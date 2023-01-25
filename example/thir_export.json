@@ -1,0 +1,424 @@
+[
+  {
+    "def_id": null,
+    "owner_id": {
+      "krate": "example#0",
+      "path": [
+        "Use"
+      ]
+    },
+    "span": {
+      "lo": {
+        "line": 1,
+        "col": 0
+      },
+      "hi": {
+        "line": 1,
+        "col": 0
+      },
+      "filename": {
+        "Real": {
+          "LocalPath": "src/lib.rs"
+        }
+      }
+    },
+    "vis_span": {
+      "lo": {
+        "line": 1,
+        "col": 0
+      },
+      "hi": {
+        "line": 1,
+        "col": 0
+      },
+      "filename": {
+        "Real": {
+          "LocalPath": "src/lib.rs"
+        }
+      }
+    },
+    "kind": {
+      "Use": [
+        {
+          "UsePath": {
+            "todo": "Path { span: no-location (#1), res: [Err], segments: [PathSegment { ident: std#1, hir_id: HirId { owner: OwnerId { def_id: DefId(0:1 ~ example[893a]::{use#0}) }, local_id: 1 }, res: Def(Mod, DefId(1:0 ~ std[84bd])), args: None, infer_args: false }, PathSegment { ident: prelude#1, hir_id: HirId { owner: OwnerId { def_id: DefId(0:1 ~ example[893a]::{use#0}) }, local_id: 2 }, res: Def(Mod, DefId(1:47 ~ std[84bd]::prelude)), args: None, infer_args: false }, PathSegment { ident: rust_2021#1, hir_id: HirId { owner: OwnerId { def_id: DefId(0:1 ~ example[893a]::{use#0}) }, local_id: 3 }, res: Def(Mod, DefId(1:134 ~ std[84bd]::prelude::rust_2021)), args: None, infer_args: false }] }"
+          }
+        },
+        "Glob"
+      ]
+    }
+  },
+  {
+    "def_id": {
+      "krate": "example#0",
+      "path": [
+        {
+          "TypeNs": "std"
+        }
+      ]
+    },
+    "owner_id": {
+      "krate": "example#0",
+      "path": [
+        {
+          "TypeNs": "std"
+        }
+      ]
+    },
+    "span": {
+      "lo": {
+        "line": 1,
+        "col": 0
+      },
+      "hi": {
+        "line": 1,
+        "col": 0
+      },
+      "filename": {
+        "Real": {
+          "LocalPath": "src/lib.rs"
+        }
+      }
+    },
+    "vis_span": {
+      "lo": {
+        "line": 1,
+        "col": 0
+      },
+      "hi": {
+        "line": 1,
+        "col": 0
+      },
+      "filename": {
+        "Real": {
+          "LocalPath": "src/lib.rs"
+        }
+      }
+    },
+    "kind": {
+      "ExternCrate": null
+    }
+  },
+  {
+    "def_id": {
+      "krate": "example#0",
+      "path": [
+        {
+          "ValueNs": "hello"
+        }
+      ]
+    },
+    "owner_id": {
+      "krate": "example#0",
+      "path": [
+        {
+          "ValueNs": "hello"
+        }
+      ]
+    },
+    "span": {
+      "lo": {
+        "line": 60,
+        "col": 0
+      },
+      "hi": {
+        "line": 60,
+        "col": 23
+      },
+      "filename": {
+        "Real": {
+          "LocalPath": "src/lib.rs"
+        }
+      }
+    },
+    "vis_span": {
+      "lo": {
+        "line": 60,
+        "col": 0
+      },
+      "hi": {
+        "line": 60,
+        "col": 0
+      },
+      "filename": {
+        "Real": {
+          "LocalPath": "src/lib.rs"
+        }
+      }
+    },
+    "kind": {
+      "Fn": [
+        {
+          "params": [
+            {
+              "hir_id": {
+                "owner": {
+                  "krate": "example#0",
+                  "path": [
+                    {
+                      "ValueNs": "hello"
+                    }
+                  ]
+                },
+                "local_id": 5
+              },
+              "def_id": {
+                "krate": "example#0",
+                "path": [
+                  {
+                    "ValueNs": "hello"
+                  },
+                  {
+                    "LifetimeNs": "'_"
+                  }
+                ]
+              },
+              "name": "Fresh",
+              "span": {
+                "lo": {
+                  "line": 60,
+                  "col": 12
+                },
+                "hi": {
+                  "line": 60,
+                  "col": 13
+                },
+                "filename": {
+                  "Real": {
+                    "LocalPath": "src/lib.rs"
+                  }
+                }
+              },
+              "pure_wrt_drop": false,
+              "kind": {
+                "Lifetime": {
+                  "kind": "Elided"
+                }
+              },
+              "colon_span": null
+            }
+          ],
+          "predicates": [],
+          "has_where_clause_predicates": false,
+          "where_clause_span": {
+            "lo": {
+              "line": 60,
+              "col": 20
+            },
+            "hi": {
+              "line": 60,
+              "col": 20
+            },
+            "filename": {
+              "Real": {
+                "LocalPath": "src/lib.rs"
+              }
+            }
+          },
+          "span": {
+            "lo": {
+              "line": 60,
+              "col": 8
+            },
+            "hi": {
+              "line": 60,
+              "col": 8
+            },
+            "filename": {
+              "Real": {
+                "LocalPath": "src/lib.rs"
+              }
+            }
+          }
+        },
+        {
+          "header": {
+            "unsafety": "Normal",
+            "constness": "NotConst",
+            "asyncness": "NotAsync",
+            "abi": {
+              "Abi": {
+                "todo": "Rust"
+              }
+            }
+          },
+          "params": [
+            {
+              "pat": {
+                "ty": {
+                  "Ref": [
+                    {
+                      "Region": {
+                        "todo": "ReErased"
+                      }
+                    },
+                    {
+                      "Uint": "U8"
+                    },
+                    true
+                  ]
+                },
+                "span": {
+                  "lo": {
+                    "line": 60,
+                    "col": 9
+                  },
+                  "hi": {
+                    "line": 60,
+                    "col": 10
+                  },
+                  "filename": {
+                    "Real": {
+                      "LocalPath": "src/lib.rs"
+                    }
+                  }
+                },
+                "contents": {
+                  "Binding": {
+                    "mutability": false,
+                    "mode": "ByValue",
+                    "var": {
+                      "name": "x",
+                      "id": {
+                        "owner": {
+                          "krate": "example#0",
+                          "path": [
+                            {
+                              "ValueNs": "hello"
+                            }
+                          ]
+                        },
+                        "local_id": 2
+                      }
+                    },
+                    "ty": {
+                      "Ref": [
+                        {
+                          "Region": {
+                            "todo": "ReErased"
+                          }
+                        },
+                        {
+                          "Uint": "U8"
+                        },
+                        true
+                      ]
+                    },
+                    "subpattern": null,
+                    "is_primary": true
+                  }
+                }
+              },
+              "ty": {
+                "Ref": [
+                  {
+                    "Region": {
+                      "todo": "ReErased"
+                    }
+                  },
+                  {
+                    "Uint": "U8"
+                  },
+                  true
+                ]
+              },
+              "ty_span": {
+                "lo": {
+                  "line": 60,
+                  "col": 12
+                },
+                "hi": {
+                  "line": 60,
+                  "col": 19
+                },
+                "filename": {
+                  "Real": {
+                    "LocalPath": "src/lib.rs"
+                  }
+                }
+              },
+              "self_kind": null,
+              "hir_id": {
+                "owner": {
+                  "krate": "example#0",
+                  "path": [
+                    {
+                      "ValueNs": "hello"
+                    }
+                  ]
+                },
+                "local_id": 1
+              }
+            }
+          ],
+          "ret": {
+            "Tuple": []
+          },
+          "body": {
+            "ty": {
+              "Tuple": []
+            },
+            "span": {
+              "lo": {
+                "line": 60,
+                "col": 21
+              },
+              "hi": {
+                "line": 60,
+                "col": 23
+              },
+              "filename": {
+                "Real": {
+                  "LocalPath": "src/lib.rs"
+                }
+              }
+            },
+            "contents": {
+              "Block": {
+                "targeted_by_break": false,
+                "region_scope": {
+                  "id": 3,
+                  "data": "Node"
+                },
+                "opt_destruction_scope": null,
+                "span": {
+                  "lo": {
+                    "line": 60,
+                    "col": 21
+                  },
+                  "hi": {
+                    "line": 60,
+                    "col": 23
+                  },
+                  "filename": {
+                    "Real": {
+                      "LocalPath": "src/lib.rs"
+                    }
+                  }
+                },
+                "stmts": [],
+                "expr": null,
+                "safety_mode": "Safe"
+              }
+            }
+          },
+          "sig_span": {
+            "lo": {
+              "line": 60,
+              "col": 0
+            },
+            "hi": {
+              "line": 60,
+              "col": 20
+            },
+            "filename": {
+              "Real": {
+                "LocalPath": "src/lib.rs"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+]

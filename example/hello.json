@@ -1,0 +1,269 @@
+[
+  {
+    "scrutinee": {
+      "ty": {
+        "Uint": "U8"
+      },
+      "span": {
+        "lo": {
+          "line": 95,
+          "col": 10
+        },
+        "hi": {
+          "line": 95,
+          "col": 11
+        },
+        "filename": {
+          "Real": {
+            "LocalPath": "src/lib.rs"
+          }
+        }
+      },
+      "contents": {
+        "VarRef": {
+          "id": {
+            "name": "x",
+            "id": {
+              "owner": {
+                "krate": "example#0",
+                "path": [
+                  {
+                    "ValueNs": "f"
+                  }
+                ]
+              },
+              "local_id": 2
+            }
+          }
+        }
+      }
+    },
+    "arms": [
+      {
+        "pattern": {
+          "ty": {
+            "Uint": "U8"
+          },
+          "span": {
+            "lo": {
+              "line": 96,
+              "col": 8
+            },
+            "hi": {
+              "line": 96,
+              "col": 10
+            },
+            "filename": {
+              "Real": {
+                "LocalPath": "src/lib.rs"
+              }
+            }
+          },
+          "contents": {
+            "Constant": {
+              "value": {
+                "Val": [
+                  {
+                    "Scalar": {
+                      "Scalar": {
+                        "todo": "0x63"
+                      }
+                    }
+                  },
+                  {
+                    "Uint": "U8"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "guard": null,
+        "body": {
+          "ty": {
+            "Uint": "U8"
+          },
+          "span": {
+            "lo": {
+              "line": 96,
+              "col": 14
+            },
+            "hi": {
+              "line": 96,
+              "col": 15
+            },
+            "filename": {
+              "Real": {
+                "LocalPath": "src/lib.rs"
+              }
+            }
+          },
+          "contents": {
+            "Literal": {
+              "lit": {
+                "node": {
+                  "Int": [
+                    1,
+                    "Unsuffixed"
+                  ]
+                },
+                "span": {
+                  "lo": {
+                    "line": 96,
+                    "col": 14
+                  },
+                  "hi": {
+                    "line": 96,
+                    "col": 15
+                  },
+                  "filename": {
+                    "Real": {
+                      "LocalPath": "src/lib.rs"
+                    }
+                  }
+                }
+              },
+              "neg": false
+            }
+          }
+        },
+        "lint_level": {
+          "Explicit": {
+            "owner": {
+              "krate": "example#0",
+              "path": [
+                {
+                  "ValueNs": "f"
+                }
+              ]
+            },
+            "local_id": 7
+          }
+        },
+        "scope": {
+          "id": 7,
+          "data": "Node"
+        },
+        "span": {
+          "lo": {
+            "line": 96,
+            "col": 8
+          },
+          "hi": {
+            "line": 96,
+            "col": 15
+          },
+          "filename": {
+            "Real": {
+              "LocalPath": "src/lib.rs"
+            }
+          }
+        }
+      },
+      {
+        "pattern": {
+          "ty": {
+            "Uint": "U8"
+          },
+          "span": {
+            "lo": {
+              "line": 97,
+              "col": 8
+            },
+            "hi": {
+              "line": 97,
+              "col": 9
+            },
+            "filename": {
+              "Real": {
+                "LocalPath": "src/lib.rs"
+              }
+            }
+          },
+          "contents": "Wild"
+        },
+        "guard": null,
+        "body": {
+          "ty": {
+            "Uint": "U8"
+          },
+          "span": {
+            "lo": {
+              "line": 97,
+              "col": 13
+            },
+            "hi": {
+              "line": 97,
+              "col": 14
+            },
+            "filename": {
+              "Real": {
+                "LocalPath": "src/lib.rs"
+              }
+            }
+          },
+          "contents": {
+            "Literal": {
+              "lit": {
+                "node": {
+                  "Int": [
+                    0,
+                    "Unsuffixed"
+                  ]
+                },
+                "span": {
+                  "lo": {
+                    "line": 97,
+                    "col": 13
+                  },
+                  "hi": {
+                    "line": 97,
+                    "col": 14
+                  },
+                  "filename": {
+                    "Real": {
+                      "LocalPath": "src/lib.rs"
+                    }
+                  }
+                }
+              },
+              "neg": false
+            }
+          }
+        },
+        "lint_level": {
+          "Explicit": {
+            "owner": {
+              "krate": "example#0",
+              "path": [
+                {
+                  "ValueNs": "f"
+                }
+              ]
+            },
+            "local_id": 10
+          }
+        },
+        "scope": {
+          "id": 10,
+          "data": "Node"
+        },
+        "span": {
+          "lo": {
+            "line": 97,
+            "col": 8
+          },
+          "hi": {
+            "line": 97,
+            "col": 14
+          },
+          "filename": {
+            "Real": {
+              "LocalPath": "src/lib.rs"
+            }
+          }
+        }
+      }
+    ]
+  }
+]

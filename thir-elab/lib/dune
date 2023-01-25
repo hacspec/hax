@@ -1,0 +1,23 @@
+(library
+ (name thir_elab)
+ (libraries yojson non_empty_list bignum pprint)
+ (modules ast raw_thir_ast import_thir print utils desugar_mutable_variable)
+ (preprocess
+  (pps
+   ppx_yojson_conv
+   ppx_sexp_conv
+   ppx_compare
+   ppx_hash
+   visitors.ppx
+   ppx_deriving.show
+   ppx_type_collection)))
+
+(rule
+         (target raw_thir_ast.ml)
+         (action (with-stdout-to raw_thir_ast.ml
+                    (run thir_ml_of_json_schema))))
+ 
+(env
+ (dev
+  (flags
+   (:standard -w -A -w +8))))

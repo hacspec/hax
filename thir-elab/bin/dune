@@ -1,0 +1,9 @@
+(executable
+ (public_name thir-elab)
+ (name main)
+ (libraries thir_elab core pprint))
+
+(env
+ (dev
+  (flags
+   (:standard -warn-error -A))))

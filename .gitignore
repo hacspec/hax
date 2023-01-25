@@ -1,0 +1,9 @@
+debug/
+target/
+**/*.rs.bk
+node_modules
+TODO.org
+.envrc
+.direnv
+_build
+result

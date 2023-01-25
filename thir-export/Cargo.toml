@@ -1,0 +1,7 @@
+[workspace]
+
+members = [
+     "adt-into",
+     "thir-export",
+     "cli",
+]

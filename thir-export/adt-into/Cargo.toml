@@ -1,0 +1,13 @@
+[package]
+name = "adt-into"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = {version = "1.0.107", features = ["derive", "printing", "extra-traits", "parsing", "full"]}
+proc-macro2 = "1.0"
+quote = "1.0"
+
