@@ -144,7 +144,7 @@ fn main() {
         .into_iter()
         .chain(
             escape_string::split(&*std::env::var("THIR_EXPORT_ARGS").unwrap_or("".into()))
-                .expect("Invalid value for the environement variable THIR_EXPORT_ARGS")
+                .expect("Invalid value for the environnement variable THIR_EXPORT_ARGS")
                 .into_iter()
                 .map(|x| String::from(x)),
         )
