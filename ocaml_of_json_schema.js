@@ -96,7 +96,7 @@ let ensureUnique = (() => {
 })();
 
 const util = require('util');
-let log_full = o => console.log(util.inspect(o, {showHidden: false, depth: null, colors: true}));
+let log_full = o => console.error(util.inspect(o, {showHidden: false, depth: null, colors: true}));
 
 let trace1 = (name, f) => (input) => {
     let output = f(input);
@@ -405,10 +405,10 @@ let export_definition = (name, def) => {
     );
 
     if (suitable_exporters.length != 1){
-        console.log(`ERROR: each definition should have exactly one suited exporter, but type "${name}" has the following exporter(s): ${JSON.stringify(suitable_exporters.map(([n, _]) => n))}.`);
-        console.log('name', name);
+        console.error(`ERROR: each definition should have exactly one suited exporter, but type "${name}" has the following exporter(s): ${JSON.stringify(suitable_exporters.map(([n, _]) => n))}.`);
+        console.error('name', name);
         log_full(def);
-        console.log('xname', name);
+        console.error('xname', name);
         
         throw "kind error";
     }
