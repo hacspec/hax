@@ -10,15 +10,32 @@
     flake-utils.url = "github:numtide/flake-utils";
     crane.url = "github:ipetkov/crane";
     crane.inputs.nixpkgs.follows = "nixpkgs";
+    fstar.url = "github:w95psp/fstar/record-payloads";
   };
 
-  outputs = {flake-utils, nixpkgs, rust-overlay, crane, ...}:
+  outputs = {flake-utils, nixpkgs, rust-overlay, crane, fstar, ...}:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs {
           inherit system;
           overlays = [rust-overlay.overlays.default];
         };
+        fstar-compiler-lib = (fstar.lib.${system}.binary-of-ml-snapshot {
+          pname = "fstar";
+          src = fstar;
+          version = "compiler-lib";
+          opts = {
+            compileFStar = false;
+            compileUlib = false;
+            compileTests = false;
+          };
+        }).overrideAttrs (_: {
+          patches = ./patch-fstar-lib.diff;
+        });
+        # fstar-bin = /home/lucas/repos/FStar/master/bin;
+        # fstar-bin = fstar.packages.${system}.default.overrideAttrs (old: {
+        #   patches = ./patch-fstar-lib.diff;
+        # });
         ocamlPackages = pkgs.ocamlPackages;
         nightly = pkgs.rust-bin.nightly."2022-12-06";
         rustc = nightly.default.override {
@@ -42,6 +59,23 @@
             minimalOCamlVersion = "4.08";
             doCheck = false;
           };
+        ppx_matches = 
+          ocamlPackages.buildDunePackage rec {
+            pname = "ppx_matches";
+            version = "0.1";
+
+            src = pkgs.fetchzip {
+              url = "https://github.com/wrbs/ppx_matches/archive/refs/tags/${version}.zip";
+              sha256 = "sha256-nAmWF8MgW0odKkRiFcHGsvJyIxNHaZpnOlNPsef89Fo=";
+            };
+
+            buildInputs = [
+              ocamlPackages.ppxlib
+            ];
+            duneVersion = "2";
+            minimalOCamlVersion = "4.04";
+            doCheck = false;
+          };
       in rec {
         packages = {
           inherit rustc nightly;
@@ -56,8 +90,9 @@
             src = ./thir-elab;
             buildInputs = with ocamlPackages; [
               base ppx_yojson_conv yojson ppx_sexp_conv ppx_hash
-              visitors pprint non_empty_list bignum
-            ];
+              visitors pprint non_empty_list bignum fstar-compiler-lib
+              ppx_deriving_yojson ppx_matches
+            ] ++ fstar-compiler-lib.buildInputs;
             nativeBuildInputs = [ packages.thir_ml_of_json_schema ];
             strictDeps = true;
             preBuild = "dune build thir-elab.opam";
