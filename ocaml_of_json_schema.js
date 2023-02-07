@@ -433,7 +433,7 @@ function run(str){
         ([name, def]) => export_definition(name, def)
     ).filter(x => x instanceof Object);
 
-    let derive_items = ['show'];
+    let derive_items = ['show', 'eq'];
 
     output_string += `
 module ParseError = struct
