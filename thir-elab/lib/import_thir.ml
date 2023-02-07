@@ -1,5 +1,9 @@
 module Thir = Raw_thir_ast
 open Base
+module Ast = struct
+  include Ast
+  include Ast.Make(Features.Rust)
+end
 open Ast
 
 let ( let* ) r f = Result.bind r ~f
@@ -17,21 +21,6 @@ type error =
 type 'a result = ('a, error) Result.t
 
 let loc (loc : Thir.loc) : Ast.loc = { col = loc.col; line = loc.line }
-
-module GlobalNames = struct
-  let h v : full expr = { span = Dummy; typ = Ast.False; v = Ast.GlobalVar v }
-  let box : full expr = `Primitive Box |> h
-  let deref : full expr = `Primitive Box |> h
-  let cast : full ty -> full ty -> full expr = fun _ _ -> `Primitive Cast |> h
-  let binop : Thir.bin_op -> full expr = fun op -> `Primitive (BinOp op) |> h
-  let unop : Thir.un_op -> full expr = fun op -> `Primitive (UnOp op) |> h
-
-  let logicalop : Thir.logical_op -> full expr =
-   fun op -> `Primitive (LogicalOp op) |> h
-
-  let tuple_type : int -> full expr = fun len -> h (`Tuple len)
-  (* let tuple_field: len:int -> Ast.expr = fun ~len -> h "tuple_field" *)
-end
 
 let sequence_result_option (x : 'a result option) : 'a option result =
   match x with
@@ -64,11 +53,6 @@ let union_span (x : span) (y : span) : span result =
   | Span x, Span y when String.(x.file <> y.file) -> Error BadSpanUnion
   | Span { file; lo }, Span { hi } -> Ok (Span { file; lo; hi })
 
-let c_borrow_kind : Thir.borrow_kind -> full borrow_kind result = function
-  | Shared -> Ok Ast.Shared
-  | Shallow -> Error ShallowMutUnsupported
-  | Unique -> Ok Ast.Unique
-  | Mut _ -> Ok (Ast.Mut ())
 
 let c_span (span : Thir.span) : span result =
   Ok
@@ -96,19 +80,26 @@ let uint_ty_to_size : Thir.uint_ty -> size = function
   | U64 -> S64
   | U128 -> S128
 
+
 let c_mutability (witness : 'a) : bool -> 'a Ast.mutability = function
   | true -> Mutable witness
   | false -> Immutable
 
-let c_binding_mode : Thir.binding_mode -> full binding_mode result = function
+let c_borrow_kind : Thir.borrow_kind -> borrow_kind result = function
+  | Shared -> Ok Ast.Shared
+  | Shallow -> Error ShallowMutUnsupported
+  | Unique -> Ok Ast.Unique
+  | Mut _ -> Ok (Ast.Mut ())
+
+let c_binding_mode : Thir.binding_mode -> binding_mode result = function
   | ByValue -> Ok Ast.ByValue
   | ByRef k ->
       let* k = c_borrow_kind k in
       Ok (Ast.ByRef k)
 
-let unit_typ : 'a ty = App { ident = `Tuple 0; args = [] }
+let unit_typ : ty = App { ident = `Tuple 0; args = [] }
 
-let unit_expr : full expr =
+let unit_expr : expr =
   {
     typ = unit_typ;
     span = Dummy;
@@ -125,7 +116,22 @@ let unit_expr : full expr =
         };
   }
 
-let wild_pat : full ty -> full pat = fun typ -> { typ; span = Dummy; v = Wild }
+let wild_pat : ty -> pat = fun typ -> { typ; span = Dummy; v = Wild }
+
+module GlobalNames = struct
+  let h v : expr = { span = Dummy; typ = Ast.False; v = Ast.GlobalVar v }
+  let box : expr = `Primitive Box |> h
+  let deref : expr = `Primitive Box |> h
+  let cast : ty -> ty -> expr = fun _ _ -> `Primitive Cast |> h
+  let binop : Thir.bin_op -> expr = fun op -> `Primitive (BinOp op) |> h
+  let unop : Thir.un_op -> expr = fun op -> `Primitive (UnOp op) |> h
+
+  let logicalop : Thir.logical_op -> expr =
+   fun op -> `Primitive (LogicalOp op) |> h
+
+  let tuple_type : int -> expr = fun len -> h (`Tuple len)
+  (* let tuple_field: len:int -> Ast.expr = fun ~len -> h "tuple_field" *)
+end
 
 let c_lit' (lit : Thir.lit_kind) : literal result =
   match lit with
@@ -148,13 +154,28 @@ let c_lit' (lit : Thir.lit_kind) : literal result =
 
 let c_lit (lit : Thir.spanned_for__lit_kind) : literal result = c_lit' lit.node
 
-let rec c_expr (e : Thir.decorated_for__expr_kind) : full expr result =
+let append_to_thir_def_id (def_id: Thir.def_id) (item: Thir.def_path_item) =
+  { def_id with path = def_id.path @ [item] }
+    
+let variant_id_of_variant_informations (info: Thir.variant_informations) =
+  let is_def_id_prefix (x: Thir.def_id) (y: Thir.def_id): bool =
+    String.(x.krate = y.krate) && List.is_prefix ~prefix:x.path ~equal:Thir.equal_def_path_item y.path
+  in
+  if not (is_def_id_prefix info.type_namespace info.variant)
+  then failwith ("variant_id_of_variant_informations: ["
+                 ^ Thir.show_def_id info.type_namespace ^
+                   "] is not a prefix of ["
+                 ^ Thir.show_def_id info.variant ^
+                   "]");
+  append_to_thir_def_id info.type_namespace (List.last_exn info.variant.path)
+
+let rec c_expr (e : Thir.decorated_for__expr_kind) : expr result =
   let call f args =
     Result.all (List.map ~f:c_expr args)
     |> Result.map ~f:(fun args -> App { f; args })
   in
   let* typ = c_ty e.ty in
-  let* (v : full expr') =
+  let* (v : expr') =
     match e.contents with
     | Box { value } -> call GlobalNames.box [ value ]
     | MacroInvokation { argument; macro_ident } ->
@@ -178,7 +199,9 @@ let rec c_expr (e : Thir.decorated_for__expr_kind) : full expr result =
         let from_ty = typ in
         let* to_ty = c_ty source.ty in
         call (GlobalNames.cast from_ty to_ty) [ source ]
-    | Use _ -> failwith "use"
+    | Use { source } ->
+      let* source = c_expr source in
+      Ok source.v
     | NeverToAny _ -> failwith "NeverToAny"
     | Pointer _ -> failwith "Pointer"
     | Loop { body } ->
@@ -203,7 +226,7 @@ let rec c_expr (e : Thir.decorated_for__expr_kind) : full expr result =
                   let* rhs = c_expr rhs in
                   let v = Let { lhs = wild_pat rhs.typ; rhs; body } in
                   let* span = union_span rhs.span body.span in
-                  Ok ({ v; typ; span } : _ expr)
+                  Ok ({ v; typ; span } : expr)
               | Let { else_block = Some _ } -> Error LetElse
               | Let { initializer' = None } -> Error LetWithoutInit
               | Let { pattern = lhs; initializer' = Some rhs } ->
@@ -211,13 +234,13 @@ let rec c_expr (e : Thir.decorated_for__expr_kind) : full expr result =
                   let* rhs = c_expr rhs in
                   let v = Let { lhs; rhs; body } in
                   let* span = union_span rhs.span body.span in
-                  Ok ({ v; typ; span } : _ expr))
+                  Ok ({ v; typ; span } : expr))
         in
         Ok v
     | Assign { lhs; rhs } ->
         let* lhs = c_expr lhs in
         let* e = c_expr rhs in
-        let lhs : _ lhs =
+        let lhs =
           match lhs.v with
           | LocalVar ident -> LhsLocalVar ident
           | _ -> failwith ("TODO:Expr:Assign" ^ "show_expr lhs")
@@ -238,9 +261,10 @@ let rec c_expr (e : Thir.decorated_for__expr_kind) : full expr result =
                args = [ lhs ];
              })
     | TupleField { lhs; field } ->
-        (* TODO: refactor *)
+      (* TODO: refactor *)
+        let tuple_len = 0 (* todo, lookup type *) in
         let* lhs = c_expr lhs in
-        let projector = GlobalVar (`Projector (`TupleField field)) in
+        let projector = GlobalVar (`Projector (`TupleField (field, tuple_len))) in
         let* span = c_span e.span in
         Ok
           (App
@@ -253,7 +277,7 @@ let rec c_expr (e : Thir.decorated_for__expr_kind) : full expr result =
     | Borrow { arg; borrow_kind = kind } ->
         let* e = c_expr arg in
         let* kind = c_borrow_kind kind in
-        Ok (Borrow { kind; e })
+        Ok (Borrow { kind; e; witness = () })
     | AddressOf { arg; mutability = mut } ->
         let* e = c_expr arg in
         Ok (AddressOf { e; mut = c_mutability () mut; witness = () })
@@ -275,7 +299,8 @@ let rec c_expr (e : Thir.decorated_for__expr_kind) : full expr result =
     | Array { fields } ->
         let* fields = List.map ~f:c_expr fields |> Result.all in
         Ok (Array fields)
-    | Adt { base; fields; variant; user_ty } ->
+    | Adt { info; base; fields; user_ty } ->
+        let constructor = def_id @@ variant_id_of_variant_informations info in
         let* base =
           Option.map ~f:(fun base -> c_expr base.base) base
           |> sequence_result_option
@@ -283,21 +308,22 @@ let rec c_expr (e : Thir.decorated_for__expr_kind) : full expr result =
         let* fields =
           List.map
             ~f:(fun f ->
+              let field = def_id @@ append_to_thir_def_id info.type_namespace (List.last_exn f.field.path) in
               let* value = c_expr f.value in
-              Ok (def_id f.field, value))
+              Ok (field, value))
             fields
           |> Result.all
         in
-        Ok (Record { fields; base })
+        Ok (Construct { constructs_record = info.constructs_record; constructor; fields; base })
     | Literal { lit } ->
         let* lit = c_lit lit in
         Ok (Literal lit)
     | e -> failwith ("todo expr: " ^ Thir.show_expr_kind e)
   in
   let* span = c_span e.span in
-  Ok ({ v; span; typ } : _ expr)
+  Ok ({ v; span; typ } : expr)
 
-and c_pat (pat : Thir.decorated_for__pat_kind) : full pat result =
+and c_pat (pat : Thir.decorated_for__pat_kind) : pat result =
   let* span = c_span pat.span in
   let* typ = c_ty pat.ty in
   let* v =
@@ -321,20 +347,21 @@ and c_pat (pat : Thir.decorated_for__pat_kind) : full pat result =
         let* mode = c_binding_mode mode in
         let var = local_ident var in
         Ok (Binding { mut; mode; var; typ; subpat })
-    | Variant { variant; substs; subpatterns } ->
-        let name = def_id variant in
-        let* args = List.map ~f:c_field_pat subpatterns |> Result.all in
-        Ok (Variant { name; args })
+    | Variant { info; substs; subpatterns } ->
+        let name = def_id @@ variant_id_of_variant_informations info in
+        let* args = List.map ~f:(c_field_pat info) subpatterns |> Result.all in
+        Ok (Variant { record = info.constructs_record; name; args })
     | Tuple { subpatterns } ->
+        let len = List.length subpatterns in
         let* args =
           List.mapi
             ~f:(fun i pat ->
               let* pat = c_pat pat in
-              Ok { field = `TupleField i; pat })
+              Ok { field = `TupleField (i, len); pat })
             subpatterns
           |> Result.all
         in
-        Ok (Variant { name = `Tuple (List.length subpatterns); args })
+        Ok (Variant { name = `Tuple (List.length subpatterns); args; record = false })
     | Deref _ -> failwith "Deref"
     | Constant { value } ->
         let* lit = c_constant_kind value in
@@ -344,10 +371,10 @@ and c_pat (pat : Thir.decorated_for__pat_kind) : full pat result =
     | Slice _ -> failwith "Slice"
     | Range _ -> failwith "Range"
   in
-  Ok ({ v; span; typ } : _ pat)
+  Ok ({ v; span; typ } : pat)
 
-and c_field_pat (field_pat : Thir.field_pat) : full field_pat result =
-  let field = def_id field_pat.field in
+and c_field_pat info (field_pat : Thir.field_pat) : field_pat result =
+  let field = def_id @@ append_to_thir_def_id info.type_namespace (List.last_exn field_pat.field.path) in
   let* pat = c_pat field_pat.pattern in
   Ok { field; pat }
 
@@ -362,14 +389,14 @@ and c_constant_kind (k : Thir.constant_kind) : literal result =
   | Todo s -> failwith ("TODO node: " ^ s)
 
 and c_canonical_user_type_annotation
-    (annotation : Thir.canonical_user_type_annotation) : full ty spanned result
+    (annotation : Thir.canonical_user_type_annotation) : ty spanned result
     =
   let* span = c_span annotation.span in
   let* v = c_ty annotation.inferred_ty in
   (* TODO: use user's type instead of inferred type? *)
   Ok ({ v; span } : _ spanned)
 
-and c_ty (ty : Thir.ty) : full ty result =
+and c_ty (ty : Thir.ty) : ty result =
   match ty with
   | Bool -> Ok Bool
   | Char -> Ok Char
@@ -386,8 +413,8 @@ and c_ty (ty : Thir.ty) : full ty result =
       Ok (Arrow (params, ret))
   | NamedType { def_id = id; generic_args } ->
       let ident = def_id id in
-      let* args = List.map ~f:c_generic_arg generic_args |> Result.all in
-      Ok (App { ident; args } : _ ty)
+      let* args = List.map ~f:c_generic_value generic_args |> Result.all in
+      Ok (App { ident; args } : ty)
   | Foreign _ -> failwith "Foreign"
   | Str -> Ok Str
   | Array (ty, len) -> failwith "len array TODO"
@@ -402,10 +429,13 @@ and c_ty (ty : Thir.ty) : full ty result =
   | Never -> Ok False
   | Tuple types ->
       let* types = List.map ~f:c_ty types |> Result.all in
-      let types = List.map ~f:(fun ty -> Type ty) types in
-      Ok (App { ident = `Tuple (List.length types); args = types } : _ ty)
+      let types = List.map ~f:(fun ty -> (Type ty : generic_value)) types in
+      Ok (App { ident = `Tuple (List.length types); args = types } : ty)
       (* Ok(TyTuple(types)) *)
   | Projection _ -> Ok (ProjectedAssociatedType (Thir.show_ty ty))
+  | Param {index; name} ->
+     (* TODO: [id] might not unique *)
+     Ok (Param { name; id = index })
   | _ -> failwith ("TODO typ " ^ Thir.show_ty ty)
 (* fun _ -> Ok Bool *)
 
@@ -415,21 +445,22 @@ and c_int_ty (ty : Thir.int_ty) : int_kind =
 and c_uint_ty (ty : Thir.uint_ty) : int_kind =
   { size = uint_ty_to_size ty; signedness = Signed }
 
-and c_generic_arg (ty : Thir.generic_arg) : full generic_arg result =
+and c_generic_value (ty : Thir.generic_arg) : generic_value result =
   match ty with
   | Type ty ->
       let* ty = c_ty ty in
-      Ok (Type ty)
-  | Const _ -> failwith "const generic: todo (those should just be expressions)"
-  | _ -> Ok (Lifetime "todo generics")
+      Ok (Type ty : generic_value)
+  | Const e -> failwith "TODO"
+      (* let* ty = c_ty ty in  *)
+  | _ -> Ok (Lifetime {lt = "todo generics"; witness = ()})
 
-and c_arm (arm : Thir.arm) : full arm result =
+and c_arm (arm : Thir.arm) : arm result =
   let* pat = c_pat arm.pattern in
   let* body = c_expr arm.body in
   let* span = c_span arm.span in
-  Ok ({ v = { pat; body }; span } : _ arm)
+  Ok ({ v = { pat; body }; span } : arm)
 
-let c_param (param : Thir.param) : full param result =
+let c_param (param : Thir.param) : param result =
   let* pat = c_pat (Option.value_exn param.pat) in
   let* typ = c_ty param.ty in
   let* typ_span =
@@ -437,12 +468,68 @@ let c_param (param : Thir.param) : full param result =
   in
   Ok { typ_span; typ; pat }
 
-let c_item (item : Thir.item) : full item result =
+let c_generic_param (param: Thir.generic_param): generic_param result
+  = let ident = match param.name with
+      | Fresh -> failwith "[Fresh] ident?"
+      | Error -> failwith "[Error] ident?"
+      | Plain n -> local_ident n
+  in
+    match (param.kind : Thir.generic_param_kind) with
+  | Lifetime {kind} -> Ok (Lifetime {ident})
+  | Type {default; synthetic} ->
+    let* default = sequence_result_option @@ Option.map ~f:c_ty default in
+    Ok (Type {ident; default} : generic_param)
+  | Const {default; ty} -> Obj.magic ()
+    failwith "TODO: Const"
+
+(* let c_generic_bound (c: Thir.generic_bound) *)
+(*   : trait_ref result *)
+(*   = match c with *)
+(*   | _ -> failwith "TODO" *)
+
+let c_predicate_kind (p: Thir.predicate_kind): trait_ref option result
+  = match p with
+  | Clause (Trait {is_positive = true; is_const = _; trait_ref }) ->
+
+     let* args = List.map ~f:c_generic_value trait_ref.substs |> Result.all in
+     Ok (Some {
+            trait = def_id trait_ref.def_id;
+            args;
+            bindings = []
+       })
+  | _ -> Ok None
+
+let c_constraint (c: Thir.where_predicate)
+  : generic_constraint list result
+  = match c with
+  | BoundPredicate {
+      bound_generic_params;
+      bounded_ty;
+      bounds;
+      hir_id;
+      origin;
+      span
+    } ->
+     let* typ = c_ty bounded_ty in
+     let* traits = List.map ~f:c_predicate_kind bounds |> Result.all in
+     let traits = List.filter_map ~f:Fn.id traits in
+     Ok (List.map ~f:(fun trait -> (Type {typ; implements = trait} : generic_constraint)) traits)
+  | RegionPredicate _ -> failwith "region prediate"
+  | EqPredicate _ -> failwith "EqPredicate"
+
+let c_generics (generics: Thir.generics): generics result =
+  let* params = List.map ~f:c_generic_param generics.params
+                |> Result.all in
+  let* constraints = List.map ~f:c_constraint generics.predicates
+                |> Result.all in
+  Ok { params; constraints = List.concat constraints }
+
+let c_item (item : Thir.item) : item result =
   let* span = c_span item.span in
   let* v =
     match item.kind with
     | Fn (generics, { body; header; params; ret; sig_span }) ->
-        let generics = () (* TODO! *) in
+        let* generics = c_generics generics in
         let* body = c_expr body in
         let* params = List.map ~f:c_param params |> Result.all in
         Ok
@@ -452,7 +539,8 @@ let c_item (item : Thir.item) : full item result =
                generics;
                body;
                params;
-             })
+          })
+    | Struct (v, g) -> Ok NotImplementedYet
     | _ -> Ok NotImplementedYet
   in
-  Ok ({ span; v } : _ item)
+  Ok ({ span; v } : item)

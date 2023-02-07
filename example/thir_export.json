@@ -2,7 +2,7 @@
   {
     "def_id": null,
     "owner_id": {
-      "krate": "example#0",
+      "krate": "example",
       "path": [
         "Use"
       ]
@@ -50,7 +50,7 @@
   },
   {
     "def_id": {
-      "krate": "example#0",
+      "krate": "example",
       "path": [
         {
           "TypeNs": "std"
@@ -58,7 +58,7 @@
       ]
     },
     "owner_id": {
-      "krate": "example#0",
+      "krate": "example",
       "path": [
         {
           "TypeNs": "std"
@@ -101,18 +101,18 @@
   },
   {
     "def_id": {
-      "krate": "example#0",
+      "krate": "example",
       "path": [
         {
-          "ValueNs": "hello"
+          "TypeNs": "Hello"
         }
       ]
     },
     "owner_id": {
-      "krate": "example#0",
+      "krate": "example",
       "path": [
         {
-          "ValueNs": "hello"
+          "TypeNs": "Hello"
         }
       ]
     },
@@ -122,8 +122,8 @@
         "col": 0
       },
       "hi": {
-        "line": 60,
-        "col": 23
+        "line": 63,
+        "col": 1
       },
       "filename": {
         "Real": {
@@ -147,67 +147,485 @@
       }
     },
     "kind": {
-      "Fn": [
-        {
-          "params": [
-            {
-              "hir_id": {
-                "owner": {
-                  "krate": "example#0",
-                  "path": [
-                    {
-                      "ValueNs": "hello"
-                    }
-                  ]
-                },
-                "local_id": 5
-              },
-              "def_id": {
-                "krate": "example#0",
-                "path": [
-                  {
-                    "ValueNs": "hello"
-                  },
-                  {
-                    "LifetimeNs": "'_"
-                  }
-                ]
-              },
-              "name": "Fresh",
-              "span": {
+      "Enum": [
+        [
+          {
+            "ident": [
+              "A",
+              {
                 "lo": {
-                  "line": 60,
-                  "col": 12
+                  "line": 61,
+                  "col": 4
                 },
                 "hi": {
-                  "line": 60,
-                  "col": 13
+                  "line": 61,
+                  "col": 5
                 },
                 "filename": {
                   "Real": {
                     "LocalPath": "src/lib.rs"
                   }
                 }
+              }
+            ],
+            "hir_id": {
+              "owner": {
+                "krate": "example",
+                "path": [
+                  {
+                    "TypeNs": "Hello"
+                  }
+                ]
               },
-              "pure_wrt_drop": false,
-              "kind": {
-                "Lifetime": {
-                  "kind": "Elided"
+              "local_id": 1
+            },
+            "def_id": {
+              "krate": "example",
+              "path": [
+                {
+                  "TypeNs": "Hello"
+                },
+                {
+                  "TypeNs": "A"
                 }
+              ]
+            },
+            "data": {
+              "Tuple": [
+                [
+                  {
+                    "span": {
+                      "lo": {
+                        "line": 61,
+                        "col": 6
+                      },
+                      "hi": {
+                        "line": 61,
+                        "col": 8
+                      },
+                      "filename": {
+                        "Real": {
+                          "LocalPath": "src/lib.rs"
+                        }
+                      }
+                    },
+                    "vis_span": {
+                      "lo": {
+                        "line": 61,
+                        "col": 6
+                      },
+                      "hi": {
+                        "line": 61,
+                        "col": 6
+                      },
+                      "filename": {
+                        "Real": {
+                          "LocalPath": "src/lib.rs"
+                        }
+                      }
+                    },
+                    "ident": [
+                      "0",
+                      {
+                        "lo": {
+                          "line": 61,
+                          "col": 6
+                        },
+                        "hi": {
+                          "line": 61,
+                          "col": 8
+                        },
+                        "filename": {
+                          "Real": {
+                            "LocalPath": "src/lib.rs"
+                          }
+                        }
+                      }
+                    ],
+                    "hir_id": {
+                      "owner": {
+                        "krate": "example",
+                        "path": [
+                          {
+                            "TypeNs": "Hello"
+                          }
+                        ]
+                      },
+                      "local_id": 5
+                    },
+                    "def_id": {
+                      "krate": "example",
+                      "path": [
+                        {
+                          "TypeNs": "Hello"
+                        },
+                        {
+                          "TypeNs": "A"
+                        },
+                        {
+                          "ValueNs": "0"
+                        }
+                      ]
+                    },
+                    "ty": {
+                      "Uint": "U8"
+                    }
+                  },
+                  {
+                    "span": {
+                      "lo": {
+                        "line": 61,
+                        "col": 10
+                      },
+                      "hi": {
+                        "line": 61,
+                        "col": 12
+                      },
+                      "filename": {
+                        "Real": {
+                          "LocalPath": "src/lib.rs"
+                        }
+                      }
+                    },
+                    "vis_span": {
+                      "lo": {
+                        "line": 61,
+                        "col": 10
+                      },
+                      "hi": {
+                        "line": 61,
+                        "col": 10
+                      },
+                      "filename": {
+                        "Real": {
+                          "LocalPath": "src/lib.rs"
+                        }
+                      }
+                    },
+                    "ident": [
+                      "1",
+                      {
+                        "lo": {
+                          "line": 61,
+                          "col": 10
+                        },
+                        "hi": {
+                          "line": 61,
+                          "col": 12
+                        },
+                        "filename": {
+                          "Real": {
+                            "LocalPath": "src/lib.rs"
+                          }
+                        }
+                      }
+                    ],
+                    "hir_id": {
+                      "owner": {
+                        "krate": "example",
+                        "path": [
+                          {
+                            "TypeNs": "Hello"
+                          }
+                        ]
+                      },
+                      "local_id": 8
+                    },
+                    "def_id": {
+                      "krate": "example",
+                      "path": [
+                        {
+                          "TypeNs": "Hello"
+                        },
+                        {
+                          "TypeNs": "A"
+                        },
+                        {
+                          "ValueNs": "1"
+                        }
+                      ]
+                    },
+                    "ty": {
+                      "Uint": "U8"
+                    }
+                  }
+                ],
+                {
+                  "owner": {
+                    "krate": "example",
+                    "path": [
+                      {
+                        "TypeNs": "Hello"
+                      }
+                    ]
+                  },
+                  "local_id": 2
+                },
+                {
+                  "krate": "example",
+                  "path": [
+                    {
+                      "TypeNs": "Hello"
+                    },
+                    {
+                      "TypeNs": "A"
+                    },
+                    "Ctor"
+                  ]
+                }
+              ]
+            },
+            "disr_expr": null,
+            "span": {
+              "lo": {
+                "line": 61,
+                "col": 4
               },
-              "colon_span": null
+              "hi": {
+                "line": 61,
+                "col": 13
+              },
+              "filename": {
+                "Real": {
+                  "LocalPath": "src/lib.rs"
+                }
+              }
             }
-          ],
+          },
+          {
+            "ident": [
+              "B",
+              {
+                "lo": {
+                  "line": 62,
+                  "col": 4
+                },
+                "hi": {
+                  "line": 62,
+                  "col": 5
+                },
+                "filename": {
+                  "Real": {
+                    "LocalPath": "src/lib.rs"
+                  }
+                }
+              }
+            ],
+            "hir_id": {
+              "owner": {
+                "krate": "example",
+                "path": [
+                  {
+                    "TypeNs": "Hello"
+                  }
+                ]
+              },
+              "local_id": 9
+            },
+            "def_id": {
+              "krate": "example",
+              "path": [
+                {
+                  "TypeNs": "Hello"
+                },
+                {
+                  "TypeNs": "B"
+                }
+              ]
+            },
+            "data": {
+              "Struct": [
+                [
+                  {
+                    "span": {
+                      "lo": {
+                        "line": 62,
+                        "col": 8
+                      },
+                      "hi": {
+                        "line": 62,
+                        "col": 13
+                      },
+                      "filename": {
+                        "Real": {
+                          "LocalPath": "src/lib.rs"
+                        }
+                      }
+                    },
+                    "vis_span": {
+                      "lo": {
+                        "line": 62,
+                        "col": 8
+                      },
+                      "hi": {
+                        "line": 62,
+                        "col": 8
+                      },
+                      "filename": {
+                        "Real": {
+                          "LocalPath": "src/lib.rs"
+                        }
+                      }
+                    },
+                    "ident": [
+                      "x",
+                      {
+                        "lo": {
+                          "line": 62,
+                          "col": 8
+                        },
+                        "hi": {
+                          "line": 62,
+                          "col": 9
+                        },
+                        "filename": {
+                          "Real": {
+                            "LocalPath": "src/lib.rs"
+                          }
+                        }
+                      }
+                    ],
+                    "hir_id": {
+                      "owner": {
+                        "krate": "example",
+                        "path": [
+                          {
+                            "TypeNs": "Hello"
+                          }
+                        ]
+                      },
+                      "local_id": 12
+                    },
+                    "def_id": {
+                      "krate": "example",
+                      "path": [
+                        {
+                          "TypeNs": "Hello"
+                        },
+                        {
+                          "TypeNs": "B"
+                        },
+                        {
+                          "ValueNs": "x"
+                        }
+                      ]
+                    },
+                    "ty": {
+                      "Uint": "U8"
+                    }
+                  },
+                  {
+                    "span": {
+                      "lo": {
+                        "line": 62,
+                        "col": 15
+                      },
+                      "hi": {
+                        "line": 62,
+                        "col": 20
+                      },
+                      "filename": {
+                        "Real": {
+                          "LocalPath": "src/lib.rs"
+                        }
+                      }
+                    },
+                    "vis_span": {
+                      "lo": {
+                        "line": 62,
+                        "col": 15
+                      },
+                      "hi": {
+                        "line": 62,
+                        "col": 15
+                      },
+                      "filename": {
+                        "Real": {
+                          "LocalPath": "src/lib.rs"
+                        }
+                      }
+                    },
+                    "ident": [
+                      "y",
+                      {
+                        "lo": {
+                          "line": 62,
+                          "col": 15
+                        },
+                        "hi": {
+                          "line": 62,
+                          "col": 16
+                        },
+                        "filename": {
+                          "Real": {
+                            "LocalPath": "src/lib.rs"
+                          }
+                        }
+                      }
+                    ],
+                    "hir_id": {
+                      "owner": {
+                        "krate": "example",
+                        "path": [
+                          {
+                            "TypeNs": "Hello"
+                          }
+                        ]
+                      },
+                      "local_id": 15
+                    },
+                    "def_id": {
+                      "krate": "example",
+                      "path": [
+                        {
+                          "TypeNs": "Hello"
+                        },
+                        {
+                          "TypeNs": "B"
+                        },
+                        {
+                          "ValueNs": "y"
+                        }
+                      ]
+                    },
+                    "ty": {
+                      "Uint": "U8"
+                    }
+                  }
+                ],
+                false
+              ]
+            },
+            "disr_expr": null,
+            "span": {
+              "lo": {
+                "line": 62,
+                "col": 4
+              },
+              "hi": {
+                "line": 62,
+                "col": 22
+              },
+              "filename": {
+                "Real": {
+                  "LocalPath": "src/lib.rs"
+                }
+              }
+            }
+          }
+        ],
+        {
+          "params": [],
           "predicates": [],
           "has_where_clause_predicates": false,
           "where_clause_span": {
             "lo": {
               "line": 60,
-              "col": 20
+              "col": 10
             },
             "hi": {
               "line": 60,
-              "col": 20
+              "col": 10
             },
             "filename": {
               "Real": {
@@ -218,11 +636,659 @@
           "span": {
             "lo": {
               "line": 60,
-              "col": 8
+              "col": 10
             },
             "hi": {
               "line": 60,
+              "col": 10
+            },
+            "filename": {
+              "Real": {
+                "LocalPath": "src/lib.rs"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "def_id": {
+      "krate": "example",
+      "path": [
+        {
+          "TypeNs": "Hi"
+        }
+      ]
+    },
+    "owner_id": {
+      "krate": "example",
+      "path": [
+        {
+          "TypeNs": "Hi"
+        }
+      ]
+    },
+    "span": {
+      "lo": {
+        "line": 65,
+        "col": 0
+      },
+      "hi": {
+        "line": 70,
+        "col": 1
+      },
+      "filename": {
+        "Real": {
+          "LocalPath": "src/lib.rs"
+        }
+      }
+    },
+    "vis_span": {
+      "lo": {
+        "line": 65,
+        "col": 0
+      },
+      "hi": {
+        "line": 65,
+        "col": 0
+      },
+      "filename": {
+        "Real": {
+          "LocalPath": "src/lib.rs"
+        }
+      }
+    },
+    "kind": {
+      "Struct": [
+        {
+          "Struct": [
+            [
+              {
+                "span": {
+                  "lo": {
+                    "line": 66,
+                    "col": 4
+                  },
+                  "hi": {
+                    "line": 66,
+                    "col": 14
+                  },
+                  "filename": {
+                    "Real": {
+                      "LocalPath": "src/lib.rs"
+                    }
+                  }
+                },
+                "vis_span": {
+                  "lo": {
+                    "line": 66,
+                    "col": 4
+                  },
+                  "hi": {
+                    "line": 66,
+                    "col": 4
+                  },
+                  "filename": {
+                    "Real": {
+                      "LocalPath": "src/lib.rs"
+                    }
+                  }
+                },
+                "ident": [
+                  "field1",
+                  {
+                    "lo": {
+                      "line": 66,
+                      "col": 4
+                    },
+                    "hi": {
+                      "line": 66,
+                      "col": 10
+                    },
+                    "filename": {
+                      "Real": {
+                        "LocalPath": "src/lib.rs"
+                      }
+                    }
+                  }
+                ],
+                "hir_id": {
+                  "owner": {
+                    "krate": "example",
+                    "path": [
+                      {
+                        "TypeNs": "Hi"
+                      }
+                    ]
+                  },
+                  "local_id": 3
+                },
+                "def_id": {
+                  "krate": "example",
+                  "path": [
+                    {
+                      "TypeNs": "Hi"
+                    },
+                    {
+                      "ValueNs": "field1"
+                    }
+                  ]
+                },
+                "ty": {
+                  "Uint": "U8"
+                }
+              },
+              {
+                "span": {
+                  "lo": {
+                    "line": 67,
+                    "col": 4
+                  },
+                  "hi": {
+                    "line": 67,
+                    "col": 14
+                  },
+                  "filename": {
+                    "Real": {
+                      "LocalPath": "src/lib.rs"
+                    }
+                  }
+                },
+                "vis_span": {
+                  "lo": {
+                    "line": 67,
+                    "col": 4
+                  },
+                  "hi": {
+                    "line": 67,
+                    "col": 4
+                  },
+                  "filename": {
+                    "Real": {
+                      "LocalPath": "src/lib.rs"
+                    }
+                  }
+                },
+                "ident": [
+                  "field2",
+                  {
+                    "lo": {
+                      "line": 67,
+                      "col": 4
+                    },
+                    "hi": {
+                      "line": 67,
+                      "col": 10
+                    },
+                    "filename": {
+                      "Real": {
+                        "LocalPath": "src/lib.rs"
+                      }
+                    }
+                  }
+                ],
+                "hir_id": {
+                  "owner": {
+                    "krate": "example",
+                    "path": [
+                      {
+                        "TypeNs": "Hi"
+                      }
+                    ]
+                  },
+                  "local_id": 6
+                },
+                "def_id": {
+                  "krate": "example",
+                  "path": [
+                    {
+                      "TypeNs": "Hi"
+                    },
+                    {
+                      "ValueNs": "field2"
+                    }
+                  ]
+                },
+                "ty": {
+                  "Uint": "U8"
+                }
+              },
+              {
+                "span": {
+                  "lo": {
+                    "line": 68,
+                    "col": 4
+                  },
+                  "hi": {
+                    "line": 68,
+                    "col": 14
+                  },
+                  "filename": {
+                    "Real": {
+                      "LocalPath": "src/lib.rs"
+                    }
+                  }
+                },
+                "vis_span": {
+                  "lo": {
+                    "line": 68,
+                    "col": 4
+                  },
+                  "hi": {
+                    "line": 68,
+                    "col": 4
+                  },
+                  "filename": {
+                    "Real": {
+                      "LocalPath": "src/lib.rs"
+                    }
+                  }
+                },
+                "ident": [
+                  "field3",
+                  {
+                    "lo": {
+                      "line": 68,
+                      "col": 4
+                    },
+                    "hi": {
+                      "line": 68,
+                      "col": 10
+                    },
+                    "filename": {
+                      "Real": {
+                        "LocalPath": "src/lib.rs"
+                      }
+                    }
+                  }
+                ],
+                "hir_id": {
+                  "owner": {
+                    "krate": "example",
+                    "path": [
+                      {
+                        "TypeNs": "Hi"
+                      }
+                    ]
+                  },
+                  "local_id": 9
+                },
+                "def_id": {
+                  "krate": "example",
+                  "path": [
+                    {
+                      "TypeNs": "Hi"
+                    },
+                    {
+                      "ValueNs": "field3"
+                    }
+                  ]
+                },
+                "ty": {
+                  "Uint": "U8"
+                }
+              },
+              {
+                "span": {
+                  "lo": {
+                    "line": 69,
+                    "col": 4
+                  },
+                  "hi": {
+                    "line": 69,
+                    "col": 14
+                  },
+                  "filename": {
+                    "Real": {
+                      "LocalPath": "src/lib.rs"
+                    }
+                  }
+                },
+                "vis_span": {
+                  "lo": {
+                    "line": 69,
+                    "col": 4
+                  },
+                  "hi": {
+                    "line": 69,
+                    "col": 4
+                  },
+                  "filename": {
+                    "Real": {
+                      "LocalPath": "src/lib.rs"
+                    }
+                  }
+                },
+                "ident": [
+                  "field4",
+                  {
+                    "lo": {
+                      "line": 69,
+                      "col": 4
+                    },
+                    "hi": {
+                      "line": 69,
+                      "col": 10
+                    },
+                    "filename": {
+                      "Real": {
+                        "LocalPath": "src/lib.rs"
+                      }
+                    }
+                  }
+                ],
+                "hir_id": {
+                  "owner": {
+                    "krate": "example",
+                    "path": [
+                      {
+                        "TypeNs": "Hi"
+                      }
+                    ]
+                  },
+                  "local_id": 12
+                },
+                "def_id": {
+                  "krate": "example",
+                  "path": [
+                    {
+                      "TypeNs": "Hi"
+                    },
+                    {
+                      "ValueNs": "field4"
+                    }
+                  ]
+                },
+                "ty": {
+                  "Uint": "U8"
+                }
+              }
+            ],
+            false
+          ]
+        },
+        {
+          "params": [],
+          "predicates": [],
+          "has_where_clause_predicates": false,
+          "where_clause_span": {
+            "lo": {
+              "line": 65,
+              "col": 9
+            },
+            "hi": {
+              "line": 65,
+              "col": 9
+            },
+            "filename": {
+              "Real": {
+                "LocalPath": "src/lib.rs"
+              }
+            }
+          },
+          "span": {
+            "lo": {
+              "line": 65,
+              "col": 9
+            },
+            "hi": {
+              "line": 65,
+              "col": 9
+            },
+            "filename": {
+              "Real": {
+                "LocalPath": "src/lib.rs"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "def_id": {
+      "krate": "example",
+      "path": [
+        {
+          "ValueNs": "hello"
+        }
+      ]
+    },
+    "owner_id": {
+      "krate": "example",
+      "path": [
+        {
+          "ValueNs": "hello"
+        }
+      ]
+    },
+    "span": {
+      "lo": {
+        "line": 72,
+        "col": 0
+      },
+      "hi": {
+        "line": 97,
+        "col": 1
+      },
+      "filename": {
+        "Real": {
+          "LocalPath": "src/lib.rs"
+        }
+      }
+    },
+    "vis_span": {
+      "lo": {
+        "line": 72,
+        "col": 0
+      },
+      "hi": {
+        "line": 72,
+        "col": 0
+      },
+      "filename": {
+        "Real": {
+          "LocalPath": "src/lib.rs"
+        }
+      }
+    },
+    "kind": {
+      "Fn": [
+        {
+          "params": [
+            {
+              "hir_id": {
+                "owner": {
+                  "krate": "example",
+                  "path": [
+                    {
+                      "ValueNs": "hello"
+                    }
+                  ]
+                },
+                "local_id": 90
+              },
+              "def_id": {
+                "krate": "example",
+                "path": [
+                  {
+                    "ValueNs": "hello"
+                  },
+                  {
+                    "TypeNs": "A"
+                  }
+                ]
+              },
+              "name": {
+                "Plain": {
+                  "name": "A",
+                  "id": {
+                    "owner": {
+                      "krate": "example",
+                      "path": [
+                        {
+                          "ValueNs": "hello"
+                        }
+                      ]
+                    },
+                    "local_id": 90
+                  }
+                }
+              },
+              "span": {
+                "lo": {
+                  "line": 72,
+                  "col": 9
+                },
+                "hi": {
+                  "line": 72,
+                  "col": 10
+                },
+                "filename": {
+                  "Real": {
+                    "LocalPath": "src/lib.rs"
+                  }
+                }
+              },
+              "pure_wrt_drop": false,
+              "kind": {
+                "Type": {
+                  "default": null,
+                  "synthetic": false
+                }
+              },
+              "colon_span": null
+            }
+          ],
+          "predicates": [
+            {
+              "BoundPredicate": {
+                "hir_id": {
+                  "owner": {
+                    "krate": "example",
+                    "path": [
+                      {
+                        "ValueNs": "hello"
+                      }
+                    ]
+                  },
+                  "local_id": 85
+                },
+                "span": {
+                  "lo": {
+                    "line": 74,
+                    "col": 4
+                  },
+                  "hi": {
+                    "line": 74,
+                    "col": 11
+                  },
+                  "filename": {
+                    "Real": {
+                      "LocalPath": "src/lib.rs"
+                    }
+                  }
+                },
+                "origin": "WhereClause",
+                "bound_generic_params": [],
+                "bounded_ty": {
+                  "Param": {
+                    "index": 0,
+                    "name": "A"
+                  }
+                },
+                "bounds": [
+                  {
+                    "Clause": {
+                      "Trait": {
+                        "trait_ref": {
+                          "def_id": {
+                            "krate": "core",
+                            "path": [
+                              {
+                                "TypeNs": "marker"
+                              },
+                              {
+                                "TypeNs": "Sized"
+                              }
+                            ]
+                          },
+                          "substs": [
+                            {
+                              "Type": {
+                                "Param": {
+                                  "index": 0,
+                                  "name": "A"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "is_const": false,
+                        "is_positive": true
+                      }
+                    }
+                  },
+                  {
+                    "Clause": {
+                      "Trait": {
+                        "trait_ref": {
+                          "def_id": {
+                            "krate": "core",
+                            "path": [
+                              {
+                                "TypeNs": "marker"
+                              },
+                              {
+                                "TypeNs": "Copy"
+                              }
+                            ]
+                          },
+                          "substs": [
+                            {
+                              "Type": {
+                                "Param": {
+                                  "index": 0,
+                                  "name": "A"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "is_const": false,
+                        "is_positive": true
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "has_where_clause_predicates": true,
+          "where_clause_span": {
+            "lo": {
+              "line": 73,
+              "col": 0
+            },
+            "hi": {
+              "line": 74,
+              "col": 12
+            },
+            "filename": {
+              "Real": {
+                "LocalPath": "src/lib.rs"
+              }
+            }
+          },
+          "span": {
+            "lo": {
+              "line": 72,
               "col": 8
+            },
+            "hi": {
+              "line": 72,
+              "col": 11
             },
             "filename": {
               "Real": {
@@ -246,26 +1312,16 @@
             {
               "pat": {
                 "ty": {
-                  "Ref": [
-                    {
-                      "Region": {
-                        "todo": "ReErased"
-                      }
-                    },
-                    {
-                      "Uint": "U8"
-                    },
-                    true
-                  ]
+                  "Uint": "U8"
                 },
                 "span": {
                   "lo": {
-                    "line": 60,
-                    "col": 9
+                    "line": 72,
+                    "col": 12
                   },
                   "hi": {
-                    "line": 60,
-                    "col": 10
+                    "line": 72,
+                    "col": 13
                   },
                   "filename": {
                     "Real": {
@@ -281,7 +1337,7 @@
                       "name": "x",
                       "id": {
                         "owner": {
-                          "krate": "example#0",
+                          "krate": "example",
                           "path": [
                             {
                               "ValueNs": "hello"
@@ -292,17 +1348,7 @@
                       }
                     },
                     "ty": {
-                      "Ref": [
-                        {
-                          "Region": {
-                            "todo": "ReErased"
-                          }
-                        },
-                        {
-                          "Uint": "U8"
-                        },
-                        true
-                      ]
+                      "Uint": "U8"
                     },
                     "subpattern": null,
                     "is_primary": true
@@ -310,26 +1356,16 @@
                 }
               },
               "ty": {
-                "Ref": [
-                  {
-                    "Region": {
-                      "todo": "ReErased"
-                    }
-                  },
-                  {
-                    "Uint": "U8"
-                  },
-                  true
-                ]
+                "Uint": "U8"
               },
               "ty_span": {
                 "lo": {
-                  "line": 60,
-                  "col": 12
+                  "line": 72,
+                  "col": 15
                 },
                 "hi": {
-                  "line": 60,
-                  "col": 19
+                  "line": 72,
+                  "col": 17
                 },
                 "filename": {
                   "Real": {
@@ -340,7 +1376,7 @@
               "self_kind": null,
               "hir_id": {
                 "owner": {
-                  "krate": "example#0",
+                  "krate": "example",
                   "path": [
                     {
                       "ValueNs": "hello"
@@ -352,20 +1388,20 @@
             }
           ],
           "ret": {
-            "Tuple": []
+            "Uint": "U8"
           },
           "body": {
             "ty": {
-              "Tuple": []
+              "Uint": "U8"
             },
             "span": {
               "lo": {
-                "line": 60,
-                "col": 21
+                "line": 75,
+                "col": 0
               },
               "hi": {
-                "line": 60,
-                "col": 23
+                "line": 97,
+                "col": 1
               },
               "filename": {
                 "Real": {
@@ -377,18 +1413,18 @@
               "Block": {
                 "targeted_by_break": false,
                 "region_scope": {
-                  "id": 3,
+                  "id": 83,
                   "data": "Node"
                 },
                 "opt_destruction_scope": null,
                 "span": {
                   "lo": {
-                    "line": 60,
-                    "col": 21
+                    "line": 75,
+                    "col": 0
                   },
                   "hi": {
-                    "line": 60,
-                    "col": 23
+                    "line": 97,
+                    "col": 1
                   },
                   "filename": {
                     "Real": {
@@ -396,20 +1432,2382 @@
                     }
                   }
                 },
-                "stmts": [],
-                "expr": null,
+                "stmts": [
+                  {
+                    "kind": {
+                      "Let": {
+                        "remainder_scope": {
+                          "id": 83,
+                          "data": {
+                            "Remainder": 0
+                          }
+                        },
+                        "init_scope": {
+                          "id": 3,
+                          "data": "Node"
+                        },
+                        "pattern": {
+                          "ty": {
+                            "Uint": "U16"
+                          },
+                          "span": {
+                            "lo": {
+                              "line": 76,
+                              "col": 8
+                            },
+                            "hi": {
+                              "line": 76,
+                              "col": 11
+                            },
+                            "filename": {
+                              "Real": {
+                                "LocalPath": "src/lib.rs"
+                              }
+                            }
+                          },
+                          "contents": {
+                            "Binding": {
+                              "mutability": false,
+                              "mode": "ByValue",
+                              "var": {
+                                "name": "foo",
+                                "id": {
+                                  "owner": {
+                                    "krate": "example",
+                                    "path": [
+                                      {
+                                        "ValueNs": "hello"
+                                      }
+                                    ]
+                                  },
+                                  "local_id": 8
+                                }
+                              },
+                              "ty": {
+                                "Uint": "U16"
+                              },
+                              "subpattern": null,
+                              "is_primary": true
+                            }
+                          }
+                        },
+                        "initializer": {
+                          "ty": {
+                            "Uint": "U16"
+                          },
+                          "span": {
+                            "lo": {
+                              "line": 76,
+                              "col": 14
+                            },
+                            "hi": {
+                              "line": 76,
+                              "col": 22
+                            },
+                            "filename": {
+                              "Real": {
+                                "LocalPath": "src/lib.rs"
+                              }
+                            }
+                          },
+                          "contents": {
+                            "Binary": {
+                              "op": "Add",
+                              "lhs": {
+                                "ty": {
+                                  "Uint": "U16"
+                                },
+                                "span": {
+                                  "lo": {
+                                    "line": 76,
+                                    "col": 14
+                                  },
+                                  "hi": {
+                                    "line": 76,
+                                    "col": 18
+                                  },
+                                  "filename": {
+                                    "Real": {
+                                      "LocalPath": "src/lib.rs"
+                                    }
+                                  }
+                                },
+                                "contents": {
+                                  "Literal": {
+                                    "lit": {
+                                      "node": {
+                                        "Int": [
+                                          1,
+                                          {
+                                            "Unsigned": "U16"
+                                          }
+                                        ]
+                                      },
+                                      "span": {
+                                        "lo": {
+                                          "line": 76,
+                                          "col": 14
+                                        },
+                                        "hi": {
+                                          "line": 76,
+                                          "col": 18
+                                        },
+                                        "filename": {
+                                          "Real": {
+                                            "LocalPath": "src/lib.rs"
+                                          }
+                                        }
+                                      }
+                                    },
+                                    "neg": false
+                                  }
+                                }
+                              },
+                              "rhs": {
+                                "ty": {
+                                  "Uint": "U16"
+                                },
+                                "span": {
+                                  "lo": {
+                                    "line": 76,
+                                    "col": 21
+                                  },
+                                  "hi": {
+                                    "line": 76,
+                                    "col": 22
+                                  },
+                                  "filename": {
+                                    "Real": {
+                                      "LocalPath": "src/lib.rs"
+                                    }
+                                  }
+                                },
+                                "contents": {
+                                  "Literal": {
+                                    "lit": {
+                                      "node": {
+                                        "Int": [
+                                          4,
+                                          "Unsuffixed"
+                                        ]
+                                      },
+                                      "span": {
+                                        "lo": {
+                                          "line": 76,
+                                          "col": 21
+                                        },
+                                        "hi": {
+                                          "line": 76,
+                                          "col": 22
+                                        },
+                                        "filename": {
+                                          "Real": {
+                                            "LocalPath": "src/lib.rs"
+                                          }
+                                        }
+                                      }
+                                    },
+                                    "neg": false
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "else_block": null,
+                        "lint_level": {
+                          "Explicit": {
+                            "owner": {
+                              "krate": "example",
+                              "path": [
+                                {
+                                  "ValueNs": "hello"
+                                }
+                              ]
+                            },
+                            "local_id": 7
+                          }
+                        }
+                      }
+                    },
+                    "opt_destruction_scope": {
+                      "id": 3,
+                      "data": "Destruction"
+                    }
+                  },
+                  {
+                    "kind": {
+                      "Let": {
+                        "remainder_scope": {
+                          "id": 83,
+                          "data": {
+                            "Remainder": 1
+                          }
+                        },
+                        "init_scope": {
+                          "id": 9,
+                          "data": "Node"
+                        },
+                        "pattern": {
+                          "ty": {
+                            "NamedType": {
+                              "generic_args": [],
+                              "def_id": {
+                                "krate": "example",
+                                "path": [
+                                  {
+                                    "TypeNs": "Hello"
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          "span": {
+                            "lo": {
+                              "line": 77,
+                              "col": 8
+                            },
+                            "hi": {
+                              "line": 77,
+                              "col": 9
+                            },
+                            "filename": {
+                              "Real": {
+                                "LocalPath": "src/lib.rs"
+                              }
+                            }
+                          },
+                          "contents": {
+                            "Binding": {
+                              "mutability": false,
+                              "mode": "ByValue",
+                              "var": {
+                                "name": "a",
+                                "id": {
+                                  "owner": {
+                                    "krate": "example",
+                                    "path": [
+                                      {
+                                        "ValueNs": "hello"
+                                      }
+                                    ]
+                                  },
+                                  "local_id": 17
+                                }
+                              },
+                              "ty": {
+                                "NamedType": {
+                                  "generic_args": [],
+                                  "def_id": {
+                                    "krate": "example",
+                                    "path": [
+                                      {
+                                        "TypeNs": "Hello"
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "subpattern": null,
+                              "is_primary": true
+                            }
+                          }
+                        },
+                        "initializer": {
+                          "ty": {
+                            "NamedType": {
+                              "generic_args": [],
+                              "def_id": {
+                                "krate": "example",
+                                "path": [
+                                  {
+                                    "TypeNs": "Hello"
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          "span": {
+                            "lo": {
+                              "line": 77,
+                              "col": 12
+                            },
+                            "hi": {
+                              "line": 77,
+                              "col": 26
+                            },
+                            "filename": {
+                              "Real": {
+                                "LocalPath": "src/lib.rs"
+                              }
+                            }
+                          },
+                          "contents": {
+                            "Adt": {
+                              "info": {
+                                "constructs_record": false,
+                                "constructs_type": {
+                                  "krate": "example",
+                                  "path": [
+                                    {
+                                      "TypeNs": "Hello"
+                                    }
+                                  ]
+                                },
+                                "type_namespace": {
+                                  "krate": "example",
+                                  "path": []
+                                },
+                                "variant": {
+                                  "krate": "example",
+                                  "path": [
+                                    {
+                                      "TypeNs": "Hello"
+                                    },
+                                    {
+                                      "TypeNs": "A"
+                                    }
+                                  ]
+                                }
+                              },
+                              "user_ty": null,
+                              "fields": [
+                                {
+                                  "field": {
+                                    "krate": "example",
+                                    "path": [
+                                      {
+                                        "TypeNs": "Hello"
+                                      },
+                                      {
+                                        "TypeNs": "A"
+                                      },
+                                      {
+                                        "ValueNs": "0"
+                                      }
+                                    ]
+                                  },
+                                  "value": {
+                                    "ty": {
+                                      "Uint": "U8"
+                                    },
+                                    "span": {
+                                      "lo": {
+                                        "line": 77,
+                                        "col": 21
+                                      },
+                                      "hi": {
+                                        "line": 77,
+                                        "col": 22
+                                      },
+                                      "filename": {
+                                        "Real": {
+                                          "LocalPath": "src/lib.rs"
+                                        }
+                                      }
+                                    },
+                                    "contents": {
+                                      "Literal": {
+                                        "lit": {
+                                          "node": {
+                                            "Int": [
+                                              2,
+                                              "Unsuffixed"
+                                            ]
+                                          },
+                                          "span": {
+                                            "lo": {
+                                              "line": 77,
+                                              "col": 21
+                                            },
+                                            "hi": {
+                                              "line": 77,
+                                              "col": 22
+                                            },
+                                            "filename": {
+                                              "Real": {
+                                                "LocalPath": "src/lib.rs"
+                                              }
+                                            }
+                                          }
+                                        },
+                                        "neg": false
+                                      }
+                                    }
+                                  }
+                                },
+                                {
+                                  "field": {
+                                    "krate": "example",
+                                    "path": [
+                                      {
+                                        "TypeNs": "Hello"
+                                      },
+                                      {
+                                        "TypeNs": "A"
+                                      },
+                                      {
+                                        "ValueNs": "1"
+                                      }
+                                    ]
+                                  },
+                                  "value": {
+                                    "ty": {
+                                      "Uint": "U8"
+                                    },
+                                    "span": {
+                                      "lo": {
+                                        "line": 77,
+                                        "col": 24
+                                      },
+                                      "hi": {
+                                        "line": 77,
+                                        "col": 25
+                                      },
+                                      "filename": {
+                                        "Real": {
+                                          "LocalPath": "src/lib.rs"
+                                        }
+                                      }
+                                    },
+                                    "contents": {
+                                      "Literal": {
+                                        "lit": {
+                                          "node": {
+                                            "Int": [
+                                              5,
+                                              "Unsuffixed"
+                                            ]
+                                          },
+                                          "span": {
+                                            "lo": {
+                                              "line": 77,
+                                              "col": 24
+                                            },
+                                            "hi": {
+                                              "line": 77,
+                                              "col": 25
+                                            },
+                                            "filename": {
+                                              "Real": {
+                                                "LocalPath": "src/lib.rs"
+                                              }
+                                            }
+                                          }
+                                        },
+                                        "neg": false
+                                      }
+                                    }
+                                  }
+                                }
+                              ],
+                              "base": null
+                            }
+                          }
+                        },
+                        "else_block": null,
+                        "lint_level": {
+                          "Explicit": {
+                            "owner": {
+                              "krate": "example",
+                              "path": [
+                                {
+                                  "ValueNs": "hello"
+                                }
+                              ]
+                            },
+                            "local_id": 16
+                          }
+                        }
+                      }
+                    },
+                    "opt_destruction_scope": {
+                      "id": 9,
+                      "data": "Destruction"
+                    }
+                  },
+                  {
+                    "kind": {
+                      "Let": {
+                        "remainder_scope": {
+                          "id": 83,
+                          "data": {
+                            "Remainder": 2
+                          }
+                        },
+                        "init_scope": {
+                          "id": 18,
+                          "data": "Node"
+                        },
+                        "pattern": {
+                          "ty": {
+                            "NamedType": {
+                              "generic_args": [],
+                              "def_id": {
+                                "krate": "example",
+                                "path": [
+                                  {
+                                    "TypeNs": "Hello"
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          "span": {
+                            "lo": {
+                              "line": 78,
+                              "col": 8
+                            },
+                            "hi": {
+                              "line": 78,
+                              "col": 9
+                            },
+                            "filename": {
+                              "Real": {
+                                "LocalPath": "src/lib.rs"
+                              }
+                            }
+                          },
+                          "contents": {
+                            "Binding": {
+                              "mutability": false,
+                              "mode": "ByValue",
+                              "var": {
+                                "name": "b",
+                                "id": {
+                                  "owner": {
+                                    "krate": "example",
+                                    "path": [
+                                      {
+                                        "ValueNs": "hello"
+                                      }
+                                    ]
+                                  },
+                                  "local_id": 27
+                                }
+                              },
+                              "ty": {
+                                "NamedType": {
+                                  "generic_args": [],
+                                  "def_id": {
+                                    "krate": "example",
+                                    "path": [
+                                      {
+                                        "TypeNs": "Hello"
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "subpattern": null,
+                              "is_primary": true
+                            }
+                          }
+                        },
+                        "initializer": {
+                          "ty": {
+                            "NamedType": {
+                              "generic_args": [],
+                              "def_id": {
+                                "krate": "example",
+                                "path": [
+                                  {
+                                    "TypeNs": "Hello"
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          "span": {
+                            "lo": {
+                              "line": 78,
+                              "col": 12
+                            },
+                            "hi": {
+                              "line": 78,
+                              "col": 38
+                            },
+                            "filename": {
+                              "Real": {
+                                "LocalPath": "src/lib.rs"
+                              }
+                            }
+                          },
+                          "contents": {
+                            "Adt": {
+                              "info": {
+                                "constructs_record": false,
+                                "constructs_type": {
+                                  "krate": "example",
+                                  "path": [
+                                    {
+                                      "TypeNs": "Hello"
+                                    }
+                                  ]
+                                },
+                                "type_namespace": {
+                                  "krate": "example",
+                                  "path": []
+                                },
+                                "variant": {
+                                  "krate": "example",
+                                  "path": [
+                                    {
+                                      "TypeNs": "Hello"
+                                    },
+                                    {
+                                      "TypeNs": "B"
+                                    }
+                                  ]
+                                }
+                              },
+                              "user_ty": null,
+                              "fields": [
+                                {
+                                  "field": {
+                                    "krate": "example",
+                                    "path": [
+                                      {
+                                        "TypeNs": "Hello"
+                                      },
+                                      {
+                                        "TypeNs": "B"
+                                      },
+                                      {
+                                        "ValueNs": "y"
+                                      }
+                                    ]
+                                  },
+                                  "value": {
+                                    "ty": {
+                                      "Uint": "U8"
+                                    },
+                                    "span": {
+                                      "lo": {
+                                        "line": 78,
+                                        "col": 26
+                                      },
+                                      "hi": {
+                                        "line": 78,
+                                        "col": 28
+                                      },
+                                      "filename": {
+                                        "Real": {
+                                          "LocalPath": "src/lib.rs"
+                                        }
+                                      }
+                                    },
+                                    "contents": {
+                                      "Literal": {
+                                        "lit": {
+                                          "node": {
+                                            "Int": [
+                                              99,
+                                              "Unsuffixed"
+                                            ]
+                                          },
+                                          "span": {
+                                            "lo": {
+                                              "line": 78,
+                                              "col": 26
+                                            },
+                                            "hi": {
+                                              "line": 78,
+                                              "col": 28
+                                            },
+                                            "filename": {
+                                              "Real": {
+                                                "LocalPath": "src/lib.rs"
+                                              }
+                                            }
+                                          }
+                                        },
+                                        "neg": false
+                                      }
+                                    }
+                                  }
+                                },
+                                {
+                                  "field": {
+                                    "krate": "example",
+                                    "path": [
+                                      {
+                                        "TypeNs": "Hello"
+                                      },
+                                      {
+                                        "TypeNs": "B"
+                                      },
+                                      {
+                                        "ValueNs": "x"
+                                      }
+                                    ]
+                                  },
+                                  "value": {
+                                    "ty": {
+                                      "Uint": "U8"
+                                    },
+                                    "span": {
+                                      "lo": {
+                                        "line": 78,
+                                        "col": 33
+                                      },
+                                      "hi": {
+                                        "line": 78,
+                                        "col": 36
+                                      },
+                                      "filename": {
+                                        "Real": {
+                                          "LocalPath": "src/lib.rs"
+                                        }
+                                      }
+                                    },
+                                    "contents": {
+                                      "Literal": {
+                                        "lit": {
+                                          "node": {
+                                            "Int": [
+                                              123,
+                                              "Unsuffixed"
+                                            ]
+                                          },
+                                          "span": {
+                                            "lo": {
+                                              "line": 78,
+                                              "col": 33
+                                            },
+                                            "hi": {
+                                              "line": 78,
+                                              "col": 36
+                                            },
+                                            "filename": {
+                                              "Real": {
+                                                "LocalPath": "src/lib.rs"
+                                              }
+                                            }
+                                          }
+                                        },
+                                        "neg": false
+                                      }
+                                    }
+                                  }
+                                }
+                              ],
+                              "base": null
+                            }
+                          }
+                        },
+                        "else_block": null,
+                        "lint_level": {
+                          "Explicit": {
+                            "owner": {
+                              "krate": "example",
+                              "path": [
+                                {
+                                  "ValueNs": "hello"
+                                }
+                              ]
+                            },
+                            "local_id": 26
+                          }
+                        }
+                      }
+                    },
+                    "opt_destruction_scope": {
+                      "id": 18,
+                      "data": "Destruction"
+                    }
+                  },
+                  {
+                    "kind": {
+                      "Let": {
+                        "remainder_scope": {
+                          "id": 83,
+                          "data": {
+                            "Remainder": 3
+                          }
+                        },
+                        "init_scope": {
+                          "id": 28,
+                          "data": "Node"
+                        },
+                        "pattern": {
+                          "ty": {
+                            "NamedType": {
+                              "generic_args": [],
+                              "def_id": {
+                                "krate": "example",
+                                "path": [
+                                  {
+                                    "TypeNs": "Hi"
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          "span": {
+                            "lo": {
+                              "line": 79,
+                              "col": 8
+                            },
+                            "hi": {
+                              "line": 79,
+                              "col": 10
+                            },
+                            "filename": {
+                              "Real": {
+                                "LocalPath": "src/lib.rs"
+                              }
+                            }
+                          },
+                          "contents": {
+                            "Binding": {
+                              "mutability": false,
+                              "mode": "ByValue",
+                              "var": {
+                                "name": "hi",
+                                "id": {
+                                  "owner": {
+                                    "krate": "example",
+                                    "path": [
+                                      {
+                                        "ValueNs": "hello"
+                                      }
+                                    ]
+                                  },
+                                  "local_id": 40
+                                }
+                              },
+                              "ty": {
+                                "NamedType": {
+                                  "generic_args": [],
+                                  "def_id": {
+                                    "krate": "example",
+                                    "path": [
+                                      {
+                                        "TypeNs": "Hi"
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "subpattern": null,
+                              "is_primary": true
+                            }
+                          }
+                        },
+                        "initializer": {
+                          "ty": {
+                            "NamedType": {
+                              "generic_args": [],
+                              "def_id": {
+                                "krate": "example",
+                                "path": [
+                                  {
+                                    "TypeNs": "Hi"
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          "span": {
+                            "lo": {
+                              "line": 79,
+                              "col": 13
+                            },
+                            "hi": {
+                              "line": 84,
+                              "col": 5
+                            },
+                            "filename": {
+                              "Real": {
+                                "LocalPath": "src/lib.rs"
+                              }
+                            }
+                          },
+                          "contents": {
+                            "Adt": {
+                              "info": {
+                                "constructs_record": true,
+                                "constructs_type": {
+                                  "krate": "example",
+                                  "path": [
+                                    {
+                                      "TypeNs": "Hi"
+                                    }
+                                  ]
+                                },
+                                "type_namespace": {
+                                  "krate": "example",
+                                  "path": []
+                                },
+                                "variant": {
+                                  "krate": "example",
+                                  "path": [
+                                    {
+                                      "TypeNs": "Hi"
+                                    }
+                                  ]
+                                }
+                              },
+                              "user_ty": null,
+                              "fields": [
+                                {
+                                  "field": {
+                                    "krate": "example",
+                                    "path": [
+                                      {
+                                        "TypeNs": "Hi"
+                                      },
+                                      {
+                                        "ValueNs": "field1"
+                                      }
+                                    ]
+                                  },
+                                  "value": {
+                                    "ty": {
+                                      "Uint": "U8"
+                                    },
+                                    "span": {
+                                      "lo": {
+                                        "line": 80,
+                                        "col": 16
+                                      },
+                                      "hi": {
+                                        "line": 80,
+                                        "col": 18
+                                      },
+                                      "filename": {
+                                        "Real": {
+                                          "LocalPath": "src/lib.rs"
+                                        }
+                                      }
+                                    },
+                                    "contents": {
+                                      "Literal": {
+                                        "lit": {
+                                          "node": {
+                                            "Int": [
+                                              10,
+                                              "Unsuffixed"
+                                            ]
+                                          },
+                                          "span": {
+                                            "lo": {
+                                              "line": 80,
+                                              "col": 16
+                                            },
+                                            "hi": {
+                                              "line": 80,
+                                              "col": 18
+                                            },
+                                            "filename": {
+                                              "Real": {
+                                                "LocalPath": "src/lib.rs"
+                                              }
+                                            }
+                                          }
+                                        },
+                                        "neg": false
+                                      }
+                                    }
+                                  }
+                                },
+                                {
+                                  "field": {
+                                    "krate": "example",
+                                    "path": [
+                                      {
+                                        "TypeNs": "Hi"
+                                      },
+                                      {
+                                        "ValueNs": "field2"
+                                      }
+                                    ]
+                                  },
+                                  "value": {
+                                    "ty": {
+                                      "Uint": "U8"
+                                    },
+                                    "span": {
+                                      "lo": {
+                                        "line": 81,
+                                        "col": 16
+                                      },
+                                      "hi": {
+                                        "line": 81,
+                                        "col": 18
+                                      },
+                                      "filename": {
+                                        "Real": {
+                                          "LocalPath": "src/lib.rs"
+                                        }
+                                      }
+                                    },
+                                    "contents": {
+                                      "Literal": {
+                                        "lit": {
+                                          "node": {
+                                            "Int": [
+                                              20,
+                                              "Unsuffixed"
+                                            ]
+                                          },
+                                          "span": {
+                                            "lo": {
+                                              "line": 81,
+                                              "col": 16
+                                            },
+                                            "hi": {
+                                              "line": 81,
+                                              "col": 18
+                                            },
+                                            "filename": {
+                                              "Real": {
+                                                "LocalPath": "src/lib.rs"
+                                              }
+                                            }
+                                          }
+                                        },
+                                        "neg": false
+                                      }
+                                    }
+                                  }
+                                },
+                                {
+                                  "field": {
+                                    "krate": "example",
+                                    "path": [
+                                      {
+                                        "TypeNs": "Hi"
+                                      },
+                                      {
+                                        "ValueNs": "field3"
+                                      }
+                                    ]
+                                  },
+                                  "value": {
+                                    "ty": {
+                                      "Uint": "U8"
+                                    },
+                                    "span": {
+                                      "lo": {
+                                        "line": 82,
+                                        "col": 16
+                                      },
+                                      "hi": {
+                                        "line": 82,
+                                        "col": 18
+                                      },
+                                      "filename": {
+                                        "Real": {
+                                          "LocalPath": "src/lib.rs"
+                                        }
+                                      }
+                                    },
+                                    "contents": {
+                                      "Literal": {
+                                        "lit": {
+                                          "node": {
+                                            "Int": [
+                                              30,
+                                              "Unsuffixed"
+                                            ]
+                                          },
+                                          "span": {
+                                            "lo": {
+                                              "line": 82,
+                                              "col": 16
+                                            },
+                                            "hi": {
+                                              "line": 82,
+                                              "col": 18
+                                            },
+                                            "filename": {
+                                              "Real": {
+                                                "LocalPath": "src/lib.rs"
+                                              }
+                                            }
+                                          }
+                                        },
+                                        "neg": false
+                                      }
+                                    }
+                                  }
+                                },
+                                {
+                                  "field": {
+                                    "krate": "example",
+                                    "path": [
+                                      {
+                                        "TypeNs": "Hi"
+                                      },
+                                      {
+                                        "ValueNs": "field4"
+                                      }
+                                    ]
+                                  },
+                                  "value": {
+                                    "ty": {
+                                      "Uint": "U8"
+                                    },
+                                    "span": {
+                                      "lo": {
+                                        "line": 83,
+                                        "col": 16
+                                      },
+                                      "hi": {
+                                        "line": 83,
+                                        "col": 18
+                                      },
+                                      "filename": {
+                                        "Real": {
+                                          "LocalPath": "src/lib.rs"
+                                        }
+                                      }
+                                    },
+                                    "contents": {
+                                      "Literal": {
+                                        "lit": {
+                                          "node": {
+                                            "Int": [
+                                              40,
+                                              "Unsuffixed"
+                                            ]
+                                          },
+                                          "span": {
+                                            "lo": {
+                                              "line": 83,
+                                              "col": 16
+                                            },
+                                            "hi": {
+                                              "line": 83,
+                                              "col": 18
+                                            },
+                                            "filename": {
+                                              "Real": {
+                                                "LocalPath": "src/lib.rs"
+                                              }
+                                            }
+                                          }
+                                        },
+                                        "neg": false
+                                      }
+                                    }
+                                  }
+                                }
+                              ],
+                              "base": null
+                            }
+                          }
+                        },
+                        "else_block": null,
+                        "lint_level": {
+                          "Explicit": {
+                            "owner": {
+                              "krate": "example",
+                              "path": [
+                                {
+                                  "ValueNs": "hello"
+                                }
+                              ]
+                            },
+                            "local_id": 39
+                          }
+                        }
+                      }
+                    },
+                    "opt_destruction_scope": {
+                      "id": 28,
+                      "data": "Destruction"
+                    }
+                  }
+                ],
+                "expr": {
+                  "ty": {
+                    "Uint": "U8"
+                  },
+                  "span": {
+                    "lo": {
+                      "line": 85,
+                      "col": 4
+                    },
+                    "hi": {
+                      "line": 96,
+                      "col": 5
+                    },
+                    "filename": {
+                      "Real": {
+                        "LocalPath": "src/lib.rs"
+                      }
+                    }
+                  },
+                  "contents": {
+                    "If": {
+                      "if_then_scope": {
+                        "id": 48,
+                        "data": "IfThen"
+                      },
+                      "cond": {
+                        "ty": "Bool",
+                        "span": {
+                          "lo": {
+                            "line": 85,
+                            "col": 7
+                          },
+                          "hi": {
+                            "line": 85,
+                            "col": 13
+                          },
+                          "filename": {
+                            "Real": {
+                              "LocalPath": "src/lib.rs"
+                            }
+                          }
+                        },
+                        "contents": {
+                          "Use": {
+                            "source": {
+                              "ty": "Bool",
+                              "span": {
+                                "lo": {
+                                  "line": 85,
+                                  "col": 7
+                                },
+                                "hi": {
+                                  "line": 85,
+                                  "col": 13
+                                },
+                                "filename": {
+                                  "Real": {
+                                    "LocalPath": "src/lib.rs"
+                                  }
+                                }
+                              },
+                              "contents": {
+                                "Literal": {
+                                  "lit": {
+                                    "node": {
+                                      "Bool": true
+                                    },
+                                    "span": {
+                                      "lo": {
+                                        "line": 85,
+                                        "col": 8
+                                      },
+                                      "hi": {
+                                        "line": 85,
+                                        "col": 12
+                                      },
+                                      "filename": {
+                                        "Real": {
+                                          "LocalPath": "src/lib.rs"
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "neg": false
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "then": {
+                        "ty": {
+                          "Uint": "U8"
+                        },
+                        "span": {
+                          "lo": {
+                            "line": 85,
+                            "col": 14
+                          },
+                          "hi": {
+                            "line": 87,
+                            "col": 5
+                          },
+                          "filename": {
+                            "Real": {
+                              "LocalPath": "src/lib.rs"
+                            }
+                          }
+                        },
+                        "contents": {
+                          "Binary": {
+                            "op": "Add",
+                            "lhs": {
+                              "ty": {
+                                "Uint": "U8"
+                              },
+                              "span": {
+                                "lo": {
+                                  "line": 86,
+                                  "col": 8
+                                },
+                                "hi": {
+                                  "line": 86,
+                                  "col": 9
+                                },
+                                "filename": {
+                                  "Real": {
+                                    "LocalPath": "src/lib.rs"
+                                  }
+                                }
+                              },
+                              "contents": {
+                                "Literal": {
+                                  "lit": {
+                                    "node": {
+                                      "Int": [
+                                        3,
+                                        "Unsuffixed"
+                                      ]
+                                    },
+                                    "span": {
+                                      "lo": {
+                                        "line": 86,
+                                        "col": 8
+                                      },
+                                      "hi": {
+                                        "line": 86,
+                                        "col": 9
+                                      },
+                                      "filename": {
+                                        "Real": {
+                                          "LocalPath": "src/lib.rs"
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "neg": false
+                                }
+                              }
+                            },
+                            "rhs": {
+                              "ty": {
+                                "Uint": "U8"
+                              },
+                              "span": {
+                                "lo": {
+                                  "line": 86,
+                                  "col": 12
+                                },
+                                "hi": {
+                                  "line": 86,
+                                  "col": 13
+                                },
+                                "filename": {
+                                  "Real": {
+                                    "LocalPath": "src/lib.rs"
+                                  }
+                                }
+                              },
+                              "contents": {
+                                "VarRef": {
+                                  "id": {
+                                    "name": "x",
+                                    "id": {
+                                      "owner": {
+                                        "krate": "example",
+                                        "path": [
+                                          {
+                                            "ValueNs": "hello"
+                                          }
+                                        ]
+                                      },
+                                      "local_id": 2
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "else_opt": {
+                        "ty": {
+                          "Uint": "U8"
+                        },
+                        "span": {
+                          "lo": {
+                            "line": 87,
+                            "col": 11
+                          },
+                          "hi": {
+                            "line": 96,
+                            "col": 5
+                          },
+                          "filename": {
+                            "Real": {
+                              "LocalPath": "src/lib.rs"
+                            }
+                          }
+                        },
+                        "contents": {
+                          "Match": {
+                            "scrutinee": {
+                              "ty": {
+                                "Int": "I32"
+                              },
+                              "span": {
+                                "lo": {
+                                  "line": 88,
+                                  "col": 14
+                                },
+                                "hi": {
+                                  "line": 88,
+                                  "col": 15
+                                },
+                                "filename": {
+                                  "Real": {
+                                    "LocalPath": "src/lib.rs"
+                                  }
+                                }
+                              },
+                              "contents": {
+                                "Literal": {
+                                  "lit": {
+                                    "node": {
+                                      "Int": [
+                                        1,
+                                        "Unsuffixed"
+                                      ]
+                                    },
+                                    "span": {
+                                      "lo": {
+                                        "line": 88,
+                                        "col": 14
+                                      },
+                                      "hi": {
+                                        "line": 88,
+                                        "col": 15
+                                      },
+                                      "filename": {
+                                        "Real": {
+                                          "LocalPath": "src/lib.rs"
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "neg": false
+                                }
+                              }
+                            },
+                            "arms": [
+                              {
+                                "pattern": {
+                                  "ty": {
+                                    "Int": "I32"
+                                  },
+                                  "span": {
+                                    "lo": {
+                                      "line": 89,
+                                      "col": 12
+                                    },
+                                    "hi": {
+                                      "line": 89,
+                                      "col": 13
+                                    },
+                                    "filename": {
+                                      "Real": {
+                                        "LocalPath": "src/lib.rs"
+                                      }
+                                    }
+                                  },
+                                  "contents": {
+                                    "Constant": {
+                                      "value": {
+                                        "Lit": {
+                                          "Int": [
+                                            0,
+                                            "Unsuffixed"
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                "guard": null,
+                                "body": {
+                                  "ty": {
+                                    "Uint": "U8"
+                                  },
+                                  "span": {
+                                    "lo": {
+                                      "line": 89,
+                                      "col": 17
+                                    },
+                                    "hi": {
+                                      "line": 89,
+                                      "col": 19
+                                    },
+                                    "filename": {
+                                      "Real": {
+                                        "LocalPath": "src/lib.rs"
+                                      }
+                                    }
+                                  },
+                                  "contents": {
+                                    "Literal": {
+                                      "lit": {
+                                        "node": {
+                                          "Int": [
+                                            12,
+                                            "Unsuffixed"
+                                          ]
+                                        },
+                                        "span": {
+                                          "lo": {
+                                            "line": 89,
+                                            "col": 17
+                                          },
+                                          "hi": {
+                                            "line": 89,
+                                            "col": 19
+                                          },
+                                          "filename": {
+                                            "Real": {
+                                              "LocalPath": "src/lib.rs"
+                                            }
+                                          }
+                                        }
+                                      },
+                                      "neg": false
+                                    }
+                                  }
+                                },
+                                "lint_level": {
+                                  "Explicit": {
+                                    "owner": {
+                                      "krate": "example",
+                                      "path": [
+                                        {
+                                          "ValueNs": "hello"
+                                        }
+                                      ]
+                                    },
+                                    "local_id": 52
+                                  }
+                                },
+                                "scope": {
+                                  "id": 52,
+                                  "data": "Node"
+                                },
+                                "span": {
+                                  "lo": {
+                                    "line": 89,
+                                    "col": 12
+                                  },
+                                  "hi": {
+                                    "line": 89,
+                                    "col": 19
+                                  },
+                                  "filename": {
+                                    "Real": {
+                                      "LocalPath": "src/lib.rs"
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "pattern": {
+                                  "ty": {
+                                    "Int": "I32"
+                                  },
+                                  "span": {
+                                    "lo": {
+                                      "line": 90,
+                                      "col": 12
+                                    },
+                                    "hi": {
+                                      "line": 90,
+                                      "col": 13
+                                    },
+                                    "filename": {
+                                      "Real": {
+                                        "LocalPath": "src/lib.rs"
+                                      }
+                                    }
+                                  },
+                                  "contents": {
+                                    "Constant": {
+                                      "value": {
+                                        "Lit": {
+                                          "Int": [
+                                            1,
+                                            "Unsuffixed"
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                "guard": null,
+                                "body": {
+                                  "ty": {
+                                    "Uint": "U8"
+                                  },
+                                  "span": {
+                                    "lo": {
+                                      "line": 90,
+                                      "col": 17
+                                    },
+                                    "hi": {
+                                      "line": 93,
+                                      "col": 13
+                                    },
+                                    "filename": {
+                                      "Real": {
+                                        "LocalPath": "src/lib.rs"
+                                      }
+                                    }
+                                  },
+                                  "contents": {
+                                    "Match": {
+                                      "scrutinee": {
+                                        "ty": {
+                                          "NamedType": {
+                                            "generic_args": [],
+                                            "def_id": {
+                                              "krate": "example",
+                                              "path": [
+                                                {
+                                                  "TypeNs": "Hello"
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        "span": {
+                                          "lo": {
+                                            "line": 90,
+                                            "col": 23
+                                          },
+                                          "hi": {
+                                            "line": 90,
+                                            "col": 24
+                                          },
+                                          "filename": {
+                                            "Real": {
+                                              "LocalPath": "src/lib.rs"
+                                            }
+                                          }
+                                        },
+                                        "contents": {
+                                          "VarRef": {
+                                            "id": {
+                                              "name": "b",
+                                              "id": {
+                                                "owner": {
+                                                  "krate": "example",
+                                                  "path": [
+                                                    {
+                                                      "ValueNs": "hello"
+                                                    }
+                                                  ]
+                                                },
+                                                "local_id": 27
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      "arms": [
+                                        {
+                                          "pattern": {
+                                            "ty": {
+                                              "NamedType": {
+                                                "generic_args": [],
+                                                "def_id": {
+                                                  "krate": "example",
+                                                  "path": [
+                                                    {
+                                                      "TypeNs": "Hello"
+                                                    }
+                                                  ]
+                                                }
+                                              }
+                                            },
+                                            "span": {
+                                              "lo": {
+                                                "line": 91,
+                                                "col": 16
+                                              },
+                                              "hi": {
+                                                "line": 91,
+                                                "col": 30
+                                              },
+                                              "filename": {
+                                                "Real": {
+                                                  "LocalPath": "src/lib.rs"
+                                                }
+                                              }
+                                            },
+                                            "contents": {
+                                              "Variant": {
+                                                "info": {
+                                                  "constructs_record": false,
+                                                  "constructs_type": {
+                                                    "krate": "example",
+                                                    "path": [
+                                                      {
+                                                        "TypeNs": "Hello"
+                                                      }
+                                                    ]
+                                                  },
+                                                  "type_namespace": {
+                                                    "krate": "example",
+                                                    "path": []
+                                                  },
+                                                  "variant": {
+                                                    "krate": "example",
+                                                    "path": [
+                                                      {
+                                                        "TypeNs": "Hello"
+                                                      },
+                                                      {
+                                                        "TypeNs": "A"
+                                                      }
+                                                    ]
+                                                  }
+                                                },
+                                                "substs": [],
+                                                "subpatterns": [
+                                                  {
+                                                    "field": {
+                                                      "krate": "example",
+                                                      "path": [
+                                                        {
+                                                          "TypeNs": "Hello"
+                                                        },
+                                                        {
+                                                          "TypeNs": "A"
+                                                        },
+                                                        {
+                                                          "ValueNs": "0"
+                                                        }
+                                                      ]
+                                                    },
+                                                    "pattern": {
+                                                      "ty": {
+                                                        "Uint": "U8"
+                                                      },
+                                                      "span": {
+                                                        "lo": {
+                                                          "line": 91,
+                                                          "col": 25
+                                                        },
+                                                        "hi": {
+                                                          "line": 91,
+                                                          "col": 26
+                                                        },
+                                                        "filename": {
+                                                          "Real": {
+                                                            "LocalPath": "src/lib.rs"
+                                                          }
+                                                        }
+                                                      },
+                                                      "contents": {
+                                                        "Binding": {
+                                                          "mutability": false,
+                                                          "mode": "ByValue",
+                                                          "var": {
+                                                            "name": "x",
+                                                            "id": {
+                                                              "owner": {
+                                                                "krate": "example",
+                                                                "path": [
+                                                                  {
+                                                                    "ValueNs": "hello"
+                                                                  }
+                                                                ]
+                                                              },
+                                                              "local_id": 61
+                                                            }
+                                                          },
+                                                          "ty": {
+                                                            "Uint": "U8"
+                                                          },
+                                                          "subpattern": null,
+                                                          "is_primary": true
+                                                        }
+                                                      }
+                                                    }
+                                                  },
+                                                  {
+                                                    "field": {
+                                                      "krate": "example",
+                                                      "path": [
+                                                        {
+                                                          "TypeNs": "Hello"
+                                                        },
+                                                        {
+                                                          "TypeNs": "A"
+                                                        },
+                                                        {
+                                                          "ValueNs": "1"
+                                                        }
+                                                      ]
+                                                    },
+                                                    "pattern": {
+                                                      "ty": {
+                                                        "Uint": "U8"
+                                                      },
+                                                      "span": {
+                                                        "lo": {
+                                                          "line": 91,
+                                                          "col": 28
+                                                        },
+                                                        "hi": {
+                                                          "line": 91,
+                                                          "col": 29
+                                                        },
+                                                        "filename": {
+                                                          "Real": {
+                                                            "LocalPath": "src/lib.rs"
+                                                          }
+                                                        }
+                                                      },
+                                                      "contents": {
+                                                        "Binding": {
+                                                          "mutability": false,
+                                                          "mode": "ByValue",
+                                                          "var": {
+                                                            "name": "y",
+                                                            "id": {
+                                                              "owner": {
+                                                                "krate": "example",
+                                                                "path": [
+                                                                  {
+                                                                    "ValueNs": "hello"
+                                                                  }
+                                                                ]
+                                                              },
+                                                              "local_id": 62
+                                                            }
+                                                          },
+                                                          "ty": {
+                                                            "Uint": "U8"
+                                                          },
+                                                          "subpattern": null,
+                                                          "is_primary": true
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          },
+                                          "guard": null,
+                                          "body": {
+                                            "ty": {
+                                              "Uint": "U8"
+                                            },
+                                            "span": {
+                                              "lo": {
+                                                "line": 91,
+                                                "col": 34
+                                              },
+                                              "hi": {
+                                                "line": 91,
+                                                "col": 35
+                                              },
+                                              "filename": {
+                                                "Real": {
+                                                  "LocalPath": "src/lib.rs"
+                                                }
+                                              }
+                                            },
+                                            "contents": {
+                                              "Literal": {
+                                                "lit": {
+                                                  "node": {
+                                                    "Int": [
+                                                      1,
+                                                      "Unsuffixed"
+                                                    ]
+                                                  },
+                                                  "span": {
+                                                    "lo": {
+                                                      "line": 91,
+                                                      "col": 34
+                                                    },
+                                                    "hi": {
+                                                      "line": 91,
+                                                      "col": 35
+                                                    },
+                                                    "filename": {
+                                                      "Real": {
+                                                        "LocalPath": "src/lib.rs"
+                                                      }
+                                                    }
+                                                  }
+                                                },
+                                                "neg": false
+                                              }
+                                            }
+                                          },
+                                          "lint_level": {
+                                            "Explicit": {
+                                              "owner": {
+                                                "krate": "example",
+                                                "path": [
+                                                  {
+                                                    "ValueNs": "hello"
+                                                  }
+                                                ]
+                                              },
+                                              "local_id": 64
+                                            }
+                                          },
+                                          "scope": {
+                                            "id": 64,
+                                            "data": "Node"
+                                          },
+                                          "span": {
+                                            "lo": {
+                                              "line": 91,
+                                              "col": 16
+                                            },
+                                            "hi": {
+                                              "line": 91,
+                                              "col": 35
+                                            },
+                                            "filename": {
+                                              "Real": {
+                                                "LocalPath": "src/lib.rs"
+                                              }
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "pattern": {
+                                            "ty": {
+                                              "NamedType": {
+                                                "generic_args": [],
+                                                "def_id": {
+                                                  "krate": "example",
+                                                  "path": [
+                                                    {
+                                                      "TypeNs": "Hello"
+                                                    }
+                                                  ]
+                                                }
+                                              }
+                                            },
+                                            "span": {
+                                              "lo": {
+                                                "line": 92,
+                                                "col": 16
+                                              },
+                                              "hi": {
+                                                "line": 92,
+                                                "col": 33
+                                              },
+                                              "filename": {
+                                                "Real": {
+                                                  "LocalPath": "src/lib.rs"
+                                                }
+                                              }
+                                            },
+                                            "contents": {
+                                              "Variant": {
+                                                "info": {
+                                                  "constructs_record": false,
+                                                  "constructs_type": {
+                                                    "krate": "example",
+                                                    "path": [
+                                                      {
+                                                        "TypeNs": "Hello"
+                                                      }
+                                                    ]
+                                                  },
+                                                  "type_namespace": {
+                                                    "krate": "example",
+                                                    "path": []
+                                                  },
+                                                  "variant": {
+                                                    "krate": "example",
+                                                    "path": [
+                                                      {
+                                                        "TypeNs": "Hello"
+                                                      },
+                                                      {
+                                                        "TypeNs": "B"
+                                                      }
+                                                    ]
+                                                  }
+                                                },
+                                                "substs": [],
+                                                "subpatterns": [
+                                                  {
+                                                    "field": {
+                                                      "krate": "example",
+                                                      "path": [
+                                                        {
+                                                          "TypeNs": "Hello"
+                                                        },
+                                                        {
+                                                          "TypeNs": "B"
+                                                        },
+                                                        {
+                                                          "ValueNs": "y"
+                                                        }
+                                                      ]
+                                                    },
+                                                    "pattern": {
+                                                      "ty": {
+                                                        "Uint": "U8"
+                                                      },
+                                                      "span": {
+                                                        "lo": {
+                                                          "line": 92,
+                                                          "col": 27
+                                                        },
+                                                        "hi": {
+                                                          "line": 92,
+                                                          "col": 28
+                                                        },
+                                                        "filename": {
+                                                          "Real": {
+                                                            "LocalPath": "src/lib.rs"
+                                                          }
+                                                        }
+                                                      },
+                                                      "contents": {
+                                                        "Binding": {
+                                                          "mutability": false,
+                                                          "mode": "ByValue",
+                                                          "var": {
+                                                            "name": "y",
+                                                            "id": {
+                                                              "owner": {
+                                                                "krate": "example",
+                                                                "path": [
+                                                                  {
+                                                                    "ValueNs": "hello"
+                                                                  }
+                                                                ]
+                                                              },
+                                                              "local_id": 69
+                                                            }
+                                                          },
+                                                          "ty": {
+                                                            "Uint": "U8"
+                                                          },
+                                                          "subpattern": null,
+                                                          "is_primary": true
+                                                        }
+                                                      }
+                                                    }
+                                                  },
+                                                  {
+                                                    "field": {
+                                                      "krate": "example",
+                                                      "path": [
+                                                        {
+                                                          "TypeNs": "Hello"
+                                                        },
+                                                        {
+                                                          "TypeNs": "B"
+                                                        },
+                                                        {
+                                                          "ValueNs": "x"
+                                                        }
+                                                      ]
+                                                    },
+                                                    "pattern": {
+                                                      "ty": {
+                                                        "Uint": "U8"
+                                                      },
+                                                      "span": {
+                                                        "lo": {
+                                                          "line": 92,
+                                                          "col": 30
+                                                        },
+                                                        "hi": {
+                                                          "line": 92,
+                                                          "col": 31
+                                                        },
+                                                        "filename": {
+                                                          "Real": {
+                                                            "LocalPath": "src/lib.rs"
+                                                          }
+                                                        }
+                                                      },
+                                                      "contents": {
+                                                        "Binding": {
+                                                          "mutability": false,
+                                                          "mode": "ByValue",
+                                                          "var": {
+                                                            "name": "x",
+                                                            "id": {
+                                                              "owner": {
+                                                                "krate": "example",
+                                                                "path": [
+                                                                  {
+                                                                    "ValueNs": "hello"
+                                                                  }
+                                                                ]
+                                                              },
+                                                              "local_id": 71
+                                                            }
+                                                          },
+                                                          "ty": {
+                                                            "Uint": "U8"
+                                                          },
+                                                          "subpattern": null,
+                                                          "is_primary": true
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          },
+                                          "guard": null,
+                                          "body": {
+                                            "ty": {
+                                              "Uint": "U8"
+                                            },
+                                            "span": {
+                                              "lo": {
+                                                "line": 92,
+                                                "col": 37
+                                              },
+                                              "hi": {
+                                                "line": 92,
+                                                "col": 38
+                                              },
+                                              "filename": {
+                                                "Real": {
+                                                  "LocalPath": "src/lib.rs"
+                                                }
+                                              }
+                                            },
+                                            "contents": {
+                                              "Literal": {
+                                                "lit": {
+                                                  "node": {
+                                                    "Int": [
+                                                      2,
+                                                      "Unsuffixed"
+                                                    ]
+                                                  },
+                                                  "span": {
+                                                    "lo": {
+                                                      "line": 92,
+                                                      "col": 37
+                                                    },
+                                                    "hi": {
+                                                      "line": 92,
+                                                      "col": 38
+                                                    },
+                                                    "filename": {
+                                                      "Real": {
+                                                        "LocalPath": "src/lib.rs"
+                                                      }
+                                                    }
+                                                  }
+                                                },
+                                                "neg": false
+                                              }
+                                            }
+                                          },
+                                          "lint_level": {
+                                            "Explicit": {
+                                              "owner": {
+                                                "krate": "example",
+                                                "path": [
+                                                  {
+                                                    "ValueNs": "hello"
+                                                  }
+                                                ]
+                                              },
+                                              "local_id": 73
+                                            }
+                                          },
+                                          "scope": {
+                                            "id": 73,
+                                            "data": "Node"
+                                          },
+                                          "span": {
+                                            "lo": {
+                                              "line": 92,
+                                              "col": 16
+                                            },
+                                            "hi": {
+                                              "line": 92,
+                                              "col": 38
+                                            },
+                                            "filename": {
+                                              "Real": {
+                                                "LocalPath": "src/lib.rs"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                },
+                                "lint_level": {
+                                  "Explicit": {
+                                    "owner": {
+                                      "krate": "example",
+                                      "path": [
+                                        {
+                                          "ValueNs": "hello"
+                                        }
+                                      ]
+                                    },
+                                    "local_id": 56
+                                  }
+                                },
+                                "scope": {
+                                  "id": 56,
+                                  "data": "Node"
+                                },
+                                "span": {
+                                  "lo": {
+                                    "line": 90,
+                                    "col": 12
+                                  },
+                                  "hi": {
+                                    "line": 93,
+                                    "col": 13
+                                  },
+                                  "filename": {
+                                    "Real": {
+                                      "LocalPath": "src/lib.rs"
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "pattern": {
+                                  "ty": {
+                                    "Int": "I32"
+                                  },
+                                  "span": {
+                                    "lo": {
+                                      "line": 94,
+                                      "col": 12
+                                    },
+                                    "hi": {
+                                      "line": 94,
+                                      "col": 13
+                                    },
+                                    "filename": {
+                                      "Real": {
+                                        "LocalPath": "src/lib.rs"
+                                      }
+                                    }
+                                  },
+                                  "contents": "Wild"
+                                },
+                                "guard": null,
+                                "body": {
+                                  "ty": {
+                                    "Uint": "U8"
+                                  },
+                                  "span": {
+                                    "lo": {
+                                      "line": 94,
+                                      "col": 17
+                                    },
+                                    "hi": {
+                                      "line": 94,
+                                      "col": 19
+                                    },
+                                    "filename": {
+                                      "Real": {
+                                        "LocalPath": "src/lib.rs"
+                                      }
+                                    }
+                                  },
+                                  "contents": {
+                                    "Literal": {
+                                      "lit": {
+                                        "node": {
+                                          "Int": [
+                                            78,
+                                            "Unsuffixed"
+                                          ]
+                                        },
+                                        "span": {
+                                          "lo": {
+                                            "line": 94,
+                                            "col": 17
+                                          },
+                                          "hi": {
+                                            "line": 94,
+                                            "col": 19
+                                          },
+                                          "filename": {
+                                            "Real": {
+                                              "LocalPath": "src/lib.rs"
+                                            }
+                                          }
+                                        }
+                                      },
+                                      "neg": false
+                                    }
+                                  }
+                                },
+                                "lint_level": {
+                                  "Explicit": {
+                                    "owner": {
+                                      "krate": "example",
+                                      "path": [
+                                        {
+                                          "ValueNs": "hello"
+                                        }
+                                      ]
+                                    },
+                                    "local_id": 77
+                                  }
+                                },
+                                "scope": {
+                                  "id": 77,
+                                  "data": "Node"
+                                },
+                                "span": {
+                                  "lo": {
+                                    "line": 94,
+                                    "col": 12
+                                  },
+                                  "hi": {
+                                    "line": 94,
+                                    "col": 19
+                                  },
+                                  "filename": {
+                                    "Real": {
+                                      "LocalPath": "src/lib.rs"
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
                 "safety_mode": "Safe"
               }
             }
           },
           "sig_span": {
             "lo": {
-              "line": 60,
+              "line": 72,
               "col": 0
             },
             "hi": {
-              "line": 60,
-              "col": 20
+              "line": 74,
+              "col": 12
             },
             "filename": {
               "Real": {

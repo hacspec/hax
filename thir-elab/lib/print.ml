@@ -1,5 +1,6 @@
 open Base
 open Ast
+open Ast.Make(Features.Full)
 open PPrint
 open Utils
 
@@ -22,12 +23,12 @@ let rec pglobal_ident (e : global_ident) =
       ^^ separate_map (string "::") string (Non_empty_list.to_list path)
   | `Primitive p -> string @@ show_primitive_ident p
   | `Tuple n -> string @@ "tuple" ^ string_of_int n
-  | `TupleField n -> string @@ "tuple_todo?._" ^ string_of_int n
+  | `TupleField (n, _) -> string @@ "tuple_todo?._" ^ string_of_int n
   | `Projector n -> string @@ show_global_ident e
 
 let rec plocal_ident (e : LocalIdent.t) = string @@ e.name
 
-let rec pty (e : 'a ty) =
+let rec pty (e : ty) =
   match e with
   | Bool -> string "bool"
   | Char -> string "char"
@@ -35,7 +36,7 @@ let rec pty (e : 'a ty) =
   | Float -> string "float"
   | Str -> string "str"
   | App { ident; args } ->
-      group @@ pglobal_ident ident ^/^ separate_map space pgeneric_arg args
+      group @@ pglobal_ident ident ^/^ separate_map space pgeneric_value args
   | Array { typ; length } ->
       string "vector" ^/^ parens (pty typ) ^/^ string (string_of_int length)
   | Slice { witness; ty } -> string "slice:todo"
@@ -48,16 +49,16 @@ let rec pty (e : 'a ty) =
         (separate_map (space ^^ string "->" ^^ space) pty (inputs @ [ output ]))
   | ProjectedAssociatedType s -> string "proj:assoc:type"
 
-and pgeneric_arg (e : 'a generic_arg) =
+and pgeneric_value (e : generic_value) =
   match e with
   | Lifetime _ -> string "todo:lifetime"
   | Type t -> group @@ parens @@ pty t
-  | _ -> string "generic_argtodo"
+  | _ -> string "generic_value todo"
 
-let rec pborrow_kind (e : 'a borrow_kind) =
+let rec pborrow_kind (e : borrow_kind) =
   match e with Mut _ -> string "mut " | _ -> empty
 
-let rec ppat (e : 'a pat) =
+let rec ppat (e : pat) =
   match e.v with
   | Wild -> underscore
   | PatAscription { typ; pat } ->
@@ -77,7 +78,7 @@ let rec ppat (e : 'a pat) =
               (fun (subpat, _) -> at ^^ group @@ parens @@ ppat subpat)
               subpat)
 
-let rec pexpr (e : 'a expr) =
+let rec pexpr (e : expr) =
   match e.v with
   | If { cond; then_; else_ } ->
       group
@@ -88,7 +89,7 @@ let rec pexpr (e : 'a expr) =
       parens (pexpr f) ^/^ concat @@ List.map ~f:(parens << pexpr) args
   | Literal e -> pliteral e
   | Array l -> brackets @@ separate semi @@ List.map ~f:pexpr l
-  | Record { fields; base } ->
+  | Construct { constructor; constructs_record; fields; base } ->
       braces
       @@ optional (fun base -> parens (pexpr base) ^^ string "with") base
       ^/^ separate_map semi
@@ -124,26 +125,37 @@ let rec pexpr (e : 'a expr) =
   | AddressOf { mut; e } -> string "&raw..."
   | MonadicNode _ -> string "monadic node"
 
-and parm ({ v = { pat; body } } : 'a arm) =
+and parm ({ v = { pat; body } } : arm) =
   group (group (group (string "|" ^/^ ppat pat) ^/^ string "->") ^/^ pexpr body)
 
-and plhs (e : 'a lhs) =
+and plhs (e : lhs) =
   match e with
   | FieldAccessor { e; field } -> pexpr e ^^ dot ^^ string field
   | ArrayAccessor { e; index } -> pexpr e ^^ brackets @@ pexpr index
   | LhsLocalVar i -> plocal_ident i
 
-let rec pparam ({ pat; typ } : 'a param) =
+let rec pparam ({ pat; typ } : param) =
+
   group @@ parens @@ ppat pat ^/^ colon ^/^ pty typ
 
-let rec pitem (e : 'a item) =
+let rec pitem (e : item) =
   match e.v with
   | Fn { name; generics; body; params } ->
       group
         (string "let" ^/^ pglobal_ident name
         ^/^ separate_map space pparam params
         ^/^ equals ^/^ pexpr body)
+  | Type {name; generics; variants} -> string "TYPEDEF"
+  | TyAlias {name; generics; ty} -> string "TYPEALIAS"
   | NotImplementedYet -> string "NotImplementedYet"
 
 let rec pmutability (e : 'a mutability) = string ""
-let rec pbinding_mode (e : 'a binding_mode) = string ""
+let rec pbinding_mode (e : binding_mode) = string ""
+
+
+
+let to_string d =
+  let b = Buffer.create 50 in
+  PPrint.ToBuffer.pretty 0.5 140 b d;
+  Buffer.contents b
+    

@@ -57,4 +57,41 @@
 //     }
 // }
 
-fn hello(x: &mut u8) {}
+enum Hello {
+    A(u8, u8),
+    B { x: u8, y: u8 },
+}
+
+struct Hi {
+    field1: u8,
+    field2: u8,
+    field3: u8,
+    field4: u8,
+}
+
+fn hello<A>(x: u8) -> u8
+where
+    A: Copy,
+{
+    let foo = 1u16 + 4;
+    let a = Hello::A(2, 5);
+    let b = Hello::B { y: 99, x: 123 };
+    let hi = Hi {
+        field1: 10,
+        field2: 20,
+        field3: 30,
+        field4: 40,
+    };
+    if (true) {
+        3 + x
+    } else {
+        match 1 {
+            0 => 12,
+            1 => match b {
+                Hello::A(x, y) => 1,
+                Hello::B { y, x } => 2,
+            },
+            _ => 78,
+        }
+    }
+}

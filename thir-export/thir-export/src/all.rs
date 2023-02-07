@@ -67,7 +67,8 @@ impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
         let krate = tcx.crate_name(def_path.krate);
         DefId {
             path: def_path.data.iter().map(|x| x.data.sinto(s)).collect(),
-            krate: format!("{}#{}", krate, def_path.krate.as_u32()),
+            // krate: format!("{}#{}", krate, def_path.krate.as_u32()),
+            krate: format!("{}", krate),
         }
     }
 }
@@ -349,6 +350,19 @@ pub struct BoundTy {
     pub kind: BoundTyKind,
 }
 
+// pub type Const = Box<Expr>;
+
+// impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, Const> for rustc_middle::ty::Const<'tcx> {
+//     fn sinto(&self, s: &S) -> Const {
+//         match self.kind() {
+//             rustc_middle::ty::ConstKind::Expr(e) => box e.sinto(s),
+//             _ => panic!("{:#?}", self),
+//         }
+//     }
+// }
+
+sinto_todo!(rustc_middle::ty, Const<'s>);
+
 use crate::{sinto_as_usize, sinto_todo};
 sinto_todo!(rustc_middle::mir::interpret, Scalar);
 sinto_todo!(rustc_middle::ty, ScalarInt);
@@ -356,7 +370,6 @@ sinto_todo!(rustc_middle::ty, ScalarInt);
 sinto_todo!(rustc_middle::ty, ExistentialPredicate<'a>);
 sinto_todo!(rustc_middle::ty, Region<'s>);
 sinto_todo!(rustc_middle::ty, PolyFnSig<'s>);
-sinto_todo!(rustc_middle::ty, Const<'s>);
 sinto_todo!(rustc_middle::ty, AdtFlags);
 sinto_todo!(rustc_middle::mir::interpret, ConstAllocation<'a>);
 
@@ -564,16 +577,6 @@ pub struct FieldPat {
     pub pattern: Pat,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct AdtExpr {
-    pub variant: DefId,
-    // pub variant_index: VariantIdx,
-    // pub substs: Vec<GenericArg>,
-    pub user_ty: Option<CanonicalUserType>,
-    pub fields: Vec<FieldExpr>,
-    pub base: Option<FruInfo>,
-}
-
 impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, AdtExpr>
     for rustc_middle::thir::AdtExpr<'tcx>
 {
@@ -581,7 +584,7 @@ impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, AdtExpr>
         let variants = self.adt_def.variants();
         let variant: &rustc_middle::ty::VariantDef = &variants[self.variant_index];
         AdtExpr {
-            variant: variant.def_id.sinto(s),
+            info: get_variant_information(&self.adt_def, &variant.def_id, s),
             fields: self
                 .fields
                 .iter()
@@ -761,8 +764,8 @@ sinto_as_usize!(rustc_middle::mir, Field);
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct LocalIdent {
-    name: String,
-    id: HirId,
+    pub name: String,
+    pub id: HirId,
 }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, LocalIdent> for rustc_middle::thir::LocalVarId {
@@ -1637,6 +1640,38 @@ pub struct PatRange {
     pub end: RangeEnd,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct VariantInformations {
+    constructs_record: bool,
+    constructs_type: DefId,
+    type_namespace: DefId,
+    variant: DefId,
+}
+
+fn get_variant_information<'s, S: BaseState<'s>>(adt_def: &rustc_middle::ty::AdtDef<'s>, variant: &rustc_hir::def_id::DefId, s: &S) -> VariantInformations {
+    let constructs_type = adt_def.did().sinto(s);
+    VariantInformations {
+        constructs_record: adt_def.is_struct(),
+        constructs_type: constructs_type.clone(),
+        variant: variant.sinto(s),
+        type_namespace: DefId {
+            path: match constructs_type.path.as_slice() {
+                [init @ .., _] => init.to_vec(),
+                _ => panic!("Type {:#?} appears to have no path", constructs_type)
+            },
+            ..constructs_type.clone()
+        },
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct AdtExpr {
+    pub info: VariantInformations,
+    pub user_ty: Option<CanonicalUserType>,
+    pub fields: Vec<FieldExpr>,
+    pub base: Option<FruInfo>,
+}
+
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::PatKind<'tcx>, state: S as gstate)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -1680,7 +1715,7 @@ pub enum PatKind {
             let variants = adt_def.variants();
             let variant: &rustc_middle::ty::VariantDef = &variants[variant_index.clone()];
             TO_TYPE::Variant {
-                variant: variant.def_id.sinto(gstate),
+                info: get_variant_information(adt_def, &variant.def_id, gstate),
                 subpatterns: subpatterns
                     .iter()
                     .map(|f| FieldPat {
@@ -1692,11 +1727,13 @@ pub enum PatKind {
             }
         }
     )]
-    /// Any variant
+    /// Any variant, TODO rename into constructor?
     Variant {
-        // adt_def: AdtDef,
-        // #[map()]
-        variant: DefId,
+        info: VariantInformations,
+        // constructs_record: bool,
+        // constructs_type: DefId,
+        // type_namespace: DefId,
+        // variant: DefId,
         substs: Vec<GenericArg>,
         subpatterns: Vec<FieldPat>,
     },

@@ -1,7 +1,9 @@
 (library
  (name thir_elab)
- (libraries yojson non_empty_list bignum pprint)
- (modules ast raw_thir_ast import_thir print utils desugar_mutable_variable)
+ (libraries yojson non_empty_list bignum pprint ppx_functor_indexed_types
+            ppx_deriving_yojson.runtime fstar-compiler-lib
+ )
+ (modules ast utils raw_thir_ast features import_thir print_fstar print)
  (preprocess
   (pps
    ppx_yojson_conv
@@ -10,13 +12,19 @@
    ppx_hash
    visitors.ppx
    ppx_deriving.show
-   ppx_type_collection)))
+   ppx_deriving.eq
+   ppx_type_collection
+   ppx_functor_indexed_types
+   ppx_matches
+   )))
 
 (rule
-         (target raw_thir_ast.ml)
-         (action (with-stdout-to raw_thir_ast.ml
-                    (run thir_ml_of_json_schema))))
- 
+ (target raw_thir_ast.ml)
+ (action
+  (with-stdout-to
+   raw_thir_ast.ml
+   (run thir_ml_of_json_schema))))
+
 (env
  (dev
   (flags
