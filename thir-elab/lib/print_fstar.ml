@@ -3,6 +3,11 @@ open Ast
 open Ast.Make(Features.FStar)
 open PPrint
 open Utils
+
+let map_first_letter (f: string -> string) (s: string) =
+  let first, rest = String.(prefix s 1, drop_prefix s 1) in
+  f first ^ rest
+    
 module F = struct
   module Util = FStar_Parser_Util
   module AST = FStar_Parser_AST
@@ -14,20 +19,21 @@ module F = struct
   let id ident = Ident.mk_ident (ident, dummyRange)
   let lid path =
     let init, last = List.(drop_last_exn path, last_exn path) in
-    let capitalize_first_letter s =
-      let first, rest = String.(prefix s 1, drop_prefix s 1) in
-      String.uppercase first ^ rest
-    in
-    let init = List.map ~f:capitalize_first_letter init in
+    let init = List.map ~f:(map_first_letter String.uppercase) init in
     let path = init @ [last] in
     Ident.lid_of_path path dummyRange
   let lid_of_id id = Ident.lid_of_ids [id]
   let term (tm: AST.term') = AST.{ tm; range = dummyRange; level = Expr }
   let decl (d: AST.decl') = AST.{ d; drange = dummyRange; quals = []; attrs = [] }
   let pat (pat: AST.pattern') = AST.{ pat; prange = dummyRange }
+  let pat_var_tcresolve (var: string option)
+    = let tcresolve = Some (AST.Meta (term @@ AST.Var FStar_Parser_Const.tcresolve_lid)) in
+      pat @@ match var with
+             | Some var -> AST.PatVar (id var, tcresolve, [])
+             | _ -> AST.PatWild (tcresolve, [])
   let pat_app name l = pat @@ AST.PatApp (name, l)
   let wild = pat @@ AST.PatWild (None, [])
-  let mk_e_app base args = AST.mkApp base (List.map ~f:(fun arg -> arg, AST.Nothing) args) dummyRange
+  let mk_e_app base args = AST.mkApp base (List.map ~f:(fun arg -> arg, AST.Nothing) args) dummyRange    
   let mk_e_binder b = AST.{b; brange = dummyRange; blevel = Un; aqual = None; battributes = []}
   let term_of_lid path = term @@ AST.Name (lid path)
   let binder_of_term (t: AST.term): AST.binder
@@ -35,6 +41,9 @@ module F = struct
   let unit = term AST.(Const Const_unit)
   let mk_e_arrow inputs output =
     term @@ AST.Product (List.map ~f:binder_of_term inputs, output)
+  let mk_e_arrow' types =
+    let inputs, output = List.drop_last_exn types, List.last_exn types in
+    mk_e_arrow inputs output
   let mk_refined
       (x: string) (typ: AST.term)
       (phi: x:AST.term -> AST.term) =
@@ -98,6 +107,26 @@ let rec plocal_ident (e : LocalIdent.t) =
 
 let pgeneric_param_name (name: string): string
   = String.lowercase name (* TODO: this is not robust, might produce name clashes *)
+
+let rec map_last_non_empty_list (f: 'a -> 'a) (l: 'a Non_empty_list.t): 'a Non_empty_list.t
+  = let open Non_empty_list in
+    match l with
+    | [x] -> [f x]
+    | x::y::tl -> cons x @@ map_last_non_empty_list f (y::tl)
+    
+let map_last_concrete_ident (f: string -> string) (id: concrete_ident)
+  = {id with path = map_last_non_empty_list f id.path}
+    
+let map_last_global_ident (f: string -> string) (id: global_ident)
+  = match id with
+  | `Concrete concrete -> `Concrete (map_last_concrete_ident f concrete)
+  | _ -> id
+
+let lowercase_global_ident: global_ident -> global_ident
+  = map_last_global_ident @@ map_first_letter String.lowercase
+    
+let ptype_ident: global_ident -> F.Ident.lident
+  = lowercase_global_ident >> pglobal_ident
     
 let rec pty (t : ty) = match t with
   | Bool -> F.term_of_lid ["Prims"; "bool"]
@@ -106,7 +135,7 @@ let rec pty (t : ty) = match t with
   | Str -> F.term_of_lid ["Prims"; "string"]
   | False -> F.term_of_lid ["Prims"; "l_False"]
   | App { ident; args } ->
-    let base = F.term @@ F.AST.Name (pglobal_ident ident) in
+    let base = F.term @@ F.AST.Name (ptype_ident ident) in
     let args = List.map ~f:pgeneric_value args in
     F.mk_e_app base args
   | Arrow (inputs, output) -> F.mk_e_arrow (List.map ~f:pty inputs) (pty output)
@@ -132,7 +161,15 @@ and pgeneric_value (g : generic_value) = match g with
   | Type ty -> pty ty
   | Const todo -> failwith "pgeneric_arg: Const"
   | Lifetime _ -> .
-    
+
+let name_of_field = function
+  | `Concrete {path} ->
+     (try Some (Int.of_string @@ Non_empty_list.last path)
+      with | _ -> None)
+  | _ -> None
+                    
+let is_field_named = name_of_field >> Option.is_some
+                    
 (* let rec pborrow_kind (e : borrow_kind) = failwith "TODO" *)
 let rec ppat (p : pat) = match p.v with
   | Wild -> F.wild
@@ -145,17 +182,24 @@ let rec ppat (p : pat) = match p.v with
     F.pat @@ F.AST.PatVar (plocal_ident var, None, [])
   | PatArray { args } ->
     F.pat @@ F.AST.PatList (List.map ~f:ppat args)
-  | Variant { name; args } ->
+  | Variant { name; args; record } ->
     let pat_rec = F.pat @@ F.AST.PatRecord (List.map ~f:pfield_pat args) in
-    let pat_name = F.pat @@ F.AST.PatName (pglobal_ident name) in
-    F.pat_app pat_name [pat_rec]
+    if record then pat_rec
+    else
+      let pat_name = F.pat @@ F.AST.PatName (pglobal_ident name) in
+      let is_payload_record = List.for_all ~f:(fun {field} -> is_field_named field) args |> not in
+      F.pat_app pat_name @@
+        if is_payload_record
+        then [pat_rec]
+        else List.map ~f:(fun {field;pat} -> ppat pat) args
   | Constant { lit } ->
     F.pat @@ F.AST.PatConst (pliteral lit)
   | Deref { subpat } -> ppat subpat
   | _ -> .
 and pfield_pat ({field; pat} : field_pat) =
   pglobal_ident field, ppat pat
-      
+
+    
 let rec pexpr (e : expr) = match e.v with
   | Literal e -> F.term @@ F.AST.Const (pliteral e)
   | LocalVar local_ident ->
@@ -169,8 +213,9 @@ let rec pexpr (e : expr) = match e.v with
   | Array l ->
     F.AST.mkConsList F.dummyRange (List.map ~f:pexpr l)
   | Let { lhs; rhs; body } ->
+     let p = F.pat @@ F.AST.PatAscribed (ppat lhs, (pty lhs.typ, None)) in
       F.term @@ F.AST.Let (NoLetQualifier, [
-        None, (ppat lhs, pexpr rhs)
+        None, (p, pexpr rhs)
       ], pexpr body)
   | MonadicNode _ -> failwith "monadic node"
   | Match { scrutinee; arms } ->
@@ -223,86 +268,189 @@ let last_of_global_ident (g: global_ident) =
   match g with
   | `Concrete {path; crate = _} -> Non_empty_list.last path
   | _ -> failwith "last_of_global_ident"
-       
+
+(* let rec pgeneric_param' (p : generic_param) *)
+(*   = match p with *)
+(*   | Lifetime {ident} -> failwith "pgeneric_param:LIFETIME" *)
+(*   | Type {ident; default = None} -> *)
+(*     let t = F.term @@ F.AST.Name (F.lid ["Type"]) in *)
+(*     F.mk_e_binder (F.AST.Annotated (plocal_ident ident, t)) *)
+(*   | Type {ident; default = _} -> failwith "pgeneric_param:Type with default" *)
+(*   | Const {ident; typ} -> failwith "todo" *)
+
+                            
+let rec pgeneric_param_bd (p : generic_param)
+  = match p with
+  | Lifetime {ident} -> failwith "pgeneric_param:LIFETIME"
+  | Type {ident; default = None} ->
+    let t = F.term @@ F.AST.Name (F.lid ["Type"]) in
+    F.mk_e_binder (F.AST.Annotated (plocal_ident ident, t)) 
+  | Type {ident; default = _} -> failwith "pgeneric_param:Type with default"
+  | Const {ident; typ} -> failwith "todo"
+
 let rec pgeneric_param (p : generic_param)
   = match p with
   | Lifetime {ident} -> failwith "pgeneric_param:LIFETIME"
   | Type {ident; default = None} ->
-    let v = F.pat @@ F.AST.PatVar (plocal_ident {ident with name = pgeneric_param_name ident.name}, None, []) in
+    let v = F.pat @@ F.AST.PatVar (plocal_ident {ident with name = pgeneric_param_name ident.name}, Some F.AST.Implicit, []) in
     let t = F.term @@ F.AST.Name (F.lid ["Type"]) in
     F.pat @@ F.AST.PatAscribed (v, (t, None))
   | Type {ident; default = _} -> failwith "pgeneric_param:Type with default"
   | Const {ident; typ} -> failwith "todo"
-
-let rec pgeneric_constraint (c: generic_constraint)
+                            
+let rec pgeneric_constraint (nth: int) (c: generic_constraint)
   = match c with
   | Lifetime _ -> failwith "pgeneric_constraint lifetime"
   | Type {typ; implements} ->
     let implements: trait_ref = implements in
-    let trait = F.term @@ F.AST.Name (pglobal_ident implements.trait) in
+    let trait = F.term @@ F.AST.Name (ptype_ident implements.trait) in
     let args = List.map ~f:pgeneric_value implements.args in
     let tc = F.mk_e_app trait ((*pty typ::*)args) in
-    F.pat @@ F.AST.PatAscribed (F.wild, (tc, None))
+    F.pat @@ F.AST.PatAscribed (F.pat_var_tcresolve @@ Some ("__" ^ string_of_int nth), (tc, None))
 
 let rec pitem (e : item) =
   match e.v with
   | Fn { name; generics; body; params } ->  
-      let pat = F.pat @@ F.AST.PatVar (
-        F.id @@ last_of_global_ident name,
-        None,
-        []
-      ) in
-      let pat = F.pat @@ F.AST.PatApp (
-             pat,
-               List.map ~f:pgeneric_param generics.params
-               @ List.map ~f:pgeneric_constraint generics.constraints
-               @ List.map ~f:(fun {pat; typ_span; typ} ->
-                     F.pat @@ F.AST.PatAscribed (
-                       ppat pat,
-                       (pty typ, None)
-                     )
-                   ) params
-             ) in
-      let pat = F.pat @@ F.AST.PatAscribed (
-          pat,
-          (pty body.typ, None)
-        ) in
-      F.decl @@ F.AST.TopLevelLet (
-        NoLetQualifier,
-        [
-          pat, pexpr body
-        ]
-      )
+     let pat = F.pat @@ F.AST.PatVar (
+                            F.id @@ last_of_global_ident name,
+                            None,
+                            []
+                          ) in
+     let pat = F.pat @@ F.AST.PatApp (
+                            pat,
+                            List.map ~f:pgeneric_param generics.params
+                            @ List.mapi ~f:pgeneric_constraint generics.constraints
+                            @ List.map ~f:(fun {pat; typ_span; typ} ->
+                                  F.pat @@ F.AST.PatAscribed (
+                                               ppat pat,
+                                               (pty typ, None)
+                                             )
+                                ) params
+                          ) in
+     let pat = F.pat @@ F.AST.PatAscribed (
+                            pat,
+                            (pty body.typ, None)
+                          ) in
+     F.decl @@ F.AST.TopLevelLet (
+                   NoLetQualifier,
+                   [
+                     pat, pexpr body
+                   ]
+                 )
   | TyAlias { name; generics; ty } ->
-    let pat = F.pat @@ F.AST.PatVar (
-        F.id @@ last_of_global_ident name,
-        None,
-        []
-      ) in
-    F.decl @@ F.AST.TopLevelLet (
-      NoLetQualifier,
-      [
-        pat, pty ty
-      ]
-    )
+     let pat = F.pat @@ F.AST.PatVar (
+                            F.id @@ last_of_global_ident @@ lowercase_global_ident name,
+                            None,
+                            []
+                          ) in
+     F.decl @@ F.AST.TopLevelLet (
+                   NoLetQualifier,
+                   [
+                     (F.pat @@ F.AST.PatApp (
+                                   pat,
+                                   List.map ~f:pgeneric_param generics.params
+                                   @ List.mapi ~f:pgeneric_constraint generics.constraints
+                     ))
+                   , pty ty
+                   ]
+                 )
+  | Type { name; generics; variants = [variant]; record = true } ->
+     (* let constructors = F.id (last_of_global_ident name), None, [] in *)
+     F.decl @@ F.AST.Tycon (
+                   false,
+                   false,
+                   [
+                     F.AST.TyconRecord (
+                         F.id @@ last_of_global_ident @@ lowercase_global_ident name,
+                         [], (* todo type parameters & constraints *)
+                         None,
+                         [],
+                         List.map ~f:(fun (field, ty) ->
+                             (
+                               F.id @@ last_of_global_ident field,
+                               None,
+                               [],
+                               pty ty
+                             )
+                           ) variant.arguments
+                       )
+                   ]
+                 )
+
   | Type { name; generics; variants } ->
-    F.decl @@ F.AST.Tycon (
-      false,
-      false,
-      [
-        F.AST.TyconVariant (
-          F.id @@ last_of_global_ident name,
-          [],
-          None,
-          []
-        )
-      ]
-    )
+     let self =
+       F.term_of_lid [last_of_global_ident @@ lowercase_global_ident name]
+     in
+     let constructors =
+       List.map ~f:(
+           fun {name; arguments} ->
+           F.id (last_of_global_ident name)
+           , Some (
+                 let field_names = List.map ~f:(fst >> name_of_field) arguments in
+                 let is_record_payload = List.exists ~f:Option.is_none field_names in
+                 if is_record_payload
+                 then F.AST.VpRecord (
+                          (
+                            (* F.id @@ last_of_global_ident @@ lowercase_global_ident name, *)
+                            (* [], (\* todo type parameters & constraints *\) *)
+                            (* None, *)
+                            (* [], *)
+                            List.map ~f:(fun (field, ty) ->
+                                (
+                                  F.id @@ last_of_global_ident field,
+                                  None,
+                                  [],
+                                  pty ty
+                                )
+                              ) arguments
+                          ), Some self
+                        )
+                 else F.AST.VpArbitrary (
+                          F.term @@ F.AST.Product (
+                                        List.map ~f:(fun (_, ty) ->
+                                            F.mk_e_binder @@ F.AST.NoName (pty ty)
+                                          ) arguments,
+                                        self
+                                      )
+                     )
+                 (* let arguments = *)
+                 (*   List.zip arguments () *)
+                 (* in *)
+                 (* F.AST.VpArbitrary ( *)
+                 (*     F.term @@ *)
+                 (*       F.AST.Product ( *)
+                 (*           List.mapi ~f:(fun nth (field, ty) -> *)
+                 (*               let field = last_of_global_ident field in *)
+                 (*               let ty = pty ty in *)
+                 (*               try let nth' = Int.of_string field in *)
+                 (*                   if Int.(nth' <> nth) *)
+                 (*                   then failwith "While outputing F*, fields of a struct variant were given in a bad order" *)
+                 (*                   else F.AST.NoName ty *)
+                 (*               with | _ -> F.AST.Annotated (F.id field, ty) *)
+                 (*             ) arguments |> List.map ~f:F.mk_e_binder, *)
+                 (*           self *)
+                 (*         ) *)
+                 (*   ) *)
+               )
+           , []
+         ) variants in
+     F.decl @@ F.AST.Tycon (
+                   false,
+                   false,
+                   [
+                     F.AST.TyconVariant (
+                         F.id @@ last_of_global_ident @@ lowercase_global_ident name,
+                         [], (* todo type parameters & constraints *)
+                         None,
+                         constructors
+                       )
+                   ]
+                 )
   | _ ->
-      F.decl @@ F.AST.TopLevelLet (
-        NoLetQualifier,
-        [
-          F.pat @@ F.AST.PatWild (None, []),
-          F.unit
-        ]
-    )
+     F.decl @@ F.AST.TopLevelLet (
+                   NoLetQualifier,
+                   [
+                     F.pat @@ F.AST.PatWild (None, []),
+                     F.unit
+                   ]
+                 )

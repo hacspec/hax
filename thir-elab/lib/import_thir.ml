@@ -517,12 +517,22 @@ let c_constraint (c: Thir.where_predicate)
   | RegionPredicate _ -> failwith "region prediate"
   | EqPredicate _ -> failwith "EqPredicate"
 
+let list_dedup (equal: 'a -> 'a -> bool): 'a list -> 'a list
+  = let rec aux (seen: 'a list) (todo: 'a list): 'a list
+    = match todo with
+    | hd::tl ->
+      if List.mem ~equal seen hd
+      then     aux seen tl
+      else hd::aux (hd::seen) tl
+    | _ -> todo
+  in aux []
+                       
 let c_generics (generics: Thir.generics): generics result =
   let* params = List.map ~f:c_generic_param generics.params
                 |> Result.all in
   let* constraints = List.map ~f:c_constraint generics.predicates
                 |> Result.all in
-  Ok { params; constraints = List.concat constraints }
+  Ok { params; constraints = List.concat constraints |> list_dedup equal_generic_constraint }
 
 let c_item (item : Thir.item) : item result =
   let* span = c_span item.span in
@@ -540,7 +550,42 @@ let c_item (item : Thir.item) : item result =
                body;
                params;
           })
-    | Struct (v, g) -> Ok NotImplementedYet
+    | Enum (variants, generics) ->
+       let name = def_id (Option.value_exn item.def_id) in
+       let* generics = c_generics generics in
+       let* variants = List.map ~f:(fun {ident; data; def_id = variant_id} ->
+              match data with
+               | Tuple (fields, _, _)              
+               | Struct (fields, _) ->
+                  let* arguments = List.map ~f:(fun {def_id = id; ty} ->
+                        let* ty = c_ty ty in
+                        Ok (def_id id, ty)
+                      ) fields |> Result.all in
+                  Ok {name = def_id variant_id; arguments}
+              | Unit (_, name) -> Ok ({name = def_id name; arguments = []})) variants
+          |> Result.all in
+        Ok (Type {
+           name;
+           generics; variants; record = true
+         })
+    | Struct (v, generics) ->
+       let name = def_id (Option.value_exn item.def_id) in
+       let* generics = c_generics generics in
+       let* v = match v with
+          | Tuple (fields, _, _) -> List.map ~f:Thir.show_hir_field_def fields |> String.concat ~sep:";" |> failwith
+          | Struct (fields, _) ->
+              let* arguments = List.map ~f:(fun {def_id = id; ty} ->
+                    let* ty = c_ty ty in
+                    Ok (def_id id, ty)
+                  ) fields |> Result.all in
+              Ok {name; arguments}
+          (* | Tuple (_, _, _) -> Ok ({name; arguments = []}) *)
+          | Unit (_, _) -> Ok ({name; arguments = []}) in
+       let variants = [v] in
+       Ok (Type {
+               name;
+               generics; variants; record = true
+         })
     | _ -> Ok NotImplementedYet
   in
   Ok ({ span; v } : item)

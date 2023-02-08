@@ -236,7 +236,8 @@ functor
       | Type of {
           name: global_ident;
           generics : generics;
-          variants: variant list
+          variants: variant list;
+          record: bool
         }
       | NotImplementedYet
 
