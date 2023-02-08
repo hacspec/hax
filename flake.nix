@@ -20,12 +20,12 @@
           inherit system;
           overlays = [rust-overlay.overlays.default];
         };
-        fstar-compiler-lib = (fstar.lib.${system}.binary-of-ml-snapshot {
+        fstar-bin = (fstar.lib.${system}.binary-of-ml-snapshot {
           pname = "fstar";
           src = fstar;
           version = "compiler-lib";
           opts = {
-            compileFStar = false;
+            compileFStar = true;
             compileUlib = false;
             compileTests = false;
           };
@@ -90,9 +90,9 @@
             src = ./thir-elab;
             buildInputs = with ocamlPackages; [
               base ppx_yojson_conv yojson ppx_sexp_conv ppx_hash
-              visitors pprint non_empty_list bignum fstar-compiler-lib
+              visitors pprint non_empty_list bignum fstar-bin
               ppx_deriving_yojson ppx_matches
-            ] ++ fstar-compiler-lib.buildInputs;
+            ] ++ fstar-bin.buildInputs;
             nativeBuildInputs = [ packages.thir_ml_of_json_schema ];
             strictDeps = true;
             preBuild = "dune build thir-elab.opam";
@@ -144,6 +144,7 @@
               pkgs.ocamlformat
               ocamlPackages.ocaml-lsp
               ocamlPackages.ocamlformat-rpc-lib
+              fstar-bin
             ];
 
             inputsFrom = [
