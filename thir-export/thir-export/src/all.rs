@@ -1648,7 +1648,11 @@ pub struct VariantInformations {
     variant: DefId,
 }
 
-fn get_variant_information<'s, S: BaseState<'s>>(adt_def: &rustc_middle::ty::AdtDef<'s>, variant: &rustc_hir::def_id::DefId, s: &S) -> VariantInformations {
+fn get_variant_information<'s, S: BaseState<'s>>(
+    adt_def: &rustc_middle::ty::AdtDef<'s>,
+    variant: &rustc_hir::def_id::DefId,
+    s: &S,
+) -> VariantInformations {
     let constructs_type = adt_def.did().sinto(s);
     VariantInformations {
         constructs_record: adt_def.is_struct(),
@@ -1657,7 +1661,7 @@ fn get_variant_information<'s, S: BaseState<'s>>(adt_def: &rustc_middle::ty::Adt
         type_namespace: DefId {
             path: match constructs_type.path.as_slice() {
                 [init @ .., _] => init.to_vec(),
-                _ => panic!("Type {:#?} appears to have no path", constructs_type)
+                _ => panic!("Type {:#?} appears to have no path", constructs_type),
             },
             ..constructs_type.clone()
         },
@@ -1897,6 +1901,52 @@ pub enum ExprKind {
     },
 
     /// A function call. Method calls and overloaded operators are converted to plain function calls.
+    #[map({
+        let e = gstate.thir().exprs[*fun].unroll_scope(gstate);
+        let def = match &e.kind {
+            rustc_middle::thir::ExprKind::ZstLiteral {user_ty: _ /* TODO: see whether this is relevant or not */} => {
+                match ty.kind() {
+                    rustc_middle::ty::TyKind::FnDef(def, _) =>
+                        def,
+                    ty_kind => {
+                        supposely_unreachable!(
+                            "CallNotTyFnDef":
+                            e, ty_kind
+                        );
+                        panic!();
+                    }
+                }
+            },
+            kind => {
+                supposely_unreachable!(
+                    "CallNotZstLiteral":
+                    e, kind
+                );
+                panic!();
+            }
+        };
+        // if false {
+        //     let tcx = gstate.tcx();
+        //     let g = tcx.generics_of(def);
+        //     let g = tcx.predicates_of(def);
+        //     let g = g.parent.unwrap();
+        //     let g = tcx.predicates_of(g);
+        //     panic!("generics={:#?}", g);
+        // }
+        TO_TYPE::Call {
+            ty: ty.sinto(gstate),
+            args: args.sinto(gstate),
+            from_hir_call: from_hir_call.sinto(gstate),
+            fn_span: fn_span.sinto(gstate),
+            fun: Expr {
+                contents: box ExprKind::GlobalName {
+                    id: def.sinto(gstate)
+                },
+                span: e.span.sinto(gstate),
+                ty: e.ty.sinto(gstate),
+            },
+        }
+    })]
     Call {
         /// The type of the function. This is often a [`FnDef`] or a [`FnPtr`].
         ///
@@ -1904,38 +1954,6 @@ pub enum ExprKind {
         /// [`FnPtr`]: ty::TyKind::FnPtr
         ty: Ty,
         /// The function itself.
-        #[map({
-            let e = gstate.thir().exprs[*x].unroll_scope(gstate);
-            match &e.kind {
-                rustc_middle::thir::ExprKind::ZstLiteral {user_ty: _ /* TODO: see whether this is relevant or not */} => {
-                    let def = match ty.kind() {
-                        rustc_middle::ty::TyKind::FnDef(def, _) =>
-                            def,
-                        ty_kind => {
-                            supposely_unreachable!(
-                                "CallNotTyFnDef":
-                                e, ty_kind
-                            );
-                            panic!();
-                        }
-                    };
-                    Expr {
-                        contents: box ExprKind::GlobalName {
-                            id: def.sinto(gstate)
-                        },
-                        span: e.span.sinto(gstate),
-                        ty: e.ty.sinto(gstate),
-                    }
-                },
-                kind => {
-                    supposely_unreachable!(
-                        "CallNotZstLiteral":
-                        e, kind
-                    );
-                    panic!();
-                }
-            }
-        })]
         fun: Expr, // TODO: can [ty] and [fun.ty] be different?
         /// The arguments passed to the function.
         ///
