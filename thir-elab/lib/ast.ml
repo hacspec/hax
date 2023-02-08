@@ -15,11 +15,11 @@ module Bigint = struct
       = fun x -> Bigint.to_string x |> yojson_of_string
 end
 
-type todo = string [@@deriving show, yojson]
-type loc = { col : int; line : int } [@@deriving show, yojson]
+type todo = string [@@deriving show, yojson, eq]
+type loc = { col : int; line : int } [@@deriving show, yojson, eq]
 
 type span = Span of { file : string; hi : loc; lo : loc } | Dummy
-[@@deriving yojson]
+[@@deriving yojson, eq]
               
 let show_span (s : span) : string = "<span>"
 
@@ -27,7 +27,7 @@ let pp_span (fmt : Format.formatter) (s : span) : unit =
   Format.pp_print_string fmt "<span>"
 
 type concrete_ident = { crate : string; path : string Non_empty_list.t }
-[@@deriving show, yojson]
+[@@deriving show, yojson, eq]
 
 type primitive_ident =
   | Box
@@ -36,7 +36,7 @@ type primitive_ident =
   | BinOp of (Raw_thir_ast.bin_op [@yojson.opaque])
   | UnOp of (Raw_thir_ast.un_op [@yojson.opaque])
   | LogicalOp of (Raw_thir_ast.logical_op [@yojson.opaque])
-[@@deriving show, yojson]
+[@@deriving show, yojson, eq]
 
 type global_ident =
   [ `Concrete of concrete_ident
@@ -44,23 +44,23 @@ type global_ident =
   | `Tuple of int
   | `TupleField of int * int
   | `Projector of [ `Concrete of concrete_ident | `TupleField of int * int ] ]
-[@@deriving show, yojson]
+[@@deriving show, yojson, eq]
 
 module LocalIdent = struct
   module T = struct
-    type t = { name : string; id : int } [@@deriving show, yojson, compare, sexp]
+    type t = { name : string; id : int } [@@deriving show, yojson, compare, sexp, eq]
   end
 
   include Base.Comparator.Make (T)
   include T
 end
 
-type local_ident = LocalIdent.t [@@deriving show, yojson, compare, sexp]
-type size = S8 | S16 | S32 | S64 | S128 | SSize [@@deriving show, yojson, compare]
-type signedness = Signed | Unsigned [@@deriving show, yojson, compare]
+type local_ident = LocalIdent.t [@@deriving show, yojson, compare, sexp, eq]
+type size = S8 | S16 | S32 | S64 | S128 | SSize [@@deriving show, yojson, compare, eq]
+type signedness = Signed | Unsigned [@@deriving show, yojson, compare, eq]
 
 type int_kind = { size : size; signedness : signedness }
-[@@deriving show, yojson, compare]
+[@@deriving show, yojson, compare, eq]
 
 type literal =
   | String of string
@@ -68,19 +68,19 @@ type literal =
   | Int of { value : Bigint.t; kind : int_kind }
   | Float of float
   | Bool of bool
-[@@deriving show, yojson]
+[@@deriving show, yojson, eq]
 
-type 't spanned = { v : 't; span : span } [@@deriving show, yojson]
+type 't spanned = { v : 't; span : span } [@@deriving show, yojson, eq]
 
-type 'mut_witness mutability = Mutable of 'mut_witness | Immutable [@@deriving show, yojson]
+type 'mut_witness mutability = Mutable of 'mut_witness | Immutable [@@deriving show, yojson, eq]
 
 module Make =
 functor
   (F : Features.T)
   ->
   struct
-    type borrow_kind = Shared | Unique | Mut of F.mutable_borrow [@@deriving show, yojson]
-    type binding_mode = ByValue | ByRef of borrow_kind[@@deriving show, yojson]
+    type borrow_kind = Shared | Unique | Mut of F.mutable_borrow [@@deriving show, yojson, eq]
+    type binding_mode = ByValue | ByRef of borrow_kind[@@deriving show, yojson, eq]
 
     type ty =
       | Bool
@@ -104,11 +104,11 @@ functor
       | ProjectedAssociatedType of string
 
     and generic_value = Lifetime of {lt: todo; witness: F.lifetime} | Type of ty | Const of todo
-      [@@deriving show, yojson]
+      [@@deriving show, yojson, eq]
     (* [@@deriving visitors { variety = "reduce"; name = "ty_reduce"; ancestors = [] }] *)
 
     type 't decorated = { v : 't; span : span; typ : ty }
-        [@@deriving show, yojson]
+        [@@deriving show, yojson, eq]
 
     type pat' =
       | Wild
@@ -124,9 +124,9 @@ functor
           typ : ty;
           subpat : (pat * F.as_pattern) option;
         }
-                     [@@deriving show, yojson]
-    and pat = pat' decorated [@@deriving show, yojson]
-    and field_pat = { field : global_ident; pat : pat } [@@deriving show, yojson]
+                     [@@deriving show, yojson, eq]
+    and pat = pat' decorated [@@deriving show, yojson, eq]
+    and field_pat = { field : global_ident; pat : pat } [@@deriving show, yojson, eq]
     (* [@@deriving *)
     (*   visitors *)
     (*     { variety = "reduce"; name = "pat_reduce"; ancestors = [ "reduce_base" ] }] *)
@@ -174,17 +174,17 @@ functor
           witness : F.raw_pointer;
         }
       | MonadicNode of { (* todo *) witness : F.monadic }
-    [@@deriving show, yojson]
+    [@@deriving show, yojson, eq]
             
-    and expr = expr' decorated [@@deriving show, yojson]
+    and expr = expr' decorated [@@deriving show, yojson, eq]
 
     and lhs =
       | FieldAccessor of { e : expr; field : string }
       | ArrayAccessor of { e : expr; index : expr }
-      | LhsLocalVar of LocalIdent.t [@@deriving show, yojson]
+      | LhsLocalVar of LocalIdent.t [@@deriving show, yojson, eq]
 
-    and arm' = { pat : pat; body : expr } [@@deriving show, yojson]
-    and arm = arm' spanned [@@deriving show, yojson]
+    and arm' = { pat : pat; body : expr } [@@deriving show, yojson, eq]
+    and arm = arm' spanned [@@deriving show, yojson, eq]
     (* [@@deriving *)
     (*   visitors *)
     (* { variety = "reduce"; name = "expr_reduce"; ancestors = [ "reduce_base" ] }] *)
@@ -193,32 +193,32 @@ functor
       | Lifetime of {ident: local_ident}
       | Type of {ident: local_ident; default: ty option}
       | Const of {ident: local_ident; typ: ty}
-            [@@deriving show, yojson]
+            [@@deriving show, yojson, eq]
 
     type trait_ref =
       {
         trait: global_ident;
         args: generic_value list;
         bindings: todo list;
-      } [@@deriving show, yojson]
+      } [@@deriving show, yojson, eq]
     
     type generic_constraint =
       | Lifetime of todo
       | Type of { typ: ty; implements: trait_ref }
-                  [@@deriving show, yojson]
+                  [@@deriving show, yojson, eq]
             
     type param = { pat : pat; typ : ty; typ_span : span option }
-                   [@@deriving show, yojson]
+                   [@@deriving show, yojson, eq]
         
     type generics = {
         params: generic_param list;
         constraints: generic_constraint list;
-      } [@@deriving show, yojson]
+      } [@@deriving show, yojson, eq]
 
     type variant = {
         name: global_ident;
         arguments: (global_ident * ty) list;
-      } [@@deriving show, yojson]
+      } [@@deriving show, yojson, eq]
         
     type item' =
       (* Todo, topological sort, rec bundles *)
@@ -241,5 +241,5 @@ functor
       | NotImplementedYet
 
     and item = { v : item'; span : span }
-        [@@deriving show, yojson]
+        [@@deriving show, yojson, eq]
   end
