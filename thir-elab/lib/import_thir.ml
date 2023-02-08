@@ -144,7 +144,7 @@ let c_lit' (lit : Thir.lit_kind) : literal result =
       Ok
         (Int
            {
-             value = Bigint.of_int i;
+             value = i;
              kind =
                { size = S8; signedness = Unsigned }
                (* kind = (match t with _ -> failwith "lit: int" (\* TODO *\)); *);

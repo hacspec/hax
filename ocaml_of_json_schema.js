@@ -114,7 +114,7 @@ let ocaml_of_type_expr = (o, path) => {
         array: type => `(${ocaml_of_type_expr(type, [...path, 'array'])} list)`,
         boolean: _ => `bool`,
         string: _ => `string`,
-        integer: _ => `int`,
+        integer: _ => o.bigint ? `Bigint.t` : `int`,
         name: payload => typeNameOf(payload),
         // name: payload => payload,
     })[kind] || (_ => {
@@ -132,7 +132,7 @@ let mk_match = (scrut, arms, path) => {
     // console.log({scrut, arms});
     return `
 begin match ${scrut} with
-${[...arms, ['_', 'failwith "parsing error: '+path+'"']].map(([pat, expr]) => `${pat} -> ${expr}`).join('\n|')}
+${[...arms, ['_', `failwith ("parsing error: ${path} LINE=" ^ string_of_int __LINE__ ^ " JSON=" ^ Yojson.Safe.pretty_to_string ${scrut})`]].map(([pat, expr]) => `${pat} -> ${expr}`).join('\n|')}
 end
 `;
 };
@@ -164,10 +164,15 @@ let ocaml_arms_of_type_expr = (o, path) => {
         ],
         boolean: _ => [[`\`Bool b`, 'b']],
         string: _ => [[`\`String s`, 's']],
-        integer: _ => [[
-            `\`Int i`, 'i',
-            `\`Intlit lit`, 'failwith "INTLIT, todo"'
-        ]],
+        integer: _ => o.bigint ?
+            [
+                [`\`Int i`, 'Bigint.of_int i'],
+                [`\`Intlit i`, 'Bigint.of_string i']
+            ] : [
+                [`\`Int i`, 'i'],
+                [`\`Intlit lit`, 'failwith "Got big number, while a int was expected"']
+            ]
+        ,
         name: payload => [['remains', `parse_${typeNameOf(payload)} remains`]],
     })[kind] || (_ => {
         log_full(o);
@@ -227,7 +232,9 @@ let is_type = {
         || is_type.option(def)
         || is_type.array(def)
         || is_type.tuple(def)
-        || (def.type === 'integer' ? {kind: 'integer'} : false)
+        || (def.type === 'integer'
+            ? {kind: 'integer', bigint: def.format.endsWith('int128')}
+            : false)
         || ( ( exact_keys(def, 'type')
                && ['boolean', 'string'].includes(def.type)
              ) ? {kind: def.type} : false
@@ -328,7 +335,7 @@ let exporters = {
                         let [pat, expr] = export_record(Object.entries(payload), ['rec-variant_'+variant+'_'+variant_name]);
                         return wrap([[pat, variant+' '+expr]]);
                     },
-                    expr: () => wrap(ocaml_arms_of_type_expr(payload, ['expr-variant_'+variant+'_'+variant_name]), variant + ' '),
+                    expr: () => wrap(ocaml_arms_of_type_expr(payload, ['expr-variant(PA):'+name+':'+variant+':'+variant_name]), variant + ' '),
                     empty: () => [[`\`String "${variant_name}"`, variant]],
                 }[payloadKind] || (() => {
                     throw "bad payloadKind: " + payloadKind;
