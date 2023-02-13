@@ -57,10 +57,23 @@
 //     }
 // }
 
+#[derive(Copy, Clone)]
+struct DummyStruct {
+    dummy: u8
+}
+
 enum Hello {
     A(u8, u8),
     B { x: u8, y: u8 },
 }
+
+trait Foo: Copy + Clone {
+    fn bar(self) -> u8 {
+        123
+    }
+}
+
+impl Foo for DummyStruct {}
 
 struct Hi {
     field1: u8,
@@ -69,9 +82,7 @@ struct Hi {
     field4: u8,
 }
 
-fn hello<A>(x: u8) -> u8
-where
-    A: Copy,
+fn f<A: Foo>(x: u8, y: A) -> u8
 {
     let foo = 1u16 + 4;
     let a = Hello::A(2, 5);
@@ -82,7 +93,7 @@ where
         field3: 30,
         field4: 40,
     };
-    if (true) {
+    if true {
         3 + x
     } else {
         match 1 {
@@ -91,7 +102,18 @@ where
                 Hello::A(x, y) => 1,
                 Hello::B { y, x } => 2,
             },
-            _ => 78,
+            _ => match hi {
+                Hi {
+                    field1,
+                    field2,
+                    field3,
+                    field4,
+                } => field3,
+            },
         }
     }
+}
+
+fn g() -> u8 {
+    f(3, DummyStruct{dummy: 9})
 }
