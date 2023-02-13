@@ -1,6 +1,7 @@
 use clap::Parser;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NamespaceChunk {
     GlobOne,  // *
     GlobMany, // **
@@ -17,7 +18,7 @@ impl std::convert::From<&str> for NamespaceChunk {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Namespace(pub Vec<NamespaceChunk>);
 
 impl std::convert::From<String> for Namespace {
@@ -51,7 +52,7 @@ impl Namespace {
     }
 }
 
-#[derive(Parser, Debug, Clone)]
+#[derive(Parser, Debug, Clone, Serialize, Deserialize)]
 #[command(author, version, about, long_about = None)]
 pub struct Options {
     /// Path to the output JSON file, "-" denotes stdout.

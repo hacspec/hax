@@ -140,17 +140,11 @@ fn rustc_sysroot() -> String {
 use clap::Parser;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let own_args: Vec<String> = [String::from(args[0].clone())]
-        .into_iter()
-        .chain(
-            escape_string::split(&*std::env::var("THIR_EXPORT_ARGS").unwrap_or("".into()))
-                .expect("Invalid value for the environnement variable THIR_EXPORT_ARGS")
-                .into_iter()
-                .map(|x| String::from(x)),
-        )
-        .collect();
-
-    let options = thir_export::Options::parse_from(own_args.iter());
+    let options: thir_export::Options = serde_json::from_str(
+        &std::env::var("THIR_EXPORT_OPTIONS")
+            .expect("Cannot find environnement variable THIR_EXPORT_OPTIONS"),
+    )
+    .expect("Invalid value for the environnement variable THIR_EXPORT_OPTIONS");
 
     options
         .export_json_schema

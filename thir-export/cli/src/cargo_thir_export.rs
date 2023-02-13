@@ -1,20 +1,18 @@
 #![feature(iter_intersperse)]
 
+use clap::Parser;
+use serde::Serialize;
 use std::process::Command;
+use thir_export;
 
 fn main() {
-    let args: Vec<_> = std::env::args().skip(2).collect();
+    let args: Vec<_> = std::env::args().skip(1).collect();
     let cargo_args = args
         .iter()
         .skip_while(|arg| *arg != "--")
         .skip_while(|arg| *arg == "--");
 
-    let thir_export_args = args
-        .iter()
-        .take_while(|arg| *arg != "--")
-        .map(|x| escape_string::escape(&x).into())
-        .intersperse(" ".to_string())
-        .collect::<String>();
+    let options = thir_export::Options::parse_from(args.iter().take_while(|arg| *arg != "--"));
 
     let exit_status = Command::new("cargo")
         .args(["build".into()].iter().chain(cargo_args))
@@ -23,7 +21,11 @@ fn main() {
         // Clearly, that seems hacky.
         .env("CARGO_CACHE_RUSTC_INFO", "1")
         .env("RUSTC_WORKSPACE_WRAPPER", "driver-thir-export")
-        .env("THIR_EXPORT_ARGS", thir_export_args)
+        .env(
+            "THIR_EXPORT_OPTIONS",
+            serde_json::to_string(&options)
+                .expect("Options could not be converted to a JSON string"),
+        )
         .spawn()
         .unwrap()
         .wait()
