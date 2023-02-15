@@ -146,18 +146,14 @@ let rec pty (t : ty) = match t with
     F.term @@ F.AST.Name (ptype_ident ident)
   | TApp { ident = `TupleType 1; args = [GType ty] } ->
     pty ty
-  | TApp { ident = `TupleType n; args = args } when n >= 2 ->
-     (* let mk_star a b = *)
-     (*   F.term @@ F.AST.Paren *)
-     (*               (F.term @@ F.AST.Op (F.id "*", List.filter_map ~f:(function Type t -> Some (pty t) | _ -> None) args)) *)
-     (* in *)
-     (* List.fold_left *)
-       
-     F.term @@ F.AST.Paren
-                 (F.term @@ F.AST.Op (F.id "*", List.filter_map ~f:(function GType t -> Some (pty t) | _ -> None) args))
-     (* List.fold ~init:hd ~f:(fun arg acc -> *)
-     (*     F.term @@ F.AST.Op (pty arg) *)
-     (*   ) args *)
+  | TApp { ident = `TupleType n; args } when n >= 2 ->
+     let args = List.filter_map ~f:(function GType t -> Some (pty t) | _ -> None) args in
+     let mk_star a b = F.term @@ F.AST.Op (F.id "*", [a;b]) in
+     begin match args with
+     | hd::tl -> F.term @@ F.AST.Paren
+                             (List.fold_right ~init:hd ~f:mk_star tl)
+     | _ -> failwith "Tuple type: bad arity"
+     end
   | TApp { ident; args } ->
     let base = F.term @@ F.AST.Name (ptype_ident ident) in
     let args = List.map ~f:pgeneric_value args in
