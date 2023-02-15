@@ -340,9 +340,9 @@ and c_pat (pat : Thir.decorated_for__pat_kind) : pat result =
     match pat.contents with
     | Wild -> Ok PWild
     | AscribeUserType { ascription = { annotation }; subpattern } ->
-        let* typ = c_canonical_user_type_annotation annotation in
+        let* (typ, typ_span) = c_canonical_user_type_annotation annotation in
         let* pat = c_pat subpattern in
-        Ok (PAscription { typ; pat })
+        Ok (PAscription { typ; typ_span; pat })
     | Binding { mode; mutability; subpattern; ty; var } ->
         let mut = c_mutability () mutability in
         let* subpat =
@@ -399,12 +399,12 @@ and c_constant_kind (k : Thir.constant_kind) : literal result =
   | Todo s -> failwith ("TODO node: " ^ s)
 
 and c_canonical_user_type_annotation
-    (annotation : Thir.canonical_user_type_annotation) : ty spanned result
+    (annotation : Thir.canonical_user_type_annotation) : (ty * span) result
     =
   let* span = c_span annotation.span in
-  let* v = c_ty annotation.inferred_ty in
+  let* typ = c_ty annotation.inferred_ty in
   (* TODO: use user's type instead of inferred type? *)
-  Ok ({ v; span } : _ spanned)
+  Ok (typ, span)
 
 and c_ty (ty : Thir.ty) : ty result =
   match ty with
@@ -468,7 +468,7 @@ and c_arm (arm : Thir.arm) : arm result =
   let* pat = c_pat arm.pattern in
   let* body = c_expr arm.body in
   let* span = c_span arm.span in
-  Ok ({ v = { pat; body }; span } : arm)
+  Ok { arm = { pat; body }; span }
 
 let c_param (param : Thir.param) : param result =
   let* pat = c_pat (Option.value_exn param.pat) in

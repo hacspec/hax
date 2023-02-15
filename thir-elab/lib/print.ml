@@ -63,7 +63,7 @@ let rec ppat (e : pat) =
   match e.p with
   | PWild -> underscore
   | PAscription { typ; pat } ->
-      group @@ parens @@ pty typ.v ^/^ colon ^/^ ppat pat
+      group @@ parens @@ pty typ ^/^ colon ^/^ ppat pat
   | PConstruct { name; args } ->
       group @@ pglobal_ident name ^/^ braces
       @@ separate_map space
@@ -126,7 +126,7 @@ let rec pexpr (e : expr) =
   | AddressOf { mut; e } -> string "&raw..."
   | MonadicNode _ -> string "monadic node"
 
-and parm ({ v = { pat; body } } : arm) =
+and parm { arm = { pat; body } } =
   group (group (group (string "|" ^/^ ppat pat) ^/^ string "->") ^/^ pexpr body)
 
 and plhs (e : lhs) =

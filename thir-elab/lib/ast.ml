@@ -75,7 +75,7 @@ type literal =
   | Bool of bool
 [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "literal_reduce" }]
 
-type 't spanned = { v : 't; span : span } [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "spanned_reduce" }]
+(* type 't spanned = { v : 't; span : span } [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "spanned_reduce" }] *)
 
 type 'mut_witness mutability = Mutable of 'mut_witness | Immutable [@@deriving show, yojson, eq]
 
@@ -95,10 +95,10 @@ functor
       | TStr
       | TApp of { ident : global_ident; args : generic_value list }
       | TArray of { typ : ty; length : int }
-      | TSlice of { witness : (F.slice [@visitors.opaque]); ty : ty }
-      | TRawPointer of { witness : (F.raw_pointer  [@visitors.opaque]) } (* todo *)
+      | TSlice of { witness : F.slice; ty : ty }
+      | TRawPointer of { witness : F.raw_pointer } (* todo *)
       | TRef of {
-          witness : (F.reference [@visitors.opaque]);
+          witness : F.reference;
           region : todo;
           typ : ty;
           mut : (F.mutable_reference mutability [@visitors.opaque]);
@@ -108,7 +108,7 @@ functor
       | TArrow of ty list * ty
       | TProjectedAssociatedType of string
 
-    and generic_value = GLifetime of {lt: todo; witness: (F.lifetime [@visitors.opaque])} | GType of ty | GConst of todo
+    and generic_value = GLifetime of {lt: todo; witness: F.lifetime} | GType of ty | GConst of todo
       [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "ty_reduce"; ancestors = ["global_ident_reduce"; "todo_reduce"; "local_ident_reduce"] }]
     (* [@@deriving visitors { variety = "reduce"; name = "ty_reduce"; ancestors = [] }] *)
 
@@ -117,17 +117,17 @@ functor
 
     type pat' =
       | PWild
-      | PAscription of { typ : ty spanned; pat : pat }
+      | PAscription of { typ : ty; typ_span: span; pat : pat }
       | PConstruct of { name : global_ident; args : field_pat list; record: bool }
       | PArray of { args : pat list }
-      | PDeref of { subpat : pat; witness: (F.reference [@visitors.opaque]) }
+      | PDeref of { subpat : pat; witness: F.reference }
       | PConstant of { lit : literal }
       | PBinding of {
           mut : (F.mutable_variable mutability [@visitors.opaque]);
           mode : binding_mode;
           var : local_ident;
           typ : ty;
-          subpat : (pat * (F.as_pattern [@visitors.opaque])) option;
+          subpat : (pat * F.as_pattern) option;
         }
     and pat = { p : pat'; span : span; typ : ty }
     and field_pat = { field : global_ident; pat : pat }
@@ -183,11 +183,10 @@ functor
       | FieldAccessor of { e : expr; field : string }
       | ArrayAccessor of { e : expr; index : expr }
       | LhsLocalVar of LocalIdent.t
-            [@@deriving show, yojson, eq]
-            (* [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "expr_reduce"; ancestors = ["pat_reduce"] }] *)
-
-    and arm' = { pat : pat; body : expr } [@@deriving show, yojson, eq]
-    and arm = arm' spanned [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "expr_reduce" }]
+            
+    and arm' = { pat : pat; body : expr }
+    and arm = { arm: arm'; span: span }
+            [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "expr_reduce"; ancestors = ["pat_reduce"] }]
     (* [@@deriving *)
     (*   visitors *)
     (* { variety = "reduce"; name = "expr_reduce"; ancestors = [ "reduce_base" ] }] *)

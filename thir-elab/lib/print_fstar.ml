@@ -199,7 +199,7 @@ let is_field_an_index = index_of_field >> Option.is_some
 let rec ppat (p : pat) = match p.p with
   | PWild -> F.wild
   | PAscription { typ; pat } ->
-    F.pat @@ F.AST.PatAscribed (ppat pat, (pty typ.v, None))
+    F.pat @@ F.AST.PatAscribed (ppat pat, (pty typ, None))
   | PBinding {
         mut = Immutable; mode = _; subpat = None;
         var; typ = _ (* we skip type annot here *);
@@ -286,7 +286,7 @@ let rec pexpr (e : expr) = match e.e with
       F.mk_e_app (F.term @@ F.AST.Name (pglobal_ident constructor)) [r]
   | _-> .
   
-and parm ({ v = { pat; body } } : arm) =
+and parm { arm = { pat; body } } =
   (ppat pat, None, pexpr body)
 
 
