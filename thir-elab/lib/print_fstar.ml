@@ -96,12 +96,14 @@ let rec pglobal_ident (id : global_ident) =
   match id with
   | `Concrete cid -> F.lid (cid.crate::Non_empty_list.to_list cid.path)
   | `Primitive prim_id -> pprim_ident prim_id
-  | `Tuple n when n <= 14 -> F.lid ["FStar"; "Pervasives"; "tuple" ^ string_of_int n]
-  | `Tuple _ -> failwith "F* doesn't support tuple of size greater than 14"
+  | `TupleType 0 -> F.lid ["prims"; "unit"]
+  | `TupleCons n when n <= 1 -> failwith ("Got a [TupleCons "^string_of_int n^"]")
+  | `TupleType n when n <= 14 -> F.lid ["FStar"; "Pervasives"; "tuple" ^ string_of_int n]
+  | `TupleCons n when n <= 14 -> F.lid ["FStar"; "Pervasives"; "Mktuple" ^ string_of_int n]
+  | `TupleType _ | `TupleCons _ -> failwith "F* doesn't support tuple of size greater than 14"
                     
-  | `TupleField (n, size) -> failwith "Cannot appear here"
-  | `Projector (`Concrete concrete_ident) -> failwith "Cannot appear here"
-  | `Projector (`TupleField n) -> failwith "Cannot appear here"
+  | `TupleField _
+  | `Projector _ -> failwith ("Cannot appear here: " ^ show_global_ident id)
 let rec plocal_ident (e : LocalIdent.t) =
   F.id e.name
 
@@ -125,22 +127,44 @@ let map_last_global_ident (f: string -> string) (id: global_ident)
 let lowercase_global_ident: global_ident -> global_ident
   = map_last_global_ident @@ map_first_letter String.lowercase
     
+let uppercase_global_ident: global_ident -> global_ident
+  = map_last_global_ident @@ map_first_letter String.uppercase
+    
 let ptype_ident: global_ident -> F.Ident.lident
   = lowercase_global_ident >> pglobal_ident
+
+let pconstructor_ident: global_ident -> F.Ident.lident
+  = uppercase_global_ident >> pglobal_ident
     
 let rec pty (t : ty) = match t with
-  | Bool -> F.term_of_lid ["Prims"; "bool"]
-  | Char -> F.term_of_lid ["FStar"; "Char"; "char"]
-  | Int k -> F.term_of_lid ["Prims"; "int"] (* todo *)
-  | Str -> F.term_of_lid ["Prims"; "string"]
-  | False -> F.term_of_lid ["Prims"; "l_False"]
-  | App { ident; args } ->
+  | TBool -> F.term_of_lid ["Prims"; "bool"]
+  | TChar -> F.term_of_lid ["FStar"; "Char"; "char"]
+  | TInt k -> F.term_of_lid ["Prims"; "int"] (* todo *)
+  | TStr -> F.term_of_lid ["Prims"; "string"]
+  | TFalse -> F.term_of_lid ["Prims"; "l_False"]
+  | TApp { ident = `TupleType 0 as ident; args = [] } ->
+    F.term @@ F.AST.Name (ptype_ident ident)
+  | TApp { ident = `TupleType 1; args = [GType ty] } ->
+    pty ty
+  | TApp { ident = `TupleType n; args = args } when n >= 2 ->
+     (* let mk_star a b = *)
+     (*   F.term @@ F.AST.Paren *)
+     (*               (F.term @@ F.AST.Op (F.id "*", List.filter_map ~f:(function Type t -> Some (pty t) | _ -> None) args)) *)
+     (* in *)
+     (* List.fold_left *)
+       
+     F.term @@ F.AST.Paren
+                 (F.term @@ F.AST.Op (F.id "*", List.filter_map ~f:(function GType t -> Some (pty t) | _ -> None) args))
+     (* List.fold ~init:hd ~f:(fun arg acc -> *)
+     (*     F.term @@ F.AST.Op (pty arg) *)
+     (*   ) args *)
+  | TApp { ident; args } ->
     let base = F.term @@ F.AST.Name (ptype_ident ident) in
     let args = List.map ~f:pgeneric_value args in
     F.mk_e_app base args
-  | Arrow (inputs, output) -> F.mk_e_arrow (List.map ~f:pty inputs) (pty output)
-  | Float -> failwith "pty: Float"
-  | Array { typ; length } ->
+  | TArrow (inputs, output) -> F.mk_e_arrow (List.map ~f:pty inputs) (pty output)
+  | TFloat -> failwith "pty: Float"
+  | TArray { typ; length } ->
     F.mk_refined
       "x"
       (F.mk_e_app
@@ -153,59 +177,73 @@ let rec pty (t : ty) = match t with
           let lt = F.term @@ F.AST.Name (pprim_ident @@ BinOp Lt) in
           F.mk_e_app lt [len_of_x; length]
         )
-  | Param i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident {i with name = pgeneric_param_name i.name})
-  | ProjectedAssociatedType s -> failwith "proj:assoc:type"
+  | TParam i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident {i with name = pgeneric_param_name i.name})
+  | TProjectedAssociatedType s -> failwith "proj:assoc:type"
   | _ -> .
 
 and pgeneric_value (g : generic_value) = match g with
-  | Type ty -> pty ty
-  | Const todo -> failwith "pgeneric_arg: Const"
-  | Lifetime _ -> .
+  | GType ty -> pty ty
+  | GConst todo -> failwith "pgeneric_arg: Const"
+  | GLifetime _ -> .
 
-let name_of_field = function
+let index_of_field = function
   | `Concrete {path} ->
      (try Some (Int.of_string @@ Non_empty_list.last path)
       with | _ -> None)
+  | `TupleField (nth, _) -> Some nth
   | _ -> None
                     
-let is_field_named = name_of_field >> Option.is_some
+let is_field_an_index = index_of_field >> Option.is_some
                     
 (* let rec pborrow_kind (e : borrow_kind) = failwith "TODO" *)
-let rec ppat (p : pat) = match p.v with
-  | Wild -> F.wild
-  | PatAscription { typ; pat } ->
+let rec ppat (p : pat) = match p.p with
+  | PWild -> F.wild
+  | PAscription { typ; pat } ->
     F.pat @@ F.AST.PatAscribed (ppat pat, (pty typ.v, None))
-  | Binding {
+  | PBinding {
         mut = Immutable; mode = _; subpat = None;
         var; typ = _ (* we skip type annot here *);
       } ->
     F.pat @@ F.AST.PatVar (plocal_ident var, None, [])
-  | PatArray { args } ->
+  | PArray { args } ->
     F.pat @@ F.AST.PatList (List.map ~f:ppat args)
-  | Variant { name; args; record } ->
-    let pat_rec = F.pat @@ F.AST.PatRecord (List.map ~f:pfield_pat args) in
-    if record then pat_rec
+  | PConstruct { name = `TupleCons 0; args = [] } ->
+     F.pat @@ F.AST.PatConst F.Const.Const_unit
+  | PConstruct { name = `TupleCons 1; args = [{pat}] } ->
+     ppat pat
+  | PConstruct { name = `TupleCons n; args } ->
+     F.pat @@ F.AST.PatTuple (List.map ~f:(fun {pat} -> ppat pat) args, false)
+  | PConstruct { name; args; record } ->
+    let pat_rec () = F.pat @@ F.AST.PatRecord (List.map ~f:pfield_pat args) in
+    if record then pat_rec ()
     else
-      let pat_name = F.pat @@ F.AST.PatName (pglobal_ident name) in
-      let is_payload_record = List.for_all ~f:(fun {field} -> is_field_named field) args |> not in
+      let pat_name = F.pat @@ F.AST.PatName (pconstructor_ident name) in
+      let is_payload_record = List.for_all ~f:(fun {field} -> is_field_an_index field) args |> not in
       F.pat_app pat_name @@
         if is_payload_record
-        then [pat_rec]
+        then [pat_rec ()]
         else List.map ~f:(fun {field;pat} -> ppat pat) args
-  | Constant { lit } ->
+  | PConstant { lit } ->
     F.pat @@ F.AST.PatConst (pliteral lit)
-  | Deref { subpat } -> ppat subpat
+  | PDeref { subpat } -> ppat subpat
   | _ -> .
 and pfield_pat ({field; pat} : field_pat) =
   pglobal_ident field, ppat pat
 
     
-let rec pexpr (e : expr) = match e.v with
+let rec pexpr (e : expr) = match e.e with
   | Literal e -> F.term @@ F.AST.Const (pliteral e)
   | LocalVar local_ident ->
     F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident local_ident)
+  | GlobalVar (`TupleCons 0)
+  | Construct { constructor = `TupleCons 0; fields = [] } ->
+    F.AST.unit_const F.dummyRange
   | GlobalVar global_ident ->
     F.term @@ F.AST.Var (pglobal_ident global_ident)
+  | App { f = {e = GlobalVar (`Projector (`TupleField (n, len)))}; args = [arg] } ->
+    F.term @@ F.AST.Project (pexpr arg, F.lid ["_" ^ string_of_int n])
+  | App { f = {e = GlobalVar (`Projector (`TupleField (n, len)))}; args = _ } ->
+      failwith "xx"
   | App { f; args } ->
     F.mk_e_app (pexpr f) @@ List.map ~f:pexpr args
   | If { cond; then_; else_ } ->
@@ -225,19 +263,20 @@ let rec pexpr (e : expr) = match e.v with
       )
   | Ascription { e; typ } ->
       F.term @@ F.AST.Ascribed (pexpr e, pty typ, None, false) 
+  | Construct { constructor = `TupleCons 1; fields = [(_, e)]; base } ->
+    pexpr e
+  | Construct { constructor = `TupleCons n; fields; base } ->
+      F.AST.mkTuple (List.map ~f:(snd >> pexpr) fields) F.dummyRange
   | Construct { constructs_record = true; constructor; fields; base } ->
       F.term @@ F.AST.Record
            ( Option.map ~f:pexpr base
              , List.map ~f:(fun (f, e) -> pglobal_ident f, pexpr e) fields
            )
   | Construct { constructs_record = false; constructor; fields; base }
-    when List.for_all ~f:(fun (f,_) -> match f with
-             | `Concrete {path} -> (try let _ = Int.of_string @@ Non_empty_list.last path in true with | _ -> false)
-             | _ -> false
-           ) fields ->
-      assert (Option.is_none base);
-      F.mk_e_app (F.term @@ F.AST.Name (pglobal_ident constructor))
-      @@ List.map ~f:(snd >> pexpr) fields
+       when List.for_all ~f:(fst >> is_field_an_index) fields ->
+     assert (Option.is_none base);
+     F.mk_e_app (F.term @@ F.AST.Name (pglobal_ident constructor))
+     @@ List.map ~f:(snd >> pexpr) fields
   | Construct { constructs_record = false; constructor; fields; base } ->
       let r = F.term @@ F.AST.Record
              ( Option.map ~f:pexpr base
@@ -386,8 +425,8 @@ let rec pitem (e : item) =
            fun {name; arguments} ->
            F.id (last_of_global_ident name)
            , Some (
-                 let field_names = List.map ~f:(fst >> name_of_field) arguments in
-                 let is_record_payload = List.exists ~f:Option.is_none field_names in
+                 let field_indexes = List.map ~f:(fst >> index_of_field) arguments in
+                 let is_record_payload = List.exists ~f:Option.is_none field_indexes in
                  if is_record_payload
                  then F.AST.VpRecord (
                           (

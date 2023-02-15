@@ -15,11 +15,11 @@ module Bigint = struct
       = fun x -> Bigint.to_string x |> yojson_of_string
 end
 
-type todo = string [@@deriving show, yojson, eq]
-type loc = { col : int; line : int } [@@deriving show, yojson, eq]
+type todo = string [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "todo_reduce" }]
+type loc = { col : int; line : int } [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "loc_reduce" }]
 
 type span = Span of { file : string; hi : loc; lo : loc } | Dummy
-[@@deriving yojson, eq]
+[@@deriving yojson, eq, visitors { variety = "reduce"; name = "span_reduce"; ancestors = ["loc_reduce"] }]
               
 let show_span (s : span) : string = "<span>"
 
@@ -27,7 +27,7 @@ let pp_span (fmt : Format.formatter) (s : span) : unit =
   Format.pp_print_string fmt "<span>"
 
 type concrete_ident = { crate : string; path : string Non_empty_list.t }
-[@@deriving show, yojson, eq]
+[@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "concrete_ident_reduce" }]
 
 type primitive_ident =
   | Box
@@ -36,15 +36,20 @@ type primitive_ident =
   | BinOp of (Raw_thir_ast.bin_op [@yojson.opaque])
   | UnOp of (Raw_thir_ast.un_op [@yojson.opaque])
   | LogicalOp of (Raw_thir_ast.logical_op [@yojson.opaque])
-[@@deriving show, yojson, eq]
+[@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "primitive_ident_reduce" }]
 
-type global_ident =
-  [ `Concrete of concrete_ident
-  | `Primitive of primitive_ident
-  | `Tuple of int
-  | `TupleField of int * int
-  | `Projector of [ `Concrete of concrete_ident | `TupleField of int * int ] ]
-[@@deriving show, yojson, eq]
+module GlobalIdent = struct
+  type t =
+    [ `Concrete of concrete_ident
+    | `Primitive of primitive_ident
+    | `TupleType of int
+    | `TupleCons of int
+    | `TupleField of int * int
+    | `Projector of [ `Concrete of concrete_ident | `TupleField of int * int ] ]
+       [@@deriving show, yojson, eq ]
+end
+        
+type global_ident = (GlobalIdent.t [@visitors.opaque]) [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "global_ident_reduce" } ]
 
 module LocalIdent = struct
   module T = struct
@@ -55,7 +60,7 @@ module LocalIdent = struct
   include T
 end
 
-type local_ident = LocalIdent.t [@@deriving show, yojson, compare, sexp, eq]
+type local_ident = (LocalIdent.t [@visitors.opaque]) [@@deriving show, yojson, compare, sexp, eq, visitors { variety = "reduce"; name = "local_ident_reduce" }]
 type size = S8 | S16 | S32 | S64 | S128 | SSize [@@deriving show, yojson, compare, eq]
 type signedness = Signed | Unsigned [@@deriving show, yojson, compare, eq]
 
@@ -65,12 +70,12 @@ type int_kind = { size : size; signedness : signedness }
 type literal =
   | String of string
   | Char of char
-  | Int of { value : Bigint.t; kind : int_kind }
+  | Int of { value : Bigint.t; kind : (int_kind [@visitors.opaque]) }
   | Float of float
   | Bool of bool
-[@@deriving show, yojson, eq]
+[@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "literal_reduce" }]
 
-type 't spanned = { v : 't; span : span } [@@deriving show, yojson, eq]
+type 't spanned = { v : 't; span : span } [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "spanned_reduce" }]
 
 type 'mut_witness mutability = Mutable of 'mut_witness | Immutable [@@deriving show, yojson, eq]
 
@@ -79,58 +84,55 @@ functor
   (F : Features.T)
   ->
   struct
-    type borrow_kind = Shared | Unique | Mut of F.mutable_borrow [@@deriving show, yojson, eq]
-    type binding_mode = ByValue | ByRef of borrow_kind[@@deriving show, yojson, eq]
-
+    type borrow_kind = Shared | Unique | Mut of F.mutable_borrow [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "borrow_kind_reduce" }]
+    type binding_mode = ByValue | ByRef of (borrow_kind * (F.reference [@visitors.opaque]))[@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "binding_mode_reduce"; ancestors = ["borrow_kind_reduce"] }]
+       
     type ty =
-      | Bool
-      | Char
-      | Int of int_kind
-      | Float
-      | Str
-      | App of { ident : global_ident; args : generic_value list }
-      | Array of { typ : ty; length : int }
-      | Slice of { witness : F.slice; ty : ty }
-      | RawPointer of { witness : F.raw_pointer } (* todo *)
-      | Ref of {
-          witness : F.reference;
+      | TBool
+      | TChar
+      | TInt of (int_kind [@visitors.opaque])
+      | TFloat
+      | TStr
+      | TApp of { ident : global_ident; args : generic_value list }
+      | TArray of { typ : ty; length : int }
+      | TSlice of { witness : (F.slice [@visitors.opaque]); ty : ty }
+      | TRawPointer of { witness : (F.raw_pointer  [@visitors.opaque]) } (* todo *)
+      | TRef of {
+          witness : (F.reference [@visitors.opaque]);
           region : todo;
           typ : ty;
-          mut : F.mutable_reference mutability;
+          mut : (F.mutable_reference mutability [@visitors.opaque]);
         }
-      | False
-      | Param of local_ident
-      | Arrow of ty list * ty
-      | ProjectedAssociatedType of string
+      | TFalse
+      | TParam of local_ident
+      | TArrow of ty list * ty
+      | TProjectedAssociatedType of string
 
-    and generic_value = Lifetime of {lt: todo; witness: F.lifetime} | Type of ty | Const of todo
-      [@@deriving show, yojson, eq]
+    and generic_value = GLifetime of {lt: todo; witness: (F.lifetime [@visitors.opaque])} | GType of ty | GConst of todo
+      [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "ty_reduce"; ancestors = ["global_ident_reduce"; "todo_reduce"; "local_ident_reduce"] }]
     (* [@@deriving visitors { variety = "reduce"; name = "ty_reduce"; ancestors = [] }] *)
 
-    type 't decorated = { v : 't; span : span; typ : ty }
-        [@@deriving show, yojson, eq]
+    (* type 't decorated = { v : 't; span : span; typ : ty } *)
+    (*     [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "decorated_reduce"; polymorphic = false }] *)
 
     type pat' =
-      | Wild
-      | PatAscription of { typ : ty spanned; pat : pat }
-      | Variant of { name : global_ident; args : field_pat list; record: bool }
-      | PatArray of { args : pat list }
-      | Deref of { subpat : pat }
-      | Constant of { lit : literal }
-      | Binding of {
-          mut : F.mutable_variable mutability;
+      | PWild
+      | PAscription of { typ : ty spanned; pat : pat }
+      | PConstruct of { name : global_ident; args : field_pat list; record: bool }
+      | PArray of { args : pat list }
+      | PDeref of { subpat : pat; witness: (F.reference [@visitors.opaque]) }
+      | PConstant of { lit : literal }
+      | PBinding of {
+          mut : (F.mutable_variable mutability [@visitors.opaque]);
           mode : binding_mode;
-          var : LocalIdent.t;
+          var : local_ident;
           typ : ty;
-          subpat : (pat * F.as_pattern) option;
+          subpat : (pat * (F.as_pattern [@visitors.opaque])) option;
         }
-                     [@@deriving show, yojson, eq]
-    and pat = pat' decorated [@@deriving show, yojson, eq]
-    and field_pat = { field : global_ident; pat : pat } [@@deriving show, yojson, eq]
-    (* [@@deriving *)
-    (*   visitors *)
-    (*     { variety = "reduce"; name = "pat_reduce"; ancestors = [ "reduce_base" ] }] *)
-
+    and pat = { p : pat'; span : span; typ : ty }
+    and field_pat = { field : global_ident; pat : pat }
+                     [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "pat_reduce"; ancestors = ["ty_reduce"; "binding_mode_reduce"] }]
+        
     type expr' =
       (* pure fragment *)
       | If of { cond : expr; then_ : expr; else_ : expr option }
@@ -159,12 +161,12 @@ functor
       | Loop of { body : expr; label : string option; witness : F.loop }
       (* ControlFlow *)
       | Break of {
-          e : expr option;
+          e : expr;
           label : string option;
-          witness : F.early_exit;
+          witness : F.loop;
         }
-      | Return of { e : expr option; witness : F.early_exit }
-      | Continue of { label : string option; witness : F.early_exit }
+      | Return of { e : expr; witness : F.early_exit }
+      | Continue of { label : string option; witness : F.continue * F.loop }
       (* Mem *)
       | Borrow of { kind : borrow_kind; e : expr; witness: F.reference }
       (* Raw borrow *)
@@ -174,26 +176,27 @@ functor
           witness : F.raw_pointer;
         }
       | MonadicNode of { (* todo *) witness : F.monadic }
-    [@@deriving show, yojson, eq]
             
-    and expr = expr' decorated [@@deriving show, yojson, eq]
+    and expr = { e : expr'; span : span; typ : ty }
 
     and lhs =
       | FieldAccessor of { e : expr; field : string }
       | ArrayAccessor of { e : expr; index : expr }
-      | LhsLocalVar of LocalIdent.t [@@deriving show, yojson, eq]
+      | LhsLocalVar of LocalIdent.t
+            [@@deriving show, yojson, eq]
+            (* [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "expr_reduce"; ancestors = ["pat_reduce"] }] *)
 
     and arm' = { pat : pat; body : expr } [@@deriving show, yojson, eq]
-    and arm = arm' spanned [@@deriving show, yojson, eq]
+    and arm = arm' spanned [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "expr_reduce" }]
     (* [@@deriving *)
     (*   visitors *)
     (* { variety = "reduce"; name = "expr_reduce"; ancestors = [ "reduce_base" ] }] *)
 
     type generic_param =
-      | Lifetime of {ident: local_ident}
+      | Lifetime of {ident: local_ident; witness: (F.lifetime [@visitors.opaque])}
       | Type of {ident: local_ident; default: ty option}
       | Const of {ident: local_ident; typ: ty}
-            [@@deriving show, yojson, eq]
+            [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "generic_param_reduce" }]
 
     type trait_ref =
       {
@@ -203,7 +206,7 @@ functor
       } [@@deriving show, yojson, eq]
     
     type generic_constraint =
-      | Lifetime of todo
+      | Lifetime of todo * (F.lifetime [@visitors.opaque])
       | Type of { typ: ty; implements: trait_ref }
                   [@@deriving show, yojson, eq]
             
@@ -242,5 +245,7 @@ functor
       | NotImplementedYet
 
     and item = { v : item'; span : span }
-        [@@deriving show, yojson, eq]
+        [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "item_reduce" }]
+    
+    type modul = item list
   end

@@ -22,7 +22,8 @@ let rec pglobal_ident (e : global_ident) =
       string crate ^^ string "::"
       ^^ separate_map (string "::") string (Non_empty_list.to_list path)
   | `Primitive p -> string @@ show_primitive_ident p
-  | `Tuple n -> string @@ "tuple" ^ string_of_int n
+  | `TupleType n -> string @@ "tuple" ^ string_of_int n
+  | `TupleCons n -> string @@ "Tuple" ^ string_of_int n
   | `TupleField (n, _) -> string @@ "tuple_todo?._" ^ string_of_int n
   | `Projector n -> string @@ show_global_ident e
 
@@ -30,48 +31,48 @@ let rec plocal_ident (e : LocalIdent.t) = string @@ e.name
 
 let rec pty (e : ty) =
   match e with
-  | Bool -> string "bool"
-  | Char -> string "char"
-  | Int k -> string "int"
-  | Float -> string "float"
-  | Str -> string "str"
-  | App { ident; args } ->
+  | TBool -> string "bool"
+  | TChar -> string "char"
+  | TInt k -> string "int"
+  | TFloat -> string "float"
+  | TStr -> string "str"
+  | TApp { ident; args } ->
       group @@ pglobal_ident ident ^/^ separate_map space pgeneric_value args
-  | Array { typ; length } ->
+  | TArray { typ; length } ->
       string "vector" ^/^ parens (pty typ) ^/^ string (string_of_int length)
-  | Slice { witness; ty } -> string "slice:todo"
-  | RawPointer { witness } -> string "rawpointer:todo"
-  | Ref { witness; region; typ; mut } -> string "&" ^^ pmut mut ^/^ pty typ
-  | False -> string "⊥"
-  | Param i -> plocal_ident i
-  | Arrow (inputs, output) ->
+  | TSlice { witness; ty } -> string "slice:todo"
+  | TRawPointer { witness } -> string "rawpointer:todo"
+  | TRef { witness; region; typ; mut } -> string "&" ^^ pmut mut ^/^ pty typ
+  | TFalse -> string "⊥"
+  | TParam i -> plocal_ident i
+  | TArrow (inputs, output) ->
       parens
         (separate_map (space ^^ string "->" ^^ space) pty (inputs @ [ output ]))
-  | ProjectedAssociatedType s -> string "proj:assoc:type"
+  | TProjectedAssociatedType s -> string "proj:assoc:type"
 
 and pgeneric_value (e : generic_value) =
   match e with
-  | Lifetime _ -> string "todo:lifetime"
-  | Type t -> group @@ parens @@ pty t
+  | GLifetime _ -> string "todo:lifetime"
+  | GType t -> group @@ parens @@ pty t
   | _ -> string "generic_value todo"
 
 let rec pborrow_kind (e : borrow_kind) =
   match e with Mut _ -> string "mut " | _ -> empty
 
 let rec ppat (e : pat) =
-  match e.v with
-  | Wild -> underscore
-  | PatAscription { typ; pat } ->
+  match e.p with
+  | PWild -> underscore
+  | PAscription { typ; pat } ->
       group @@ parens @@ pty typ.v ^/^ colon ^/^ ppat pat
-  | Variant { name; args } ->
+  | PConstruct { name; args } ->
       group @@ pglobal_ident name ^/^ braces
       @@ separate_map space
            (fun { field; pat } -> pglobal_ident field ^/^ colon ^/^ ppat pat)
            args
-  | PatArray { args } -> string "makes no sense"
-  | Deref { subpat } -> string "deref" ^/^ ppat subpat
-  | Constant { lit } -> pliteral lit
-  | Binding { mut; mode; var; typ; subpat } ->
+  | PArray { args } -> string "makes no sense"
+  | PDeref { subpat } -> string "deref" ^/^ ppat subpat
+  | PConstant { lit } -> pliteral lit
+  | PBinding { mut; mode; var; typ; subpat } ->
       group
         (pmut mut ^/^ plocal_ident var
         ^/^ optional
@@ -79,7 +80,7 @@ let rec ppat (e : pat) =
               subpat)
 
 let rec pexpr (e : expr) =
-  match e.v with
+  match e.e with
   | If { cond; then_; else_ } ->
       group
         (string "if" ^/^ pexpr cond ^/^ string "then" ^/^ pexpr then_
@@ -100,8 +101,8 @@ let rec pexpr (e : expr) =
         (group (string "match" ^/^ pexpr scrutinee ^/^ string "with")
         ^/^ separate_map hardline parm arms)
   | Let { lhs; rhs; body } -> (
-      match lhs.v with
-      | Wild -> pexpr rhs ^^ semi ^^ hardline ^^ pexpr body
+      match lhs.p with
+      | PWild -> pexpr rhs ^^ semi ^^ hardline ^^ pexpr body
       | _ ->
           group
             (string "let" ^/^ ppat lhs ^/^ equals ^/^ pexpr rhs ^/^ string "in")
@@ -116,9 +117,9 @@ let rec pexpr (e : expr) =
         (string "loop[" ^^ optional string label ^^ string "]"
        ^/^ string "begin" ^/^ pexpr body ^/^ string "end")
   | Break { e; label } ->
-      string "break(" ^^ optional pexpr e ^^ string ")["
+      string "break(" ^^ pexpr e ^^ string ")["
       ^^ optional string label ^^ string "]"
-  | Return { e } -> string "return(" ^^ optional pexpr e ^^ string ")"
+  | Return { e } -> string "return(" ^^ pexpr e ^^ string ")"
   | Continue { label } ->
       string "continue[" ^^ optional string label ^^ string "]"
   | Borrow { kind; e } -> string "&" ^^ pborrow_kind kind ^^ parens (pexpr e)
