@@ -1386,6 +1386,11 @@ pub enum Ty {
             let tcx = state.tcx();
             arrow_of_sig(&tcx.bound_fn_sig(*def).subst(tcx, substs), state)
         },
+        FROM_TYPE::Closure (defid, substs) => {
+            let sig = substs.as_closure().sig();
+            let sig = state.tcx().signature_unclosure(sig, rustc_hir::Unsafety::Normal);
+            arrow_of_sig(&sig, state)
+        },
     )]
     Arrow {
         params: Vec<Ty>,
@@ -1461,13 +1466,12 @@ pub enum Ty {
     /// A trait object. Written as `dyn for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
 
-    /// The anonymous type of a closure. Used to represent the type of `|a| a`.
-    ///
-    /// Closure substs contain both the - potentially substituted - generic parameters
-    /// of its parent and some synthetic parameters. See the documentation for
-    /// `ClosureSubsts` for more details.
-    Closure(DefId, Vec<GenericArg>),
-
+    // /// The anonymous type of a closure. Used to represent the type of `|a| a`.
+    // ///
+    // /// Closure substs contain both the - potentially substituted - generic parameters
+    // /// of its parent and some synthetic parameters. See the documentation for
+    // /// `ClosureSubsts` for more details.
+    // Closure(DefId, Vec<GenericArg>),
     /// The anonymous type of a generator. Used to represent the type of
     /// `|a| yield a`.
     ///
@@ -1856,6 +1860,55 @@ pub struct MacroInvokation {
 }
 
 #[derive(AdtInto)]
+#[args(<S>, from: rustc_hir::ImplicitSelfKind, state: S as tcx)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub enum ImplicitSelfKind {
+    Imm,
+    Mut,
+    ImmRef,
+    MutRef,
+    None,
+}
+
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::Param<'tcx>, state: S as tcx)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct Param {
+    pub pat: Option<Pat>,
+    pub ty: Ty,
+    pub ty_span: Option<Span>,
+    pub self_kind: Option<ImplicitSelfKind>,
+    pub hir_id: Option<HirId>,
+}
+
+pub type Body = Expr;
+pub fn inspect_local_def_id<'tcx, S: BaseState<'tcx>>(
+    did: rustc_hir::def_id::LocalDefId,
+    s: &S,
+) -> (rustc_middle::thir::Thir<'tcx>, Vec<Param>, Body) {
+    let tcx: rustc_middle::ty::TyCtxt = s.tcx();
+    tcx.thir_body(rustc_middle::ty::WithOptConstParam {
+        did,
+        const_param_did: None,
+    })
+    .map(|(thir, expr)| {
+        let thir: rustc_middle::thir::Thir<'tcx> = thir.borrow().clone();
+        let s = State {
+            tcx: s.tcx(),
+            options: s.options(),
+            thir: thir.clone(),
+            def_id: (),
+            macro_infos: s.macro_infos(),
+            local_ident_map: s.local_ident_map(),
+        };
+        let params: Vec<Param> = thir.params.iter().map(|x| x.sinto(&s)).collect();
+        let body = expr.sinto(&s);
+        (thir, params, body)
+    })
+    .expect("While trying to reach a body's THIR defintion, got a typechecking error")
+}
+
+#[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::ExprKind<'tcx>, state: S as gstate)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[append(
@@ -2141,15 +2194,23 @@ pub enum ExprKind {
         /// Type that the user gave to this expression
         user_ty: Option<CanonicalUserType>,
     },
-    // TODO
-    // /// A closure definition.
-    // Closure {
-    //     closure_id: LocalDefId,
-    //     substs: UpvarSubsts,
-    //     upvars: Vec<Expr>,
-    //     movability: Option<Movability>,
-    //     fake_reads: Vec<(Expr, FakeReadCause, HirId)>,
-    // },
+    /// A closure definition.
+    #[custom_arm(FROM_TYPE::Closure(e) => {
+        let (_, params, body) = inspect_local_def_id(e.closure_id, gstate);
+        TO_TYPE::Closure {
+            params,
+            body,
+            upvars: e.upvars.sinto(gstate),
+            movability: e.movability.sinto(gstate)
+        }
+    },
+    )]
+    Closure {
+        params: Vec<Param>,
+        body: Body,
+        upvars: Vec<Expr>,
+        movability: Option<Movability>,
+    },
     /// A literal.
     Literal {
         lit: Spanned<LitKind>,

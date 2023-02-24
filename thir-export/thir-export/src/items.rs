@@ -45,7 +45,6 @@ pub struct FnHeader {
     pub abi: Abi,
 }
 
-pub type Body = all::Expr;
 pub type FnBody = all::Expr;
 
 fn make_fn_def<'tcx, S: BaseState<'tcx>>(
@@ -53,55 +52,28 @@ fn make_fn_def<'tcx, S: BaseState<'tcx>>(
     body_id: &rustc_hir::BodyId,
     s: &S,
 ) -> FnDef {
-    let tcx: rustc_middle::ty::TyCtxt = s.tcx();
-    let opts: Box<crate::options::Options> = s.options();
-    tcx.thir_body(rustc_middle::ty::WithOptConstParam {
-        did: body_id.hir_id.owner.def_id,
-        const_param_did: None,
-    })
-    .map(|(thir, expr)| {
-        let thir: rustc_middle::thir::Thir<'tcx> = thir.borrow().clone();
-        let s = State {
-            tcx: s.tcx(),
-            options: s.options(),
-            thir: thir.clone(),
-            def_id: (),
-            macro_infos: s.macro_infos(),
-            local_ident_map: s.local_ident_map(),
-        };
-        let params: Vec<Param> = thir.params.iter().map(|x| x.sinto(&s)).collect();
-        let body = expr.sinto(&s);
-        let ret = body.ty.clone();
-        FnDef {
-            params,
-            ret,
-            body,
-            sig_span: fn_sig.span.sinto(&s),
-            header: fn_sig.header.sinto(&s),
-        }
-    })
-    .expect("While trying to reach a body's THIR defintion, got a typechecking error")
+    let (thir, params, body) = inspect_local_def_id(body_id.hir_id.owner.def_id, s);
+    let ret = body.ty.clone();
+    let s = State {
+        tcx: s.tcx(),
+        options: s.options(),
+        thir: thir.clone(),
+        def_id: (),
+        macro_infos: s.macro_infos(),
+        local_ident_map: s.local_ident_map(),
+    };
+    FnDef {
+        params,
+        ret,
+        body,
+        sig_span: fn_sig.span.sinto(&s),
+        header: fn_sig.header.sinto(&s),
+    }
 }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Body> for rustc_hir::BodyId {
     fn sinto(&self, s: &S) -> Body {
-        let tcx: rustc_middle::ty::TyCtxt = s.tcx();
-
-        tcx.thir_body(rustc_middle::ty::WithOptConstParam {
-            did: self.hir_id.owner.def_id,
-            const_param_did: None,
-        })
-        .map(|(thir, expr)| {
-            expr.sinto(&State {
-                tcx: s.tcx(),
-                options: s.options(),
-                thir: thir.borrow().clone(),
-                def_id: (),
-                macro_infos: s.macro_infos(),
-                local_ident_map: s.local_ident_map(),
-            })
-        })
-        .expect("While trying to reach a body's THIR defintion, got a typechecking error")
+        inspect_local_def_id(s.tcx().hir().body_owner_def_id(self.clone()), s).2
     }
 }
 
@@ -110,17 +82,6 @@ impl<'x, 'tcx, S: BaseState<'tcx> + HasDefId> SInto<S, Ty> for rustc_hir::Ty<'x>
         let ctx = rustc_hir_analysis::collect::ItemCtxt::new(s.tcx(), s.def_id());
         ctx.to_ty(self).sinto(s)
     }
-}
-
-#[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::Param<'tcx>, state: S as tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct Param {
-    pub pat: Option<Pat>,
-    pub ty: Ty,
-    pub ty_span: Option<Span>,
-    pub self_kind: Option<ImplicitSelfKind>,
-    pub hir_id: Option<HirId>,
 }
 
 #[derive(AdtInto)]
@@ -318,17 +279,6 @@ pub enum IsAsync {
 pub enum FnRetTy {
     DefaultReturn(Span),
     Return(Ty),
-}
-
-#[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::ImplicitSelfKind, state: S as tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub enum ImplicitSelfKind {
-    Imm,
-    Mut,
-    ImmRef,
-    MutRef,
-    None,
 }
 
 impl<'a, S> SInto<S, Path> for rustc_hir::TraitRef<'a> {
@@ -716,16 +666,19 @@ impl<'tcx, S: BaseState<'tcx> + HasDefId> SInto<S, GenericBounds>
         // eprintln!("tcx.hir().get(hir_id)={:#?}", tcx.hir().get(hir_id));
         // let generics = tcx.generics_of(s.def_id());
         let predicates = tcx.predicates_of(s.def_id()).predicates;
-        predicates.iter().map(|(pred, span)| {
-            let pred: rustc_middle::ty::Predicate = pred.clone();
-            let kind: rustc_middle::ty::Binder<'_, rustc_middle::ty::PredicateKind>
-                = pred.kind();
-            let kind: rustc_middle::ty::PredicateKind = kind.no_bound_vars().unwrap();
-            kind.sinto(s)
-        }).collect()
+        predicates
+            .iter()
+            .map(|(pred, span)| {
+                let pred: rustc_middle::ty::Predicate = pred.clone();
+                let kind: rustc_middle::ty::Binder<'_, rustc_middle::ty::PredicateKind> =
+                    pred.kind();
+                let kind: rustc_middle::ty::PredicateKind = kind.no_bound_vars().unwrap();
+                kind.sinto(s)
+            })
+            .collect()
         // eprintln!("generics={:#?}", generics);
         // eprintln!("predicates={:#?}", predicates);
-            // match tcx.hir().get(hir_id) 
+        // match tcx.hir().get(hir_id)
         // let ctx = rustc_hir_analysis::collect::ItemCtxt::new(tcx, s.def_id());
         // let x = tcx.explicit_item_bounds(s.def_id());
         // x.iter().map(|(pred, span)| {
