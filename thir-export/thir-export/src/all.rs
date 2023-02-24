@@ -20,15 +20,6 @@ pub type Path = Vec<String>; // x::y::z, TODO
 pub type ProjectionPath = Vec<String>; // x::y::z, TODO
                                        // pub type LitFloatType = TODO;
 
-trait Foo {
-    type Loop;
-    type Mut;
-}
-
-enum EE<T: Foo> {
-    Loop(Box<EE<T>>, T::Loop),
-}
-
 macro_rules! supposely_unreachable {
     (@$verb:tt $label:literal : $($e:expr),*$(,)?) => {
         $verb !(concat!("
