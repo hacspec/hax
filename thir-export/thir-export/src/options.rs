@@ -76,4 +76,10 @@ pub struct Options {
     /// Export JSON schema in FILE.
     #[arg(long = "export-json-schema")]
     pub export_json_schema: Option<String>,
+
+    /// Arguments to pass to the `cargo build` invokation made by
+    /// `thir-export`. For example, to export the THIR of a package
+    /// `foo`, use `-p foo`.
+    #[arg(default_values = Vec::<&str>::new(), last = true)]
+    pub cargo_flags: Vec<String>,
 }

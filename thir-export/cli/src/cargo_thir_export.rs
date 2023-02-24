@@ -1,25 +1,22 @@
 #![feature(iter_intersperse)]
 
 use clap::Parser;
-use serde::Serialize;
 use std::process::Command;
 use thir_export;
 
 fn main() {
-    let args: Vec<_> = std::env::args().skip(1).collect();
-    let cargo_args = args
-        .iter()
-        .skip_while(|arg| *arg != "--")
-        .skip_while(|arg| *arg == "--");
+    let args: Vec<_> = {
+        let mut args: Vec<_> = std::env::args().collect();
+        if std::path::PathBuf::from(args[0].clone()) == std::env::current_exe().unwrap() {
+            args = args.into_iter().skip(1).collect();
+        }
+        args
+    };
 
-    let options = thir_export::Options::parse_from(args.iter().take_while(|arg| *arg != "--"));
+    let options = thir_export::Options::parse_from(args.iter());
 
     let exit_status = Command::new("cargo")
-        .args(["build".into()].iter().chain(cargo_args))
-        // TODO: without setting CARGO_CACHE_RUSTC_INFO, cargo seems
-        // just to cache its call to the custom driver.
-        // Clearly, that seems hacky.
-        .env("CARGO_CACHE_RUSTC_INFO", "1")
+        .args(["build".into()].iter().chain(options.cargo_flags.iter()))
         .env("RUSTC_WORKSPACE_WRAPPER", "driver-thir-export")
         .env(
             "THIR_EXPORT_OPTIONS",
