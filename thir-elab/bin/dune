@@ -1,7 +1,9 @@
 (executable
  (public_name thir-elab)
  (name main)
- (libraries thir_elab core pprint))
+ (libraries thir_elab core pprint)
+ (preprocess
+  (pps ppx_deriving.show ppx_deriving.eq)))
 
 (env
  (dev

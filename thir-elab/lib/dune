@@ -1,9 +1,16 @@
 (library
  (name thir_elab)
- (libraries yojson non_empty_list bignum pprint ppx_functor_indexed_types
-            ppx_deriving_yojson.runtime fstar-compiler-lib
+ (libraries
+  yojson
+  non_empty_list
+  bignum
+  pprint
+  ppx_deriving_yojson.runtime
+  fstar.lib)
+ (preprocessor_deps
+ ; `ppx_inline` is used on the `Subtype` module, thus we need it at PPX time
+ (file subtype.ml)
  )
- (modules ast utils raw_thir_ast features import_thir print_fstar print)
  (preprocess
   (pps
    ppx_yojson_conv
@@ -13,11 +20,11 @@
    visitors.ppx
    ppx_deriving.show
    ppx_deriving.eq
-   ppx_type_collection
-   ppx_functor_indexed_types
-   ppx_matches
-   )))
+   ppx_inline
+   ppx_generate_features
+   ppx_matches)))
 
+; TODO: the following rule works only with the Nix setup
 (rule
  (target raw_thir_ast.ml)
  (action

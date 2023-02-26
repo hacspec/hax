@@ -1,45 +1,64 @@
 open Thir_elab.Raw_thir_ast
 open Core
+open Thir_elab.Utils
 open Thir_elab.Print_fstar
+open Thir_elab
+open Desugar_utils
+
+module DesugarToFStar = struct
+  module D1 = Desugar_reject_mutable_references.Make (Features.Rust)
+  module D2 = Desugar_reject_mutable_references.MakeContinueReject (D1.FB)
+  module D3 = Desugar_drop_references.Make (D2.FB)
+
+  module D4 =
+    Desugar_mutable_variable.Make
+      (D3.FB)
+      (struct
+        let early_exit = Fn.id
+      end)
+
+  module D5 = Desugar_reject_mutable_references.EnsureIsFStar (D4.FB)
+
+  include
+    BindDesugar
+      (BindDesugar (BindDesugar (BindDesugar (D1) (D2)) (D3)) (D4)) (D5)
+end
 
 let parse_list_json (parse : Yojson.Safe.t -> 'a) (input : Yojson.Safe.t) :
-      'a list =
+    'a list =
   match input with
   | `List l -> List.map ~f:parse l
   | _ -> failwith "parse_list_json: not a list"
 
-let () =
-  let path =
-    if Array.length Sys.argv <> 2 then (
-      print_endline "Usage thir-elab /path/to/the/thir'/file.json";
-      exit 1)
-    else Sys.argv.(1)
-  in
-  let input = In_channel.read_all path |> Yojson.Safe.from_string in
-  try
-    let items = parse_list_json parse_item input in
-    print_endline "Parsed";
-    let converted_items =
-      List.map
-        ~f:(fun item ->
-          print_endline "A";
-          try
-            Result.map_error ~f:Thir_elab.Import_thir.show_error
-              (Thir_elab.Import_thir.c_item item)
-          with Failure e -> Error e)
-        items
-    in
-    print_endline "Converted";
-    List.iter
+let () = Printexc.record_backtrace true;;
+
+let path =
+  if Array.length Sys.argv <> 2 then (
+    print_endline "Usage thir-elab /path/to/the/thir'/file.json";
+    exit 1)
+  else Sys.argv.(1)
+in
+let input = In_channel.read_all path |> Yojson.Safe.from_string in
+try
+  let items = parse_list_json parse_item input in
+  prerr_endline "Parsed";
+  let converted_items =
+    List.map
       ~f:(fun item ->
-        print_endline "\n----------------------------------------------------";
-        print_endline
-          (match item with
-           | Ok item ->
-              decl_to_string (pitem (Obj.magic item))
-              (* let b = Buffer.create 50 in *)
-              (* PPrint.ToBuffer.pretty 0.5 140 b (Thir_elab.Print.pitem item); *)
-              (* Buffer.contents b *)
-           | Error err -> "ERROR" ^ err))
-      converted_items
-  with e -> print_endline (ParseError.pp e)
+        try Result.map_error ~f:Import_thir.show_error (Import_thir.c_item item)
+        with Failure e -> Error e)
+      items
+  in
+  prerr_endline "Converted";
+  print_endline "module Example";
+  List.iter
+    ~f:(fun item ->
+      print_endline "";
+      print_endline
+        (match item with
+        | Ok item ->
+            let item = DesugarToFStar.ditem item in
+            decl_to_string (pitem item)
+        | Error err -> "Convertion error: " ^ err))
+    converted_items
+with e -> print_endline (ParseError.pp e)

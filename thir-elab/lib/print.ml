@@ -1,6 +1,6 @@
 open Base
 open Ast
-open Ast.Make(Features.Full)
+open Ast.Make (Features.Full)
 open PPrint
 open Utils
 
@@ -100,7 +100,8 @@ let rec pexpr (e : expr) =
       group
         (group (string "match" ^/^ pexpr scrutinee ^/^ string "with")
         ^/^ separate_map hardline parm arms)
-  | Let { lhs; rhs; body } -> (
+  | Let { monadic = Some _; lhs; rhs; body } -> string "monadic Let"
+  | Let { monadic = _; lhs; rhs; body } -> (
       match lhs.p with
       | PWild -> pexpr rhs ^^ semi ^^ hardline ^^ pexpr body
       | _ ->
@@ -117,14 +118,15 @@ let rec pexpr (e : expr) =
         (string "loop[" ^^ optional string label ^^ string "]"
        ^/^ string "begin" ^/^ pexpr body ^/^ string "end")
   | Break { e; label } ->
-      string "break(" ^^ pexpr e ^^ string ")["
-      ^^ optional string label ^^ string "]"
+      string "break(" ^^ pexpr e ^^ string ")[" ^^ optional string label
+      ^^ string "]"
   | Return { e } -> string "return(" ^^ pexpr e ^^ string ")"
   | Continue { label } ->
       string "continue[" ^^ optional string label ^^ string "]"
   | Borrow { kind; e } -> string "&" ^^ pborrow_kind kind ^^ parens (pexpr e)
   | AddressOf { mut; e } -> string "&raw..."
-  | MonadicNode _ -> string "monadic node"
+  | MonadicAction _ -> string "monadic action"
+  | Closure { params; body } -> string "closure"
 
 and parm { arm = { pat; body } } =
   group (group (group (string "|" ^/^ ppat pat) ^/^ string "->") ^/^ pexpr body)
@@ -136,7 +138,6 @@ and plhs (e : lhs) =
   | LhsLocalVar i -> plocal_ident i
 
 let rec pparam ({ pat; typ } : param) =
-
   group @@ parens @@ ppat pat ^/^ colon ^/^ pty typ
 
 let rec pitem (e : item) =
@@ -146,17 +147,14 @@ let rec pitem (e : item) =
         (string "let" ^/^ pglobal_ident name
         ^/^ separate_map space pparam params
         ^/^ equals ^/^ pexpr body)
-  | Type {name; generics; variants} -> string "TYPEDEF"
-  | TyAlias {name; generics; ty} -> string "TYPEALIAS"
+  | Type { name; generics; variants } -> string "TYPEDEF"
+  | TyAlias { name; generics; ty } -> string "TYPEALIAS"
   | NotImplementedYet -> string "NotImplementedYet"
 
 let rec pmutability (e : 'a mutability) = string ""
 let rec pbinding_mode (e : binding_mode) = string ""
 
-
-
 let to_string d =
   let b = Buffer.create 50 in
   PPrint.ToBuffer.pretty 0.5 140 b d;
   Buffer.contents b
-    
