@@ -1,16 +1,21 @@
 {
   inputs = {
-    rust-overlay = {
-      url = "github:oxalica/rust-overlay";
+    flake-utils.url = "github:numtide/flake-utils";
+    fstar = {
+      url = "github:fstarlang/fstar";
+      inputs = {
+        flake-utils.follows = "flake-utils";
+      };
+    };
+    nixpkgs.follows = "fstar/nixpkgs";
+    crane = {
+      url = "github:ipetkov/crane";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         flake-utils.follows = "flake-utils";
       };
     };
-    flake-utils.url = "github:numtide/flake-utils";
-    crane.url = "github:ipetkov/crane";
-    crane.inputs.nixpkgs.follows = "nixpkgs";
-    fstar.url = "github:w95psp/fstar/record-payloads";
+    rust-overlay.follows = "crane/rust-overlay";
   };
 
   outputs = {flake-utils, nixpkgs, rust-overlay, crane, fstar, ...}:
@@ -20,23 +25,9 @@
           inherit system;
           overlays = [rust-overlay.overlays.default];
         };
-        fstar-bin = (fstar.lib.${system}.binary-of-ml-snapshot {
-          pname = "fstar";
-          src = fstar;
-          version = "compiler-lib";
-          opts = {
-            compileFStar = true;
-            compileUlib = false;
-            compileTests = false;
-          };
-        }).overrideAttrs (_: {
-          patches = ./patch-fstar-lib.diff;
-        });
-        # fstar-bin = /home/lucas/repos/FStar/master/bin;
-        # fstar-bin = fstar.packages.${system}.default.overrideAttrs (old: {
-        #   patches = ./patch-fstar-lib.diff;
-        # });
-        ocamlPackages = pkgs.ocamlPackages;
+        fstar-pkgs = fstar.packages.${system};
+        fstar-bin = fstar-pkgs.fstar;
+        ocamlPackages = fstar-pkgs.ocamlPackages;
         nightly = pkgs.rust-bin.nightly."2022-12-06";
         rustc = nightly.default.override {
           extensions = [
@@ -80,6 +71,8 @@
         packages = {
           inherit rustc nightly;
           thir-export = craneLib.buildPackage {
+            pname = "thir-export";
+            version = "0.0.1";
             src = craneLib.cleanCargoSource ./thir-export;
           };
           docs = nightly.rustc-docs;
@@ -92,7 +85,7 @@
               base ppx_yojson_conv yojson ppx_sexp_conv ppx_hash
               visitors pprint non_empty_list bignum fstar-bin
               ppx_deriving_yojson ppx_matches
-            ] ++ fstar-bin.buildInputs;
+            ] ++ fstar-pkgs.fstar-dune.buildInputs;
             nativeBuildInputs = [ packages.thir_ml_of_json_schema ];
             strictDeps = true;
             preBuild = "dune build thir-elab.opam";
