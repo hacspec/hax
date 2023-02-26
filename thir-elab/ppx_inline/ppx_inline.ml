@@ -21,13 +21,7 @@ type inlinable_item = { path : string list; kind : inlinable_item_kind }
 let collect_ast_nodes (result : inlinable_item list ref) =
   let add (l : inlinable_item list) = result := !result @ l in
   object
-    inherit [string list] Ast.map_with_context as super
-    method bool _ = Fn.id
-    method char _ = Fn.id
-    method int _ = Fn.id
-    method string _ = Fn.id
-    method option f path = Option.map ~f:(f path)
-    method list f path = List.map ~f:(f path)
+    inherit [string list] Ast_traverse.map_with_context as super
 
     method! module_binding path x =
       let path =
