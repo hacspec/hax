@@ -1,0 +1,15 @@
+(library
+ (name ppx_match_default_branches)
+ (kind ppx_rewriter)
+ (libraries ppxlib base core
+  re
+  re.posix
+  )
+ (preprocess
+  (pps ppxlib.metaquot
+)))
+
+(env
+ (dev
+  (flags
+   (:standard -w -A -w +8))))
