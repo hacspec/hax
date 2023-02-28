@@ -23,11 +23,11 @@ end
 
 type todo = string
 [@@deriving
-  show, yojson, eq, visitors { variety = "reduce"; name = "todo_reduce" }]
+  show, yojson, eq, visitors { variety = "reduce"; name = "todo_reduce" }, visitors { variety = "map"; name = "todo_map" }]
 
 type loc = { col : int; line : int }
 [@@deriving
-  show, yojson, eq, visitors { variety = "reduce"; name = "loc_reduce" }]
+  show, yojson, eq, visitors { variety = "reduce"; name = "loc_reduce" }, visitors { variety = "map"; name = "loc_map" }]
 
 type span =
   | Span of {
@@ -41,7 +41,9 @@ type span =
     eq,
     show,
     visitors
-      { variety = "reduce"; name = "span_reduce"; ancestors = [ "loc_reduce" ] }]
+      { variety = "reduce"; name = "span_reduce"; ancestors = [ "loc_reduce" ] },
+    visitors
+      { variety = "map"; name = "span_map"; ancestors = [ "loc_map" ] }]
 
 let show_span (s : span) : string = "<span>"
 
@@ -53,7 +55,8 @@ type concrete_ident = { crate : string; path : string Non_empty_list.t }
   show,
     yojson,
     eq,
-    visitors { variety = "reduce"; name = "concrete_ident_reduce" }]
+    visitors { variety = "reduce"; name = "concrete_ident_reduce" },
+    visitors { variety = "map"; name = "concrete_ident_map" }]
 
 type primitive_ident =
   | Box
@@ -66,7 +69,8 @@ type primitive_ident =
   show,
     yojson,
     eq,
-    visitors { variety = "reduce"; name = "primitive_ident_reduce" }]
+    visitors { variety = "reduce"; name = "primitive_ident_reduce" },
+    visitors { variety = "map"; name = "primitive_ident_map" }]
 
 module GlobalIdent = struct
   type t =
@@ -85,7 +89,8 @@ type global_ident = (GlobalIdent.t[@visitors.opaque])
   show,
     yojson,
     eq,
-    visitors { variety = "reduce"; name = "global_ident_reduce" }]
+    visitors { variety = "reduce"; name = "global_ident_reduce" },
+    visitors { variety = "map"; name = "global_ident_map" }]
 
 module LocalIdent = struct
   module T = struct
@@ -104,7 +109,8 @@ type local_ident = (LocalIdent.t[@visitors.opaque])
     compare,
     sexp,
     eq,
-    visitors { variety = "reduce"; name = "local_ident_reduce" }]
+    visitors { variety = "reduce"; name = "local_ident_reduce" },
+    visitors { variety = "map"; name = "local_ident_map" }]
 
 type size = S8 | S16 | S32 | S64 | S128 | SSize
 [@@deriving show, yojson, compare, eq]
@@ -121,7 +127,7 @@ type literal =
   | Float of float
   | Bool of bool
 [@@deriving
-  show, yojson, eq, visitors { variety = "reduce"; name = "literal_reduce" }]
+  show, yojson, eq, visitors { variety = "reduce"; name = "literal_reduce" }, visitors { variety = "map"; name = "literal_map" }]
 
 (* type 't spanned = { v : 't; span : span } [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "spanned_reduce" }] *)
 
@@ -133,19 +139,21 @@ type supported_monads = Option | Result | ControlFlow
   show,
     yojson,
     eq,
-    visitors { variety = "reduce"; name = "supported_monads_reduce" }]
+    visitors { variety = "reduce"; name = "supported_monads_reduce" },
+    visitors { variety = "map"; name = "supported_monads_map" }]
 
 module Make =
 functor
   (F : Features.T)
   ->
   struct
-    type borrow_kind = Shared | Unique | Mut of F.mutable_borrow
+    type borrow_kind = Shared | Unique | Mut of F.mutable_reference
     [@@deriving
       show,
         yojson,
         eq,
-        visitors { variety = "reduce"; name = "borrow_kind_reduce" }]
+        visitors { variety = "reduce"; name = "borrow_kind_reduce" },
+        visitors { variety = "map"; name = "borrow_kind_map" }]
 
     type binding_mode =
       | ByValue
@@ -159,8 +167,15 @@ functor
             variety = "reduce";
             name = "binding_mode_reduce";
             ancestors = [ "borrow_kind_reduce" ];
+          },
+        visitors
+          {
+            variety = "map";
+            name = "binding_mode_map";
+            ancestors = [ "borrow_kind_map" ];
           }]
 
+    (* TODO: generate those classes automatically *)
     class virtual ['self] default_reduce_features =
       object (self : 'self)
         inherit [_] VisitorsRuntime.reduce
@@ -173,7 +188,6 @@ functor
         method visit_mutable_variable () (_ : F.mutable_variable) = self#zero
         method visit_mutable_reference () (_ : F.mutable_reference) = self#zero
         method visit_mutable_pointer () (_ : F.mutable_pointer) = self#zero
-        method visit_mutable_borrow () (_ : F.mutable_borrow) = self#zero
         method visit_reference () (_ : F.reference) = self#zero
         method visit_slice () (_ : F.slice) = self#zero
         method visit_raw_pointer () (_ : F.raw_pointer) = self#zero
@@ -187,6 +201,30 @@ functor
         (* move somewhere else *)
         method visit_span _ (_ : span) = self#zero
         method visit_literal _ (_ : literal) = self#zero
+      end
+
+    class virtual ['self] default_map_features =
+      object (self : 'self)
+        inherit ['env] VisitorsRuntime.map
+
+        method visit_loop: 'env -> F.loop -> F.loop = Fn.const Fn.id
+        method visit_continue: 'env -> F.continue -> F.continue = Fn.const Fn.id
+        method visit_mutable_variable: 'env -> F.mutable_variable -> F.mutable_variable = Fn.const Fn.id
+        method visit_mutable_reference: 'env -> F.mutable_reference -> F.mutable_reference = Fn.const Fn.id
+        method visit_mutable_pointer: 'env -> F.mutable_pointer -> F.mutable_pointer = Fn.const Fn.id
+        method visit_reference: 'env -> F.reference -> F.reference = Fn.const Fn.id
+        method visit_slice: 'env -> F.slice -> F.slice = Fn.const Fn.id
+        method visit_raw_pointer: 'env -> F.raw_pointer -> F.raw_pointer = Fn.const Fn.id
+        method visit_early_exit: 'env -> F.early_exit -> F.early_exit = Fn.const Fn.id
+        method visit_macro: 'env -> F.macro -> F.macro = Fn.const Fn.id
+        method visit_as_pattern: 'env -> F.as_pattern -> F.as_pattern = Fn.const Fn.id
+        method visit_lifetime: 'env -> F.lifetime -> F.lifetime = Fn.const Fn.id
+        method visit_monadic_action: 'env -> F.monadic_action -> F.monadic_action = Fn.const Fn.id
+        method visit_monadic_binding: 'env -> F.monadic_binding -> F.monadic_binding = Fn.const Fn.id
+
+        (* move somewhere else *)
+        method visit_span: 'env -> span -> span = Fn.const Fn.id
+        method visit_literal: 'env -> literal -> literal = Fn.const Fn.id
       end
 
     type ty =
@@ -229,6 +267,18 @@ functor
                 "local_ident_reduce";
                 "default_reduce_features";
               ];
+          },
+        visitors
+          {
+            variety = "map";
+            name = "ty_map";
+            ancestors =
+              [
+                "global_ident_map";
+                "todo_map";
+                "local_ident_map";
+                "default_map_features";
+              ];
           }]
     (* [@@deriving visitors { variety = "reduce"; name = "ty_reduce"; ancestors = [] }] *)
 
@@ -266,6 +316,12 @@ functor
             variety = "reduce";
             name = "pat_reduce";
             ancestors = [ "ty_reduce"; "binding_mode_reduce" ];
+          },
+        visitors
+          {
+            variety = "map";
+            name = "pat_map";
+            ancestors = [ "ty_map"; "binding_mode_map" ];
           }]
 
     type expr' =
@@ -334,6 +390,12 @@ functor
             variety = "reduce";
             name = "expr_reduce";
             ancestors = [ "pat_reduce"; "supported_monads_reduce" ];
+          },
+        visitors
+          {
+            variety = "map";
+            name = "expr_map";
+            ancestors = [ "pat_map"; "supported_monads_map" ];
           }]
     (* [@@deriving *)
     (*   visitors *)
@@ -350,7 +412,8 @@ functor
       show,
         yojson,
         eq,
-        visitors { variety = "reduce"; name = "generic_param_reduce" }]
+        visitors { variety = "reduce"; name = "generic_param_reduce" },
+        visitors { variety = "map"; name = "generic_param_map" }]
 
     type trait_ref = {
       trait : global_ident;
@@ -395,7 +458,7 @@ functor
 
     and item = { v : item'; span : span }
     [@@deriving
-      show, yojson, eq, visitors { variety = "reduce"; name = "item_reduce" }]
+      show, yojson, eq, visitors { variety = "reduce"; name = "item_reduce" }, visitors { variety = "map"; name = "item_map" }]
 
     type modul = item list
   end
