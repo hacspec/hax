@@ -103,21 +103,21 @@ let unit_expr : expr =
   {
     typ = unit_typ;
     span = Dummy;
-    e =
-      Ast.App
-        {
-          f = { e = Ast.GlobalVar (`TupleCons 0); span = Dummy; typ = unit_typ };
-          args = [];
-        };
+    e = Ast.GlobalVar (`TupleCons 0)
   }
 
 let wild_pat : ty -> pat = fun typ -> { typ; span = Dummy; p = PWild }
 
 module GlobalNames = struct
-  let h v : expr = { span = Dummy; typ = Ast.TFalse; e = Ast.GlobalVar v }
-  let box : expr = `Primitive Box |> h
-  let deref : expr = `Primitive Deref |> h
-  let cast : ty -> ty -> expr = fun _ _ -> `Primitive Cast |> h
+  let h typ v : expr = { span = Dummy; typ; e = Ast.GlobalVar v }
+  let box (t: ty): expr =
+    let box = `Primitive Box in
+    h (TArrow ([t], TApp {ident = box; args = [GType t]})) box
+  let deref (t1: ty) (t2: ty) : expr =
+    h (TArrow ([t1], t2)) (`Primitive Deref)
+                          
+  let cast t1 t2: expr =
+    `Primitive Cast |> h @@ TArrow ([t1], t2)
 
   let binop : ty -> ty -> ty -> Thir.bin_op -> expr =
    fun l r out op ->
@@ -127,15 +127,15 @@ module GlobalNames = struct
       e = Ast.GlobalVar (`Primitive (BinOp op));
     }
 
-  let unop : Thir.un_op -> expr = fun op -> `Primitive (UnOp op) |> h
+  (* let unop : Thir.un_op -> expr = fun op -> `Primitive (UnOp op) |> h *)
 
-  let logicalop : Thir.logical_op -> expr =
-   fun op -> `Primitive (LogicalOp op) |> h
+(*   let logicalop : Thir.logical_op -> expr = *)
+(*    fun op -> `Primitive (LogicalOp op) |> h *)
 
-  let tuple_type : int -> expr = fun len -> h (`TupleType len)
+(*   let tuple_type : int -> expr = fun len -> h (`TupleType len) *)
 
-  let tuple_field : int -> int -> Ast.expr =
-   fun nth len -> h (`TupleField (nth, len))
+(*   let tuple_field : int -> int -> Ast.expr = *)
+(*    fun nth len -> h (`TupleField (nth, len)) *)
 end
 
 let c_lit' (lit : Thir.lit_kind) : literal result =
@@ -211,9 +211,15 @@ let rec c_expr (e : Thir.decorated_for__expr_kind) : expr result =
     |> Result.map ~f:(fun args -> App { f; args })
   in
   let* typ = c_ty e.ty in
+  let* span = c_span e.span in
+  let mk typ e : expr = { span; typ; e } in
+  let mk_global typ v : expr = { span; typ; e = GlobalVar v } in
+  let (->.) a b = TArrow (a, b) in
   let* (v : expr') =
     match e.contents with
-    | Box { value } -> call GlobalNames.box [ value ]
+    | Box { value } ->
+      let* inner_typ = c_ty e.ty in
+      call (mk_global ([inner_typ] ->. typ) @@ `Primitive Box) [ value ]
     | MacroInvokation { argument; macro_ident } ->
         Ok
           (MacroInvokation
@@ -227,17 +233,23 @@ let rec c_expr (e : Thir.decorated_for__expr_kind) : expr result =
         let* args = List.map ~f:c_expr args |> Result.all in
         let* f = c_expr fun' in
         Ok (App { f; args })
-    | Deref { arg } -> call GlobalNames.deref [ arg ]
+    | Deref { arg } ->
+      let* inner_typ = c_ty e.ty in
+      call (mk_global ([inner_typ] ->. typ) @@ `Primitive Deref) [ arg ]
     | Binary { lhs; rhs; op } ->
         let* lty = c_ty lhs.ty in
         let* rty = c_ty rhs.ty in
         call (GlobalNames.binop lty rty typ op) [ lhs; rhs ]
-    | LogicalOp { lhs; rhs; op } -> call (GlobalNames.logicalop op) [ lhs; rhs ]
-    | Unary { arg; op } -> call (GlobalNames.unop op) [ arg ]
+    | LogicalOp { lhs; rhs; op } ->
+      let* lhs_type = c_ty lhs.ty in
+      let* rhs_type = c_ty rhs.ty in
+      call (mk_global ([lhs_type; rhs_type] ->. typ) @@ `Primitive Deref) [ lhs; rhs ]
+    | Unary { arg; op } ->
+      let* arg_type = c_ty arg.ty in
+      call (mk_global ([arg_type] ->. typ) @@ `Primitive Deref) [ arg ]
     | Cast { source } ->
-        let from_ty = typ in
-        let* to_ty = c_ty source.ty in
-        call (GlobalNames.cast from_ty to_ty) [ source ]
+      let* source_type = c_ty source.ty in
+      call (mk_global ([source_type] ->. typ) @@ `Primitive Deref) [ source ]
     | Use { source } ->
         let* source = c_expr source in
         Ok source.e
@@ -404,7 +416,6 @@ let rec c_expr (e : Thir.decorated_for__expr_kind) : expr result =
         Ok (Closure { body; params; captures = upvars })
     | e -> failwith ("todo expr: " ^ Thir.show_expr_kind e)
   in
-  let* span = c_span e.span in
   Ok ({ e = v; span; typ } : expr)
 
 and c_pat (pat : Thir.decorated_for__pat_kind) : pat result =
