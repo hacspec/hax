@@ -79,11 +79,11 @@ module Make (F : Features.T) = struct
          inherit [_] pat_reduce as super
          inherit [_] Sets.LocalIdent.monoid as m
 
-         method! visit_PBinding _ _ _ var _ subpat =
+         method! visit_PBinding env _ _ var _ subpat =
            m#plus
              (Set.singleton (module LocalIdent) var)
              (Option.value_map subpat ~default:m#zero
-                ~f:(fst >> super#visit_pat ()))
+                ~f:(fst >> super#visit_pat env))
       end)
         #visit_pat
         () p
@@ -142,6 +142,13 @@ module Make (F : Features.T) = struct
   let unit_expr : expr =
     { typ = unit_typ; span = Dummy; e = GlobalVar (`TupleCons 0) }
 
+  let rec remove_tuple1 (t: ty): ty
+    = match t with
+    | TApp { ident = `TupleType 1; args = [GType t] } -> remove_tuple1 t
+    | _ -> t
+  
+  let is_unit_typ: ty -> bool = remove_tuple1 >> [%matches? TApp { ident = `TupleType 0 }]
+
   let rec pat_is_expr (p : pat) (e : expr) =
     match (p.p, e.e) with
     | PBinding { subpat = None; var = pv }, LocalVar ev ->
@@ -161,7 +168,7 @@ module Make (F : Features.T) = struct
   let make_let (lhs : pat) (rhs : expr) (body : expr) =
     if pat_is_expr lhs body then rhs
     else { body with e = Let { monadic = None; lhs; rhs; body } }
-
+  
   let make_var_pat (var : local_ident) (typ : ty) (span : span) : pat =
     {
       p = PBinding { mut = Immutable; mode = ByValue; var; typ; subpat = None };
@@ -185,10 +192,16 @@ module Make (F : Features.T) = struct
 
   let make_wild_pat (typ : ty) (span : span) : pat = { p = PWild; span; typ }
 
+  let make_seq (e1: expr) (e2: expr): expr =
+    make_let (make_wild_pat e1.typ e1.span) e1 e2
+  
   let make_tuple_field_pat (len : int) (nth : int) (pat : pat) : field_pat =
     { field = `TupleField (nth + 1, len); pat }
 
   let make_tuple_pat' (tuple : field_pat list) : pat =
+    match tuple with
+    | [{pat}] -> pat
+    | _ -> 
     let len = List.length tuple in
     let span = (* TODO: union of r.bindings's spans *) Dummy in
     {
