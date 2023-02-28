@@ -52,7 +52,7 @@ struct
     match borrow_kind with
     | Shared -> Shared
     | Unique -> Unique
-    | Mut witness -> Mut (S.mutable_borrow witness)
+    | Mut witness -> Mut (S.mutable_reference witness)
 
   let rec dpat (p : A.pat) : B.pat =
     { p = dpat' p.p; span = p.span; typ = dty p.typ }
@@ -70,7 +70,7 @@ struct
         PBinding
           {
             mut = dmutability S.mutable_variable mut;
-            mode = ByValue;
+            mode = dbinding_mode mode;
             var;
             typ = dty typ;
             subpat = Option.map ~f:(dpat *** S.as_pattern) subpat;
@@ -169,46 +169,47 @@ struct
         ArrayAccessor { e = dexpr e; index = dexpr index }
     | LhsLocalVar id -> LhsLocalVar id
 
-  let dtrait_ref (r : A.trait_ref) : B.trait_ref =
-    {
-      trait = r.trait;
-      args = List.map ~f:dgeneric_value r.args;
-      bindings = r.bindings;
-    }
+  module Item = struct
+    let dtrait_ref (r : A.trait_ref) : B.trait_ref =
+      {
+        trait = r.trait;
+        args = List.map ~f:dgeneric_value r.args;
+        bindings = r.bindings;
+      }
 
-  let dgeneric_param (generic_param : A.generic_param) : B.generic_param =
-    match generic_param with
-    | Lifetime { ident; witness } ->
+    let dgeneric_param (generic_param : A.generic_param) : B.generic_param =
+      match generic_param with
+      | Lifetime { ident; witness } ->
         Lifetime { ident; witness = S.lifetime witness }
-    | Type { ident; default } ->
+      | Type { ident; default } ->
         Type { ident; default = Option.map ~f:dty default }
-    | Const { ident; typ } -> Const { ident; typ = dty typ }
+      | Const { ident; typ } -> Const { ident; typ = dty typ }
 
-  let dgeneric_constraint (generic_constraint : A.generic_constraint) :
+    let dgeneric_constraint (generic_constraint : A.generic_constraint) :
       B.generic_constraint =
-    match generic_constraint with
-    | Lifetime (lf, witness) -> B.Lifetime (lf, S.lifetime witness)
-    | Type { typ; implements } ->
+      match generic_constraint with
+      | Lifetime (lf, witness) -> B.Lifetime (lf, S.lifetime witness)
+      | Type { typ; implements } ->
         B.Type { typ = dty typ; implements = dtrait_ref implements }
 
-  let dgenerics (g : A.generics) : B.generics =
-    {
-      params = List.map ~f:dgeneric_param g.params;
-      constraints = List.map ~f:dgeneric_constraint g.constraints;
-    }
+    let dgenerics (g : A.generics) : B.generics =
+      {
+        params = List.map ~f:dgeneric_param g.params;
+        constraints = List.map ~f:dgeneric_constraint g.constraints;
+      }
 
-  let dparam (p : A.param) : B.param =
-    { pat = dpat p.pat; typ = dty p.typ; typ_span = p.typ_span }
+    let dparam (p : A.param) : B.param =
+      { pat = dpat p.pat; typ = dty p.typ; typ_span = p.typ_span }
 
-  let dvariant (v : A.variant) : B.variant =
-    { name = v.name; arguments = List.map ~f:(map_snd dty) v.arguments }
+    let dvariant (v : A.variant) : B.variant =
+      { name = v.name; arguments = List.map ~f:(map_snd dty) v.arguments }
 
-  let rec ditem (item : A.item) : B.item =
-    { v = ditem' item.v; span = item.span }
+    let rec ditem (item : A.item) : B.item =
+      { v = ditem' item.v; span = item.span }
 
-  and ditem' (item : A.item') : B.item' =
-    match item with
-    | Fn { name; generics; body; params } ->
+    and ditem' (item : A.item') : B.item' =
+      match item with
+      | Fn { name; generics; body; params } ->
         B.Fn
           {
             name;
@@ -216,7 +217,7 @@ struct
             body = dexpr body;
             params = List.map ~f:dparam params;
           }
-    | Type { name; generics; variants; record } ->
+      | Type { name; generics; variants; record } ->
         B.Type
           {
             name;
@@ -224,7 +225,9 @@ struct
             variants = List.map ~f:dvariant variants;
             record;
           }
-    | TyAlias { name; generics; ty } ->
+      | TyAlias { name; generics; ty } ->
         B.TyAlias { name; generics = dgenerics generics; ty = dty ty }
-    | NotImplementedYet -> B.NotImplementedYet
+      | NotImplementedYet -> B.NotImplementedYet
+  end
+  include Item
 end

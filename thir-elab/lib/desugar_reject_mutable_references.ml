@@ -8,7 +8,7 @@ module Make (FA : Features.T) = struct
   module FB = struct
     include FA
 
-    include Features.Off.Mutable_reference
+    (* include Features.Off.Mutable_reference *)
     include Features.Off.Raw_pointer
     include Features.Off.Mutable_pointer
   end
@@ -20,7 +20,7 @@ module Make (FA : Features.T) = struct
     include Features.SUBTYPE.Id
 
     let mutable_pointer _ = failwith "mutable_pointer"
-    let mutable_reference _ = failwith "mutable_reference"
+    (* let mutable_reference _ = failwith "mutable_reference" *)
     let raw_pointer _ = failwith "raw_pointer"
   end
 

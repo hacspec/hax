@@ -55,3 +55,4 @@ struct
   let desugaring_phase = D1.desugaring_phase ^ "-" ^ D2.desugaring_phase
   let ditem : A.item -> B.item = D1'.ditem >> D2'.ditem
 end
+
