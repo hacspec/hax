@@ -210,27 +210,34 @@ let map_inline_nodes opens loc =
           let cases =
             List.concat_map
               ~f:(fun case ->
-                match case.pc_lhs with
-                | [%pat? [%inline_arms [%e? e]]] -> (
-                    match plus_minus_list_of_expr e with
-                    | Some opts -> (
-                        try
-                          find opts (function
-                            | MatchCase case -> Some case
-                            | _ -> None)
-                        with InlineError err ->
-                          let err =
-                            [%show: inline_error] err
-                            |> Ast_builder.Default.estring ~loc
-                          in
-                          [
-                            {
-                              case with
-                              pc_lhs = [%pat? [%ocaml.error [%e err]]];
-                            };
-                          ])
-                    | None -> [ case ])
-                | _ -> [ case ])
+                  match case.pc_lhs with
+                  | [%pat? [%inline_arms [%e? e]]] -> (
+                      let pc_rhs_map = match case.pc_rhs with
+                        | [%expr map([%e? f])] -> fun e -> [%expr [%e f] ([%e e])]
+                        | _ -> Fn.id
+                      in
+                      match plus_minus_list_of_expr e with
+                      | Some opts -> (
+                          try
+                            find opts (function
+                                | MatchCase case -> Some case
+                                | _ -> None)
+                            |> List.map ~f:(fun case ->
+                                {case with pc_rhs = pc_rhs_map case.pc_rhs}
+                              )
+                          with InlineError err ->
+                            let err =
+                              [%show: inline_error] err
+                              |> Ast_builder.Default.estring ~loc
+                            in
+                            [
+                              {
+                                case with
+                                pc_lhs = [%pat? [%ocaml.error [%e err]]];
+                              };
+                            ])
+                      | None -> [ case ])
+                  | _ -> [ case ])
               cases
           in
           { e with pexp_desc = Pexp_match (scrut, cases) }
