@@ -6,6 +6,23 @@ let name = "declare_features"
 let uppercase_first_char (s : string) : string =
   String.(uppercase (prefix s 1) ^ drop_prefix s 1)
 
+
+let rename (l: (string * string) list) =
+  let h (s: string) =
+    List.find_map ~f:(fun (s', replace) -> if String.equal s s' then Some replace else None) l
+    |> Option.value ~default:s
+  in
+  object
+    inherit Ast_traverse.map as super
+    method! string = h
+    method! label = h
+    method! longident =
+      let rec r = function
+        | Lapply (x, y) -> Lapply (r x, r y)
+        | Ldot (x, y) -> Ldot (r x, h y)
+        | Lident x -> Lident (h x) in r
+  end
+  
 let expand ~(ctxt : Expansion_context.Extension.t)
     (features: string list):
     structure_item =
@@ -13,30 +30,11 @@ let expand ~(ctxt : Expansion_context.Extension.t)
   (* let add_derivings t = [%type: [%t t] [@deriving show, yojson, eq]] in *)
   let (module B) = Ast_builder.make loc in
   (* let template = [%sigi: type name [@@deriving show, yojson, eq] ] in *)
-  let rename_type txt =
-    let h n =
-      if String.(n = "placeholder")
-      then txt
-      else if String.(lowercase n = "placeholder")
-      then uppercase_first_char txt
-      else n
-    in
-    object
-      inherit Ast_traverse.map as super
-      method! type_declaration decl =
-        { decl with ptype_name = {decl.ptype_name with txt = h decl.ptype_name.txt} }
-      method! module_binding mb =
-        let mb = super#module_binding mb in
-        match mb.pmb_name with
-        | {txt = Some txt} as l -> {mb with pmb_name = {l with txt = Some (h txt)}}
-        | _ -> mb
-    end
-  in
   [%stri include struct
     module type FEATURES = sig
       include [%m
         List.map ~f:(fun txt ->
-            (rename_type txt)#signature_item
+            (rename ["placeholder", txt])#signature_item
               [%sigi: type placeholder [@@deriving show, yojson, eq]]
           ) features
         |> B.pmty_signature
@@ -44,16 +42,67 @@ let expand ~(ctxt : Expansion_context.Extension.t)
     end
     module type T = FEATURES
 
+    module DefaultClasses (F: T) = struct
+      open Base
+    (*   (\* TODO: generate those classes automatically *\) *)
+      class virtual ['self] default_reduce_features =
+        object (self : 'self)
+               (* [%m inherit [_] VisitorsRuntime.reduce] *)
+    (*       inherit [_] VisitorsRuntime.reduce *)
+
+    (*       (\* todo: here I force unit to get rid of generalization issues *)
+    (*          Instead, TODO: split this class into multiple *)
+    (*       *\) *)
+    (*       method visit_loop () (_ : F.loop) = self#zero *)
+    (*       method visit_continue () (_ : F.continue) = self#zero *)
+    (*       method visit_mutable_variable () (_ : F.mutable_variable) = self#zero *)
+    (*       method visit_mutable_reference () (_ : F.mutable_reference) = self#zero *)
+    (*       method visit_mutable_pointer () (_ : F.mutable_pointer) = self#zero *)
+    (*       method visit_reference () (_ : F.reference) = self#zero *)
+    (*       method visit_slice () (_ : F.slice) = self#zero *)
+    (*       method visit_raw_pointer () (_ : F.raw_pointer) = self#zero *)
+    (*       method visit_early_exit () (_ : F.early_exit) = self#zero *)
+    (*       method visit_macro () (_ : F.macro) = self#zero *)
+    (*       method visit_as_pattern () (_ : F.as_pattern) = self#zero *)
+    (*       method visit_lifetime () (_ : F.lifetime) = self#zero *)
+    (*       method visit_monadic_action () (_ : F.monadic_action) = self#zero *)
+    (*       method visit_monadic_binding () (_ : F.monadic_binding) = self#zero *)
+        end
+
+    (*   class virtual ['self] default_map_features = *)
+    (*     object (self : 'self) *)
+    (*       inherit ['env] VisitorsRuntime.map *)
+
+    (*       (\* todo: here I force unit to get rid of generalization issues *)
+    (*          Instead, TODO: split this class into multiple *)
+    (*       *\) *)
+    (*       method visit_loop: 'env -> F.loop -> F.loop = Fn.const Fn.id *)
+    (*       method visit_continue: 'env -> F.continue -> F.continue = Fn.const Fn.id *)
+    (*       method visit_mutable_variable: 'env -> F.mutable_variable -> F.mutable_variable = Fn.const Fn.id *)
+    (*       method visit_mutable_reference: 'env -> F.mutable_reference -> F.mutable_reference = Fn.const Fn.id *)
+    (*       method visit_mutable_pointer: 'env -> F.mutable_pointer -> F.mutable_pointer = Fn.const Fn.id *)
+    (*       method visit_reference: 'env -> F.reference -> F.reference = Fn.const Fn.id *)
+    (*       method visit_slice: 'env -> F.slice -> F.slice = Fn.const Fn.id *)
+    (*       method visit_raw_pointer: 'env -> F.raw_pointer -> F.raw_pointer = Fn.const Fn.id *)
+    (*       method visit_early_exit: 'env -> F.early_exit -> F.early_exit = Fn.const Fn.id *)
+    (*       method visit_macro: 'env -> F.macro -> F.macro = Fn.const Fn.id *)
+    (*       method visit_as_pattern: 'env -> F.as_pattern -> F.as_pattern = Fn.const Fn.id *)
+    (*       method visit_lifetime: 'env -> F.lifetime -> F.lifetime = Fn.const Fn.id *)
+    (*       method visit_monadic_action: 'env -> F.monadic_action -> F.monadic_action = Fn.const Fn.id *)
+    (*       method visit_monadic_binding: 'env -> F.monadic_binding -> F.monadic_binding = Fn.const Fn.id *)
+    (*     end *)
+    end
+
     module MapFeatureTypes (T: sig type t [@@deriving show, yojson, eq] end) = struct
       include T
       include [%m
         List.concat_map ~f:(fun txt ->
-            (rename_type txt)#structure
+            (rename ["placeholder", txt; "Placeholder", uppercase_first_char txt])#structure
               [%str
                 module Placeholder = struct
                   type placeholder = T.t [@@deriving show, yojson, eq]
                 end
-                type placeholder = T.t [@@deriving show, yojson, eq]
+                include Placeholder
               ]
           ) features
         |> B.pmod_structure
@@ -70,14 +119,8 @@ let expand ~(ctxt : Expansion_context.Extension.t)
 
         include [%m
           List.map ~f:(fun txt ->
-              let path modul = Longident.(Ldot (Lident modul, txt)) in
-              let h m = B.ptyp_constr {loc; txt = path m} [] in
-              B.psig_value (
-                B.value_description
-                  ~name:{loc; txt}
-                  ~type_:(B.ptyp_arrow Nolabel (h "A") (h "B"))
-                  ~prim:[]
-              )
+              (rename ["placeholder", txt])#signature_item
+                [%sigi: val placeholder: A.placeholder -> B.placeholder]
             ) features
           |> B.pmty_signature
         ]
