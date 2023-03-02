@@ -153,6 +153,7 @@ pub mod thir_elab_part {
     pub enum Backend {
         /// Use the F* backend
         Fstar,
+        Coq
     }
 
     #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
