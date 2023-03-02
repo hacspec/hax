@@ -57,6 +57,8 @@
 //     }
 // }
 
+mod hash;
+
 #[derive(Copy, Clone)]
 struct DummyStruct {
     dummy: u8
