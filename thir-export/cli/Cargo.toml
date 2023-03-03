@@ -26,4 +26,5 @@ itertools = "0.10.5"
 clap = { version = "4.0", features = ["derive"] }
 paste = "1.0.11"
 thir-export={path = "../thir-export"}
+path-clean = "1.0.1"
 

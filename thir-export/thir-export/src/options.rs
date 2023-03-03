@@ -1,5 +1,6 @@
 use clap::Parser;
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NamespaceChunk {
@@ -52,12 +53,43 @@ impl Namespace {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PathOrDash {
+    Dash,
+    Path(PathBuf),
+}
+
+impl std::convert::From<&std::ffi::OsStr> for PathOrDash {
+    fn from(s: &std::ffi::OsStr) -> Self {
+        if s == "-" {
+            PathOrDash::Dash
+        } else {
+            PathOrDash::Path(PathBuf::from(s))
+        }
+    }
+}
+
+impl PathOrDash {
+    pub fn open_or_stdout(&self) -> Box<dyn std::io::Write> {
+        match self {
+            PathOrDash::Dash => box std::io::stdout(),
+            PathOrDash::Path(path) => box std::fs::File::create(&path).unwrap(),
+        }
+    }
+    pub fn map_path<F: FnOnce(&Path) -> PathBuf>(&self, f: F) -> Self {
+        match self {
+            PathOrDash::Path(path) => PathOrDash::Path(f(path)),
+            PathOrDash::Dash => PathOrDash::Dash,
+        }
+    }
+}
+
 #[derive(Parser, Debug, Clone, Serialize, Deserialize)]
 #[command(author, version, about, long_about = None)]
 pub struct Options {
     /// Path to the output JSON file, "-" denotes stdout.
-    #[arg(short, long = "output-file", default_value_t = String::from("thir_export.json"))]
-    pub output_file: String,
+    #[arg(short, long = "output-file", default_value = "thir_export.json")]
+    pub output_file: PathOrDash,
 
     /// Replace the expansion of each macro matching PATTERN by their
     /// invokation. PATTERN denotes a rust path (i.e. [A::B::c]) in
@@ -75,7 +107,7 @@ pub struct Options {
 
     /// Export JSON schema in FILE.
     #[arg(long = "export-json-schema")]
-    pub export_json_schema: Option<String>,
+    pub export_json_schema: Option<PathOrDash>,
 
     /// Arguments to pass to the `cargo build` invokation made by
     /// `thir-export`. For example, to export the THIR of a package

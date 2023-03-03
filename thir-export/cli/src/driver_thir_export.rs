@@ -60,23 +60,13 @@ fn browse_items<'hir>(
         options: box options.clone(),
         thir: (),
         def_id: (),
+        opt_def_id: None,
         macro_infos: macro_calls_r,
         local_ident_map: Rc::new(RefCell::new(HashMap::new())),
     };
     let converted_items = thir_export::inline_macro_invokations(&items.collect(), state);
 
-    serde_json::to_writer_pretty(
-        thir_export::utils::writer_of_path(&options.output_file),
-        &converted_items,
-    )
-    .unwrap();
-    // if options.output_file == "-" {
-    //     // TODO, stream to fd stdout instead
-    //     println!("{}", serde_json::to_string(&converted_items).unwrap());
-    // } else {
-    //     let output = std::fs::File::create(&options.output_file).unwrap();
-    //     serde_json::to_writer_pretty(output, &converted_items).unwrap();
-    // }
+    serde_json::to_writer_pretty(options.output_file.open_or_stdout(), &converted_items).unwrap();
 }
 
 use std::collections::HashMap;
@@ -145,11 +135,6 @@ fn main() {
             .expect("Cannot find environnement variable THIR_EXPORT_OPTIONS"),
     )
     .expect("Invalid value for the environnement variable THIR_EXPORT_OPTIONS");
-
-    options
-        .export_json_schema
-        .as_ref()
-        .map(thir_export::utils::export_schema_to);
 
     let mut rustc_args: Vec<String> = std::env::args().skip(1).collect();
     if !rustc_args.iter().any(|arg| arg.starts_with("--sysroot")) {
