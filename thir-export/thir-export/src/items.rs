@@ -59,6 +59,7 @@ fn make_fn_def<'tcx, S: BaseState<'tcx>>(
         options: s.options(),
         thir: thir.clone(),
         def_id: (),
+        opt_def_id: s.opt_def_id(),
         macro_infos: s.macro_infos(),
         local_ident_map: s.local_ident_map(),
     };
@@ -72,13 +73,13 @@ fn make_fn_def<'tcx, S: BaseState<'tcx>>(
 }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Body> for rustc_hir::BodyId {
-    fn sinto(&self, s: &S) -> Body {
+    #[tracing::instrument]fn sinto(&self, s: &S) -> Body {
         inspect_local_def_id(s.tcx().hir().body_owner_def_id(self.clone()), s).2
     }
 }
 
 impl<'x, 'tcx, S: BaseState<'tcx> + HasDefId> SInto<S, Ty> for rustc_hir::Ty<'x> {
-    fn sinto(self: &rustc_hir::Ty<'x>, s: &S) -> Ty {
+    #[tracing::instrument]fn sinto(self: &rustc_hir::Ty<'x>, s: &S) -> Ty {
         let ctx = rustc_hir_analysis::collect::ItemCtxt::new(s.tcx(), s.def_id());
         ctx.to_ty(self).sinto(s)
     }
@@ -146,7 +147,7 @@ pub enum WherePredicate {
 }
 
 impl<'tcx, S: BaseState<'tcx> + HasDefId> SInto<S, ImplItem> for rustc_hir::ImplItemRef {
-    fn sinto(&self, s: &S) -> ImplItem {
+    #[tracing::instrument]fn sinto(&self, s: &S) -> ImplItem {
         let tcx: rustc_middle::ty::TyCtxt = s.tcx();
         let impl_item = tcx.hir().impl_item(self.id.clone());
         impl_item.sinto(s)
@@ -282,7 +283,7 @@ pub enum FnRetTy {
 }
 
 impl<'a, S> SInto<S, Path> for rustc_hir::TraitRef<'a> {
-    fn sinto(&self, s: &S) -> Path {
+    #[tracing::instrument]fn sinto(&self, s: &S) -> Path {
         self.path
             .segments
             .iter()
@@ -406,13 +407,13 @@ pub struct TraitItem {
 }
 
 impl<'tcx, S: BaseState<'tcx> + HasDefId> SInto<S, Vec<Variant>> for rustc_hir::EnumDef<'tcx> {
-    fn sinto(&self, s: &S) -> Vec<Variant> {
+    #[tracing::instrument]fn sinto(&self, s: &S) -> Vec<Variant> {
         self.variants.iter().map(|v| v.sinto(s)).collect()
     }
 }
 
 impl<'a, S: BaseState<'a> + HasDefId> SInto<S, TraitItem> for rustc_hir::TraitItemRef {
-    fn sinto(&self, s: &S) -> TraitItem {
+    #[tracing::instrument]fn sinto(&self, s: &S) -> TraitItem {
         let tcx: rustc_middle::ty::TyCtxt = s.tcx();
         tcx.hir().trait_item(self.clone().id).sinto(s)
     }
@@ -460,7 +461,7 @@ pub fn inline_macro_invokations<'t, S: BaseState<'t>>(
 }
 
 impl<'a, 'tcx, S: BaseState<'tcx>> SInto<S, Vec<Item>> for rustc_hir::Mod<'a> {
-    fn sinto(&self, s: &S) -> Vec<Item> {
+    #[tracing::instrument]fn sinto(&self, s: &S) -> Vec<Item> {
         inline_macro_invokations(&self.item_ids.iter().cloned().collect(), s)
         // .iter()
         // .map(|item_id| item_id.sinto(s))
@@ -489,7 +490,7 @@ pub struct ForeignItem {
 }
 
 impl<'a, S: BaseState<'a> + HasDefId> SInto<S, ForeignItem> for rustc_hir::ForeignItemRef {
-    fn sinto(&self, s: &S) -> ForeignItem {
+    #[tracing::instrument]fn sinto(&self, s: &S) -> ForeignItem {
         let tcx: rustc_middle::ty::TyCtxt = s.tcx();
         tcx.hir().foreign_item(self.clone().id).sinto(s)
     }
@@ -660,7 +661,7 @@ type GenericBounds = Vec<PredicateKind>;
 impl<'tcx, S: BaseState<'tcx> + HasDefId> SInto<S, GenericBounds>
     for rustc_hir::GenericBounds<'tcx>
 {
-    fn sinto(&self, s: &S) -> GenericBounds {
+    #[tracing::instrument]fn sinto(&self, s: &S) -> GenericBounds {
         let tcx = s.tcx();
         let hir_id = tcx.hir().local_def_id_to_hir_id(s.def_id().expect_local());
         // eprintln!("tcx.hir().get(hir_id)={:#?}", tcx.hir().get(hir_id));
@@ -734,6 +735,7 @@ pub struct Item {
             options: state.options(),
             thir: (),
             def_id: self.owner_id.to_def_id(),
+            opt_def_id: Some(self.owner_id.to_def_id()),
             macro_infos: state.macro_infos(),
             local_ident_map: state.local_ident_map(),
         })
@@ -742,7 +744,7 @@ pub struct Item {
 }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Item> for rustc_hir::ItemId {
-    fn sinto(&self, s: &S) -> Item {
+    #[tracing::instrument]fn sinto(&self, s: &S) -> Item {
         let tcx: rustc_middle::ty::TyCtxt = s.tcx();
         tcx.hir().item(self.clone()).sinto(s)
     }
@@ -759,7 +761,7 @@ pub type Ident = (Symbol, Span);
 // }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Ident> for rustc_span::symbol::Ident {
-    fn sinto(&self, s: &S) -> Ident {
+    #[tracing::instrument]fn sinto(&self, s: &S) -> Ident {
         (self.name.sinto(s), self.span.sinto(s))
     }
 }

@@ -101,6 +101,8 @@ pub mod types {
     pub type LocalIdentMap = Rc<RefCell<HashMap<rustc_middle::thir::LocalVarId, String>>>;
     pub type MacroCalls = Box<HashMap<rustc_span::Span, rustc_ast::ast::MacCall>>;
     pub type Options = Box<crate::options::Options>;
+    pub type OptDefId = Option<rustc_hir::def_id::DefId>;
+    // pub type Predicates<'tcx> = Box<rustc_middle::ty::List<rustc_middle::ty::Predicate<'tcx>>>;
 }
 
 mk!(
@@ -109,8 +111,10 @@ mk!(
         options: {} types::Options,
         thir: {'tcx} rustc_middle::thir::Thir,
         def_id: {} rustc_hir::def_id::DefId,
+        opt_def_id: {} types::OptDefId,
         macro_infos: {} types::MacroCalls,
         local_ident_map: {} types::LocalIdentMap,
+        // predicates: {'tcx} types::Predicates,
     }
 );
 

@@ -7,8 +7,14 @@ use std::path::PathBuf;
 
 use crate::{AdtInto, SInto};
 
-pub trait BaseState<'tcx> =
-    HasTcx<'tcx> + HasOptions + HasMacroInfos + HasLocalIdentMap + IsState<'tcx> + Clone;
+pub trait BaseState<'tcx> = HasTcx<'tcx>
+    + HasOptions
+    + HasMacroInfos
+    + HasLocalIdentMap
+    + IsState<'tcx>
+    + Clone
+    + HasOptDefId
+    + std::fmt::Debug;
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct DefId {
@@ -52,6 +58,7 @@ impl std::convert::From<DefId> for Path {
 }
 
 impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> DefId {
         let tcx = s.tcx();
         let def_path = tcx.def_path(self.clone());
@@ -66,6 +73,7 @@ impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
 
 pub type GlobalIdent = DefId;
 impl<'tcx, S: BaseState<'tcx>> SInto<S, GlobalIdent> for rustc_hir::def_id::LocalDefId {
+    #[tracing::instrument]
     fn sinto(&self, st: &S) -> DefId {
         self.to_def_id().sinto(st)
     }
@@ -98,6 +106,7 @@ pub enum DefPathItem {
 
 pub type Symbol = String;
 impl<'t, S> SInto<S, Symbol> for rustc_span::symbol::Symbol {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> Symbol {
         self.to_ident_string()
     }
@@ -112,6 +121,7 @@ pub enum LintLevel {
 
 pub type Mutability = bool;
 impl<S> SInto<S, Mutability> for rustc_hir::Mutability {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> Mutability {
         match self {
             rustc_hir::Mutability::Mut => true,
@@ -252,12 +262,14 @@ pub enum ConstantKind {
 // }
 
 impl<S> SInto<S, u64> for rustc_middle::mir::interpret::AllocId {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> u64 {
         self.0.get()
     }
 }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Box<Ty>> for rustc_middle::ty::Ty<'tcx> {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> Box<Ty> {
         box self.sinto(s)
     }
@@ -265,6 +277,7 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, Box<Ty>> for rustc_middle::ty::Ty<'tcx> 
 
 // impl<'s, 'a, S: BaseState<'a>>
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Ty> for rustc_middle::ty::Ty<'tcx> {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> Ty {
         self.kind().sinto(s)
     }
@@ -280,6 +293,7 @@ pub struct HirId {
 // TODO: If not working: See original
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, DefId> for rustc_hir::hir_id::OwnerId {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> DefId {
         self.to_def_id().sinto(s)
     }
@@ -344,7 +358,7 @@ pub struct BoundTy {
 // pub type Const = Box<Expr>;
 
 // impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, Const> for rustc_middle::ty::Const<'tcx> {
-//     fn sinto(&self, s: &S) -> Const {
+//     #[tracing::instrument]fn sinto(&self, s: &S) -> Const {
 //         match self.kind() {
 //             rustc_middle::ty::ConstKind::Expr(e) => box e.sinto(s),
 //             _ => panic!("{:#?}", self),
@@ -390,6 +404,7 @@ pub struct Placeholder<T> {
 impl<'tcx, S: BaseState<'tcx>, T: SInto<S, U>, U> SInto<S, Placeholder<U>>
     for rustc_middle::ty::Placeholder<T>
 {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> Placeholder<U> {
         Placeholder {
             universe: self.universe.sinto(s),
@@ -409,6 +424,7 @@ pub type CanonicalUserType = Canonical<UserType>;
 impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>, T: SInto<S, U>, U> SInto<S, Canonical<U>>
     for rustc_middle::infer::canonical::Canonical<'tcx, T>
 {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> Canonical<U> {
         Canonical {
             max_universe: self.max_universe.sinto(s),
@@ -470,6 +486,7 @@ pub enum Visibility<Id = rustc_span::def_id::LocalDefId> {
     Restricted(Id),
 }
 impl<S, T: SInto<S, U>, U> SInto<S, Visibility<U>> for rustc_middle::ty::Visibility<T> {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> Visibility<U> {
         use rustc_middle::ty::Visibility as T;
         match self {
@@ -512,6 +529,7 @@ pub enum GenericArg {
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Vec<GenericArg>>
     for rustc_middle::ty::subst::SubstsRef<'tcx>
 {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> Vec<GenericArg> {
         self.iter().map(|v| v.unpack().sinto(s)).collect()
     }
@@ -528,6 +546,7 @@ pub enum LitIntType {
 
 pub type AdtDef = DefId;
 impl<'a, 's, S: BaseState<'s>> SInto<S, AdtDef> for rustc_middle::ty::AdtDef<'a> {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> AdtDef {
         self.did().sinto(s)
     }
@@ -571,6 +590,7 @@ pub struct FieldPat {
 impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, AdtExpr>
     for rustc_middle::thir::AdtExpr<'tcx>
 {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> AdtExpr {
         let variants = self.adt_def.variants();
         let variant: &rustc_middle::ty::VariantDef = &variants[self.variant_index];
@@ -733,6 +753,7 @@ impl Into<Loc> for rustc_span::Loc {
 }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Span> for rustc_span::Span {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> Span {
         let smap: &rustc_span::source_map::SourceMap = s.tcx().sess.parse_sess.source_map();
         let span = self.clone();
@@ -760,6 +781,7 @@ pub struct LocalIdent {
 }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, LocalIdent> for rustc_middle::thir::LocalVarId {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> LocalIdent {
         LocalIdent {
             name: s
@@ -791,6 +813,7 @@ impl<'s, S: BaseState<'s>, T: SInto<S, U>, U> SInto<S, Spanned<U>>
 }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, String> for PathBuf {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> String {
         self.as_path().display().to_string()
     }
@@ -863,12 +886,103 @@ pub struct Block {
     pub safety_mode: BlockSafety,
 }
 
-#[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::ProjectionTy<'tcx>, state: S as gstate)]
+// #[derive(AdtInto)]
+// #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::ProjectionTy<'tcx>, state: S as gstate)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ProjectionTy {
     pub substs: Vec<GenericArg>,
-    pub item_def_id: DefId,
+    pub trait_def_id: DefId,
+    // pub item_def_id: DefId,
+}
+
+fn get_param_env<'tcx, S: BaseState<'tcx>>(s: &S) -> rustc_middle::ty::ParamEnv<'tcx> {
+    let tcx = s.tcx();
+    let predicates = match s.opt_def_id() {
+        Some(id) => {
+            let predicates = tcx
+                .predicates_of(id)
+                .predicates
+                .into_iter()
+                .map(|(p, _)| p)
+                .cloned()
+                .collect::<Vec<_>>()
+                .into_boxed_slice();
+            tcx.intern_predicates(&predicates)
+        }
+        None => rustc_middle::ty::List::empty(),
+    };
+    rustc_middle::ty::ParamEnv::new(
+        &predicates,
+        rustc_middle::traits::Reveal::All,
+        rustc_hir::Constness::NotConst,
+    )
+}
+
+fn resolve_trait<'tcx, S: BaseState<'tcx>>(trait_ref: rustc_middle::ty::TraitRef<'tcx>, s: &S) {
+    let tcx = s.tcx();
+    let param_env = get_param_env(s);
+    use rustc_middle::ty::Binder;
+    let binder: Binder<'tcx, _> = Binder::dummy(trait_ref);
+    // let x: Result<&rustc_middle::traits::ImplSource<'tcx, ()>, _> =
+    //     tcx.codegen_select_candidate((param_env, binder));
+    use rustc_infer::infer::TyCtxtInferExt;
+    use rustc_infer::traits;
+    use rustc_middle::ty::{ParamEnv, ParamEnvAnd};
+    use rustc_trait_selection::infer::InferCtxtBuilderExt;
+    use rustc_trait_selection::traits::SelectionContext;
+    // let id = s.opt_def_id().unwrap();
+    let inter_ctxt = tcx.infer_ctxt().ignoring_regions().build();
+    let mut selection_ctxt = SelectionContext::new(&inter_ctxt);
+    use std::collections::VecDeque;
+    let mut queue = VecDeque::new();
+    let obligation = traits::Obligation::new(
+        tcx,
+        traits::ObligationCause::dummy(),
+        param_env,
+        rustc_middle::ty::Binder::dummy(trait_ref),
+    );
+    use rustc_middle::traits::ImplSource;
+    queue.push_back(obligation);
+    loop {
+        match queue.pop_front() {
+            Some(obligation) => {
+                let impl_source = selection_ctxt.select(&obligation).unwrap().unwrap();
+                println!("impl_source={:#?}", impl_source);
+                let nested = impl_source.clone().nested_obligations();
+                for subobligation in nested {
+                    let bound_predicate = subobligation.predicate.kind();
+                    match bound_predicate.skip_binder() {
+                        rustc_middle::ty::PredicateKind::Clause(
+                            rustc_middle::ty::Clause::Trait(trait_pred),
+                        ) => {
+                            let trait_pred = bound_predicate.rebind(trait_pred);
+                            let subobligation = subobligation.with(tcx, trait_pred);
+                            queue.push_back(subobligation);
+                        }
+                        _ => (),
+                    }
+                }
+            }
+            None => break,
+        }
+    }
+    // let impl_source = selection_ctxt.select(&obligation).unwrap().unwrap();
+    // let nested = impl_source.clone().nested_obligations();
+}
+
+impl<'tcx, S: BaseState<'tcx>> SInto<S, ProjectionTy> for rustc_middle::ty::ProjectionTy<'tcx> {
+    #[tracing::instrument]
+    fn sinto(&self, s: &S) -> ProjectionTy {
+        let tcx = s.tcx();
+        let trait_ref = self.trait_ref(tcx);
+        // println!("######################");
+        // println!("for={:#?}", self);
+        // resolve_trait(trait_ref, s);
+        ProjectionTy {
+            substs: self.substs.sinto(s),
+            trait_def_id: self.trait_def_id(tcx).sinto(s),
+        }
+    }
 }
 
 #[derive(AdtInto)]
@@ -1011,6 +1125,7 @@ pub struct MacCall {
 
 pub type TokenStream = Vec<TokenTree>;
 impl<'t, S: BaseState<'t>> SInto<S, TokenStream> for rustc_ast::tokenstream::TokenStream {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> TokenStream {
         self.trees().map(|stream| stream.sinto(s)).collect()
     }
@@ -1019,12 +1134,14 @@ impl<'t, S: BaseState<'t>> SInto<S, TokenStream> for rustc_ast::tokenstream::Tok
 sinto_todo!(rustc_ast::tokenstream, DelimSpan);
 
 impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, Block> for rustc_middle::thir::BlockId {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> Block {
         s.thir().blocks[*self].sinto(s)
     }
 }
 
 impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, Stmt> for rustc_middle::thir::StmtId {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> Stmt {
         s.thir().stmts[*self].sinto(s)
     }
@@ -1102,6 +1219,7 @@ pub fn macro_invokation_of_span<'t, S: BaseState<'t>>(
 // }
 
 impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx> {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> Expr {
         let unrolled = self.unroll_scope(s);
         let rustc_middle::thir::Expr { span, kind, ty, .. } = unrolled;
@@ -1161,12 +1279,14 @@ impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, Expr> for rustc_middle::
 }
 
 impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, Expr> for rustc_middle::thir::ExprId {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> Expr {
         s.thir().exprs[*self].sinto(s)
     }
 }
 
 impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, Pat> for rustc_middle::thir::Pat<'tcx> {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> Pat {
         let rustc_middle::thir::Pat { span, kind, ty } = self;
         let contents = match kind {
@@ -1208,6 +1328,7 @@ impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, Pat> for rustc_middle::t
 }
 
 impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, Arm> for rustc_middle::thir::ArmId {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> Arm {
         s.thir().arms[*self].sinto(s)
     }
@@ -1234,6 +1355,7 @@ pub enum FloatTy {
 }
 
 impl<'tcx, S> SInto<S, FloatTy> for rustc_ast::ast::FloatTy {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> FloatTy {
         use rustc_ast::ast::FloatTy as T;
         match self {
@@ -1244,6 +1366,7 @@ impl<'tcx, S> SInto<S, FloatTy> for rustc_ast::ast::FloatTy {
 }
 
 impl<'tcx, S> SInto<S, IntTy> for rustc_ast::ast::IntTy {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> IntTy {
         use rustc_ast::ast::IntTy as T;
         match self {
@@ -1257,6 +1380,7 @@ impl<'tcx, S> SInto<S, IntTy> for rustc_ast::ast::IntTy {
     }
 }
 impl<'tcx, S> SInto<S, UintTy> for rustc_ast::ast::UintTy {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> UintTy {
         use rustc_ast::ast::UintTy as T;
         match self {
@@ -1295,12 +1419,14 @@ pub type Binder<T> = Option<T>;
 impl<'s, S, U, T: SInto<S, U> + rustc_middle::ty::visit::TypeVisitable<'s>> SInto<S, Binder<U>>
     for rustc_middle::ty::Binder<'s, T>
 {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> Binder<U> {
         self.clone().no_bound_vars().map(|x| x.sinto(s))
     }
 }
 
 impl<S, U, T: SInto<S, U>> SInto<S, Vec<U>> for rustc_middle::ty::List<T> {
+    #[tracing::instrument]
     fn sinto(&self, s: &S) -> Vec<U> {
         self.iter().map(|x| x.sinto(s)).collect()
     }
@@ -1426,7 +1552,10 @@ pub enum Ty {
     Str,
 
     /// An array with the given length. Written as `[T; N]`.
-    Array(Box<Ty>, Const),
+    Array(
+        Box<Ty>,
+        #[map(x.try_eval_usize(state.tcx(), get_param_env(state)).unwrap())] u64,
+    ),
 
     /// The pointee of an array slice. Written as `[T]`.
     Slice(Box<Ty>),
@@ -1898,6 +2027,7 @@ pub fn inspect_local_def_id<'tcx, S: BaseState<'tcx>>(
             options: s.options(),
             thir: thir.clone(),
             def_id: (),
+            opt_def_id: s.opt_def_id(),
             macro_infos: s.macro_infos(),
             local_ident_map: s.local_ident_map(),
         };
@@ -1947,11 +2077,11 @@ pub enum ExprKind {
     /// A function call. Method calls and overloaded operators are converted to plain function calls.
     #[map({
         let e = gstate.thir().exprs[*fun].unroll_scope(gstate);
-        let def = match &e.kind {
+        let (def, substs) = match &e.kind {
             rustc_middle::thir::ExprKind::ZstLiteral {user_ty: _ /* TODO: see whether this is relevant or not */} => {
                 match ty.kind() {
-                    rustc_middle::ty::TyKind::FnDef(def, _) =>
-                        def,
+                    rustc_middle::ty::TyKind::FnDef(def, substs) =>
+                        (def, substs),
                     ty_kind => {
                         supposely_unreachable!(
                             "CallNotTyFnDef":
@@ -1969,6 +2099,20 @@ pub enum ExprKind {
                 panic!();
             }
         };
+        let tcx = gstate.tcx();
+        match tcx.trait_of_item(*def) {
+            Some(trait_def_id) => {
+                // println!("########################");
+                // println!("expr={:#?}", self);
+                // printlnresolve!("x={:#?}", x);
+                // resolve_trait(
+                //     rustc_middle::ty::TraitRef::new(trait_def_id, substs),
+                //     gstate
+                // );
+                ()
+            },
+            None => ()
+        }
         // if false {
         //     let tcx = gstate.tcx();
         //     let g = tcx.generics_of(def);
