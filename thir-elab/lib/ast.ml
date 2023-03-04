@@ -46,9 +46,8 @@ type span =
       { variety = "map"; name = "span_map"; ancestors = [ "loc_map" ] }]
 
 let show_span (s : span) : string = "<span>"
-
 let pp_span (fmt : Format.formatter) (s : span) : unit =
-  Format.pp_print_string fmt "<span>"
+  Format.pp_print_string fmt @@ show_span s
 
 type concrete_ident = { crate : string; path : string Non_empty_list.t }
 [@@deriving
@@ -57,6 +56,11 @@ type concrete_ident = { crate : string; path : string Non_empty_list.t }
     eq,
     visitors { variety = "reduce"; name = "concrete_ident_reduce" },
     visitors { variety = "map"; name = "concrete_ident_map" }]
+
+let show_concrete_ident (s : concrete_ident) : string =
+  s.crate ^ "::" ^ String.concat ~sep:"::" @@ Non_empty_list.to_list s.path
+let pp_concrete_ident (fmt : Format.formatter) (s : concrete_ident) : unit =
+  Format.pp_print_string fmt @@ show_concrete_ident s
 
 type primitive_ident =
   | Box
