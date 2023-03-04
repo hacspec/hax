@@ -23,11 +23,19 @@ end
 
 type todo = string
 [@@deriving
-  show, yojson, eq, visitors { variety = "reduce"; name = "todo_reduce" }, visitors { variety = "map"; name = "todo_map" }]
+  show,
+    yojson,
+    eq,
+    visitors { variety = "reduce"; name = "todo_reduce" },
+    visitors { variety = "map"; name = "todo_map" }]
 
 type loc = { col : int; line : int }
 [@@deriving
-  show, yojson, eq, visitors { variety = "reduce"; name = "loc_reduce" }, visitors { variety = "map"; name = "loc_map" }]
+  show,
+    yojson,
+    eq,
+    visitors { variety = "reduce"; name = "loc_reduce" },
+    visitors { variety = "map"; name = "loc_map" }]
 
 type span =
   | Span of {
@@ -42,10 +50,10 @@ type span =
     show,
     visitors
       { variety = "reduce"; name = "span_reduce"; ancestors = [ "loc_reduce" ] },
-    visitors
-      { variety = "map"; name = "span_map"; ancestors = [ "loc_map" ] }]
+    visitors { variety = "map"; name = "span_map"; ancestors = [ "loc_map" ] }]
 
 let show_span (s : span) : string = "<span>"
+
 let pp_span (fmt : Format.formatter) (s : span) : unit =
   Format.pp_print_string fmt @@ show_span s
 
@@ -59,6 +67,7 @@ type concrete_ident = { crate : string; path : string Non_empty_list.t }
 
 let show_concrete_ident (s : concrete_ident) : string =
   s.crate ^ "::" ^ String.concat ~sep:"::" @@ Non_empty_list.to_list s.path
+
 let pp_concrete_ident (fmt : Format.formatter) (s : concrete_ident) : unit =
   Format.pp_print_string fmt @@ show_concrete_ident s
 
@@ -131,7 +140,11 @@ type literal =
   | Float of float
   | Bool of bool
 [@@deriving
-  show, yojson, eq, visitors { variety = "reduce"; name = "literal_reduce" }, visitors { variety = "map"; name = "literal_map" }]
+  show,
+    yojson,
+    eq,
+    visitors { variety = "reduce"; name = "literal_reduce" },
+    visitors { variety = "map"; name = "literal_map" }]
 
 (* type 't spanned = { v : 't; span : span } [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "spanned_reduce" }] *)
 
@@ -179,30 +192,12 @@ functor
             ancestors = [ "borrow_kind_map" ];
           }]
 
+    module DefaultClasses = Features.DefaultClasses (F)
+
     (* TODO: generate those classes automatically *)
     class virtual ['self] default_reduce_features =
       object (self : 'self)
         inherit [_] VisitorsRuntime.reduce
-
-        (* todo: here I force unit to get rid of generalization issues
-           Instead, TODO: split this class into multiple
-        *)
-        method visit_loop () (_ : F.loop) = self#zero
-        method visit_continue () (_ : F.continue) = self#zero
-        method visit_mutable_variable () (_ : F.mutable_variable) = self#zero
-        method visit_mutable_reference () (_ : F.mutable_reference) = self#zero
-        method visit_mutable_pointer () (_ : F.mutable_pointer) = self#zero
-        method visit_reference () (_ : F.reference) = self#zero
-        method visit_slice () (_ : F.slice) = self#zero
-        method visit_raw_pointer () (_ : F.raw_pointer) = self#zero
-        method visit_early_exit () (_ : F.early_exit) = self#zero
-        method visit_macro () (_ : F.macro) = self#zero
-        method visit_as_pattern () (_ : F.as_pattern) = self#zero
-        method visit_lifetime () (_ : F.lifetime) = self#zero
-        method visit_monadic_action () (_ : F.monadic_action) = self#zero
-        method visit_monadic_binding () (_ : F.monadic_binding) = self#zero
-
-        (* move somewhere else *)
         method visit_span _ (_ : span) = self#zero
         method visit_literal _ (_ : literal) = self#zero
       end
@@ -210,25 +205,8 @@ functor
     class virtual ['self] default_map_features =
       object (self : 'self)
         inherit ['env] VisitorsRuntime.map
-
-        method visit_loop: 'env -> F.loop -> F.loop = Fn.const Fn.id
-        method visit_continue: 'env -> F.continue -> F.continue = Fn.const Fn.id
-        method visit_mutable_variable: 'env -> F.mutable_variable -> F.mutable_variable = Fn.const Fn.id
-        method visit_mutable_reference: 'env -> F.mutable_reference -> F.mutable_reference = Fn.const Fn.id
-        method visit_mutable_pointer: 'env -> F.mutable_pointer -> F.mutable_pointer = Fn.const Fn.id
-        method visit_reference: 'env -> F.reference -> F.reference = Fn.const Fn.id
-        method visit_slice: 'env -> F.slice -> F.slice = Fn.const Fn.id
-        method visit_raw_pointer: 'env -> F.raw_pointer -> F.raw_pointer = Fn.const Fn.id
-        method visit_early_exit: 'env -> F.early_exit -> F.early_exit = Fn.const Fn.id
-        method visit_macro: 'env -> F.macro -> F.macro = Fn.const Fn.id
-        method visit_as_pattern: 'env -> F.as_pattern -> F.as_pattern = Fn.const Fn.id
-        method visit_lifetime: 'env -> F.lifetime -> F.lifetime = Fn.const Fn.id
-        method visit_monadic_action: 'env -> F.monadic_action -> F.monadic_action = Fn.const Fn.id
-        method visit_monadic_binding: 'env -> F.monadic_binding -> F.monadic_binding = Fn.const Fn.id
-
-        (* move somewhere else *)
-        method visit_span: 'env -> span -> span = Fn.const Fn.id
-        method visit_literal: 'env -> literal -> literal = Fn.const Fn.id
+        method visit_span : 'env -> span -> span = Fn.const Fn.id
+        method visit_literal : 'env -> literal -> literal = Fn.const Fn.id
       end
 
     type ty =
@@ -270,6 +248,7 @@ functor
                 "todo_reduce";
                 "local_ident_reduce";
                 "default_reduce_features";
+                "DefaultClasses.default_reduce_features";
               ];
           },
         visitors
@@ -282,12 +261,9 @@ functor
                 "todo_map";
                 "local_ident_map";
                 "default_map_features";
+                "DefaultClasses.default_map_features";
               ];
           }]
-    (* [@@deriving visitors { variety = "reduce"; name = "ty_reduce"; ancestors = [] }] *)
-
-    (* type 't decorated = { v : 't; span : span; typ : ty } *)
-    (*     [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "decorated_reduce"; polymorphic = false }] *)
 
     type pat' =
       | PWild
@@ -406,44 +382,77 @@ functor
     (* { variety = "reduce"; name = "expr_reduce"; ancestors = [ "reduce_base" ] }] *)
 
     type generic_param =
-      | Lifetime of {
+      | GPLifetime of {
           ident : local_ident;
           witness : (F.lifetime[@visitors.opaque]);
         }
-      | Type of { ident : local_ident; default : ty option }
-      | Const of { ident : local_ident; typ : ty }
+      | GPType of { ident : local_ident; default : ty option }
+      | GPConst of { ident : local_ident; typ : ty }
     [@@deriving
       show,
         yojson,
         eq,
-        visitors { variety = "reduce"; name = "generic_param_reduce" },
-        visitors { variety = "map"; name = "generic_param_map" }]
+        visitors
+          {
+            variety = "reduce";
+            name = "generic_param_reduce";
+            ancestors = [ "ty_reduce" ];
+          },
+        visitors
+          {
+            variety = "map";
+            name = "generic_param_map";
+            ancestors = [ "ty_map" ];
+          }]
 
     type trait_ref = {
       trait : global_ident;
       args : generic_value list;
       bindings : todo list;
     }
-    [@@deriving show, yojson, eq]
+    [@@deriving
+      show,
+        yojson,
+        eq,
+        visitors
+          {
+            variety = "reduce";
+            name = "trait_ref_reduce";
+            ancestors = [ "ty_reduce" ];
+          },
+        visitors
+          { variety = "map"; name = "trait_ref_map"; ancestors = [ "ty_map" ] }]
 
     type generic_constraint =
-      | Lifetime of todo * (F.lifetime[@visitors.opaque])
-      | Type of { typ : ty; implements : trait_ref }
-    [@@deriving show, yojson, eq]
+      | GCLifetime of todo * (F.lifetime[@visitors.opaque])
+      | GCType of { typ : ty; implements : trait_ref }
+    [@@deriving
+      show,
+        yojson,
+        eq,
+        visitors
+          {
+            variety = "reduce";
+            name = "generic_constraint_reduce";
+            ancestors = [ "trait_ref_reduce" ];
+          },
+        visitors
+          {
+            variety = "map";
+            name = "generic_constraint_map";
+            ancestors = [ "trait_ref_map" ];
+          }]
 
     type param = { pat : pat; typ : ty; typ_span : span option }
-    [@@deriving show, yojson, eq]
 
-    type generics = {
+    and generics = {
       params : generic_param list;
       constraints : generic_constraint list;
     }
-    [@@deriving show, yojson, eq]
 
-    type variant = { name : global_ident; arguments : (global_ident * ty) list }
-    [@@deriving show, yojson, eq]
+    and variant = { name : global_ident; arguments : (global_ident * ty) list }
 
-    type item' =
+    and item' =
       (* Todo, topological sort, rec bundles *)
       | Fn of {
           name : global_ident;
@@ -462,7 +471,29 @@ functor
 
     and item = { v : item'; span : span }
     [@@deriving
-      show, yojson, eq, visitors { variety = "reduce"; name = "item_reduce" }, visitors { variety = "map"; name = "item_map" }]
+      show,
+        yojson,
+        eq,
+        visitors
+          {
+            variety = "reduce";
+            name = "item_reduce";
+            ancestors =
+              [
+                "generic_constraint_reduce";
+                "expr_reduce";
+                "generic_param_reduce";
+              ];
+          },
+        visitors
+          {
+            variety = "map";
+            name = "item_map";
+            ancestors =
+              [ "generic_constraint_map"; "expr_map"; "generic_param_map" ];
+          }]
+    (* [@@deriving *)
+    (*   show, yojson, eq, visitors { variety = "reduce"; name = "item_reduce" }, visitors { variety = "map"; name = "item_map" }] *)
 
     type modul = item list
   end
