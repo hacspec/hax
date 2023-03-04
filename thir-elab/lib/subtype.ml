@@ -189,18 +189,18 @@ struct
 
     let dgeneric_param (generic_param : A.generic_param) : B.generic_param =
       match generic_param with
-      | Lifetime { ident; witness } ->
-        Lifetime { ident; witness = S.lifetime witness }
-      | Type { ident; default } ->
-        Type { ident; default = Option.map ~f:dty default }
-      | Const { ident; typ } -> Const { ident; typ = dty typ }
+      | GPLifetime { ident; witness } ->
+          GPLifetime { ident; witness = S.lifetime witness }
+      | GPType { ident; default } ->
+          GPType { ident; default = Option.map ~f:dty default }
+      | GPConst { ident; typ } -> GPConst { ident; typ = dty typ }
 
     let dgeneric_constraint (generic_constraint : A.generic_constraint) :
-      B.generic_constraint =
+        B.generic_constraint =
       match generic_constraint with
-      | Lifetime (lf, witness) -> B.Lifetime (lf, S.lifetime witness)
-      | Type { typ; implements } ->
-        B.Type { typ = dty typ; implements = dtrait_ref implements }
+      | GCLifetime (lf, witness) -> B.GCLifetime (lf, S.lifetime witness)
+      | GCType { typ; implements } ->
+          B.GCType { typ = dty typ; implements = dtrait_ref implements }
 
     let dgenerics (g : A.generics) : B.generics =
       {
@@ -220,24 +220,25 @@ struct
     and ditem' (item : A.item') : B.item' =
       match item with
       | Fn { name; generics; body; params } ->
-        B.Fn
-          {
-            name;
-            generics = dgenerics generics;
-            body = dexpr body;
-            params = List.map ~f:dparam params;
-          }
+          B.Fn
+            {
+              name;
+              generics = dgenerics generics;
+              body = dexpr body;
+              params = List.map ~f:dparam params;
+            }
       | Type { name; generics; variants; record } ->
-        B.Type
-          {
-            name;
-            generics = dgenerics generics;
-            variants = List.map ~f:dvariant variants;
-            record;
-          }
+          B.Type
+            {
+              name;
+              generics = dgenerics generics;
+              variants = List.map ~f:dvariant variants;
+              record;
+            }
       | TyAlias { name; generics; ty } ->
-        B.TyAlias { name; generics = dgenerics generics; ty = dty ty }
+          B.TyAlias { name; generics = dgenerics generics; ty = dty ty }
       | NotImplementedYet -> B.NotImplementedYet
   end
+
   include Item
 end

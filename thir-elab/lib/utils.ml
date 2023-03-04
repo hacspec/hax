@@ -13,6 +13,5 @@ let map_snd g = Fn.id *** g
 let fst3 (x, _, _) = x
 let snd3 (_, y, _) = y
 let thd3 (_, _, z) = z
-
 let curry f x y = f (x, y)
 let uncurry f (x, y) = f x y

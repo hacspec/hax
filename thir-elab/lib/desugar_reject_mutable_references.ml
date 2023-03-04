@@ -20,6 +20,7 @@ module Make (FA : Features.T) = struct
     include Features.SUBTYPE.Id
 
     let mutable_pointer _ = failwith "mutable_pointer"
+
     (* let mutable_reference _ = failwith "mutable_reference" *)
     let raw_pointer _ = failwith "raw_pointer"
   end
@@ -31,6 +32,7 @@ end
 
 module MakeContinueReject (FA : Features.T) = struct
   open Ast
+
   module FB = struct
     include FA
     include Features.Off.Continue

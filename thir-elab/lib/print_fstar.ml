@@ -8,6 +8,7 @@ let map_first_letter (f : string -> string) (s : string) =
   let first, rest = String.(prefix s 1, drop_prefix s 1) in
   f first ^ rest
 
+(* Helpers for constructing an F* surface AST *)
 module F = struct
   module Util = FStar_Parser_Util
   module AST = FStar_Parser_AST

@@ -8,9 +8,8 @@
   ppx_deriving_yojson.runtime
   fstar.lib)
  (preprocessor_deps
- ; `ppx_inline` is used on the `Subtype` module, thus we need it at PPX time
- (file subtype.ml)
- )
+  ; `ppx_inline` is used on the `Subtype` module, thus we need it at PPX time
+  (file subtype.ml))
  (preprocess
   (pps
    ppx_yojson_conv
@@ -25,6 +24,7 @@
    ppx_matches)))
 
 ; TODO: the following rule works only with the Nix setup
+
 (rule
  (target raw_thir_ast.ml)
  (action

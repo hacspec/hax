@@ -1,7 +1,7 @@
 open Base
 open Utils
 
-module Make
+module%inlined_contents Make
     (F : Features.T
            with type raw_pointer = Features.off
             and type mutable_reference = Features.off) =
@@ -11,7 +11,6 @@ struct
 
   module FB = struct
     include F
-
     include Features.Off.Mutable_pointer
     include Features.Off.Lifetime
     include Features.Off.Reference
@@ -19,6 +18,10 @@ struct
 
   module A = Ast.Make (F)
   module B = Ast.Make (FB)
+
+  module S = struct
+    include Features.SUBTYPE.Id
+  end
 
   let rec dty (t : A.ty) : B.ty =
     match t with
@@ -111,8 +114,7 @@ struct
         MacroInvokation { macro; args; witness }
     | Assign { lhs; e; witness } ->
         Assign { lhs = dlhs lhs; e = dexpr e; witness }
-    | Loop { body; label; witness } ->
-        Loop { body = dexpr body; label; witness }
+    | [%inline_arms Loop + ForLoop] -> auto
     | Break { e; label; witness } -> Break { e = dexpr e; label; witness }
     | Return { e; witness } -> Return { e = dexpr e; witness }
     | Continue { label; witness } -> Continue { label; witness }
@@ -147,17 +149,17 @@ struct
 
   let dgeneric_param (p : A.generic_param) : B.generic_param option =
     match p with
-    | Lifetime { ident; witness } -> None
-    | Type { ident; default } ->
-        Some (Type { ident; default = Option.map ~f:dty default })
-    | Const { ident; typ } -> Some (Const { ident; typ = dty typ })
+    | GPLifetime { ident; witness } -> None
+    | GPType { ident; default } ->
+        Some (GPType { ident; default = Option.map ~f:dty default })
+    | GPConst { ident; typ } -> Some (GPConst { ident; typ = dty typ })
 
   let dgeneric_constraint (p : A.generic_constraint) :
       B.generic_constraint option =
     match p with
-    | Lifetime (lf, witness) -> None
-    | Type { typ; implements } ->
-        Some (B.Type { typ = dty typ; implements = dtrait_ref implements })
+    | GCLifetime (lf, witness) -> None
+    | GCType { typ; implements } ->
+        Some (B.GCType { typ = dty typ; implements = dtrait_ref implements })
 
   let dgenerics (g : A.generics) : B.generics =
     {
@@ -198,3 +200,4 @@ struct
 
   let desugaring_phase = "DropReferences"
 end
+[@@add "subtype.ml"]

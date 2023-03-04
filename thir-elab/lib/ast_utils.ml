@@ -73,6 +73,28 @@ module Make (F : Features.T) = struct
     end
   end
 
+  module Mappers = struct
+    let normalize_borrow_mut =
+      object
+        inherit [_] expr_map as super
+        method visit_t () x = x
+        method visit_mutability _ () m = m
+
+        method! visit_expr s e =
+          let rec expr e =
+            match e.e with
+            | App
+                {
+                  f = { e = GlobalVar (`Primitive Deref) };
+                  args = [ { e = Borrow { e = sub } } ];
+                } ->
+                expr sub
+            | _ -> super#visit_expr s e
+          in
+          expr e
+      end
+  end
+
   module Reducers = struct
     let variables_of_pat (p : pat) : Sets.LocalIdent.t =
       (object
@@ -142,15 +164,18 @@ module Make (F : Features.T) = struct
   let unit_expr : expr =
     { typ = unit_typ; span = Dummy; e = GlobalVar (`TupleCons 0) }
 
-  let rec remove_tuple1 (t: ty): ty
-    = match t with
-    | TApp { ident = `TupleType 1; args = [GType t] } -> remove_tuple1 t
+  let rec remove_tuple1 (t : ty) : ty =
+    match t with
+    | TApp { ident = `TupleType 1; args = [ GType t ] } -> remove_tuple1 t
     | _ -> t
-  
-  let is_unit_typ: ty -> bool = remove_tuple1 >> [%matches? TApp { ident = `TupleType 0 }]
+
+  let is_unit_typ : ty -> bool =
+    remove_tuple1 >> [%matches? TApp { ident = `TupleType 0 }]
 
   let rec pat_is_expr (p : pat) (e : expr) =
     match (p.p, e.e) with
+    | _, Construct { constructor = `TupleCons 1; fields = [ (_, e) ]; _ } ->
+        pat_is_expr p e
     | PBinding { subpat = None; var = pv }, LocalVar ev ->
         [%eq: local_ident] pv ev
     | ( PConstruct { name = pn; args = pargs },
@@ -168,7 +193,7 @@ module Make (F : Features.T) = struct
   let make_let (lhs : pat) (rhs : expr) (body : expr) =
     if pat_is_expr lhs body then rhs
     else { body with e = Let { monadic = None; lhs; rhs; body } }
-  
+
   let make_var_pat (var : local_ident) (typ : ty) (span : span) : pat =
     {
       p = PBinding { mut = Immutable; mode = ByValue; var; typ; subpat = None };
@@ -192,30 +217,31 @@ module Make (F : Features.T) = struct
 
   let make_wild_pat (typ : ty) (span : span) : pat = { p = PWild; span; typ }
 
-  let make_seq (e1: expr) (e2: expr): expr =
+  let make_seq (e1 : expr) (e2 : expr) : expr =
     make_let (make_wild_pat e1.typ e1.span) e1 e2
-  
+
   let make_tuple_field_pat (len : int) (nth : int) (pat : pat) : field_pat =
     { field = `TupleField (nth + 1, len); pat }
 
   let make_tuple_pat' (tuple : field_pat list) : pat =
     match tuple with
-    | [{pat}] -> pat
-    | _ -> 
-    let len = List.length tuple in
-    let span = (* TODO: union of r.bindings's spans *) Dummy in
-    {
-      p =
-        PConstruct
-          {
-            name = `TupleCons len;
-            args = tuple;
-            (*List.mapi ~f:(make_tuple_field_pat len) tuple;*)
-            record = false;
-          };
-      typ = make_tuple_typ @@ List.map ~f:(fun { pat = { typ } } -> typ) tuple;
-      span;
-    }
+    | [ { pat } ] -> pat
+    | _ ->
+        let len = List.length tuple in
+        let span = (* TODO: union of r.bindings's spans *) Dummy in
+        {
+          p =
+            PConstruct
+              {
+                name = `TupleCons len;
+                args = tuple;
+                (*List.mapi ~f:(make_tuple_field_pat len) tuple;*)
+                record = false;
+              };
+          typ =
+            make_tuple_typ @@ List.map ~f:(fun { pat = { typ } } -> typ) tuple;
+          span;
+        }
 
   let make_tuple_pat (pats : pat list) : pat =
     let len = List.length pats in

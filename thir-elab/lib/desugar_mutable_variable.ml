@@ -1,6 +1,29 @@
 open Base
 open Utils
 
+module Fix (F : Features.T) = struct
+  open Ast.Make (F)
+
+  type fix_representation = { body : expr; s_pat : pat; s_init : expr }
+  [@@deriving show]
+
+  let destruct_fix (e : expr) : fix_representation option =
+    match e.e with
+    | App
+        {
+          f =
+            {
+              e =
+                GlobalVar
+                  (`Concrete
+                    { crate = "dummy"; path = Non_empty_list.("fix" :: []) });
+            };
+          args = [ { e = Closure { params = [ s_pat ]; body; _ } }; s_init ];
+        } ->
+        Some { body; s_pat; s_init }
+    | _ -> None
+end
+
 module Make
     (F : Features.T
            with type mutable_reference = Features.off
@@ -11,7 +34,7 @@ module Make
             and type monadic_binding = Features.off
                                                    (* todo: this phase should require mutable borrow to be disabled *))
     (FConstraints : sig
-       val early_exit : F.loop -> F.early_exit
+      val early_exit : F.loop -> F.early_exit
     end) =
 struct
   open Ast
@@ -19,11 +42,11 @@ struct
 
   module FB = struct
     include F
-
     include Features.Off.Mutable_variable
     include Features.Off.Loop
   end
 
+  module B_Fix = Fix (FB)
   module UA = Ast_utils.Make (F)
   module UB = Ast_utils.Make (FB)
   module A = Ast.Make (F)
@@ -205,7 +228,8 @@ struct
 
     let with_names' (name : string) (r : t) : B.expr option * (B.expr -> B.expr)
         =
-      if BTyLocIdentUniqueList.is_empty r.shadowings then (Some r.expr, Fn.id)
+      if BTyLocIdentUniqueList.is_empty r.shadowings then
+        (Option.map ~f:(Fn.const r.expr) r.result_type, Fn.id)
       else
         (* prerr_endline (name ^ " -> " ^ [%show: t] r); *)
         let val_pat, pat = pat' name r in
@@ -602,6 +626,7 @@ struct
                          B.{ span; arm = { pat = dpat pat; body } });
               })
     | If { cond; then_; else_ } ->
+        (* TODO: None [else_] + mutation in [then_] *)
         Result.from_match ctx.vars
           (fun vars -> dexpr { ctx with vars })
           e cond
@@ -803,6 +828,12 @@ struct
                   };
             }
         in
+        (match B_Fix.destruct_fix fix_call with
+        | None -> failwith "None!"
+        | Some fix_call ->
+            (* print_endline @@ B.show_expr @@ fix_call.body *)
+            ())
+        (* print_endline @@ B_Fix.show_fix_representation fix_call *);
         {
           bindings = [];
           value =
@@ -878,16 +909,16 @@ struct
 
   let dgeneric_param (p : A.generic_param) : B.generic_param =
     match p with
-    | Lifetime { ident; witness } -> Lifetime { ident; witness }
-    | Type { ident; default } ->
-        Type { ident; default = Option.map ~f:dty default }
-    | Const { ident; typ } -> Const { ident; typ = dty typ }
+    | GPLifetime { ident; witness } -> GPLifetime { ident; witness }
+    | GPType { ident; default } ->
+        GPType { ident; default = Option.map ~f:dty default }
+    | GPConst { ident; typ } -> GPConst { ident; typ = dty typ }
 
   let dgeneric_constraint (p : A.generic_constraint) : B.generic_constraint =
     match p with
-    | Lifetime (lf, witness) -> B.Lifetime (lf, witness)
-    | Type { typ; implements } ->
-        B.Type { typ = dty typ; implements = dtrait_ref implements }
+    | GCLifetime (lf, witness) -> B.GCLifetime (lf, witness)
+    | GCType { typ; implements } ->
+        B.GCType { typ = dty typ; implements = dtrait_ref implements }
 
   let dgenerics (g : A.generics) : B.generics =
     {

@@ -48,7 +48,7 @@ let collect_ast_nodes (result : inlinable_item list ref) =
               | Some n -> add [ { path = path @ [ n ]; kind = StrItem s } ]
               | _ -> ())
       | Pstr_type (r, bindings) ->
-          List.iter bindings ~f:(fun { ptype_name = {txt = n} } ->
+          List.iter bindings ~f:(fun { ptype_name = { txt = n } } ->
               add [ { path = path @ [ n ]; kind = StrItem s } ])
       | _ -> ());
       super#structure_item path s
@@ -74,7 +74,9 @@ let collect_ast_nodes (result : inlinable_item list ref) =
   end
 
 let locate_module ~loc module_name =
-  let dirname = loc.Ocaml_common.Location.loc_start.pos_fname |> Filename.dirname in
+  let dirname =
+    loc.Ocaml_common.Location.loc_start.pos_fname |> Filename.dirname
+  in
   Filename.concat dirname module_name
 
 let inlinable_items_of_module : loc:location -> string -> inlinable_item list =
@@ -82,13 +84,13 @@ let inlinable_items_of_module : loc:location -> string -> inlinable_item list =
   fun ~loc path ->
     Hashtbl.find_or_add memo
       ~default:(fun () ->
-          let results = ref [] in
-          let _ =
-            locate_module ~loc path |> open_in |> Lexing.from_channel
-            |> Parse.implementation
-            |> (collect_ast_nodes results)#structure [ path ] in
-          !results
-        )
+        let results = ref [] in
+        let _ =
+          locate_module ~loc path |> open_in |> Lexing.from_channel
+          |> Parse.implementation
+          |> (collect_ast_nodes results)#structure [ path ]
+        in
+        !results)
       path
 
 let inlinable_items_of_modules ~loc : string list -> inlinable_item list =
@@ -145,7 +147,8 @@ let map_inline_nodes opens loc =
     | _ -> List.is_suffix ~equal:String.equal ~suffix:glob against
   in
   let matches (glob : string list) : inlinable_item list =
-    List.filter ~f:(fun { path } -> match_glob glob path) @@ inlinable_items ~loc
+    List.filter ~f:(fun { path } -> match_glob glob path)
+    @@ inlinable_items ~loc
   in
   let find_one (type a) (glob : string list)
       (f : inlinable_item_kind -> a option) : (string list * a) list =
@@ -159,7 +162,8 @@ let map_inline_nodes opens loc =
         @@ NotFound
              {
                search = glob;
-               available = List.map ~f:(fun { path } -> path) @@ inlinable_items ~loc;
+               available =
+                 List.map ~f:(fun { path } -> path) @@ inlinable_items ~loc;
              }
     | l -> l
   in
@@ -210,34 +214,34 @@ let map_inline_nodes opens loc =
           let cases =
             List.concat_map
               ~f:(fun case ->
-                  match case.pc_lhs with
-                  | [%pat? [%inline_arms [%e? e]]] -> (
-                      let pc_rhs_map = match case.pc_rhs with
-                        | [%expr map([%e? f])] -> fun e -> [%expr [%e f] ([%e e])]
-                        | _ -> Fn.id
-                      in
-                      match plus_minus_list_of_expr e with
-                      | Some opts -> (
-                          try
-                            find opts (function
-                                | MatchCase case -> Some case
-                                | _ -> None)
-                            |> List.map ~f:(fun case ->
-                                {case with pc_rhs = pc_rhs_map case.pc_rhs}
-                              )
-                          with InlineError err ->
-                            let err =
-                              [%show: inline_error] err
-                              |> Ast_builder.Default.estring ~loc
-                            in
-                            [
-                              {
-                                case with
-                                pc_lhs = [%pat? [%ocaml.error [%e err]]];
-                              };
-                            ])
-                      | None -> [ case ])
-                  | _ -> [ case ])
+                match case.pc_lhs with
+                | [%pat? [%inline_arms [%e? e]]] -> (
+                    let pc_rhs_map =
+                      match case.pc_rhs with
+                      | [%expr map [%e? f]] -> fun e -> [%expr [%e f] [%e e]]
+                      | _ -> Fn.id
+                    in
+                    match plus_minus_list_of_expr e with
+                    | Some opts -> (
+                        try
+                          find opts (function
+                            | MatchCase case -> Some case
+                            | _ -> None)
+                          |> List.map ~f:(fun case ->
+                                 { case with pc_rhs = pc_rhs_map case.pc_rhs })
+                        with InlineError err ->
+                          let err =
+                            [%show: inline_error] err
+                            |> Ast_builder.Default.estring ~loc
+                          in
+                          [
+                            {
+                              case with
+                              pc_lhs = [%pat? [%ocaml.error [%e err]]];
+                            };
+                          ])
+                    | None -> [ case ])
+                | _ -> [ case ])
               cases
           in
           { e with pexp_desc = Pexp_match (scrut, cases) }

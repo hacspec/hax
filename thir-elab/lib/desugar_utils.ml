@@ -18,6 +18,14 @@ module type DESUGAR = sig
   val ditem : A.item -> B.item
 end
 
+module type DESUGAR_EXN = sig
+  include DESUGAR
+
+  type error [@@deriving show]
+
+  exception Error of error
+end
+
 let _DEBUG_SHOW_ITEM = false
 let _DEBUG_SHOW_BACKTRACE = false
 
@@ -56,3 +64,9 @@ struct
   let ditem : A.item -> B.item = D1'.ditem >> D2'.ditem
 end
 
+module CatchExnDesugar (D : DESUGAR_EXN) = struct
+  include D
+
+  let ditem (i : A.item) : B.item =
+    try ditem i with D.Error error -> failwith (show_error error)
+end

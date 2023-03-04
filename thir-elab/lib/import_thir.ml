@@ -22,9 +22,9 @@ type error =
 module Exn = struct
   exception ImportError of error
 
-  open (struct
+  open struct
     let raise e = raise @@ ImportError e
-  end)
+  end
 
   let loc (loc : Thir.loc) : Ast.loc = { col = loc.col; line = loc.line }
 
@@ -54,12 +54,13 @@ module Exn = struct
     | Span { file; lo }, Span { hi } -> Span { file; lo; hi }
 
   let c_span (span : Thir.span) : span =
-    Span {
-      lo = loc span.lo;
-      hi = loc span.hi;
-      file =
-        (match span.filename with Real (LocalPath path) -> path | _ -> "?");
-    }
+    Span
+      {
+        lo = loc span.lo;
+        hi = loc span.hi;
+        file =
+          (match span.filename with Real (LocalPath path) -> path | _ -> "?");
+      }
 
   let int_ty_to_size : Thir.int_ty -> size = function
     | Isize -> SSize
@@ -94,27 +95,24 @@ module Exn = struct
   let unit_typ : ty = TApp { ident = `TupleType 0; args = [] }
 
   let unit_expr : expr =
-    {
-      typ = unit_typ;
-      span = Dummy;
-      e = Ast.GlobalVar (`TupleCons 0)
-    }
+    { typ = unit_typ; span = Dummy; e = Ast.GlobalVar (`TupleCons 0) }
 
   let wild_pat : ty -> pat = fun typ -> { typ; span = Dummy; p = PWild }
 
   module GlobalNames = struct
     let h typ v : expr = { span = Dummy; typ; e = Ast.GlobalVar v }
-    let box (t: ty): expr =
-      let box = `Primitive Box in
-      h (TArrow ([t], TApp {ident = box; args = [GType t]})) box
-    let deref (t1: ty) (t2: ty) : expr =
-      h (TArrow ([t1], t2)) (`Primitive Deref)
 
-    let cast t1 t2: expr =
-      `Primitive Cast |> h @@ TArrow ([t1], t2)
+    let box (t : ty) : expr =
+      let box = `Primitive Box in
+      h (TArrow ([ t ], TApp { ident = box; args = [ GType t ] })) box
+
+    let deref (t1 : ty) (t2 : ty) : expr =
+      h (TArrow ([ t1 ], t2)) (`Primitive Deref)
+
+    let cast t1 t2 : expr = `Primitive Cast |> h @@ TArrow ([ t1 ], t2)
 
     let binop : ty -> ty -> ty -> Thir.bin_op -> expr =
-      fun l r out op ->
+     fun l r out op ->
       {
         span = Dummy;
         typ = Ast.TArrow ([ l; r ], out);
@@ -130,13 +128,13 @@ module Exn = struct
     | Byte _ -> failwith "todo"
     | Char s -> String s
     | Int (i, t) ->
-      Int
-        {
-          value = i;
-          kind =
-            { size = S8; signedness = Unsigned }
-          (* kind = (match t with _ -> failwith "lit: int" (\* TODO *\)); *);
-        }
+        Int
+          {
+            value = i;
+            kind =
+              { size = S8; signedness = Unsigned }
+              (* kind = (match t with _ -> failwith "lit: int" (\* TODO *\)); *);
+          }
     | Float _ -> failwith "todo float"
     | Bool b -> Bool b
 
@@ -153,18 +151,20 @@ module Exn = struct
     if not (is_def_id_prefix info.type_namespace info.variant) then
       failwith
         ("variant_id_of_variant_informations: ["
-         ^ Thir.show_def_id info.type_namespace
-         ^ "] is not a prefix of ["
-         ^ Thir.show_def_id info.variant
-         ^ "]");
+        ^ Thir.show_def_id info.type_namespace
+        ^ "] is not a prefix of ["
+        ^ Thir.show_def_id info.variant
+        ^ "]");
     append_to_thir_def_id info.type_namespace (List.last_exn info.variant.path)
 
   let unbox_underef_expr (e : expr) : expr =
     match e.e with
     | App
-        { f = { e = GlobalVar (`Primitive (Ast.Box | Ast.Deref)) }; args = [ e ] }
-      ->
-      e
+        {
+          f = { e = GlobalVar (`Primitive (Ast.Box | Ast.Deref)) };
+          args = [ e ];
+        } ->
+        e
     | _ -> e
 
   let resugar_index_mut (e : expr) : (expr * expr) option =
@@ -176,211 +176,211 @@ module Exn = struct
               e =
                 GlobalVar
                   (`Concrete
-                     {
-                       crate = "core";
-                       path =
-                         Non_empty_list.(
-                           "ops" :: [ "index"; "IndexMut"; "index_mut" ]);
-                     });
+                    {
+                      crate = "core";
+                      path =
+                        Non_empty_list.(
+                          "ops" :: [ "index"; "IndexMut"; "index_mut" ]);
+                    });
             };
           args = [ { e = Borrow { e = x } }; index ];
         } ->
-      Some (x, index)
+        Some (x, index)
     | _ -> None
 
   let rec c_expr (e : Thir.decorated_for__expr_kind) : expr =
-    let call f args = App {f; args = List.map ~f:c_expr args} in
+    let call f args = App { f; args = List.map ~f:c_expr args } in
     let typ = c_ty e.ty in
     let span = c_span e.span in
     let mk typ e : expr = { span; typ; e } in
     let mk_global typ v : expr = { span; typ; e = GlobalVar v } in
-    let (->.) a b = TArrow (a, b) in
+    let ( ->. ) a b = TArrow (a, b) in
     let (v : expr') =
       match e.contents with
       | Box { value } ->
-        let inner_typ = c_ty e.ty in
-        call (mk_global ([inner_typ] ->. typ) @@ `Primitive Box) [ value ]
+          let inner_typ = c_ty e.ty in
+          call (mk_global ([ inner_typ ] ->. typ) @@ `Primitive Box) [ value ]
       | MacroInvokation { argument; macro_ident } ->
-        MacroInvokation
-          { args = argument; macro = def_id macro_ident; witness = () }
+          MacroInvokation
+            { args = argument; macro = def_id macro_ident; witness = () }
       | If { cond; if_then_scope = _; else_opt; then' } ->
-        let cond = c_expr cond in
-        let then_ = c_expr then' in
-        let else_ = Option.map ~f:c_expr else_opt in
-        If { cond; else_; then_ }
+          let cond = c_expr cond in
+          let then_ = c_expr then' in
+          let else_ = Option.map ~f:c_expr else_opt in
+          If { cond; else_; then_ }
       | Call { args; fn_span = _; from_hir_call = _; fun'; ty = _ } ->
-        let args = List.map ~f:c_expr args in
-        let f = c_expr fun' in
-        App { f; args }
+          let args = List.map ~f:c_expr args in
+          let f = c_expr fun' in
+          App { f; args }
       | Deref { arg } ->
-        let inner_typ = c_ty e.ty in
-        call (mk_global ([inner_typ] ->. typ) @@ `Primitive Deref) [ arg ]
+          let inner_typ = c_ty e.ty in
+          call (mk_global ([ inner_typ ] ->. typ) @@ `Primitive Deref) [ arg ]
       | Binary { lhs; rhs; op } ->
-        let lty = c_ty lhs.ty in
-        let rty = c_ty rhs.ty in
-        call (GlobalNames.binop lty rty typ op) [ lhs; rhs ]
+          let lty = c_ty lhs.ty in
+          let rty = c_ty rhs.ty in
+          call (GlobalNames.binop lty rty typ op) [ lhs; rhs ]
       | LogicalOp { lhs; rhs; op } ->
-        let lhs_type = c_ty lhs.ty in
-        let rhs_type = c_ty rhs.ty in
-        call (mk_global ([lhs_type; rhs_type] ->. typ) @@ `Primitive Deref) [ lhs; rhs ]
+          let lhs_type = c_ty lhs.ty in
+          let rhs_type = c_ty rhs.ty in
+          call
+            (mk_global ([ lhs_type; rhs_type ] ->. typ) @@ `Primitive Deref)
+            [ lhs; rhs ]
       | Unary { arg; op } ->
-        let arg_type = c_ty arg.ty in
-        call (mk_global ([arg_type] ->. typ) @@ `Primitive Deref) [ arg ]
+          let arg_type = c_ty arg.ty in
+          call (mk_global ([ arg_type ] ->. typ) @@ `Primitive Deref) [ arg ]
       | Cast { source } ->
-        let source_type = c_ty source.ty in
-        call (mk_global ([source_type] ->. typ) @@ `Primitive Deref) [ source ]
+          let source_type = c_ty source.ty in
+          call
+            (mk_global ([ source_type ] ->. typ) @@ `Primitive Deref)
+            [ source ]
       | Use { source } ->
-        let source = c_expr source in
-        source.e
+          let source = c_expr source in
+          source.e
       | NeverToAny { source } ->
-        let { e } = c_expr source in
-        e
+          let { e } = c_expr source in
+          e
       (* TODO: this is incorrect *)
       | Pointer _ -> failwith "Pointer"
       | Loop { body } ->
-        let body = c_expr body in
-        Loop { body; label = None; witness = () }
+          let body = c_expr body in
+          Loop { body; label = None; witness = () }
       | Match { scrutinee; arms } ->
-        let scrutinee = c_expr scrutinee in
-        let arms = List.map ~f:c_arm arms in
-        Match { scrutinee; arms }
+          let scrutinee = c_expr scrutinee in
+          let arms = List.map ~f:c_arm arms in
+          Match { scrutinee; arms }
       | Let _ -> failwith "TODO: Let"
       | Block { safety_mode = BuiltinUnsafe | ExplicitUnsafe } ->
-        raise UnsafeBlock
+          raise UnsafeBlock
       | Block o ->
-        let init =
-          Option.map ~f:c_expr o.expr |> Option.value ~default:unit_expr
-        in
-        let {e} = List.fold_right o.stmts ~init ~f:(fun { kind } body ->
-            match kind with
-            | Expr { expr = rhs } ->
-              let rhs = c_expr rhs in
-              let e =
-                Let { monadic = None; lhs = wild_pat rhs.typ; rhs; body }
-              in
-              let span = union_span rhs.span body.span in
-              { e; typ; span }
-            | Let { else_block = Some _ } -> raise LetElse
-            | Let { initializer' = None } -> raise LetWithoutInit
-            | Let { pattern = lhs; initializer' = Some rhs } ->
-              let lhs = c_pat lhs in
-              let rhs = c_expr rhs in
-              let e = Let { monadic = None; lhs; rhs; body } in
-              let span = union_span rhs.span body.span in
-              { e; typ; span })
-        in e
+          let init =
+            Option.map ~f:c_expr o.expr |> Option.value ~default:unit_expr
+          in
+          let { e } =
+            List.fold_right o.stmts ~init ~f:(fun { kind } body ->
+                match kind with
+                | Expr { expr = rhs } ->
+                    let rhs = c_expr rhs in
+                    let e =
+                      Let { monadic = None; lhs = wild_pat rhs.typ; rhs; body }
+                    in
+                    let span = union_span rhs.span body.span in
+                    { e; typ; span }
+                | Let { else_block = Some _ } -> raise LetElse
+                | Let { initializer' = None } -> raise LetWithoutInit
+                | Let { pattern = lhs; initializer' = Some rhs } ->
+                    let lhs = c_pat lhs in
+                    let rhs = c_expr rhs in
+                    let e = Let { monadic = None; lhs; rhs; body } in
+                    let span = union_span rhs.span body.span in
+                    { e; typ; span })
+          in
+          e
       | Assign { lhs; rhs } ->
-        let lhs = c_expr lhs in
-        let e = c_expr rhs in
-        let lhs =
-          match lhs.e with
-          | LocalVar ident -> LhsLocalVar ident
-          | _ -> (
-              match resugar_index_mut lhs with
-              | Some (e, index) -> ArrayAccessor { e; index }
-              | None -> failwith ("Cannot handle LHS: " ^ [%show: expr] lhs))
-        in
-        Assign { lhs; e; witness = () }
+          let lhs = c_expr lhs in
+          let e = c_expr rhs in
+          let lhs =
+            match lhs.e with
+            | LocalVar ident -> LhsLocalVar ident
+            | _ -> (
+                match resugar_index_mut lhs with
+                | Some (e, index) -> ArrayAccessor { e; index }
+                | None -> failwith ("Cannot handle LHS: " ^ [%show: expr] lhs))
+          in
+          Assign { lhs; e; witness = () }
       | AssignOp _ -> failwith "AssignOp"
       | VarRef { id } -> LocalVar (local_ident id)
       | Field { lhs; field } ->
-        let lhs = c_expr lhs in
-        let projector =
-          GlobalVar (`Projector (`Concrete (concrete_of_def_id field)))
-        in
-        let span = c_span e.span in
-        App
-          {
-            f = { e = projector; typ = TArrow ([ lhs.typ ], typ); span };
-            args = [ lhs ];
-          }
+          let lhs = c_expr lhs in
+          let projector =
+            GlobalVar (`Projector (`Concrete (concrete_of_def_id field)))
+          in
+          let span = c_span e.span in
+          App
+            {
+              f = { e = projector; typ = TArrow ([ lhs.typ ], typ); span };
+              args = [ lhs ];
+            }
       | TupleField { lhs; field } ->
-        (* TODO: refactor *)
-        let tuple_len = 0 (* todo, lookup type *) in
-        let lhs = c_expr lhs in
-        let projector =
-          GlobalVar (`Projector (`TupleField (field, tuple_len)))
-        in
-        let span = c_span e.span in
-        App
-          {
-            f = { e = projector; typ = TArrow ([ lhs.typ ], typ); span };
-            args = [ lhs ];
-          }
+          (* TODO: refactor *)
+          let tuple_len = 0 (* todo, lookup type *) in
+          let lhs = c_expr lhs in
+          let projector =
+            GlobalVar (`Projector (`TupleField (field, tuple_len)))
+          in
+          let span = c_span e.span in
+          App
+            {
+              f = { e = projector; typ = TArrow ([ lhs.typ ], typ); span };
+              args = [ lhs ];
+            }
       | GlobalName { id } -> GlobalVar (def_id id)
-      | UpvarRef { var_hir_id = id } ->
-        LocalVar (local_ident id)
+      | UpvarRef { var_hir_id = id } -> LocalVar (local_ident id)
       (* failwith ("upvar ref: " ^ Thir.show_decorated_for__expr_kind e) *)
       | Borrow { arg; borrow_kind = kind } ->
-        let e = c_expr arg in
-        let kind = c_borrow_kind kind in
-        Borrow { kind; e; witness = () }
+          let e = c_expr arg in
+          let kind = c_borrow_kind kind in
+          Borrow { kind; e; witness = () }
       | AddressOf { arg; mutability = mut } ->
-        let e = c_expr arg in
-        AddressOf { e; mut = c_mutability () mut; witness = () }
+          let e = c_expr arg in
+          AddressOf { e; mut = c_mutability () mut; witness = () }
       (* | Break { label; value = Some _ } -> *)
       (*     failwith "TODO: Break with labels are not supported" *)
       | Break { label; value } ->
-        let e = Option.map ~f:c_expr value in
-        let e = Option.value ~default:unit_expr e in
-        Break { e; label = None; witness = () }
+          let e = Option.map ~f:c_expr value in
+          let e = Option.value ~default:unit_expr e in
+          Break { e; label = None; witness = () }
       | Continue _ -> failwith "Continue"
       | Return { value } ->
-        let e = Option.map ~f:c_expr value in
-        let e = Option.value ~default:unit_expr e in
-        Return { e; witness = () }
+          let e = Option.map ~f:c_expr value in
+          let e = Option.value ~default:unit_expr e in
+          Return { e; witness = () }
       | ConstBlock _ -> failwith "ConstBlock"
       | Repeat _ -> failwith "Repeat"
       | Tuple { fields } ->
-        let fields = List.map ~f:c_expr fields in
-        let len = List.length fields in
-        Construct
-          {
-            constructor = `TupleCons len;
-            constructs_record = false;
-            fields =
-              List.mapi
-                ~f:(fun i field -> (`TupleField (i, len), field))
-                fields;
-            base = None;
-          }
-      | Array { fields } ->
-        Array (List.map ~f:c_expr fields)
+          let fields = List.map ~f:c_expr fields in
+          let len = List.length fields in
+          Construct
+            {
+              constructor = `TupleCons len;
+              constructs_record = false;
+              fields =
+                List.mapi
+                  ~f:(fun i field -> (`TupleField (i, len), field))
+                  fields;
+              base = None;
+            }
+      | Array { fields } -> Array (List.map ~f:c_expr fields)
       | Adt { info; base; fields; user_ty } ->
-        let constructor = def_id @@ variant_id_of_variant_informations info in
-        let base =
-          Option.map ~f:(fun base -> c_expr base.base) base
-        in
-        let fields =
-          List.map
-            ~f:(fun f ->
+          let constructor = def_id @@ variant_id_of_variant_informations info in
+          let base = Option.map ~f:(fun base -> c_expr base.base) base in
+          let fields =
+            List.map
+              ~f:(fun f ->
                 let field =
                   def_id
                   @@ append_to_thir_def_id info.type_namespace
-                    (List.last_exn f.field.path)
+                       (List.last_exn f.field.path)
                 in
                 let value = c_expr f.value in
-                field, value
-              )
-            fields
-        in
-        Construct
-          {
-            constructs_record = info.constructs_record;
-            constructor;
-            fields;
-            base;
-          }
-      | Literal { lit } ->
-        Literal (c_lit lit)
+                (field, value))
+              fields
+          in
+          Construct
+            {
+              constructs_record = info.constructs_record;
+              constructor;
+              fields;
+              base;
+            }
+      | Literal { lit } -> Literal (c_lit lit)
       | NamedConst { def_id = id } -> GlobalVar (def_id id)
       | Closure { movability; body; params; upvars } ->
-        let params =
-          List.filter_map ~f:(fun p -> Option.map ~f:c_pat p.pat) params
-        in
-        let body = c_expr body in
-        let upvars = List.map ~f:c_expr upvars in
-        Closure { body; params; captures = upvars }
+          let params =
+            List.filter_map ~f:(fun p -> Option.map ~f:c_pat p.pat) params
+          in
+          let body = c_expr body in
+          let upvars = List.map ~f:c_expr upvars in
+          Closure { body; params; captures = upvars }
       | e -> failwith ("todo expr: " ^ Thir.show_expr_kind e)
     in
     { e = v; span; typ }
@@ -392,43 +392,39 @@ module Exn = struct
       match pat.contents with
       | Wild -> PWild
       | AscribeUserType { ascription = { annotation }; subpattern } ->
-        let typ, typ_span = c_canonical_user_type_annotation annotation in
-        let pat = c_pat subpattern in
-        PAscription { typ; typ_span; pat }
+          let typ, typ_span = c_canonical_user_type_annotation annotation in
+          let pat = c_pat subpattern in
+          PAscription { typ; typ_span; pat }
       | Binding { mode; mutability; subpattern; ty; var } ->
-        let mut = c_mutability () mutability in
-        let subpat =
-          Option.map
-            ~f:(c_pat &&& Fn.const ())
-            subpattern
-        in
-        let typ = c_ty ty in
-        let mode = c_binding_mode mode in
-        let var = local_ident var in
-        PBinding { mut; mode; var; typ; subpat }
+          let mut = c_mutability () mutability in
+          let subpat = Option.map ~f:(c_pat &&& Fn.const ()) subpattern in
+          let typ = c_ty ty in
+          let mode = c_binding_mode mode in
+          let var = local_ident var in
+          PBinding { mut; mode; var; typ; subpat }
       | Variant { info; substs; subpatterns } ->
-        let name = def_id @@ variant_id_of_variant_informations info in
-        let args = List.map ~f:(c_field_pat info) subpatterns in
-        PConstruct { record = info.constructs_record; name; args }
+          let name = def_id @@ variant_id_of_variant_informations info in
+          let args = List.map ~f:(c_field_pat info) subpatterns in
+          PConstruct { record = info.constructs_record; name; args }
       | Tuple { subpatterns } ->
-        let len = List.length subpatterns in
-        let args =
-          List.mapi
-            ~f:(fun i pat ->
+          let len = List.length subpatterns in
+          let args =
+            List.mapi
+              ~f:(fun i pat ->
                 let pat = c_pat pat in
                 { field = `TupleField (i, len); pat })
-            subpatterns
-        in
-        PConstruct
-          {
-            name = `TupleCons (List.length subpatterns);
-            args;
-            record = false;
-          }
+              subpatterns
+          in
+          PConstruct
+            {
+              name = `TupleCons (List.length subpatterns);
+              args;
+              record = false;
+            }
       | Deref _ -> failwith "Deref"
       | Constant { value } ->
-        let lit = c_constant_kind value in
-        PConstant { lit }
+          let lit = c_constant_kind value in
+          PConstant { lit }
       | Array { prefix; suffix; slice } -> failwith "Pat:Array"
       | Or _ -> failwith "Or"
       | Slice _ -> failwith "Slice"
@@ -437,10 +433,12 @@ module Exn = struct
     { p = v; span; typ }
 
   and c_field_pat info (field_pat : Thir.field_pat) : field_pat =
-    { field = def_id
+    {
+      field =
+        def_id
         @@ append_to_thir_def_id info.type_namespace
-          (List.last_exn field_pat.field.path)
-    ; pat = c_pat field_pat.pattern
+             (List.last_exn field_pat.field.path);
+      pat = c_pat field_pat.pattern;
     }
 
   and c_constant_kind (k : Thir.constant_kind) : literal =
@@ -455,7 +453,7 @@ module Exn = struct
 
   and c_canonical_user_type_annotation
       (annotation : Thir.canonical_user_type_annotation) : ty * span =
-    c_ty annotation.inferred_ty, c_span annotation.span
+    (c_ty annotation.inferred_ty, c_span annotation.span)
 
   and c_ty (ty : Thir.ty) : ty =
     match ty with
@@ -466,28 +464,38 @@ module Exn = struct
     | Float k -> TFloat
     | Arrow { params; ret } -> TArrow (List.map ~f:c_ty params, c_ty ret)
     | NamedType { def_id = id; generic_args } ->
-      let ident = def_id id in
-      let args = List.map ~f:c_generic_value generic_args in
-      TApp { ident; args }
+        let ident = def_id id in
+        let args = List.map ~f:c_generic_value generic_args in
+        TApp { ident; args }
     | Foreign _ -> failwith "Foreign"
     | Str -> TStr
-    | Array (ty, len) -> failwith "len array TODO"
+    | Array (ty, len) ->
+        TArray
+          {
+            typ = c_ty ty;
+            length =
+              len
+              (* TODO *)
+              (* length = match len.kind with *)
+              (*   | Value -> failwith "value" *)
+              (*   | _ -> failwith "Import_thir:Array:len" *);
+          }
     | Slice ty ->
-      let ty = c_ty ty in
-      TSlice { ty; witness = () }
+        let ty = c_ty ty in
+        TSlice { ty; witness = () }
     | RawPtr _ -> TRawPointer { witness = () }
     | Ref (region, ty, mut) ->
-      let typ = c_ty ty in
-      let mut = c_mutability () mut in
-      TRef { witness = (); region = "todo"; typ; mut }
+        let typ = c_ty ty in
+        let mut = c_mutability () mut in
+        TRef { witness = (); region = "todo"; typ; mut }
     | Never -> TFalse
     | Tuple types ->
-      let types = List.map ~f:(fun ty -> GType (c_ty ty)) types in
-      TApp { ident = `TupleType (List.length types); args = types }
+        let types = List.map ~f:(fun ty -> GType (c_ty ty)) types in
+        TApp { ident = `TupleType (List.length types); args = types }
     | Projection _ -> TProjectedAssociatedType (Thir.show_ty ty)
     | Param { index; name } ->
-      (* TODO: [id] might not unique *)
-      TParam { name; id = index }
+        (* TODO: [id] might not unique *)
+        TParam { name; id = index }
     | _ -> failwith ("TODO typ " ^ Thir.show_ty ty)
   (* fun _ -> Ok Bool *)
 
@@ -513,43 +521,44 @@ module Exn = struct
     {
       typ_span = Option.map ~f:c_span param.ty_span;
       typ = c_ty param.ty;
-      pat = c_pat (Option.value_exn param.pat)
+      pat = c_pat (Option.value_exn param.pat);
     }
 
   let c_generic_param (param : Thir.generic_param) : generic_param =
     let ident =
       match param.name with
       | Fresh ->
-        (* failwith ("[Fresh] ident? " ^ Thir.show_generic_param param) *)
-        (* TODO might be wrong to just have a wildcard here *)
-        ({ name = "_"; id = 123456789 } : local_ident)
+          (* failwith ("[Fresh] ident? " ^ Thir.show_generic_param param) *)
+          (* TODO might be wrong to just have a wildcard here *)
+          ({ name = "_"; id = 123456789 } : local_ident)
       | Error -> failwith ("[Error] ident? " ^ Thir.show_generic_param param)
       | Plain n -> local_ident n
     in
     match (param.kind : Thir.generic_param_kind) with
-    | Lifetime { kind } -> Lifetime { ident; witness = () }
+    | Lifetime { kind } -> GPLifetime { ident; witness = () }
     | Type { default; synthetic } ->
-      let default = Option.map ~f:c_ty default in
-      Type { ident; default }
+        let default = Option.map ~f:c_ty default in
+        GPType { ident; default }
     | Const { default; ty } -> failwith "TODO: Const"
 
   let c_predicate_kind (p : Thir.predicate_kind) : trait_ref option =
     match p with
     | Clause (Trait { is_positive = true; is_const = _; trait_ref }) ->
-      let args = List.map ~f:c_generic_value trait_ref.substs in
-      Some { trait = def_id trait_ref.def_id; args; bindings = [] }
+        let args = List.map ~f:c_generic_value trait_ref.substs in
+        Some { trait = def_id trait_ref.def_id; args; bindings = [] }
     | _ -> None
 
   let c_constraint (c : Thir.where_predicate) : generic_constraint list =
     match c with
     | BoundPredicate
         { bound_generic_params; bounded_ty; bounds; hir_id; origin; span } ->
-      let typ = c_ty bounded_ty in
-      let traits = List.map ~f:c_predicate_kind bounds in
-      let traits = List.filter_map ~f:Fn.id traits in
-      List.map
-        ~f:(fun trait : generic_constraint -> Type { typ; implements = trait })
-        traits
+        let typ = c_ty bounded_ty in
+        let traits = List.map ~f:c_predicate_kind bounds in
+        let traits = List.filter_map ~f:Fn.id traits in
+        List.map
+          ~f:(fun trait : generic_constraint ->
+            GCType { typ; implements = trait })
+          traits
     | RegionPredicate _ -> failwith "region prediate"
     | EqPredicate _ -> failwith "EqPredicate"
 
@@ -557,8 +566,8 @@ module Exn = struct
     let rec aux (seen : 'a list) (todo : 'a list) : 'a list =
       match todo with
       | hd :: tl ->
-        if List.mem ~equal seen hd then aux seen tl
-        else hd :: aux (hd :: seen) tl
+          if List.mem ~equal seen hd then aux seen tl
+          else hd :: aux (hd :: seen) tl
       | _ -> todo
     in
     aux []
@@ -576,56 +585,55 @@ module Exn = struct
     let v =
       match item.kind with
       | Fn (generics, { body; header; params; ret; sig_span }) ->
-        Fn {
-          name = def_id (Option.value_exn item.def_id);
-          generics = c_generics generics;
-          body = c_expr body;
-          params = List.map ~f:c_param params
-        }
+          Fn
+            {
+              name = def_id (Option.value_exn item.def_id);
+              generics = c_generics generics;
+              body = c_expr body;
+              params = List.map ~f:c_param params;
+            }
       | Enum (variants, generics) ->
-        let name = def_id (Option.value_exn item.def_id) in
-        let generics = c_generics generics in
-        let variants =
-          List.map
-            ~f:(fun { ident; data; def_id = variant_id } ->
+          let name = def_id (Option.value_exn item.def_id) in
+          let generics = c_generics generics in
+          let variants =
+            List.map
+              ~f:(fun { ident; data; def_id = variant_id } ->
                 match data with
                 | Tuple (fields, _, _) | Struct (fields, _) ->
-                  let arguments =
-                    List.map
-                      ~f:(fun { def_id = id; ty } -> def_id id, c_ty ty)
-                      fields
-                  in
-                  { name = def_id variant_id; arguments }
+                    let arguments =
+                      List.map
+                        ~f:(fun { def_id = id; ty } -> (def_id id, c_ty ty))
+                        fields
+                    in
+                    { name = def_id variant_id; arguments }
                 | Unit (_, name) -> { name = def_id name; arguments = [] })
-            variants
-        in
-        Type { name; generics; variants; record = true }
+              variants
+          in
+          Type { name; generics; variants; record = true }
       | Struct (v, generics) ->
-        let name = def_id (Option.value_exn item.def_id) in
-        let generics = c_generics generics in
-        let v =
-          match v with
-          | Tuple (fields, _, _) ->
-            List.map ~f:Thir.show_hir_field_def fields
-            |> String.concat ~sep:";" |> failwith
-          | Struct (fields, _) ->
-            let arguments =
-              List.map
-                ~f:(fun { def_id = id; ty } -> def_id id, c_ty ty)
-                fields
+          let name = def_id (Option.value_exn item.def_id) in
+          let generics = c_generics generics in
+          let v, record =
+            let mk fields =
+              let arguments =
+                List.map
+                  ~f:(fun Thir.{ def_id = id; ty } -> (def_id id, c_ty ty))
+                  fields
+              in
+              { name; arguments }
             in
-            { name; arguments }
-          (* | Tuple (_, _, _) -> Ok ({name; arguments = []}) *)
-          | Unit (_, _) -> { name; arguments = [] }
-        in
-        let variants = [ v ] in
-        Type { name; generics; variants; record = true }
+            match v with
+            | Tuple (fields, _, _) -> (mk fields, false)
+            | Struct (fields, _) -> (mk fields, true)
+            | Unit (_, _) -> ({ name; arguments = [] }, false)
+          in
+          let variants = [ v ] in
+          Type { name; generics; variants; record }
       | _ -> NotImplementedYet
     in
     { span; v }
 end
 
 let c_item (item : Thir.item) : (item, error) Result.t =
-  try Exn.c_item item |> Result.return with
-  | Exn.ImportError error -> Error error
-
+  try Exn.c_item item |> Result.return
+  with Exn.ImportError error -> Error error

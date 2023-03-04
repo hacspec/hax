@@ -39,8 +39,9 @@ module _ = struct
   module _ : T = FStar
 end
 
-module DefaultClasses (F: T) = struct
+module DefaultClasses (F : T) = struct
   open Base
+
   (* TODO: generate those classes automatically *)
   class virtual ['self] default_reduce_features =
     object (self : 'self)
