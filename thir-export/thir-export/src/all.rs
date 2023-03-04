@@ -1516,7 +1516,10 @@ pub enum Ty {
     Str,
 
     /// An array with the given length. Written as `[T; N]`.
-    Array(Box<Ty>, Const),
+    Array(
+        Box<Ty>,
+        #[map(x.try_eval_usize(state.tcx(), get_param_env(state)).unwrap())] u64,
+    ),
 
     /// The pointee of an array slice. Written as `[T]`.
     Slice(Box<Ty>),
