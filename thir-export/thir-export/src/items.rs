@@ -59,6 +59,7 @@ fn make_fn_def<'tcx, S: BaseState<'tcx>>(
         options: s.options(),
         thir: thir.clone(),
         def_id: (),
+        opt_def_id: s.opt_def_id(),
         macro_infos: s.macro_infos(),
         local_ident_map: s.local_ident_map(),
     };
@@ -734,6 +735,7 @@ pub struct Item {
             options: state.options(),
             thir: (),
             def_id: self.owner_id.to_def_id(),
+            opt_def_id: Some(self.owner_id.to_def_id()),
             macro_infos: state.macro_infos(),
             local_ident_map: state.local_ident_map(),
         })
