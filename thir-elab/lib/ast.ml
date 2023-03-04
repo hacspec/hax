@@ -336,6 +336,14 @@ functor
       | Assign of { lhs : lhs; e : expr; witness : F.mutable_variable }
       (* Loop *)
       | Loop of { body : expr; label : string option; witness : F.loop }
+      | ForLoop of {
+          start : expr;
+          end_ : expr;
+          var : local_ident;
+          body : expr;
+          label : string option;
+          witness : F.for_loop;
+        }
       (* ControlFlow *)
       | Break of { e : expr; label : string option; witness : F.loop }
       | Return of { e : expr; witness : F.early_exit }

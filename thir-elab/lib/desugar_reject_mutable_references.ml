@@ -76,6 +76,7 @@ module EnsureIsFStar (FA : Features.T) = struct
     let lifetime _ = failwith "lifetime"
     let monadic_action _ = failwith "monadic action"
     let monadic_binding _ = ()
+    let for_loop _ = failwith "for_loop"
   end
 
   let desugaring_phase = "RejectAnythingNotFStar"

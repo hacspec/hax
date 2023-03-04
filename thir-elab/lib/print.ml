@@ -127,6 +127,7 @@ let rec pexpr (e : expr) =
   | AddressOf { mut; e } -> string "&raw..."
   | MonadicAction _ -> string "monadic action"
   | Closure { params; body } -> string "closure"
+  | ForLoop _ -> string "ForLoop"
 
 and parm { arm = { pat; body } } =
   group (group (group (string "|" ^/^ ppat pat) ^/^ string "->") ^/^ pexpr body)

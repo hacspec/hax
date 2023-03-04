@@ -128,6 +128,16 @@ struct
           { lhs = dlhs lhs; e = dexpr e; witness = S.mutable_variable witness }
     | Loop { body; label; witness } ->
         Loop { body = dexpr body; label; witness = S.loop witness }
+    | ForLoop { start; end_; var; body; label; witness } ->
+        ForLoop
+          {
+            start = dexpr start;
+            end_ = dexpr end_;
+            var;
+            body = dexpr body;
+            label;
+            witness = S.for_loop witness;
+          }
     | Break { e; label; witness } ->
         Break { e = dexpr e; label; witness = S.loop witness }
     | Return { e; witness } ->

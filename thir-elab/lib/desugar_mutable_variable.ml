@@ -614,6 +614,103 @@ struct
                 failwith
                   "Internal fatal error: Result.from_match didn't keep its \
                    promise")
+    | ForLoop { start; end_; var; body; label = None; witness } ->
+        (* TODO: Here, I assume there's no [break] or [continue].
+           We should have two "modes" of translations. *)
+        Result.seq
+          [ dexpr ctx start; dexpr ctx end_ ]
+          (function
+            | [ start; end_ ] ->
+                let body_r =
+                  dexpr
+                    {
+                      vars = Set.empty (module UB.TypedLocalIdent);
+                      loop = None;
+                    }
+                    body
+                in
+                let body_r =
+                  {
+                    body_r with
+                    value = { body_r.value with result_type = None };
+                  }
+                in
+                let body' =
+                  Result.as_shadowing_tuple body_r
+                  @@ BTyLocIdentUniqueList.from_set
+                  @@ Result.collect_mut_idents body_r
+                in
+                let body = body'.expr in
+                let closure =
+                  B.
+                    {
+                      span = body.span;
+                      typ = B.TArrow ([ start.typ; body'.expr.typ ], body.typ);
+                      e =
+                        B.Closure
+                          {
+                            params =
+                              [
+                                UB.make_var_pat var start.typ Dummy;
+                                UB.make_tuple_pat
+                                @@ List.map ~f:(fun (v, ty) ->
+                                       UB.make_var_pat v ty body.span)
+                                @@ BTyLocIdentUniqueList.to_list
+                                     body'.shadowings;
+                              ];
+                            body;
+                            captures = [];
+                            (* Assumes we don't rely on captures *)
+                          };
+                    }
+                in
+                let fix =
+                  B.
+                    {
+                      span = e.span;
+                      typ = B.TArrow ([ closure.typ; UB.unit_typ ], UB.unit_typ);
+                      e =
+                        B.GlobalVar
+                          (`Concrete
+                            {
+                              crate = "dummy";
+                              path = Non_empty_list.("foldi" :: []);
+                            });
+                    }
+                in
+                let fix_call =
+                  B.
+                    {
+                      span = e.span;
+                      typ = UB.unit_typ;
+                      e =
+                        B.App
+                          {
+                            f = fix;
+                            args =
+                              [
+                                start;
+                                end_;
+                                closure;
+                                UB.make_tuple_expr ~span:e.span
+                                  (List.map
+                                     ~f:(fun (v, typ) ->
+                                       B.
+                                         {
+                                           span = e.span;
+                                           typ;
+                                           e = B.LocalVar v;
+                                         })
+                                     (BTyLocIdentUniqueList.to_list
+                                        body'.shadowings));
+                              ];
+                          };
+                    }
+                in
+                fix_call
+            | _ ->
+                failwith
+                  "Internal fatal error: Result.seq didn't keep its promise")
     | Loop { body; label = None; witness } ->
         let vars_set =
           UA.Reducers.free_assigned_variables#visit_expr () body
