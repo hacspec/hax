@@ -3,7 +3,7 @@
  (name main)
  (libraries thir_elab core pprint)
  (preprocess
-  (pps ppx_deriving.show ppx_deriving.eq)))
+  (pps ppx_functor_application ppx_deriving.show ppx_deriving.eq)))
 
 (env
  (dev

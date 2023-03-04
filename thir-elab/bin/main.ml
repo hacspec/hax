@@ -5,25 +5,18 @@ open Thir_elab.Print_fstar
 open Thir_elab
 open Desugar_utils
 
-module DesugarToFStar = struct
-  module D1 = Desugar_reject_mutable_references.Make (Features.Rust)
-  module D2 = Desugar_direct_and_mut.Make (D1.FB)
-  module D3 = Desugar_reject_mutable_references.MakeContinueReject (D2.FB)
-  module D4 = Desugar_drop_references.Make (D3.FB)
-
-  module D5 =
-    Desugar_mutable_variable.Make
-      (D4.FB)
-      (struct
-        let early_exit = Fn.id
-      end)
-
-  module D6 = Desugar_reject_mutable_references.EnsureIsFStar (D5.FB)
-
-  include
-    BindDesugar
-      (BindDesugar (BindDesugar (BindDesugar (BindDesugar (D1) (D2)) (D3)) (D4)) (D5)) (D6)
-end
+module DesugarToFStar =
+[%functor_application
+Desugar_reject_mutable_references.Make Features.Rust |> Resugar_for_loop.Make
+|> Desugar_direct_and_mut.Make
+|> Desugar_reject_mutable_references.MakeContinueReject
+|> Desugar_drop_references.Make
+|> (fun X ->
+     (Desugar_mutable_variable.Make (module X))
+       (module struct
+         let early_exit = Fn.id
+       end))
+|> Desugar_fix_for.Make |> Desugar_reject_mutable_references.EnsureIsFStar]
 
 let parse_list_json (parse : Yojson.Safe.t -> 'a) (input : Yojson.Safe.t) :
     'a list =
