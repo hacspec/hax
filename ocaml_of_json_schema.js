@@ -2,8 +2,7 @@ const keys = p =>
     new Set(
         Object.keys(p)
             .filter(k => ![
-                'description', 'maxItems', 'minItems',
-                'maxLength', 'minLength'
+                'description', 'maxItems', 'minItems'
             ].includes(k))
             .filter(k => p?.additionalProperties !== false || k != 'additionalProperties')
     );
@@ -114,6 +113,7 @@ let ocaml_of_type_expr = (o, path) => {
         array: type => `(${ocaml_of_type_expr(type, [...path, 'array'])} list)`,
         boolean: _ => `bool`,
         string: _ => `string`,
+        char: _ => `char`,
         integer: _ => o.bigint ? `Bigint.t` : `int`,
         name: payload => typeNameOf(payload),
         // name: payload => payload,
@@ -164,6 +164,7 @@ let ocaml_arms_of_type_expr = (o, path) => {
         ],
         boolean: _ => [[`\`Bool b`, 'b']],
         string: _ => [[`\`String s`, 's']],
+        char: _ => [[`\`String s`, 'String.get s 0']],
         integer: _ => o.bigint ?
             [
                 [`\`Int i`, 'Bigint.of_int i'],
@@ -234,6 +235,9 @@ let is_type = {
         || is_type.tuple(def)
         || (def.type === 'integer'
             ? {kind: 'integer', bigint: def.format.endsWith('int128')}
+            : false)
+        || (def.type === 'string' && def.maxLength === def.minLength && def.minLength === 1
+            ? {kind: 'char'}
             : false)
         || ( ( exact_keys(def, 'type')
                && ['boolean', 'string'].includes(def.type)
