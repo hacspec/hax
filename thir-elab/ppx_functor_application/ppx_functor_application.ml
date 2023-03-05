@@ -39,8 +39,6 @@ type module_dsl =
 [@@deriving show]
 
 let var_of_string s = Var (Longident.Lident s)
-(* let longident_of_strings l = *)
-(*   List.foldl () *)
 
 let rec elab ~loc (t : module_dsl) : module_expr =
   let (module E) = Ast_builder.make loc in

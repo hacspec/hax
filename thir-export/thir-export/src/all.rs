@@ -1730,10 +1730,22 @@ pub struct PatRange {
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct VariantInformations {
-    constructs_record: bool,
+    constructs_record: bool, // Is a *non-tuple* struct
     constructs_type: DefId,
     type_namespace: DefId,
     variant: DefId,
+}
+
+trait IsRecord {
+    fn is_record(&self) -> bool;
+}
+impl<'tcx> IsRecord for rustc_middle::ty::AdtDef<'tcx> {
+    fn is_record(&self) -> bool {
+        self.is_struct()
+            && self
+                .all_fields()
+                .all(|field| field.name.to_ident_string().parse::<u64>().is_err())
+    }
 }
 
 fn get_variant_information<'s, S: BaseState<'s>>(
@@ -1743,7 +1755,7 @@ fn get_variant_information<'s, S: BaseState<'s>>(
 ) -> VariantInformations {
     let constructs_type = adt_def.did().sinto(s);
     VariantInformations {
-        constructs_record: adt_def.is_struct(),
+        constructs_record: adt_def.is_record(),
         constructs_type: constructs_type.clone(),
         variant: variant.sinto(s),
         type_namespace: DefId {
