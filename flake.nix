@@ -70,11 +70,19 @@
       in rec {
         packages = {
           inherit rustc nightly;
-          thir-export = craneLib.buildPackage {
-            pname = "thir-export";
-            version = "0.0.1";
-            src = craneLib.cleanCargoSource ./thir-export;
-          };
+          thir-export =
+            let
+              commonArgs = {
+                version = "0.0.1";
+                src = craneLib.cleanCargoSource ./thir-export;
+              };
+              cargoArtifacts = craneLib.buildDepsOnly (commonArgs // {
+                pname = "thir-export-deps";
+              });
+            in
+              craneLib.buildPackage (commonArgs // {
+                pname = "thir-export";
+              });
           docs = nightly.rustc-docs;
           thir-elab = ocamlPackages.buildDunePackage {
             pname = "thir-elab";
@@ -82,9 +90,10 @@
             duneVersion = "3";
             src = ./thir-elab;
             buildInputs = with ocamlPackages; [
-              base ppx_yojson_conv yojson ppx_sexp_conv ppx_hash
+              core base core_unix
+              ppx_yojson_conv yojson ppx_sexp_conv ppx_hash
               visitors pprint non_empty_list bignum fstar-bin
-              ppx_deriving_yojson ppx_matches
+              ppx_deriving_yojson ppx_matches ppx_let
             ] ++ fstar-pkgs.fstar-dune.buildInputs;
             nativeBuildInputs = [ packages.thir_ml_of_json_schema ];
             strictDeps = true;
