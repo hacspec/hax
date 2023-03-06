@@ -117,21 +117,28 @@ let rec pliteral (e : literal) =
       F.Const.Const_int
         ( Bigint.to_string value,
           let open F.Const in
-          let w =
-            match size with
-            | S8 -> Int8
-            | S16 -> Int16
-            | S32 -> Int32
-            | S64 -> Int64
-            | S128 ->
-                Int64 (* failwith "TODO: u128/i128 not supported for now" *)
-            | SSize -> Sizet
-          in
-          match signedness with
-          | Signed -> Some (Signed, w)
-          | Unsigned -> Some (Unsigned, w) )
+          Option.map
+            (match size with
+            | S8 -> Some Int8
+            | S16 -> Some Int16
+            | S32 -> Some Int32
+            | S64 -> Some Int64
+            | S128 -> failwith "Cannot handle S128"
+            | SSize -> None)
+            ~f:(fun w ->
+              ( (match signedness with Signed -> Signed | Unsigned -> Unsigned),
+                w )) )
   | Float _ -> failwith "Float: todo"
   | Bool b -> F.Const.Const_bool b
+
+let pliteral_as_expr (e : literal) =
+  let h e = F.term @@ F.AST.Const (pliteral e) in
+  match e with
+  | Int { value; kind = { size = S128; signedness } as s } ->
+      let lit = h (Int { value; kind = { s with size = SSize } }) in
+      let prefix = match signedness with Signed -> "" | Unsigned -> "u" in
+      F.mk_e_app (F.term_of_lid [ prefix ^ "int128" ]) [ lit ]
+  | _ -> h e
 
 let rec pglobal_ident (id : global_ident) =
   match id with
@@ -186,7 +193,18 @@ let rec pty (t : ty) =
   match t with
   | TBool -> F.term_of_lid [ "Prims"; "bool" ]
   | TChar -> F.term_of_lid [ "FStar"; "Char"; "char" ]
-  | TInt k -> F.term_of_lid [ "Prims"; "int" ] (* todo *)
+  | TInt k ->
+      let prefix = function Signed -> "UInt" | Unsigned -> "Int" in
+      let path x s = [ prefix x ^ s; "t" ] in
+      F.term_of_lid
+        (match k with
+        | { size = SSize; signedness = Signed } -> [ "Prims"; "int" ]
+        | { size = SSize; signedness = Unsigned } -> [ "Prims"; "nat" ]
+        | { size = S8; signedness } -> path signedness "8"
+        | { size = S16; signedness } -> path signedness "16"
+        | { size = S32; signedness } -> path signedness "32"
+        | { size = S64; signedness } -> path signedness "64"
+        | { size = S128; signedness } -> path signedness "128")
   | TStr -> F.term_of_lid [ "Prims"; "string" ]
   | TFalse -> F.term_of_lid [ "Prims"; "l_False" ]
   | TApp { ident = `TupleType 0 as ident; args = [] } ->
@@ -217,15 +235,14 @@ let rec pty (t : ty) =
               (F.term_of_lid [ "FStar"; "List"; "Tot"; "Base"; "length" ])
               [ x ]
           in
-          let lit =
-            pliteral
+          let length =
+            pliteral_as_expr
               (Ast.Int
                  {
                    value = Bigint.of_int length;
                    kind = { size = SSize; signedness = Signed };
                  })
           in
-          let length = F.term @@ F.AST.Const lit in
           let lt = F.term @@ F.AST.Name (pprim_ident @@ BinOp Lt) in
           F.mk_e_app lt [ len_of_x; length ])
   | TParam i ->
@@ -299,7 +316,7 @@ let debug_expr (label : string) (e : F.AST.term) =
 
 let rec pexpr (e : expr) =
   match e.e with
-  | Literal e -> F.term @@ F.AST.Const (pliteral e)
+  | Literal e -> pliteral_as_expr e
   | LocalVar local_ident ->
       F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident local_ident)
   | GlobalVar (`TupleCons 0)
