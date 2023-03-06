@@ -53,11 +53,29 @@ fn browse_items<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) {
     let hir = tcx.hir();
+    let bodies = hir.body_owners();
+
+    let mut bodies = bodies.collect::<Vec<_>>();
+    // we first visit `AnonConst`s, otherwise the thir body might be stolen
+    bodies.sort_by(|a, b| {
+        use std::cmp::Ordering::*;
+        let is_anon_const = |x: &rustc_span::def_id::LocalDefId| {
+            matches!(hir.get_by_def_id(x.clone()), rustc_hir::Node::AnonConst(_))
+        };
+        if is_anon_const(a) {
+            Less
+        } else if is_anon_const(b) {
+            Equal
+        } else {
+            Greater
+        }
+    });
+
     let thirs: std::collections::HashMap<
         rustc_span::def_id::LocalDefId,
         (rustc_middle::thir::Thir<'tcx>, ExprId),
-    > = hir
-        .body_owners()
+    > = bodies
+        .into_iter()
         .map(|did| {
             let (thir, expr) = tcx
                 .thir_body(rustc_middle::ty::WithOptConstParam {
