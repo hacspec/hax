@@ -17,6 +17,7 @@ type error =
   | BadSpanUnion
   | ShallowMutUnsupported
   | GotTypeInLitPat
+  | IllTypedIntLiteral
 [@@deriving show]
 
 module Exn = struct
@@ -78,6 +79,12 @@ module Exn = struct
     | U64 -> S64
     | U128 -> S128
 
+  let c_int_ty (ty : Thir.int_ty) : int_kind =
+    { size = int_ty_to_size ty; signedness = Signed }
+
+  let c_uint_ty (ty : Thir.uint_ty) : int_kind =
+    { size = uint_ty_to_size ty; signedness = Unsigned }
+
   let c_mutability (witness : 'a) : bool -> 'a Ast.mutability = function
     | true -> Mutable witness
     | false -> Immutable
@@ -120,25 +127,36 @@ module Exn = struct
       }
   end
 
-  let c_lit' (lit : Thir.lit_kind) : literal =
+  let c_lit_type (t : Thir.lit_int_type) : int_kind =
+    match t with
+    | Unsuffixed -> failwith "Got an untyped int literal which is `Unsuffixed`"
+    | Signed ty -> { size = int_ty_to_size ty; signedness = Signed }
+    | Unsigned ty -> { size = uint_ty_to_size ty; signedness = Unsigned }
+
+  let c_lit' (lit : Thir.lit_kind) (ty : ty option) : literal =
     match lit with
     | Err -> raise GotErrLiteral
     | Str (str, _) -> String str
     | ByteStr _ -> failwith "todo"
     | Byte _ -> failwith "todo"
-    | Char s -> String s
+    | Char s -> Char s
     | Int (i, t) ->
         Int
           {
             value = i;
             kind =
-              { size = S8; signedness = Unsigned }
-              (* kind = (match t with _ -> failwith "lit: int" (\* TODO *\)); *);
+              (match ty with
+              | Some (TInt k) -> k
+              | Some _ -> raise IllTypedIntLiteral
+              | None ->
+                  failwith "TODO" { size = S8; signedness = Unsigned }
+                  (* kind = (match t with _ -> failwith "lit: int" (\* TODO *\)); *));
           }
     | Float _ -> failwith "todo float"
     | Bool b -> Bool b
 
-  let c_lit (lit : Thir.spanned_for__lit_kind) : literal = c_lit' lit.node
+  let c_lit (lit : Thir.spanned_for__lit_kind) : ty option -> literal =
+    c_lit' lit.node
 
   let append_to_thir_def_id (def_id : Thir.def_id) (item : Thir.def_path_item) =
     { def_id with path = def_id.path @ [ item ] }
@@ -372,7 +390,7 @@ module Exn = struct
               fields;
               base;
             }
-      | Literal { lit } -> Literal (c_lit lit)
+      | Literal { lit } -> Literal (c_lit lit @@ Some typ)
       | NamedConst { def_id = id } -> GlobalVar (def_id id)
       | Closure { movability; body; params; upvars } ->
           let params =
@@ -444,7 +462,7 @@ module Exn = struct
   and c_constant_kind (k : Thir.constant_kind) : literal =
     match k with
     | Ty _ -> raise GotTypeInLitPat
-    | Lit lit -> c_lit' lit
+    | Lit lit -> c_lit' lit None
     (* | Val (ZeroSized, _) -> failwith "todo, ZeroSized" *)
     (* | Val (Slice _, _) -> failwith "todo, Slice" *)
     (* | Val ( _, _) -> failwith "todo" *)
@@ -498,12 +516,6 @@ module Exn = struct
         TParam { name; id = index }
     | _ -> failwith ("TODO typ " ^ Thir.show_ty ty)
   (* fun _ -> Ok Bool *)
-
-  and c_int_ty (ty : Thir.int_ty) : int_kind =
-    { size = int_ty_to_size ty; signedness = Signed }
-
-  and c_uint_ty (ty : Thir.uint_ty) : int_kind =
-    { size = uint_ty_to_size ty; signedness = Signed }
 
   and c_generic_value (ty : Thir.generic_arg) : generic_value =
     match ty with
@@ -585,11 +597,13 @@ module Exn = struct
     let v =
       match item.kind with
       | Fn (generics, { body; header; params; ret; sig_span }) ->
+          let body = c_expr body in
+          (* let body = { body with typ = unit_typ } in *)
           Fn
             {
               name = def_id (Option.value_exn item.def_id);
               generics = c_generics generics;
-              body = c_expr body;
+              body;
               params = List.map ~f:c_param params;
             }
       | Enum (variants, generics) ->

@@ -198,20 +198,25 @@ pub struct Scope {
                 Ty::Bool => LitKind::Bool(si.clone().try_into().unwrap()),
                 Ty::Char => LitKind::Char(si.clone().try_into().unwrap()),
                 // TODO! This is incorrect!
-                Ty::Int(..) | Ty::Uint(..) => LitKind::Int(
+                Ty::Int(..) | Ty::Uint(..) => {
+                    use LitKind::Int;
+                    use LitIntType::{Unsigned as U, Signed as I, Unsuffixed};
+                    use UintTy::*;
+                    use crate::IntTy::*;
                     Err(())
-                        .or(si.try_to_u8().map(|x| x as u128))
-                        .or(si.try_to_u16().map(|x| x as u128))
-                        .or(si.try_to_u32().map(|x| x as u128))
-                        .or(si.try_to_u64().map(|x| x as u128))
-                        .or(si.try_to_u128().map(|x| x as u128))
-                        .or(si.try_to_i8().map(|x| x as u128))
-                        .or(si.try_to_i16().map(|x| x as u128))
-                        .or(si.try_to_i32().map(|x| x as u128))
-                        .or(si.try_to_i64().map(|x| x as u128))
-                        .or(si.try_to_i128().map(|x| x as u128)).unwrap()
-                    , LitIntType::Unsuffixed
-                ),
+                        .or(si.try_to_u8().map(|x| Int(x as u128, U(U8))))
+                        .or(si.try_to_u16().map(|x| Int(x as u128, U(U16))))
+                        .or(si.try_to_u32().map(|x| Int(x as u128, U(U32))))
+                        .or(si.try_to_u64().map(|x| Int(x as u128, U(U64))))
+                        .or(si.try_to_u128().map(|x| Int(x as u128, U(U128))))
+                        .or(si.try_to_i8().map(|x| Int(x as u128, I(I8))))
+                        .or(si.try_to_i16().map(|x| Int(x as u128, I(I16))))
+                        .or(si.try_to_i32().map(|x| Int(x as u128, I(I32))))
+                        .or(si.try_to_i64().map(|x| Int(x as u128, I(I64))))
+                        .or(si.try_to_i128().map(|x| Int(x as u128, I(I128))))
+                        .unwrap()
+                    // )
+                },
                 _ => todo!("constant are not exhaustive {:#?}", ty)
             })
         },

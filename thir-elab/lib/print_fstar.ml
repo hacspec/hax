@@ -1,6 +1,7 @@
 open Base
 open Ast
 open Ast.Make (Features.FStar)
+module U = Ast_utils.Make (Features.FStar)
 open PPrint
 open Utils
 
@@ -22,6 +23,7 @@ module F = struct
 
   let lid path =
     let init, last = List.(drop_last_exn path, last_exn path) in
+    let last = if String.(last = "new") then "new_" else last in
     let init = List.map ~f:(map_first_letter String.uppercase) init in
     let path = init @ [ last ] in
     Ident.lid_of_path path dummyRange
