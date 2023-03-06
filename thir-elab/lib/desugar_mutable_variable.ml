@@ -515,9 +515,12 @@ struct
                                   A.GlobalVar
                                     (`Concrete
                                       {
-                                        crate = "todo";
+                                        crate = "std";
                                         path =
-                                          Non_empty_list.("update_array" :: []);
+                                          Non_empty_list.
+                                            [
+                                              "core"; "array"; "update_array_at";
+                                            ];
                                       });
                                 typ =
                                   A.TArrow
@@ -957,5 +960,5 @@ struct
     in
     { v; span = item.span }
 
-  let desugaring_phase = "MutableVariables"
+  let metadata = Desugar_utils.Metadata.make "MutableVariables"
 end

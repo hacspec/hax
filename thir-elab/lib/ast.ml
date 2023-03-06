@@ -37,13 +37,7 @@ type loc = { col : int; line : int }
     visitors { variety = "reduce"; name = "loc_reduce" },
     visitors { variety = "map"; name = "loc_map" }]
 
-type span =
-  | Span of {
-      file : (string[@yojson.opaque]);
-      hi : (loc[@yojson.opaque]);
-      lo : (loc[@yojson.opaque]);
-    }
-  | Dummy
+type span = Span of { file : string; hi : loc; lo : loc } | Dummy
 [@@deriving
   yojson,
     eq,
@@ -264,6 +258,11 @@ functor
                 "DefaultClasses.default_map_features";
               ];
           }]
+
+    (* let show_ty (s : ty) : string = "<ty>" *)
+
+    (* let pp_ty (fmt : Format.formatter) (s : ty) : unit = *)
+    (*   Format.pp_print_string fmt @@ show_ty s *)
 
     type pat' =
       | PWild

@@ -198,6 +198,6 @@ struct
     in
     { v; span = item.span }
 
-  let desugaring_phase = "DropReferences"
+  let metadata = Desugar_utils.Metadata.make "DropReferences"
 end
 [@@add "subtype.ml"]

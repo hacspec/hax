@@ -16,7 +16,7 @@ Desugar_reject_mutable_references.Make Features.Rust |> Resugar_for_loop.Make
        (module struct
          let early_exit = Fn.id
        end))
-|> Desugar_fix_for.Make |> Desugar_reject_mutable_references.EnsureIsFStar]
+|> Desugar_reject_mutable_references.EnsureIsFStar |> Identity]
 
 let parse_list_json (parse : Yojson.Safe.t -> 'a) (input : Yojson.Safe.t) :
     'a list =
@@ -51,7 +51,15 @@ try
       print_endline
         (match item with
         | Ok item ->
-            let item = DesugarToFStar.ditem item in
+            let item =
+              try
+                let r = DesugarToFStar.ditem item in
+                DebugBindDesugar.export ();
+                r
+              with e ->
+                DebugBindDesugar.export ();
+                raise e
+            in
             decl_to_string (pitem item)
         | Error err -> "Convertion error: " ^ err))
     converted_items

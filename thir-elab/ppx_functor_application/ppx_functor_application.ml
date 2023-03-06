@@ -85,7 +85,6 @@ let rec elab ~loc (t : module_dsl) : module_expr =
       @ [%str include [%m binds]]
   | Pipe _ -> failwith "Illegal pipe: singleton or empty"
   | Abs _ -> failwith "Top-level abstraction"
-  | _ -> failwith "todo"
 
 let rec collect_pipes (t : module_dsl) : module_dsl list =
   match t with
@@ -129,9 +128,7 @@ let expand ~(ctxt : Expansion_context.Extension.t) (e : expression) :
     module_expr =
   let loc = Expansion_context.Extension.extension_point_loc ctxt in
   let e = parse e |> normalize in
-  let e = elab ~loc e in
-  (* print_endline @@ string_of_module_expr e; *)
-  e
+  elab ~loc e
 
 let ext =
   Extension.V3.declare name Extension.Context.module_expr

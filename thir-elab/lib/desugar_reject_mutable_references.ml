@@ -27,7 +27,7 @@ module Make (FA : Features.T) = struct
 
   include Subtype.Make (FA) (FB) (S)
 
-  let desugaring_phase = "RejectMutableReferences"
+  let metadata = Desugar_utils.Metadata.make "RejectMutableReferences"
 end
 
 module MakeContinueReject (FA : Features.T) = struct
@@ -48,7 +48,7 @@ module MakeContinueReject (FA : Features.T) = struct
 
   include Subtype.Make (FA) (FB) (S)
 
-  let desugaring_phase = "RejectContinue"
+  let metadata = Desugar_utils.Metadata.make "RejectContinue"
 end
 
 module EnsureIsFStar (FA : Features.T) = struct
@@ -81,7 +81,7 @@ module EnsureIsFStar (FA : Features.T) = struct
     let for_loop _ = failwith "for_loop"
   end
 
-  let desugaring_phase = "RejectAnythingNotFStar"
+  let metadata = Desugar_utils.Metadata.make "RejectAnythingNotFStar"
 
   include Subtype.Make (FA) (FB) (S)
 end

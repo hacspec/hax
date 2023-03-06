@@ -164,6 +164,12 @@ module Make (F : Features.T) = struct
   let unit_expr : expr =
     { typ = unit_typ; span = Dummy; e = GlobalVar (`TupleCons 0) }
 
+  let rec remove_tuple1_pat (p : pat) : pat =
+    match p.p with
+    | PConstruct { name = `TupleType 1; args = [ { pat; _ } ] } ->
+        remove_tuple1_pat pat
+    | _ -> p
+
   let rec remove_tuple1 (t : ty) : ty =
     match t with
     | TApp { ident = `TupleType 1; args = [ GType t ] } -> remove_tuple1 t
@@ -264,12 +270,29 @@ module Make (F : Features.T) = struct
       span;
     }
 
-  let rec collect_let_bindings (e : expr) : (pat * expr) list * expr =
+  let rec collect_let_bindings' (e : expr) : (pat * expr * ty) list * expr =
     match e.e with
     | Let { monadic = _; lhs; rhs; body } ->
-        let bindings, body = collect_let_bindings body in
-        ((lhs, rhs) :: bindings, body)
+        let bindings, body = collect_let_bindings' body in
+        ((lhs, rhs, e.typ) :: bindings, body)
     | _ -> ([], e)
+
+  let rec collect_let_bindings (e : expr) : (pat * expr) list * expr =
+    let bindings, body = collect_let_bindings' e in
+    let types = List.map ~f:thd3 bindings in
+    assert (
+      match (List.drop_last types, types) with
+      | Some init, _ :: tl ->
+          List.zip_exn init tl |> List.for_all ~f:(uncurry [%eq: ty])
+      | _ -> true);
+    (* TODO: injecting the type of the lets in the body is bad.
+       We should stay closer to Rust's inference.
+       Here, we lose a bit of information.
+    *)
+    let body =
+      { body with typ = List.hd types |> Option.value ~default:body.typ }
+    in
+    (List.map ~f:(fun (p, e, _) -> (p, e)) bindings, body)
 
   let rec map_body_of_nested_lets (f : expr -> expr) (e : expr) : expr =
     match e.e with

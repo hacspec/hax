@@ -24,7 +24,7 @@ struct
     let mutable_variable = Fn.const ()
   end
 
-  let desugaring_phase = "ref_mut"
+  let metadata = Desugar_utils.Metadata.make "ref_mut"
 
   module UA = Ast_utils.Make (FA)
   module UB = Ast_utils.Make (FB)
