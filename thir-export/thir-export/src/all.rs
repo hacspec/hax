@@ -7,8 +7,15 @@ use std::path::PathBuf;
 
 use crate::{AdtInto, SInto};
 
-pub trait BaseState<'tcx> =
-    HasTcx<'tcx> + HasOptions + HasMacroInfos + HasLocalIdentMap + IsState<'tcx> + Clone;
+pub trait BaseState<'tcx> = HasTcx<'tcx>
+    + HasOptions
+    + HasMacroInfos
+    + HasLocalIdentMap
+    + IsState<'tcx>
+    + Clone
+    + HasOptDefId
+    + HasCachedThirs<'tcx>;
+// + std::fmt::Debug;
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct DefId {
@@ -1992,26 +1999,25 @@ pub fn inspect_local_def_id<'tcx, S: BaseState<'tcx>>(
     s: &S,
 ) -> (rustc_middle::thir::Thir<'tcx>, Vec<Param>, Body) {
     let tcx: rustc_middle::ty::TyCtxt = s.tcx();
-    tcx.thir_body(rustc_middle::ty::WithOptConstParam {
-        did,
-        const_param_did: None,
-    })
-    .map(|(thir, expr)| {
-        let thir: rustc_middle::thir::Thir<'tcx> = thir.borrow().clone();
-        let s = State {
-            tcx: s.tcx(),
-            options: s.options(),
-            thir: thir.clone(),
-            def_id: (),
-            opt_def_id: s.opt_def_id(),
-            macro_infos: s.macro_infos(),
-            local_ident_map: s.local_ident_map(),
-        };
-        let params: Vec<Param> = thir.params.iter().map(|x| x.sinto(&s)).collect();
-        let body = expr.sinto(&s);
-        (thir, params, body)
-    })
-    .expect("While trying to reach a body's THIR defintion, got a typechecking error")
+    let thirs = s.cached_thirs();
+
+    let (thir, expr) = thirs
+        .get(&did)
+        .unwrap_or_else(|| panic!("Could not load body for id {did:?}"));
+
+    let s = State {
+        tcx: s.tcx(),
+        options: s.options(),
+        thir: thir.clone(),
+        def_id: (),
+        opt_def_id: s.opt_def_id(),
+        macro_infos: s.macro_infos(),
+        local_ident_map: s.local_ident_map(),
+        cached_thirs: s.cached_thirs(),
+    };
+    let params: Vec<Param> = thir.params.iter().map(|x| x.sinto(&s)).collect();
+    let body = expr.sinto(&s);
+    (thir.clone(), params, body)
 }
 
 #[derive(AdtInto)]

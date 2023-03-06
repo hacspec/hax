@@ -47,12 +47,29 @@ use thir_export;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-fn browse_items<'hir>(
+fn browse_items<'tcx>(
     options: &thir_export::Options,
     macro_calls: HashMap<rustc_span::Span, rustc_ast::ast::MacCall>,
-    tcx: TyCtxt<'hir>,
+    tcx: TyCtxt<'tcx>,
 ) {
     let hir = tcx.hir();
+    let thirs: std::collections::HashMap<
+        rustc_span::def_id::LocalDefId,
+        (rustc_middle::thir::Thir<'tcx>, ExprId),
+    > = hir
+        .body_owners()
+        .map(|did| {
+            let (thir, expr) = tcx
+                .thir_body(rustc_middle::ty::WithOptConstParam {
+                    did,
+                    const_param_did: None,
+                })
+                .expect("While trying to reach a body's THIR defintion, got a typechecking error");
+            // Borrowing `Thir` from a `Steal`!
+            (did, (thir.borrow().clone(), expr))
+        })
+        .collect();
+
     let items = hir.items();
     let macro_calls_r = box macro_calls;
     let state = &thir_export::State {
@@ -63,6 +80,7 @@ fn browse_items<'hir>(
         opt_def_id: None,
         macro_infos: macro_calls_r,
         local_ident_map: Rc::new(RefCell::new(HashMap::new())),
+        cached_thirs: thirs,
     };
     let converted_items = thir_export::inline_macro_invokations(&items.collect(), state);
 

@@ -62,6 +62,7 @@ fn make_fn_def<'tcx, S: BaseState<'tcx>>(
         opt_def_id: s.opt_def_id(),
         macro_infos: s.macro_infos(),
         local_ident_map: s.local_ident_map(),
+        cached_thirs: s.cached_thirs(),
     };
     FnDef {
         params,
@@ -738,6 +739,7 @@ pub struct Item {
             opt_def_id: Some(self.owner_id.to_def_id()),
             macro_infos: state.macro_infos(),
             local_ident_map: state.local_ident_map(),
+            cached_thirs: state.cached_thirs(),
         })
     })]
     pub kind: ItemKind,
