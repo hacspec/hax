@@ -341,6 +341,20 @@ struct
   let debug_expr (label : string) (e : F.AST.term) =
     F.term @@ F.AST.App (F.term_of_lid [ "__debug__" ^ label ], e, Nothing)
 
+  let operators =
+    let c' = function
+      | crate :: x :: l -> `Concrete Non_empty_list.{ crate; path = x :: l }
+      | _ -> failwith "operators contains ill-formed idents"
+    in
+    let c = split_str ~on:"::" >> c' in
+    [
+      (c "std::core::array::update_array_at", (3, ".[]<-"));
+      (c "core::ops::index::Index::index", (2, ".[]"));
+      (c "core::ops::bit::BitXor::bitxor", (2, "^."));
+      (c "core::ops::arith::Add::add", (2, "+."));
+    ]
+    |> Map.of_alist_exn (module GlobalIdent)
+
   let rec pexpr (e : expr) =
     match e.e with
     | Literal e -> pliteral_as_expr e
@@ -357,6 +371,10 @@ struct
         } ->
         F.term
         @@ F.AST.Project (pexpr arg, F.lid [ "_" ^ string_of_int (n + 1) ])
+    | App { f = { e = GlobalVar x }; args } when Map.mem operators x ->
+        let arity, op = Map.find_exn operators x in
+        if List.length args <> arity then failwith "Bad arity";
+        F.term @@ F.AST.Op (F.Ident.id_of_text op, List.map ~f:pexpr args)
     | App { f; args } -> F.mk_e_app (pexpr f) @@ List.map ~f:pexpr args
     | If { cond; then_; else_ } ->
         F.term
