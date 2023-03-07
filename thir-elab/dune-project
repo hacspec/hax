@@ -19,7 +19,27 @@
  (name thir-elab)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml dune)
+ (depends
+        ocaml
+        dune
+        base
+        core
+        fstar
+        yojson
+        non_empty_list
+        bignum
+        pprint
+        ppx_deriving_yojson
+        fstar
+        ppx_yojson_conv
+        ppx_sexp_conv
+        ppx_compare
+        ppx_hash
+        visitors
+        ppx_deriving
+        ppx_deriving
+        ppx_deriving_cmdliner
+        ppx_matches)
  (tags
   (topics "to describe" your project)))
 

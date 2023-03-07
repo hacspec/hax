@@ -12,6 +12,24 @@ bug-reports: "https://github.com/username/reponame/issues"
 depends: [
   "ocaml"
   "dune" {>= "3.6"}
+  "base"
+  "core"
+  "fstar"
+  "yojson"
+  "non_empty_list"
+  "bignum"
+  "pprint"
+  "ppx_deriving_yojson"
+  "fstar"
+  "ppx_yojson_conv"
+  "ppx_sexp_conv"
+  "ppx_compare"
+  "ppx_hash"
+  "visitors"
+  "ppx_deriving"
+  "ppx_deriving"
+  "ppx_deriving_cmdliner"
+  "ppx_matches"
   "odoc" {with-doc}
 ]
 build: [
@@ -29,3 +47,6 @@ build: [
   ]
 ]
 dev-repo: "git+https://github.com/username/reponame.git"
+depexts: [
+  ["nodejs"] {}
+]
