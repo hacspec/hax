@@ -17,6 +17,16 @@ Reject.RawOrMutPointer Features.Rust |> Resugar_for_loop.Make
        end))
 |> Reject.NotFStar |> Identity]
 
+module U = Ast_utils.Make (DesugarToFStar.FB)
+
+let rewrite_some_idents (item : DesugarToFStar.B.item) : DesugarToFStar.B.item =
+  let h = function
+    | `Concrete Ast.{ crate = "hacspec_lib" as crate; path } ->
+        `Concrete Ast.{ crate; path = Non_empty_list.[ last path ] }
+    | x -> x
+  in
+  Obj.magic (U.Mappers.rename_global_idents h)#visit_item () (Obj.magic item)
+
 let parse_list_json (parse : Yojson.Safe.t -> 'a) (input : Yojson.Safe.t) :
     'a list =
   match input with
@@ -59,7 +69,7 @@ try
                 DebugBindDesugar.export ();
                 raise e
             in
-            decl_to_string (pitem item)
+            decl_to_string (pitem @@ rewrite_some_idents item)
         | Error err -> "Convertion error: " ^ err))
     converted_items
 with e -> print_endline (ParseError.pp e)
