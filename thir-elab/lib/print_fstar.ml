@@ -5,10 +5,6 @@ module U = Ast_utils.Make (Features.FStar)
 open PPrint
 open Utils
 
-let map_first_letter (f : string -> string) (s : string) =
-  let first, rest = String.(prefix s 1, drop_prefix s 1) in
-  f first ^ rest
-
 (* Helpers for constructing an F* surface AST *)
 module F = struct
   module Util = FStar_Parser_Util
@@ -75,6 +71,27 @@ end
 module Context = struct
   type t = { current_namespace : string * string list }
 end
+
+let rec map_last_non_empty_list (f : 'a -> 'a) (l : 'a Non_empty_list.t) :
+    'a Non_empty_list.t =
+  let open Non_empty_list in
+  match l with
+  | [ x ] -> [ f x ]
+  | x :: y :: tl -> cons x @@ map_last_non_empty_list f (y :: tl)
+
+let map_last_concrete_ident (f : string -> string) (id : concrete_ident) =
+  { id with path = map_last_non_empty_list f id.path }
+
+let map_last_global_ident (f : string -> string) (id : global_ident) =
+  match id with
+  | `Concrete concrete -> `Concrete (map_last_concrete_ident f concrete)
+  | _ -> id
+
+let lowercase_global_ident : global_ident -> global_ident =
+  map_last_global_ident @@ map_first_letter String.lowercase
+
+let uppercase_global_ident : global_ident -> global_ident =
+  map_last_global_ident @@ map_first_letter String.uppercase
 
 module Make (Ctx : sig
   val ctx : Context.t
@@ -182,29 +199,10 @@ struct
     String.lowercase
       name (* TODO: this is not robust, might produce name clashes *)
 
-  let rec map_last_non_empty_list (f : 'a -> 'a) (l : 'a Non_empty_list.t) :
-      'a Non_empty_list.t =
-    let open Non_empty_list in
-    match l with
-    | [ x ] -> [ f x ]
-    | x :: y :: tl -> cons x @@ map_last_non_empty_list f (y :: tl)
-
-  let map_last_concrete_ident (f : string -> string) (id : concrete_ident) =
-    { id with path = map_last_non_empty_list f id.path }
-
-  let map_last_global_ident (f : string -> string) (id : global_ident) =
-    match id with
-    | `Concrete concrete -> `Concrete (map_last_concrete_ident f concrete)
-    | _ -> id
-
-  let lowercase_global_ident : global_ident -> global_ident =
-    map_last_global_ident @@ map_first_letter String.lowercase
-
-  let uppercase_global_ident : global_ident -> global_ident =
-    map_last_global_ident @@ map_first_letter String.uppercase
-
   let ptype_ident : global_ident -> F.Ident.lident =
-    lowercase_global_ident >> pglobal_ident
+    lowercase_global_ident
+    >> map_last_global_ident (fun s -> s ^ "_t")
+    >> pglobal_ident
 
   let pconstructor_ident : global_ident -> F.Ident.lident =
     uppercase_global_ident >> pglobal_ident
@@ -352,6 +350,29 @@ struct
       (c "core::ops::index::Index::index", (2, ".[]"));
       (c "core::ops::bit::BitXor::bitxor", (2, "^."));
       (c "core::ops::arith::Add::add", (2, "+."));
+      (`Primitive (BinOp Add), (2, "+"));
+      (`Primitive (BinOp Sub), (2, "-"));
+      (`Primitive (BinOp Mul), (2, "*"));
+      (`Primitive (BinOp Eq), (2, "="))
+      (* | BinOp  -> ( *)
+      (*    match op with *)
+      (*    | Add -> F.lid [ "Prims"; "op_Addition" ] *)
+      (*    | Sub -> F.lid [ "Prims"; "op_Subtraction" ] *)
+      (*    | Mul -> F.lid [ "FStar"; "Mul"; "op_Star" ] *)
+      (*    | Div -> F.lid [ "Prims"; "op_Division" ] *)
+      (*    | Eq -> F.lid [ "Prims"; "op_Equality" ] *)
+      (*    | Lt -> F.lid [ "Prims"; "op_LessThan" ] *)
+      (*    | Le -> F.lid [ "Prims"; "op_LessThanOrEqual" ] *)
+      (*    | Ge -> F.lid [ "Prims"; "op_GreaterThan" ] *)
+      (*    | Gt -> F.lid [ "Prims"; "op_GreaterThanOrEqual" ] *)
+      (*    | Ne -> F.lid [ "Prims"; "op_disEquality" ] *)
+      (*    | Rem -> failwith "TODO: Rem" *)
+      (*    | BitXor -> failwith "TODO: BitXor" *)
+      (*    | BitAnd -> failwith "TODO: BitAnd" *)
+      (*    | BitOr -> failwith "TODO: BitOr" *)
+      (*    | Shl -> failwith "TODO: Shl" *)
+      (*    | Shr -> failwith "TODO: Shr" *)
+      (*    | Offset -> failwith "TODO: Offset") *);
     ]
     |> Map.of_alist_exn (module GlobalIdent)
 

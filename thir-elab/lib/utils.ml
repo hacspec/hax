@@ -16,6 +16,10 @@ let thd3 (_, _, z) = z
 let curry f x y = f (x, y)
 let uncurry f (x, y) = f x y
 
+let map_first_letter (f : string -> string) (s : string) =
+  let first, rest = String.(prefix s 1, drop_prefix s 1) in
+  f first ^ rest
+
 let rec split_list_once ~equal ~needle ~acc subject =
   match subject with
   | [] -> (List.rev acc, [])

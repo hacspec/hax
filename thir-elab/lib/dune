@@ -6,6 +6,8 @@
   bignum
   pprint
   ppx_deriving_yojson.runtime
+  ppx_deriving_cmdliner.runtime
+  cmdliner
   fstar.lib)
  (preprocessor_deps
   ; `ppx_inline` is used on the `Subtype` module, thus we need it at PPX time
@@ -21,6 +23,7 @@
    ppx_deriving.eq
    ppx_inline
    ppx_generate_features
+   ppx_deriving_cmdliner
    ppx_matches)))
 
 (rule
