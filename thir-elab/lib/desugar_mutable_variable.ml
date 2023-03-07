@@ -250,23 +250,26 @@ struct
     let forget_all (s : t) : B.expr =
       match s.result_type with
       | None -> UB.unit_expr
-      | Some rt -> (
-          match s.shadowings |> BTyLocIdentUniqueList.to_list with
-          | [] -> s.expr
-          | shadowings ->
-              UB.map_body_of_nested_lets
-                (fun e ->
-                  match e.e with
-                  | B.Construct
-                      {
-                        constructor = `TupleCons len;
-                        fields = (_, first) :: _;
-                        base = None;
-                      }
-                    when len = List.length shadowings + 1 ->
-                      first
-                  | _ -> UB.project_tuple e (List.length shadowings) 0 rt)
-                s.expr)
+      | Some rt ->
+          let e =
+            match s.shadowings |> BTyLocIdentUniqueList.to_list with
+            | [] -> s.expr
+            | shadowings ->
+                UB.map_body_of_nested_lets
+                  (fun e ->
+                    match e.e with
+                    | B.Construct
+                        {
+                          constructor = `TupleCons len;
+                          fields = (_, first) :: _;
+                          base = None;
+                        }
+                      when len = List.length shadowings + 1 ->
+                        first
+                    | _ -> UB.project_tuple e (List.length shadowings) 0 rt)
+                  s.expr
+          in
+          { e with typ = rt }
   end
 
   module Binding = struct
