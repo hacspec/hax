@@ -2014,7 +2014,7 @@ pub fn inspect_local_def_id<'tcx, S: BaseState<'tcx>>(
         tcx: s.tcx(),
         options: s.options(),
         thir: thir.clone(),
-        def_id: (),
+        owner_id: (),
         opt_def_id: s.opt_def_id(),
         macro_infos: s.macro_infos(),
         local_ident_map: s.local_ident_map(),

@@ -94,7 +94,7 @@ fn browse_items<'tcx>(
         tcx,
         options: box options.clone(),
         thir: (),
-        def_id: (),
+        owner_id: (),
         opt_def_id: None,
         macro_infos: macro_calls_r,
         local_ident_map: Rc::new(RefCell::new(HashMap::new())),
