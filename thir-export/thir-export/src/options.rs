@@ -84,6 +84,27 @@ impl PathOrDash {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ForceCargoBuild {
+    data: u128,
+}
+
+impl std::convert::From<&std::ffi::OsStr> for ForceCargoBuild {
+    fn from(s: &std::ffi::OsStr) -> Self {
+        ForceCargoBuild {
+            data: if s == "false" {
+                use std::time::{SystemTime, UNIX_EPOCH};
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .map(|r| r.as_millis())
+                    .unwrap_or(0)
+            } else {
+                0
+            },
+        }
+    }
+}
+
 #[derive(Parser, Debug, Clone, Serialize, Deserialize)]
 #[command(author, version, about, long_about = None)]
 pub struct Options {
@@ -114,4 +135,8 @@ pub struct Options {
     /// `foo`, use `-p foo`.
     #[arg(default_values = Vec::<&str>::new(), last = true)]
     pub cargo_flags: Vec<String>,
+
+    /// [cargo] caching is disabled by default, this flag enables it back.
+    #[arg(long="enable-cargo-cache", action=clap::builder::ArgAction::SetTrue)]
+    pub force_cargo_build: ForceCargoBuild,
 }

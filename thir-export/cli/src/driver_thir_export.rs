@@ -19,6 +19,7 @@ extern crate rustc_index;
 extern crate rustc_interface;
 extern crate rustc_middle;
 extern crate rustc_mir_build;
+extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 extern crate rustc_type_ir;
@@ -126,10 +127,24 @@ fn collect_macros(
     v.macro_calls
 }
 
+use rustc_interface::interface;
+use rustc_session::parse::ParseSess;
+use rustc_span::symbol::Symbol;
+
 struct DefaultCallbacks {
     options: thir_export::Options,
 }
 impl Callbacks for DefaultCallbacks {
+    fn config(&mut self, config: &mut interface::Config) {
+        let options = self.options.clone();
+        config.parse_sess_created = Some(Box::new(move |parse_sess| {
+            parse_sess.env_depinfo.get_mut().insert((
+                Symbol::intern("THIR_EXPORT_OPTIONS"),
+                Some(Symbol::intern(&serde_json::to_string(&options).unwrap())),
+            ));
+        }));
+    }
+
     fn after_parsing<'tcx>(
         &mut self,
         _compiler: &Compiler,
