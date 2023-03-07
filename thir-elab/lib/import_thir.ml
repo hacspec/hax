@@ -595,15 +595,22 @@ module Exn = struct
   let c_item (item : Thir.item) : item =
     let span = c_span item.span in
     let v =
-      match item.kind with
+      (* TODO: things might be unnamed (e.g. constants) *)
+      match (item.kind : Thir.item_kind) with
+      | Const (t, body) ->
+          Fn
+            {
+              name = def_id (Option.value_exn item.def_id);
+              generics = { params = []; constraints = [] };
+              body = c_expr body;
+              params = [];
+            }
       | Fn (generics, { body; header; params; ret; sig_span }) ->
-          let body = c_expr body in
-          (* let body = { body with typ = unit_typ } in *)
           Fn
             {
               name = def_id (Option.value_exn item.def_id);
               generics = c_generics generics;
-              body;
+              body = c_expr body;
               params = List.map ~f:c_param params;
             }
       | Enum (variants, generics) ->
