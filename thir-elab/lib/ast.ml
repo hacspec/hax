@@ -9,6 +9,9 @@ module Non_empty_list = struct
 
   let yojson_of_t : ('a -> Yojson.Safe.t) -> 'a t -> Yojson.Safe.t =
    fun f x -> Non_empty_list.to_list x |> yojson_of_list f
+
+  let t_of_sexp f s = List.t_of_sexp f s |> Non_empty_list.of_list_exn
+  let sexp_of_t f x = Non_empty_list.to_list x |> List.sexp_of_t f
 end
 
 module Bigint = struct
@@ -52,12 +55,44 @@ let pp_span (fmt : Format.formatter) (s : span) : unit =
   Format.pp_print_string fmt @@ show_span s
 
 type concrete_ident = { crate : string; path : string Non_empty_list.t }
+
+and bin_op =
+  | Add
+  | Sub
+  | Mul
+  | Div
+  | Rem
+  | BitXor
+  | BitAnd
+  | BitOr
+  | Shl
+  | Shr
+  | Eq
+  | Lt
+  | Le
+  | Ne
+  | Ge
+  | Gt
+  | Offset
+
+and un_op = Not | Neg
+and logical_op = And | Or
+
+and primitive_ident =
+  | Box
+  | Deref
+  | Cast
+  | BinOp of bin_op
+  | UnOp of un_op
+  | LogicalOp of logical_op
 [@@deriving
   show,
     yojson,
+    compare,
+    sexp,
     eq,
-    visitors { variety = "reduce"; name = "concrete_ident_reduce" },
-    visitors { variety = "map"; name = "concrete_ident_map" }]
+    visitors { variety = "reduce"; name = "primitive_ident_reduce" },
+    visitors { variety = "map"; name = "primitive_ident_map" }]
 
 let show_concrete_ident (s : concrete_ident) : string =
   s.crate ^ "::" ^ String.concat ~sep:"::" @@ Non_empty_list.to_list s.path
@@ -65,30 +100,33 @@ let show_concrete_ident (s : concrete_ident) : string =
 let pp_concrete_ident (fmt : Format.formatter) (s : concrete_ident) : unit =
   Format.pp_print_string fmt @@ show_concrete_ident s
 
-type primitive_ident =
-  | Box
-  | Deref
-  | Cast
-  | BinOp of (Raw_thir_ast.bin_op[@yojson.opaque])
-  | UnOp of (Raw_thir_ast.un_op[@yojson.opaque])
-  | LogicalOp of (Raw_thir_ast.logical_op[@yojson.opaque])
-[@@deriving
-  show,
-    yojson,
-    eq,
-    visitors { variety = "reduce"; name = "primitive_ident_reduce" },
-    visitors { variety = "map"; name = "primitive_ident_map" }]
-
 module GlobalIdent = struct
-  type t =
-    [ `Concrete of concrete_ident
-    | `Primitive of primitive_ident
-    | `TupleType of int
-    | `TupleCons of int
-    | `TupleField of int * int
-    | `Projector of [ `Concrete of concrete_ident | `TupleField of int * int ]
-    ]
-  [@@deriving show, yojson, eq]
+  module T = struct
+    type t =
+      [ `Concrete of concrete_ident
+      | `Primitive of primitive_ident
+      | `TupleType of int
+      | `TupleCons of int
+      | `TupleField of int * int
+      | `Projector of [ `Concrete of concrete_ident | `TupleField of int * int ]
+      ]
+    [@@deriving show, yojson, compare, sexp, eq]
+  end
+
+  include Base.Comparator.Make (T)
+  include T
+  (* open Ppx_deriving_cmdliner_runtime *)
+
+  let of_string : string -> [ `Error of string | `Ok of t ] =
+    split_str ~on:"::" >> function
+    | [] | [ _ ] -> `Error "A global ident is at least composed of two chunks"
+    | crate :: path_hd :: path_tl ->
+        `Ok (`Concrete Non_empty_list.{ crate; path = path_hd :: path_tl })
+
+  let to_string : t -> string = [%show: t]
+
+  let cmdliner_converter =
+    (of_string, fun fmt t -> Format.fprintf fmt "%s" (to_string t))
 end
 
 type global_ident = (GlobalIdent.t[@visitors.opaque])
