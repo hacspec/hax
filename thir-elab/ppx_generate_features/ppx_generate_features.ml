@@ -48,6 +48,33 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
 
       module type T = FEATURES
 
+      module Enumeration = struct
+        [%%i
+        let decl =
+          B.type_declaration ~name:{ loc; txt = "t" } ~params:[] ~cstrs:[]
+            ~kind:
+              (Ptype_variant
+                 (List.map
+                    ~f:(fun txt ->
+                      B.constructor_declaration
+                        ~name:{ loc; txt = uppercase_first_char txt }
+                        ~args:(Pcstr_tuple []) ~res:None)
+                    features))
+            ~private_:Public ~manifest:None
+        in
+        B.pstr_type Recursive
+          [
+            {
+              decl with
+              ptype_attributes =
+                [
+                  B.attribute ~name:{ loc; txt = "deriving" }
+                    ~payload:(PStr [%str show, yojson, eq]);
+                ];
+            };
+          ]]
+      end
+
       module DefaultClasses (F : T) = struct
         open Base
 
@@ -149,6 +176,44 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
             features
           |> B.pmty_signature]
         end
+
+        module type T_Exn = sig
+          include T
+
+          type error [@@deriving show, yojson, eq]
+
+          exception E of error
+        end
+
+        module WrapExns (S : T_Exn) =
+        [%m
+        B.pmod_structure
+        @@ [%str
+             type error = S.error * Enumeration.t [@@deriving show, yojson, eq]
+
+             exception E of error]
+        @ List.map
+            ~f:(fun txt ->
+              [%stri
+                let [%p B.ppat_var { loc; txt }] =
+                 fun x ->
+                  try
+                    [%e B.pexp_ident @@ { loc; txt = Ldot (Lident "S", txt) }] x
+                  with S.E err ->
+                    raise
+                    @@ E
+                         ( err,
+                           [%e
+                             B.pexp_construct
+                               {
+                                 loc;
+                                 txt =
+                                   Ldot
+                                     ( Lident "Enumeration",
+                                       uppercase_first_char txt );
+                               }
+                               None] )])
+            features]
 
         module Id =
         [%m

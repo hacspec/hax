@@ -7,16 +7,15 @@ open Desugar_utils
 
 module DesugarToFStar =
 [%functor_application
-Desugar_reject_mutable_references.Make Features.Rust |> Resugar_for_loop.Make
-|> Desugar_direct_and_mut.Make
-|> Desugar_reject_mutable_references.MakeContinueReject
+Reject.RawOrMutPointer Features.Rust |> Resugar_for_loop.Make
+|> Desugar_direct_and_mut.Make |> Reject.Continue
 |> Desugar_drop_references.Make
 |> (fun X ->
      (Desugar_mutable_variable.Make (module X))
        (module struct
          let early_exit = Fn.id
        end))
-|> Desugar_reject_mutable_references.EnsureIsFStar |> Identity]
+|> Reject.NotFStar |> Identity]
 
 let parse_list_json (parse : Yojson.Safe.t -> 'a) (input : Yojson.Safe.t) :
     'a list =
