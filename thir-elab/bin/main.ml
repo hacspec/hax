@@ -1,7 +1,6 @@
 open Thir_elab.Raw_thir_ast
 open Core
 open Thir_elab.Utils
-open Thir_elab.Print_fstar
 open Thir_elab
 open Desugar_utils
 
@@ -60,6 +59,9 @@ try
       print_endline
         (match item with
         | Ok item ->
+            let (module Print) =
+              Print_fstar.(make { current_namespace = item.parent_namespace })
+            in
             let item =
               try
                 let r = DesugarToFStar.ditem item in
@@ -69,7 +71,7 @@ try
                 DebugBindDesugar.export ();
                 raise e
             in
-            decl_to_string (pitem @@ rewrite_some_idents item)
+            Print.decl_to_string (Print.pitem @@ rewrite_some_idents item)
         | Error err -> "Convertion error: " ^ err))
     converted_items
 with e -> print_endline (ParseError.pp e)

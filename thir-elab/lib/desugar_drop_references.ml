@@ -196,7 +196,7 @@ struct
           B.TyAlias { name; generics = dgenerics generics; ty = dty ty }
       | NotImplementedYet -> B.NotImplementedYet
     in
-    { v; span = item.span }
+    { v; span = item.span; parent_namespace = item.parent_namespace }
 
   let metadata = Desugar_utils.Metadata.make "DropReferences"
 end

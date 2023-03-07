@@ -33,6 +33,11 @@ module Exn = struct
     | TypeNs s | ValueNs s | MacroNs s | LifetimeNs s -> Some s
     | _ -> None
 
+  let namespace_of_def_id (def_id : Thir.def_id) : string * string list =
+    ( def_id.krate,
+      def_id.path |> List.drop_last_exn
+      |> List.filter_map ~f:string_of_def_path_item )
+
   let concrete_of_def_id (def_id : Thir.def_id) : concrete_ident =
     {
       crate = def_id.krate;
@@ -677,7 +682,7 @@ module Exn = struct
           Type { name; generics; variants; record }
       | _ -> NotImplementedYet
     in
-    { span; v }
+    { span; v; parent_namespace = namespace_of_def_id item.owner_id }
 end
 
 let c_item (item : Thir.item) : (item, error) Result.t =

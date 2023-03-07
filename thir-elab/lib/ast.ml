@@ -514,7 +514,11 @@ functor
         }
       | NotImplementedYet
 
-    and item = { v : item'; span : span }
+    and item = {
+      v : item';
+      span : span;
+      parent_namespace : string * string list;
+    }
     [@@deriving
       show,
         yojson,

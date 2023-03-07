@@ -215,7 +215,11 @@ struct
       { name = v.name; arguments = List.map ~f:(map_snd dty) v.arguments }
 
     let rec ditem (item : A.item) : B.item =
-      { v = ditem' item.v; span = item.span }
+      {
+        v = ditem' item.v;
+        span = item.span;
+        parent_namespace = item.parent_namespace;
+      }
 
     and ditem' (item : A.item') : B.item' =
       match item with
