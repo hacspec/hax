@@ -50,6 +50,17 @@ module Make (F : Features.T) = struct
   module TypedLocalIdent = TypedLocalIdent (AST)
 
   module Sets = struct
+    module GlobalIdent = struct
+      include Set.M (GlobalIdent)
+
+      class ['s] monoid =
+        object
+          inherit ['s] VisitorsRuntime.monoid
+          method private zero = Set.empty (module GlobalIdent)
+          method private plus = Set.union
+        end
+    end
+
     module LocalIdent = struct
       include Set.M (LocalIdent)
 
@@ -93,9 +104,24 @@ module Make (F : Features.T) = struct
           in
           expr e
       end
+
+    let rename_global_idents (f : global_ident -> global_ident) =
+      object
+        inherit [_] item_map as super
+        method visit_t () x = x
+        method visit_mutability _ () m = m
+        method! visit_global_ident s ident = f ident
+      end
   end
 
   module Reducers = struct
+    let collect_global_idents =
+      object
+        inherit [_] pat_reduce as super
+        inherit [_] Sets.GlobalIdent.monoid as m
+        method! visit_global_ident env x = Set.singleton (module GlobalIdent) x
+      end
+
     let variables_of_pat (p : pat) : Sets.LocalIdent.t =
       (object
          inherit [_] pat_reduce as super

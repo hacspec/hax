@@ -15,3 +15,23 @@ let snd3 (_, y, _) = y
 let thd3 (_, _, z) = z
 let curry f x y = f (x, y)
 let uncurry f (x, y) = f x y
+
+let rec split_list_once ~equal ~needle ~acc subject =
+  match subject with
+  | [] -> (List.rev acc, [])
+  | hd :: tl ->
+      if List.is_prefix subject ~prefix:needle ~equal then
+        (List.rev acc, List.drop subject (List.length needle))
+      else split_list_once ~equal ~needle ~acc:(hd :: acc) tl
+
+let split_list ~equal ~needle (subject : 'a list) : 'a list list =
+  let rec h l =
+    match split_list_once ~equal ~needle ~acc:[] l with
+    | l, [] -> [ l ]
+    | l, r -> l :: h r
+  in
+  h subject
+
+let split_str (s : string) ~(on : string) : string list =
+  split_list ~equal:Char.equal ~needle:(String.to_list on) (String.to_list s)
+  |> List.map ~f:String.of_char_list

@@ -106,6 +106,31 @@ module Exn = struct
 
   let wild_pat : ty -> pat = fun typ -> { typ; span = Dummy; p = PWild }
 
+  let c_binop : Thir.bin_op -> bin_op = function
+    | Add -> Add
+    | Sub -> Sub
+    | Mul -> Mul
+    | Div -> Div
+    | Rem -> Rem
+    | BitXor -> BitXor
+    | BitAnd -> BitAnd
+    | BitOr -> BitOr
+    | Shl -> Shl
+    | Shr -> Shr
+    | Eq -> Eq
+    | Lt -> Lt
+    | Le -> Le
+    | Ne -> Ne
+    | Ge -> Ge
+    | Gt -> Gt
+    | Offset -> Offset
+
+  let c_un_op : Thir.un_op -> un_op = function Not -> Not | Neg -> Neg
+
+  let c_logical_op : Thir.logical_op -> logical_op = function
+    | And -> And
+    | Or -> Or
+
   module GlobalNames = struct
     let h typ v : expr = { span = Dummy; typ; e = Ast.GlobalVar v }
 
@@ -123,7 +148,7 @@ module Exn = struct
       {
         span = Dummy;
         typ = Ast.TArrow ([ l; r ], out);
-        e = Ast.GlobalVar (`Primitive (BinOp op));
+        e = Ast.GlobalVar (`Primitive (BinOp (c_binop op)));
       }
   end
 
@@ -347,7 +372,7 @@ module Exn = struct
           let e = Option.map ~f:c_expr value in
           let e = Option.value ~default:unit_expr e in
           Break { e; label = None; witness = () }
-      | Continue _ -> failwith "Continue"
+      | Continue _ -> Continue { label = None; witness = ((), ()) }
       | Return { value } ->
           let e = Option.map ~f:c_expr value in
           let e = Option.value ~default:unit_expr e in
