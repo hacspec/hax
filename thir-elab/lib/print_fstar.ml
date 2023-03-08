@@ -212,12 +212,14 @@ struct
     | TBool -> F.term_of_lid [ "Prims"; "bool" ]
     | TChar -> F.term_of_lid [ "FStar"; "Char"; "char" ]
     | TInt k ->
-        let prefix = function Signed -> "UInt" | Unsigned -> "Int" in
+        let prefix = function Signed -> "Int" | Unsigned -> "UInt" in
         let path x s = [ prefix x ^ s; "t" ] in
         F.term_of_lid
           (match k with
-          | { size = SSize; signedness = Signed } -> [ "Prims"; "int" ]
-          | { size = SSize; signedness = Unsigned } -> [ "Prims"; "nat" ]
+          | { size = SSize; signedness = Signed } -> [ "int_size" ]
+          | { size = SSize; signedness = Unsigned } -> [ "uint_size" ]
+          (* | { size = SSize; signedness = Signed } -> [ "Prims"; "int" ] *)
+          (* | { size = SSize; signedness = Unsigned } -> [ "Prims"; "nat" ] *)
           | { size = S8; signedness } -> path signedness "8"
           | { size = S16; signedness } -> path signedness "16"
           | { size = S32; signedness } -> path signedness "32"
@@ -353,7 +355,8 @@ struct
       (`Primitive (BinOp Add), (2, "+"));
       (`Primitive (BinOp Sub), (2, "-"));
       (`Primitive (BinOp Mul), (2, "*"));
-      (`Primitive (BinOp Eq), (2, "="))
+      (`Primitive (BinOp Eq), (2, "="));
+      (`Primitive (BinOp Ne), (2, "<>"))
       (* | BinOp  -> ( *)
       (*    match op with *)
       (*    | Add -> F.lid [ "Prims"; "op_Addition" ] *)

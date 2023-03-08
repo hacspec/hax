@@ -1,86 +1,10 @@
 module Hacspec_chacha20.Edited
 
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+
 open FStar.Mul
 open Hacspec.Lib
-
-type state_t = lseq (uint32) (16)
-
-let state_idx =
-  nat_mod (16)
-
-type constants_t = lseq (uint32) (4)
-
-let constants_idx =
-  nat_mod (4)
-
-type block_t = lseq (uint8) (64)
-
-type chaChaIV_t = lseq (uint8) (12)
-
-type chaChaKey_t = lseq (uint8) (32)
-
-let x = 3l
-
-class from_seq_tc (t: Type) = {
-  inner: Type;
-  size: nat;
-  from_seq: s:seq inner{seq_len s = size} -> t
-}
-
-instance _: from_seq_tc state_t = {
-  inner = uint32;
-  size = 16;
-  from_seq = array_from_seq 16
-}
-
-instance _: from_seq_tc block_t = {
-  inner = uint8;
-  size = 64;
-  from_seq = array_from_seq 64
-}
-
-let to_le_bytes (#int_ty: inttype{unsigned int_ty /\ int_ty <> U1})
-  (#len: uint_size{
-    range (len * (match int_ty with U8 -> 1 | U16 -> 2  | U32 -> 4 | U64 -> 8 | U128 -> 16)) U32
-  })
-  = array_to_le_bytes #int_ty #len
-
-let to_le_U32s = array_to_le_uint32s
-
-class array_assign (o: Type0) = {
-  key: Type0;
-  value: Type0;
-  (.[]<-): o -> key -> value -> o
-}
-
-instance array_upd1: array_assign state_t = {
-  key = state_idx;
-  value = uint32;
-  (.[]<-) = array_upd
-}
-
-instance array_upd2: array_assign constants_t = {
-  key = constants_idx;
-  value = uint32;
-  (.[]<-) = array_upd
-}
-class has_default (o: Type) = {new_: o}
-instance _: has_default state_t = {new_ = array_new_ (Hacspec_lib.secret 0x0ul) 16}
-instance _: has_default constants_t = {new_ = array_new_ (Hacspec_lib.secret 0x0ul) 4}
-instance _: has_default block_t = {new_ = array_new_ (Hacspec_lib.secret (pub_u8 0x0)) 64}
-
-class xor (t: Type) = { (^.): t -> t -> t }
-instance xor_inherit t l: xor (int_t t l) = { (^.) = logxor }
-instance xor_lseq (len: uint_size) (t:Type) {| xor t |}: xor (lseq t len) 
-  = { (^.) = array_xor (^.) }
-
-class add (t: Type) = { (+.): t -> t -> t }
-
-instance _: add int = { (+.) = (+) }
-instance add_inherit (t:inttype{unsigned t}) l: add (int_t t l) = { (+.) = add_mod }
-instance add_lseq (len: uint_size) (t:Type) {| add t |}: add (lseq t len) 
-  = { (+.) = array_add (+.) }
-
+include Hacspec_chacha20.Header
 
 let chacha20_line (a b d: state_idx) (s: pos {s < 32}) (m: state_t) : state_t =
   let state:state_t = m in
@@ -107,10 +31,9 @@ let chacha20_double_round (state: state_t) : state_t =
 let chacha20_rounds (state: state_t) : state_t =
   let st:state_t = state in
   let st =
-    foldi 0 10 (fun _i (st: state_t) -> chacha20_double_round st) st
+    foldi 0 10 (fun (i: uint_size) (st: state_t) -> chacha20_double_round st) st
   in
   st
-
 
 let chacha20_core (ctr: Hacspec_lib.secret_t) (st0: state_t) : state_t =
   let state:state_t = st0 in
@@ -124,8 +47,6 @@ let chacha20_constants_init: constants_t =
   let constants:constants_t = constants.[ 1 ] <- Hacspec_lib.secret 857760878ul in
   let constants:constants_t = constants.[ 2 ] <- Hacspec_lib.secret 2036477234ul in
   constants.[ 3 ] <- Hacspec_lib.secret 1797285236ul
-
-
 
 let chacha20_init (key: chaChaKey_t) (iv: chaChaIV_t) (ctr: Hacspec_lib.secret_t) : state_t =
   let st:state_t = new_ in
@@ -156,42 +77,41 @@ let chacha20_encrypt_last
   let b:block_t = new_ in
   let b:block_t = Hacspec_lib.update b 0 plain in
   let b:block_t = chacha20_encrypt_block st0 ctr b in
-  array_slice b 0 (Hacspec_lib.len plain)
+  slice b 0 (Hacspec_lib.len plain)
 
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
-
-let chacha20_update (st0: state_t) (m: Hacspec_lib.seq_t Secret_integers.u8_t): Hacspec_lib.seq_t Secret_integers.u8_t =
-  let blocks_out = seq_new_ (Hacspec_lib.secret (pub_u8 0x0)) (seq_len m) in
-  let n_blocks: uint_size = seq_num_exact_chunks m 64 in
-  let blocks_out = // : lseq uint8 (seq_len m) =
+let chacha20_update (st0: state_t) (m: Hacspec_lib.seq_t Secret_integers.u8_t)
+    : Hacspec_lib.seq_t Secret_integers.u8_t =
+  let blocks_out = Hacspec_lib.new_ (Hacspec_lib.len m) in
+  let n_blocks:uint_size = Hacspec_lib.num_exact_chunks m 64 in
+  let blocks_out =
     foldi 0
       n_blocks
       (fun i blocks_out ->
-          let msg_block: seq uint8 =
-            seq_get_exact_chunk m 64 i
+          let msg_block:Hacspec_lib.seq_t Secret_integers.u8_t =
+            Hacspec_lib.get_exact_chunk m 64 i
           in
-          let b:block_t = chacha20_encrypt_block st0 (Hacspec_lib.secret (pub_u32 i)) (from_seq msg_block) in
-          seq_set_exact_chunk blocks_out 64 i b)
+          let b:block_t = chacha20_encrypt_block st0 (Hacspec_lib.secret i) (from_seq msg_block) in
+          Hacspec_lib.set_exact_chunk blocks_out 64 i b)
       blocks_out
   in
-  let last_block:Hacspec_lib.seq_t Secret_integers.u8_t = seq_get_remainder_chunk m 64 in
-  let blocks_out =
-    if seq_len last_block <> 0
+  let last_block:Hacspec_lib.seq_t Secret_integers.u8_t = Hacspec_lib.get_remainder_chunk m 64 in
+  let blocks_out:(Hacspec_lib.seq_t Secret_integers.u8_t) =
+    if Hacspec_lib.len last_block <> 0
     then
       let b:Hacspec_lib.seq_t Secret_integers.u8_t =
-        chacha20_encrypt_last st0 (Hacspec_lib.secret (pub_u32 n_blocks)) last_block
+        chacha20_encrypt_last st0 (Hacspec_lib.secret n_blocks) last_block
       in
-      seq_set_chunk blocks_out 64 n_blocks b
+      Hacspec_lib.set_chunk blocks_out 64 n_blocks b
     else blocks_out
   in
   blocks_out
 
+
 let chacha20
       (key: chaChaKey_t)
       (iv: chaChaIV_t)
-      (ctr: pub_uint32)
+      (ctr: UInt32.t)
       (m: Hacspec_lib.seq_t Secret_integers.u8_t)
     : Hacspec_lib.seq_t Secret_integers.u8_t =
   let state:state_t = chacha20_init key iv (Hacspec_lib.secret ctr) in
   chacha20_update state m
-

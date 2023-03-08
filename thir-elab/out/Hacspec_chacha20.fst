@@ -1,12 +1,12 @@
 module Hacspec_chacha20
 
-let chacha20_line (a b d s: Prims.nat) (m: state_t) : state_t =
+let chacha20_line (a b d s: uint_size) (m: state_t) : state_t =
   let state:state_t = m in
   let state:state_t = state.[ a ] <- state.[ a ] +. state.[ b ] in
   let state:state_t = state.[ d ] <- state.[ d ] ^. state.[ a ] in
   state.[ d ] <- Secret_integers.rotate_left state.[ d ] s
 
-let chacha20_quarter_round (a b c d: Prims.nat) (state: state_t) : state_t =
+let chacha20_quarter_round (a b c d: uint_size) (state: state_t) : state_t =
   let state:state_t = chacha20_line a b d 16 state in
   let state:state_t = chacha20_line c d b 12 state in
   let state:state_t = chacha20_line a b d 8 state in
@@ -25,28 +25,28 @@ let chacha20_double_round (state: state_t) : state_t =
 let chacha20_rounds (state: state_t) : state_t =
   let st:state_t = state in
   let _:Prims.unit =
-    Dummy.foldi 0l 10l (fun (_i: UInt32.t) (st: state_t) -> chacha20_double_round st) st
+    Dummy.foldi 0 10 (fun (i: uint_size) (st: state_t) -> chacha20_double_round st) st
   in
   st
 
 let chacha20_core (ctr: Hacspec_lib.secret_t) (st0: state_t) : state_t =
   let state:state_t = st0 in
-  let state:state_t = state.[ 12l ] <- state.[ 12l ] +. ctr in
+  let state:state_t = state.[ 12 ] <- state.[ 12 ] +. ctr in
   let k:state_t = chacha20_rounds state in
   k +. state
 
 let chacha20_constants_init: constants_t =
   let constants:constants_t = new_ in
-  let constants:constants_t = constants.[ 0l ] <- Hacspec_lib.secret 1634760805ul in
-  let constants:constants_t = constants.[ 1l ] <- Hacspec_lib.secret 857760878ul in
-  let constants:constants_t = constants.[ 2l ] <- Hacspec_lib.secret 2036477234ul in
-  constants.[ 3l ] <- Hacspec_lib.secret 1797285236ul
+  let constants:constants_t = constants.[ 0 ] <- Hacspec_lib.secret 1634760805ul in
+  let constants:constants_t = constants.[ 1 ] <- Hacspec_lib.secret 857760878ul in
+  let constants:constants_t = constants.[ 2 ] <- Hacspec_lib.secret 2036477234ul in
+  constants.[ 3 ] <- Hacspec_lib.secret 1797285236ul
 
 let chacha20_init (key: chaChaKey_t) (iv: chaChaIV_t) (ctr: Hacspec_lib.secret_t) : state_t =
   let st:state_t = new_ in
   let st:state_t = Hacspec_lib.update st 0 chacha20_constants_init in
   let st:state_t = Hacspec_lib.update st 4 (to_le_U32s key) in
-  let st:state_t = st.[ 12l ] <- ctr in
+  let st:state_t = st.[ 12 ] <- ctr in
   Hacspec_lib.update st 13 (to_le_U32s iv)
 
 let chacha20_key_block (state: state_t) : block_t =
@@ -76,11 +76,11 @@ let chacha20_encrypt_last
 let chacha20_update (st0: state_t) (m: Hacspec_lib.seq_t Secret_integers.u8_t)
     : Hacspec_lib.seq_t Secret_integers.u8_t =
   let blocks_out:Hacspec_lib.seq_t Secret_integers.u8_t = Hacspec_lib.new_ (Hacspec_lib.len m) in
-  let n_blocks:Prims.nat = Hacspec_lib.num_exact_chunks m 64 in
+  let n_blocks:uint_size = Hacspec_lib.num_exact_chunks m 64 in
   let _:Prims.unit =
     Dummy.foldi 0
       n_blocks
-      (fun (i: Prims.nat) (blocks_out: Hacspec_lib.seq_t Secret_integers.u8_t) ->
+      (fun (i: uint_size) (blocks_out: Hacspec_lib.seq_t Secret_integers.u8_t) ->
           let msg_block:Hacspec_lib.seq_t Secret_integers.u8_t =
             Hacspec_lib.get_exact_chunk m 64 i
           in
@@ -90,7 +90,7 @@ let chacha20_update (st0: state_t) (m: Hacspec_lib.seq_t Secret_integers.u8_t)
   in
   let last_block:Hacspec_lib.seq_t Secret_integers.u8_t = Hacspec_lib.get_remainder_chunk m 64 in
   let _, blocks_out:(Prims.unit * Hacspec_lib.seq_t Secret_integers.u8_t) =
-    if Prims.op_disEquality (Hacspec_lib.len last_block) 0
+    if Hacspec_lib.len last_block <> 0
     then
       let b:Hacspec_lib.seq_t Secret_integers.u8_t =
         chacha20_encrypt_last st0 (Hacspec_lib.secret n_blocks) last_block
@@ -102,7 +102,7 @@ let chacha20_update (st0: state_t) (m: Hacspec_lib.seq_t Secret_integers.u8_t)
 let chacha20
       (key: chaChaKey_t)
       (iv: chaChaIV_t)
-      (ctr: Int32.t)
+      (ctr: UInt32.t)
       (m: Hacspec_lib.seq_t Secret_integers.u8_t)
     : Hacspec_lib.seq_t Secret_integers.u8_t =
   let state:state_t = chacha20_init key iv (Hacspec_lib.secret ctr) in
