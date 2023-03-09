@@ -4,12 +4,6 @@ open FStar.Mul
 open Hacspec.Lib
 open Hacspec_lib_tc
 
-
-
-
-
-
-
 unfold
 type state_t = lseq uint32 16
 unfold
@@ -35,8 +29,6 @@ let chacha20_line (a b d: state_idx_t) (s: pos {s < 32}) (m: state_t) : state_t 
   let state:state_t = state.[ d ] <- state.[ d ] ^. state.[ a ] in
   state.[ d ] <- Secret_integers.rotate_left state.[ d ] s
 
-
-
 let chacha20_quarter_round (a b c d: state_idx_t) (state: state_t) : state_t =
   let state:state_t = chacha20_line a b d 16 state in
   let state:state_t = chacha20_line c d b 12 state in
@@ -55,7 +47,7 @@ let chacha20_double_round (state: state_t) : state_t =
 
 let chacha20_rounds (state: state_t) : state_t =
   let st:state_t = state in
-  foldi 0 10 (fun (_i: uint_size) (st: state_t) -> chacha20_double_round st) st
+  Hacspec.Lib.foldi 0 10 (fun _i st -> chacha20_double_round st) st
 
 let chacha20_core (ctr: Secret_integers.u32_t) (st0: state_t) : state_t =
   let state:state_t = st0 in
@@ -108,7 +100,7 @@ let chacha20_update (st0: state_t) (m: Hacspec_lib_tc.seq_t Secret_integers.u8_t
   in
   let n_blocks:uint_size = Hacspec_lib_tc.num_exact_chunks m 64 in
   let blocks_out =
-    foldi 0
+    Hacspec.Lib.foldi 0
       n_blocks
       (fun i blocks_out ->
           let msg_block:Hacspec_lib_tc.seq_t Secret_integers.u8_t =

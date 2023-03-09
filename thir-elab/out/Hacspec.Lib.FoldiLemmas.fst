@@ -50,6 +50,8 @@ unfold let map_blocks_foldi_fun
   (i: uint_size{i<max}) (s: lseq 'a len)
   = seq_set_exact_chunk #'a #len s blocksize i (f i (seq_get_exact_chunk #'a original_s blocksize i))
 
+// let _ = seq_set_exact_chunk
+
 unfold let map_blocks_foldi
     (#len: uint_size) (blocksize: size_pos)
     (max: uint_size {max * blocksize <= len})

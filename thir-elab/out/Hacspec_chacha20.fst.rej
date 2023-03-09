@@ -1,24 +1,19 @@
 *** /dev/null
 --- /dev/null
 ***************
-*** 95
--       (plain: Hacspec_lib.seq_t Secret_integers.u8_t)
---- 93 -----
-+       (plain: Hacspec_lib.seq_t Secret_integers.u8_t {seq_len plain < 64})
+*** 58
+-   Dummy.foldi 0 10 (fun (_i: uint_size) (st: state_t) -> chacha20_double_round st) st
+--- 58 -----
++   foldi 0 10 (fun (_i: uint_size) (st: state_t) -> chacha20_double_round st) st
 ***************
-*** 104
--   let blocks_out:Hacspec_lib.seq_t Secret_integers.u8_t = Hacspec_lib.new_ (Hacspec_lib.len m) in
---- 102 -----
-+   let blocks_out = Hacspec_lib.new_ (Hacspec_lib.len m) in
-***************
-*** 106,107
--   let blocks_out:Hacspec_lib.seq_t Secret_integers.u8_t =
+*** 110,111
+-   let blocks_out:Hacspec_lib_tc.seq_t Secret_integers.u8_t =
 -     Dummy.foldi 0
---- 104,105 -----
+--- 110,111 -----
 +   let blocks_out =
 +     foldi 0
 ***************
-*** 109
--       (fun (i: uint_size) (blocks_out: Hacspec_lib.seq_t Secret_integers.u8_t) ->
---- 107 -----
+*** 113
+-       (fun (i: uint_size) (blocks_out: Hacspec_lib_tc.seq_t Secret_integers.u8_t) ->
+--- 113 -----
 +       (fun i blocks_out ->

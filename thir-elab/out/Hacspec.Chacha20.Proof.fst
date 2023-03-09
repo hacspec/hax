@@ -28,13 +28,13 @@ let equiv_line (a b d: state_idx_t) (s: pos {s < 32}) (state: state_t)
   = assert (S.line a b d (pub_u32 s) state `LSeq.equal` H.chacha20_line a b d s state)
 
 let equiv_constants_init
-  : squash (LSeq.map secret S.chacha20_constants == chacha20_constants_init ())
+  : squash (LSeq.map secret S.chacha20_constants == chacha20_constants_init)
   = let l = S.([c0;c1;c2;c3]) in
     assert_norm (FStar.List.Tot.length l == 4);
     assert_norm S.(let h (i:nat{i<4}) = FStar.List.Tot.index l i in h 0 = c0 /\ h 1 = c1 /\ h 2 = c2 /\ h 3 = c3);
-    LSeq.eq_intro (LSeq.map #_ #_ #(4 <: size_nat) secret S.chacha20_constants) (chacha20_constants_init ())
+    LSeq.eq_intro (LSeq.map #_ #_ #(4 <: size_nat) secret S.chacha20_constants) (chacha20_constants_init)
 
-let equiv_init (key: cha_cha_key_t) (iv: cha_cha_iv_t) (ctr: uint32)
+let equiv_init (key: chaChaKey_t) (iv: chaChaIV_t) (ctr: uint32)
   : Lemma (S.chacha20_init key iv (v ctr) == H.chacha20_init key iv ctr)
           [SMTPat (H.chacha20_init key iv ctr)]
   = ()
@@ -95,7 +95,7 @@ let equiv_key_block (state: state_t)
           [SMTPat (H.chacha20_key_block state)]
   = ()
 
-let equiv_key_block0 (key: cha_cha_key_t) (iv: cha_cha_iv_t)
+let equiv_key_block0 (key: chaChaKey_t) (iv: chaChaIV_t)
   : Lemma (chacha20_key_block0 key iv == S.chacha20_key_block0 key iv)
           [SMTPat (H.chacha20_key_block0 key iv)]
   = ()
@@ -112,9 +112,35 @@ let equiv_encrypt_last (st0:state_t) (ctr:uint32) (plain: byte_seq {seq_len plai
 
 open Hacspec.Lib.FoldiLemmas
 
-let chacha20_update_equiv (st0 : state_t) (cipher : byte_seq) 
-  : Lemma (H.chacha20_update st0 cipher == S.chacha20_update st0 cipher)
-          [SMTPat (H.chacha20_update st0 cipher)]
+
+let chacha20_update_ (st0 : state_t) (m : byte_seq) : Hacspec_lib_tc.seq_t Secret_integers.u8_t =
+  let blocks_out = Hacspec_lib_tc.new_seq (Hacspec_lib_tc.len m) in
+  let n_blocks : uint_size = Hacspec_lib_tc.num_exact_chunks m 64 in
+  let blocks_out =
+    foldi 0 n_blocks (fun i blocks_out ->
+      let msg_block : seq uint8 =
+        Hacspec_lib_tc.get_exact_chunk m 64 i
+      in
+      let b : block_t =
+        chacha20_encrypt_block st0 (Hacspec.Lib.secret (pub_u32 i)) (
+          array_from_seq (64) (msg_block))
+      in
+      let blocks_out =
+        Hacspec_lib_tc.set_exact_chunk (blocks_out) 64 i b
+      in
+      blocks_out)
+    blocks_out
+  in
+  let last_block: seq uint8 = seq_get_remainder_chunk m 64 in
+    if seq_len last_block <> 0 then
+      let b : seq uint8 =
+        chacha20_encrypt_last st0 (Hacspec.Lib.secret (pub_u32 n_blocks)) last_block
+      in
+      seq_set_chunk blocks_out 64 n_blocks b
+    else blocks_out
+
+let chacha20_update_equiv_ (st0 : state_t) (cipher : byte_seq) 
+  : Lemma (chacha20_update_ st0 cipher == S.chacha20_update st0 cipher)
   = let blocks_out: seq uint8 = seq_new_ (secret (pub_u8 0x0)) (seq_len cipher) in
     let n_blocks: uint_size = seq_num_exact_chunks cipher 64 in
   
@@ -131,7 +157,17 @@ let chacha20_update_equiv (st0 : state_t) (cipher : byte_seq)
          (if seq_len last_block = 0 then blocks_out'
           else seq_set_chunk blocks_out' 64 n_blocks (chacha20_encrypt_last st0 (secret (pub_u32 n_blocks)) last_block)))
 
-let chacha20_equiv (key: cha_cha_key_t) (iv: cha_cha_iv_t) (ctr: pub_uint32) (m: byte_seq)
+
+let chacha20_update_equiv (st0 : state_t) (cipher : byte_seq) 
+  : Lemma (H.chacha20_update st0 cipher == S.chacha20_update st0 cipher)
+          [SMTPat (H.chacha20_update st0 cipher)]
+  = assert (H.chacha20_update st0 cipher == chacha20_update_ st0 cipher) by (
+           Tactics.compute ();
+           Tactics.trefl ()
+    );
+    chacha20_update_equiv_ st0 cipher
+
+let chacha20_equiv (key: chaChaKey_t) (iv: chaChaIV_t) (ctr: pub_uint32) (m: byte_seq)
   : Lemma (S.chacha20_encrypt_bytes key iv (v ctr) m == H.chacha20 key iv ctr m)
           [SMTPat (H.chacha20 key iv ctr m)]
   = ()
