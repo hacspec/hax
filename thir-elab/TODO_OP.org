@@ -1,0 +1,29 @@
+* Std.Core.Array.update_array_at a b c
+a.[b] <- c;
+
+* Core.Ops.Arith.Add.add a b
+~a +. b~
+
+* Core.Ops.Index.Index.index a b
+~a.[b]~
+
+* Core.Ops.Bit.BitXor.bitxor x y
+~x ^ y~
+
+* Secret_integers.rotate_left x y
+~x <<< y~
+
+* Dummy.foldi
+hacspec_lib.foldi or something
+
+
+
+* Hacspec_lib.Traits.SeqTrait.update
+Hacspec_lib.update_sub
+
+* remap from_seq -> Hacspec_lib.from_seq
+
+* Hacspec_lib.* 
+
+* prettify F* prims stuff
+

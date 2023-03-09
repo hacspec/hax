@@ -3,10 +3,10 @@ module Hacspec.Lib.FoldiLemmas
 open FStar.Tactics
 open Hacspec.Lib
 open FStar.Mul
-open Hacspec.Chacha20
+open Hacspec_chacha20
 
 module S = Spec.Chacha20
-module H = Hacspec.Chacha20
+module H = Hacspec_chacha20
 module LSeq = Lib.Sequence
 module Seq = FStar.Seq
 module LSeqLemmas = Lib.Sequence.Lemmas

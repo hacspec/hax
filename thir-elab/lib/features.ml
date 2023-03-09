@@ -31,6 +31,7 @@ end
 module FStar = struct
   include Off
   include On.Monadic_binding
+  include On.Macro
 end
 
 module _ = struct

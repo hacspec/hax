@@ -35,3 +35,9 @@ The Rust part should be fine though, it should only be a matter of `cargo build`
 Just clone & `cd` into the repo, then run `nix develop .#target` –target being `thir-export` or `thir-elab`.
 You can also just use [direnv](https://github.com/nix-community/nix-direnv), with [editor integration](https://github.com/direnv/direnv/wiki#editor-integration).
 
+
+
+### To integrate
+- On MAC, the librustc library path needs to be added to DYLD_LIBRARY_PATH
+- rust-toolchain or +nightly setting on all cargo commands should be consistent
+- cargo clean all directories including hacspec, hacspec-v2, hacspec/examples ect

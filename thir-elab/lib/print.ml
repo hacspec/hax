@@ -151,6 +151,7 @@ let rec pitem (e : item) =
   | Type { name; generics; variants } -> string "TYPEDEF"
   | TyAlias { name; generics; ty } -> string "TYPEALIAS"
   | NotImplementedYet -> string "NotImplementedYet"
+  | IMacroInvokation _ -> string "MacroInvok"
 
 let rec pmutability (e : 'a mutability) = string ""
 let rec pbinding_mode (e : binding_mode) = string ""

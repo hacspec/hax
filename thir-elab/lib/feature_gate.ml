@@ -93,7 +93,7 @@ struct
   let dparam = [%inline_body dparam]
   let dvariant = [%inline_body dvariant]
 
-  let rec ditem (item : A.item) : B.item =
+  let rec ditem (item : A.item) : B.item list =
     try [%inline_body ditem] item with
     | S.E err -> raise @@ Data.ret err @@ Item item
     | E data -> raise @@ Data.add data @@ Item item
@@ -147,6 +147,6 @@ struct
   let dty : A.ty -> B.ty = catch dty
   let dpat : A.pat -> B.pat = catch dpat
   let dexpr : A.expr -> B.expr = catch dexpr
-  let ditem : A.item -> B.item = catch ditem
+  let ditem : A.item -> B.item list = catch ditem
   let metadata = S0.metadata
 end

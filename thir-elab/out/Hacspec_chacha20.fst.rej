@@ -1,0 +1,24 @@
+*** /dev/null
+--- /dev/null
+***************
+*** 95
+-       (plain: Hacspec_lib.seq_t Secret_integers.u8_t)
+--- 93 -----
++       (plain: Hacspec_lib.seq_t Secret_integers.u8_t {seq_len plain < 64})
+***************
+*** 104
+-   let blocks_out:Hacspec_lib.seq_t Secret_integers.u8_t = Hacspec_lib.new_ (Hacspec_lib.len m) in
+--- 102 -----
++   let blocks_out = Hacspec_lib.new_ (Hacspec_lib.len m) in
+***************
+*** 106,107
+-   let blocks_out:Hacspec_lib.seq_t Secret_integers.u8_t =
+-     Dummy.foldi 0
+--- 104,105 -----
++   let blocks_out =
++     foldi 0
+***************
+*** 109
+-       (fun (i: uint_size) (blocks_out: Hacspec_lib.seq_t Secret_integers.u8_t) ->
+--- 107 -----
++       (fun i blocks_out ->

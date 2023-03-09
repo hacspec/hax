@@ -27,9 +27,10 @@ module F = struct
   let lid_of_id id = Ident.lid_of_ids [ id ]
   let term (tm : AST.term') = AST.{ tm; range = dummyRange; level = Expr }
 
-  let decl (d : AST.decl') =
+  let decl ?(quals = []) (d : AST.decl') =
     AST.{ d; drange = dummyRange; quals = []; attrs = [] }
 
+  let decls ?(quals = []) x = [ decl ~quals x ]
   let pat (pat : AST.pattern') = AST.{ pat; prange = dummyRange }
 
   let pat_var_tcresolve (var : string option) =
@@ -66,7 +67,45 @@ module F = struct
     let x = id x in
     let x_bd = mk_e_binder @@ AST.Annotated (x, typ) in
     term @@ AST.Refine (x_bd, phi (term @@ AST.Var (lid_of_id x)))
+
+  let parse_string f s =
+    let open FStar_Parser_ParseIt in
+    let frag_of_text s =
+      {
+        frag_fname = "<string_of_term>";
+        frag_line = Z.of_int 1;
+        frag_col = Z.of_int 0;
+        frag_text = s;
+      }
+    in
+    match parse (f (frag_of_text s)) with
+    | ParseError (_, err, _) -> failwith ("string_of_term: got error " ^ err)
+    | x -> x
+
+  let term_of_string s =
+    match parse_string (fun x -> Fragment x) s with
+    | Term t -> t
+    | _ -> failwith "parse failed"
+
+  let decls_of_string s =
+    match parse_string (fun x -> Toplevel x) s with
+    | ASTFragment (Inr l, _) -> l
+    | _ -> failwith "parse failed"
+
+  let decl_of_string s =
+    match decls_of_string s with [ d ] -> d | _ -> failwith "decl_of_string"
 end
+
+let doc_to_string : document -> string =
+  FStar_Pprint.pretty_string 1.0 (Z.of_int 100)
+
+let term_to_string : F.AST.term -> string =
+  FStar_Parser_ToDocument.term_to_document >> doc_to_string
+
+let decl_to_string : F.AST.decl -> string =
+  FStar_Parser_ToDocument.decl_to_document >> doc_to_string
+
+(* let _ = failwith @@ term_to_string @@ F.term_of_string "a + 3" *)
 
 module Context = struct
   type t = { current_namespace : string * string list }
@@ -161,8 +200,8 @@ struct
     match e with
     | Int { value; kind = { size = S128; signedness } as s } ->
         let lit = h (Int { value; kind = { s with size = SSize } }) in
-        let prefix = match signedness with Signed -> "" | Unsigned -> "u" in
-        F.mk_e_app (F.term_of_lid [ prefix ^ "int128" ]) [ lit ]
+        let prefix = match signedness with Signed -> "i" | Unsigned -> "u" in
+        F.mk_e_app (F.term_of_lid [ "pub_" ^ prefix ^ "128" ]) [ lit ]
     | _ -> h e
 
   (* let is_concrete_ident_in_namespace (crate, path) (id : concrete_ident) = *)
@@ -236,7 +275,7 @@ struct
             ~f:(function GType t -> Some (pty t) | _ -> None)
             args
         in
-        let mk_star a b = F.term @@ F.AST.Op (F.id "*", [ a; b ]) in
+        let mk_star a b = F.term @@ F.AST.Op (F.id "&", [ a; b ]) in
         match args with
         | hd :: tl ->
             F.term @@ F.AST.Paren (List.fold_left ~init:hd ~f:mk_star tl)
@@ -351,7 +390,9 @@ struct
       (c "std::core::array::update_array_at", (3, ".[]<-"));
       (c "core::ops::index::Index::index", (2, ".[]"));
       (c "core::ops::bit::BitXor::bitxor", (2, "^."));
+      (c "core::ops::bit::BitAnd::bitand", (2, "&."));
       (c "core::ops::arith::Add::add", (2, "+."));
+      (c "core::ops::arith::Mul::mul", (2, "*."));
       (`Primitive (BinOp Add), (2, "+"));
       (`Primitive (BinOp Sub), (2, "-"));
       (`Primitive (BinOp Mul), (2, "*"));
@@ -387,7 +428,9 @@ struct
     | GlobalVar (`TupleCons 0)
     | Construct { constructor = `TupleCons 0; fields = [] } ->
         F.AST.unit_const F.dummyRange
-    | GlobalVar global_ident -> F.term @@ F.AST.Var (pglobal_ident global_ident)
+    | GlobalVar global_ident ->
+        F.term
+        @@ F.AST.Var (pglobal_ident @@ lowercase_global_ident global_ident)
     | App
         {
           f = { e = GlobalVar (`Projector (`TupleField (n, len))) };
@@ -456,23 +499,16 @@ struct
         @@ F.AST.Abs
              ( List.map
                  ~f:(fun p ->
-                   F.pat @@ F.AST.PatAscribed (ppat p, (pty p.typ, None)))
+                   (* F.pat @@ F.AST.PatAscribed (ppat p, (pty p.typ, None))) *)
+                   ppat p)
                  params,
                pexpr body )
     | Return { e } ->
         F.term @@ F.AST.App (F.term_of_lid [ "RETURN_STMT" ], pexpr e, Nothing)
+    | MacroInvokation _ -> failwith "expr:MacroInvokation"
     | _ -> .
 
   and parm { arm = { pat; body } } = (ppat pat, None, pexpr body)
-
-  let doc_to_string : document -> string =
-    FStar_Pprint.pretty_string 1.0 (Z.of_int 100)
-
-  let term_to_string : F.AST.term -> string =
-    FStar_Parser_ToDocument.term_to_document >> doc_to_string
-
-  let decl_to_string : F.AST.decl -> string =
-    FStar_Parser_ToDocument.decl_to_document >> doc_to_string
 
   (* let item_to_string: F.AST.item -> string = *)
   (*   FStar_Parser_ToDocument.decl_to_document >> doc_to_string *)
@@ -482,6 +518,11 @@ struct
     match g with
     | `Concrete { path; crate = _ } -> Non_empty_list.last path
     | _ -> failwith "last_of_global_ident"
+
+  let str_of_type_ident : global_ident -> string =
+    lowercase_global_ident
+    >> map_last_global_ident (fun s -> s ^ "_t")
+    >> last_of_global_ident
 
   (* let rec pgeneric_param' (p : generic_param) *)
   (*   = match p with *)
@@ -532,6 +573,9 @@ struct
         @@ F.AST.PatAscribed
              (F.pat_var_tcresolve @@ Some ("__" ^ string_of_int nth), (tc, None))
 
+  let hacspec_lib_item s =
+    `Concrete { crate = "hacspec"; path = Non_empty_list.[ "lib"; s ] }
+
   let rec pitem (e : item) =
     match e.v with
     | Fn { name; generics; body; params } ->
@@ -542,7 +586,11 @@ struct
         (*   | _ -> failwith "last_of_global_ident" *)
         (* in *)
         let pat =
-          F.pat @@ F.AST.PatVar (F.id @@ last_of_global_ident name, None, [])
+          F.pat
+          @@ F.AST.PatVar
+               ( F.id @@ last_of_global_ident @@ lowercase_global_ident name,
+                 None,
+                 [] )
         in
         let pat =
           F.pat
@@ -556,7 +604,7 @@ struct
                      params )
         in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (pty body.typ, None)) in
-        F.decl @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, pexpr body) ])
+        F.decls @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, pexpr body) ])
     | TyAlias { name; generics; ty } ->
         let pat =
           F.pat
@@ -565,7 +613,7 @@ struct
                  None,
                  [] )
         in
-        F.decl
+        F.decls ~quals:[ F.AST.Unfold_for_unification_and_vcgen ]
         @@ F.AST.TopLevelLet
              ( NoLetQualifier,
                [
@@ -579,13 +627,13 @@ struct
                ] )
     | Type { name; generics; variants = [ variant ]; record = true } ->
         (* let constructors = F.id (last_of_global_ident name), None, [] in *)
-        F.decl
+        F.decls
         @@ F.AST.Tycon
              ( false,
                false,
                [
                  F.AST.TyconRecord
-                   ( F.id @@ last_of_global_ident @@ lowercase_global_ident name,
+                   ( F.id @@ str_of_type_ident name,
                      [],
                      (* todo type parameters & constraints *)
                      None,
@@ -654,7 +702,7 @@ struct
                 [] ))
             variants
         in
-        F.decl
+        F.decls
         @@ F.AST.Tycon
              ( false,
                false,
@@ -666,15 +714,84 @@ struct
                      None,
                      constructors );
                ] )
-    | _ ->
-        F.decl
-        @@ F.AST.TopLevelLet
-             (NoLetQualifier, [ (F.pat @@ F.AST.PatWild (None, []), F.unit) ])
+    | IMacroInvokation
+        {
+          macro =
+            `Concrete
+              Non_empty_list.
+                { crate = "hacspec_lib_tc"; path = [ "public_nat_mod" ] };
+          argument;
+          span;
+        } ->
+        let open Hacspeclib_macro_parser in
+        (* failwith argument; *)
+        let o : PublicNatMod.t =
+          PublicNatMod.parse argument |> Result.ok_or_failwith
+        in
+        (F.decls_of_string @@ "unfold type "
+        ^ str_of_type_ident (hacspec_lib_item @@ o.type_name)
+        ^ "  = nat_mod 0x" ^ o.modulo_value)
+        @ F.decls_of_string @@ "unfold type "
+        ^ str_of_type_ident (hacspec_lib_item @@ o.type_of_canvas)
+        ^ "  = lseq pub_uint8 "
+        ^ string_of_int o.bit_size_of_field
+        (* type field_canvas_t = lseq (pub_uint8) (17) *)
+        (* type field_element_t = nat_mod 0x03fffffffffffffffffffffffffffffffb *)
+    | IMacroInvokation
+        {
+          macro =
+            `Concrete
+              Non_empty_list.{ crate = "hacspec_lib_tc"; path = [ "bytes" ] };
+          argument;
+          span;
+        } ->
+        let open Hacspeclib_macro_parser in
+        let o : Bytes.t = Bytes.parse argument |> Result.ok_or_failwith in
+        F.decls_of_string @@ "unfold type "
+        ^ str_of_type_ident (hacspec_lib_item @@ o.bytes_name)
+        ^ "  = lseq uint8 " ^ string_of_int o.size
+    | IMacroInvokation
+        {
+          macro =
+            `Concrete
+              Non_empty_list.{ crate = "hacspec_lib_tc"; path = [ "array" ] };
+          argument;
+          span;
+        } ->
+        let open Hacspeclib_macro_parser in
+        let o : Array.t = Array.parse argument |> Result.ok_or_failwith in
+        let typ =
+          match o.typ with
+          | "U32" -> "uint32"
+          | "U16" -> "uint16"
+          | "U8" -> "uint8"
+          | _ -> failwith @@ "unknown type: " ^ o.typ
+        in
+        let size = string_of_int o.size in
+        let array_def =
+          F.decls_of_string @@ "unfold type "
+          ^ str_of_type_ident (hacspec_lib_item o.array_name)
+          ^ "  = lseq " ^ typ ^ " " ^ size
+        in
+        let index_def =
+          match o.index_typ with
+          | Some index ->
+              F.decls_of_string @@ "unfold type "
+              ^ str_of_type_ident (hacspec_lib_item @@ o.array_name ^ "_idx")
+              ^ " = nat_mod " ^ size
+          | None -> []
+        in
+        array_def @ index_def
+    | IMacroInvokation
+        { macro = `Concrete Non_empty_list.{ crate; path = _ } as x } ->
+        F.decls_of_string @@ "let _ = \"could not handle macro "
+        ^ [%show: global_ident] x
+        ^ "\""
+    | _ -> []
 end
 
 module type S = sig
-  val pitem : item -> F.AST.decl
-  val decl_to_string : F.AST.decl -> string
+  val pitem : item -> F.AST.decl list
 end
 
 let make ctx =

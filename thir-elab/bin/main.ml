@@ -14,24 +14,47 @@ Reject.RawOrMutPointer Features.Rust |> Resugar_for_loop.Make
        (module struct
          let early_exit = Fn.id
        end))
-|> Reject.NotFStar |> Identity]
+(* |> Desugar_legacy_hacspec_lib.Make *)
+|> Reject.NotFStar
+|> Identity]
 
 module U = Ast_utils.Make (DesugarToFStar.FB)
 
 let rewrite_some_idents (item : DesugarToFStar.B.item) : DesugarToFStar.B.item =
-  let h = function
-    | `Concrete Ast.{ crate = "hacspec_lib" as crate; path } ->
-        `Concrete Ast.{ crate; path = Non_empty_list.[ last path ] }
+  let h lvl = function
+    | `Concrete Ast.{ crate = "hacspec_lib"; path } ->
+        let last_chunk =
+          match Non_empty_list.last path with
+          | "U128_from_le_bytes" -> "uint128_from_le_bytes"
+          | "new" -> "new_seq"
+          | "ZERO" -> "zero"
+          | last -> last
+        in
+        `Concrete
+          Ast.{ crate = "hacspec_lib_tc"; path = Non_empty_list.[ last_chunk ] }
+    (* | `Concrete *)
+    (*     Ast. *)
+    (*       { *)
+    (*         crate = "secret_integers" as crate; *)
+    (*         path = Non_empty_list.[ "U32" ]; *)
+    (*       } -> *)
+    (*     `Concrete Ast.{ crate; path = Non_empty_list.[ "u32" ] } *)
     | `Concrete
-        Ast.{ crate = "secret_integers"; path = Non_empty_list.[ "U32" ] } ->
+        Ast.
+          {
+            crate = "secret_integers";
+            path = Non_empty_list.[ ("U128" | "U32") ];
+          }
+      when [%matches? U.Mappers.ExprLevel] lvl ->
         `Concrete
-          Ast.{ crate = "hacspec_lib"; path = Non_empty_list.[ "secret" ] }
-    | `Concrete Ast.{ crate = "Dummy"; path } ->
+          Ast.{ crate = "hacspec_lib_tc"; path = Non_empty_list.[ "secret" ] }
+    | `Concrete Ast.{ crate = "dummy"; path } ->
         `Concrete
-          Ast.{ crate = "hacspec_lib"; path = Non_empty_list.[ last path ] }
+          Ast.{ crate = "hacspec"; path = Non_empty_list.[ "lib"; last path ] }
     | x -> x
   in
-  Obj.magic (U.Mappers.rename_global_idents h)#visit_item () (Obj.magic item)
+  Obj.magic
+    ((U.Mappers.rename_global_idents h)#visit_item ExprLevel (Obj.magic item))
 
 let parse_list_json (parse : Yojson.Safe.t -> 'a) (input : Yojson.Safe.t) :
     'a list =
@@ -59,7 +82,7 @@ let string_of_item (item : RustAst.item) : string =
   let (module Print) =
     Print_fstar.(make { current_namespace = item.parent_namespace })
   in
-  let item =
+  let items =
     try
       let r = DesugarToFStar.ditem item in
       DebugBindDesugar.export ();
@@ -68,11 +91,16 @@ let string_of_item (item : RustAst.item) : string =
       DebugBindDesugar.export ();
       raise e
   in
-  Print.decl_to_string (Print.pitem @@ rewrite_some_idents item)
+  let r =
+    List.map ~f:Print_fstar.decl_to_string
+      (List.concat_map ~f:(rewrite_some_idents >> Print.pitem) items)
+    |> String.concat ~sep:"\n"
+  in
+  r
 
 let string_of_items =
-  List.map ~f:string_of_item
-  >> List.filter ~f:(String.equal "let _ = ()" >> not)
+  List.map ~f:string_of_item >> List.map ~f:String.strip
+  >> List.filter ~f:(String.is_empty >> not)
   >> String.concat ~sep:"\n\n"
 
 let items_by_module (items : RustAst.item list) :
@@ -86,6 +114,13 @@ let items_by_module (items : RustAst.item list) :
   Map.of_iteri_exn
     (module Namespace)
     ~iteri:(Hashtbl.map h ~f:( ! ) |> Hashtbl.iteri)
+
+let hardcoded_fstar_headers =
+  "\n\
+   #set-options \"--fuel 0 --ifuel 1 --z3rlimit 15\"\n\
+   open FStar.Mul\n\
+   open Hacspec.Lib\n\
+   open Hacspec_lib_tc"
 
 let main () =
   Printexc.record_backtrace true;
@@ -109,6 +144,7 @@ let main () =
         items
     in
     prerr_endline "Converted";
+
     let modules =
       items_by_module converted_items
       |> Map.to_alist
@@ -119,7 +155,9 @@ let main () =
                     ~f:(map_first_letter String.uppercase)
                     (fst ns :: snd ns))
              in
-             (mod_name, "module " ^ mod_name ^ "\n\n" ^ string_of_items items))
+             ( mod_name,
+               "module " ^ mod_name ^ hardcoded_fstar_headers ^ "\n\n"
+               ^ string_of_items items ))
     in
     (* TODO out dir *)
     let out_dir = "out/" in
@@ -131,6 +169,6 @@ let main () =
           Out_channel.write_all file ~data;
           print_endline @@ "Wrote " ^ file))
       modules
-  with e -> print_endline (ParseError.pp e)
+  with ParseError.MissingField _ as e -> print_endline (ParseError.pp e)
 
 let () = main ()

@@ -7,6 +7,7 @@
   pprint
   ppx_deriving_yojson.runtime
   ppx_deriving_cmdliner.runtime
+  hacspeclib_macro_parser
   cmdliner
   fstar.lib)
  (preprocessor_deps

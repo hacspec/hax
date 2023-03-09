@@ -512,6 +512,12 @@ functor
           variants : variant list;
           record : bool;
         }
+      | IMacroInvokation of {
+          macro : global_ident;
+          argument : string;
+          span : span;
+          witness : F.macro;
+        }
       | NotImplementedYet
 
     and item = {
@@ -539,7 +545,12 @@ functor
             variety = "map";
             name = "item_map";
             ancestors =
-              [ "generic_constraint_map"; "expr_map"; "generic_param_map" ];
+              [
+                "generic_constraint_map";
+                "expr_map";
+                "ty_map";
+                "generic_param_map";
+              ];
           }]
     (* [@@deriving *)
     (*   show, yojson, eq, visitors { variety = "reduce"; name = "item_reduce" }, visitors { variety = "map"; name = "item_map" }] *)

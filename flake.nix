@@ -93,7 +93,8 @@
               core base core_unix
               ppx_yojson_conv yojson ppx_sexp_conv ppx_hash
               visitors pprint non_empty_list bignum fstar-bin
-              ppx_deriving_yojson ppx_matches ppx_let
+              ppx_deriving_yojson ppx_matches ppx_let cmdliner ppx_deriving_cmdliner
+              angstrom
             ] ++ fstar-pkgs.fstar-dune.buildInputs;
             nativeBuildInputs = [ packages.thir_ml_of_json_schema ];
             strictDeps = true;

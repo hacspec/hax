@@ -64,6 +64,25 @@ fn make_fn_def<'tcx, S: BaseState<'tcx>>(
         local_ident_map: s.local_ident_map(),
         cached_thirs: s.cached_thirs(),
     };
+    // let params = match s.tcx().hir().owner(body_id.hir_id.owner) {
+    //     rustc_hir::OwnerNode::Item(rustc_hir::Item {
+    //         kind: rustc_hir::ItemKind::Fn(rustc_hir::FnSig { decl, .. }, _, _),
+    //         ..
+    //     }) => params
+    //         .into_iter()
+    //         .zip(decl.inputs.into_iter())
+    //         .map(|(x, ty)| {
+    //             ty = ty.sinto(&-s);
+    //             ..x
+    //         })
+    //         .collect(),
+    //     _ => params,
+    // };
+
+    // println!("#################################");
+    // println!("x={:#?}", x);
+    // println!("#################################");
+    // println!("params={:#?}", params);
     FnDef {
         params,
         ret,
@@ -444,12 +463,15 @@ pub fn inline_macro_invokations<'t, S: BaseState<'t>>(
         .into_iter()
         .map(|(mac, items)| match mac.0 {
             Some((macro_ident, expn_data)) => {
+                let owner_id = items.into_iter().map(|x| x.owner_id).next().unwrap();
+                // owner_id.reduce()
                 let invokation =
                     macro_invokation_of_raw_mac_invokation(&macro_ident, &expn_data, s);
                 let span = expn_data.call_site.sinto(s);
                 vec![Item {
                     def_id: None,
-                    owner_id: expn_data.parent_module.unwrap().sinto(s),
+                    owner_id: owner_id.sinto(s),
+                    // owner_id: expn_data.parent_module.unwrap().sinto(s),
                     kind: ItemKind::MacroInvokation(invokation),
                     span,
                     vis_span: rustc_span::DUMMY_SP.sinto(s),

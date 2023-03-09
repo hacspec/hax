@@ -8,7 +8,8 @@
 pub const HASH_LENGTH: usize = 32;
 
 // The actual derive doesn't matter.
-#[derive(Debug)]
+// #[derive(Debug)]
+#[derive(PartialEq, Eq)]
 pub struct HashOf<T> {
     _inner: [T; HASH_LENGTH],
 }

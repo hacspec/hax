@@ -34,7 +34,7 @@ module type DESUGAR = sig
     type item [@@deriving show, yojson]
   end
 
-  val ditem : A.item -> B.item
+  val ditem : A.item -> B.item list
 end
 
 module Identity (F : Features.T) = struct
@@ -43,7 +43,7 @@ module Identity (F : Features.T) = struct
   module A = Ast.Make (F)
   module B = Ast.Make (F)
 
-  let ditem (x : A.item) : B.item = Obj.magic x
+  let ditem (x : A.item) : B.item list = [ Obj.magic x ]
   let metadata = Metadata.make "Identity"
 end
 
@@ -65,7 +65,7 @@ module AddErrorHandling (D : DESUGAR) = struct
 
   exception DesugarError
 
-  let ditem (i : D.A.item) : D.B.item =
+  let ditem (i : D.A.item) : D.B.item list =
     try D.ditem i
     with Failure e ->
       prerr_endline
@@ -119,17 +119,18 @@ struct
 
   let metadata = Metadata.bind D1.metadata D2.metadata
 
-  let ditem : A.item -> B.item =
+  let ditem : A.item -> B.item list =
    fun item0 ->
     let item1 = D1'.ditem item0 in
-    let item2 = D2'.ditem item1 in
-    DebugBindDesugar.add D1.metadata (fun _ -> [%yojson_of: D1.B.item] item1);
+    let item2 = List.concat_map ~f:D2'.ditem item1 in
+    DebugBindDesugar.add D1.metadata (fun _ ->
+        [%yojson_of: D1.B.item list] item1);
     item2
 end
 
 module CatchExnDesugar (D : DESUGAR_EXN) = struct
   include D
 
-  let ditem (i : A.item) : B.item =
+  let ditem (i : A.item) : B.item list =
     try ditem i with D.Error error -> failwith (show_error error)
 end

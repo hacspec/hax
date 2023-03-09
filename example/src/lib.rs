@@ -1,5 +1,4 @@
-// #![feature(never_type)]
-
+#![feature(structural_match)]
 // trait Features {
 //     type Mutability;
 //     type EarlyExit;
@@ -56,8 +55,26 @@
 //         _ => helper_macro!(t.into()),
 //     }
 // }
+// mod hash;
 
-mod hash;
+fn test() -> u8 {
+    let mut acc = 0;
+    for i in 1..10 {
+        acc = acc + i;
+    };
+    acc + 1
+}
+
+
+// #![feature(register_tool)]
+// #![register_tool(my_tool)]
+
+// // const X: usize = 0;
+// type X = (u8, u8);
+// fn f(#[my_tool::hello(3 + 34)] a: X) {}
+// fn f(x: u8, y: u8) -> u8 {
+//     x + (y - 2) * 3
+// }
 
 // #[derive(Copy, Clone)]
 // struct DummyStruct {

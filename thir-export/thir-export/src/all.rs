@@ -278,6 +278,9 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, Box<Ty>> for rustc_middle::ty::Ty<'tcx> 
 // impl<'s, 'a, S: BaseState<'a>>
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Ty> for rustc_middle::ty::Ty<'tcx> {
     fn sinto(&self, s: &S) -> Ty {
+        // macro_invokation_of_span(self.span, s)
+        //     .map(Ty::MacroInvokation)
+        //     .unwrap_or_else(|| self.kind().sinto(s))
         self.kind().sinto(s)
     }
 }
@@ -1482,6 +1485,8 @@ pub enum Ty {
     /// A primitive floating-point type. For example, `f64`.
     Float(FloatTy),
 
+    // #[disable_mapping]
+    // MacroInvokation(MacroInvokation),
     #[custom_arm(
         rustc_middle::ty::TyKind::FnPtr(sig) => arrow_of_sig(sig, state),
         x @ rustc_middle::ty::TyKind::FnDef(def, substs) => {
@@ -1988,14 +1993,52 @@ pub enum ImplicitSelfKind {
 }
 
 #[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::Param<'tcx>, state: S as tcx)]
+#[args(<S>, from: rustc_ast::token::CommentKind, state: S as tcx)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub enum CommentKind {
+    Line,
+    Block,
+}
+
+sinto_todo!(rustc_ast::tokenstream, LazyAttrTokenStream);
+sinto_todo!(rustc_ast::ast, AttrItem);
+
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_ast::ast::NormalAttr, state: S as tcx)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct NormalAttr {
+    pub item: AttrItem,
+    pub tokens: Option<LazyAttrTokenStream>,
+}
+
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_ast::AttrKind, state: S as tcx)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub enum AttrKind {
+    Normal(NormalAttr),
+    DocComment(CommentKind, Symbol),
+}
+
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::Param<'tcx>, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Param {
     pub pat: Option<Pat>,
     pub ty: Ty,
     pub ty_span: Option<Span>,
     pub self_kind: Option<ImplicitSelfKind>,
+    // #[map({
+    //     x.map(|x|{
+    //         let hir = s.tcx().hir();
+    //         // let id = hir.get_parent_node(x);
+    //         // println!("self={:#?}", hir.get(x));
+    //         // println!("---------");
+    //         println!("={:#?}", hir.attrs(x));
+    //         x.sinto(s)
+    //     })
+    // })]
     pub hir_id: Option<HirId>,
+    // pub attributes:
 }
 
 pub type Body = Expr;
