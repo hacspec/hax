@@ -68,6 +68,17 @@ instance add_lseq (len: uint_size) (t:Type) {| add t |}: add (lseq t len)
 instance add_nat_mod (m: pos): add (nat_mod m)
   = { (+.) = (fun x y -> x +% y) }
 
+
+class bitor (t: Type) = { ( |. ): t -> t -> t }
+
+// instance _: bitor int = { ( |. ) = ( Hacspec.Lib.( ( .| ) ) ) }
+instance bitor_inherit (t:inttype{unsigned t}) l: bitor (int_t t l) = { ( |. ) = logor }
+// instance bitor_lseq (len: uint_size) (t:Type) {| bitor t |}: bitor (lseq t len) 
+//   = { ( |. ) = array_l ( |. ) }
+
+// instance bitor_nat_mod (m: pos): bitor (nat_mod m)
+//   = { ( |. ) = (fun x y -> x |. y) }
+
 // let array_from_slice
 //   (#a: Type)
 //   (#default_value: a)
@@ -155,12 +166,18 @@ unfold instance secret_U32: secret_tc uint_size = {
    secret = (fun x -> Hacspec.Lib.secret #U32 (pub_u32 x));
 }
 
-
 unfold instance secret_U128: secret_tc pub_uint128 = {
    int_type = U128;
    as_int = (fun (x: pub_uint128) -> v x);
    secret = (fun x -> Hacspec.Lib.secret #U128 x);
 }
+
+unfold instance secret_U8: secret_tc pub_uint8 = {
+   int_type = U8;
+   as_int = (fun (x: pub_uint8) -> v x);
+   secret = (fun x -> Hacspec.Lib.secret #U8 x);
+}
+
 
 unfold instance secret_U128' pred: secret_tc (x:pub_uint128{pred x}) = {
    int_type = U128;
@@ -220,3 +237,4 @@ unfold let set_chunk #a #len = seq_set_chunk #a #len
 unfold let uint128_from_le_bytes = uint128_from_le_bytes
 unfold let u128_to_le_bytes = uint128_to_le_bytes
 
+let _ = size_t

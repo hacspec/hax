@@ -20,6 +20,7 @@ let parens p = ignore_spaces (char '(') *> p <* ignore_spaces (char ')')
 module type Parser = sig
   type t [@@deriving show, yojson, eq]
 
+  val name : string
   val parser : t Angstrom.t
 end
 
@@ -28,14 +29,20 @@ module Make (M : Parser) : sig
 end = struct
   open M
 
-  let parse = parse_string ~consume:All (parens parser <* end_of_input)
+  let parse input =
+    match parse_string ~consume:All (parens parser <* end_of_input) input with
+    | Ok e -> Ok e
+    | Error e ->
+        prerr_endline @@ "########## Error while parsing: (" ^ name ^ ")";
+        prerr_endline input;
+        Error e
 end
 
 module Array = struct
   module M = struct
     type t = {
       array_name : string;
-      size : int;
+      size : string;
       typ : string;
       index_typ : string option;
     }
@@ -43,12 +50,14 @@ module Array = struct
 
     let parser =
       let* array_name = identifier <* comma in
-      let* size = number <* comma in
+      let* size = identifier <* comma in
       let* typ = identifier in
       let+ index_typ =
         maybe @@ (comma *> string "type_for_indexes" *> colon *> identifier)
       in
       { array_name; size; typ; index_typ }
+
+    let name = "array"
   end
 
   include M
@@ -57,12 +66,15 @@ end
 
 module Bytes = struct
   module M = struct
-    type t = { bytes_name : string; size : int } [@@deriving show, yojson, eq]
+    type t = { bytes_name : string; size : string }
+    [@@deriving show, yojson, eq]
 
     let parser =
       let* bytes_name = identifier <* comma in
-      let+ size = number in
+      let+ size = identifier in
       { bytes_name; size }
+
+    let name = "bytes"
   end
 
   include M
@@ -145,6 +157,8 @@ module PublicNatMod = struct
           return
             ({ type_name; type_of_canvas; bit_size_of_field; modulo_value } : t)
       | _ -> fail "Some fields are missing"
+
+    let name = "public_nat_mod"
   end
 
   include M

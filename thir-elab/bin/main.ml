@@ -43,7 +43,7 @@ let rewrite_some_idents (item : DesugarToFStar.B.item) : DesugarToFStar.B.item =
         Ast.
           {
             crate = "secret_integers";
-            path = Non_empty_list.[ ("U128" | "U32") ];
+            path = Non_empty_list.[ ("U128" | "U32" | "U8") ];
           }
       when [%matches? U.Mappers.ExprLevel] lvl ->
         `Concrete
@@ -64,111 +64,117 @@ let parse_list_json (parse : Yojson.Safe.t -> 'a) (input : Yojson.Safe.t) :
 
 module RustAst = Ast.Make (Features.Rust)
 
-module Namespace = struct
-  module U = struct
-    module T = struct
-      type t = string * string list [@@deriving show, eq, compare, sexp, hash]
-    end
+(* let string_of_item (item : RustAst.item) : string = *)
+(*   let (module Print) = *)
+(*     Print_fstar.(make { current_namespace = item.parent_namespace }) *)
+(*   in *)
+(*   let items = *)
+(*     try *)
+(*       let r = DesugarToFStar.ditem item in *)
+(*       DebugBindDesugar.export (); *)
+(*       r *)
+(*     with e -> *)
+(*       DebugBindDesugar.export (); *)
+(*       raise e *)
+(*   in *)
+(*   let r = *)
+(*     List.map ~f:Print_fstar.decl_to_string *)
+(*       (List.concat_map ~f:(rewrite_some_idents >> Print.pitem) items) *)
+(*     |> String.concat ~sep:"\n" *)
+(*   in *)
+(*   r *)
 
-    include Base.Comparator.Make (T)
-    include T
-  end
+(* module Namespace = Ast.Namespace *)
 
-  include U
-  module Map = Map.M (U)
-end
+(* let items_by_module (items : RustAst.item list) : *)
+(*     RustAst.item list Namespace.Map.t = *)
+(*   let h = Hashtbl.create (module Namespace) in *)
+(*   List.iter items ~f:(fun item -> *)
+(*       let items = *)
+(*         Hashtbl.find_or_add h item.parent_namespace ~default:(fun _ -> ref []) *)
+(*       in *)
+(*       items := !items @ [ item ]); *)
+(*   Map.of_iteri_exn *)
+(*     (module Namespace) *)
+(*     ~iteri:(Hashtbl.map h ~f:( ! ) |> Hashtbl.iteri) *)
 
-let string_of_item (item : RustAst.item) : string =
-  let (module Print) =
-    Print_fstar.(make { current_namespace = item.parent_namespace })
-  in
-  let items =
-    try
-      let r = DesugarToFStar.ditem item in
-      DebugBindDesugar.export ();
-      r
-    with e ->
-      DebugBindDesugar.export ();
-      raise e
-  in
-  let r =
-    List.map ~f:Print_fstar.decl_to_string
-      (List.concat_map ~f:(rewrite_some_idents >> Print.pitem) items)
-    |> String.concat ~sep:"\n"
-  in
-  r
+(* let string_of_items = *)
+(*   List.map ~f:string_of_item >> List.map ~f:String.strip *)
+(*   >> List.filter ~f:(String.is_empty >> not) *)
+(*   >> String.concat ~sep:"\n\n" *)
 
-let string_of_items =
-  List.map ~f:string_of_item >> List.map ~f:String.strip
-  >> List.filter ~f:(String.is_empty >> not)
-  >> String.concat ~sep:"\n\n"
-
-let items_by_module (items : RustAst.item list) :
-    RustAst.item list Namespace.Map.t =
-  let h = Hashtbl.create (module Namespace) in
-  List.iter items ~f:(fun item ->
-      let items =
-        Hashtbl.find_or_add h item.parent_namespace ~default:(fun _ -> ref [])
-      in
-      items := !items @ [ item ]);
-  Map.of_iteri_exn
-    (module Namespace)
-    ~iteri:(Hashtbl.map h ~f:( ! ) |> Hashtbl.iteri)
-
-let hardcoded_fstar_headers =
-  "\n\
-   #set-options \"--fuel 0 --ifuel 1 --z3rlimit 15\"\n\
-   open FStar.Mul\n\
-   open Hacspec.Lib\n\
-   open Hacspec_lib_tc"
+(* let hardcoded_fstar_headers = *)
+(* "\n\ *)
+   (*    #set-options \"--fuel 0 --ifuel 1 --z3rlimit 15\"\n\ *)
+   (*    open FStar.Mul\n\ *)
+   (*    open Hacspec.Lib\n\ *)
+   (*    open Hacspec_lib_tc" *)
 
 let main () =
+  Fstar_backend.register;
   Printexc.record_backtrace true;
-  let path =
-    if Array.length Sys.argv <> 2 then (
-      print_endline "Usage thir-elab /path/to/the/thir'/file.json";
-      exit 1)
-    else Sys.argv.(1)
-  in
+  let path = "/home/lucas/repos/hacspec/examples/thir_export.json" in
+  (* let path = *)
+  (*   if Array.length Sys.argv <> 2 then ( *)
+  (*     print_endline "Usage thir-elab /path/to/the/thir'/file.json"; *)
+  (*     exit 1) *)
+  (*   else Sys.argv.(1) *)
+  (* in *)
   let input = In_channel.read_all path |> Yojson.Safe.from_string in
-  try
-    let items = parse_list_json parse_item input in
-    prerr_endline "Parsed";
-    let converted_items =
-      List.map
-        ~f:(fun item ->
-          try
-            Result.map_error ~f:Import_thir.show_error (Import_thir.c_item item)
-            |> Result.ok_or_failwith
-          with Failure e -> failwith e)
-        items
-    in
-    prerr_endline "Converted";
+  let items = parse_list_json parse_item input in
+  let items =
+    List.map
+      ~f:(fun item ->
+        try
+          Result.map_error ~f:Import_thir.show_error (Import_thir.c_item item)
+          |> Result.ok_or_failwith
+        with Failure e -> failwith e)
+      items
+  in
+  let runner = Backend.Registration.command () in
+  let open Cmdliner in
+  match Cmd.eval_value runner with
+  | Ok (`Ok runner) -> runner Backend.Options.default items
+  | _ -> ()
 
-    let modules =
-      items_by_module converted_items
-      |> Map.to_alist
-      |> List.map ~f:(fun (ns, items) ->
-             let mod_name =
-               String.concat ~sep:"."
-                 (List.map
-                    ~f:(map_first_letter String.uppercase)
-                    (fst ns :: snd ns))
-             in
-             ( mod_name,
-               "module " ^ mod_name ^ hardcoded_fstar_headers ^ "\n\n"
-               ^ string_of_items items ))
-    in
-    (* TODO out dir *)
-    let out_dir = "out/" in
-    (try Caml.Sys.mkdir out_dir 0o777 with Sys_error _ -> ());
-    List.iter
-      ~f:(fun (ns, data) ->
-        if not (String.equal ns "Hacspec_lib") then (
-          let file = out_dir ^ ns ^ ".fst" in
-          Out_channel.write_all file ~data;
-          print_endline @@ "Wrote " ^ file))
-      modules
-  with ParseError.MissingField _ as e -> print_endline (ParseError.pp e)
+(* try *)
+(*   let items = parse_list_json parse_item input in *)
+(*   prerr_endline "Parsed"; *)
+(*   let converted_items = *)
+(*     List.map *)
+(*       ~f:(fun item -> *)
+(*         try *)
+(*           Result.map_error ~f:Import_thir.show_error (Import_thir.c_item item) *)
+(*           |> Result.ok_or_failwith *)
+(*         with Failure e -> failwith e) *)
+(*       items *)
+(*   in *)
+(*   prerr_endline "Converted"; *)
+
+(*   let modules = *)
+(*     items_by_module converted_items *)
+(*     |> Map.to_alist *)
+(*     |> List.map ~f:(fun (ns, items) -> *)
+(*            let mod_name = *)
+(*              String.concat ~sep:"." *)
+(*                (List.map *)
+(*                   ~f:(map_first_letter String.uppercase) *)
+(*                   (fst ns :: snd ns)) *)
+(*            in *)
+(*            ( mod_name, *)
+(*              "module " ^ mod_name ^ hardcoded_fstar_headers ^ "\n\n" *)
+(*              ^ string_of_items items )) *)
+(*   in *)
+(*   (\* TODO out dir *\) *)
+(*   let out_dir = "out/" in *)
+(*   (try Caml.Sys.mkdir out_dir 0o777 with Sys_error _ -> ()); *)
+(*   List.iter *)
+(*     ~f:(fun (ns, data) -> *)
+(*       if not (String.equal ns "Hacspec_lib") then ( *)
+(*         let file = out_dir ^ ns ^ ".fst" in *)
+(*         Out_channel.write_all file ~data; *)
+(*         print_endline @@ "Wrote " ^ file)) *)
+(*     modules *)
+(* with ParseError.MissingField _ as e -> print_endline (ParseError.pp e) *)
 
 let () = main ()

@@ -356,6 +356,17 @@ module Make (F : Features.T) = struct
           };
     }
 
+  let group_items_by_namespace (items : item list) : item list Namespace.Map.t =
+    let h = Hashtbl.create (module Namespace) in
+    List.iter items ~f:(fun item ->
+        let items =
+          Hashtbl.find_or_add h item.parent_namespace ~default:(fun _ -> ref [])
+        in
+        items := !items @ [ item ]);
+    Map.of_iteri_exn
+      (module Namespace)
+      ~iteri:(Hashtbl.map h ~f:( ! ) |> Hashtbl.iteri)
+
   module Std = struct
     module Ops = struct
       module ControlFlow = struct

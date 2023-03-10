@@ -25,14 +25,8 @@ module type DESUGAR = sig
 
   module FA : Features.T
   module FB : Features.T
-
-  module A : sig
-    type item [@@deriving show, yojson]
-  end
-
-  module B : sig
-    type item [@@deriving show, yojson]
-  end
+  module A : Ast.T
+  module B : Ast.T
 
   val ditem : A.item -> B.item list
 end

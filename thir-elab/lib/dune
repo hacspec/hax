@@ -25,6 +25,7 @@
    ppx_inline
    ppx_generate_features
    ppx_deriving_cmdliner
+   ppx_functor_application
    ppx_matches)))
 
 (rule

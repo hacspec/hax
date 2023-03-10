@@ -2,8 +2,8 @@ open Base
 open Ast
 open Ast.Make (Features.FStar)
 module U = Ast_utils.Make (Features.FStar)
-open PPrint
 open Utils
+open PPrint
 
 (* Helpers for constructing an F* surface AST *)
 module F = struct
@@ -391,6 +391,7 @@ struct
       (c "core::ops::index::Index::index", (2, ".[]"));
       (c "core::ops::bit::BitXor::bitxor", (2, "^."));
       (c "core::ops::bit::BitAnd::bitand", (2, "&."));
+      (c "core::ops::bit::BitOr::bitor", (2, "|."));
       (c "core::ops::arith::Add::add", (2, "+."));
       (c "core::ops::arith::Mul::mul", (2, "*."));
       (`Primitive (BinOp Add), (2, "+"));
@@ -749,7 +750,7 @@ struct
         let o : Bytes.t = Bytes.parse argument |> Result.ok_or_failwith in
         F.decls_of_string @@ "unfold type "
         ^ str_of_type_ident (hacspec_lib_item @@ o.bytes_name)
-        ^ "  = lseq uint8 " ^ string_of_int o.size
+        ^ "  = lseq uint8 " ^ o.size
     | IMacroInvokation
         {
           macro =
@@ -765,9 +766,9 @@ struct
           | "U32" -> "uint32"
           | "U16" -> "uint16"
           | "U8" -> "uint8"
-          | _ -> failwith @@ "unknown type: " ^ o.typ
+          | usize -> usize
         in
-        let size = string_of_int o.size in
+        let size = o.size in
         let array_def =
           F.decls_of_string @@ "unfold type "
           ^ str_of_type_ident (hacspec_lib_item o.array_name)

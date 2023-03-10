@@ -24,6 +24,21 @@ module Bigint = struct
    fun x -> Bigint.to_string x |> yojson_of_string
 end
 
+module Namespace = struct
+  module U = struct
+    module T = struct
+      type t = string * string list
+      [@@deriving show, eq, compare, sexp, hash, yojson]
+    end
+
+    include Base.Comparator.Make (T)
+    include T
+  end
+
+  include U
+  module Map = Map.M (U)
+end
+
 type todo = string
 [@@deriving
   show,
@@ -113,8 +128,13 @@ module GlobalIdent = struct
     [@@deriving show, yojson, compare, sexp, eq]
   end
 
-  include Base.Comparator.Make (T)
-  include T
+  module M = struct
+    include Base.Comparator.Make (T)
+    include T
+  end
+
+  include M
+  module Map = Map.M (M)
   (* open Ppx_deriving_cmdliner_runtime *)
 
   let of_string : string -> [ `Error of string | `Ok of t ] =
@@ -523,7 +543,7 @@ functor
     and item = {
       v : item';
       span : span;
-      parent_namespace : string * string list;
+      parent_namespace : (Namespace.t[@visitors.opaque]);
     }
     [@@deriving
       show,
@@ -557,3 +577,9 @@ functor
 
     type modul = item list
   end
+
+module type T = sig
+  type item [@@deriving show, yojson]
+end
+
+module Rust = Make (Features.Rust)
