@@ -173,7 +173,7 @@ struct
   let dvariant (v : A.variant) : B.variant =
     { name = v.name; arguments = List.map ~f:(map_snd dty) v.arguments }
 
-  let ditem (item : A.item) : B.item =
+  let ditem (item : A.item) : B.item list =
     let v =
       match item.v with
       | Fn { name; generics; body; params } ->
@@ -194,9 +194,9 @@ struct
             }
       | TyAlias { name; generics; ty } ->
           B.TyAlias { name; generics = dgenerics generics; ty = dty ty }
-      | NotImplementedYet -> B.NotImplementedYet
+      | [%inline_arms NotImplementedYet + IMacroInvokation] -> auto
     in
-    { v; span = item.span; parent_namespace = item.parent_namespace }
+    [ { v; span = item.span; parent_namespace = item.parent_namespace } ]
 
   let metadata = Desugar_utils.Metadata.make "DropReferences"
 end
