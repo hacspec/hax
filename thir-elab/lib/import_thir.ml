@@ -635,6 +635,13 @@ module Exn = struct
               body = c_expr body;
               params = [];
             }
+      | TyAlias (ty, generics) ->
+          TyAlias
+            {
+              name = def_id (Option.value_exn item.def_id);
+              generics = c_generics generics;
+              ty = c_ty ty;
+            }
       | Fn (generics, { body; header; params; ret; sig_span }) ->
           Fn
             {
