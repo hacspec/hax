@@ -1988,7 +1988,34 @@ pub enum ImplicitSelfKind {
 }
 
 #[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::Param<'tcx>, state: S as tcx)]
+#[args(<S>, from: rustc_ast::token::CommentKind, state: S as tcx)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub enum CommentKind {
+    Line,
+    Block,
+}
+
+sinto_todo!(rustc_ast::tokenstream, LazyAttrTokenStream);
+sinto_todo!(rustc_ast::ast, AttrItem);
+
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_ast::ast::NormalAttr, state: S as tcx)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct NormalAttr {
+    pub item: AttrItem,
+    pub tokens: Option<LazyAttrTokenStream>,
+}
+
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_ast::AttrKind, state: S as tcx)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub enum AttrKind {
+    Normal(NormalAttr),
+    DocComment(CommentKind, Symbol),
+}
+
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::Param<'tcx>, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Param {
     pub pat: Option<Pat>,
