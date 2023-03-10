@@ -1,0 +1,23 @@
+[package]
+name = "hacspec-ed25519"
+version = "0.1.0"
+authors = ["Kasper S. Nielsen <ksn@cs.au.dk>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+path = "src/ed25519.rs"
+
+[dependencies]
+hacspec-lib = { git = "https://github.com/hacspec/hacspec.git" }
+hacspec-sha512 = { path = "../sha512" }
+hacspec-edwards25519 = { path = "../edwards25519" }
+
+[dev-dependencies]
+quickcheck = "1"
+quickcheck_macros = "1"
+serde_json = "1.0"
+serde = {version = "1.0", features = ["derive"]}
+
+
