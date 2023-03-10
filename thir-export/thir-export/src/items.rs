@@ -444,12 +444,15 @@ pub fn inline_macro_invokations<'t, S: BaseState<'t>>(
         .into_iter()
         .map(|(mac, items)| match mac.0 {
             Some((macro_ident, expn_data)) => {
+                let owner_id = items.into_iter().map(|x| x.owner_id).next().unwrap();
+                // owner_id.reduce()
                 let invokation =
                     macro_invokation_of_raw_mac_invokation(&macro_ident, &expn_data, s);
                 let span = expn_data.call_site.sinto(s);
                 vec![Item {
                     def_id: None,
-                    owner_id: expn_data.parent_module.unwrap().sinto(s),
+                    owner_id: owner_id.sinto(s),
+                    // owner_id: expn_data.parent_module.unwrap().sinto(s),
                     kind: ItemKind::MacroInvokation(invokation),
                     span,
                     vis_span: rustc_span::DUMMY_SP.sinto(s),
