@@ -1,0 +1,16 @@
+[package]
+name = "hacspec-merlin"
+version = "0.1.0"
+authors = ["Rasmus Kirk <mail@rasmuskirk.com>"]
+edition = "2018"
+
+[lib]
+path = "src/merlin.rs"
+
+[dependencies]
+hacspec-lib = { git = "https://github.com/hacspec/hacspec.git" }
+hacspec-sha3 = { path = "../sha3" }
+
+[dev-dependencies]
+merlin = "3"
+quickcheck = "1"

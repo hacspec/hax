@@ -1,0 +1,21 @@
+[package]
+name = "hacspec-edwards25519-hash"
+version = "0.1.0"
+authors = ["Malte Thomsen <malteut@gmail.com>", "Marcus Rasmussen <marcusjr@live.dk>", "Tobias Vestergaard <tsv2907@gmail.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+path = "src/edwards25519-hash.rs"
+
+[dependencies]
+hacspec-lib = { git = "https://github.com/hacspec/hacspec.git" }
+hacspec-sha512 = { path = "../sha512" }
+hacspec-edwards25519 = { path = "../edwards25519" }
+
+[dev-dependencies]
+quickcheck = "1"
+quickcheck_macros = "1"
+h2c-rust-ref = { git = "https://github.com/armfazh/h2c-rust-ref" }
+redox-ecc = { git = "https://github.com/armfazh/redox-ecc" }
