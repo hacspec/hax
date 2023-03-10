@@ -687,6 +687,14 @@ module Exn = struct
           in
           let variants = [ v ] in
           Type { name; generics; variants; record }
+      | MacroInvokation { macro_ident; argument; span } ->
+          IMacroInvokation
+            {
+              macro = def_id macro_ident;
+              argument;
+              span = c_span span;
+              witness = ();
+            }
       | _ -> NotImplementedYet
     in
     { span; v; parent_namespace = namespace_of_def_id item.owner_id }
