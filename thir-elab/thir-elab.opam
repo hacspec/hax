@@ -20,7 +20,7 @@ depends: [
   "bignum"
   "pprint"
   "ppx_deriving_yojson"
-  "fstar"
+  "fstar" {}
   "ppx_yojson_conv"
   "ppx_sexp_conv"
   "ppx_compare"
@@ -51,5 +51,5 @@ depexts: [
   ["nodejs"] {}
 ]
 pin-depends: [
-  [ "fstar" "git+https://github.com/fstarlang/fstar#1c088bca6afbcf79a7a4eaec73bf21fc8128e8b5" ]
+  [ "fstar." "git+https://github.com/FStarLang/FStar#1c088bca6afbcf79a7a4eaec73bf21fc8128e8b5" ]
 ]
