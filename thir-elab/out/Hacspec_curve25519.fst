@@ -4,21 +4,30 @@ open FStar.Mul
 open Hacspec.Lib
 open Hacspec_lib_tc
 
-let _ = "could not handle macro `Concrete (hacspec_lib::math_integers::public_nat_mod)"
+unfold
+type x25519FieldElement_t =
+  nat_mod 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed
+unfold
+type fieldCanvas_t = lseq pub_uint8 256
 
-let _ = "could not handle macro `Concrete (hacspec_lib::math_integers::public_nat_mod)"
+unfold
+type scalar_t = nat_mod 0x8000000000000000000000000000000000000000000000000000000000000000
+unfold
+type scalarCanvas_t = lseq pub_uint8 256
 
 let point = (x25519FieldElement_t & x25519FieldElement_t)
 
-let _ = "could not handle macro `Concrete (hacspec_lib::array::bytes)"
+unfold
+type x25519SerializedPoint_t = lseq uint8 32
 
-let _ = "could not handle macro `Concrete (hacspec_lib::array::bytes)"
+unfold
+type x25519SerializedScalar_t = lseq uint8 32
 
 let mask_scalar (s: x25519SerializedScalar_t) : x25519SerializedScalar_t =
   let k:x25519SerializedScalar_t = s in
-  let k:x25519SerializedScalar_t = k.[ 0l ] <- k.[ 0l ] &. Secret_integers.U8 248uy in
-  let k:x25519SerializedScalar_t = k.[ 31l ] <- k.[ 31l ] &. Secret_integers.U8 127uy in
-  k.[ 31l ] <- k.[ 31l ] |. Secret_integers.U8 64uy
+  let k:x25519SerializedScalar_t = k.[ 0l ] <- k.[ 0l ] &. Hacspec_lib_tc.secret 248uy in
+  let k:x25519SerializedScalar_t = k.[ 31l ] <- k.[ 31l ] &. Hacspec_lib_tc.secret 127uy in
+  k.[ 31l ] <- k.[ 31l ] |. Hacspec_lib_tc.secret 64uy
 
 let decode_scalar (s: x25519SerializedScalar_t) : scalar_t =
   let k:x25519SerializedScalar_t = mask_scalar s in
@@ -26,13 +35,13 @@ let decode_scalar (s: x25519SerializedScalar_t) : scalar_t =
 
 let decode_point (u: x25519SerializedPoint_t) : (x25519FieldElement_t & x25519FieldElement_t) =
   let u_:x25519SerializedPoint_t = u in
-  let u_:x25519SerializedPoint_t = u_.[ 31l ] <- u_.[ 31l ] &. Secret_integers.U8 127uy in
+  let u_:x25519SerializedPoint_t = u_.[ 31l ] <- u_.[ 31l ] &. Hacspec_lib_tc.secret 127uy in
   from_byte_seq_le u_, from_literal (pub_u128 1)
 
 let encode_point (p: (x25519FieldElement_t & x25519FieldElement_t)) : x25519SerializedPoint_t =
   let x, y:(x25519FieldElement_t & x25519FieldElement_t) = p in
   let b:x25519FieldElement_t = x *. inv y in
-  Hacspec_lib.Traits.SeqTrait.update_start new_ (to_byte_seq_le b)
+  Hacspec_lib_tc.update_start new_ (to_byte_seq_le b)
 
 let point_add_and_double
       (q: (x25519FieldElement_t & x25519FieldElement_t))
@@ -121,5 +130,5 @@ let x25519_scalarmult (s: x25519SerializedScalar_t) (p: x25519SerializedPoint_t)
 
 let x25519_secret_to_public (s: x25519SerializedScalar_t) : x25519SerializedPoint_t =
   let base:x25519SerializedPoint_t = new_ in
-  let base:x25519SerializedPoint_t = base.[ 0l ] <- Secret_integers.U8 9uy in
+  let base:x25519SerializedPoint_t = base.[ 0l ] <- Hacspec_lib_tc.secret 9uy in
   x25519_scalarmult s base

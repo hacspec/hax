@@ -2,6 +2,8 @@ open Base
 open Utils
 open Ast
 
+type visit_level = ExprLevel | TypeLevel
+
 module TypedLocalIdent (Ty : sig
   type ty [@@deriving show, yojson]
 end) =
@@ -105,14 +107,12 @@ module Make (F : Features.T) = struct
           expr e
       end
 
-    type level = ExprLevel | TypeLevel
-
-    let rename_global_idents (f : level -> global_ident -> global_ident) =
+    let rename_global_idents (f : visit_level -> global_ident -> global_ident) =
       object
         inherit [_] item_map as super
-        method visit_t (lvl : level) x = x
-        method visit_mutability _ (lvl : level) m = m
-        method! visit_global_ident (lvl : level) ident = f lvl ident
+        method visit_t (lvl : visit_level) x = x
+        method visit_mutability _ (lvl : visit_level) m = m
+        method! visit_global_ident (lvl : visit_level) ident = f lvl ident
         method! visit_ty _ t = super#visit_ty TypeLevel t
         (* method visit_GlobalVar (lvl : level) i = GlobalVar (f lvl i) *)
       end

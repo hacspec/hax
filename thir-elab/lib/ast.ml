@@ -143,6 +143,9 @@ module GlobalIdent = struct
     | crate :: path_hd :: path_tl ->
         `Ok (`Concrete Non_empty_list.{ crate; path = path_hd :: path_tl })
 
+  let of_string_exn (s : string) : t =
+    match of_string s with `Ok v -> v | `Error s -> failwith s
+
   let to_string : t -> string = [%show: t]
 
   let cmdliner_converter =

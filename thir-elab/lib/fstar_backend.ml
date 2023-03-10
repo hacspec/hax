@@ -437,11 +437,7 @@ module FStarBackend = struct
       F.term @@ F.AST.App (F.term_of_lid [ "__debug__" ^ label ], e, Nothing)
 
     let operators =
-      let c' = function
-        | crate :: x :: l -> `Concrete Non_empty_list.{ crate; path = x :: l }
-        | _ -> failwith "operators contains ill-formed idents"
-      in
-      let c = split_str ~on:"::" >> c' in
+      let c = GlobalIdent.of_string_exn in
       [
         (c "std::core::array::update_array_at", (3, ".[]<-"));
         (c "core::ops::index::Index::index", (2, ".[]"));
@@ -848,6 +844,7 @@ module FStarBackend = struct
           F.decls_of_string @@ "let _ = \"could not handle macro "
           ^ [%show: global_ident] x
           ^ "\""
+      | IMacroInvokation _ -> failwith "x"
       | _ -> []
   end
 
