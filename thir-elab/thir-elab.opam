@@ -50,3 +50,6 @@ dev-repo: "git+https://github.com/username/reponame.git"
 depexts: [
   ["nodejs"] {}
 ]
+pin-depends: [
+  [ "fstar" "git+https://github.com/fstarlang/fstar#1c088bca6afbcf79a7a4eaec73bf21fc8128e8b5" ]
+]
