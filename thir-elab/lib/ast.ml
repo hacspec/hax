@@ -422,9 +422,10 @@ functor
     and expr = { e : expr'; span : span; typ : ty }
 
     and lhs =
-      | FieldAccessor of { e : expr; field : string }
-      | ArrayAccessor of { e : expr; index : expr }
-      | LhsLocalVar of LocalIdent.t
+      | LhsLocalVar of { var : LocalIdent.t; typ : ty }
+      | LhsArbitraryExpr of { e : expr; witness : F.arbitrary_lhs }
+      | LhsFieldAccessor of { e : lhs; typ : ty; field : string }
+      | LhsArrayAccessor of { e : lhs; typ : ty; index : expr }
 
     and arm' = { pat : pat; body : expr }
 

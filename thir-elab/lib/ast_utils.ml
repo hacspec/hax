@@ -145,7 +145,9 @@ module Make (F : Features.T) = struct
       let pat_vars = variables_of_pat pat in
       Set.filter mut_vars ~f:(fst >> Set.mem pat_vars >> not)
 
-    let free_assigned_variables =
+    let free_assigned_variables
+        (fv_of_arbitrary_lhs :
+          F.arbitrary_lhs -> expr -> Sets.TypedLocalIdent.t) =
       object
         inherit [_] expr_reduce as super
         inherit [_] Sets.TypedLocalIdent.monoid as m
@@ -153,9 +155,16 @@ module Make (F : Features.T) = struct
         method visit_mutability f () _ = m#zero
 
         method visit_Assign m lhs e wit =
-          match lhs with
-          | LhsLocalVar v -> Set.singleton (module TypedLocalIdent) (v, e.typ)
-          | _ -> failwith "???"
+          let rec visit_lhs lhs =
+            match lhs with
+            | LhsLocalVar { var; _ } ->
+                Set.singleton (module TypedLocalIdent) (var, e.typ)
+            | LhsFieldAccessor { e; _ } -> visit_lhs e
+            | LhsArrayAccessor { e; index } ->
+                Set.union (super#visit_expr () index) (visit_lhs e)
+            | LhsArbitraryExpr { witness; e } -> fv_of_arbitrary_lhs witness e
+          in
+          visit_lhs lhs
 
         method visit_Match m scrut arms =
           List.fold_left ~init:(super#visit_expr m scrut) ~f:Set.union

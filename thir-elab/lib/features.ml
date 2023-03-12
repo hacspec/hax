@@ -14,6 +14,7 @@ loop,
   early_exit,
   macro,
   as_pattern,
+  arbitrary_lhs,
   lifetime,
   monadic_action,
   monadic_binding]
@@ -66,6 +67,7 @@ module DefaultClasses (F : T) = struct
       method visit_lifetime () (_ : F.lifetime) = self#zero
       method visit_monadic_action () (_ : F.monadic_action) = self#zero
       method visit_monadic_binding () (_ : F.monadic_binding) = self#zero
+      method visit_arbitrary_lhs () (_ : F.arbitrary_lhs) = self#zero
     end
 
   class virtual ['self] default_map_features =
@@ -108,6 +110,9 @@ module DefaultClasses (F : T) = struct
         Fn.const Fn.id
 
       method visit_lifetime : 'env -> F.lifetime -> F.lifetime = Fn.const Fn.id
+
+      method visit_arbitrary_lhs : 'env -> F.arbitrary_lhs -> F.arbitrary_lhs =
+        Fn.const Fn.id
 
       method visit_monadic_action : 'env -> F.monadic_action -> F.monadic_action
           =

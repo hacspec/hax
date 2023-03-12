@@ -132,13 +132,7 @@ struct
 
   and darm (a : A.arm) : B.arm = { span = a.span; arm = darm' a.arm }
   and darm' (a : A.arm') : B.arm' = { pat = dpat a.pat; body = dexpr a.body }
-
-  and dlhs (e : A.lhs) : B.lhs =
-    match e with
-    | FieldAccessor { e; field } -> FieldAccessor { e = dexpr e; field }
-    | ArrayAccessor { e; index } ->
-        ArrayAccessor { e = dexpr e; index = dexpr index }
-    | LhsLocalVar id -> LhsLocalVar id
+  and dlhs = [%inline_body dlhs]
 
   let dtrait_ref (r : A.trait_ref) : B.trait_ref =
     {

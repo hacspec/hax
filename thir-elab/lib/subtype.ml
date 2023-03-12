@@ -174,10 +174,13 @@ struct
 
   and dlhs (lhs : A.lhs) : B.lhs =
     match lhs with
-    | FieldAccessor { e; field } -> FieldAccessor { e = dexpr e; field }
-    | ArrayAccessor { e; index } ->
-        ArrayAccessor { e = dexpr e; index = dexpr index }
-    | LhsLocalVar id -> LhsLocalVar id
+    | LhsFieldAccessor { e; field; typ } ->
+        LhsFieldAccessor { e = dlhs e; field; typ = dty typ }
+    | LhsArrayAccessor { e; index; typ } ->
+        LhsArrayAccessor { e = dlhs e; index = dexpr index; typ = dty typ }
+    | LhsLocalVar { var; typ } -> LhsLocalVar { var; typ = dty typ }
+    | LhsArbitraryExpr { e; witness } ->
+        LhsArbitraryExpr { e = dexpr e; witness = S.arbitrary_lhs witness }
 
   module Item = struct
     let dtrait_ref (r : A.trait_ref) : B.trait_ref =

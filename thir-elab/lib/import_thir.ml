@@ -326,15 +326,17 @@ module Exn = struct
       | Assign { lhs; rhs } ->
           let lhs = c_expr lhs in
           let e = c_expr rhs in
-          let lhs =
+          let rec mk_lhs lhs =
             match lhs.e with
-            | LocalVar ident -> LhsLocalVar ident
+            | LocalVar var -> LhsLocalVar { var; typ = lhs.typ }
             | _ -> (
                 match resugar_index_mut lhs with
-                | Some (e, index) -> ArrayAccessor { e; index }
-                | None -> failwith ("Cannot handle LHS: " ^ [%show: expr] lhs))
+                | Some (e, index) ->
+                    LhsArrayAccessor { e = mk_lhs e; typ = lhs.typ; index }
+                | None ->
+                    LhsArbitraryExpr { e = lhs; witness = () })
           in
-          Assign { lhs; e; witness = () }
+          Assign { lhs = mk_lhs lhs; e; witness = () }
       | AssignOp _ -> failwith "AssignOp"
       | VarRef { id } -> LocalVar (local_ident id)
       | Field { lhs; field } ->

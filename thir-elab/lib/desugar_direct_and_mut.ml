@@ -148,11 +148,17 @@ struct
               LocalIdent.{ name = "todo_fresh_var"; id = 0 }
             in
             match mut_typed_inputs with
-            | [ (_, (i, _, _)) ] when ret_unit ->
+            | [ (_, (var, typ, _)) ] when ret_unit ->
                 {
                   expr with
                   typ = UB.unit_typ;
-                  e = B.Assign { lhs = LhsLocalVar i; witness = (); e = expr };
+                  e =
+                    B.Assign
+                      {
+                        lhs = LhsLocalVar { var; typ };
+                        witness = ();
+                        e = expr;
+                      };
                 }
             | _ ->
                 let idents =
@@ -174,7 +180,7 @@ struct
                         e =
                           B.Assign
                             {
-                              lhs = LhsLocalVar i;
+                              lhs = LhsLocalVar { var = i; typ };
                               witness = ();
                               e = { expr with typ; span; e = LocalVar i_temp };
                             };
