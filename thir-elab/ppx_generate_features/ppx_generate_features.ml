@@ -172,13 +172,17 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
              [ ("placeholder", txt); ("Placeholder", uppercase_first_char txt) ])
             #structure
             [%str
-              module Placeholder = struct
-                type placeholder = Placeholder [@@deriving show, yojson, eq]
+              module Placeholder : sig
+                type placeholder [@@deriving show, yojson, eq]
+
+                val placeholder : placeholder
+              end = struct
+                type placeholder = () [@@deriving show, yojson, eq]
+
+                let placeholder = ()
               end
 
-              include Placeholder
-
-              let placeholder = Placeholder])
+              include Placeholder])
         features
       |> B.pmod_structure]
 
