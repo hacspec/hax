@@ -3,8 +3,8 @@ open Utils
 
 module%inlined_contents Make
     (F : Features.T
-           with type raw_pointer = Features.off
-            and type mutable_reference = Features.off) =
+           with type raw_pointer = Features.Off.raw_pointer
+            and type mutable_reference = Features.Off.mutable_reference) =
 struct
   open Ast
   module FA = F
@@ -25,20 +25,10 @@ struct
 
   let rec dty (t : A.ty) : B.ty =
     match t with
-    | TBool -> TBool
-    | TChar -> TChar
-    | TInt k -> TInt k
-    | TFloat -> TFloat
-    | TStr -> TStr
+    | [%inline_arms "dty.*" - TApp - TRef] -> auto
     | TApp { ident; args } ->
         TApp { ident; args = List.filter_map ~f:dgeneric_value args }
-    | TArray { typ; length } -> TArray { typ = dty typ; length }
-    | TSlice { witness; ty } -> TSlice { witness; ty = dty ty }
     | TRef { witness; typ; mut = Immutable as mut; region } -> dty typ
-    | TFalse -> TFalse
-    | TParam local_ident -> TParam local_ident
-    | TArrow (inputs, output) -> TArrow (List.map ~f:dty inputs, dty output)
-    | TProjectedAssociatedType string -> TProjectedAssociatedType string
     | _ -> .
 
   and dgeneric_value (g : A.generic_value) : B.generic_value option =
@@ -47,22 +37,12 @@ struct
     | GType t -> Some (GType (dty t))
     | GConst c -> Some (GConst c)
 
-  (* let test = *)
-  (*   match%auto_arms 1 with *)
-  (*   | OneCase -> 0 *)
-
   let rec dpat (p : A.pat) : B.pat =
     { p = dpat' p.p; span = p.span; typ = dty p.typ }
 
   and dpat' (p : A.pat') : B.pat' =
     match p with
-    | PWild -> PWild
-    | PAscription { typ; typ_span; pat } ->
-        PAscription { typ = dty typ; typ_span; pat = dpat pat }
-    | PConstruct { name; args; record } ->
-        PConstruct { name; record; args = List.map ~f:dfield_pat args }
-    | PArray { args } -> PArray { args = List.map ~f:dpat args }
-    | PConstant { lit } -> PConstant { lit }
+    | [%inline_arms "dpat'.*" - PBinding - PDeref] -> auto
     | PBinding { mut; mode; var : LocalIdent.t; typ; subpat } ->
         PBinding
           {
@@ -74,27 +54,17 @@ struct
           }
     | PDeref { subpat } -> (dpat subpat).p
 
-  and dfield_pat (p : A.field_pat) : B.field_pat =
-    { field = p.field; pat = dpat p.pat }
+  and dfield_pat = [%inline_body dfield_pat]
 
-  let rec dexpr (e : A.expr) : B.expr =
-    { e = dexpr' e.e; span = e.span; typ = dty e.typ }
+  let rec dexpr = [%inline_body dexpr]
 
   and dexpr' (e : A.expr') : B.expr' =
     match e with
-    | If { cond; then_; else_ } ->
-        If
-          {
-            cond = dexpr cond;
-            then_ = dexpr then_;
-            else_ = Option.map ~f:dexpr else_;
-          }
+    | [%inline_arms If + Literal + Array] -> auto
     | App { f = { e = GlobalVar (`Primitive (Box | Deref)) }; args = [ arg ] }
       ->
         (dexpr arg).e
     | App { f; args } -> App { f = dexpr f; args = List.map ~f:dexpr args }
-    | Literal lit -> Literal lit
-    | Array l -> Array (List.map ~f:dexpr l)
     | Construct { constructor; constructs_record; fields; base } ->
         Construct
           {

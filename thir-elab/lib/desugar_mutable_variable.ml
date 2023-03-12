@@ -26,13 +26,14 @@ end
 
 module%inlined_contents Make
     (F : Features.T
-           with type mutable_reference = Features.off
-            and type mutable_pointer = Features.off
-            and type raw_pointer = Features.off
-            and type continue = Features.off
-            and type monadic_action = Features.off
-            and type monadic_binding = Features.off
-                                                   (* todo: this phase should require mutable borrow to be disabled *))
+           with type mutable_reference = Features.Off.mutable_reference
+            and type mutable_pointer = Features.Off.mutable_pointer
+            and type raw_pointer = Features.Off.raw_pointer
+            and type continue = Features.Off.continue
+            and type arbitrary_lhs = Features.Off.arbitrary_lhs
+            and type monadic_action = Features.Off.monadic_action
+            and type monadic_binding = Features.Off.monadic_binding
+                                                                   (* todo: this phase should require mutable borrow to be disabled *))
     (FConstraints : sig
       val early_exit : F.loop -> F.early_exit
     end) =

@@ -3,13 +3,13 @@ open Utils
 
 module%inlined_contents Make
     (FA : Features.T
-            with type mutable_reference = Features.off
-             and type mutable_pointer = Features.off
-             and type raw_pointer = Features.off
-             and type continue = Features.off
-            (* and type monadic = Features.off *)
-             and type mutable_variable = Features.off
-             and type loop = Features.off) =
+            with type mutable_reference = Features.Off.mutable_reference
+             and type mutable_pointer = Features.Off.mutable_pointer
+             and type raw_pointer = Features.Off.raw_pointer
+             and type continue = Features.Off.continue
+            (* and type monadic = Features.Off.monadic *)
+             and type mutable_variable = Features.Off.mutable_variable
+             and type loop = Features.Off.loop) =
 struct
   open Ast
 

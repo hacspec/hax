@@ -3,8 +3,8 @@ open Utils
 
 module%inlined_contents Make
     (FA : Features.T
-            with type raw_pointer = Features.off
-             and type mutable_pointer = Features.off
+            with type raw_pointer = Features.Off.raw_pointer
+             and type mutable_pointer = Features.Off.mutable_pointer
     (* and type mutable_reference = Features.on *)) =
 struct
   open Ast
@@ -21,7 +21,7 @@ struct
   module S = struct
     include Features.SUBTYPE.Id
 
-    let mutable_variable = Fn.const ()
+    let mutable_variable = Fn.const Features.On.mutable_variable
   end
 
   let metadata = Desugar_utils.Metadata.make "ref_mut"
@@ -156,7 +156,7 @@ struct
                     B.Assign
                       {
                         lhs = LhsLocalVar { var; typ };
-                        witness = ();
+                        witness = Features.On.mutable_variable;
                         e = expr;
                       };
                 }
@@ -181,7 +181,7 @@ struct
                           B.Assign
                             {
                               lhs = LhsLocalVar { var = i; typ };
-                              witness = ();
+                              witness = Features.On.mutable_variable;
                               e = { expr with typ; span; e = LocalVar i_temp };
                             };
                       })

@@ -1,5 +1,5 @@
-type on = unit [@@deriving show, yojson, eq]
-type off = | [@@deriving show, yojson, eq]
+(* type on = unit [@@deriving show, yojson, eq] *)
+(* type off = | [@@deriving show, yojson, eq] *)
 
 [%%declare_features
 loop,
@@ -23,10 +23,9 @@ module Full = On
 
 module Rust = struct
   include On
-
-  type for_loop = off [@@deriving show, yojson, eq]
-  type monadic_action = off [@@deriving show, yojson, eq]
-  type monadic_binding = off [@@deriving show, yojson, eq]
+  include Off.For_loop
+  include Off.Monadic_action
+  include Off.Monadic_binding
 end
 
 module FStar = struct

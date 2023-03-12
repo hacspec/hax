@@ -31,11 +31,12 @@ module FStarBackend = struct
           let slice = reject
           let raw_pointer = reject
           let early_exit _ = Obj.magic ()
-          let macro _ = ()
+          let macro _ = Features.On.macro
           let as_pattern = reject
           let lifetime = reject
           let monadic_action = reject
-          let monadic_binding _ = ()
+          let arbitrary_lhs = reject
+          let monadic_binding _ = Features.On.monadic_binding
           let for_loop = reject
           let metadata = Desugar_utils.Metadata.make "RejectNotFStar"
         end)
@@ -905,18 +906,22 @@ module FStarBackend = struct
   open Desugar_utils
 
   module DesugarToInputLanguage =
-  [%functor_application
-  Reject.RawOrMutPointer Features.Rust |> Resugar_for_loop.Make
-  |> Desugar_direct_and_mut.Make |> Reject.Continue
-  |> Desugar_drop_references.Make
-  |> (fun X ->
-       (Desugar_mutable_variable.Make (module X))
-         (module struct
-           let early_exit = Fn.id
-         end))
-  (* |> Desugar_legacy_hacspec_lib.Make *)
-  |> RejectNotFStar
-  (* |> Identity *)]
+    [%functor_application
+       Reject.RawOrMutPointer(Features.Rust)
+    |> Reject.Arbitrary_lhs
+    |> Resugar_for_loop.Make
+    |> Desugar_direct_and_mut.Make
+    |> Reject.Continue
+    |> Desugar_drop_references.Make
+    |> (fun X ->
+        (Desugar_mutable_variable.Make(module X))
+          (module struct
+            let early_exit = fun _ -> Features.On.early_exit
+          end))
+    |> RejectNotFStar
+    |> Identity
+    ]
+    [@ocamlformat "disable"]
 
   let desugar (o : Backend.Options.t) (bo : BackendOptions.t)
       (i : Ast.Rust.item) : AST.item list =
