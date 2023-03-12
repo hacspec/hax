@@ -79,6 +79,12 @@ let locate_module ~loc module_name =
   in
   Filename.concat dirname module_name
 
+let replace_every_location (location : location) =
+  object
+    inherit Ast_traverse.map as super
+    method! location = Fn.const location
+  end
+
 let inlinable_items_of_module : loc:location -> string -> inlinable_item list =
   let memo = Hashtbl.create (module String) in
   fun ~loc path ->
@@ -87,7 +93,7 @@ let inlinable_items_of_module : loc:location -> string -> inlinable_item list =
         let results = ref [] in
         let _ =
           locate_module ~loc path |> open_in |> Lexing.from_channel
-          |> Parse.implementation
+          |> Parse.implementation |> (replace_every_location loc)#structure
           |> (collect_ast_nodes results)#structure [ path ]
         in
         !results)
@@ -140,22 +146,22 @@ let diff_list (type a) (x : a list) (y : a list) ~(equal : a -> a -> bool) :
     x
 
 let map_inline_nodes opens loc =
-  let inlinable_items = inlinable_items_of_modules opens in
   let rec match_glob (glob : string list) (against : string list) =
     match (elast glob, elast against) with
     | Some (glob, "*"), Some (against, _) -> match_glob glob against
     | _ -> List.is_suffix ~equal:String.equal ~suffix:glob against
   in
-  let matches (glob : string list) : inlinable_item list =
+  let inlinable_items = inlinable_items_of_modules opens in
+  let matches ~loc (glob : string list) : inlinable_item list =
     List.filter ~f:(fun { path } -> match_glob glob path)
     @@ inlinable_items ~loc
   in
-  let find_one (type a) (glob : string list)
+  let find_one (type a) ~loc (glob : string list)
       (f : inlinable_item_kind -> a option) : (string list * a) list =
     match
       List.filter_map ~f:(fun { path; kind } ->
           Option.map ~f:(fun r -> (path, r)) @@ f kind)
-      @@ matches glob
+      @@ matches glob ~loc
     with
     | [] ->
         raise_inline_err
@@ -167,11 +173,11 @@ let map_inline_nodes opens loc =
              }
     | l -> l
   in
-  let find (type a) (flags : (flag * string list) list)
+  let find (type a) ~loc (flags : (flag * string list) list)
       (f : inlinable_item_kind -> a option) =
     List.fold_left ~init:[]
       ~f:(fun acc (flag, path) ->
-        let matches = find_one path f in
+        let matches = find_one ~loc path f in
         match flag with
         | Include -> acc @ matches
         | Exclude ->
@@ -188,6 +194,7 @@ let map_inline_nodes opens loc =
     method! structure e =
       let e = super#structure e in
       let each_item e =
+        let loc = e.pstr_loc in
         match e.pstr_desc with
         | Pstr_extension
             ( ( { txt = "inline_defs" },
@@ -195,7 +202,7 @@ let map_inline_nodes opens loc =
               _ ) -> (
             match plus_minus_list_of_expr payload with
             | Some opts -> (
-                try find opts (function StrItem x -> Some x | _ -> None)
+                try find ~loc opts (function StrItem x -> Some x | _ -> None)
                 with InlineError err ->
                   let err =
                     [%show: inline_error] err
@@ -209,6 +216,7 @@ let map_inline_nodes opens loc =
 
     method! expression e =
       let e = super#expression e in
+      let loc = e.pexp_loc in
       match e with
       | { pexp_desc = Pexp_match (scrut, cases) } ->
           let cases =
@@ -224,7 +232,7 @@ let map_inline_nodes opens loc =
                     match plus_minus_list_of_expr e with
                     | Some opts -> (
                         try
-                          find opts (function
+                          find ~loc opts (function
                             | MatchCase case -> Some case
                             | _ -> None)
                           |> List.map ~f:(fun case ->
@@ -250,7 +258,7 @@ let map_inline_nodes opens loc =
           | Some opts -> (
               try
                 match
-                  find opts (function
+                  find ~loc opts (function
                     | Binding { pvb_expr } -> Some pvb_expr
                     | _ -> None)
                 with
