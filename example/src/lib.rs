@@ -62,6 +62,12 @@ struct FooStruct {
 pub fn my_fun() {
     let x = 5;
     let _y = unsafe { 8 };
+    loop {
+        break;
+    }
+    while x > 4 {
+        break;
+    }
 }
 
 pub unsafe fn unsafe_fun() {
@@ -69,7 +75,13 @@ pub unsafe fn unsafe_fun() {
 }
 
 pub async fn async_fun() {
-    let _x = 8;
+    let mut x = 8;
+    let y = &mut x;
+}
+
+pub trait MyTraitWithAssoc {
+    type Error;
+    fn run(&self);
 }
 
 pub trait MyTrait {
@@ -84,7 +96,16 @@ pub fn trait_obj_fun2(trait_obj: &impl MyTrait) {
     trait_obj.run();
 }
 
+pub fn trait_obj_fun3(trait_obj: impl MyTrait) {
+    trait_obj.run();
+}
+
+pub union SomeUnion {
+    a: u8,
+}
+
 mod hash;
+use hash::*;
 
 #[derive(Copy, Clone)]
 struct DummyStruct {
@@ -109,6 +130,13 @@ struct Hi {
     field2: u8,
     field3: u8,
     field4: u8,
+}
+
+fn f3<A>(x: u8, y: A) -> u8
+where
+    A: Foo,
+{
+    5
 }
 
 fn f2<A: Foo>(x: u8, y: A) -> u8 {

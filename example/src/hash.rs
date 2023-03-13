@@ -4,6 +4,7 @@
 /// * use the constant
 /// * use the generic type
 /// * derive something
+use super::*;
 
 pub const HASH_LENGTH: usize = 32;
 
@@ -12,4 +13,9 @@ pub const HASH_LENGTH: usize = 32;
 #[derive(PartialEq, Eq)]
 pub struct HashOf<T> {
     _inner: [T; HASH_LENGTH],
+}
+
+pub trait IllegalTrait {
+    type Error;
+    fn run(&self);
 }
