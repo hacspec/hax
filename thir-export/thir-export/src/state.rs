@@ -114,7 +114,7 @@ mk!(
         tcx: {'tcx} rustc_middle::ty::TyCtxt,
         options: {} types::Options,
         thir: {'tcx} rustc_middle::thir::Thir,
-        def_id: {} rustc_hir::def_id::DefId,
+        owner_id: {} rustc_hir::hir_id::OwnerId,
         opt_def_id: {} types::OptDefId,
         macro_infos: {} types::MacroCalls,
         local_ident_map: {} types::LocalIdentMap,

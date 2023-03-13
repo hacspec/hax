@@ -104,7 +104,7 @@ fn browse_items<'tcx>(
         tcx,
         options: box options.clone(),
         thir: (),
-        def_id: (),
+        owner_id: (),
         opt_def_id: None,
         macro_infos: macro_calls_r,
         local_ident_map: Rc::new(RefCell::new(HashMap::new())),
@@ -251,6 +251,7 @@ fn linter(crate_ast: &rustc_ast::ast::Crate, session: &Lrc<Session>, compiler: &
                     // eprintln!("found a closure - unsupported?");
                 }
             }
+            rustc_ast::visit::walk_fn(self, fk);
         }
     }
     let mut linter = FnLinter { session };
@@ -290,12 +291,25 @@ fn linter(crate_ast: &rustc_ast::ast::Crate, session: &Lrc<Session>, compiler: &
     // compiler.register_lints();
 }
 
+use rustc_interface::interface;
+use rustc_session::parse::ParseSess;
+use rustc_span::symbol::Symbol;
+
 struct DefaultCallbacks {
     options: thir_export::Options,
 }
 
 impl Callbacks for DefaultCallbacks {
-    // fn config(&mut self, config: &mut rustc_interface::Config) {}
+    fn config(&mut self, config: &mut interface::Config) {
+        let options = self.options.clone();
+        config.parse_sess_created = Some(Box::new(move |parse_sess| {
+            parse_sess.env_depinfo.get_mut().insert((
+                Symbol::intern("THIR_EXPORT_OPTIONS"),
+                Some(Symbol::intern(&serde_json::to_string(&options).unwrap())),
+            ));
+        }));
+    }
+
     fn after_parsing<'tcx>(
         &mut self,
         _compiler: &Compiler,

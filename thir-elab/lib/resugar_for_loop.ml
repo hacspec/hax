@@ -24,7 +24,7 @@ struct
   module S = struct
     include Features.SUBTYPE.Id
 
-    let for_loop = Fn.const ()
+    let for_loop = Fn.const Features.On.for_loop
   end
 
   module For = struct
@@ -329,7 +329,7 @@ struct
                 end_ = dexpr end_;
                 var;
                 label;
-                witness = ();
+                witness = Features.On.for_loop;
               };
           span = expr.span;
           typ = UB.unit_typ;

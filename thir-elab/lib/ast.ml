@@ -24,6 +24,21 @@ module Bigint = struct
    fun x -> Bigint.to_string x |> yojson_of_string
 end
 
+module Namespace = struct
+  module U = struct
+    module T = struct
+      type t = string * string list
+      [@@deriving show, eq, compare, sexp, hash, yojson]
+    end
+
+    include Base.Comparator.Make (T)
+    include T
+  end
+
+  include U
+  module Map = Map.M (U)
+end
+
 type todo = string
 [@@deriving
   show,
@@ -113,8 +128,13 @@ module GlobalIdent = struct
     [@@deriving show, yojson, compare, sexp, eq]
   end
 
-  include Base.Comparator.Make (T)
-  include T
+  module M = struct
+    include Base.Comparator.Make (T)
+    include T
+  end
+
+  include M
+  module Map = Map.M (M)
   (* open Ppx_deriving_cmdliner_runtime *)
 
   let of_string : string -> [ `Error of string | `Ok of t ] =
@@ -122,6 +142,9 @@ module GlobalIdent = struct
     | [] | [ _ ] -> `Error "A global ident is at least composed of two chunks"
     | crate :: path_hd :: path_tl ->
         `Ok (`Concrete Non_empty_list.{ crate; path = path_hd :: path_tl })
+
+  let of_string_exn (s : string) : t =
+    match of_string s with `Ok v -> v | `Error s -> failwith s
 
   let to_string : t -> string = [%show: t]
 
@@ -399,9 +422,10 @@ functor
     and expr = { e : expr'; span : span; typ : ty }
 
     and lhs =
-      | FieldAccessor of { e : expr; field : string }
-      | ArrayAccessor of { e : expr; index : expr }
-      | LhsLocalVar of LocalIdent.t
+      | LhsLocalVar of { var : LocalIdent.t; typ : ty }
+      | LhsArbitraryExpr of { e : expr; witness : F.arbitrary_lhs }
+      | LhsFieldAccessor of { e : lhs; typ : ty; field : string }
+      | LhsArrayAccessor of { e : lhs; typ : ty; index : expr }
 
     and arm' = { pat : pat; body : expr }
 
@@ -512,12 +536,18 @@ functor
           variants : variant list;
           record : bool;
         }
+      | IMacroInvokation of {
+          macro : global_ident;
+          argument : string;
+          span : span;
+          witness : F.macro;
+        }
       | NotImplementedYet
 
     and item = {
       v : item';
       span : span;
-      parent_namespace : string * string list;
+      parent_namespace : (Namespace.t[@visitors.opaque]);
     }
     [@@deriving
       show,
@@ -539,10 +569,21 @@ functor
             variety = "map";
             name = "item_map";
             ancestors =
-              [ "generic_constraint_map"; "expr_map"; "generic_param_map" ];
+              [
+                "generic_constraint_map";
+                "expr_map";
+                "ty_map";
+                "generic_param_map";
+              ];
           }]
     (* [@@deriving *)
     (*   show, yojson, eq, visitors { variety = "reduce"; name = "item_reduce" }, visitors { variety = "map"; name = "item_map" }] *)
 
     type modul = item list
   end
+
+module type T = sig
+  type item [@@deriving show, yojson]
+end
+
+module Rust = Make (Features.Rust)

@@ -128,6 +128,7 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
         (*     end *)
       end
 
+      (*
       module MapFeatureTypes (T : sig
         type t [@@deriving show, yojson, eq]
       end) =
@@ -146,9 +147,9 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
                 #structure
                 [%str
                   module Placeholder = struct
-                    type placeholder = T.t [@@deriving show, yojson, eq]
+                    type placeholder = Placeholder of T.t [@@deriving show, yojson, eq]
                   end
-
+                      
                   include Placeholder])
             features
           |> B.pmod_structure]
@@ -160,7 +161,46 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
 
       module Off = MapFeatureTypes (struct
         type t = off [@@deriving show, yojson, eq]
-      end)
+            end)
+            *)
+
+      module On =
+      [%m
+      List.concat_map
+        ~f:(fun txt ->
+          (rename
+             [ ("placeholder", txt); ("Placeholder", uppercase_first_char txt) ])
+            #structure
+            [%str
+              module Placeholder : sig
+                type placeholder [@@deriving show, yojson, eq]
+
+                val placeholder : placeholder
+              end = struct
+                type placeholder = () [@@deriving show, yojson, eq]
+
+                let placeholder = ()
+              end
+
+              include Placeholder])
+        features
+      |> B.pmod_structure]
+
+      module Off =
+      [%m
+      List.concat_map
+        ~f:(fun txt ->
+          (rename
+             [ ("placeholder", txt); ("Placeholder", uppercase_first_char txt) ])
+            #structure
+            [%str
+              module Placeholder = struct
+                type placeholder = | [@@deriving show, yojson, eq]
+              end
+
+              include Placeholder])
+        features
+      |> B.pmod_structure]
 
       module SUBTYPE = struct
         module type T = sig

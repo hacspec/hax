@@ -134,9 +134,10 @@ and parm { arm = { pat; body } } =
 
 and plhs (e : lhs) =
   match e with
-  | FieldAccessor { e; field } -> pexpr e ^^ dot ^^ string field
-  | ArrayAccessor { e; index } -> pexpr e ^^ brackets @@ pexpr index
-  | LhsLocalVar i -> plocal_ident i
+  | LhsFieldAccessor { e; field; _ } -> plhs e ^^ dot ^^ string field
+  | LhsArrayAccessor { e; index; _ } -> plhs e ^^ brackets @@ pexpr index
+  | LhsLocalVar { var; _ } -> plocal_ident var
+  | LhsArbitraryExpr { e; _ } -> pexpr e
 
 let rec pparam ({ pat; typ } : param) =
   group @@ parens @@ ppat pat ^/^ colon ^/^ pty typ
@@ -151,6 +152,7 @@ let rec pitem (e : item) =
   | Type { name; generics; variants } -> string "TYPEDEF"
   | TyAlias { name; generics; ty } -> string "TYPEALIAS"
   | NotImplementedYet -> string "NotImplementedYet"
+  | IMacroInvokation _ -> string "MacroInvok"
 
 let rec pmutability (e : 'a mutability) = string ""
 let rec pbinding_mode (e : binding_mode) = string ""

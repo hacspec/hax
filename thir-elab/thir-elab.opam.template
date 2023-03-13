@@ -1,3 +1,6 @@
 depexts: [
   ["nodejs"] {}
 ]
+pin-depends: [
+  [ "fstar.dev" "git+https://github.com/FStarLang/FStar#1c088bca6afbcf79a7a4eaec73bf21fc8128e8b5" ]
+]

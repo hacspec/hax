@@ -1,0 +1,13 @@
+[package]
+name = "hacspec-coverage-test"
+version = "0.1.0"
+authors = ["Lasse Letager Hansen <letager@cs.au.dk>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+hacspec-lib = { git = "https://github.com/hacspec/hacspec.git" }

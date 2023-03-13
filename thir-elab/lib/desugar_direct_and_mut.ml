@@ -3,8 +3,8 @@ open Utils
 
 module%inlined_contents Make
     (FA : Features.T
-            with type raw_pointer = Features.off
-             and type mutable_pointer = Features.off
+            with type raw_pointer = Features.Off.raw_pointer
+             and type mutable_pointer = Features.Off.mutable_pointer
     (* and type mutable_reference = Features.on *)) =
 struct
   open Ast
@@ -21,7 +21,7 @@ struct
   module S = struct
     include Features.SUBTYPE.Id
 
-    let mutable_variable = Fn.const ()
+    let mutable_variable = Fn.const Features.On.mutable_variable
   end
 
   let metadata = Desugar_utils.Metadata.make "ref_mut"
@@ -148,11 +148,17 @@ struct
               LocalIdent.{ name = "todo_fresh_var"; id = 0 }
             in
             match mut_typed_inputs with
-            | [ (_, (i, _, _)) ] when ret_unit ->
+            | [ (_, (var, typ, _)) ] when ret_unit ->
                 {
                   expr with
                   typ = UB.unit_typ;
-                  e = B.Assign { lhs = LhsLocalVar i; witness = (); e = expr };
+                  e =
+                    B.Assign
+                      {
+                        lhs = LhsLocalVar { var; typ };
+                        witness = Features.On.mutable_variable;
+                        e = expr;
+                      };
                 }
             | _ ->
                 let idents =
@@ -174,8 +180,8 @@ struct
                         e =
                           B.Assign
                             {
-                              lhs = LhsLocalVar i;
-                              witness = ();
+                              lhs = LhsLocalVar { var = i; typ };
+                              witness = Features.On.mutable_variable;
                               e = { expr with typ; span; e = LocalVar i_temp };
                             };
                       })

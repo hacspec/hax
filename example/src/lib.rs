@@ -57,6 +57,7 @@ struct FooStruct {
 //         _ => helper_macro!(t.into()),
 //     }
 // }
+// mod hash;
 
 pub fn my_fun() {
     let x = 5;

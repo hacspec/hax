@@ -1,5 +1,5 @@
-type on = unit [@@deriving show, yojson, eq]
-type off = | [@@deriving show, yojson, eq]
+(* type on = unit [@@deriving show, yojson, eq] *)
+(* type off = | [@@deriving show, yojson, eq] *)
 
 [%%declare_features
 loop,
@@ -14,6 +14,7 @@ loop,
   early_exit,
   macro,
   as_pattern,
+  arbitrary_lhs,
   lifetime,
   monadic_action,
   monadic_binding]
@@ -22,15 +23,15 @@ module Full = On
 
 module Rust = struct
   include On
-
-  type for_loop = off [@@deriving show, yojson, eq]
-  type monadic_action = off [@@deriving show, yojson, eq]
-  type monadic_binding = off [@@deriving show, yojson, eq]
+  include Off.For_loop
+  include Off.Monadic_action
+  include Off.Monadic_binding
 end
 
 module FStar = struct
   include Off
   include On.Monadic_binding
+  include On.Macro
 end
 
 module _ = struct
@@ -65,6 +66,7 @@ module DefaultClasses (F : T) = struct
       method visit_lifetime () (_ : F.lifetime) = self#zero
       method visit_monadic_action () (_ : F.monadic_action) = self#zero
       method visit_monadic_binding () (_ : F.monadic_binding) = self#zero
+      method visit_arbitrary_lhs () (_ : F.arbitrary_lhs) = self#zero
     end
 
   class virtual ['self] default_map_features =
@@ -107,6 +109,9 @@ module DefaultClasses (F : T) = struct
         Fn.const Fn.id
 
       method visit_lifetime : 'env -> F.lifetime -> F.lifetime = Fn.const Fn.id
+
+      method visit_arbitrary_lhs : 'env -> F.arbitrary_lhs -> F.arbitrary_lhs =
+        Fn.const Fn.id
 
       method visit_monadic_action : 'env -> F.monadic_action -> F.monadic_action
           =

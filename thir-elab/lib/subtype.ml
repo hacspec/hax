@@ -174,10 +174,13 @@ struct
 
   and dlhs (lhs : A.lhs) : B.lhs =
     match lhs with
-    | FieldAccessor { e; field } -> FieldAccessor { e = dexpr e; field }
-    | ArrayAccessor { e; index } ->
-        ArrayAccessor { e = dexpr e; index = dexpr index }
-    | LhsLocalVar id -> LhsLocalVar id
+    | LhsFieldAccessor { e; field; typ } ->
+        LhsFieldAccessor { e = dlhs e; field; typ = dty typ }
+    | LhsArrayAccessor { e; index; typ } ->
+        LhsArrayAccessor { e = dlhs e; index = dexpr index; typ = dty typ }
+    | LhsLocalVar { var; typ } -> LhsLocalVar { var; typ = dty typ }
+    | LhsArbitraryExpr { e; witness } ->
+        LhsArbitraryExpr { e = dexpr e; witness = S.arbitrary_lhs witness }
 
   module Item = struct
     let dtrait_ref (r : A.trait_ref) : B.trait_ref =
@@ -214,12 +217,14 @@ struct
     let dvariant (v : A.variant) : B.variant =
       { name = v.name; arguments = List.map ~f:(map_snd dty) v.arguments }
 
-    let rec ditem (item : A.item) : B.item =
-      {
-        v = ditem' item.v;
-        span = item.span;
-        parent_namespace = item.parent_namespace;
-      }
+    let rec ditem (item : A.item) : B.item list =
+      [
+        {
+          v = ditem' item.v;
+          span = item.span;
+          parent_namespace = item.parent_namespace;
+        };
+      ]
 
     and ditem' (item : A.item') : B.item' =
       match item with
@@ -241,6 +246,9 @@ struct
             }
       | TyAlias { name; generics; ty } ->
           B.TyAlias { name; generics = dgenerics generics; ty = dty ty }
+      | IMacroInvokation { macro; argument; span; witness } ->
+          B.IMacroInvokation
+            { macro; argument; span; witness = S.macro witness }
       | NotImplementedYet -> B.NotImplementedYet
   end
 

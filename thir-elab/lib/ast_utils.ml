@@ -2,6 +2,8 @@ open Base
 open Utils
 open Ast
 
+type visit_level = ExprLevel | TypeLevel
+
 module TypedLocalIdent (Ty : sig
   type ty [@@deriving show, yojson]
 end) =
@@ -105,12 +107,14 @@ module Make (F : Features.T) = struct
           expr e
       end
 
-    let rename_global_idents (f : global_ident -> global_ident) =
+    let rename_global_idents (f : visit_level -> global_ident -> global_ident) =
       object
         inherit [_] item_map as super
-        method visit_t () x = x
-        method visit_mutability _ () m = m
-        method! visit_global_ident s ident = f ident
+        method visit_t (lvl : visit_level) x = x
+        method visit_mutability _ (lvl : visit_level) m = m
+        method! visit_global_ident (lvl : visit_level) ident = f lvl ident
+        method! visit_ty _ t = super#visit_ty TypeLevel t
+        (* method visit_GlobalVar (lvl : level) i = GlobalVar (f lvl i) *)
       end
   end
 
@@ -141,7 +145,9 @@ module Make (F : Features.T) = struct
       let pat_vars = variables_of_pat pat in
       Set.filter mut_vars ~f:(fst >> Set.mem pat_vars >> not)
 
-    let free_assigned_variables =
+    let free_assigned_variables
+        (fv_of_arbitrary_lhs :
+          F.arbitrary_lhs -> expr -> Sets.TypedLocalIdent.t) =
       object
         inherit [_] expr_reduce as super
         inherit [_] Sets.TypedLocalIdent.monoid as m
@@ -149,9 +155,16 @@ module Make (F : Features.T) = struct
         method visit_mutability f () _ = m#zero
 
         method visit_Assign m lhs e wit =
-          match lhs with
-          | LhsLocalVar v -> Set.singleton (module TypedLocalIdent) (v, e.typ)
-          | _ -> failwith "???"
+          let rec visit_lhs lhs =
+            match lhs with
+            | LhsLocalVar { var; _ } ->
+                Set.singleton (module TypedLocalIdent) (var, e.typ)
+            | LhsFieldAccessor { e; _ } -> visit_lhs e
+            | LhsArrayAccessor { e; index } ->
+                Set.union (super#visit_expr () index) (visit_lhs e)
+            | LhsArbitraryExpr { witness; e } -> fv_of_arbitrary_lhs witness e
+          in
+          visit_lhs lhs
 
         method visit_Match m scrut arms =
           List.fold_left ~init:(super#visit_expr m scrut) ~f:Set.union
@@ -200,6 +213,8 @@ module Make (F : Features.T) = struct
     match t with
     | TApp { ident = `TupleType 1; args = [ GType t ] } -> remove_tuple1 t
     | _ -> t
+
+  (* let rec remove_empty_tap *)
 
   let is_unit_typ : ty -> bool =
     remove_tuple1 >> [%matches? TApp { ident = `TupleType 0 }]
@@ -349,6 +364,17 @@ module Make (F : Features.T) = struct
             args = [ tuple ];
           };
     }
+
+  let group_items_by_namespace (items : item list) : item list Namespace.Map.t =
+    let h = Hashtbl.create (module Namespace) in
+    List.iter items ~f:(fun item ->
+        let items =
+          Hashtbl.find_or_add h item.parent_namespace ~default:(fun _ -> ref [])
+        in
+        items := !items @ [ item ]);
+    Map.of_iteri_exn
+      (module Namespace)
+      ~iteri:(Hashtbl.map h ~f:( ! ) |> Hashtbl.iteri)
 
   module Std = struct
     module Ops = struct

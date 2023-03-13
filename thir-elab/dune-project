@@ -30,15 +30,15 @@
         bignum
         pprint
         ppx_deriving_yojson
-        fstar
+        (fstar (= dev))
         ppx_yojson_conv
         ppx_sexp_conv
         ppx_compare
         ppx_hash
         visitors
         ppx_deriving
-        ppx_deriving
-        ppx_deriving_cmdliner
+        cmdliner
+        angstrom
         ppx_matches)
  (tags
   (topics "to describe" your project)))

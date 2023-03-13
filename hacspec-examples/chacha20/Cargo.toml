@@ -1,0 +1,27 @@
+[package]
+name = "hacspec-chacha20"
+version = "0.1.0"
+authors = ["Denis Merigoux <denis.merigoux@gmail.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+documentation = "https://docs.rs/hacspec-chacha20"
+description = "hacspec chacha20 block cipher"
+readme = "README.md"
+repository = "https://github.com/hacspec/hacspec"
+
+[lib]
+path = "src/chacha20.rs"
+
+[dependencies]
+hacspec-lib = { git = "https://github.com/hacspec/hacspec.git" }
+
+[dev-dependencies]
+serde_json = "1.0"
+serde = {version = "1.0", features = ["derive"]}
+rayon = "1.3.0"
+criterion = "0.4"
+rand = "0.8"
+
+[[bench]]
+name = "benchmarks"
+harness = false

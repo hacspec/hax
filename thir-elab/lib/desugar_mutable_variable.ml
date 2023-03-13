@@ -24,15 +24,16 @@ module Fix (F : Features.T) = struct
     | _ -> None
 end
 
-module Make
+module%inlined_contents Make
     (F : Features.T
-           with type mutable_reference = Features.off
-            and type mutable_pointer = Features.off
-            and type raw_pointer = Features.off
-            and type continue = Features.off
-            and type monadic_action = Features.off
-            and type monadic_binding = Features.off
-                                                   (* todo: this phase should require mutable borrow to be disabled *))
+           with type mutable_reference = Features.Off.mutable_reference
+            and type mutable_pointer = Features.Off.mutable_pointer
+            and type raw_pointer = Features.Off.raw_pointer
+            and type continue = Features.Off.continue
+            and type arbitrary_lhs = Features.Off.arbitrary_lhs
+            and type monadic_action = Features.Off.monadic_action
+            and type monadic_binding = Features.Off.monadic_binding
+                                                                   (* todo: this phase should require mutable borrow to be disabled *))
     (FConstraints : sig
       val early_exit : F.loop -> F.early_exit
     end) =
@@ -51,6 +52,10 @@ struct
   module UB = Ast_utils.Make (FB)
   module A = Ast.Make (F)
   module B = Ast.Make (FB)
+  module S = Features.SUBTYPE.Id
+
+  let free_assigned_variables =
+    UA.Reducers.free_assigned_variables (function _ -> .)
 
   let rec dty (t : A.ty) : B.ty =
     match t with
@@ -249,6 +254,8 @@ struct
 
     let forget_all (s : t) : B.expr =
       match s.result_type with
+      (* TODO: option is useless? *)
+      | Some rt when UB.is_unit_typ rt -> UB.unit_expr
       | None -> UB.unit_expr
       | Some rt ->
           let e =
@@ -324,10 +331,15 @@ struct
         ShadowingTuple.t =
       let body =
         let shadowings = BTyLocIdentUniqueList.to_list shadowings in
+        (* print_endline @@ "##################################################"; *)
+        (* print_endline @@ [%show: B.expr] r.value.expr; *)
         match shadowings with
-        | [] -> ShadowingTuple.forget_all r.value
+        | [] ->
+            (* print_endline @@ "---> forget_all"; *)
+            ShadowingTuple.forget_all r.value
         (* | [(x, _)], {e = B.LocalVar } when UB.TypedLocalIdent.(x == r.value.expr) -> r.value.expr *)
         | _ ->
+            (* print_endline @@ "---> other"; *)
             let var, mk =
               ShadowingTuple.with_names' "value_as_shadow_tup" r.value
             in
@@ -375,7 +387,8 @@ struct
           value =
             {
               expr;
-              result_type = Some expr.typ;
+              result_type =
+                (if UB.is_unit_typ expr.typ then None else Some expr.typ);
               shadowings = BTyLocIdentUniqueList.empty;
             };
         }
@@ -417,10 +430,25 @@ struct
           value =
             {
               expr;
-              result_type = Some expr.typ;
+              result_type =
+                (if UB.is_unit_typ expr.typ then None else Some expr.typ);
               shadowings = BTyLocIdentUniqueList.empty;
             };
         }
+
+    include struct
+      open struct
+        let err () =
+          failwith "Internal fatal error: Result.seq didn't kept its promise"
+      end
+
+      let seq1 (x : t) (f : B.expr -> B.expr) : t =
+        seq [ x ] (function [ x ] -> f x | _ -> err ())
+
+      let seqNp1 (x : t) (l : t list) (f : B.expr -> B.expr list -> B.expr) : t
+          =
+        seq (x :: l) (function x :: l -> f x l | _ -> err ())
+    end
 
     let from_match (more : MutatedVarSet.t)
         (dexpr : MutatedVarSet.t -> A.expr -> t) (whole : A.expr)
@@ -428,7 +456,7 @@ struct
         (f : B.expr -> B.expr list -> B.expr') =
       let scrut' = dexpr more scrut in
       let vars =
-        UA.Reducers.free_assigned_variables#visit_expr () whole
+        free_assigned_variables#visit_expr () whole
         |> Set.map (module UB.TypedLocalIdent) ~f:(fun (i, t) -> (i, dty t))
       in
       (* prerr_endline @@ [%show: Collect.TypedLocalIdent.t list] (Set.to_list vars); *)
@@ -445,12 +473,8 @@ struct
         List.map ~f:(fun arm -> (as_shadowing_tuple arm vars).expr) arms'
       in
       let r =
-        seq [ scrut' ] (function
-          | [ cond ] ->
-              { e = f cond arms''; span = whole.span; typ = dty whole.typ }
-          | _ ->
-              failwith
-                "Internal fatal error: Result.seq didn't kept its promise")
+        seq1 scrut' (fun cond ->
+            { e = f cond arms''; span = whole.span; typ = dty whole.typ })
       in
       { r with value = { r.value with shadowings = vars } }
 
@@ -461,7 +485,7 @@ struct
           ShadowingTuple.
             {
               expr = { e; span = e0.span; typ };
-              result_type = Some typ;
+              result_type = (if UB.is_unit_typ typ then None else Some typ);
               shadowings = BTyLocIdentUniqueList.empty;
             };
         bindings = [];
@@ -472,6 +496,12 @@ struct
   type dexpr_ctx = { vars : MutatedVarSet.t; loop : loop_ctx option }
 
   let rec dexpr (ctx : dexpr_ctx) (e : A.expr) : Result.t =
+    let unsupported msg =
+      failwith
+        ("[desugar_mutable_variable:dexpr] unsupported " ^ msg ^ "\n\nContext:"
+        ^ [%show: A.expr] e)
+    in
+    let e_with e' = B.{ e = e'; typ = dty e.typ; span = e.span } in
     match e.e with
     | GlobalVar (`TupleCons 0)
     | Construct { constructor = `TupleCons 0; fields = [] } ->
@@ -494,7 +524,9 @@ struct
     | GlobalVar v -> Result.pure e @@ B.GlobalVar v
     | Assign
         {
-          lhs = ArrayAccessor { e = { e = LocalVar var; typ = var_typ }; index };
+          lhs =
+            LhsArrayAccessor
+              { e = LhsLocalVar { var; typ = var_typ } as lhs_local_var; index };
           e = rhs;
           witness;
         } ->
@@ -504,7 +536,7 @@ struct
             e =
               Assign
                 {
-                  lhs = LhsLocalVar var;
+                  lhs = lhs_local_var;
                   e =
                     {
                       e with
@@ -541,9 +573,9 @@ struct
                   witness;
                 };
           }
-    | Assign { lhs = LhsLocalVar var; e = e'; witness } ->
+    | Assign { lhs = LhsLocalVar { var; typ = var_typ }; e = e'; witness } ->
         let e'_r = dexpr ctx e' in
-        let var_typ = dty e'.typ in
+        let var_typ = dty var_typ in
         let var_pat = UB.make_var_pat var var_typ e.span in
         let _, pat = ShadowingTuple.pat (Some var_pat) e'_r.value in
         let var_binding : Binding.t =
@@ -567,6 +599,8 @@ struct
                   shadowings = BTyLocIdentUniqueList.empty;
                 };
           }
+    | Assign { lhs = _; e = e'; witness } ->
+        failwith "desugar_mutable_variable: TODO non-lhs-local-var assign"
     | Let _ ->
         let lets, body = UA.collect_let_bindings e in
         let lets = List.map ~f:(fun (p, e) -> (dpat p, dexpr ctx e)) lets in
@@ -578,14 +612,9 @@ struct
         in
         { bindings = []; value }
     | App { f; args } ->
-        Result.seq
-          (List.map ~f:(dexpr ctx) @@ (f :: args))
-          (function
-            | f :: args ->
-                B.{ e = App { f; args }; typ = dty e.typ; span = e.span }
-            | _ ->
-                failwith
-                  "Internal fatal error: Result.seq didn't keep its promise")
+        Result.seqNp1 (dexpr ctx f)
+          (List.map ~f:(dexpr ctx) args)
+          (fun f args -> e_with @@ App { f; args })
     | Construct { constructor; constructs_record; fields; base } ->
         Result.seq
           (Option.to_list (Option.map ~f:(dexpr ctx) base)
@@ -632,11 +661,11 @@ struct
                          B.{ span; arm = { pat = dpat pat; body } });
               })
     | If { cond; then_; else_ } ->
-        (* TODO: None [else_] + mutation in [then_] *)
         Result.from_match ctx.vars
           (fun vars -> dexpr { ctx with vars })
           e cond
-          (then_ :: Option.to_list else_
+          (then_
+           :: Option.to_list (Some (Option.value else_ ~default:UA.unit_expr))
           |> List.map ~f:(fun e -> (Set.empty (module UB.TypedLocalIdent), e)))
           (fun cond -> function
             | [ then_; else_ ] -> If { cond; then_; else_ = Some else_ }
@@ -648,103 +677,116 @@ struct
     | ForLoop { start; end_; var; body; label = None; witness } ->
         (* TODO: Here, I assume there's no [break] or [continue].
            We should have two "modes" of translations. *)
-        Result.seq
-          [ dexpr ctx start; dexpr ctx end_ ]
-          (function
-            | [ start; end_ ] ->
-                let body_r =
-                  dexpr
+        let shadowings_ = ref BTyLocIdentUniqueList.empty in
+        let r =
+          Result.seq
+            [ dexpr ctx start; dexpr ctx end_ ]
+            (function
+              | [ start; end_ ] ->
+                  let body_r =
+                    dexpr
+                      {
+                        vars = Set.empty (module UB.TypedLocalIdent);
+                        loop = None;
+                      }
+                      body
+                  in
+                  let body_r =
                     {
-                      vars = Set.empty (module UB.TypedLocalIdent);
-                      loop = None;
+                      body_r with
+                      value = { body_r.value with result_type = None };
                     }
-                    body
-                in
-                let body_r =
-                  {
-                    body_r with
-                    value = { body_r.value with result_type = None };
-                  }
-                in
-                let body' =
-                  Result.as_shadowing_tuple body_r
-                  @@ BTyLocIdentUniqueList.from_set
-                  @@ Result.collect_mut_idents body_r
-                in
-                let body = body'.expr in
-                let closure =
-                  B.
-                    {
-                      span = body.span;
-                      typ = B.TArrow ([ start.typ; body'.expr.typ ], body.typ);
-                      e =
-                        B.Closure
-                          {
-                            params =
-                              [
-                                UB.make_var_pat var start.typ Dummy;
-                                UB.make_tuple_pat
-                                @@ List.map ~f:(fun (v, ty) ->
-                                       UB.make_var_pat v ty body.span)
-                                @@ BTyLocIdentUniqueList.to_list
-                                     body'.shadowings;
-                              ];
-                            body;
-                            captures = [];
-                            (* Assumes we don't rely on captures *)
-                          };
-                    }
-                in
-                let fix =
-                  B.
-                    {
-                      span = e.span;
-                      typ = B.TArrow ([ closure.typ; UB.unit_typ ], UB.unit_typ);
-                      e =
-                        B.GlobalVar
-                          (`Concrete
+                  in
+                  (* failwith @@ [%show: MutatedVarSet.t] *)
+                  (* @@ Result.collect_mut_idents body_r; *)
+                  let body' =
+                    Result.as_shadowing_tuple body_r
+                    @@ BTyLocIdentUniqueList.from_set
+                    @@ Result.collect_mut_idents body_r
+                  in
+                  shadowings_ := body'.shadowings;
+                  let body = body'.expr in
+                  let closure =
+                    B.
+                      {
+                        span = body.span;
+                        typ = B.TArrow ([ start.typ; body.typ ], body.typ);
+                        e =
+                          B.Closure
                             {
-                              crate = "dummy";
-                              path = Non_empty_list.("foldi" :: []);
-                            });
-                    }
-                in
-                let fix_call =
-                  B.
-                    {
-                      span = e.span;
-                      typ = UB.unit_typ;
-                      e =
-                        B.App
-                          {
-                            f = fix;
-                            args =
-                              [
-                                start;
-                                end_;
-                                closure;
-                                UB.make_tuple_expr ~span:e.span
-                                  (List.map
-                                     ~f:(fun (v, typ) ->
-                                       B.
-                                         {
-                                           span = e.span;
-                                           typ;
-                                           e = B.LocalVar v;
-                                         })
-                                     (BTyLocIdentUniqueList.to_list
-                                        body'.shadowings));
-                              ];
-                          };
-                    }
-                in
-                fix_call
-            | _ ->
-                failwith
-                  "Internal fatal error: Result.seq didn't keep its promise")
+                              params =
+                                [
+                                  UB.make_var_pat var start.typ Dummy;
+                                  UB.make_tuple_pat
+                                  @@ List.map ~f:(fun (v, ty) ->
+                                         UB.make_var_pat v ty body.span)
+                                  @@ BTyLocIdentUniqueList.to_list
+                                       body'.shadowings;
+                                ];
+                              body;
+                              captures = [];
+                              (* Assumes we don't rely on captures *)
+                            };
+                      }
+                  in
+                  let fix =
+                    B.
+                      {
+                        span = e.span;
+                        typ = B.TArrow ([ closure.typ; body.typ ], body.typ);
+                        e =
+                          B.GlobalVar
+                            (`Concrete
+                              {
+                                crate = "dummy";
+                                path = Non_empty_list.("foldi" :: []);
+                              });
+                      }
+                  in
+                  (* failwith @@ [%show: B.ty] body.typ; *)
+                  let fix_call =
+                    B.
+                      {
+                        span = e.span;
+                        typ = body.typ;
+                        e =
+                          B.App
+                            {
+                              f = fix;
+                              args =
+                                [
+                                  start;
+                                  end_;
+                                  closure;
+                                  UB.make_tuple_expr ~span:e.span
+                                    (List.map
+                                       ~f:(fun (v, typ) ->
+                                         B.
+                                           {
+                                             span = e.span;
+                                             typ;
+                                             e = B.LocalVar v;
+                                           })
+                                       (BTyLocIdentUniqueList.to_list
+                                          body'.shadowings));
+                                ];
+                            };
+                      }
+                  in
+                  fix_call
+              | _ ->
+                  failwith
+                    "Internal fatal error: Result.seq didn't keep its promise")
+        in
+        (* failwith @@ [%show: B.ty option] r.value.result_type; *)
+        (* failwith @@ [%show: Result.t] r; *)
+        {
+          r with
+          value = { r.value with shadowings = !shadowings_; result_type = None };
+        }
     | Loop { body; label = None; witness } ->
         let vars_set =
-          UA.Reducers.free_assigned_variables#visit_expr () body
+          free_assigned_variables#visit_expr () body
           |> Set.map (module UB.TypedLocalIdent) ~f:(fun (i, t) -> (i, dty t))
         in
         let vars_unique = BTyLocIdentUniqueList.from_set vars_set in
@@ -850,6 +892,8 @@ struct
               (* shadowings = vars_unique *)
             };
         }
+    | Loop _ -> unsupported "cannot handle labels"
+    | ForLoop _ -> unsupported "cannot handle labels"
     | Closure { params; body; captures } ->
         Result.pure e
         @@ B.Closure
@@ -863,8 +907,23 @@ struct
     | Continue { witness } ->
         dbreak_continue e ctx true UA.unit_expr (snd witness)
     | Return _ when Option.is_some ctx.loop ->
-        failwith "Returns inside loops are not supported"
-    | _ -> failwith ("dexpr TODO: " ^ [%show: A.expr] e)
+        unsupported "returns inside loops"
+    | Return _ -> unsupported "TODO:Return"
+    | Break _ -> unsupported "TODO:Break"
+    | MacroInvokation { macro; args; witness } ->
+        Result.pure e @@ B.MacroInvokation { macro; args; witness }
+    | Array l ->
+        Result.seq (List.map ~f:(dexpr ctx) l) (fun l -> e_with @@ Array l)
+    | Borrow { kind; e; witness } ->
+        Result.seq1 (dexpr ctx e) (fun e ->
+            e_with @@ Borrow { kind = dborrow_kind kind; e; witness })
+    | Closure _ -> unsupported "TODO:Closure"
+    | Ascription { e; typ } ->
+        Result.seq1 (dexpr ctx e) (fun e ->
+            e_with @@ Ascription { e; typ = dty typ })
+    | AddressOf { mut; e; witness } -> .
+    | MonadicAction _ -> .
+  (* | _ -> failwith ("dexpr TODO: " ^ [%show: A.expr] e) *)
 
   and dexpr_top (e : A.expr) : B.expr =
     let e =
@@ -938,7 +997,7 @@ struct
   let dvariant (v : A.variant) : B.variant =
     { name = v.name; arguments = List.map ~f:(map_snd dty) v.arguments }
 
-  let ditem (item : A.item) : B.item =
+  let ditem (item : A.item) : B.item list =
     let v =
       match item.v with
       | Fn { name; generics; body; params } ->
@@ -959,9 +1018,10 @@ struct
             }
       | TyAlias { name; generics; ty } ->
           B.TyAlias { name; generics = dgenerics generics; ty = dty ty }
-      | NotImplementedYet -> B.NotImplementedYet
+      | [%inline_arms NotImplementedYet + IMacroInvokation] -> auto
     in
-    { v; span = item.span; parent_namespace = item.parent_namespace }
+    [ { v; span = item.span; parent_namespace = item.parent_namespace } ]
 
   let metadata = Desugar_utils.Metadata.make "MutableVariables"
 end
+[@@add "subtype.ml"]

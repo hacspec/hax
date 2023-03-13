@@ -94,15 +94,17 @@ module Exn = struct
     | true -> Mutable witness
     | false -> Immutable
 
+  module W = Features.On
+
   let c_borrow_kind : Thir.borrow_kind -> borrow_kind = function
     | Shared -> Shared
     | Shallow -> raise ShallowMutUnsupported
     | Unique -> Unique
-    | Mut _ -> Mut ()
+    | Mut _ -> Mut W.mutable_reference
 
   let c_binding_mode : Thir.binding_mode -> binding_mode = function
     | ByValue -> ByValue
-    | ByRef k -> ByRef (c_borrow_kind k, ())
+    | ByRef k -> ByRef (c_borrow_kind k, W.reference)
 
   let unit_typ : ty = TApp { ident = `TupleType 0; args = [] }
 
@@ -250,7 +252,7 @@ module Exn = struct
           call (mk_global ([ inner_typ ] ->. typ) @@ `Primitive Box) [ value ]
       | MacroInvokation { argument; macro_ident } ->
           MacroInvokation
-            { args = argument; macro = def_id macro_ident; witness = () }
+            { args = argument; macro = def_id macro_ident; witness = W.macro }
       | If { cond; if_then_scope = _; else_opt; then' } ->
           let cond = c_expr cond in
           let then_ = c_expr then' in
@@ -291,7 +293,7 @@ module Exn = struct
       | Pointer _ -> failwith "Pointer"
       | Loop { body } ->
           let body = c_expr body in
-          Loop { body; label = None; witness = () }
+          Loop { body; label = None; witness = W.loop }
       | Match { scrutinee; arms } ->
           let scrutinee = c_expr scrutinee in
           let arms = List.map ~f:c_arm arms in
@@ -326,15 +328,17 @@ module Exn = struct
       | Assign { lhs; rhs } ->
           let lhs = c_expr lhs in
           let e = c_expr rhs in
-          let lhs =
+          let rec mk_lhs lhs =
             match lhs.e with
-            | LocalVar ident -> LhsLocalVar ident
+            | LocalVar var -> LhsLocalVar { var; typ = lhs.typ }
             | _ -> (
                 match resugar_index_mut lhs with
-                | Some (e, index) -> ArrayAccessor { e; index }
-                | None -> failwith ("Cannot handle LHS: " ^ [%show: expr] lhs))
+                | Some (e, index) ->
+                    LhsArrayAccessor { e = mk_lhs e; typ = lhs.typ; index }
+                | None ->
+                    LhsArbitraryExpr { e = lhs; witness = W.arbitrary_lhs })
           in
-          Assign { lhs; e; witness = () }
+          Assign { lhs = mk_lhs lhs; e; witness = W.mutable_variable }
       | AssignOp _ -> failwith "AssignOp"
       | VarRef { id } -> LocalVar (local_ident id)
       | Field { lhs; field } ->
@@ -367,21 +371,26 @@ module Exn = struct
       | Borrow { arg; borrow_kind = kind } ->
           let e = c_expr arg in
           let kind = c_borrow_kind kind in
-          Borrow { kind; e; witness = () }
+          Borrow { kind; e; witness = W.reference }
       | AddressOf { arg; mutability = mut } ->
           let e = c_expr arg in
-          AddressOf { e; mut = c_mutability () mut; witness = () }
+          AddressOf
+            {
+              e;
+              mut = c_mutability W.mutable_pointer mut;
+              witness = W.raw_pointer;
+            }
       (* | Break { label; value = Some _ } -> *)
       (*     failwith "TODO: Break with labels are not supported" *)
       | Break { label; value } ->
           let e = Option.map ~f:c_expr value in
           let e = Option.value ~default:unit_expr e in
-          Break { e; label = None; witness = () }
-      | Continue _ -> Continue { label = None; witness = ((), ()) }
+          Break { e; label = None; witness = W.loop }
+      | Continue _ -> Continue { label = None; witness = (W.continue, W.loop) }
       | Return { value } ->
           let e = Option.map ~f:c_expr value in
           let e = Option.value ~default:unit_expr e in
-          Return { e; witness = () }
+          Return { e; witness = W.early_exit }
       | ConstBlock _ -> failwith "ConstBlock"
       | Repeat _ -> failwith "Repeat"
       | Tuple { fields } ->
@@ -444,8 +453,10 @@ module Exn = struct
           let pat = c_pat subpattern in
           PAscription { typ; typ_span; pat }
       | Binding { mode; mutability; subpattern; ty; var } ->
-          let mut = c_mutability () mutability in
-          let subpat = Option.map ~f:(c_pat &&& Fn.const ()) subpattern in
+          let mut = c_mutability W.mutable_variable mutability in
+          let subpat =
+            Option.map ~f:(c_pat &&& Fn.const W.as_pattern) subpattern
+          in
           let typ = c_ty ty in
           let mode = c_binding_mode mode in
           let var = local_ident var in
@@ -530,12 +541,12 @@ module Exn = struct
           }
     | Slice ty ->
         let ty = c_ty ty in
-        TSlice { ty; witness = () }
-    | RawPtr _ -> TRawPointer { witness = () }
+        TSlice { ty; witness = W.slice }
+    | RawPtr _ -> TRawPointer { witness = W.raw_pointer }
     | Ref (region, ty, mut) ->
         let typ = c_ty ty in
-        let mut = c_mutability () mut in
-        TRef { witness = (); region = "todo"; typ; mut }
+        let mut = c_mutability W.mutable_reference mut in
+        TRef { witness = W.reference; region = "todo"; typ; mut }
     | Never -> TFalse
     | Tuple types ->
         let types = List.map ~f:(fun ty -> GType (c_ty ty)) types in
@@ -551,7 +562,7 @@ module Exn = struct
     match ty with
     | Type ty -> GType (c_ty ty)
     | Const e -> failwith "TODO" (* let* ty = c_ty ty in  *)
-    | _ -> GLifetime { lt = "todo generics"; witness = () }
+    | _ -> GLifetime { lt = "todo generics"; witness = W.lifetime }
 
   and c_arm (arm : Thir.arm) : arm =
     let pat = c_pat arm.pattern in
@@ -577,7 +588,7 @@ module Exn = struct
       | Plain n -> local_ident n
     in
     match (param.kind : Thir.generic_param_kind) with
-    | Lifetime { kind } -> GPLifetime { ident; witness = () }
+    | Lifetime { kind } -> GPLifetime { ident; witness = W.lifetime }
     | Type { default; synthetic } ->
         let default = Option.map ~f:c_ty default in
         GPType { ident; default }
@@ -635,6 +646,13 @@ module Exn = struct
               body = c_expr body;
               params = [];
             }
+      | TyAlias (ty, generics) ->
+          TyAlias
+            {
+              name = def_id (Option.value_exn item.def_id);
+              generics = c_generics generics;
+              ty = c_ty ty;
+            }
       | Fn (generics, { body; header; params; ret; sig_span }) ->
           Fn
             {
@@ -680,6 +698,14 @@ module Exn = struct
           in
           let variants = [ v ] in
           Type { name; generics; variants; record }
+      | MacroInvokation { macro_ident; argument; span } ->
+          IMacroInvokation
+            {
+              macro = def_id macro_ident;
+              argument;
+              span = c_span span;
+              witness = W.macro;
+            }
       | _ -> NotImplementedYet
     in
     { span; v; parent_namespace = namespace_of_def_id item.owner_id }
