@@ -877,7 +877,7 @@ module FStarBackend = struct
   (* module AST : Ast.T *)
 
   let modules_to_string (o : Backend.Options.t) modules =
-    let out_dir = "out/" in
+    let out_dir = o.output_directory ^ "/" in
     (try Caml.Sys.mkdir out_dir 0o777 with Sys_error _ -> ());
     List.iter
       ~f:(fun (relative_path, data) ->
