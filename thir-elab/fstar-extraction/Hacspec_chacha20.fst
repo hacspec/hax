@@ -51,22 +51,22 @@ let chacha20_rounds (state: state_t) : state_t =
 
 let chacha20_core (ctr: Secret_integers.u32_t) (st0: state_t) : state_t =
   let state:state_t = st0 in
-  let state:state_t = state.[ 12 ] <- state.[ 12 ] +. ctr in
+  let state:state_t = state.[ 12l ] <- state.[ 12l ] +. ctr in
   let k:state_t = chacha20_rounds state in
   k +. state
 
 let chacha20_constants_init: constants_t =
   let constants:constants_t = new_ in
-  let constants:constants_t = constants.[ 0 ] <- Hacspec_lib_tc.secret 1634760805ul in
-  let constants:constants_t = constants.[ 1 ] <- Hacspec_lib_tc.secret 857760878ul in
-  let constants:constants_t = constants.[ 2 ] <- Hacspec_lib_tc.secret 2036477234ul in
-  constants.[ 3 ] <- Hacspec_lib_tc.secret 1797285236ul
+  let constants:constants_t = constants.[ 0l ] <- Hacspec_lib_tc.secret 1634760805ul in
+  let constants:constants_t = constants.[ 1l ] <- Hacspec_lib_tc.secret 857760878ul in
+  let constants:constants_t = constants.[ 2l ] <- Hacspec_lib_tc.secret 2036477234ul in
+  constants.[ 3l ] <- Hacspec_lib_tc.secret 1797285236ul
 
 let chacha20_init (key: chaChaKey_t) (iv: chaChaIV_t) (ctr: Secret_integers.u32_t) : state_t =
   let st:state_t = new_ in
   let st:state_t = Hacspec_lib_tc.update st 0 chacha20_constants_init in
   let st:state_t = Hacspec_lib_tc.update st 4 (to_le_U32s key) in
-  let st:state_t = st.[ 12 ] <- ctr in
+  let st:state_t = st.[ 12l ] <- ctr in
   Hacspec_lib_tc.update st 13 (to_le_U32s iv)
 
 let chacha20_key_block (state: state_t) : block_t =

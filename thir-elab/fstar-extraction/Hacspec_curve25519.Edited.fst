@@ -41,7 +41,7 @@ let decode_point (u: x25519SerializedPoint_t) : (x25519FieldElement_t & x25519Fi
 let encode_point (p: (x25519FieldElement_t & x25519FieldElement_t)) : x25519SerializedPoint_t =
   let x, y:(x25519FieldElement_t & x25519FieldElement_t) = p in
   let b:x25519FieldElement_t = x *. inv y in
-  seq_update_start (new_ <: x25519SerializedPoint_t) (to_byte_seq_le b <: lseq uint8 32)
+  Hacspec_lib_tc.update_start new_ (to_byte_seq_le b)
 
 let point_add_and_double
       (q: (x25519FieldElement_t & x25519FieldElement_t))
@@ -98,7 +98,7 @@ let montgomery_ladder (k: scalar_t) (init: (x25519FieldElement_t & x25519FieldEl
   in
   let acc:((x25519FieldElement_t & x25519FieldElement_t) &
     (x25519FieldElement_t & x25519FieldElement_t)) =
-    Hacspec.Lib.foldi 0
+    Dummy.foldi 0
       256
       (fun i acc ->
           if bit k (255 - i)
