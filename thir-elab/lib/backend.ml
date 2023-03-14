@@ -40,6 +40,15 @@ module Options = struct
   }
   (* [@@deriving show] *)
 
+  let mk_default output_directory json_input =
+    {
+      header = "";
+      operators = Map.empty (module GlobalIdent);
+      output_directory;
+      json_input;
+      renamed_identifiers;
+    }
+
   open Cmdliner
 
   let parse : t Term.t =
@@ -56,21 +65,22 @@ module Options = struct
         & info [ "i"; "input" ] ~docv:"INPUT_JSON"
             ~doc:"Input JSON file (produced with `cargo thir-export`).")
     in
-    let f output_directory json_input =
-      {
-        header = "";
-        operators = Map.empty (module GlobalIdent);
-        output_directory;
-        json_input;
-        renamed_identifiers;
-      }
-    in
-    Term.(const f $ output_directory $ json_input)
+
+    Term.(const mk_default $ output_directory $ json_input)
 end
 
 module type T = sig
   module InputLanguage : Features.T
   module AST : Ast.T
+
+  module U : sig
+    module Mappers : sig
+      val rename_global_idents_item :
+        (Ast_utils.visit_level -> global_ident -> global_ident) ->
+        AST.item ->
+        AST.item
+    end
+  end
 
   module BackendOptions : sig
     type t
@@ -107,6 +117,7 @@ end = struct
   module StringHashtbl = Hashtbl.M (String)
 
   let backends : (module T) StringHashtbl.t = Hashtbl.create (module String)
+  let backend_of_name = Hashtbl.find_exn backends
 
   let register (module X : T) =
     match Hashtbl.add backends ~key:X.name ~data:(module X) with
@@ -116,7 +127,7 @@ end = struct
         ^ "]: a backend with a same name already exists"
 
   open Cmdliner
-  module U = Ast_utils.Make (Features.Rust)
+  (* module U = Ast_utils.Make (Features.Rust) *)
 
   let commands () : unit Cmd.t list =
     Hashtbl.to_alist backends
@@ -126,14 +137,13 @@ end = struct
            let f (o : Options.t) bo =
              let items = read_json o.json_input in
              let h lvl x = x in
+             let items = List.concat_map ~f:(B.desugar o bo) items in
              let items =
                List.map
                  ~f:
-                   ((U.Mappers.rename_global_idents o.renamed_identifiers)
-                      #visit_item ExprLevel)
+                   (B.U.Mappers.rename_global_idents_item o.renamed_identifiers)
                  items
              in
-             let items = List.concat_map ~f:(B.desugar o bo) items in
              B.translate o bo items
            in
            Cmd.v info Term.(const f $ Options.parse $ opts))

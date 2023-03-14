@@ -116,6 +116,10 @@ module Make (F : Features.T) = struct
         method! visit_ty _ t = super#visit_ty TypeLevel t
         (* method visit_GlobalVar (lvl : level) i = GlobalVar (f lvl i) *)
       end
+
+    let rename_global_idents_item
+        (f : visit_level -> global_ident -> global_ident) : item -> item =
+      (rename_global_idents f)#visit_item ExprLevel
   end
 
   module Reducers = struct
