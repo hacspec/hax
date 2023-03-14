@@ -52,7 +52,7 @@ use rustc_middle::{
 // mod options;
 // use options::Options;
 
-use thir_export::{self};
+use thir_export::{self, TraitItem, TraitItemKind};
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -61,9 +61,441 @@ fn browse_items<'tcx>(
     options: &thir_export::Options,
     macro_calls: HashMap<rustc_span::Span, rustc_ast::ast::MacCall>,
     tcx: TyCtxt<'tcx>,
+    session: &Lrc<Session>,
 ) {
     let hir = tcx.hir();
     let bodies = hir.body_owners();
+
+    // Register linter
+    {
+        use rustc_hir::{intravisit::*, *};
+        use rustc_middle::hir::nested_filter::OnlyBodies;
+        use rustc_span::Span;
+
+        struct HirLinter<'a, 'tcx> {
+            session: &'a Lrc<Session>,
+            tcx: &'a TyCtxt<'tcx>,
+        }
+
+        impl<'a, 'v> HirLinter<'a, 'v> {
+            fn explicit_lifetime(&self, span: Span) {
+                self.session.span_warn_with_code(
+                    span,
+                    "[Circus] Explicit lifetimes are not supported",
+                    DiagnosticId::Lint {
+                        name: "Lifetime".to_string(),
+                        has_future_breakage: false,
+                        is_force_warn: true,
+                    },
+                );
+            }
+
+            fn mut_borrow_let(&self, span: Span) {
+                self.session.span_warn_with_code(
+                    span,
+                    "[Circus] Mutable borrows are not supported",
+                    DiagnosticId::Lint {
+                        name: "Mut borrow".to_string(),
+                        has_future_breakage: false,
+                        is_force_warn: true,
+                    },
+                );
+            }
+
+            fn extern_crate(&self, span: Span) {
+                self.session.span_warn_with_code(
+                    span,
+                    "[Circus] External crates are not supported",
+                    DiagnosticId::Lint {
+                        name: "External".to_string(),
+                        has_future_breakage: false,
+                        is_force_warn: true,
+                    },
+                );
+            }
+
+            fn no_trait_objects(&self, span: Span) {
+                self.session.span_warn_with_code(
+                    span,
+                    "[Circus] Trait objects are not supported",
+                    DiagnosticId::Lint {
+                        name: "Trait objects".to_string(),
+                        has_future_breakage: false,
+                        is_force_warn: true,
+                    },
+                );
+            }
+
+            fn no_assoc_items(&self, span: Span) {
+                self.session.span_warn_with_code(
+                    span,
+                    "[Circus] Associated items are not supported",
+                    DiagnosticId::Lint {
+                        name: "Assoc items".to_string(),
+                        has_future_breakage: false,
+                        is_force_warn: true,
+                    },
+                );
+            }
+
+            fn no_where_predicate(&self, span: Span) {
+                self.session.span_warn_with_code(
+                    span,
+                    "[Circus] Where predicates are not supported",
+                    DiagnosticId::Lint {
+                        name: "Where".to_string(),
+                        has_future_breakage: false,
+                        is_force_warn: true,
+                    },
+                );
+            }
+
+            fn no_async_await(&self, span: Span) {
+                self.session.span_warn_with_code(
+                    span,
+                    "[Circus] Async and await are not supported",
+                    DiagnosticId::Lint {
+                        name: "Async".to_string(),
+                        has_future_breakage: false,
+                        is_force_warn: true,
+                    },
+                );
+            }
+
+            fn no_unsafe(&self, span: Span) {
+                self.session.span_warn_with_code(
+                    span,
+                    "[Circus] Unsafe code is not supported",
+                    DiagnosticId::Lint {
+                        name: "Unsafe".to_string(),
+                        has_future_breakage: false,
+                        is_force_warn: true,
+                    },
+                );
+            }
+
+            fn unsupported_loop(&self, span: Span) {
+                self.session.span_warn_with_code(
+                    span,
+                    "[Circus] loop and while are not supported",
+                    DiagnosticId::Lint {
+                        name: "Loops".to_string(),
+                        has_future_breakage: false,
+                        is_force_warn: true,
+                    },
+                );
+            }
+
+            fn no_union(&self, span: Span) {
+                self.session.span_warn_with_code(
+                    span,
+                    "[Circus] Unions are not supported",
+                    DiagnosticId::Lint {
+                        name: "Unsupported item".to_string(),
+                        has_future_breakage: false,
+                        is_force_warn: true,
+                    },
+                );
+            }
+
+            fn no_derive(&self, span: Span) {
+                self.session.span_warn_with_code(
+                    span,
+                    "[Circus] Derives are not supported",
+                    DiagnosticId::Lint {
+                        name: "Derive".to_string(),
+                        has_future_breakage: false,
+                        is_force_warn: true,
+                    },
+                );
+            }
+
+            fn foreign_items(&self, key: rustc_span::def_id::DefId, span: Span) {
+                // Check for foreign item
+                if self.tcx.is_foreign_item(key) {
+                    eprintln!("foreign item: {:#?}", span);
+                }
+            }
+        }
+
+        impl<'v, 'a> Visitor<'v> for HirLinter<'a, 'v> {
+            type NestedFilter = OnlyBodies;
+
+            fn nested_visit_map(&mut self) -> Self::Map {
+                self.tcx.hir()
+            }
+
+            fn visit_fn(
+                &mut self,
+                fk: FnKind<'v>,
+                fd: &'v FnDecl<'v>,
+                b: BodyId,
+                span: Span,
+                id: HirId,
+            ) {
+                fn check_ty_kind(visitor: &HirLinter, k: &TyKind, span: Span) {
+                    match k {
+                        TyKind::Ptr(_) => visitor.no_unsafe(span),
+                        TyKind::TraitObject(_, _, _) => {
+                            visitor.no_trait_objects(span);
+                        }
+                        TyKind::Rptr(_, ty) => check_ty_kind(visitor, &ty.ty.kind, span),
+                        TyKind::OpaqueDef(_, _, _) => {
+                            visitor.no_trait_objects(span);
+                        }
+                        TyKind::Path(path) => match path {
+                            QPath::Resolved(ty, p) => {
+                                if let Some(ty) = ty {
+                                    check_ty_kind(visitor, &ty.kind, span)
+                                }
+                                if p.segments
+                                    .iter()
+                                    .any(|s| s.ident.to_string().contains("impl"))
+                                {
+                                    visitor.no_trait_objects(span);
+                                }
+                            }
+                            QPath::TypeRelative(ty, p) => check_ty_kind(visitor, &ty.kind, span),
+                            QPath::LangItem(lang_item, span, hir_id) => (),
+                        },
+                        _ => (),
+                    }
+                }
+
+                match fk {
+                    FnKind::ItemFn(ident, generics, header) => {
+                        // eprintln!("     fun: {:?}", ident);
+                        // TODO: All this should be an error (span_err_with_code)
+                        // Unsafe functions
+                        if header.unsafety == Unsafety::Unsafe {
+                            self.no_unsafe(span);
+                        }
+
+                        // async functions
+                        if header.asyncness == IsAsync::Async {
+                            self.no_async_await(span);
+                        }
+                    }
+                    FnKind::Method(ident, sig) => {
+                        // eprintln!("     method: {:?}", ident);
+                        // TODO: All this should be an error (span_err_with_code)
+                        // Unsafe functions
+                        if sig.header.unsafety == Unsafety::Unsafe {
+                            self.no_unsafe(span);
+                        }
+
+                        // async functions
+                        if sig.header.asyncness == IsAsync::Async {
+                            self.no_async_await(span);
+                        }
+                    }
+                    FnKind::Closure => (),
+                }
+                fd.inputs.iter().for_each(|param| {
+                    // // No dyn/trait object
+                    // FIXME
+                    // eprintln!(" >>> fd inputs {:#?}", param);
+                    check_ty_kind(self, &param.kind, param.span);
+                });
+
+                // keep going
+                walk_fn(self, fk, fd, b, id);
+            }
+
+            fn visit_expr(&mut self, ex: &'v Expr<'v>) {
+                // eprintln!(" >>> hir expr {:?}", ex.span);
+
+                match &ex.kind {
+                    ExprKind::Block(block, _) => match block.rules {
+                        BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) => {
+                            self.no_unsafe(block.span)
+                        }
+                        _ => (),
+                    },
+                    ExprKind::Loop(block, label, source, span) => match source {
+                        LoopSource::Loop | LoopSource::While => self.unsupported_loop(*span),
+                        _ => (),
+                    },
+                    // FIXME: where to get this from?
+                    // ExprKind::Async(e, c, b) => self.no_async_await(b.span),
+                    // ExprKind::Await(a) => self.no_async_await(a.span),
+                    ExprKind::InlineAsm(p) => self.no_unsafe(p.line_spans[0]),
+                    ExprKind::Call(expr, exprs) => {
+                        // eprintln!("call: {:#?}", expr);
+                        if self.tcx.is_foreign_item(expr.hir_id.owner.def_id) {
+                            eprintln!("foreign call: {:#?}", expr.span);
+                        }
+                    }
+                    ExprKind::MethodCall(path, expr, exprs, span) => {
+                        // eprintln!("method call: {:#?}", path);
+                        if self.tcx.is_foreign_item(expr.hir_id.owner.def_id) {
+                            eprintln!("foreign method call: {:#?}", expr.span);
+                        }
+                    }
+                    _ => (), // eprintln!("found expression {:?} at {:?}", ex.kind, ex.span),
+                }
+
+                // keep going
+                walk_expr(self, ex);
+            }
+
+            fn visit_mod(&mut self, m: &'v Mod<'v>, s: Span, n: HirId) {
+                // FIXME
+                // eprintln!(" >>> hir mod {:?}", s);
+
+                // keep going
+                walk_mod(self, m, n);
+            }
+
+            fn visit_item(&mut self, i: &'v Item<'v>) {
+                // eprintln!(" >>> hir item {:?} at {:?}", i.ident.name, i.span);
+                match i.kind {
+                    ItemKind::Union(_, _) => {
+                        // TODO: This should be an error (span_err_with_code)
+                        self.no_union(i.span)
+                    }
+                    ItemKind::GlobalAsm(_) => self.no_unsafe(i.span),
+                    ItemKind::Impl(imp) => {
+                        // eprintln!("     impl {:?}", imp.self_ty.kind);
+                        if imp.unsafety == Unsafety::Unsafe {
+                            self.no_unsafe(imp.items[0].span); // TODO: What's the right span?
+                        }
+                        if let Some(of_trait) = &imp.of_trait {
+                            // XXX: We probably want to get this in. Only look for external functions.
+                            let def_id = of_trait.hir_ref_id.owner.def_id.to_def_id();
+                            // eprintln!(" >>> impl of trait {:?}", of_trait.path.span,);
+                            if self
+                                .tcx
+                                .has_attr(def_id, rustc_span::symbol::sym::automatically_derived)
+                            {
+                                if let Some(item) = imp.items.get(0) {
+                                    self.no_derive(item.span);
+                                }
+                            }
+                        }
+                    }
+                    _ => (),
+                }
+
+                // Check for foreign item
+                self.foreign_items(i.owner_id.def_id.to_def_id(), i.span);
+
+                // keep going
+                walk_item(self, i);
+            }
+
+            fn visit_trait_item(&mut self, ti: &'v TraitItem<'v>) {
+                match &ti.kind {
+                    TraitItemKind::Const(_, _) => self.no_assoc_items(ti.span),
+                    TraitItemKind::Type(_, _) => self.no_assoc_items(ti.span),
+                    TraitItemKind::Fn(bounds, ty) => (),
+                }
+
+                // keep going
+                walk_trait_item(self, ti);
+            }
+
+            fn visit_assoc_type_binding(&mut self, type_binding: &'v TypeBinding<'v>) {
+                // self.no_assoc_items(type_binding.span);
+
+                // keep going
+                walk_assoc_type_binding(self, type_binding);
+            }
+
+            fn visit_associated_item_kind(&mut self, kind: &'v AssocItemKind) {
+                // eprintln!(" >>> visit assoc item kind {:?}", kind);
+                // self.no_assoc_items(self.span);
+
+                // keep going
+                walk_associated_item_kind(self, kind);
+            }
+
+            fn visit_stmt(&mut self, s: &'v Stmt<'v>) {
+                match &s.kind {
+                    StmtKind::Local(b) => {
+                        if let Some(init) = b.init {
+                            match init.kind {
+                                ExprKind::AddrOf(x, f, s) => {
+                                    // Don't allow raw borrows (pointer) and mutable borrows.
+                                    if matches!(x, BorrowKind::Raw) || matches!(f, Mutability::Mut)
+                                    {
+                                        self.mut_borrow_let(b.span)
+                                    }
+                                }
+                                _ => (),
+                            }
+                        }
+                        if let Some(els) = b.els {}
+                    }
+                    StmtKind::Item(_) => (),
+                    StmtKind::Expr(_) => (),
+                    StmtKind::Semi(_) => (),
+                }
+
+                // keep going
+                walk_stmt(self, s);
+            }
+
+            fn visit_where_predicate(&mut self, predicate: &'v WherePredicate<'v>) {
+                match predicate {
+                    WherePredicate::BoundPredicate(p) => (),
+                    WherePredicate::RegionPredicate(p) => self.explicit_lifetime(p.span),
+                    WherePredicate::EqPredicate(p) => (),
+                }
+
+                // keep going
+                walk_where_predicate(self, predicate);
+            }
+
+            fn visit_inline_asm(&mut self, asm: &'v InlineAsm<'v>, id: HirId) {
+                self.no_unsafe(asm.line_spans[0]); // XXX: what's the right span here?
+
+                // keep going
+                walk_inline_asm(self, asm, id);
+            }
+
+            fn visit_use(&mut self, path: &'v UsePath<'v>, hir_id: HirId) {
+                // FIXME
+                // eprintln!(" >>> use {path:?}");
+
+                // keep going
+                walk_use(self, path, hir_id);
+            }
+
+            fn visit_impl_item(&mut self, ii: &'v ImplItem<'v>) {
+                // match &ii.kind {
+                //     ImplItemKind::Const(_, _) => eprintln!(" >>> impl const {:#?}", ii.ident),
+                //     ImplItemKind::Type(_) => eprintln!(" >>> impl type {:#?}", ii.ident),
+                //     ImplItemKind::Fn(bounds, ty) => eprintln!(" >>> impl fn {:#?}", ii.ident),
+                // }
+
+                self.foreign_items(ii.owner_id.def_id.to_def_id(), ii.span);
+
+                // keep going
+                walk_impl_item(self, ii);
+            }
+
+            fn visit_body(&mut self, b: &'v Body<'v>) {
+                // eprintln!(" >>> body: {:?}", b.);
+
+                // keep going
+                walk_body(self, b);
+            }
+
+            fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
+                // eprintln!(" >>> attribute: {:?}", attr.span);
+                // match &attr.kind {
+                //     ast::AttrKind::Normal(normal_attr) => {
+                //         eprintln!(" >>> normal attribute: {:?}", normal_attr.item.path);
+                //     }
+                //     ast::AttrKind::DocComment(comment_kind, symbol) => (),
+                // }
+            }
+        }
+
+        let mut linter = HirLinter { session, tcx: &tcx };
+        hir.visit_all_item_likes_in_crate(&mut linter);
+    }
 
     let mut bodies = bodies.collect::<Vec<_>>();
     // we first visit `AnonConst`s, otherwise the thir body might be stolen
@@ -176,7 +608,7 @@ fn linter(crate_ast: &rustc_ast::ast::Crate, session: &Lrc<Session>, compiler: &
 
         fn visit_item(&mut self, i: &'ast Item) {
             eprintln!("found item {:?} at {:?}", i.ident.name, i.span);
-            match i.kind {
+            match &i.kind {
                 rustc_ast::ast::ItemKind::Union(_, _) => {
                     // TODO: This should be an error (span_err_with_code)
                     self.session.span_warn_with_code(
@@ -188,6 +620,18 @@ fn linter(crate_ast: &rustc_ast::ast::Crate, session: &Lrc<Session>, compiler: &
                             is_force_warn: true,
                         },
                     );
+                }
+                rustc_ast::ast::ItemKind::Mod(unsafe_mod, mod_kind) => {
+                    match unsafe_mod {
+                        rustc_ast::ast::Unsafe::Yes(span) => self.no_unsafe(*span),
+                        _ => (),
+                    }
+                    match mod_kind {
+                        rustc_ast::ast::ModKind::Unloaded => {
+                            eprintln!("Unloaded module {:?}", i.ident)
+                        }
+                        _ => (),
+                    }
                 }
                 _ => (),
             }
@@ -469,14 +913,14 @@ impl Callbacks for DefaultCallbacks {
         compiler: &Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
-        let session = compiler.session();
         let macro_calls = collect_macros(&queries.parse().unwrap().peek());
-        linter(&queries.parse().unwrap().peek(), session, compiler);
+        let session = compiler.session();
+        // linter(&queries.parse().unwrap().peek(), session, compiler);
         queries
             .global_ctxt()
             .unwrap()
             .peek_mut()
-            .enter(|tcx| browse_items(&self.options, macro_calls, tcx));
+            .enter(|tcx| browse_items(&self.options, macro_calls, tcx, session));
 
         Compilation::Continue
     }

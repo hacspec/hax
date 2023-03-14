@@ -106,8 +106,10 @@ pub union SomeUnion {
 
 mod hash;
 use hash::*;
+use serde::{Deserialize, Serialize};
+use serde_json::to_string as to_json_string;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 struct DummyStruct {
     dummy: u8,
 }
@@ -123,8 +125,20 @@ trait Foo: Copy + Clone {
     }
 }
 
-impl Foo for DummyStruct {}
+impl DummyStruct {
+    fn member_fun(&self) {
+        let s = to_json_string(self).unwrap();
+        println!("I'm a member function {}", s);
+    }
+}
 
+impl Foo for DummyStruct {
+    fn bar(self) -> u8 {
+        5
+    }
+}
+
+#[derive(Debug)]
 struct Hi {
     field1: u8,
     field2: u8,
