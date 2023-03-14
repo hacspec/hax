@@ -128,6 +128,13 @@
                 ''PATH="${packages.thir-export}/bin:${rustc}/bin/:$PATH" cargo thir-export "$@"''
             }";
           };
+          circus = {
+            type = "app";
+            program = "${
+              pkgs.writeScript "circus"
+                ''PATH="${packages.thir-export}/bin:${rustc}/bin/:$PATH" cargo circus "$@"''
+            }";
+          };
         };
         devShells = rec {
           thir-export = pkgs.mkShell {
