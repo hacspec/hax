@@ -96,20 +96,18 @@
               ppx_deriving_yojson ppx_matches ppx_let cmdliner
               angstrom
             ] ++ fstar-pkgs.fstar-dune.buildInputs;
-            nativeBuildInputs = [ packages.thir_ml_of_json_schema ];
+            nativeBuildInputs = [ packages.thir-export pkgs.nodejs ];
             strictDeps = true;
             preBuild = "dune build thir-elab.opam";
           };
-          thir_ml_of_json_schema = pkgs.writeScriptBin "thir_ml_of_json_schema" ''
-            #!${pkgs.stdenv.shell}
-            TEMP="$(mktemp -d)"
-            trap 'rm -rf -- "$TEMP"' EXIT
-            cd "$TEMP"
-            echo 'profile = default' > .ocamlformat
-            ${packages.thir-export}/bin/thir-export-json-schema - \
-               | ${pkgs.nodejs}/bin/node ${./ocaml_of_json_schema.js} - - \
-               | ${pkgs.ocamlformat}/bin/ocamlformat --impl -
-          '';
+          circus = pkgs.symlinkJoin {
+            name = "circus";
+            paths = [
+              packages.thir-elab
+              packages.thir-export
+              rustc
+            ];
+          };
         };
         apps = {
           serve-rustc-docs = { type = "app"; program = "${pkgs.writeScript "serve-rustc-docs" ''
@@ -131,7 +129,7 @@
             }";
           };
         };
-        devShells = {
+        devShells = rec {
           thir-export = pkgs.mkShell {
             packages = [
               pkgs.cargo-expand
@@ -152,8 +150,16 @@
 
             inputsFrom = [
               packages.thir-elab
+              packages.thir-export
             ];
           };
+          circus = pkgs.mkShell {
+            packages = [
+              packages.circus
+              pkgs.yq
+            ];
+          };
+          default = circus;
         };
       }
     );
