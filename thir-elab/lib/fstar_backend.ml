@@ -446,6 +446,7 @@ module FStarBackend = struct
         (c "core::ops::bit::BitAnd::bitand", (2, "&."));
         (c "core::ops::bit::BitOr::bitor", (2, "|."));
         (c "core::ops::arith::Add::add", (2, "+."));
+        (c "core::ops::arith::Sub::sub", (2, "-."));
         (c "core::ops::arith::Mul::mul", (2, "*."));
         (`Primitive (BinOp Add), (2, "+"));
         (`Primitive (BinOp Sub), (2, "-"));
