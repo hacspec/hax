@@ -7,31 +7,64 @@
  - `ocaml_of_json_schema.js`: a quick & dirty script that translates a [JSON Schema](https://json-schema.org/) into OCaml types and serializers. *(note: this will be replaced by [quicktype](https://github.com/quicktype/quicktype) when we our OCaml backend is ready)*
 
 ## Quick start
-### With Nix
-**Prerequisites:** install the [Nix package manager](https://nixos.org/) with flake support: https://github.com/mschwaig/howto-install-nix-with-flake-support
+### With Nix (works on [Linux](https://nixos.org/download.html#nix-install-linux),
+[MacOS](https://nixos.org/download.html#nix-install-macos) and
+[Windows](https://nixos.org/download.html#nix-install-windows))
+**Prerequisites:** install the [Nix package
+manager](https://nixos.org/) with flake support:
+https://github.com/mschwaig/howto-install-nix-with-flake-support
 
-#### Get the _THIR'_ JSON out of a crate
+
+#### Get the F* translation of a crate
+1. `cd path/to/your/crate`
+2. `nix run github:w95psp/hacspec-v2#circus -o some/output/dir fstar`  
+  will create `fst` modules in directory `some/output/dir`.
+
+#### Get a shell with `cargo circus`, `cargo thir-export` and `thir-elab`
+1. `nix develop github:w95psp/hacspec-v2`
+
+#### Other operations
+##### Get the _THIR'_ JSON out of a crate
 1. `cd path/to/your/crate`
 2. `nix run github:w95psp/hacspec-v2#thir-export`  
     ...will create `thir_export.json` in the current directory.
     
-**More generally:** `nix run github:w95psp/hacspec-v2#thir-export -- THIR-EXPORT-ARGUMENTS -- CARGO-ARGUMENTS`; for instance `CARGO-ARGUMENTS` could be `-p crate-name`.
+**More generally:** `nix run github:w95psp/hacspec-v2#thir-export -- THIR-EXPORT-ARGUMENTS`. Replace `THIR-EXPORT-ARGUMENTS` with `--help` to get more information.
 
 
-#### Running `thir-elab` on the JSON
-1. `nix run github:w95psp/hacspec-v2#thir-elab /path/to/thir_export.json`
+##### Running `thir-elab` on the JSON
+1. `nix run github:w95psp/hacspec-v2#thir-elab -i /path/to/thir_export.json`
 
-#### Visualization of the THIR' JSON
+##### Visualization of the THIR' JSON
 1. `cd /directory/in/which/the/thir_export.json/file/lives/`
 2. `nix run github:w95psp/hacspec-v2#thir-json-visualizer`
 3. visit `http://localhost:8888/`
 
 ### Without Nix
-For now, the OCaml part is a bit hard to get it compiled without Nix since it's relying on a (not yet merged) F* branch.
+1. Make sure to have the following installed on your system:
+ - `opam`;
+ - `rustup`;
+ - `nodejs`.
+2. Clone this repo `git clone git@github.com:hacspec/hacspec-v2.git`
+3. Install `thir-export`:
+   1. `cd thir-export`
+   2. `cargo install --path cli`
+4. Build `thir-elab`:
+   1. `cd thir-elab`
+   2. `opam install --deps-only .`
+   2. `dune build`
+   2. add the subfolder `_build/install/default/bin` in your `PATH`
+5. Commands available are:
+   - `cargo circus [--help]`: export a crate to a backend (F* for instance);
+   - `cargo thir-export [--help]`: export the THIR of a crate to a JSON file;
+   - `thir-elab [--help]`: takes the THIR JSON export of a crate and outputs F*/... code.
 
-The Rust part should be fine though, it should only be a matter of `cargo build`.
+#### Note for MacOS users
+- The librustc library path needs to be added to `DYLD_LIBRARY_PATH`
 
 ## Edit the sources (Nix)
 Just clone & `cd` into the repo, then run `nix develop .#target` –target being `thir-export` or `thir-elab`.
 You can also just use [direnv](https://github.com/nix-community/nix-direnv), with [editor integration](https://github.com/direnv/direnv/wiki#editor-integration).
+
+
 
