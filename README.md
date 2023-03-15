@@ -61,7 +61,7 @@ https://github.com/mschwaig/howto-install-nix-with-flake-support
    - `cargo thir-export [--help]`: export the THIR of a crate to a JSON file;
    - `thir-elab [--help]`: takes the THIR JSON export of a crate and outputs F\*/... code.
 
-**Note for MacOS users**: the librustc library path needs to be added to `DYLD_LIBRARY_PATH=$(rustc --print=sysroot)/lib`
+**Note**: the librustc library path needs to be added to `DYLD_LIBRARY_PATH=$(rustc --print=sysroot)/lib`
 Make sure to use the right Rust nightly version, which is currently `nightly-2022-12-06`.
 
 ## Edit the sources (Nix)
