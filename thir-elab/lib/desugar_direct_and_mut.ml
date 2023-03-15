@@ -203,7 +203,7 @@ struct
                   expr
                 @@ List.fold_right
                      ~init:
-                       (if ret_unit then UB.unit_expr
+                       (if ret_unit then UB.unit_expr expr.span
                        else
                          {
                            expr with

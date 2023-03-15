@@ -69,6 +69,15 @@ let show_span (s : span) : string = "<span>"
 let pp_span (fmt : Format.formatter) (s : span) : unit =
   Format.pp_print_string fmt @@ show_span s
 
+let union_span (x : span) (y : span) : span =
+  match (x, y) with
+  | Dummy, _ | _, Dummy -> Dummy
+  | Span x, Span y when String.(x.file <> y.file) ->
+      failwith "TODO error: Bad span union"
+  | Span { file; lo }, Span { hi } -> Span { file; lo; hi }
+
+let union_spans : span list -> span = List.reduce_exn ~f:union_span
+
 type concrete_ident = { crate : string; path : string Non_empty_list.t }
 
 and bin_op =
