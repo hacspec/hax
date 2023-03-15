@@ -38,6 +38,12 @@ fn main() {
             serde_json::to_string(&opts).expect("Options could not be converted to a JSON string"),
         )
         .spawn()
+        .map_err(|e| {
+            if let std::io::ErrorKind::NotFound = e.kind() {
+                panic!("The binary [thir-elab] was not found in your [PATH].")
+            }
+            e
+        })
         .unwrap()
         .wait()
         .unwrap();
