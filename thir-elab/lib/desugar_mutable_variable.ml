@@ -183,20 +183,21 @@ struct
           ~f:(fun (var, ty) ->
             (if Set.mem vars_of_val_pat var then UB.make_wild_pat
             else UB.make_var_pat var)
-              ty Dummy)
+              ty t.expr.span)
           shadowings
         |> List.append (Option.to_list value)
       in
       (value, UB.make_tuple_pat chunks)
 
-    let pat' (name : string) (t : t) : (local_ident * B.ty) option * B.pat =
+    let pat' span (name : string) (t : t) : (local_ident * B.ty) option * B.pat
+        =
       let val_id_ty =
         Option.map
           ~f:((fun _ -> Fresh.local_ident name) &&& Fn.id)
           t.result_type
       in
       let val_pat =
-        Option.map ~f:(fun (v, t) -> UB.make_var_pat v t Dummy) val_id_ty
+        Option.map ~f:(fun (v, t) -> UB.make_var_pat v t span) val_id_ty
       in
       let val_pat, pat = pat val_pat t in
       (Option.bind ~f:(Fn.const val_id_ty) val_pat, pat)
@@ -237,7 +238,7 @@ struct
         (Option.map ~f:(Fn.const r.expr) r.result_type, Fn.id)
       else
         (* prerr_endline (name ^ " -> " ^ [%show: t] r); *)
-        let val_pat, pat = pat' name r in
+        let val_pat, pat = pat' r.expr.span name r in
         (* (\* match val_pat wit h *\) *)
         (* (\* | Some val_pat ->  *\) *)
         (* (\* if [%eq: B.pat option] (Some pat.p) val_pat *\) *)
@@ -248,15 +249,16 @@ struct
           UB.make_let pat r.expr body
         in
         ( Option.map
-            ~f:(fun (v, t) -> B.{ span = Dummy; typ = t; e = B.LocalVar v })
+            ~f:(fun (v, t) ->
+              B.{ span = r.expr.span; typ = t; e = B.LocalVar v })
             val_pat,
           mk )
 
     let forget_all (s : t) : B.expr =
       match s.result_type with
       (* TODO: option is useless? *)
-      | Some rt when UB.is_unit_typ rt -> UB.unit_expr
-      | None -> UB.unit_expr
+      | Some rt when UB.is_unit_typ rt -> UB.unit_expr s.expr.span
+      | None -> UB.unit_expr s.expr.span
       | Some rt ->
           let e =
             match s.shadowings |> BTyLocIdentUniqueList.to_list with
@@ -347,7 +349,8 @@ struct
             @@ UB.make_tuple_expr ~span:r.value.expr.span
             @@ Option.to_list var
             @ List.map
-                ~f:(fun (v, typ) -> B.{ span = Dummy; typ; e = B.LocalVar v })
+                ~f:(fun (v, typ) ->
+                  B.{ span = r.value.expr.span; typ; e = B.LocalVar v })
                 shadowings
         (* (List.map ~f:Option.some shadowings |> List.filter_map ~f:Fn.id) *)
       in
@@ -360,7 +363,8 @@ struct
       let bindings : Binding.t list =
         List.concat_map
           ~f:(fun (pat, { bindings; value }) ->
-            if [%eq: B.expr] value.expr UB.unit_expr then bindings
+            (* TODO: write a is_unit_expr helper *)
+            if [%eq: B.expr'] value.expr.e (UB.unit_expr Dummy).e then bindings
             else
               bindings
               @ [
@@ -403,13 +407,15 @@ struct
                 && not (has_observable_effect value.expr)
               then ([], value.expr)
               else
-                let var, pat = ShadowingTuple.pat' "arg" value in
+                let var, pat =
+                  ShadowingTuple.pat' value.expr.span "arg" value
+                in
                 let var =
                   Option.map
                     ~f:(fun (var, typ) ->
-                      B.{ e = B.LocalVar var; typ; span = Dummy })
+                      B.{ e = B.LocalVar var; typ; span = pat.span })
                     var
-                  |> Option.value ~default:UB.unit_expr
+                  |> Option.value ~default:(UB.unit_expr pat.span)
                 in
                 ( bindings
                   @ [
@@ -594,7 +600,7 @@ struct
             value =
               ShadowingTuple.
                 {
-                  expr = UB.unit_expr;
+                  expr = UB.unit_expr e.span;
                   result_type = None;
                   shadowings = BTyLocIdentUniqueList.empty;
                 };
@@ -645,7 +651,7 @@ struct
     | Match { scrutinee; arms } ->
         Result.from_match ctx.vars
           (fun vars -> dexpr { ctx with vars })
-          { e with e = Match { scrutinee = UA.unit_expr; arms } }
+          { e with e = Match { scrutinee = UA.unit_expr e.span; arms } }
           scrutinee
           (List.map
              ~f:(fun { arm = { pat; body } } ->
@@ -665,7 +671,8 @@ struct
           (fun vars -> dexpr { ctx with vars })
           e cond
           (then_
-           :: Option.to_list (Some (Option.value else_ ~default:UA.unit_expr))
+           :: Option.to_list
+                (Some (Option.value else_ ~default:(UA.unit_expr e.span)))
           |> List.map ~f:(fun e -> (Set.empty (module UB.TypedLocalIdent), e)))
           (fun cond -> function
             | [ then_; else_ ] -> If { cond; then_; else_ = Some else_ }
@@ -716,7 +723,7 @@ struct
                             {
                               params =
                                 [
-                                  UB.make_var_pat var start.typ Dummy;
+                                  UB.make_var_pat var start.typ body.span;
                                   UB.make_tuple_pat
                                   @@ List.map ~f:(fun (v, ty) ->
                                          UB.make_var_pat v ty body.span)
@@ -866,7 +873,7 @@ struct
                       [
                         closure;
                         UB.make_tuple_expr ~span:e.span
-                          (UB.unit_expr
+                          (UB.unit_expr e.span
                           :: List.map
                                ~f:(fun (v, typ) ->
                                  B.{ span = e.span; typ; e = B.LocalVar v })
@@ -905,7 +912,7 @@ struct
     | Break { e = payload; label; witness } ->
         dbreak_continue e ctx false payload witness
     | Continue { witness } ->
-        dbreak_continue e ctx true UA.unit_expr (snd witness)
+        dbreak_continue e ctx true (UA.unit_expr e.span) (snd witness)
     | Return _ when Option.is_some ctx.loop ->
         unsupported "returns inside loops"
     | Return _ -> unsupported "TODO:Return"

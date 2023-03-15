@@ -28,12 +28,12 @@
 
 (rule
  (target raw_thir_ast.ml)
- (deps (:ocaml_of_json_schema ../../ocaml_of_json_schema.js))
+ (deps (:ocaml_of_json_schema ../ocaml_of_json_schema.js))
  (action
   (with-stdout-to
    raw_thir_ast.ml
    (pipe-stdout
-        (run thir-export-json-schema -)
+        (run thir-export-json-schema ast -)
         (run node %{ocaml_of_json_schema} - -)
    ))))
 

@@ -108,10 +108,10 @@ module Exn = struct
 
   let unit_typ : ty = TApp { ident = `TupleType 0; args = [] }
 
-  let unit_expr : expr =
-    { typ = unit_typ; span = Dummy; e = Ast.GlobalVar (`TupleCons 0) }
+  let unit_expr span : expr =
+    { typ = unit_typ; span; e = Ast.GlobalVar (`TupleCons 0) }
 
-  let wild_pat : ty -> pat = fun typ -> { typ; span = Dummy; p = PWild }
+  let wild_pat span : ty -> pat = fun typ -> { typ; span; p = PWild }
 
   let c_binop : Thir.bin_op -> bin_op = function
     | Add -> Add
@@ -137,27 +137,6 @@ module Exn = struct
   let c_logical_op : Thir.logical_op -> logical_op = function
     | And -> And
     | Or -> Or
-
-  module GlobalNames = struct
-    let h typ v : expr = { span = Dummy; typ; e = Ast.GlobalVar v }
-
-    let box (t : ty) : expr =
-      let box = `Primitive Box in
-      h (TArrow ([ t ], TApp { ident = box; args = [ GType t ] })) box
-
-    let deref (t1 : ty) (t2 : ty) : expr =
-      h (TArrow ([ t1 ], t2)) (`Primitive Deref)
-
-    let cast t1 t2 : expr = `Primitive Cast |> h @@ TArrow ([ t1 ], t2)
-
-    let binop : ty -> ty -> ty -> Thir.bin_op -> expr =
-     fun l r out op ->
-      {
-        span = Dummy;
-        typ = Ast.TArrow ([ l; r ], out);
-        e = Ast.GlobalVar (`Primitive (BinOp (c_binop op)));
-      }
-  end
 
   let c_lit_type (t : Thir.lit_int_type) : int_kind =
     match t with
@@ -268,7 +247,9 @@ module Exn = struct
       | Binary { lhs; rhs; op } ->
           let lty = c_ty lhs.ty in
           let rty = c_ty rhs.ty in
-          call (GlobalNames.binop lty rty typ op) [ lhs; rhs ]
+          call
+            (mk_global ([ lty; rty ] ->. typ) @@ `Primitive (BinOp (c_binop op)))
+            [ lhs; rhs ]
       | LogicalOp { lhs; rhs; op } ->
           let lhs_type = c_ty lhs.ty in
           let rhs_type = c_ty rhs.ty in
@@ -303,7 +284,8 @@ module Exn = struct
           raise UnsafeBlock
       | Block o ->
           let init =
-            Option.map ~f:c_expr o.expr |> Option.value ~default:unit_expr
+            Option.map ~f:c_expr o.expr
+            |> Option.value ~default:(unit_expr span)
           in
           let { e } =
             List.fold_right o.stmts ~init ~f:(fun { kind } body ->
@@ -311,7 +293,13 @@ module Exn = struct
                 | Expr { expr = rhs } ->
                     let rhs = c_expr rhs in
                     let e =
-                      Let { monadic = None; lhs = wild_pat rhs.typ; rhs; body }
+                      Let
+                        {
+                          monadic = None;
+                          lhs = wild_pat rhs.span rhs.typ;
+                          rhs;
+                          body;
+                        }
                     in
                     let span = union_span rhs.span body.span in
                     { e; typ; span }
@@ -384,12 +372,12 @@ module Exn = struct
       (*     failwith "TODO: Break with labels are not supported" *)
       | Break { label; value } ->
           let e = Option.map ~f:c_expr value in
-          let e = Option.value ~default:unit_expr e in
+          let e = Option.value ~default:(unit_expr span) e in
           Break { e; label = None; witness = W.loop }
       | Continue _ -> Continue { label = None; witness = (W.continue, W.loop) }
       | Return { value } ->
           let e = Option.map ~f:c_expr value in
-          let e = Option.value ~default:unit_expr e in
+          let e = Option.value ~default:(unit_expr span) e in
           Return { e; witness = W.early_exit }
       | ConstBlock _ -> failwith "ConstBlock"
       | Repeat _ -> failwith "Repeat"

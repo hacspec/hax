@@ -40,7 +40,6 @@ const clean = o => {
         && o.type instanceof Array
         && o.type.length === 2
         && o.type.includes('null')
-        // && eq(new Set(o.type), new Set(['array', 'null']))
        ) {
         let type = o.type.filter(x => x != 'null')[0];
         let other = JSON.parse(JSON.stringify(o));
@@ -256,12 +255,14 @@ let is_type = {
     },
     
     variant: def => {
+        let doc = def.description;
         if (exporters.enum.guard(def))
             return def.enum.map(e => ({
                 kind: 'variant',
                 name: e,
                 payloadKind: 'empty',
-                payload: null
+                payload: null,
+                doc,
             }));
         if (exact_keys(def, 'type', 'required', 'properties')
             && def.type === 'object'
@@ -273,14 +274,16 @@ let is_type = {
                     kind: 'variant',
                     payloadKind: 'expr',
                     name,
-                    payload: is_type.expr(value)
+                    payload: is_type.expr(value),
+                    doc,
                 }];
             if (is_type.record(value))
                 return [{
                     kind: 'variant',
                     name,
                     payloadKind: 'record',
-                    payload: is_type.record(value)
+                    payload: is_type.record(value),
+                    doc,
                 }];
         }
         return false;
@@ -307,22 +310,25 @@ let export_record = (fields, path) => {
     return [`\`Assoc l`, `{ ${record_expression} }`];
 };
 
+let mkdoc = doc => doc ? ` (** ${doc} *)` : '';
+
 let exporters = {
     oneOf: {
         guard: def => eq(keys(def), new Set(["oneOf"])) &&
             def.oneOf.every(is_type.variant),
         f: (name, {oneOf}) => {
             let variants = oneOf.map(is_type.variant).flat();
-            let type = variants.map(({kind, name: variant_name, payloadKind, payload}) => {
+            let type = variants.map(({kind, name: variant_name, payloadKind, payload, doc}) => {
+                doc = mkdoc(doc);
                 let variant = ensureUnique('variant', variantNameOf(variant_name));
                 return ({
                     record: () => {
                         let fields = Object.entries(payload).map(([field, value]) =>
                             fieldNameOf(field) + ' : ' + ocaml_of_type_expr(value, ['rec-variant:'+variant+':'+field]));
-                        return `${variant} of {${fields.join(';\n')}}`;
+                        return `${variant} of {${fields.join(';\n')}}${doc}`;
                     },
-                    expr: () => `${variant} of (${ocaml_of_type_expr(payload, ['expr-variant:'+variant+':'+name])})`,
-                    empty: () => `${variant}`,
+                    expr: () => `${variant} of (${ocaml_of_type_expr(payload, ['expr-variant:'+variant+':'+name])})${doc}`,
+                    empty: () => `${variant}${doc}`,
                 }[payloadKind] || (() => {
                     throw "bad payloadKind: " + payloadKind;
                 }))();
@@ -359,26 +365,13 @@ let exporters = {
             && Object.values(def.properties).every(is_type.expr),
         f: (name, {required, properties}) => {
             let fields = Object.entries(properties).map(
-                ([name, prop]) => [name, is_type.expr(prop)]
+                ([name, prop]) => [name, is_type.expr(prop), prop.description]
             );
-            // let fields_bindings = fields.map(([name, type], i) =>
-            //     `("${name}", field${i})`
-            // );
-            // let let_bindings = fields.map(([fname, type], i) => {
-            //     let match = mk_match(`field${i}`, ocaml_arms_of_type_expr(type, ['struct_'+fname+'_'+name]), ['struct_'+fname+'_'+name]);
-            //     return `let field${i} = ${match} in`;
-            // }).join('\n');
-            // // let variant = typeNameOf(name);
-            // let record_expression = `{` + fields.map(([name, _], i) =>
-            //     `${fieldNameOf(name)} = field${i}`
-            // ).join(';\n') + '}';
 
             let [pat, expr] = export_record(fields, ['struct_'+name]);
             
-            // return wrap();
-            // let fields = properties.
             return {
-                type: `{ ${fields.map(([fname, type]) => `${fieldNameOf(fname)} : ${ocaml_of_type_expr(type, ['struct_'+fname+'_'+name])}`).join(';\n')} }`,
+                type: `{ ${fields.map(([fname, type, doc]) => `${fieldNameOf(fname)} : ${ocaml_of_type_expr(type, ['struct_'+fname+'_'+name])}${mkdoc(doc)}`).join(';\n')} }`,
                 parse: mk_match('o', [[pat, expr]], ['struct_'+name])
             };
         },

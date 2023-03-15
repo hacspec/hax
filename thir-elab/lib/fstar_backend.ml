@@ -446,6 +446,7 @@ module FStarBackend = struct
         (c "core::ops::bit::BitAnd::bitand", (2, "&."));
         (c "core::ops::bit::BitOr::bitor", (2, "|."));
         (c "core::ops::arith::Add::add", (2, "+."));
+        (c "core::ops::arith::Sub::sub", (2, "-."));
         (c "core::ops::arith::Mul::mul", (2, "*."));
         (`Primitive (BinOp Add), (2, "+"));
         (`Primitive (BinOp Sub), (2, "-"));
@@ -877,7 +878,7 @@ module FStarBackend = struct
   (* module AST : Ast.T *)
 
   let modules_to_string (o : Backend.Options.t) modules =
-    let out_dir = "out/" in
+    let out_dir = o.output_directory ^ "/" in
     (try Caml.Sys.mkdir out_dir 0o777 with Sys_error _ -> ());
     List.iter
       ~f:(fun (relative_path, data) ->

@@ -10,6 +10,10 @@ path = "src/cargo_thir_export.rs"
 name = "cargo-thir-export"
 
 [[bin]]
+path = "src/cargo_circus.rs"
+name = "cargo-circus"
+
+[[bin]]
 path = "src/driver_thir_export.rs"
 name = "driver-thir-export"
 
@@ -25,6 +29,8 @@ schemars = "0.8"
 itertools = "0.10.5"
 clap = { version = "4.0", features = ["derive"] }
 paste = "1.0.11"
-thir-export={path = "../thir-export"}
+thir-export = {path = "../thir-export"}
+cli-lib = {path = "../cli-lib"}
 path-clean = "1.0.1"
+tempfile = "3.4"
 

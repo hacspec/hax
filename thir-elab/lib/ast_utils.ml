@@ -116,6 +116,10 @@ module Make (F : Features.T) = struct
         method! visit_ty _ t = super#visit_ty TypeLevel t
         (* method visit_GlobalVar (lvl : level) i = GlobalVar (f lvl i) *)
       end
+
+    let rename_global_idents_item
+        (f : visit_level -> global_ident -> global_ident) : item -> item =
+      (rename_global_idents f)#visit_item ExprLevel
   end
 
   module Reducers = struct
@@ -200,8 +204,8 @@ module Make (F : Features.T) = struct
 
   let unit_typ : ty = TApp { ident = `TupleType 0; args = [] }
 
-  let unit_expr : expr =
-    { typ = unit_typ; span = Dummy; e = GlobalVar (`TupleCons 0) }
+  let unit_expr span : expr =
+    { typ = unit_typ; span; e = GlobalVar (`TupleCons 0) }
 
   let rec remove_tuple1_pat (p : pat) : pat =
     match p.p with
@@ -270,21 +274,13 @@ module Make (F : Features.T) = struct
   let make_tuple_field_pat (len : int) (nth : int) (pat : pat) : field_pat =
     { field = `TupleField (nth + 1, len); pat }
 
-  let make_tuple_pat' (tuple : field_pat list) : pat =
+  let make_tuple_pat' span (tuple : field_pat list) : pat =
     match tuple with
     | [ { pat } ] -> pat
     | _ ->
         let len = List.length tuple in
-        let span = (* TODO: union of r.bindings's spans *) Dummy in
         {
-          p =
-            PConstruct
-              {
-                name = `TupleCons len;
-                args = tuple;
-                (*List.mapi ~f:(make_tuple_field_pat len) tuple;*)
-                record = false;
-              };
+          p = PConstruct { name = `TupleCons len; args = tuple; record = false };
           typ =
             make_tuple_typ @@ List.map ~f:(fun { pat = { typ } } -> typ) tuple;
           span;
@@ -293,7 +289,7 @@ module Make (F : Features.T) = struct
   let make_tuple_pat (pats : pat list) : pat =
     let len = List.length pats in
     List.mapi ~f:(fun i pat -> { field = `TupleField (i, len); pat }) pats
-    |> make_tuple_pat'
+    |> make_tuple_pat' (union_spans @@ List.map ~f:(fun p -> p.span) pats)
 
   let make_tuple_expr ~(span : span) (tuple : expr list) : expr =
     let len = List.length tuple in
