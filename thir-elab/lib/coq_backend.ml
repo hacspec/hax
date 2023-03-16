@@ -89,6 +89,7 @@ module CoqBackend = struct
         | Ident of string
         | Lit of literal
         | RecordPat of string * (string * pat) list
+        | TuplePat of pat list
 
       type term =
         | Let of pat * term * term * ty
@@ -103,6 +104,7 @@ module CoqBackend = struct
         | RecordConstructor of term * (string * term) list
         | Type of ty
         | Lambda of pat list * term
+        | Tuple of term list
 
       type decl =
         | Unimplemented of string
@@ -130,25 +132,23 @@ module CoqBackend = struct
     | C.AST.U128 -> "128"
     | _ -> .
 
-  let rec ty_to_string (x : C.AST.ty) : string * string =
+  let rec ty_to_string (x : C.AST.ty) : C.AST.decl list * string =
     match x with
-    | C.AST.Bool -> "", "bool"
-    | C.AST.Int (int_size, true) -> "", "int" ^ int_size_to_string int_size
-    | C.AST.Int (int_size, false) -> "", "int" ^ int_size_to_string int_size
-    | C.AST.Name s -> "", s
-    | C.AST.RecordTy (name, fields) ->
-       let (fields_def, fields_str) = record_fields_to_string fields in
-       fields_def ^ "Record" ^ " " ^ name ^ " " ^ ":" ^ " " ^ "Type" ^ " " ^ ":=" ^ "{" ^ fields_str ^ newline_indent 0 ^ "}" ^ "." ^ newline_indent 0, name
+    | C.AST.Bool -> [], "bool"
+    | C.AST.Int (int_size, true) -> [], "int" ^ int_size_to_string int_size
+    | C.AST.Int (int_size, false) -> [], "int" ^ int_size_to_string int_size
+    | C.AST.Name s -> [], s
+    | C.AST.RecordTy (name, fields) -> [C.AST.Record (name, fields)], name
     | C.AST.Product l -> product_to_string l "'×"
     | C.AST.Arrow (a, b) ->
        let a_ty_def, a_ty_str = ty_to_string a in
        let b_ty_def, b_ty_str = ty_to_string b in
-       a_ty_def ^ b_ty_def, a_ty_str ^ " " ^ "->" ^ " " ^ b_ty_str
+       a_ty_def @ b_ty_def, a_ty_str ^ " " ^ "->" ^ " " ^ b_ty_str
     | C.AST.Array (t, l) ->
        let ty_def, ty_str = ty_to_string t in
        ty_def, "nseq" ^ " " ^ ty_str ^ " " ^ Int.to_string l
     | C.AST.AppTy (i, []) ->
-       "", i
+       [], i
     | C.AST.AppTy (i, [y]) ->
        let (ty_defs, ty_str) = ty_to_string y in
        ty_defs, i ^ " " ^ ty_str
@@ -156,24 +156,24 @@ module CoqBackend = struct
        let ty_def, ty_str = product_to_string p "," in
        ty_def, i ^ " " ^ "(" ^ ty_str ^ ")"
     | C.AST.NatMod (t, i, s) ->
-       "todo predef","todo natmod " ^ s
+       [C.AST.Notation (t, C.AST.Array (C.AST.Int (U8, false), i))], "nat_mod 0x" ^ s
     | _ -> .
-  and product_to_string (x : C.AST.ty list) (sep : string) : string * string =
+  and product_to_string (x : C.AST.ty list) (sep : string) : C.AST.decl list * string =
     match x with
     | [y] ->
        ty_to_string y
     | (y :: ys) ->
        let (ty_defs, ty_str) = ty_to_string y in
        let (ys_defs, ys_str) = product_to_string ys sep in
-       ty_defs ^ ys_defs, ty_str ^ " " ^ sep ^ " " ^ ys_str
-    | [] -> "", ""
-  and record_fields_to_string (x : (string * C.AST.ty) list) : string * string =
-    match x with
-    | (name, ty) :: xs ->
-       let ty_def, ty_str = ty_to_string ty in
-       let xs_def, xs_str = record_fields_to_string xs in
-       ty_def ^ xs_def, newline_indent 1 ^ name ^ ":" ^ " " ^ ty_str ^ ";" ^ xs_str
-    | _ -> "", ""
+       ty_defs @ ys_defs, ty_str ^ " " ^ sep ^ " " ^ ys_str
+    | [] -> [], ""
+  (* and record_fields_to_string (x : (string * C.AST.ty) list) : C.AST.decl list * string = *)
+  (*   match x with *)
+  (*   | (name, ty) :: xs -> *)
+  (*      let ty_def, ty_str = ty_to_string ty in *)
+  (*      let xs_def, xs_str = record_fields_to_string xs in *)
+  (*      ty_def @ xs_def, newline_indent 1 ^ name ^ ":" ^ " " ^ ty_str ^ ";" ^ xs_str *)
+  (*   | _ -> [], "" *)
 
   let literal_to_string (x : C.AST.literal) : string =
     match x with
@@ -192,6 +192,10 @@ module CoqBackend = struct
     | C.AST.RecordPat (name, args) ->
        name ^ " " ^ "{|" ^ record_pat_to_string args (depth+1) ^ newline_indent depth
        ^ "|}"
+    | C.AST.TuplePat (t :: ts) ->
+       "'(" ^ List.fold_left ~init:(pat_to_string t (depth+1)) ~f:(fun x y -> x ^ "," ^ pat_to_string y (depth+1)) ts ^ ")"
+    | C.AST.TuplePat [] ->
+       "todo empty tuple pattern?"
     | _ -> .
   and record_pat_to_string args depth : string =
     match args with
@@ -203,7 +207,7 @@ module CoqBackend = struct
     match x with
     | C.AST.Let (pat, bind, term, typ) ->
        let _, ty_str = ty_to_string typ in (* TODO: propegate type definition *)
-       "let" ^ " " ^ pat_to_string pat depth ^ " " ^ ":" ^ " " ^ ty_str ^ " " ^ ":=" ^ " " ^ term_to_string_without_paren bind (depth+1) ^ " " ^ "in" ^ newline_indent depth
+       "let" ^ " " ^ pat_to_string pat depth ^ " " ^ ":=" ^ " " ^ term_to_string_without_paren bind (depth+1) ^ " " ^ ":" ^ " " ^ ty_str ^ " " ^ "in" ^ newline_indent depth
        ^ term_to_string_without_paren term depth,
        true
     | C.AST.If (cond, then_, else_) ->
@@ -232,6 +236,10 @@ module CoqBackend = struct
        ty_str, true (* TODO? does this always need paren? *)
     | C.AST.Lambda (params, body) ->
        "fun" ^ lambda_params_to_string params depth ^ " " ^ "=>" ^ newline_indent (depth+1) ^ term_to_string_without_paren body (depth+1), true
+    | C.AST.Tuple (t :: ts) ->
+       "(" ^ List.fold_left ~init:(term_to_string_without_paren t (depth+1)) ~f:(fun x y -> x ^ "," ^ term_to_string_without_paren y (depth+1)) ts ^ ")", false
+    | C.AST.Tuple [] ->
+       "!TODO empty tuple!", false
     | _ -> .
 
   and lambda_params_to_string (params : C.AST.pat list) depth : string =
@@ -275,30 +283,32 @@ module CoqBackend = struct
     | C.AST.Unimplemented s -> "(*" ^ s ^ "*)"
     | C.AST.Definition (name, params, term, ty) ->
        let (definitions, ty_str) = ty_to_string ty in
-       definitions ^ "Definition" ^ " " ^ name ^ " " ^ params_to_string params ^ ":" ^ " " ^ ty_str ^ " " ^ ":=" ^ newline_indent 1 ^ term_to_string_without_paren term 1 ^ "."
+       decl_list_to_string definitions ^ "Definition" ^ " " ^ name ^ " " ^ params_to_string params ^ ":" ^ " " ^ ty_str ^ " " ^ ":=" ^ newline_indent 1 ^ term_to_string_without_paren term 1 ^ "."
     | C.AST.Notation (name, ty) ->
        let (definitions, ty_str) = ty_to_string ty in
-       definitions ^ "Notation" ^ " " ^ name ^ " " ^ ":=" ^ " " ^ "(" ^ ty_str ^ ")" ^ "."
+       decl_list_to_string definitions ^ "Notation" ^ " " ^ name ^ " " ^ ":=" ^ " " ^ "(" ^ ty_str ^ ")" ^ "."
     | C.AST.Record (name, variants) ->
        let (definitions, variants_str) = variants_to_string variants (newline_indent 1) ";" in
-       definitions ^ "Record" ^ " " ^ name ^ " " ^ ":" ^ " " ^ "Type" ^ " " ^ ":=" ^ "{" ^ variants_str ^ newline_indent 0 ^ "}."
+       decl_list_to_string definitions ^ "Record" ^ " " ^ name ^ " " ^ ":" ^ " " ^ "Type" ^ " " ^ ":=" ^ "{" ^ variants_str ^ newline_indent 0 ^ "}."
     | C.AST.Inductive (name, variants) ->
        let (definitions, variants_str) = variants_to_string variants (newline_indent 0 ^ "|" ^ " ") (" " ^ "->" ^ " " ^ name) in
-       definitions ^ "Inductive" ^ " " ^ name ^ " " ^ ":" ^ " " ^ "Type" ^ " " ^ ":=" ^ variants_str ^ "."
+       decl_list_to_string definitions ^ "Inductive" ^ " " ^ name ^ " " ^ ":" ^ " " ^ "Type" ^ " " ^ ":=" ^ variants_str ^ "."
     | _ -> .
+  and decl_list_to_string (x : C.AST.decl list) : string =
+    List.fold_right ~init:"" ~f:(fun x y -> decl_to_string x ^ newline_indent 0 ^ y) x
   and params_to_string params : string =
     match params with
     | (pat, ty) :: xs ->
        let _, ty_str = ty_to_string ty in
        "(" ^ pat_to_string pat 0 ^ " " ^ ":" ^ " " ^ ty_str ^ ")" ^ " " ^ params_to_string xs
     | [] -> ""
-  and variants_to_string variants pre post : string * string =
+  and variants_to_string variants pre post : C.AST.decl list * string =
     match variants with
     | (ty_name, ty) :: xs ->
        let (ty_definitions, ty_str) = ty_to_string ty in
        let (variant_definitions, variants_str) = variants_to_string xs pre post in
-       ty_definitions ^ variant_definitions , pre ^ ty_name ^ " " ^ ":" ^ " " ^ ty_str ^ post ^ variants_str
-    | _ -> "", ""
+       ty_definitions @ variant_definitions, pre ^ ty_name ^ " " ^ ":" ^ " " ^ ty_str ^ post ^ variants_str
+    | _ -> [], ""
 
   let primitive_to_string (id : primitive_ident) : string =
     match id with
@@ -383,7 +393,8 @@ module CoqBackend = struct
       | PArray { args } -> __TODO_pat__ "Parray?"
       | PConstruct { name = `TupleCons 0; args = [] } -> __TODO_pat__ "tuple 0"
       | PConstruct { name = `TupleCons 1; args = [ { pat } ] } -> __TODO_pat__ "tuple 1"
-      | PConstruct { name = `TupleCons n; args } -> __TODO_pat__ "tuple n"
+      | PConstruct { name = `TupleCons n; args } ->
+         C.AST.TuplePat (List.map ~f:(fun { pat } -> ppat pat) args)
       | PConstruct { name; args; record } ->
          C.AST.RecordPat (pglobal_ident_last name, pfield_pats args)
       | PConstant { lit } ->
@@ -527,7 +538,7 @@ module CoqBackend = struct
       | Construct { constructor = `TupleCons 1; fields = [ (_, e) ]; base } ->
          pexpr e
       | Construct { constructor = `TupleCons n; fields; base } ->
-         __TODO_term__ "construct tuplecons n"
+         C.AST.Tuple (List.map ~f:(snd >> pexpr) fields)
       | Construct { constructs_record = true; constructor; fields; base } ->
          __TODO_term__ "record true"
       | Construct { constructs_record = false; constructor; fields; base } ->
@@ -677,6 +688,11 @@ module CoqBackend = struct
      Instance array_add_inst {ws : WORDSIZE} {len: nat} : Addition (nseq (@int ws) len) := { add a b := a array_add b }.\n\
      Instance int_add_inst {ws : WORDSIZE} : Addition (@int ws) := { add a b := MachineIntegers.add a b }.\n\
      \n\
+     Class Multiplication A := mul : A -> A -> A.\n\
+     Notation \"a .* b\" := (mul a b).\n\
+     Instance array_mul_inst {ws : WORDSIZE} {len: nat} : Multiplication (nseq (@int ws) len) := { mul a b := a array_mul b }.\n\
+     Instance int_mul_inst {ws : WORDSIZE} : Multiplication (@int ws) := { mul a b := MachineIntegers.mul a b }.\n\
+     \n\
      Class Xor A := xor : A -> A -> A.\n\
      Notation \"a .^ b\" := (xor a b).\n\
      \n\
@@ -689,6 +705,8 @@ module CoqBackend = struct
      \n\
      Arguments as_seq {_} {_} array_or_seq.\n\
      Arguments as_nseq {_} {_} array_or_seq.\n\
+     Coercion as_seq : array_or_seq >-> seq.\n\
+     Coercion as_nseq : array_or_seq >-> nseq.\n\
      \n\
      Instance nseq_array_or_seq {A len} (a : nseq A len) : array_or_seq A len :=\n\
      { as_seq := array_to_seq a ; as_nseq := a ; }.\n\
@@ -703,7 +721,7 @@ module CoqBackend = struct
      \n\
      Definition to_le_U32s {A l} := array_to_le_uint32s (A := A) (l := l).\n\
      Axiom to_le_bytes : forall {ws : WORDSIZE} {len}, nseq (@int ws) len -> seq int8.\n\
-     Definition from_seq {A : Type}  `{Default A} {len} (s : seq A) : nseq A len := array_from_seq _ s.\n\
+     Definition from_seq {A : Type}  `{Default A} {len slen} (s : array_or_seq A slen) : nseq A len := array_from_seq _ (as_seq s).\n\
      \n\
      Notation Seq := seq.\n\
      Notation len := length.\n\
@@ -724,6 +742,15 @@ module CoqBackend = struct
      Definition set_exact_chunk {a} `{H : Default a} {len} := @set_chunk a H len.\n\
      Notation get_remainder_chunk := seq_get_remainder_chunk.\n\
      Notation \"a <> b\" := (negb (eqb a b)).\n\
+     \n\
+     Notation from_secret_literal := nat_mod_from_secret_literal.\n\
+     Definition pow2 {m} := nat_mod_pow2 m.\n\
+     Instance nat_mod_addition {n} : Addition (nat_mod n) := { add a b := a +% b }.\n\
+     Instance nat_mod_multiplication {n} : Multiplication (nat_mod n) := { mul a b := a *% b }.\n\
+     Definition from_slice {a: Type} `{Default a} {len slen} (x : array_or_seq a slen) := array_from_slice default len (as_seq x).\n\
+     Notation zero := nat_mod_zero.\n\
+     Notation to_byte_seq_le := nat_mod_to_byte_seq_le.\n\
+     Notation U128_to_le_bytes := u128_to_le_bytes.\n\
      "
 
   let modules_to_string (o : Backend.Options.t) modules =
