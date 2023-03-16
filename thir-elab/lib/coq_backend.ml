@@ -90,6 +90,7 @@ module CoqBackend = struct
         | Lit of literal
         | RecordPat of string * (string * pat) list
         | TuplePat of pat list
+        | AscriptionPat of pat * ty
 
       type term =
         | Let of pat * term * term * ty
@@ -165,7 +166,7 @@ module CoqBackend = struct
     | (y :: ys) ->
        let (ty_defs, ty_str) = ty_to_string y in
        let (ys_defs, ys_str) = product_to_string ys sep in
-       ty_defs @ ys_defs, ty_str ^ " " ^ sep ^ " " ^ ys_str
+       ty_defs @ ys_defs, "(" ^ ty_str ^ " " ^ sep ^ " " ^ ys_str ^ ")"
     | [] -> [], ""
   (* and record_fields_to_string (x : (string * C.AST.ty) list) : C.AST.decl list * string = *)
   (*   match x with *)
@@ -196,6 +197,7 @@ module CoqBackend = struct
        "'(" ^ List.fold_left ~init:(pat_to_string t (depth+1)) ~f:(fun x y -> x ^ "," ^ pat_to_string y (depth+1)) ts ^ ")"
     | C.AST.TuplePat [] ->
        "todo empty tuple pattern?"
+    | C.AST.AscriptionPat (p, ty) -> pat_to_string p depth
     | _ -> .
   and record_pat_to_string args depth : string =
     match args with
@@ -384,29 +386,6 @@ module CoqBackend = struct
       | Float _ -> failwith "Float: todo"
       | Bool b -> C.AST.Const_bool b
 
-    let rec ppat (p : pat) : C.AST.pat =
-      match p.p with
-      | PWild -> C.AST.Wild
-      | PAscription { typ; pat } -> __TODO_pat__ "ascription"
-      | PBinding { mut = Immutable; mode = _; subpat = None; var; typ = _ (* we skip type annot here *); } ->
-         C.AST.Ident (var.name)
-      | PArray { args } -> __TODO_pat__ "Parray?"
-      | PConstruct { name = `TupleCons 0; args = [] } -> __TODO_pat__ "tuple 0"
-      | PConstruct { name = `TupleCons 1; args = [ { pat } ] } -> __TODO_pat__ "tuple 1"
-      | PConstruct { name = `TupleCons n; args } ->
-         C.AST.TuplePat (List.map ~f:(fun { pat } -> ppat pat) args)
-      | PConstruct { name; args; record } ->
-         C.AST.RecordPat (pglobal_ident_last name, pfield_pats args)
-      | PConstant { lit } ->
-         C.AST.Lit (pliteral lit)
-      | PDeref { subpat } -> __TODO_pat__ "deref"
-      | _ -> __TODO_pat__ "should never happen"
-    and pfield_pats (args : field_pat list) : (string * C.AST.pat) list =
-      match args with
-      | { field; pat } :: xs ->
-         (pglobal_ident_last field, ppat pat) :: pfield_pats xs
-      | _ -> []
-
     let __TODO_ty__ s : C.AST.ty = C.AST.Name (s ^ " todo(ty)")
 
     let rec pty (t : ty) : C.AST.ty =
@@ -446,6 +425,29 @@ module CoqBackend = struct
          | GType x -> pty x
          | GConst _ ->  __TODO_ty__ "const") :: args_ty xs
       | [] -> []
+
+    let rec ppat (p : pat) : C.AST.pat =
+      match p.p with
+      | PWild -> C.AST.Wild
+      | PAscription { typ; pat } -> C.AST.AscriptionPat (ppat pat, pty typ)
+      | PBinding { mut = Immutable; mode = _; subpat = None; var; typ = _ (* we skip type annot here *); } ->
+         C.AST.Ident (var.name)
+      | PArray { args } -> __TODO_pat__ "Parray?"
+      | PConstruct { name = `TupleCons 0; args = [] } -> __TODO_pat__ "tuple 0"
+      | PConstruct { name = `TupleCons 1; args = [ { pat } ] } -> __TODO_pat__ "tuple 1"
+      | PConstruct { name = `TupleCons n; args } ->
+         C.AST.TuplePat (List.map ~f:(fun { pat } -> ppat pat) args)
+      | PConstruct { name; args; record } ->
+         C.AST.RecordPat (pglobal_ident_last name, pfield_pats args)
+      | PConstant { lit } ->
+         C.AST.Lit (pliteral lit)
+      | PDeref { subpat } -> __TODO_pat__ "deref"
+      | _ -> __TODO_pat__ "should never happen"
+    and pfield_pats (args : field_pat list) : (string * C.AST.pat) list =
+      match args with
+      | { field; pat } :: xs ->
+         (pglobal_ident_last field, ppat pat) :: pfield_pats xs
+      | _ -> []
 
     let op_to_string (op : Ast.bin_op) =
       match op with
@@ -688,6 +690,11 @@ module CoqBackend = struct
      Instance array_add_inst {ws : WORDSIZE} {len: nat} : Addition (nseq (@int ws) len) := { add a b := a array_add b }.\n\
      Instance int_add_inst {ws : WORDSIZE} : Addition (@int ws) := { add a b := MachineIntegers.add a b }.\n\
      \n\
+     Class Subtraction A := sub : A -> A -> A.\n\
+     Notation \"a .- b\" := (sub a b).\n\
+     Instance array_sub_inst {ws : WORDSIZE} {len: nat} : Subtraction (nseq (@int ws) len) := { sub := array_join_map MachineIntegers.sub }.\n\
+     Instance int_sub_inst {ws : WORDSIZE} : Subtraction (@int ws) := { sub a b := MachineIntegers.sub a b }.\n\
+     \n\
      Class Multiplication A := mul : A -> A -> A.\n\
      Notation \"a .* b\" := (mul a b).\n\
      Instance array_mul_inst {ws : WORDSIZE} {len: nat} : Multiplication (nseq (@int ws) len) := { mul a b := a array_mul b }.\n\
@@ -746,11 +753,18 @@ module CoqBackend = struct
      Notation from_secret_literal := nat_mod_from_secret_literal.\n\
      Definition pow2 {m} := nat_mod_pow2 m.\n\
      Instance nat_mod_addition {n} : Addition (nat_mod n) := { add a b := a +% b }.\n\
+     Instance nat_mod_subtraction {n} : Subtraction (nat_mod n) := { sub a b := a -% b }.\n\
      Instance nat_mod_multiplication {n} : Multiplication (nat_mod n) := { mul a b := a *% b }.\n\
      Definition from_slice {a: Type} `{Default a} {len slen} (x : array_or_seq a slen) := array_from_slice default len (as_seq x).\n\
      Notation zero := nat_mod_zero.\n\
      Notation to_byte_seq_le := nat_mod_to_byte_seq_le.\n\
      Notation U128_to_le_bytes := u128_to_le_bytes.\n\
+     Notation from_byte_seq_le := nat_mod_from_byte_seq_le.\n\
+     Definition from_literal {m} := nat_mod_from_literal m.\n\
+     Notation inv := nat_mod_inv.\n\
+     Notation update_start := array_update_start.\n\
+     Notation pow := nat_mod_pow_self.\n\
+     Notation bit := nat_mod_bit.\n\
      "
 
   let modules_to_string (o : Backend.Options.t) modules =
