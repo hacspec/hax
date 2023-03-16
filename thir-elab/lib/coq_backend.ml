@@ -76,6 +76,7 @@ module CoqBackend = struct
         | Arrow of ty * ty
         | Array of ty * int
         | AppTy of string * ty list
+        | NatMod of string * int * string
 
       type literal =
         | Const_string of string
@@ -154,6 +155,8 @@ module CoqBackend = struct
     | C.AST.AppTy (i, p) ->
        let ty_def, ty_str = product_to_string p "," in
        ty_def, i ^ " " ^ "(" ^ ty_str ^ ")"
+    | C.AST.NatMod (t, i, s) ->
+       "todo predef","todo natmod " ^ s
     | _ -> .
   and product_to_string (x : C.AST.ty list) (sep : string) : string * string =
     match x with
@@ -458,8 +461,8 @@ module CoqBackend = struct
       [
         (c "std::core::array::update_array_at", (3, ["";".[";"]<-";""]));
         (c "core::ops::index::Index::index", (2, ["";".[";"]"]));
-        (c "core::ops::bit::BitXor::bitxor", (2, ["";" .^ ";""]));
-        (c "core::ops::bit::BitAnd::bitand", (2, ["";" .& ";""]));
+        (c "core::ops::bit::BitXor::bitxor", (2, ["";".^";""]));
+        (c "core::ops::bit::BitAnd::bitand", (2, ["";".&";""]));
         (c "core::ops::bit::BitOr::bitor", (2, ["";".|";""]));
         (c "core::ops::arith::Add::add", (2, ["";".+";""]));
         (c "core::ops::arith::Sub::sub", (2, ["";".-";""]));
@@ -577,7 +580,41 @@ module CoqBackend = struct
            C.AST.Inductive (pglobal_ident_last name, p_record variants name)
         | Type { name; generics; variants } ->
            C.AST.Notation (pglobal_ident_last name, C.AST.Product (List.map ~f:snd (p_record variants name)))
-        (* Should probably be definition not notation! *)
+             (* Should probably be definition not notation! *)
+        | IMacroInvokation { macro =
+                               `Concrete
+                                 Non_empty_list.
+                               { crate = "hacspec_lib_tc"; path = [ "public_nat_mod" ] };
+                             argument;
+                             span; } ->
+           let open Hacspeclib_macro_parser in
+           let o : PublicNatMod.t =
+             PublicNatMod.parse argument |> Result.ok_or_failwith
+           in
+           C.AST.Notation (o.type_name, C.AST.NatMod (o.type_of_canvas, o.bit_size_of_field, o.modulo_value))
+        | IMacroInvokation { macro =
+                               `Concrete
+                                 Non_empty_list.{ crate = "hacspec_lib_tc"; path = [ "bytes" ] };
+                             argument;
+                             span; } ->
+           let open Hacspeclib_macro_parser in
+           let o : Bytes.t = Bytes.parse argument |> Result.ok_or_failwith in
+           C.AST.Notation (o.bytes_name, C.AST.Array (C.AST.Int (C.AST.U8, false), int_of_string o.size))
+        | IMacroInvokation { macro =
+                               `Concrete
+                                 Non_empty_list.{ crate = "hacspec_lib_tc"; path = [ "array" ] };
+                             argument;
+                             span; } ->
+           let open Hacspeclib_macro_parser in
+           let o : Array.t = Array.parse argument |> Result.ok_or_failwith in
+           let typ =
+             match o.typ with
+             | "U32" -> C.AST.U32
+             | "U16" -> C.AST.U16
+             | "U8" -> C.AST.U8
+             | usize -> C.AST.U32 (* TODO: usize? *)
+           in
+           C.AST.Notation (o.array_name, C.AST.Array(C.AST.Int (typ, false), int_of_string o.size)) (* o.index_typ *)
         | IMacroInvokation { macro; argument; span; witness; } ->
            __TODO_item__ "Macro"
         | NotImplementedYet -> __TODO_item__ "Not implemented yet?"
@@ -713,7 +750,8 @@ module CoqBackend = struct
            in
            ( mod_name ^ ".v",
              hardcoded_coq_headers ^ "\n\n"
-             ^ string_of_items items ))
+             ^ string_of_items items
+             ^ "\n"))
     |> modules_to_string o
 
   open Desugar_utils
