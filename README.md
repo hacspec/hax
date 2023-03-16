@@ -42,7 +42,7 @@ https://github.com/mschwaig/howto-install-nix-with-flake-support
 
 1. Make sure to have the following installed on your system:
 
-- `opam`
+- `opam` (`opam switch create 4.14.1`)
 - `rustup`
 - `nodejs`
 - `python2.7` (for example using [pyenv](https://github.com/pyenv/pyenv))
@@ -61,8 +61,11 @@ https://github.com/mschwaig/howto-install-nix-with-flake-support
    - `cargo thir-export [--help]`: export the THIR of a crate to a JSON file;
    - `thir-elab [--help]`: takes the THIR JSON export of a crate and outputs F\*/... code.
 
-**Note for MacOS users**: the librustc library path needs to be added to `DYLD_LIBRARY_PATH=$(rustc --print=sysroot)/lib`
+The librustc library path needs to be added to `DYLD_LIBRARY_PATH=$(rustc --print=sysroot)/lib`
 Make sure to use the right Rust nightly version, which is currently `nightly-2022-12-06`.
+
+> **Note**
+> Please use and check the [setup.sh](./setup.sh) for these steps as well.
 
 ## Edit the sources (Nix)
 
