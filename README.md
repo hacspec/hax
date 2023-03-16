@@ -42,7 +42,7 @@ https://github.com/mschwaig/howto-install-nix-with-flake-support
 
 1. Make sure to have the following installed on your system:
 
-- `opam`
+- `opam` (`opam switch create 4.14.1`)
 - `rustup`
 - `nodejs`
 - `python2.7` (for example using [pyenv](https://github.com/pyenv/pyenv))

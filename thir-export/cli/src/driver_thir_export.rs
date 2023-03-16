@@ -75,6 +75,7 @@ fn browse_items<'tcx>(
         struct HirLinter<'a, 'tcx> {
             session: &'a Lrc<Session>,
             tcx: &'a TyCtxt<'tcx>,
+            derive_allow_list: Vec<String>,
         }
 
         impl<'a, 'v> HirLinter<'a, 'v> {
@@ -314,7 +315,7 @@ fn browse_items<'tcx>(
                     },
                     ExprKind::Loop(block, label, source, span) => match source {
                         LoopSource::Loop | LoopSource::While => self.unsupported_loop(*span),
-                        _ => (),
+                        LoopSource::ForLoop => eprintln!(" >>> hir for loop"),
                     },
                     // FIXME: where to get this from?
                     // ExprKind::Async(e, c, b) => self.no_async_await(b.span),
@@ -340,8 +341,7 @@ fn browse_items<'tcx>(
             }
 
             fn visit_mod(&mut self, m: &'v Mod<'v>, s: Span, n: HirId) {
-                // FIXME
-                // eprintln!(" >>> hir mod {:?}", s);
+                eprintln!(" >>> hir mod {:?}", s);
 
                 // keep going
                 walk_mod(self, m, n);
@@ -363,14 +363,23 @@ fn browse_items<'tcx>(
                         if let Some(of_trait) = &imp.of_trait {
                             // XXX: We probably want to get this in. Only look for external functions.
                             let def_id = of_trait.hir_ref_id.owner.def_id.to_def_id();
-                            // eprintln!(" >>> impl of trait {:?}", of_trait.path.span,);
                             if self
                                 .tcx
                                 .has_attr(def_id, rustc_span::symbol::sym::automatically_derived)
                             {
-                                if let Some(item) = imp.items.get(0) {
-                                    self.no_derive(item.span);
+                                let path_string = of_trait
+                                    .path
+                                    .segments
+                                    .iter()
+                                    .map(|seg| seg.ident.as_str())
+                                    .collect::<Vec<&str>>()
+                                    .join("::");
+                                if !self.derive_allow_list.contains(&path_string) {
+                                    self.no_derive(i.span);
                                 }
+
+                                // We don't want to go into derived items.
+                                return;
                             }
                         }
                     }
@@ -385,11 +394,13 @@ fn browse_items<'tcx>(
             }
 
             fn visit_trait_item(&mut self, ti: &'v TraitItem<'v>) {
-                match &ti.kind {
-                    TraitItemKind::Const(_, _) => self.no_assoc_items(ti.span),
-                    TraitItemKind::Type(_, _) => self.no_assoc_items(ti.span),
-                    TraitItemKind::Fn(bounds, ty) => (),
-                }
+                eprintln!(" >>> hir trait item {:?} at {:?}", ti.ident.name, ti.span);
+
+                // match &ti.kind {
+                //     TraitItemKind::Const(_, _) => self.no_assoc_items(ti.span),
+                //     TraitItemKind::Type(_, _) => self.no_assoc_items(ti.span),
+                //     TraitItemKind::Fn(bounds, ty) => (),
+                // }
 
                 // keep going
                 walk_trait_item(self, ti);
@@ -411,8 +422,15 @@ fn browse_items<'tcx>(
             }
 
             fn visit_stmt(&mut self, s: &'v Stmt<'v>) {
+                // eprintln!(
+                //     " >>> hir stmt {:?} at {:?}",
+                //     self.tcx.opt_item_name(s.hir_id.owner.to_def_id()).unwrap(),
+                //     s.span
+                // );
+
                 match &s.kind {
                     StmtKind::Local(b) => {
+                        // eprintln!("       local stmt");
                         if let Some(init) = b.init {
                             match init.kind {
                                 ExprKind::AddrOf(x, f, s) => {
@@ -427,9 +445,9 @@ fn browse_items<'tcx>(
                         }
                         if let Some(els) = b.els {}
                     }
-                    StmtKind::Item(_) => (),
-                    StmtKind::Expr(_) => (),
-                    StmtKind::Semi(_) => (),
+                    StmtKind::Item(_) => (), // eprintln!("       item stmt"),
+                    StmtKind::Expr(_) => (), // eprintln!("       expr stmt"),
+                    StmtKind::Semi(_) => (), // eprintln!("       semi stmt"),
                 }
 
                 // keep going
@@ -463,8 +481,16 @@ fn browse_items<'tcx>(
             }
 
             fn visit_impl_item(&mut self, ii: &'v ImplItem<'v>) {
+                eprintln!(
+                    " >>> hir impl item {:?} at {:?} with owner {:?}",
+                    ii.ident.name,
+                    ii.span,
+                    self.tcx.hir().owner(ii.owner_id)
+                    // self.tcx.opt_item_name(ii.owner_id.def_id.to_def_id())
+                );
+
                 // match &ii.kind {
-                //     ImplItemKind::Const(_, _) => eprintln!(" >>> impl const {:#?}", ii.ident),
+                //     ImplItemKind::Const(_, _) => (), // eprintln!(" >>> impl const {:#?}", ii.ident),
                 //     ImplItemKind::Type(_) => eprintln!(" >>> impl type {:#?}", ii.ident),
                 //     ImplItemKind::Fn(bounds, ty) => eprintln!(" >>> impl fn {:#?}", ii.ident),
                 // }
@@ -493,58 +519,82 @@ fn browse_items<'tcx>(
             }
         }
 
-        let mut linter = HirLinter { session, tcx: &tcx };
+        // XXX: read from config file or something
+        let derive_allow_list = vec![
+            // serde
+            "_serde::Serialize",
+            "_serde::Deserialize",
+            // std lib
+            "$crate::marker::StructuralPartialEq",
+            "$crate::marker::StructuralEq",
+            "$crate::cmp::PartialEq",
+            "$crate::cmp::Eq",
+            "$crate::clone::Clone",
+            "$crate::fmt::Debug",
+            "$crate::marker::Copy",
+        ];
+        let derive_allow_list = derive_allow_list
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
+
+        let mut linter = HirLinter {
+            session,
+            tcx: &tcx,
+            derive_allow_list,
+        };
         hir.visit_all_item_likes_in_crate(&mut linter);
+        // hir.walk_toplevel_module(&mut linter);
     }
 
-    let mut bodies = bodies.collect::<Vec<_>>();
-    // we first visit `AnonConst`s, otherwise the thir body might be stolen
-    bodies.sort_by(|a, b| {
-        use std::cmp::Ordering::*;
-        let is_anon_const = |x: &rustc_span::def_id::LocalDefId| {
-            matches!(hir.get_by_def_id(x.clone()), rustc_hir::Node::AnonConst(_))
-        };
-        if is_anon_const(a) {
-            Less
-        } else if is_anon_const(b) {
-            Equal
-        } else {
-            Greater
-        }
-    });
+    // let mut bodies = bodies.collect::<Vec<_>>();
+    // // we first visit `AnonConst`s, otherwise the thir body might be stolen
+    // bodies.sort_by(|a, b| {
+    //     use std::cmp::Ordering::*;
+    //     let is_anon_const = |x: &rustc_span::def_id::LocalDefId| {
+    //         matches!(hir.get_by_def_id(x.clone()), rustc_hir::Node::AnonConst(_))
+    //     };
+    //     if is_anon_const(a) {
+    //         Less
+    //     } else if is_anon_const(b) {
+    //         Equal
+    //     } else {
+    //         Greater
+    //     }
+    // });
 
-    let thirs: std::collections::HashMap<
-        rustc_span::def_id::LocalDefId,
-        (rustc_middle::thir::Thir<'tcx>, ExprId),
-    > = bodies
-        .into_iter()
-        .map(|did| {
-            let (thir, expr) = tcx
-                .thir_body(rustc_middle::ty::WithOptConstParam {
-                    did,
-                    const_param_did: None,
-                })
-                .expect("While trying to reach a body's THIR defintion, got a typechecking error");
-            // Borrowing `Thir` from a `Steal`!
-            (did, (thir.borrow().clone(), expr))
-        })
-        .collect();
+    // let thirs: std::collections::HashMap<
+    //     rustc_span::def_id::LocalDefId,
+    //     (rustc_middle::thir::Thir<'tcx>, ExprId),
+    // > = bodies
+    //     .into_iter()
+    //     .map(|did| {
+    //         let (thir, expr) = tcx
+    //             .thir_body(rustc_middle::ty::WithOptConstParam {
+    //                 did,
+    //                 const_param_did: None,
+    //             })
+    //             .expect("While trying to reach a body's THIR defintion, got a typechecking error");
+    //         // Borrowing `Thir` from a `Steal`!
+    //         (did, (thir.borrow().clone(), expr))
+    //     })
+    //     .collect();
 
-    let items = hir.items();
-    let macro_calls_r = box macro_calls;
-    let state = &thir_export::State {
-        tcx,
-        options: box options.clone(),
-        thir: (),
-        owner_id: (),
-        opt_def_id: None,
-        macro_infos: macro_calls_r,
-        local_ident_map: Rc::new(RefCell::new(HashMap::new())),
-        cached_thirs: thirs,
-    };
-    let converted_items = thir_export::inline_macro_invokations(&items.collect(), state);
+    // let items = hir.items();
+    // let macro_calls_r = box macro_calls;
+    // let state = &thir_export::State {
+    //     tcx,
+    //     options: box options.clone(),
+    //     thir: (),
+    //     owner_id: (),
+    //     opt_def_id: None,
+    //     macro_infos: macro_calls_r,
+    //     local_ident_map: Rc::new(RefCell::new(HashMap::new())),
+    //     cached_thirs: thirs,
+    // };
+    // let converted_items = thir_export::inline_macro_invokations(&items.collect(), state);
 
-    serde_json::to_writer_pretty(options.output_file.open_or_stdout(), &converted_items).unwrap();
+    // serde_json::to_writer_pretty(options.output_file.open_or_stdout(), &converted_items).unwrap();
 }
 
 use std::collections::HashMap;
