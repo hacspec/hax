@@ -225,12 +225,14 @@ fn browse_items<'tcx>(
                 );
             }
 
-            fn no_derive(&self, span: Span) {
+            fn derive_external_trait(&self, span: Span, trait_name: String) {
                 self.session.span_warn_with_code(
                     span,
-                    "[Circus] Derives are not supported",
+                    format!(
+                        "[Circus] Implementation of external trait {trait_name} is not supported"
+                    ),
                     DiagnosticId::Lint {
-                        name: "Derive".to_string(),
+                        name: "External trait".to_string(),
                         has_future_breakage: false,
                         is_force_warn: true,
                     },
@@ -296,7 +298,11 @@ fn browse_items<'tcx>(
                                     .collect::<Vec<&str>>()
                                     .join("::");
                                 if !self.derive_allow_list.contains(&path_string) {
-                                    self.no_derive(i.span);
+                                    let path_string = match path_string.split_once(':') {
+                                        Some((left, right)) => right[1..].to_string(),
+                                        None => path_string,
+                                    };
+                                    self.derive_external_trait(i.span, path_string);
                                 }
 
                                 // We don't want to go into derived items.

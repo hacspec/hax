@@ -122,7 +122,7 @@ use hash::*;
 use serde::{Deserialize, Serialize};
 use serde_json::to_string as to_json_string;
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize, Hash)]
 struct DummyStruct {
     dummy: u8,
 }
