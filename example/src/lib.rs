@@ -100,6 +100,19 @@ pub fn trait_obj_fun3(trait_obj: impl MyTrait) {
     trait_obj.run();
 }
 
+pub fn explicit_lifetime<'a>(x: &'a u8) -> u8 {
+    *x
+}
+
+fn update<F1, F2>(f1: F1, mut f2: F2) -> u8
+where
+    F1: Fn(u8) -> u8,
+    F2: FnMut(u8) -> u8,
+{
+    let x = 5;
+    f1(1) + f2(x)
+}
+
 pub union SomeUnion {
     a: u8,
 }
@@ -129,6 +142,10 @@ impl DummyStruct {
     fn member_fun(&self) {
         let s = to_json_string(self).unwrap();
         println!("I'm a member function {}", s);
+    }
+
+    fn update(&mut self) {
+        println!("update self");
     }
 }
 
