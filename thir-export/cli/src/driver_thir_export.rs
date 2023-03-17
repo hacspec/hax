@@ -223,6 +223,7 @@ fn browse_items<'tcx>(
             type NestedFilter = OnlyBodies;
 
             fn nested_visit_map(&mut self) -> Self::Map {
+                eprintln!(" >>> visiting nested map");
                 self.tcx.hir()
             }
 
@@ -234,6 +235,7 @@ fn browse_items<'tcx>(
                 span: Span,
                 id: HirId,
             ) {
+                eprintln!(" >>> visiting fn");
                 fn check_ty_kind(visitor: &HirLinter, k: &TyKind, span: Span) {
                     match k {
                         TyKind::Ptr(_) => visitor.no_unsafe(span),
@@ -304,7 +306,7 @@ fn browse_items<'tcx>(
             }
 
             fn visit_expr(&mut self, ex: &'v Expr<'v>) {
-                // eprintln!(" >>> hir expr {:?}", ex.span);
+                eprintln!(" >>> visitng hir expr {:?}", ex.span);
 
                 match &ex.kind {
                     ExprKind::Block(block, _) => match block.rules {
@@ -341,14 +343,14 @@ fn browse_items<'tcx>(
             }
 
             fn visit_mod(&mut self, m: &'v Mod<'v>, s: Span, n: HirId) {
-                eprintln!(" >>> hir mod {:?}", s);
+                eprintln!(" >>> visiting mod {:?}", s);
 
                 // keep going
                 walk_mod(self, m, n);
             }
 
             fn visit_item(&mut self, i: &'v Item<'v>) {
-                // eprintln!(" >>> hir item {:?} at {:?}", i.ident.name, i.span);
+                eprintln!(" >>> visiting item {:?} at {:?}", i.ident.name, i.span);
                 match i.kind {
                     ItemKind::Union(_, _) => {
                         // TODO: This should be an error (span_err_with_code)
@@ -394,7 +396,7 @@ fn browse_items<'tcx>(
             }
 
             fn visit_trait_item(&mut self, ti: &'v TraitItem<'v>) {
-                eprintln!(" >>> hir trait item {:?} at {:?}", ti.ident.name, ti.span);
+                eprintln!(" >>> visiting trait item {:?} at {:?}", ti.ident.name, ti.span);
 
                 // match &ti.kind {
                 //     TraitItemKind::Const(_, _) => self.no_assoc_items(ti.span),
@@ -407,6 +409,7 @@ fn browse_items<'tcx>(
             }
 
             fn visit_assoc_type_binding(&mut self, type_binding: &'v TypeBinding<'v>) {
+                eprintln!(" >>> visiting assoc type binding {:?}", type_binding.span);
                 // self.no_assoc_items(type_binding.span);
 
                 // keep going
@@ -414,7 +417,7 @@ fn browse_items<'tcx>(
             }
 
             fn visit_associated_item_kind(&mut self, kind: &'v AssocItemKind) {
-                // eprintln!(" >>> visit assoc item kind {:?}", kind);
+                eprintln!(" >>> visit assoc item kind {:?}", kind);
                 // self.no_assoc_items(self.span);
 
                 // keep going
@@ -422,11 +425,11 @@ fn browse_items<'tcx>(
             }
 
             fn visit_stmt(&mut self, s: &'v Stmt<'v>) {
-                // eprintln!(
-                //     " >>> hir stmt {:?} at {:?}",
-                //     self.tcx.opt_item_name(s.hir_id.owner.to_def_id()).unwrap(),
-                //     s.span
-                // );
+                eprintln!(
+                    " >>> visiting stmt {:?} at {:?}",
+                    self.tcx.opt_item_name(s.hir_id.owner.to_def_id()).unwrap(),
+                    s.span
+                );
 
                 match &s.kind {
                     StmtKind::Local(b) => {
@@ -455,6 +458,8 @@ fn browse_items<'tcx>(
             }
 
             fn visit_where_predicate(&mut self, predicate: &'v WherePredicate<'v>) {
+                eprintln!(" >>> visiting where predicate");
+
                 match predicate {
                     WherePredicate::BoundPredicate(p) => (),
                     WherePredicate::RegionPredicate(p) => self.explicit_lifetime(p.span),
@@ -466,6 +471,7 @@ fn browse_items<'tcx>(
             }
 
             fn visit_inline_asm(&mut self, asm: &'v InlineAsm<'v>, id: HirId) {
+                eprintln!(" >>> visiting inline asm");
                 self.no_unsafe(asm.line_spans[0]); // XXX: what's the right span here?
 
                 // keep going
@@ -474,7 +480,7 @@ fn browse_items<'tcx>(
 
             fn visit_use(&mut self, path: &'v UsePath<'v>, hir_id: HirId) {
                 // FIXME
-                // eprintln!(" >>> use {path:?}");
+                eprintln!(" >>> cisiting use {:?}", path.span);
 
                 // keep going
                 walk_use(self, path, hir_id);
@@ -482,10 +488,10 @@ fn browse_items<'tcx>(
 
             fn visit_impl_item(&mut self, ii: &'v ImplItem<'v>) {
                 eprintln!(
-                    " >>> hir impl item {:?} at {:?} with owner {:?}",
+                    " >>> visiting impl item {:?} at {:?}", // with owner {:?}",
                     ii.ident.name,
                     ii.span,
-                    self.tcx.hir().owner(ii.owner_id)
+                    // self.tcx.hir().owner(ii.owner_id)
                     // self.tcx.opt_item_name(ii.owner_id.def_id.to_def_id())
                 );
 
@@ -502,14 +508,14 @@ fn browse_items<'tcx>(
             }
 
             fn visit_body(&mut self, b: &'v Body<'v>) {
-                // eprintln!(" >>> body: {:?}", b.);
+                eprintln!(" >>> visiting body");
 
                 // keep going
                 walk_body(self, b);
             }
 
             fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
-                // eprintln!(" >>> attribute: {:?}", attr.span);
+                eprintln!(" >>> visiting attribute: {:?}", attr.span);
                 // match &attr.kind {
                 //     ast::AttrKind::Normal(normal_attr) => {
                 //         eprintln!(" >>> normal attribute: {:?}", normal_attr.item.path);
