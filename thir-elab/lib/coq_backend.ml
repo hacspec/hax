@@ -74,7 +74,7 @@ module CoqBackend = struct
         | RecordTy of string * (string * ty) list
         | Product of ty list
         | Arrow of ty * ty
-        | Array of ty * int
+        | ArrayTy of ty * int
         | AppTy of string * ty list
         | NatMod of string * int * string
 
@@ -106,6 +106,7 @@ module CoqBackend = struct
         | Type of ty
         | Lambda of pat list * term
         | Tuple of term list
+        | Array of term list
 
       type decl =
         | Unimplemented of string
@@ -145,7 +146,7 @@ module CoqBackend = struct
        let a_ty_def, a_ty_str = ty_to_string a in
        let b_ty_def, b_ty_str = ty_to_string b in
        a_ty_def @ b_ty_def, a_ty_str ^ " " ^ "->" ^ " " ^ b_ty_str
-    | C.AST.Array (t, l) ->
+    | C.AST.ArrayTy (t, l) ->
        let ty_def, ty_str = ty_to_string t in
        ty_def, "nseq" ^ " " ^ ty_str ^ " " ^ Int.to_string l
     | C.AST.AppTy (i, []) ->
@@ -157,7 +158,7 @@ module CoqBackend = struct
        let ty_def, ty_str = product_to_string p "," in
        ty_def, i ^ " " ^ "(" ^ ty_str ^ ")"
     | C.AST.NatMod (t, i, s) ->
-       [C.AST.Notation (t, C.AST.Array (C.AST.Int (U8, false), i))], "nat_mod 0x" ^ s
+       [C.AST.Notation (t, C.AST.ArrayTy (C.AST.Int (U8, false), i))], "nat_mod 0x" ^ s
     | _ -> .
   and product_to_string (x : C.AST.ty list) (sep : string) : C.AST.decl list * string =
     match x with
@@ -166,7 +167,7 @@ module CoqBackend = struct
     | (y :: ys) ->
        let (ty_defs, ty_str) = ty_to_string y in
        let (ys_defs, ys_str) = product_to_string ys sep in
-       ty_defs @ ys_defs, "(" ^ ty_str ^ " " ^ sep ^ " " ^ ys_str ^ ")"
+       ty_defs @ ys_defs, (* "(" ^ " " ^ *) ty_str ^ " " ^ sep ^ " " ^ ys_str (* " " ^ ")" ^ *)
     | [] -> [], ""
   (* and record_fields_to_string (x : (string * C.AST.ty) list) : C.AST.decl list * string = *)
   (*   match x with *)
@@ -232,7 +233,7 @@ module CoqBackend = struct
     | C.AST.Var s -> s, false
     | C.AST.Name s -> s, false
     | C.AST.RecordConstructor (f, args) ->
-       term_to_string_without_paren f depth ^ " " ^ record_args_to_string args depth, true
+       "Build_" ^ term_to_string_without_paren f depth ^ " " ^ record_args_to_string args depth, true
     | C.AST.Type t ->
        let _, ty_str = ty_to_string t in (* TODO: Make definitions? *)
        ty_str, true (* TODO? does this always need paren? *)
@@ -242,6 +243,10 @@ module CoqBackend = struct
        "(" ^ List.fold_left ~init:(term_to_string_without_paren t (depth+1)) ~f:(fun x y -> x ^ "," ^ term_to_string_without_paren y (depth+1)) ts ^ ")", false
     | C.AST.Tuple [] ->
        "!TODO empty tuple!", false
+    | C.AST.Array (t :: ts) ->
+       "array_from_list"^" "^"_"^" "^"[" ^ List.fold_left ~init:(term_to_string_without_paren t (depth+1)) ~f:(fun x y -> x ^ ";" ^ term_to_string_without_paren y (depth+1)) ts ^ "]", true
+    | C.AST.Array [] ->
+       "!TODO empty array!", false
     | _ -> .
 
   and lambda_params_to_string (params : C.AST.pat list) depth : string =
@@ -320,22 +325,22 @@ module CoqBackend = struct
     | BinOp op ->
        (
          match op with
-         | Add -> "int_add"
-         | Sub -> "int_sub"
-         | Mul -> "int_mul"
-         | Div -> "int_div"
+         | Add -> "MachineIntegers.add"
+         | Sub -> "MachineIntegers.sub"
+         | Mul -> "MachineIntegers.mul"
+         | Div -> "MachineIntegers.divs"
          | Eq -> "eq_op"
          | Lt -> "lt_op"
          | Le -> "le_op"
          | Ge -> "ge_op"
          | Gt -> "gt_op"
          | Ne -> "ne_op"
-         | Rem -> failwith "TODO: Rem"
-         | BitXor -> failwith "TODO: BitXor"
-         | BitAnd -> failwith "TODO: BitAnd"
-         | BitOr -> failwith "TODO: BitOr"
-         | Shl -> failwith "TODO: Shl"
-         | Shr -> failwith "TODO: Shr"
+         | Rem -> "MachineIntegers.mods" (* .% *)
+         | BitXor -> "MachineIntegers.xor" (* .^ *)
+         | BitAnd -> "MachineIntegers.and" (* .& *)
+         | BitOr -> "MachineIntegers.or" (* .| *)
+         | Shl -> "shift_left_" (* shift_left *)
+         | Shr -> "shift_right_" (* shift_right *)
          | Offset -> failwith "TODO: Offset")
     | UnOp op ->
        "UnOp"
@@ -412,7 +417,7 @@ module CoqBackend = struct
          C.AST.Arrow (C.AST.Product (List.map ~f:pty inputs), pty output)
       | TFloat -> failwith "pty: Float"
       | TArray { typ; length } ->
-         C.AST.Array (pty typ, length)
+         C.AST.ArrayTy (pty typ, length)
       | TParam i ->
          __TODO_ty__ "param"
       | TProjectedAssociatedType s -> failwith "proj:assoc:type"
@@ -449,26 +454,6 @@ module CoqBackend = struct
          (pglobal_ident_last field, ppat pat) :: pfield_pats xs
       | _ -> []
 
-    let op_to_string (op : Ast.bin_op) =
-      match op with
-      | Add -> "+"
-      | Sub -> "-"
-      | Mul -> "*"
-      | Div -> "/"
-      | Eq -> "="
-      | Lt -> "<"
-      | Le -> "<="
-      | Ge -> ">="
-      | Gt -> ">"
-      | Ne -> "<>"
-      | Rem -> failwith "TODO: Rem"
-      | BitXor -> failwith "TODO: BitXor"
-      | BitAnd -> failwith "TODO: BitAnd"
-      | BitOr -> failwith "TODO: BitOr"
-      | Shl -> failwith "TODO: Shl"
-      | Shr -> failwith "TODO: Shr"
-      | Offset -> failwith "TODO: Offset"
-
     let operators =
       let c = GlobalIdent.of_string_exn in
       [
@@ -480,9 +465,9 @@ module CoqBackend = struct
         (c "core::ops::arith::Add::add", (2, ["";".+";""]));
         (c "core::ops::arith::Sub::sub", (2, ["";".-";""]));
         (c "core::ops::arith::Mul::mul", (2, ["";".*";""]));
-        (`Primitive (BinOp Add), (2, ["";"+";""]));
-        (`Primitive (BinOp Sub), (2, ["";"-";""]));
-        (`Primitive (BinOp Mul), (2, ["";"*";""]));
+        (`Primitive (BinOp Add), (2, ["";".+";""]));
+        (`Primitive (BinOp Sub), (2, ["";".-";""]));
+        (`Primitive (BinOp Mul), (2, ["";".*";""]));
         (`Primitive (BinOp Div), (2, ["";"/";""]));
         (`Primitive (BinOp Eq), (2, ["";"=";""]));
         (`Primitive (BinOp Lt), (2, ["";"<";""]));
@@ -490,6 +475,12 @@ module CoqBackend = struct
         (`Primitive (BinOp Ge), (2, ["";">=";""]));
         (`Primitive (BinOp Gt), (2, ["";">";""]));
         (`Primitive (BinOp Ne), (2, ["";"<>";""]));
+        (`Primitive (BinOp Rem), (2,["";".%";""]));
+        (`Primitive (BinOp BitXor), (2,["";".^";""]));
+        (`Primitive (BinOp BitAnd), (2,["";".&";""]));
+        (`Primitive (BinOp BitOr), (2,["";".|";""]));
+        (`Primitive (BinOp Shl), (2,["";" shift_left ";""]));
+        (`Primitive (BinOp Shr), (2,["";" shift_right ";""]));
         (c "secret_integers::rotate_left", (2, ["rol ";" ";""]));
         (c "hacspec::lib::foldi", (4, ["foldi ";" ";" ";" ";""]));
         (* (c "secret_integers::u8", (0, ["U8"])); *)
@@ -508,7 +499,7 @@ module CoqBackend = struct
          C.AST.Const (pliteral e)
       | LocalVar local_ident -> C.AST.Name local_ident.name
       | GlobalVar (`TupleCons 0)
-        | Construct { constructor = `TupleCons 0; fields = [] } ->
+      | Construct { constructor = `TupleCons 0; fields = [] } ->
          __TODO_term__ "global var 0 / construct 0"
       | GlobalVar global_ident ->
          C.AST.Var (pglobal_ident global_ident)
@@ -520,6 +511,8 @@ module CoqBackend = struct
          if List.length args <> arity then failwith "Bad arity";
          let args = List.map ~f:pexpr args in
          C.AST.AppFormat (op, args)
+      (* | App { f = { e = GlobalVar x }; args } -> *)
+      (*    __TODO_term__ "GLOBAL APP?" *)
       | App { f; args } ->
          let base = pexpr f in
          let args = List.map ~f:pexpr args in
@@ -527,7 +520,7 @@ module CoqBackend = struct
       | If { cond; then_; else_ } ->
          C.AST.If (pexpr cond, pexpr then_, Option.value_map else_ ~default:(C.AST.Literal "()") ~f:pexpr)
       | Array l ->
-         __TODO_term__ "array"
+         C.AST.Array (List.map ~f:pexpr l)
       | Let { lhs; rhs; body; monadic = Some monad } ->
          C.AST.Let (ppat lhs, pexpr rhs, pexpr body, pty lhs.typ)
       | Let { lhs; rhs; body; monadic = None } ->
@@ -580,58 +573,70 @@ module CoqBackend = struct
     let __TODO_item__ s = C.AST.Unimplemented (s ^ " todo(item)")
 
     let rec pitem (e : item) : C.AST.decl list =
-      [ match e.v with
-        | Fn { name; generics; body; params } ->
-           C.AST.Definition (pglobal_ident name, List.map ~f:(fun { pat; typ; typ_span } -> (ppat pat, pty typ)) params, pexpr body, pty body.typ)
-        | TyAlias { name; generics; ty } ->
-           C.AST.Notation (pglobal_ident name, pty ty)
-        (* record *)
-        | Type { name; generics; variants = [{name=record_name; arguments}]; record = true } ->
-           C.AST.Record (pglobal_ident_last name, p_record_record arguments)
-        (* enum *)
-        | Type { name; generics; variants; record = true } ->
-           C.AST.Inductive (pglobal_ident_last name, p_record variants name)
-        | Type { name; generics; variants } ->
-           C.AST.Notation (pglobal_ident_last name, C.AST.Product (List.map ~f:snd (p_record variants name)))
-             (* Should probably be definition not notation! *)
-        | IMacroInvokation { macro =
-                               `Concrete
-                                 Non_empty_list.
-                               { crate = "hacspec_lib_tc"; path = [ "public_nat_mod" ] };
-                             argument;
-                             span; } ->
-           let open Hacspeclib_macro_parser in
-           let o : PublicNatMod.t =
-             PublicNatMod.parse argument |> Result.ok_or_failwith
-           in
-           C.AST.Notation (o.type_name, C.AST.NatMod (o.type_of_canvas, o.bit_size_of_field, o.modulo_value))
-        | IMacroInvokation { macro =
-                               `Concrete
-                                 Non_empty_list.{ crate = "hacspec_lib_tc"; path = [ "bytes" ] };
-                             argument;
-                             span; } ->
-           let open Hacspeclib_macro_parser in
-           let o : Bytes.t = Bytes.parse argument |> Result.ok_or_failwith in
-           C.AST.Notation (o.bytes_name, C.AST.Array (C.AST.Int (C.AST.U8, false), int_of_string o.size))
-        | IMacroInvokation { macro =
-                               `Concrete
-                                 Non_empty_list.{ crate = "hacspec_lib_tc"; path = [ "array" ] };
-                             argument;
-                             span; } ->
-           let open Hacspeclib_macro_parser in
-           let o : Array.t = Array.parse argument |> Result.ok_or_failwith in
-           let typ =
-             match o.typ with
-             | "U32" -> C.AST.U32
-             | "U16" -> C.AST.U16
-             | "U8" -> C.AST.U8
-             | usize -> C.AST.U32 (* TODO: usize? *)
-           in
-           C.AST.Notation (o.array_name, C.AST.Array(C.AST.Int (typ, false), int_of_string o.size)) (* o.index_typ *)
-        | IMacroInvokation { macro; argument; span; witness; } ->
-           __TODO_item__ "Macro"
-        | NotImplementedYet -> __TODO_item__ "Not implemented yet?"
-        | _ -> . ]
+      match e.v with
+      | Fn { name; generics; body; params } ->
+         [ C.AST.Definition (pglobal_ident name, List.map ~f:(fun { pat; typ; typ_span } -> (ppat pat, pty typ)) params, pexpr body, pty body.typ) ]
+      | TyAlias { name; generics; ty } ->
+         [ C.AST.Notation (pglobal_ident name, pty ty) ]
+      (* record *)
+      | Type { name; generics; variants = [{name=record_name; arguments}]; record = true } ->
+         [ C.AST.Record (pglobal_ident_last name, p_record_record arguments) ]
+      (* enum *)
+      | Type { name; generics; variants; record = true } ->
+         [ C.AST.Inductive (pglobal_ident_last name, p_record variants name) ]
+      | Type { name; generics; variants } ->
+         [ C.AST.Notation (pglobal_ident_last name, C.AST.Product (List.map ~f:snd (p_record variants name))) ]
+      (* Should probably be definition not notation! *)
+      | IMacroInvokation { macro =
+                             `Concrete
+                               Non_empty_list.
+                             { crate = "hacspec_lib_tc"; path = [ "public_nat_mod" ] };
+                           argument;
+                           span; } ->
+         let open Hacspeclib_macro_parser in
+         let o : PublicNatMod.t =
+           PublicNatMod.parse argument |> Result.ok_or_failwith
+         in
+         [ C.AST.Notation (o.type_name, C.AST.NatMod (o.type_of_canvas, o.bit_size_of_field, o.modulo_value)) ]
+      | IMacroInvokation { macro =
+                             `Concrete
+                               Non_empty_list.{ crate = "hacspec_lib_tc"; path = [ "bytes" ] };
+                           argument;
+                           span; } ->
+         let open Hacspeclib_macro_parser in
+         let o : Bytes.t = Bytes.parse argument |> Result.ok_or_failwith in
+         [ C.AST.Notation (o.bytes_name, C.AST.ArrayTy (C.AST.Int (C.AST.U8, false), int_of_string o.size)) ]
+      | IMacroInvokation { macro =
+                             `Concrete
+                               Non_empty_list.{ crate = "hacspec_lib_tc"; path = [ "public_bytes" ] };
+                           argument;
+                           span; } ->
+         let open Hacspeclib_macro_parser in
+         let o : Bytes.t = Bytes.parse argument |> Result.ok_or_failwith in
+         (* C.AST.Record (o.bytes_name, [("_", C.AST.ArrayTy (C.AST.Int (C.AST.U8, false), int_of_string o.size))]) *)
+         let typ = C.AST.ArrayTy (C.AST.Int (C.AST.U8, false), int_of_string o.size) in
+         [ C.AST.Notation (o.bytes_name, typ) ;
+           C.AST.Definition ("Build_" ^ o.bytes_name, [(C.AST.Ident "x", typ)], C.AST.Name "x", typ)
+         ]
+      | IMacroInvokation { macro =
+                             `Concrete
+                               Non_empty_list.{ crate = "hacspec_lib_tc"; path = [ "array" ] };
+                           argument;
+                           span; } ->
+         let open Hacspeclib_macro_parser in
+         let o : Array.t = Array.parse argument |> Result.ok_or_failwith in
+         let typ =
+           match o.typ with
+           | "U32" -> C.AST.U32
+           | "U16" -> C.AST.U16
+           | "U8" -> C.AST.U8
+           | usize -> C.AST.U32 (* TODO: usize? *)
+         in
+         [ C.AST.Notation (o.array_name, C.AST.ArrayTy (C.AST.Int (typ, false), int_of_string o.size)) (* o.index_typ *) ]
+      | IMacroInvokation { macro; argument; span; witness; } ->
+         [ __TODO_item__ "Macro" ]
+      | NotImplementedYet -> [ __TODO_item__ "Not implemented yet?" ]
+      | _ -> .
 
     and p_record variants parrent_name : (string * C.AST.ty) list =
       match variants with
@@ -670,12 +675,14 @@ module CoqBackend = struct
 
   let hardcoded_coq_headers =
     "From Hacspec Require Import Hacspec_Lib MachineIntegers.\n\
-     From Coq Require Import ZArith.\n\
+     (* From Coq Require Import ZArith.*)\n\
      Import List.ListNotations.\n\
-     Open Scope Z_scope.\n\
+     (* Open Scope Z_scope. *)\n\
      Open Scope bool_scope.\n\
      Open Scope hacspec_scope.\n\
      \n\
+     Definition int_succ {WS : WORDSIZE} (a : int) : int := MachineIntegers.add a MachineIntegers.one.\n\
+     Number Notation int Nat.of_num_uint Nat.to_num_uint (via nat mapping [[int_succ] => S, [MachineIntegers.zero] => O]) : hacspec_scope.\n\
      Definition U8 := int8. (* Secret int  *)\n\
      Definition U16 := int16. (* Secret int  *)\n\
      Definition U32 := int32. (* Secret int  *)\n\
@@ -765,6 +772,10 @@ module CoqBackend = struct
      Notation update_start := array_update_start.\n\
      Notation pow := nat_mod_pow_self.\n\
      Notation bit := nat_mod_bit.\n\
+     \n\
+     Definition int_to_int {ws1 ws2} (i : @int ws1) : @int ws2 := repr (unsigned i).\n\
+     Coercion int_to_int : int >-> int.\n\
+     Notation push := seq_push.\n\
      "
 
   let modules_to_string (o : Backend.Options.t) modules =
