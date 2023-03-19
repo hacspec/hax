@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "basic",
     "protocols/tls_cryptolib",
     "curve25519",
     "chacha20",
