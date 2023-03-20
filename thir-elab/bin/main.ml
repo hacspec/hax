@@ -3,7 +3,6 @@ open Core
 open Thir_elab.Utils
 open Thir_elab
 open Desugar_utils
-(* open Cli_types *)
 
 let import_options (o : Cli_types.options) (json_input : string) :
     Backend.Options.t =
@@ -48,9 +47,3 @@ let () =
      Coq_backend.register;
      Printexc.record_backtrace true;
      exit (Cmdliner.Cmd.eval (Backend.Registration.command ()))
-(* ======= *)
-(*   Fstar_backend.register; *)
-(*   Coq_backend.register; *)
-(*   Printexc.record_backtrace true; *)
-(*   exit (Cmdliner.Cmd.eval (Backend.Registration.command ())) *)
-(* >>>>>>> 1e22434 (mend) *)
