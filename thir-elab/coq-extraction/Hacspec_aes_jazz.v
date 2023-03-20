@@ -1,17 +1,19 @@
 From Hacspec Require Import Hacspec_Lib MachineIntegers.
-(* From Coq Require Import ZArith.*)
+From Coq Require Import ZArith.
 Import List.ListNotations.
-(* Open Scope Z_scope. *)
+Open Scope Z_scope.
 Open Scope bool_scope.
 Open Scope hacspec_scope.
 
-Definition int_succ {WS : WORDSIZE} (a : int) : int := MachineIntegers.add a MachineIntegers.one.
-Number Notation int Nat.of_num_uint Nat.to_num_uint (via nat mapping [[int_succ] => S, [MachineIntegers.zero] => O]) : hacspec_scope.
-Definition U8 := int8. (* Secret int  *)
-Definition U16 := int16. (* Secret int  *)
-Definition U32 := int32. (* Secret int  *)
-Definition U64 := int64. (* Secret int  *)
-Definition U128 := int128. (* Secret int  *)
+Definition int_xI {WS : WORDSIZE} (a : int) : int := MachineIntegers.add (MachineIntegers.mul a (repr 2)) MachineIntegers.one.
+Definition int_xO {WS : WORDSIZE} (a : int) : int := MachineIntegers.mul a (repr 2).
+Number Notation int Pos.of_num_int Pos.to_num_int (via positive mapping [[int_xI] => xI, [int_xO] => xO , [MachineIntegers.one] => xH]) : hacspec_scope.
+Notation "0" := (repr O).
+Notation U8 := int8. (* Secret int  *)
+Notation U16 := int16. (* Secret int  *)
+Notation U32 := int32. (* Secret int  *)
+Notation U64 := int64. (* Secret int  *)
+Notation U128 := int128. (* Secret int  *)
 
 Notation " x .[ a ]" := (array_index x a) (at level 40).
 Notation " x .[ i ]<- a" := (array_upd x i a) (at level 40).
@@ -62,7 +64,7 @@ Axiom to_le_bytes : forall {ws : WORDSIZE} {len}, nseq (@int ws) len -> seq int8
 Definition from_seq {A : Type}  `{Default A} {len slen} (s : array_or_seq A slen) : nseq A len := array_from_seq _ (as_seq s).
 
 Notation Seq := seq.
-Notation len := length.
+Notation len := (fun s => seq_len s : int32).
 
 Notation slice := array_slice.
 Notation new_seq := seq_new.
@@ -82,7 +84,7 @@ Notation get_remainder_chunk := seq_get_remainder_chunk.
 Notation "a <> b" := (negb (eqb a b)).
 
 Notation from_secret_literal := nat_mod_from_secret_literal.
-Definition pow2 {m} := nat_mod_pow2 m.
+Definition pow2 {m} (x : @int WORDSIZE32) := nat_mod_pow2 m (unsigned x).
 Instance nat_mod_addition {n} : Addition (nat_mod n) := { add a b := a +% b }.
 Instance nat_mod_subtraction {n} : Subtraction (nat_mod n) := { sub a b := a -% b }.
 Instance nat_mod_multiplication {n} : Multiplication (nat_mod n) := { mul a b := a *% b }.
@@ -100,6 +102,9 @@ Notation bit := nat_mod_bit.
 Definition int_to_int {ws1 ws2} (i : @int ws1) : @int ws2 := repr (unsigned i).
 Coercion int_to_int : int >-> int.
 Notation push := seq_push.
+Notation Build_secret := secret.
+Notation "a -× b" :=
+(prod a b) (at level 80, right associativity) : hacspec_scope.
 
 
 (*Not implemented yet? todo(item)*)
@@ -161,7 +166,7 @@ Definition vshufps (s1 : int128) (s2 : int128) (o : int8) : int128 :=
   let d4 := vpshufd1 s2 o 3 : int32 in
   rebuild_u128 d1 d2 d3 d4.
 
-Definition key_combine (rkey : int128) (temp1 : int128) (temp2 : int128) : int128 '× int128 :=
+Definition key_combine (rkey : int128) (temp1 : int128) (temp2 : int128) : (int128 '× int128) :=
   let temp1 := vpshufd temp1 255 : int128 in
   let temp2 := vshufps temp2 rkey 16 : int128 in
   let rkey := rkey.^temp2 : int128 in
@@ -179,7 +184,7 @@ Definition aeskeygenassist (v1 : int128) (v2 : int8) : int128 :=
   let y3 := (rotword y2).^v2 : int32 in
   rebuild_u128 y0 y1 y2 y3.
 
-Definition key_expand (rcon : int8) (rkey : int128) (temp2 : int128) : int128 '× int128 :=
+Definition key_expand (rcon : int8) (rkey : int128) (temp2 : int128) : (int128 '× int128) :=
   let temp1 := aeskeygenassist rkey rcon : int128 in
   key_combine rkey temp1 temp2.
 
@@ -192,11 +197,11 @@ Definition keys_expand (key : int128) : Seq int128 :=
   let temp2 := 0 : int128 in
   let '(key,rkeys,temp2) := foldi 1 11 (fun round '(key,rkeys,temp2) =>
       let rcon := RCON.[round] : int8 in
-      let '(key_temp,temp2_temp) := key_expand rcon key temp2 : int128 '× int128 in
+      let '(key_temp,temp2_temp) := key_expand rcon key temp2 : (int128 '× int128) in
       let key := key_temp : int128 in
       let temp2 := temp2_temp : int128 in
       let rkeys := push rkeys key : Seq int128 in
-      (key,rkeys,temp2)) (key,rkeys,temp2) : int128 '× Seq int128 '× int128 in
+      (key,rkeys,temp2)) (key,rkeys,temp2) : (int128 '× Seq int128 '× int128) in
   rkeys.
 
 Definition subbytes (s : int128) : int128 :=

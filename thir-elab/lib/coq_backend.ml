@@ -141,7 +141,9 @@ module CoqBackend = struct
     | C.AST.Int (int_size, false) -> [], "int" ^ int_size_to_string int_size
     | C.AST.Name s -> [], s
     | C.AST.RecordTy (name, fields) -> [C.AST.Record (name, fields)], name
-    | C.AST.Product l -> product_to_string l "'×"
+    | C.AST.Product l ->
+       let p_decl, p_str = product_to_string l "'×" in
+       p_decl, "(" ^ p_str ^ ")"
     | C.AST.Arrow (a, b) ->
        let a_ty_def, a_ty_str = ty_to_string a in
        let b_ty_def, b_ty_str = ty_to_string b in
@@ -167,7 +169,7 @@ module CoqBackend = struct
     | (y :: ys) ->
        let (ty_defs, ty_str) = ty_to_string y in
        let (ys_defs, ys_str) = product_to_string ys sep in
-       ty_defs @ ys_defs, (* "(" ^ " " ^ *) ty_str ^ " " ^ sep ^ " " ^ ys_str (* " " ^ ")" ^ *)
+       ty_defs @ ys_defs, ty_str ^ " " ^ sep ^ " " ^ ys_str
     | [] -> [], ""
   (* and record_fields_to_string (x : (string * C.AST.ty) list) : C.AST.decl list * string = *)
   (*   match x with *)
@@ -194,12 +196,15 @@ module CoqBackend = struct
     | C.AST.RecordPat (name, args) ->
        name ^ " " ^ "{|" ^ record_pat_to_string args (depth+1) ^ newline_indent depth
        ^ "|}"
-    | C.AST.TuplePat (t :: ts) ->
-       "'(" ^ List.fold_left ~init:(pat_to_string t (depth+1)) ~f:(fun x y -> x ^ "," ^ pat_to_string y (depth+1)) ts ^ ")"
-    | C.AST.TuplePat [] ->
-       "todo empty tuple pattern?"
+    | C.AST.TuplePat vals ->
+       "'(" ^ tuple_pat_to_string vals (depth+1) ^ ")" (* List.fold_left ~init:(pat_to_string t (depth+1)) ~f:(fun x y -> "(" ^ x ^ "," ^ pat_to_string y (depth+1) ^ ")") (ts) *)
     | C.AST.AscriptionPat (p, ty) -> pat_to_string p depth
     | _ -> .
+  and tuple_pat_to_string vals depth =
+    match vals with
+    | [t] -> pat_to_string t depth
+    | t :: ts -> pat_to_string t depth ^ "," ^ tuple_pat_to_string ts depth
+    | [] -> "todo empty tuple pattern?"
   and record_pat_to_string args depth : string =
     match args with
     | (name, pat) :: xs ->
@@ -239,15 +244,23 @@ module CoqBackend = struct
        ty_str, true (* TODO? does this always need paren? *)
     | C.AST.Lambda (params, body) ->
        "fun" ^ lambda_params_to_string params depth ^ " " ^ "=>" ^ newline_indent (depth+1) ^ term_to_string_without_paren body (depth+1), true
-    | C.AST.Tuple (t :: ts) ->
-       "(" ^ List.fold_left ~init:(term_to_string_without_paren t (depth+1)) ~f:(fun x y -> x ^ "," ^ term_to_string_without_paren y (depth+1)) ts ^ ")", false
-    | C.AST.Tuple [] ->
-       "!TODO empty tuple!", false
+    | C.AST.Tuple vals ->
+       "(" ^ tuple_term_to_string vals (depth+1) ^ ")", false
+       (* List.fold_left ~init:(term_to_string_without_paren t (depth+1)) ~f:(fun x y -> "(" ^ x ^ "," ^ term_to_string_without_paren y (depth+1) ^ ")") ts, false *)
     | C.AST.Array (t :: ts) ->
        "array_from_list"^" "^"_"^" "^"[" ^ List.fold_left ~init:(term_to_string_without_paren t (depth+1)) ~f:(fun x y -> x ^ ";" ^ term_to_string_without_paren y (depth+1)) ts ^ "]", true
     | C.AST.Array [] ->
        "!TODO empty array!", false
     | _ -> .
+
+  and tuple_term_to_string vals depth : string =
+    match vals with
+    | [t] ->
+       term_to_string_without_paren t depth
+    | t :: ts ->
+       term_to_string_without_paren t depth ^ "," ^ tuple_term_to_string ts depth
+    | [] ->
+       "!TODO empty tuple!"
 
   and lambda_params_to_string (params : C.AST.pat list) depth : string =
     match params with
@@ -675,19 +688,21 @@ module CoqBackend = struct
 
   let hardcoded_coq_headers =
     "From Hacspec Require Import Hacspec_Lib MachineIntegers.\n\
-     (* From Coq Require Import ZArith.*)\n\
+     From Coq Require Import ZArith.\n\
      Import List.ListNotations.\n\
-     (* Open Scope Z_scope. *)\n\
+     Open Scope Z_scope.\n\
      Open Scope bool_scope.\n\
      Open Scope hacspec_scope.\n\
      \n\
-     Definition int_succ {WS : WORDSIZE} (a : int) : int := MachineIntegers.add a MachineIntegers.one.\n\
-     Number Notation int Nat.of_num_uint Nat.to_num_uint (via nat mapping [[int_succ] => S, [MachineIntegers.zero] => O]) : hacspec_scope.\n\
-     Definition U8 := int8. (* Secret int  *)\n\
-     Definition U16 := int16. (* Secret int  *)\n\
-     Definition U32 := int32. (* Secret int  *)\n\
-     Definition U64 := int64. (* Secret int  *)\n\
-     Definition U128 := int128. (* Secret int  *)\n\
+     Definition int_xI {WS : WORDSIZE} (a : int) : int := MachineIntegers.add (MachineIntegers.mul a (repr 2)) MachineIntegers.one.\n\
+     Definition int_xO {WS : WORDSIZE} (a : int) : int := MachineIntegers.mul a (repr 2).\n\
+     Number Notation int Pos.of_num_int Pos.to_num_int (via positive mapping [[int_xI] => xI, [int_xO] => xO , [MachineIntegers.one] => xH]) : hacspec_scope.\n\
+     Notation \"0\" := (repr O).\n\
+     Notation U8 := int8. (* Secret int  *)\n\
+     Notation U16 := int16. (* Secret int  *)\n\
+     Notation U32 := int32. (* Secret int  *)\n\
+     Notation U64 := int64. (* Secret int  *)\n\
+     Notation U128 := int128. (* Secret int  *)\n\
      \n\
      Notation \" x .[ a ]\" := (array_index x a) (at level 40).\n\
      Notation \" x .[ i ]<- a\" := (array_upd x i a) (at level 40).\n\
@@ -738,7 +753,7 @@ module CoqBackend = struct
      Definition from_seq {A : Type}  `{Default A} {len slen} (s : array_or_seq A slen) : nseq A len := array_from_seq _ (as_seq s).\n\
      \n\
      Notation Seq := seq.\n\
-     Notation len := length.\n\
+     Notation len := (fun s => seq_len s : int32).\n\
      \n\
      Notation slice := array_slice.\n\
      Notation new_seq := seq_new.\n\
@@ -758,7 +773,7 @@ module CoqBackend = struct
      Notation \"a <> b\" := (negb (eqb a b)).\n\
      \n\
      Notation from_secret_literal := nat_mod_from_secret_literal.\n\
-     Definition pow2 {m} := nat_mod_pow2 m.\n\
+     Definition pow2 {m} (x : @int WORDSIZE32) := nat_mod_pow2 m (unsigned x).\n\
      Instance nat_mod_addition {n} : Addition (nat_mod n) := { add a b := a +% b }.\n\
      Instance nat_mod_subtraction {n} : Subtraction (nat_mod n) := { sub a b := a -% b }.\n\
      Instance nat_mod_multiplication {n} : Multiplication (nat_mod n) := { mul a b := a *% b }.\n\
@@ -776,6 +791,9 @@ module CoqBackend = struct
      Definition int_to_int {ws1 ws2} (i : @int ws1) : @int ws2 := repr (unsigned i).\n\
      Coercion int_to_int : int >-> int.\n\
      Notation push := seq_push.\n\
+     Notation Build_secret := secret.\n\
+     Notation \"a -× b\" :=\n\
+       (prod a b) (at level 80, right associativity) : hacspec_scope.\n\
      "
 
   let modules_to_string (o : Backend.Options.t) modules =

@@ -5,11 +5,15 @@ Open Scope Z_scope.
 Open Scope bool_scope.
 Open Scope hacspec_scope.
 
-Definition U8 := int8. (* Secret int  *)
-Definition U16 := int16. (* Secret int  *)
-Definition U32 := int32. (* Secret int  *)
-Definition U64 := int64. (* Secret int  *)
-Definition U128 := int128. (* Secret int  *)
+Definition int_xI {WS : WORDSIZE} (a : int) : int := MachineIntegers.add (MachineIntegers.mul a (repr 2)) MachineIntegers.one.
+Definition int_xO {WS : WORDSIZE} (a : int) : int := MachineIntegers.mul a (repr 2).
+Number Notation int Pos.of_num_int Pos.to_num_int (via positive mapping [[int_xI] => xI, [int_xO] => xO , [MachineIntegers.one] => xH]) : hacspec_scope.
+Notation "0" := (repr O).
+Notation U8 := int8. (* Secret int  *)
+Notation U16 := int16. (* Secret int  *)
+Notation U32 := int32. (* Secret int  *)
+Notation U64 := int64. (* Secret int  *)
+Notation U128 := int128. (* Secret int  *)
 
 Notation " x .[ a ]" := (array_index x a) (at level 40).
 Notation " x .[ i ]<- a" := (array_upd x i a) (at level 40).
@@ -60,7 +64,7 @@ Axiom to_le_bytes : forall {ws : WORDSIZE} {len}, nseq (@int ws) len -> seq int8
 Definition from_seq {A : Type}  `{Default A} {len slen} (s : array_or_seq A slen) : nseq A len := array_from_seq _ (as_seq s).
 
 Notation Seq := seq.
-Notation len := length.
+Notation len := (fun s => seq_len s : int32).
 
 Notation slice := array_slice.
 Notation new_seq := seq_new.
@@ -80,7 +84,7 @@ Notation get_remainder_chunk := seq_get_remainder_chunk.
 Notation "a <> b" := (negb (eqb a b)).
 
 Notation from_secret_literal := nat_mod_from_secret_literal.
-Definition pow2 {m} := nat_mod_pow2 m.
+Definition pow2 {m} (x : @int WORDSIZE32) := nat_mod_pow2 m (unsigned x).
 Instance nat_mod_addition {n} : Addition (nat_mod n) := { add a b := a +% b }.
 Instance nat_mod_subtraction {n} : Subtraction (nat_mod n) := { sub a b := a -% b }.
 Instance nat_mod_multiplication {n} : Multiplication (nat_mod n) := { mul a b := a *% b }.
@@ -94,6 +98,13 @@ Notation inv := nat_mod_inv.
 Notation update_start := array_update_start.
 Notation pow := nat_mod_pow_self.
 Notation bit := nat_mod_bit.
+
+Definition int_to_int {ws1 ws2} (i : @int ws1) : @int ws2 := repr (unsigned i).
+Coercion int_to_int : int >-> int.
+Notation push := seq_push.
+Notation Build_secret := secret.
+Notation "a -× b" :=
+(prod a b) (at level 80, right associativity) : hacspec_scope.
 
 
 (*Not implemented yet? todo(item)*)
@@ -116,9 +127,9 @@ Notation X25519SerializedScalar := (nseq int8 32).
 
 Definition mask_scalar (s : X25519SerializedScalar) : X25519SerializedScalar :=
   let k := s : X25519SerializedScalar in
-  let k := k.[0]<-((k.[0]).&(secret 248)) : X25519SerializedScalar in
-  let k := k.[31]<-((k.[31]).&(secret 127)) : X25519SerializedScalar in
-  k.[31]<-((k.[31]).|(secret 64)).
+  let k := k.[0]<-((k.[0]).&(Build_secret 248)) : X25519SerializedScalar in
+  let k := k.[31]<-((k.[31]).&(Build_secret 127)) : X25519SerializedScalar in
+  k.[31]<-((k.[31]).|(Build_secret 64)).
 
 Definition decode_scalar (s : X25519SerializedScalar) : Scalar :=
   let k := mask_scalar s : X25519SerializedScalar in
@@ -126,7 +137,7 @@ Definition decode_scalar (s : X25519SerializedScalar) : Scalar :=
 
 Definition decode_point (u : X25519SerializedPoint) : (X25519FieldElement '× X25519FieldElement) :=
   let u_ := u : X25519SerializedPoint in
-  let u_ := u_.[31]<-((u_.[31]).&(secret 127)) : X25519SerializedPoint in
+  let u_ := u_.[31]<-((u_.[31]).&(Build_secret 127)) : X25519SerializedPoint in
   (from_byte_seq_le u_,from_literal 1).
 
 Definition encode_point (p : (X25519FieldElement '× X25519FieldElement)) : X25519SerializedPoint :=
@@ -164,7 +175,7 @@ Definition montgomery_ladder (k : Scalar) (init : (X25519FieldElement '× X25519
   let acc := (inf,init) : ((X25519FieldElement '× X25519FieldElement) '× (X25519FieldElement '× X25519FieldElement)) in
   let acc := foldi 0 256 (fun i acc =>
       if
-        bit k (255-i)
+        bit k (255.-i)
       then
         let acc := swap acc : ((X25519FieldElement '× X25519FieldElement) '× (X25519FieldElement '× X25519FieldElement)) in
         let acc := point_add_and_double init acc : ((X25519FieldElement '× X25519FieldElement) '× (X25519FieldElement '× X25519FieldElement)) in
@@ -182,5 +193,5 @@ Definition x25519_scalarmult (s : X25519SerializedScalar) (p : X25519SerializedP
 
 Definition x25519_secret_to_public (s : X25519SerializedScalar) : X25519SerializedPoint :=
   let base := new : X25519SerializedPoint in
-  let base := base.[0]<-(secret 9) : X25519SerializedPoint in
+  let base := base.[0]<-(Build_secret 9) : X25519SerializedPoint in
   x25519_scalarmult s base.
