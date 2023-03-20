@@ -270,7 +270,7 @@ fn browse_items<'tcx>(
 
             fn visit_item(&mut self, i: &'v Item<'v>) {
                 log::trace!("visiting item {:?} at {:?}", i.ident.name, i.span);
-                // log::trace!("   item kind: {:#?}", i.kind);
+                log::trace!("   item kind: {:#?}", i.kind);
 
                 match i.kind {
                     ItemKind::Union(_, _) => {
@@ -330,8 +330,11 @@ fn browse_items<'tcx>(
 
             ///////////////
 
-            fn visit_id(&mut self, _hir_id: HirId) {
-                log::trace!(" >>> visiting id");
+            fn visit_id(&mut self, hir_id: HirId) {
+                log::trace!(
+                    "visiting id {hir_id:?} from crate {:?}",
+                    self.tcx.def_path(hir_id.owner.to_def_id())
+                );
                 // Nothing to do.
             }
             fn visit_name(&mut self, _name: Symbol) {
@@ -349,7 +352,7 @@ fn browse_items<'tcx>(
                 walk_mod(self, m, n);
             }
             fn visit_foreign_item(&mut self, i: &'v ForeignItem<'v>) {
-                log::trace!(" >>> visiting foreign item {:?} at {:?}", i.ident, i.span);
+                log::trace!("visiting foreign item {:?} at {:?}", i.ident, i.span);
                 walk_foreign_item(self, i)
             }
             fn visit_local(&mut self, l: &'v Local<'v>) {

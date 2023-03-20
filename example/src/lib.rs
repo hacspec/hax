@@ -119,6 +119,7 @@ pub union SomeUnion {
 
 mod hash;
 use hash::*;
+use hex::*;
 use serde::{Deserialize, Serialize};
 use serde_json::to_string as to_json_string;
 
@@ -141,7 +142,7 @@ trait Foo: Copy + Clone {
 impl DummyStruct {
     fn member_fun(&self) {
         let s = to_json_string(self).unwrap();
-        println!("I'm a member function {}", s);
+        println!("I'm a member function {}", encode(s));
     }
 
     fn update(&mut self) {
