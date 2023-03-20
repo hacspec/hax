@@ -210,12 +210,12 @@ module FStarBackend = struct
           | Ge -> F.lid [ "Prims"; "op_GreaterThan" ]
           | Gt -> F.lid [ "Prims"; "op_GreaterThanOrEqual" ]
           | Ne -> F.lid [ "Prims"; "op_disEquality" ]
-          | Rem -> failwith "TODO: Rem"
-          | BitXor -> failwith "TODO: BitXor"
-          | BitAnd -> failwith "TODO: BitAnd"
-          | BitOr -> failwith "TODO: BitOr"
-          | Shl -> failwith "TODO: Shl"
-          | Shr -> failwith "TODO: Shr"
+          | Rem -> F.lid [ "Prims"; "op_Modulus" ]
+          | BitXor -> F.lid [ "Hacspec_lib"; "^." ]
+          | BitAnd -> F.lid [ "Hacspec_lib"; "&." ]
+          | BitOr -> F.lid [ "Hacspec_lib"; "|." ]
+          | Shl -> F.lid [ "Hacspec_lib"; "<<." ]
+          | Shr -> F.lid [ "Hacspec_lib"; ">>." ]
           | Offset -> failwith "TODO: Offset")
       | UnOp op -> (
           match op with
