@@ -3,7 +3,6 @@ open Core
 open Thir_elab.Utils
 open Thir_elab
 open Desugar_utils
-(* open Cli_types *)
 
 let import_options (o : Cli_types.options) (json_input : string) :
     Backend.Options.t =
@@ -30,8 +29,21 @@ let () =
               ~f:(U.Mappers.rename_global_idents_item o.renamed_identifiers)
               items
           in
-          translate o bo items)
+          translate o bo items
+      | Coq ->
+         let open Coq_backend.CoqBackend in
+         let o : Backend.Options.t = import_options options input in
+         let bo : BackendOptions.t = () in
+         let items = Backend.read_json o.json_input in
+         let items = List.concat_map ~f:(desugar o bo) items in
+         let items =
+           List.map
+             ~f:(U.Mappers.rename_global_idents_item o.renamed_identifiers)
+             items
+         in
+         translate o bo items)
   | _ ->
-      Fstar_backend.register;
-      Printexc.record_backtrace true;
-      exit (Cmdliner.Cmd.eval (Backend.Registration.command ()))
+     Fstar_backend.register;
+     Coq_backend.register;
+     Printexc.record_backtrace true;
+     exit (Cmdliner.Cmd.eval (Backend.Registration.command ()))
