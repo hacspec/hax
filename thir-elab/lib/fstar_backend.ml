@@ -373,8 +373,7 @@ module FStarBackend = struct
           (* failwith "xx"; *)
           (* F.term @@ F.AST.Const (F.Const.Const_string (show_ty t, F.dummyRange)) *)
           F.term
-          @@ F.AST.Const
-               (F.Const.Const_string ("TODO:ProjectedType", F.dummyRange))
+          @@ F.AST.Wild
       (* failwith ("TODO: print_fstar cannot handle yet: " ^ show_ty t) *)
       | _ -> .
 
@@ -445,6 +444,7 @@ module FStarBackend = struct
         (c "core::ops::bit::BitXor::bitxor", (2, "^."));
         (c "core::ops::bit::BitAnd::bitand", (2, "&."));
         (c "core::ops::bit::BitOr::bitor", (2, "|."));
+        (c "core::ops::bit::Not::not", (1, "~."));
         (c "core::ops::arith::Add::add", (2, "+."));
         (c "core::ops::arith::Sub::sub", (2, "-."));
         (c "core::ops::arith::Mul::mul", (2, "*."));
@@ -705,6 +705,11 @@ module FStarBackend = struct
             F.term_of_lid
               [ last_of_global_ident @@ lowercase_global_ident name ]
           in
+          let constructor_funs =
+            List.map
+              ~f:(fun { name; arguments } ->
+                ( F.id @@  last_of_global_ident @@ lowercase_global_ident name,
+                  F.id @@  last_of_global_ident @@ name)) variants in
           let constructors =
             List.map
               ~f:(fun { name; arguments } ->
@@ -824,7 +829,7 @@ module FStarBackend = struct
             | "U32" -> "uint32"
             | "U16" -> "uint16"
             | "U8" -> "uint8"
-            | usize -> usize
+            | usize -> "uint_size"
           in
           let size = o.size in
           let array_def =
