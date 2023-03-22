@@ -257,20 +257,26 @@ fn browse_items<'tcx>(
 
             fn visit_nested_trait_item(&mut self, id: TraitItemId) {
                 log::trace!(" >>> visiting nested trait item");
+
+                walk_trait_item(self, self.tcx.hir().trait_item(id));
             }
             fn visit_nested_impl_item(&mut self, id: ImplItemId) {
                 log::trace!(" >>> visiting nested impl item");
+
+                walk_impl_item(self, self.tcx.hir().impl_item(id));
             }
             fn visit_nested_foreign_item(&mut self, id: ForeignItemId) {
                 log::trace!(" >>> visiting nested foreign item");
             }
             fn visit_nested_body(&mut self, id: BodyId) {
                 log::trace!(" >>> visiting nested body");
+
+                walk_body(self, self.tcx.hir().body(id));
             }
 
             fn visit_item(&mut self, i: &'v Item<'v>) {
                 log::trace!("visiting item {:?} at {:?}", i.ident.name, i.span);
-                log::trace!("   item kind: {:#?}", i.kind);
+                // log::trace!("   item kind: {:#?}", i.kind);
 
                 match i.kind {
                     ItemKind::Union(_, _) => {
@@ -320,7 +326,6 @@ fn browse_items<'tcx>(
                 // keep going
                 walk_item(self, i);
             }
-
             fn visit_body(&mut self, b: &'v Body<'v>) {
                 log::trace!(" >>> visiting body");
 
@@ -331,9 +336,19 @@ fn browse_items<'tcx>(
             ///////////////
 
             fn visit_id(&mut self, hir_id: HirId) {
+                // log::trace!(
+                //     "visiting id {hir_id:?} from crate {:?}",
+                //     self.tcx.def_path(hir_id.owner.to_def_id())
+                // );
+                // log::trace!(
+                //     "visiting id at {:?} with node {:?}",
+                //     self.tcx.hir().span_if_local(hir_id.owner.to_def_id()),
+                //     self.tcx.hir().find(hir_id)
+                // );
                 log::trace!(
-                    "visiting id {hir_id:?} from crate {:?}",
-                    self.tcx.def_path(hir_id.owner.to_def_id())
+                    "visiting id at {:?} is foreign: {:?}",
+                    self.tcx.hir().span_if_local(hir_id.owner.to_def_id()),
+                    self.tcx.is_foreign_item(hir_id.owner)
                 );
                 // Nothing to do.
             }
@@ -417,6 +432,7 @@ fn browse_items<'tcx>(
             }
             fn visit_expr(&mut self, ex: &'v Expr<'v>) {
                 log::trace!("visiting expr {:?}", ex.span);
+                log::trace!("   Node: {:?}", self.tcx.hir().find(ex.hir_id));
 
                 match &ex.kind {
                     ExprKind::Block(block, _) => match block.rules {
@@ -817,8 +833,20 @@ fn browse_items<'tcx>(
                 walk_lifetime(self, lifetime)
             }
             // The span is that of the surrounding type/pattern/expr/whatever.
-            fn visit_qpath(&mut self, qpath: &'v QPath<'v>, id: HirId, _span: Span) {
-                log::trace!(" >>> visiting qpath");
+            fn visit_qpath(&mut self, qpath: &'v QPath<'v>, id: HirId, span: Span) {
+                log::trace!("visiting qpath {span:?}");
+
+                // Look for foreign paths
+                match qpath {
+                    QPath::Resolved(ty, path) => {
+                        match path.res {
+                            _ => (),
+                        }
+                    },
+                    QPath::TypeRelative(ty, path) => (),
+                    _ => (),
+                }
+
                 walk_qpath(self, qpath, id)
             }
             fn visit_path(&mut self, path: &Path<'v>, _id: HirId) {

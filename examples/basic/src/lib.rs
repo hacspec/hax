@@ -1,6 +1,17 @@
 // #![feature(never_type)]
 #![allow(dead_code, unused)]
 
+mod hash;
+use hash::*;
+use hex::*;
+use serde::{Deserialize, Serialize};
+use serde_json::to_string as to_json_string;
+
+fn serde_json_print() {
+    let s = to_json_string(&[0, 1, 2]).unwrap();
+    println!("I'm a function {}", encode(s));
+}
+
 trait Features {
     type Mutability;
     type EarlyExit;
@@ -116,12 +127,6 @@ where
 pub union SomeUnion {
     a: u8,
 }
-
-mod hash;
-use hash::*;
-use hex::*;
-use serde::{Deserialize, Serialize};
-use serde_json::to_string as to_json_string;
 
 #[derive(Copy, Clone, Serialize, Deserialize, Hash)]
 struct DummyStruct {
