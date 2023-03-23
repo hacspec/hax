@@ -88,6 +88,7 @@ module CoqBackend = struct
 
       type pat =
         | Wild
+        | UnitPat
         | Ident of string
         | Lit of literal
         | RecordPat of string * (string * pat) list
@@ -198,6 +199,7 @@ module CoqBackend = struct
   let rec pat_to_string (x : C.AST.pat) depth : string =
     match x with
     | C.AST.Wild -> "_"
+    | C.AST.UnitPat -> "'tt"
     | C.AST.Ident s -> s
     | C.AST.Lit l ->
        literal_to_string l
@@ -322,7 +324,9 @@ module CoqBackend = struct
     | C.AST.Inductive (name, generics, variants) ->
        let name_generics = name ^ (List.fold_left ~init:"" ~f:(fun a b -> a ^ " " ^ b) generics) in
        let (definitions, variants_str) = inductive_case_to_string variants (newline_indent 0 ^ "|" ^ " ") (name_generics) in
-       let (_, args_str) = inductive_case_args_to_string variants (newline_indent 0 ^ "Arguments" ^ " ") (List.fold_left ~init:"" ~f:(fun a b -> a ^ " {_}") generics) (".") in
+       let (_, args_str) = if List.length generics == 0
+                           then [], ""
+                           else inductive_case_args_to_string variants (newline_indent 0 ^ "Arguments" ^ " ") (List.fold_left ~init:"" ~f:(fun a b -> a ^ " {_}") generics) (".") in
        decl_list_to_string definitions ^ "Inductive" ^ " " ^ name_generics ^ " " ^ ":" ^ " " ^ "Type" ^ " " ^ ":=" ^ variants_str ^ "." ^ args_str
     | _ -> .
   and decl_list_to_string (x : C.AST.decl list) : string =
@@ -415,21 +419,24 @@ module CoqBackend = struct
 
     let pglobal_ident (id : global_ident) : string =
       match id with
-      | `Concrete cid ->
-         pconcrete_ident cid
+      | `Projector (`Concrete cid) | `Concrete cid -> pconcrete_ident cid
       | `Primitive p_id -> primitive_to_string p_id
-      | _ -> "name of fn"
-    (* | `TupleType of int *)
-    (* | `TupleCons of int *)
-    (* | `TupleField of int * int *)
-    (* | `Projector of [ `Concrete of concrete_ident | `TupleField of int * int ] *)
-    (* ] *)
+      | `TupleType i -> "TODO (global ident) tuple type"
+      | `TupleCons i -> "TODO (global ident) tuple cons"
+      | `Projector (`TupleField (i, j)) | `TupleField (i, j) -> "TODO (global ident) tuple field"
+      | _ -> .
 
     let pglobal_ident_last (id : global_ident) : string =
       match id with
       | `Concrete { crate; path } ->
          Non_empty_list.last path
-      | _ -> "name of fn"
+      | `Primitive p_id -> "TODO (global ident last) primitive"
+      | `TupleType i -> "TODO (global ident last) tuple type"
+      | `TupleCons i -> "TODO (global ident last) tuple cons"
+      | `TupleField i -> "TODO (global ident last) tuple field"
+      | `Projector (`Concrete cid) -> "TODO (global ident last) projector cid"
+      | `Projector (`TupleField (i, j)) -> "TODO (global ident last) projector tuplefield"
+      | _ -> .
 
 
     let __TODO_pat__ s = C.AST.Ident (s ^ " todo(pat)")
@@ -463,7 +470,7 @@ module CoqBackend = struct
       | TApp { ident = `TupleType n; args } when n >= 2 ->
          C.AST.Product (args_ty args)
       | TApp { ident; args } ->
-         C.AST.AppTy (pglobal_ident ident, args_ty args)
+         C.AST.AppTy (pglobal_ident ident ^ "_t", args_ty args)
       | TArrow (inputs, output) ->
          C.AST.Arrow (C.AST.Product (List.map ~f:pty inputs), pty output)
       | TFloat -> failwith "pty: Float"
@@ -472,7 +479,7 @@ module CoqBackend = struct
       | TParam i ->
          C.AST.Name (i.name)
       | TProjectedAssociatedType s -> failwith "proj:assoc:type"
-      | _ -> __TODO_ty__ "other??"
+      | _ -> .
     and args_ty (args : generic_value list) : C.AST.ty list = (* List.map ~f:pty *)
       match args with
       | arg :: xs ->
@@ -489,7 +496,7 @@ module CoqBackend = struct
       | PBinding { mut = Immutable; mode = _; subpat = None; var; typ = _ (* we skip type annot here *); } ->
          C.AST.Ident (var.name)
       | PArray { args } -> __TODO_pat__ "Parray?"
-      | PConstruct { name = `TupleCons 0; args = [] } -> __TODO_pat__ "tuple 0"
+      | PConstruct { name = `TupleCons 0; args = [] } -> C.AST.UnitPat
       | PConstruct { name = `TupleCons 1; args = [ { pat } ] } -> __TODO_pat__ "tuple 1"
       | PConstruct { name = `TupleCons n; args } ->
          C.AST.TuplePat (List.map ~f:(fun { pat } -> ppat pat) args)
@@ -594,9 +601,7 @@ module CoqBackend = struct
       | Construct { constructor = `TupleCons n; fields; base } ->
          C.AST.Tuple (List.map ~f:(snd >> pexpr) fields)
       | Construct { constructs_record = true; constructor; fields; base } ->
-         C.AST.RecordConstructor (C.AST.Var (pglobal_ident constructor), List.map ~f:(fun (f, e) -> (pglobal_ident f, pexpr e)) fields)
-      | Construct { constructor; fields = [(f,{ e = Array l; span; typ })]; base } ->
-         pexpr { e = Array l; span; typ }
+         C.AST.RecordConstructor (C.AST.Var (pglobal_ident constructor ^ "_t"), List.map ~f:(fun (f, e) -> (pglobal_ident f, pexpr e)) fields)
       | Construct { constructor; fields = [(f,e)]; base } ->
          C.AST.App (C.AST.Var (pglobal_ident constructor), [pexpr e])
       | Construct { constructor; fields; base } ->
@@ -640,17 +645,18 @@ module CoqBackend = struct
       | Fn { name; generics; body; params } ->
          [ C.AST.Definition (pglobal_ident name, List.map ~f:(fun { pat; typ; typ_span } -> (ppat pat, pty typ)) params, pexpr body, pty body.typ) ]
       | TyAlias { name; generics; ty } ->
-         [ C.AST.Notation (pglobal_ident name, pty ty) ]
+         [ C.AST.Notation (pglobal_ident name ^ "_t", pty ty) ]
       (* record *)
       | Type { name; generics; variants = [{name=record_name; arguments}]; record = true } ->
-         [ C.AST.Record (pglobal_ident_last name, p_record_record arguments) ]
+         [ C.AST.Record (pglobal_ident_last name ^ "_t", p_record_record arguments) ]
       (* enum *)
       | Type { name; generics; variants; record = true } ->
-         [ C.AST.Inductive (pglobal_ident_last name,
+         [ C.AST.Inductive (pglobal_ident_last name ^ "_t",
                             List.fold_left ~init:[] ~f:(fun a b -> a @ [match b with | GPType {ident; default} -> ident.name]) generics.params,
                             p_inductive variants name) ]
       | Type { name; generics; variants } ->
-         [ C.AST.Notation (pglobal_ident_last name, C.AST.Product (List.map ~f:snd (p_record variants name))) ]
+         [ C.AST.Notation (pglobal_ident_last name ^ "_t", C.AST.Product (List.map ~f:snd (p_record variants name))) ;
+           C.AST.Definition (pglobal_ident_last name, [], C.AST.Var "id", C.AST.Arrow (C.AST.Name (pglobal_ident_last name ^ "_t"), C.AST.Name (pglobal_ident_last name ^ "_t"))) ]
       (* Should probably be definition not notation! *)
       | IMacroInvokation { macro =
                              `Concrete
@@ -760,11 +766,16 @@ module CoqBackend = struct
      Definition int_xO {WS : WORDSIZE} (a : int) : int := MachineIntegers.mul a (repr 2).\n\
      Number Notation int Pos.of_num_int Pos.to_num_int (via positive mapping [[int_xI] => xI, [int_xO] => xO , [MachineIntegers.one] => xH]) : hacspec_scope.\n\
      Notation \"0\" := (repr O).\n\
-     Notation U8 := int8. (* Secret int  *)\n\
-     Notation U16 := int16. (* Secret int  *)\n\
-     Notation U32 := int32. (* Secret int  *)\n\
-     Notation U64 := int64. (* Secret int  *)\n\
-     Notation U128 := int128. (* Secret int  *)\n\
+     Notation U8_t := int8.\n\
+     Notation U8 := id.\n\
+     Notation U16_t := int16.\n\
+     Notation U16 := id.\n\
+     Notation U32_t := int32.\n\
+     Notation U32 := id.\n\
+     Notation U64_t := int64.\n\
+     Notation U64 := id.\n\
+     Notation U128_t := int128.\n\
+     Notation U128 := id.\n\
      \n\
      Notation \" x .[ a ]\" := (array_index x a) (at level 40).\n\
      Notation \" x .[ i ]<- a\" := (array_upd x i a) (at level 40).\n\
@@ -898,11 +909,11 @@ module CoqBackend = struct
     |> Desugar_direct_and_mut.Make
     |> Reject.Continue
     |> Desugar_drop_references.Make
-    |> (fun X ->
-        (Desugar_mutable_variable.Make(module X))
-          (module struct
-            let early_exit = fun _ -> Features.On.early_exit
-          end))
+    (* |> (fun X -> *)
+    (*     (Desugar_mutable_variable.Make(module X)) *)
+    (*       (module struct *)
+    (*         let early_exit = fun _ -> Features.On.early_exit *)
+    (*       end)) *)
     |> RejectNotCoq
     |> Identity
     ]
