@@ -2,9 +2,17 @@
 
 ## Quick start with Nix (works on [Linux](https://nixos.org/download.html#nix-install-linux), [MacOS](https://nixos.org/download.html#nix-install-macos) and [Windows](https://nixos.org/download.html#nix-install-windows))
 
-**Prerequisites:** install the [Nix package
-manager](https://nixos.org/) with flake support:
-https://github.com/mschwaig/howto-install-nix-with-flake-support
+<details>
+  <summary><b>Prerequisites:</b> <a href="https://nixos.org/">Nix package
+manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled)</i></summary>
+
+  - Either using the [Determinate Nix Installer](https://github.com/DeterminateSystems/nix-installer), with the following bash one-liner:
+    ```bash
+    curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+    ```
+  - or following [those steps](https://github.com/mschwaig/howto-install-nix-with-flake-support).
+
+</details>
 
 ### Get the F\* translation of a crate
 
