@@ -76,7 +76,8 @@ let union_span (x : span) (y : span) : span =
       failwith "TODO error: Bad span union"
   | Span { file; lo }, Span { hi } -> Span { file; lo; hi }
 
-let union_spans : span list -> span = List.reduce_exn ~f:union_span
+let union_spans : span list -> span =
+  List.reduce ~f:union_span >> Option.value ~default:Dummy
 
 type concrete_ident = { crate : string; path : string Non_empty_list.t }
 
