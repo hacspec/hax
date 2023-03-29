@@ -217,6 +217,17 @@ struct
     let dvariant (v : A.variant) : B.variant =
       { name = v.name; arguments = List.map ~f:(map_snd dty) v.arguments }
 
+    let rec dtrait_item' (ti : A.trait_item') : B.trait_item' =
+      match ti with TIType g -> TIType (dgenerics g) | TIFn t -> TIFn (dty t)
+
+    and dtrait_item (ti : A.trait_item) : B.trait_item =
+      {
+        ti_span = ti.ti_span;
+        ti_generics = dgenerics ti.ti_generics;
+        ti_v = dtrait_item' ti.ti_v;
+        ti_name = ti.ti_name;
+      }
+
     let rec ditem (item : A.item) : B.item list =
       [
         {
@@ -249,6 +260,13 @@ struct
       | IMacroInvokation { macro; argument; span; witness } ->
           B.IMacroInvokation
             { macro; argument; span; witness = S.macro witness }
+      | Trait { name; generics; items } ->
+          B.Trait
+            {
+              name;
+              generics = dgenerics generics;
+              items = List.map ~f:dtrait_item items;
+            }
       | NotImplementedYet -> B.NotImplementedYet
   end
 

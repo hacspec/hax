@@ -621,6 +621,38 @@ module Exn = struct
         |> list_dedup equal_generic_constraint;
     }
 
+  let c_trait_item' (item : Thir.trait_item_kind) : trait_item' =
+    match item with
+    | Const (ty, _) ->
+        failwith "TODO: traits: no support for defaults in traits for now"
+    | Const (ty, None) -> TIFn (c_ty ty)
+    | ProvidedFn _ ->
+        failwith "TODO: traits: no support for defaults in funcitons for now"
+    | RequiredFn (sg, _) ->
+        let Thir.{ inputs; output; _ } = sg.decl in
+        let output =
+          match output with
+          | DefaultReturn span -> unit_typ
+          | Return ty -> c_ty ty
+        in
+        (* failwith @@ [%show: Thir.ty list] inputs; *)
+        TIFn (TArrow (List.map ~f:c_ty inputs, output))
+    | Type ([], None) -> TIType { params = []; constraints = [] }
+    | Type (_, None) ->
+        failwith "TODO: traits: no support for generics in type for now"
+    | Type (_, Some _) ->
+        failwith "TODO: traits: no support for defaults in type for now"
+
+  let c_trait_item (item : Thir.trait_item) : trait_item =
+    (* Raw_thir_ast.Param { index = 0; name = "Self" } *)
+    let { params; constraints } = c_generics item.generics in
+    {
+      ti_span = c_span item.span;
+      ti_generics = { params; constraints };
+      ti_v = c_trait_item' item.kind;
+      ti_name = fst item.ident;
+    }
+
   let c_item (item : Thir.item) : item =
     let span = c_span item.span in
     let v =
@@ -694,6 +726,21 @@ module Exn = struct
               span = c_span span;
               witness = W.macro;
             }
+      | Trait (No, Normal, generics, _bounds, items) ->
+          let name = def_id (Option.value_exn item.def_id) in
+          let { params; constraints } = c_generics generics in
+          let params =
+            GPType { ident = { name = "Self"; id = 0 }; default = None }
+            :: params
+          in
+          Trait
+            {
+              name;
+              generics = { params; constraints };
+              items = List.map ~f:c_trait_item items;
+            }
+      | Trait (Yes, _, _, _, _) -> failwith "Auto trait"
+      | Trait (_, Unsafe, _, _, _) -> failwith "Unsafe trait"
       | _ -> NotImplementedYet
     in
     { span; v; parent_namespace = namespace_of_def_id item.owner_id }

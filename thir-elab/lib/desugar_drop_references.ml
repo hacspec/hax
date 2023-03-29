@@ -137,6 +137,8 @@ struct
   let dvariant (v : A.variant) : B.variant =
     { name = v.name; arguments = List.map ~f:(map_snd dty) v.arguments }
 
+  [%%inline_defs dtrait_item]
+
   let ditem (item : A.item) : B.item list =
     let v =
       match item.v with
@@ -158,7 +160,7 @@ struct
             }
       | TyAlias { name; generics; ty } ->
           B.TyAlias { name; generics = dgenerics generics; ty = dty ty }
-      | [%inline_arms NotImplementedYet + IMacroInvokation] -> auto
+      | [%inline_arms NotImplementedYet + IMacroInvokation + Trait] -> auto
     in
     [ { v; span = item.span; parent_namespace = item.parent_namespace } ]
 

@@ -552,12 +552,27 @@ functor
           span : span;
           witness : F.macro;
         }
+      | Trait of {
+          name : global_ident;
+          generics : generics;
+          items : trait_item list;
+        }
       | NotImplementedYet
 
     and item = {
       v : item';
       span : span;
       parent_namespace : (Namespace.t[@visitors.opaque]);
+    }
+
+    and trait_item' = TIType of generics | TIFn of ty
+
+    and trait_item = {
+      (* TODO: why do I need to prefix by `ti_` here? I guess visitors fail or something *)
+      ti_span : span;
+      ti_generics : generics;
+      ti_v : trait_item';
+      ti_name : string;
     }
     [@@deriving
       show,

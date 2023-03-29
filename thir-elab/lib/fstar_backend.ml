@@ -289,7 +289,7 @@ module FStarBackend = struct
       | `TupleField _ | `Projector _ ->
           failwith ("Cannot appear here: " ^ show_global_ident id)
 
-    let rec plocal_ident (e : LocalIdent.t) = F.id e.name
+    let rec plocal_ident (e : LocalIdent.t) = F.id @@ String.lowercase e.name
 
     let pgeneric_param_name (name : string) : string =
       String.lowercase
@@ -372,8 +372,7 @@ module FStarBackend = struct
           print_endline @@ s;
           (* failwith "xx"; *)
           (* F.term @@ F.AST.Const (F.Const.Const_string (show_ty t, F.dummyRange)) *)
-          F.term
-          @@ F.AST.Wild
+          F.term @@ F.AST.Wild
       (* failwith ("TODO: print_fstar cannot handle yet: " ^ show_ty t) *)
       | _ -> .
 
@@ -589,16 +588,6 @@ module FStarBackend = struct
     (*   | Type {ident; default = _} -> failwith "pgeneric_param:Type with default" *)
     (*   | Const {ident; typ} -> failwith "todo" *)
 
-    let rec pgeneric_param_bd (p : generic_param) =
-      match p with
-      | GPLifetime { ident } -> failwith "pgeneric_param:LIFETIME"
-      | GPType { ident; default = None } ->
-          let t = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
-          F.mk_e_binder (F.AST.Annotated (plocal_ident ident, t))
-      | GPType { ident; default = _ } ->
-          failwith "pgeneric_param:Type with default"
-      | GPConst { ident; typ } -> failwith "todo"
-
     let rec pgeneric_param (p : generic_param) =
       match p with
       | GPLifetime { ident } -> failwith "pgeneric_param:LIFETIME"
@@ -629,6 +618,33 @@ module FStarBackend = struct
           @@ F.AST.PatAscribed
                ( F.pat_var_tcresolve @@ Some ("__" ^ string_of_int nth),
                  (tc, None) )
+
+    let rec pgeneric_param_bd (p : generic_param) =
+      match p with
+      | GPLifetime { ident } -> failwith "pgeneric_param:LIFETIME"
+      | GPType { ident; default = None } ->
+          let t = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
+          F.mk_e_binder (F.AST.Annotated (plocal_ident ident, t))
+      | GPType { ident; default = _ } ->
+          failwith "pgeneric_param:Type with default"
+      | GPConst { ident; typ } -> failwith "todo"
+
+    let rec pgeneric_constraint_bd (c : generic_constraint) =
+      match c with
+      | GCLifetime _ -> failwith "pgeneric_constraint lifetime"
+      | GCType { typ; implements } ->
+          let implements : trait_ref = implements in
+          let trait = F.term @@ F.AST.Name (ptype_ident implements.trait) in
+          let args = List.map ~f:pgeneric_value implements.args in
+          let tc = F.mk_e_app trait (*pty typ::*) args in
+          F.AST.
+            {
+              b = F.AST.NoName tc;
+              brange = F.dummyRange;
+              blevel = Un;
+              aqual = None;
+              battributes = [];
+            }
 
     let hacspec_lib_item s =
       `Concrete { crate = "hacspec"; path = Non_empty_list.[ "lib"; s ] }
@@ -708,8 +724,10 @@ module FStarBackend = struct
           let constructor_funs =
             List.map
               ~f:(fun { name; arguments } ->
-                ( F.id @@  last_of_global_ident @@ lowercase_global_ident name,
-                  F.id @@  last_of_global_ident @@ name)) variants in
+                ( F.id @@ last_of_global_ident @@ lowercase_global_ident name,
+                  F.id @@ last_of_global_ident @@ name ))
+              variants
+          in
           let constructors =
             List.map
               ~f:(fun { name; arguments } ->
@@ -852,7 +870,27 @@ module FStarBackend = struct
           ^ [%show: global_ident] x
           ^ "\""
       | IMacroInvokation _ -> failwith "x"
-      | _ -> []
+      | Trait { name; generics; items } ->
+          let bds =
+            List.map ~f:pgeneric_param_bd generics.params
+            @ List.map ~f:pgeneric_constraint_bd generics.constraints
+          in
+          let name =
+            F.id @@ last_of_global_ident @@ lowercase_global_ident name
+          in
+          let fields =
+            List.map
+              ~f:(fun i ->
+                match i.ti_v with
+                | TIType generics -> failwith "TODO trait associated types"
+                | TIFn ty -> (F.id i.ti_name, None, [], pty ty))
+              items
+          in
+          let tcdef = F.AST.TyconRecord (name, bds, None, [], fields) in
+          let d = F.AST.Tycon (false, true, [ tcdef ]) in
+          [ { d; drange = F.dummyRange; quals = []; attrs = [] } ]
+      | NotImplementedYet -> []
+      | _ -> failwith ("F* backend: item not supported\n" ^ [%show: item] e)
   end
 
   module type S = sig

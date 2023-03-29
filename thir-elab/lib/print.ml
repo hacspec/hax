@@ -153,6 +153,7 @@ let rec pitem (e : item) =
   | TyAlias { name; generics; ty } -> string "TYPEALIAS"
   | NotImplementedYet -> string "NotImplementedYet"
   | IMacroInvokation _ -> string "MacroInvok"
+  | _ -> string "pitem: TODO"
 
 let rec pmutability (e : 'a mutability) = string ""
 let rec pbinding_mode (e : binding_mode) = string ""
