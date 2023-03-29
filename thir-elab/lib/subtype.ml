@@ -218,7 +218,9 @@ struct
       { name = v.name; arguments = List.map ~f:(map_snd dty) v.arguments }
 
     let rec dtrait_item' (ti : A.trait_item') : B.trait_item' =
-      match ti with TIType g -> TIType (dgenerics g) | TIFn t -> TIFn (dty t)
+      match ti with
+      | TIType g -> TIType (List.map ~f:dtrait_ref g)
+      | TIFn t -> TIFn (dty t)
 
     and dtrait_item (ti : A.trait_item) : B.trait_item =
       {
@@ -226,6 +228,20 @@ struct
         ti_generics = dgenerics ti.ti_generics;
         ti_v = dtrait_item' ti.ti_v;
         ti_name = ti.ti_name;
+      }
+
+    let rec dimpl_item' (ii : A.impl_item') : B.impl_item' =
+      match ii with
+      | IIType g -> IIType (dty g)
+      | IIFn { body; params } ->
+          IIFn { body = dexpr body; params = List.map ~f:dparam params }
+
+    and dimpl_item (ii : A.impl_item) : B.impl_item =
+      {
+        ii_span = ii.ii_span;
+        ii_generics = dgenerics ii.ii_generics;
+        ii_v = dimpl_item' ii.ii_v;
+        ii_name = ii.ii_name;
       }
 
     let rec ditem (item : A.item) : B.item list =
@@ -266,6 +282,15 @@ struct
               name;
               generics = dgenerics generics;
               items = List.map ~f:dtrait_item items;
+            }
+      | Impl { generics; self_ty; of_trait; items } ->
+          B.Impl
+            {
+              generics = dgenerics generics;
+              self_ty = dty self_ty;
+              of_trait =
+                Option.map ~f:(Fn.id *** List.map ~f:dgeneric_value) of_trait;
+              items = List.map ~f:dimpl_item items;
             }
       | NotImplementedYet -> B.NotImplementedYet
   end

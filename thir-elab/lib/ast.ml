@@ -557,6 +557,12 @@ functor
           generics : generics;
           items : trait_item list;
         }
+      | Impl of {
+          generics : generics;
+          self_ty : ty;
+          of_trait : (global_ident * generic_value list) option;
+          items : impl_item list;
+        }
       | NotImplementedYet
 
     and item = {
@@ -565,7 +571,18 @@ functor
       parent_namespace : (Namespace.t[@visitors.opaque]);
     }
 
-    and trait_item' = TIType of generics | TIFn of ty
+    and impl_item' =
+      | IIType of ty
+      | IIFn of { body : expr; params : param list }
+
+    and impl_item = {
+      ii_span : span;
+      ii_generics : generics;
+      ii_v : impl_item';
+      ii_name : string;
+    }
+
+    and trait_item' = TIType of trait_ref list | TIFn of ty
 
     and trait_item = {
       (* TODO: why do I need to prefix by `ti_` here? I guess visitors fail or something *)

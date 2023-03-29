@@ -585,7 +585,7 @@ module Exn = struct
   let c_predicate_kind (p : Thir.predicate_kind) : trait_ref option =
     match p with
     | Clause (Trait { is_positive = true; is_const = _; trait_ref }) ->
-        let args = List.map ~f:c_generic_value trait_ref.substs in
+        let args = List.map ~f:c_generic_value trait_ref.generic_args in
         Some { trait = def_id trait_ref.def_id; args; bindings = [] }
     | _ -> None
 
@@ -637,8 +637,11 @@ module Exn = struct
         in
         (* failwith @@ [%show: Thir.ty list] inputs; *)
         TIFn (TArrow (List.map ~f:c_ty inputs, output))
-    | Type ([], None) -> TIType { params = []; constraints = [] }
-    | Type (_, None) ->
+    | Type (bounds, None) ->
+        let bounds = List.filter_map ~f:c_predicate_kind bounds in
+        TIType bounds
+    | Type (bounds, None) ->
+        (* print_endline @@ [%show: Thir.trait_item_kind] item; *)
         failwith "TODO: traits: no support for generics in type for now"
     | Type (_, Some _) ->
         failwith "TODO: traits: no support for defaults in type for now"
@@ -741,6 +744,37 @@ module Exn = struct
             }
       | Trait (Yes, _, _, _, _) -> failwith "Auto trait"
       | Trait (_, Unsafe, _, _, _) -> failwith "Unsafe trait"
+      | Impl i ->
+          Impl
+            {
+              generics = c_generics i.generics;
+              self_ty = c_ty i.self_ty;
+              of_trait =
+                Option.map
+                  ~f:(fun { def_id = id; generic_args } ->
+                    (def_id id, List.map ~f:c_generic_value generic_args))
+                  i.of_trait;
+              items =
+                List.map
+                  ~f:(fun (item : Thir.impl_item) ->
+                    {
+                      ii_span = c_span item.span;
+                      ii_generics = c_generics item.generics;
+                      ii_v =
+                        (match (item.kind : Thir.impl_item_kind) with
+                        | Fn { body; header; params; ret; sig_span } ->
+                            IIFn
+                              {
+                                body = c_expr body;
+                                params = List.map ~f:c_param params;
+                              }
+                        | Const (_ty, e) ->
+                            IIFn { body = c_expr e; params = [] }
+                        | Type ty -> IIType (c_ty ty));
+                      ii_name = fst item.ident;
+                    })
+                  i.items;
+            }
       | _ -> NotImplementedYet
     in
     { span; v; parent_namespace = namespace_of_def_id item.owner_id }

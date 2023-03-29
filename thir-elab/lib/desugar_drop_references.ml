@@ -137,7 +137,7 @@ struct
   let dvariant (v : A.variant) : B.variant =
     { name = v.name; arguments = List.map ~f:(map_snd dty) v.arguments }
 
-  [%%inline_defs dtrait_item]
+  [%%inline_defs dtrait_item + dimpl_item]
 
   let ditem (item : A.item) : B.item list =
     let v =
@@ -160,6 +160,17 @@ struct
             }
       | TyAlias { name; generics; ty } ->
           B.TyAlias { name; generics = dgenerics generics; ty = dty ty }
+      | Impl { generics; self_ty; of_trait; items } ->
+          B.Impl
+            {
+              generics = dgenerics generics;
+              self_ty = dty self_ty;
+              of_trait =
+                Option.map
+                  ~f:(Fn.id *** List.filter_map ~f:dgeneric_value)
+                  of_trait;
+              items = List.map ~f:dimpl_item items;
+            }
       | [%inline_arms NotImplementedYet + IMacroInvokation + Trait] -> auto
     in
     [ { v; span = item.span; parent_namespace = item.parent_namespace } ]

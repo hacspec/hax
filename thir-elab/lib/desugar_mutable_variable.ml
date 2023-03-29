@@ -1003,6 +1003,22 @@ struct
 
   [%%inline_defs dtrait_item + dvariant + dparam]
 
+  (* TODO: rename pexpr into pexpr', and pexpr_top into pexpr *)
+
+  let rec dimpl_item' (ii : A.impl_item') : B.impl_item' =
+    match ii with
+    | IIType g -> IIType (dty g)
+    | IIFn { body; params } ->
+        IIFn { body = dexpr_top body; params = List.map ~f:dparam params }
+
+  and dimpl_item (ii : A.impl_item) : B.impl_item =
+    {
+      ii_span = ii.ii_span;
+      ii_generics = dgenerics ii.ii_generics;
+      ii_v = dimpl_item' ii.ii_v;
+      ii_name = ii.ii_name;
+    }
+
   let ditem (item : A.item) : B.item list =
     let v =
       match item.v with
@@ -1024,7 +1040,8 @@ struct
             }
       | TyAlias { name; generics; ty } ->
           B.TyAlias { name; generics = dgenerics generics; ty = dty ty }
-      | [%inline_arms NotImplementedYet + IMacroInvokation + Trait] -> auto
+      | [%inline_arms NotImplementedYet + IMacroInvokation + Trait + Impl] ->
+          auto
     in
     [ { v; span = item.span; parent_namespace = item.parent_namespace } ]
 

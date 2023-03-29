@@ -879,16 +879,75 @@ module FStarBackend = struct
             F.id @@ last_of_global_ident @@ lowercase_global_ident name
           in
           let fields =
-            List.map
+            List.concat_map
               ~f:(fun i ->
+                let name = map_first_letter String.lowercase @@ i.ti_name in
                 match i.ti_v with
-                | TIType generics -> failwith "TODO trait associated types"
-                | TIFn ty -> (F.id i.ti_name, None, [], pty ty))
+                | TIType bounds ->
+                    let t = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
+                    (F.id name, None, [], t)
+                    :: List.map
+                         ~f:(fun { trait; args; bindings = _ } ->
+                           let base =
+                             F.term @@ F.AST.Name (ptype_ident trait)
+                           in
+                           let args = List.map ~f:pgeneric_value args in
+                           ( F.id
+                               (name ^ "_implements_"
+                              ^ last_of_global_ident trait),
+                             None,
+                             [],
+                             F.mk_e_app base args ))
+                         bounds
+                | TIFn ty -> [ (F.id name, None, [], pty ty) ])
               items
           in
           let tcdef = F.AST.TyconRecord (name, bds, None, [], fields) in
           let d = F.AST.Tycon (false, true, [ tcdef ]) in
           [ { d; drange = F.dummyRange; quals = []; attrs = [] } ]
+      | Impl { generics; self_ty = _; of_trait; items } ->
+          let pat = F.pat @@ F.AST.PatVar (F.id "impl", None, []) in
+          let pat =
+            F.pat
+            @@ F.AST.PatApp
+                 ( pat,
+                   List.map ~f:pgeneric_param generics.params
+                   @ List.mapi ~f:pgeneric_constraint generics.constraints )
+          in
+          let typ =
+            match of_trait with
+            | None -> failwith "anonymous impl not supported yet"
+            | Some (trait, generic_args) ->
+                F.mk_e_app
+                  (F.term @@ F.AST.Name (pglobal_ident trait))
+                  (List.map ~f:pgeneric_value generic_args)
+          in
+          let pat = F.pat @@ F.AST.PatAscribed (pat, (typ, None)) in
+          let body =
+            F.term
+            @@ F.AST.Record
+                 ( None,
+                   List.map
+                     ~f:(fun { ii_span; ii_generics; ii_v; ii_name } ->
+                       ( F.lid [ map_first_letter String.lowercase @@ ii_name ],
+                         match ii_v with
+                         | IIFn { body; params } ->
+                             let pats =
+                               List.map ~f:pgeneric_param generics.params
+                               @ List.mapi ~f:pgeneric_constraint
+                                   generics.constraints
+                               @ List.map
+                                   ~f:(fun { pat; typ_span; typ } ->
+                                     F.pat
+                                     @@ F.AST.PatAscribed
+                                          (ppat pat, (pty typ, None)))
+                                   params
+                             in
+                             F.term @@ F.AST.Abs (pats, pexpr body)
+                         | IIType ty -> pty ty ))
+                     items )
+          in
+          F.decls @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
       | NotImplementedYet -> []
       | _ -> failwith ("F* backend: item not supported\n" ^ [%show: item] e)
   end

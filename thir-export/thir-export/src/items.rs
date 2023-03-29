@@ -253,7 +253,7 @@ pub enum AssocItemKind {
 }
 
 #[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::Impl<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::Impl<'tcx>, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Impl {
     pub unsafety: Unsafety,
@@ -262,7 +262,10 @@ pub struct Impl {
     pub defaultness_span: Option<Span>,
     pub constness: Constness,
     pub generics: Generics,
-    pub of_trait: Option<Path>,
+    #[map({
+        s.tcx().impl_trait_ref(s.owner_id().to_def_id()).sinto(s)
+    })]
+    pub of_trait: Option<TraitRef>,
     pub self_ty: Ty,
     pub items: Vec<ImplItem>,
 }
@@ -281,16 +284,6 @@ pub enum IsAsync {
 pub enum FnRetTy {
     DefaultReturn(Span),
     Return(Ty),
-}
-
-impl<'a, S> SInto<S, Path> for rustc_hir::TraitRef<'a> {
-    fn sinto(&self, s: &S) -> Path {
-        self.path
-            .segments
-            .iter()
-            .map(|rustc_hir::PathSegment { ident, .. }| ident.as_str().into())
-            .collect()
-    }
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -614,7 +607,8 @@ pub enum GenericBound {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct TraitRef {
     pub def_id: DefId,
-    pub substs: Vec<GenericArg>,
+    #[from(substs)]
+    pub generic_args: Vec<GenericArg>,
 }
 
 #[derive(AdtInto)]
