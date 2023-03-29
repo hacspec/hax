@@ -41,7 +41,10 @@ let () =
       | Fstar -> run (module Fstar_backend.FStarBackend) ()
       | Coq -> run (module Coq_backend.CoqBackend) ())
   | _ ->
-     Fstar_backend.register;
-     Coq_backend.register;
-     Printexc.record_backtrace true;
-     exit (Cmdliner.Cmd.eval (Backend.Registration.command ()))
+      Fstar_backend.register;
+      Coq_backend.register;
+      Printexc.record_backtrace true;
+      let exit_code = Cmdliner.Cmd.eval (Backend.Registration.command ()) in
+      if Option.is_some @@ Base.Sys.getenv "THIR_ELAB_DEBUG" then
+        DebugBindDesugar.export ();
+      exit exit_code
