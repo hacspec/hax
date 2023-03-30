@@ -17,31 +17,31 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 ### Get the F\* translation of a crate
 
 1. `cd path/to/your/crate`
-2. `nix run github:w95psp/hacspec-v2#circus -o some/output/dir fstar`  
+2. `nix run github:hacspec/hacspec-v2#circus -o some/output/dir fstar`  
    will create `fst` modules in directory `some/output/dir`.
 
 ### Get a shell with `cargo circus`, `cargo thir-export` and `thir-elab`
 
-1. `nix develop github:w95psp/hacspec-v2`
+1. `nix develop github:hacspec/hacspec-v2`
 
 <details>
   <summary>Other operations</summary>
   
 #### Get the _THIR'_ JSON out of a crate
 1. `cd path/to/your/crate`
-2. `nix run github:w95psp/hacspec-v2#thir-export`  
+2. `nix run github:hacspec/hacspec-v2#thir-export`  
     ...will create `thir_export.json` in the current directory.
     
-**More generally:** `nix run github:w95psp/hacspec-v2#thir-export -- THIR-EXPORT-ARGUMENTS`. Replace `THIR-EXPORT-ARGUMENTS` with `--help` to get more information.
+**More generally:** `nix run github:hacspec/hacspec-v2#thir-export -- THIR-EXPORT-ARGUMENTS`. Replace `THIR-EXPORT-ARGUMENTS` with `--help` to get more information.
 
 #### Running `thir-elab` on the JSON
 
-1. `nix run github:w95psp/hacspec-v2#thir-elab -i /path/to/thir_export.json`
+1. `nix run github:hacspec/hacspec-v2#thir-elab -i /path/to/thir_export.json`
 
 #### Visualization of the THIR' JSON
 
 1. `cd /directory/in/which/the/thir_export.json/file/lives/`
-2. `nix run github:w95psp/hacspec-v2#thir-json-visualizer`
+2. `nix run github:hacspec/hacspec-v2#thir-json-visualizer`
 3. visit `http://localhost:8888/`
 
 </details>
