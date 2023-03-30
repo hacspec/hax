@@ -17,7 +17,7 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 ### Get the F\* translation of a crate
 
 1. `cd path/to/your/crate`
-2. `nix run github:hacspec/hacspec-v2#circus -o some/output/dir fstar`  
+2. `nix run github:hacspec/hacspec-v2#circus -- -o some/output/dir fstar`  
    will create `fst` modules in directory `some/output/dir`.
 
 ### Get a shell with `cargo circus`, `cargo thir-export` and `thir-elab`
@@ -36,7 +36,7 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 
 #### Running `thir-elab` on the JSON
 
-1. `nix run github:hacspec/hacspec-v2#thir-elab -i /path/to/thir_export.json`
+1. `nix run github:hacspec/hacspec-v2#thir-elab -- -i /path/to/thir_export.json`
 
 #### Visualization of the THIR' JSON
 
