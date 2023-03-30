@@ -46,7 +46,14 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 
 </details>
 
-## Without Nix
+## Using Docker
+1. Clone this repo: `git clone git@github.com:hacspec/hacspec-v2.git && cd hacspec-v2`
+2. Go to the `.docker` folder: `cd .docker`
+3. Build the docker image: `docker build . -t hacspec-v2`
+4. Get a shell: `docker run -it --rm -v /some/dir/with/a/crate:/work hacspec-v2 bash`
+5. You can now run `cargo-circus --help` (notice )
+
+## Manual installation
 
 1. Make sure to have the following installed on your system:
 
@@ -55,7 +62,7 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 - `nodejs`
 - `python2.7` (for example using [pyenv](https://github.com/pyenv/pyenv))
 
-2. Clone this repo `git clone git@github.com:hacspec/hacspec-v2.git`
+2. Clone this repo `git clone git@github.com:hacspec/hacspec-v2.git && cd hacspec-v2`
 3. Install `thir-export`:
    1. `cd thir-export`
    2. `cargo install --path cli`
