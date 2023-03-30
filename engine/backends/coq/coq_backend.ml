@@ -76,7 +76,7 @@ module CoqBackend = struct
         | RecordTy of string * (string * ty) list
         | Product of ty list
         | Arrow of ty * ty
-        | ArrayTy of ty * int
+        | ArrayTy of ty * string (* int *)
         | AppTy of string * ty list
         | NatMod of string * int * string
 
@@ -159,7 +159,7 @@ module CoqBackend = struct
        a_ty_def @ b_ty_def, a_ty_str ^ " " ^ "->" ^ " " ^ b_ty_str
     | C.AST.ArrayTy (t, l) ->
        let ty_def, ty_str = ty_to_string t in
-       ty_def, "nseq" ^ " " ^ ty_str ^ " " ^ Int.to_string l
+       ty_def, "nseq" ^ " " ^ ty_str ^ " " ^ (* Int.to_string *) l
     | C.AST.AppTy (i, []) ->
        [], i
     | C.AST.AppTy (i, [y]) ->
@@ -169,7 +169,7 @@ module CoqBackend = struct
        let ty_def, ty_str = product_to_string p " " in
        ty_def, i ^ " " ^ ty_str
     | C.AST.NatMod (t, i, s) ->
-       [C.AST.Notation (t, C.AST.ArrayTy (C.AST.Int (U8, false), i))], "nat_mod 0x" ^ s
+       [C.AST.Notation (t, C.AST.ArrayTy (C.AST.Int (U8, false), Int.to_string i))], "nat_mod 0x" ^ s
     | _ -> .
   and product_to_string (x : C.AST.ty list) (sep : string) : C.AST.decl list * string =
     match x with
@@ -475,10 +475,12 @@ module CoqBackend = struct
          C.AST.Arrow (C.AST.Product (List.map ~f:pty inputs), pty output)
       | TFloat -> failwith "pty: Float"
       | TArray { typ; length } ->
-         C.AST.ArrayTy (pty typ, length)
+         C.AST.ArrayTy (pty typ, Int.to_string length)
       | TParam i ->
          C.AST.Name (i.name)
-      | TProjectedAssociatedType s -> failwith "proj:assoc:type"
+      | TProjectedAssociatedType s ->
+         __TODO_ty__ ("proj:assoc:type" ^ s)
+         (* failwith "proj:assoc:type" *)
       | _ -> .
     and args_ty (args : generic_value list) : C.AST.ty list = (* List.map ~f:pty *)
       match args with
@@ -610,6 +612,20 @@ module CoqBackend = struct
          C.AST.Lambda (List.map ~f:ppat params, pexpr body)
       | Return { e } -> __TODO_term__ "return"
       (* Macro *)
+      | MacroInvokation { macro =
+                             `Concrete
+                               Non_empty_list.{ crate = "hacspec_lib_tc"; path = [ "secret_bytes" ] };
+                           args;
+                           witness; } ->
+         let open Hacspeclib_macro_parser in
+         let o : SecretBytes.t = SecretBytes.parse args |> Result.ok_or_failwith in
+         C.AST.Array (List.map ~f:(fun x -> C.AST.Literal x) o.array_values)
+      | MacroInvokation { macro =
+                            `Concrete
+                              Non_empty_list.{ crate; path = [ pp ] };
+                          args;
+                          witness; } ->
+         __TODO_term__ (crate ^ " macro " ^ pp)
       | MacroInvokation { macro;
                           args;
                           witness; } ->
@@ -657,7 +673,6 @@ module CoqBackend = struct
       | Type { name; generics; variants } ->
          [ C.AST.Notation (pglobal_ident_last name ^ "_t", C.AST.Product (List.map ~f:snd (p_record variants name))) ;
            C.AST.Definition (pglobal_ident_last name, [], C.AST.Var "id", C.AST.Arrow (C.AST.Name (pglobal_ident_last name ^ "_t"), C.AST.Name (pglobal_ident_last name ^ "_t"))) ]
-      (* Should probably be definition not notation! *)
       | IMacroInvokation { macro =
                              `Concrete
                                Non_empty_list.
@@ -668,7 +683,8 @@ module CoqBackend = struct
          let o : PublicNatMod.t =
            PublicNatMod.parse argument |> Result.ok_or_failwith
          in
-         [ C.AST.Notation (o.type_name, C.AST.NatMod (o.type_of_canvas, o.bit_size_of_field, o.modulo_value)) ]
+         [ C.AST.Notation (o.type_name ^ "_t", C.AST.NatMod (o.type_of_canvas, o.bit_size_of_field, o.modulo_value)) ;
+           C.AST.Definition (o.type_name, [], C.AST.Var "id", C.AST.Arrow (C.AST.Name (o.type_name ^ "_t"), C.AST.Name (o.type_name ^ "_t")))]
       | IMacroInvokation { macro =
                              `Concrete
                                Non_empty_list.{ crate = "hacspec_lib_tc"; path = [ "bytes" ] };
@@ -676,7 +692,8 @@ module CoqBackend = struct
                            span; } ->
          let open Hacspeclib_macro_parser in
          let o : Bytes.t = Bytes.parse argument |> Result.ok_or_failwith in
-         [ C.AST.Notation (o.bytes_name, C.AST.ArrayTy (C.AST.Int (C.AST.U8, false), int_of_string o.size)) ]
+         [ C.AST.Notation (o.bytes_name ^ "_t", C.AST.ArrayTy (C.AST.Int (C.AST.U8, false), (* int_of_string *) o.size)) ;
+           C.AST.Definition (o.bytes_name, [], C.AST.Var "id", C.AST.Arrow (C.AST.Name (o.bytes_name ^ "_t"), C.AST.Name (o.bytes_name ^ "_t"))) ]
       | IMacroInvokation { macro =
                              `Concrete
                                Non_empty_list.{ crate = "hacspec_lib_tc"; path = [ "public_bytes" ] };
@@ -685,8 +702,9 @@ module CoqBackend = struct
          let open Hacspeclib_macro_parser in
          let o : Bytes.t = Bytes.parse argument |> Result.ok_or_failwith in
          (* C.AST.Record (o.bytes_name, [("_", C.AST.ArrayTy (C.AST.Int (C.AST.U8, false), int_of_string o.size))]) *)
-         let typ = C.AST.ArrayTy (C.AST.Int (C.AST.U8, false), int_of_string o.size) in
-         [ C.AST.Notation (o.bytes_name, typ) ;
+         let typ = C.AST.ArrayTy (C.AST.Int (C.AST.U8, false), (* int_of_string *) o.size) in
+         [ C.AST.Notation (o.bytes_name ^ "_t", typ)  ;
+           C.AST.Definition (o.bytes_name, [], C.AST.Var "id", C.AST.Arrow (C.AST.Name (o.bytes_name ^ "_t"), C.AST.Name (o.bytes_name ^ "_t")))
            (* C.AST.Definition ("(\*Macro*\) " ^ o.bytes_name, [(C.AST.Ident "x", typ)], C.AST.Name "x", typ) *)
          ]
       | IMacroInvokation { macro =
@@ -703,7 +721,8 @@ module CoqBackend = struct
            | "U8" -> C.AST.U8
            | usize -> C.AST.U32 (* TODO: usize? *)
          in
-         [ C.AST.Notation (o.array_name, C.AST.ArrayTy (C.AST.Int (typ, false), int_of_string o.size)) (* o.index_typ *) ]
+         [ C.AST.Notation (o.array_name ^ "_t", C.AST.ArrayTy (C.AST.Int (typ, false), (* int_of_string *) o.size)) (* o.index_typ *)  ;
+           C.AST.Definition (o.array_name, [], C.AST.Var "id", C.AST.Arrow (C.AST.Name (o.array_name ^ "_t"), C.AST.Name (o.array_name ^ "_t")))]
       | IMacroInvokation { macro; argument; span; witness; } ->
          [ __TODO_item__ "Macro" ]
       | NotImplementedYet -> [ __TODO_item__ "Not implemented yet?" ]
@@ -825,7 +844,7 @@ module CoqBackend = struct
      Axiom to_le_bytes : forall {ws : WORDSIZE} {len}, nseq (@int ws) len -> seq int8.\n\
      Definition from_seq {A : Type}  `{Default A} {len slen} (s : array_or_seq A slen) : nseq A len := array_from_seq _ (as_seq s).\n\
      \n\
-     Notation Seq := seq.\n\
+     Notation Seq_t := seq.\n\
      Notation len := (fun s => seq_len s : int32).\n\
      \n\
      Notation slice := array_slice.\n\
@@ -867,7 +886,7 @@ module CoqBackend = struct
      Notation Build_secret := secret.\n\
      Notation \"a -× b\" :=\n\
      (prod a b) (at level 80, right associativity) : hacspec_scope.\n\
-     Notation Result := result.\n\
+     Notation Result_t := (fun '(x,y) => result).\n\
      Axiom TODO_name : Type.\n\
      "
 
@@ -909,11 +928,11 @@ module CoqBackend = struct
     |> Desugar_direct_and_mut.Make
     |> Reject.Continue
     |> Desugar_drop_references.Make
-    (* |> (fun X -> *)
-    (*     (Desugar_mutable_variable.Make(module X)) *)
-    (*       (module struct *)
-    (*         let early_exit = fun _ -> Features.On.early_exit *)
-    (*       end)) *)
+     (* results in unit functions disappering *)
+    |> (fun X -> (Desugar_mutable_variable.Make(module X))
+                   (module struct
+                      let early_exit = fun _ -> Features.On.early_exit
+                    end))
     |> RejectNotCoq
     |> Identity
     ]
