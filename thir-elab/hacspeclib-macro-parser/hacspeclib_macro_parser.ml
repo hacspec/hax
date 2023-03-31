@@ -1,6 +1,30 @@
 open Base
 open Angstrom
 
+(* functions from util functions *)
+let ( << ) f g x = f (g x)
+
+let rec split_list_once ~equal ~needle ~acc subject =
+  match subject with
+  | [] -> (List.rev acc, [])
+  | hd :: tl ->
+      if List.is_prefix subject ~prefix:needle ~equal then
+        (List.rev acc, List.drop subject (List.length needle))
+      else split_list_once ~equal ~needle ~acc:(hd :: acc) tl
+
+let split_list ~equal ~needle (subject : 'a list) : 'a list list =
+  let rec h l =
+    match split_list_once ~equal ~needle ~acc:[] l with
+    | l, [] -> [ l ]
+    | l, r -> l :: h r
+  in
+  h subject
+
+let split_str (s : string) ~(on : string) : string list =
+  split_list ~equal:Char.equal ~needle:(String.to_list on) (String.to_list s)
+  |> List.map ~f:String.of_char_list
+(*  *)
+
 let is_space = function ' ' | '\t' | '\n' -> true | _ -> false
 
 let is_identifier = function
@@ -18,10 +42,14 @@ let maybe p = Option.some <$> p <|> return None
 let parens p = ignore_spaces (char '(') *> p <* ignore_spaces (char ')')
 let square_parens p = ignore_spaces (char '[') *> p <* ignore_spaces (char ']')
 let hex_list_identifier = identifier <* comma
-let is_hex_identifier = function '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' -> true | _ -> false
+let is_hex_identifier = function '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' | '_' -> true | _ -> false
 let is_int_type = function 'u' | 'U' -> true | x -> is_digit x
-let hex_identifier = ignore_spaces ((string "0x" *> take_while1 is_hex_identifier) >>= fun f -> return ("0x" ^ f))
-let hex_list = square_parens (hex_list_identifier)
+
+let rec remove_underscore (x : string) : string =
+  List.fold_left ~init:"" ~f:(^) (split_str x "_")
+
+let hex_identifier = ignore_spaces ((string "0x" *> take_while1 is_hex_identifier) >>= (return << (^) "0x" << remove_underscore))
+let hex_list = square_parens (many (hex_identifier <* maybe identifier <* maybe comma))
 
 module type Parser = sig
   type t [@@deriving show, yojson, eq]
@@ -175,10 +203,27 @@ module SecretBytes = struct
     [@@deriving show, yojson, eq]
 
     let parser =
-      let+ av = square_parens (many (hex_identifier <* maybe comma)) in
+      let+ av = hex_list in
       { array_values = (* List.map ~f:(fun x -> fst x ^ snd x)  *) av }
 
     let name = "secret_bytes"
+  end
+
+  include M
+  include Make (M)
+end
+
+module SecretArray = struct
+  module M = struct
+    type t = { array_typ : string ; array_values : string list }
+    [@@deriving show, yojson, eq]
+
+    let parser =
+      let* at = identifier <* comma in
+      let+ av = hex_list in
+      { array_typ = at ; array_values = av }
+
+    let name = "secret_array"
   end
 
   include M

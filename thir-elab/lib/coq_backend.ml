@@ -121,6 +121,7 @@ module CoqBackend = struct
         | Notation of string * ty
         | Record of string * (string * ty) list
         | Inductive of string * string list * inductive_case list
+        | Class of string * (string * ty) list
     end
   end
 
@@ -327,7 +328,13 @@ module CoqBackend = struct
                            then [], ""
                            else inductive_case_args_to_string variants (newline_indent 0 ^ "Arguments" ^ " ") (List.fold_left ~init:"" ~f:(fun a b -> a ^ " {_}") generics) (".") in
        decl_list_to_string definitions ^ "Inductive" ^ " " ^ name_generics ^ " " ^ ":" ^ " " ^ "Type" ^ " " ^ ":=" ^ variants_str ^ "." ^ args_str
-    | _ -> .
+    | C.AST.Class (name, trait_items) ->
+       let (field_defs, field_str) =
+         List.fold_left ~init:([],"") ~f:(fun x y ->
+             let (definitions, ty_str) = ty_to_string (snd y) in
+             (definitions @ fst x, snd x ^ newline_indent 1 ^ fst y ^ ":" ^ ty_str ^ " " ^ ";")) trait_items
+       in
+       decl_list_to_string field_defs ^ "Class" ^ " " ^ name ^ " " ^ ":=" ^ " " ^ "{" ^ field_str ^ newline_indent 0 ^ "}" ^ "."
   and decl_list_to_string (x : C.AST.decl list) : string =
     List.fold_right ~init:"" ~f:(fun x y -> decl_to_string x ^ newline_indent 0 ^ y) x
   and params_to_string params : string =
@@ -620,6 +627,21 @@ module CoqBackend = struct
          let o : SecretBytes.t = SecretBytes.parse args |> Result.ok_or_failwith in
          C.AST.Array (List.map ~f:(fun x -> C.AST.Literal x) o.array_values)
       | MacroInvokation { macro =
+                             `Concrete
+                               Non_empty_list.{ crate = "hacspec_lib_tc"; path = [ "secret_array" ] };
+                           args;
+                           witness; } ->
+         let open Hacspeclib_macro_parser in
+         let o : SecretArray.t = SecretArray.parse args |> Result.ok_or_failwith in
+         (* let typ = *)
+         (*   match o.typ with *)
+         (*   | "U32" -> C.AST.U32 *)
+         (*   | "U16" -> C.AST.U16 *)
+         (*   | "U8" -> C.AST.U8 *)
+         (*   | usize -> C.AST.U32 (\* TODO: usize? *\) *)
+         (* in *)
+         C.AST.Array (List.map ~f:(fun x -> C.AST.Literal x) o.array_values)
+      | MacroInvokation { macro =
                             `Concrete
                               Non_empty_list.{ crate; path = [ pp ] };
                           args;
@@ -725,7 +747,7 @@ module CoqBackend = struct
       | IMacroInvokation { macro; argument; span; witness; } ->
          [ __TODO_item__ "Macro" ]
       | NotImplementedYet -> [ __TODO_item__ "Not implemented yet?" ]
-      | Trait _ -> [ __TODO_item__ "Trait: coq_backend: todo" ]
+      | Trait { name; generics; items; } -> [ C.AST.Class (pglobal_ident name, List.map ~f:(fun x -> (x.ti_name, match x.ti_v with | TIFn fn_ty -> pty fn_ty | _ -> __TODO_ty__ "field_ty")) items) ]
       | Impl _ -> [ __TODO_item__ "Impl: coq_backend: todo" ]
 
     and p_inductive variants parrent_name : C.AST.inductive_case list =
