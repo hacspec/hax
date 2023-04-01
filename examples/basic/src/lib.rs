@@ -51,6 +51,10 @@ struct FooStruct {
     field_c: u16,
 }
 
+fn some_option() -> Option<u8> {
+    Some(5)
+}
+
 // #[derive(Clone)]
 // enum Bar {
 //     BarA(u8, u16),
@@ -158,6 +162,21 @@ impl DummyStruct {
 impl Foo for DummyStruct {
     fn bar(self) -> u8 {
         5
+    }
+}
+
+trait TraitWithFun {
+    fn update<F>(&self, f: F) -> u8
+    where
+        F: FnMut(u8) -> u8;
+}
+
+impl TraitWithFun for DummyStruct {
+    fn update<F>(&self, mut f: F) -> u8
+    where
+        F: FnMut(u8) -> u8,
+    {
+        f(6)
     }
 }
 

@@ -108,7 +108,7 @@ fn browse_items<'tcx>(
             fn extern_crate(&self, span: Span) {
                 self.session.span_warn_with_code(
                     span,
-                    "[Circus] External crates are not supported",
+                    "[Circus] External items need a model",
                     DiagnosticId::Lint {
                         name: "External".to_string(),
                         has_future_breakage: false,
@@ -242,7 +242,7 @@ fn browse_items<'tcx>(
             fn foreign_items(&self, key: rustc_span::def_id::DefId, span: Span) {
                 // Check for foreign item
                 if self.tcx.is_foreign_item(key) {
-                    eprintln!("foreign item: {:#?}", span);
+                    log::trace!("foreign item: {:#?}", span);
                 }
             }
         }
@@ -285,7 +285,7 @@ fn browse_items<'tcx>(
                     }
                     ItemKind::GlobalAsm(_) => self.no_unsafe(i.span),
                     ItemKind::Impl(imp) => {
-                        // eprintln!("     impl {:?}", imp.self_ty.kind);
+                        // log::trace!("     impl {:?}", imp.self_ty.kind);
                         if imp.unsafety == Unsafety::Unsafe {
                             self.no_unsafe(imp.items[0].span); // TODO: What's the right span?
                         }
@@ -303,17 +303,30 @@ fn browse_items<'tcx>(
                                     .map(|seg| seg.ident.as_str())
                                     .collect::<Vec<&str>>()
                                     .join("::");
-                                if !self.derive_allow_list.contains(&path_string) {
+                                let crate_path = of_trait
+                                    .path
+                                    .segments
+                                    .first()
+                                    .unwrap() // XXX: Is this safe?
+                                    .ident
+                                    .as_str()
+                                    .to_string();
+                                if self.derive_allow_list.contains(&crate_path)
+                                    || self.derive_allow_list.contains(&path_string)
+                                {
+                                    // We don't want to go into derived items.
+                                    log::trace!("   Skipping trait implementation of allowlist");
+                                    return;
+                                } else {
                                     let path_string = match path_string.split_once(':') {
                                         Some((left, right)) => right[1..].to_string(),
                                         None => path_string,
                                     };
                                     self.derive_external_trait(i.span, path_string);
-                                }
 
-                                // We don't want to go into derived items.
-                                log::trace!("   Skipping trait implementation of allowlist");
-                                return;
+                                    // Don't go any further
+                                    return;
+                                }
                             }
                         }
                     }
@@ -336,20 +349,20 @@ fn browse_items<'tcx>(
             ///////////////
 
             fn visit_id(&mut self, hir_id: HirId) {
-                // log::trace!(
-                //     "visiting id {hir_id:?} from crate {:?}",
-                //     self.tcx.def_path(hir_id.owner.to_def_id())
-                // );
+                log::trace!(
+                    "visiting id {hir_id:?} from def path {:?}",
+                    self.tcx.def_path(hir_id.owner.to_def_id())
+                );
                 // log::trace!(
                 //     "visiting id at {:?} with node {:?}",
                 //     self.tcx.hir().span_if_local(hir_id.owner.to_def_id()),
                 //     self.tcx.hir().find(hir_id)
                 // );
-                log::trace!(
-                    "visiting id at {:?} is foreign: {:?}",
-                    self.tcx.hir().span_if_local(hir_id.owner.to_def_id()),
-                    self.tcx.is_foreign_item(hir_id.owner)
-                );
+                // log::trace!(
+                //     "visiting id at {:?} is foreign: {:?}",
+                //     self.tcx.hir().span_if_local(hir_id.owner.to_def_id()),
+                //     self.tcx.is_foreign_item(hir_id.owner)
+                // );
                 // Nothing to do.
             }
             fn visit_name(&mut self, _name: Symbol) {
@@ -379,7 +392,7 @@ fn browse_items<'tcx>(
                 walk_block(self, b)
             }
             fn visit_stmt(&mut self, s: &'v Stmt<'v>) {
-                eprintln!(
+                log::trace!(
                     " >>> visiting stmt {:?} at {:?}",
                     self.tcx.opt_item_name(s.hir_id.owner.to_def_id()).unwrap(),
                     s.span
@@ -387,7 +400,7 @@ fn browse_items<'tcx>(
 
                 match &s.kind {
                     StmtKind::Local(b) => {
-                        // eprintln!("       local stmt");
+                        // log::trace!("       local stmt");
                         if let Some(init) = b.init {
                             match init.kind {
                                 ExprKind::AddrOf(x, f, s) => {
@@ -402,9 +415,9 @@ fn browse_items<'tcx>(
                         }
                         if let Some(els) = b.els {}
                     }
-                    StmtKind::Item(_) => (), // eprintln!("       item stmt"),
-                    StmtKind::Expr(_) => (), // eprintln!("       expr stmt"),
-                    StmtKind::Semi(_) => (), // eprintln!("       semi stmt"),
+                    StmtKind::Item(_) => (), // log::trace!("       item stmt"),
+                    StmtKind::Expr(_) => (), // log::trace!("       expr stmt"),
+                    StmtKind::Semi(_) => (), // log::trace!("       semi stmt"),
                 }
 
                 // keep going
@@ -432,7 +445,7 @@ fn browse_items<'tcx>(
             }
             fn visit_expr(&mut self, ex: &'v Expr<'v>) {
                 log::trace!("visiting expr {:?}", ex.span);
-                log::trace!("   Node: {:?}", self.tcx.hir().find(ex.hir_id));
+                // log::trace!("   Node: {:#?}", self.tcx.hir().find(ex.hir_id));
 
                 match &ex.kind {
                     ExprKind::Block(block, _) => match block.rules {
@@ -443,25 +456,62 @@ fn browse_items<'tcx>(
                     },
                     ExprKind::Loop(block, label, source, span) => match source {
                         LoopSource::Loop | LoopSource::While => self.unsupported_loop(*span),
-                        LoopSource::ForLoop => eprintln!(" >>> hir for loop"),
+                        LoopSource::ForLoop => log::trace!(" >>> hir for loop"),
                     },
                     // FIXME: where to get this from?
                     // ExprKind::Async(e, c, b) => self.no_async_await(b.span),
                     // ExprKind::Await(a) => self.no_async_await(a.span),
                     ExprKind::InlineAsm(p) => self.no_unsafe(p.line_spans[0]),
                     ExprKind::Call(expr, exprs) => {
-                        // eprintln!("call: {:#?}", expr);
+                        // log::trace!("call: {:#?}", expr);
                         if self.tcx.is_foreign_item(expr.hir_id.owner.def_id) {
-                            eprintln!("foreign call: {:#?}", expr.span);
+                            log::trace!("foreign call: {:#?}", expr.span);
                         }
                     }
                     ExprKind::MethodCall(path, expr, exprs, span) => {
-                        // eprintln!("method call: {:#?}", path);
+                        // log::trace!("method call: {:#?}", path);
                         if self.tcx.is_foreign_item(expr.hir_id.owner.def_id) {
-                            eprintln!("foreign method call: {:#?}", expr.span);
+                            log::trace!("foreign method call: {:#?}", expr.span);
                         }
                     }
-                    _ => (), // eprintln!("found expression {:?} at {:?}", ex.kind, ex.span),
+                    ExprKind::Path(qpath) => match qpath {
+                        QPath::Resolved(_, path) => match path.res {
+                            def::Res::Def(_def_kind, def_id) => {
+                                if !def_id.is_local() {
+                                    log::trace!("   non local path at: {:?}", path.span);
+
+                                    let path_string = path
+                                        .segments
+                                        .iter()
+                                        .map(|seg| seg.ident.as_str())
+                                        .collect::<Vec<&str>>()
+                                        .join("::");
+
+                                    let crate_path = path
+                                        .segments
+                                        .first()
+                                        .unwrap() // XXX: Is this safe?
+                                        .ident
+                                        .as_str()
+                                        .to_string();
+
+                                    log::trace!("   path: {path_string:?}");
+                                    log::trace!("   crate: {crate_path:?}");
+
+                                    if !self.derive_allow_list.contains(&crate_path)
+                                        && !self.derive_allow_list.contains(&path_string)
+                                    {
+                                        // FIXME
+                                        // self.extern_crate(path.span);
+                                    }
+                                    return;
+                                }
+                            }
+                            _ => (),
+                        },
+                        _ => (),
+                    },
+                    _ => (), // log::trace!("found expression {:?} at {:?}", ex.kind, ex.span),
                 }
 
                 // keep going
@@ -481,6 +531,8 @@ fn browse_items<'tcx>(
             }
             fn visit_generic_param(&mut self, p: &'v GenericParam<'v>) {
                 log::trace!("visiting generic param {:?}", p.span);
+                log::trace!("   name: {:?}", p.name);
+
                 walk_generic_param(self, p)
             }
             fn visit_const_param_default(&mut self, _param: HirId, ct: &'v AnonConst) {
@@ -659,7 +711,7 @@ fn browse_items<'tcx>(
                 fd.inputs.iter().for_each(|param| {
                     // // No dyn/trait object
                     // FIXME
-                    // eprintln!(" >>> fd inputs {:#?}", param);
+                    // log::trace!(" >>> fd inputs {:#?}", param);
                     check_ty_kind(self, &param.kind, param.span);
                 });
 
@@ -717,7 +769,18 @@ fn browse_items<'tcx>(
                                             .collect::<Vec<&str>>()
                                             .join("::");
 
-                                        if !self.derive_allow_list.contains(&path_string) {
+                                        let crate_path = poly_ref
+                                            .trait_ref
+                                            .path
+                                            .segments
+                                            .first()
+                                            .unwrap() // XXX: Is this safe?
+                                            .ident
+                                            .as_str()
+                                            .to_string();
+                                        if !self.derive_allow_list.contains(&crate_path)
+                                            && !self.derive_allow_list.contains(&path_string)
+                                        {
                                             // We don't want to go into these derived items
                                             // when they are on the allow list.
                                             log::trace!(
@@ -770,9 +833,9 @@ fn browse_items<'tcx>(
                 // traverse_owner(self.tcx, self.tcx.hir().owner(ii.owner_id), 0);
 
                 // match &ii.kind {
-                //     ImplItemKind::Const(_, _) => (), // eprintln!(" >>> impl const {:#?}", ii.ident),
-                //     ImplItemKind::Type(_) => eprintln!(" >>> impl type {:#?}", ii.ident),
-                //     ImplItemKind::Fn(bounds, ty) => eprintln!(" >>> impl fn {:#?}", ii.ident),
+                //     ImplItemKind::Const(_, _) => (), // log::trace!(" >>> impl const {:#?}", ii.ident),
+                //     ImplItemKind::Type(_) => log::trace!(" >>> impl type {:#?}", ii.ident),
+                //     ImplItemKind::Fn(bounds, ty) => log::trace!(" >>> impl fn {:#?}", ii.ident),
                 // }
 
                 self.foreign_items(ii.owner_id.def_id.to_def_id(), ii.span);
@@ -838,10 +901,8 @@ fn browse_items<'tcx>(
 
                 // Look for foreign paths
                 match qpath {
-                    QPath::Resolved(ty, path) => {
-                        match path.res {
-                            _ => (),
-                        }
+                    QPath::Resolved(ty, path) => match path.res {
+                        _ => (),
                     },
                     QPath::TypeRelative(ty, path) => (),
                     _ => (),
@@ -849,8 +910,21 @@ fn browse_items<'tcx>(
 
                 walk_qpath(self, qpath, id)
             }
-            fn visit_path(&mut self, path: &Path<'v>, _id: HirId) {
-                log::trace!(" >>> visiting path {:?}", path.span);
+            fn visit_path(&mut self, path: &Path<'v>, id: HirId) {
+                log::trace!("visiting path {:?}", path.span);
+                // log::trace!("   node: {:?}", self.tcx.hir().find(id));
+                // log::trace!("   path: {:?}", path);
+
+                match path.res {
+                    def::Res::Def(_def_kind, def_id) => {
+                        if !def_id.is_local() {
+                            log::trace!("   non local path at: {:?}", path.span);
+                            // self.extern_crate(path.span);
+                        }
+                    }
+                    _ => (),
+                }
+
                 walk_path(self, path)
             }
             fn visit_path_segment(&mut self, path_segment: &'v PathSegment<'v>) {
@@ -869,16 +943,16 @@ fn browse_items<'tcx>(
                 walk_assoc_type_binding(self, type_binding);
             }
             fn visit_attribute(&mut self, attr: &'v rustc_ast::ast::Attribute) {
-                log::trace!(" >>> visiting attribute: {:?}", attr.span);
+                log::trace!("visiting attribute: {:?}", attr.span);
                 // match &attr.kind {
                 //     ast::AttrKind::Normal(normal_attr) => {
-                //         eprintln!(" >>> normal attribute: {:?}", normal_attr.item.path);
+                //         log::trace!(" >>> normal attribute: {:?}", normal_attr.item.path);
                 //     }
                 //     ast::AttrKind::DocComment(comment_kind, symbol) => (),
                 // }
             }
             fn visit_associated_item_kind(&mut self, kind: &'v AssocItemKind) {
-                log::trace!(" >>> visit assoc item kind {:?}", kind);
+                log::trace!("visit assoc item kind {:?}", kind);
                 // self.no_assoc_items(self.span);
 
                 // keep going
@@ -900,14 +974,15 @@ fn browse_items<'tcx>(
         // XXX: read from config file or something
         let derive_allow_list = vec![
             // serde
-            "_serde::Serialize",
-            "_serde::Deserialize",
+            "_serde",
+            "serde",
             // std lib
             "$crate::marker::StructuralPartialEq",
             "$crate::marker::StructuralEq",
             "$crate::cmp::PartialEq",
             "$crate::cmp::Eq",
             "$crate::clone::Clone",
+            "$crate::clone::Clone::clone",
             "$crate::fmt::Debug",
             "$crate::marker::Copy",
         ];
