@@ -13,6 +13,7 @@ hacspec-lib = { git = "https://github.com/hacspec/hacspec.git" }
 [dev-dependencies]
 criterion = "0.4"
 rand = "0.8"
+hacspec-dev = { git = "https://github.com/hacspec/hacspec.git" }
 
 [[bench]]
 name = "benchmarks"

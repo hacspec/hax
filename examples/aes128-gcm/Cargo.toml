@@ -17,6 +17,7 @@ serde_json = "1.0"
 serde = {version = "1.0", features = ["derive"]}
 criterion = "0.4"
 rand = "0.8"
+hacspec-dev = { git = "https://github.com/hacspec/hacspec.git" }
 
 [[bench]]
 name = "benchmarks"

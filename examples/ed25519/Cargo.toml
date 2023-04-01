@@ -19,5 +19,6 @@ quickcheck = "1"
 quickcheck_macros = "1"
 serde_json = "1.0"
 serde = {version = "1.0", features = ["derive"]}
+hacspec-dev = { git = "https://github.com/hacspec/hacspec.git" }
 
 

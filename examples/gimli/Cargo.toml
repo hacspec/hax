@@ -11,3 +11,4 @@ path = "src/gimli.rs"
 hacspec-lib = { git = "https://github.com/hacspec/hacspec.git" }
 
 [dev-dependencies]
+hacspec-dev = { git = "https://github.com/hacspec/hacspec.git" }
