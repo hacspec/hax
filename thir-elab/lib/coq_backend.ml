@@ -649,7 +649,8 @@ module CoqBackend = struct
       | IMacroInvokation { macro; argument; span; witness; } ->
          [ __TODO_item__ "Macro" ]
       | NotImplementedYet -> [ __TODO_item__ "Not implemented yet?" ]
-      | _ -> .
+      | Trait _ -> [ __TODO_item__ "Trait: coq_backend: todo" ]
+      | Impl _ -> [ __TODO_item__ "Impl: coq_backend: todo" ]
 
     and p_record variants parrent_name : (string * C.AST.ty) list =
       match variants with

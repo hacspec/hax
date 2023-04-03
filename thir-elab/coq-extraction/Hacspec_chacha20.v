@@ -129,11 +129,12 @@ Definition chacha20_line (a : int32) (b : int32) (d : int32) (s : int32) (m : St
   let state := state.[d]<-((state.[d]).^(state.[a])) : State in
   state.[d]<-(rol (state.[d]) s).
 
-Definition chacha20_quarter_round (a : int32) (b : int32) (c : int32) (d : int32) (state : State) : State :=
-  let state := chacha20_line a b d 16 state : State in
-  let state := chacha20_line c d b 12 state : State in
-  let state := chacha20_line a b d 8 state : State in
-  chacha20_line c d b 7 state.
+  Definition chacha20_quarter_round (a : int32) (b : int32) (c : int32)
+                                    (d : int32) (state : State) : State :=
+    let state := chacha20_line a b d 16 state : State in
+    let state := chacha20_line c d b 12 state : State in
+    let state := chacha20_line a b d 8 state : State in
+    chacha20_line c d b 7 state.
 
 Definition chacha20_double_round (state : State) : State :=
   let state := chacha20_quarter_round 0 4 8 12 state : State in

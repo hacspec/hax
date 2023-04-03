@@ -585,7 +585,7 @@ module Exn = struct
   let c_predicate_kind (p : Thir.predicate_kind) : trait_ref option =
     match p with
     | Clause (Trait { is_positive = true; is_const = _; trait_ref }) ->
-        let args = List.map ~f:c_generic_value trait_ref.substs in
+        let args = List.map ~f:c_generic_value trait_ref.generic_args in
         Some { trait = def_id trait_ref.def_id; args; bindings = [] }
     | _ -> None
 
@@ -619,6 +619,41 @@ module Exn = struct
       constraints =
         List.concat_map ~f:c_constraint generics.predicates
         |> list_dedup equal_generic_constraint;
+    }
+
+  let c_trait_item' (item : Thir.trait_item_kind) : trait_item' =
+    match item with
+    | Const (ty, _) ->
+        failwith "TODO: traits: no support for defaults in traits for now"
+    | Const (ty, None) -> TIFn (c_ty ty)
+    | ProvidedFn _ ->
+        failwith "TODO: traits: no support for defaults in funcitons for now"
+    | RequiredFn (sg, _) ->
+        let Thir.{ inputs; output; _ } = sg.decl in
+        let output =
+          match output with
+          | DefaultReturn span -> unit_typ
+          | Return ty -> c_ty ty
+        in
+        (* failwith @@ [%show: Thir.ty list] inputs; *)
+        TIFn (TArrow (List.map ~f:c_ty inputs, output))
+    | Type (bounds, None) ->
+        let bounds = List.filter_map ~f:c_predicate_kind bounds in
+        TIType bounds
+    | Type (bounds, None) ->
+        (* print_endline @@ [%show: Thir.trait_item_kind] item; *)
+        failwith "TODO: traits: no support for generics in type for now"
+    | Type (_, Some _) ->
+        failwith "TODO: traits: no support for defaults in type for now"
+
+  let c_trait_item (item : Thir.trait_item) : trait_item =
+    (* Raw_thir_ast.Param { index = 0; name = "Self" } *)
+    let { params; constraints } = c_generics item.generics in
+    {
+      ti_span = c_span item.span;
+      ti_generics = { params; constraints };
+      ti_v = c_trait_item' item.kind;
+      ti_name = fst item.ident;
     }
 
   let c_item (item : Thir.item) : item =
@@ -693,6 +728,52 @@ module Exn = struct
               argument;
               span = c_span span;
               witness = W.macro;
+            }
+      | Trait (No, Normal, generics, _bounds, items) ->
+          let name = def_id (Option.value_exn item.def_id) in
+          let { params; constraints } = c_generics generics in
+          let params =
+            GPType { ident = { name = "Self"; id = 0 }; default = None }
+            :: params
+          in
+          Trait
+            {
+              name;
+              generics = { params; constraints };
+              items = List.map ~f:c_trait_item items;
+            }
+      | Trait (Yes, _, _, _, _) -> failwith "Auto trait"
+      | Trait (_, Unsafe, _, _, _) -> failwith "Unsafe trait"
+      | Impl i ->
+          Impl
+            {
+              generics = c_generics i.generics;
+              self_ty = c_ty i.self_ty;
+              of_trait =
+                Option.map
+                  ~f:(fun { def_id = id; generic_args } ->
+                    (def_id id, List.map ~f:c_generic_value generic_args))
+                  i.of_trait;
+              items =
+                List.map
+                  ~f:(fun (item : Thir.impl_item) ->
+                    {
+                      ii_span = c_span item.span;
+                      ii_generics = c_generics item.generics;
+                      ii_v =
+                        (match (item.kind : Thir.impl_item_kind) with
+                        | Fn { body; header; params; ret; sig_span } ->
+                            IIFn
+                              {
+                                body = c_expr body;
+                                params = List.map ~f:c_param params;
+                              }
+                        | Const (_ty, e) ->
+                            IIFn { body = c_expr e; params = [] }
+                        | Type ty -> IIType (c_ty ty));
+                      ii_name = fst item.ident;
+                    })
+                  i.items;
             }
       | _ -> NotImplementedYet
     in

@@ -76,7 +76,8 @@ let union_span (x : span) (y : span) : span =
       failwith "TODO error: Bad span union"
   | Span { file; lo }, Span { hi } -> Span { file; lo; hi }
 
-let union_spans : span list -> span = List.reduce_exn ~f:union_span
+let union_spans : span list -> span =
+  List.reduce ~f:union_span >> Option.value ~default:Dummy
 
 type concrete_ident = { crate : string; path : string Non_empty_list.t }
 
@@ -551,12 +552,44 @@ functor
           span : span;
           witness : F.macro;
         }
+      | Trait of {
+          name : global_ident;
+          generics : generics;
+          items : trait_item list;
+        }
+      | Impl of {
+          generics : generics;
+          self_ty : ty;
+          of_trait : (global_ident * generic_value list) option;
+          items : impl_item list;
+        }
       | NotImplementedYet
 
     and item = {
       v : item';
       span : span;
       parent_namespace : (Namespace.t[@visitors.opaque]);
+    }
+
+    and impl_item' =
+      | IIType of ty
+      | IIFn of { body : expr; params : param list }
+
+    and impl_item = {
+      ii_span : span;
+      ii_generics : generics;
+      ii_v : impl_item';
+      ii_name : string;
+    }
+
+    and trait_item' = TIType of trait_ref list | TIFn of ty
+
+    and trait_item = {
+      (* TODO: why do I need to prefix by `ti_` here? I guess visitors fail or something *)
+      ti_span : span;
+      ti_generics : generics;
+      ti_v : trait_item';
+      ti_name : string;
     }
     [@@deriving
       show,

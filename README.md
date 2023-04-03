@@ -2,43 +2,58 @@
 
 ## Quick start with Nix (works on [Linux](https://nixos.org/download.html#nix-install-linux), [MacOS](https://nixos.org/download.html#nix-install-macos) and [Windows](https://nixos.org/download.html#nix-install-windows))
 
-**Prerequisites:** install the [Nix package
-manager](https://nixos.org/) with flake support:
-https://github.com/mschwaig/howto-install-nix-with-flake-support
+<details>
+  <summary><b>Prerequisites:</b> <a href="https://nixos.org/">Nix package
+manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled)</i></summary>
+
+  - Either using the [Determinate Nix Installer](https://github.com/DeterminateSystems/nix-installer), with the following bash one-liner:
+    ```bash
+    curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+    ```
+  - or following [those steps](https://github.com/mschwaig/howto-install-nix-with-flake-support).
+
+</details>
 
 ### Get the F\* translation of a crate
 
 1. `cd path/to/your/crate`
-2. `nix run github:w95psp/hacspec-v2#circus -o some/output/dir fstar`  
+2. `nix run github:hacspec/hacspec-v2#circus -- -o some/output/dir fstar`  
    will create `fst` modules in directory `some/output/dir`.
 
 ### Get a shell with `cargo circus`, `cargo thir-export` and `thir-elab`
 
-1. `nix develop github:w95psp/hacspec-v2`
+1. `nix develop github:hacspec/hacspec-v2`
 
 <details>
   <summary>Other operations</summary>
   
 #### Get the _THIR'_ JSON out of a crate
 1. `cd path/to/your/crate`
-2. `nix run github:w95psp/hacspec-v2#thir-export`  
+2. `nix run github:hacspec/hacspec-v2#thir-export`  
     ...will create `thir_export.json` in the current directory.
     
-**More generally:** `nix run github:w95psp/hacspec-v2#thir-export -- THIR-EXPORT-ARGUMENTS`. Replace `THIR-EXPORT-ARGUMENTS` with `--help` to get more information.
+**More generally:** `nix run github:hacspec/hacspec-v2#thir-export -- THIR-EXPORT-ARGUMENTS`. Replace `THIR-EXPORT-ARGUMENTS` with `--help` to get more information.
 
 #### Running `thir-elab` on the JSON
 
-1. `nix run github:w95psp/hacspec-v2#thir-elab -i /path/to/thir_export.json`
+1. `nix run github:hacspec/hacspec-v2#thir-elab -- -i /path/to/thir_export.json`
 
 #### Visualization of the THIR' JSON
 
 1. `cd /directory/in/which/the/thir_export.json/file/lives/`
-2. `nix run github:w95psp/hacspec-v2#thir-json-visualizer`
+2. `nix run github:hacspec/hacspec-v2#thir-json-visualizer`
 3. visit `http://localhost:8888/`
 
 </details>
 
-## Without Nix
+## Using Docker
+1. Clone this repo: `git clone git@github.com:hacspec/hacspec-v2.git && cd hacspec-v2`
+2. Go to the `.docker` folder: `cd .docker`
+3. Build the docker image: `docker build . -t hacspec-v2`
+4. Get a shell: `docker run -it --rm -v /some/dir/with/a/crate:/work hacspec-v2 bash`
+5. You can now run `cargo-circus --help` (notice )
+
+## Manual installation
 
 1. Make sure to have the following installed on your system:
 
@@ -47,7 +62,7 @@ https://github.com/mschwaig/howto-install-nix-with-flake-support
 - `nodejs`
 - `python2.7` (for example using [pyenv](https://github.com/pyenv/pyenv))
 
-2. Clone this repo `git clone git@github.com:hacspec/hacspec-v2.git`
+2. Clone this repo `git clone git@github.com:hacspec/hacspec-v2.git && cd hacspec-v2`
 3. Install `thir-export`:
    1. `cd thir-export`
    2. `cargo install --path cli`

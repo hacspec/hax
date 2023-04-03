@@ -998,11 +998,26 @@ struct
       constraints = List.map ~f:dgeneric_constraint g.constraints;
     }
 
-  let dparam (p : A.param) : B.param =
-    { pat = dpat p.pat; typ = dty p.typ; typ_span = p.typ_span }
+  (* let dparam (p : A.param) : B.param = *)
+  (*   { pat = dpat p.pat; typ = dty p.typ; typ_span = p.typ_span } *)
 
-  let dvariant (v : A.variant) : B.variant =
-    { name = v.name; arguments = List.map ~f:(map_snd dty) v.arguments }
+  [%%inline_defs dtrait_item + dvariant + dparam]
+
+  (* TODO: rename pexpr into pexpr', and pexpr_top into pexpr *)
+
+  let rec dimpl_item' (ii : A.impl_item') : B.impl_item' =
+    match ii with
+    | IIType g -> IIType (dty g)
+    | IIFn { body; params } ->
+        IIFn { body = dexpr_top body; params = List.map ~f:dparam params }
+
+  and dimpl_item (ii : A.impl_item) : B.impl_item =
+    {
+      ii_span = ii.ii_span;
+      ii_generics = dgenerics ii.ii_generics;
+      ii_v = dimpl_item' ii.ii_v;
+      ii_name = ii.ii_name;
+    }
 
   let ditem (item : A.item) : B.item list =
     let v =
@@ -1025,7 +1040,8 @@ struct
             }
       | TyAlias { name; generics; ty } ->
           B.TyAlias { name; generics = dgenerics generics; ty = dty ty }
-      | [%inline_arms NotImplementedYet + IMacroInvokation] -> auto
+      | [%inline_arms NotImplementedYet + IMacroInvokation + Trait + Impl] ->
+          auto
     in
     [ { v; span = item.span; parent_namespace = item.parent_namespace } ]
 

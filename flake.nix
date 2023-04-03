@@ -100,14 +100,22 @@
             strictDeps = true;
             preBuild = "dune build thir-elab.opam";
           };
-          circus = pkgs.symlinkJoin {
-            name = "circus";
-            paths = [
-              packages.thir-elab
-              packages.thir-export
-              rustc
-            ];
-          };
+          circus =
+            pkgs.stdenv.mkDerivation {
+              name = "circus";
+              buildInputs = [ pkgs.makeWrapper ];
+              phases = ["installPhase"];
+              installPhase = ''
+                mkdir -p $out/bin
+                makeWrapper ${packages.thir-export}/bin/cargo-circus $out/bin/cargo-circus \
+                  --prefix PATH : ${
+                    pkgs.lib.makeBinPath [
+                      packages.thir-export packages.thir-elab rustc
+                    ]
+                  }
+              '';
+              meta.mainProgram = "cargo-circus";
+            };
         };
         apps = {
           serve-rustc-docs = { type = "app"; program = "${pkgs.writeScript "serve-rustc-docs" ''
@@ -126,13 +134,6 @@
             program = "${
               pkgs.writeScript "thir-export"
                 ''PATH="${packages.thir-export}/bin:${rustc}/bin/:$PATH" cargo thir-export "$@"''
-            }";
-          };
-          circus = {
-            type = "app";
-            program = "${
-              pkgs.writeScript "circus"
-                ''PATH="${packages.thir-export}/bin:${rustc}/bin/:$PATH" cargo circus "$@"''
             }";
           };
         };

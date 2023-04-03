@@ -86,12 +86,7 @@ struct
   and darm' = [%inline_body darm']
   and dlhs = [%inline_body dlhs]
 
-  let dtrait_ref = [%inline_body dtrait_ref]
-  let dgeneric_param = [%inline_body dgeneric_param]
-  let dgeneric_constraint = [%inline_body dgeneric_constraint]
-  let dgenerics = [%inline_body dgenerics]
-  let dparam = [%inline_body dparam]
-  let dvariant = [%inline_body dvariant]
+  [%%inline_defs "Item.*" - ditem - ditem']
 
   let rec ditem (item : A.item) : B.item list =
     try [%inline_body ditem] item with
