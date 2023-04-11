@@ -57,13 +57,13 @@
 // }
 // mod hash;
 
-fn test() -> u8 {
-    let mut acc = 0;
-    for i in 1..10 {
-        acc = acc + i;
-    };
-    acc + 1
-}
+// fn test() -> u8 {
+//     let mut acc = 0;
+//     for i in 1..10 {
+//         acc = acc + i;
+//     };
+//     acc + 1
+// }
 
 
 // #![feature(register_tool)]
@@ -135,4 +135,40 @@ fn test() -> u8 {
 
 // fn g() -> u8 {
 //     f(3, DummyStruct{dummy: 9})
+// }
+
+pub trait Temp<A> {
+    fn my (xx : u64, xy : u32, xw : A, xz : u16) -> Self;
+    fn x (yy : u64) -> Self;
+    fn y (zz : u64) -> Self;
+    fn z (ww : u64) -> Self;
+    // const t : u64;
+}
+
+impl Temp<u8> for u64 {
+    fn my (xx : u64, xy : u32, xw : u8, xz : u16) -> u64 {
+        xx
+    }
+
+    fn x (yy : u64) -> u64 {
+        yy
+    }
+    fn y (zz : u64) -> u64 {
+        zz
+    }
+
+    fn z (ww : u64) -> u64 {
+        ww
+    }
+    // const t : u64 = 16;
+}
+
+// struct MyData {
+//     temp : u64
+// }
+
+// impl Default for MyData {
+//     fn default() -> Self {
+//         MyData { temp: 32 }
+//     }
 // }
