@@ -116,13 +116,17 @@ module CoqBackend = struct
         | InductiveCase of string * ty
         | BaseCase of string
 
+      type definition_type = string * (pat * ty) list * term * ty
+      type generics_type = string list
+
       type decl =
         | Unimplemented of string
-        | Definition of string * (pat * ty) list * term * ty
+        | Definition of definition_type
         | Notation of string * ty
         | Record of string * (string * ty) list
-        | Inductive of string * string list * inductive_case list
-        | Class of string * (string * ty) list
+        | Inductive of string * generics_type * inductive_case list
+        | Class of string * (string * ty) list * generics_type
+        | Instance of string * ty * ty list * definition_type list
     end
   end
 
@@ -329,13 +333,27 @@ module CoqBackend = struct
                            then [], ""
                            else inductive_case_args_to_string variants (newline_indent 0 ^ "Arguments" ^ " ") (List.fold_left ~init:"" ~f:(fun a b -> a ^ " {_}") generics) (".") in
        decl_list_to_string definitions ^ "Inductive" ^ " " ^ name_generics ^ " " ^ ":" ^ " " ^ "Type" ^ " " ^ ":=" ^ variants_str ^ "." ^ args_str
-    | C.AST.Class (name, trait_items) ->
+    | C.AST.Class (name, trait_items, generics) ->
        let (field_defs, field_str) =
          List.fold_left ~init:([],"") ~f:(fun x y ->
              let (definitions, ty_str) = ty_to_string (snd y) in
              (definitions @ fst x, snd x ^ newline_indent 1 ^ fst y ^ ":" ^ ty_str ^ " " ^ ";")) trait_items
        in
-       decl_list_to_string field_defs ^ "Class" ^ " " ^ name ^ " " ^ ":=" ^ " " ^ "{" ^ field_str ^ newline_indent 0 ^ "}" ^ "."
+       let name_generics = name ^ (List.fold_left ~init:"" ~f:(fun a b -> a ^ " " ^ b) generics) in
+       decl_list_to_string field_defs ^ "Class" ^ " " ^ name_generics ^ " " ^ ":=" ^ " " ^ "{" ^ field_str ^ newline_indent 0 ^ "}" ^ "."
+    | C.AST.Instance (name, self_ty, ty_list, impl_list) ->
+       let (ty_list_defs, ty_list_str) =
+         List.fold_left ~init:([],"") ~f:(fun x y ->
+             let (definitions, ty_str) = ty_to_string y in
+             (definitions @ fst x, snd x ^ ty_str ^ " ")) ty_list
+       in
+       let impl_str =
+         List.fold_left ~init:("") ~f:(fun x y ->
+             let (name, params, term, ty) = y in
+             (x ^ newline_indent 1 ^ name ^ " " ^ params_to_string params ^ ":=" ^ " " ^ term_to_string_without_paren term 1 ^ ";")) impl_list
+       in
+       let ty_defs, ty_str = ty_to_string self_ty in
+       decl_list_to_string (ty_list_defs @ ty_defs) ^ "Instance" ^ " " ^ ty_str ^ "_" ^ name ^ " " ^ ":" ^ " " ^ name ^ " " ^ ty_list_str ^ ":=" ^ " " ^ "{" ^ impl_str ^ newline_indent 0 ^ "}" ^ "."
   and decl_list_to_string (x : C.AST.decl list) : string =
     List.fold_right ~init:"" ~f:(fun x y -> decl_to_string x ^ newline_indent 0 ^ y) x
   and params_to_string params : string =
@@ -479,7 +497,7 @@ module CoqBackend = struct
       | TApp { ident; args } ->
          C.AST.AppTy (pglobal_ident ident ^ "_t", args_ty args)
       | TArrow (inputs, output) ->
-         C.AST.Arrow (C.AST.Product (List.map ~f:pty inputs), pty output)
+         List.fold_right ~init:(pty output) ~f:(fun x y -> C.AST.Arrow (x, y)) (List.map ~f:pty inputs)
       | TFloat -> failwith "pty: Float"
       | TArray { typ; length } ->
          C.AST.ArrayTy (pty typ, Int.to_string length)
@@ -748,8 +766,32 @@ module CoqBackend = struct
       | IMacroInvokation { macro; argument; span; witness; } ->
          [ __TODO_item__ "Macro" ]
       | NotImplementedYet -> [ __TODO_item__ "Not implemented yet?" ]
-      | Trait { name; generics; items; } -> [ C.AST.Class (pglobal_ident name, List.map ~f:(fun x -> (x.ti_name, match x.ti_v with | TIFn fn_ty -> pty fn_ty | _ -> __TODO_ty__ "field_ty")) items) ]
-      | Impl _ -> [ __TODO_item__ "Impl: coq_backend: todo" ]
+      | Trait { name; generics; items; } -> [
+          C.AST.Class (pglobal_ident name,
+                       List.map ~f:(fun x -> (x.ti_name,
+                                              match x.ti_v with
+                                              | TIFn fn_ty ->
+                                                 pty fn_ty
+                                              | _ -> __TODO_ty__ "field_ty")) items,
+                       List.fold_left ~init:[] ~f:(fun a b -> a @ [match b with | GPType {ident; default} -> ident.name]) generics.params) ]
+      | Impl {generics; self_ty; of_trait = Some (name, gen_vals); items } -> [
+          C.AST.Instance (pglobal_ident name,
+                          pty self_ty,
+                          args_ty gen_vals,
+                          List.map ~f:(fun x -> match x.ii_v with
+                                                | IIFn {body; params} ->
+                                                   (x.ii_name,
+                                                    List.map ~f:(fun { pat; typ; typ_span } -> (ppat pat, pty typ)) params,
+                                                    pexpr body,
+                                                    pty body.typ)
+                                                | _ -> ("todo_name", [], __TODO_term__ "body", __TODO_ty__ "typ"))
+                            items)
+        ]
+      | Impl _ -> [ __TODO_item__ "trait self" ]
+
+                  (* self_ty : ty; *)
+                  (* of_trait : (global_ident * generic_value list) option; *)
+                  (* items : impl_item list; *)
 
     and p_inductive variants parrent_name : C.AST.inductive_case list =
       match variants with
