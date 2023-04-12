@@ -1,13 +1,6 @@
 {
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
-    fstar = {
-      url = "github:fstarlang/fstar";
-      inputs = {
-        flake-utils.follows = "flake-utils";
-      };
-    };
-    nixpkgs.follows = "fstar/nixpkgs";
     crane = {
       url = "github:ipetkov/crane";
       inputs = {
@@ -18,16 +11,14 @@
     rust-overlay.follows = "crane/rust-overlay";
   };
 
-  outputs = {flake-utils, nixpkgs, rust-overlay, crane, fstar, ...}:
+  outputs = {flake-utils, nixpkgs, rust-overlay, crane, ...}:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs {
           inherit system;
           overlays = [rust-overlay.overlays.default];
         };
-        fstar-pkgs = fstar.packages.${system};
-        fstar-bin = fstar-pkgs.fstar;
-        ocamlPackages = fstar-pkgs.ocamlPackages;
+        ocamlPackages = pkgs.ocamlPackages;
         nightly = pkgs.rust-bin.nightly."2022-12-06";
         rustc = nightly.default.override {
           extensions = [
@@ -92,10 +83,13 @@
             buildInputs = with ocamlPackages; [
               core base core_unix
               ppx_yojson_conv yojson ppx_sexp_conv ppx_hash
-              visitors pprint non_empty_list bignum fstar-bin
+              visitors pprint non_empty_list bignum
               ppx_deriving_yojson ppx_matches ppx_let cmdliner
               angstrom
-            ] ++ fstar-pkgs.fstar-dune.buildInputs;
+            ] ++
+            # F* dependencies
+            [ batteries menhirLib ppx_deriving
+              ppxlib sedlex stdint zarith ];
             nativeBuildInputs = [ packages.thir-export pkgs.nodejs ];
             strictDeps = true;
             preBuild = "dune build thir-elab.opam";
@@ -153,7 +147,6 @@
               pkgs.ocamlformat
               ocamlPackages.ocaml-lsp
               ocamlPackages.ocamlformat-rpc-lib
-              fstar-bin
             ];
 
             inputsFrom = [

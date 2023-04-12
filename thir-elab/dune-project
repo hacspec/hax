@@ -39,7 +39,15 @@
         ppx_deriving
         cmdliner
         angstrom
-        ppx_matches)
+        ppx_matches
+        
+        ; F*-specific dependencies
+        batteries
+        zarith
+        stdint
+        ppxlib
+        menhirLib
+        )
  (tags
   (topics "to describe" your project)))
 

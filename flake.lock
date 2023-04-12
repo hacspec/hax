@@ -56,39 +56,17 @@
         "type": "github"
       }
     },
-    "fstar": {
-      "inputs": {
-        "flake-utils": [
-          "flake-utils"
-        ],
-        "nixpkgs": "nixpkgs"
-      },
-      "locked": {
-        "lastModified": 1677018370,
-        "narHash": "sha256-OvEy4lgPGkQZGaEmj9fOeyxvsssdWpGetvdTK2H0Ij0=",
-        "owner": "fstarlang",
-        "repo": "fstar",
-        "rev": "eb911fc41d5ba730c15f2ac296ffc5ebf7b46560",
-        "type": "github"
-      },
-      "original": {
-        "owner": "fstarlang",
-        "repo": "fstar",
-        "type": "github"
-      }
-    },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1669140675,
-        "narHash": "sha256-npzfyfLECsJWgzK/M4gWhykP2DNAJTYjgY2BWkz/oEQ=",
+        "lastModified": 1681215634,
+        "narHash": "sha256-dI0SsSWb7ksK3OtTCf61vdlBhok838aIpwQ2EUM+jhY=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "2788904d26dda6cfa1921c5abb7a2466ffe3cb8c",
+        "rev": "5a156c2e89c1eca09b40bcdcee86760e0e4d79a9",
         "type": "github"
       },
       "original": {
         "id": "nixpkgs",
-        "ref": "nixos-unstable",
         "type": "indirect"
       }
     },
@@ -96,11 +74,7 @@
       "inputs": {
         "crane": "crane",
         "flake-utils": "flake-utils",
-        "fstar": "fstar",
-        "nixpkgs": [
-          "fstar",
-          "nixpkgs"
-        ],
+        "nixpkgs": "nixpkgs",
         "rust-overlay": [
           "crane",
           "rust-overlay"
