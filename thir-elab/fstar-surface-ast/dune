@@ -1,0 +1,19 @@
+(library
+ (name fstar_ast)
+ (public_name fstar-ast)
+ (libraries
+    batteries
+    zarith
+    stdint
+    ppxlib
+    menhirLib
+    pprint
+ )
+ (modes native)
+ (wrapped false)
+ (preprocess (pps ppx_deriving.show ppx_deriving_yojson sedlex.ppx))
+)
+
+(env
+  (_
+    (flags (:standard -w -A))))
