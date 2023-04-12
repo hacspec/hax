@@ -24,13 +24,11 @@
         dune
         base
         core
-        fstar
         yojson
         non_empty_list
         bignum
         pprint
         ppx_deriving_yojson
-        (fstar (= dev))
         ppx_yojson_conv
         ppx_sexp_conv
         ppx_compare

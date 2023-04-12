@@ -1,6 +1,5 @@
 (library
- (name fstar_ast)
- (public_name fstar-ast)
+ (name fstar_surface_ast)
  (libraries
     batteries
     zarith

@@ -8,7 +8,7 @@
   ppx_deriving_yojson.runtime
   hacspeclib_macro_parser
   cmdliner
-  fstar.lib)
+  fstar_surface_ast)
  (preprocessor_deps
   ; `ppx_inline` is used on the `Subtype` module, thus we need it at PPX time
   (file subtype.ml))
