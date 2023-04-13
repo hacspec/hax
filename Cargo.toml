@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+     "rust-frontend",
+     "cli",
+]

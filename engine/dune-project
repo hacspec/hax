@@ -1,0 +1,52 @@
+(lang dune 3.6)
+
+(name circus-engine)
+
+(generate_opam_files true)
+
+(source
+ (github username/reponame))
+
+(authors "Author Name")
+
+(maintainers "Maintainer Name")
+
+(license LICENSE)
+
+(documentation https://url/to/documentation)
+
+(package
+ (name circus-engine)
+ (synopsis "A short synopsis")
+ (description "A longer description")
+ (depends
+        ocaml
+        dune
+        base
+        core
+        yojson
+        non_empty_list
+        bignum
+        pprint
+        ppx_deriving_yojson
+        ppx_yojson_conv
+        ppx_sexp_conv
+        ppx_compare
+        ppx_hash
+        visitors
+        ppx_deriving
+        cmdliner
+        angstrom
+        ppx_matches
+        
+        ; F*-specific dependencies
+        batteries
+        zarith
+        stdint
+        ppxlib
+        menhirLib
+        )
+ (tags
+  (topics "to describe" your project)))
+
+; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project

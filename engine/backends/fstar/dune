@@ -1,0 +1,21 @@
+(library
+ (name fstar_backend)
+ (wrapped false)
+ (libraries circus_engine core fstar_surface_ast)
+ (preprocess
+  (pps
+   ppx_yojson_conv
+   ppx_sexp_conv
+   ppx_compare
+   ppx_hash
+   visitors.ppx
+   ppx_deriving.show
+   ppx_deriving.eq
+   ppx_inline
+   ppx_functor_application
+   ppx_matches)))
+
+(env
+ (dev
+  (flags
+   (:standard -w -A -w +8))))
