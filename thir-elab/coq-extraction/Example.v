@@ -143,95 +143,16 @@ Notation U64_from_U8 := uint64_from_uint8.
 
 (*Not implemented yet? todo(item)*)
 
-(*Not implemented yet? todo(item)*)
+Class Temp Self A := {
+  my:int64 -> int32 -> A -> int16 -> Self ;
+  x:int64 -> Self ;
+  y:int64 -> Self ;
+  z:int64 -> Self ;
+}.
 
-Notation FieldCanvas := (nseq int8 256).
-Notation X25519FieldElement_t := (nat_mod 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed).
-Definition X25519FieldElement : X25519FieldElement_t -> X25519FieldElement_t :=
-  id.
-
-Notation ScalarCanvas := (nseq int8 256).
-Notation Scalar_t := (nat_mod 0x8000000000000000000000000000000000000000000000000000000000000000).
-Definition Scalar : Scalar_t -> Scalar_t :=
-  id.
-
-Notation Point_t := ((X25519FieldElement_t '× X25519FieldElement_t)).
-
-Notation X25519SerializedPoint_t := (nseq int8 32).
-Definition X25519SerializedPoint : X25519SerializedPoint_t -> X25519SerializedPoint_t :=
-  id.
-
-Notation X25519SerializedScalar_t := (nseq int8 32).
-Definition X25519SerializedScalar : X25519SerializedScalar_t -> X25519SerializedScalar_t :=
-  id.
-
-Definition mask_scalar (s : X25519SerializedScalar_t) : X25519SerializedScalar_t :=
-  let k := s : X25519SerializedScalar_t in
-  let k := k.[(@repr WORDSIZE32 0)]<-((k.[(@repr WORDSIZE32 0)]).&(secret (@repr WORDSIZE8 248))) : X25519SerializedScalar_t in
-  let k := k.[(@repr WORDSIZE32 31)]<-((k.[(@repr WORDSIZE32 31)]).&(secret (@repr WORDSIZE8 127))) : X25519SerializedScalar_t in
-  k.[(@repr WORDSIZE32 31)]<-((k.[(@repr WORDSIZE32 31)]).|(secret (@repr WORDSIZE8 64))).
-
-Definition decode_scalar (s : X25519SerializedScalar_t) : Scalar_t :=
-  let k := mask_scalar s : X25519SerializedScalar_t in
-  from_byte_seq_le k.
-
-Definition decode_point (u : X25519SerializedPoint_t) : (X25519FieldElement_t '× X25519FieldElement_t) :=
-  let u_ := u : X25519SerializedPoint_t in
-  let u_ := u_.[(@repr WORDSIZE32 31)]<-((u_.[(@repr WORDSIZE32 31)]).&(secret (@repr WORDSIZE8 127))) : X25519SerializedPoint_t in
-  (from_byte_seq_le u_,from_literal (@repr WORDSIZE128 1)).
-
-Definition encode_point (p : (X25519FieldElement_t '× X25519FieldElement_t)) : X25519SerializedPoint_t :=
-  let '(x,y) := p : (X25519FieldElement_t '× X25519FieldElement_t) in
-  let b := x.*(inv y) : X25519FieldElement_t in
-  update_start new (to_byte_seq_le b).
-
-Definition point_add_and_double (q : (X25519FieldElement_t '× X25519FieldElement_t)) (np : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t))) : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) :=
-  let '(nq,nqp1) := np : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-  let '(x_1,_z_1) := q : (X25519FieldElement_t '× X25519FieldElement_t) in
-  let '(x_2,z_2) := nq : (X25519FieldElement_t '× X25519FieldElement_t) in
-  let '(x_3,z_3) := nqp1 : (X25519FieldElement_t '× X25519FieldElement_t) in
-  let a := x_2.+z_2 : X25519FieldElement_t in
-  let aa := pow a (@repr WORDSIZE128 2) : X25519FieldElement_t in
-  let b := x_2.-z_2 : X25519FieldElement_t in
-  let bb := b.*b : X25519FieldElement_t in
-  let e := aa.-bb : X25519FieldElement_t in
-  let c := x_3.+z_3 : X25519FieldElement_t in
-  let d := x_3.-z_3 : X25519FieldElement_t in
-  let da := d.*a : X25519FieldElement_t in
-  let cb := c.*b : X25519FieldElement_t in
-  let x_3 := pow (da.+cb) (@repr WORDSIZE128 2) : X25519FieldElement_t in
-  let z_3 := x_1.*(pow (da.-cb) (@repr WORDSIZE128 2)) : X25519FieldElement_t in
-  let x_2 := aa.*bb : X25519FieldElement_t in
-  let e121665 := from_literal (@repr WORDSIZE128 121665) : X25519FieldElement_t in
-  let z_2 := e.*(aa.+(e121665.*e)) : X25519FieldElement_t in
-  ((x_2,z_2),(x_3,z_3)).
-
-Definition swap (x : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t))) : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) :=
-  let '(x0,x1) := x : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-  (x1,x0).
-
-Definition montgomery_ladder (k : Scalar_t) (init : (X25519FieldElement_t '× X25519FieldElement_t)) : (X25519FieldElement_t '× X25519FieldElement_t) :=
-  let inf := (from_literal (@repr WORDSIZE128 1),from_literal (@repr WORDSIZE128 0)) : (X25519FieldElement_t '× X25519FieldElement_t) in
-  let acc := (inf,init) : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-  let acc := foldi (@repr WORDSIZE32 0) (@repr WORDSIZE32 256) (fun i acc =>
-      if
-        bit k ((@repr WORDSIZE32 255).-i)
-      then
-        let acc := swap acc : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-        let acc := point_add_and_double init acc : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-        swap acc
-      else
-        point_add_and_double init acc) acc : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-  let '(out,_) := acc : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-  out.
-
-Definition x25519_scalarmult (s : X25519SerializedScalar_t) (p : X25519SerializedPoint_t) : X25519SerializedPoint_t :=
-  let s_ := decode_scalar s : Scalar_t in
-  let p_ := decode_point p : (X25519FieldElement_t '× X25519FieldElement_t) in
-  let r := montgomery_ladder s_ p_ : (X25519FieldElement_t '× X25519FieldElement_t) in
-  encode_point r.
-
-Definition x25519_secret_to_public (s : X25519SerializedScalar_t) : X25519SerializedPoint_t :=
-  let base := new : X25519SerializedPoint_t in
-  let base := base.[(@repr WORDSIZE32 0)]<-(secret (@repr WORDSIZE8 9)) : X25519SerializedPoint_t in
-  x25519_scalarmult s base.
+Instance int64_Temp : Temp int64 int8 := {
+  my (xx : int64) (xy : int32) (xw : int8) (xz : int16) := xx;
+  x (yy : int64) := yy;
+  y (zz : int64) := zz;
+  z (ww : int64) := ww;
+}.

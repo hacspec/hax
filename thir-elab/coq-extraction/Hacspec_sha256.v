@@ -145,93 +145,139 @@ Notation U64_from_U8 := uint64_from_uint8.
 
 (*Not implemented yet? todo(item)*)
 
-Notation FieldCanvas := (nseq int8 256).
-Notation X25519FieldElement_t := (nat_mod 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed).
-Definition X25519FieldElement : X25519FieldElement_t -> X25519FieldElement_t :=
+Definition BLOCK_SIZE : int32 :=
+  (@repr WORDSIZE32 64).
+
+Definition LEN_SIZE : int32 :=
+  (@repr WORDSIZE32 8).
+
+Definition K_SIZE : int32 :=
+  (@repr WORDSIZE32 64).
+
+Definition HASH_SIZE : int32 :=
+  (@repr WORDSIZE32 256)./(@repr WORDSIZE32 8).
+
+Notation Block_t := (nseq int8 BLOCK_SIZE).
+Definition Block : Block_t -> Block_t :=
   id.
 
-Notation ScalarCanvas := (nseq int8 256).
-Notation Scalar_t := (nat_mod 0x8000000000000000000000000000000000000000000000000000000000000000).
-Definition Scalar : Scalar_t -> Scalar_t :=
+Notation OpTableType_t := (nseq int32 12).
+Definition OpTableType : OpTableType_t -> OpTableType_t :=
   id.
 
-Notation Point_t := ((X25519FieldElement_t '× X25519FieldElement_t)).
-
-Notation X25519SerializedPoint_t := (nseq int8 32).
-Definition X25519SerializedPoint : X25519SerializedPoint_t -> X25519SerializedPoint_t :=
+Notation Sha256Digest_t := (nseq int8 HASH_SIZE).
+Definition Sha256Digest : Sha256Digest_t -> Sha256Digest_t :=
   id.
 
-Notation X25519SerializedScalar_t := (nseq int8 32).
-Definition X25519SerializedScalar : X25519SerializedScalar_t -> X25519SerializedScalar_t :=
+Notation RoundConstantsTable_t := (nseq int32 K_SIZE).
+Definition RoundConstantsTable : RoundConstantsTable_t -> RoundConstantsTable_t :=
   id.
 
-Definition mask_scalar (s : X25519SerializedScalar_t) : X25519SerializedScalar_t :=
-  let k := s : X25519SerializedScalar_t in
-  let k := k.[(@repr WORDSIZE32 0)]<-((k.[(@repr WORDSIZE32 0)]).&(secret (@repr WORDSIZE8 248))) : X25519SerializedScalar_t in
-  let k := k.[(@repr WORDSIZE32 31)]<-((k.[(@repr WORDSIZE32 31)]).&(secret (@repr WORDSIZE8 127))) : X25519SerializedScalar_t in
-  k.[(@repr WORDSIZE32 31)]<-((k.[(@repr WORDSIZE32 31)]).|(secret (@repr WORDSIZE8 64))).
+Notation Hash_t := (nseq int32 8).
+Definition Hash : Hash_t -> Hash_t :=
+  id.
 
-Definition decode_scalar (s : X25519SerializedScalar_t) : Scalar_t :=
-  let k := mask_scalar s : X25519SerializedScalar_t in
-  from_byte_seq_le k.
+Definition ch (x : U32_t) (y : U32_t) (z : U32_t) : _ :=
+  (x.&y).^((not x).&z).
 
-Definition decode_point (u : X25519SerializedPoint_t) : (X25519FieldElement_t '× X25519FieldElement_t) :=
-  let u_ := u : X25519SerializedPoint_t in
-  let u_ := u_.[(@repr WORDSIZE32 31)]<-((u_.[(@repr WORDSIZE32 31)]).&(secret (@repr WORDSIZE8 127))) : X25519SerializedPoint_t in
-  (from_byte_seq_le u_,from_literal (@repr WORDSIZE128 1)).
+Definition maj (x : U32_t) (y : U32_t) (z : U32_t) : _ :=
+  (x.&y).^((x.&z).^(y.&z)).
 
-Definition encode_point (p : (X25519FieldElement_t '× X25519FieldElement_t)) : X25519SerializedPoint_t :=
-  let '(x,y) := p : (X25519FieldElement_t '× X25519FieldElement_t) in
-  let b := x.*(inv y) : X25519FieldElement_t in
-  update_start new (to_byte_seq_le b).
+Definition OP_TABLE : OpTableType_t :=
+  OpTableType (array_from_list _ [(@repr WORDSIZE32 2);(@repr WORDSIZE32 13);(@repr WORDSIZE32 22);(@repr WORDSIZE32 6);(@repr WORDSIZE32 11);(@repr WORDSIZE32 25);(@repr WORDSIZE32 7);(@repr WORDSIZE32 18);(@repr WORDSIZE32 3);(@repr WORDSIZE32 17);(@repr WORDSIZE32 19);(@repr WORDSIZE32 10)]).
 
-Definition point_add_and_double (q : (X25519FieldElement_t '× X25519FieldElement_t)) (np : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t))) : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) :=
-  let '(nq,nqp1) := np : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-  let '(x_1,_z_1) := q : (X25519FieldElement_t '× X25519FieldElement_t) in
-  let '(x_2,z_2) := nq : (X25519FieldElement_t '× X25519FieldElement_t) in
-  let '(x_3,z_3) := nqp1 : (X25519FieldElement_t '× X25519FieldElement_t) in
-  let a := x_2.+z_2 : X25519FieldElement_t in
-  let aa := pow a (@repr WORDSIZE128 2) : X25519FieldElement_t in
-  let b := x_2.-z_2 : X25519FieldElement_t in
-  let bb := b.*b : X25519FieldElement_t in
-  let e := aa.-bb : X25519FieldElement_t in
-  let c := x_3.+z_3 : X25519FieldElement_t in
-  let d := x_3.-z_3 : X25519FieldElement_t in
-  let da := d.*a : X25519FieldElement_t in
-  let cb := c.*b : X25519FieldElement_t in
-  let x_3 := pow (da.+cb) (@repr WORDSIZE128 2) : X25519FieldElement_t in
-  let z_3 := x_1.*(pow (da.-cb) (@repr WORDSIZE128 2)) : X25519FieldElement_t in
-  let x_2 := aa.*bb : X25519FieldElement_t in
-  let e121665 := from_literal (@repr WORDSIZE128 121665) : X25519FieldElement_t in
-  let z_2 := e.*(aa.+(e121665.*e)) : X25519FieldElement_t in
-  ((x_2,z_2),(x_3,z_3)).
+Definition K_TABLE : RoundConstantsTable_t :=
+  RoundConstantsTable (array_from_list _ [0x428a2f98;0x71374491;0xb5c0fbcf;0xe9b5dba5;0x3956c25b;0x59f111f1;0x923f82a4;0xab1c5ed5;0xd807aa98;0x12835b01;0x243185be;0x550c7dc3;0x72be5d74;0x80deb1fe;0x9bdc06a7;0xc19bf174;0xe49b69c1;0xefbe4786;0x0fc19dc6;0x240ca1cc;0x2de92c6f;0x4a7484aa;0x5cb0a9dc;0x76f988da;0x983e5152;0xa831c66d;0xb00327c8;0xbf597fc7;0xc6e00bf3;0xd5a79147;0x06ca6351;0x14292967;0x27b70a85;0x2e1b2138;0x4d2c6dfc;0x53380d13;0x650a7354;0x766a0abb;0x81c2c92e;0x92722c85;0xa2bfe8a1;0xa81a664b;0xc24b8b70;0xc76c51a3;0xd192e819;0xd6990624;0xf40e3585;0x106aa070;0x19a4c116;0x1e376c08;0x2748774c;0x34b0bcb5;0x391c0cb3;0x4ed8aa4a;0x5b9cca4f;0x682e6ff3;0x748f82ee;0x78a5636f;0x84c87814;0x8cc70208;0x90befffa;0xa4506ceb;0xbef9a3f7;0xc67178f2]).
 
-Definition swap (x : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t))) : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) :=
-  let '(x0,x1) := x : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-  (x1,x0).
+Definition HASH_INIT : Hash_t :=
+  Hash (array_from_list _ [0x6a09e667;0xbb67ae85;0x3c6ef372;0xa54ff53a;0x510e527f;0x9b05688c;0x1f83d9ab;0x5be0cd19]).
 
-Definition montgomery_ladder (k : Scalar_t) (init : (X25519FieldElement_t '× X25519FieldElement_t)) : (X25519FieldElement_t '× X25519FieldElement_t) :=
-  let inf := (from_literal (@repr WORDSIZE128 1),from_literal (@repr WORDSIZE128 0)) : (X25519FieldElement_t '× X25519FieldElement_t) in
-  let acc := (inf,init) : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-  let acc := foldi (@repr WORDSIZE32 0) (@repr WORDSIZE32 256) (fun i acc =>
+Definition sigma (x : U32_t) (i : int32) (op : int32) : U32_t :=
+  let tmp := rotate_right x (OP_TABLE.[(((@repr WORDSIZE32 3).*i).+(@repr WORDSIZE32 2))]) : U32_t in
+  let tmp := if
+      op=.?(@repr WORDSIZE32 0)
+    then
+      shr x (OP_TABLE.[(((@repr WORDSIZE32 3).*i).+(@repr WORDSIZE32 2))])
+    else
+      tmp : _ in
+  ((rotate_right x (OP_TABLE.[((@repr WORDSIZE32 3).*i)])).^(rotate_right x (OP_TABLE.[(((@repr WORDSIZE32 3).*i).+(@repr WORDSIZE32 1))]))).^tmp.
+
+Definition schedule (block : Block_t) : RoundConstantsTable_t :=
+  let b := to_be_U32s block : Seq_t U32_t in
+  let s := new : RoundConstantsTable_t in
+  foldi (@repr WORDSIZE32 0) K_SIZE (fun i s =>
+    if
+      i<.?(@repr WORDSIZE32 16)
+    then
+      s.[i]<-(b.[i])
+    else
+      let t16 := s.[(i.-(@repr WORDSIZE32 16))] : U32_t in
+      let t15 := s.[(i.-(@repr WORDSIZE32 15))] : U32_t in
+      let t7 := s.[(i.-(@repr WORDSIZE32 7))] : U32_t in
+      let t2 := s.[(i.-(@repr WORDSIZE32 2))] : U32_t in
+      let s1 := sigma t2 (@repr WORDSIZE32 3) (@repr WORDSIZE32 0) : U32_t in
+      let s0 := sigma t15 (@repr WORDSIZE32 2) (@repr WORDSIZE32 0) : U32_t in
+      s.[i]<-(((s1.+t7).+s0).+t16)) s.
+
+Definition shuffle (ws : RoundConstantsTable_t) (hashi : Hash_t) : Hash_t :=
+  let h := hashi : Hash_t in
+  foldi (@repr WORDSIZE32 0) K_SIZE (fun i h =>
+    let a0 := h.[(@repr WORDSIZE32 0)] : U32_t in
+    let b0 := h.[(@repr WORDSIZE32 1)] : U32_t in
+    let c0 := h.[(@repr WORDSIZE32 2)] : U32_t in
+    let d0 := h.[(@repr WORDSIZE32 3)] : U32_t in
+    let e0 := h.[(@repr WORDSIZE32 4)] : U32_t in
+    let f0 := h.[(@repr WORDSIZE32 5)] : U32_t in
+    let g0 := h.[(@repr WORDSIZE32 6)] : U32_t in
+    let h0 := h.[(@repr WORDSIZE32 7)] : U32_t in
+    let t1 := (((h0.+(sigma e0 (@repr WORDSIZE32 1) (@repr WORDSIZE32 1))).+(ch e0 f0 g0)).+(K_TABLE.[i])).+(ws.[i]) : U32_t in
+    let t2 := (sigma a0 (@repr WORDSIZE32 0) (@repr WORDSIZE32 1)).+(maj a0 b0 c0) : U32_t in
+    let h := h.[(@repr WORDSIZE32 0)]<-(t1.+t2) : Hash_t in
+    let h := h.[(@repr WORDSIZE32 1)]<-a0 : Hash_t in
+    let h := h.[(@repr WORDSIZE32 2)]<-b0 : Hash_t in
+    let h := h.[(@repr WORDSIZE32 3)]<-c0 : Hash_t in
+    let h := h.[(@repr WORDSIZE32 4)]<-(d0.+t1) : Hash_t in
+    let h := h.[(@repr WORDSIZE32 5)]<-e0 : Hash_t in
+    let h := h.[(@repr WORDSIZE32 6)]<-f0 : Hash_t in
+    h.[(@repr WORDSIZE32 7)]<-g0) h.
+
+Definition compress (block : Block_t) (h_in : Hash_t) : Hash_t :=
+  let s := schedule block : RoundConstantsTable_t in
+  let h := shuffle s h_in : Hash_t in
+  foldi (@repr WORDSIZE32 0) (@repr WORDSIZE32 8) (fun i h =>
+    h.[i]<-((h.[i]).+(h_in.[i]))) h.
+
+Definition hash (msg : Seq_t U8_t) : Sha256Digest_t :=
+  let h := HASH_INIT : Hash_t in
+  let last_block := new : Block_t in
+  let last_block_len := (@repr WORDSIZE32 0) : int32 in
+  let '(h,last_block,last_block_len) := foldi (@repr WORDSIZE32 0) (num_chunks msg BLOCK_SIZE) (fun i '(h,last_block,last_block_len) =>
+      let '(block_len,block) := get_chunk msg BLOCK_SIZE i : (int32 '× Seq_t U8_t) in
       if
-        bit k ((@repr WORDSIZE32 255).-i)
+        block_len<.?BLOCK_SIZE
       then
-        let acc := swap acc : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-        let acc := point_add_and_double init acc : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-        swap acc
+        let last_block := update_start new block : Block_t in
+        let last_block_len := block_len : int32 in
+        (h,last_block,last_block_len)
       else
-        point_add_and_double init acc) acc : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-  let '(out,_) := acc : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-  out.
+        let compress_input := from_seq block : Block_t in
+        let h := compress compress_input h : Hash_t in
+        (h,last_block,last_block_len)) (h,last_block,last_block_len) : (Hash_t '× Block_t '× int32) in
+  let last_block := last_block.[last_block_len]<-(secret (@repr WORDSIZE8 128)) : Block_t in
+  let len_bist := U64 ((len msg).*(@repr WORDSIZE32 8)) : U64_t in
+  let '(h,last_block) := if
+      last_block_len<.?(BLOCK_SIZE.-LEN_SIZE)
+    then
+      let last_block := update last_block (BLOCK_SIZE.-LEN_SIZE) (U64_to_be_bytes len_bist) : Block_t in
+      let h := compress last_block h : Hash_t in
+      (h,last_block)
+    else
+      let pad_block := new : Block_t in
+      let pad_block := update pad_block (BLOCK_SIZE.-LEN_SIZE) (U64_to_be_bytes len_bist) : Block_t in
+      let h := compress last_block h : Hash_t in
+      let h := compress pad_block h : Hash_t in
+      (h,last_block) : (Hash_t '× Block_t) in
+  from_seq (to_be_bytes h).
 
-Definition x25519_scalarmult (s : X25519SerializedScalar_t) (p : X25519SerializedPoint_t) : X25519SerializedPoint_t :=
-  let s_ := decode_scalar s : Scalar_t in
-  let p_ := decode_point p : (X25519FieldElement_t '× X25519FieldElement_t) in
-  let r := montgomery_ladder s_ p_ : (X25519FieldElement_t '× X25519FieldElement_t) in
-  encode_point r.
-
-Definition x25519_secret_to_public (s : X25519SerializedScalar_t) : X25519SerializedPoint_t :=
-  let base := new : X25519SerializedPoint_t in
-  let base := base.[(@repr WORDSIZE32 0)]<-(secret (@repr WORDSIZE8 9)) : X25519SerializedPoint_t in
-  x25519_scalarmult s base.
+Definition sha256 (msg : Seq_t U8_t) : Sha256Digest_t :=
+  hash msg.

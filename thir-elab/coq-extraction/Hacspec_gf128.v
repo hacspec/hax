@@ -145,93 +145,90 @@ Notation U64_from_U8 := uint64_from_uint8.
 
 (*Not implemented yet? todo(item)*)
 
-Notation FieldCanvas := (nseq int8 256).
-Notation X25519FieldElement_t := (nat_mod 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed).
-Definition X25519FieldElement : X25519FieldElement_t -> X25519FieldElement_t :=
+Definition BLOCKSIZE : int32 :=
+  (@repr WORDSIZE32 16).
+
+Notation Gf128Block_t := (nseq int8 BLOCKSIZE).
+Definition Gf128Block : Gf128Block_t -> Gf128Block_t :=
   id.
 
-Notation ScalarCanvas := (nseq int8 256).
-Notation Scalar_t := (nat_mod 0x8000000000000000000000000000000000000000000000000000000000000000).
-Definition Scalar : Scalar_t -> Scalar_t :=
+Notation Gf128Key_t := (nseq int8 BLOCKSIZE).
+Definition Gf128Key : Gf128Key_t -> Gf128Key_t :=
   id.
 
-Notation Point_t := ((X25519FieldElement_t '× X25519FieldElement_t)).
-
-Notation X25519SerializedPoint_t := (nseq int8 32).
-Definition X25519SerializedPoint : X25519SerializedPoint_t -> X25519SerializedPoint_t :=
+Notation Gf128Tag_t := (nseq int8 BLOCKSIZE).
+Definition Gf128Tag : Gf128Tag_t -> Gf128Tag_t :=
   id.
 
-Notation X25519SerializedScalar_t := (nseq int8 32).
-Definition X25519SerializedScalar : X25519SerializedScalar_t -> X25519SerializedScalar_t :=
-  id.
+Notation Element_t := (U128_t).
 
-Definition mask_scalar (s : X25519SerializedScalar_t) : X25519SerializedScalar_t :=
-  let k := s : X25519SerializedScalar_t in
-  let k := k.[(@repr WORDSIZE32 0)]<-((k.[(@repr WORDSIZE32 0)]).&(secret (@repr WORDSIZE8 248))) : X25519SerializedScalar_t in
-  let k := k.[(@repr WORDSIZE32 31)]<-((k.[(@repr WORDSIZE32 31)]).&(secret (@repr WORDSIZE8 127))) : X25519SerializedScalar_t in
-  k.[(@repr WORDSIZE32 31)]<-((k.[(@repr WORDSIZE32 31)]).|(secret (@repr WORDSIZE8 64))).
+Definition IRRED : U128_t :=
+  secret (@repr WORDSIZE128 299076299051606071403356588563077529600).
 
-Definition decode_scalar (s : X25519SerializedScalar_t) : Scalar_t :=
-  let k := mask_scalar s : X25519SerializedScalar_t in
-  from_byte_seq_le k.
+Definition fadd (x : U128_t) (y : U128_t) : _ :=
+  x.^y.
 
-Definition decode_point (u : X25519SerializedPoint_t) : (X25519FieldElement_t '× X25519FieldElement_t) :=
-  let u_ := u : X25519SerializedPoint_t in
-  let u_ := u_.[(@repr WORDSIZE32 31)]<-((u_.[(@repr WORDSIZE32 31)]).&(secret (@repr WORDSIZE8 127))) : X25519SerializedPoint_t in
-  (from_byte_seq_le u_,from_literal (@repr WORDSIZE128 1)).
+Definition fmul (x : U128_t) (y : U128_t) : U128_t :=
+  let res := secret (@repr WORDSIZE128 0) : U128_t in
+  let sh := x : U128_t in
+  let '(res,sh) := foldi (@repr WORDSIZE32 0) (@repr WORDSIZE32 128) (fun i '(res,sh) =>
+      let res := if
+          (declassify (y.&(shl (secret (@repr WORDSIZE128 1)) ((@repr WORDSIZE32 127).-i))))<>(declassify (secret (@repr WORDSIZE128 0)))
+        then
+          res.^sh
+        else
+          res : _ in
+      let sh := if
+          (declassify (sh.&(secret (@repr WORDSIZE128 1))))<>(declassify (secret (@repr WORDSIZE128 0)))
+        then
+          (shr sh (@repr WORDSIZE32 1)).^IRRED
+        else
+          shr sh (@repr WORDSIZE32 1) : _ in
+      (res,sh)) (res,sh) : (_ '× _) in
+  res.
 
-Definition encode_point (p : (X25519FieldElement_t '× X25519FieldElement_t)) : X25519SerializedPoint_t :=
-  let '(x,y) := p : (X25519FieldElement_t '× X25519FieldElement_t) in
-  let b := x.*(inv y) : X25519FieldElement_t in
-  update_start new (to_byte_seq_le b).
+Definition encode (block : Gf128Block_t) : U128_t :=
+  U128_from_be_bytes (from_seq block).
 
-Definition point_add_and_double (q : (X25519FieldElement_t '× X25519FieldElement_t)) (np : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t))) : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) :=
-  let '(nq,nqp1) := np : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-  let '(x_1,_z_1) := q : (X25519FieldElement_t '× X25519FieldElement_t) in
-  let '(x_2,z_2) := nq : (X25519FieldElement_t '× X25519FieldElement_t) in
-  let '(x_3,z_3) := nqp1 : (X25519FieldElement_t '× X25519FieldElement_t) in
-  let a := x_2.+z_2 : X25519FieldElement_t in
-  let aa := pow a (@repr WORDSIZE128 2) : X25519FieldElement_t in
-  let b := x_2.-z_2 : X25519FieldElement_t in
-  let bb := b.*b : X25519FieldElement_t in
-  let e := aa.-bb : X25519FieldElement_t in
-  let c := x_3.+z_3 : X25519FieldElement_t in
-  let d := x_3.-z_3 : X25519FieldElement_t in
-  let da := d.*a : X25519FieldElement_t in
-  let cb := c.*b : X25519FieldElement_t in
-  let x_3 := pow (da.+cb) (@repr WORDSIZE128 2) : X25519FieldElement_t in
-  let z_3 := x_1.*(pow (da.-cb) (@repr WORDSIZE128 2)) : X25519FieldElement_t in
-  let x_2 := aa.*bb : X25519FieldElement_t in
-  let e121665 := from_literal (@repr WORDSIZE128 121665) : X25519FieldElement_t in
-  let z_2 := e.*(aa.+(e121665.*e)) : X25519FieldElement_t in
-  ((x_2,z_2),(x_3,z_3)).
+Definition decode (e : U128_t) : Gf128Block_t :=
+  from_seq (U128_to_be_bytes e).
 
-Definition swap (x : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t))) : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) :=
-  let '(x0,x1) := x : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-  (x1,x0).
+Definition update_ (r : U128_t) (block : Gf128Block_t) (acc : U128_t) : U128_t :=
+  fmul (fadd (encode block) acc) r.
 
-Definition montgomery_ladder (k : Scalar_t) (init : (X25519FieldElement_t '× X25519FieldElement_t)) : (X25519FieldElement_t '× X25519FieldElement_t) :=
-  let inf := (from_literal (@repr WORDSIZE128 1),from_literal (@repr WORDSIZE128 0)) : (X25519FieldElement_t '× X25519FieldElement_t) in
-  let acc := (inf,init) : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-  let acc := foldi (@repr WORDSIZE32 0) (@repr WORDSIZE32 256) (fun i acc =>
-      if
-        bit k ((@repr WORDSIZE32 255).-i)
-      then
-        let acc := swap acc : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-        let acc := point_add_and_double init acc : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-        swap acc
-      else
-        point_add_and_double init acc) acc : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-  let '(out,_) := acc : ((X25519FieldElement_t '× X25519FieldElement_t) '× (X25519FieldElement_t '× X25519FieldElement_t)) in
-  out.
+Fixpoint Build_Range_t (a b : nat) :=
+  match (b - a)%nat with
+    O => []
+  | S n =>
+      match b with
+      | O => []
+      | _ => 
+          b :: Build_Range_t a b
+      end
+  end.
 
-Definition x25519_scalarmult (s : X25519SerializedScalar_t) (p : X25519SerializedPoint_t) : X25519SerializedPoint_t :=
-  let s_ := decode_scalar s : Scalar_t in
-  let p_ := decode_point p : (X25519FieldElement_t '× X25519FieldElement_t) in
-  let r := montgomery_ladder s_ p_ : (X25519FieldElement_t '× X25519FieldElement_t) in
-  encode_point r.
+Definition poly (msg : Seq_t U8_t) (r : U128_t) : U128_t :=
+  let l := len msg : int32 in
+  let n_blocks := l./BLOCKSIZE : int32 in
+  let rem_ := l.%BLOCKSIZE : int32 in
+  let acc := secret (@repr WORDSIZE128 0) : U128_t in
+  let acc := foldi (@repr WORDSIZE32 0) n_blocks (fun i acc =>
+      let k := i.*BLOCKSIZE : int32 in
+      let block := new : Gf128Block_t in
+      let block := update_start block (slice_range msg (Build_Range_t k(k.+BLOCKSIZE))) : Gf128Block_t in
+      update_ r block acc) acc : U128_t in
+  if
+    rem_<>(@repr WORDSIZE32 0)
+  then
+    let k := n_blocks.*BLOCKSIZE : int32 in
+    let last_block := new : Gf128Block_t in
+    let last_block := update_slice last_block (@repr WORDSIZE32 0) msg k rem_ : Gf128Block_t in
+    update_ r last_block acc
+  else
+    acc.
 
-Definition x25519_secret_to_public (s : X25519SerializedScalar_t) : X25519SerializedPoint_t :=
-  let base := new : X25519SerializedPoint_t in
-  let base := base.[(@repr WORDSIZE32 0)]<-(secret (@repr WORDSIZE8 9)) : X25519SerializedPoint_t in
-  x25519_scalarmult s base.
+Definition gmac (text : Seq_t U8_t) (k : Gf128Key_t) : Gf128Tag_t :=
+  let s := new : Gf128Block_t in
+  let r := encode (from_seq k) : U128_t in
+  let a := poly text r : U128_t in
+  from_seq (decode (fadd a (encode s))).
