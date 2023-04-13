@@ -951,6 +951,8 @@ module CoqBackend = struct
      (prod a b) (at level 80, right associativity) : hacspec_scope.\n\
      Notation Result_t := (fun '(x,y) => result).\n\
      Axiom TODO_name : Type.\n\
+     Notation ONE := nat_mod_one.\n\
+     Notation exp := nat_mod_exp.\n\
      "
 
   let modules_to_string (o : Backend.Options.t) modules =
