@@ -1,0 +1,7 @@
+[workspace]
+
+members = [
+     "frontend/exporter",
+     "frontend/diagnostics",
+     "cli",
+]

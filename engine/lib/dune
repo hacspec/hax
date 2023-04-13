@@ -1,0 +1,45 @@
+(library
+ (name circus_engine)
+ (libraries
+  yojson
+  non_empty_list
+  bignum
+  pprint
+  ppx_deriving_yojson.runtime
+  hacspeclib_macro_parser
+  cmdliner
+  fstar_surface_ast
+  core
+  )
+ (preprocessor_deps
+  ; `ppx_inline` is used on the `Subtype` module, thus we need it at PPX time
+  (file subtype.ml))
+ (preprocess
+  (pps
+   ppx_yojson_conv
+   ppx_sexp_conv
+   ppx_compare
+   ppx_hash
+   visitors.ppx
+   ppx_deriving.show
+   ppx_deriving.eq
+   ppx_inline
+   ppx_generate_features
+   ppx_functor_application
+   ppx_matches)))
+
+(rule
+ (target raw_thir_ast.ml)
+ (deps (:ocaml_of_json_schema ../utils/ocaml_of_json_schema/ocaml_of_json_schema.js))
+ (action
+  (with-stdout-to
+   raw_thir_ast.ml
+   (pipe-stdout
+        (run circus-frontend-exporter-json-schema ast -)
+        (run node %{ocaml_of_json_schema} - -)
+   ))))
+
+(env
+ (dev
+  (flags
+   (:standard -w -A -w +8))))
