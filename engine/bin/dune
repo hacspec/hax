@@ -15,7 +15,7 @@
   (with-stdout-to
    cli_types.ml
    (pipe-stdout
-        (run circus-frontend-json-schema cli -)
+        (run circus-frontend-exporter-json-schema cli -)
         (run node %{ocaml_of_json_schema} - -)
    ))))
 

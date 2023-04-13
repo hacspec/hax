@@ -36,7 +36,10 @@
         };
         devShells = {
           default = pkgs.mkShell {
-            inputsFrom = [packages.default];
+            inputsFrom = [
+              packages.circus-rust-frontend.unwrapped
+              packages.circus-engine
+            ];
             packages = [
               pkgs.ocamlformat
               pkgs.ocamlPackages.ocaml-lsp

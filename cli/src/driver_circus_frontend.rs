@@ -43,13 +43,13 @@ use rustc_middle::{
 // mod options;
 // use options::Options;
 
-use circus_frontend;
+use circus_frontend_exporter;
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
 fn browse_items<'tcx>(
-    options: &circus_frontend::Options,
+    options: &circus_frontend_exporter::Options,
     macro_calls: HashMap<rustc_span::Span, rustc_ast::ast::MacCall>,
     tcx: TyCtxt<'tcx>,
 ) {
@@ -91,7 +91,7 @@ fn browse_items<'tcx>(
 
     let items = hir.items();
     let macro_calls_r = box macro_calls;
-    let state = &circus_frontend::State {
+    let state = &circus_frontend_exporter::State {
         tcx,
         options: box options.clone(),
         thir: (),
@@ -101,7 +101,7 @@ fn browse_items<'tcx>(
         local_ident_map: Rc::new(RefCell::new(HashMap::new())),
         cached_thirs: thirs,
     };
-    let converted_items = circus_frontend::inline_macro_invokations(&items.collect(), state);
+    let converted_items = circus_frontend_exporter::inline_macro_invokations(&items.collect(), state);
 
     serde_json::to_writer_pretty(options.output_file.open_or_stdout(), &converted_items).unwrap();
 }
@@ -132,7 +132,7 @@ use rustc_session::parse::ParseSess;
 use rustc_span::symbol::Symbol;
 
 struct DefaultCallbacks {
-    options: circus_frontend::Options,
+    options: circus_frontend_exporter::Options,
 }
 impl Callbacks for DefaultCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
@@ -181,7 +181,7 @@ fn rustc_sysroot() -> String {
 use clap::Parser;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let options: circus_frontend::Options = serde_json::from_str(
+    let options: circus_frontend_exporter::Options = serde_json::from_str(
         &std::env::var("THIR_EXPORT_OPTIONS")
             .expect("Cannot find environnement variable THIR_EXPORT_OPTIONS"),
     )

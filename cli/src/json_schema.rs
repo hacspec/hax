@@ -1,8 +1,8 @@
 mod common;
 
-use circus_frontend;
+use circus_frontend_exporter;
 
-pub fn export_cli_schema_to(path: &circus_frontend::PathOrDash) {
+pub fn export_cli_schema_to(path: &circus_frontend_exporter::PathOrDash) {
     use schemars::JsonSchema;
     use serde::{Deserialize, Serialize};
     #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -16,7 +16,7 @@ pub fn export_cli_schema_to(path: &circus_frontend::PathOrDash) {
 fn main() {
     match std::env::args().collect::<Vec<_>>().as_slice() {
         [_, kind, destination] if kind == "cli" || kind == "ast" => {
-            let destination = circus_frontend::PathOrDash::from(std::ffi::OsStr::new(destination));
+            let destination = circus_frontend_exporter::PathOrDash::from(std::ffi::OsStr::new(destination));
             if kind == "cli" {
                 export_cli_schema_to(&destination)
             } else {

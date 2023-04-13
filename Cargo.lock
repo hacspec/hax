@@ -30,7 +30,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "circus-frontend"
+name = "circus-frontend-exporter"
 version = "0.1.0"
 dependencies = [
  "adt-into",
@@ -83,7 +83,7 @@ dependencies = [
 name = "driver"
 version = "0.1.0"
 dependencies = [
- "circus-frontend",
+ "circus-frontend-exporter",
  "clap",
  "escape_string",
  "itertools",

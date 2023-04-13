@@ -7,7 +7,7 @@ edition = "2021"
 
 [[bin]]
 path = "src/cargo_circus_frontend.rs"
-name = "cargo-circus-frontend"
+name = "cargo-circus-frontend-exporter"
 
 [[bin]]
 path = "src/cargo_circus.rs"
@@ -15,11 +15,11 @@ name = "cargo-circus"
 
 [[bin]]
 path = "src/driver_circus_frontend.rs"
-name = "driver-circus-frontend"
+name = "driver-circus-frontend-exporter"
 
 [[bin]]
 path = "src/json_schema.rs"
-name = "circus-frontend-json-schema"
+name = "circus-frontend-exporter-json-schema"
 
 [dependencies]
 escape_string= "0.1"
@@ -29,7 +29,7 @@ schemars = "0.8"
 itertools = "0.10.5"
 clap = { version = "4.0", features = ["derive"] }
 paste = "1.0.11"
-circus-frontend = {path = "../rust-frontend"}
+circus-frontend-exporter = {path = "../frontend/exporter"}
 path-clean = "1.0.1"
 tempfile = "3.4"
 

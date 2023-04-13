@@ -31,7 +31,7 @@ pub struct ForceCargoBuildCmd {
     pub force_cargo_build: ForceCargoBuild,
 }
 
-use circus_frontend::{Namespace, PathOrDash};
+use circus_frontend_exporter::{Namespace, PathOrDash};
 
 fn absolute_path(path: impl AsRef<std::path::Path>) -> std::io::Result<std::path::PathBuf> {
     use path_clean::PathClean;
@@ -138,9 +138,9 @@ pub mod circus_frontend_part {
         }
     }
 
-    impl Into<circus_frontend::Options> for All {
-        fn into(self) -> circus_frontend::Options {
-            circus_frontend::Options {
+    impl Into<circus_frontend_exporter::Options> for All {
+        fn into(self) -> circus_frontend_exporter::Options {
+            circus_frontend_exporter::Options {
                 export_json_schema: self.extra.export_json_schema,
                 output_file: self.extra.output_file,
                 cargo_flags: self.base.cargo_flags,
@@ -163,7 +163,7 @@ pub mod circus_engine_part {
     #[command(author, version, about, long_about = None)]
     pub struct Options {
         #[command(flatten)]
-        pub circus_frontend: circus_frontend_part::CircusFrontendBase,
+        pub circus_frontend_exporter: circus_frontend_part::CircusFrontendBase,
 
         /// Directory in which the backend should output files.
         #[arg(short, long = "output-dir", default_value = "out/")]
@@ -179,7 +179,7 @@ pub mod circus_engine_part {
     impl NormalizePaths for Options {
         fn normalize_paths(self) -> Self {
             Options {
-                circus_frontend: self.circus_frontend.normalize_paths(),
+                circus_frontend_exporter: self.circus_frontend_exporter.normalize_paths(),
                 output_dir: absolute_path(self.output_dir).unwrap(),
                 backend: self.backend,
                 force_cargo_build: self.force_cargo_build,

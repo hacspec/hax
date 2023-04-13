@@ -15,9 +15,9 @@ fn main() {
         (common::options::circus_frontend_part::All {
             extra: common::options::circus_frontend_part::Extra {
                 export_json_schema: None,
-                output_file: circus_frontend::PathOrDash::Path(path.clone()),
+                output_file: circus_frontend_exporter::PathOrDash::Path(path.clone()),
             },
-            base: opts.circus_frontend.clone(),
+            base: opts.circus_frontend_exporter.clone(),
             force_cargo_build: opts.force_cargo_build.clone(),
         })
         .into(),
