@@ -165,7 +165,7 @@ module PublicNatMod = struct
       let f =
         type_name <|> type_of_canvas <|> bit_size_of_field <|> modulo_value
       in
-      let* f1 = f <* comma <* ignore_comment in
+      let* f1 = ignore_comment *> f <* comma <* ignore_comment in
       let* f2 = f <* comma <* ignore_comment in
       let* f3 = f <* comma <* ignore_comment in
       let+ f4 = f <* ignore_comment in
