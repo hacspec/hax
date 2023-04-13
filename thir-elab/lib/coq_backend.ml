@@ -67,10 +67,12 @@ module CoqBackend = struct
         | U64
         | U128
 
+      type int_type = int_size * bool
+
       type ty =
         | Bool
         | Unit
-        | Int of int_size * bool
+        | Int of int_type
         | Name of string
         | RecordTy of string * (string * ty) list
         | Product of ty list
@@ -82,7 +84,7 @@ module CoqBackend = struct
       type literal =
         | Const_string of string
         | Const_char of int
-        | Const_int of string
+        | Const_int of string * int_type
         | Const_bool of bool
 
       type pat =
@@ -196,33 +198,31 @@ module CoqBackend = struct
     match x with
     | Const_string s -> s
     | Const_char c -> Int.to_string c (* TODO *)
-    | Const_int i -> i
+    | Const_int (i, (int_size, b)) -> "(@repr" ^ " " ^ "WORDSIZE" ^ int_size_to_string int_size ^ " " ^ i ^ ")"
     | Const_bool b -> Bool.to_string b
-    | _ -> .
 
-  let rec pat_to_string (x : C.AST.pat) depth : string =
+  let rec pat_to_string (x : C.AST.pat) (is_top_expr : bool) depth : string =
     match x with
     | C.AST.Wild -> "_"
-    | C.AST.UnitPat -> "'tt"
+    | C.AST.UnitPat -> tick_if is_top_expr ^ "tt"
     | C.AST.Ident s -> s
-    | C.AST.Lit l ->
-       literal_to_string l
+    | C.AST.Lit l -> literal_to_string l
     | C.AST.RecordPat (name, args) ->
        (* name ^ " " ^ *) "{|" ^ record_pat_to_string args (depth+1) ^ newline_indent depth
        ^ "|}"
-    | C.AST.TuplePat vals ->
-       "'(" ^ tuple_pat_to_string vals (depth+1) ^ ")" (* List.fold_left ~init:(pat_to_string t (depth+1)) ~f:(fun x y -> "(" ^ x ^ "," ^ pat_to_string y (depth+1) ^ ")") (ts) *)
-    | C.AST.AscriptionPat (p, ty) -> pat_to_string p depth
-    | _ -> .
+    | C.AST.TuplePat vals -> tick_if is_top_expr ^ "(" ^ tuple_pat_to_string vals (depth+1) ^ ")"
+    | C.AST.AscriptionPat (p, ty) -> pat_to_string p true depth (* TODO: Should this be true of false? *)
+  and tick_if is_top_expr =
+    (if is_top_expr then "'" else "")
   and tuple_pat_to_string vals depth =
     match vals with
-    | [t] -> pat_to_string t depth
-    | t :: ts -> pat_to_string t depth ^ "," ^ tuple_pat_to_string ts depth
+    | [t] -> pat_to_string t false depth
+    | t :: ts -> pat_to_string t false depth ^ "," ^ tuple_pat_to_string ts depth
     | [] -> "todo empty tuple pattern?"
   and record_pat_to_string args depth : string =
     match args with
     | (name, pat) :: xs ->
-       newline_indent depth ^ name ^ " " ^ ":=" ^ " " ^ pat_to_string pat depth ^ ";" ^ record_pat_to_string xs depth
+       newline_indent depth ^ name ^ " " ^ ":=" ^ " " ^ pat_to_string pat true depth ^ ";" ^ record_pat_to_string xs depth
     | _ -> ""
 
   let rec term_to_string (x : C.AST.term) depth : string * bool =
@@ -230,7 +230,7 @@ module CoqBackend = struct
     | C.AST.UnitTerm -> "tt", false
     | C.AST.Let (pat, bind, term, typ) ->
        let _, ty_str = ty_to_string typ in (* TODO: propegate type definition *)
-       "let" ^ " " ^ pat_to_string pat depth ^ " " ^ ":=" ^ " " ^ term_to_string_without_paren bind (depth+1) ^ " " ^ ":" ^ " " ^ ty_str ^ " " ^ "in" ^ newline_indent depth
+       "let" ^ " " ^ pat_to_string pat true depth ^ " " ^ ":=" ^ " " ^ term_to_string_without_paren bind (depth+1) ^ " " ^ ":" ^ " " ^ ty_str ^ " " ^ "in" ^ newline_indent depth
        ^ term_to_string_without_paren term depth,
        true
     | C.AST.If (cond, then_, else_) ->
@@ -279,7 +279,7 @@ module CoqBackend = struct
 
   and lambda_params_to_string (params : C.AST.pat list) depth : string =
     match params with
-    | x :: xs -> " " ^ pat_to_string x depth ^ lambda_params_to_string xs depth
+    | x :: xs -> " " ^ pat_to_string x true depth ^ lambda_params_to_string xs depth
     | [] -> ""
 
   and term_to_string_with_paren (x : C.AST.term) depth : string =
@@ -310,7 +310,7 @@ module CoqBackend = struct
   and arm_to_string (x : (C.AST.pat * C.AST.term) list) depth : string =
     match x with
     | ((pat, body) :: xs) ->
-       "|" ^ " " ^ pat_to_string pat depth ^ " " ^ "=>" ^ " " ^ term_to_string_without_paren body (depth+1) ^ newline_indent depth ^ arm_to_string xs depth
+       "|" ^ " " ^ pat_to_string pat true depth ^ " " ^ "=>" ^ " " ^ term_to_string_without_paren body (depth+1) ^ newline_indent depth ^ arm_to_string xs depth
     | _ -> ""
 
   let rec decl_to_string (x : C.AST.decl) : string =
@@ -359,7 +359,7 @@ module CoqBackend = struct
     match params with
     | (pat, ty) :: xs ->
        let _, ty_str = ty_to_string ty in
-       "(" ^ pat_to_string pat 0 ^ " " ^ ":" ^ " " ^ ty_str ^ ")" ^ " " ^ params_to_string xs
+       "(" ^ pat_to_string pat true 0 ^ " " ^ ":" ^ " " ^ ty_str ^ ")" ^ " " ^ params_to_string xs (* TODO: Should pat_to_string have tick here? *)
     | [] -> ""
   and inductive_case_to_string variants pre post : C.AST.decl list * string =
     match variants with
@@ -398,9 +398,9 @@ module CoqBackend = struct
 
   let primitive_to_string (id : primitive_ident) : string =
     match id with
-    | Box -> failwith "Box"
-    | Deref -> failwith "Box"
-    | Cast -> failwith "Cast"
+    | Box -> "(TODO: BOX)" (* failwith "Box" *)
+    | Deref -> "(TODO: Deref)" (* failwith "Deref" *)
+    | Cast -> "(TODO: Cast)" (* failwith "Cast" *)
     | BinOp op ->
        (
          match op with
@@ -420,11 +420,13 @@ module CoqBackend = struct
          | BitOr -> "MachineIntegers.or" (* .| *)
          | Shl -> "shift_left_" (* shift_left *)
          | Shr -> "shift_right_" (* shift_right *)
-         | Offset -> failwith "TODO: Offset")
+         | Offset -> "(TODO: Offset)" (* failwith "TODO: Offset" *))
     | UnOp op ->
-       "UnOp"
+       "(TODO: UnOp)"
     | LogicalOp op ->
-       "LogicOp"
+       (match op with
+        | And -> "andb"
+        | Or -> "orb")
 
   module Make (Ctx : sig
     val ctx : Context.t
@@ -465,11 +467,20 @@ module CoqBackend = struct
 
     let __TODO_pat__ s = C.AST.Ident (s ^ " todo(pat)")
 
+    let pint_kind (k : int_kind) : C.AST.int_type =
+      ((match k.size with
+        | S8 -> U8
+        | S16 -> U16
+        | S32 -> U32
+        | S64 -> U64
+        | S128 -> U128
+        | SSize -> U32), k.signedness == Signed)
+
     let rec pliteral (e : literal) =
       match e with
       | String s -> C.AST.Const_string s
       | Char c -> C.AST.Const_char (Char.to_int c)
-      | Int { value } -> C.AST.Const_int (Bigint.to_string value)
+      | Int { value ; kind } -> C.AST.Const_int (Bigint.to_string value, pint_kind kind)
       | Float _ -> failwith "Float: todo"
       | Bool b -> C.AST.Const_bool b
 
@@ -479,13 +490,7 @@ module CoqBackend = struct
       match t with
       | TBool -> C.AST.Bool
       | TChar -> __TODO_ty__ "char"
-      | TInt k -> C.AST.Int ((match k.size with
-                              | S8 -> U8
-                              | S16 -> U16
-                              | S32 -> U32
-                              | S64 -> U64
-                              | S128 -> U128
-                              | SSize -> U32), k.signedness == Signed)
+      | TInt k -> C.AST.Int (pint_kind k)
       | TStr -> __TODO_ty__ "str"
       | TFalse -> __TODO_ty__ "false"
       | TApp { ident = `TupleType 0 as ident; args = [] } ->
@@ -587,8 +592,7 @@ module CoqBackend = struct
 
     let rec pexpr (e : expr) : C.AST.term =
       match e.e with
-      | Literal e ->
-         C.AST.Const (pliteral e)
+      | Literal e -> C.AST.Const (pliteral e)
       | LocalVar local_ident -> C.AST.Name local_ident.name
       | GlobalVar (`TupleCons 0)
       | Construct { constructor = `TupleCons 0; fields = [] } ->
@@ -844,6 +848,7 @@ module CoqBackend = struct
      Open Scope bool_scope.\n\
      Open Scope hacspec_scope.\n\
      \n\
+     (** Should be moved to Hacspec_Lib.v **)
      Definition int_xI {WS : WORDSIZE} (a : int) : int := MachineIntegers.add (MachineIntegers.mul a (repr 2)) MachineIntegers.one.\n\
      Definition int_xO {WS : WORDSIZE} (a : int) : int := MachineIntegers.mul a (repr 2).\n\
      Number Notation int Pos.of_num_int Pos.to_num_int (via positive mapping [[int_xI] => xI, [int_xO] => xO , [MachineIntegers.one] => xH]) : hacspec_scope.\n\
@@ -953,6 +958,14 @@ module CoqBackend = struct
      Axiom TODO_name : Type.\n\
      Notation ONE := nat_mod_one.\n\
      Notation exp := nat_mod_exp.\n\
+     Notation nat_mod := GZnZ.znz.\n\
+     Instance nat_mod_znz_addition {n} : Addition (GZnZ.znz n) := { add a b := a +% b }.\n\
+     Instance nat_mod_znz_subtraction {n} : Subtraction (GZnZ.znz n) := { sub a b := a -% b }.\n\
+     Instance nat_mod_znz_multiplication {n} : Multiplication (GZnZ.znz n) := { mul a b := a *% b }.\n\
+     Notation TWO := nat_mod_two.\n\
+     Notation ne := (fun x y => negb (eqb x y)).\n\
+     Notation eq := (eqb).\n\
+     (** end of: Should be moved to Hacspec_Lib.v **)\n\
      "
 
   let modules_to_string (o : Backend.Options.t) modules =
