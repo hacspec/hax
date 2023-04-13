@@ -45,7 +45,7 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
    2. `opam install --deps-only .`
    3. `dune build`
    4. add the subfolder `_build/install/default/bin` in your `PATH`
-5. run `cargo circus --help`
+5. run `cargo-circus --help`
 
 The librustc library path needs to be added to `DYLD_LIBRARY_PATH=$(rustc --print=sysroot)/lib`
 Make sure to use the right Rust nightly version, which is currently `nightly-2022-12-06`.
