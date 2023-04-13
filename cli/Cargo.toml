@@ -3,12 +3,6 @@ name = "driver"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[[bin]]
-path = "src/cargo_circus_frontend.rs"
-name = "cargo-circus-frontend-exporter"
-
 [[bin]]
 path = "src/cargo_circus.rs"
 name = "cargo-circus"
@@ -30,6 +24,7 @@ itertools = "0.10.5"
 clap = { version = "4.0", features = ["derive"] }
 paste = "1.0.11"
 circus-frontend-exporter = {path = "../frontend/exporter"}
+circus-diagnostics = {path = "../frontend/diagnostics"}
 path-clean = "1.0.1"
 tempfile = "3.4"
 

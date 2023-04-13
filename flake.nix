@@ -46,7 +46,7 @@
               pkgs.ocamlPackages.ocamlformat-rpc-lib
               pkgs.ocamlPackages.ocaml-print-intf
 
-              pkgs.cargo-expand
+              # pkgs.cargo-expand
               pkgs.openssl.dev
               pkgs.pkg-config
               pkgs.rust-analyzer

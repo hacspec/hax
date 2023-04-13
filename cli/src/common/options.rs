@@ -156,7 +156,37 @@ pub mod circus_engine_part {
     pub enum Backend {
         /// Use the F* backend
         Fstar,
+        /// Use the Coq backend
         Coq,
+    }
+
+    #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+    pub struct Options {
+        pub circus_frontend_exporter: circus_frontend_part::CircusFrontendBase,
+        pub output_dir: std::path::PathBuf,
+        pub backend: Backend,
+    }
+}
+
+pub mod wrapped {
+    use super::*;
+    use circus_engine_part::*;
+
+    #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
+    pub enum JsonOrBackend {
+        #[command(flatten)]
+        Backend(Backend),
+
+        /// Export directly as a JSON file
+        JSON {
+            /// Path to the output JSON file, "-" denotes stdout.
+            #[arg(
+                short,
+                long = "output-file",
+                default_value = "circus_frontend_export.json"
+            )]
+            output_file: PathOrDash,
+        },
     }
 
     #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
@@ -170,7 +200,7 @@ pub mod circus_engine_part {
         pub output_dir: std::path::PathBuf,
 
         #[command(subcommand)]
-        pub backend: Backend,
+        pub backend: JsonOrBackend,
 
         #[command(flatten)]
         pub force_cargo_build: ForceCargoBuildCmd,
