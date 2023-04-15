@@ -288,11 +288,8 @@ module Make (F : Features.T) = struct
 
   let make_tuple_pat (pats : pat list) : pat =
     let len = List.length pats in
-    if len == 0
-    then make_tuple_pat' Dummy []
-    else
-      List.mapi ~f:(fun i pat -> { field = `TupleField (i, len); pat }) pats
-      |> make_tuple_pat' (union_spans @@ List.map ~f:(fun p -> p.span) pats)
+    List.mapi ~f:(fun i pat -> { field = `TupleField (i, len); pat }) pats
+    |> make_tuple_pat' (union_spans @@ List.map ~f:(fun p -> p.span) pats)
 
   let make_tuple_expr ~(span : span) (tuple : expr list) : expr =
     let len = List.length tuple in
