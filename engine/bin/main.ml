@@ -1,8 +1,8 @@
 open Circus_engine.Raw_thir_ast
-open Core
 open Circus_engine.Utils
 open Circus_engine
 open Desugar_utils
+open Base
   
 let import_options (o : Cli_types.options) (json_input : string) :
     Backend.Options.t =

@@ -37,7 +37,7 @@ ocamlPackages.buildDunePackage {
   duneVersion = "3";
   src = ./.;
   buildInputs = with ocamlPackages; [
-    core base core_unix
+    base core_kernel
     ppx_yojson_conv yojson ppx_sexp_conv ppx_hash
     visitors pprint non_empty_list bignum
     ppx_deriving_yojson ppx_matches ppx_let cmdliner

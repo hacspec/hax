@@ -1,6 +1,6 @@
 (library
  (name coq_backend)
- (libraries circus_engine core)
+ (libraries circus_engine base)
  (preprocess
   (pps
    ppx_yojson_conv
