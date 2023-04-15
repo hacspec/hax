@@ -45,6 +45,7 @@
         stdint
         ppxlib
         menhirLib
+        sedlex
         )
  (tags
   (topics "to describe" your project)))
