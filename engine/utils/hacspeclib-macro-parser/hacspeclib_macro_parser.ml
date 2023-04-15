@@ -4,27 +4,6 @@ open Angstrom
 (* functions from util functions *)
 let ( << ) f g x = f (g x)
 
-let rec split_list_once ~equal ~needle ~acc subject =
-  match subject with
-  | [] -> (List.rev acc, [])
-  | hd :: tl ->
-      if List.is_prefix subject ~prefix:needle ~equal then
-        (List.rev acc, List.drop subject (List.length needle))
-      else split_list_once ~equal ~needle ~acc:(hd :: acc) tl
-
-let split_list ~equal ~needle (subject : 'a list) : 'a list list =
-  let rec h l =
-    match split_list_once ~equal ~needle ~acc:[] l with
-    | l, [] -> [ l ]
-    | l, r -> l :: h r
-  in
-  h subject
-
-let split_str (s : string) ~(on : string) : string list =
-  split_list ~equal:Char.equal ~needle:(String.to_list on) (String.to_list s)
-  |> List.map ~f:String.of_char_list
-(*  *)
-
 let is_space = function ' ' | '\t' | '\n' -> true | _ -> false
 
 let is_identifier = function
@@ -46,7 +25,7 @@ let is_hex_identifier = function '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' | '_' -> t
 let is_int_type = function 'u' | 'U' -> true | x -> is_digit x
 
 let rec remove_underscore (x : string) : string =
-  List.fold_left ~init:"" ~f:(^) (split_str x "_")
+  String.concat @@ String.split_on_chars x ['_']
 
 let hex_identifier = ignore_spaces ((string "0x" *> take_while1 is_hex_identifier) >>= (return << (^) "0x" << remove_underscore))
 let hex_list = square_parens (many (hex_identifier <* maybe identifier <* maybe comma))
