@@ -26,6 +26,7 @@
           rustc-docs = packages.rustc.passthru.availableComponents.rustc-docs;
           circus-engine = pkgs.callPackage ./engine {
             circus-rust-frontend = packages.circus-rust-frontend.unwrapped;
+            inherit rustc;
           };
           circus-rust-frontend = pkgs.callPackage ./cli {
             inherit rustc craneLib;
