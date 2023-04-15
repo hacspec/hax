@@ -9,7 +9,7 @@
   hacspeclib_macro_parser
   cmdliner
   fstar_surface_ast
-  core
+  base
   )
  (preprocessor_deps
   ; `ppx_inline` is used on the `Subtype` module, thus we need it at PPX time

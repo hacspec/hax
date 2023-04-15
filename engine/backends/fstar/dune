@@ -1,7 +1,7 @@
 (library
  (name fstar_backend)
  (wrapped false)
- (libraries circus_engine core fstar_surface_ast)
+ (libraries circus_engine base fstar_surface_ast)
  (preprocess
   (pps
    ppx_yojson_conv
