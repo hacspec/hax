@@ -1,0 +1,53 @@
+name: Release binaries for circus-engine
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          # - windows-latest
+        ocaml-compiler: [4.14.x]
+        
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+
+      - uses: actions-rs/toolchain@v1
+        id: rust_toolchain
+        with:
+          toolchain: stable
+          
+      - run: cargo install --path cli
+
+      - run: opam install . --deps-only
+        working-directory: engine
+        
+      - run: opam exec -- dune build
+        working-directory: engine
+
+      - run: |
+          cp engine/_build/default/bin/main.exe circus-engine
+          tar -czf hacspec_${{ matrix.os }}.tar.gz circus-engine
+        
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: hacspec_${{ matrix.os }}.tar.gz
+
+          
