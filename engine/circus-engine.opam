@@ -33,6 +33,7 @@ depends: [
   "stdint"
   "ppxlib"
   "menhirLib"
+  "sedlex"
   "odoc" {with-doc}
 ]
 build: [
