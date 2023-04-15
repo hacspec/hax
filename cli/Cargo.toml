@@ -13,7 +13,7 @@ name = "driver-circus-frontend-exporter"
 
 [[bin]]
 path = "src/json_schema.rs"
-name = "circus-frontend-exporter-json-schema"
+name = "cargo-circus-export-json-schemas"
 
 [dependencies]
 escape_string= "0.1"

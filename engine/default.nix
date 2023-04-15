@@ -1,4 +1,4 @@
-{ocamlPackages, fetchzip, circus-rust-frontend, nodejs}:
+{ocamlPackages, fetchzip, circus-rust-frontend, rustc, nodejs}:
 let
   non_empty_list = 
     ocamlPackages.buildDunePackage rec {
@@ -46,6 +46,6 @@ ocamlPackages.buildDunePackage {
   # F* dependencies
   [ batteries menhirLib ppx_deriving
     ppxlib sedlex stdint zarith ];
-  nativeBuildInputs = [ circus-rust-frontend nodejs ];
+  nativeBuildInputs = [ rustc circus-rust-frontend nodejs ];
   strictDeps = true;
 }
