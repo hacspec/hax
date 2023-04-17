@@ -1,10 +1,8 @@
 name: Test extractions for `hacpsec/specs`
 
 on:
-  push:
-    branches:
-      pull_request:
-      workflow_dispatch:
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
