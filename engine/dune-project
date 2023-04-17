@@ -23,7 +23,6 @@
         ocaml
         dune
         base
-        core
         yojson
         non_empty_list
         pprint

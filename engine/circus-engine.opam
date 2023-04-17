@@ -13,7 +13,6 @@ depends: [
   "ocaml"
   "dune" {>= "3.0"}
   "base"
-  "core"
   "yojson"
   "non_empty_list"
   "pprint"
