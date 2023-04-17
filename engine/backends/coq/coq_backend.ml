@@ -715,7 +715,7 @@ module CoqBackend = struct
       (* enum *)
       | Type { name; generics; variants; record = true } ->
          [ C.AST.Inductive (pglobal_ident_last name ^ "_t",
-                            List.fold_left ~init:[] ~f:(fun a b -> a @ [match b with | GPType {ident; default} -> ident.name]) generics.params,
+                            List.fold_left ~init:[] ~f:(fun a b -> a @ [match b with | GPType {ident; default} -> ident.name | _ -> failwith "Coq: TODO: generic_params"]) generics.params,
                             p_inductive variants name) ]
       | Type { name; generics; variants } ->
          [ C.AST.Notation (pglobal_ident_last name ^ "_t", C.AST.Product (List.map ~f:snd (p_record variants name))) ;
@@ -782,7 +782,7 @@ module CoqBackend = struct
                                               | TIFn fn_ty ->
                                                  pty fn_ty
                                               | _ -> __TODO_ty__ "field_ty")) items,
-                       List.fold_left ~init:[] ~f:(fun a b -> a @ [match b with | GPType {ident; default} -> ident.name]) generics.params) ]
+                       List.fold_left ~init:[] ~f:(fun a b -> a @ [match b with | GPType {ident; default} -> ident.name | _ -> failwith "Coq: TODO: generic_params"]) generics.params) ]
       | Impl {generics; self_ty; of_trait = Some (name, gen_vals); items } -> [
           C.AST.Instance (pglobal_ident name,
                           pty self_ty,
