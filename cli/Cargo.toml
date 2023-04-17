@@ -28,7 +28,5 @@ circus-frontend-exporter = {path = "../frontend/exporter"}
 circus-diagnostics = {path = "../frontend/diagnostics"}
 path-clean = "1.0.1"
 tempfile = "3.4"
-
-[build-dependencies]
-vergen = { version = "8.0.0", features = ["build", "git", "gitcl"] }
-
+which = "4.4.0"
+inquire = "0.6"

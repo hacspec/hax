@@ -192,7 +192,7 @@ pub mod wrapped {
     }
 
     #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
-    #[command(author, version, about, long_about = None)]
+    #[command(author, version = concat!("commit=", env!("CIRCUS_GIT_COMMIT_HASH"), " ", "describe=", env!("CIRCUS_GIT_DESCRIBE")), name = "circus", about, long_about = None)]
     pub struct Options {
         #[command(flatten)]
         pub circus_frontend_exporter: circus_frontend_part::CircusFrontendBase,
