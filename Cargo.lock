@@ -57,6 +57,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "circus-lint"
+version = "0.1.0"
+dependencies = [
+ "circus-diagnostics",
+ "log",
+]
+
+[[package]]
 name = "clap"
 version = "4.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
