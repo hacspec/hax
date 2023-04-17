@@ -28,8 +28,7 @@ jobs:
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
 
-      - uses: actions-rs/toolchain@v1
-        id: rust_toolchain
+      - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
           
