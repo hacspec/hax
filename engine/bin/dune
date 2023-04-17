@@ -3,7 +3,7 @@
  (name main)
  (libraries
         circus_engine core pprint
-        fstar_backend coq_backend easycrypt_backend
+        fstar_backend coq_backend easycrypt_backend proverif_backend
  )
  (preprocess
   (pps ppx_matches ppx_functor_application ppx_yojson_conv ppx_deriving.show ppx_compare ppx_sexp_conv ppx_hash ppx_deriving.eq)))

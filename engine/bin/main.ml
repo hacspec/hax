@@ -40,7 +40,8 @@ let () =
       match options.backend with
       | Fstar -> run (module Fstar_backend.FStarBackend) ()
       | Coq -> run (module Coq_backend.CoqBackend) ()
-      | EasyCrypt -> run (module Easycrypt_backend.ECBackend) ())
+      | Easycrypt -> run (module Easycrypt_backend.ECBackend) ()
+      | Proverif -> run (module Proverif_backend.ProverifBackend) ())
   | _ ->
       Fstar_backend.register;
       Coq_backend.register;
