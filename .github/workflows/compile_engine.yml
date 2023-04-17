@@ -6,6 +6,27 @@ on:
       - '*'
 
 jobs:
+  release-js:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: cachix/install-nix-action@v20
+    - uses: cachix/cachix-action@v12runs-on: ${{ matrix.os }}
+      with:
+        name: hacspec
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+    - name: Build JS
+      run: nix build .#circus-engine.passthru.js -L -o circus-engine.js
+
+    - run: |
+        tar -czf hacspec_js.tar.gz circus-engine.js
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: hacspec_${{ matrix.os }}.tar.gz
+
   release:
     if: startsWith(github.ref, 'refs/tags/')
     strategy:
