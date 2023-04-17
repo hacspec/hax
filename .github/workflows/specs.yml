@@ -15,7 +15,7 @@ jobs:
         name: hacspec
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - name: Build
-      run: nix build
+      run: nix build -L
 
     - name: Install
       run: |
@@ -47,13 +47,13 @@ jobs:
         done
       env:
         SKIPLIST: |
-          hacspec-sha256
-          hacspec-bls12-381
-          hacspec-hmac
-          hacspec-bls12-381-hash
-          hacspec-gimli
-          hacspec-sha3
-          hacspec-gf128
+          hacspec-sha256-fstar
+          hacspec-bls12-381-fstar
+          hacspec-hmac-fstar
+          hacspec-bls12-381-hash-fstar
+          hacspec-gimli-fstar
+          hacspec-sha3-fstar
+          hacspec-gf128-fstar
           tls_cryptolib
           hacspec-ristretto
           hacspec-linalg
