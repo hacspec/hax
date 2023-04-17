@@ -16,7 +16,6 @@ depends: [
   "core"
   "yojson"
   "non_empty_list"
-  "bignum"
   "pprint"
   "ppx_deriving_yojson"
   "ppx_yojson_conv"

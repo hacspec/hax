@@ -233,7 +233,7 @@ module FStarBackend = struct
       | Char c -> F.Const.Const_char (Char.to_int c)
       | Int { value; kind = { size; signedness } } ->
           F.Const.Const_int
-            ( Bigint.to_string value,
+            ( value,
               let open F.Const in
               Option.map
                 (match size with
@@ -358,7 +358,7 @@ module FStarBackend = struct
                 pliteral_as_expr
                   (Ast.Int
                      {
-                       value = Bigint.of_int length;
+                       value = string_of_int length;
                        kind = { size = SSize; signedness = Signed };
                      })
               in

@@ -12,7 +12,7 @@ let rec pliteral (e : literal) =
   match e with
   | String s -> "\"" ^ s ^ "\""
   | Char c -> "'" ^ Char.to_string c ^ "'"
-  | Int { value } -> Bigint.to_string value
+  | Int { value } -> value
   | Float _ -> "float_todo"
   | Bool b -> string_of_bool b
 

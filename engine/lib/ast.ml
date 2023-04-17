@@ -14,16 +14,6 @@ module Non_empty_list = struct
   let sexp_of_t f x = Non_empty_list.to_list x |> List.sexp_of_t f
 end
 
-module Bigint = struct
-  include Bigint
-
-  let t_of_yojson : Yojson.Safe.t -> t =
-   fun x -> string_of_yojson x |> Bigint.of_string
-
-  let yojson_of_t : t -> Yojson.Safe.t =
-   fun x -> Bigint.to_string x |> yojson_of_string
-end
-
 module Namespace = struct
   module U = struct
     module T = struct
@@ -201,7 +191,7 @@ type int_kind = { size : size; signedness : signedness }
 type literal =
   | String of string
   | Char of char
-  | Int of { value : Bigint.t; kind : (int_kind[@visitors.opaque]) }
+  | Int of { value : string; kind : (int_kind[@visitors.opaque]) }
   | Float of float
   | Bool of bool
 [@@deriving

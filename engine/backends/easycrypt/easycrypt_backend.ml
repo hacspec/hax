@@ -431,7 +431,7 @@ module ECBackend = struct
       | Literal (Int { value; kind; }) ->
           Format.fprintf fmt "%s.ofint %a"
             (intmodule_of_kind kind)
-            Bigint.pp value
+            String.pp value
 
       | Literal _ ->
           assert false
