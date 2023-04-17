@@ -33,13 +33,13 @@ jobs:
         paths=$(tomlq -r '.workspace.members | .[]' Cargo.toml)
         for cratePath in $paths; do
           crate=$(tomlq -r '.package.name' "$cratePath/Cargo.toml")
-          for skip in $SKIPLIST; do
-            if [[ "$skip" == "$crate" ]]; then
-              echo "⛔ $crate (skipping)"
-              continue 2
-            fi
-          done
           for backend in fstar coq; do
+            for skip in $SKIPLIST; do
+              if [[ "$skip" == "$crate" || "$skip" == "$crate-$backend" ]]; then
+                echo "⛔ $crate [$backend] (skipping)"
+                continue 2
+              fi
+            done
             echo "::group::$crate [$backend]"
             cargo circus -C -p "$crate" \; -i '**' "$backend"
             echo "::endgroup::"
