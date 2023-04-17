@@ -1,4 +1,4 @@
-{ocamlPackages, fetchzip, circus-rust-frontend, rustc, nodejs}:
+{ocamlPackages, fetchzip, circus-rust-frontend, rustc, nodejs, closurecompiler, gnused, lib}:
 let
   non_empty_list = 
     ocamlPackages.buildDunePackage rec {
@@ -30,22 +30,44 @@ let
       minimalOCamlVersion = "4.04";
       doCheck = false;
     };
+  circus-engine = ocamlPackages.buildDunePackage {
+    pname = "circus-engine";
+    version = "0.0.1";
+    duneVersion = "3";
+    src = lib.sourceFilesBySuffices ./. [ ".ml" ".mli" ".js" "dune" "dune-project" ];
+    buildInputs = with ocamlPackages; [
+      zarith_stubs_js
+      base
+      ppx_yojson_conv yojson ppx_sexp_conv ppx_hash
+      visitors pprint non_empty_list bignum
+      ppx_deriving_yojson ppx_matches ppx_let cmdliner
+      angstrom
+    ] ++
+    # F* dependencies
+    [ batteries menhirLib ppx_deriving
+      ppxlib sedlex stdint zarith ];
+    nativeBuildInputs = [
+      rustc circus-rust-frontend nodejs
+      ocamlPackages.js_of_ocaml-compiler
+    ];
+    strictDeps = true;
+    passthru = {
+      js = circus-engine.overrideAttrs (old: {
+        name = "circus-engine.js";
+        nativeBuildInputs = old.nativeBuildInputs ++ [closurecompiler gnused];
+        buildPhase = ''
+          # Compile JS target
+          dune build bin/js_driver.bc.js
+          # Optimize the size of the JS file
+          closure-compiler --js _build/default/bin/js_driver.bc.js --js_output_file circus-engine.js
+          # Add a shebang & make executable
+          sed -i '1 i #!/usr/bin/env node' circus-engine.js
+          chmod +x circus-engine.js
+        '';
+        checkPhase = "true";
+        installPhase = "cp circus-engine.js $out";
+      });
+    };
+  };
 in
-ocamlPackages.buildDunePackage {
-  pname = "circus-engine";
-  version = "0.0.1";
-  duneVersion = "3";
-  src = ./.;
-  buildInputs = with ocamlPackages; [
-    base core_kernel
-    ppx_yojson_conv yojson ppx_sexp_conv ppx_hash
-    visitors pprint non_empty_list bignum
-    ppx_deriving_yojson ppx_matches ppx_let cmdliner
-    angstrom
-  ] ++
-  # F* dependencies
-  [ batteries menhirLib ppx_deriving
-    ppxlib sedlex stdint zarith ];
-  nativeBuildInputs = [ rustc circus-rust-frontend nodejs ];
-  strictDeps = true;
-}
+circus-engine
