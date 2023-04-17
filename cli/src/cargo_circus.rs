@@ -4,9 +4,39 @@ use clap::Parser;
 use common::options::{circus_engine_part, wrapped};
 use std::process::Command;
 
-fn main() {
-    let args = common::get_args("circus");
+const ENGINE_BINARY_NAME: &str = "circus-engine";
+const ENGINE_BINARY_NOT_FOUND: &str = const_format::formatcp!(
+    "The binary [{}] was not found in your [PATH].",
+    ENGINE_BINARY_NAME,
+);
 
+fn find_circus_engine() -> std::path::PathBuf {
+    use which::which;
+
+    which(ENGINE_BINARY_NAME)
+        .ok()
+        .or_else(|| {
+            which("node").ok().and_then(|_| {
+                if let Ok(true) = inquire::Confirm::new(&format!(
+                    "{} Should I try to download it from GitHub?",
+                    ENGINE_BINARY_NOT_FOUND,
+                ))
+                .with_default(true)
+                .prompt()
+                {
+                    panic!("TODO: Downloading from GitHub is not supported yet.")
+                } else {
+                    None
+                }
+            })
+        })
+        .expect(&ENGINE_BINARY_NOT_FOUND)
+}
+
+fn main() {
+    let engine_binary_path = find_circus_engine();
+
+    let args = common::get_args("circus");
     let opts = wrapped::Options::parse_from(args.iter());
 
     let (engine_data, output_file_path) = match opts.backend {
@@ -45,7 +75,7 @@ fn main() {
     }
 
     if let Some((output_file, opts, path)) = engine_data {
-        let exit_status = Command::new("circus-engine")
+        let exit_status = Command::new(engine_binary_path)
             .env("CIRCUS_ENGINE_INPUT", path)
             .env(
                 "CIRCUS_ENGINE_OPTIONS",
