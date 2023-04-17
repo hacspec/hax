@@ -805,7 +805,7 @@ module CoqBackend = struct
       ~f:(fun (relative_path, data) ->
         if not (String.equal relative_path "Hacspec_lib.v") then (
           let file = out_dir ^ relative_path in
-          Core.Out_channel.write_all file ~data;
+          Out_channel.with_open_bin file (fun oc -> Stdlib.output_string oc data);
           print_endline @@ "Wrote " ^ file))
       modules
 

@@ -1,7 +1,7 @@
 (library
  (name ppx_generate_features)
  (kind ppx_rewriter)
- (libraries ppxlib base core)
+ (libraries ppxlib base)
  (preprocess
   (pps ppxlib.metaquot ppx_deriving.eq ppx_deriving.show)))
 
