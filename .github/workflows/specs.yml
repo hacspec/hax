@@ -1,0 +1,80 @@
+name: Test extractions for `hacpsec/specs`
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: cachix/install-nix-action@v20
+    - uses: cachix/cachix-action@v12
+      with:
+        name: hacspec
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+    - name: Build
+      run: nix build -L
+
+    - name: Install
+      run: |
+        nix profile install nixpkgs#yq
+        nix profile install .#rustc
+        nix profile install .
+
+    - name: Checkout specifications
+      uses: actions/checkout@v3
+      with:
+        repository: 'hacspec/specs'
+
+    - name: Test the extraction
+      run: |
+        paths=$(tomlq -r '.workspace.members | .[]' Cargo.toml)
+        for cratePath in $paths; do
+          crate=$(tomlq -r '.package.name' "$cratePath/Cargo.toml")
+          for backend in fstar coq; do
+            for skip in $SKIPLIST; do
+              if [[ "$skip" == "$crate" || "$skip" == "$crate-$backend" ]]; then
+                echo "⛔ $crate [$backend] (skipping)"
+                continue 2
+              fi
+            done
+            echo "::group::$crate [$backend]"
+            cargo circus -C -p "$crate" \; -i '**' "$backend"
+            echo "::endgroup::"
+          done
+        done
+      env:
+        SKIPLIST: |
+          hacspec-sha256-fstar
+          hacspec-bls12-381-fstar
+          hacspec-hmac-fstar
+          hacspec-bls12-381-hash-fstar
+          hacspec-gimli-fstar
+          hacspec-sha3-fstar
+          hacspec-gf128-fstar
+          tls_cryptolib
+          hacspec-ristretto
+          hacspec-linalg
+          hacspec-merlin
+          hacspec-chacha20poly1305
+          hacspec-sha1
+          hacspec-ntru-prime
+          hacspec-riot-bootloader
+          hacspec-riot-runqueue
+          hacspec-hkdf
+          hacspec-p256
+          hacspec-ecdsa-p256-sha256
+          hacspec-aes
+          hacspec-aes128-gcm
+          hacspec-ed25519
+          hacspec-edwards25519
+          hacspec-edwards25519-hash
+          hacspec-edwards25519-ecvrf
+          hacspec-rsa-pkcs1
+          hacspec-bip-340
+          hacspec-rsa-fdh-vrf
+          hacspec-xor
+          
+        

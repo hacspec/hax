@@ -233,7 +233,7 @@ module FStarBackend = struct
       | Char c -> F.Const.Const_char (Char.to_int c)
       | Int { value; kind = { size; signedness } } ->
           F.Const.Const_int
-            ( Bigint.to_string value,
+            ( value,
               let open F.Const in
               Option.map
                 (match size with
@@ -358,7 +358,7 @@ module FStarBackend = struct
                 pliteral_as_expr
                   (Ast.Int
                      {
-                       value = Bigint.of_int length;
+                       value = string_of_int length;
                        kind = { size = SSize; signedness = Signed };
                      })
               in
@@ -987,7 +987,7 @@ module FStarBackend = struct
       ~f:(fun (relative_path, data) ->
         if not (String.equal relative_path "Hacspec_lib.fst") then (
           let file = out_dir ^ relative_path in
-          Core.Out_channel.write_all file ~data;
+          Out_channel.with_open_bin file (fun oc -> Stdlib.output_string oc data);
           print_endline @@ "Wrote " ^ file))
       modules
 

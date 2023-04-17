@@ -96,8 +96,9 @@ end = struct
              `Assoc
                [ ("name", `String k); ("nth", `Int nth); ("items", `List !l) ])
     in
-    Core.Out_channel.write_all ~data:(`List all |> Yojson.Safe.pretty_to_string)
-    @@ "/tmp/debug-circus-engine.json"
+    (* Core_kernel.Out_channel.write_all ~data:(`List all |> Yojson.Safe.pretty_to_string) *)
+    (* @@ "/tmp/debug-circus-engine.json" *)
+    ()
 end
 
 module BindDesugar

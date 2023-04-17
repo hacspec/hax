@@ -113,7 +113,7 @@ let ocaml_of_type_expr = (o, path) => {
         boolean: _ => `bool`,
         string: _ => `string`,
         char: _ => `char`,
-        integer: _ => o.bigint ? `Bigint.t` : `int`,
+        integer: _ => o.bigint ? `string` : `int`,
         name: payload => typeNameOf(payload),
         // name: payload => payload,
     })[kind] || (_ => {
@@ -166,8 +166,8 @@ let ocaml_arms_of_type_expr = (o, path) => {
         char: _ => [[`\`String s`, 'String.get s 0']],
         integer: _ => o.bigint ?
             [
-                [`\`Int i`, 'Bigint.of_int i'],
-                [`\`Intlit i`, 'Bigint.of_string i']
+                [`\`Int i`, 'string_of_int i'],
+                [`\`Intlit s`, 's']
             ] : [
                 [`\`Int i`, 'i'],
                 [`\`Intlit lit`, 'failwith "Got big number, while a int was expected"']

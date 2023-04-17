@@ -100,7 +100,7 @@ let parse_list_json (parse : Yojson.Safe.t -> 'a) (input : Yojson.Safe.t) :
   | _ -> failwith "parse_list_json: not a list"
 
 let read_json (path : string) =
-  let input = Core.In_channel.read_all path |> Yojson.Safe.from_string in
+  let input = In_channel.with_open_bin path In_channel.input_all |> Yojson.Safe.from_string in
   let items = parse_list_json Raw_thir_ast.parse_item input in
   List.map
     ~f:(fun item ->

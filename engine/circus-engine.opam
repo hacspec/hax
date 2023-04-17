@@ -11,12 +11,10 @@ doc: "https://url/to/documentation"
 bug-reports: "https://github.com/username/reponame/issues"
 depends: [
   "ocaml"
-  "dune" {>= "3.6"}
+  "dune" {>= "3.0"}
   "base"
-  "core"
   "yojson"
   "non_empty_list"
-  "bignum"
   "pprint"
   "ppx_deriving_yojson"
   "ppx_yojson_conv"
@@ -28,11 +26,14 @@ depends: [
   "cmdliner"
   "angstrom"
   "ppx_matches"
+  "js_of_ocaml-compiler"
+  "zarith_stubs_js"
   "batteries"
   "zarith"
   "stdint"
   "ppxlib"
   "menhirLib"
+  "sedlex"
   "odoc" {with-doc}
 ]
 build: [

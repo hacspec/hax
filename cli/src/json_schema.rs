@@ -32,7 +32,8 @@ macro_rules! wrapped_schema_for {
 }
 
 fn main() {
-    let Options { kind, destination } = Options::parse();
+    let Options { kind, destination } =
+        Options::parse_from(common::get_args("circus-export-json-schemas").iter());
     let schema: RootSchema = match kind {
         Kind::Cli => wrapped_schema_for!(common::options::circus_engine_part::Options),
         Kind::Ast => wrapped_schema_for!(circus_frontend_exporter::Item),

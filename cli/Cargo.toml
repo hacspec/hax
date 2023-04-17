@@ -2,6 +2,7 @@
 name = "driver"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 [[bin]]
 path = "src/cargo_circus.rs"
@@ -13,7 +14,7 @@ name = "driver-circus-frontend-exporter"
 
 [[bin]]
 path = "src/json_schema.rs"
-name = "circus-frontend-exporter-json-schema"
+name = "cargo-circus-export-json-schemas"
 
 [dependencies]
 escape_string= "0.1"
@@ -27,4 +28,6 @@ circus-frontend-exporter = {path = "../frontend/exporter"}
 circus-diagnostics = {path = "../frontend/diagnostics"}
 path-clean = "1.0.1"
 tempfile = "3.4"
-
+which = "4.4.0"
+inquire = "0.6"
+const_format = "0.2"

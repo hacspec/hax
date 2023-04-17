@@ -1,8 +1,8 @@
 open Circus_engine.Raw_thir_ast
-open Core
 open Circus_engine.Utils
 open Circus_engine
 open Desugar_utils
+open Base
   
 let import_options (o : Cli_types.options) (json_input : string) :
     Backend.Options.t =
@@ -24,7 +24,7 @@ let run_with_backend (options : Cli_types.options) (input : string)
   in
   translate o backend_options items
 
-let () =
+let main () =
   match
     (Base.Sys.getenv "CIRCUS_ENGINE_OPTIONS", Base.Sys.getenv "CIRCUS_ENGINE_INPUT")
   with

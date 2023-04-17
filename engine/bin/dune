@@ -1,12 +1,29 @@
+(library
+ (name lib)
+ (modules lib cli_types)
+ (wrapped false)
+ (libraries circus_engine
+            fstar_backend coq_backend easycrypt_backend))
+
 (executable
  (public_name circus-engine)
- (name main)
- (libraries
-        circus_engine core pprint
-        fstar_backend coq_backend easycrypt_backend
+ (name native_driver)
+ (modules native_driver)
+ (libraries lib))
+ 
+(executable
+ (optional)
+ (name js_driver)
+ (modes js)
+ (modules js_driver)
+ (js_of_ocaml
+   (javascript_files
+     js_stubs/mutex.js
+     js_stubs/stdint.js
+     js_stubs/unix.js
+   )
  )
- (preprocess
-  (pps ppx_matches ppx_functor_application ppx_yojson_conv ppx_deriving.show ppx_compare ppx_sexp_conv ppx_hash ppx_deriving.eq)))
+ (libraries zarith_stubs_js lib))
 
 (rule
  (target cli_types.ml)
@@ -15,7 +32,7 @@
   (with-stdout-to
    cli_types.ml
    (pipe-stdout
-        (run circus-frontend-exporter-json-schema cli -)
+        (run cargo circus-export-json-schemas -- cli -)
         (run node %{ocaml_of_json_schema} - -)
    ))))
 

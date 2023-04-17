@@ -483,7 +483,7 @@ module CoqBackend = struct
       match e with
       | String s -> C.AST.Const_string s
       | Char c -> C.AST.Const_char (Char.to_int c)
-      | Int { value ; kind } -> C.AST.Const_int (Bigint.to_string value, pint_kind kind)
+      | Int { value ; kind } -> C.AST.Const_int (value, pint_kind kind)
       | Float _ -> failwith "Float: todo"
       | Bool b -> C.AST.Const_bool b
 
@@ -996,7 +996,7 @@ module CoqBackend = struct
       ~f:(fun (relative_path, data) ->
         if not (String.equal relative_path "Hacspec_lib.v") then (
           let file = out_dir ^ relative_path in
-          Core.Out_channel.write_all file ~data;
+          Out_channel.with_open_bin file (fun oc -> Stdlib.output_string oc data);
           print_endline @@ "Wrote " ^ file))
       modules
 

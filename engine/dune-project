@@ -1,4 +1,4 @@
-(lang dune 3.6)
+(lang dune 3.0)
 
 (name circus-engine)
 
@@ -23,10 +23,8 @@
         ocaml
         dune
         base
-        core
         yojson
         non_empty_list
-        bignum
         pprint
         ppx_deriving_yojson
         ppx_yojson_conv
@@ -38,6 +36,9 @@
         cmdliner
         angstrom
         ppx_matches
+
+        js_of_ocaml-compiler
+        zarith_stubs_js
         
         ; F*-specific dependencies
         batteries
@@ -45,6 +46,7 @@
         stdint
         ppxlib
         menhirLib
+        sedlex
         )
  (tags
   (topics "to describe" your project)))
