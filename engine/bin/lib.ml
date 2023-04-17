@@ -24,7 +24,7 @@ let run_with_backend (options : Cli_types.options) (input : string)
   in
   translate o backend_options items
 
-let () =
+let main () =
   match
     (Base.Sys.getenv "CIRCUS_ENGINE_OPTIONS", Base.Sys.getenv "CIRCUS_ENGINE_INPUT")
   with

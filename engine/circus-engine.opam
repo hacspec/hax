@@ -26,6 +26,8 @@ depends: [
   "cmdliner"
   "angstrom"
   "ppx_matches"
+  "js_of_ocaml-compiler"
+  "zarith_stubs_js"
   "batteries"
   "zarith"
   "stdint"

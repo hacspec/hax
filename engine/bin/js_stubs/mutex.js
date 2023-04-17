@@ -1,0 +1,78 @@
+// Whether to log.
+var v_log = false;
+function ll(s) { if (v_log) console.log(s); }
+
+//Provides: caml_condition_broadcast
+function caml_condition_broadcast() {
+  return 0;
+}
+
+//Provides: caml_condition_new
+function caml_condition_new() {
+  return 0;
+}
+
+//Provides: caml_condition_signal
+function caml_condition_signal() {
+  return 0;
+}
+
+//Provides: caml_condition_wait
+function caml_condition_wait() {
+  return 0;
+}
+
+//Provides: caml_thread_initialize
+function caml_thread_initialize() {
+  return 0;
+}
+
+//Provides: caml_thread_new
+function caml_thread_new() {
+  return 0;
+}
+
+//Provides: caml_thread_self
+function caml_thread_self() {
+  return [0,0];
+}
+
+//Provides: caml_thread_uncaught_exception
+function caml_thread_uncaught_exception() {
+  return 0;
+}
+
+//Provides: caml_thread_yield
+function caml_thread_yield() {
+  return 0;
+}
+
+//Provides: caml_mutex_lock
+function caml_mutex_lock() {
+  return 0;
+}
+
+//Provides: caml_mutex_new
+function caml_mutex_new() {
+  return 0;
+}
+
+//Provides: caml_mutex_unlock
+function caml_mutex_unlock() {
+  return 0;
+}
+
+//Provides: caml_thread_cleanup
+function caml_thread_cleanup() {
+  return 0;
+}
+
+//Provides: caml_thread_exit
+function caml_thread_exit() {
+  return 0;
+}
+
+//Provides: caml_thread_id
+function caml_thread_id() {
+  return 0;
+}
