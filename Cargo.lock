@@ -152,6 +152,7 @@ version = "0.1.0"
 dependencies = [
  "circus-diagnostics",
  "circus-frontend-exporter",
+ "circus-lint",
  "clap",
  "const_format",
  "escape_string",

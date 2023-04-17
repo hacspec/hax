@@ -117,6 +117,7 @@ pub mod circus_frontend_part {
             }
         }
     }
+    
     #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
     #[command(author, version, about, long_about = None)]
     pub struct All {
@@ -175,7 +176,7 @@ pub mod wrapped {
     use circus_engine_part::*;
 
     #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
-    pub enum JsonOrBackend {
+    pub enum Cmd {
         #[command(flatten)]
         Backend(Backend),
 
@@ -202,7 +203,7 @@ pub mod wrapped {
         pub output_dir: std::path::PathBuf,
 
         #[command(subcommand)]
-        pub backend: JsonOrBackend,
+        pub cmd: Option<Cmd>,
 
         #[command(flatten)]
         pub force_cargo_build: ForceCargoBuildCmd,
@@ -213,7 +214,7 @@ pub mod wrapped {
             Options {
                 circus_frontend_exporter: self.circus_frontend_exporter.normalize_paths(),
                 output_dir: absolute_path(self.output_dir).unwrap(),
-                backend: self.backend,
+                cmd: self.cmd,
                 force_cargo_build: self.force_cargo_build,
             }
         }

@@ -1,7 +1,10 @@
 mod common;
 
 use clap::Parser;
-use common::options::{circus_engine_part, wrapped};
+use common::options::{
+    circus_engine_part,
+    wrapped::{self, Cmd},
+};
 use std::process::Command;
 
 const ENGINE_BINARY_NAME: &str = "circus-engine";
@@ -39,9 +42,9 @@ fn main() {
     let args = common::get_args("circus");
     let opts = wrapped::Options::parse_from(args.iter());
 
-    let (engine_data, output_file_path) = match opts.backend {
-        wrapped::JsonOrBackend::JSON { output_file } => (None, output_file),
-        wrapped::JsonOrBackend::Backend(backend) => {
+    let (engine_data, output_file_path) = match opts.cmd {
+        Cmd::JSON { output_file } => (None, output_file),
+        Cmd::Backend(backend) => {
             let file = tempfile::NamedTempFile::new().unwrap();
             let path = file.path().to_path_buf();
             (
