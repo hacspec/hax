@@ -2,7 +2,6 @@
  (name hacspeclib_macro_parser)
  (libraries
   yojson
-  bignum
   angstrom
   )
  (preprocess

@@ -401,7 +401,7 @@ module CoqBackend = struct
       match e with
       | String s -> C.AST.Const_string s
       | Char c -> C.AST.Const_char (Char.to_int c)
-      | Int { value } -> C.AST.Const_int (Bigint.to_string value)
+      | Int { value } -> C.AST.Const_int value
       | Float _ -> failwith "Float: todo"
       | Bool b -> C.AST.Const_bool b
 
