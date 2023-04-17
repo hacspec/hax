@@ -39,7 +39,8 @@ let () =
       in
       match options.backend with
       | Fstar -> run (module Fstar_backend.FStarBackend) ()
-      | Coq -> run (module Coq_backend.CoqBackend) ())
+      | Coq -> run (module Coq_backend.CoqBackend) ()
+      | EasyCrypt -> run (module Easycrypt_backend.ECBackend) ())
   | _ ->
       Fstar_backend.register;
       Coq_backend.register;

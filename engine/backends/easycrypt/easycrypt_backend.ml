@@ -1,4 +1,5 @@
 (* -------------------------------------------------------------------- *)
+open Circus_engine
 open Utils
 open Base
 
@@ -17,6 +18,7 @@ module ECBackend = struct
   end
 
   module AST = Ast.Make(InputLanguage)
+  module U = Ast_utils.Make (InputLanguage)
 
   module RejectNotEC (FA : Features.T) = struct
     module FB = InputLanguage
@@ -28,8 +30,8 @@ module ECBackend = struct
           module B = FB
           include Feature_gate.DefaultSubtype
 
-          let mutable_variable _ = ()
-          let loop _ = ()
+          let mutable_variable _ = Features.On.mutable_variable
+          let loop _ = Features.On.loop
           let continue = reject
           let mutable_reference = reject
           let mutable_pointer = reject
@@ -38,12 +40,13 @@ module ECBackend = struct
           let slice = reject
           let raw_pointer = reject
           let early_exit _ = Obj.magic ()
-          let macro _ = ()
+          let macro _ = Features.On.macro
           let as_pattern = reject
           let lifetime = reject
           let monadic_action = reject
           let monadic_binding = reject
-          let for_loop _ = ()
+          let arbitrary_lhs = reject
+          let for_loop _ = Features.On.for_loop
           let metadata = Desugar_utils.Metadata.make "RejectNotEasyCrypt"
         end)
   end
@@ -148,6 +151,12 @@ module ECBackend = struct
               assert false
   
           | Type _ ->
+              assert false
+                
+          | Trait _ ->
+              assert false
+  
+          | Impl _ ->
               assert false
   
           | IMacroInvokation mi ->
@@ -341,18 +350,22 @@ module ECBackend = struct
 
     and doit_lhs (fmt : Format.formatter) (lhs : lhs) =
       match lhs with
-      | FieldAccessor _ ->
+      | LhsFieldAccessor _ ->
           assert false
 
-      | ArrayAccessor { e = { e = LocalVar { name } }; index; } ->
+      | LhsArrayAccessor { e = LhsLocalVar { var = {name} }; index; typ = _ } ->
           Format.fprintf fmt "%s.[%a]" name doit_expr index
 
-      | ArrayAccessor _ ->
+      | LhsArrayAccessor _ ->
           assert false
 
-      | LhsLocalVar { name } ->
+      | LhsLocalVar { var = {name} } ->
           Format.fprintf fmt "%s" name
 
+
+      | LhsArbitraryExpr _ ->
+          assert false
+            
     and doit_expr (fmt : Format.formatter) (expr :  expr) =
       match expr.e with
       | If _ ->
