@@ -9,10 +9,12 @@ jobs:
   release-js:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
     - uses: actions/checkout@v3
     - uses: cachix/install-nix-action@v20
-    - uses: cachix/cachix-action@v12runs-on: ${{ matrix.os }}
+    - uses: cachix/cachix-action@v12
       with:
         name: hacspec
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
@@ -20,12 +22,12 @@ jobs:
       run: nix build .#circus-engine.passthru.js -L -o circus-engine.js
 
     - run: |
-        tar -czf hacspec_js.tar.gz circus-engine.js
+        tar --dereference -czf hacspec_js.tar.gz circus-engine.js
 
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
-        files: hacspec_${{ matrix.os }}.tar.gz
+        files: hacspec_js.tar.gz
 
   release:
     if: startsWith(github.ref, 'refs/tags/')
@@ -35,7 +37,7 @@ jobs:
         os:
           - macos-latest
           - ubuntu-latest
-          - windows-latest
+          # - windows-latest (See #4)
         ocaml-compiler: [4.14.x]
         
     runs-on: ${{ matrix.os }}
@@ -49,9 +51,7 @@ jobs:
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
+      - uses: dtolnay/rust-toolchain@1.67 # TODO: change this to `stable` when we update nightly 
           
       - run: cargo install --path cli
 
@@ -62,7 +62,7 @@ jobs:
         working-directory: engine
 
       - run: |
-          cp engine/_build/default/bin/main.exe circus-engine
+          cp engine/_build/default/bin/native_driver.exe  circus-engine
           tar -czf hacspec_${{ matrix.os }}.tar.gz circus-engine
         
       - name: Release
