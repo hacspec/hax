@@ -158,6 +158,8 @@ pub mod circus_engine_part {
         Fstar,
         /// Use the Coq backend
         Coq,
+        /// Use the EasyCrypt backend
+        EasyCrypt,
     }
 
     #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
