@@ -254,7 +254,7 @@ module Exn = struct
           let lhs_type = c_ty lhs.ty in
           let rhs_type = c_ty rhs.ty in
           call
-            (mk_global ([ lhs_type; rhs_type ] ->. typ) @@ `Primitive Deref)
+            (mk_global ([ lhs_type; rhs_type ] ->. typ) @@ `Primitive (LogicalOp (c_logical_op op)))
             [ lhs; rhs ]
       | Unary { arg; op } ->
           let arg_type = c_ty arg.ty in
