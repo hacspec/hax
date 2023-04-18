@@ -2,22 +2,70 @@ open Base
 open Utils
 
 module Metadata : sig
-  type t = private { current_phase : string; previous_phase : t option }
+  type t = private {
+    current_phase : Diagnostics.Phase.t;
+    previous_phase : t option;
+  }
 
-  val make : string -> t
+  val make : Diagnostics.Phase.t -> t
   val bind : t -> t -> t
-  val previous_phases : t -> string list
+  val previous_phases : t -> Diagnostics.Phase.t list
 end = struct
-  type t = { current_phase : string; previous_phase : t option }
+  type t = { current_phase : Diagnostics.Phase.t; previous_phase : t option }
 
   let make name = { current_phase = name; previous_phase = None }
   let bind (x : t) (y : t) : t = { y with previous_phase = Some x }
 
-  let rec previous_phases' (p : t) : string list =
+  let rec previous_phases' (p : t) : Diagnostics.Phase.t list =
     previous_phases p @ [ p.current_phase ]
 
-  and previous_phases (p : t) : string list =
+  and previous_phases (p : t) : Diagnostics.Phase.t list =
     Option.map ~f:previous_phases' p.previous_phase |> Option.value ~default:[]
+end
+
+module type DESUGAR_ERROR = sig
+  type t [@@deriving show, eq]
+
+  val lift : t -> Diagnostics.Phase.t -> Diagnostics.t
+
+  exception E of t
+end
+
+module DefaultError = struct
+  module Error = struct
+    type t = {
+      kind : Diagnostics.kind;
+      span : Ast.span;
+      details : string option;
+    }
+    [@@deriving show, eq]
+
+    let lift { kind; span; details } (phase : Diagnostics.Phase.t) :
+        Diagnostics.t =
+      {
+        kind;
+        span = Diagnostics.to_thir_span span;
+        details;
+        context = Phase phase;
+      }
+
+    exception E of t
+  end
+
+  module _ : DESUGAR_ERROR = Error
+end
+
+module NoError = struct
+  module Error = struct
+    type t = | [@@deriving show, eq]
+
+    let lift (x : t) (phase : Diagnostics.Phase.t) : Diagnostics.t =
+      match x with _ -> .
+
+    exception E of t
+  end
+
+  module _ : DESUGAR_ERROR = Error
 end
 
 module type DESUGAR = sig
@@ -27,6 +75,7 @@ module type DESUGAR = sig
   module FB : Features.T
   module A : Ast.T
   module B : Ast.T
+  module Error : DESUGAR_ERROR
 
   val ditem : A.item -> B.item list
 end
@@ -36,23 +85,33 @@ module Identity (F : Features.T) = struct
   module FB = F
   module A = Ast.Make (F)
   module B = Ast.Make (F)
+  include NoError
 
   let ditem (x : A.item) : B.item list = [ Obj.magic x ]
-  let metadata = Metadata.make "Identity"
+  let metadata = Metadata.make Diagnostics.Phase.Identity
 end
 
 module _ (F : Features.T) : DESUGAR = Identity (F)
 
-module type DESUGAR_EXN = sig
-  include DESUGAR
+(* module type DESUGAR_EXN = sig *)
+(*   include DESUGAR *)
 
-  type error [@@deriving show]
+(*   type error [@@deriving show] *)
 
-  exception Error of error
-end
+(*   exception Error of error *)
+(* end *)
 
 let _DEBUG_SHOW_ITEM = false
 let _DEBUG_SHOW_BACKTRACE = false
+
+module CatchErrors (D : DESUGAR) = struct
+  include D
+
+  let ditem (i : D.A.item) : D.B.item list =
+    try D.ditem i
+    with D.Error.E e ->
+      raise @@ Diagnostics.Error (D.Error.lift e D.metadata.current_phase)
+end
 
 module AddErrorHandling (D : DESUGAR) = struct
   include D
@@ -63,8 +122,9 @@ module AddErrorHandling (D : DESUGAR) = struct
     try D.ditem i
     with Failure e ->
       prerr_endline
-        ("Desugaring " ^ metadata.current_phase ^ " failed with exception: " ^ e
-       ^ "\nTerm: "
+        ("Desugaring "
+        ^ [%show: Diagnostics.Phase.t] metadata.current_phase
+        ^ " failed with exception: " ^ e ^ "\nTerm: "
         ^
         if _DEBUG_SHOW_ITEM then
           [%show: A.item] i
@@ -78,8 +138,8 @@ module DebugBindDesugar : sig
   val add : Metadata.t -> (unit -> Yojson.Safe.t) -> unit
   val export : unit -> unit
 end = struct
-  let cache : (string, int * Yojson.Safe.t list ref) Hashtbl.t =
-    Hashtbl.create (module String)
+  let cache : (Diagnostics.Phase.t, int * Yojson.Safe.t list ref) Hashtbl.t =
+    Hashtbl.create (module Diagnostics.Phase)
 
   let add (phase_name : Metadata.t) (mk_json : unit -> Yojson.Safe.t) =
     let _, l =
@@ -112,20 +172,32 @@ struct
   module A = D1.A
   module B = D2.B
 
+  module Error = struct
+    type t = ErrD1 of D1.Error.t | ErrD2 of D2.Error.t [@@deriving show, eq]
+
+    let lift (x : t) (phase : Diagnostics.Phase.t) : Diagnostics.t =
+      match x with
+      | ErrD1 e -> D1.Error.lift e D1.metadata.current_phase
+      | ErrD2 e -> D2.Error.lift e D2.metadata.current_phase
+
+    exception E of t
+  end
+
+  module _ : DESUGAR_ERROR = Error
+
   let metadata = Metadata.bind D1.metadata D2.metadata
 
   let ditem : A.item -> B.item list =
    fun item0 ->
-    let item1 = D1'.ditem item0 in
-    let item2 = List.concat_map ~f:D2'.ditem item1 in
+    let item1 =
+      try D1'.ditem item0
+      with D1.Error.E e -> raise @@ Error.E (Error.ErrD1 e)
+    in
+    let item2 =
+      try List.concat_map ~f:D2'.ditem item1
+      with D2.Error.E e -> raise @@ Error.E (Error.ErrD2 e)
+    in
     DebugBindDesugar.add D1.metadata (fun _ ->
         [%yojson_of: D1.B.item list] item1);
     item2
-end
-
-module CatchExnDesugar (D : DESUGAR_EXN) = struct
-  include D
-
-  let ditem (i : A.item) : B.item list =
-    try ditem i with D.Error error -> failwith (show_error error)
 end

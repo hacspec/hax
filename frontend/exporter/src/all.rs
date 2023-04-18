@@ -14,7 +14,8 @@ pub trait BaseState<'tcx> = HasTcx<'tcx>
     + IsState<'tcx>
     + Clone
     + HasOptDefId
-    + HasCachedThirs<'tcx>;
+    + HasCachedThirs<'tcx>
+    + HasExportedSpans;
 // + std::fmt::Debug;
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -746,6 +747,8 @@ impl Into<Loc> for rustc_span::Loc {
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Span> for rustc_span::Span {
     fn sinto(&self, s: &S) -> Span {
+        let set: crate::state::types::ExportedSpans = s.exported_spans();
+        set.borrow_mut().insert(self.clone());
         let smap: &rustc_span::source_map::SourceMap = s.tcx().sess.parse_sess.source_map();
         let span = self.clone();
         let span_data = span.data();
@@ -2046,6 +2049,7 @@ pub fn inspect_local_def_id<'tcx, S: BaseState<'tcx>>(
         macro_infos: s.macro_infos(),
         local_ident_map: s.local_ident_map(),
         cached_thirs: s.cached_thirs(),
+        exported_spans: s.exported_spans(),
     };
     let params: Vec<Param> = thir.params.iter().map(|x| x.sinto(&s)).collect();
     let body = expr.sinto(&s);

@@ -2,7 +2,6 @@
 name = "driver"
 version = "0.1.0"
 edition = "2021"
-build = "build.rs"
 
 [[bin]]
 path = "src/cargo_circus.rs"
@@ -26,6 +25,7 @@ clap = { version = "4.0", features = ["derive"] }
 paste = "1.0.11"
 circus-frontend-exporter = {path = "../frontend/exporter"}
 circus-diagnostics = {path = "../frontend/diagnostics"}
+circus-cli-options = {path = "options"}
 path-clean = "1.0.1"
 tempfile = "3.4"
 which = "4.4.0"

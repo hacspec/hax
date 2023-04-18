@@ -25,14 +25,15 @@ impl std::convert::From<&str> for NamespaceChunk {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct Namespace{
-    pub chunks: Vec<NamespaceChunk>
+pub struct Namespace {
+    pub chunks: Vec<NamespaceChunk>,
 }
 
 impl std::convert::From<String> for Namespace {
     fn from(s: String) -> Self {
         Namespace {
-            chunks: s.split("::")
+            chunks: s
+                .split("::")
                 .into_iter()
                 .filter(|s| s.len() > 0)
                 .map(|s| NamespaceChunk::from(s))
@@ -63,62 +64,7 @@ impl Namespace {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub enum PathOrDash {
-    Dash,
-    Path(PathBuf),
-}
-
-impl std::convert::From<&std::ffi::OsStr> for PathOrDash {
-    fn from(s: &std::ffi::OsStr) -> Self {
-        if s == "-" {
-            PathOrDash::Dash
-        } else {
-            PathOrDash::Path(PathBuf::from(s))
-        }
-    }
-}
-
-impl PathOrDash {
-    pub fn open_or_stdout(&self) -> Box<dyn std::io::Write> {
-        match self {
-            PathOrDash::Dash => box std::io::stdout(),
-            PathOrDash::Path(path) => box std::fs::File::create(&path).unwrap(),
-        }
-    }
-    pub fn map_path<F: FnOnce(&Path) -> PathBuf>(&self, f: F) -> Self {
-        match self {
-            PathOrDash::Path(path) => PathOrDash::Path(f(path)),
-            PathOrDash::Dash => PathOrDash::Dash,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ForceCargoBuild {
-    data: u128,
-}
-
-impl std::convert::From<&std::ffi::OsStr> for ForceCargoBuild {
-    fn from(s: &std::ffi::OsStr) -> Self {
-        ForceCargoBuild {
-            data: if s == "false" {
-                use std::time::{SystemTime, UNIX_EPOCH};
-                SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .map(|r| r.as_millis())
-                    .unwrap_or(0)
-            } else {
-                0
-            },
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct Options {
-    pub output_file: PathOrDash,
     pub inline_macro_calls: Vec<Namespace>,
-    pub export_json_schema: Option<PathOrDash>,
-    pub cargo_flags: Vec<String>,
 }

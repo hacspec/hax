@@ -8,14 +8,13 @@ use clap::{Parser, ValueEnum};
 struct Options {
     #[arg(value_enum)]
     kind: Kind,
-    destination: circus_frontend_exporter::PathOrDash,
+    destination: circus_cli_options::PathOrDash,
 }
 
 #[derive(ValueEnum, Debug, Clone)]
 enum Kind {
     Cli,
     Ast,
-    Diagnostics,
 }
 
 use schemars::{schema::RootSchema, JsonSchema};
@@ -35,11 +34,12 @@ fn main() {
     let Options { kind, destination } =
         Options::parse_from(common::get_args("circus-export-json-schemas").iter());
     let schema: RootSchema = match kind {
-        Kind::Cli => wrapped_schema_for!(common::options::circus_engine_part::Options),
-        Kind::Ast => wrapped_schema_for!(circus_frontend_exporter::Item),
-        Kind::Diagnostics => {
-            wrapped_schema_for!(circus_diagnostics::Diagnostics<circus_frontend_exporter::Span>)
-        }
+        Kind::Cli => wrapped_schema_for!(circus_cli_options::ExportedTypes),
+        Kind::Ast => wrapped_schema_for!((
+            circus_frontend_exporter::Item,
+            circus_cli_options::ExportedTypes,
+            circus_diagnostics::Diagnostics<circus_frontend_exporter::Span>
+        )),
     };
     serde_json::to_writer(destination.open_or_stdout(), &schema).unwrap();
 }

@@ -52,6 +52,7 @@ struct
   module UB = Ast_utils.Make (FB)
   module A = Ast.Make (F)
   module B = Ast.Make (FB)
+  include Desugar_utils.NoError
   module S = Features.SUBTYPE.Id
 
   let free_assigned_variables =
@@ -1045,6 +1046,6 @@ struct
     in
     [ { v; span = item.span; parent_namespace = item.parent_namespace } ]
 
-  let metadata = Desugar_utils.Metadata.make "MutableVariables"
+  let metadata = Desugar_utils.Metadata.make MutableVariables
 end
 [@@add "subtype.ml"]

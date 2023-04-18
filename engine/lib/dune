@@ -26,7 +26,7 @@
    ppx_generate_features
    ppx_functor_application
    ppx_matches)))
-
+   
 (rule
  (target raw_thir_ast.ml)
  (deps (:ocaml_of_json_schema ../utils/ocaml_of_json_schema/ocaml_of_json_schema.js))

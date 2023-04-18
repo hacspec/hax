@@ -1,6 +1,29 @@
 module Thir = Raw_thir_ast
 open Utils
 open Base
+open Diagnostics
+
+let fail_unknown (span : Thir.span) (details : string) =
+  raise
+    (Error
+       {
+         span;
+         kind = T.Unknown { details = None };
+         context = ThirImport;
+         details = (if details == "" then None else Some details);
+       })
+
+let unimplemented (span : Thir.span) (details : string) =
+  raise
+    (Error
+       {
+         span;
+         kind = T.Unimplemented { details = None };
+         context = ThirImport;
+         details = (if details == "" then None else Some details);
+       })
+
+let todo (span : Thir.span) = unimplemented span ""
 
 module Ast = struct
   include Ast
@@ -24,7 +47,7 @@ module Exn = struct
   exception ImportError of error
 
   open struct
-    let raise e = raise @@ ImportError e
+    let raise span e = fail_unknown span (show_error e)
   end
 
   let loc (loc : Thir.loc) : Ast.loc = { col = loc.col; line = loc.line }
@@ -56,7 +79,7 @@ module Exn = struct
   let union_span (x : span) (y : span) : span =
     match (x, y) with
     | Dummy, _ | _, Dummy -> Dummy
-    | Span x, Span y when String.(x.file <> y.file) -> raise BadSpanUnion
+    | Span x, Span y when String.(x.file <> y.file) -> Dummy
     | Span { file; lo }, Span { hi } -> Span { file; lo; hi }
 
   let c_span (span : Thir.span) : span =
@@ -96,15 +119,15 @@ module Exn = struct
 
   module W = Features.On
 
-  let c_borrow_kind : Thir.borrow_kind -> borrow_kind = function
+  let c_borrow_kind span : Thir.borrow_kind -> borrow_kind = function
     | Shared -> Shared
-    | Shallow -> raise ShallowMutUnsupported
+    | Shallow -> raise span ShallowMutUnsupported
     | Unique -> Unique
     | Mut _ -> Mut W.mutable_reference
 
-  let c_binding_mode : Thir.binding_mode -> binding_mode = function
+  let c_binding_mode span : Thir.binding_mode -> binding_mode = function
     | ByValue -> ByValue
-    | ByRef k -> ByRef (c_borrow_kind k, W.reference)
+    | ByRef k -> ByRef (c_borrow_kind span k, W.reference)
 
   let unit_typ : ty = TApp { ident = `TupleType 0; args = [] }
 
@@ -138,18 +161,19 @@ module Exn = struct
     | And -> And
     | Or -> Or
 
-  let c_lit_type (t : Thir.lit_int_type) : int_kind =
+  let c_lit_type span (t : Thir.lit_int_type) : int_kind =
     match t with
-    | Unsuffixed -> failwith "Got an untyped int literal which is `Unsuffixed`"
+    | Unsuffixed ->
+        fail_unknown span "Got an untyped int literal which is `Unsuffixed`"
     | Signed ty -> { size = int_ty_to_size ty; signedness = Signed }
     | Unsigned ty -> { size = uint_ty_to_size ty; signedness = Unsigned }
 
-  let c_lit' (lit : Thir.lit_kind) (ty : ty option) : literal =
+  let c_lit' span (lit : Thir.lit_kind) (ty : ty option) : literal =
     match lit with
-    | Err -> raise GotErrLiteral
+    | Err -> raise span GotErrLiteral
     | Str (str, _) -> String str
-    | ByteStr _ -> failwith "todo"
-    | Byte _ -> failwith "todo"
+    | ByteStr _ -> todo span
+    | Byte _ -> todo span
     | Char s -> Char s
     | Int (i, t) ->
         Int
@@ -158,27 +182,29 @@ module Exn = struct
             kind =
               (match ty with
               | Some (TInt k) -> k
-              | Some _ -> raise IllTypedIntLiteral
+              | Some _ -> raise span IllTypedIntLiteral
               | None ->
-                  failwith "TODO" { size = S8; signedness = Unsigned }
-                  (* kind = (match t with _ -> failwith "lit: int" (\* TODO *\)); *));
+                  todo span
+                  (* { size = S8; signedness = Unsigned } *)
+                  (* kind = (match t with _ -> fail with "lit: int" (\* TODO *\)); *));
           }
-    | Float _ -> failwith "todo float"
+    | Float _ -> unimplemented span "todo float"
     | Bool b -> Bool b
 
-  let c_lit (lit : Thir.spanned_for__lit_kind) : ty option -> literal =
-    c_lit' lit.node
+  let c_lit span (lit : Thir.spanned_for__lit_kind) : ty option -> literal =
+    c_lit' span lit.node
 
   let append_to_thir_def_id (def_id : Thir.def_id) (item : Thir.def_path_item) =
     { def_id with path = def_id.path @ [ item ] }
 
-  let variant_id_of_variant_informations (info : Thir.variant_informations) =
+  let variant_id_of_variant_informations span (info : Thir.variant_informations)
+      =
     let is_def_id_prefix (x : Thir.def_id) (y : Thir.def_id) : bool =
       String.(x.krate = y.krate)
       && List.is_prefix ~prefix:x.path ~equal:Thir.equal_def_path_item y.path
     in
     if not (is_def_id_prefix info.type_namespace info.variant) then
-      failwith
+      fail_unknown span
         ("variant_id_of_variant_informations: ["
         ^ Thir.show_def_id info.type_namespace
         ^ "] is not a prefix of ["
@@ -219,7 +245,7 @@ module Exn = struct
 
   let rec c_expr (e : Thir.decorated_for__expr_kind) : expr =
     let call f args = App { f; args = List.map ~f:c_expr args } in
-    let typ = c_ty e.ty in
+    let typ = c_ty e.span e.ty in
     let span = c_span e.span in
     let mk typ e : expr = { span; typ; e } in
     let mk_global typ v : expr = { span; typ; e = GlobalVar v } in
@@ -227,7 +253,7 @@ module Exn = struct
     let (v : expr') =
       match e.contents with
       | Box { value } ->
-          let inner_typ = c_ty e.ty in
+          let inner_typ = c_ty e.span e.ty in
           call (mk_global ([ inner_typ ] ->. typ) @@ `Primitive Box) [ value ]
       | MacroInvokation { argument; macro_ident } ->
           MacroInvokation
@@ -242,25 +268,26 @@ module Exn = struct
           let f = c_expr fun' in
           App { f; args }
       | Deref { arg } ->
-          let inner_typ = c_ty e.ty in
+          let inner_typ = c_ty e.span e.ty in
           call (mk_global ([ inner_typ ] ->. typ) @@ `Primitive Deref) [ arg ]
       | Binary { lhs; rhs; op } ->
-          let lty = c_ty lhs.ty in
-          let rty = c_ty rhs.ty in
+          let lty = c_ty lhs.span lhs.ty in
+          let rty = c_ty rhs.span rhs.ty in
           call
             (mk_global ([ lty; rty ] ->. typ) @@ `Primitive (BinOp (c_binop op)))
             [ lhs; rhs ]
       | LogicalOp { lhs; rhs; op } ->
-          let lhs_type = c_ty lhs.ty in
-          let rhs_type = c_ty rhs.ty in
+          let lhs_type = c_ty lhs.span lhs.ty in
+          let rhs_type = c_ty rhs.span rhs.ty in
           call
-            (mk_global ([ lhs_type; rhs_type ] ->. typ) @@ `Primitive (LogicalOp (c_logical_op op)))
+            (mk_global ([ lhs_type; rhs_type ] ->. typ)
+            @@ `Primitive (LogicalOp (c_logical_op op)))
             [ lhs; rhs ]
       | Unary { arg; op } ->
-          let arg_type = c_ty arg.ty in
+          let arg_type = c_ty arg.span arg.ty in
           call (mk_global ([ arg_type ] ->. typ) @@ `Primitive Deref) [ arg ]
       | Cast { source } ->
-          let source_type = c_ty source.ty in
+          let source_type = c_ty source.span source.ty in
           call
             (mk_global ([ source_type ] ->. typ) @@ `Primitive Deref)
             [ source ]
@@ -271,7 +298,7 @@ module Exn = struct
           let { e } = c_expr source in
           e
       (* TODO: this is incorrect *)
-      | Pointer _ -> failwith "Pointer"
+      | Pointer _ -> unimplemented e.span "Pointer"
       | Loop { body } ->
           let body = c_expr body in
           Loop { body; label = None; witness = W.loop }
@@ -279,9 +306,9 @@ module Exn = struct
           let scrutinee = c_expr scrutinee in
           let arms = List.map ~f:c_arm arms in
           Match { scrutinee; arms }
-      | Let _ -> failwith "TODO: Let"
+      | Let _ -> unimplemented e.span "TODO: Let"
       | Block { safety_mode = BuiltinUnsafe | ExplicitUnsafe } ->
-          raise UnsafeBlock
+          raise e.span UnsafeBlock
       | Block o ->
           let init =
             Option.map ~f:c_expr o.expr
@@ -303,8 +330,8 @@ module Exn = struct
                     in
                     let span = union_span rhs.span body.span in
                     { e; typ; span }
-                | Let { else_block = Some _ } -> raise LetElse
-                | Let { initializer' = None } -> raise LetWithoutInit
+                | Let { else_block = Some _ } -> raise e.span LetElse
+                | Let { initializer' = None } -> raise e.span LetWithoutInit
                 | Let { pattern = lhs; initializer' = Some rhs } ->
                     let lhs = c_pat lhs in
                     let rhs = c_expr rhs in
@@ -327,7 +354,7 @@ module Exn = struct
                     LhsArbitraryExpr { e = lhs; witness = W.arbitrary_lhs })
           in
           Assign { lhs = mk_lhs lhs; e; witness = W.mutable_variable }
-      | AssignOp _ -> failwith "AssignOp"
+      | AssignOp _ -> unimplemented e.span "AssignOp"
       | VarRef { id } -> LocalVar (local_ident id)
       | Field { lhs; field } ->
           let lhs = c_expr lhs in
@@ -355,11 +382,10 @@ module Exn = struct
             }
       | GlobalName { id } -> GlobalVar (def_id id)
       | UpvarRef { var_hir_id = id } -> LocalVar (local_ident id)
-      (* failwith ("upvar ref: " ^ Thir.show_decorated_for__expr_kind e) *)
       | Borrow { arg; borrow_kind = kind } ->
-          let e = c_expr arg in
-          let kind = c_borrow_kind kind in
-          Borrow { kind; e; witness = W.reference }
+          let e' = c_expr arg in
+          let kind = c_borrow_kind e.span kind in
+          Borrow { kind; e = e'; witness = W.reference }
       | AddressOf { arg; mutability = mut } ->
           let e = c_expr arg in
           AddressOf
@@ -368,8 +394,6 @@ module Exn = struct
               mut = c_mutability W.mutable_pointer mut;
               witness = W.raw_pointer;
             }
-      (* | Break { label; value = Some _ } -> *)
-      (*     failwith "TODO: Break with labels are not supported" *)
       | Break { label; value } ->
           let e = Option.map ~f:c_expr value in
           let e = Option.value ~default:(unit_expr span) e in
@@ -379,8 +403,8 @@ module Exn = struct
           let e = Option.map ~f:c_expr value in
           let e = Option.value ~default:(unit_expr span) e in
           Return { e; witness = W.early_exit }
-      | ConstBlock _ -> failwith "ConstBlock"
-      | Repeat _ -> failwith "Repeat"
+      | ConstBlock _ -> unimplemented e.span "ConstBlock"
+      | Repeat _ -> unimplemented e.span "Repeat"
       | Tuple { fields } ->
           let fields = List.map ~f:c_expr fields in
           let len = List.length fields in
@@ -396,7 +420,9 @@ module Exn = struct
             }
       | Array { fields } -> Array (List.map ~f:c_expr fields)
       | Adt { info; base; fields; user_ty } ->
-          let constructor = def_id @@ variant_id_of_variant_informations info in
+          let constructor =
+            def_id @@ variant_id_of_variant_informations e.span info
+          in
           let base = Option.map ~f:(fun base -> c_expr base.base) base in
           let fields =
             List.map
@@ -417,7 +443,7 @@ module Exn = struct
               fields;
               base;
             }
-      | Literal { lit } -> Literal (c_lit lit @@ Some typ)
+      | Literal { lit } -> Literal (c_lit e.span lit @@ Some typ)
       | NamedConst { def_id = id } -> GlobalVar (def_id id)
       | Closure { movability; body; params; upvars } ->
           let params =
@@ -426,13 +452,13 @@ module Exn = struct
           let body = c_expr body in
           let upvars = List.map ~f:c_expr upvars in
           Closure { body; params; captures = upvars }
-      | e -> failwith ("todo expr: " ^ Thir.show_expr_kind e)
+      | _ -> unimplemented e.span "expr"
     in
     { e = v; span; typ }
 
   and c_pat (pat : Thir.decorated_for__pat_kind) : pat =
     let span = c_span pat.span in
-    let typ = c_ty pat.ty in
+    let typ = c_ty pat.span pat.ty in
     let v =
       match pat.contents with
       | Wild -> PWild
@@ -445,12 +471,14 @@ module Exn = struct
           let subpat =
             Option.map ~f:(c_pat &&& Fn.const W.as_pattern) subpattern
           in
-          let typ = c_ty ty in
-          let mode = c_binding_mode mode in
+          let typ = c_ty pat.span ty in
+          let mode = c_binding_mode pat.span mode in
           let var = local_ident var in
           PBinding { mut; mode; var; typ; subpat }
       | Variant { info; substs; subpatterns } ->
-          let name = def_id @@ variant_id_of_variant_informations info in
+          let name =
+            def_id @@ variant_id_of_variant_informations pat.span info
+          in
           let args = List.map ~f:(c_field_pat info) subpatterns in
           PConstruct { record = info.constructs_record; name; args }
       | Tuple { subpatterns } ->
@@ -468,14 +496,14 @@ module Exn = struct
               args;
               record = false;
             }
-      | Deref _ -> failwith "Deref"
+      | Deref _ -> unimplemented pat.span "Deref"
       | Constant { value } ->
-          let lit = c_constant_kind value in
+          let lit = c_constant_kind pat.span value in
           PConstant { lit }
-      | Array { prefix; suffix; slice } -> failwith "Pat:Array"
-      | Or _ -> failwith "Or"
-      | Slice _ -> failwith "Slice"
-      | Range _ -> failwith "Range"
+      | Array { prefix; suffix; slice } -> unimplemented pat.span "Pat:Array"
+      | Or _ -> unimplemented pat.span "Or"
+      | Slice _ -> unimplemented pat.span "Slice"
+      | Range _ -> unimplemented pat.span "Range"
     in
     { p = v; span; typ }
 
@@ -488,68 +516,56 @@ module Exn = struct
       pat = c_pat field_pat.pattern;
     }
 
-  and c_constant_kind (k : Thir.constant_kind) : literal =
+  and c_constant_kind span (k : Thir.constant_kind) : literal =
     match k with
-    | Ty _ -> raise GotTypeInLitPat
-    | Lit lit -> c_lit' lit None
-    (* | Val (ZeroSized, _) -> failwith "todo, ZeroSized" *)
-    (* | Val (Slice _, _) -> failwith "todo, Slice" *)
-    (* | Val ( _, _) -> failwith "todo" *)
-    (* | Val (Todo s, _) -> failwith ("TODO node: " ^ s) *)
-    | Todo s -> failwith ("TODO node: " ^ s)
+    | Ty _ -> raise span GotTypeInLitPat
+    | Lit lit -> c_lit' span lit None
+    | Todo s -> unimplemented span ("TODO node: " ^ s)
 
   and c_canonical_user_type_annotation
       (annotation : Thir.canonical_user_type_annotation) : ty * span =
-    (c_ty annotation.inferred_ty, c_span annotation.span)
+    (c_ty annotation.span annotation.inferred_ty, c_span annotation.span)
 
-  and c_ty (ty : Thir.ty) : ty =
+  and c_ty (span : Thir.span) (ty : Thir.ty) : ty =
     match ty with
     | Bool -> TBool
     | Char -> TChar
     | Int k -> TInt (c_int_ty k)
     | Uint k -> TInt (c_uint_ty k)
     | Float k -> TFloat
-    | Arrow { params; ret } -> TArrow (List.map ~f:c_ty params, c_ty ret)
+    | Arrow { params; ret } ->
+        TArrow (List.map ~f:(c_ty span) params, c_ty span ret)
     | NamedType { def_id = id; generic_args } ->
         let ident = def_id id in
-        let args = List.map ~f:c_generic_value generic_args in
+        let args = List.map ~f:(c_generic_value span) generic_args in
         TApp { ident; args }
-    | Foreign _ -> failwith "Foreign"
+    | Foreign _ -> unimplemented span "Foreign"
     | Str -> TStr
-    | Array (ty, len) ->
-        TArray
-          {
-            typ = c_ty ty;
-            length =
-              len
-              (* TODO *)
-              (* length = match len.kind with *)
-              (*   | Value -> failwith "value" *)
-              (*   | _ -> failwith "Import_thir:Array:len" *);
-          }
+    | Array (ty, len) -> TArray { typ = c_ty span ty; length = len (* TODO *) }
     | Slice ty ->
-        let ty = c_ty ty in
+        let ty = c_ty span ty in
         TSlice { ty; witness = W.slice }
     | RawPtr _ -> TRawPointer { witness = W.raw_pointer }
     | Ref (region, ty, mut) ->
-        let typ = c_ty ty in
+        let typ = c_ty span ty in
         let mut = c_mutability W.mutable_reference mut in
         TRef { witness = W.reference; region = "todo"; typ; mut }
     | Never -> TFalse
     | Tuple types ->
-        let types = List.map ~f:(fun ty -> GType (c_ty ty)) types in
+        let types = List.map ~f:(fun ty -> GType (c_ty span ty)) types in
         TApp { ident = `TupleType (List.length types); args = types }
     | Projection _ -> TProjectedAssociatedType (Thir.show_ty ty)
     | Param { index; name } ->
         (* TODO: [id] might not unique *)
         TParam { name; id = index }
-    | _ -> failwith ("TODO typ " ^ Thir.show_ty ty)
+    | _ -> unimplemented span "typ"
   (* fun _ -> Ok Bool *)
 
-  and c_generic_value (ty : Thir.generic_arg) : generic_value =
+  and c_generic_value (span : Thir.span) (ty : Thir.generic_arg) : generic_value
+      =
     match ty with
-    | Type ty -> GType (c_ty ty)
-    | Const e -> failwith "TODO" (* let* ty = c_ty ty in  *)
+    | Type ty -> GType (c_ty span ty)
+    | Const e -> unimplemented span "Const"
     | _ -> GLifetime { lt = "todo generics"; witness = W.lifetime }
 
   and c_arm (arm : Thir.arm) : arm =
@@ -558,10 +574,10 @@ module Exn = struct
     let span = c_span arm.span in
     { arm = { pat; body }; span }
 
-  and c_param (param : Thir.param) : param =
+  and c_param span (param : Thir.param) : param =
     {
       typ_span = Option.map ~f:c_span param.ty_span;
-      typ = c_ty param.ty;
+      typ = c_ty (Option.value ~default:span param.ty_span) param.ty;
       pat = c_pat (Option.value_exn param.pat);
     }
 
@@ -569,39 +585,39 @@ module Exn = struct
     let ident =
       match param.name with
       | Fresh ->
-          (* failwith ("[Fresh] ident? " ^ Thir.show_generic_param param) *)
+          (* fail with ("[Fresh] ident? " ^ Thir.show_generic_param param) *)
           (* TODO might be wrong to just have a wildcard here *)
           ({ name = "_"; id = 123456789 } : local_ident)
-      | Error -> failwith ("[Error] ident? " ^ Thir.show_generic_param param)
+      | Error -> fail_unknown param.span "[Error] ident"
       | Plain n -> local_ident n
     in
     match (param.kind : Thir.generic_param_kind) with
     | Lifetime { kind } -> GPLifetime { ident; witness = W.lifetime }
     | Type { default; synthetic } ->
-        let default = Option.map ~f:c_ty default in
+        let default = Option.map ~f:(c_ty param.span) default in
         GPType { ident; default }
-    | Const { default; ty } -> failwith "TODO: Const"
+    | Const { default; ty } -> unimplemented param.span "Const"
 
-  let c_predicate_kind (p : Thir.predicate_kind) : trait_ref option =
+  let c_predicate_kind span (p : Thir.predicate_kind) : trait_ref option =
     match p with
     | Clause (Trait { is_positive = true; is_const = _; trait_ref }) ->
-        let args = List.map ~f:c_generic_value trait_ref.generic_args in
+        let args = List.map ~f:(c_generic_value span) trait_ref.generic_args in
         Some { trait = def_id trait_ref.def_id; args; bindings = [] }
     | _ -> None
 
-  let c_constraint (c : Thir.where_predicate) : generic_constraint list =
+  let c_constraint span (c : Thir.where_predicate) : generic_constraint list =
     match c with
     | BoundPredicate
         { bound_generic_params; bounded_ty; bounds; hir_id; origin; span } ->
-        let typ = c_ty bounded_ty in
-        let traits = List.map ~f:c_predicate_kind bounds in
+        let typ = c_ty span bounded_ty in
+        let traits = List.map ~f:(c_predicate_kind span) bounds in
         let traits = List.filter_map ~f:Fn.id traits in
         List.map
           ~f:(fun trait : generic_constraint ->
             GCType { typ; implements = trait })
           traits
-    | RegionPredicate _ -> failwith "region prediate"
-    | EqPredicate _ -> failwith "EqPredicate"
+    | RegionPredicate _ -> unimplemented span "region prediate"
+    | EqPredicate _ -> unimplemented span "EqPredicate"
 
   let list_dedup (equal : 'a -> 'a -> bool) : 'a list -> 'a list =
     let rec aux (seen : 'a list) (todo : 'a list) : 'a list =
@@ -617,34 +633,37 @@ module Exn = struct
     {
       params = List.map ~f:c_generic_param generics.params;
       constraints =
-        List.concat_map ~f:c_constraint generics.predicates
+        List.concat_map ~f:(c_constraint generics.span) generics.predicates
         |> list_dedup equal_generic_constraint;
     }
 
-  let c_trait_item' (item : Thir.trait_item_kind) : trait_item' =
+  let c_trait_item' span (item : Thir.trait_item_kind) : trait_item' =
     match item with
     | Const (ty, _) ->
-        failwith "TODO: traits: no support for defaults in traits for now"
-    | Const (ty, None) -> TIFn (c_ty ty)
+        unimplemented span
+          "TODO: traits: no support for defaults in traits for now"
+    | Const (ty, None) -> TIFn (c_ty span ty)
     | ProvidedFn _ ->
-        failwith "TODO: traits: no support for defaults in funcitons for now"
+        unimplemented span
+          "TODO: traits: no support for defaults in funcitons for now"
     | RequiredFn (sg, _) ->
         let Thir.{ inputs; output; _ } = sg.decl in
         let output =
           match output with
           | DefaultReturn span -> unit_typ
-          | Return ty -> c_ty ty
+          | Return ty -> c_ty span ty
         in
-        (* failwith @@ [%show: Thir.ty list] inputs; *)
-        TIFn (TArrow (List.map ~f:c_ty inputs, output))
+        TIFn (TArrow (List.map ~f:(c_ty span) inputs, output))
     | Type (bounds, None) ->
-        let bounds = List.filter_map ~f:c_predicate_kind bounds in
+        let bounds = List.filter_map ~f:(c_predicate_kind span) bounds in
         TIType bounds
     | Type (bounds, None) ->
         (* print_endline @@ [%show: Thir.trait_item_kind] item; *)
-        failwith "TODO: traits: no support for generics in type for now"
+        unimplemented span
+          "TODO: traits: no support for generics in type for now"
     | Type (_, Some _) ->
-        failwith "TODO: traits: no support for defaults in type for now"
+        unimplemented span
+          "TODO: traits: no support for defaults in type for now"
 
   let c_trait_item (item : Thir.trait_item) : trait_item =
     (* Raw_thir_ast.Param { index = 0; name = "Self" } *)
@@ -652,7 +671,7 @@ module Exn = struct
     {
       ti_span = c_span item.span;
       ti_generics = { params; constraints };
-      ti_v = c_trait_item' item.kind;
+      ti_v = c_trait_item' item.span item.kind;
       ti_name = fst item.ident;
     }
 
@@ -674,7 +693,7 @@ module Exn = struct
             {
               name = def_id (Option.value_exn item.def_id);
               generics = c_generics generics;
-              ty = c_ty ty;
+              ty = c_ty item.span ty;
             }
       | Fn (generics, { body; header; params; ret; sig_span }) ->
           Fn
@@ -682,7 +701,7 @@ module Exn = struct
               name = def_id (Option.value_exn item.def_id);
               generics = c_generics generics;
               body = c_expr body;
-              params = List.map ~f:c_param params;
+              params = List.map ~f:(c_param item.span) params;
             }
       | Enum (variants, generics) ->
           let name = def_id (Option.value_exn item.def_id) in
@@ -694,7 +713,8 @@ module Exn = struct
                 | Tuple (fields, _, _) | Struct (fields, _) ->
                     let arguments =
                       List.map
-                        ~f:(fun { def_id = id; ty } -> (def_id id, c_ty ty))
+                        ~f:(fun { def_id = id; ty; span } ->
+                          (def_id id, c_ty span ty))
                         fields
                     in
                     { name = def_id variant_id; arguments }
@@ -709,7 +729,8 @@ module Exn = struct
             let mk fields =
               let arguments =
                 List.map
-                  ~f:(fun Thir.{ def_id = id; ty } -> (def_id id, c_ty ty))
+                  ~f:(fun Thir.{ def_id = id; ty; span } ->
+                    (def_id id, c_ty span ty))
                   fields
               in
               { name; arguments }
@@ -742,17 +763,18 @@ module Exn = struct
               generics = { params; constraints };
               items = List.map ~f:c_trait_item items;
             }
-      | Trait (Yes, _, _, _, _) -> failwith "Auto trait"
-      | Trait (_, Unsafe, _, _, _) -> failwith "Unsafe trait"
+      | Trait (Yes, _, _, _, _) -> unimplemented item.span "Auto trait"
+      | Trait (_, Unsafe, _, _, _) -> unimplemented item.span "Unsafe trait"
       | Impl i ->
           Impl
             {
               generics = c_generics i.generics;
-              self_ty = c_ty i.self_ty;
+              self_ty = c_ty item.span i.self_ty;
               of_trait =
                 Option.map
                   ~f:(fun { def_id = id; generic_args } ->
-                    (def_id id, List.map ~f:c_generic_value generic_args))
+                    ( def_id id,
+                      List.map ~f:(c_generic_value item.span) generic_args ))
                   i.of_trait;
               items =
                 List.map
@@ -766,11 +788,11 @@ module Exn = struct
                             IIFn
                               {
                                 body = c_expr body;
-                                params = List.map ~f:c_param params;
+                                params = List.map ~f:(c_param item.span) params;
                               }
                         | Const (_ty, e) ->
                             IIFn { body = c_expr e; params = [] }
-                        | Type ty -> IIType (c_ty ty));
+                        | Type ty -> IIType (c_ty item.span ty));
                       ii_name = fst item.ident;
                     })
                   i.items;

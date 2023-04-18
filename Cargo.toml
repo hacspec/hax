@@ -3,5 +3,6 @@
 members = [
      "frontend/exporter",
      "frontend/diagnostics",
+     "cli/options",
      "cli",
 ]

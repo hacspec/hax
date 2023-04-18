@@ -1,18 +1,18 @@
-pub mod options;
+// pub mod options;
 
-use circus_frontend_exporter;
-use std::process::Command;
+// use circus_frontend_exporter;
+// use std::process::Command;
 
-pub fn export_schema_to(path: &circus_frontend_exporter::PathOrDash) {
-    use schemars::JsonSchema;
-    use serde::{Deserialize, Serialize};
-    #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-    struct TypesEntrypoint {
-        item: circus_frontend_exporter::Item,
-    }
-    let schema = schemars::schema_for!(TypesEntrypoint);
-    serde_json::to_writer(path.open_or_stdout(), &schema).unwrap();
-}
+// pub fn export_schema_to(path: &circus_frontend_exporter::PathOrDash) {
+//     use schemars::JsonSchema;
+//     use serde::{Deserialize, Serialize};
+//     #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+//     struct TypesEntrypoint {
+//         item: circus_frontend_exporter::Item,
+//     }
+//     let schema = schemars::schema_for!(TypesEntrypoint);
+//     serde_json::to_writer(path.open_or_stdout(), &schema).unwrap();
+// }
 
 pub fn get_args(subcommand: &str) -> Vec<String> {
     let mut args: Vec<_> = std::env::args().collect();
@@ -21,23 +21,4 @@ pub fn get_args(subcommand: &str) -> Vec<String> {
         args = args.into_iter().skip(1).collect();
     }
     args
-}
-
-pub fn run(options: circus_frontend_exporter::Options) -> i32 {
-    options.export_json_schema.as_ref().map(export_schema_to);
-
-    let exit_status = Command::new("cargo")
-        .args(["build".into()].iter().chain(options.cargo_flags.iter()))
-        .env("RUSTC_WORKSPACE_WRAPPER", "driver-circus-frontend-exporter")
-        .env(
-            "THIR_EXPORT_OPTIONS",
-            serde_json::to_string(&options)
-                .expect("Options could not be converted to a JSON string"),
-        )
-        .spawn()
-        .unwrap()
-        .wait()
-        .unwrap();
-
-    exit_status.code().unwrap_or(-1)
 }

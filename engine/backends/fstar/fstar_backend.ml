@@ -39,7 +39,9 @@ module FStarBackend = struct
           let arbitrary_lhs = reject
           let monadic_binding _ = Features.On.monadic_binding
           let for_loop = reject
-          let metadata = Desugar_utils.Metadata.make "RejectNotFStar"
+
+          let metadata =
+            Desugar_utils.Metadata.make (Reject (NotInBackendLang FStar))
         end)
   end
 
@@ -370,7 +372,7 @@ module FStarBackend = struct
                (F.lid_of_id
                @@ plocal_ident { i with name = pgeneric_param_name i.name })
       | TProjectedAssociatedType s ->
-          print_endline @@ s;
+          (* print_endline @@ s; *)
           (* failwith "xx"; *)
           (* F.term @@ F.AST.Const (F.Const.Const_string (show_ty t, F.dummyRange)) *)
           F.term @@ F.AST.Wild
@@ -561,7 +563,15 @@ module FStarBackend = struct
                  pexpr body )
       | Return { e } ->
           F.term @@ F.AST.App (F.term_of_lid [ "RETURN_STMT" ], pexpr e, Nothing)
-      | MacroInvokation _ -> failwith "expr:MacroInvokation"
+      | MacroInvokation _ ->
+          raise
+          @@ Diagnostics.Error
+               {
+                 context = Backend FStar;
+                 kind = Unknown { details = None };
+                 span = Diagnostics.to_thir_span e.span;
+                 details = Some "MacroInvokation";
+               }
       | _ -> .
 
     and parm { arm = { pat; body } } = (ppat pat, None, pexpr body)
@@ -978,58 +988,51 @@ module FStarBackend = struct
      open Hacspec.Lib\n\
      open Hacspec_lib_tc"
 
-  (* module AST : Ast.T *)
-
-  let modules_to_string (o : Backend.Options.t) modules =
-    let out_dir = o.output_directory ^ "/" in
-    (try Caml.Sys.mkdir out_dir 0o777 with Sys_error _ -> ());
-    List.iter
-      ~f:(fun (relative_path, data) ->
-        if not (String.equal relative_path "Hacspec_lib.fst") then (
-          let file = out_dir ^ relative_path in
-          Out_channel.with_open_bin file (fun oc -> Stdlib.output_string oc data);
-          print_endline @@ "Wrote " ^ file))
-      modules
-
   let translate (o : Backend.Options.t) (bo : BackendOptions.t)
-      (items : AST.item list) : unit =
-    U.group_items_by_namespace items
-    |> Map.to_alist
-    |> List.map ~f:(fun (ns, items) ->
-           let mod_name =
-             String.concat ~sep:"."
-               (List.map
-                  ~f:(map_first_letter String.uppercase)
-                  (fst ns :: snd ns))
-           in
-           ( mod_name ^ ".fst",
-             "module " ^ mod_name ^ hardcoded_fstar_headers ^ "\n\n"
-             ^ string_of_items items ))
-    |> modules_to_string o
+      (items : AST.item list) : Raw_thir_ast.output =
+    {
+      diagnostics = [];
+      files =
+        U.group_items_by_namespace items
+        |> Map.to_alist
+        |> List.map ~f:(fun (ns, items) ->
+               let mod_name =
+                 String.concat ~sep:"."
+                   (List.map
+                      ~f:(map_first_letter String.uppercase)
+                      (fst ns :: snd ns))
+               in
+               Raw_thir_ast.
+                 {
+                   path = mod_name ^ ".fst";
+                   contents =
+                     "module " ^ mod_name ^ hardcoded_fstar_headers ^ "\n\n"
+                     ^ string_of_items items;
+                 });
+    }
 
   open Desugar_utils
 
   module DesugarToInputLanguage =
-    [%functor_application
-       Reject.RawOrMutPointer(Features.Rust)
-    |> Reject.Arbitrary_lhs
-    |> Resugar_for_loop.Make
-    |> Desugar_direct_and_mut.Make
-    |> Reject.Continue
-    |> Desugar_drop_references.Make
-    |> (fun X ->
-        (Desugar_mutable_variable.Make(module X))
-          (module struct
-            let early_exit = fun _ -> Features.On.early_exit
-          end))
-    |> RejectNotFStar
-    |> Identity
-    ]
-    [@ocamlformat "disable"]
+    CatchErrors
+      ([%functor_application
+      Reject.RawOrMutPointer(Features.Rust)
+      |> Reject.Arbitrary_lhs
+      |> Resugar_for_loop.Make
+      |> Desugar_direct_and_mut.Make
+      |> Reject.Continue
+      |> Desugar_drop_references.Make
+      |> (fun X ->
+      (Desugar_mutable_variable.Make(module X))
+      (module struct
+      let early_exit = fun _ -> Features.On.early_exit
+      end))
+      |> RejectNotFStar
+      |> Identity
+      ]
+      [@ocamlformat "disable"])
 
   let desugar (o : Backend.Options.t) (bo : BackendOptions.t)
       (i : Ast.Rust.item) : AST.item list =
     DesugarToInputLanguage.ditem i
 end
-
-let register = Backend.Registration.register (module FStarBackend)
