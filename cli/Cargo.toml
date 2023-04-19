@@ -2,13 +2,14 @@
 name = "driver"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 [[bin]]
 path = "src/cargo_circus.rs"
 name = "cargo-circus"
 
 [[bin]]
-path = "src/driver_circus_frontend.rs"
+path = "src/driver_circus_frontend/driver.rs"
 name = "driver-circus-frontend-exporter"
 
 [[bin]]
@@ -31,3 +32,9 @@ tempfile = "3.4"
 which = "4.4.0"
 inquire = "0.6"
 const_format = "0.2"
+version_check = "0.9"
+rustup-toolchain = "0.1"
+
+[build-dependencies]
+version_check = "0.9"
+toml = "0.7"

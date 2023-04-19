@@ -1,43 +1,19 @@
-#![feature(rustc_private)]
-#![feature(box_syntax)]
-#![feature(box_patterns)]
-#![feature(concat_idents)]
-#![feature(trait_alias)]
-#![allow(unused_imports)]
-#![allow(unused_variables)]
-#![allow(unreachable_code)]
-#![allow(dead_code)]
-#![feature(macro_metavar_expr)]
-
-extern crate rustc_ast;
-extern crate rustc_data_structures;
-extern crate rustc_driver;
-extern crate rustc_errors;
-extern crate rustc_hir;
-extern crate rustc_hir_analysis;
-extern crate rustc_index;
-extern crate rustc_interface;
-extern crate rustc_middle;
-extern crate rustc_mir_build;
-extern crate rustc_session;
-extern crate rustc_span;
-extern crate rustc_target;
-extern crate rustc_type_ir;
-
+use circus_cli_options::ENV_VAR_OPTIONS_FRONTEND;
+use circus_frontend_exporter;
 use circus_frontend_exporter::types::ExportedSpans;
 use rustc_driver::{Callbacks, Compilation};
+use rustc_interface::interface;
 use rustc_interface::{interface::Compiler, Queries};
 use rustc_middle::middle::region::Scope;
-
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::{
     thir,
     thir::{Block, BlockId, Expr, ExprId, ExprKind, Pat, PatKind, Stmt, StmtId, StmtKind, Thir},
 };
-
-use circus_frontend_exporter;
-
+use rustc_session::parse::ParseSess;
+use rustc_span::symbol::Symbol;
 use std::cell::RefCell;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 fn convert_thir<'tcx>(
@@ -100,8 +76,6 @@ fn convert_thir<'tcx>(
     (exported_spans.into_iter().collect(), result)
 }
 
-use std::collections::{HashMap, HashSet};
-
 fn collect_macros(
     crate_ast: &rustc_ast::ast::Crate,
 ) -> HashMap<rustc_span::Span, rustc_ast::ast::MacCall> {
@@ -120,10 +94,6 @@ fn collect_macros(
     v.visit_crate(crate_ast);
     v.macro_calls
 }
-
-use rustc_interface::interface;
-use rustc_session::parse::ParseSess;
-use rustc_span::symbol::Symbol;
 
 const ENGINE_BINARY_NAME: &str = "circus-engine";
 const ENGINE_BINARY_NOT_FOUND: &str = const_format::formatcp!(
@@ -154,10 +124,10 @@ fn find_circus_engine() -> std::path::PathBuf {
         .expect(&ENGINE_BINARY_NOT_FOUND)
 }
 
-struct DefaultCallbacks {
-    options: circus_cli_options::Options,
+pub(crate) struct RustcCommonCallbacks {
+    pub options: circus_cli_options::Options,
 }
-impl Callbacks for DefaultCallbacks {
+impl Callbacks for RustcCommonCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
         let options = self.options.clone();
         config.parse_sess_created = Some(Box::new(move |parse_sess| {
@@ -223,59 +193,56 @@ impl Callbacks for DefaultCallbacks {
                     .unwrap();
 
                     let out = engine_subprocess.wait_with_output().unwrap();
-                    if out.status.success() {
-                        let output: circus_cli_options::engine::Output =
-                            serde_json::from_slice(out.stdout.as_slice()).unwrap_or_else(|_| {
-                                panic!(
-                                    "{} outputed incorrect JSON {}",
-                                    ENGINE_BINARY_NAME,
-                                    String::from_utf8(out.stdout).unwrap()
-                                )
-                            });
-                        let options_frontend =
-                            box circus_frontend_exporter::options::Options::from(
-                                self.options.clone(),
-                            )
-                            .clone();
-                        let state = circus_frontend_exporter::State {
-                            tcx,
-                            options: options_frontend,
-                            thir: (),
-                            owner_id: (),
-                            opt_def_id: None::<rustc_hir::def_id::DefId>,
-                            macro_infos: Box::new(HashMap::new()),
-                            local_ident_map: Rc::new(RefCell::new(HashMap::new())),
-                            cached_thirs: HashMap::new(),
-                            exported_spans: Rc::new(RefCell::new(HashSet::new())),
-                        };
-                        let session = compiler.session();
-                        for d in output.diagnostics.clone() {
-                            use circus_frontend_exporter::SInto;
-                            session.span_err_with_code(
-                                spans
-                                    .iter()
-                                    .find(|span| span.sinto(&state) == d.span)
-                                    .cloned()
-                                    .unwrap_or(rustc_span::DUMMY_SP),
-                                format!("{:#?}", d),
-                                rustc_errors::DiagnosticId::Error(d.kind.code().into()),
-                            );
-                        }
-                        for file in output.files.clone() {
-                            let mut path = self.options.output_dir.clone();
-                            path.push(std::path::PathBuf::from(file.path));
-                            std::fs::create_dir_all({
-                                let mut parent = path.clone();
-                                parent.pop();
-                                parent
-                            })
-                            .unwrap();
-                            println!("Write {:#?}", path);
-                            std::fs::write(path, file.contents).expect("Unable to write file");
-                        }
-                    } else {
+                    if !out.status.success() {
                         panic!("{} exited with non-zero code", ENGINE_BINARY_NAME);
                         std::process::exit(out.status.code().unwrap_or(-1));
+                    }
+                    let output: circus_cli_options::engine::Output =
+                        serde_json::from_slice(out.stdout.as_slice()).unwrap_or_else(|_| {
+                            panic!(
+                                "{} outputed incorrect JSON {}",
+                                ENGINE_BINARY_NAME,
+                                String::from_utf8(out.stdout).unwrap()
+                            )
+                        });
+                    let options_frontend =
+                        box circus_frontend_exporter::options::Options::from(self.options.clone())
+                            .clone();
+                    let state = circus_frontend_exporter::State {
+                        tcx,
+                        options: options_frontend,
+                        thir: (),
+                        owner_id: (),
+                        opt_def_id: None::<rustc_hir::def_id::DefId>,
+                        macro_infos: Box::new(HashMap::new()),
+                        local_ident_map: Rc::new(RefCell::new(HashMap::new())),
+                        cached_thirs: HashMap::new(),
+                        exported_spans: Rc::new(RefCell::new(HashSet::new())),
+                    };
+                    let session = compiler.session();
+                    for d in output.diagnostics.clone() {
+                        use circus_frontend_exporter::SInto;
+                        session.span_err_with_code(
+                            spans
+                                .iter()
+                                .find(|span| span.sinto(&state) == d.span)
+                                .cloned()
+                                .unwrap_or(rustc_span::DUMMY_SP),
+                            format!("{:#?}", d),
+                            rustc_errors::DiagnosticId::Error(d.kind.code().into()),
+                        );
+                    }
+                    for file in output.files.clone() {
+                        let mut path = self.options.output_dir.clone();
+                        path.push(std::path::PathBuf::from(file.path));
+                        std::fs::create_dir_all({
+                            let mut parent = path.clone();
+                            parent.pop();
+                            parent
+                        })
+                        .unwrap();
+                        println!("Write {:#?}", path);
+                        std::fs::write(path, file.contents).expect("Unable to write file");
                     }
                 }
             };
@@ -283,38 +250,4 @@ impl Callbacks for DefaultCallbacks {
 
         Compilation::Continue
     }
-}
-
-fn rustc_sysroot() -> String {
-    std::process::Command::new("rustc")
-        .args(["--print", "sysroot"])
-        .output()
-        .ok()
-        .and_then(|out| String::from_utf8(out.stdout).ok())
-        .map(|s| s.trim().to_string())
-        .unwrap()
-}
-
-use circus_cli_options::ENV_VAR_OPTIONS_FRONTEND;
-use clap::Parser;
-fn main() {
-    let args: Vec<String> = std::env::args().collect();
-    let options: circus_cli_options::Options =
-        serde_json::from_str(&std::env::var(ENV_VAR_OPTIONS_FRONTEND).expect(&format!(
-            "Cannot find environnement variable {}",
-            ENV_VAR_OPTIONS_FRONTEND
-        )))
-        .expect(&format!(
-            "Invalid value for the environnement variable {}",
-            ENV_VAR_OPTIONS_FRONTEND
-        ));
-
-    let mut rustc_args: Vec<String> = std::env::args().skip(1).collect();
-    if !rustc_args.iter().any(|arg| arg.starts_with("--sysroot")) {
-        rustc_args.extend(vec!["--sysroot".into(), rustc_sysroot()])
-    };
-
-    std::process::exit(rustc_driver::catch_with_exit_code(move || {
-        rustc_driver::RunCompiler::new(&rustc_args, &mut DefaultCallbacks { options }).run()
-    }))
 }
