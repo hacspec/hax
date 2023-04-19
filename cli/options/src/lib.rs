@@ -122,7 +122,7 @@ pub enum Command {
 #[command(author, version = concat!("commit=", env!("CIRCUS_GIT_COMMIT_HASH"), " ", "describe=", env!("CIRCUS_GIT_DESCRIBE")), name = "circus", about, long_about = None)]
 pub struct Options {
     /// Replace the expansion of each macro matching PATTERN by their
-    /// invokation. PATTERN denotes a rust path (i.e. [A::B::c]) in
+    /// invocation. PATTERN denotes a rust path (i.e. [A::B::c]) in
     /// which glob patterns are allowed. The glob pattern * matches
     /// any name, the glob pattern ** matches zero, one or more
     /// names. For instance, [A::B::C::D::X] and [A::E::F::D::Y]
@@ -137,7 +137,7 @@ pub struct Options {
     pub inline_macro_calls: Vec<Namespace>,
 
     /// Semi-colon terminated list of arguments to pass to the
-    /// [cargo build] invokation. For example, to apply this
+    /// [cargo build] invocation. For example, to apply this
     /// program on a package [foo], use [-C -p foo;]. (make sure
     /// to escape [;] correctly in your shell)
     #[arg(default_values = Vec::<&str>::new(), short='C', allow_hyphen_values=true, num_args=1.., long="cargo-args", value_terminator=";")]

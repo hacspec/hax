@@ -1139,7 +1139,7 @@ fn argument_span_of_mac_call(mac_call: &rustc_ast::ast::MacCall) -> rustc_span::
     (*mac_call.args).dspan.entire()
 }
 
-pub fn raw_macro_invokation_of_span<'t, S: BaseState<'t>>(
+pub fn raw_macro_invocation_of_span<'t, S: BaseState<'t>>(
     span: rustc_span::Span,
     state: &S,
 ) -> Option<(DefId, rustc_span::hygiene::ExpnData)> {
@@ -1170,7 +1170,7 @@ pub fn raw_macro_invokation_of_span<'t, S: BaseState<'t>>(
     })
 }
 
-pub fn macro_invokation_of_raw_mac_invokation<'t, S: BaseState<'t>>(
+pub fn macro_invocation_of_raw_mac_invocation<'t, S: BaseState<'t>>(
     macro_ident: &DefId,
     expn_data: &rustc_span::hygiene::ExpnData,
     state: &S,
@@ -1186,12 +1186,12 @@ pub fn macro_invokation_of_raw_mac_invokation<'t, S: BaseState<'t>>(
     }
 }
 
-pub fn macro_invokation_of_span<'t, S: BaseState<'t>>(
+pub fn macro_invocation_of_span<'t, S: BaseState<'t>>(
     span: rustc_span::Span,
     state: &S,
 ) -> Option<MacroInvokation> {
-    let (macro_ident, expn_data) = raw_macro_invokation_of_span(span, state)?;
-    Some(macro_invokation_of_raw_mac_invokation(
+    let (macro_ident, expn_data) = raw_macro_invocation_of_span(span, state)?;
+    Some(macro_invocation_of_raw_mac_invocation(
         &macro_ident,
         &expn_data,
         state,
@@ -1210,7 +1210,7 @@ impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, Expr> for rustc_middle::
     fn sinto(&self, s: &S) -> Expr {
         let unrolled = self.unroll_scope(s);
         let rustc_middle::thir::Expr { span, kind, ty, .. } = unrolled;
-        let contents = macro_invokation_of_span(span, s)
+        let contents = macro_invocation_of_span(span, s)
             .map(ExprKind::MacroInvokation)
             .unwrap_or_else(|| match kind {
                 rustc_middle::thir::ExprKind::ZstLiteral { .. } => {

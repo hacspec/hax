@@ -74,7 +74,7 @@ fn convert_thir<'tcx>(
         exported_spans: Rc::new(RefCell::new(HashSet::new())),
     };
 
-    let result = circus_frontend_exporter::inline_macro_invokations(&items.collect(), &state);
+    let result = circus_frontend_exporter::inline_macro_invocations(&items.collect(), &state);
     let exported_spans = state.exported_spans.borrow().clone();
     (exported_spans.into_iter().collect(), result)
 }
