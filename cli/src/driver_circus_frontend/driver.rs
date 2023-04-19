@@ -25,24 +25,10 @@ extern crate rustc_target;
 extern crate rustc_type_ir;
 
 mod exporter;
+use circus_cli_options::Command;
 
 use circus_cli_options::ENV_VAR_OPTIONS_FRONTEND;
-use circus_frontend_exporter;
-use circus_frontend_exporter::types::ExportedSpans;
-use rustc_driver::{Callbacks, Compilation};
-use rustc_interface::interface;
-use rustc_interface::{interface::Compiler, Queries};
-use rustc_middle::middle::region::Scope;
-use rustc_middle::ty::TyCtxt;
-use rustc_middle::{
-    thir,
-    thir::{Block, BlockId, Expr, ExprId, ExprKind, Pat, PatKind, Stmt, StmtId, StmtKind, Thir},
-};
-use rustc_session::parse::ParseSess;
-use rustc_span::symbol::Symbol;
-use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
+use const_format::formatcp;
 
 fn rustc_sysroot() -> String {
     std::process::Command::new("rustc")
@@ -56,24 +42,33 @@ fn rustc_sysroot() -> String {
 
 use clap::Parser;
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
     let options: circus_cli_options::Options =
-        serde_json::from_str(&std::env::var(ENV_VAR_OPTIONS_FRONTEND).expect(&format!(
+        serde_json::from_str(&std::env::var(ENV_VAR_OPTIONS_FRONTEND).expect(&formatcp!(
             "Cannot find environnement variable {}",
             ENV_VAR_OPTIONS_FRONTEND
         )))
-        .expect(&format!(
+        .expect(&formatcp!(
             "Invalid value for the environnement variable {}",
             ENV_VAR_OPTIONS_FRONTEND
         ));
 
     let mut rustc_args: Vec<String> = std::env::args().skip(1).collect();
+    // add [--sysroot] if not present
     if !rustc_args.iter().any(|arg| arg.starts_with("--sysroot")) {
         rustc_args.extend(vec!["--sysroot".into(), rustc_sysroot()])
     };
 
+    // fetch the correct callback structure given the command, and
+    // coerce options
+    let mut callback = match options.command {
+        Command::ExporterCommand(command) => exporter::Options {
+            output_dir: options.output_dir,
+            inline_macro_calls: options.inline_macro_calls,
+            command,
+        },
+    };
+
     std::process::exit(rustc_driver::catch_with_exit_code(move || {
-        rustc_driver::RunCompiler::new(&rustc_args, &mut exporter::RustcCommonCallbacks { options })
-            .run()
+        rustc_driver::RunCompiler::new(&rustc_args, &mut callback).run()
     }))
 }

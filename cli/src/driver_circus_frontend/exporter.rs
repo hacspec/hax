@@ -12,10 +12,13 @@ use rustc_middle::{
 };
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::Symbol;
+use serde::Serialize;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
+/// Browse a crate and translate every item from HIR+THIR to "THIR'"
+/// (I call "THIR'" the AST described in this crate)
 fn convert_thir<'tcx>(
     options: &circus_frontend_exporter::options::Options,
     macro_calls: HashMap<rustc_span::Span, rustc_ast::ast::MacCall>,
@@ -76,6 +79,7 @@ fn convert_thir<'tcx>(
     (exported_spans.into_iter().collect(), result)
 }
 
+/// Collect a map from spans to macro calls
 fn collect_macros(
     crate_ast: &rustc_ast::ast::Crate,
 ) -> HashMap<rustc_span::Span, rustc_ast::ast::MacCall> {
@@ -101,11 +105,16 @@ const ENGINE_BINARY_NOT_FOUND: &str = const_format::formatcp!(
     ENGINE_BINARY_NAME,
 );
 
-fn find_circus_engine() -> std::path::PathBuf {
+/// Dynamically looks for binary [ENGINE_BINARY_NAME] in PATH. If it's
+/// not found, detect wether nodejs is available, download the
+/// JS-compiled engine and use it.
+use std::process;
+fn find_circus_engine() -> process::Command {
     use which::which;
 
     which(ENGINE_BINARY_NAME)
         .ok()
+        .map(|name| process::Command::new(name))
         .or_else(|| {
             which("node").ok().and_then(|_| {
                 if let Ok(true) = inquire::Confirm::new(&format!(
@@ -115,7 +124,11 @@ fn find_circus_engine() -> std::path::PathBuf {
                 .with_default(true)
                 .prompt()
                 {
-                    panic!("TODO: Downloading from GitHub is not supported yet.")
+                    let mut cmd = process::Command::new("node");
+                    let engine_js_path: String =
+                        panic!("TODO: Downloading from GitHub is not supported yet.");
+                    cmd.arg(engine_js_path);
+                    Some(cmd)
                 } else {
                     None
                 }
@@ -124,15 +137,27 @@ fn find_circus_engine() -> std::path::PathBuf {
         .expect(&ENGINE_BINARY_NOT_FOUND)
 }
 
-pub(crate) struct RustcCommonCallbacks {
-    pub options: circus_cli_options::Options,
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct Options {
+    pub output_dir: std::path::PathBuf,
+    pub inline_macro_calls: Vec<circus_cli_options::Namespace>,
+    pub command: circus_cli_options::ExporterCommand,
 }
-impl Callbacks for RustcCommonCallbacks {
+
+impl From<Options> for circus_frontend_exporter::options::Options {
+    fn from(opts: Options) -> circus_frontend_exporter::options::Options {
+        circus_frontend_exporter::options::Options {
+            inline_macro_calls: opts.inline_macro_calls,
+        }
+    }
+}
+
+impl Callbacks for Options {
     fn config(&mut self, config: &mut interface::Config) {
-        let options = self.options.clone();
+        let options = self.clone();
         config.parse_sess_created = Some(Box::new(move |parse_sess| {
             parse_sess.env_depinfo.get_mut().insert((
-                Symbol::intern("THIR_EXPORT_OPTIONS"),
+                Symbol::intern("CIRCUS_FRONTEND_OPTIONS"),
                 Some(Symbol::intern(&serde_json::to_string(&options).unwrap())),
             ));
         }));
@@ -153,22 +178,20 @@ impl Callbacks for RustcCommonCallbacks {
         let parse_ast = queries.parse().unwrap().peek();
         let macro_calls = collect_macros(&parse_ast);
         queries.global_ctxt().unwrap().peek_mut().enter(|tcx| {
-            let (spans, converted_items) =
-                convert_thir(&self.options.clone().into(), macro_calls, tcx);
+            let (spans, converted_items) = convert_thir(&self.clone().into(), macro_calls, tcx);
 
-            use circus_cli_options::Command;
-            match self.options.clone().backend {
-                Command::JSON { output_file } => {
+            use circus_cli_options::ExporterCommand;
+            match self.command.clone() {
+                ExporterCommand::JSON { output_file } => {
                     serde_json::to_writer_pretty(output_file.open_or_stdout(), &converted_items)
                         .unwrap()
                 }
-                Command::Backend(backend) => {
+                ExporterCommand::Backend(backend) => {
                     let engine_options = circus_cli_options::engine::Options {
                         backend,
                         input: converted_items,
                     };
-                    let engine_binary_path = find_circus_engine();
-                    let mut engine_subprocess = std::process::Command::new(engine_binary_path)
+                    let mut engine_subprocess = find_circus_engine()
                         .stdin(std::process::Stdio::piped())
                         .stdout(std::process::Stdio::piped())
                         .spawn()
@@ -206,8 +229,7 @@ impl Callbacks for RustcCommonCallbacks {
                             )
                         });
                     let options_frontend =
-                        box circus_frontend_exporter::options::Options::from(self.options.clone())
-                            .clone();
+                        box circus_frontend_exporter::options::Options::from(self.clone()).clone();
                     let state = circus_frontend_exporter::State {
                         tcx,
                         options: options_frontend,
@@ -233,7 +255,7 @@ impl Callbacks for RustcCommonCallbacks {
                         );
                     }
                     for file in output.files.clone() {
-                        let mut path = self.options.output_dir.clone();
+                        let mut path = self.output_dir.clone();
                         path.push(std::path::PathBuf::from(file.path));
                         std::fs::create_dir_all({
                             let mut parent = path.clone();

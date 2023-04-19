@@ -3,7 +3,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-use circus_frontend_exporter::options::*;
+pub use circus_frontend_exporter::options::*;
 pub mod engine;
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
@@ -96,7 +96,7 @@ pub enum Backend {
 }
 
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
-pub enum Command {
+pub enum ExporterCommand {
     #[command(flatten)]
     Backend(Backend),
 
@@ -110,6 +110,12 @@ pub enum Command {
         )]
         output_file: PathOrDash,
     },
+}
+
+#[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
+pub enum Command {
+    #[command(flatten)]
+    ExporterCommand(ExporterCommand),
 }
 
 #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
@@ -142,7 +148,7 @@ pub struct Options {
     pub output_dir: std::path::PathBuf,
 
     #[command(subcommand)]
-    pub backend: Command,
+    pub command: Command,
 
     /// [cargo] caching is disabled by default, this flag enables it back.
     #[arg(long="enable-cargo-cache", action=clap::builder::ArgAction::SetTrue)]
