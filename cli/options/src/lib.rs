@@ -92,7 +92,7 @@ pub enum Backend {
     /// Use the Coq backend
     Coq,
     /// Use the EasyCrypt backend
-    EasyCrypt,
+    Easycrypt,
 }
 
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
