@@ -11,16 +11,20 @@ pub struct Diagnostics<S> {
 #[derive(Debug, Clone, JsonSchema, Serialize, Deserialize)]
 #[repr(u16)]
 pub enum Kind {
+    /// Unsafe code is not supported
     UnsafeBlock = 0,
-    Unimplemented { details: Option<String> } = 1,
+
+    /// A feature is not currently implemented, but
+    Unimplemented {
+        /// Issue on the GitHub repository
+        issue_id: Option<u32>,
+        details: Option<String>,
+    } = 1,
+
+    /// Unknown error
+    // This is useful when doing sanity checks (i.e. one can yield
+    // this error kind for cases that should never happen)
     Unknown { details: Option<String> } = 2,
-    // ThirErrLiteral = 3,
-    // | LetElse
-    // | LetWithoutInit
-    // BadSpanUnion = 4,
-    // | ShallowMutUnsupported
-    // | GotTypeInLitPat
-    // | IllTypedIntLiteral
 }
 
 impl Kind {

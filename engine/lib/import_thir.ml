@@ -18,7 +18,9 @@ let unimplemented (span : Thir.span) (details : string) =
     (Error
        {
          span;
-         kind = T.Unimplemented { details = None };
+         kind =
+           T.Unimplemented
+             { details = None; issue_id = None (* TODO, file issues *) };
          context = ThirImport;
          details = (if details == "" then None else Some details);
        })

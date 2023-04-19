@@ -63,13 +63,3 @@ let to_thir_span (s : Ast.span) : T.span =
         hi = to_thir_loc hi;
         lo = to_thir_loc lo;
       }
-
-let mk_unimplemented_phase phase (span : Ast.span) (details : string option) =
-  raise
-    (Error
-       {
-         span = to_thir_span span;
-         kind = T.Unimplemented { details = None };
-         context = Phase phase;
-         details;
-       })
