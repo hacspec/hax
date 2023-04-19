@@ -8,16 +8,6 @@ let read_options_from_stdin () : Raw_thir_ast.options =
   In_channel.input_all In_channel.stdin
   |> Yojson.Safe.from_string |> Raw_thir_ast.parse_options
 
-(* let read_options_from_stdin () : Raw_thir_ast.options = *)
-(*   (let acc = ref [] in *)
-(*    try *)
-(*      while true do *)
-(*        acc := read_line () :: !acc *)
-(*      done; *)
-(*      "" *)
-(*    with End_of_file -> String.concat ~sep:"\n" !acc) *)
-(*   |> Yojson.Safe.from_string |> Raw_thir_ast.parse_options *)
-
 let run () : Raw_thir_ast.output =
   let options = read_options_from_stdin () in
   let run (type options_type)
