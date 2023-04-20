@@ -53,7 +53,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@1.67 # TODO: change this to `stable` when we update nightly 
           
-      - run: cargo install --path cli
+      - run: cargo install --path cli/driver && cargo install --path cli/subcommands
 
       - run: opam install . --deps-only
         working-directory: engine

@@ -1,6 +1,5 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub enum Glob {
@@ -54,7 +53,7 @@ impl Namespace {
                     aux(pattern, path)
                 }
                 ([NamespaceChunk::Glob(Glob::Many), pattern @ ..], []) => aux(pattern, path),
-                ([NamespaceChunk::Glob(Glob::Many), pattern_tl @ ..], [path_hd, path_tl @ ..]) => {
+                ([NamespaceChunk::Glob(Glob::Many), pattern_tl @ ..], [_path_hd, path_tl @ ..]) => {
                     aux(pattern_tl, path) || aux(pattern, path_tl)
                 }
                 _ => false,

@@ -1,4 +1,6 @@
-use crate::*;
+use circus_cli_options::*;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
 pub struct Options {

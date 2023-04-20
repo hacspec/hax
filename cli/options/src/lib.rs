@@ -3,8 +3,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-pub use circus_frontend_exporter::options::*;
-pub mod engine;
+pub use circus_frontend_exporter_options::*;
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
 pub struct ForceCargoBuild {
@@ -164,19 +163,19 @@ impl NormalizePaths for Options {
     }
 }
 
-impl From<Options> for circus_frontend_exporter::options::Options {
-    fn from(opts: Options) -> circus_frontend_exporter::options::Options {
-        circus_frontend_exporter::options::Options {
+impl From<Options> for circus_frontend_exporter_options::Options {
+    fn from(opts: Options) -> circus_frontend_exporter_options::Options {
+        circus_frontend_exporter_options::Options {
             inline_macro_calls: opts.inline_macro_calls,
         }
     }
 }
 
-#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
-pub struct ExportedTypes {
-    pub engine_options: engine::Options,
-    pub engine_output: engine::Output,
-    pub cli_options: Options,
-}
+// #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+// pub struct ExportedTypes {
+//     pub engine_options: engine::Options,
+//     pub engine_output: engine::Output,
+//     pub cli_options: Options,
+// }
 
 pub const ENV_VAR_OPTIONS_FRONTEND: &str = "DRIVER_CIRCUS_FRONTEND_OPTS";

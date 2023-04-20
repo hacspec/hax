@@ -10,7 +10,8 @@ serde_json = "1.0"
 schemars = "0.8"
 itertools = "0.10.5"
 clap = { version = "4.0", features = ["derive"] }
-circus-frontend-exporter = { path = "../../frontend/exporter" }
+# circus-frontend-exporter = { path = "../../frontend/exporter" }
 circus-diagnostics = { path = "../../frontend/diagnostics" }
+circus-frontend-exporter-options = { path = "../../frontend/exporter/options" }
 path-clean = "1.0.1"
 

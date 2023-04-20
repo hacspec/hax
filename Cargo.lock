@@ -40,7 +40,23 @@ name = "circus-cli-options"
 version = "0.1.0"
 dependencies = [
  "circus-diagnostics",
+ "circus-frontend-exporter-options",
+ "clap",
+ "itertools",
+ "path-clean",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "circus-cli-options-engine"
+version = "0.1.0"
+dependencies = [
+ "circus-cli-options",
+ "circus-diagnostics",
  "circus-frontend-exporter",
+ "circus-frontend-exporter-options",
  "clap",
  "itertools",
  "path-clean",
@@ -58,16 +74,69 @@ dependencies = [
 ]
 
 [[package]]
+name = "circus-driver"
+version = "0.1.0"
+dependencies = [
+ "circus-cli-options",
+ "circus-cli-options-engine",
+ "circus-frontend-exporter",
+ "circus-frontend-exporter-options",
+ "clap",
+ "const_format",
+ "inquire",
+ "serde",
+ "serde_json",
+ "which",
+]
+
+[[package]]
 name = "circus-frontend-exporter"
 version = "0.1.0"
 dependencies = [
  "adt-into",
+ "circus-frontend-exporter-options",
  "clap",
  "itertools",
  "paste",
  "schemars",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "circus-frontend-exporter-options"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "circus-subcommands"
+version = "0.1.0"
+dependencies = [
+ "circus-cli-options",
+ "circus-cli-options-engine",
+ "circus-diagnostics",
+ "circus-driver",
+ "circus-frontend-exporter",
+ "circus-frontend-exporter-options",
+ "clap",
+ "const_format",
+ "inquire",
+ "itertools",
+ "paste",
+ "path-clean",
+ "rustup-toolchain",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "toml",
+ "version_check",
+ "which",
 ]
 
 [[package]]
@@ -153,30 +222,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "driver"
-version = "0.1.0"
-dependencies = [
- "circus-cli-options",
- "circus-diagnostics",
- "circus-frontend-exporter",
- "clap",
- "const_format",
- "escape_string",
- "inquire",
- "itertools",
- "paste",
- "path-clean",
- "rustup-toolchain",
- "schemars",
- "serde",
- "serde_json",
- "tempfile",
- "toml",
- "version_check",
- "which",
-]
-
-[[package]]
 name = "dyn-clone"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -219,12 +264,6 @@ dependencies = [
  "cc",
  "libc",
 ]
-
-[[package]]
-name = "escape_string"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59e867569975c88fdf73833a30bd6e0978aa6ab6bd784b648fcece07450951ba"
 
 [[package]]
 name = "fastrand"

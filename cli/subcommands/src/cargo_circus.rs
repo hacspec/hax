@@ -1,5 +1,3 @@
-mod common;
-
 use circus_cli_options::Options;
 use clap::Parser;
 use std::process::Command;
@@ -24,8 +22,20 @@ fn cargo_command() -> Command {
     cmd
 }
 
+/// [get_args] is a wrapper of `std::env::args` that strips a possible
+/// cargo subcommand. This allows for a binary [BINARY] to be called
+/// both with [cargo BINARY args...] and [cargo-BINARY args...].
+pub fn get_args(subcommand: &str) -> Vec<String> {
+    let mut args: Vec<_> = std::env::args().collect();
+    if args.get(1) == Some(&subcommand.to_string()) {
+        // we face a call `cargo [subcommand]`: we need to get rid of the first argument
+        args = args.into_iter().skip(1).collect();
+    }
+    args
+}
+
 fn main() {
-    let args = common::get_args("circus");
+    let args: Vec<String> = get_args("circus");
     let options = Options::parse_from(args.iter());
 
     std::process::exit(

@@ -28,7 +28,6 @@ extern crate rustc_type_ir;
 mod all;
 mod items;
 mod manual;
-pub mod options;
 mod sinto;
 pub mod state;
 pub mod utils;

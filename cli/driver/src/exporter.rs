@@ -20,7 +20,7 @@ use std::rc::Rc;
 /// Browse a crate and translate every item from HIR+THIR to "THIR'"
 /// (I call "THIR'" the AST described in this crate)
 fn convert_thir<'tcx>(
-    options: &circus_frontend_exporter::options::Options,
+    options: &circus_frontend_exporter_options::Options,
     macro_calls: HashMap<rustc_span::Span, rustc_ast::ast::MacCall>,
     tcx: TyCtxt<'tcx>,
 ) -> (Vec<rustc_span::Span>, Vec<circus_frontend_exporter::Item>) {
@@ -144,9 +144,9 @@ pub(crate) struct Options {
     pub command: circus_cli_options::ExporterCommand,
 }
 
-impl From<Options> for circus_frontend_exporter::options::Options {
-    fn from(opts: Options) -> circus_frontend_exporter::options::Options {
-        circus_frontend_exporter::options::Options {
+impl From<Options> for circus_frontend_exporter_options::Options {
+    fn from(opts: Options) -> circus_frontend_exporter_options::Options {
+        circus_frontend_exporter_options::Options {
             inline_macro_calls: opts.inline_macro_calls,
         }
     }
@@ -187,7 +187,7 @@ impl Callbacks for Options {
                         .unwrap()
                 }
                 ExporterCommand::Backend(backend) => {
-                    let engine_options = circus_cli_options::engine::Options {
+                    let engine_options = circus_cli_options_engine::Options {
                         backend,
                         input: converted_items,
                     };
@@ -220,7 +220,7 @@ impl Callbacks for Options {
                         panic!("{} exited with non-zero code", ENGINE_BINARY_NAME);
                         std::process::exit(out.status.code().unwrap_or(-1));
                     }
-                    let output: circus_cli_options::engine::Output =
+                    let output: circus_cli_options_engine::Output =
                         serde_json::from_slice(out.stdout.as_slice()).unwrap_or_else(|_| {
                             panic!(
                                 "{} outputed incorrect JSON {}",
@@ -229,7 +229,7 @@ impl Callbacks for Options {
                             )
                         });
                     let options_frontend =
-                        box circus_frontend_exporter::options::Options::from(self.clone()).clone();
+                        box circus_frontend_exporter_options::Options::from(self.clone()).clone();
                     let state = circus_frontend_exporter::State {
                         tcx,
                         options: options_frontend,
