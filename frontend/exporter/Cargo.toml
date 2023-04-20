@@ -3,16 +3,13 @@ name = "circus-frontend-exporter"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-adt-into = {path = "adt-into"}
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-schemars = "0.8"
+adt-into.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
 itertools = "0.10.5"
-clap = { version = "4.0", features = ["derive"] }
-circus-frontend-exporter-options = { path = "options" }
+circus-frontend-exporter-options.workspace = true
 paste = "1.0.11"
 
 [features]
