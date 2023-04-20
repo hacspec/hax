@@ -32,6 +32,6 @@
  (libraries zarith_stubs_js lib))
 
 (env
- (dev
+ (*
   (flags
-   (:standard -warn-error -A))))
+   (:standard -w -A -w +8))))
