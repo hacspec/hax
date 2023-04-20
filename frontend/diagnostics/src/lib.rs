@@ -1,5 +1,9 @@
+#![feature(rustc_private)]
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+pub mod error;
 
 #[derive(Debug, Clone, JsonSchema, Serialize, Deserialize)]
 pub struct Diagnostics<S> {

@@ -1,5 +1,5 @@
 [package]
-name = "circus-diagnostics"
+name = "circus-lint"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,6 +7,5 @@ edition = "2021"
 rustc_private=true
 
 [dependencies]
-serde.workspace = true
-schemars.workspace = true
-
+circus-diagnostics = { version = "=0.1.0", path = "../diagnostics" }
+log = "0.4"
