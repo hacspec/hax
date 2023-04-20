@@ -388,7 +388,7 @@ let exporters = {
                         );
                     },
                     expr: () => wrap('x', ocaml_yojson_of_type_expr(payload, 'x', [name+':'+variant, 'payload'])),
-                    empty: () => wrap("", `\`String "${variant_name}"`),
+                    empty: () => `${variant} -> \`String "${variant_name}"`,
                 }[payloadKind] || (() => {
                     throw "bad payloadKind: " + payloadKind;
                 }))();
