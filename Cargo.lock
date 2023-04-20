@@ -39,10 +39,8 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 name = "circus-cli-options"
 version = "0.1.0"
 dependencies = [
- "circus-diagnostics",
  "circus-frontend-exporter-options",
  "clap",
- "itertools",
  "path-clean",
  "schemars",
  "serde",
@@ -95,7 +93,6 @@ version = "0.1.0"
 dependencies = [
  "adt-into",
  "circus-frontend-exporter-options",
- "clap",
  "itertools",
  "paste",
  "schemars",
@@ -107,7 +104,6 @@ dependencies = [
 name = "circus-frontend-exporter-options"
 version = "0.1.0"
 dependencies = [
- "clap",
  "schemars",
  "serde",
  "serde_json",
@@ -120,12 +116,9 @@ dependencies = [
  "circus-cli-options",
  "circus-cli-options-engine",
  "circus-diagnostics",
- "circus-driver",
  "circus-frontend-exporter",
  "circus-frontend-exporter-options",
  "clap",
- "const_format",
- "inquire",
  "itertools",
  "paste",
  "path-clean",
