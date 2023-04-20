@@ -112,9 +112,19 @@ pub enum ExporterCommand {
 }
 
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
+pub enum LinterCommand {
+    /// Lint for the hacspec subset
+    Hacspec,
+    /// Lint for the supported Rust subset
+    Rust,
+}
+
+#[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
 pub enum Command {
     #[command(flatten)]
     ExporterCommand(ExporterCommand),
+    #[clap(subcommand, name = "lint", about = "Lint the code")]
+    LintCommand(LinterCommand),
 }
 
 #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
@@ -147,7 +157,7 @@ pub struct Options {
     pub output_dir: std::path::PathBuf,
 
     #[command(subcommand)]
-    pub command: Command,
+    pub command: Option<Command>,
 
     /// [cargo] caching is disabled by default, this flag enables it back.
     #[arg(long="enable-cargo-cache", action=clap::builder::ArgAction::SetTrue)]

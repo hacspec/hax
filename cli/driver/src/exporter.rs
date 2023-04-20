@@ -124,7 +124,7 @@ fn find_circus_engine() -> process::Command {
                 .with_default(true)
                 .prompt()
                 {
-                    let mut cmd = process::Command::new("node");
+                    let cmd = process::Command::new("node");
                     let engine_js_path: String =
                         panic!("TODO: Downloading from GitHub is not supported yet.");
                     cmd.arg(engine_js_path);
@@ -137,22 +137,23 @@ fn find_circus_engine() -> process::Command {
         .expect(&ENGINE_BINARY_NOT_FOUND)
 }
 
+/// Callback for extraction
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct Options {
+pub(crate) struct ExtractionCallbacks {
     pub output_dir: std::path::PathBuf,
     pub inline_macro_calls: Vec<circus_cli_options::Namespace>,
     pub command: circus_cli_options::ExporterCommand,
 }
 
-impl From<Options> for circus_frontend_exporter_options::Options {
-    fn from(opts: Options) -> circus_frontend_exporter_options::Options {
+impl From<ExtractionCallbacks> for circus_frontend_exporter_options::Options {
+    fn from(opts: ExtractionCallbacks) -> circus_frontend_exporter_options::Options {
         circus_frontend_exporter_options::Options {
             inline_macro_calls: opts.inline_macro_calls,
         }
     }
 }
 
-impl Callbacks for Options {
+impl Callbacks for ExtractionCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
         let options = self.clone();
         config.parse_sess_created = Some(Box::new(move |parse_sess| {

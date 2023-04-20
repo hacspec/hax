@@ -37,7 +37,7 @@ pub struct Linter<'a, 'tcx> {
 
 impl<'a, 'tcx> Linter<'a, 'tcx> {
     /// Register the linter.
-    pub fn register(tcx: TyCtxt<'tcx>, session: &'a Lrc<Session>) -> Result<Self, Error> {
+    pub fn register(tcx: TyCtxt<'tcx>, session: &'a Lrc<Session>) {
         let hir = tcx.hir();
 
         // XXX: read from config file or something and find a better way to do this.
@@ -75,7 +75,6 @@ impl<'a, 'tcx> Linter<'a, 'tcx> {
             trait_block_list,
         };
         hir.visit_all_item_likes_in_crate(&mut linter);
-        todo!()
     }
 }
 

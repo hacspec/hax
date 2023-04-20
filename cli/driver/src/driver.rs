@@ -27,6 +27,8 @@ extern crate rustc_type_ir;
 mod exporter;
 use circus_cli_options::Command;
 
+mod linter;
+
 use circus_cli_options::ENV_VAR_OPTIONS_FRONTEND;
 use const_format::formatcp;
 
@@ -41,6 +43,8 @@ fn rustc_sysroot() -> String {
 }
 
 use clap::Parser;
+use linter::LinterCallbacks;
+use rustc_driver::Callbacks;
 fn main() {
     let options: circus_cli_options::Options =
         serde_json::from_str(&std::env::var(ENV_VAR_OPTIONS_FRONTEND).expect(&formatcp!(
@@ -60,15 +64,36 @@ fn main() {
 
     // fetch the correct callback structure given the command, and
     // coerce options
-    let mut callback = match options.command {
-        Command::ExporterCommand(command) => exporter::Options {
-            output_dir: options.output_dir,
-            inline_macro_calls: options.inline_macro_calls,
-            command,
-        },
-    };
+    match options.command {
+        Some(Command::ExporterCommand(command)) => {
+            let mut callbacks = exporter::ExtractionCallbacks {
+                output_dir: options.output_dir,
+                inline_macro_calls: options.inline_macro_calls,
+                command,
+            };
 
-    std::process::exit(rustc_driver::catch_with_exit_code(move || {
-        rustc_driver::RunCompiler::new(&rustc_args, &mut callback).run()
-    }))
+            std::process::exit(rustc_driver::catch_with_exit_code(move || {
+                rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
+            }))
+        }
+        Some(Command::LintCommand(command)) => {
+            let _config = match command {
+                circus_cli_options::LinterCommand::Hacspec => (),
+                circus_cli_options::LinterCommand::Rust => (),
+            };
+            let mut callbacks = LinterCallbacks {};
+
+            std::process::exit(rustc_driver::catch_with_exit_code(move || {
+                rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
+            }))
+        }
+        None => {
+            // hacspec lint
+            let mut callbacks = LinterCallbacks {};
+
+            std::process::exit(rustc_driver::catch_with_exit_code(move || {
+                rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
+            }))
+        }
+    };
 }
