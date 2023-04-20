@@ -4,9 +4,9 @@ open Circus_engine
 open Desugar_utils
 open Base
 
-let read_options_from_stdin () : Raw_thir_ast.options =
+let read_options_from_stdin () : Raw_thir_ast.engine_options =
   In_channel.input_all In_channel.stdin
-  |> Yojson.Safe.from_string |> Raw_thir_ast.parse_options
+  |> Yojson.Safe.from_string |> Raw_thir_ast.parse_engine_options
 
 let run () : Raw_thir_ast.output =
   let options = read_options_from_stdin () in

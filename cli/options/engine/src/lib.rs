@@ -3,7 +3,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
-pub struct Options {
+pub struct EngineOptions {
     pub backend: Backend,
     pub input: Vec<circus_frontend_exporter::Item>,
 }

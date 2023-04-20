@@ -10,7 +10,7 @@ name = "cargo-circus"
 
 [[bin]]
 path = "src/json_schema.rs"
-name = "cargo-circus-export-json-schemas"
+name = "circus-export-json-schemas"
 
 [dependencies]
 # escape_string= "0.1"

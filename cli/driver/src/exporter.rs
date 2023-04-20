@@ -187,7 +187,7 @@ impl Callbacks for Options {
                         .unwrap()
                 }
                 ExporterCommand::Backend(backend) => {
-                    let engine_options = circus_cli_options_engine::Options {
+                    let engine_options = circus_cli_options_engine::EngineOptions {
                         backend,
                         input: converted_items,
                     };

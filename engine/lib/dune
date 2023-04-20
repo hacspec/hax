@@ -34,7 +34,7 @@
   (with-stdout-to
    raw_thir_ast.ml
    (pipe-stdout
-        (run cargo circus-export-json-schemas -- ast -)
+        (run circus-export-json-schemas)
         (run node %{ocaml_of_json_schema} - -)
    ))))
 

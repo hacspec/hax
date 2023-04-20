@@ -18,7 +18,7 @@ fn json_schema_static_asset() {
         circus_frontend_exporter::Item,
         circus_cli_options::Options,
         circus_diagnostics::Diagnostics<circus_frontend_exporter::Span>,
-        circus_cli_options_engine::Options,
+        circus_cli_options_engine::EngineOptions,
         circus_cli_options_engine::Output,
     ));
     serde_json::to_writer(
