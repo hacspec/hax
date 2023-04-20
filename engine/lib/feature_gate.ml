@@ -124,11 +124,14 @@ struct
         file ^ ":" ^ pos_to_string lo ^ "-" ^ pos_to_string hi
     | Dummy -> "?"
 
+  include Desugar_utils.NoError
+
   let report (data : Data.t) =
     let msg = S0.explain (fst data.data) (snd data.data) in
     let first = Non_empty_list.hd data.path in
-    prerr_endline @@ "Error at " ^ S0.metadata.current_phase ^ " phase: " ^ msg
-    ^ " at span "
+    prerr_endline @@ "Error at "
+    ^ [%show: Diagnostics.Phase.t] S0.metadata.current_phase
+    ^ " phase: " ^ msg ^ " at span "
     ^ pretty_string_of_span (Data.span data);
     prerr_endline @@ [%show: ast_chunk] first;
     ()

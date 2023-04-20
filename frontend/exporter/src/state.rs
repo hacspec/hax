@@ -96,12 +96,13 @@ macro_rules! mk {
 
 pub mod types {
     use std::cell::RefCell;
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
     use std::rc::Rc;
     pub type LocalIdentMap = Rc<RefCell<HashMap<rustc_middle::thir::LocalVarId, String>>>;
     pub type MacroCalls = Box<HashMap<rustc_span::Span, rustc_ast::ast::MacCall>>;
-    pub type Options = Box<crate::options::Options>;
+    pub type Options = Box<circus_frontend_exporter_options::Options>;
     pub type OptDefId = Option<rustc_hir::def_id::DefId>;
+    pub type ExportedSpans = Rc<RefCell<HashSet<rustc_span::Span>>>;
     pub type Thirs<'tcx> = HashMap<
         rustc_span::def_id::LocalDefId,
         (rustc_middle::thir::Thir<'tcx>, rustc_middle::thir::ExprId),
@@ -118,7 +119,8 @@ mk!(
         opt_def_id: {} types::OptDefId,
         macro_infos: {} types::MacroCalls,
         local_ident_map: {} types::LocalIdentMap,
-        cached_thirs: {'tcx} types::Thirs
+        cached_thirs: {'tcx} types::Thirs,
+        exported_spans: {} types::ExportedSpans
     }
 );
 

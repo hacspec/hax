@@ -36,6 +36,36 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "circus-cli-options"
+version = "0.1.0"
+dependencies = [
+ "circus-diagnostics",
+ "circus-frontend-exporter-options",
+ "clap",
+ "itertools",
+ "path-clean",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "circus-cli-options-engine"
+version = "0.1.0"
+dependencies = [
+ "circus-cli-options",
+ "circus-diagnostics",
+ "circus-frontend-exporter",
+ "circus-frontend-exporter-options",
+ "clap",
+ "itertools",
+ "path-clean",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "circus-diagnostics"
 version = "0.1.0"
 dependencies = [
@@ -44,16 +74,69 @@ dependencies = [
 ]
 
 [[package]]
+name = "circus-driver"
+version = "0.1.0"
+dependencies = [
+ "circus-cli-options",
+ "circus-cli-options-engine",
+ "circus-frontend-exporter",
+ "circus-frontend-exporter-options",
+ "clap",
+ "const_format",
+ "inquire",
+ "serde",
+ "serde_json",
+ "which",
+]
+
+[[package]]
 name = "circus-frontend-exporter"
 version = "0.1.0"
 dependencies = [
  "adt-into",
+ "circus-frontend-exporter-options",
  "clap",
  "itertools",
  "paste",
  "schemars",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "circus-frontend-exporter-options"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "circus-subcommands"
+version = "0.1.0"
+dependencies = [
+ "circus-cli-options",
+ "circus-cli-options-engine",
+ "circus-diagnostics",
+ "circus-driver",
+ "circus-frontend-exporter",
+ "circus-frontend-exporter-options",
+ "clap",
+ "const_format",
+ "inquire",
+ "itertools",
+ "paste",
+ "path-clean",
+ "rustup-toolchain",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "toml",
+ "version_check",
+ "which",
 ]
 
 [[package]]
@@ -139,26 +222,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "driver"
-version = "0.1.0"
-dependencies = [
- "circus-diagnostics",
- "circus-frontend-exporter",
- "clap",
- "const_format",
- "escape_string",
- "inquire",
- "itertools",
- "paste",
- "path-clean",
- "schemars",
- "serde",
- "serde_json",
- "tempfile",
- "which",
-]
-
-[[package]]
 name = "dyn-clone"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -203,12 +266,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "escape_string"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59e867569975c88fdf73833a30bd6e0978aa6ab6bd784b648fcece07450951ba"
-
-[[package]]
 name = "fastrand"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -216,6 +273,12 @@ checksum = "e51093e27b0797c359783294ca4f0a911c270184cb10f85783b118614a1501be"
 dependencies = [
  "instant",
 ]
+
+[[package]]
+name = "hashbrown"
+version = "0.12.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
 name = "heck"
@@ -228,6 +291,16 @@ name = "hermit-abi"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fed44880c466736ef9a5c5b5facefb5ed0785676d0c02d612db14e54f0d84286"
+
+[[package]]
+name = "indexmap"
+version = "1.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
+dependencies = [
+ "autocfg",
+ "hashbrown",
+]
 
 [[package]]
 name = "inquire"
@@ -334,6 +407,12 @@ checksum = "abb12e687cfb44aa40f41fc3978ef76448f9b6038cad6aef4259d3c095a2382e"
 dependencies = [
  "cfg-if",
 ]
+
+[[package]]
+name = "memchr"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
 
 [[package]]
 name = "mio"
@@ -492,6 +571,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustup-toolchain"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4d51c4ed26a5c04c5474585c9909d8b1ab90d31923c6a383832b70dbbf70da9"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "ryu"
 version = "1.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -566,6 +654,15 @@ checksum = "cad406b69c91885b5107daf2c29572f6c8cdb3c66826821e286c533490c0bc76"
 dependencies = [
  "itoa",
  "ryu",
+ "serde",
+]
+
+[[package]]
+name = "serde_spanned"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0efd8caf556a6cebd3b285caf480045fcc1ac04f6bd786b09a6f11af30c4fcf4"
+dependencies = [
  "serde",
 ]
 
@@ -662,6 +759,40 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "toml"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b403acf6f2bb0859c93c7f0d967cb4a75a7ac552100f9322faf64dc047669b21"
+dependencies = [
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_edit",
+]
+
+[[package]]
+name = "toml_datetime"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ab8ed2edee10b50132aed5f331333428b011c99402b5a534154ed15746f9622"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.19.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "239410c8609e8125456927e6707163a3b1fdb40561e4b803bc041f466ccfdc13"
+dependencies = [
+ "indexmap",
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "winnow",
 ]
 
 [[package]]
@@ -873,3 +1004,12 @@ name = "windows_x86_64_msvc"
 version = "0.48.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a515f5799fe4961cb532f983ce2b23082366b898e52ffbce459c86f67c8378a"
+
+[[package]]
+name = "winnow"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae8970b36c66498d8ff1d66685dc86b91b29db0c7739899012f63a63814b4b28"
+dependencies = [
+ "memchr",
+]

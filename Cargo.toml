@@ -2,6 +2,10 @@
 
 members = [
      "frontend/exporter",
+     "frontend/exporter/options",
      "frontend/diagnostics",
-     "cli",
+     "cli/options",
+     "cli/options/engine",
+     "cli/subcommands",
+     "cli/driver",
 ]

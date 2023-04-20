@@ -16,10 +16,11 @@ struct
   module A = Ast.Make (FA)
   module B = Ast.Make (FB)
 
-  let metadata = Desugar_utils.Metadata.make "resugar_for_loop"
+  let metadata = Desugar_utils.Metadata.make ResugarForLoops
 
   module UA = Ast_utils.Make (FA)
   module UB = Ast_utils.Make (FB)
+  include Desugar_utils.NoError
 
   module S = struct
     include Features.SUBTYPE.Id

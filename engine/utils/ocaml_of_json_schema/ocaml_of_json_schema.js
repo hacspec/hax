@@ -138,6 +138,28 @@ end
 
 let wrap_paren = s => `(${s})`;
 
+let ocaml_yojson_of_type_expr = (o, subject, path) => {
+    if (!path)
+        throw "Path missing!";
+    let {kind, payload} = o;
+    return `(${(({
+        option: type => `match ${subject} with | Option.Some x -> ${ocaml_yojson_of_type_expr(type, 'x', [...path, 'Some'])} | _ -> \`Null`,
+        tuple: types =>
+            `let (${types.map((t, i) => 'x' + i)}) = ${subject} in \`List [${types.map((t, i) => ocaml_yojson_of_type_expr(t, 'x' + i, [...path, 'tuple', i])).join(';')}]`,
+        array: type => 
+            `\`List (List.map (fun x -> ${ocaml_yojson_of_type_expr(type, 'x', [...path, 'array'])}) ${subject})`,
+        boolean: _ => `\`Bool ${subject}`,
+        string: _ => `\`String ${subject}`,
+        integer: _ => `\`${o.bigint ? 'Intlit' : 'Int'} ${subject}`,
+        char: _ => `\`String (Base.Char.to_string ${subject})`,
+        name: payload => `to_json_${typeNameOf(payload)} ${subject}`,
+    })[kind] || (_ => {
+        log_full(o);
+        throw "ocaml_arms_of_type_expr: bad kind "+kind;
+    }))(payload)})`;
+};
+
+
 let ocaml_arms_of_type_expr = (o, path) => {
     if (!path)
         throw "Path missing!";
@@ -352,7 +374,26 @@ let exporters = {
                 }))();
             }).flat();
             let parse = mk_match('o', parse_arms, ['parse_'+name]);
-            return {type, parse};
+            let to_json = `match o with ${variants.map(({kind, name: variant_name, payloadKind, payload}) => {
+                let variant = variantNameOf(variant_name);
+                let wrap = (x, e) => `${variant} ${x} -> \`Assoc ["${variant_name}", ${e}]`;
+                return ({
+                    record: () => {
+                        let fields = Object.entries(payload);
+                        return wrap(
+                          `{${fields.map(([field, type], i) => `${fieldNameOf(field)}`).join('; ')}}`,
+                          `\`Assoc [${
+                              fields.map(([field, type], i) => `("${field}", ${ocaml_yojson_of_type_expr(type, fieldNameOf(field), [name+':'+variant, 'variant', field])})`).join('; ')
+                          }]`
+                        );
+                    },
+                    expr: () => wrap('x', ocaml_yojson_of_type_expr(payload, 'x', [name+':'+variant, 'payload'])),
+                    empty: () => wrap("", `\`String "${variant_name}"`),
+                }[payloadKind] || (() => {
+                    throw "bad payloadKind: " + payloadKind;
+                }))();
+            }).join(' | ')}`;
+            return {type, parse, to_json};
         },
     },
     // object is a *flat* record
@@ -372,7 +413,9 @@ let exporters = {
             
             return {
                 type: `{ ${fields.map(([fname, type, doc]) => `${fieldNameOf(fname)} : ${ocaml_of_type_expr(type, ['struct_'+fname+'_'+name])}${mkdoc(doc)}`).join(';\n')} }`,
-                parse: mk_match('o', [[pat, expr]], ['struct_'+name])
+                parse: mk_match('o', [[pat, expr]], ['struct_'+name]),
+                to_json: //`let {${fields.map(([fname, type, doc]) => fieldNameOf(fname)).join(';')}} = o in`
+                   `\`Assoc [${fields.map(([fname, type, doc]) => `("${fname}", ${ocaml_yojson_of_type_expr(type, 'o.'+fieldNameOf(fname), ['todo'])})`).join('; ')}]`
             };
         },
     },
@@ -384,7 +427,8 @@ let exporters = {
 
             let variants = o.enum.map(n => ({
                 Δ: n,
-                variant: ensureUnique('variant', variantNameOf(n))
+                variant: ensureUnique('variant', variantNameOf(n)),
+                variantOriginName: n
             }));
 
             let parse_string
@@ -397,7 +441,8 @@ let exporters = {
                 parse: `  match o with
                         | \`String s -> (${parse_string})
                         | _ -> failwith "expected a string while parsing a ${name}"
-                       `
+                       `,
+                to_json: `match o with ${variants.map(({variant, variantOriginName}) => `${variant} -> \`String "${variantOriginName}"`).join(' | ')}`,
             };
         },
     },
@@ -421,8 +466,8 @@ let export_definition = (name, def) => {
     let r = f(name, def);
     if(r === null)
         return `(* type ${name} *)`;
-    let {type, parse} = r;
-    return {name, type, parse};
+    let {type, parse, to_json} = r;
+    return {name, type, parse, to_json};
     // return [{type, parse}]
     // return `type ${name} = ${type}\nlet parse_${name} (o: Yojson.Safe.t): ${name} = ${parse}\n`;
 };
@@ -432,6 +477,7 @@ function run(str){
     const definitions = clean(contents.definitions);
     
     let output_string = `type todo = string\n`;
+    output_string = ``;
 
     let items = Object.entries(definitions).map(
         ([name, def]) => export_definition(name, def)
@@ -455,12 +501,16 @@ end
 open ParseError
 `;
 
-    output_string += ('type ' + items.map(({name, type, parse}) =>
+    output_string += ('type ' + items.map(({name, type}) =>
         `${name} = ${type}\n${derive_items.length ? `[@@deriving ${derive_items.join(', ')}]` : ''}`).join('\nand ')
     );
     output_string += ('');
     output_string += ('let rec ' + items.map(({name, type, parse}) =>
         `parse_${name} (o: Yojson.Safe.t): ${name} = ${parse}`
+    ).join('\nand '));
+    output_string += ('');
+    output_string += ('let rec ' + items.map(({name, type, parse, to_json}) =>
+        `to_json_${name} (o: ${name}): Yojson.Safe.t = ${to_json}`
     ).join('\nand '));
 
     return output_string;

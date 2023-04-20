@@ -1,0 +1,20 @@
+[package]
+name = "circus-driver"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+path = "src/driver.rs"
+name = "driver-circus-frontend-exporter"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+clap = { version = "4.0", features = ["derive"] }
+circus-frontend-exporter = {path = "../../frontend/exporter"}
+circus-cli-options = {path = "../options"}
+circus-cli-options-engine = {path = "../options/engine"}
+circus-frontend-exporter-options = { path = "../../frontend/exporter/options" }
+which = "4.4.0"
+inquire = "0.6"
+const_format = "0.2"

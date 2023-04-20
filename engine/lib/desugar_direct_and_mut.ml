@@ -24,10 +24,11 @@ struct
     let mutable_variable = Fn.const Features.On.mutable_variable
   end
 
-  let metadata = Desugar_utils.Metadata.make "ref_mut"
+  let metadata = Desugar_utils.Metadata.make RefMut
 
   module UA = Ast_utils.Make (FA)
   module UB = Ast_utils.Make (FB)
+  include Desugar_utils.NoError
 
   [%%inline_defs dmutability]
 

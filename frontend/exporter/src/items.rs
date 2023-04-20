@@ -63,6 +63,7 @@ fn make_fn_def<'tcx, S: BaseState<'tcx>>(
         macro_infos: s.macro_infos(),
         local_ident_map: s.local_ident_map(),
         cached_thirs: s.cached_thirs(),
+        exported_spans: s.exported_spans(),
     };
     FnDef {
         params,
@@ -415,7 +416,7 @@ impl<'a, S: BaseState<'a> + HasOwnerId> SInto<S, TraitItem> for rustc_hir::Trait
 
 use itertools::Itertools;
 
-pub fn inline_macro_invokations<'t, S: BaseState<'t>>(
+pub fn inline_macro_invocations<'t, S: BaseState<'t>>(
     ids: &Vec<rustc_hir::ItemId>,
     s: &S,
 ) -> Vec<Item> {
@@ -433,20 +434,20 @@ pub fn inline_macro_invokations<'t, S: BaseState<'t>>(
     ids.iter()
         .cloned()
         .map(|id| tcx.hir().item(id))
-        .group_by(|item| SpanEq(raw_macro_invokation_of_span(item.span, s)))
+        .group_by(|item| SpanEq(raw_macro_invocation_of_span(item.span, s)))
         .into_iter()
         .map(|(mac, items)| match mac.0 {
             Some((macro_ident, expn_data)) => {
                 let owner_id = items.into_iter().map(|x| x.owner_id).next().unwrap();
                 // owner_id.reduce()
-                let invokation =
-                    macro_invokation_of_raw_mac_invokation(&macro_ident, &expn_data, s);
+                let invocation =
+                    macro_invocation_of_raw_mac_invocation(&macro_ident, &expn_data, s);
                 let span = expn_data.call_site.sinto(s);
                 vec![Item {
                     def_id: None,
                     owner_id: owner_id.sinto(s),
                     // owner_id: expn_data.parent_module.unwrap().sinto(s),
-                    kind: ItemKind::MacroInvokation(invokation),
+                    kind: ItemKind::MacroInvokation(invocation),
                     span,
                     vis_span: rustc_span::DUMMY_SP.sinto(s),
                 }]
@@ -459,7 +460,7 @@ pub fn inline_macro_invokations<'t, S: BaseState<'t>>(
 
 impl<'a, 'tcx, S: BaseState<'tcx>> SInto<S, Vec<Item>> for rustc_hir::Mod<'a> {
     fn sinto(&self, s: &S) -> Vec<Item> {
-        inline_macro_invokations(&self.item_ids.iter().cloned().collect(), s)
+        inline_macro_invocations(&self.item_ids.iter().cloned().collect(), s)
         // .iter()
         // .map(|item_id| item_id.sinto(s))
         // .collect()
@@ -739,6 +740,7 @@ pub struct Item {
             macro_infos: state.macro_infos(),
             local_ident_map: state.local_ident_map(),
             cached_thirs: state.cached_thirs(),
+            exported_spans: state.exported_spans(),
         })
     })]
     pub kind: ItemKind,
