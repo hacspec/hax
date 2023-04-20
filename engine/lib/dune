@@ -39,6 +39,6 @@
    ))))
 
 (env
- (*
+ (_
   (flags
    (:standard -w -A -w +8))))
