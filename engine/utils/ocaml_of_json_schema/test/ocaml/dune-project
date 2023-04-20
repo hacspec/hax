@@ -1,0 +1,11 @@
+(lang dune 3.7)
+
+(name test)
+
+(package
+ (allow_empty)
+ (name test)
+ (depends ocaml dune)
+ (tags
+  (topics "to describe" your project)))
+

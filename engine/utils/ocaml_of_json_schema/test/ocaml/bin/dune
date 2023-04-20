@@ -1,0 +1,20 @@
+(executable
+ (public_name ocaml_of_json_schema_ocaml)
+ (name main)
+ (libraries yojson))
+
+(rule
+ (target types.ml)
+ (deps (:ocaml_of_json_schema ../../../ocaml_of_json_schema.js))
+ (action
+  (with-stdout-to
+   types.ml
+   (pipe-stdout
+        (run ocaml_of_json_schema-schema)
+        (run node %{ocaml_of_json_schema} - -)
+   ))))
+
+(env
+ (_
+  (flags
+   (:standard -w -A -w +8))))
