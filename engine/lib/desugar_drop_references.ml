@@ -18,10 +18,13 @@ struct
 
   module A = Ast.Make (F)
   module B = Ast.Make (FB)
+  include Desugar_utils.NoError
 
   module S = struct
     include Features.SUBTYPE.Id
   end
+
+  include Desugar_utils.DefaultError
 
   let rec dty (t : A.ty) : B.ty =
     match t with
@@ -175,6 +178,6 @@ struct
     in
     [ { v; span = item.span; parent_namespace = item.parent_namespace } ]
 
-  let metadata = Desugar_utils.Metadata.make "DropReferences"
+  let metadata = Desugar_utils.Metadata.make DropReferences
 end
 [@@add "subtype.ml"]

@@ -1,6 +1,9 @@
 open Base
 open Utils
 
+let make_metadata rejection_phase =
+  Desugar_utils.Metadata.make (Diagnostics.Phase.Reject rejection_phase)
+
 module Arbitrary_lhs (FA : Features.T) = struct
   module FB = struct
     include FA
@@ -15,9 +18,11 @@ module Arbitrary_lhs (FA : Features.T) = struct
         include Feature_gate.DefaultSubtype
 
         let arbitrary_lhs = reject
-        let metadata = Desugar_utils.Metadata.make "RejectArbitrary_lhs"
+        let metadata = make_metadata ArbitraryLhs
       end)
 end
+
+module _ (FA : Features.T) : Desugar_utils.DESUGAR = Arbitrary_lhs (FA)
 
 module Continue (FA : Features.T) = struct
   module FB = struct
@@ -33,9 +38,11 @@ module Continue (FA : Features.T) = struct
         include Feature_gate.DefaultSubtype
 
         let continue = reject
-        let metadata = Desugar_utils.Metadata.make "RejectContinue"
+        let metadata = make_metadata Continue
       end)
 end
+
+module _ (FA : Features.T) : Desugar_utils.DESUGAR = Continue (FA)
 
 module RawOrMutPointer (FA : Features.T) = struct
   module FB = struct
@@ -53,6 +60,8 @@ module RawOrMutPointer (FA : Features.T) = struct
 
         let mutable_pointer = reject
         let raw_pointer = reject
-        let metadata = Desugar_utils.Metadata.make "RejectRawOrMutPointer"
+        let metadata = make_metadata RawOrMutPointer
       end)
 end
+
+module _ (FA : Features.T) : Desugar_utils.DESUGAR = RawOrMutPointer (FA)

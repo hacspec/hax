@@ -7,15 +7,28 @@ pub mod error;
 
 #[derive(Debug, Clone, JsonSchema, Serialize, Deserialize)]
 pub struct Diagnostics<S> {
-    kind: Kind,
-    span: S,
-    context: Option<String>,
+    pub kind: Kind,
+    pub span: S,
+    pub context: Option<String>,
 }
 
 #[derive(Debug, Clone, JsonSchema, Serialize, Deserialize)]
 #[repr(u16)]
 pub enum Kind {
+    /// Unsafe code is not supported
     UnsafeBlock = 0,
+
+    /// A feature is not currently implemented, but
+    Unimplemented {
+        /// Issue on the GitHub repository
+        issue_id: Option<u32>,
+        details: Option<String>,
+    } = 1,
+
+    /// Unknown error
+    // This is useful when doing sanity checks (i.e. one can yield
+    // this error kind for cases that should never happen)
+    Unknown { details: Option<String> } = 2,
 }
 
 impl Kind {

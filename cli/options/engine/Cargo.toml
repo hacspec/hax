@@ -1,20 +1,17 @@
 [package]
-name = "circus-frontend-exporter"
+name = "circus-cli-options-engine"
 version = "0.1.0"
 edition = "2021"
 
-[package.metadata.rust-analyzer]
-rustc_private=true
-
 [dependencies]
-adt-into.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 schemars.workspace = true
 itertools = "0.10.5"
+clap.workspace = true
+circus-diagnostics.workspace = true
+circus-cli-options.workspace = true
+circus-frontend-exporter.workspace = true
 circus-frontend-exporter-options.workspace = true
-paste = "1.0.11"
+path-clean = "1.0.1"
 
-[features]
-default = ["minimal-ast"]
-minimal-ast = []

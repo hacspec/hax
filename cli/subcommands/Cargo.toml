@@ -1,0 +1,39 @@
+[package]
+name = "circus-subcommands"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[[bin]]
+path = "src/cargo_circus.rs"
+name = "cargo-circus"
+
+[[bin]]
+path = "src/json_schema.rs"
+name = "circus-export-json-schemas"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+itertools = "0.10.5"
+clap.workspace = true
+paste = "1.0.11"
+circus-cli-options.workspace = true
+circus-frontend-exporter-options.workspace = true
+path-clean = "1.0.1"
+tempfile = "3.4"
+which.workspace = true
+version_check = "0.9"
+rustup-toolchain = "0.1"
+
+[build-dependencies]
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+circus-frontend-exporter.workspace = true
+circus-diagnostics.workspace = true
+circus-cli-options.workspace = true
+circus-cli-options-engine.workspace = true
+version_check = "0.9"
+toml = "0.7"

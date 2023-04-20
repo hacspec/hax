@@ -1,0 +1,20 @@
+[package]
+name = "circus-driver"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+path = "src/driver.rs"
+name = "driver-circus-frontend-exporter"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+clap.workspace = true
+circus-frontend-exporter.workspace = true
+circus-cli-options.workspace = true
+circus-cli-options-engine.workspace = true
+circus-frontend-exporter-options.workspace = true
+which.workspace = true
+inquire = "0.6"
+const_format = "0.2"

@@ -28,9 +28,8 @@ extern crate rustc_type_ir;
 mod all;
 mod items;
 mod manual;
-mod options;
 mod sinto;
-mod state;
+pub mod state;
 pub mod utils;
 
 pub use adt_into::AdtInto;
@@ -41,7 +40,6 @@ use serde::{Deserialize, Serialize};
 
 pub use all::*;
 pub use items::*;
-pub use options::*;
 pub use state::*;
 
 // #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]

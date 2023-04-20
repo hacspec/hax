@@ -38,20 +38,12 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 - `rustup`
 - `nodejs`
 
-2. clone this repo `git clone git@github.com:hacspec/hacspec-v2.git && cd hacspec-v2`
-3. install the CLI & frontend:  `cargo install --path cli`
-4. install `circus-engine`:
-   1. `cd engine`
-   2. `opam install --deps-only .`
-   3. `dune build`
-   4. add the subfolder `_build/install/default/bin` in your `PATH`
-5. run `cargo-circus --help`
+2. Clone this repo: `git clone git@github.com:hacspec/hacspec-v2.git && cd hacspec-v2`
+3. Run the [setup.sh](./setup.sh) script: `./setup.sh`.
+4. Run `cargo-circus --help`
 
 The librustc library path needs to be added to `DYLD_LIBRARY_PATH=$(rustc --print=sysroot)/lib`
 Make sure to use the right Rust nightly version, which is currently `nightly-2022-12-06`.
-
-> **Note**
-> Please use and check the [setup.sh](./setup.sh) for these steps as well.
 
 ## Edit the sources (Nix)
 

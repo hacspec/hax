@@ -3,49 +3,37 @@ open Circus_engine.Utils
 open Circus_engine
 open Desugar_utils
 open Base
-  
-let import_options (o : Cli_types.options) (json_input : string) :
-    Backend.Options.t =
-  let d = Backend.Options.mk_default o.output_dir json_input in
-  d
 
-let run_with_backend (options : Cli_types.options) (input : string)
-    (type options_type)
-    (module M : Backend.T with type BackendOptions.t = options_type)
-    (backend_options : options_type) =
-  let open M in
-  let o : Backend.Options.t = import_options options input in
-  let items = Backend.read_json o.json_input in
-  let items = List.concat_map ~f:(desugar o backend_options) items in
-  let items =
-    List.map
-      ~f:(U.Mappers.rename_global_idents_item o.renamed_identifiers)
-      items
+let read_options_from_stdin () : Raw_thir_ast.engine_options =
+  In_channel.input_all In_channel.stdin
+  |> Yojson.Safe.from_string |> Raw_thir_ast.parse_engine_options
+
+let run () : Raw_thir_ast.output =
+  let options = read_options_from_stdin () in
+  let run (type options_type)
+      (module M : Backend.T with type BackendOptions.t = options_type)
+      (backend_options : options_type) : Raw_thir_ast.output =
+    let open M in
+    let o : Backend.Options.t = Backend.Options.mk_default in
+    options.input
+    |> List.map ~f:(fun item ->
+           try
+             Result.map_error ~f:Import_thir.show_error
+               (Import_thir.c_item item)
+             |> Result.ok_or_failwith
+           with Failure e -> failwith e)
+    |> List.concat_map ~f:(desugar o backend_options)
+    |> List.map ~f:(U.Mappers.rename_global_idents_item o.renamed_identifiers)
+    |> translate o backend_options
   in
-  translate o backend_options items
+  try
+    match options.backend with
+    | Fstar -> run (module Fstar_backend.FStarBackend) ()
+    | Coq -> run (module Coq_backend.CoqBackend) ()
+    | Easycrypt -> run (module Easycrypt_backend.ECBackend) ()
+  with Diagnostics.Error x ->
+    { diagnostics = [ Diagnostics.to_thir_diagnostic x ]; files = [] }
 
 let main () =
-  match
-    (Base.Sys.getenv "CIRCUS_ENGINE_OPTIONS", Base.Sys.getenv "CIRCUS_ENGINE_INPUT")
-  with
-  | Some options, Some input -> (
-      let options =
-        Cli_types.parse_options @@ Yojson.Safe.from_string options
-      in
-      let run (type options_type)
-          (module M : Backend.T with type BackendOptions.t = options_type)
-          (backend_options : options_type) =
-        run_with_backend options input (module M) backend_options
-      in
-      match options.backend with
-      | Fstar -> run (module Fstar_backend.FStarBackend) ()
-      | Coq -> run (module Coq_backend.CoqBackend) ()
-      | EasyCrypt -> run (module Easycrypt_backend.ECBackend) ())
-  | _ ->
-      Fstar_backend.register;
-      Coq_backend.register;
-      Printexc.record_backtrace true;
-      let exit_code = Cmdliner.Cmd.eval (Backend.Registration.command ()) in
-      if Option.is_some @@ Base.Sys.getenv "CIRCUS_ENGINE_DEBUG" then
-        DebugBindDesugar.export ();
-      exit exit_code
+  print_endline @@ Yojson.Safe.pretty_to_string @@ Raw_thir_ast.to_json_output
+  @@ run ()
