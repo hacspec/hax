@@ -171,11 +171,4 @@ impl From<Options> for circus_frontend_exporter_options::Options {
     }
 }
 
-// #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
-// pub struct ExportedTypes {
-//     pub engine_options: engine::Options,
-//     pub engine_output: engine::Output,
-//     pub cli_options: Options,
-// }
-
 pub const ENV_VAR_OPTIONS_FRONTEND: &str = "DRIVER_CIRCUS_FRONTEND_OPTS";
