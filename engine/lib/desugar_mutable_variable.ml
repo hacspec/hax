@@ -58,68 +58,26 @@ struct
   let free_assigned_variables =
     UA.Reducers.free_assigned_variables (function _ -> .)
 
-  let rec dty (t : A.ty) : B.ty =
-    match t with
-    | TBool -> TBool
-    | TChar -> TChar
-    | TInt k -> TInt k
-    | TFloat -> TFloat
-    | TStr -> TStr
-    | TApp { ident; args } ->
-        TApp { ident; args = List.map ~f:dgeneric_value args }
-    | TArray { typ; length } -> TArray { typ = dty typ; length }
-    | TSlice { witness; ty } -> TSlice { witness; ty = dty ty }
-    | TRef { witness; typ; mut; region } ->
-        TRef { witness; typ = dty typ; mut; region }
-    | TFalse -> TFalse
-    | TParam local_ident -> TParam local_ident
-    | TArrow (inputs, output) -> TArrow (List.map ~f:dty inputs, dty output)
-    | TProjectedAssociatedType string -> TProjectedAssociatedType string
-    | TRawPointer { witness } -> .
+  [%%inline_defs dmutability + dty + dborrow_kind]
 
-  and dgeneric_value (g : A.generic_value) : B.generic_value =
-    match g with
-    | GLifetime { lt; witness } -> GLifetime { lt; witness }
-    | GType t -> GType (dty t)
-    | GConst c -> GConst c
+  let rec dpat = [%inline_body dpat]
 
-  let dborrow_kind (k : A.borrow_kind) : B.borrow_kind =
-    match k with
-    | Shared -> Shared
-    | Unique -> Unique
-    | Mut witness -> Mut witness
-
-  let rec dpat (p : A.pat) : B.pat =
-    { p = dpat' p.p; span = p.span; typ = dty p.typ }
-
-  and dpat' (p : A.pat') : B.pat' =
+  and dpat' (span : span) (p : A.pat') : B.pat' =
     match p with
-    | PWild -> PWild
-    | PAscription { typ; typ_span; pat } ->
-        PAscription { typ = dty typ; typ_span; pat = dpat pat }
-    | PConstruct { name; args; record } ->
-        PConstruct { name; record; args = List.map ~f:dfield_pat args }
-    | PArray { args } -> PArray { args = List.map ~f:dpat args }
-    | PConstant { lit } -> PConstant { lit }
+    | [%inline_arms "dpat'.*" - PBinding - PDeref] -> auto
     | PBinding { mut; mode; var : LocalIdent.t; typ; subpat } ->
         PBinding
           {
             mut = Immutable;
             mode = ByValue;
             var;
-            typ = dty typ;
+            typ = dty span typ;
             subpat = Option.map ~f:(dpat *** Fn.id) subpat;
           }
     | PDeref { subpat } -> (dpat subpat).p
-    | _ -> .
 
-  and dfield_pat (p : A.field_pat) : B.field_pat =
-    { field = p.field; pat = dpat p.pat }
-
-  and dbinding_mode (m : A.binding_mode) : B.binding_mode =
-    match m with
-    | ByValue -> ByValue
-    | ByRef (kind, witness) -> ByRef (dborrow_kind kind, witness)
+  and dfield_pat = [%inline_body dfield_pat]
+  and dbinding_mode = [%inline_body dfield_pat]
 
   module Fresh = struct
     let state = ref 0
@@ -464,7 +422,9 @@ struct
       let scrut' = dexpr more scrut in
       let vars =
         free_assigned_variables#visit_expr () whole
-        |> Set.map (module UB.TypedLocalIdent) ~f:(fun (i, t) -> (i, dty t))
+        |> Set.map
+             (module UB.TypedLocalIdent)
+             ~f:(fun (i, t) -> (i, dty Dummy t))
       in
       (* prerr_endline @@ [%show: Collect.TypedLocalIdent.t list] (Set.to_list vars); *)
       let more = Set.union more vars in
@@ -481,12 +441,12 @@ struct
       in
       let r =
         seq1 scrut' (fun cond ->
-            { e = f cond arms''; span = whole.span; typ = dty whole.typ })
+            { e = f cond arms''; span = whole.span; typ = dty Dummy whole.typ })
       in
       { r with value = { r.value with shadowings = vars } }
 
     let pure (e0 : A.expr) (e : B.expr') : t =
-      let typ = dty e0.typ in
+      let typ = dty e0.span e0.typ in
       {
         value =
           ShadowingTuple.
@@ -502,13 +462,14 @@ struct
   type loop_ctx = { continue : B.ty; break : B.ty }
   type dexpr_ctx = { vars : MutatedVarSet.t; loop : loop_ctx option }
 
-  let rec dexpr (ctx : dexpr_ctx) (e : A.expr) : Result.t =
+  let rec dexpr_local (ctx : dexpr_ctx) (e : A.expr) : Result.t =
     let unsupported msg =
       failwith
-        ("[desugar_mutable_variable:dexpr] unsupported " ^ msg ^ "\n\nContext:"
+        ("[desugar_mutable_variable:dexpr_local] unsupported " ^ msg
+       ^ "\n\nContext:"
         ^ [%show: A.expr] e)
     in
-    let e_with e' = B.{ e = e'; typ = dty e.typ; span = e.span } in
+    let e_with e' = B.{ e = e'; typ = dty e.span e.typ; span = e.span } in
     match e.e with
     | GlobalVar (`TupleCons 0)
     | Construct { constructor = `TupleCons 0; fields = [] } ->
@@ -519,7 +480,7 @@ struct
               expr =
                 {
                   span = e.span;
-                  typ = dty e.typ;
+                  typ = dty e.span e.typ;
                   e = B.GlobalVar (`TupleCons 0);
                 };
               shadowings = BTyLocIdentUniqueList.empty;
@@ -537,7 +498,7 @@ struct
           e = rhs;
           witness;
         } ->
-        dexpr ctx
+        dexpr_local ctx
           {
             e with
             e =
@@ -581,8 +542,8 @@ struct
                 };
           }
     | Assign { lhs = LhsLocalVar { var; typ = var_typ }; e = e'; witness } ->
-        let e'_r = dexpr ctx e' in
-        let var_typ = dty var_typ in
+        let e'_r = dexpr_local ctx e' in
+        let var_typ = dty e.span var_typ in
         let var_pat = UB.make_var_pat var var_typ e.span in
         let _, pat = ShadowingTuple.pat (Some var_pat) e'_r.value in
         let var_binding : Binding.t =
@@ -610,8 +571,10 @@ struct
         failwith "desugar_mutable_variable: TODO non-lhs-local-var assign"
     | Let _ ->
         let lets, body = UA.collect_let_bindings e in
-        let lets = List.map ~f:(fun (p, e) -> (dpat p, dexpr ctx e)) lets in
-        let r = Result.from_bindings lets (dexpr ctx body) in
+        let lets =
+          List.map ~f:(fun (p, e) -> (dpat p, dexpr_local ctx e)) lets
+        in
+        let r = Result.from_bindings lets (dexpr_local ctx body) in
         let value =
           Result.as_shadowing_tuple r
             (Set.union (Result.collect_mut_idents r) ctx.vars
@@ -619,13 +582,13 @@ struct
         in
         { bindings = []; value }
     | App { f; args } ->
-        Result.seqNp1 (dexpr ctx f)
-          (List.map ~f:(dexpr ctx) args)
+        Result.seqNp1 (dexpr_local ctx f)
+          (List.map ~f:(dexpr_local ctx) args)
           (fun f args -> e_with @@ App { f; args })
     | Construct { constructor; constructs_record; fields; base } ->
         Result.seq
-          (Option.to_list (Option.map ~f:(dexpr ctx) base)
-          @ List.map ~f:(snd >> dexpr ctx) fields)
+          (Option.to_list (Option.map ~f:(dexpr_local ctx) base)
+          @ List.map ~f:(snd >> dexpr_local ctx) fields)
           (fun l ->
             let h fields_snd base =
               B.
@@ -639,7 +602,7 @@ struct
                           List.zip_exn (List.map ~f:fst fields) fields_snd;
                         base;
                       };
-                  typ = dty e.typ;
+                  typ = dty e.span e.typ;
                   span = e.span;
                 }
             in
@@ -651,7 +614,7 @@ struct
                   "Internal fatal error: Result.seq didn't keep its promise")
     | Match { scrutinee; arms } ->
         Result.from_match ctx.vars
-          (fun vars -> dexpr { ctx with vars })
+          (fun vars -> dexpr_local { ctx with vars })
           { e with e = Match { scrutinee = UA.unit_expr e.span; arms } }
           scrutinee
           (List.map
@@ -669,7 +632,7 @@ struct
               })
     | If { cond; then_; else_ } ->
         Result.from_match ctx.vars
-          (fun vars -> dexpr { ctx with vars })
+          (fun vars -> dexpr_local { ctx with vars })
           e cond
           (then_
            :: Option.to_list
@@ -688,11 +651,11 @@ struct
         let shadowings_ = ref BTyLocIdentUniqueList.empty in
         let r =
           Result.seq
-            [ dexpr ctx start; dexpr ctx end_ ]
+            [ dexpr_local ctx start; dexpr_local ctx end_ ]
             (function
               | [ start; end_ ] ->
                   let body_r =
-                    dexpr
+                    dexpr_local
                       {
                         vars = Set.empty (module UB.TypedLocalIdent);
                         loop = None;
@@ -795,7 +758,9 @@ struct
     | Loop { body; label = None; witness } ->
         let vars_set =
           free_assigned_variables#visit_expr () body
-          |> Set.map (module UB.TypedLocalIdent) ~f:(fun (i, t) -> (i, dty t))
+          |> Set.map
+               (module UB.TypedLocalIdent)
+               ~f:(fun (i, t) -> (i, dty e.span t))
         in
         let vars_unique = BTyLocIdentUniqueList.from_set vars_set in
         let vars = BTyLocIdentUniqueList.to_list vars_unique in
@@ -803,14 +768,14 @@ struct
         let break_value_typ =
           match UA.Reducers.collect_break_payloads#visit_expr () body with
           | [] -> B.TFalse
-          | hd :: _ -> dty hd.typ
+          | hd :: _ -> dty e.span hd.typ
         in
         let mk_typ t = UB.make_tuple_typ (t :: List.map ~f:snd vars) in
         let break_typ = mk_typ break_value_typ in
         let continue_typ = mk_typ break_value_typ in
 
         let body_r =
-          dexpr
+          dexpr_local
             {
               vars = vars_set;
               loop = Some { continue = continue_typ; break = break_typ };
@@ -907,8 +872,8 @@ struct
         @@ B.Closure
              {
                params = List.map ~f:dpat params;
-               body = dexpr_top body;
-               captures = List.map ~f:dexpr_top captures;
+               body = dexpr body;
+               captures = List.map ~f:dexpr captures;
              }
     | Break { e = payload; label; witness } ->
         dbreak_continue e ctx false payload witness
@@ -921,27 +886,32 @@ struct
     | MacroInvokation { macro; args; witness } ->
         Result.pure e @@ B.MacroInvokation { macro; args; witness }
     | Array l ->
-        Result.seq (List.map ~f:(dexpr ctx) l) (fun l -> e_with @@ Array l)
+        Result.seq
+          (List.map ~f:(dexpr_local ctx) l)
+          (fun l -> e_with @@ Array l)
     | Borrow { kind; e; witness } ->
-        Result.seq1 (dexpr ctx e) (fun e ->
-            e_with @@ Borrow { kind = dborrow_kind kind; e; witness })
+        Result.seq1 (dexpr_local ctx e) (fun e' ->
+            e_with
+            @@ Borrow { kind = dborrow_kind e.span kind; e = e'; witness })
     | Closure _ -> unsupported "TODO:Closure"
     | Ascription { e; typ } ->
-        Result.seq1 (dexpr ctx e) (fun e ->
-            e_with @@ Ascription { e; typ = dty typ })
+        Result.seq1 (dexpr_local ctx e) (fun e' ->
+            e_with @@ Ascription { e = e'; typ = dty e.span typ })
     | AddressOf { mut; e; witness } -> .
     | MonadicAction _ -> .
-  (* | _ -> failwith ("dexpr TODO: " ^ [%show: A.expr] e) *)
+  (* | _ -> failwith ("dexpr_local TODO: " ^ [%show: A.expr] e) *)
 
-  and dexpr_top (e : A.expr) : B.expr =
+  and dexpr (e : A.expr) : B.expr =
     let e =
-      dexpr { vars = Set.empty (module UB.TypedLocalIdent); loop = None } e
+      dexpr_local
+        { vars = Set.empty (module UB.TypedLocalIdent); loop = None }
+        e
     in
     ShadowingTuple.forget_all
       (Result.as_shadowing_tuple e BTyLocIdentUniqueList.empty)
 
   and dbreak_continue e ctx is_continue (payload : A.expr) (witness : F.loop) =
-    let r = dexpr ctx payload in
+    let r = dexpr_local ctx payload in
     let loop_types =
       Option.value_exn ~message:"Break outside of a loop?" ctx.loop
     in
@@ -973,78 +943,7 @@ struct
           };
       }
 
-  let dtrait_ref (r : A.trait_ref) : B.trait_ref =
-    {
-      trait = r.trait;
-      args = List.map ~f:dgeneric_value r.args;
-      bindings = r.bindings;
-    }
-
-  let dgeneric_param (p : A.generic_param) : B.generic_param =
-    match p with
-    | GPLifetime { ident; witness } -> GPLifetime { ident; witness }
-    | GPType { ident; default } ->
-        GPType { ident; default = Option.map ~f:dty default }
-    | GPConst { ident; typ } -> GPConst { ident; typ = dty typ }
-
-  let dgeneric_constraint (p : A.generic_constraint) : B.generic_constraint =
-    match p with
-    | GCLifetime (lf, witness) -> B.GCLifetime (lf, witness)
-    | GCType { typ; implements } ->
-        B.GCType { typ = dty typ; implements = dtrait_ref implements }
-
-  let dgenerics (g : A.generics) : B.generics =
-    {
-      params = List.map ~f:dgeneric_param g.params;
-      constraints = List.map ~f:dgeneric_constraint g.constraints;
-    }
-
-  (* let dparam (p : A.param) : B.param = *)
-  (*   { pat = dpat p.pat; typ = dty p.typ; typ_span = p.typ_span } *)
-
-  [%%inline_defs dtrait_item + dvariant + dparam]
-
-  (* TODO: rename pexpr into pexpr', and pexpr_top into pexpr *)
-
-  let rec dimpl_item' (ii : A.impl_item') : B.impl_item' =
-    match ii with
-    | IIType g -> IIType (dty g)
-    | IIFn { body; params } ->
-        IIFn { body = dexpr_top body; params = List.map ~f:dparam params }
-
-  and dimpl_item (ii : A.impl_item) : B.impl_item =
-    {
-      ii_span = ii.ii_span;
-      ii_generics = dgenerics ii.ii_generics;
-      ii_v = dimpl_item' ii.ii_v;
-      ii_name = ii.ii_name;
-    }
-
-  let ditem (item : A.item) : B.item list =
-    let v =
-      match item.v with
-      | Fn { name; generics; body; params } ->
-          B.Fn
-            {
-              name;
-              generics = dgenerics generics;
-              body = dexpr_top body;
-              params = List.map ~f:dparam params;
-            }
-      | Type { name; generics; variants; record } ->
-          B.Type
-            {
-              name;
-              generics = dgenerics generics;
-              variants = List.map ~f:dvariant variants;
-              record;
-            }
-      | TyAlias { name; generics; ty } ->
-          B.TyAlias { name; generics = dgenerics generics; ty = dty ty }
-      | [%inline_arms NotImplementedYet + IMacroInvokation + Trait + Impl] ->
-          auto
-    in
-    [ { v; span = item.span; parent_namespace = item.parent_namespace } ]
+  [%%inline_defs "Item.*"]
 
   let metadata = Desugar_utils.Metadata.make MutableVariables
 end
