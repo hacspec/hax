@@ -64,36 +64,26 @@ fn main() {
 
     // fetch the correct callback structure given the command, and
     // coerce options
-    match options.command {
-        Some(Command::ExporterCommand(command)) => {
-            let mut callbacks = exporter::ExtractionCallbacks {
-                output_dir: options.output_dir,
-                inline_macro_calls: options.inline_macro_calls,
-                command,
-            };
-
-            std::process::exit(rustc_driver::catch_with_exit_code(move || {
-                rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
-            }))
-        }
+    let mut callbacks: Box<dyn Callbacks + Send> = match options.command {
+        Some(Command::ExporterCommand(command)) => Box::new(exporter::ExtractionCallbacks {
+            output_dir: options.output_dir,
+            inline_macro_calls: options.inline_macro_calls,
+            command,
+        }),
         Some(Command::LintCommand(command)) => {
             let _config = match command {
                 circus_cli_options::LinterCommand::Hacspec => (),
                 circus_cli_options::LinterCommand::Rust => (),
             };
-            let mut callbacks = LinterCallbacks {};
-
-            std::process::exit(rustc_driver::catch_with_exit_code(move || {
-                rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
-            }))
+            Box::new(LinterCallbacks {})
         }
         None => {
             // hacspec lint
-            let mut callbacks = LinterCallbacks {};
-
-            std::process::exit(rustc_driver::catch_with_exit_code(move || {
-                rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
-            }))
+            Box::new(LinterCallbacks {})
         }
     };
+
+    std::process::exit(rustc_driver::catch_with_exit_code(move || {
+        rustc_driver::RunCompiler::new(&rustc_args, &mut *callbacks).run()
+    }))
 }
