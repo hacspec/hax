@@ -26,24 +26,24 @@ struct
 
   include Desugar_utils.DefaultError
 
-  let rec dty (t : A.ty) : B.ty =
+  let rec dty (span : span) (t : A.ty) : B.ty =
     match t with
     | [%inline_arms "dty.*" - TApp - TRef] -> auto
     | TApp { ident; args } ->
-        TApp { ident; args = List.filter_map ~f:dgeneric_value args }
-    | TRef { witness; typ; mut = Immutable as mut; region } -> dty typ
-    | _ -> .
+        TApp { ident; args = List.filter_map ~f:(dgeneric_value span) args }
+    | TRef { witness; typ; mut = Immutable as mut; region } -> dty span typ
+    | TRef _ -> .
 
-  and dgeneric_value (g : A.generic_value) : B.generic_value option =
+  and dgeneric_value (span : span) (g : A.generic_value) :
+      B.generic_value option =
     match g with
     | GLifetime _ -> None
-    | GType t -> Some (GType (dty t))
+    | GType t -> Some (GType (dty span t))
     | GConst c -> Some (GConst c)
 
-  let rec dpat (p : A.pat) : B.pat =
-    { p = dpat' p.p; span = p.span; typ = dty p.typ }
+  let rec dpat = [%inline_body dpat]
 
-  and dpat' (p : A.pat') : B.pat' =
+  and dpat' (span : span) (p : A.pat') : B.pat' =
     match p with
     | [%inline_arms "dpat'.*" - PBinding - PDeref] -> auto
     | PBinding { mut; mode; var : LocalIdent.t; typ; subpat } ->
@@ -52,7 +52,7 @@ struct
             mut;
             mode = ByValue;
             var;
-            typ = dty typ;
+            typ = dty span typ;
             subpat = Option.map ~f:(fun (p, as_pat) -> (dpat p, as_pat)) subpat;
           }
     | PDeref { subpat } -> (dpat subpat).p
@@ -61,7 +61,7 @@ struct
 
   let rec dexpr = [%inline_body dexpr]
 
-  and dexpr' (e : A.expr') : B.expr' =
+  and dexpr' (span : span) (e : A.expr') : B.expr' =
     match e with
     | [%inline_arms If + Literal + Array] -> auto
     | App { f = { e = GlobalVar (`Primitive (Box | Deref)) }; args = [ arg ] }
@@ -82,11 +82,12 @@ struct
         Let { monadic; lhs = dpat lhs; rhs = dexpr rhs; body = dexpr body }
     | LocalVar local_ident -> LocalVar local_ident
     | GlobalVar global_ident -> GlobalVar global_ident
-    | Ascription { e; typ } -> Ascription { e = dexpr e; typ = dty typ }
+    | Ascription { e = e'; typ } ->
+        Ascription { e = dexpr e'; typ = dty span typ }
     | MacroInvokation { macro; args; witness } ->
         MacroInvokation { macro; args; witness }
     | Assign { lhs; e; witness } ->
-        Assign { lhs = dlhs lhs; e = dexpr e; witness }
+        Assign { lhs = dlhs span lhs; e = dexpr e; witness }
     | [%inline_arms Loop + ForLoop] -> auto
     | Break { e; label; witness } -> Break { e = dexpr e; label; witness }
     | Return { e; witness } -> Return { e = dexpr e; witness }
@@ -107,76 +108,56 @@ struct
   and darm' (a : A.arm') : B.arm' = { pat = dpat a.pat; body = dexpr a.body }
   and dlhs = [%inline_body dlhs]
 
-  let dtrait_ref (r : A.trait_ref) : B.trait_ref =
+  let dtrait_ref (span : span) (r : A.trait_ref) : B.trait_ref =
     {
       trait = r.trait;
-      args = List.filter_map ~f:dgeneric_value r.args;
+      args = List.filter_map ~f:(dgeneric_value span) r.args;
       bindings = r.bindings;
     }
 
-  let dgeneric_param (p : A.generic_param) : B.generic_param option =
+  let dgeneric_param (span : span) (p : A.generic_param) :
+      B.generic_param option =
     match p with
     | GPLifetime { ident; witness } -> None
     | GPType { ident; default } ->
-        Some (GPType { ident; default = Option.map ~f:dty default })
-    | GPConst { ident; typ } -> Some (GPConst { ident; typ = dty typ })
+        Some (GPType { ident; default = Option.map ~f:(dty span) default })
+    | GPConst { ident; typ } -> Some (GPConst { ident; typ = dty span typ })
 
-  let dgeneric_constraint (p : A.generic_constraint) :
+  let dgeneric_constraint (span : span) (p : A.generic_constraint) :
       B.generic_constraint option =
     match p with
     | GCLifetime (lf, witness) -> None
     | GCType { typ; implements } ->
-        Some (B.GCType { typ = dty typ; implements = dtrait_ref implements })
+        Some
+          (B.GCType
+             { typ = dty span typ; implements = dtrait_ref span implements })
 
-  let dgenerics (g : A.generics) : B.generics =
+  let dgenerics (span : span) (g : A.generics) : B.generics =
     {
-      params = List.filter_map ~f:dgeneric_param g.params;
-      constraints = List.filter_map ~f:dgeneric_constraint g.constraints;
+      params = List.filter_map ~f:(dgeneric_param span) g.params;
+      constraints = List.filter_map ~f:(dgeneric_constraint span) g.constraints;
     }
 
-  let dparam (p : A.param) : B.param =
-    { pat = dpat p.pat; typ = dty p.typ; typ_span = p.typ_span }
+  (* [%%inline_defs *)
+  (* "Item.*" - dtrait_ref - dgeneric_param - dgeneric_constraint - dgenerics] *)
+  [%%inline_defs dparam + dvariant + dtrait_item + dimpl_item]
 
-  let dvariant (v : A.variant) : B.variant =
-    { name = v.name; arguments = List.map ~f:(map_snd dty) v.arguments }
+  let rec ditem = [%inline_body ditem]
 
-  [%%inline_defs dtrait_item + dimpl_item]
-
-  let ditem (item : A.item) : B.item list =
-    let v =
-      match item.v with
-      | Fn { name; generics; body; params } ->
-          B.Fn
-            {
-              name;
-              generics = dgenerics generics;
-              body = dexpr body;
-              params = List.map ~f:dparam params;
-            }
-      | Type { name; generics; variants; record } ->
-          B.Type
-            {
-              name;
-              generics = dgenerics generics;
-              variants = List.map ~f:dvariant variants;
-              record;
-            }
-      | TyAlias { name; generics; ty } ->
-          B.TyAlias { name; generics = dgenerics generics; ty = dty ty }
-      | Impl { generics; self_ty; of_trait; items } ->
-          B.Impl
-            {
-              generics = dgenerics generics;
-              self_ty = dty self_ty;
-              of_trait =
-                Option.map
-                  ~f:(Fn.id *** List.filter_map ~f:dgeneric_value)
-                  of_trait;
-              items = List.map ~f:dimpl_item items;
-            }
-      | [%inline_arms NotImplementedYet + IMacroInvokation + Trait] -> auto
-    in
-    [ { v; span = item.span; parent_namespace = item.parent_namespace } ]
+  and ditem' (span : span) (item : A.item') : B.item' =
+    match item with
+    | [%inline_arms "ditem'.*" - Impl] -> auto
+    | Impl { generics; self_ty; of_trait; items } ->
+        B.Impl
+          {
+            generics = dgenerics span generics;
+            self_ty = dty span self_ty;
+            of_trait =
+              Option.map
+                ~f:(Fn.id *** List.filter_map ~f:(dgeneric_value span))
+                of_trait;
+            items = List.map ~f:dimpl_item items;
+          }
 
   let metadata = Desugar_utils.Metadata.make DropReferences
 end

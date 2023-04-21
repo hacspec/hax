@@ -9,6 +9,9 @@ members = [
      "cli/subcommands",
      "cli/driver",
 ]
+exclude = [
+     "engine/utils/ocaml_of_json_schema/test/rust/",
+]
 
 [workspace.dependencies]
 itertools = "0.10.5"

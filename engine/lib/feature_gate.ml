@@ -58,8 +58,8 @@ struct
 
   [%%inline_defs dmutability]
 
-  let rec dty (ty : A.ty) : B.ty =
-    try [%inline_body dty] ty with
+  let rec dty (span : span) (ty : A.ty) : B.ty =
+    try [%inline_body dty] span ty with
     | S.E err -> raise @@ Data.ret err @@ Ty ty
     | E data -> raise @@ Data.add data @@ Ty ty
 
@@ -142,7 +142,7 @@ struct
       report data;
       Caml.exit 1
 
-  let dty : A.ty -> B.ty = catch dty
+  let dty : span -> A.ty -> B.ty = fun span -> catch @@ dty span
   let dpat : A.pat -> B.pat = catch dpat
   let dexpr : A.expr -> B.expr = catch dexpr
   let ditem : A.item -> B.item list = catch ditem

@@ -42,23 +42,23 @@ struct
 
   let raise e = raise (Error e)
 
-  let rec dty (ty : A.ty) : B.ty =
+  let rec dty (span : span) (ty : A.ty) : B.ty =
     match ty with
     | [%inline_arms "dty.*" - TRef] -> auto
     | TRef { mut = Mutable _ } -> raise @@ IllegalRefMut ty
     | TRef { witness; typ; mut = Immutable as mut; region } ->
-        TRef { witness; typ = dty typ; mut; region }
+        TRef { witness; typ = dty span typ; mut; region }
 
   and dgeneric_value = [%inline_body dgeneric_value]
 
-  let dborrow_kind (borrow_kind : A.borrow_kind) : B.borrow_kind =
+  let dborrow_kind (span : span) (borrow_kind : A.borrow_kind) : B.borrow_kind =
     match borrow_kind with
     | [%inline_arms "dborrow_kind.*" - Mut] -> auto
     | Mut witness -> Shared
 
   [%%inline_defs dpat]
 
-  let rec extract_direct_ref_mut (t : A.ty) (e : A.expr) :
+  let rec extract_direct_ref_mut (ty_span : span) (t : A.ty) (e : A.expr) :
       (B.ty * (local_ident * B.ty * span), B.ty * B.expr) Either.t =
     let e = UA.Mappers.normalize_borrow_mut#visit_expr () e in
     match (t, e.e) with
@@ -70,17 +70,18 @@ struct
             witness = _;
           } ) ->
         let t = A.TRef { witness; typ; mut = Immutable; region } in
-        Either.First (dty t, (i, dty e_typ, span))
-    | _ -> Either.Second (dty t, dexpr e)
+        Either.First (dty ty_span t, (i, dty ty_span e_typ, span))
+    | _ -> Either.Second (dty ty_span t, dexpr e)
 
   and darm = [%inline_body darm]
   and darm' = [%inline_body darm']
   and dlhs = [%inline_body dlhs]
 
   and dexpr (expr : A.expr) : B.expr =
+    let span = expr.span in
     match expr.e with
     | [%inline_arms "dexpr'.*" - App - Borrow] ->
-        map (fun e -> B.{ e; typ = dty expr.typ; span = expr.span })
+        map (fun e -> B.{ e; typ = dty expr.span expr.typ; span = expr.span })
     | Borrow { kind; e; witness } ->
         {
           e =
@@ -94,7 +95,7 @@ struct
                 e = dexpr e;
                 witness;
               };
-          typ = dty expr.typ;
+          typ = dty expr.span expr.typ;
           span = expr.span;
         }
     | App { f; args } -> (
@@ -102,7 +103,8 @@ struct
         | TArrow (input_types, type_output0) -> (
             let typed_inputs =
               match List.zip input_types args with
-              | Ok args -> List.map ~f:(uncurry extract_direct_ref_mut) args
+              | Ok args ->
+                  List.map ~f:(uncurry @@ extract_direct_ref_mut expr.span) args
               | Unequal_lengths -> raise @@ BadArityApplication expr
             in
             if [%matches? A.TRef { mut = Mutable _ }] type_output0 then
@@ -115,7 +117,8 @@ struct
             let type_output =
               UB.make_tuple_typ
               @@ Option.to_list
-                   (if ret_unit then None else Some (dty type_output0))
+                   (if ret_unit then None
+                   else Some (dty expr.span type_output0))
               @ mut_input_types
             in
             let f_typ =
@@ -196,7 +199,7 @@ struct
                        (if ret_unit then None
                        else
                          Some
-                           ( dty type_output0,
+                           ( dty expr.span type_output0,
                              returned_value_ident,
                              returned_value_ident,
                              expr.span ))
@@ -209,7 +212,7 @@ struct
                          {
                            expr with
                            e = LocalVar returned_value_ident;
-                           typ = dty type_output0;
+                           typ = dty expr.span type_output0;
                          })
                      ~f:UB.make_seq assigns)
         | _ -> failwith @@ A.show_expr f)
