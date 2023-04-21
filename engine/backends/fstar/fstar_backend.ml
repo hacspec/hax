@@ -41,7 +41,7 @@ module FStarBackend = struct
           let for_loop = reject
 
           let metadata =
-            Desugar_utils.Metadata.make (Reject (NotInBackendLang FStar))
+            Phase_utils.Metadata.make (Reject (NotInBackendLang FStar))
         end)
   end
 
@@ -1011,19 +1011,19 @@ module FStarBackend = struct
                  });
     }
 
-  open Desugar_utils
+  open Phase_utils
 
-  module DesugarToInputLanguage =
+  module TransformToInputLanguage =
     CatchErrors
       ([%functor_application
-      Reject.RawOrMutPointer(Features.Rust)
-      |> Reject.Arbitrary_lhs
-      |> Resugar_for_loop.Make
-      |> Desugar_direct_and_mut.Make
-      |> Reject.Continue
-      |> Desugar_drop_references.Make
+      Phases.Reject.RawOrMutPointer(Features.Rust)
+      |> Phases.Reject.Arbitrary_lhs
+      |> Phases.Reconstruct_for_loops
+      |> Phases.Direct_and_mut
+      |> Phases.Reject.Continue
+      |> Phases.Drop_references
       |> (fun X ->
-      (Desugar_mutable_variable.Make(module X))
+      (Phases.Mutable_variable(module X))
       (module struct
       let early_exit = fun _ -> Features.On.early_exit
       end))
@@ -1032,7 +1032,7 @@ module FStarBackend = struct
       ]
       [@ocamlformat "disable"])
 
-  let desugar (o : Backend.Options.t) (bo : BackendOptions.t)
+  let apply_phases (o : Backend.Options.t) (bo : BackendOptions.t)
       (i : Ast.Rust.item) : AST.item list =
-    DesugarToInputLanguage.ditem i
+    TransformToInputLanguage.ditem i
 end

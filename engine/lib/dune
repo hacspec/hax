@@ -1,4 +1,5 @@
 (library
+ (public_name circus-engine)
  (name circus_engine)
  (libraries
   yojson
@@ -27,6 +28,8 @@
    ppx_functor_application
    ppx_matches)))
    
+(include_subdirs unqualified)
+
 (rule
  (target raw_thir_ast.ml)
  (deps (:ocaml_of_json_schema ../utils/ocaml_of_json_schema/ocaml_of_json_schema.js))

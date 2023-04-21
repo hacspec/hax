@@ -1,5 +1,6 @@
 (library
  (name easycrypt_backend)
+ (package circus-engine)
  (libraries circus_engine)
  (preprocess
   (pps

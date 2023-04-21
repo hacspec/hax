@@ -2,7 +2,7 @@ open Base
 open Utils
 
 let make_metadata rejection_phase =
-  Desugar_utils.Metadata.make (Diagnostics.Phase.Reject rejection_phase)
+  Phase_utils.Metadata.make (Diagnostics.Phase.Reject rejection_phase)
 
 module Arbitrary_lhs (FA : Features.T) = struct
   module FB = struct
@@ -22,7 +22,7 @@ module Arbitrary_lhs (FA : Features.T) = struct
       end)
 end
 
-module _ (FA : Features.T) : Desugar_utils.DESUGAR = Arbitrary_lhs (FA)
+module _ (FA : Features.T) : Phase_utils.PHASE = Arbitrary_lhs (FA)
 
 module Continue (FA : Features.T) = struct
   module FB = struct
@@ -42,7 +42,7 @@ module Continue (FA : Features.T) = struct
       end)
 end
 
-module _ (FA : Features.T) : Desugar_utils.DESUGAR = Continue (FA)
+module _ (FA : Features.T) : Phase_utils.PHASE = Continue (FA)
 
 module RawOrMutPointer (FA : Features.T) = struct
   module FB = struct
@@ -64,4 +64,4 @@ module RawOrMutPointer (FA : Features.T) = struct
       end)
 end
 
-module _ (FA : Features.T) : Desugar_utils.DESUGAR = RawOrMutPointer (FA)
+module _ (FA : Features.T) : Phase_utils.PHASE = RawOrMutPointer (FA)

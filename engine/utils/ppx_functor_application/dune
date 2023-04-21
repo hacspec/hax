@@ -1,5 +1,6 @@
 (library
  (name ppx_functor_application)
+ (package circus-engine)
  (kind ppx_rewriter)
  (libraries ppxlib base)
  (preprocess

@@ -48,7 +48,7 @@ module ECBackend = struct
           let for_loop _ = Features.On.for_loop
 
           let metadata =
-            Desugar_utils.Metadata.make (Reject (NotInBackendLang EasyCrypt))
+            Phase_utils.Metadata.make (Reject (NotInBackendLang EasyCrypt))
         end)
   end
 
@@ -333,15 +333,15 @@ module ECBackend = struct
     doit Format.err_formatter items;
     { diagnostics = []; files = [] }
 
-  open Desugar_utils
+  open Phase_utils
 
-  module DesugarToInputLanguage =
+  module TransformToInputLanguage =
   [%functor_application
-  Reject.RawOrMutPointer Features.Rust |> Resugar_for_loop.Make
-  |> Desugar_direct_and_mut.Make |> Reject.Continue
-  |> Desugar_drop_references.Make |> RejectNotEC]
+  Phases.Reject.RawOrMutPointer Features.Rust |> Phases.Reconstruct_for_loops
+  |> Phases.Direct_and_mut |> Phases.Reject.Continue
+  |> Phases.Drop_references |> RejectNotEC]
 
-  let desugar (o : Backend.Options.t) (bo : BackendOptions.t)
+  let apply_phases (o : Backend.Options.t) (bo : BackendOptions.t)
       (i : Ast.Rust.item) : AST.item list =
-    DesugarToInputLanguage.ditem i
+    TransformToInputLanguage.ditem i
 end
