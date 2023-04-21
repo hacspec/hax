@@ -319,6 +319,73 @@ pub struct Variant {
     pub span: Span,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub enum Res {
+    Def(String, String),
+    PrimTy(String),
+    SelfTyParam {
+        trait_: String,
+    },
+    SelfTyAlias {
+        alias_to: String,
+        forbid_generic: bool,
+        is_trait_impl: bool,
+    },
+    SelfCtor(String),
+    Local(String),
+    ToolMod,
+    NonMacroAttr(String),
+    Err,
+}
+
+impl<Id, S> SInto<S, Res> for rustc_hir::def::Res<Id> {
+    fn sinto(&self, s: &S) -> Res {
+        match &self {
+            rustc_hir::def::Res::Def(a, b) => Res::Def(format!("{:?}", a), format!("{:?}", b)),
+            rustc_hir::def::Res::PrimTy(a) => Res::PrimTy(format!("{:?}", a)),
+            rustc_hir::def::Res::SelfTyParam { trait_ } => Res::SelfTyParam {
+                trait_: format!("{:?}", trait_),
+            },
+            rustc_hir::def::Res::SelfTyAlias {
+                alias_to,
+                forbid_generic,
+                is_trait_impl,
+            } => Res::SelfTyAlias {
+                alias_to: format!("{:?}", alias_to),
+                forbid_generic: forbid_generic.clone(),
+                is_trait_impl: is_trait_impl.clone(),
+            },
+            rustc_hir::def::Res::SelfCtor(a) => Res::SelfCtor(format!("{:?}", a)),
+            rustc_hir::def::Res::Local(a) => Res::Local(String::from("id?")),
+            rustc_hir::def::Res::ToolMod => Res::ToolMod,
+            rustc_hir::def::Res::NonMacroAttr(a) => Res::NonMacroAttr(format!("{:?}", a)),
+            rustc_hir::def::Res::Err => Res::Err,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct UsePath {
+    // span: Span,
+    path: Vec<String>,
+    outside: Vec<Res>,
+}
+
+impl<'hir, S, Id: std::fmt::Debug, R: IntoIterator<Item = rustc_hir::def::Res<Id>> + Clone>
+    SInto<S, UsePath> for rustc_hir::Path<'hir, R>
+{
+    fn sinto(&self, s: &S) -> UsePath {
+        UsePath {
+            path: self
+                .segments
+                .iter()
+                .map(|x| x.ident.name.to_ident_string())
+                .collect(),
+            outside: self.res.clone().into_iter().map(|x| x.sinto(s)).collect(),
+        }
+    }
+}
+
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::ItemKind<'tcx>, state: S as tcx)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -722,7 +789,7 @@ pub struct Item {
     #[map({
         let name: String = self.ident.name.to_ident_string();
         let owner_id: DefId = self.owner_id.sinto(state);
-        let path = Path::from(owner_id.clone());
+        let path = all::Path::from(owner_id.clone());
         if path.ends_with(&[name]) {Some(owner_id.clone())} else {None}
     })]
     #[not_in_source]
@@ -791,7 +858,6 @@ pub enum PredicateOrigin {
 }
 
 sinto_todo!(rustc_hir, InlineAsm<'a>);
-sinto_todo!(rustc_hir, UsePath<'tcx>);
 sinto_todo!(rustc_target::spec::abi, Abi);
 sinto_todo!(rustc_hir, WhereRegionPredicate<'tcx>);
 sinto_todo!(rustc_hir, WhereEqPredicate<'tcx>);

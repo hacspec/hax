@@ -958,6 +958,7 @@ module FStarBackend = struct
                      items )
           in
           F.decls @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
+      | Use _ (* TODO: Not Yet Implemented *)
       | NotImplementedYet -> []
       | _ -> failwith ("F* backend: item not supported\n" ^ [%show: item] e)
   end

@@ -521,6 +521,18 @@ functor
 
     and variant = { name : global_ident; arguments : (global_ident * ty) list }
 
+    and use_res = ToolMod
+                | Err
+                | Def of (string * string)
+                | PrimTy of (string)
+                | SelfTyParam of {trait_ : string}
+                | SelfTyAlias of {alias_to : string;
+                                  forbid_generic : bool;
+                                  is_trait_impl : bool}
+                | SelfCtor of (string)
+                | Local of (string)
+                | NonMacroAttr of (string)
+
     and item' =
       (* Todo, topological sort, rec bundles *)
       | Fn of {
@@ -553,6 +565,7 @@ functor
           of_trait : (global_ident * generic_value list) option;
           items : impl_item list;
         }
+      | Use of string list * string * use_res list
       | NotImplementedYet
 
     and item = {
