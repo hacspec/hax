@@ -1,0 +1,50 @@
+name: Test installations
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, staging, trying]
+    
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - run: docker build -f .docker/Dockerfile . -t hacspec-v2
+  setup_sh:
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - ubuntu-20.04
+          - macos-latest
+          - macos-11
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v3
+    - if: runner.os == 'macOS'
+      run: brew install opam nodejs rustup-init
+    - if: runner.os == 'Linux'
+      run: sudo apt-get install -y opam nodejs
+    - run: curl --proto '=https' --tlsv1.3 https://sh.rustup.rs -sSf | sh -s -- -y
+    - run: opam init --bare -y && opam switch create -y 4.14.1
+    - run: ./setup.sh
+    - run: cargo circus --version
+    - name: Test an extraction
+      uses: actions/checkout@v3
+      with:
+        repository: 'hacspec/specs'
+    - run: |
+        eval $(opam env)
+        cargo circus -C -p hacspec-chacha20 \; -i '**' fstar
+  ci-success-bors:
+    name: ci-success-bors
+    if: ${{ success() }}
+    needs:
+      - docker
+      - setup_sh
+    runs-on: ubuntu-latest
+    steps:
+      - name: CI succeeded
+        run: exit 0
+      
