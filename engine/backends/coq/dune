@@ -1,5 +1,6 @@
 (library
  (name coq_backend)
+ (package circus-engine)
  (libraries circus_engine base)
  (preprocess
   (pps
