@@ -6,4 +6,4 @@ set -x -e
 cargo install --path cli/driver && cargo install --path cli/subcommands
 
 # Install the OCaml engine:
-opam install --yes --assume-depexts ./engine
+OPAMASSUMEDEPEXTS=1 opam install --yes ./engine
