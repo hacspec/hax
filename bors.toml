@@ -1,0 +1,4 @@
+status = [
+       "test-specs-extraction",
+       "ci-success-bors",
+]
