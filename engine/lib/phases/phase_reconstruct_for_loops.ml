@@ -16,11 +16,11 @@ struct
   module A = Ast.Make (FA)
   module B = Ast.Make (FB)
 
-  let metadata = Desugar_utils.Metadata.make ResugarForLoops
+  let metadata = Phase_utils.Metadata.make ResugarForLoops
 
   module UA = Ast_utils.Make (FA)
   module UB = Ast_utils.Make (FB)
-  include Desugar_utils.NoError
+  include Phase_utils.NoError
 
   module S = struct
     include Features.SUBTYPE.Id
@@ -346,6 +346,6 @@ struct
 
   module FA = FA
 end
-[@@add "subtype.ml"]
+[@@add "../subtype.ml"]
 
-(* module _ (F: Features.T): Desugar_utils.DESUGAR = Make(F) *)
+(* module _ (F: Features.T): Phase_utils.DESUGAR = Make(F) *)

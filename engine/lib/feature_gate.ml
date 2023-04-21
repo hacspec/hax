@@ -104,7 +104,7 @@ module%inlined_contents Make
       include Features.SUBTYPE.T_Exn
 
       val explain : error -> Features.Enumeration.t -> string
-      val metadata : Desugar_utils.Metadata.t
+      val metadata : Phase_utils.Metadata.t
     end
     with module A = FA
      and module B = FB) =
@@ -124,7 +124,7 @@ struct
         file ^ ":" ^ pos_to_string lo ^ "-" ^ pos_to_string hi
     | Dummy -> "?"
 
-  include Desugar_utils.NoError
+  include Phase_utils.NoError
 
   let report (data : Data.t) =
     let msg = S0.explain (fst data.data) (snd data.data) in

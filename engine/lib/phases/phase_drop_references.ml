@@ -18,13 +18,13 @@ struct
 
   module A = Ast.Make (F)
   module B = Ast.Make (FB)
-  include Desugar_utils.NoError
+  include Phase_utils.NoError
 
   module S = struct
     include Features.SUBTYPE.Id
   end
 
-  include Desugar_utils.DefaultError
+  include Phase_utils.DefaultError
 
   let rec dty (span : span) (t : A.ty) : B.ty =
     match t with
@@ -159,6 +159,6 @@ struct
             items = List.map ~f:dimpl_item items;
           }
 
-  let metadata = Desugar_utils.Metadata.make DropReferences
+  let metadata = Phase_utils.Metadata.make DropReferences
 end
-[@@add "subtype.ml"]
+[@@add "../subtype.ml"]
