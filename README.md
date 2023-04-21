@@ -25,10 +25,9 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 
 ## Using Docker
 1. Clone this repo: `git clone git@github.com:hacspec/hacspec-v2.git && cd hacspec-v2`
-2. Go to the `.docker` folder: `cd .docker`
-3. Build the docker image: `docker build . -t hacspec-v2`
+3. Build the docker image: `docker build -f .docker/Dockerfile . -t hacspec-v2`
 4. Get a shell: `docker run -it --rm -v /some/dir/with/a/crate:/work hacspec-v2 bash`
-5. You can now run `cargo-circus --help` (notice )
+5. You can now run `cargo-circus --help` (notice here we use `cargo-circus` instead of `cargo circus`)
 
 ## Manual installation
 
