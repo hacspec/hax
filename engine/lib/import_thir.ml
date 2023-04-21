@@ -498,7 +498,8 @@ module Exn = struct
               args;
               record = false;
             }
-      | Deref _ -> unimplemented pat.span "Deref"
+      | Deref { subpattern } ->
+          PDeref { subpat = c_pat subpattern; witness = W.reference }
       | Constant { value } ->
           let lit = c_constant_kind pat.span value in
           PConstant { lit }
