@@ -67,7 +67,8 @@ module type T = sig
     type t
   end
 
-  val desugar : Options.t -> BackendOptions.t -> Ast.Rust.item -> AST.item list
+  val apply_phases :
+    Options.t -> BackendOptions.t -> Ast.Rust.item -> AST.item list
 
   val translate :
     Options.t -> BackendOptions.t -> AST.item list -> Raw_thir_ast.output

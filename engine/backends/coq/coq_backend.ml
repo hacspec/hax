@@ -1287,7 +1287,7 @@ module CoqBackend = struct
 
   open Phase_utils
 
-  module DesugarToInputLanguage =
+  module TransformToInputLanguage =
     [%functor_application
        Phases.Reject.RawOrMutPointer(Features.Rust)
     |> Phases.Reject.Arbitrary_lhs
@@ -1305,7 +1305,7 @@ module CoqBackend = struct
     ]
     [@ocamlformat "disable"]
 
-  let desugar (o : Backend.Options.t) (bo : BackendOptions.t)
+  let apply_phases (o : Backend.Options.t) (bo : BackendOptions.t)
       (i : Ast.Rust.item) : AST.item list =
-    DesugarToInputLanguage.ditem i
+    TransformToInputLanguage.ditem i
 end

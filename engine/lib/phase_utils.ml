@@ -23,7 +23,7 @@ end = struct
     Option.map ~f:previous_phases' p.previous_phase |> Option.value ~default:[]
 end
 
-module type DESUGAR_ERROR = sig
+module type PHASE_ERROR = sig
   type t [@@deriving show, eq]
 
   val lift : t -> Diagnostics.Phase.t -> Diagnostics.t
@@ -52,7 +52,7 @@ module DefaultError = struct
     exception E of t
   end
 
-  module _ : DESUGAR_ERROR = Error
+  module _ : PHASE_ERROR = Error
 end
 
 module NoError = struct
@@ -65,17 +65,17 @@ module NoError = struct
     exception E of t
   end
 
-  module _ : DESUGAR_ERROR = Error
+  module _ : PHASE_ERROR = Error
 end
 
-module type DESUGAR = sig
+module type PHASE = sig
   val metadata : Metadata.t
 
   module FA : Features.T
   module FB : Features.T
   module A : Ast.T
   module B : Ast.T
-  module Error : DESUGAR_ERROR
+  module Error : PHASE_ERROR
 
   val ditem : A.item -> B.item list
 end
@@ -91,10 +91,10 @@ module Identity (F : Features.T) = struct
   let metadata = Metadata.make Diagnostics.Phase.Identity
 end
 
-module _ (F : Features.T) : DESUGAR = Identity (F)
+module _ (F : Features.T) : PHASE = Identity (F)
 
-(* module type DESUGAR_EXN = sig *)
-(*   include DESUGAR *)
+(* module type PHASE_EXN = sig *)
+(*   include PHASE *)
 
 (*   type error [@@deriving show] *)
 
@@ -104,7 +104,7 @@ module _ (F : Features.T) : DESUGAR = Identity (F)
 let _DEBUG_SHOW_ITEM = false
 let _DEBUG_SHOW_BACKTRACE = false
 
-module CatchErrors (D : DESUGAR) = struct
+module CatchErrors (D : PHASE) = struct
   include D
 
   let ditem (i : D.A.item) : D.B.item list =
@@ -113,16 +113,18 @@ module CatchErrors (D : DESUGAR) = struct
       raise @@ Diagnostics.Error (D.Error.lift e D.metadata.current_phase)
 end
 
-module AddErrorHandling (D : DESUGAR) = struct
+(* TODO: This module should disappear entierly when issue #14 is
+   closed (#14: Improve/add errors in simplification phases) *)
+module AddErrorHandling (D : PHASE) = struct
   include D
 
-  exception DesugarError
+  exception PhaseError
 
   let ditem (i : D.A.item) : D.B.item list =
     try D.ditem i
     with Failure e ->
       prerr_endline
-        ("Desugaring "
+        ("Phase "
         ^ [%show: Diagnostics.Phase.t] metadata.current_phase
         ^ " failed with exception: " ^ e ^ "\nTerm: "
         ^
@@ -131,10 +133,10 @@ module AddErrorHandling (D : DESUGAR) = struct
           ^ "\n"
           ^ if _DEBUG_SHOW_BACKTRACE then Printexc.get_backtrace () else ""
         else "");
-      raise DesugarError
+      raise PhaseError
 end
 
-module DebugBindDesugar : sig
+module DebugBindPhase : sig
   val add : Metadata.t -> (unit -> Yojson.Safe.t) -> unit
   val export : unit -> unit
 end = struct
@@ -161,9 +163,9 @@ end = struct
     ()
 end
 
-module BindDesugar
-    (D1 : DESUGAR)
-    (D2 : DESUGAR with module FA = D1.FB and module A = D1.B) =
+module BindPhase
+    (D1 : PHASE)
+    (D2 : PHASE with module FA = D1.FB and module A = D1.B) =
 struct
   module D1' = AddErrorHandling (D1)
   module D2' = AddErrorHandling (D2)
@@ -183,7 +185,7 @@ struct
     exception E of t
   end
 
-  module _ : DESUGAR_ERROR = Error
+  module _ : PHASE_ERROR = Error
 
   let metadata = Metadata.bind D1.metadata D2.metadata
 
@@ -197,7 +199,6 @@ struct
       try List.concat_map ~f:D2'.ditem item1
       with D2.Error.E e -> raise @@ Error.E (Error.ErrD2 e)
     in
-    DebugBindDesugar.add D1.metadata (fun _ ->
-        [%yojson_of: D1.B.item list] item1);
+    DebugBindPhase.add D1.metadata (fun _ -> [%yojson_of: D1.B.item list] item1);
     item2
 end

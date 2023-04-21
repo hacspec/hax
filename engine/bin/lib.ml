@@ -1,7 +1,4 @@
-open Circus_engine.Raw_thir_ast
-open Circus_engine.Utils
 open Circus_engine
-open Desugar_utils
 open Base
 
 let read_options_from_stdin () : Raw_thir_ast.engine_options =
@@ -22,7 +19,7 @@ let run () : Raw_thir_ast.output =
                (Import_thir.c_item item)
              |> Result.ok_or_failwith
            with Failure e -> failwith e)
-    |> List.concat_map ~f:(desugar o backend_options)
+    |> List.concat_map ~f:(apply_phases o backend_options)
     |> List.map ~f:(U.Mappers.rename_global_idents_item o.renamed_identifiers)
     |> translate o backend_options
   in

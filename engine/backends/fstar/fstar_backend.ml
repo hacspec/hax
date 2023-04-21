@@ -1013,7 +1013,7 @@ module FStarBackend = struct
 
   open Phase_utils
 
-  module DesugarToInputLanguage =
+  module TransformToInputLanguage =
     CatchErrors
       ([%functor_application
       Phases.Reject.RawOrMutPointer(Features.Rust)
@@ -1032,7 +1032,7 @@ module FStarBackend = struct
       ]
       [@ocamlformat "disable"])
 
-  let desugar (o : Backend.Options.t) (bo : BackendOptions.t)
+  let apply_phases (o : Backend.Options.t) (bo : BackendOptions.t)
       (i : Ast.Rust.item) : AST.item list =
-    DesugarToInputLanguage.ditem i
+    TransformToInputLanguage.ditem i
 end

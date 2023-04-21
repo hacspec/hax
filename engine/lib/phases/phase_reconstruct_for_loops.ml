@@ -348,4 +348,4 @@ struct
 end
 [@@add "../subtype.ml"]
 
-(* module _ (F: Features.T): Phase_utils.DESUGAR = Make(F) *)
+(* module _ (F: Features.T): Phase_utils.PHASE = Make(F) *)
