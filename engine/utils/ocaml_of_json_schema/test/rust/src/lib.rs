@@ -1,9 +1,5 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
-
-use proptest::prelude::*;
-use proptest_derive::Arbitrary;
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Test {

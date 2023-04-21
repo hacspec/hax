@@ -1,7 +1,11 @@
 (executable
  (public_name ocaml_of_json_schema_ocaml)
  (name main)
- (libraries yojson))
+ (libraries yojson)
+ (preprocess
+  (pps
+   ppx_deriving.show
+   ppx_deriving.eq)))
 
 (rule
  (target types.ml)

@@ -1,9 +1,9 @@
 mod lib;
-// use proptest::arbitrary::*;
-use proptest::prelude::*;
 
 fn main() {
     let value: lib::Test = lib::gen();
+
+    println!("# [Rust] value start\n{:#?}\n# [Rust] value end", value);
 
     let mut engine_subprocess = std::process::Command::new("ocaml_of_json_schema_ocaml")
         .stdin(std::process::Stdio::piped())
@@ -22,7 +22,7 @@ fn main() {
 
     let out = engine_subprocess.wait_with_output().unwrap();
     println!(
-        "######## out\n{}",
+        "# [Rust] OCaml stdout start\n{}\n# [Rust] OCaml stdout end",
         String::from_utf8(out.stdout.clone()).unwrap()
     );
 
