@@ -6,6 +6,7 @@ on:
 
 jobs:
   tests:
+    name: test-specs-extraction
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
