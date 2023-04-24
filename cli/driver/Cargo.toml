@@ -20,5 +20,7 @@ circus-cli-options-engine.workspace = true
 circus-frontend-exporter-options.workspace = true
 circus-lint.workspace = true
 which.workspace = true
+log.workspace = true
+pretty_env_logger.workspace = true
 inquire = "0.6"
 const_format = "0.2"
