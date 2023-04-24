@@ -42,14 +42,23 @@ let maybe p = Option.some <$> p <|> return None
 let parens p = ignore_spaces (char '(') *> p <* ignore_spaces (char ')')
 let square_parens p = ignore_spaces (char '[') *> p <* ignore_spaces (char ']')
 let hex_list_identifier = identifier <* comma
-let is_hex_identifier = function '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' | '_' -> true | _ -> false
+
+let is_hex_identifier = function
+  | '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' | '_' -> true
+  | _ -> false
+
 let is_int_type = function 'u' | 'U' -> true | x -> is_digit x
 
 let rec remove_underscore (x : string) : string =
-  List.fold_left ~init:"" ~f:(^) (split_str x "_")
+  List.fold_left ~init:"" ~f:( ^ ) (split_str x "_")
 
-let hex_identifier = ignore_spaces ((string "0x" *> take_while1 is_hex_identifier) >>= (return << (^) "0x" << remove_underscore))
-let hex_list = square_parens (many (hex_identifier <* maybe identifier <* maybe comma))
+let hex_identifier =
+  ignore_spaces
+    (string "0x" *> take_while1 is_hex_identifier
+    >>= (return << ( ^ ) "0x" << remove_underscore))
+
+let hex_list =
+  square_parens (many (hex_identifier <* maybe identifier <* maybe comma))
 
 module type Parser = sig
   type t [@@deriving show, yojson, eq]
@@ -116,12 +125,7 @@ module Bytes = struct
 end
 
 let quoted_string = char '"' *> take_while (Char.( <> ) '"') <* char '"'
-
-let quoted_hex =
-  char '"'
-  *> take_while is_hex_identifier
-  <* char '"'
-
+let quoted_hex = char '"' *> take_while is_hex_identifier <* char '"'
 let field name p = string name *> colon *> p
 (* let ( <|.> ) p1 p2 = Either.first <$> p1 <|> (Either.second <$> p2) *)
 
@@ -199,8 +203,7 @@ end
 
 module SecretBytes = struct
   module M = struct
-    type t = { array_values : string list }
-    [@@deriving show, yojson, eq]
+    type t = { array_values : string list } [@@deriving show, yojson, eq]
 
     let parser =
       let+ av = hex_list in
@@ -215,13 +218,13 @@ end
 
 module SecretArray = struct
   module M = struct
-    type t = { array_typ : string ; array_values : string list }
+    type t = { array_typ : string; array_values : string list }
     [@@deriving show, yojson, eq]
 
     let parser =
       let* at = identifier <* comma in
       let+ av = hex_list in
-      { array_typ = at ; array_values = av }
+      { array_typ = at; array_values = av }
 
     let name = "secret_array"
   end

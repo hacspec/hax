@@ -1,18 +1,12 @@
 (library
  (name fstar_surface_ast)
  (package circus-engine)
- (libraries
-    batteries
-    zarith
-    stdint
-    ppxlib
-    menhirLib
-    pprint
- )
+ (libraries batteries zarith stdint ppxlib menhirLib pprint)
  (wrapped false)
- (preprocess (pps ppx_deriving.show ppx_deriving_yojson sedlex.ppx))
-)
+ (preprocess
+  (pps ppx_deriving.show ppx_deriving_yojson sedlex.ppx)))
 
 (env
-  (_
-    (flags (:standard -w -A))))
+ (_
+  (flags
+   (:standard -w -A))))
