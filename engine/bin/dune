@@ -2,33 +2,23 @@
  (name lib)
  (modules lib)
  (wrapped false)
- (libraries circus_engine
-            fstar_backend coq_backend easycrypt_backend)
+ (libraries circus_engine fstar_backend coq_backend easycrypt_backend)
  (preprocess
-  (pps
-   ppx_yojson_conv
-   ppx_deriving.show
-   ppx_deriving.eq
-   )))
+  (pps ppx_yojson_conv ppx_deriving.show ppx_deriving.eq)))
 
 (executable
  (public_name circus-engine)
  (name native_driver)
  (modules native_driver)
  (libraries lib))
- 
+
 (executable
  (optional)
  (name js_driver)
  (modes js)
  (modules js_driver)
  (js_of_ocaml
-   (javascript_files
-     js_stubs/mutex.js
-     js_stubs/stdint.js
-     js_stubs/unix.js
-   )
- )
+  (javascript_files js_stubs/mutex.js js_stubs/stdint.js js_stubs/unix.js))
  (libraries zarith_stubs_js lib))
 
 (env

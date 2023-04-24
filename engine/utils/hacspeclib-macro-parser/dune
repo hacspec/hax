@@ -1,10 +1,7 @@
 (library
  (name hacspeclib_macro_parser)
  (package circus-engine)
- (libraries
-  yojson
-  angstrom
-  )
+ (libraries yojson angstrom)
  (preprocess
   (pps
    ppx_yojson_conv

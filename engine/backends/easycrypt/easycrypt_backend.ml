@@ -338,8 +338,8 @@ module ECBackend = struct
   module TransformToInputLanguage =
   [%functor_application
   Phases.Reject.RawOrMutPointer Features.Rust |> Phases.Reconstruct_for_loops
-  |> Phases.Direct_and_mut |> Phases.Reject.Continue
-  |> Phases.Drop_references |> RejectNotEC]
+  |> Phases.Direct_and_mut |> Phases.Reject.Continue |> Phases.Drop_references
+  |> RejectNotEC]
 
   let apply_phases (o : Backend.Options.t) (bo : BackendOptions.t)
       (i : Ast.Rust.item) : AST.item list =

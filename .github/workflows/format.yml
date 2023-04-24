@@ -1,0 +1,31 @@
+name: Ensure formatting
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches: [main, staging, trying]
+
+jobs:
+  ocamlformat:
+    name: ocamlformat
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: cachix/install-nix-action@v20
+    - name: Run OCaml formatter
+      run: |
+        nix shell nixpkgs#ocamlformat -c \
+          ocamlformat --check $(find . -name '*.ml')
+      working-directory: engine
+  rustfmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: cachix/install-nix-action@v20
+    - name: Run Rust formatter
+      run: |
+        nix shell nixpkgs#rustfmt -c \
+          rustfmt --check $(find . -name '*.rs')
+

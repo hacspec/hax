@@ -3,9 +3,12 @@ name: Test extractions for `hacpsec/specs`
 on:
   pull_request:
   workflow_dispatch:
+  push:
+    branches: [main, staging, trying]
 
 jobs:
   tests:
+    name: test-specs-extraction
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
