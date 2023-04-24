@@ -28,7 +28,8 @@ jobs:
       run: sudo apt-get install -y opam nodejs
     - run: curl --proto '=https' --tlsv1.3 https://sh.rustup.rs -sSf | sh -s -- -y
     - run: opam init --bare -y && opam switch create -y 4.14.1
-    - run: |
+    - name: Run `setup.sh`
+      run: |
         export OPAMERRLOGLEN=0
         ./setup.sh
     - run: cargo circus --version

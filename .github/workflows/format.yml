@@ -3,6 +3,8 @@ name: Ensure formatting
 on:
   pull_request:
   workflow_dispatch:
+  push:
+    branches: [main, staging, trying]
 
 jobs:
   ocamlformat:
