@@ -46,6 +46,8 @@ use clap::Parser;
 use linter::LinterCallbacks;
 use rustc_driver::Callbacks;
 fn main() {
+    let _ = pretty_env_logger::try_init();
+
     let options: circus_cli_options::Options =
         serde_json::from_str(&std::env::var(ENV_VAR_OPTIONS_FRONTEND).expect(&formatcp!(
             "Cannot find environnement variable {}",
