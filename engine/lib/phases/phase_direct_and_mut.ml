@@ -28,24 +28,15 @@ struct
 
   module UA = Ast_utils.Make (FA)
   module UB = Ast_utils.Make (FB)
-  include Phase_utils.NoError
+  include Phase_utils.DefaultError
 
   [%%inline_defs dmutability]
-
-  type error =
-    | IllegalRefMut of A.ty
-    | BadArityApplication of A.expr
-    | MutRefOutput of A.expr
-  [@@deriving show]
-
-  exception Error of error
-
-  let raise e = raise (Error e)
 
   let rec dty (span : span) (ty : A.ty) : B.ty =
     match ty with
     | [%inline_arms "dty.*" - TRef] -> auto
-    | TRef { mut = Mutable _ } -> raise @@ IllegalRefMut ty
+    | TRef { mut = Mutable _ } ->
+        raise @@ Error.E { kind = UnallowedMutRef; span; details = None }
     | TRef { witness; typ; mut = Immutable as mut; region } ->
         TRef { witness; typ = dty span typ; mut; region }
 
@@ -89,7 +80,14 @@ struct
               {
                 kind =
                   (match kind with
-                  | Mut _ -> failwith "TODO, illegal borrow"
+                  | Mut _ ->
+                      raise
+                      @@ Error.E
+                           {
+                             kind = UnallowedMutRef;
+                             span = expr.span;
+                             details = None;
+                           }
                   | Shared -> B.Shared
                   | Unique -> B.Unique);
                 e = dexpr e;
@@ -105,10 +103,20 @@ struct
               match List.zip input_types args with
               | Ok args ->
                   List.map ~f:(uncurry @@ extract_direct_ref_mut expr.span) args
-              | Unequal_lengths -> raise @@ BadArityApplication expr
+              | Unequal_lengths ->
+                  raise
+                  @@ Error.E
+                       {
+                         kind =
+                           Unknown { details = Some "Bad arity application" };
+                         span = expr.span;
+                         details = None;
+                       }
             in
             if [%matches? A.TRef { mut = Mutable _ }] type_output0 then
-              raise @@ MutRefOutput f;
+              raise
+              @@ Error.E
+                   { kind = UnallowedMutRef; span = expr.span; details = None };
             let ret_unit = UA.is_unit_typ type_output0 in
             let mut_typed_inputs =
               List.filter_map ~f:Either.First.to_option typed_inputs
@@ -215,7 +223,16 @@ struct
                            typ = dty expr.span type_output0;
                          })
                      ~f:UB.make_seq assigns)
-        | _ -> failwith @@ A.show_expr f)
+        | _ ->
+            raise
+            @@ Error.E
+                 {
+                   kind =
+                     Unimplemented
+                       { issue_id = Some 76; details = Some "Incomplete phase" };
+                   span = expr.span;
+                   details = None;
+                 })
 
   (* let ditem (x: A.item): B.item = failwith "todo"  *)
   [%%inline_defs "Item.*"]

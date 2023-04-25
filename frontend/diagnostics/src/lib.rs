@@ -29,6 +29,9 @@ pub enum Kind {
     // This is useful when doing sanity checks (i.e. one can yield
     // this error kind for cases that should never happen)
     Unknown { details: Option<String> } = 2,
+
+    /// Unallowed mutable reference
+    UnallowedMutRef = 3,
 }
 
 impl Kind {
