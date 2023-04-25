@@ -444,10 +444,34 @@ module CoqBackend = struct
         ^ ty_list_str ^ ":=" ^ " " ^ "{" ^ impl_str ^ newline_indent 0 ^ "}"
         ^ "."
     | C.AST.Require (import, t, outside) ->
-       if (List.fold_left ~init:false ~f:(fun y x -> match x with | Err -> true | _ -> y) outside)
-       then ""
-       else "From Examples Require Import" ^ " " ^
-              map_first_letter (String.uppercase) (List.fold_left ~init:"" ~f:(fun x y -> x ^ y ^ ".") import)
+        if
+          List.fold_left ~init:false
+            ~f:(fun y x -> match x with Err -> true | _ -> y)
+            outside
+        then ""
+        else
+          "From Examples Require Import" ^ " "
+          ^ map_first_letter String.uppercase
+              (List.fold_left ~init:"" ~f:(fun x y -> x ^ y ^ ".") import)
+          ^ " (* "
+          ^ List.fold_left ~init:""
+              ~f:(fun y x ->
+                y ^ " "
+                ^
+                match x with
+                | ToolMod -> "ToolMod"
+                | Err -> "Err"
+                | Def (a, b) -> "Def(" ^ a ^ "," ^ b ^ ")"
+                | PrimTy a -> "PrimTy(" ^ a ^ ")"
+                | SelfTyParam { trait_ } -> "SelfTyParam {" ^ trait_ ^ "}"
+                | SelfTyAlias { alias_to; forbid_generic; is_trait_impl } ->
+                    "SelfTyAlias {" ^ alias_to
+                    ^ "; forbid_generic; is_trait_impl}"
+                | SelfCtor a -> "SelfCtor(" ^ a ^ ")"
+                | Local b -> "Local(" ^ b ^ ")"
+                | NonMacroAttr a -> "NonMacroAttr(" ^ a ^ ")")
+              outside
+          ^ " *)"
 
   and decl_list_to_string (x : C.AST.decl list) : string =
     List.fold_right ~init:""

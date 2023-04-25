@@ -315,20 +315,23 @@ struct
                   of_trait;
               items = List.map ~f:dimpl_item items;
             }
-      | Use (a,b,c) ->
-         B.Use (a,b,
-                List.map ~f:(function
-                    | ToolMod -> B.ToolMod
-                    | Err -> B.Err
-                    | Def(a,b) -> B.Def(a,b)
-                    | PrimTy(a) -> B.PrimTy(a)
-                    | SelfTyParam{trait_} -> B.SelfTyParam{trait_}
-                    | SelfTyAlias{alias_to;forbid_generic;is_trait_impl} ->
-                       B.SelfTyAlias{alias_to;forbid_generic;is_trait_impl}
-                    | SelfCtor(a) -> B.SelfCtor(a)
-                    | Local(a) -> B.Local(a)
-                    | NonMacroAttr(a) -> B.NonMacroAttr(a)
-                  ) c)
+      | Use (a, b, c) ->
+          B.Use
+            ( a,
+              b,
+              List.map
+                ~f:(function
+                  | ToolMod -> B.ToolMod
+                  | Err -> B.Err
+                  | Def (a, b) -> B.Def (a, b)
+                  | PrimTy a -> B.PrimTy a
+                  | SelfTyParam { trait_ } -> B.SelfTyParam { trait_ }
+                  | SelfTyAlias { alias_to; forbid_generic; is_trait_impl } ->
+                      B.SelfTyAlias { alias_to; forbid_generic; is_trait_impl }
+                  | SelfCtor a -> B.SelfCtor a
+                  | Local a -> B.Local a
+                  | NonMacroAttr a -> B.NonMacroAttr a)
+                c )
       | NotImplementedYet -> B.NotImplementedYet
   end
 

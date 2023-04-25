@@ -814,32 +814,29 @@ module Exn = struct
                     })
                   i.items;
             }
-      | Use ({path; outside}, t) ->
-         Use (path,
+      | Use ({ path; outside }, t) ->
+          Use
+            ( path,
               (match t with
               | Single -> "single"
               | Glob -> "glob"
               | ListStem -> "ListStem"),
-              List.map ~f:(function
+              List.map
+                ~f:(function
                   | ToolMod -> ToolMod
                   | Err -> Err
-                  | Def(a,b) -> Def(a,b)
-                  | PrimTy(a) -> PrimTy(a)
-                  | SelfTyParam {trait_} -> SelfTyParam {trait_}
-                  | SelfTyAlias {alias_to; forbid_generic; is_trait_impl} -> SelfTyAlias {alias_to; forbid_generic; is_trait_impl}
-                  | SelfCtor(a) -> SelfCtor(a)
-                  | Local(b) -> Local(b)
-                  | NonMacroAttr(a) -> NonMacroAttr(a))
-                outside)
-      | ExternCrate _
-      | Static _
-      | Macro _
-      | Mod _
-      | ForeignMod _
-      | GlobalAsm _
-      | OpaqueTy _
-      | Union _
-      | TraitAlias _ -> NotImplementedYet
+                  | Def (a, b) -> Def (a, b)
+                  | PrimTy a -> PrimTy a
+                  | SelfTyParam { trait_ } -> SelfTyParam { trait_ }
+                  | SelfTyAlias { alias_to; forbid_generic; is_trait_impl } ->
+                      SelfTyAlias { alias_to; forbid_generic; is_trait_impl }
+                  | SelfCtor a -> SelfCtor a
+                  | Local b -> Local b
+                  | NonMacroAttr a -> NonMacroAttr a)
+                outside )
+      | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
+      | OpaqueTy _ | Union _ | TraitAlias _ ->
+          NotImplementedYet
     in
     { span; v; parent_namespace = namespace_of_def_id item.owner_id }
 end
