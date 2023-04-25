@@ -832,14 +832,14 @@ module Exn = struct
                   | NonMacroAttr(a) -> NonMacroAttr(a))
                 outside)
       | ExternCrate _
-        |Static _
-        |Macro _
-        |Mod _
-        |ForeignMod _
-        |GlobalAsm _
-        |OpaqueTy _
-        |Union _
-        |TraitAlias _ -> NotImplementedYet
+      | Static _
+      | Macro _
+      | Mod _
+      | ForeignMod _
+      | GlobalAsm _
+      | OpaqueTy _
+      | Union _
+      | TraitAlias _ -> NotImplementedYet
     in
     { span; v; parent_namespace = namespace_of_def_id item.owner_id }
 end

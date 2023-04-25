@@ -789,7 +789,7 @@ pub struct Item {
     #[map({
         let name: String = self.ident.name.to_ident_string();
         let owner_id: DefId = self.owner_id.sinto(state);
-        let path = all::Path::from(owner_id.clone());
+        let path = Path::from(owner_id.clone());
         if path.ends_with(&[name]) {Some(owner_id.clone())} else {None}
     })]
     #[not_in_source]
