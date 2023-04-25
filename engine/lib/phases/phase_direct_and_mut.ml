@@ -103,7 +103,8 @@ struct
                   @@ Error.E
                        {
                          kind =
-                           Unknown { details = Some "Bad arity application" };
+                           AssertionFailure
+                             { details = "Bad arity application" };
                          span = expr.span;
                        }
             in

@@ -3,16 +3,9 @@ open Utils
 open Base
 open Diagnostics
 
-let fail_unknown (span : Thir.span) (details : string) =
+let assertion_failure (span : Thir.span) (details : string) =
   raise
-    (Error
-       {
-         span;
-         kind =
-           T.Unknown
-             { details = (if details == "" then None else Some details) };
-         context = ThirImport;
-       })
+    (Error { span; kind = T.AssertionFailure { details }; context = ThirImport })
 
 let unimplemented (span : Thir.span) (details : string) =
   raise
@@ -52,7 +45,7 @@ module Exn = struct
   exception ImportError of error
 
   open struct
-    let raise span e = fail_unknown span (show_error e)
+    let raise span e = assertion_failure span (show_error e)
   end
 
   let loc (loc : Thir.loc) : Ast.loc = { col = loc.col; line = loc.line }
@@ -169,7 +162,7 @@ module Exn = struct
   let c_lit_type span (t : Thir.lit_int_type) : int_kind =
     match t with
     | Unsuffixed ->
-        fail_unknown span "Got an untyped int literal which is `Unsuffixed`"
+        assertion_failure span "Got an untyped int literal which is `Unsuffixed`"
     | Signed ty -> { size = int_ty_to_size ty; signedness = Signed }
     | Unsigned ty -> { size = uint_ty_to_size ty; signedness = Unsigned }
 
@@ -209,7 +202,7 @@ module Exn = struct
       && List.is_prefix ~prefix:x.path ~equal:Thir.equal_def_path_item y.path
     in
     if not (is_def_id_prefix info.type_namespace info.variant) then
-      fail_unknown span
+      assertion_failure span
         ("variant_id_of_variant_informations: ["
         ^ Thir.show_def_id info.type_namespace
         ^ "] is not a prefix of ["
@@ -594,7 +587,7 @@ module Exn = struct
           (* fail with ("[Fresh] ident? " ^ Thir.show_generic_param param) *)
           (* TODO might be wrong to just have a wildcard here *)
           ({ name = "_"; id = 123456789 } : local_ident)
-      | Error -> fail_unknown param.span "[Error] ident"
+      | Error -> assertion_failure param.span "[Error] ident"
       | Plain n -> local_ident n
     in
     match (param.kind : Thir.generic_param_kind) with
