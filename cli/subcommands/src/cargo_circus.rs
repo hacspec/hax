@@ -1,9 +1,6 @@
 use circus_cli_options::Options;
 use clap::Parser;
-use std::{
-    io::{self, Write},
-    process::Command,
-};
+use std::process::Command;
 
 /// Return a [Command] for [cargo]: when the correct nightly is
 /// already present, this is just the command [cargo], otherwise we
@@ -41,18 +38,20 @@ fn main() {
     let args: Vec<String> = get_args("circus");
     let options = Options::parse_from(args.iter());
 
-    let child = cargo_command()
-        .args(["build".into()].iter().chain(options.cargo_flags.iter()))
-        .env("RUSTC_WORKSPACE_WRAPPER", "driver-circus-frontend-exporter")
-        .env(
-            circus_cli_options::ENV_VAR_OPTIONS_FRONTEND,
-            serde_json::to_string(&options)
-                .expect("Options could not be converted to a JSON string"),
-        )
-        .spawn()
-        .unwrap();
-    let output = child.wait_with_output().unwrap();
-    io::stdout().write_all(&output.stdout).unwrap();
-    io::stderr().write_all(&output.stderr).unwrap();
-    std::process::exit(output.status.code().unwrap_or(254))
+    std::process::exit(
+        cargo_command()
+            .args(["build".into()].iter().chain(options.cargo_flags.iter()))
+            .env("RUSTC_WORKSPACE_WRAPPER", "driver-circus-frontend-exporter")
+            .env(
+                circus_cli_options::ENV_VAR_OPTIONS_FRONTEND,
+                serde_json::to_string(&options)
+                    .expect("Options could not be converted to a JSON string"),
+            )
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap()
+            .code()
+            .unwrap_or(254),
+    )
 }
