@@ -25,12 +25,17 @@ extern crate rustc_target;
 extern crate rustc_type_ir;
 
 mod exporter;
-use circus_cli_options::Command;
+use exporter::ExtractionCallbacks;
 
 mod linter;
+use linter::LinterCallbacks;
 
-use circus_cli_options::ENV_VAR_OPTIONS_FRONTEND;
+use circus_cli_options::{Command, ENV_VAR_OPTIONS_FRONTEND};
 use const_format::formatcp;
+
+use rustc_driver::{Callbacks, Compilation};
+use rustc_interface::{interface, Queries};
+use rustc_span::symbol::Symbol;
 
 fn rustc_sysroot() -> String {
     std::process::Command::new("rustc")
@@ -42,9 +47,46 @@ fn rustc_sysroot() -> String {
         .unwrap()
 }
 
-use clap::Parser;
-use linter::LinterCallbacks;
-use rustc_driver::Callbacks;
+/// Wraps a [Callbacks] structure, and injects some cache-related
+/// configuration in the `config` phase of rustc
+struct CallbacksWrapper<'a> {
+    sub: &'a mut (dyn Callbacks + Send + 'a),
+    options: circus_cli_options::Options,
+}
+impl<'a> Callbacks for CallbacksWrapper<'a> {
+    fn config(&mut self, config: &mut interface::Config) {
+        let options = self.options.clone();
+        config.parse_sess_created = Some(Box::new(move |parse_sess| {
+            parse_sess.env_depinfo.get_mut().insert((
+                Symbol::intern(circus_cli_options::ENV_VAR_OPTIONS_FRONTEND),
+                Some(Symbol::intern(&serde_json::to_string(&options).unwrap())),
+            ));
+        }));
+        self.sub.config(config)
+    }
+    fn after_parsing<'tcx>(
+        &mut self,
+        compiler: &interface::Compiler,
+        queries: &'tcx Queries<'tcx>,
+    ) -> Compilation {
+        self.sub.after_parsing(compiler, queries)
+    }
+    fn after_expansion<'tcx>(
+        &mut self,
+        compiler: &interface::Compiler,
+        queries: &'tcx Queries<'tcx>,
+    ) -> Compilation {
+        self.sub.after_expansion(compiler, queries)
+    }
+    fn after_analysis<'tcx>(
+        &mut self,
+        compiler: &interface::Compiler,
+        queries: &'tcx Queries<'tcx>,
+    ) -> Compilation {
+        self.sub.after_analysis(compiler, queries)
+    }
+}
+
 fn main() {
     let _ = pretty_env_logger::try_init();
 
@@ -66,11 +108,11 @@ fn main() {
 
     // fetch the correct callback structure given the command, and
     // coerce options
-    let mut callbacks: Box<dyn Callbacks + Send> = match options.command {
+    let mut callbacks: Box<dyn Callbacks + Send> = match &options.command {
         Some(Command::ExporterCommand(command)) => Box::new(exporter::ExtractionCallbacks {
-            output_dir: options.output_dir,
-            inline_macro_calls: options.inline_macro_calls,
-            command,
+            output_dir: options.output_dir.clone(),
+            inline_macro_calls: options.inline_macro_calls.clone(),
+            command: command.clone(),
         }),
         Some(Command::LintCommand(command)) => {
             let _config = match command {
@@ -85,7 +127,12 @@ fn main() {
         }
     };
 
+    let mut callbacks = CallbacksWrapper {
+        sub: &mut *callbacks,
+        options,
+    };
+
     std::process::exit(rustc_driver::catch_with_exit_code(move || {
-        rustc_driver::RunCompiler::new(&rustc_args, &mut *callbacks).run()
+        rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
     }))
 }
