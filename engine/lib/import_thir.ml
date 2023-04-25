@@ -8,9 +8,10 @@ let fail_unknown (span : Thir.span) (details : string) =
     (Error
        {
          span;
-         kind = T.Unknown { details = None };
+         kind =
+           T.Unknown
+             { details = (if details == "" then None else Some details) };
          context = ThirImport;
-         details = (if details == "" then None else Some details);
        })
 
 let unimplemented (span : Thir.span) (details : string) =
@@ -20,9 +21,11 @@ let unimplemented (span : Thir.span) (details : string) =
          span;
          kind =
            T.Unimplemented
-             { details = None; issue_id = None (* TODO, file issues *) };
+             {
+               issue_id = None (* TODO, file issues *);
+               details = (if details == "" then None else Some details);
+             };
          context = ThirImport;
-         details = (if details == "" then None else Some details);
        })
 
 let todo (span : Thir.span) = unimplemented span ""

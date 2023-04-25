@@ -568,9 +568,9 @@ module FStarBackend = struct
           @@ Diagnostics.Error
                {
                  context = Backend FStar;
-                 kind = Unknown { details = None };
+                 kind = Unknown { details = Some "MacroInvokation" };
+                 (* TODO: unsupported macro error *)
                  span = Diagnostics.to_thir_span e.span;
-                 details = Some "MacroInvokation";
                }
       | _ -> .
 

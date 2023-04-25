@@ -36,16 +36,14 @@ module DefaultError = struct
     type t = {
       kind : Diagnostics.kind;
       span : Ast.span;
-      details : string option;
     }
     [@@deriving show, eq]
 
-    let lift { kind; span; details } (phase : Diagnostics.Phase.t) :
+    let lift { kind; span } (phase : Diagnostics.Phase.t) :
         Diagnostics.t =
       {
         kind;
         span = Diagnostics.to_thir_span span;
-        details;
         context = Phase phase;
       }
 

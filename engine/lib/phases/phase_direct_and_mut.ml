@@ -36,7 +36,7 @@ struct
     match ty with
     | [%inline_arms "dty.*" - TRef] -> auto
     | TRef { mut = Mutable _ } ->
-        raise @@ Error.E { kind = UnallowedMutRef; span; details = None }
+        raise @@ Error.E { kind = UnallowedMutRef; span }
     | TRef { witness; typ; mut = Immutable as mut; region } ->
         TRef { witness; typ = dty span typ; mut; region }
 
@@ -82,12 +82,7 @@ struct
                   (match kind with
                   | Mut _ ->
                       raise
-                      @@ Error.E
-                           {
-                             kind = UnallowedMutRef;
-                             span = expr.span;
-                             details = None;
-                           }
+                      @@ Error.E { kind = UnallowedMutRef; span = expr.span }
                   | Shared -> B.Shared
                   | Unique -> B.Unique);
                 e = dexpr e;
@@ -110,13 +105,10 @@ struct
                          kind =
                            Unknown { details = Some "Bad arity application" };
                          span = expr.span;
-                         details = None;
                        }
             in
             if [%matches? A.TRef { mut = Mutable _ }] type_output0 then
-              raise
-              @@ Error.E
-                   { kind = UnallowedMutRef; span = expr.span; details = None };
+              raise @@ Error.E { kind = UnallowedMutRef; span = expr.span };
             let ret_unit = UA.is_unit_typ type_output0 in
             let mut_typed_inputs =
               List.filter_map ~f:Either.First.to_option typed_inputs
@@ -231,7 +223,6 @@ struct
                      Unimplemented
                        { issue_id = Some 76; details = Some "Incomplete phase" };
                    span = expr.span;
-                   details = None;
                  })
 
   (* let ditem (x: A.item): B.item = failwith "todo"  *)

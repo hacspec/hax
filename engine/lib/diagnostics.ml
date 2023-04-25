@@ -37,7 +37,6 @@ type t = {
   context : Context.t;
   kind : kind;
   span : T.span;
-  details : string option;
 }
 [@@deriving show, eq]
 
@@ -46,7 +45,7 @@ exception Error of t
 let to_thir_diagnostic (d : t) : Raw_thir_ast.diagnostics_for__span =
   {
     kind = d.kind;
-    context = [%show: Context.t * string option] (d.context, d.details);
+    context = [%show: Context.t] d.context;
     span = d.span;
   }
 
