@@ -154,16 +154,6 @@ impl From<ExtractionCallbacks> for circus_frontend_exporter_options::Options {
 }
 
 impl Callbacks for ExtractionCallbacks {
-    fn config(&mut self, config: &mut interface::Config) {
-        let options = self.clone();
-        config.parse_sess_created = Some(Box::new(move |parse_sess| {
-            parse_sess.env_depinfo.get_mut().insert((
-                Symbol::intern("CIRCUS_FRONTEND_OPTIONS"),
-                Some(Symbol::intern(&serde_json::to_string(&options).unwrap())),
-            ));
-        }));
-    }
-
     fn after_parsing<'tcx>(
         &mut self,
         _compiler: &Compiler,
