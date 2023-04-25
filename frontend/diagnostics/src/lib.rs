@@ -9,7 +9,13 @@ pub mod error;
 pub struct Diagnostics<S> {
     pub kind: Kind,
     pub span: S,
-    pub context: Option<String>,
+    pub context: String,
+}
+
+impl<S> std::fmt::Display for Diagnostics<S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}: {:?}", self.context, self.kind)
+    }
 }
 
 #[derive(Debug, Clone, JsonSchema, Serialize, Deserialize)]
