@@ -519,14 +519,29 @@ functor
       constraints : generic_constraint list;
     }
 
-    and variant = { name : global_ident; arguments : (global_ident * ty) list }
+    and def_path_item =
+      | PathCrateRoot
+      | PathImpl
+      | PathForeignMod
+      | PathUse
+      | PathGlobalAsm
+      | PathClosureExpr
+      | PathCtor
+      | PathAnonConst
+      | PathImplTrait
+      | PathTypeNs of string
+      | PathValueNs of string
+      | PathMacroNs of string
+      | PathLifetimeNs of string
+
+    and def_id = { krate : string; def_path : def_path_item list }
 
     and use_res =
       | ToolMod
       | Err
-      | Def of (string * string)
+      | Def of (string * def_id)
       | PrimTy of string
-      | SelfTyParam of { trait_ : string }
+      | SelfTyParam of { trait_ : def_id }
       | SelfTyAlias of {
           alias_to : string;
           forbid_generic : bool;
@@ -535,6 +550,8 @@ functor
       | SelfCtor of string
       | Local of string
       | NonMacroAttr of string
+
+    and variant = { name : global_ident; arguments : (global_ident * ty) list }
 
     and item' =
       (* Todo, topological sort, rec bundles *)
@@ -568,7 +585,7 @@ functor
           of_trait : (global_ident * generic_value list) option;
           items : impl_item list;
         }
-      | Use of string list * string * use_res list
+      | Use of string list * string * bool * use_res list
       | NotImplementedYet
 
     and item = {

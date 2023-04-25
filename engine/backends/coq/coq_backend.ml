@@ -444,34 +444,49 @@ module CoqBackend = struct
         ^ ty_list_str ^ ":=" ^ " " ^ "{" ^ impl_str ^ newline_indent 0 ^ "}"
         ^ "."
     | C.AST.Require (import, t, outside) ->
-        if
-          List.fold_left ~init:false
-            ~f:(fun y x -> match x with Err -> true | _ -> y)
+        "From Examples Require Import" ^ " "
+        ^ map_first_letter String.uppercase
+            (List.fold_left ~init:"" ~f:(fun x y -> x ^ y ^ ".") import)
+        ^ " (* "
+        ^ List.fold_left ~init:""
+            ~f:(fun y x ->
+              y ^ " "
+              ^
+              match x with
+              | ToolMod -> "ToolMod"
+              | Err -> "Err"
+              | Def (a, b) ->
+                  "Def(" ^ a ^ "," ^ b.krate
+                  ^ List.fold_left ~init:""
+                      ~f:(fun y x ->
+                        y ^ " "
+                        ^
+                        match x with
+                        | PathCrateRoot -> "PathCrateRoot"
+                        | PathImpl -> "PathImpl"
+                        | PathForeignMod -> "PathForeignMod"
+                        | PathUse -> "PathUse"
+                        | PathGlobalAsm -> "PathGlobalAsm"
+                        | PathClosureExpr -> "PathClosureExpr"
+                        | PathCtor -> "PathCtor"
+                        | PathAnonConst -> "PathAnonConst"
+                        | PathImplTrait -> "PathImplTrait"
+                        | PathTypeNs a -> "PathTypeNs (" ^ a ^ ")"
+                        | PathValueNs a -> "PathValueNs (" ^ a ^ ")"
+                        | PathMacroNs a -> "PathMacroNs (" ^ a ^ ")"
+                        | PathLifetimeNs a -> "PathLifetimeNs (" ^ a ^ ")")
+                      b.def_path
+                  ^ ")"
+              | PrimTy a -> "PrimTy(" ^ a ^ ")"
+              | SelfTyParam { trait_ } -> "SelfTyParam {" ^ trait_.krate ^ "}"
+              | SelfTyAlias { alias_to; forbid_generic; is_trait_impl } ->
+                  "SelfTyAlias {" ^ alias_to
+                  ^ "; forbid_generic; is_trait_impl}"
+              | SelfCtor a -> "SelfCtor(" ^ a ^ ")"
+              | Local b -> "Local(" ^ b ^ ")"
+              | NonMacroAttr a -> "NonMacroAttr(" ^ a ^ ")")
             outside
-        then ""
-        else
-          "From Examples Require Import" ^ " "
-          ^ map_first_letter String.uppercase
-              (List.fold_left ~init:"" ~f:(fun x y -> x ^ y ^ ".") import)
-          ^ " (* "
-          ^ List.fold_left ~init:""
-              ~f:(fun y x ->
-                y ^ " "
-                ^
-                match x with
-                | ToolMod -> "ToolMod"
-                | Err -> "Err"
-                | Def (a, b) -> "Def(" ^ a ^ "," ^ b ^ ")"
-                | PrimTy a -> "PrimTy(" ^ a ^ ")"
-                | SelfTyParam { trait_ } -> "SelfTyParam {" ^ trait_ ^ "}"
-                | SelfTyAlias { alias_to; forbid_generic; is_trait_impl } ->
-                    "SelfTyAlias {" ^ alias_to
-                    ^ "; forbid_generic; is_trait_impl}"
-                | SelfCtor a -> "SelfCtor(" ^ a ^ ")"
-                | Local b -> "Local(" ^ b ^ ")"
-                | NonMacroAttr a -> "NonMacroAttr(" ^ a ^ ")")
-              outside
-          ^ " *)"
+        ^ " *)"
 
   and decl_list_to_string (x : C.AST.decl list) : string =
     List.fold_right ~init:""
@@ -1022,7 +1037,8 @@ module CoqBackend = struct
           ]
       | IMacroInvokation { macro; argument; span; witness } ->
           [ __TODO_item__ "Macro" ]
-      | Use (u, t, res) -> [ C.AST.Require (u, t, res) ]
+      | Use (u, t, internal, res) ->
+          if internal then [ C.AST.Require (u, t, res) ] else [] 
       | NotImplementedYet -> [ __TODO_item__ "Not implemented yet?" ]
       | Trait { name; generics; items } ->
           [

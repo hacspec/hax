@@ -692,6 +692,38 @@ module Exn = struct
       ti_name = fst item.ident;
     }
 
+  let rec c_use_res (res : Thir.res) : use_res =
+    match res with
+    | ToolMod -> ToolMod
+    | Err -> Err
+    | Def (a, { krate; path }) ->
+        Def (a, { krate; def_path = List.map ~f:c_def_path_item path })
+    | PrimTy a -> PrimTy a
+    | SelfTyParam { trait_ = { krate; path } } ->
+        SelfTyParam
+          { trait_ = { krate; def_path = List.map ~f:c_def_path_item path } }
+    | SelfTyAlias { alias_to; forbid_generic; is_trait_impl } ->
+        SelfTyAlias { alias_to; forbid_generic; is_trait_impl }
+    | SelfCtor a -> SelfCtor a
+    | Local b -> Local b
+    | NonMacroAttr a -> NonMacroAttr a
+
+  and c_def_path_item (dpi : Thir.def_path_item) : def_path_item =
+    match dpi with
+    | CrateRoot -> PathCrateRoot
+    | Impl -> PathImpl
+    | ForeignMod -> PathForeignMod
+    | Use -> PathUse
+    | GlobalAsm -> PathGlobalAsm
+    | ClosureExpr -> PathClosureExpr
+    | Ctor -> PathCtor
+    | AnonConst -> PathAnonConst
+    | ImplTrait -> PathImplTrait
+    | TypeNs a -> PathTypeNs a
+    | ValueNs a -> PathValueNs a
+    | MacroNs a -> PathMacroNs a
+    | LifetimeNs a -> PathLifetimeNs a
+
   let c_item (item : Thir.item) : item =
     let span = c_span item.span in
     let v =
@@ -814,26 +846,15 @@ module Exn = struct
                     })
                   i.items;
             }
-      | Use ({ path; outside }, t) ->
+      | Use ({ path; outside; res_path }, t) ->
           Use
             ( path,
               (match t with
               | Single -> "single"
               | Glob -> "glob"
               | ListStem -> "ListStem"),
-              List.map
-                ~f:(function
-                  | ToolMod -> ToolMod
-                  | Err -> Err
-                  | Def (a, b) -> Def (a, b)
-                  | PrimTy a -> PrimTy a
-                  | SelfTyParam { trait_ } -> SelfTyParam { trait_ }
-                  | SelfTyAlias { alias_to; forbid_generic; is_trait_impl } ->
-                      SelfTyAlias { alias_to; forbid_generic; is_trait_impl }
-                  | SelfCtor a -> SelfCtor a
-                  | Local b -> Local b
-                  | NonMacroAttr a -> NonMacroAttr a)
-                outside )
+              not (List.exists ~f:(function | Err -> true | _ -> false) outside), (* TODO: is this correct? *)
+              List.map ~f:c_use_res outside @@ List.map ~f:c_use_res res_path)
       | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
       | OpaqueTy _ | Union _ | TraitAlias _ ->
           NotImplementedYet

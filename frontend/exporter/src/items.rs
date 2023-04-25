@@ -321,10 +321,10 @@ pub struct Variant {
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum Res {
-    Def(String, String),
+    Def(String, DefId),
     PrimTy(String),
     SelfTyParam {
-        trait_: String,
+        trait_: DefId,
     },
     SelfTyAlias {
         alias_to: String,
@@ -338,13 +338,13 @@ pub enum Res {
     Err,
 }
 
-impl<Id, S> SInto<S, Res> for rustc_hir::def::Res<Id> {
+impl<'s, Id, S : BaseState<'s>> SInto<S, Res> for rustc_hir::def::Res<Id> {
     fn sinto(&self, s: &S) -> Res {
         match &self {
-            rustc_hir::def::Res::Def(a, b) => Res::Def(format!("{:?}", a), format!("{:?}", b)),
+            rustc_hir::def::Res::Def(a, b) => Res::Def(format!("{:?}", a), b.sinto(s)),
             rustc_hir::def::Res::PrimTy(a) => Res::PrimTy(format!("{:?}", a)),
             rustc_hir::def::Res::SelfTyParam { trait_ } => Res::SelfTyParam {
-                trait_: format!("{:?}", trait_),
+                trait_: trait_.sinto(s),
             },
             rustc_hir::def::Res::SelfTyAlias {
                 alias_to,
@@ -369,9 +369,10 @@ pub struct UsePath {
     // span: Span,
     path: Vec<String>,
     outside: Vec<Res>,
+    res_path: Vec<Res>,
 }
 
-impl<'hir, S, Id: std::fmt::Debug, R: IntoIterator<Item = rustc_hir::def::Res<Id>> + Clone>
+impl<'hir, S: BaseState<'hir>, Id: std::fmt::Debug, R: IntoIterator<Item = rustc_hir::def::Res<Id>> + Clone>
     SInto<S, UsePath> for rustc_hir::Path<'hir, R>
 {
     fn sinto(&self, s: &S) -> UsePath {
@@ -382,6 +383,7 @@ impl<'hir, S, Id: std::fmt::Debug, R: IntoIterator<Item = rustc_hir::def::Res<Id
                 .map(|x| x.ident.name.to_ident_string())
                 .collect(),
             outside: self.res.clone().into_iter().map(|x| x.sinto(s)).collect(),
+            res_path: self.segments.iter().map(|x| x.res.sinto(s)).collect(),
         }
     }
 }
