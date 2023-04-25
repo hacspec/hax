@@ -26,53 +26,39 @@ use rustc_data_structures::sync::Lrc;
 extern crate rustc_ast;
 use rustc_ast::ast;
 
-pub enum Error {}
+#[derive(Debug, Clone, Copy)]
+pub enum Type {
+    Rust,
+    Hacspec,
+}
 
 pub struct Linter<'a, 'tcx> {
     session: &'a Lrc<Session>,
     tcx: TyCtxt<'tcx>,
-    derive_allow_list: Vec<String>,
+    extern_allow_list: Vec<&'static str>,
     trait_block_list: Vec<String>,
+    ltype: Type,
 }
 
 impl<'a, 'tcx> Linter<'a, 'tcx> {
     /// Register the linter.
-    pub fn register(tcx: TyCtxt<'tcx>, session: &'a Lrc<Session>) {
+    pub fn register(tcx: TyCtxt<'tcx>, session: &'a Lrc<Session>, ltype: Type) {
         let hir = tcx.hir();
 
-        // XXX: read from config file or something and find a better way to do this.
-        let derive_allow_list = vec![
-            // serde
-            "_serde",
-            "serde",
-            // std lib
-            "$crate::marker::StructuralPartialEq",
-            "$crate::marker::StructuralEq",
-            "$crate::cmp::PartialEq",
-            "$crate::cmp::Eq",
-            "$crate::clone::Clone",
-            "$crate::clone::Clone::clone",
-            "$crate::fmt::Debug",
-            "$crate::marker::Copy",
-            "$crate::hash::Hash",
-            "$crate::cmp::PartialOrd",
-            "$crate::cmp::Ord",
-        ];
-        let derive_allow_list = derive_allow_list
-            .into_iter()
-            .map(|s| s.to_string())
-            .collect();
         let trait_block_list = vec!["FnMut"];
         let trait_block_list = trait_block_list
             .into_iter()
             .map(|s| s.to_string())
             .collect();
 
+        let extern_allow_list = vec!["core", "alloc", "std"];
+
         let mut linter = Self {
             session,
             tcx,
-            derive_allow_list,
+            extern_allow_list,
             trait_block_list,
+            ltype,
         };
         hir.visit_all_item_likes_in_crate(&mut linter);
     }
@@ -111,12 +97,50 @@ impl<'a, 'v> Linter<'a, 'v> {
         self.any_parent_has_attr(hir_id, rustc_span::symbol::sym::automatically_derived)
     }
 
-    // XXX: remove
-    fn foreign_items(&self, key: rustc_span::def_id::DefId, span: Span) {
-        // Check for foreign item
-        if self.tcx.is_foreign_item(key) {
-            log::trace!("foreign item: {:#?}", span);
+    /// Check and warn for non-local def ids.
+    ///
+    /// Returns true if the path is non-local.
+    fn non_local_def_id(&self, def_id: rustc_span::def_id::DefId, span: Span) -> bool {
+        if !def_id.is_local() {
+            log::trace!("   non local path at: {:?}", span);
+
+            let krate = self.tcx.crate_name(def_id.krate);
+            log::trace!("   crate: {:?}", krate);
+            if self.extern_allow_list.contains(&krate.as_str()) {
+                // For the allow list we assume that there's a model
+                return true;
+            }
+            // On everything else we warn.
+            error::extern_crate(self.session, span);
+            // }
+            return true;
         }
+        false
+    }
+
+    /// Check and warn for non-local paths.
+    ///
+    /// Returns true if the path is non-local.
+    fn non_local_path(&self, qpath: &QPath) -> bool {
+        match qpath {
+            QPath::Resolved(_, path) => match path.res {
+                def::Res::Def(_def_kind, def_id) => self.non_local_def_id(def_id, path.span),
+                _ => return false,
+            },
+            _ => return false,
+        }
+    }
+
+    /// Check and warn for non-local hir ids.
+    ///
+    /// Returns true if the path is non-local.
+    fn non_local_hir_id(&self, hir_id: HirId) -> bool {
+        if let Some(owner_id) = hir_id.as_owner() {
+            if self.non_local_def_id(owner_id.to_def_id(), self.tcx.def_span(owner_id)) {
+                return true;
+            }
+        }
+        false
     }
 }
 
@@ -124,25 +148,25 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
     type NestedFilter = OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {
-        log::trace!(" >>> visiting nested map");
+        log::trace!("visiting nested map");
         self.tcx.hir()
     }
 
     fn visit_nested_trait_item(&mut self, id: TraitItemId) {
-        log::trace!(" >>> visiting nested trait item");
+        log::trace!("visiting nested trait item");
 
         walk_trait_item(self, self.tcx.hir().trait_item(id));
     }
     fn visit_nested_impl_item(&mut self, id: ImplItemId) {
-        log::trace!(" >>> visiting nested impl item");
+        log::trace!("visiting nested impl item");
 
         walk_impl_item(self, self.tcx.hir().impl_item(id));
     }
     fn visit_nested_foreign_item(&mut self, _id: ForeignItemId) {
-        log::trace!(" >>> visiting nested foreign item");
+        log::trace!("visiting nested foreign item");
     }
     fn visit_nested_body(&mut self, id: BodyId) {
-        log::trace!(" >>> visiting nested body");
+        log::trace!("visiting nested body");
 
         walk_body(self, self.tcx.hir().body(id));
     }
@@ -162,46 +186,16 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
             ItemKind::Impl(imp) => {
                 // log::trace!("     impl {:?}", imp.self_ty.kind);
                 if imp.unsafety == Unsafety::Unsafe {
-                    error::no_unsafe(self.session, imp.items[0].span); // TODO: What's the right span?
+                    error::no_unsafe(self.session, i.span);
                 }
                 if let Some(of_trait) = &imp.of_trait {
-                    // XXX: We probably want to get this in. Only look for external functions.
                     let def_id = of_trait.hir_ref_id.owner.def_id.to_def_id();
                     if self
                         .tcx
                         .has_attr(def_id, rustc_span::symbol::sym::automatically_derived)
                     {
-                        let path_string = of_trait
-                            .path
-                            .segments
-                            .iter()
-                            .map(|seg| seg.ident.as_str())
-                            .collect::<Vec<&str>>()
-                            .join("::");
-                        let crate_path = of_trait
-                            .path
-                            .segments
-                            .first()
-                            .unwrap() // XXX: Is this safe?
-                            .ident
-                            .as_str()
-                            .to_string();
-                        if self.derive_allow_list.contains(&crate_path)
-                            || self.derive_allow_list.contains(&path_string)
-                        {
-                            // We don't want to go into derived items.
-                            log::trace!("   Skipping trait implementation of allowlist");
-                            return;
-                        } else {
-                            let path_string = match path_string.split_once(':') {
-                                Some((_left, right)) => right[1..].to_string(),
-                                None => path_string,
-                            };
-                            error::derive_external_trait(self.session, i.span, path_string);
-
-                            // Don't go any further
-                            return;
-                        }
+                        log::trace!("   Skipping automatically derived implementations");
+                        return;
                     }
                 }
             }
@@ -209,13 +203,16 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         }
 
         // Check for foreign item
-        self.foreign_items(i.owner_id.def_id.to_def_id(), i.span);
+        if self.non_local_def_id(i.owner_id.def_id.to_def_id(), i.span) {
+            // Don't keep walking.
+            return;
+        }
 
         // keep going
         walk_item(self, i);
     }
     fn visit_body(&mut self, b: &'v Body<'v>) {
-        log::trace!(" >>> visiting body");
+        log::trace!("visiting body");
 
         // keep going
         walk_body(self, b);
@@ -228,16 +225,12 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
             "visiting id {hir_id:?} from def path {:?}",
             self.tcx.def_path(hir_id.owner.to_def_id())
         );
-        // log::trace!(
-        //     "visiting id at {:?} with node {:?}",
-        //     self.tcx.hir().span_if_local(hir_id.owner.to_def_id()),
-        //     self.tcx.hir().find(hir_id)
-        // );
-        // log::trace!(
-        //     "visiting id at {:?} is foreign: {:?}",
-        //     self.tcx.hir().span_if_local(hir_id.owner.to_def_id()),
-        //     self.tcx.is_foreign_item(hir_id.owner)
-        // );
+
+        if self.non_local_hir_id(hir_id) {
+            // Don't keep walking.
+            return;
+        }
+
         // Nothing to do.
     }
     fn visit_name(&mut self, name: Symbol) {
@@ -245,7 +238,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         // Nothing to do.
     }
     fn visit_ident(&mut self, ident: Ident) {
-        log::trace!(" >>> visiting ident {:?}", ident);
+        log::trace!("visiting ident {:?}", ident);
 
         // XXX: This really shouldn't be done here but earlier.
         if ident.name.as_str() == "FnMut" {
@@ -256,7 +249,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         walk_ident(self, ident)
     }
     fn visit_mod(&mut self, m: &'v Mod<'v>, s: Span, n: HirId) {
-        log::trace!(" >>> visiting mod {:?}", s);
+        log::trace!("visiting mod {:?}", s);
 
         // keep going
         walk_mod(self, m, n);
@@ -266,19 +259,23 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         walk_foreign_item(self, i)
     }
     fn visit_local(&mut self, l: &'v Local<'v>) {
-        log::trace!(" >>> visiting local {:?}", l.span);
+        log::trace!("visiting local {:?}", l.span);
         walk_local(self, l)
     }
     fn visit_block(&mut self, b: &'v Block<'v>) {
-        log::trace!(" >>> visiting block {:?}", b.span);
+        log::trace!("visiting block {:?}", b.span);
         walk_block(self, b)
     }
     fn visit_stmt(&mut self, s: &'v Stmt<'v>) {
         log::trace!(
-            " >>> visiting stmt {:?} at {:?}",
+            "visiting stmt {:?} at {:?}",
             self.tcx.opt_item_name(s.hir_id.owner.to_def_id()).unwrap(),
             s.span
         );
+        if self.non_local_hir_id(s.hir_id) {
+            // Don't keep walking
+            return;
+        }
 
         match &s.kind {
             StmtKind::Local(b) => {
@@ -305,23 +302,23 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         walk_stmt(self, s);
     }
     fn visit_arm(&mut self, a: &'v Arm<'v>) {
-        log::trace!(" >>> visiting arm {:?}", a.span);
+        log::trace!("visiting arm {:?}", a.span);
         walk_arm(self, a)
     }
     fn visit_pat(&mut self, p: &'v Pat<'v>) {
-        log::trace!(" >>> visiting pat {:?}", p.span);
+        log::trace!("visiting pat {:?}", p.span);
         walk_pat(self, p)
     }
     fn visit_pat_field(&mut self, f: &'v PatField<'v>) {
-        log::trace!(" >>> visiting pat field {:?} at {:?}", f.ident, f.span);
+        log::trace!("visiting pat field {:?} at {:?}", f.ident, f.span);
         walk_pat_field(self, f)
     }
     fn visit_array_length(&mut self, len: &'v ArrayLen) {
-        log::trace!(" >>> visiting array length");
+        log::trace!("visiting array length");
         walk_array_len(self, len)
     }
     fn visit_anon_const(&mut self, c: &'v AnonConst) {
-        log::trace!(" >>> visiting anon const");
+        log::trace!("visiting anon const");
         walk_anon_const(self, c)
     }
     fn visit_expr(&mut self, ex: &'v Expr<'v>) {
@@ -340,7 +337,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
                 LoopSource::Loop | LoopSource::While => {
                     error::unsupported_loop(self.session, *span)
                 }
-                LoopSource::ForLoop => log::trace!(" >>> hir for loop"),
+                LoopSource::ForLoop => log::trace!("hir for loop"),
             },
             // FIXME: where to get this from?
             // ExprKind::Async(e, c, b) => self.no_async_await(b.span),
@@ -359,62 +356,27 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
                 }
             }
             ExprKind::Path(qpath) => {
-                match qpath {
-                    QPath::Resolved(_, path) => match path.res {
-                        def::Res::Def(_def_kind, def_id) => {
-                            if !def_id.is_local() {
-                                log::trace!("   non local path at: {:?}", path.span);
-
-                                let path_string = path
-                                    .segments
-                                    .iter()
-                                    .map(|seg| seg.ident.as_str())
-                                    .collect::<Vec<&str>>()
-                                    .join("::");
-
-                                let crate_path = path
-                                    .segments
-                                    .first()
-                                    .unwrap() // XXX: Is this safe?
-                                    .ident
-                                    .as_str()
-                                    .to_string();
-
-                                log::trace!("   path: {path_string:?}");
-                                log::trace!("   crate: {crate_path:?}");
-
-                                if self.derive_allow_list.contains(&crate_path)
-                                    || self.derive_allow_list.contains(&path_string)
-                                {
-                                    log::trace!("   We skip trait implementation of allowlist?");
-                                } else {
-                                    // FIXME
-                                    // self.extern_crate(path.span);
-                                }
-                                return;
-                            }
-                        }
-                        _ => (),
-                    },
-                    _ => (),
+                if self.non_local_path(qpath) {
+                    // Don't keep walking.
+                    return;
                 }
             }
-            _ => (), // log::trace!("found expression {:?} at {:?}", ex.kind, ex.span),
+            _ => (),
         }
 
         // keep going
         walk_expr(self, ex);
     }
     fn visit_let_expr(&mut self, lex: &'v Let<'v>) {
-        log::trace!(" >>> visiting let expr {:?}", lex.span);
+        log::trace!("visiting let expr {:?}", lex.span);
         walk_let_expr(self, lex)
     }
     fn visit_expr_field(&mut self, field: &'v ExprField<'v>) {
-        log::trace!(" >>> visiting expr field {:?}", field.ident);
+        log::trace!("visiting expr field {:?}", field.ident);
         walk_expr_field(self, field)
     }
     fn visit_ty(&mut self, t: &'v Ty<'v>) {
-        log::trace!(" >>> visiting ty {:?}", t.span);
+        log::trace!("visiting ty {:?}", t.span);
         walk_ty(self, t)
     }
     fn visit_generic_param(&mut self, p: &'v GenericParam<'v>) {
@@ -424,7 +386,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         walk_generic_param(self, p)
     }
     fn visit_const_param_default(&mut self, _param: HirId, ct: &'v AnonConst) {
-        log::trace!(" >>> visiting const param default");
+        log::trace!("visiting const param default");
         walk_const_param_default(self, ct)
     }
     fn visit_generics(&mut self, g: &'v Generics<'v>) {
@@ -467,15 +429,15 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         walk_where_predicate(self, predicate);
     }
     fn visit_fn_ret_ty(&mut self, ret_ty: &'v FnRetTy<'v>) {
-        log::trace!(" >>> visiting fn ret ty");
+        log::trace!("visiting fn ret ty");
         walk_fn_ret_ty(self, ret_ty)
     }
     fn visit_fn_decl(&mut self, fd: &'v FnDecl<'v>) {
-        log::trace!(" >>> visiting fn decl");
+        log::trace!("visiting fn decl");
         walk_fn_decl(self, fd)
     }
     fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl<'v>, b: BodyId, span: Span, id: HirId) {
-        log::trace!(" >>> visiting fn at {:?}", span);
+        log::trace!("visiting fn at {:?}", span);
         skip_derived!(self, id);
 
         fn check_ty_kind(visitor: &Linter, k: &TyKind, span: Span) {
@@ -492,6 +454,11 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
                     // check for mutable self.
                     // we have to do that here, because we know it's mut here.
                     if matches!(ty.mutbl, Mutability::Mut) {
+                        if matches!(visitor.ltype, Type::Hacspec) {
+                            // No mutability is allowed here for hacspec
+                            error::no_mut(visitor.session, ty.ty.span);
+                            return;
+                        }
                         match &ty.ty.kind {
                             TyKind::Path(path) => match path {
                                 QPath::Resolved(_ty, p) => {
@@ -615,7 +582,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         fd.inputs.iter().for_each(|param| {
             // // No dyn/trait object
             // FIXME
-            // log::trace!(" >>> fd inputs {:#?}", param);
+            // log::trace!("fd inputs {:#?}", param);
             check_ty_kind(self, &param.kind, param.span);
         });
 
@@ -624,17 +591,13 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
     }
     fn visit_use(&mut self, path: &'v UsePath<'v>, hir_id: HirId) {
         // FIXME
-        log::trace!(" >>> visiting use {:?}", path.span);
+        log::trace!("visiting use {:?}", path.span);
 
         // keep going
         walk_use(self, path, hir_id);
     }
     fn visit_trait_item(&mut self, ti: &'v TraitItem<'v>) {
-        log::trace!(
-            " >>> visiting trait item {:?} at {:?}",
-            ti.ident.name,
-            ti.span
-        );
+        log::trace!("visiting trait item {:?} at {:?}", ti.ident.name, ti.span);
         skip_derived!(self, ti.hir_id());
 
         // match &ti.kind {
@@ -647,11 +610,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         walk_trait_item(self, ti);
     }
     fn visit_trait_item_ref(&mut self, ii: &'v TraitItemRef) {
-        log::trace!(
-            " >>> visiting trait item ref {:?} at {:?}",
-            ii.ident,
-            ii.span
-        );
+        log::trace!("visiting trait item ref {:?} at {:?}", ii.ident, ii.span);
         walk_trait_item_ref(self, ii)
     }
     fn visit_impl_item(&mut self, ii: &'v ImplItem<'v>) {
@@ -666,34 +625,9 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
                 WherePredicate::BoundPredicate(bound) => {
                     for bound in bound.bounds {
                         match bound {
-                            GenericBound::Trait(poly_ref, _modifier) => {
-                                let path_string = poly_ref
-                                    .trait_ref
-                                    .path
-                                    .segments
-                                    .iter()
-                                    .map(|seg| seg.ident.as_str())
-                                    .collect::<Vec<&str>>()
-                                    .join("::");
-
-                                let crate_path = poly_ref
-                                    .trait_ref
-                                    .path
-                                    .segments
-                                    .first()
-                                    .unwrap() // XXX: Is this safe?
-                                    .ident
-                                    .as_str()
-                                    .to_string();
-                                if !self.derive_allow_list.contains(&crate_path)
-                                    && !self.derive_allow_list.contains(&path_string)
-                                {
-                                    // We don't want to go into these derived items
-                                    // when they are on the allow list.
-                                    log::trace!("    found trait impl for trait {:?}", path_string);
-                                    log::trace!("   Skipping trait implementation of allowlist");
-                                    return;
-                                }
+                            GenericBound::Trait(_poly_ref, _modifier) => {
+                                log::trace!("   Skipping trait bound");
+                                return;
                             }
                             _ => (),
                         }
@@ -735,12 +669,15 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         // traverse_owner(self.tcx, self.tcx.hir().owner(ii.owner_id), 0);
 
         // match &ii.kind {
-        //     ImplItemKind::Const(_, _) => (), // log::trace!(" >>> impl const {:#?}", ii.ident),
-        //     ImplItemKind::Type(_) => log::trace!(" >>> impl type {:#?}", ii.ident),
-        //     ImplItemKind::Fn(bounds, ty) => log::trace!(" >>> impl fn {:#?}", ii.ident),
+        //     ImplItemKind::Const(_, _) => (), // log::trace!("impl const {:#?}", ii.ident),
+        //     ImplItemKind::Type(_) => log::trace!("impl type {:#?}", ii.ident),
+        //     ImplItemKind::Fn(bounds, ty) => log::trace!("impl fn {:#?}", ii.ident),
         // }
 
-        self.foreign_items(ii.owner_id.def_id.to_def_id(), ii.span);
+        if self.non_local_def_id(ii.owner_id.def_id.to_def_id(), ii.span) {
+            // Don't keep walking.
+            return;
+        }
 
         // keep going
         walk_impl_item(self, ii);
@@ -754,39 +691,39 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         walk_impl_item_ref(self, ii)
     }
     fn visit_trait_ref(&mut self, t: &'v TraitRef<'v>) {
-        log::trace!(" >>> visiting trait ref");
+        log::trace!("visiting trait ref");
         walk_trait_ref(self, t)
     }
     fn visit_param_bound(&mut self, bounds: &'v GenericBound<'v>) {
-        log::trace!(" >>> visiting param bound");
+        log::trace!("visiting param bound");
         walk_param_bound(self, bounds)
     }
     fn visit_poly_trait_ref(&mut self, t: &'v PolyTraitRef<'v>) {
-        log::trace!(" >>> visiting poly trait ref {:?}", t.span);
+        log::trace!("visiting poly trait ref {:?}", t.span);
         walk_poly_trait_ref(self, t)
     }
     fn visit_variant_data(&mut self, s: &'v VariantData<'v>) {
-        log::trace!(" >>> visiting variant data");
+        log::trace!("visiting variant data");
         walk_struct_def(self, s)
     }
     fn visit_field_def(&mut self, s: &'v FieldDef<'v>) {
-        log::trace!(" >>> visiting field def {:?} at {:?}", s.ident, s.span);
+        log::trace!("visiting field def {:?} at {:?}", s.ident, s.span);
         walk_field_def(self, s)
     }
     fn visit_enum_def(&mut self, enum_definition: &'v EnumDef<'v>, item_id: HirId) {
-        log::trace!(" >>> visiting enum def");
+        log::trace!("visiting enum def");
         walk_enum_def(self, enum_definition, item_id)
     }
     fn visit_variant(&mut self, v: &'v Variant<'v>) {
-        log::trace!(" >>> visiting variant {:?} at {:?}", v.ident, v.span);
+        log::trace!("visiting variant {:?} at {:?}", v.ident, v.span);
         walk_variant(self, v)
     }
     fn visit_label(&mut self, label: &'v rustc_ast::ast::Label) {
-        log::trace!(" >>> visiting label {:?}", label.ident);
+        log::trace!("visiting label {:?}", label.ident);
         walk_label(self, label)
     }
     fn visit_infer(&mut self, inf: &'v InferArg) {
-        log::trace!(" >>> visiting infer {:?}", inf.span);
+        log::trace!("visiting infer {:?}", inf.span);
         walk_inf(self, inf);
     }
     fn visit_generic_arg(&mut self, generic_arg: &'v GenericArg<'v>) {
@@ -794,7 +731,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         walk_generic_arg(self, generic_arg);
     }
     fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
-        log::trace!(" >>> visiting lifetime {:?}", lifetime.ident);
+        log::trace!("visiting lifetime {:?}", lifetime.ident);
         walk_lifetime(self, lifetime)
     }
     // The span is that of the surrounding type/pattern/expr/whatever.
@@ -847,7 +784,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         walk_generic_args(self, generic_args)
     }
     fn visit_assoc_type_binding(&mut self, type_binding: &'v TypeBinding<'v>) {
-        log::trace!(" >>> visiting assoc type binding {:?}", type_binding.span);
+        log::trace!("visiting assoc type binding {:?}", type_binding.span);
         // self.no_assoc_items(type_binding.span);
 
         // keep going
@@ -857,7 +794,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         log::trace!("visiting attribute: {:?}", attr.span);
         // match &attr.kind {
         //     ast::AttrKind::Normal(normal_attr) => {
-        //         log::trace!(" >>> normal attribute: {:?}", normal_attr.item.path);
+        //         log::trace!("normal attribute: {:?}", normal_attr.item.path);
         //     }
         //     ast::AttrKind::DocComment(comment_kind, symbol) => (),
         // }
@@ -870,11 +807,11 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         walk_associated_item_kind(self, kind);
     }
     fn visit_defaultness(&mut self, defaultness: &'v Defaultness) {
-        log::trace!(" >>> visiting defaultness");
+        log::trace!("visiting defaultness");
         walk_defaultness(self, defaultness);
     }
     fn visit_inline_asm(&mut self, asm: &'v InlineAsm<'v>, _id: HirId) {
-        log::trace!(" >>> visiting inline asm");
+        log::trace!("visiting inline asm");
         error::no_unsafe(self.session, asm.line_spans[0]); // XXX: what's the right span here?
 
         // don't keep going
