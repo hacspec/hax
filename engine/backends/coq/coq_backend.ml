@@ -462,20 +462,24 @@ module CoqBackend = struct
                         y ^ " "
                         ^
                         match x with
-                        | PathCrateRoot -> "PathCrateRoot"
-                        | PathImpl -> "PathImpl"
-                        | PathForeignMod -> "PathForeignMod"
-                        | PathUse -> "PathUse"
-                        | PathGlobalAsm -> "PathGlobalAsm"
-                        | PathClosureExpr -> "PathClosureExpr"
-                        | PathCtor -> "PathCtor"
-                        | PathAnonConst -> "PathAnonConst"
-                        | PathImplTrait -> "PathImplTrait"
-                        | PathTypeNs a -> "PathTypeNs (" ^ a ^ ")"
-                        | PathValueNs a -> "PathValueNs (" ^ a ^ ")"
-                        | PathMacroNs a -> "PathMacroNs (" ^ a ^ ")"
-                        | PathLifetimeNs a -> "PathLifetimeNs (" ^ a ^ ")")
+                        | PathCrateRoot -> "CrateRoot"
+                        | PathImpl -> "Impl"
+                        | PathForeignMod -> "ForeignMod"
+                        | PathUse -> "Use"
+                        | PathGlobalAsm -> "GlobalAsm"
+                        | PathClosureExpr -> "ClosureExpr"
+                        | PathCtor -> "Ctor"
+                        | PathAnonConst -> "AnonConst"
+                        | PathImplTrait -> "ImplTrait"
+                        | PathTypeNs a -> "TypeNs (" ^ a ^ ")"
+                        | PathValueNs a -> "ValueNs (" ^ a ^ ")"
+                        | PathMacroNs a -> "MacroNs (" ^ a ^ ")"
+                        | PathLifetimeNs a -> "LifetirmeNs (" ^ a ^ ")")
                       b.def_path
+                  ^ "<><>"
+                  ^ List.fold_left ~init:""
+                      ~f:(fun y x -> y ^ " " ^ x)
+                      b.path_names
                   ^ ")"
               | PrimTy a -> "PrimTy(" ^ a ^ ")"
               | SelfTyParam { trait_ } -> "SelfTyParam {" ^ trait_.krate ^ "}"
@@ -1038,7 +1042,7 @@ module CoqBackend = struct
       | IMacroInvokation { macro; argument; span; witness } ->
           [ __TODO_item__ "Macro" ]
       | Use (u, t, internal, res) ->
-          if internal then [ C.AST.Require (u, t, res) ] else [] 
+          if internal then [ C.AST.Require (u, t, res) ] else []
       | NotImplementedYet -> [ __TODO_item__ "Not implemented yet?" ]
       | Trait { name; generics; items } ->
           [

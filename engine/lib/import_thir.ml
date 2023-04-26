@@ -696,12 +696,16 @@ module Exn = struct
     match res with
     | ToolMod -> ToolMod
     | Err -> Err
-    | Def (a, { krate; path }) ->
-        Def (a, { krate; def_path = List.map ~f:c_def_path_item path })
+    | Def (a, { krate; path; path_names }) ->
+        Def
+          (a, { krate; def_path = List.map ~f:c_def_path_item path; path_names })
     | PrimTy a -> PrimTy a
-    | SelfTyParam { trait_ = { krate; path } } ->
+    | SelfTyParam { trait_ = { krate; path; path_names } } ->
         SelfTyParam
-          { trait_ = { krate; def_path = List.map ~f:c_def_path_item path } }
+          {
+            trait_ =
+              { krate; def_path = List.map ~f:c_def_path_item path; path_names };
+          }
     | SelfTyAlias { alias_to; forbid_generic; is_trait_impl } ->
         SelfTyAlias { alias_to; forbid_generic; is_trait_impl }
     | SelfCtor a -> SelfCtor a
@@ -853,8 +857,9 @@ module Exn = struct
               | Single -> "single"
               | Glob -> "glob"
               | ListStem -> "ListStem"),
-              not (List.exists ~f:(function | Err -> true | _ -> false) outside), (* TODO: is this correct? *)
-              List.map ~f:c_use_res outside @@ List.map ~f:c_use_res res_path)
+              not (List.exists ~f:(function Err -> true | _ -> false) outside),
+              (* TODO: is this correct? *)
+              List.map ~f:c_use_res outside @ List.map ~f:c_use_res res_path )
       | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
       | OpaqueTy _ | Union _ | TraitAlias _ ->
           NotImplementedYet

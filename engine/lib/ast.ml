@@ -534,7 +534,7 @@ functor
       | PathMacroNs of string
       | PathLifetimeNs of string
 
-    and def_id = { krate : string; def_path : def_path_item list }
+    and def_id = { krate : string; def_path : def_path_item list; path_names : string list }
 
     and use_res =
       | ToolMod
