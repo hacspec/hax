@@ -9,4 +9,4 @@
 (env
  (_
   (flags
-   (:standard -w -A))))
+   (:standard -warn-error -A -warn-error +8))))
