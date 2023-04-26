@@ -476,8 +476,8 @@ function run(str){
     let contents = JSON.parse(str);
     const definitions = clean(contents.definitions);
     
-    let output_string = `type todo = string\n`;
-    output_string = ``;
+    let output_string = `include struct
+[@@@warning "-A"]`;
 
     let items = Object.entries(definitions).map(
         ([name, def]) => export_definition(name, def)
@@ -513,7 +513,7 @@ open ParseError
         `to_json_${name} (o: ${name}): Yojson.Safe.t = ${to_json}`
     ).join('\nand '));
 
-    return output_string;
+    return output_string + ' \n end';
 }
 
 function parse_args(){

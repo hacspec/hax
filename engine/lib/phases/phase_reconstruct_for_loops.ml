@@ -29,6 +29,8 @@ struct
   end
 
   module For = struct
+    [@@@warning "-9"]
+
     open A
 
     type t = {

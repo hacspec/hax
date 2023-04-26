@@ -17,6 +17,6 @@
    ppx_matches)))
 
 (env
- (dev
+ (_
   (flags
-   (:standard -w -A -w +8))))
+   (:standard -w -A))))
