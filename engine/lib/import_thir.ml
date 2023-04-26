@@ -162,7 +162,8 @@ module Exn = struct
   let c_lit_type span (t : Thir.lit_int_type) : int_kind =
     match t with
     | Unsuffixed ->
-        assertion_failure span "Got an untyped int literal which is `Unsuffixed`"
+        assertion_failure span
+          "Got an untyped int literal which is `Unsuffixed`"
     | Signed ty -> { size = int_ty_to_size ty; signedness = Signed }
     | Unsigned ty -> { size = uint_ty_to_size ty; signedness = Unsigned }
 

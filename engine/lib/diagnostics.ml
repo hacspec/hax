@@ -33,21 +33,13 @@ end
 
 type kind = T.kind [@@deriving show, eq]
 
-type t = {
-  context : Context.t;
-  kind : kind;
-  span : T.span;
-}
+type t = { context : Context.t; kind : kind; span : T.span }
 [@@deriving show, eq]
 
 exception Error of t
 
 let to_thir_diagnostic (d : t) : Raw_thir_ast.diagnostics_for__span =
-  {
-    kind = d.kind;
-    context = [%show: Context.t] d.context;
-    span = d.span;
-  }
+  { kind = d.kind; context = [%show: Context.t] d.context; span = d.span }
 
 let to_thir_loc ({ col; line } : Ast.loc) : T.loc = { col; line }
 
