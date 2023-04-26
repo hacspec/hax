@@ -38,6 +38,9 @@ pub enum Kind {
 
     /// Unallowed mutable reference
     UnallowedMutRef = 3,
+
+    /// Unsupported macro invokation
+    UnsupportedMacro { id: String } = 4,
 }
 
 impl Kind {
