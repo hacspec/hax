@@ -31,7 +31,7 @@ struct
     | [%inline_arms "dty.*" - TApp - TRef] -> auto
     | TApp { ident; args } ->
         TApp { ident; args = List.filter_map ~f:(dgeneric_value span) args }
-    | TRef { witness; typ; mut = Immutable as mut; region } -> dty span typ
+    | TRef { typ; mut = Immutable; _ } -> dty span typ
     | TRef _ -> .
 
   and dgeneric_value (span : span) (g : A.generic_value) :
@@ -46,7 +46,7 @@ struct
   and dpat' (span : span) (p : A.pat') : B.pat' =
     match p with
     | [%inline_arms "dpat'.*" - PBinding - PDeref] -> auto
-    | PBinding { mut; mode; var : LocalIdent.t; typ; subpat } ->
+    | PBinding { mut; var : LocalIdent.t; typ; subpat; _ } ->
         PBinding
           {
             mut;
@@ -55,7 +55,7 @@ struct
             typ = dty span typ;
             subpat = Option.map ~f:(fun (p, as_pat) -> (dpat p, as_pat)) subpat;
           }
-    | PDeref { subpat } -> (dpat subpat).p
+    | PDeref { subpat; _ } -> (dpat subpat).p
 
   and dfield_pat = [%inline_body dfield_pat]
 
@@ -64,7 +64,8 @@ struct
   and dexpr' (span : span) (e : A.expr') : B.expr' =
     match e with
     | [%inline_arms If + Literal + Array] -> auto
-    | App { f = { e = GlobalVar (`Primitive (Box | Deref)) }; args = [ arg ] }
+    | App
+        { f = { e = GlobalVar (`Primitive (Box | Deref)); _ }; args = [ arg ] }
       ->
         (dexpr arg).e
     | App { f; args } -> App { f = dexpr f; args = List.map ~f:dexpr args }
@@ -118,7 +119,7 @@ struct
   let dgeneric_param (span : span) (p : A.generic_param) :
       B.generic_param option =
     match p with
-    | GPLifetime { ident; witness } -> None
+    | GPLifetime _ -> None
     | GPType { ident; default } ->
         Some (GPType { ident; default = Option.map ~f:(dty span) default })
     | GPConst { ident; typ } -> Some (GPConst { ident; typ = dty span typ })
@@ -126,7 +127,7 @@ struct
   let dgeneric_constraint (span : span) (p : A.generic_constraint) :
       B.generic_constraint option =
     match p with
-    | GCLifetime (lf, witness) -> None
+    | GCLifetime _ -> None
     | GCType { typ; implements } ->
         Some
           (B.GCType
@@ -161,4 +162,4 @@ struct
 
   let metadata = Phase_utils.Metadata.make DropReferences
 end
-[@@add "../subtype.ml"]
+[@@add "subtype.ml"]

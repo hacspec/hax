@@ -1,4 +1,3 @@
-open Utils
 open Base
 open Ast
 

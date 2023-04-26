@@ -117,7 +117,7 @@ struct
 
   let pretty_string_of_span =
     let pos_to_string { col; line } =
-      string_of_int line ^ ":" ^ string_of_int col
+      Int.to_string line ^ ":" ^ Int.to_string col
     in
     function
     | Span { file; hi; lo } ->
@@ -129,11 +129,11 @@ struct
   let report (data : Data.t) =
     let msg = S0.explain (fst data.data) (snd data.data) in
     let first = Non_empty_list.hd data.path in
-    prerr_endline @@ "Error at "
+    Caml.prerr_endline @@ "Error at "
     ^ [%show: Diagnostics.Phase.t] S0.metadata.current_phase
     ^ " phase: " ^ msg ^ " at span "
     ^ pretty_string_of_span (Data.span data);
-    prerr_endline @@ [%show: ast_chunk] first;
+    Caml.prerr_endline @@ [%show: ast_chunk] first;
     ()
 
   let catch (type a b) (f : a -> b) (x : a) : b =

@@ -54,17 +54,17 @@ type span = Span of { file : string; hi : loc; lo : loc } | Dummy
       { variety = "reduce"; name = "span_reduce"; ancestors = [ "loc_reduce" ] },
     visitors { variety = "map"; name = "span_map"; ancestors = [ "loc_map" ] }]
 
-let show_span (s : span) : string = "<span>"
+let show_span (_s : span) : string = "<span>"
 
-let pp_span (fmt : Format.formatter) (s : span) : unit =
-  Format.pp_print_string fmt @@ show_span s
+let pp_span (fmt : Caml.Format.formatter) (s : span) : unit =
+  Caml.Format.pp_print_string fmt @@ show_span s
 
 let union_span (x : span) (y : span) : span =
   match (x, y) with
   | Dummy, _ | _, Dummy -> Dummy
   | Span x, Span y when String.(x.file <> y.file) ->
       failwith "TODO error: Bad span union"
-  | Span { file; lo }, Span { hi } -> Span { file; lo; hi }
+  | Span { file; lo; _ }, Span { hi; _ } -> Span { file; lo; hi }
 
 let union_spans : span list -> span =
   List.reduce ~f:union_span >> Option.value ~default:Dummy
@@ -112,8 +112,9 @@ and primitive_ident =
 let show_concrete_ident (s : concrete_ident) : string =
   s.crate ^ "::" ^ String.concat ~sep:"::" @@ Non_empty_list.to_list s.path
 
-let pp_concrete_ident (fmt : Format.formatter) (s : concrete_ident) : unit =
-  Format.pp_print_string fmt @@ show_concrete_ident s
+let pp_concrete_ident (fmt : Caml.Format.formatter) (s : concrete_ident) : unit
+    =
+  Caml.Format.pp_print_string fmt @@ show_concrete_ident s
 
 module GlobalIdent = struct
   module T = struct
@@ -149,7 +150,7 @@ module GlobalIdent = struct
   let to_string : t -> string = [%show: t]
 
   let cmdliner_converter =
-    (of_string, fun fmt t -> Format.fprintf fmt "%s" (to_string t))
+    (of_string, fun fmt t -> Caml.Format.fprintf fmt "%s" (to_string t))
 end
 
 type global_ident = (GlobalIdent.t[@visitors.opaque])
@@ -258,7 +259,7 @@ functor
       end
 
     class virtual ['self] default_map_features =
-      object (self : 'self)
+      object (_self : 'self)
         inherit ['env] VisitorsRuntime.map
         method visit_span : 'env -> span -> span = Fn.const Fn.id
         method visit_literal : 'env -> literal -> literal = Fn.const Fn.id

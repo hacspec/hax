@@ -35,17 +35,18 @@ struct
   let rec dty (span : span) (ty : A.ty) : B.ty =
     match ty with
     | [%inline_arms "dty.*" - TRef] -> auto
-    | TRef { mut = Mutable _ } ->
+    | TRef { mut = Mutable _; _ } ->
         raise @@ Error.E { kind = UnallowedMutRef; span }
     | TRef { witness; typ; mut = Immutable as mut; region } ->
         TRef { witness; typ = dty span typ; mut; region }
 
   and dgeneric_value = [%inline_body dgeneric_value]
 
-  let dborrow_kind (span : span) (borrow_kind : A.borrow_kind) : B.borrow_kind =
+  let dborrow_kind (_span : span) (borrow_kind : A.borrow_kind) : B.borrow_kind
+      =
     match borrow_kind with
     | [%inline_arms "dborrow_kind.*" - Mut] -> auto
-    | Mut witness -> Shared
+    | Mut _ -> Shared
 
   [%%inline_defs dpat]
 
@@ -108,7 +109,7 @@ struct
                          span = expr.span;
                        }
             in
-            if [%matches? A.TRef { mut = Mutable _ }] type_output0 then
+            if [%matches? A.TRef { mut = Mutable _; _ }] type_output0 then
               raise @@ Error.E { kind = UnallowedMutRef; span = expr.span };
             let ret_unit = UA.is_unit_typ type_output0 in
             let mut_typed_inputs =
@@ -187,7 +188,7 @@ struct
                             {
                               lhs = LhsLocalVar { var = i; typ };
                               witness = Features.On.mutable_variable;
-                              e = { expr with typ; span; e = LocalVar i_temp };
+                              e = { typ; span; e = LocalVar i_temp };
                             };
                       })
                     idents
@@ -232,4 +233,4 @@ struct
   (* [%%inline_defs "Item.*"] *)
   module FA = FA
 end
-[@@add "../subtype.ml"]
+[@@add "subtype.ml"]

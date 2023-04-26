@@ -1,5 +1,4 @@
 open Base
-open Utils
 
 module Metadata : sig
   type t = private {
@@ -48,7 +47,7 @@ module NoError = struct
   module Error = struct
     type t = | [@@deriving show, eq]
 
-    let lift (x : t) (phase : Diagnostics.Phase.t) : Diagnostics.t =
+    let lift (x : t) (_phase : Diagnostics.Phase.t) : Diagnostics.t =
       match x with _ -> .
 
     exception E of t
@@ -76,7 +75,7 @@ module Identity (F : Features.T) = struct
   module B = Ast.Make (F)
   include NoError
 
-  let ditem (x : A.item) : B.item list = [ Obj.magic x ]
+  let ditem (x : A.item) : B.item list = [ x ]
   let metadata = Metadata.make Diagnostics.Phase.Identity
 end
 
@@ -112,7 +111,7 @@ module AddErrorHandling (D : PHASE) = struct
   let ditem (i : D.A.item) : D.B.item list =
     try D.ditem i
     with Failure e ->
-      prerr_endline
+      Caml.prerr_endline
         ("Phase "
         ^ [%show: Diagnostics.Phase.t] metadata.current_phase
         ^ " failed with exception: " ^ e ^ "\nTerm: "
@@ -120,7 +119,7 @@ module AddErrorHandling (D : PHASE) = struct
         if _DEBUG_SHOW_ITEM then
           [%show: A.item] i
           ^ "\n"
-          ^ if _DEBUG_SHOW_BACKTRACE then Printexc.get_backtrace () else ""
+          ^ if _DEBUG_SHOW_BACKTRACE then Caml.Printexc.get_backtrace () else ""
         else "");
       raise PhaseError
 end
@@ -140,7 +139,7 @@ end = struct
     l := !l @ [ mk_json () ]
 
   let export () =
-    let all =
+    let _all =
       Hashtbl.to_alist cache
       |> List.sort ~compare:(fun (_, (a, _)) (_, (b, _)) -> Int.compare a b)
       |> List.map ~f:(fun (k, (nth, l)) ->
@@ -166,7 +165,7 @@ struct
   module Error = struct
     type t = ErrD1 of D1.Error.t | ErrD2 of D2.Error.t [@@deriving show, eq]
 
-    let lift (x : t) (phase : Diagnostics.Phase.t) : Diagnostics.t =
+    let lift (x : t) (_phase : Diagnostics.Phase.t) : Diagnostics.t =
       match x with
       | ErrD1 e -> D1.Error.lift e D1.metadata.current_phase
       | ErrD2 e -> D2.Error.lift e D2.metadata.current_phase
