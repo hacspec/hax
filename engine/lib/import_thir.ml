@@ -451,7 +451,17 @@ module Exn = struct
           let body = c_expr body in
           let upvars = List.map ~f:c_expr upvars in
           Closure { body; params; captures = upvars }
-      | _ -> unimplemented e.span "expr"
+      | Index _ -> unimplemented e.span "expression Index"
+      | PlaceTypeAscription _ ->
+          unimplemented e.span "expression PlaceTypeAscription"
+      | ValueTypeAscription _ ->
+          unimplemented e.span "expression ValueTypeAscription"
+      | NonHirLiteral _ -> unimplemented e.span "expression NonHirLiteral"
+      | ZstLiteral _ -> unimplemented e.span "expression ZstLiteral"
+      | ConstParam _ -> unimplemented e.span "expression ConstParam"
+      | StaticRef _ -> unimplemented e.span "expression StaticRef"
+      | Yield _ -> unimplemented e.span "expression Yield"
+      | Todo _ -> unimplemented e.span "expression Todo"
     in
     { e = v; span; typ }
 
@@ -558,7 +568,14 @@ module Exn = struct
     | Param { index; name } ->
         (* TODO: [id] might not unique *)
         TParam { name; id = index }
-    | _ -> unimplemented span "typ"
+    | Error -> unimplemented span "type Error"
+    | Dynamic _ -> unimplemented span "type Dynamic"
+    | Generator _ -> unimplemented span "type Generator"
+    | Opaque _ -> unimplemented span "type Opaque"
+    | Placeholder _ -> unimplemented span "type Placeholder"
+    | Bound _ -> unimplemented span "type Bound"
+    | Infer _ -> unimplemented span "type Infer"
+    | Todo _ -> unimplemented span "type Todo"
   (* fun _ -> Ok Bool *)
 
   and c_generic_value (span : Thir.span) (ty : Thir.generic_arg) : generic_value
