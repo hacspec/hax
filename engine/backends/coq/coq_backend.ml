@@ -10,7 +10,6 @@ module CoqBackend = struct
     include Off
 
     (* include On.Monadic_action *)
-    include On.Early_exit
     include On.Monadic_binding
     include On.Macro
   end
@@ -34,7 +33,7 @@ module CoqBackend = struct
           let reference = reject
           let slice = reject
           let raw_pointer = reject
-          let early_exit _ = Features.On.early_exit (* Obj.magic () *)
+          let early_exit _ = Obj.magic ()
           let macro _ = Features.On.macro
           let as_pattern = reject
           let lifetime = reject
@@ -493,14 +492,10 @@ module CoqBackend = struct
 
   and variants_to_string variants pre post : C.AST.decl list * string =
     List.fold_left ~init:([], "")
-      ~f:(function
-        | variant_definitions, variants_str -> (
-            function
-            | ty_name, ty ->
-                let ty_definitions, ty_str = ty_to_string ty in
-                ( ty_definitions @ variant_definitions,
-                  pre ^ ty_name ^ " " ^ ":" ^ " " ^ ty_str ^ post ^ variants_str
-                )))
+      ~f:(fun (variant_definitions, variants_str) (ty_name, ty) ->
+        let ty_definitions, ty_str = ty_to_string ty in
+        ( ty_definitions @ variant_definitions,
+          pre ^ ty_name ^ " " ^ ":" ^ " " ^ ty_str ^ post ^ variants_str ))
       variants
 
   let primitive_to_string (id : primitive_ident) : string =
@@ -849,7 +844,7 @@ module CoqBackend = struct
             variants = [ { name = record_name; arguments } ];
             record = true;
           }
-        when name == record_name ->
+        when GlobalIdent.equal name record_name ->
           [
             C.AST.Record
               ( pglobal_ident_last name ^ "_t" ^ pglobal_ident record_name,
