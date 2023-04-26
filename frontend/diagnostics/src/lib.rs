@@ -9,7 +9,13 @@ pub mod error;
 pub struct Diagnostics<S> {
     pub kind: Kind,
     pub span: S,
-    pub context: Option<String>,
+    pub context: String,
+}
+
+impl<S> std::fmt::Display for Diagnostics<S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}: {:?}", self.context, self.kind)
+    }
 }
 
 #[derive(Debug, Clone, JsonSchema, Serialize, Deserialize)]
@@ -28,7 +34,13 @@ pub enum Kind {
     /// Unknown error
     // This is useful when doing sanity checks (i.e. one can yield
     // this error kind for cases that should never happen)
-    Unknown { details: Option<String> } = 2,
+    AssertionFailure { details: String } = 2,
+
+    /// Unallowed mutable reference
+    UnallowedMutRef = 3,
+
+    /// Unsupported macro invokation
+    UnsupportedMacro { id: String } = 4,
 }
 
 impl Kind {

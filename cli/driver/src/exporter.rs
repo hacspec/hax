@@ -241,7 +241,7 @@ impl Callbacks for ExtractionCallbacks {
                                 .find(|span| span.sinto(&state) == d.span)
                                 .cloned()
                                 .unwrap_or(rustc_span::DUMMY_SP),
-                            format!("{:#?}", d),
+                            format!("{}", d),
                             rustc_errors::DiagnosticId::Error(d.kind.code().into()),
                         );
                     }
