@@ -122,6 +122,15 @@ module Make (F : Features.T) = struct
   end
 
   module Reducers = struct
+    let collect_local_idents =
+      object
+        inherit [_] expr_reduce as _super
+        inherit [_] Sets.LocalIdent.monoid as m
+        method visit_t _ _ = m#zero
+        method visit_mutability _f () _ = m#zero
+        method! visit_local_ident _env x = Set.singleton (module LocalIdent) x
+      end
+
     let collect_global_idents =
       object
         inherit [_] pat_reduce as _super
@@ -200,6 +209,29 @@ module Make (F : Features.T) = struct
                                         m#zero
       end
   end
+
+  (** Produces a local identifier which is locally fresh **with respect
+      to expressions {exprs}**. *)
+  let fresh_local_ident_in_expr (exprs : expr list) (prefix : string) :
+      LocalIdent.t =
+    let free_suffix =
+      List.map ~f:(Reducers.collect_local_idents#visit_expr ()) exprs
+      |> Set.union_list (module LocalIdent)
+      |> Set.to_list
+      |> List.filter_map ~f:(fun ({ name; _ } : local_ident) ->
+             String.chop_prefix ~prefix name)
+      |> List.map ~f:(function "" -> "0" | s -> s)
+      |> List.filter_map ~f:Caml.int_of_string_opt
+      |> List.fold ~init:(-1) ~f:Int.max
+      |> ( + ) 1
+      |> function
+      | 0 -> ""
+      | n -> Int.to_string n
+    in
+    {
+      name = prefix ^ free_suffix;
+      id = (* TODO: freshness is local and name-only here... *) -1;
+    }
 
   let unit_typ : ty = TApp { ident = `TupleType 0; args = [] }
 
