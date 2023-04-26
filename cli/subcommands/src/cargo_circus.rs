@@ -1,5 +1,6 @@
 use circus_cli_options::Options;
 use clap::Parser;
+use colored::Colorize;
 use std::process::Command;
 
 /// Return a [Command] for [cargo]: when the correct nightly is
@@ -7,13 +8,17 @@ use std::process::Command;
 /// (1) ensure [rustup] is available (2) install the nightly (3) tell
 /// cargo to the nightly
 fn cargo_command() -> Command {
-    let (_version, channel, date) = version_check::triple().unwrap();
-    let current_rustc_version = format!("{channel}-{date}");
+    let current_rustc_version = version_check::triple()
+        .map(|(_, channel, date)| format!("{channel}-{date}"))
+        .unwrap_or("unknown".into());
     let mut cmd = Command::new("cargo");
     if env!("CIRCUS_RUSTC_VERSION") != current_rustc_version {
         const TOOLCHAIN: &str = env!("CIRCUS_TOOLCHAIN");
         // ensure rustup is available
-        which::which("rustup").expect(&format!("rustup was not found, but toolchain {TOOLCHAIN} is required while the current toolchain is {current_rustc_version}"));
+        which::which("rustup").ok().unwrap_or_else(|| {
+            println!("Error: {} was not found, but toolchain {} is required while the current toolchain is {}\n\nExiting.", "rustup".bold(), TOOLCHAIN.bold(), current_rustc_version.bold());
+            std::process::exit(1)
+        });
         // make sure the toolchain is installed
         rustup_toolchain::install(TOOLCHAIN).unwrap();
         // add a [rustup] flag to cargo
