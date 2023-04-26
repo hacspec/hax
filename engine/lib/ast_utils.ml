@@ -46,7 +46,6 @@ end = struct
 end
 
 module Make (F : Features.T) = struct
-  open Ast
   module AST = Ast.Make (F)
   include AST
   module TypedLocalIdent = TypedLocalIdent (AST)
@@ -98,8 +97,8 @@ module Make (F : Features.T) = struct
             match e.e with
             | App
                 {
-                  f = { e = GlobalVar (`Primitive Deref) };
-                  args = [ { e = Borrow { e = sub } } ];
+                  f = { e = GlobalVar (`Primitive Deref); _ };
+                  args = [ { e = Borrow { e = sub; _ }; _ } ];
                 } ->
                 expr sub
             | _ -> super#visit_expr s e
@@ -110,8 +109,8 @@ module Make (F : Features.T) = struct
     let rename_global_idents (f : visit_level -> global_ident -> global_ident) =
       object
         inherit [_] item_map as super
-        method visit_t (lvl : visit_level) x = x
-        method visit_mutability _ (lvl : visit_level) m = m
+        method visit_t (_lvl : visit_level) x = x
+        method visit_mutability _ (_lvl : visit_level) m = m
         method! visit_global_ident (lvl : visit_level) ident = f lvl ident
         method! visit_ty _ t = super#visit_ty TypeLevel t
         (* method visit_GlobalVar (lvl : level) i = GlobalVar (f lvl i) *)
@@ -125,9 +124,9 @@ module Make (F : Features.T) = struct
   module Reducers = struct
     let collect_global_idents =
       object
-        inherit [_] pat_reduce as super
-        inherit [_] Sets.GlobalIdent.monoid as m
-        method! visit_global_ident env x = Set.singleton (module GlobalIdent) x
+        inherit [_] pat_reduce as _super
+        inherit [_] Sets.GlobalIdent.monoid as _m
+        method! visit_global_ident _env x = Set.singleton (module GlobalIdent) x
       end
 
     let variables_of_pat (p : pat) : Sets.LocalIdent.t =
@@ -156,15 +155,15 @@ module Make (F : Features.T) = struct
         inherit [_] expr_reduce as super
         inherit [_] Sets.TypedLocalIdent.monoid as m
         method visit_t _ _ = m#zero
-        method visit_mutability f () _ = m#zero
+        method visit_mutability _f () _ = m#zero
 
-        method visit_Assign m lhs e wit =
+        method visit_Assign _m lhs e _wit =
           let rec visit_lhs lhs =
             match lhs with
             | LhsLocalVar { var; _ } ->
                 Set.singleton (module TypedLocalIdent) (var, e.typ)
             | LhsFieldAccessor { e; _ } -> visit_lhs e
-            | LhsArrayAccessor { e; index } ->
+            | LhsArrayAccessor { e; index; _ } ->
                 Set.union (super#visit_expr () index) (visit_lhs e)
             | LhsArbitraryExpr { witness; e } -> fv_of_arbitrary_lhs witness e
           in
@@ -194,11 +193,11 @@ module Make (F : Features.T) = struct
         inherit [_] expr_reduce as super
         inherit [_] expr_list_monoid as m
         method visit_t _ _ = m#zero
-        method visit_mutability f () _ = m#zero
+        method visit_mutability _f () _ = m#zero
         method visit_Break _ e _ _ = m#plus (super#visit_expr () e) [ e ]
 
-        method visit_Loop _ _ _ _ = (* Do *NOT* visit sub nodes *)
-                                    m#zero
+        method visit_Loop _ _ _ _ _ _ = (* Do *NOT* visit sub nodes *)
+                                        m#zero
       end
   end
 
@@ -209,7 +208,7 @@ module Make (F : Features.T) = struct
 
   let rec remove_tuple1_pat (p : pat) : pat =
     match p.p with
-    | PConstruct { name = `TupleType 1; args = [ { pat; _ } ] } ->
+    | PConstruct { name = `TupleType 1; args = [ { pat; _ } ]; _ } ->
         remove_tuple1_pat pat
     | _ -> p
 
@@ -221,16 +220,16 @@ module Make (F : Features.T) = struct
   (* let rec remove_empty_tap *)
 
   let is_unit_typ : ty -> bool =
-    remove_tuple1 >> [%matches? TApp { ident = `TupleType 0 }]
+    remove_tuple1 >> [%matches? TApp { ident = `TupleType 0; _ }]
 
   let rec pat_is_expr (p : pat) (e : expr) =
     match (p.p, e.e) with
     | _, Construct { constructor = `TupleCons 1; fields = [ (_, e) ]; _ } ->
         pat_is_expr p e
-    | PBinding { subpat = None; var = pv }, LocalVar ev ->
+    | PBinding { subpat = None; var = pv; _ }, LocalVar ev ->
         [%eq: local_ident] pv ev
-    | ( PConstruct { name = pn; args = pargs },
-        Construct { constructor = en; fields = eargs; base = None } )
+    | ( PConstruct { name = pn; args = pargs; _ },
+        Construct { constructor = en; fields = eargs; base = None; _ } )
       when [%eq: global_ident] pn en -> (
         match List.zip pargs eargs with
         | Ok zip ->
@@ -276,13 +275,12 @@ module Make (F : Features.T) = struct
 
   let make_tuple_pat' span (tuple : field_pat list) : pat =
     match tuple with
-    | [ { pat } ] -> pat
+    | [ { pat; _ } ] -> pat
     | _ ->
         let len = List.length tuple in
         {
           p = PConstruct { name = `TupleCons len; args = tuple; record = false };
-          typ =
-            make_tuple_typ @@ List.map ~f:(fun { pat = { typ } } -> typ) tuple;
+          typ = make_tuple_typ @@ List.map ~f:(fun { pat; _ } -> pat.typ) tuple;
           span;
         }
 
@@ -303,7 +301,7 @@ module Make (F : Features.T) = struct
               List.mapi ~f:(fun i x -> (`TupleField (i, len), x)) @@ tuple;
             base = None;
           };
-      typ = make_tuple_typ @@ List.map ~f:(fun { typ } -> typ) tuple;
+      typ = make_tuple_typ @@ List.map ~f:(fun { typ; _ } -> typ) tuple;
       span;
     }
 
@@ -314,7 +312,7 @@ module Make (F : Features.T) = struct
         ((lhs, rhs, e.typ) :: bindings, body)
     | _ -> ([], e)
 
-  let rec collect_let_bindings (e : expr) : (pat * expr) list * expr =
+  let collect_let_bindings (e : expr) : (pat * expr) list * expr =
     let bindings, body = collect_let_bindings' e in
     let types = List.map ~f:thd3 bindings in
     assert (

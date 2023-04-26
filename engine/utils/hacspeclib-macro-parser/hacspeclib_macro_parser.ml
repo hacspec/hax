@@ -35,7 +35,7 @@ let is_digit = function '0' .. '9' -> true | _ -> false
 let spaces = Fn.const () <$> take_while is_space
 let ignore_spaces p = spaces *> p <* spaces
 let identifier = ignore_spaces @@ take_while1 is_identifier
-let number = ignore_spaces (int_of_string <$> take_while1 is_digit)
+let number = ignore_spaces (Int.of_string <$> take_while1 is_digit)
 let comma = Fn.const () <$> ignore_spaces @@ char ','
 let colon = Fn.const () <$> ignore_spaces @@ char ':'
 let maybe p = Option.some <$> p <|> return None
@@ -49,8 +49,8 @@ let is_hex_identifier = function
 
 let is_int_type = function 'u' | 'U' -> true | x -> is_digit x
 
-let rec remove_underscore (x : string) : string =
-  List.fold_left ~init:"" ~f:( ^ ) (split_str x "_")
+let remove_underscore (x : string) : string =
+  List.fold_left ~init:"" ~f:( ^ ) (split_str ~on:"_" x)
 
 let hex_identifier =
   ignore_spaces
@@ -76,8 +76,9 @@ end = struct
     match parse_string ~consume:All (parens parser <* end_of_input) input with
     | Ok e -> Ok e
     | Error e ->
-        prerr_endline @@ "########## Error while parsing: (" ^ name ^ ")";
-        prerr_endline input;
+        Out_channel.output_string Out_channel.stderr
+        @@ "########## Error while parsing: (" ^ name ^ ")";
+        Out_channel.output_string Out_channel.stderr input;
         Error e
 end
 

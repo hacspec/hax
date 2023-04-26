@@ -17,8 +17,9 @@ module Fix (F : Features.T) = struct
                 GlobalVar
                   (`Concrete
                     { crate = "dummy"; path = Non_empty_list.("fix" :: []) });
+              _;
             };
-          args = [ { e = Closure { params = [ s_pat ]; body; _ } }; s_init ];
+          args = [ { e = Closure { params = [ s_pat ]; body; _ }; _ }; s_init ];
         } ->
         Some { body; s_pat; s_init }
     | _ -> None
@@ -65,7 +66,7 @@ struct
   and dpat' (span : span) (p : A.pat') : B.pat' =
     match p with
     | [%inline_arms "dpat'.*" - PBinding - PDeref] -> auto
-    | PBinding { mut; mode; var : LocalIdent.t; typ; subpat } ->
+    | PBinding { var : LocalIdent.t; typ; subpat; _ } ->
         PBinding
           {
             mut = Immutable;
@@ -74,7 +75,7 @@ struct
             typ = dty span typ;
             subpat = Option.map ~f:(dpat *** Fn.id) subpat;
           }
-    | PDeref { subpat } -> (dpat subpat).p
+    | PDeref { subpat; _ } -> (dpat subpat).p
 
   and dfield_pat = [%inline_body dfield_pat]
   and dbinding_mode = [%inline_body dfield_pat]
@@ -90,7 +91,7 @@ struct
     let local_ident (name : string) : local_ident =
       (* TODO, this gives no guarrantee of freshness whatsoever *)
       let id = int () in
-      { name = name ^ string_of_int id; id }
+      { name = name ^ Int.to_string id; id }
   end
 
   module MutatedVarSet = struct
@@ -161,16 +162,16 @@ struct
       let val_pat, pat = pat val_pat t in
       (Option.bind ~f:(Fn.const val_id_ty) val_pat, pat)
 
-    let collect_mut_idents { shadowings } : MutatedVarSet.t =
+    let collect_mut_idents { shadowings; _ } : MutatedVarSet.t =
       Set.of_list (module UB.TypedLocalIdent)
       @@ BTyLocIdentUniqueList.to_list shadowings
 
     let rec pat_is_expr (p : B.pat) (e : B.expr) =
       match (p.p, e.e) with
-      | B.PBinding { subpat = None; var = pv }, B.LocalVar ev ->
+      | B.PBinding { subpat = None; var = pv; _ }, B.LocalVar ev ->
           [%eq: local_ident] pv ev
-      | ( B.PConstruct { name = pn; args = pargs },
-          B.Construct { constructor = en; fields = eargs; base = None } )
+      | ( B.PConstruct { name = pn; args = pargs; _ },
+          B.Construct { constructor = en; fields = eargs; base = None; _ } )
         when [%eq: global_ident] pn en -> (
           match List.zip pargs eargs with
           | Ok zip ->
@@ -231,6 +232,7 @@ struct
                           constructor = `TupleCons len;
                           fields = (_, first) :: _;
                           base = None;
+                          _;
                         }
                       when len = List.length shadowings + 1 ->
                         first
@@ -249,9 +251,9 @@ struct
     }
     [@@deriving show, yojson, eq]
 
-    let collect_mut_idents { mutated_vars } : MutatedVarSet.t = mutated_vars
+    let collect_mut_idents { mutated_vars; _ } : MutatedVarSet.t = mutated_vars
 
-    let with_name ({ pat = lhs; e = rhs } : t) ~(body : B.expr) : B.expr =
+    let with_name ({ pat = lhs; e = rhs; _ } : t) ~(body : B.expr) : B.expr =
       UB.make_let lhs rhs body
 
     let with_names (l : t list) ~(body : B.expr) : B.expr =
@@ -314,7 +316,7 @@ struct
         (* (List.map ~f:Option.some shadowings |> List.filter_map ~f:Fn.id) *)
       in
       (* [%yojson_of: BTyLocIdentUniqueList.t] shadowings |> Yojson.Safe.pretty_to_string |> prerr_endline; *)
-      let expr = Binding.with_names r.bindings body in
+      let expr = Binding.with_names r.bindings ~body in
       (* print_endline ("as_shadowing_tuple: " ^ [%show: B.expr] expr); *)
       { expr; shadowings; result_type = r.value.result_type }
 
@@ -344,7 +346,7 @@ struct
         |> Set.union_list (module UB.TypedLocalIdent)
         |> Set.is_empty
       then
-        let expr = f (List.map ~f:(fun { value = { expr } } -> expr) l) in
+        let expr = f (List.map ~f:(fun { value = { expr; _ }; _ } -> expr) l) in
         {
           bindings = [];
           value =
@@ -359,7 +361,7 @@ struct
         let l : (Binding.t list * B.expr) list =
           List.map
             ~f:(fun { bindings; value } ->
-              let has_observable_effect e = false (* TODO *) in
+              let has_observable_effect _e = false (* TODO *) in
               if
                 Set.is_empty (ShadowingTuple.collect_mut_idents value)
                 && List.is_empty bindings
@@ -430,7 +432,7 @@ struct
       let more = Set.union more vars in
       let arms' =
         List.map
-          ~f:(fun (vars, rhs) ->
+          ~f:(fun (_vars, rhs) ->
             (* what about vars? maybe put somewhere in Result.t *)
             dexpr more rhs)
           arms
@@ -472,7 +474,7 @@ struct
     let e_with e' = B.{ e = e'; typ = dty e.span e.typ; span = e.span } in
     match e.e with
     | GlobalVar (`TupleCons 0)
-    | Construct { constructor = `TupleCons 0; fields = [] } ->
+    | Construct { constructor = `TupleCons 0; fields = []; _ } ->
         {
           bindings = [];
           value =
@@ -494,7 +496,11 @@ struct
         {
           lhs =
             LhsArrayAccessor
-              { e = LhsLocalVar { var; typ = var_typ } as lhs_local_var; index };
+              {
+                e = LhsLocalVar { var; typ = var_typ } as lhs_local_var;
+                index;
+                _;
+              };
           e = rhs;
           witness;
         } ->
@@ -541,7 +547,7 @@ struct
                   witness;
                 };
           }
-    | Assign { lhs = LhsLocalVar { var; typ = var_typ }; e = e'; witness } ->
+    | Assign { lhs = LhsLocalVar { var; typ = var_typ }; e = e'; _ } ->
         let e'_r = dexpr_local ctx e' in
         let var_typ = dty e.span var_typ in
         let var_pat = UB.make_var_pat var var_typ e.span in
@@ -567,7 +573,7 @@ struct
                   shadowings = BTyLocIdentUniqueList.empty;
                 };
           }
-    | Assign { lhs = _; e = e'; witness } ->
+    | Assign _ ->
         failwith "desugar_mutable_variable: TODO non-lhs-local-var assign"
     | Let _ ->
         let lets, body = UA.collect_let_bindings e in
@@ -608,17 +614,14 @@ struct
             in
             match (l, base) with
             | base :: fields_snd, Some _ -> h fields_snd (Some base)
-            | fields_snd, _ -> h fields_snd None
-            | _ ->
-                failwith
-                  "Internal fatal error: Result.seq didn't keep its promise")
+            | fields_snd, _ -> h fields_snd None)
     | Match { scrutinee; arms } ->
         Result.from_match ctx.vars
           (fun vars -> dexpr_local { ctx with vars })
           { e with e = Match { scrutinee = UA.unit_expr e.span; arms } }
           scrutinee
           (List.map
-             ~f:(fun { arm = { pat; body } } ->
+             ~f:(fun { arm = { body; _ }; _ } ->
                (Set.empty (module UB.TypedLocalIdent), body))
              arms)
           (fun scrutinee arms' ->
@@ -627,7 +630,7 @@ struct
                 scrutinee;
                 arms =
                   List.zip_exn arms arms'
-                  |> List.map ~f:(fun (A.{ span; arm = { pat } }, body) ->
+                  |> List.map ~f:(fun (A.{ span; arm = { pat; _ } }, body) ->
                          B.{ span; arm = { pat = dpat pat; body } });
               })
     | If { cond; then_; else_ } ->
@@ -645,6 +648,7 @@ struct
                 failwith
                   "Internal fatal error: Result.from_match didn't keep its \
                    promise")
+    (*
     | ForLoop { start; end_; var; body; label = None; witness } ->
         (* TODO: Here, I assume there's no [break] or [continue].
            We should have two "modes" of translations. *)
@@ -754,8 +758,9 @@ struct
         {
           r with
           value = { r.value with shadowings = !shadowings_; result_type = None };
-        }
-    | Loop { body; label = None; witness } ->
+      }
+      *)
+    | Loop { body; label = None; _ } ->
         let vars_set =
           free_assigned_variables#visit_expr () body
           |> Set.map
@@ -851,7 +856,7 @@ struct
         in
         (match B_Fix.destruct_fix fix_call with
         | None -> failwith "None!"
-        | Some fix_call ->
+        | Some _fix_call ->
             (* print_endline @@ B.show_expr @@ fix_call.body *)
             ())
         (* print_endline @@ B_Fix.show_fix_representation fix_call *);
@@ -947,4 +952,4 @@ struct
 
   let metadata = Phase_utils.Metadata.make MutableVariables
 end
-[@@add "../subtype.ml"]
+[@@add "subtype.ml"]

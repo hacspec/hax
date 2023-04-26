@@ -11,7 +11,7 @@ struct
   module B = Ast.Make (FB)
   module FA = FA
 
-  let dmutability (span : span) (type a b) (s : a -> b)
+  let dmutability (_span : span) (type a b) (s : a -> b)
       (mutability : a mutability) : b mutability =
     match mutability with Mutable w -> Mutable (s w) | Immutable -> Immutable
 
@@ -50,7 +50,8 @@ struct
     | GType t -> GType (dty span t)
     | GConst c -> GConst c
 
-  let dborrow_kind (span : span) (borrow_kind : A.borrow_kind) : B.borrow_kind =
+  let dborrow_kind (_span : span) (borrow_kind : A.borrow_kind) : B.borrow_kind
+      =
     match borrow_kind with
     | Shared -> Shared
     | Unique -> Unique

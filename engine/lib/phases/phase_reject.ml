@@ -1,6 +1,3 @@
-open Base
-open Utils
-
 let make_metadata rejection_phase =
   Phase_utils.Metadata.make (Diagnostics.Phase.Reject rejection_phase)
 

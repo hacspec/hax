@@ -16,7 +16,7 @@ let unimplemented (span : Thir.span) (details : string) =
            T.Unimplemented
              {
                issue_id = None (* TODO, file issues *);
-               details = (if details == "" then None else Some details);
+               details = String.(if details = "" then None else Some details);
              };
          context = ThirImport;
        })
@@ -78,7 +78,7 @@ module Exn = struct
     match (x, y) with
     | Dummy, _ | _, Dummy -> Dummy
     | Span x, Span y when String.(x.file <> y.file) -> Dummy
-    | Span { file; lo }, Span { hi } -> Span { file; lo; hi }
+    | Span { file; lo; _ }, Span { hi; _ } -> Span { file; lo; hi }
 
   let c_span (span : Thir.span) : span =
     Span
@@ -174,7 +174,7 @@ module Exn = struct
     | ByteStr _ -> todo span
     | Byte _ -> todo span
     | Char s -> Char s
-    | Int (i, t) ->
+    | Int (i, _t) ->
         Int
           {
             value = i;
@@ -215,7 +215,7 @@ module Exn = struct
     match e.e with
     | App
         {
-          f = { e = GlobalVar (`Primitive (Ast.Box | Ast.Deref)) };
+          f = { e = GlobalVar (`Primitive (Ast.Box | Ast.Deref)); _ };
           args = [ e ];
         } ->
         e
@@ -236,8 +236,9 @@ module Exn = struct
                         Non_empty_list.(
                           "ops" :: [ "index"; "IndexMut"; "index_mut" ]);
                     });
+              _;
             };
-          args = [ { e = Borrow { e = x } }; index ];
+          args = [ { e = Borrow { e = x; _ }; _ }; index ];
         } ->
         Some (x, index)
     | _ -> None
@@ -246,7 +247,6 @@ module Exn = struct
     let call f args = App { f; args = List.map ~f:c_expr args } in
     let typ = c_ty e.span e.ty in
     let span = c_span e.span in
-    let mk typ e : expr = { span; typ; e } in
     let mk_global typ v : expr = { span; typ; e = GlobalVar v } in
     let ( ->. ) a b = TArrow (a, b) in
     let (v : expr') =
@@ -254,7 +254,7 @@ module Exn = struct
       | Box { value } ->
           let inner_typ = c_ty e.span e.ty in
           call (mk_global ([ inner_typ ] ->. typ) @@ `Primitive Box) [ value ]
-      | MacroInvokation { argument; macro_ident } ->
+      | MacroInvokation { argument; macro_ident; _ } ->
           MacroInvokation
             { args = argument; macro = def_id macro_ident; witness = W.macro }
       | If { cond; if_then_scope = _; else_opt; then' } ->
@@ -284,18 +284,17 @@ module Exn = struct
             [ lhs; rhs ]
       | Unary { arg; op } ->
           let arg_type = c_ty arg.span arg.ty in
-          call (mk_global ([ arg_type ] ->. typ) @@ `Primitive Deref) [ arg ]
+          call
+            (mk_global ([ arg_type ] ->. typ)
+            @@ `Primitive (UnOp (match op with Not -> Not | Neg -> Neg)))
+            [ arg ]
       | Cast { source } ->
           let source_type = c_ty source.span source.ty in
           call
-            (mk_global ([ source_type ] ->. typ) @@ `Primitive Deref)
+            (mk_global ([ source_type ] ->. typ) @@ `Primitive Cast)
             [ source ]
-      | Use { source } ->
-          let source = c_expr source in
-          source.e
-      | NeverToAny { source } ->
-          let { e } = c_expr source in
-          e
+      | Use { source } -> (c_expr source).e
+      | NeverToAny { source } -> (c_expr source).e
       (* TODO: this is incorrect *)
       | Pointer _ -> unimplemented e.span "Pointer"
       | Loop { body } ->
@@ -306,17 +305,17 @@ module Exn = struct
           let arms = List.map ~f:c_arm arms in
           Match { scrutinee; arms }
       | Let _ -> unimplemented e.span "TODO: Let"
-      | Block { safety_mode = BuiltinUnsafe | ExplicitUnsafe } ->
+      | Block { safety_mode = BuiltinUnsafe | ExplicitUnsafe; _ } ->
           raise e.span UnsafeBlock
       | Block o ->
           let init =
             Option.map ~f:c_expr o.expr
             |> Option.value ~default:(unit_expr span)
           in
-          let { e } =
-            List.fold_right o.stmts ~init ~f:(fun { kind } body ->
+          let { e; _ } =
+            List.fold_right o.stmts ~init ~f:(fun { kind; _ } body ->
                 match kind with
-                | Expr { expr = rhs } ->
+                | Expr { expr = rhs; _ } ->
                     let rhs = c_expr rhs in
                     let e =
                       Let
@@ -329,9 +328,9 @@ module Exn = struct
                     in
                     let span = union_span rhs.span body.span in
                     { e; typ; span }
-                | Let { else_block = Some _ } -> raise e.span LetElse
-                | Let { initializer' = None } -> raise e.span LetWithoutInit
-                | Let { pattern = lhs; initializer' = Some rhs } ->
+                | Let { else_block = Some _; _ } -> raise e.span LetElse
+                | Let { initializer' = None; _ } -> raise e.span LetWithoutInit
+                | Let { pattern = lhs; initializer' = Some rhs; _ } ->
                     let lhs = c_pat lhs in
                     let rhs = c_expr rhs in
                     let e = Let { monadic = None; lhs; rhs; body } in
@@ -380,7 +379,7 @@ module Exn = struct
               args = [ lhs ];
             }
       | GlobalName { id } -> GlobalVar (def_id id)
-      | UpvarRef { var_hir_id = id } -> LocalVar (local_ident id)
+      | UpvarRef { var_hir_id = id; _ } -> LocalVar (local_ident id)
       | Borrow { arg; borrow_kind = kind } ->
           let e' = c_expr arg in
           let kind = c_borrow_kind e.span kind in
@@ -418,7 +417,7 @@ module Exn = struct
               base = None;
             }
       | Array { fields } -> Array (List.map ~f:c_expr fields)
-      | Adt { info; base; fields; user_ty } ->
+      | Adt { info; base; fields; _ } ->
           let constructor =
             def_id @@ variant_id_of_variant_informations e.span info
           in
@@ -442,9 +441,9 @@ module Exn = struct
               fields;
               base;
             }
-      | Literal { lit } -> Literal (c_lit e.span lit @@ Some typ)
-      | NamedConst { def_id = id } -> GlobalVar (def_id id)
-      | Closure { movability; body; params; upvars } ->
+      | Literal { lit; _ } -> Literal (c_lit e.span lit @@ Some typ)
+      | NamedConst { def_id = id; _ } -> GlobalVar (def_id id)
+      | Closure { body; params; upvars; _ } ->
           let params =
             List.filter_map ~f:(fun p -> Option.map ~f:c_pat p.pat) params
           in
@@ -481,11 +480,11 @@ module Exn = struct
     let v =
       match pat.contents with
       | Wild -> PWild
-      | AscribeUserType { ascription = { annotation }; subpattern } ->
+      | AscribeUserType { ascription = { annotation; _ }; subpattern } ->
           let typ, typ_span = c_canonical_user_type_annotation annotation in
           let pat = c_pat subpattern in
           PAscription { typ; typ_span; pat }
-      | Binding { mode; mutability; subpattern; ty; var } ->
+      | Binding { mode; mutability; subpattern; ty; var; _ } ->
           let mut = c_mutability W.mutable_variable mutability in
           let subpat =
             Option.map ~f:(c_pat &&& Fn.const W.as_pattern) subpattern
@@ -494,7 +493,7 @@ module Exn = struct
           let mode = c_binding_mode pat.span mode in
           let var = local_ident var in
           PBinding { mut; mode; var; typ; subpat }
-      | Variant { info; substs; subpatterns } ->
+      | Variant { info; subpatterns; _ } ->
           let name =
             def_id @@ variant_id_of_variant_informations pat.span info
           in
@@ -520,7 +519,7 @@ module Exn = struct
       | Constant { value } ->
           let lit = c_constant_kind pat.span value in
           PConstant { lit }
-      | Array { prefix; suffix; slice } -> unimplemented pat.span "Pat:Array"
+      | Array _ -> unimplemented pat.span "Pat:Array"
       | Or _ -> unimplemented pat.span "Or"
       | Slice _ -> unimplemented pat.span "Slice"
       | Range _ -> unimplemented pat.span "Range"
@@ -552,7 +551,7 @@ module Exn = struct
     | Char -> TChar
     | Int k -> TInt (c_int_ty k)
     | Uint k -> TInt (c_uint_ty k)
-    | Float k -> TFloat
+    | Float _k -> TFloat
     | Arrow { params; ret } ->
         TArrow (List.map ~f:(c_ty span) params, c_ty span ret)
     | NamedType { def_id = id; generic_args } ->
@@ -566,7 +565,7 @@ module Exn = struct
         let ty = c_ty span ty in
         TSlice { ty; witness = W.slice }
     | RawPtr _ -> TRawPointer { witness = W.raw_pointer }
-    | Ref (region, ty, mut) ->
+    | Ref (_region, ty, mut) ->
         let typ = c_ty span ty in
         let mut = c_mutability W.mutable_reference mut in
         TRef { witness = W.reference; region = "todo"; typ; mut }
@@ -592,7 +591,7 @@ module Exn = struct
       =
     match ty with
     | Type ty -> GType (c_ty span ty)
-    | Const e -> unimplemented span "Const"
+    | Const _e -> unimplemented span "Const"
     | _ -> GLifetime { lt = "todo generics"; witness = W.lifetime }
 
   and c_arm (arm : Thir.arm) : arm =
@@ -619,11 +618,11 @@ module Exn = struct
       | Plain n -> local_ident n
     in
     match (param.kind : Thir.generic_param_kind) with
-    | Lifetime { kind } -> GPLifetime { ident; witness = W.lifetime }
-    | Type { default; synthetic } ->
+    | Lifetime _ -> GPLifetime { ident; witness = W.lifetime }
+    | Type { default; _ } ->
         let default = Option.map ~f:(c_ty param.span) default in
         GPType { ident; default }
-    | Const { default; ty } -> unimplemented param.span "Const"
+    | Const _ -> unimplemented param.span "Const"
 
   let c_predicate_kind span (p : Thir.predicate_kind) : trait_ref option =
     match p with
@@ -634,8 +633,7 @@ module Exn = struct
 
   let c_constraint span (c : Thir.where_predicate) : generic_constraint list =
     match c with
-    | BoundPredicate
-        { bound_generic_params; bounded_ty; bounds; hir_id; origin; span } ->
+    | BoundPredicate { bounded_ty; bounds; span; _ } ->
         let typ = c_ty span bounded_ty in
         let traits = List.map ~f:(c_predicate_kind span) bounds in
         let traits = List.filter_map ~f:Fn.id traits in
@@ -666,7 +664,7 @@ module Exn = struct
 
   let c_trait_item' span (item : Thir.trait_item_kind) : trait_item' =
     match item with
-    | Const (ty, _) ->
+    | Const (_, Some _) ->
         unimplemented span
           "TODO: traits: no support for defaults in traits for now"
     | Const (ty, None) -> TIFn (c_ty span ty)
@@ -677,17 +675,13 @@ module Exn = struct
         let Thir.{ inputs; output; _ } = sg.decl in
         let output =
           match output with
-          | DefaultReturn span -> unit_typ
+          | DefaultReturn _span -> unit_typ
           | Return ty -> c_ty span ty
         in
         TIFn (TArrow (List.map ~f:(c_ty span) inputs, output))
     | Type (bounds, None) ->
         let bounds = List.filter_map ~f:(c_predicate_kind span) bounds in
         TIType bounds
-    | Type (bounds, None) ->
-        (* print_endline @@ [%show: Thir.trait_item_kind] item; *)
-        unimplemented span
-          "TODO: traits: no support for generics in type for now"
     | Type (_, Some _) ->
         unimplemented span
           "TODO: traits: no support for defaults in type for now"
@@ -707,7 +701,7 @@ module Exn = struct
     let v =
       (* TODO: things might be unnamed (e.g. constants) *)
       match (item.kind : Thir.item_kind) with
-      | Const (t, body) ->
+      | Const (_, body) ->
           Fn
             {
               name = def_id (Option.value_exn item.def_id);
@@ -722,7 +716,7 @@ module Exn = struct
               generics = c_generics generics;
               ty = c_ty item.span ty;
             }
-      | Fn (generics, { body; header; params; ret; sig_span }) ->
+      | Fn (generics, { body; params; _ }) ->
           Fn
             {
               name = def_id (Option.value_exn item.def_id);
@@ -735,12 +729,12 @@ module Exn = struct
           let generics = c_generics generics in
           let variants =
             List.map
-              ~f:(fun { ident; data; def_id = variant_id } ->
+              ~f:(fun { data; def_id = variant_id; _ } ->
                 match data with
                 | Tuple (fields, _, _) | Struct (fields, _) ->
                     let arguments =
                       List.map
-                        ~f:(fun { def_id = id; ty; span } ->
+                        ~f:(fun { def_id = id; ty; span; _ } ->
                           (def_id id, c_ty span ty))
                         fields
                     in
@@ -756,7 +750,7 @@ module Exn = struct
             let mk fields =
               let arguments =
                 List.map
-                  ~f:(fun Thir.{ def_id = id; ty; span } ->
+                  ~f:(fun Thir.{ def_id = id; ty; span; _ } ->
                     (def_id id, c_ty span ty))
                   fields
               in
@@ -811,7 +805,7 @@ module Exn = struct
                       ii_generics = c_generics item.generics;
                       ii_v =
                         (match (item.kind : Thir.impl_item_kind) with
-                        | Fn { body; header; params; ret; sig_span } ->
+                        | Fn { body; params; _ } ->
                             IIFn
                               {
                                 body = c_expr body;

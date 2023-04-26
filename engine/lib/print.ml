@@ -6,49 +6,49 @@ open Utils
 
 let pmut mut = match mut with Mutable _ -> string "mut" | _ -> empty
 
-let rec pliteral (e : literal) =
+let pliteral (e : literal) =
   string
   @@
   match e with
   | String s -> "\"" ^ s ^ "\""
   | Char c -> "'" ^ Char.to_string c ^ "'"
-  | Int { value } -> value
+  | Int { value; _ } -> value
   | Float _ -> "float_todo"
-  | Bool b -> string_of_bool b
+  | Bool b -> Bool.to_string b
 
-let rec pglobal_ident (e : global_ident) =
+let pglobal_ident (e : global_ident) =
   match e with
   | `Concrete { crate; path } ->
       string crate ^^ string "::"
       ^^ separate_map (string "::") string (Non_empty_list.to_list path)
   | `Primitive p -> string @@ show_primitive_ident p
-  | `TupleType n -> string @@ "tuple" ^ string_of_int n
-  | `TupleCons n -> string @@ "Tuple" ^ string_of_int n
-  | `TupleField (n, _) -> string @@ "tuple_todo?._" ^ string_of_int n
-  | `Projector n -> string @@ show_global_ident e
+  | `TupleType n -> string @@ "tuple" ^ Int.to_string n
+  | `TupleCons n -> string @@ "Tuple" ^ Int.to_string n
+  | `TupleField (n, _) -> string @@ "tuple_todo?._" ^ Int.to_string n
+  | `Projector _n -> string @@ show_global_ident e
 
-let rec plocal_ident (e : LocalIdent.t) = string @@ e.name
+let plocal_ident (e : LocalIdent.t) = string @@ e.name
 
 let rec pty (e : ty) =
   match e with
   | TBool -> string "bool"
   | TChar -> string "char"
-  | TInt k -> string "int"
+  | TInt _k -> string "int"
   | TFloat -> string "float"
   | TStr -> string "str"
   | TApp { ident; args } ->
       group @@ pglobal_ident ident ^/^ separate_map space pgeneric_value args
   | TArray { typ; length } ->
-      string "vector" ^/^ parens (pty typ) ^/^ string (string_of_int length)
-  | TSlice { witness; ty } -> string "slice:todo"
-  | TRawPointer { witness } -> string "rawpointer:todo"
-  | TRef { witness; region; typ; mut } -> string "&" ^^ pmut mut ^/^ pty typ
+      string "vector" ^/^ parens (pty typ) ^/^ string (Int.to_string length)
+  | TSlice _ -> string "slice:todo"
+  | TRawPointer _ -> string "rawpointer:todo"
+  | TRef { typ; mut; _ } -> string "&" ^^ pmut mut ^/^ pty typ
   | TFalse -> string "⊥"
   | TParam i -> plocal_ident i
   | TArrow (inputs, output) ->
       parens
         (separate_map (space ^^ string "->" ^^ space) pty (inputs @ [ output ]))
-  | TProjectedAssociatedType s -> string "proj:assoc:type"
+  | TProjectedAssociatedType _ -> string "proj:assoc:type"
 
 and pgeneric_value (e : generic_value) =
   match e with
@@ -56,23 +56,23 @@ and pgeneric_value (e : generic_value) =
   | GType t -> group @@ parens @@ pty t
   | _ -> string "generic_value todo"
 
-let rec pborrow_kind (e : borrow_kind) =
+let pborrow_kind (e : borrow_kind) =
   match e with Mut _ -> string "mut " | _ -> empty
 
 let rec ppat (e : pat) =
   match e.p with
   | PWild -> underscore
-  | PAscription { typ; pat } ->
+  | PAscription { typ; pat; _ } ->
       group @@ parens @@ pty typ ^/^ colon ^/^ ppat pat
-  | PConstruct { name; args } ->
+  | PConstruct { name; args; _ } ->
       group @@ pglobal_ident name ^/^ braces
       @@ separate_map space
            (fun { field; pat } -> pglobal_ident field ^/^ colon ^/^ ppat pat)
            args
-  | PArray { args } -> string "makes no sense"
-  | PDeref { subpat } -> string "deref" ^/^ ppat subpat
+  | PArray _ -> string "makes no sense"
+  | PDeref { subpat; _ } -> string "deref" ^/^ ppat subpat
   | PConstant { lit } -> pliteral lit
-  | PBinding { mut; mode; var; typ; subpat } ->
+  | PBinding { mut; var; subpat; _ } ->
       group
         (pmut mut ^/^ plocal_ident var
         ^/^ optional
@@ -90,7 +90,7 @@ let rec pexpr (e : expr) =
       parens (pexpr f) ^/^ concat @@ List.map ~f:(parens << pexpr) args
   | Literal e -> pliteral e
   | Array l -> brackets @@ separate semi @@ List.map ~f:pexpr l
-  | Construct { constructor; constructs_record; fields; base } ->
+  | Construct { fields; base; _ } ->
       braces
       @@ optional (fun base -> parens (pexpr base) ^^ string "with") base
       ^/^ separate_map semi
@@ -100,7 +100,7 @@ let rec pexpr (e : expr) =
       group
         (group (string "match" ^/^ pexpr scrutinee ^/^ string "with")
         ^/^ separate_map hardline parm arms)
-  | Let { monadic = Some _; lhs; rhs; body } -> string "monadic Let"
+  | Let { monadic = Some _; _ } -> string "monadic Let"
   | Let { monadic = _; lhs; rhs; body } -> (
       match lhs.p with
       | PWild -> pexpr rhs ^^ semi ^^ hardline ^^ pexpr body
@@ -111,13 +111,13 @@ let rec pexpr (e : expr) =
   | LocalVar local_ident -> plocal_ident local_ident
   | GlobalVar global_ident -> pglobal_ident global_ident
   | Ascription { e; typ } -> group (pexpr e ^/^ string "<:" ^/^ pty typ)
-  | MacroInvokation { macro; args } -> string "<macro>"
-  | Assign { lhs; e } -> group (plhs lhs ^/^ string ":=" ^/^ pexpr e)
-  | Loop { body; label } ->
+  | MacroInvokation _ -> string "<macro>"
+  | Assign { lhs; e; _ } -> group (plhs lhs ^/^ string ":=" ^/^ pexpr e)
+  | Loop { body; label; _ } ->
       group
         (string "loop[" ^^ optional string label ^^ string "]"
        ^/^ string "begin" ^/^ pexpr body ^/^ string "end")
-  | Break { e; label } ->
+  | Break { e; label; _ } ->
       string "break(" ^^ pexpr e ^^ string ")[" ^^ optional string label
       ^^ string "]"
   | Return { e } -> string "return(" ^^ pexpr e ^^ string ")"
@@ -129,7 +129,7 @@ let rec pexpr (e : expr) =
   | Closure { params; body } -> string "closure"
   | ForLoop _ -> string "ForLoop"
 
-and parm { arm = { pat; body } } =
+and parm { arm = { pat; body; _ }; _ } =
   group (group (group (string "|" ^/^ ppat pat) ^/^ string "->") ^/^ pexpr body)
 
 and plhs (e : lhs) =
@@ -139,24 +139,24 @@ and plhs (e : lhs) =
   | LhsLocalVar { var; _ } -> plocal_ident var
   | LhsArbitraryExpr { e; _ } -> pexpr e
 
-let rec pparam ({ pat; typ } : param) =
+let pparam ({ pat; typ; _ } : param) =
   group @@ parens @@ ppat pat ^/^ colon ^/^ pty typ
 
-let rec pitem (e : item) =
+let pitem (e : item) =
   match e.v with
-  | Fn { name; generics; body; params } ->
+  | Fn { name; body; params; _ } ->
       group
         (string "let" ^/^ pglobal_ident name
         ^/^ separate_map space pparam params
         ^/^ equals ^/^ pexpr body)
-  | Type { name; generics; variants } -> string "TYPEDEF"
-  | TyAlias { name; generics; ty } -> string "TYPEALIAS"
+  | Type _ -> string "TYPEDEF"
+  | TyAlias _ -> string "TYPEALIAS"
   | NotImplementedYet -> string "NotImplementedYet"
   | IMacroInvokation _ -> string "MacroInvok"
   | _ -> string "pitem: TODO"
 
-let rec pmutability (e : 'a mutability) = string ""
-let rec pbinding_mode (e : binding_mode) = string ""
+let pmutability (_e : 'a mutability) = string ""
+let pbinding_mode (_e : binding_mode) = string ""
 
 let to_string d =
   let b = Buffer.create 50 in
