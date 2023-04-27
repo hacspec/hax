@@ -127,15 +127,17 @@ module Make (F : Features.T) = struct
         inherit [_] expr_reduce as _super
         inherit [_] Sets.LocalIdent.monoid as m
         method visit_t _ _ = m#zero
-        method visit_mutability _f () _ = m#zero
-        method! visit_local_ident _env x = Set.singleton (module LocalIdent) x
+        method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
+        method! visit_local_ident _ x = Set.singleton (module LocalIdent) x
       end
 
     let collect_global_idents =
       object
-        inherit [_] pat_reduce as _super
+        inherit ['self] pat_reduce as _super
         inherit [_] Sets.GlobalIdent.monoid as _m
-        method! visit_global_ident _env x = Set.singleton (module GlobalIdent) x
+
+        method! visit_global_ident (_env : unit) (x : GlobalIdent.t) =
+          Set.singleton (module GlobalIdent) x
       end
 
     let variables_of_pat (p : pat) : Sets.LocalIdent.t =
@@ -164,7 +166,7 @@ module Make (F : Features.T) = struct
         inherit [_] expr_reduce as super
         inherit [_] Sets.TypedLocalIdent.monoid as m
         method visit_t _ _ = m#zero
-        method visit_mutability _f () _ = m#zero
+        method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
 
         method visit_Assign _m lhs e _wit =
           let rec visit_lhs lhs =
@@ -202,7 +204,7 @@ module Make (F : Features.T) = struct
         inherit [_] expr_reduce as super
         inherit [_] expr_list_monoid as m
         method visit_t _ _ = m#zero
-        method visit_mutability _f () _ = m#zero
+        method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
         method visit_Break _ e _ _ = m#plus (super#visit_expr () e) [ e ]
 
         method visit_Loop _ _ _ _ _ _ = (* Do *NOT* visit sub nodes *)

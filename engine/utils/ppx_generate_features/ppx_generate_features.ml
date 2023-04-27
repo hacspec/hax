@@ -103,7 +103,7 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
                                       (rename [ ("placeholder", txt) ])
                                         #expression
                                         [%expr
-                                          fun () (_ : F.placeholder) ->
+                                          fun (_env : 'env) (_ : F.placeholder) ->
                                             self#zero] ) ))
                             features));
           ]]
