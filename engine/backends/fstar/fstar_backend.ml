@@ -563,14 +563,13 @@ module FStarBackend = struct
                  pexpr body )
       | Return { e } ->
           F.term @@ F.AST.App (F.term_of_lid [ "RETURN_STMT" ], pexpr e, Nothing)
-      | MacroInvokation _ ->
+      | MacroInvokation { macro; _ } ->
           raise
           @@ Diagnostics.Error
                {
                  context = Backend FStar;
-                 kind = Unknown { details = None };
+                 kind = UnsupportedMacro { id = [%show: global_ident] macro };
                  span = Diagnostics.to_thir_span e.span;
-                 details = Some "MacroInvokation";
                }
       | _ -> .
 

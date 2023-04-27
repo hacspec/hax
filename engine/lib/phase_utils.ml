@@ -33,21 +33,10 @@ end
 
 module DefaultError = struct
   module Error = struct
-    type t = {
-      kind : Diagnostics.kind;
-      span : Ast.span;
-      details : string option;
-    }
-    [@@deriving show, eq]
+    type t = { kind : Diagnostics.kind; span : Ast.span } [@@deriving show, eq]
 
-    let lift { kind; span; details } (phase : Diagnostics.Phase.t) :
-        Diagnostics.t =
-      {
-        kind;
-        span = Diagnostics.to_thir_span span;
-        details;
-        context = Phase phase;
-      }
+    let lift { kind; span } (phase : Diagnostics.Phase.t) : Diagnostics.t =
+      { kind; span = Diagnostics.to_thir_span span; context = Phase phase }
 
     exception E of t
   end

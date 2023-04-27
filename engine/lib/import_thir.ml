@@ -3,15 +3,9 @@ open Utils
 open Base
 open Diagnostics
 
-let fail_unknown (span : Thir.span) (details : string) =
+let assertion_failure (span : Thir.span) (details : string) =
   raise
-    (Error
-       {
-         span;
-         kind = T.Unknown { details = None };
-         context = ThirImport;
-         details = (if details == "" then None else Some details);
-       })
+    (Error { span; kind = T.AssertionFailure { details }; context = ThirImport })
 
 let unimplemented (span : Thir.span) (details : string) =
   raise
@@ -20,9 +14,11 @@ let unimplemented (span : Thir.span) (details : string) =
          span;
          kind =
            T.Unimplemented
-             { details = None; issue_id = None (* TODO, file issues *) };
+             {
+               issue_id = None (* TODO, file issues *);
+               details = (if details == "" then None else Some details);
+             };
          context = ThirImport;
-         details = (if details == "" then None else Some details);
        })
 
 let todo (span : Thir.span) = unimplemented span ""
@@ -49,7 +45,7 @@ module Exn = struct
   exception ImportError of error
 
   open struct
-    let raise span e = fail_unknown span (show_error e)
+    let raise span e = assertion_failure span (show_error e)
   end
 
   let loc (loc : Thir.loc) : Ast.loc = { col = loc.col; line = loc.line }
@@ -166,7 +162,8 @@ module Exn = struct
   let c_lit_type span (t : Thir.lit_int_type) : int_kind =
     match t with
     | Unsuffixed ->
-        fail_unknown span "Got an untyped int literal which is `Unsuffixed`"
+        assertion_failure span
+          "Got an untyped int literal which is `Unsuffixed`"
     | Signed ty -> { size = int_ty_to_size ty; signedness = Signed }
     | Unsigned ty -> { size = uint_ty_to_size ty; signedness = Unsigned }
 
@@ -206,7 +203,7 @@ module Exn = struct
       && List.is_prefix ~prefix:x.path ~equal:Thir.equal_def_path_item y.path
     in
     if not (is_def_id_prefix info.type_namespace info.variant) then
-      fail_unknown span
+      assertion_failure span
         ("variant_id_of_variant_informations: ["
         ^ Thir.show_def_id info.type_namespace
         ^ "] is not a prefix of ["
@@ -454,7 +451,17 @@ module Exn = struct
           let body = c_expr body in
           let upvars = List.map ~f:c_expr upvars in
           Closure { body; params; captures = upvars }
-      | _ -> unimplemented e.span "expr"
+      | Index _ -> unimplemented e.span "expression Index"
+      | PlaceTypeAscription _ ->
+          unimplemented e.span "expression PlaceTypeAscription"
+      | ValueTypeAscription _ ->
+          unimplemented e.span "expression ValueTypeAscription"
+      | NonHirLiteral _ -> unimplemented e.span "expression NonHirLiteral"
+      | ZstLiteral _ -> unimplemented e.span "expression ZstLiteral"
+      | ConstParam _ -> unimplemented e.span "expression ConstParam"
+      | StaticRef _ -> unimplemented e.span "expression StaticRef"
+      | Yield _ -> unimplemented e.span "expression Yield"
+      | Todo _ -> unimplemented e.span "expression Todo"
     in
     { e = v; span; typ }
 
@@ -561,7 +568,14 @@ module Exn = struct
     | Param { index; name } ->
         (* TODO: [id] might not unique *)
         TParam { name; id = index }
-    | _ -> unimplemented span "typ"
+    | Error -> unimplemented span "type Error"
+    | Dynamic _ -> unimplemented span "type Dynamic"
+    | Generator _ -> unimplemented span "type Generator"
+    | Opaque _ -> unimplemented span "type Opaque"
+    | Placeholder _ -> unimplemented span "type Placeholder"
+    | Bound _ -> unimplemented span "type Bound"
+    | Infer _ -> unimplemented span "type Infer"
+    | Todo _ -> unimplemented span "type Todo"
   (* fun _ -> Ok Bool *)
 
   and c_generic_value (span : Thir.span) (ty : Thir.generic_arg) : generic_value
@@ -591,7 +605,7 @@ module Exn = struct
           (* fail with ("[Fresh] ident? " ^ Thir.show_generic_param param) *)
           (* TODO might be wrong to just have a wildcard here *)
           ({ name = "_"; id = 123456789 } : local_ident)
-      | Error -> fail_unknown param.span "[Error] ident"
+      | Error -> assertion_failure param.span "[Error] ident"
       | Plain n -> local_ident n
     in
     match (param.kind : Thir.generic_param_kind) with
