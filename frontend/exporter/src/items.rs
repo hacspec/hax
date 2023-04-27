@@ -389,11 +389,11 @@ impl<
                 .collect(),
             rename: self.segments.iter().last().map_or(None, |segment| {
                 match s.tcx().hir().find_by_def_id(segment.hir_id.owner.def_id) {
-                    Some(rustc_hir::Node::Item(item))
-                        if item.ident.name.to_ident_string() != "" =>
-                    {
-                        Some(item.ident.name.to_ident_string())
-                    }
+                    Some(rustc_hir::Node::Item(rustc_hir::Item {
+                        ident,
+                        kind: rustc_hir::ItemKind::Use(_, _),
+                        ..
+                    })) if ident.name.to_ident_string() != "" => Some(ident.name.to_ident_string()),
                     _ => None,
                 }
             }),

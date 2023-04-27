@@ -444,48 +444,51 @@ module CoqBackend = struct
         ^ ty_list_str ^ ":=" ^ " " ^ "{" ^ impl_str ^ newline_indent 0 ^ "}"
         ^ "."
     | C.AST.Require (import, t, outside, rename) ->
-      "From " ^ "Example" (* TODO : Make this the crate name? *) ^ " Require Import" ^ " "
-      ^ map_first_letter String.uppercase
-        (List.fold_left ~init:"" ~f:(fun x y -> x ^ y ^ ".") import)
-      ^ " (* "
-      ^ List.fold_left ~init:""
-        ~f:(fun y x ->
-            y ^ " "
-            ^
-            match x with
-            | ToolMod -> "ToolMod"
-            | Err -> "Err"
-            | Def (a, b) ->
-              "Def(" ^ a ^ "," ^ b.krate
-              ^ List.fold_left ~init:""
-                ~f:(fun y x ->
-                    y ^ " "
-                    ^
-                    match x with
-                    | PathCrateRoot -> "CrateRoot"
-                    | PathImpl -> "Impl"
-                    | PathForeignMod -> "ForeignMod"
-                    | PathUse -> "Use"
-                    | PathGlobalAsm -> "GlobalAsm"
-                    | PathClosureExpr -> "ClosureExpr"
-                    | PathCtor -> "Ctor"
-                    | PathAnonConst -> "AnonConst"
-                    | PathImplTrait -> "ImplTrait"
-                    | PathTypeNs a -> "TypeNs (" ^ a ^ ")"
-                    | PathValueNs a -> "ValueNs (" ^ a ^ ")"
-                    | PathMacroNs a -> "MacroNs (" ^ a ^ ")"
-                    | PathLifetimeNs a -> "LifetirmeNs (" ^ a ^ ")")
-                b.def_path ^ ")"
-            | PrimTy a -> "PrimTy(" ^ a ^ ")"
-            | SelfTyParam { trait_ } -> "SelfTyParam {" ^ trait_.krate ^ "}"
-            | SelfTyAlias { alias_to; forbid_generic; is_trait_impl } ->
-              "SelfTyAlias {" ^ alias_to
-              ^ "; forbid_generic; is_trait_impl}"
-            | SelfCtor a -> "SelfCtor(" ^ a ^ ")"
-            | Local b -> "Local(" ^ b ^ ")"
-            | NonMacroAttr a -> "NonMacroAttr(" ^ a ^ ")")
-        outside
-      ^ " *)" ^ (match rename with Some(s) -> "as " ^ s | _ -> "")
+        "Require Import" ^ " "
+        ^ map_first_letter String.uppercase
+            (List.fold_left ~init:"" ~f:(fun x y -> x ^ y ^ ".") import)
+        ^ " (* "
+        ^ (match rename with Some s -> "as " ^ s | _ -> "")
+        ^ " *) " ^ " (* "
+        ^ List.fold_left ~init:""
+            ~f:(fun y x ->
+              y ^ " "
+              ^
+              match x with
+              | ToolMod -> "ToolMod"
+              | Err -> "Err"
+              | Def (a, b) ->
+                  "Def(" ^ a ^ "," ^ b.krate
+                  ^ List.fold_left ~init:""
+                      ~f:(fun y x ->
+                        y ^ " "
+                        ^
+                        match x with
+                        | PathCrateRoot -> "CrateRoot"
+                        | PathImpl -> "Impl"
+                        | PathForeignMod -> "ForeignMod"
+                        | PathUse -> "Use"
+                        | PathGlobalAsm -> "GlobalAsm"
+                        | PathClosureExpr -> "ClosureExpr"
+                        | PathCtor -> "Ctor"
+                        | PathAnonConst -> "AnonConst"
+                        | PathImplTrait -> "ImplTrait"
+                        | PathTypeNs a -> "TypeNs (" ^ a ^ ")"
+                        | PathValueNs a -> "ValueNs (" ^ a ^ ")"
+                        | PathMacroNs a -> "MacroNs (" ^ a ^ ")"
+                        | PathLifetimeNs a -> "LifetirmeNs (" ^ a ^ ")")
+                      b.def_path
+                  ^ ")"
+              | PrimTy a -> "PrimTy(" ^ a ^ ")"
+              | SelfTyParam { trait_ } -> "SelfTyParam {" ^ trait_.krate ^ "}"
+              | SelfTyAlias { alias_to; forbid_generic; is_trait_impl } ->
+                  "SelfTyAlias {" ^ alias_to
+                  ^ "; forbid_generic; is_trait_impl}"
+              | SelfCtor a -> "SelfCtor(" ^ a ^ ")"
+              | Local b -> "Local(" ^ b ^ ")"
+              | NonMacroAttr a -> "NonMacroAttr(" ^ a ^ ")")
+            outside
+        ^ " *)"
 
   and decl_list_to_string (x : C.AST.decl list) : string =
     List.fold_right ~init:""
