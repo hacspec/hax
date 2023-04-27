@@ -264,49 +264,6 @@ struct
         ii_name = ii.ii_name;
       }
 
-    let rec duse_res (res : A.use_res) : B.use_res =
-      match res with
-      | ToolMod -> B.ToolMod
-      | Err -> B.Err
-      | Def (a, { krate; def_path }) ->
-          B.Def
-            ( a,
-              {
-                krate;
-                def_path = List.map ~f:ddef_path_item def_path
-              } )
-      | PrimTy a -> B.PrimTy a
-      | SelfTyParam { trait_ = { krate; def_path } } ->
-          B.SelfTyParam
-            {
-              trait_ =
-                {
-                  krate;
-                  def_path = List.map ~f:ddef_path_item def_path
-                };
-            }
-      | SelfTyAlias { alias_to; forbid_generic; is_trait_impl } ->
-          B.SelfTyAlias { alias_to; forbid_generic; is_trait_impl }
-      | SelfCtor a -> B.SelfCtor a
-      | Local a -> B.Local a
-      | NonMacroAttr a -> B.NonMacroAttr a
-
-    and ddef_path_item (dpi : A.def_path_item) : B.def_path_item =
-      match dpi with
-      | PathCrateRoot -> B.PathCrateRoot
-      | PathImpl -> B.PathImpl
-      | PathForeignMod -> B.PathForeignMod
-      | PathUse -> B.PathUse
-      | PathGlobalAsm -> B.PathGlobalAsm
-      | PathClosureExpr -> B.PathClosureExpr
-      | PathCtor -> B.PathCtor
-      | PathAnonConst -> B.PathAnonConst
-      | PathImplTrait -> B.PathImplTrait
-      | PathTypeNs a -> B.PathTypeNs a
-      | PathValueNs a -> B.PathValueNs a
-      | PathMacroNs a -> B.PathMacroNs a
-      | PathLifetimeNs a -> B.PathLifetimeNs a
-
     let rec ditem (item : A.item) : B.item list =
       [
         {
@@ -358,7 +315,7 @@ struct
                   of_trait;
               items = List.map ~f:dimpl_item items;
             }
-      | Use (segments, kind, outside, d, rename) -> B.Use (segments, kind, outside, List.map ~f:duse_res d, rename)
+      | Use (segments, kind, outside, rename) -> B.Use (segments, kind, outside, rename)
       | NotImplementedYet -> B.NotImplementedYet
   end
 

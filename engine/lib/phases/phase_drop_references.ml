@@ -141,7 +141,6 @@ struct
   (* [%%inline_defs *)
   (* "Item.*" - dtrait_ref - dgeneric_param - dgeneric_constraint - dgenerics] *)
   [%%inline_defs dparam + dvariant + dtrait_item + dimpl_item]
-  [%%inline_defs duse_res]
 
   let rec ditem = [%inline_body ditem]
 
