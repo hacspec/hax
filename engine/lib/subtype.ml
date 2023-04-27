@@ -268,23 +268,21 @@ struct
       match res with
       | ToolMod -> B.ToolMod
       | Err -> B.Err
-      | Def (a, { krate; def_path; path_names }) ->
+      | Def (a, { krate; def_path }) ->
           B.Def
             ( a,
               {
                 krate;
-                def_path = List.map ~f:ddef_path_item def_path;
-                path_names;
+                def_path = List.map ~f:ddef_path_item def_path
               } )
       | PrimTy a -> B.PrimTy a
-      | SelfTyParam { trait_ = { krate; def_path; path_names } } ->
+      | SelfTyParam { trait_ = { krate; def_path } } ->
           B.SelfTyParam
             {
               trait_ =
                 {
                   krate;
-                  def_path = List.map ~f:ddef_path_item def_path;
-                  path_names;
+                  def_path = List.map ~f:ddef_path_item def_path
                 };
             }
       | SelfTyAlias { alias_to; forbid_generic; is_trait_impl } ->
@@ -360,7 +358,7 @@ struct
                   of_trait;
               items = List.map ~f:dimpl_item items;
             }
-      | Use (a, b, c, d) -> B.Use (a, b, c, List.map ~f:duse_res d)
+      | Use (segments, kind, outside, d, rename) -> B.Use (segments, kind, outside, List.map ~f:duse_res d, rename)
       | NotImplementedYet -> B.NotImplementedYet
   end
 

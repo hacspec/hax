@@ -22,7 +22,6 @@ pub trait BaseState<'tcx> = HasTcx<'tcx>
 pub struct DefId {
     pub krate: String,
     pub path: Vec<DefPathItem>,
-    pub path_names: Vec<String>,
 }
 
 pub type Path = Vec<String>; // x::y::z, TODO
@@ -67,8 +66,6 @@ impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
         let krate = tcx.crate_name(def_path.krate);
         DefId {
             path: def_path.data.iter().map(|x| x.data.sinto(s)).collect(),
-            path_names: Vec::from([tcx.item_name(self.clone()).to_ident_string()]),
-            // krate: format!("{}#{}", krate, def_path.krate.as_u32()),
             krate: format!("{}", krate),
         }
     }

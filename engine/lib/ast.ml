@@ -534,7 +534,7 @@ functor
       | PathMacroNs of string
       | PathLifetimeNs of string
 
-    and def_id = { krate : string; def_path : def_path_item list; path_names : string list }
+    and def_id = { krate : string; def_path : def_path_item list }
 
     and use_res =
       | ToolMod
@@ -585,7 +585,7 @@ functor
           of_trait : (global_ident * generic_value list) option;
           items : impl_item list;
         }
-      | Use of string list * string * bool * use_res list
+      | Use of string list * string * bool * use_res list * string option
       | NotImplementedYet
 
     and item = {

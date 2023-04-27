@@ -125,7 +125,7 @@ module CoqBackend = struct
         | Inductive of string * generics_type * inductive_case list
         | Class of string * (string * ty) list * generics_type
         | Instance of string * ty * ty list * definition_type list
-        | Require of string list * string * AST.use_res list
+        | Require of string list * string * AST.use_res list * string option
     end
   end
 
@@ -443,54 +443,49 @@ module CoqBackend = struct
         ^ "Instance" ^ " " ^ ty_str ^ "_" ^ name ^ " " ^ ":" ^ " " ^ name ^ " "
         ^ ty_list_str ^ ":=" ^ " " ^ "{" ^ impl_str ^ newline_indent 0 ^ "}"
         ^ "."
-    | C.AST.Require (import, t, outside) ->
-        "From Examples Require Import" ^ " "
-        ^ map_first_letter String.uppercase
-            (List.fold_left ~init:"" ~f:(fun x y -> x ^ y ^ ".") import)
-        ^ " (* "
-        ^ List.fold_left ~init:""
-            ~f:(fun y x ->
-              y ^ " "
-              ^
-              match x with
-              | ToolMod -> "ToolMod"
-              | Err -> "Err"
-              | Def (a, b) ->
-                  "Def(" ^ a ^ "," ^ b.krate
-                  ^ List.fold_left ~init:""
-                      ~f:(fun y x ->
-                        y ^ " "
-                        ^
-                        match x with
-                        | PathCrateRoot -> "CrateRoot"
-                        | PathImpl -> "Impl"
-                        | PathForeignMod -> "ForeignMod"
-                        | PathUse -> "Use"
-                        | PathGlobalAsm -> "GlobalAsm"
-                        | PathClosureExpr -> "ClosureExpr"
-                        | PathCtor -> "Ctor"
-                        | PathAnonConst -> "AnonConst"
-                        | PathImplTrait -> "ImplTrait"
-                        | PathTypeNs a -> "TypeNs (" ^ a ^ ")"
-                        | PathValueNs a -> "ValueNs (" ^ a ^ ")"
-                        | PathMacroNs a -> "MacroNs (" ^ a ^ ")"
-                        | PathLifetimeNs a -> "LifetirmeNs (" ^ a ^ ")")
-                      b.def_path
-                  ^ "<><>"
-                  ^ List.fold_left ~init:""
-                      ~f:(fun y x -> y ^ " " ^ x)
-                      b.path_names
-                  ^ ")"
-              | PrimTy a -> "PrimTy(" ^ a ^ ")"
-              | SelfTyParam { trait_ } -> "SelfTyParam {" ^ trait_.krate ^ "}"
-              | SelfTyAlias { alias_to; forbid_generic; is_trait_impl } ->
-                  "SelfTyAlias {" ^ alias_to
-                  ^ "; forbid_generic; is_trait_impl}"
-              | SelfCtor a -> "SelfCtor(" ^ a ^ ")"
-              | Local b -> "Local(" ^ b ^ ")"
-              | NonMacroAttr a -> "NonMacroAttr(" ^ a ^ ")")
-            outside
-        ^ " *)"
+    | C.AST.Require (import, t, outside, rename) ->
+      "From " ^ "Example" (* TODO : Make this the crate name? *) ^ " Require Import" ^ " "
+      ^ map_first_letter String.uppercase
+        (List.fold_left ~init:"" ~f:(fun x y -> x ^ y ^ ".") import)
+      ^ " (* "
+      ^ List.fold_left ~init:""
+        ~f:(fun y x ->
+            y ^ " "
+            ^
+            match x with
+            | ToolMod -> "ToolMod"
+            | Err -> "Err"
+            | Def (a, b) ->
+              "Def(" ^ a ^ "," ^ b.krate
+              ^ List.fold_left ~init:""
+                ~f:(fun y x ->
+                    y ^ " "
+                    ^
+                    match x with
+                    | PathCrateRoot -> "CrateRoot"
+                    | PathImpl -> "Impl"
+                    | PathForeignMod -> "ForeignMod"
+                    | PathUse -> "Use"
+                    | PathGlobalAsm -> "GlobalAsm"
+                    | PathClosureExpr -> "ClosureExpr"
+                    | PathCtor -> "Ctor"
+                    | PathAnonConst -> "AnonConst"
+                    | PathImplTrait -> "ImplTrait"
+                    | PathTypeNs a -> "TypeNs (" ^ a ^ ")"
+                    | PathValueNs a -> "ValueNs (" ^ a ^ ")"
+                    | PathMacroNs a -> "MacroNs (" ^ a ^ ")"
+                    | PathLifetimeNs a -> "LifetirmeNs (" ^ a ^ ")")
+                b.def_path ^ ")"
+            | PrimTy a -> "PrimTy(" ^ a ^ ")"
+            | SelfTyParam { trait_ } -> "SelfTyParam {" ^ trait_.krate ^ "}"
+            | SelfTyAlias { alias_to; forbid_generic; is_trait_impl } ->
+              "SelfTyAlias {" ^ alias_to
+              ^ "; forbid_generic; is_trait_impl}"
+            | SelfCtor a -> "SelfCtor(" ^ a ^ ")"
+            | Local b -> "Local(" ^ b ^ ")"
+            | NonMacroAttr a -> "NonMacroAttr(" ^ a ^ ")")
+        outside
+      ^ " *)" ^ (match rename with Some(s) -> "as " ^ s | _ -> "")
 
   and decl_list_to_string (x : C.AST.decl list) : string =
     List.fold_right ~init:""
@@ -1041,8 +1036,8 @@ module CoqBackend = struct
           ]
       | IMacroInvokation { macro; argument; span; witness } ->
           [ __TODO_item__ "Macro" ]
-      | Use (u, t, internal, res) ->
-          if internal then [ C.AST.Require (u, t, res) ] else []
+      | Use (u, t, internal, res, rename) ->
+          if internal then [ C.AST.Require (u, t, res, rename) ] else []
       | NotImplementedYet -> [ __TODO_item__ "Not implemented yet?" ]
       | Trait { name; generics; items } ->
           [

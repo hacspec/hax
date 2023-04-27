@@ -338,7 +338,7 @@ pub enum Res {
     Err,
 }
 
-impl<'s, Id, S : BaseState<'s>> SInto<S, Res> for rustc_hir::def::Res<Id> {
+impl<'s, Id, S: BaseState<'s>> SInto<S, Res> for rustc_hir::def::Res<Id> {
     fn sinto(&self, s: &S) -> Res {
         match &self {
             rustc_hir::def::Res::Def(a, b) => Res::Def(format!("{:?}", a), b.sinto(s)),
@@ -370,10 +370,15 @@ pub struct UsePath {
     path: Vec<String>,
     outside: Vec<Res>,
     res_path: Vec<Res>,
+    rename: Option<String>,
 }
 
-impl<'hir, S: BaseState<'hir>, Id: std::fmt::Debug, R: IntoIterator<Item = rustc_hir::def::Res<Id>> + Clone>
-    SInto<S, UsePath> for rustc_hir::Path<'hir, R>
+impl<
+        'hir,
+        S: BaseState<'hir>,
+        Id: std::fmt::Debug,
+        R: IntoIterator<Item = rustc_hir::def::Res<Id>> + Clone,
+    > SInto<S, UsePath> for rustc_hir::Path<'hir, R>
 {
     fn sinto(&self, s: &S) -> UsePath {
         UsePath {
@@ -382,6 +387,16 @@ impl<'hir, S: BaseState<'hir>, Id: std::fmt::Debug, R: IntoIterator<Item = rustc
                 .iter()
                 .map(|x| x.ident.name.to_ident_string())
                 .collect(),
+            rename: self.segments.iter().last().map_or(None, |segment| {
+                match s.tcx().hir().find_by_def_id(segment.hir_id.owner.def_id) {
+                    Some(rustc_hir::Node::Item(item))
+                        if item.ident.name.to_ident_string() != "" =>
+                    {
+                        Some(item.ident.name.to_ident_string())
+                    }
+                    _ => None,
+                }
+            }),
             outside: self.res.clone().into_iter().map(|x| x.sinto(s)).collect(),
             res_path: self.segments.iter().map(|x| x.res.sinto(s)).collect(),
         }
