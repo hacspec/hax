@@ -319,89 +319,84 @@ pub struct Variant {
     pub span: Span,
 }
 
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_hir::UsePath<'tcx>, state: S as s)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct UsePath {
+    pub span: Span,
+    #[map(x.iter().map(|res| res.sinto(s)).collect())]
+    pub res: Vec<Res>,
+    pub segments: Vec<PathSegment>,
+    #[not_in_source]
+    #[map(self.segments.iter().last().map_or(None, |segment| {
+            match s.tcx().hir().find_by_def_id(segment.hir_id.owner.def_id) {
+                Some(rustc_hir::Node::Item(rustc_hir::Item {
+                    ident,
+                    kind: rustc_hir::ItemKind::Use(_, _),
+                    ..
+                })) if ident.name.to_ident_string() != "" => Some(ident.name.to_ident_string()),
+                _ => None,
+            }
+        }))]
+    pub rename: Option<String>,
+}
+
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_hir::def::Res, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum Res {
-    Def(String, DefId),
-    PrimTy(String),
+    Def(DefKind, DefId),
+    PrimTy(PrimTy),
     SelfTyParam {
         trait_: DefId,
     },
     SelfTyAlias {
-        alias_to: String,
+        alias_to: DefId,
         forbid_generic: bool,
         is_trait_impl: bool,
     },
-    SelfCtor(String),
-    Local(String),
+    SelfCtor(DefId),
+    Local(HirId),
     ToolMod,
-    NonMacroAttr(String),
+    NonMacroAttr(NonMacroAttrKind),
     Err,
 }
+sinto_todo!(rustc_hir::def, DefKind);
 
-impl<'s, Id, S: BaseState<'s>> SInto<S, Res> for rustc_hir::def::Res<Id> {
-    fn sinto(&self, s: &S) -> Res {
-        match &self {
-            rustc_hir::def::Res::Def(a, b) => Res::Def(format!("{:?}", a), b.sinto(s)),
-            rustc_hir::def::Res::PrimTy(a) => Res::PrimTy(format!("{:?}", a)),
-            rustc_hir::def::Res::SelfTyParam { trait_ } => Res::SelfTyParam {
-                trait_: trait_.sinto(s),
-            },
-            rustc_hir::def::Res::SelfTyAlias {
-                alias_to,
-                forbid_generic,
-                is_trait_impl,
-            } => Res::SelfTyAlias {
-                alias_to: format!("{:?}", alias_to),
-                forbid_generic: forbid_generic.clone(),
-                is_trait_impl: is_trait_impl.clone(),
-            },
-            rustc_hir::def::Res::SelfCtor(a) => Res::SelfCtor(format!("{:?}", a)),
-            rustc_hir::def::Res::Local(a) => Res::Local(String::from("id?")),
-            rustc_hir::def::Res::ToolMod => Res::ToolMod,
-            rustc_hir::def::Res::NonMacroAttr(a) => Res::NonMacroAttr(format!("{:?}", a)),
-            rustc_hir::def::Res::Err => Res::Err,
-        }
-    }
-}
-
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_hir::PrimTy, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct UsePath {
-    // span: Span,
-    path: Vec<String>,
-    outside: Vec<Res>,
-    res_path: Vec<Res>,
-    rename: Option<String>,
+pub enum PrimTy {
+    Int(IntTy),
+    Uint(UintTy),
+    Float(FloatTy),
+    Str,
+    Bool,
+    Char,
 }
 
-impl<
-        'hir,
-        S: BaseState<'hir>,
-        Id: std::fmt::Debug,
-        R: IntoIterator<Item = rustc_hir::def::Res<Id>> + Clone,
-    > SInto<S, UsePath> for rustc_hir::Path<'hir, R>
-{
-    fn sinto(&self, s: &S) -> UsePath {
-        UsePath {
-            path: self
-                .segments
-                .iter()
-                .map(|x| x.ident.name.to_ident_string())
-                .collect(),
-            rename: self.segments.iter().last().map_or(None, |segment| {
-                match s.tcx().hir().find_by_def_id(segment.hir_id.owner.def_id) {
-                    Some(rustc_hir::Node::Item(rustc_hir::Item {
-                        ident,
-                        kind: rustc_hir::ItemKind::Use(_, _),
-                        ..
-                    })) if ident.name.to_ident_string() != "" => Some(ident.name.to_ident_string()),
-                    _ => None,
-                }
-            }),
-            outside: self.res.clone().into_iter().map(|x| x.sinto(s)).collect(),
-            res_path: self.segments.iter().map(|x| x.res.sinto(s)).collect(),
-        }
-    }
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_hir::def::NonMacroAttrKind, state: S as s)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub enum NonMacroAttrKind {
+    Builtin(Symbol),
+    Tool,
+    DeriveHelper,
+    DeriveHelperCompat,
 }
+
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_hir::PathSegment<'tcx>, state: S as s)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct PathSegment {
+    pub ident: Ident,
+    pub hir_id: HirId,
+    pub res: Res,
+    #[map(args.map(|args| args.sinto(s)))]
+    pub args: Option<HirGenericArgs>,
+    pub infer_args: bool,
+}
+sinto_todo!(rustc_hir, GenericArgs<'a> as HirGenericArgs);
 
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::ItemKind<'tcx>, state: S as tcx)]
