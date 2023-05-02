@@ -9,3 +9,6 @@ rustc_private=true
 [dependencies]
 circus-diagnostics = { version = "=0.1.0", path = "../diagnostics" }
 log = "0.4"
+
+[dev-dependencies]
+regex = "1"

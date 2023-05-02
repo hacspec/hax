@@ -187,6 +187,7 @@ version = "0.1.0"
 dependencies = [
  "circus-diagnostics",
  "log",
+ "regex",
 ]
 
 [[package]]

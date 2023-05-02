@@ -41,7 +41,9 @@ pub fn get_args(subcommand: &str) -> Vec<String> {
 
 fn main() {
     let args: Vec<String> = get_args("circus");
+    // eprintln!("args: {args:?}");
     let options = Options::parse_from(args.iter());
+    // eprintln!("options: {options:?}");
 
     std::process::exit(
         cargo_command()

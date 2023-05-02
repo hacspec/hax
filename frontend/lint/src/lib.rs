@@ -51,14 +51,14 @@ impl<'a, 'tcx> Linter<'a, 'tcx> {
             .map(|s| s.to_string())
             .collect();
 
-        let extern_allow_list = vec![
-            "core",
-            "alloc",
-            "std",
-            "hacspec_lib",
-            "secret_integers",
-            "abstract_integers",
-        ];
+        let mut extern_allow_list = vec!["core", "alloc", "std"];
+        if matches!(ltype, Type::Hacspec) {
+            extern_allow_list.append(&mut vec![
+                "hacspec_lib",
+                "secret_integers",
+                "abstract_integers",
+            ]);
+        }
 
         let mut linter = Self {
             session,
