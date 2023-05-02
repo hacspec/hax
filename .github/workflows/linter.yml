@@ -1,0 +1,26 @@
+name: Test linter
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, staging, trying]
+  pull_request:
+
+jobs:
+  linter:
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - if: runner.os == 'macOS'
+        run: brew install opam nodejs rustup-init
+      - if: runner.os == 'Linux'
+        run: sudo apt-get install -y opam nodejs
+      - run: curl --proto '=https' --tlsv1.3 https://sh.rustup.rs -sSf | sh -s -- -y
+
+      - name: Test linter
+        run: cargo test -p circus-lint
