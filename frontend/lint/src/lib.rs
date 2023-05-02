@@ -51,7 +51,14 @@ impl<'a, 'tcx> Linter<'a, 'tcx> {
             .map(|s| s.to_string())
             .collect();
 
-        let extern_allow_list = vec!["core", "alloc", "std"];
+        let extern_allow_list = vec![
+            "core",
+            "alloc",
+            "std",
+            "hacspec_lib",
+            "secret_integers",
+            "abstract_integers",
+        ];
 
         let mut linter = Self {
             session,
@@ -68,10 +75,36 @@ fn has_attr(attrs: &[ast::Attribute], symbol: Symbol) -> bool {
     attrs.iter().any(|attr| attr.has_name(symbol))
 }
 
-macro_rules! skip_derived {
+macro_rules! skip_derived_non_local {
     ($self:ident, $hir_id:expr) => {
         if $self.any_parent_is_automatically_derived($hir_id) {
             log::trace!("   skipping automatically derived code");
+            return;
+        }
+        if $self.non_local_hir_id($hir_id) {
+            error::extern_crate($self.session, $self.tcx.def_span($hir_id.owner));
+            // Don't keep going
+            return;
+        }
+    };
+}
+
+macro_rules! skip_v1_lib_macros {
+    ($self:ident, $hir_id:expr) => {
+        if $self
+            .tcx
+            .def_span($hir_id.owner)
+            .macro_backtrace()
+            .any(|data| {
+                if let Some(parent) = data.parent_module {
+                    log::trace!("  macro in {:?}", { data.parent_module });
+                    if $self.non_local_def_id(parent, $self.tcx.def_span($hir_id.owner)) {
+                        return true;
+                    }
+                }
+                false
+            })
+        {
             return;
         }
     };
@@ -135,12 +168,18 @@ impl<'a, 'v> Linter<'a, 'v> {
     ///
     /// Returns true if the path is non-local.
     fn non_local_hir_id(&self, hir_id: HirId) -> bool {
-        if let Some(owner_id) = hir_id.as_owner() {
-            if self.non_local_def_id(owner_id.to_def_id(), self.tcx.def_span(owner_id)) {
-                return true;
-            }
+        if self.non_local_def_id(hir_id.owner.to_def_id(), self.tcx.def_span(hir_id.owner)) {
+            return true;
         }
         false
+    }
+
+    fn non_local_expr(&self, expr: &Expr) -> bool {
+        self.non_local_hir_id(expr.hir_id)
+    }
+
+    fn expr_span(&self, expr: &Expr) -> Span {
+        self.tcx.def_span(expr.hir_id.owner)
     }
 }
 
@@ -173,7 +212,8 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
 
     fn visit_item(&mut self, i: &'v Item<'v>) {
         log::trace!("visiting item {:?} at {:?}", i.ident.name, i.span);
-        skip_derived!(self, i.hir_id());
+        skip_derived_non_local!(self, i.hir_id());
+        skip_v1_lib_macros!(self, i.hir_id());
         // log::trace!("   item kind: {:#?}", i.kind);
 
         match i.kind {
@@ -213,6 +253,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
     }
     fn visit_body(&mut self, b: &'v Body<'v>) {
         log::trace!("visiting body");
+        skip_derived_non_local!(self, b.value.hir_id);
 
         // keep going
         walk_body(self, b);
@@ -226,10 +267,8 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
             self.tcx.def_path(hir_id.owner.to_def_id())
         );
 
-        if self.non_local_hir_id(hir_id) {
-            // Don't keep walking.
-            return;
-        }
+        skip_derived_non_local!(self, hir_id);
+        skip_v1_lib_macros!(self, hir_id);
 
         // Nothing to do.
     }
@@ -264,6 +303,9 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
     }
     fn visit_block(&mut self, b: &'v Block<'v>) {
         log::trace!("visiting block {:?}", b.span);
+
+        skip_derived_non_local!(self, b.hir_id);
+
         walk_block(self, b)
     }
     fn visit_stmt(&mut self, s: &'v Stmt<'v>) {
@@ -272,10 +314,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
             self.tcx.opt_item_name(s.hir_id.owner.to_def_id()).unwrap(),
             s.span
         );
-        if self.non_local_hir_id(s.hir_id) {
-            // Don't keep walking
-            return;
-        }
+        skip_derived_non_local!(self, s.hir_id);
 
         match &s.kind {
             StmtKind::Local(b) => {
@@ -323,8 +362,11 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
     }
     fn visit_expr(&mut self, ex: &'v Expr<'v>) {
         log::trace!("visiting expr {:?}", ex.span);
-        skip_derived!(self, ex.hir_id);
+        skip_derived_non_local!(self, ex.hir_id);
         // log::trace!("   Node: {:#?}", self.tcx.hir().find(ex.hir_id));
+
+        // eprintln!("  kind: {:?}", ex.kind);
+        // eprintln!("expr at: {:?}", self.expr_span(ex));
 
         match &ex.kind {
             ExprKind::Block(block, _) => match block.rules {
@@ -438,7 +480,9 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
     }
     fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl<'v>, b: BodyId, span: Span, id: HirId) {
         log::trace!("visiting fn at {:?}", span);
-        skip_derived!(self, id);
+
+        skip_derived_non_local!(self, id);
+        skip_v1_lib_macros!(self, id);
 
         fn check_ty_kind(visitor: &Linter, k: &TyKind, span: Span) {
             match k {
@@ -598,7 +642,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
     }
     fn visit_trait_item(&mut self, ti: &'v TraitItem<'v>) {
         log::trace!("visiting trait item {:?} at {:?}", ti.ident.name, ti.span);
-        skip_derived!(self, ti.hir_id());
+        skip_derived_non_local!(self, ti.hir_id());
 
         // match &ti.kind {
         //     TraitItemKind::Const(_, _) => self.no_assoc_items(ti.span),
@@ -615,7 +659,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
     }
     fn visit_impl_item(&mut self, ii: &'v ImplItem<'v>) {
         log::trace!("visiting impl item {:?} at {:?}", ii.ident.name, ii.span,);
-        skip_derived!(self, ii.hir_id());
+        skip_derived_non_local!(self, ii.hir_id());
 
         // log::trace!("   item: {:#?}", ii);
 
@@ -737,7 +781,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
     // The span is that of the surrounding type/pattern/expr/whatever.
     fn visit_qpath(&mut self, qpath: &'v QPath<'v>, id: HirId, span: Span) {
         log::trace!("visiting qpath {span:?}");
-        skip_derived!(self, id);
+        skip_derived_non_local!(self, id);
 
         // Look for foreign paths
         match qpath {
@@ -754,7 +798,9 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
     }
     fn visit_path(&mut self, path: &Path<'v>, id: HirId) {
         log::trace!("visiting path {:?}", path.span);
-        skip_derived!(self, id);
+
+        skip_derived_non_local!(self, id);
+        skip_v1_lib_macros!(self, id);
         // log::trace!("   node: {:?}", self.tcx.hir().find(id));
         // log::trace!("   path: {:?}", path);
 
@@ -777,6 +823,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
     }
     fn visit_path_segment(&mut self, path_segment: &'v PathSegment<'v>) {
         log::trace!("visiting path segment {:?}", path_segment.ident);
+        skip_derived_non_local!(self, path_segment.hir_id);
         walk_path_segment(self, path_segment)
     }
     fn visit_generic_args(&mut self, generic_args: &'v GenericArgs<'v>) {
