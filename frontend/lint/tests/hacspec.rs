@@ -30,21 +30,22 @@ fn run() {
         let mut cmd = Command::new("cargo");
         cmd.current_dir("../");
 
-        let output = cmd
-            .args(&[
-                "run",
-                "--bin",
-                "cargo-circus",
-                "--",
-                "-C",
-                "--manifest-path",
-                test.manifest_path,
-                ";",
-                "lint",
-                "hacspec",
-            ])
-            .output()
-            .unwrap();
+        let cmd = cmd.args(&[
+            "run",
+            "--bin",
+            "cargo-circus",
+            "--",
+            "-C",
+            "--manifest-path",
+            test.manifest_path,
+            ";",
+            "lint",
+            "hacspec",
+        ]);
+
+        let output = cmd.output().unwrap();
+        eprintln!("{:?}", output);
+        let output = cmd.output().unwrap();
         eprintln!("{:?}", output);
 
         let err_str = filter_stderr(&output.stderr);

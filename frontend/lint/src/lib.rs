@@ -173,14 +173,6 @@ impl<'a, 'v> Linter<'a, 'v> {
         }
         false
     }
-
-    fn non_local_expr(&self, expr: &Expr) -> bool {
-        self.non_local_hir_id(expr.hir_id)
-    }
-
-    fn expr_span(&self, expr: &Expr) -> Span {
-        self.tcx.def_span(expr.hir_id.owner)
-    }
 }
 
 impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
