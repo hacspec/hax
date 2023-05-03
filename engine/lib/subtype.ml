@@ -315,7 +315,7 @@ struct
                   of_trait;
               items = List.map ~f:dimpl_item items;
             }
-      | Use (segments, kind, outside, rename) -> B.Use (segments, kind, outside, rename)
+      | Use { path; is_external; rename } -> B.Use { path; is_external; rename }
       | NotImplementedYet -> B.NotImplementedYet
   end
 

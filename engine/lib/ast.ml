@@ -553,7 +553,11 @@ functor
           of_trait : (global_ident * generic_value list) option;
           items : impl_item list;
         }
-      | Use of string list * string * bool * string option
+      | Use of {
+          path : string list;
+          is_external : bool;
+          rename : string option;
+        }
       | NotImplementedYet
 
     and item = {

@@ -814,15 +814,15 @@ module Exn = struct
                     })
                   i.items;
             }
-      | Use ({ path; outside; res_path; rename }, t) ->
+      | Use ({ span; res; segments; rename }, t) ->
           Use
-            ( path,
-              (match t with
-              | Single -> "single"
-              | Glob -> "glob"
-              | ListStem -> "ListStem"),
-              not (List.exists ~f:(function Err -> true | _ -> false) outside) (* TODO: this should represent local/external? *),
-              rename)
+            {
+              path = List.map ~f:(fun x -> fst x.ident) segments;
+              is_external =
+                List.exists ~f:(function Err -> true | _ -> false) res;
+              (* TODO: this should represent local/external? *)
+              rename;
+            }
       | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
       | OpaqueTy _ | Union _ | TraitAlias _ ->
           NotImplementedYet
