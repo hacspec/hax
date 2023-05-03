@@ -2,12 +2,8 @@
 
 use std::process::Command;
 
-use regex::Regex;
-
-struct Test {
-    stderr: &'static str,
-    manifest_path: &'static str,
-}
+mod util;
+use util::*;
 
 const TESTS: [Test; 2] = [
     Test {
@@ -46,6 +42,8 @@ warning: `fnmut` (lib) generated 2 warnings",
 
 #[test]
 fn run() {
+    install_driver();
+
     for test in TESTS {
         let mut cmd = Command::new("cargo");
         cmd.current_dir("../");
@@ -64,16 +62,7 @@ fn run() {
             .unwrap();
         eprintln!("{:?}", output);
 
-        let err_str = String::from_utf8_lossy(&output.stderr);
-
-        let re = Regex::new(r"(?m)^(\s*[Blocking|Running|Finished|Compiling][\S]+.*\n*)").unwrap();
-        assert!(re.is_match(&err_str));
-
-        eprintln!("stderr:\n{err_str}");
-        let err_str = re.replace_all(&err_str, "");
-        let err_str = err_str.trim();
-        eprintln!("stderr:\n{err_str}");
-
+        let err_str = filter_stderr(&output.stderr);
         assert_eq!(err_str, test.stderr);
     }
 }
