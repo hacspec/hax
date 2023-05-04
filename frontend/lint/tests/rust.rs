@@ -41,7 +41,7 @@ warning: `fnmut` (lib) generated 2 warnings",
 ];
 
 #[test]
-fn run() {
+fn lint_rust() {
     install_driver();
 
     for test in TESTS {

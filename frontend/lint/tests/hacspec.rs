@@ -23,7 +23,7 @@ warning: `mut_arg` (lib) generated 1 warning",
 ];
 
 #[test]
-fn run() {
+fn lint_hacspec() {
     install_driver();
 
     for test in TESTS {

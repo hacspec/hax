@@ -32,7 +32,8 @@ pub fn filter_stderr(stderr: &[u8]) -> String {
     eprintln!("stderr:\n{err_str}");
     let err_str = re.replace_all(&err_str, "");
     let err_str = err_str.trim();
+    let err_str = err_str.replace("\\", "/"); // "Fix" paths on Windows.
     eprintln!("stderr:\n{err_str}");
 
-    err_str.to_string()
+    err_str
 }
