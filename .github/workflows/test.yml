@@ -25,7 +25,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: Swatinem/rust-cache@v2
-      - uses: dtolnay/rust-toolchain@stable
 
       - name: Test
         run: cargo test --workspace --verbose
