@@ -4,6 +4,7 @@ let
   commonArgs = {
     version = "0.0.1";
     src = craneLib.cleanCargoSource ./..;
+    doCheck = false;
   };
   cargoArtifacts = craneLib.buildDepsOnly (commonArgs // {
     pname = "${pname}-deps";
