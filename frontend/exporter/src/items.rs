@@ -320,6 +320,85 @@ pub struct Variant {
 }
 
 #[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_hir::UsePath<'tcx>, state: S as s)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct UsePath {
+    pub span: Span,
+    #[map(x.iter().map(|res| res.sinto(s)).collect())]
+    pub res: Vec<Res>,
+    pub segments: Vec<PathSegment>,
+    #[not_in_source]
+    #[map(self.segments.iter().last().map_or(None, |segment| {
+            match s.tcx().hir().find_by_def_id(segment.hir_id.owner.def_id) {
+                Some(rustc_hir::Node::Item(rustc_hir::Item {
+                    ident,
+                    kind: rustc_hir::ItemKind::Use(_, _),
+                    ..
+                })) if ident.name.to_ident_string() != "" => Some(ident.name.to_ident_string()),
+                _ => None,
+            }
+        }))]
+    pub rename: Option<String>,
+}
+
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_hir::def::Res, state: S as s)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub enum Res {
+    Def(DefKind, DefId),
+    PrimTy(PrimTy),
+    SelfTyParam {
+        trait_: DefId,
+    },
+    SelfTyAlias {
+        alias_to: DefId,
+        forbid_generic: bool,
+        is_trait_impl: bool,
+    },
+    SelfCtor(DefId),
+    Local(HirId),
+    ToolMod,
+    NonMacroAttr(NonMacroAttrKind),
+    Err,
+}
+sinto_todo!(rustc_hir::def, DefKind);
+
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_hir::PrimTy, state: S as s)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub enum PrimTy {
+    Int(IntTy),
+    Uint(UintTy),
+    Float(FloatTy),
+    Str,
+    Bool,
+    Char,
+}
+
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_hir::def::NonMacroAttrKind, state: S as s)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub enum NonMacroAttrKind {
+    Builtin(Symbol),
+    Tool,
+    DeriveHelper,
+    DeriveHelperCompat,
+}
+
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_hir::PathSegment<'tcx>, state: S as s)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct PathSegment {
+    pub ident: Ident,
+    pub hir_id: HirId,
+    pub res: Res,
+    #[map(args.map(|args| args.sinto(s)))]
+    pub args: Option<HirGenericArgs>,
+    pub infer_args: bool,
+}
+sinto_todo!(rustc_hir, GenericArgs<'a> as HirGenericArgs);
+
+#[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::ItemKind<'tcx>, state: S as tcx)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum ItemKind {
@@ -791,7 +870,6 @@ pub enum PredicateOrigin {
 }
 
 sinto_todo!(rustc_hir, InlineAsm<'a>);
-sinto_todo!(rustc_hir, UsePath<'tcx>);
 sinto_todo!(rustc_target::spec::abi, Abi);
 sinto_todo!(rustc_hir, WhereRegionPredicate<'tcx>);
 sinto_todo!(rustc_hir, WhereEqPredicate<'tcx>);

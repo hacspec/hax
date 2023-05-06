@@ -66,7 +66,6 @@ impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
         let krate = tcx.crate_name(def_path.krate);
         DefId {
             path: def_path.data.iter().map(|x| x.data.sinto(s)).collect(),
-            // krate: format!("{}#{}", krate, def_path.krate.as_u32()),
             krate: format!("{}", krate),
         }
     }
