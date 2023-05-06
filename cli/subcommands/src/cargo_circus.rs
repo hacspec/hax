@@ -48,7 +48,11 @@ fn main() {
     std::process::exit(
         cargo_command()
             .args(["build".into()].iter().chain(options.cargo_flags.iter()))
-            .env("RUSTC_WORKSPACE_WRAPPER", "driver-circus-frontend-exporter")
+            .env(
+                "RUSTC_WORKSPACE_WRAPPER",
+                std::env::var("CIRCUS_RUSTC_DRIVER_BINARY")
+                    .unwrap_or("driver-circus-frontend-exporter".into()),
+            )
             .env(
                 circus_cli_options::ENV_VAR_OPTIONS_FRONTEND,
                 serde_json::to_string(&options)
