@@ -42,21 +42,9 @@ warning: `fnmut` (lib) generated 2 warnings",
 
 #[test]
 fn lint_rust() {
-    install_driver();
-
     for test in TESTS {
-        let mut cmd = Command::new("cargo");
+        let mut cmd = Command::circus(&["-C", "--manifest-path", test.manifest_path]);
         cmd.current_dir("../");
-
-        let cmd = cmd.args(&[
-            "run",
-            "--bin",
-            "cargo-circus",
-            "--",
-            "-C",
-            "--manifest-path",
-            test.manifest_path,
-        ]);
 
         let output = cmd.output().unwrap();
         eprintln!("{:?}", output);

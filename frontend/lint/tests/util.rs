@@ -1,4 +1,5 @@
-use std::process::Command;
+use lazy_static::lazy_static;
+use std::{ffi::OsStr, process::Command};
 
 use regex::Regex;
 
@@ -7,18 +8,31 @@ pub struct Test {
     pub manifest_path: &'static str,
 }
 
-/// We need to install the driver before we can run the circus command.
-/// "cargo install --path cli/driver"
-pub fn install_driver() {
-    let mut cmd = Command::new("cargo");
-    cmd.current_dir("../../");
+pub trait CommandCircusExt {
+    fn circus<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(args: I) -> Self;
+}
 
-    let status = cmd
-        .args(&["install", "--path", "cli/driver"])
-        .output()
-        .unwrap()
-        .status;
-    assert!(status.success());
+impl CommandCircusExt for Command {
+    fn circus<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(args: I) -> Command {
+        use assert_cmd::cargo::cargo_bin;
+        use std::path::PathBuf;
+        lazy_static! {
+            static ref DRIVER: PathBuf = cargo_bin("driver-circus-frontend-exporter");
+            static ref CARGO_CIRCUS: PathBuf = cargo_bin("cargo-circus");
+        }
+        let mut cmd = Command::new(CARGO_CIRCUS.clone());
+        cmd.env("CIRCUS_RUSTC_DRIVER_BINARY", DRIVER.clone());
+        cmd.args(args);
+        // As documented in
+        // https://doc.rust-lang.org/cargo/reference/environment-variables.html#dynamic-library-paths,
+        // [cargo run] (and thus also [cargo test]) sets dynamic
+        // library paths, which causes some issues with dependencies
+        // when compiling without rustup
+        for env in ["DYLD_FALLBACK_LIBRARY_PATH", "LD_LIBRARY_PATH"] {
+            cmd.env_remove(env);
+        }
+        cmd
+    }
 }
 
 pub const REGEX_STRING: &str = r"(?m)^(\s*[Blocking|Running|Finished|Compiling][\S]+.*\n*)";

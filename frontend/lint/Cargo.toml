@@ -12,3 +12,5 @@ log = "0.4"
 
 [dev-dependencies]
 regex = "1"
+lazy_static = "1.4"
+assert_cmd = "2.0"

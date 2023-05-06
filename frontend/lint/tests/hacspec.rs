@@ -24,17 +24,8 @@ warning: `mut_arg` (lib) generated 1 warning",
 
 #[test]
 fn lint_hacspec() {
-    install_driver();
-
     for test in TESTS {
-        let mut cmd = Command::new("cargo");
-        cmd.current_dir("../");
-
-        let cmd = cmd.args(&[
-            "run",
-            "--bin",
-            "cargo-circus",
-            "--",
+        let mut cmd = Command::circus(&[
             "-C",
             "--manifest-path",
             test.manifest_path,
@@ -42,6 +33,7 @@ fn lint_hacspec() {
             "lint",
             "hacspec",
         ]);
+        cmd.current_dir("../");
 
         let output = cmd.output().unwrap();
         eprintln!("{:?}", output);
