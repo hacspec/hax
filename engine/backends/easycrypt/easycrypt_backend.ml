@@ -130,6 +130,7 @@ module ECBackend = struct
                | Trait _ -> assert false
                | Impl _ -> assert false
                | IMacroInvokation mi -> ()
+               | Use _ -> ()
                | NotImplementedYet -> ())
       in
 

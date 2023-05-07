@@ -814,7 +814,18 @@ module Exn = struct
                     })
                   i.items;
             }
-      | _ -> NotImplementedYet
+      | Use ({ span; res; segments; rename }, t) ->
+          Use
+            {
+              path = List.map ~f:(fun x -> fst x.ident) segments;
+              is_external =
+                List.exists ~f:(function Err -> true | _ -> false) res;
+              (* TODO: this should represent local/external? *)
+              rename;
+            }
+      | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
+      | OpaqueTy _ | Union _ | TraitAlias _ ->
+          NotImplementedYet
     in
     { span; v; parent_namespace = namespace_of_def_id item.owner_id }
 end

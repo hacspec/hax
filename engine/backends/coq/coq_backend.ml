@@ -125,6 +125,7 @@ module CoqBackend = struct
         | Inductive of string * generics_type * inductive_case list
         | Class of string * (string * ty) list * generics_type
         | Instance of string * ty * ty list * definition_type list
+        | Require of string list * string option
     end
   end
 
@@ -442,6 +443,13 @@ module CoqBackend = struct
         ^ "Instance" ^ " " ^ ty_str ^ "_" ^ name ^ " " ^ ":" ^ " " ^ name ^ " "
         ^ ty_list_str ^ ":=" ^ " " ^ "{" ^ impl_str ^ newline_indent 0 ^ "}"
         ^ "."
+    | C.AST.Require ([], rename) -> ""
+    | C.AST.Require (import :: imports, rename) -> (
+        "Require Import" ^ " "
+        ^ map_first_letter String.uppercase import
+          (* (List.fold_left ~init:import ~f:(fun x y -> x ^ "." ^ y) imports) *)
+        ^ "."
+        ^ match rename with Some s -> " (* " ^ "as " ^ s ^ " *)" | _ -> "")
 
   and decl_list_to_string (x : C.AST.decl list) : string =
     List.fold_right ~init:""
@@ -992,6 +1000,8 @@ module CoqBackend = struct
           ]
       | IMacroInvokation { macro; argument; span; witness } ->
           [ __TODO_item__ "Macro" ]
+      | Use { path; is_external; rename } ->
+          if is_external then [] else [ C.AST.Require (path, rename) ]
       | NotImplementedYet -> [ __TODO_item__ "Not implemented yet?" ]
       | Trait { name; generics; items } ->
           [

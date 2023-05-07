@@ -7,18 +7,21 @@ pub trait SInto<S, To> {
 
 #[macro_export]
 macro_rules! sinto_todo {
-    ($($mod:ident)::+, $type:ident$(<$($lts:lifetime),*$(,)?>)?) => {
+    ($($mod:ident)::+, $type:ident$(<$($lts:lifetime),*$(,)?>)? as $renamed:ident) => {
         #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-        pub enum $type {
-            $type{
+        pub enum $renamed {
+            $type {
                 todo: String
             },
         }
-        impl<$($($lts,)*)? S> SInto<S, $type> for $($mod)::+::$type$(<$($lts,)*>)? {
-            fn sinto(&self, _: &S) -> $type {
-                $type::$type{todo: format!("{:?}", self)}
+        impl<$($($lts,)*)? S> SInto<S, $renamed> for $($mod)::+::$type$(<$($lts,)*>)? {
+            fn sinto(&self, _: &S) -> $renamed {
+                $renamed::$type{todo: format!("{:?}", self)}
             }
         }
+    };
+    ($($mod:ident)::+, $type:ident$(<$($lts:lifetime),*$(,)?>)?) => {
+        sinto_todo!($($mod)::+, $type$(<$($lts),*>)? as $type);
     }
 }
 
