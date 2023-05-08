@@ -16,12 +16,26 @@ impl CommandCircusExt for Command {
     fn circus<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(args: I) -> Command {
         use assert_cmd::cargo::cargo_bin;
         use std::path::PathBuf;
-        lazy_static! {
-            static ref DRIVER: PathBuf = cargo_bin("driver-circus-frontend-exporter");
-            static ref CARGO_CIRCUS: PathBuf = cargo_bin("cargo-circus");
+        struct Paths {
+            driver: PathBuf,
+            cargo_circus: PathBuf,
         }
-        let mut cmd = Command::new(CARGO_CIRCUS.clone());
-        cmd.env("CIRCUS_RUSTC_DRIVER_BINARY", DRIVER.clone());
+        lazy_static! {
+            static ref PATHS: Paths = {
+                // Make sure binaries are built
+                assert!(Command::new("cargo")
+                    .args(&["build", "--workspace", "--bins"])
+                    .status()
+                    .unwrap()
+                    .success());
+                Paths {
+                    driver: cargo_bin("driver-circus-frontend-exporter"),
+                    cargo_circus: cargo_bin("cargo-circus"),
+                }
+            };
+        }
+        let mut cmd = Command::new(PATHS.cargo_circus.clone());
+        cmd.env("CIRCUS_RUSTC_DRIVER_BINARY", PATHS.driver.clone());
         cmd.args(args);
         // As documented in
         // https://doc.rust-lang.org/cargo/reference/environment-variables.html#dynamic-library-paths,
