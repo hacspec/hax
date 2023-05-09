@@ -56,6 +56,18 @@ module FStarBackend = struct
     let parse = Term.(const ())
   end
 
+  let failwith ?(span = Ast.Dummy) msg =
+    Diagnostics.failure ~context:(Backend FStar) ~span
+      (Unimplemented
+         {
+           issue_id = None;
+           details =
+             Some
+               ("[TODO: this error uses failwith, and thus leads to bad error \
+                 messages, please update it using [Diagnostics.*] helpers] "
+              ^ msg);
+         })
+
   open Ast
   module U = Ast_utils.Make (InputLanguage)
   open AST

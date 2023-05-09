@@ -12,7 +12,11 @@ module Phase = struct
       | ArbitraryLhs
       | Continue
       | RawOrMutPointer
-    [@@deriving show, eq, yojson, compare, hash, sexp]
+    [@@deriving show { with_path = false }, eq, yojson, compare, hash, sexp]
+
+    let display = function
+      | NotInBackendLang backend -> "not_in_" ^ [%show: Backend.t] backend
+      | x -> [%show: t] x
   end
 
   type t =
@@ -22,13 +26,26 @@ module Phase = struct
     | RefMut
     | ResugarForLoops
     | MutableVariables
+    | TrivializeAssignLhs
+    | DummyA
+    | DummyB
+    | DummyC
     | Reject of Rejection.t
-  [@@deriving show, eq, yojson, compare, hash, sexp]
+  [@@deriving show { with_path = false }, eq, yojson, compare, hash, sexp]
+
+  let display = function
+    | Reject rejection -> "reject_" ^ Rejection.display rejection
+    | x -> [%show: t] x
 end
 
 module Context = struct
-  type t = Phase of Phase.t | Backend of Backend.t | ThirImport
-  [@@deriving show, eq, yojson, compare, hash, sexp]
+  type t =
+    | Phase of Phase.t
+    | Backend of Backend.t
+    | ThirImport
+    | DebugPrintRust
+    | Other of string
+  [@@deriving show, eq, yojson]
 end
 
 type kind = T.kind [@@deriving show, eq]
@@ -54,3 +71,6 @@ let to_thir_span (s : Ast.span) : T.span =
         hi = to_thir_loc hi;
         lo = to_thir_loc lo;
       }
+
+let failure ~context ~span kind =
+  raise @@ Error { context; kind; span = to_thir_span span }
