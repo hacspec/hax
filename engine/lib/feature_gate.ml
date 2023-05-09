@@ -141,8 +141,25 @@ struct
   let catch (type a b) (f : a -> b) (x : a) : b =
     try f x
     with E data ->
-      report data;
-      Caml.exit 1
+      let err : exn =
+        Diagnostics.Error
+          {
+            context = Phase S0.metadata.current_phase;
+            kind =
+              Unimplemented
+                {
+                  issue_id = None;
+                  details =
+                    Some
+                      ("Todo error for feature_gate. "
+                      ^ S0.explain (fst data.data) (snd data.data));
+                };
+            span = Diagnostics.to_thir_span @@ Data.span data;
+          }
+      in
+      Caml.raise err
+  (* report data; *)
+  (* Caml.exit 1 *)
 
   let dty : span -> A.ty -> B.ty = fun span -> catch @@ dty span
   let dpat : A.pat -> B.pat = catch dpat

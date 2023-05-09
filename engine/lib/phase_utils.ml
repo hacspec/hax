@@ -38,6 +38,11 @@ module DefaultError = struct
       { kind; span = Diagnostics.to_thir_span span; context = Phase phase }
 
     exception E of t
+
+    let raise err = raise @@ E err
+
+    let unimplemented ?issue_id ?details span =
+      raise { kind = Unimplemented { issue_id; details }; span }
   end
 
   module _ : PHASE_ERROR = Error
@@ -124,31 +129,102 @@ module AddErrorHandling (D : PHASE) = struct
       raise PhaseError
 end
 
-module DebugBindPhase : sig
-  val add : Metadata.t -> (unit -> Yojson.Safe.t) -> unit
+module DebugPhaseInfo = struct
+  type t = Before | Phase of Diagnostics.Phase.t
+  [@@deriving eq, sexp, hash, compare, yojson]
+
+  let show (s : t) : string =
+    match s with
+    | Before -> "initial_input"
+    | Phase p -> Diagnostics.Phase.display p
+
+  let pp (fmt : Caml.Format.formatter) (s : t) : unit =
+    Caml.Format.pp_print_string fmt @@ show s
+end
+
+module type DEBUG_BIND_PHASE = sig
+  val add : DebugPhaseInfo.t -> int -> (unit -> Ast.Full.item list) -> unit
   val export : unit -> unit
-end = struct
-  let cache : (Diagnostics.Phase.t, int * Yojson.Safe.t list ref) Hashtbl.t =
-    Hashtbl.create (module Diagnostics.Phase)
+end
 
-  let add (phase_name : Metadata.t) (mk_json : unit -> Yojson.Safe.t) =
+module FakeDebugBindPhase : DEBUG_BIND_PHASE = struct
+  let add _ _ _ = ()
+  let export _ = ()
+end
+
+module type EnabledDebugBindPhase_OPTIONS = sig
+  val prefix_path : string
+end
+
+module EnabledDebugBindPhase (Options : EnabledDebugBindPhase_OPTIONS) :
+  DEBUG_BIND_PHASE = struct
+  let cache : (DebugPhaseInfo.t, int * Ast.Full.item list ref) Hashtbl.t =
+    Hashtbl.create (module DebugPhaseInfo)
+
+  let add (phase_info : DebugPhaseInfo.t) (nth : int)
+      (mk_item : unit -> Ast.Full.item list) =
     let _, l =
-      Hashtbl.find_or_add cache phase_name.current_phase ~default:(fun _ ->
-          (List.length @@ Metadata.previous_phases phase_name, ref []))
+      Hashtbl.find_or_add cache phase_info ~default:(fun _ -> (nth, ref []))
     in
-    l := !l @ [ mk_json () ]
+    l := !l @ mk_item ()
 
-  let export () =
-    let _all =
+  open Options
+
+  let export_print () =
+    let files =
+      Hashtbl.to_alist cache
+      |> List.sort ~compare:(fun (_, (a, _)) (_, (b, _)) -> Int.compare a b)
+      |> List.map ~f:(fun (k, (nth, l)) ->
+             ( Printf.sprintf "%02d" nth ^ "_" ^ [%show: DebugPhaseInfo.t] k,
+               String.concat ~sep:"\n\n" (List.map ~f:Print_rust.pitem !l) ))
+    in
+    List.iter
+      ~f:(fun (path, data) ->
+        Core.Out_channel.write_all ~data
+        @@ [%string "%{prefix_path}/%{path}.rs"])
+      files
+
+  let export_as_json () =
+    let all =
       Hashtbl.to_alist cache
       |> List.sort ~compare:(fun (_, (a, _)) (_, (b, _)) -> Int.compare a b)
       |> List.map ~f:(fun (k, (nth, l)) ->
              `Assoc
-               [ ("name", `String k); ("nth", `Int nth); ("items", `List !l) ])
+               [
+                 ("name", `String ([%show: DebugPhaseInfo.t] k));
+                 ("nth", `Int nth);
+                 ("items", [%yojson_of: Ast.Full.item list] !l);
+               ])
     in
-    (* Core_kernel.Out_channel.write_all ~data:(`List all |> Yojson.Safe.pretty_to_string) *)
-    (* @@ "/tmp/debug-circus-engine.json" *)
-    ()
+    Core.Out_channel.write_all ~data:(`List all |> Yojson.Safe.pretty_to_string)
+    @@ prefix_path ^ "/debug-circus-engine.json"
+
+  let export () =
+    export_print ();
+    export_as_json ()
+end
+
+module DebugBindPhase : DEBUG_BIND_PHASE =
+  (val match Caml.Sys.getenv_opt "CIRCUS_ENGINE_DEBUG" with
+       | Some "" | None -> (module FakeDebugBindPhase : DEBUG_BIND_PHASE)
+       | Some path ->
+           if not (Caml.Sys.file_exists path && Caml.Sys.is_directory path) then
+             failwith
+               [%string
+                 "Engine error: the environment variable CIRCUS_ENGINE_DEBUG \
+                  is set to [%{path}] which was expected to be a valid \
+                  existing directory. Aborting."];
+           let (module Options : EnabledDebugBindPhase_OPTIONS) =
+             (module struct
+               let prefix_path = path
+             end)
+           in
+           (module EnabledDebugBindPhase (Options) : DEBUG_BIND_PHASE))
+
+module type S = sig
+  module A : Ast.T
+
+  val ditem : A.item -> Ast.Full.item list
 end
 
 module BindPhase
@@ -179,14 +255,22 @@ struct
 
   let ditem : A.item -> B.item list =
    fun item0 ->
+    let nth = List.length @@ Metadata.previous_phases D1.metadata in
+    (if Int.equal nth 0 then
+     let coerce_to_full_ast : D1'.A.item -> Ast.Full.item = Caml.Obj.magic in
+     DebugBindPhase.add Before 0 (fun _ -> [ coerce_to_full_ast item0 ]));
     let item1 =
       try D1'.ditem item0
       with D1.Error.E e -> raise @@ Error.E (Error.ErrD1 e)
     in
+    let coerce_to_full_ast : D2'.A.item list -> Ast.Full.item list =
+      Caml.Obj.magic
+    in
+    DebugBindPhase.add (Phase D1.metadata.current_phase) (nth + 1) (fun _ ->
+        coerce_to_full_ast item1);
     let item2 =
       try List.concat_map ~f:D2'.ditem item1
       with D2.Error.E e -> raise @@ Error.E (Error.ErrD2 e)
     in
-    DebugBindPhase.add D1.metadata (fun _ -> [%yojson_of: D1.B.item list] item1);
     item2
 end

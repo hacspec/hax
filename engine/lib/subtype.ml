@@ -208,11 +208,22 @@ struct
 
   and dlhs (span : span) (lhs : A.lhs) : B.lhs =
     match lhs with
-    | LhsFieldAccessor { e; field; typ } ->
-        LhsFieldAccessor { e = dlhs span e; field; typ = dty span typ }
-    | LhsArrayAccessor { e; index; typ } ->
+    | LhsFieldAccessor { e; field; typ; witness } ->
+        LhsFieldAccessor
+          {
+            e = dlhs span e;
+            field;
+            typ = dty span typ;
+            witness = S.nontrivial_lhs witness;
+          }
+    | LhsArrayAccessor { e; index; typ; witness } ->
         LhsArrayAccessor
-          { e = dlhs span e; index = dexpr index; typ = dty span typ }
+          {
+            e = dlhs span e;
+            index = dexpr index;
+            typ = dty span typ;
+            witness = S.nontrivial_lhs witness;
+          }
     | LhsLocalVar { var; typ } -> LhsLocalVar { var; typ = dty span typ }
     | LhsArbitraryExpr { e; witness } ->
         LhsArbitraryExpr { e = dexpr e; witness = S.arbitrary_lhs witness }

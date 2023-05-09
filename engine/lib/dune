@@ -9,7 +9,8 @@
   hacspeclib_macro_parser
   cmdliner
   fstar_surface_ast
-  base)
+  base
+  core)
  (preprocessor_deps
   ; `ppx_inline` is used on the `Subtype` module, thus we need it at PPX time
   (file subtype.ml))
@@ -22,6 +23,7 @@
    visitors.ppx
    ppx_deriving.show
    ppx_deriving.eq
+   ppx_string
    ppx_inline
    ppx_generate_features
    ppx_functor_application

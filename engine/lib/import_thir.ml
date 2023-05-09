@@ -21,7 +21,7 @@ let unimplemented (span : Thir.span) (details : string) =
          context = ThirImport;
        })
 
-let todo (span : Thir.span) = unimplemented span ""
+let todo (span : Thir.span) = unimplemented span "TODO"
 
 module Ast = struct
   include Ast
@@ -171,8 +171,8 @@ module Exn = struct
     match lit with
     | Err -> raise span GotErrLiteral
     | Str (str, _) -> String str
-    | ByteStr _ -> todo span
-    | Byte _ -> todo span
+    | ByteStr _ -> unimplemented span "ByteStr literals"
+    | Byte _ -> unimplemented span "Byte literals"
     | Char s -> Char s
     | Int (i, _t) ->
         Int
@@ -183,8 +183,9 @@ module Exn = struct
               | Some (TInt k) -> k
               | Some _ -> raise span IllTypedIntLiteral
               | None ->
-                  todo span
-                  (* { size = S8; signedness = Unsigned } *)
+                  (* unimplemented span "ByteStr literals" *)
+                  (* TODO: this is wrong *)
+                  { size = S8; signedness = Unsigned }
                   (* kind = (match t with _ -> fail with "lit: int" (\* TODO *\)); *));
           }
     | Float _ -> unimplemented span "todo float"
@@ -354,10 +355,37 @@ module Exn = struct
             | _ -> (
                 match resugar_index_mut lhs with
                 | Some (e, index) ->
-                    LhsArrayAccessor { e = mk_lhs e; typ = lhs.typ; index }
-                | None ->
-                    LhsArbitraryExpr { e = lhs; witness = W.arbitrary_lhs })
+                    LhsArrayAccessor
+                      {
+                        e = mk_lhs e;
+                        typ = lhs.typ;
+                        index;
+                        witness = W.nontrivial_lhs;
+                      }
+                | None -> (
+                    match (unbox_underef_expr lhs).e with
+                    | App
+                        {
+                          f =
+                            {
+                              e = GlobalVar (`Projector (`Concrete _) as field);
+                              typ = TArrow ([ _ ], _);
+                              span = _;
+                            };
+                          args = [ e ];
+                        } ->
+                        LhsFieldAccessor
+                          {
+                            e = mk_lhs e;
+                            typ = lhs.typ;
+                            field;
+                            witness = W.nontrivial_lhs;
+                          }
+                    | _ ->
+                        LhsArbitraryExpr { e = lhs; witness = W.arbitrary_lhs })
+                )
           in
+
           Assign { lhs = mk_lhs lhs; e; witness = W.mutable_variable }
       | AssignOp _ -> unimplemented e.span "AssignOp"
       | VarRef { id } -> LocalVar (local_ident id)

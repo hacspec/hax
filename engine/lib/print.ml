@@ -134,7 +134,7 @@ and parm { arm = { pat; body; _ }; _ } =
 
 and plhs (e : lhs) =
   match e with
-  | LhsFieldAccessor { e; field; _ } -> plhs e ^^ dot ^^ string field
+  | LhsFieldAccessor { e; _ } -> plhs e ^^ dot ^^ string "field"
   | LhsArrayAccessor { e; index; _ } -> plhs e ^^ brackets @@ pexpr index
   | LhsLocalVar { var; _ } -> plocal_ident var
   | LhsArbitraryExpr { e; _ } -> pexpr e

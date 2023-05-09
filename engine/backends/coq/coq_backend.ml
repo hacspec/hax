@@ -39,6 +39,7 @@ module CoqBackend = struct
           let lifetime = reject
           let monadic_action = reject
           let arbitrary_lhs = reject
+          let nontrivial_lhs = reject
           let monadic_binding _ = Features.On.monadic_binding
           let state_passing_loop = reject
           let for_loop = reject
@@ -758,7 +759,7 @@ module CoqBackend = struct
           C.AST.Let (ppat lhs, pexpr rhs, pexpr body, pty lhs.typ)
       | Let { lhs; rhs; body; monadic = None } ->
           C.AST.Let (ppat lhs, pexpr rhs, pexpr body, pty lhs.typ)
-      | MonadicAction _ -> __TODO_term__ "monadic action"
+      | EffectAction _ -> __TODO_term__ "monadic action"
       | Match { scrutinee; arms } ->
           C.AST.Match
             ( pexpr scrutinee,
@@ -780,7 +781,6 @@ module CoqBackend = struct
           C.AST.Var (pglobal_ident constructor ^ snd (ty_to_string (pty e.typ)))
       | Closure { params; body } ->
           C.AST.Lambda (List.map ~f:ppat params, pexpr body)
-      | Return { e } -> __TODO_term__ "return"
       (* Macro *)
       | MacroInvokation
           {
@@ -1117,8 +1117,8 @@ module CoqBackend = struct
      Open Scope Z_scope.\n\
      Open Scope bool_scope.\n"
 
-  let translate (o : Backend.Options.t) (bo : BackendOptions.t)
-      (items : AST.item list) : Raw_thir_ast.output =
+  let translate (bo : BackendOptions.t) (items : AST.item list) :
+      Raw_thir_ast.output =
     {
       diagnostics = [];
       files =
@@ -1150,17 +1150,17 @@ module CoqBackend = struct
     |> Phases.Direct_and_mut
     |> Phases.Reject.Continue
     |> Phases.Drop_references
-     (* results in unit functions disappering *)
-    |> (fun X -> (Phases.Mutable_variable(module X))
-                   (module struct
-                      let early_exit = fun _ -> Features.On.early_exit
-                    end))
+    |> Phases.Trivialize_assign_lhs
+    |> Side_effect_utils.Hoist
+    |> Side_effect_utils.MutVar
+    |> Phases.Reject.Continue
+    |> Phases.Reject.EarlyExit
+    |> Phases.Functionalize_loops
     |> RejectNotCoq
-    (* |> Identity *)
+    |> Identity
     ]
     [@ocamlformat "disable"]
 
-  let apply_phases (o : Backend.Options.t) (bo : BackendOptions.t)
-      (i : Ast.Rust.item) : AST.item list =
+  let apply_phases (bo : BackendOptions.t) (i : Ast.Rust.item) : AST.item list =
     TransformToInputLanguage.ditem i
 end

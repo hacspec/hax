@@ -31,7 +31,7 @@ module FStarBackend = struct
           let reference = reject
           let slice = reject
           let raw_pointer = reject
-          let early_exit _ = Obj.magic ()
+          let early_exit = reject
           let macro _ = Features.On.macro
           let as_pattern = reject
           let lifetime = reject
@@ -40,6 +40,7 @@ module FStarBackend = struct
           let nontrivial_lhs = reject
           let monadic_binding _ = Features.On.monadic_binding
           let for_loop = reject
+          let state_passing_loop = reject
 
           let metadata =
             Phase_utils.Metadata.make (Reject (NotInBackendLang FStar))
@@ -213,7 +214,7 @@ module FStarBackend = struct
       match id with
       | Box -> failwith "Box"
       | Deref -> failwith "Box"
-      | Cast -> failwith "Cast"
+      | Cast -> F.lid [ "cast" ]
       | BinOp op -> (
           match op with
           | Add -> F.lid [ "Prims"; "op_Addition" ]
@@ -535,15 +536,15 @@ module FStarBackend = struct
           in
           F.term
           @@ F.AST.Let (NoLetQualifier, [ (None, (p, pexpr rhs)) ], pexpr body)
-      | MonadicAction _ -> .
+      | EffectAction _ -> .
       | Match { scrutinee; arms } ->
           F.term
           @@ F.AST.Match (pexpr scrutinee, None, None, List.map ~f:parm arms)
       | Ascription { e; typ } ->
           F.term @@ F.AST.Ascribed (pexpr e, pty typ, None, false)
-      | Construct { constructor = `TupleCons 1; fields = [ (_, e) ]; base } ->
-          pexpr e
-      | Construct { constructor = `TupleCons n; fields; base } ->
+      | Construct { constructor = `TupleCons 1; fields = [ (_, e') ]; base } ->
+          pexpr e'
+      | Construct { constructor = `TupleCons n; fields; base = None } ->
           F.AST.mkTuple (List.map ~f:(snd >> pexpr) fields) F.dummyRange
       | Construct { constructs_record = true; constructor; fields; base } ->
           F.term
@@ -553,7 +554,10 @@ module FStarBackend = struct
                )
       | Construct { constructs_record = false; constructor; fields; base }
         when List.for_all ~f:(fst >> is_field_an_index) fields ->
-          assert (Option.is_none base);
+          if [%matches? Some _] base then
+            Diagnostics.failure ~context:(Backend FStar) ~span:e.span
+              (AssertionFailure
+                 { details = "non-record type with base present" });
           F.mk_e_app (F.term @@ F.AST.Name (pglobal_ident constructor))
           @@ List.map ~f:(snd >> pexpr) fields
       | Construct { constructs_record = false; constructor; fields; base } ->
@@ -1000,28 +1004,27 @@ module FStarBackend = struct
      open Hacspec.Lib\n\
      open Hacspec_lib_tc"
 
-  let translate (o : Backend.Options.t) (bo : BackendOptions.t)
-      (items : AST.item list) : Raw_thir_ast.output =
-    {
-      diagnostics = [];
-      files =
-        U.group_items_by_namespace items
-        |> Map.to_alist
-        |> List.map ~f:(fun (ns, items) ->
-               let mod_name =
-                 String.concat ~sep:"."
-                   (List.map
-                      ~f:(map_first_letter String.uppercase)
-                      (fst ns :: snd ns))
-               in
-               Raw_thir_ast.
-                 {
-                   path = mod_name ^ ".fst";
-                   contents =
-                     "module " ^ mod_name ^ hardcoded_fstar_headers ^ "\n\n"
-                     ^ string_of_items items;
-                 });
-    }
+  let translate (bo : BackendOptions.t) (items : AST.item list) :
+      Raw_thir_ast.output =
+    let files =
+      U.group_items_by_namespace items
+      |> Map.to_alist
+      |> List.map ~f:(fun (ns, items) ->
+             let mod_name =
+               String.concat ~sep:"."
+                 (List.map
+                    ~f:(map_first_letter String.uppercase)
+                    (fst ns :: snd ns))
+             in
+             Raw_thir_ast.
+               {
+                 path = mod_name ^ ".fst";
+                 contents =
+                   "module " ^ mod_name ^ hardcoded_fstar_headers ^ "\n\n"
+                   ^ string_of_items items;
+               })
+    in
+    { diagnostics = []; files }
 
   open Phase_utils
 
@@ -1032,19 +1035,18 @@ module FStarBackend = struct
       |> Phases.Reject.Arbitrary_lhs
       |> Phases.Reconstruct_for_loops
       |> Phases.Direct_and_mut
-      |> Phases.Reject.Continue
       |> Phases.Drop_references
-      |> (fun X ->
-      (Phases.Mutable_variable(module X))
-      (module struct
-      let early_exit = fun _ -> Features.On.early_exit
-      end))
+      |> Phases.Trivialize_assign_lhs
+      |> Side_effect_utils.Hoist
+      |> Side_effect_utils.MutVar
+      |> Phases.Reject.Continue
+      |> Phases.Reject.EarlyExit
+      |> Phases.Functionalize_loops
       |> RejectNotFStar
       |> Identity
       ]
       [@ocamlformat "disable"])
 
-  let apply_phases (o : Backend.Options.t) (bo : BackendOptions.t)
-      (i : Ast.Rust.item) : AST.item list =
+  let apply_phases (bo : BackendOptions.t) (i : Ast.Rust.item) : AST.item list =
     TransformToInputLanguage.ditem i
 end

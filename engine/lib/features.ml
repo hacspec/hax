@@ -12,6 +12,7 @@ loop,
   early_exit,
   macro,
   as_pattern,
+  nontrivial_lhs,
   arbitrary_lhs,
   lifetime,
   monadic_action,
@@ -24,6 +25,7 @@ module Rust = struct
   include Off.For_loop
   include Off.Monadic_action
   include Off.Monadic_binding
+  include Off.State_passing_loop
 end
 
 module _ = struct

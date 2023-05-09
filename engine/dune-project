@@ -36,6 +36,7 @@
         cmdliner
         angstrom
         ppx_matches
+        ppx_string
 
         js_of_ocaml-compiler
         zarith_stubs_js
