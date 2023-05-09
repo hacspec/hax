@@ -75,17 +75,23 @@ let collect_ast_nodes (result : inlinable_item list ref) =
       | _ -> e'
   end
 
-let locate_module ~loc module_name =
-  let dirname =
-    loc.Ocaml_common.Location.loc_start.pos_fname |> Filename.dirname
-  in
-  Filename.concat dirname module_name
-
 let replace_every_location (location : location) =
   object
     inherit Ast_traverse.map
     method! location = Fn.const location
   end
+
+let locate_module (name : string) : string =
+  let rec find = function
+    | path when Caml.Sys.is_directory path ->
+        Caml.Sys.readdir path
+        |> Array.find_map ~f:(fun name ->
+               find @@ Caml.Filename.concat path name)
+    | path when String.(Caml.Filename.basename path = name) -> Some path
+    | _ -> None
+  in
+  find (Caml.Sys.getcwd ())
+  |> Option.value_exn ~message:("ppx_inbline: could not locate module " ^ name)
 
 let inlinable_items_of_module : loc:location -> string -> inlinable_item list =
   let memo = Hashtbl.create (module String) in
