@@ -1,10 +1,19 @@
+use circus_lint::Type;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::{
     interface::{self, Compiler},
     Queries,
 };
 
-pub(crate) struct LinterCallbacks {}
+pub(crate) struct LinterCallbacks {
+    ltype: Type,
+}
+
+impl LinterCallbacks {
+    pub(crate) fn new(ltype: Type) -> Self {
+        Self { ltype }
+    }
+}
 
 impl Callbacks for LinterCallbacks {
     fn after_parsing<'tcx>(
@@ -24,7 +33,7 @@ impl Callbacks for LinterCallbacks {
             .global_ctxt()
             .unwrap()
             .peek_mut()
-            .enter(|tcx| circus_lint::Linter::register(tcx, session));
+            .enter(|tcx| circus_lint::Linter::register(tcx, session, self.ltype));
 
         Compilation::Continue
     }

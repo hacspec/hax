@@ -147,7 +147,7 @@ pub struct Options {
 
     /// Semi-colon terminated list of arguments to pass to the
     /// [cargo build] invocation. For example, to apply this
-    /// program on a package [foo], use [-C -p foo;]. (make sure
+    /// program on a package [foo], use [-C -p foo ;]. (make sure
     /// to escape [;] correctly in your shell)
     #[arg(default_values = Vec::<&str>::new(), short='C', allow_hyphen_values=true, num_args=1.., long="cargo-args", value_terminator=";")]
     pub cargo_flags: Vec<String>,

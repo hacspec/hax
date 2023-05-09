@@ -74,6 +74,18 @@ pub fn no_mut_self(session: &Lrc<Session>, span: Span) {
     );
 }
 
+pub fn no_mut(session: &Lrc<Session>, span: Span) {
+    session.span_warn_with_code(
+        span,
+        "[Circus] Mutable arguments are not supported",
+        DiagnosticId::Lint {
+            name: "Mutability".to_string(),
+            has_future_breakage: false,
+            is_force_warn: true,
+        },
+    );
+}
+
 pub fn no_assoc_items(session: &Lrc<Session>, span: Span) {
     session.span_warn_with_code(
         span,

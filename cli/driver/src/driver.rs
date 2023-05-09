@@ -25,6 +25,7 @@ extern crate rustc_target;
 extern crate rustc_type_ir;
 
 mod exporter;
+use circus_lint::Type;
 use exporter::ExtractionCallbacks;
 
 mod linter;
@@ -115,15 +116,15 @@ fn main() {
             command: command.clone(),
         }),
         Some(Command::LintCommand(command)) => {
-            let _config = match command {
-                circus_cli_options::LinterCommand::Hacspec => (),
-                circus_cli_options::LinterCommand::Rust => (),
+            let ltype = match command {
+                circus_cli_options::LinterCommand::Hacspec => Type::Hacspec,
+                circus_cli_options::LinterCommand::Rust => Type::Rust,
             };
-            Box::new(LinterCallbacks {})
+            Box::new(LinterCallbacks::new(ltype))
         }
         None => {
             // hacspec lint
-            Box::new(LinterCallbacks {})
+            Box::new(LinterCallbacks::new(Type::Rust))
         }
     };
 
