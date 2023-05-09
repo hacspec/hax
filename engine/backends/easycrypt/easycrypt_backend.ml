@@ -46,6 +46,7 @@ module ECBackend = struct
           let monadic_binding = reject
           let arbitrary_lhs = reject
           let state_passing_loop = reject
+          let nontrivial_lhs = reject
           let for_loop _ = Features.On.for_loop
 
           let metadata =

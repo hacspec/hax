@@ -68,6 +68,12 @@ pub enum Kind {
 
     /// Unsupported macro invokation
     UnsupportedMacro { id: String } = 4,
+
+    /// Mutation of bindings living outside a closure scope are not supported
+    ClosureMutatesParentBindings { bindings: Vec<String> },
+
+    /// Assignation of an arbitrary left-hand side is not supported. [lhs = e] is fine only when [lhs] is a combination of local identifiers, field accessors and index accessors.
+    ArbitraryLHS,
 }
 
 impl Kind {
