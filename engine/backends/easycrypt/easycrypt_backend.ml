@@ -45,6 +45,7 @@ module ECBackend = struct
           let monadic_action = reject
           let monadic_binding = reject
           let arbitrary_lhs = reject
+          let state_passing_loop = reject
           let for_loop _ = Features.On.for_loop
 
           let metadata =
@@ -215,8 +216,13 @@ module ECBackend = struct
       | Assign { lhs; e } ->
           Format.fprintf fmt "%a <- %a;" doit_lhs lhs doit_expr e
       | Match _ -> foo ()
-      | Loop _ -> foo ()
-      | ForLoop { var = { name }; start; end_; body } ->
+      | Loop
+          {
+            body;
+            kind = ForLoop { start; end_; var; witness };
+            state = None;
+            _;
+          } ->
           let vty =
             match start.typ with TInt kind -> kind | _ -> assert false
           in
@@ -225,6 +231,7 @@ module ECBackend = struct
           Format.fprintf fmt "@[<v>while (%s < %a) {@,  @[<v>%a%t@]@,}@]" name
             doit_expr end_ doit_stmt body (fun fmt ->
               Format.fprintf fmt "%s <- %s + 1;@," name name)
+      | Loop _ -> foo ()
       | Return _ -> foo ()
       | MacroInvokation _ -> foo ()
       | GlobalVar (`TupleCons 0) -> ()
@@ -321,7 +328,6 @@ module ECBackend = struct
       | MacroInvokation _ -> assert false
       | Assign _ -> assert false
       | Loop _ -> assert false
-      | ForLoop _ -> assert false
       | Break _ -> assert false
       | Return _ -> assert false
       | Continue _ -> assert false

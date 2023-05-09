@@ -180,16 +180,36 @@ module Make (F : Features.T) = struct
           in
           visit_lhs lhs
 
-        method visit_Match m scrut arms =
-          List.fold_left ~init:(super#visit_expr m scrut) ~f:Set.union
-          @@ List.map ~f:(fun arm -> super#visit_arm m arm) arms
+        method visit_Match env scrut arms =
+          List.fold_left ~init:(super#visit_expr env scrut) ~f:Set.union
+          @@ List.map ~f:(fun arm -> super#visit_arm env arm) arms
 
-        method visit_Let m _monadic pat expr body =
-          Set.union (super#visit_expr m expr)
-          @@ without_pat_vars (super#visit_expr m body) pat
+        method visit_Let env _monadic pat expr body =
+          Set.union (super#visit_expr env expr)
+          @@ without_pat_vars (super#visit_expr env body) pat
 
-        method visit_arm' m { pat; body } =
-          without_pat_vars (super#visit_expr m body) pat
+        method visit_Closure env params body _captures =
+          without_pats_vars (super#visit_expr env body) params
+
+        method visit_Loop env body kind state _label _witness =
+          let vars =
+            (match kind with
+            | UnconditionalLoop -> []
+            | ForLoop { var = _not_mutable; _ } -> [])
+            @ (state
+              |> Option.map ~f:(fun { bpat; _ } -> variables_of_pat bpat)
+              |> Option.to_list)
+            |> Set.union_list (module LocalIdent)
+          in
+          m#plus
+            (super#visit_loop_kind env kind)
+            (m#plus
+               (Option.map ~f:(super#visit_loop_state env) state
+               |> Option.value ~default:m#zero)
+               (without_vars (super#visit_expr env body) vars))
+
+        method visit_arm' env { pat; body } =
+          without_pat_vars (super#visit_expr env body) pat
       end
 
     class ['s] expr_list_monoid =

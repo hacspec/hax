@@ -140,8 +140,8 @@ struct
         Loop
           {
             body = dexpr body;
-            kind = dloop_kind kind;
-            state = Option.map ~f:(S.state_passing_loop *** dexpr) state;
+            kind = dloop_kind span kind;
+            state = Option.map ~f:(dloop_state span) state;
             label;
             witness = S.loop witness;
           }
@@ -181,17 +181,25 @@ struct
             captures = List.map ~f:dexpr captures;
           }
 
-  and dloop_kind (k : A.loop_kind) : B.loop_kind =
+  and dloop_kind (span : span) (k : A.loop_kind) : B.loop_kind =
     match k with
     | UnconditionalLoop -> UnconditionalLoop
-    | ForLoop { start; end_; var; witness } ->
+    | ForLoop { start; end_; var; var_typ; witness } ->
         ForLoop
           {
             start = dexpr start;
             end_ = dexpr end_;
             var;
+            var_typ = dty span var_typ;
             witness = S.for_loop witness;
           }
+
+  and dloop_state (_span : span) (s : A.loop_state) : B.loop_state =
+    {
+      init = dexpr s.init;
+      bpat = dpat s.bpat;
+      witness = S.state_passing_loop s.witness;
+    }
 
   and darm (a : A.arm) : B.arm = { span = a.span; arm = darm' a.span a.arm }
 

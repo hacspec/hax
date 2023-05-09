@@ -396,19 +396,21 @@ functor
       (* Mut *)
       | Assign of { lhs : lhs; e : expr; witness : F.mutable_variable }
       (* Loop *)
-      | Loop of { body : expr; label : string option; witness : F.loop }
-      | ForLoop of {
-          start : expr;
-          end_ : expr;
-          var : local_ident;
+      | Loop of {
           body : expr;
+          kind : loop_kind;
+          state : loop_state option;
           label : string option;
-          witness : F.for_loop;
+          witness : F.loop;
         }
       (* ControlFlow *)
       | Break of { e : expr; label : string option; witness : F.loop }
       | Return of { e : expr; witness : F.early_exit }
-      | Continue of { label : string option; witness : F.continue * F.loop }
+      | Continue of {
+          e : (F.state_passing_loop * expr) option;
+          label : string option;
+          witness : F.continue * F.loop;
+        }
       (* Mem *)
       | Borrow of { kind : borrow_kind; e : expr; witness : F.reference }
       (* Raw borrow *)
@@ -421,6 +423,18 @@ functor
       | MonadicAction of { action : F.monadic_action; argument : expr }
 
     and expr = { e : expr'; span : span; typ : ty }
+
+    and loop_kind =
+      | UnconditionalLoop
+      | ForLoop of {
+          start : expr;
+          end_ : expr;
+          var : local_ident;
+          var_typ : ty;
+          witness : F.for_loop;
+        }
+
+    and loop_state = { init : expr; bpat : pat; witness : F.state_passing_loop }
 
     and lhs =
       | LhsLocalVar of { var : LocalIdent.t; typ : ty }

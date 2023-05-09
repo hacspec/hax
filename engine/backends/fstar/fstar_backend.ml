@@ -37,6 +37,7 @@ module FStarBackend = struct
           let lifetime = reject
           let monadic_action = reject
           let arbitrary_lhs = reject
+          let nontrivial_lhs = reject
           let monadic_binding _ = Features.On.monadic_binding
           let for_loop = reject
 

@@ -1,6 +1,7 @@
 [%%declare_features
 loop,
   for_loop,
+  state_passing_loop,
   continue,
   mutable_variable,
   mutable_reference,

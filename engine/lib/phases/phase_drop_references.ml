@@ -89,13 +89,12 @@ struct
         MacroInvokation { macro; args; witness }
     | Assign { lhs; e; witness } ->
         Assign { lhs = dlhs span lhs; e = dexpr e; witness }
-    | [%inline_arms Loop + ForLoop] -> auto
-    | Break { e; label; witness } -> Break { e = dexpr e; label; witness }
+    | [%inline_arms Loop + Continue + Break] ->
+        auto (* TODO: inline more arms! *)
     | Return { e; witness } -> Return { e = dexpr e; witness }
-    | Continue { label; witness } -> Continue { label; witness }
-    | Borrow { kind; e; witness } -> (dexpr e).e
-    | MonadicAction { action; argument } ->
-        MonadicAction { action; argument = dexpr argument }
+    | Borrow { e; _ } -> (dexpr e).e
+    | EffectAction { action; argument } ->
+        EffectAction { action; argument = dexpr argument }
     | Closure { params; body; captures } ->
         Closure
           {
@@ -108,6 +107,8 @@ struct
   and darm (a : A.arm) : B.arm = { span = a.span; arm = darm' a.arm }
   and darm' (a : A.arm') : B.arm' = { pat = dpat a.pat; body = dexpr a.body }
   and dlhs = [%inline_body dlhs]
+  and dloop_kind = [%inline_body dloop_kind]
+  and dloop_state = [%inline_body dloop_state]
 
   let dtrait_ref (span : span) (r : A.trait_ref) : B.trait_ref =
     {

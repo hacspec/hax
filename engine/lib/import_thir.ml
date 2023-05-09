@@ -299,7 +299,14 @@ module Exn = struct
       | Pointer _ -> unimplemented e.span "Pointer"
       | Loop { body } ->
           let body = c_expr body in
-          Loop { body; label = None; witness = W.loop }
+          Loop
+            {
+              body;
+              kind = UnconditionalLoop;
+              state = None;
+              label = None;
+              witness = W.loop;
+            }
       | Match { scrutinee; arms } ->
           let scrutinee = c_expr scrutinee in
           let arms = List.map ~f:c_arm arms in
@@ -392,11 +399,13 @@ module Exn = struct
               mut = c_mutability W.mutable_pointer mut;
               witness = W.raw_pointer;
             }
-      | Break { label; value } ->
+      | Break { value; _ } ->
+          (* TODO: labels! *)
           let e = Option.map ~f:c_expr value in
           let e = Option.value ~default:(unit_expr span) e in
           Break { e; label = None; witness = W.loop }
-      | Continue _ -> Continue { label = None; witness = (W.continue, W.loop) }
+      | Continue _ ->
+          Continue { e = None; label = None; witness = (W.continue, W.loop) }
       | Return { value } ->
           let e = Option.map ~f:c_expr value in
           let e = Option.value ~default:(unit_expr span) e in

@@ -37,8 +37,11 @@ struct
       start : expr;
       end_ : expr;
       var : local_ident;
+      var_typ : ty;
       body : expr;
+      state : loop_state option;
       label : string option;
+      witness : FA.loop;
     }
     [@@deriving show]
 
@@ -132,6 +135,9 @@ struct
                             Loop
                               {
                                 label;
+                                kind = UnconditionalLoop;
+                                state;
+                                witness;
                                 body =
                                   {
                                     e =
@@ -267,6 +273,8 @@ struct
                                                                                 subpat =
                                                                                 None;
                                                                                 };
+                                                                                typ =
+                                                                                var_typ;
                                                                                 };
                                                                             };
                                                                           ];
@@ -312,7 +320,7 @@ struct
               ];
           }
         when [%eq: local_ident] iter_variable next_iter_variable ->
-          Some { start; end_; var; body; label }
+          Some { start; end_; var; body; state; var_typ; label; witness }
       | _ -> None
              [@ocamlformat "disable"]
   end
@@ -322,17 +330,24 @@ struct
   let rec dexpr (expr : A.expr) : B.expr =
     let h = [%inline_body dexpr] in
     match For.extract expr with
-    | Some { start; end_; var; body; label } ->
+    | Some { start; end_; var; body; label; state; var_typ; witness } ->
         {
           e =
-            ForLoop
+            Loop
               {
                 body = dexpr body;
-                start = dexpr start;
-                end_ = dexpr end_;
-                var;
+                kind =
+                  ForLoop
+                    {
+                      start = dexpr start;
+                      end_ = dexpr end_;
+                      var;
+                      var_typ = dty expr.span var_typ;
+                      witness = Features.On.for_loop;
+                    };
+                state = Option.map ~f:(dloop_state expr.span) state;
                 label;
-                witness = Features.On.for_loop;
+                witness = S.loop witness;
               };
           span = expr.span;
           typ = UB.unit_typ;
@@ -343,11 +358,13 @@ struct
   and darm = [%inline_body darm]
   and darm' = [%inline_body darm']
   and dlhs = [%inline_body dlhs]
+  and dloop_kind = [%inline_body dloop_kind]
+  and dloop_state = [%inline_body dloop_state]
 
   [%%inline_defs "Item.*"]
 
   module FA = FA
 end
-[@@add "../subtype.ml"]
+[@@add "subtype.ml"]
 
 (* module _ (F: Features.T): Phase_utils.PHASE = Make(F) *)

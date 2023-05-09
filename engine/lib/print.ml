@@ -120,14 +120,14 @@ let rec pexpr (e : expr) =
   | Break { e; label; _ } ->
       string "break(" ^^ pexpr e ^^ string ")[" ^^ optional string label
       ^^ string "]"
-  | Return { e } -> string "return(" ^^ pexpr e ^^ string ")"
-  | Continue { label } ->
+  | Return { e; _ } -> string "return(" ^^ pexpr e ^^ string ")"
+  | Continue { label; _ } ->
       string "continue[" ^^ optional string label ^^ string "]"
-  | Borrow { kind; e } -> string "&" ^^ pborrow_kind kind ^^ parens (pexpr e)
-  | AddressOf { mut; e } -> string "&raw..."
-  | MonadicAction _ -> string "monadic action"
-  | Closure { params; body } -> string "closure"
-  | ForLoop _ -> string "ForLoop"
+  | Borrow { kind; e; _ } -> string "&" ^^ pborrow_kind kind ^^ parens (pexpr e)
+  | AddressOf _ -> string "&raw..."
+  | EffectAction _ -> string "EffectAction"
+  | Closure _ -> string "closure"
+(* | ForLoop _ -> string "ForLoop" *)
 
 and parm { arm = { pat; body; _ }; _ } =
   group (group (group (string "|" ^/^ ppat pat) ^/^ string "->") ^/^ pexpr body)
