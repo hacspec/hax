@@ -215,7 +215,9 @@ impl Callbacks for ExtractionCallbacks {
 
                     let out = engine_subprocess.wait_with_output().unwrap();
                     if !out.status.success() {
-                        panic!("{} exited with non-zero code", ENGINE_BINARY_NAME);
+                        eprintln!("{} exited with non-zero code", ENGINE_BINARY_NAME);
+                        eprintln!("stdout: {}", String::from_utf8(out.stdout).unwrap());
+                        eprintln!("stderr: {}", String::from_utf8(out.stderr).unwrap());
                         std::process::exit(out.status.code().unwrap_or(-1));
                     }
                     let output: circus_cli_options_engine::Output =
