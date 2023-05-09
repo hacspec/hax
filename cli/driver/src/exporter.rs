@@ -264,6 +264,7 @@ impl Callbacks for ExtractionCallbacks {
                     } else {
                         let session = compiler.session();
                         for d in output.diagnostics.clone() {
+                            use circus_diagnostics::*;
                             use circus_frontend_exporter::SInto;
                             let mut relevant_spans: Vec<_> = spans
                                 .iter()
@@ -271,13 +272,13 @@ impl Callbacks for ExtractionCallbacks {
                                 .cloned()
                                 .collect();
                             relevant_spans.sort();
-                            session.span_err_with_code(
-                                relevant_spans
-                                    .first()
-                                    .cloned()
-                                    .unwrap_or(rustc_span::DUMMY_SP),
-                                format!("{}", d),
-                                rustc_errors::DiagnosticId::Error(d.kind.code().into()),
+                            session.span_circus_err(
+                                d.set_span(
+                                    relevant_spans
+                                        .first()
+                                        .cloned()
+                                        .unwrap_or(rustc_span::DUMMY_SP),
+                                ),
                             );
                         }
                     }

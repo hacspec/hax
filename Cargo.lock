@@ -205,6 +205,7 @@ version = "0.1.0"
 dependencies = [
  "circus-cli-options",
  "circus-cli-options-engine",
+ "circus-diagnostics",
  "circus-frontend-exporter",
  "circus-frontend-exporter-options",
  "circus-lint",
