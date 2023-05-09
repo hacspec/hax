@@ -35,6 +35,7 @@ type todo = string
     yojson,
     eq,
     visitors { variety = "reduce"; name = "todo_reduce" },
+    visitors { variety = "mapreduce"; name = "todo_mapreduce" },
     visitors { variety = "map"; name = "todo_map" }]
 
 type loc = { col : int; line : int }
@@ -43,6 +44,7 @@ type loc = { col : int; line : int }
     yojson,
     eq,
     visitors { variety = "reduce"; name = "loc_reduce" },
+    visitors { variety = "mapreduce"; name = "loc_mapreduce" },
     visitors { variety = "map"; name = "loc_map" }]
 
 type span = Span of { file : string; hi : loc; lo : loc } | Dummy
@@ -52,6 +54,12 @@ type span = Span of { file : string; hi : loc; lo : loc } | Dummy
     show,
     visitors
       { variety = "reduce"; name = "span_reduce"; ancestors = [ "loc_reduce" ] },
+    visitors
+      {
+        variety = "mapreduce";
+        name = "span_mapreduce";
+        ancestors = [ "loc_mapreduce" ];
+      },
     visitors { variety = "map"; name = "span_map"; ancestors = [ "loc_map" ] }]
 
 let show_span (_s : span) : string = "<span>"
@@ -107,6 +115,7 @@ and primitive_ident =
     sexp,
     eq,
     visitors { variety = "reduce"; name = "primitive_ident_reduce" },
+    visitors { variety = "mapreduce"; name = "primitive_ident_mapreduce" },
     visitors { variety = "map"; name = "primitive_ident_map" }]
 
 let show_concrete_ident (s : concrete_ident) : string =
@@ -159,6 +168,7 @@ type global_ident = (GlobalIdent.t[@visitors.opaque])
     yojson,
     eq,
     visitors { variety = "reduce"; name = "global_ident_reduce" },
+    visitors { variety = "mapreduce"; name = "global_ident_mapreduce" },
     visitors { variety = "map"; name = "global_ident_map" }]
 
 module LocalIdent = struct
@@ -179,6 +189,7 @@ type local_ident = (LocalIdent.t[@visitors.opaque])
     sexp,
     eq,
     visitors { variety = "reduce"; name = "local_ident_reduce" },
+    visitors { variety = "mapreduce"; name = "local_ident_mapreduce" },
     visitors { variety = "map"; name = "local_ident_map" }]
 
 type size = S8 | S16 | S32 | S64 | S128 | SSize
@@ -200,6 +211,7 @@ type literal =
     yojson,
     eq,
     visitors { variety = "reduce"; name = "literal_reduce" },
+    visitors { variety = "mapreduce"; name = "literal_mapreduce" },
     visitors { variety = "map"; name = "literal_map" }]
 
 (* type 't spanned = { v : 't; span : span } [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "spanned_reduce" }] *)
@@ -213,6 +225,7 @@ type supported_monads = Option | Result | ControlFlow
     yojson,
     eq,
     visitors { variety = "reduce"; name = "supported_monads_reduce" },
+    visitors { variety = "mapreduce"; name = "supported_monads_mapreduce" },
     visitors { variety = "map"; name = "supported_monads_map" }]
 
 module Make =
@@ -226,6 +239,7 @@ functor
         yojson,
         eq,
         visitors { variety = "reduce"; name = "borrow_kind_reduce" },
+        visitors { variety = "mapreduce"; name = "borrow_kind_mapreduce" },
         visitors { variety = "map"; name = "borrow_kind_map" }]
 
     type binding_mode =
@@ -240,6 +254,12 @@ functor
             variety = "reduce";
             name = "binding_mode_reduce";
             ancestors = [ "borrow_kind_reduce" ];
+          },
+        visitors
+          {
+            variety = "mapreduce";
+            name = "binding_mode_mapreduce";
+            ancestors = [ "borrow_kind_mapreduce" ];
           },
         visitors
           {
@@ -260,9 +280,16 @@ functor
 
     class virtual ['self] default_map_features =
       object (_self : 'self)
-        inherit ['env] VisitorsRuntime.map
-        method visit_span : 'env -> span -> span = Fn.const Fn.id
-        method visit_literal : 'env -> literal -> literal = Fn.const Fn.id
+        inherit [_] VisitorsRuntime.map
+        method visit_span : _ -> span -> span = Fn.const Fn.id
+        method visit_literal : _ -> literal -> literal = Fn.const Fn.id
+      end
+
+    class virtual ['self] default_mapreduce_features =
+      object (self : 'self)
+        inherit ['env] VisitorsRuntime.mapreduce
+        method visit_span : _ -> span -> _ = fun _ x -> (x, self#zero)
+        method visit_literal : _ -> literal -> _ = fun _ x -> (x, self#zero)
       end
 
     type ty =
@@ -305,6 +332,19 @@ functor
                 "local_ident_reduce";
                 "default_reduce_features";
                 "DefaultClasses.default_reduce_features";
+              ];
+          },
+        visitors
+          {
+            variety = "mapreduce";
+            name = "ty_mapreduce";
+            ancestors =
+              [
+                "global_ident_mapreduce";
+                "todo_mapreduce";
+                "local_ident_mapreduce";
+                "default_mapreduce_features";
+                "DefaultClasses.default_mapreduce_features";
               ];
           },
         visitors
@@ -360,6 +400,12 @@ functor
           },
         visitors
           {
+            variety = "mapreduce";
+            name = "pat_mapreduce";
+            ancestors = [ "ty_mapreduce"; "binding_mode_mapreduce" ];
+          },
+        visitors
+          {
             variety = "map";
             name = "pat_map";
             ancestors = [ "ty_map"; "binding_mode_map" ];
@@ -404,7 +450,12 @@ functor
           witness : F.loop;
         }
       (* ControlFlow *)
-      | Break of { e : expr; label : string option; witness : F.loop }
+      | Break of {
+          e : expr;
+          label : string option;
+          witness : F.loop;
+              (* todo, we should be able to disable [Break]s specifically *)
+        }
       | Return of { e : expr; witness : F.early_exit }
       | Continue of {
           e : (F.state_passing_loop * expr) option;
@@ -435,12 +486,26 @@ functor
         }
 
     and loop_state = { init : expr; bpat : pat; witness : F.state_passing_loop }
+    (* | WhileLoop of { *)
+    (*     condition: expr; *)
+    (*     witness : F.while_loop; *)
+    (*   } *)
 
     and lhs =
       | LhsLocalVar of { var : LocalIdent.t; typ : ty }
       | LhsArbitraryExpr of { e : expr; witness : F.arbitrary_lhs }
-      | LhsFieldAccessor of { e : lhs; typ : ty; field : string }
-      | LhsArrayAccessor of { e : lhs; typ : ty; index : expr }
+      | LhsFieldAccessor of {
+          e : lhs;
+          typ : ty;
+          field : global_ident;
+          witness : F.nontrivial_lhs;
+        }
+      | LhsArrayAccessor of {
+          e : lhs;
+          typ : ty;
+          index : expr;
+          witness : F.nontrivial_lhs;
+        }
 
     and arm' = { pat : pat; body : expr }
 
@@ -457,13 +522,16 @@ functor
           },
         visitors
           {
+            variety = "mapreduce";
+            name = "expr_mapreduce";
+            ancestors = [ "pat_mapreduce"; "supported_monads_mapreduce" ];
+          },
+        visitors
+          {
             variety = "map";
             name = "expr_map";
             ancestors = [ "pat_map"; "supported_monads_map" ];
           }]
-    (* [@@deriving *)
-    (*   visitors *)
-    (* { variety = "reduce"; name = "expr_reduce"; ancestors = [ "reduce_base" ] }] *)
 
     type generic_param =
       | GPLifetime of {
@@ -481,6 +549,12 @@ functor
             variety = "reduce";
             name = "generic_param_reduce";
             ancestors = [ "ty_reduce" ];
+          },
+        visitors
+          {
+            variety = "mapreduce";
+            name = "generic_param_mapreduce";
+            ancestors = [ "ty_mapreduce" ];
           },
         visitors
           {
@@ -505,6 +579,12 @@ functor
             ancestors = [ "ty_reduce" ];
           },
         visitors
+          {
+            variety = "mapreduce";
+            name = "trait_ref_mapreduce";
+            ancestors = [ "ty_mapreduce" ];
+          },
+        visitors
           { variety = "map"; name = "trait_ref_map"; ancestors = [ "ty_map" ] }]
 
     type generic_constraint =
@@ -519,6 +599,12 @@ functor
             variety = "reduce";
             name = "generic_constraint_reduce";
             ancestors = [ "trait_ref_reduce" ];
+          },
+        visitors
+          {
+            variety = "mapreduce";
+            name = "generic_constraint_mapreduce";
+            ancestors = [ "trait_ref_mapreduce" ];
           },
         visitors
           {
@@ -618,6 +704,17 @@ functor
           },
         visitors
           {
+            variety = "mapreduce";
+            name = "item_mapreduce";
+            ancestors =
+              [
+                "generic_constraint_mapreduce";
+                "expr_mapreduce";
+                "generic_param_mapreduce";
+              ];
+          },
+        visitors
+          {
             variety = "map";
             name = "item_map";
             ancestors =
@@ -632,6 +729,8 @@ functor
     (*   show, yojson, eq, visitors { variety = "reduce"; name = "item_reduce" }, visitors { variety = "map"; name = "item_map" }] *)
 
     type modul = item list
+
+    module F = F
   end
 
 module type T = sig
@@ -639,3 +738,4 @@ module type T = sig
 end
 
 module Rust = Make (Features.Rust)
+module Full = Make (Features.Full)
