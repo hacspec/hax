@@ -68,6 +68,8 @@ struct
   and darm = [%inline_body darm]
   and darm' = [%inline_body darm']
   and dlhs = [%inline_body dlhs]
+  and dloop_kind = [%inline_body dloop_kind]
+  and dloop_state = [%inline_body dloop_state]
 
   and dexpr (expr : A.expr) : B.expr =
     let span = expr.span in

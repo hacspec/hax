@@ -82,6 +82,8 @@ struct
     | E data -> raise @@ Data.add data @@ Expr expr
 
   and dexpr' = [%inline_body dexpr']
+  and dloop_kind = [%inline_body dloop_kind]
+  and dloop_state = [%inline_body dloop_state]
   and darm = [%inline_body darm]
   and darm' = [%inline_body darm']
   and dlhs = [%inline_body dlhs]

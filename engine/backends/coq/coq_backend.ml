@@ -40,6 +40,7 @@ module CoqBackend = struct
           let monadic_action = reject
           let arbitrary_lhs = reject
           let monadic_binding _ = Features.On.monadic_binding
+          let state_passing_loop = reject
           let for_loop = reject
 
           let metadata =
@@ -812,20 +813,6 @@ module CoqBackend = struct
           } ->
           __TODO_term__ (crate ^ " macro " ^ pp)
       | MacroInvokation { macro; args; witness } -> __TODO_term__ "macro"
-      (* Mut *)
-      | Assign { lhs; e; witness } -> __TODO_term__ "assign"
-      (* Loop *)
-      | Loop { body; label; witness } -> __TODO_term__ "loop"
-      (* ControlFlow *)
-      | Break { e; label; witness } -> __TODO_term__ "break"
-      | Continue { label; witness } -> __TODO_term__ "continue"
-      (* Mem *)
-      | Borrow { kind; e; witness } -> __TODO_term__ "borrow"
-      (* Raw borrow *)
-      | AddressOf { mut; e; witness } -> __TODO_term__ "raw borrow"
-      | Literal l -> __TODO_term__ "literal"
-      | ForLoop { start; end_; var; body; label; witness } ->
-          __TODO_term__ "for loop"
       | _ -> .
 
     let __TODO_item__ s = C.AST.Unimplemented (s ^ " todo(item)")
