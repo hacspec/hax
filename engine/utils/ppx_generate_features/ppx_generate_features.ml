@@ -113,6 +113,40 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
           [
             B.class_infos ~virt:Virtual
               ~params:[ ([%type: 'self], (NoVariance, NoInjectivity)) ]
+              ~name:{ loc; txt = "default_mapreduce_features" }
+              ~expr:
+                (B.pcl_structure
+                @@ B.class_structure
+                     ~self:[%pat? (self : 'self)]
+                     ~fields:
+                       (B.pcf_inherit Fresh
+                          (B.pcl_constr
+                             {
+                               txt = Ldot (Lident "VisitorsRuntime", "mapreduce");
+                               loc;
+                             }
+                             [ [%type: _] ])
+                          None
+                       :: List.map
+                            ~f:(fun txt ->
+                              B.pcf_method
+                                ( { loc; txt = "visit_" ^ txt },
+                                  Public,
+                                  Cfk_concrete
+                                    ( Fresh,
+                                      (rename [ ("placeholder", txt) ])
+                                        #expression
+                                        [%expr
+                                          fun (_env : 'env) (x : F.placeholder) ->
+                                            (x, self#zero)] ) ))
+                            features));
+          ]]
+
+        [%%i
+        B.pstr_class
+          [
+            B.class_infos ~virt:Virtual
+              ~params:[ ([%type: 'self], (NoVariance, NoInjectivity)) ]
               ~name:{ loc; txt = "default_map_features" }
               ~expr:
                 (B.pcl_structure
@@ -198,6 +232,17 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
               end
 
               include Placeholder])
+        features
+      |> B.pmod_structure]
+
+      module ToFull =
+      [%m
+      List.concat_map
+        ~f:(fun txt ->
+          (rename
+             [ ("placeholder", txt); ("Placeholder", uppercase_first_char txt) ])
+            #structure
+            [%str let placeholder _ = On.placeholder])
         features
       |> B.pmod_structure]
 
