@@ -53,6 +53,7 @@
               pkgs.ocamlPackages.ocamlformat-rpc-lib
               pkgs.ocamlPackages.ocaml-print-intf
               pkgs.ocamlPackages.odoc
+              pkgs.ocamlPackages.utop
 
               # pkgs.cargo-expand
               pkgs.openssl.dev

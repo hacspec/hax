@@ -471,7 +471,7 @@ functor
           witness : F.raw_pointer;
         }
       | Closure of { params : pat list; body : expr; captures : expr list }
-      | MonadicAction of { action : F.monadic_action; argument : expr }
+      | EffectAction of { action : F.monadic_action; argument : expr }
 
     and expr = { e : expr'; span : span; typ : ty }
 

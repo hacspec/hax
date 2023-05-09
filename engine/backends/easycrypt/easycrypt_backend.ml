@@ -106,8 +106,8 @@ module ECBackend = struct
       (suffix_of_signedness signedness)
       (suffix_of_size size)
 
-  let translate (o : Backend.Options.t) (bo : BackendOptions.t)
-      (items : AST.item list) : Raw_thir_ast.output =
+  let translate' (bo : BackendOptions.t) (items : AST.item list) :
+      Raw_thir_ast.output =
     let items = List.fold_left ~init:NM.empty ~f:NM.push items in
 
     let rec doit (fmt : Format.formatter) (the : nmtree) =
@@ -237,7 +237,7 @@ module ECBackend = struct
       | MacroInvokation _ -> foo ()
       | GlobalVar (`TupleCons 0) -> ()
       | Ascription _ | Array _ | Break _ | Continue _ | Closure _ | Borrow _
-      | MonadicAction _ | AddressOf _ ->
+      | EffectAction _ | AddressOf _ ->
           assert false
       | App _ | Literal _ | Construct _ | LocalVar _ | GlobalVar _ ->
           Format.fprintf fmt "return %a;" doit_expr expr
@@ -329,17 +329,30 @@ module ECBackend = struct
       | MacroInvokation _ -> assert false
       | Assign _ -> assert false
       | Loop _ -> assert false
+      (* | ForLoop _ -> assert false *)
       | Break _ -> assert false
       | Return _ -> assert false
       | Continue _ -> assert false
       | Borrow _ -> assert false
       | AddressOf _ -> assert false
       | Closure _ -> assert false
-      | MonadicAction _ -> assert false
+      | EffectAction _ -> assert false
     in
 
     doit Format.err_formatter items;
     { diagnostics = []; files = [] }
+
+  let translate (bo : BackendOptions.t) (items : AST.item list) :
+      Raw_thir_ast.output =
+    try translate' bo items
+    with Assert_failure (file, line, col) ->
+      Diagnostics.failure ~context:(Backend FStar) ~span:Dummy
+        (AssertionFailure
+           {
+             details =
+               "Assertion failed in " ^ file ^ ":" ^ Int.to_string line ^ ":"
+               ^ Int.to_string col;
+           })
 
   open Phase_utils
 
@@ -349,7 +362,6 @@ module ECBackend = struct
   |> Phases.Direct_and_mut |> Phases.Reject.Continue |> Phases.Drop_references
   |> RejectNotEC]
 
-  let apply_phases (o : Backend.Options.t) (bo : BackendOptions.t)
-      (i : Ast.Rust.item) : AST.item list =
+  let apply_phases (bo : BackendOptions.t) (i : Ast.Rust.item) : AST.item list =
     TransformToInputLanguage.ditem i
 end

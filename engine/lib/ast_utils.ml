@@ -47,7 +47,7 @@ end
 
 module Make (F : Features.T) = struct
   module AST = Ast.Make (F)
-  include AST
+  open AST
   module TypedLocalIdent = TypedLocalIdent (AST)
 
   module Sets = struct
@@ -154,10 +154,20 @@ module Make (F : Features.T) = struct
         #visit_pat
         () p
 
+    let variables_of_pats : pat list -> Sets.LocalIdent.t =
+      List.map ~f:variables_of_pat >> Set.union_list (module LocalIdent)
+
+    let without_vars (mut_vars : Sets.TypedLocalIdent.t)
+        (vars : Sets.LocalIdent.t) =
+      Set.filter mut_vars ~f:(fst >> Set.mem vars >> not)
+
+    let without_pats_vars (mut_vars : Sets.TypedLocalIdent.t) :
+        pat list -> Sets.TypedLocalIdent.t =
+      variables_of_pats >> without_vars mut_vars
+
     let without_pat_vars (mut_vars : Sets.TypedLocalIdent.t) (pat : pat) :
         Sets.TypedLocalIdent.t =
-      let pat_vars = variables_of_pat pat in
-      Set.filter mut_vars ~f:(fst >> Set.mem pat_vars >> not)
+      without_pats_vars mut_vars [ pat ]
 
     let free_assigned_variables
         (fv_of_arbitrary_lhs :
@@ -168,7 +178,9 @@ module Make (F : Features.T) = struct
         method visit_t _ _ = m#zero
         method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
 
-        method visit_Assign _m lhs e _wit =
+        (* TODO: loop state *)
+
+        method visit_Assign _env lhs e _wit =
           let rec visit_lhs lhs =
             match lhs with
             | LhsLocalVar { var; _ } ->
@@ -260,6 +272,7 @@ module Make (F : Features.T) = struct
   let unit_expr span : expr =
     { typ = unit_typ; span; e = GlobalVar (`TupleCons 0) }
 
+  (* TODO: Those tuple1 things are wrong! Tuples of size one exists in Rust! e.g. `(123,)` *)
   let rec remove_tuple1_pat (p : pat) : pat =
     match p.p with
     | PConstruct { name = `TupleType 1; args = [ { pat; _ } ]; _ } ->
@@ -358,6 +371,13 @@ module Make (F : Features.T) = struct
       typ = make_tuple_typ @@ List.map ~f:(fun { typ; _ } -> typ) tuple;
       span;
     }
+
+  let call (crate : string) (path_hd : string) (path_tl : string list)
+      (args : expr list) span ret_typ =
+    let path = Non_empty_list.(path_hd :: path_tl) in
+    let typ = TArrow (List.map ~f:(fun arg -> arg.typ) args, ret_typ) in
+    let e = GlobalVar (`Concrete { crate; path }) in
+    { e = App { f = { e; typ; span }; args }; typ = ret_typ; span }
 
   let rec collect_let_bindings' (e : expr) : (pat * expr * ty) list * expr =
     match e.e with
