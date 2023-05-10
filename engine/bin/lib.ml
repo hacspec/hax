@@ -24,7 +24,7 @@ let run () : Raw_thir_ast.output =
     |> translate o backend_options
   in
   try
-    match options.backend with
+    match options.backend.backend with
     | Fstar -> run (module Fstar_backend.FStarBackend) ()
     | Coq -> run (module Coq_backend.CoqBackend) ()
     | Easycrypt -> run (module Easycrypt_backend.ECBackend) ()

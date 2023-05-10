@@ -94,10 +94,17 @@ pub enum Backend {
     Easycrypt,
 }
 
+#[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
+pub struct BackendOptions {
+    #[command(subcommand)]
+    backend: Backend,
+}
+
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
 pub enum ExporterCommand {
-    #[command(flatten)]
-    Backend(Backend),
+    /// Translate to a backend
+    #[clap(name = "into")]
+    Backend(BackendOptions),
 
     /// Export directly as a JSON file
     JSON {

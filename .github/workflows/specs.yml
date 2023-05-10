@@ -44,7 +44,7 @@ jobs:
               fi
             done
             echo "::group::$crate [$backend]"
-            cargo circus -C -p "$crate" \; -i '**' "$backend"
+            cargo circus -C -p "$crate" \; -i '**' into "$backend"
             echo "::endgroup::"
           done
         done
