@@ -109,6 +109,13 @@ pub struct BackendOptions {
     /// on the stdout in JSON.
     #[arg(short, long = "output-dir", default_value = "out/")]
     pub output_dir: PathOrDash,
+
+    /// Enable debugging in the engine. When this option is enabled,
+    /// the engine will dump the transformed AST at each phase in the
+    /// specified directory. Those ASTs will be available in two
+    /// different formats: Rust-ish files, and plain JSON ASTs.
+    #[arg(long = "debug-engine")]
+    debug_engine: Option<PathBuf>,
 }
 
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
