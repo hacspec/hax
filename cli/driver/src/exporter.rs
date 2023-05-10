@@ -269,8 +269,13 @@ impl Callbacks for ExtractionCallbacks {
                             parent
                         })
                         .unwrap();
-                        println!("Write {:#?}", path);
-                        std::fs::write(path, file.contents).expect("Unable to write file");
+                        session.note_without_error(format!("Writing file {:#?}", path));
+                        std::fs::write(&path, file.contents).unwrap_or_else(|e| {
+                            session.fatal(format!(
+                                "Unable to write to file {:#?}. Error: {:#?}",
+                                path, e
+                            ))
+                        })
                     }
                 }
             };
