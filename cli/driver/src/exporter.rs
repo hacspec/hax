@@ -240,6 +240,7 @@ impl Callbacks for ExtractionCallbacks {
                         cached_thirs: HashMap::new(),
                         exported_spans: Rc::new(RefCell::new(HashSet::new())),
                     };
+                    let session = compiler.session();
                     if output.diagnostics.is_empty() {
                         match &backend.output_dir {
                             PathOrDash::Dash => {
@@ -255,14 +256,17 @@ impl Callbacks for ExtractionCallbacks {
                                         parent
                                     })
                                     .unwrap();
-                                    println!("Write {:#?}", path);
-                                    std::fs::write(path, file.contents)
-                                        .expect("Unable to write file");
+                                    session.note_without_error(format!("Writing file {:#?}", path));
+                                    std::fs::write(&path, file.contents).unwrap_or_else(|e| {
+                                        session.fatal(format!(
+                                            "Unable to write to file {:#?}. Error: {:#?}",
+                                            path, e
+                                        ))
+                                    })
                                 }
                             }
                         }
                     } else {
-                        let session = compiler.session();
                         for d in output.diagnostics.clone() {
                             use circus_diagnostics::*;
                             use circus_frontend_exporter::SInto;
