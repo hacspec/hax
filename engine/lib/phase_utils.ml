@@ -142,35 +142,28 @@ module DebugPhaseInfo = struct
     Caml.Format.pp_print_string fmt @@ show s
 end
 
-module type DEBUG_BIND_PHASE = sig
+module DebugBindPhase : sig
   val add : DebugPhaseInfo.t -> int -> (unit -> Ast.Full.item list) -> unit
   val export : unit -> unit
-end
+  val enable : string -> unit
+end = struct
+  let prefix_path = ref None
+  let enable (path : string) = prefix_path := Some path
+  let enabled () = Option.is_some !prefix_path
 
-module FakeDebugBindPhase : DEBUG_BIND_PHASE = struct
-  let add _ _ _ = ()
-  let export _ = ()
-end
-
-module type EnabledDebugBindPhase_OPTIONS = sig
-  val prefix_path : string
-end
-
-module EnabledDebugBindPhase (Options : EnabledDebugBindPhase_OPTIONS) :
-  DEBUG_BIND_PHASE = struct
   let cache : (DebugPhaseInfo.t, int * Ast.Full.item list ref) Hashtbl.t =
     Hashtbl.create (module DebugPhaseInfo)
 
   let add (phase_info : DebugPhaseInfo.t) (nth : int)
       (mk_item : unit -> Ast.Full.item list) =
-    let _, l =
-      Hashtbl.find_or_add cache phase_info ~default:(fun _ -> (nth, ref []))
-    in
-    l := !l @ mk_item ()
+    if enabled () then
+      let _, l =
+        Hashtbl.find_or_add cache phase_info ~default:(fun _ -> (nth, ref []))
+      in
+      l := !l @ mk_item ()
+    else ()
 
-  open Options
-
-  let export_print () =
+  let export_print prefix_path =
     let files =
       Hashtbl.to_alist cache
       |> List.sort ~compare:(fun (_, (a, _)) (_, (b, _)) -> Int.compare a b)
@@ -184,7 +177,7 @@ module EnabledDebugBindPhase (Options : EnabledDebugBindPhase_OPTIONS) :
         @@ [%string "%{prefix_path}/%{path}.rs"])
       files
 
-  let export_as_json () =
+  let export_as_json prefix_path =
     let all =
       Hashtbl.to_alist cache
       |> List.sort ~compare:(fun (_, (a, _)) (_, (b, _)) -> Int.compare a b)
@@ -200,26 +193,12 @@ module EnabledDebugBindPhase (Options : EnabledDebugBindPhase_OPTIONS) :
     @@ prefix_path ^ "/debug-circus-engine.json"
 
   let export () =
-    export_print ();
-    export_as_json ()
+    match !prefix_path with
+    | Some prefix_path ->
+        export_print prefix_path;
+        export_as_json prefix_path
+    | None -> ()
 end
-
-module DebugBindPhase : DEBUG_BIND_PHASE =
-  (val match Caml.Sys.getenv_opt "CIRCUS_ENGINE_DEBUG" with
-       | Some "" | None -> (module FakeDebugBindPhase : DEBUG_BIND_PHASE)
-       | Some path ->
-           if not (Caml.Sys.file_exists path && Caml.Sys.is_directory path) then
-             failwith
-               [%string
-                 "Engine error: the environment variable CIRCUS_ENGINE_DEBUG \
-                  is set to [%{path}] which was expected to be a valid \
-                  existing directory. Aborting."];
-           let (module Options : EnabledDebugBindPhase_OPTIONS) =
-             (module struct
-               let prefix_path = path
-             end)
-           in
-           (module EnabledDebugBindPhase (Options) : DEBUG_BIND_PHASE))
 
 module type S = sig
   module A : Ast.T

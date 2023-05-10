@@ -98,6 +98,13 @@ pub enum Backend {
 pub struct BackendOptions {
     #[command(subcommand)]
     backend: Backend,
+
+    /// Enable debugging in the engine. When this option is enabled,
+    /// the engine will dump the transformed AST at each phase in the
+    /// specified directory. Those ASTs will be available in two
+    /// different formats: Rust-ish files, and plain JSON ASTs.
+    #[arg(long = "debug-engine")]
+    debug_engine: Option<PathBuf>,
 }
 
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]

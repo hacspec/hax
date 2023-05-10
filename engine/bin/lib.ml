@@ -32,6 +32,16 @@ let read_options_from_stdin () : Raw_thir_ast.engine_options =
 
 let run () : Raw_thir_ast.output =
   let options = read_options_from_stdin () in
+  (match options.backend.debug_engine with
+  | Some path ->
+      if not (Caml.Sys.file_exists path && Caml.Sys.is_directory path) then
+        failwith
+          [%string
+            "Engine error: the environment variable CIRCUS_ENGINE_DEBUG is set \
+             to [%{path}] which was expected to be a valid existing directory. \
+             Aborting."];
+      Phase_utils.DebugBindPhase.enable path
+  | None -> ());
   let run (type options_type)
       (module M : Backend.T with type BackendOptions.t = options_type)
       (backend_options : options_type) : Raw_thir_ast.output =
