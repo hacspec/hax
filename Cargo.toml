@@ -8,6 +8,7 @@ members = [
      "cli/options/engine",
      "cli/subcommands",
      "cli/driver",
+     "test-harness",
 ]
 exclude = ["tests"]
 
@@ -35,3 +36,4 @@ circus-cli-options-engine = { path = "cli/options/engine" }
 circus-frontend-exporter-options = { path = "frontend/exporter/options" }
 circus-diagnostics = { path = "frontend/diagnostics" }
 circus-lint = { version = "=0.1.0", path = "frontend/lint" }
+
