@@ -242,10 +242,15 @@ impl Callbacks for ExtractionCallbacks {
                     let session = compiler.session();
                     for d in output.diagnostics.clone() {
                         use circus_frontend_exporter::SInto;
+                        let mut relevant_spans: Vec<_> = spans
+                            .iter()
+                            .filter(|span| span.sinto(&state) == d.span)
+                            .cloned()
+                            .collect();
+                        relevant_spans.sort();
                         session.span_err_with_code(
-                            spans
-                                .iter()
-                                .find(|span| span.sinto(&state) == d.span)
+                            relevant_spans
+                                .first()
                                 .cloned()
                                 .unwrap_or(rustc_span::DUMMY_SP),
                             format!("{}", d),
