@@ -28,6 +28,7 @@ module Phase = struct
     | HoistSideEffects
     | LocalMutation
     | TrivializeAssignLhs
+    | CfIntoMonads
     | DummyA
     | DummyB
     | DummyC

@@ -1040,6 +1040,7 @@ module FStarBackend = struct
       |> Side_effect_utils.Hoist
       |> Side_effect_utils.MutVar
       |> Phases.Reject.Continue
+      |> Phases.Cf_into_monads
       |> Phases.Reject.EarlyExit
       |> Phases.Functionalize_loops
       |> RejectNotFStar
