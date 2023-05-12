@@ -219,15 +219,6 @@ type literal =
 type 'mut_witness mutability = Mutable of 'mut_witness | Immutable
 [@@deriving show, yojson, eq]
 
-type supported_monads = Option | Result | ControlFlow
-[@@deriving
-  show,
-    yojson,
-    eq,
-    visitors { variety = "reduce"; name = "supported_monads_reduce" },
-    visitors { variety = "mapreduce"; name = "supported_monads_mapreduce" },
-    visitors { variety = "map"; name = "supported_monads_map" }]
-
 module Make =
 functor
   (F : Features.T)
@@ -425,7 +416,7 @@ functor
         }
       | Match of { scrutinee : expr; arms : arm list }
       | Let of {
-          monadic : (supported_monads * F.monadic_binding) option;
+          monadic : F.monadic_binding option;
           lhs : pat;
           rhs : expr;
           body : expr;
@@ -518,20 +509,16 @@ functor
           {
             variety = "reduce";
             name = "expr_reduce";
-            ancestors = [ "pat_reduce"; "supported_monads_reduce" ];
+            ancestors = [ "pat_reduce" ];
           },
         visitors
           {
             variety = "mapreduce";
             name = "expr_mapreduce";
-            ancestors = [ "pat_mapreduce"; "supported_monads_mapreduce" ];
+            ancestors = [ "pat_mapreduce" ];
           },
         visitors
-          {
-            variety = "map";
-            name = "expr_map";
-            ancestors = [ "pat_map"; "supported_monads_map" ];
-          }]
+          { variety = "map"; name = "expr_map"; ancestors = [ "pat_map" ] }]
 
     type generic_param =
       | GPLifetime of {

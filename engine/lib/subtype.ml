@@ -119,7 +119,7 @@ struct
     | Let { monadic; lhs; rhs; body } ->
         Let
           {
-            monadic = Option.map ~f:(Fn.id *** S.monadic_binding) monadic;
+            monadic = Option.map ~f:S.monadic_binding monadic;
             lhs = dpat lhs;
             rhs = dexpr rhs;
             body = dexpr body;
