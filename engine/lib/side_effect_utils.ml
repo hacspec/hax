@@ -153,7 +153,13 @@ struct
                  && SideEffects.commute effect effects
                 then (lbs, e)
                 else
-                  let var = fresh () in
+                  let var =
+                    (* if the body is a local variable, use that,
+                       otherwise get a fresh one *)
+                    match snd @@ U.collect_let_bindings e with
+                    | { e = LocalVar var; _ } -> var
+                    | _ -> fresh ()
+                  in
                   ( lbs @ [ (U.make_var_pat var e.typ e.span, e) ],
                     { e with e = LocalVar var } ))
                 :: l ))
