@@ -1,7 +1,9 @@
 open Base
 open Utils
 
-module MakeSI (F : Features.T) = struct
+module MakeSI
+    (F : Features.T with type monadic_binding = Features.Off.monadic_binding) =
+struct
   module AST = Ast.Make (F)
   module U = Ast_utils.Make (F)
   include Ast
@@ -354,23 +356,13 @@ module MakeSI (F : Features.T) = struct
                 (fun scrutinee effects ->
                   ( { e with e = Match { scrutinee; arms } },
                     m#plus eff_arms effects ))
-          | Let { monadic; lhs; rhs; body } ->
-              let rhs, rhs_effects = super#visit_expr env rhs in
-              let body, body_effects =
-                let body, (lbs, body_effects) = super#visit_expr env body in
-                (* anything in body might depend on pat *)
-                (* thus, we do not hoist *)
-                let body = lets_of_bindings lbs body in
-                ( body,
-                  (* effects related to vars introduced by lhs are discared *)
-                  SideEffects.without_rw_vars
-                    (U.Reducers.variables_of_pat lhs)
-                    body_effects )
-              in
-              ( { e with e = Let { monadic; lhs; rhs; body } },
-                m#plus ([], body_effects) rhs_effects )
-              (* HoistSeq.one env (rhs, rhs_effects) (fun rhs effects -> *)
-              (*     ({ e with e = Let { monadic; lhs; rhs; body } }, effects)) *)
+          | Let { monadic = Some _; _ } -> .
+          | Let { monadic = None; lhs; rhs; body } ->
+              let rhs, (rhs_lbs, rhs_effects) = super#visit_expr env rhs in
+              let body, (body_lbs, body_effects) = super#visit_expr env body in
+              let lbs = rhs_lbs @ ((lhs, rhs) :: body_lbs) in
+              let effects = SideEffects.plus rhs_effects body_effects in
+              (body, (lbs, effects))
           | GlobalVar _ -> (e, m#zero)
           | Ascription { e = e'; typ } ->
               HoistSeq.one env (super#visit_expr env e') (fun e' eff ->
@@ -424,7 +416,9 @@ module MakeSI (F : Features.T) = struct
   end
 end
 
-module%inlined_contents Hoist (F : Features.T) = struct
+module%inlined_contents Hoist
+    (F : Features.T with type monadic_binding = Features.Off.monadic_binding) =
+struct
   module FA = F
 
   module FB = struct
@@ -454,8 +448,6 @@ module%inlined_contents Hoist (F : Features.T) = struct
   let metadata = Phase_utils.Metadata.make HoistSideEffects
 end
 [@@add "subtype.ml"]
-
-module _ (F : Features.T) : Phase_utils.PHASE = Hoist (F)
 
 module%inlined_contents MutVar
     (F : Features.T
