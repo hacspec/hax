@@ -14,7 +14,7 @@ impl CommandCircusExt for Command {
             engine: PathBuf,
             cargo_circus: PathBuf,
         }
-        const DRIVER: &str = "driver-circus-frontend-exporter";
+        const CARGO_CIRCUS: &str = "cargo-circus";
         lazy_static! {
             static ref PATHS: Option<Paths> = {
                 if let "yes" | "y" | "true" | "1" = std::env::var("CARGO_TESTS_ASSUME_BUILT").unwrap_or("".into()).to_lowercase().as_str() {
@@ -37,8 +37,8 @@ impl CommandCircusExt for Command {
                         .unwrap()
                         .success());
                 Some(Paths {
-                    driver: cargo_bin(DRIVER),
-                    cargo_circus: cargo_bin("cargo-circus"),
+                    driver: cargo_bin("driver-circus-frontend-exporter"),
+                    cargo_circus: cargo_bin(CARGO_CIRCUS),
                     engine: engine_dir.join("_build/install/default/bin/circus-engine"),
                 })
             };
@@ -50,7 +50,7 @@ impl CommandCircusExt for Command {
                 cmd.env("CIRCUS_ENGINE_BINARY", paths.engine.clone());
                 cmd
             }
-            None => Command::new(DRIVER),
+            None => Command::new(CARGO_CIRCUS),
         };
         cmd.args(args);
         // As documented in
