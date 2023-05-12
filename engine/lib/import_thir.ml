@@ -25,7 +25,7 @@ let todo (span : Thir.span) = unimplemented span "TODO"
 
 module Ast = struct
   include Ast
-  include Ast.Make (Features.Rust)
+  include Rust
 end
 
 open Ast
