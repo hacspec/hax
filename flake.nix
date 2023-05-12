@@ -35,6 +35,7 @@
           circus = packages.circus-rust-frontend;
           default = packages.circus;
         };
+        checks.default = packages.circus.tests;
         apps = {
           serve-rustc-docs = { type = "app"; program = "${pkgs.writeScript "serve-rustc-docs" ''
              cd ${packages.rustc-docs}/share/doc/rust/html/rustc
