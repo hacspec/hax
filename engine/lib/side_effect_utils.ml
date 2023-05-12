@@ -531,7 +531,8 @@ struct
 
   (* [s] is the list of variables the last expression should return, packed in a tuple *)
   let rec dexpr_s (s : Instructions.t) (expr : A.expr) : B.expr =
-    let rec dexpr e = dexpr_s s e
+    let dexpr_same e = dexpr_s s e in
+    let rec dexpr e = dexpr_s { s with expr_level = []; drop_expr = false } e
     and dloop_state = [%inline_body dloop_state]
     and darm = [%inline_body darm]
     and darm' = [%inline_body darm'] (* and dlhs = [%inline_body dlhs] *) in
@@ -566,7 +567,7 @@ struct
                     (dexpr_s
                        { s with expr_level = []; drop_expr = false }
                        value);
-                body = dexpr body;
+                body = dexpr_same body;
               };
           typ = dty span expr.typ;
           span = expr.span;
@@ -596,7 +597,7 @@ struct
                 monadic = None;
                 lhs = lhs';
                 rhs = dexpr_s { s with expr_level = rhs_vars; drop_expr } rhs;
-                body = dexpr body;
+                body = dexpr_same body;
               };
           typ = dty span expr.typ;
           span = expr.span;
@@ -667,8 +668,8 @@ struct
               {
                 cond =
                   dexpr_s { s with expr_level = []; drop_expr = false } cond;
-                then_ = dexpr then_;
-                else_ = Option.map ~f:dexpr else_;
+                then_ = dexpr_same then_;
+                else_ = Option.map ~f:dexpr_same else_;
               };
           typ = dty span expr.typ;
           span = expr.span;
