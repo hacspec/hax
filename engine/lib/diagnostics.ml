@@ -25,7 +25,8 @@ module Phase = struct
     | DropReferences
     | RefMut
     | ResugarForLoops
-    | MutableVariables
+    | HoistSideEffects
+    | LocalMutation
     | TrivializeAssignLhs
     | DummyA
     | DummyB

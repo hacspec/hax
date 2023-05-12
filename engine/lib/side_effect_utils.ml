@@ -451,7 +451,7 @@ module%inlined_contents Hoist (F : Features.T) = struct
 
   [%%inline_defs "Item.*"]
 
-  let metadata = Phase_utils.Metadata.make DummyA
+  let metadata = Phase_utils.Metadata.make HoistSideEffects
 end
 [@@add "subtype.ml"]
 
@@ -474,7 +474,7 @@ struct
   open Ast
   module FA = F
 
-  let metadata = Phase_utils.Metadata.make DummyB
+  let metadata = Phase_utils.Metadata.make LocalMutation
 
   module FB = struct
     include F
