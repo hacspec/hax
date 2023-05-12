@@ -3,9 +3,8 @@ name = "test-harness"
 version = "0.1.0"
 edition = "2021"
 
-
 [[test]]
-name = "full"
+name = "toolchain"
 path = "src/harness.rs"
 harness = false
 test = false
