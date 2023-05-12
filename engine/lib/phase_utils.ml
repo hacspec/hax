@@ -43,6 +43,9 @@ module DefaultError = struct
 
     let unimplemented ?issue_id ?details span =
       raise { kind = Unimplemented { issue_id; details }; span }
+
+    let assertion_failure span details =
+      raise { kind = AssertionFailure { details }; span }
   end
 
   module _ : PHASE_ERROR = Error
