@@ -316,12 +316,26 @@ module Exn = struct
       | Block { safety_mode = BuiltinUnsafe | ExplicitUnsafe; _ } ->
           raise e.span UnsafeBlock
       | Block o ->
+          (* if there is no expression & the last expression is ⊥, just use that *)
+          let lift_last_statement_as_expr_if_possible expr stmts (ty : Thir.ty)
+              =
+            match (ty, expr, List.drop_last stmts, List.last stmts) with
+            | ( Thir.Never,
+                None,
+                Some stmts,
+                Some ({ kind = Thir.Expr { expr; _ } } : Thir.stmt) ) ->
+                (stmts, Some expr)
+            | _ -> (stmts, expr)
+          in
+          let o_stmts, o_expr =
+            lift_last_statement_as_expr_if_possible o.expr o.stmts e.ty
+          in
           let init =
-            Option.map ~f:c_expr o.expr
+            Option.map ~f:c_expr o_expr
             |> Option.value ~default:(unit_expr span)
           in
           let { e; _ } =
-            List.fold_right o.stmts ~init ~f:(fun { kind; _ } body ->
+            List.fold_right o_stmts ~init ~f:(fun { kind; _ } body ->
                 match kind with
                 | Expr { expr = rhs; _ } ->
                     let rhs = c_expr rhs in
