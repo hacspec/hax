@@ -106,9 +106,9 @@ const ENGINE_BINARY_NOT_FOUND: &str = const_format::formatcp!(
 );
 
 /// Dynamically looks for binary [ENGINE_BINARY_NAME].  First, we
-/// check wether [CIRCUS_ENGINE_BINARY] is set, and use that if it
+/// check whether [CIRCUS_ENGINE_BINARY] is set, and use that if it
 /// is. Then, we try to find [ENGINE_BINARY_NAME] in PATH. If not
-/// found, detect wether nodejs is available, download the JS-compiled
+/// found, detect whether nodejs is available, download the JS-compiled
 /// engine and use it.
 use std::process;
 fn find_circus_engine() -> process::Command {
