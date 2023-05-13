@@ -147,7 +147,6 @@ fn find_circus_engine() -> process::Command {
 /// Callback for extraction
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct ExtractionCallbacks {
-    pub output_dir: std::path::PathBuf,
     pub inline_macro_calls: Vec<circus_cli_options::Namespace>,
     pub command: circus_cli_options::ExporterCommand,
 }
@@ -186,7 +185,7 @@ impl Callbacks for ExtractionCallbacks {
                 }
                 ExporterCommand::Backend(backend) => {
                     let engine_options = circus_cli_options_engine::EngineOptions {
-                        backend,
+                        backend: backend.clone(),
                         input: converted_items,
                     };
                     let mut engine_subprocess = find_circus_engine()
@@ -258,7 +257,7 @@ impl Callbacks for ExtractionCallbacks {
                         );
                     }
                     for file in output.files.clone() {
-                        let mut path = self.output_dir.clone();
+                        let mut path = backend.output_dir.clone();
                         path.push(std::path::PathBuf::from(file.path));
                         std::fs::create_dir_all({
                             let mut parent = path.clone();

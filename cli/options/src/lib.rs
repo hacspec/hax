@@ -98,6 +98,10 @@ pub enum Backend {
 pub struct BackendOptions {
     #[command(subcommand)]
     backend: Backend,
+
+    /// Directory in which the backend should output files.
+    #[arg(short, long = "output-dir", default_value = "out/")]
+    pub output_dir: std::path::PathBuf,
 }
 
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
@@ -159,10 +163,6 @@ pub struct Options {
     #[arg(default_values = Vec::<&str>::new(), short='C', allow_hyphen_values=true, num_args=1.., long="cargo-args", value_terminator=";")]
     pub cargo_flags: Vec<String>,
 
-    /// Directory in which the backend should output files.
-    #[arg(short, long = "output-dir", default_value = "out/")]
-    pub output_dir: std::path::PathBuf,
-
     #[command(subcommand)]
     pub command: Option<Command>,
 
@@ -171,10 +171,23 @@ pub struct Options {
     pub force_cargo_build: ForceCargoBuild,
 }
 
+impl NormalizePaths for Command {
+    fn normalize_paths(self) -> Self {
+        match self {
+            Command::ExporterCommand(ExporterCommand::Backend(o)) => {
+                Command::ExporterCommand(ExporterCommand::Backend(BackendOptions {
+                    output_dir: absolute_path(o.output_dir).unwrap(),
+                    ..o
+                }))
+            }
+            _ => self,
+        }
+    }
+}
 impl NormalizePaths for Options {
     fn normalize_paths(self) -> Self {
         Options {
-            output_dir: absolute_path(self.output_dir).unwrap(),
+            command: self.command.map(|c| c.normalize_paths()),
             ..self
         }
     }
