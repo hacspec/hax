@@ -75,11 +75,16 @@ pub trait NormalizePaths {
     fn normalize_paths(self) -> Self;
 }
 
+impl NormalizePaths for PathBuf {
+    fn normalize_paths(self) -> Self {
+        absolute_path(self).unwrap()
+    }
+}
 impl NormalizePaths for PathOrDash {
     fn normalize_paths(self) -> Self {
         match self {
             PathOrDash::Dash => PathOrDash::Dash,
-            PathOrDash::Path(p) => PathOrDash::Path(absolute_path(p).unwrap()),
+            PathOrDash::Path(p) => PathOrDash::Path(p.normalize_paths()),
         }
     }
 }
@@ -179,7 +184,7 @@ impl NormalizePaths for ExporterCommand {
                 output_file: output_file.normalize_paths(),
             },
             Backend(o) => Backend(BackendOptions {
-                output_dir: absolute_path(o.output_dir).unwrap(),
+                output_dir: o.output_dir.normalize_paths(),
                 ..o
             }),
         }
