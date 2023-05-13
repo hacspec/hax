@@ -171,15 +171,25 @@ pub struct Options {
     pub force_cargo_build: ForceCargoBuild,
 }
 
+impl NormalizePaths for ExporterCommand {
+    fn normalize_paths(self) -> Self {
+        use ExporterCommand::*;
+        match self {
+            JSON { output_file } => JSON {
+                output_file: output_file.normalize_paths(),
+            },
+            Backend(o) => Backend(BackendOptions {
+                output_dir: absolute_path(o.output_dir).unwrap(),
+                ..o
+            }),
+        }
+    }
+}
+
 impl NormalizePaths for Command {
     fn normalize_paths(self) -> Self {
         match self {
-            Command::ExporterCommand(ExporterCommand::Backend(o)) => {
-                Command::ExporterCommand(ExporterCommand::Backend(BackendOptions {
-                    output_dir: absolute_path(o.output_dir).unwrap(),
-                    ..o
-                }))
-            }
+            Command::ExporterCommand(cmd) => Command::ExporterCommand(cmd.normalize_paths()),
             _ => self,
         }
     }
