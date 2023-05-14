@@ -1,4 +1,4 @@
-use circus_cli_options::ENV_VAR_OPTIONS_FRONTEND;
+use circus_cli_options::{PathOrDash, ENV_VAR_OPTIONS_FRONTEND};
 use circus_frontend_exporter;
 use circus_frontend_exporter::types::ExportedSpans;
 use rustc_driver::{Callbacks, Compilation};
@@ -238,35 +238,46 @@ impl Callbacks for ExtractionCallbacks {
                         cached_thirs: HashMap::new(),
                         exported_spans: Rc::new(RefCell::new(HashSet::new())),
                     };
-                    let session = compiler.session();
-                    for d in output.diagnostics.clone() {
-                        use circus_frontend_exporter::SInto;
-                        let mut relevant_spans: Vec<_> = spans
-                            .iter()
-                            .filter(|span| span.sinto(&state) == d.span)
-                            .cloned()
-                            .collect();
-                        relevant_spans.sort();
-                        session.span_err_with_code(
-                            relevant_spans
-                                .first()
+                    if output.diagnostics.is_empty() {
+                        match &backend.output_dir {
+                            PathOrDash::Dash => {
+                                serde_json::to_writer(std::io::stdout(), &output.files).unwrap();
+                            }
+                            PathOrDash::Path(output_dir) => {
+                                let output_dir = output_dir.clone();
+                                for file in output.files.clone() {
+                                    let path = output_dir.join(file.path);
+                                    std::fs::create_dir_all({
+                                        let mut parent = path.clone();
+                                        parent.pop();
+                                        parent
+                                    })
+                                    .unwrap();
+                                    println!("Write {:#?}", path);
+                                    std::fs::write(path, file.contents)
+                                        .expect("Unable to write file");
+                                }
+                            }
+                        }
+                    } else {
+                        let session = compiler.session();
+                        for d in output.diagnostics.clone() {
+                            use circus_frontend_exporter::SInto;
+                            let mut relevant_spans: Vec<_> = spans
+                                .iter()
+                                .filter(|span| span.sinto(&state) == d.span)
                                 .cloned()
-                                .unwrap_or(rustc_span::DUMMY_SP),
-                            format!("{}", d),
-                            rustc_errors::DiagnosticId::Error(d.kind.code().into()),
-                        );
-                    }
-                    for file in output.files.clone() {
-                        let mut path = backend.output_dir.clone();
-                        path.push(std::path::PathBuf::from(file.path));
-                        std::fs::create_dir_all({
-                            let mut parent = path.clone();
-                            parent.pop();
-                            parent
-                        })
-                        .unwrap();
-                        println!("Write {:#?}", path);
-                        std::fs::write(path, file.contents).expect("Unable to write file");
+                                .collect();
+                            relevant_spans.sort();
+                            session.span_err_with_code(
+                                relevant_spans
+                                    .first()
+                                    .cloned()
+                                    .unwrap_or(rustc_span::DUMMY_SP),
+                                format!("{}", d),
+                                rustc_errors::DiagnosticId::Error(d.kind.code().into()),
+                            );
+                        }
                     }
                 }
             };

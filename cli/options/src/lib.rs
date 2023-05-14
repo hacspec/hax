@@ -104,9 +104,11 @@ pub struct BackendOptions {
     #[command(subcommand)]
     backend: Backend,
 
-    /// Directory in which the backend should output files.
+    /// Directory in which the backend should output modules. If [-]
+    /// (a dash) is given to this option, the modules will be printed
+    /// on the stdout in JSON.
     #[arg(short, long = "output-dir", default_value = "out/")]
-    pub output_dir: std::path::PathBuf,
+    pub output_dir: PathOrDash,
 }
 
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
