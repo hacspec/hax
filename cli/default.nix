@@ -16,8 +16,6 @@ let
     cargoVendorDir = craneLib.vendorMultipleCargoDeps {
       cargoLockList = [
         ../Cargo.lock
-        ../frontend/lint/hacspec_tests/Cargo.lock
-        ../frontend/lint/rust_tests/Cargo.lock
         ../tests/Cargo.lock
       ];
     };

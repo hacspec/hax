@@ -1,0 +1,25 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Lint:
+      linter: hacspec
+  info:
+    name: v1-lib
+    manifest: /home/lucas/repos/thir-export/custom-test-harness/tests/lint/hacspec/v1-lib/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: true
+      stdout: true
+---
+exit = 0
+stderr = '''
+Compiling v1-lib v0.1.0 (WORKSPACE_ROOT/lint/hacspec/v1-lib)
+    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+stdout = ''

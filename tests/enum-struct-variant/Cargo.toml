@@ -8,6 +8,4 @@ edition = "2021"
 [dependencies]
 
 [package.metadata.circus-tests]
-lint.rust = {}
-lint.hacspec = {}
-into."fstar+coq" = {broken = true}
+into."fstar+coq" = {broken = true, snapshot = "none"}

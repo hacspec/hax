@@ -1,2 +1,7 @@
 [workspace]
-members = ["enum-struct-variant"]
+members = [
+        "enum-struct-variant",
+        "lint/hacspec/v1-lib",
+        "lint/hacspec/mut_args",
+        "lint/rust/fnmut",
+]

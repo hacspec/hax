@@ -1,0 +1,32 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Lint:
+      linter: hacspec
+  info:
+    name: mut_arg
+    manifest: /home/lucas/repos/thir-export/custom-test-harness/tests/lint/hacspec/mut_args/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: true
+      stdout: true
+---
+exit = 0
+stderr = '''
+Compiling mut_arg v0.1.0 (WORKSPACE_ROOT/lint/hacspec/mut_args)
+warning: [Circus] Mutable arguments are not supported
+ --> lint/hacspec/mut_args/src/lib.rs:1:23
+  |
+1 | pub fn add(left: &mut usize, right: usize) {
+  |                       ^^^^^
+
+warning: `mut_arg` (lib) generated 1 warning
+    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+stdout = ''
