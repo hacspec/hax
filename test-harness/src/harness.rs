@@ -1,26 +1,48 @@
 mod command_circus_ext;
 use command_circus_ext::*;
-use serde_json::Value;
+use serde::Deserializer;
+use serde_json::{Map, Value};
 use std::process::{Command, Stdio};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 pub enum TestKind {
     Translate { backend: String },
     Lint { linter: String },
 }
 
 impl TestKind {
-    fn as_subcommands(&self) -> [String; 2] {
+    fn as_subcommands(&self) -> Vec<String> {
         match self {
-            TestKind::Lint { linter } => ["lint".to_string(), linter.clone()],
-            TestKind::Translate { backend } => ["into".to_string(), backend.clone()],
+            TestKind::Lint { linter } => vec!["lint".to_string(), linter.clone()],
+            TestKind::Translate { backend } => {
+                vec!["into".to_string(), "-o".into(), "-".into(), backend.clone()]
+            }
         }
     }
+    fn as_name(&self) -> String {
+        (match self {
+            TestKind::Lint { linter } => ["lint".to_string(), linter.clone()],
+            TestKind::Translate { backend } => ["into".to_string(), backend.clone()],
+        })
+        .join("-")
+    }
+}
+
+fn bool_true() -> bool {
+    true
+}
+
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct TestSnapshot {
+    #[serde(default = "bool_true")]
+    pub stderr: bool,
+    #[serde(default = "bool_true")]
+    pub stdout: bool,
 }
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub struct TestSpec {
-    /// a slow test can be made optional
+    /// is the test optional? (useful for slow tests for instance)
     pub optional: bool,
     /// a broken test a test that should succeed (or fail) but does
     /// not dues to a bug to be fixed (see field [issue_id] below)
@@ -29,36 +51,60 @@ pub struct TestSpec {
     pub issue_id: Option<u64>,
     /// Is that a positive or a negative test?
     pub positive: bool,
+    pub snapshot: TestSnapshot,
 }
 impl From<Value> for TestSpec {
     /// Parse a JSON value into a TestSpec
     fn from(o: Value) -> Self {
-        let as_bool = |key: &str, default: bool| {
-            let b = &o[key];
-            if b.is_null() {
-                default
-            } else {
-                b.as_bool().unwrap()
+        fn as_opt_bool(v: &Value, def: bool) -> Option<bool> {
+            if v.is_null() {
+                return Some(def);
             }
-        };
-        Self {
-            optional: as_bool("optional", false),
-            positive: as_bool("positive", true),
-            broken: as_bool("broken", false),
-            issue_id: o["issue_id"].as_u64(),
+            v.as_bool()
+        }
+        fn as_bool(o: &Value, k: &str, def: bool) -> bool {
+            let v = &o[k];
+            as_opt_bool(v, def)
+                .expect(format!("[{}] was expected to be a boolean, got {}", k, v).as_str())
+        }
+        let snapshot = &o["snapshot"];
+        TestSpec {
+            optional: as_bool(&o, "optional", false),
+            broken: as_bool(&o, "broken", false),
+            positive: as_bool(&o, "positive", true),
+            issue_id: o["positive"].as_u64(),
+            snapshot: as_opt_bool(snapshot, true)
+                .map(|b| TestSnapshot {
+                    stderr: b,
+                    stdout: b,
+                })
+                .or_else(|| match snapshot.as_str() {
+                    Some(v @ ("stdout" | "stderr" | "both" | "none")) => Some(TestSnapshot {
+                        stdout: matches!(v, "stdout" | "both"),
+                        stderr: matches!(v, "stderr" | "both"),
+                    }),
+                    Some(v) => panic!(
+                        "[snapshot] is \"{}\" but was expected to be \"stderr\", \"stdout\" or \"both\"", v
+                    ),
+                    None => None,
+                })
+                .unwrap_or_else(|| TestSnapshot {
+                    stderr: as_bool(&snapshot, "stderr", true),
+                    stdout: as_bool(&snapshot, "stdout", true),
+                }),
         }
     }
 }
 
 /// The information for a test is given by `cargo metadata`
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 pub struct TestInfo {
     pub name: String,
     pub manifest: std::path::PathBuf,
     pub description: Option<String>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 pub struct Test {
     pub kind: TestKind,
     pub info: TestInfo,
@@ -92,16 +138,48 @@ impl Test {
 
         let command_successful = out.status.success();
         let cleanup = |s: String| {
-            s.replace(r"\", "/")
-                .replace(&workspace, "WORKSPACE_ROOT")
-                .replace("Blocking waiting for file lock on build directory", "")
-                .trim()
-                .to_string()
+            use lazy_static::lazy_static;
+            use regex::Regex;
+            lazy_static! {
+                // Regex [TIME] matches compile times
+                static ref TIME: Regex = Regex::new(r"\bin \d+(\.\d+)?s\b").unwrap();
+            }
+            TIME.replace_all(
+                s.replace(r"\", "/")
+                    .replace(&workspace, "WORKSPACE_ROOT")
+                    .replace("Blocking waiting for file lock on build directory", "")
+                    .trim(),
+                "in XXs",
+            )
+            .to_string()
         };
         let serr = cleanup(String::from_utf8_lossy(&out.stderr).to_string());
-        let sout = cleanup(String::from_utf8_lossy(&out.stdout).to_string());
+        let sout = String::from_utf8_lossy(&out.stdout).to_string();
 
         // 3. make sure the test is successful
+        let mut snapshot: Map<String, Value> = Map::new();
+        if self.spec.snapshot.stderr {
+            snapshot.insert("stderr".to_string(), Value::String(serr.clone()));
+        }
+        if self.spec.snapshot.stdout {
+            snapshot.insert(
+                "stdout".to_string(),
+                serde_json::from_str(&sout)
+                    .unwrap_or_else(|_| Value::String(cleanup(sout.clone()))),
+            );
+        }
+
+        if !snapshot.is_empty() {
+            let exit = out.status.code().unwrap_or(std::i32::MAX);
+            snapshot.insert("exit".to_string(), exit.into());
+            let snapshot = Value::Object(snapshot);
+            let name = format!("{} {}", self.info.name, self.kind.as_name());
+
+            insta::with_settings!({
+                info => &self,
+            }, { insta::assert_toml_snapshot!(name, snapshot) })
+        }
+
         let err = |s: &str| {
             Err(format!(
                 "Command {s}.\nThe command was: {:?}{}",
@@ -114,27 +192,10 @@ impl Test {
             ))
         };
         match (command_successful, (self.spec.positive, self.spec.broken)) {
-            (false, (false, false) | (true, true)) => {
-                #[derive(serde::Serialize)]
-                struct Output {
-                    serr: String,
-                    sout: String,
-                    exit: i32,
-                }
-                let exit = out.status.code().unwrap_or(std::i32::MAX);
-                let out = &Output { serr, sout, exit };
-                let name = format!(
-                    "{}+{}",
-                    self.info.name,
-                    self.kind.as_subcommands().join("-")
-                );
-                insta::with_settings!({
-                    info => &self.spec,
-                }, { Ok(insta::assert_toml_snapshot!(name, out)) })
-            }
+            (true, (true, false) | (false, true)) => Ok(()),
+            (false, (false, false) | (true, true)) => Ok(()),
             (false, (false, true)) => err("failed, but this is a negative test marked broken")?,
             (false, (true, false)) => err("failed")?,
-            (true, (true, false) | (false, true)) => Ok(()),
             (true, (true, true)) => err("succeeded, but this is a positive test marked broken")?,
             (true, (false, false)) => err("succeeded, but this is a negative test")?,
         }
@@ -158,13 +219,29 @@ impl Test {
 /// Given [metadata] the table declared in a test's [Cargo.toml]
 /// [workspace.circus-tests], this function returns a list of tests
 fn parse_circus_tests_metadata(info: TestInfo, metadata: &Value) -> Vec<Test> {
+    if metadata.is_null() {
+        return vec![];
+    }
+
     metadata
         .as_object()
-        .expect("Expected value at key [circus-tests] to be a dictionary")
+        .expect(
+            format!(
+                "Expected value at key [circus-tests] to be a dictionary for package {:#?}",
+                info
+            )
+            .as_str(),
+        )
         .into_iter()
         .flat_map(|(a, o)| {
             o.as_object()
-                .expect(format!("Expected value at key [{}] be a dictionary", a).as_str())
+                .expect(
+                    format!(
+                        "Expected value at key [{}] be a dictionary for package {:#?}",
+                        a, info
+                    )
+                    .as_str(),
+                )
                 .into_iter()
                 .flat_map(|(key, o)| key.split("+").map(|k| (k.trim().to_string(), o.clone())))
                 .map(|(b, o)| (a.clone(), b, o))
@@ -175,7 +252,10 @@ fn parse_circus_tests_metadata(info: TestInfo, metadata: &Value) -> Vec<Test> {
             kind: match a.as_str() {
                 "into" => TestKind::Translate { backend: b },
                 "lint" => TestKind::Lint { linter: b },
-                _ => panic!("unexpected metadata [circus-tests.{}.{}]", a, b),
+                _ => panic!(
+                    "unexpected metadata [circus-tests.{}.{}] for package {:#?}",
+                    a, b, info
+                ),
             },
         })
         .collect()

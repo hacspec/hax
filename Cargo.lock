@@ -1080,6 +1080,7 @@ dependencies = [
  "insta",
  "lazy_static",
  "libtest-mimic",
+ "regex",
  "serde",
  "serde_json",
 ]

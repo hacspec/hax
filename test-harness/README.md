@@ -25,11 +25,23 @@ for instance `fstar+coq`.
    
 ### Test specifications
 A **test specification** is a dictionary with the following fields:
- - `positive: bool`: is the test positive (i.e. expected to succeed) or negative?
- - `optional: bool`: is the test optional? (useful for slow tests for instance)
- - `broken: bool`: is this test broken because of some feature not being implemented?
- - `issue_id: u64`: when the test has a companion issue on GitHub (closed or not)
- 
+
+<!-- | Field | Type | Def. | Description | -->
+<!-- |-------|------|----|-------------| -->
+<!-- | __`positive`__ | `bool` | `true` | is the test positive (the exit code of the `cargo circus` command is `0`) or negative (the exit code is non-null)?  | -->
+
+
+* <code><b>positive</b>: bool <i>⟨true⟩</i></code>: is the test positive (the exit code of the `cargo circus` command is `0`) or negative (the exit code is non-null)?
+* <code><b>snapshots</b></code>: should we enforce the stability of the output of the `cargo circus` command?
+   + <code>snapshots.<b>stdout</b>: bool <i>⟨true⟩</i></code>
+   + <code>snapshots.<b>stderr</b>: bool <i>⟨true⟩</i></code>  
+     **Note:** this field can also be set to the following strings: `stdout`, `stderr`, `both` or `none`.
+* <code><b>optional</b>: bool <i>⟨false⟩</i></code>: is the test optional? (useful for slow tests for instance)
+* <code><b>broken</b>: bool <i>⟨false⟩</i></code>: is this test broken because of some feature not being implemented?
+* <code><b>issue_id</b>: u64 <i>⟨null⟩</i></code>: when the test has a companion issue on GitHub (closed or not)
+
+
+
 ### Linter names
 The available linters can be listed by running `cargo circus lint --help`.
 
