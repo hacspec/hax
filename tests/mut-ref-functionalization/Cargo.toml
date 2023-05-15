@@ -1,0 +1,10 @@
+[package]
+name = "mut-ref-functionalization"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[package.metadata.circus-tests]
+into.fstar = {broken = true, issue_id = 90, snapshot = "none"}
+

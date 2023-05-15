@@ -4,4 +4,5 @@ members = [
         "lint/hacspec/v1-lib",
         "lint/hacspec/mut_args",
         "lint/rust/fnmut",
+        "mut-ref-functionalization",
 ]
