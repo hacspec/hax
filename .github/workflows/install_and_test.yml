@@ -1,4 +1,4 @@
-name: Test extractions for `hacpsec/specs`
+name: Install & test
 
 on:
   pull_request:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   tests:
-    name: test-specs-extraction
+    name: nix-action
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -20,18 +20,22 @@ jobs:
     - name: Build
       run: nix build -L
 
-    - name: Install
+    - name: Install the toolchain
       run: |
         nix profile install nixpkgs#yq
         nix profile install .#rustc
         nix profile install .
+        
+    - name: Test the toolchain
+      run: |
+        nix flake check -L
 
     - name: Checkout specifications
       uses: actions/checkout@v3
       with:
         repository: 'hacspec/specs'
-
-    - name: Test the extraction
+        
+    - name: Extract specifications
       run: |
         paths=$(tomlq -r '.workspace.members | .[]' Cargo.toml)
         for cratePath in $paths; do
@@ -44,7 +48,7 @@ jobs:
               fi
             done
             echo "::group::$crate [$backend]"
-            cargo circus -C -p "$crate" \; -i '**' "$backend"
+            cargo circus -C -p "$crate" \; -i '**' into "$backend"
             echo "::endgroup::"
           done
         done

@@ -111,7 +111,6 @@ fn main() {
     // coerce options
     let mut callbacks: Box<dyn Callbacks + Send> = match &options.command {
         Some(Command::ExporterCommand(command)) => Box::new(exporter::ExtractionCallbacks {
-            output_dir: options.output_dir.clone(),
             inline_macro_calls: options.inline_macro_calls.clone(),
             command: command.clone(),
         }),

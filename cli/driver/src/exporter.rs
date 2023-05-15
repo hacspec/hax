@@ -1,4 +1,4 @@
-use circus_cli_options::ENV_VAR_OPTIONS_FRONTEND;
+use circus_cli_options::{PathOrDash, ENV_VAR_OPTIONS_FRONTEND};
 use circus_frontend_exporter;
 use circus_frontend_exporter::types::ExportedSpans;
 use rustc_driver::{Callbacks, Compilation};
@@ -105,16 +105,23 @@ const ENGINE_BINARY_NOT_FOUND: &str = const_format::formatcp!(
     ENGINE_BINARY_NAME,
 );
 
-/// Dynamically looks for binary [ENGINE_BINARY_NAME] in PATH. If it's
-/// not found, detect wether nodejs is available, download the
-/// JS-compiled engine and use it.
+/// Dynamically looks for binary [ENGINE_BINARY_NAME].  First, we
+/// check whether [CIRCUS_ENGINE_BINARY] is set, and use that if it
+/// is. Then, we try to find [ENGINE_BINARY_NAME] in PATH. If not
+/// found, detect whether nodejs is available, download the JS-compiled
+/// engine and use it.
 use std::process;
 fn find_circus_engine() -> process::Command {
     use which::which;
 
-    which(ENGINE_BINARY_NAME)
+    std::env::var("CIRCUS_ENGINE_BINARY")
         .ok()
         .map(|name| process::Command::new(name))
+        .or_else(|| {
+            which(ENGINE_BINARY_NAME)
+                .ok()
+                .map(|name| process::Command::new(name))
+        })
         .or_else(|| {
             which("node").ok().and_then(|_| {
                 if let Ok(true) = inquire::Confirm::new(&format!(
@@ -140,7 +147,6 @@ fn find_circus_engine() -> process::Command {
 /// Callback for extraction
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct ExtractionCallbacks {
-    pub output_dir: std::path::PathBuf,
     pub inline_macro_calls: Vec<circus_cli_options::Namespace>,
     pub command: circus_cli_options::ExporterCommand,
 }
@@ -179,7 +185,7 @@ impl Callbacks for ExtractionCallbacks {
                 }
                 ExporterCommand::Backend(backend) => {
                     let engine_options = circus_cli_options_engine::EngineOptions {
-                        backend,
+                        backend: backend.clone(),
                         input: converted_items,
                     };
                     let mut engine_subprocess = find_circus_engine()
@@ -232,30 +238,46 @@ impl Callbacks for ExtractionCallbacks {
                         cached_thirs: HashMap::new(),
                         exported_spans: Rc::new(RefCell::new(HashSet::new())),
                     };
-                    let session = compiler.session();
-                    for d in output.diagnostics.clone() {
-                        use circus_frontend_exporter::SInto;
-                        session.span_err_with_code(
-                            spans
+                    if output.diagnostics.is_empty() {
+                        match &backend.output_dir {
+                            PathOrDash::Dash => {
+                                serde_json::to_writer(std::io::stdout(), &output.files).unwrap();
+                            }
+                            PathOrDash::Path(output_dir) => {
+                                let output_dir = output_dir.clone();
+                                for file in output.files.clone() {
+                                    let path = output_dir.join(file.path);
+                                    std::fs::create_dir_all({
+                                        let mut parent = path.clone();
+                                        parent.pop();
+                                        parent
+                                    })
+                                    .unwrap();
+                                    println!("Write {:#?}", path);
+                                    std::fs::write(path, file.contents)
+                                        .expect("Unable to write file");
+                                }
+                            }
+                        }
+                    } else {
+                        let session = compiler.session();
+                        for d in output.diagnostics.clone() {
+                            use circus_frontend_exporter::SInto;
+                            let mut relevant_spans: Vec<_> = spans
                                 .iter()
-                                .find(|span| span.sinto(&state) == d.span)
+                                .filter(|span| span.sinto(&state) == d.span)
                                 .cloned()
-                                .unwrap_or(rustc_span::DUMMY_SP),
-                            format!("{}", d),
-                            rustc_errors::DiagnosticId::Error(d.kind.code().into()),
-                        );
-                    }
-                    for file in output.files.clone() {
-                        let mut path = self.output_dir.clone();
-                        path.push(std::path::PathBuf::from(file.path));
-                        std::fs::create_dir_all({
-                            let mut parent = path.clone();
-                            parent.pop();
-                            parent
-                        })
-                        .unwrap();
-                        println!("Write {:#?}", path);
-                        std::fs::write(path, file.contents).expect("Unable to write file");
+                                .collect();
+                            relevant_spans.sort();
+                            session.span_err_with_code(
+                                relevant_spans
+                                    .first()
+                                    .cloned()
+                                    .unwrap_or(rustc_span::DUMMY_SP),
+                                format!("{}", d),
+                                rustc_errors::DiagnosticId::Error(d.kind.code().into()),
+                            );
+                        }
                     }
                 }
             };

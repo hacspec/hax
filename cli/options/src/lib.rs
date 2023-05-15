@@ -75,11 +75,16 @@ pub trait NormalizePaths {
     fn normalize_paths(self) -> Self;
 }
 
+impl NormalizePaths for PathBuf {
+    fn normalize_paths(self) -> Self {
+        absolute_path(self).unwrap()
+    }
+}
 impl NormalizePaths for PathOrDash {
     fn normalize_paths(self) -> Self {
         match self {
             PathOrDash::Dash => PathOrDash::Dash,
-            PathOrDash::Path(p) => PathOrDash::Path(absolute_path(p).unwrap()),
+            PathOrDash::Path(p) => PathOrDash::Path(p.normalize_paths()),
         }
     }
 }
@@ -94,10 +99,23 @@ pub enum Backend {
     Easycrypt,
 }
 
+#[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
+pub struct BackendOptions {
+    #[command(subcommand)]
+    backend: Backend,
+
+    /// Directory in which the backend should output modules. If [-]
+    /// (a dash) is given to this option, the modules will be printed
+    /// on the stdout in JSON.
+    #[arg(short, long = "output-dir", default_value = "out/")]
+    pub output_dir: PathOrDash,
+}
+
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
 pub enum ExporterCommand {
-    #[command(flatten)]
-    Backend(Backend),
+    /// Translate to a backend
+    #[clap(name = "into")]
+    Backend(BackendOptions),
 
     /// Export directly as a JSON file
     JSON {
@@ -152,10 +170,6 @@ pub struct Options {
     #[arg(default_values = Vec::<&str>::new(), short='C', allow_hyphen_values=true, num_args=1.., long="cargo-args", value_terminator=";")]
     pub cargo_flags: Vec<String>,
 
-    /// Directory in which the backend should output files.
-    #[arg(short, long = "output-dir", default_value = "out/")]
-    pub output_dir: std::path::PathBuf,
-
     #[command(subcommand)]
     pub command: Option<Command>,
 
@@ -164,10 +178,33 @@ pub struct Options {
     pub force_cargo_build: ForceCargoBuild,
 }
 
+impl NormalizePaths for ExporterCommand {
+    fn normalize_paths(self) -> Self {
+        use ExporterCommand::*;
+        match self {
+            JSON { output_file } => JSON {
+                output_file: output_file.normalize_paths(),
+            },
+            Backend(o) => Backend(BackendOptions {
+                output_dir: o.output_dir.normalize_paths(),
+                ..o
+            }),
+        }
+    }
+}
+
+impl NormalizePaths for Command {
+    fn normalize_paths(self) -> Self {
+        match self {
+            Command::ExporterCommand(cmd) => Command::ExporterCommand(cmd.normalize_paths()),
+            _ => self,
+        }
+    }
+}
 impl NormalizePaths for Options {
     fn normalize_paths(self) -> Self {
         Options {
-            output_dir: absolute_path(self.output_dir).unwrap(),
+            command: self.command.map(|c| c.normalize_paths()),
             ..self
         }
     }

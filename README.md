@@ -16,7 +16,7 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 
 + Run circus on a crate to get F\*/Coq/...:
    - `cd path/to/your/crate`
-   - `nix run github:hacspec/hacspec-v2 -- -o some/output/dir fstar`  
+   - `nix run github:hacspec/hacspec-v2 -- into -o some/output/dir fstar`  
       will create `fst` modules in directory `some/output/dir`.  
       *Note: replace `fstar` by your backend of choice*
 

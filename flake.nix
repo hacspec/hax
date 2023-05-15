@@ -23,7 +23,6 @@
       in rec {
         packages = {
           inherit rustc;
-          rustc-docs = packages.rustc.passthru.availableComponents.rustc-docs;
           circus-engine = pkgs.callPackage ./engine {
             circus-rust-frontend = packages.circus-rust-frontend.unwrapped;
             inherit rustc;
@@ -35,9 +34,10 @@
           circus = packages.circus-rust-frontend;
           default = packages.circus;
         };
+        checks.default = packages.circus.tests;
         apps = {
           serve-rustc-docs = { type = "app"; program = "${pkgs.writeScript "serve-rustc-docs" ''
-             cd ${packages.rustc-docs}/share/doc/rust/html/rustc
+             cd ${packages.rustc.passthru.availableComponents.rustc-docs}/share/doc/rust/html/rustc
              ${pkgs.python3}/bin/python -m http.server
           ''}"; };
         };
