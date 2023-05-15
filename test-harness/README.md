@@ -26,11 +26,6 @@ for instance `fstar+coq`.
 ### Test specifications
 A **test specification** is a dictionary with the following fields:
 
-<!-- | Field | Type | Def. | Description | -->
-<!-- |-------|------|----|-------------| -->
-<!-- | __`positive`__ | `bool` | `true` | is the test positive (the exit code of the `cargo circus` command is `0`) or negative (the exit code is non-null)?  | -->
-
-
 * <code><b>positive</b>: bool <i>⟨true⟩</i></code>: is the test positive (the exit code of the `cargo circus` command is `0`) or negative (the exit code is non-null)?
 * <code><b>snapshots</b></code>: should we enforce the stability of the output of the `cargo circus` command?
    + <code>snapshots.<b>stdout</b>: bool <i>⟨true⟩</i></code>
