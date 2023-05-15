@@ -77,6 +77,6 @@ module EarlyExit (FA : Features.T) = struct
         include Feature_gate.DefaultSubtype
 
         let early_exit = reject
-        let metadata = make_metadata Continue
+        let metadata = make_metadata EarlyExit
       end)
 end
