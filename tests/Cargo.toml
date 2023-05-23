@@ -1,6 +1,7 @@
 [workspace]
 members = [
         "enum-struct-variant",
+        "string-literal",
         "lint/hacspec/v1-lib",
         "lint/hacspec/mut_args",
         "lint/rust/fnmut",
