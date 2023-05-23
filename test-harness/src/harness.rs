@@ -1,6 +1,5 @@
 mod command_circus_ext;
 use command_circus_ext::*;
-use serde::Deserializer;
 use serde_json::{Map, Value};
 use std::process::{Command, Stdio};
 
@@ -28,6 +27,7 @@ impl TestKind {
     }
 }
 
+#[allow(dead_code)]
 fn bool_true() -> bool {
     true
 }
