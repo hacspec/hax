@@ -73,6 +73,15 @@ type span =
       },
     visitors { variety = "map"; name = "span_map"; ancestors = [ "loc_map" ] }]
 
+let display_loc (l : loc) : string =
+  Int.to_string l.col ^ ":" ^ Int.to_string l.line
+
+let display_span (s : span) : string =
+  match s with
+  | Dummy _ -> "<dummy>"
+  | Span s ->
+      "<" ^ s.file ^ " " ^ display_loc s.lo ^ "→" ^ display_loc s.hi ^ ">"
+
 let show_span (_s : span) : string = "<span>"
 
 let pp_span (fmt : Caml.Format.formatter) (s : span) : unit =
