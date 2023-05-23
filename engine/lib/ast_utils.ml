@@ -86,6 +86,18 @@ module Make (F : Features.T) = struct
   end
 
   module Mappers = struct
+    let regenerate_span_ids =
+      object
+        inherit [_] item_map
+        method visit_t () x = x
+        method visit_mutability _ () m = m
+
+        method! visit_span s =
+          function
+          | Dummy _ -> Dummy { id = FreshSpanId.make () }
+          | Span s -> Span { s with id = FreshSpanId.make () }
+      end
+
     let normalize_borrow_mut =
       object
         inherit [_] expr_map as super
@@ -415,7 +427,8 @@ module Make (F : Features.T) = struct
   let tuple_projector (tuple_typ : ty) (len : int) (nth : int)
       (type_at_nth : ty) : expr =
     {
-      span = Dummy;
+      span = Dummy { id = FreshSpanId.make () };
+      (* TODO: require a span here *)
       typ = TArrow ([ tuple_typ ], type_at_nth);
       e = GlobalVar (`Projector (`TupleField (nth, len)));
     }
@@ -423,7 +436,7 @@ module Make (F : Features.T) = struct
   let project_tuple (tuple : expr) (len : int) (nth : int) (type_at_nth : ty) :
       expr =
     {
-      span = Dummy;
+      span = tuple.span;
       typ = type_at_nth;
       e =
         App

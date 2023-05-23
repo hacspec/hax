@@ -59,7 +59,7 @@ module CoqBackend = struct
     let parse = Term.(const ())
   end
 
-  let failwith ?(span = Ast.Dummy) msg =
+  let failwith ?(span = Ast.Dummy { id = -1 }) msg =
     Diagnostics.failure ~context:(Backend Coq) ~span
       (Unimplemented
          {

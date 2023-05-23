@@ -47,7 +47,18 @@ type loc = { col : int; line : int }
     visitors { variety = "mapreduce"; name = "loc_mapreduce" },
     visitors { variety = "map"; name = "loc_map" }]
 
-type span = Span of { file : string; hi : loc; lo : loc } | Dummy
+module FreshSpanId = struct
+  let current = ref 0
+
+  let make () =
+    let id = !current in
+    current := id + 1;
+    id
+end
+
+type span =
+  | Span of { file : string; hi : loc; lo : loc; id : int }
+  | Dummy of { id : int }
 [@@deriving
   yojson,
     eq,
@@ -69,13 +80,16 @@ let pp_span (fmt : Caml.Format.formatter) (s : span) : unit =
 
 let union_span (x : span) (y : span) : span =
   match (x, y) with
-  | Dummy, _ | _, Dummy -> Dummy
+  | Dummy _, _ | _, Dummy _ -> Dummy { id = FreshSpanId.make () }
   | Span x, Span y when String.(x.file <> y.file) ->
       failwith "TODO error: Bad span union"
-  | Span { file; lo; _ }, Span { hi; _ } -> Span { file; lo; hi }
+  | Span { file; lo; _ }, Span { hi; _ } ->
+      Span { file; lo; hi; id = FreshSpanId.make () }
 
 let union_spans : span list -> span =
-  List.reduce ~f:union_span >> Option.value ~default:Dummy
+  List.reduce ~f:union_span
+  >> Option.value_or_thunk ~default:(fun _ ->
+         Dummy { id = FreshSpanId.make () })
 
 type concrete_ident = { crate : string; path : string Non_empty_list.t }
 

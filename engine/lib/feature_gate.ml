@@ -124,7 +124,7 @@ struct
     function
     | Span { file; hi; lo } ->
         file ^ ":" ^ pos_to_string lo ^ "-" ^ pos_to_string hi
-    | Dummy -> "?"
+    | Dummy _ -> "?"
 
   include Phase_utils.NoError
 

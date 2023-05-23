@@ -346,7 +346,8 @@ module ECBackend = struct
       Raw_thir_ast.output =
     try translate' bo items
     with Assert_failure (file, line, col) ->
-      Diagnostics.failure ~context:(Backend FStar) ~span:Dummy
+      Diagnostics.failure ~context:(Backend FStar)
+        ~span:(Dummy { id = -1 })
         (AssertionFailure
            {
              details =

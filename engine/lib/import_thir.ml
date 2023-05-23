@@ -76,9 +76,11 @@ module Exn = struct
 
   let union_span (x : span) (y : span) : span =
     match (x, y) with
-    | Dummy, _ | _, Dummy -> Dummy
-    | Span x, Span y when String.(x.file <> y.file) -> Dummy
-    | Span { file; lo; _ }, Span { hi; _ } -> Span { file; lo; hi }
+    | Dummy _, _ | _, Dummy _ -> Dummy { id = FreshSpanId.make () }
+    | Span x, Span y when String.(x.file <> y.file) ->
+        Dummy { id = FreshSpanId.make () }
+    | Span { file; lo; _ }, Span { hi; _ } ->
+        Span { file; lo; hi; id = FreshSpanId.make () }
 
   let c_span (span : Thir.span) : span =
     Span
@@ -87,6 +89,7 @@ module Exn = struct
         hi = loc span.hi;
         file =
           (match span.filename with Real (LocalPath path) -> path | _ -> "?");
+        id = FreshSpanId.make ();
       }
 
   let int_ty_to_size : Thir.int_ty -> size = function
