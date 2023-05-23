@@ -91,6 +91,13 @@ struct
     | ByRef (kind, witness) ->
         ByRef (dborrow_kind span kind, S.reference witness)
 
+  let dsupported_monads (span : span) (m : A.supported_monads) :
+      B.supported_monads =
+    match m with
+    | MException t -> MException (dty span t)
+    | MResult t -> MResult (dty span t)
+    | MOption -> MOption
+
   let rec dexpr (e : A.expr) : B.expr =
     { e = dexpr' e.span e.e; span = e.span; typ = dty e.span e.typ }
 
@@ -119,7 +126,10 @@ struct
     | Let { monadic; lhs; rhs; body } ->
         Let
           {
-            monadic = Option.map ~f:S.monadic_binding monadic;
+            monadic =
+              Option.map
+                ~f:(dsupported_monads span *** S.monadic_binding)
+                monadic;
             lhs = dpat lhs;
             rhs = dexpr rhs;
             body = dexpr body;

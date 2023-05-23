@@ -49,7 +49,7 @@ struct
       | [%inline_arms "dborrow_kind.*" - Mut] -> auto
       | Mut _ -> Shared
 
-    [%%inline_defs dpat]
+    [%%inline_defs dpat + dsupported_monads]
 
     let rec extract_direct_ref_mut (ty_span : span) (t : A.ty) (e : A.expr) :
         (B.ty * (local_ident * B.ty * span), B.ty * B.expr) Either.t =

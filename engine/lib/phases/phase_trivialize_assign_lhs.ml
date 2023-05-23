@@ -26,7 +26,7 @@ module%inlined_contents Make (F : Features.T) = struct
     module UA = Ast_utils.Make (F)
     module UB = Ast_utils.Make (FB)
 
-    [%%inline_defs dmutability + dty + dborrow_kind + dpat]
+    [%%inline_defs dmutability + dty + dborrow_kind + dpat + dsupported_monads]
 
     let rec expr_of_lhs (lhs : A.lhs) (span : span) : B.expr =
       match lhs with

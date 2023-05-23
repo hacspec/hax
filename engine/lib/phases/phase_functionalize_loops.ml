@@ -29,7 +29,7 @@ struct
       include Features.SUBTYPE.Id
     end
 
-    [%%inline_defs dmutability + dty + dborrow_kind + dpat]
+    [%%inline_defs dmutability + dty + dborrow_kind + dpat + dsupported_monads]
 
     let rec dexpr (expr : A.expr) : B.expr =
       let span = expr.span in

@@ -425,6 +425,19 @@ functor
             ancestors = [ "ty_map"; "binding_mode_map" ];
           }]
 
+    type supported_monads =
+      | MException of ty
+          (** a exception monad, which we use to handle early returns *)
+      | MResult of ty  (** the [Result] monad *)
+      | MOption  (** the [Option] monad *)
+    [@@deriving
+      show,
+        yojson,
+        eq,
+        visitors { variety = "reduce"; name = "supported_monads_reduce" },
+        visitors { variety = "mapreduce"; name = "supported_monads_mapreduce" },
+        visitors { variety = "map"; name = "supported_monads_map" }]
+
     type expr' =
       (* pure fragment *)
       | If of { cond : expr; then_ : expr; else_ : expr option }
@@ -439,7 +452,7 @@ functor
         }
       | Match of { scrutinee : expr; arms : arm list }
       | Let of {
-          monadic : F.monadic_binding option;
+          monadic : (supported_monads * F.monadic_binding) option;
           lhs : pat;
           rhs : expr;
           body : expr;
@@ -538,16 +551,20 @@ functor
           {
             variety = "reduce";
             name = "expr_reduce";
-            ancestors = [ "pat_reduce" ];
+            ancestors = [ "supported_monads_reduce"; "pat_reduce" ];
           },
         visitors
           {
             variety = "mapreduce";
             name = "expr_mapreduce";
-            ancestors = [ "pat_mapreduce" ];
+            ancestors = [ "supported_monads_mapreduce"; "pat_mapreduce" ];
           },
         visitors
-          { variety = "map"; name = "expr_map"; ancestors = [ "pat_map" ] }]
+          {
+            variety = "map";
+            name = "expr_map";
+            ancestors = [ "supported_monads_map"; "pat_map" ];
+          }]
 
     type generic_param =
       | GPLifetime of {

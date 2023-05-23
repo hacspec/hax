@@ -64,6 +64,8 @@ struct
 
     and dfield_pat = [%inline_body dfield_pat]
 
+    let dsupported_monads = [%inline_body dsupported_monads]
+
     let rec dexpr = [%inline_body dexpr]
 
     and dexpr' (span : span) (e : A.expr') : B.expr' =
@@ -87,7 +89,13 @@ struct
       | Match { scrutinee; arms } ->
           Match { scrutinee = dexpr scrutinee; arms = List.map ~f:darm arms }
       | Let { monadic; lhs; rhs; body } ->
-          Let { monadic; lhs = dpat lhs; rhs = dexpr rhs; body = dexpr body }
+          Let
+            {
+              monadic = Option.map ~f:(dsupported_monads span *** Fn.id) monadic;
+              lhs = dpat lhs;
+              rhs = dexpr rhs;
+              body = dexpr body;
+            }
       | LocalVar local_ident -> LocalVar local_ident
       | GlobalVar global_ident -> GlobalVar global_ident
       | Ascription { e = e'; typ } ->

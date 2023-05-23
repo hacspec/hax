@@ -168,7 +168,9 @@ struct
         next (List.map ~f:snd l) (lbs, effects)
 
       let err_hoist_invariant (type r) (location : string) : r =
-        Diagnostics.failure ~context:(Other "HoistSeq") ~span:Dummy
+        (* TODO: we should be able to throw span-unrelated errors *)
+        let span = Dummy { id = -1 } in
+        Diagnostics.failure ~context:(Other "HoistSeq") ~span
           (AssertionFailure
              {
                details =
@@ -449,7 +451,7 @@ struct
   module S = Features.SUBTYPE.Id
   open MakeSI (F)
 
-  [%%inline_defs dmutability + dty + dborrow_kind + dpat]
+  [%%inline_defs dmutability + dty + dborrow_kind + dpat + dsupported_monads]
 
   module ID = struct
     (* OCaml is not able to understand A.expr is the same as B.expr........... *)
