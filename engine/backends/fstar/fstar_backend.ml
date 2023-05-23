@@ -1040,7 +1040,7 @@ module FStarBackend = struct
       |> Phases.Trivialize_assign_lhs
       |> Phases.Reconstruct_question_marks
       |> Side_effect_utils.Hoist
-      |> Side_effect_utils.MutVar
+      |> Phases.Local_mutation
       |> Phases.Reject.Continue
       |> Phases.Cf_into_monads
       |> Phases.Reject.EarlyExit

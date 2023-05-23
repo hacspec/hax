@@ -1144,23 +1144,26 @@ module CoqBackend = struct
   open Phase_utils
 
   module TransformToInputLanguage =
-    [%functor_application
-       Phases.Reject.RawOrMutPointer(Features.Rust)
-    |> Phases.Reject.Arbitrary_lhs
-    |> Phases.Reconstruct_for_loops
-    |> Phases.Direct_and_mut
-    |> Phases.Reject.Continue
-    |> Phases.Drop_references
-    |> Phases.Trivialize_assign_lhs
-    |> Side_effect_utils.Hoist
-    |> Side_effect_utils.MutVar
-    |> Phases.Reject.Continue
-    |> Phases.Reject.EarlyExit
-    |> Phases.Functionalize_loops
-    |> RejectNotCoq
-    |> Identity
-    ]
-    [@ocamlformat "disable"]
+    CatchErrors
+      ([%functor_application
+      Phases.Reject.RawOrMutPointer(Features.Rust)
+      |> Phases.Reject.Arbitrary_lhs
+      |> Phases.Reconstruct_for_loops
+      |> Phases.Direct_and_mut
+      |> Phases.Reject.Continue
+      |> Phases.Drop_references
+      |> Phases.Trivialize_assign_lhs
+      |> Phases.Reconstruct_question_marks
+      |> Side_effect_utils.Hoist
+      |> Phases.Local_mutation
+      |> Phases.Reject.Continue
+      |> Phases.Cf_into_monads
+      |> Phases.Reject.EarlyExit
+      |> Phases.Functionalize_loops
+      |> RejectNotCoq
+      |> Identity
+      ]
+      [@ocamlformat "disable"])
 
   let apply_phases (bo : BackendOptions.t) (i : Ast.Rust.item) : AST.item list =
     TransformToInputLanguage.ditem i
