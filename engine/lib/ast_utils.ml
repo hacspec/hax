@@ -337,12 +337,15 @@ module Make (F : Features.T) = struct
       expr =
     List.fold_right ~init:body ~f:let_of_binding bindings
 
-  let make_tuple_typ (tuple : ty list) : ty =
+  let make_tuple_typ' (tuple : ty list) : ty =
     TApp
       {
         ident = `TupleType (List.length tuple);
         args = List.map ~f:(fun typ -> GType typ) tuple;
       }
+
+  let make_tuple_typ (tuple : ty list) : ty =
+    match tuple with [ ty ] -> ty | _ -> make_tuple_typ' tuple
 
   let make_wild_pat (typ : ty) (span : span) : pat = { p = PWild; span; typ }
 
@@ -352,7 +355,7 @@ module Make (F : Features.T) = struct
   let make_tuple_field_pat (len : int) (nth : int) (pat : pat) : field_pat =
     { field = `TupleField (nth + 1, len); pat }
 
-  let make_tuple_pat' span (tuple : field_pat list) : pat =
+  let make_tuple_pat'' span (tuple : field_pat list) : pat =
     match tuple with
     | [ { pat; _ } ] -> pat
     | _ ->
@@ -363,12 +366,16 @@ module Make (F : Features.T) = struct
           span;
         }
 
-  let make_tuple_pat (pats : pat list) : pat =
+  let make_tuple_pat' (pats : pat list) : pat =
     let len = List.length pats in
     List.mapi ~f:(fun i pat -> { field = `TupleField (i, len); pat }) pats
-    |> make_tuple_pat' (union_spans @@ List.map ~f:(fun p -> p.span) pats)
+    |> make_tuple_pat'' (union_spans @@ List.map ~f:(fun p -> p.span) pats)
 
-  let make_tuple_expr ~(span : span) (tuple : expr list) : expr =
+  let make_tuple_pat : pat list -> pat = function
+    | [ pat ] -> pat
+    | pats -> make_tuple_pat' pats
+
+  let make_tuple_expr' ~(span : span) (tuple : expr list) : expr =
     let len = List.length tuple in
     {
       e =
@@ -383,6 +390,10 @@ module Make (F : Features.T) = struct
       typ = make_tuple_typ @@ List.map ~f:(fun { typ; _ } -> typ) tuple;
       span;
     }
+
+  let make_tuple_expr ~(span : span) : expr list -> expr = function
+    | [ e ] -> e
+    | es -> make_tuple_expr' ~span es
 
   let call (crate : string) (path_hd : string) (path_tl : string list)
       (args : expr list) span ret_typ =
