@@ -19,6 +19,7 @@ struct
       continue : ty option option; (* TODO: continue with labels *)
       break : ty option; (* TODO: break with labels *)
     }
+    [@@deriving show]
 
     let zero : t =
       {
@@ -35,20 +36,26 @@ struct
         assert ([%eq: ty] x y);
         x
       in
+      let merge_opts (type x) (f : x -> x -> x) (a : x option) (b : x option) =
+        match (a, b) with
+        | Some a, Some b -> Some (f a b)
+        | Some a, None | None, Some a -> Some a
+        | None, None -> None
+      in
       fun x y ->
         {
           reads_local_mut = Set.union x.reads_local_mut y.reads_local_mut;
           writes_local_mut = Set.union x.writes_local_mut y.writes_local_mut;
           deep_mutation = x.deep_mutation || y.deep_mutation;
-          return = Option.map2 ~f:merge_ty x.return y.return;
+          return = merge_opts merge_ty x.return y.return;
           continue =
-            Option.map2
-              ~f:(fun x y ->
+            merge_opts
+              (fun x y ->
                 match (x, y) with
                 | Some x, Some y -> Some (merge_ty x y)
                 | _ -> None)
               x.continue y.continue;
-          break = Option.map2 ~f:merge_ty x.break y.break;
+          break = merge_opts merge_ty x.break y.break;
         }
 
     let reads (var : LocalIdent.t) (ty : ty) =
@@ -105,8 +112,8 @@ struct
   end
 
   module Hoist = struct
-    type binding = pat * expr
-    type t = binding list * SideEffects.t
+    type binding = pat * expr [@@deriving show]
+    type t = binding list * SideEffects.t [@@deriving show]
 
     let plus : t -> t -> t =
      fun (lbs1, e1) (lbs2, e2) -> (lbs1 @ lbs2, SideEffects.plus e1 e2)
@@ -192,17 +199,17 @@ struct
       List.fold_right ~init:body ~f:let_of_binding bindings
 
     let collect_and_hoist_effects_object =
-      object
-        inherit [_] expr_mapreduce as super
+      object (super)
+        inherit [_] expr_mapreduce
         inherit [_] monoid as m
         method visit_t _ x = (x, m#zero)
         method visit_mutability _ _ x = (x, m#zero)
 
         (* Collecting effects bottom up *)
-        method visit_LhsLocalVar _ var typ =
+        method! visit_LhsLocalVar _ var typ =
           (LhsLocalVar { var; typ }, ([], SideEffects.writes var typ))
 
-        method visit_LhsArbitraryExpr _ e witness =
+        method! visit_LhsArbitraryExpr _ e witness =
           let deep_mutation =
             (object
                inherit [_] expr_reduce
@@ -217,7 +224,7 @@ struct
           ( LhsArbitraryExpr { e; witness },
             ([], { SideEffects.zero with deep_mutation }) )
 
-        method visit_expr (env : CollectContext.t) e =
+        method! visit_expr (env : CollectContext.t) e =
           match e.e with
           | LocalVar v -> (e, ([], SideEffects.reads v e.typ))
           | QuestionMark { e = e'; converted_typ; witness } ->
@@ -258,6 +265,7 @@ struct
                         m#plus ceffect effects ))
               | None -> (e, ceffect))
           | Loop { body; kind; state; label; witness } ->
+              (* let body = U.unit_expr (Dummy { id = -4 }) in *)
               let kind' =
                 match kind with
                 | UnconditionalLoop -> []
@@ -328,6 +336,20 @@ struct
               HoistSeq.many env
                 (List.map ~f:(super#visit_expr env) l)
                 (fun l effects -> ({ e with e = Array l }, effects))
+          | Construct
+              { constructor; constructs_record; fields = []; base = None } ->
+              ( {
+                  e with
+                  e =
+                    Construct
+                      {
+                        constructor;
+                        constructs_record;
+                        fields = [];
+                        base = None;
+                      };
+                },
+                m#zero )
           | Construct { constructor; constructs_record; fields; base } ->
               HoistSeq.many env
                 (List.map ~f:(super#visit_expr env)
@@ -448,7 +470,11 @@ struct
   module A = Ast.Make (F)
   module B = Ast.Make (FB)
   include Phase_utils.NoError
-  module S = Features.SUBTYPE.Id
+
+  module S = struct
+    include Features.SUBTYPE.Id
+  end
+
   open MakeSI (F)
 
   [%%inline_defs dmutability + dty + dborrow_kind + dpat + dsupported_monads]
@@ -464,335 +490,5 @@ struct
   [%%inline_defs "Item.*"]
 
   let metadata = Phase_utils.Metadata.make HoistSideEffects
-end
-[@@add "subtype.ml"]
-
-module%inlined_contents MutVar
-    (F : Features.T
-           with type mutable_reference = Features.Off.mutable_reference
-            and type mutable_pointer = Features.Off.mutable_pointer
-            and type raw_pointer = Features.Off.raw_pointer
-            and type arbitrary_lhs = Features.Off.arbitrary_lhs
-            and type nontrivial_lhs = Features.Off.nontrivial_lhs
-            and type monadic_action = Features.Off.monadic_action
-            and type monadic_binding = Features.Off.monadic_binding
-    (* todo: this phase should require mutable borrow to be disabled *)) =
-(* (FConstraints : sig *)
-(*   val early_exit : F.loop -> F.early_exit *)
-(* end) *)
-struct
-  open Ast
-  module FA = F
-
-  let metadata = Phase_utils.Metadata.make LocalMutation
-
-  module FB = struct
-    include F
-    include Features.Off.Mutable_variable
-    include Features.On.State_passing_loop
-  end
-
-  module UA = Ast_utils.Make (F)
-  module UB = Ast_utils.Make (FB)
-  module A = Ast.Make (F)
-  module B = Ast.Make (FB)
-  include Phase_utils.DefaultError
-
-  module S = struct
-    include Features.SUBTYPE.Id
-
-    let state_passing_loop _ = Features.On.state_passing_loop
-  end
-
-  [%%inline_defs dmutability + dty + dborrow_kind]
-
-  let rec dpat : A.pat -> B.pat = [%inline_body dpat]
-
-  and dpat' (span : span) (p : A.pat') : B.pat' =
-    match p with
-    | [%inline_arms "dpat'.*" - PBinding - PDeref] -> auto
-    | PBinding { var : LocalIdent.t; typ; subpat; _ } ->
-        PBinding
-          {
-            mut = Immutable;
-            mode = ByValue;
-            var;
-            typ = dty span typ;
-            subpat = Option.map ~f:(dpat *** Fn.id) subpat;
-          }
-    | PDeref { subpat; _ } -> (dpat subpat).p
-
-  and dfield_pat = [%inline_body dfield_pat]
-  and dbinding_mode = [%inline_body dfield_pat]
-
-  let free_assigned_variables =
-    UA.Reducers.free_assigned_variables (function _ -> .)
-
-  module Instructions = struct
-    type t = {
-      expr_level : UB.TypedLocalIdent.t list;
-      fun_level : UB.TypedLocalIdent.t list;
-      loop_level : UB.TypedLocalIdent.t list;
-      drop_expr : bool;
-    }
-
-    let zero =
-      { expr_level = []; fun_level = []; loop_level = []; drop_expr = false }
-  end
-
-  (* [s] is the list of variables the last expression should return, packed in a tuple *)
-  let rec dexpr_s (s : Instructions.t) (expr : A.expr) : B.expr =
-    let dexpr_same e = dexpr_s s e in
-    let rec dexpr e = dexpr_s { s with expr_level = []; drop_expr = false } e
-    and dloop_state = [%inline_body dloop_state]
-    and darm = [%inline_body darm]
-    and darm' = [%inline_body darm'] (* and dlhs = [%inline_body dlhs] *) in
-    let span = expr.span in
-    match expr.e with
-    | Let
-        {
-          monadic = None;
-          lhs;
-          rhs =
-            {
-              e =
-                Assign
-                  { lhs = LhsLocalVar { var; typ }; e = value; witness = _ };
-              _;
-            };
-          body;
-        } ->
-        let h (type a) (f : a list -> a) (x : a) (y : a) =
-          match lhs.p with PWild -> y | _ -> f [ x; y ]
-        in
-        {
-          e =
-            Let
-              {
-                monadic = None;
-                lhs =
-                  h UB.make_tuple_pat (dpat lhs)
-                    (UB.make_var_pat var (dty span typ) span);
-                rhs =
-                  h (UB.make_tuple_expr ~span) (UB.unit_expr span)
-                    (dexpr_s
-                       { s with expr_level = []; drop_expr = false }
-                       value);
-                body = dexpr_same body;
-              };
-          typ = dty span expr.typ;
-          span = expr.span;
-        }
-    | Let { monadic = Some _; _ } -> .
-    | Let { monadic = None; lhs; rhs; body } ->
-        let drop_expr = [%matches? A.PWild] lhs.p in
-        let rhs_vars =
-          free_assigned_variables#visit_expr () rhs
-          |> Set.to_list
-          |> List.map ~f:(fun (i, t) -> (i, dty span t))
-        in
-        let vars_pat =
-          List.map ~f:(fun (i, t) -> UB.make_var_pat i t span) rhs_vars
-          |> UB.make_tuple_pat
-        in
-        let lhs = dpat lhs in
-        let lhs' =
-          if List.is_empty rhs_vars then lhs
-          else if drop_expr then vars_pat
-          else UB.make_tuple_pat [ vars_pat; lhs ]
-        in
-        {
-          e =
-            Let
-              {
-                monadic = None;
-                lhs = lhs';
-                rhs = dexpr_s { s with expr_level = rhs_vars; drop_expr } rhs;
-                body = dexpr_same body;
-              };
-          typ = dty span expr.typ;
-          span = expr.span;
-        }
-    | Assign { e; lhs = LhsLocalVar { var; _ }; _ } ->
-        let vars =
-          List.map
-            ~f:(fun (i, typ) : B.expr ->
-              if LocalIdent.equal i var then
-                dexpr_s { s with expr_level = []; drop_expr = false } e
-              else { e = LocalVar i; typ; span })
-            s.expr_level
-        in
-        let vars =
-          match vars with [ v ] -> v | _ -> UB.make_tuple_expr ~span vars
-        in
-        if s.drop_expr then vars
-        else UB.make_tuple_expr ~span [ vars; UB.unit_expr span ]
-    | Assign _ -> .
-    | Closure { params; body; captures } ->
-        let observable_mutations = free_assigned_variables#visit_expr () expr in
-        if observable_mutations |> Set.is_empty |> not then
-          raise
-          @@ Error.E
-               {
-                 kind =
-                   ClosureMutatesParentBindings
-                     {
-                       bindings =
-                         Set.to_list observable_mutations
-                         |> List.map ~f:(fun (LocalIdent.{ name; _ }, _) ->
-                                name);
-                     };
-                 span;
-               };
-        let s =
-          {
-            s with
-            expr_level =
-              (UA.Reducers.free_assigned_variables (function _ -> .))
-                #visit_expr () body
-              |> Set.to_list
-              |> List.map ~f:(fun (i, t) -> (i, dty span t));
-            drop_expr = false;
-          }
-        in
-        {
-          e =
-            Closure
-              {
-                params = List.map ~f:dpat params;
-                body = dexpr_s s body;
-                captures =
-                  List.map
-                    ~f:
-                      (dexpr_s
-                         Instructions.zero
-                         (* TODO: what to do with captures? We discard them entirely for now. Maybe we should remove that from the AST. *))
-                    captures;
-              };
-          typ = dty span expr.typ;
-          span = expr.span;
-        }
-    | If { cond; then_; else_ } ->
-        {
-          e =
-            If
-              {
-                cond =
-                  dexpr_s { s with expr_level = []; drop_expr = false } cond;
-                then_ = dexpr_same then_;
-                else_ = Option.map ~f:dexpr_same else_;
-              };
-          typ = dty span expr.typ;
-          span = expr.span;
-        }
-    | Match { scrutinee; arms } ->
-        {
-          e =
-            Match
-              {
-                scrutinee =
-                  dexpr_s
-                    { s with expr_level = []; drop_expr = false }
-                    scrutinee;
-                arms = List.map ~f:darm arms;
-              };
-          typ = dty span expr.typ;
-          span = expr.span;
-        }
-    | Loop { body; kind; state; label; witness } ->
-        let variables_to_output = s.expr_level in
-        let observable_mutations, adapt =
-          let set =
-            free_assigned_variables#visit_expr () expr
-            |> Set.map
-                 (module UB.TypedLocalIdent)
-                 ~f:(fun (i, t) -> (i, dty span t))
-          in
-          (* if we mutate exactly s.expr_level, return that in this order *)
-          if
-            Set.equal
-              (Set.map (module LocalIdent) ~f:fst set)
-              (variables_to_output |> List.map ~f:fst
-              |> Set.of_list (module LocalIdent))
-          then (variables_to_output, true)
-          else (set |> Set.to_list, false)
-        in
-        let s =
-          {
-            s with
-            expr_level = observable_mutations;
-            loop_level = observable_mutations;
-            drop_expr = true;
-          }
-        in
-        let empty_s = { s with expr_level = []; drop_expr = false } in
-        let state : B.loop_state option =
-          if List.is_empty observable_mutations then
-            Option.map ~f:(dloop_state span) state
-          else
-            Some
-              (let bpat' =
-                 List.map
-                   ~f:(fun (i, t) -> UB.make_var_pat i t span)
-                   observable_mutations
-                 |> UB.make_tuple_pat
-               in
-               let init' =
-                 List.map
-                   ~f:(fun (i, typ) : B.expr -> { e = LocalVar i; typ; span })
-                   observable_mutations
-                 |> UB.make_tuple_expr ~span
-               in
-               let witness = Features.On.state_passing_loop in
-               match state with
-               | None -> { init = init'; bpat = bpat'; witness }
-               | Some { init; bpat; _ } ->
-                   {
-                     init =
-                       UB.make_tuple_expr ~span [ init'; dexpr_s empty_s init ];
-                     bpat = UB.make_tuple_pat [ bpat'; dpat bpat ];
-                     witness;
-                   })
-        in
-        let kind =
-          let dexpr = dexpr_s empty_s in
-          [%inline_body dloop_kind] span kind
-        in
-        let body = dexpr_s s body in
-        let expr_typ = dty span expr.typ in
-        let loop : B.expr =
-          {
-            e = Loop { body; kind; state; label; witness };
-            typ =
-              (if List.is_empty observable_mutations then
-               UB.make_tuple_typ
-                 [
-                   List.map ~f:snd observable_mutations |> UB.make_tuple_typ;
-                   expr_typ;
-                 ]
-              else expr_typ);
-            span;
-          }
-        in
-        if adapt && not (List.is_empty variables_to_output) then loop else loop
-    | [%inline_arms "dexpr'.*" - Let - Assign - Closure - Loop - If - Match] ->
-        map (fun e ->
-            let e' = B.{ e; typ = dty expr.span expr.typ; span = expr.span } in
-            match e with
-            | If _ | Match _ | Loop _ | Assign _ -> e'
-            | _ when List.is_empty s.expr_level -> e'
-            | _ ->
-                let vars =
-                  List.map
-                    ~f:(fun (i, typ) : B.expr -> { e = LocalVar i; typ; span })
-                    s.expr_level
-                  |> UB.make_tuple_expr ~span
-                in
-                if s.drop_expr then vars
-                else UB.make_tuple_expr ~span [ vars; e' ])
-
-  let dexpr = dexpr_s Instructions.zero
-
-  [%%inline_defs "Item.*"]
 end
 [@@add "subtype.ml"]

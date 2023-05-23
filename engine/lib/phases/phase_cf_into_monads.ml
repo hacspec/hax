@@ -37,39 +37,59 @@ struct
     [%%inline_defs dmutability + dty + dborrow_kind + dpat]
 
     module KnownMonads = struct
+      type t = { monad : B.supported_monads option; typ : B.ty }
+      [@@deriving show, eq]
       (** types of computations *)
-      type t =
-        | MId of { typ : B.ty }
-        | MReturn of { return : B.ty; continue : B.ty }
+      (* | MId of { typ : B.ty } *)
+      (* | MReturn of { return : B.ty; continue : B.ty } *)
 
       let std_ops_control_flow_mk l =
         `Concrete
           { crate = "std"; path = Non_empty_list.("ops" :: "ControlFlow" :: l) }
 
+      let std_result_mk l =
+        `Concrete
+          { crate = "core"; path = Non_empty_list.("result" :: "Result" :: l) }
+
       let std_ops_control_flow = std_ops_control_flow_mk []
 
       (** translate a computation type to a simple type *)
-      let to_typ : t -> B.ty = function
-        | MId { typ } -> typ
-        | MReturn { return; continue } ->
-            let args = List.map ~f:(fun t -> B.GType t) [ return; continue ] in
+      let to_typ (x : t) : B.ty =
+        match x.monad with
+        | None -> x.typ
+        | Some (MResult err) ->
+            let args = List.map ~f:(fun t -> B.GType t) [ x.typ; err ] in
+            TApp { ident = std_result_mk []; args }
+        | Some MOption -> failwith "todo support"
+        | Some (MException return) ->
+            let args = List.map ~f:(fun t -> B.GType t) [ return; x.typ ] in
             TApp { ident = std_ops_control_flow; args }
 
       let from_typ' : B.ty -> t = function
-        | TApp { ident; args = [ GType return; GType continue ] }
+        | TApp { ident; args = [ GType return; GType continue ] } as t
           when GlobalIdent.equal ident std_ops_control_flow ->
-            MReturn { return; continue }
-        | typ -> MId { typ }
+            prerr_endline @@ "A>>>" ^ [%show: B.ty] t;
+            { monad = Some (MException return); typ = continue }
+        | TApp { ident; args = [ GType ok; GType err ] } as typ
+          when GlobalIdent.equal ident (std_result_mk []) ->
+            prerr_endline @@ "B>>>"
+            ^ [%show: global_ident * global_ident] (ident, std_result_mk []);
+            { monad = Some (MResult err); typ = ok }
+        | typ ->
+            prerr_endline @@ "C>>>" ^ [%show: B.ty] typ;
+            { monad = None; typ }
 
       (** the type of pure expression we can return in the monad *)
-      let pure_type = function
-        (* *)
-        | MId { typ } | MReturn { continue = typ } -> typ
+      let pure_type (x : t) = x.typ
 
-      let lift (e : B.expr) (monad_of_e : t) (monad_destination : t) : B.expr =
+      let lift (e : B.expr) monad_of_e monad_destination : B.expr =
         match (monad_of_e, monad_destination) with
-        | MId _, MId _ | MReturn _, MReturn _ -> e
-        | MId _, MReturn _ ->
+        | m1, m2 when [%equal: B.supported_monads option] m1 m2 -> e
+        | None, Some (B.MResult _) ->
+            (* TODO: this is a supposed to be Construct node not an App *)
+            UB.call "core" "result" [ "Result"; "Ok" ] [ e ] e.span
+              (to_typ { monad = monad_destination; typ = e.typ })
+        | _, Some (B.MException _) ->
             (* TODO: this is a supposed to be Construct node not an App *)
             (* maybe we should just drop Construct in favor of a
                [Record] thing, and put everything which is not a Record
@@ -77,20 +97,29 @@ struct
                for LHS things. *)
             UB.call "std" "ops"
               [ "ControlFlow"; "Continue" ]
-              [ e ] e.span (to_typ monad_destination)
-        | _, MId _ ->
+              [ e ] e.span
+              (to_typ { monad = monad_destination; typ = e.typ })
+        | m1, m2 ->
             Error.assertion_failure e.span
-              "Cannot lift a non-identity monad into the identity monad"
+            @@ "Cannot lift from monad ["
+            ^ [%show: B.supported_monads option] m1
+            ^ "] to monad ["
+            ^ [%show: B.supported_monads option] m2
+            ^ "]"
 
-      let lub m1 m2 = match (m1, m2) with MId _, m | m, MId _ -> m | _ -> m1
+      let lub m1 m2 =
+        match (m1, m2) with
+        | None, m | m, None _ -> m
+        | (Some (B.MResult _) as m), _ | _, (Some (B.MResult _) as m) -> m
+        | _ -> m1
 
       (** after transformation, are **getting** inside a monad? *)
       let from_typ (old : A.ty) (new_ : B.ty) : t =
-        let old = dty Dummy old in
+        let old = dty (Dummy { id = -1 } (* irrelevant *)) old in
         let monad = from_typ' new_ in
         if B.equal_ty (pure_type monad) old || true (* TODO: this is broken *)
         then monad
-        else MId { typ = new_ }
+        else { monad = None; typ = new_ }
     end
 
     let rec dexpr (expr : A.expr) : B.expr =
@@ -104,9 +133,9 @@ struct
           let body' = dexpr body in
           let rhs' = dexpr rhs in
           let mrhs = KnownMonads.from_typ rhs.typ rhs'.typ in
-          let lhs = { (dpat lhs) with typ = rhs'.typ } in
+          let lhs = { (dpat lhs) with typ = KnownMonads.pure_type mrhs } in
           match mrhs with
-          | MId _ ->
+          | { monad = None; _ } ->
               let monadic = None in
               let rhs = rhs' in
               let body = body' in
@@ -117,13 +146,13 @@ struct
               }
           | _ ->
               let mbody = KnownMonads.from_typ body.typ body'.typ in
-              let m = KnownMonads.lub mbody mrhs in
-              let body = KnownMonads.lift body' mbody m in
-              let rhs = KnownMonads.lift rhs' mrhs m in
+              let m = KnownMonads.lub mbody.monad mrhs.monad in
+              let body = KnownMonads.lift body' mbody.monad m in
+              let rhs = KnownMonads.lift rhs' mrhs.monad m in
               let monadic =
                 match m with
-                | MId _ -> None
-                | _ -> Some Features.On.monadic_binding
+                | None -> None
+                | Some m -> Some (m, Features.On.monadic_binding)
               in
               { e = Let { monadic; lhs; rhs; body }; span; typ = body.typ })
       | Match { scrutinee; arms } ->
@@ -135,18 +164,25 @@ struct
                 (m, (dpat pat, span, b)))
               arms
           in
-          (* Todo throw assertion failed here *)
-          let m = List.map ~f:fst arms |> List.reduce_exn ~f:KnownMonads.lub in
+          (* Todo throw assertion failed here (to get rid of reduce_exn in favor of reduce) *)
+          let m =
+            List.map ~f:(fun ({ monad; _ }, _) -> monad) arms
+            |> List.reduce_exn ~f:KnownMonads.lub
+          in
           let arms =
             List.map
               ~f:(fun (mself, (pat, span, body)) ->
-                let body = KnownMonads.lift body mself m in
+                let body = KnownMonads.lift body mself.monad m in
                 let pat = { pat with typ = body.typ } in
                 ({ arm = { pat; body }; span } : B.arm))
               arms
           in
           let scrutinee = dexpr scrutinee in
-          { e = Match { scrutinee; arms }; span; typ = KnownMonads.to_typ m }
+          {
+            e = Match { scrutinee; arms };
+            span;
+            typ = (List.hd_exn arms).arm.body.typ;
+          }
       | If { cond; then_; else_ } ->
           let cond = dexpr cond in
           let then' = dexpr then_ in
@@ -157,20 +193,25 @@ struct
             | Some else_, Some else' -> KnownMonads.from_typ else_.typ else'.typ
             | _ -> mthen
           in
-          let m = KnownMonads.lub mthen melse in
+          let m = KnownMonads.lub mthen.monad melse.monad in
           let else_ =
-            Option.map ~f:(fun else' -> KnownMonads.lift else' melse m) else'
+            Option.map
+              ~f:(fun else' -> KnownMonads.lift else' melse.monad m)
+              else'
           in
-          let then_ = KnownMonads.lift then' mthen m in
-          { e = If { cond; then_; else_ }; span; typ = KnownMonads.to_typ m }
+          let then_ = KnownMonads.lift then' mthen.monad m in
+          { e = If { cond; then_; else_ }; span; typ = then_.typ }
       | Continue _ -> failwith "TODO Continue"
       | Break _ -> failwith "TODO Break"
+      | QuestionMark { e; _ } ->
+          (* TODO: insert from_residual when needed *) dexpr e
       | Return { e; _ } ->
           let open KnownMonads in
           let e = dexpr e in
           UB.call "std" "ops" [ "ControlFlow"; "Break" ] [ e ] e.span
-            (to_typ @@ MReturn { return = (* bad*) e.typ; continue = typ })
-      | [%inline_arms "dexpr'.*" - Let - Continue - Break - Return] ->
+            (to_typ @@ { monad = Some (MException (* bad *) e.typ); typ })
+      | [%inline_arms
+          "dexpr'.*" - Let - Continue - Break - Return - QuestionMark] ->
           map (fun e -> B.{ e; typ = dty expr.span expr.typ; span = expr.span })
 
     and lift_if_necessary (e : B.expr) (target_type : B.ty) =
@@ -183,7 +224,27 @@ struct
     and darm' = [%inline_body darm']
     and dlhs = [%inline_body dlhs]
 
-    [%%inline_defs "Item.*"]
+    module Item = struct
+      module OverrideDExpr = struct
+        let dexpr (e : A.expr) : B.expr =
+          let e' = dexpr e in
+          match KnownMonads.from_typ e.typ e'.typ with
+          | { monad = Some m; typ } ->
+              UB.call "dummy"
+                (match m with
+                | MException _ -> "mexception"
+                | MResult _ -> "mresult"
+                | MOption -> "moption")
+                [ "run" ] [ e' ] e.span typ
+          | _ -> e'
+      end
+
+      open OverrideDExpr
+
+      [%%inline_defs "Item.*"]
+    end
+
+    include Item
   end
 
   include Implem

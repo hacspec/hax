@@ -12,6 +12,7 @@ module Phase = struct
       | ArbitraryLhs
       | Continue
       | RawOrMutPointer
+      | EarlyExit
     [@@deriving show { with_path = false }, eq, yojson, compare, hash, sexp]
 
     let display = function
@@ -30,6 +31,7 @@ module Phase = struct
     | LocalMutation
     | TrivializeAssignLhs
     | CfIntoMonads
+    | FunctionalizeLoops
     | DummyA
     | DummyB
     | DummyC
