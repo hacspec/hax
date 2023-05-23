@@ -36,6 +36,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "if-let"
+version = "0.1.0"
+
+[[package]]
 name = "mut-ref-functionalization"
 version = "0.1.0"
 
