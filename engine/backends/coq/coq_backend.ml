@@ -34,6 +34,7 @@ module CoqBackend = struct
           let slice = reject
           let raw_pointer = reject
           let early_exit _ = Obj.magic ()
+          let question_mark = reject
           let macro _ = Features.On.macro
           let as_pattern = reject
           let lifetime = reject

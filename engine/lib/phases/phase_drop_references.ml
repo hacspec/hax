@@ -4,7 +4,8 @@ open Utils
 module%inlined_contents Make
     (F : Features.T
            with type raw_pointer = Features.Off.raw_pointer
-            and type mutable_reference = Features.Off.mutable_reference) =
+            and type mutable_reference = Features.Off.mutable_reference
+            and type question_mark = Features.Off.question_mark) =
 struct
   open Ast
   module FA = F

@@ -32,6 +32,7 @@ module FStarBackend = struct
           let slice = reject
           let raw_pointer = reject
           let early_exit = reject
+          let question_mark = reject
           let macro _ = Features.On.macro
           let as_pattern = reject
           let lifetime = reject
@@ -1037,6 +1038,7 @@ module FStarBackend = struct
       |> Phases.Direct_and_mut
       |> Phases.Drop_references
       |> Phases.Trivialize_assign_lhs
+      |> Phases.Reconstruct_question_marks
       |> Side_effect_utils.Hoist
       |> Side_effect_utils.MutVar
       |> Phases.Reject.Continue

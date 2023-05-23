@@ -25,6 +25,7 @@ module Phase = struct
     | DropReferences
     | RefMut
     | ResugarForLoops
+    | ResugarQuestionMarks
     | HoistSideEffects
     | LocalMutation
     | TrivializeAssignLhs
@@ -64,7 +65,7 @@ let to_thir_loc ({ col; line } : Ast.loc) : T.loc = { col; line }
 
 let to_thir_span (s : Ast.span) : T.span =
   match s with
-  | Dummy ->
+  | Dummy _ ->
       let hi : T.loc = { col = 0; line = 0 } in
       { filename = Custom "DUNMMY"; hi; lo = hi }
   | Span { file; hi; lo } ->

@@ -149,6 +149,13 @@ struct
         Break { e = dexpr e; label; witness = S.loop witness }
     | Return { e; witness } ->
         Return { e = dexpr e; witness = S.early_exit witness }
+    | QuestionMark { e; converted_typ; witness } ->
+        QuestionMark
+          {
+            e = dexpr e;
+            converted_typ = dty span converted_typ;
+            witness = S.question_mark witness;
+          }
     | Continue { e; label; witness = w1, w2 } ->
         Continue
           {

@@ -218,6 +218,15 @@ struct
         method visit_expr (env : CollectContext.t) e =
           match e.e with
           | LocalVar v -> (e, ([], SideEffects.reads v e.typ))
+          | QuestionMark { e = e'; converted_typ; witness } ->
+              HoistSeq.one env (super#visit_expr env e') (fun e' effects ->
+                  ( {
+                      e with
+                      e = QuestionMark { e = e'; converted_typ; witness };
+                    },
+                    m#plus effects
+                      ([], { SideEffects.zero with return = Some converted_typ })
+                  ))
           | Return { e = e'; witness } ->
               HoistSeq.one env (super#visit_expr env e') (fun e' effects ->
                   ( { e with e = Return { e = e'; witness } },

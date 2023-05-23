@@ -39,6 +39,7 @@ module ECBackend = struct
           let slice = reject
           let raw_pointer = reject
           let early_exit _ = Obj.magic ()
+          let question_mark = reject
           let macro _ = Features.On.macro
           let as_pattern = reject
           let lifetime = reject
@@ -241,6 +242,7 @@ module ECBackend = struct
           assert false
       | App _ | Literal _ | Construct _ | LocalVar _ | GlobalVar _ ->
           Format.fprintf fmt "return %a;" doit_expr expr
+      | _ -> .
     and doit_lhs (fmt : Format.formatter) (lhs : lhs) =
       match lhs with
       | LhsFieldAccessor _ -> assert false
@@ -337,6 +339,7 @@ module ECBackend = struct
       | AddressOf _ -> assert false
       | Closure _ -> assert false
       | EffectAction _ -> assert false
+      | _ -> .
     in
 
     doit Format.err_formatter items;
