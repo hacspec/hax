@@ -56,46 +56,56 @@ struct
 
   let raise x = raise (E x)
 
-  [%%inline_defs dmutability]
+  module Implem : sig
+    val dty : span -> A.ty -> B.ty
+    val dpat : A.pat -> B.pat
+    val dexpr : A.expr -> B.expr
+    val ditem : A.item -> B.item list
+  end = struct
+    [%%inline_defs dmutability]
 
-  let rec dty (span : span) (ty : A.ty) : B.ty =
-    try [%inline_body dty] span ty with
-    | S.E err -> raise @@ Data.ret err @@ Ty ty
-    | E data -> raise @@ Data.add data @@ Ty ty
+    let rec dty (span : span) (ty : A.ty) : B.ty =
+      try [%inline_body dty] span ty with
+      | S.E err -> raise @@ Data.ret err @@ Ty ty
+      | E data -> raise @@ Data.add data @@ Ty ty
 
-  and dgeneric_value = [%inline_body dgeneric_value]
+    and dgeneric_value = [%inline_body dgeneric_value]
 
-  let dborrow_kind = [%inline_body dborrow_kind]
+    let dborrow_kind = [%inline_body dborrow_kind]
 
-  let rec dpat (pat : A.pat) : B.pat =
-    try [%inline_body dpat] pat with
-    | S.E err -> raise @@ Data.ret err @@ Pat pat
-    | E data -> raise @@ Data.add data @@ Pat pat
+    let rec dpat (pat : A.pat) : B.pat =
+      try [%inline_body dpat] pat with
+      | S.E err -> raise @@ Data.ret err @@ Pat pat
+      | E data -> raise @@ Data.add data @@ Pat pat
 
-  and dpat' = [%inline_body dpat']
-  and dfield_pat = [%inline_body dfield_pat]
-  and dbinding_mode = [%inline_body dbinding_mode]
+    and dpat' = [%inline_body dpat']
+    and dfield_pat = [%inline_body dfield_pat]
+    and dbinding_mode = [%inline_body dbinding_mode]
+    and dsupported_monads = [%inline_body dsupported_monads]
 
-  let rec dexpr (expr : A.expr) : B.expr =
-    try [%inline_body dexpr] expr with
-    | S.E err -> raise @@ Data.ret err @@ Expr expr
-    | E data -> raise @@ Data.add data @@ Expr expr
+    let rec dexpr (expr : A.expr) : B.expr =
+      try [%inline_body dexpr] expr with
+      | S.E err -> raise @@ Data.ret err @@ Expr expr
+      | E data -> raise @@ Data.add data @@ Expr expr
 
-  and dexpr' = [%inline_body dexpr']
-  and dloop_kind = [%inline_body dloop_kind]
-  and dloop_state = [%inline_body dloop_state]
-  and darm = [%inline_body darm]
-  and darm' = [%inline_body darm']
-  and dlhs = [%inline_body dlhs]
+    and dexpr' = [%inline_body dexpr']
+    and dloop_kind = [%inline_body dloop_kind]
+    and dloop_state = [%inline_body dloop_state]
+    and darm = [%inline_body darm]
+    and darm' = [%inline_body darm']
+    and dlhs = [%inline_body dlhs]
 
-  [%%inline_defs "Item.*" - ditem - ditem']
+    [%%inline_defs "Item.*" - ditem - ditem']
 
-  let rec ditem (item : A.item) : B.item list =
-    try [%inline_body ditem] item with
-    | S.E err -> raise @@ Data.ret err @@ Item item
-    | E data -> raise @@ Data.add data @@ Item item
+    let rec ditem (item : A.item) : B.item list =
+      try [%inline_body ditem] item with
+      | S.E err -> raise @@ Data.ret err @@ Item item
+      | E data -> raise @@ Data.add data @@ Item item
 
-  and ditem' = [%inline_body ditem']
+    and ditem' = [%inline_body ditem']
+  end
+
+  include Implem
 end
 [@@add "subtype.ml"]
 
