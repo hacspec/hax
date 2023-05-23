@@ -36,6 +36,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "if-let"
+version = "0.1.0"
+
+[[package]]
+name = "mut-ref-functionalization"
+version = "0.1.0"
+
+[[package]]
 name = "mut_arg"
 version = "0.1.0"
 
@@ -119,6 +127,14 @@ dependencies = [
 name = "secret_integers"
 version = "0.1.7"
 source = "git+https://github.com/hacspec/hacspec.git#00601ff65cc9a745c5191282986721d0fcb5f4f7"
+
+[[package]]
+name = "slices"
+version = "0.1.0"
+
+[[package]]
+name = "string-literal"
+version = "0.1.0"
 
 [[package]]
 name = "v1-lib"
