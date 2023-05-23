@@ -2,6 +2,7 @@
 members = [
         "enum-struct-variant",
         "string-literal",
+        "slices",
         "lint/hacspec/v1-lib",
         "lint/hacspec/mut_args",
         "lint/rust/fnmut",
