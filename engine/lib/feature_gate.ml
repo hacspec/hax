@@ -113,9 +113,6 @@ module%inlined_contents Make
 struct
   include MakeExn (FA) (FB) (S0)
   open Ast
-  (* module A = WithExn.A *)
-  (* module B = WithExn.B *)
-  (* module S = WithExn.S *)
 
   let pretty_string_of_span =
     let pos_to_string { col; line } =

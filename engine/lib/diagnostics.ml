@@ -2,7 +2,7 @@ module T = Raw_thir_ast
 
 module Backend = struct
   type t = Coq | FStar | EasyCrypt
-  [@@deriving show, eq, yojson, compare, hash, sexp]
+  [@@deriving show { with_path = false }, eq, yojson, compare, hash, sexp]
 end
 
 module Phase = struct

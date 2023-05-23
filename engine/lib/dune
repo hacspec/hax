@@ -10,7 +10,7 @@
   cmdliner
   fstar_surface_ast
   base
-  core)
+  core re)
  (preprocessor_deps
   ; `ppx_inline` is used on the `Subtype` module, thus we need it at PPX time
   (file subtype.ml))

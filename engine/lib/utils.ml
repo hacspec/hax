@@ -14,6 +14,7 @@ let snd3 (_, y, _) = y
 let thd3 (_, _, z) = z
 let curry f x y = f (x, y)
 let uncurry f (x, y) = f x y
+let tup2 a b = (a, b)
 
 let map_first_letter (f : string -> string) (s : string) =
   let first, rest = String.(prefix s 1, drop_prefix s 1) in

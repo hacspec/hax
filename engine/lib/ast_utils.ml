@@ -76,6 +76,12 @@ module Make (F : Features.T) = struct
     module TypedLocalIdent = struct
       include Set.M (TypedLocalIdent)
 
+      let show (x : t) : string =
+        [%show: TypedLocalIdent.t list] @@ Set.to_list x
+
+      let pp (fmt : Caml.Format.formatter) (s : t) : unit =
+        Caml.Format.pp_print_string fmt @@ show s
+
       class ['s] monoid =
         object
           inherit ['s] VisitorsRuntime.monoid

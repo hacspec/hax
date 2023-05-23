@@ -66,12 +66,10 @@ let run () : Raw_thir_ast.output =
     { diagnostics = [ Diagnostics.to_thir_diagnostic x ]; files = [] }
 
 let main () =
-  let finish = Phase_utils.DebugBindPhase.export in
-  (try
-     let results = run () in
-     Raw_thir_ast.to_json_output results
-     |> Yojson.Safe.pretty_to_string |> print_endline
-   with exn ->
-     finish ();
-     raise exn);
-  finish ()
+  let result = try Ok (run ()) with e -> Error e in
+  Phase_utils.DebugBindPhase.export ();
+  match result with
+  | Ok results ->
+      Raw_thir_ast.to_json_output results
+      |> Yojson.Safe.pretty_to_string |> print_endline
+  | Error exn -> raise exn

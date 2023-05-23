@@ -76,6 +76,15 @@ module type PHASE = sig
   val ditem : A.item -> B.item list
 end
 
+module MakePhaseImplemT (A : Ast.T) (B : Ast.T) = struct
+  module type T = sig
+    module Error : PHASE_ERROR
+
+    val metadata : Metadata.t
+    val ditem : A.item -> B.item list
+  end
+end
+
 module Identity (F : Features.T) = struct
   module FA = F
   module FB = F
@@ -166,40 +175,44 @@ end = struct
       l := !l @ mk_item ()
     else ()
 
-  let export_print prefix_path =
-    let files =
+  let export' prefix_path =
+    let files, json =
       Hashtbl.to_alist cache
       |> List.sort ~compare:(fun (_, (a, _)) (_, (b, _)) -> Int.compare a b)
       |> List.map ~f:(fun (k, (nth, l)) ->
-             ( Printf.sprintf "%02d" nth ^ "_" ^ [%show: DebugPhaseInfo.t] k,
-               String.concat ~sep:"\n\n" (List.map ~f:Print_rust.pitem !l) ))
+             let filename =
+               Printf.sprintf "%02d" nth ^ "_" ^ [%show: DebugPhaseInfo.t] k
+             in
+             let rustish = List.map ~f:Print_rust.pitem !l in
+             let json =
+               `Assoc
+                 [
+                   ("name", `String ([%show: DebugPhaseInfo.t] k));
+                   ("nth", `Int nth);
+                   ("items", [%yojson_of: Ast.Full.item list] !l);
+                   ( "rustish",
+                     [%yojson_of: Print_rust.AnnotatedString.Output.t list]
+                       rustish );
+                 ]
+             in
+             let rustish =
+               List.map ~f:Print_rust.AnnotatedString.Output.raw_string rustish
+               |> String.concat ~sep:"\n\n"
+             in
+             ((filename, rustish), json))
+      |> List.unzip
     in
     List.iter
       ~f:(fun (path, data) ->
         Core.Out_channel.write_all ~data
         @@ [%string "%{prefix_path}/%{path}.rs"])
-      files
-
-  let export_as_json prefix_path =
-    let all =
-      Hashtbl.to_alist cache
-      |> List.sort ~compare:(fun (_, (a, _)) (_, (b, _)) -> Int.compare a b)
-      |> List.map ~f:(fun (k, (nth, l)) ->
-             `Assoc
-               [
-                 ("name", `String ([%show: DebugPhaseInfo.t] k));
-                 ("nth", `Int nth);
-                 ("items", [%yojson_of: Ast.Full.item list] !l);
-               ])
-    in
-    Core.Out_channel.write_all ~data:(`List all |> Yojson.Safe.pretty_to_string)
+      files;
+    Core.Out_channel.write_all ~data:(`List json |> Yojson.Safe.pretty_to_string)
     @@ prefix_path ^ "/debug-circus-engine.json"
 
   let export () =
     match !prefix_path with
-    | Some prefix_path ->
-        export_print prefix_path;
-        export_as_json prefix_path
+    | Some prefix_path -> export' prefix_path
     | None -> ()
 end
 
