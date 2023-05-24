@@ -531,7 +531,49 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>>(
                     vis_span: rustc_span::DUMMY_SP.sinto(s),
                 }]
             }
-            _ => items.map(|item| item.sinto(s)).collect(),
+            _ => items
+                // TODO: this filter is temporary, and should be replaced by something better, see issue #88
+                .filter(|item| {
+                    mod clippy_utils {
+                        /* This is stolen from `clippy_utils`. TODO: use `clippy_utils` directly.
+                        (I was not able to understand how to make cargo to install it) */
+                        use rustc_ast::ast;
+                        use rustc_hir::HirId;
+                        use rustc_middle::ty::TyCtxt;
+                        use rustc_span::{symbol::sym, Symbol};
+                        fn has_attr(attrs: &[ast::Attribute], symbol: Symbol) -> bool {
+                            attrs.iter().any(|attr| attr.has_name(symbol))
+                        }
+                        fn any_parent_has_attr(
+                            tcx: TyCtxt<'_>,
+                            node: HirId,
+                            symbol: Symbol,
+                        ) -> bool {
+                            let map = &tcx.hir();
+                            let mut prev_enclosing_node = None;
+                            let mut enclosing_node = node;
+                            while Some(enclosing_node) != prev_enclosing_node {
+                                if has_attr(map.attrs(enclosing_node), symbol) {
+                                    return true;
+                                }
+                                prev_enclosing_node = Some(enclosing_node);
+                                enclosing_node = map.get_parent_item(enclosing_node).into();
+                            }
+
+                            false
+                        }
+
+                        pub fn any_parent_is_automatically_derived(
+                            tcx: TyCtxt<'_>,
+                            node: HirId,
+                        ) -> bool {
+                            any_parent_has_attr(tcx, node, sym::automatically_derived)
+                        }
+                    }
+                    !clippy_utils::any_parent_is_automatically_derived(tcx, item.hir_id())
+                })
+                .map(|item| item.sinto(s))
+                .collect(),
         })
         .flatten()
         .collect()
