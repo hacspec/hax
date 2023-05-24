@@ -2,7 +2,9 @@ open Base
 open Utils
 
 module Make
-    (F : Features.T with type monadic_action = Features.Off.monadic_action) : sig
+    (F : Features.T
+           with type monadic_action = Features.Off.monadic_action
+            and type monadic_binding = Features.Off.monadic_binding) : sig
   include module type of struct
     module FA = F
 

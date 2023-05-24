@@ -2,7 +2,9 @@ open Base
 open Utils
 
 module%inlined_contents Make
-    (F : Features.T with type monadic_action = Features.Off.monadic_action) =
+    (F : Features.T
+           with type monadic_action = Features.Off.monadic_action
+            and type monadic_binding = Features.Off.monadic_binding) =
 struct
   open Ast
   module FA = F
@@ -13,7 +15,6 @@ struct
     include Features.Off.Early_exit
 
     (* TODO: when break is introduced: include Features.Off.Break *)
-    (* include Features.Off.Mutable_variable *)
     include Features.On.Monadic_binding
   end
 
@@ -126,9 +127,7 @@ struct
       let span = expr.span in
       let typ = dty span expr.typ in
       match expr.e with
-      | Let { monadic = Some _; lhs; rhs; body } ->
-          (* let monadic = monadic || match r with _ -> false in *)
-          failwith "todo"
+      | Let { monadic = Some _; _ } -> .
       | Let { monadic = None; lhs; rhs; body } -> (
           let body' = dexpr body in
           let rhs' = dexpr rhs in
