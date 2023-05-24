@@ -102,6 +102,7 @@ struct
           let h (type a) (f : a list -> a) (x : a) (y : a) =
             match lhs.p with PWild -> y | _ -> f [ x; y ]
           in
+          let body = dexpr_same body in
           {
             e =
               Let
@@ -115,9 +116,9 @@ struct
                       (dexpr_s
                          { s with expr_level = []; drop_expr = false }
                          value);
-                  body = dexpr_same body;
+                  body;
                 };
-            typ = dty span expr.typ;
+            typ = body.typ;
             span = expr.span;
           }
       | Let { monadic = Some _; _ } -> .

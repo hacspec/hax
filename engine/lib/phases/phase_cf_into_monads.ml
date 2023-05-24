@@ -69,16 +69,11 @@ struct
       let from_typ' : B.ty -> t = function
         | TApp { ident; args = [ GType return; GType continue ] } as t
           when GlobalIdent.equal ident std_ops_control_flow ->
-            prerr_endline @@ "A>>>" ^ [%show: B.ty] t;
             { monad = Some (MException return); typ = continue }
         | TApp { ident; args = [ GType ok; GType err ] } as typ
           when GlobalIdent.equal ident (std_result_mk []) ->
-            prerr_endline @@ "B>>>"
-            ^ [%show: global_ident * global_ident] (ident, std_result_mk []);
             { monad = Some (MResult err); typ = ok }
-        | typ ->
-            prerr_endline @@ "C>>>" ^ [%show: B.ty] typ;
-            { monad = None; typ }
+        | typ -> { monad = None; typ }
 
       (** the type of pure expression we can return in the monad *)
       let pure_type (x : t) = x.typ
@@ -87,16 +82,10 @@ struct
         match (monad_of_e, monad_destination) with
         | m1, m2 when [%equal: B.supported_monads option] m1 m2 -> e
         | None, Some (B.MResult _) ->
-            (* TODO: this is a supposed to be Construct node not an App *)
-            UB.call "core" "result" [ "Result"; "Ok" ] [ e ] e.span
+            UB.call_Constructor "core" "result" [ "Result"; "Ok" ] [ e ] e.span
               (to_typ { monad = monad_destination; typ = e.typ })
         | _, Some (B.MException _) ->
-            (* TODO: this is a supposed to be Construct node not an App *)
-            (* maybe we should just drop Construct in favor of a
-               [Record] thing, and put everything which is not a Record
-               into an App. This would simplify stuff quite much. Maybe not
-               for LHS things. *)
-            UB.call "std" "ops"
+            UB.call_Constructor "std" "ops"
               [ "ControlFlow"; "Continue" ]
               [ e ] e.span
               (to_typ { monad = monad_destination; typ = e.typ })
@@ -118,8 +107,7 @@ struct
       let from_typ (old : A.ty) (new_ : B.ty) : t =
         let old = dty (Dummy { id = -1 } (* irrelevant *)) old in
         let monad = from_typ' new_ in
-        if B.equal_ty (pure_type monad) old || true (* TODO: this is broken *)
-        then monad
+        if B.equal_ty (pure_type monad) old then monad
         else { monad = None; typ = new_ }
     end
 
