@@ -190,12 +190,18 @@ struct
           { e = If { cond; then_; else_ }; span; typ = then_.typ }
       | Continue _ -> failwith "TODO Continue"
       | Break _ -> failwith "TODO Break"
-      | QuestionMark { e; _ } ->
-          (* TODO: insert from_residual when needed *) dexpr e
+      | QuestionMark { e; converted_typ } ->
+          let e = dexpr e in
+          let converted_typ = dty span converted_typ in
+          if [%equal: B.ty] converted_typ e.typ then e
+          else
+            UB.call "std" "ops"
+              [ "FromResidual"; "from_residual" ]
+              [ e ] span converted_typ
       | Return { e; _ } ->
           let open KnownMonads in
           let e = dexpr e in
-          UB.call "std" "ops" [ "ControlFlow"; "Break" ] [ e ] e.span
+          UB.call "std" "ops" [ "ControlFlow"; "Break" ] [ e ] span
             (to_typ @@ { monad = Some (MException (* bad *) e.typ); typ })
       | [%inline_arms
           "dexpr'.*" - Let - Continue - Break - Return - QuestionMark] ->
