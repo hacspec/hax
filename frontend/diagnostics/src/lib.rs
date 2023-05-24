@@ -69,6 +69,9 @@ pub enum Kind {
     /// Unsupported macro invokation
     UnsupportedMacro { id: String } = 4,
 
+    /// A phase explicitely rejected this chunk of code
+    ExplicitRejection { reason: String },
+
     /// Mutation of bindings living outside a closure scope are not supported
     ClosureMutatesParentBindings { bindings: Vec<String> },
 

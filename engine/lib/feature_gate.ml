@@ -10,7 +10,8 @@ module DefaultSubtype = struct
 
   include Features.SUBTYPE.Id
 
-  let explain : error -> Features.Enumeration.t -> string = fun _ _ -> "todo"
+  let explain : error -> Features.Enumeration.t -> string =
+   fun _ _ -> "unknown reason"
 end
 
 module%inlined_contents MakeExn
@@ -123,50 +124,19 @@ module%inlined_contents Make
 struct
   include MakeExn (FA) (FB) (S0)
   open Ast
-
-  let pretty_string_of_span =
-    let pos_to_string { col; line } =
-      Int.to_string line ^ ":" ^ Int.to_string col
-    in
-    function
-    | Span { file; hi; lo } ->
-        file ^ ":" ^ pos_to_string lo ^ "-" ^ pos_to_string hi
-    | Dummy _ -> "?"
-
-  include Phase_utils.NoError
-
-  let report (data : Data.t) =
-    let msg = S0.explain (fst data.data) (snd data.data) in
-    let first = Non_empty_list.hd data.path in
-    Caml.prerr_endline @@ "Error at "
-    ^ [%show: Diagnostics.Phase.t] S0.metadata.current_phase
-    ^ " phase: " ^ msg ^ " at span "
-    ^ pretty_string_of_span (Data.span data);
-    Caml.prerr_endline @@ [%show: ast_chunk] first;
-    ()
+  include Phase_utils.DefaultError
 
   let catch (type a b) (f : a -> b) (x : a) : b =
     try f x
     with E data ->
-      let err : exn =
-        Diagnostics.Error
-          {
-            context = Phase S0.metadata.current_phase;
-            kind =
-              Unimplemented
-                {
-                  issue_id = None;
-                  details =
-                    Some
-                      ("Todo error for feature_gate. "
-                      ^ S0.explain (fst data.data) (snd data.data));
-                };
-            span = Diagnostics.to_thir_span @@ Data.span data;
-          }
-      in
-      Caml.raise err
-  (* report data; *)
-  (* Caml.exit 1 *)
+      Caml.raise
+      @@ Error.E
+           {
+             kind =
+               ExplicitRejection
+                 { reason = S0.explain (fst data.data) (snd data.data) };
+             span = Data.span data;
+           }
 
   let dty : span -> A.ty -> B.ty = fun span -> catch @@ dty span
   let dpat : A.pat -> B.pat = catch dpat

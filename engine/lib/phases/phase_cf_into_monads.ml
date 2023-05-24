@@ -192,10 +192,10 @@ struct
           { e = If { cond; then_; else_ }; span; typ = then_.typ }
       | Continue _ ->
           Error.unimplemented ~issue_id:96
-            "TODO: Monad for loop-related control flow"
+            ~details:"TODO: Monad for loop-related control flow" span
       | Break _ ->
           Error.unimplemented ~issue_id:96
-            "TODO: Monad for loop-related control flow"
+            ~details:"TODO: Monad for loop-related control flow" span
       | QuestionMark { e; converted_typ } ->
           let e = dexpr e in
           let converted_typ = dty span converted_typ in
