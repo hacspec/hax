@@ -451,7 +451,17 @@ module Exn = struct
           let body = c_expr body in
           let upvars = List.map ~f:c_expr upvars in
           Closure { body; params; captures = upvars }
-      | Index _ -> unimplemented e.span "expression Index"
+      | Index { index; lhs } ->
+          let index_type = c_ty index.span index.ty in
+          let lhs_type = c_ty lhs.span lhs.ty in
+          call
+            (mk_global ([ lhs_type; index_type ] ->. typ)
+            @@ `Concrete
+                 {
+                   crate = "std";
+                   path = Non_empty_list.[ "ops"; "Index"; "index" ];
+                 })
+            [ lhs; index ]
       | PlaceTypeAscription _ ->
           unimplemented e.span "expression PlaceTypeAscription"
       | ValueTypeAscription _ ->
