@@ -135,7 +135,6 @@ struct
                       typed_inputs,
                     type_output )
               in
-              (* failwith @@ "ICI " ^ A.show_ty f.typ; *)
               let e =
                 B.App
                   {
@@ -235,7 +234,6 @@ struct
                      span = expr.span;
                    })
 
-    (* let ditem (x: A.item): B.item = failwith "todo"  *)
     [%%inline_defs "Item.*"]
 
     (* [%%inline_defs "Item.*"] *)

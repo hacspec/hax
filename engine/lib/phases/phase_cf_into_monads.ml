@@ -154,7 +154,9 @@ struct
           (* Todo throw assertion failed here (to get rid of reduce_exn in favor of reduce) *)
           let m =
             List.map ~f:(fun ({ monad; _ }, _) -> monad) arms
-            |> List.reduce_exn ~f:KnownMonads.lub
+            |> List.reduce ~f:KnownMonads.lub
+            |> Option.value_or_thunk ~default:(fun _ ->
+                   Error.assertion_failure span "[match] with zero arm?")
           in
           let arms =
             List.map
@@ -188,8 +190,12 @@ struct
           in
           let then_ = KnownMonads.lift then' mthen.monad m in
           { e = If { cond; then_; else_ }; span; typ = then_.typ }
-      | Continue _ -> failwith "TODO Continue"
-      | Break _ -> failwith "TODO Break"
+      | Continue _ ->
+          Error.unimplemented ~issue_id:96
+            "TODO: Monad for loop-related control flow"
+      | Break _ ->
+          Error.unimplemented ~issue_id:96
+            "TODO: Monad for loop-related control flow"
       | QuestionMark { e; converted_typ } ->
           let e = dexpr e in
           let converted_typ = dty span converted_typ in
@@ -202,7 +208,7 @@ struct
           let open KnownMonads in
           let e = dexpr e in
           UB.call "std" "ops" [ "ControlFlow"; "Break" ] [ e ] span
-            (to_typ @@ { monad = Some (MException (* bad *) e.typ); typ })
+            (to_typ @@ { monad = Some (MException e.typ); typ })
       | [%inline_arms
           "dexpr'.*" - Let - Continue - Break - Return - QuestionMark] ->
           map (fun e -> B.{ e; typ = dty expr.span expr.typ; span = expr.span })
