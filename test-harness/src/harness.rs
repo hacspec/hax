@@ -143,14 +143,17 @@ impl Test {
             lazy_static! {
                 // Regex [TIME] matches compile times
                 static ref TIME: Regex = Regex::new(r"\bin \d+(\.\d+)?s\b").unwrap();
+                static ref LOCK: Regex = Regex::new(r"Blocking waiting for \w+ lock on (the registry index|build directory|package cache)").unwrap();
             }
             TIME.replace_all(
-                s.replace(r"\", "/")
-                    .replace(&workspace, "WORKSPACE_ROOT")
-                    .replace("Blocking waiting for file lock on build directory", "")
-                    .trim(),
+                LOCK.replace_all(
+                    &s.replace(r"\", "/").replace(&workspace, "WORKSPACE_ROOT"),
+                    "",
+                )
+                .as_ref(),
                 "in XXs",
             )
+            .trim()
             .to_string()
         };
         let serr = cleanup(String::from_utf8_lossy(&out.stderr).to_string());
