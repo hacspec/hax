@@ -401,6 +401,32 @@ module Make (F : Features.T) = struct
     | [ e ] -> e
     | es -> make_tuple_expr' ~span es
 
+  (* maybe we should just drop Construct in favor of a
+     [Record] thing, and put everything which is not a Record
+       into an App. This would simplify stuff quite much. Maybe not
+       for LHS things. *)
+  let call_Constructor (crate : string) (path_hd : string)
+      (path_tl : string list) (args : expr list) span ret_typ =
+    let path = Non_empty_list.(path_hd :: path_tl) in
+    let typ = TArrow (List.map ~f:(fun arg -> arg.typ) args, ret_typ) in
+    let mk_field =
+      let len = List.length args in
+      fun n -> `TupleField (len, n)
+    in
+    let fields = List.mapi ~f:(fun i arg -> (mk_field i, arg)) args in
+    {
+      e =
+        Construct
+          {
+            constructor = `Concrete { crate; path };
+            constructs_record = false;
+            fields;
+            base = None;
+          };
+      typ = ret_typ;
+      span;
+    }
+
   let call (crate : string) (path_hd : string) (path_tl : string list)
       (args : expr list) span ret_typ =
     let path = Non_empty_list.(path_hd :: path_tl) in
