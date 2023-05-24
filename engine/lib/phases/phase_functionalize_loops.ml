@@ -59,8 +59,8 @@ struct
               span = body.span;
             }
           in
-          UB.call "dummy" "sfoldi" []
-            [ dexpr start; dexpr end_; dexpr init; fn ]
+          UB.call "dummy" "foldi" []
+            [ dexpr start; dexpr end_; fn; dexpr init ]
             span (dty span expr.typ)
       | Loop { state = None; _ } ->
           Error.unimplemented ~details:"Loop without mutation?" span
