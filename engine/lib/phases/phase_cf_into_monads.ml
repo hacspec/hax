@@ -52,6 +52,10 @@ struct
         `Concrete
           { crate = "core"; path = Non_empty_list.("result" :: "Result" :: l) }
 
+      let std_option_mk l =
+        `Concrete
+          { crate = "core"; path = Non_empty_list.("option" :: "Option" :: l) }
+
       let std_ops_control_flow = std_ops_control_flow_mk []
 
       (** translate a computation type to a simple type *)
@@ -61,7 +65,9 @@ struct
         | Some (MResult err) ->
             let args = List.map ~f:(fun t -> B.GType t) [ x.typ; err ] in
             TApp { ident = std_result_mk []; args }
-        | Some MOption -> failwith "todo support"
+        | Some MOption ->
+            let args = List.map ~f:(fun t -> B.GType t) [ x.typ ] in
+            TApp { ident = std_option_mk []; args }
         | Some (MException return) ->
             let args = List.map ~f:(fun t -> B.GType t) [ return; x.typ ] in
             TApp { ident = std_ops_control_flow; args }
@@ -73,6 +79,9 @@ struct
         | TApp { ident; args = [ GType ok; GType err ] } as typ
           when GlobalIdent.equal ident (std_result_mk []) ->
             { monad = Some (MResult err); typ = ok }
+        | TApp { ident; args = [ GType ok ] } as typ
+          when GlobalIdent.equal ident (std_option_mk []) ->
+            { monad = Some MOption; typ = ok }
         | typ -> { monad = None; typ }
 
       (** the type of pure expression we can return in the monad *)
@@ -83,6 +92,10 @@ struct
         | m1, m2 when [%equal: B.supported_monads option] m1 m2 -> e
         | None, Some (B.MResult _) ->
             UB.call_Constructor "core" "result" [ "Result"; "Ok" ] [ e ] e.span
+              (to_typ { monad = monad_destination; typ = e.typ })
+        | None, Some B.MOption ->
+            UB.call_Constructor "core" "option" [ "Option"; "Some" ] [ e ]
+              e.span
               (to_typ { monad = monad_destination; typ = e.typ })
         | _, Some (B.MException _) ->
             UB.call_Constructor "std" "ops"
