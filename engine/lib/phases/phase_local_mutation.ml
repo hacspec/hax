@@ -81,9 +81,7 @@ struct
     let rec dexpr_s (s : Instructions.t) (expr : A.expr) : B.expr =
       let dexpr_same e = dexpr_s s e in
       let rec dexpr e = dexpr_s { s with expr_level = []; drop_expr = false } e
-      and dloop_state = [%inline_body dloop_state]
-      and darm = [%inline_body darm]
-      and darm' = [%inline_body darm'] (* and dlhs = [%inline_body dlhs] *) in
+      and dloop_state = [%inline_body dloop_state] in
       let span = expr.span in
       match expr.e with
       | Let
