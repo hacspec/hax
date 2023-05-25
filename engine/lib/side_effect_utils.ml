@@ -85,7 +85,6 @@ struct
 
     let commute : t -> t -> bool =
       curry @@ function
-      (* | x, y when pure x && pure y -> true *)
       | ( ({ reads_local_mut = xr; writes_local_mut = xw; _ } as x),
           ({ reads_local_mut = yr; writes_local_mut = yw; _ } as y) )
         when no_deep_mut_or_cf x && no_deep_mut_or_cf y ->
@@ -93,6 +92,7 @@ struct
           let x = union xw xr in
           let y = union yw yr in
           is_empty @@ union (inter xw y) (inter yw x)
+      | x, y when reads_local_mut_only x || reads_local_mut_only y -> true
       | _ -> false
 
     class ['s] monoid =
