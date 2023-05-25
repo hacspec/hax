@@ -73,13 +73,13 @@ struct
             TApp { ident = std_ops_control_flow; args }
 
       let from_typ' : B.ty -> t = function
-        | TApp { ident; args = [ GType return; GType continue ] } as t
+        | TApp { ident; args = [ GType return; GType continue ] }
           when GlobalIdent.equal ident std_ops_control_flow ->
             { monad = Some (MException return); typ = continue }
-        | TApp { ident; args = [ GType ok; GType err ] } as typ
+        | TApp { ident; args = [ GType ok; GType err ] }
           when GlobalIdent.equal ident (std_result_mk []) ->
             { monad = Some (MResult err); typ = ok }
-        | TApp { ident; args = [ GType ok ] } as typ
+        | TApp { ident; args = [ GType ok ] }
           when GlobalIdent.equal ident (std_option_mk []) ->
             { monad = Some MOption; typ = ok }
         | typ -> { monad = None; typ }
@@ -112,7 +112,7 @@ struct
 
       let lub m1 m2 =
         match (m1, m2) with
-        | None, m | m, None _ -> m
+        | None, m | m, None -> m
         | (Some (B.MResult _) as m), _ | _, (Some (B.MResult _) as m) -> m
         | _ -> m1
 
@@ -139,11 +139,7 @@ struct
               let monadic = None in
               let rhs = rhs' in
               let body = body' in
-              {
-                e = Let { monadic = None; lhs; rhs; body };
-                span;
-                typ = body.typ;
-              }
+              { e = Let { monadic; lhs; rhs; body }; span; typ = body.typ }
           | _ ->
               let mbody = KnownMonads.from_typ body.typ body'.typ in
               let m = KnownMonads.lub mbody.monad mrhs.monad in
@@ -209,7 +205,7 @@ struct
       | Break _ ->
           Error.unimplemented ~issue_id:96
             ~details:"TODO: Monad for loop-related control flow" span
-      | QuestionMark { e; converted_typ } ->
+      | QuestionMark { e; converted_typ; _ } ->
           let e = dexpr e in
           let converted_typ = dty span converted_typ in
           if [%equal: B.ty] converted_typ e.typ then e
@@ -223,7 +219,8 @@ struct
           UB.call "std" "ops" [ "ControlFlow"; "Break" ] [ e ] span
             (to_typ @@ { monad = Some (MException e.typ); typ })
       | [%inline_arms
-          "dexpr'.*" - Let - Continue - Break - Return - QuestionMark] ->
+          "dexpr'.*" - Let - Match - If - Continue - Break - QuestionMark
+          - Return] ->
           map (fun e -> B.{ e; typ = dty expr.span expr.typ; span = expr.span })
 
     and lift_if_necessary (e : B.expr) (target_type : B.ty) =
