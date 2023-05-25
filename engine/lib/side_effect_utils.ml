@@ -113,12 +113,16 @@ struct
 
   module Hoist = struct
     type binding = pat * expr [@@deriving show]
-    type t = binding list * SideEffects.t [@@deriving show]
+    type t = { lbs : binding list; effects : SideEffects.t } [@@deriving show]
 
-    let plus : t -> t -> t =
-     fun (lbs1, e1) (lbs2, e2) -> (lbs1 @ lbs2, SideEffects.plus e1 e2)
+    let plus x y : t =
+      let effects = SideEffects.plus x.effects y.effects in
+      { lbs = x.lbs @ y.lbs; effects }
 
-    let zero : t = ([], SideEffects.zero)
+    let zero : t = { lbs = []; effects = SideEffects.zero }
+    let flbs { lbs; _ } = lbs
+    let feff { effects; _ } = effects
+    let no_lbs effects = { lbs = []; effects }
 
     class ['s] monoid =
       object
@@ -153,26 +157,26 @@ struct
         let fresh () = CollectContext.fresh_local_ident ctx in
         let effects, l =
           List.fold_right l ~init:(SideEffects.zero, [])
-            ~f:(fun (e, (lbs, effect)) (effects, l) ->
-              ( SideEffects.plus effect effects,
+            ~f:(fun (expr, { lbs; effects = effects0 }) (effects, l) ->
+              ( SideEffects.plus effects0 effects,
                 (if
-                 SideEffects.reads_local_mut_only effect
-                 && SideEffects.commute effect effects
-                then (lbs, e)
+                 SideEffects.reads_local_mut_only effects0
+                 && SideEffects.commute effects0 effects
+                then (lbs, expr)
                 else
                   let var =
                     (* if the body is a local variable, use that,
                        otherwise get a fresh one *)
-                    match snd @@ U.collect_let_bindings e with
+                    match snd @@ U.collect_let_bindings expr with
                     | { e = LocalVar var; _ } -> var
                     | _ -> fresh ()
                   in
-                  ( lbs @ [ (U.make_var_pat var e.typ e.span, e) ],
-                    { e with e = LocalVar var } ))
+                  ( lbs @ [ (U.make_var_pat var expr.typ expr.span, expr) ],
+                    { expr with e = LocalVar var } ))
                 :: l ))
         in
         let lbs = List.concat_map ~f:fst l in
-        next (List.map ~f:snd l) (lbs, effects)
+        next (List.map ~f:snd l) { lbs; effects }
 
       let err_hoist_invariant (type r) (location : string) : r =
         (* TODO: we should be able to throw span-unrelated errors *)
@@ -207,7 +211,7 @@ struct
 
         (* Collecting effects bottom up *)
         method! visit_LhsLocalVar _ var typ =
-          (LhsLocalVar { var; typ }, ([], SideEffects.writes var typ))
+          (LhsLocalVar { var; typ }, no_lbs @@ SideEffects.writes var typ)
 
         method! visit_LhsArbitraryExpr _ e witness =
           let deep_mutation =
@@ -222,37 +226,40 @@ struct
               () e
           in
           ( LhsArbitraryExpr { e; witness },
-            ([], { SideEffects.zero with deep_mutation }) )
+            no_lbs { SideEffects.zero with deep_mutation } )
 
         method! visit_expr (env : CollectContext.t) e =
           match e.e with
-          | LocalVar v -> (e, ([], SideEffects.reads v e.typ))
+          | LocalVar v -> (e, no_lbs (SideEffects.reads v e.typ))
           | QuestionMark { e = e'; converted_typ; witness } ->
               HoistSeq.one env (super#visit_expr env e') (fun e' effects ->
+                  let effects =
+                    m#plus effects
+                      (no_lbs
+                         { SideEffects.zero with return = Some converted_typ })
+                  in
                   ( {
                       e with
                       e = QuestionMark { e = e'; converted_typ; witness };
                     },
-                    m#plus effects
-                      ([], { SideEffects.zero with return = Some converted_typ })
-                  ))
+                    effects ))
           | Return { e = e'; witness } ->
               HoistSeq.one env (super#visit_expr env e') (fun e' effects ->
                   ( { e with e = Return { e = e'; witness } },
                     m#plus effects
-                      ([], { SideEffects.zero with return = Some e'.typ }) ))
+                      (no_lbs { SideEffects.zero with return = Some e'.typ }) ))
           | Break { e = e'; label; witness } ->
               HoistSeq.one env (super#visit_expr env e') (fun e' effects ->
                   ( { e with e = Break { e = e'; label; witness } },
                     m#plus effects
-                      ([], { SideEffects.zero with break = Some e'.typ }) ))
+                      (no_lbs { SideEffects.zero with break = Some e'.typ }) ))
           | Continue { e = e'; label; witness } -> (
               let ceffect =
-                ( [],
+                no_lbs
                   {
                     SideEffects.zero with
                     continue = Some (Option.map ~f:(fun (_, e) -> e.typ) e');
-                  } )
+                  }
               in
               match e' with
               | Some (witness', e') ->
@@ -265,7 +272,6 @@ struct
                         m#plus ceffect effects ))
               | None -> (e, ceffect))
           | Loop { body; kind; state; label; witness } ->
-              (* let body = U.unit_expr (Dummy { id = -4 }) in *)
               let kind' =
                 match kind with
                 | UnconditionalLoop -> []
@@ -298,10 +304,12 @@ struct
                     | _ -> HoistSeq.err_hoist_invariant Caml.__LOC__
                   in
                   (* by now, the "inputs" of the loop are hoisted as let if needed *)
-                  let body, (lbs, body_effects) = super#visit_expr env body in
+                  let body, { lbs; effects = body_effects } =
+                    super#visit_expr env body
+                  in
                   (* the loop construction **handles** the effect continue and break *)
                   let body_effects =
-                    ([], { body_effects with continue = None; break = None })
+                    no_lbs { body_effects with continue = None; break = None }
                   in
                   let effects = m#plus effects body_effects in
                   let body = lets_of_bindings lbs body in
@@ -309,8 +317,10 @@ struct
                     effects ))
           | If { cond; then_; else_ } ->
               HoistSeq.one env (super#visit_expr env cond) (fun cond effects ->
-                  let then_, (lbs_then, ethen) = super#visit_expr env then_ in
-                  let else_, (lbs_else, eelse) =
+                  let then_, { lbs = lbs_then; effects = ethen } =
+                    super#visit_expr env then_
+                  in
+                  let else_, { lbs = lbs_else; effects = eelse } =
                     match Option.map ~f:(super#visit_expr env) else_ with
                     | Some (else_, eelse) -> (Some else_, eelse)
                     | None -> (None, m#zero)
@@ -318,7 +328,7 @@ struct
                   let then_ = lets_of_bindings lbs_then then_ in
                   let else_ = Option.map ~f:(lets_of_bindings lbs_else) else_ in
                   let effects =
-                    m#plus (m#plus ([], ethen) ([], eelse)) effects
+                    m#plus (m#plus (no_lbs ethen) (no_lbs eelse)) effects
                   in
                   ({ e with e = If { cond; then_; else_ } }, effects))
           | App { f; args } ->
@@ -379,15 +389,18 @@ struct
                 let arms =
                   List.map ~f:(super#visit_arm env) arms
                   (* materialize letbindings in each arms *)
-                  |> List.map ~f:(fun ({ arm; span }, ((lbs, effects) : t)) ->
+                  |> List.map ~f:(fun ({ arm; span }, ({ lbs; effects } : t)) ->
                          let arm =
                            { arm with body = lets_of_bindings lbs arm.body }
                          in
-                         (({ arm; span } : arm), ([], effects)))
+                         (({ arm; span } : arm), { lbs = []; effects }))
                      (* cancel effects that concern variables introduced in pats  *)
-                  |> List.map ~f:(fun (arm, (lbs, effects)) ->
+                  |> List.map ~f:(fun (arm, { lbs; effects }) ->
                          let vars = U.Reducers.variables_of_pat arm.arm.pat in
-                         (arm, (lbs, SideEffects.without_rw_vars vars effects)))
+                         let effects =
+                           SideEffects.without_rw_vars vars effects
+                         in
+                         (arm, { lbs; effects }))
                 in
                 ( List.map ~f:fst arms,
                   List.fold ~init:m#zero ~f:m#plus (List.map ~f:snd arms) )
@@ -398,11 +411,15 @@ struct
                     m#plus eff_arms effects ))
           | Let { monadic = Some _; _ } -> .
           | Let { monadic = None; lhs; rhs; body } ->
-              let rhs, (rhs_lbs, rhs_effects) = super#visit_expr env rhs in
-              let body, (body_lbs, body_effects) = super#visit_expr env body in
+              let rhs, { lbs = rhs_lbs; effects = rhs_effects } =
+                super#visit_expr env rhs
+              in
+              let body, { lbs = body_lbs; effects = body_effects } =
+                super#visit_expr env body
+              in
               let lbs = rhs_lbs @ ((lhs, rhs) :: body_lbs) in
               let effects = SideEffects.plus rhs_effects body_effects in
-              (body, (lbs, effects))
+              (body, { lbs; effects })
           | GlobalVar _ -> (e, m#zero)
           | Ascription { e = e'; typ } ->
               HoistSeq.one env (super#visit_expr env e') (fun e' eff ->
@@ -420,20 +437,20 @@ struct
                   let effects = m#plus kind_effects effects in
                   ({ e with e = Borrow { kind; e = e'; witness } }, effects))
           | AddressOf { mut; e = e'; witness } ->
-              (* let mut, mut_effects = super#visit_mutability env kind in *)
               let mut, mut_effects = (mut, m#zero) in
               HoistSeq.one env (super#visit_expr env e') (fun e' effects ->
                   let effects = m#plus mut_effects effects in
                   ({ e with e = AddressOf { mut; e = e'; witness } }, effects))
           | Closure { params; body; captures } ->
               let body, body_effects =
-                let body, (lbs, effects) = super#visit_expr env body in
+                let body, { lbs; effects } = super#visit_expr env body in
                 let vars =
                   Set.union_list (module LocalIdent)
                   @@ List.map ~f:U.Reducers.variables_of_pat params
                 in
                 let body = lets_of_bindings lbs body in
-                (body, ([], SideEffects.without_rw_vars vars effects))
+                let effects = SideEffects.without_rw_vars vars effects in
+                (body, { lbs = []; effects })
               in
               ({ e with e = Closure { params; body; captures } }, body_effects)
               (* HoistSeq.many env *)
@@ -449,7 +466,7 @@ struct
       end
 
     let collect_and_hoist_effects (e : expr) : expr * SideEffects.t =
-      let e, (lbs, effects) =
+      let e, { lbs; effects } =
         collect_and_hoist_effects_object#visit_expr CollectContext.empty e
       in
       (lets_of_bindings lbs e, effects)
