@@ -213,11 +213,16 @@ impl Callbacks for ExtractionCallbacks {
                     .unwrap();
 
                     let out = engine_subprocess.wait_with_output().unwrap();
+                    let session = compiler.session();
                     if !out.status.success() {
-                        eprintln!("{} exited with non-zero code", ENGINE_BINARY_NAME);
-                        eprintln!("stdout: {}", String::from_utf8(out.stdout).unwrap());
-                        eprintln!("stderr: {}", String::from_utf8(out.stderr).unwrap());
-                        std::process::exit(out.status.code().unwrap_or(-1));
+                        session.fatal(format!(
+                            "{} exited with non-zero code {}\nstdout: {}\n stderr: {}",
+                            ENGINE_BINARY_NAME,
+                            out.status.code().unwrap_or(-1),
+                            String::from_utf8(out.stdout).unwrap(),
+                            String::from_utf8(out.stderr).unwrap(),
+                        ));
+                        return Compilation::Stop;
                     }
                     let output: circus_cli_options_engine::Output =
                         serde_json::from_slice(out.stdout.as_slice()).unwrap_or_else(|_| {
@@ -240,7 +245,6 @@ impl Callbacks for ExtractionCallbacks {
                         cached_thirs: HashMap::new(),
                         exported_spans: Rc::new(RefCell::new(HashSet::new())),
                     };
-                    let session = compiler.session();
                     if output.diagnostics.is_empty() {
                         match &backend.output_dir {
                             PathOrDash::Dash => {
@@ -288,8 +292,7 @@ impl Callbacks for ExtractionCallbacks {
                     }
                 }
             };
-        });
-
-        Compilation::Continue
+            Compilation::Continue
+        })
     }
 }
