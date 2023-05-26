@@ -218,6 +218,16 @@ type local_ident = (LocalIdent.t[@visitors.opaque])
 type size = S8 | S16 | S32 | S64 | S128 | SSize
 [@@deriving show, yojson, compare, eq]
 
+let int_of_size = function
+  | S8 -> Some 8
+  | S16 -> Some 16
+  | S32 -> Some 32
+  | S64 -> Some 64
+  | S128 -> Some 128
+  | _ -> None
+
+let string_of_size = int_of_size >> Option.map ~f:Int.to_string
+
 type signedness = Signed | Unsigned [@@deriving show, yojson, compare, eq]
 
 type int_kind = { size : size; signedness : signedness }

@@ -69,14 +69,17 @@ pub enum Kind {
     /// Unsupported macro invokation
     UnsupportedMacro { id: String } = 4,
 
-    /// A phase explicitely rejected this chunk of code
-    ExplicitRejection { reason: String },
+    /// Error parsing a macro invocation to a macro treated specifcially by a backend
+    ErrorParsingMacroInvocation { macro_id: String, details: String } = 5,
 
     /// Mutation of bindings living outside a closure scope are not supported
-    ClosureMutatesParentBindings { bindings: Vec<String> },
+    ClosureMutatesParentBindings { bindings: Vec<String> } = 6,
 
     /// Assignation of an arbitrary left-hand side is not supported. [lhs = e] is fine only when [lhs] is a combination of local identifiers, field accessors and index accessors.
-    ArbitraryLHS,
+    ArbitraryLHS = 7,
+
+    /// A phase explicitely rejected this chunk of code
+    ExplicitRejection { reason: String } = 8,
 }
 
 impl Kind {

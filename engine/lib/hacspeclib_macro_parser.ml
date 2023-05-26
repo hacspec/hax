@@ -1,29 +1,6 @@
 open Base
 open Angstrom
-
-(* functions from util functions *)
-let ( << ) f g x = f (g x)
-
-let rec split_list_once ~equal ~needle ~acc subject =
-  match subject with
-  | [] -> (List.rev acc, [])
-  | hd :: tl ->
-      if List.is_prefix subject ~prefix:needle ~equal then
-        (List.rev acc, List.drop subject (List.length needle))
-      else split_list_once ~equal ~needle ~acc:(hd :: acc) tl
-
-let split_list ~equal ~needle (subject : 'a list) : 'a list list =
-  let rec h l =
-    match split_list_once ~equal ~needle ~acc:[] l with
-    | l, [] -> [ l ]
-    | l, r -> l :: h r
-  in
-  h subject
-
-let split_str (s : string) ~(on : string) : string list =
-  split_list ~equal:Char.equal ~needle:(String.to_list on) (String.to_list s)
-  |> List.map ~f:String.of_char_list
-(*  *)
+open Utils
 
 let is_space = function ' ' | '\t' | '\n' -> true | _ -> false
 
@@ -43,7 +20,7 @@ let parens p = ignore_spaces (char '(') *> p <* ignore_spaces (char ')')
 let square_parens p = ignore_spaces (char '[') *> p <* ignore_spaces (char ']')
 let hex_list_identifier = identifier <* comma
 
-let is_hex_identifier = function
+let is_hex = function
   | '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' | '_' -> true
   | _ -> false
 
@@ -54,11 +31,74 @@ let remove_underscore (x : string) : string =
 
 let hex_identifier =
   ignore_spaces
-    (string "0x" *> take_while1 is_hex_identifier
+    (string "0x" *> take_while1 is_hex
     >>= (return << ( ^ ) "0x" << remove_underscore))
 
 let hex_list =
   square_parens (many (hex_identifier <* maybe identifier <* maybe comma))
+
+let quoted_string = char '"' *> take_while (Char.( <> ) '"') <* char '"'
+let quoted_hex = char '"' *> take_while is_hex <* char '"'
+let field name p = string name *> colon *> p
+let comment = ignore_spaces (string "//" *> take_while Char.(( <> ) '\n'))
+let ignore_comment = Fn.const () <$> maybe comment
+
+let sep_list1 (type a) ~sep (p : a t) : a list t =
+  let p = ignore_spaces p in
+  let* hd = p in
+  let+ tl = many (sep *> p) in
+  hd :: tl
+
+let sep_list (type a) ~sep (p : a t) : a list t = option [] (sep_list1 ~sep p)
+
+module RustIntLiteral = struct
+  (* *partial* support of https://doc.rust-lang.org/reference/tokens.html#number-literals *)
+  let bin_digit = satisfy [%matches? '0' | '1']
+
+  let oct_digit =
+    satisfy [%matches? '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7']
+
+  let dec_digit = satisfy is_digit
+  let hex_digit = satisfy is_hex
+
+  let mk (prefix : string t) (o : char t) : string t =
+    let underscore : char option t = Fn.const None <$> char '_' in
+    let* prefix = prefix in
+    let* hd = o in
+    let+ tl = many (Option.some <$> o <|> underscore) in
+    prefix ^ String.of_char_list @@ List.filter_map ~f:Fn.id (Some hd :: tl)
+
+  let dec_literal = mk (string "") dec_digit
+  let bin_literal = mk (string "0b") bin_digit
+  let oct_literal = mk (string "0o") oct_digit
+  let hex_literal = mk (string "0x") hex_digit
+
+  let signedness =
+    let open Ast in
+    Fn.const Unsigned <$> char 'u' <|> (Fn.const Signed <$> char 'i')
+
+  let size =
+    let open Ast in
+    let h size str = Fn.const size <$> string str in
+    choice [ h S8 "8"; h S16 "16"; h S32 "32"; h S64 "64"; h S128 "128" ]
+
+  let suffix : Ast.int_kind t =
+    let open Ast in
+    let* signedness = signedness in
+    let+ size = size in
+    { size; signedness }
+
+  let integer_literal =
+    let* value = bin_literal <|> oct_literal <|> hex_literal <|> dec_literal in
+    let+ kind = suffix in
+    (value, kind)
+end
+
+let rust_int_type = RustIntLiteral.suffix
+
+let array_of_int_literal =
+  ignore_spaces (char '[') *> sep_list ~sep:comma RustIntLiteral.integer_literal
+  <* ignore_spaces (char ']')
 
 module type Parser = sig
   type t [@@deriving show, yojson, eq]
@@ -79,6 +119,7 @@ end = struct
         Out_channel.output_string Out_channel.stderr
         @@ "########## Error while parsing: (" ^ name ^ ")";
         Out_channel.output_string Out_channel.stderr input;
+        Out_channel.output_string Out_channel.stderr e;
         Error e
 end
 
@@ -124,14 +165,6 @@ module Bytes = struct
   include M
   include Make (M)
 end
-
-let quoted_string = char '"' *> take_while (Char.( <> ) '"') <* char '"'
-let quoted_hex = char '"' *> take_while is_hex_identifier <* char '"'
-let field name p = string name *> colon *> p
-(* let ( <|.> ) p1 p2 = Either.first <$> p1 <|> (Either.second <$> p2) *)
-
-let comment = ignore_spaces (string "//" *> take_while Char.(( <> ) '\n'))
-let ignore_comment = Fn.const () <$> maybe comment
 
 module PublicNatMod = struct
   module M = struct
@@ -204,12 +237,9 @@ end
 
 module SecretBytes = struct
   module M = struct
-    type t = { array_values : string list } [@@deriving show, yojson, eq]
+    type t = (string * Ast.int_kind) list [@@deriving show, yojson, eq]
 
-    let parser =
-      let+ av = hex_list in
-      { array_values = (* List.map ~f:(fun x -> fst x ^ snd x)  *) av }
-
+    let parser = array_of_int_literal
     let name = "secret_bytes"
   end
 
@@ -219,13 +249,27 @@ end
 
 module SecretArray = struct
   module M = struct
-    type t = { array_typ : string; array_values : string list }
+    type t = {
+      int_typ_size : Ast.size;
+      array_values : (string * Ast.int_kind) list;
+    }
     [@@deriving show, yojson, eq]
 
     let parser =
-      let* at = identifier <* comma in
-      let+ av = hex_list in
-      { array_typ = at; array_values = av }
+      let hacspec_int_type =
+        let* _ = string "U" in
+        (* only unsigned *)
+        RustIntLiteral.size
+        (* let ident = *)
+        (*   `Concrete Ast.{ crate = "dummy"; path = Non_empty_list.[ c ^ size ] } *)
+        (* in *)
+        (* AST.TApp { ident; args = [] } *)
+      in
+      let* int_typ_size = hacspec_int_type in
+      let* _ = comma in
+      let* array_values = array_of_int_literal in
+      let+ _ = option () comma in
+      { int_typ_size; array_values }
 
     let name = "secret_array"
   end

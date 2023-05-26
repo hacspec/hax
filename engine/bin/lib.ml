@@ -59,9 +59,9 @@ let run () : Raw_thir_ast.output =
   in
   try
     match options.backend.backend with
-    | Fstar -> run (module Fstar_backend.FStarBackend) ()
-    | Coq -> run (module Coq_backend.CoqBackend) ()
-    | Easycrypt -> run (module Easycrypt_backend.ECBackend) ()
+    | Fstar -> run (module Fstar_backend) ()
+    | Coq -> run (module Coq_backend) ()
+    | Easycrypt -> run (module Easycrypt_backend) ()
   with Diagnostics.Error x ->
     { diagnostics = [ Diagnostics.to_thir_diagnostic x ]; files = [] }
 
