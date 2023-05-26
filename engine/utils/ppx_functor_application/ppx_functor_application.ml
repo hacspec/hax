@@ -1,5 +1,6 @@
 open Base
 open Ppxlib
+module Format = Caml.Format
 
 let name = "functor_application"
 
@@ -57,7 +58,7 @@ let rec elab ~loc (t : module_dsl) : module_expr =
   | App (f, x) -> E.pmod_apply (h f) (h x)
   | Pipe (x :: funs) ->
       let x = h x in
-      let nth_arg nth = "ARG" ^ string_of_int nth in
+      let nth_arg nth = "ARG" ^ Int.to_string nth in
       let arg0 = E.pmod_ident { loc; txt = Lident (nth_arg 0) } in
       let binds =
         List.mapi
@@ -104,20 +105,17 @@ let rec normalize (t : module_dsl) : module_dsl =
       | l -> Pipe l)
 
 let rec parse expr =
-  let out_of_lang () =
-    failwith @@ "Out of language: " ^ Pprintast.string_of_expression expr
-  in
   let r =
     match expr with
-    | { pexp_desc = Pexp_construct ({ txt }, None) } -> Var txt
-    | { pexp_desc = Pexp_construct ({ txt }, Some arg) } ->
+    | { pexp_desc = Pexp_construct ({ txt; _ }, None); _ } -> Var txt
+    | { pexp_desc = Pexp_construct ({ txt; _ }, Some arg); _ } ->
         App (Var txt, parse arg)
     | [%expr [%e? m1] |> [%e? m2]] -> Pipe [ parse m1; parse m2 ]
     | [%expr (module [%m? m])] -> ModExpr m
     | [%expr [%e? f] [%e? x]] -> App (parse f, parse x)
     | [%expr fun [%p? x] -> [%e? body]] -> (
         match x with
-        | { ppat_desc = Ppat_construct ({ txt = Lident x }, None) } ->
+        | { ppat_desc = Ppat_construct ({ txt = Lident x; _ }, None); _ } ->
             Abs (x, parse body)
         | _ -> failwith @@ "Out of language: " ^ string_of_pattern x)
     | _ -> failwith @@ "Out of language: " ^ Pprintast.string_of_expression expr

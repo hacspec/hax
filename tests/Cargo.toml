@@ -4,6 +4,7 @@ members = [
         "string-literal",
         "slices",
         "if-let",
+        "side-effects",
         "lint/hacspec/v1-lib",
         "lint/hacspec/mut_args",
         "lint/rust/fnmut",

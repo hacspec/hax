@@ -1,5 +1,4 @@
 open Base
-open Utils
 
 module Metadata : sig
   type t = private {
@@ -39,6 +38,14 @@ module DefaultError = struct
       { kind; span = Diagnostics.to_thir_span span; context = Phase phase }
 
     exception E of t
+
+    let raise err = raise @@ E err
+
+    let unimplemented ?issue_id ?details span =
+      raise { kind = Unimplemented { issue_id; details }; span }
+
+    let assertion_failure span details =
+      raise { kind = AssertionFailure { details }; span }
   end
 
   module _ : PHASE_ERROR = Error
@@ -48,7 +55,7 @@ module NoError = struct
   module Error = struct
     type t = | [@@deriving show, eq]
 
-    let lift (x : t) (phase : Diagnostics.Phase.t) : Diagnostics.t =
+    let lift (x : t) (_phase : Diagnostics.Phase.t) : Diagnostics.t =
       match x with _ -> .
 
     exception E of t
@@ -69,6 +76,15 @@ module type PHASE = sig
   val ditem : A.item -> B.item list
 end
 
+module MakePhaseImplemT (A : Ast.T) (B : Ast.T) = struct
+  module type T = sig
+    module Error : PHASE_ERROR
+
+    val metadata : Metadata.t
+    val ditem : A.item -> B.item list
+  end
+end
+
 module Identity (F : Features.T) = struct
   module FA = F
   module FB = F
@@ -76,7 +92,7 @@ module Identity (F : Features.T) = struct
   module B = Ast.Make (F)
   include NoError
 
-  let ditem (x : A.item) : B.item list = [ Obj.magic x ]
+  let ditem (x : A.item) : B.item list = [ x ]
   let metadata = Metadata.make Diagnostics.Phase.Identity
 end
 
@@ -112,7 +128,7 @@ module AddErrorHandling (D : PHASE) = struct
   let ditem (i : D.A.item) : D.B.item list =
     try D.ditem i
     with Failure e ->
-      prerr_endline
+      Caml.prerr_endline
         ("Phase "
         ^ [%show: Diagnostics.Phase.t] metadata.current_phase
         ^ " failed with exception: " ^ e ^ "\nTerm: "
@@ -120,36 +136,90 @@ module AddErrorHandling (D : PHASE) = struct
         if _DEBUG_SHOW_ITEM then
           [%show: A.item] i
           ^ "\n"
-          ^ if _DEBUG_SHOW_BACKTRACE then Printexc.get_backtrace () else ""
+          ^ if _DEBUG_SHOW_BACKTRACE then Caml.Printexc.get_backtrace () else ""
         else "");
       raise PhaseError
 end
 
+module DebugPhaseInfo = struct
+  type t = Before | Phase of Diagnostics.Phase.t
+  [@@deriving eq, sexp, hash, compare, yojson]
+
+  let show (s : t) : string =
+    match s with
+    | Before -> "initial_input"
+    | Phase p -> Diagnostics.Phase.display p
+
+  let pp (fmt : Caml.Format.formatter) (s : t) : unit =
+    Caml.Format.pp_print_string fmt @@ show s
+end
+
 module DebugBindPhase : sig
-  val add : Metadata.t -> (unit -> Yojson.Safe.t) -> unit
+  val add : DebugPhaseInfo.t -> int -> (unit -> Ast.Full.item list) -> unit
   val export : unit -> unit
+  val enable : string -> unit
 end = struct
-  let cache : (Diagnostics.Phase.t, int * Yojson.Safe.t list ref) Hashtbl.t =
-    Hashtbl.create (module Diagnostics.Phase)
+  let prefix_path = ref None
+  let enable (path : string) = prefix_path := Some path
+  let enabled () = Option.is_some !prefix_path
 
-  let add (phase_name : Metadata.t) (mk_json : unit -> Yojson.Safe.t) =
-    let _, l =
-      Hashtbl.find_or_add cache phase_name.current_phase ~default:(fun _ ->
-          (List.length @@ Metadata.previous_phases phase_name, ref []))
-    in
-    l := !l @ [ mk_json () ]
+  let cache : (DebugPhaseInfo.t, int * Ast.Full.item list ref) Hashtbl.t =
+    Hashtbl.create (module DebugPhaseInfo)
 
-  let export () =
-    let all =
+  let add (phase_info : DebugPhaseInfo.t) (nth : int)
+      (mk_item : unit -> Ast.Full.item list) =
+    if enabled () then
+      let _, l =
+        Hashtbl.find_or_add cache phase_info ~default:(fun _ -> (nth, ref []))
+      in
+      l := !l @ mk_item ()
+    else ()
+
+  let export' prefix_path =
+    let files, json =
       Hashtbl.to_alist cache
       |> List.sort ~compare:(fun (_, (a, _)) (_, (b, _)) -> Int.compare a b)
       |> List.map ~f:(fun (k, (nth, l)) ->
-             `Assoc
-               [ ("name", `String k); ("nth", `Int nth); ("items", `List !l) ])
+             let filename =
+               Printf.sprintf "%02d" nth ^ "_" ^ [%show: DebugPhaseInfo.t] k
+             in
+             let rustish = List.map ~f:Print_rust.pitem !l in
+             let json =
+               `Assoc
+                 [
+                   ("name", `String ([%show: DebugPhaseInfo.t] k));
+                   ("nth", `Int nth);
+                   ("items", [%yojson_of: Ast.Full.item list] !l);
+                   ( "rustish",
+                     [%yojson_of: Print_rust.AnnotatedString.Output.t list]
+                       rustish );
+                 ]
+             in
+             let rustish =
+               List.map ~f:Print_rust.AnnotatedString.Output.raw_string rustish
+               |> String.concat ~sep:"\n\n"
+             in
+             ((filename, rustish), json))
+      |> List.unzip
     in
-    (* Core_kernel.Out_channel.write_all ~data:(`List all |> Yojson.Safe.pretty_to_string) *)
-    (* @@ "/tmp/debug-circus-engine.json" *)
-    ()
+    List.iter
+      ~f:(fun (path, data) ->
+        Core.Out_channel.write_all ~data
+        @@ [%string "%{prefix_path}/%{path}.rs"])
+      files;
+    Core.Out_channel.write_all ~data:(`List json |> Yojson.Safe.pretty_to_string)
+    @@ prefix_path ^ "/debug-circus-engine.json"
+
+  let export () =
+    match !prefix_path with
+    | Some prefix_path -> export' prefix_path
+    | None -> ()
+end
+
+module type S = sig
+  module A : Ast.T
+
+  val ditem : A.item -> Ast.Full.item list
 end
 
 module BindPhase
@@ -166,7 +236,7 @@ struct
   module Error = struct
     type t = ErrD1 of D1.Error.t | ErrD2 of D2.Error.t [@@deriving show, eq]
 
-    let lift (x : t) (phase : Diagnostics.Phase.t) : Diagnostics.t =
+    let lift (x : t) (_phase : Diagnostics.Phase.t) : Diagnostics.t =
       match x with
       | ErrD1 e -> D1.Error.lift e D1.metadata.current_phase
       | ErrD2 e -> D2.Error.lift e D2.metadata.current_phase
@@ -180,14 +250,22 @@ struct
 
   let ditem : A.item -> B.item list =
    fun item0 ->
+    let nth = List.length @@ Metadata.previous_phases D1.metadata in
+    (if Int.equal nth 0 then
+     let coerce_to_full_ast : D1'.A.item -> Ast.Full.item = Caml.Obj.magic in
+     DebugBindPhase.add Before 0 (fun _ -> [ coerce_to_full_ast item0 ]));
     let item1 =
       try D1'.ditem item0
       with D1.Error.E e -> raise @@ Error.E (Error.ErrD1 e)
     in
+    let coerce_to_full_ast : D2'.A.item list -> Ast.Full.item list =
+      Caml.Obj.magic
+    in
+    DebugBindPhase.add (Phase D1.metadata.current_phase) (nth + 1) (fun _ ->
+        coerce_to_full_ast item1);
     let item2 =
       try List.concat_map ~f:D2'.ditem item1
       with D2.Error.E e -> raise @@ Error.E (Error.ErrD2 e)
     in
-    DebugBindPhase.add D1.metadata (fun _ -> [%yojson_of: D1.B.item list] item1);
     item2
 end

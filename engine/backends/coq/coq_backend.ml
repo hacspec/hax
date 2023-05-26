@@ -34,12 +34,15 @@ module CoqBackend = struct
           let slice = reject
           let raw_pointer = reject
           let early_exit _ = Obj.magic ()
+          let question_mark = reject
           let macro _ = Features.On.macro
           let as_pattern = reject
           let lifetime = reject
           let monadic_action = reject
           let arbitrary_lhs = reject
+          let nontrivial_lhs = reject
           let monadic_binding _ = Features.On.monadic_binding
+          let state_passing_loop = reject
           let for_loop = reject
 
           let metadata =
@@ -56,6 +59,18 @@ module CoqBackend = struct
 
     let parse = Term.(const ())
   end
+
+  let failwith ?(span = Ast.Dummy { id = -1 }) msg =
+    Diagnostics.failure ~context:(Backend Coq) ~span
+      (Unimplemented
+         {
+           issue_id = None;
+           details =
+             Some
+               ("[TODO: this error uses failwith, and thus leads to bad error \
+                 messages, please update it using [Diagnostics.*] helpers] "
+              ^ msg);
+         })
 
   open Ast
   module U = Ast_utils.Make (InputLanguage)
@@ -745,7 +760,7 @@ module CoqBackend = struct
           C.AST.Let (ppat lhs, pexpr rhs, pexpr body, pty lhs.typ)
       | Let { lhs; rhs; body; monadic = None } ->
           C.AST.Let (ppat lhs, pexpr rhs, pexpr body, pty lhs.typ)
-      | MonadicAction _ -> __TODO_term__ "monadic action"
+      | EffectAction _ -> __TODO_term__ "monadic action"
       | Match { scrutinee; arms } ->
           C.AST.Match
             ( pexpr scrutinee,
@@ -767,7 +782,6 @@ module CoqBackend = struct
           C.AST.Var (pglobal_ident constructor ^ snd (ty_to_string (pty e.typ)))
       | Closure { params; body } ->
           C.AST.Lambda (List.map ~f:ppat params, pexpr body)
-      | Return { e } -> __TODO_term__ "return"
       (* Macro *)
       | MacroInvokation
           {
@@ -812,20 +826,6 @@ module CoqBackend = struct
           } ->
           __TODO_term__ (crate ^ " macro " ^ pp)
       | MacroInvokation { macro; args; witness } -> __TODO_term__ "macro"
-      (* Mut *)
-      | Assign { lhs; e; witness } -> __TODO_term__ "assign"
-      (* Loop *)
-      | Loop { body; label; witness } -> __TODO_term__ "loop"
-      (* ControlFlow *)
-      | Break { e; label; witness } -> __TODO_term__ "break"
-      | Continue { label; witness } -> __TODO_term__ "continue"
-      (* Mem *)
-      | Borrow { kind; e; witness } -> __TODO_term__ "borrow"
-      (* Raw borrow *)
-      | AddressOf { mut; e; witness } -> __TODO_term__ "raw borrow"
-      | Literal l -> __TODO_term__ "literal"
-      | ForLoop { start; end_; var; body; label; witness } ->
-          __TODO_term__ "for loop"
       | _ -> .
 
     let __TODO_item__ s = C.AST.Unimplemented (s ^ " todo(item)")
@@ -1118,8 +1118,8 @@ module CoqBackend = struct
      Open Scope Z_scope.\n\
      Open Scope bool_scope.\n"
 
-  let translate (o : Backend.Options.t) (bo : BackendOptions.t)
-      (items : AST.item list) : Raw_thir_ast.output =
+  let translate (bo : BackendOptions.t) (items : AST.item list) :
+      Raw_thir_ast.output =
     {
       diagnostics = [];
       files =
@@ -1144,24 +1144,27 @@ module CoqBackend = struct
   open Phase_utils
 
   module TransformToInputLanguage =
-    [%functor_application
-       Phases.Reject.RawOrMutPointer(Features.Rust)
-    |> Phases.Reject.Arbitrary_lhs
-    |> Phases.Reconstruct_for_loops
-    |> Phases.Direct_and_mut
-    |> Phases.Reject.Continue
-    |> Phases.Drop_references
-     (* results in unit functions disappering *)
-    |> (fun X -> (Phases.Mutable_variable(module X))
-                   (module struct
-                      let early_exit = fun _ -> Features.On.early_exit
-                    end))
-    |> RejectNotCoq
-    (* |> Identity *)
-    ]
-    [@ocamlformat "disable"]
+    CatchErrors
+      ([%functor_application
+      Phases.Reject.RawOrMutPointer(Features.Rust)
+      |> Phases.Reject.Arbitrary_lhs
+      |> Phases.Reconstruct_for_loops
+      |> Phases.Direct_and_mut
+      |> Phases.Reject.Continue
+      |> Phases.Drop_references
+      |> Phases.Trivialize_assign_lhs
+      |> Phases.Reconstruct_question_marks
+      |> Side_effect_utils.Hoist
+      |> Phases.Local_mutation
+      |> Phases.Reject.Continue
+      |> Phases.Cf_into_monads
+      |> Phases.Reject.EarlyExit
+      |> Phases.Functionalize_loops
+      |> RejectNotCoq
+      |> Identity
+      ]
+      [@ocamlformat "disable"])
 
-  let apply_phases (o : Backend.Options.t) (bo : BackendOptions.t)
-      (i : Ast.Rust.item) : AST.item list =
+  let apply_phases (bo : BackendOptions.t) (i : Ast.Rust.item) : AST.item list =
     TransformToInputLanguage.ditem i
 end

@@ -1,3 +1,4 @@
+use circus_cli_options::NormalizePaths;
 use circus_cli_options::Options;
 use clap::Parser;
 use colored::Colorize;
@@ -42,7 +43,7 @@ pub fn get_args(subcommand: &str) -> Vec<String> {
 fn main() {
     let args: Vec<String> = get_args("circus");
     // eprintln!("args: {args:?}");
-    let options = Options::parse_from(args.iter());
+    let options = Options::parse_from(args.iter()).normalize_paths();
     // eprintln!("options: {options:?}");
 
     std::process::exit(

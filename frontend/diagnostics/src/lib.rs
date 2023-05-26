@@ -1,7 +1,24 @@
 #![feature(rustc_private)]
 
+extern crate rustc_errors;
+extern crate rustc_session;
+extern crate rustc_span;
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+pub trait SessionExtTrait {
+    fn span_circus_err(&self, diag: Diagnostics<rustc_span::Span>);
+}
+impl SessionExtTrait for rustc_session::Session {
+    fn span_circus_err(&self, diag: Diagnostics<rustc_span::Span>) {
+        self.span_err_with_code(
+            diag.span,
+            format!("{}", diag),
+            rustc_errors::DiagnosticId::Error(diag.kind.code().into()),
+        );
+    }
+}
 
 pub mod error;
 
@@ -10,6 +27,16 @@ pub struct Diagnostics<S> {
     pub kind: Kind,
     pub span: S,
     pub context: String,
+}
+
+impl<S> Diagnostics<S> {
+    pub fn set_span<T>(&self, span: T) -> Diagnostics<T> {
+        Diagnostics {
+            kind: self.kind.clone(),
+            context: self.context.clone(),
+            span,
+        }
+    }
 }
 
 impl<S> std::fmt::Display for Diagnostics<S> {
@@ -41,6 +68,15 @@ pub enum Kind {
 
     /// Unsupported macro invokation
     UnsupportedMacro { id: String } = 4,
+
+    /// A phase explicitely rejected this chunk of code
+    ExplicitRejection { reason: String },
+
+    /// Mutation of bindings living outside a closure scope are not supported
+    ClosureMutatesParentBindings { bindings: Vec<String> },
+
+    /// Assignation of an arbitrary left-hand side is not supported. [lhs = e] is fine only when [lhs] is a combination of local identifiers, field accessors and index accessors.
+    ArbitraryLHS,
 }
 
 impl Kind {

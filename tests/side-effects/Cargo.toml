@@ -1,0 +1,10 @@
+[package]
+name = "side-effects"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[package.metadata.circus-tests]
+into.fstar = {snapshot = "none"}
+into.coq = {snapshot = "none"}

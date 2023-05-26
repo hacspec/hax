@@ -46,9 +46,8 @@ end = struct
 end
 
 module Make (F : Features.T) = struct
-  open Ast
   module AST = Ast.Make (F)
-  include AST
+  open AST
   module TypedLocalIdent = TypedLocalIdent (AST)
 
   module Sets = struct
@@ -77,6 +76,12 @@ module Make (F : Features.T) = struct
     module TypedLocalIdent = struct
       include Set.M (TypedLocalIdent)
 
+      let show (x : t) : string =
+        [%show: TypedLocalIdent.t list] @@ Set.to_list x
+
+      let pp (fmt : Caml.Format.formatter) (s : t) : unit =
+        Caml.Format.pp_print_string fmt @@ show s
+
       class ['s] monoid =
         object
           inherit ['s] VisitorsRuntime.monoid
@@ -87,6 +92,18 @@ module Make (F : Features.T) = struct
   end
 
   module Mappers = struct
+    let regenerate_span_ids =
+      object
+        inherit [_] item_map
+        method visit_t () x = x
+        method visit_mutability _ () m = m
+
+        method! visit_span s =
+          function
+          | Dummy _ -> Dummy { id = FreshSpanId.make () }
+          | Span s -> Span { s with id = FreshSpanId.make () }
+      end
+
     let normalize_borrow_mut =
       object
         inherit [_] expr_map as super
@@ -98,8 +115,8 @@ module Make (F : Features.T) = struct
             match e.e with
             | App
                 {
-                  f = { e = GlobalVar (`Primitive Deref) };
-                  args = [ { e = Borrow { e = sub } } ];
+                  f = { e = GlobalVar (`Primitive Deref); _ };
+                  args = [ { e = Borrow { e = sub; _ }; _ } ];
                 } ->
                 expr sub
             | _ -> super#visit_expr s e
@@ -110,8 +127,8 @@ module Make (F : Features.T) = struct
     let rename_global_idents (f : visit_level -> global_ident -> global_ident) =
       object
         inherit [_] item_map as super
-        method visit_t (lvl : visit_level) x = x
-        method visit_mutability _ (lvl : visit_level) m = m
+        method visit_t (_lvl : visit_level) x = x
+        method visit_mutability _ (_lvl : visit_level) m = m
         method! visit_global_ident (lvl : visit_level) ident = f lvl ident
         method! visit_ty _ t = super#visit_ty TypeLevel t
         (* method visit_GlobalVar (lvl : level) i = GlobalVar (f lvl i) *)
@@ -123,11 +140,22 @@ module Make (F : Features.T) = struct
   end
 
   module Reducers = struct
+    let collect_local_idents =
+      object
+        inherit [_] expr_reduce as _super
+        inherit [_] Sets.LocalIdent.monoid as m
+        method visit_t _ _ = m#zero
+        method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
+        method! visit_local_ident _ x = Set.singleton (module LocalIdent) x
+      end
+
     let collect_global_idents =
       object
-        inherit [_] pat_reduce as super
-        inherit [_] Sets.GlobalIdent.monoid as m
-        method! visit_global_ident env x = Set.singleton (module GlobalIdent) x
+        inherit ['self] pat_reduce as _super
+        inherit [_] Sets.GlobalIdent.monoid as _m
+
+        method! visit_global_ident (_env : unit) (x : GlobalIdent.t) =
+          Set.singleton (module GlobalIdent) x
       end
 
     let variables_of_pat (p : pat) : Sets.LocalIdent.t =
@@ -144,10 +172,20 @@ module Make (F : Features.T) = struct
         #visit_pat
         () p
 
+    let variables_of_pats : pat list -> Sets.LocalIdent.t =
+      List.map ~f:variables_of_pat >> Set.union_list (module LocalIdent)
+
+    let without_vars (mut_vars : Sets.TypedLocalIdent.t)
+        (vars : Sets.LocalIdent.t) =
+      Set.filter mut_vars ~f:(fst >> Set.mem vars >> not)
+
+    let without_pats_vars (mut_vars : Sets.TypedLocalIdent.t) :
+        pat list -> Sets.TypedLocalIdent.t =
+      variables_of_pats >> without_vars mut_vars
+
     let without_pat_vars (mut_vars : Sets.TypedLocalIdent.t) (pat : pat) :
         Sets.TypedLocalIdent.t =
-      let pat_vars = variables_of_pat pat in
-      Set.filter mut_vars ~f:(fst >> Set.mem pat_vars >> not)
+      without_pats_vars mut_vars [ pat ]
 
     let free_assigned_variables
         (fv_of_arbitrary_lhs :
@@ -156,30 +194,52 @@ module Make (F : Features.T) = struct
         inherit [_] expr_reduce as super
         inherit [_] Sets.TypedLocalIdent.monoid as m
         method visit_t _ _ = m#zero
-        method visit_mutability f () _ = m#zero
+        method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
 
-        method visit_Assign m lhs e wit =
+        (* TODO: loop state *)
+
+        method visit_Assign _env lhs e _wit =
           let rec visit_lhs lhs =
             match lhs with
             | LhsLocalVar { var; _ } ->
                 Set.singleton (module TypedLocalIdent) (var, e.typ)
             | LhsFieldAccessor { e; _ } -> visit_lhs e
-            | LhsArrayAccessor { e; index } ->
+            | LhsArrayAccessor { e; index; _ } ->
                 Set.union (super#visit_expr () index) (visit_lhs e)
             | LhsArbitraryExpr { witness; e } -> fv_of_arbitrary_lhs witness e
           in
           visit_lhs lhs
 
-        method visit_Match m scrut arms =
-          List.fold_left ~init:(super#visit_expr m scrut) ~f:Set.union
-          @@ List.map ~f:(fun arm -> super#visit_arm m arm) arms
+        method visit_Match env scrut arms =
+          List.fold_left ~init:(super#visit_expr env scrut) ~f:Set.union
+          @@ List.map ~f:(fun arm -> super#visit_arm env arm) arms
 
-        method visit_Let m _monadic pat expr body =
-          Set.union (super#visit_expr m expr)
-          @@ without_pat_vars (super#visit_expr m body) pat
+        method visit_Let env _monadic pat expr body =
+          Set.union (super#visit_expr env expr)
+          @@ without_pat_vars (super#visit_expr env body) pat
 
-        method visit_arm' m { pat; body } =
-          without_pat_vars (super#visit_expr m body) pat
+        method visit_Closure env params body _captures =
+          without_pats_vars (super#visit_expr env body) params
+
+        method visit_Loop env body kind state _label _witness =
+          let vars =
+            (match kind with
+            | UnconditionalLoop -> []
+            | ForLoop { var = _not_mutable; _ } -> [])
+            @ (state
+              |> Option.map ~f:(fun { bpat; _ } -> variables_of_pat bpat)
+              |> Option.to_list)
+            |> Set.union_list (module LocalIdent)
+          in
+          m#plus
+            (super#visit_loop_kind env kind)
+            (m#plus
+               (Option.map ~f:(super#visit_loop_state env) state
+               |> Option.value ~default:m#zero)
+               (without_vars (super#visit_expr env body) vars))
+
+        method visit_arm' env { pat; body } =
+          without_pat_vars (super#visit_expr env body) pat
       end
 
     class ['s] expr_list_monoid =
@@ -194,22 +254,46 @@ module Make (F : Features.T) = struct
         inherit [_] expr_reduce as super
         inherit [_] expr_list_monoid as m
         method visit_t _ _ = m#zero
-        method visit_mutability f () _ = m#zero
+        method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
         method visit_Break _ e _ _ = m#plus (super#visit_expr () e) [ e ]
 
-        method visit_Loop _ _ _ _ = (* Do *NOT* visit sub nodes *)
-                                    m#zero
+        method visit_Loop _ _ _ _ _ _ = (* Do *NOT* visit sub nodes *)
+                                        m#zero
       end
   end
+
+  (** Produces a local identifier which is locally fresh **with respect
+      to expressions {exprs}**. *)
+  let fresh_local_ident_in_expr (exprs : expr list) (prefix : string) :
+      LocalIdent.t =
+    let free_suffix =
+      List.map ~f:(Reducers.collect_local_idents#visit_expr ()) exprs
+      |> Set.union_list (module LocalIdent)
+      |> Set.to_list
+      |> List.filter_map ~f:(fun ({ name; _ } : local_ident) ->
+             String.chop_prefix ~prefix name)
+      |> List.map ~f:(function "" -> "0" | s -> s)
+      |> List.filter_map ~f:Caml.int_of_string_opt
+      |> List.fold ~init:(-1) ~f:Int.max
+      |> ( + ) 1
+      |> function
+      | 0 -> ""
+      | n -> Int.to_string n
+    in
+    {
+      name = prefix ^ free_suffix;
+      id = (* TODO: freshness is local and name-only here... *) -1;
+    }
 
   let unit_typ : ty = TApp { ident = `TupleType 0; args = [] }
 
   let unit_expr span : expr =
     { typ = unit_typ; span; e = GlobalVar (`TupleCons 0) }
 
+  (* TODO: Those tuple1 things are wrong! Tuples of size one exists in Rust! e.g. `(123,)` *)
   let rec remove_tuple1_pat (p : pat) : pat =
     match p.p with
-    | PConstruct { name = `TupleType 1; args = [ { pat; _ } ] } ->
+    | PConstruct { name = `TupleType 1; args = [ { pat; _ } ]; _ } ->
         remove_tuple1_pat pat
     | _ -> p
 
@@ -221,16 +305,16 @@ module Make (F : Features.T) = struct
   (* let rec remove_empty_tap *)
 
   let is_unit_typ : ty -> bool =
-    remove_tuple1 >> [%matches? TApp { ident = `TupleType 0 }]
+    remove_tuple1 >> [%matches? TApp { ident = `TupleType 0; _ }]
 
   let rec pat_is_expr (p : pat) (e : expr) =
     match (p.p, e.e) with
     | _, Construct { constructor = `TupleCons 1; fields = [ (_, e) ]; _ } ->
         pat_is_expr p e
-    | PBinding { subpat = None; var = pv }, LocalVar ev ->
+    | PBinding { subpat = None; var = pv; _ }, LocalVar ev ->
         [%eq: local_ident] pv ev
-    | ( PConstruct { name = pn; args = pargs },
-        Construct { constructor = en; fields = eargs; base = None } )
+    | ( PConstruct { name = pn; args = pargs; _ },
+        Construct { constructor = en; fields = eargs; base = None; _ } )
       when [%eq: global_ident] pn en -> (
         match List.zip pargs eargs with
         | Ok zip ->
@@ -259,12 +343,15 @@ module Make (F : Features.T) = struct
       expr =
     List.fold_right ~init:body ~f:let_of_binding bindings
 
-  let make_tuple_typ (tuple : ty list) : ty =
+  let make_tuple_typ' (tuple : ty list) : ty =
     TApp
       {
         ident = `TupleType (List.length tuple);
         args = List.map ~f:(fun typ -> GType typ) tuple;
       }
+
+  let make_tuple_typ (tuple : ty list) : ty =
+    match tuple with [ ty ] -> ty | _ -> make_tuple_typ' tuple
 
   let make_wild_pat (typ : ty) (span : span) : pat = { p = PWild; span; typ }
 
@@ -274,24 +361,27 @@ module Make (F : Features.T) = struct
   let make_tuple_field_pat (len : int) (nth : int) (pat : pat) : field_pat =
     { field = `TupleField (nth + 1, len); pat }
 
-  let make_tuple_pat' span (tuple : field_pat list) : pat =
+  let make_tuple_pat'' span (tuple : field_pat list) : pat =
     match tuple with
-    | [ { pat } ] -> pat
+    | [ { pat; _ } ] -> pat
     | _ ->
         let len = List.length tuple in
         {
           p = PConstruct { name = `TupleCons len; args = tuple; record = false };
-          typ =
-            make_tuple_typ @@ List.map ~f:(fun { pat = { typ } } -> typ) tuple;
+          typ = make_tuple_typ @@ List.map ~f:(fun { pat; _ } -> pat.typ) tuple;
           span;
         }
 
-  let make_tuple_pat (pats : pat list) : pat =
+  let make_tuple_pat' (pats : pat list) : pat =
     let len = List.length pats in
     List.mapi ~f:(fun i pat -> { field = `TupleField (i, len); pat }) pats
-    |> make_tuple_pat' (union_spans @@ List.map ~f:(fun p -> p.span) pats)
+    |> make_tuple_pat'' (union_spans @@ List.map ~f:(fun p -> p.span) pats)
 
-  let make_tuple_expr ~(span : span) (tuple : expr list) : expr =
+  let make_tuple_pat : pat list -> pat = function
+    | [ pat ] -> pat
+    | pats -> make_tuple_pat' pats
+
+  let make_tuple_expr' ~(span : span) (tuple : expr list) : expr =
     let len = List.length tuple in
     {
       e =
@@ -303,9 +393,46 @@ module Make (F : Features.T) = struct
               List.mapi ~f:(fun i x -> (`TupleField (i, len), x)) @@ tuple;
             base = None;
           };
-      typ = make_tuple_typ @@ List.map ~f:(fun { typ } -> typ) tuple;
+      typ = make_tuple_typ @@ List.map ~f:(fun { typ; _ } -> typ) tuple;
       span;
     }
+
+  let make_tuple_expr ~(span : span) : expr list -> expr = function
+    | [ e ] -> e
+    | es -> make_tuple_expr' ~span es
+
+  (* maybe we should just drop Construct in favor of a
+     [Record] thing, and put everything which is not a Record
+       into an App. This would simplify stuff quite much. Maybe not
+       for LHS things. *)
+  let call_Constructor (crate : string) (path_hd : string)
+      (path_tl : string list) (args : expr list) span ret_typ =
+    let path = Non_empty_list.(path_hd :: path_tl) in
+    let typ = TArrow (List.map ~f:(fun arg -> arg.typ) args, ret_typ) in
+    let mk_field =
+      let len = List.length args in
+      fun n -> `TupleField (len, n)
+    in
+    let fields = List.mapi ~f:(fun i arg -> (mk_field i, arg)) args in
+    {
+      e =
+        Construct
+          {
+            constructor = `Concrete { crate; path };
+            constructs_record = false;
+            fields;
+            base = None;
+          };
+      typ = ret_typ;
+      span;
+    }
+
+  let call (crate : string) (path_hd : string) (path_tl : string list)
+      (args : expr list) span ret_typ =
+    let path = Non_empty_list.(path_hd :: path_tl) in
+    let typ = TArrow (List.map ~f:(fun arg -> arg.typ) args, ret_typ) in
+    let e = GlobalVar (`Concrete { crate; path }) in
+    { e = App { f = { e; typ; span }; args }; typ = ret_typ; span }
 
   let rec collect_let_bindings' (e : expr) : (pat * expr * ty) list * expr =
     match e.e with
@@ -314,7 +441,7 @@ module Make (F : Features.T) = struct
         ((lhs, rhs, e.typ) :: bindings, body)
     | _ -> ([], e)
 
-  let rec collect_let_bindings (e : expr) : (pat * expr) list * expr =
+  let collect_let_bindings (e : expr) : (pat * expr) list * expr =
     let bindings, body = collect_let_bindings' e in
     let types = List.map ~f:thd3 bindings in
     assert (
@@ -343,7 +470,8 @@ module Make (F : Features.T) = struct
   let tuple_projector (tuple_typ : ty) (len : int) (nth : int)
       (type_at_nth : ty) : expr =
     {
-      span = Dummy;
+      span = Dummy { id = FreshSpanId.make () };
+      (* TODO: require a span here *)
       typ = TArrow ([ tuple_typ ], type_at_nth);
       e = GlobalVar (`Projector (`TupleField (nth, len)));
     }
@@ -351,7 +479,7 @@ module Make (F : Features.T) = struct
   let project_tuple (tuple : expr) (len : int) (nth : int) (type_at_nth : ty) :
       expr =
     {
-      span = Dummy;
+      span = tuple.span;
       typ = type_at_nth;
       e =
         App

@@ -2,9 +2,9 @@
  (name lib)
  (modules lib)
  (wrapped false)
- (libraries circus_engine fstar_backend coq_backend easycrypt_backend)
+ (libraries circus_engine fstar_backend coq_backend easycrypt_backend core)
  (preprocess
-  (pps ppx_yojson_conv ppx_deriving.show ppx_deriving.eq)))
+  (pps ppx_yojson_conv ppx_deriving.show ppx_deriving.eq ppx_matches ppx_string)))
 
 (executable
  (public_name circus-engine)
@@ -24,4 +24,4 @@
 (env
  (_
   (flags
-   (:standard -w -A -w +8))))
+   (:standard -warn-error -A -warn-error +8))))

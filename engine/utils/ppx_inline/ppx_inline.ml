@@ -4,10 +4,12 @@ open Ppxlib
 let name = "inlined_contents"
 
 let cons_lid_of_pattern (p : pattern) =
-  match p.ppat_desc with Ppat_construct ({ txt }, _) -> Some txt | _ -> None
+  match p.ppat_desc with
+  | Ppat_construct ({ txt; _ }, _) -> Some txt
+  | _ -> None
 
 let name_of_pattern (p : pattern) =
-  match p.ppat_desc with Ppat_var { txt } -> Some txt | _ -> None
+  match p.ppat_desc with Ppat_var { txt; _ } -> Some txt | _ -> None
 
 type inlinable_item_kind =
   | MatchCase of (case[@opaque])
@@ -42,13 +44,13 @@ let collect_ast_nodes (result : inlinable_item list ref) =
 
     method! structure_item path s =
       (match s.pstr_desc with
-      | Pstr_value (r, bindings) ->
-          List.iter bindings ~f:(fun ({ pvb_pat } as b) ->
+      | Pstr_value (_, bindings) ->
+          List.iter bindings ~f:(fun { pvb_pat; _ } ->
               match name_of_pattern pvb_pat with
               | Some n -> add [ { path = path @ [ n ]; kind = StrItem s } ]
               | _ -> ())
-      | Pstr_type (r, bindings) ->
-          List.iter bindings ~f:(fun { ptype_name = { txt = n } } ->
+      | Pstr_type (_, bindings) ->
+          List.iter bindings ~f:(fun { ptype_name = { txt = n; _ }; _ } ->
               add [ { path = path @ [ n ]; kind = StrItem s } ])
       | _ -> ());
       super#structure_item path s
@@ -73,17 +75,23 @@ let collect_ast_nodes (result : inlinable_item list ref) =
       | _ -> e'
   end
 
-let locate_module ~loc module_name =
-  let dirname =
-    loc.Ocaml_common.Location.loc_start.pos_fname |> Filename.dirname
-  in
-  Filename.concat dirname module_name
-
 let replace_every_location (location : location) =
   object
-    inherit Ast_traverse.map as super
+    inherit Ast_traverse.map
     method! location = Fn.const location
   end
+
+let locate_module (name : string) : string =
+  let rec find = function
+    | path when Caml.Sys.is_directory path ->
+        Caml.Sys.readdir path
+        |> Array.find_map ~f:(fun name ->
+               find @@ Caml.Filename.concat path name)
+    | path when String.(Caml.Filename.basename path = name) -> Some path
+    | _ -> None
+  in
+  find (Caml.Sys.getcwd ())
+  |> Option.value_exn ~message:("ppx_inbline: could not locate module " ^ name)
 
 let inlinable_items_of_module : loc:location -> string -> inlinable_item list =
   let memo = Hashtbl.create (module String) in
@@ -92,7 +100,7 @@ let inlinable_items_of_module : loc:location -> string -> inlinable_item list =
       ~default:(fun () ->
         let results = ref [] in
         let _ =
-          locate_module ~loc path |> open_in |> Lexing.from_channel
+          locate_module path |> Caml.open_in |> Lexing.from_channel
           |> Parse.implementation |> (replace_every_location loc)#structure
           |> (collect_ast_nodes results)#structure [ path ]
         in
@@ -121,10 +129,10 @@ let rec plus_minus_list_of_expr' (e : expression) : (flag * string list) list =
       plus_minus_list_of_expr' x
       @ List.map ~f:(fun (_, v) -> (Exclude, v))
       @@ plus_minus_list_of_expr' y
-  | { pexp_desc = Pexp_constant (Pconst_string (s, _, _)) } ->
+  | { pexp_desc = Pexp_constant (Pconst_string (s, _, _)); _ } ->
       [ (Include, String.split ~on:'.' s) ]
-  | { pexp_desc = Pexp_ident { txt } }
-  | { pexp_desc = Pexp_construct ({ txt }, _) } ->
+  | { pexp_desc = Pexp_ident { txt; _ }; _ }
+  | { pexp_desc = Pexp_construct ({ txt; _ }, _); _ } ->
       [ (Include, Longident.flatten_exn txt) ]
   | _ -> raise_inline_err NotPlusMinusList
 
@@ -145,7 +153,8 @@ let diff_list (type a) (x : a list) (y : a list) ~(equal : a -> a -> bool) :
       List.for_all ~f:(fun elem_y -> not @@ equal elem_x elem_y) y)
     x
 
-let map_inline_nodes opens loc =
+(* TODO: ppx_inline reports badly locations (I actually don't use `_loc`...) *)
+let map_inline_nodes opens _loc =
   let rec match_glob (glob : string list) (against : string list) =
     match (elast glob, elast against) with
     | Some (glob, "*"), Some (against, _) -> match_glob glob against
@@ -153,7 +162,7 @@ let map_inline_nodes opens loc =
   in
   let inlinable_items = inlinable_items_of_modules opens in
   let matches ~loc (glob : string list) : inlinable_item list =
-    List.filter ~f:(fun { path } -> match_glob glob path)
+    List.filter ~f:(fun { path; _ } -> match_glob glob path)
     @@ inlinable_items ~loc
   in
   let find_one (type a) ~loc (glob : string list)
@@ -169,7 +178,7 @@ let map_inline_nodes opens loc =
              {
                search = glob;
                available =
-                 List.map ~f:(fun { path } -> path) @@ inlinable_items ~loc;
+                 List.map ~f:(fun { path; _ } -> path) @@ inlinable_items ~loc;
              }
     | l -> l
   in
@@ -197,8 +206,8 @@ let map_inline_nodes opens loc =
         let loc = e.pstr_loc in
         match e.pstr_desc with
         | Pstr_extension
-            ( ( { txt = "inline_defs" },
-                PStr [ { pstr_desc = Pstr_eval (payload, _) } ] ),
+            ( ( { txt = "inline_defs"; _ },
+                PStr [ { pstr_desc = Pstr_eval (payload, _); _ } ] ),
               _ ) -> (
             match plus_minus_list_of_expr payload with
             | Some opts -> (
@@ -218,7 +227,7 @@ let map_inline_nodes opens loc =
       let e = super#expression e in
       let loc = e.pexp_loc in
       match e with
-      | { pexp_desc = Pexp_match (scrut, cases) } ->
+      | { pexp_desc = Pexp_match (scrut, cases); _ } ->
           let cases =
             List.concat_map
               ~f:(fun case ->
@@ -259,7 +268,7 @@ let map_inline_nodes opens loc =
               try
                 match
                   find ~loc opts (function
-                    | Binding { pvb_expr } -> Some pvb_expr
+                    | Binding { pvb_expr; _ } -> Some pvb_expr
                     | _ -> None)
                 with
                 | [ x ] -> x
@@ -275,7 +284,7 @@ let map_inline_nodes opens loc =
 
 let attributes_of_structure_item (str : structure_item) =
   match str.pstr_desc with
-  | Pstr_module { pmb_attributes = attrs } | Pstr_eval (_, attrs) -> attrs
+  | Pstr_module { pmb_attributes = attrs; _ } | Pstr_eval (_, attrs) -> attrs
   | _ -> failwith "attributes_of_structure_item: not implemented"
 
 let string_of_payload ~loc e =

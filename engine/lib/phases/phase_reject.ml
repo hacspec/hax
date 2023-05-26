@@ -1,6 +1,3 @@
-open Base
-open Utils
-
 let make_metadata rejection_phase =
   Phase_utils.Metadata.make (Diagnostics.Phase.Reject rejection_phase)
 
@@ -65,3 +62,21 @@ module RawOrMutPointer (FA : Features.T) = struct
 end
 
 module _ (FA : Features.T) : Phase_utils.PHASE = RawOrMutPointer (FA)
+
+module EarlyExit (FA : Features.T) = struct
+  module FB = struct
+    include FA
+    include Features.Off.Early_exit
+  end
+
+  include
+    Feature_gate.Make (FA) (FB)
+      (struct
+        module A = FA
+        module B = FB
+        include Feature_gate.DefaultSubtype
+
+        let early_exit = reject
+        let metadata = make_metadata EarlyExit
+      end)
+end

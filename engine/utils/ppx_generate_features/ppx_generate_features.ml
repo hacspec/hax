@@ -14,7 +14,7 @@ let rename (l : (string * string) list) =
     |> Option.value ~default:s
   in
   object
-    inherit Ast_traverse.map as super
+    inherit Ast_traverse.map
     method! string = h
     method! label = h
 
@@ -30,9 +30,7 @@ let rename (l : (string * string) list) =
 let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
     structure_item =
   let loc = Expansion_context.Extension.extension_point_loc ctxt in
-  (* let add_derivings t = [%type: [%t t] [@deriving show, yojson, eq]] in *)
   let (module B) = Ast_builder.make loc in
-  (* let template = [%sigi: type name [@@deriving show, yojson, eq] ] in *)
   [%stri
     include struct
       module type FEATURES = sig
@@ -76,38 +74,72 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
       end
 
       module DefaultClasses (F : T) = struct
-        open Base
-
         [%%i
         B.pstr_class
           [
             B.class_infos ~virt:Virtual
               ~params:[ ([%type: 'self], (NoVariance, NoInjectivity)) ]
               ~name:{ loc; txt = "default_reduce_features" }
-            @@ B.pcl_structure
-            @@ B.class_structure
-                 ~self:[%pat? (self : 'self)]
-                 ~fields:
-                   (B.pcf_inherit Fresh
-                      (B.pcl_constr
-                         {
-                           txt = Ldot (Lident "VisitorsRuntime", "reduce");
-                           loc;
-                         }
-                         [ [%type: _] ])
-                      None
-                   :: List.map
-                        ~f:(fun txt ->
-                          B.pcf_method
-                            ( { loc; txt = "visit_" ^ txt },
-                              Public,
-                              Cfk_concrete
-                                ( Fresh,
-                                  (rename [ ("placeholder", txt) ])#expression
-                                    [%expr
-                                      fun () (_ : F.placeholder) -> self#zero]
-                                ) ))
-                        features);
+              ~expr:
+                (B.pcl_structure
+                @@ B.class_structure
+                     ~self:[%pat? (self : 'self)]
+                     ~fields:
+                       (B.pcf_inherit Fresh
+                          (B.pcl_constr
+                             {
+                               txt = Ldot (Lident "VisitorsRuntime", "reduce");
+                               loc;
+                             }
+                             [ [%type: _] ])
+                          None
+                       :: List.map
+                            ~f:(fun txt ->
+                              B.pcf_method
+                                ( { loc; txt = "visit_" ^ txt },
+                                  Public,
+                                  Cfk_concrete
+                                    ( Fresh,
+                                      (rename [ ("placeholder", txt) ])
+                                        #expression
+                                        [%expr
+                                          fun (_env : 'env) (_ : F.placeholder) ->
+                                            self#zero] ) ))
+                            features));
+          ]]
+
+        [%%i
+        B.pstr_class
+          [
+            B.class_infos ~virt:Virtual
+              ~params:[ ([%type: 'self], (NoVariance, NoInjectivity)) ]
+              ~name:{ loc; txt = "default_mapreduce_features" }
+              ~expr:
+                (B.pcl_structure
+                @@ B.class_structure
+                     ~self:[%pat? (self : 'self)]
+                     ~fields:
+                       (B.pcf_inherit Fresh
+                          (B.pcl_constr
+                             {
+                               txt = Ldot (Lident "VisitorsRuntime", "mapreduce");
+                               loc;
+                             }
+                             [ [%type: _] ])
+                          None
+                       :: List.map
+                            ~f:(fun txt ->
+                              B.pcf_method
+                                ( { loc; txt = "visit_" ^ txt },
+                                  Public,
+                                  Cfk_concrete
+                                    ( Fresh,
+                                      (rename [ ("placeholder", txt) ])
+                                        #expression
+                                        [%expr
+                                          fun (_env : 'env) (x : F.placeholder) ->
+                                            (x, self#zero)] ) ))
+                            features));
           ]]
 
         [%%i
@@ -116,27 +148,32 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
             B.class_infos ~virt:Virtual
               ~params:[ ([%type: 'self], (NoVariance, NoInjectivity)) ]
               ~name:{ loc; txt = "default_map_features" }
-            @@ B.pcl_structure
-            @@ B.class_structure
-                 ~self:[%pat? (self : 'self)]
-                 ~fields:
-                   (B.pcf_inherit Fresh
-                      (B.pcl_constr
-                         { txt = Ldot (Lident "VisitorsRuntime", "map"); loc }
-                         [ [%type: 'env] ])
-                      None
-                   :: List.map
-                        ~f:(fun txt ->
-                          B.pcf_method
-                            ( { loc; txt = "visit_" ^ txt },
-                              Public,
-                              Cfk_concrete
-                                ( Fresh,
-                                  (rename [ ("placeholder", txt) ])#expression
-                                    [%expr
-                                      fun (_ : 'env) (x : F.placeholder) -> x]
-                                ) ))
-                        features);
+              ~expr:
+                (B.pcl_structure
+                @@ B.class_structure
+                     ~self:[%pat? (_self : 'self)]
+                     ~fields:
+                       (B.pcf_inherit Fresh
+                          (B.pcl_constr
+                             {
+                               txt = Ldot (Lident "VisitorsRuntime", "map");
+                               loc;
+                             }
+                             [ [%type: 'env] ])
+                          None
+                       :: List.map
+                            ~f:(fun txt ->
+                              B.pcf_method
+                                ( { loc; txt = "visit_" ^ txt },
+                                  Public,
+                                  Cfk_concrete
+                                    ( Fresh,
+                                      (rename [ ("placeholder", txt) ])
+                                        #expression
+                                        [%expr
+                                          fun (_ : 'env) (x : F.placeholder) ->
+                                            x] ) ))
+                            features));
           ]]
       end
 
@@ -189,12 +226,23 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
 
                 val placeholder : placeholder
               end = struct
-                type placeholder = () [@@deriving show, yojson, eq]
+                type placeholder = Placeholder [@@deriving show, yojson, eq]
 
-                let placeholder = ()
+                let placeholder = Placeholder
               end
 
               include Placeholder])
+        features
+      |> B.pmod_structure]
+
+      module ToFull =
+      [%m
+      List.concat_map
+        ~f:(fun txt ->
+          (rename
+             [ ("placeholder", txt); ("Placeholder", uppercase_first_char txt) ])
+            #structure
+            [%str let placeholder _ = On.placeholder])
         features
       |> B.pmod_structure]
 

@@ -475,17 +475,19 @@ let export_definition = (name, def) => {
 function run(str){
     let contents = JSON.parse(str);
     const definitions = clean(contents.definitions);
+
+    let sig = ``;
     
-    let output_string = `type todo = string\n`;
-    output_string = ``;
+    let impl = `include struct
+[@@@warning "-A"]`;
 
     let items = Object.entries(definitions).map(
         ([name, def]) => export_definition(name, def)
     ).filter(x => x instanceof Object);
 
     let derive_items = ['show', 'eq'];
-
-    output_string += `
+    
+    impl += `
 module ParseError = struct
   exception MissingField of {
     fields: (string * Yojson.Safe.t) list;
@@ -501,19 +503,19 @@ end
 open ParseError
 `;
 
-    output_string += ('type ' + items.map(({name, type}) =>
+    impl += ('type ' + items.map(({name, type}) =>
         `${name} = ${type}\n${derive_items.length ? `[@@deriving ${derive_items.join(', ')}]` : ''}`).join('\nand ')
     );
-    output_string += ('');
-    output_string += ('let rec ' + items.map(({name, type, parse}) =>
+    impl += ('');
+    impl += ('let rec ' + items.map(({name, type, parse}) =>
         `parse_${name} (o: Yojson.Safe.t): ${name} = ${parse}`
     ).join('\nand '));
-    output_string += ('');
-    output_string += ('let rec ' + items.map(({name, type, parse, to_json}) =>
+    impl += ('');
+    impl += ('let rec ' + items.map(({name, type, parse, to_json}) =>
         `to_json_${name} (o: ${name}): Yojson.Safe.t = ${to_json}`
     ).join('\nand '));
 
-    return output_string;
+    return impl + ' \n end';
 }
 
 function parse_args(){

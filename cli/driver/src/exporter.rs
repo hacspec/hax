@@ -213,9 +213,16 @@ impl Callbacks for ExtractionCallbacks {
                     .unwrap();
 
                     let out = engine_subprocess.wait_with_output().unwrap();
+                    let session = compiler.session();
                     if !out.status.success() {
-                        panic!("{} exited with non-zero code", ENGINE_BINARY_NAME);
-                        std::process::exit(out.status.code().unwrap_or(-1));
+                        session.fatal(format!(
+                            "{} exited with non-zero code {}\nstdout: {}\n stderr: {}",
+                            ENGINE_BINARY_NAME,
+                            out.status.code().unwrap_or(-1),
+                            String::from_utf8(out.stdout).unwrap(),
+                            String::from_utf8(out.stderr).unwrap(),
+                        ));
+                        return Compilation::Stop;
                     }
                     let output: circus_cli_options_engine::Output =
                         serde_json::from_slice(out.stdout.as_slice()).unwrap_or_else(|_| {
@@ -253,15 +260,19 @@ impl Callbacks for ExtractionCallbacks {
                                         parent
                                     })
                                     .unwrap();
-                                    println!("Write {:#?}", path);
-                                    std::fs::write(path, file.contents)
-                                        .expect("Unable to write file");
+                                    session.note_without_error(format!("Writing file {:#?}", path));
+                                    std::fs::write(&path, file.contents).unwrap_or_else(|e| {
+                                        session.fatal(format!(
+                                            "Unable to write to file {:#?}. Error: {:#?}",
+                                            path, e
+                                        ))
+                                    })
                                 }
                             }
                         }
                     } else {
-                        let session = compiler.session();
                         for d in output.diagnostics.clone() {
+                            use circus_diagnostics::*;
                             use circus_frontend_exporter::SInto;
                             let mut relevant_spans: Vec<_> = spans
                                 .iter()
@@ -269,20 +280,19 @@ impl Callbacks for ExtractionCallbacks {
                                 .cloned()
                                 .collect();
                             relevant_spans.sort();
-                            session.span_err_with_code(
-                                relevant_spans
-                                    .first()
-                                    .cloned()
-                                    .unwrap_or(rustc_span::DUMMY_SP),
-                                format!("{}", d),
-                                rustc_errors::DiagnosticId::Error(d.kind.code().into()),
+                            session.span_circus_err(
+                                d.set_span(
+                                    relevant_spans
+                                        .first()
+                                        .cloned()
+                                        .unwrap_or(rustc_span::DUMMY_SP),
+                                ),
                             );
                         }
                     }
                 }
             };
-        });
-
-        Compilation::Continue
+            Compilation::Continue
+        })
     }
 }

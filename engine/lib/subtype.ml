@@ -11,7 +11,7 @@ struct
   module B = Ast.Make (FB)
   module FA = FA
 
-  let dmutability (span : span) (type a b) (s : a -> b)
+  let dmutability (_span : span) (type a b) (s : a -> b)
       (mutability : a mutability) : b mutability =
     match mutability with Mutable w -> Mutable (s w) | Immutable -> Immutable
 
@@ -50,7 +50,8 @@ struct
     | GType t -> GType (dty span t)
     | GConst c -> GConst c
 
-  let dborrow_kind (span : span) (borrow_kind : A.borrow_kind) : B.borrow_kind =
+  let dborrow_kind (_span : span) (borrow_kind : A.borrow_kind) : B.borrow_kind
+      =
     match borrow_kind with
     | Shared -> Shared
     | Unique -> Unique
@@ -77,9 +78,10 @@ struct
             typ = dty span typ;
             subpat = Option.map ~f:(dpat *** S.as_pattern) subpat;
           }
-    | PDeref { subpat } -> (dpat subpat).p
+    | PDeref { subpat; witness } ->
+        PDeref { subpat = dpat subpat; witness = S.reference witness }
 
-  and dfield_pat (span : span) (p : A.field_pat) : B.field_pat =
+  and dfield_pat (_span : span) (p : A.field_pat) : B.field_pat =
     { field = p.field; pat = dpat p.pat }
 
   and dbinding_mode (span : span) (binding_mode : A.binding_mode) :
@@ -88,6 +90,13 @@ struct
     | ByValue -> ByValue
     | ByRef (kind, witness) ->
         ByRef (dborrow_kind span kind, S.reference witness)
+
+  let dsupported_monads (span : span) (m : A.supported_monads) :
+      B.supported_monads =
+    match m with
+    | MException t -> MException (dty span t)
+    | MResult t -> MResult (dty span t)
+    | MOption -> MOption
 
   let rec dexpr (e : A.expr) : B.expr =
     { e = dexpr' e.span e.e; span = e.span; typ = dty e.span e.typ }
@@ -117,7 +126,10 @@ struct
     | Let { monadic; lhs; rhs; body } ->
         Let
           {
-            monadic = Option.map ~f:(Fn.id *** S.monadic_binding) monadic;
+            monadic =
+              Option.map
+                ~f:(dsupported_monads span *** S.monadic_binding)
+                monadic;
             lhs = dpat lhs;
             rhs = dexpr rhs;
             body = dexpr body;
@@ -134,24 +146,33 @@ struct
             e = dexpr e;
             witness = S.mutable_variable witness;
           }
-    | Loop { body; label; witness } ->
-        Loop { body = dexpr body; label; witness = S.loop witness }
-    | ForLoop { start; end_; var; body; label; witness } ->
-        ForLoop
+    | Loop { body; kind; state; label; witness } ->
+        Loop
           {
-            start = dexpr start;
-            end_ = dexpr end_;
-            var;
             body = dexpr body;
+            kind = dloop_kind span kind;
+            state = Option.map ~f:(dloop_state span) state;
             label;
-            witness = S.for_loop witness;
+            witness = S.loop witness;
           }
     | Break { e; label; witness } ->
         Break { e = dexpr e; label; witness = S.loop witness }
     | Return { e; witness } ->
         Return { e = dexpr e; witness = S.early_exit witness }
-    | Continue { label; witness = w1, w2 } ->
-        Continue { label; witness = (S.continue w1, S.loop w2) }
+    | QuestionMark { e; converted_typ; witness } ->
+        QuestionMark
+          {
+            e = dexpr e;
+            converted_typ = dty span converted_typ;
+            witness = S.question_mark witness;
+          }
+    | Continue { e; label; witness = w1, w2 } ->
+        Continue
+          {
+            e = Option.map ~f:(S.state_passing_loop *** dexpr) e;
+            label;
+            witness = (S.continue w1, S.loop w2);
+          }
     | Borrow { kind; e; witness } ->
         Borrow
           {
@@ -159,8 +180,8 @@ struct
             e = dexpr e;
             witness = S.reference witness;
           }
-    | MonadicAction { action; argument } ->
-        MonadicAction
+    | EffectAction { action; argument } ->
+        EffectAction
           { action = S.monadic_action action; argument = dexpr argument }
     | AddressOf { mut; e; witness } ->
         AddressOf
@@ -177,18 +198,49 @@ struct
             captures = List.map ~f:dexpr captures;
           }
 
+  and dloop_kind (span : span) (k : A.loop_kind) : B.loop_kind =
+    match k with
+    | UnconditionalLoop -> UnconditionalLoop
+    | ForLoop { start; end_; var; var_typ; witness } ->
+        ForLoop
+          {
+            start = dexpr start;
+            end_ = dexpr end_;
+            var;
+            var_typ = dty span var_typ;
+            witness = S.for_loop witness;
+          }
+
+  and dloop_state (_span : span) (s : A.loop_state) : B.loop_state =
+    {
+      init = dexpr s.init;
+      bpat = dpat s.bpat;
+      witness = S.state_passing_loop s.witness;
+    }
+
   and darm (a : A.arm) : B.arm = { span = a.span; arm = darm' a.span a.arm }
 
-  and darm' (span : span) (a : A.arm') : B.arm' =
+  and darm' (_span : span) (a : A.arm') : B.arm' =
     { pat = dpat a.pat; body = dexpr a.body }
 
   and dlhs (span : span) (lhs : A.lhs) : B.lhs =
     match lhs with
-    | LhsFieldAccessor { e; field; typ } ->
-        LhsFieldAccessor { e = dlhs span e; field; typ = dty span typ }
-    | LhsArrayAccessor { e; index; typ } ->
+    | LhsFieldAccessor { e; field; typ; witness } ->
+        LhsFieldAccessor
+          {
+            e = dlhs span e;
+            field;
+            typ = dty span typ;
+            witness = S.nontrivial_lhs witness;
+          }
+    | LhsArrayAccessor { e; index; typ; witness } ->
         LhsArrayAccessor
-          { e = dlhs span e; index = dexpr index; typ = dty span typ }
+          {
+            e = dlhs span e;
+            index = dexpr index;
+            typ = dty span typ;
+            witness = S.nontrivial_lhs witness;
+          }
     | LhsLocalVar { var; typ } -> LhsLocalVar { var; typ = dty span typ }
     | LhsArbitraryExpr { e; witness } ->
         LhsArbitraryExpr { e = dexpr e; witness = S.arbitrary_lhs witness }
