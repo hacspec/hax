@@ -23,6 +23,7 @@
         ocaml
         dune
         base
+        core
         yojson
         non_empty_list
         pprint
@@ -35,6 +36,7 @@
         ppx_deriving
         cmdliner
         angstrom
+        re
         ppx_matches
         ppx_string
 

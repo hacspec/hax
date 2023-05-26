@@ -13,6 +13,7 @@ depends: [
   "ocaml"
   "dune" {>= "3.0"}
   "base"
+  "core"
   "yojson"
   "non_empty_list"
   "pprint"
@@ -25,6 +26,7 @@ depends: [
   "ppx_deriving"
   "cmdliner"
   "angstrom"
+  "re"
   "ppx_matches"
   "ppx_string"
   "js_of_ocaml-compiler"
