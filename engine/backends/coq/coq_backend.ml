@@ -770,14 +770,12 @@ struct
           (pglobal_ident constructor ^ snd (ty_to_string (pty span e.typ)))
     | Closure { params; body } ->
         C.AST.Lambda (List.map ~f:ppat params, pexpr body)
-    | MacroInvokation
-        {
-          macro = `Concrete Non_empty_list.{ crate; path = [ pp ] };
-          args;
-          witness;
-        } ->
-        __TODO_term__ span (crate ^ " macro " ^ pp)
-    | MacroInvokation { macro; args; witness } -> __TODO_term__ span "macro"
+    | MacroInvokation { macro; args; witness } ->
+        Error.raise
+        @@ {
+             kind = UnsupportedMacro { id = [%show: global_ident] macro };
+             span = e.span;
+           }
     | _ -> .
 
   let rec pitem (e : item) : C.AST.decl list =

@@ -479,13 +479,11 @@ struct
     | Return { e } ->
         F.term @@ F.AST.App (F.term_of_lid [ "RETURN_STMT" ], pexpr e, Nothing)
     | MacroInvokation { macro; args; witness } ->
-        raise
-        @@ Diagnostics.Error
-             {
-               context = Backend FStar;
-               kind = UnsupportedMacro { id = [%show: global_ident] macro };
-               span = Diagnostics.to_thir_span e.span;
-             }
+        Error.raise
+        @@ {
+             kind = UnsupportedMacro { id = [%show: global_ident] macro };
+             span = e.span;
+           }
     | _ -> .
 
   and parm { arm = { pat; body } } = (ppat pat, None, pexpr body)
