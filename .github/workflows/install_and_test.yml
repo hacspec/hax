@@ -54,25 +54,8 @@ jobs:
         done
       env:
         SKIPLIST: |
-          hacspec-ristretto-fstar
-          hacspec-sha1-fstar
-          hacspec-sha256-fstar
-          hacspec-hmac-fstar
-          hacspec-hkdf-fstar
-          hacspec-p256-fstar
-          hacspec-bls12-381-fstar
-          hacspec-ecdsa-p256-sha256-fstar
-          hacspec-aes-fstar
-          hacspec-aes128-gcm-fstar
-          hacspec-bls12-381-hash-fstar
-          hacspec-ed25519-fstar
-          hacspec-edwards25519-fstar
-          hacspec-edwards25519-hash-fstar
-          hacspec-rsa-pkcs1-fstar
-          hacspec-bip-340-fstar
-          hacspec-rsa-fdh-vrf-fstar
           tls_cryptolib
+          hacspec-ristretto
           hacspec-merlin
-          hacspec-edwards25519-ecvrf
-          
-        
+          hacspec-p256
+          hacspec-ecdsa-p256-sha256
