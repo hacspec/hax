@@ -28,6 +28,7 @@ module Ast = struct
   include Rust
 end
 
+module U = Ast_utils.Make (Features.Rust)
 open Ast
 
 type error =
@@ -256,7 +257,7 @@ module Exn = struct
     let (v : expr') =
       match e.contents with
       | Box { value } ->
-          let inner_typ = c_ty e.span e.ty in
+          let inner_typ = c_ty value.span value.ty in
           call (mk_global ([ inner_typ ] ->. typ) @@ `Primitive Box) [ value ]
       | MacroInvokation { argument; macro_ident; _ } ->
           MacroInvokation
@@ -271,7 +272,7 @@ module Exn = struct
           let f = c_expr fun' in
           App { f; args }
       | Deref { arg } ->
-          let inner_typ = c_ty e.span e.ty in
+          let inner_typ = c_ty arg.span arg.ty in
           call (mk_global ([ inner_typ ] ->. typ) @@ `Primitive Deref) [ arg ]
       | Binary { lhs; rhs; op } ->
           let lty = c_ty lhs.span lhs.ty in
