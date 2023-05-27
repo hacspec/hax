@@ -952,8 +952,12 @@ struct
                 ( C.AST.Name (o.array_name ^ "_t"),
                   C.AST.Name (o.array_name ^ "_t") ) );
         ]
-    | IMacroInvokation { macro; argument; span; witness } ->
-        [ __TODO_item__ span "Macro" ]
+    | IMacroInvokation { macro; _ } ->
+        Error.raise
+        @@ {
+             kind = UnsupportedMacro { id = [%show: global_ident] macro };
+             span = e.span;
+           }
     | Use { path; is_external; rename } ->
         if is_external then [] else [ C.AST.Require (path, rename) ]
     | NotImplementedYet -> [ __TODO_item__ span "Not implemented yet?" ]

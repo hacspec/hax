@@ -787,12 +787,12 @@ struct
           | None -> []
         in
         array_def @ index_def
-    | IMacroInvokation
-        { macro = `Concrete Non_empty_list.{ crate; path = _ } as x } ->
-        F.decls_of_string @@ "let _ = \"could not handle macro "
-        ^ [%show: global_ident] x
-        ^ "\""
-    | IMacroInvokation _ -> failwith "x"
+    | IMacroInvokation { macro; _ } ->
+        Error.raise
+        @@ {
+             kind = UnsupportedMacro { id = [%show: global_ident] macro };
+             span = e.span;
+           }
     | Trait { name; generics; items } ->
         let bds =
           List.map ~f:pgeneric_param_bd generics.params
