@@ -300,8 +300,8 @@ module Exn = struct
             [ source ]
       | Use { source } -> (c_expr source).e
       | NeverToAny { source } -> (c_expr source).e
-      (* TODO: this is incorrect *)
-      | Pointer _ -> unimplemented e.span "Pointer"
+      (* TODO: this is incorrect (NeverToAny) *)
+      | Pointer { cast; source } -> c_pointer e typ span cast source
       | Loop { body } ->
           let body = c_expr body in
           Loop
@@ -327,7 +327,7 @@ module Exn = struct
             | ( Thir.Never,
                 None,
                 Some stmts,
-                Some ({ kind = Thir.Expr { expr; _ } } : Thir.stmt) ) ->
+                Some ({ kind = Thir.Expr { expr; _ }; _ } : Thir.stmt) ) ->
                 (stmts, Some expr)
             | _ -> (stmts, expr)
           in
@@ -599,6 +599,37 @@ module Exn = struct
   and c_canonical_user_type_annotation
       (annotation : Thir.canonical_user_type_annotation) : ty * span =
     (c_ty annotation.span annotation.inferred_ty, c_span annotation.span)
+
+  and c_pointer e typ span cast source =
+    match cast with
+    | Unsize ->
+        (* https://doc.rust-lang.org/std/marker/trait.Unsize.html *)
+        (U.call "dummy" "CoerceUnsized" [ "unsize" ] [ c_expr source ] span typ)
+          .e
+        (* let source = c_expr source in *)
+        (* let from_typ = source.typ in *)
+        (* let to_typ = typ in *)
+        (* match (U.Box.Ty.destruct from_typ, U.Box.Ty.destruct to_typ) with *)
+        (* | Some _from_typ, Some to_typ -> ( *)
+        (*     match U.Box.Expr.destruct source with *)
+        (*     | Some source -> *)
+        (*         (U.Box.Expr.make *)
+        (*         @@ U.call "dummy" "unsize_cast" [] [ source ] span to_typ) *)
+        (*           .e *)
+        (*     | _ -> *)
+        (*         unimplemented e.span *)
+        (*           "[Pointer(Unsize)] cast from not directly boxed expression") *)
+        (* | _ -> *)
+        (*     unimplemented e.span *)
+        (*       ("[Pointer(Unsize)] cast\n • from type [" *)
+        (*       ^ [%show: ty] from_typ *)
+        (*       ^ "]\n • to type [" *)
+        (*       ^ [%show: ty] to_typ *)
+        (*       ^ "]\n\nThe expression is: " *)
+        (*       ^ [%show: expr] source)) *)
+    | _ ->
+        unimplemented e.span
+          ("Pointer, with [cast] being " ^ [%show: Thir.pointer_cast] cast)
 
   and c_ty (span : Thir.span) (ty : Thir.ty) : ty =
     match ty with
