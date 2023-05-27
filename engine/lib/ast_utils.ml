@@ -434,6 +434,47 @@ module Make (F : Features.T) = struct
     let e = GlobalVar (`Concrete { crate; path }) in
     { e = App { f = { e; typ; span }; args }; typ = ret_typ; span }
 
+  module Box = struct
+    module Ty = struct
+      let destruct (t : ty) : ty option =
+        match t with
+        | TApp
+            {
+              ident =
+                `Concrete
+                  { crate = "alloc"; path = Non_empty_list.[ "boxed"; "Box" ] };
+              args = [ GType sub; _alloc ];
+            } ->
+            Some sub
+        | _ -> None
+
+      let alloc_ty =
+        let path = Non_empty_list.[ "alloc"; "Global" ] in
+        TApp { ident = `Concrete { crate = "alloc"; path }; args = [] }
+
+      let make (t : ty) : ty =
+        let ident =
+          let path = Non_empty_list.[ "boxed"; "Box" ] in
+          `Concrete { crate = "alloc"; path }
+        in
+        TApp { ident; args = [ GType t; GType alloc_ty ] }
+    end
+
+    module Expr = struct
+      let destruct (e : expr) : expr option =
+        match e.e with
+        | App { f = { e = GlobalVar (`Primitive Box); _ }; args = [ arg ] } ->
+            Some arg
+        | _ -> None
+
+      let make (e : expr) : expr =
+        let boxed_ty = Ty.make e.typ in
+        let f_ty = TArrow ([ e.typ ], boxed_ty) in
+        let f = { e with typ = f_ty; e = GlobalVar (`Primitive Box) } in
+        { e with typ = boxed_ty; e = App { f; args = [ e ] } }
+    end
+  end
+
   let rec collect_let_bindings' (e : expr) : (pat * expr * ty) list * expr =
     match e.e with
     | Let { monadic = _; lhs; rhs; body } ->
