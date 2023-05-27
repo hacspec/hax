@@ -7,6 +7,7 @@ include
     (struct
       open Features
       include Off
+      include On.Slice
       include On.Monadic_binding
       include On.Macro
     end)
@@ -31,7 +32,7 @@ module RejectNotCoq (FA : Features.T) = struct
         let mutable_pointer = reject
         let mutable_borrow = reject
         let reference = reject
-        let slice = reject
+        let slice _ = Features.On.slice
         let raw_pointer = reject
         let early_exit _ = Obj.magic ()
         let question_mark = reject
@@ -73,6 +74,7 @@ module C = struct
       | Product of ty list
       | Arrow of ty * ty
       | ArrayTy of ty * string (* int *)
+      | SliceTy of ty
       | AppTy of string * ty list
       | NatMod of string * int * string
 
@@ -159,6 +161,9 @@ let rec ty_to_string (x : C.AST.ty) : C.AST.decl list * string =
   | C.AST.ArrayTy (t, l) ->
       let ty_def, ty_str = ty_to_string t in
       (ty_def, "nseq" ^ " " ^ ty_str ^ " " ^ (* Int.to_string *) l)
+  | C.AST.SliceTy t ->
+      let ty_def, ty_str = ty_to_string t in
+      (ty_def, "seq" ^ " " ^ ty_str)
   | C.AST.AppTy (i, []) -> ([], i)
   | C.AST.AppTy (i, [ y ]) ->
       let ty_defs, ty_str = ty_to_string y in
@@ -617,6 +622,7 @@ struct
     | TFloat -> failwith "pty: Float"
     | TArray { typ; length } ->
         C.AST.ArrayTy (pty span typ, Int.to_string length)
+    | TSlice { ty; _ } -> C.AST.SliceTy (pty span ty)
     | TParam i -> C.AST.Name i.name
     | TProjectedAssociatedType s ->
         C.AST.Wild

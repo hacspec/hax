@@ -8,6 +8,7 @@ include
       open Features
       include Off
       include On.Monadic_binding
+      include On.Slice
       include On.Macro
     end)
     (struct
@@ -31,7 +32,7 @@ module RejectNotFStar (FA : Features.T) = struct
         let mutable_pointer = reject
         let mutable_borrow = reject
         let reference = reject
-        let slice = reject
+        let slice _ = Features.On.slice
         let raw_pointer = reject
         let early_exit = reject
         let question_mark = reject
@@ -240,6 +241,8 @@ struct
           | { size = S128; signedness } -> path signedness "128")
     | TStr -> F.term_of_lid [ "Prims"; "string" ]
     | TFalse -> F.term_of_lid [ "Prims"; "l_False" ]
+    | TSlice { ty; _ } ->
+        F.mk_e_app (F.term_of_lid [ "FStar"; "Seq"; "seq" ]) [ pty ty ]
     | TApp { ident = `TupleType 0 as ident; args = [] } ->
         F.term @@ F.AST.Name (ptype_ident ident)
     | TApp { ident = `TupleType 1; args = [ GType ty ] } -> pty ty
