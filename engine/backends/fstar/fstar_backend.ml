@@ -937,7 +937,6 @@ module TransformToInputLanguage =
     |> Phases.Cf_into_monads
     |> Phases.Reject.EarlyExit
     |> Phases.Functionalize_loops
-    |> Phases.Rewrite_inline_hacspeclib_macros
     |> RejectNotFStar
     |> Identity
     ]
