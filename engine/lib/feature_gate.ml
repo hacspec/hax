@@ -25,7 +25,11 @@ struct
   module S = Features.SUBTYPE.WrapExns (S0)
   module FA = FA
 
-  type ast_chunk = Item of A.item | Expr of A.expr | Ty of A.ty | Pat of A.pat
+  type ast_chunk =
+    | Item of A.item
+    | Expr of A.expr
+    | Ty of (span * A.ty)
+    | Pat of A.pat
   [@@deriving show, yojson, eq]
 
   module Data = struct
@@ -49,7 +53,7 @@ struct
           | Item x -> Some x.span
           | Expr x -> Some x.span
           | Pat x -> Some x.span
-          | _ -> None)
+          | Ty (span, _) -> Some span)
         x.path
   end
 
@@ -67,8 +71,8 @@ struct
 
     let rec dty (span : span) (ty : A.ty) : B.ty =
       try [%inline_body dty] span ty with
-      | S.E err -> raise @@ Data.ret err @@ Ty ty
-      | E data -> raise @@ Data.add data @@ Ty ty
+      | S.E err -> raise @@ Data.ret err @@ Ty (span, ty)
+      | E data -> raise @@ Data.add data @@ Ty (span, ty)
 
     and dgeneric_value = [%inline_body dgeneric_value]
 
