@@ -457,7 +457,12 @@ module Exn = struct
           let e = Option.value ~default:(unit_expr span) e in
           Return { e; witness = W.early_exit }
       | ConstBlock _ -> unimplemented e.span "ConstBlock"
-      | Repeat _ -> unimplemented e.span "Repeat"
+      | Repeat { value; count } ->
+          let value = c_expr value in
+          let count = c_expr count in
+          (U.Box.Expr.make
+          @@ U.call "dummy" "repeat" [] [ value; count ] span typ)
+            .e
       | Tuple { fields } ->
           let fields = List.map ~f:c_expr fields in
           let len = List.length fields in
