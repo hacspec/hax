@@ -374,46 +374,17 @@ module Exn = struct
           e
       | Assign { lhs; rhs } ->
           let lhs = c_expr lhs in
-          let e = c_expr rhs in
-          let rec mk_lhs lhs =
-            match lhs.e with
-            | LocalVar var -> LhsLocalVar { var; typ = lhs.typ }
-            | _ -> (
-                match resugar_index_mut lhs with
-                | Some (e, index) ->
-                    LhsArrayAccessor
-                      {
-                        e = mk_lhs e;
-                        typ = lhs.typ;
-                        index;
-                        witness = W.nontrivial_lhs;
-                      }
-                | None -> (
-                    match (unbox_underef_expr lhs).e with
-                    | App
-                        {
-                          f =
-                            {
-                              e = GlobalVar (`Projector (`Concrete _) as field);
-                              typ = TArrow ([ _ ], _);
-                              span = _;
-                            };
-                          args = [ e ];
-                        } ->
-                        LhsFieldAccessor
-                          {
-                            e = mk_lhs e;
-                            typ = lhs.typ;
-                            field;
-                            witness = W.nontrivial_lhs;
-                          }
-                    | _ ->
-                        LhsArbitraryExpr { e = lhs; witness = W.arbitrary_lhs })
-                )
+          let rhs = c_expr rhs in
+          c_expr_assign lhs rhs
+      | AssignOp { lhs; op; rhs } ->
+          let lhs = c_expr lhs in
+          let rhs = c_expr rhs in
+          let rhs =
+            let f = `Primitive (BinOp (c_binop op)) in
+            let f = mk_global ([ lhs.typ; rhs.typ ] ->. typ) f in
+            { e = App { f; args = [ lhs; rhs ] }; typ = lhs.typ; span }
           in
-
-          Assign { lhs = mk_lhs lhs; e; witness = W.mutable_variable }
-      | AssignOp _ -> unimplemented e.span "AssignOp"
+          c_expr_assign lhs rhs
       | VarRef { id } -> LocalVar (local_ident id)
       | Field { lhs; field } ->
           let lhs = c_expr lhs in
@@ -553,6 +524,44 @@ module Exn = struct
       | Todo _ -> unimplemented e.span "expression Todo"
     in
     { e = v; span; typ }
+
+  and c_expr_assign lhs rhs =
+    let rec mk_lhs lhs =
+      match lhs.e with
+      | LocalVar var -> LhsLocalVar { var; typ = lhs.typ }
+      | _ -> (
+          match resugar_index_mut lhs with
+          | Some (e, index) ->
+              LhsArrayAccessor
+                {
+                  e = mk_lhs e;
+                  typ = lhs.typ;
+                  index;
+                  witness = W.nontrivial_lhs;
+                }
+          | None -> (
+              match (unbox_underef_expr lhs).e with
+              | App
+                  {
+                    f =
+                      {
+                        e = GlobalVar (`Projector (`Concrete _) as field);
+                        typ = TArrow ([ _ ], _);
+                        span = _;
+                      };
+                    args = [ e ];
+                  } ->
+                  LhsFieldAccessor
+                    {
+                      e = mk_lhs e;
+                      typ = lhs.typ;
+                      field;
+                      witness = W.nontrivial_lhs;
+                    }
+              | _ -> LhsArbitraryExpr { e = lhs; witness = W.arbitrary_lhs }))
+    in
+
+    Assign { lhs = mk_lhs lhs; e = rhs; witness = W.mutable_variable }
 
   and c_pat (pat : Thir.decorated_for__pat_kind) : pat =
     let span = c_span pat.span in
