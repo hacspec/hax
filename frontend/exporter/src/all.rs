@@ -2349,7 +2349,36 @@ pub enum ExprKind {
     /// An array literal constructed from one repeated element, e.g. `[1; 5]`.
     Repeat {
         value: Expr,
-        count: Const,
+        // count: Const,
+        #[map({
+            let tcx = gstate.tcx();
+            match count.kind().try_to_machine_usize(tcx) {
+                Some(n) => {
+                    let n = n as u128;
+                    let span = count.default_span(tcx).sinto(gstate);
+                    let ty = Ty::Uint(UintTy::Usize);
+                    let contents = ExprKind::Literal {
+                        lit: Spanned {
+                            node: LitKind::Int(n, LitIntType::Unsigned(UintTy::Usize)),
+                            span: span.clone()
+                        },
+                        neg: false
+                    };
+                    use rustc_middle::query::Key;
+                    Decorated {
+                        ty,
+                        span,
+                        contents: Box::new(contents),
+                    }
+                },
+                None => {
+                    eprintln!("Error, cannot transform constant into expression.");
+                    eprintln!("Constant: {:#?}", count);
+                    panic!()
+                },
+            }
+        })]
+        count: Expr,
     },
     /// An array, e.g. `[a, b, c, d]`.
     Array {
