@@ -171,31 +171,39 @@ module Exn = struct
     | Signed ty -> { size = int_ty_to_size ty; signedness = Signed }
     | Unsigned ty -> { size = uint_ty_to_size ty; signedness = Unsigned }
 
-  let c_lit' span (lit : Thir.lit_kind) (ty : ty option) : literal =
+  type extended_literal = EL_Lit of literal | EL_Array of literal list
+
+  let c_lit' span (lit : Thir.lit_kind) (ty : ty option) : extended_literal =
+    let mk l = EL_Lit l in
+    let mku8 n =
+      let kind = { size = S8; signedness = Unsigned } in
+      Int { value = Int.to_string n; kind }
+    in
     match lit with
     | Err -> raise span GotErrLiteral
-    | Str (str, _) -> String str
-    | ByteStr _ -> unimplemented span "ByteStr literals"
-    | Byte _ -> unimplemented span "Byte literals"
-    | Char s -> Char s
+    | Str (str, _) -> mk @@ String str
+    | ByteStr l -> EL_Array (List.map ~f:mku8 l)
+    | Byte n -> mk @@ mku8 n
+    | Char s -> mk @@ Char s
     | Int (i, _t) ->
-        Int
-          {
-            value = i;
-            kind =
-              (match ty with
-              | Some (TInt k) -> k
-              | Some _ -> raise span IllTypedIntLiteral
-              | None ->
-                  (* unimplemented span "ByteStr literals" *)
-                  (* TODO: this is wrong *)
-                  { size = S8; signedness = Unsigned }
-                  (* kind = (match t with _ -> fail with "lit: int" (\* TODO *\)); *));
-          }
+        mk
+        @@ Int
+             {
+               value = i;
+               kind =
+                 (match ty with
+                 | Some (TInt k) -> k
+                 | Some _ -> raise span IllTypedIntLiteral
+                 | None ->
+                     (* TODO: this is wrong *)
+                     { size = SSize; signedness = Unsigned }
+                     (* kind = (match t with _ -> fail with "lit: int" (\* TODO *\)); *));
+             }
     | Float _ -> unimplemented span "todo float"
-    | Bool b -> Bool b
+    | Bool b -> mk @@ Bool b
 
-  let c_lit span (lit : Thir.spanned_for__lit_kind) : ty option -> literal =
+  let c_lit span (lit : Thir.spanned_for__lit_kind) :
+      ty option -> extended_literal =
     c_lit' span lit.node
 
   let append_to_thir_def_id (def_id : Thir.def_id) (item : Thir.def_path_item) =
@@ -501,7 +509,19 @@ module Exn = struct
               fields;
               base;
             }
-      | Literal { lit; _ } -> Literal (c_lit e.span lit @@ Some typ)
+      | Literal { lit; _ } -> (
+          match c_lit e.span lit @@ Some typ with
+          | EL_Lit lit -> Literal lit
+          | EL_Array l ->
+              Array
+                (List.map
+                   ~f:(fun lit ->
+                     {
+                       e = Literal lit;
+                       span;
+                       typ = TInt { size = S8; signedness = Unsigned };
+                     })
+                   l))
       | NamedConst { def_id = id; _ } -> GlobalVar (def_id id)
       | Closure { body; params; upvars; _ } ->
           let params =
@@ -576,9 +596,22 @@ module Exn = struct
             }
       | Deref { subpattern } ->
           PDeref { subpat = c_pat subpattern; witness = W.reference }
-      | Constant { value } ->
-          let lit = c_constant_kind pat.span value in
-          PConstant { lit }
+      | Constant { value } -> (
+          match c_constant_kind pat.span value with
+          | EL_Lit lit -> PConstant { lit }
+          | EL_Array l ->
+              PArray
+                {
+                  args =
+                    List.map
+                      ~f:(fun lit ->
+                        {
+                          p = PConstant { lit };
+                          span;
+                          typ = TInt { size = S8; signedness = Unsigned };
+                        })
+                      l;
+                })
       | Array _ -> unimplemented pat.span "Pat:Array"
       | Or _ -> unimplemented pat.span "Or"
       | Slice _ -> unimplemented pat.span "Slice"
@@ -595,7 +628,7 @@ module Exn = struct
       pat = c_pat field_pat.pattern;
     }
 
-  and c_constant_kind span (k : Thir.constant_kind) : literal =
+  and c_constant_kind span (k : Thir.constant_kind) : extended_literal =
     match k with
     | Ty _ -> raise span GotTypeInLitPat
     | Lit lit -> c_lit' span lit None
