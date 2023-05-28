@@ -1209,13 +1209,30 @@ impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, Expr> for rustc_middle::
     fn sinto(&self, s: &S) -> Expr {
         let unrolled = self.unroll_scope(s);
         let rustc_middle::thir::Expr { span, kind, ty, .. } = unrolled;
-        let contents = macro_invocation_of_span(span, s)
-            .map(ExprKind::MacroInvokation)
-            .unwrap_or_else(|| match kind {
-                rustc_middle::thir::ExprKind::ZstLiteral { .. } => {
-                    // supposely_unreachable!("ZstLiteral": kind, span, ty);
-                    kind.sinto(s)
-                }
+        let contents = match macro_invocation_of_span(span, s).map(ExprKind::MacroInvokation) {
+            Some(contents) => contents,
+            None => match kind {
+                rustc_middle::thir::ExprKind::ZstLiteral { .. } => match ty.kind() {
+                    rustc_middle::ty::TyKind::FnDef(def, substs) => {
+                        let tcx = s.tcx();
+                        let sig = &tcx.bound_fn_sig(*def).subst(tcx, substs);
+                        let ret: rustc_middle::ty::Ty = tcx.erase_late_bound_regions(sig.output());
+                        let inputs = sig.inputs();
+                        let indexes = inputs.skip_binder().iter().enumerate().map(|(i, _)| i);
+                        let params = indexes.map(|i| inputs.map_bound(|tys| tys[i]));
+                        let params: Vec<rustc_middle::ty::Ty> =
+                            params.map(|i| tcx.erase_late_bound_regions(i)).collect();
+                        return Expr {
+                            contents: box ExprKind::GlobalName { id: def.sinto(s) },
+                            span: self.span.sinto(s),
+                            ty: ty.sinto(s),
+                        };
+                    }
+                    _ => {
+                        supposely_unreachable!("ZstLiteral ty≠FnDef(...)": kind, span, ty);
+                        kind.sinto(s)
+                    }
+                },
                 rustc_middle::thir::ExprKind::Field {
                     lhs,
                     variant_index,
@@ -1255,7 +1272,8 @@ impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, Expr> for rustc_middle::
                     }
                 }
                 _ => kind.sinto(s),
-            });
+            },
+        };
         Decorated {
             ty: ty.sinto(s),
             span: span.sinto(s),
@@ -2384,7 +2402,7 @@ pub enum ExprKind {
     },
     /// A literal of a ZST type.
     //zero space type
-    // #[cfg(not(feature = "minimal-ast"))]
+    // This is basically used for functions! e.g. `<T>::from`
     ZstLiteral {
         user_ty: Option<CanonicalUserType>,
     },
