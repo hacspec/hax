@@ -607,6 +607,9 @@ module Exn = struct
 
   and c_pointer e typ span cast source =
     match cast with
+    | ReifyFnPointer ->
+        (* we have arrow types, we do not distinguish between top-level functions and closures *)
+        (c_expr source).e
     | Unsize ->
         (* https://doc.rust-lang.org/std/marker/trait.Unsize.html *)
         (U.call "dummy" "CoerceUnsized" [ "unsize" ] [ c_expr source ] span typ)
