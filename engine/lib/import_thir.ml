@@ -270,7 +270,27 @@ module Exn = struct
       | MacroInvokation { argument; macro_ident; _ } ->
           MacroInvokation
             { args = argument; macro = def_id macro_ident; witness = W.macro }
-      | If { cond; if_then_scope = _; else_opt; then' } ->
+      | If
+          {
+            cond = { contents = Let { expr = scrutinee; pat }; _ };
+            else_opt;
+            then';
+            _;
+          } ->
+          let scrutinee = c_expr scrutinee in
+          let pat = c_pat pat in
+          let then_ = c_expr then' in
+          let else_ =
+            Option.value ~default:(U.unit_expr span)
+            @@ Option.map ~f:c_expr else_opt
+          in
+          let arm_then = { arm = { pat; body = then_ }; span = then_.span } in
+          let arm_else =
+            let pat = { pat with p = PWild } in
+            { arm = { pat; body = else_ }; span = else_.span }
+          in
+          Match { scrutinee; arms = [ arm_then; arm_else ] }
+      | If { cond; else_opt; then'; _ } ->
           let cond = c_expr cond in
           let then_ = c_expr then' in
           let else_ = Option.map ~f:c_expr else_opt in
@@ -324,7 +344,7 @@ module Exn = struct
           let scrutinee = c_expr scrutinee in
           let arms = List.map ~f:c_arm arms in
           Match { scrutinee; arms }
-      | Let _ -> unimplemented e.span "TODO: Let"
+      | Let _ -> unimplemented e.span "Let"
       | Block { safety_mode = BuiltinUnsafe | ExplicitUnsafe; _ } ->
           raise e.span UnsafeBlock
       | Block o ->
