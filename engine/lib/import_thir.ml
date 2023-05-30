@@ -28,6 +28,7 @@ module Ast = struct
   include Rust
 end
 
+module U = Ast_utils.Make (Features.Rust)
 open Ast
 
 type error =
@@ -170,31 +171,39 @@ module Exn = struct
     | Signed ty -> { size = int_ty_to_size ty; signedness = Signed }
     | Unsigned ty -> { size = uint_ty_to_size ty; signedness = Unsigned }
 
-  let c_lit' span (lit : Thir.lit_kind) (ty : ty option) : literal =
+  type extended_literal = EL_Lit of literal | EL_Array of literal list
+
+  let c_lit' span (lit : Thir.lit_kind) (ty : ty option) : extended_literal =
+    let mk l = EL_Lit l in
+    let mku8 n =
+      let kind = { size = S8; signedness = Unsigned } in
+      Int { value = Int.to_string n; kind }
+    in
     match lit with
     | Err -> raise span GotErrLiteral
-    | Str (str, _) -> String str
-    | ByteStr _ -> unimplemented span "ByteStr literals"
-    | Byte _ -> unimplemented span "Byte literals"
-    | Char s -> Char s
+    | Str (str, _) -> mk @@ String str
+    | ByteStr l -> EL_Array (List.map ~f:mku8 l)
+    | Byte n -> mk @@ mku8 n
+    | Char s -> mk @@ Char s
     | Int (i, _t) ->
-        Int
-          {
-            value = i;
-            kind =
-              (match ty with
-              | Some (TInt k) -> k
-              | Some _ -> raise span IllTypedIntLiteral
-              | None ->
-                  (* unimplemented span "ByteStr literals" *)
-                  (* TODO: this is wrong *)
-                  { size = S8; signedness = Unsigned }
-                  (* kind = (match t with _ -> fail with "lit: int" (\* TODO *\)); *));
-          }
+        mk
+        @@ Int
+             {
+               value = i;
+               kind =
+                 (match ty with
+                 | Some (TInt k) -> k
+                 | Some _ -> raise span IllTypedIntLiteral
+                 | None ->
+                     (* TODO: this is wrong *)
+                     { size = SSize; signedness = Unsigned }
+                     (* kind = (match t with _ -> fail with "lit: int" (\* TODO *\)); *));
+             }
     | Float _ -> unimplemented span "todo float"
-    | Bool b -> Bool b
+    | Bool b -> mk @@ Bool b
 
-  let c_lit span (lit : Thir.spanned_for__lit_kind) : ty option -> literal =
+  let c_lit span (lit : Thir.spanned_for__lit_kind) :
+      ty option -> extended_literal =
     c_lit' span lit.node
 
   let append_to_thir_def_id (def_id : Thir.def_id) (item : Thir.def_path_item) =
@@ -256,12 +265,32 @@ module Exn = struct
     let (v : expr') =
       match e.contents with
       | Box { value } ->
-          let inner_typ = c_ty e.span e.ty in
+          let inner_typ = c_ty value.span value.ty in
           call (mk_global ([ inner_typ ] ->. typ) @@ `Primitive Box) [ value ]
       | MacroInvokation { argument; macro_ident; _ } ->
           MacroInvokation
             { args = argument; macro = def_id macro_ident; witness = W.macro }
-      | If { cond; if_then_scope = _; else_opt; then' } ->
+      | If
+          {
+            cond = { contents = Let { expr = scrutinee; pat }; _ };
+            else_opt;
+            then';
+            _;
+          } ->
+          let scrutinee = c_expr scrutinee in
+          let pat = c_pat pat in
+          let then_ = c_expr then' in
+          let else_ =
+            Option.value ~default:(U.unit_expr span)
+            @@ Option.map ~f:c_expr else_opt
+          in
+          let arm_then = { arm = { pat; body = then_ }; span = then_.span } in
+          let arm_else =
+            let pat = { pat with p = PWild } in
+            { arm = { pat; body = else_ }; span = else_.span }
+          in
+          Match { scrutinee; arms = [ arm_then; arm_else ] }
+      | If { cond; else_opt; then'; _ } ->
           let cond = c_expr cond in
           let then_ = c_expr then' in
           let else_ = Option.map ~f:c_expr else_opt in
@@ -271,7 +300,7 @@ module Exn = struct
           let f = c_expr fun' in
           App { f; args }
       | Deref { arg } ->
-          let inner_typ = c_ty e.span e.ty in
+          let inner_typ = c_ty arg.span arg.ty in
           call (mk_global ([ inner_typ ] ->. typ) @@ `Primitive Deref) [ arg ]
       | Binary { lhs; rhs; op } ->
           let lty = c_ty lhs.span lhs.ty in
@@ -299,8 +328,8 @@ module Exn = struct
             [ source ]
       | Use { source } -> (c_expr source).e
       | NeverToAny { source } -> (c_expr source).e
-      (* TODO: this is incorrect *)
-      | Pointer _ -> unimplemented e.span "Pointer"
+      (* TODO: this is incorrect (NeverToAny) *)
+      | Pointer { cast; source } -> c_pointer e typ span cast source
       | Loop { body } ->
           let body = c_expr body in
           Loop
@@ -315,7 +344,7 @@ module Exn = struct
           let scrutinee = c_expr scrutinee in
           let arms = List.map ~f:c_arm arms in
           Match { scrutinee; arms }
-      | Let _ -> unimplemented e.span "TODO: Let"
+      | Let _ -> unimplemented e.span "Let"
       | Block { safety_mode = BuiltinUnsafe | ExplicitUnsafe; _ } ->
           raise e.span UnsafeBlock
       | Block o ->
@@ -326,7 +355,7 @@ module Exn = struct
             | ( Thir.Never,
                 None,
                 Some stmts,
-                Some ({ kind = Thir.Expr { expr; _ } } : Thir.stmt) ) ->
+                Some ({ kind = Thir.Expr { expr; _ }; _ } : Thir.stmt) ) ->
                 (stmts, Some expr)
             | _ -> (stmts, expr)
           in
@@ -365,46 +394,17 @@ module Exn = struct
           e
       | Assign { lhs; rhs } ->
           let lhs = c_expr lhs in
-          let e = c_expr rhs in
-          let rec mk_lhs lhs =
-            match lhs.e with
-            | LocalVar var -> LhsLocalVar { var; typ = lhs.typ }
-            | _ -> (
-                match resugar_index_mut lhs with
-                | Some (e, index) ->
-                    LhsArrayAccessor
-                      {
-                        e = mk_lhs e;
-                        typ = lhs.typ;
-                        index;
-                        witness = W.nontrivial_lhs;
-                      }
-                | None -> (
-                    match (unbox_underef_expr lhs).e with
-                    | App
-                        {
-                          f =
-                            {
-                              e = GlobalVar (`Projector (`Concrete _) as field);
-                              typ = TArrow ([ _ ], _);
-                              span = _;
-                            };
-                          args = [ e ];
-                        } ->
-                        LhsFieldAccessor
-                          {
-                            e = mk_lhs e;
-                            typ = lhs.typ;
-                            field;
-                            witness = W.nontrivial_lhs;
-                          }
-                    | _ ->
-                        LhsArbitraryExpr { e = lhs; witness = W.arbitrary_lhs })
-                )
+          let rhs = c_expr rhs in
+          c_expr_assign lhs rhs
+      | AssignOp { lhs; op; rhs } ->
+          let lhs = c_expr lhs in
+          let rhs = c_expr rhs in
+          let rhs =
+            let f = `Primitive (BinOp (c_binop op)) in
+            let f = mk_global ([ lhs.typ; rhs.typ ] ->. typ) f in
+            { e = App { f; args = [ lhs; rhs ] }; typ = lhs.typ; span }
           in
-
-          Assign { lhs = mk_lhs lhs; e; witness = W.mutable_variable }
-      | AssignOp _ -> unimplemented e.span "AssignOp"
+          c_expr_assign lhs rhs
       | VarRef { id } -> LocalVar (local_ident id)
       | Field { lhs; field } ->
           let lhs = c_expr lhs in
@@ -456,7 +456,12 @@ module Exn = struct
           let e = Option.value ~default:(unit_expr span) e in
           Return { e; witness = W.early_exit }
       | ConstBlock _ -> unimplemented e.span "ConstBlock"
-      | Repeat _ -> unimplemented e.span "Repeat"
+      | Repeat { value; count } ->
+          let value = c_expr value in
+          let count = c_expr count in
+          (U.Box.Expr.make
+          @@ U.call "dummy" "repeat" [] [ value; count ] span typ)
+            .e
       | Tuple { fields } ->
           let fields = List.map ~f:c_expr fields in
           let len = List.length fields in
@@ -495,7 +500,19 @@ module Exn = struct
               fields;
               base;
             }
-      | Literal { lit; _ } -> Literal (c_lit e.span lit @@ Some typ)
+      | Literal { lit; _ } -> (
+          match c_lit e.span lit @@ Some typ with
+          | EL_Lit lit -> Literal lit
+          | EL_Array l ->
+              Array
+                (List.map
+                   ~f:(fun lit ->
+                     {
+                       e = Literal lit;
+                       span;
+                       typ = TInt { size = S8; signedness = Unsigned };
+                     })
+                   l))
       | NamedConst { def_id = id; _ } -> GlobalVar (def_id id)
       | Closure { body; params; upvars; _ } ->
           let params =
@@ -527,6 +544,44 @@ module Exn = struct
       | Todo _ -> unimplemented e.span "expression Todo"
     in
     { e = v; span; typ }
+
+  and c_expr_assign lhs rhs =
+    let rec mk_lhs lhs =
+      match lhs.e with
+      | LocalVar var -> LhsLocalVar { var; typ = lhs.typ }
+      | _ -> (
+          match resugar_index_mut lhs with
+          | Some (e, index) ->
+              LhsArrayAccessor
+                {
+                  e = mk_lhs e;
+                  typ = lhs.typ;
+                  index;
+                  witness = W.nontrivial_lhs;
+                }
+          | None -> (
+              match (unbox_underef_expr lhs).e with
+              | App
+                  {
+                    f =
+                      {
+                        e = GlobalVar (`Projector (`Concrete _) as field);
+                        typ = TArrow ([ _ ], _);
+                        span = _;
+                      };
+                    args = [ e ];
+                  } ->
+                  LhsFieldAccessor
+                    {
+                      e = mk_lhs e;
+                      typ = lhs.typ;
+                      field;
+                      witness = W.nontrivial_lhs;
+                    }
+              | _ -> LhsArbitraryExpr { e = lhs; witness = W.arbitrary_lhs }))
+    in
+
+    Assign { lhs = mk_lhs lhs; e = rhs; witness = W.mutable_variable }
 
   and c_pat (pat : Thir.decorated_for__pat_kind) : pat =
     let span = c_span pat.span in
@@ -570,9 +625,22 @@ module Exn = struct
             }
       | Deref { subpattern } ->
           PDeref { subpat = c_pat subpattern; witness = W.reference }
-      | Constant { value } ->
-          let lit = c_constant_kind pat.span value in
-          PConstant { lit }
+      | Constant { value } -> (
+          match c_constant_kind pat.span value with
+          | EL_Lit lit -> PConstant { lit }
+          | EL_Array l ->
+              PArray
+                {
+                  args =
+                    List.map
+                      ~f:(fun lit ->
+                        {
+                          p = PConstant { lit };
+                          span;
+                          typ = TInt { size = S8; signedness = Unsigned };
+                        })
+                      l;
+                })
       | Array _ -> unimplemented pat.span "Pat:Array"
       | Or _ -> unimplemented pat.span "Or"
       | Slice _ -> unimplemented pat.span "Slice"
@@ -589,7 +657,7 @@ module Exn = struct
       pat = c_pat field_pat.pattern;
     }
 
-  and c_constant_kind span (k : Thir.constant_kind) : literal =
+  and c_constant_kind span (k : Thir.constant_kind) : extended_literal =
     match k with
     | Ty _ -> raise span GotTypeInLitPat
     | Lit lit -> c_lit' span lit None
@@ -598,6 +666,40 @@ module Exn = struct
   and c_canonical_user_type_annotation
       (annotation : Thir.canonical_user_type_annotation) : ty * span =
     (c_ty annotation.span annotation.inferred_ty, c_span annotation.span)
+
+  and c_pointer e typ span cast source =
+    match cast with
+    | ReifyFnPointer ->
+        (* we have arrow types, we do not distinguish between top-level functions and closures *)
+        (c_expr source).e
+    | Unsize ->
+        (* https://doc.rust-lang.org/std/marker/trait.Unsize.html *)
+        (U.call "dummy" "CoerceUnsized" [ "unsize" ] [ c_expr source ] span typ)
+          .e
+        (* let source = c_expr source in *)
+        (* let from_typ = source.typ in *)
+        (* let to_typ = typ in *)
+        (* match (U.Box.Ty.destruct from_typ, U.Box.Ty.destruct to_typ) with *)
+        (* | Some _from_typ, Some to_typ -> ( *)
+        (*     match U.Box.Expr.destruct source with *)
+        (*     | Some source -> *)
+        (*         (U.Box.Expr.make *)
+        (*         @@ U.call "dummy" "unsize_cast" [] [ source ] span to_typ) *)
+        (*           .e *)
+        (*     | _ -> *)
+        (*         unimplemented e.span *)
+        (*           "[Pointer(Unsize)] cast from not directly boxed expression") *)
+        (* | _ -> *)
+        (*     unimplemented e.span *)
+        (*       ("[Pointer(Unsize)] cast\n • from type [" *)
+        (*       ^ [%show: ty] from_typ *)
+        (*       ^ "]\n • to type [" *)
+        (*       ^ [%show: ty] to_typ *)
+        (*       ^ "]\n\nThe expression is: " *)
+        (*       ^ [%show: expr] source)) *)
+    | _ ->
+        unimplemented e.span
+          ("Pointer, with [cast] being " ^ [%show: Thir.pointer_cast] cast)
 
   and c_ty (span : Thir.span) (ty : Thir.ty) : ty =
     match ty with

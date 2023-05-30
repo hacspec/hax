@@ -6,7 +6,6 @@
   non_empty_list
   pprint
   ppx_deriving_yojson.runtime
-  hacspeclib_macro_parser
   cmdliner
   fstar_surface_ast
   base

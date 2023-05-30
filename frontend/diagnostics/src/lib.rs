@@ -4,6 +4,7 @@ extern crate rustc_errors;
 extern crate rustc_session;
 extern crate rustc_span;
 
+use colored::Colorize;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -41,7 +42,46 @@ impl<S> Diagnostics<S> {
 
 impl<S> std::fmt::Display for Diagnostics<S> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}: {:?}", self.context, self.kind)
+        match &self.kind {
+            Kind::Unimplemented { issue_id, details } => write!(
+                f,
+                "{}: something is not implemented yet.{}{}",
+                self.context,
+                match issue_id {
+                    Some(id) => format!(" This is discussed in issue {}: please upvote or comment this issue if you see this error message.", format!("{}", id).bold()),
+                    _ => "".to_string(),
+                },
+                match details {
+                    Some(details) => format!("\n{}", details),
+                    _ => "".to_string(),
+                }
+            ),
+            Kind::UnsupportedMacro { id } => write!(
+                f,
+                "The unexpanded macro {} it is not supported by this backend. Please verify the option you passed the {} (or {}) option.",
+                id.bold(),
+                "--inline-macro-call".bold(), "-i".bold()
+            ),
+            Kind::UnsafeBlock => write!(f, "Unsafe blocks are not allowed."),
+            Kind::AssertionFailure {details} => write!(
+                f,
+                "Fatal error: something we considered as impossible occurred! {}\nDetails: {}",
+                "Please report this by submitting an issue on GitHub!".bold(),
+                details
+            ),
+            Kind::UnallowedMutRef => write!(
+                f,
+                "The mutation of this {} is not allowed here.",
+                "&mut".bold()
+            ),
+            Kind::ClosureMutatesParentBindings {bindings} => write!(
+                f,
+                "The bindings {:?} cannot be mutated here: they don't belong to the closure scope, and this is not allowed.",
+                bindings
+            ),
+            Kind::ArbitraryLHS => write!(f, "Assignation of an arbitrary left-hand side is not supported. [lhs = e] is fine only when [lhs] is a combination of local identifiers, field accessors and index accessors."),
+            _ => write!(f, "{}: {:?}", self.context, self.kind),
+        }
     }
 }
 
@@ -69,14 +109,17 @@ pub enum Kind {
     /// Unsupported macro invokation
     UnsupportedMacro { id: String } = 4,
 
-    /// A phase explicitely rejected this chunk of code
-    ExplicitRejection { reason: String },
+    /// Error parsing a macro invocation to a macro treated specifcially by a backend
+    ErrorParsingMacroInvocation { macro_id: String, details: String } = 5,
 
     /// Mutation of bindings living outside a closure scope are not supported
-    ClosureMutatesParentBindings { bindings: Vec<String> },
+    ClosureMutatesParentBindings { bindings: Vec<String> } = 6,
 
     /// Assignation of an arbitrary left-hand side is not supported. [lhs = e] is fine only when [lhs] is a combination of local identifiers, field accessors and index accessors.
-    ArbitraryLHS,
+    ArbitraryLHS = 7,
+
+    /// A phase explicitely rejected this chunk of code
+    ExplicitRejection { reason: String } = 8,
 }
 
 impl Kind {

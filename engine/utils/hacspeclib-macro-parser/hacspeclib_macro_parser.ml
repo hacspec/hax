@@ -1,64 +1,46 @@
-open Base
+open! Base
 open Angstrom
 
-(* functions from util functions *)
-let ( << ) f g x = f (g x)
+module BasicParsers = struct
+  let is_space = function ' ' | '\t' | '\n' -> true | _ -> false
 
-let rec split_list_once ~equal ~needle ~acc subject =
-  match subject with
-  | [] -> (List.rev acc, [])
-  | hd :: tl ->
-      if List.is_prefix subject ~prefix:needle ~equal then
-        (List.rev acc, List.drop subject (List.length needle))
-      else split_list_once ~equal ~needle ~acc:(hd :: acc) tl
+  let is_identifier = function
+    | '0' .. '9' | 'a' .. 'z' | 'A' .. 'Z' | '_' -> true
+    | _ -> false
 
-let split_list ~equal ~needle (subject : 'a list) : 'a list list =
-  let rec h l =
-    match split_list_once ~equal ~needle ~acc:[] l with
-    | l, [] -> [ l ]
-    | l, r -> l :: h r
-  in
-  h subject
+  let is_digit = function '0' .. '9' -> true | _ -> false
+  let spaces = Fn.const () <$> take_while is_space
+  let ignore_spaces p = spaces *> p <* spaces
+  let identifier = ignore_spaces @@ take_while1 is_identifier
 
-let split_str (s : string) ~(on : string) : string list =
-  split_list ~equal:Char.equal ~needle:(String.to_list on) (String.to_list s)
-  |> List.map ~f:String.of_char_list
-(*  *)
+  let many1_ignore_underscores p =
+    List.filter_map ~f:Fn.id
+    <$> many1 (Option.some <$> p <|> (Fn.const None <$> char '_'))
 
-let is_space = function ' ' | '\t' | '\n' -> true | _ -> false
+  let take_while1_ignore_underscores f =
+    String.of_char_list <$> many1_ignore_underscores (satisfy f)
 
-let is_identifier = function
-  | '0' .. '9' | 'a' .. 'z' | 'A' .. 'Z' | '_' -> true
-  | _ -> false
+  let number =
+    ignore_spaces (Int.of_string <$> take_while1_ignore_underscores is_digit)
 
-let is_digit = function '0' .. '9' -> true | _ -> false
-let spaces = Fn.const () <$> take_while is_space
-let ignore_spaces p = spaces *> p <* spaces
-let identifier = ignore_spaces @@ take_while1 is_identifier
-let number = ignore_spaces (Int.of_string <$> take_while1 is_digit)
-let comma = Fn.const () <$> ignore_spaces @@ char ','
-let colon = Fn.const () <$> ignore_spaces @@ char ':'
-let maybe p = Option.some <$> p <|> return None
-let parens p = ignore_spaces (char '(') *> p <* ignore_spaces (char ')')
-let square_parens p = ignore_spaces (char '[') *> p <* ignore_spaces (char ']')
-let hex_list_identifier = identifier <* comma
+  let is_hex = function
+    | '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' -> true
+    | _ -> false
 
-let is_hex_identifier = function
-  | '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' | '_' -> true
-  | _ -> false
+  let hex_literal =
+    ignore_spaces (string "0x" *> take_while1_ignore_underscores is_hex)
 
-let is_int_type = function 'u' | 'U' -> true | x -> is_digit x
+  let comma = Fn.const () <$> ignore_spaces @@ char ','
+  let colon = Fn.const () <$> ignore_spaces @@ char ':'
+  let maybe p = Option.some <$> p <|> return None
+  let parens p = ignore_spaces (char '(') *> p <* ignore_spaces (char ')')
+  let quoted p = ignore_spaces (char '"') *> p <* ignore_spaces (char '"')
+  let field name p = string name *> colon *> p
+  let comment = ignore_spaces (string "//" *> take_while Char.(( <> ) '\n'))
+  let ignore_comment = Fn.const () <$> maybe comment
+end
 
-let remove_underscore (x : string) : string =
-  List.fold_left ~init:"" ~f:( ^ ) (split_str ~on:"_" x)
-
-let hex_identifier =
-  ignore_spaces
-    (string "0x" *> take_while1 is_hex_identifier
-    >>= (return << ( ^ ) "0x" << remove_underscore))
-
-let hex_list =
-  square_parens (many (hex_identifier <* maybe identifier <* maybe comma))
+open BasicParsers
 
 module type Parser = sig
   type t [@@deriving show, yojson, eq]
@@ -76,9 +58,8 @@ end = struct
     match parse_string ~consume:All (parens parser <* end_of_input) input with
     | Ok e -> Ok e
     | Error e ->
-        Out_channel.output_string Out_channel.stderr
-        @@ "########## Error while parsing: (" ^ name ^ ")";
-        Out_channel.output_string Out_channel.stderr input;
+        Caml.prerr_endline @@ "########## Error while parsing: (" ^ name ^ ")";
+        Caml.prerr_endline input;
         Error e
 end
 
@@ -125,13 +106,21 @@ module Bytes = struct
   include Make (M)
 end
 
-let quoted_string = char '"' *> take_while (Char.( <> ) '"') <* char '"'
-let quoted_hex = char '"' *> take_while is_hex_identifier <* char '"'
-let field name p = string name *> colon *> p
-(* let ( <|.> ) p1 p2 = Either.first <$> p1 <|> (Either.second <$> p2) *)
+module UnsignedPublicInteger = struct
+  module M = struct
+    type t = { integer_name : string; bits : int } [@@deriving show, yojson, eq]
 
-let comment = ignore_spaces (string "//" *> take_while Char.(( <> ) '\n'))
-let ignore_comment = Fn.const () <$> maybe comment
+    let parser =
+      let* integer_name = identifier <* comma in
+      let+ bits = number in
+      { integer_name; bits }
+
+    let name = "unsigned_public_integer"
+  end
+
+  include M
+  include Make (M)
+end
 
 module PublicNatMod = struct
   module M = struct
@@ -165,7 +154,7 @@ module PublicNatMod = struct
       in
       let modulo_value =
         (fun x acc -> { acc with modulo_value = Some x })
-        <$> field "modulo_value" quoted_hex
+        <$> field "modulo_value" (quoted @@ take_while1 is_hex)
       in
       let f =
         type_name <|> type_of_canvas <|> bit_size_of_field <|> modulo_value
@@ -196,38 +185,6 @@ module PublicNatMod = struct
       | _ -> fail "Some fields are missing"
 
     let name = "public_nat_mod"
-  end
-
-  include M
-  include Make (M)
-end
-
-module SecretBytes = struct
-  module M = struct
-    type t = { array_values : string list } [@@deriving show, yojson, eq]
-
-    let parser =
-      let+ av = hex_list in
-      { array_values = (* List.map ~f:(fun x -> fst x ^ snd x)  *) av }
-
-    let name = "secret_bytes"
-  end
-
-  include M
-  include Make (M)
-end
-
-module SecretArray = struct
-  module M = struct
-    type t = { array_typ : string; array_values : string list }
-    [@@deriving show, yojson, eq]
-
-    let parser =
-      let* at = identifier <* comma in
-      let+ av = hex_list in
-      { array_typ = at; array_values = av }
-
-    let name = "secret_array"
   end
 
   include M

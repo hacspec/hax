@@ -195,6 +195,7 @@ dependencies = [
 name = "circus-diagnostics"
 version = "0.1.0"
 dependencies = [
+ "colored",
  "schemars",
  "serde",
 ]

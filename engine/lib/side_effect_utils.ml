@@ -153,7 +153,6 @@ struct
 
       let many (ctx : CollectContext.t) (l : (expr * t) list)
           (next : expr list -> t -> expr * t) =
-        assert (not @@ List.is_empty l);
         let fresh () = CollectContext.fresh_local_ident ctx in
         let effects, l =
           List.fold_right l ~init:(SideEffects.zero, [])
