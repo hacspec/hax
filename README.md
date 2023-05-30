@@ -1,6 +1,24 @@
-# Hacspec v2
+# Hax
 
-## Quick start with Nix (works on [Linux](https://nixos.org/download.html#nix-install-linux), [MacOS](https://nixos.org/download.html#nix-install-macos) and [Windows](https://nixos.org/download.html#nix-install-windows))
+## Usage
+Hax is a cargo subcommand. 
+The command `cargo hax` accepts the following subcommands:
+ * **`into`** (`cargo hax into BACKEND`): translate a Rust crate to the backend `BACKEND` (e.g. `fstar`, `coq`).
+ * **`lint`** (`cargo hax lint LINTER`): lint a Rust crate with `LINTER`.
+ * **`json`** (`cargo hax json`): extract the typed AST of your crate as a JSON file.
+ 
+Note:
+ * `BACKEND` can be `fstar`, `coq` or `easycrypt`. The list of
+   supported backends can be displayed running `cargo hax into
+   --help`.
+ * `LINTER` can be:
+   * `hacspec`: is your Rust code in the Hacspec subset, that is, a simple enough subset of Rust suited for specifications? (TODO: documentation)
+   * `rust`: checks *fast* whether your code will be extractible to `fstar` or `coq` without running the full toolchain? (running the full toolchain is not fast enough for LSPs for instance)
+ * The subcommand `cargo hax` takes options, list them with `cargo hax --help`.
+ * The subcommand `cargo hax into` takes also options, list them with `cargo hax into --help`.
+
+## Installation
+### Nix (works on [Linux](https://nixos.org/download.html#nix-install-linux), [MacOS](https://nixos.org/download.html#nix-install-macos) and [Windows](https://nixos.org/download.html#nix-install-windows))
 
 <details>
   <summary><b>Prerequisites:</b> <a href="https://nixos.org/">Nix package
@@ -23,13 +41,13 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 + Install the tool:  `nix profile install github:hacspec/hacspec-v2`
    - then run `cargo hax --help` anywhere
 
-## Using Docker
+### Using Docker
 1. Clone this repo: `git clone git@github.com:hacspec/hacspec-v2.git && cd hacspec-v2`
 3. Build the docker image: `docker build -f .docker/Dockerfile . -t hacspec-v2`
 4. Get a shell: `docker run -it --rm -v /some/dir/with/a/crate:/work hacspec-v2 bash`
 5. You can now run `cargo-hax --help` (notice here we use `cargo-hax` instead of `cargo hax`)
 
-## Manual installation
+### Manual installation
 
 1. Make sure to have the following installed on your system:
 
@@ -44,12 +62,13 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 The librustc library path needs to be added to `DYLD_LIBRARY_PATH=$(rustc --print=sysroot)/lib`
 Make sure to use the right Rust nightly version, which is currently `nightly-2022-12-06`.
 
-## Edit the sources (Nix)
+## Hacking on Hax
+### Edit the sources (Nix)
 
 Just clone & `cd` into the repo, then run `nix develop .`.
 You can also just use [direnv](https://github.com/nix-community/nix-direnv), with [editor integration](https://github.com/direnv/direnv/wiki#editor-integration).
 
-## Structure of this repository
+### Structure of this repository
 
 - `rust-frontend/`: Rust library that hooks in the rust compiler and
   extract its internal typed abstract syntax tree
