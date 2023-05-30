@@ -25,14 +25,14 @@ extern crate rustc_target;
 extern crate rustc_type_ir;
 
 mod exporter;
-use hax_lint::Type;
 use exporter::ExtractionCallbacks;
+use hax_lint::Type;
 
 mod linter;
 use linter::LinterCallbacks;
 
-use hax_cli_options::{Command, ENV_VAR_OPTIONS_FRONTEND};
 use const_format::formatcp;
+use hax_cli_options::{Command, ENV_VAR_OPTIONS_FRONTEND};
 
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::{interface, Queries};

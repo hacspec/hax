@@ -1,7 +1,7 @@
-use hax_cli_options::NormalizePaths;
-use hax_cli_options::Options;
 use clap::Parser;
 use colored::Colorize;
+use hax_cli_options::NormalizePaths;
+use hax_cli_options::Options;
 use std::process::Command;
 
 /// Return a [Command] for [cargo]: when the correct nightly is
