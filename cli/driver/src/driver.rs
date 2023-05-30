@@ -25,13 +25,13 @@ extern crate rustc_target;
 extern crate rustc_type_ir;
 
 mod exporter;
-use circus_lint::Type;
+use hax_lint::Type;
 use exporter::ExtractionCallbacks;
 
 mod linter;
 use linter::LinterCallbacks;
 
-use circus_cli_options::{Command, ENV_VAR_OPTIONS_FRONTEND};
+use hax_cli_options::{Command, ENV_VAR_OPTIONS_FRONTEND};
 use const_format::formatcp;
 
 use rustc_driver::{Callbacks, Compilation};
@@ -52,14 +52,14 @@ fn rustc_sysroot() -> String {
 /// configuration in the `config` phase of rustc
 struct CallbacksWrapper<'a> {
     sub: &'a mut (dyn Callbacks + Send + 'a),
-    options: circus_cli_options::Options,
+    options: hax_cli_options::Options,
 }
 impl<'a> Callbacks for CallbacksWrapper<'a> {
     fn config(&mut self, config: &mut interface::Config) {
         let options = self.options.clone();
         config.parse_sess_created = Some(Box::new(move |parse_sess| {
             parse_sess.env_depinfo.get_mut().insert((
-                Symbol::intern(circus_cli_options::ENV_VAR_OPTIONS_FRONTEND),
+                Symbol::intern(hax_cli_options::ENV_VAR_OPTIONS_FRONTEND),
                 Some(Symbol::intern(&serde_json::to_string(&options).unwrap())),
             ));
         }));
@@ -91,7 +91,7 @@ impl<'a> Callbacks for CallbacksWrapper<'a> {
 fn main() {
     let _ = pretty_env_logger::try_init();
 
-    let options: circus_cli_options::Options =
+    let options: hax_cli_options::Options =
         serde_json::from_str(&std::env::var(ENV_VAR_OPTIONS_FRONTEND).expect(&formatcp!(
             "Cannot find environnement variable {}",
             ENV_VAR_OPTIONS_FRONTEND
@@ -116,8 +116,8 @@ fn main() {
         }),
         Some(Command::LintCommand(command)) => {
             let ltype = match command {
-                circus_cli_options::LinterCommand::Hacspec => Type::Hacspec,
-                circus_cli_options::LinterCommand::Rust => Type::Rust,
+                hax_cli_options::LinterCommand::Hacspec => Type::Hacspec,
+                hax_cli_options::LinterCommand::Rust => Type::Rust,
             };
             Box::new(LinterCallbacks::new(ltype))
         }

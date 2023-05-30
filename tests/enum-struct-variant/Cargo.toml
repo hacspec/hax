@@ -7,5 +7,5 @@ edition = "2021"
 
 [dependencies]
 
-[package.metadata.circus-tests]
+[package.metadata.hax-tests]
 into."fstar+coq" = {broken = false, snapshot = "none"}

@@ -1,8 +1,8 @@
 (library
  (name fstar_backend)
- (package circus-engine)
+ (package hax-engine)
  (wrapped false)
- (libraries circus_engine base fstar_surface_ast hacspeclib_macro_parser)
+ (libraries hax_engine base fstar_surface_ast hacspeclib_macro_parser)
  (preprocess
   (pps
    ppx_yojson_conv

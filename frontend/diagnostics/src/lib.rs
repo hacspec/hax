@@ -9,10 +9,10 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 pub trait SessionExtTrait {
-    fn span_circus_err(&self, diag: Diagnostics<rustc_span::Span>);
+    fn span_hax_err(&self, diag: Diagnostics<rustc_span::Span>);
 }
 impl SessionExtTrait for rustc_session::Session {
-    fn span_circus_err(&self, diag: Diagnostics<rustc_span::Span>) {
+    fn span_hax_err(&self, diag: Diagnostics<rustc_span::Span>) {
         self.span_err_with_code(
             diag.span,
             format!("{}", diag),
@@ -129,7 +129,7 @@ impl Kind {
     }
 
     pub fn code(&self) -> String {
-        // `C` stands for `circus`
+        // `C` stands for `hax`
         format!("CE{:0>4}", self.discriminant())
     }
 }

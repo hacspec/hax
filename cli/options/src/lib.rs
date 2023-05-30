@@ -3,7 +3,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-pub use circus_frontend_exporter_options::*;
+pub use hax_frontend_exporter_options::*;
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
 pub struct ForceCargoBuild {
@@ -130,7 +130,7 @@ pub enum ExporterCommand {
         #[arg(
             short,
             long = "output-file",
-            default_value = "circus_frontend_export.json"
+            default_value = "hax_frontend_export.json"
         )]
         output_file: PathOrDash,
     },
@@ -153,7 +153,7 @@ pub enum Command {
 }
 
 #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
-#[command(author, version = concat!("commit=", env!("CIRCUS_GIT_COMMIT_HASH"), " ", "describe=", env!("CIRCUS_GIT_DESCRIBE")), name = "circus", about, long_about = None)]
+#[command(author, version = concat!("commit=", env!("HAX_GIT_COMMIT_HASH"), " ", "describe=", env!("HAX_GIT_DESCRIBE")), name = "hax", about, long_about = None)]
 pub struct Options {
     /// Replace the expansion of each macro matching PATTERN by their
     /// invocation. PATTERN denotes a rust path (i.e. [A::B::c]) in
@@ -221,12 +221,12 @@ impl NormalizePaths for Options {
     }
 }
 
-impl From<Options> for circus_frontend_exporter_options::Options {
-    fn from(opts: Options) -> circus_frontend_exporter_options::Options {
-        circus_frontend_exporter_options::Options {
+impl From<Options> for hax_frontend_exporter_options::Options {
+    fn from(opts: Options) -> hax_frontend_exporter_options::Options {
+        hax_frontend_exporter_options::Options {
             inline_macro_calls: opts.inline_macro_calls,
         }
     }
 }
 
-pub const ENV_VAR_OPTIONS_FRONTEND: &str = "DRIVER_CIRCUS_FRONTEND_OPTS";
+pub const ENV_VAR_OPTIONS_FRONTEND: &str = "DRIVER_HAX_FRONTEND_OPTS";

@@ -1,5 +1,5 @@
-use circus_cli_options::NormalizePaths;
-use circus_cli_options::Options;
+use hax_cli_options::NormalizePaths;
+use hax_cli_options::Options;
 use clap::Parser;
 use colored::Colorize;
 use std::process::Command;
@@ -13,8 +13,8 @@ fn cargo_command() -> Command {
         .map(|(_, channel, date)| format!("{channel}-{date}"))
         .unwrap_or("unknown".into());
     let mut cmd = Command::new("cargo");
-    if env!("CIRCUS_RUSTC_VERSION") != current_rustc_version {
-        const TOOLCHAIN: &str = env!("CIRCUS_TOOLCHAIN");
+    if env!("HAX_RUSTC_VERSION") != current_rustc_version {
+        const TOOLCHAIN: &str = env!("HAX_TOOLCHAIN");
         // ensure rustup is available
         which::which("rustup").ok().unwrap_or_else(|| {
             println!("Error: {} was not found, but toolchain {} is required while the current toolchain is {}\n\nExiting.", "rustup".bold(), TOOLCHAIN.bold(), current_rustc_version.bold());
@@ -41,7 +41,7 @@ pub fn get_args(subcommand: &str) -> Vec<String> {
 }
 
 fn main() {
-    let args: Vec<String> = get_args("circus");
+    let args: Vec<String> = get_args("hax");
     // eprintln!("args: {args:?}");
     let options = Options::parse_from(args.iter()).normalize_paths();
     // eprintln!("options: {options:?}");
@@ -51,11 +51,11 @@ fn main() {
             .args(["build".into()].iter().chain(options.cargo_flags.iter()))
             .env(
                 "RUSTC_WORKSPACE_WRAPPER",
-                std::env::var("CIRCUS_RUSTC_DRIVER_BINARY")
-                    .unwrap_or("driver-circus-frontend-exporter".into()),
+                std::env::var("HAX_RUSTC_DRIVER_BINARY")
+                    .unwrap_or("driver-hax-frontend-exporter".into()),
             )
             .env(
-                circus_cli_options::ENV_VAR_OPTIONS_FRONTEND,
+                hax_cli_options::ENV_VAR_OPTIONS_FRONTEND,
                 serde_json::to_string(&options)
                     .expect("Options could not be converted to a JSON string"),
             )

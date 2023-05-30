@@ -14,20 +14,20 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 
 </details>
 
-+ Run circus on a crate to get F\*/Coq/...:
++ Run hax on a crate to get F\*/Coq/...:
    - `cd path/to/your/crate`
    - `nix run github:hacspec/hacspec-v2 -- into -o some/output/dir fstar`  
       will create `fst` modules in directory `some/output/dir`.  
       *Note: replace `fstar` by your backend of choice*
 
 + Install the tool:  `nix profile install github:hacspec/hacspec-v2`
-   - then run `cargo circus --help` anywhere
+   - then run `cargo hax --help` anywhere
 
 ## Using Docker
 1. Clone this repo: `git clone git@github.com:hacspec/hacspec-v2.git && cd hacspec-v2`
 3. Build the docker image: `docker build -f .docker/Dockerfile . -t hacspec-v2`
 4. Get a shell: `docker run -it --rm -v /some/dir/with/a/crate:/work hacspec-v2 bash`
-5. You can now run `cargo-circus --help` (notice here we use `cargo-circus` instead of `cargo circus`)
+5. You can now run `cargo-hax --help` (notice here we use `cargo-hax` instead of `cargo hax`)
 
 ## Manual installation
 
@@ -39,7 +39,7 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 
 2. Clone this repo: `git clone git@github.com:hacspec/hacspec-v2.git && cd hacspec-v2`
 3. Run the [setup.sh](./setup.sh) script: `./setup.sh`.
-4. Run `cargo-circus --help`
+4. Run `cargo-hax --help`
 
 The librustc library path needs to be added to `DYLD_LIBRARY_PATH=$(rustc --print=sysroot)/lib`
 Make sure to use the right Rust nightly version, which is currently `nightly-2022-12-06`.
@@ -56,4 +56,4 @@ You can also just use [direnv](https://github.com/nix-community/nix-direnv), wit
   [**THIR**](https://rustc-dev-guide.rust-lang.org/thir.html) as JSON.
 - `engine/`: the simplication and elaboration engine that translate
   programs from the Rust language to various backends (see `engine/backends/`).
-- `cli/`: the `circus` subcommand for Cargo.
+- `cli/`: the `hax` subcommand for Cargo.

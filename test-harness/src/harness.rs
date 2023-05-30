@@ -1,5 +1,5 @@
-mod command_circus_ext;
-use command_circus_ext::*;
+mod command_hax_ext;
+use command_hax_ext::*;
 use serde_json::{Map, Value};
 use std::process::{Command, Stdio};
 
@@ -124,7 +124,7 @@ impl std::fmt::Display for Test {
 impl Test {
     fn into_runner(self, workspace: String) -> Result<(), libtest_mimic::Failed> {
         // 1. cook a command
-        let mut cmd = Command::circus(&["-C"]);
+        let mut cmd = Command::hax(&["-C"]);
         cmd.arg("--manifest-path").arg(self.info.manifest.clone());
         cmd.arg(";");
         cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
@@ -220,8 +220,8 @@ impl Test {
 }
 
 /// Given [metadata] the table declared in a test's [Cargo.toml]
-/// [workspace.circus-tests], this function returns a list of tests
-fn parse_circus_tests_metadata(info: TestInfo, metadata: &Value) -> Vec<Test> {
+/// [workspace.hax-tests], this function returns a list of tests
+fn parse_hax_tests_metadata(info: TestInfo, metadata: &Value) -> Vec<Test> {
     if metadata.is_null() {
         return vec![];
     }
@@ -230,7 +230,7 @@ fn parse_circus_tests_metadata(info: TestInfo, metadata: &Value) -> Vec<Test> {
         .as_object()
         .expect(
             format!(
-                "Expected value at key [circus-tests] to be a dictionary for package {:#?}",
+                "Expected value at key [hax-tests] to be a dictionary for package {:#?}",
                 info
             )
             .as_str(),
@@ -256,7 +256,7 @@ fn parse_circus_tests_metadata(info: TestInfo, metadata: &Value) -> Vec<Test> {
                 "into" => TestKind::Translate { backend: b },
                 "lint" => TestKind::Lint { linter: b },
                 _ => panic!(
-                    "unexpected metadata [circus-tests.{}.{}] for package {:#?}",
+                    "unexpected metadata [hax-tests.{}.{}] for package {:#?}",
                     a, b, info
                 ),
             },
@@ -277,13 +277,13 @@ fn main() {
             .packages
             .into_iter()
             .flat_map(|o| {
-                parse_circus_tests_metadata(
+                parse_hax_tests_metadata(
                     TestInfo {
                         name: o.name,
                         description: o.description,
                         manifest: o.manifest_path.into(),
                     },
-                    &o.metadata["circus-tests"],
+                    &o.metadata["hax-tests"],
                 )
             })
             .map(|test| test.into_trial(&workspace_root))

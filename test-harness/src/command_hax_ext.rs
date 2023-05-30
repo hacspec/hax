@@ -1,20 +1,20 @@
 use lazy_static::{__Deref, lazy_static};
 use std::{ffi::OsStr, process::Command};
 
-pub trait CommandCircusExt {
-    fn circus<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(args: I) -> Self;
+pub trait CommandHaxExt {
+    fn hax<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(args: I) -> Self;
 }
 
-impl CommandCircusExt for Command {
-    fn circus<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(args: I) -> Command {
+impl CommandHaxExt for Command {
+    fn hax<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(args: I) -> Command {
         use assert_cmd::cargo::cargo_bin;
         use std::path::PathBuf;
         struct Paths {
             driver: PathBuf,
             engine: PathBuf,
-            cargo_circus: PathBuf,
+            cargo_hax: PathBuf,
         }
-        const CARGO_CIRCUS: &str = "cargo-circus";
+        const CARGO_HAX: &str = "cargo-hax";
         lazy_static! {
             static ref PATHS: Option<Paths> = {
                 if let "yes" | "y" | "true" | "1" = std::env::var("CARGO_TESTS_ASSUME_BUILT").unwrap_or("".into()).to_lowercase().as_str() {
@@ -31,26 +31,26 @@ impl CommandCircusExt for Command {
                         .success());
                 assert!(Command::new("dune")
                         .args(&["build"])
-                        .env("CIRCUS_JSON_SCHEMA_EXPORTER_BINARY", cargo_bin("circus-export-json-schemas"))
+                        .env("HAX_JSON_SCHEMA_EXPORTER_BINARY", cargo_bin("hax-export-json-schemas"))
                         .current_dir(engine_dir.clone())
                         .status()
                         .unwrap()
                         .success());
                 Some(Paths {
-                    driver: cargo_bin("driver-circus-frontend-exporter"),
-                    cargo_circus: cargo_bin(CARGO_CIRCUS),
-                    engine: engine_dir.join("_build/install/default/bin/circus-engine"),
+                    driver: cargo_bin("driver-hax-frontend-exporter"),
+                    cargo_hax: cargo_bin(CARGO_HAX),
+                    engine: engine_dir.join("_build/install/default/bin/hax-engine"),
                 })
             };
         }
         let mut cmd = match PATHS.deref() {
             Some(paths) => {
-                let mut cmd = Command::new(paths.cargo_circus.clone());
-                cmd.env("CIRCUS_RUSTC_DRIVER_BINARY", paths.driver.clone());
-                cmd.env("CIRCUS_ENGINE_BINARY", paths.engine.clone());
+                let mut cmd = Command::new(paths.cargo_hax.clone());
+                cmd.env("HAX_RUSTC_DRIVER_BINARY", paths.driver.clone());
+                cmd.env("HAX_ENGINE_BINARY", paths.engine.clone());
                 cmd
             }
-            None => Command::new(CARGO_CIRCUS),
+            None => Command::new(CARGO_HAX),
         };
         cmd.args(args);
         // As documented in

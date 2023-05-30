@@ -1,4 +1,4 @@
-use circus_lint::Type;
+use hax_lint::Type;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::{
     interface::{self, Compiler},
@@ -33,7 +33,7 @@ impl Callbacks for LinterCallbacks {
             .global_ctxt()
             .unwrap()
             .peek_mut()
-            .enter(|tcx| circus_lint::Linter::register(tcx, session, self.ltype));
+            .enter(|tcx| hax_lint::Linter::register(tcx, session, self.ltype));
 
         Compilation::Continue
     }

@@ -1,5 +1,5 @@
 [package]
-name = "circus-cli-options"
+name = "hax-cli-options"
 version = "0.1.0"
 edition = "2021"
 build = "build.rs"
@@ -9,6 +9,6 @@ serde.workspace = true
 serde_json.workspace = true
 schemars.workspace = true
 clap.workspace = true
-circus-frontend-exporter-options.workspace = true
+hax-frontend-exporter-options.workspace = true
 path-clean = "1.0.1"
 

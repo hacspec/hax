@@ -208,7 +208,7 @@ end = struct
         @@ [%string "%{prefix_path}/%{path}.rs"])
       files;
     Core.Out_channel.write_all ~data:(`List json |> Yojson.Safe.pretty_to_string)
-    @@ prefix_path ^ "/debug-circus-engine.json"
+    @@ prefix_path ^ "/debug-hax-engine.json"
 
   let export () =
     match !prefix_path with

@@ -1,4 +1,4 @@
-open Circus_engine
+open Hax_engine
 open Base
 
 let renamed_identifiers lvl = function
@@ -37,7 +37,7 @@ let run () : Raw_thir_ast.output =
       if not (Caml.Sys.file_exists path && Caml.Sys.is_directory path) then
         failwith
           [%string
-            "Engine error: the environment variable CIRCUS_ENGINE_DEBUG is set \
+            "Engine error: the environment variable HAX_ENGINE_DEBUG is set \
              to [%{path}] which was expected to be a valid existing directory. \
              Aborting."];
       Phase_utils.DebugBindPhase.enable path

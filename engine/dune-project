@@ -1,6 +1,6 @@
 (lang dune 3.0)
 
-(name circus-engine)
+(name hax-engine)
 
 (generate_opam_files true)
 
@@ -16,7 +16,7 @@
 (documentation https://url/to/documentation)
 
 (package
- (name circus-engine)
+ (name hax-engine)
  (synopsis "A short synopsis")
  (description "A longer description")
  (depends

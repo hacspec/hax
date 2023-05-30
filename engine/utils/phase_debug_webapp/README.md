@@ -11,7 +11,7 @@ This webapp allows you to display a rust code before and after each
 phase.
 
 ### How to
-When running `cargo circus into BACKEND`, pass the option
+When running `cargo hax into BACKEND`, pass the option
 `--debug-engine DEBUG_DIRECTORY` to the subcommand `into`, with
 `DEBUG_DIRECTORY` an existing directory of your choice. For instance,
 `DEBUG_DIRECTORY` could be `/tmp/something`.

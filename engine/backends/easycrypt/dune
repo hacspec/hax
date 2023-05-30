@@ -1,7 +1,7 @@
 (library
  (name easycrypt_backend)
- (package circus-engine)
- (libraries circus_engine)
+ (package hax-engine)
+ (libraries hax_engine)
  (preprocess
   (pps
    ppx_yojson_conv

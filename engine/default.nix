@@ -1,4 +1,4 @@
-{ocamlPackages, fetchzip, circus-rust-frontend, rustc, nodejs, closurecompiler, gnused, lib}:
+{ocamlPackages, fetchzip, hax-rust-frontend, rustc, nodejs, closurecompiler, gnused, lib}:
 let
   non_empty_list = 
     ocamlPackages.buildDunePackage rec {
@@ -30,8 +30,8 @@ let
       minimalOCamlVersion = "4.04";
       doCheck = false;
     };
-  circus-engine = ocamlPackages.buildDunePackage {
-    pname = "circus-engine";
+  hax-engine = ocamlPackages.buildDunePackage {
+    pname = "hax-engine";
     version = "0.0.1";
     duneVersion = "3";
     src = lib.sourceFilesBySuffices ./. [ ".ml" ".mli" ".js" "dune" "dune-project" ];
@@ -48,27 +48,27 @@ let
     [ batteries menhirLib ppx_deriving
       ppxlib sedlex stdint zarith ];
     nativeBuildInputs = [
-      rustc circus-rust-frontend nodejs
+      rustc hax-rust-frontend nodejs
       ocamlPackages.js_of_ocaml-compiler
     ];
     strictDeps = true;
     passthru = {
-      js = circus-engine.overrideAttrs (old: {
-        name = "circus-engine.js";
+      js = hax-engine.overrideAttrs (old: {
+        name = "hax-engine.js";
         nativeBuildInputs = old.nativeBuildInputs ++ [closurecompiler gnused];
         buildPhase = ''
           # Compile JS target
           dune build bin/js_driver.bc.js
           # Optimize the size of the JS file
-          closure-compiler --js _build/default/bin/js_driver.bc.js --js_output_file circus-engine.js
+          closure-compiler --js _build/default/bin/js_driver.bc.js --js_output_file hax-engine.js
           # Add a shebang & make executable
-          sed -i '1 i #!/usr/bin/env node' circus-engine.js
-          chmod +x circus-engine.js
+          sed -i '1 i #!/usr/bin/env node' hax-engine.js
+          chmod +x hax-engine.js
         '';
         checkPhase = "true";
-        installPhase = "cp circus-engine.js $out";
+        installPhase = "cp hax-engine.js $out";
       });
     };
   };
 in
-circus-engine
+hax-engine

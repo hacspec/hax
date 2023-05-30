@@ -8,4 +8,4 @@ edition = "2021"
 [dependencies]
 hacspec-lib = { git = "https://github.com/hacspec/hacspec.git" }
 
-[package.metadata.circus-tests.lint.hacspec]
+[package.metadata.hax-tests.lint.hacspec]

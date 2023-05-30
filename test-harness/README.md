@@ -4,19 +4,19 @@ This crate defines a custom test harness[^1][^2] that scans for packages
 in the Cargo workspace `../tests/Cargo.toml`.
 
 Each package in that workspace should define a sequence of tests to be
-run in the `package.metadata.circus-tests` dictionary of its
+run in the `package.metadata.hax-tests` dictionary of its
 `Cargo.toml` manifest.
 
 Note this cargo test is disabled by default, since it requires both
 the Cargo and Dune package to be built. To run this test, please use
 the command `cargo test --test toolchain`.
 
-## Format for `package.metadata.circus-tests`
+## Format for `package.metadata.hax-tests`
 
-`package.metadata.circus-tests` is a map from a target (e.g. `into
+`package.metadata.hax-tests` is a map from a target (e.g. `into
 fstar` or `lint hacspec`) to a **test specification** (see below).
 
-`package.metadata.circus-tests` is expected to be a **dictionary** with
+`package.metadata.hax-tests` is expected to be a **dictionary** with
 the following optional fields:
 
 - `lint`, a map from a **linter name** to a **test specification**.
@@ -29,8 +29,8 @@ for instance `fstar+coq`.
 
 A **test specification** is a dictionary with the following fields:
 
-- <code><b>positive</b>: bool <i>⟨true⟩</i></code>: is the test positive (the exit code of the `cargo circus` command is `0`) or negative (the exit code is non-null)?
-- <code><b>snapshots</b></code>: should we enforce the stability of the output of the `cargo circus` command?
+- <code><b>positive</b>: bool <i>⟨true⟩</i></code>: is the test positive (the exit code of the `cargo hax` command is `0`) or negative (the exit code is non-null)?
+- <code><b>snapshots</b></code>: should we enforce the stability of the output of the `cargo hax` command?
   - <code>snapshots.<b>stdout</b>: bool <i>⟨true⟩</i></code>
   - <code>snapshots.<b>stderr</b>: bool <i>⟨true⟩</i></code>  
     **Note:** this field can also be set to the following strings: `stdout`, `stderr`, `both` or `none`.
@@ -40,11 +40,11 @@ A **test specification** is a dictionary with the following fields:
 
 ### Linter names
 
-The available linters can be listed by running `cargo circus lint --help`.
+The available linters can be listed by running `cargo hax lint --help`.
 
 ### Backend names
 
-The available backends can be listed by running `cargo circus into --help`.
+The available backends can be listed by running `cargo hax into --help`.
 
 ## The `insta` tool and library
 

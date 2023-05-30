@@ -164,120 +164,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "circus-cli-options"
-version = "0.1.0"
-dependencies = [
- "circus-frontend-exporter-options",
- "clap",
- "path-clean",
- "schemars",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "circus-cli-options-engine"
-version = "0.1.0"
-dependencies = [
- "circus-cli-options",
- "circus-diagnostics",
- "circus-frontend-exporter",
- "circus-frontend-exporter-options",
- "clap",
- "itertools",
- "path-clean",
- "schemars",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "circus-diagnostics"
-version = "0.1.0"
-dependencies = [
- "colored",
- "schemars",
- "serde",
-]
-
-[[package]]
-name = "circus-driver"
-version = "0.1.0"
-dependencies = [
- "circus-cli-options",
- "circus-cli-options-engine",
- "circus-diagnostics",
- "circus-frontend-exporter",
- "circus-frontend-exporter-options",
- "circus-lint",
- "clap",
- "const_format",
- "inquire",
- "log",
- "pretty_env_logger",
- "serde",
- "serde_json",
- "which",
-]
-
-[[package]]
-name = "circus-frontend-exporter"
-version = "0.1.0"
-dependencies = [
- "adt-into",
- "circus-frontend-exporter-options",
- "itertools",
- "paste",
- "schemars",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "circus-frontend-exporter-options"
-version = "0.1.0"
-dependencies = [
- "schemars",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "circus-lint"
-version = "0.1.0"
-dependencies = [
- "assert_cmd",
- "circus-diagnostics",
- "lazy_static",
- "log",
- "regex",
-]
-
-[[package]]
-name = "circus-subcommands"
-version = "0.1.0"
-dependencies = [
- "circus-cli-options",
- "circus-cli-options-engine",
- "circus-diagnostics",
- "circus-frontend-exporter",
- "circus-frontend-exporter-options",
- "clap",
- "colored",
- "itertools",
- "paste",
- "path-clean",
- "rustup-toolchain",
- "schemars",
- "serde",
- "serde_json",
- "tempfile",
- "toml 0.7.3",
- "version_check",
- "which",
-]
-
-[[package]]
 name = "clap"
 version = "4.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -491,6 +377,120 @@ name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
+
+[[package]]
+name = "hax-cli-options"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "hax-frontend-exporter-options",
+ "path-clean",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "hax-cli-options-engine"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "hax-cli-options",
+ "hax-diagnostics",
+ "hax-frontend-exporter",
+ "hax-frontend-exporter-options",
+ "itertools",
+ "path-clean",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "hax-diagnostics"
+version = "0.1.0"
+dependencies = [
+ "colored",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "hax-driver"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "const_format",
+ "hax-cli-options",
+ "hax-cli-options-engine",
+ "hax-diagnostics",
+ "hax-frontend-exporter",
+ "hax-frontend-exporter-options",
+ "hax-lint",
+ "inquire",
+ "log",
+ "pretty_env_logger",
+ "serde",
+ "serde_json",
+ "which",
+]
+
+[[package]]
+name = "hax-frontend-exporter"
+version = "0.1.0"
+dependencies = [
+ "adt-into",
+ "hax-frontend-exporter-options",
+ "itertools",
+ "paste",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "hax-frontend-exporter-options"
+version = "0.1.0"
+dependencies = [
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "hax-lint"
+version = "0.1.0"
+dependencies = [
+ "assert_cmd",
+ "hax-diagnostics",
+ "lazy_static",
+ "log",
+ "regex",
+]
+
+[[package]]
+name = "hax-subcommands"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "colored",
+ "hax-cli-options",
+ "hax-cli-options-engine",
+ "hax-diagnostics",
+ "hax-frontend-exporter",
+ "hax-frontend-exporter-options",
+ "itertools",
+ "paste",
+ "path-clean",
+ "rustup-toolchain",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "toml 0.7.3",
+ "version_check",
+ "which",
+]
 
 [[package]]
 name = "heck"

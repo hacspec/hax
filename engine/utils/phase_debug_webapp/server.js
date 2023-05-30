@@ -14,7 +14,7 @@ if (args.length !== 1) {
 Usage: ${self} [DEBUG_ENGINE_PATH]
 
 DEBUG_ENGINE_PATH: the directory which contains the
-[debug-circus-engine.json] file, that is, the directory you gave to
+[debug-hax-engine.json] file, that is, the directory you gave to
 the option \`--debug-engine\`.
 
 Environment variables:
@@ -24,7 +24,7 @@ Environment variables:
 }
 
 const [DEBUG_ENGINE_PATH] = args;
-const JSON_FILENAME = 'debug-circus-engine.json';
+const JSON_FILENAME = 'debug-hax-engine.json';
 
 http.createServer(function(req, res) {
     let url = req.url.split('?')[0];
