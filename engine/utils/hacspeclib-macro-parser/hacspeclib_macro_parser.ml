@@ -106,6 +106,22 @@ module Bytes = struct
   include Make (M)
 end
 
+module UnsignedPublicInteger = struct
+  module M = struct
+    type t = { integer_name : string; bits : int } [@@deriving show, yojson, eq]
+
+    let parser =
+      let* integer_name = identifier <* comma in
+      let+ bits = number in
+      { integer_name; bits }
+
+    let name = "unsigned_public_integer"
+  end
+
+  include M
+  include Make (M)
+end
+
 module PublicNatMod = struct
   module M = struct
     type t = {
