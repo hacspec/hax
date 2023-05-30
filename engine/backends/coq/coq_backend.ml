@@ -896,6 +896,34 @@ struct
           macro =
             `Concrete
               Non_empty_list.
+                {
+                  crate = "hacspec_lib_tc";
+                  path = [ "unsigned_public_integer" ];
+                };
+          argument;
+          span;
+        } ->
+        let open Hacspeclib_macro_parser in
+        let o = UnsignedPublicInteger.parse argument |> Result.ok_or_failwith in
+        [
+          C.AST.Notation
+            ( o.integer_name ^ "_t",
+              C.AST.ArrayTy
+                (C.AST.Int (C.AST.U8, false), Int.to_string ((o.bits + 7) / 8))
+            );
+          C.AST.Definition
+            ( o.integer_name,
+              [],
+              C.AST.Var "id",
+              C.AST.Arrow
+                ( C.AST.Name (o.integer_name ^ "_t"),
+                  C.AST.Name (o.integer_name ^ "_t") ) );
+        ]
+    | IMacroInvokation
+        {
+          macro =
+            `Concrete
+              Non_empty_list.
                 { crate = "hacspec_lib_tc"; path = [ "public_bytes" ] };
           argument;
           span;
