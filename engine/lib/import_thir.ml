@@ -990,6 +990,6 @@ module Exn = struct
     { span; v; parent_namespace = namespace_of_def_id item.owner_id }
 end
 
-let c_item (item : Thir.item) : (item, error) Result.t =
+let c_item (item : Thir.item) : (item list, error) Result.t =
   try Exn.c_item item |> Result.return
   with Exn.ImportError error -> Error error
