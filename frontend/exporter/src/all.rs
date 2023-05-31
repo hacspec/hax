@@ -1992,6 +1992,9 @@ pub struct Arm {
     pub lint_level: LintLevel,
     pub scope: Scope,
     pub span: Span,
+    #[not_in_source]
+    #[map(attribute_from_scope(gstate, scope).1)]
+    attributes: Vec<Attribute>,
 }
 
 #[derive(AdtInto)]
