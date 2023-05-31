@@ -317,7 +317,7 @@ pub enum VariantData {
 }
 
 #[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::FieldDef<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::FieldDef<'tcx>, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct HirFieldDef {
     pub span: Span,
@@ -326,10 +326,13 @@ pub struct HirFieldDef {
     pub hir_id: HirId,
     pub def_id: GlobalIdent,
     pub ty: Ty,
+    #[not_in_source]
+    #[map(s.tcx().hir().attrs(hir_id.clone()).sinto(s))]
+    attributes: Vec<Attribute>,
 }
 
 #[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::Variant<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::Variant<'tcx>, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Variant {
     pub ident: Ident,
@@ -338,6 +341,9 @@ pub struct Variant {
     pub data: VariantData,
     pub disr_expr: Option<AnonConst>,
     pub span: Span,
+    #[not_in_source]
+    #[map(s.tcx().hir().attrs(hir_id.clone()).sinto(s))]
+    attributes: Vec<Attribute>,
 }
 
 #[derive(AdtInto)]
