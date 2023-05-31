@@ -6,7 +6,7 @@
    [https://github.com/orgs/hacspec/projects/1](https://github.com/orgs/hacspec/projects/1).
  - [`release`](./.github/workflows/release.yml): whenever a tagged
    commit is pushed, this action builds the Linux binary, MacOS
-   binary and JS of `circus-engine`, and uploads them to a new GitHub
+   binary and JS of `hax-engine`, and uploads them to a new GitHub
    release.
  - [`format`](./.github/workflows/format.yml): ensure formatting for
    Rust and OCaml files.

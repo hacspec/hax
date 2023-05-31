@@ -1,5 +1,5 @@
 [package]
-name = "circus-frontend-exporter"
+name = "hax-frontend-exporter"
 version = "0.1.0"
 edition = "2021"
 
@@ -12,7 +12,7 @@ serde.workspace = true
 serde_json.workspace = true
 schemars.workspace = true
 itertools = "0.10.5"
-circus-frontend-exporter-options.workspace = true
+hax-frontend-exporter-options.workspace = true
 paste = "1.0.11"
 
 [features]

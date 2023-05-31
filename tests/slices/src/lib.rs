@@ -4,5 +4,5 @@
 const VERSION: &[u8] = b"v1";
 
 // This panics
-// thread 'rustc' panicked at 'circus-engine exited with non-zero code', cli/driver/src/exporter.rs:217:2
+// thread 'rustc' panicked at 'hax-engine exited with non-zero code', cli/driver/src/exporter.rs:217:2
 pub fn do_something(_: &[u8]) {}

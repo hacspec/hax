@@ -1,6 +1,6 @@
-use circus_cli_options::{PathOrDash, ENV_VAR_OPTIONS_FRONTEND};
-use circus_frontend_exporter;
-use circus_frontend_exporter::types::ExportedSpans;
+use hax_cli_options::{PathOrDash, ENV_VAR_OPTIONS_FRONTEND};
+use hax_frontend_exporter;
+use hax_frontend_exporter::types::ExportedSpans;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::interface;
 use rustc_interface::{interface::Compiler, Queries};
@@ -20,10 +20,10 @@ use std::rc::Rc;
 /// Browse a crate and translate every item from HIR+THIR to "THIR'"
 /// (I call "THIR'" the AST described in this crate)
 fn convert_thir<'tcx>(
-    options: &circus_frontend_exporter_options::Options,
+    options: &hax_frontend_exporter_options::Options,
     macro_calls: HashMap<rustc_span::Span, rustc_ast::ast::MacCall>,
     tcx: TyCtxt<'tcx>,
-) -> (Vec<rustc_span::Span>, Vec<circus_frontend_exporter::Item>) {
+) -> (Vec<rustc_span::Span>, Vec<hax_frontend_exporter::Item>) {
     let hir = tcx.hir();
     let bodies = hir.body_owners();
 
@@ -62,7 +62,7 @@ fn convert_thir<'tcx>(
 
     let items = hir.items();
     let macro_calls_r = box macro_calls;
-    let state = circus_frontend_exporter::State {
+    let state = hax_frontend_exporter::State {
         tcx,
         options: box options.clone(),
         thir: (),
@@ -74,7 +74,7 @@ fn convert_thir<'tcx>(
         exported_spans: Rc::new(RefCell::new(HashSet::new())),
     };
 
-    let result = circus_frontend_exporter::inline_macro_invocations(&items.collect(), &state);
+    let result = hax_frontend_exporter::inline_macro_invocations(&items.collect(), &state);
     let exported_spans = state.exported_spans.borrow().clone();
     (exported_spans.into_iter().collect(), result)
 }
@@ -99,22 +99,22 @@ fn collect_macros(
     v.macro_calls
 }
 
-const ENGINE_BINARY_NAME: &str = "circus-engine";
+const ENGINE_BINARY_NAME: &str = "hax-engine";
 const ENGINE_BINARY_NOT_FOUND: &str = const_format::formatcp!(
     "The binary [{}] was not found in your [PATH].",
     ENGINE_BINARY_NAME,
 );
 
 /// Dynamically looks for binary [ENGINE_BINARY_NAME].  First, we
-/// check whether [CIRCUS_ENGINE_BINARY] is set, and use that if it
+/// check whether [HAX_ENGINE_BINARY] is set, and use that if it
 /// is. Then, we try to find [ENGINE_BINARY_NAME] in PATH. If not
 /// found, detect whether nodejs is available, download the JS-compiled
 /// engine and use it.
 use std::process;
-fn find_circus_engine() -> process::Command {
+fn find_hax_engine() -> process::Command {
     use which::which;
 
-    std::env::var("CIRCUS_ENGINE_BINARY")
+    std::env::var("HAX_ENGINE_BINARY")
         .ok()
         .map(|name| process::Command::new(name))
         .or_else(|| {
@@ -147,13 +147,13 @@ fn find_circus_engine() -> process::Command {
 /// Callback for extraction
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct ExtractionCallbacks {
-    pub inline_macro_calls: Vec<circus_cli_options::Namespace>,
-    pub command: circus_cli_options::ExporterCommand,
+    pub inline_macro_calls: Vec<hax_cli_options::Namespace>,
+    pub command: hax_cli_options::ExporterCommand,
 }
 
-impl From<ExtractionCallbacks> for circus_frontend_exporter_options::Options {
-    fn from(opts: ExtractionCallbacks) -> circus_frontend_exporter_options::Options {
-        circus_frontend_exporter_options::Options {
+impl From<ExtractionCallbacks> for hax_frontend_exporter_options::Options {
+    fn from(opts: ExtractionCallbacks) -> hax_frontend_exporter_options::Options {
+        hax_frontend_exporter_options::Options {
             inline_macro_calls: opts.inline_macro_calls,
         }
     }
@@ -177,18 +177,18 @@ impl Callbacks for ExtractionCallbacks {
         queries.global_ctxt().unwrap().peek_mut().enter(|tcx| {
             let (spans, converted_items) = convert_thir(&self.clone().into(), macro_calls, tcx);
 
-            use circus_cli_options::ExporterCommand;
+            use hax_cli_options::ExporterCommand;
             match self.command.clone() {
                 ExporterCommand::JSON { output_file } => {
                     serde_json::to_writer_pretty(output_file.open_or_stdout(), &converted_items)
                         .unwrap()
                 }
                 ExporterCommand::Backend(backend) => {
-                    let engine_options = circus_cli_options_engine::EngineOptions {
+                    let engine_options = hax_cli_options_engine::EngineOptions {
                         backend: backend.clone(),
                         input: converted_items,
                     };
-                    let mut engine_subprocess = find_circus_engine()
+                    let mut engine_subprocess = find_hax_engine()
                         .stdin(std::process::Stdio::piped())
                         .stdout(std::process::Stdio::piped())
                         .spawn()
@@ -224,7 +224,7 @@ impl Callbacks for ExtractionCallbacks {
                         ));
                         return Compilation::Stop;
                     }
-                    let output: circus_cli_options_engine::Output =
+                    let output: hax_cli_options_engine::Output =
                         serde_json::from_slice(out.stdout.as_slice()).unwrap_or_else(|_| {
                             panic!(
                                 "{} outputed incorrect JSON {}",
@@ -233,8 +233,8 @@ impl Callbacks for ExtractionCallbacks {
                             )
                         });
                     let options_frontend =
-                        box circus_frontend_exporter_options::Options::from(self.clone()).clone();
-                    let state = circus_frontend_exporter::State {
+                        box hax_frontend_exporter_options::Options::from(self.clone()).clone();
+                    let state = hax_frontend_exporter::State {
                         tcx,
                         options: options_frontend,
                         thir: (),
@@ -272,15 +272,15 @@ impl Callbacks for ExtractionCallbacks {
                         }
                     } else {
                         for d in output.diagnostics.clone() {
-                            use circus_diagnostics::*;
-                            use circus_frontend_exporter::SInto;
+                            use hax_diagnostics::*;
+                            use hax_frontend_exporter::SInto;
                             let mut relevant_spans: Vec<_> = spans
                                 .iter()
                                 .filter(|span| span.sinto(&state) == d.span)
                                 .cloned()
                                 .collect();
                             relevant_spans.sort();
-                            session.span_circus_err(
+                            session.span_hax_err(
                                 d.set_span(
                                     relevant_spans
                                         .first()

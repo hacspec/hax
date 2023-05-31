@@ -2,7 +2,7 @@
 
 set -x -e
 
-# Install the Rust CLI & frontend, providing `cargo-circus` and `driver-circus`:
+# Install the Rust CLI & frontend, providing `cargo-hax` and `driver-hax`:
 cargo install --path cli/driver && cargo install --path cli/subcommands
 
 # Install the OCaml engine:

@@ -1,6 +1,6 @@
-{craneLib, stdenv, makeWrapper, lib, rustc, gcc, circus-engine, doCheck ? true }:
+{craneLib, stdenv, makeWrapper, lib, rustc, gcc, hax-engine, doCheck ? true }:
 let
-  pname = "circus";
+  pname = "hax";
   commonArgs = {
     version = "0.0.1";
     src = lib.cleanSourceWith {
@@ -23,13 +23,13 @@ let
   cargoArtifacts = craneLib.buildDepsOnly (commonArgs // {
     pname = pname;
   });
-  circus = craneLib.buildPackage (commonArgs // {
+  hax = craneLib.buildPackage (commonArgs // {
     inherit cargoArtifacts pname;
   });
-  binaries = [ circus circus-engine rustc gcc ];
+  binaries = [ hax hax-engine rustc gcc ];
   tests = craneLib.buildPackage (commonArgs // {
     inherit cargoArtifacts;
-    pname = "circus-tests";
+    pname = "hax-tests";
     doCheck = true;
     CI = "true";
     cargoBuildCommand = "true";
@@ -47,17 +47,17 @@ let
   });
 in
 stdenv.mkDerivation {
-  name = circus.name;
+  name = hax.name;
   buildInputs = [ makeWrapper ];
   phases = ["installPhase"];
   installPhase = ''
       mkdir -p $out/bin
-      makeWrapper ${circus}/bin/cargo-circus $out/bin/cargo-circus \
+      makeWrapper ${hax}/bin/cargo-hax $out/bin/cargo-hax \
         --prefix PATH : ${lib.makeBinPath binaries}
     '';
-  meta.mainProgram = "cargo-circus";
+  meta.mainProgram = "cargo-hax";
   passthru = {
-    unwrapped = circus;
+    unwrapped = hax;
     inherit tests;
   };
 }

@@ -21,13 +21,13 @@ info:
 exit = 0
 stderr = '''
 Compiling fnmut v0.1.0 (WORKSPACE_ROOT/lint/rust/fnmut)
-warning: [Circus] FnMut is not supported
+warning: [Hax] FnMut is not supported
  --> lint/rust/fnmut/src/lib.rs:8:12
   |
 8 |         F: FnMut(u32) -> u8;
   |            ^^^^^
 
-warning: [Circus] FnMut is not supported
+warning: [Hax] FnMut is not supported
   --> lint/rust/fnmut/src/lib.rs:16:12
    |
 16 |         F: FnMut(u32) -> u8,

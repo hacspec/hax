@@ -1,6 +1,6 @@
 (library
  (name fstar_surface_ast)
- (package circus-engine)
+ (package hax-engine)
  (libraries batteries zarith stdint ppxlib menhirLib pprint)
  (wrapped false)
  (preprocess

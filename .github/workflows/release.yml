@@ -1,4 +1,4 @@
-name: Release binaries for circus-engine
+name: Release binaries for hax-engine
 
 on:
   push:
@@ -19,10 +19,10 @@ jobs:
         name: hacspec
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - name: Build JS
-      run: nix build .#circus-engine.passthru.js -L -o circus-engine.js
+      run: nix build .#hax-engine.passthru.js -L -o hax-engine.js
 
     - run: |
-        tar --dereference -czf hacspec_js.tar.gz circus-engine.js
+        tar --dereference -czf hacspec_js.tar.gz hax-engine.js
 
     - name: Release
       uses: softprops/action-gh-release@v1
@@ -62,8 +62,8 @@ jobs:
         working-directory: engine
 
       - run: |
-          cp engine/_build/default/bin/native_driver.exe  circus-engine
-          tar -czf hacspec_${{ matrix.os }}.tar.gz circus-engine
+          cp engine/_build/default/bin/native_driver.exe  hax-engine
+          tar -czf hacspec_${{ matrix.os }}.tar.gz hax-engine
         
       - name: Release
         uses: softprops/action-gh-release@v1

@@ -1,6 +1,6 @@
 # `ppx_generate_features`
 
-Specific to `circus-engine`: 
+Specific to `hax-engine`: 
     - generates a `FEATURES` module type;
     - modules `Off` and `On` of type `FEATURES`, one with every feature type set to `on`, the other with every feature type set to `off`;
     - a `SUBSET.T` module type that describe a subtyping relation between two modules of type `FEATURES`;

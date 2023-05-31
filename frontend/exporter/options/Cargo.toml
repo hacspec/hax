@@ -1,5 +1,5 @@
 [package]
-name = "circus-frontend-exporter-options"
+name = "hax-frontend-exporter-options"
 version = "0.1.0"
 edition = "2021"
 

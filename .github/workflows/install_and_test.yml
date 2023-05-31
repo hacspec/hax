@@ -48,7 +48,7 @@ jobs:
               fi
             done
             echo "::group::$crate [$backend]"
-            cargo circus -C -p "$crate" \; into "$backend"
+            cargo hax -C -p "$crate" \; into "$backend"
             echo "::endgroup::"
           done
         done

@@ -23,18 +23,18 @@
       in rec {
         packages = {
           inherit rustc;
-          circus-engine = pkgs.callPackage ./engine {
-            circus-rust-frontend = packages.circus-rust-frontend.unwrapped;
+          hax-engine = pkgs.callPackage ./engine {
+            hax-rust-frontend = packages.hax-rust-frontend.unwrapped;
             inherit rustc;
           };
-          circus-rust-frontend = pkgs.callPackage ./cli {
+          hax-rust-frontend = pkgs.callPackage ./cli {
             inherit rustc craneLib;
-            inherit (packages) circus-engine;
+            inherit (packages) hax-engine;
           };
-          circus = packages.circus-rust-frontend;
-          default = packages.circus;
+          hax = packages.hax-rust-frontend;
+          default = packages.hax;
         };
-        checks.default = packages.circus.tests;
+        checks.default = packages.hax.tests;
         apps = {
           serve-rustc-docs = { type = "app"; program = "${pkgs.writeScript "serve-rustc-docs" ''
              cd ${packages.rustc.passthru.availableComponents.rustc-docs}/share/doc/rust/html/rustc
@@ -44,8 +44,8 @@
         devShells = {
           default = pkgs.mkShell {
             inputsFrom = [
-              packages.circus-rust-frontend.unwrapped
-              packages.circus-engine
+              packages.hax-rust-frontend.unwrapped
+              packages.hax-engine
             ];
             packages = [
               pkgs.ocamlformat

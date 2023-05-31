@@ -2,12 +2,17 @@
  (name lib)
  (modules lib)
  (wrapped false)
- (libraries circus_engine fstar_backend coq_backend easycrypt_backend core)
+ (libraries hax_engine fstar_backend coq_backend easycrypt_backend core)
  (preprocess
-  (pps ppx_yojson_conv ppx_deriving.show ppx_deriving.eq ppx_matches ppx_string)))
+  (pps
+   ppx_yojson_conv
+   ppx_deriving.show
+   ppx_deriving.eq
+   ppx_matches
+   ppx_string)))
 
 (executable
- (public_name circus-engine)
+ (public_name hax-engine)
  (name native_driver)
  (modules native_driver)
  (libraries lib))

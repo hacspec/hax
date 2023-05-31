@@ -1,11 +1,11 @@
-use circus_cli_options::*;
+use hax_cli_options::*;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
 pub struct EngineOptions {
     pub backend: BackendOptions,
-    pub input: Vec<circus_frontend_exporter::Item>,
+    pub input: Vec<hax_frontend_exporter::Item>,
 }
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
@@ -16,6 +16,6 @@ pub struct File {
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
 pub struct Output {
-    pub diagnostics: Vec<circus_diagnostics::Diagnostics<circus_frontend_exporter::Span>>,
+    pub diagnostics: Vec<hax_diagnostics::Diagnostics<hax_frontend_exporter::Span>>,
     pub files: Vec<File>,
 }

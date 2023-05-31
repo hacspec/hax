@@ -4,7 +4,7 @@ let
     version = "0.0.1";
     src = craneLib.cleanCargoSource ./.;
   };
-  pname = "circus-rust-frontend";
+  pname = "hax-rust-frontend";
   cargoArtifacts = craneLib.buildDepsOnly (commonArgs // {
     pname = "${pname}-deps";
   });
@@ -12,24 +12,24 @@ in
 craneLib.buildPackage (commonArgs // {
   inherit cargoArtifacts pname;
 })
-# circus // {
-#   passthru = circus.passthru or {} // {
-#     wrapped = circus-engine: stdenv.mkDerivation {
-#       name = "circus";
+# hax // {
+#   passthru = hax.passthru or {} // {
+#     wrapped = hax-engine: stdenv.mkDerivation {
+#       name = "hax";
 #       buildInputs = [ makeWrapper ];
 #       phases = ["installPhase"];
 #       installPhase = ''
 #       mkdir -p $out/bin
-#       makeWrapper ${circus}/bin/cargo-circus $out/bin/cargo-circus \
+#       makeWrapper ${hax}/bin/cargo-hax $out/bin/cargo-hax \
 #         --prefix PATH : ${
 #           lib.makeBinPath [
-#             circus
-#             circus-engine
+#             hax
+#             hax-engine
 #             rustc gcc
 #           ]
 #         }
 #     '';
-#       meta.mainProgram = "cargo-circus";
+#       meta.mainProgram = "cargo-hax";
 #     };
 #   };
 # }

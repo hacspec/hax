@@ -1,6 +1,6 @@
 (library
  (name ppx_generate_features)
- (package circus-engine)
+ (package hax-engine)
  (kind ppx_rewriter)
  (libraries ppxlib base)
  (preprocess

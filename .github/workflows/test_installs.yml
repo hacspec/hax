@@ -32,14 +32,14 @@ jobs:
       run: |
         export OPAMERRLOGLEN=0
         ./setup.sh
-    - run: cargo circus --version
+    - run: cargo hax --version
     - name: Test an extraction
       uses: actions/checkout@v3
       with:
         repository: 'hacspec/specs'
     - run: |
         eval $(opam env)
-        cargo circus -C -p hacspec-chacha20 \; -i '**' into fstar
+        cargo hax -C -p hacspec-chacha20 \; -i '**' into fstar
   ci-success-bors:
     name: ci-success-bors
     if: ${{ success() }}

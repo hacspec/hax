@@ -17,8 +17,8 @@ macro_rules! set_empty_env_var_with_git {
 
 fn main() {
     set_empty_env_var_with_git!(
-        "CIRCUS_GIT_DESCRIBE",
+        "HAX_GIT_DESCRIBE",
         ["describe", "--tags", "--always", "--abbrev=0"]
     );
-    set_empty_env_var_with_git!("CIRCUS_GIT_COMMIT_HASH", ["rev-parse", "HEAD"]);
+    set_empty_env_var_with_git!("HAX_GIT_COMMIT_HASH", ["rev-parse", "HEAD"]);
 }

@@ -2,7 +2,7 @@
 
 // rustc middle
 extern crate rustc_middle;
-use circus_diagnostics::error;
+use hax_diagnostics::error;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::ty::TyCtxt;
 

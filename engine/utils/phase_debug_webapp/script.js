@@ -168,7 +168,7 @@ function json(json) {
 
 const SEED = Date.now();
 async function phases_viewer(state = {index: 0, ast_focus: null, seed: SEED}) {
-    let data = await (await fetch('debug-circus-engine.json?seed='+state.seed)).json();
+    let data = await (await fetch('debug-hax-engine.json?seed='+state.seed)).json();
     if (!data[state.index] && state.index != 0) {
         return phases_viewer({...state, index: 0});
     };

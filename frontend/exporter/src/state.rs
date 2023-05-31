@@ -100,7 +100,7 @@ pub mod types {
     use std::rc::Rc;
     pub type LocalIdentMap = Rc<RefCell<HashMap<rustc_middle::thir::LocalVarId, String>>>;
     pub type MacroCalls = Box<HashMap<rustc_span::Span, rustc_ast::ast::MacCall>>;
-    pub type Options = Box<circus_frontend_exporter_options::Options>;
+    pub type Options = Box<hax_frontend_exporter_options::Options>;
     pub type OptDefId = Option<rustc_hir::def_id::DefId>;
     pub type ExportedSpans = Rc<RefCell<HashSet<rustc_span::Span>>>;
     pub type Thirs<'tcx> = HashMap<

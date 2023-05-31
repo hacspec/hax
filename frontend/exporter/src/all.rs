@@ -1142,7 +1142,7 @@ pub fn raw_macro_invocation_of_span<'t, S: BaseState<'t>>(
     span: rustc_span::Span,
     state: &S,
 ) -> Option<(DefId, rustc_span::hygiene::ExpnData)> {
-    let box opts: Box<circus_frontend_exporter_options::Options> = state.options();
+    let box opts: Box<hax_frontend_exporter_options::Options> = state.options();
     let box macro_calls: Box<HashMap<rustc_span::Span, rustc_ast::ast::MacCall>> =
         state.macro_infos();
 
