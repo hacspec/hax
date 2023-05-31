@@ -732,6 +732,11 @@ struct
                 F.decls_of_string @@ "unfold type "
                 ^ str_of_type_ident e.span (hacspec_lib_item @@ o.bytes_name)
                 ^ "  = lseq uint8 " ^ o.size
+            | "public_bytes" ->
+                let o = Bytes.parse argument |> unwrap in
+                F.decls_of_string @@ "unfold type "
+                ^ str_of_type_ident e.span (hacspec_lib_item @@ o.bytes_name)
+                ^ "  = lseq uint8 " ^ o.size
             | "array" ->
                 let o = Array.parse argument |> unwrap in
                 let typ =

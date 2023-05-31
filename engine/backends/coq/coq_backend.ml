@@ -881,8 +881,7 @@ struct
         [
           C.AST.Notation
             ( o.bytes_name ^ "_t",
-              C.AST.ArrayTy
-                (C.AST.Int (C.AST.U8, false), (* int_of_string *) o.size) );
+              C.AST.ArrayTy (C.AST.Int (C.AST.U8, false), o.size) );
           C.AST.Definition
             ( o.bytes_name,
               [],
@@ -930,9 +929,7 @@ struct
         } ->
         let open Hacspeclib_macro_parser in
         let o : Bytes.t = Bytes.parse argument |> Result.ok_or_failwith in
-        let typ =
-          C.AST.ArrayTy (C.AST.Int (C.AST.U8, false), (* int_of_string *) o.size)
-        in
+        let typ = C.AST.ArrayTy (C.AST.Int (C.AST.U8, false), o.size) in
         [
           C.AST.Notation (o.bytes_name ^ "_t", typ);
           C.AST.Definition
