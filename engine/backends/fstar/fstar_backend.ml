@@ -349,6 +349,7 @@ struct
   let operators =
     let c = GlobalIdent.of_string_exn in
     [
+      (c "core::ops::index::IndexMut::update_at", (3, ".[]<-"));
       (c "std::core::array::update_array_at", (3, ".[]<-"));
       (c "core::ops::index::Index::index", (2, ".[]"));
       (c "core::ops::bit::BitXor::bitxor", (2, "^."));
