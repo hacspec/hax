@@ -120,9 +120,9 @@ functor
           let ty_def, ty_str = ty_to_string t in
           (ty_def, "seq" ^ " " ^ ty_str)
       | AST.AppTy (i, []) -> ([], i)
-      | AST.AppTy (i, [ y ]) ->
-          let ty_defs, ty_str = ty_to_string y in
-          (ty_defs, i ^ " " ^ ty_str)
+      (* | AST.AppTy (i, [ y ]) -> *)
+      (*     let ty_defs, ty_str = ty_to_string y in *)
+      (*     (ty_defs, i ^ " " ^ ty_str) *)
       | AST.AppTy (i, p) ->
           let ty_def, ty_str = product_to_string p ") (" in
           (ty_def, i ^ " " ^ "(" ^ ty_str ^ ")")
@@ -248,9 +248,7 @@ functor
           (* TODO: Make definitions? *)
           (ty_str, true (* TODO? does this always need paren? *))
       | AST.Lambda (params, body) ->
-          ( "fun"
-            ^ lambda_params_to_string params depth
-            ^ " " ^ "=>"
+          ( lambda_params_to_string params depth
             ^ newline_indent (depth + 1)
             ^ term_to_string_without_paren body (depth + 1),
             true )
@@ -286,7 +284,7 @@ functor
     and lambda_params_to_string (params : AST.pat list) depth : string =
       match params with
       | x :: xs ->
-          " " ^ pat_to_string x true depth ^ lambda_params_to_string xs depth
+          "fun" ^ " " ^ pat_to_string x true depth ^ " " ^ "=>" ^ lambda_params_to_string xs depth
       | [] -> ""
 
     and term_to_string_with_paren (x : AST.term) depth : string =

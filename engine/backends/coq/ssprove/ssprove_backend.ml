@@ -61,15 +61,15 @@ open AST
 module SSProveLibrary : Library = struct
   module Notation = struct
     let int_repr (x : string) (i : string) : string =
-      "(@repr" ^ " " ^ "U" ^ x ^ " " ^ i ^ ")"
+      "(" ^ "lift_to_both0" ^ " " ^ "(" ^ i ^ " " ^ ":" ^ " " ^ "int" ^ x ^ ")" ^ ")"
 
-    let let_stmt (var : string) (typ : string) (expr : string) (body : string)
+    let let_stmt (var : string) (expr : string) (typ : string) (body : string)
         (depth : int) : string =
-      "let" ^ " " ^ var ^ ":" ^ typ ^ ":=" ^ " " ^ expr ^ " " ^ "in"
-      ^ newline_indent depth ^ body
+      "letb" ^ " " ^ var ^ " " ^ ":=" ^ " (" ^ expr ^ ") " ^ ":" ^ " " ^ "both0" ^ "(" ^ typ ^ ")"
+      ^ " " ^ "in" ^ newline_indent depth ^ body
 
     let let_mut_stmt = let_stmt
-    let tuple_prefix : string = ""
+    let tuple_prefix : string = "prod_b0"
   end
 end
 
@@ -78,9 +78,6 @@ module SSP = Coq (SSProveLibrary)
 module Context = struct
   type t = { current_namespace : string * string list }
 end
-
-let tabsize = 2
-let newline_indent depth : string = "\n" ^ String.make (tabsize * depth) ' '
 
 let primitive_to_string (id : primitive_ident) : string =
   match id with
@@ -265,8 +262,8 @@ struct
   let operators =
     let c = GlobalIdent.of_string_exn in
     [
-      (c "std::core::array::update_array_at", (3, [ ""; ".["; "]<-"; "" ]));
-      (c "core::ops::index::Index::index", (2, [ ""; ".["; "]" ]));
+      (c "std::core::array::update_array_at", (3, [ "nseq_array_or_seq "; ".["; "]<-"; "" ]));
+      (c "core::ops::index::Index::index", (2, [ "nseq_array_or_seq "; ".["; "]" ]));
       (c "core::ops::bit::BitXor::bitxor", (2, [ ""; ".^"; "" ]));
       (c "core::ops::bit::BitAnd::bitand", (2, [ ""; ".&"; "" ]));
       (c "core::ops::bit::BitOr::bitor", (2, [ ""; ".|"; "" ]));
@@ -290,7 +287,7 @@ struct
       (`Primitive (BinOp Shl), (2, [ ""; " shift_left "; "" ]));
       (`Primitive (BinOp Shr), (2, [ ""; " shift_right "; "" ]));
       (c "secret_integers::rotate_left", (2, [ "rol "; " "; "" ]));
-      (c "hacspec::lib::foldi", (4, [ "foldi "; " "; " "; " "; "" ]));
+      (c "hacspec::lib::foldi", (4, [ "foldi_both' "; " "; " (ssp"; ") "; "" ]));
       (* (c "secret_integers::u8", (0, ["U8"])); *)
       (* (c "secret_integers::u16", (0, ["U16"])); *)
       (* (c "secret_integers::u32", (0, ["U32"])); *)
@@ -391,13 +388,13 @@ struct
     match e.v with
     | Fn { name; generics; body; params } ->
         [
-          SSP.AST.Definition
+          SSP.AST.ProgramDefinition
             ( pglobal_ident name,
               List.map
-                ~f:(fun { pat; typ; typ_span } -> (ppat pat, pty span typ))
+                ~f:(fun { pat; typ; typ_span } -> (ppat pat, SSP.AST.AppTy ("both0", [pty span typ])))
                 params,
               pexpr body,
-              pty span body.typ );
+              SSP.AST.AppTy ("both0", [pty span body.typ]) );
         ]
     | TyAlias { name; generics; ty } ->
         [ SSP.AST.Notation (pglobal_ident name ^ "_t", pty span ty) ]
@@ -441,8 +438,8 @@ struct
               [],
               SSP.AST.Var "id",
               SSP.AST.Arrow
-                ( SSP.AST.Name (pglobal_ident_last name ^ "_t"),
-                  SSP.AST.Name (pglobal_ident_last name ^ "_t") ) );
+                ( SSP.AST.AppTy ("both0", [SSP.AST.Name (pglobal_ident_last name ^ "_t")]),
+                  SSP.AST.AppTy ("both0", [SSP.AST.Name (pglobal_ident_last name ^ "_t")]) ) );
         ]
     | IMacroInvokation
         {
@@ -467,8 +464,8 @@ struct
               [],
               SSP.AST.Var "id",
               SSP.AST.Arrow
-                ( SSP.AST.Name (o.type_name ^ "_t"),
-                  SSP.AST.Name (o.type_name ^ "_t") ) );
+                ( SSP.AST.AppTy ("both0", [SSP.AST.Name (o.type_name ^ "_t")]),
+                  SSP.AST.AppTy ("both0", [SSP.AST.Name (o.type_name ^ "_t")]) ) );
         ]
     | IMacroInvokation
         {
@@ -485,14 +482,14 @@ struct
             ( o.bytes_name ^ "_t",
               SSP.AST.ArrayTy
                 ( SSP.AST.Int { size = SSP.AST.U8; signed = false },
-                  (* int_of_string *) o.size ) );
+                  (* int_of_string *) o.size ));
           SSP.AST.Definition
             ( o.bytes_name,
               [],
               SSP.AST.Var "id",
               SSP.AST.Arrow
-                ( SSP.AST.Name (o.bytes_name ^ "_t"),
-                  SSP.AST.Name (o.bytes_name ^ "_t") ) );
+                ( SSP.AST.AppTy ("both0", [SSP.AST.Name (o.bytes_name ^ "_t")]),
+                  SSP.AST.AppTy ("both0", [SSP.AST.Name (o.bytes_name ^ "_t")]) ) );
         ]
     | IMacroInvokation
         {
@@ -519,8 +516,8 @@ struct
               [],
               SSP.AST.Var "id",
               SSP.AST.Arrow
-                ( SSP.AST.Name (o.integer_name ^ "_t"),
-                  SSP.AST.Name (o.integer_name ^ "_t") ) );
+                ( SSP.AST.AppTy ("both0", [SSP.AST.Name (o.integer_name ^ "_t")]),
+                  SSP.AST.AppTy ("both0", [SSP.AST.Name (o.integer_name ^ "_t")]) ) );
         ]
     | IMacroInvokation
         {
@@ -545,8 +542,8 @@ struct
               [],
               SSP.AST.Var "id",
               SSP.AST.Arrow
-                ( SSP.AST.Name (o.bytes_name ^ "_t"),
-                  SSP.AST.Name (o.bytes_name ^ "_t") ) );
+                ( SSP.AST.AppTy ("both0", [SSP.AST.Name (o.bytes_name ^ "_t")]),
+                  SSP.AST.AppTy ("both0", [SSP.AST.Name (o.bytes_name ^ "_t")]) ) );
         ]
     | IMacroInvokation
         {
@@ -583,8 +580,10 @@ struct
               [],
               SSP.AST.Var "id",
               SSP.AST.Arrow
-                ( SSP.AST.Name (o.array_name ^ "_t"),
-                  SSP.AST.Name (o.array_name ^ "_t") ) );
+                ( SSP.AST.AppTy ("both0",
+[SSP.AST.Name (o.array_name ^ "_t")]),
+                  SSP.AST.AppTy ("both0",
+[SSP.AST.Name (o.array_name ^ "_t")]) ) );
         ]
     | IMacroInvokation { macro; _ } ->
         Error.raise
@@ -723,7 +722,9 @@ let hardcoded_coq_headers =
      From Hacspec Require Import Hacspec_Lib_Comparable.\n\
      From Hacspec Require Import Hacspec_Lib_Pre.\n\
      From Hacspec Require Import Hacspec_Lib.\n\n\
-     Open Scope hacspec_scope.\n"
+     Open Scope hacspec_scope.\n\
+     Import choice.Choice.Exports.\n\n\
+     Obligation Tactic := try timeout 8 solve_ssprove_obligations.\n"
 
 let translate (bo : BackendOptions.t) (items : AST.item list) :
     Raw_thir_ast.output =
