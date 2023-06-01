@@ -11,9 +11,6 @@ module type Library = sig
   end
 end
 
-let tabsize = 2
-let newline_indent depth : string = "\n" ^ String.make (tabsize * depth) ' '
-
 module Coq =
 functor
   (Lib : Library)
