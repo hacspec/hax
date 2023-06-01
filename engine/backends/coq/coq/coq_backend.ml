@@ -62,12 +62,17 @@ module CoqLibrary : Library = struct
   module Notation = struct
     let int_repr (x : string) (i : string) : string =
       "(@repr" ^ " " ^ "WORDSIZE" ^ x ^ " " ^ i ^ ")"
-    let let_stmt (var : string) (typ : string) (expr : string) (body : string) (depth : int) : string =
-      "let" ^ " " ^ var ^ ":" ^ typ ^ ":=" ^ " " ^ expr ^ "in" ^ newline_indent depth ^ body
+
+    let let_stmt (var : string) (typ : string) (expr : string) (body : string)
+        (depth : int) : string =
+      "let" ^ " " ^ var ^ ":" ^ typ ^ ":=" ^ " " ^ expr ^ "in"
+      ^ newline_indent depth ^ body
+
     let let_mut_stmt = let_stmt
     let tuple_prefix : string = ""
   end
 end
+
 module C = Coq (CoqLibrary)
 
 module Context = struct
@@ -167,13 +172,17 @@ struct
   open TODOs
 
   let pint_kind (k : int_kind) : C.AST.int_type =
-    { size = (match k.size with
-      | S8 -> U8
-      | S16 -> U16
-      | S32 -> U32
-      | S64 -> U64
-      | S128 -> U128
-      | SSize -> USize) ; signed = k.signedness == Signed }
+    {
+      size =
+        (match k.size with
+        | S8 -> U8
+        | S16 -> U16
+        | S32 -> U32
+        | S64 -> U64
+        | S128 -> U128
+        | SSize -> USize);
+      signed = k.signedness == Signed;
+    }
 
   let rec pliteral (e : literal) =
     match e with
@@ -331,15 +340,21 @@ struct
             Option.value_map else_ ~default:(C.AST.Literal "()") ~f:pexpr )
     | Array l -> C.AST.Array (List.map ~f:pexpr l)
     | Let { lhs; rhs; body; monadic = Some monad } ->
-      C.AST.Let { pattern = ppat lhs ;
-                  value = pexpr rhs ;
-                  body = pexpr body;
-                  value_typ = pty span lhs.typ }
+        C.AST.Let
+          {
+            pattern = ppat lhs;
+            value = pexpr rhs;
+            body = pexpr body;
+            value_typ = pty span lhs.typ;
+          }
     | Let { lhs; rhs; body; monadic = None } ->
-      C.AST.Let { pattern = ppat lhs ;
-                  value = pexpr rhs ;
-                  body = pexpr body;
-                  value_typ = pty span lhs.typ }
+        C.AST.Let
+          {
+            pattern = ppat lhs;
+            value = pexpr rhs;
+            body = pexpr body;
+            value_typ = pty span lhs.typ;
+          }
     | EffectAction _ -> __TODO_term__ span "monadic action"
     | Match { scrutinee; arms } ->
         C.AST.Match
@@ -469,7 +484,8 @@ struct
           C.AST.Notation
             ( o.bytes_name ^ "_t",
               C.AST.ArrayTy
-                (C.AST.Int {size = C.AST.U8 ; signed = false}, (* int_of_string *) o.size) );
+                ( C.AST.Int { size = C.AST.U8; signed = false },
+                  (* int_of_string *) o.size ) );
           C.AST.Definition
             ( o.bytes_name,
               [],
@@ -496,8 +512,8 @@ struct
           C.AST.Notation
             ( o.integer_name ^ "_t",
               C.AST.ArrayTy
-                (C.AST.Int {size = C.AST.U8 ; signed = false}, Int.to_string ((o.bits + 7) / 8))
-            );
+                ( C.AST.Int { size = C.AST.U8; signed = false },
+                  Int.to_string ((o.bits + 7) / 8) ) );
           C.AST.Definition
             ( o.integer_name,
               [],
@@ -518,7 +534,9 @@ struct
         let open Hacspeclib_macro_parser in
         let o : Bytes.t = Bytes.parse argument |> Result.ok_or_failwith in
         let typ =
-          C.AST.ArrayTy (C.AST.Int {size = C.AST.U8 ; signed = false}, (* int_of_string *) o.size)
+          C.AST.ArrayTy
+            ( C.AST.Int { size = C.AST.U8; signed = false },
+              (* int_of_string *) o.size )
         in
         [
           C.AST.Notation (o.bytes_name ^ "_t", typ);
@@ -557,8 +575,9 @@ struct
         [
           C.AST.Notation
             ( o.array_name ^ "_t",
-              C.AST.ArrayTy (C.AST.Int {size = typ ; signed = false}, (* int_of_string *) o.size)
-            );
+              C.AST.ArrayTy
+                ( C.AST.Int { size = typ; signed = false },
+                  (* int_of_string *) o.size ) );
           C.AST.Definition
             ( o.array_name,
               [],
