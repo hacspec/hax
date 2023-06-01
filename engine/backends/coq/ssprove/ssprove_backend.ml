@@ -61,12 +61,13 @@ open AST
 module SSProveLibrary : Library = struct
   module Notation = struct
     let int_repr (x : string) (i : string) : string =
-      "(" ^ "lift_to_both0" ^ " " ^ "(" ^ i ^ " " ^ ":" ^ " " ^ "int" ^ x ^ ")" ^ ")"
+      "(" ^ "lift_to_both0" ^ " " ^ "(" ^ i ^ " " ^ ":" ^ " " ^ "int" ^ x ^ ")"
+      ^ ")"
 
     let let_stmt (var : string) (expr : string) (typ : string) (body : string)
         (depth : int) : string =
-      "letb" ^ " " ^ var ^ " " ^ ":=" ^ " (" ^ expr ^ ") " ^ ":" ^ " " ^ "both0" ^ "(" ^ typ ^ ")"
-      ^ " " ^ "in" ^ newline_indent depth ^ body
+      "letb" ^ " " ^ var ^ " " ^ ":=" ^ " (" ^ expr ^ ") " ^ ":" ^ " " ^ "both0"
+      ^ "(" ^ typ ^ ")" ^ " " ^ "in" ^ newline_indent depth ^ body
 
     let let_mut_stmt = let_stmt
     let tuple_prefix : string = "prod_b0"
@@ -150,7 +151,9 @@ struct
     let __TODO_pat__ _ s = SSP.AST.Ident (s ^ " todo(pat)")
     let __TODO_ty__ _ s : SSP.AST.ty = SSP.AST.Name (s ^ " todo(ty)")
     let __TODO_item__ _ s = SSP.AST.Unimplemented (s ^ " todo(item)")
-    let __TODO_term__ _ s = SSP.AST.Const (SSP.AST.Const_string (s ^ " todo(term)"))
+
+    let __TODO_term__ _ s =
+      SSP.AST.Const (SSP.AST.Const_string (s ^ " todo(term)"))
   end
 
   module TODOs = struct
@@ -231,7 +234,8 @@ struct
   let rec ppat (p : pat) : SSP.AST.pat =
     match p.p with
     | PWild -> SSP.AST.Wild
-    | PAscription { typ; pat } -> SSP.AST.AscriptionPat (ppat pat, pty p.span typ)
+    | PAscription { typ; pat } ->
+        SSP.AST.AscriptionPat (ppat pat, pty p.span typ)
     | PBinding
         {
           mut = Immutable;
@@ -262,8 +266,10 @@ struct
   let operators =
     let c = GlobalIdent.of_string_exn in
     [
-      (c "std::core::array::update_array_at", (3, [ "nseq_array_or_seq "; ".["; "]<-"; "" ]));
-      (c "core::ops::index::Index::index", (2, [ "nseq_array_or_seq "; ".["; "]" ]));
+      ( c "std::core::array::update_array_at",
+        (3, [ "nseq_array_or_seq "; ".["; "]<-"; "" ]) );
+      ( c "core::ops::index::Index::index",
+        (2, [ "nseq_array_or_seq "; ".["; "]" ]) );
       (c "core::ops::bit::BitXor::bitxor", (2, [ ""; ".^"; "" ]));
       (c "core::ops::bit::BitAnd::bitand", (2, [ ""; ".&"; "" ]));
       (c "core::ops::bit::BitOr::bitor", (2, [ ""; ".|"; "" ]));
@@ -391,10 +397,11 @@ struct
           SSP.AST.ProgramDefinition
             ( pglobal_ident name,
               List.map
-                ~f:(fun { pat; typ; typ_span } -> (ppat pat, SSP.AST.AppTy ("both0", [pty span typ])))
+                ~f:(fun { pat; typ; typ_span } ->
+                  (ppat pat, SSP.AST.AppTy ("both0", [ pty span typ ])))
                 params,
               pexpr body,
-              SSP.AST.AppTy ("both0", [pty span body.typ]) );
+              SSP.AST.AppTy ("both0", [ pty span body.typ ]) );
         ]
     | TyAlias { name; generics; ty } ->
         [ SSP.AST.Notation (pglobal_ident name ^ "_t", pty span ty) ]
@@ -438,8 +445,11 @@ struct
               [],
               SSP.AST.Var "id",
               SSP.AST.Arrow
-                ( SSP.AST.AppTy ("both0", [SSP.AST.Name (pglobal_ident_last name ^ "_t")]),
-                  SSP.AST.AppTy ("both0", [SSP.AST.Name (pglobal_ident_last name ^ "_t")]) ) );
+                ( SSP.AST.AppTy
+                    ("both0", [ SSP.AST.Name (pglobal_ident_last name ^ "_t") ]),
+                  SSP.AST.AppTy
+                    ("both0", [ SSP.AST.Name (pglobal_ident_last name ^ "_t") ])
+                ) );
         ]
     | IMacroInvokation
         {
@@ -464,8 +474,9 @@ struct
               [],
               SSP.AST.Var "id",
               SSP.AST.Arrow
-                ( SSP.AST.AppTy ("both0", [SSP.AST.Name (o.type_name ^ "_t")]),
-                  SSP.AST.AppTy ("both0", [SSP.AST.Name (o.type_name ^ "_t")]) ) );
+                ( SSP.AST.AppTy ("both0", [ SSP.AST.Name (o.type_name ^ "_t") ]),
+                  SSP.AST.AppTy ("both0", [ SSP.AST.Name (o.type_name ^ "_t") ])
+                ) );
         ]
     | IMacroInvokation
         {
@@ -482,14 +493,15 @@ struct
             ( o.bytes_name ^ "_t",
               SSP.AST.ArrayTy
                 ( SSP.AST.Int { size = SSP.AST.U8; signed = false },
-                  (* int_of_string *) o.size ));
+                  (* int_of_string *) o.size ) );
           SSP.AST.Definition
             ( o.bytes_name,
               [],
               SSP.AST.Var "id",
               SSP.AST.Arrow
-                ( SSP.AST.AppTy ("both0", [SSP.AST.Name (o.bytes_name ^ "_t")]),
-                  SSP.AST.AppTy ("both0", [SSP.AST.Name (o.bytes_name ^ "_t")]) ) );
+                ( SSP.AST.AppTy ("both0", [ SSP.AST.Name (o.bytes_name ^ "_t") ]),
+                  SSP.AST.AppTy ("both0", [ SSP.AST.Name (o.bytes_name ^ "_t") ])
+                ) );
         ]
     | IMacroInvokation
         {
@@ -516,8 +528,10 @@ struct
               [],
               SSP.AST.Var "id",
               SSP.AST.Arrow
-                ( SSP.AST.AppTy ("both0", [SSP.AST.Name (o.integer_name ^ "_t")]),
-                  SSP.AST.AppTy ("both0", [SSP.AST.Name (o.integer_name ^ "_t")]) ) );
+                ( SSP.AST.AppTy
+                    ("both0", [ SSP.AST.Name (o.integer_name ^ "_t") ]),
+                  SSP.AST.AppTy
+                    ("both0", [ SSP.AST.Name (o.integer_name ^ "_t") ]) ) );
         ]
     | IMacroInvokation
         {
@@ -542,8 +556,9 @@ struct
               [],
               SSP.AST.Var "id",
               SSP.AST.Arrow
-                ( SSP.AST.AppTy ("both0", [SSP.AST.Name (o.bytes_name ^ "_t")]),
-                  SSP.AST.AppTy ("both0", [SSP.AST.Name (o.bytes_name ^ "_t")]) ) );
+                ( SSP.AST.AppTy ("both0", [ SSP.AST.Name (o.bytes_name ^ "_t") ]),
+                  SSP.AST.AppTy ("both0", [ SSP.AST.Name (o.bytes_name ^ "_t") ])
+                ) );
         ]
     | IMacroInvokation
         {
@@ -580,10 +595,9 @@ struct
               [],
               SSP.AST.Var "id",
               SSP.AST.Arrow
-                ( SSP.AST.AppTy ("both0",
-[SSP.AST.Name (o.array_name ^ "_t")]),
-                  SSP.AST.AppTy ("both0",
-[SSP.AST.Name (o.array_name ^ "_t")]) ) );
+                ( SSP.AST.AppTy ("both0", [ SSP.AST.Name (o.array_name ^ "_t") ]),
+                  SSP.AST.AppTy ("both0", [ SSP.AST.Name (o.array_name ^ "_t") ])
+                ) );
         ]
     | IMacroInvokation { macro; _ } ->
         Error.raise
@@ -675,7 +689,8 @@ struct
         :: p_record span xs parrent_name
     | { name; arguments } :: xs ->
         ( pglobal_ident_last name,
-          SSP.AST.RecordTy (pglobal_ident name, p_record_record span arguments) )
+          SSP.AST.RecordTy (pglobal_ident name, p_record_record span arguments)
+        )
         :: p_record span xs parrent_name
     | _ -> []
 
@@ -705,26 +720,26 @@ let string_of_items =
   >> String.concat ~sep:"\n\n"
 
 let hardcoded_coq_headers =
-    "(* File automatically generated by Hacspec *)\n\
-     Set Warnings \"-notation-overridden,-ambiguous-paths\".\n\
-     From Crypt Require Import choice_type Package Prelude.\n\
-     Import PackageNotation.\n\
-     From extructures Require Import ord fset.\n\
-     From mathcomp Require Import ssrZ word.\n\
-     From Jasmin Require Import word.\n\n\
-     From Coq Require Import ZArith.\n\
-     Import List.ListNotations.\n\
-     Open Scope list_scope.\n\
-     Open Scope Z_scope.\n\
-     Open Scope bool_scope.\n\n\
-     From Hacspec Require Import ChoiceEquality.\n\
-     From Hacspec Require Import LocationUtility.\n\
-     From Hacspec Require Import Hacspec_Lib_Comparable.\n\
-     From Hacspec Require Import Hacspec_Lib_Pre.\n\
-     From Hacspec Require Import Hacspec_Lib.\n\n\
-     Open Scope hacspec_scope.\n\
-     Import choice.Choice.Exports.\n\n\
-     Obligation Tactic := try timeout 8 solve_ssprove_obligations.\n"
+  "(* File automatically generated by Hacspec *)\n\
+   Set Warnings \"-notation-overridden,-ambiguous-paths\".\n\
+   From Crypt Require Import choice_type Package Prelude.\n\
+   Import PackageNotation.\n\
+   From extructures Require Import ord fset.\n\
+   From mathcomp Require Import ssrZ word.\n\
+   From Jasmin Require Import word.\n\n\
+   From Coq Require Import ZArith.\n\
+   Import List.ListNotations.\n\
+   Open Scope list_scope.\n\
+   Open Scope Z_scope.\n\
+   Open Scope bool_scope.\n\n\
+   From Hacspec Require Import ChoiceEquality.\n\
+   From Hacspec Require Import LocationUtility.\n\
+   From Hacspec Require Import Hacspec_Lib_Comparable.\n\
+   From Hacspec Require Import Hacspec_Lib_Pre.\n\
+   From Hacspec Require Import Hacspec_Lib.\n\n\
+   Open Scope hacspec_scope.\n\
+   Import choice.Choice.Exports.\n\n\
+   Obligation Tactic := try timeout 8 solve_ssprove_obligations.\n"
 
 let translate (bo : BackendOptions.t) (items : AST.item list) :
     Raw_thir_ast.output =

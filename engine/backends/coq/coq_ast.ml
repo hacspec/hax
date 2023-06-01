@@ -284,7 +284,8 @@ functor
     and lambda_params_to_string (params : AST.pat list) depth : string =
       match params with
       | x :: xs ->
-          "fun" ^ " " ^ pat_to_string x true depth ^ " " ^ "=>" ^ lambda_params_to_string xs depth
+          "fun" ^ " " ^ pat_to_string x true depth ^ " " ^ "=>"
+          ^ lambda_params_to_string xs depth
       | [] -> ""
 
     and term_to_string_with_paren (x : AST.term) depth : string =
