@@ -54,10 +54,5 @@ jobs:
         done
       env:
         SKIPLIST: |
-          hacspec-riot-runqueue
-          hacspec-aes-jazz
           tls_cryptolib
           hacspec-merlin
-          hacspec-rsa-pkcs1
-          hacspec-bip-340
-          hacspec-rsa-fdh-vrf

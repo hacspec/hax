@@ -96,7 +96,10 @@ module Bytes = struct
 
     let parser =
       let* bytes_name = identifier <* comma in
-      let+ size = identifier in
+      let+ size =
+        identifier
+        (* this covers number and constants, but this leads to namespacing issues... *)
+      in
       { bytes_name; size }
 
     let name = "bytes"

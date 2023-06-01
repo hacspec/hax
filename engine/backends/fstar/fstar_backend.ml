@@ -349,6 +349,7 @@ struct
   let operators =
     let c = GlobalIdent.of_string_exn in
     [
+      (c "core::ops::index::IndexMut::update_at", (3, ".[]<-"));
       (c "std::core::array::update_array_at", (3, ".[]<-"));
       (c "core::ops::index::Index::index", (2, ".[]"));
       (c "core::ops::bit::BitXor::bitxor", (2, "^."));
@@ -385,6 +386,9 @@ struct
         } ->
         F.term
         @@ F.AST.Project (pexpr arg, F.lid [ "_" ^ string_of_int (n + 1) ])
+    | App { f = { e = GlobalVar (`Projector (`Concrete cid)) }; args = [ arg ] }
+      ->
+        F.term @@ F.AST.Project (pexpr arg, pconcrete_ident cid)
     | App { f = { e = GlobalVar x }; args } when Map.mem operators x ->
         let arity, op = Map.find_exn operators x in
         if List.length args <> arity then
@@ -728,6 +732,11 @@ struct
                 ^ "  = lseq pub_uint8 "
                 ^ string_of_int o.bit_size_of_field
             | "bytes" ->
+                let o = Bytes.parse argument |> unwrap in
+                F.decls_of_string @@ "unfold type "
+                ^ str_of_type_ident e.span (hacspec_lib_item @@ o.bytes_name)
+                ^ "  = lseq uint8 " ^ o.size
+            | "public_bytes" ->
                 let o = Bytes.parse argument |> unwrap in
                 F.decls_of_string @@ "unfold type "
                 ^ str_of_type_ident e.span (hacspec_lib_item @@ o.bytes_name)
