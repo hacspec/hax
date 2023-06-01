@@ -39,3 +39,6 @@ let split_list ~equal ~needle (subject : 'a list) : 'a list list =
 let split_str (s : string) ~(on : string) : string list =
   split_list ~equal:Char.equal ~needle:(String.to_list on) (String.to_list s)
   |> List.map ~f:String.of_char_list
+
+let tabsize = 2
+let newline_indent depth : string = "\n" ^ String.make (tabsize * depth) ' '

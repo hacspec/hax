@@ -63,9 +63,9 @@ module CoqLibrary : Library = struct
     let int_repr (x : string) (i : string) : string =
       "(@repr" ^ " " ^ "WORDSIZE" ^ x ^ " " ^ i ^ ")"
 
-    let let_stmt (var : string) (typ : string) (expr : string) (body : string)
+    let let_stmt (var : string) (expr : string) (typ : string) (body : string)
         (depth : int) : string =
-      "let" ^ " " ^ var ^ ":" ^ typ ^ ":=" ^ " " ^ expr ^ "in"
+      "let" ^ " " ^ var ^ " " ^ ":=" ^ " (" ^ expr ^ ") " ^ ":" ^ " " ^ typ ^ " " ^ "in"
       ^ newline_indent depth ^ body
 
     let let_mut_stmt = let_stmt
@@ -79,14 +79,11 @@ module Context = struct
   type t = { current_namespace : string * string list }
 end
 
-let tabsize = 2
-let newline_indent depth : string = "\n" ^ String.make (tabsize * depth) ' '
-
 let primitive_to_string (id : primitive_ident) : string =
   match id with
   | Box -> "(TODO: BOX)" (* failwith "Box" *)
   | Deref -> "(TODO: Deref)" (* failwith "Deref" *)
-  | Cast -> "(TODO: Cast)" (* failwith "Cast" *)
+  | Cast -> "cast" (* failwith "Cast" *)
   | BinOp op -> (
       match op with
       | Add -> "MachineIntegers.add"
