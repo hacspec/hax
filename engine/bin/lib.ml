@@ -56,6 +56,7 @@ let run () : Types.output =
         match options.backend.backend with
         | Fstar -> run (module Fstar_backend) ()
         | Coq -> run (module Coq_backend) ()
+        | Ssprove -> run (module Ssprove_backend) ()
         | Easycrypt -> run (module Easycrypt_backend) ())
   in
   {

@@ -52,7 +52,13 @@ functor
 
       type term =
         | UnitTerm
-        | Let of { pattern : pat; value : term; body : term; value_typ : ty }
+        | Let of {
+            pattern : pat;
+            mut : bool;
+            value : term;
+            body : term;
+            value_typ : ty;
+          }
         | If of term * term * term
         | Match of term * (pat * term) list
         | Const of literal
@@ -69,13 +75,17 @@ functor
 
       (* TODO: I don't get why you've got InductiveCase VS BaseCase. Why not an inductive case (i.e. a variant, right?) is a name + a list of types? *)
       type inductive_case = InductiveCase of string * ty | BaseCase of string
-      type definition_type = string * (pat * ty) list * term * ty
+
+      type definition_type =
+        string * (pat * ty) list * (pat * ty) list * term * ty
+
       type generics_type = string list
 
       type decl =
         | Unimplemented of string
         | Definition of definition_type
         | ProgramDefinition of definition_type
+        | Equations of definition_type
         | Notation of string * ty
         | Record of string * (string * ty) list
         | Inductive of string * generics_type * inductive_case list
@@ -122,9 +132,9 @@ functor
           let ty_def, ty_str = ty_to_string t in
           (ty_def, "seq" ^ " " ^ ty_str)
       | AST.AppTy (i, []) -> ([], i)
-      | AST.AppTy (i, [ y ]) ->
-          let ty_defs, ty_str = ty_to_string y in
-          (ty_defs, i ^ " " ^ ty_str)
+      (* | AST.AppTy (i, [ y ]) -> *)
+      (*     let ty_defs, ty_str = ty_to_string y in *)
+      (*     (ty_defs, i ^ " " ^ ty_str) *)
       | AST.AppTy (i, p) ->
           let ty_def, ty_str = product_to_string p ") (" in
           (ty_def, i ^ " " ^ "(" ^ ty_str ^ ")")
@@ -204,10 +214,11 @@ functor
     let rec term_to_string (x : AST.term) depth : string * bool =
       match x with
       | AST.UnitTerm -> ("tt", false)
-      | AST.Let { pattern = pat; value = bind; value_typ = typ; body = term } ->
+      | AST.Let
+          { pattern = pat; mut; value = bind; value_typ = typ; body = term } ->
           let _, ty_str = ty_to_string typ in
           (* TODO: propegate type definition *)
-          ( Lib.Notation.let_stmt
+          ( (if mut then Lib.Notation.let_mut_stmt else Lib.Notation.let_stmt)
               (pat_to_string pat true depth)
               (term_to_string_without_paren bind (depth + 1))
               ty_str
@@ -253,9 +264,7 @@ functor
           (* TODO: Make definitions? *)
           (ty_str, true (* TODO? does this always need paren? *))
       | AST.Lambda (params, body) ->
-          ( "fun"
-            ^ lambda_params_to_string params depth
-            ^ " " ^ "=>"
+          ( lambda_params_to_string params depth
             ^ newline_indent (depth + 1)
             ^ term_to_string_without_paren body (depth + 1),
             true )
@@ -291,7 +300,8 @@ functor
     and lambda_params_to_string (params : AST.pat list) depth : string =
       match params with
       | x :: xs ->
-          " " ^ pat_to_string x true depth ^ lambda_params_to_string xs depth
+          "fun" ^ " " ^ pat_to_string x true depth ^ " " ^ "=>"
+          ^ lambda_params_to_string xs depth
       | [] -> ""
 
     and term_to_string_with_paren (x : AST.term) depth : string =
@@ -333,20 +343,34 @@ functor
     let rec decl_to_string (x : AST.decl) : string =
       match x with
       | AST.Unimplemented s -> "(*" ^ s ^ "*)"
-      | AST.Definition (name, params, term, ty) ->
+      | AST.Definition (name, implicit_params, params, term, ty) ->
           let definitions, ty_str = ty_to_string ty in
           decl_list_to_string definitions
-          ^ "Definition" ^ " " ^ name ^ " " ^ params_to_string params ^ ":"
-          ^ " " ^ ty_str ^ " " ^ ":=" ^ newline_indent 1
+          ^ "Definition" ^ " " ^ name ^ " "
+          ^ params_to_string_typed (fun x -> "{" ^ x ^ "}") implicit_params
+          ^ params_to_string_typed (fun x -> "(" ^ x ^ ")") params
+          ^ ":" ^ " " ^ ty_str ^ " " ^ ":=" ^ newline_indent 1
           ^ term_to_string_without_paren term 1
           ^ "."
-      | AST.ProgramDefinition (name, params, term, ty) ->
+      | AST.ProgramDefinition (name, implicit_params, params, term, ty) ->
           let definitions, ty_str = ty_to_string ty in
           decl_list_to_string definitions
           ^ "Program" ^ " " ^ "Definition" ^ " " ^ name ^ " "
-          ^ params_to_string params ^ ":" ^ " " ^ ty_str ^ " " ^ ":="
-          ^ newline_indent 1
+          ^ params_to_string_typed (fun x -> "{" ^ x ^ "}") implicit_params
+          ^ params_to_string_typed (fun x -> "(" ^ x ^ ")") params
+          ^ ":" ^ " " ^ ty_str ^ " " ^ ":=" ^ newline_indent 1
           ^ term_to_string_without_paren term 1
+          ^ " " ^ ":" ^ " " ^ ty_str ^ "." ^ newline_indent 0 ^ "Fail" ^ " "
+          ^ "Next" ^ " " ^ "Obligation."
+      | AST.Equations (name, implicit_params, params, term, ty) ->
+          let definitions, ty_str = ty_to_string ty in
+          decl_list_to_string definitions
+          ^ "Equations" ^ " " ^ name ^ " "
+          ^ params_to_string_typed (fun x -> "{" ^ x ^ "}") implicit_params
+          ^ params_to_string_typed (fun x -> "(" ^ x ^ ")") params
+          ^ ":" ^ " " ^ ty_str ^ " " ^ ":=" ^ newline_indent 1 ^ name ^ " "
+          ^ params_to_string params ^ " " ^ ":=" ^ newline_indent 2
+          ^ term_to_string_without_paren term 2
           ^ " " ^ ":" ^ " " ^ ty_str ^ "." ^ newline_indent 0 ^ "Fail" ^ " "
           ^ "Next" ^ " " ^ "Obligation."
       | AST.Notation (name, ty) ->
@@ -407,8 +431,12 @@ functor
           let impl_str =
             List.fold_left ~init:""
               ~f:(fun x y ->
-                let name, params, term, ty = y in
-                x ^ newline_indent 1 ^ name ^ " " ^ params_to_string params
+                let name, implicit_params, params, term, ty = y in
+                x ^ newline_indent 1 ^ name ^ " "
+                ^ params_to_string_typed
+                    (fun x -> "{" ^ x ^ "}")
+                    implicit_params
+                ^ params_to_string_typed (fun x -> "(" ^ x ^ ")") params
                 ^ ":=" ^ " "
                 ^ term_to_string_without_paren term 1
                 ^ ";")
@@ -432,11 +460,21 @@ functor
         ~f:(fun x y -> decl_to_string x ^ newline_indent 0 ^ y)
         x
 
+    and params_to_string_typed paren params : string =
+      match params with
+      | (pat, ty) :: xs ->
+          let _, ty_str = ty_to_string ty in
+          paren (pat_to_string pat true 0 ^ " " ^ ":" ^ " " ^ ty_str)
+          ^ " "
+          ^ params_to_string_typed paren
+              xs (* TODO: Should pat_to_string have tick here? *)
+      | [] -> ""
+
     and params_to_string params : string =
       match params with
       | (pat, ty) :: xs ->
           let _, ty_str = ty_to_string ty in
-          "(" ^ pat_to_string pat true 0 ^ " " ^ ":" ^ " " ^ ty_str ^ ")" ^ " "
+          pat_to_string pat true 0 ^ " "
           ^ params_to_string xs (* TODO: Should pat_to_string have tick here? *)
       | [] -> ""
 

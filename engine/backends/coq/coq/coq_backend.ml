@@ -302,18 +302,14 @@ struct
             pexpr then_,
             Option.value_map else_ ~default:(C.AST.Literal "()") ~f:pexpr )
     | Array l -> C.AST.Array (List.map ~f:pexpr l)
-    | Let { lhs; rhs; body; monadic = Some monad } ->
+    | Let { lhs; rhs; body; monadic } ->
         C.AST.Let
           {
             pattern = ppat lhs;
-            value = pexpr rhs;
-            body = pexpr body;
-            value_typ = pty span lhs.typ;
-          }
-    | Let { lhs; rhs; body; monadic = None } ->
-        C.AST.Let
-          {
-            pattern = ppat lhs;
+            mut =
+              (match lhs.p with
+              | PBinding { mut = Mutable _ } -> true
+              | _ -> false);
             value = pexpr rhs;
             body = pexpr body;
             value_typ = pty span lhs.typ;
@@ -365,6 +361,7 @@ struct
         [
           C.AST.Definition
             ( pconcrete_ident name,
+              [],
               List.map
                 ~f:(fun { pat; typ; typ_span } -> (ppat pat, pty span typ))
                 params,
@@ -425,6 +422,7 @@ struct
                   C.AST.Definition
                     ( o.type_name,
                       [],
+                      [],
                       C.AST.Var "id",
                       C.AST.Arrow
                         ( C.AST.Name (o.type_name ^ "_t"),
@@ -443,6 +441,7 @@ struct
                           (* int_of_string *) o.size ) );
                   C.AST.Definition
                     ( o.bytes_name,
+                      [],
                       [],
                       C.AST.Var "id",
                       C.AST.Arrow
@@ -463,6 +462,7 @@ struct
                   C.AST.Definition
                     ( o.integer_name,
                       [],
+                      [],
                       C.AST.Var "id",
                       C.AST.Arrow
                         ( C.AST.Name (o.integer_name ^ "_t"),
@@ -482,6 +482,7 @@ struct
                   C.AST.Notation (o.bytes_name ^ "_t", typ);
                   C.AST.Definition
                     ( o.bytes_name,
+                      [],
                       [],
                       C.AST.Var "id",
                       C.AST.Arrow
@@ -515,6 +516,7 @@ struct
                           (* int_of_string *) o.size ) );
                   C.AST.Definition
                     ( o.array_name,
+                      [],
                       [],
                       C.AST.Var "id",
                       C.AST.Arrow
@@ -561,6 +563,7 @@ struct
                   match x.ii_v with
                   | IIFn { body; params } ->
                       ( x.ii_name,
+                        [],
                         List.map
                           ~f:(fun { pat; typ; typ_span } ->
                             (ppat pat, pty span typ))
@@ -569,6 +572,7 @@ struct
                         pty span body.typ )
                   | _ ->
                       ( "todo_name",
+                        [],
                         [],
                         __TODO_term__ span "body",
                         __TODO_ty__ span "typ" ))
