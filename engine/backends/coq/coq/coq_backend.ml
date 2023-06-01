@@ -65,8 +65,8 @@ module CoqLibrary : Library = struct
 
     let let_stmt (var : string) (expr : string) (typ : string) (body : string)
         (depth : int) : string =
-      "let" ^ " " ^ var ^ " " ^ ":=" ^ " (" ^ expr ^ ") " ^ ":" ^ " " ^ typ ^ " " ^ "in"
-      ^ newline_indent depth ^ body
+      "let" ^ " " ^ var ^ " " ^ ":=" ^ " (" ^ expr ^ ") " ^ ":" ^ " " ^ typ
+      ^ " " ^ "in" ^ newline_indent depth ^ body
 
     let let_mut_stmt = let_stmt
     let tuple_prefix : string = ""
