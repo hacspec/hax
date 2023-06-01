@@ -1,6 +1,4 @@
-open Base
-open Utils
-open Concrete_ident
+open! Prelude
 
 module%inlined_contents Make (F : Features.T) = struct
   module FA = F
@@ -32,7 +30,7 @@ module%inlined_contents Make (F : Features.T) = struct
       List.filter_map
         ~f:(fun x ->
           match x.v with
-          | Fn { name; generics; body; params } ->
+          | Fn { name; generics = _; body; params = _ } ->
               Some (name, analyse_function_body body)
           | _ -> None)
         items

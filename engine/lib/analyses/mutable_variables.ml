@@ -1,5 +1,4 @@
-open Base
-open Utils
+open! Prelude
 
 module%inlined_contents Make (F : Features.T) = struct
   module FA = F
@@ -24,7 +23,7 @@ module%inlined_contents Make (F : Features.T) = struct
       List.fold_left
         ~f:(fun y x ->
           match x.v with
-          | Fn { name; generics; body; params } ->
+          | Fn { name; generics = _; body; params = _ } ->
               let items, count = analyse_function_body body (snd y) in
               ([ (name, items) ] @ fst y, count)
           | _ -> y)
@@ -67,7 +66,7 @@ module%inlined_contents Make (F : Features.T) = struct
             method visit_t _ _ = m#zero
             method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
 
-            method visit_Assign env lhs e _wit =
+            method visit_Assign env lhs _e _wit =
               let rec visit_lhs lhs =
                 match lhs with
                 | A.LhsLocalVar { var; typ } ->
@@ -75,7 +74,7 @@ module%inlined_contents Make (F : Features.T) = struct
                 | LhsFieldAccessor { e; _ } -> visit_lhs e
                 | LhsArrayAccessor { e; index; _ } ->
                     Set.union (super#visit_expr env index) (visit_lhs e)
-                | LhsArbitraryExpr { witness; e } ->
+                | LhsArbitraryExpr { witness = _; e } ->
                     super#visit_expr env e (* TODO? *)
               in
               visit_lhs lhs

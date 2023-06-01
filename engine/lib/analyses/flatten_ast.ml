@@ -1,13 +1,11 @@
-open Base
-open Utils
+open! Prelude
 
 module%inlined_contents Make (F : Features.T) = struct
   module FA = F
   module A = Ast.Make (F)
   module U = Ast_utils.Make (F)
-  open Ast
 
-  let rec flatten_ast : A.expr -> A.expr list =
+  let flatten_ast : A.expr -> A.expr list =
     (object
        inherit [_] A.expr_reduce as super
        inherit [_] U.Reducers.expr_list_monoid as m
