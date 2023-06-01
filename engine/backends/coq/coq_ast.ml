@@ -33,6 +33,7 @@ functor
         | Product of ty list
         | Arrow of ty * ty
         | ArrayTy of ty * string (* int *)
+        | SliceTy of ty
         | AppTy of string * ty list
         | NatMod of string * int * string
 
@@ -118,6 +119,9 @@ functor
       | AST.ArrayTy (t, l) ->
           let ty_def, ty_str = ty_to_string t in
           (ty_def, "nseq" ^ " " ^ ty_str ^ " " ^ (* Int.to_string *) l)
+      | AST.SliceTy t ->
+        let ty_def, ty_str = ty_to_string t in
+        (ty_def, "seq" ^ " " ^ ty_str)
       | AST.AppTy (i, []) -> ([], i)
       | AST.AppTy (i, [ y ]) ->
           let ty_defs, ty_str = ty_to_string y in
