@@ -72,7 +72,6 @@ module CoqLibrary : Library = struct
     let tuple_prefix : string = ""
   end
 end
-
 module C = Coq (CoqLibrary)
 
 module Context = struct
