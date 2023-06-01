@@ -120,6 +120,9 @@ pub enum Kind {
 
     /// A phase explicitely rejected this chunk of code
     ExplicitRejection { reason: String } = 8,
+
+    /// A backend doesn't support a tuple size
+    UnsupportedTupleSize { tuple_size: u32, reason: String } = 9,
 }
 
 impl Kind {
