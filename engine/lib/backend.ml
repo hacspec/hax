@@ -25,7 +25,7 @@ module type T = sig
   module BackendOptions : BACKEND_OPTIONS
 
   val apply_phases : BackendOptions.t -> Ast.Rust.item -> AST.item list
-  val translate : BackendOptions.t -> AST.item list -> Raw_thir_ast.output
+  val translate : BackendOptions.t -> AST.item list -> Raw_thir_ast.file list
 end
 
 module type BackendMetadata = sig
@@ -42,13 +42,12 @@ module Make (InputLanguage : Features.T) (M : BackendMetadata) = struct
     type t = { kind : Diagnostics.kind; span : Ast.span } [@@deriving show, eq]
 
     let raise err =
-      raise
-      @@ Diagnostics.Error
-           {
-             context = Diagnostics.Context.Backend M.backend;
-             kind = err.kind;
-             span = Diagnostics.to_thir_span err.span;
-           }
+      Diagnostics.raise_fatal_error
+        {
+          context = Diagnostics.Context.Backend M.backend;
+          kind = err.kind;
+          span = Diagnostics.to_thir_span err.span;
+        }
 
     let unimplemented ?issue_id ?details span =
       raise { kind = Unimplemented { issue_id; details }; span }

@@ -890,26 +890,23 @@ let hardcoded_fstar_headers =
    open Hacspec_lib_tc"
 
 let translate (bo : BackendOptions.t) (items : AST.item list) :
-    Raw_thir_ast.output =
-  let files =
-    U.group_items_by_namespace items
-    |> Map.to_alist
-    |> List.map ~f:(fun (ns, items) ->
-           let mod_name =
-             String.concat ~sep:"."
-               (List.map
-                  ~f:(map_first_letter String.uppercase)
-                  (fst ns :: snd ns))
-           in
-           Raw_thir_ast.
-             {
-               path = mod_name ^ ".fst";
-               contents =
-                 "module " ^ mod_name ^ hardcoded_fstar_headers ^ "\n\n"
-                 ^ string_of_items items;
-             })
-  in
-  { diagnostics = []; files }
+    Raw_thir_ast.file list =
+  U.group_items_by_namespace items
+  |> Map.to_alist
+  |> List.map ~f:(fun (ns, items) ->
+         let mod_name =
+           String.concat ~sep:"."
+             (List.map
+                ~f:(map_first_letter String.uppercase)
+                (fst ns :: snd ns))
+         in
+         Raw_thir_ast.
+           {
+             path = mod_name ^ ".fst";
+             contents =
+               "module " ^ mod_name ^ hardcoded_fstar_headers ^ "\n\n"
+               ^ string_of_items items;
+           })
 
 open Phase_utils
 

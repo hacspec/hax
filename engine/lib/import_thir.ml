@@ -4,22 +4,21 @@ open Base
 open Diagnostics
 
 let assertion_failure (span : Thir.span) (details : string) =
-  raise
-    (Error { span; kind = T.AssertionFailure { details }; context = ThirImport })
+  raise_fatal_error
+    { span; kind = T.AssertionFailure { details }; context = ThirImport }
 
 let unimplemented (span : Thir.span) (details : string) =
-  raise
-    (Error
-       {
-         span;
-         kind =
-           T.Unimplemented
-             {
-               issue_id = None (* TODO, file issues *);
-               details = String.(if details = "" then None else Some details);
-             };
-         context = ThirImport;
-       })
+  raise_fatal_error
+    {
+      span;
+      kind =
+        T.Unimplemented
+          {
+            issue_id = None (* TODO, file issues *);
+            details = String.(if details = "" then None else Some details);
+          };
+      context = ThirImport;
+    }
 
 let todo (span : Thir.span) = unimplemented span "TODO"
 

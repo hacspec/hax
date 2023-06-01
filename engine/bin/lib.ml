@@ -44,7 +44,7 @@ let run () : Raw_thir_ast.output =
   | None -> ());
   let run (type options_type)
       (module M : Backend.T with type BackendOptions.t = options_type)
-      (backend_options : options_type) : Raw_thir_ast.output =
+      (backend_options : options_type) : Raw_thir_ast.file list =
     let open M in
     options.input
     |> List.concat_map ~f:(fun item ->
@@ -57,13 +57,17 @@ let run () : Raw_thir_ast.output =
     |> List.map ~f:(U.Mappers.rename_global_idents_item renamed_identifiers)
     |> translate backend_options
   in
-  try
-    match options.backend.backend with
-    | Fstar -> run (module Fstar_backend) ()
-    | Coq -> run (module Coq_backend) ()
-    | Easycrypt -> run (module Easycrypt_backend) ()
-  with Diagnostics.Error x ->
-    { diagnostics = [ Diagnostics.to_thir_diagnostic x ]; files = [] }
+  let diagnostics, files =
+    Diagnostics.try_ (fun () ->
+        match options.backend.backend with
+        | Fstar -> run (module Fstar_backend) ()
+        | Coq -> run (module Coq_backend) ()
+        | Easycrypt -> run (module Easycrypt_backend) ())
+  in
+  {
+    diagnostics = List.map ~f:Diagnostics.to_thir_diagnostic diagnostics;
+    files = Option.value ~default:[] files;
+  }
 
 let main () =
   let result = try Ok (run ()) with e -> Error e in

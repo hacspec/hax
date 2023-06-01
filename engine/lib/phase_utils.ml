@@ -115,7 +115,7 @@ module CatchErrors (D : PHASE) = struct
   let ditem (i : D.A.item) : D.B.item list =
     try D.ditem i
     with D.Error.E e ->
-      raise @@ Diagnostics.Error (D.Error.lift e D.metadata.current_phase)
+      Diagnostics.raise_fatal_error (D.Error.lift e D.metadata.current_phase)
 end
 
 (* TODO: This module should disappear entierly when issue #14 is

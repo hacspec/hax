@@ -102,7 +102,7 @@ let intmodule_of_kind (Ast.{ size; signedness } : Ast.int_kind) =
   Format.sprintf "W%s%s" (suffix_of_signedness signedness) (suffix_of_size size)
 
 let translate' (bo : BackendOptions.t) (items : AST.item list) :
-    Raw_thir_ast.output =
+    Raw_thir_ast.file list =
   let items = List.fold_left ~init:NM.empty ~f:NM.push items in
 
   let rec doit (fmt : Format.formatter) (the : nmtree) =
@@ -334,10 +334,10 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) :
   in
 
   doit Format.err_formatter items;
-  { diagnostics = []; files = [] }
+  []
 
 let translate (bo : BackendOptions.t) (items : AST.item list) :
-    Raw_thir_ast.output =
+    Raw_thir_ast.file list =
   try translate' bo items
   with Assert_failure (file, line, col) ->
     Diagnostics.failure ~context:(Backend FStar)
