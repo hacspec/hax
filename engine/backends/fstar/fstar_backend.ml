@@ -385,6 +385,13 @@ struct
         } ->
         F.term
         @@ F.AST.Project (pexpr arg, F.lid [ "_" ^ string_of_int (n + 1) ])
+    | App
+        {
+          f = { e = GlobalVar (`Projector (`Concrete cid)) };
+          args = [ arg ];
+        } ->
+        F.term
+        @@ F.AST.Project (pexpr arg, pconcrete_ident cid)
     | App { f = { e = GlobalVar x }; args } when Map.mem operators x ->
         let arity, op = Map.find_exn operators x in
         if List.length args <> arity then
