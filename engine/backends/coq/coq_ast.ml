@@ -120,8 +120,8 @@ functor
           let ty_def, ty_str = ty_to_string t in
           (ty_def, "nseq" ^ " " ^ ty_str ^ " " ^ (* Int.to_string *) l)
       | AST.SliceTy t ->
-        let ty_def, ty_str = ty_to_string t in
-        (ty_def, "seq" ^ " " ^ ty_str)
+          let ty_def, ty_str = ty_to_string t in
+          (ty_def, "seq" ^ " " ^ ty_str)
       | AST.AppTy (i, []) -> ([], i)
       | AST.AppTy (i, [ y ]) ->
           let ty_defs, ty_str = ty_to_string y in
