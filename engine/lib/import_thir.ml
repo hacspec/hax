@@ -532,6 +532,7 @@ module Exn = struct
                    path = Non_empty_list.[ "ops"; "Index"; "index" ];
                  })
             [ lhs; index ]
+      | StaticRef { def_id = id; _ } -> GlobalVar (def_id id)
       | PlaceTypeAscription _ ->
           unimplemented e.span "expression PlaceTypeAscription"
       | ValueTypeAscription _ ->
@@ -539,7 +540,6 @@ module Exn = struct
       | NonHirLiteral _ -> unimplemented e.span "expression NonHirLiteral"
       | ZstLiteral _ -> unimplemented e.span "expression ZstLiteral"
       | ConstParam _ -> unimplemented e.span "expression ConstParam"
-      | StaticRef _ -> unimplemented e.span "expression StaticRef"
       | Yield _ -> unimplemented e.span "expression Yield"
       | Todo _ -> unimplemented e.span "expression Todo"
     in
