@@ -95,6 +95,8 @@ pub enum Backend {
     Fstar,
     /// Use the Coq backend
     Coq,
+    /// Use the SSProve backend
+    Ssprove,
     /// Use the EasyCrypt backend
     Easycrypt,
 }

@@ -1,7 +1,7 @@
 module T = Raw_thir_ast
 
 module Backend = struct
-  type t = Coq | FStar | EasyCrypt
+  type t = Coq | SSProve | FStar | EasyCrypt
   [@@deriving show { with_path = false }, eq, yojson, compare, hash, sexp]
 end
 
