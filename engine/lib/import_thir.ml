@@ -6,7 +6,7 @@ open Diagnostics
 let assertion_failure (span : Thir.span) (details : string) =
   let kind = T.AssertionFailure { details } in
   report { span; kind; context = ThirImport };
-  raise @@ Diagnostics.ContextFreeError kind
+  raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
 
 let unimplemented (span : Thir.span) (details : string) =
   let kind =
@@ -17,7 +17,7 @@ let unimplemented (span : Thir.span) (details : string) =
       }
   in
   report { span; kind; context = ThirImport };
-  raise @@ Diagnostics.ContextFreeError kind
+  raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
 
 let todo (span : Thir.span) = unimplemented span "TODO"
 
@@ -256,13 +256,14 @@ module Exn = struct
 
   let rec c_expr (e : Thir.decorated_for__expr_kind) : expr =
     try c_expr_unwrapped e
-    with Diagnostics.ContextFreeError kind ->
+    with Diagnostics.SpanFreeError report ->
       let typ : ty =
         try c_ty e.span e.ty
-        with Diagnostics.ContextFreeError _ -> U.hax_failure_typ
+        with Diagnostics.SpanFreeError _ -> U.hax_failure_typ
       in
       let span = c_span e.span in
-      U.hax_failure_expr span typ kind
+      U.hax_failure_expr' span typ report
+        ([%show: Thir.decorated_for__expr_kind] e)
 
   and c_expr_unwrapped (e : Thir.decorated_for__expr_kind) : expr =
     let call f args = App { f; args = List.map ~f:c_expr args } in
@@ -861,7 +862,7 @@ module Exn = struct
     }
 
   let rec c_item (item : Thir.item) : item list =
-    try c_item_unwrapped item with Diagnostics.ContextFreeError _kind -> []
+    try c_item_unwrapped item with Diagnostics.SpanFreeError _kind -> []
 
   and c_item_unwrapped (item : Thir.item) : item list =
     if

@@ -9,3 +9,4 @@ module AnnotatedString : sig
 end
 
 val pitem : item -> AnnotatedString.Output.t
+val pexpr_str : expr -> string

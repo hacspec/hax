@@ -1,3 +1,4 @@
+open Utils
 module T = Raw_thir_ast
 
 module Backend = struct
@@ -75,6 +76,27 @@ let to_thir_span (s : Ast.span) : T.span =
         lo = to_thir_loc lo;
       }
 
+let run_hax_pretty_print_diagnostics (s : string) : string =
+  try
+    let stdout, stdin = Unix.open_process "hax-pretty-print-diagnostics" in
+    Out_channel.(
+      output_string stdin s;
+      flush stdin;
+      close stdin);
+    In_channel.input_all stdout
+  with e ->
+    "[run_hax_pretty_print_diagnostics] failed. Exn: " ^ Printexc.to_string e
+    ^ ". Here is the JSON representation of the error that occurred:\n" ^ s
+
+let pretty_print : t -> string =
+  to_thir_diagnostic >> Raw_thir_ast.to_json_diagnostics_for__span
+  >> Yojson.Safe.pretty_to_string >> run_hax_pretty_print_diagnostics
+
+let pretty_print_context_kind : Context.t -> kind -> string =
+ fun context kind ->
+  let span = to_thir_span (Dummy { id = 0 }) in
+  pretty_print { context; kind; span }
+
 module Core : sig
   val raise_fatal_error : 'never. t -> 'never
   val report : t -> unit
@@ -100,4 +122,4 @@ include Core
 let failure ~context ~span kind =
   Core.raise_fatal_error { context; kind; span = to_thir_span span }
 
-exception ContextFreeError of kind
+exception SpanFreeError of (Context.t * kind)

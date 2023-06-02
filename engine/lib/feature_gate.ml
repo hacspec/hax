@@ -20,6 +20,7 @@ module%inlined_contents MakeExn
     (S0 : Features.SUBTYPE.T_Exn with module A = FA and module B = FB) =
 struct
   open Ast
+  module UA = Ast_utils.Make (FA)
   module A = Ast.Make (FA)
   module B = Ast.Make (FB)
   module S = Features.SUBTYPE.WrapExns (S0)
@@ -143,9 +144,9 @@ struct
           { reason = S0.explain (fst data.data) (snd data.data) }
       in
       let span = Diagnostics.to_thir_span @@ Data.span data in
-      Diagnostics.report
-        { kind; span; context = Phase S0.metadata.current_phase };
-      native_raise @@ Diagnostics.ContextFreeError kind
+      let context : Diagnostics.Context.t = Phase S0.metadata.current_phase in
+      Diagnostics.report { kind; span; context };
+      native_raise @@ Diagnostics.SpanFreeError (context, kind)
 
   let dty : span -> A.ty -> B.ty = fun span -> catch @@ dty span
   let dpat : A.pat -> B.pat = catch dpat

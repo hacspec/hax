@@ -9,6 +9,7 @@ struct
   open Ast
   module A = Ast.Make (FA)
   module B = Ast.Make (FB)
+  module UA = Ast_utils.Make (FA)
   module UB = Ast_utils.Make (FB)
   module FA = FA
 
@@ -101,12 +102,12 @@ struct
 
   let rec dexpr (e : A.expr) : B.expr =
     try dexpr_unwrapped e
-    with Diagnostics.ContextFreeError kind ->
+    with Diagnostics.SpanFreeError (context, kind) ->
       let typ : B.ty =
         try dty e.span e.typ
-        with Diagnostics.ContextFreeError _ -> UB.hax_failure_typ
+        with Diagnostics.SpanFreeError _ -> UB.hax_failure_typ
       in
-      UB.hax_failure_expr e.span typ kind
+      UB.hax_failure_expr e.span typ (context, kind) (UA.LiftToFullAst.expr e)
 
   and dexpr_unwrapped (e : A.expr) : B.expr =
     { e = dexpr' e.span e.e; span = e.span; typ = dty e.span e.typ }

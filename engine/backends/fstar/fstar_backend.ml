@@ -369,10 +369,10 @@ struct
 
   let rec pexpr (e : expr) =
     try pexpr_unwrapped e
-    with Diagnostics.ContextFreeError kind ->
+    with Diagnostics.SpanFreeError kind ->
       (* let typ = *)
       (* try pty e.span e.typ *)
-      (* with Diagnostics.ContextFreeError _ -> U.hax_failure_typ *)
+      (* with Diagnostics.SpanFreeError _ -> U.hax_failure_typ *)
       (* in *)
       F.term @@ F.AST.Const (F.Const.Const_string ("failure", F.dummyRange))
 
@@ -569,7 +569,7 @@ struct
 
   let rec pitem (e : item) =
     try pitem_unwrapped e
-    with Diagnostics.ContextFreeError _kind ->
+    with Diagnostics.SpanFreeError _kind ->
       [ F.decl_of_string "let _ = \"hax failure\"" ]
 
   and pitem_unwrapped (e : item) =

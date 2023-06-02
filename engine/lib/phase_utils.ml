@@ -69,7 +69,7 @@ struct
 
     let raise err =
       Diagnostics.report @@ lift err;
-      raise @@ Diagnostics.ContextFreeError err.kind
+      raise @@ Diagnostics.SpanFreeError (Phase M.phase_id, err.kind)
 
     let unimplemented ?issue_id ?details span =
       raise { kind = Unimplemented { issue_id; details }; span }
@@ -98,7 +98,7 @@ module CatchErrors (D : PHASE) = struct
   include D
 
   let ditem (i : D.A.item) : D.B.item list =
-    try ditem i with Diagnostics.ContextFreeError _kind -> (* TODO *) []
+    try ditem i with Diagnostics.SpanFreeError _kind -> (* TODO *) []
 end
 
 (* TODO: This module should disappear entierly when issue #14 is

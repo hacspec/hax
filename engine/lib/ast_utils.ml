@@ -437,15 +437,24 @@ module Make (F : Features.T) = struct
   let string_lit span (s : string) : expr =
     { span; typ = TStr; e = Literal (String s) }
 
-  let hax_failure_expr span (typ : ty) (kind : Diagnostics.kind) =
-    let s = string_lit span @@ [%show: Diagnostics.kind] kind in
-    call "hax_error" "hax_failure" [] [ s ] span typ
+  let hax_failure_expr' span (typ : ty) (context, kind) (ast : string) =
+    let error = Diagnostics.pretty_print_context_kind context kind in
+    let args = List.map ~f:(string_lit span) [ error; ast ] in
+    call "hax_error" "hax_failure" [] args span typ
+
+  let hax_failure_expr span (typ : ty) (context, kind) (expr0 : Ast.Full.expr) =
+    hax_failure_expr' span typ (context, kind) (Print_rust.pexpr_str expr0)
 
   let hax_failure_typ =
     let ident =
       `Concrete { crate = "hax_error"; path = Non_empty_list.[ "hax_failure" ] }
     in
     TApp { ident; args = [] }
+
+  module LiftToFullAst = struct
+    let expr : AST.expr -> Ast.Full.expr = Obj.magic
+    let item : AST.expr -> Ast.Full.expr = Obj.magic
+  end
 
   module Box = struct
     module Ty = struct

@@ -374,17 +374,23 @@ let rustfmt_annotated (x : AnnotatedString.t) : AnnotatedString.t =
   let r = snd @@ List.fold_left s ~init:(x, []) ~f in
   List.rev r
 
-(* let pitem : item -> AnnotatedString.Output.t = *)
-(*   Raw.pitem >> AnnotatedString.Output.convert *)
-
-module U = Ast_utils.Make (Features.Full)
+(* module U = Ast_utils.Make (Features.Full) *)
 
 let pitem : item -> AnnotatedString.Output.t =
   (* U.Mappers.regenerate_span_ids#visit_item () *)
   Raw.pitem >> rustfmt_annotated >> AnnotatedString.Output.convert
 
-(* let pitem : item -> AnnotatedString.Output.t = *)
-(*  fun i -> *)
-(*   let items = Raw.pitem i in *)
-(*   AnnotatedString.Output.convert (items @ rustfmt_annotated items) *)
-(* let pitem : item -> string = Raw.pitem >> rustfmt *)
+let pitem_str : item -> string = pitem >> AnnotatedString.Output.raw_string
+
+let pexpr_str (e : expr) : string =
+  let e = Raw.pexpr e in
+  let ( ! ) = AnnotatedString.pure (Dummy { id = 0 }) in
+  let ( & ) = AnnotatedString.( & ) in
+  let prefix = "fn expr_wrapper() {" in
+  let suffix = "}" in
+  let item = !prefix & e & !suffix in
+  rustfmt_annotated item |> AnnotatedString.Output.convert
+  |> AnnotatedString.Output.raw_string |> Caml.String.trim
+  |> String.chop_suffix_if_exists ~suffix
+  |> String.chop_prefix_if_exists ~prefix
+  |> Caml.String.trim
