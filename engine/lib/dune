@@ -47,4 +47,4 @@
 (env
  (_
   (flags
-   (:standard -warn-error "-A+8" -w "-17-7-30-56-32"))))
+   (:standard -g -warn-error "-A+8" -w "-17-7-30-56-32"))))
