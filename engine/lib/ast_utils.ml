@@ -434,6 +434,19 @@ module Make (F : Features.T) = struct
     let e = GlobalVar (`Concrete { crate; path }) in
     { e = App { f = { e; typ; span }; args }; typ = ret_typ; span }
 
+  let string_lit span (s : string) : expr =
+    { span; typ = TStr; e = Literal (String s) }
+
+  let hax_failure_expr span (typ : ty) (kind : Diagnostics.kind) =
+    let s = string_lit span @@ [%show: Diagnostics.kind] kind in
+    call "hax_error" "hax_failure" [] [ s ] span typ
+
+  let hax_failure_typ =
+    let ident =
+      `Concrete { crate = "hax_error"; path = Non_empty_list.[ "hax_failure" ] }
+    in
+    TApp { ident; args = [] }
+
   module Box = struct
     module Ty = struct
       let destruct (t : ty) : ty option =
