@@ -70,10 +70,13 @@ let run () : Raw_thir_ast.output =
   }
 
 let main () =
-  let result = try Ok (run ()) with e -> Error e in
+  Printexc.record_backtrace true;
+  let result =
+    try Ok (run ()) with e -> Error (e, Printexc.get_raw_backtrace ())
+  in
   Phase_utils.DebugBindPhase.export ();
   match result with
   | Ok results ->
       Raw_thir_ast.to_json_output results
       |> Yojson.Safe.pretty_to_string |> print_endline
-  | Error exn -> raise exn
+  | Error (exn, bt) -> Printexc.raise_with_backtrace exn bt
