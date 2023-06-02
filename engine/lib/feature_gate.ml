@@ -67,6 +67,8 @@ struct
     val dexpr : A.expr -> B.expr
     val ditem : A.item -> B.item list
   end = struct
+    module UB = Ast_utils.Make (FB)
+
     [%%inline_defs dmutability]
 
     let rec dty (span : span) (ty : A.ty) : B.ty =
@@ -88,8 +90,10 @@ struct
     and dbinding_mode = [%inline_body dbinding_mode]
     and dsupported_monads = [%inline_body dsupported_monads]
 
-    let rec dexpr (expr : A.expr) : B.expr =
-      try [%inline_body dexpr] expr with
+    let rec dexpr = [%inline_body dexpr]
+
+    and dexpr_unwrapped (expr : A.expr) : B.expr =
+      try [%inline_body dexpr_unwrapped] expr with
       | S.E err -> raise @@ Data.ret err @@ Expr expr
       | E data -> raise @@ Data.add data @@ Expr expr
 
@@ -126,21 +130,22 @@ module%inlined_contents Make
     with module A = FA
      and module B = FB) =
 struct
+  let native_raise = raise
+
   include MakeExn (FA) (FB) (S0)
   open Ast
-  include Phase_utils.DefaultError
 
   let catch (type a b) (f : a -> b) (x : a) : b =
     try f x
     with E data ->
-      Caml.raise
-      @@ Error.E
-           {
-             kind =
-               ExplicitRejection
-                 { reason = S0.explain (fst data.data) (snd data.data) };
-             span = Data.span data;
-           }
+      let kind : Diagnostics.kind =
+        ExplicitRejection
+          { reason = S0.explain (fst data.data) (snd data.data) }
+      in
+      let span = Diagnostics.to_thir_span @@ Data.span data in
+      Diagnostics.report
+        { kind; span; context = Phase S0.metadata.current_phase };
+      native_raise @@ Diagnostics.ContextFreeError kind
 
   let dty : span -> A.ty -> B.ty = fun span -> catch @@ dty span
   let dpat : A.pat -> B.pat = catch dpat

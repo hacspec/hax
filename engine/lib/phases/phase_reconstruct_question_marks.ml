@@ -9,16 +9,17 @@ module%inlined_contents Make (FA : Features.T) = struct
     include Features.On.Question_mark
   end
 
-  module A = Ast.Make (FA)
-  module B = Ast.Make (FB)
-  module ImplemT = Phase_utils.MakePhaseImplemT (A) (B)
+  include
+    Phase_utils.MakeBase (FA) (FB)
+      (struct
+        let phase_id = Diagnostics.Phase.ResugarQuestionMarks
+      end)
 
   module Implem : ImplemT.T = struct
-    let metadata = Phase_utils.Metadata.make ResugarQuestionMarks
+    let metadata = metadata
 
     module UA = Ast_utils.Make (FA)
     module UB = Ast_utils.Make (FB)
-    include Phase_utils.NoError
 
     module S = struct
       include Features.SUBTYPE.Id
@@ -143,8 +144,10 @@ module%inlined_contents Make (FA : Features.T) = struct
 
     [%%inline_defs dmutability + dty + dborrow_kind + dpat + dsupported_monads]
 
-    let rec dexpr (expr : A.expr) : B.expr =
-      let h = [%inline_body dexpr] in
+    let rec dexpr = [%inline_body dexpr]
+
+    and dexpr_unwrapped (expr : A.expr) : B.expr =
+      let h = [%inline_body dexpr_unwrapped] in
       match QuestionMarks.extract expr with
       | Some (e, converted_typ) ->
           {

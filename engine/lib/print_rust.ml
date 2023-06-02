@@ -84,17 +84,18 @@ module Raw = struct
     | UnOp op -> "BinOp::" ^ [%show: un_op] op
     | LogicalOp op -> "BinOp::" ^ [%show: logical_op] op
 
-  let pglobal_ident span (e : global_ident) : AnnotatedString.t =
+  let rec pglobal_ident' prefix span (e : global_ident) : AnnotatedString.t =
+    let ( ! ) s = pure span (prefix ^ s) in
     match e with
     | `Concrete { crate; path } ->
-        pure span
-        @@ String.concat ~sep:"::" (crate :: Non_empty_list.to_list path)
+        !(String.concat ~sep:"::" (crate :: Non_empty_list.to_list path))
     | `Primitive p -> pprimitive_ident span p
-    | `TupleType n -> pure span @@ [%string "tuple%{Int.to_string n}"]
-    | `TupleCons n -> pure span @@ [%string "Tuple%{Int.to_string n}"]
-    | `TupleField (n, _) ->
-        pure span @@ [%string "proj_tuple%{Int.to_string n}"]
-    | `Projector _n -> pure span @@ show_global_ident e
+    | `TupleType n -> ![%string "tuple%{Int.to_string n}"]
+    | `TupleCons n -> ![%string "Tuple%{Int.to_string n}"]
+    | `TupleField (n, _) -> ![%string "proj_tuple%{Int.to_string n}"]
+    | `Projector o -> pglobal_ident' "proj_" span (o :> global_ident)
+
+  let pglobal_ident = pglobal_ident' ""
 
   let plocal_ident span (e : LocalIdent.t) : AnnotatedString.t =
     pure span e.name

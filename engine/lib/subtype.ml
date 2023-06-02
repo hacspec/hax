@@ -9,6 +9,7 @@ struct
   open Ast
   module A = Ast.Make (FA)
   module B = Ast.Make (FB)
+  module UB = Ast_utils.Make (FB)
   module FA = FA
 
   let dmutability (_span : span) (type a b) (s : a -> b)
@@ -99,6 +100,15 @@ struct
     | MOption -> MOption
 
   let rec dexpr (e : A.expr) : B.expr =
+    try dexpr_unwrapped e
+    with Diagnostics.ContextFreeError kind ->
+      let typ : B.ty =
+        try dty e.span e.typ
+        with Diagnostics.ContextFreeError _ -> UB.hax_failure_typ
+      in
+      UB.hax_failure_expr e.span typ kind
+
+  and dexpr_unwrapped (e : A.expr) : B.expr =
     { e = dexpr' e.span e.e; span = e.span; typ = dty e.span e.typ }
 
   and dexpr' (span : span) (expr : A.expr') : B.expr' =

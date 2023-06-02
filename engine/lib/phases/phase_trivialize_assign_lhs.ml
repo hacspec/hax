@@ -10,18 +10,18 @@ module%inlined_contents Make (F : Features.T) = struct
     include Features.Off.Nontrivial_lhs
   end
 
-  module A = Ast.Make (F)
-  module B = Ast.Make (FB)
-  module ImplemT = Phase_utils.MakePhaseImplemT (A) (B)
+  include
+    Phase_utils.MakeBase (F) (FB)
+      (struct
+        let phase_id = Diagnostics.Phase.TrivializeAssignLhs
+      end)
 
   module Implem : ImplemT.T = struct
-    include Phase_utils.DefaultError
+    let metadata = metadata
 
     module S = struct
       include Features.SUBTYPE.Id
     end
-
-    let metadata = Phase_utils.Metadata.make TrivializeAssignLhs
 
     module UA = Ast_utils.Make (F)
     module UB = Ast_utils.Make (FB)
@@ -54,7 +54,7 @@ module%inlined_contents Make (F : Features.T) = struct
             [ "index"; "Index"; "index" ]
             [ expr_of_lhs e span; dexpr index ]
             span (dty span typ)
-      | LhsArbitraryExpr _ -> raise @@ Error.E { kind = ArbitraryLHS; span }
+      | LhsArbitraryExpr _ -> Error.raise { kind = ArbitraryLHS; span }
 
     and updater_of_lhs (lhs : A.lhs) (rhs : B.expr) (span : span) :
         (LocalIdent.t * B.ty) * B.expr =
@@ -72,9 +72,11 @@ module%inlined_contents Make (F : Features.T) = struct
               span lhs.typ
           in
           updater_of_lhs e rhs span
-      | LhsArbitraryExpr _ -> raise @@ Error.E { kind = ArbitraryLHS; span }
+      | LhsArbitraryExpr _ -> Error.raise { kind = ArbitraryLHS; span }
 
-    and dexpr (expr : A.expr) : B.expr =
+    and dexpr = [%inline_body dexpr]
+
+    and dexpr_unwrapped (expr : A.expr) : B.expr =
       let span = expr.span in
       match expr.e with
       | Assign { lhs; e; witness } ->

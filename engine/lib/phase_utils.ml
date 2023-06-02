@@ -22,48 +22,6 @@ end = struct
     Option.map ~f:previous_phases' p.previous_phase |> Option.value ~default:[]
 end
 
-module type PHASE_ERROR = sig
-  type t [@@deriving show, eq]
-
-  val lift : t -> Diagnostics.Phase.t -> Diagnostics.t
-
-  exception E of t
-end
-
-module DefaultError = struct
-  module Error = struct
-    type t = { kind : Diagnostics.kind; span : Ast.span } [@@deriving show, eq]
-
-    let lift { kind; span } (phase : Diagnostics.Phase.t) : Diagnostics.t =
-      { kind; span = Diagnostics.to_thir_span span; context = Phase phase }
-
-    exception E of t
-
-    let raise err = raise @@ E err
-
-    let unimplemented ?issue_id ?details span =
-      raise { kind = Unimplemented { issue_id; details }; span }
-
-    let assertion_failure span details =
-      raise { kind = AssertionFailure { details }; span }
-  end
-
-  module _ : PHASE_ERROR = Error
-end
-
-module NoError = struct
-  module Error = struct
-    type t = | [@@deriving show, eq]
-
-    let lift (x : t) (_phase : Diagnostics.Phase.t) : Diagnostics.t =
-      match x with _ -> .
-
-    exception E of t
-  end
-
-  module _ : PHASE_ERROR = Error
-end
-
 module type PHASE = sig
   val metadata : Metadata.t
 
@@ -71,17 +29,53 @@ module type PHASE = sig
   module FB : Features.T
   module A : Ast.T
   module B : Ast.T
-  module Error : PHASE_ERROR
 
   val ditem : A.item -> B.item list
 end
 
 module MakePhaseImplemT (A : Ast.T) (B : Ast.T) = struct
   module type T = sig
-    module Error : PHASE_ERROR
-
     val metadata : Metadata.t
     val ditem : A.item -> B.item list
+    val dexpr : A.expr -> B.expr
+  end
+end
+
+exception ReportError of Diagnostics.kind
+
+module MakeBase
+    (FA : Features.T)
+    (FB : Features.T) (M : sig
+      val phase_id : Diagnostics.Phase.t
+    end) =
+struct
+  module A = Ast.Make (FA)
+  module B = Ast.Make (FB)
+  module UA = Ast_utils.Make (FA)
+  module UB = Ast_utils.Make (FB)
+  module ImplemT = MakePhaseImplemT (A) (B)
+  include M
+
+  let metadata = Metadata.make phase_id
+  let failwith = ()
+
+  module Error = struct
+    type t = { kind : Diagnostics.kind; span : Ast.span } [@@deriving show, eq]
+
+    let lift { kind; span } : Diagnostics.t =
+      { kind; span = Diagnostics.to_thir_span span; context = Phase M.phase_id }
+
+    (* exception E of t *)
+
+    let raise err =
+      Diagnostics.report @@ lift err;
+      raise @@ Diagnostics.ContextFreeError err.kind
+
+    let unimplemented ?issue_id ?details span =
+      raise { kind = Unimplemented { issue_id; details }; span }
+
+    let assertion_failure span details =
+      raise { kind = AssertionFailure { details }; span }
   end
 end
 
@@ -90,21 +84,12 @@ module Identity (F : Features.T) = struct
   module FB = F
   module A = Ast.Make (F)
   module B = Ast.Make (F)
-  include NoError
 
   let ditem (x : A.item) : B.item list = [ x ]
   let metadata = Metadata.make Diagnostics.Phase.Identity
 end
 
 module _ (F : Features.T) : PHASE = Identity (F)
-
-(* module type PHASE_EXN = sig *)
-(*   include PHASE *)
-
-(*   type error [@@deriving show] *)
-
-(*   exception Error of error *)
-(* end *)
 
 let _DEBUG_SHOW_ITEM = false
 let _DEBUG_SHOW_BACKTRACE = false
@@ -113,9 +98,7 @@ module CatchErrors (D : PHASE) = struct
   include D
 
   let ditem (i : D.A.item) : D.B.item list =
-    try D.ditem i
-    with D.Error.E e ->
-      Diagnostics.raise_fatal_error (D.Error.lift e D.metadata.current_phase)
+    try ditem i with Diagnostics.ContextFreeError _kind -> (* TODO *) []
 end
 
 (* TODO: This module should disappear entierly when issue #14 is
@@ -233,19 +216,6 @@ struct
   module A = D1.A
   module B = D2.B
 
-  module Error = struct
-    type t = ErrD1 of D1.Error.t | ErrD2 of D2.Error.t [@@deriving show, eq]
-
-    let lift (x : t) (_phase : Diagnostics.Phase.t) : Diagnostics.t =
-      match x with
-      | ErrD1 e -> D1.Error.lift e D1.metadata.current_phase
-      | ErrD2 e -> D2.Error.lift e D2.metadata.current_phase
-
-    exception E of t
-  end
-
-  module _ : PHASE_ERROR = Error
-
   let metadata = Metadata.bind D1.metadata D2.metadata
 
   let ditem : A.item -> B.item list =
@@ -255,8 +225,9 @@ struct
      let coerce_to_full_ast : D1'.A.item -> Ast.Full.item = Caml.Obj.magic in
      DebugBindPhase.add Before 0 (fun _ -> [ coerce_to_full_ast item0 ]));
     let item1 =
-      try D1'.ditem item0
-      with D1.Error.E e -> raise @@ Error.E (Error.ErrD1 e)
+      (* try *)
+      D1'.ditem item0
+      (* with D1.Error.E e -> raise @@ Error.E (Error.ErrD1 e) *)
     in
     let coerce_to_full_ast : D2'.A.item list -> Ast.Full.item list =
       Caml.Obj.magic
@@ -264,8 +235,9 @@ struct
     DebugBindPhase.add (Phase D1.metadata.current_phase) (nth + 1) (fun _ ->
         coerce_to_full_ast item1);
     let item2 =
-      try List.concat_map ~f:D2'.ditem item1
-      with D2.Error.E e -> raise @@ Error.E (Error.ErrD2 e)
+      (* try *)
+      List.concat_map ~f:D2'.ditem item1
+      (* with D2.Error.E e -> raise @@ Error.E (Error.ErrD2 e) *)
     in
     item2
 end

@@ -777,6 +777,7 @@ functor
   end
 
 module type T = sig
+  type expr [@@deriving show, yojson]
   type item [@@deriving show, yojson]
 end
 

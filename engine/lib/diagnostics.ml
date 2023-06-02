@@ -99,3 +99,5 @@ include Core
 
 let failure ~context ~span kind =
   Core.raise_fatal_error { context; kind; span = to_thir_span span }
+
+exception ContextFreeError of kind

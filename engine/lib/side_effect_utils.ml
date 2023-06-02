@@ -486,7 +486,6 @@ struct
   module UB = Ast_utils.Make (FB)
   module A = Ast.Make (F)
   module B = Ast.Make (FB)
-  include Phase_utils.NoError
 
   module S = struct
     include Features.SUBTYPE.Id
