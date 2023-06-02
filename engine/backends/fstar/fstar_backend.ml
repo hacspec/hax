@@ -368,6 +368,15 @@ struct
     |> Map.of_alist_exn (module GlobalIdent)
 
   let rec pexpr (e : expr) =
+    try pexpr_unwrapped e
+    with Diagnostics.ContextFreeError kind ->
+      (* let typ = *)
+      (* try pty e.span e.typ *)
+      (* with Diagnostics.ContextFreeError _ -> U.hax_failure_typ *)
+      (* in *)
+      F.term @@ F.AST.Const (F.Const.Const_string ("failure", F.dummyRange))
+
+  and pexpr_unwrapped (e : expr) =
     match e.e with
     | Literal l -> pliteral_as_expr e.span l
     | LocalVar local_ident ->
@@ -559,6 +568,11 @@ struct
     `Concrete { crate = "hacspec"; path = Non_empty_list.[ "lib"; s ] }
 
   let rec pitem (e : item) =
+    try pitem_unwrapped e
+    with Diagnostics.ContextFreeError _kind ->
+      [ F.decl_of_string "let _ = \"hax failure\"" ]
+
+  and pitem_unwrapped (e : item) =
     match e.v with
     | Fn { name; generics; body; params } ->
         let pat =
