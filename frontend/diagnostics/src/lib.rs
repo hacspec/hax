@@ -48,7 +48,7 @@ impl<S> std::fmt::Display for Diagnostics<S> {
                 "{}: something is not implemented yet.{}{}",
                 self.context,
                 match issue_id {
-                    Some(id) => format!(" This is discussed in issue {}: please upvote or comment this issue if you see this error message.", format!("{}", id).bold()),
+                    Some(id) => format!("This is discussed in issue https://github.com/hacspec/hacspec-v2/issues/{id}.\nPlease upvote or comment this issue if you see this error message."),
                     _ => "".to_string(),
                 },
                 match details {
