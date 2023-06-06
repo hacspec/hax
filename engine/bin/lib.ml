@@ -47,7 +47,7 @@ let run () : Raw_thir_ast.output =
       (backend_options : options_type) : Raw_thir_ast.output =
     let open M in
     options.input
-    |> List.map ~f:(fun item ->
+    |> List.concat_map ~f:(fun item ->
            try
              Result.map_error ~f:Import_thir.show_error
                (Import_thir.c_item item)
