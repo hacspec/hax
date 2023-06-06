@@ -694,18 +694,12 @@ pub struct ExpnData {
     pub collapse_debuginfo: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq)]
 pub struct Span {
     lo: Loc,
     hi: Loc,
     filename: FileName,
     // expn_backtrace: Vec<ExpnData>,
-}
-
-impl PartialEq for Span {
-    fn eq(&self, other: &Self) -> bool {
-        self.lo == other.lo && self.hi == other.hi && self.filename == other.filename
-    }
 }
 
 #[derive(Debug)]
