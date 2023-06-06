@@ -98,7 +98,13 @@ module CatchErrors (D : PHASE) = struct
   include D
 
   let ditem (i : D.A.item) : D.B.item list =
-    try ditem i with Diagnostics.SpanFreeError _kind -> (* TODO *) []
+    try ditem i
+    with Diagnostics.SpanFreeError (context, kind) ->
+      let error = Diagnostics.pretty_print_context_kind context kind in
+      let cast_item : A.item -> Ast.Full.item = Obj.magic in
+      let ast = cast_item i |> Print_rust.pitem_str in
+      let msg = error ^ "\nLast available AST for this item:\n\n" ^ ast in
+      [ B.make_hax_error_item i.span i.parent_namespace msg ]
 end
 
 (* TODO: This module should disappear entierly when issue #14 is

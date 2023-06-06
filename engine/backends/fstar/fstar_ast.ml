@@ -21,7 +21,7 @@ let lid_of_id id = Ident.lid_of_ids [ id ]
 let term (tm : AST.term') = AST.{ tm; range = dummyRange; level = Expr }
 
 let decl ?(quals = []) (d : AST.decl') =
-  AST.{ d; drange = dummyRange; quals = []; attrs = [] }
+  `Item AST.{ d; drange = dummyRange; quals = []; attrs = [] }
 
 let decls ?(quals = []) x = [ decl ~quals x ]
 let pat (pat : AST.pattern') = AST.{ pat; prange = dummyRange }
@@ -82,7 +82,7 @@ let term_of_string s =
 
 let decls_of_string s =
   match parse_string (fun x -> Toplevel x) s with
-  | ASTFragment (Inr l, _) -> l
+  | ASTFragment (Inr l, _) -> List.map ~f:(fun i -> `Item i) l
   | _ -> failwith "parse failed"
 
 let decl_of_string s =

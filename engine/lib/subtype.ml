@@ -379,6 +379,7 @@ struct
               items = List.map ~f:dimpl_item items;
             }
       | Use { path; is_external; rename } -> B.Use { path; is_external; rename }
+      | HaxError e -> B.HaxError e
       | NotImplementedYet -> B.NotImplementedYet
   end
 

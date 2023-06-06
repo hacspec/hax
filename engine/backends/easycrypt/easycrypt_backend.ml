@@ -126,6 +126,7 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) :
              | Type _ -> assert false
              | Trait _ -> assert false
              | Impl _ -> assert false
+             | HaxError _ -> ()
              | IMacroInvokation mi -> ()
              | Use _ -> ()
              | NotImplementedYet -> ())

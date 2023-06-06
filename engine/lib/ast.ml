@@ -702,6 +702,7 @@ functor
           is_external : bool;
           rename : string option;
         }
+      | HaxError of string
       | NotImplementedYet
 
     and item = {
@@ -773,12 +774,21 @@ functor
 
     type modul = item list
 
+    let make_hax_error_item (span : span) (parent_namespace : Namespace.t)
+        (s : string) : item =
+      { v = HaxError s; span; parent_namespace }
+
     module F = F
   end
 
 module type T = sig
   type expr [@@deriving show, yojson]
-  type item [@@deriving show, yojson]
+  type item' [@@deriving show, yojson]
+
+  type item = { v : item'; span : span; parent_namespace : Namespace.t }
+  [@@deriving show, yojson]
+
+  val make_hax_error_item : span -> Namespace.t -> string -> item
 end
 
 module Rust = Make (Features.Rust)

@@ -567,12 +567,13 @@ struct
   let hacspec_lib_item s =
     `Concrete { crate = "hacspec"; path = Non_empty_list.[ "lib"; s ] }
 
-  let rec pitem (e : item) =
+  let rec pitem (e : item) : [> `Item of F.AST.decl | `Comment of string ] list
+      =
     try pitem_unwrapped e
-    with Diagnostics.SpanFreeError _kind ->
-      [ F.decl_of_string "let _ = \"hax failure\"" ]
+    with Diagnostics.SpanFreeError _kind -> [ `Comment "item error backend" ]
 
-  and pitem_unwrapped (e : item) =
+  and pitem_unwrapped (e : item) :
+      [> `Item of F.AST.decl | `Comment of string ] list =
     match e.v with
     | Fn { name; generics; body; params } ->
         let pat =
@@ -823,7 +824,7 @@ struct
         in
         let tcdef = F.AST.TyconRecord (name, bds, None, [], fields) in
         let d = F.AST.Tycon (false, true, [ tcdef ]) in
-        [ { d; drange = F.dummyRange; quals = []; attrs = [] } ]
+        [ `Item { d; drange = F.dummyRange; quals = []; attrs = [] } ]
     | Impl { generics; self_ty = _; of_trait; items } ->
         let pat = F.pat @@ F.AST.PatVar (F.id "impl", None, []) in
         let pat =
@@ -874,12 +875,13 @@ struct
                    items )
         in
         F.decls @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
+    | HaxError details -> [ `Comment details ]
     | Use _ (* TODO: Not Yet Implemented *) | NotImplementedYet -> []
     | _ -> .
 end
 
 module type S = sig
-  val pitem : item -> F.AST.decl list
+  val pitem : item -> [> `Item of F.AST.decl | `Comment of string ] list
 end
 
 let make ctx =
@@ -889,7 +891,11 @@ let make ctx =
 
 let string_of_item (item : item) : string =
   let (module Print) = make { current_namespace = item.parent_namespace } in
-  List.map ~f:decl_to_string @@ Print.pitem item |> String.concat ~sep:"\n"
+  List.map ~f:(function
+    | `Item i -> decl_to_string i
+    | `Comment s -> "(* " ^ s ^ " *)")
+  @@ Print.pitem item
+  |> String.concat ~sep:"\n"
 
 let string_of_items =
   List.map ~f:string_of_item >> List.map ~f:String.strip
