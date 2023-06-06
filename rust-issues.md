@@ -21,6 +21,15 @@ error[CE0001]: (Diagnostics.Context.Phase FunctionalizeLoops): something is not 
                Only for loop are being functionalized for now
 ```
 
+```rust
+for _i in 0..10 {}
+```
+
+```
+error[CE0001]: (Diagnostics.Context.Phase CfIntoMonads): something is not implemented yet. This is discussed in issue 96: please upvote or comment this issue if you see this error message.
+               TODO: Monad for loop-related control flow
+```
+
 ## Arrays, Vectors, and Slices
 ```rust
 let mut a = [1, 2];
