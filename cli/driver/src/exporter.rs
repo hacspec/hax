@@ -245,7 +245,7 @@ impl Callbacks for ExtractionCallbacks {
                         cached_thirs: HashMap::new(),
                         exported_spans: Rc::new(RefCell::new(HashSet::new())),
                     };
-                    for d in output.diagnostics.clone() {
+                    for d in output.diagnostics {
                         use hax_diagnostics::*;
                         use hax_frontend_exporter::SInto;
                         let mut relevant_spans: Vec<_> = spans
