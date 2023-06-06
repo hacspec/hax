@@ -368,6 +368,15 @@ struct
     |> Map.of_alist_exn (module GlobalIdent)
 
   let rec pexpr (e : expr) =
+    try pexpr_unwrapped e
+    with Diagnostics.SpanFreeError kind ->
+      (* let typ = *)
+      (* try pty e.span e.typ *)
+      (* with Diagnostics.SpanFreeError _ -> U.hax_failure_typ *)
+      (* in *)
+      F.term @@ F.AST.Const (F.Const.Const_string ("failure", F.dummyRange))
+
+  and pexpr_unwrapped (e : expr) =
     match e.e with
     | Literal l -> pliteral_as_expr e.span l
     | LocalVar local_ident ->
@@ -558,7 +567,13 @@ struct
   let hacspec_lib_item s =
     `Concrete { crate = "hacspec"; path = Non_empty_list.[ "lib"; s ] }
 
-  let rec pitem (e : item) =
+  let rec pitem (e : item) : [> `Item of F.AST.decl | `Comment of string ] list
+      =
+    try pitem_unwrapped e
+    with Diagnostics.SpanFreeError _kind -> [ `Comment "item error backend" ]
+
+  and pitem_unwrapped (e : item) :
+      [> `Item of F.AST.decl | `Comment of string ] list =
     match e.v with
     | Fn { name; generics; body; params } ->
         let pat =
@@ -809,7 +824,7 @@ struct
         in
         let tcdef = F.AST.TyconRecord (name, bds, None, [], fields) in
         let d = F.AST.Tycon (false, true, [ tcdef ]) in
-        [ { d; drange = F.dummyRange; quals = []; attrs = [] } ]
+        [ `Item { d; drange = F.dummyRange; quals = []; attrs = [] } ]
     | Impl { generics; self_ty = _; of_trait; items } ->
         let pat = F.pat @@ F.AST.PatVar (F.id "impl", None, []) in
         let pat =
@@ -860,12 +875,13 @@ struct
                    items )
         in
         F.decls @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
+    | HaxError details -> [ `Comment details ]
     | Use _ (* TODO: Not Yet Implemented *) | NotImplementedYet -> []
     | _ -> .
 end
 
 module type S = sig
-  val pitem : item -> F.AST.decl list
+  val pitem : item -> [> `Item of F.AST.decl | `Comment of string ] list
 end
 
 let make ctx =
@@ -875,7 +891,11 @@ let make ctx =
 
 let string_of_item (item : item) : string =
   let (module Print) = make { current_namespace = item.parent_namespace } in
-  List.map ~f:decl_to_string @@ Print.pitem item |> String.concat ~sep:"\n"
+  List.map ~f:(function
+    | `Item i -> decl_to_string i
+    | `Comment s -> "(* " ^ s ^ " *)")
+  @@ Print.pitem item
+  |> String.concat ~sep:"\n"
 
 let string_of_items =
   List.map ~f:string_of_item >> List.map ~f:String.strip
@@ -890,26 +910,23 @@ let hardcoded_fstar_headers =
    open Hacspec_lib_tc"
 
 let translate (bo : BackendOptions.t) (items : AST.item list) :
-    Raw_thir_ast.output =
-  let files =
-    U.group_items_by_namespace items
-    |> Map.to_alist
-    |> List.map ~f:(fun (ns, items) ->
-           let mod_name =
-             String.concat ~sep:"."
-               (List.map
-                  ~f:(map_first_letter String.uppercase)
-                  (fst ns :: snd ns))
-           in
-           Raw_thir_ast.
-             {
-               path = mod_name ^ ".fst";
-               contents =
-                 "module " ^ mod_name ^ hardcoded_fstar_headers ^ "\n\n"
-                 ^ string_of_items items;
-             })
-  in
-  { diagnostics = []; files }
+    Raw_thir_ast.file list =
+  U.group_items_by_namespace items
+  |> Map.to_alist
+  |> List.map ~f:(fun (ns, items) ->
+         let mod_name =
+           String.concat ~sep:"."
+             (List.map
+                ~f:(map_first_letter String.uppercase)
+                (fst ns :: snd ns))
+         in
+         Raw_thir_ast.
+           {
+             path = mod_name ^ ".fst";
+             contents =
+               "module " ^ mod_name ^ hardcoded_fstar_headers ^ "\n\n"
+               ^ string_of_items items;
+           })
 
 open Phase_utils
 

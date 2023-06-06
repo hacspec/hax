@@ -245,49 +245,46 @@ impl Callbacks for ExtractionCallbacks {
                         cached_thirs: HashMap::new(),
                         exported_spans: Rc::new(RefCell::new(HashSet::new())),
                     };
-                    if output.diagnostics.is_empty() {
-                        match &backend.output_dir {
-                            PathOrDash::Dash => {
-                                serde_json::to_writer(std::io::stdout(), &output.files).unwrap();
-                            }
-                            PathOrDash::Path(output_dir) => {
-                                let output_dir = output_dir.clone();
-                                for file in output.files.clone() {
-                                    let path = output_dir.join(file.path);
-                                    std::fs::create_dir_all({
-                                        let mut parent = path.clone();
-                                        parent.pop();
-                                        parent
-                                    })
-                                    .unwrap();
-                                    session.note_without_error(format!("Writing file {:#?}", path));
-                                    std::fs::write(&path, file.contents).unwrap_or_else(|e| {
-                                        session.fatal(format!(
-                                            "Unable to write to file {:#?}. Error: {:#?}",
-                                            path, e
-                                        ))
-                                    })
-                                }
-                            }
+                    for d in output.diagnostics {
+                        use hax_diagnostics::*;
+                        use hax_frontend_exporter::SInto;
+                        let mut relevant_spans: Vec<_> = spans
+                            .iter()
+                            .filter(|span| span.sinto(&state) == d.span)
+                            .cloned()
+                            .collect();
+                        relevant_spans.sort();
+                        session.span_hax_err(
+                            d.set_span(
+                                relevant_spans
+                                    .first()
+                                    .cloned()
+                                    .unwrap_or(rustc_span::DUMMY_SP),
+                            ),
+                        );
+                    }
+                    match &backend.output_dir {
+                        PathOrDash::Dash => {
+                            serde_json::to_writer(std::io::stdout(), &output.files).unwrap();
                         }
-                    } else {
-                        for d in output.diagnostics.clone() {
-                            use hax_diagnostics::*;
-                            use hax_frontend_exporter::SInto;
-                            let mut relevant_spans: Vec<_> = spans
-                                .iter()
-                                .filter(|span| span.sinto(&state) == d.span)
-                                .cloned()
-                                .collect();
-                            relevant_spans.sort();
-                            session.span_hax_err(
-                                d.set_span(
-                                    relevant_spans
-                                        .first()
-                                        .cloned()
-                                        .unwrap_or(rustc_span::DUMMY_SP),
-                                ),
-                            );
+                        PathOrDash::Path(output_dir) => {
+                            let output_dir = output_dir.clone();
+                            for file in output.files.clone() {
+                                let path = output_dir.join(file.path);
+                                std::fs::create_dir_all({
+                                    let mut parent = path.clone();
+                                    parent.pop();
+                                    parent
+                                })
+                                .unwrap();
+                                session.note_without_error(format!("Writing file {:#?}", path));
+                                std::fs::write(&path, file.contents).unwrap_or_else(|e| {
+                                    session.fatal(format!(
+                                        "Unable to write to file {:#?}. Error: {:#?}",
+                                        path, e
+                                    ))
+                                })
+                            }
                         }
                     }
                 }

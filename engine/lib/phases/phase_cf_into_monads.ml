@@ -18,22 +18,25 @@ struct
     include Features.On.Monadic_binding
   end
 
-  module A = Ast.Make (F)
-  module B = Ast.Make (FB)
-  module ImplemT = Phase_utils.MakePhaseImplemT (A) (B)
+  include
+    Phase_utils.MakeBase (F) (FB)
+      (struct
+        let phase_id = Diagnostics.Phase.CfIntoMonads
+      end)
 
   module Implem : ImplemT.T = struct
+    let metadata = metadata
+
     module UA = Ast_utils.Make (F)
     module UB = Ast_utils.Make (FB)
-    include Phase_utils.DefaultError
 
     module S = struct
+      module A = FA
+      module B = FB
       include Features.SUBTYPE.Id
 
       let monadic_binding _ = Features.On.monadic_binding
     end
-
-    let metadata = Phase_utils.Metadata.make CfIntoMonads
 
     [%%inline_defs dmutability + dty + dborrow_kind + dpat]
 
@@ -124,7 +127,9 @@ struct
         else { monad = None; typ = new_ }
     end
 
-    let rec dexpr (expr : A.expr) : B.expr =
+    let rec dexpr = [%inline_body dexpr]
+
+    and dexpr_unwrapped (expr : A.expr) : B.expr =
       let span = expr.span in
       let typ = dty span expr.typ in
       match expr.e with

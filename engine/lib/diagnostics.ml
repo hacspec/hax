@@ -1,3 +1,4 @@
+open Utils
 module T = Raw_thir_ast
 
 module Backend = struct
@@ -58,8 +59,6 @@ type kind = T.kind [@@deriving show, eq]
 type t = { context : Context.t; kind : kind; span : T.span }
 [@@deriving show, eq]
 
-exception Error of t
-
 let to_thir_diagnostic (d : t) : Raw_thir_ast.diagnostics_for__span =
   { kind = d.kind; context = [%show: Context.t] d.context; span = d.span }
 
@@ -77,5 +76,50 @@ let to_thir_span (s : Ast.span) : T.span =
         lo = to_thir_loc lo;
       }
 
+let run_hax_pretty_print_diagnostics (s : string) : string =
+  try
+    let stdout, stdin = Unix.open_process "hax-pretty-print-diagnostics" in
+    Out_channel.(
+      output_string stdin s;
+      flush stdin;
+      close stdin);
+    In_channel.input_all stdout
+  with e ->
+    "[run_hax_pretty_print_diagnostics] failed. Exn: " ^ Printexc.to_string e
+    ^ ". Here is the JSON representation of the error that occurred:\n" ^ s
+
+let pretty_print : t -> string =
+  to_thir_diagnostic >> Raw_thir_ast.to_json_diagnostics_for__span
+  >> Yojson.Safe.pretty_to_string >> run_hax_pretty_print_diagnostics
+
+let pretty_print_context_kind : Context.t -> kind -> string =
+ fun context kind ->
+  let span = to_thir_span (Dummy { id = 0 }) in
+  pretty_print { context; kind; span }
+
+module Core : sig
+  val raise_fatal_error : 'never. t -> 'never
+  val report : t -> unit
+  val try_ : 'x. (unit -> 'x) -> t list * 'x option
+end = struct
+  (* a mutable state for collecting errors *)
+  let state = ref []
+  let report e = state := !state @ [ e ]
+
+  exception Error
+
+  let raise_fatal_error e =
+    report e;
+    raise Error
+
+  let try_ f =
+    let result = try Some (f ()) with Error -> None in
+    (!state, result)
+end
+
+include Core
+
 let failure ~context ~span kind =
-  raise @@ Error { context; kind; span = to_thir_span span }
+  Core.raise_fatal_error { context; kind; span = to_thir_span span }
+
+exception SpanFreeError of (Context.t * kind)

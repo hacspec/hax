@@ -4,22 +4,20 @@ open Base
 open Diagnostics
 
 let assertion_failure (span : Thir.span) (details : string) =
-  raise
-    (Error { span; kind = T.AssertionFailure { details }; context = ThirImport })
+  let kind = T.AssertionFailure { details } in
+  report { span; kind; context = ThirImport };
+  raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
 
 let unimplemented (span : Thir.span) (details : string) =
-  raise
-    (Error
-       {
-         span;
-         kind =
-           T.Unimplemented
-             {
-               issue_id = None (* TODO, file issues *);
-               details = String.(if details = "" then None else Some details);
-             };
-         context = ThirImport;
-       })
+  let kind =
+    T.Unimplemented
+      {
+        issue_id = None (* TODO, file issues *);
+        details = String.(if details = "" then None else Some details);
+      }
+  in
+  report { span; kind; context = ThirImport };
+  raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
 
 let todo (span : Thir.span) = unimplemented span "TODO"
 
@@ -123,7 +121,7 @@ module Exn = struct
 
   let c_borrow_kind span : Thir.borrow_kind -> borrow_kind = function
     | Shared -> Shared
-    | Shallow -> raise span ShallowMutUnsupported
+    | Shallow -> unimplemented span "Shallow borrows"
     | Unique -> Unique
     | Mut _ -> Mut W.mutable_reference
 
@@ -257,6 +255,17 @@ module Exn = struct
     | _ -> None
 
   let rec c_expr (e : Thir.decorated_for__expr_kind) : expr =
+    try c_expr_unwrapped e
+    with Diagnostics.SpanFreeError report ->
+      let typ : ty =
+        try c_ty e.span e.ty
+        with Diagnostics.SpanFreeError _ -> U.hax_failure_typ
+      in
+      let span = c_span e.span in
+      U.hax_failure_expr' span typ report
+        ([%show: Thir.decorated_for__expr_kind] e)
+
+  and c_expr_unwrapped (e : Thir.decorated_for__expr_kind) : expr =
     let call f args = App { f; args = List.map ~f:c_expr args } in
     let typ = c_ty e.span e.ty in
     let span = c_span e.span in
@@ -852,7 +861,10 @@ module Exn = struct
       ti_name = fst item.ident;
     }
 
-  let c_item (item : Thir.item) : item list =
+  let rec c_item (item : Thir.item) : item list =
+    try c_item_unwrapped item with Diagnostics.SpanFreeError _kind -> []
+
+  and c_item_unwrapped (item : Thir.item) : item list =
     if
       (* We need something better here, see issue #108 *)
       List.exists

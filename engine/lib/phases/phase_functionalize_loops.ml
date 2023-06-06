@@ -14,16 +14,17 @@ struct
     include Features.Off.Loop
   end
 
-  module A = Ast.Make (F)
-  module B = Ast.Make (FB)
-  module ImplemT = Phase_utils.MakePhaseImplemT (A) (B)
+  include
+    Phase_utils.MakeBase (F) (FB)
+      (struct
+        let phase_id = Diagnostics.Phase.FunctionalizeLoops
+      end)
 
   module Implem : ImplemT.T = struct
-    let metadata = Phase_utils.Metadata.make FunctionalizeLoops
+    let metadata = metadata
 
     module UA = Ast_utils.Make (F)
     module UB = Ast_utils.Make (FB)
-    include Phase_utils.DefaultError
 
     module S = struct
       include Features.SUBTYPE.Id
@@ -31,7 +32,9 @@ struct
 
     [%%inline_defs dmutability + dty + dborrow_kind + dpat + dsupported_monads]
 
-    let rec dexpr (expr : A.expr) : B.expr =
+    let rec dexpr = [%inline_body dexpr]
+
+    and dexpr_unwrapped (expr : A.expr) : B.expr =
       let span = expr.span in
       match expr.e with
       | Loop

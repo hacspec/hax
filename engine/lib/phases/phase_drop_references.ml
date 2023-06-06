@@ -17,18 +17,18 @@ struct
     include Features.Off.Reference
   end
 
-  module A = Ast.Make (F)
-  module B = Ast.Make (FB)
-  module ImplemT = Phase_utils.MakePhaseImplemT (A) (B)
+  include
+    Phase_utils.MakeBase (F) (FB)
+      (struct
+        let phase_id = Diagnostics.Phase.DropReferences
+      end)
 
   module Implem : ImplemT.T = struct
-    include Phase_utils.NoError
+    let metadata = metadata
 
     module S = struct
       include Features.SUBTYPE.Id
     end
-
-    include Phase_utils.DefaultError
 
     let rec dty (span : span) (t : A.ty) : B.ty =
       match t with
@@ -67,6 +67,7 @@ struct
     let dsupported_monads = [%inline_body dsupported_monads]
 
     let rec dexpr = [%inline_body dexpr]
+    and dexpr_unwrapped = [%inline_body dexpr_unwrapped]
 
     and dexpr' (span : span) (e : A.expr') : B.expr' =
       match e with
@@ -176,8 +177,6 @@ struct
                   of_trait;
               items = List.map ~f:dimpl_item items;
             }
-
-    let metadata = Phase_utils.Metadata.make DropReferences
   end
 
   include Implem
