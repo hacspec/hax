@@ -1,3 +1,4 @@
+(* TODO: handle Exn report *)
 open Base
 open Utils
 open Side_effect_utils
@@ -21,16 +22,17 @@ struct
     include Features.On.State_passing_loop
   end
 
-  module A = Ast.Make (F)
-  module B = Ast.Make (FB)
-  module ImplemT = Phase_utils.MakePhaseImplemT (A) (B)
+  include
+    Phase_utils.MakeBase (F) (FB)
+      (struct
+        let phase_id = Diagnostics.Phase.LocalMutation
+      end)
 
   module Implem : ImplemT.T = struct
-    let metadata = Phase_utils.Metadata.make LocalMutation
+    let metadata = metadata
 
     module UA = Ast_utils.Make (F)
     module UB = Ast_utils.Make (FB)
-    include Phase_utils.DefaultError
 
     module S = struct
       include Features.SUBTYPE.Id
@@ -170,19 +172,17 @@ struct
             free_assigned_variables#visit_expr () expr
           in
           if observable_mutations |> Set.is_empty |> not then
-            raise
-            @@ Error.E
-                 {
-                   kind =
-                     ClosureMutatesParentBindings
-                       {
-                         bindings =
-                           Set.to_list observable_mutations
-                           |> List.map ~f:(fun (LocalIdent.{ name; _ }, _) ->
-                                  name);
-                       };
-                   span;
-                 };
+            Error.raise
+              {
+                kind =
+                  ClosureMutatesParentBindings
+                    {
+                      bindings =
+                        Set.to_list observable_mutations
+                        |> List.map ~f:(fun (LocalIdent.{ name; _ }, _) -> name);
+                    };
+                span;
+              };
           let s =
             {
               s with

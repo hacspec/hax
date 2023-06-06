@@ -84,17 +84,18 @@ module Raw = struct
     | UnOp op -> "BinOp::" ^ [%show: un_op] op
     | LogicalOp op -> "BinOp::" ^ [%show: logical_op] op
 
-  let pglobal_ident span (e : global_ident) : AnnotatedString.t =
+  let rec pglobal_ident' prefix span (e : global_ident) : AnnotatedString.t =
+    let ( ! ) s = pure span (prefix ^ s) in
     match e with
     | `Concrete { crate; path } ->
-        pure span
-        @@ String.concat ~sep:"::" (crate :: Non_empty_list.to_list path)
+        !(String.concat ~sep:"::" (crate :: Non_empty_list.to_list path))
     | `Primitive p -> pprimitive_ident span p
-    | `TupleType n -> pure span @@ [%string "tuple%{Int.to_string n}"]
-    | `TupleCons n -> pure span @@ [%string "Tuple%{Int.to_string n}"]
-    | `TupleField (n, _) ->
-        pure span @@ [%string "proj_tuple%{Int.to_string n}"]
-    | `Projector _n -> pure span @@ show_global_ident e
+    | `TupleType n -> ![%string "tuple%{Int.to_string n}"]
+    | `TupleCons n -> ![%string "Tuple%{Int.to_string n}"]
+    | `TupleField (n, _) -> ![%string "proj_tuple%{Int.to_string n}"]
+    | `Projector o -> pglobal_ident' "proj_" span (o :> global_ident)
+
+  let pglobal_ident = pglobal_ident' ""
 
   let plocal_ident span (e : LocalIdent.t) : AnnotatedString.t =
     pure span e.name
@@ -373,17 +374,23 @@ let rustfmt_annotated (x : AnnotatedString.t) : AnnotatedString.t =
   let r = snd @@ List.fold_left s ~init:(x, []) ~f in
   List.rev r
 
-(* let pitem : item -> AnnotatedString.Output.t = *)
-(*   Raw.pitem >> AnnotatedString.Output.convert *)
-
-module U = Ast_utils.Make (Features.Full)
+(* module U = Ast_utils.Make (Features.Full) *)
 
 let pitem : item -> AnnotatedString.Output.t =
   (* U.Mappers.regenerate_span_ids#visit_item () *)
   Raw.pitem >> rustfmt_annotated >> AnnotatedString.Output.convert
 
-(* let pitem : item -> AnnotatedString.Output.t = *)
-(*  fun i -> *)
-(*   let items = Raw.pitem i in *)
-(*   AnnotatedString.Output.convert (items @ rustfmt_annotated items) *)
-(* let pitem : item -> string = Raw.pitem >> rustfmt *)
+let pitem_str : item -> string = pitem >> AnnotatedString.Output.raw_string
+
+let pexpr_str (e : expr) : string =
+  let e = Raw.pexpr e in
+  let ( ! ) = AnnotatedString.pure (Dummy { id = 0 }) in
+  let ( & ) = AnnotatedString.( & ) in
+  let prefix = "fn expr_wrapper() {" in
+  let suffix = "}" in
+  let item = !prefix & e & !suffix in
+  rustfmt_annotated item |> AnnotatedString.Output.convert
+  |> AnnotatedString.Output.raw_string |> Caml.String.trim
+  |> String.chop_suffix_if_exists ~suffix
+  |> String.chop_prefix_if_exists ~prefix
+  |> Caml.String.trim

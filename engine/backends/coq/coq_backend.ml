@@ -985,6 +985,7 @@ struct
            }
     | Use { path; is_external; rename } ->
         if is_external then [] else [ C.AST.Require (path, rename) ]
+    | HaxError s -> [ __TODO_item__ span s ]
     | NotImplementedYet -> [ __TODO_item__ span "Not implemented yet?" ]
     | Trait { name; generics; items } ->
         [
@@ -1105,27 +1106,23 @@ let hardcoded_coq_headers =
    Open Scope bool_scope.\n"
 
 let translate (bo : BackendOptions.t) (items : AST.item list) :
-    Raw_thir_ast.output =
-  {
-    diagnostics = [];
-    files =
-      U.group_items_by_namespace items
-      |> Map.to_alist
-      |> List.map ~f:(fun (ns, items) ->
-             let mod_name =
-               String.concat ~sep:"."
-                 (List.map
-                    ~f:(map_first_letter String.uppercase)
-                    (fst ns :: snd ns))
-             in
+    Raw_thir_ast.file list =
+  U.group_items_by_namespace items
+  |> Map.to_alist
+  |> List.map ~f:(fun (ns, items) ->
+         let mod_name =
+           String.concat ~sep:"."
+             (List.map
+                ~f:(map_first_letter String.uppercase)
+                (fst ns :: snd ns))
+         in
 
-             Raw_thir_ast.
-               {
-                 path = mod_name ^ ".v";
-                 contents =
-                   hardcoded_coq_headers ^ "\n" ^ string_of_items items ^ "\n";
-               });
-  }
+         Raw_thir_ast.
+           {
+             path = mod_name ^ ".v";
+             contents =
+               hardcoded_coq_headers ^ "\n" ^ string_of_items items ^ "\n";
+           })
 
 open Phase_utils
 

@@ -52,7 +52,9 @@ fn make_fn_def<'tcx, S: BaseState<'tcx>>(
     body_id: &rustc_hir::BodyId,
     s: &S,
 ) -> FnDef {
-    let (thir, params, body) = inspect_local_def_id(body_id.hir_id.owner.def_id, s);
+    let hir_id = body_id.hir_id;
+    let (thir, params, body) =
+        inspect_local_def_id(hir_id.clone().owner.def_id, hir_id.clone().owner, s);
     let ret = body.ty.clone();
     let s = State {
         tcx: s.tcx(),
@@ -74,9 +76,14 @@ fn make_fn_def<'tcx, S: BaseState<'tcx>>(
     }
 }
 
-impl<'tcx, S: BaseState<'tcx>> SInto<S, Body> for rustc_hir::BodyId {
+impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, Body> for rustc_hir::BodyId {
     fn sinto(&self, s: &S) -> Body {
-        inspect_local_def_id(s.tcx().hir().body_owner_def_id(self.clone()), s).2
+        inspect_local_def_id(
+            s.tcx().hir().body_owner_def_id(self.clone()),
+            s.owner_id(),
+            s,
+        )
+        .2
     }
 }
 
@@ -173,10 +180,24 @@ pub enum LifetimeParamKind {
     Error,
 }
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_hir::AnonConst, state: S as tcx)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_hir::AnonConst, state: S as s)]
 pub struct AnonConst {
     pub hir_id: HirId,
     pub def_id: GlobalIdent,
+    #[map({
+        let s = State {
+            tcx: s.tcx(),
+            options: s.options(),
+            thir: (),
+            owner_id: hir_id.owner,
+            opt_def_id: s.opt_def_id(),
+            macro_infos: s.macro_infos(),
+            local_ident_map: s.local_ident_map(),
+            cached_thirs: s.cached_thirs(),
+            exported_spans: s.exported_spans(),
+        };
+        x.sinto(&s)
+    })]
     pub body: Body,
 }
 
@@ -296,7 +317,7 @@ pub enum VariantData {
 }
 
 #[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::FieldDef<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::FieldDef<'tcx>, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct HirFieldDef {
     pub span: Span,
@@ -305,10 +326,13 @@ pub struct HirFieldDef {
     pub hir_id: HirId,
     pub def_id: GlobalIdent,
     pub ty: Ty,
+    #[not_in_source]
+    #[map(s.tcx().hir().attrs(hir_id.clone()).sinto(s))]
+    attributes: Vec<Attribute>,
 }
 
 #[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::Variant<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::Variant<'tcx>, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Variant {
     pub ident: Ident,
@@ -317,6 +341,9 @@ pub struct Variant {
     pub data: VariantData,
     pub disr_expr: Option<AnonConst>,
     pub span: Span,
+    #[not_in_source]
+    #[map(s.tcx().hir().attrs(hir_id.clone()).sinto(s))]
+    attributes: Vec<Attribute>,
 }
 
 #[derive(AdtInto)]
@@ -529,51 +556,11 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>>(
                     kind: ItemKind::MacroInvokation(invocation),
                     span,
                     vis_span: rustc_span::DUMMY_SP.sinto(s),
+                    attributes: vec![],
+                    expn_backtrace: vec![],
                 }]
             }
-            _ => items
-                // TODO: this filter is temporary, and should be replaced by something better, see issue #88
-                .filter(|item| {
-                    mod clippy_utils {
-                        /* This is stolen from `clippy_utils`. TODO: use `clippy_utils` directly.
-                        (I was not able to understand how to make cargo to install it) */
-                        use rustc_ast::ast;
-                        use rustc_hir::HirId;
-                        use rustc_middle::ty::TyCtxt;
-                        use rustc_span::{symbol::sym, Symbol};
-                        fn has_attr(attrs: &[ast::Attribute], symbol: Symbol) -> bool {
-                            attrs.iter().any(|attr| attr.has_name(symbol))
-                        }
-                        fn any_parent_has_attr(
-                            tcx: TyCtxt<'_>,
-                            node: HirId,
-                            symbol: Symbol,
-                        ) -> bool {
-                            let map = &tcx.hir();
-                            let mut prev_enclosing_node = None;
-                            let mut enclosing_node = node;
-                            while Some(enclosing_node) != prev_enclosing_node {
-                                if has_attr(map.attrs(enclosing_node), symbol) {
-                                    return true;
-                                }
-                                prev_enclosing_node = Some(enclosing_node);
-                                enclosing_node = map.get_parent_item(enclosing_node).into();
-                            }
-
-                            false
-                        }
-
-                        pub fn any_parent_is_automatically_derived(
-                            tcx: TyCtxt<'_>,
-                            node: HirId,
-                        ) -> bool {
-                            any_parent_has_attr(tcx, node, sym::automatically_derived)
-                        }
-                    }
-                    !clippy_utils::any_parent_is_automatically_derived(tcx, item.hir_id())
-                })
-                .map(|item| item.sinto(s))
-                .collect(),
+            _ => items.map(|item| item.sinto(s)).collect(),
         })
         .flatten()
         .collect()
@@ -865,6 +852,21 @@ pub struct Item {
         })
     })]
     pub kind: ItemKind,
+    #[map({
+        let tcx = state.tcx();
+        tcx.hir().attrs(rustc_hir::hir_id::HirId::from(owner_id.clone())).sinto(state)
+    })]
+    #[not_in_source]
+    pub attributes: Vec<Attribute>,
+    #[not_in_source]
+    #[map(span.macro_backtrace().map(|o| o.sinto(state)).collect())]
+    expn_backtrace: Vec<ExpnData>,
+    // #[map({
+    //     let tcx = state.tcx();
+    //     tcx.hir().attrs(rustc_hir::hir_id::HirId::from(owner_id.clone())).sinto(state)
+    // })]
+    // #[not_in_source]
+    // pub comes_from_ex: Vec<Attribute>,
 }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Item> for rustc_hir::ItemId {

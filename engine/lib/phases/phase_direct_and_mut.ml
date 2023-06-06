@@ -14,11 +14,15 @@ struct
     include Features.Off.Mutable_reference
   end
 
-  module A = Ast.Make (FA)
-  module B = Ast.Make (FB)
-  module ImplemT = Phase_utils.MakePhaseImplemT (A) (B)
+  include
+    Phase_utils.MakeBase (FA) (FB)
+      (struct
+        let phase_id = Diagnostics.Phase.RefMut
+      end)
 
   module Implem : ImplemT.T = struct
+    let metadata = metadata
+
     module S = struct
       include Features.SUBTYPE.Id
 
@@ -27,9 +31,6 @@ struct
 
     module UA = Ast_utils.Make (FA)
     module UB = Ast_utils.Make (FB)
-    include Phase_utils.DefaultError
-
-    let metadata = Phase_utils.Metadata.make RefMut
 
     [%%inline_defs dmutability]
 
@@ -37,7 +38,7 @@ struct
       match ty with
       | [%inline_arms "dty.*" - TRef] -> auto
       | TRef { mut = Mutable _; _ } ->
-          raise @@ Error.E { kind = UnallowedMutRef; span }
+          Error.raise { kind = UnallowedMutRef; span }
       | TRef { witness; typ; mut = Immutable as mut; region } ->
           TRef { witness; typ = dty span typ; mut; region }
 
@@ -71,8 +72,9 @@ struct
     and dlhs = [%inline_body dlhs]
     and dloop_kind = [%inline_body dloop_kind]
     and dloop_state = [%inline_body dloop_state]
+    and dexpr = [%inline_body dexpr]
 
-    and dexpr (expr : A.expr) : B.expr =
+    and dexpr_unwrapped (expr : A.expr) : B.expr =
       let span = expr.span in
       match expr.e with
       | [%inline_arms "dexpr'.*" - App - Borrow] ->
@@ -85,8 +87,7 @@ struct
                   kind =
                     (match kind with
                     | Mut _ ->
-                        raise
-                        @@ Error.E { kind = UnallowedMutRef; span = expr.span }
+                        Error.raise { kind = UnallowedMutRef; span = expr.span }
                     | Shared -> B.Shared
                     | Unique -> B.Unique);
                   e = dexpr e;
@@ -105,17 +106,15 @@ struct
                       ~f:(uncurry @@ extract_direct_ref_mut expr.span)
                       args
                 | Unequal_lengths ->
-                    raise
-                    @@ Error.E
-                         {
-                           kind =
-                             AssertionFailure
-                               { details = "Bad arity application" };
-                           span = expr.span;
-                         }
+                    Error.raise
+                      {
+                        kind =
+                          AssertionFailure { details = "Bad arity application" };
+                        span = expr.span;
+                      }
               in
               if [%matches? A.TRef { mut = Mutable _; _ }] type_output0 then
-                raise @@ Error.E { kind = UnallowedMutRef; span = expr.span };
+                Error.raise { kind = UnallowedMutRef; span = expr.span };
               let ret_unit = UA.is_unit_typ type_output0 in
               let mut_typed_inputs =
                 List.filter_map ~f:Either.First.to_option typed_inputs
@@ -222,17 +221,13 @@ struct
                            })
                        ~f:UB.make_seq assigns)
           | _ ->
-              raise
-              @@ Error.E
-                   {
-                     kind =
-                       Unimplemented
-                         {
-                           issue_id = Some 76;
-                           details = Some "Incomplete phase";
-                         };
-                     span = expr.span;
-                   })
+              Error.raise
+                {
+                  kind =
+                    Unimplemented
+                      { issue_id = Some 76; details = Some "Incomplete phase" };
+                  span = expr.span;
+                })
 
     [%%inline_defs "Item.*"]
 

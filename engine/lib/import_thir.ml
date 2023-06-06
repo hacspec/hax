@@ -4,22 +4,20 @@ open Base
 open Diagnostics
 
 let assertion_failure (span : Thir.span) (details : string) =
-  raise
-    (Error { span; kind = T.AssertionFailure { details }; context = ThirImport })
+  let kind = T.AssertionFailure { details } in
+  report { span; kind; context = ThirImport };
+  raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
 
 let unimplemented (span : Thir.span) (details : string) =
-  raise
-    (Error
-       {
-         span;
-         kind =
-           T.Unimplemented
-             {
-               issue_id = None (* TODO, file issues *);
-               details = String.(if details = "" then None else Some details);
-             };
-         context = ThirImport;
-       })
+  let kind =
+    T.Unimplemented
+      {
+        issue_id = None (* TODO, file issues *);
+        details = String.(if details = "" then None else Some details);
+      }
+  in
+  report { span; kind; context = ThirImport };
+  raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
 
 let todo (span : Thir.span) = unimplemented span "TODO"
 
@@ -123,7 +121,7 @@ module Exn = struct
 
   let c_borrow_kind span : Thir.borrow_kind -> borrow_kind = function
     | Shared -> Shared
-    | Shallow -> raise span ShallowMutUnsupported
+    | Shallow -> unimplemented span "Shallow borrows"
     | Unique -> Unique
     | Mut _ -> Mut W.mutable_reference
 
@@ -273,6 +271,17 @@ module Exn = struct
     | _ -> None
 
   let rec c_expr (e : Thir.decorated_for__expr_kind) : expr =
+    try c_expr_unwrapped e
+    with Diagnostics.SpanFreeError report ->
+      let typ : ty =
+        try c_ty e.span e.ty
+        with Diagnostics.SpanFreeError _ -> U.hax_failure_typ
+      in
+      let span = c_span e.span in
+      U.hax_failure_expr' span typ report
+        ([%show: Thir.decorated_for__expr_kind] e)
+
+  and c_expr_unwrapped (e : Thir.decorated_for__expr_kind) : expr =
     let call f args = App { f; args = List.map ~f:c_expr args } in
     let typ = c_ty e.span e.ty in
     let span = c_span e.span in
@@ -868,144 +877,158 @@ module Exn = struct
       ti_name = fst item.ident;
     }
 
-  let c_item (item : Thir.item) : item =
-    let span = c_span item.span in
-    let v =
-      (* TODO: things might be unnamed (e.g. constants) *)
-      match (item.kind : Thir.item_kind) with
-      | Const (_, body) ->
-          Fn
-            {
-              name = def_id (Option.value_exn item.def_id);
-              generics = { params = []; constraints = [] };
-              body = c_expr body;
-              params = [];
-            }
-      | TyAlias (ty, generics) ->
-          TyAlias
-            {
-              name = def_id (Option.value_exn item.def_id);
-              generics = c_generics generics;
-              ty = c_ty item.span ty;
-            }
-      | Fn (generics, { body; params; _ }) ->
-          Fn
-            {
-              name = def_id (Option.value_exn item.def_id);
-              generics = c_generics generics;
-              body = c_expr body;
-              params = List.map ~f:(c_param item.span) params;
-            }
-      | Enum (variants, generics) ->
-          let name = def_id (Option.value_exn item.def_id) in
-          let generics = c_generics generics in
-          let variants =
-            List.map
-              ~f:(fun { data; def_id = variant_id; _ } ->
-                match data with
-                | Tuple (fields, _, _) | Struct (fields, _) ->
-                    let arguments =
-                      List.map
-                        ~f:(fun { def_id = id; ty; span; _ } ->
-                          (def_id id, c_ty span ty))
-                        fields
-                    in
-                    { name = def_id variant_id; arguments }
-                | Unit (_, name) -> { name = def_id name; arguments = [] })
-              variants
-          in
-          Type { name; generics; variants; record = true }
-      | Struct (v, generics) ->
-          let name = def_id (Option.value_exn item.def_id) in
-          let generics = c_generics generics in
-          let v, record =
-            let mk fields =
-              let arguments =
-                List.map
-                  ~f:(fun Thir.{ def_id = id; ty; span; _ } ->
-                    (def_id id, c_ty span ty))
-                  fields
-              in
-              { name; arguments }
+  let rec c_item (item : Thir.item) : item list =
+    try c_item_unwrapped item with Diagnostics.SpanFreeError _kind -> []
+
+  and c_item_unwrapped (item : Thir.item) : item list =
+    if
+      (* We need something better here, see issue #108 *)
+      List.exists
+        ~f:(function
+          | { kind = Normal { item = { path; _ }; _ }; _ } ->
+              String.equal path "automatically_derived"
+          | _ -> false)
+        item.attributes
+    then []
+    else
+      let span = c_span item.span in
+      let v =
+        (* TODO: things might be unnamed (e.g. constants) *)
+        match (item.kind : Thir.item_kind) with
+        | Const (_, body) ->
+            Fn
+              {
+                name = def_id (Option.value_exn item.def_id);
+                generics = { params = []; constraints = [] };
+                body = c_expr body;
+                params = [];
+              }
+        | TyAlias (ty, generics) ->
+            TyAlias
+              {
+                name = def_id (Option.value_exn item.def_id);
+                generics = c_generics generics;
+                ty = c_ty item.span ty;
+              }
+        | Fn (generics, { body; params; _ }) ->
+            Fn
+              {
+                name = def_id (Option.value_exn item.def_id);
+                generics = c_generics generics;
+                body = c_expr body;
+                params = List.map ~f:(c_param item.span) params;
+              }
+        | Enum (variants, generics) ->
+            let name = def_id (Option.value_exn item.def_id) in
+            let generics = c_generics generics in
+            let variants =
+              List.map
+                ~f:(fun { data; def_id = variant_id; _ } ->
+                  match data with
+                  | Tuple (fields, _, _) | Struct (fields, _) ->
+                      let arguments =
+                        List.map
+                          ~f:(fun { def_id = id; ty; span; _ } ->
+                            (def_id id, c_ty span ty))
+                          fields
+                      in
+                      { name = def_id variant_id; arguments }
+                  | Unit (_, name) -> { name = def_id name; arguments = [] })
+                variants
             in
-            match v with
-            | Tuple (fields, _, _) -> (mk fields, false)
-            | Struct (fields, _) -> (mk fields, true)
-            | Unit (_, _) -> ({ name; arguments = [] }, false)
-          in
-          let variants = [ v ] in
-          Type { name; generics; variants; record }
-      | MacroInvokation { macro_ident; argument; span } ->
-          IMacroInvokation
-            {
-              macro = def_id macro_ident;
-              argument;
-              span = c_span span;
-              witness = W.macro;
-            }
-      | Trait (No, Normal, generics, _bounds, items) ->
-          let name = def_id (Option.value_exn item.def_id) in
-          let { params; constraints } = c_generics generics in
-          let params =
-            GPType { ident = { name = "Self"; id = 0 }; default = None }
-            :: params
-          in
-          Trait
-            {
-              name;
-              generics = { params; constraints };
-              items = List.map ~f:c_trait_item items;
-            }
-      | Trait (Yes, _, _, _, _) -> unimplemented item.span "Auto trait"
-      | Trait (_, Unsafe, _, _, _) -> unimplemented item.span "Unsafe trait"
-      | Impl i ->
-          Impl
-            {
-              generics = c_generics i.generics;
-              self_ty = c_ty item.span i.self_ty;
-              of_trait =
-                Option.map
-                  ~f:(fun { def_id = id; generic_args } ->
-                    ( def_id id,
-                      List.map ~f:(c_generic_value item.span) generic_args ))
-                  i.of_trait;
-              items =
-                List.map
-                  ~f:(fun (item : Thir.impl_item) ->
-                    {
-                      ii_span = c_span item.span;
-                      ii_generics = c_generics item.generics;
-                      ii_v =
-                        (match (item.kind : Thir.impl_item_kind) with
-                        | Fn { body; params; _ } ->
-                            IIFn
-                              {
-                                body = c_expr body;
-                                params = List.map ~f:(c_param item.span) params;
-                              }
-                        | Const (_ty, e) ->
-                            IIFn { body = c_expr e; params = [] }
-                        | Type ty -> IIType (c_ty item.span ty));
-                      ii_name = fst item.ident;
-                    })
-                  i.items;
-            }
-      | Use ({ span; res; segments; rename }, t) ->
-          Use
-            {
-              path = List.map ~f:(fun x -> fst x.ident) segments;
-              is_external =
-                List.exists ~f:(function Err -> true | _ -> false) res;
-              (* TODO: this should represent local/external? *)
-              rename;
-            }
-      | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
-      | OpaqueTy _ | Union _ | TraitAlias _ ->
-          NotImplementedYet
-    in
-    { span; v; parent_namespace = namespace_of_def_id item.owner_id }
+            Type { name; generics; variants; record = true }
+        | Struct (v, generics) ->
+            let name = def_id (Option.value_exn item.def_id) in
+            let generics = c_generics generics in
+            let v, record =
+              let mk fields =
+                let arguments =
+                  List.map
+                    ~f:(fun Thir.{ def_id = id; ty; span; _ } ->
+                      (def_id id, c_ty span ty))
+                    fields
+                in
+                { name; arguments }
+              in
+              match v with
+              | Tuple (fields, _, _) -> (mk fields, false)
+              | Struct (fields, _) -> (mk fields, true)
+              | Unit (_, _) -> ({ name; arguments = [] }, false)
+            in
+            let variants = [ v ] in
+            Type { name; generics; variants; record }
+        | MacroInvokation { macro_ident; argument; span } ->
+            IMacroInvokation
+              {
+                macro = def_id macro_ident;
+                argument;
+                span = c_span span;
+                witness = W.macro;
+              }
+        | Trait (No, Normal, generics, _bounds, items) ->
+            let name = def_id (Option.value_exn item.def_id) in
+            let { params; constraints } = c_generics generics in
+            let params =
+              GPType { ident = { name = "Self"; id = 0 }; default = None }
+              :: params
+            in
+            Trait
+              {
+                name;
+                generics = { params; constraints };
+                items = List.map ~f:c_trait_item items;
+              }
+        | Trait (Yes, _, _, _, _) -> unimplemented item.span "Auto trait"
+        | Trait (_, Unsafe, _, _, _) -> unimplemented item.span "Unsafe trait"
+        | Impl i ->
+            Impl
+              {
+                generics = c_generics i.generics;
+                self_ty = c_ty item.span i.self_ty;
+                of_trait =
+                  Option.map
+                    ~f:(fun { def_id = id; generic_args } ->
+                      ( def_id id,
+                        List.map ~f:(c_generic_value item.span) generic_args ))
+                    i.of_trait;
+                items =
+                  List.map
+                    ~f:(fun (item : Thir.impl_item) ->
+                      {
+                        ii_span = c_span item.span;
+                        ii_generics = c_generics item.generics;
+                        ii_v =
+                          (match (item.kind : Thir.impl_item_kind) with
+                          | Fn { body; params; _ } ->
+                              IIFn
+                                {
+                                  body = c_expr body;
+                                  params =
+                                    List.map ~f:(c_param item.span) params;
+                                }
+                          | Const (_ty, e) ->
+                              IIFn { body = c_expr e; params = [] }
+                          | Type ty -> IIType (c_ty item.span ty));
+                        ii_name = fst item.ident;
+                      })
+                    i.items;
+              }
+        | Use ({ span; res; segments; rename }, t) ->
+            Use
+              {
+                path = List.map ~f:(fun x -> fst x.ident) segments;
+                is_external =
+                  List.exists ~f:(function Err -> true | _ -> false) res;
+                (* TODO: this should represent local/external? *)
+                rename;
+              }
+        | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _
+        | GlobalAsm _ | OpaqueTy _ | Union _ | TraitAlias _ ->
+            NotImplementedYet
+      in
+      [ { span; v; parent_namespace = namespace_of_def_id item.owner_id } ]
 end
 
-let c_item (item : Thir.item) : (item, error) Result.t =
+let c_item (item : Thir.item) : (item list, error) Result.t =
   try Exn.c_item item |> Result.return
   with Exn.ImportError error -> Error error
