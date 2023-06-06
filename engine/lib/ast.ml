@@ -341,56 +341,8 @@ functor
       | GLifetime of { lt : todo; witness : F.lifetime }
       | GType of ty
       | GConst of todo
-    [@@deriving
-      show,
-        yojson,
-        eq,
-        visitors
-          {
-            variety = "reduce";
-            name = "ty_reduce";
-            ancestors =
-              [
-                "global_ident_reduce";
-                "todo_reduce";
-                "local_ident_reduce";
-                "default_reduce_features";
-                "DefaultClasses.default_reduce_features";
-              ];
-          },
-        visitors
-          {
-            variety = "mapreduce";
-            name = "ty_mapreduce";
-            ancestors =
-              [
-                "global_ident_mapreduce";
-                "todo_mapreduce";
-                "local_ident_mapreduce";
-                "default_mapreduce_features";
-                "DefaultClasses.default_mapreduce_features";
-              ];
-          },
-        visitors
-          {
-            variety = "map";
-            name = "ty_map";
-            ancestors =
-              [
-                "global_ident_map";
-                "todo_map";
-                "local_ident_map";
-                "default_map_features";
-                "DefaultClasses.default_map_features";
-              ];
-          }]
 
-    (* let show_ty (s : ty) : string = "<ty>" *)
-
-    (* let pp_ty (fmt : Format.formatter) (s : ty) : unit = *)
-    (*   Format.pp_print_string fmt @@ show_ty s *)
-
-    type pat' =
+    and pat' =
       | PWild
       | PAscription of { typ : ty; typ_span : span; pat : pat }
       | PConstruct of {
@@ -410,45 +362,9 @@ functor
         }
 
     and pat = { p : pat'; span : span; typ : ty }
-
     and field_pat = { field : global_ident; pat : pat }
-    [@@deriving
-      show,
-        yojson,
-        eq,
-        visitors
-          {
-            variety = "reduce";
-            name = "pat_reduce";
-            ancestors = [ "ty_reduce"; "binding_mode_reduce" ];
-          },
-        visitors
-          {
-            variety = "mapreduce";
-            name = "pat_mapreduce";
-            ancestors = [ "ty_mapreduce"; "binding_mode_mapreduce" ];
-          },
-        visitors
-          {
-            variety = "map";
-            name = "pat_map";
-            ancestors = [ "ty_map"; "binding_mode_map" ];
-          }]
 
-    type supported_monads =
-      | MException of ty
-          (** a exception monad, which we use to handle early returns *)
-      | MResult of ty  (** the [Result] monad *)
-      | MOption  (** the [Option] monad *)
-    [@@deriving
-      show,
-        yojson,
-        eq,
-        visitors { variety = "reduce"; name = "supported_monads_reduce" },
-        visitors { variety = "mapreduce"; name = "supported_monads_mapreduce" },
-        visitors { variety = "map"; name = "supported_monads_map" }]
-
-    type expr' =
+    and expr' =
       (* pure fragment *)
       | If of { cond : expr; then_ : expr; else_ : expr option }
       | App of { f : expr; args : expr list (* ; f_span: span *) }
@@ -518,6 +434,12 @@ functor
 
     and expr = { e : expr'; span : span; typ : ty }
 
+    and supported_monads =
+      | MException of ty
+          (** a exception monad, which we use to handle early returns *)
+      | MResult of ty  (** the [Result] monad *)
+      | MOption  (** the [Option] monad *)
+
     and loop_kind =
       | UnconditionalLoop
       | ForLoop of {
@@ -550,7 +472,8 @@ functor
           witness : F.nontrivial_lhs;
         }
 
-    and arm' = { pat : pat; body : expr }
+    (* OCaml + visitors is not happy with `pat`... hence `arm_pat`... *)
+    and arm' = { arm_pat : pat; body : expr }
 
     and arm = { arm : arm'; span : span }
     [@@deriving
@@ -561,19 +484,43 @@ functor
           {
             variety = "reduce";
             name = "expr_reduce";
-            ancestors = [ "supported_monads_reduce"; "pat_reduce" ];
+            ancestors =
+              [
+                "global_ident_reduce";
+                "todo_reduce";
+                "local_ident_reduce";
+                "default_reduce_features";
+                "DefaultClasses.default_reduce_features";
+                "binding_mode_reduce";
+              ];
           },
         visitors
           {
             variety = "mapreduce";
             name = "expr_mapreduce";
-            ancestors = [ "supported_monads_mapreduce"; "pat_mapreduce" ];
+            ancestors =
+              [
+                "global_ident_mapreduce";
+                "todo_mapreduce";
+                "local_ident_mapreduce";
+                "default_mapreduce_features";
+                "DefaultClasses.default_mapreduce_features";
+                "binding_mode_mapreduce";
+              ];
           },
         visitors
           {
             variety = "map";
             name = "expr_map";
-            ancestors = [ "supported_monads_map"; "pat_map" ];
+            ancestors =
+              [
+                "global_ident_map";
+                "todo_map";
+                "local_ident_map";
+                "default_map_features";
+                "DefaultClasses.default_map_features";
+                "binding_mode_map";
+              ];
           }]
 
     type generic_param =
@@ -591,19 +538,19 @@ functor
           {
             variety = "reduce";
             name = "generic_param_reduce";
-            ancestors = [ "ty_reduce" ];
+            ancestors = [ "expr_reduce" ];
           },
         visitors
           {
             variety = "mapreduce";
             name = "generic_param_mapreduce";
-            ancestors = [ "ty_mapreduce" ];
+            ancestors = [ "expr_mapreduce" ];
           },
         visitors
           {
             variety = "map";
             name = "generic_param_map";
-            ancestors = [ "ty_map" ];
+            ancestors = [ "expr_map" ];
           }]
 
     type trait_ref = {
@@ -619,16 +566,20 @@ functor
           {
             variety = "reduce";
             name = "trait_ref_reduce";
-            ancestors = [ "ty_reduce" ];
+            ancestors = [ "expr_reduce" ];
           },
         visitors
           {
             variety = "mapreduce";
             name = "trait_ref_mapreduce";
-            ancestors = [ "ty_mapreduce" ];
+            ancestors = [ "expr_mapreduce" ];
           },
         visitors
-          { variety = "map"; name = "trait_ref_map"; ancestors = [ "ty_map" ] }]
+          {
+            variety = "map";
+            name = "trait_ref_map";
+            ancestors = [ "expr_map" ];
+          }]
 
     type generic_constraint =
       | GCLifetime of todo * (F.lifetime[@visitors.opaque])
@@ -762,12 +713,7 @@ functor
             variety = "map";
             name = "item_map";
             ancestors =
-              [
-                "generic_constraint_map";
-                "expr_map";
-                "ty_map";
-                "generic_param_map";
-              ];
+              [ "generic_constraint_map"; "expr_map"; "generic_param_map" ];
           }]
     (* [@@deriving *)
     (*   show, yojson, eq, visitors { variety = "reduce"; name = "item_reduce" }, visitors { variety = "map"; name = "item_map" }] *)

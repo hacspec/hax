@@ -121,7 +121,10 @@ struct
       | _ -> .
 
     and darm (a : A.arm) : B.arm = { span = a.span; arm = darm' a.arm }
-    and darm' (a : A.arm') : B.arm' = { pat = dpat a.pat; body = dexpr a.body }
+
+    and darm' (a : A.arm') : B.arm' =
+      { arm_pat = dpat a.arm_pat; body = dexpr a.body }
+
     and dlhs = [%inline_body dlhs]
     and dloop_kind = [%inline_body dloop_kind]
     and dloop_state = [%inline_body dloop_state]

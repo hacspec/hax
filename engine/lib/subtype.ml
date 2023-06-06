@@ -232,7 +232,7 @@ struct
   and darm (a : A.arm) : B.arm = { span = a.span; arm = darm' a.span a.arm }
 
   and darm' (_span : span) (a : A.arm') : B.arm' =
-    { pat = dpat a.pat; body = dexpr a.body }
+    { arm_pat = dpat a.arm_pat; body = dexpr a.body }
 
   and dlhs (span : span) (lhs : A.lhs) : B.lhs =
     match lhs with

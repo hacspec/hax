@@ -287,16 +287,18 @@ module Exn = struct
             _;
           } ->
           let scrutinee = c_expr scrutinee in
-          let pat = c_pat pat in
+          let arm_pat = c_pat pat in
           let then_ = c_expr then' in
           let else_ =
             Option.value ~default:(U.unit_expr span)
             @@ Option.map ~f:c_expr else_opt
           in
-          let arm_then = { arm = { pat; body = then_ }; span = then_.span } in
+          let arm_then =
+            { arm = { arm_pat; body = then_ }; span = then_.span }
+          in
           let arm_else =
-            let pat = { pat with p = PWild } in
-            { arm = { pat; body = else_ }; span = else_.span }
+            let arm_pat = { arm_pat with p = PWild } in
+            { arm = { arm_pat; body = else_ }; span = else_.span }
           in
           Match { scrutinee; arms = [ arm_then; arm_else ] }
       | If { cond; else_opt; then'; _ } ->
@@ -760,10 +762,10 @@ module Exn = struct
     | _ -> GLifetime { lt = "todo generics"; witness = W.lifetime }
 
   and c_arm (arm : Thir.arm) : arm =
-    let pat = c_pat arm.pattern in
+    let arm_pat = c_pat arm.pattern in
     let body = c_expr arm.body in
     let span = c_span arm.span in
-    { arm = { pat; body }; span }
+    { arm = { arm_pat; body }; span }
 
   and c_param span (param : Thir.param) : param =
     {

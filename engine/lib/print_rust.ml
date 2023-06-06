@@ -233,8 +233,8 @@ module Raw = struct
     | Match { scrutinee; arms } ->
         let arms =
           List.map
-            ~f:(fun { arm = { pat; body }; _ } ->
-              ppat pat & !" => {" & pexpr body & !"}")
+            ~f:(fun { arm = { arm_pat; body }; _ } ->
+              ppat arm_pat & !" => {" & pexpr body & !"}")
             arms
           |> concat ~sep:!","
         in

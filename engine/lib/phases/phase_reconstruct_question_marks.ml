@@ -87,7 +87,7 @@ module%inlined_contents Make (FA : Features.T) = struct
                   {
                     arm =
                       {
-                        pat = pat_break;
+                        arm_pat = pat_break;
                         body =
                           {
                             e =
@@ -119,7 +119,7 @@ module%inlined_contents Make (FA : Features.T) = struct
                   {
                     arm =
                       {
-                        pat = pat_continue;
+                        arm_pat = pat_continue;
                         body = { e = LocalVar continue_var; _ };
                       };
                     _;

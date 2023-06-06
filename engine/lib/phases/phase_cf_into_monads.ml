@@ -159,10 +159,10 @@ struct
       | Match { scrutinee; arms } ->
           let arms =
             List.map
-              ~f:(fun { arm = { pat; body = a }; span } ->
+              ~f:(fun { arm = { arm_pat; body = a }; span } ->
                 let b = dexpr a in
                 let m = KnownMonads.from_typ a.typ b.typ in
-                (m, (dpat pat, span, b)))
+                (m, (dpat arm_pat, span, b)))
               arms
           in
           (* Todo throw assertion failed here (to get rid of reduce_exn in favor of reduce) *)
@@ -174,10 +174,10 @@ struct
           in
           let arms =
             List.map
-              ~f:(fun (mself, (pat, span, body)) ->
+              ~f:(fun (mself, (arm_pat, span, body)) ->
                 let body = KnownMonads.lift body mself.monad m in
-                let pat = { pat with typ = body.typ } in
-                ({ arm = { pat; body }; span } : B.arm))
+                let arm_pat = { arm_pat with typ = body.typ } in
+                ({ arm = { arm_pat; body }; span } : B.arm))
               arms
           in
           let scrutinee = dexpr scrutinee in

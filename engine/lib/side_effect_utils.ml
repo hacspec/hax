@@ -396,7 +396,9 @@ struct
                          (({ arm; span } : arm), { lbs = []; effects }))
                      (* cancel effects that concern variables introduced in pats  *)
                   |> List.map ~f:(fun (arm, { lbs; effects }) ->
-                         let vars = U.Reducers.variables_of_pat arm.arm.pat in
+                         let vars =
+                           U.Reducers.variables_of_pat arm.arm.arm_pat
+                         in
                          let effects =
                            SideEffects.without_rw_vars vars effects
                          in

@@ -151,8 +151,10 @@ module Make (F : Features.T) = struct
 
     let collect_global_idents =
       object
-        inherit ['self] pat_reduce as _super
-        inherit [_] Sets.GlobalIdent.monoid as _m
+        inherit ['self] expr_reduce as _super
+        inherit [_] Sets.GlobalIdent.monoid as m
+        method visit_t _ _ = m#zero
+        method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
 
         method! visit_global_ident (_env : unit) (x : GlobalIdent.t) =
           Set.singleton (module GlobalIdent) x
@@ -160,8 +162,10 @@ module Make (F : Features.T) = struct
 
     let variables_of_pat (p : pat) : Sets.LocalIdent.t =
       (object
-         inherit [_] pat_reduce as super
+         inherit [_] expr_reduce as super
          inherit [_] Sets.LocalIdent.monoid as m
+         method visit_t _ _ = m#zero
+         method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
 
          method! visit_PBinding env _ _ var _ subpat =
            m#plus
@@ -238,8 +242,8 @@ module Make (F : Features.T) = struct
                |> Option.value ~default:m#zero)
                (without_vars (super#visit_expr env body) vars))
 
-        method visit_arm' env { pat; body } =
-          without_pat_vars (super#visit_expr env body) pat
+        method visit_arm' env { arm_pat; body } =
+          without_pat_vars (super#visit_expr env body) arm_pat
       end
 
     class ['s] expr_list_monoid =

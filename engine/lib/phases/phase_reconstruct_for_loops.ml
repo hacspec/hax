@@ -121,7 +121,7 @@ struct
                   {
                     arm =
                       {
-                        pat =
+                        arm_pat =
                           {
                             p =
                               PBinding
@@ -202,7 +202,7 @@ struct
                                                           {
                                                             arm =
                                                               {
-                                                                pat =
+                                                                arm_pat =
                                                                   {
                                                                     p =
                                                                       PConstruct
@@ -243,7 +243,7 @@ struct
                                                           {
                                                             arm =
                                                               {
-                                                                pat =
+                                                                arm_pat =
                                                                   {
                                                                     p =
                                                                       PConstruct
