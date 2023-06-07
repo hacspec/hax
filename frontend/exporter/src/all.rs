@@ -1,4 +1,3 @@
-use crate::state::types::LocalIdentMap;
 use crate::state::*;
 use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
@@ -10,7 +9,7 @@ use crate::{AdtInto, SInto};
 pub trait BaseState<'tcx> = HasTcx<'tcx>
     + HasOptions
     + HasMacroInfos
-    + HasLocalIdentMap
+    + HasLocalCtx
     + IsState<'tcx>
     + Clone
     + HasOptDefId
@@ -345,7 +344,7 @@ pub struct ParamTy {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::ty::ParamConst, state: S as gstate)]
+#[args(<S>, from: rustc_middle::ty::ParamConst, state: S as gstate)]
 pub struct ParamConst {
     pub index: u32,
     pub name: Symbol,
@@ -793,8 +792,9 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, LocalIdent> for rustc_middle::thir::Loca
     fn sinto(&self, s: &S) -> LocalIdent {
         LocalIdent {
             name: s
-                .local_ident_map()
+                .local_ctx()
                 .borrow()
+                .vars
                 .get(self)
                 .clone()
                 .unwrap()
@@ -1531,6 +1531,125 @@ fn arrow_of_sig<'tcx, S: BaseState<'tcx>>(
     }
 }
 
+fn scalar_int_to_literal<'tcx, S: BaseState<'tcx>>(
+    s: &S,
+    x: rustc_middle::ty::ScalarInt,
+    ty: rustc_middle::ty::Ty,
+) -> LitKind {
+    use rustc_middle::ty;
+    match ty.kind() {
+        ty::Char => LitKind::Char(
+            x.try_to_u8()
+                .expect("scalar_int_to_literal: expected a char")
+                .into(),
+        ),
+        ty::Bool => LitKind::Bool(
+            x.try_to_bool()
+                .expect("scalar_int_to_literal: expected a bool"),
+        ),
+        ty::Int(kind) => LitKind::Int(x.assert_bits(x.size()), LitIntType::Signed(kind.sinto(s))),
+        ty::Uint(kind) => {
+            LitKind::Int(x.assert_bits(x.size()), LitIntType::Unsigned(kind.sinto(s)))
+        }
+        _ => panic!("scalar_int_to_literal: the type {:?} is not a literal", ty),
+    }
+}
+fn const_to_expr<'tcx, S: BaseState<'tcx>>(
+    s: &S,
+    c: rustc_middle::ty::Const<'tcx>,
+    ty: rustc_middle::ty::Ty<'tcx>,
+    span: rustc_span::Span,
+) -> Expr {
+    use rustc_middle::ty;
+    let kind = match c.kind() {
+        ty::ConstKind::Param(p) => ExprKind::ConstRef { id: p.sinto(s) },
+        ty::ConstKind::Infer(..) => panic!("ty::ConstKind::Infer node? {:#?}", c),
+        ty::ConstKind::Unevaluated(..) => panic!("ty::ConstKind::Unevaluated node? {:#?}", c),
+        ty::ConstKind::Value(valtree) => return valtree_to_expr(s, valtree, ty, span),
+        ty::ConstKind::Error(valtree) => panic!(),
+        ty::ConstKind::Expr(e) => {
+            use rustc_middle::ty::Expr as CE;
+            panic!("ty::ConstKind::Expr {:#?}", e)
+        }
+        _ => panic!(),
+    };
+    Decorated {
+        ty: ty.sinto(s),
+        span: span.sinto(s),
+        contents: box kind,
+        hir_id: None,
+        attributes: vec![],
+    }
+}
+fn valtree_to_expr<'tcx, S: BaseState<'tcx>>(
+    s: &S,
+    valtree: rustc_middle::ty::ValTree<'tcx>,
+    ty: rustc_middle::ty::Ty<'tcx>,
+    span: rustc_span::Span,
+) -> Expr {
+    use rustc_middle::ty;
+    let kind = match (valtree, ty.kind()) {
+        (_, ty::Ref(_, inner_ty, _)) => ExprKind::Borrow {
+            borrow_kind: BorrowKind::Shared,
+            arg: valtree_to_expr(s, valtree, *inner_ty, span),
+        },
+        (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
+            let contents: rustc_middle::ty::DestructuredConst = s
+                .tcx()
+                .destructure_const(s.tcx().mk_const(valtree.clone(), ty));
+            let fields = contents.fields.iter().copied();
+            match ty.kind() {
+                ty::Array(inner_ty, _) => ExprKind::Array {
+                    fields: fields
+                        .map(|field| const_to_expr(s, field, *inner_ty, span))
+                        .collect(),
+                },
+                ty::Tuple(typs) => ExprKind::Tuple {
+                    fields: fields
+                        .zip(typs.into_iter())
+                        .map(|(field, inner_ty)| const_to_expr(s, field, inner_ty, span))
+                        .collect(),
+                },
+                ty::Adt(def, substs) => {
+                    let variant_idx = contents
+                        .variant
+                        .expect("destructed const of adt without variant idx");
+                    let variant_def = &def.variant(variant_idx);
+                    ExprKind::Adt(AdtExpr {
+                        info: get_variant_information(def, &variant_def.def_id, s),
+                        user_ty: None,
+                        fields: fields
+                            .zip(&variant_def.fields)
+                            .map(|(value, field)| FieldExpr {
+                                field: field.did.sinto(s),
+                                value: const_to_expr(s, value, field.ty(s.tcx(), substs), span),
+                            })
+                            .collect(),
+                        base: None,
+                    })
+                }
+                _ => unreachable!(),
+            }
+        }
+        (ty::ValTree::Leaf(x), _) => ExprKind::Literal {
+            lit: Spanned {
+                node: scalar_int_to_literal(s, x, ty),
+                span: rustc_span::DUMMY_SP.sinto(s),
+            },
+            neg: false,
+        },
+        _ => panic!("valtree_to_expr: cannot hanlde {:#?}", valtree),
+    };
+
+    Decorated {
+        ty: ty.sinto(s),
+        span: span.sinto(s),
+        contents: box kind,
+        hir_id: None,
+        attributes: vec![],
+    }
+}
+
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::TyKind<'tcx>, state: S as state)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -1598,7 +1717,12 @@ pub enum Ty {
     /// An array with the given length. Written as `[T; N]`.
     Array(
         Box<Ty>,
-        #[map(x.try_eval_usize(state.tcx(), get_param_env(state)).unwrap())] u64,
+        #[map({
+            let x = x.eval(state.tcx(), get_param_env(state));
+            use rustc_middle::query::Key;
+            Box::new(const_to_expr(state, x, x.ty(), x.default_span(state.tcx())))
+        })]
+        Box<Expr>,
     ),
 
     /// The pointee of an array slice. Written as `[T]`.
@@ -1874,8 +1998,8 @@ pub enum PatKind {
 
     #[custom_arm(
         rustc_middle::thir::PatKind::Binding {mutability, name, mode, var, ty, subpattern, is_primary} => {
-            let map: LocalIdentMap = gstate.local_ident_map();
-            map.borrow_mut().insert(var.clone(), name.to_string());
+            let local_ctx = gstate.local_ctx();
+            local_ctx.borrow_mut().vars.insert(var.clone(), name.to_string());
             PatKind::Binding {
                 mutability: mutability.sinto(gstate),
                 mode: mode.sinto(gstate),
@@ -2149,7 +2273,7 @@ pub fn inspect_local_def_id<'tcx, S: BaseState<'tcx>>(
         owner_id,
         opt_def_id: s.opt_def_id(),
         macro_infos: s.macro_infos(),
-        local_ident_map: s.local_ident_map(),
+        local_ctx: s.local_ctx(),
         cached_thirs: s.cached_thirs(),
         exported_spans: s.exported_spans(),
     };
@@ -2391,6 +2515,13 @@ pub enum ExprKind {
     VarRef {
         id: LocalIdent,
     },
+
+    #[disable_mapping]
+    /// A local (const) variable.
+    ConstRef {
+        id: ParamConst,
+    },
+
     #[disable_mapping]
     GlobalName {
         id: GlobalIdent,

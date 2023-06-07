@@ -1,6 +1,6 @@
 use hax_cli_options::{PathOrDash, ENV_VAR_OPTIONS_FRONTEND};
 use hax_frontend_exporter;
-use hax_frontend_exporter::types::ExportedSpans;
+use hax_frontend_exporter::types::{ExportedSpans, LocalContextS};
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::interface;
 use rustc_interface::{interface::Compiler, Queries};
@@ -69,7 +69,7 @@ fn convert_thir<'tcx>(
         owner_id: (),
         opt_def_id: None,
         macro_infos: macro_calls_r,
-        local_ident_map: Rc::new(RefCell::new(HashMap::new())),
+        local_ctx: Rc::new(RefCell::new(LocalContextS::new())),
         cached_thirs: thirs,
         exported_spans: Rc::new(RefCell::new(HashSet::new())),
     };
@@ -241,7 +241,7 @@ impl Callbacks for ExtractionCallbacks {
                         owner_id: (),
                         opt_def_id: None::<rustc_hir::def_id::DefId>,
                         macro_infos: Box::new(HashMap::new()),
-                        local_ident_map: Rc::new(RefCell::new(HashMap::new())),
+                        local_ctx: Rc::new(RefCell::new(LocalContextS::new())),
                         cached_thirs: HashMap::new(),
                         exported_spans: Rc::new(RefCell::new(HashSet::new())),
                     };

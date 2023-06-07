@@ -323,7 +323,7 @@ functor
       | TFloat
       | TStr
       | TApp of { ident : global_ident; args : generic_value list }
-      | TArray of { typ : ty; length : int }
+      | TArray of { typ : ty; length : expr }
       | TSlice of { witness : F.slice; ty : ty }
       | TRawPointer of { witness : F.raw_pointer } (* todo *)
       | TRef of {

@@ -26,7 +26,8 @@ struct
     | TStr -> TStr
     | TApp { ident; args } ->
         TApp { ident; args = List.map ~f:(dgeneric_value span) args }
-    | TArray { typ; length } -> TArray { typ = dty span typ; length }
+    | TArray { typ; length } ->
+        TArray { typ = dty span typ; length = dexpr length }
     | TSlice { witness; ty } ->
         TSlice { witness = S.slice witness; ty = dty span ty }
     | TRef { witness; typ; mut; region } ->

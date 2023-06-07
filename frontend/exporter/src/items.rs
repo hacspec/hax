@@ -63,7 +63,7 @@ fn make_fn_def<'tcx, S: BaseState<'tcx>>(
         owner_id: (),
         opt_def_id: s.opt_def_id(),
         macro_infos: s.macro_infos(),
-        local_ident_map: s.local_ident_map(),
+        local_ctx: s.local_ctx(),
         cached_thirs: s.cached_thirs(),
         exported_spans: s.exported_spans(),
     };
@@ -192,7 +192,7 @@ pub struct AnonConst {
             owner_id: hir_id.owner,
             opt_def_id: s.opt_def_id(),
             macro_infos: s.macro_infos(),
-            local_ident_map: s.local_ident_map(),
+            local_ctx: s.local_ctx(),
             cached_thirs: s.cached_thirs(),
             exported_spans: s.exported_spans(),
         };
@@ -846,7 +846,7 @@ pub struct Item {
             owner_id: self.owner_id,
             opt_def_id: Some(self.owner_id.to_def_id()),
             macro_infos: state.macro_infos(),
-            local_ident_map: state.local_ident_map(),
+            local_ctx: state.local_ctx(),
             cached_thirs: state.cached_thirs(),
             exported_spans: state.exported_spans(),
         })

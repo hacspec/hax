@@ -467,6 +467,7 @@ module Exn = struct
           let e = Option.value ~default:(unit_expr span) e in
           Return { e; witness = W.early_exit }
       | ConstBlock _ -> unimplemented e.span "ConstBlock"
+      | ConstRef _ -> unimplemented e.span "ConstRef"
       | Repeat { value; count } ->
           let value = c_expr value in
           let count = c_expr count in
@@ -731,7 +732,7 @@ module Exn = struct
         TApp { ident; args }
     | Foreign _ -> unimplemented span "Foreign"
     | Str -> TStr
-    | Array (ty, len) -> TArray { typ = c_ty span ty; length = len (* TODO *) }
+    | Array (ty, len) -> TArray { typ = c_ty span ty; length = c_expr len }
     | Slice ty ->
         let ty = c_ty span ty in
         TSlice { ty; witness = W.slice }
