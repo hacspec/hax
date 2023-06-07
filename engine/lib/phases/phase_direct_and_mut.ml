@@ -42,17 +42,13 @@ struct
       | TRef { witness; typ; mut = Immutable as mut; region } ->
           TRef { witness; typ = dty span typ; mut; region }
 
-    and dgeneric_value = [%inline_body dgeneric_value]
-
-    let dborrow_kind (_span : span) (borrow_kind : A.borrow_kind) :
+    and dborrow_kind (_span : span) (borrow_kind : A.borrow_kind) :
         B.borrow_kind =
       match borrow_kind with
       | [%inline_arms "dborrow_kind.*" - Mut] -> auto
       | Mut _ -> Shared
 
-    [%%inline_defs dpat + dsupported_monads]
-
-    let rec extract_direct_ref_mut (ty_span : span) (t : A.ty) (e : A.expr) :
+    and extract_direct_ref_mut (ty_span : span) (t : A.ty) (e : A.expr) :
         (B.ty * (local_ident * B.ty * span), B.ty * B.expr) Either.t =
       let e = UA.Mappers.normalize_borrow_mut#visit_expr () e in
       match (t, e.e) with
@@ -66,13 +62,6 @@ struct
           let t = A.TRef { witness; typ; mut = Immutable; region } in
           Either.First (dty ty_span t, (i, dty ty_span e_typ, span))
       | _ -> Either.Second (dty ty_span t, dexpr e)
-
-    and darm = [%inline_body darm]
-    and darm' = [%inline_body darm']
-    and dlhs = [%inline_body dlhs]
-    and dloop_kind = [%inline_body dloop_kind]
-    and dloop_state = [%inline_body dloop_state]
-    and dexpr = [%inline_body dexpr]
 
     and dexpr_unwrapped (expr : A.expr) : B.expr =
       let span = expr.span in
@@ -228,6 +217,7 @@ struct
                       { issue_id = Some 76; details = Some "Incomplete phase" };
                   span = expr.span;
                 })
+      [@@inline_ands bindings_of dexpr - dexpr']
 
     [%%inline_defs "Item.*"]
 

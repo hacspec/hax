@@ -142,11 +142,9 @@ module%inlined_contents Make (FA : Features.T) = struct
         | _ -> None
     end
 
-    [%%inline_defs dmutability + dty + dborrow_kind + dpat + dsupported_monads]
+    [%%inline_defs dmutability]
 
-    let rec dexpr = [%inline_body dexpr]
-
-    and dexpr_unwrapped (expr : A.expr) : B.expr =
+    let rec dexpr_unwrapped (expr : A.expr) : B.expr =
       let h = [%inline_body dexpr_unwrapped] in
       match QuestionMarks.extract expr with
       | Some (e, converted_typ) ->
@@ -162,13 +160,7 @@ module%inlined_contents Make (FA : Features.T) = struct
             typ = dty expr.span expr.typ;
           }
       | None -> h expr
-
-    and dexpr' = [%inline_body dexpr']
-    and darm = [%inline_body darm]
-    and darm' = [%inline_body darm']
-    and dlhs = [%inline_body dlhs]
-    and dloop_kind = [%inline_body dloop_kind]
-    and dloop_state = [%inline_body dloop_state]
+      [@@inline_ands bindings_of dexpr]
 
     [%%inline_defs "Item.*"]
   end

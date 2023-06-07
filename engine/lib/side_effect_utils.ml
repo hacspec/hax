@@ -496,15 +496,17 @@ struct
 
   open MakeSI (F)
 
-  [%%inline_defs dmutability + dty + dborrow_kind + dpat + dsupported_monads]
+  [%%inline_defs dmutability]
 
   module ID = struct
     (* OCaml is not able to understand A.expr is the same as B.expr........... *)
     [%%inline_defs dexpr]
   end
 
+  open ID
+
   let dexpr (expr : A.expr) : B.expr =
-    Hoist.collect_and_hoist_effects expr |> fst |> ID.dexpr
+    Hoist.collect_and_hoist_effects expr |> fst |> dexpr
 
   [%%inline_defs "Item.*"]
 

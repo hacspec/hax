@@ -45,8 +45,6 @@ struct
       | GType t -> Some (GType (dty span t))
       | GConst c -> Some (GConst c)
 
-    let rec dpat = [%inline_body dpat]
-
     and dpat' (span : span) (p : A.pat') : B.pat' =
       match p with
       | [%inline_arms "dpat'.*" - PBinding - PDeref] -> auto
@@ -61,13 +59,6 @@ struct
                 Option.map ~f:(fun (p, as_pat) -> (dpat p, as_pat)) subpat;
             }
       | PDeref { subpat; _ } -> (dpat subpat).p
-
-    and dfield_pat = [%inline_body dfield_pat]
-
-    let dsupported_monads = [%inline_body dsupported_monads]
-
-    let rec dexpr = [%inline_body dexpr]
-    and dexpr_unwrapped = [%inline_body dexpr_unwrapped]
 
     and dexpr' (span : span) (e : A.expr') : B.expr' =
       match e with
@@ -119,15 +110,7 @@ struct
               captures = List.map ~f:dexpr captures;
             }
       | _ -> .
-
-    and darm (a : A.arm) : B.arm = { span = a.span; arm = darm' a.arm }
-
-    and darm' (a : A.arm') : B.arm' =
-      { arm_pat = dpat a.arm_pat; body = dexpr a.body }
-
-    and dlhs = [%inline_body dlhs]
-    and dloop_kind = [%inline_body dloop_kind]
-    and dloop_state = [%inline_body dloop_state]
+      [@@inline_ands bindings_of dexpr - dbinding_mode]
 
     let dtrait_ref (span : span) (r : A.trait_ref) : B.trait_ref =
       {
@@ -160,8 +143,6 @@ struct
           List.filter_map ~f:(dgeneric_constraint span) g.constraints;
       }
 
-    (* [%%inline_defs *)
-    (* "Item.*" - dtrait_ref - dgeneric_param - dgeneric_constraint - dgenerics] *)
     [%%inline_defs dparam + dvariant + dtrait_item + dimpl_item]
 
     let rec ditem = [%inline_body ditem]

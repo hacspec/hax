@@ -328,11 +328,9 @@ struct
                [@ocamlformat "disable"]
     end
 
-    [%%inline_defs dmutability + dty + dborrow_kind + dpat + dsupported_monads]
+    [%%inline_defs dmutability]
 
-    let rec dexpr = [%inline_body dexpr]
-
-    and dexpr_unwrapped (expr : A.expr) : B.expr =
+    let rec dexpr_unwrapped (expr : A.expr) : B.expr =
       let h = [%inline_body dexpr_unwrapped] in
       match For.extract expr with
       | Some { start; end_; var; body; label; state; var_typ; witness } ->
@@ -358,13 +356,7 @@ struct
             typ = UB.unit_typ;
           }
       | None -> h expr
-
-    and dexpr' = [%inline_body dexpr']
-    and darm = [%inline_body darm]
-    and darm' = [%inline_body darm']
-    and dlhs = [%inline_body dlhs]
-    and dloop_kind = [%inline_body dloop_kind]
-    and dloop_state = [%inline_body dloop_state]
+      [@@inline_ands bindings_of dexpr]
 
     [%%inline_defs "Item.*"]
   end
@@ -373,5 +365,3 @@ struct
   module FA = FA
 end
 [@@add "subtype.ml"]
-
-(* module _ (F: Features.T): Phase_utils.PHASE = Make(F) *)
