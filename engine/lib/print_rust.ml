@@ -146,12 +146,19 @@ module Raw = struct
     match g with
     | `Concrete { path; crate = _ } -> Non_empty_list.last path
     | _ ->
-        Diagnostics.failure ~context:DebugPrintRust ~span
-          (AssertionFailure
-             {
-               details =
-                 "[last_of_global_ident] was given a non-concrete global ident";
-             })
+        Diagnostics.report
+          {
+            context = DebugPrintRust;
+            kind =
+              AssertionFailure
+                {
+                  details =
+                    "[last_of_global_ident] was given a non-concrete global \
+                     ident";
+                };
+            span = Diagnostics.to_thir_span span;
+          };
+        "print_rust_last_of_global_ident_error"
 
   let rec ppat (e : pat) =
     let ( ! ) = pure e.span in
@@ -292,6 +299,11 @@ module Raw = struct
     let ( ! ) = pure span in
     match e with
     | LhsFieldAccessor { e; field; _ } ->
+        let field =
+          match field with
+          | `Projector field -> (field :> global_ident)
+          | _ -> field
+        in
         plhs e span & !"." & !(last_of_global_ident field span)
     | LhsArrayAccessor { e; index; _ } ->
         plhs e span & !"[" & pexpr index & !"]"
