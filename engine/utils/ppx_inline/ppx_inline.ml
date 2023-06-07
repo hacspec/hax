@@ -91,7 +91,7 @@ let locate_module (name : string) : string =
     | _ -> None
   in
   find (Caml.Sys.getcwd ())
-  |> Option.value_exn ~message:("ppx_inbline: could not locate module " ^ name)
+  |> Option.value_exn ~message:("ppx_inline: could not locate module " ^ name)
 
 let inlinable_items_of_module : loc:location -> string -> inlinable_item list =
   let memo = Hashtbl.create (module String) in
