@@ -374,7 +374,7 @@ functor
           constructor : global_ident;
           constructs_record : bool;
           fields : (global_ident * expr) list;
-          base : expr option;
+          base : (expr * F.construct_base) option;
         }
       | Match of { scrutinee : expr; arms : arm list }
       | Let of {

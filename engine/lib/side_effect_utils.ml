@@ -363,11 +363,12 @@ struct
           | Construct { constructor; constructs_record; fields; base } ->
               HoistSeq.many env
                 (List.map ~f:(super#visit_expr env)
-                   (Option.to_list base @ List.map ~f:snd fields))
+                   (Option.to_list (Option.map ~f:fst base)
+                   @ List.map ~f:snd fields))
                 (fun l effects ->
                   let base, fields_expr =
                     match (l, base) with
-                    | hd :: tl, Some _ -> (Some hd, tl)
+                    | hd :: tl, Some (_, witness) -> (Some (hd, witness), tl)
                     | _, None -> (None, l)
                     | _ -> HoistSeq.err_hoist_invariant Caml.__LOC__
                   in

@@ -491,7 +491,11 @@ module Exn = struct
           let constructor =
             def_id @@ variant_id_of_variant_informations e.span info
           in
-          let base = Option.map ~f:(fun base -> c_expr base.base) base in
+          let base =
+            Option.map
+              ~f:(fun base -> (c_expr base.base, W.construct_base))
+              base
+          in
           let fields =
             List.map
               ~f:(fun f ->

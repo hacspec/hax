@@ -14,6 +14,7 @@ include
       include On.For_loop
       include On.Mutable_variable
       include On.Macro
+      include On.Construct_base
     end)
     (struct
       let backend = Diagnostics.Backend.EasyCrypt
@@ -51,6 +52,7 @@ module RejectNotEC (FA : Features.T) = struct
         let arbitrary_lhs = reject
         let state_passing_loop = reject
         let nontrivial_lhs = reject
+        let construct_base _ = Features.On.construct_base
         let for_loop _ = Features.On.for_loop
 
         let metadata =

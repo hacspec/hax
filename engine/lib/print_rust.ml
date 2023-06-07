@@ -227,7 +227,9 @@ module Raw = struct
           |> concat ~sep:!","
         in
         let base =
-          match base with Some base -> !"..(" & pexpr base & !")" | _ -> !""
+          match base with
+          | Some (base, _) -> !"..(" & pexpr base & !")"
+          | _ -> !""
         in
         pglobal_ident e.span constructor & !"{" & fields & !"," & base & !"}"
     | Match { scrutinee; arms } ->

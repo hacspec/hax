@@ -10,6 +10,7 @@ include
       include On.Monadic_binding
       include On.Slice
       include On.Macro
+      include On.Construct_base
     end)
     (struct
       let backend = Diagnostics.Backend.FStar
@@ -43,6 +44,7 @@ module RejectNotFStar (FA : Features.T) = struct
         let arbitrary_lhs = reject
         let nontrivial_lhs = reject
         let monadic_binding _ = Features.On.monadic_binding
+        let construct_base _ = Features.On.construct_base
         let for_loop = reject
         let state_passing_loop = reject
 
@@ -443,7 +445,7 @@ struct
     | Construct { constructs_record = true; constructor; fields; base } ->
         F.term
         @@ F.AST.Record
-             ( Option.map ~f:pexpr base,
+             ( Option.map ~f:(fst >> pexpr) base,
                List.map
                  ~f:(fun (f, e) -> (pglobal_ident e.span f, pexpr e))
                  fields )
@@ -458,7 +460,7 @@ struct
         let r =
           F.term
           @@ F.AST.Record
-               ( Option.map ~f:pexpr base,
+               ( Option.map ~f:(fst >> pexpr) base,
                  List.map
                    ~f:(fun (f, e') -> (pglobal_ident e.span f, pexpr e'))
                    fields )

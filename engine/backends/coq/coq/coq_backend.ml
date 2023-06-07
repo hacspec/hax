@@ -11,6 +11,7 @@ include
       include On.Slice
       include On.Monadic_binding
       include On.Macro
+      include On.Construct_base
     end)
     (struct
       let backend = Diagnostics.Backend.Coq
@@ -44,6 +45,7 @@ module RejectNotCoq (FA : Features.T) = struct
         let arbitrary_lhs = reject
         let nontrivial_lhs = reject
         let monadic_binding _ = Features.On.monadic_binding
+        let construct_base _ = Features.On.construct_base
         let state_passing_loop = reject
         let for_loop = reject
 

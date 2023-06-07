@@ -130,7 +130,7 @@ struct
             constructor;
             constructs_record;
             fields = List.map ~f:(map_snd dexpr) fields;
-            base = Option.map ~f:dexpr base;
+            base = Option.map ~f:(dexpr *** S.construct_base) base;
           }
     | Match { scrutinee; arms } ->
         Match { scrutinee = dexpr scrutinee; arms = List.map ~f:darm arms }
