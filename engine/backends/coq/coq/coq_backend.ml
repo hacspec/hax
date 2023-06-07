@@ -210,7 +210,7 @@ struct
           (List.map ~f:(pty span) inputs)
     | TFloat -> failwith "pty: Float"
     | TArray { typ; length } ->
-        C.AST.ArrayTy (pty span typ, Int.to_string length)
+        C.AST.ArrayTy (pty span typ, "TODO: Int.to_string length")
     | TSlice { ty; _ } -> C.AST.SliceTy (pty span ty)
     | TParam i -> C.AST.Name i.name
     | TProjectedAssociatedType s ->
@@ -359,7 +359,7 @@ struct
         C.AST.Match
           ( pexpr scrutinee,
             List.map
-              ~f:(fun { arm = { pat; body } } -> (ppat pat, pexpr body))
+              ~f:(fun { arm = { arm_pat; body } } -> (ppat arm_pat, pexpr body))
               arms )
     | Ascription { e; typ } -> __TODO_term__ span "asciption"
     | Construct { constructor = `TupleCons 1; fields = [ (_, e) ]; base } ->

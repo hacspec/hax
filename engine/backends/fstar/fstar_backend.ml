@@ -217,6 +217,35 @@ struct
   let pconstructor_ident span : global_ident -> F.Ident.lident =
     uppercase_global_ident >> pglobal_ident span
 
+  let index_of_field = function
+    | `Concrete { path } -> (
+        try Some (Int.of_string @@ Non_empty_list.last path) with _ -> None)
+    | `TupleField (nth, _) -> Some nth
+    | _ -> None
+
+  let is_field_an_index = index_of_field >> Option.is_some
+
+  let operators =
+    let c = GlobalIdent.of_string_exn in
+    [
+      (c "core::ops::index::IndexMut::update_at", (3, ".[]<-"));
+      (c "std::core::array::update_array_at", (3, ".[]<-"));
+      (c "core::ops::index::Index::index", (2, ".[]"));
+      (c "core::ops::bit::BitXor::bitxor", (2, "^."));
+      (c "core::ops::bit::BitAnd::bitand", (2, "&."));
+      (c "core::ops::bit::BitOr::bitor", (2, "|."));
+      (c "core::ops::bit::Not::not", (1, "~."));
+      (c "core::ops::arith::Add::add", (2, "+."));
+      (c "core::ops::arith::Sub::sub", (2, "-."));
+      (c "core::ops::arith::Mul::mul", (2, "*."));
+      (`Primitive (BinOp Add), (2, "+"));
+      (`Primitive (BinOp Sub), (2, "-"));
+      (`Primitive (BinOp Mul), (2, "*"));
+      (`Primitive (BinOp Eq), (2, "="));
+      (`Primitive (BinOp Ne), (2, "<>"));
+    ]
+    |> Map.of_alist_exn (module GlobalIdent)
+
   let rec pty span (t : ty) =
     match t with
     | TBool -> F.term_of_lid [ "Prims"; "bool" ]
@@ -269,16 +298,8 @@ struct
                 (F.term_of_lid [ "FStar"; "List"; "Tot"; "Base"; "length" ])
                 [ x ]
             in
-            let length =
-              pliteral_as_expr span
-                (Ast.Int
-                   {
-                     value = string_of_int length;
-                     kind = { size = SSize; signedness = Signed };
-                   })
-            in
             let lt = F.term @@ F.AST.Name (pprim_ident span @@ BinOp Lt) in
-            F.mk_e_app lt [ len_of_x; length ])
+            F.mk_e_app lt [ len_of_x; pexpr length ])
     | TParam i ->
         F.term
         @@ F.AST.Var
@@ -293,15 +314,7 @@ struct
     | GConst todo -> Error.unimplemented ~details:"pgeneric_value:GConst" span
     | GLifetime _ -> .
 
-  let index_of_field = function
-    | `Concrete { path } -> (
-        try Some (Int.of_string @@ Non_empty_list.last path) with _ -> None)
-    | `TupleField (nth, _) -> Some nth
-    | _ -> None
-
-  let is_field_an_index = index_of_field >> Option.is_some
-
-  let rec ppat (p : pat) =
+  and ppat (p : pat) =
     match p.p with
     | PWild -> F.wild
     | PAscription { typ; pat } ->
@@ -345,31 +358,7 @@ struct
   and pfield_pat ({ field; pat } : field_pat) =
     (pglobal_ident pat.span field, ppat pat)
 
-  let debug_expr (label : string) (e : F.AST.term) =
-    F.term @@ F.AST.App (F.term_of_lid [ "__debug__" ^ label ], e, Nothing)
-
-  let operators =
-    let c = GlobalIdent.of_string_exn in
-    [
-      (c "core::ops::index::IndexMut::update_at", (3, ".[]<-"));
-      (c "std::core::array::update_array_at", (3, ".[]<-"));
-      (c "core::ops::index::Index::index", (2, ".[]"));
-      (c "core::ops::bit::BitXor::bitxor", (2, "^."));
-      (c "core::ops::bit::BitAnd::bitand", (2, "&."));
-      (c "core::ops::bit::BitOr::bitor", (2, "|."));
-      (c "core::ops::bit::Not::not", (1, "~."));
-      (c "core::ops::arith::Add::add", (2, "+."));
-      (c "core::ops::arith::Sub::sub", (2, "-."));
-      (c "core::ops::arith::Mul::mul", (2, "*."));
-      (`Primitive (BinOp Add), (2, "+"));
-      (`Primitive (BinOp Sub), (2, "-"));
-      (`Primitive (BinOp Mul), (2, "*"));
-      (`Primitive (BinOp Eq), (2, "="));
-      (`Primitive (BinOp Ne), (2, "<>"));
-    ]
-    |> Map.of_alist_exn (module GlobalIdent)
-
-  let rec pexpr (e : expr) =
+  and pexpr (e : expr) =
     try pexpr_unwrapped e
     with Diagnostics.SpanFreeError kind ->
       (* let typ = *)
@@ -487,7 +476,7 @@ struct
            }
     | _ -> .
 
-  and parm { arm = { pat; body } } = (ppat pat, None, pexpr body)
+  and parm { arm = { arm_pat; body } } = (ppat arm_pat, None, pexpr body)
 
   (* let item_to_string: F.AST.item -> string = *)
   (*   FStar_Parser_ToDocument.decl_to_document >> doc_to_string *)
