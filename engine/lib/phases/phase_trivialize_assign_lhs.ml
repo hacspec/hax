@@ -61,8 +61,8 @@ module%inlined_contents Make (F : Features.T) = struct
       match lhs with
       | LhsLocalVar { var; typ } -> ((var, dty span typ), rhs)
       | LhsFieldAccessor _ ->
-          Diagnostics.failure ~context:DebugPrintRust ~span
-            (Unimplemented { issue_id = Some 86; details = None })
+          Error.unimplemented ~issue_id:86
+            ~details:"Mutation of fields is not implemented yet" span
       | LhsArrayAccessor { e; typ = _; index; _ } ->
           let lhs = expr_of_lhs e span in
           let rhs =
