@@ -1,7 +1,7 @@
 (library
- (name coq_ast)
+ (name coq_backend)
  (package hax-engine)
- (libraries hax_engine base hacspeclib_macro_parser)
+ (libraries hax_engine base hacspeclib_macro_parser coq_ast)
  (preprocess
   (pps
    ppx_yojson_conv
