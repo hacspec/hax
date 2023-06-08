@@ -1,5 +1,5 @@
 open Utils
-module T = Raw_thir_ast
+module T = Types
 
 module Backend = struct
   type t = Coq | FStar | EasyCrypt
@@ -59,7 +59,7 @@ type kind = T.kind [@@deriving show, eq]
 type t = { context : Context.t; kind : kind; span : T.span }
 [@@deriving show, eq]
 
-let to_thir_diagnostic (d : t) : Raw_thir_ast.diagnostics_for__span =
+let to_thir_diagnostic (d : t) : Types.diagnostics_for__span =
   { kind = d.kind; context = [%show: Context.t] d.context; span = d.span }
 
 let to_thir_loc ({ col; line } : Ast.loc) : T.loc = { col; line }
@@ -89,7 +89,7 @@ let run_hax_pretty_print_diagnostics (s : string) : string =
     ^ ". Here is the JSON representation of the error that occurred:\n" ^ s
 
 let pretty_print : t -> string =
-  to_thir_diagnostic >> Raw_thir_ast.to_json_diagnostics_for__span
+  to_thir_diagnostic >> Types.to_json_diagnostics_for__span
   >> Yojson.Safe.pretty_to_string >> run_hax_pretty_print_diagnostics
 
 let pretty_print_context_kind : Context.t -> kind -> string =

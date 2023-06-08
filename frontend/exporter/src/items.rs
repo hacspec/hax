@@ -63,7 +63,7 @@ fn make_fn_def<'tcx, S: BaseState<'tcx>>(
         owner_id: (),
         opt_def_id: s.opt_def_id(),
         macro_infos: s.macro_infos(),
-        local_ident_map: s.local_ident_map(),
+        local_ctx: s.local_ctx(),
         cached_thirs: s.cached_thirs(),
         exported_spans: s.exported_spans(),
     };
@@ -192,7 +192,7 @@ pub struct AnonConst {
             owner_id: hir_id.owner,
             opt_def_id: s.opt_def_id(),
             macro_infos: s.macro_infos(),
-            local_ident_map: s.local_ident_map(),
+            local_ctx: s.local_ctx(),
             cached_thirs: s.cached_thirs(),
             exported_spans: s.exported_spans(),
         };
@@ -219,7 +219,7 @@ pub enum GenericParamKind {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::GenericParam<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::GenericParam<'tcx>, state: S as s)]
 pub struct GenericParam {
     pub hir_id: HirId,
     pub def_id: GlobalIdent,
@@ -227,7 +227,7 @@ pub struct GenericParam {
         rustc_hir::ParamName::Plain(loc_ident) =>
             ParamName::Plain(LocalIdent {
                 name: loc_ident.as_str().to_string(),
-                id: self.hir_id.sinto(tcx)
+                id: self.hir_id.sinto(s)
             }),
         rustc_hir::ParamName::Fresh =>
             ParamName::Fresh,
@@ -239,6 +239,9 @@ pub struct GenericParam {
     pub pure_wrt_drop: bool,
     pub kind: GenericParamKind,
     pub colon_span: Option<Span>,
+    #[not_in_source]
+    #[map(s.tcx().hir().attrs(hir_id.clone()).sinto(s))]
+    attributes: Vec<Attribute>,
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -846,7 +849,7 @@ pub struct Item {
             owner_id: self.owner_id,
             opt_def_id: Some(self.owner_id.to_def_id()),
             macro_infos: state.macro_infos(),
-            local_ident_map: state.local_ident_map(),
+            local_ctx: state.local_ctx(),
             cached_thirs: state.cached_thirs(),
             exported_spans: state.exported_spans(),
         })

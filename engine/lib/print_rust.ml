@@ -106,6 +106,26 @@ module Raw = struct
   let dbinding_mode span =
     pure span << function ByValue -> "" | ByRef _ -> "&"
 
+  let pborrow_kind span = pure span << function Mut _ -> "mut " | _ -> ""
+
+  let last_of_global_ident (g : global_ident) span =
+    match g with
+    | `Concrete { path; crate = _ } -> Non_empty_list.last path
+    | _ ->
+        Diagnostics.report
+          {
+            context = DebugPrintRust;
+            kind =
+              AssertionFailure
+                {
+                  details =
+                    "[last_of_global_ident] was given a non-concrete global \
+                     ident";
+                };
+            span = Diagnostics.to_thir_span span;
+          };
+        "print_rust_last_of_global_ident_error"
+
   let rec pty span (e : ty) =
     let ( ! ) = pure span in
     match e with
@@ -120,8 +140,7 @@ module Raw = struct
           List.map ~f:(pgeneric_value span) args |> concat ~sep:!", "
         in
         pglobal_ident span ident & !"<" & args & !">"
-    | TArray { typ; length } ->
-        !"[" & pty span typ & !";" & !(Int.to_string length) & !"]"
+    | TArray { typ; length } -> !"[" & pty span typ & !";" & pexpr length & !"]"
     | TSlice { ty; _ } -> !"[" & pty span ty & !"]"
     | TRawPointer _ -> !"raw_pointer!()"
     | TRef { typ; mut; _ } -> !"&" & dmutability span mut & pty span typ
@@ -140,20 +159,7 @@ module Raw = struct
     | GType t -> pty span t
     | _ -> pure span "generic_value!(todo)"
 
-  let pborrow_kind span = pure span << function Mut _ -> "mut " | _ -> ""
-
-  let last_of_global_ident (g : global_ident) span =
-    match g with
-    | `Concrete { path; crate = _ } -> Non_empty_list.last path
-    | _ ->
-        Diagnostics.failure ~context:DebugPrintRust ~span
-          (AssertionFailure
-             {
-               details =
-                 "[last_of_global_ident] was given a non-concrete global ident";
-             })
-
-  let rec ppat (e : pat) =
+  and ppat (e : pat) =
     let ( ! ) = pure e.span in
     match e.p with
     | PWild -> !"_"
@@ -185,14 +191,14 @@ module Raw = struct
         dbinding_mode e.span mode & dmutability e.span mut
         & plocal_ident e.span var & subpat
 
-  let psupported_monads span m =
+  and psupported_monads span m =
     let ( ! ) = pure span in
     match m with
     | MException t -> !"MException<" & pty span t & !">"
     | MResult t -> !"MResult<" & pty span t & !">"
     | MOption -> !"MOption"
 
-  let rec pexpr' (e : expr) =
+  and pexpr' (e : expr) =
     let ( ! ) = pure e.span in
     match e.e with
     | If { cond; then_; else_ } ->
@@ -220,14 +226,16 @@ module Raw = struct
           |> concat ~sep:!","
         in
         let base =
-          match base with Some base -> !"..(" & pexpr base & !")" | _ -> !""
+          match base with
+          | Some (base, _) -> !"..(" & pexpr base & !")"
+          | _ -> !""
         in
         pglobal_ident e.span constructor & !"{" & fields & !"," & base & !"}"
     | Match { scrutinee; arms } ->
         let arms =
           List.map
-            ~f:(fun { arm = { pat; body }; _ } ->
-              ppat pat & !" => {" & pexpr body & !"}")
+            ~f:(fun { arm = { arm_pat; body }; _ } ->
+              ppat arm_pat & !" => {" & pexpr body & !"}")
             arms
           |> concat ~sep:!","
         in
@@ -292,6 +300,11 @@ module Raw = struct
     let ( ! ) = pure span in
     match e with
     | LhsFieldAccessor { e; field; _ } ->
+        let field =
+          match field with
+          | `Projector field -> (field :> global_ident)
+          | _ -> field
+        in
         plhs e span & !"." & !(last_of_global_ident field span)
     | LhsArrayAccessor { e; index; _ } ->
         plhs e span & !"[" & pexpr index & !"]"

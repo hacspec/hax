@@ -32,14 +32,14 @@
 (include_subdirs unqualified)
 
 (rule
- (target raw_thir_ast.ml)
+ (target types.ml)
  (deps
   (env_var HAX_JSON_SCHEMA_EXPORTER_BINARY)
   (:ocaml_of_json_schema
    ../utils/ocaml_of_json_schema/ocaml_of_json_schema.js))
  (action
   (with-stdout-to
-   raw_thir_ast.ml
+   types.ml
    (pipe-stdout
     (run %{env:HAX_JSON_SCHEMA_EXPORTER_BINARY=hax-export-json-schemas})
     (run node %{ocaml_of_json_schema} - -)))))

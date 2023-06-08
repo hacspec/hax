@@ -1,0 +1,9 @@
+[package]
+name = "generics"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[package.metadata.hax-tests]
+into."fstar" = { broken = false, snapshot = "none", issue_id = "21" }

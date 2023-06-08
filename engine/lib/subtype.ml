@@ -13,8 +13,8 @@ struct
   module UB = Ast_utils.Make (FB)
   module FA = FA
 
-  let dmutability (_span : span) (type a b) (s : a -> b)
-      (mutability : a mutability) : b mutability =
+  let dmutability _span (type a b) (s : a -> b) (mutability : a mutability) :
+      b mutability =
     match mutability with Mutable w -> Mutable (s w) | Immutable -> Immutable
 
   let rec dty (span : span) (ty : A.ty) : B.ty =
@@ -26,7 +26,8 @@ struct
     | TStr -> TStr
     | TApp { ident; args } ->
         TApp { ident; args = List.map ~f:(dgeneric_value span) args }
-    | TArray { typ; length } -> TArray { typ = dty span typ; length }
+    | TArray { typ; length } ->
+        TArray { typ = dty span typ; length = dexpr length }
     | TSlice { witness; ty } ->
         TSlice { witness = S.slice witness; ty = dty span ty }
     | TRef { witness; typ; mut; region } ->
@@ -52,14 +53,14 @@ struct
     | GType t -> GType (dty span t)
     | GConst c -> GConst c
 
-  let dborrow_kind (_span : span) (borrow_kind : A.borrow_kind) : B.borrow_kind
+  and dborrow_kind (_span : span) (borrow_kind : A.borrow_kind) : B.borrow_kind
       =
     match borrow_kind with
     | Shared -> Shared
     | Unique -> Unique
     | Mut witness -> Mut (S.mutable_reference witness)
 
-  let rec dpat (p : A.pat) : B.pat =
+  and dpat (p : A.pat) : B.pat =
     { p = dpat' p.span p.p; span = p.span; typ = dty p.span p.typ }
 
   and dpat' (span : span) (pat : A.pat') : B.pat' =
@@ -93,14 +94,14 @@ struct
     | ByRef (kind, witness) ->
         ByRef (dborrow_kind span kind, S.reference witness)
 
-  let dsupported_monads (span : span) (m : A.supported_monads) :
+  and dsupported_monads (span : span) (m : A.supported_monads) :
       B.supported_monads =
     match m with
     | MException t -> MException (dty span t)
     | MResult t -> MResult (dty span t)
     | MOption -> MOption
 
-  let rec dexpr (e : A.expr) : B.expr =
+  and dexpr (e : A.expr) : B.expr =
     try dexpr_unwrapped e
     with Diagnostics.SpanFreeError (context, kind) ->
       let typ : B.ty =
@@ -130,7 +131,7 @@ struct
             constructor;
             constructs_record;
             fields = List.map ~f:(map_snd dexpr) fields;
-            base = Option.map ~f:dexpr base;
+            base = Option.map ~f:(dexpr *** S.construct_base) base;
           }
     | Match { scrutinee; arms } ->
         Match { scrutinee = dexpr scrutinee; arms = List.map ~f:darm arms }
@@ -232,7 +233,7 @@ struct
   and darm (a : A.arm) : B.arm = { span = a.span; arm = darm' a.span a.arm }
 
   and darm' (_span : span) (a : A.arm') : B.arm' =
-    { pat = dpat a.pat; body = dexpr a.body }
+    { arm_pat = dpat a.arm_pat; body = dexpr a.body }
 
   and dlhs (span : span) (lhs : A.lhs) : B.lhs =
     match lhs with

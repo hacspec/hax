@@ -42,11 +42,24 @@ struct
 
     module SI = MakeSI (FB)
 
-    [%%inline_defs dmutability + dty + dborrow_kind]
+    module Instructions = struct
+      type t = {
+        expr_level : UB.TypedLocalIdent.t list;
+        fun_level : UB.TypedLocalIdent.t list;
+        loop_level : UB.TypedLocalIdent.t list;
+        drop_expr : bool;
+      }
 
-    let rec dpat : A.pat -> B.pat = [%inline_body dpat]
+      let zero =
+        { expr_level = []; fun_level = []; loop_level = []; drop_expr = false }
+    end
 
-    and dpat' (span : span) (p : A.pat') : B.pat' =
+    let free_assigned_variables =
+      UA.Reducers.free_assigned_variables (function _ -> .)
+
+    [%%inline_defs dmutability]
+
+    let rec dpat' (span : span) (p : A.pat') : B.pat' =
       match p with
       | [%inline_arms "dpat'.*" - PBinding - PDeref] -> auto
       | PBinding { var : LocalIdent.t; typ; subpat; _ } ->
@@ -60,27 +73,8 @@ struct
             }
       | PDeref { subpat; _ } -> (dpat subpat).p
 
-    and dfield_pat = [%inline_body dfield_pat]
-    and dbinding_mode = [%inline_body dbinding_mode]
-    and dsupported_monads = [%inline_body dsupported_monads]
-
-    let free_assigned_variables =
-      UA.Reducers.free_assigned_variables (function _ -> .)
-
-    module Instructions = struct
-      type t = {
-        expr_level : UB.TypedLocalIdent.t list;
-        fun_level : UB.TypedLocalIdent.t list;
-        loop_level : UB.TypedLocalIdent.t list;
-        drop_expr : bool;
-      }
-
-      let zero =
-        { expr_level = []; fun_level = []; loop_level = []; drop_expr = false }
-    end
-
     (* [s] is the list of variables the last expression should return, packed in a tuple *)
-    let rec dexpr_s (s : Instructions.t) (expr : A.expr) : B.expr =
+    and dexpr_s (s : Instructions.t) (expr : A.expr) : B.expr =
       let dexpr_same e = dexpr_s s e in
       let rec dexpr e = dexpr_s { s with expr_level = []; drop_expr = false } e
       and dloop_state = [%inline_body dloop_state] in
@@ -372,7 +366,8 @@ struct
                       }
                   else UB.make_tuple_expr ~span [ vars; e' ])
 
-    let dexpr = dexpr_s Instructions.zero
+    and dexpr_unwrapped e = dexpr_s Instructions.zero e
+      [@@inline_ands bindings_of dexpr - dexpr']
 
     [%%inline_defs "Item.*"]
   end

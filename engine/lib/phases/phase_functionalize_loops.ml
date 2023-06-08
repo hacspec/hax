@@ -30,11 +30,9 @@ struct
       include Features.SUBTYPE.Id
     end
 
-    [%%inline_defs dmutability + dty + dborrow_kind + dpat + dsupported_monads]
+    [%%inline_defs dmutability]
 
-    let rec dexpr = [%inline_body dexpr]
-
-    and dexpr_unwrapped (expr : A.expr) : B.expr =
+    let rec dexpr_unwrapped (expr : A.expr) : B.expr =
       let span = expr.span in
       match expr.e with
       | Loop
@@ -79,12 +77,7 @@ struct
       | [%inline_arms "dexpr'.*" - Loop - Break - Continue - Return] ->
           map (fun e -> B.{ e; typ = dty expr.span expr.typ; span = expr.span })
       | _ -> .
-
-    and dloop_kind = [%inline_body dloop_kind]
-    and dloop_state = [%inline_body dloop_state]
-    and darm = [%inline_body darm]
-    and darm' = [%inline_body darm']
-    and dlhs = [%inline_body dlhs]
+      [@@inline_ands bindings_of dexpr - dexpr']
 
     [%%inline_defs "Item.*"]
   end

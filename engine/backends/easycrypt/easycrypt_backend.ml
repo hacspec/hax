@@ -14,6 +14,7 @@ include
       include On.For_loop
       include On.Mutable_variable
       include On.Macro
+      include On.Construct_base
     end)
     (struct
       let backend = Diagnostics.Backend.EasyCrypt
@@ -51,6 +52,7 @@ module RejectNotEC (FA : Features.T) = struct
         let arbitrary_lhs = reject
         let state_passing_loop = reject
         let nontrivial_lhs = reject
+        let construct_base _ = Features.On.construct_base
         let for_loop _ = Features.On.for_loop
 
         let metadata =
@@ -101,8 +103,8 @@ let suffix_of_signedness (s : Ast.signedness) =
 let intmodule_of_kind (Ast.{ size; signedness } : Ast.int_kind) =
   Format.sprintf "W%s%s" (suffix_of_signedness signedness) (suffix_of_size size)
 
-let translate' (bo : BackendOptions.t) (items : AST.item list) :
-    Raw_thir_ast.file list =
+let translate' (bo : BackendOptions.t) (items : AST.item list) : Types.file list
+    =
   let items = List.fold_left ~init:NM.empty ~f:NM.push items in
 
   let rec doit (fmt : Format.formatter) (the : nmtree) =
@@ -337,8 +339,8 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) :
   doit Format.err_formatter items;
   []
 
-let translate (bo : BackendOptions.t) (items : AST.item list) :
-    Raw_thir_ast.file list =
+let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
+    =
   try translate' bo items
   with Assert_failure (file, line, col) ->
     Diagnostics.failure ~context:(Backend FStar)

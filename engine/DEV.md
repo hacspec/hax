@@ -1,0 +1,44 @@
+# Notes about developping on the engine
+
+Note that Hax uses [JSON schemas](https://json-schema.org/): an OCaml
+module `types.ml` definining the types we declared on the Rust side
+with JSON parser and serializer is automatically generated. Thus, when
+we refer here to a Rust type in the context of the engine, we mean its
+OCaml automatically derived counterpart in `Types.ml`.
+
+The engine is designed to behave like a "pure" function.
+ 1. It receives a JSON string in its stdin.
+ 2. Parses the JSON as a
+ [`EngineOptions`](../cli/options/engine/src/lib.rs): note this
+ structure has everything the engine needs to know. The behavior of
+ the engine should be completely deterministic given this structure.
+ 3. From the engine options we received on stdin, we extract the
+    `input` field, that contains all the items of the Rust crate we
+    want to translate.
+ 4. Those items are translated in [our internal AST](lib/ast.ml) by
+    the module [`Import_thir`](lib/import_thir.ml).
+ 5. According to the engine options we just got as JSON, we choose a backend.
+ 6. We run the `translate` function of that backend, that applies a
+    certain number of rewrite phases, transporting the items in a
+    type-safe manner from an AST to another.
+ 7. The backend produces a list of
+    [`File`](../cli/options/engine/src/lib.rs)s. Each phase might also
+    (as a side effect) have produced diagnostics messages. Those are
+    collected in [`Diagnostics.Core.state`](lib/diagnostics.ml).
+ 8. Gathering files and diagnostics, we make a
+    [`Output`](../cli/options/engine/src/lib.rs) value, serialize it
+    to JSON, and output that on stdout.  
+    *Note that the engine doesn't write or read anything on the
+    hard-drive, it is supposed to be entirely side-ffect free (when
+    not in debug mode): files are created by the [Rust
+    driver](../cli/driver/src/exporter.rs)*
+
+## Miscellaneous
+### How to show types of `Types.ml`?
+`dune build` produces that file using `utils/ocaml_of_json_schema`,
+and stores it in `build/default/lib/types.ml`.
+
+To show the file nicely formated, use: `dune describe pp lib/types.ml` (or `dune describe pp lib/types.ml | bat -l ml`, if you have [`bat`](https://github.com/sharkdp/bat))
+
+You can also use `dune utop` and then `#show_type Hax_engine.Types.SOME_TYPE` and `#show_constructor Hax_engine.Types.SOME_CONSTRUCTOR`.
+

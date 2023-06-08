@@ -143,7 +143,10 @@ struct
 
       let fresh_local_ident (self : t) : LocalIdent.t =
         self.fresh_id <- self.fresh_id + 1;
-        { name = "hoist" ^ Int.to_string self.fresh_id; id = -1 }
+        {
+          name = "hoist" ^ Int.to_string self.fresh_id;
+          id = LocalIdent.var_id_of_int (-1) (* todo *);
+        }
 
       let empty = { fresh_id = 0 }
     end
@@ -363,11 +366,12 @@ struct
           | Construct { constructor; constructs_record; fields; base } ->
               HoistSeq.many env
                 (List.map ~f:(super#visit_expr env)
-                   (Option.to_list base @ List.map ~f:snd fields))
+                   (Option.to_list (Option.map ~f:fst base)
+                   @ List.map ~f:snd fields))
                 (fun l effects ->
                   let base, fields_expr =
                     match (l, base) with
-                    | hd :: tl, Some _ -> (Some hd, tl)
+                    | hd :: tl, Some (_, witness) -> (Some (hd, witness), tl)
                     | _, None -> (None, l)
                     | _ -> HoistSeq.err_hoist_invariant Caml.__LOC__
                   in
@@ -396,7 +400,9 @@ struct
                          (({ arm; span } : arm), { lbs = []; effects }))
                      (* cancel effects that concern variables introduced in pats  *)
                   |> List.map ~f:(fun (arm, { lbs; effects }) ->
-                         let vars = U.Reducers.variables_of_pat arm.arm.pat in
+                         let vars =
+                           U.Reducers.variables_of_pat arm.arm.arm_pat
+                         in
                          let effects =
                            SideEffects.without_rw_vars vars effects
                          in
@@ -493,15 +499,17 @@ struct
 
   open MakeSI (F)
 
-  [%%inline_defs dmutability + dty + dborrow_kind + dpat + dsupported_monads]
+  [%%inline_defs dmutability]
 
   module ID = struct
     (* OCaml is not able to understand A.expr is the same as B.expr........... *)
     [%%inline_defs dexpr]
   end
 
+  open ID
+
   let dexpr (expr : A.expr) : B.expr =
-    Hoist.collect_and_hoist_effects expr |> fst |> ID.dexpr
+    Hoist.collect_and_hoist_effects expr |> fst |> dexpr
 
   [%%inline_defs "Item.*"]
 

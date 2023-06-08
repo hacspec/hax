@@ -26,6 +26,10 @@ name = "fnmut"
 version = "0.1.0"
 
 [[package]]
+name = "generics"
+version = "0.1.0"
+
+[[package]]
 name = "hacspec-lib"
 version = "0.1.0-beta.1"
 source = "git+https://github.com/hacspec/hacspec.git#00601ff65cc9a745c5191282986721d0fcb5f4f7"
