@@ -77,13 +77,7 @@ let to_thir_span (s : Ast.span) : T.span =
       }
 
 let run_hax_pretty_print_diagnostics (s : string) : string =
-  try
-    let stdout, stdin = Unix.open_process "hax-pretty-print-diagnostics" in
-    Out_channel.(
-      output_string stdin s;
-      flush stdin;
-      close stdin);
-    In_channel.input_all stdout
+  try (Utils.Command.run "hax-pretty-print-diagnostics" s).stdout
   with e ->
     "[run_hax_pretty_print_diagnostics] failed. Exn: " ^ Printexc.to_string e
     ^ ". Here is the JSON representation of the error that occurred:\n" ^ s

@@ -193,7 +193,7 @@ async function phases_viewer(state = {index: 0, ast_focus: null, seed: SEED}) {
         header.appendChild(container);
     }
     let last_item = null;
-    let codes = current.rustish.map(({string, map}) => {
+    let codes = [current.rustish].map(({string, map}) => {
         let src = string;
         let code = mk('code', [], ['language-rust']);
         code.innerHTML = Prism.highlight(src, Prism.languages.rust, 'rust');

@@ -337,16 +337,9 @@ module Raw = struct
 end
 
 let rustfmt (s : string) : string =
-  let stdout, stdin, stderr =
-    Unix.open_process_full "rustfmt" (Unix.environment ())
-  in
-  Out_channel.(
-    output_string stdin s;
-    flush stdin;
-    close stdin);
-  let strout = In_channel.input_all stdout in
-  let strerr = In_channel.input_all stderr |> Caml.String.trim in
-  if String.is_empty strerr then strout
+  let open Utils.Command in
+  let { stderr; stdout } = run "rustfmt" s in
+  if String.is_empty stderr then stdout
   else
     let err =
       [%string
@@ -354,9 +347,9 @@ let rustfmt (s : string) : string =
          #######################################################\n\
          ########### WARNING: Failed running rustfmt ###########\n\
          #### STDOUT:\n\
-         %{strout}\n\
+         %{stdout}\n\
          #### STDERR:\n\
-         %{strerr}\n\
+         %{stderr}\n\
          #######################################################\n"]
     in
     Caml.prerr_endline err;
@@ -392,6 +385,10 @@ let rustfmt_annotated (x : AnnotatedString.t) : AnnotatedString.t =
 let pitem : item -> AnnotatedString.Output.t =
   (* U.Mappers.regenerate_span_ids#visit_item () *)
   Raw.pitem >> rustfmt_annotated >> AnnotatedString.Output.convert
+
+let pitems : item list -> AnnotatedString.Output.t =
+  List.concat_map ~f:Raw.pitem
+  >> rustfmt_annotated >> AnnotatedString.Output.convert
 
 let pitem_str : item -> string = pitem >> AnnotatedString.Output.raw_string
 
