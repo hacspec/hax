@@ -3,6 +3,9 @@
 
 FROM nixpkgs/nix-flakes
 
+# See issue #71
+RUN [ "$(uname)" = Darwin ] && echo "filter-syscalls = false" >> /etc/nix/nix.conf
+
 # Prepare the sources
 COPY . /circus-sources
 RUN cd /circus-sources && git init && git add .
