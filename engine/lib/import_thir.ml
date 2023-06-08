@@ -1,4 +1,4 @@
-module Thir = Raw_thir_ast
+module Thir = Types
 open Utils
 open Base
 open Diagnostics
@@ -859,7 +859,7 @@ module Exn = struct
           "TODO: traits: no support for defaults in type for now"
 
   let c_trait_item (item : Thir.trait_item) : trait_item =
-    (* Raw_thir_ast.Param { index = 0; name = "Self" } *)
+    (* Types.Param { index = 0; name = "Self" } *)
     let { params; constraints } = c_generics item.generics in
     {
       ti_span = c_span item.span;

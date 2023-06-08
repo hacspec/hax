@@ -900,8 +900,8 @@ let hardcoded_fstar_headers =
    open Hacspec.Lib\n\
    open Hacspec_lib_tc"
 
-let translate (bo : BackendOptions.t) (items : AST.item list) :
-    Raw_thir_ast.file list =
+let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
+    =
   U.group_items_by_namespace items
   |> Map.to_alist
   |> List.map ~f:(fun (ns, items) ->
@@ -911,7 +911,7 @@ let translate (bo : BackendOptions.t) (items : AST.item list) :
                 ~f:(map_first_letter String.uppercase)
                 (fst ns :: snd ns))
          in
-         Raw_thir_ast.
+         Types.
            {
              path = mod_name ^ ".fst";
              contents =
