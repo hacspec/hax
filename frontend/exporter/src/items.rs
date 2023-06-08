@@ -219,7 +219,7 @@ pub enum GenericParamKind {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::GenericParam<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::GenericParam<'tcx>, state: S as s)]
 pub struct GenericParam {
     pub hir_id: HirId,
     pub def_id: GlobalIdent,
@@ -227,7 +227,7 @@ pub struct GenericParam {
         rustc_hir::ParamName::Plain(loc_ident) =>
             ParamName::Plain(LocalIdent {
                 name: loc_ident.as_str().to_string(),
-                id: self.hir_id.sinto(tcx)
+                id: self.hir_id.sinto(s)
             }),
         rustc_hir::ParamName::Fresh =>
             ParamName::Fresh,
@@ -239,6 +239,9 @@ pub struct GenericParam {
     pub pure_wrt_drop: bool,
     pub kind: GenericParamKind,
     pub colon_span: Option<Span>,
+    #[not_in_source]
+    #[map(s.tcx().hir().attrs(hir_id.clone()).sinto(s))]
+    attributes: Vec<Attribute>,
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
