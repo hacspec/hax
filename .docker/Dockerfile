@@ -7,8 +7,8 @@ FROM nixpkgs/nix-flakes
 RUN [ "$(uname)" = Darwin ] && echo "filter-syscalls = false" >> /etc/nix/nix.conf
 
 # Prepare the sources
-COPY . /circus-sources
-RUN cd /circus-sources && git init && git add .
+COPY . /hax-sources
+RUN cd /hax-sources && git init && git add .
 
 # Use cache to speed up install
 ENV PATH="$PATH:/root/.nix-profile/bin"
@@ -16,4 +16,4 @@ RUN nix-env -iA cachix -f https://cachix.org/api/v1/install
 RUN cachix use hacspec
 
 # Install
-RUN nix profile install /circus-sources
+RUN nix profile install /hax-sources
