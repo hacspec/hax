@@ -195,8 +195,24 @@ type global_ident = (GlobalIdent.t[@visitors.opaque])
     visitors { variety = "map"; name = "global_ident_map" }]
 
 module LocalIdent = struct
-  module T = struct
-    type t = { name : string; id : int }
+  module T : sig
+    type id [@@deriving show, yojson, compare, sexp, eq]
+
+    val var_id_of_int : int -> id
+    val ty_param_id_of_int : int -> id
+    val const_id_of_int : int -> id
+
+    type t = { name : string; id : id }
+    [@@deriving show, yojson, compare, sexp, eq]
+  end = struct
+    type id = Typ of int | Cnst of int | Expr of int
+    [@@deriving show, yojson, compare, sexp, eq]
+
+    let var_id_of_int id = Expr id
+    let ty_param_id_of_int id = Typ id
+    let const_id_of_int id = Cnst id
+
+    type t = { name : string; id : id }
     [@@deriving show, yojson, compare, sexp, eq]
   end
 

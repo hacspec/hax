@@ -71,7 +71,7 @@ module Exn = struct
     `Concrete (concrete_of_def_id def_id)
 
   let local_ident (ident : Thir.local_ident) : local_ident =
-    { name = ident.name; id = 123 (* todo! *) }
+    { name = ident.name; id = LocalIdent.var_id_of_int 123 (* todo! *) }
 
   let union_span (x : span) (y : span) : span =
     match (x, y) with
@@ -748,7 +748,7 @@ module Exn = struct
     | Projection _ -> TProjectedAssociatedType (Thir.show_ty ty)
     | Param { index; name } ->
         (* TODO: [id] might not unique *)
-        TParam { name; id = index }
+        TParam { name; id = LocalIdent.ty_param_id_of_int index }
     | Error -> unimplemented span "type Error"
     | Dynamic _ -> unimplemented span "type Dynamic"
     | Generator _ -> unimplemented span "type Generator"
@@ -785,7 +785,7 @@ module Exn = struct
       | Fresh ->
           (* fail with ("[Fresh] ident? " ^ Thir.show_generic_param param) *)
           (* TODO might be wrong to just have a wildcard here *)
-          ({ name = "_"; id = 123456789 } : local_ident)
+          ({ name = "_"; id = LocalIdent.ty_param_id_of_int 123 } : local_ident)
       | Error -> assertion_failure param.span "[Error] ident"
       | Plain n -> local_ident n
     in
@@ -960,7 +960,15 @@ module Exn = struct
             let name = def_id (Option.value_exn item.def_id) in
             let { params; constraints } = c_generics generics in
             let params =
-              GPType { ident = { name = "Self"; id = 0 }; default = None }
+              GPType
+                {
+                  ident =
+                    {
+                      name = "Self";
+                      id = LocalIdent.ty_param_id_of_int 0 (* todo *);
+                    };
+                  default = None;
+                }
               :: params
             in
             Trait

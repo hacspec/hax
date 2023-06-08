@@ -286,7 +286,9 @@ module Make (F : Features.T) = struct
     in
     {
       name = prefix ^ free_suffix;
-      id = (* TODO: freshness is local and name-only here... *) -1;
+      id =
+        (* TODO: freshness is local and name-only here... *)
+        LocalIdent.var_id_of_int (-1);
     }
 
   let unit_typ : ty = TApp { ident = `TupleType 0; args = [] }

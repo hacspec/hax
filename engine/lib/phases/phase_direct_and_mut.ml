@@ -143,7 +143,11 @@ struct
               in
               let expr = B.{ e; typ = type_output; span = expr.span } in
               let returned_value_ident =
-                LocalIdent.{ name = "todo_fresh_var"; id = 0 }
+                LocalIdent.
+                  {
+                    name = "todo_fresh_var";
+                    id = LocalIdent.var_id_of_int (-1) (* todo *);
+                  }
               in
               match mut_typed_inputs with
               | [ (_, (var, typ, _)) ] when ret_unit ->
