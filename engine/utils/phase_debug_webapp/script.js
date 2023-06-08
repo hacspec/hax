@@ -263,7 +263,7 @@ async function phases_viewer(state = {index: 0, ast_focus: null, seed: SEED}) {
     let app_root = document.querySelector('#app');
     app_root.childNodes.forEach(old => old.remove());
     app_root.appendChild(main);
-    app_root.onkeydown = (e) => {
+    document.body.onkeydown = (e) => {
         let key = ({'ArrowRight': 'n', 'ArrowLeft': 'p'})[e.key] || e.key;
         (({
             'n': () => phases_viewer({...state, index: state.index + 1, ast_focus: null}),
