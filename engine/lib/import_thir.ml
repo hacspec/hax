@@ -467,7 +467,8 @@ module Exn = struct
           let e = Option.value ~default:(unit_expr span) e in
           Return { e; witness = W.early_exit }
       | ConstBlock _ -> unimplemented e.span "ConstBlock"
-      | ConstRef _ -> unimplemented e.span "ConstRef"
+      | ConstRef { id } ->
+          LocalVar { name = id.name; id = LocalIdent.const_id_of_int id.index }
       | Repeat { value; count } ->
           let value = c_expr value in
           let count = c_expr count in
@@ -794,7 +795,10 @@ module Exn = struct
     | Type { default; _ } ->
         let default = Option.map ~f:(c_ty param.span) default in
         GPType { ident; default }
-    | Const _ -> unimplemented param.span "Const"
+    | Const { default = Some _; _ } ->
+        unimplemented param.span "c_generic_param:Const with a default"
+    | Const { default = None; ty } ->
+        GPConst { ident; typ = c_ty param.span ty }
 
   let c_predicate_kind span (p : Thir.predicate_kind) : trait_ref option =
     match p with
