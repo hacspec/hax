@@ -467,7 +467,7 @@ module Exn = struct
           let e = Option.value ~default:(unit_expr span) e in
           Return { e; witness = W.early_exit }
       | ConstBlock _ -> unimplemented e.span "ConstBlock"
-      | ConstRef { id } ->
+      | ConstParam { param = id } (* TODO: shadowing? *) | ConstRef { id } ->
           LocalVar { name = id.name; id = LocalIdent.const_id_of_int id.index }
       | Repeat { value; count } ->
           let value = c_expr value in
@@ -556,7 +556,6 @@ module Exn = struct
           unimplemented e.span "expression ValueTypeAscription"
       | NonHirLiteral _ -> unimplemented e.span "expression NonHirLiteral"
       | ZstLiteral _ -> unimplemented e.span "expression ZstLiteral"
-      | ConstParam _ -> unimplemented e.span "expression ConstParam"
       | Yield _ -> unimplemented e.span "expression Yield"
       | Todo _ -> unimplemented e.span "expression Todo"
     in
