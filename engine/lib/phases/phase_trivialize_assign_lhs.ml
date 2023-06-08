@@ -62,6 +62,11 @@ module%inlined_contents Make (F : Features.T) = struct
       | LhsLocalVar { var; typ } -> ((var, dty span typ), rhs)
       | LhsFieldAccessor { e; typ; field; _ } ->
           let lhs = expr_of_lhs e span in
+          let field =
+            match field with
+            | `Projector field -> (field :> global_ident)
+            | _ -> field
+          in
           (match lhs.typ with
            | TApp {ident; args} ->
               let rhs' =

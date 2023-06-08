@@ -214,6 +214,20 @@ struct
     >> map_last_global_ident (fun s -> s ^ "_t")
     >> pglobal_ident span
 
+  (* This is a bit too fiddly. TODO: simplify *)
+  let pfield_concrete_ident (id:concrete_ident) =
+    let id_path = Non_empty_list.to_list id.path in
+    F.lid [String.lowercase (List.last_exn id_path)]
+  let pfield_ident span (f:global_ident) : F.Ident.lident =
+    match f with
+    | `Concrete cid -> pfield_concrete_ident cid
+    | `Projector (`Concrete cid) -> pfield_concrete_ident cid
+    | _ ->
+        Error.assertion_failure span
+          ("pfield_ident: not a valid field name in F* backend: "
+         ^ show_global_ident f)
+
+
   let pconstructor_ident span : global_ident -> F.Ident.lident =
     uppercase_global_ident >> pglobal_ident span
 
@@ -388,7 +402,7 @@ struct
         @@ F.AST.Project (pexpr arg, F.lid [ "_" ^ string_of_int (n + 1) ])
     | App { f = { e = GlobalVar (`Projector (`Concrete cid)) }; args = [ arg ] }
       ->
-        F.term @@ F.AST.Project (pexpr arg, pconcrete_ident cid)
+        F.term @@ F.AST.Project (pexpr arg, pfield_concrete_ident cid)
     | App { f = { e = GlobalVar x }; args } when Map.mem operators x ->
         let arity, op = Map.find_exn operators x in
         if List.length args <> arity then
@@ -436,7 +450,7 @@ struct
         @@ F.AST.Record
              ( Option.map ~f:(fst >> pexpr) base,
                List.map
-                 ~f:(fun (f, e) -> (pglobal_ident e.span f, pexpr e))
+                 ~f:(fun (f, e) -> (pfield_ident e.span f, pexpr e))
                  fields )
     | Construct { constructs_record = false; constructor; fields; base }
       when List.for_all ~f:(fst >> is_field_an_index) fields ->
