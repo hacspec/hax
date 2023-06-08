@@ -508,9 +508,9 @@ struct
         let t = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
         F.pat @@ F.AST.PatAscribed (v, (t, None))
     | GPType { ident; default = _ } ->
-        Error.unimplemented span ~span:"pgeneric_param:Type with default"
+        Error.unimplemented span ~details:"pgeneric_param:Type with default"
     | GPConst { ident; typ } ->
-        Error.unimplemented span ~span:"pgeneric_param:const todo"
+        Error.unimplemented span ~details:"pgeneric_param:const todo"
 
   let rec pgeneric_constraint span (nth : int) (c : generic_constraint) =
     match c with
@@ -533,9 +533,9 @@ struct
         let t = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
         F.mk_e_binder (F.AST.Annotated (plocal_ident ident, t))
     | GPType { ident; default = _ } ->
-        Error.unimplemented span ~span:"pgeneric_param_bd:Type with default"
+        Error.unimplemented span ~details:"pgeneric_param_bd:Type with default"
     | GPConst { ident; typ } ->
-        Error.unimplemented span ~span:"pgeneric_param_bd:const todo"
+        Error.unimplemented span ~details:"pgeneric_param_bd:const todo"
 
   let rec pgeneric_constraint_bd span (c : generic_constraint) =
     match c with
