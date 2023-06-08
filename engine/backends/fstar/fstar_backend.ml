@@ -493,24 +493,24 @@ struct
     >> last_of_global_ident span
 
   let rec pgeneric_param span (p : generic_param) =
+    let mk_implicit (ident : local_ident) ty =
+      let v =
+        F.pat
+        @@ F.AST.PatVar
+             ( plocal_ident { ident with name = pgeneric_param_name ident.name },
+               Some F.AST.Implicit,
+               [] )
+      in
+      F.pat @@ F.AST.PatAscribed (v, (ty, None))
+    in
     match p with
     | GPLifetime { ident } ->
         Error.assertion_failure span "pgeneric_param:LIFETIME"
     | GPType { ident; default = None } ->
-        let v =
-          F.pat
-          @@ F.AST.PatVar
-               ( plocal_ident
-                   { ident with name = pgeneric_param_name ident.name },
-                 Some F.AST.Implicit,
-                 [] )
-        in
-        let t = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
-        F.pat @@ F.AST.PatAscribed (v, (t, None))
+        mk_implicit ident (F.term @@ F.AST.Name (F.lid [ "Type" ]))
     | GPType { ident; default = _ } ->
         Error.unimplemented span ~details:"pgeneric_param:Type with default"
-    | GPConst { ident; typ } ->
-        Error.unimplemented span ~details:"pgeneric_param:const todo"
+    | GPConst { ident; typ } -> mk_implicit ident (pty span typ)
 
   let rec pgeneric_constraint span (nth : int) (c : generic_constraint) =
     match c with
