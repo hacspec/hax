@@ -26,11 +26,11 @@ let renamed_identifiers lvl = function
         Ast.{ crate = "hacspec"; path = Non_empty_list.[ "lib"; last path ] }
   | x -> x
 
-let read_options_from_stdin () : Raw_thir_ast.engine_options =
+let read_options_from_stdin () : Types.engine_options =
   In_channel.input_all In_channel.stdin
-  |> Yojson.Safe.from_string |> Raw_thir_ast.parse_engine_options
+  |> Yojson.Safe.from_string |> Types.parse_engine_options
 
-let run () : Raw_thir_ast.output =
+let run () : Types.output =
   let options = read_options_from_stdin () in
   (match options.backend.debug_engine with
   | Some path ->
@@ -44,7 +44,7 @@ let run () : Raw_thir_ast.output =
   | None -> ());
   let run (type options_type)
       (module M : Backend.T with type BackendOptions.t = options_type)
-      (backend_options : options_type) : Raw_thir_ast.file list =
+      (backend_options : options_type) : Types.file list =
     let open M in
     options.input
     |> List.concat_map ~f:(fun item ->
@@ -77,6 +77,6 @@ let main () =
   Phase_utils.DebugBindPhase.export ();
   match result with
   | Ok results ->
-      Raw_thir_ast.to_json_output results
+      Types.to_json_output results
       |> Yojson.Safe.pretty_to_string |> print_endline
   | Error (exn, bt) -> Printexc.raise_with_backtrace exn bt

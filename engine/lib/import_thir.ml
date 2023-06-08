@@ -1,4 +1,4 @@
-module Thir = Raw_thir_ast
+module Thir = Types
 open Utils
 open Base
 open Diagnostics
@@ -71,7 +71,7 @@ module Exn = struct
     `Concrete (concrete_of_def_id def_id)
 
   let local_ident (ident : Thir.local_ident) : local_ident =
-    { name = ident.name; id = 123 (* todo! *) }
+    { name = ident.name; id = LocalIdent.var_id_of_int 123 (* todo! *) }
 
   let union_span (x : span) (y : span) : span =
     match (x, y) with
@@ -287,16 +287,18 @@ module Exn = struct
             _;
           } ->
           let scrutinee = c_expr scrutinee in
-          let pat = c_pat pat in
+          let arm_pat = c_pat pat in
           let then_ = c_expr then' in
           let else_ =
             Option.value ~default:(U.unit_expr span)
             @@ Option.map ~f:c_expr else_opt
           in
-          let arm_then = { arm = { pat; body = then_ }; span = then_.span } in
+          let arm_then =
+            { arm = { arm_pat; body = then_ }; span = then_.span }
+          in
           let arm_else =
-            let pat = { pat with p = PWild } in
-            { arm = { pat; body = else_ }; span = else_.span }
+            let arm_pat = { arm_pat with p = PWild } in
+            { arm = { arm_pat; body = else_ }; span = else_.span }
           in
           Match { scrutinee; arms = [ arm_then; arm_else ] }
       | If { cond; else_opt; then'; _ } ->
@@ -465,6 +467,8 @@ module Exn = struct
           let e = Option.value ~default:(unit_expr span) e in
           Return { e; witness = W.early_exit }
       | ConstBlock _ -> unimplemented e.span "ConstBlock"
+      | ConstParam { param = id } (* TODO: shadowing? *) | ConstRef { id } ->
+          LocalVar { name = id.name; id = LocalIdent.const_id_of_int id.index }
       | Repeat { value; count } ->
           let value = c_expr value in
           let count = c_expr count in
@@ -489,7 +493,11 @@ module Exn = struct
           let constructor =
             def_id @@ variant_id_of_variant_informations e.span info
           in
-          let base = Option.map ~f:(fun base -> c_expr base.base) base in
+          let base =
+            Option.map
+              ~f:(fun base -> (c_expr base.base, W.construct_base))
+              base
+          in
           let fields =
             List.map
               ~f:(fun f ->
@@ -548,7 +556,6 @@ module Exn = struct
           unimplemented e.span "expression ValueTypeAscription"
       | NonHirLiteral _ -> unimplemented e.span "expression NonHirLiteral"
       | ZstLiteral _ -> unimplemented e.span "expression ZstLiteral"
-      | ConstParam _ -> unimplemented e.span "expression ConstParam"
       | Yield _ -> unimplemented e.span "expression Yield"
       | Todo _ -> unimplemented e.span "expression Todo"
     in
@@ -725,7 +732,7 @@ module Exn = struct
         TApp { ident; args }
     | Foreign _ -> unimplemented span "Foreign"
     | Str -> TStr
-    | Array (ty, len) -> TArray { typ = c_ty span ty; length = len (* TODO *) }
+    | Array (ty, len) -> TArray { typ = c_ty span ty; length = c_expr len }
     | Slice ty ->
         let ty = c_ty span ty in
         TSlice { ty; witness = W.slice }
@@ -741,7 +748,7 @@ module Exn = struct
     | Projection _ -> TProjectedAssociatedType (Thir.show_ty ty)
     | Param { index; name } ->
         (* TODO: [id] might not unique *)
-        TParam { name; id = index }
+        TParam { name; id = LocalIdent.ty_param_id_of_int index }
     | Error -> unimplemented span "type Error"
     | Dynamic _ -> unimplemented span "type Dynamic"
     | Generator _ -> unimplemented span "type Generator"
@@ -756,14 +763,14 @@ module Exn = struct
       =
     match ty with
     | Type ty -> GType (c_ty span ty)
-    | Const _e -> unimplemented span "Const"
+    | Const _e -> unimplemented span "c_generic_value:Const"
     | _ -> GLifetime { lt = "todo generics"; witness = W.lifetime }
 
   and c_arm (arm : Thir.arm) : arm =
-    let pat = c_pat arm.pattern in
+    let arm_pat = c_pat arm.pattern in
     let body = c_expr arm.body in
     let span = c_span arm.span in
-    { arm = { pat; body }; span }
+    { arm = { arm_pat; body }; span }
 
   and c_param span (param : Thir.param) : param =
     {
@@ -778,7 +785,7 @@ module Exn = struct
       | Fresh ->
           (* fail with ("[Fresh] ident? " ^ Thir.show_generic_param param) *)
           (* TODO might be wrong to just have a wildcard here *)
-          ({ name = "_"; id = 123456789 } : local_ident)
+          ({ name = "_"; id = LocalIdent.ty_param_id_of_int 123 } : local_ident)
       | Error -> assertion_failure param.span "[Error] ident"
       | Plain n -> local_ident n
     in
@@ -787,7 +794,10 @@ module Exn = struct
     | Type { default; _ } ->
         let default = Option.map ~f:(c_ty param.span) default in
         GPType { ident; default }
-    | Const _ -> unimplemented param.span "Const"
+    | Const { default = Some _; _ } ->
+        unimplemented param.span "c_generic_param:Const with a default"
+    | Const { default = None; ty } ->
+        GPConst { ident; typ = c_ty param.span ty }
 
   let c_predicate_kind span (p : Thir.predicate_kind) : trait_ref option =
     match p with
@@ -852,7 +862,7 @@ module Exn = struct
           "TODO: traits: no support for defaults in type for now"
 
   let c_trait_item (item : Thir.trait_item) : trait_item =
-    (* Raw_thir_ast.Param { index = 0; name = "Self" } *)
+    (* Types.Param { index = 0; name = "Self" } *)
     let { params; constraints } = c_generics item.generics in
     {
       ti_span = c_span item.span;
@@ -953,7 +963,15 @@ module Exn = struct
             let name = def_id (Option.value_exn item.def_id) in
             let { params; constraints } = c_generics generics in
             let params =
-              GPType { ident = { name = "Self"; id = 0 }; default = None }
+              GPType
+                {
+                  ident =
+                    {
+                      name = "Self";
+                      id = LocalIdent.ty_param_id_of_int 0 (* todo *);
+                    };
+                  default = None;
+                }
               :: params
             in
             Trait

@@ -9,4 +9,5 @@ members = [
         "lint/hacspec/mut_args",
         "lint/rust/fnmut",
         "mut-ref-functionalization",
+        "generics",
 ]

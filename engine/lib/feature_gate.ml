@@ -77,33 +77,16 @@ struct
       | S.E err -> raise @@ Data.ret err @@ Ty (span, ty)
       | E data -> raise @@ Data.add data @@ Ty (span, ty)
 
-    and dgeneric_value = [%inline_body dgeneric_value]
-
-    let dborrow_kind = [%inline_body dborrow_kind]
-
-    let rec dpat (pat : A.pat) : B.pat =
+    and dpat (pat : A.pat) : B.pat =
       try [%inline_body dpat] pat with
       | S.E err -> raise @@ Data.ret err @@ Pat pat
       | E data -> raise @@ Data.add data @@ Pat pat
-
-    and dpat' = [%inline_body dpat']
-    and dfield_pat = [%inline_body dfield_pat]
-    and dbinding_mode = [%inline_body dbinding_mode]
-    and dsupported_monads = [%inline_body dsupported_monads]
-
-    let rec dexpr = [%inline_body dexpr]
 
     and dexpr_unwrapped (expr : A.expr) : B.expr =
       try [%inline_body dexpr_unwrapped] expr with
       | S.E err -> raise @@ Data.ret err @@ Expr expr
       | E data -> raise @@ Data.add data @@ Expr expr
-
-    and dexpr' = [%inline_body dexpr']
-    and dloop_kind = [%inline_body dloop_kind]
-    and dloop_state = [%inline_body dloop_state]
-    and darm = [%inline_body darm]
-    and darm' = [%inline_body darm']
-    and dlhs = [%inline_body dlhs]
+      [@@inline_ands bindings_of dexpr]
 
     [%%inline_defs "Item.*" - ditem - ditem']
 

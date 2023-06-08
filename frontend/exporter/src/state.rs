@@ -98,7 +98,22 @@ pub mod types {
     use std::cell::RefCell;
     use std::collections::{HashMap, HashSet};
     use std::rc::Rc;
-    pub type LocalIdentMap = Rc<RefCell<HashMap<rustc_middle::thir::LocalVarId, String>>>;
+
+    pub struct LocalContextS {
+        pub vars: HashMap<rustc_middle::thir::LocalVarId, String>,
+    }
+
+    impl LocalContextS {
+        pub fn new() -> LocalContextS {
+            LocalContextS {
+                vars: HashMap::new(),
+            }
+        }
+    }
+
+    pub type LocalContext = Rc<RefCell<LocalContextS>>;
+    // pub type LocalIdentMap = Rc<RefCell<HashMap<rustc_middle::thir::LocalVarId, String>>>;
+    // pub type ConstParamIdMap = Rc<RefCell<HashMap<u32, rustc_span::def_id::DefId>>>;
     pub type MacroCalls = Box<HashMap<rustc_span::Span, rustc_ast::ast::MacCall>>;
     pub type Options = Box<hax_frontend_exporter_options::Options>;
     pub type OptDefId = Option<rustc_hir::def_id::DefId>;
@@ -118,7 +133,7 @@ mk!(
         owner_id: {} rustc_hir::hir_id::OwnerId,
         opt_def_id: {} types::OptDefId,
         macro_infos: {} types::MacroCalls,
-        local_ident_map: {} types::LocalIdentMap,
+        local_ctx: {} types::LocalContext,
         cached_thirs: {'tcx} types::Thirs,
         exported_spans: {} types::ExportedSpans
     }

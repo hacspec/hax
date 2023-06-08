@@ -16,6 +16,7 @@ loop,
   nontrivial_lhs,
   arbitrary_lhs,
   lifetime,
+  construct_base,
   monadic_action,
   monadic_binding]
 

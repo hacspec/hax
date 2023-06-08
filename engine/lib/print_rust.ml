@@ -106,40 +106,6 @@ module Raw = struct
   let dbinding_mode span =
     pure span << function ByValue -> "" | ByRef _ -> "&"
 
-  let rec pty span (e : ty) =
-    let ( ! ) = pure span in
-    match e with
-    | TBool -> !"bool"
-    | TChar -> !"char"
-    | TInt _k -> !"int"
-    | TFloat -> !"float"
-    | TStr -> !"String"
-    | TApp { ident; args = [] } -> pglobal_ident span ident
-    | TApp { ident; args } ->
-        let args : AnnotatedString.t =
-          List.map ~f:(pgeneric_value span) args |> concat ~sep:!", "
-        in
-        pglobal_ident span ident & !"<" & args & !">"
-    | TArray { typ; length } ->
-        !"[" & pty span typ & !";" & !(Int.to_string length) & !"]"
-    | TSlice { ty; _ } -> !"[" & pty span ty & !"]"
-    | TRawPointer _ -> !"raw_pointer!()"
-    | TRef { typ; mut; _ } -> !"&" & dmutability span mut & pty span typ
-    | TFalse -> !"!"
-    | TParam i -> plocal_ident span i
-    | TArrow (inputs, output) ->
-        let arrow =
-          List.map ~f:(pty span) (inputs @ [ output ]) |> concat ~sep:!" -> "
-        in
-        !"arrow!(" & arrow & !")"
-    | TProjectedAssociatedType _ -> !"proj_asso_type!()"
-
-  and pgeneric_value span (e : generic_value) : AnnotatedString.t =
-    match e with
-    | GLifetime _ -> pure span "lifetime!(something)"
-    | GType t -> pty span t
-    | _ -> pure span "generic_value!(todo)"
-
   let pborrow_kind span = pure span << function Mut _ -> "mut " | _ -> ""
 
   let last_of_global_ident (g : global_ident) span =
@@ -160,7 +126,40 @@ module Raw = struct
           };
         "print_rust_last_of_global_ident_error"
 
-  let rec ppat (e : pat) =
+  let rec pty span (e : ty) =
+    let ( ! ) = pure span in
+    match e with
+    | TBool -> !"bool"
+    | TChar -> !"char"
+    | TInt _k -> !"int"
+    | TFloat -> !"float"
+    | TStr -> !"String"
+    | TApp { ident; args = [] } -> pglobal_ident span ident
+    | TApp { ident; args } ->
+        let args : AnnotatedString.t =
+          List.map ~f:(pgeneric_value span) args |> concat ~sep:!", "
+        in
+        pglobal_ident span ident & !"<" & args & !">"
+    | TArray { typ; length } -> !"[" & pty span typ & !";" & pexpr length & !"]"
+    | TSlice { ty; _ } -> !"[" & pty span ty & !"]"
+    | TRawPointer _ -> !"raw_pointer!()"
+    | TRef { typ; mut; _ } -> !"&" & dmutability span mut & pty span typ
+    | TFalse -> !"!"
+    | TParam i -> plocal_ident span i
+    | TArrow (inputs, output) ->
+        let arrow =
+          List.map ~f:(pty span) (inputs @ [ output ]) |> concat ~sep:!" -> "
+        in
+        !"arrow!(" & arrow & !")"
+    | TProjectedAssociatedType _ -> !"proj_asso_type!()"
+
+  and pgeneric_value span (e : generic_value) : AnnotatedString.t =
+    match e with
+    | GLifetime _ -> pure span "lifetime!(something)"
+    | GType t -> pty span t
+    | _ -> pure span "generic_value!(todo)"
+
+  and ppat (e : pat) =
     let ( ! ) = pure e.span in
     match e.p with
     | PWild -> !"_"
@@ -192,14 +191,14 @@ module Raw = struct
         dbinding_mode e.span mode & dmutability e.span mut
         & plocal_ident e.span var & subpat
 
-  let psupported_monads span m =
+  and psupported_monads span m =
     let ( ! ) = pure span in
     match m with
     | MException t -> !"MException<" & pty span t & !">"
     | MResult t -> !"MResult<" & pty span t & !">"
     | MOption -> !"MOption"
 
-  let rec pexpr' (e : expr) =
+  and pexpr' (e : expr) =
     let ( ! ) = pure e.span in
     match e.e with
     | If { cond; then_; else_ } ->
@@ -227,14 +226,16 @@ module Raw = struct
           |> concat ~sep:!","
         in
         let base =
-          match base with Some base -> !"..(" & pexpr base & !")" | _ -> !""
+          match base with
+          | Some (base, _) -> !"..(" & pexpr base & !")"
+          | _ -> !""
         in
         pglobal_ident e.span constructor & !"{" & fields & !"," & base & !"}"
     | Match { scrutinee; arms } ->
         let arms =
           List.map
-            ~f:(fun { arm = { pat; body }; _ } ->
-              ppat pat & !" => {" & pexpr body & !"}")
+            ~f:(fun { arm = { arm_pat; body }; _ } ->
+              ppat arm_pat & !" => {" & pexpr body & !"}")
             arms
           |> concat ~sep:!","
         in

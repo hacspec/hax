@@ -38,7 +38,7 @@ struct
       let monadic_binding _ = Features.On.monadic_binding
     end
 
-    [%%inline_defs dmutability + dty + dborrow_kind + dpat]
+    [%%inline_defs dmutability]
 
     module KnownMonads = struct
       type t = { monad : B.supported_monads option; typ : B.ty }
@@ -120,16 +120,14 @@ struct
         | _ -> m1
 
       (** after transformation, are **getting** inside a monad? *)
-      let from_typ (old : A.ty) (new_ : B.ty) : t =
+      let from_typ dty (old : A.ty) (new_ : B.ty) : t =
         let old = dty (Dummy { id = -1 } (* irrelevant *)) old in
         let monad = from_typ' new_ in
         if B.equal_ty (pure_type monad) old then monad
         else { monad = None; typ = new_ }
     end
 
-    let rec dexpr = [%inline_body dexpr]
-
-    and dexpr_unwrapped (expr : A.expr) : B.expr =
+    let rec dexpr_unwrapped (expr : A.expr) : B.expr =
       let span = expr.span in
       let typ = dty span expr.typ in
       match expr.e with
@@ -137,7 +135,7 @@ struct
       | Let { monadic = None; lhs; rhs; body } -> (
           let body' = dexpr body in
           let rhs' = dexpr rhs in
-          let mrhs = KnownMonads.from_typ rhs.typ rhs'.typ in
+          let mrhs = KnownMonads.from_typ dty rhs.typ rhs'.typ in
           let lhs = { (dpat lhs) with typ = KnownMonads.pure_type mrhs } in
           match mrhs with
           | { monad = None; _ } ->
@@ -146,7 +144,7 @@ struct
               let body = body' in
               { e = Let { monadic; lhs; rhs; body }; span; typ = body.typ }
           | _ ->
-              let mbody = KnownMonads.from_typ body.typ body'.typ in
+              let mbody = KnownMonads.from_typ dty body.typ body'.typ in
               let m = KnownMonads.lub mbody.monad mrhs.monad in
               let body = KnownMonads.lift body' mbody.monad m in
               let rhs = KnownMonads.lift rhs' mrhs.monad m in
@@ -159,10 +157,10 @@ struct
       | Match { scrutinee; arms } ->
           let arms =
             List.map
-              ~f:(fun { arm = { pat; body = a }; span } ->
+              ~f:(fun { arm = { arm_pat; body = a }; span } ->
                 let b = dexpr a in
-                let m = KnownMonads.from_typ a.typ b.typ in
-                (m, (dpat pat, span, b)))
+                let m = KnownMonads.from_typ dty a.typ b.typ in
+                (m, (dpat arm_pat, span, b)))
               arms
           in
           (* Todo throw assertion failed here (to get rid of reduce_exn in favor of reduce) *)
@@ -174,10 +172,10 @@ struct
           in
           let arms =
             List.map
-              ~f:(fun (mself, (pat, span, body)) ->
+              ~f:(fun (mself, (arm_pat, span, body)) ->
                 let body = KnownMonads.lift body mself.monad m in
-                let pat = { pat with typ = body.typ } in
-                ({ arm = { pat; body }; span } : B.arm))
+                let arm_pat = { arm_pat with typ = body.typ } in
+                ({ arm = { arm_pat; body }; span } : B.arm))
               arms
           in
           let scrutinee = dexpr scrutinee in
@@ -190,10 +188,11 @@ struct
           let cond = dexpr cond in
           let then' = dexpr then_ in
           let else' = Option.map ~f:dexpr else_ in
-          let mthen = KnownMonads.from_typ then_.typ then'.typ in
+          let mthen = KnownMonads.from_typ dty then_.typ then'.typ in
           let melse =
             match (else_, else') with
-            | Some else_, Some else' -> KnownMonads.from_typ else_.typ else'.typ
+            | Some else_, Some else' ->
+                KnownMonads.from_typ dty else_.typ else'.typ
             | _ -> mthen
           in
           let m = KnownMonads.lub mthen.monad melse.monad in
@@ -231,18 +230,13 @@ struct
     and lift_if_necessary (e : B.expr) (target_type : B.ty) =
       if B.equal_ty e.typ target_type then e
       else UB.call "dummy" "lift" [] [ e ] e.span target_type
-
-    and dloop_kind = [%inline_body dloop_kind]
-    and dloop_state = [%inline_body dloop_state]
-    and darm = [%inline_body darm]
-    and darm' = [%inline_body darm']
-    and dlhs = [%inline_body dlhs]
+      [@@inline_ands bindings_of dexpr - dexpr']
 
     module Item = struct
       module OverrideDExpr = struct
         let dexpr (e : A.expr) : B.expr =
           let e' = dexpr e in
-          match KnownMonads.from_typ e.typ e'.typ with
+          match KnownMonads.from_typ dty e.typ e'.typ with
           | { monad = Some m; typ } ->
               UB.call "dummy"
                 (match m with

@@ -26,7 +26,7 @@ module%inlined_contents Make (F : Features.T) = struct
     module UA = Ast_utils.Make (F)
     module UB = Ast_utils.Make (FB)
 
-    [%%inline_defs dmutability + dty + dborrow_kind + dpat + dsupported_monads]
+    [%%inline_defs dmutability]
 
     let rec expr_of_lhs (lhs : A.lhs) (span : span) : B.expr =
       match lhs with
@@ -74,8 +74,6 @@ module%inlined_contents Make (F : Features.T) = struct
           updater_of_lhs e rhs span
       | LhsArbitraryExpr _ -> Error.raise { kind = ArbitraryLHS; span }
 
-    and dexpr = [%inline_body dexpr]
-
     and dexpr_unwrapped (expr : A.expr) : B.expr =
       let span = expr.span in
       match expr.e with
@@ -89,11 +87,7 @@ module%inlined_contents Make (F : Features.T) = struct
           }
       | [%inline_arms "dexpr'.*" - Assign] ->
           map (fun e -> B.{ e; typ = dty expr.span expr.typ; span = expr.span })
-
-    and dloop_kind = [%inline_body dloop_kind]
-    and dloop_state = [%inline_body dloop_state]
-    and darm = [%inline_body darm]
-    and darm' = [%inline_body darm']
+      [@@inline_ands bindings_of dexpr - dlhs - dexpr']
 
     [%%inline_defs "Item.*"]
   end
