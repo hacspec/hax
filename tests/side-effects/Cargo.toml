@@ -7,4 +7,4 @@ edition = "2021"
 
 [package.metadata.hax-tests]
 into.fstar = {snapshot = "none"}
-into.coq = {snapshot = "none"}
+into.coq = {broken = true, snapshot = "none", issue_id = 134}
