@@ -60,29 +60,30 @@ module%inlined_contents Make (F : Features.T) = struct
         (LocalIdent.t * B.ty) * B.expr =
       match lhs with
       | LhsLocalVar { var; typ } -> ((var, dty span typ), rhs)
-      | LhsFieldAccessor { e; typ; field; _ } ->
+      | LhsFieldAccessor { e; typ; field; _ } -> (
           let lhs = expr_of_lhs e span in
           let field =
             match field with
             | `Projector field -> (field :> global_ident)
             | _ -> field
           in
-          (match lhs.typ with
-           | TApp {ident; args} ->
+          match lhs.typ with
+          | TApp { ident; args } ->
               let rhs' =
-                B.Construct {
+                B.Construct
+                  {
                     constructor = ident;
                     constructs_record = true;
-                    fields = [(field,rhs)];
+                    fields = [ (field, rhs) ];
                     base = Some lhs;
-                  } in
-              let rhs = {B.e = rhs'; typ = lhs.typ; span} in
+                  }
+              in
+              let rhs = { B.e = rhs'; typ = lhs.typ; span } in
               updater_of_lhs e rhs span
-           | _ ->
-              Error.raise { kind = ArbitraryLHS; span })
+          | _ -> Error.raise { kind = ArbitraryLHS; span })
       | LhsArrayAccessor { e; typ = _; index; _ } ->
-         let lhs = expr_of_lhs e span in
-         let rhs =
+          let lhs = expr_of_lhs e span in
+          let rhs =
             UB.call "core" "ops"
               [ "index"; "IndexMut"; "update_at" ]
               [ lhs; dexpr index; rhs ]

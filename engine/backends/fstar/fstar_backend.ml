@@ -215,10 +215,11 @@ struct
     >> pglobal_ident span
 
   (* This is a bit too fiddly. TODO: simplify *)
-  let pfield_concrete_ident (id:concrete_ident) =
+  let pfield_concrete_ident (id : concrete_ident) =
     let id_path = Non_empty_list.to_list id.path in
-    F.lid [String.lowercase (List.last_exn id_path)]
-  let pfield_ident span (f:global_ident) : F.Ident.lident =
+    F.lid [ String.lowercase (List.last_exn id_path) ]
+
+  let pfield_ident span (f : global_ident) : F.Ident.lident =
     match f with
     | `Concrete cid -> pfield_concrete_ident cid
     | `Projector (`Concrete cid) -> pfield_concrete_ident cid
@@ -226,7 +227,6 @@ struct
         Error.assertion_failure span
           ("pfield_ident: not a valid field name in F* backend: "
          ^ show_global_ident f)
-
 
   let pconstructor_ident span : global_ident -> F.Ident.lident =
     uppercase_global_ident >> pglobal_ident span
