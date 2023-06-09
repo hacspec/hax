@@ -458,12 +458,13 @@ functor
 
     and loop_kind =
       | UnconditionalLoop
-      | ForLoop of {
+      | ForLoop of { var : local_ident; it : expr; witness : F.for_loop }
+      | ForIndexLoop of {
           start : expr;
           end_ : expr;
           var : local_ident;
           var_typ : ty;
-          witness : F.for_loop;
+          witness : F.for_index_loop;
         }
 
     and loop_state = { init : expr; bpat : pat; witness : F.state_passing_loop }
