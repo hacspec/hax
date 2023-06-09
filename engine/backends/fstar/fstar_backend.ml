@@ -16,41 +16,42 @@ include
       let backend = Diagnostics.Backend.FStar
     end)
 
-module RejectNotFStar (FA : Features.T) = struct
+module SubtypeToInputLanguage
+    (FA : Features.T
+            with type mutable_reference = Features.Off.mutable_reference
+             and type continue = Features.Off.continue
+             and type mutable_reference = Features.Off.mutable_reference
+             and type mutable_pointer = Features.Off.mutable_pointer
+             and type mutable_variable = Features.Off.mutable_variable
+             and type reference = Features.Off.reference
+             and type raw_pointer = Features.Off.raw_pointer
+             and type early_exit = Features.Off.early_exit
+             and type question_mark = Features.Off.question_mark
+             and type as_pattern = Features.Off.as_pattern
+             and type lifetime = Features.Off.lifetime
+             and type monadic_action = Features.Off.monadic_action
+             and type arbitrary_lhs = Features.Off.arbitrary_lhs
+             and type nontrivial_lhs = Features.Off.nontrivial_lhs
+             and type loop = Features.Off.loop
+             and type for_loop = Features.Off.for_loop
+             and type for_index_loop = Features.Off.for_index_loop
+             and type state_passing_loop = Features.Off.state_passing_loop) =
+struct
   module FB = InputLanguage
 
   include
-    Feature_gate.Make (FA) (FB)
+    Subtype.Make (FA) (FB)
       (struct
         module A = FA
         module B = FB
-        include Feature_gate.DefaultSubtype
-
-        let mutable_variable = reject
-        let loop = reject
-        let continue = reject
-        let mutable_reference = reject
-        let mutable_pointer = reject
-        let mutable_borrow = reject
-        let reference = reject
-        let slice _ = Features.On.slice
-        let raw_pointer = reject
-        let early_exit = reject
-        let question_mark = reject
-        let macro _ = Features.On.macro
-        let as_pattern = reject
-        let lifetime = reject
-        let monadic_action = reject
-        let arbitrary_lhs = reject
-        let nontrivial_lhs = reject
-        let monadic_binding _ = Features.On.monadic_binding
-        let construct_base _ = Features.On.construct_base
-        let for_loop = reject
-        let state_passing_loop = reject
-
-        let metadata =
-          Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
+        include Features.SUBTYPE.Id
+        include Features.SUBTYPE.On.Monadic_binding
+        include Features.SUBTYPE.On.Construct_base
+        include Features.SUBTYPE.On.Slice
+        include Features.SUBTYPE.On.Macro
       end)
+
+  let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
 end
 
 module AST = Ast.Make (InputLanguage)
@@ -961,7 +962,8 @@ module TransformToInputLanguage =
     |> Phases.Cf_into_monads
     |> Phases.Reject.EarlyExit
     |> Phases.Functionalize_loops
-    |> RejectNotFStar
+    |> Phases.Reject.As_pattern
+    |> SubtypeToInputLanguage
     |> Identity
     ]
     [@ocamlformat "disable"])
