@@ -118,11 +118,11 @@ struct
         | Gt -> F.lid [ "Prims"; "op_GreaterThanOrEqual" ]
         | Ne -> F.lid [ "Prims"; "op_disEquality" ]
         | Rem -> F.lid [ "Prims"; "op_Modulus" ]
-        | BitXor -> F.lid [ "Hacspec_lib"; "^." ]
-        | BitAnd -> F.lid [ "Hacspec_lib"; "&." ]
-        | BitOr -> F.lid [ "Hacspec_lib"; "|." ]
-        | Shl -> F.lid [ "Hacspec_lib"; "<<." ]
-        | Shr -> F.lid [ "Hacspec_lib"; ">>." ]
+        | BitXor -> F.lid [ "Hacspec_lib"; "op_bitxor" ]
+        | BitAnd -> F.lid [ "Hacspec_lib"; "op_bitand" ]
+        | BitOr -> F.lid [ "Hacspec_lib"; "op_bitor" ]
+        | Shl -> F.lid [ "Hacspec_lib"; "op_lshift" ]
+        | Shr -> F.lid [ "Hacspec_lib"; "op_rshift" ]
         | Offset -> Error.assertion_failure span "pprim_ident BinOp::Offset?")
     | UnOp op -> (
         match op with
