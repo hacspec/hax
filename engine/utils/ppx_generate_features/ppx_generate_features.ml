@@ -315,6 +315,44 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
                                None] )])
             features]
 
+        module On =
+        [%m
+        List.concat_map
+          ~f:(fun txt ->
+            (rename
+               [
+                 ("placeholder", txt); ("Placeholder", uppercase_first_char txt);
+               ])
+              #structure
+              [%str
+                module Placeholder = struct
+                  let placeholder _ = On.placeholder
+                end
+
+                include Placeholder])
+          features
+        |> B.pmod_structure]
+
+        module Reject (R : sig
+          val reject : 'a. unit -> 'a
+        end) =
+        [%m
+        List.concat_map
+          ~f:(fun txt ->
+            (rename
+               [
+                 ("placeholder", txt); ("Placeholder", uppercase_first_char txt);
+               ])
+              #structure
+              [%str
+                module Placeholder = struct
+                  let placeholder _ = R.reject
+                end
+
+                include Placeholder])
+          features
+        |> B.pmod_structure]
+
         module Id =
         [%m
         List.map
