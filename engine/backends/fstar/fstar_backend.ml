@@ -314,8 +314,8 @@ struct
                 (F.term_of_lid [ "FStar"; "List"; "Tot"; "Base"; "length" ])
                 [ x ]
             in
-            let lt = F.term @@ F.AST.Name (pprim_ident span @@ BinOp Lt) in
-            F.mk_e_app lt [ len_of_x; pexpr length ])
+            let eq = F.term @@ F.AST.Name (pprim_ident span @@ BinOp Eq) in
+            F.mk_e_app eq [ len_of_x; pexpr length ])
     | TParam i ->
         F.term
         @@ F.AST.Var
