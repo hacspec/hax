@@ -945,7 +945,7 @@ module Exn = struct
                   | Unit (_, name) -> { name = def_id name; arguments = [] })
                 variants
             in
-            Type { name; generics; variants; record = true }
+            Type { name; generics; variants; record = false }
         | Struct (v, generics) ->
             let name = def_id (Option.value_exn item.def_id) in
             let generics = c_generics generics in
