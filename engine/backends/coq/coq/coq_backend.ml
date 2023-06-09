@@ -306,7 +306,12 @@ struct
 
   (* let is_field_an_index = index_of_field >> Option.is_some *)
 
-  let rec pexpr (e : expr) : C.AST.term =
+  let rec pexpr (e : expr) =
+    try pexpr_unwrapped e
+    with Diagnostics.SpanFreeError kind ->
+      TODOs_debug.__TODO_term__ e.span "failure"
+
+  and pexpr_unwrapped (e : expr) : C.AST.term =
     let span = e.span in
     match e.e with
     | Literal e -> C.AST.Const (pliteral e)
@@ -386,6 +391,11 @@ struct
     | _ -> .
 
   let rec pitem (e : item) : C.AST.decl list =
+    try pitem_unwrapped e
+    with Diagnostics.SpanFreeError _kind ->
+      [ C.AST.Unimplemented "item error backend" ]
+
+  and pitem_unwrapped (e : item) : C.AST.decl list =
     let span = e.span in
     match e.v with
     | Fn { name; generics; body; params } ->
