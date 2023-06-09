@@ -9,7 +9,8 @@ module Make
             and type arbitrary_lhs = Features.Off.arbitrary_lhs
             and type nontrivial_lhs = Features.Off.nontrivial_lhs
             and type monadic_action = Features.Off.monadic_action
-            and type monadic_binding = Features.Off.monadic_binding) : sig
+            and type monadic_binding = Features.Off.monadic_binding
+            and type for_index_loop = Features.Off.for_index_loop) : sig
   include module type of struct
     open Ast
     module FA = F

@@ -2,7 +2,9 @@ open Base
 open Utils
 
 module MakeSI
-    (F : Features.T with type monadic_binding = Features.Off.monadic_binding) =
+    (F : Features.T
+           with type monadic_binding = Features.Off.monadic_binding
+            and type for_index_loop = Features.Off.for_index_loop) =
 struct
   module AST = Ast.Make (F)
   module U = Ast_utils.Make (F)
@@ -278,8 +280,8 @@ struct
               let kind' =
                 match kind with
                 | UnconditionalLoop -> []
-                | ForLoop { start; end_; _ } ->
-                    [ super#visit_expr env start; super#visit_expr env end_ ]
+                | ForLoop { it; _ } -> [ super#visit_expr env it ]
+                | _ -> .
               in
               let state' =
                 Option.map
@@ -292,18 +294,17 @@ struct
               HoistSeq.many env kind_state (fun l effects ->
                   let kind =
                     match (l, kind) with
-                    | ( start :: end_ :: ([ _ ] | []),
-                        ForLoop { var; witness; var_typ; _ } ) ->
-                        ForLoop { var; witness; start; end_; var_typ }
+                    | it :: ([ _ ] | []), ForLoop { var; witness; _ } ->
+                        ForLoop { var; witness; it }
                     | ([ _ ] | []), UnconditionalLoop -> UnconditionalLoop
+                    | _, ForIndexLoop _ -> .
                     | _ -> HoistSeq.err_hoist_invariant Caml.__LOC__
                   in
                   let state =
                     match (l, state) with
-                    | ( (_ :: _ :: [ state ] | [ state ]),
-                        Some { witness; bpat; _ } ) ->
+                    | (_ :: [ state ] | [ state ]), Some { witness; bpat; _ } ->
                         Some { witness; bpat; init = state }
-                    | ([ _; _ ] | []), None -> None
+                    | ([ _ ] | []), None -> None
                     | _ -> HoistSeq.err_hoist_invariant Caml.__LOC__
                   in
                   (* by now, the "inputs" of the loop are hoisted as let if needed *)
@@ -480,7 +481,9 @@ struct
 end
 
 module%inlined_contents Hoist
-    (F : Features.T with type monadic_binding = Features.Off.monadic_binding) =
+    (F : Features.T
+           with type monadic_binding = Features.Off.monadic_binding
+            and type for_index_loop = Features.Off.for_index_loop) =
 struct
   module FA = F
 

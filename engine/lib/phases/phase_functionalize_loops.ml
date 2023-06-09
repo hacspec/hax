@@ -38,12 +38,13 @@ struct
       | Loop
           {
             body;
-            kind = ForLoop { start; end_; var; var_typ; _ };
+            kind = ForLoop { it; var; _ };
             state = Some { init; bpat; _ };
             _;
           } ->
           let body = dexpr body in
-          let var_typ = dty span var_typ in
+          let it = dexpr it in
+          let var_typ = it.typ in
           let bpat = dpat bpat in
           let fn : B.expr' =
             Closure
@@ -60,8 +61,8 @@ struct
               span = body.span;
             }
           in
-          UB.call "dummy" "foldi" []
-            [ dexpr start; dexpr end_; fn; dexpr init ]
+          UB.call "core" "iter" [ "Iterator"; "fold" ]
+            [ it; dexpr init; fn ]
             span (dty span expr.typ)
       | Loop { state = None; _ } ->
           Error.unimplemented ~details:"Loop without mutation?" span
@@ -77,7 +78,7 @@ struct
       | [%inline_arms "dexpr'.*" - Loop - Break - Continue - Return] ->
           map (fun e -> B.{ e; typ = dty expr.span expr.typ; span = expr.span })
       | _ -> .
-      [@@inline_ands bindings_of dexpr - dexpr']
+      [@@inline_ands bindings_of dexpr - dexpr' - dloop_kind - dloop_state]
 
     [%%inline_defs "Item.*"]
   end

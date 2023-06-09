@@ -37,10 +37,8 @@ struct
       open A
 
       type t = {
-        start : expr;
-        end_ : expr;
+        it : expr;
         var : local_ident;
-        var_typ : ty;
         body : expr;
         state : loop_state option;
         label : string option;
@@ -53,69 +51,7 @@ struct
         match e.e with
         | Match
             {
-              scrutinee =
-                {
-                  e =
-                    App
-                      {
-                        f =
-                          {
-                            e =
-                              GlobalVar
-                                (`Concrete
-                                  {
-                                    crate = "core";
-                                    path =
-                                      Non_empty_list.
-                                        [
-                                          "iter";
-                                          "traits";
-                                          "collect";
-                                          "IntoIterator";
-                                          "into_iter";
-                                        ];
-                                  });
-                          };
-                        args =
-                          [
-                            {
-                              e =
-                                Construct
-                                  {
-                                    constructor =
-                                      `Concrete
-                                        {
-                                          crate = "core";
-                                          path =
-                                            Non_empty_list.
-                                              [ "ops"; "range"; "Range" ];
-                                        };
-                                    constructs_record = true;
-                                    fields =
-                                      [
-                                        ( `Concrete
-                                            {
-                                              crate = "core";
-                                              path =
-                                                Non_empty_list.
-                                                  [ "ops"; "range"; "Range"; "start" ];
-                                            },
-                                          start );
-                                        ( `Concrete
-                                            {
-                                              crate = "core";
-                                              path =
-                                                Non_empty_list.
-                                                  [ "ops"; "range"; "Range"; "end" ];
-                                            },
-                                          end_ );
-                                      ];
-                                    base = None;
-                                  };
-                            };
-                          ];
-                      };
-                };
+              scrutinee = it;
               arms =
                 [
                   {
@@ -277,7 +213,7 @@ struct
                                                                                 None;
                                                                                 };
                                                                                 typ =
-                                                                                var_typ;
+                                                                                _;
                                                                                 };
                                                                               };
                                                                             ];
@@ -323,7 +259,7 @@ struct
                 ];
             }
           when [%eq: local_ident] iter_variable next_iter_variable ->
-            Some { start; end_; var; body; state; var_typ; label; witness }
+            Some { it; var; body; state; label; witness }
         | _ -> None
                [@ocamlformat "disable"]
     end
@@ -333,7 +269,7 @@ struct
     let rec dexpr_unwrapped (expr : A.expr) : B.expr =
       let h = [%inline_body dexpr_unwrapped] in
       match For.extract expr with
-      | Some { start; end_; var; body; label; state; var_typ; witness } ->
+      | Some { it; var; body; label; state; witness } ->
           {
             e =
               Loop
@@ -341,13 +277,7 @@ struct
                   body = dexpr body;
                   kind =
                     ForLoop
-                      {
-                        start = dexpr start;
-                        end_ = dexpr end_;
-                        var;
-                        var_typ = dty expr.span var_typ;
-                        witness = Features.On.for_loop;
-                      };
+                      { it = dexpr it; var; witness = Features.On.for_loop };
                   state = Option.map ~f:(dloop_state expr.span) state;
                   label;
                   witness = S.loop witness;

@@ -213,14 +213,16 @@ struct
   and dloop_kind (span : span) (k : A.loop_kind) : B.loop_kind =
     match k with
     | UnconditionalLoop -> UnconditionalLoop
-    | ForLoop { start; end_; var; var_typ; witness } ->
-        ForLoop
+    | ForLoop { it; var; witness } ->
+        ForLoop { it = dexpr it; var; witness = S.for_loop witness }
+    | ForIndexLoop { start; end_; var; var_typ; witness } ->
+        ForIndexLoop
           {
             start = dexpr start;
             end_ = dexpr end_;
             var;
             var_typ = dty span var_typ;
-            witness = S.for_loop witness;
+            witness = S.for_index_loop witness;
           }
 
   and dloop_state (_span : span) (s : A.loop_state) : B.loop_state =
