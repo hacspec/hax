@@ -8,6 +8,7 @@ module%inlined_contents Make (F : Features.T) = struct
   module FB = struct
     include F
     include Features.Off.Nontrivial_lhs
+    include Features.On.Construct_base
   end
 
   include
@@ -21,6 +22,8 @@ module%inlined_contents Make (F : Features.T) = struct
 
     module S = struct
       include Features.SUBTYPE.Id
+
+      let construct_base _ = Features.On.construct_base
     end
 
     module UA = Ast_utils.Make (F)
@@ -75,7 +78,7 @@ module%inlined_contents Make (F : Features.T) = struct
                     constructor = ident;
                     constructs_record = true;
                     fields = [ (field, rhs) ];
-                    base = Some lhs;
+                    base = Some (lhs, Features.On.construct_base);
                   }
               in
               let rhs = { B.e = rhs'; typ = lhs.typ; span } in
