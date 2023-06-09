@@ -215,16 +215,23 @@ struct
     >> pglobal_ident span
 
   (* This is a bit too fiddly. TODO: simplify *)
-  let pfield_concrete_ident (id : concrete_ident) =
+  let pfield_concrete_ident span (id : concrete_ident) =
     let id_path = Non_empty_list.to_list id.path in
-    F.lid [ String.lowercase (List.last_exn id_path) ]
+    let id_rev = List.rev id_path in
+    match id_rev with
+    | [fname] -> F.lid [ String.lowercase fname ]
+    | fname::tname::rest -> F.lid [ String.lowercase tname^"_"^String.lowercase fname ]
+    | _ ->
+        Error.assertion_failure span
+          ("pfield_concrete_ident: not a valid field name in F* backend: "
+            ^ show_concrete_ident id)
 
   let pfield_ident span (f : global_ident) : F.Ident.lident =
     match f with
-    | `Concrete cid -> pfield_concrete_ident cid
+    | `Concrete cid -> pfield_concrete_ident span cid
     | `Projector (`TupleField (n, len)) | `TupleField (n, len) ->
         F.lid [ "_" ^ Int.to_string (n + 1) ]
-    | `Projector (`Concrete cid) -> pfield_concrete_ident cid
+    | `Projector (`Concrete cid) -> pfield_concrete_ident span cid
     | _ ->
         Error.assertion_failure span
           ("pfield_ident: not a valid field name in F* backend: "
@@ -372,7 +379,7 @@ struct
     | _ -> .
 
   and pfield_pat ({ field; pat } : field_pat) =
-    (pglobal_ident pat.span field, ppat pat)
+    (pfield_ident pat.span field, ppat pat)
 
   and pexpr (e : expr) =
     try pexpr_unwrapped e
@@ -404,7 +411,7 @@ struct
         @@ F.AST.Project (pexpr arg, F.lid [ "_" ^ string_of_int (n + 1) ])
     | App { f = { e = GlobalVar (`Projector (`Concrete cid)) }; args = [ arg ] }
       ->
-        F.term @@ F.AST.Project (pexpr arg, pfield_concrete_ident cid)
+        F.term @@ F.AST.Project (pexpr arg, pfield_concrete_ident e.span cid)
     | App { f = { e = GlobalVar x }; args } when Map.mem operators x ->
         let arity, op = Map.find_exn operators x in
         if List.length args <> arity then
@@ -647,9 +654,9 @@ struct
                      (* todo type parameters & constraints *)
                      None,
                      [],
-                     List.map
+                    List.map
                        ~f:(fun (field, ty) ->
-                         ( F.id @@ last_of_global_ident e.span field,
+                         ( (pfield_ident e.span field).ident,
                            None,
                            [],
                            pty e.span ty ))
@@ -688,7 +695,7 @@ struct
                          (* [], *)
                          List.map
                            ~f:(fun (field, ty) ->
-                             ( F.id @@ last_of_global_ident e.span field,
+                             ( (pfield_ident e.span field).ident,
                                None,
                                [],
                                pty e.span ty ))

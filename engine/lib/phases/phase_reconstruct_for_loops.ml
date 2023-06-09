@@ -98,7 +98,7 @@ struct
                                               crate = "core";
                                               path =
                                                 Non_empty_list.
-                                                  [ "ops"; "range"; "start" ];
+                                                  [ "ops"; "range"; "Range"; "start" ];
                                             },
                                           start );
                                         ( `Concrete
@@ -106,7 +106,7 @@ struct
                                               crate = "core";
                                               path =
                                                 Non_empty_list.
-                                                  [ "ops"; "range"; "finish" ];
+                                                  [ "ops"; "range"; "Range"; "end" ];
                                             },
                                           end_ );
                                       ];

@@ -518,9 +518,8 @@ module Exn = struct
             List.map
               ~f:(fun f ->
                 let field =
-                  def_id
-                  @@ append_to_thir_def_id info.type_namespace
-                       (List.last_exn f.field.path)
+                  def_id f.field
+                         (*                  @@ {info.type_namespace with path = info.type_namespace.path @  f.field.path} *)
                 in
                 let value = c_expr f.value in
                 (field, value))
