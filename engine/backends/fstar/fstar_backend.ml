@@ -222,6 +222,8 @@ struct
   let pfield_ident span (f : global_ident) : F.Ident.lident =
     match f with
     | `Concrete cid -> pfield_concrete_ident cid
+    | `Projector (`TupleField (n, len)) | `TupleField (n, len) ->
+        F.lid [ "_" ^ Int.to_string (n + 1) ]
     | `Projector (`Concrete cid) -> pfield_concrete_ident cid
     | _ ->
         Error.assertion_failure span
