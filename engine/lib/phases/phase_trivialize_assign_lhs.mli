@@ -9,6 +9,7 @@ module Make (F : Features.T) : sig
     module FB = struct
       include F
       include Features.Off.Nontrivial_lhs
+      include Features.On.Construct_base
     end
 
     module A = Ast.Make (F)

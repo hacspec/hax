@@ -252,6 +252,22 @@ module Exn = struct
           args = [ { e = Borrow { e = x; _ }; _ }; index ];
         } ->
         Some (x, index)
+    | App
+        {
+          f =
+            {
+              e =
+                GlobalVar
+                  (`Concrete
+                    {
+                      crate = "core";
+                      path = Non_empty_list.[ "ops"; "Index"; "index" ];
+                    });
+              _;
+            };
+          args = [ x; index ];
+        } ->
+        Some (x, index)
     | _ -> None
 
   let rec c_expr (e : Thir.decorated_for__expr_kind) : expr =
@@ -545,7 +561,7 @@ module Exn = struct
             (mk_global ([ lhs_type; index_type ] ->. typ)
             @@ `Concrete
                  {
-                   crate = "std";
+                   crate = "core";
                    path = Non_empty_list.[ "ops"; "Index"; "index" ];
                  })
             [ lhs; index ]
@@ -581,7 +597,7 @@ module Exn = struct
                   {
                     f =
                       {
-                        e = GlobalVar (`Projector (`Concrete _) as field);
+                        e = GlobalVar (`Projector _ as field);
                         typ = TArrow ([ _ ], _);
                         span = _;
                       };
