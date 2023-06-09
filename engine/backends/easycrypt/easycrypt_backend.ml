@@ -218,7 +218,7 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) : Types.file list
     | Loop
         {
           body;
-          kind = ForLoop { start; end_; var = { name }; witness };
+          kind = ForIndexLoop { start; end_; var = { name }; witness; _ };
           state = None;
           _;
         } ->
