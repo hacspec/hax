@@ -1,8 +1,8 @@
+#![allow(dead_code)]
 fn add3(x: usize, y: usize, z: usize) -> usize {
     x + y + z
 }
 
-#[allow(dead_code)]
 fn local_mutation(mut x: usize) -> usize {
     let mut y = 0;
     if {
@@ -39,7 +39,6 @@ fn local_mutation(mut x: usize) -> usize {
     }
 }
 
-#[allow(dead_code)]
 fn early_returns(mut x: usize) -> usize {
     return (123
         + if {
@@ -59,7 +58,6 @@ fn early_returns(mut x: usize) -> usize {
         + x;
 }
 
-#[allow(dead_code)]
 fn question_mark(mut x: usize) -> Result<usize, usize> {
     if x > 40usize {
         let mut y = 0;
@@ -77,4 +75,23 @@ fn question_mark(mut x: usize) -> Result<usize, usize> {
         _ => 3,
     };
     Ok(3 + x)
+}
+
+struct Bar {
+    a: bool,
+    b: ([(bool, bool); 6], bool),
+}
+struct Foo {
+    x: bool,
+    y: (bool, Vec<Bar>),
+    z: [Bar; 6],
+    bar: Bar,
+}
+fn assign_non_trivial_lhs(mut foo: Foo) -> Foo {
+    foo.x = true;
+    foo.bar.a = true;
+    foo.bar.b.0[3].1 = true;
+    foo.z[3].a = true;
+    foo.y.1[3].b.0[5].0 = true;
+    foo
 }
