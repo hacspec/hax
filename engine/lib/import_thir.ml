@@ -597,7 +597,7 @@ module Exn = struct
                   {
                     f =
                       {
-                        e = GlobalVar (`Projector (`Concrete _) as field);
+                        e = GlobalVar (`Projector _ as field);
                         typ = TArrow ([ _ ], _);
                         span = _;
                       };
