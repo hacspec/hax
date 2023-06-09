@@ -106,7 +106,7 @@ struct
                                               crate = "core";
                                               path =
                                                 Non_empty_list.
-                                                  [ "ops"; "range"; "end" ];
+                                                  [ "ops"; "range"; "finish" ];
                                             },
                                           end_ );
                                       ];
