@@ -172,7 +172,7 @@ end = struct
              let filename =
                Printf.sprintf "%02d" nth ^ "_" ^ [%show: DebugPhaseInfo.t] k
              in
-             let rustish = List.map ~f:Print_rust.pitem !l in
+             let rustish = Print_rust.pitems !l in
              let json =
                `Assoc
                  [
@@ -180,14 +180,14 @@ end = struct
                    ("nth", `Int nth);
                    ("items", [%yojson_of: Ast.Full.item list] !l);
                    ( "rustish",
-                     [%yojson_of: Print_rust.AnnotatedString.Output.t list]
-                       rustish );
+                     [%yojson_of: Print_rust.AnnotatedString.Output.t] rustish
+                   );
                  ]
              in
              let rustish =
-               List.map ~f:Print_rust.AnnotatedString.Output.raw_string rustish
-               |> String.concat ~sep:"\n\n"
+               Print_rust.AnnotatedString.Output.raw_string rustish
              in
+
              ((filename, rustish), json))
       |> List.unzip
     in
