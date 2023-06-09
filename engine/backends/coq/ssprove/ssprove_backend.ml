@@ -11,6 +11,7 @@ include
       include On.Slice
       include On.Monadic_binding
       include On.Macro
+      include On.Construct_base
     end)
     (struct
       let backend = Diagnostics.Backend.SSProve
@@ -44,6 +45,7 @@ module RejectNotSSProve (FA : Features.T) = struct
         let arbitrary_lhs = reject
         let nontrivial_lhs = reject
         let monadic_binding _ = Features.On.monadic_binding
+        let construct_base _ = Features.On.construct_base
         let state_passing_loop = reject
         let for_loop = reject
 
@@ -211,7 +213,7 @@ struct
           (List.map ~f:(pty span) inputs)
     | TFloat -> failwith "pty: Float"
     | TArray { typ; length } ->
-        SSP.AST.ArrayTy (pty span typ, Int.to_string length)
+        SSP.AST.ArrayTy (pty span typ, "TODO: Int.to_string length")
     | TSlice { ty; _ } -> SSP.AST.SliceTy (pty span ty)
     | TParam i -> SSP.AST.Name i.name
     | TProjectedAssociatedType s ->
@@ -363,7 +365,7 @@ struct
         SSP.AST.Match
           ( pexpr scrutinee,
             List.map
-              ~f:(fun { arm = { pat; body } } -> (ppat pat, pexpr body))
+              ~f:(fun { arm = { arm_pat; body } } -> (ppat arm_pat, pexpr body))
               arms )
     | Ascription { e; typ } -> __TODO_term__ span "asciption"
     | Construct { constructor = `TupleCons 1; fields = [ (_, e) ]; base } ->
@@ -742,8 +744,8 @@ let hardcoded_coq_headers =
    Import choice.Choice.Exports.\n\n\
    Obligation Tactic := try timeout 8 solve_ssprove_obligations.\n"
 
-let translate (bo : BackendOptions.t) (items : AST.item list) :
-    Raw_thir_ast.file list =
+let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
+    =
   U.group_items_by_namespace items
   |> Map.to_alist
   |> List.map ~f:(fun (ns, items) ->
@@ -754,7 +756,7 @@ let translate (bo : BackendOptions.t) (items : AST.item list) :
                 (fst ns :: snd ns))
          in
 
-         Raw_thir_ast.
+         Types.
            {
              path = mod_name ^ ".v";
              contents =
