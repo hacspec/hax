@@ -118,11 +118,11 @@ struct
         | Gt -> F.lid [ "Prims"; "op_GreaterThanOrEqual" ]
         | Ne -> F.lid [ "Prims"; "op_disEquality" ]
         | Rem -> F.lid [ "Prims"; "op_Modulus" ]
-        | BitXor -> F.lid [ "Hacspec_lib"; "op_bitxor" ]
-        | BitAnd -> F.lid [ "Hacspec_lib"; "op_bitand" ]
-        | BitOr -> F.lid [ "Hacspec_lib"; "op_bitor" ]
-        | Shl -> F.lid [ "Hacspec_lib"; "op_lshift" ]
-        | Shr -> F.lid [ "Hacspec_lib"; "op_rshift" ]
+        | BitXor -> F.lid [ "Hacspec.Lib"; "op_bitxor" ]
+        | BitAnd -> F.lid [ "Hacspec.Lib"; "op_bitand" ]
+        | BitOr -> F.lid [ "Hacspec.Lib"; "op_bitor" ]
+        | Shl -> F.lid [ "Hacspec.Lib"; "op_lshift" ]
+        | Shr -> F.lid [ "Hacspec.Lib"; "op_rshift" ]
         | Offset -> Error.assertion_failure span "pprim_ident BinOp::Offset?")
     | UnOp op -> (
         match op with
@@ -152,7 +152,7 @@ struct
                     ~details:
                       "128 literals (fail if pattern maching, otherwise TODO)"
                     span
-              | SSize -> None)
+              | SSize -> Some Sizet)
               ~f:(fun w ->
                 ( (match signedness with
                   | Signed -> Signed
@@ -278,10 +278,10 @@ struct
         let path x s = [ prefix x ^ s; "t" ] in
         F.term_of_lid
           (match k with
-          | { size = SSize; signedness = Signed } -> [ "int_size" ]
-          | { size = SSize; signedness = Unsigned } -> [ "uint_size" ]
-          (* | { size = SSize; signedness = Signed } -> [ "Prims"; "int" ] *)
-          (* | { size = SSize; signedness = Unsigned } -> [ "Prims"; "nat" ] *)
+             (* TODO: We need a proper treatment of usize and isize
+                that works on multiple platforms *)
+          | { size = SSize; signedness = Signed } -> [ "size_t" ]
+          | { size = SSize; signedness = Unsigned } -> [ "size_t" ]
           | { size = S8; signedness } -> path signedness "8"
           | { size = S16; signedness } -> path signedness "16"
           | { size = S32; signedness } -> path signedness "32"
@@ -418,6 +418,7 @@ struct
           Error.assertion_failure e.span
             "pexpr: bad arity for operator application";
         F.term @@ F.AST.Op (F.Ident.id_of_text op, List.map ~f:pexpr args)
+    | App { f; args = [] } -> F.mk_e_app (pexpr f) @@ [F.unit]
     | App { f; args } -> F.mk_e_app (pexpr f) @@ List.map ~f:pexpr args
     | If { cond; then_; else_ } ->
         F.term
@@ -920,8 +921,7 @@ let hardcoded_fstar_headers =
   "\n\
    #set-options \"--fuel 0 --ifuel 1 --z3rlimit 15\"\n\
    open FStar.Mul\n\
-   open Hacspec.Lib\n\
-   open Hacspec_lib_tc"
+   open Hacspec.Lib"
 
 let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
     =
