@@ -189,6 +189,22 @@ pub struct Options {
     pub force_cargo_build: ForceCargoBuild,
 }
 
+fn proof_output_dir(b:&Backend,o:PathOrDash) -> PathOrDash {
+    match o {
+        PathOrDash::Dash => {return o},
+        PathOrDash::Path(p) => {
+            let s = p.into_os_string();
+            if s == "out/" {
+                match b {
+                    Backend::Fstar => {return PathOrDash::Path(PathBuf::from("proofs/fstar/"))},
+                    Backend::Coq => {return PathOrDash::Path(PathBuf::from("proofs/coq/"))},
+                    Backend::Easycrypt => {return PathOrDash::Path(PathBuf::from("proofs/easycrypt/"))}
+                }
+            } else {return PathOrDash::Path(PathBuf::from(s))}
+        }
+    }
+}
+
 impl NormalizePaths for ExporterCommand {
     fn normalize_paths(self) -> Self {
         use ExporterCommand::*;
@@ -197,7 +213,7 @@ impl NormalizePaths for ExporterCommand {
                 output_file: output_file.normalize_paths(),
             },
             Backend(o) => Backend(BackendOptions {
-                output_dir: o.output_dir.normalize_paths(),
+                output_dir: proof_output_dir(&o.backend,o.output_dir).normalize_paths(),
                 ..o
             }),
         }
