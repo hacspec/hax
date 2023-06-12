@@ -1,0 +1,10 @@
+[package]
+name = "loops"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[package.metadata.hax-tests]
+into."fstar" = { snapshot = "none" }
+into."coq" = { broken = true, snapshot = "none", issue_id = "137" }
