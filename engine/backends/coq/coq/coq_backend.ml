@@ -184,12 +184,12 @@ struct
       signed = k.signedness == Signed;
     }
 
-  let rec pliteral (e : literal) =
+  let rec pliteral span (e : literal) =
     match e with
     | String s -> C.AST.Const_string s
     | Char c -> C.AST.Const_char (Char.to_int c)
     | Int { value; kind } -> C.AST.Const_int (value, pint_kind kind)
-    | Float _ -> failwith "Float: todo"
+    | Float _ -> Error.unimplemented ~details:"pliteral: Float" span
     | Bool b -> C.AST.Const_bool b
 
   let rec pty span (t : ty) : C.AST.ty =
@@ -209,7 +209,7 @@ struct
         List.fold_right ~init:(pty span output)
           ~f:(fun x y -> C.AST.Arrow (x, y))
           (List.map ~f:(pty span) inputs)
-    | TFloat -> failwith "pty: Float"
+    | TFloat -> __TODO_ty__ span "pty: Float"
     | TArray { typ; length } ->
         C.AST.ArrayTy (pty span typ, "TODO: Int.to_string length")
     | TSlice { ty; _ } -> C.AST.SliceTy (pty span ty)
@@ -252,7 +252,7 @@ struct
         C.AST.TuplePat (List.map ~f:(fun { pat } -> ppat pat) args)
     | PConstruct { name; args; record } ->
         C.AST.RecordPat (pglobal_ident_last name, pfield_pats args)
-    | PConstant { lit } -> C.AST.Lit (pliteral lit)
+    | PConstant { lit } -> C.AST.Lit (pliteral p.span lit)
     | PDeref { subpat } -> __TODO_pat__ p.span "deref"
     | _ -> .
 
@@ -315,7 +315,7 @@ struct
   and pexpr_unwrapped (e : expr) : C.AST.term =
     let span = e.span in
     match e.e with
-    | Literal e -> C.AST.Const (pliteral e)
+    | Literal l -> C.AST.Const (pliteral e.span l)
     | LocalVar local_ident -> C.AST.Name local_ident.name
     | GlobalVar (`TupleCons 0)
     | Construct { constructor = `TupleCons 0; fields = [] } ->
@@ -329,7 +329,8 @@ struct
         __TODO_term__ span "app global vcar projector tuple"
     | App { f = { e = GlobalVar x }; args } when Map.mem operators x ->
         let arity, op = Map.find_exn operators x in
-        if List.length args <> arity then failwith "Bad arity";
+        if List.length args <> arity then
+          Error.assertion_failure span "expr: function application: bad arity";
         let args = List.map ~f:pexpr args in
         C.AST.AppFormat (op, args)
     (* | App { f = { e = GlobalVar x }; args } -> *)
@@ -436,7 +437,9 @@ struct
                   @ [
                       (match b with
                       | GPType { ident; default } -> ident.name
-                      | _ -> failwith "Coq: TODO: generic_params");
+                      | _ ->
+                          Error.unimplemented
+                            ~details:"Coq: TODO: generic_params" span);
                     ])
                 generics.params,
               p_inductive span variants name );
@@ -623,7 +626,9 @@ struct
                   @ [
                       (match b with
                       | GPType { ident; default } -> ident.name
-                      | _ -> failwith "Coq: TODO: generic_params");
+                      | _ ->
+                          Error.unimplemented
+                            ~details:"Coq: TODO: generic_params" span);
                     ])
                 generics.params );
         ]
