@@ -14,6 +14,7 @@ module Phase = struct
       | Continue
       | RawOrMutPointer
       | EarlyExit
+      | AsPattern
     [@@deriving show { with_path = false }, eq, yojson, compare, hash, sexp]
 
     let display = function
@@ -27,6 +28,7 @@ module Phase = struct
     | DropReferences
     | RefMut
     | ResugarForLoops
+    | ResugarForIndexLoops
     | ResugarQuestionMarks
     | HoistSideEffects
     | LocalMutation

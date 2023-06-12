@@ -10,4 +10,5 @@ members = [
         "lint/rust/fnmut",
         "mut-ref-functionalization",
         "generics",
+        "loops",
 ]

@@ -1,6 +1,7 @@
 [%%declare_features
 loop,
   for_loop,
+  for_index_loop,
   state_passing_loop,
   continue,
   mutable_variable,
@@ -25,6 +26,7 @@ module Full = On
 module Rust = struct
   include On
   include Off.For_loop
+  include Off.For_index_loop
   include Off.Question_mark
   include Off.Monadic_action
   include Off.Monadic_binding
