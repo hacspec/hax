@@ -4,7 +4,9 @@
 FROM nixpkgs/nix-flakes
 
 # See issue #71
-RUN [ "$(uname)" = Darwin ] && echo "filter-syscalls = false" >> /etc/nix/nix.conf
+RUN if [ "$(uname)" = Darwin ]; then \
+    echo "filter-syscalls = false" >> /etc/nix/nix.conf; \
+    fi
 
 # Prepare the sources
 COPY . /hax-sources
