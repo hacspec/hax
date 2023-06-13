@@ -107,31 +107,31 @@ struct
     | Cast -> F.lid [ "cast" ]
     | BinOp op -> (
         match op with
-        | Add -> F.lid [ "Prims"; "op_Addition" ]
-        | Sub -> F.lid [ "Prims"; "op_Subtraction" ]
-        | Mul -> F.lid [ "FStar"; "Mul"; "op_Star" ]
-        | Div -> F.lid [ "Prims"; "op_Division" ]
-        | Eq -> F.lid [ "Prims"; "op_Equality" ]
-        | Lt -> F.lid [ "Prims"; "op_LessThan" ]
-        | Le -> F.lid [ "Prims"; "op_LessThanOrEqual" ]
-        | Ge -> F.lid [ "Prims"; "op_GreaterThan" ]
-        | Gt -> F.lid [ "Prims"; "op_GreaterThanOrEqual" ]
-        | Ne -> F.lid [ "Prims"; "op_disEquality" ]
-        | Rem -> F.lid [ "Prims"; "op_Modulus" ]
-        | BitXor -> F.lid [ "Hacspec.Lib"; "op_bitxor" ]
-        | BitAnd -> F.lid [ "Hacspec.Lib"; "op_bitand" ]
-        | BitOr -> F.lid [ "Hacspec.Lib"; "op_bitor" ]
-        | Shl -> F.lid [ "Hacspec.Lib"; "op_lshift" ]
-        | Shr -> F.lid [ "Hacspec.Lib"; "op_rshift" ]
+        | Add -> F.lid [ "Core"; "op_Addition" ]
+        | Sub -> F.lid [ "Core"; "op_Subtraction" ]
+        | Mul -> F.lid [ "Core"; "op_Multiplication" ]
+        | Div -> F.lid [ "Core"; "op_Division" ]
+        | Eq -> F.lid [ "Core"; "op_Equality" ]
+        | Lt -> F.lid [ "Core"; "op_LessThan" ]
+        | Le -> F.lid [ "Core"; "op_LessThanOrEqual" ]
+        | Ge -> F.lid [ "Core"; "op_GreaterThan" ]
+        | Gt -> F.lid [ "Core"; "op_GreaterThanOrEqual" ]
+        | Ne -> F.lid [ "Core"; "op_DisEquality" ]
+        | Rem -> F.lid [ "Core"; "op_Modulus" ]
+        | BitXor -> F.lid [ "Core"; "op_BitXor" ]
+        | BitAnd -> F.lid [ "Core"; "op_BitAnd" ]
+        | BitOr -> F.lid [ "Core"; "op_BitOr" ]
+        | Shl -> F.lid [ "Core"; "op_LeftShift" ]
+        | Shr -> F.lid [ "Core"; "op_RightShift" ]
         | Offset -> Error.assertion_failure span "pprim_ident BinOp::Offset?")
     | UnOp op -> (
         match op with
-        | Not -> F.lid [ "Prims"; "l_Not" ]
-        | Neg -> F.lid [ "Prims"; "op_Minus" ])
+        | Not -> F.lid [ "Core"; "op_LogicalNot" ]
+        | Neg -> F.lid [ "Core"; "op_Negation" ])
     | LogicalOp op -> (
         match op with
-        | And -> F.lid [ "Prims"; "op_AmpAmp" ]
-        | Or -> F.lid [ "Prims"; "op_BarBar" ])
+        | And -> F.lid [ "Core"; "op_LogicalAnd" ]
+        | Or -> F.lid [ "Core"; "op_LogicalOr" ])
 
   let rec pliteral span (e : literal) =
     match e with
@@ -186,7 +186,7 @@ struct
     match id with
     | `Concrete cid -> pconcrete_ident cid
     | `Primitive prim_id -> pprim_ident span prim_id
-    | `TupleType 0 -> F.lid [ "prims"; "unit" ]
+    | `TupleType 0 -> F.lid [ "Core"; "unit" ]
     | `TupleCons n when n <= 1 ->
         Error.assertion_failure span
           ("Got a [TupleCons " ^ string_of_int n ^ "]")
@@ -271,7 +271,7 @@ struct
 
   let rec pty span (t : ty) =
     match t with
-    | TBool -> F.term_of_lid [ "Prims"; "bool" ]
+    | TBool -> F.term_of_lid [ "Core"; "bool" ]
     | TChar -> F.term_of_lid [ "FStar"; "Char"; "char" ]
     | TInt k ->
         let prefix = function Signed -> "Int" | Unsigned -> "UInt" in
@@ -287,8 +287,8 @@ struct
           | { size = S32; signedness } -> path signedness "32"
           | { size = S64; signedness } -> path signedness "64"
           | { size = S128; signedness } -> path signedness "128")
-    | TStr -> F.term_of_lid [ "Prims"; "string" ]
-    | TFalse -> F.term_of_lid [ "Prims"; "l_False" ]
+    | TStr -> F.term_of_lid [ "Core"; "string" ]
+    | TFalse -> F.term_of_lid [ "Core"; "l_False" ]
     | TSlice { ty; _ } ->
         F.mk_e_app (F.term_of_lid [ "FStar"; "Seq"; "seq" ]) [ pty span ty ]
     | TApp { ident = `TupleType 0 as ident; args = [] } ->
@@ -314,7 +314,7 @@ struct
     | TFloat -> Error.unimplemented ~details:"pty: Float" span
     | TArray { typ; length } ->
         F.mk_refined "x"
-          (F.mk_e_app (F.term_of_lid [ "Prims"; "list" ]) [ pty span typ ])
+          (F.mk_e_app (F.term_of_lid [ "Core"; "list" ]) [ pty span typ ])
           (fun ~x ->
             let len_of_x =
               F.mk_e_app
@@ -738,7 +738,7 @@ struct
              }
         in
         match macro with
-        | `Concrete Non_empty_list.{ crate = "hacspec_lib_tc"; path = [ name ] }
+        | `Concrete Non_empty_list.{ crate = "hacspec_lib"; path }
           -> (
             let unwrap r =
               match r with
@@ -751,8 +751,8 @@ struct
                       span = e.span;
                     }
             in
-            match name with
-            | "public_nat_mod" ->
+            match path with
+            | ["math_integers";"public_nat_mod"] ->
                 let o = PublicNatMod.parse argument |> unwrap in
                 (F.decls_of_string @@ "unfold type "
                 ^ str_of_type_ident e.span (hacspec_lib_item @@ o.type_name)
@@ -761,17 +761,17 @@ struct
                 ^ str_of_type_ident e.span (hacspec_lib_item @@ o.type_of_canvas)
                 ^ "  = lseq pub_uint8 "
                 ^ string_of_int o.bit_size_of_field
-            | "bytes" ->
+            | ["array";"bytes"] ->
                 let o = Bytes.parse argument |> unwrap in
                 F.decls_of_string @@ "unfold type "
                 ^ str_of_type_ident e.span (hacspec_lib_item @@ o.bytes_name)
                 ^ "  = lseq uint8 " ^ o.size
-            | "public_bytes" ->
+            | ["array";"public_bytes"] ->
                 let o = Bytes.parse argument |> unwrap in
                 F.decls_of_string @@ "unfold type "
                 ^ str_of_type_ident e.span (hacspec_lib_item @@ o.bytes_name)
                 ^ "  = lseq uint8 " ^ o.size
-            | "array" ->
+            | ["array";"array"] ->
                 let o = Array.parse argument |> unwrap in
                 let typ =
                   match o.typ with
@@ -796,7 +796,7 @@ struct
                   | None -> []
                 in
                 array_def @ index_def
-            | "unsigned_public_integer" ->
+            | ["unsigned_public_integer"] ->
                 let o = UnsignedPublicInteger.parse argument |> unwrap in
                 F.decls_of_string @@ "unfold type "
                 ^ str_of_type_ident e.span (hacspec_lib_item @@ o.integer_name)
@@ -921,7 +921,8 @@ let hardcoded_fstar_headers =
   "\n\
    #set-options \"--fuel 0 --ifuel 1 --z3rlimit 15\"\n\
    open FStar.Mul\n\
-   open Hacspec.Lib"
+   open Core\n\
+   open Hacspec_lib"
 
 let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
     =
