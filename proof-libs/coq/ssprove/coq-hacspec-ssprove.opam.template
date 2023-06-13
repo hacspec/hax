@@ -1,0 +1,4 @@
+pin-depends: [
+  ["jasmin.dev" "git+https://github.com/proux01/jasmin.git#mathcomp2"]
+  ["ssprove.dev" "git+https://github.com/ssprove/ssprove.git#jasmin-coq.8.18.0"]
+]

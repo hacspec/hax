@@ -1,0 +1,33 @@
+-R src/ Hacspec
+-arg -w
+-arg all
+
+src/Hacspec_Lib_Comparable.v
+src/LocationUtility.v
+src/ChoiceEquality.v
+src/Hacspec_Lib_Pre.v
+
+src/Hacspec_Lib_Integers.v
+src/Hacspec_Lib_Loops.v
+src/Hacspec_Lib_Seq.v
+src/Hacspec_Lib_Natmod.v
+src/Hacspec_Lib_Coercions.v
+src/Hacspec_Lib_Eq.v
+src/Hacspec_Lib_Monad.v
+src/Hacspec_Lib_Ltac.v
+src/Hacspec_Lib_Controlflow.v
+src/Hacspec_Lib_Notation.v
+src/Hacspec_Lib_TODO.v
+
+src/Hacspec_Lib.v
+
+# src/Hacspec_Aes_Jazz.v
+# src/Hacspec_Xor.v
+
+# src/Hacspec_Aes.v
+# src/Hacspec_Bls12_381.v
+# src/Hacspec_Poly1305.v
+# src/Hacspec_Curve25519.v
+# src/Hacspec_Gf128.v
+# src/Hacspec_P256.v
+# src/Hacspec_Sha256.v
