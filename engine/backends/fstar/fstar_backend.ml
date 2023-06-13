@@ -993,6 +993,13 @@ struct
                       @@ F.AST.Product (pgenerics i.ti_span i.ti_generics, ty)
                     in
                     [ (F.id name, None, [], ty) ]
+                | TIConst ty ->
+                    let ty = pty e.span ty in
+                    let ty =
+                      F.term
+                      @@ F.AST.Product (pgenerics i.ti_span i.ti_generics, ty)
+                    in
+                    [ (F.id name, None, [], ty) ]
               in
               List.map ~f:Fn.id
                 (* ~f:(fun (n, q, a, ty) -> (n, q, a, F.mk_e_app bds ty)) *)
@@ -1059,6 +1066,13 @@ struct
                             F.pat
                             @@ F.AST.PatAscribed (ppat pat, (pty span typ, None)))
                           params
+                    in
+                    F.mk_e_abs pats (pexpr body)
+                | IIConst { body } ->
+                    let pats =
+                      List.mapi
+                        ~f:(pgeneric_constraint ii_span)
+                        ii_generics.constraints
                     in
                     F.mk_e_abs pats (pexpr body)
                 | IIType ty -> pty ii_span ty ))

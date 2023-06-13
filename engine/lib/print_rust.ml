@@ -427,6 +427,9 @@ module Raw = struct
         in
         !"fn " & ident & generics & !"(" & params & !") -> " & return_type
         & bounds & !";"
+    | TIConst ty ->
+        let return_type = pty ti.ti_span ty in
+        !"fn " & ident & generics & !" -> " & return_type & bounds & !";"
 
   let pparam span ({ pat; typ; typ_span; attrs } : param) =
     let ( ! ) = pure span in
@@ -449,6 +452,10 @@ module Raw = struct
         let return_type = pty span body.typ in
         !"fn " & ident & generics & pparams span params & !" -> " & return_type
         & bounds & !"{" & pexpr body & !"}"
+    | IIConst { body } ->
+        let return_type = pty span body.typ in
+        !"fn " & ident & generics & !" -> " & return_type & bounds & !"{"
+        & pexpr body & !"}"
 
   let pitem (e : item) =
     let exception NotImplemented in
