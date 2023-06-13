@@ -662,7 +662,9 @@ let hardcoded_coq_headers =
    Open Scope Z_scope.\n\
    Open Scope bool_scope.\n"
 
-let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
+type analysis_data = unit
+
+let translate (bo : BackendOptions.t) (items : AST.item list) (_ : analysis_data) : Types.file list
     =
   U.group_items_by_namespace items
   |> Map.to_alist
