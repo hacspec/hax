@@ -1,0 +1,14 @@
+(coq.theory
+ (name Hacspec) ; -R flag
+ (package coq-hacspec-ssprove)
+ (flags -w all)
+ (theories
+   mathcomp elpi HB deriving ; Mathcomp
+   extructures
+   Equations
+   ConCert stdpp MetaCoq Ltac2 ; ConCert
+   Crypt Mon Jasmin Relational ; SSProve
+   )
+ ; (libraries <ocaml_libraries>)
+ )
+; (include_subdirs qualified)
