@@ -729,7 +729,9 @@ let hardcoded_coq_headers =
    Open Scope Z_scope.\n\
    Open Scope bool_scope.\n"
 
-let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
+type analysis_data = unit
+
+let translate (bo : BackendOptions.t) (items : AST.item list) (_ : analysis_data) : Types.file list
     =
   U.group_items_by_namespace items
   |> Map.to_alist
@@ -773,5 +775,5 @@ module TransformToInputLanguage =
     ]
     [@ocamlformat "disable"])
 
-let apply_phases (bo : BackendOptions.t) (i : Ast.Rust.item) : AST.item list =
-  TransformToInputLanguage.ditem i
+let apply_phases (bo : BackendOptions.t) (i : Ast.Rust.item list) : AST.item list * analysis_data =
+  List.concat_map ~f:TransformToInputLanguage.ditem i, ()

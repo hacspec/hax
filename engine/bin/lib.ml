@@ -46,16 +46,18 @@ let run () : Types.output =
       (module M : Backend.T with type BackendOptions.t = options_type)
       (backend_options : options_type) : Types.file list =
     let open M in
-    options.input
+    ( options.input
     |> List.concat_map ~f:(fun item ->
            try
              Result.map_error ~f:Import_thir.show_error
                (Import_thir.c_item item)
              |> Result.ok_or_failwith
            with Failure e -> failwith e)
-    |> List.concat_map ~f:(apply_phases backend_options)
-    |> List.map ~f:(U.Mappers.rename_global_idents_item renamed_identifiers)
-    |> translate backend_options
+    |> apply_phases backend_options
+    |> fun (x, y) ->
+      ( List.map ~f:(U.Mappers.rename_global_idents_item renamed_identifiers) x,
+        y ) )
+    |> fun (x, y) -> translate backend_options x y
   in
   let diagnostics, files =
     Diagnostics.try_ (fun () ->

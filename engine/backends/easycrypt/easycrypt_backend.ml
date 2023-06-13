@@ -340,8 +340,10 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) : Types.file list
   doit Format.err_formatter items;
   []
 
-let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
-    =
+type analysis_data = unit
+
+let translate (bo : BackendOptions.t) (items : AST.item list)
+    (_ : analysis_data) : Types.file list =
   try translate' bo items
   with Assert_failure (file, line, col) ->
     Diagnostics.failure ~context:(Backend FStar)
@@ -362,5 +364,6 @@ module TransformToInputLanguage =
     |> Phases.Direct_and_mut |> Phases.Reject.Continue |> Phases.Drop_references
     |> RejectNotEC])
 
-let apply_phases (bo : BackendOptions.t) (i : Ast.Rust.item) : AST.item list =
-  TransformToInputLanguage.ditem i
+let apply_phases (bo : BackendOptions.t) (i : Ast.Rust.item list) :
+    AST.item list * analysis_data =
+  List.concat_map ~f:TransformToInputLanguage.ditem i, ()
