@@ -75,6 +75,7 @@ type global_ident = (Global_ident.t[@visitors.opaque])
     yojson,
     hash,
     eq,
+    compare,
     visitors { variety = "reduce"; name = "global_ident_reduce" },
     visitors { variety = "mapreduce"; name = "global_ident_mapreduce" },
     visitors { variety = "map"; name = "global_ident_map" }]
