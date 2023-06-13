@@ -371,18 +371,15 @@ pub struct BoundTy {
     pub kind: BoundTyKind,
 }
 
-// pub type Const = Box<Expr>;
+pub type Const = Box<Expr>;
 
-// impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, Const> for rustc_middle::ty::Const<'tcx> {
-//     fn sinto(&self, s: &S) -> Const {
-//         match self.kind() {
-//             rustc_middle::ty::ConstKind::Expr(e) => box e.sinto(s),
-//             _ => panic!("{:#?}", self),
-//         }
-//     }
-// }
-
-sinto_todo!(rustc_middle::ty, Const<'s>);
+impl<'tcx, S: BaseState<'tcx>> SInto<S, Const> for rustc_middle::ty::Const<'tcx> {
+    fn sinto(&self, s: &S) -> Const {
+        let x = self.eval(s.tcx(), get_param_env(s));
+        use rustc_middle::query::Key;
+        Box::new(const_to_expr(s, x, x.ty(), x.default_span(s.tcx())))
+    }
+}
 
 use crate::{sinto_as_usize, sinto_todo};
 sinto_todo!(rustc_middle::mir::interpret, Scalar);
@@ -1715,15 +1712,7 @@ pub enum Ty {
     Str,
 
     /// An array with the given length. Written as `[T; N]`.
-    Array(
-        Box<Ty>,
-        #[map({
-            let x = x.eval(state.tcx(), get_param_env(state));
-            use rustc_middle::query::Key;
-            Box::new(const_to_expr(state, x, x.ty(), x.default_span(state.tcx())))
-        })]
-        Box<Expr>,
-    ),
+    Array(Box<Ty>, Const),
 
     /// The pointee of an array slice. Written as `[T]`.
     Slice(Box<Ty>),
@@ -2567,38 +2556,7 @@ pub enum ExprKind {
     /// An array literal constructed from one repeated element, e.g. `[1; 5]`.
     Repeat {
         value: Expr,
-        // count: Const,
-        #[map({
-            let tcx = gstate.tcx();
-            match count.kind().try_to_machine_usize(tcx) {
-                Some(n) => {
-                    let n = n as u128;
-                    let span = count.default_span(tcx).sinto(gstate);
-                    let ty = Ty::Uint(UintTy::Usize);
-                    let contents = ExprKind::Literal {
-                        lit: Spanned {
-                            node: LitKind::Int(n, LitIntType::Unsigned(UintTy::Usize)),
-                            span: span.clone()
-                        },
-                        neg: false
-                    };
-                    use rustc_middle::query::Key;
-                    Decorated {
-                        ty,
-                        span,
-                        contents: Box::new(contents),
-                        hir_id: None,
-                        attributes: vec![],
-                    }
-                },
-                None => {
-                    eprintln!("Error, cannot transform constant into expression.");
-                    eprintln!("Constant: {:#?}", count);
-                    panic!()
-                },
-            }
-        })]
-        count: Expr,
+        count: Const,
     },
     /// An array, e.g. `[a, b, c, d]`.
     Array {
