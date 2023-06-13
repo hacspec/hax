@@ -1010,7 +1010,7 @@ end) : EXPR = struct
     | Const (_, Some _) ->
         unimplemented [ span ]
           "TODO: traits: no support for defaults in traits for now"
-    | Const (ty, None) -> TIFn (c_ty span ty)
+    | Const (ty, None) -> TIConst (c_ty span ty)
     | ProvidedFn (sg, _) | RequiredFn (sg, _) ->
         let (Thir.{ inputs; output; _ } : Thir.fn_decl) = sg.decl in
         let output =
@@ -1038,7 +1038,11 @@ let c_trait_item (item : Thir.trait_item) : trait_item =
   let open (val make ~krate:item.owner_id.krate : EXPR) in
   let { params; constraints } = c_generics item.generics in
   (* TODO: see TODO in impl items *)
-  let ti_ident = Concrete_ident.of_def_id Field item.owner_id in
+  let ti_ident =
+    Concrete_ident.of_def_id
+      (match (item.kind : _) with Const _ -> Value | _ -> Field)
+      item.owner_id
+  in
   {
     ti_span = Span.of_thir item.span;
     ti_generics = { params; constraints };
@@ -1272,7 +1276,11 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
                         backend will see traits and impls as
                         records. See https://github.com/hacspec/hacspec-v2/issues/271. *)
                      let ii_ident =
-                       Concrete_ident.of_def_id Field item.owner_id
+                       Concrete_ident.of_def_id
+                         (match (item.kind : _) with
+                         | Const _ -> Value
+                         | _ -> Field)
+                         item.owner_id
                      in
                      {
                        ii_span = Span.of_thir item.span;
@@ -1285,8 +1293,7 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
                                  body = c_expr body;
                                  params = List.map ~f:(c_param item.span) params;
                                }
-                         | Const (_ty, e) ->
-                             IIFn { body = c_expr e; params = [] }
+                         | Const (_ty, e) -> IIConst { body = c_expr e }
                          | Type ty -> IIType (c_ty item.span ty));
                        ii_ident;
                        ii_attrs = c_item_attrs item.attributes;

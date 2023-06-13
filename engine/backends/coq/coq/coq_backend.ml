@@ -541,6 +541,7 @@ struct
                   ( U.Concrete_ident_view.to_definition_name x.ti_ident,
                     match x.ti_v with
                     | TIFn fn_ty -> pty span fn_ty
+                    | TIConst fn_ty -> pty span fn_ty
                     | _ -> __TODO_ty__ span "field_ty" ))
                 items,
               List.fold_left ~init:[]
@@ -570,6 +571,11 @@ struct
                           ~f:(fun { pat; typ; typ_span } ->
                             (ppat pat, pty span typ))
                           params,
+                        pexpr body,
+                        pty span body.typ )
+                  | IIConst { body } ->
+                      ( U.Concrete_ident_view.to_definition_name x.ii_ident,
+                        [],
                         pexpr body,
                         pty span body.typ )
                   | _ ->
