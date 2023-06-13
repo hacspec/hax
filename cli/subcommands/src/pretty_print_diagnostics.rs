@@ -5,6 +5,9 @@
 //! Thus, this binary expects a JSON diagnostics error on its stdin
 //! and outputs on stdout its pretty, `Display`ed version.
 
+#![feature(rustc_private)]
+extern crate rustc_driver;
+
 use hax_diagnostics::Diagnostics as D;
 use serde_json::{from_reader, Value};
 
