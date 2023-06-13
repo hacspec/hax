@@ -366,4 +366,4 @@ module TransformToInputLanguage =
 
 let apply_phases (bo : BackendOptions.t) (i : Ast.Rust.item list) :
     AST.item list * analysis_data =
-  List.concat_map ~f:TransformToInputLanguage.ditem i, ()
+  (List.concat_map ~f:TransformToInputLanguage.ditem i, ())
