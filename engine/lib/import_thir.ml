@@ -180,7 +180,7 @@ module Exn = struct
     match lit with
     | Err -> raise span GotErrLiteral
     | Str (str, _) -> mk @@ String str
-    | ByteStr l -> EL_Array (List.map ~f:mku8 l)
+    | CStr (l, _) | ByteStr (l, _) -> EL_Array (List.map ~f:mku8 l)
     | Byte n -> mk @@ mku8 n
     | Char s -> mk @@ Char s
     | Int (i, _t) ->
@@ -760,14 +760,14 @@ module Exn = struct
     | Tuple types ->
         let types = List.map ~f:(fun ty -> GType (c_ty span ty)) types in
         TApp { ident = `TupleType (List.length types); args = types }
-    | Projection _ -> TProjectedAssociatedType (Thir.show_ty ty)
+    | Alias _ -> TProjectedAssociatedType (Thir.show_ty ty)
+    (* | Opaque _ -> unimplemented span "type Opaque" *)
     | Param { index; name } ->
         (* TODO: [id] might not unique *)
         TParam { name; id = LocalIdent.ty_param_id_of_int index }
     | Error -> unimplemented span "type Error"
     | Dynamic _ -> unimplemented span "type Dynamic"
     | Generator _ -> unimplemented span "type Generator"
-    | Opaque _ -> unimplemented span "type Opaque"
     | Placeholder _ -> unimplemented span "type Placeholder"
     | Bound _ -> unimplemented span "type Bound"
     | Infer _ -> unimplemented span "type Infer"

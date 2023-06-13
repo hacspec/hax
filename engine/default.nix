@@ -9,7 +9,7 @@ let
         sha256 = "sha256-BJlEi0yG2DRT5vuU9ulucMD5MPFt9duWgcNO1YsigiA=";
       };
       buildInputs = with ocamlPackages; [ base ppxlib ppx_deriving ];
-      duneVersion = "2";
+      duneVersion = "3";
       minimalOCamlVersion = "4.08";
       doCheck = false;
     };
@@ -26,7 +26,7 @@ let
       buildInputs = [
         ocamlPackages.ppxlib
       ];
-      duneVersion = "2";
+      duneVersion = "3";
       minimalOCamlVersion = "4.04";
       doCheck = false;
     };

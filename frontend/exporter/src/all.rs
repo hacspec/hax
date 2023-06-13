@@ -100,6 +100,7 @@ pub enum DefPathItem {
     Ctor,
     AnonConst,
     ImplTrait,
+    ImplTraitAssocTy,
 }
 
 pub type Symbol = String;
@@ -289,7 +290,7 @@ impl<S> SInto<S, u64> for rustc_middle::mir::interpret::AllocId {
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Box<Ty>> for rustc_middle::ty::Ty<'tcx> {
     fn sinto(&self, s: &S) -> Box<Ty> {
-        box self.sinto(s)
+        Box::new(self.sinto(s))
     }
 }
 
@@ -361,23 +362,18 @@ pub enum DynKind {
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::BoundTyKind, state: S as gstate)]
 pub enum BoundTyKind {
     Anon,
-    Param(Symbol),
-}
-
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::BoundTy, state: S as gstate)]
-pub struct BoundTy {
-    pub var: BoundVar,
-    pub kind: BoundTyKind,
+    Param(DefId, Symbol),
 }
 
 pub type Const = Box<Expr>;
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Const> for rustc_middle::ty::Const<'tcx> {
     fn sinto(&self, s: &S) -> Const {
-        let x = self.eval(s.tcx(), get_param_env(s));
+        // TODO?
+        // let x = self.eval(s.tcx(), get_param_env(s));
+        let x = self;
         use rustc_middle::query::Key;
-        Box::new(const_to_expr(s, x, x.ty(), x.default_span(s.tcx())))
+        Box::new(const_to_expr(s, x.clone(), x.ty(), x.default_span(s.tcx())))
     }
 }
 
@@ -397,21 +393,35 @@ sinto_as_usize!(rustc_middle::ty, BoundVar);
 sinto_as_usize!(rustc_middle::middle::region, FirstStatementIndex);
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::BoundTy, state: S as gstate)]
+pub struct BoundTy {
+    pub var: BoundVar,
+    pub kind: BoundTyKind,
+}
+
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::BoundRegionKind, state: S as gstate)]
 pub enum BoundRegionKind {
-    BrAnon(u32, Option<Span>),
+    BrAnon(Option<Span>),
     BrNamed(DefId, Symbol),
     BrEnv,
 }
 
-pub type PlaceholderRegion = Placeholder<BoundRegionKind>;
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::BoundRegion, state: S as gstate)]
+pub struct BoundRegion {
+    pub var: BoundVar,
+    pub kind: BoundRegionKind,
+}
+
+pub type PlaceholderRegion = Placeholder<BoundRegion>;
 pub type PlaceholderConst = Placeholder<BoundVar>;
-pub type PlaceholderType = Placeholder<BoundVar>;
+pub type PlaceholderType = Placeholder<BoundTy>;
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Placeholder<T> {
     pub universe: UniverseIndex,
-    pub name: T,
+    pub bound: T,
 }
 
 impl<'tcx, S: BaseState<'tcx>, T: SInto<S, U>, U> SInto<S, Placeholder<U>>
@@ -420,7 +430,7 @@ impl<'tcx, S: BaseState<'tcx>, T: SInto<S, U>, U> SInto<S, Placeholder<U>>
     fn sinto(&self, s: &S) -> Placeholder<U> {
         Placeholder {
             universe: self.universe.sinto(s),
-            name: self.name.sinto(s),
+            bound: self.bound.sinto(s),
         }
     }
 }
@@ -514,6 +524,14 @@ pub struct FieldDef {
     pub vis: Visibility<DefId>,
 }
 
+// impl<I: rustc_index::vec::Idx, S, D: Clone, T: SInto<S, D>> SInto<S, Vec<D>>
+//     for rustc_index::vec::IndexVec<I, T>
+// {
+//     fn sinto(&self, s: &S) -> Vec<D> {
+//         self.into_iter().map(|x| x.sinto(s)).collect()
+//     }
+// }
+
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::ty::VariantDef, state: S as state)]
 pub struct VariantDef {
@@ -522,6 +540,7 @@ pub struct VariantDef {
     pub ctor: Option<(CtorKind, DefId)>,
     pub name: Symbol,
     pub discr: VariantDiscr,
+    #[map(fields.raw.sinto(state))]
     pub fields: Vec<FieldDef>,
 }
 
@@ -605,7 +624,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, AdtExpr> for rustc_middle::thir::AdtExpr
                 .fields
                 .iter()
                 .map(|f| FieldExpr {
-                    field: variant.fields[f.name.index()].did.sinto(s),
+                    field: variant.fields[f.name].did.sinto(s),
                     value: f.expr.sinto(s),
                 })
                 .collect(),
@@ -659,7 +678,6 @@ pub enum ExpnKind {
     Macro(MacroKind, Symbol),
     AstPass(AstPass),
     Desugaring(DesugaringKind),
-    Inlined,
 }
 
 #[derive(AdtInto)]
@@ -777,7 +795,7 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, Span> for rustc_span::Span {
     }
 }
 
-sinto_as_usize!(rustc_middle::mir, Field);
+// sinto_as_usize!(rustc_middle::mir, Field);
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct LocalIdent {
@@ -837,6 +855,12 @@ pub enum RealFileName {
     },
 }
 
+impl<S> SInto<S, u64> for rustc_data_structures::stable_hasher::Hash64 {
+    fn sinto(&self, s: &S) -> u64 {
+        self.as_u64()
+    }
+}
+
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_span::FileName, state: S as gstate)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq)]
@@ -893,95 +917,95 @@ pub struct Block {
 // #[derive(AdtInto)]
 // #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::ProjectionTy<'tcx>, state: S as gstate)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct ProjectionTy {
+pub struct AliasTy {
     pub substs: Vec<GenericArg>,
     pub trait_def_id: DefId,
     // pub item_def_id: DefId,
 }
 
-fn get_param_env<'tcx, S: BaseState<'tcx>>(s: &S) -> rustc_middle::ty::ParamEnv<'tcx> {
-    let tcx = s.tcx();
-    let predicates = match s.opt_def_id() {
-        Some(id) => {
-            let predicates = tcx
-                .predicates_of(id)
-                .predicates
-                .into_iter()
-                .map(|(p, _)| p)
-                .cloned()
-                .collect::<Vec<_>>()
-                .into_boxed_slice();
-            tcx.intern_predicates(&predicates)
-        }
-        None => rustc_middle::ty::List::empty(),
-    };
-    rustc_middle::ty::ParamEnv::new(
-        &predicates,
-        rustc_middle::traits::Reveal::All,
-        rustc_hir::Constness::NotConst,
-    )
-}
+// fn get_param_env<'tcx, S: BaseState<'tcx>>(s: &S) -> rustc_middle::ty::ParamEnv<'tcx> {
+//     let tcx = s.tcx();
+//     let predicates = match s.opt_def_id() {
+//         Some(id) => {
+//             let predicates = tcx
+//                 .predicates_of(id)
+//                 .predicates
+//                 .into_iter()
+//                 .map(|(p, _)| p)
+//                 .cloned()
+//                 .collect::<Vec<_>>()
+//                 .into_boxed_slice();
+//             tcx.intern_predicates(&predicates)
+//         }
+//         None => rustc_middle::ty::List::empty(),
+//     };
+//     rustc_middle::ty::ParamEnv::new(
+//         &predicates,
+//         rustc_middle::traits::Reveal::All,
+//         rustc_hir::Constness::NotConst,
+//     )
+// }
 
-fn resolve_trait<'tcx, S: BaseState<'tcx>>(trait_ref: rustc_middle::ty::TraitRef<'tcx>, s: &S) {
-    let tcx = s.tcx();
-    let param_env = get_param_env(s);
-    use rustc_middle::ty::Binder;
-    let binder: Binder<'tcx, _> = Binder::dummy(trait_ref);
-    // let x: Result<&rustc_middle::traits::ImplSource<'tcx, ()>, _> =
-    //     tcx.codegen_select_candidate((param_env, binder));
-    use rustc_infer::infer::TyCtxtInferExt;
-    use rustc_infer::traits;
-    use rustc_middle::ty::{ParamEnv, ParamEnvAnd};
-    use rustc_trait_selection::infer::InferCtxtBuilderExt;
-    use rustc_trait_selection::traits::SelectionContext;
-    // let id = s.opt_def_id().unwrap();
-    let inter_ctxt = tcx.infer_ctxt().ignoring_regions().build();
-    let mut selection_ctxt = SelectionContext::new(&inter_ctxt);
-    use std::collections::VecDeque;
-    let mut queue = VecDeque::new();
-    let obligation = traits::Obligation::new(
-        tcx,
-        traits::ObligationCause::dummy(),
-        param_env,
-        rustc_middle::ty::Binder::dummy(trait_ref),
-    );
-    use rustc_middle::traits::ImplSource;
-    queue.push_back(obligation);
-    loop {
-        match queue.pop_front() {
-            Some(obligation) => {
-                let impl_source = selection_ctxt.select(&obligation).unwrap().unwrap();
-                println!("impl_source={:#?}", impl_source);
-                let nested = impl_source.clone().nested_obligations();
-                for subobligation in nested {
-                    let bound_predicate = subobligation.predicate.kind();
-                    match bound_predicate.skip_binder() {
-                        rustc_middle::ty::PredicateKind::Clause(
-                            rustc_middle::ty::Clause::Trait(trait_pred),
-                        ) => {
-                            let trait_pred = bound_predicate.rebind(trait_pred);
-                            let subobligation = subobligation.with(tcx, trait_pred);
-                            queue.push_back(subobligation);
-                        }
-                        _ => (),
-                    }
-                }
-            }
-            None => break,
-        }
-    }
-    // let impl_source = selection_ctxt.select(&obligation).unwrap().unwrap();
-    // let nested = impl_source.clone().nested_obligations();
-}
+// fn resolve_trait<'tcx, S: BaseState<'tcx>>(trait_ref: rustc_middle::ty::TraitRef<'tcx>, s: &S) {
+//     let tcx = s.tcx();
+//     let param_env = get_param_env(s);
+//     use rustc_middle::ty::Binder;
+//     let binder: Binder<'tcx, _> = Binder::dummy(trait_ref);
+//     // let x: Result<&rustc_middle::traits::ImplSource<'tcx, ()>, _> =
+//     //     tcx.codegen_select_candidate((param_env, binder));
+//     use rustc_infer::infer::TyCtxtInferExt;
+//     use rustc_infer::traits;
+//     use rustc_middle::ty::{ParamEnv, ParamEnvAnd};
+//     use rustc_trait_selection::infer::InferCtxtBuilderExt;
+//     use rustc_trait_selection::traits::SelectionContext;
+//     // let id = s.opt_def_id().unwrap();
+//     let inter_ctxt = tcx.infer_ctxt().ignoring_regions().build();
+//     let mut selection_ctxt = SelectionContext::new(&inter_ctxt);
+//     use std::collections::VecDeque;
+//     let mut queue = VecDeque::new();
+//     let obligation = traits::Obligation::new(
+//         tcx,
+//         traits::ObligationCause::dummy(),
+//         param_env,
+//         rustc_middle::ty::Binder::dummy(trait_ref),
+//     );
+//     use rustc_middle::traits::ImplSource;
+//     queue.push_back(obligation);
+//     loop {
+//         match queue.pop_front() {
+//             Some(obligation) => {
+//                 let impl_source = selection_ctxt.select(&obligation).unwrap().unwrap();
+//                 println!("impl_source={:#?}", impl_source);
+//                 let nested = impl_source.clone().nested_obligations();
+//                 for subobligation in nested {
+//                     let bound_predicate = subobligation.predicate.kind();
+//                     match bound_predicate.skip_binder() {
+//                         rustc_middle::ty::PredicateKind::Clause(
+//                             rustc_middle::ty::Clause::Trait(trait_pred),
+//                         ) => {
+//                             let trait_pred = bound_predicate.rebind(trait_pred);
+//                             let subobligation = subobligation.with(tcx, trait_pred);
+//                             queue.push_back(subobligation);
+//                         }
+//                         _ => (),
+//                     }
+//                 }
+//             }
+//             None => break,
+//         }
+//     }
+//     // let impl_source = selection_ctxt.select(&obligation).unwrap().unwrap();
+//     // let nested = impl_source.clone().nested_obligations();
+// }
 
-impl<'tcx, S: BaseState<'tcx>> SInto<S, ProjectionTy> for rustc_middle::ty::ProjectionTy<'tcx> {
-    fn sinto(&self, s: &S) -> ProjectionTy {
+impl<'tcx, S: BaseState<'tcx>> SInto<S, AliasTy> for rustc_middle::ty::AliasTy<'tcx> {
+    fn sinto(&self, s: &S) -> AliasTy {
         let tcx = s.tcx();
         let trait_ref = self.trait_ref(tcx);
         // println!("######################");
         // println!("for={:#?}", self);
         // resolve_trait(trait_ref, s);
-        ProjectionTy {
+        AliasTy {
             substs: self.substs.sinto(s),
             trait_def_id: self.trait_def_id(tcx).sinto(s),
         }
@@ -1254,7 +1278,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                 rustc_middle::thir::ExprKind::ZstLiteral { .. } => match ty.kind() {
                     rustc_middle::ty::TyKind::FnDef(def, substs) => {
                         let tcx = s.tcx();
-                        let sig = &tcx.bound_fn_sig(*def).subst(tcx, substs);
+                        let sig = &tcx.fn_sig(*def).subst(tcx, substs);
                         let ret: rustc_middle::ty::Ty = tcx.erase_late_bound_regions(sig.output());
                         let inputs = sig.inputs();
                         let indexes = inputs.skip_binder().iter().enumerate().map(|(i, _)| i);
@@ -1262,7 +1286,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                         let params: Vec<rustc_middle::ty::Ty> =
                             params.map(|i| tcx.erase_late_bound_regions(i)).collect();
                         return Expr {
-                            contents: box ExprKind::GlobalName { id: def.sinto(s) },
+                            contents: Box::new(ExprKind::GlobalName { id: def.sinto(s) }),
                             span: self.span.sinto(s),
                             ty: ty.sinto(s),
                             hir_id,
@@ -1293,7 +1317,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                         rustc_middle::ty::TyKind::Adt(adt_def, substs) => {
                             let variant = adt_def.variant(variant_index);
                             ExprKind::Field {
-                                field: variant.fields[name.index()].did.sinto(s),
+                                field: variant.fields[name].did.sinto(s),
                                 lhs: lhs.sinto(s),
                             }
                         }
@@ -1318,7 +1342,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
         Decorated {
             ty: ty.sinto(s),
             span: span.sinto(s),
-            contents: box contents,
+            contents: Box::new(contents),
             hir_id,
             attributes,
         }
@@ -1459,8 +1483,12 @@ pub struct TypeAndMut {
 
 pub type Binder<T> = Option<T>;
 
-impl<'s, S, U, T: SInto<S, U> + rustc_middle::ty::visit::TypeVisitable<'s>> SInto<S, Binder<U>>
-    for rustc_middle::ty::Binder<'s, T>
+impl<
+        's,
+        S,
+        U,
+        T: SInto<S, U> + rustc_middle::ty::visit::TypeVisitable<rustc_middle::ty::TyCtxt<'s>>,
+    > SInto<S, Binder<U>> for rustc_middle::ty::Binder<'s, T>
 {
     fn sinto(&self, s: &S) -> Binder<U> {
         self.clone().no_bound_vars().map(|x| x.sinto(s))
@@ -1573,7 +1601,7 @@ fn const_to_expr<'tcx, S: BaseState<'tcx>>(
     Decorated {
         ty: ty.sinto(s),
         span: span.sinto(s),
-        contents: box kind,
+        contents: Box::new(kind),
         hir_id: None,
         attributes: vec![],
     }
@@ -1641,10 +1669,19 @@ fn valtree_to_expr<'tcx, S: BaseState<'tcx>>(
     Decorated {
         ty: ty.sinto(s),
         span: span.sinto(s),
-        contents: box kind,
+        contents: Box::new(kind),
         hir_id: None,
         attributes: vec![],
     }
+}
+
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_type_ir::sty::AliasKind, state: S as state)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub enum AliasKind {
+    Projection,
+    Inherent,
+    Opaque,
 }
 
 #[derive(AdtInto)]
@@ -1670,7 +1707,7 @@ pub enum Ty {
         rustc_middle::ty::TyKind::FnPtr(sig) => arrow_of_sig(sig, state),
         x @ rustc_middle::ty::TyKind::FnDef(def, substs) => {
             let tcx = state.tcx();
-            arrow_of_sig(&tcx.bound_fn_sig(*def).subst(tcx, substs), state)
+            arrow_of_sig(&tcx.fn_sig(*def).subst(tcx, substs), state)
         },
         FROM_TYPE::Closure (defid, substs) => {
             let sig = substs.as_closure().sig();
@@ -1805,21 +1842,7 @@ pub enum Ty {
     /// A tuple type. For example, `(i32, bool)`.
     Tuple(Vec<Ty>),
 
-    /// The projection of an associated type. For example,
-    /// `<T as Trait<..>>::N`.
-    Projection(ProjectionTy),
-
-    /// Opaque (`impl Trait`) type found in a return type.
-    ///
-    /// The `DefId` comes either from
-    /// * the `impl Trait` ast::Ty node,
-    /// * or the `type Foo = impl Trait` declaration
-    ///
-    /// For RPIT the substitutions are for the generics of the function,
-    /// while for TAIT it is used for the generic parameters of the alias.
-    ///
-    /// During codegen, `tcx.type_of(def_id)` can be used to get the underlying type.
-    Opaque(DefId, Vec<GenericArg>),
+    Alias(AliasKind, AliasTy),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}`.
     Param(ParamTy),
@@ -2019,7 +2042,7 @@ pub enum PatKind {
                 subpatterns: subpatterns
                     .iter()
                     .map(|f| FieldPat {
-                        field: variant.fields[f.field.index()].did.sinto(gstate),
+                        field: variant.fields[f.field].did.sinto(gstate),
                         pattern: f.pattern.sinto(gstate),
                     })
                     .collect(),
@@ -2147,7 +2170,8 @@ pub enum StrStyle {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum LitKind {
     Str(Symbol, StrStyle),
-    ByteStr(Vec<u8>),
+    ByteStr(Vec<u8>, StrStyle),
+    CStr(Vec<u8>, StrStyle),
     Byte(u8),
     Char(char),
     Int(u128, LitIntType),
@@ -2360,9 +2384,9 @@ pub enum ExprKind {
             from_hir_call: from_hir_call.sinto(gstate),
             fn_span: fn_span.sinto(gstate),
             fun: Expr {
-                contents: box ExprKind::GlobalName {
+                contents: Box::new(ExprKind::GlobalName {
                     id: def.sinto(gstate)
-                },
+                }),
                 span: e.span.sinto(gstate),
                 ty: e.ty.sinto(gstate),
                 hir_id: None, /* Todo: this is incorrect */

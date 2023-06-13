@@ -1,5 +1,4 @@
 #![feature(rustc_private)]
-#![feature(box_syntax)]
 #![feature(box_patterns)]
 #![feature(concat_idents)]
 #![feature(trait_alias)]
