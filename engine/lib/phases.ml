@@ -10,3 +10,4 @@ module Functionalize_loops = Phase_functionalize_loops.Make
 module Reject = Phase_reject
 module Local_mutation = Phase_local_mutation.Make
 module Struct_pattern = Phase_struct_pattern.Make
+module State_passing_loop = Phase_state_passing_loop.Make

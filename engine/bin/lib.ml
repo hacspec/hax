@@ -43,6 +43,7 @@ let import_thir_items (include_clauses : Types.inclusion_clause list)
         match Attrs.status i.attrs with Included _ -> true | _ -> false)
       items
   in
+  (* TODO: should keep order for non-dependent functions by default? This breaks ssprove extraction. *)
   let items = Deps.sort items in
   let reports =
     List.concat_map
@@ -87,6 +88,7 @@ let run (options : Types.engine_options) : Types.output =
         match options.backend.backend with
         | Fstar opts -> run (module Fstar_backend) opts
         | Coq -> run (module Coq_backend) ()
+        | Ssprove -> run (module Ssprove_backend) ()
         | Easycrypt -> run (module Easycrypt_backend) ()
         | ProVerif -> run (module Proverif_backend) ())
   in

@@ -2,7 +2,15 @@
  (name lib)
  (modules lib)
  (wrapped false)
- (libraries hax_engine fstar_backend coq_backend easycrypt_backend proverif_backend logs core)
+ (libraries
+  hax_engine
+  fstar_backend
+  coq_backend
+  ssprove_backend
+  easycrypt_backend
+  proverif_backend
+  logs
+  core)
  (preprocess
   (pps
    ppx_yojson_conv
