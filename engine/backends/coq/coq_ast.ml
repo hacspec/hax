@@ -51,7 +51,7 @@ functor
 
       type term =
         | UnitTerm
-        | Let of { pattern : pat; value : term; body : term; value_typ : ty }
+        | Let of { pattern : pat; mut : bool; value : term; body : term; value_typ : ty }
         | If of term * term * term
         | Match of term * (pat * term) list
         | Const of literal
@@ -199,10 +199,10 @@ functor
     let rec term_to_string (x : AST.term) depth : string * bool =
       match x with
       | AST.UnitTerm -> ("tt", false)
-      | AST.Let { pattern = pat; value = bind; value_typ = typ; body = term } ->
+      | AST.Let { pattern = pat; mut; value = bind; value_typ = typ; body = term } ->
           let _, ty_str = ty_to_string typ in
           (* TODO: propegate type definition *)
-          ( Lib.Notation.let_stmt
+          ( (if mut then Lib.Notation.let_mut_stmt else Lib.Notation.let_stmt)
               (pat_to_string pat true depth)
               (term_to_string_without_paren bind (depth + 1))
               ty_str

@@ -345,18 +345,13 @@ struct
             pexpr then_,
             Option.value_map else_ ~default:(C.AST.Literal "()") ~f:pexpr )
     | Array l -> C.AST.Array (List.map ~f:pexpr l)
-    | Let { lhs; rhs; body; monadic = Some monad } ->
+    | Let { lhs; rhs; body; monadic } ->
         C.AST.Let
           {
             pattern = ppat lhs;
-            value = pexpr rhs;
-            body = pexpr body;
-            value_typ = pty span lhs.typ;
-          }
-    | Let { lhs; rhs; body; monadic = None } ->
-        C.AST.Let
-          {
-            pattern = ppat lhs;
+            mut = (match lhs.p with
+                | PBinding { mut = Mutable _ } -> true
+                | _ -> false);
             value = pexpr rhs;
             body = pexpr body;
             value_typ = pty span lhs.typ;
@@ -729,8 +724,10 @@ let hardcoded_coq_headers =
    Open Scope Z_scope.\n\
    Open Scope bool_scope.\n"
 
-let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
-    =
+type analysis_data = unit
+
+let translate (bo : BackendOptions.t) (items : AST.item list)
+    (_ : analysis_data) : Types.file list =
   U.group_items_by_namespace items
   |> Map.to_alist
   |> List.map ~f:(fun (ns, items) ->
