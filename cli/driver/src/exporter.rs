@@ -25,29 +25,38 @@ fn convert_thir<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> (Vec<rustc_span::Span>, Vec<hax_frontend_exporter::Item>) {
     let hir = tcx.hir();
-    let bodies = hir.body_owners();
 
-    let mut bodies = bodies.collect::<Vec<_>>();
-    // we first visit `AnonConst`s, otherwise the thir body might be stolen
-    bodies.sort_by(|a, b| {
-        use std::cmp::Ordering::*;
-        let is_anon_const = |x: &rustc_span::def_id::LocalDefId| {
-            matches!(hir.get_by_def_id(x.clone()), rustc_hir::Node::AnonConst(_))
+    let bodies = {
+        // Here, we partition the bodies so that constant items appear
+        // first.
+        let mut is_const = |x: &rustc_span::def_id::LocalDefId| {
+            matches!(
+                hir.get_by_def_id(x.clone()),
+                rustc_hir::Node::AnonConst(_)
+                    | rustc_hir::Node::Item(rustc_hir::Item {
+                        kind: rustc_hir::ItemKind::Const(..),
+                        ..
+                    })
+                    | rustc_hir::Node::TraitItem(rustc_hir::TraitItem {
+                        kind: rustc_hir::TraitItemKind::Const(..),
+                        ..
+                    })
+                    | rustc_hir::Node::ImplItem(rustc_hir::ImplItem {
+                        kind: rustc_hir::ImplItemKind::Const(..),
+                        ..
+                    })
+            )
         };
-        if is_anon_const(a) {
-            Less
-        } else if is_anon_const(b) {
-            Equal
-        } else {
-            Greater
-        }
-    });
+
+        let (consts, others): (Vec<rustc_span::def_id::LocalDefId>, _) =
+            hir.body_owners().partition(is_const);
+        consts.into_iter().chain(others.into_iter())
+    };
 
     let thirs: std::collections::HashMap<
         rustc_span::def_id::LocalDefId,
         (rustc_middle::thir::Thir<'tcx>, ExprId),
     > = bodies
-        .into_iter()
         .map(|did| {
             let (thir, expr) = tcx
                 .thir_body(rustc_middle::ty::WithOptConstParam {
