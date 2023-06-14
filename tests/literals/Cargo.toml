@@ -1,5 +1,5 @@
 [package]
-name = "string-literal"
+name = "literals"
 version = "0.1.0"
 edition = "2021"
 
