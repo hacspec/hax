@@ -6,16 +6,13 @@ open Coq_ast
 include
   Backend.Make
     (struct
-      open Features
-      include Off
-      include On.Slice
-      include On.Monadic_binding
-      include On.Macro
-      include On.Construct_base
+      include Features.Rust
     end)
     (struct
       let backend = Diagnostics.Backend.SSProve
     end)
+
+open Phase_utils
 
 module RejectNotSSProve (FA : Features.T) = struct
   module FB = InputLanguage
@@ -27,28 +24,29 @@ module RejectNotSSProve (FA : Features.T) = struct
         module B = FB
         include Feature_gate.DefaultSubtype
 
-        let mutable_variable = reject (* Features.On.mutable_variable *)
         let loop = reject
+        let for_loop = reject
+        let state_passing_loop = reject
         let continue = reject
+        let mutable_variable = reject
         let mutable_reference = reject
         let mutable_pointer = reject
-        let mutable_borrow = reject
         let reference = reject
-        let slice _ = Features.On.slice
+        let slice = reject
         let raw_pointer = reject
-        let early_exit _ = Obj.magic ()
+        let early_exit = reject
         let question_mark = reject
-        let macro _ = Features.On.macro
+        let macro = reject
         let as_pattern = reject
-        let lifetime = reject
-        let monadic_action = reject
-        let arbitrary_lhs = reject
         let nontrivial_lhs = reject
-        let monadic_binding _ = Features.On.monadic_binding
-        let construct_base _ = Features.On.construct_base
-        let state_passing_loop = reject
-        let for_loop = reject
+        let arbitrary_lhs = reject
+        let lifetime = reject
+        let construct_base = reject
+        let monadic_action = reject
+        let monadic_binding = reject
 
+        (* let mutable_pointer = reject *)
+        (* let raw_pointer = reject *)
         let metadata =
           Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
       end)
@@ -129,27 +127,25 @@ let primitive_to_string (id : primitive_ident) : string =
   | UnOp op -> "(TODO: UnOp)"
   | LogicalOp op -> ( match op with And -> "andb" | Or -> "orb")
 
-open Phase_utils
-
-module TransformToInputLanguage =
+module TransformToInputLanguage (* : PHASE *) =
   CatchErrors
     ([%functor_application
-    Phases.Reject.RawOrMutPointer(Features.Rust)
-    |> Phases.Reject.Arbitrary_lhs
-    |> Phases.Reconstruct_for_loops
-    |> Phases.Direct_and_mut
-    |> Phases.Reject.Continue
-    |> Phases.Drop_references
-    |> Phases.Trivialize_assign_lhs
-    |> Phases.Reconstruct_question_marks
-    |> Side_effect_utils.Hoist
-    |> Phases.Local_mutation
-    |> Phases.Reject.Continue
-    |> Phases.Cf_into_monads
-    |> Phases.Reject.EarlyExit
-    |> Phases.Functionalize_loops
-    |> RejectNotSSProve
-    |> Identity
+    (* Phases.Reject.RawOrMutPointer(Features.Rust) *)
+    (* |> Phases.Reject.Arbitrary_lhs *)
+    (* |> Phases.Reconstruct_for_loops *)
+    (* |> Phases.Direct_and_mut *)
+    (* |> Phases.Reject.Continue *)
+    (* |> Phases.Drop_references *)
+    (* |> Phases.Trivialize_assign_lhs *)
+    (* |> Phases.Reconstruct_question_marks *)
+    (* |> Side_effect_utils.Hoist *)
+    (* |> Phases.Local_mutation *)
+    (* |> Phases.Reject.Continue *)
+    (* |> Phases.Cf_into_monads *)
+    (* |> Phases.Reject.EarlyExit *)
+    (* |> Phases.Functionalize_loops *)
+    (* |>  *) RejectNotSSProve(Features.Rust)
+    (* |> Identity *)
     ]
     [@ocamlformat "disable"])
 
@@ -263,7 +259,10 @@ struct
     | TProjectedAssociatedType s ->
         SSP.AST.Wild
         (* __TODO_ty__ span ("proj:assoc:type" ^ s) *)
-        (* failwith "proj:assoc:type" *)
+    (* failwith "proj:assoc:type" *)
+    (* DUMMY WHILE FINDING FEATURE SET *)
+    | TRawPointer _ -> __TODO_ty__ span "raw_pointer"
+    | TRef _ -> __TODO_ty__ span "ref"
     | _ -> .
 
   and args_ty span (args : generic_value list) : SSP.AST.ty list =
@@ -286,11 +285,20 @@ struct
         {
           mut = Immutable;
           mode = _;
-          subpat = None;
+          subpat (* = None *);
           var;
           typ = _ (* we skip type annot here *);
         } ->
         SSP.AST.Ident var.name
+    | PBinding
+        {
+          mut = Mutable _;
+          mode = _;
+          subpat; (* TODO no subpat? *)
+          var;
+          typ = _ (* we skip type annot here *);
+        } ->
+      SSP.AST.Ident var.name (* TODO Mutable binding ! *)
     | PArray { args } -> __TODO_pat__ p.span "Parray?"
     | PConstruct { name = `TupleCons 0; args = [] } -> SSP.AST.UnitPat
     | PConstruct { name = `TupleCons 1; args = [ { pat } ] } ->
@@ -428,6 +436,14 @@ struct
              kind = UnsupportedMacro { id = [%show: global_ident] macro };
              span = e.span;
            }
+    (* TODO FEATURE SET *)
+    | Assign {e; } -> __TODO_term__ span "assign?"
+    | Loop {body; } -> __TODO_term__ span "loop?"
+    | Break {e; } -> __TODO_term__ span "break?"
+    | Return {e; } -> __TODO_term__ span "return?"
+    | Continue {witness; } -> __TODO_term__ span "continue?"
+    | Borrow {e; } -> __TODO_term__ span "borrow?"
+    | AddressOf {e; } -> __TODO_term__ span "addressof?"
     | _ -> .
 
   let temp (i : LocalIdent.T.id) : string =
@@ -441,29 +457,29 @@ struct
           (* match Map.find (fst ctx.func_dep) name with Some l -> l | None -> [] *) (* Not relevant yet *)
         in
         let mvars : (local_ident * AST.ty * int) list =
-          
-          match Map.find ctx.mut_vars name with
-          | Some l ->
-            List.filter_map ~f:(fun ((x, x_ty), x_n) ->
-                let x_expr : Rust.expr = { e = Rust.LocalVar x; span = Dummy { id = FreshSpanId.make () }; typ = x_ty } in
-                let x_item : Rust.item =
-                  {
-                    v = (Rust.Fn {
-                        name = `Concrete { crate = "temp"; path = ["temp"] };
-                        generics = { params = []; constraints = []; };
-                        body = x_expr;
-                        params = [];
-                      });
-                    span = Dummy { id = FreshSpanId.make () };
-                    parent_namespace = ctx.current_namespace;
-                  }
-                in
-                match TransformToInputLanguage.ditem x_item with
-                | [{v = Fn {body = { e = LocalVar y; typ };}}] ->
-                  Some (y, typ, x_n)
-                | _ -> None
-              ) l
-          | None -> []
+          []
+          (* match Map.find ctx.mut_vars name with *)
+          (* | Some l -> *)
+          (*   List.filter_map ~f:(fun ((x, x_ty), x_n) -> *)
+          (*       let x_expr : Rust.expr = { e = Rust.LocalVar x; span = Dummy { id = FreshSpanId.make () }; typ = x_ty } in *)
+          (*       let x_item : Rust.item = *)
+          (*         { *)
+          (*           v = (Rust.Fn { *)
+          (*               name = `Concrete { crate = "temp"; path = ["temp"] }; *)
+          (*               generics = { params = []; constraints = []; }; *)
+          (*               body = x_expr; *)
+          (*               params = []; *)
+          (*             }); *)
+          (*           span = Dummy { id = FreshSpanId.make () }; *)
+          (*           parent_namespace = ctx.current_namespace; *)
+          (*         } *)
+          (*       in *)
+          (*       match TransformToInputLanguage.ditem x_item with *)
+          (*       | [{v = Fn {body = { e = LocalVar y; typ };}}] -> *)
+          (*         Some (y, typ, x_n) *)
+          (*       | _ -> None *)
+          (*     ) l *)
+          (* | None -> [] *)
         in
         List.fold_left ~init:[] ~f:(fun y (x, x_ty, x_n) -> SSP.AST.Definition
                                                  (x.name ^ "_loc",
