@@ -1628,9 +1628,12 @@ fn valtree_to_expr<'tcx, S: BaseState<'tcx>>(
             },
             neg: false,
         },
-        _ => panic!(
-            "valtree_to_expr: cannot handle valtree{:#?} ty={:#?}",
-            valtree, ty
+        _ => s.tcx().sess.span_fatal(
+            span,
+            format!(
+                "valtree_to_expr: cannot handle valtree{:#?} ty={:#?}",
+                valtree, ty
+            ),
         ),
     };
 
