@@ -35,7 +35,7 @@ struct
 
     let plus : t -> t -> t =
       let merge_ty x y =
-        if not @@ [%eq: ty] x y then
+        if not @@ U.ty_equalily x y then
           Diagnostics.failure ~context:(Other "side_effect_utils.ml")
             ~span:(Dummy { id = -1 })
             (AssertionFailure
