@@ -21,7 +21,7 @@ use std::rc::Rc;
 /// (I call "THIR'" the AST described in this crate)
 fn convert_thir<'tcx>(
     options: &hax_frontend_exporter_options::Options,
-    macro_calls: HashMap<rustc_span::Span, rustc_ast::ast::MacCall>,
+    macro_calls: HashMap<hax_frontend_exporter::Span, hax_frontend_exporter::Span>,
     tcx: TyCtxt<'tcx>,
 ) -> (Vec<rustc_span::Span>, Vec<hax_frontend_exporter::Item>) {
     let hir = tcx.hir();
@@ -155,7 +155,7 @@ fn find_hax_engine() -> process::Command {
 pub(crate) struct ExtractionCallbacks {
     pub inline_macro_calls: Vec<hax_cli_options::Namespace>,
     pub command: hax_cli_options::ExporterCommand,
-    pub macro_calls: HashMap<rustc_span::Span, rustc_ast::ast::MacCall>,
+    pub macro_calls: HashMap<hax_frontend_exporter::Span, hax_frontend_exporter::Span>,
 }
 
 impl From<ExtractionCallbacks> for hax_frontend_exporter_options::Options {
@@ -169,12 +169,22 @@ impl From<ExtractionCallbacks> for hax_frontend_exporter_options::Options {
 impl Callbacks for ExtractionCallbacks {
     fn after_parsing<'tcx>(
         &mut self,
-        _compiler: &Compiler,
+        compiler: &Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
         let parse_ast = queries.parse().unwrap();
         let parse_ast = parse_ast.borrow();
-        self.macro_calls = collect_macros(&parse_ast);
+        self.macro_calls = collect_macros(&parse_ast)
+            .into_iter()
+            .map(|(k, v)| {
+                use hax_frontend_exporter::*;
+                let sess = compiler.session();
+                (
+                    translate_span(k, sess),
+                    translate_span(argument_span_of_mac_call(&v), sess),
+                )
+            })
+            .collect();
         Compilation::Continue
     }
     fn after_expansion<'tcx>(
