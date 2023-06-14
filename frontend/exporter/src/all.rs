@@ -242,9 +242,19 @@ impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, ConstantKind>
                     _ => ConstantKind::Todo(format!("{:#?}", self)),
                 }
             }
-            RustConstantKind::Ty(c) => match c.kind().try_to_scalar_int() {
-                Some(si) => ConstantKind::Lit(scalar_int_to_literal(s, si, c.ty())),
-                _ => ConstantKind::Ty(c.sinto(s)),
+            RustConstantKind::Ty(c) => match c.sinto(s).unwrap_borrow() {
+                Decorated {
+                    contents:
+                        box ExprKind::Literal {
+                            lit: Spanned { node, .. },
+                            ..
+                        },
+                    ..
+                } => ConstantKind::Lit(node),
+                e => {
+                    eprintln!(">>> {:#?}", e);
+                    ConstantKind::Ty(Box::new(e))
+                }
             },
             _ => ConstantKind::Todo(format!("{:#?}", self)),
         }
@@ -1583,6 +1593,16 @@ fn valtree_to_expr<'tcx, S: BaseState<'tcx>>(
             borrow_kind: BorrowKind::Shared,
             arg: valtree_to_expr(s, valtree, *inner_ty, span),
         },
+        (ty::ValTree::Branch(valtrees), ty::Str) => ExprKind::Literal {
+            lit: Spanned {
+                node: LitKind::ByteStr(valtrees.into_iter().map(|x| match x {
+                    ty::ValTree::Leaf(leaf) => leaf.try_to_u8().unwrap_or_else(|e| span_fatal!(s, span, "Expected a u8 leaf while translating a str literal, got something else. Error: {:#?}", e)),
+                    _ => span_fatal!(s, span, "Expected a flat list of leaves while translating a str literal, got a arbitrary valtree.")
+                }).collect(), StrStyle::Cooked),
+                span: rustc_span::DUMMY_SP.sinto(s),
+            },
+            neg: false,
+        },
         (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
             let contents: rustc_middle::ty::DestructuredConst = s
                 .tcx()
@@ -1624,7 +1644,7 @@ fn valtree_to_expr<'tcx, S: BaseState<'tcx>>(
         (ty::ValTree::Leaf(x), _) => ExprKind::Literal {
             lit: Spanned {
                 node: scalar_int_to_literal(s, x, ty),
-                span: rustc_span::DUMMY_SP.sinto(s),
+                span: span.sinto(s),
             },
             neg: false,
         },
@@ -2662,6 +2682,15 @@ impl<'tcx> ExprKindExt<'tcx> for rustc_middle::thir::Expr<'tcx> {
                 lint_level,
                 value,
             } => s.thir().exprs[value].unroll_scope(s),
+            _ => self.clone(),
+        }
+    }
+}
+
+impl Expr {
+    fn unwrap_borrow(&self) -> Self {
+        match &self.contents {
+            box ExprKind::Borrow { arg, .. } => arg.clone(),
             _ => self.clone(),
         }
     }
