@@ -27,6 +27,30 @@ pub type Path = Vec<String>; // x::y::z, TODO
 pub type ProjectionPath = Vec<String>; // x::y::z, TODO
                                        // pub type LitFloatType = TODO;
 
+macro_rules! span_fatal {
+    ($s:ident, $span:expr, $($other:tt)*) => {
+        $s.tcx().sess.span_fatal($span,format!($($other)*))
+    }
+}
+
+macro_rules! no_span_fatal {
+    ($s:ident, $($other:tt)*) => {
+        $s.tcx().sess.fatal(format!($($other)*))
+    }
+}
+
+macro_rules! fatal {
+    ($s:ident, $($other:tt)*) => {
+        {let tcx = $s.tcx();
+        match $s.opt_def_id() {
+            Some(did) =>
+                tcx.sess.span_fatal(tcx.def_span(did), format!($($other)*)),
+            None =>
+                tcx.sess.fatal(format!($($other)*)),
+        }}
+    }
+}
+
 macro_rules! supposely_unreachable {
     (@$verb:tt $label:literal : $($e:expr),*$(,)?) => {
         $verb !(concat!("
@@ -237,35 +261,6 @@ pub enum ConstantKind {
     Todo(String),
 }
 
-// #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-// #[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::mir::interpret::ConstValue<'tcx>, state: S as gstate)]
-// pub enum ConstValue {
-//     #[from(Scalar)]
-//     Literal(
-//         #[map({
-//             use rustc_middle::{mir::interpret::Scalar, ty::consts::int::ScalarInt};
-//             match x {
-//                 FROM_TYPE::Int ({data, size}) => todo!(),
-//                 Scalar::Ptr(..) => panic!("Ptr")
-//             }
-//         })]
-//         LitKind,
-//     ),
-//     // Scalar(Scalar),
-//     ZeroSized,
-//     Slice {
-//         data: ConstAllocation,
-//         start: usize,
-//         end: usize,
-//     },
-//     // ByRef {
-//     //     alloc: ConstAllocation,
-//     //     offset: Size,
-//     // },
-//     #[todo]
-//     Todo(String),
-// }
-
 impl<S> SInto<S, u64> for rustc_middle::mir::interpret::AllocId {
     fn sinto(&self, s: &S) -> u64 {
         self.0.get()
@@ -278,7 +273,6 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, Box<Ty>> for rustc_middle::ty::Ty<'tcx> 
     }
 }
 
-// impl<'s, 'a, S: BaseState<'a>>
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Ty> for rustc_middle::ty::Ty<'tcx> {
     fn sinto(&self, s: &S) -> Ty {
         self.kind().sinto(s)
@@ -1179,7 +1173,7 @@ pub fn macro_invocation_of_raw_mac_invocation<'t, S: BaseState<'t>>(
     let macro_infos = state.macro_infos();
     let mac_call_span = macro_infos
         .get(&translate_span(expn_data.call_site, state.tcx().sess))
-        .unwrap_or_else(|| panic!("{:#?}", expn_data.call_site));
+        .unwrap_or_else(|| fatal!(state, "{:#?}", expn_data.call_site));
     MacroInvokation {
         macro_ident: macro_ident.clone(),
         argument: read_span_from_file(mac_call_span).unwrap(),
@@ -1297,7 +1291,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                                 ty.kind(),
                                 lhs_ty
                             );
-                            panic!()
+                            fatal!(s, "ExprKindFieldBadTy")
                         }
                     }
                 }
@@ -1348,7 +1342,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Pat> for rustc_middle::thir::Pat<'tcx> {
                         kind,
                         span.sinto(s)
                     );
-                    panic!()
+                    fatal!(s, "PatLeafNonAdtTy")
                 }
             },
             _ => kind.sinto(s),
@@ -1541,7 +1535,11 @@ fn scalar_int_to_literal<'tcx, S: BaseState<'tcx>>(
         ty::Uint(kind) => {
             LitKind::Int(x.assert_bits(x.size()), LitIntType::Unsigned(kind.sinto(s)))
         }
-        _ => panic!("scalar_int_to_literal: the type {:?} is not a literal", ty),
+        _ => fatal!(
+            s,
+            "scalar_int_to_literal: the type {:?} is not a literal",
+            ty
+        ),
     }
 }
 fn const_to_expr<'tcx, S: BaseState<'tcx>>(
@@ -1553,15 +1551,17 @@ fn const_to_expr<'tcx, S: BaseState<'tcx>>(
     use rustc_middle::ty;
     let kind = match c.kind() {
         ty::ConstKind::Param(p) => ExprKind::ConstRef { id: p.sinto(s) },
-        ty::ConstKind::Infer(..) => panic!("ty::ConstKind::Infer node? {:#?}", c),
-        ty::ConstKind::Unevaluated(..) => panic!("ty::ConstKind::Unevaluated node? {:#?}", c),
+        ty::ConstKind::Infer(..) => span_fatal!(s, span, "ty::ConstKind::Infer node? {:#?}", c),
+        ty::ConstKind::Unevaluated(..) => {
+            span_fatal!(s, span, "ty::ConstKind::Unevaluated node? {:#?}", c)
+        }
         ty::ConstKind::Value(valtree) => return valtree_to_expr(s, valtree, ty, span),
-        ty::ConstKind::Error(valtree) => panic!(),
+        ty::ConstKind::Error(valtree) => span_fatal!(s, span, "ty::ConstKind::Error"),
         ty::ConstKind::Expr(e) => {
             use rustc_middle::ty::Expr as CE;
-            panic!("ty::ConstKind::Expr {:#?}", e)
+            span_fatal!(s, span, "ty::ConstKind::Expr {:#?}", e)
         }
-        _ => panic!(),
+        _ => span_fatal!(s, span, "const_to_expr, unexpected case"),
     };
     Decorated {
         ty: ty.sinto(s),
@@ -1628,12 +1628,12 @@ fn valtree_to_expr<'tcx, S: BaseState<'tcx>>(
             },
             neg: false,
         },
-        _ => s.tcx().sess.span_fatal(
+        _ => span_fatal!(
+            s,
             span,
-            format!(
-                "valtree_to_expr: cannot handle valtree{:#?} ty={:#?}",
-                valtree, ty
-            ),
+            "valtree_to_expr: cannot handle valtree{:#?} ty={:#?}",
+            valtree,
+            ty
         ),
     };
 
@@ -1951,7 +1951,15 @@ fn get_variant_information<'s, S: BaseState<'s>>(
         type_namespace: DefId {
             path: match constructs_type.path.as_slice() {
                 [init @ .., _] => init.to_vec(),
-                _ => panic!("Type {:#?} appears to have no path", constructs_type),
+                _ => {
+                    let span = s.tcx().def_span(variant);
+                    span_fatal!(
+                        s,
+                        span,
+                        "Type {:#?} appears to have no path",
+                        constructs_type
+                    )
+                }
             },
             ..constructs_type.clone()
         },
@@ -1969,7 +1977,7 @@ pub struct AdtExpr {
 #[derive(AdtInto)]
 #[args(<'tcx, S: ExprState<'tcx>>, from: rustc_middle::thir::PatKind<'tcx>, state: S as gstate)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[append(rustc_middle::thir::PatKind::Leaf {..} => panic!("PatKind::Leaf: should never come up"),)]
+#[append(rustc_middle::thir::PatKind::Leaf {..} => fatal!(gstate, "PatKind::Leaf: should never come up"),)]
 pub enum PatKind {
     /// A wildcard pattern: `_`.
     Wild,
@@ -2248,7 +2256,7 @@ pub fn inspect_local_def_id<'tcx, S: BaseState<'tcx>>(
 
     let (thir, expr) = thirs
         .get(&did)
-        .unwrap_or_else(|| panic!("Could not load body for id {did:?}"));
+        .unwrap_or_else(|| span_fatal!(s, tcx.def_span(did), "Could not load body for id {did:?}"));
 
     let s = State {
         tcx: s.tcx(),
@@ -2274,10 +2282,10 @@ pub fn inspect_local_def_id<'tcx, S: BaseState<'tcx>>(
     //     gstate.thir().exprs[*value].clone().unroll_scope(gstate).sinto(gstate).kind
     // },
     rustc_middle::thir::ExprKind::Scope {..} => {
-        panic!("Scope should have been eliminated at this point");
+        fatal!(gstate, "Scope should have been eliminated at this point");
     },
     rustc_middle::thir::ExprKind::Field {..} => {
-        panic!("Field should have been eliminated at this point");
+        fatal!(gstate, "Field should have been eliminated at this point");
     },
 )]
 pub enum ExprKind {
@@ -2315,7 +2323,7 @@ pub enum ExprKind {
                             "CallNotTyFnDef":
                             e, ty_kind
                         );
-                        panic!();
+                        fatal!(gstate, "CallNotTyFnDef")
                     }
                 }
             },
@@ -2324,7 +2332,7 @@ pub enum ExprKind {
                     "CallNotZstLiteral":
                     e, kind
                 );
-                panic!();
+                fatal!(gstate, "CallNotZstLiteral")
             }
         };
         let tcx = gstate.tcx();
@@ -2479,17 +2487,6 @@ pub enum ExprKind {
         lhs: Expr,
     },
 
-    // use {
-    //         rustc_middle::thir::ExprKind::Field {lhs, variant_index, name} => {
-    //             let lhs = lhs.sinto(gstate);
-    //             let variant_index = variant_index.sinto(gstate);
-    //             let name = name.sinto(gstate);
-    //             if variant_index > 0 {
-    //                 panic!("FIELD: {}, {:#?}", name, lhs.span);
-    //             }
-    //             ExprKind::Field {lhs, variant_index, name}
-    //         }
-    //     },
     /// A *non-overloaded* indexing operation.
     Index {
         lhs: Expr,
@@ -2526,7 +2523,7 @@ pub enum ExprKind {
     },
     /// A `&raw [const|mut] $place_expr` raw borrow resulting in type `*[const|mut] T`.
     AddressOf {
-        #[map(panic!("AddressOf"))]
+        #[map(fatal!(gstate, "AddressOf"))]
         mutability: Mutability,
         arg: Expr,
     },
