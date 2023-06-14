@@ -29,27 +29,26 @@ fn convert_thir<'tcx>(
     let bodies = {
         // Here, we partition the bodies so that constant items appear
         // first.
-        let mut is_const = |x: &rustc_span::def_id::LocalDefId| {
-            matches!(
-                hir.get_by_def_id(x.clone()),
-                rustc_hir::Node::AnonConst(_)
-                    | rustc_hir::Node::Item(rustc_hir::Item {
-                        kind: rustc_hir::ItemKind::Const(..),
-                        ..
-                    })
-                    | rustc_hir::Node::TraitItem(rustc_hir::TraitItem {
-                        kind: rustc_hir::TraitItemKind::Const(..),
-                        ..
-                    })
-                    | rustc_hir::Node::ImplItem(rustc_hir::ImplItem {
-                        kind: rustc_hir::ImplItemKind::Const(..),
-                        ..
-                    })
-            )
-        };
-
-        let (consts, others): (Vec<rustc_span::def_id::LocalDefId>, _) =
-            hir.body_owners().partition(is_const);
+        let (consts, others): (Vec<rustc_span::def_id::LocalDefId>, _) = hir
+            .body_owners()
+            .partition(|x: &rustc_span::def_id::LocalDefId| {
+                matches!(
+                    hir.get_by_def_id(x.clone()),
+                    rustc_hir::Node::AnonConst(_)
+                        | rustc_hir::Node::Item(rustc_hir::Item {
+                            kind: rustc_hir::ItemKind::Const(..),
+                            ..
+                        })
+                        | rustc_hir::Node::TraitItem(rustc_hir::TraitItem {
+                            kind: rustc_hir::TraitItemKind::Const(..),
+                            ..
+                        })
+                        | rustc_hir::Node::ImplItem(rustc_hir::ImplItem {
+                            kind: rustc_hir::ImplItemKind::Const(..),
+                            ..
+                        })
+                )
+            });
         consts.into_iter().chain(others.into_iter())
     };
 

@@ -898,13 +898,10 @@ pub struct Block {
     pub safety_mode: BlockSafety,
 }
 
-// #[derive(AdtInto)]
-// #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::ProjectionTy<'tcx>, state: S as gstate)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct AliasTy {
     pub substs: Vec<GenericArg>,
     pub trait_def_id: DefId,
-    // pub item_def_id: DefId,
 }
 
 fn get_param_env<'tcx, S: BaseState<'tcx>>(s: &S) -> rustc_middle::ty::ParamEnv<'tcx> {
@@ -914,64 +911,62 @@ fn get_param_env<'tcx, S: BaseState<'tcx>>(s: &S) -> rustc_middle::ty::ParamEnv<
     }
 }
 
-// fn resolve_trait<'tcx, S: BaseState<'tcx>>(trait_ref: rustc_middle::ty::TraitRef<'tcx>, s: &S) {
-//     let tcx = s.tcx();
-//     let param_env = get_param_env(s);
-//     use rustc_middle::ty::Binder;
-//     let binder: Binder<'tcx, _> = Binder::dummy(trait_ref);
-//     // let x: Result<&rustc_middle::traits::ImplSource<'tcx, ()>, _> =
-//     //     tcx.codegen_select_candidate((param_env, binder));
-//     use rustc_infer::infer::TyCtxtInferExt;
-//     use rustc_infer::traits;
-//     use rustc_middle::ty::{ParamEnv, ParamEnvAnd};
-//     use rustc_trait_selection::infer::InferCtxtBuilderExt;
-//     use rustc_trait_selection::traits::SelectionContext;
-//     // let id = s.opt_def_id().unwrap();
-//     let inter_ctxt = tcx.infer_ctxt().ignoring_regions().build();
-//     let mut selection_ctxt = SelectionContext::new(&inter_ctxt);
-//     use std::collections::VecDeque;
-//     let mut queue = VecDeque::new();
-//     let obligation = traits::Obligation::new(
-//         tcx,
-//         traits::ObligationCause::dummy(),
-//         param_env,
-//         rustc_middle::ty::Binder::dummy(trait_ref),
-//     );
-//     use rustc_middle::traits::ImplSource;
-//     queue.push_back(obligation);
-//     loop {
-//         match queue.pop_front() {
-//             Some(obligation) => {
-//                 let impl_source = selection_ctxt.select(&obligation).unwrap().unwrap();
-//                 println!("impl_source={:#?}", impl_source);
-//                 let nested = impl_source.clone().nested_obligations();
-//                 for subobligation in nested {
-//                     let bound_predicate = subobligation.predicate.kind();
-//                     match bound_predicate.skip_binder() {
-//                         rustc_middle::ty::PredicateKind::Clause(
-//                             rustc_middle::ty::Clause::Trait(trait_pred),
-//                         ) => {
-//                             let trait_pred = bound_predicate.rebind(trait_pred);
-//                             let subobligation = subobligation.with(tcx, trait_pred);
-//                             queue.push_back(subobligation);
-//                         }
-//                         _ => (),
-//                     }
-//                 }
-//             }
-//             None => break,
-//         }
-//     }
-//     // let impl_source = selection_ctxt.select(&obligation).unwrap().unwrap();
-//     // let nested = impl_source.clone().nested_obligations();
-// }
+fn _resolve_trait<'tcx, S: BaseState<'tcx>>(trait_ref: rustc_middle::ty::TraitRef<'tcx>, s: &S) {
+    let tcx = s.tcx();
+    let param_env = get_param_env(s);
+    use rustc_middle::ty::Binder;
+    let binder: Binder<'tcx, _> = Binder::dummy(trait_ref);
+    // let x: Result<&rustc_middle::traits::ImplSource<'tcx, ()>, _> =
+    //     tcx.codegen_select_candidate((param_env, binder));
+    use rustc_infer::infer::TyCtxtInferExt;
+    use rustc_infer::traits;
+    use rustc_middle::ty::{ParamEnv, ParamEnvAnd};
+    use rustc_trait_selection::infer::InferCtxtBuilderExt;
+    use rustc_trait_selection::traits::SelectionContext;
+    // let id = s.opt_def_id().unwrap();
+    let inter_ctxt = tcx.infer_ctxt().ignoring_regions().build();
+    let mut selection_ctxt = SelectionContext::new(&inter_ctxt);
+    use std::collections::VecDeque;
+    let mut queue = VecDeque::new();
+    let obligation = traits::Obligation::new(
+        tcx,
+        traits::ObligationCause::dummy(),
+        param_env,
+        rustc_middle::ty::Binder::dummy(trait_ref),
+    );
+    use rustc_middle::traits::ImplSource;
+    queue.push_back(obligation);
+    loop {
+        match queue.pop_front() {
+            Some(obligation) => {
+                let impl_source = selection_ctxt.select(&obligation).unwrap().unwrap();
+                println!("impl_source={:#?}", impl_source);
+                let nested = impl_source.clone().nested_obligations();
+                for subobligation in nested {
+                    let bound_predicate = subobligation.predicate.kind();
+                    match bound_predicate.skip_binder() {
+                        rustc_middle::ty::PredicateKind::Clause(
+                            rustc_middle::ty::Clause::Trait(trait_pred),
+                        ) => {
+                            let trait_pred = bound_predicate.rebind(trait_pred);
+                            let subobligation = subobligation.with(tcx, trait_pred);
+                            queue.push_back(subobligation);
+                        }
+                        _ => (),
+                    }
+                }
+            }
+            None => break,
+        }
+    }
+    // let impl_source = selection_ctxt.select(&obligation).unwrap().unwrap();
+    // let nested = impl_source.clone().nested_obligations();
+}
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, AliasTy> for rustc_middle::ty::AliasTy<'tcx> {
     fn sinto(&self, s: &S) -> AliasTy {
         let tcx = s.tcx();
         let trait_ref = self.trait_ref(tcx);
-        // println!("######################");
-        // println!("for={:#?}", self);
         // resolve_trait(trait_ref, s);
         AliasTy {
             substs: self.substs.sinto(s),
