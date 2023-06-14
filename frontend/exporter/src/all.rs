@@ -1628,7 +1628,10 @@ fn valtree_to_expr<'tcx, S: BaseState<'tcx>>(
             },
             neg: false,
         },
-        _ => panic!("valtree_to_expr: cannot hanlde {:#?}", valtree),
+        _ => panic!(
+            "valtree_to_expr: cannot handle valtree{:#?} ty={:#?}",
+            valtree, ty
+        ),
     };
 
     Decorated {
