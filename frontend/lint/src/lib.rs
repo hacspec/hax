@@ -8,11 +8,12 @@ use rustc_middle::ty::TyCtxt;
 
 // rustc hier
 extern crate rustc_hir;
+
 use rustc_hir::{intravisit::*, *};
 
 // rustc span
 extern crate rustc_span;
-use rustc_span::{symbol::Ident, Span, Symbol};
+use rustc_span::{def_id::LocalDefId, symbol::Ident, Span, Symbol};
 
 // rustc session
 extern crate rustc_session;
@@ -470,11 +471,20 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         log::trace!("visiting fn decl");
         walk_fn_decl(self, fd)
     }
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl<'v>, b: BodyId, span: Span, id: HirId) {
+    fn visit_fn(
+        &mut self,
+        fk: FnKind<'v>,
+        fd: &'v FnDecl<'v>,
+        b: BodyId,
+        span: Span,
+        id: LocalDefId,
+    ) {
         log::trace!("visiting fn at {:?}", span);
 
-        skip_derived_non_local!(self, id);
-        skip_v1_lib_macros!(self, id);
+        let hir_id = self.tcx.hir().local_def_id_to_hir_id(id);
+
+        skip_derived_non_local!(self, hir_id);
+        skip_v1_lib_macros!(self, hir_id);
 
         fn check_ty_kind(visitor: &Linter, k: &TyKind, span: Span) {
             match k {
@@ -482,7 +492,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
                 TyKind::TraitObject(_, _, _) => {
                     error::no_trait_objects(visitor.session, span);
                 }
-                TyKind::Rptr(lifetime, ty) => {
+                TyKind::Ref(lifetime, ty) => {
                     // TODO: check lifetime. only allow anonymous
                     log::trace!("   lifetime {:?}", lifetime.ident);
                     // log::trace!("   ref ty {:#?}", ty);

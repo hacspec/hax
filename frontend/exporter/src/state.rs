@@ -114,7 +114,7 @@ pub mod types {
     pub type LocalContext = Rc<RefCell<LocalContextS>>;
     // pub type LocalIdentMap = Rc<RefCell<HashMap<rustc_middle::thir::LocalVarId, String>>>;
     // pub type ConstParamIdMap = Rc<RefCell<HashMap<u32, rustc_span::def_id::DefId>>>;
-    pub type MacroCalls = Box<HashMap<rustc_span::Span, rustc_ast::ast::MacCall>>;
+    pub type MacroCalls = Box<HashMap<crate::Span, crate::Span>>;
     pub type Options = Box<hax_frontend_exporter_options::Options>;
     pub type OptDefId = Option<rustc_hir::def_id::DefId>;
     pub type ExportedSpans = Rc<RefCell<HashSet<rustc_span::Span>>>;

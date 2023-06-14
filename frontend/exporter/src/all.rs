@@ -27,6 +27,30 @@ pub type Path = Vec<String>; // x::y::z, TODO
 pub type ProjectionPath = Vec<String>; // x::y::z, TODO
                                        // pub type LitFloatType = TODO;
 
+macro_rules! span_fatal {
+    ($s:ident, $span:expr, $($other:tt)*) => {
+        $s.tcx().sess.span_fatal($span,format!($($other)*))
+    }
+}
+
+macro_rules! no_span_fatal {
+    ($s:ident, $($other:tt)*) => {
+        $s.tcx().sess.fatal(format!($($other)*))
+    }
+}
+
+macro_rules! fatal {
+    ($s:ident, $($other:tt)*) => {
+        {let tcx = $s.tcx();
+        match $s.opt_def_id() {
+            Some(did) =>
+                tcx.sess.span_fatal(tcx.def_span(did), format!($($other)*)),
+            None =>
+                tcx.sess.fatal(format!($($other)*)),
+        }}
+    }
+}
+
 macro_rules! supposely_unreachable {
     (@$verb:tt $label:literal : $($e:expr),*$(,)?) => {
         $verb !(concat!("
@@ -100,6 +124,7 @@ pub enum DefPathItem {
     Ctor,
     AnonConst,
     ImplTrait,
+    ImplTraitAssocTy,
 }
 
 pub type Symbol = String;
@@ -202,84 +227,49 @@ pub struct Scope {
     pub data: ScopeData,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::mir::ConstantKind<'tcx>, state: S as gstate)]
-#[append(FROM_TYPE::Val(const_value, ty) => {
-    use rustc_middle::mir::interpret::ConstValue;
-    use rustc_middle::mir::interpret::Scalar;
-    use rustc_middle::ty::TyKind as Ty;
-    use rustc_middle::mir::ConstantKind as CKind;
-    use rustc_middle::ty::IntTy;
-    match const_value {
-        ConstValue::Scalar(Scalar::Int(si)) => {
-            ConstantKind::Lit(match ty.kind() {
-                Ty::Bool => LitKind::Bool(si.clone().try_into().unwrap()),
-                Ty::Char => LitKind::Char(si.clone().try_into().unwrap()),
-                // TODO! This is incorrect!
-                Ty::Int(..) | Ty::Uint(..) => {
-                    use LitKind::Int;
-                    use LitIntType::{Unsigned as U, Signed as I, Unsuffixed};
-                    use UintTy::*;
-                    use crate::IntTy::*;
-                    Err(())
-                        .or(si.try_to_u8().map(|x| Int(x as u128, U(U8))))
-                        .or(si.try_to_u16().map(|x| Int(x as u128, U(U16))))
-                        .or(si.try_to_u32().map(|x| Int(x as u128, U(U32))))
-                        .or(si.try_to_u64().map(|x| Int(x as u128, U(U64))))
-                        .or(si.try_to_u128().map(|x| Int(x as u128, U(U128))))
-                        .or(si.try_to_i8().map(|x| Int(x as u128, I(I8))))
-                        .or(si.try_to_i16().map(|x| Int(x as u128, I(I16))))
-                        .or(si.try_to_i32().map(|x| Int(x as u128, I(I32))))
-                        .or(si.try_to_i64().map(|x| Int(x as u128, I(I64))))
-                        .or(si.try_to_i128().map(|x| Int(x as u128, I(I128))))
-                        .unwrap()
-                    // )
-                },
-                _ => todo!("constant are not exhaustive {:#?}", ty)
-            })
-        },
-        _ => ConstantKind::Todo(format!("{:#?}", self))
+impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, ConstantKind>
+    for rustc_middle::mir::ConstantKind<'tcx>
+{
+    fn sinto(&self, s: &S) -> ConstantKind {
+        use rustc_middle::mir::ConstantKind as RustConstantKind;
+        match self.eval(s.tcx(), get_param_env(s)) {
+            RustConstantKind::Val(const_value, ty) => {
+                use rustc_middle::mir::interpret::ConstValue;
+                match const_value {
+                    ConstValue::Scalar(scalar) => {
+                        ConstantKind::Lit(scalar_int_to_literal(s, scalar.assert_int(), ty.clone()))
+                    }
+                    _ => ConstantKind::Todo(format!("{:#?}", self)),
+                }
+            }
+            RustConstantKind::Ty(c) => match c.sinto(s).unwrap_borrow() {
+                Decorated {
+                    contents:
+                        box ExprKind::Literal {
+                            lit: Spanned { node, .. },
+                            ..
+                        },
+                    ..
+                } => ConstantKind::Lit(node),
+                e => {
+                    eprintln!(">>> {:#?}", e);
+                    ConstantKind::Ty(Box::new(e))
+                }
+            },
+            _ => ConstantKind::Todo(format!("{:#?}", self)),
+        }
     }
-})]
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum ConstantKind {
     Ty(Const),
     // Unevaluated(Unevaluated<'tcx, Option<Promoted>>, Ty),
-    #[disable_mapping]
     Lit(LitKind),
 
     // Val(ConstValue, Ty),
-    #[todo]
     Todo(String),
 }
-
-// #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-// #[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::mir::interpret::ConstValue<'tcx>, state: S as gstate)]
-// pub enum ConstValue {
-//     #[from(Scalar)]
-//     Literal(
-//         #[map({
-//             use rustc_middle::{mir::interpret::Scalar, ty::consts::int::ScalarInt};
-//             match x {
-//                 FROM_TYPE::Int ({data, size}) => todo!(),
-//                 Scalar::Ptr(..) => panic!("Ptr")
-//             }
-//         })]
-//         LitKind,
-//     ),
-//     // Scalar(Scalar),
-//     ZeroSized,
-//     Slice {
-//         data: ConstAllocation,
-//         start: usize,
-//         end: usize,
-//     },
-//     // ByRef {
-//     //     alloc: ConstAllocation,
-//     //     offset: Size,
-//     // },
-//     #[todo]
-//     Todo(String),
-// }
 
 impl<S> SInto<S, u64> for rustc_middle::mir::interpret::AllocId {
     fn sinto(&self, s: &S) -> u64 {
@@ -289,11 +279,10 @@ impl<S> SInto<S, u64> for rustc_middle::mir::interpret::AllocId {
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Box<Ty>> for rustc_middle::ty::Ty<'tcx> {
     fn sinto(&self, s: &S) -> Box<Ty> {
-        box self.sinto(s)
+        Box::new(self.sinto(s))
     }
 }
 
-// impl<'s, 'a, S: BaseState<'a>>
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Ty> for rustc_middle::ty::Ty<'tcx> {
     fn sinto(&self, s: &S) -> Ty {
         self.kind().sinto(s)
@@ -361,14 +350,7 @@ pub enum DynKind {
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::BoundTyKind, state: S as gstate)]
 pub enum BoundTyKind {
     Anon,
-    Param(Symbol),
-}
-
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::BoundTy, state: S as gstate)]
-pub struct BoundTy {
-    pub var: BoundVar,
-    pub kind: BoundTyKind,
+    Param(DefId, Symbol),
 }
 
 pub type Const = Box<Expr>;
@@ -377,7 +359,7 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, Const> for rustc_middle::ty::Const<'tcx>
     fn sinto(&self, s: &S) -> Const {
         let x = self.eval(s.tcx(), get_param_env(s));
         use rustc_middle::query::Key;
-        Box::new(const_to_expr(s, x, x.ty(), x.default_span(s.tcx())))
+        Box::new(const_to_expr(s, x.clone(), x.ty(), x.default_span(s.tcx())))
     }
 }
 
@@ -397,21 +379,35 @@ sinto_as_usize!(rustc_middle::ty, BoundVar);
 sinto_as_usize!(rustc_middle::middle::region, FirstStatementIndex);
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::BoundTy, state: S as gstate)]
+pub struct BoundTy {
+    pub var: BoundVar,
+    pub kind: BoundTyKind,
+}
+
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::BoundRegionKind, state: S as gstate)]
 pub enum BoundRegionKind {
-    BrAnon(u32, Option<Span>),
+    BrAnon(Option<Span>),
     BrNamed(DefId, Symbol),
     BrEnv,
 }
 
-pub type PlaceholderRegion = Placeholder<BoundRegionKind>;
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::BoundRegion, state: S as gstate)]
+pub struct BoundRegion {
+    pub var: BoundVar,
+    pub kind: BoundRegionKind,
+}
+
+pub type PlaceholderRegion = Placeholder<BoundRegion>;
 pub type PlaceholderConst = Placeholder<BoundVar>;
-pub type PlaceholderType = Placeholder<BoundVar>;
+pub type PlaceholderType = Placeholder<BoundTy>;
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Placeholder<T> {
     pub universe: UniverseIndex,
-    pub name: T,
+    pub bound: T,
 }
 
 impl<'tcx, S: BaseState<'tcx>, T: SInto<S, U>, U> SInto<S, Placeholder<U>>
@@ -420,7 +416,7 @@ impl<'tcx, S: BaseState<'tcx>, T: SInto<S, U>, U> SInto<S, Placeholder<U>>
     fn sinto(&self, s: &S) -> Placeholder<U> {
         Placeholder {
             universe: self.universe.sinto(s),
-            name: self.name.sinto(s),
+            bound: self.bound.sinto(s),
         }
     }
 }
@@ -514,6 +510,14 @@ pub struct FieldDef {
     pub vis: Visibility<DefId>,
 }
 
+// impl<I: rustc_index::vec::Idx, S, D: Clone, T: SInto<S, D>> SInto<S, Vec<D>>
+//     for rustc_index::vec::IndexVec<I, T>
+// {
+//     fn sinto(&self, s: &S) -> Vec<D> {
+//         self.into_iter().map(|x| x.sinto(s)).collect()
+//     }
+// }
+
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::ty::VariantDef, state: S as state)]
 pub struct VariantDef {
@@ -522,6 +526,7 @@ pub struct VariantDef {
     pub ctor: Option<(CtorKind, DefId)>,
     pub name: Symbol,
     pub discr: VariantDiscr,
+    #[map(fields.raw.sinto(state))]
     pub fields: Vec<FieldDef>,
 }
 
@@ -605,7 +610,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, AdtExpr> for rustc_middle::thir::AdtExpr
                 .fields
                 .iter()
                 .map(|f| FieldExpr {
-                    field: variant.fields[f.name.index()].did.sinto(s),
+                    field: variant.fields[f.name].did.sinto(s),
                     value: f.expr.sinto(s),
                 })
                 .collect(),
@@ -615,7 +620,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, AdtExpr> for rustc_middle::thir::AdtExpr
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash)]
 pub struct Loc {
     line: usize,
     col: usize,
@@ -659,7 +664,6 @@ pub enum ExpnKind {
     Macro(MacroKind, Symbol),
     AstPass(AstPass),
     Desugaring(DesugaringKind),
-    Inlined,
 }
 
 #[derive(AdtInto)]
@@ -690,7 +694,7 @@ pub struct ExpnData {
     pub collapse_debuginfo: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash)]
 pub struct Span {
     lo: Loc,
     hi: Loc,
@@ -711,7 +715,7 @@ impl std::convert::From<std::io::Error> for ReadSpanErr {
     }
 }
 
-fn read_span_from_file(span: Span) -> Result<String, ReadSpanErr> {
+fn read_span_from_file(span: &Span) -> Result<String, ReadSpanErr> {
     use ReadSpanErr::*;
     let realpath = (match span.filename.clone() {
         FileName::Real(RealFileName::LocalPath(path)) => Ok(path),
@@ -728,7 +732,7 @@ fn read_span_from_file(span: Span) -> Result<String, ReadSpanErr> {
         .collect::<Result<Vec<_>, _>>()?;
 
     match lines.as_slice() {
-        [] => Err(NotEnoughLines { span }),
+        [] => Err(NotEnoughLines { span: span.clone() }),
         [line] => Ok(line
             .chars()
             .enumerate()
@@ -756,28 +760,30 @@ impl Into<Loc> for rustc_span::Loc {
     }
 }
 
+pub fn translate_span(span: rustc_span::Span, sess: &rustc_session::Session) -> Span {
+    let smap: &rustc_span::source_map::SourceMap = sess.parse_sess.source_map();
+    let span_data = span.data();
+    let filename = smap.span_to_filename(span);
+
+    let lo = smap.lookup_char_pos(span.lo());
+    let hi = smap.lookup_char_pos(span.hi());
+
+    Span {
+        lo: lo.into(),
+        hi: hi.into(),
+        filename: filename.sinto(&()),
+    }
+}
+
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Span> for rustc_span::Span {
     fn sinto(&self, s: &S) -> Span {
         let set: crate::state::types::ExportedSpans = s.exported_spans();
         set.borrow_mut().insert(self.clone());
-        let smap: &rustc_span::source_map::SourceMap = s.tcx().sess.parse_sess.source_map();
-        let span = self.clone();
-        let span_data = span.data();
-        let filename = smap.span_to_filename(span);
-
-        let lo = smap.lookup_char_pos(span.lo());
-        let hi = smap.lookup_char_pos(span.hi());
-
-        Span {
-            lo: lo.into(),
-            hi: hi.into(),
-            filename: filename.sinto(s),
-            // expn_backtrace: span.macro_backtrace().map(|o| o.sinto(s)).collect(),
-        }
+        translate_span(self.clone(), s.tcx().sess)
     }
 }
 
-sinto_as_usize!(rustc_middle::mir, Field);
+// sinto_as_usize!(rustc_middle::mir, Field);
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct LocalIdent {
@@ -823,8 +829,8 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, String> for PathBuf {
     }
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_span::RealFileName, state: S as gstate)]
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash)]
+#[args(<S>, from: rustc_span::RealFileName, state: S as gstate)]
 pub enum RealFileName {
     LocalPath(#[map(x.to_str().unwrap().into())] String),
     #[map(RealFileName::Remapped {
@@ -837,9 +843,15 @@ pub enum RealFileName {
     },
 }
 
+impl<S> SInto<S, u64> for rustc_data_structures::stable_hasher::Hash64 {
+    fn sinto(&self, s: &S) -> u64 {
+        self.as_u64()
+    }
+}
+
 #[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_span::FileName, state: S as gstate)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[args(<S>, from: rustc_span::FileName, state: S as gstate)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash)]
 pub enum FileName {
     Real(RealFileName),
     QuoteExpansion(u64),
@@ -890,39 +902,20 @@ pub struct Block {
     pub safety_mode: BlockSafety,
 }
 
-// #[derive(AdtInto)]
-// #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::ProjectionTy<'tcx>, state: S as gstate)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct ProjectionTy {
+pub struct AliasTy {
     pub substs: Vec<GenericArg>,
     pub trait_def_id: DefId,
-    // pub item_def_id: DefId,
 }
 
 fn get_param_env<'tcx, S: BaseState<'tcx>>(s: &S) -> rustc_middle::ty::ParamEnv<'tcx> {
-    let tcx = s.tcx();
-    let predicates = match s.opt_def_id() {
-        Some(id) => {
-            let predicates = tcx
-                .predicates_of(id)
-                .predicates
-                .into_iter()
-                .map(|(p, _)| p)
-                .cloned()
-                .collect::<Vec<_>>()
-                .into_boxed_slice();
-            tcx.intern_predicates(&predicates)
-        }
-        None => rustc_middle::ty::List::empty(),
-    };
-    rustc_middle::ty::ParamEnv::new(
-        &predicates,
-        rustc_middle::traits::Reveal::All,
-        rustc_hir::Constness::NotConst,
-    )
+    match s.opt_def_id() {
+        Some(id) => s.tcx().param_env(id),
+        None => rustc_middle::ty::ParamEnv::empty(),
+    }
 }
 
-fn resolve_trait<'tcx, S: BaseState<'tcx>>(trait_ref: rustc_middle::ty::TraitRef<'tcx>, s: &S) {
+fn _resolve_trait<'tcx, S: BaseState<'tcx>>(trait_ref: rustc_middle::ty::TraitRef<'tcx>, s: &S) {
     let tcx = s.tcx();
     let param_env = get_param_env(s);
     use rustc_middle::ty::Binder;
@@ -974,14 +967,12 @@ fn resolve_trait<'tcx, S: BaseState<'tcx>>(trait_ref: rustc_middle::ty::TraitRef
     // let nested = impl_source.clone().nested_obligations();
 }
 
-impl<'tcx, S: BaseState<'tcx>> SInto<S, ProjectionTy> for rustc_middle::ty::ProjectionTy<'tcx> {
-    fn sinto(&self, s: &S) -> ProjectionTy {
+impl<'tcx, S: BaseState<'tcx>> SInto<S, AliasTy> for rustc_middle::ty::AliasTy<'tcx> {
+    fn sinto(&self, s: &S) -> AliasTy {
         let tcx = s.tcx();
         let trait_ref = self.trait_ref(tcx);
-        // println!("######################");
-        // println!("for={:#?}", self);
         // resolve_trait(trait_ref, s);
-        ProjectionTy {
+        AliasTy {
             substs: self.substs.sinto(s),
             trait_def_id: self.trait_def_id(tcx).sinto(s),
         }
@@ -1147,7 +1138,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Stmt> for rustc_middle::thir::StmtId {
     }
 }
 
-fn argument_span_of_mac_call(mac_call: &rustc_ast::ast::MacCall) -> rustc_span::Span {
+pub fn argument_span_of_mac_call(mac_call: &rustc_ast::ast::MacCall) -> rustc_span::Span {
     (*mac_call.args).dspan.entire()
 }
 
@@ -1156,14 +1147,16 @@ pub fn raw_macro_invocation_of_span<'t, S: BaseState<'t>>(
     state: &S,
 ) -> Option<(DefId, rustc_span::hygiene::ExpnData)> {
     let box opts: Box<hax_frontend_exporter_options::Options> = state.options();
-    let box macro_calls: Box<HashMap<rustc_span::Span, rustc_ast::ast::MacCall>> =
-        state.macro_infos();
+    let box macro_calls: crate::state::types::MacroCalls = state.macro_infos();
+
+    let sess = state.tcx().sess;
 
     span.macro_backtrace().find_map(|expn_data| {
         let expn_data_ret = expn_data.clone();
+        let call_site = translate_span(expn_data.call_site, sess);
         match (expn_data.kind, expn_data.macro_def_id) {
             (rustc_span::hygiene::ExpnKind::Macro(_, _), Some(mac_def_id))
-                if macro_calls.contains_key(&expn_data.call_site) =>
+                if macro_calls.keys().any(|span| span.clone() == call_site) =>
             {
                 let macro_ident = mac_def_id.sinto(state);
                 let path = Path::from(macro_ident.clone());
@@ -1188,12 +1181,12 @@ pub fn macro_invocation_of_raw_mac_invocation<'t, S: BaseState<'t>>(
     state: &S,
 ) -> MacroInvokation {
     let macro_infos = state.macro_infos();
-    let mac_call = macro_infos
-        .get(&expn_data.call_site)
-        .unwrap_or_else(|| panic!("{:#?}", expn_data.call_site));
+    let mac_call_span = macro_infos
+        .get(&translate_span(expn_data.call_site, state.tcx().sess))
+        .unwrap_or_else(|| fatal!(state, "{:#?}", expn_data.call_site));
     MacroInvokation {
         macro_ident: macro_ident.clone(),
-        argument: read_span_from_file(argument_span_of_mac_call(mac_call).sinto(state)).unwrap(),
+        argument: read_span_from_file(mac_call_span).unwrap(),
         span: expn_data.call_site.sinto(state),
     }
 }
@@ -1254,7 +1247,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                 rustc_middle::thir::ExprKind::ZstLiteral { .. } => match ty.kind() {
                     rustc_middle::ty::TyKind::FnDef(def, substs) => {
                         let tcx = s.tcx();
-                        let sig = &tcx.bound_fn_sig(*def).subst(tcx, substs);
+                        let sig = &tcx.fn_sig(*def).subst(tcx, substs);
                         let ret: rustc_middle::ty::Ty = tcx.erase_late_bound_regions(sig.output());
                         let inputs = sig.inputs();
                         let indexes = inputs.skip_binder().iter().enumerate().map(|(i, _)| i);
@@ -1262,7 +1255,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                         let params: Vec<rustc_middle::ty::Ty> =
                             params.map(|i| tcx.erase_late_bound_regions(i)).collect();
                         return Expr {
-                            contents: box ExprKind::GlobalName { id: def.sinto(s) },
+                            contents: Box::new(ExprKind::GlobalName { id: def.sinto(s) }),
                             span: self.span.sinto(s),
                             ty: ty.sinto(s),
                             hir_id,
@@ -1293,7 +1286,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                         rustc_middle::ty::TyKind::Adt(adt_def, substs) => {
                             let variant = adt_def.variant(variant_index);
                             ExprKind::Field {
-                                field: variant.fields[name.index()].did.sinto(s),
+                                field: variant.fields[name].did.sinto(s),
                                 lhs: lhs.sinto(s),
                             }
                         }
@@ -1308,7 +1301,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                                 ty.kind(),
                                 lhs_ty
                             );
-                            panic!()
+                            fatal!(s, "ExprKindFieldBadTy")
                         }
                     }
                 }
@@ -1318,7 +1311,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
         Decorated {
             ty: ty.sinto(s),
             span: span.sinto(s),
-            contents: box contents,
+            contents: Box::new(contents),
             hir_id,
             attributes,
         }
@@ -1359,7 +1352,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Pat> for rustc_middle::thir::Pat<'tcx> {
                         kind,
                         span.sinto(s)
                     );
-                    panic!()
+                    fatal!(s, "PatLeafNonAdtTy")
                 }
             },
             _ => kind.sinto(s),
@@ -1459,8 +1452,12 @@ pub struct TypeAndMut {
 
 pub type Binder<T> = Option<T>;
 
-impl<'s, S, U, T: SInto<S, U> + rustc_middle::ty::visit::TypeVisitable<'s>> SInto<S, Binder<U>>
-    for rustc_middle::ty::Binder<'s, T>
+impl<
+        's,
+        S,
+        U,
+        T: SInto<S, U> + rustc_middle::ty::visit::TypeVisitable<rustc_middle::ty::TyCtxt<'s>>,
+    > SInto<S, Binder<U>> for rustc_middle::ty::Binder<'s, T>
 {
     fn sinto(&self, s: &S) -> Binder<U> {
         self.clone().no_bound_vars().map(|x| x.sinto(s))
@@ -1548,7 +1545,11 @@ fn scalar_int_to_literal<'tcx, S: BaseState<'tcx>>(
         ty::Uint(kind) => {
             LitKind::Int(x.assert_bits(x.size()), LitIntType::Unsigned(kind.sinto(s)))
         }
-        _ => panic!("scalar_int_to_literal: the type {:?} is not a literal", ty),
+        _ => fatal!(
+            s,
+            "scalar_int_to_literal: the type {:?} is not a literal",
+            ty
+        ),
     }
 }
 fn const_to_expr<'tcx, S: BaseState<'tcx>>(
@@ -1560,20 +1561,22 @@ fn const_to_expr<'tcx, S: BaseState<'tcx>>(
     use rustc_middle::ty;
     let kind = match c.kind() {
         ty::ConstKind::Param(p) => ExprKind::ConstRef { id: p.sinto(s) },
-        ty::ConstKind::Infer(..) => panic!("ty::ConstKind::Infer node? {:#?}", c),
-        ty::ConstKind::Unevaluated(..) => panic!("ty::ConstKind::Unevaluated node? {:#?}", c),
+        ty::ConstKind::Infer(..) => span_fatal!(s, span, "ty::ConstKind::Infer node? {:#?}", c),
+        ty::ConstKind::Unevaluated(..) => {
+            span_fatal!(s, span, "ty::ConstKind::Unevaluated node? {:#?}", c)
+        }
         ty::ConstKind::Value(valtree) => return valtree_to_expr(s, valtree, ty, span),
-        ty::ConstKind::Error(valtree) => panic!(),
+        ty::ConstKind::Error(valtree) => span_fatal!(s, span, "ty::ConstKind::Error"),
         ty::ConstKind::Expr(e) => {
             use rustc_middle::ty::Expr as CE;
-            panic!("ty::ConstKind::Expr {:#?}", e)
+            span_fatal!(s, span, "ty::ConstKind::Expr {:#?}", e)
         }
-        _ => panic!(),
+        _ => span_fatal!(s, span, "const_to_expr, unexpected case"),
     };
     Decorated {
         ty: ty.sinto(s),
         span: span.sinto(s),
-        contents: box kind,
+        contents: Box::new(kind),
         hir_id: None,
         attributes: vec![],
     }
@@ -1589,6 +1592,16 @@ fn valtree_to_expr<'tcx, S: BaseState<'tcx>>(
         (_, ty::Ref(_, inner_ty, _)) => ExprKind::Borrow {
             borrow_kind: BorrowKind::Shared,
             arg: valtree_to_expr(s, valtree, *inner_ty, span),
+        },
+        (ty::ValTree::Branch(valtrees), ty::Str) => ExprKind::Literal {
+            lit: Spanned {
+                node: LitKind::ByteStr(valtrees.into_iter().map(|x| match x {
+                    ty::ValTree::Leaf(leaf) => leaf.try_to_u8().unwrap_or_else(|e| span_fatal!(s, span, "Expected a u8 leaf while translating a str literal, got something else. Error: {:#?}", e)),
+                    _ => span_fatal!(s, span, "Expected a flat list of leaves while translating a str literal, got a arbitrary valtree.")
+                }).collect(), StrStyle::Cooked),
+                span: rustc_span::DUMMY_SP.sinto(s),
+            },
+            neg: false,
         },
         (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
             let contents: rustc_middle::ty::DestructuredConst = s
@@ -1631,20 +1644,35 @@ fn valtree_to_expr<'tcx, S: BaseState<'tcx>>(
         (ty::ValTree::Leaf(x), _) => ExprKind::Literal {
             lit: Spanned {
                 node: scalar_int_to_literal(s, x, ty),
-                span: rustc_span::DUMMY_SP.sinto(s),
+                span: span.sinto(s),
             },
             neg: false,
         },
-        _ => panic!("valtree_to_expr: cannot hanlde {:#?}", valtree),
+        _ => span_fatal!(
+            s,
+            span,
+            "valtree_to_expr: cannot handle valtree{:#?} ty={:#?}",
+            valtree,
+            ty
+        ),
     };
 
     Decorated {
         ty: ty.sinto(s),
         span: span.sinto(s),
-        contents: box kind,
+        contents: Box::new(kind),
         hir_id: None,
         attributes: vec![],
     }
+}
+
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_type_ir::sty::AliasKind, state: S as state)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub enum AliasKind {
+    Projection,
+    Inherent,
+    Opaque,
 }
 
 #[derive(AdtInto)]
@@ -1670,7 +1698,7 @@ pub enum Ty {
         rustc_middle::ty::TyKind::FnPtr(sig) => arrow_of_sig(sig, state),
         x @ rustc_middle::ty::TyKind::FnDef(def, substs) => {
             let tcx = state.tcx();
-            arrow_of_sig(&tcx.bound_fn_sig(*def).subst(tcx, substs), state)
+            arrow_of_sig(&tcx.fn_sig(*def).subst(tcx, substs), state)
         },
         FROM_TYPE::Closure (defid, substs) => {
             let sig = substs.as_closure().sig();
@@ -1805,21 +1833,7 @@ pub enum Ty {
     /// A tuple type. For example, `(i32, bool)`.
     Tuple(Vec<Ty>),
 
-    /// The projection of an associated type. For example,
-    /// `<T as Trait<..>>::N`.
-    Projection(ProjectionTy),
-
-    /// Opaque (`impl Trait`) type found in a return type.
-    ///
-    /// The `DefId` comes either from
-    /// * the `impl Trait` ast::Ty node,
-    /// * or the `type Foo = impl Trait` declaration
-    ///
-    /// For RPIT the substitutions are for the generics of the function,
-    /// while for TAIT it is used for the generic parameters of the alias.
-    ///
-    /// During codegen, `tcx.type_of(def_id)` can be used to get the underlying type.
-    Opaque(DefId, Vec<GenericArg>),
+    Alias(AliasKind, AliasTy),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}`.
     Param(ParamTy),
@@ -1957,7 +1971,15 @@ fn get_variant_information<'s, S: BaseState<'s>>(
         type_namespace: DefId {
             path: match constructs_type.path.as_slice() {
                 [init @ .., _] => init.to_vec(),
-                _ => panic!("Type {:#?} appears to have no path", constructs_type),
+                _ => {
+                    let span = s.tcx().def_span(variant);
+                    span_fatal!(
+                        s,
+                        span,
+                        "Type {:#?} appears to have no path",
+                        constructs_type
+                    )
+                }
             },
             ..constructs_type.clone()
         },
@@ -1975,7 +1997,7 @@ pub struct AdtExpr {
 #[derive(AdtInto)]
 #[args(<'tcx, S: ExprState<'tcx>>, from: rustc_middle::thir::PatKind<'tcx>, state: S as gstate)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[append(rustc_middle::thir::PatKind::Leaf {..} => panic!("PatKind::Leaf: should never come up"),)]
+#[append(rustc_middle::thir::PatKind::Leaf {..} => fatal!(gstate, "PatKind::Leaf: should never come up"),)]
 pub enum PatKind {
     /// A wildcard pattern: `_`.
     Wild,
@@ -2019,7 +2041,7 @@ pub enum PatKind {
                 subpatterns: subpatterns
                     .iter()
                     .map(|f| FieldPat {
-                        field: variant.fields[f.field.index()].did.sinto(gstate),
+                        field: variant.fields[f.field].did.sinto(gstate),
                         pattern: f.pattern.sinto(gstate),
                     })
                     .collect(),
@@ -2147,7 +2169,8 @@ pub enum StrStyle {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum LitKind {
     Str(Symbol, StrStyle),
-    ByteStr(Vec<u8>),
+    ByteStr(Vec<u8>, StrStyle),
+    CStr(Vec<u8>, StrStyle),
     Byte(u8),
     Char(char),
     Int(u128, LitIntType),
@@ -2253,7 +2276,7 @@ pub fn inspect_local_def_id<'tcx, S: BaseState<'tcx>>(
 
     let (thir, expr) = thirs
         .get(&did)
-        .unwrap_or_else(|| panic!("Could not load body for id {did:?}"));
+        .unwrap_or_else(|| span_fatal!(s, tcx.def_span(did), "Could not load body for id {did:?}"));
 
     let s = State {
         tcx: s.tcx(),
@@ -2279,10 +2302,10 @@ pub fn inspect_local_def_id<'tcx, S: BaseState<'tcx>>(
     //     gstate.thir().exprs[*value].clone().unroll_scope(gstate).sinto(gstate).kind
     // },
     rustc_middle::thir::ExprKind::Scope {..} => {
-        panic!("Scope should have been eliminated at this point");
+        fatal!(gstate, "Scope should have been eliminated at this point");
     },
     rustc_middle::thir::ExprKind::Field {..} => {
-        panic!("Field should have been eliminated at this point");
+        fatal!(gstate, "Field should have been eliminated at this point");
     },
 )]
 pub enum ExprKind {
@@ -2320,7 +2343,7 @@ pub enum ExprKind {
                             "CallNotTyFnDef":
                             e, ty_kind
                         );
-                        panic!();
+                        fatal!(gstate, "CallNotTyFnDef")
                     }
                 }
             },
@@ -2329,7 +2352,7 @@ pub enum ExprKind {
                     "CallNotZstLiteral":
                     e, kind
                 );
-                panic!();
+                fatal!(gstate, "CallNotZstLiteral")
             }
         };
         let tcx = gstate.tcx();
@@ -2360,9 +2383,9 @@ pub enum ExprKind {
             from_hir_call: from_hir_call.sinto(gstate),
             fn_span: fn_span.sinto(gstate),
             fun: Expr {
-                contents: box ExprKind::GlobalName {
+                contents: Box::new(ExprKind::GlobalName {
                     id: def.sinto(gstate)
-                },
+                }),
                 span: e.span.sinto(gstate),
                 ty: e.ty.sinto(gstate),
                 hir_id: None, /* Todo: this is incorrect */
@@ -2484,17 +2507,6 @@ pub enum ExprKind {
         lhs: Expr,
     },
 
-    // use {
-    //         rustc_middle::thir::ExprKind::Field {lhs, variant_index, name} => {
-    //             let lhs = lhs.sinto(gstate);
-    //             let variant_index = variant_index.sinto(gstate);
-    //             let name = name.sinto(gstate);
-    //             if variant_index > 0 {
-    //                 panic!("FIELD: {}, {:#?}", name, lhs.span);
-    //             }
-    //             ExprKind::Field {lhs, variant_index, name}
-    //         }
-    //     },
     /// A *non-overloaded* indexing operation.
     Index {
         lhs: Expr,
@@ -2531,7 +2543,7 @@ pub enum ExprKind {
     },
     /// A `&raw [const|mut] $place_expr` raw borrow resulting in type `*[const|mut] T`.
     AddressOf {
-        #[map(panic!("AddressOf"))]
+        #[map(fatal!(gstate, "AddressOf"))]
         mutability: Mutability,
         arg: Expr,
     },
@@ -2670,6 +2682,15 @@ impl<'tcx> ExprKindExt<'tcx> for rustc_middle::thir::Expr<'tcx> {
                 lint_level,
                 value,
             } => s.thir().exprs[value].unroll_scope(s),
+            _ => self.clone(),
+        }
+    }
+}
+
+impl Expr {
+    fn unwrap_borrow(&self) -> Self {
+        match &self.contents {
+            box ExprKind::Borrow { arg, .. } => arg.clone(),
             _ => self.clone(),
         }
     }

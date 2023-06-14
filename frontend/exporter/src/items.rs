@@ -89,7 +89,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, Body> for rustc_hir::BodyId
 
 impl<'x, 'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, Ty> for rustc_hir::Ty<'x> {
     fn sinto(self: &rustc_hir::Ty<'x>, s: &S) -> Ty {
-        let ctx = rustc_hir_analysis::collect::ItemCtxt::new(s.tcx(), s.owner_id().to_def_id());
+        let ctx = rustc_hir_analysis::collect::ItemCtxt::new(s.tcx(), s.owner_id().def_id);
         ctx.to_ty(self).sinto(s)
     }
 }
@@ -275,6 +275,19 @@ pub enum AssocItemKind {
     Const,
     Fn { has_self: bool },
     Type,
+}
+
+impl<
+        'tcx,
+        S,
+        D: Clone,
+        T: SInto<S, D> + rustc_middle::ty::TypeFoldable<rustc_middle::ty::TyCtxt<'tcx>>,
+    > SInto<S, D> for rustc_middle::ty::subst::EarlyBinder<T>
+{
+    fn sinto(&self, s: &S) -> D {
+        use rustc_middle::ty::TypeFoldable;
+        self.clone().subst_identity().sinto(s)
+    }
 }
 
 #[derive(AdtInto)]
@@ -815,7 +828,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, GenericBounds>
 pub enum OpaqueTyOrigin {
     FnReturn(GlobalIdent),
     AsyncFn(GlobalIdent),
-    TyAlias,
+    TyAlias { in_assoc_ty: bool },
 }
 
 #[derive(AdtInto)]

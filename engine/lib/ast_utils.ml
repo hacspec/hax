@@ -343,6 +343,19 @@ module Make (F : Features.T) = struct
       typ;
     }
 
+  let ty_equality (a : ty) (b : ty) : bool =
+    let replace_spans =
+      object
+        inherit [_] item_map
+        method visit_t () x = x
+        method visit_mutability _ () m = m
+        method! visit_span s = function _ -> Dummy { id = 0 }
+      end
+    in
+    let a = replace_spans#visit_ty () a in
+    let b = replace_spans#visit_ty () b in
+    [%eq: ty] a b
+
   let let_of_binding ((var, rhs) : local_ident * expr) (body : expr) : expr =
     make_let (make_var_pat var rhs.typ rhs.span) rhs body
 
