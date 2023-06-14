@@ -37,6 +37,8 @@ include
       include Features.On.Monadic_binding
       include Features.Off.Early_exit
       include Features.Off.Loop
+
+      include Features.On.State_passing_loop
     end)
     (struct
       let backend = Diagnostics.Backend.SSProve
@@ -56,7 +58,7 @@ module RejectNotSSProve (FA : Features.T) = struct
 
         let loop = reject
         let for_loop = Fn.const Features.On.for_loop
-        let state_passing_loop = reject
+        let state_passing_loop = Fn.const Features.On.state_passing_loop (* reject *)
         let continue = reject
         let mutable_variable = Fn.const Features.On.mutable_variable
         let mutable_reference = reject
@@ -94,12 +96,12 @@ module SSProveLibrary : Library = struct
 
     let let_stmt (var : string) (expr : string) (typ : string) (body : string)
         (depth : int) : string =
-      "letb" ^ " " ^ var ^ " " ^ ":=" ^ " (" ^ expr ^ ") " ^ ":" ^ " " ^ "both0" ^ " "
+      "letb" ^ " " ^ var ^ " " ^ ":=" ^ " (" ^ expr ^ ") " ^ ":" ^ " " ^ "both _ _" ^ " "
       ^ "(" ^ typ ^ ")" ^ " " ^ "in" ^ newline_indent depth ^ body
 
     let let_mut_stmt (var : string) (expr : string) (typ : string) (body : string)
         (depth : int) : string =
-      "letbm" ^ " " ^ var ^ " " ^ "loc(" ^ var ^ "_loc" ^ ")" ^ " " ^ ":=" ^ " (" ^ expr ^ ") " ^ ":" ^ " " ^ "both0" ^ " "
+      "letbm" ^ " " ^ var ^ " " ^ "loc(" ^ var ^ "_loc" ^ ")" ^ " " ^ ":=" ^ " (" ^ expr ^ ") " ^ ":" ^ " " ^ "both _ _" ^ " "
       ^ "(" ^ typ ^ ")" ^ " " ^ "in" ^ newline_indent depth ^ body
 
     let tuple_prefix : string = "prod_b0"
@@ -162,6 +164,7 @@ module TransformToInputLanguage (* : PHASE *) =
     |> Phases.Reconstruct_question_marks
     |> Side_effect_utils.Hoist
     (* |> Phases.Local_mutation *)
+    |> Phases.State_passing_loop
     |> Phases.Reject.Continue
     |> Phases.Cf_into_monads
     |> Phases.Reject.EarlyExit
@@ -416,17 +419,16 @@ struct
             Option.value_map else_ ~default:(SSP.AST.Literal "()") ~f:pexpr )
     | Array l -> SSP.AST.Array (List.map ~f:pexpr l)
     | Let { lhs; rhs; body; monadic } ->
-      __TODO_term__ span "let"
-        (* SSP.AST.Let *)
-        (*   { *)
-        (*     pattern = ppat lhs; *)
-        (*     mut = (match lhs.p with *)
-        (*         | PBinding { mut = Mutable _ } -> true *)
-        (*         | _ -> false); *)
-        (*     value = pexpr rhs; *)
-        (*     body = __TODO_term__ span "body" (\* pexpr body *\); *)
-        (*     value_typ = __TODO_ty__ (\* pty *\) lhs.span "lhs typ" (\* lhs.typ *\); *)
-        (*   } *)
+      SSP.AST.Let
+        {
+          pattern = ppat lhs;
+          mut = (match lhs.p with
+              | PBinding { mut = Mutable _ } -> true
+              | _ -> false);
+          value = pexpr rhs;
+          body = pexpr body ;
+          value_typ = pty lhs.span lhs.typ ;
+        }
     | EffectAction _ -> __TODO_term__ span "monadic action"
     | Match { scrutinee; arms } ->
         SSP.AST.Match
@@ -456,13 +458,13 @@ struct
              kind = UnsupportedMacro { id = [%show: global_ident] macro };
              span = e.span;
            }
-    | Assign {e; } -> __TODO_term__ span "assign?"
-    | QuestionMark {e; } -> __TODO_term__ span "question_mark?"
+    | Assign {e; } -> SSP.AST.Const (SSP.AST.Const_string (" todo(term)")) (* __TODO_term__ span "assign?" *)
+    | QuestionMark {e; } -> SSP.AST.Const (SSP.AST.Const_string (" todo(term)")) (* __TODO_term__ span "question_mark?" *)
     | _ -> .
 
   let temp (i : LocalIdent.T.id) : string =
     LocalIdent.show_id i
-  
+
   let rec pitem (e : AST.item) : SSP.AST.decl list =
     let span = e.span in
     match e.v with
@@ -472,34 +474,33 @@ struct
         in
         let mvars : (local_ident * AST.ty * int) list =
           match Map.find ctx.mut_vars name with
-          | Some l -> [] (* List.map ~f:(fun ((x, x_ty), x_n) -> (x, x_ty, x_n)) l *)
+          | Some l -> List.map ~f:(fun ((x, x_ty), x_n) -> (x, x_ty, x_n)) l
           | None -> []
         in
-        (* List.fold_left ~init:[] ~f:(fun y (x, x_ty, x_n) -> SSP.AST.Definition *)
-        (*                                          (x.name ^ "_loc", *)
-        (*                                           [], *)
-        (*                                           SSP.AST.Const *)
-        (*                                             (SSP.AST.Const_string ("(" ^ (snd (SSP.ty_to_string (pty (Dummy { id = FreshSpanId.make () }) x_ty))) ^ " ; " ^ (Int.to_string x_n) ^ "%nat)")), *)
-        (*                                           SSP.AST.Name "Location" *)
-        (*                                          ) :: y) mvars *)
-        (* @ *)
-        (* [ *)
-        (*   SSP.AST.ProgramDefinition *)
-        (*     ( pglobal_ident name, *)
-        (*       List.map *)
-        (*         ~f:(fun { pat; typ; typ_span } -> *)
-        (*           (ppat pat, SSP.AST.AppTy ("both0", [ pty span typ ]))) *)
-        (*         params, *)
-        (*       pexpr body, *)
-        (*       SSP.AST.AppTy *)
-        (*         ( "both" ^ " " ^ "(fset [" *)
-        (*           ^ List.fold ~f:(^) ~init:"" (List.intersperse ~sep:"; " (List.map ~f:(fun (x, x_ty, _) -> x.name ^ "_loc") mvars)) *)
-        (*           ^ "])" ^ " " ^ "(fset [" *)
-        (*           ^ List.fold ~f:(^) ~init:"" (List.intersperse ~sep:"; " (List.map ~f:pglobal_ident ndep)) *)
-        (*           ^ "])", *)
-        (*           [ pty span body.typ ] ) ); *)
-        (* ] *)
-        []
+        List.fold_left ~init:[] ~f:(fun y (x, x_ty, x_n) -> SSP.AST.Definition
+                                                 (x.name ^ "_loc",
+                                                  [],
+                                                  SSP.AST.Const
+                                                    (SSP.AST.Const_string ("(" ^ (snd (SSP.ty_to_string (pty (Dummy { id = FreshSpanId.make () }) x_ty))) ^ " ; " ^ (Int.to_string x_n) ^ "%nat)")),
+                                                  SSP.AST.Name "Location"
+                                                 ) :: y) mvars
+        @
+        [
+          SSP.AST.ProgramDefinition
+            ( pglobal_ident name,
+              List.map
+                ~f:(fun { pat; typ; typ_span } ->
+                  (ppat pat, SSP.AST.AppTy ("both0", [ pty span typ ])))
+                params,
+              pexpr body,
+              SSP.AST.AppTy
+                ( "both" ^ " " ^ "(fset ["
+                  ^ List.fold ~f:(^) ~init:"" (List.intersperse ~sep:"; " (List.map ~f:(fun (x, x_ty, _) -> x.name ^ "_loc") mvars))
+                  ^ "])" ^ " " ^ "(fset ["
+                  ^ List.fold ~f:(^) ~init:"" (List.intersperse ~sep:"; " (List.map ~f:pglobal_ident ndep))
+                  ^ "])",
+                  [ pty span body.typ ] ) );
+        ]
     | TyAlias { name; generics; ty } ->
         [ SSP.AST.Notation (pglobal_ident name ^ "_t", pty span ty) ]
     (* record *)
