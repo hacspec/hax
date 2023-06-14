@@ -616,7 +616,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, AdtExpr> for rustc_middle::thir::AdtExpr
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash)]
 pub struct Loc {
     line: usize,
     col: usize,
@@ -690,7 +690,7 @@ pub struct ExpnData {
     pub collapse_debuginfo: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash)]
 pub struct Span {
     lo: Loc,
     hi: Loc,
@@ -711,7 +711,7 @@ impl std::convert::From<std::io::Error> for ReadSpanErr {
     }
 }
 
-fn read_span_from_file(span: Span) -> Result<String, ReadSpanErr> {
+fn read_span_from_file(span: &Span) -> Result<String, ReadSpanErr> {
     use ReadSpanErr::*;
     let realpath = (match span.filename.clone() {
         FileName::Real(RealFileName::LocalPath(path)) => Ok(path),
@@ -728,7 +728,7 @@ fn read_span_from_file(span: Span) -> Result<String, ReadSpanErr> {
         .collect::<Result<Vec<_>, _>>()?;
 
     match lines.as_slice() {
-        [] => Err(NotEnoughLines { span }),
+        [] => Err(NotEnoughLines { span: span.clone() }),
         [line] => Ok(line
             .chars()
             .enumerate()
@@ -756,24 +756,26 @@ impl Into<Loc> for rustc_span::Loc {
     }
 }
 
+pub fn translate_span(span: rustc_span::Span, sess: &rustc_session::Session) -> Span {
+    let smap: &rustc_span::source_map::SourceMap = sess.parse_sess.source_map();
+    let span_data = span.data();
+    let filename = smap.span_to_filename(span);
+
+    let lo = smap.lookup_char_pos(span.lo());
+    let hi = smap.lookup_char_pos(span.hi());
+
+    Span {
+        lo: lo.into(),
+        hi: hi.into(),
+        filename: filename.sinto(&()),
+    }
+}
+
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Span> for rustc_span::Span {
     fn sinto(&self, s: &S) -> Span {
         let set: crate::state::types::ExportedSpans = s.exported_spans();
         set.borrow_mut().insert(self.clone());
-        let smap: &rustc_span::source_map::SourceMap = s.tcx().sess.parse_sess.source_map();
-        let span = self.clone();
-        let span_data = span.data();
-        let filename = smap.span_to_filename(span);
-
-        let lo = smap.lookup_char_pos(span.lo());
-        let hi = smap.lookup_char_pos(span.hi());
-
-        Span {
-            lo: lo.into(),
-            hi: hi.into(),
-            filename: filename.sinto(s),
-            // expn_backtrace: span.macro_backtrace().map(|o| o.sinto(s)).collect(),
-        }
+        translate_span(self.clone(), s.tcx().sess)
     }
 }
 
@@ -823,8 +825,8 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, String> for PathBuf {
     }
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_span::RealFileName, state: S as gstate)]
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash)]
+#[args(<S>, from: rustc_span::RealFileName, state: S as gstate)]
 pub enum RealFileName {
     LocalPath(#[map(x.to_str().unwrap().into())] String),
     #[map(RealFileName::Remapped {
@@ -844,8 +846,8 @@ impl<S> SInto<S, u64> for rustc_data_structures::stable_hasher::Hash64 {
 }
 
 #[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_span::FileName, state: S as gstate)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[args(<S>, from: rustc_span::FileName, state: S as gstate)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash)]
 pub enum FileName {
     Real(RealFileName),
     QuoteExpansion(u64),
@@ -1137,7 +1139,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Stmt> for rustc_middle::thir::StmtId {
     }
 }
 
-fn argument_span_of_mac_call(mac_call: &rustc_ast::ast::MacCall) -> rustc_span::Span {
+pub fn argument_span_of_mac_call(mac_call: &rustc_ast::ast::MacCall) -> rustc_span::Span {
     (*mac_call.args).dspan.entire()
 }
 
@@ -1146,14 +1148,16 @@ pub fn raw_macro_invocation_of_span<'t, S: BaseState<'t>>(
     state: &S,
 ) -> Option<(DefId, rustc_span::hygiene::ExpnData)> {
     let box opts: Box<hax_frontend_exporter_options::Options> = state.options();
-    let box macro_calls: Box<HashMap<rustc_span::Span, rustc_ast::ast::MacCall>> =
-        state.macro_infos();
+    let box macro_calls: crate::state::types::MacroCalls = state.macro_infos();
+
+    let sess = state.tcx().sess;
 
     span.macro_backtrace().find_map(|expn_data| {
         let expn_data_ret = expn_data.clone();
+        let call_site = translate_span(expn_data.call_site, sess);
         match (expn_data.kind, expn_data.macro_def_id) {
             (rustc_span::hygiene::ExpnKind::Macro(_, _), Some(mac_def_id))
-                if macro_calls.contains_key(&expn_data.call_site) =>
+                if macro_calls.keys().any(|span| span.clone() == call_site) =>
             {
                 let macro_ident = mac_def_id.sinto(state);
                 let path = Path::from(macro_ident.clone());
@@ -1178,12 +1182,12 @@ pub fn macro_invocation_of_raw_mac_invocation<'t, S: BaseState<'t>>(
     state: &S,
 ) -> MacroInvokation {
     let macro_infos = state.macro_infos();
-    let mac_call = macro_infos
-        .get(&expn_data.call_site)
+    let mac_call_span = macro_infos
+        .get(&translate_span(expn_data.call_site, state.tcx().sess))
         .unwrap_or_else(|| panic!("{:#?}", expn_data.call_site));
     MacroInvokation {
         macro_ident: macro_ident.clone(),
-        argument: read_span_from_file(argument_span_of_mac_call(mac_call).sinto(state)).unwrap(),
+        argument: read_span_from_file(mac_call_span).unwrap(),
         span: expn_data.call_site.sinto(state),
     }
 }
