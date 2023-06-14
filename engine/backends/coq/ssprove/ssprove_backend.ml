@@ -6,7 +6,37 @@ open Coq_ast
 include
   Backend.Make
     (struct
+      (* Extra features from Features.Rust: *)
+
+      (* Features.On.slice, *)
+      (* Features.On.macro, *)
+      (* Features.On.as_pattern, *)
+      (* Features.On.construct_base, *)
+
+      (* Features.Off.Monadic_action *)
+      (* Features.Off.State_passing_loop *)
+
       include Features.Rust
+
+      include Features.Off.Raw_pointer
+      (* include Features.Off.Mutable_pointer *)
+      include Features.Off.Arbitrary_lhs
+      include Features.On.For_loop
+      include Features.On.Mutable_variable
+      include Features.Off.Mutable_reference
+      (* include Features.Off.Continue *)
+      (* include Features.Off.Question_mark *)
+      include Features.Off.Mutable_pointer
+      include Features.Off.Lifetime
+      include Features.Off.Reference
+      include Features.Off.Nontrivial_lhs
+      include Features.On.Question_mark
+      include Features.Off.Continue
+      (* include Features.Off.Early_exit *)
+      (* TODO: when break is introduced: include Features.Off.Break *)
+      include Features.On.Monadic_binding
+      include Features.Off.Early_exit
+      include Features.Off.Loop
     end)
     (struct
       let backend = Diagnostics.Backend.SSProve
@@ -25,28 +55,26 @@ module RejectNotSSProve (FA : Features.T) = struct
         include Feature_gate.DefaultSubtype
 
         let loop = reject
-        let for_loop = reject
+        let for_loop = Fn.const Features.On.for_loop
         let state_passing_loop = reject
         let continue = reject
-        let mutable_variable = reject
+        let mutable_variable = Fn.const Features.On.mutable_variable
         let mutable_reference = reject
         let mutable_pointer = reject
         let reference = reject
-        let slice = reject
+        let slice = Fn.const Features.On.slice (* On in Features.Rust *)
         let raw_pointer = reject
         let early_exit = reject
-        let question_mark = reject
-        let macro = reject
-        let as_pattern = reject
+        let question_mark = Fn.const Features.On.question_mark
+        let macro = Fn.const Features.On.macro (* On in Features.Rust *)
+        let as_pattern = Fn.const Features.On.as_pattern
         let nontrivial_lhs = reject
         let arbitrary_lhs = reject
         let lifetime = reject
-        let construct_base = reject
+        let construct_base = Fn.const Features.On.construct_base
         let monadic_action = reject
-        let monadic_binding = reject
+        let monadic_binding _ = Features.On.monadic_binding
 
-        (* let mutable_pointer = reject *)
-        (* let raw_pointer = reject *)
         let metadata =
           Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
       end)
@@ -82,15 +110,9 @@ module SSP = Coq (SSProveLibrary)
 open Analysis_utils
 open Analyses
 
-module FuncDep (* : ANALYSIS *) =
-[%functor_application
-Analyses.Function_dependency Features.Rust]
-(* InputLanguage *)
+module FuncDep (* : ANALYSIS *) = [%functor_application Analyses.Function_dependency InputLanguage]
 
-module MutableVar (* : ANALYSIS *) =
-[%functor_application
-Analyses.Mutable_variables Features.Rust]
-(* InputLanguage *)
+module MutableVar (* : ANALYSIS *) = [%functor_application Analyses.Mutable_variables InputLanguage]
 
 module Context = struct
   type t = {
@@ -130,24 +152,25 @@ let primitive_to_string (id : primitive_ident) : string =
 module TransformToInputLanguage (* : PHASE *) =
   CatchErrors
     ([%functor_application
-    (* Phases.Reject.RawOrMutPointer(Features.Rust) *)
-    (* |> Phases.Reject.Arbitrary_lhs *)
-    (* |> Phases.Reconstruct_for_loops *)
-    (* |> Phases.Direct_and_mut *)
-    (* |> Phases.Reject.Continue *)
-    (* |> Phases.Drop_references *)
-    (* |> Phases.Trivialize_assign_lhs *)
-    (* |> Phases.Reconstruct_question_marks *)
-    (* |> Side_effect_utils.Hoist *)
+    Phases.Reject.RawOrMutPointer(Features.Rust)
+    |> Phases.Reject.Arbitrary_lhs
+    |> Phases.Reconstruct_for_loops
+    |> Phases.Direct_and_mut
+    |> Phases.Reject.Continue
+    |> Phases.Drop_references
+    |> Phases.Trivialize_assign_lhs
+    |> Phases.Reconstruct_question_marks
+    |> Side_effect_utils.Hoist
     (* |> Phases.Local_mutation *)
-    (* |> Phases.Reject.Continue *)
-    (* |> Phases.Cf_into_monads *)
-    (* |> Phases.Reject.EarlyExit *)
-    (* |> Phases.Functionalize_loops *)
-    (* |>  *) RejectNotSSProve(Features.Rust)
-    (* |> Identity *)
+    |> Phases.Reject.Continue
+    |> Phases.Cf_into_monads
+    |> Phases.Reject.EarlyExit
+    |> Phases.Functionalize_loops
+    |> RejectNotSSProve
+    |> Identity
     ]
     [@ocamlformat "disable"])
+
 
 module Make (Ctx : sig
   val ctx : Context.t
@@ -259,10 +282,6 @@ struct
     | TProjectedAssociatedType s ->
         SSP.AST.Wild
         (* __TODO_ty__ span ("proj:assoc:type" ^ s) *)
-    (* failwith "proj:assoc:type" *)
-    (* DUMMY WHILE FINDING FEATURE SET *)
-    | TRawPointer _ -> __TODO_ty__ span "raw_pointer"
-    | TRef _ -> __TODO_ty__ span "ref"
     | _ -> .
 
   and args_ty span (args : generic_value list) : SSP.AST.ty list =
@@ -397,16 +416,17 @@ struct
             Option.value_map else_ ~default:(SSP.AST.Literal "()") ~f:pexpr )
     | Array l -> SSP.AST.Array (List.map ~f:pexpr l)
     | Let { lhs; rhs; body; monadic } ->
-        SSP.AST.Let
-          {
-            pattern = ppat lhs;
-            mut = (match lhs.p with
-                | PBinding { mut = Mutable _ } -> true
-                | _ -> false);
-            value = pexpr rhs;
-            body = pexpr body;
-            value_typ = pty span lhs.typ;
-          }
+      __TODO_term__ span "let"
+        (* SSP.AST.Let *)
+        (*   { *)
+        (*     pattern = ppat lhs; *)
+        (*     mut = (match lhs.p with *)
+        (*         | PBinding { mut = Mutable _ } -> true *)
+        (*         | _ -> false); *)
+        (*     value = pexpr rhs; *)
+        (*     body = __TODO_term__ span "body" (\* pexpr body *\); *)
+        (*     value_typ = __TODO_ty__ (\* pty *\) lhs.span "lhs typ" (\* lhs.typ *\); *)
+        (*   } *)
     | EffectAction _ -> __TODO_term__ span "monadic action"
     | Match { scrutinee; arms } ->
         SSP.AST.Match
@@ -436,14 +456,8 @@ struct
              kind = UnsupportedMacro { id = [%show: global_ident] macro };
              span = e.span;
            }
-    (* TODO FEATURE SET *)
     | Assign {e; } -> __TODO_term__ span "assign?"
-    | Loop {body; } -> __TODO_term__ span "loop?"
-    | Break {e; } -> __TODO_term__ span "break?"
-    | Return {e; } -> __TODO_term__ span "return?"
-    | Continue {witness; } -> __TODO_term__ span "continue?"
-    | Borrow {e; } -> __TODO_term__ span "borrow?"
-    | AddressOf {e; } -> __TODO_term__ span "addressof?"
+    | QuestionMark {e; } -> __TODO_term__ span "question_mark?"
     | _ -> .
 
   let temp (i : LocalIdent.T.id) : string =
@@ -457,54 +471,35 @@ struct
           (* match Map.find (fst ctx.func_dep) name with Some l -> l | None -> [] *) (* Not relevant yet *)
         in
         let mvars : (local_ident * AST.ty * int) list =
-          []
-          (* match Map.find ctx.mut_vars name with *)
-          (* | Some l -> *)
-          (*   List.filter_map ~f:(fun ((x, x_ty), x_n) -> *)
-          (*       let x_expr : Rust.expr = { e = Rust.LocalVar x; span = Dummy { id = FreshSpanId.make () }; typ = x_ty } in *)
-          (*       let x_item : Rust.item = *)
-          (*         { *)
-          (*           v = (Rust.Fn { *)
-          (*               name = `Concrete { crate = "temp"; path = ["temp"] }; *)
-          (*               generics = { params = []; constraints = []; }; *)
-          (*               body = x_expr; *)
-          (*               params = []; *)
-          (*             }); *)
-          (*           span = Dummy { id = FreshSpanId.make () }; *)
-          (*           parent_namespace = ctx.current_namespace; *)
-          (*         } *)
-          (*       in *)
-          (*       match TransformToInputLanguage.ditem x_item with *)
-          (*       | [{v = Fn {body = { e = LocalVar y; typ };}}] -> *)
-          (*         Some (y, typ, x_n) *)
-          (*       | _ -> None *)
-          (*     ) l *)
-          (* | None -> [] *)
+          match Map.find ctx.mut_vars name with
+          | Some l -> [] (* List.map ~f:(fun ((x, x_ty), x_n) -> (x, x_ty, x_n)) l *)
+          | None -> []
         in
-        List.fold_left ~init:[] ~f:(fun y (x, x_ty, x_n) -> SSP.AST.Definition
-                                                 (x.name ^ "_loc",
-                                                  [],
-                                                  SSP.AST.Const
-                                                    (SSP.AST.Const_string ("(" ^ (snd (SSP.ty_to_string (pty (Dummy { id = FreshSpanId.make () }) x_ty))) ^ " ; " ^ (Int.to_string x_n) ^ "%nat)")),
-                                                  SSP.AST.Name "Location"
-                                                 ) :: y) mvars
-        @
-        [
-          SSP.AST.ProgramDefinition
-            ( pglobal_ident name,
-              List.map
-                ~f:(fun { pat; typ; typ_span } ->
-                  (ppat pat, SSP.AST.AppTy ("both0", [ pty span typ ])))
-                params,
-              pexpr body,
-              SSP.AST.AppTy
-                ( "both" ^ " " ^ "(fset ["
-                  ^ List.fold ~f:(^) ~init:"" (List.intersperse ~sep:"; " (List.map ~f:(fun (x, x_ty, _) -> x.name ^ "_loc") mvars))
-                  ^ "])" ^ " " ^ "(fset ["
-                  ^ List.fold ~f:(^) ~init:"" (List.intersperse ~sep:"; " (List.map ~f:pglobal_ident ndep))
-                  ^ "])",
-                  [ pty span body.typ ] ) );
-        ]
+        (* List.fold_left ~init:[] ~f:(fun y (x, x_ty, x_n) -> SSP.AST.Definition *)
+        (*                                          (x.name ^ "_loc", *)
+        (*                                           [], *)
+        (*                                           SSP.AST.Const *)
+        (*                                             (SSP.AST.Const_string ("(" ^ (snd (SSP.ty_to_string (pty (Dummy { id = FreshSpanId.make () }) x_ty))) ^ " ; " ^ (Int.to_string x_n) ^ "%nat)")), *)
+        (*                                           SSP.AST.Name "Location" *)
+        (*                                          ) :: y) mvars *)
+        (* @ *)
+        (* [ *)
+        (*   SSP.AST.ProgramDefinition *)
+        (*     ( pglobal_ident name, *)
+        (*       List.map *)
+        (*         ~f:(fun { pat; typ; typ_span } -> *)
+        (*           (ppat pat, SSP.AST.AppTy ("both0", [ pty span typ ]))) *)
+        (*         params, *)
+        (*       pexpr body, *)
+        (*       SSP.AST.AppTy *)
+        (*         ( "both" ^ " " ^ "(fset [" *)
+        (*           ^ List.fold ~f:(^) ~init:"" (List.intersperse ~sep:"; " (List.map ~f:(fun (x, x_ty, _) -> x.name ^ "_loc") mvars)) *)
+        (*           ^ "])" ^ " " ^ "(fset [" *)
+        (*           ^ List.fold ~f:(^) ~init:"" (List.intersperse ~sep:"; " (List.map ~f:pglobal_ident ndep)) *)
+        (*           ^ "])", *)
+        (*           [ pty span body.typ ] ) ); *)
+        (* ] *)
+        []
     | TyAlias { name; generics; ty } ->
         [ SSP.AST.Notation (pglobal_ident name ^ "_t", pty span ty) ]
     (* record *)
@@ -758,10 +753,6 @@ struct
         ]
     | Impl _ -> [ __TODO_item__ span "trait self" ]
 
-  (* self_ty : ty; *)
-  (* of_trait : (global_ident * generic_value list) option; *)
-  (* items : impl_item list; *)
-
   and p_inductive span variants parrent_name : SSP.AST.inductive_case list =
     match variants with
     | { name; arguments = [ (arg_name, arg_ty) ] } :: xs ->
@@ -813,6 +804,8 @@ let make ctx =
     let ctx = ctx
   end) : S)
 
+type analysis_data = FuncDep.analysis_data * MutableVar.analysis_data
+
 let string_of_item (func_dep : FuncDep.analysis_data)
     (mut_vars : MutableVar.analysis_data) (item : item) : string =
   let (module Print) =
@@ -848,8 +841,6 @@ let hardcoded_coq_headers =
    Import choice.Choice.Exports.\n\n\
    Obligation Tactic := try timeout 8 solve_ssprove_obligations.\n"
 
-type analysis_data = FuncDep.analysis_data * MutableVar.analysis_data
-
 let translate (bo : BackendOptions.t) (items : AST.item list)
     (analysis_data : analysis_data) : Types.file list =
   U.group_items_by_namespace items
@@ -872,7 +863,8 @@ let translate (bo : BackendOptions.t) (items : AST.item list)
            })
 
 let apply_phases (bo : BackendOptions.t) (i : Ast.Rust.item list) :
-    AST.item list * analysis_data =
-  let func_dep = FuncDep.analyse () i in
-  let mut_var = MutableVar.analyse func_dep i in
-  (List.concat_map ~f:TransformToInputLanguage.ditem i, (func_dep, mut_var))
+  AST.item list * analysis_data =
+  let result = List.concat_map ~f:TransformToInputLanguage.ditem i in
+  let func_dep = FuncDep.analyse () result in
+  let mut_var = MutableVar.analyse func_dep result in
+  (result, (func_dep, mut_var))
