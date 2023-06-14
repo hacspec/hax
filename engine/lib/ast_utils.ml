@@ -343,7 +343,7 @@ module Make (F : Features.T) = struct
       typ;
     }
 
-  let ty_equalily (a : ty) (b : ty) : bool =
+  let ty_equality (a : ty) (b : ty) : bool =
     let replace_spans =
       object
         inherit [_] item_map
