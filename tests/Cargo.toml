@@ -12,3 +12,4 @@ members = [
         "generics",
         "loops",
 ]
+resolver = "2"
