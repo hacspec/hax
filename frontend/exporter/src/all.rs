@@ -203,53 +203,37 @@ pub struct Scope {
     pub data: ScopeData,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::mir::ConstantKind<'tcx>, state: S as gstate)]
-#[append(FROM_TYPE::Val(const_value, ty) => {
-    use rustc_middle::mir::interpret::ConstValue;
-    use rustc_middle::mir::interpret::Scalar;
-    use rustc_middle::ty::TyKind as Ty;
-    use rustc_middle::mir::ConstantKind as CKind;
-    use rustc_middle::ty::IntTy;
-    match const_value {
-        ConstValue::Scalar(Scalar::Int(si)) => {
-            ConstantKind::Lit(match ty.kind() {
-                Ty::Bool => LitKind::Bool(si.clone().try_into().unwrap()),
-                Ty::Char => LitKind::Char(si.clone().try_into().unwrap()),
-                // TODO! This is incorrect!
-                Ty::Int(..) | Ty::Uint(..) => {
-                    use LitKind::Int;
-                    use LitIntType::{Unsigned as U, Signed as I, Unsuffixed};
-                    use UintTy::*;
-                    use crate::IntTy::*;
-                    Err(())
-                        .or(si.try_to_u8().map(|x| Int(x as u128, U(U8))))
-                        .or(si.try_to_u16().map(|x| Int(x as u128, U(U16))))
-                        .or(si.try_to_u32().map(|x| Int(x as u128, U(U32))))
-                        .or(si.try_to_u64().map(|x| Int(x as u128, U(U64))))
-                        .or(si.try_to_u128().map(|x| Int(x as u128, U(U128))))
-                        .or(si.try_to_i8().map(|x| Int(x as u128, I(I8))))
-                        .or(si.try_to_i16().map(|x| Int(x as u128, I(I16))))
-                        .or(si.try_to_i32().map(|x| Int(x as u128, I(I32))))
-                        .or(si.try_to_i64().map(|x| Int(x as u128, I(I64))))
-                        .or(si.try_to_i128().map(|x| Int(x as u128, I(I128))))
-                        .unwrap()
-                    // )
-                },
-                _ => todo!("constant are not exhaustive {:#?}", ty)
-            })
-        },
-        _ => ConstantKind::Todo(format!("{:#?}", self))
+impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, ConstantKind>
+    for rustc_middle::mir::ConstantKind<'tcx>
+{
+    fn sinto(&self, s: &S) -> ConstantKind {
+        use rustc_middle::mir::ConstantKind as RustConstantKind;
+        match self.eval(s.tcx(), get_param_env(s)) {
+            RustConstantKind::Val(const_value, ty) => {
+                use rustc_middle::mir::interpret::ConstValue;
+                match const_value {
+                    ConstValue::Scalar(scalar) => {
+                        ConstantKind::Lit(scalar_int_to_literal(s, scalar.assert_int(), ty.clone()))
+                    }
+                    _ => ConstantKind::Todo(format!("{:#?}", self)),
+                }
+            }
+            RustConstantKind::Ty(c) => match c.kind().try_to_scalar_int() {
+                Some(si) => ConstantKind::Lit(scalar_int_to_literal(s, si, c.ty())),
+                _ => ConstantKind::Ty(c.sinto(s)),
+            },
+            _ => ConstantKind::Todo(format!("{:#?}", self)),
+        }
     }
-})]
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum ConstantKind {
     Ty(Const),
     // Unevaluated(Unevaluated<'tcx, Option<Promoted>>, Ty),
-    #[disable_mapping]
     Lit(LitKind),
 
     // Val(ConstValue, Ty),
-    #[todo]
     Todo(String),
 }
 
@@ -369,9 +353,7 @@ pub type Const = Box<Expr>;
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Const> for rustc_middle::ty::Const<'tcx> {
     fn sinto(&self, s: &S) -> Const {
-        // TODO?
-        // let x = self.eval(s.tcx(), get_param_env(s));
-        let x = self;
+        let x = self.eval(s.tcx(), get_param_env(s));
         use rustc_middle::query::Key;
         Box::new(const_to_expr(s, x.clone(), x.ty(), x.default_span(s.tcx())))
     }
@@ -923,28 +905,12 @@ pub struct AliasTy {
     // pub item_def_id: DefId,
 }
 
-// fn get_param_env<'tcx, S: BaseState<'tcx>>(s: &S) -> rustc_middle::ty::ParamEnv<'tcx> {
-//     let tcx = s.tcx();
-//     let predicates = match s.opt_def_id() {
-//         Some(id) => {
-//             let predicates = tcx
-//                 .predicates_of(id)
-//                 .predicates
-//                 .into_iter()
-//                 .map(|(p, _)| p)
-//                 .cloned()
-//                 .collect::<Vec<_>>()
-//                 .into_boxed_slice();
-//             tcx.intern_predicates(&predicates)
-//         }
-//         None => rustc_middle::ty::List::empty(),
-//     };
-//     rustc_middle::ty::ParamEnv::new(
-//         &predicates,
-//         rustc_middle::traits::Reveal::All,
-//         rustc_hir::Constness::NotConst,
-//     )
-// }
+fn get_param_env<'tcx, S: BaseState<'tcx>>(s: &S) -> rustc_middle::ty::ParamEnv<'tcx> {
+    match s.opt_def_id() {
+        Some(id) => s.tcx().param_env(id),
+        None => rustc_middle::ty::ParamEnv::empty(),
+    }
+}
 
 // fn resolve_trait<'tcx, S: BaseState<'tcx>>(trait_ref: rustc_middle::ty::TraitRef<'tcx>, s: &S) {
 //     let tcx = s.tcx();
