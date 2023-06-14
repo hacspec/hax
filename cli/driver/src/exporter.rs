@@ -155,6 +155,7 @@ fn find_hax_engine() -> process::Command {
 pub(crate) struct ExtractionCallbacks {
     pub inline_macro_calls: Vec<hax_cli_options::Namespace>,
     pub command: hax_cli_options::ExporterCommand,
+    pub macro_calls: HashMap<rustc_span::Span, rustc_ast::ast::MacCall>,
 }
 
 impl From<ExtractionCallbacks> for hax_frontend_exporter_options::Options {
@@ -171,6 +172,9 @@ impl Callbacks for ExtractionCallbacks {
         _compiler: &Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
+        let parse_ast = queries.parse().unwrap();
+        let parse_ast = parse_ast.borrow();
+        self.macro_calls = collect_macros(&parse_ast);
         Compilation::Continue
     }
     fn after_expansion<'tcx>(
@@ -179,11 +183,10 @@ impl Callbacks for ExtractionCallbacks {
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
         use std::ops::{Deref, DerefMut};
-        let parse_ast = queries.parse().unwrap();
-        let parse_ast = parse_ast.borrow();
-        let macro_calls = collect_macros(&parse_ast);
+
         queries.global_ctxt().unwrap().enter(|tcx| {
-            let (spans, converted_items) = convert_thir(&self.clone().into(), macro_calls, tcx);
+            let (spans, converted_items) =
+                convert_thir(&self.clone().into(), self.macro_calls.clone(), tcx);
 
             use hax_cli_options::ExporterCommand;
             match self.command.clone() {
