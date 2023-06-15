@@ -150,15 +150,20 @@ struct
     and ditem' (span : span) (item : A.item') : B.item' =
       match item with
       | [%inline_arms "ditem'.*" - Impl] -> auto
-      | Impl { generics; self_ty; of_trait; items } ->
+      | Impl
+          {
+            generics;
+            self_ty;
+            of_trait = of_trait_id, of_trait_generics;
+            items;
+          } ->
           B.Impl
             {
               generics = dgenerics span generics;
               self_ty = dty span self_ty;
               of_trait =
-                Option.map
-                  ~f:(Fn.id *** List.filter_map ~f:(dgeneric_value span))
-                  of_trait;
+                ( of_trait_id,
+                  List.filter_map ~f:(dgeneric_value span) of_trait_generics );
               items = List.map ~f:dimpl_item items;
             }
   end

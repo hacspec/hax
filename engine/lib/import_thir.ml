@@ -1029,22 +1029,21 @@ module Exn = struct
                         params = [];
                       }
                 | Type ty ->
-                    assertion_failure span
+                    assertion_failure item.span
                       "Inherent implementations are not supposed to have \
                        associated types \
                        (https://doc.rust-lang.org/reference/items/implementations.html#inherent-implementations)."))
             items
-      | Impl i ->
+      | Impl ({ of_trait = Some of_trait } as i) ->
           !(Impl
               {
                 generics = c_generics i.generics;
                 self_ty = c_ty item.span i.self_ty;
                 of_trait =
-                  Option.map
-                    ~f:(fun { def_id = id; generic_args } ->
-                      ( def_id id,
-                        List.map ~f:(c_generic_value item.span) generic_args ))
-                    i.of_trait;
+                  ( def_id of_trait.def_id,
+                    List.map
+                      ~f:(c_generic_value item.span)
+                      of_trait.generic_args );
                 items =
                   List.map
                     ~f:(fun (item : Thir.impl_item) ->

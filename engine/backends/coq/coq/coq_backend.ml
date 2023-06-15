@@ -632,7 +632,7 @@ struct
                     ])
                 generics.params );
         ]
-    | Impl { generics; self_ty; of_trait = Some (name, gen_vals); items } ->
+    | Impl { generics; self_ty; of_trait = name, gen_vals; items } ->
         [
           C.AST.Instance
             ( pglobal_ident name,
@@ -656,7 +656,6 @@ struct
                         __TODO_ty__ span "typ" ))
                 items );
         ]
-    | Impl _ -> [ __TODO_item__ span "trait self" ]
 
   (* self_ty : ty; *)
   (* of_trait : (global_ident * generic_value list) option; *)

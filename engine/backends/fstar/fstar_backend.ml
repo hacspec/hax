@@ -833,7 +833,7 @@ struct
         let tcdef = F.AST.TyconRecord (name, bds, None, [], fields) in
         let d = F.AST.Tycon (false, true, [ tcdef ]) in
         [ `Item { d; drange = F.dummyRange; quals = []; attrs = [] } ]
-    | Impl { generics; self_ty = _; of_trait; items } ->
+    | Impl { generics; self_ty = _; of_trait = trait, generic_args; items } ->
         let pat = F.pat @@ F.AST.PatVar (F.id "impl", None, []) in
         let pat =
           F.pat
@@ -845,12 +845,9 @@ struct
                      generics.constraints )
         in
         let typ =
-          match of_trait with
-          | None -> Error.unimplemented ~details:"anonymous impl" e.span
-          | Some (trait, generic_args) ->
-              F.mk_e_app
-                (F.term @@ F.AST.Name (pglobal_ident e.span trait))
-                (List.map ~f:(pgeneric_value e.span) generic_args)
+          F.mk_e_app
+            (F.term @@ F.AST.Name (pglobal_ident e.span trait))
+            (List.map ~f:(pgeneric_value e.span) generic_args)
         in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (typ, None)) in
         let body =

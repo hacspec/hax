@@ -370,15 +370,14 @@ struct
               generics = dgenerics span generics;
               items = List.map ~f:dtrait_item items;
             }
-      | Impl { generics; self_ty; of_trait; items } ->
+      | Impl { generics; self_ty; of_trait = trait_id, trait_generics; items }
+        ->
           B.Impl
             {
               generics = dgenerics span generics;
               self_ty = dty span self_ty;
               of_trait =
-                Option.map
-                  ~f:(Fn.id *** List.map ~f:(dgeneric_value span))
-                  of_trait;
+                (trait_id, List.map ~f:(dgeneric_value span) trait_generics);
               items = List.map ~f:dimpl_item items;
             }
       | Use { path; is_external; rename } -> B.Use { path; is_external; rename }
