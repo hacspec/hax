@@ -2543,7 +2543,6 @@ pub enum ExprKind {
     },
     /// A `&raw [const|mut] $place_expr` raw borrow resulting in type `*[const|mut] T`.
     AddressOf {
-        #[map(fatal!(gstate, "AddressOf"))]
         mutability: Mutability,
         arg: Expr,
     },
