@@ -57,11 +57,48 @@ fn convert_thir<'tcx>(
         (rustc_middle::thir::Thir<'tcx>, ExprId),
     > = bodies
         .map(|did| {
-            let (thir, expr) = tcx
-                .thir_body(did)
-                .expect("While trying to reach a body's THIR defintion, got a typechecking error");
-            // Borrowing `Thir` from a `Steal`!
-            (did, (thir.borrow().clone(), expr))
+            let span = hir.span(hir.local_def_id_to_hir_id(did));
+            let mk_error_thir = || {
+                // let ty = tcx.ty_error(error);
+                let ty = tcx.mk_ty_from_kind(rustc_type_ir::sty::TyKind::Never);
+                let mut thir = rustc_middle::thir::Thir::new(rustc_middle::thir::BodyTy::Const(ty));
+                const ERR_LITERAL: &'static rustc_hir::Lit = &rustc_span::source_map::Spanned {
+                    node: rustc_ast::ast::LitKind::Err,
+                    span: rustc_span::DUMMY_SP,
+                };
+                let expr = thir.exprs.push(rustc_middle::thir::Expr {
+                    kind: rustc_middle::thir::ExprKind::Literal {
+                        lit: ERR_LITERAL,
+                        neg: false,
+                    },
+                    ty,
+                    temp_lifetime: None,
+                    span,
+                });
+                (did, (thir, expr))
+            };
+            let (thir, expr) = match tcx.thir_body(did) {
+                Ok(x) => x,
+                Err(e) => {
+                    tcx.sess.span_err(
+                        span,
+                        "While trying to reach a body's THIR defintion, got a typechecking error.",
+                    );
+                    return mk_error_thir();
+                }
+            };
+            let thir = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                // Borrowing `Thir` from a `Steal`!
+                thir.borrow().clone()
+            })) {
+                Ok(x) => x,
+                Err(e) => {
+                    let message = format!("The THIR body of item {:?} was stolen.\nThis is not supposed to happen.\nThis is a bug in Hax's frontend.\nThis is discussed in issue https://github.com/hacspec/hacspec-v2/issues/27.\nPlease comment this issue if you see this error message!", did);
+                    tcx.sess.span_err(span, message);
+                    return mk_error_thir();
+                }
+            };
+            (did, (thir, expr))
         })
         .collect();
 
