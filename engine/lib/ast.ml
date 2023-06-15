@@ -663,7 +663,7 @@ functor
       | Impl of {
           generics : generics;
           self_ty : ty;
-          of_trait : (global_ident * generic_value list) option;
+          of_trait : global_ident * generic_value list;
           items : impl_item list;
         }
       | Use of {
