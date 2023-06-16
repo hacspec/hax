@@ -53,8 +53,7 @@ module%inlined_contents Make (F : Features.T) = struct
             span;
           }
       | LhsArrayAccessor { e; typ; index; _ } ->
-          UB.call "core" "ops"
-            [ "index"; "Index"; "index" ]
+          UB.call Core__ops__index__Index__index
             [ expr_of_lhs e span; dexpr index ]
             span (dty span typ)
       | LhsArbitraryExpr _ -> Error.raise { kind = ArbitraryLHS; span }
@@ -87,10 +86,7 @@ module%inlined_contents Make (F : Features.T) = struct
       | LhsArrayAccessor { e; typ = _; index; _ } ->
           let lhs = expr_of_lhs e span in
           let rhs =
-            UB.call "core" "ops"
-              [ "index"; "IndexMut"; "update_at" ]
-              [ lhs; dexpr index; rhs ]
-              span lhs.typ
+            UB.call Hax__Array__update_at [ lhs; dexpr index; rhs ] span lhs.typ
           in
           updater_of_lhs e rhs span
       | LhsArbitraryExpr _ -> Error.raise { kind = ArbitraryLHS; span }

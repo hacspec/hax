@@ -101,7 +101,7 @@ let union_spans : span list -> span =
   >> Option.value_or_thunk ~default:(fun _ ->
          Dummy { id = FreshSpanId.make () })
 
-type concrete_ident = { crate : string; path : string Non_empty_list.t }
+type concrete_ident = (Concrete_ident.t[@opaque])
 
 and bin_op =
   | Add
@@ -142,13 +142,6 @@ and primitive_ident =
     visitors { variety = "mapreduce"; name = "primitive_ident_mapreduce" },
     visitors { variety = "map"; name = "primitive_ident_map" }]
 
-let show_concrete_ident (s : concrete_ident) : string =
-  s.crate ^ "::" ^ String.concat ~sep:"::" @@ Non_empty_list.to_list s.path
-
-let pp_concrete_ident (fmt : Caml.Format.formatter) (s : concrete_ident) : unit
-    =
-  Caml.Format.pp_print_string fmt @@ show_concrete_ident s
-
 module GlobalIdent = struct
   module T = struct
     type t =
@@ -169,21 +162,9 @@ module GlobalIdent = struct
 
   include M
   module Map = Map.M (M)
-  (* open Ppx_deriving_cmdliner_runtime *)
 
-  let of_string : string -> [ `Error of string | `Ok of t ] =
-    split_str ~on:"::" >> function
-    | [] | [ _ ] -> `Error "A global ident is at least composed of two chunks"
-    | crate :: path_hd :: path_tl ->
-        `Ok (`Concrete Non_empty_list.{ crate; path = path_hd :: path_tl })
-
-  let of_string_exn (s : string) : t =
-    match of_string s with `Ok v -> v | `Error s -> failwith s
-
+  let mk n = `Concrete (Concrete_ident.mk n)
   let to_string : t -> string = [%show: t]
-
-  let cmdliner_converter =
-    (of_string, fun fmt t -> Caml.Format.fprintf fmt "%s" (to_string t))
 end
 
 type global_ident = (GlobalIdent.t[@visitors.opaque])

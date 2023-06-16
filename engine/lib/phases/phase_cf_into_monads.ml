@@ -48,19 +48,11 @@ struct
       (* | MId of { typ : B.ty } *)
       (* | MReturn of { return : B.ty; continue : B.ty } *)
 
-      let std_ops_control_flow_mk l =
-        `Concrete
-          { crate = "std"; path = Non_empty_list.("ops" :: "ControlFlow" :: l) }
+      let std_result = GlobalIdent.mk Core__result__Result
+      let std_option = GlobalIdent.mk Core__option__Option
 
-      let std_result_mk l =
-        `Concrete
-          { crate = "core"; path = Non_empty_list.("result" :: "Result" :: l) }
-
-      let std_option_mk l =
-        `Concrete
-          { crate = "core"; path = Non_empty_list.("option" :: "Option" :: l) }
-
-      let std_ops_control_flow = std_ops_control_flow_mk []
+      let std_ops_control_flow =
+        GlobalIdent.mk Core__ops__control_flow__ControlFlow
 
       (** translate a computation type to a simple type *)
       let to_typ (x : t) : B.ty =
@@ -68,10 +60,10 @@ struct
         | None -> x.typ
         | Some (MResult err) ->
             let args = List.map ~f:(fun t -> B.GType t) [ x.typ; err ] in
-            TApp { ident = std_result_mk []; args }
+            TApp { ident = std_result; args }
         | Some MOption ->
             let args = List.map ~f:(fun t -> B.GType t) [ x.typ ] in
-            TApp { ident = std_option_mk []; args }
+            TApp { ident = std_option; args }
         | Some (MException return) ->
             let args = List.map ~f:(fun t -> B.GType t) [ return; x.typ ] in
             TApp { ident = std_ops_control_flow; args }
@@ -81,10 +73,10 @@ struct
           when GlobalIdent.equal ident std_ops_control_flow ->
             { monad = Some (MException return); typ = continue }
         | TApp { ident; args = [ GType ok; GType err ] }
-          when GlobalIdent.equal ident (std_result_mk []) ->
+          when GlobalIdent.equal ident std_result ->
             { monad = Some (MResult err); typ = ok }
         | TApp { ident; args = [ GType ok ] }
-          when GlobalIdent.equal ident (std_option_mk []) ->
+          when GlobalIdent.equal ident std_option ->
             { monad = Some MOption; typ = ok }
         | typ -> { monad = None; typ }
 
@@ -95,15 +87,13 @@ struct
         match (monad_of_e, monad_destination) with
         | m1, m2 when [%equal: B.supported_monads option] m1 m2 -> e
         | None, Some (B.MResult _) ->
-            UB.call_Constructor "core" "result" [ "Result"; "Ok" ] [ e ] e.span
+            UB.call_Constructor Core__result__Result__Ok [ e ] e.span
               (to_typ { monad = monad_destination; typ = e.typ })
         | None, Some B.MOption ->
-            UB.call_Constructor "core" "option" [ "Option"; "Some" ] [ e ]
-              e.span
+            UB.call_Constructor Core__option__Option__Some [ e ] e.span
               (to_typ { monad = monad_destination; typ = e.typ })
         | _, Some (B.MException _) ->
-            UB.call_Constructor "std" "ops"
-              [ "ControlFlow"; "Continue" ]
+            UB.call_Constructor Core__ops__control_flow__ControlFlow__Continue
               [ e ] e.span
               (to_typ { monad = monad_destination; typ = e.typ })
         | m1, m2 ->
@@ -215,13 +205,12 @@ struct
           let converted_typ = dty span converted_typ in
           if [%equal: B.ty] converted_typ e.typ then e
           else
-            UB.call "std" "ops"
-              [ "FromResidual"; "from_residual" ]
-              [ e ] span converted_typ
+            UB.call Core__ops__try_trait__FromResidual__from_residual [ e ] span
+              converted_typ
       | Return { e; _ } ->
           let open KnownMonads in
           let e = dexpr e in
-          UB.call "std" "ops" [ "ControlFlow"; "Break" ] [ e ] span
+          UB.call Core__ops__control_flow__ControlFlow__Break [ e ] span
             (to_typ @@ { monad = Some (MException e.typ); typ })
       | [%inline_arms
           "dexpr'.*" - Let - Match - If - Continue - Break - QuestionMark
@@ -230,7 +219,9 @@ struct
 
     and lift_if_necessary (e : B.expr) (target_type : B.ty) =
       if B.equal_ty e.typ target_type then e
-      else UB.call "dummy" "lift" [] [ e ] e.span target_type
+      else
+        UB.call Hax__control_flow_monad__ControlFlowMonad__lift [ e ] e.span
+          target_type
       [@@inline_ands bindings_of dexpr - dexpr']
 
     module Item = struct
@@ -239,12 +230,12 @@ struct
           let e' = dexpr e in
           match KnownMonads.from_typ dty e.typ e'.typ with
           | { monad = Some m; typ } ->
-              UB.call "dummy"
+              UB.call
                 (match m with
-                | MException _ -> "mexception"
-                | MResult _ -> "mresult"
-                | MOption -> "moption")
-                [ "run" ] [ e' ] e.span typ
+                | MException _ -> Hax__control_flow_monad__mexception__run
+                | MResult _ -> Hax__control_flow_monad__mresult__run
+                | MOption -> Hax__control_flow_monad__moption__run)
+                [ e' ] e.span typ
           | _ -> e'
       end
 

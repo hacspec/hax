@@ -53,19 +53,17 @@ module Exn = struct
     | TypeNs s | ValueNs s | MacroNs s | LifetimeNs s -> Some s
     | _ -> None
 
+  let string_of_disambiguated_def_path_item
+      (x : Thir.disambiguated_def_path_item) : string option =
+    string_of_def_path_item x.data
+
   let namespace_of_def_id (def_id : Thir.def_id) : string * string list =
     ( def_id.krate,
       def_id.path |> List.drop_last_exn
-      |> List.filter_map ~f:string_of_def_path_item )
+      |> List.filter_map ~f:string_of_disambiguated_def_path_item )
 
-  let concrete_of_def_id (def_id : Thir.def_id) : concrete_ident =
-    {
-      crate = def_id.krate;
-      path =
-        def_id.path
-        |> List.filter_map ~f:string_of_def_path_item
-        |> Non_empty_list.of_list_exn;
-    }
+  let concrete_of_def_id : Thir.def_id -> concrete_ident =
+    Concrete_ident.of_def_id
 
   let def_id (def_id : Thir.def_id) : global_ident =
     `Concrete (concrete_of_def_id def_id)
@@ -204,24 +202,6 @@ module Exn = struct
       ty option -> extended_literal =
     c_lit' span lit.node
 
-  let append_to_thir_def_id (def_id : Thir.def_id) (item : Thir.def_path_item) =
-    { def_id with path = def_id.path @ [ item ] }
-
-  let variant_id_of_variant_informations span (info : Thir.variant_informations)
-      =
-    let is_def_id_prefix (x : Thir.def_id) (y : Thir.def_id) : bool =
-      String.(x.krate = y.krate)
-      && List.is_prefix ~prefix:x.path ~equal:Thir.equal_def_path_item y.path
-    in
-    if not (is_def_id_prefix info.type_namespace info.variant) then
-      assertion_failure span
-        ("variant_id_of_variant_informations: ["
-        ^ Thir.show_def_id info.type_namespace
-        ^ "] is not a prefix of ["
-        ^ Thir.show_def_id info.variant
-        ^ "]");
-    append_to_thir_def_id info.type_namespace (List.last_exn info.variant.path)
-
   let unbox_underef_expr (e : expr) : expr =
     match e.e with
     | App
@@ -236,37 +216,15 @@ module Exn = struct
     match (unbox_underef_expr e).e with
     | App
         {
-          f =
-            {
-              e =
-                GlobalVar
-                  (`Concrete
-                    {
-                      crate = "core";
-                      path =
-                        Non_empty_list.(
-                          "ops" :: [ "index"; "IndexMut"; "index_mut" ]);
-                    });
-              _;
-            };
+          f = { e = GlobalVar (`Concrete meth); _ };
           args = [ { e = Borrow { e = x; _ }; _ }; index ];
-        } ->
+        }
+      when Concrete_ident.equal meth
+             (Concrete_ident.mk Core__ops__index__IndexMut__index_mut) ->
         Some (x, index)
-    | App
-        {
-          f =
-            {
-              e =
-                GlobalVar
-                  (`Concrete
-                    {
-                      crate = "core";
-                      path = Non_empty_list.[ "ops"; "Index"; "index" ];
-                    });
-              _;
-            };
-          args = [ x; index ];
-        } ->
+    | App { f = { e = GlobalVar (`Concrete meth); _ }; args = [ x; index ] }
+      when Concrete_ident.equal meth
+             (Concrete_ident.mk Core__ops__index__Index__index) ->
         Some (x, index)
     | _ -> None
 
@@ -489,7 +447,7 @@ module Exn = struct
           let value = c_expr value in
           let count = c_expr count in
           (U.Box.Expr.make
-          @@ U.call "dummy" "repeat" [] [ value; count ] span typ)
+          @@ U.call Hax__Array__repeat [ value; count ] span typ)
             .e
       | Tuple { fields } ->
           let fields = List.map ~f:c_expr fields in
@@ -506,9 +464,7 @@ module Exn = struct
             }
       | Array { fields } -> Array (List.map ~f:c_expr fields)
       | Adt { info; base; fields; _ } ->
-          let constructor =
-            def_id @@ variant_id_of_variant_informations e.span info
-          in
+          let constructor = def_id info.constructs_type in
           let base =
             Option.map
               ~f:(fun base -> (c_expr base.base, W.construct_base))
@@ -517,11 +473,7 @@ module Exn = struct
           let fields =
             List.map
               ~f:(fun f ->
-                let field =
-                  def_id
-                  @@ append_to_thir_def_id info.type_namespace
-                       (List.last_exn f.field.path)
-                in
+                let field = def_id f.field in
                 let value = c_expr f.value in
                 (field, value))
               fields
@@ -559,11 +511,7 @@ module Exn = struct
           let lhs_type = c_ty lhs.span lhs.ty in
           call
             (mk_global ([ lhs_type; index_type ] ->. typ)
-            @@ `Concrete
-                 {
-                   crate = "core";
-                   path = Non_empty_list.[ "ops"; "Index"; "index" ];
-                 })
+            @@ GlobalIdent.mk Core__ops__index__Index__index)
             [ lhs; index ]
       | StaticRef { def_id = id; _ } -> GlobalVar (def_id id)
       | PlaceTypeAscription _ ->
@@ -635,9 +583,7 @@ module Exn = struct
           let var = local_ident var in
           PBinding { mut; mode; var; typ; subpat }
       | Variant { info; subpatterns; _ } ->
-          let name =
-            def_id @@ variant_id_of_variant_informations pat.span info
-          in
+          let name = def_id info.constructs_type in
           let args = List.map ~f:(c_field_pat info) subpatterns in
           PConstruct { record = info.constructs_record; name; args }
       | Tuple { subpatterns } ->
@@ -681,13 +627,7 @@ module Exn = struct
     { p = v; span; typ }
 
   and c_field_pat info (field_pat : Thir.field_pat) : field_pat =
-    {
-      field =
-        def_id
-        @@ append_to_thir_def_id info.type_namespace
-             (List.last_exn field_pat.field.path);
-      pat = c_pat field_pat.pattern;
-    }
+    { field = def_id field_pat.field; pat = c_pat field_pat.pattern }
 
   and c_constant_kind span (k : Thir.constant_kind) : extended_literal =
     match k with
@@ -706,8 +646,7 @@ module Exn = struct
         (c_expr source).e
     | Unsize ->
         (* https://doc.rust-lang.org/std/marker/trait.Unsize.html *)
-        (U.call "dummy" "CoerceUnsized" [ "unsize" ] [ c_expr source ] span typ)
-          .e
+        (U.call Hax__CoerceUnsize__unsize [ c_expr source ] span typ).e
         (* let source = c_expr source in *)
         (* let from_typ = source.typ in *)
         (* let to_typ = typ in *)
