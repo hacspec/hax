@@ -904,36 +904,38 @@ module Exn = struct
     then []
     else
       let span = c_span item.span in
-      let mk v =
+      let mk_one v =
         { span; v; parent_namespace = namespace_of_def_id item.owner_id }
       in
-      let ( ! ) v = [ mk v ] in
-      (* let v = *)
+      let mk v = [ mk_one v ] in
       (* TODO: things might be unnamed (e.g. constants) *)
       match (item.kind : Thir.item_kind) with
       | Const (_, body) ->
-          !(Fn
-              {
-                name = def_id (Option.value_exn item.def_id);
-                generics = { params = []; constraints = [] };
-                body = c_expr body;
-                params = [];
-              })
+          mk
+          @@ Fn
+               {
+                 name = def_id (Option.value_exn item.def_id);
+                 generics = { params = []; constraints = [] };
+                 body = c_expr body;
+                 params = [];
+               }
       | TyAlias (ty, generics) ->
-          !(TyAlias
-              {
-                name = def_id (Option.value_exn item.def_id);
-                generics = c_generics generics;
-                ty = c_ty item.span ty;
-              })
+          mk
+          @@ TyAlias
+               {
+                 name = def_id (Option.value_exn item.def_id);
+                 generics = c_generics generics;
+                 ty = c_ty item.span ty;
+               }
       | Fn (generics, { body; params; _ }) ->
-          !(Fn
-              {
-                name = def_id (Option.value_exn item.def_id);
-                generics = c_generics generics;
-                body = c_expr body;
-                params = List.map ~f:(c_param item.span) params;
-              })
+          mk
+          @@ Fn
+               {
+                 name = def_id (Option.value_exn item.def_id);
+                 generics = c_generics generics;
+                 body = c_expr body;
+                 params = List.map ~f:(c_param item.span) params;
+               }
       | Enum (variants, generics) ->
           let name = def_id (Option.value_exn item.def_id) in
           let generics = c_generics generics in
@@ -952,7 +954,7 @@ module Exn = struct
                 | Unit (_, name) -> { name = def_id name; arguments = [] })
               variants
           in
-          !(Type { name; generics; variants; record = true })
+          mk @@ Type { name; generics; variants; record = true }
       | Struct (v, generics) ->
           let name = def_id (Option.value_exn item.def_id) in
           let generics = c_generics generics in
@@ -972,15 +974,16 @@ module Exn = struct
             | Unit (_, _) -> ({ name; arguments = [] }, false)
           in
           let variants = [ v ] in
-          !(Type { name; generics; variants; record })
+          mk @@ Type { name; generics; variants; record }
       | MacroInvokation { macro_ident; argument; span } ->
-          !(IMacroInvokation
-              {
-                macro = def_id macro_ident;
-                argument;
-                span = c_span span;
-                witness = W.macro;
-              })
+          mk
+          @@ IMacroInvokation
+               {
+                 macro = def_id macro_ident;
+                 argument;
+                 span = c_span span;
+                 witness = W.macro;
+               }
       | Trait (No, Normal, generics, _bounds, items) ->
           let name = def_id (Option.value_exn item.def_id) in
           let { params; constraints } = c_generics generics in
@@ -996,23 +999,21 @@ module Exn = struct
               }
             :: params
           in
-          !(Trait
-              {
-                name;
-                generics = { params; constraints };
-                items = List.map ~f:c_trait_item items;
-              })
+          mk
+          @@ Trait
+               {
+                 name;
+                 generics = { params; constraints };
+                 items = List.map ~f:c_trait_item items;
+               }
       | Trait (Yes, _, _, _, _) -> unimplemented item.span "Auto trait"
       | Trait (_, Unsafe, _, _, _) -> unimplemented item.span "Unsafe trait"
       | Impl { of_trait = None; generics; items; _ } ->
           List.map
             ~f:(fun (item : Thir.impl_item) ->
-              let span = c_span item.span in
               let item_def_id = def_id item.owner_id in
-              let parent_namespace = namespace_of_def_id item.owner_id in
-              let mk v = { span; v; parent_namespace } in
-              mk
-                (match (item.kind : Thir.impl_item_kind) with
+              let v =
+                match (item.kind : Thir.impl_item_kind) with
                 | Fn { body; params; _ } ->
                     Fn
                       {
@@ -1034,52 +1035,57 @@ module Exn = struct
                     assertion_failure item.span
                       "Inherent implementations are not supposed to have \
                        associated types \
-                       (https://doc.rust-lang.org/reference/items/implementations.html#inherent-implementations)."))
+                       (https://doc.rust-lang.org/reference/items/implementations.html#inherent-implementations)."
+              in
+              let parent_namespace = namespace_of_def_id item.owner_id in
+              { span = c_span item.span; v; parent_namespace })
             items
       | Impl ({ of_trait = Some of_trait } as i) ->
-          !(Impl
-              {
-                generics = c_generics i.generics;
-                self_ty = c_ty item.span i.self_ty;
-                of_trait =
-                  ( def_id of_trait.def_id,
-                    List.map
-                      ~f:(c_generic_value item.span)
-                      of_trait.generic_args );
-                items =
-                  List.map
-                    ~f:(fun (item : Thir.impl_item) ->
-                      {
-                        ii_span = c_span item.span;
-                        ii_generics = c_generics item.generics;
-                        ii_v =
-                          (match (item.kind : Thir.impl_item_kind) with
-                          | Fn { body; params; _ } ->
-                              IIFn
-                                {
-                                  body = c_expr body;
-                                  params =
-                                    List.map ~f:(c_param item.span) params;
-                                }
-                          | Const (_ty, e) ->
-                              IIFn { body = c_expr e; params = [] }
-                          | Type ty -> IIType (c_ty item.span ty));
-                        ii_name = fst item.ident;
-                      })
-                    i.items;
-              })
+          mk
+          @@ Impl
+               {
+                 generics = c_generics i.generics;
+                 self_ty = c_ty item.span i.self_ty;
+                 of_trait =
+                   ( def_id of_trait.def_id,
+                     List.map
+                       ~f:(c_generic_value item.span)
+                       of_trait.generic_args );
+                 items =
+                   List.map
+                     ~f:(fun (item : Thir.impl_item) ->
+                       {
+                         ii_span = c_span item.span;
+                         ii_generics = c_generics item.generics;
+                         ii_v =
+                           (match (item.kind : Thir.impl_item_kind) with
+                           | Fn { body; params; _ } ->
+                               IIFn
+                                 {
+                                   body = c_expr body;
+                                   params =
+                                     List.map ~f:(c_param item.span) params;
+                                 }
+                           | Const (_ty, e) ->
+                               IIFn { body = c_expr e; params = [] }
+                           | Type ty -> IIType (c_ty item.span ty));
+                         ii_name = fst item.ident;
+                       })
+                     i.items;
+               }
       | Use ({ span; res; segments; rename }, t) ->
-          !(Use
-              {
-                path = List.map ~f:(fun x -> fst x.ident) segments;
-                is_external =
-                  List.exists ~f:(function Err -> true | _ -> false) res;
-                (* TODO: this should represent local/external? *)
-                rename;
-              })
+          mk
+          @@ Use
+               {
+                 path = List.map ~f:(fun x -> fst x.ident) segments;
+                 is_external =
+                   List.exists ~f:(function Err -> true | _ -> false) res;
+                 (* TODO: this should represent local/external? *)
+                 rename;
+               }
       | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
       | OpaqueTy _ | Union _ | TraitAlias _ ->
-          !NotImplementedYet
+          mk NotImplementedYet
 end
 
 let c_item (item : Thir.item) : (item list, error) Result.t =
