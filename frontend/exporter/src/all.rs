@@ -17,10 +17,29 @@ pub trait BaseState<'tcx> = HasTcx<'tcx>
     + HasExportedSpans;
 // + std::fmt::Debug;
 
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'a, S: BaseState<'a>>, from: rustc_hir::definitions::DisambiguatedDefPathData, state: S as s)]
+pub struct DisambiguatedDefPathItem {
+    pub data: DefPathItem,
+    pub disambiguator: u32,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct DefId {
     pub krate: String,
-    pub path: Vec<DefPathItem>,
+    pub path: Vec<DisambiguatedDefPathItem>,
+}
+
+impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
+    fn sinto(&self, s: &S) -> DefId {
+        let tcx = s.tcx();
+        let def_path = tcx.def_path(self.clone());
+        let krate = tcx.crate_name(def_path.krate);
+        DefId {
+            path: def_path.data.iter().map(|x| x.sinto(s)).collect(),
+            krate: format!("{}", krate),
+        }
+    }
 }
 
 pub type Path = Vec<String>; // x::y::z, TODO
@@ -71,7 +90,7 @@ Meta-information:
 impl std::convert::From<DefId> for Path {
     fn from(v: DefId) -> Vec<String> {
         std::iter::once(v.krate)
-            .chain(v.path.into_iter().filter_map(|item| match item {
+            .chain(v.path.into_iter().filter_map(|item| match item.data {
                 DefPathItem::TypeNs(s)
                 | DefPathItem::ValueNs(s)
                 | DefPathItem::MacroNs(s)
@@ -79,18 +98,6 @@ impl std::convert::From<DefId> for Path {
                 _ => None,
             }))
             .collect()
-    }
-}
-
-impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
-    fn sinto(&self, s: &S) -> DefId {
-        let tcx = s.tcx();
-        let def_path = tcx.def_path(self.clone());
-        let krate = tcx.crate_name(def_path.krate);
-        DefId {
-            path: def_path.data.iter().map(|x| x.data.sinto(s)).collect(),
-            krate: format!("{}", krate),
-        }
     }
 }
 
