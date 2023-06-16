@@ -44,16 +44,6 @@ module%inlined_contents Make (FA : Features.T) = struct
       }
       [@@deriving show]
 
-      let mk_core_ops path =
-        `Concrete { crate = "core"; path = Non_empty_list.("ops" :: path) }
-
-      let core_ops_try_branch = mk_core_ops [ "try_trait"; "Try"; "branch" ]
-      let cf_break = mk_core_ops [ "control_flow"; "Break" ]
-      let cf_continue = mk_core_ops [ "control_flow"; "Continue" ]
-
-      let f_from_residual =
-        mk_core_ops [ "try_trait"; "FromResidual"; "from_residual" ]
-
       let extract (e : expr) : (expr * ty) option =
         let extract_pat_app_bd (p : pat) : (global_ident * local_ident) option =
           match p.p with
@@ -127,14 +117,20 @@ module%inlined_contents Make (FA : Features.T) = struct
                 ];
             }
         (*[@ocamlformat "disable"]*)
-          when [%equal: global_ident] n core_ops_try_branch -> (
+          when [%equal: global_ident] n
+                 (GlobalIdent.mk Core__ops__try_trait__Try__branch) -> (
             match
               (extract_pat_app_bd pat_break, extract_pat_app_bd pat_continue)
             with
             | Some (f_break, residual_arg_var'), Some (f_continue, continue_var')
-              when [%equal: global_ident] f_break cf_break
-                   && [%equal: global_ident] f_continue cf_continue
-                   && [%equal: global_ident] f f_from_residual
+              when [%equal: global_ident] f_break
+                     (GlobalIdent.mk Core__ops__control_flow__ControlFlow__Break)
+                   && [%equal: global_ident] f_continue
+                        (GlobalIdent.mk
+                           Core__ops__control_flow__ControlFlow__Continue)
+                   && [%equal: global_ident] f
+                        (GlobalIdent.mk
+                           Core__ops__try_trait__FromResidual__from_residual)
                    && [%equal: local_ident] residual_arg_var residual_arg_var'
                    && [%equal: local_ident] continue_var continue_var' ->
                 Some (expr, converted_typ)

@@ -426,9 +426,8 @@ module Make (F : Features.T) = struct
      [Record] thing, and put everything which is not a Record
        into an App. This would simplify stuff quite much. Maybe not
        for LHS things. *)
-  let call_Constructor (crate : string) (path_hd : string)
-      (path_tl : string list) (args : expr list) span ret_typ =
-    let path = Non_empty_list.(path_hd :: path_tl) in
+  let call_Constructor' (constructor : global_ident) (args : expr list) span
+      ret_typ =
     let typ = TArrow (List.map ~f:(fun arg -> arg.typ) args, ret_typ) in
     let mk_field =
       let len = List.length args in
@@ -438,22 +437,24 @@ module Make (F : Features.T) = struct
     {
       e =
         Construct
-          {
-            constructor = `Concrete { crate; path };
-            constructs_record = false;
-            fields;
-            base = None;
-          };
+          { constructor; constructs_record = false; fields; base = None };
       typ = ret_typ;
       span;
     }
 
-  let call (crate : string) (path_hd : string) (path_tl : string list)
+  let call_Constructor (constructor_name : Concrete_ident.name)
       (args : expr list) span ret_typ =
-    let path = Non_empty_list.(path_hd :: path_tl) in
+    call_Constructor'
+      (`Concrete (Concrete_ident.mk constructor_name))
+      args span ret_typ
+
+  let call' f (args : expr list) span ret_typ =
     let typ = TArrow (List.map ~f:(fun arg -> arg.typ) args, ret_typ) in
-    let e = GlobalVar (`Concrete { crate; path }) in
+    let e = GlobalVar f in
     { e = App { f = { e; typ; span }; args }; typ = ret_typ; span }
+
+  let call (f_name : Concrete_ident.name) (args : expr list) span ret_typ =
+    call' (`Concrete (Concrete_ident.mk f_name)) args span ret_typ
 
   let string_lit span (s : string) : expr =
     { span; typ = TStr; e = Literal (String s) }
@@ -461,15 +462,13 @@ module Make (F : Features.T) = struct
   let hax_failure_expr' span (typ : ty) (context, kind) (ast : string) =
     let error = Diagnostics.pretty_print_context_kind context kind in
     let args = List.map ~f:(string_lit span) [ error; ast ] in
-    call "hax_error" "hax_failure" [] args span typ
+    call Hax__error__failure args span typ
 
   let hax_failure_expr span (typ : ty) (context, kind) (expr0 : Ast.Full.expr) =
     hax_failure_expr' span typ (context, kind) (Print_rust.pexpr_str expr0)
 
   let hax_failure_typ =
-    let ident =
-      `Concrete { crate = "hax_error"; path = Non_empty_list.[ "hax_failure" ] }
-    in
+    let ident = `Concrete (Concrete_ident.mk Hax__error__Failure) in
     TApp { ident; args = [] }
 
   module LiftToFullAst = struct
@@ -481,25 +480,20 @@ module Make (F : Features.T) = struct
     module Ty = struct
       let destruct (t : ty) : ty option =
         match t with
-        | TApp
-            {
-              ident =
-                `Concrete
-                  { crate = "alloc"; path = Non_empty_list.[ "boxed"; "Box" ] };
-              args = [ GType sub; _alloc ];
-            } ->
+        | TApp { ident = `Concrete box; args = [ GType sub; _alloc ] }
+          when Concrete_ident.equal box (Concrete_ident.mk Alloc__boxed__Box) ->
             Some sub
         | _ -> None
 
       let alloc_ty =
-        let path = Non_empty_list.[ "alloc"; "Global" ] in
-        TApp { ident = `Concrete { crate = "alloc"; path }; args = [] }
+        TApp
+          {
+            ident = `Concrete (Concrete_ident.mk Alloc__alloc__Global);
+            args = [];
+          }
 
       let make (t : ty) : ty =
-        let ident =
-          let path = Non_empty_list.[ "boxed"; "Box" ] in
-          `Concrete { crate = "alloc"; path }
-        in
+        let ident = `Concrete (Concrete_ident.mk Alloc__boxed__Box) in
         TApp { ident; args = [ GType t; GType alloc_ty ] }
     end
 
@@ -588,20 +582,14 @@ module Make (F : Features.T) = struct
     module Ops = struct
       module ControlFlow = struct
         let ident =
-          `Concrete
-            { crate = "std"; path = Non_empty_list.[ "ops"; "ControlFlow" ] }
+          `Concrete (Concrete_ident.mk Core__ops__control_flow__ControlFlow)
 
         let typ (break : ty) (continue : ty) : ty =
           TApp { ident; args = [ GType break; GType continue ] }
 
-        let _make (name : string) (e : expr) (typ : ty) : expr =
-          let constructor =
-            `Concrete
-              {
-                crate = "std";
-                path = Non_empty_list.("ops" :: "ControlFlow" :: [ name ]);
-              }
-          in
+        let _make name (e : expr) (typ : ty) : expr =
+          let constructor = `Concrete (Concrete_ident.mk name) in
+
           {
             e with
             e =
@@ -616,10 +604,12 @@ module Make (F : Features.T) = struct
           }
 
         let break (e : expr) (continue_type : ty) : expr =
-          _make "Break" e (typ e.typ continue_type)
+          _make Core__ops__control_flow__ControlFlow__Break e
+            (typ e.typ continue_type)
 
         let continue (e : expr) (break_type : ty) : expr =
-          _make "Continue" e (typ break_type e.typ)
+          _make Core__ops__control_flow__ControlFlow__Continue e
+            (typ break_type e.typ)
       end
     end
   end

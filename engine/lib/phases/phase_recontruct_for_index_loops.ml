@@ -38,57 +38,19 @@ module%inlined_contents Make (FA : Features.T) = struct
                 e =
                   App
                     {
-                      f =
-                        {
-                          e =
-                            GlobalVar
-                              (`Concrete
-                                {
-                                  crate = "core";
-                                  path =
-                                    Non_empty_list.
-                                      [
-                                        "iter";
-                                        "traits";
-                                        "collect";
-                                        "IntoIterator";
-                                        "into_iter";
-                                      ];
-                                });
-                        };
+                      f = { e = GlobalVar (`Concrete into_iter_meth) };
                       args =
                         [
                           {
                             e =
                               Construct
                                 {
-                                  constructor =
-                                    `Concrete
-                                      {
-                                        crate = "core";
-                                        path =
-                                          Non_empty_list.
-                                            [ "ops"; "range"; "Range" ];
-                                      };
+                                  constructor = `Concrete range_ctor;
                                   constructs_record = true;
                                   fields =
                                     [
-                                      ( `Concrete
-                                          {
-                                            crate = "core";
-                                            path =
-                                              Non_empty_list.
-                                                [ "ops"; "range"; "start" ];
-                                          },
-                                        start );
-                                      ( `Concrete
-                                          {
-                                            crate = "core";
-                                            path =
-                                              Non_empty_list.
-                                                [ "ops"; "range"; "end" ];
-                                          },
-                                        end_ );
+                                      (`Concrete start_field, start);
+                                      (`Concrete end_field, end_);
                                     ];
                                   base = None;
                                 };
@@ -106,7 +68,14 @@ module%inlined_contents Make (FA : Features.T) = struct
                 typ = _;
               };
             witness;
-          } ->
+          }
+        when Concrete_ident.eq_name
+               Core__iter__traits__collect__IntoIterator__into_iter
+               into_iter_meth
+             && Concrete_ident.eq_name Core__ops__range__Range__start
+                  start_field
+             && Concrete_ident.eq_name Core__ops__range__Range range_ctor
+             && Concrete_ident.eq_name Core__ops__range__Range__end end_field ->
           ForIndexLoop
             {
               start = dexpr start;
