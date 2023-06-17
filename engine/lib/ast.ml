@@ -163,7 +163,7 @@ module Global_ident = struct
   include M
   module Map = Map.M (M)
 
-  let mk n = `Concrete (Concrete_ident.mk n)
+  let of_name n = `Concrete (Concrete_ident.of_name n)
   let to_string : t -> string = [%show: t]
 end
 

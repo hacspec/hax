@@ -6,7 +6,7 @@ val path : t -> string Non_empty_list.t
 type name = Concrete_ident_generated.name
 
 val of_def_id : Types.def_id -> t
-val mk : name -> t
+val of_name : name -> t
 val eq_name : name -> t -> bool
 
 (* (\* Rust's [core] names we produce *\) *)

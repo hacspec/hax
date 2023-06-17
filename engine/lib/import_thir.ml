@@ -220,11 +220,11 @@ module Exn = struct
           args = [ { e = Borrow { e = x; _ }; _ }; index ];
         }
       when Concrete_ident.equal meth
-             (Concrete_ident.mk Core__ops__index__IndexMut__index_mut) ->
+             (Concrete_ident.of_name Core__ops__index__IndexMut__index_mut) ->
         Some (x, index)
     | App { f = { e = GlobalVar (`Concrete meth); _ }; args = [ x; index ] }
       when Concrete_ident.equal meth
-             (Concrete_ident.mk Core__ops__index__Index__index) ->
+             (Concrete_ident.of_name Core__ops__index__Index__index) ->
         Some (x, index)
     | _ -> None
 
@@ -511,7 +511,7 @@ module Exn = struct
           let lhs_type = c_ty lhs.span lhs.ty in
           call
             (mk_global ([ lhs_type; index_type ] ->. typ)
-            @@ Global_ident.mk Core__ops__index__Index__index)
+            @@ Global_ident.of_name Core__ops__index__Index__index)
             [ lhs; index ]
       | StaticRef { def_id = id; _ } -> GlobalVar (def_id id)
       | PlaceTypeAscription _ ->

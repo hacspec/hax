@@ -48,11 +48,11 @@ struct
       (* | MId of { typ : B.ty } *)
       (* | MReturn of { return : B.ty; continue : B.ty } *)
 
-      let std_result = Global_ident.mk Core__result__Result
-      let std_option = Global_ident.mk Core__option__Option
+      let std_result = Global_ident.of_name Core__result__Result
+      let std_option = Global_ident.of_name Core__option__Option
 
       let std_ops_control_flow =
-        Global_ident.mk Core__ops__control_flow__ControlFlow
+        Global_ident.of_name Core__ops__control_flow__ControlFlow
 
       (** translate a computation type to a simple type *)
       let to_typ (x : t) : B.ty =
