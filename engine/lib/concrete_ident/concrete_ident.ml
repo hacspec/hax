@@ -45,5 +45,5 @@ let of_def_id (def_id : Types.def_id) : t =
       |> Non_empty_list.of_list_exn;
   }
 
-let mk : name -> t = Concrete_ident_generated.def_id_of >> of_def_id
-let eq_name : name -> t -> bool = fun n -> [%equal: t] @@ mk n
+let of_name : name -> t = Concrete_ident_generated.def_id_of >> of_def_id
+let eq_name : name -> t -> bool = of_name >> [%equal: t]

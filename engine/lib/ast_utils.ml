@@ -445,7 +445,7 @@ module Make (F : Features.T) = struct
   let call_Constructor (constructor_name : Concrete_ident.name)
       (args : expr list) span ret_typ =
     call_Constructor'
-      (`Concrete (Concrete_ident.mk constructor_name))
+      (`Concrete (Concrete_ident.of_name constructor_name))
       args span ret_typ
 
   let call' f (args : expr list) span ret_typ =
@@ -454,7 +454,7 @@ module Make (F : Features.T) = struct
     { e = App { f = { e; typ; span }; args }; typ = ret_typ; span }
 
   let call (f_name : Concrete_ident.name) (args : expr list) span ret_typ =
-    call' (`Concrete (Concrete_ident.mk f_name)) args span ret_typ
+    call' (`Concrete (Concrete_ident.of_name f_name)) args span ret_typ
 
   let string_lit span (s : string) : expr =
     { span; typ = TStr; e = Literal (String s) }
@@ -468,7 +468,7 @@ module Make (F : Features.T) = struct
     hax_failure_expr' span typ (context, kind) (Print_rust.pexpr_str expr0)
 
   let hax_failure_typ =
-    let ident = `Concrete (Concrete_ident.mk Hax__error__Failure) in
+    let ident = `Concrete (Concrete_ident.of_name Hax__error__Failure) in
     TApp { ident; args = [] }
 
   module LiftToFullAst = struct
@@ -481,19 +481,19 @@ module Make (F : Features.T) = struct
       let destruct (t : ty) : ty option =
         match t with
         | TApp { ident = `Concrete box; args = [ GType sub; _alloc ] }
-          when Concrete_ident.equal box (Concrete_ident.mk Alloc__boxed__Box) ->
+          when Concrete_ident.equal box (Concrete_ident.of_name Alloc__boxed__Box) ->
             Some sub
         | _ -> None
 
       let alloc_ty =
         TApp
           {
-            ident = `Concrete (Concrete_ident.mk Alloc__alloc__Global);
+            ident = `Concrete (Concrete_ident.of_name Alloc__alloc__Global);
             args = [];
           }
 
       let make (t : ty) : ty =
-        let ident = `Concrete (Concrete_ident.mk Alloc__boxed__Box) in
+        let ident = `Concrete (Concrete_ident.of_name Alloc__boxed__Box) in
         TApp { ident; args = [ GType t; GType alloc_ty ] }
     end
 
@@ -582,13 +582,13 @@ module Make (F : Features.T) = struct
     module Ops = struct
       module ControlFlow = struct
         let ident =
-          `Concrete (Concrete_ident.mk Core__ops__control_flow__ControlFlow)
+          `Concrete (Concrete_ident.of_name Core__ops__control_flow__ControlFlow)
 
         let typ (break : ty) (continue : ty) : ty =
           TApp { ident; args = [ GType break; GType continue ] }
 
         let _make name (e : expr) (typ : ty) : expr =
-          let constructor = `Concrete (Concrete_ident.mk name) in
+          let constructor = `Concrete (Concrete_ident.of_name name) in
 
           {
             e with
