@@ -263,7 +263,7 @@ struct
     | _ -> []
 
   let operators =
-    let c = GlobalIdent.of_string_exn in
+    let c = Global_ident.of_string_exn in
     [
       (c "std::core::array::update_array_at", (3, [ ""; ".["; "]<-"; "" ]));
       (c "core::ops::index::Index::index", (2, [ ""; ".["; "]" ]));
@@ -297,7 +297,7 @@ struct
       (* (c "secret_integers::u64", (0, ["U64"])); *)
       (* (c "secret_integers::u128", (0, ["U128"])); *)
     ]
-    |> Map.of_alist_exn (module GlobalIdent)
+    |> Map.of_alist_exn (module Global_ident)
 
   let index_of_field = function
     | `Concrete { path } -> (
@@ -420,7 +420,7 @@ struct
           variants = [ { name = record_name; arguments } ];
           record = true;
         }
-      when GlobalIdent.equal name record_name ->
+      when Global_ident.equal name record_name ->
         [
           C.AST.Record
             ( pglobal_ident_last name ^ "_t" ^ pglobal_ident record_name,

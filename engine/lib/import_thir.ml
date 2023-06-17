@@ -511,7 +511,7 @@ module Exn = struct
           let lhs_type = c_ty lhs.span lhs.ty in
           call
             (mk_global ([ lhs_type; index_type ] ->. typ)
-            @@ GlobalIdent.mk Core__ops__index__Index__index)
+            @@ Global_ident.mk Core__ops__index__Index__index)
             [ lhs; index ]
       | StaticRef { def_id = id; _ } -> GlobalVar (def_id id)
       | PlaceTypeAscription _ ->
