@@ -243,7 +243,7 @@ struct
   let is_field_an_index = index_of_field >> Option.is_some
 
   let operators =
-    let c = GlobalIdent.of_string_exn in
+    let c = Global_ident.of_string_exn in
     [
       (c "core::ops::index::IndexMut::update_at", (3, ".[]<-"));
       (c "std::core::array::update_array_at", (3, ".[]<-"));
@@ -261,7 +261,7 @@ struct
       (`Primitive (BinOp Eq), (2, "="));
       (`Primitive (BinOp Ne), (2, "<>"));
     ]
-    |> Map.of_alist_exn (module GlobalIdent)
+    |> Map.of_alist_exn (module Global_ident)
 
   let rec pty span (t : ty) =
     match t with

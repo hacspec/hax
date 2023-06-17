@@ -48,11 +48,11 @@ struct
       (* | MId of { typ : B.ty } *)
       (* | MReturn of { return : B.ty; continue : B.ty } *)
 
-      let std_result = GlobalIdent.mk Core__result__Result
-      let std_option = GlobalIdent.mk Core__option__Option
+      let std_result = Global_ident.mk Core__result__Result
+      let std_option = Global_ident.mk Core__option__Option
 
       let std_ops_control_flow =
-        GlobalIdent.mk Core__ops__control_flow__ControlFlow
+        Global_ident.mk Core__ops__control_flow__ControlFlow
 
       (** translate a computation type to a simple type *)
       let to_typ (x : t) : B.ty =
@@ -70,13 +70,13 @@ struct
 
       let from_typ' : B.ty -> t = function
         | TApp { ident; args = [ GType return; GType continue ] }
-          when GlobalIdent.equal ident std_ops_control_flow ->
+          when Global_ident.equal ident std_ops_control_flow ->
             { monad = Some (MException return); typ = continue }
         | TApp { ident; args = [ GType ok; GType err ] }
-          when GlobalIdent.equal ident std_result ->
+          when Global_ident.equal ident std_result ->
             { monad = Some (MResult err); typ = ok }
         | TApp { ident; args = [ GType ok ] }
-          when GlobalIdent.equal ident std_option ->
+          when Global_ident.equal ident std_option ->
             { monad = Some MOption; typ = ok }
         | typ -> { monad = None; typ }
 

@@ -142,7 +142,7 @@ and primitive_ident =
     visitors { variety = "mapreduce"; name = "primitive_ident_mapreduce" },
     visitors { variety = "map"; name = "primitive_ident_map" }]
 
-module GlobalIdent = struct
+module Global_ident = struct
   module T = struct
     type t =
       [ `Concrete of concrete_ident
@@ -167,7 +167,7 @@ module GlobalIdent = struct
   let to_string : t -> string = [%show: t]
 end
 
-type global_ident = (GlobalIdent.t[@visitors.opaque])
+type global_ident = (Global_ident.t[@visitors.opaque])
 [@@deriving
   show,
     yojson,
