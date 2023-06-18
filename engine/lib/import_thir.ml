@@ -131,27 +131,6 @@ module Exn = struct
 
   let wild_pat span : ty -> pat = fun typ -> { typ; span; p = PWild }
 
-  let c_binop : Thir.bin_op -> bin_op = function
-    | Add -> Add
-    | Sub -> Sub
-    | Mul -> Mul
-    | Div -> Div
-    | Rem -> Rem
-    | BitXor -> BitXor
-    | BitAnd -> BitAnd
-    | BitOr -> BitOr
-    | Shl -> Shl
-    | Shr -> Shr
-    | Eq -> Eq
-    | Lt -> Lt
-    | Le -> Le
-    | Ne -> Ne
-    | Ge -> Ge
-    | Gt -> Gt
-    | Offset -> Offset
-
-  let c_un_op : Thir.un_op -> un_op = function Not -> Not | Neg -> Neg
-
   let c_logical_op : Thir.logical_op -> logical_op = function
     | And -> And
     | Or -> Or
@@ -199,18 +178,8 @@ module Exn = struct
       ty option -> extended_literal =
     c_lit' span lit.node
 
-  let unbox_underef_expr (e : expr) : expr =
-    match e.e with
-    | App
-        {
-          f = { e = GlobalVar (`Primitive (Ast.Box | Ast.Deref)); _ };
-          args = [ e ];
-        } ->
-        e
-    | _ -> e
-
   let resugar_index_mut (e : expr) : (expr * expr) option =
-    match (unbox_underef_expr e).e with
+    match (U.unbox_underef_expr e).e with
     | App
         {
           f = { e = GlobalVar (`Concrete meth); _ };
@@ -234,6 +203,28 @@ module Exn = struct
       U.hax_failure_expr' span typ report
         ([%show: Thir.decorated_for__expr_kind] e)
 
+  and c_binop (op : Thir.bin_op) lhs rhs span typ =
+    U.call
+      (match op with
+      | Add -> Core__ops__arith__Add__add
+      | Sub -> Core__ops__arith__Sub__sub
+      | Mul -> Core__ops__arith__Mul__mul
+      | Div -> Core__ops__arith__Div__div
+      | Rem -> Core__ops__arith__Rem__rem
+      | BitXor -> Core__ops__bit__BitXor__bitxor
+      | BitAnd -> Core__ops__bit__BitAnd__bitand
+      | BitOr -> Core__ops__bit__BitOr__bitor
+      | Shl -> Core__ops__bit__Shl__shl
+      | Shr -> Core__ops__bit__Shr__shr
+      | Eq -> Core__cmp__PartialEq__eq
+      | Lt -> Core__cmp__PartialOrd__lt
+      | Le -> Core__cmp__PartialOrd__le
+      | Ne -> Core__cmp__PartialEq__ne
+      | Ge -> Core__cmp__PartialOrd__ge
+      | Gt -> Core__cmp__PartialOrd__gt
+      | Offset -> Core__ptr__const_ptr__Impl__offset)
+      [ lhs; rhs ] span typ
+
   and c_expr_unwrapped (e : Thir.decorated_for__expr_kind) : expr =
     let call f args = App { f; args = List.map ~f:c_expr args } in
     let typ = c_ty e.span e.ty in
@@ -242,9 +233,6 @@ module Exn = struct
     let ( ->. ) a b = TArrow (a, b) in
     let (v : expr') =
       match e.contents with
-      | Box { value } ->
-          let inner_typ = c_ty value.span value.ty in
-          call (mk_global ([ inner_typ ] ->. typ) @@ `Primitive Box) [ value ]
       | MacroInvokation { argument; macro_ident; _ } ->
           MacroInvokation
             {
@@ -287,11 +275,7 @@ module Exn = struct
           let inner_typ = c_ty arg.span arg.ty in
           call (mk_global ([ inner_typ ] ->. typ) @@ `Primitive Deref) [ arg ]
       | Binary { lhs; rhs; op } ->
-          let lty = c_ty lhs.span lhs.ty in
-          let rty = c_ty rhs.span rhs.ty in
-          call
-            (mk_global ([ lty; rty ] ->. typ) @@ `Primitive (BinOp (c_binop op)))
-            [ lhs; rhs ]
+          (c_binop op (c_expr lhs) (c_expr rhs) span typ).e
       | LogicalOp { lhs; rhs; op } ->
           let lhs_type = c_ty lhs.span lhs.ty in
           let rhs_type = c_ty rhs.span rhs.ty in
@@ -300,11 +284,13 @@ module Exn = struct
             @@ `Primitive (LogicalOp (c_logical_op op)))
             [ lhs; rhs ]
       | Unary { arg; op } ->
-          let arg_type = c_ty arg.span arg.ty in
-          call
-            (mk_global ([ arg_type ] ->. typ)
-            @@ `Primitive (UnOp (match op with Not -> Not | Neg -> Neg)))
-            [ arg ]
+          (U.call
+             (match op with
+             | Not -> Core__ops__bit__Not__not
+             | Neg -> Core__ops__arith__Neg__neg)
+             [ c_expr arg ]
+             span typ)
+            .e
       | Cast { source } ->
           let source_type = c_ty source.span source.ty in
           call
@@ -382,13 +368,7 @@ module Exn = struct
           c_expr_assign lhs rhs
       | AssignOp { lhs; op; rhs } ->
           let lhs = c_expr lhs in
-          let rhs = c_expr rhs in
-          let rhs =
-            let f = `Primitive (BinOp (c_binop op)) in
-            let f = mk_global ([ lhs.typ; rhs.typ ] ->. typ) f in
-            { e = App { f; args = [ lhs; rhs ] }; typ = lhs.typ; span }
-          in
-          c_expr_assign lhs rhs
+          c_expr_assign lhs @@ c_binop op lhs (c_expr rhs) span typ
       | VarRef { id } -> LocalVar (local_ident id)
       | Field { lhs; field } ->
           let lhs = c_expr lhs in
@@ -446,9 +426,8 @@ module Exn = struct
       | Repeat { value; count } ->
           let value = c_expr value in
           let count = c_expr count in
-          (U.Box.Expr.make
-          @@ U.call Hax__Array__repeat [ value; count ] span typ)
-            .e
+          let inner = U.call Hax__Array__repeat [ value; count ] span typ in
+          (U.call Alloc__boxed__Impl__new [ inner ] span typ).e
       | Tuple { fields } ->
           let fields = List.map ~f:c_expr fields in
           let len = List.length fields in
@@ -540,7 +519,7 @@ module Exn = struct
                   witness = W.nontrivial_lhs;
                 }
           | None -> (
-              match (unbox_underef_expr lhs).e with
+              match (U.unbox_underef_expr lhs).e with
               | App
                   {
                     f =
