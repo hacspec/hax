@@ -88,9 +88,7 @@ module Raw = struct
   let rec pglobal_ident' prefix span (e : global_ident) : AnnotatedString.t =
     let ( ! ) s = pure span (prefix ^ s) in
     match e with
-    | `Concrete c ->
-        let path, crate = Concrete_ident.(path c, crate c) in
-        !(String.concat ~sep:"::" (crate :: Non_empty_list.to_list path))
+    | `Concrete c -> !([%show: Concrete_ident.t] c)
     | `Primitive p -> pprimitive_ident span p
     | `TupleType n -> ![%string "tuple%{Int.to_string n}"]
     | `TupleCons n -> ![%string "Tuple%{Int.to_string n}"]
@@ -112,7 +110,7 @@ module Raw = struct
 
   let last_of_global_ident (g : global_ident) span =
     match g with
-    | `Concrete c -> Non_empty_list.last (Concrete_ident.path c)
+    | `Concrete c -> Concrete_ident.to_definition_name c
     | _ ->
         Diagnostics.report
           {

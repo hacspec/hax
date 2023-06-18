@@ -48,35 +48,35 @@ struct
       (* | MId of { typ : B.ty } *)
       (* | MReturn of { return : B.ty; continue : B.ty } *)
 
-      let std_result = Global_ident.of_name Core__result__Result
-      let std_option = Global_ident.of_name Core__option__Option
-
-      let std_ops_control_flow =
-        Global_ident.of_name Core__ops__control_flow__ControlFlow
-
       (** translate a computation type to a simple type *)
       let to_typ (x : t) : B.ty =
         match x.monad with
         | None -> x.typ
         | Some (MResult err) ->
             let args = List.map ~f:(fun t -> B.GType t) [ x.typ; err ] in
-            TApp { ident = std_result; args }
+            let ident = Global_ident.of_name Type Core__result__Result in
+            TApp { ident; args }
         | Some MOption ->
             let args = List.map ~f:(fun t -> B.GType t) [ x.typ ] in
-            TApp { ident = std_option; args }
+            let ident = Global_ident.of_name Type Core__option__Option in
+            TApp { ident; args }
         | Some (MException return) ->
             let args = List.map ~f:(fun t -> B.GType t) [ return; x.typ ] in
-            TApp { ident = std_ops_control_flow; args }
+            let ident =
+              Global_ident.of_name Type Core__ops__control_flow__ControlFlow
+            in
+            TApp { ident; args }
 
       let from_typ' : B.ty -> t = function
         | TApp { ident; args = [ GType return; GType continue ] }
-          when Global_ident.equal ident std_ops_control_flow ->
+          when Global_ident.eq_name Core__ops__control_flow__ControlFlow ident
+          ->
             { monad = Some (MException return); typ = continue }
         | TApp { ident; args = [ GType ok; GType err ] }
-          when Global_ident.equal ident std_result ->
+          when Global_ident.eq_name Core__result__Result ident ->
             { monad = Some (MResult err); typ = ok }
         | TApp { ident; args = [ GType ok ] }
-          when Global_ident.equal ident std_option ->
+          when Global_ident.eq_name Core__option__Option ident ->
             { monad = Some MOption; typ = ok }
         | typ -> { monad = None; typ }
 

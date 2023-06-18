@@ -1,60 +1,24 @@
 type t [@@deriving show, yojson, compare, sexp, eq]
-
-val crate : t -> string
-val path : t -> string Non_empty_list.t
-
 type name = Concrete_ident_generated.name
 
-val of_def_id : Types.def_id -> t
-val of_name : name -> t
+module Kind : sig
+  type t =
+    | Type
+    | Value
+    | Lifetime
+    | Constructor
+    | Field
+    | Macro
+    | Trait
+    | Impl
+  [@@deriving show, yojson, compare, sexp, eq]
+end
+
+val of_def_id : Kind.t -> Types.def_id -> t
+val of_name : Kind.t -> name -> t
 val eq_name : name -> t -> bool
 
-(* (\* Rust's [core] names we produce *\) *)
-(* module Core : sig *)
-(*   module Result : sig *)
-(*     val ok : t *)
-(*     val some : t *)
-(*   end *)
+type view = { crate : string; path : string list; definition : string }
 
-(*   module Iter : sig *)
-(*     module Iterator : sig *)
-(*       val fold : t *)
-(*     end *)
-(*   end *)
-
-(*   module Ops : sig *)
-(*     module ControlFlow : sig *)
-(*       val continue : t *)
-(*       val break : t *)
-(*     end *)
-
-(*     module Index : sig *)
-(*       val index : t *)
-(*     end *)
-
-(*     module FromResidual : sig *)
-(*       val from_residual : t *)
-(*     end *)
-(*   end *)
-(* end *)
-
-(* (\* Extra definitions (i.e. non Rust core) we introduce with Hax *\) *)
-(* module Hax : sig *)
-(*   module Error : sig *)
-(*     val failure : t *)
-(*   end *)
-
-(*   module Array : sig *)
-(*     val repeat : t *)
-(*     val update_at : t *)
-(*   end *)
-
-(*   module CoerceUnsize : sig *)
-(*     val unsize : t *)
-(*   end *)
-
-(*   module MonadicCf : sig *)
-(*     val lift : t *)
-(*     val mexception : t *)
-(*   end *)
-(* end *)
+val to_view : t -> view
+val to_definition_name : t -> string

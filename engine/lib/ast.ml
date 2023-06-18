@@ -2,19 +2,6 @@ open Base
 open Utils
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
-module Non_empty_list = struct
-  include Non_empty_list
-
-  let t_of_yojson : (Yojson.Safe.t -> 'a) -> Yojson.Safe.t -> 'a t =
-   fun f x -> list_of_yojson f x |> Non_empty_list.of_list_exn
-
-  let yojson_of_t : ('a -> Yojson.Safe.t) -> 'a t -> Yojson.Safe.t =
-   fun f x -> Non_empty_list.to_list x |> yojson_of_list f
-
-  let t_of_sexp f s = List.t_of_sexp f s |> Non_empty_list.of_list_exn
-  let sexp_of_t f x = Non_empty_list.to_list x |> List.sexp_of_t f
-end
-
 module Namespace = struct
   module U = struct
     module T = struct
@@ -101,7 +88,7 @@ let union_spans : span list -> span =
   >> Option.value_or_thunk ~default:(fun _ ->
          Dummy { id = FreshSpanId.make () })
 
-type concrete_ident = (Concrete_ident.t[@opaque])
+type concrete_ident = (Concrete_ident.t[@Visitors.opaque])
 
 and bin_op =
   | Add
@@ -163,7 +150,11 @@ module Global_ident = struct
   include M
   module Map = Map.M (M)
 
-  let of_name n = `Concrete (Concrete_ident.of_name n)
+  let of_name kind n = `Concrete (Concrete_ident.of_name kind n)
+
+  let eq_name name (x : t) : bool =
+    match x with `Concrete x -> Concrete_ident.eq_name name x | _ -> false
+
   let to_string : t -> string = [%show: t]
 end
 

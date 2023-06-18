@@ -81,20 +81,6 @@ let rec map_last_non_empty_list (f : 'a -> 'a) (l : 'a Non_empty_list.t) :
   | [ x ] -> [ f x ]
   | x :: y :: tl -> cons x @@ map_last_non_empty_list f (y :: tl)
 
-let map_last_concrete_ident (f : string -> string) (id : concrete_ident) =
-  { id with path = map_last_non_empty_list f id.path }
-
-let map_last_global_ident (f : string -> string) (id : global_ident) =
-  match id with
-  | `Concrete concrete -> `Concrete (map_last_concrete_ident f concrete)
-  | _ -> id
-
-let lowercase_global_ident : global_ident -> global_ident =
-  map_last_global_ident @@ map_first_letter String.lowercase
-
-let uppercase_global_ident : global_ident -> global_ident =
-  map_last_global_ident @@ map_first_letter String.uppercase
-
 module Make (Ctx : sig
   val ctx : Context.t
 end) =
@@ -171,17 +157,12 @@ struct
         F.mk_e_app (F.term_of_lid [ "pub_" ^ prefix ^ "128" ]) [ lit ]
     | _ -> h e
 
-  (* let is_concrete_ident_in_namespace (crate, path) (id : concrete_ident) = *)
-  (*   crate = id.crate && List.is_prefix ~prefix:path @@ Non_empty_list. id.path *)
-
   let pconcrete_ident (id : concrete_ident) =
-    let id_path = Non_empty_list.to_list id.path in
-    let crate, path = ctx.current_namespace in
-    if
-      String.(crate = id.crate)
-      && [%eq: string list] (List.drop_last_exn id_path) path
-    then F.lid [ List.last_exn id_path ]
-    else F.lid (id.crate :: id_path)
+    let id = Concrete_ident.to_view id in
+    let ns_crate, ns_path = ctx.current_namespace in
+    if String.(ns_crate = id.crate) && [%eq: string list] ns_path id.path then
+      F.lid [ id.definition ]
+    else F.lid (id.crate :: (id.path @ [ id.definition ]))
 
   let rec pglobal_ident (span : span) (id : global_ident) =
     match id with
@@ -210,15 +191,9 @@ struct
     String.lowercase
       name (* TODO: this is not robust, might produce name clashes *)
 
-  let ptype_ident span : global_ident -> F.Ident.lident =
-    lowercase_global_ident
-    >> map_last_global_ident (fun s -> s ^ "_t")
-    >> pglobal_ident span
-
   (* This is a bit too fiddly. TODO: simplify *)
   let pfield_concrete_ident (id : concrete_ident) =
-    let id_path = Non_empty_list.to_list id.path in
-    F.lid [ String.lowercase (List.last_exn id_path) ]
+    F.lid [ (Concrete_ident.to_view id).definition ]
 
   let pfield_ident span (f : global_ident) : F.Ident.lident =
     match f with
@@ -231,30 +206,27 @@ struct
           ("pfield_ident: not a valid field name in F* backend: "
          ^ show_global_ident f)
 
-  let pconstructor_ident span : global_ident -> F.Ident.lident =
-    uppercase_global_ident >> pglobal_ident span
-
   let index_of_field = function
-    | `Concrete { path } -> (
-        try Some (Int.of_string @@ Non_empty_list.last path) with _ -> None)
+    | `Concrete id -> (
+        try Some (Int.of_string @@ Concrete_ident.to_definition_name id)
+        with _ -> None)
     | `TupleField (nth, _) -> Some nth
     | _ -> None
 
   let is_field_an_index = index_of_field >> Option.is_some
 
   let operators =
-    let c = Global_ident.of_string_exn in
+    let c = Global_ident.of_name in
     [
-      (c "core::ops::index::IndexMut::update_at", (3, ".[]<-"));
-      (c "std::core::array::update_array_at", (3, ".[]<-"));
-      (c "core::ops::index::Index::index", (2, ".[]"));
-      (c "core::ops::bit::BitXor::bitxor", (2, "^."));
-      (c "core::ops::bit::BitAnd::bitand", (2, "&."));
-      (c "core::ops::bit::BitOr::bitor", (2, "|."));
-      (c "core::ops::bit::Not::not", (1, "~."));
-      (c "core::ops::arith::Add::add", (2, "+."));
-      (c "core::ops::arith::Sub::sub", (2, "-."));
-      (c "core::ops::arith::Mul::mul", (2, "*."));
+      (c Hax__Array__update_at, (3, ".[]<-"));
+      (c Core__ops__index__Index__index, (2, ".[]"));
+      (c Core__ops__bit__BitXor__bitxor, (2, "^."));
+      (c Core__ops__bit__BitAnd__bitand, (2, "&."));
+      (c Core__ops__bit__BitOr__bitor, (2, "|."));
+      (c Core__ops__bit__Not__not, (1, "~."));
+      (c Core__ops__arith__Add__add, (2, "+."));
+      (c Core__ops__arith__Sub__sub, (2, "-."));
+      (c Core__ops__arith__Mul__mul, (2, "*."));
       (`Primitive (BinOp Add), (2, "+"));
       (`Primitive (BinOp Sub), (2, "-"));
       (`Primitive (BinOp Mul), (2, "*"));
@@ -286,7 +258,7 @@ struct
     | TSlice { ty; _ } ->
         F.mk_e_app (F.term_of_lid [ "FStar"; "Seq"; "seq" ]) [ pty span ty ]
     | TApp { ident = `TupleType 0 as ident; args = [] } ->
-        F.term @@ F.AST.Name (ptype_ident span ident)
+        F.term @@ F.AST.Name (pglobal_ident span ident)
     | TApp { ident = `TupleType 1; args = [ GType ty ] } -> pty span ty
     | TApp { ident = `TupleType n; args } when n >= 2 -> (
         let args =
@@ -300,7 +272,7 @@ struct
             F.term @@ F.AST.Paren (List.fold_left ~init:hd ~f:mk_star tl)
         | _ -> Error.assertion_failure span "Tuple type: bad arity")
     | TApp { ident; args } ->
-        let base = F.term @@ F.AST.Name (ptype_ident span ident) in
+        let base = F.term @@ F.AST.Name (pglobal_ident span ident) in
         let args = List.map ~f:(pgeneric_value span) args in
         F.mk_e_app base args
     | TArrow (inputs, output) ->
@@ -358,9 +330,7 @@ struct
         in
         if record then pat_rec ()
         else
-          let pat_name =
-            F.pat @@ F.AST.PatName (pconstructor_ident p.span name)
-          in
+          let pat_name = F.pat @@ F.AST.PatName (pglobal_ident p.span name) in
           let is_payload_record =
             List.for_all ~f:(fun { field } -> is_field_an_index field) args
             |> not
@@ -535,7 +505,9 @@ struct
         Error.assertion_failure span "pgeneric_constraint:LIFETIME"
     | GCType { typ; implements } ->
         let implements : trait_ref = implements in
-        let trait = F.term @@ F.AST.Name (ptype_ident span implements.trait) in
+        let trait =
+          F.term @@ F.AST.Name (pglobal_ident span implements.trait)
+        in
         let args = List.map ~f:(pgeneric_value span) implements.args in
         let tc = F.mk_e_app trait (*pty typ::*) args in
         F.pat
@@ -560,7 +532,9 @@ struct
         Error.assertion_failure span "pgeneric_constraint_bd:LIFETIME"
     | GCType { typ; implements } ->
         let implements : trait_ref = implements in
-        let trait = F.term @@ F.AST.Name (ptype_ident span implements.trait) in
+        let trait =
+          F.term @@ F.AST.Name (pglobal_ident span implements.trait)
+        in
         let args = List.map ~f:(pgeneric_value span) implements.args in
         let tc = F.mk_e_app trait (*pty typ::*) args in
         F.AST.
@@ -817,7 +791,7 @@ struct
                   :: List.map
                        ~f:(fun { trait; args; bindings = _ } ->
                          let base =
-                           F.term @@ F.AST.Name (ptype_ident e.span trait)
+                           F.term @@ F.AST.Name (pglobal_ident e.span trait)
                          in
                          let args = List.map ~f:(pgeneric_value e.span) args in
                          ( F.id
