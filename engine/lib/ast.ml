@@ -89,36 +89,9 @@ let union_spans : span list -> span =
          Dummy { id = FreshSpanId.make () })
 
 type concrete_ident = (Concrete_ident.t[@Visitors.opaque])
-
-and bin_op =
-  | Add
-  | Sub
-  | Mul
-  | Div
-  | Rem
-  | BitXor
-  | BitAnd
-  | BitOr
-  | Shl
-  | Shr
-  | Eq
-  | Lt
-  | Le
-  | Ne
-  | Ge
-  | Gt
-  | Offset
-
-and un_op = Not | Neg
 and logical_op = And | Or
 
-and primitive_ident =
-  | Box
-  | Deref
-  | Cast
-  | BinOp of bin_op
-  | UnOp of un_op
-  | LogicalOp of logical_op
+and primitive_ident = Deref | Cast | LogicalOp of logical_op
 [@@deriving
   show,
     yojson,
