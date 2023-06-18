@@ -59,7 +59,6 @@ fn convert_thir<'tcx>(
         .map(|did| {
             let span = hir.span(hir.local_def_id_to_hir_id(did));
             let mk_error_thir = || {
-                // let ty = tcx.ty_error(error);
                 let ty = tcx.mk_ty_from_kind(rustc_type_ir::sty::TyKind::Never);
                 let mut thir = rustc_middle::thir::Thir::new(rustc_middle::thir::BodyTy::Const(ty));
                 const ERR_LITERAL: &'static rustc_hir::Lit = &rustc_span::source_map::Spanned {
