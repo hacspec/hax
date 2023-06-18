@@ -277,43 +277,28 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
           |> B.pmty_signature]
         end
 
-        module type T_Exn = sig
-          include T
-
-          type error [@@deriving show, yojson, eq]
-
-          exception E of error
+        module type MAPPER = sig
+          val map : 'a 'b. ('a -> 'b) -> Enumeration.t -> 'a -> 'b
         end
 
-        module WrapExns (S : T_Exn) =
+        module Map (S : T) (Mapper : MAPPER) =
         [%m
-        B.pmod_structure
-        @@ [%str
-             type error = S.error * Enumeration.t [@@deriving show, yojson, eq]
-
-             exception E of error]
-        @ List.map
-            ~f:(fun txt ->
-              [%stri
-                let [%p B.ppat_var { loc; txt }] =
-                 fun x ->
-                  try
-                    [%e B.pexp_ident @@ { loc; txt = Ldot (Lident "S", txt) }] x
-                  with S.E err ->
-                    raise
-                    @@ E
-                         ( err,
-                           [%e
-                             B.pexp_construct
-                               {
-                                 loc;
-                                 txt =
-                                   Ldot
-                                     ( Lident "Enumeration",
-                                       uppercase_first_char txt );
-                               }
-                               None] )])
-            features]
+        let f txt =
+          [%stri
+            let [%p B.ppat_var { loc; txt }] =
+              let kind =
+                [%e
+                  B.pexp_construct
+                    {
+                      loc;
+                      txt = Ldot (Lident "Enumeration", uppercase_first_char txt);
+                    }
+                    None]
+              in
+              let f = [%e B.pexp_ident { loc; txt = Ldot (Lident "S", txt) }] in
+              Mapper.map f kind]
+        in
+        B.pmod_structure @@ ([%stri include S] :: List.map ~f features)]
 
         module On =
         [%m
