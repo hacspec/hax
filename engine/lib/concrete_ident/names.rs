@@ -25,8 +25,26 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     let _ = [()].into_iter();
     let _ = 1..2;
 
+    const _: () = {
+        use core::ops::*;
+        fn arith<
+            X: Add<Output = X>
+                + Sub<Output = X>
+                + Mul<Output = X>
+                + Div<Output = X>
+                + BitXor<Output = X>
+                + BitAnd<Output = X>
+                + BitOr<Output = X>
+                + Not<Output = X>
+                + Copy,
+        >(
+            x: X,
+        ) -> X {
+            (x ^ x & !x) + x / x * x - x
+        }
+    };
+
     fn dummy<T: core::ops::Try<Output = ()>>(z: T) {
-        // use core::ops::Try;
         let _ = T::from_output(());
         let _ = z.branch();
     }

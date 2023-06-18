@@ -214,13 +214,10 @@ struct
                 ];
             }
           when [%eq: local_ident] iter_variable next_iter_variable
-               && [%eq: concrete_ident] next_meth
-                    (Concrete_ident.of_name
-                       Core__iter__traits__iterator__Iterator__next)
-               && [%eq: concrete_ident] none_ctor
-                    (Concrete_ident.of_name Core__option__Option__None)
-               && [%eq: concrete_ident] some_ctor
-                    (Concrete_ident.of_name Core__option__Option__Some) ->
+               && Concrete_ident.eq_name
+                    Core__iter__traits__iterator__Iterator__next next_meth
+               && Concrete_ident.eq_name Core__option__Option__None none_ctor
+               && Concrete_ident.eq_name Core__option__Option__Some some_ctor ->
             Some { it; pat; body; state; label; witness }
         | _ -> None
                [@ocamlformat "disable"]

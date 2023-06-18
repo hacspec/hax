@@ -40,6 +40,9 @@ let split_str (s : string) ~(on : string) : string list =
   split_list ~equal:Char.equal ~needle:(String.to_list on) (String.to_list s)
   |> List.map ~f:String.of_char_list
 
+let last_init (l : 'a list) : ('a list * 'a) option =
+  Option.both (List.drop_last l) (List.last l)
+
 let tabsize = 2
 let newline_indent depth : string = "\n" ^ String.make (tabsize * depth) ' '
 

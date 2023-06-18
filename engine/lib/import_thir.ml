@@ -62,11 +62,8 @@ module Exn = struct
       def_id.path |> List.drop_last_exn
       |> List.filter_map ~f:string_of_disambiguated_def_path_item )
 
-  let concrete_of_def_id : Thir.def_id -> concrete_ident =
-    Concrete_ident.of_def_id
-
-  let def_id (def_id : Thir.def_id) : global_ident =
-    `Concrete (concrete_of_def_id def_id)
+  let def_id kind (def_id : Thir.def_id) : global_ident =
+    `Concrete (Concrete_ident.of_def_id kind def_id)
 
   let local_ident (ident : Thir.local_ident) : local_ident =
     { name = ident.name; id = LocalIdent.var_id_of_int 123 (* todo! *) }
@@ -219,12 +216,10 @@ module Exn = struct
           f = { e = GlobalVar (`Concrete meth); _ };
           args = [ { e = Borrow { e = x; _ }; _ }; index ];
         }
-      when Concrete_ident.equal meth
-             (Concrete_ident.of_name Core__ops__index__IndexMut__index_mut) ->
+      when Concrete_ident.eq_name Core__ops__index__IndexMut__index_mut meth ->
         Some (x, index)
     | App { f = { e = GlobalVar (`Concrete meth); _ }; args = [ x; index ] }
-      when Concrete_ident.equal meth
-             (Concrete_ident.of_name Core__ops__index__Index__index) ->
+      when Concrete_ident.eq_name Core__ops__index__Index__index meth ->
         Some (x, index)
     | _ -> None
 
@@ -252,7 +247,11 @@ module Exn = struct
           call (mk_global ([ inner_typ ] ->. typ) @@ `Primitive Box) [ value ]
       | MacroInvokation { argument; macro_ident; _ } ->
           MacroInvokation
-            { args = argument; macro = def_id macro_ident; witness = W.macro }
+            {
+              args = argument;
+              macro = def_id Macro macro_ident;
+              witness = W.macro;
+            }
       | If
           {
             cond = { contents = Let { expr = scrutinee; pat }; _ };
@@ -394,7 +393,8 @@ module Exn = struct
       | Field { lhs; field } ->
           let lhs = c_expr lhs in
           let projector =
-            GlobalVar (`Projector (`Concrete (concrete_of_def_id field)))
+            GlobalVar
+              (`Projector (`Concrete (Concrete_ident.of_def_id Field field)))
           in
           let span = c_span e.span in
           App
@@ -415,7 +415,7 @@ module Exn = struct
               f = { e = projector; typ = TArrow ([ lhs.typ ], typ); span };
               args = [ lhs ];
             }
-      | GlobalName { id } -> GlobalVar (def_id id)
+      | GlobalName { id } -> GlobalVar (def_id Value id)
       | UpvarRef { var_hir_id = id; _ } -> LocalVar (local_ident id)
       | Borrow { arg; borrow_kind = kind } ->
           let e' = c_expr arg in
@@ -464,7 +464,7 @@ module Exn = struct
             }
       | Array { fields } -> Array (List.map ~f:c_expr fields)
       | Adt { info; base; fields; _ } ->
-          let constructor = def_id info.constructs_type in
+          let constructor = def_id Constructor info.variant in
           let base =
             Option.map
               ~f:(fun base -> (c_expr base.base, W.construct_base))
@@ -473,7 +473,7 @@ module Exn = struct
           let fields =
             List.map
               ~f:(fun f ->
-                let field = def_id f.field in
+                let field = def_id Field f.field in
                 let value = c_expr f.value in
                 (field, value))
               fields
@@ -498,7 +498,7 @@ module Exn = struct
                        typ = TInt { size = S8; signedness = Unsigned };
                      })
                    l))
-      | NamedConst { def_id = id; _ } -> GlobalVar (def_id id)
+      | NamedConst { def_id = id; _ } -> GlobalVar (def_id Value id)
       | Closure { body; params; upvars; _ } ->
           let params =
             List.filter_map ~f:(fun p -> Option.map ~f:c_pat p.pat) params
@@ -511,9 +511,9 @@ module Exn = struct
           let lhs_type = c_ty lhs.span lhs.ty in
           call
             (mk_global ([ lhs_type; index_type ] ->. typ)
-            @@ Global_ident.of_name Core__ops__index__Index__index)
+            @@ Global_ident.of_name Value Core__ops__index__Index__index)
             [ lhs; index ]
-      | StaticRef { def_id = id; _ } -> GlobalVar (def_id id)
+      | StaticRef { def_id = id; _ } -> GlobalVar (def_id Value id)
       | PlaceTypeAscription _ ->
           unimplemented e.span "expression PlaceTypeAscription"
       | ValueTypeAscription _ ->
@@ -583,7 +583,7 @@ module Exn = struct
           let var = local_ident var in
           PBinding { mut; mode; var; typ; subpat }
       | Variant { info; subpatterns; _ } ->
-          let name = def_id info.constructs_type in
+          let name = def_id Constructor info.variant in
           let args = List.map ~f:(c_field_pat info) subpatterns in
           PConstruct { record = info.constructs_record; name; args }
       | Tuple { subpatterns } ->
@@ -627,7 +627,7 @@ module Exn = struct
     { p = v; span; typ }
 
   and c_field_pat info (field_pat : Thir.field_pat) : field_pat =
-    { field = def_id field_pat.field; pat = c_pat field_pat.pattern }
+    { field = def_id Field field_pat.field; pat = c_pat field_pat.pattern }
 
   and c_constant_kind span (k : Thir.constant_kind) : extended_literal =
     match k with
@@ -682,7 +682,7 @@ module Exn = struct
     | Arrow { params; ret } ->
         TArrow (List.map ~f:(c_ty span) params, c_ty span ret)
     | NamedType { def_id = id; generic_args } ->
-        let ident = def_id id in
+        let ident = def_id Type id in
         let args = List.map ~f:(c_generic_value span) generic_args in
         TApp { ident; args }
     | Foreign _ -> unimplemented span "Foreign"
@@ -758,7 +758,7 @@ module Exn = struct
     match p with
     | Clause (Trait { is_positive = true; is_const = _; trait_ref }) ->
         let args = List.map ~f:(c_generic_value span) trait_ref.generic_args in
-        Some { trait = def_id trait_ref.def_id; args; bindings = [] }
+        Some { trait = def_id Trait trait_ref.def_id; args; bindings = [] }
     | _ -> None
 
   let c_constraint span (c : Thir.where_predicate) : generic_constraint list =
@@ -851,7 +851,7 @@ module Exn = struct
           mk
           @@ Fn
                {
-                 name = def_id (Option.value_exn item.def_id);
+                 name = def_id Value (Option.value_exn item.def_id);
                  generics = { params = []; constraints = [] };
                  body = c_expr body;
                  params = [];
@@ -860,7 +860,7 @@ module Exn = struct
           mk
           @@ TyAlias
                {
-                 name = def_id (Option.value_exn item.def_id);
+                 name = def_id Type (Option.value_exn item.def_id);
                  generics = c_generics generics;
                  ty = c_ty item.span ty;
                }
@@ -868,13 +868,13 @@ module Exn = struct
           mk
           @@ Fn
                {
-                 name = def_id (Option.value_exn item.def_id);
+                 name = def_id Value (Option.value_exn item.def_id);
                  generics = c_generics generics;
                  body = c_expr body;
                  params = List.map ~f:(c_param item.span) params;
                }
       | Enum (variants, generics) ->
-          let name = def_id (Option.value_exn item.def_id) in
+          let name = def_id Type (Option.value_exn item.def_id) in
           let generics = c_generics generics in
           let variants =
             List.map
@@ -884,23 +884,23 @@ module Exn = struct
                     let arguments =
                       List.map
                         ~f:(fun { def_id = id; ty; span; _ } ->
-                          (def_id id, c_ty span ty))
+                          (def_id Field id, c_ty span ty))
                         fields
                     in
-                    { name = def_id variant_id; arguments }
-                | Unit (_, name) -> { name = def_id name; arguments = [] })
+                    { name = def_id Type variant_id; arguments }
+                | Unit (_, name) -> { name = def_id Type name; arguments = [] })
               variants
           in
           mk @@ Type { name; generics; variants; record = true }
       | Struct (v, generics) ->
-          let name = def_id (Option.value_exn item.def_id) in
+          let name = def_id Type (Option.value_exn item.def_id) in
           let generics = c_generics generics in
           let v, record =
             let mk fields =
               let arguments =
                 List.map
                   ~f:(fun Thir.{ def_id = id; ty; span; _ } ->
-                    (def_id id, c_ty span ty))
+                    (def_id Field id, c_ty span ty))
                   fields
               in
               { name; arguments }
@@ -916,13 +916,13 @@ module Exn = struct
           mk
           @@ IMacroInvokation
                {
-                 macro = def_id macro_ident;
+                 macro = def_id Macro macro_ident;
                  argument;
                  span = c_span span;
                  witness = W.macro;
                }
       | Trait (No, Normal, generics, _bounds, items) ->
-          let name = def_id (Option.value_exn item.def_id) in
+          let name = def_id Trait (Option.value_exn item.def_id) in
           let { params; constraints } = c_generics generics in
           let params =
             GPType
@@ -948,7 +948,7 @@ module Exn = struct
       | Impl { of_trait = None; generics; items; _ } ->
           List.map
             ~f:(fun (item : Thir.impl_item) ->
-              let item_def_id = def_id item.owner_id in
+              let item_def_id = def_id Impl item.owner_id in
               let v =
                 match (item.kind : Thir.impl_item_kind) with
                 | Fn { body; params; _ } ->
@@ -984,7 +984,7 @@ module Exn = struct
                  generics = c_generics i.generics;
                  self_ty = c_ty item.span i.self_ty;
                  of_trait =
-                   ( def_id of_trait.def_id,
+                   ( def_id Trait of_trait.def_id,
                      List.map
                        ~f:(c_generic_value item.span)
                        of_trait.generic_args );

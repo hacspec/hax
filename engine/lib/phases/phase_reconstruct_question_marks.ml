@@ -117,20 +117,18 @@ module%inlined_contents Make (FA : Features.T) = struct
                 ];
             }
         (*[@ocamlformat "disable"]*)
-          when [%equal: global_ident] n
-                 (Global_ident.of_name Core__ops__try_trait__Try__branch) -> (
+          when Global_ident.eq_name Core__ops__try_trait__Try__branch n -> (
             match
               (extract_pat_app_bd pat_break, extract_pat_app_bd pat_continue)
             with
             | Some (f_break, residual_arg_var'), Some (f_continue, continue_var')
-              when [%equal: global_ident] f_break
-                     (Global_ident.of_name Core__ops__control_flow__ControlFlow__Break)
-                   && [%equal: global_ident] f_continue
-                        (Global_ident.of_name
-                           Core__ops__control_flow__ControlFlow__Continue)
-                   && [%equal: global_ident] f
-                        (Global_ident.of_name
-                           Core__ops__try_trait__FromResidual__from_residual)
+              when Global_ident.eq_name
+                     Core__ops__control_flow__ControlFlow__Break f_break
+                   && Global_ident.eq_name
+                        Core__ops__control_flow__ControlFlow__Continue
+                        f_continue
+                   && Global_ident.eq_name
+                        Core__ops__try_trait__FromResidual__from_residual f
                    && [%equal: local_ident] residual_arg_var residual_arg_var'
                    && [%equal: local_ident] continue_var continue_var' ->
                 Some (expr, converted_typ)
