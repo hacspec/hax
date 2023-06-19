@@ -213,8 +213,8 @@ struct
   and dloop_kind (span : span) (k : A.loop_kind) : B.loop_kind =
     match k with
     | UnconditionalLoop -> UnconditionalLoop
-    | ForLoop { it; var; witness } ->
-        ForLoop { it = dexpr it; var; witness = S.for_loop witness }
+    | ForLoop { it; pat; witness } ->
+        ForLoop { it = dexpr it; pat = dpat pat; witness = S.for_loop witness }
     | ForIndexLoop { start; end_; var; var_typ; witness } ->
         ForIndexLoop
           {

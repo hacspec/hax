@@ -230,7 +230,7 @@ module Make (F : Features.T) = struct
           let vars =
             (match kind with
             | UnconditionalLoop -> []
-            | ForLoop { var = _not_mutable; _ } -> []
+            | ForLoop { pat = _not_mutable; _ } -> []
             | ForIndexLoop { var = _not_mutable; _ } -> [])
             @ (state
               |> Option.map ~f:(fun { bpat; _ } -> variables_of_pat bpat)
