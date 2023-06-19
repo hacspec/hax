@@ -98,7 +98,13 @@ module%inlined_contents Make (FA : Features.T) = struct
                 typ;
                 _;
               };
-            var;
+            pat =
+              {
+                p =
+                  PBinding
+                    { mut = Immutable; mode = ByValue; var; subpat = None };
+                typ = _;
+              };
             witness;
           } ->
           ForIndexLoop

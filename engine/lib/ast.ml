@@ -459,7 +459,7 @@ functor
 
     and loop_kind =
       | UnconditionalLoop
-      | ForLoop of { var : local_ident; it : expr; witness : F.for_loop }
+      | ForLoop of { pat : pat; it : expr; witness : F.for_loop }
       | ForIndexLoop of {
           start : expr;
           end_ : expr;

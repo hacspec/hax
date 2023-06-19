@@ -38,7 +38,7 @@ struct
 
       type t = {
         it : expr;
-        var : local_ident;
+        pat : pat;
         body : expr;
         state : loop_state option;
         label : string option;
@@ -199,22 +199,7 @@ struct
                                                                           args =
                                                                             [
                                                                               {
-                                                                                pat =
-                                                                                {
-                                                                                p =
-                                                                                PBinding
-                                                                                {
-                                                                                mut =
-                                                                                Immutable;
-                                                                                mode =
-                                                                                ByValue;
-                                                                                var;
-                                                                                subpat =
-                                                                                None;
-                                                                                };
-                                                                                typ =
-                                                                                _;
-                                                                                };
+                                                                                pat;
                                                                               };
                                                                             ];
                                                                           _;
@@ -259,7 +244,7 @@ struct
                 ];
             }
           when [%eq: local_ident] iter_variable next_iter_variable ->
-            Some { it; var; body; state; label; witness }
+            Some { it; pat; body; state; label; witness }
         | _ -> None
                [@ocamlformat "disable"]
     end
@@ -269,7 +254,7 @@ struct
     let rec dexpr_unwrapped (expr : A.expr) : B.expr =
       let h = [%inline_body dexpr_unwrapped] in
       match For.extract expr with
-      | Some { it; var; body; label; state; witness } ->
+      | Some { it; pat; body; label; state; witness } ->
           {
             e =
               Loop
@@ -277,7 +262,11 @@ struct
                   body = dexpr body;
                   kind =
                     ForLoop
-                      { it = dexpr it; var; witness = Features.On.for_loop };
+                      {
+                        it = dexpr it;
+                        pat = dpat pat;
+                        witness = Features.On.for_loop;
+                      };
                   state = Option.map ~f:(dloop_state expr.span) state;
                   label;
                   witness = S.loop witness;

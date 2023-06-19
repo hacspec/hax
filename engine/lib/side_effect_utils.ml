@@ -304,8 +304,8 @@ struct
               HoistSeq.many env kind_state (fun l effects ->
                   let kind =
                     match (l, kind) with
-                    | it :: ([ _ ] | []), ForLoop { var; witness; _ } ->
-                        ForLoop { var; witness; it }
+                    | it :: ([ _ ] | []), ForLoop { pat; witness; _ } ->
+                        ForLoop { pat; witness; it }
                     | ([ _ ] | []), UnconditionalLoop -> UnconditionalLoop
                     | _, ForIndexLoop _ -> .
                     | _ -> HoistSeq.err_hoist_invariant Caml.__LOC__

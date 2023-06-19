@@ -67,4 +67,22 @@ mod for_loops {
         }
         acc
     }
+
+    fn pattern(arr: Vec<(usize, usize)>) -> usize {
+        let mut acc = 0;
+        for (x, y) in arr {
+            acc = acc + x * y;
+        }
+        acc
+    }
+
+    fn enumerate_chunks(arr: Vec<usize>) -> usize {
+        let mut acc = 0;
+        for (i, chunk) in arr.chunks(4).enumerate() {
+            for (j, x) in chunk.iter().enumerate() {
+                acc = i + j + x;
+            }
+        }
+        acc
+    }
 }
