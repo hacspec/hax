@@ -6,7 +6,7 @@ module Kind : sig
     | Type
     | Value
     | Lifetime
-    | Constructor
+    | Constructor of { is_struct : bool }
     | Field
     | Macro
     | Trait
@@ -22,3 +22,4 @@ type view = { crate : string; path : string list; definition : string }
 
 val to_view : t -> view
 val to_definition_name : t -> string
+val to_namespace : t -> string * string list
