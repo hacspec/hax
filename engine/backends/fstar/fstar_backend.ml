@@ -89,32 +89,8 @@ struct
 
   let pprim_ident (span : span) (id : primitive_ident) =
     match id with
-    | Box -> Error.assertion_failure span "pprim_ident Box"
     | Deref -> Error.assertion_failure span "pprim_ident Deref"
     | Cast -> F.lid [ "cast" ]
-    | BinOp op -> (
-        match op with
-        | Add -> F.lid [ "Prims"; "op_Addition" ]
-        | Sub -> F.lid [ "Prims"; "op_Subtraction" ]
-        | Mul -> F.lid [ "FStar"; "Mul"; "op_Star" ]
-        | Div -> F.lid [ "Prims"; "op_Division" ]
-        | Eq -> F.lid [ "Prims"; "op_Equality" ]
-        | Lt -> F.lid [ "Prims"; "op_LessThan" ]
-        | Le -> F.lid [ "Prims"; "op_LessThanOrEqual" ]
-        | Ge -> F.lid [ "Prims"; "op_GreaterThan" ]
-        | Gt -> F.lid [ "Prims"; "op_GreaterThanOrEqual" ]
-        | Ne -> F.lid [ "Prims"; "op_disEquality" ]
-        | Rem -> F.lid [ "Prims"; "op_Modulus" ]
-        | BitXor -> F.lid [ "Hacspec_lib"; "^." ]
-        | BitAnd -> F.lid [ "Hacspec_lib"; "&." ]
-        | BitOr -> F.lid [ "Hacspec_lib"; "|." ]
-        | Shl -> F.lid [ "Hacspec_lib"; "<<." ]
-        | Shr -> F.lid [ "Hacspec_lib"; ">>." ]
-        | Offset -> Error.assertion_failure span "pprim_ident BinOp::Offset?")
-    | UnOp op -> (
-        match op with
-        | Not -> F.lid [ "Prims"; "l_Not" ]
-        | Neg -> F.lid [ "Prims"; "op_Minus" ])
     | LogicalOp op -> (
         match op with
         | And -> F.lid [ "Prims"; "op_AmpAmp" ]
@@ -185,6 +161,13 @@ struct
           ("pglobal_ident: expected to be handled somewhere else: "
          ^ show_global_ident id)
 
+  let assert_concrete span (id : global_ident) : concrete_ident =
+    match id with
+    | `Concrete c -> c
+    | _ ->
+        Error.assertion_failure span
+        @@ "assert_concrete: not concrete ident: " ^ show_global_ident id
+
   let rec plocal_ident (e : LocalIdent.t) = F.id @@ String.lowercase e.name
 
   let pgeneric_param_name (name : string) : string =
@@ -193,7 +176,7 @@ struct
 
   (* This is a bit too fiddly. TODO: simplify *)
   let pfield_concrete_ident (id : concrete_ident) =
-    F.lid [ (Concrete_ident.to_view id).definition ]
+    F.lid [ Concrete_ident.to_definition_name id ]
 
   let pfield_ident span (f : global_ident) : F.Ident.lident =
     match f with
@@ -206,32 +189,39 @@ struct
           ("pfield_ident: not a valid field name in F* backend: "
          ^ show_global_ident f)
 
+  let index_of_field_concrete id =
+    try Some (Int.of_string @@ Concrete_ident.to_definition_name id)
+    with _ -> None
+
   let index_of_field = function
-    | `Concrete id -> (
-        try Some (Int.of_string @@ Concrete_ident.to_definition_name id)
-        with _ -> None)
+    | `Concrete id -> index_of_field_concrete id
     | `TupleField (nth, _) -> Some nth
     | _ -> None
 
   let is_field_an_index = index_of_field >> Option.is_some
 
   let operators =
-    let c = Global_ident.of_name in
+    let c = Global_ident.of_name Value in
     [
       (c Hax__Array__update_at, (3, ".[]<-"));
       (c Core__ops__index__Index__index, (2, ".[]"));
-      (c Core__ops__bit__BitXor__bitxor, (2, "^."));
+      (c Core__ops__bit__BitXor__bitxor, (2, "^"));
       (c Core__ops__bit__BitAnd__bitand, (2, "&."));
-      (c Core__ops__bit__BitOr__bitor, (2, "|."));
-      (c Core__ops__bit__Not__not, (1, "~."));
-      (c Core__ops__arith__Add__add, (2, "+."));
-      (c Core__ops__arith__Sub__sub, (2, "-."));
-      (c Core__ops__arith__Mul__mul, (2, "*."));
-      (`Primitive (BinOp Add), (2, "+"));
-      (`Primitive (BinOp Sub), (2, "-"));
-      (`Primitive (BinOp Mul), (2, "*"));
-      (`Primitive (BinOp Eq), (2, "="));
-      (`Primitive (BinOp Ne), (2, "<>"));
+      (c Core__ops__bit__BitOr__bitor, (2, "|"));
+      (c Core__ops__bit__Not__not, (1, "~"));
+      (c Core__ops__arith__Add__add, (2, "+"));
+      (c Core__ops__arith__Sub__sub, (2, "-"));
+      (c Core__ops__arith__Mul__mul, (2, "*"));
+      (c Core__ops__arith__Div__div, (2, "/"));
+      (c Core__ops__arith__Rem__rem, (2, "%"));
+      (c Core__ops__bit__Shl__shl, (2, ">>."));
+      (c Core__ops__bit__Shr__shr, (2, "<<."));
+      (c Core__cmp__PartialEq__eq, (2, "=."));
+      (c Core__cmp__PartialOrd__lt, (2, "<"));
+      (c Core__cmp__PartialOrd__le, (2, "<="));
+      (c Core__cmp__PartialEq__ne, (2, "<>"));
+      (c Core__cmp__PartialOrd__ge, (2, ">="));
+      (c Core__cmp__PartialOrd__gt, (2, ">"));
     ]
     |> Map.of_alist_exn (module Global_ident)
 
@@ -287,7 +277,12 @@ struct
                 (F.term_of_lid [ "FStar"; "List"; "Tot"; "Base"; "length" ])
                 [ x ]
             in
-            let eq = F.term @@ F.AST.Name (pprim_ident span @@ BinOp Eq) in
+            let eq =
+              F.term
+              @@ F.AST.Name
+                   (pglobal_ident span
+                   @@ Global_ident.of_name Value Core__cmp__PartialEq__eq)
+            in
             F.mk_e_app eq [ len_of_x; pexpr length ])
     | TParam i ->
         F.term
@@ -363,9 +358,7 @@ struct
     | Construct { constructor = `TupleCons 0; fields = [] } ->
         F.AST.unit_const F.dummyRange
     | GlobalVar global_ident ->
-        F.term
-        @@ F.AST.Var
-             (pglobal_ident e.span @@ lowercase_global_ident global_ident)
+        F.term @@ F.AST.Var (pglobal_ident e.span @@ global_ident)
     | App
         {
           f = { e = GlobalVar (`Projector (`TupleField (n, len))) };
@@ -465,20 +458,6 @@ struct
 
   and parm { arm = { arm_pat; body } } = (ppat arm_pat, None, pexpr body)
 
-  (* let item_to_string: F.AST.item -> string = *)
-  (*   FStar_Parser_ToDocument.decl_to_document >> doc_to_string *)
-
-  (* todo eliminate me *)
-  let last_of_global_ident span (g : global_ident) =
-    match g with
-    | `Concrete { path; crate = _ } -> Non_empty_list.last path
-    | _ -> Error.assertion_failure span "last_of_global_ident"
-
-  let str_of_type_ident span : global_ident -> string =
-    lowercase_global_ident
-    >> map_last_global_ident (fun s -> s ^ "_t")
-    >> last_of_global_ident span
-
   let rec pgeneric_param span (p : generic_param) =
     let mk_implicit (ident : local_ident) ty =
       let v =
@@ -505,9 +484,7 @@ struct
         Error.assertion_failure span "pgeneric_constraint:LIFETIME"
     | GCType { typ; implements } ->
         let implements : trait_ref = implements in
-        let trait =
-          F.term @@ F.AST.Name (pglobal_ident span implements.trait)
-        in
+        let trait = F.term @@ F.AST.Name (pconcrete_ident implements.trait) in
         let args = List.map ~f:(pgeneric_value span) implements.args in
         let tc = F.mk_e_app trait (*pty typ::*) args in
         F.pat
@@ -532,9 +509,7 @@ struct
         Error.assertion_failure span "pgeneric_constraint_bd:LIFETIME"
     | GCType { typ; implements } ->
         let implements : trait_ref = implements in
-        let trait =
-          F.term @@ F.AST.Name (pglobal_ident span implements.trait)
-        in
+        let trait = F.term @@ F.AST.Name (pconcrete_ident implements.trait) in
         let args = List.map ~f:(pgeneric_value span) implements.args in
         let tc = F.mk_e_app trait (*pty typ::*) args in
         F.AST.
@@ -546,8 +521,11 @@ struct
             battributes = [];
           }
 
-  let hacspec_lib_item s =
-    `Concrete { crate = "hacspec"; path = Non_empty_list.[ "lib"; s ] }
+  (* let hacspec_lib_item s = *)
+  (*   `Concrete { crate = "hacspec"; path = Non_empty_list.[ "lib"; s ] } *)
+
+  let assert_definition_name span =
+    assert_concrete span >> Concrete_ident.to_definition_name
 
   let rec pitem (e : item) : [> `Item of F.AST.decl | `Comment of string ] list
       =
@@ -561,11 +539,7 @@ struct
         let pat =
           F.pat
           @@ F.AST.PatVar
-               ( F.id
-                 @@ last_of_global_ident e.span
-                 @@ lowercase_global_ident name,
-                 None,
-                 [] )
+               (F.id @@ Concrete_ident.to_definition_name name, None, [])
         in
         let pat =
           F.pat
@@ -590,11 +564,7 @@ struct
         let pat =
           F.pat
           @@ F.AST.PatVar
-               ( F.id
-                 @@ last_of_global_ident e.span
-                 @@ lowercase_global_ident name,
-                 None,
-                 [] )
+               (F.id @@ Concrete_ident.to_definition_name name, None, [])
         in
         F.decls ~quals:[ F.AST.Unfold_for_unification_and_vcgen ]
         @@ F.AST.TopLevelLet
@@ -610,60 +580,43 @@ struct
                    pty e.span ty );
                ] )
     | Type { name; generics; variants = [ variant ]; record = true } ->
-        (* let constructors = F.id (last_of_global_ident name), None, [] in *)
         F.decls
         @@ F.AST.Tycon
              ( false,
                false,
                [
                  F.AST.TyconRecord
-                   ( F.id @@ str_of_type_ident e.span name,
+                   ( F.id @@ Concrete_ident.to_definition_name name,
                      [],
                      (* todo type parameters & constraints *)
                      None,
                      [],
                      List.map
                        ~f:(fun (field, ty) ->
-                         ( F.id @@ last_of_global_ident e.span field,
+                         ( F.id @@ Concrete_ident.to_definition_name field,
                            None,
                            [],
                            pty e.span ty ))
                        variant.arguments );
                ] )
     | Type { name; generics; variants } ->
-        let self =
-          F.term_of_lid
-            [ last_of_global_ident e.span @@ lowercase_global_ident name ]
-        in
-        let constructor_funs =
-          List.map
-            ~f:(fun { name; arguments } ->
-              ( F.id
-                @@ last_of_global_ident e.span
-                @@ lowercase_global_ident name,
-                F.id @@ last_of_global_ident e.span @@ name ))
-            variants
-        in
+        let self = F.term_of_lid [ Concrete_ident.to_definition_name name ] in
         let constructors =
           List.map
             ~f:(fun { name; arguments } ->
-              ( F.id (last_of_global_ident e.span name),
+              ( F.id (Concrete_ident.to_definition_name name),
                 Some
                   (let field_indexes =
-                     List.map ~f:(fst >> index_of_field) arguments
+                     List.map ~f:(fst >> index_of_field_concrete) arguments
                    in
                    let is_record_payload =
                      List.exists ~f:Option.is_none field_indexes
                    in
                    if is_record_payload then
                      F.AST.VpRecord
-                       ( (* F.id @@ last_of_global_ident @@ lowercase_global_ident name, *)
-                         (* [], (\* todo type parameters & constraints *\) *)
-                         (* None, *)
-                         (* [], *)
-                         List.map
+                       ( List.map
                            ~f:(fun (field, ty) ->
-                             ( F.id @@ last_of_global_ident e.span field,
+                             ( F.id @@ Concrete_ident.to_definition_name field,
                                None,
                                [],
                                pty e.span ty ))
@@ -687,99 +640,96 @@ struct
                false,
                [
                  F.AST.TyconVariant
-                   ( F.id
-                     @@ last_of_global_ident e.span
-                     @@ lowercase_global_ident name,
+                   ( F.id @@ Concrete_ident.to_definition_name name,
                      [],
                      (* todo type parameters & constraints *)
                      None,
                      constructors );
                ] )
-    | IMacroInvokation { macro; argument; span } -> (
-        let open Hacspeclib_macro_parser in
-        let unsupported_macro () =
-          Error.raise
-          @@ {
-               kind = UnsupportedMacro { id = [%show: global_ident] macro };
-               span = e.span;
-             }
-        in
-        match macro with
-        | `Concrete Non_empty_list.{ crate = "hacspec_lib_tc"; path = [ name ] }
-          -> (
-            let unwrap r =
-              match r with
-              | Ok r -> r
-              | Error details ->
-                  let macro_id = [%show: global_ident] macro in
-                  Error.raise
-                    {
-                      kind = ErrorParsingMacroInvocation { macro_id; details };
-                      span = e.span;
-                    }
-            in
-            match name with
-            | "public_nat_mod" ->
-                let o = PublicNatMod.parse argument |> unwrap in
-                (F.decls_of_string @@ "unfold type "
-                ^ str_of_type_ident e.span (hacspec_lib_item @@ o.type_name)
-                ^ "  = nat_mod 0x" ^ o.modulo_value)
-                @ F.decls_of_string @@ "unfold type "
-                ^ str_of_type_ident e.span (hacspec_lib_item @@ o.type_of_canvas)
-                ^ "  = lseq pub_uint8 "
-                ^ string_of_int o.bit_size_of_field
-            | "bytes" ->
-                let o = Bytes.parse argument |> unwrap in
-                F.decls_of_string @@ "unfold type "
-                ^ str_of_type_ident e.span (hacspec_lib_item @@ o.bytes_name)
-                ^ "  = lseq uint8 " ^ o.size
-            | "public_bytes" ->
-                let o = Bytes.parse argument |> unwrap in
-                F.decls_of_string @@ "unfold type "
-                ^ str_of_type_ident e.span (hacspec_lib_item @@ o.bytes_name)
-                ^ "  = lseq uint8 " ^ o.size
-            | "array" ->
-                let o = Array.parse argument |> unwrap in
-                let typ =
-                  match o.typ with
-                  | "U32" -> "uint32"
-                  | "U16" -> "uint16"
-                  | "U8" -> "uint8"
-                  | usize -> "uint_size"
-                in
-                let size = o.size in
-                let array_def =
-                  F.decls_of_string @@ "unfold type "
-                  ^ str_of_type_ident e.span (hacspec_lib_item o.array_name)
-                  ^ "  = lseq " ^ typ ^ " " ^ size
-                in
-                let index_def =
-                  match o.index_typ with
-                  | Some index ->
-                      F.decls_of_string @@ "unfold type "
-                      ^ str_of_type_ident e.span
-                          (hacspec_lib_item @@ o.array_name ^ "_idx")
-                      ^ " = nat_mod " ^ size
-                  | None -> []
-                in
-                array_def @ index_def
-            | "unsigned_public_integer" ->
-                let o = UnsignedPublicInteger.parse argument |> unwrap in
-                F.decls_of_string @@ "unfold type "
-                ^ str_of_type_ident e.span (hacspec_lib_item @@ o.integer_name)
-                ^ "  = lseq uint8 ("
-                ^ (Int.to_string @@ ((o.bits + 7) / 8))
-                ^ ")"
-            | _ -> unsupported_macro ())
-        | _ -> unsupported_macro ())
+    | IMacroInvokation { macro; argument; span } ->
+        failwith "todo"
+        (* let open Hacspeclib_macro_parser in *)
+        (* let unsupported_macro () = *)
+        (*   Error.raise *)
+        (*   @@ { *)
+        (*        kind = UnsupportedMacro { id = [%show: global_ident] macro }; *)
+        (*        span = e.span; *)
+        (*      } *)
+        (* in *)
+        (* match macro with *)
+        (* | `Concrete Non_empty_list.{ crate = "hacspec_lib_tc"; path = [ name ] } *)
+        (*   -> ( *)
+        (*     let unwrap r = *)
+        (*       match r with *)
+        (*       | Ok r -> r *)
+        (*       | Error details -> *)
+        (*           let macro_id = [%show: global_ident] macro in *)
+        (*           Error.raise *)
+        (*             { *)
+        (*               kind = ErrorParsingMacroInvocation { macro_id; details }; *)
+        (*               span = e.span; *)
+        (*             } *)
+        (*     in *)
+        (*     match name with *)
+        (*     | "public_nat_mod" -> *)
+        (*         let o = PublicNatMod.parse argument |> unwrap in *)
+        (*         (F.decls_of_string @@ "unfold type " *)
+        (*         ^ str_of_type_ident e.span (hacspec_lib_item @@ o.type_name) *)
+        (*         ^ "  = nat_mod 0x" ^ o.modulo_value) *)
+        (*         @ F.decls_of_string @@ "unfold type " *)
+        (*         ^ str_of_type_ident e.span (hacspec_lib_item @@ o.type_of_canvas) *)
+        (*         ^ "  = lseq pub_uint8 " *)
+        (*         ^ string_of_int o.bit_size_of_field *)
+        (*     | "bytes" -> *)
+        (*         let o = Bytes.parse argument |> unwrap in *)
+        (*         F.decls_of_string @@ "unfold type " *)
+        (*         ^ str_of_type_ident e.span (hacspec_lib_item @@ o.bytes_name) *)
+        (*         ^ "  = lseq uint8 " ^ o.size *)
+        (*     | "public_bytes" -> *)
+        (*         let o = Bytes.parse argument |> unwrap in *)
+        (*         F.decls_of_string @@ "unfold type " *)
+        (*         ^ str_of_type_ident e.span (hacspec_lib_item @@ o.bytes_name) *)
+        (*         ^ "  = lseq uint8 " ^ o.size *)
+        (*     | "array" -> *)
+        (*         let o = Array.parse argument |> unwrap in *)
+        (*         let typ = *)
+        (*           match o.typ with *)
+        (*           | "U32" -> "uint32" *)
+        (*           | "U16" -> "uint16" *)
+        (*           | "U8" -> "uint8" *)
+        (*           | usize -> "uint_size" *)
+        (*         in *)
+        (*         let size = o.size in *)
+        (*         let array_def = *)
+        (*           F.decls_of_string @@ "unfold type " *)
+        (*           ^ str_of_type_ident e.span (hacspec_lib_item o.array_name) *)
+        (*           ^ "  = lseq " ^ typ ^ " " ^ size *)
+        (*         in *)
+        (*         let index_def = *)
+        (*           match o.index_typ with *)
+        (*           | Some index -> *)
+        (*               F.decls_of_string @@ "unfold type " *)
+        (*               ^ str_of_type_ident e.span *)
+        (*                   (hacspec_lib_item @@ o.array_name ^ "_idx") *)
+        (*               ^ " = nat_mod " ^ size *)
+        (*           | None -> [] *)
+        (*         in *)
+        (*         array_def @ index_def *)
+        (*     | "unsigned_public_integer" -> *)
+        (*         let o = UnsignedPublicInteger.parse argument |> unwrap in *)
+        (*         F.decls_of_string @@ "unfold type " *)
+        (*         ^ str_of_type_ident e.span (hacspec_lib_item @@ o.integer_name) *)
+        (*         ^ "  = lseq uint8 (" *)
+        (*         ^ (Int.to_string @@ ((o.bits + 7) / 8)) *)
+        (*         ^ ")" *)
+        (*     | _ -> unsupported_macro ()) *)
+        (* | _ -> unsupported_macro ()) *)
     | Trait { name; generics; items } ->
         let bds =
           List.map ~f:(pgeneric_param_bd e.span) generics.params
           @ List.map ~f:(pgeneric_constraint_bd e.span) generics.constraints
         in
-        let name =
-          F.id @@ last_of_global_ident e.span @@ lowercase_global_ident name
-        in
+        let name = F.id @@ Concrete_ident.to_definition_name name in
         let fields =
           List.concat_map
             ~f:(fun i ->
@@ -791,12 +741,12 @@ struct
                   :: List.map
                        ~f:(fun { trait; args; bindings = _ } ->
                          let base =
-                           F.term @@ F.AST.Name (pglobal_ident e.span trait)
+                           F.term @@ F.AST.Name (pconcrete_ident trait)
                          in
                          let args = List.map ~f:(pgeneric_value e.span) args in
                          ( F.id
                              (name ^ "_implements_"
-                             ^ last_of_global_ident e.span trait),
+                             ^ Concrete_ident.to_definition_name trait),
                            None,
                            [],
                            F.mk_e_app base args ))
@@ -869,7 +819,9 @@ let make ctx =
   end) : S)
 
 let string_of_item (item : item) : string =
-  let (module Print) = make { current_namespace = item.parent_namespace } in
+  let (module Print) =
+    make { current_namespace = Concrete_ident.to_namespace item.ident }
+  in
   List.map ~f:(function
     | `Item i -> decl_to_string i
     | `Comment s -> "(* " ^ s ^ " *)")
