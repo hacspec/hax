@@ -1966,9 +1966,9 @@ trait IsRecord {
 impl<'tcx> IsRecord for rustc_middle::ty::AdtDef<'tcx> {
     fn is_record(&self) -> bool {
         self.is_struct()
-            && self
+            && !self
                 .all_fields()
-                .all(|field| field.name.to_ident_string().parse::<u64>().is_err())
+                .any(|field| field.name.to_ident_string().parse::<u64>().is_ok())
     }
 }
 
