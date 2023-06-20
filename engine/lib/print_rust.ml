@@ -1,4 +1,5 @@
 open Base
+open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 open Ast
 open Ast.Full
 open Utils
@@ -268,7 +269,9 @@ module Raw = struct
         let header =
           match kind with
           | UnconditionalLoop -> !"loop"
-          | ForLoop { start; end_; var; _ } ->
+          | ForLoop { it; pat; _ } ->
+              !"for " & ppat pat & !" in (" & pexpr it & !")"
+          | ForIndexLoop { start; end_; var; _ } ->
               !"for " & plocal_ident e.span var & !" in (" & pexpr start
               & !")..(" & pexpr end_ & !")"
         in

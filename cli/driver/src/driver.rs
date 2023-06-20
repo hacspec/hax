@@ -1,5 +1,4 @@
 #![feature(rustc_private)]
-#![feature(box_syntax)]
 #![feature(box_patterns)]
 #![feature(concat_idents)]
 #![feature(trait_alias)]
@@ -113,6 +112,7 @@ fn main() {
         Some(Command::ExporterCommand(command)) => Box::new(exporter::ExtractionCallbacks {
             inline_macro_calls: options.inline_macro_calls.clone(),
             command: command.clone(),
+            macro_calls: std::collections::HashMap::new(),
         }),
         Some(Command::LintCommand(command)) => {
             let ltype = match command {

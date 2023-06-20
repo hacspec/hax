@@ -11,7 +11,7 @@ include
       open Features
       include Off
       include On.Loop
-      include On.For_loop
+      include On.For_index_loop
       include On.Mutable_variable
       include On.Macro
       include On.Construct_base
@@ -42,7 +42,7 @@ module RejectNotEC (FA : Features.T) = struct
         let reference = reject
         let slice = reject
         let raw_pointer = reject
-        let early_exit _ = Obj.magic ()
+        let early_exit = reject
         let question_mark = reject
         let macro _ = Features.On.macro
         let as_pattern = reject
@@ -53,7 +53,8 @@ module RejectNotEC (FA : Features.T) = struct
         let state_passing_loop = reject
         let nontrivial_lhs = reject
         let construct_base _ = Features.On.construct_base
-        let for_loop _ = Features.On.for_loop
+        let for_loop = reject
+        let for_index_loop _ = Features.On.for_index_loop
 
         let metadata =
           Phase_utils.Metadata.make (Reject (NotInBackendLang EasyCrypt))
@@ -217,7 +218,7 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) : Types.file list
     | Loop
         {
           body;
-          kind = ForLoop { start; end_; var = { name }; witness };
+          kind = ForIndexLoop { start; end_; var = { name }; witness; _ };
           state = None;
           _;
         } ->

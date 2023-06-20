@@ -44,6 +44,14 @@ name = "if-let"
 version = "0.1.0"
 
 [[package]]
+name = "literals"
+version = "0.1.0"
+
+[[package]]
+name = "loops"
+version = "0.1.0"
+
+[[package]]
 name = "mut-ref-functionalization"
 version = "0.1.0"
 
@@ -138,10 +146,6 @@ version = "0.1.0"
 
 [[package]]
 name = "slices"
-version = "0.1.0"
-
-[[package]]
-name = "string-literal"
 version = "0.1.0"
 
 [[package]]

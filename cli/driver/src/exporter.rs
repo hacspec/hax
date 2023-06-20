@@ -21,50 +21,91 @@ use std::rc::Rc;
 /// (I call "THIR'" the AST described in this crate)
 fn convert_thir<'tcx>(
     options: &hax_frontend_exporter_options::Options,
-    macro_calls: HashMap<rustc_span::Span, rustc_ast::ast::MacCall>,
+    macro_calls: HashMap<hax_frontend_exporter::Span, hax_frontend_exporter::Span>,
     tcx: TyCtxt<'tcx>,
 ) -> (Vec<rustc_span::Span>, Vec<hax_frontend_exporter::Item>) {
     let hir = tcx.hir();
-    let bodies = hir.body_owners();
 
-    let mut bodies = bodies.collect::<Vec<_>>();
-    // we first visit `AnonConst`s, otherwise the thir body might be stolen
-    bodies.sort_by(|a, b| {
-        use std::cmp::Ordering::*;
-        let is_anon_const = |x: &rustc_span::def_id::LocalDefId| {
-            matches!(hir.get_by_def_id(x.clone()), rustc_hir::Node::AnonConst(_))
-        };
-        if is_anon_const(a) {
-            Less
-        } else if is_anon_const(b) {
-            Equal
-        } else {
-            Greater
-        }
-    });
+    let bodies = {
+        // Here, we partition the bodies so that constant items appear
+        // first.
+        let (consts, others): (Vec<rustc_span::def_id::LocalDefId>, _) = hir
+            .body_owners()
+            .partition(|x: &rustc_span::def_id::LocalDefId| {
+                matches!(
+                    hir.get_by_def_id(x.clone()),
+                    rustc_hir::Node::AnonConst(_)
+                        | rustc_hir::Node::Item(rustc_hir::Item {
+                            kind: rustc_hir::ItemKind::Const(..),
+                            ..
+                        })
+                        | rustc_hir::Node::TraitItem(rustc_hir::TraitItem {
+                            kind: rustc_hir::TraitItemKind::Const(..),
+                            ..
+                        })
+                        | rustc_hir::Node::ImplItem(rustc_hir::ImplItem {
+                            kind: rustc_hir::ImplItemKind::Const(..),
+                            ..
+                        })
+                )
+            });
+        consts.into_iter().chain(others.into_iter())
+    };
 
     let thirs: std::collections::HashMap<
         rustc_span::def_id::LocalDefId,
         (rustc_middle::thir::Thir<'tcx>, ExprId),
     > = bodies
-        .into_iter()
         .map(|did| {
-            let (thir, expr) = tcx
-                .thir_body(rustc_middle::ty::WithOptConstParam {
-                    did,
-                    const_param_did: None,
-                })
-                .expect("While trying to reach a body's THIR defintion, got a typechecking error");
-            // Borrowing `Thir` from a `Steal`!
-            (did, (thir.borrow().clone(), expr))
+            let span = hir.span(hir.local_def_id_to_hir_id(did));
+            let mk_error_thir = || {
+                let ty = tcx.mk_ty_from_kind(rustc_type_ir::sty::TyKind::Never);
+                let mut thir = rustc_middle::thir::Thir::new(rustc_middle::thir::BodyTy::Const(ty));
+                const ERR_LITERAL: &'static rustc_hir::Lit = &rustc_span::source_map::Spanned {
+                    node: rustc_ast::ast::LitKind::Err,
+                    span: rustc_span::DUMMY_SP,
+                };
+                let expr = thir.exprs.push(rustc_middle::thir::Expr {
+                    kind: rustc_middle::thir::ExprKind::Literal {
+                        lit: ERR_LITERAL,
+                        neg: false,
+                    },
+                    ty,
+                    temp_lifetime: None,
+                    span,
+                });
+                (did, (thir, expr))
+            };
+            let (thir, expr) = match tcx.thir_body(did) {
+                Ok(x) => x,
+                Err(e) => {
+                    tcx.sess.span_err(
+                        span,
+                        "While trying to reach a body's THIR defintion, got a typechecking error.",
+                    );
+                    return mk_error_thir();
+                }
+            };
+            let thir = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                // Borrowing `Thir` from a `Steal`!
+                thir.borrow().clone()
+            })) {
+                Ok(x) => x,
+                Err(e) => {
+                    let message = format!("The THIR body of item {:?} was stolen.\nThis is not supposed to happen.\nThis is a bug in Hax's frontend.\nThis is discussed in issue https://github.com/hacspec/hacspec-v2/issues/27.\nPlease comment this issue if you see this error message!", did);
+                    tcx.sess.span_err(span, message);
+                    return mk_error_thir();
+                }
+            };
+            (did, (thir, expr))
         })
         .collect();
 
     let items = hir.items();
-    let macro_calls_r = box macro_calls;
+    let macro_calls_r = Box::new(macro_calls);
     let state = hax_frontend_exporter::State {
         tcx,
-        options: box options.clone(),
+        options: Box::new(options.clone()),
         thir: (),
         owner_id: (),
         opt_def_id: None,
@@ -149,6 +190,7 @@ fn find_hax_engine() -> process::Command {
 pub(crate) struct ExtractionCallbacks {
     pub inline_macro_calls: Vec<hax_cli_options::Namespace>,
     pub command: hax_cli_options::ExporterCommand,
+    pub macro_calls: HashMap<hax_frontend_exporter::Span, hax_frontend_exporter::Span>,
 }
 
 impl From<ExtractionCallbacks> for hax_frontend_exporter_options::Options {
@@ -162,9 +204,22 @@ impl From<ExtractionCallbacks> for hax_frontend_exporter_options::Options {
 impl Callbacks for ExtractionCallbacks {
     fn after_parsing<'tcx>(
         &mut self,
-        _compiler: &Compiler,
+        compiler: &Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
+        let parse_ast = queries.parse().unwrap();
+        let parse_ast = parse_ast.borrow();
+        self.macro_calls = collect_macros(&parse_ast)
+            .into_iter()
+            .map(|(k, v)| {
+                use hax_frontend_exporter::*;
+                let sess = compiler.session();
+                (
+                    translate_span(k, sess),
+                    translate_span(argument_span_of_mac_call(&v), sess),
+                )
+            })
+            .collect();
         Compilation::Continue
     }
     fn after_expansion<'tcx>(
@@ -172,10 +227,11 @@ impl Callbacks for ExtractionCallbacks {
         compiler: &Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
-        let parse_ast = queries.parse().unwrap().peek();
-        let macro_calls = collect_macros(&parse_ast);
-        queries.global_ctxt().unwrap().peek_mut().enter(|tcx| {
-            let (spans, converted_items) = convert_thir(&self.clone().into(), macro_calls, tcx);
+        use std::ops::{Deref, DerefMut};
+
+        queries.global_ctxt().unwrap().enter(|tcx| {
+            let (spans, converted_items) =
+                convert_thir(&self.clone().into(), self.macro_calls.clone(), tcx);
 
             use hax_cli_options::ExporterCommand;
             match self.command.clone() {
@@ -232,8 +288,9 @@ impl Callbacks for ExtractionCallbacks {
                                 String::from_utf8(out.stdout).unwrap()
                             )
                         });
-                    let options_frontend =
-                        box hax_frontend_exporter_options::Options::from(self.clone()).clone();
+                    let options_frontend = Box::new(
+                        hax_frontend_exporter_options::Options::from(self.clone()).clone(),
+                    );
                     let state = hax_frontend_exporter::State {
                         tcx,
                         options: options_frontend,

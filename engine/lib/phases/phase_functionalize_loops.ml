@@ -12,6 +12,9 @@ struct
   module FB = struct
     include F
     include Features.Off.Loop
+    include Features.Off.For_loop
+    include Features.Off.For_index_loop
+    include Features.Off.State_passing_loop
   end
 
   include
@@ -38,30 +41,26 @@ struct
       | Loop
           {
             body;
-            kind = ForLoop { start; end_; var; var_typ; _ };
+            kind = ForLoop { it; pat; _ };
             state = Some { init; bpat; _ };
             _;
           } ->
           let body = dexpr body in
-          let var_typ = dty span var_typ in
+          let it = dexpr it in
+          let pat = dpat pat in
           let bpat = dpat bpat in
           let fn : B.expr' =
-            Closure
-              {
-                params = [ UB.make_var_pat var var_typ span; bpat ];
-                body;
-                captures = [];
-              }
+            Closure { params = [ pat; bpat ]; body; captures = [] }
           in
           let fn : B.expr =
             {
               e = fn;
-              typ = TArrow ([ var_typ; bpat.typ ], body.typ);
+              typ = TArrow ([ pat.typ; bpat.typ ], body.typ);
               span = body.span;
             }
           in
-          UB.call "dummy" "foldi" []
-            [ dexpr start; dexpr end_; fn; dexpr init ]
+          UB.call "core" "iter" [ "Iterator"; "fold" ]
+            [ it; dexpr init; fn ]
             span (dty span expr.typ)
       | Loop { state = None; _ } ->
           Error.unimplemented ~details:"Loop without mutation?" span
@@ -77,7 +76,7 @@ struct
       | [%inline_arms "dexpr'.*" - Loop - Break - Continue - Return] ->
           map (fun e -> B.{ e; typ = dty expr.span expr.typ; span = expr.span })
       | _ -> .
-      [@@inline_ands bindings_of dexpr - dexpr']
+      [@@inline_ands bindings_of dexpr - dexpr' - dloop_kind - dloop_state]
 
     [%%inline_defs "Item.*"]
   end

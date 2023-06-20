@@ -1,4 +1,5 @@
 open Utils
+open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 module T = Types
 
 module Backend = struct
@@ -14,6 +15,7 @@ module Phase = struct
       | Continue
       | RawOrMutPointer
       | EarlyExit
+      | AsPattern
     [@@deriving show { with_path = false }, eq, yojson, compare, hash, sexp]
 
     let display = function
@@ -27,6 +29,7 @@ module Phase = struct
     | DropReferences
     | RefMut
     | ResugarForLoops
+    | ResugarForIndexLoops
     | ResugarQuestionMarks
     | HoistSideEffects
     | LocalMutation

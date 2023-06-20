@@ -51,7 +51,7 @@ jobs:
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
 
-      - uses: dtolnay/rust-toolchain@1.67 # TODO: change this to `stable` when we update nightly 
+      - uses: dtolnay/rust-toolchain@1.70
           
       - run: cargo install --path cli/driver && cargo install --path cli/subcommands
 

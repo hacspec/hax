@@ -11,3 +11,7 @@ fn foo<const LEN: usize>(arr: [usize; LEN]) -> usize {
     }
     acc
 }
+
+fn repeat<const LEN: usize, T: Copy>(x: T) -> [T; LEN] {
+    [x; LEN]
+}

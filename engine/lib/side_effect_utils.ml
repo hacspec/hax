@@ -2,7 +2,9 @@ open Base
 open Utils
 
 module MakeSI
-    (F : Features.T with type monadic_binding = Features.Off.monadic_binding) =
+    (F : Features.T
+           with type monadic_binding = Features.Off.monadic_binding
+            and type for_index_loop = Features.Off.for_index_loop) =
 struct
   module AST = Ast.Make (F)
   module U = Ast_utils.Make (F)
@@ -33,8 +35,18 @@ struct
 
     let plus : t -> t -> t =
       let merge_ty x y =
-        assert ([%eq: ty] x y);
-        x
+        if not @@ U.ty_equality x y then
+          Diagnostics.failure ~context:(Other "side_effect_utils.ml")
+            ~span:(Dummy { id = -1 })
+            (AssertionFailure
+               {
+                 details =
+                   "Expected two exact same types, got x="
+                   ^ [%show: ty] x
+                   ^ " and y="
+                   ^ [%show: ty] y;
+               })
+        else x
       in
       let merge_opts (type x) (f : x -> x -> x) (a : x option) (b : x option) =
         match (a, b) with
@@ -278,8 +290,8 @@ struct
               let kind' =
                 match kind with
                 | UnconditionalLoop -> []
-                | ForLoop { start; end_; _ } ->
-                    [ super#visit_expr env start; super#visit_expr env end_ ]
+                | ForLoop { it; _ } -> [ super#visit_expr env it ]
+                | _ -> .
               in
               let state' =
                 Option.map
@@ -292,18 +304,17 @@ struct
               HoistSeq.many env kind_state (fun l effects ->
                   let kind =
                     match (l, kind) with
-                    | ( start :: end_ :: ([ _ ] | []),
-                        ForLoop { var; witness; var_typ; _ } ) ->
-                        ForLoop { var; witness; start; end_; var_typ }
+                    | it :: ([ _ ] | []), ForLoop { pat; witness; _ } ->
+                        ForLoop { pat; witness; it }
                     | ([ _ ] | []), UnconditionalLoop -> UnconditionalLoop
+                    | _, ForIndexLoop _ -> .
                     | _ -> HoistSeq.err_hoist_invariant Caml.__LOC__
                   in
                   let state =
                     match (l, state) with
-                    | ( (_ :: _ :: [ state ] | [ state ]),
-                        Some { witness; bpat; _ } ) ->
+                    | (_ :: [ state ] | [ state ]), Some { witness; bpat; _ } ->
                         Some { witness; bpat; init = state }
-                    | ([ _; _ ] | []), None -> None
+                    | ([ _ ] | []), None -> None
                     | _ -> HoistSeq.err_hoist_invariant Caml.__LOC__
                   in
                   (* by now, the "inputs" of the loop are hoisted as let if needed *)
@@ -480,7 +491,9 @@ struct
 end
 
 module%inlined_contents Hoist
-    (F : Features.T with type monadic_binding = Features.Off.monadic_binding) =
+    (F : Features.T
+           with type monadic_binding = Features.Off.monadic_binding
+            and type for_index_loop = Features.Off.for_index_loop) =
 struct
   module FA = F
 

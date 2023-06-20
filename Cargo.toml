@@ -11,6 +11,7 @@ members = [
      "test-harness",
 ]
 exclude = ["tests"]
+resolver = "2"
 
 [workspace.dependencies]
 itertools = "0.10.5"
