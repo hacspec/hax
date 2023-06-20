@@ -23,6 +23,8 @@ struct
         let phase_id = Diagnostics.Phase.DropReferences
       end)
 
+  module UA = Ast_utils.Make (F)
+
   module Implem : ImplemT.T = struct
     let metadata = metadata
 
@@ -61,14 +63,8 @@ struct
       | PDeref { subpat; _ } -> (dpat subpat).p
 
     and dexpr' (span : span) (e : A.expr') : B.expr' =
-      match e with
-      | [%inline_arms If + Literal + Array] -> auto
-      | App
-          {
-            f = { e = GlobalVar (`Primitive (Box | Deref)); _ };
-            args = [ arg ];
-          } ->
-          (dexpr arg).e
+      match (UA.unbox_underef_expr { e; span; typ = TFalse }).e with
+      | [%inline_arms If + Literal + Array + App] -> auto
       | App { f; args } -> App { f = dexpr f; args = List.map ~f:dexpr args }
       | Construct { constructor; constructs_record; fields; base } ->
           Construct

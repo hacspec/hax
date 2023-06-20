@@ -78,11 +78,8 @@ module Raw = struct
 
   let pprimitive_ident span : _ -> AnnotatedString.t =
     pure span << function
-    | Box -> "Box::new"
     | Deref -> "deref"
     | Cast -> "cast"
-    | BinOp op -> "BinOp::" ^ [%show: bin_op] op
-    | UnOp op -> "BinOp::" ^ [%show: un_op] op
     | LogicalOp op -> "BinOp::" ^ [%show: logical_op] op
 
   let rec pglobal_ident' prefix span (e : global_ident) : AnnotatedString.t =
