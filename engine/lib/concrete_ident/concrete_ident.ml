@@ -1,5 +1,6 @@
 open Base
 open Utils
+open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
 module Imported = struct
   type def_id = { krate : string; path : disambiguated_def_path_item list }
@@ -24,7 +25,7 @@ module Imported = struct
     | ValueNs of string
     | MacroNs of string
     | LifetimeNs of string
-  [@@deriving show, yojson, compare, sexp, eq]
+  [@@deriving show, yojson, compare, sexp, eq, hash]
 
   let of_def_path_item : Types.def_path_item -> def_path_item = function
     | CrateRoot -> CrateRoot
@@ -61,7 +62,7 @@ module Kind = struct
     | Macro
     | Trait
     | Impl
-  [@@deriving show, yojson, compare, sexp, eq]
+  [@@deriving show, yojson, compare, sexp, eq, hash]
 
   let of_def_path_item : Imported.def_path_item -> t option = function
     | TypeNs _ -> Some Type

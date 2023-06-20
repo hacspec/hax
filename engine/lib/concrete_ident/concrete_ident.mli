@@ -1,4 +1,4 @@
-type t [@@deriving show, yojson, compare, sexp, eq]
+type t [@@deriving show, yojson, compare, sexp, eq, hash]
 type name = Concrete_ident_generated.name
 
 module Kind : sig
@@ -11,7 +11,7 @@ module Kind : sig
     | Macro
     | Trait
     | Impl
-  [@@deriving show, yojson, compare, sexp, eq]
+  [@@deriving show, yojson, compare, sexp, eq, hash]
 end
 
 val of_def_id : Kind.t -> Types.def_id -> t

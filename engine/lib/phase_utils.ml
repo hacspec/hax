@@ -105,7 +105,7 @@ module CatchErrors (D : PHASE) = struct
       let cast_item : A.item -> Ast.Full.item = Obj.magic in
       let ast = cast_item i |> Print_rust.pitem_str in
       let msg = error ^ "\nLast available AST for this item:\n\n" ^ ast in
-      [ B.make_hax_error_item i.span i.parent_namespace msg ]
+      [ B.make_hax_error_item i.span i.ident msg ]
 end
 
 (* TODO: This module should disappear entierly when issue #14 is

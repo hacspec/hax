@@ -333,7 +333,7 @@ module Raw = struct
           |> concat ~sep:!","
         in
         !"fn "
-        & !(last_of_global_ident name e.span)
+        & !(Concrete_ident.to_definition_name name)
         & !"(" & params & !") -> " & return_type & !"{" & pexpr body & !"}"
     | _ -> !"/* TO DO */"
 end

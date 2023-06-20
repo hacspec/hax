@@ -57,11 +57,6 @@ module Exn = struct
       (x : Thir.disambiguated_def_path_item) : string option =
     string_of_def_path_item x.data
 
-  let namespace_of_def_id (def_id : Thir.def_id) : string * string list =
-    ( def_id.krate,
-      def_id.path |> List.drop_last_exn
-      |> List.filter_map ~f:string_of_disambiguated_def_path_item )
-
   let def_id kind (def_id : Thir.def_id) : global_ident =
     `Concrete (Concrete_ident.of_def_id kind def_id)
 
@@ -821,7 +816,7 @@ module Exn = struct
     else
       let span = c_span item.span in
       let mk_one v =
-        { span; v; parent_namespace = namespace_of_def_id item.owner_id }
+        { span; v; ident = Concrete_ident.of_def_id Value item.owner_id }
       in
       let mk v = [ mk_one v ] in
       (* TODO: things might be unnamed (e.g. constants) *)
