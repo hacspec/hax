@@ -443,9 +443,10 @@ module Make (F : Features.T) = struct
     }
 
   let call_Constructor (constructor_name : Concrete_ident.name)
-      (args : expr list) span ret_typ =
+      (is_struct : bool) (args : expr list) span ret_typ =
     call_Constructor'
-      (`Concrete (Concrete_ident.of_name Constructor constructor_name))
+      (`Concrete
+        (Concrete_ident.of_name (Constructor { is_struct }) constructor_name))
       args span ret_typ
 
   let call' f (args : expr list) span ret_typ =
@@ -476,41 +477,55 @@ module Make (F : Features.T) = struct
     let item : AST.expr -> Ast.Full.expr = Obj.magic
   end
 
-  module Box = struct
-    module Ty = struct
-      let destruct (t : ty) : ty option =
-        match t with
-        | TApp { ident = `Concrete box; args = [ GType sub; _alloc ] }
-          when Concrete_ident.eq_name Alloc__boxed__Box box ->
-            Some sub
-        | _ -> None
+  let unbox_expr (e : expr) : expr =
+    match e.e with
+    | App { f = { e = GlobalVar f; _ }; args = [ e ] }
+      when Global_ident.eq_name Alloc__boxed__Impl__new f ->
+        e
+    | _ -> e
 
-      let alloc_ty =
-        TApp
-          {
-            ident = `Concrete (Concrete_ident.of_name Type Alloc__alloc__Global);
-            args = [];
-          }
+  let underef_expr (e : expr) : expr =
+    match e.e with
+    | App { f = { e = GlobalVar (`Primitive Ast.Deref); _ }; args = [ e ] } -> e
+    | _ -> e
 
-      let make (t : ty) : ty =
-        let ident = `Concrete (Concrete_ident.of_name Type Alloc__boxed__Box) in
-        TApp { ident; args = [ GType t; GType alloc_ty ] }
-    end
+  let unbox_underef_expr = unbox_expr >> underef_expr
 
-    module Expr = struct
-      let destruct (e : expr) : expr option =
-        match e.e with
-        | App { f = { e = GlobalVar (`Primitive Box); _ }; args = [ arg ] } ->
-            Some arg
-        | _ -> None
+  (* module Box = struct *)
+  (*   module Ty = struct *)
+  (*     let destruct (t : ty) : ty option = *)
+  (*       match t with *)
+  (*       | TApp { ident = `Concrete box; args = [ GType sub; _alloc ] } *)
+  (*         when Concrete_ident.eq_name Alloc__boxed__Box box -> *)
+  (*           Some sub *)
+  (*       | _ -> None *)
 
-      let make (e : expr) : expr =
-        let boxed_ty = Ty.make e.typ in
-        let f_ty = TArrow ([ e.typ ], boxed_ty) in
-        let f = { e with typ = f_ty; e = GlobalVar (`Primitive Box) } in
-        { e with typ = boxed_ty; e = App { f; args = [ e ] } }
-    end
-  end
+  (*     let alloc_ty = *)
+  (*       TApp *)
+  (*         { *)
+  (*           ident = `Concrete (Concrete_ident.of_name Type Alloc__alloc__Global); *)
+  (*           args = []; *)
+  (*         } *)
+
+  (*     let make (t : ty) : ty = *)
+  (*       let ident = `Concrete (Concrete_ident.of_name Type Alloc__boxed__Box) in *)
+  (*       TApp { ident; args = [ GType t; GType alloc_ty ] } *)
+  (*   end *)
+
+  (*   module Expr = struct *)
+  (*     let destruct (e : expr) : expr option = *)
+  (*       match e.e with *)
+  (*       | App { f = { e = GlobalVar (`Primitive Box); _ }; args = [ arg ] } -> *)
+  (*           Some arg *)
+  (*       | _ -> None *)
+
+  (*     let make (e : expr) : expr = *)
+  (*       let boxed_ty = Ty.make e.typ in *)
+  (*       let f_ty = TArrow ([ e.typ ], boxed_ty) in *)
+  (*       let f = { e with typ = f_ty; e = GlobalVar (`Primitive Box) } in *)
+  (*       { e with typ = boxed_ty; e = App { f; args = [ e ] } } *)
+  (*   end *)
+  (* end *)
 
   let rec collect_let_bindings' (e : expr) : (pat * expr * ty) list * expr =
     match e.e with

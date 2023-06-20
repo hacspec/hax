@@ -331,13 +331,7 @@ struct
       }
 
     let rec ditem (item : A.item) : B.item list =
-      [
-        {
-          v = ditem' item.span item.v;
-          span = item.span;
-          parent_namespace = item.parent_namespace;
-        };
-      ]
+      [ { v = ditem' item.span item.v; span = item.span; ident = item.ident } ]
 
     and ditem' (span : span) (item : A.item') : B.item' =
       match item with

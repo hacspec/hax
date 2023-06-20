@@ -438,7 +438,11 @@ module Exn = struct
             }
       | Array { fields } -> Array (List.map ~f:c_expr fields)
       | Adt { info; base; fields; _ } ->
-          let constructor = def_id Constructor info.variant in
+          let constructor =
+            def_id
+              (Constructor { is_struct = info.is_constructed_type_struct })
+              info.variant
+          in
           let base =
             Option.map
               ~f:(fun base -> (c_expr base.base, W.construct_base))
@@ -557,7 +561,11 @@ module Exn = struct
           let var = local_ident var in
           PBinding { mut; mode; var; typ; subpat }
       | Variant { info; subpatterns; _ } ->
-          let name = def_id Constructor info.variant in
+          let name =
+            def_id
+              (Constructor { is_struct = info.is_constructed_type_struct })
+              info.variant
+          in
           let args = List.map ~f:(c_field_pat info) subpatterns in
           PConstruct { record = info.constructs_record; name; args }
       | Tuple { subpatterns } ->
@@ -732,7 +740,12 @@ module Exn = struct
     match p with
     | Clause (Trait { is_positive = true; is_const = _; trait_ref }) ->
         let args = List.map ~f:(c_generic_value span) trait_ref.generic_args in
-        Some { trait = def_id Trait trait_ref.def_id; args; bindings = [] }
+        Some
+          {
+            trait = Concrete_ident.of_def_id Trait trait_ref.def_id;
+            args;
+            bindings = [];
+          }
     | _ -> None
 
   let c_constraint span (c : Thir.where_predicate) : generic_constraint list =
@@ -825,7 +838,8 @@ module Exn = struct
           mk
           @@ Fn
                {
-                 name = def_id Value (Option.value_exn item.def_id);
+                 name =
+                   Concrete_ident.of_def_id Value (Option.value_exn item.def_id);
                  generics = { params = []; constraints = [] };
                  body = c_expr body;
                  params = [];
@@ -834,7 +848,8 @@ module Exn = struct
           mk
           @@ TyAlias
                {
-                 name = def_id Type (Option.value_exn item.def_id);
+                 name =
+                   Concrete_ident.of_def_id Type (Option.value_exn item.def_id);
                  generics = c_generics generics;
                  ty = c_ty item.span ty;
                }
@@ -842,15 +857,17 @@ module Exn = struct
           mk
           @@ Fn
                {
-                 name = def_id Value (Option.value_exn item.def_id);
+                 name =
+                   Concrete_ident.of_def_id Value (Option.value_exn item.def_id);
                  generics = c_generics generics;
                  body = c_expr body;
                  params = List.map ~f:(c_param item.span) params;
                }
       | Enum (variants, generics) ->
-          let name = def_id Type (Option.value_exn item.def_id) in
+          let def_id = Option.value_exn item.def_id in
           let generics = c_generics generics in
           let variants =
+            let kind = Concrete_ident.Kind.Constructor { is_struct = false } in
             List.map
               ~f:(fun { data; def_id = variant_id; _ } ->
                 match data with
@@ -858,23 +875,33 @@ module Exn = struct
                     let arguments =
                       List.map
                         ~f:(fun { def_id = id; ty; span; _ } ->
-                          (def_id Field id, c_ty span ty))
+                          (Concrete_ident.of_def_id Field id, c_ty span ty))
                         fields
                     in
-                    { name = def_id Type variant_id; arguments }
-                | Unit (_, name) -> { name = def_id Type name; arguments = [] })
+                    {
+                      name = Concrete_ident.of_def_id kind variant_id;
+                      arguments;
+                    }
+                | Unit (_, name) ->
+                    {
+                      name = Concrete_ident.of_def_id kind name;
+                      arguments = [];
+                    })
               variants
           in
-          mk @@ Type { name; generics; variants; record = true }
+          let name = Concrete_ident.of_def_id Type def_id in
+          mk @@ Type { name; generics; variants; record = false }
       | Struct (v, generics) ->
-          let name = def_id Type (Option.value_exn item.def_id) in
           let generics = c_generics generics in
+          let def_id = Option.value_exn item.def_id in
           let v, record =
+            let kind = Concrete_ident.Kind.Constructor { is_struct = true } in
+            let name = Concrete_ident.of_def_id kind def_id in
             let mk fields =
               let arguments =
                 List.map
                   ~f:(fun Thir.{ def_id = id; ty; span; _ } ->
-                    (def_id Field id, c_ty span ty))
+                    (Concrete_ident.of_def_id Field id, c_ty span ty))
                   fields
               in
               { name; arguments }
@@ -885,18 +912,21 @@ module Exn = struct
             | Unit (_, _) -> ({ name; arguments = [] }, false)
           in
           let variants = [ v ] in
+          let name = Concrete_ident.of_def_id Type def_id in
           mk @@ Type { name; generics; variants; record }
       | MacroInvokation { macro_ident; argument; span } ->
           mk
           @@ IMacroInvokation
                {
-                 macro = def_id Macro macro_ident;
+                 macro = Concrete_ident.of_def_id Macro macro_ident;
                  argument;
                  span = c_span span;
                  witness = W.macro;
                }
       | Trait (No, Normal, generics, _bounds, items) ->
-          let name = def_id Trait (Option.value_exn item.def_id) in
+          let name =
+            Concrete_ident.of_def_id Trait (Option.value_exn item.def_id)
+          in
           let { params; constraints } = c_generics generics in
           let params =
             GPType
@@ -922,7 +952,7 @@ module Exn = struct
       | Impl { of_trait = None; generics; items; _ } ->
           List.map
             ~f:(fun (item : Thir.impl_item) ->
-              let item_def_id = def_id Impl item.owner_id in
+              let item_def_id = Concrete_ident.of_def_id Impl item.owner_id in
               let v =
                 match (item.kind : Thir.impl_item_kind) with
                 | Fn { body; params; _ } ->
@@ -948,8 +978,8 @@ module Exn = struct
                        associated types \
                        (https://doc.rust-lang.org/reference/items/implementations.html#inherent-implementations)."
               in
-              let parent_namespace = namespace_of_def_id item.owner_id in
-              { span = c_span item.span; v; parent_namespace })
+              let ident = Concrete_ident.of_def_id Value item.owner_id in
+              { span = c_span item.span; v; ident })
             items
       | Impl ({ of_trait = Some of_trait } as i) ->
           mk
@@ -984,16 +1014,28 @@ module Exn = struct
                        })
                      i.items;
                }
-      | Use ({ span; res; segments; rename }, t) ->
-          mk
-          @@ Use
-               {
-                 path = List.map ~f:(fun x -> fst x.ident) segments;
-                 is_external =
-                   List.exists ~f:(function Err -> true | _ -> false) res;
-                 (* TODO: this should represent local/external? *)
-                 rename;
-               }
+      | Use ({ span = _; res; segments; rename }, t) ->
+          let v =
+            Use
+              {
+                path = List.map ~f:(fun x -> fst x.ident) segments;
+                is_external =
+                  List.exists ~f:(function Err -> true | _ -> false) res;
+                (* TODO: this should represent local/external? *)
+                rename;
+              }
+          in
+          (* ident is supposed to always be an actual item, thus here we need to cheat a bit *)
+          let def_id = item.owner_id in
+          let def_id =
+            {
+              def_id with
+              path =
+                def_id.path
+                @ [ Types.{ data = ValueNs "DUMMY"; disambiguator = 0 } ];
+            }
+          in
+          [ { span; v; ident = Concrete_ident.of_def_id Value def_id } ]
       | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
       | OpaqueTy _ | Union _ | TraitAlias _ ->
           mk NotImplementedYet
