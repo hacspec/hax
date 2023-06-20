@@ -567,14 +567,30 @@ module Make (F : Features.T) = struct
           };
     }
 
-  let group_items_by_namespace (items : item list) : item list Namespace.Map.t =
-    let h = Hashtbl.create (module Namespace) in
+  module StringList = struct
+    module U = struct
+      module T = struct
+        type t = string * string list
+        [@@deriving show, yojson, compare, sexp, eq, hash]
+      end
+
+      include T
+      module C = Base.Comparator.Make (T)
+      include C
+    end
+
+    include U
+    module Map = Map.M (U)
+  end
+
+  let group_items_by_namespace (items : item list) : item list StringList.Map.t
+      =
+    let h = Hashtbl.create (module StringList) in
     List.iter items ~f:(fun item ->
-        let items =
-          Hashtbl.find_or_add h item.parent_namespace ~default:(fun _ -> ref [])
-        in
+        let ns = Concrete_ident.to_namespace item.ident in
+        let items = Hashtbl.find_or_add h ns ~default:(fun _ -> ref []) in
         items := !items @ [ item ]);
     Map.of_iteri_exn
-      (module Namespace)
+      (module StringList)
       ~iteri:(Hashtbl.map h ~f:( ! ) |> Hashtbl.iteri)
 end

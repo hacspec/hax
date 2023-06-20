@@ -2,21 +2,6 @@ open Base
 open Utils
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
-module Namespace = struct
-  module U = struct
-    module T = struct
-      type t = string * string list
-      [@@deriving show, eq, compare, sexp, hash, yojson]
-    end
-
-    include Base.Comparator.Make (T)
-    include T
-  end
-
-  include U
-  module Map = Map.M (U)
-end
-
 type todo = string
 [@@deriving
   show,
@@ -88,19 +73,21 @@ let union_spans : span list -> span =
   >> Option.value_or_thunk ~default:(fun _ ->
          Dummy { id = FreshSpanId.make () })
 
-type concrete_ident = (Concrete_ident.t[@Visitors.opaque])
-and logical_op = And | Or
-
-and primitive_ident = Deref | Cast | LogicalOp of logical_op
+type concrete_ident = (Concrete_ident.t[@visitors.opaque])
 [@@deriving
   show,
     yojson,
     compare,
     sexp,
     eq,
-    visitors { variety = "reduce"; name = "primitive_ident_reduce" },
-    visitors { variety = "mapreduce"; name = "primitive_ident_mapreduce" },
-    visitors { variety = "map"; name = "primitive_ident_map" }]
+    visitors { variety = "reduce"; name = "concrete_ident_reduce" },
+    visitors { variety = "mapreduce"; name = "concrete_ident_mapreduce" },
+    visitors { variety = "map"; name = "concrete_ident_map" }]
+
+type logical_op = And | Or
+
+and primitive_ident = Deref | Cast | LogicalOp of logical_op
+[@@deriving show, yojson, compare, sexp, eq]
 
 module Global_ident = struct
   module T = struct
@@ -209,7 +196,7 @@ type literal =
     visitors { variety = "mapreduce"; name = "literal_mapreduce" },
     visitors { variety = "map"; name = "literal_map" }]
 
-(* type 't spanned = { v : 't; span : span } [@@deriving show, yojson, eq, visitors { variety = "reduce"; name = "spanned_reduce" }] *)
+(* type 't spanned = { v : 't; span : span } [@@deriving show, yojson, eq] *)
 
 type 'mut_witness mutability = Mutable of 'mut_witness | Immutable
 [@@deriving show, yojson, eq]
@@ -273,7 +260,7 @@ functor
 
     class virtual ['self] default_mapreduce_features =
       object (self : 'self)
-        inherit ['env] VisitorsRuntime.mapreduce
+        inherit [_] VisitorsRuntime.mapreduce
         method visit_span : _ -> span -> _ = fun _ x -> (x, self#zero)
         method visit_literal : _ -> literal -> _ = fun _ x -> (x, self#zero)
       end
@@ -517,7 +504,7 @@ functor
           }]
 
     type trait_ref = {
-      trait : global_ident;
+      trait : concrete_ident;
       args : generic_value list;
       bindings : todo list;
     }
@@ -529,19 +516,19 @@ functor
           {
             variety = "reduce";
             name = "trait_ref_reduce";
-            ancestors = [ "expr_reduce" ];
+            ancestors = [ "expr_reduce"; "concrete_ident_reduce" ];
           },
         visitors
           {
             variety = "mapreduce";
             name = "trait_ref_mapreduce";
-            ancestors = [ "expr_mapreduce" ];
+            ancestors = [ "expr_mapreduce"; "concrete_ident_mapreduce" ];
           },
         visitors
           {
             variety = "map";
             name = "trait_ref_map";
-            ancestors = [ "expr_map" ];
+            ancestors = [ "expr_map"; "concrete_ident_map" ];
           }]
 
     type generic_constraint =
@@ -577,31 +564,35 @@ functor
       constraints : generic_constraint list;
     }
 
-    and variant = { name : global_ident; arguments : (global_ident * ty) list }
+    and variant = {
+      name : concrete_ident;
+      arguments : (concrete_ident * ty) list;
+    }
 
     and item' =
-      (* Todo, topological sort, rec bundles *)
+      (* Todo: rename `global_ident` into `concrete_ident` here *)
+      (* Todo: topological sort, rec bundles *)
       | Fn of {
-          name : global_ident;
+          name : concrete_ident;
           generics : generics;
           body : expr;
           params : param list;
         }
-      | TyAlias of { name : global_ident; generics : generics; ty : ty }
+      | TyAlias of { name : concrete_ident; generics : generics; ty : ty }
       | Type of {
-          name : global_ident;
+          name : concrete_ident;
           generics : generics;
           variants : variant list;
           record : bool;
         }
       | IMacroInvokation of {
-          macro : global_ident;
+          macro : concrete_ident;
           argument : string;
           span : span;
           witness : F.macro;
         }
       | Trait of {
-          name : global_ident;
+          name : concrete_ident;
           generics : generics;
           items : trait_item list;
         }
@@ -619,11 +610,7 @@ functor
       | HaxError of string
       | NotImplementedYet
 
-    and item = {
-      v : item';
-      span : span;
-      parent_namespace : (Namespace.t[@visitors.opaque]);
-    }
+    and item = { v : item'; span : span; ident : concrete_ident }
 
     and impl_item' =
       | IIType of ty
@@ -679,13 +666,13 @@ functor
               [ "generic_constraint_map"; "expr_map"; "generic_param_map" ];
           }]
     (* [@@deriving *)
-    (*   show, yojson, eq, visitors { variety = "reduce"; name = "item_reduce" }, visitors { variety = "map"; name = "item_map" }] *)
+    (*   show, yojson, eq] *)
 
     type modul = item list
 
-    let make_hax_error_item (span : span) (parent_namespace : Namespace.t)
+    let make_hax_error_item (span : span) (ident : Concrete_ident.t)
         (s : string) : item =
-      { v = HaxError s; span; parent_namespace }
+      { v = HaxError s; span; ident }
 
     module F = F
   end
@@ -694,10 +681,10 @@ module type T = sig
   type expr [@@deriving show, yojson]
   type item' [@@deriving show, yojson]
 
-  type item = { v : item'; span : span; parent_namespace : Namespace.t }
+  type item = { v : item'; span : span; ident : Concrete_ident.t }
   [@@deriving show, yojson]
 
-  val make_hax_error_item : span -> Namespace.t -> string -> item
+  val make_hax_error_item : span -> Concrete_ident.t -> string -> item
 end
 
 module Rust = Make (Features.Rust)
