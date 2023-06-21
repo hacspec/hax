@@ -70,6 +70,7 @@ mod error {
 pub trait Array {
     fn repeat() {}
     fn update_at() {}
+    fn array_of_list() {}
 }
 // pub trait Array<Idx>: core::ops::Index<Idx> {
 //     fn update_at(&self, _index: Idx) -> &Self::Output {

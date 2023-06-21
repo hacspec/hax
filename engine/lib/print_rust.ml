@@ -162,11 +162,11 @@ module Raw = struct
     | PWild -> !"_"
     | PAscription { typ; pat; _ } ->
         !"pat_ascription!(" & ppat pat & !" as " & pty e.span typ & !")"
-    | PConstruct { name; args; record; _ } ->
+    | PConstruct { name; args; is_record; _ } ->
         pglobal_ident e.span name
         &
         if List.is_empty args then !""
-        else if record then
+        else if is_record then
           !"{"
           & concat ~sep:!", "
               (List.map
@@ -211,10 +211,10 @@ module Raw = struct
         pexpr f & !"(" & args & !")"
     | Literal l -> pliteral e.span l
     | Array l -> !"[" & concat ~sep:!"," (List.map ~f:pexpr l) & !"]"
-    | Construct { constructs_record = false; constructor; fields; base = _ } ->
+    | Construct { is_record = false; constructor; fields; base = _ } ->
         let fields = List.map ~f:(snd >> pexpr) fields |> concat ~sep:!"," in
         pglobal_ident e.span constructor & !"(" & fields & !")"
-    | Construct { constructs_record = true; constructor; fields; base } ->
+    | Construct { is_record = true; constructor; fields; base } ->
         let fields =
           List.map
             ~f:(fun (field, value) ->

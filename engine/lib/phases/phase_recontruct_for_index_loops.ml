@@ -46,7 +46,8 @@ module%inlined_contents Make (FA : Features.T) = struct
                               Construct
                                 {
                                   constructor = `Concrete range_ctor;
-                                  constructs_record = true;
+                                  is_record = true;
+                                  is_struct = true;
                                   fields =
                                     [
                                       (`Concrete start_field, start);

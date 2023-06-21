@@ -101,26 +101,24 @@ struct
     | String s -> F.Const.Const_string (s, F.dummyRange)
     | Char c -> F.Const.Const_char (Char.to_int c)
     | Int { value; kind = { size; signedness } } ->
+        let open F.Const in
+        let size =
+          match size with
+          | S8 -> Int8
+          | S16 -> Int16
+          | S32 -> Int32
+          | S64 -> Int64
+          | S128 ->
+              Error.unimplemented
+                ~details:
+                  "128 literals (fail if pattern maching, otherwise TODO)" span
+          | SSize -> Sizet
+        in
         F.Const.Const_int
           ( value,
-            let open F.Const in
-            Option.map
-              (match size with
-              | S8 -> Some Int8
-              | S16 -> Some Int16
-              | S32 -> Some Int32
-              | S64 -> Some Int64
-              | S128 ->
-                  Error.unimplemented
-                    ~details:
-                      "128 literals (fail if pattern maching, otherwise TODO)"
-                    span
-              | SSize -> None)
-              ~f:(fun w ->
-                ( (match signedness with
-                  | Signed -> Signed
-                  | Unsigned -> Unsigned),
-                  w )) )
+            Some
+              ( (match signedness with Signed -> Signed | Unsigned -> Unsigned),
+                size ) )
     | Float _ -> Error.unimplemented ~details:"pliteral: Float" span
     | Bool b -> F.Const.Const_bool b
 
@@ -161,13 +159,6 @@ struct
           ("pglobal_ident: expected to be handled somewhere else: "
          ^ show_global_ident id)
 
-  let assert_concrete span (id : global_ident) : concrete_ident =
-    match id with
-    | `Concrete c -> c
-    | _ ->
-        Error.assertion_failure span
-        @@ "assert_concrete: not concrete ident: " ^ show_global_ident id
-
   let rec plocal_ident (e : LocalIdent.t) = F.id @@ String.lowercase e.name
 
   let pgeneric_param_name (name : string) : string =
@@ -180,7 +171,7 @@ struct
 
   let pfield_ident span (f : global_ident) : F.Ident.lident =
     match f with
-    | `Concrete cid -> pfield_concrete_ident cid
+    | `Concrete cid -> pconcrete_ident cid
     | `Projector (`TupleField (n, len)) | `TupleField (n, len) ->
         F.lid [ "_" ^ Int.to_string (n + 1) ]
     | `Projector (`Concrete cid) -> pfield_concrete_ident cid
@@ -205,48 +196,41 @@ struct
     [
       (c Hax__Array__update_at, (3, ".[]<-"));
       (c Core__ops__index__Index__index, (2, ".[]"));
-      (c Core__ops__bit__BitXor__bitxor, (2, "^"));
+      (c Core__ops__bit__BitXor__bitxor, (2, "^."));
       (c Core__ops__bit__BitAnd__bitand, (2, "&."));
-      (c Core__ops__bit__BitOr__bitor, (2, "|"));
-      (c Core__ops__bit__Not__not, (1, "~"));
-      (c Core__ops__arith__Add__add, (2, "+"));
-      (c Core__ops__arith__Sub__sub, (2, "-"));
-      (c Core__ops__arith__Mul__mul, (2, "*"));
-      (c Core__ops__arith__Div__div, (2, "/"));
-      (c Core__ops__arith__Rem__rem, (2, "%"));
+      (c Core__ops__bit__BitOr__bitor, (2, "|."));
+      (c Core__ops__bit__Not__not, (1, "~."));
+      (c Core__ops__arith__Add__add, (2, "+."));
+      (c Core__ops__arith__Sub__sub, (2, "-."));
+      (c Core__ops__arith__Mul__mul, (2, "*."));
+      (c Core__ops__arith__Div__div, (2, "/."));
+      (c Core__ops__arith__Rem__rem, (2, "%."));
       (c Core__ops__bit__Shl__shl, (2, ">>."));
       (c Core__ops__bit__Shr__shr, (2, "<<."));
       (c Core__cmp__PartialEq__eq, (2, "=."));
-      (c Core__cmp__PartialOrd__lt, (2, "<"));
-      (c Core__cmp__PartialOrd__le, (2, "<="));
-      (c Core__cmp__PartialEq__ne, (2, "<>"));
-      (c Core__cmp__PartialOrd__ge, (2, ">="));
-      (c Core__cmp__PartialOrd__gt, (2, ">"));
+      (c Core__cmp__PartialOrd__lt, (2, "<."));
+      (c Core__cmp__PartialOrd__le, (2, "<=."));
+      (c Core__cmp__PartialEq__ne, (2, "<>."));
+      (c Core__cmp__PartialOrd__ge, (2, ">=."));
+      (c Core__cmp__PartialOrd__gt, (2, ">."));
     ]
     |> Map.of_alist_exn (module Global_ident)
 
   let rec pty span (t : ty) =
     match t with
-    | TBool -> F.term_of_lid [ "Prims"; "bool" ]
-    | TChar -> F.term_of_lid [ "FStar"; "Char"; "char" ]
-    | TInt k ->
-        let prefix = function Signed -> "Int" | Unsigned -> "UInt" in
-        let path x s = [ prefix x ^ s; "t" ] in
+    | TBool -> F.term_of_lid [ "bool" ]
+    | TChar -> F.term_of_lid [ "char" ]
+    | TInt { size; signedness } ->
         F.term_of_lid
-          (match k with
-          | { size = SSize; signedness = Signed } -> [ "int_size" ]
-          | { size = SSize; signedness = Unsigned } -> [ "uint_size" ]
-          (* | { size = SSize; signedness = Signed } -> [ "Prims"; "int" ] *)
-          (* | { size = SSize; signedness = Unsigned } -> [ "Prims"; "nat" ] *)
-          | { size = S8; signedness } -> path signedness "8"
-          | { size = S16; signedness } -> path signedness "16"
-          | { size = S32; signedness } -> path signedness "32"
-          | { size = S64; signedness } -> path signedness "64"
-          | { size = S128; signedness } -> path signedness "128")
-    | TStr -> F.term_of_lid [ "Prims"; "string" ]
-    | TFalse -> F.term_of_lid [ "Prims"; "l_False" ]
-    | TSlice { ty; _ } ->
-        F.mk_e_app (F.term_of_lid [ "FStar"; "Seq"; "seq" ]) [ pty span ty ]
+          [
+            (match signedness with Signed -> "i" | Unsigned -> "u")
+            ^ (int_of_size size
+              |> Option.map ~f:Int.to_string
+              |> Option.value ~default:"size");
+          ]
+    | TStr -> F.term_of_lid [ "string" ]
+    | TFalse -> F.term_of_lid [ "never" ]
+    | TSlice { ty; _ } -> F.mk_e_app (F.term_of_lid [ "slice" ]) [ pty span ty ]
     | TApp { ident = `TupleType 0 as ident; args = [] } ->
         F.term @@ F.AST.Name (pglobal_ident span ident)
     | TApp { ident = `TupleType 1; args = [ GType ty ] } -> pty span ty
@@ -269,21 +253,7 @@ struct
         F.mk_e_arrow (List.map ~f:(pty span) inputs) (pty span output)
     | TFloat -> Error.unimplemented ~details:"pty: Float" span
     | TArray { typ; length } ->
-        F.mk_refined "x"
-          (F.mk_e_app (F.term_of_lid [ "Prims"; "list" ]) [ pty span typ ])
-          (fun ~x ->
-            let len_of_x =
-              F.mk_e_app
-                (F.term_of_lid [ "FStar"; "List"; "Tot"; "Base"; "length" ])
-                [ x ]
-            in
-            let eq =
-              F.term
-              @@ F.AST.Name
-                   (pglobal_ident span
-                   @@ Global_ident.of_name Value Core__cmp__PartialEq__eq)
-            in
-            F.mk_e_app eq [ len_of_x; pexpr length ])
+        F.mk_e_app (F.term_of_lid [ "array" ]) [ pty span typ; pexpr length ]
     | TParam i ->
         F.term
         @@ F.AST.Var
@@ -319,11 +289,11 @@ struct
     | PConstruct { name = `TupleCons n; args } ->
         F.pat
         @@ F.AST.PatTuple (List.map ~f:(fun { pat } -> ppat pat) args, false)
-    | PConstruct { name; args; record } ->
+    | PConstruct { name; args; is_record; is_struct } ->
         let pat_rec () =
           F.pat @@ F.AST.PatRecord (List.map ~f:pfield_pat args)
         in
-        if record then pat_rec ()
+        if is_struct && is_record then pat_rec ()
         else
           let pat_name = F.pat @@ F.AST.PatName (pglobal_ident p.span name) in
           let is_payload_record =
@@ -411,21 +381,21 @@ struct
         pexpr e'
     | Construct { constructor = `TupleCons n; fields; base = None } ->
         F.AST.mkTuple (List.map ~f:(snd >> pexpr) fields) F.dummyRange
-    | Construct { constructs_record = true; constructor; fields; base } ->
+    | Construct
+        { is_record = true; is_struct = true; constructor; fields; base } ->
         F.term
         @@ F.AST.Record
              ( Option.map ~f:(fst >> pexpr) base,
                List.map
                  ~f:(fun (f, e) -> (pfield_ident e.span f, pexpr e))
                  fields )
-    | Construct { constructs_record = false; constructor; fields; base }
-      when List.for_all ~f:(fst >> is_field_an_index) fields ->
+    | Construct { is_record = false; constructor; fields; base } ->
         if [%matches? Some _] base then
           Diagnostics.failure ~context:(Backend FStar) ~span:e.span
             (AssertionFailure { details = "non-record type with base present" });
         F.mk_e_app (F.term @@ F.AST.Name (pglobal_ident e.span constructor))
         @@ List.map ~f:(snd >> pexpr) fields
-    | Construct { constructs_record = false; constructor; fields; base } ->
+    | Construct { is_record = true; constructor; fields; base } ->
         let r =
           F.term
           @@ F.AST.Record
@@ -521,12 +491,6 @@ struct
             battributes = [];
           }
 
-  (* let hacspec_lib_item s = *)
-  (*   `Concrete { crate = "hacspec"; path = Non_empty_list.[ "lib"; s ] } *)
-
-  let assert_definition_name span =
-    assert_concrete span >> Concrete_ident.to_definition_name
-
   let rec pitem (e : item) : [> `Item of F.AST.decl | `Comment of string ] list
       =
     try pitem_unwrapped e
@@ -579,7 +543,13 @@ struct
                               generics.constraints ),
                    pty e.span ty );
                ] )
-    | Type { name; generics; variants = [ variant ]; record = true } ->
+    | Type
+        {
+          name;
+          generics;
+          variants = [ { arguments; is_record = true } ];
+          is_struct = true;
+        } ->
         F.decls
         @@ F.AST.Tycon
              ( false,
@@ -597,22 +567,19 @@ struct
                            None,
                            [],
                            pty e.span ty ))
-                       variant.arguments );
+                       arguments );
                ] )
-    | Type { name; generics; variants } ->
+    | Type { name; generics; variants; _ } ->
         let self = F.term_of_lid [ Concrete_ident.to_definition_name name ] in
         let constructors =
           List.map
-            ~f:(fun { name; arguments } ->
+            ~f:(fun { name; arguments; is_record } ->
               ( F.id (Concrete_ident.to_definition_name name),
                 Some
                   (let field_indexes =
                      List.map ~f:(fst >> index_of_field_concrete) arguments
                    in
-                   let is_record_payload =
-                     List.exists ~f:Option.is_none field_indexes
-                   in
-                   if is_record_payload then
+                   if is_record then
                      F.AST.VpRecord
                        ( List.map
                            ~f:(fun (field, ty) ->
@@ -834,11 +801,7 @@ let string_of_items =
   >> String.concat ~sep:"\n\n"
 
 let hardcoded_fstar_headers =
-  "\n\
-   #set-options \"--fuel 0 --ifuel 1 --z3rlimit 15\"\n\
-   open FStar.Mul\n\
-   open Hacspec.Lib\n\
-   open Hacspec_lib_tc"
+  "\n#set-options \"--fuel 0 --ifuel 1 --z3rlimit 15\"\nopen Core"
 
 let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
     =

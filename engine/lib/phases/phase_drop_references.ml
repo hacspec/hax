@@ -66,11 +66,12 @@ struct
       match (UA.unbox_underef_expr { e; span; typ = TFalse }).e with
       | [%inline_arms If + Literal + Array + App] -> auto
       | App { f; args } -> App { f = dexpr f; args = List.map ~f:dexpr args }
-      | Construct { constructor; constructs_record; fields; base } ->
+      | Construct { constructor; is_record; is_struct; fields; base } ->
           Construct
             {
               constructor;
-              constructs_record;
+              is_record;
+              is_struct;
               fields = List.map ~f:(fun (i, e) -> (i, dexpr e)) fields;
               base = Option.map ~f:(dexpr *** S.construct_base) base;
             }

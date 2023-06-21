@@ -297,7 +297,8 @@ functor
       | PConstruct of {
           name : global_ident;
           args : field_pat list;
-          record : bool;
+          is_record : bool; (* are fields named? *)
+          is_struct : bool; (* a struct has one constructor *)
         }
       | PArray of { args : pat list }
       | PDeref of { subpat : pat; witness : F.reference }
@@ -321,7 +322,8 @@ functor
       | Array of expr list
       | Construct of {
           constructor : global_ident;
-          constructs_record : bool;
+          is_record : bool; (* are fields named? *)
+          is_struct : bool; (* a struct has one constructor *)
           fields : (global_ident * expr) list;
           base : (expr * F.construct_base) option;
         }
@@ -567,6 +569,7 @@ functor
     and variant = {
       name : concrete_ident;
       arguments : (concrete_ident * ty) list;
+      is_record : bool;
     }
 
     and item' =
@@ -583,7 +586,7 @@ functor
           name : concrete_ident;
           generics : generics;
           variants : variant list;
-          record : bool;
+          is_struct : bool;
         }
       | IMacroInvokation of {
           macro : concrete_ident;
