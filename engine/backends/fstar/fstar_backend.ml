@@ -165,16 +165,12 @@ struct
     String.lowercase
       name (* TODO: this is not robust, might produce name clashes *)
 
-  (* This is a bit too fiddly. TODO: simplify *)
-  let pfield_concrete_ident (id : concrete_ident) =
-    F.lid [ Concrete_ident.to_definition_name id ]
-
   let pfield_ident span (f : global_ident) : F.Ident.lident =
     match f with
     | `Concrete cid -> pconcrete_ident cid
     | `Projector (`TupleField (n, len)) | `TupleField (n, len) ->
         F.lid [ "_" ^ Int.to_string (n + 1) ]
-    | `Projector (`Concrete cid) -> pfield_concrete_ident cid
+    | `Projector (`Concrete cid) -> pconcrete_ident cid
     | _ ->
         Error.assertion_failure span
           ("pfield_ident: not a valid field name in F* backend: "
@@ -408,14 +404,7 @@ struct
           (F.term @@ F.AST.Name (pglobal_ident e.span constructor))
           [ r ]
     | Closure { params; body } ->
-        F.term
-        @@ F.AST.Abs
-             ( List.map
-                 ~f:(fun p ->
-                   (* F.pat @@ F.AST.PatAscribed (ppat p, (pty p.typ, None))) *)
-                   ppat p)
-                 params,
-               pexpr body )
+        F.term @@ F.AST.Abs (List.map ~f:ppat params, pexpr body)
     | Return { e } ->
         F.term @@ F.AST.App (F.term_of_lid [ "RETURN_STMT" ], pexpr e, Nothing)
     | MacroInvokation { macro; args; witness } ->
