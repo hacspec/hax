@@ -388,7 +388,14 @@ module Make (F : Features.T) = struct
     | _ ->
         let len = List.length tuple in
         {
-          p = PConstruct { name = `TupleCons len; args = tuple; record = false };
+          p =
+            PConstruct
+              {
+                name = `TupleCons len;
+                args = tuple;
+                is_record = false;
+                is_struct = true;
+              };
           typ = make_tuple_typ @@ List.map ~f:(fun { pat; _ } -> pat.typ) tuple;
           span;
         }
@@ -409,7 +416,8 @@ module Make (F : Features.T) = struct
         Construct
           {
             constructor = `TupleCons len;
-            constructs_record = false;
+            is_record = false;
+            is_struct = true;
             fields =
               List.mapi ~f:(fun i x -> (`TupleField (i, len), x)) @@ tuple;
             base = None;
@@ -426,8 +434,8 @@ module Make (F : Features.T) = struct
      [Record] thing, and put everything which is not a Record
        into an App. This would simplify stuff quite much. Maybe not
        for LHS things. *)
-  let call_Constructor' (constructor : global_ident) (args : expr list) span
-      ret_typ =
+  let call_Constructor' (constructor : global_ident) is_struct
+      (args : expr list) span ret_typ =
     let typ = TArrow (List.map ~f:(fun arg -> arg.typ) args, ret_typ) in
     let mk_field =
       let len = List.length args in
@@ -437,7 +445,7 @@ module Make (F : Features.T) = struct
     {
       e =
         Construct
-          { constructor; constructs_record = false; fields; base = None };
+          { constructor; is_record = false; is_struct; fields; base = None };
       typ = ret_typ;
       span;
     }
@@ -447,7 +455,7 @@ module Make (F : Features.T) = struct
     call_Constructor'
       (`Concrete
         (Concrete_ident.of_name (Constructor { is_struct }) constructor_name))
-      args span ret_typ
+      is_struct args span ret_typ
 
   let call' f (args : expr list) span ret_typ =
     let typ = TArrow (List.map ~f:(fun arg -> arg.typ) args, ret_typ) in

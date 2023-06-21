@@ -424,24 +424,11 @@ module Exn = struct
           let inner = U.call Hax__Array__repeat [ value; count ] span typ in
           (U.call Alloc__boxed__Impl__new [ inner ] span typ).e
       | Tuple { fields } ->
-          let fields = List.map ~f:c_expr fields in
-          let len = List.length fields in
-          Construct
-            {
-              constructor = `TupleCons len;
-              constructs_record = false;
-              fields =
-                List.mapi
-                  ~f:(fun i field -> (`TupleField (i, len), field))
-                  fields;
-              base = None;
-            }
+          (U.make_tuple_expr' ~span @@ List.map ~f:c_expr fields).e
       | Array { fields } -> Array (List.map ~f:c_expr fields)
       | Adt { info; base; fields; _ } ->
           let constructor =
-            def_id
-              (Constructor { is_struct = info.is_constructed_type_struct })
-              info.variant
+            def_id (Constructor { is_struct = info.typ_is_struct }) info.variant
           in
           let base =
             Option.map
@@ -458,7 +445,8 @@ module Exn = struct
           in
           Construct
             {
-              constructs_record = info.constructs_record;
+              is_record = info.variant_is_record;
+              is_struct = info.typ_is_struct;
               constructor;
               fields;
               base;
@@ -562,27 +550,18 @@ module Exn = struct
           PBinding { mut; mode; var; typ; subpat }
       | Variant { info; subpatterns; _ } ->
           let name =
-            def_id
-              (Constructor { is_struct = info.is_constructed_type_struct })
-              info.variant
+            def_id (Constructor { is_struct = info.typ_is_struct }) info.variant
           in
           let args = List.map ~f:(c_field_pat info) subpatterns in
-          PConstruct { record = info.constructs_record; name; args }
-      | Tuple { subpatterns } ->
-          let len = List.length subpatterns in
-          let args =
-            List.mapi
-              ~f:(fun i pat ->
-                let pat = c_pat pat in
-                { field = `TupleField (i, len); pat })
-              subpatterns
-          in
           PConstruct
             {
-              name = `TupleCons (List.length subpatterns);
+              name;
               args;
-              record = false;
+              is_record = info.variant_is_record;
+              is_struct = info.typ_is_struct;
             }
+      | Tuple { subpatterns } ->
+          (List.map ~f:c_pat subpatterns |> U.make_tuple_pat').p
       | Deref { subpattern } ->
           PDeref { subpat = c_pat subpattern; witness = W.reference }
       | Constant { value } -> (
@@ -866,54 +845,51 @@ module Exn = struct
       | Enum (variants, generics) ->
           let def_id = Option.value_exn item.def_id in
           let generics = c_generics generics in
+          let is_struct = false in
           let variants =
-            let kind = Concrete_ident.Kind.Constructor { is_struct = false } in
+            let kind = Concrete_ident.Kind.Constructor { is_struct } in
             List.map
               ~f:(fun { data; def_id = variant_id; _ } ->
-                match data with
-                | Tuple (fields, _, _) | Struct (fields, _) ->
-                    let arguments =
+                let is_record = [%matches? Types.Struct (_ :: _, _)] data in
+                let name = Concrete_ident.of_def_id kind variant_id in
+                let arguments =
+                  match data with
+                  | Tuple (fields, _, _) | Struct (fields, _) ->
                       List.map
                         ~f:(fun { def_id = id; ty; span; _ } ->
                           (Concrete_ident.of_def_id Field id, c_ty span ty))
                         fields
-                    in
-                    {
-                      name = Concrete_ident.of_def_id kind variant_id;
-                      arguments;
-                    }
-                | Unit (_, name) ->
-                    {
-                      name = Concrete_ident.of_def_id kind name;
-                      arguments = [];
-                    })
+                  | Unit (_, name) -> []
+                in
+                { name; arguments; is_record })
               variants
           in
           let name = Concrete_ident.of_def_id Type def_id in
-          mk @@ Type { name; generics; variants; record = false }
+          mk @@ Type { name; generics; variants; is_struct }
       | Struct (v, generics) ->
           let generics = c_generics generics in
           let def_id = Option.value_exn item.def_id in
-          let v, record =
-            let kind = Concrete_ident.Kind.Constructor { is_struct = true } in
+          let is_struct = true in
+          let v =
+            let kind = Concrete_ident.Kind.Constructor { is_struct } in
             let name = Concrete_ident.of_def_id kind def_id in
-            let mk fields =
+            let mk fields is_record =
               let arguments =
                 List.map
                   ~f:(fun Thir.{ def_id = id; ty; span; _ } ->
                     (Concrete_ident.of_def_id Field id, c_ty span ty))
                   fields
               in
-              { name; arguments }
+              { name; arguments; is_record }
             in
             match v with
-            | Tuple (fields, _, _) -> (mk fields, false)
-            | Struct (fields, _) -> (mk fields, true)
-            | Unit (_, _) -> ({ name; arguments = [] }, false)
+            | Tuple (fields, _, _) -> mk fields false
+            | Struct ((_ :: _ as fields), _) -> mk fields true
+            | _ -> { name; arguments = []; is_record = false }
           in
           let variants = [ v ] in
           let name = Concrete_ident.of_def_id Type def_id in
-          mk @@ Type { name; generics; variants; record }
+          mk @@ Type { name; generics; variants; is_struct }
       | MacroInvokation { macro_ident; argument; span } ->
           mk
           @@ IMacroInvokation

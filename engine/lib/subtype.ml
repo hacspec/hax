@@ -68,8 +68,14 @@ struct
     | PWild -> PWild
     | PAscription { typ; typ_span; pat } ->
         PAscription { typ = dty span typ; pat = dpat pat; typ_span }
-    | PConstruct { name; args; record } ->
-        PConstruct { name; record; args = List.map ~f:(dfield_pat span) args }
+    | PConstruct { name; args; is_record; is_struct } ->
+        PConstruct
+          {
+            name;
+            args = List.map ~f:(dfield_pat span) args;
+            is_record;
+            is_struct;
+          }
     | PArray { args } -> PArray { args = List.map ~f:dpat args }
     | PConstant { lit } -> PConstant { lit }
     | PBinding { mut; mode; var : LocalIdent.t; typ; subpat } ->
@@ -125,11 +131,12 @@ struct
     | App { f; args } -> App { f = dexpr f; args = List.map ~f:dexpr args }
     | Literal lit -> Literal lit
     | Array l -> Array (List.map ~f:dexpr l)
-    | Construct { constructor; constructs_record; fields; base } ->
+    | Construct { constructor; is_record; is_struct; fields; base } ->
         Construct
           {
             constructor;
-            constructs_record;
+            is_record;
+            is_struct;
             fields = List.map ~f:(map_snd dexpr) fields;
             base = Option.map ~f:(dexpr *** S.construct_base) base;
           }
@@ -301,6 +308,7 @@ struct
       {
         name = v.name;
         arguments = List.map ~f:(map_snd @@ dty span) v.arguments;
+        is_record = v.is_record;
       }
 
     let rec dtrait_item' (span : span) (ti : A.trait_item') : B.trait_item' =
@@ -343,13 +351,13 @@ struct
               body = dexpr body;
               params = List.map ~f:(dparam span) params;
             }
-      | Type { name; generics; variants; record } ->
+      | Type { name; generics; variants; is_struct } ->
           B.Type
             {
               name;
               generics = dgenerics span generics;
               variants = List.map ~f:(dvariant span) variants;
-              record;
+              is_struct;
             }
       | TyAlias { name; generics; ty } ->
           B.TyAlias

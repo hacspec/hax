@@ -361,20 +361,21 @@ struct
                 (List.map ~f:(super#visit_expr env) l)
                 (fun l effects -> ({ e with e = Array l }, effects))
           | Construct
-              { constructor; constructs_record; fields = []; base = None } ->
+              { constructor; is_record; is_struct; fields = []; base = None } ->
               ( {
                   e with
                   e =
                     Construct
                       {
                         constructor;
-                        constructs_record;
+                        is_record;
+                        is_struct;
                         fields = [];
                         base = None;
                       };
                 },
                 m#zero )
-          | Construct { constructor; constructs_record; fields; base } ->
+          | Construct { constructor; is_struct; is_record; fields; base } ->
               HoistSeq.many env
                 (List.map ~f:(super#visit_expr env)
                    (Option.to_list (Option.map ~f:fst base)
@@ -396,7 +397,7 @@ struct
                       e with
                       e =
                         Construct
-                          { constructor; constructs_record; fields; base };
+                          { constructor; is_struct; is_record; fields; base };
                     },
                     effects ))
           | Match { scrutinee; arms } ->

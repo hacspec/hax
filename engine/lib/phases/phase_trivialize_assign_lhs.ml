@@ -75,7 +75,8 @@ module%inlined_contents Make (F : Features.T) = struct
                 B.Construct
                   {
                     constructor = ident;
-                    constructs_record = true;
+                    is_record = true (* TODO: might not be, actually *);
+                    is_struct = true;
                     fields = [ (field, rhs) ];
                     base = Some (lhs, Features.On.construct_base);
                   }

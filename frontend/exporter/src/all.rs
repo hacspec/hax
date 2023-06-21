@@ -1947,22 +1947,19 @@ pub struct PatRange {
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct VariantInformations {
-    constructs_record: bool, // Is a *non-tuple* struct
-    constructs_type: DefId,
     type_namespace: DefId,
-    variant: DefId,
-}
 
-trait IsRecord {
-    fn is_record(&self) -> bool;
-}
-impl<'tcx> IsRecord for rustc_middle::ty::AdtDef<'tcx> {
-    fn is_record(&self) -> bool {
-        self.is_struct()
-            && !self
-                .all_fields()
-                .any(|field| field.name.to_ident_string().parse::<u64>().is_ok())
-    }
+    typ: DefId,
+    variant: DefId,
+
+    // A record type is a type with only one variant which is a record variant.
+    typ_is_record: bool,
+    // A record variant is a variant whose fields are named, a record
+    // variant always has at least one field.
+    variant_is_record: bool,
+    // A struct is a type with exactly one variant. Note that one
+    // variant is named exactly as the type.
+    typ_is_struct: bool,
 }
 
 fn get_variant_information<'s, S: BaseState<'s>>(
@@ -1970,11 +1967,26 @@ fn get_variant_information<'s, S: BaseState<'s>>(
     variant: &rustc_hir::def_id::DefId,
     s: &S,
 ) -> VariantInformations {
+    fn is_record<'s, I: std::iter::Iterator<Item = &'s rustc_middle::ty::FieldDef> + Clone>(
+        it: I,
+    ) -> bool {
+        it.clone()
+            .any(|field| !field.name.to_ident_string().parse::<u64>().is_ok())
+    }
+    let variant_def = adt_def
+        .variants()
+        .into_iter()
+        .find(|v| v.def_id == variant.clone())
+        .unwrap();
     let constructs_type = adt_def.did().sinto(s);
     VariantInformations {
-        constructs_record: adt_def.is_record(),
-        constructs_type: constructs_type.clone(),
+        typ: constructs_type.clone(),
         variant: variant.sinto(s),
+
+        typ_is_record: adt_def.is_struct() && is_record(adt_def.all_fields()),
+        variant_is_record: is_record(variant_def.fields.iter()),
+        typ_is_struct: adt_def.is_struct(),
+
         type_namespace: DefId {
             path: match constructs_type.path.as_slice() {
                 [init @ .., _] => init.to_vec(),
