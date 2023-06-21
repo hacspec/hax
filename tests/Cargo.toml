@@ -3,6 +3,7 @@ members = [
         "enum-struct-variant",
         "literals",
         "slices",
+        "naming",
         "if-let",
         "side-effects",
         "lint/hacspec/v1-lib",
