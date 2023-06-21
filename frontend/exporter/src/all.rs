@@ -2334,10 +2334,6 @@ pub enum ExprKind {
     //     lint_level: LintLevel,
     //     value: Expr,
     // },
-    /// A `box <value>` expression.
-    Box {
-        value: Expr,
-    },
     /// TODO
     #[disable_mapping]
     MacroInvokation(MacroInvokation),
