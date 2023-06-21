@@ -64,6 +64,10 @@ name = "mut_arg"
 version = "0.1.0"
 
 [[package]]
+name = "naming"
+version = "0.1.0"
+
+[[package]]
 name = "num"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
