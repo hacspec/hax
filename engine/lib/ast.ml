@@ -1,5 +1,6 @@
 open Base
 open Utils
+open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
 module Non_empty_list = struct
   include Non_empty_list
@@ -459,7 +460,7 @@ functor
 
     and loop_kind =
       | UnconditionalLoop
-      | ForLoop of { var : local_ident; it : expr; witness : F.for_loop }
+      | ForLoop of { pat : pat; it : expr; witness : F.for_loop }
       | ForIndexLoop of {
           start : expr;
           end_ : expr;

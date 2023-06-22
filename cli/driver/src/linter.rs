@@ -32,7 +32,6 @@ impl Callbacks for LinterCallbacks {
         queries
             .global_ctxt()
             .unwrap()
-            .peek_mut()
             .enter(|tcx| hax_lint::Linter::register(tcx, session, self.ltype));
 
         Compilation::Continue

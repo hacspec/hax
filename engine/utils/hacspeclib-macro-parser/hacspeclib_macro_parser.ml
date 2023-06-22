@@ -1,5 +1,6 @@
 open! Base
 open Angstrom
+open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
 module BasicParsers = struct
   let is_space = function ' ' | '\t' | '\n' -> true | _ -> false

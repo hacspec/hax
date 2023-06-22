@@ -35,8 +35,18 @@ struct
 
     let plus : t -> t -> t =
       let merge_ty x y =
-        assert ([%eq: ty] x y);
-        x
+        if not @@ U.ty_equality x y then
+          Diagnostics.failure ~context:(Other "side_effect_utils.ml")
+            ~span:(Dummy { id = -1 })
+            (AssertionFailure
+               {
+                 details =
+                   "Expected two exact same types, got x="
+                   ^ [%show: ty] x
+                   ^ " and y="
+                   ^ [%show: ty] y;
+               })
+        else x
       in
       let merge_opts (type x) (f : x -> x -> x) (a : x option) (b : x option) =
         match (a, b) with
@@ -294,8 +304,8 @@ struct
               HoistSeq.many env kind_state (fun l effects ->
                   let kind =
                     match (l, kind) with
-                    | it :: ([ _ ] | []), ForLoop { var; witness; _ } ->
-                        ForLoop { var; witness; it }
+                    | it :: ([ _ ] | []), ForLoop { pat; witness; _ } ->
+                        ForLoop { pat; witness; it }
                     | ([ _ ] | []), UnconditionalLoop -> UnconditionalLoop
                     | _, ForIndexLoop _ -> .
                     | _ -> HoistSeq.err_hoist_invariant Caml.__LOC__

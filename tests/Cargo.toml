@@ -1,7 +1,7 @@
 [workspace]
 members = [
         "enum-struct-variant",
-        "string-literal",
+        "literals",
         "slices",
         "if-let",
         "side-effects",
@@ -12,3 +12,4 @@ members = [
         "generics",
         "loops",
 ]
+resolver = "2"
