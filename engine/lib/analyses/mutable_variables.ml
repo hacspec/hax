@@ -74,6 +74,7 @@ module%inlined_contents Make (F : Features.T) = struct
     (* let unique_mut_var_list = *)
     number_list mut_var_list i
 
+  (* State monad *)
   and number_list (l : 'a list) (i : int) : ('a * int) list * int =
     match l with
     | x :: xs ->

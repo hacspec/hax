@@ -797,10 +797,8 @@ let string_of_items =
 let hardcoded_fstar_headers =
   "\n#set-options \"--fuel 0 --ifuel 1 --z3rlimit 15\"\nopen Core"
 
-type analysis_data = unit
-
-let translate (bo : BackendOptions.t) (items : AST.item list)
-    (_ : analysis_data) : Types.file list =
+let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
+    =
   U.group_items_by_namespace items
   |> Map.to_alist
   |> List.map ~f:(fun (ns, items) ->
