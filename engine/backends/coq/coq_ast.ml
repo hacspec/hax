@@ -51,7 +51,13 @@ functor
 
       type term =
         | UnitTerm
-        | Let of { pattern : pat; mut : bool; value : term; body : term; value_typ : ty }
+        | Let of {
+            pattern : pat;
+            mut : bool;
+            value : term;
+            body : term;
+            value_typ : ty;
+          }
         | If of term * term * term
         | Match of term * (pat * term) list
         | Const of literal
@@ -200,7 +206,8 @@ functor
     let rec term_to_string (x : AST.term) depth : string * bool =
       match x with
       | AST.UnitTerm -> ("tt", false)
-      | AST.Let { pattern = pat; mut; value = bind; value_typ = typ; body = term } ->
+      | AST.Let
+          { pattern = pat; mut; value = bind; value_typ = typ; body = term } ->
           let _, ty_str = ty_to_string typ in
           (* TODO: propegate type definition *)
           ( (if mut then Lib.Notation.let_mut_stmt else Lib.Notation.let_stmt)
@@ -331,16 +338,17 @@ functor
       | AST.Definition (name, params, term, ty) ->
           let definitions, ty_str = ty_to_string ty in
           decl_list_to_string definitions
-          ^ "Definition" ^ " " ^ name ^ " " ^ params_to_string_typed params ^ ":"
-          ^ " " ^ ty_str ^ " " ^ ":=" ^ newline_indent 1
+          ^ "Definition" ^ " " ^ name ^ " "
+          ^ params_to_string_typed params
+          ^ ":" ^ " " ^ ty_str ^ " " ^ ":=" ^ newline_indent 1
           ^ term_to_string_without_paren term 1
           ^ "."
       | AST.ProgramDefinition (name, params, term, ty) ->
           let definitions, ty_str = ty_to_string ty in
           decl_list_to_string definitions
           ^ "Program" ^ " " ^ "Definition" ^ " " ^ name ^ " "
-          ^ params_to_string_typed params ^ ":" ^ " " ^ ty_str ^ " " ^ ":="
-          ^ newline_indent 1
+          ^ params_to_string_typed params
+          ^ ":" ^ " " ^ ty_str ^ " " ^ ":=" ^ newline_indent 1
           ^ term_to_string_without_paren term 1
           ^ " " ^ ":" ^ " " ^ ty_str ^ "." ^ newline_indent 0 ^ "Fail" ^ " "
           ^ "Next" ^ " " ^ "Obligation."
@@ -348,10 +356,9 @@ functor
           let definitions, ty_str = ty_to_string ty in
           decl_list_to_string definitions
           ^ "Equations" ^ " " ^ name ^ " "
-          ^ params_to_string_typed params ^ ":" ^ " " ^ ty_str ^ " " ^ ":="
-          ^ newline_indent 1
-          ^ name ^ " " ^ params_to_string params ^ " " ^ ":="
-          ^ newline_indent 2
+          ^ params_to_string_typed params
+          ^ ":" ^ " " ^ ty_str ^ " " ^ ":=" ^ newline_indent 1 ^ name ^ " "
+          ^ params_to_string params ^ " " ^ ":=" ^ newline_indent 2
           ^ term_to_string_without_paren term 2
           ^ " " ^ ":" ^ " " ^ ty_str ^ "." ^ newline_indent 0 ^ "Fail" ^ " "
           ^ "Next" ^ " " ^ "Obligation."
@@ -414,7 +421,8 @@ functor
             List.fold_left ~init:""
               ~f:(fun x y ->
                 let name, params, term, ty = y in
-                x ^ newline_indent 1 ^ name ^ " " ^ params_to_string_typed params
+                x ^ newline_indent 1 ^ name ^ " "
+                ^ params_to_string_typed params
                 ^ ":=" ^ " "
                 ^ term_to_string_without_paren term 1
                 ^ ";")
@@ -443,8 +451,10 @@ functor
       | (pat, ty) :: xs ->
           let _, ty_str = ty_to_string ty in
           "(" ^ pat_to_string pat true 0 ^ " " ^ ":" ^ " " ^ ty_str ^ ")" ^ " "
-          ^ params_to_string_typed xs (* TODO: Should pat_to_string have tick here? *)
+          ^ params_to_string_typed
+              xs (* TODO: Should pat_to_string have tick here? *)
       | [] -> ""
+
     and params_to_string params : string =
       match params with
       | (pat, ty) :: xs ->

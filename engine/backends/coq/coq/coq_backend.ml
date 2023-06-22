@@ -349,9 +349,10 @@ struct
         C.AST.Let
           {
             pattern = ppat lhs;
-            mut = (match lhs.p with
-                | PBinding { mut = Mutable _ } -> true
-                | _ -> false);
+            mut =
+              (match lhs.p with
+              | PBinding { mut = Mutable _ } -> true
+              | _ -> false);
             value = pexpr rhs;
             body = pexpr body;
             value_typ = pty span lhs.typ;

@@ -18,6 +18,7 @@ struct
 
   module FB = struct
     include F
+
     (* include Features.Off.Mutable_variable *)
     include Features.On.State_passing_loop
   end
@@ -65,7 +66,7 @@ struct
       | PBinding { var : LocalIdent.t; typ; mut; subpat; _ } ->
           PBinding
             {
-              mut = mut;
+              mut;
               mode = ByValue;
               var;
               typ = dty span typ;

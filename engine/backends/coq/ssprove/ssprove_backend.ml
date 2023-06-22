@@ -17,13 +17,14 @@ include
       (* Features.Off.State_passing_loop *)
 
       include Features.Rust
-
       include Features.Off.Raw_pointer
+
       (* include Features.Off.Mutable_pointer *)
       include Features.Off.Arbitrary_lhs
       include Features.On.For_loop
       include Features.On.Mutable_variable
       include Features.Off.Mutable_reference
+
       (* include Features.Off.Continue *)
       (* include Features.Off.Question_mark *)
       include Features.Off.Mutable_pointer
@@ -32,12 +33,12 @@ include
       include Features.Off.Nontrivial_lhs
       include Features.On.Question_mark
       include Features.Off.Continue
+
       (* include Features.Off.Early_exit *)
       (* TODO: when break is introduced: include Features.Off.Break *)
       include Features.On.Monadic_binding
       include Features.Off.Early_exit
       include Features.Off.Loop
-
       include Features.On.State_passing_loop
     end)
     (struct
@@ -58,7 +59,10 @@ module RejectNotSSProve (FA : Features.T) = struct
 
         let loop = reject
         let for_loop = Fn.const Features.On.for_loop
-        let state_passing_loop = Fn.const Features.On.state_passing_loop (* reject *)
+
+        let state_passing_loop =
+          Fn.const Features.On.state_passing_loop (* reject *)
+
         let continue = reject
         let mutable_variable = Fn.const Features.On.mutable_variable
         let mutable_reference = reject
@@ -90,18 +94,19 @@ open AST
 
 module SSProveLibrary : Library = struct
   module Notation = struct
-    let int_repr (x : string) (i : string) : string =
-      "i" ^ x ^ "(" ^ i ^ ")"
+    let int_repr (x : string) (i : string) : string = "i" ^ x ^ "(" ^ i ^ ")"
 
     let let_stmt (var : string) (expr : string) (typ : string) (body : string)
         (depth : int) : string =
-      "letb" ^ " " ^ var ^ " " ^ ":=" ^ " (" ^ expr ^ ") " ^ ":" ^ " " ^ "both _ _" ^ " "
-      ^ "(" ^ typ ^ ")" ^ " " ^ "in" ^ newline_indent depth ^ body
+      "letb" ^ " " ^ var ^ " " ^ ":=" ^ " (" ^ expr ^ ") " ^ ":" ^ " "
+      ^ "both _ _" ^ " " ^ "(" ^ typ ^ ")" ^ " " ^ "in" ^ newline_indent depth
+      ^ body
 
-    let let_mut_stmt (var : string) (expr : string) (typ : string) (body : string)
-        (depth : int) : string =
-      "letbm" ^ " " ^ var ^ " " ^ "loc(" ^ var ^ "_loc" ^ ")" ^ " " ^ ":=" ^ " (" ^ expr ^ ") " ^ ":" ^ " " ^ "both _ _" ^ " "
-      ^ "(" ^ typ ^ ")" ^ " " ^ "in" ^ newline_indent depth ^ body
+    let let_mut_stmt (var : string) (expr : string) (typ : string)
+        (body : string) (depth : int) : string =
+      "letbm" ^ " " ^ var ^ " " ^ "loc(" ^ var ^ "_loc" ^ ")" ^ " " ^ ":="
+      ^ " (" ^ expr ^ ") " ^ ":" ^ " " ^ "both _ _" ^ " " ^ "(" ^ typ ^ ")"
+      ^ " " ^ "in" ^ newline_indent depth ^ body
 
     let tuple_prefix : string = "prod_b"
   end
@@ -111,9 +116,13 @@ module SSP = Coq (SSProveLibrary)
 open Analysis_utils
 open Analyses
 
-module FuncDep (* : ANALYSIS *) = [%functor_application Analyses.Function_dependency InputLanguage]
+module FuncDep (* : ANALYSIS *) =
+[%functor_application
+Analyses.Function_dependency InputLanguage]
 
-module MutableVar (* : ANALYSIS *) = [%functor_application Analyses.Mutable_variables InputLanguage]
+module MutableVar (* : ANALYSIS *) =
+[%functor_application
+Analyses.Mutable_variables InputLanguage]
 
 module Context = struct
   type t = {
@@ -172,7 +181,6 @@ module TransformToInputLanguage (* : PHASE *) =
     |> Identity
     ]
     [@ocamlformat "disable"])
-
 
 module Make (Ctx : sig
   val ctx : Context.t
@@ -282,8 +290,7 @@ struct
     | TSlice { ty; _ } -> SSP.AST.SliceTy (pty span ty)
     | TParam i -> SSP.AST.Name i.name
     | TProjectedAssociatedType s ->
-        SSP.AST.Wild
-        (* __TODO_ty__ span ("proj:assoc:type" ^ s) *)
+        SSP.AST.Wild (* __TODO_ty__ span ("proj:assoc:type" ^ s) *)
     | _ -> .
 
   and args_ty span (args : generic_value list) : SSP.AST.ty list =
@@ -315,11 +322,12 @@ struct
         {
           mut = Mutable _;
           mode = _;
-          subpat; (* TODO no subpat? *)
+          subpat;
+          (* TODO no subpat? *)
           var;
           typ = _ (* we skip type annot here *);
         } ->
-      SSP.AST.Ident var.name (* TODO Mutable binding ! *)
+        SSP.AST.Ident var.name (* TODO Mutable binding ! *)
     | PArray { args } -> __TODO_pat__ p.span "Parray?"
     | PConstruct { name = `TupleCons 0; args = [] } -> SSP.AST.UnitPat
     | PConstruct { name = `TupleCons 1; args = [ { pat } ] } ->
@@ -418,16 +426,17 @@ struct
             Option.value_map else_ ~default:(SSP.AST.Literal "()") ~f:pexpr )
     | Array l -> SSP.AST.Array (List.map ~f:pexpr l)
     | Let { lhs; rhs; body; monadic } ->
-      SSP.AST.Let
-        {
-          pattern = ppat lhs;
-          mut = (match lhs.p with
+        SSP.AST.Let
+          {
+            pattern = ppat lhs;
+            mut =
+              (match lhs.p with
               | PBinding { mut = Mutable _ } -> true
               | _ -> false);
-          value = pexpr rhs;
-          body = pexpr body ;
-          value_typ = pty lhs.span lhs.typ ;
-        }
+            value = pexpr rhs;
+            body = pexpr body;
+            value_typ = pty lhs.span lhs.typ;
+          }
     | EffectAction _ -> __TODO_term__ span "monadic action"
     | Match { scrutinee; arms } ->
         SSP.AST.Match
@@ -457,49 +466,67 @@ struct
              kind = UnsupportedMacro { id = [%show: global_ident] macro };
              span = e.span;
            }
-    | Assign {e; } -> SSP.AST.Const (SSP.AST.Const_string (" todo(term)")) (* __TODO_term__ span "assign?" *)
-    | QuestionMark {e; } -> SSP.AST.Const (SSP.AST.Const_string (" todo(term)")) (* __TODO_term__ span "question_mark?" *)
+    | Assign { e } ->
+        SSP.AST.Const (SSP.AST.Const_string " todo(term)")
+        (* __TODO_term__ span "assign?" *)
+    | QuestionMark { e } ->
+        SSP.AST.Const (SSP.AST.Const_string " todo(term)")
+        (* __TODO_term__ span "question_mark?" *)
     | _ -> .
 
-  let temp (i : LocalIdent.T.id) : string =
-    LocalIdent.show_id i
+  let temp (i : LocalIdent.T.id) : string = LocalIdent.show_id i
 
   let rec pitem (e : AST.item) : SSP.AST.decl list =
     let span = e.span in
     match e.v with
     | Fn { name; generics; body; params } ->
-        let ndep = []
-          (* match Map.find (fst ctx.func_dep) name with Some l -> l | None -> [] *) (* Not relevant yet *)
+        let ndep =
+          []
+          (* match Map.find (fst ctx.func_dep) name with Some l -> l | None -> [] *)
+          (* Not relevant yet *)
         in
         let mvars : (local_ident * AST.ty * int) list =
           match Map.find ctx.mut_vars name with
           | Some l -> List.map ~f:(fun ((x, x_ty), x_n) -> (x, x_ty, x_n)) l
           | None -> []
         in
-        List.fold_left ~init:[] ~f:(fun y (x, x_ty, x_n) -> SSP.AST.Definition
-                                                 (x.name ^ "_loc",
-                                                  [],
-                                                  SSP.AST.Const
-                                                    (SSP.AST.Const_string ("(" ^ (snd (SSP.ty_to_string (pty (Dummy { id = FreshSpanId.make () }) x_ty))) ^ " ; " ^ (Int.to_string x_n) ^ "%nat)")),
-                                                  SSP.AST.Name "Location"
-                                                 ) :: y) mvars
-        @
-        [
-          SSP.AST.Equations
-            ( pglobal_ident name,
-              List.map
-                ~f:(fun { pat; typ; typ_span } ->
-                  (ppat pat, SSP.AST.AppTy ("both0", [ pty span typ ])))
-                params,
-              pexpr body,
-              SSP.AST.AppTy
-                ( "both" ^ " " ^ "(fset ["
-                  ^ List.fold ~f:(^) ~init:"" (List.intersperse ~sep:"; " (List.map ~f:(fun (x, x_ty, _) -> x.name ^ "_loc") mvars))
-                  ^ "])" ^ " " ^ "([interface "
-                  ^ List.fold ~f:(^) ~init:"" (List.intersperse ~sep:"; " (List.map ~f:pglobal_ident ndep))
-                  ^ "])",
-                  [ pty span body.typ ] ) );
-        ]
+        List.fold_left ~init:[]
+          ~f:(fun y (x, x_ty, x_n) ->
+            SSP.AST.Definition
+              ( x.name ^ "_loc",
+                [],
+                SSP.AST.Const
+                  (SSP.AST.Const_string
+                     ("("
+                     ^ snd
+                         (SSP.ty_to_string
+                            (pty (Dummy { id = FreshSpanId.make () }) x_ty))
+                     ^ " ; " ^ Int.to_string x_n ^ "%nat)")),
+                SSP.AST.Name "Location" )
+            :: y)
+          mvars
+        @ [
+            SSP.AST.Equations
+              ( pglobal_ident name,
+                List.map
+                  ~f:(fun { pat; typ; typ_span } ->
+                    (ppat pat, SSP.AST.AppTy ("both0", [ pty span typ ])))
+                  params,
+                pexpr body,
+                SSP.AST.AppTy
+                  ( "both" ^ " " ^ "(fset ["
+                    ^ List.fold ~f:( ^ ) ~init:""
+                        (List.intersperse ~sep:"; "
+                           (List.map
+                              ~f:(fun (x, x_ty, _) -> x.name ^ "_loc")
+                              mvars))
+                    ^ "])" ^ " " ^ "([interface "
+                    ^ List.fold ~f:( ^ ) ~init:""
+                        (List.intersperse ~sep:"; "
+                           (List.map ~f:pglobal_ident ndep))
+                    ^ "])",
+                    [ pty span body.typ ] ) );
+          ]
     | TyAlias { name; generics; ty } ->
         [ SSP.AST.Notation (pglobal_ident name ^ "_t", pty span ty) ]
     (* record *)
@@ -863,7 +890,7 @@ let translate (bo : BackendOptions.t) (items : AST.item list)
            })
 
 let apply_phases (bo : BackendOptions.t) (i : Ast.Rust.item list) :
-  AST.item list * analysis_data =
+    AST.item list * analysis_data =
   let result = List.concat_map ~f:TransformToInputLanguage.ditem i in
   let func_dep = FuncDep.analyse () result in
   let mut_var = MutableVar.analyse func_dep result in
