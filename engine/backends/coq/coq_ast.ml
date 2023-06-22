@@ -74,6 +74,7 @@ functor
         | Unimplemented of string
         | Definition of definition_type
         | ProgramDefinition of definition_type
+        | Equations of definition_type
         | Notation of string * ty
         | Record of string * (string * ty) list
         | Inductive of string * generics_type * inductive_case list
@@ -330,7 +331,7 @@ functor
       | AST.Definition (name, params, term, ty) ->
           let definitions, ty_str = ty_to_string ty in
           decl_list_to_string definitions
-          ^ "Definition" ^ " " ^ name ^ " " ^ params_to_string params ^ ":"
+          ^ "Definition" ^ " " ^ name ^ " " ^ params_to_string_typed params ^ ":"
           ^ " " ^ ty_str ^ " " ^ ":=" ^ newline_indent 1
           ^ term_to_string_without_paren term 1
           ^ "."
@@ -338,9 +339,20 @@ functor
           let definitions, ty_str = ty_to_string ty in
           decl_list_to_string definitions
           ^ "Program" ^ " " ^ "Definition" ^ " " ^ name ^ " "
-          ^ params_to_string params ^ ":" ^ " " ^ ty_str ^ " " ^ ":="
+          ^ params_to_string_typed params ^ ":" ^ " " ^ ty_str ^ " " ^ ":="
           ^ newline_indent 1
           ^ term_to_string_without_paren term 1
+          ^ " " ^ ":" ^ " " ^ ty_str ^ "." ^ newline_indent 0 ^ "Fail" ^ " "
+          ^ "Next" ^ " " ^ "Obligation."
+      | AST.Equations (name, params, term, ty) ->
+          let definitions, ty_str = ty_to_string ty in
+          decl_list_to_string definitions
+          ^ "Equations" ^ " " ^ name ^ " "
+          ^ params_to_string_typed params ^ ":" ^ " " ^ ty_str ^ " " ^ ":="
+          ^ newline_indent 1
+          ^ name ^ " " ^ params_to_string params ^ " " ^ ":="
+          ^ newline_indent 2
+          ^ term_to_string_without_paren term 2
           ^ " " ^ ":" ^ " " ^ ty_str ^ "." ^ newline_indent 0 ^ "Fail" ^ " "
           ^ "Next" ^ " " ^ "Obligation."
       | AST.Notation (name, ty) ->
@@ -402,7 +414,7 @@ functor
             List.fold_left ~init:""
               ~f:(fun x y ->
                 let name, params, term, ty = y in
-                x ^ newline_indent 1 ^ name ^ " " ^ params_to_string params
+                x ^ newline_indent 1 ^ name ^ " " ^ params_to_string_typed params
                 ^ ":=" ^ " "
                 ^ term_to_string_without_paren term 1
                 ^ ";")
@@ -426,11 +438,18 @@ functor
         ~f:(fun x y -> decl_to_string x ^ newline_indent 0 ^ y)
         x
 
-    and params_to_string params : string =
+    and params_to_string_typed params : string =
       match params with
       | (pat, ty) :: xs ->
           let _, ty_str = ty_to_string ty in
           "(" ^ pat_to_string pat true 0 ^ " " ^ ":" ^ " " ^ ty_str ^ ")" ^ " "
+          ^ params_to_string_typed xs (* TODO: Should pat_to_string have tick here? *)
+      | [] -> ""
+    and params_to_string params : string =
+      match params with
+      | (pat, ty) :: xs ->
+          let _, ty_str = ty_to_string ty in
+          pat_to_string pat true 0 ^ " "
           ^ params_to_string xs (* TODO: Should pat_to_string have tick here? *)
       | [] -> ""
 

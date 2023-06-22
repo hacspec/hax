@@ -91,8 +91,7 @@ open AST
 module SSProveLibrary : Library = struct
   module Notation = struct
     let int_repr (x : string) (i : string) : string =
-      "(" ^ "lift_to_both0" ^ " " ^ "(" ^ i ^ " " ^ ":" ^ " " ^ "int" ^ x ^ ")"
-      ^ ")"
+      "i" ^ x ^ "(" ^ i ^ ")"
 
     let let_stmt (var : string) (expr : string) (typ : string) (body : string)
         (depth : int) : string =
@@ -104,7 +103,7 @@ module SSProveLibrary : Library = struct
       "letbm" ^ " " ^ var ^ " " ^ "loc(" ^ var ^ "_loc" ^ ")" ^ " " ^ ":=" ^ " (" ^ expr ^ ") " ^ ":" ^ " " ^ "both _ _" ^ " "
       ^ "(" ^ typ ^ ")" ^ " " ^ "in" ^ newline_indent depth ^ body
 
-    let tuple_prefix : string = "prod_b0"
+    let tuple_prefix : string = "prod_b"
   end
 end
 
@@ -486,7 +485,7 @@ struct
                                                  ) :: y) mvars
         @
         [
-          SSP.AST.ProgramDefinition
+          SSP.AST.Equations
             ( pglobal_ident name,
               List.map
                 ~f:(fun { pat; typ; typ_span } ->
@@ -496,7 +495,7 @@ struct
               SSP.AST.AppTy
                 ( "both" ^ " " ^ "(fset ["
                   ^ List.fold ~f:(^) ~init:"" (List.intersperse ~sep:"; " (List.map ~f:(fun (x, x_ty, _) -> x.name ^ "_loc") mvars))
-                  ^ "])" ^ " " ^ "(fset ["
+                  ^ "])" ^ " " ^ "([interface "
                   ^ List.fold ~f:(^) ~init:"" (List.intersperse ~sep:"; " (List.map ~f:pglobal_ident ndep))
                   ^ "])",
                   [ pty span body.typ ] ) );
