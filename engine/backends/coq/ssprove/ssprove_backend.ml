@@ -6,84 +6,53 @@ open Coq_ast
 include
   Backend.Make
     (struct
-      (* Extra features from Features.Rust: *)
-
-      (* Features.On.slice, *)
-      (* Features.On.macro, *)
-      (* Features.On.as_pattern, *)
-      (* Features.On.construct_base, *)
-
-      (* Features.Off.Monadic_action *)
-      (* Features.Off.State_passing_loop *)
-
-      include Features.Rust
-      include Features.Off.Raw_pointer
-
-      (* include Features.Off.Mutable_pointer *)
-      include Features.Off.Arbitrary_lhs
-      include Features.On.For_loop
-      include Features.On.Mutable_variable
-      include Features.Off.Mutable_reference
-
-      (* include Features.Off.Continue *)
-      (* include Features.Off.Question_mark *)
-      include Features.Off.Mutable_pointer
-      include Features.Off.Lifetime
-      include Features.Off.Reference
-      include Features.Off.Nontrivial_lhs
-      include Features.On.Question_mark
-      include Features.Off.Continue
-
-      (* include Features.Off.Early_exit *)
-      (* TODO: when break is introduced: include Features.Off.Break *)
-      include Features.On.Monadic_binding
-      include Features.Off.Early_exit
-      include Features.Off.Loop
-      include Features.On.State_passing_loop
+      open Features
+      include Off
+      include On.Slice
+      include On.Monadic_binding
+      include On.Macro
+      include On.Construct_base
+      include On.Mutable_variable
     end)
     (struct
       let backend = Diagnostics.Backend.SSProve
     end)
 
-open Phase_utils
-
-module RejectNotSSProve (FA : Features.T) = struct
+module SubtypeToInputLanguage
+    (FA : Features.T
+            with type mutable_reference = Features.Off.mutable_reference
+             and type continue = Features.Off.continue
+             and type mutable_pointer = Features.Off.mutable_pointer
+             and type mutable_variable = Features.On.mutable_variable
+             and type reference = Features.Off.reference
+             and type raw_pointer = Features.Off.raw_pointer
+             and type early_exit = Features.Off.early_exit
+             and type question_mark = Features.Off.question_mark
+             and type as_pattern = Features.Off.as_pattern
+             and type lifetime = Features.Off.lifetime
+             and type monadic_action = Features.Off.monadic_action
+             and type arbitrary_lhs = Features.Off.arbitrary_lhs
+             and type nontrivial_lhs = Features.Off.nontrivial_lhs
+             and type loop = Features.Off.loop
+             and type for_loop = Features.Off.for_loop
+             and type for_index_loop = Features.Off.for_index_loop
+             and type state_passing_loop = Features.Off.state_passing_loop) =
+struct
   module FB = InputLanguage
 
   include
-    Feature_gate.Make (FA) (FB)
+    Subtype.Make (FA) (FB)
       (struct
         module A = FA
         module B = FB
-        include Feature_gate.DefaultSubtype
-
-        let loop = reject
-        let for_loop = Fn.const Features.On.for_loop
-
-        let state_passing_loop =
-          Fn.const Features.On.state_passing_loop (* reject *)
-
-        let continue = reject
-        let mutable_variable = Fn.const Features.On.mutable_variable
-        let mutable_reference = reject
-        let mutable_pointer = reject
-        let reference = reject
-        let slice = Fn.const Features.On.slice (* On in Features.Rust *)
-        let raw_pointer = reject
-        let early_exit = reject
-        let question_mark = Fn.const Features.On.question_mark
-        let macro = Fn.const Features.On.macro (* On in Features.Rust *)
-        let as_pattern = Fn.const Features.On.as_pattern
-        let nontrivial_lhs = reject
-        let arbitrary_lhs = reject
-        let lifetime = reject
-        let construct_base = Fn.const Features.On.construct_base
-        let monadic_action = reject
-        let monadic_binding _ = Features.On.monadic_binding
-
-        let metadata =
-          Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
+        include Features.SUBTYPE.Id
+        include Features.SUBTYPE.On.Monadic_binding
+        include Features.SUBTYPE.On.Construct_base
+        include Features.SUBTYPE.On.Slice
+        include Features.SUBTYPE.On.Macro
       end)
+
+  let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
 end
 
 module AST = Ast.Make (InputLanguage)
@@ -159,6 +128,8 @@ let primitive_to_string (id : primitive_ident) : string =
   | UnOp op -> "(TODO: UnOp)"
   | LogicalOp op -> ( match op with And -> "andb" | Or -> "orb")
 
+open Phase_utils
+
 module TransformToInputLanguage (* : PHASE *) =
   CatchErrors
     ([%functor_application
@@ -166,7 +137,6 @@ module TransformToInputLanguage (* : PHASE *) =
     |> Phases.Reject.Arbitrary_lhs
     |> Phases.Reconstruct_for_loops
     |> Phases.Direct_and_mut
-    |> Phases.Reject.Continue
     |> Phases.Drop_references
     |> Phases.Trivialize_assign_lhs
     |> Phases.Reconstruct_question_marks
@@ -177,7 +147,8 @@ module TransformToInputLanguage (* : PHASE *) =
     |> Phases.Cf_into_monads
     |> Phases.Reject.EarlyExit
     |> Phases.Functionalize_loops
-    |> RejectNotSSProve
+    |> Phases.Reject.As_pattern
+    |> SubtypeToInputLanguage
     |> Identity
     ]
     [@ocamlformat "disable"])
@@ -868,8 +839,10 @@ let hardcoded_coq_headers =
    Import choice.Choice.Exports.\n\n\
    Obligation Tactic := try timeout 8 solve_ssprove_obligations.\n"
 
-let translate (bo : BackendOptions.t) (items : AST.item list)
-    (analysis_data : analysis_data) : Types.file list =
+let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
+    =
+  let func_dep = FuncDep.analyse () items in
+  let mut_var = MutableVar.analyse func_dep items in
   U.group_items_by_namespace items
   |> Map.to_alist
   |> List.map ~f:(fun (ns, items) ->
@@ -885,13 +858,10 @@ let translate (bo : BackendOptions.t) (items : AST.item list)
              path = mod_name ^ ".v";
              contents =
                hardcoded_coq_headers ^ "\n"
-               ^ string_of_items (items, analysis_data)
+               ^ string_of_items (items, (func_dep, mut_var))
                ^ "\n";
            })
 
 let apply_phases (bo : BackendOptions.t) (i : Ast.Rust.item list) :
-    AST.item list * analysis_data =
-  let result = List.concat_map ~f:TransformToInputLanguage.ditem i in
-  let func_dep = FuncDep.analyse () result in
-  let mut_var = MutableVar.analyse func_dep result in
-  (result, (func_dep, mut_var))
+    AST.item list =
+  List.concat_map ~f:TransformToInputLanguage.ditem i

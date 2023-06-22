@@ -21,7 +21,6 @@ module SubtypeToInputLanguage
     (FA : Features.T
             with type mutable_reference = Features.Off.mutable_reference
              and type continue = Features.Off.continue
-             and type mutable_reference = Features.Off.mutable_reference
              and type mutable_pointer = Features.Off.mutable_pointer
              and type mutable_variable = Features.Off.mutable_variable
              and type reference = Features.Off.reference
@@ -725,10 +724,8 @@ let hardcoded_coq_headers =
    Open Scope Z_scope.\n\
    Open Scope bool_scope.\n"
 
-type analysis_data = unit
-
-let translate (bo : BackendOptions.t) (items : AST.item list)
-    (_ : analysis_data) : Types.file list =
+let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
+    =
   U.group_items_by_namespace items
   |> Map.to_alist
   |> List.map ~f:(fun (ns, items) ->
@@ -755,7 +752,6 @@ module TransformToInputLanguage =
     |> Phases.Reject.Arbitrary_lhs
     |> Phases.Reconstruct_for_loops
     |> Phases.Direct_and_mut
-    |> Phases.Reject.Continue
     |> Phases.Drop_references
     |> Phases.Trivialize_assign_lhs
     |> Phases.Reconstruct_question_marks
