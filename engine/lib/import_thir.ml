@@ -27,6 +27,7 @@ module Ast = struct
 end
 
 module U = Ast_utils.Make (Features.Rust)
+module W = Features.On
 open Ast
 
 type error =
@@ -41,21 +42,7 @@ type error =
 [@@deriving show]
 
 module Exn = struct
-  exception ImportError of error
-
-  open struct
-    let raise span e = assertion_failure span (show_error e)
-  end
-
   let loc (loc : Thir.loc) : Ast.loc = { col = loc.col; line = loc.line }
-
-  let string_of_def_path_item : Thir.def_path_item -> string option = function
-    | TypeNs s | ValueNs s | MacroNs s | LifetimeNs s -> Some s
-    | _ -> None
-
-  let string_of_disambiguated_def_path_item
-      (x : Thir.disambiguated_def_path_item) : string option =
-    string_of_def_path_item x.data
 
   let def_id kind (def_id : Thir.def_id) : global_ident =
     `Concrete (Concrete_ident.of_def_id kind def_id)
@@ -106,8 +93,6 @@ module Exn = struct
   let c_mutability (witness : 'a) : bool -> 'a Ast.mutability = function
     | true -> Mutable witness
     | false -> Immutable
-
-  module W = Features.On
 
   let c_borrow_kind span : Thir.borrow_kind -> borrow_kind = function
     | Shared -> Shared

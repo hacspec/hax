@@ -87,7 +87,9 @@ module%inlined_contents Make (F : Features.T) = struct
       | LhsArrayAccessor { e; typ = _; index; _ } ->
           let lhs = expr_of_lhs e span in
           let rhs =
-            UB.call Hax__Array__update_at [ lhs; dexpr index; rhs ] span lhs.typ
+            UB.call Rust_primitives__hax__update_at
+              [ lhs; dexpr index; rhs ]
+              span lhs.typ
           in
           updater_of_lhs e rhs span
       | LhsArbitraryExpr _ -> Error.raise { kind = ArbitraryLHS; span }
