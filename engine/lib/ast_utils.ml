@@ -471,13 +471,15 @@ module Make (F : Features.T) = struct
   let hax_failure_expr' span (typ : ty) (context, kind) (ast : string) =
     let error = Diagnostics.pretty_print_context_kind context kind in
     let args = List.map ~f:(string_lit span) [ error; ast ] in
-    call Hax__error__failure args span typ
+    call Rust_primitives__hax__failure args span typ
 
   let hax_failure_expr span (typ : ty) (context, kind) (expr0 : Ast.Full.expr) =
     hax_failure_expr' span typ (context, kind) (Print_rust.pexpr_str expr0)
 
   let hax_failure_typ =
-    let ident = `Concrete (Concrete_ident.of_name Type Hax__error__Failure) in
+    let ident =
+      `Concrete (Concrete_ident.of_name Type Rust_primitives__hax__failure)
+    in
     TApp { ident; args = [] }
 
   module LiftToFullAst = struct

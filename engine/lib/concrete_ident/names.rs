@@ -63,35 +63,63 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     }
 }
 
-mod error {
-    fn failure() {}
-    struct Failure;
-}
-pub trait Array {
-    fn repeat() {}
-    fn update_at() {}
-    fn array_of_list() {}
-}
-// pub trait Array<Idx>: core::ops::Index<Idx> {
-//     fn update_at(&self, _index: Idx) -> &Self::Output {
-//         panic!()
-//     }
-// }
-trait CoerceUnsize {
-    fn unsize() {}
+macro_rules! impl_arith {
+    ($name:ident$(,)?) => {
+        mod $name {
+            fn add() {}
+            fn sub() {}
+            fn mul() {}
+            fn div() {}
+            fn rem() {}
+            fn bit_xor() {}
+            fn bit_and() {}
+            fn bit_or() {}
+            fn shl() {}
+            fn shr() {}
+            fn eq() {}
+            fn lt() {}
+            fn le() {}
+            fn ne() {}
+            fn ge() {}
+            fn gt() {}
+        }
+    };
+    ($name:ident,$($rest:tt)*) => {
+        impl_arith!($name);
+        impl_arith!($($rest)*);
+    }
 }
 
-mod control_flow_monad {
-    trait ControlFlowMonad {
-        fn lift() {}
-    }
-    mod mexception {
-        fn run() {}
-    }
-    mod mresult {
-        fn run() {}
-    }
-    mod moption {
-        fn run() {}
+impl_arith!(u128);
+// impl_arith!(u8, u16, u32, u64, u128, usize);
+// impl_arith!(i8, i16, i32, i64, i128, isize);
+
+fn offset() {}
+
+fn unsize() {}
+
+/// Hax additions
+mod hax {
+    fn failure() {}
+    struct Failure;
+
+    fn repeat() {}
+    fn update_at() {}
+    // TODO: Should that live here: this is F* specific
+    fn array_of_list() {}
+
+    mod control_flow_monad {
+        trait ControlFlowMonad {
+            fn lift() {}
+        }
+        mod mexception {
+            fn run() {}
+        }
+        mod mresult {
+            fn run() {}
+        }
+        mod moption {
+            fn run() {}
+        }
     }
 }

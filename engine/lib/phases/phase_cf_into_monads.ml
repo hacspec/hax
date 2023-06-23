@@ -220,8 +220,8 @@ struct
     and lift_if_necessary (e : B.expr) (target_type : B.ty) =
       if B.equal_ty e.typ target_type then e
       else
-        UB.call Hax__control_flow_monad__ControlFlowMonad__lift [ e ] e.span
-          target_type
+        UB.call Rust_primitives__hax__control_flow_monad__ControlFlowMonad__lift
+          [ e ] e.span target_type
       [@@inline_ands bindings_of dexpr - dexpr']
 
     module Item = struct
@@ -232,9 +232,12 @@ struct
           | { monad = Some m; typ } ->
               UB.call
                 (match m with
-                | MException _ -> Hax__control_flow_monad__mexception__run
-                | MResult _ -> Hax__control_flow_monad__mresult__run
-                | MOption -> Hax__control_flow_monad__moption__run)
+                | MException _ ->
+                    Rust_primitives__hax__control_flow_monad__mexception__run
+                | MResult _ ->
+                    Rust_primitives__hax__control_flow_monad__mresult__run
+                | MOption ->
+                    Rust_primitives__hax__control_flow_monad__moption__run)
                 [ e' ] e.span typ
           | _ -> e'
       end

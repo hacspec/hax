@@ -190,7 +190,7 @@ struct
   let operators =
     let c = Global_ident.of_name Value in
     [
-      (c Hax__Array__update_at, (3, ".[]<-"));
+      (c Rust_primitives__hax__array_of_list, (3, ".[]<-"));
       (c Core__ops__index__Index__index, (2, ".[]"));
       (c Core__ops__bit__BitXor__bitxor, (2, "^."));
       (c Core__ops__bit__BitAnd__bitand, (2, "&."));
