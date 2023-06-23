@@ -61,6 +61,17 @@ module Imported = struct
         | Some path, Some { data = Ctor; _ } -> path
         | _ -> path);
     }
+
+  let map_path_strings ~(f : string -> string) (did : def_id) : def_id =
+    let f : def_path_item -> def_path_item = function
+      | TypeNs s -> TypeNs (f s)
+      | ValueNs s -> ValueNs (f s)
+      | MacroNs s -> MacroNs (f s)
+      | LifetimeNs s -> LifetimeNs (f s)
+      | other -> other
+    in
+    let f x = { x with data = f x.data } in
+    { did with path = List.map ~f did.path }
 end
 
 module Kind = struct
@@ -84,6 +95,9 @@ end
 
 type t = { def_id : Imported.def_id; kind : Kind.t }
 [@@deriving show, yojson, sexp]
+
+let map_path_strings ~(f : string -> string) (cid : t) : t =
+  { cid with def_id = Imported.map_path_strings ~f cid.def_id }
 
 (* [kind] is really a metadata, it is not relevant, `def_id`s are unique *)
 let equal x y = [%equal: Imported.def_id] x.def_id y.def_id
@@ -218,6 +232,8 @@ let rec to_view ({ def_id; kind } : t) : view =
   View.{ crate; path; definition }
 
 and to_definition_name (x : t) : string = (to_view x).definition
+
+let to_crate_name (x : t) : string = (to_view x).crate
 
 let to_namespace x =
   let View.{ crate; path; _ } = to_view x in

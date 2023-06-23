@@ -268,6 +268,22 @@ impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, ConstantKind>
     }
 }
 
+impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, TypedConstantKind>
+    for rustc_middle::mir::ConstantKind<'tcx>
+{
+    fn sinto(&self, s: &S) -> TypedConstantKind {
+        TypedConstantKind {
+            typ: self.ty().sinto(s),
+            constant_kind: self.sinto(s),
+        }
+    }
+}
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct TypedConstantKind {
+    typ: Ty,
+    constant_kind: ConstantKind,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum ConstantKind {
     Ty(Const),
@@ -1940,8 +1956,8 @@ pub enum RangeEnd {
 #[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::PatRange<'tcx>, state: S as state)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct PatRange {
-    pub lo: ConstantKind,
-    pub hi: ConstantKind,
+    pub lo: TypedConstantKind,
+    pub hi: TypedConstantKind,
     pub end: RangeEnd,
 }
 
@@ -2095,7 +2111,7 @@ pub enum PatKind {
     /// * Opaque constants, that must not be matched structurally. So anything that does not derive
     ///   `PartialEq` and `Eq`.
     Constant {
-        value: ConstantKind,
+        value: TypedConstantKind,
     },
 
     Range(PatRange),
