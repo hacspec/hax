@@ -19,6 +19,11 @@ let unimplemented ?issue_id (span : Thir.span) (details : string) =
   report { span; kind; context = ThirImport };
   raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
 
+let unsafe_block (span : Thir.span) =
+  let kind = T.UnsafeBlock in
+  report { span; kind; context = ThirImport };
+  raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
+
 let todo (span : Thir.span) = unimplemented span "TODO"
 
 module Ast = struct
@@ -131,8 +136,18 @@ module Exn = struct
       let kind = { size = S8; signedness = Unsigned } in
       Int { value = Int.to_string n; kind }
     in
+    let error kind =
+      assertion_failure span
+        ("[import_thir:literal] got a " ^ kind ^ " literal, expected " ^ kind
+       ^ " type, got type ["
+        ^ [%show: ty] ty
+        ^ "] instead.")
+    in
     match lit with
-    | Err -> raise span GotErrLiteral
+    | Err ->
+        assertion_failure span
+          "[import_thir:literal] got an error literal: this means the Rust \
+           compiler or Hax's frontend probably reported errors above."
     | Str (str, _) -> mk @@ String str
     | CStr (l, _) | ByteStr (l, _) -> EL_Array (List.map ~f:mku8 l)
     | Byte n -> mk @@ mku8 n
@@ -141,15 +156,15 @@ module Exn = struct
         mk
         @@ Int
              {
-               value = i;
-               kind =
-                 (match ty with
-                 | Some (TInt k) -> k
-                 | Some _ -> raise span IllTypedIntLiteral
-                 | None ->
-                     (* TODO: this is wrong *)
-                     { size = SSize; signedness = Unsigned }
-                     (* kind = (match t with _ -> fail with "lit: int" (\* TODO *\)); *));
+               value;
+               kind = (match ty with TInt k -> k | ty -> error "integer");
+             }
+    | Float (value, _kind) ->
+        mk
+        @@ Float
+             {
+               value;
+               kind = (match ty with TFloat k -> k | ty -> error "float");
              }
     | Float _ -> unimplemented span "todo float"
     | Bool b -> mk @@ Bool b
