@@ -22,7 +22,7 @@ struct
     | TBool -> TBool
     | TChar -> TChar
     | TInt k -> TInt k
-    | TFloat -> TFloat
+    | TFloat k -> TFloat k
     | TStr -> TStr
     | TApp { ident; args } ->
         TApp { ident; args = List.map ~f:(dgeneric_value span) args }

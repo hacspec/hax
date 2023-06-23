@@ -188,11 +188,15 @@ let show_int_kind { size; signedness } =
     |> Option.map ~f:Int.to_string
     |> Option.value ~default:"size")
 
+type float_kind = F32 | F64 [@@deriving show, yojson, compare, eq]
+
+let show_float_kind = function F32 -> "f32" | F64 -> "f64"
+
 type literal =
   | String of string
   | Char of char
   | Int of { value : string; kind : (int_kind[@visitors.opaque]) }
-  | Float of float
+  | Float of { value : string; kind : float_kind [@visitors.opaque] }
   | Bool of bool
 [@@deriving
   show,
@@ -275,7 +279,7 @@ functor
       | TBool
       | TChar
       | TInt of (int_kind[@visitors.opaque])
-      | TFloat
+      | TFloat of (float_kind[@visitors.opaque])
       | TStr
       | TApp of { ident : global_ident; args : generic_value list }
       | TArray of { typ : ty; length : expr }

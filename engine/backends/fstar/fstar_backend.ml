@@ -240,7 +240,7 @@ struct
         F.mk_e_app base args
     | TArrow (inputs, output) ->
         F.mk_e_arrow (List.map ~f:(pty span) inputs) (pty span output)
-    | TFloat -> Error.unimplemented ~details:"pty: Float" span
+    | TFloat _ -> Error.unimplemented ~details:"pty: Float" span
     | TArray { typ; length } ->
         F.mk_e_app (F.term_of_lid [ "array" ]) [ pty span typ; pexpr length ]
     | TParam i ->
