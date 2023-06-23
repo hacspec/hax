@@ -182,6 +182,12 @@ type signedness = Signed | Unsigned [@@deriving show, yojson, compare, eq]
 type int_kind = { size : size; signedness : signedness }
 [@@deriving show, yojson, compare, eq]
 
+let show_int_kind { size; signedness } =
+  (match signedness with Signed -> "i" | Unsigned -> "u")
+  ^ (int_of_size size
+    |> Option.map ~f:Int.to_string
+    |> Option.value ~default:"size")
+
 type literal =
   | String of string
   | Char of char

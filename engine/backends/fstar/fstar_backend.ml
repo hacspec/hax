@@ -216,14 +216,7 @@ struct
     match t with
     | TBool -> F.term_of_lid [ "bool" ]
     | TChar -> F.term_of_lid [ "char" ]
-    | TInt { size; signedness } ->
-        F.term_of_lid
-          [
-            (match signedness with Signed -> "i" | Unsigned -> "u")
-            ^ (int_of_size size
-              |> Option.map ~f:Int.to_string
-              |> Option.value ~default:"size");
-          ]
+    | TInt k -> F.term_of_lid [ show_int_kind k ]
     | TStr -> F.term_of_lid [ "string" ]
     | TFalse -> F.term_of_lid [ "never" ]
     | TSlice { ty; _ } -> F.mk_e_app (F.term_of_lid [ "slice" ]) [ pty span ty ]
