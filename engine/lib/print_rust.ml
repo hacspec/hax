@@ -73,7 +73,8 @@ module Raw = struct
     | String s -> "\"" ^ s ^ "\""
     | Char c -> "'" ^ Char.to_string c ^ "'"
     | Int { value; _ } -> value
-    | Float _ -> "float_todo"
+    | Float { value; kind = F32 } -> value ^ "f32"
+    | Float { value; kind = F64 } -> value ^ "f64"
     | Bool b -> Bool.to_string b
 
   let pprimitive_ident span : _ -> AnnotatedString.t =
@@ -129,7 +130,7 @@ module Raw = struct
     | TBool -> !"bool"
     | TChar -> !"char"
     | TInt _k -> !"int"
-    | TFloat -> !"float"
+    | TFloat _k -> !"float"
     | TStr -> !"String"
     | TApp { ident; args = [] } -> pglobal_ident span ident
     | TApp { ident; args } ->
