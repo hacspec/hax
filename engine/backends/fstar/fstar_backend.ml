@@ -327,7 +327,7 @@ struct
         @@ F.AST.Project (pexpr arg, F.lid [ "_" ^ string_of_int (n + 1) ])
     | App { f = { e = GlobalVar (`Projector (`Concrete cid)) }; args = [ arg ] }
       ->
-        F.term @@ F.AST.Project (pexpr arg, pfield_concrete_ident cid)
+        F.term @@ F.AST.Project (pexpr arg, pconcrete_ident cid)
     | App { f = { e = GlobalVar x }; args } when Map.mem operators x ->
         let arity, op = Map.find_exn operators x in
         if List.length args <> arity then
@@ -343,7 +343,20 @@ struct
                None,
                pexpr then_,
                Option.value_map else_ ~default:F.unit ~f:pexpr )
-    | Array l -> F.AST.mkConsList F.dummyRange (List.map ~f:pexpr l)
+    | Array l ->
+        let len = List.length l in
+        let body = F.AST.mkConsList F.dummyRange (List.map ~f:pexpr l) in
+        let array_of_list =
+          let id =
+            Concrete_ident.of_name Value Rust_primitives__hax__array_of_list
+          in
+          F.term @@ F.AST.Name (pconcrete_ident id)
+        in
+        F.term_of_string
+          ("(let l = " ^ term_to_string body
+         ^ " in assert_norm (List.Tot.length l == " ^ Int.to_string len ^ "); "
+          ^ term_to_string array_of_list
+          ^ " l)")
     | Let { lhs; rhs; body; monadic = Some monad } ->
         let p =
           F.pat @@ F.AST.PatAscribed (ppat lhs, (pty lhs.span lhs.typ, None))
