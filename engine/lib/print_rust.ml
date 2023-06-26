@@ -35,12 +35,10 @@ module AnnotatedString = struct
     type t = { string : string; map : (int * int * string) list }
     [@@deriving show, yojson]
 
-    let id_of_span = function Dummy { id } | Span { id; _ } -> id
-
     let convert (v : T.t) : t =
       (* let annotations, map = *)
       let map =
-        List.map v ~f:(fun (span, s) -> (String.length s, id_of_span span, s))
+        List.map v ~f:(fun (span, s) -> (String.length s, Span.id_of span, s))
       in
       (*   List.fold v ~init:([], []) ~f:(fun (annotations, acc) (span, s) -> *)
       (*       let len = String.length s in *)
@@ -120,7 +118,7 @@ module Raw = struct
                     "[last_of_global_ident] was given a non-concrete global \
                      ident";
                 };
-            span = Diagnostics.to_thir_span span;
+            span = Span.to_thir span;
           };
         "print_rust_last_of_global_ident_error"
 
@@ -360,8 +358,8 @@ let rustfmt_annotated (x : AnnotatedString.t) : AnnotatedString.t =
   let s = AnnotatedString.to_string x |> rustfmt |> AnnotatedString.split in
   let f (x, result) s =
     let last =
-      let default = Dummy { id = -1 } in
-      List.hd result |> Option.map ~f:fst |> Option.value ~default
+      List.hd result |> Option.map ~f:fst
+      |> Option.value_or_thunk ~default:Span.dummy
     in
     let x, tuple =
       match List.split_while ~f:(snd >> String.equal s >> not) x with
@@ -394,7 +392,7 @@ let pitem_str : item -> string = pitem >> AnnotatedString.Output.raw_string
 
 let pexpr_str (e : expr) : string =
   let e = Raw.pexpr e in
-  let ( ! ) = AnnotatedString.pure (Dummy { id = 0 }) in
+  let ( ! ) = AnnotatedString.pure @@ Span.dummy () in
   let ( & ) = AnnotatedString.( & ) in
   let prefix = "fn expr_wrapper() {" in
   let suffix = "}" in

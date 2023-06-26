@@ -98,11 +98,7 @@ module Make (F : Features.T) = struct
         inherit [_] item_map
         method visit_t () x = x
         method visit_mutability _ () m = m
-
-        method! visit_span s =
-          function
-          | Dummy _ -> Dummy { id = FreshSpanId.make () }
-          | Span s -> Span { s with id = FreshSpanId.make () }
+        method visit_span = Fn.const Span.refresh_id
       end
 
     let normalize_borrow_mut =
@@ -350,7 +346,7 @@ module Make (F : Features.T) = struct
         inherit [_] item_map
         method visit_t () x = x
         method visit_mutability _ () m = m
-        method! visit_span s = function _ -> Dummy { id = 0 }
+        method! visit_span s = function _ -> Span.default
       end
     in
     let a = replace_spans#visit_ty () a in
@@ -403,7 +399,7 @@ module Make (F : Features.T) = struct
   let make_tuple_pat' (pats : pat list) : pat =
     let len = List.length pats in
     List.mapi ~f:(fun i pat -> { field = `TupleField (i, len); pat }) pats
-    |> make_tuple_pat'' (union_spans @@ List.map ~f:(fun p -> p.span) pats)
+    |> make_tuple_pat'' (Span.union_list @@ List.map ~f:(fun p -> p.span) pats)
 
   let make_tuple_pat : pat list -> pat = function
     | [ pat ] -> pat
@@ -570,10 +566,10 @@ module Make (F : Features.T) = struct
         }
     | _ -> f e
 
-  let tuple_projector (tuple_typ : ty) (len : int) (nth : int)
+  let tuple_projector span (tuple_typ : ty) (len : int) (nth : int)
       (type_at_nth : ty) : expr =
     {
-      span = Dummy { id = FreshSpanId.make () };
+      span;
       (* TODO: require a span here *)
       typ = TArrow ([ tuple_typ ], type_at_nth);
       e = GlobalVar (`Projector (`TupleField (nth, len)));
@@ -587,7 +583,7 @@ module Make (F : Features.T) = struct
       e =
         App
           {
-            f = tuple_projector tuple.typ len nth type_at_nth;
+            f = tuple_projector tuple.span tuple.typ len nth type_at_nth;
             args = [ tuple ];
           };
     }

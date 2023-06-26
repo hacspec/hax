@@ -47,31 +47,11 @@ type error =
 [@@deriving show]
 
 module Exn = struct
-  let loc (loc : Thir.loc) : Ast.loc = { col = loc.col; line = loc.line }
-
   let def_id kind (def_id : Thir.def_id) : global_ident =
     `Concrete (Concrete_ident.of_def_id kind def_id)
 
   let local_ident (ident : Thir.local_ident) : local_ident =
     { name = ident.name; id = LocalIdent.var_id_of_int 123 (* todo! *) }
-
-  let union_span (x : span) (y : span) : span =
-    match (x, y) with
-    | Dummy _, _ | _, Dummy _ -> Dummy { id = FreshSpanId.make () }
-    | Span x, Span y when String.(x.file <> y.file) ->
-        Dummy { id = FreshSpanId.make () }
-    | Span { file; lo; _ }, Span { hi; _ } ->
-        Span { file; lo; hi; id = FreshSpanId.make () }
-
-  let c_span (span : Thir.span) : span =
-    Span
-      {
-        lo = loc span.lo;
-        hi = loc span.hi;
-        file =
-          (match span.filename with Real (LocalPath path) -> path | _ -> "?");
-        id = FreshSpanId.make ();
-      }
 
   let int_ty_to_size : Thir.int_ty -> size = function
     | Isize -> SSize
@@ -239,8 +219,7 @@ module Exn = struct
         if CTX.is_core_item then
           let assert_type_eq t1 t2 =
             if not (U.ty_equality t1 t2) then
-              assertion_failure
-                (Diagnostics.to_thir_span span)
+              assertion_failure (Span.to_thir span)
                 ("Binary operation: expected LHS and RHS to have the same \
                   type, instead LHS has type ["
                 ^ [%show: ty] t1
@@ -289,8 +268,7 @@ module Exn = struct
                    | "u128" -> with_
                    | s -> s)
           | None ->
-              assertion_failure
-                (Diagnostics.to_thir_span span)
+              assertion_failure (Span.to_thir span)
                 ("Binary operation: expected " ^ expected ^ " type, got "
                 ^ [%show: ty] lhs.typ)
         else Concrete_ident.of_name Value @@ overloaded_names_of_binop op
@@ -304,14 +282,14 @@ module Exn = struct
           try c_ty e.span e.ty
           with Diagnostics.SpanFreeError _ -> U.hax_failure_typ
         in
-        let span = c_span e.span in
+        let span = Span.of_thir e.span in
         U.hax_failure_expr' span typ report
           ([%show: Thir.decorated_for__expr_kind] e)
 
     and c_expr_unwrapped (e : Thir.decorated_for__expr_kind) : expr =
       let call f args = App { f; args = List.map ~f:c_expr args } in
       let typ = c_ty e.span e.ty in
-      let span = c_span e.span in
+      let span = Span.of_thir e.span in
       let mk_global typ v : expr = { span; typ; e = GlobalVar v } in
       let ( ->. ) a b = TArrow (a, b) in
       let (v : expr') =
@@ -433,7 +411,7 @@ module Exn = struct
                             body;
                           }
                       in
-                      let span = union_span rhs.span body.span in
+                      let span = Span.union rhs.span body.span in
                       { e; typ; span }
                   | Let { else_block = Some _; _ } ->
                       unimplemented ~issue_id:155 e.span
@@ -450,7 +428,7 @@ module Exn = struct
                       let lhs = c_pat lhs in
                       let rhs = c_expr rhs in
                       let e = Let { monadic = None; lhs; rhs; body } in
-                      let span = union_span rhs.span body.span in
+                      let span = Span.union rhs.span body.span in
                       { e; typ; span })
             in
             e
@@ -468,7 +446,7 @@ module Exn = struct
               GlobalVar
                 (`Projector (`Concrete (Concrete_ident.of_def_id Field field)))
             in
-            let span = c_span e.span in
+            let span = Span.of_thir e.span in
             App
               {
                 f = { e = projector; typ = TArrow ([ lhs.typ ], typ); span };
@@ -481,7 +459,7 @@ module Exn = struct
             let projector =
               GlobalVar (`Projector (`TupleField (field, tuple_len)))
             in
-            let span = c_span e.span in
+            let span = Span.of_thir e.span in
             App
               {
                 f = { e = projector; typ = TArrow ([ lhs.typ ], typ); span };
@@ -631,7 +609,7 @@ module Exn = struct
       Assign { lhs = mk_lhs lhs; e = rhs; witness = W.mutable_variable }
 
     and c_pat (pat : Thir.decorated_for__pat_kind) : pat =
-      let span = c_span pat.span in
+      let span = Span.of_thir pat.span in
       let typ = c_ty pat.span pat.ty in
       let v =
         match pat.contents with
@@ -693,13 +671,12 @@ module Exn = struct
       in
       { p = v; span; typ }
 
-    and c_field_pat info (field_pat : Thir.field_pat) : field_pat =
+    and c_field_pat _info (field_pat : Thir.field_pat) : field_pat =
       { field = def_id Field field_pat.field; pat = c_pat field_pat.pattern }
 
     and extended_literal_of_expr (e : expr) : extended_literal =
       let not_a_literal () =
-        assertion_failure
-          (Diagnostics.to_thir_span e.span)
+        assertion_failure (Span.to_thir e.span)
           ("expected a literal, got " ^ [%show: expr] e)
       in
       match e.e with
@@ -728,7 +705,7 @@ module Exn = struct
 
     and c_canonical_user_type_annotation
         (annotation : Thir.canonical_user_type_annotation) : ty * span =
-      (c_ty annotation.span annotation.inferred_ty, c_span annotation.span)
+      (c_ty annotation.span annotation.inferred_ty, Span.of_thir annotation.span)
 
     and c_pointer e typ span cast source =
       match cast with
@@ -815,12 +792,12 @@ module Exn = struct
     and c_arm (arm : Thir.arm) : arm =
       let arm_pat = c_pat arm.pattern in
       let body = c_expr arm.body in
-      let span = c_span arm.span in
+      let span = Span.of_thir arm.span in
       { arm = { arm_pat; body }; span }
 
     and c_param span (param : Thir.param) : param =
       {
-        typ_span = Option.map ~f:c_span param.ty_span;
+        typ_span = Option.map ~f:Span.of_thir param.ty_span;
         typ = c_ty (Option.value ~default:span param.ty_span) param.ty;
         pat = c_pat (Option.value_exn param.pat);
       }
@@ -927,7 +904,7 @@ module Exn = struct
     let open (val make ~krate:item.owner_id.krate : EXPR) in
     let { params; constraints } = c_generics item.generics in
     {
-      ti_span = c_span item.span;
+      ti_span = Span.of_thir item.span;
       ti_generics = { params; constraints };
       ti_v = c_trait_item' item.span item.kind;
       ti_name = fst item.ident;
@@ -948,7 +925,7 @@ module Exn = struct
         item.attributes
     then []
     else
-      let span = c_span item.span in
+      let span = Span.of_thir item.span in
       let mk_one v =
         { span; v; ident = Concrete_ident.of_def_id Value item.owner_id }
       in
@@ -1038,7 +1015,7 @@ module Exn = struct
                {
                  macro = Concrete_ident.of_def_id Macro macro_ident;
                  argument;
-                 span = c_span span;
+                 span = Span.of_thir span;
                  witness = W.macro;
                }
       | Trait (No, Normal, generics, _bounds, items) ->
@@ -1097,7 +1074,7 @@ module Exn = struct
                        (https://doc.rust-lang.org/reference/items/implementations.html#inherent-implementations)."
               in
               let ident = Concrete_ident.of_def_id Value item.owner_id in
-              { span = c_span item.span; v; ident })
+              { span = Span.of_thir item.span; v; ident })
             items
       | Impl ({ of_trait = Some of_trait } as i) ->
           mk
@@ -1114,7 +1091,7 @@ module Exn = struct
                    List.map
                      ~f:(fun (item : Thir.impl_item) ->
                        {
-                         ii_span = c_span item.span;
+                         ii_span = Span.of_thir item.span;
                          ii_generics = c_generics item.generics;
                          ii_v =
                            (match (item.kind : Thir.impl_item_kind) with
