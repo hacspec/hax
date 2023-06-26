@@ -809,7 +809,7 @@ module Exn = struct
         generic_value =
       match ty with
       | Type ty -> GType (c_ty span ty)
-      | Const _e -> unimplemented span "c_generic_value:Const"
+      | Const e -> GConst (c_expr e)
       | _ -> GLifetime { lt = "todo generics"; witness = W.lifetime }
 
     and c_arm (arm : Thir.arm) : arm =

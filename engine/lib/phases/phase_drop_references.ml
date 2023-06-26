@@ -44,8 +44,8 @@ struct
         B.generic_value option =
       match g with
       | GLifetime _ -> None
-      | GType t -> Some (GType (dty span t))
-      | GConst c -> Some (GConst c)
+      | [%inline_arms "dgeneric_value.*" - GLifetime] ->
+          map (Option.some : B.generic_value -> _)
 
     and dpat' (span : span) (p : A.pat') : B.pat' =
       match p with
