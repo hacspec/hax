@@ -64,7 +64,7 @@ struct
     type t = { kind : Diagnostics.kind; span : Ast.span } [@@deriving show, eq]
 
     let lift { kind; span } : Diagnostics.t =
-      { kind; span = Diagnostics.to_thir_span span; context = Phase M.phase_id }
+      { kind; span = Span.to_thir span; context = Phase M.phase_id }
 
     (* exception E of t *)
 

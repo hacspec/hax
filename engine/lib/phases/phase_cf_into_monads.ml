@@ -112,7 +112,7 @@ struct
 
       (** after transformation, are **getting** inside a monad? *)
       let from_typ dty (old : A.ty) (new_ : B.ty) : t =
-        let old = dty (Dummy { id = -1 } (* irrelevant *)) old in
+        let old = dty Span.default (* irrelevant *) old in
         let monad = from_typ' new_ in
         if B.equal_ty (pure_type monad) old then monad
         else { monad = None; typ = new_ }

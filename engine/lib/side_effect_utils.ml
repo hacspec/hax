@@ -37,7 +37,7 @@ struct
       let merge_ty x y =
         if not @@ U.ty_equality x y then
           Diagnostics.failure ~context:(Other "side_effect_utils.ml")
-            ~span:(Dummy { id = -1 })
+            ~span:(Span.dummy ())
             (AssertionFailure
                {
                  details =
@@ -193,9 +193,7 @@ struct
         let lbs = List.concat_map ~f:fst l in
         next (List.map ~f:snd l) { lbs; effects }
 
-      let err_hoist_invariant (type r) (location : string) : r =
-        (* TODO: we should be able to throw span-unrelated errors *)
-        let span = Dummy { id = -1 } in
+      let err_hoist_invariant span (type r) (location : string) : r =
         Diagnostics.failure ~context:(Other "HoistSeq") ~span
           (AssertionFailure
              {
@@ -208,7 +206,7 @@ struct
           (next : expr -> t -> expr * t) =
         many ctx [ e ] (function
           | [ e ] -> next e
-          | _ -> err_hoist_invariant Caml.__LOC__)
+          | _ -> err_hoist_invariant (fst e).span Caml.__LOC__)
     end
 
     let let_of_binding ((pat, rhs) : pat * expr) (body : expr) : expr =
@@ -308,14 +306,14 @@ struct
                         ForLoop { pat; witness; it }
                     | ([ _ ] | []), UnconditionalLoop -> UnconditionalLoop
                     | _, ForIndexLoop _ -> .
-                    | _ -> HoistSeq.err_hoist_invariant Caml.__LOC__
+                    | _ -> HoistSeq.err_hoist_invariant e.span Caml.__LOC__
                   in
                   let state =
                     match (l, state) with
                     | (_ :: [ state ] | [ state ]), Some { witness; bpat; _ } ->
                         Some { witness; bpat; init = state }
                     | ([ _ ] | []), None -> None
-                    | _ -> HoistSeq.err_hoist_invariant Caml.__LOC__
+                    | _ -> HoistSeq.err_hoist_invariant e.span Caml.__LOC__
                   in
                   (* by now, the "inputs" of the loop are hoisted as let if needed *)
                   let body, { lbs; effects = body_effects } =
@@ -352,7 +350,7 @@ struct
                   let f, args =
                     match l with
                     | f :: args -> (f, args)
-                    | _ -> HoistSeq.err_hoist_invariant Caml.__LOC__
+                    | _ -> HoistSeq.err_hoist_invariant e.span Caml.__LOC__
                   in
                   ({ e with e = App { f; args } }, effects))
           | Literal _ -> (e, m#zero)
@@ -385,13 +383,13 @@ struct
                     match (l, base) with
                     | hd :: tl, Some (_, witness) -> (Some (hd, witness), tl)
                     | _, None -> (None, l)
-                    | _ -> HoistSeq.err_hoist_invariant Caml.__LOC__
+                    | _ -> HoistSeq.err_hoist_invariant e.span Caml.__LOC__
                   in
                   let fields =
                     match List.zip (List.map ~f:fst fields) fields_expr with
                     | Ok fields -> fields
                     | Unequal_lengths ->
-                        HoistSeq.err_hoist_invariant Caml.__LOC__
+                        HoistSeq.err_hoist_invariant e.span Caml.__LOC__
                   in
                   ( {
                       e with

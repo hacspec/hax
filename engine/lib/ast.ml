@@ -11,67 +11,18 @@ type todo = string
     visitors { variety = "mapreduce"; name = "todo_mapreduce" },
     visitors { variety = "map"; name = "todo_map" }]
 
-type loc = { col : int; line : int }
+type span = (Span.t[@visitors.opaque])
 [@@deriving
   show,
     yojson,
+    compare,
+    sexp,
     eq,
-    visitors { variety = "reduce"; name = "loc_reduce" },
-    visitors { variety = "mapreduce"; name = "loc_mapreduce" },
-    visitors { variety = "map"; name = "loc_map" }]
+    visitors { variety = "reduce"; name = "span_reduce" },
+    visitors { variety = "mapreduce"; name = "span_mapreduce" },
+    visitors { variety = "map"; name = "span_map" }]
 
-module FreshSpanId = struct
-  let current = ref 0
-
-  let make () =
-    let id = !current in
-    current := id + 1;
-    id
-end
-
-type span =
-  | Span of { file : string; hi : loc; lo : loc; id : int }
-  | Dummy of { id : int }
-[@@deriving
-  yojson,
-    eq,
-    show,
-    visitors
-      { variety = "reduce"; name = "span_reduce"; ancestors = [ "loc_reduce" ] },
-    visitors
-      {
-        variety = "mapreduce";
-        name = "span_mapreduce";
-        ancestors = [ "loc_mapreduce" ];
-      },
-    visitors { variety = "map"; name = "span_map"; ancestors = [ "loc_map" ] }]
-
-let display_loc (l : loc) : string =
-  Int.to_string l.col ^ ":" ^ Int.to_string l.line
-
-let display_span (s : span) : string =
-  match s with
-  | Dummy _ -> "<dummy>"
-  | Span s ->
-      "<" ^ s.file ^ " " ^ display_loc s.lo ^ "→" ^ display_loc s.hi ^ ">"
-
-let show_span (_s : span) : string = "<span>"
-
-let pp_span (fmt : Caml.Format.formatter) (s : span) : unit =
-  Caml.Format.pp_print_string fmt @@ show_span s
-
-let union_span (x : span) (y : span) : span =
-  match (x, y) with
-  | Dummy _, _ | _, Dummy _ -> Dummy { id = FreshSpanId.make () }
-  | Span x, Span y when String.(x.file <> y.file) ->
-      failwith "TODO error: Bad span union"
-  | Span { file; lo; _ }, Span { hi; _ } ->
-      Span { file; lo; hi; id = FreshSpanId.make () }
-
-let union_spans : span list -> span =
-  List.reduce ~f:union_span
-  >> Option.value_or_thunk ~default:(fun _ ->
-         Dummy { id = FreshSpanId.make () })
+type loc = Span.loc [@@deriving show, yojson, compare, sexp, eq]
 
 type concrete_ident = (Concrete_ident.t[@visitors.opaque])
 [@@deriving
@@ -264,14 +215,12 @@ functor
     class virtual ['self] default_map_features =
       object (_self : 'self)
         inherit [_] VisitorsRuntime.map
-        method visit_span : _ -> span -> span = Fn.const Fn.id
         method visit_literal : _ -> literal -> literal = Fn.const Fn.id
       end
 
     class virtual ['self] default_mapreduce_features =
       object (self : 'self)
         inherit [_] VisitorsRuntime.mapreduce
-        method visit_span : _ -> span -> _ = fun _ x -> (x, self#zero)
         method visit_literal : _ -> literal -> _ = fun _ x -> (x, self#zero)
       end
 
@@ -454,6 +403,7 @@ functor
                 "default_reduce_features";
                 "DefaultClasses.default_reduce_features";
                 "binding_mode_reduce";
+                "span_reduce";
               ];
           },
         visitors
@@ -468,6 +418,7 @@ functor
                 "default_mapreduce_features";
                 "DefaultClasses.default_mapreduce_features";
                 "binding_mode_mapreduce";
+                "span_mapreduce";
               ];
           },
         visitors
@@ -482,6 +433,7 @@ functor
                 "default_map_features";
                 "DefaultClasses.default_map_features";
                 "binding_mode_map";
+                "span_map";
               ];
           }]
 
