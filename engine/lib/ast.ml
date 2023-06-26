@@ -299,7 +299,7 @@ functor
     and generic_value =
       | GLifetime of { lt : todo; witness : F.lifetime }
       | GType of ty
-      | GConst of todo
+      | GConst of expr
 
     and pat' =
       | PWild

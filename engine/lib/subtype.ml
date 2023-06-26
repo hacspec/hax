@@ -51,7 +51,7 @@ struct
     | GLifetime { lt; witness } ->
         GLifetime { lt; witness = S.lifetime witness }
     | GType t -> GType (dty span t)
-    | GConst c -> GConst c
+    | GConst e -> GConst (dexpr e)
 
   and dborrow_kind (_span : span) (borrow_kind : A.borrow_kind) : B.borrow_kind
       =
