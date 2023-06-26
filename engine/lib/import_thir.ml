@@ -131,14 +131,14 @@ module Exn = struct
         @@ Int
              {
                value;
-               kind = (match ty with TInt k -> k | ty -> error "integer");
+               kind = (match ty with TInt k -> k | _ -> error "integer");
              }
     | Float (value, _kind) ->
         mk
         @@ Float
              {
                value;
-               kind = (match ty with TFloat k -> k | ty -> error "float");
+               kind = (match ty with TFloat k -> k | _ -> error "float");
              }
     | Bool b -> mk @@ Bool b
 
@@ -491,7 +491,8 @@ module Exn = struct
             let e = Option.value ~default:(unit_expr span) e in
             Return { e; witness = W.early_exit }
         | ConstBlock _ -> unimplemented e.span "ConstBlock"
-        | ConstParam { param = id } (* TODO: shadowing? *) | ConstRef { id } ->
+        | ConstParam { param = id; _ } (* TODO: shadowing? *) | ConstRef { id }
+          ->
             LocalVar
               { name = id.name; id = LocalIdent.const_id_of_int id.index }
         | Repeat { value; count } ->
@@ -688,6 +689,7 @@ module Exn = struct
                        Literal
                          (Int { kind = { size = S8; signedness = Unsigned }; _ }
                          as lit);
+                     _;
                    } ->
                      lit
                  | _ -> not_a_literal ())
@@ -976,7 +978,7 @@ module Exn = struct
                         ~f:(fun { def_id = id; ty; span; _ } ->
                           (Concrete_ident.of_def_id Field id, c_ty span ty))
                         fields
-                  | Unit (_, name) -> []
+                  | Unit _ -> []
                 in
                 { name; arguments; is_record })
               variants
@@ -1065,7 +1067,7 @@ module Exn = struct
                         body = c_expr e;
                         params = [];
                       }
-                | Type ty ->
+                | Type _ty ->
                     assertion_failure item.span
                       "Inherent implementations are not supposed to have \
                        associated types \
@@ -1074,12 +1076,21 @@ module Exn = struct
               let ident = Concrete_ident.of_def_id Value item.owner_id in
               { span = Span.of_thir item.span; v; ident })
             items
-      | Impl ({ of_trait = Some of_trait } as i) ->
+      | Impl { unsafety = Unsafe; _ } -> unsafe_block item.span
+      | Impl
+          {
+            of_trait = Some of_trait;
+            generics;
+            self_ty;
+            items;
+            unsafety = Normal;
+            _;
+          } ->
           mk
           @@ Impl
                {
-                 generics = c_generics i.generics;
-                 self_ty = c_ty item.span i.self_ty;
+                 generics = c_generics generics;
+                 self_ty = c_ty item.span self_ty;
                  of_trait =
                    ( def_id Trait of_trait.def_id,
                      List.map
@@ -1105,9 +1116,9 @@ module Exn = struct
                            | Type ty -> IIType (c_ty item.span ty));
                          ii_name = fst item.ident;
                        })
-                     i.items;
+                     items;
                }
-      | Use ({ span = _; res; segments; rename }, t) ->
+      | Use ({ span = _; res; segments; rename }, _) ->
           let v =
             Use
               {
