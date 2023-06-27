@@ -611,7 +611,7 @@ struct
              }
         in
         match Concrete_ident.to_view macro with
-        | { crate = "hacspec_lib_tc"; path = []; definition = name } -> (
+        | { crate = "hacspec_lib"; path = _; definition = name } -> (
             let unwrap r =
               match r with
               | Ok r -> r
