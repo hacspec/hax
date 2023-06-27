@@ -332,6 +332,7 @@ module Exn = struct
             let args = List.map ~f:c_expr args in
             let f = c_expr fun' in
             App { f; args }
+        | Box { value } -> (U.call Rust_primitives__hax__box_new [] span typ).e
         | Deref { arg } ->
             let inner_typ = c_ty arg.span arg.ty in
             call (mk_global ([ inner_typ ] ->. typ) @@ `Primitive Deref) [ arg ]
@@ -567,7 +568,7 @@ module Exn = struct
             unimplemented e.span "expression ValueTypeAscription"
         | ZstLiteral _ -> unimplemented e.span "expression ZstLiteral"
         | Yield _ -> unimplemented e.span "expression Yield"
-        | Todo _ -> unimplemented e.span "expression Todo"
+        | Todo payload -> unimplemented e.span ("expression Todo\n" ^ payload)
       in
       { e = v; span; typ }
 
