@@ -320,29 +320,34 @@ impl Callbacks for ExtractionCallbacks {
                             ),
                         );
                     }
-                    match &backend.output_dir {
-                        PathOrDash::Dash => {
-                            serde_json::to_writer(std::io::stdout(), &output.files).unwrap();
-                        }
-                        PathOrDash::Path(output_dir) => {
-                            let output_dir = output_dir.clone();
-                            for file in output.files.clone() {
-                                let path = output_dir.join(file.path);
-                                std::fs::create_dir_all({
-                                    let mut parent = path.clone();
-                                    parent.pop();
-                                    parent
-                                })
-                                .unwrap();
-                                session.note_without_error(format!("Writing file {:#?}", path));
-                                std::fs::write(&path, file.contents).unwrap_or_else(|e| {
-                                    session.fatal(format!(
-                                        "Unable to write to file {:#?}. Error: {:#?}",
-                                        path, e
-                                    ))
-                                })
-                            }
-                        }
+                    let metadata = cargo_metadata::MetadataCommand::new().exec().unwrap();
+                    let crate_name = std::env::var("CARGO_CRATE_NAME").unwrap();
+                    let package = metadata
+                        .packages
+                        .iter()
+                        .rfind(|pkg| pkg.name == crate_name)
+                        .unwrap();
+                    let manifest_path = package.manifest_path.clone();
+                    let relative_path: cargo_metadata::camino::Utf8PathBuf =
+                        ["hax", format!("{}", backend.backend).as_str(), "extraction"]
+                            .iter()
+                            .collect();
+                    let output_dir = manifest_path.parent().unwrap().join(relative_path);
+                    for file in output.files.clone() {
+                        let path = output_dir.join(file.path);
+                        std::fs::create_dir_all({
+                            let mut parent = path.clone();
+                            parent.pop();
+                            parent
+                        })
+                        .unwrap();
+                        session.note_without_error(format!("Writing file {:#?}", path));
+                        std::fs::write(&path, file.contents).unwrap_or_else(|e| {
+                            session.fatal(format!(
+                                "Unable to write to file {:#?}. Error: {:#?}",
+                                path, e
+                            ))
+                        })
                     }
                 }
             };
