@@ -74,13 +74,6 @@ module Context = struct
   type t = { current_namespace : string * string list }
 end
 
-let rec map_last_non_empty_list (f : 'a -> 'a) (l : 'a Non_empty_list.t) :
-    'a Non_empty_list.t =
-  let open Non_empty_list in
-  match l with
-  | [ x ] -> [ f x ]
-  | x :: y :: tl -> cons x @@ map_last_non_empty_list f (y :: tl)
-
 module Make (Ctx : sig
   val ctx : Context.t
 end) =
@@ -254,7 +247,7 @@ struct
   and pgeneric_value span (g : generic_value) =
     match g with
     | GType ty -> pty span ty
-    | GConst todo -> Error.unimplemented ~details:"pgeneric_value:GConst" span
+    | GConst e -> pexpr e
     | GLifetime _ -> .
 
   and ppat (p : pat) =
@@ -542,7 +535,7 @@ struct
         {
           name;
           generics;
-          variants = [ { arguments; is_record = true } ];
+          variants = [ { arguments; is_record = true; _ } ];
           is_struct = true;
         } ->
         F.decls
@@ -608,84 +601,77 @@ struct
                      None,
                      constructors );
                ] )
-    | IMacroInvokation { macro; argument; span } ->
-        failwith "todo"
-        (* let open Hacspeclib_macro_parser in *)
-        (* let unsupported_macro () = *)
-        (*   Error.raise *)
-        (*   @@ { *)
-        (*        kind = UnsupportedMacro { id = [%show: global_ident] macro }; *)
-        (*        span = e.span; *)
-        (*      } *)
-        (* in *)
-        (* match macro with *)
-        (* | `Concrete Non_empty_list.{ crate = "hacspec_lib_tc"; path = [ name ] } *)
-        (*   -> ( *)
-        (*     let unwrap r = *)
-        (*       match r with *)
-        (*       | Ok r -> r *)
-        (*       | Error details -> *)
-        (*           let macro_id = [%show: global_ident] macro in *)
-        (*           Error.raise *)
-        (*             { *)
-        (*               kind = ErrorParsingMacroInvocation { macro_id; details }; *)
-        (*               span = e.span; *)
-        (*             } *)
-        (*     in *)
-        (*     match name with *)
-        (*     | "public_nat_mod" -> *)
-        (*         let o = PublicNatMod.parse argument |> unwrap in *)
-        (*         (F.decls_of_string @@ "unfold type " *)
-        (*         ^ str_of_type_ident e.span (hacspec_lib_item @@ o.type_name) *)
-        (*         ^ "  = nat_mod 0x" ^ o.modulo_value) *)
-        (*         @ F.decls_of_string @@ "unfold type " *)
-        (*         ^ str_of_type_ident e.span (hacspec_lib_item @@ o.type_of_canvas) *)
-        (*         ^ "  = lseq pub_uint8 " *)
-        (*         ^ string_of_int o.bit_size_of_field *)
-        (*     | "bytes" -> *)
-        (*         let o = Bytes.parse argument |> unwrap in *)
-        (*         F.decls_of_string @@ "unfold type " *)
-        (*         ^ str_of_type_ident e.span (hacspec_lib_item @@ o.bytes_name) *)
-        (*         ^ "  = lseq uint8 " ^ o.size *)
-        (*     | "public_bytes" -> *)
-        (*         let o = Bytes.parse argument |> unwrap in *)
-        (*         F.decls_of_string @@ "unfold type " *)
-        (*         ^ str_of_type_ident e.span (hacspec_lib_item @@ o.bytes_name) *)
-        (*         ^ "  = lseq uint8 " ^ o.size *)
-        (*     | "array" -> *)
-        (*         let o = Array.parse argument |> unwrap in *)
-        (*         let typ = *)
-        (*           match o.typ with *)
-        (*           | "U32" -> "uint32" *)
-        (*           | "U16" -> "uint16" *)
-        (*           | "U8" -> "uint8" *)
-        (*           | usize -> "uint_size" *)
-        (*         in *)
-        (*         let size = o.size in *)
-        (*         let array_def = *)
-        (*           F.decls_of_string @@ "unfold type " *)
-        (*           ^ str_of_type_ident e.span (hacspec_lib_item o.array_name) *)
-        (*           ^ "  = lseq " ^ typ ^ " " ^ size *)
-        (*         in *)
-        (*         let index_def = *)
-        (*           match o.index_typ with *)
-        (*           | Some index -> *)
-        (*               F.decls_of_string @@ "unfold type " *)
-        (*               ^ str_of_type_ident e.span *)
-        (*                   (hacspec_lib_item @@ o.array_name ^ "_idx") *)
-        (*               ^ " = nat_mod " ^ size *)
-        (*           | None -> [] *)
-        (*         in *)
-        (*         array_def @ index_def *)
-        (*     | "unsigned_public_integer" -> *)
-        (*         let o = UnsignedPublicInteger.parse argument |> unwrap in *)
-        (*         F.decls_of_string @@ "unfold type " *)
-        (*         ^ str_of_type_ident e.span (hacspec_lib_item @@ o.integer_name) *)
-        (*         ^ "  = lseq uint8 (" *)
-        (*         ^ (Int.to_string @@ ((o.bits + 7) / 8)) *)
-        (*         ^ ")" *)
-        (*     | _ -> unsupported_macro ()) *)
-        (* | _ -> unsupported_macro ()) *)
+    | IMacroInvokation { macro; argument; span } -> (
+        let open Hacspeclib_macro_parser in
+        let unsupported_macro () =
+          Error.raise
+          @@ {
+               kind = UnsupportedMacro { id = [%show: concrete_ident] macro };
+               span = e.span;
+             }
+        in
+        match Concrete_ident.to_view macro with
+        | { crate = "hacspec_lib_tc"; path = []; definition = name } -> (
+            let unwrap r =
+              match r with
+              | Ok r -> r
+              | Error details ->
+                  let macro_id = [%show: concrete_ident] macro in
+                  Error.raise
+                    {
+                      kind = ErrorParsingMacroInvocation { macro_id; details };
+                      span = e.span;
+                    }
+            in
+            let mk_typ_name name = "t_" ^ String.lowercase name in
+            match name with
+            | "public_nat_mod" ->
+                let o = PublicNatMod.parse argument |> unwrap in
+                (F.decls_of_string @@ "unfold type " ^ mk_typ_name o.type_name
+               ^ "  = nat_mod 0x" ^ o.modulo_value)
+                @ F.decls_of_string @@ "unfold type "
+                ^ mk_typ_name o.type_of_canvas
+                ^ "  = lseq pub_uint8 "
+                ^ string_of_int o.bit_size_of_field
+            | "bytes" ->
+                let o = Bytes.parse argument |> unwrap in
+                F.decls_of_string @@ "unfold type " ^ mk_typ_name o.bytes_name
+                ^ "  = lseq uint8 " ^ o.size
+            | "public_bytes" ->
+                let o = Bytes.parse argument |> unwrap in
+                F.decls_of_string @@ "unfold type " ^ mk_typ_name o.bytes_name
+                ^ "  = lseq uint8 " ^ o.size
+            | "array" ->
+                let o = Array.parse argument |> unwrap in
+                let typ =
+                  match o.typ with
+                  | "U32" -> "uint32"
+                  | "U16" -> "uint16"
+                  | "U8" -> "uint8"
+                  | usize -> "uint_size"
+                in
+                let size = o.size in
+                let array_def =
+                  F.decls_of_string @@ "unfold type " ^ mk_typ_name o.array_name
+                  ^ "  = lseq " ^ typ ^ " " ^ size
+                in
+                let index_def =
+                  match o.index_typ with
+                  | Some index ->
+                      F.decls_of_string @@ "unfold type "
+                      ^ mk_typ_name (o.array_name ^ "_idx")
+                      ^ " = nat_mod " ^ size
+                  | None -> []
+                in
+                array_def @ index_def
+            | "unsigned_public_integer" ->
+                let o = UnsignedPublicInteger.parse argument |> unwrap in
+                F.decls_of_string @@ "unfold type " ^ mk_typ_name o.integer_name
+                ^ "  = lseq uint8 ("
+                ^ (Int.to_string @@ ((o.bits + 7) / 8))
+                ^ ")"
+            | _ -> unsupported_macro ())
+        | _ -> unsupported_macro ())
     | Trait { name; generics; items } ->
         let bds =
           List.map ~f:(pgeneric_param_bd e.span) generics.params
