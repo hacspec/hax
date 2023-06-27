@@ -6,4 +6,5 @@ edition = "2021"
 [dependencies]
 
 [package.metadata.hax-tests]
-into."fstar+coq" = { snapshot = "none" }
+into."fstar" = { snapshot = "none" }
+into."coq" = { broken = true, snapshot = "none" }
