@@ -328,7 +328,7 @@ impl Callbacks for ExtractionCallbacks {
                         let package = metadata
                             .packages
                             .iter()
-                            .rfind(|pkg| pkg.name == crate_name)
+                            .find(|pkg| pkg.name == crate_name)
                             .unwrap();
                         let manifest_path = package.manifest_path.clone();
                         let relative_path: cargo_metadata::camino::Utf8PathBuf =
