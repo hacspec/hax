@@ -59,9 +59,6 @@ module%inlined_contents Make (F : Features.T) = struct
 
   and analyse_function_body (x : A.expr) : global_ident list =
     List.filter_map
-      ~f:(fun x ->
-          match x.e with
-          | GlobalVar g -> Some g
-          | _ -> None)
+      ~f:(fun x -> match x.e with GlobalVar g -> Some g | _ -> None)
       (Flatten.flatten_ast x)
 end
