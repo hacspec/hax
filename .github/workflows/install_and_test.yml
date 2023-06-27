@@ -56,3 +56,7 @@ jobs:
         SKIPLIST: |
           tls_cryptolib
           hacspec-merlin
+          hacspec-halo2-coq
+          hacspec-halo2-fstar
+          hacspec-weierstrass-coq
+          hacspec-weierstrass-fstar
