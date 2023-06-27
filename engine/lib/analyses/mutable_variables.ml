@@ -25,7 +25,7 @@ module%inlined_contents Make (F : Features.T) = struct
           match x.v with
           | Fn { name; generics; body; params } ->
               let items, count = analyse_function_body body (snd y) in
-              (fst y @ [ (name, items) ], count)
+              ([ (name, items) ] @ fst y, count)
           | _ -> y)
         ~init:([], 0) items
     in
@@ -46,12 +46,12 @@ module%inlined_contents Make (F : Features.T) = struct
             (let local_muts =
                match Map.find mut_map x with Some l -> l | None -> []
              in
-             ( (match Map.find (fst func_dep) x with
-               | Some l ->
-                   let l' = List.filter_map ~f:(Map.find y) l in
-                   let b = List.concat (List.map ~f:fst l') in
-                   List.map ~f:(fst >> fst) local_muts @ b
-               | None -> []),
+             ( (List.map ~f:(fst >> fst) local_muts @
+                match Map.find (fst func_dep) x with
+                | Some l ->
+                  let l' = List.concat (List.filter_map ~f:(Map.find mut_map) l) in
+                  List.map ~f:(fst >> fst) l'
+                | None -> []),
                local_muts )))
       ~init:(Map.empty (module GlobalIdent))
       (List.map ~f:fst mut_var_list)
