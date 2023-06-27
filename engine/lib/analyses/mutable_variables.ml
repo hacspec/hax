@@ -46,12 +46,15 @@ module%inlined_contents Make (F : Features.T) = struct
             (let local_muts =
                match Map.find mut_map x with Some l -> l | None -> []
              in
-             ( (List.map ~f:(fst >> fst) local_muts @
-                match Map.find (fst func_dep) x with
-                | Some l ->
-                  let l' = List.concat (List.filter_map ~f:(Map.find mut_map) l) in
-                  List.map ~f:(fst >> fst) l'
-                | None -> []),
+             ( (List.map ~f:(fst >> fst) local_muts
+               @
+               match Map.find (fst func_dep) x with
+               | Some l ->
+                   let l' =
+                     List.concat (List.filter_map ~f:(Map.find mut_map) l)
+                   in
+                   List.map ~f:(fst >> fst) l'
+               | None -> []),
                local_muts )))
       ~init:(Map.empty (module GlobalIdent))
       (List.map ~f:fst mut_var_list)
