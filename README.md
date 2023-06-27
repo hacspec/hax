@@ -54,6 +54,7 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 - `opam` (`opam switch create 4.14.1`)
 - `rustup`
 - `nodejs`
+- `jq`
 
 2. Clone this repo: `git clone git@github.com:hacspec/hacspec-v2.git && cd hacspec-v2`
 3. Run the [setup.sh](./setup.sh) script: `./setup.sh`.
