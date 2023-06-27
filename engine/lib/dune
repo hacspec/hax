@@ -34,8 +34,8 @@
 (rule
  (target concrete_ident_generated.ml)
  (deps
-  (:generate_sh ./concrete_ident/generate.sh)
-  (:names ./concrete_ident/names.rs))
+  (:generate_sh concrete_ident/generate.sh)
+  (:names concrete_ident/names.rs))
  (action
   (with-stdout-to
    concrete_ident_generated.ml

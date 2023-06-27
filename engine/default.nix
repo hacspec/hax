@@ -1,4 +1,4 @@
-{ocamlPackages, fetchzip, hax-rust-frontend, rustc, nodejs, closurecompiler, gnused, lib}:
+{ocamlPackages, fetchzip, hax-rust-frontend, rustc, nodejs, jq, closurecompiler, gnused, lib}:
 let
   non_empty_list = 
     ocamlPackages.buildDunePackage rec {
@@ -50,6 +50,7 @@ let
     nativeBuildInputs = [
       rustc hax-rust-frontend nodejs
       ocamlPackages.js_of_ocaml-compiler
+      jq
     ];
     strictDeps = true;
     passthru = {
