@@ -30,7 +30,7 @@ module%inlined_contents Make (F : Features.T) = struct
         (global_ident, global_ident list, GlobalIdent.comparator_witness) Map.t)
       (depth : int) (l : global_ident list) : global_ident list * int =
     let a, b = List.unzip (List.map ~f:(flatten_map_index map (depth + 1)) l) in
-    (List.concat a, List.fold_left ~f:max ~init:0 b)
+    (l @ List.concat a, List.fold_left ~f:max ~init:0 b)
 
   let rec analyse (_ : pre_data) (items : A.item list) : analysis_data =
     let func_dep_list =
@@ -59,6 +59,9 @@ module%inlined_contents Make (F : Features.T) = struct
 
   and analyse_function_body (x : A.expr) : global_ident list =
     List.filter_map
-      ~f:(fun x -> match x.e with GlobalVar g -> Some g | _ -> None)
+      ~f:(fun x ->
+          match x.e with
+          | GlobalVar g -> Some g
+          | _ -> None)
       (Flatten.flatten_ast x)
 end
