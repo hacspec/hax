@@ -324,7 +324,7 @@ impl Callbacks for ExtractionCallbacks {
                         serde_json::to_writer(std::io::stdout(), &output.files).unwrap();
                     } else {
                         let metadata = cargo_metadata::MetadataCommand::new().exec().unwrap();
-                        let crate_name = std::env::var("CARGO_CRATE_NAME").unwrap();
+                        let crate_name = std::env::var("CARGO_PKG_NAME").unwrap();
                         let package = metadata
                             .packages
                             .iter()
