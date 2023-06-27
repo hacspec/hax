@@ -34,7 +34,7 @@ let
     pname = "hax-engine";
     version = "0.0.1";
     duneVersion = "3";
-    src = lib.sourceFilesBySuffices ./. [ ".ml" ".mli" ".js" "dune" "dune-project" ];
+    src = lib.sourceFilesBySuffices ./. [ ".ml" ".mli" ".js" "dune" "dune-project" "sh" "rs" ];
     buildInputs = with ocamlPackages; [
       zarith_stubs_js
       base
