@@ -367,7 +367,7 @@ functor
               name_generics
           in
           let _, args_str =
-            if List.length generics == 0 then ([], "")
+            if List.is_empty generics then ([], "")
             else
               inductive_case_args_to_string variants
                 (newline_indent 0 ^ "Arguments" ^ " ")
