@@ -422,7 +422,7 @@ struct
           Error.raise { kind = UnsupportedMacro { id }; span = e.span }
         in
         match Concrete_ident.to_view macro with
-        | { crate = "hacspec_lib_tc"; path = []; definition = name } -> (
+        | { crate = "hacspec_lib"; path = _; definition = name } -> (
             match name with
             | "public_nat_mod" ->
                 let open Hacspeclib_macro_parser in
