@@ -66,6 +66,7 @@ functor
         | Tuple of term list
         | Array of term list
 
+      (* TODO: I don't get why you've got InductiveCase VS BaseCase. Why not an inductive case (i.e. a variant, right?) is a name + a list of types? *)
       type inductive_case = InductiveCase of string * ty | BaseCase of string
       type definition_type = string * (pat * ty) list * term * ty
       type generics_type = string list
