@@ -122,4 +122,5 @@ mod hax {
             fn run() {}
         }
     }
+    fn box_new() {}
 }
