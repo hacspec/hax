@@ -14,7 +14,7 @@ impl TestKind {
         match self {
             TestKind::Lint { linter } => vec!["lint".to_string(), linter.clone()],
             TestKind::Translate { backend } => {
-                vec!["into".to_string(), "-o".into(), "-".into(), backend.clone()]
+                vec!["into".to_string(), "--dry-run".to_string(), backend.clone()]
             }
         }
     }
