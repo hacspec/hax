@@ -12,7 +12,7 @@ module%inlined_contents Make (F : Features.T) = struct
 
   type analysis_data =
     ( global_ident,
-      ((local_ident * A.ty) * int) list,
+      local_ident list * ((local_ident * A.ty) * int) list,
       GlobalIdent.comparator_witness )
     Map.t
 
@@ -29,7 +29,9 @@ module%inlined_contents Make (F : Features.T) = struct
           | _ -> y)
         ~init:([], 0) items
     in
-    let mut_map : analysis_data =
+    let mut_map : (global_ident,
+                   ((local_ident * A.ty) * int) list,
+                   GlobalIdent.comparator_witness) Map.t =
       List.fold_left
         ~f:(fun y x -> Map.set y ~key:(fst x) ~data:(snd x))
         ~init:(Map.empty (module GlobalIdent))
@@ -37,15 +39,19 @@ module%inlined_contents Make (F : Features.T) = struct
     in
     List.fold_left
       ~f:(fun y x ->
-        Map.set y ~key:x
-          ~data:
-            ((match (Map.find mut_map x) with
-                | Some l -> l
-                | None -> [])
-             @
-             match Map.find (fst func_dep) x with
-             | Some l -> List.concat (List.filter_map ~f:(Map.find y) l)
-             | None -> []))
+          Map.set y ~key:x
+            ~data:
+              (let local_muts =
+                 match (Map.find mut_map x) with
+                 | Some l -> l
+                 | None -> []
+               in
+               (match Map.find (fst func_dep) x with
+                | Some l ->
+                  let l' = List.filter_map ~f:(Map.find y) l in
+                  let b = List.concat (List.map ~f:fst l') in
+                  List.map ~f:(fst >> fst) local_muts @ b
+                | None -> []), local_muts))
       ~init:(Map.empty (module GlobalIdent))
       (List.map ~f:fst mut_var_list)
 
