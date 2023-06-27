@@ -115,6 +115,11 @@ pub struct BackendOptions {
     #[command(subcommand)]
     pub backend: Backend,
 
+    /// Don't write anything on disk. Output everything as JSON to stdout
+    /// instead.
+    #[arg(long = "dry-run")]
+    pub dry_run: bool,
+
     /// Enable debugging in the engine. When this option is enabled,
     /// the engine will dump the transformed AST at each phase in the
     /// specified directory. Those ASTs will be available in two
