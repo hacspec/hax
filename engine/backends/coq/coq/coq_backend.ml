@@ -84,8 +84,8 @@ end
 
 let primitive_to_string (id : primitive_ident) : string =
   match id with
-  | Deref -> "(TODO: Deref)" (* failwith "Deref" *)
-  | Cast -> "cast" (* failwith "Cast" *)
+  | Deref -> Error.unimplemented ~details:("[string] " ^ "Box") (Dummy { id = 0 })
+  | Cast -> "cast"
   | LogicalOp op -> ( match op with And -> "andb" | Or -> "orb")
 
 module Make (Ctx : sig
@@ -104,21 +104,12 @@ struct
       (* List.fold_left ~init:"" ~f:(fun x y -> x ^ "_" ^ y) *)
       id.definition
 
-  let pglobal_ident (id : global_ident) : string =
-    match id with
-    | `Projector (`Concrete cid) | `Concrete cid -> pconcrete_ident cid
-    | `Primitive p_id -> primitive_to_string p_id
-    | `TupleType i -> "TODO (global ident) tuple type"
-    | `TupleCons i -> "TODO (global ident) tuple cons"
-    | `Projector (`TupleField (i, j)) | `TupleField (i, j) ->
-        "TODO (global ident) tuple field"
-    | _ -> .
-
   module TODOs_debug = struct
     let __TODO_pat__ _ s = C.AST.Ident (s ^ " todo(pat)")
     let __TODO_ty__ _ s : C.AST.ty = C.AST.Name (s ^ " todo(ty)")
     let __TODO_item__ _ s = C.AST.Unimplemented (s ^ " todo(item)")
     let __TODO_term__ _ s = C.AST.Const (C.AST.Const_string (s ^ " todo(term)"))
+    let __TODO_string__ s = "todo(" ^ s ^ ")"
   end
 
   module TODOs = struct
@@ -132,9 +123,34 @@ struct
       Error.unimplemented ~details:("[expr] node " ^ s) span
 
     let __TODO_item__ span s = C.AST.Unimplemented (s ^ " todo(item)")
+
+    let __TODO_string__ s =
+      Error.unimplemented ~details:("[string] " ^ s) (Dummy { id = 0 })
   end
 
   open TODOs
+
+  let pglobal_ident (id : global_ident) : string =
+    match id with
+    | `Projector (`Concrete cid) | `Concrete cid -> pconcrete_ident cid
+    | `Primitive p_id -> primitive_to_string p_id
+    | `TupleType i -> __TODO_string__ "(global ident) tuple type"
+    | `TupleCons i -> __TODO_string__ "(global ident) tuple cons"
+    | `Projector (`TupleField (i, j)) | `TupleField (i, j) ->
+        __TODO_string__ "(global ident) tuple field"
+    | _ -> .
+
+  let pglobal_ident_last (id : global_ident) : string =
+    match id with
+    | `Concrete { crate; path } -> Non_empty_list.last path
+    | `Primitive p_id -> __TODO_string__ "(global ident last) primitive"
+    | `TupleType i -> __TODO_string__ "(global ident last) tuple type"
+    | `TupleCons i -> __TODO_string__ "(global ident last) tuple cons"
+    | `TupleField i -> __TODO_string__ "(global ident last) tuple field"
+    | `Projector (`Concrete cid) -> __TODO_string__ "(global ident last) projector cid"
+    | `Projector (`TupleField (i, j)) ->
+        __TODO_string__ "(global ident last) projector tuplefield"
+    | _ -> .
 
   let pint_kind (k : int_kind) : C.AST.int_type =
     {
@@ -180,7 +196,7 @@ struct
     | TSlice { ty; _ } -> C.AST.SliceTy (pty span ty)
     | TParam i -> C.AST.Name i.name
     | TProjectedAssociatedType s ->
-        C.AST.Wild
+        C.AST.Wild (* TODO *)
         (* __TODO_ty__ span ("proj:assoc:type" ^ s) *)
         (* failwith "proj:assoc:type" *)
     | _ -> .
@@ -658,7 +674,7 @@ struct
         (Concrete_ident.to_definition_name arg_name, pty span arg_ty)
         :: p_record span xs parrent_name
     | { name; arguments = [] } :: xs ->
-        ("TODO FIELD?", __TODO_ty__ span "TODO")
+        (__TODO_string__ "(p_record) FIELD?", __TODO_ty__ span "TODO")
         :: p_record span xs parrent_name
     | { name; arguments } :: xs ->
         ( Concrete_ident.to_definition_name name,
