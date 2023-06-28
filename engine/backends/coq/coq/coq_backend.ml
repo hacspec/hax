@@ -121,6 +121,7 @@ struct
     let __TODO_ty__ _ s : C.AST.ty = C.AST.Name (s ^ " todo(ty)")
     let __TODO_item__ _ s = C.AST.Unimplemented (s ^ " todo(item)")
     let __TODO_term__ _ s = C.AST.Const (C.AST.Const_string (s ^ " todo(term)"))
+    let __TODO_string__ s = "todo(" ^ s ^ ")"
   end
 
   module TODOs = struct
@@ -134,6 +135,9 @@ struct
       Error.unimplemented ~details:("[expr] node " ^ s) span
 
     let __TODO_item__ span s = C.AST.Unimplemented (s ^ " todo(item)")
+
+    let __TODO_string__ s =
+      Error.unimplemented ~details:("[string] " ^ s) (Dummy { id = 0 })
   end
 
   open TODOs
@@ -182,7 +186,7 @@ struct
     | TSlice { ty; _ } -> C.AST.SliceTy (pty span ty)
     | TParam i -> C.AST.Name i.name
     | TProjectedAssociatedType s ->
-        C.AST.Wild
+        C.AST.Wild (* TODO *)
         (* __TODO_ty__ span ("proj:assoc:type" ^ s) *)
         (* failwith "proj:assoc:type" *)
     | _ -> .
@@ -636,7 +640,7 @@ struct
         (U.Concrete_ident_view.to_definition_name arg_name, pty span arg_ty)
         :: p_record span xs parrent_name
     | { name; arguments = [] } :: xs ->
-        ("TODO FIELD?", __TODO_ty__ span "TODO")
+        (__TODO_string__ "(p_record) FIELD?", __TODO_ty__ span "TODO")
         :: p_record span xs parrent_name
     | { name; arguments } :: xs ->
         ( U.Concrete_ident_view.to_definition_name name,
