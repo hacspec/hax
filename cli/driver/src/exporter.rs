@@ -332,7 +332,7 @@ impl Callbacks for ExtractionCallbacks {
                             .unwrap();
                         let manifest_path = package.manifest_path.clone();
                         let relative_path: cargo_metadata::camino::Utf8PathBuf =
-                            ["hax", format!("{}", backend.backend).as_str(), "extraction"]
+                            ["proofs", format!("{}", backend.backend).as_str(), "extraction"]
                                 .iter()
                                 .collect();
                         let output_dir = manifest_path.parent().unwrap().join(relative_path);
