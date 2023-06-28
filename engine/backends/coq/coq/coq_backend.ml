@@ -165,7 +165,7 @@ struct
     | TChar -> __TODO_ty__ span "char"
     | TInt k -> C.AST.Int (pint_kind k)
     | TStr -> __TODO_ty__ span "str"
-    | TFalse -> __TODO_ty__ span "false"
+    | TFalse -> C.AST.Bot
     | TApp { ident = `TupleType 0 as ident; args = [] } -> C.AST.Unit
     | TApp { ident = `TupleType 1; args = [ GType ty ] } -> pty span ty
     | TApp { ident = `TupleType n; args } when n >= 2 ->
@@ -537,7 +537,12 @@ struct
                   ( x.ti_name,
                     match x.ti_v with
                     | TIFn fn_ty -> pty span fn_ty
-                    | _ -> __TODO_ty__ span "field_ty" ))
+                    | TIType bounds ->
+                      C.AST.Product (List.map ~f:(fun {trait; args; bindings = _} -> C.AST.Product (List.map ~f:(fun x -> match x with
+                          | GType t -> pty span t
+                          | _ -> __TODO_ty__ span "generic_value ty"
+                            ) args)) bounds)
+                  ))
                 items,
               List.fold_left ~init:[]
                 ~f:(fun a b ->
@@ -568,11 +573,11 @@ struct
                           params,
                         pexpr body,
                         pty span body.typ )
-                  | _ ->
-                      ( "todo_name",
+                  | IIType t ->
+                      ( x.ii_name,
                         [],
-                        __TODO_term__ span "body",
-                        __TODO_ty__ span "typ" ))
+                        C.AST.Type (pty span t),
+                        C.AST.Wild ))
                 items );
         ]
 

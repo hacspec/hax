@@ -22,8 +22,10 @@ functor
 
       type ty =
         | Wild
-        | Bool
+        | Bot
+        | Top
         | Unit
+        | Bool
         | Int of int_type
         | Name of string
         | RecordTy of string * (string * ty) list
@@ -101,8 +103,10 @@ functor
     let rec ty_to_string (x : AST.ty) : AST.decl list * string =
       match x with
       | AST.Wild -> ([], "_")
-      | AST.Bool -> ([], "bool")
+      | AST.Bot -> ([], "False")
+      | AST.Top -> ([], "True")
       | AST.Unit -> ([], "unit")
+      | AST.Bool -> ([], "bool")
       | AST.Int { size = AST.USize; signed } -> ([], "uint_size")
       | AST.Int { size; signed } -> ([], "int" ^ int_size_to_string size)
       | AST.Name s -> ([], s)
