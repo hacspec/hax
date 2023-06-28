@@ -4,15 +4,13 @@ use hax_cli_options::NormalizePaths;
 use hax_cli_options::Options;
 use std::process::Command;
 
-/// Return a [Command] for [cargo]: when the correct nightly is
-/// already present, this is just the command [cargo], otherwise we
-/// (1) ensure [rustup] is available (2) install the nightly (3) tell
-/// cargo to the nightly
-fn cargo_command() -> Command {
+/// Return a toolchain argument to pass to [cargo]: when the correct nightly is
+/// already present, this is None, otherwise we (1) ensure [rustup] is available
+/// (2) install the nightly (3) return the toolchain
+fn toolchain() -> Option<&'static str> {
     let current_rustc_version = version_check::triple()
         .map(|(_, channel, date)| format!("{channel}-{date}"))
         .unwrap_or("unknown".into());
-    let mut cmd = Command::new("cargo");
     if env!("HAX_RUSTC_VERSION") != current_rustc_version {
         const TOOLCHAIN: &str = env!("HAX_TOOLCHAIN");
         // ensure rustup is available
@@ -22,10 +20,11 @@ fn cargo_command() -> Command {
         });
         // make sure the toolchain is installed
         rustup_toolchain::install(TOOLCHAIN).unwrap();
-        // add a [rustup] flag to cargo
-        cmd.arg(format!("+{TOOLCHAIN}"));
+        // return the correct toolchain
+        Some(TOOLCHAIN)
+    } else {
+        None
     }
-    cmd
 }
 
 /// [get_args] is a wrapper of `std::env::args` that strips a possible
@@ -46,24 +45,18 @@ fn main() {
     let options = Options::parse_from(args.iter()).normalize_paths();
     // eprintln!("options: {options:?}");
 
-    std::process::exit(
-        cargo_command()
-            .args(["build".into()].iter().chain(options.cargo_flags.iter()))
-            .env(
-                "RUSTC_WORKSPACE_WRAPPER",
-                std::env::var("HAX_RUSTC_DRIVER_BINARY")
-                    .unwrap_or("driver-hax-frontend-exporter".into()),
-            )
-            .env(
-                hax_cli_options::ENV_VAR_OPTIONS_FRONTEND,
-                serde_json::to_string(&options)
-                    .expect("Options could not be converted to a JSON string"),
-            )
-            .spawn()
-            .unwrap()
-            .wait()
-            .unwrap()
-            .code()
-            .unwrap_or(254),
+    let mut cmd = Command::new("cargo");
+    if let Some(toolchain) = toolchain() {
+        cmd.env("RUSTUP_TOOLCHAIN", toolchain);
+    }
+    cmd.args(["build".into()].iter().chain(options.cargo_flags.iter()));
+    cmd.env(
+        "RUSTC_WORKSPACE_WRAPPER",
+        std::env::var("HAX_RUSTC_DRIVER_BINARY").unwrap_or("driver-hax-frontend-exporter".into()),
     )
+    .env(
+        hax_cli_options::ENV_VAR_OPTIONS_FRONTEND,
+        serde_json::to_string(&options).expect("Options could not be converted to a JSON string"),
+    );
+    std::process::exit(cmd.spawn().unwrap().wait().unwrap().code().unwrap_or(254))
 }
