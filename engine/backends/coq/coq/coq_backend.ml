@@ -282,7 +282,11 @@ struct
           f = { e = GlobalVar (`Projector (`TupleField (n, len))) };
           args = [ arg ];
         } ->
-        __TODO_term__ span "app global vcar projector tuple"
+        project_to_simple_projections n
+          (match pty arg.span arg.typ with
+          | C.AST.Product l -> List.length l
+          | _ -> 1)
+          (pexpr arg)
     | App { f = { e = GlobalVar x }; args } when Map.mem operators x ->
         let arity, op = Map.find_exn operators x in
         if List.length args <> arity then
@@ -347,6 +351,13 @@ struct
              span = e.span;
            }
     | _ -> .
+
+  and project_to_simple_projections n len v : C.AST.term =
+    if n + 1 >= len then C.AST.App (C.AST.Var "snd", [ v ])
+    else if len == 2 then C.AST.App (C.AST.Var "fst", [ v ])
+    else
+      project_to_simple_projections n (len - 1)
+        (C.AST.App (C.AST.Var "fst", [ v ]))
 
   let rec pitem (e : item) : C.AST.decl list =
     try pitem_unwrapped e
@@ -550,11 +561,17 @@ struct
                     match x.ti_v with
                     | TIFn fn_ty -> pty span fn_ty
                     | TIType bounds ->
-                      C.AST.Product (List.map ~f:(fun {trait; args; bindings = _} -> C.AST.Product (List.map ~f:(fun x -> match x with
-                          | GType t -> pty span t
-                          | _ -> __TODO_ty__ span "generic_value ty"
-                            ) args)) bounds)
-                  ))
+                        C.AST.Product
+                          (List.map
+                             ~f:(fun { trait; args; bindings = _ } ->
+                               C.AST.Product
+                                 (List.map
+                                    ~f:(fun x ->
+                                      match x with
+                                      | GType t -> pty span t
+                                      | _ -> __TODO_ty__ span "generic_value ty")
+                                    args))
+                             bounds) ))
                 items,
               List.fold_left ~init:[]
                 ~f:(fun a b ->
@@ -586,18 +603,12 @@ struct
                         pexpr body,
                         pty span body.typ )
                   | IIType t ->
-                      ( x.ii_name,
-                        [],
-                        C.AST.Type (pty span t),
-                        C.AST.Wild ))
+                      (x.ii_name, [], C.AST.Type (pty span t), C.AST.Wild))
                 items );
         ]
-    | Impl {
-        generics;
-        self_ty;
-        of_trait = None;
-        items;
-      } -> [ C.AST.Unimplemented ("trait self" ^ " todo(item)") ] (* __TODO_item__ span "trait self" *)
+    | Impl { generics; self_ty; of_trait = None; items } ->
+        [ C.AST.Unimplemented ("trait self" ^ " todo(item)") ]
+  (* __TODO_item__ span "trait self" *)
 
   (* self_ty : ty; *)
   (* of_trait : (global_ident * generic_value list) option; *)
