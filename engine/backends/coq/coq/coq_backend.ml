@@ -353,6 +353,10 @@ struct
     with Diagnostics.SpanFreeError _kind ->
       [ C.AST.Unimplemented "item error backend" ]
 
+  and pgeneric_param span : generic_param -> _ = function
+    | GPType { ident; default } -> ident.name
+    | _ -> Error.unimplemented ~details:"Coq: TODO: generic_params" span
+
   and pitem_unwrapped (e : item) : C.AST.decl list =
     let span = e.span in
     match e.v with
@@ -369,32 +373,19 @@ struct
     | TyAlias { name; generics; ty } ->
         [ C.AST.Notation (pconcrete_ident name ^ "_t", pty span ty) ]
     (* record *)
-    | Type { name; generics; variants; is_struct = true } -> (
-        match variants with
-        | [ { arguments; is_record = true; _ } ] ->
-            [
-              C.AST.Record
-                ( Concrete_ident.to_definition_name name,
-                  p_record_record span arguments );
-            ]
-        | _ ->
-            Error.assertion_failure span
-              "a struct should have exactly one variant")
+    | Type { name; generics; variants = [ v ]; is_struct = true } ->
+        [
+          (* TODO: generics *)
+          C.AST.Record
+            ( Concrete_ident.to_definition_name name,
+              p_record_record span v.arguments );
+        ]
     (* enum *)
-    | Type { name; generics; variants; is_struct = false } ->
+    | Type { name; generics; variants } ->
         [
           C.AST.Inductive
             ( Concrete_ident.to_definition_name name,
-              List.concat_map
-                ~f:(fun b ->
-                  [
-                    (match b with
-                    | GPType { ident; default } -> ident.name
-                    | _ ->
-                        Error.unimplemented ~details:"Coq: TODO: generic_params"
-                          span);
-                  ])
-                generics.params,
+              List.map ~f:(pgeneric_param span) generics.params,
               p_inductive span variants name );
         ]
     (* TODO: this is never matched, now *)
