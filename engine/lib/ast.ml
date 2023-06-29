@@ -535,7 +535,6 @@ functor
     }
 
     and item' =
-      (* Todo: rename `global_ident` into `concrete_ident` here *)
       (* Todo: topological sort, rec bundles *)
       | Fn of {
           name : concrete_ident;
