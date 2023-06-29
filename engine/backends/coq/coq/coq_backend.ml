@@ -84,7 +84,7 @@ end
 
 let primitive_to_string (id : primitive_ident) : string =
   match id with
-  | Deref -> Error.unimplemented ~details:("[string] " ^ "Box") (Dummy { id = 0 })
+  | Deref -> Error.unimplemented ~details:("[string] " ^ "Box") (Span.dummy ())
   | Cast -> "cast"
   | LogicalOp op -> ( match op with And -> "andb" | Or -> "orb")
 
@@ -93,16 +93,6 @@ module Make (Ctx : sig
 end) =
 struct
   open Ctx
-
-  let pconcrete_ident (id : concrete_ident) : string =
-    let id = Concrete_ident.to_view id in
-    let crate, path = ctx.current_namespace in
-    if String.(crate = id.crate) && [%eq: string list] id.path path then
-      id.definition
-    else
-      (* id.crate ^ "_" ^ *)
-      (* List.fold_left ~init:"" ~f:(fun x y -> x ^ "_" ^ y) *)
-      id.definition
 
   module TODOs_debug = struct
     let __TODO_pat__ _ s = C.AST.Ident (s ^ " todo(pat)")
@@ -125,31 +115,19 @@ struct
     let __TODO_item__ span s = C.AST.Unimplemented (s ^ " todo(item)")
 
     let __TODO_string__ s =
-      Error.unimplemented ~details:("[string] " ^ s) (Dummy { id = 0 })
+      Error.unimplemented ~details:("[string] " ^ s) (Span.dummy ())
   end
 
   open TODOs
 
   let pglobal_ident (id : global_ident) : string =
     match id with
-    | `Projector (`Concrete cid) | `Concrete cid -> pconcrete_ident cid
+    | `Projector (`Concrete cid) | `Concrete cid -> Concrete_ident.to_definition_name cid
     | `Primitive p_id -> primitive_to_string p_id
     | `TupleType i -> __TODO_string__ "(global ident) tuple type"
     | `TupleCons i -> __TODO_string__ "(global ident) tuple cons"
     | `Projector (`TupleField (i, j)) | `TupleField (i, j) ->
-        __TODO_string__ "(global ident) tuple field"
-    | _ -> .
-
-  let pglobal_ident_last (id : global_ident) : string =
-    match id with
-    | `Concrete { crate; path } -> Non_empty_list.last path
-    | `Primitive p_id -> __TODO_string__ "(global ident last) primitive"
-    | `TupleType i -> __TODO_string__ "(global ident last) tuple type"
-    | `TupleCons i -> __TODO_string__ "(global ident last) tuple cons"
-    | `TupleField i -> __TODO_string__ "(global ident last) tuple field"
-    | `Projector (`Concrete cid) -> __TODO_string__ "(global ident last) projector cid"
-    | `Projector (`TupleField (i, j)) ->
-        __TODO_string__ "(global ident last) projector tuplefield"
+      __TODO_string__ "(global ident) tuple field"
     | _ -> .
 
   let pint_kind (k : int_kind) : C.AST.int_type =
@@ -185,7 +163,7 @@ struct
     | TApp { ident = `TupleType n; args } when n >= 2 ->
         C.AST.Product (args_ty span args)
     | TApp { ident; args } ->
-        C.AST.AppTy (pglobal_ident ident ^ "_t", args_ty span args)
+        C.AST.AppTy (pglobal_ident ident, args_ty span args)
     | TArrow (inputs, output) ->
         List.fold_right ~init:(pty span output)
           ~f:(fun x y -> C.AST.Arrow (x, y))
@@ -234,8 +212,9 @@ struct
     | PConstruct { name; args; is_record = true } ->
         C.AST.RecordPat (pglobal_ident name, pfield_pats args)
     | PConstruct { name; args; is_record = false } ->
-        Error.unimplemented ~details:"Patterns for non-record constructors"
-          p.span
+      C.AST.EnumPat (pglobal_ident name, pfield_pats args)
+        (* Error.unimplemented ~details:"Patterns for non-record constructors" *)
+        (*   p.span *)
     | PConstant { lit } -> C.AST.Lit (pliteral p.span lit)
     | PDeref { subpat } -> __TODO_pat__ p.span "deref"
     | _ -> .
@@ -357,7 +336,7 @@ struct
         C.AST.App (C.AST.Var (pglobal_ident constructor), [ pexpr e ])
     | Construct { constructor; fields; base } ->
         C.AST.Var
-          (pglobal_ident constructor ^ snd (C.ty_to_string (pty span e.typ)))
+          (pglobal_ident constructor (* ^ " " ^ snd (C.ty_to_string (pty span e.typ)) *))
     | Closure { params; body } ->
         C.AST.Lambda (List.map ~f:ppat params, pexpr body)
     | MacroInvokation { macro; args; witness } ->
@@ -386,7 +365,7 @@ struct
     | Fn { name; generics; body; params } ->
         [
           C.AST.Definition
-            ( pconcrete_ident name,
+            ( Concrete_ident.to_definition_name name,
               List.map
                 ~f:(fun { pat; typ; typ_span } -> (ppat pat, pty span typ))
                 params,
@@ -394,7 +373,7 @@ struct
               pty span body.typ );
         ]
     | TyAlias { name; generics; ty } ->
-        [ C.AST.Notation (pconcrete_ident name ^ "_t", pty span ty) ]
+        [ C.AST.Notation (Concrete_ident.to_definition_name name, pty span ty) ]
     (* record *)
     | Type
         {
@@ -416,16 +395,12 @@ struct
           C.AST.Inductive
             ( Concrete_ident.to_definition_name name,
               (* TODO: why not a `List.concat_map` instead of a fold here? *)
-              List.fold_left ~init:[]
-                ~f:(fun a b ->
-                  a
-                  @ [
-                      (match b with
-                      | GPType { ident; default } -> ident.name
-                      | _ ->
-                          Error.unimplemented
-                            ~details:"Coq: TODO: generic_params" span);
-                    ])
+              List.concat_map ~f:(fun b -> [match b with
+                  | GPType { ident; default } -> ident.name
+                  | _ ->
+                    Error.unimplemented
+                      ~details:"Coq: TODO: generic_params" span
+                ])
                 generics.params,
               p_inductive span variants name );
         ]
@@ -458,7 +433,7 @@ struct
                 in
                 [
                   C.AST.Notation
-                    ( o.type_name ^ "_t",
+                    ( "t_" ^ o.type_name,
                       C.AST.NatMod
                         (o.type_of_canvas, o.bit_size_of_field, o.modulo_value)
                     );
@@ -467,8 +442,8 @@ struct
                       [],
                       C.AST.Var "id",
                       C.AST.Arrow
-                        ( C.AST.Name (o.type_name ^ "_t"),
-                          C.AST.Name (o.type_name ^ "_t") ) );
+                        ( C.AST.Name ("t_" ^ o.type_name),
+                          C.AST.Name ("t_" ^ o.type_name) ) );
                 ]
             | "bytes" ->
                 let open Hacspeclib_macro_parser in
@@ -477,7 +452,7 @@ struct
                 in
                 [
                   C.AST.Notation
-                    ( o.bytes_name ^ "_t",
+                    ( "t_" ^ o.bytes_name,
                       C.AST.ArrayTy
                         ( C.AST.Int { size = C.AST.U8; signed = false },
                           (* int_of_string *) o.size ) );
@@ -486,8 +461,8 @@ struct
                       [],
                       C.AST.Var "id",
                       C.AST.Arrow
-                        ( C.AST.Name (o.bytes_name ^ "_t"),
-                          C.AST.Name (o.bytes_name ^ "_t") ) );
+                        ( C.AST.Name ("t_" ^ o.bytes_name),
+                          C.AST.Name ("t_" ^ o.bytes_name) ) );
                 ]
             | "unsigned_public_integer" ->
                 let open Hacspeclib_macro_parser in
@@ -496,7 +471,7 @@ struct
                 in
                 [
                   C.AST.Notation
-                    ( o.integer_name ^ "_t",
+                    ( "t_" ^ o.integer_name,
                       C.AST.ArrayTy
                         ( C.AST.Int { size = C.AST.U8; signed = false },
                           Int.to_string ((o.bits + 7) / 8) ) );
@@ -505,8 +480,8 @@ struct
                       [],
                       C.AST.Var "id",
                       C.AST.Arrow
-                        ( C.AST.Name (o.integer_name ^ "_t"),
-                          C.AST.Name (o.integer_name ^ "_t") ) );
+                        ( C.AST.Name ("t_" ^ o.integer_name),
+                          C.AST.Name ("t_" ^ o.integer_name) ) );
                 ]
             | "public_bytes" ->
                 let open Hacspeclib_macro_parser in
@@ -519,14 +494,14 @@ struct
                       (* int_of_string *) o.size )
                 in
                 [
-                  C.AST.Notation (o.bytes_name ^ "_t", typ);
+                  C.AST.Notation ("t_" ^ o.bytes_name, typ);
                   C.AST.Definition
                     ( o.bytes_name,
                       [],
                       C.AST.Var "id",
                       C.AST.Arrow
-                        ( C.AST.Name (o.bytes_name ^ "_t"),
-                          C.AST.Name (o.bytes_name ^ "_t") ) );
+                        ( C.AST.Name ("t_" ^ o.bytes_name),
+                          C.AST.Name ("t_" ^ o.bytes_name) ) );
                 ]
             | "array" ->
                 let open Hacspeclib_macro_parser in
@@ -549,7 +524,7 @@ struct
                 in
                 [
                   C.AST.Notation
-                    ( o.array_name ^ "_t",
+                    ( "t_" ^ o.array_name,
                       C.AST.ArrayTy
                         ( C.AST.Int { size = typ; signed = false },
                           (* int_of_string *) o.size ) );
@@ -558,8 +533,8 @@ struct
                       [],
                       C.AST.Var "id",
                       C.AST.Arrow
-                        ( C.AST.Name (o.array_name ^ "_t"),
-                          C.AST.Name (o.array_name ^ "_t") ) );
+                        ( C.AST.Name ("t_" ^ o.array_name),
+                          C.AST.Name ("t_" ^ o.array_name) ) );
                 ]
             | _ -> unsupported ())
         | _ -> unsupported ())
@@ -622,51 +597,18 @@ struct
                       (x.ii_name, [], C.AST.Type (pty span t), C.AST.Wild))
                 items );
         ]
-    | Impl { generics; self_ty; of_trait = None; items } ->
-        [ C.AST.Unimplemented ("trait self" ^ " todo(item)") ]
-  (* __TODO_item__ span "trait self" *)
 
-  (* self_ty : ty; *)
-  (* of_trait : (global_ident * generic_value list) option; *)
-  (* items : impl_item list; *)
+  and p_inductive span variants parrent_name : (string * C.AST.ty list) list =
+  (* and p_inductive span variants parrent_name : C.AST.inductive_case list = *)
+    List.map ~f:(fun { name; arguments } ->
+        (Concrete_ident.to_definition_name name,
+         List.map
+           ~f:(fun (arg_name, arg_ty) -> pty span arg_ty)
+           arguments)) variants
 
-  (* TODO: why not a List.map or concat_map? also, parrent_name is never used *)
-  and p_inductive span variants parrent_name : C.AST.inductive_case list =
-    (* what about: *)
-    List.map variants ~f:(fun { name; arguments; is_record } ->
-        if is_record then
-          C.AST.InductiveCase
-            ( Concrete_ident.to_definition_name name,
-              C.AST.RecordTy
-                (pconcrete_ident name, p_record_record span arguments) )
-        else
-          match arguments with
-          | [ (arg_name, arg_ty) ] ->
-              C.AST.InductiveCase
-                (Concrete_ident.to_definition_name name, pty span arg_ty)
-          | [] -> C.AST.BaseCase (Concrete_ident.to_definition_name name)
-          | _ ->
-              Error.unimplemented
-                ~details:"non-record variant of arity 2 or more" span)
-  (* match variants with _ -> [] *)
-  (* TODO: I don't get this pattern maching below. Variant with more than one payloads are rejected implicitely? *)
-  (* | { name; arguments = [ (arg_name, arg_ty) ] } :: xs -> *)
-  (*     if (index_of_field >> Option.is_some) arg_name then *)
-  (*       C.AST.InductiveCase (Concrete_ident.to_definition_name name, pty span arg_ty) *)
-  (*       :: p_inductive span xs parrent_name *)
-  (*     else *)
-  (*       C.AST.InductiveCase (Concrete_ident.to_definition_name arg_name, pty span arg_ty) *)
-  (*       :: p_inductive span xs parrent_name *)
-  (* | { name; arguments = [] } :: xs -> *)
-  (*     C.AST.BaseCase (Concrete_ident.to_definition_name name) *)
-  (*     :: p_inductive span xs parrent_name *)
-  (* | { name; arguments } :: xs -> *)
-  (*     C.AST.InductiveCase *)
-  (*       ( Concrete_ident.to_definition_name name, *)
-  (*         C.AST.RecordTy (pglobal_ident name, p_record_record span arguments) *)
-  (*       ) *)
-  (*     :: p_inductive span xs parrent_name *)
-  (* | _ -> [] *)
+    (* List.map variants ~f:(fun { name; arguments; is_record } -> *)
+    (*     List.map ~f:(fun (arg_name, arg_ty) -> *)
+    (*         (Concrete_ident.to_definition_name name, pty span arg_ty)) arguments) *)
 
   and p_record span variants parrent_name : (string * C.AST.ty) list =
     match variants with
@@ -678,7 +620,7 @@ struct
         :: p_record span xs parrent_name
     | { name; arguments } :: xs ->
         ( Concrete_ident.to_definition_name name,
-          C.AST.RecordTy (pconcrete_ident name, p_record_record span arguments)
+          C.AST.RecordTy (Concrete_ident.to_definition_name name, p_record_record span arguments)
         )
         :: p_record span xs parrent_name
     | _ -> []

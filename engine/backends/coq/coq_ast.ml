@@ -48,6 +48,7 @@ functor
         | Ident of string
         | Lit of literal
         | RecordPat of string * (string * pat) list
+        | EnumPat of string * (string * pat) list
         | TuplePat of pat list
         | AscriptionPat of pat * ty
 
@@ -68,8 +69,6 @@ functor
         | Tuple of term list
         | Array of term list
 
-      (* TODO: I don't get why you've got InductiveCase VS BaseCase. Why not an inductive case (i.e. a variant, right?) is a name + a list of types? *)
-      type inductive_case = InductiveCase of string * ty | BaseCase of string
       type definition_type = string * (pat * ty) list * term * ty
       type generics_type = string list
 
@@ -79,7 +78,7 @@ functor
         | ProgramDefinition of definition_type
         | Notation of string * ty
         | Record of string * (string * ty) list
-        | Inductive of string * generics_type * inductive_case list
+        | Inductive of string * generics_type * (string * ty list) list
         | Class of string * (string * ty) list * generics_type
         | Instance of string * ty * ty list * definition_type list
         | Require of string list * string option
@@ -178,6 +177,8 @@ functor
           "{|"
           ^ record_pat_to_string args (depth + 1)
           ^ newline_indent depth ^ "|}"
+      | AST.EnumPat (name, args) ->
+        name ^ " " ^ List.fold_left ~f:(^) ~init:"" (List.intersperse ~sep:" " (List.map ~f:(fun (name, pat) -> pat_to_string pat true (depth+1)) args))
       | AST.TuplePat vals ->
           tick_if is_top_expr ^ "(" ^ tuple_pat_to_string vals (depth + 1) ^ ")"
       | AST.AscriptionPat (p, ty) ->
@@ -352,7 +353,7 @@ functor
       | AST.Notation (name, ty) ->
           let definitions, ty_str = ty_to_string ty in
           decl_list_to_string definitions
-          ^ "Notation" ^ " " ^ name ^ " " ^ ":=" ^ " " ^ "(" ^ ty_str ^ ")"
+          ^ "Notation" ^ " " ^ "\"'" ^ name ^ "'\"" ^ " " ^ ":=" ^ " " ^ "(" ^ ty_str ^ ")"
           ^ "."
       | AST.Record (name, variants) ->
           let definitions, variants_str =
@@ -365,22 +366,16 @@ functor
           let name_generics =
             name ^ List.fold_left ~init:"" ~f:(fun a b -> a ^ " " ^ b) generics
           in
-          let definitions, variants_str =
-            inductive_case_to_string variants
-              (newline_indent 0 ^ "|" ^ " ")
-              name_generics
-          in
-          let _, args_str =
-            if List.is_empty generics then ([], "")
-            else
-              inductive_case_args_to_string variants
-                (newline_indent 0 ^ "Arguments" ^ " ")
-                (List.fold_left ~init:"" ~f:(fun a b -> a ^ " {_}") generics)
-                "."
-          in
-          decl_list_to_string definitions
-          ^ "Inductive" ^ " " ^ name_generics ^ " " ^ ":" ^ " " ^ "Type" ^ " "
-          ^ ":=" ^ variants_str ^ "." ^ args_str
+          "Inductive" ^ " " ^ name_generics ^ " " ^ ":" ^ " " ^ "Type" ^ " "
+          ^ ":=" ^
+          List.fold_left ~init: "" ~f:(^) (
+              List.map ~f:(fun (case_name , lty) ->
+                  (newline_indent 0) ^
+                  "|" ^ " " ^ case_name ^ " " ^ ":" ^ " "
+                  ^ (List.fold_left ~init:"" ~f:(^) (
+                      List.map ~f:(ty_to_string >> snd >> (fun x -> x ^ " " ^ "->" ^ " ")) lty))
+                  ^ name) variants)
+            ^ "."
       | AST.Class (name, trait_items, generics) ->
           let field_defs, field_str =
             List.fold_left ~init:([], "")
@@ -439,40 +434,6 @@ functor
           "(" ^ pat_to_string pat true 0 ^ " " ^ ":" ^ " " ^ ty_str ^ ")" ^ " "
           ^ params_to_string xs (* TODO: Should pat_to_string have tick here? *)
       | [] -> ""
-
-    and inductive_case_to_string variants pre post : AST.decl list * string =
-      match variants with
-      | x :: xs ->
-          let ty_def, mid_str =
-            match x with
-            | AST.BaseCase ty_name -> ([], ty_name)
-            | AST.InductiveCase (ty_name, ty) ->
-                let ty_definitions, ty_str = ty_to_string ty in
-                ( ty_definitions,
-                  ty_name ^ " " ^ ":" ^ " " ^ ty_str ^ " " ^ "->" ^ " " )
-          in
-          let variant_definitions, variants_str =
-            inductive_case_to_string xs pre post
-          in
-          (ty_def @ variant_definitions, pre ^ mid_str ^ post ^ variants_str)
-      | [] -> ([], "")
-
-    and inductive_case_args_to_string variants pre mid post :
-        AST.decl list * string =
-      List.fold_left ~init:([], "")
-        ~f:(fun y x ->
-          let mid_str, ty_str =
-            match x with
-            | AST.BaseCase ty_name -> (ty_name, "")
-            | AST.InductiveCase (ty_name, ty) ->
-                let _, ty_str = ty_to_string ty in
-                (ty_name, " " ^ ty_str)
-          in
-          match y with
-          | variant_definitions, variants_str ->
-              ( variant_definitions,
-                pre ^ mid_str ^ mid ^ ty_str ^ post ^ variants_str ))
-        variants
 
     and variants_to_string variants pre post : AST.decl list * string =
       List.fold_left ~init:([], "")
