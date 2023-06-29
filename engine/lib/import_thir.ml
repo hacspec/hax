@@ -570,7 +570,6 @@ module Exn = struct
           unimplemented e.span "expression PlaceTypeAscription"
       | ValueTypeAscription _ ->
           unimplemented e.span "expression ValueTypeAscription"
-      | NonHirLiteral _ -> unimplemented e.span "expression NonHirLiteral"
       | ZstLiteral _ -> unimplemented e.span "expression ZstLiteral"
       | Yield _ -> unimplemented e.span "expression Yield"
       | Todo _ -> unimplemented e.span "expression Todo"
