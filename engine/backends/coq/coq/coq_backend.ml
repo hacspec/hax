@@ -218,8 +218,8 @@ struct
     | PConstruct { name; args; is_record = true } ->
         C.AST.RecordPat (pglobal_ident name, pfield_pats args)
     | PConstruct { name; args; is_record = false } ->
-        Error.unimplemented ~details:"Patterns for non-record constructors"
-          p.span
+        C.AST.ConstructorPat
+          (pglobal_ident name, List.map ~f:(fun p -> ppat p.pat) args)
     | PConstant { lit } -> C.AST.Lit (pliteral p.span lit)
     | PDeref { subpat } -> __TODO_pat__ p.span "deref"
     | _ -> .
