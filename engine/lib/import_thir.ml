@@ -8,11 +8,11 @@ let assertion_failure (span : Thir.span) (details : string) =
   report { span; kind; context = ThirImport };
   raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
 
-let unimplemented (span : Thir.span) (details : string) =
+let unimplemented ?issue_id (span : Thir.span) (details : string) =
   let kind =
     T.Unimplemented
       {
-        issue_id = None (* TODO, file issues *);
+        issue_id;
         details = String.(if details = "" then None else Some details);
       }
   in
@@ -674,7 +674,10 @@ module Exn = struct
                       l;
                 })
       | Array _ -> unimplemented pat.span "Pat:Array"
-      | Or _ -> unimplemented pat.span "Or"
+      | Or _ ->
+          unimplemented pat.span ~issue_id:161
+            "Or patterns (see \
+             https://rust-lang.github.io/rfcs/2535-or-patterns.html)"
       | Slice _ -> unimplemented pat.span "Slice"
       | Range _ -> unimplemented pat.span "Range"
     in
