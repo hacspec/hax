@@ -4,6 +4,7 @@ members = [
         "literals",
         "slices",
         "if-let",
+        "enum-repr",
         "side-effects",
         "lint/hacspec/v1-lib",
         "lint/hacspec/mut_args",

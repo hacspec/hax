@@ -1244,6 +1244,13 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
         let contents = match macro_invocation_of_span(span, s).map(ExprKind::MacroInvokation) {
             Some(contents) => contents,
             None => match kind {
+                rustc_middle::thir::ExprKind::NonHirLiteral { lit, .. } => ExprKind::Literal {
+                    lit: Spanned {
+                        node: scalar_int_to_literal(s, lit, ty),
+                        span: span.sinto(s),
+                    },
+                    neg: false,
+                },
                 rustc_middle::thir::ExprKind::ZstLiteral { .. } => match ty.kind() {
                     rustc_middle::ty::TyKind::FnDef(def, substs) => {
                         let tcx = s.tcx();
@@ -2307,6 +2314,9 @@ pub fn inspect_local_def_id<'tcx, S: BaseState<'tcx>>(
     rustc_middle::thir::ExprKind::Field {..} => {
         fatal!(gstate, "Field should have been eliminated at this point");
     },
+    rustc_middle::thir::ExprKind::NonHirLiteral {..} => {
+        fatal!(gstate, "NonHirLiteral should have been eliminated at this point");
+    },
 )]
 pub enum ExprKind {
     // /// and to track the `HirId` of the expressions within the scope.
@@ -2612,11 +2622,6 @@ pub enum ExprKind {
     Literal {
         lit: Spanned<LitKind>,
         neg: bool, // TODO
-    },
-    /// For literals that don't correspond to anything in the HIR
-    NonHirLiteral {
-        lit: ScalarInt,
-        user_ty: Option<CanonicalUserType>,
     },
     /// A literal of a ZST type.
     //zero space type
