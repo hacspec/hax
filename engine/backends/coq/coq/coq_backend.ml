@@ -369,53 +369,48 @@ struct
     | TyAlias { name; generics; ty } ->
         [ C.AST.Notation (pconcrete_ident name ^ "_t", pty span ty) ]
     (* record *)
-    | Type
-        {
-          name;
-          generics;
-          variants = [ { (*name=record_name*) arguments; is_record = true; _ } ];
-          is_struct = true;
-        }
-    (* TODO: the when clause should be an invariant (TODO: how/should we encode that invariant) *)
-    (* when Global_ident.equal name record_name *) ->
-        [
-          C.AST.Record
-            ( Concrete_ident.to_definition_name name,
-              p_record_record span arguments );
-        ]
+    | Type { name; generics; variants; is_struct = true } -> (
+        match variants with
+        | [ { arguments; is_record = true; _ } ] ->
+            [
+              C.AST.Record
+                ( Concrete_ident.to_definition_name name,
+                  p_record_record span arguments );
+            ]
+        | _ ->
+            Error.assertion_failure span
+              "a struct should have exactly one variant")
     (* enum *)
     | Type { name; generics; variants; is_struct = false } ->
         [
           C.AST.Inductive
             ( Concrete_ident.to_definition_name name,
-              (* TODO: why not a `List.concat_map` instead of a fold here? *)
-              List.fold_left ~init:[]
-                ~f:(fun a b ->
-                  a
-                  @ [
-                      (match b with
-                      | GPType { ident; default } -> ident.name
-                      | _ ->
-                          Error.unimplemented
-                            ~details:"Coq: TODO: generic_params" span);
-                    ])
+              List.concat_map
+                ~f:(fun b ->
+                  [
+                    (match b with
+                    | GPType { ident; default } -> ident.name
+                    | _ ->
+                        Error.unimplemented ~details:"Coq: TODO: generic_params"
+                          span);
+                  ])
                 generics.params,
               p_inductive span variants name );
         ]
-    | Type { name; generics; variants } ->
-        (* TODO: Why not using types of arity n instead of packing things in a tuple? *)
-        [
-          C.AST.Notation
-            ( Concrete_ident.to_definition_name name,
-              C.AST.Product (List.map ~f:snd (p_record span variants name)) );
-          C.AST.Definition
-            ( Concrete_ident.to_definition_name name,
-              [],
-              C.AST.Var "id",
-              C.AST.Arrow
-                ( C.AST.Name (Concrete_ident.to_definition_name name),
-                  C.AST.Name (Concrete_ident.to_definition_name name) ) );
-        ]
+    (* TODO: this is never matched, now *)
+    (* | Type { name; generics; variants } -> *)
+    (*     [ *)
+    (*       C.AST.Notation *)
+    (*         ( Concrete_ident.to_definition_name name, *)
+    (*           C.AST.Product (List.map ~f:snd (p_record span variants name)) ); *)
+    (*       C.AST.Definition *)
+    (*         ( Concrete_ident.to_definition_name name, *)
+    (*           [], *)
+    (*           C.AST.Var "id", *)
+    (*           C.AST.Arrow *)
+    (*             ( C.AST.Name (Concrete_ident.to_definition_name name), *)
+    (*               C.AST.Name (Concrete_ident.to_definition_name name) ) ); *)
+    (*     ] *)
     | IMacroInvokation { macro; argument; span } -> (
         let unsupported () =
           let id = [%show: concrete_ident] macro in
@@ -588,13 +583,7 @@ struct
                 items );
         ]
 
-  (* self_ty : ty; *)
-  (* of_trait : (global_ident * generic_value list) option; *)
-  (* items : impl_item list; *)
-
-  (* TODO: why not a List.map or concat_map? also, parrent_name is never used *)
   and p_inductive span variants parrent_name : C.AST.inductive_case list =
-    (* what about: *)
     List.map variants ~f:(fun { name; arguments; is_record } ->
         if is_record then
           C.AST.InductiveCase
@@ -602,14 +591,13 @@ struct
               C.AST.RecordTy
                 (pconcrete_ident name, p_record_record span arguments) )
         else
+          let name = Concrete_ident.to_definition_name name in
           match arguments with
-          | [ (arg_name, arg_ty) ] ->
-              C.AST.InductiveCase
-                (Concrete_ident.to_definition_name name, pty span arg_ty)
-          | [] -> C.AST.BaseCase (Concrete_ident.to_definition_name name)
+          | [] -> C.AST.BaseCase name
+          | [ (arg_name, arg_ty) ] -> C.AST.InductiveCase (name, pty span arg_ty)
           | _ ->
-              Error.unimplemented
-                ~details:"non-record variant of arity 2 or more" span)
+              C.AST.InductiveCase
+                (name, C.AST.Product (List.map ~f:(snd >> pty span) arguments)))
   (* match variants with _ -> [] *)
   (* TODO: I don't get this pattern maching below. Variant with more than one payloads are rejected implicitely? *)
   (* | { name; arguments = [ (arg_name, arg_ty) ] } :: xs -> *)
