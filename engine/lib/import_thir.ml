@@ -8,11 +8,11 @@ let assertion_failure (span : Thir.span) (details : string) =
   report { span; kind; context = ThirImport };
   raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
 
-let unimplemented (span : Thir.span) (details : string) =
+let unimplemented ?issue_id (span : Thir.span) (details : string) =
   let kind =
     T.Unimplemented
       {
-        issue_id = None (* TODO, file issues *);
+        issue_id;
         details = String.(if details = "" then None else Some details);
       }
   in
