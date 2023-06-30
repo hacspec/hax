@@ -524,7 +524,7 @@ functor
     and variant = {
       name : concrete_ident;
       arguments : (concrete_ident * ty) list;
-      is_record : bool;
+      is_record : bool; (* F.record_variants option; *)
     }
 
     and item' =

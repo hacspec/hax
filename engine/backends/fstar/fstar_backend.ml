@@ -11,6 +11,7 @@ include
       include On.Slice
       include On.Macro
       include On.Construct_base
+      include On.Record_variants
     end)
     (struct
       let backend = Diagnostics.Backend.FStar
@@ -50,6 +51,7 @@ struct
         include Features.SUBTYPE.On.Construct_base
         include Features.SUBTYPE.On.Slice
         include Features.SUBTYPE.On.Macro
+        include Features.SUBTYPE.On.Record_variants
       end)
 
   let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))

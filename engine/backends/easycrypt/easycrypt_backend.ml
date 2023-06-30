@@ -15,6 +15,7 @@ include
       include On.Mutable_variable
       include On.Macro
       include On.Construct_base
+      include On.Record_variants
     end)
     (struct
       let backend = Diagnostics.Backend.EasyCrypt
@@ -62,6 +63,7 @@ module RejectNotEC (FA : Features.T) = struct
         let construct_base _ = Features.On.construct_base
         let for_loop = reject
         let for_index_loop _ = Features.On.for_index_loop
+        let record_variants _ = Features.On.record_variants
 
         let metadata =
           Phase_utils.Metadata.make (Reject (NotInBackendLang EasyCrypt))

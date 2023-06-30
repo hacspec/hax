@@ -20,7 +20,8 @@ loop,
   lifetime,
   construct_base,
   monadic_action,
-  monadic_binding]
+  monadic_binding,
+  record_variants]
 
 module Full = On
 
