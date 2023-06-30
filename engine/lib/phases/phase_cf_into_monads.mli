@@ -13,9 +13,7 @@ module Make
       include Features.Off.Continue
       include Features.Off.Early_exit
       include Features.Off.Question_mark
-
-      (* TODO: when break is introduced: include Features.Off.Break *)
-      (* include Features.Off.Mutable_variable *)
+      include Features.Off.Break
       include Features.On.Monadic_binding
     end
 
