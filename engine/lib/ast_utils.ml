@@ -52,13 +52,13 @@ module Make (F : Features.T) = struct
   module TypedLocalIdent = TypedLocalIdent (AST)
 
   module Sets = struct
-    module GlobalIdent = struct
-      include Set.M (GlobalIdent)
+    module Global_ident = struct
+      include Set.M (Global_ident)
 
       class ['s] monoid =
         object
           inherit ['s] VisitorsRuntime.monoid
-          method private zero = Set.empty (module GlobalIdent)
+          method private zero = Set.empty (module Global_ident)
           method private plus = Set.union
         end
     end
@@ -98,11 +98,7 @@ module Make (F : Features.T) = struct
         inherit [_] item_map
         method visit_t () x = x
         method visit_mutability _ () m = m
-
-        method! visit_span s =
-          function
-          | Dummy _ -> Dummy { id = FreshSpanId.make () }
-          | Span s -> Span { s with id = FreshSpanId.make () }
+        method visit_span = Fn.const Span.refresh_id
       end
 
     let normalize_borrow_mut =
@@ -153,12 +149,12 @@ module Make (F : Features.T) = struct
     let collect_global_idents =
       object
         inherit ['self] expr_reduce as _super
-        inherit [_] Sets.GlobalIdent.monoid as m
+        inherit [_] Sets.Global_ident.monoid as m
         method visit_t _ _ = m#zero
         method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
 
-        method! visit_global_ident (_env : unit) (x : GlobalIdent.t) =
-          Set.singleton (module GlobalIdent) x
+        method! visit_global_ident (_env : unit) (x : Global_ident.t) =
+          Set.singleton (module Global_ident) x
       end
 
     let variables_of_pat (p : pat) : Sets.LocalIdent.t =
@@ -350,7 +346,7 @@ module Make (F : Features.T) = struct
         inherit [_] item_map
         method visit_t () x = x
         method visit_mutability _ () m = m
-        method! visit_span s = function _ -> Dummy { id = 0 }
+        method! visit_span s = function _ -> Span.default
       end
     in
     let a = replace_spans#visit_ty () a in
@@ -388,7 +384,14 @@ module Make (F : Features.T) = struct
     | _ ->
         let len = List.length tuple in
         {
-          p = PConstruct { name = `TupleCons len; args = tuple; record = false };
+          p =
+            PConstruct
+              {
+                name = `TupleCons len;
+                args = tuple;
+                is_record = false;
+                is_struct = true;
+              };
           typ = make_tuple_typ @@ List.map ~f:(fun { pat; _ } -> pat.typ) tuple;
           span;
         }
@@ -396,7 +399,7 @@ module Make (F : Features.T) = struct
   let make_tuple_pat' (pats : pat list) : pat =
     let len = List.length pats in
     List.mapi ~f:(fun i pat -> { field = `TupleField (i, len); pat }) pats
-    |> make_tuple_pat'' (union_spans @@ List.map ~f:(fun p -> p.span) pats)
+    |> make_tuple_pat'' (Span.union_list @@ List.map ~f:(fun p -> p.span) pats)
 
   let make_tuple_pat : pat list -> pat = function
     | [ pat ] -> pat
@@ -409,7 +412,8 @@ module Make (F : Features.T) = struct
         Construct
           {
             constructor = `TupleCons len;
-            constructs_record = false;
+            is_record = false;
+            is_struct = true;
             fields =
               List.mapi ~f:(fun i x -> (`TupleField (i, len), x)) @@ tuple;
             base = None;
@@ -426,9 +430,8 @@ module Make (F : Features.T) = struct
      [Record] thing, and put everything which is not a Record
        into an App. This would simplify stuff quite much. Maybe not
        for LHS things. *)
-  let call_Constructor (crate : string) (path_hd : string)
-      (path_tl : string list) (args : expr list) span ret_typ =
-    let path = Non_empty_list.(path_hd :: path_tl) in
+  let call_Constructor' (constructor : global_ident) is_struct
+      (args : expr list) span ret_typ =
     let typ = TArrow (List.map ~f:(fun arg -> arg.typ) args, ret_typ) in
     let mk_field =
       let len = List.length args in
@@ -438,22 +441,25 @@ module Make (F : Features.T) = struct
     {
       e =
         Construct
-          {
-            constructor = `Concrete { crate; path };
-            constructs_record = false;
-            fields;
-            base = None;
-          };
+          { constructor; is_record = false; is_struct; fields; base = None };
       typ = ret_typ;
       span;
     }
 
-  let call (crate : string) (path_hd : string) (path_tl : string list)
-      (args : expr list) span ret_typ =
-    let path = Non_empty_list.(path_hd :: path_tl) in
+  let call_Constructor (constructor_name : Concrete_ident.name)
+      (is_struct : bool) (args : expr list) span ret_typ =
+    call_Constructor'
+      (`Concrete
+        (Concrete_ident.of_name (Constructor { is_struct }) constructor_name))
+      is_struct args span ret_typ
+
+  let call' f (args : expr list) span ret_typ =
     let typ = TArrow (List.map ~f:(fun arg -> arg.typ) args, ret_typ) in
-    let e = GlobalVar (`Concrete { crate; path }) in
+    let e = GlobalVar f in
     { e = App { f = { e; typ; span }; args }; typ = ret_typ; span }
+
+  let call (f_name : Concrete_ident.name) (args : expr list) span ret_typ =
+    call' (`Concrete (Concrete_ident.of_name Value f_name)) args span ret_typ
 
   let string_lit span (s : string) : expr =
     { span; typ = TStr; e = Literal (String s) }
@@ -461,14 +467,14 @@ module Make (F : Features.T) = struct
   let hax_failure_expr' span (typ : ty) (context, kind) (ast : string) =
     let error = Diagnostics.pretty_print_context_kind context kind in
     let args = List.map ~f:(string_lit span) [ error; ast ] in
-    call "hax_error" "hax_failure" [] args span typ
+    call Rust_primitives__hax__failure args span typ
 
   let hax_failure_expr span (typ : ty) (context, kind) (expr0 : Ast.Full.expr) =
     hax_failure_expr' span typ (context, kind) (Print_rust.pexpr_str expr0)
 
   let hax_failure_typ =
     let ident =
-      `Concrete { crate = "hax_error"; path = Non_empty_list.[ "hax_failure" ] }
+      `Concrete (Concrete_ident.of_name Type Rust_primitives__hax__failure)
     in
     TApp { ident; args = [] }
 
@@ -477,46 +483,55 @@ module Make (F : Features.T) = struct
     let item : AST.expr -> Ast.Full.expr = Obj.magic
   end
 
-  module Box = struct
-    module Ty = struct
-      let destruct (t : ty) : ty option =
-        match t with
-        | TApp
-            {
-              ident =
-                `Concrete
-                  { crate = "alloc"; path = Non_empty_list.[ "boxed"; "Box" ] };
-              args = [ GType sub; _alloc ];
-            } ->
-            Some sub
-        | _ -> None
+  let unbox_expr (e : expr) : expr =
+    match e.e with
+    | App { f = { e = GlobalVar f; _ }; args = [ e ] }
+      when Global_ident.eq_name Alloc__boxed__Impl__new f ->
+        e
+    | _ -> e
 
-      let alloc_ty =
-        let path = Non_empty_list.[ "alloc"; "Global" ] in
-        TApp { ident = `Concrete { crate = "alloc"; path }; args = [] }
+  let underef_expr (e : expr) : expr =
+    match e.e with
+    | App { f = { e = GlobalVar (`Primitive Ast.Deref); _ }; args = [ e ] } -> e
+    | _ -> e
 
-      let make (t : ty) : ty =
-        let ident =
-          let path = Non_empty_list.[ "boxed"; "Box" ] in
-          `Concrete { crate = "alloc"; path }
-        in
-        TApp { ident; args = [ GType t; GType alloc_ty ] }
-    end
+  let unbox_underef_expr = unbox_expr >> underef_expr
 
-    module Expr = struct
-      let destruct (e : expr) : expr option =
-        match e.e with
-        | App { f = { e = GlobalVar (`Primitive Box); _ }; args = [ arg ] } ->
-            Some arg
-        | _ -> None
+  (* module Box = struct *)
+  (*   module Ty = struct *)
+  (*     let destruct (t : ty) : ty option = *)
+  (*       match t with *)
+  (*       | TApp { ident = `Concrete box; args = [ GType sub; _alloc ] } *)
+  (*         when Concrete_ident.eq_name Alloc__boxed__Box box -> *)
+  (*           Some sub *)
+  (*       | _ -> None *)
 
-      let make (e : expr) : expr =
-        let boxed_ty = Ty.make e.typ in
-        let f_ty = TArrow ([ e.typ ], boxed_ty) in
-        let f = { e with typ = f_ty; e = GlobalVar (`Primitive Box) } in
-        { e with typ = boxed_ty; e = App { f; args = [ e ] } }
-    end
-  end
+  (*     let alloc_ty = *)
+  (*       TApp *)
+  (*         { *)
+  (*           ident = `Concrete (Concrete_ident.of_name Type Alloc__alloc__Global); *)
+  (*           args = []; *)
+  (*         } *)
+
+  (*     let make (t : ty) : ty = *)
+  (*       let ident = `Concrete (Concrete_ident.of_name Type Alloc__boxed__Box) in *)
+  (*       TApp { ident; args = [ GType t; GType alloc_ty ] } *)
+  (*   end *)
+
+  (*   module Expr = struct *)
+  (*     let destruct (e : expr) : expr option = *)
+  (*       match e.e with *)
+  (*       | App { f = { e = GlobalVar (`Primitive Box); _ }; args = [ arg ] } -> *)
+  (*           Some arg *)
+  (*       | _ -> None *)
+
+  (*     let make (e : expr) : expr = *)
+  (*       let boxed_ty = Ty.make e.typ in *)
+  (*       let f_ty = TArrow ([ e.typ ], boxed_ty) in *)
+  (*       let f = { e with typ = f_ty; e = GlobalVar (`Primitive Box) } in *)
+  (*       { e with typ = boxed_ty; e = App { f; args = [ e ] } } *)
+  (*   end *)
+  (* end *)
 
   let rec collect_let_bindings' (e : expr) : (pat * expr * ty) list * expr =
     match e.e with
@@ -551,10 +566,10 @@ module Make (F : Features.T) = struct
         }
     | _ -> f e
 
-  let tuple_projector (tuple_typ : ty) (len : int) (nth : int)
+  let tuple_projector span (tuple_typ : ty) (len : int) (nth : int)
       (type_at_nth : ty) : expr =
     {
-      span = Dummy { id = FreshSpanId.make () };
+      span;
       (* TODO: require a span here *)
       typ = TArrow ([ tuple_typ ], type_at_nth);
       e = GlobalVar (`Projector (`TupleField (nth, len)));
@@ -568,59 +583,35 @@ module Make (F : Features.T) = struct
       e =
         App
           {
-            f = tuple_projector tuple.typ len nth type_at_nth;
+            f = tuple_projector tuple.span tuple.typ len nth type_at_nth;
             args = [ tuple ];
           };
     }
 
-  let group_items_by_namespace (items : item list) : item list Namespace.Map.t =
-    let h = Hashtbl.create (module Namespace) in
+  module StringList = struct
+    module U = struct
+      module T = struct
+        type t = string * string list
+        [@@deriving show, yojson, compare, sexp, eq, hash]
+      end
+
+      include T
+      module C = Base.Comparator.Make (T)
+      include C
+    end
+
+    include U
+    module Map = Map.M (U)
+  end
+
+  let group_items_by_namespace (items : item list) : item list StringList.Map.t
+      =
+    let h = Hashtbl.create (module StringList) in
     List.iter items ~f:(fun item ->
-        let items =
-          Hashtbl.find_or_add h item.parent_namespace ~default:(fun _ -> ref [])
-        in
+        let ns = Concrete_ident.to_namespace item.ident in
+        let items = Hashtbl.find_or_add h ns ~default:(fun _ -> ref []) in
         items := !items @ [ item ]);
     Map.of_iteri_exn
-      (module Namespace)
+      (module StringList)
       ~iteri:(Hashtbl.map h ~f:( ! ) |> Hashtbl.iteri)
-
-  module Std = struct
-    module Ops = struct
-      module ControlFlow = struct
-        let ident =
-          `Concrete
-            { crate = "std"; path = Non_empty_list.[ "ops"; "ControlFlow" ] }
-
-        let typ (break : ty) (continue : ty) : ty =
-          TApp { ident; args = [ GType break; GType continue ] }
-
-        let _make (name : string) (e : expr) (typ : ty) : expr =
-          let constructor =
-            `Concrete
-              {
-                crate = "std";
-                path = Non_empty_list.("ops" :: "ControlFlow" :: [ name ]);
-              }
-          in
-          {
-            e with
-            e =
-              Construct
-                {
-                  constructor;
-                  constructs_record = false;
-                  base = None;
-                  fields = [ (`TupleField (0, 1), e) ];
-                };
-            typ;
-          }
-
-        let break (e : expr) (continue_type : ty) : expr =
-          _make "Break" e (typ e.typ continue_type)
-
-        let continue (e : expr) (break_type : ty) : expr =
-          _make "Continue" e (typ break_type e.typ)
-      end
-    end
-  end
 end

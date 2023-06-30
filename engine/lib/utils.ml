@@ -36,9 +36,18 @@ let split_list ~equal ~needle (subject : 'a list) : 'a list list =
   in
   h subject
 
+let first_letter s = String.prefix s 1
+let is_uppercase s = String.equal s (String.uppercase s)
+let is_lowercase s = String.equal s (String.lowercase s)
+let start_uppercase = first_letter >> is_uppercase
+let start_lowercase = first_letter >> is_lowercase
+
 let split_str (s : string) ~(on : string) : string list =
   split_list ~equal:Char.equal ~needle:(String.to_list on) (String.to_list s)
   |> List.map ~f:String.of_char_list
+
+let last_init (l : 'a list) : ('a list * 'a) option =
+  Option.both (List.drop_last l) (List.last l)
 
 let tabsize = 2
 let newline_indent depth : string = "\n" ^ String.make (tabsize * depth) ' '

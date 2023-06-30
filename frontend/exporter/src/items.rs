@@ -248,7 +248,7 @@ pub struct GenericParam {
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::ImplItem<'tcx>, state: S as tcx)]
 pub struct ImplItem {
     pub ident: Ident,
-    pub owner_id: OwnerId,
+    pub owner_id: DefId,
     pub generics: Generics,
     pub kind: ImplItemKind,
     pub defaultness: Defaultness,
@@ -516,7 +516,7 @@ pub enum TraitItemKind {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct TraitItem {
     pub ident: Ident,
-    pub owner_id: OwnerId,
+    pub owner_id: DefId,
     pub generics: Generics,
     pub kind: TraitItemKind,
     pub span: Span,
@@ -606,7 +606,7 @@ pub enum ForeignItemKind {
 pub struct ForeignItem {
     pub ident: Ident,
     pub kind: ForeignItemKind,
-    pub owner_id: OwnerId,
+    pub owner_id: DefId,
     pub span: Span,
     pub vis_span: Span,
 }

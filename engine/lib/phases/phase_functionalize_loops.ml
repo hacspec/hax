@@ -50,16 +50,16 @@ struct
           let pat = dpat pat in
           let bpat = dpat bpat in
           let fn : B.expr' =
-            Closure { params = [ pat; bpat ]; body; captures = [] }
+            Closure { params = [ bpat; pat ]; body; captures = [] }
           in
           let fn : B.expr =
             {
               e = fn;
-              typ = TArrow ([ pat.typ; bpat.typ ], body.typ);
+              typ = TArrow ([ bpat.typ; pat.typ ], body.typ);
               span = body.span;
             }
           in
-          UB.call "core" "iter" [ "Iterator"; "fold" ]
+          UB.call Core__iter__traits__iterator__Iterator__fold
             [ it; dexpr init; fn ]
             span (dty span expr.typ)
       | Loop { state = None; _ } ->

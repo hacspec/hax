@@ -22,7 +22,7 @@ struct
     | TBool -> TBool
     | TChar -> TChar
     | TInt k -> TInt k
-    | TFloat -> TFloat
+    | TFloat k -> TFloat k
     | TStr -> TStr
     | TApp { ident; args } ->
         TApp { ident; args = List.map ~f:(dgeneric_value span) args }
@@ -51,7 +51,7 @@ struct
     | GLifetime { lt; witness } ->
         GLifetime { lt; witness = S.lifetime witness }
     | GType t -> GType (dty span t)
-    | GConst c -> GConst c
+    | GConst e -> GConst (dexpr e)
 
   and dborrow_kind (_span : span) (borrow_kind : A.borrow_kind) : B.borrow_kind
       =
@@ -68,8 +68,14 @@ struct
     | PWild -> PWild
     | PAscription { typ; typ_span; pat } ->
         PAscription { typ = dty span typ; pat = dpat pat; typ_span }
-    | PConstruct { name; args; record } ->
-        PConstruct { name; record; args = List.map ~f:(dfield_pat span) args }
+    | PConstruct { name; args; is_record; is_struct } ->
+        PConstruct
+          {
+            name;
+            args = List.map ~f:(dfield_pat span) args;
+            is_record;
+            is_struct;
+          }
     | PArray { args } -> PArray { args = List.map ~f:dpat args }
     | PConstant { lit } -> PConstant { lit }
     | PBinding { mut; mode; var : LocalIdent.t; typ; subpat } ->
@@ -125,11 +131,12 @@ struct
     | App { f; args } -> App { f = dexpr f; args = List.map ~f:dexpr args }
     | Literal lit -> Literal lit
     | Array l -> Array (List.map ~f:dexpr l)
-    | Construct { constructor; constructs_record; fields; base } ->
+    | Construct { constructor; is_record; is_struct; fields; base } ->
         Construct
           {
             constructor;
-            constructs_record;
+            is_record;
+            is_struct;
             fields = List.map ~f:(map_snd dexpr) fields;
             base = Option.map ~f:(dexpr *** S.construct_base) base;
           }
@@ -301,6 +308,7 @@ struct
       {
         name = v.name;
         arguments = List.map ~f:(map_snd @@ dty span) v.arguments;
+        is_record = v.is_record;
       }
 
     let rec dtrait_item' (span : span) (ti : A.trait_item') : B.trait_item' =
@@ -331,13 +339,7 @@ struct
       }
 
     let rec ditem (item : A.item) : B.item list =
-      [
-        {
-          v = ditem' item.span item.v;
-          span = item.span;
-          parent_namespace = item.parent_namespace;
-        };
-      ]
+      [ { v = ditem' item.span item.v; span = item.span; ident = item.ident } ]
 
     and ditem' (span : span) (item : A.item') : B.item' =
       match item with
@@ -349,13 +351,13 @@ struct
               body = dexpr body;
               params = List.map ~f:(dparam span) params;
             }
-      | Type { name; generics; variants; record } ->
+      | Type { name; generics; variants; is_struct } ->
           B.Type
             {
               name;
               generics = dgenerics span generics;
               variants = List.map ~f:(dvariant span) variants;
-              record;
+              is_struct;
             }
       | TyAlias { name; generics; ty } ->
           B.TyAlias
@@ -370,15 +372,14 @@ struct
               generics = dgenerics span generics;
               items = List.map ~f:dtrait_item items;
             }
-      | Impl { generics; self_ty; of_trait; items } ->
+      | Impl { generics; self_ty; of_trait = trait_id, trait_generics; items }
+        ->
           B.Impl
             {
               generics = dgenerics span generics;
               self_ty = dty span self_ty;
               of_trait =
-                Option.map
-                  ~f:(Fn.id *** List.map ~f:(dgeneric_value span))
-                  of_trait;
+                (trait_id, List.map ~f:(dgeneric_value span) trait_generics);
               items = List.map ~f:dimpl_item items;
             }
       | Use { path; is_external; rename } -> B.Use { path; is_external; rename }

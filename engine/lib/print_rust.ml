@@ -35,12 +35,10 @@ module AnnotatedString = struct
     type t = { string : string; map : (int * int * string) list }
     [@@deriving show, yojson]
 
-    let id_of_span = function Dummy { id } | Span { id; _ } -> id
-
     let convert (v : T.t) : t =
       (* let annotations, map = *)
       let map =
-        List.map v ~f:(fun (span, s) -> (String.length s, id_of_span span, s))
+        List.map v ~f:(fun (span, s) -> (String.length s, Span.id_of span, s))
       in
       (*   List.fold v ~init:([], []) ~f:(fun (annotations, acc) (span, s) -> *)
       (*       let len = String.length s in *)
@@ -73,23 +71,20 @@ module Raw = struct
     | String s -> "\"" ^ s ^ "\""
     | Char c -> "'" ^ Char.to_string c ^ "'"
     | Int { value; _ } -> value
-    | Float _ -> "float_todo"
+    | Float { value; kind = F32 } -> value ^ "f32"
+    | Float { value; kind = F64 } -> value ^ "f64"
     | Bool b -> Bool.to_string b
 
   let pprimitive_ident span : _ -> AnnotatedString.t =
     pure span << function
-    | Box -> "Box::new"
     | Deref -> "deref"
     | Cast -> "cast"
-    | BinOp op -> "BinOp::" ^ [%show: bin_op] op
-    | UnOp op -> "BinOp::" ^ [%show: un_op] op
     | LogicalOp op -> "BinOp::" ^ [%show: logical_op] op
 
   let rec pglobal_ident' prefix span (e : global_ident) : AnnotatedString.t =
     let ( ! ) s = pure span (prefix ^ s) in
     match e with
-    | `Concrete { crate; path } ->
-        !(String.concat ~sep:"::" (crate :: Non_empty_list.to_list path))
+    | `Concrete c -> !([%show: Concrete_ident.t] c)
     | `Primitive p -> pprimitive_ident span p
     | `TupleType n -> ![%string "tuple%{Int.to_string n}"]
     | `TupleCons n -> ![%string "Tuple%{Int.to_string n}"]
@@ -111,7 +106,7 @@ module Raw = struct
 
   let last_of_global_ident (g : global_ident) span =
     match g with
-    | `Concrete { path; crate = _ } -> Non_empty_list.last path
+    | `Concrete c -> Concrete_ident.to_definition_name c
     | _ ->
         Diagnostics.report
           {
@@ -123,7 +118,7 @@ module Raw = struct
                     "[last_of_global_ident] was given a non-concrete global \
                      ident";
                 };
-            span = Diagnostics.to_thir_span span;
+            span = Span.to_thir span;
           };
         "print_rust_last_of_global_ident_error"
 
@@ -133,7 +128,7 @@ module Raw = struct
     | TBool -> !"bool"
     | TChar -> !"char"
     | TInt _k -> !"int"
-    | TFloat -> !"float"
+    | TFloat _k -> !"float"
     | TStr -> !"String"
     | TApp { ident; args = [] } -> pglobal_ident span ident
     | TApp { ident; args } ->
@@ -166,11 +161,11 @@ module Raw = struct
     | PWild -> !"_"
     | PAscription { typ; pat; _ } ->
         !"pat_ascription!(" & ppat pat & !" as " & pty e.span typ & !")"
-    | PConstruct { name; args; record; _ } ->
+    | PConstruct { name; args; is_record; _ } ->
         pglobal_ident e.span name
         &
         if List.is_empty args then !""
-        else if record then
+        else if is_record then
           !"{"
           & concat ~sep:!", "
               (List.map
@@ -215,10 +210,10 @@ module Raw = struct
         pexpr f & !"(" & args & !")"
     | Literal l -> pliteral e.span l
     | Array l -> !"[" & concat ~sep:!"," (List.map ~f:pexpr l) & !"]"
-    | Construct { constructs_record = false; constructor; fields; base = _ } ->
+    | Construct { is_record = false; constructor; fields; base = _ } ->
         let fields = List.map ~f:(snd >> pexpr) fields |> concat ~sep:!"," in
         pglobal_ident e.span constructor & !"(" & fields & !")"
-    | Construct { constructs_record = true; constructor; fields; base } ->
+    | Construct { is_record = true; constructor; fields; base } ->
         let fields =
           List.map
             ~f:(fun (field, value) ->
@@ -334,7 +329,7 @@ module Raw = struct
           |> concat ~sep:!","
         in
         !"fn "
-        & !(last_of_global_ident name e.span)
+        & !(Concrete_ident.to_definition_name name)
         & !"(" & params & !") -> " & return_type & !"{" & pexpr body & !"}"
     | _ -> !"/* TO DO */"
 end
@@ -363,8 +358,8 @@ let rustfmt_annotated (x : AnnotatedString.t) : AnnotatedString.t =
   let s = AnnotatedString.to_string x |> rustfmt |> AnnotatedString.split in
   let f (x, result) s =
     let last =
-      let default = Dummy { id = -1 } in
-      List.hd result |> Option.map ~f:fst |> Option.value ~default
+      List.hd result |> Option.map ~f:fst
+      |> Option.value_or_thunk ~default:Span.dummy
     in
     let x, tuple =
       match List.split_while ~f:(snd >> String.equal s >> not) x with
@@ -397,7 +392,7 @@ let pitem_str : item -> string = pitem >> AnnotatedString.Output.raw_string
 
 let pexpr_str (e : expr) : string =
   let e = Raw.pexpr e in
-  let ( ! ) = AnnotatedString.pure (Dummy { id = 0 }) in
+  let ( ! ) = AnnotatedString.pure @@ Span.dummy () in
   let ( & ) = AnnotatedString.( & ) in
   let prefix = "fn expr_wrapper() {" in
   let suffix = "}" in

@@ -65,20 +65,6 @@ type t = { context : Context.t; kind : kind; span : T.span }
 let to_thir_diagnostic (d : t) : Types.diagnostics_for__span =
   { kind = d.kind; context = [%show: Context.t] d.context; span = d.span }
 
-let to_thir_loc ({ col; line } : Ast.loc) : T.loc = { col; line }
-
-let to_thir_span (s : Ast.span) : T.span =
-  match s with
-  | Dummy _ ->
-      let hi : T.loc = { col = 0; line = 0 } in
-      { filename = Custom "DUNMMY"; hi; lo = hi }
-  | Span { file; hi; lo } ->
-      {
-        filename = Real (LocalPath file);
-        hi = to_thir_loc hi;
-        lo = to_thir_loc lo;
-      }
-
 let run_hax_pretty_print_diagnostics (s : string) : string =
   try (Utils.Command.run "hax-pretty-print-diagnostics" s).stdout
   with e ->
@@ -91,7 +77,7 @@ let pretty_print : t -> string =
 
 let pretty_print_context_kind : Context.t -> kind -> string =
  fun context kind ->
-  let span = to_thir_span (Dummy { id = 0 }) in
+  let span = Span.to_thir (Span.dummy ()) in
   pretty_print { context; kind; span }
 
 module Core : sig
@@ -117,6 +103,6 @@ end
 include Core
 
 let failure ~context ~span kind =
-  Core.raise_fatal_error { context; kind; span = to_thir_span span }
+  Core.raise_fatal_error { context; kind; span = Span.to_thir span }
 
 exception SpanFreeError of (Context.t * kind)

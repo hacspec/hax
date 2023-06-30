@@ -53,8 +53,7 @@ module%inlined_contents Make (F : Features.T) = struct
             span;
           }
       | LhsArrayAccessor { e; typ; index; _ } ->
-          UB.call "core" "ops"
-            [ "index"; "Index"; "index" ]
+          UB.call Core__ops__index__Index__index
             [ expr_of_lhs e span; dexpr index ]
             span (dty span typ)
       | LhsArbitraryExpr _ -> Error.raise { kind = ArbitraryLHS; span }
@@ -76,7 +75,8 @@ module%inlined_contents Make (F : Features.T) = struct
                 B.Construct
                   {
                     constructor = ident;
-                    constructs_record = true;
+                    is_record = true (* TODO: might not be, actually *);
+                    is_struct = true;
                     fields = [ (field, rhs) ];
                     base = Some (lhs, Features.On.construct_base);
                   }
@@ -87,8 +87,7 @@ module%inlined_contents Make (F : Features.T) = struct
       | LhsArrayAccessor { e; typ = _; index; _ } ->
           let lhs = expr_of_lhs e span in
           let rhs =
-            UB.call "core" "ops"
-              [ "index"; "IndexMut"; "update_at" ]
+            UB.call Rust_primitives__hax__update_at
               [ lhs; dexpr index; rhs ]
               span lhs.typ
           in

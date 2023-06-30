@@ -23,6 +23,8 @@ struct
         let phase_id = Diagnostics.Phase.DropReferences
       end)
 
+  module UA = Ast_utils.Make (F)
+
   module Implem : ImplemT.T = struct
     let metadata = metadata
 
@@ -42,8 +44,8 @@ struct
         B.generic_value option =
       match g with
       | GLifetime _ -> None
-      | GType t -> Some (GType (dty span t))
-      | GConst c -> Some (GConst c)
+      | [%inline_arms "dgeneric_value.*" - GLifetime] ->
+          map (Option.some : B.generic_value -> _)
 
     and dpat' (span : span) (p : A.pat') : B.pat' =
       match p with
@@ -61,20 +63,15 @@ struct
       | PDeref { subpat; _ } -> (dpat subpat).p
 
     and dexpr' (span : span) (e : A.expr') : B.expr' =
-      match e with
-      | [%inline_arms If + Literal + Array] -> auto
-      | App
-          {
-            f = { e = GlobalVar (`Primitive (Box | Deref)); _ };
-            args = [ arg ];
-          } ->
-          (dexpr arg).e
+      match (UA.unbox_underef_expr { e; span; typ = TFalse }).e with
+      | [%inline_arms If + Literal + Array + App] -> auto
       | App { f; args } -> App { f = dexpr f; args = List.map ~f:dexpr args }
-      | Construct { constructor; constructs_record; fields; base } ->
+      | Construct { constructor; is_record; is_struct; fields; base } ->
           Construct
             {
               constructor;
-              constructs_record;
+              is_record;
+              is_struct;
               fields = List.map ~f:(fun (i, e) -> (i, dexpr e)) fields;
               base = Option.map ~f:(dexpr *** S.construct_base) base;
             }
@@ -150,15 +147,20 @@ struct
     and ditem' (span : span) (item : A.item') : B.item' =
       match item with
       | [%inline_arms "ditem'.*" - Impl] -> auto
-      | Impl { generics; self_ty; of_trait; items } ->
+      | Impl
+          {
+            generics;
+            self_ty;
+            of_trait = of_trait_id, of_trait_generics;
+            items;
+          } ->
           B.Impl
             {
               generics = dgenerics span generics;
               self_ty = dty span self_ty;
               of_trait =
-                Option.map
-                  ~f:(Fn.id *** List.filter_map ~f:(dgeneric_value span))
-                  of_trait;
+                ( of_trait_id,
+                  List.filter_map ~f:(dgeneric_value span) of_trait_generics );
               items = List.map ~f:dimpl_item items;
             }
   end

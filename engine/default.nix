@@ -1,4 +1,4 @@
-{ocamlPackages, fetchzip, hax-rust-frontend, rustc, nodejs, closurecompiler, gnused, lib}:
+{ocamlPackages, fetchzip, hax-rust-frontend, rustc, nodejs, jq, closurecompiler, gnused, lib}:
 let
   non_empty_list = 
     ocamlPackages.buildDunePackage rec {
@@ -34,7 +34,7 @@ let
     pname = "hax-engine";
     version = "0.0.1";
     duneVersion = "3";
-    src = lib.sourceFilesBySuffices ./. [ ".ml" ".mli" ".js" "dune" "dune-project" ];
+    src = lib.sourceFilesBySuffices ./. [ ".ml" ".mli" ".js" "dune" "dune-project" "sh" "rs" ];
     buildInputs = with ocamlPackages; [
       zarith_stubs_js
       base
@@ -50,6 +50,7 @@ let
     nativeBuildInputs = [
       rustc hax-rust-frontend nodejs
       ocamlPackages.js_of_ocaml-compiler
+      jq
     ];
     strictDeps = true;
     passthru = {

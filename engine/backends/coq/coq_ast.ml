@@ -46,6 +46,7 @@ functor
         | Ident of string
         | Lit of literal
         | RecordPat of string * (string * pat) list
+        | ConstructorPat of string * pat list
         | TuplePat of pat list
         | AscriptionPat of pat * ty
 
@@ -66,6 +67,7 @@ functor
         | Tuple of term list
         | Array of term list
 
+      (* TODO: I don't get why you've got InductiveCase VS BaseCase. Why not an inductive case (i.e. a variant, right?) is a name + a list of types? *)
       type inductive_case = InductiveCase of string * ty | BaseCase of string
       type definition_type = string * (pat * ty) list * term * ty
       type generics_type = string list
@@ -168,6 +170,9 @@ functor
       | AST.UnitPat -> tick_if is_top_expr ^ "tt"
       | AST.Ident s -> s
       | AST.Lit l -> literal_to_string l
+      | AST.ConstructorPat (name, args) ->
+          name ^ " " ^ String.concat ~sep:" "
+          @@ List.map ~f:(fun pat -> pat_to_string pat true depth) args
       | AST.RecordPat (name, args) ->
           (* name ^ " " ^ *)
           "{|"
@@ -366,7 +371,7 @@ functor
               name_generics
           in
           let _, args_str =
-            if List.length generics == 0 then ([], "")
+            if List.is_empty generics then ([], "")
             else
               inductive_case_args_to_string variants
                 (newline_indent 0 ^ "Arguments" ^ " ")

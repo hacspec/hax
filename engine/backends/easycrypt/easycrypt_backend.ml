@@ -20,8 +20,13 @@ include
       let backend = Diagnostics.Backend.EasyCrypt
     end)
 
+let apply_phases _ = failwith "xx"
+let translate _ = failwith "xx"
+
+module BackendOptions = Backend.UnitBackendOptions
 module AST = Ast.Make (InputLanguage)
 module U = Ast_utils.Make (InputLanguage)
+open AST
 
 module RejectNotEC (FA : Features.T) = struct
   module FB = InputLanguage
@@ -61,9 +66,6 @@ module RejectNotEC (FA : Features.T) = struct
       end)
 end
 
-module BackendOptions = Backend.UnitBackendOptions
-open AST
-
 type nmtree = { subnms : (string, nmtree) Map.Poly.t; items : AST.item list }
 
 module NM = struct
@@ -81,12 +83,12 @@ module NM = struct
 
         { the with subnms = Map.Poly.update ~f:update the.subnms name }
 
-  let push_using_namespace (the : nmtree) (nm : Ast.Namespace.t)
+  let push_using_namespace (the : nmtree) (nm : string * string list)
       (item : AST.item) =
     push_using_longname the (List.rev (fst nm :: snd nm)) item
 
   let push (the : nmtree) (item : AST.item) =
-    push_using_namespace the item.parent_namespace item
+    push_using_namespace the (Concrete_ident.to_namespace item.ident) item
 end
 
 let suffix_of_size (size : Ast.size) =
@@ -119,9 +121,9 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) : Types.file list
       the.items
       |> List.iter ~f:(fun item ->
              match item.v with
-             | Fn { name = `Concrete { path }; generics; body; params }
+             | Fn { name; generics; body; params }
                when List.is_empty generics.params ->
-                 let name = Non_empty_list.last path in
+                 let name = Concrete_ident.to_definition_name name in
 
                  doit_fn fmt (name, params, body)
              | Fn _ -> assert false
@@ -150,22 +152,23 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) : Types.file list
          ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
          pp_param)
       params doit_stmt body
-  and doit_path (fmt : Format.formatter) (p : string Non_empty_list.t) =
-    Format.fprintf fmt "%s" (Non_empty_list.last p)
+  and doit_concrete_ident (fmt : Format.formatter) (p : Concrete_ident.t) =
+    Format.fprintf fmt "%s" (Concrete_ident.to_definition_name p)
   and doit_type (fmt : Format.formatter) (typ : ty) =
     match typ with
     | TBool -> assert false
     | TChar -> assert false
     | TInt kind -> Format.fprintf fmt "%s.t" (intmodule_of_kind kind)
-    | TFloat -> assert false
+    | TFloat _ -> assert false
     | TStr -> assert false
-    | TApp { ident = `Concrete { path }; args = [] } -> doit_path fmt path
-    | TApp { ident = `Concrete { path }; args } ->
+    | TApp { ident = `Concrete ident; args = [] } ->
+        doit_concrete_ident fmt ident
+    | TApp { ident = `Concrete ident; args } ->
         Format.fprintf fmt "(%a) %a"
           (Format.pp_print_list
              ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
              doit_type_arg)
-          args doit_path path
+          args doit_concrete_ident ident
     | TApp _ -> assert false
     | TArray _ -> assert false
     | TSlice _ -> assert false
@@ -251,52 +254,33 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) : Types.file list
   and doit_expr (fmt : Format.formatter) (expr : expr) =
     match expr.e with
     | If _ -> assert false
-    | App { f = { e = GlobalVar (`Concrete { crate; path }) }; args = [ a; i ] }
-      when List.equal String.equal
-             (crate :: Non_empty_list.to_list path)
-             [ "core"; "ops"; "index"; "Index"; "index" ] ->
+    | App { f = { e = GlobalVar ident }; args = [ a; i ] }
+      when Ast.Global_ident.eq_name Core__ops__index__Index__index ident ->
         Format.fprintf fmt "(%a).[%a]" doit_expr a doit_expr i
-    | App
-        {
-          f =
-            {
-              e =
-                GlobalVar
-                  (`Concrete
-                    {
-                      crate = "core";
-                      path =
-                        "ops"
-                        :: ( [ "bit"; "BitXor"; "bitxor" ]
-                           | [ "bit"; "BitAnd"; "bitand" ]
-                           | [ "bit"; "BitOr"; "bitor" ]
-                           | [ "arith"; "Add"; "add" ]
-                           | [ "arith"; "Mul"; "mul" ] ) as path;
-                    });
-            };
-          args = [ e1; e2 ];
-        } ->
+    | App { f = { e = GlobalVar (`Concrete op); _ }; args = [ e1; e2 ] }
+      when Concrete_ident.(
+             eq_name Core__ops__bit__BitXor__bitxor op
+             || eq_name Core__ops__bit__BitAnd__bitand op
+             || eq_name Core__ops__bit__BitOr__bitor op
+             || eq_name Core__ops__arith__Add__add op
+             || eq_name Core__ops__arith__Mul__mul op
+             || eq_name Core__cmp__PartialEq__ne op
+             || eq_name Core__cmp__PartialEq__eq op) ->
         Format.fprintf fmt "(%a) %s (%a)" doit_expr e1
-          (match Non_empty_list.last path with
+          (match Concrete_ident.to_definition_name op with
           | "bitxor" -> "^"
           | "bitand" -> "&"
           | "bitor" -> "|"
           | "add" -> "+"
           | "mul" -> "*"
+          | "eq" -> "="
+          | "ne" -> "<>"
           | _ -> assert false)
           doit_expr e2
-    | App
-        {
-          f = { e = GlobalVar (`Primitive (BinOp ((Eq | Ne) as op))) };
-          args = [ e1; e2 ];
-        } ->
-        Format.fprintf fmt "(%a) %s (%a)" doit_expr e1
-          (match op with Eq -> "=" | Ne -> "<>" | _ -> assert false)
-          doit_expr e2
-    | App { f = { e = GlobalVar (`Concrete { path }) }; args = [] } ->
-        Format.fprintf fmt "%a" doit_path path
-    | App { f = { e = GlobalVar (`Concrete { path }) }; args } ->
-        Format.fprintf fmt "%a %a" doit_path path
+    | App { f = { e = GlobalVar (`Concrete ident) }; args = [] } ->
+        Format.fprintf fmt "%a" doit_concrete_ident ident
+    | App { f = { e = GlobalVar (`Concrete ident) }; args } ->
+        Format.fprintf fmt "%a %a" doit_concrete_ident ident
           (Format.pp_print_list
              ~pp_sep:(fun fmt () -> Format.fprintf fmt " ")
              (fun fmt e -> Format.fprintf fmt "(%a)" doit_expr e))
@@ -311,12 +295,13 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) : Types.file list
     | Array _ -> assert false
     | Construct
         {
-          constructor = `Concrete { path };
-          constructs_record = false;
+          constructor = `Concrete ident;
+          is_record = false;
+          is_struct = false;
           base = None;
           fields = args;
         } ->
-        Format.eprintf "%a." doit_path path
+        Format.eprintf "%a." doit_concrete_ident ident
     | Construct _ -> assert false
     | Match _ -> assert false
     | Let _ -> assert false
@@ -344,8 +329,7 @@ let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
     =
   try translate' bo items
   with Assert_failure (file, line, col) ->
-    Diagnostics.failure ~context:(Backend FStar)
-      ~span:(Dummy { id = -1 })
+    Diagnostics.failure ~context:(Backend FStar) ~span:(Span.dummy ())
       (AssertionFailure
          {
            details =

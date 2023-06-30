@@ -1,31 +1,6 @@
 open Hax_engine
 open Base
 
-let renamed_identifiers lvl = function
-  | `Concrete Ast.{ crate = "hacspec_lib"; path } ->
-      let last_chunk =
-        match Non_empty_list.last path with
-        | "U128_from_le_bytes" -> "uint128_from_le_bytes"
-        | "new" -> "new_seq"
-        | "ZERO" -> "zero"
-        | last -> last
-      in
-      `Concrete
-        Ast.{ crate = "hacspec_lib_tc"; path = Non_empty_list.[ last_chunk ] }
-  | `Concrete
-      Ast.
-        {
-          crate = "secret_integers";
-          path = Non_empty_list.[ ("U128" | "U32" | "U8") ];
-        }
-    when [%matches? Ast_utils.ExprLevel] lvl ->
-      `Concrete
-        Ast.{ crate = "hacspec_lib_tc"; path = Non_empty_list.[ "secret" ] }
-  | `Concrete Ast.{ crate = "dummy"; path } ->
-      `Concrete
-        Ast.{ crate = "hacspec"; path = Non_empty_list.[ "lib"; last path ] }
-  | x -> x
-
 let read_options_from_stdin () : Types.engine_options =
   In_channel.input_all In_channel.stdin
   |> Yojson.Safe.from_string |> Types.parse_engine_options
@@ -54,7 +29,6 @@ let run () : Types.output =
              |> Result.ok_or_failwith
            with Failure e -> failwith e)
     |> List.concat_map ~f:(apply_phases backend_options)
-    |> List.map ~f:(U.Mappers.rename_global_idents_item renamed_identifiers)
     |> translate backend_options
   in
   let diagnostics, files =

@@ -17,10 +17,29 @@ pub trait BaseState<'tcx> = HasTcx<'tcx>
     + HasExportedSpans;
 // + std::fmt::Debug;
 
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'a, S: BaseState<'a>>, from: rustc_hir::definitions::DisambiguatedDefPathData, state: S as s)]
+pub struct DisambiguatedDefPathItem {
+    pub data: DefPathItem,
+    pub disambiguator: u32,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct DefId {
     pub krate: String,
-    pub path: Vec<DefPathItem>,
+    pub path: Vec<DisambiguatedDefPathItem>,
+}
+
+impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
+    fn sinto(&self, s: &S) -> DefId {
+        let tcx = s.tcx();
+        let def_path = tcx.def_path(self.clone());
+        let krate = tcx.crate_name(def_path.krate);
+        DefId {
+            path: def_path.data.iter().map(|x| x.sinto(s)).collect(),
+            krate: format!("{}", krate),
+        }
+    }
 }
 
 pub type Path = Vec<String>; // x::y::z, TODO
@@ -71,7 +90,7 @@ Meta-information:
 impl std::convert::From<DefId> for Path {
     fn from(v: DefId) -> Vec<String> {
         std::iter::once(v.krate)
-            .chain(v.path.into_iter().filter_map(|item| match item {
+            .chain(v.path.into_iter().filter_map(|item| match item.data {
                 DefPathItem::TypeNs(s)
                 | DefPathItem::ValueNs(s)
                 | DefPathItem::MacroNs(s)
@@ -79,18 +98,6 @@ impl std::convert::From<DefId> for Path {
                 _ => None,
             }))
             .collect()
-    }
-}
-
-impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
-    fn sinto(&self, s: &S) -> DefId {
-        let tcx = s.tcx();
-        let def_path = tcx.def_path(self.clone());
-        let krate = tcx.crate_name(def_path.krate);
-        DefId {
-            path: def_path.data.iter().map(|x| x.data.sinto(s)).collect(),
-            krate: format!("{}", krate),
-        }
     }
 }
 
@@ -259,6 +266,22 @@ impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, ConstantKind>
             _ => ConstantKind::Todo(format!("{:#?}", self)),
         }
     }
+}
+
+impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, TypedConstantKind>
+    for rustc_middle::mir::ConstantKind<'tcx>
+{
+    fn sinto(&self, s: &S) -> TypedConstantKind {
+        TypedConstantKind {
+            typ: self.ty().sinto(s),
+            constant_kind: self.sinto(s),
+        }
+    }
+}
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct TypedConstantKind {
+    typ: Ty,
+    constant_kind: ConstantKind,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -1940,29 +1963,26 @@ pub enum RangeEnd {
 #[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::PatRange<'tcx>, state: S as state)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct PatRange {
-    pub lo: ConstantKind,
-    pub hi: ConstantKind,
+    pub lo: TypedConstantKind,
+    pub hi: TypedConstantKind,
     pub end: RangeEnd,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct VariantInformations {
-    constructs_record: bool, // Is a *non-tuple* struct
-    constructs_type: DefId,
     type_namespace: DefId,
-    variant: DefId,
-}
 
-trait IsRecord {
-    fn is_record(&self) -> bool;
-}
-impl<'tcx> IsRecord for rustc_middle::ty::AdtDef<'tcx> {
-    fn is_record(&self) -> bool {
-        self.is_struct()
-            && self
-                .all_fields()
-                .all(|field| field.name.to_ident_string().parse::<u64>().is_err())
-    }
+    typ: DefId,
+    variant: DefId,
+
+    // A record type is a type with only one variant which is a record variant.
+    typ_is_record: bool,
+    // A record variant is a variant whose fields are named, a record
+    // variant always has at least one field.
+    variant_is_record: bool,
+    // A struct is a type with exactly one variant. Note that one
+    // variant is named exactly as the type.
+    typ_is_struct: bool,
 }
 
 fn get_variant_information<'s, S: BaseState<'s>>(
@@ -1970,11 +1990,26 @@ fn get_variant_information<'s, S: BaseState<'s>>(
     variant: &rustc_hir::def_id::DefId,
     s: &S,
 ) -> VariantInformations {
+    fn is_record<'s, I: std::iter::Iterator<Item = &'s rustc_middle::ty::FieldDef> + Clone>(
+        it: I,
+    ) -> bool {
+        it.clone()
+            .any(|field| !field.name.to_ident_string().parse::<u64>().is_ok())
+    }
+    let variant_def = adt_def
+        .variants()
+        .into_iter()
+        .find(|v| v.def_id == variant.clone())
+        .unwrap();
     let constructs_type = adt_def.did().sinto(s);
     VariantInformations {
-        constructs_record: adt_def.is_record(),
-        constructs_type: constructs_type.clone(),
+        typ: constructs_type.clone(),
         variant: variant.sinto(s),
+
+        typ_is_record: adt_def.is_struct() && is_record(adt_def.all_fields()),
+        variant_is_record: is_record(variant_def.fields.iter()),
+        typ_is_struct: adt_def.is_struct(),
+
         type_namespace: DefId {
             path: match constructs_type.path.as_slice() {
                 [init @ .., _] => init.to_vec(),
@@ -2083,7 +2118,7 @@ pub enum PatKind {
     /// * Opaque constants, that must not be matched structurally. So anything that does not derive
     ///   `PartialEq` and `Eq`.
     Constant {
-        value: ConstantKind,
+        value: TypedConstantKind,
     },
 
     Range(PatRange),
