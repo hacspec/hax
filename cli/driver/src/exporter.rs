@@ -1,6 +1,7 @@
 use hax_cli_options::{PathOrDash, ENV_VAR_OPTIONS_FRONTEND};
 use hax_frontend_exporter;
 use hax_frontend_exporter::types::{ExportedSpans, LocalContextS};
+use hax_frontend_exporter::SInto;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::interface;
 use rustc_interface::{interface::Compiler, Queries};
@@ -16,6 +17,60 @@ use serde::Serialize;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+
+fn report_diagnostics(
+    output: &hax_cli_options_engine::Output,
+    session: &rustc_session::Session,
+    spans: &Vec<(rustc_span::Span, hax_frontend_exporter::Span)>,
+) {
+    for d in &output.diagnostics {
+        use hax_diagnostics::*;
+        let mut relevant_spans: Vec<_> = spans
+            .iter()
+            .filter(|(_, span)| span == &d.span)
+            .map(|(span, _)| span)
+            .cloned()
+            .collect();
+        relevant_spans.sort();
+        session.span_hax_err(
+            d.set_span(
+                relevant_spans
+                    .first()
+                    .cloned()
+                    .unwrap_or(rustc_span::DUMMY_SP),
+            ),
+        );
+    }
+}
+
+fn write_files(
+    output: &hax_cli_options_engine::Output,
+    session: &rustc_session::Session,
+    backend: hax_cli_options::Backend,
+) {
+    let pkg_name = std::env::var("CARGO_PKG_NAME").unwrap();
+    let metadata = cargo_metadata::MetadataCommand::new().exec().unwrap();
+    let package = metadata
+        .packages
+        .iter()
+        .find(|pkg| pkg.name == pkg_name)
+        .unwrap();
+    let manifest_path = std::path::Path::new(&package.manifest_path);
+    let relative_path: std::path::PathBuf =
+        ["proofs", format!("{backend}").as_str(), "extraction"].iter().collect();
+    let out_dir = manifest_path.parent().unwrap().join(&relative_path);
+    for file in output.files.clone() {
+        let path = out_dir.join(&file.path);
+        std::fs::create_dir_all(&path.parent().unwrap()).unwrap();
+        session.note_without_error(format!("Writing file {:#?}", path));
+        std::fs::write(&path, file.contents).unwrap_or_else(|e| {
+            session.fatal(format!(
+                "Unable to write to file {:#?}. Error: {:#?}",
+                path, e
+            ))
+        })
+    }
+}
 
 /// Browse a crate and translate every item from HIR+THIR to "THIR'"
 /// (I call "THIR'" the AST described in this crate)
@@ -302,56 +357,18 @@ impl Callbacks for ExtractionCallbacks {
                         cached_thirs: HashMap::new(),
                         exported_spans: Rc::new(RefCell::new(HashSet::new())),
                     };
-                    for d in output.diagnostics {
-                        use hax_diagnostics::*;
-                        use hax_frontend_exporter::SInto;
-                        let mut relevant_spans: Vec<_> = spans
-                            .iter()
-                            .filter(|span| span.sinto(&state) == d.span)
-                            .cloned()
-                            .collect();
-                        relevant_spans.sort();
-                        session.span_hax_err(
-                            d.set_span(
-                                relevant_spans
-                                    .first()
-                                    .cloned()
-                                    .unwrap_or(rustc_span::DUMMY_SP),
-                            ),
-                        );
-                    }
+                    report_diagnostics(
+                        &output,
+                        &session,
+                        &spans
+                            .into_iter()
+                            .map(|span| (span.clone(), span.sinto(&state)))
+                            .collect(),
+                    );
                     if backend.dry_run {
                         serde_json::to_writer(std::io::stdout(), &output.files).unwrap();
                     } else {
-                        let metadata = cargo_metadata::MetadataCommand::new().exec().unwrap();
-                        let crate_name = std::env::var("CARGO_PKG_NAME").unwrap();
-                        let package = metadata
-                            .packages
-                            .iter()
-                            .find(|pkg| pkg.name == crate_name)
-                            .unwrap();
-                        let manifest_path = package.manifest_path.clone();
-                        let relative_path: cargo_metadata::camino::Utf8PathBuf =
-                            ["proofs", format!("{}", backend.backend).as_str(), "extraction"]
-                                .iter()
-                                .collect();
-                        let output_dir = manifest_path.parent().unwrap().join(relative_path);
-                        for file in output.files.clone() {
-                            let path = output_dir.join(file.path);
-                            std::fs::create_dir_all({
-                                let mut parent = path.clone();
-                                parent.pop();
-                                parent
-                            })
-                            .unwrap();
-                            session.note_without_error(format!("Writing file {:#?}", path));
-                            std::fs::write(&path, file.contents).unwrap_or_else(|e| {
-                                session.fatal(format!(
-                                    "Unable to write to file {:#?}. Error: {:#?}",
-                                    path, e
-                                ))
-                            })
-                        }
+                        write_files(&output, &session, backend.backend);
                     }
                 }
             };
