@@ -46,6 +46,70 @@ struct
       }
       [@@deriving show]
 
+      let extract_loop_body (e : expr) =
+        match e.e with
+        | Match
+            {
+              scrutinee =
+                {
+                  e =
+                    App
+                      {
+                        f = { e = GlobalVar (`Concrete next) };
+                        args =
+                          [
+                            {
+                              e =
+                                Borrow { kind = Mut _; e = { e = LocalVar v } };
+                            };
+                          ];
+                      };
+                };
+              arms =
+                [
+                  {
+                    arm =
+                      {
+                        arm_pat =
+                          {
+                            p =
+                              PConstruct { name = `Concrete none; args = []; _ };
+                          };
+                        body =
+                          { e = Break { e = { e = GlobalVar (`TupleCons 0) } } };
+                      };
+                  };
+                  {
+                    arm =
+                      {
+                        arm_pat =
+                          {
+                            p =
+                              PConstruct
+                                { name = `Concrete some; args = [ { pat } ]; _ };
+                          };
+                        body =
+                          ( {
+                              e =
+                                Let
+                                  {
+                                    lhs = { p = PWild };
+                                    rhs = body;
+                                    body = { e = GlobalVar (`TupleCons 0) };
+                                  };
+                            }
+                          | body );
+                      };
+                  };
+                ];
+            }
+          when Concrete_ident.eq_name
+                 Core__iter__traits__iterator__Iterator__next next
+               && Concrete_ident.eq_name Core__option__Option__None none
+               && Concrete_ident.eq_name Core__option__Option__Some some ->
+            Some (v, pat, body)
+        | _ -> None
+
       let extract (e : expr) : t option =
         let e = UA.Mappers.normalize_borrow_mut#visit_expr () e in
         match e.e with
@@ -78,147 +142,30 @@ struct
                                   state;
                                   witness;
                                   body =
-                                    {
-                                      e =
-                                        Let
-                                          {
-                                            monadic = None;
-                                            lhs = { p = PWild };
-                                            rhs =
-                                              {
-                                                e =
-                                                  Match
-                                                    {
-                                                      scrutinee =
-                                                        {
-                                                          e =
-                                                            App
-                                                              {
-                                                                f =
-                                                                  {
-                                                                    e =
-                                                                      GlobalVar
-                                                                        (`Concrete
-                                                                          next_meth);
-                                                                  };
-                                                                args =
-                                                                  [
-                                                                    {
-                                                                      e =
-                                                                        Borrow
-                                                                          {
-                                                                            kind =
-                                                                              Mut
-                                                                                _;
-                                                                            e =
-                                                                              {
-                                                                                e =
-                                                                                LocalVar
-                                                                                next_iter_variable;
-                                                                              };
-                                                                          };
-                                                                    };
-                                                                  ];
-                                                              };
-                                                        };
-                                                      arms =
-                                                        [
-                                                          {
-                                                            arm =
-                                                              {
-                                                                arm_pat =
-                                                                  {
-                                                                    p =
-                                                                      PConstruct
-                                                                        {
-                                                                          name =
-                                                                            `Concrete
-                                                                              none_ctor;
-                                                                          args =
-                                                                            [];
-                                                                          _;
-                                                                        };
-                                                                  };
-                                                                body =
-                                                                  {
-                                                                    e =
-                                                                      Break
-                                                                        {
-                                                                          e =
-                                                                            {
-                                                                              e =
-                                                                                GlobalVar
-                                                                                (`TupleCons
-                                                                                0);
-                                                                            };
-                                                                        };
-                                                                  };
-                                                              };
-                                                          };
-                                                          {
-                                                            arm =
-                                                              {
-                                                                arm_pat =
-                                                                  {
-                                                                    p =
-                                                                      PConstruct
-                                                                        {
-                                                                          name =
-                                                                            `Concrete
-                                                                              some_ctor;
-                                                                          args =
-                                                                            [
-                                                                              {
-                                                                                pat;
-                                                                              };
-                                                                            ];
-                                                                          _;
-                                                                        };
-                                                                  };
-                                                                body =
-                                                                  ( {
-                                                                      e =
-                                                                        Let
-                                                                          {
-                                                                            lhs =
-                                                                              {
-                                                                                p =
-                                                                                PWild;
-                                                                              };
-                                                                            rhs =
-                                                                              body;
-                                                                            body =
-                                                                              {
-                                                                                e =
-                                                                                GlobalVar
-                                                                                (`TupleCons
-                                                                                0);
-                                                                              };
-                                                                          };
-                                                                    }
-                                                                  | body );
-                                                              };
-                                                          };
-                                                        ];
-                                                    };
-                                              };
-                                            body =
-                                              { e = GlobalVar (`TupleCons 0) };
-                                          };
-                                    };
+                                    ( {
+                                        e =
+                                          Let
+                                            {
+                                              monadic = None;
+                                              lhs = { p = PWild };
+                                              rhs = loop_body;
+                                              body =
+                                                { e = GlobalVar (`TupleCons 0) };
+                                            };
+                                      }
+                                    | loop_body );
                                   _;
                                 };
                           };
                       };
                   };
                 ];
-            }
-          when [%eq: local_ident] iter_variable next_iter_variable
-               && Concrete_ident.eq_name
-                    Core__iter__traits__iterator__Iterator__next next_meth
-               && Concrete_ident.eq_name Core__option__Option__None none_ctor
-               && Concrete_ident.eq_name Core__option__Option__Some some_ctor ->
-            Some { it; pat; body; state; label; witness }
+            } -> (
+            match extract_loop_body loop_body with
+            | Some (next_iter_variable, pat, body)
+              when [%eq: local_ident] iter_variable next_iter_variable ->
+                Some { it; pat; body; state; label; witness }
+            | _ -> None)
         | _ -> None
                [@ocamlformat "disable"]
     end
