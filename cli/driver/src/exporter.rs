@@ -56,8 +56,9 @@ fn write_files(
         .find(|pkg| pkg.name == pkg_name)
         .unwrap();
     let manifest_path = std::path::Path::new(&package.manifest_path);
-    let relative_path: std::path::PathBuf =
-        ["proofs", format!("{backend}").as_str(), "extraction"].iter().collect();
+    let relative_path: std::path::PathBuf = ["proofs", format!("{backend}").as_str(), "extraction"]
+        .iter()
+        .collect();
     let out_dir = manifest_path.parent().unwrap().join(&relative_path);
     for file in output.files.clone() {
         let path = out_dir.join(&file.path);
