@@ -3,7 +3,7 @@ open Utils
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
 module FreshId = struct
-  let current = ref 0
+  let current = ref 1
 
   let make () =
     let id = !current in
@@ -11,70 +11,111 @@ module FreshId = struct
     id
 end
 
-type loc = { col : int; line : int }
-[@@deriving show, yojson, sexp, compare, eq]
+module Imported = struct
+  type span = { filename : file_name; hi : loc; lo : loc }
+  and loc = { col : int; line : int }
 
-type t =
-  | Span of { file : string; hi : loc; lo : loc; id : int }
-  | Dummy of { id : int }
-[@@deriving show, yojson, sexp, compare, eq]
+  and file_name =
+    | Real of real_file_name
+    | QuoteExpansion of int
+    | Anon of int
+    | MacroExpansion of int
+    | ProcMacroSourceCode of int
+    | CfgSpec of int
+    | CliCrateAttr of int
+    | Custom of string
+    | DocTest of string
+    | InlineAsm of int
 
-let display_loc (l : loc) : string =
-  Int.to_string l.col ^ ":" ^ Int.to_string l.line
+  and real_file_name =
+    | LocalPath of string
+    | Remapped of { local_path : string option; virtual_name : string }
+  [@@deriving show, yojson, sexp, compare, eq, hash]
 
-let display_span (s : t) : string =
-  match s with
-  | Dummy _ -> "<dummy>"
-  | Span s ->
-      "<" ^ s.file ^ " " ^ display_loc s.lo ^ "→" ^ display_loc s.hi ^ ">"
+  let file_name_of_thir : Types.file_name -> file_name = function
+    | Real x ->
+        Real
+          (match x with
+          | LocalPath x -> LocalPath x
+          | Remapped { local_path; virtual_name } ->
+              Remapped { local_path; virtual_name })
+    | QuoteExpansion x -> QuoteExpansion x
+    | Anon x -> Anon x
+    | MacroExpansion x -> MacroExpansion x
+    | ProcMacroSourceCode x -> ProcMacroSourceCode x
+    | CfgSpec x -> CfgSpec x
+    | CliCrateAttr x -> CliCrateAttr x
+    | Custom x -> Custom x
+    | DocTest x -> DocTest x
+    | InlineAsm x -> InlineAsm x
 
-let show (_s : t) : string = "<span>"
+  let loc_of_thir ({ col; line } : Types.loc) : loc = { col; line }
 
-let pp (fmt : Caml.Format.formatter) (s : t) : unit =
-  Caml.Format.pp_print_string fmt @@ show s
-
-let union (x : t) (y : t) : t =
-  match (x, y) with
-  | Dummy _, _ | _, Dummy _ -> Dummy { id = FreshId.make () }
-  | Span x, Span y when String.(x.file <> y.file) ->
-      failwith "TODO error: Bad span union"
-  | Span { file; lo; _ }, Span { hi; _ } ->
-      Span { file; lo; hi; id = FreshId.make () }
-
-let dummy () = Dummy { id = FreshId.make () }
-let default = Dummy { id = 0 }
-
-let union_list : t list -> t =
-  List.reduce ~f:union >> Option.value_or_thunk ~default:dummy
-
-let of_thir_loc (loc : Types.loc) : loc = { col = loc.col; line = loc.line }
-
-let of_thir (span : Types.span) : t =
-  Span
+  let span_of_thir (s : Types.span) : span =
     {
-      lo = of_thir_loc span.lo;
-      hi = of_thir_loc span.hi;
-      file =
-        (match span.filename with Real (LocalPath path) -> path | _ -> "?");
-      id = FreshId.make ();
+      filename = file_name_of_thir s.filename;
+      hi = loc_of_thir s.hi;
+      lo = loc_of_thir s.lo;
     }
 
-let to_thir_loc ({ col; line } : loc) : Types.loc = { col; line }
+  let file_name_to_thir : file_name -> Types.file_name = function
+    | Real x ->
+        Real
+          (match x with
+          | LocalPath x -> LocalPath x
+          | Remapped { local_path; virtual_name } ->
+              Remapped { local_path; virtual_name })
+    | QuoteExpansion x -> QuoteExpansion x
+    | Anon x -> Anon x
+    | MacroExpansion x -> MacroExpansion x
+    | ProcMacroSourceCode x -> ProcMacroSourceCode x
+    | CfgSpec x -> CfgSpec x
+    | CliCrateAttr x -> CliCrateAttr x
+    | Custom x -> Custom x
+    | DocTest x -> DocTest x
+    | InlineAsm x -> InlineAsm x
 
-let to_thir (s : t) : Types.span =
-  match s with
-  | Dummy _ ->
-      let hi : Types.loc = { col = 0; line = 0 } in
-      { filename = Custom "DUNMMY"; hi; lo = hi }
-  | Span { file; hi; lo; _ } ->
-      {
-        filename = Real (LocalPath file);
-        hi = to_thir_loc hi;
-        lo = to_thir_loc lo;
-      }
+  let loc_to_thir ({ col; line } : loc) : Types.loc = { col; line }
 
-let id_of = function Span { id; _ } | Dummy { id } -> id
+  let span_to_thir (s : span) : Types.span =
+    {
+      filename = file_name_to_thir s.filename;
+      hi = loc_to_thir s.hi;
+      lo = loc_to_thir s.lo;
+    }
 
-let refresh_id span =
-  let id = FreshId.make () in
-  match span with Dummy _ -> Dummy { id } | Span s -> Span { s with id }
+  let display_loc (l : loc) : string =
+    Int.to_string l.col ^ ":" ^ Int.to_string l.line
+
+  let display_span (s : span) : string =
+    let file =
+      match s.filename with
+      | Real (LocalPath path) -> path
+      | s -> [%show: file_name] s
+    in
+    "<" ^ file ^ " " ^ display_loc s.lo ^ "→" ^ display_loc s.hi ^ ">"
+end
+
+type t = { id : int; data : Imported.span list }
+[@@deriving show, yojson, sexp, compare, eq, hash]
+
+let display { id; data } =
+  match data with
+  | [] -> "<dummy>"
+  | [ span ] -> Imported.display_span span
+  | spans -> List.map ~f:Imported.display_span spans |> String.concat ~sep:"∪"
+
+let of_thir span =
+  { data = [ Imported.span_of_thir span ]; id = FreshId.make () }
+
+let to_thir { data; _ } = List.map ~f:Imported.span_to_thir data
+
+let union_list spans =
+  let data = List.concat_map ~f:(fun { data; _ } -> data) spans in
+  { data; id = FreshId.make () }
+
+let union x y = union_list [ x; y ]
+let dummy () = { id = FreshId.make (); data = [] }
+let id_of { id; _ } = id
+let refresh_id span = { span with id = FreshId.make () }
+let default = { id = 0; data = [] }

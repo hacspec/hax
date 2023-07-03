@@ -21,25 +21,11 @@ use std::rc::Rc;
 fn report_diagnostics(
     output: &hax_cli_options_engine::Output,
     session: &rustc_session::Session,
-    spans: &Vec<(rustc_span::Span, hax_frontend_exporter::Span)>,
+    mapping: &Vec<(hax_frontend_exporter::Span, rustc_span::Span)>,
 ) {
     for d in &output.diagnostics {
         use hax_diagnostics::*;
-        let mut relevant_spans: Vec<_> = spans
-            .iter()
-            .filter(|(_, span)| span == &d.span)
-            .map(|(span, _)| span)
-            .cloned()
-            .collect();
-        relevant_spans.sort();
-        session.span_hax_err(
-            d.set_span(
-                relevant_spans
-                    .first()
-                    .cloned()
-                    .unwrap_or(rustc_span::DUMMY_SP),
-            ),
-        );
+        session.span_hax_err(d.convert(mapping).into());
     }
 }
 
@@ -363,7 +349,7 @@ impl Callbacks for ExtractionCallbacks {
                         &session,
                         &spans
                             .into_iter()
-                            .map(|span| (span.clone(), span.sinto(&state)))
+                            .map(|span| (span.sinto(&state), span.clone()))
                             .collect(),
                     );
                     if backend.dry_run {

@@ -68,7 +68,7 @@ module Raw = struct
     pure span
     @@
     match e with
-    | String s -> "\"" ^ s ^ "\""
+    | String s -> "\"" ^ String.escaped s ^ "\""
     | Char c -> "'" ^ Char.to_string c ^ "'"
     | Int { value; _ } -> value
     | Float { value; kind = F32 } -> value ^ "f32"
