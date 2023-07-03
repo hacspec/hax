@@ -22,10 +22,9 @@ function findNode(o, search){
     let h = o => o instanceof Object ? (search(o) ? o : Object.values(o).map(h).find(x => x)) : null;
     return h(o);
 }
-let is_span = o => o instanceof Array &&
-    o[0] === "Span" &&
-    o[1] instanceof Object && "hi" in o[1] && "lo" in o[1];
-let spanned = span_id => o => Object.values(o).some(o => is_span(o) && o[1]["id"] === span_id);
+let is_span = o => o instanceof Object && "data" in o && "id" in o;
+
+let spanned = span_id => o  => Object.values(o).some(o => is_span(o) && o["id"] === span_id);
 
 let rewrite = f => o => f(
     o instanceof Array
@@ -33,12 +32,16 @@ let rewrite = f => o => f(
         : (o instanceof Object ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, rewrite(f)(v)])) : o)
 );
 let loc_to_string = ({col, line}) => `${col}:${line}`;
-let span_to_string = ({file, lo, hi}) => `<${file} ${loc_to_string(lo)}→${loc_to_string(hi)}>`;
+let filename_to_string = name =>
+    ((name instanceof Array && name[0] == 'Real' && name[1]?.[0] =='LocalPath') ?
+     name?.[1]?.[1] : null) || JSON.stringify(name);
+let span_data_to_string = ({filename, lo, hi}) => `<${filename_to_string(filename)} ${loc_to_string(lo)}→${loc_to_string(hi)}>`;
+let span_to_string = ({id, data}) => data.length ? data.map(span_data_to_string).join('∪') : '<dummy>';
 let clean = rewrite(o => {
     if(!(o instanceof Object))
         return o;
     if (is_span(o))
-        return span_to_string(o[1]);
+        return span_to_string(o);
     return o;
 });
 
@@ -217,7 +220,7 @@ async function phases_viewer(state = {index: 0, ast_focus: null, seed: SEED}) {
             let [len, id, s] = mappings.pop();
             let text = node.textContent;
             if (len > text.length) {
-                mapping.push([len - text.length, id, s.slice(text.length)]);
+                mappings.push([len - text.length, id, s.slice(text.length)]);
             } else if (len < text.length) {
                 let after = node.cloneNode();
                 let left = text.slice(0, len);

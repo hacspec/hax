@@ -3,12 +3,12 @@ open Utils
 open Base
 open Diagnostics
 
-let assertion_failure (span : Thir.span) (details : string) =
+let assertion_failure (span : Thir.span list) (details : string) =
   let kind = T.AssertionFailure { details } in
   report { span; kind; context = ThirImport };
   raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
 
-let unimplemented ?issue_id (span : Thir.span) (details : string) =
+let unimplemented ?issue_id (span : Thir.span list) (details : string) =
   let kind =
     T.Unimplemented
       {
@@ -19,12 +19,12 @@ let unimplemented ?issue_id (span : Thir.span) (details : string) =
   report { span; kind; context = ThirImport };
   raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
 
-let unsafe_block (span : Thir.span) =
+let unsafe_block (span : Thir.span list) =
   let kind = T.UnsafeBlock in
   report { span; kind; context = ThirImport };
   raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
 
-let todo (span : Thir.span) = unimplemented span "TODO"
+let todo (span : Thir.span) = unimplemented [ span ] "TODO"
 
 module Ast = struct
   include Ast
@@ -81,7 +81,7 @@ module Exn = struct
 
   let c_borrow_kind span : Thir.borrow_kind -> borrow_kind = function
     | Shared -> Shared
-    | Shallow -> unimplemented span "Shallow borrows"
+    | Shallow -> unimplemented [ span ] "Shallow borrows"
     | Unique -> Unique
     | Mut _ -> Mut W.mutable_reference
 
@@ -111,7 +111,7 @@ module Exn = struct
       Int { value = Int.to_string n; kind }
     in
     let error kind =
-      assertion_failure span
+      assertion_failure [ span ]
         ("[import_thir:literal] got a " ^ kind ^ " literal, expected " ^ kind
        ^ " type, got type ["
         ^ [%show: ty] ty
@@ -119,7 +119,7 @@ module Exn = struct
     in
     match lit with
     | Err ->
-        assertion_failure span
+        assertion_failure [ span ]
           "[import_thir:literal] got an error literal: this means the Rust \
            compiler or Hax's frontend probably reported errors above."
     | Str (str, _) -> mk @@ String str
@@ -376,9 +376,9 @@ module Exn = struct
             let scrutinee = c_expr scrutinee in
             let arms = List.map ~f:c_arm arms in
             Match { scrutinee; arms }
-        | Let _ -> unimplemented e.span "Let"
+        | Let _ -> unimplemented [ e.span ] "Let"
         | Block { safety_mode = BuiltinUnsafe | ExplicitUnsafe; _ } ->
-            unsafe_block e.span
+            unsafe_block [ e.span ]
         | Block o ->
             (* if there is no expression & the last expression is ⊥, just use that *)
             let lift_last_statement_as_expr_if_possible expr stmts
@@ -412,15 +412,14 @@ module Exn = struct
                             body;
                           }
                       in
-                      let span = Span.union rhs.span body.span in
-                      { e; typ; span }
+                      { e; typ; span = Span.union rhs.span body.span }
                   | Let { else_block = Some _; _ } ->
-                      unimplemented ~issue_id:155 e.span
+                      unimplemented ~issue_id:155 [ e.span ]
                         "Sorry, Hax does not support [let-else] (see \
                          https://doc.rust-lang.org/rust-by-example/flow_control/let_else.html) \
                          for now."
                   | Let { initializer' = None; _ } ->
-                      unimplemented ~issue_id:156 e.span
+                      unimplemented ~issue_id:156 [ e.span ]
                         "Sorry, Hax does not support declare-first let \
                          bindings (see \
                          https://doc.rust-lang.org/rust-by-example/variable_bindings/declare.html) \
@@ -429,8 +428,7 @@ module Exn = struct
                       let lhs = c_pat lhs in
                       let rhs = c_expr rhs in
                       let e = Let { monadic = None; lhs; rhs; body } in
-                      let span = Span.union rhs.span body.span in
-                      { e; typ; span })
+                      { e; typ; span = Span.union rhs.span body.span })
             in
             e
         | Assign { lhs; rhs } ->
@@ -491,7 +489,7 @@ module Exn = struct
             let e = Option.map ~f:c_expr value in
             let e = Option.value ~default:(unit_expr span) e in
             Return { e; witness = W.early_exit }
-        | ConstBlock _ -> unimplemented e.span "ConstBlock"
+        | ConstBlock _ -> unimplemented [ e.span ] "ConstBlock"
         | ConstParam { param = id; _ } (* TODO: shadowing? *) | ConstRef { id }
           ->
             LocalVar
@@ -563,12 +561,13 @@ module Exn = struct
               [ lhs; index ]
         | StaticRef { def_id = id; _ } -> GlobalVar (def_id Value id)
         | PlaceTypeAscription _ ->
-            unimplemented e.span "expression PlaceTypeAscription"
+            unimplemented [ e.span ] "expression PlaceTypeAscription"
         | ValueTypeAscription _ ->
-            unimplemented e.span "expression ValueTypeAscription"
-        | ZstLiteral _ -> unimplemented e.span "expression ZstLiteral"
-        | Yield _ -> unimplemented e.span "expression Yield"
-        | Todo payload -> unimplemented e.span ("expression Todo\n" ^ payload)
+            unimplemented [ e.span ] "expression ValueTypeAscription"
+        | ZstLiteral _ -> unimplemented [ e.span ] "expression ZstLiteral"
+        | Yield _ -> unimplemented [ e.span ] "expression Yield"
+        | Todo payload ->
+            unimplemented [ e.span ] ("expression Todo\n" ^ payload)
       in
       { e = v; span; typ }
 
@@ -663,13 +662,13 @@ module Exn = struct
                           })
                         l;
                   })
-        | Array _ -> unimplemented pat.span "Pat:Array"
+        | Array _ -> unimplemented [ pat.span ] "Pat:Array"
         | Or _ ->
-            unimplemented pat.span ~issue_id:161
+            unimplemented [ pat.span ] ~issue_id:161
               "Or patterns (see \
                https://rust-lang.github.io/rfcs/2535-or-patterns.html)"
-        | Slice _ -> unimplemented pat.span "Slice"
-        | Range _ -> unimplemented pat.span "Range"
+        | Slice _ -> unimplemented [ pat.span ] "Slice"
+        | Range _ -> unimplemented [ pat.span ] "Range"
       in
       { p = v; span; typ }
 
@@ -704,7 +703,7 @@ module Exn = struct
       match k.constant_kind with
       | Ty e -> extended_literal_of_expr (c_expr e)
       | Lit lit -> c_lit' span lit (c_ty span k.typ)
-      | Todo s -> unimplemented span ("TODO node: " ^ s)
+      | Todo s -> unimplemented [ span ] ("TODO node: " ^ s)
 
     and c_canonical_user_type_annotation
         (annotation : Thir.canonical_user_type_annotation) : ty * span =
@@ -740,7 +739,7 @@ module Exn = struct
           (*       ^ "]\n\nThe expression is: " *)
           (*       ^ [%show: expr] source)) *)
       | _ ->
-          unimplemented e.span
+          unimplemented [ e.span ]
             ("Pointer, with [cast] being " ^ [%show: Thir.pointer_cast] cast)
 
     and c_ty (span : Thir.span) (ty : Thir.ty) : ty =
@@ -756,7 +755,7 @@ module Exn = struct
           let ident = def_id Type id in
           let args = List.map ~f:(c_generic_value span) generic_args in
           TApp { ident; args }
-      | Foreign _ -> unimplemented span "Foreign"
+      | Foreign _ -> unimplemented [ span ] "Foreign"
       | Str -> TStr
       | Array (ty, len) -> TArray { typ = c_ty span ty; length = c_expr len }
       | Slice ty ->
@@ -772,17 +771,17 @@ module Exn = struct
           let types = List.map ~f:(fun ty -> GType (c_ty span ty)) types in
           TApp { ident = `TupleType (List.length types); args = types }
       | Alias _ -> TProjectedAssociatedType (Thir.show_ty ty)
-      (* | Opaque _ -> unimplemented span "type Opaque" *)
+      (* | Opaque _ -> unimplemented [span] "type Opaque" *)
       | Param { index; name } ->
           (* TODO: [id] might not unique *)
           TParam { name; id = LocalIdent.ty_param_id_of_int index }
-      | Error -> unimplemented span "type Error"
-      | Dynamic _ -> unimplemented span "type Dynamic"
-      | Generator _ -> unimplemented span "type Generator"
-      | Placeholder _ -> unimplemented span "type Placeholder"
-      | Bound _ -> unimplemented span "type Bound"
-      | Infer _ -> unimplemented span "type Infer"
-      | Todo _ -> unimplemented span "type Todo"
+      | Error -> unimplemented [ span ] "type Error"
+      | Dynamic _ -> unimplemented [ span ] "type Dynamic"
+      | Generator _ -> unimplemented [ span ] "type Generator"
+      | Placeholder _ -> unimplemented [ span ] "type Placeholder"
+      | Bound _ -> unimplemented [ span ] "type Bound"
+      | Infer _ -> unimplemented [ span ] "type Infer"
+      | Todo _ -> unimplemented [ span ] "type Todo"
     (* fun _ -> Ok Bool *)
 
     and c_generic_value (span : Thir.span) (ty : Thir.generic_arg) :
@@ -813,7 +812,7 @@ module Exn = struct
             (* TODO might be wrong to just have a wildcard here *)
             ({ name = "_"; id = LocalIdent.ty_param_id_of_int 123 }
               : local_ident)
-        | Error -> assertion_failure param.span "[Error] ident"
+        | Error -> assertion_failure [ param.span ] "[Error] ident"
         | Plain n -> local_ident n
       in
       match (param.kind : Thir.generic_param_kind) with
@@ -822,7 +821,7 @@ module Exn = struct
           let default = Option.map ~f:(c_ty param.span) default in
           GPType { ident; default }
       | Const { default = Some _; _ } ->
-          unimplemented param.span "c_generic_param:Const with a default"
+          unimplemented [ param.span ] "c_generic_param:Const with a default"
       | Const { default = None; ty } ->
           GPConst { ident; typ = c_ty param.span ty }
 
@@ -850,8 +849,8 @@ module Exn = struct
             ~f:(fun trait : generic_constraint ->
               GCType { typ; implements = trait })
             traits
-      | RegionPredicate _ -> unimplemented span "region prediate"
-      | EqPredicate _ -> unimplemented span "EqPredicate"
+      | RegionPredicate _ -> unimplemented [ span ] "region prediate"
+      | EqPredicate _ -> unimplemented [ span ] "EqPredicate"
 
     let list_dedup (equal : 'a -> 'a -> bool) : 'a list -> 'a list =
       let rec aux (seen : 'a list) (todo : 'a list) : 'a list =
@@ -874,11 +873,11 @@ module Exn = struct
     let c_trait_item' span (item : Thir.trait_item_kind) : trait_item' =
       match item with
       | Const (_, Some _) ->
-          unimplemented span
+          unimplemented [ span ]
             "TODO: traits: no support for defaults in traits for now"
       | Const (ty, None) -> TIFn (c_ty span ty)
       | ProvidedFn _ ->
-          unimplemented span
+          unimplemented [ span ]
             "TODO: traits: no support for defaults in funcitons for now"
       | RequiredFn (sg, _) ->
           let Thir.{ inputs; output; _ } = sg.decl in
@@ -892,7 +891,7 @@ module Exn = struct
           let bounds = List.filter_map ~f:(c_predicate_kind span) bounds in
           TIType bounds
       | Type (_, Some _) ->
-          unimplemented span
+          unimplemented [ span ]
             "TODO: traits: no support for defaults in type for now"
   end
 
@@ -1045,8 +1044,8 @@ module Exn = struct
                  generics = { params; constraints };
                  items = List.map ~f:c_trait_item items;
                }
-      | Trait (Yes, _, _, _, _) -> unimplemented item.span "Auto trait"
-      | Trait (_, Unsafe, _, _, _) -> unimplemented item.span "Unsafe trait"
+      | Trait (Yes, _, _, _, _) -> unimplemented [ item.span ] "Auto trait"
+      | Trait (_, Unsafe, _, _, _) -> unimplemented [ item.span ] "Unsafe trait"
       | Impl { of_trait = None; generics; items; _ } ->
           List.map
             ~f:(fun (item : Thir.impl_item) ->
@@ -1071,7 +1070,7 @@ module Exn = struct
                         params = [];
                       }
                 | Type _ty ->
-                    assertion_failure item.span
+                    assertion_failure [ item.span ]
                       "Inherent implementations are not supposed to have \
                        associated types \
                        (https://doc.rust-lang.org/reference/items/implementations.html#inherent-implementations)."
@@ -1079,7 +1078,7 @@ module Exn = struct
               let ident = Concrete_ident.of_def_id Value item.owner_id in
               { span = Span.of_thir item.span; v; ident })
             items
-      | Impl { unsafety = Unsafe; _ } -> unsafe_block item.span
+      | Impl { unsafety = Unsafe; _ } -> unsafe_block [ item.span ]
       | Impl
           {
             of_trait = Some of_trait;
