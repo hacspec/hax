@@ -484,19 +484,24 @@ module Make (F : Features.T) = struct
     let item : AST.expr -> Ast.Full.expr = Obj.magic
   end
 
-  let unbox_expr (e : expr) : expr =
+  let unbox_expr' (next : expr -> expr) (e : expr) : expr =
     match e.e with
     | App { f = { e = GlobalVar f; _ }; args = [ e ] }
       when Global_ident.eq_name Alloc__boxed__Impl__new f ->
-        e
+        next e
     | _ -> e
 
-  let underef_expr (e : expr) : expr =
+  let underef_expr' (next : expr -> expr) (e : expr) : expr =
     match e.e with
-    | App { f = { e = GlobalVar (`Primitive Ast.Deref); _ }; args = [ e ] } -> e
+    | App { f = { e = GlobalVar (`Primitive Ast.Deref); _ }; args = [ e ] } ->
+        next e
     | _ -> e
 
-  let unbox_underef_expr = unbox_expr >> underef_expr
+  let rec unbox_expr e = unbox_expr' unbox_expr e
+  let rec underef_expr e = underef_expr' unbox_expr e
+
+  let rec unbox_underef_expr e =
+    (unbox_expr' unbox_underef_expr >> underef_expr' unbox_underef_expr) e
 
   (* module Box = struct *)
   (*   module Ty = struct *)
