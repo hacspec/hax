@@ -43,11 +43,11 @@ impl<S> Diagnostics<S> {
 
 impl<S> std::fmt::Display for Diagnostics<S> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}:", self.context);
         match &self.kind {
             Kind::Unimplemented { issue_id, details } => write!(
                 f,
-                "{}: something is not implemented yet.{}{}",
-                self.context,
+                "something is not implemented yet.{}{}",
                 match issue_id {
                     Some(id) => format!("This is discussed in issue https://github.com/hacspec/hacspec-v2/issues/{id}.\nPlease upvote or comment this issue if you see this error message."),
                     _ => "".to_string(),
@@ -81,7 +81,7 @@ impl<S> std::fmt::Display for Diagnostics<S> {
                 bindings
             ),
             Kind::ArbitraryLHS => write!(f, "Assignation of an arbitrary left-hand side is not supported. [lhs = e] is fine only when [lhs] is a combination of local identifiers, field accessors and index accessors."),
-            _ => write!(f, "{}: {:?}", self.context, self.kind),
+            _ => write!(f, "{:?}", self.kind),
         }
     }
 }
