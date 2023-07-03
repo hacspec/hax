@@ -83,7 +83,7 @@ struct
       (** the type of pure expression we can return in the monad *)
       let pure_type (x : t) = x.typ
 
-      let lift (e : B.expr) monad_of_e monad_destination : B.expr =
+      let lift details (e : B.expr) monad_of_e monad_destination : B.expr =
         match (monad_of_e, monad_destination) with
         | m1, m2 when [%equal: B.supported_monads option] m1 m2 -> e
         | None, Some (B.MResult _) ->
@@ -102,15 +102,33 @@ struct
             ^ [%show: B.supported_monads option] m1
             ^ "] to monad ["
             ^ [%show: B.supported_monads option] m2
-            ^ "]"
+            ^ "]" ^ "\n Details: " ^ details
 
-      let lub m1 m2 =
+      let lub span m1 m2 =
         match (m1, m2) with
         | None, m | m, None -> m
-        | (Some (B.MResult _) as m), _ | _, (Some (B.MResult _) as m) -> m
-        | _ -> m1
+        | Some m1, Some m2 ->
+            let impossible () =
+              Error.assertion_failure span
+              @@ "Trying to compute the lub of two incompatible monads:"
+              ^ "\n • "
+              ^ [%show: B.supported_monads] m1
+              ^ "\n • "
+              ^ [%show: B.supported_monads] m2
+            in
+            Option.some
+              (match (m1, m2) with
+              | (B.MResult _ | B.MOption _), (B.MException _ as m)
+              | (B.MException _ as m), (B.MResult _ | B.MOption _) ->
+                  m
+              | B.MResult _, B.MResult _
+              | B.MOption _, B.MOption _
+              | B.MException _, B.MException _ ->
+                  m1
+              | B.MResult _, B.MOption _ | B.MOption _, B.MResult _ ->
+                  impossible ())
 
-      (** after transformation, are **getting** inside a monad? *)
+      (** after transformation, are we **getting** inside a monad? *)
       let from_typ dty (old : A.ty) (new_ : B.ty) : t =
         let old = dty Span.default (* irrelevant *) old in
         let monad = from_typ' new_ in
@@ -136,9 +154,9 @@ struct
               { e = Let { monadic; lhs; rhs; body }; span; typ = body.typ }
           | _ ->
               let mbody = KnownMonads.from_typ dty body.typ body'.typ in
-              let m = KnownMonads.lub mbody.monad mrhs.monad in
-              let body = KnownMonads.lift body' mbody.monad m in
-              let rhs = KnownMonads.lift rhs' mrhs.monad m in
+              let m = KnownMonads.lub span mbody.monad mrhs.monad in
+              let body = KnownMonads.lift "Let:body" body' mbody.monad m in
+              let rhs = KnownMonads.lift "Let:rhs" rhs' mrhs.monad m in
               let monadic =
                 match m with
                 | None -> None
@@ -157,14 +175,14 @@ struct
           (* Todo throw assertion failed here (to get rid of reduce_exn in favor of reduce) *)
           let m =
             List.map ~f:(fun ({ monad; _ }, _) -> monad) arms
-            |> List.reduce ~f:KnownMonads.lub
+            |> List.reduce ~f:(KnownMonads.lub span)
             |> Option.value_or_thunk ~default:(fun _ ->
                    Error.assertion_failure span "[match] with zero arm?")
           in
           let arms =
             List.map
               ~f:(fun (mself, (arm_pat, span, body)) ->
-                let body = KnownMonads.lift body mself.monad m in
+                let body = KnownMonads.lift "Match" body mself.monad m in
                 let arm_pat = { arm_pat with typ = body.typ } in
                 ({ arm = { arm_pat; body }; span } : B.arm))
               arms
@@ -186,13 +204,14 @@ struct
                 KnownMonads.from_typ dty else_.typ else'.typ
             | _ -> mthen
           in
-          let m = KnownMonads.lub mthen.monad melse.monad in
+          let m = KnownMonads.lub span mthen.monad melse.monad in
           let else_ =
             Option.map
-              ~f:(fun else' -> KnownMonads.lift else' melse.monad m)
+              ~f:(fun else' ->
+                KnownMonads.lift "If:else-branch" else' melse.monad m)
               else'
           in
-          let then_ = KnownMonads.lift then' mthen.monad m in
+          let then_ = KnownMonads.lift "If:then-branch" then' mthen.monad m in
           { e = If { cond; then_; else_ }; span; typ = then_.typ }
       | Continue _ ->
           Error.unimplemented ~issue_id:96

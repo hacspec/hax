@@ -95,3 +95,10 @@ fn assign_non_trivial_lhs(mut foo: Foo) -> Foo {
     foo.y.1[3].b.0[5].0 = true;
     foo
 }
+
+struct A;
+struct B;
+
+fn monad_lifting() -> Result<A, B> {
+    return Ok(Err(B)?);
+}
