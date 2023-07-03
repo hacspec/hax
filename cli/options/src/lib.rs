@@ -11,18 +11,24 @@ pub struct ForceCargoBuild {
     pub data: u128,
 }
 
+impl std::default::Default for ForceCargoBuild {
+    fn default() -> Self {
+        ForceCargoBuild { data: 0 }
+    }
+}
+
 impl std::convert::From<&std::ffi::OsStr> for ForceCargoBuild {
     fn from(s: &std::ffi::OsStr) -> Self {
-        ForceCargoBuild {
-            data: if s == "false" {
-                use std::time::{SystemTime, UNIX_EPOCH};
-                SystemTime::now()
+        use std::time::{SystemTime, UNIX_EPOCH};
+        if s == "false" {
+            ForceCargoBuild {
+                data: SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .map(|r| r.as_millis())
-                    .unwrap_or(0)
-            } else {
-                0
-            },
+                    .unwrap_or(0),
+            }
+        } else {
+            ForceCargoBuild::default()
         }
     }
 }

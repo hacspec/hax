@@ -108,38 +108,46 @@ fn main() {
 
     // fetch the correct callback structure given the command, and
     // coerce options
-    let mut callbacks: Box<dyn Callbacks + Send> = match &options.command {
-        Some(Command::ExporterCommand(command)) => Box::new(exporter::ExtractionCallbacks {
-            inline_macro_calls: options.inline_macro_calls.clone(),
-            command: command.clone(),
-            macro_calls: std::collections::HashMap::new(),
-        }),
-        Some(Command::LintCommand(command)) => {
-            let ltype = match command {
-                hax_cli_options::LinterCommand::Hacspec => Type::Hacspec,
-                hax_cli_options::LinterCommand::Rust => Type::Rust,
-            };
-            Box::new(LinterCallbacks::new(ltype))
-        }
-        None => {
-            // hacspec lint
-            Box::new(LinterCallbacks::new(Type::Rust))
-        }
-    };
-
     let is_primary_package = std::env::var("CARGO_PRIMARY_PACKAGE").is_ok();
-    let mut callbacks: Box<dyn Callbacks + Send> = if options.deps || is_primary_package {
-        Box::new(CallbacksWrapper {
-            sub: &mut *callbacks,
-            options,
-        })
+    let translate_package = options.deps || is_primary_package;
+    let mut callbacks: Box<dyn Callbacks + Send> = if translate_package {
+        match &options.command {
+            Some(Command::ExporterCommand(command)) => Box::new(exporter::ExtractionCallbacks {
+                inline_macro_calls: options.inline_macro_calls.clone(),
+                command: command.clone(),
+                macro_calls: std::collections::HashMap::new(),
+            }),
+            Some(Command::LintCommand(command)) => {
+                let ltype = match command {
+                    hax_cli_options::LinterCommand::Hacspec => Type::Hacspec,
+                    hax_cli_options::LinterCommand::Rust => Type::Rust,
+                };
+                Box::new(LinterCallbacks::new(ltype))
+            }
+            None => {
+                // hacspec lint
+                Box::new(LinterCallbacks::new(Type::Rust))
+            }
+        }
     } else {
         struct CallbacksNoop;
         impl Callbacks for CallbacksNoop {}
         Box::new(CallbacksNoop)
     };
 
+    let mut callbacks = CallbacksWrapper {
+        sub: &mut *callbacks,
+        options: hax_cli_options::Options {
+            force_cargo_build: if translate_package {
+                options.force_cargo_build
+            } else {
+                hax_cli_options::ForceCargoBuild::default()
+            },
+            ..options
+        },
+    };
+
     std::process::exit(rustc_driver::catch_with_exit_code(move || {
-        rustc_driver::RunCompiler::new(&rustc_args, &mut *callbacks).run()
+        rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
     }))
 }
