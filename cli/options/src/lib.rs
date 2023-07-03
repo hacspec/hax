@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::path::{Path, PathBuf};
 
 pub use hax_frontend_exporter_options::*;
@@ -99,16 +100,25 @@ pub enum Backend {
     Easycrypt,
 }
 
+impl fmt::Display for Backend {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Backend::Fstar => write!(f, "fstar"),
+            Backend::Coq => write!(f, "coq"),
+            Backend::Easycrypt => write!(f, "easycrypt"),
+        }
+    }
+}
+
 #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
 pub struct BackendOptions {
     #[command(subcommand)]
-    backend: Backend,
+    pub backend: Backend,
 
-    /// Directory in which the backend should output modules. If [-]
-    /// (a dash) is given to this option, the modules will be printed
-    /// on the stdout in JSON.
-    #[arg(short, long = "output-dir", default_value = "out/")]
-    pub output_dir: PathOrDash,
+    /// Don't write anything on disk. Output everything as JSON to stdout
+    /// instead.
+    #[arg(long = "dry-run")]
+    pub dry_run: bool,
 
     /// Enable debugging in the engine. When this option is enabled,
     /// the engine will dump the transformed AST at each phase in the
@@ -120,7 +130,10 @@ pub struct BackendOptions {
 
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
 pub enum ExporterCommand {
-    /// Translate to a backend
+    /// Translate to a backend. The translated modules will be written
+    /// under the directory [<PKG>/proofs/<BACKEND>/extraction], where
+    /// <PKG> is the translated cargo package name and <BACKEND> the
+    /// name of the backend.
     #[clap(name = "into")]
     Backend(BackendOptions),
 
@@ -196,10 +209,7 @@ impl NormalizePaths for ExporterCommand {
             JSON { output_file } => JSON {
                 output_file: output_file.normalize_paths(),
             },
-            Backend(o) => Backend(BackendOptions {
-                output_dir: o.output_dir.normalize_paths(),
-                ..o
-            }),
+            Backend(o) => Backend(o),
         }
     }
 }

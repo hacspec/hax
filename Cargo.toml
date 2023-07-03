@@ -37,4 +37,4 @@ hax-cli-options-engine = { path = "cli/options/engine" }
 hax-frontend-exporter-options = { path = "frontend/exporter/options" }
 hax-diagnostics = { path = "frontend/diagnostics" }
 hax-lint = { version = "=0.1.0", path = "frontend/lint" }
-
+cargo_metadata = "0.15"
