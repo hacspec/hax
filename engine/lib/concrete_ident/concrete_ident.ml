@@ -412,3 +412,6 @@ end
 
 module DefaultViewAPI = MakeViewAPI (DefaultNamePolicy)
 include DefaultViewAPI
+
+include
+  (val Base.Comparator.make ~compare:[%compare: t] ~sexp_of_t:[%sexp_of: t])

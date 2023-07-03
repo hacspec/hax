@@ -52,8 +52,8 @@
  (action
   (with-stdout-to
    concrete_ident_generated.ml
-    (run bash %{generate_sh} %{names}))))
-    
+   (run bash %{generate_sh} %{names}))))
+
 (rule
  (target types.ml)
  (deps
