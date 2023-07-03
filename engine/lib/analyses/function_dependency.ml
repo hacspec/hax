@@ -1,5 +1,6 @@
 open Base
 open Utils
+open Concrete_ident
 
 module%inlined_contents Make (F : Features.T) = struct
   module FA = F
@@ -8,17 +9,26 @@ module%inlined_contents Make (F : Features.T) = struct
 
   type pre_data = unit
 
+  (* include (val Comparator.make ~compare:Concrete_ident.compare ~sexp_of_t:(fun x -> Sexp.Atom "?")) *)
+  (* val Comparator.make ~compare:Concrete_ident.compare ~sexp_of_t:(fun x -> Sexp.Atom "?") *)
+
   type analysis_data =
-    (global_ident, global_ident list, GlobalIdent.comparator_witness) Map.t
-    * (global_ident, int, GlobalIdent.comparator_witness) Map.t
+    ( concrete_ident,
+      concrete_ident list,
+      Concrete_ident.comparator_witness )
+    Map.t
+    * (concrete_ident, int, Concrete_ident.comparator_witness) Map.t
 
   module Flatten = Flatten_ast.Make (F)
 
   (* No recursion *)
   let rec flatten_map_index
       (map :
-        (global_ident, global_ident list, GlobalIdent.comparator_witness) Map.t)
-      (depth : int) (index : global_ident) : global_ident list * int =
+        ( concrete_ident,
+          concrete_ident list,
+          Concrete_ident.comparator_witness )
+        Map.t) (depth : int) (index : concrete_ident) :
+      concrete_ident list * int =
     match Map.find map index with
     | Some l ->
         let a, b = flatten_concat_map map (depth + 1) l in
@@ -27,8 +37,11 @@ module%inlined_contents Make (F : Features.T) = struct
 
   and flatten_concat_map
       (map :
-        (global_ident, global_ident list, GlobalIdent.comparator_witness) Map.t)
-      (depth : int) (l : global_ident list) : global_ident list * int =
+        ( concrete_ident,
+          concrete_ident list,
+          Concrete_ident.comparator_witness )
+        Map.t) (depth : int) (l : concrete_ident list) :
+      concrete_ident list * int =
     let a, b = List.unzip (List.map ~f:(flatten_map_index map (depth + 1)) l) in
     (l @ List.concat a, List.fold_left ~f:max ~init:0 b)
 
@@ -45,20 +58,22 @@ module%inlined_contents Make (F : Features.T) = struct
     let graph_map =
       List.fold_left
         ~f:(fun y x -> Map.set y ~key:(fst x) ~data:(snd x))
-        ~init:(Map.empty (module GlobalIdent))
+        ~init:(Map.empty (module Concrete_ident))
         func_dep_list
     in
     List.fold_left
       ~f:(fun y x ->
         let values, depth = flatten_concat_map graph_map 0 (snd x) in
         ( Map.set (fst y) ~key:(fst x)
-            ~data:(Set.elements (Set.of_list (module GlobalIdent) values)),
+            ~data:(Set.elements (Set.of_list (module Concrete_ident) values)),
           Map.set (snd y) ~key:(fst x) ~data:depth ))
-      ~init:(Map.empty (module GlobalIdent), Map.empty (module GlobalIdent))
+      ~init:
+        (Map.empty (module Concrete_ident), Map.empty (module Concrete_ident))
       func_dep_list
 
-  and analyse_function_body (x : A.expr) : global_ident list =
+  and analyse_function_body (x : A.expr) : concrete_ident list =
     List.filter_map
-      ~f:(fun x -> match x.e with GlobalVar g -> Some g | _ -> None)
+      ~f:(fun x ->
+        match x.e with GlobalVar (`Concrete g) -> Some g | _ -> None)
       (Flatten.flatten_ast x)
 end

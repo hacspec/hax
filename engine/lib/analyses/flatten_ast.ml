@@ -16,7 +16,7 @@ module%inlined_contents Make (F : Features.T) = struct
     | App { f; args } -> flatten_ast f @ List.concat_map ~f:flatten_ast args
     | Literal l -> []
     | Array elements -> List.concat_map ~f:flatten_ast elements
-    | Construct { constructor; constructs_record; fields; base } ->
+    | Construct { constructor; fields; base } ->
         List.concat_map ~f:(snd >> flatten_ast) fields
     | Match { scrutinee; arms } ->
         flatten_ast scrutinee
