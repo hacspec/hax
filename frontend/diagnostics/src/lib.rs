@@ -134,6 +134,6 @@ impl Kind {
 
     pub fn code(&self) -> String {
         // `C` stands for `hax`
-        format!("CE{:0>4}", self.discriminant())
+        format!("HAX{:0>4}", self.discriminant())
     }
 }
