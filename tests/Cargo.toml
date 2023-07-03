@@ -13,5 +13,7 @@ members = [
         "mut-ref-functionalization",
         "generics",
         "loops",
+        "even",
+        "odd",
 ]
 resolver = "2"
