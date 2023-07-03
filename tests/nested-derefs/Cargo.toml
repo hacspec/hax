@@ -1,0 +1,7 @@
+[package]
+name = "nested-derefs"
+version = "0.1.0"
+edition = "2021"
+
+[package.metadata.hax-tests]
+into."fstar+coq" = { snapshot = "none" }
