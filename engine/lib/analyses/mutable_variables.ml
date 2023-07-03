@@ -7,13 +7,16 @@ module%inlined_contents Make (F : Features.T) = struct
   open Ast
 
   type pre_data =
-    (global_ident, global_ident list, GlobalIdent.comparator_witness) Map.t
-    * (global_ident, int, GlobalIdent.comparator_witness) Map.t
+    ( concrete_ident,
+      concrete_ident list,
+      Concrete_ident.comparator_witness )
+    Map.t
+    * (concrete_ident, int, Concrete_ident.comparator_witness) Map.t
 
   type analysis_data =
-    ( global_ident,
+    ( concrete_ident,
       local_ident list * ((local_ident * A.ty) * int) list,
-      GlobalIdent.comparator_witness )
+      Concrete_ident.comparator_witness )
     Map.t
 
   module Flatten = Flatten_ast.Make (F)
@@ -30,13 +33,13 @@ module%inlined_contents Make (F : Features.T) = struct
         ~init:([], 0) items
     in
     let mut_map :
-        ( global_ident,
+        ( concrete_ident,
           ((local_ident * A.ty) * int) list,
-          GlobalIdent.comparator_witness )
+          Concrete_ident.comparator_witness )
         Map.t =
       List.fold_left
         ~f:(fun y x -> Map.set y ~key:(fst x) ~data:(snd x))
-        ~init:(Map.empty (module GlobalIdent))
+        ~init:(Map.empty (module Concrete_ident))
         mut_var_list
     in
     List.fold_left
@@ -56,7 +59,7 @@ module%inlined_contents Make (F : Features.T) = struct
                    List.map ~f:(fst >> fst) l'
                | None -> []),
                local_muts )))
-      ~init:(Map.empty (module GlobalIdent))
+      ~init:(Map.empty (module Concrete_ident))
       (List.map ~f:fst mut_var_list)
 
   and analyse_function_body (x : A.expr) (i : int) :
