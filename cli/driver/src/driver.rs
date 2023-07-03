@@ -127,12 +127,19 @@ fn main() {
         }
     };
 
-    let mut callbacks = CallbacksWrapper {
-        sub: &mut *callbacks,
-        options,
+    let is_primary_package = std::env::var("CARGO_PRIMARY_PACKAGE").is_ok();
+    let mut callbacks: Box<dyn Callbacks + Send> = if options.deps || is_primary_package {
+        Box::new(CallbacksWrapper {
+            sub: &mut *callbacks,
+            options,
+        })
+    } else {
+        struct CallbacksNoop;
+        impl Callbacks for CallbacksNoop {}
+        Box::new(CallbacksNoop)
     };
 
     std::process::exit(rustc_driver::catch_with_exit_code(move || {
-        rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
+        rustc_driver::RunCompiler::new(&rustc_args, &mut *callbacks).run()
     }))
 }

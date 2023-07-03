@@ -200,6 +200,10 @@ pub struct Options {
     /// [cargo] caching is disabled by default, this flag enables it back.
     #[arg(long="enable-cargo-cache", action=clap::builder::ArgAction::SetTrue)]
     pub force_cargo_build: ForceCargoBuild,
+
+    /// Apply the command to the dependencies of the primary package
+    #[arg(long = "deps")]
+    pub deps: bool,
 }
 
 impl NormalizePaths for ExporterCommand {
