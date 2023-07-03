@@ -55,6 +55,13 @@ module Context = struct
     | DebugPrintRust
     | Other of string
   [@@deriving show, eq, yojson]
+
+  let display = function
+    | Phase p -> Phase.display p
+    | Backend backend -> [%show: Backend.t] backend ^ " backend"
+    | ThirImport -> "AST import"
+    | DebugPrintRust -> "Rust debug printer"
+    | Other s -> "Other (" ^ s ^ ")"
 end
 
 type kind = T.kind [@@deriving show, eq]
@@ -63,7 +70,7 @@ type t = { context : Context.t; kind : kind; span : T.span }
 [@@deriving show, eq]
 
 let to_thir_diagnostic (d : t) : Types.diagnostics_for__span =
-  { kind = d.kind; context = [%show: Context.t] d.context; span = d.span }
+  { kind = d.kind; context = Context.display d.context; span = d.span }
 
 let run_hax_pretty_print_diagnostics (s : string) : string =
   try (Utils.Command.run "hax-pretty-print-diagnostics" s).stdout
