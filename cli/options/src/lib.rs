@@ -130,7 +130,10 @@ pub struct BackendOptions {
 
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
 pub enum ExporterCommand {
-    /// Translate to a backend
+    /// Translate to a backend. The translated modules will be written
+    /// under the directory [<PKG>/proofs/<BACKEND>/extraction], where
+    /// <PKG> is the translated cargo package name and <BACKEND> the
+    /// name of the backend.
     #[clap(name = "into")]
     Backend(BackendOptions),
 
