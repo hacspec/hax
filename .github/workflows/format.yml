@@ -15,7 +15,7 @@ jobs:
     - uses: cachix/install-nix-action@v20
     - name: Run OCaml formatter
       run: |
-        nix shell nixpkgs#ocamlformat -c \
+        nix shell ..#ocamlformat -c \
           ocamlformat --check $(find . -name '*.ml')
       working-directory: engine
   rustfmt:

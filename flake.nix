@@ -20,9 +20,10 @@
         };
         rustc = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
         craneLib = (crane.mkLib pkgs).overrideToolchain rustc;
+        ocamlformat = pkgs.ocamlformat_0_24_1;
       in rec {
         packages = {
-          inherit rustc;
+          inherit rustc ocamlformat;
           hax-engine = pkgs.callPackage ./engine {
             hax-rust-frontend = packages.hax-rust-frontend.unwrapped;
             inherit rustc;
@@ -48,7 +49,7 @@
               packages.hax-engine
             ];
             packages = [
-              pkgs.ocamlformat
+              ocamlformat
               pkgs.ocamlPackages.ocaml-lsp
               pkgs.ocamlPackages.ocamlformat-rpc-lib
               pkgs.ocamlPackages.ocaml-print-intf
