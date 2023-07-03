@@ -22,8 +22,6 @@ type span = (Span.t[@visitors.opaque])
     visitors { variety = "mapreduce"; name = "span_mapreduce" },
     visitors { variety = "map"; name = "span_map" }]
 
-type loc = Span.loc [@@deriving show, yojson, compare, sexp, eq]
-
 type concrete_ident = (Concrete_ident.t[@visitors.opaque])
 [@@deriving
   show,

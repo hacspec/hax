@@ -398,8 +398,9 @@ module Make (F : Features.T) = struct
 
   let make_tuple_pat' (pats : pat list) : pat =
     let len = List.length pats in
+    let span = Span.union_list @@ List.map ~f:(fun p -> p.span) pats in
     List.mapi ~f:(fun i pat -> { field = `TupleField (i, len); pat }) pats
-    |> make_tuple_pat'' (Span.union_list @@ List.map ~f:(fun p -> p.span) pats)
+    |> make_tuple_pat'' span
 
   let make_tuple_pat : pat list -> pat = function
     | [ pat ] -> pat

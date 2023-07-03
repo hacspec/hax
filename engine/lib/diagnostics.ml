@@ -66,10 +66,10 @@ end
 
 type kind = T.kind [@@deriving show, eq]
 
-type t = { context : Context.t; kind : kind; span : T.span }
+type t = { context : Context.t; kind : kind; span : T.span list }
 [@@deriving show, eq]
 
-let to_thir_diagnostic (d : t) : Types.diagnostics_for__span =
+let to_thir_diagnostic (d : t) : Types.diagnostics_for__array_of__span =
   { kind = d.kind; context = Context.display d.context; span = d.span }
 
 let run_hax_pretty_print_diagnostics (s : string) : string =
@@ -79,7 +79,7 @@ let run_hax_pretty_print_diagnostics (s : string) : string =
     ^ ". Here is the JSON representation of the error that occurred:\n" ^ s
 
 let pretty_print : t -> string =
-  to_thir_diagnostic >> Types.to_json_diagnostics_for__span
+  to_thir_diagnostic >> Types.to_json_diagnostics_for__array_of__span
   >> Yojson.Safe.pretty_to_string >> run_hax_pretty_print_diagnostics
 
 let pretty_print_context_kind : Context.t -> kind -> string =
