@@ -28,7 +28,7 @@ let run () : Types.output =
                (Import_thir.c_item item)
              |> Result.ok_or_failwith
            with Failure e -> failwith e)
-    |> List.concat_map ~f:(apply_phases backend_options)
+    |> apply_phases backend_options
     |> translate backend_options
   in
   let diagnostics, files =

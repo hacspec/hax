@@ -338,7 +338,16 @@ struct
         ii_name = ii.ii_name;
       }
 
-    let rec ditem (item : A.item) : B.item list =
+    let rec ditem (i : A.item) : B.item list =
+      try ditem_unwrapped i
+      with Diagnostics.SpanFreeError (context, kind) ->
+        let error = Diagnostics.pretty_print_context_kind context kind in
+        let cast_item : A.item -> Ast.Full.item = Obj.magic in
+        let ast = cast_item i |> Print_rust.pitem_str in
+        let msg = error ^ "\nLast available AST for this item:\n\n" ^ ast in
+        [ B.make_hax_error_item i.span i.ident msg ]
+
+    and ditem_unwrapped (item : A.item) : B.item list =
       [ { v = ditem' item.span item.v; span = item.span; ident = item.ident } ]
 
     and ditem' (span : span) (item : A.item') : B.item' =
@@ -385,6 +394,8 @@ struct
       | Use { path; is_external; rename } -> B.Use { path; is_external; rename }
       | HaxError e -> B.HaxError e
       | NotImplementedYet -> B.NotImplementedYet
+
+    let ditems = List.concat_map ~f:ditem
   end
 
   include Item

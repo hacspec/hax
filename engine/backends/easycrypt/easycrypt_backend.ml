@@ -344,11 +344,11 @@ let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
 open Phase_utils
 
 module TransformToInputLanguage =
-  CatchErrors
-    ([%functor_application
-    Phases.Reject.RawOrMutPointer Features.Rust |> Phases.Reconstruct_for_loops
-    |> Phases.Direct_and_mut |> Phases.Reject.Continue |> Phases.Drop_references
-    |> RejectNotEC])
+[%functor_application
+Phases.Reject.RawOrMutPointer Features.Rust |> Phases.Reconstruct_for_loops
+|> Phases.Direct_and_mut |> Phases.Reject.Continue |> Phases.Drop_references
+|> RejectNotEC]
 
-let apply_phases (bo : BackendOptions.t) (i : Ast.Rust.item) : AST.item list =
-  TransformToInputLanguage.ditem i
+let apply_phases (bo : BackendOptions.t) (items : Ast.Rust.item list) :
+    AST.item list =
+  TransformToInputLanguage.ditems items
