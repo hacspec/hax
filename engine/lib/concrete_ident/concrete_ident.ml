@@ -186,12 +186,6 @@ end)
 module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
   type t = T.t
 
-  let show x =
-    View.to_view x.def_id
-    |> (fun View.{ crate; path; definition } ->
-         crate :: (path @ [ definition ]))
-    |> String.concat ~sep:"::"
-
   let pp fmt = show >> Caml.Format.pp_print_string fmt
   let is_reserved_word : string -> bool = Hash_set.mem NP.reserved_words
 
@@ -253,6 +247,12 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
   let to_namespace x =
     let View.{ crate; path; _ } = to_view x in
     (crate, path)
+
+  let show x =
+    to_view x
+    |> (fun View.{ crate; path; definition } ->
+         crate :: (path @ [ definition ]))
+    |> String.concat ~sep:"::"
 end
 
 let to_debug_string = T.show
