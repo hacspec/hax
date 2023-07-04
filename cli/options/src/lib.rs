@@ -126,6 +126,10 @@ pub struct BackendOptions {
     #[arg(long = "dry-run")]
     pub dry_run: bool,
 
+    /// Verbose mode for the Hax engine. Set [-vv] for maximal verbosity.
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    verbose: u8,
+
     /// Enable debugging in the engine. When this option is enabled,
     /// the engine will dump the transformed AST at each phase in the
     /// specified directory. Those ASTs will be available in two
