@@ -52,19 +52,35 @@ module Make (FA : Features.T) = struct
     let b_v = dvariant span v in
     if b_v.is_record then
       let new_name : Ast.concrete_ident =
-        Concrete_ident.of_def_id Type {
-          krate = "temp_name";
-          path = [{data = TypeNs "my_temp_name"; disambiguator = 0}];
-        } in
+        Concrete_ident.of_def_id Type
+          {
+            krate = "temp_name";
+            path = [ { data = TypeNs "my_temp_name"; disambiguator = 0 } ];
+          }
+      in
       let b_v' : B.variant =
-        { name = b_v.name;
-          arguments = [(new_name, B.TParam { name = Concrete_ident.to_definition_name new_name; id = Ast.LocalIdent.ty_param_id_of_int 0 })];
-          is_record = false; } in
-      let temp : Concrete_ident -> B.variant = (fun n -> {
-            name = n;
-            arguments = [];
-            is_record = true; (* F.record_variants option; *)
-          }) in
+        {
+          name = b_v.name;
+          arguments =
+            [
+              ( new_name,
+                B.TParam
+                  {
+                    name = "my_temp_name";
+                    id = Ast.LocalIdent.ty_param_id_of_int 0;
+                  } );
+            ];
+          is_record = false;
+        }
+      in
+      let temp n : B.variant =
+        {
+          name = n;
+          arguments = [];
+          is_record = true;
+          (* F.record_variants option; *)
+        }
+      in
       ( b_v',
         Some
           {

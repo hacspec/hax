@@ -53,12 +53,6 @@ functor
       type term =
         | UnitTerm
         | Let of { pattern : pat; value : term; body : term; value_typ : ty }
-        | LetBind of {
-            pattern : pat;
-            value : term;
-            body : term;
-            value_typ : ty;
-          }
         | If of term * term * term
         | Match of term * (pat * term) list
         | Const of literal
@@ -219,18 +213,6 @@ functor
               ty_str
               (term_to_string_without_paren term depth)
               depth,
-            true )
-      | AST.LetBind
-          { pattern = pat; value = bind; value_typ = typ; body = term } ->
-          let _, ty_str = ty_to_string typ in
-          (* TODO: propegate type definition *)
-          ( "bind"
-            ^ Lib.Notation.let_stmt
-                (pat_to_string pat true depth)
-                (term_to_string_without_paren bind (depth + 1))
-                ty_str
-                (term_to_string_without_paren term depth)
-                depth,
             true )
       | AST.If (cond, then_, else_) ->
           ( "if"

@@ -256,6 +256,15 @@ struct
       (c Core__ops__arith__Rem__rem, (2, [ ""; ".%"; "" ]));
       (c Core__ops__bit__Shl__shl, (2, [ ""; " shift_left "; "" ]));
       (c Core__ops__bit__Shr__shr, (2, [ ""; " shift_right "; "" ]));
+      (* TODO: those two are not notations/operators at all, right? *)
+      (* (c "secret_integers::rotate_left", (2, [ "rol "; " "; "" ])); *)
+      (* (c "hacspec::lib::foldi", (4, [ "foldi "; " "; " "; " "; "" ])); *)
+
+      (* (c "secret_integers::u8", (0, ["U8"])); *)
+      (* (c "secret_integers::u16", (0, ["U16"])); *)
+      (* (c "secret_integers::u32", (0, ["U32"])); *)
+      (* (c "secret_integers::u64", (0, ["U64"])); *)
+      (* (c "secret_integers::u128", (0, ["U128"])); *)
     ]
     |> Map.of_alist_exn (module Global_ident)
 
@@ -285,6 +294,8 @@ struct
           Error.assertion_failure span "expr: function application: bad arity";
         let args = List.map ~f:pexpr args in
         C.AST.AppFormat (op, args)
+    (* | App { f = { e = GlobalVar x }; args } -> *)
+    (*    __TODO_term__ span "GLOBAL APP?" *)
     | App { f; args } ->
         let base = pexpr f in
         let args = List.map ~f:pexpr args in
@@ -296,7 +307,7 @@ struct
             Option.value_map else_ ~default:(C.AST.Literal "()") ~f:pexpr )
     | Array l -> C.AST.Array (List.map ~f:pexpr l)
     | Let { lhs; rhs; body; monadic = Some monad } ->
-        C.AST.LetBind
+        C.AST.Let
           {
             pattern = ppat lhs;
             value = pexpr rhs;
@@ -311,7 +322,7 @@ struct
             body = pexpr body;
             value_typ = pty span lhs.typ;
           }
-    (* | EffectAction _ -> __TODO_term__ span "monadic action" *)
+    | EffectAction _ -> __TODO_term__ span "monadic action"
     | Match { scrutinee; arms } ->
         C.AST.Match
           ( pexpr scrutinee,
