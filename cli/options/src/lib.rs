@@ -207,7 +207,10 @@ pub struct Options {
     #[arg(long="enable-cargo-cache", action=clap::builder::ArgAction::SetTrue)]
     pub force_cargo_build: ForceCargoBuild,
 
-    /// Apply the command to the dependencies of the primary package
+    /// Apply the command to every local package of the dependency closure. By
+    /// default, the command is only applied to the primary packages (i.e. the
+    /// package(s) of the current directory, or the ones selected with cargo
+    /// options like [-C -p <PKG> ;]).
     #[arg(long = "deps")]
     pub deps: bool,
 }
