@@ -59,3 +59,7 @@ fn f(x: Foobar) -> usize {
     }
     x.a.g()
 }
+
+fn reserved_names(val: u8, noeq: u8, of: u8) -> u8 {
+    val + noeq + of
+}
