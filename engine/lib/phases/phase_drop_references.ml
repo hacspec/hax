@@ -143,6 +143,7 @@ struct
     [%%inline_defs dparam + dvariant + dtrait_item + dimpl_item]
 
     let rec ditem = [%inline_body ditem]
+    and ditem_unwrapped = [%inline_body ditem_unwrapped]
 
     and ditem' (span : span) (item : A.item') : B.item' =
       match item with
@@ -163,6 +164,8 @@ struct
                   List.filter_map ~f:(dgeneric_value span) of_trait_generics );
               items = List.map ~f:dimpl_item items;
             }
+
+    [%%inline_defs ditems]
   end
 
   include Implem

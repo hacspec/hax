@@ -31,13 +31,13 @@ module type PHASE = sig
   module A : Ast.T
   module B : Ast.T
 
-  val ditem : A.item -> B.item list
+  val ditems : A.item list -> B.item list
 end
 
 module MakePhaseImplemT (A : Ast.T) (B : Ast.T) = struct
   module type T = sig
     val metadata : Metadata.t
-    val ditem : A.item -> B.item list
+    val ditems : A.item list -> B.item list
     val dexpr : A.expr -> B.expr
   end
 end
@@ -86,7 +86,7 @@ module Identity (F : Features.T) = struct
   module A = Ast.Make (F)
   module B = Ast.Make (F)
 
-  let ditem (x : A.item) : B.item list = [ x ]
+  let ditems (l : A.item list) : B.item list = l
   let metadata = Metadata.make Diagnostics.Phase.Identity
 end
 
@@ -94,42 +94,6 @@ module _ (F : Features.T) : PHASE = Identity (F)
 
 let _DEBUG_SHOW_ITEM = false
 let _DEBUG_SHOW_BACKTRACE = false
-
-module CatchErrors (D : PHASE) = struct
-  include D
-
-  let ditem (i : D.A.item) : D.B.item list =
-    try ditem i
-    with Diagnostics.SpanFreeError (context, kind) ->
-      let error = Diagnostics.pretty_print_context_kind context kind in
-      let cast_item : A.item -> Ast.Full.item = Obj.magic in
-      let ast = cast_item i |> Print_rust.pitem_str in
-      let msg = error ^ "\nLast available AST for this item:\n\n" ^ ast in
-      [ B.make_hax_error_item i.span i.ident msg ]
-end
-
-(* TODO: This module should disappear entierly when issue #14 is
-   closed (#14: Improve/add errors in simplification phases) *)
-module AddErrorHandling (D : PHASE) = struct
-  include D
-
-  exception PhaseError
-
-  let ditem (i : D.A.item) : D.B.item list =
-    try D.ditem i
-    with Failure e ->
-      Caml.prerr_endline
-        ("Phase "
-        ^ [%show: Diagnostics.Phase.t] metadata.current_phase
-        ^ " failed with exception: " ^ e ^ "\nTerm: "
-        ^
-        if _DEBUG_SHOW_ITEM then
-          [%show: A.item] i
-          ^ "\n"
-          ^ if _DEBUG_SHOW_BACKTRACE then Caml.Printexc.get_backtrace () else ""
-        else "");
-      raise PhaseError
-end
 
 module DebugPhaseInfo = struct
   type t = Before | Phase of Diagnostics.Phase.t
@@ -212,12 +176,27 @@ module type S = sig
   val ditem : A.item -> Ast.Full.item list
 end
 
+module TracePhase (P : PHASE) = struct
+  include P
+
+  let name = [%show: Diagnostics.Phase.t] P.metadata.current_phase
+  let enable = Option.is_some P.metadata.previous_phase
+
+  let ditems =
+    if enable then P.ditems
+    else fun items ->
+      prerr_endline @@ "# Entering phase " ^ name;
+      let items = P.ditems items in
+      prerr_endline @@ "# Exiting phase " ^ name;
+      items
+end
+
 module BindPhase
     (D1 : PHASE)
     (D2 : PHASE with module FA = D1.FB and module A = D1.B) =
 struct
-  module D1' = AddErrorHandling (D1)
-  module D2' = AddErrorHandling (D2)
+  module D1' = TracePhase (D1)
+  module D2' = TracePhase (D2)
   module FA = D1.FA
   module FB = D2.FB
   module A = D1.A
@@ -225,26 +204,16 @@ struct
 
   let metadata = Metadata.bind D1.metadata D2.metadata
 
-  let ditem : A.item -> B.item list =
-   fun item0 ->
-    let nth = List.length @@ Metadata.previous_phases D1.metadata in
+  let ditems (items : A.item list) : B.item list =
+    let nth = List.length @@ Metadata.previous_phases D1'.metadata in
     (if Int.equal nth 0 then
      let coerce_to_full_ast : D1'.A.item -> Ast.Full.item = Caml.Obj.magic in
-     DebugBindPhase.add Before 0 (fun _ -> [ coerce_to_full_ast item0 ]));
-    let item1 =
-      (* try *)
-      D1'.ditem item0
-      (* with D1.Error.E e -> raise @@ Error.E (Error.ErrD1 e) *)
-    in
+     DebugBindPhase.add Before 0 (fun _ -> List.map ~f:coerce_to_full_ast items));
+    let items' = D1'.ditems items in
     let coerce_to_full_ast : D2'.A.item list -> Ast.Full.item list =
       Caml.Obj.magic
     in
-    DebugBindPhase.add (Phase D1.metadata.current_phase) (nth + 1) (fun _ ->
-        coerce_to_full_ast item1);
-    let item2 =
-      (* try *)
-      List.concat_map ~f:D2'.ditem item1
-      (* with D2.Error.E e -> raise @@ Error.E (Error.ErrD2 e) *)
-    in
-    item2
+    DebugBindPhase.add (Phase D1'.metadata.current_phase) (nth + 1) (fun _ ->
+        coerce_to_full_ast items');
+    D2'.ditems items'
 end
