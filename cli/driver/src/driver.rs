@@ -109,7 +109,8 @@ fn main() {
     // fetch the correct callback structure given the command, and
     // coerce options
     let is_primary_package = std::env::var("CARGO_PRIMARY_PACKAGE").is_ok();
-    let translate_package = options.deps || is_primary_package;
+    let is_build_script = std::env::var("CARGO_CRATE_NAME") == Ok("build_script_build".to_string()); // FIXME: is there a more robust way to do this?
+    let translate_package = !is_build_script && (options.deps || is_primary_package);
     let mut callbacks: Box<dyn Callbacks + Send> = if translate_package {
         match &options.command {
             Some(Command::ExporterCommand(command)) => Box::new(exporter::ExtractionCallbacks {
