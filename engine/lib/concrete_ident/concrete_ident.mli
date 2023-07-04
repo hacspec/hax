@@ -17,6 +17,7 @@ end
 val of_def_id : Kind.t -> Types.def_id -> t
 val of_name : Kind.t -> name -> t
 val eq_name : name -> t -> bool
+val to_debug_string : t -> string
 
 type view = { crate : string; path : string list; definition : string }
 

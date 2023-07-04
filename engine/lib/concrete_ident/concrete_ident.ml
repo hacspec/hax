@@ -154,7 +154,8 @@ module View = struct
 end
 
 module T = struct
-  type t = { def_id : Imported.def_id; kind : Kind.t } [@@deriving yojson, sexp]
+  type t = { def_id : Imported.def_id; kind : Kind.t }
+  [@@deriving show, yojson, sexp]
 
   (* [kind] is really a metadata, it is not relevant, `def_id`s are unique *)
   let equal x y = [%equal: Imported.def_id] x.def_id y.def_id
@@ -219,7 +220,7 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
     | Constructor _ -> if start_lowercase name then "C_" ^ name else escape name
     | Field -> (
         match Caml.int_of_string_opt name with
-        | Some _ -> name
+        | Some _ -> NP.index_field_transform name
         (* | _ -> "f_" ^ Option.value_exn type_name ^ "_" ^ name *)
         | _ -> "f_" ^ name)
     | Lifetime | Macro -> escape name
@@ -254,11 +255,14 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
     (crate, path)
 end
 
+let to_debug_string = T.show
+
 let map_path_strings ~(f : string -> string) (cid : t) : t =
   { cid with def_id = Imported.map_path_strings ~f cid.def_id }
 
 module DefaultNamePolicy = struct
   let reserved_words = Hash_set.create (module String)
+  let index_field_transform = Fn.id
 end
 
 module DefaultViewAPI = MakeViewAPI (DefaultNamePolicy)
