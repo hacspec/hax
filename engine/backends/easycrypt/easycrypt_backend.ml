@@ -25,7 +25,8 @@ let translate _ = failwith "xx"
 
 module BackendOptions = Backend.UnitBackendOptions
 module AST = Ast.Make (InputLanguage)
-module U = Ast_utils.Make (InputLanguage)
+module ECNamePolicy = Concrete_ident.DefaultNamePolicy
+module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (ECNamePolicy)
 open AST
 
 module RejectNotEC (FA : Features.T) = struct
@@ -89,7 +90,9 @@ module NM = struct
     push_using_longname the (List.rev (fst nm :: snd nm)) item
 
   let push (the : nmtree) (item : AST.item) =
-    push_using_namespace the (Concrete_ident.to_namespace item.ident) item
+    push_using_namespace the
+      (U.Concrete_ident_view.to_namespace item.ident)
+      item
 end
 
 let suffix_of_size (size : Ast.size) =
@@ -124,7 +127,7 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) : Types.file list
              match item.v with
              | Fn { name; generics; body; params }
                when List.is_empty generics.params ->
-                 let name = Concrete_ident.to_definition_name name in
+                 let name = U.Concrete_ident_view.to_definition_name name in
 
                  doit_fn fmt (name, params, body)
              | Fn _ -> assert false
@@ -154,7 +157,7 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) : Types.file list
          pp_param)
       params doit_stmt body
   and doit_concrete_ident (fmt : Format.formatter) (p : Concrete_ident.t) =
-    Format.fprintf fmt "%s" (Concrete_ident.to_definition_name p)
+    Format.fprintf fmt "%s" (U.Concrete_ident_view.to_definition_name p)
   and doit_type (fmt : Format.formatter) (typ : ty) =
     match typ with
     | TBool -> assert false
@@ -268,7 +271,7 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) : Types.file list
              || eq_name Core__cmp__PartialEq__ne op
              || eq_name Core__cmp__PartialEq__eq op) ->
         Format.fprintf fmt "(%a) %s (%a)" doit_expr e1
-          (match Concrete_ident.to_definition_name op with
+          (match U.Concrete_ident_view.to_definition_name op with
           | "bitxor" -> "^"
           | "bitand" -> "&"
           | "bitor" -> "|"

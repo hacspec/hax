@@ -20,8 +20,15 @@ val eq_name : name -> t -> bool
 
 type view = { crate : string; path : string list; definition : string }
 
-val to_view : t -> view
-val to_definition_name : t -> string
-val to_crate_name : t -> string
-val to_namespace : t -> string * string list
 val map_path_strings : f:(string -> string) -> t -> t
+
+include module type of struct
+  include Concrete_ident_sig.Make (struct
+    type t_ = t
+    type view_ = view
+  end)
+end
+
+module MakeViewAPI (NP : NAME_POLICY) : VIEW_API
+module DefaultNamePolicy : NAME_POLICY
+module DefaultViewAPI : VIEW_API

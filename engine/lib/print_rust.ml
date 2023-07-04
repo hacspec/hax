@@ -3,6 +3,7 @@ open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 open Ast
 open Ast.Full
 open Utils
+module Concrete_ident_view = Concrete_ident.DefaultViewAPI
 
 module AnnotatedString = struct
   module T = struct
@@ -106,7 +107,7 @@ module Raw = struct
 
   let last_of_global_ident (g : global_ident) span =
     match g with
-    | `Concrete c -> Concrete_ident.to_definition_name c
+    | `Concrete c -> Concrete_ident_view.to_definition_name c
     | _ ->
         Diagnostics.report
           {
@@ -329,7 +330,7 @@ module Raw = struct
           |> concat ~sep:!","
         in
         !"fn "
-        & !(Concrete_ident.to_definition_name name)
+        & !(Concrete_ident_view.to_definition_name name)
         & !"(" & params & !") -> " & return_type & !"{" & pexpr body & !"}"
     | _ -> !"/* TO DO */"
 end
