@@ -59,7 +59,8 @@ end
 module AST = Ast.Make (InputLanguage)
 module BackendOptions = Backend.UnitBackendOptions
 open Ast
-module U = Ast_utils.Make (InputLanguage)
+module CoqNamePolicy = Concrete_ident.DefaultNamePolicy
+module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (CoqNamePolicy)
 open AST
 
 module CoqLibrary : Library = struct
@@ -96,7 +97,7 @@ struct
   open Ctx
 
   let pconcrete_ident (id : concrete_ident) : string =
-    let id = Concrete_ident.to_view id in
+    let id = U.Concrete_ident_view.to_view id in
     let crate, path = ctx.current_namespace in
     if String.(crate = id.crate) && [%eq: string list] id.path path then
       id.definition
@@ -378,14 +379,14 @@ struct
         [
           (* TODO: generics *)
           C.AST.Record
-            ( Concrete_ident.to_definition_name name,
+            ( U.Concrete_ident_view.to_definition_name name,
               p_record_record span v.arguments );
         ]
     (* enum *)
     | Type { name; generics; variants } ->
         [
           C.AST.Inductive
-            ( Concrete_ident.to_definition_name name,
+            ( U.Concrete_ident_view.to_definition_name name,
               List.map ~f:(pgeneric_param span) generics.params,
               p_inductive span variants name );
         ]
@@ -393,22 +394,22 @@ struct
     (* | Type { name; generics; variants } -> *)
     (*     [ *)
     (*       C.AST.Notation *)
-    (*         ( Concrete_ident.to_definition_name name, *)
+    (*         ( U.Concrete_ident_view.to_definition_name name, *)
     (*           C.AST.Product (List.map ~f:snd (p_record span variants name)) ); *)
     (*       C.AST.Definition *)
-    (*         ( Concrete_ident.to_definition_name name, *)
+    (*         ( U.Concrete_ident_view.to_definition_name name, *)
     (*           [], *)
     (*           C.AST.Var "id", *)
     (*           C.AST.Arrow *)
-    (*             ( C.AST.Name (Concrete_ident.to_definition_name name), *)
-    (*               C.AST.Name (Concrete_ident.to_definition_name name) ) ); *)
+    (*             ( C.AST.Name (U.Concrete_ident_view.to_definition_name name), *)
+    (*               C.AST.Name (U.Concrete_ident_view.to_definition_name name) ) ); *)
     (*     ] *)
     | IMacroInvokation { macro; argument; span } -> (
         let unsupported () =
           let id = [%show: concrete_ident] macro in
           Error.raise { kind = UnsupportedMacro { id }; span = e.span }
         in
-        match Concrete_ident.to_view macro with
+        match U.Concrete_ident_view.to_view macro with
         | { crate = "hacspec_lib"; path = _; definition = name } -> (
             match name with
             | "public_nat_mod" ->
@@ -530,7 +531,7 @@ struct
     | Trait { name; generics; items } ->
         [
           C.AST.Class
-            ( Concrete_ident.to_definition_name name,
+            ( U.Concrete_ident_view.to_definition_name name,
               List.map
                 ~f:(fun x ->
                   ( x.ti_name,
@@ -579,11 +580,11 @@ struct
     List.map variants ~f:(fun { name; arguments; is_record } ->
         if is_record then
           C.AST.InductiveCase
-            ( Concrete_ident.to_definition_name name,
+            ( U.Concrete_ident_view.to_definition_name name,
               C.AST.RecordTy
                 (pconcrete_ident name, p_record_record span arguments) )
         else
-          let name = Concrete_ident.to_definition_name name in
+          let name = U.Concrete_ident_view.to_definition_name name in
           match arguments with
           | [] -> C.AST.BaseCase name
           | [ (arg_name, arg_ty) ] -> C.AST.InductiveCase (name, pty span arg_ty)
@@ -594,17 +595,17 @@ struct
   (* TODO: I don't get this pattern maching below. Variant with more than one payloads are rejected implicitely? *)
   (* | { name; arguments = [ (arg_name, arg_ty) ] } :: xs -> *)
   (*     if (index_of_field >> Option.is_some) arg_name then *)
-  (*       C.AST.InductiveCase (Concrete_ident.to_definition_name name, pty span arg_ty) *)
+  (*       C.AST.InductiveCase (U.Concrete_ident_view.to_definition_name name, pty span arg_ty) *)
   (*       :: p_inductive span xs parrent_name *)
   (*     else *)
-  (*       C.AST.InductiveCase (Concrete_ident.to_definition_name arg_name, pty span arg_ty) *)
+  (*       C.AST.InductiveCase (U.Concrete_ident_view.to_definition_name arg_name, pty span arg_ty) *)
   (*       :: p_inductive span xs parrent_name *)
   (* | { name; arguments = [] } :: xs -> *)
-  (*     C.AST.BaseCase (Concrete_ident.to_definition_name name) *)
+  (*     C.AST.BaseCase (U.Concrete_ident_view.to_definition_name name) *)
   (*     :: p_inductive span xs parrent_name *)
   (* | { name; arguments } :: xs -> *)
   (*     C.AST.InductiveCase *)
-  (*       ( Concrete_ident.to_definition_name name, *)
+  (*       ( U.Concrete_ident_view.to_definition_name name, *)
   (*         C.AST.RecordTy (pglobal_ident name, p_record_record span arguments) *)
   (*       ) *)
   (*     :: p_inductive span xs parrent_name *)
@@ -613,13 +614,13 @@ struct
   and p_record span variants parrent_name : (string * C.AST.ty) list =
     match variants with
     | { name; arguments = [ (arg_name, arg_ty) ] } :: xs ->
-        (Concrete_ident.to_definition_name arg_name, pty span arg_ty)
+        (U.Concrete_ident_view.to_definition_name arg_name, pty span arg_ty)
         :: p_record span xs parrent_name
     | { name; arguments = [] } :: xs ->
         ("TODO FIELD?", __TODO_ty__ span "TODO")
         :: p_record span xs parrent_name
     | { name; arguments } :: xs ->
-        ( Concrete_ident.to_definition_name name,
+        ( U.Concrete_ident_view.to_definition_name name,
           C.AST.RecordTy (pconcrete_ident name, p_record_record span arguments)
         )
         :: p_record span xs parrent_name
@@ -629,7 +630,7 @@ struct
     List.map
       ~f:(function
         | arg_name, arg_ty ->
-            (Concrete_ident.to_definition_name arg_name, pty span arg_ty))
+            (U.Concrete_ident_view.to_definition_name arg_name, pty span arg_ty))
       arguments
 end
 
@@ -644,7 +645,7 @@ let make ctx =
 
 let string_of_item (item : item) : string =
   let (module Print) =
-    make { current_namespace = Concrete_ident.to_namespace item.ident }
+    make { current_namespace = U.Concrete_ident_view.to_namespace item.ident }
   in
   List.map ~f:C.decl_to_string @@ Print.pitem item |> String.concat ~sep:"\n"
 

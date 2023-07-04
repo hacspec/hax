@@ -58,7 +58,16 @@ end
 module AST = Ast.Make (InputLanguage)
 module BackendOptions = Backend.UnitBackendOptions
 open Ast
-module U = Ast_utils.Make (InputLanguage)
+
+module FStarNamePolicy = struct
+  include Concrete_ident.DefaultNamePolicy
+
+  [@@@ocamlformat "disable"]
+
+  let reserved_words = Hash_set.of_list (module String) ["attributes";"noeq";"unopteq";"and";"assert";"assume";"begin";"by";"calc";"class";"default";"decreases";"effect";"eliminate";"else";"end";"ensures";"exception";"exists";"false";"friend";"forall";"fun";"λ";"function";"if";"in";"include";"inline";"inline_for_extraction";"instance";"introduce";"irreducible";"let";"logic";"match";"returns";"as";"module";"new";"new_effect";"layered_effect";"polymonadic_bind";"polymonadic_subcomp";"noextract";"of";"open";"opaque";"private";"quote";"range_of";"rec";"reifiable";"reify";"reflectable";"requires";"set_range_of";"sub_effect";"synth";"then";"total";"true";"try";"type";"unfold";"unfoldable";"val";"when";"with";"_";"__SOURCE_FILE__";"__LINE__";"match";"if";"let";"and"]
+end
+
+module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (FStarNamePolicy)
 open AST
 module F = Fstar_ast
 
@@ -126,7 +135,7 @@ struct
     | _ -> h e
 
   let pconcrete_ident (id : concrete_ident) =
-    let id = Concrete_ident.to_view id in
+    let id = U.Concrete_ident_view.to_view id in
     let ns_crate, ns_path = ctx.current_namespace in
     if String.(ns_crate = id.crate) && [%eq: string list] ns_path id.path then
       F.lid [ id.definition ]
@@ -171,7 +180,7 @@ struct
          ^ show_global_ident f)
 
   let index_of_field_concrete id =
-    try Some (Int.of_string @@ Concrete_ident.to_definition_name id)
+    try Some (Int.of_string @@ U.Concrete_ident_view.to_definition_name id)
     with _ -> None
 
   let index_of_field = function
@@ -492,7 +501,7 @@ struct
         let pat =
           F.pat
           @@ F.AST.PatVar
-               (F.id @@ Concrete_ident.to_definition_name name, None, [])
+               (F.id @@ U.Concrete_ident_view.to_definition_name name, None, [])
         in
         let pat =
           F.pat
@@ -517,7 +526,7 @@ struct
         let pat =
           F.pat
           @@ F.AST.PatVar
-               (F.id @@ Concrete_ident.to_definition_name name, None, [])
+               (F.id @@ U.Concrete_ident_view.to_definition_name name, None, [])
         in
         F.decls ~quals:[ F.AST.Unfold_for_unification_and_vcgen ]
         @@ F.AST.TopLevelLet
@@ -545,25 +554,27 @@ struct
                false,
                [
                  F.AST.TyconRecord
-                   ( F.id @@ Concrete_ident.to_definition_name name,
+                   ( F.id @@ U.Concrete_ident_view.to_definition_name name,
                      [],
                      (* todo type parameters & constraints *)
                      None,
                      [],
                      List.map
                        ~f:(fun (field, ty) ->
-                         ( F.id @@ Concrete_ident.to_definition_name field,
+                         ( F.id @@ U.Concrete_ident_view.to_definition_name field,
                            None,
                            [],
                            pty e.span ty ))
                        arguments );
                ] )
     | Type { name; generics; variants; _ } ->
-        let self = F.term_of_lid [ Concrete_ident.to_definition_name name ] in
+        let self =
+          F.term_of_lid [ U.Concrete_ident_view.to_definition_name name ]
+        in
         let constructors =
           List.map
             ~f:(fun { name; arguments; is_record } ->
-              ( F.id (Concrete_ident.to_definition_name name),
+              ( F.id (U.Concrete_ident_view.to_definition_name name),
                 Some
                   (let field_indexes =
                      List.map ~f:(fst >> index_of_field_concrete) arguments
@@ -572,7 +583,8 @@ struct
                      F.AST.VpRecord
                        ( List.map
                            ~f:(fun (field, ty) ->
-                             ( F.id @@ Concrete_ident.to_definition_name field,
+                             ( F.id
+                               @@ U.Concrete_ident_view.to_definition_name field,
                                None,
                                [],
                                pty e.span ty ))
@@ -596,7 +608,7 @@ struct
                false,
                [
                  F.AST.TyconVariant
-                   ( F.id @@ Concrete_ident.to_definition_name name,
+                   ( F.id @@ U.Concrete_ident_view.to_definition_name name,
                      [],
                      (* todo type parameters & constraints *)
                      None,
@@ -611,7 +623,7 @@ struct
                span = e.span;
              }
         in
-        match Concrete_ident.to_view macro with
+        match U.Concrete_ident_view.to_view macro with
         | { crate = "hacspec_lib"; path = _; definition = name } -> (
             let unwrap r =
               match r with
@@ -678,7 +690,7 @@ struct
           List.map ~f:(pgeneric_param_bd e.span) generics.params
           @ List.map ~f:(pgeneric_constraint_bd e.span) generics.constraints
         in
-        let name = F.id @@ Concrete_ident.to_definition_name name in
+        let name = F.id @@ U.Concrete_ident_view.to_definition_name name in
         let fields =
           List.concat_map
             ~f:(fun i ->
@@ -695,7 +707,7 @@ struct
                          let args = List.map ~f:(pgeneric_value e.span) args in
                          ( F.id
                              (name ^ "_implements_"
-                             ^ Concrete_ident.to_definition_name trait),
+                             ^ U.Concrete_ident_view.to_definition_name trait),
                            None,
                            [],
                            F.mk_e_app base args ))
@@ -769,7 +781,7 @@ let make ctx =
 
 let string_of_item (item : item) : string =
   let (module Print) =
-    make { current_namespace = Concrete_ident.to_namespace item.ident }
+    make { current_namespace = U.Concrete_ident_view.to_namespace item.ident }
   in
   List.map ~f:(function
     | `Item i -> decl_to_string i

@@ -93,19 +93,6 @@ module Kind = struct
     | _ -> None
 end
 
-type t = { def_id : Imported.def_id; kind : Kind.t }
-[@@deriving show, yojson, sexp]
-
-let map_path_strings ~(f : string -> string) (cid : t) : t =
-  { cid with def_id = Imported.map_path_strings ~f cid.def_id }
-
-(* [kind] is really a metadata, it is not relevant, `def_id`s are unique *)
-let equal x y = [%equal: Imported.def_id] x.def_id y.def_id
-let compare x y = [%compare: Imported.def_id] x.def_id y.def_id
-let of_def_id kind def_id = { def_id = Imported.of_def_id def_id; kind }
-let hash x = [%hash: Imported.def_id] x.def_id
-let hash_fold_t s x = Imported.hash_fold_def_id s x.def_id
-
 module View = struct
   module T = struct
     type view = { crate : string; path : string list; definition : string }
@@ -166,75 +153,114 @@ module View = struct
   let to_definition_name x = (to_view x).definition
 end
 
-let show x =
-  View.to_view x.def_id
-  |> (fun View.{ crate; path; definition } -> crate :: (path @ [ definition ]))
-  |> String.concat ~sep:"::"
+module T = struct
+  type t = { def_id : Imported.def_id; kind : Kind.t }
+  [@@deriving show, yojson, sexp]
 
-let pp fmt = show >> Caml.Format.pp_print_string fmt
+  (* [kind] is really a metadata, it is not relevant, `def_id`s are unique *)
+  let equal x y = [%equal: Imported.def_id] x.def_id y.def_id
+  let compare x y = [%compare: Imported.def_id] x.def_id y.def_id
+  let of_def_id kind def_id = { def_id = Imported.of_def_id def_id; kind }
+  let hash x = [%hash: Imported.def_id] x.def_id
+  let hash_fold_t s x = Imported.hash_fold_def_id s x.def_id
 
-type name = Concrete_ident_generated.name
+  type name = Concrete_ident_generated.name
 
-let of_name k = Concrete_ident_generated.def_id_of >> of_def_id k
+  let of_name k = Concrete_ident_generated.def_id_of >> of_def_id k
 
-let eq_name name id =
-  let of_name = Concrete_ident_generated.def_id_of name |> Imported.of_def_id in
-  [%equal: Imported.def_id] of_name id.def_id
+  let eq_name name id =
+    let of_name =
+      Concrete_ident_generated.def_id_of name |> Imported.of_def_id
+    in
+    [%equal: Imported.def_id] of_name id.def_id
+end
 
+include T
 include View.T
 
-let rename_definition (path : string list) (name : string) (kind : Kind.t)
-    type_name =
-  (* let path, name = *)
-  (*   match kind with *)
-  (*   | Constructor { is_struct = false } -> *)
-  (*       let path, type_name = (List.drop_last_exn path, List.last_exn path) in *)
-  (*       (path, type_name ^ "_" ^ name) *)
-  (*   | _ -> (path, name) *)
-  (* in *)
-  let prefixes = [ "t"; "C"; "v"; "f" ] in
-  let escape s =
-    match String.lsplit2 ~on:'_' s with
-    | Some (prefix, leftover) when List.mem ~equal:String.equal prefixes prefix
-      ->
-        prefix ^ "__" ^ leftover
-    | _ -> s
-  in
-  match kind with
-  | Type | Trait -> "t_" ^ name
-  | Value | Impl -> if start_uppercase name then "v_" ^ name else escape name
-  | Constructor _ -> if start_lowercase name then "C_" ^ name else escape name
-  | Field -> (
-      match Caml.int_of_string_opt name with
-      | Some _ -> name
-      (* | _ -> "f_" ^ Option.value_exn type_name ^ "_" ^ name *)
-      | _ -> "f_" ^ name)
-  | Lifetime | Macro -> escape name
+include Concrete_ident_sig.Make (struct
+  type t_ = t
+  type view_ = view
+end)
 
-let rec to_view ({ def_id; kind } : t) : view =
-  let def_id = Imported.drop_ctor def_id in
-  let View.{ crate; path; definition } = View.to_view def_id in
-  let type_name =
-    try
-      { def_id = Imported.parent def_id; kind = Type }
-      |> to_definition_name
-      |> String.chop_prefix_exn ~prefix:"t_"
-      |> Option.some
-    with _ -> None
-  in
-  let path, definition =
+module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
+  type t = T.t
+
+  let show x =
+    View.to_view x.def_id
+    |> (fun View.{ crate; path; definition } ->
+         crate :: (path @ [ definition ]))
+    |> String.concat ~sep:"::"
+
+  let pp fmt = show >> Caml.Format.pp_print_string fmt
+  let is_reserved_word : string -> bool = Hash_set.mem NP.reserved_words
+
+  let rename_definition (path : string list) (name : string) (kind : Kind.t)
+      type_name =
+    (* let path, name = *)
+    (*   match kind with *)
+    (*   | Constructor { is_struct = false } -> *)
+    (*       let path, type_name = (List.drop_last_exn path, List.last_exn path) in *)
+    (*       (path, type_name ^ "_" ^ name) *)
+    (*   | _ -> (path, name) *)
+    (* in *)
+    let prefixes = [ "t"; "C"; "v"; "f" ] in
+    let escape s =
+      match String.lsplit2 ~on:'_' s with
+      | Some (prefix, leftover)
+        when List.mem ~equal:String.equal prefixes prefix ->
+          prefix ^ "__" ^ leftover
+      | _ -> s
+    in
     match kind with
-    | Constructor { is_struct = false } ->
-        (List.drop_last_exn path, Option.value_exn type_name ^ "_" ^ definition)
-    | _ -> (path, definition)
-  in
-  let definition = rename_definition path definition kind type_name in
-  View.{ crate; path; definition }
+    | Type | Trait -> "t_" ^ name
+    | Value | Impl ->
+        if start_uppercase name || is_reserved_word name then "v_" ^ name
+        else escape name
+    | Constructor _ -> if start_lowercase name then "C_" ^ name else escape name
+    | Field -> (
+        match Caml.int_of_string_opt name with
+        | Some _ -> name
+        (* | _ -> "f_" ^ Option.value_exn type_name ^ "_" ^ name *)
+        | _ -> "f_" ^ name)
+    | Lifetime | Macro -> escape name
 
-and to_definition_name (x : t) : string = (to_view x).definition
+  let rec to_view ({ def_id; kind } : t) : view =
+    let def_id = Imported.drop_ctor def_id in
+    let View.{ crate; path; definition } = View.to_view def_id in
+    let type_name =
+      try
+        { def_id = Imported.parent def_id; kind = Type }
+        |> to_definition_name
+        |> String.chop_prefix_exn ~prefix:"t_"
+        |> Option.some
+      with _ -> None
+    in
+    let path, definition =
+      match kind with
+      | Constructor { is_struct = false } ->
+          ( List.drop_last_exn path,
+            Option.value_exn type_name ^ "_" ^ definition )
+      | _ -> (path, definition)
+    in
+    let definition = rename_definition path definition kind type_name in
+    View.{ crate; path; definition }
 
-let to_crate_name (x : t) : string = (to_view x).crate
+  and to_definition_name (x : t) : string = (to_view x).definition
 
-let to_namespace x =
-  let View.{ crate; path; _ } = to_view x in
-  (crate, path)
+  let to_crate_name (x : t) : string = (to_view x).crate
+
+  let to_namespace x =
+    let View.{ crate; path; _ } = to_view x in
+    (crate, path)
+end
+
+let map_path_strings ~(f : string -> string) (cid : t) : t =
+  { cid with def_id = Imported.map_path_strings ~f cid.def_id }
+
+module DefaultNamePolicy = struct
+  let reserved_words = Hash_set.create (module String)
+end
+
+module DefaultViewAPI = MakeViewAPI (DefaultNamePolicy)
+include DefaultViewAPI
