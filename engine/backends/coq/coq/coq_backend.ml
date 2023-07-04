@@ -21,6 +21,7 @@ module SubtypeToInputLanguage
     (FA : Features.T
             with type mutable_reference = Features.Off.mutable_reference
              and type continue = Features.Off.continue
+             and type break = Features.Off.break
              and type mutable_reference = Features.Off.mutable_reference
              and type mutable_pointer = Features.Off.mutable_pointer
              and type mutable_variable = Features.Off.mutable_variable

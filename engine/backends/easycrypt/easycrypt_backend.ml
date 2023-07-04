@@ -49,6 +49,7 @@ module RejectNotEC (FA : Features.T) = struct
         let raw_pointer = reject
         let early_exit = reject
         let question_mark = reject
+        let break = reject
         let macro _ = Features.On.macro
         let as_pattern = reject
         let lifetime = reject

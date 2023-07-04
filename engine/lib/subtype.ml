@@ -175,7 +175,7 @@ struct
             witness = S.loop witness;
           }
     | Break { e; label; witness } ->
-        Break { e = dexpr e; label; witness = S.loop witness }
+        Break { e = dexpr e; label; witness = (S.break *** S.loop) witness }
     | Return { e; witness } ->
         Return { e = dexpr e; witness = S.early_exit witness }
     | QuestionMark { e; converted_typ; witness } ->

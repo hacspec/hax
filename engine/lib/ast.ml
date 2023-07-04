@@ -311,12 +311,7 @@ functor
           witness : F.loop;
         }
       (* ControlFlow *)
-      | Break of {
-          e : expr;
-          label : string option;
-          witness : F.loop;
-              (* todo, we should be able to disable [Break]s specifically *)
-        }
+      | Break of { e : expr; label : string option; witness : F.break * F.loop }
       | Return of { e : expr; witness : F.early_exit }
       | QuestionMark of {
           e : expr;

@@ -482,7 +482,7 @@ module Exn = struct
             (* TODO: labels! *)
             let e = Option.map ~f:c_expr value in
             let e = Option.value ~default:(unit_expr span) e in
-            Break { e; label = None; witness = W.loop }
+            Break { e; label = None; witness = (W.break, W.loop) }
         | Continue _ ->
             Continue { e = None; label = None; witness = (W.continue, W.loop) }
         | Return { value } ->
