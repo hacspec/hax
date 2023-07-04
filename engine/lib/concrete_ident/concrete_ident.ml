@@ -154,8 +154,7 @@ module View = struct
 end
 
 module T = struct
-  type t = { def_id : Imported.def_id; kind : Kind.t }
-  [@@deriving show, yojson, sexp]
+  type t = { def_id : Imported.def_id; kind : Kind.t } [@@deriving yojson, sexp]
 
   (* [kind] is really a metadata, it is not relevant, `def_id`s are unique *)
   let equal x y = [%equal: Imported.def_id] x.def_id y.def_id
