@@ -186,7 +186,8 @@ struct
     | TSlice { ty; _ } -> C.AST.SliceTy (pty span ty)
     | TParam i -> C.AST.Name i.name
     | TProjectedAssociatedType s ->
-        C.AST.Wild (* TODO *)
+        C.AST.Wild
+        (* TODO *)
         (* __TODO_ty__ span ("proj:assoc:type" ^ s) *)
         (* failwith "proj:assoc:type" *)
     | _ -> .
@@ -327,7 +328,6 @@ struct
             body = pexpr body;
             value_typ = pty span lhs.typ;
           }
-    | EffectAction _ -> __TODO_term__ span "monadic action"
     | Match { scrutinee; arms } ->
         C.AST.Match
           ( pexpr scrutinee,
