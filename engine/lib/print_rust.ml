@@ -3,7 +3,12 @@ open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 open Ast
 open Ast.Full
 open Utils
-module Concrete_ident_view = Concrete_ident.DefaultViewAPI
+
+module Concrete_ident_view = Concrete_ident.MakeViewAPI (struct
+  include Concrete_ident.DefaultNamePolicy
+
+  let index_field_transform field = "_" ^ field
+end)
 
 module AnnotatedString = struct
   module T = struct
@@ -85,7 +90,7 @@ module Raw = struct
   let rec pglobal_ident' prefix span (e : global_ident) : AnnotatedString.t =
     let ( ! ) s = pure span (prefix ^ s) in
     match e with
-    | `Concrete c -> !([%show: Concrete_ident.t] c)
+    | `Concrete c -> !(Concrete_ident_view.show c)
     | `Primitive p -> pprimitive_ident span p
     | `TupleType n -> ![%string "tuple%{Int.to_string n}"]
     | `TupleCons n -> ![%string "Tuple%{Int.to_string n}"]
