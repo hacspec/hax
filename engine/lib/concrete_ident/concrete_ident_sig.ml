@@ -23,5 +23,6 @@ struct
     val to_definition_name : t_ -> string
     val to_crate_name : t_ -> string
     val to_namespace : t_ -> string * string list
+    val local_name : string -> string
   end
 end
