@@ -162,7 +162,8 @@ struct
           ("pglobal_ident: expected to be handled somewhere else: "
          ^ show_global_ident id)
 
-  let rec plocal_ident (e : LocalIdent.t) = F.id @@ String.lowercase e.name
+  let rec plocal_ident (e : LocalIdent.t) =
+    F.id @@ U.Concrete_ident_view.local_name e.name
 
   let pgeneric_param_name (name : string) : string =
     String.lowercase

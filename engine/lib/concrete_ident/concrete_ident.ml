@@ -211,7 +211,9 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
     | Value | Impl ->
         if start_uppercase name || is_reserved_word name then "v_" ^ name
         else escape name
-    | Constructor _ -> if start_lowercase name then "C_" ^ name else escape name
+    | Constructor _ ->
+        if start_lowercase name || is_reserved_word name then "C_" ^ name
+        else escape name
     | Field -> (
         match Caml.int_of_string_opt name with
         | Some _ -> NP.index_field_transform name
@@ -253,6 +255,17 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
     |> (fun View.{ crate; path; definition } ->
          crate :: (path @ [ definition ]))
     |> String.concat ~sep:"::"
+
+  let local_name name =
+    to_definition_name
+      {
+        def_id =
+          {
+            krate = "dummy_for_local_name";
+            path = [ { data = ValueNs name; disambiguator = 0 } ];
+          };
+        kind = Value;
+      }
 end
 
 let to_debug_string = T.show
