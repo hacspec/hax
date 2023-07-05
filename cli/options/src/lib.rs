@@ -168,16 +168,26 @@ pub enum LinterCommand {
 }
 
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
-pub enum Command {
+pub enum RustcCommand {
     #[command(flatten)]
     ExporterCommand(ExporterCommand),
-    #[clap(subcommand, name = "lint", about = "Lint the code")]
+    /// Lint the code
+    #[clap(subcommand, name = "lint")]
     LintCommand(LinterCommand),
+}
+
+#[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
+pub enum Command {
+    #[command(flatten)]
+    RustcCommand(RustcCommand),
+    /// Check the proofs
+    #[command(subcommand, name = "check")]
+    CheckCommand(Backend),
 }
 
 #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
 #[command(author, version = concat!("commit=", env!("HAX_GIT_COMMIT_HASH"), " ", "describe=", env!("HAX_GIT_DESCRIBE")), name = "hax", about, long_about = None)]
-pub struct Options {
+pub struct Options<Command: clap::Subcommand> {
     /// Replace the expansion of each macro matching PATTERN by their
     /// invocation. PATTERN denotes a rust path (i.e. [A::B::c]) in
     /// which glob patterns are allowed. The glob pattern * matches
@@ -205,7 +215,7 @@ pub struct Options {
     pub cargo_flags: Vec<String>,
 
     #[command(subcommand)]
-    pub command: Option<Command>,
+    pub command: Command,
 
     /// [cargo] caching is disabled by default, this flag enables it back.
     #[arg(long="enable-cargo-cache", action=clap::builder::ArgAction::SetTrue)]
@@ -231,25 +241,37 @@ impl NormalizePaths for ExporterCommand {
     }
 }
 
-impl NormalizePaths for Command {
+impl NormalizePaths for RustcCommand {
     fn normalize_paths(self) -> Self {
         match self {
-            Command::ExporterCommand(cmd) => Command::ExporterCommand(cmd.normalize_paths()),
+            RustcCommand::ExporterCommand(cmd) => {
+                RustcCommand::ExporterCommand(cmd.normalize_paths())
+            }
             _ => self,
         }
     }
 }
-impl NormalizePaths for Options {
+
+impl NormalizePaths for Command {
     fn normalize_paths(self) -> Self {
-        Options {
-            command: self.command.map(|c| c.normalize_paths()),
+        match self {
+            Command::RustcCommand(cmd) => Command::RustcCommand(cmd.normalize_paths()),
+            _ => self,
+        }
+    }
+}
+
+impl<Command: NormalizePaths + clap::Subcommand> NormalizePaths for Options<Command> {
+    fn normalize_paths(self) -> Self {
+        Self {
+            command: self.command.normalize_paths(),
             ..self
         }
     }
 }
 
-impl From<Options> for hax_frontend_exporter_options::Options {
-    fn from(opts: Options) -> hax_frontend_exporter_options::Options {
+impl From<Options<RustcCommand>> for hax_frontend_exporter_options::Options {
+    fn from(opts: Options<RustcCommand>) -> Self {
         hax_frontend_exporter_options::Options {
             inline_macro_calls: opts.inline_macro_calls,
         }

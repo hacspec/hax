@@ -16,7 +16,7 @@ fn rustc_version_env_var() {
 fn json_schema_static_asset() {
     let schema = schemars::schema_for!((
         hax_frontend_exporter::Item,
-        hax_cli_options::Options,
+        hax_cli_options::Options<hax_cli_options::Command>,
         hax_diagnostics::Diagnostics<hax_frontend_exporter::Span>,
         hax_cli_options_engine::EngineOptions,
         hax_cli_options_engine::Output,

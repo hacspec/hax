@@ -1,8 +1,8 @@
+#![feature(type_changing_struct_update)]
+
 use clap::Parser;
 use colored::Colorize;
-use hax_cli_options::NormalizePaths;
-use hax_cli_options::Options;
-use std::process::Command;
+use hax_cli_options::{Command, NormalizePaths, Options, RustcCommand};
 
 /// Return a toolchain argument to pass to [cargo]: when the correct nightly is
 /// already present, this is None, otherwise we (1) ensure [rustup] is available
@@ -41,22 +41,31 @@ pub fn get_args(subcommand: &str) -> Vec<String> {
 
 fn main() {
     let args: Vec<String> = get_args("hax");
-    // eprintln!("args: {args:?}");
-    let options = Options::parse_from(args.iter()).normalize_paths();
-    // eprintln!("options: {options:?}");
+    let options: Options<Command> = Options::parse_from(args.iter()).normalize_paths();
 
-    let mut cmd = Command::new("cargo");
+    let mut cmd = std::process::Command::new("cargo");
     if let Some(toolchain) = toolchain() {
         cmd.env("RUSTUP_TOOLCHAIN", toolchain);
     }
-    cmd.args(["build".into()].iter().chain(options.cargo_flags.iter()));
-    cmd.env(
-        "RUSTC_WORKSPACE_WRAPPER",
-        std::env::var("HAX_RUSTC_DRIVER_BINARY").unwrap_or("driver-hax-frontend-exporter".into()),
-    )
-    .env(
-        hax_cli_options::ENV_VAR_OPTIONS_FRONTEND,
-        serde_json::to_string(&options).expect("Options could not be converted to a JSON string"),
-    );
-    std::process::exit(cmd.spawn().unwrap().wait().unwrap().code().unwrap_or(254))
+    cmd.arg("build").args(&options.cargo_flags);
+
+    match options.command {
+        Command::RustcCommand(command) => {
+            let options: Options<RustcCommand> = Options { command, ..options };
+            cmd.env(
+                "RUSTC_WORKSPACE_WRAPPER",
+                std::env::var("HAX_RUSTC_DRIVER_BINARY")
+                    .unwrap_or("driver-hax-frontend-exporter".into()),
+            );
+            cmd.env(
+                hax_cli_options::ENV_VAR_OPTIONS_FRONTEND,
+                serde_json::to_string(&options)
+                    .expect("Options could not be converted to a JSON string"),
+            );
+            std::process::exit(cmd.spawn().unwrap().wait().unwrap().code().unwrap_or(254))
+        }
+        Command::CheckCommand(backend) => {
+            todo!()
+        }
+    }
 }
