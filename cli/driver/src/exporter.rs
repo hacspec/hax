@@ -34,18 +34,12 @@ fn write_files(
     session: &rustc_session::Session,
     backend: hax_cli_options::Backend,
 ) {
-    let pkg_name = std::env::var("CARGO_PKG_NAME").unwrap();
-    let metadata = cargo_metadata::MetadataCommand::new().exec().unwrap();
-    let package = metadata
-        .packages
-        .iter()
-        .find(|pkg| pkg.name == pkg_name)
-        .unwrap();
-    let manifest_path = std::path::Path::new(&package.manifest_path);
+    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    let manifest_dir = std::path::Path::new(&manifest_dir);
     let relative_path: std::path::PathBuf = ["proofs", format!("{backend}").as_str(), "extraction"]
         .iter()
         .collect();
-    let out_dir = manifest_path.parent().unwrap().join(&relative_path);
+    let out_dir = manifest_dir.join(&relative_path);
     for file in output.files.clone() {
         let path = out_dir.join(&file.path);
         std::fs::create_dir_all(&path.parent().unwrap()).unwrap();
