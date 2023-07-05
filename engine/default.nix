@@ -41,7 +41,7 @@ let
       ppx_yojson_conv yojson ppx_sexp_conv ppx_hash
       visitors pprint non_empty_list bignum
       ppx_deriving_yojson ppx_matches ppx_let cmdliner
-      angstrom ppx_string
+      angstrom ppx_string logs
       core re
     ] ++
     # F* dependencies

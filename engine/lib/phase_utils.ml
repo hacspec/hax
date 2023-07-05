@@ -166,7 +166,9 @@ end = struct
 
   let export () =
     match !prefix_path with
-    | Some prefix_path -> export' prefix_path
+    | Some prefix_path ->
+        Logs.info (fun m -> m "Exporting debug informations");
+        export' prefix_path
     | None -> ()
 end
 
@@ -185,9 +187,9 @@ module TracePhase (P : PHASE) = struct
   let ditems =
     if enable then P.ditems
     else fun items ->
-      prerr_endline @@ "# Entering phase " ^ name;
+      Logs.info (fun m -> m "Entering phase [%s]" name);
       let items = P.ditems items in
-      prerr_endline @@ "# Exiting phase " ^ name;
+      Logs.info (fun m -> m "Exiting phase [%s]" name);
       items
 end
 

@@ -26,6 +26,7 @@ module type T = sig
 
   val apply_phases : BackendOptions.t -> Ast.Rust.item list -> AST.item list
   val translate : BackendOptions.t -> AST.item list -> Types.file list
+  val backend : Diagnostics.Backend.t
 end
 
 module type BackendMetadata = sig
