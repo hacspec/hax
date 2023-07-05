@@ -24,11 +24,15 @@ module AnnotatedString = struct
     let pure : span -> string -> t = fun meta s -> [ (meta, s) ]
     let ( & ) = append
     let to_string = List.map ~f:snd >> String.concat ~sep:""
-    let split_re = Re.Str.regexp "\\([\t\n ]+\\|[^A-Za-z0-9_]\\)"
+    let split_re = Re.Pcre.regexp "[\t\n ]+|[^A-Za-z0-9_]"
 
     let split =
-      let open Re.Str in
-      full_split split_re >> List.map ~f:(function Text s | Delim s -> s)
+      let open Re.Pcre in
+      full_split ~rex:split_re
+      >> List.concat_map ~f:(function
+           | (Text s | Delim s | Group (_, s)) when not (String.is_empty s) ->
+               [ s ]
+           | _ -> [])
 
     let tokenize : t -> t =
       List.concat_map
@@ -61,9 +65,9 @@ module AnnotatedString = struct
   end
 end
 
-let re_matches re (s : string) : bool =
+let re_matches rex (s : string) : bool =
   try
-    let _ = Re.Str.search_forward re s 0 in
+    let _ = Re.Pcre.pmatch ~rex s in
     true
   with _ -> false
 
