@@ -2,9 +2,10 @@ name: Ensure formatting
 
 on:
   pull_request:
+  merge_group:
   workflow_dispatch:
   push:
-    branches: [main, staging, trying]
+    branches: [main]
 
 jobs:
   ocamlformat:

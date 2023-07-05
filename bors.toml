@@ -1,6 +1,0 @@
-status = [
-       "nix-action",
-       "ci-success-bors",
-       "rustfmt",
-       "ocamlformat",
-]

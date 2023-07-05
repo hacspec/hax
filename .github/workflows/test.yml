@@ -2,8 +2,9 @@ name: Test Workspace
 
 on:
   push:
-    branches: [main, staging, trying]
+    branches: [main]
   pull_request:
+  merge_group:
   workflow_dispatch:
 
 concurrency:
