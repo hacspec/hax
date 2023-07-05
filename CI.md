@@ -19,15 +19,6 @@
    the toolchain on two versions of Ubuntu and two versions of MacOS
    using `apt` or `homebrew` and the `setup.sh` script.
  
-## Pull Requests & Bors
-Each commit pushed to a pull request triggers the actions `specs` and
-`format`.
-
-When a PR is reviewed and ready to be merged, one should not press the
-merge button, but should comment `bors +r` in the PR. This will call
-the [Bors bot](https://github.com/bors-ng/bors-ng), which will
-additionally run the action `test_installs`, and merge automatically
-if that latter action is successful.
-
-Note Bors also ensures that PRs are up to date and merged one at a
-time.
+## Merge queue
+Additional actions are triggered on pull requests in the merge queue. They are
+found in [`test_installs`](./.github/workflows/test_installs.yml).

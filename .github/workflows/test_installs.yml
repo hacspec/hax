@@ -1,9 +1,10 @@
 name: Test installations
 
 on:
+  merge_group:
   workflow_dispatch:
   push:
-    branches: [main, staging, trying]
+    branches: [main]
     
 jobs:
   docker:
@@ -40,14 +41,3 @@ jobs:
     - run: |
         eval $(opam env)
         cargo hax -C -p hacspec-chacha20 \; -i '**' into fstar
-  ci-success-bors:
-    name: ci-success-bors
-    if: ${{ success() }}
-    needs:
-      - docker
-      - setup_sh
-    runs-on: ubuntu-latest
-    steps:
-      - name: CI succeeded
-        run: exit 0
-      
