@@ -11,6 +11,9 @@ struct
     val reserved_words : string Hash_set.t
     (** List of all words that have a special meaning in the target
         language, and that should thus be escaped. *)
+
+    val index_field_transform : string -> string
+    (** Transformation applied to indexes fields name (i.e. [x.1]) *)
   end
 
   module type VIEW_API = sig
