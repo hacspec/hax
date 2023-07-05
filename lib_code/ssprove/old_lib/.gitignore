@@ -1,0 +1,8 @@
+*.vo*
+*.aux
+*.glob
+*.cache
+.Makefile.d
+Makefile
+Makefile.conf
+src/_temp/

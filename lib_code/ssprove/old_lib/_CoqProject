@@ -1,0 +1,9 @@
+-R src/ Hacspec
+-arg -w
+-arg all
+
+src/Hacspec_Lib_Comparable.v
+src/LocationUtility.v
+src/ChoiceEquality.v
+src/Hacspec_Lib_Pre.v
+src/Hacspec_Lib.v

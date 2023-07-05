@@ -1,0 +1,40 @@
+# -R src Hacspec
+
+# # src/MachineIntegers.v
+# src/ChoiceEquality.v
+# src/Hacspec_Lib_Comparable.v
+# src/LocationUtility.v
+# src/Hacspec_Lib_Pre.v
+# src/Hacspec_Lib.v
+# # src/QuickChickLib.v
+
+-R . Examples
+-arg -w
+-arg all
+
+Hacspec_lib.v
+
+# Hacspec_lib_old.v
+
+Hacspec_aes_jazz.v
+
+# Hacspec_chacha20.v
+# Hacspec_poly1305.v
+# Hacspec_chacha20poly1305.v
+
+# Hacspec_curve25519.v
+
+# Hacspec_sha256.v
+# Hacspec_sha512.v
+
+# Hacspec_bls12_381.v
+
+### Not working
+# Example.v
+# Hacspec_aes.v
+# Hacspec_gf128.v
+# Hacspec_gimli.v
+# Hacspec_hmac.v
+# Hacspec_sha3.v
+
+aes_hac.v
