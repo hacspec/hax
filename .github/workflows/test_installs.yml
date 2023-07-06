@@ -44,3 +44,16 @@ jobs:
     - run: |
         eval $(opam env)
         cargo hax -C -p hacspec-chacha20 \; -i '**' into fstar
+  setup_sh_status:
+    if: |
+      always() &&
+      github.event_name == 'merge_group'
+    needs: setup_sh
+    runs-on: ubuntu-latest
+    steps:
+      - name: Successful
+        if: ${{ !(contains(needs.*.result, 'failure')) }}
+        run: exit 0
+      - name: Failing
+        if: ${{ contains(needs.*.result, 'failure') }}
+        run: exit 1
