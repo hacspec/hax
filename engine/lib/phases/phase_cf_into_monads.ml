@@ -185,13 +185,10 @@ struct
                   ({ arm = { arm_pat; body }; span } : B.arm))
                 arms
           in
-          let scrutinee = dexpr scrutinee in
-          {
-            e = Match { scrutinee; arms };
-            span;
-            typ =
-              List.map ~f:(fun arm -> arm.arm.body.typ) arms |> UB.meet_types;
-          }
+          let typ =
+            match arms with [] -> B.TFalse | hd :: _ -> hd.arm.body.typ
+          in
+          { e = Match { scrutinee = dexpr scrutinee; arms }; span; typ }
       | If { cond; then_; else_ } ->
           let cond = dexpr cond in
           let then' = dexpr then_ in
@@ -211,14 +208,7 @@ struct
               else'
           in
           let then_ = KnownMonads.lift "If:then-branch" then' mthen.monad m in
-          let else_typ =
-            match else_ with Some { typ; _ } -> typ | None -> UB.unit_typ
-          in
-          {
-            e = If { cond; then_; else_ };
-            span;
-            typ = UB.meet_types [ then_.typ; else_typ ];
-          }
+          { e = If { cond; then_; else_ }; span; typ = then_.typ }
       | Continue _ ->
           Error.unimplemented ~issue_id:96
             ~details:"TODO: Monad for loop-related control flow" span
