@@ -208,6 +208,9 @@ struct
           }
       | If { cond; then_; else_ } ->
           let then_ = dexpr_same then_ in
+          let else_ =
+            Option.value ~default:(UA.unit_expr expr.span) else_ |> dexpr_same
+          in
           {
             e =
               If
@@ -215,11 +218,9 @@ struct
                   cond =
                     dexpr_s { s with expr_level = []; drop_expr = false } cond;
                   then_;
-                  else_ =
-                    Option.value ~default:(UA.unit_expr expr.span) else_
-                    |> dexpr_same |> Option.some;
+                  else_ = Option.some else_;
                 };
-            typ = then_.typ;
+            typ = UB.meet_types [ then_.typ; else_.typ ];
             span = expr.span;
           }
       | Match { scrutinee; arms } ->
@@ -239,7 +240,8 @@ struct
                       scrutinee;
                   arms;
                 };
-            typ = (List.hd_exn arms).arm.body.typ;
+            typ =
+              List.map ~f:(fun arm -> arm.arm.body.typ) arms |> UB.meet_types;
             span = expr.span;
           }
       | Loop { body; kind; state; label; witness } ->

@@ -324,6 +324,14 @@ module Make (F : Features.T) = struct
         LocalIdent.var_id_of_int (-1);
     }
 
+  (** Computes the [meet] of a list of types. Basically, [⊥ ⊓ τ] is
+      [τ], [τ ⊓ τ] is [τ], and anything else isn't defined. In the
+      implementation, we just return the first non-[⊥] type, and [⊥]
+      if there is none. Note [⊥] is noted [!] in Rust and correspond
+      to [TFalse] in Hax's AST. *)
+  let meet_types : ty list -> ty =
+    List.find ~f:([%matches? TFalse] >> not) >> Option.value ~default:TFalse
+
   let unit_typ : ty = TApp { ident = `TupleType 0; args = [] }
 
   let unit_expr span : expr =

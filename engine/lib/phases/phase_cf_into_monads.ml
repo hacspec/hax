@@ -171,26 +171,26 @@ struct
                 (m, (dpat arm_pat, span, b)))
               arms
           in
-          (* Todo throw assertion failed here (to get rid of reduce_exn in favor of reduce) *)
-          let m =
-            List.map ~f:(fun ({ monad; _ }, _) -> monad) arms
-            |> List.reduce ~f:(KnownMonads.lub span)
-            |> Option.value_or_thunk ~default:(fun _ ->
-                   Error.assertion_failure span "[match] with zero arm?")
-          in
           let arms =
-            List.map
-              ~f:(fun (mself, (arm_pat, span, body)) ->
-                let body = KnownMonads.lift "Match" body mself.monad m in
-                let arm_pat = { arm_pat with typ = body.typ } in
-                ({ arm = { arm_pat; body }; span } : B.arm))
-              arms
+            if List.is_empty arms then []
+            else
+              let m =
+                List.map ~f:(fun ({ monad; _ }, _) -> monad) arms
+                |> List.reduce_exn ~f:(KnownMonads.lub span)
+              in
+              List.map
+                ~f:(fun (mself, (arm_pat, span, body)) ->
+                  let body = KnownMonads.lift "Match" body mself.monad m in
+                  let arm_pat = { arm_pat with typ = body.typ } in
+                  ({ arm = { arm_pat; body }; span } : B.arm))
+                arms
           in
           let scrutinee = dexpr scrutinee in
           {
             e = Match { scrutinee; arms };
             span;
-            typ = (List.hd_exn arms).arm.body.typ;
+            typ =
+              List.map ~f:(fun arm -> arm.arm.body.typ) arms |> UB.meet_types;
           }
       | If { cond; then_; else_ } ->
           let cond = dexpr cond in
@@ -211,7 +211,14 @@ struct
               else'
           in
           let then_ = KnownMonads.lift "If:then-branch" then' mthen.monad m in
-          { e = If { cond; then_; else_ }; span; typ = then_.typ }
+          let else_typ =
+            match else_ with Some { typ; _ } -> typ | None -> UB.unit_typ
+          in
+          {
+            e = If { cond; then_; else_ };
+            span;
+            typ = UB.meet_types [ then_.typ; else_typ ];
+          }
       | Continue _ ->
           Error.unimplemented ~issue_id:96
             ~details:"TODO: Monad for loop-related control flow" span
