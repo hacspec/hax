@@ -245,7 +245,6 @@ functor
       | AST.RecordConstructor (f, args) ->
           ( "Build_"
             ^ term_to_string_without_paren f depth
-            ^ " "
             ^ record_args_to_string args depth,
             true )
       | AST.Type t ->
@@ -311,7 +310,9 @@ functor
     and record_args_to_string (args : (string * AST.term) list) depth : string =
       match args with
       | (i, t) :: xs ->
-          term_to_string_with_paren t depth ^ record_args_to_string xs depth
+          " "
+          ^ term_to_string_with_paren t depth
+          ^ record_args_to_string xs depth
       | _ -> ""
 
     and args_to_string (args : AST.term list) depth : string =

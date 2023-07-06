@@ -174,7 +174,7 @@ struct
     | TApp { ident = `TupleType n; args } when n >= 2 ->
         C.AST.Product (args_ty span args)
     | TApp { ident; args } ->
-        C.AST.AppTy (pglobal_ident ident ^ "_t", args_ty span args)
+        C.AST.AppTy (pglobal_ident ident, args_ty span args)
     | TArrow (inputs, output) ->
         List.fold_right ~init:(pty span output)
           ~f:(fun x y -> C.AST.Arrow (x, y))
@@ -377,36 +377,20 @@ struct
         ]
     | TyAlias { name; generics; ty } ->
         [ C.AST.Notation (pconcrete_ident name ^ "_t", pty span ty) ]
-    (* record *)
-    | Type { name; generics; variants = [ v ]; is_struct = true } ->
+    | Type { name; generics; variants; is_struct = true (* record *) } ->
         [
           (* TODO: generics *)
           C.AST.Record
             ( U.Concrete_ident_view.to_definition_name name,
-              p_record_record span v.arguments );
+              p_record span variants );
         ]
-    (* enum *)
-    | Type { name; generics; variants } ->
+    | Type { name; generics; variants; is_struct = false (* enum *) } ->
         [
           C.AST.Inductive
             ( U.Concrete_ident_view.to_definition_name name,
               List.map ~f:(pgeneric_param span) generics.params,
               p_inductive span variants name );
         ]
-    (* TODO: this is never matched, now *)
-    (* | Type { name; generics; variants } -> *)
-    (*     [ *)
-    (*       C.AST.Notation *)
-    (*         ( U.Concrete_ident_view.to_definition_name name, *)
-    (*           C.AST.Product (List.map ~f:snd (p_record span variants name)) ); *)
-    (*       C.AST.Definition *)
-    (*         ( U.Concrete_ident_view.to_definition_name name, *)
-    (*           [], *)
-    (*           C.AST.Var "id", *)
-    (*           C.AST.Arrow *)
-    (*             ( C.AST.Name (U.Concrete_ident_view.to_definition_name name), *)
-    (*               C.AST.Name (U.Concrete_ident_view.to_definition_name name) ) ); *)
-    (*     ] *)
     | IMacroInvokation { macro; argument; span } -> (
         let unsupported () =
           let id = [%show: concrete_ident] macro in
@@ -614,19 +598,19 @@ struct
   (*     :: p_inductive span xs parrent_name *)
   (* | _ -> [] *)
 
-  and p_record span variants parrent_name : (string * C.AST.ty) list =
+  and p_record span variants : (string * C.AST.ty) list =
     match variants with
     | { name; arguments = [ (arg_name, arg_ty) ] } :: xs ->
         (U.Concrete_ident_view.to_definition_name arg_name, pty span arg_ty)
-        :: p_record span xs parrent_name
+        :: p_record span xs
     | { name; arguments = [] } :: xs ->
-        ("TODO FIELD?", __TODO_ty__ span "TODO")
-        :: p_record span xs parrent_name
+        (U.Concrete_ident_view.to_definition_name name, C.AST.Wild)
+        :: p_record span xs
     | { name; arguments } :: xs ->
         ( U.Concrete_ident_view.to_definition_name name,
           C.AST.RecordTy (pconcrete_ident name, p_record_record span arguments)
         )
-        :: p_record span xs parrent_name
+        :: p_record span xs
     | _ -> []
 
   and p_record_record span arguments : (string * C.AST.ty) list =

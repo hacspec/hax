@@ -20,32 +20,39 @@ module Make (FA : Features.T) = struct
           Phase_utils.Metadata.make Diagnostics.Phase.RecordVariants
       end)
 
-  let rec ditem (item : A.item) : B.item list =
-    match item.v with
-    | Type { name; generics; variants; is_struct = false } ->
-        let variants', type_defs =
-          List.unzip
-            (List.map ~f:(flatten_variants item.span generics) variants)
-        in
-        List.filter_opt type_defs
-        @ [
-            {
-              v =
-                B.Type
-                  {
-                    name;
-                    generics = dgenerics item.span generics;
-                    variants = variants';
-                    is_struct = false;
-                  };
-              span = item.span;
-              ident = item.ident;
-            };
-          ]
-    | _ ->
-        [
-          { v = ditem' item.span item.v; span = item.span; ident = item.ident };
-        ]
+  let rec ditems (items : A.item list) : B.item list =
+    List.concat_map
+      ~f:(fun item ->
+        match item.v with
+        | Type { name; generics; variants; is_struct = false } ->
+            let variants', type_defs =
+              List.unzip
+                (List.map ~f:(flatten_variants item.span generics) variants)
+            in
+            List.filter_opt type_defs
+            @ [
+                {
+                  v =
+                    B.Type
+                      {
+                        name;
+                        generics = dgenerics item.span generics;
+                        variants = variants';
+                        is_struct = false;
+                      };
+                  span = item.span;
+                  ident = item.ident;
+                };
+              ]
+        | _ ->
+            [
+              {
+                v = ditem' item.span item.v;
+                span = item.span;
+                ident = item.ident;
+              };
+            ])
+      items
 
   and flatten_variants span generics (v : A.variant) : B.variant * B.item option
       =
@@ -55,29 +62,23 @@ module Make (FA : Features.T) = struct
         Concrete_ident.of_def_id Type
           {
             krate = "temp_name";
-            path = [ { data = TypeNs "my_temp_name"; disambiguator = 0 } ];
+            path = [ { data = TypeNs "my_temp_name"; disambiguator = 4 } ];
           }
       in
       let b_v' : B.variant =
         {
           name = b_v.name;
           arguments =
-            [
-              ( new_name,
-                B.TParam
-                  {
-                    name = "my_temp_name";
-                    id = Ast.LocalIdent.ty_param_id_of_int 0;
-                  } );
-            ];
+            [ (new_name, B.TApp { ident = `Concrete new_name; args = [] }) ];
           is_record = false;
         }
       in
-      let temp n : B.variant =
+      let temp (n, t) : B.variant =
         {
           name = n;
-          arguments = [];
-          is_record = true;
+          arguments = [ (n, t) ];
+          is_record = false;
+          (* Should this be false? *)
           (* F.record_variants option; *)
         }
       in
@@ -89,7 +90,7 @@ module Make (FA : Features.T) = struct
                 {
                   name = new_name;
                   generics = dgenerics span generics;
-                  variants = List.map ~f:(fun (n, _) -> temp n) b_v.arguments;
+                  variants = List.map ~f:temp b_v.arguments;
                   is_struct = true;
                 };
             span;
