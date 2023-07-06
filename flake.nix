@@ -61,6 +61,15 @@
               pkgs.pkg-config
               pkgs.rust-analyzer
               rustc
+
+              (pkgs.stdenv.mkDerivation {
+                name = "rebuild-script";
+                phases = [ "installPhase" ];
+                installPhase = ''
+                  mkdir -p $out/bin
+                  cp ${./.utils/rebuild.sh} $out/bin/rebuild
+                '';
+              })
             ];
             LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
           };
