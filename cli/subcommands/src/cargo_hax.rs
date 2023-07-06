@@ -3,6 +3,9 @@
 use clap::Parser;
 use colored::Colorize;
 use hax_cli_options::{Command, NormalizePaths, Options, RustcCommand};
+use itertools::Itertools;
+use std::collections::hash_set::HashSet;
+use std::collections::HashMap;
 
 /// Return a toolchain argument to pass to [cargo]: when the correct nightly is
 /// already present, this is None, otherwise we (1) ensure [rustup] is available
@@ -39,6 +42,48 @@ pub fn get_args(subcommand: &str) -> Vec<String> {
     args
 }
 
+fn check(backend: &hax_cli_options::Backend, metadata: &cargo_metadata::Metadata, pkg_name: &str) {
+    use cargo_metadata::PackageId;
+
+    let resolve = metadata.resolve.as_ref().unwrap();
+    let mut graph: HashMap<PackageId, HashSet<PackageId>> = HashMap::new();
+    for node in &resolve.nodes {
+        let _ = graph.insert(
+            node.id.clone(),
+            node.deps.iter().map(|dep| dep.pkg.clone()).collect(),
+        );
+    }
+
+    let mut closure: HashSet<PackageId> = HashSet::new();
+    let mut queue: Vec<PackageId> = Vec::new();
+    queue.push(
+        metadata
+            .packages
+            .iter()
+            .find(|pkg| pkg.name == pkg_name) // FIXME: is this package unique?
+            .unwrap()
+            .id
+            .clone(),
+    );
+    while let Some(cur) = queue.pop() {
+        for dep in &graph[&cur] {
+            if !closure.contains(dep) {
+                closure.insert(dep.clone());
+                queue.push(dep.clone());
+            }
+        }
+    }
+
+    let paths = metadata
+        .packages
+        .iter()
+        .filter(|pkg| closure.contains(&pkg.id))
+        .map(|pkg| pkg.manifest_path.parent().unwrap().to_string())
+        .collect::<Vec<_>>();
+
+    todo!()
+}
+
 fn main() {
     let args: Vec<String> = get_args("hax");
     let options: Options<Command> = Options::parse_from(args.iter()).normalize_paths();
@@ -65,7 +110,32 @@ fn main() {
             std::process::exit(cmd.spawn().unwrap().wait().unwrap().code().unwrap_or(254))
         }
         Command::CheckCommand(backend) => {
-            todo!()
+            // get primary packages from [cargo -Z unstable-options --build-plan]
+            cmd.args([
+                "-Z".to_string(),
+                "unstable-options".to_string(),
+                "--build-plan".to_string(),
+            ]);
+            let output = cmd.output().unwrap();
+            let build_plan: serde_json::Value = serde_json::from_slice(&output.stdout[..]).unwrap();
+            let primary_packages = build_plan["invocations"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|p| {
+                    p["env"]
+                        .as_object()
+                        .unwrap()
+                        .contains_key("CARGO_PRIMARY_PACKAGE")
+                })
+                .map(|p| p["package_name"].as_str().unwrap())
+                .unique();
+
+            // get cargo metadata
+            let metadata = cargo_metadata::MetadataCommand::new().exec().unwrap();
+
+            // check the primary packages
+            primary_packages.for_each(|pkg_name| check(&backend, &metadata, pkg_name));
         }
     }
 }
