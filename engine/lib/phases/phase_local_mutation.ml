@@ -208,20 +208,14 @@ struct
           }
       | If { cond; then_; else_ } ->
           let then_ = dexpr_same then_ in
-          {
-            e =
-              If
-                {
-                  cond =
-                    dexpr_s { s with expr_level = []; drop_expr = false } cond;
-                  then_;
-                  else_ =
-                    Option.value ~default:(UA.unit_expr expr.span) else_
-                    |> dexpr_same |> Option.some;
-                };
-            typ = then_.typ;
-            span = expr.span;
-          }
+          let else_ =
+            Option.value ~default:(UA.unit_expr expr.span) else_
+            |> dexpr_same |> Option.some
+          in
+          let cond =
+            dexpr_s { s with expr_level = []; drop_expr = false } cond
+          in
+          { e = If { cond; then_; else_ }; typ = then_.typ; span = expr.span }
       | Match { scrutinee; arms } ->
           let arms =
             let dexpr = dexpr_same in
@@ -229,19 +223,13 @@ struct
             and darm' = [%inline_body darm'] in
             List.map ~f:darm arms
           in
-          {
-            e =
-              Match
-                {
-                  scrutinee =
-                    dexpr_s
-                      { s with expr_level = []; drop_expr = false }
-                      scrutinee;
-                  arms;
-                };
-            typ = (List.hd_exn arms).arm.body.typ;
-            span = expr.span;
-          }
+          let typ =
+            match arms with [] -> UB.never_typ | hd :: _ -> hd.arm.body.typ
+          in
+          let scrutinee =
+            dexpr_s { s with expr_level = []; drop_expr = false } scrutinee
+          in
+          { e = Match { scrutinee; arms }; typ; span = expr.span }
       | Loop { body; kind; state; label; witness } ->
           let variables_to_output = s.expr_level in
           (* [adapt]: should we reorder shadowings? *)

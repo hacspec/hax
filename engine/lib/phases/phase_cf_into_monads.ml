@@ -171,27 +171,24 @@ struct
                 (m, (dpat arm_pat, span, b)))
               arms
           in
-          (* Todo throw assertion failed here (to get rid of reduce_exn in favor of reduce) *)
-          let m =
-            List.map ~f:(fun ({ monad; _ }, _) -> monad) arms
-            |> List.reduce ~f:(KnownMonads.lub span)
-            |> Option.value_or_thunk ~default:(fun _ ->
-                   Error.assertion_failure span "[match] with zero arm?")
-          in
           let arms =
-            List.map
-              ~f:(fun (mself, (arm_pat, span, body)) ->
-                let body = KnownMonads.lift "Match" body mself.monad m in
-                let arm_pat = { arm_pat with typ = body.typ } in
-                ({ arm = { arm_pat; body }; span } : B.arm))
-              arms
+            if List.is_empty arms then []
+            else
+              let m =
+                List.map ~f:(fun ({ monad; _ }, _) -> monad) arms
+                |> List.reduce_exn ~f:(KnownMonads.lub span)
+              in
+              List.map
+                ~f:(fun (mself, (arm_pat, span, body)) ->
+                  let body = KnownMonads.lift "Match" body mself.monad m in
+                  let arm_pat = { arm_pat with typ = body.typ } in
+                  ({ arm = { arm_pat; body }; span } : B.arm))
+                arms
           in
-          let scrutinee = dexpr scrutinee in
-          {
-            e = Match { scrutinee; arms };
-            span;
-            typ = (List.hd_exn arms).arm.body.typ;
-          }
+          let typ =
+            match arms with [] -> UB.never_typ | hd :: _ -> hd.arm.body.typ
+          in
+          { e = Match { scrutinee = dexpr scrutinee; arms }; span; typ }
       | If { cond; then_; else_ } ->
           let cond = dexpr cond in
           let then' = dexpr then_ in

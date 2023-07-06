@@ -238,7 +238,6 @@ functor
           typ : ty;
           mut : (F.mutable_reference mutability[@visitors.opaque]);
         }
-      | TFalse
       | TParam of local_ident
       | TArrow of ty list * ty
       | TProjectedAssociatedType of string

@@ -38,7 +38,6 @@ struct
             mut = dmutability span S.mutable_reference mut;
             region;
           }
-    | TFalse -> TFalse
     | TParam local_ident -> TParam local_ident
     | TArrow (inputs, output) ->
         TArrow (List.map ~f:(dty span) inputs, dty span output)

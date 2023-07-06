@@ -324,6 +324,17 @@ module Make (F : Features.T) = struct
         LocalIdent.var_id_of_int (-1);
     }
 
+  let never_typ : ty =
+    let ident =
+      `Concrete (Concrete_ident.of_name Type Rust_primitives__hax__Never)
+    in
+    TApp { ident; args = [] }
+
+  let is_never_typ : ty -> bool = function
+    | TApp { ident; _ } ->
+        Global_ident.eq_name Rust_primitives__hax__Never ident
+    | _ -> false
+
   let unit_typ : ty = TApp { ident = `TupleType 0; args = [] }
 
   let unit_expr span : expr =

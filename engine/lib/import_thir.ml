@@ -359,7 +359,11 @@ module Exn = struct
               (mk_global ([ source_type ] ->. typ) @@ `Primitive Cast)
               [ source ]
         | Use { source } -> (c_expr source).e
-        | NeverToAny { source } -> (c_expr source).e
+        | NeverToAny { source } ->
+            (U.call Rust_primitives__hax__never_to_any
+               [ c_expr source ]
+               span typ)
+              .e
         (* TODO: this is incorrect (NeverToAny) *)
         | Pointer { cast; source } -> c_pointer e typ span cast source
         | Loop { body } ->
@@ -766,7 +770,7 @@ module Exn = struct
           let typ = c_ty span ty in
           let mut = c_mutability W.mutable_reference mut in
           TRef { witness = W.reference; region = "todo"; typ; mut }
-      | Never -> TFalse
+      | Never -> U.never_typ
       | Tuple types ->
           let types = List.map ~f:(fun ty -> GType (c_ty span ty)) types in
           TApp { ident = `TupleType (List.length types); args = types }

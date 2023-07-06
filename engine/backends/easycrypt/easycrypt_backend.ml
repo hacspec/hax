@@ -178,7 +178,6 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) : Types.file list
     | TSlice _ -> assert false
     | TRawPointer _ -> assert false
     | TRef _ -> assert false
-    | TFalse -> assert false
     | TParam _ -> assert false
     | TArrow (_, _) -> assert false
     | TProjectedAssociatedType _ -> assert false

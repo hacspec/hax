@@ -15,5 +15,6 @@ members = [
         "loops",
         "even",
         "odd",
+        "never-type",
 ]
 resolver = "2"
