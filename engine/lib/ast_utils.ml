@@ -134,6 +134,41 @@ module Make (F : Features.T) = struct
     let rename_global_idents_item
         (f : visit_level -> global_ident -> global_ident) : item -> item =
       (rename_global_idents f)#visit_item ExprLevel
+
+    (** Add type ascription nodes in nested function calls.  This helps
+    type inference in the presence of associated types in backends
+    that don't support them well (F* for instance). *)
+    let add_typ_ascription =
+      let is_app : expr' -> bool =
+        [%matches? App { f = { e = GlobalVar (`Concrete _) }; _ }]
+      in
+      let o =
+        object
+          inherit [_] item_map as super
+          method visit_t (ascribe_app : bool) x = x
+          method visit_mutability _ (ascribe_app : bool) m = m
+
+          method! visit_expr' (ascribe_app : bool) e =
+            (* Enable type ascription of underlying function
+               application. In the F* backend, we're annotating every
+               [Let] bindings, thus if we're facing a [Let], we turn
+               off application ascription. Similarly, if we're facing
+               an Ascription, we turn off application ascription. *)
+            let ascribe_app =
+              (ascribe_app || is_app e)
+              && not ([%matches? Let _ | Ascription _] e)
+            in
+            super#visit_expr' ascribe_app e
+
+          method! visit_expr (ascribe_app : bool) e =
+            let e = super#visit_expr ascribe_app e in
+            (* Ascribe the return type of a function application *)
+            if ascribe_app && is_app e.e then
+              { e with e = Ascription { e; typ = e.typ } }
+            else e
+        end
+      in
+      o#visit_item false
   end
 
   module Reducers = struct
