@@ -77,3 +77,8 @@ You can also just use [direnv](https://github.com/nix-community/nix-direnv), wit
 - `engine/`: the simplication and elaboration engine that translate
   programs from the Rust language to various backends (see `engine/backends/`).
 - `cli/`: the `hax` subcommand for Cargo.
+
+### Recompiling
+You can use the [`.utils/rebuild.sh`](./.utils/rebuild.sh) script (which is available automatically as the command `rebuild` when using the Nix devshell):
+ - `rebuild`: rebuild the Rust then the OCaml part;
+ - `rebuild TARGET`: rebuild the `TARGET` part (`TARGET` is either `rust` or `ocaml`).
