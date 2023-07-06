@@ -419,7 +419,6 @@ dependencies = [
 name = "hax-driver"
 version = "0.1.0"
 dependencies = [
- "cargo_metadata",
  "clap",
  "const_format",
  "hax-cli-options",
@@ -473,6 +472,7 @@ dependencies = [
 name = "hax-subcommands"
 version = "0.1.0"
 dependencies = [
+ "cargo_metadata",
  "clap",
  "colored",
  "hax-cli-options",
