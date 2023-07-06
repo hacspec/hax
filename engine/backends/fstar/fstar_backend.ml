@@ -548,7 +548,7 @@ struct
         {
           name;
           generics;
-          variants = [ { arguments; is_record = true; _ } ];
+          variants = [ { arguments; is_record = Some _; _ } ];
           is_struct = true;
         } ->
         F.decls
@@ -582,7 +582,7 @@ struct
                   (let field_indexes =
                      List.map ~f:(fst >> index_of_field_concrete) arguments
                    in
-                   if is_record then
+                   if Option.is_some is_record then
                      F.AST.VpRecord
                        ( List.map
                            ~f:(fun (field, ty) ->

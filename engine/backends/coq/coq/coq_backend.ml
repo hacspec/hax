@@ -564,20 +564,14 @@ struct
         ]
 
   and p_inductive span variants parrent_name : C.AST.inductive_case list =
-    List.map variants ~f:(fun { name; arguments; is_record } ->
-        if is_record then
-          C.AST.InductiveCase
-            ( U.Concrete_ident_view.to_definition_name name,
-              C.AST.RecordTy
-                (pconcrete_ident name, p_record_record span arguments) )
-        else
-          let name = U.Concrete_ident_view.to_definition_name name in
-          match arguments with
-          | [] -> C.AST.BaseCase name
-          | [ (arg_name, arg_ty) ] -> C.AST.InductiveCase (name, pty span arg_ty)
-          | _ ->
-              C.AST.InductiveCase
-                (name, C.AST.Product (List.map ~f:(snd >> pty span) arguments)))
+    List.map variants ~f:(fun { name; arguments; is_record = None } ->
+        let name = U.Concrete_ident_view.to_definition_name name in
+        match arguments with
+        | [] -> C.AST.BaseCase name
+        | [ (arg_name, arg_ty) ] -> C.AST.InductiveCase (name, pty span arg_ty)
+        | _ ->
+            C.AST.InductiveCase
+              (name, C.AST.Product (List.map ~f:(snd >> pty span) arguments)))
   (* match variants with _ -> [] *)
   (* TODO: I don't get this pattern maching below. Variant with more than one payloads are rejected implicitely? *)
   (* | { name; arguments = [ (arg_name, arg_ty) ] } :: xs -> *)

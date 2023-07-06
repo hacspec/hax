@@ -308,7 +308,7 @@ struct
       {
         name = v.name;
         arguments = List.map ~f:(map_snd @@ dty span) v.arguments;
-        is_record = v.is_record;
+        is_record = Option.map ~f:S.record_variants v.is_record;
       }
 
     let rec dtrait_item' (span : span) (ti : A.trait_item') : B.trait_item' =

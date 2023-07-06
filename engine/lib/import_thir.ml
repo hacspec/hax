@@ -982,7 +982,11 @@ module Exn = struct
                         fields
                   | Unit _ -> []
                 in
-                { name; arguments; is_record })
+                {
+                  name;
+                  arguments;
+                  is_record = Option.some_if is_record W.record_variants;
+                })
               variants
           in
           let name = Concrete_ident.of_def_id Type def_id in
@@ -1001,12 +1005,16 @@ module Exn = struct
                     (Concrete_ident.of_def_id Field id, c_ty span ty))
                   fields
               in
-              { name; arguments; is_record }
+              {
+                name;
+                arguments;
+                is_record = Option.some_if is_record W.record_variants;
+              }
             in
             match v with
             | Tuple (fields, _, _) -> mk fields false
             | Struct ((_ :: _ as fields), _) -> mk fields true
-            | _ -> { name; arguments = []; is_record = false }
+            | _ -> { name; arguments = []; is_record = None }
           in
           let variants = [ v ] in
           let name = Concrete_ident.of_def_id Type def_id in

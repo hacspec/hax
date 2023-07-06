@@ -57,11 +57,11 @@ module Make (FA : Features.T) = struct
   and flatten_variants span generics (v : A.variant) : B.variant * B.item option
       =
     let b_v = dvariant span v in
-    if b_v.is_record then
+    if Option.is_some v.is_record then
       let new_name : Ast.concrete_ident =
         Concrete_ident.of_def_id Type
           {
-            krate = "temp_name";
+            krate = "";
             path = [ { data = TypeNs "my_temp_name"; disambiguator = 4 } ];
           }
       in
@@ -70,16 +70,7 @@ module Make (FA : Features.T) = struct
           name = b_v.name;
           arguments =
             [ (new_name, B.TApp { ident = `Concrete new_name; args = [] }) ];
-          is_record = false;
-        }
-      in
-      let temp (n, t) : B.variant =
-        {
-          name = n;
-          arguments = [ (n, t) ];
-          is_record = false;
-          (* Should this be false? *)
-          (* F.record_variants option; *)
+          is_record = b_v.is_record;
         }
       in
       ( b_v',
@@ -90,7 +81,11 @@ module Make (FA : Features.T) = struct
                 {
                   name = new_name;
                   generics = dgenerics span generics;
-                  variants = List.map ~f:temp b_v.arguments;
+                  variants =
+                    List.map
+                      ~f:(fun (n, t) : B.variant ->
+                        { name = n; arguments = [ (n, t) ]; is_record = None })
+                      b_v.arguments;
                   is_struct = true;
                 };
             span;
