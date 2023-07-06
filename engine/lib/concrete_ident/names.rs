@@ -105,8 +105,10 @@ mod hax {
 
     fn repeat() {}
     fn update_at() {}
-    // TODO: Should that live here: this is F* specific
+    // TODO: Should that live here? (this is F* specific)
     fn array_of_list() {}
+
+    fn never_to_any() {}
 
     mod control_flow_monad {
         trait ControlFlowMonad {

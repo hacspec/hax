@@ -359,7 +359,11 @@ module Exn = struct
               (mk_global ([ source_type ] ->. typ) @@ `Primitive Cast)
               [ source ]
         | Use { source } -> (c_expr source).e
-        | NeverToAny { source } -> (c_expr source).e
+        | NeverToAny { source } ->
+            (U.call Rust_primitives__hax__never_to_any
+               [ c_expr source ]
+               span typ)
+              .e
         (* TODO: this is incorrect (NeverToAny) *)
         | Pointer { cast; source } -> c_pointer e typ span cast source
         | Loop { body } ->

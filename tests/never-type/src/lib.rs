@@ -13,3 +13,7 @@ fn test(b: bool) -> u8 {
     };
     3
 }
+
+fn any<T>() -> T {
+    panic!()
+}

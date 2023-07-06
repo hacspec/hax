@@ -142,15 +142,30 @@ struct
                                                                 body =
                                                                   {
                                                                     e =
-                                                                      Break
+                                                                      App
                                                                         {
-                                                                          e =
+                                                                          f =
                                                                             {
                                                                               e =
                                                                                 GlobalVar
+                                                                                never_to_any;
+                                                                            };
+                                                                          args =
+                                                                            [
+                                                                              {
+                                                                                e =
+                                                                                Break
+                                                                                {
+                                                                                e =
+                                                                                {
+                                                                                e =
+                                                                                GlobalVar
                                                                                 (`TupleCons
                                                                                 0);
-                                                                            };
+                                                                                };
+                                                                                };
+                                                                              };
+                                                                            ];
                                                                         };
                                                                   };
                                                               };
@@ -217,7 +232,9 @@ struct
                && Concrete_ident.eq_name
                     Core__iter__traits__iterator__Iterator__next next_meth
                && Concrete_ident.eq_name Core__option__Option__None none_ctor
-               && Concrete_ident.eq_name Core__option__Option__Some some_ctor ->
+               && Concrete_ident.eq_name Core__option__Option__Some some_ctor
+               && Global_ident.eq_name Rust_primitives__hax__never_to_any
+                    never_to_any ->
             Some { it; pat; body; state; label; witness }
         | _ -> None
                [@ocamlformat "disable"]
