@@ -150,7 +150,6 @@ module Raw = struct
     | TSlice { ty; _ } -> !"[" & pty span ty & !"]"
     | TRawPointer _ -> !"raw_pointer!()"
     | TRef { typ; mut; _ } -> !"&" & dmutability span mut & pty span typ
-    | TFalse -> !"!"
     | TParam i -> plocal_ident span i
     | TArrow (inputs, output) ->
         let arrow =

@@ -324,13 +324,16 @@ module Make (F : Features.T) = struct
         LocalIdent.var_id_of_int (-1);
     }
 
-  (** Computes the [meet] of a list of types. Basically, [⊥ ⊓ τ] is
-      [τ], [τ ⊓ τ] is [τ], and anything else isn't defined. In the
-      implementation, we just return the first non-[⊥] type, and [⊥]
-      if there is none. Note [⊥] is noted [!] in Rust and correspond
-      to [TFalse] in Hax's AST. *)
-  let meet_types : ty list -> ty =
-    List.find ~f:([%matches? TFalse] >> not) >> Option.value ~default:TFalse
+  let never_typ : ty =
+    let ident =
+      `Concrete (Concrete_ident.of_name Type Rust_primitives__hax__Never)
+    in
+    TApp { ident; args = [] }
+
+  let is_never_typ : ty -> bool = function
+    | TApp { ident; _ } ->
+        Global_ident.eq_name Rust_primitives__hax__Never ident
+    | _ -> false
 
   let unit_typ : ty = TApp { ident = `TupleType 0; args = [] }
 

@@ -770,7 +770,7 @@ module Exn = struct
           let typ = c_ty span ty in
           let mut = c_mutability W.mutable_reference mut in
           TRef { witness = W.reference; region = "todo"; typ; mut }
-      | Never -> TFalse
+      | Never -> U.never_typ
       | Tuple types ->
           let types = List.map ~f:(fun ty -> GType (c_ty span ty)) types in
           TApp { ident = `TupleType (List.length types); args = types }

@@ -224,7 +224,7 @@ struct
             List.map ~f:darm arms
           in
           let typ =
-            match arms with [] -> B.TFalse | hd :: _ -> hd.arm.body.typ
+            match arms with [] -> UB.never_typ | hd :: _ -> hd.arm.body.typ
           in
           let scrutinee =
             dexpr_s { s with expr_level = []; drop_expr = false } scrutinee

@@ -222,7 +222,6 @@ struct
     | TChar -> F.term_of_lid [ "char" ]
     | TInt k -> F.term_of_lid [ show_int_kind k ]
     | TStr -> F.term_of_lid [ "string" ]
-    | TFalse -> F.term_of_lid [ "never" ]
     | TSlice { ty; _ } -> F.mk_e_app (F.term_of_lid [ "slice" ]) [ pty span ty ]
     | TApp { ident = `TupleType 0 as ident; args = [] } ->
         F.term @@ F.AST.Name (pglobal_ident span ident)

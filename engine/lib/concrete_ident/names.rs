@@ -102,6 +102,7 @@ fn unsize() {}
 mod hax {
     fn failure() {}
     struct Failure;
+    enum Never {}
 
     fn repeat() {}
     fn update_at() {}

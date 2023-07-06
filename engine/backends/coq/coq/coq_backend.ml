@@ -165,7 +165,6 @@ struct
     | TChar -> __TODO_ty__ span "char"
     | TInt k -> C.AST.Int (pint_kind k)
     | TStr -> __TODO_ty__ span "str"
-    | TFalse -> __TODO_ty__ span "false"
     | TApp { ident = `TupleType 0 as ident; args = [] } -> C.AST.Unit
     | TApp { ident = `TupleType 1; args = [ GType ty ] } -> pty span ty
     | TApp { ident = `TupleType n; args } when n >= 2 ->
