@@ -45,6 +45,26 @@ pub fn get_args(subcommand: &str) -> Vec<String> {
 fn check(backend: &hax_cli_options::Backend, metadata: &cargo_metadata::Metadata, pkg_name: &str) {
     use cargo_metadata::PackageId;
 
+    let backend_path: cargo_metadata::camino::Utf8PathBuf =
+        ["proofs", format!("{backend}").as_str()].iter().collect();
+    let pkg = metadata
+        .packages
+        .iter()
+        .find(|pkg| pkg.name == pkg_name) // FIXME: is this package unique?
+        .unwrap()
+        .clone();
+
+    if !pkg
+        .manifest_path
+        .parent()
+        .unwrap()
+        .join(&backend_path)
+        .exists()
+    {
+        eprintln!("no {backend} proofs found for package {pkg_name}");
+        return;
+    }
+
     let resolve = metadata.resolve.as_ref().unwrap();
     let mut graph: HashMap<PackageId, HashSet<PackageId>> = HashMap::new();
     for node in &resolve.nodes {
@@ -56,15 +76,7 @@ fn check(backend: &hax_cli_options::Backend, metadata: &cargo_metadata::Metadata
 
     let mut closure: HashSet<PackageId> = HashSet::new();
     let mut queue: Vec<PackageId> = Vec::new();
-    queue.push(
-        metadata
-            .packages
-            .iter()
-            .find(|pkg| pkg.name == pkg_name) // FIXME: is this package unique?
-            .unwrap()
-            .id
-            .clone(),
-    );
+    queue.push(pkg.id);
     while let Some(cur) = queue.pop() {
         for dep in &graph[&cur] {
             if !closure.contains(dep) {
@@ -78,7 +90,9 @@ fn check(backend: &hax_cli_options::Backend, metadata: &cargo_metadata::Metadata
         .packages
         .iter()
         .filter(|pkg| closure.contains(&pkg.id))
-        .map(|pkg| pkg.manifest_path.parent().unwrap().to_string())
+        .map(|pkg| pkg.manifest_path.parent().unwrap())
+        .map(|path| path.join(&backend_path))
+        .filter(|path| path.exists())
         .collect::<Vec<_>>();
 
     todo!()
