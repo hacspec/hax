@@ -53,14 +53,9 @@ fn check(backend: &hax_cli_options::Backend, metadata: &cargo_metadata::Metadata
         .find(|pkg| pkg.name == pkg_name) // FIXME: is this package unique?
         .unwrap()
         .clone();
+    let path = pkg.manifest_path.parent().unwrap().join(&backend_path);
 
-    if !pkg
-        .manifest_path
-        .parent()
-        .unwrap()
-        .join(&backend_path)
-        .exists()
-    {
+    if !path.exists() {
         eprintln!("no {backend} proofs found for package {pkg_name}");
         return;
     }
@@ -86,14 +81,21 @@ fn check(backend: &hax_cli_options::Backend, metadata: &cargo_metadata::Metadata
         }
     }
 
-    let paths = metadata
+    let proofs_path = metadata
         .packages
         .iter()
         .filter(|pkg| closure.contains(&pkg.id))
         .map(|pkg| pkg.manifest_path.parent().unwrap())
         .map(|path| path.join(&backend_path))
         .filter(|path| path.exists())
-        .collect::<Vec<_>>();
+        .map(|path| path.to_string())
+        .intersperse(":".to_string())
+        .collect::<String>();
+
+    let mut cmd = std::process::Command::new("make");
+    let cmd = cmd
+        .args(["-C", path.as_str()])
+        .env("HAX_PROOFS_PATH", proofs_path);
 
     todo!()
 }
