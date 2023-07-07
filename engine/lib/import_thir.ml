@@ -1013,7 +1013,7 @@ module Exn = struct
             in
             match v with
             | Tuple (fields, _, _) -> mk fields false
-            | Struct ((_ :: _ as fields), _) -> mk fields true
+            | Struct ((_ :: _ as fields), _) -> mk fields true (* Why is this true? *)
             | _ -> { name; arguments = []; is_record = None }
           in
           let variants = [ v ] in

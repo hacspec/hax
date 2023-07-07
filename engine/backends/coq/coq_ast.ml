@@ -243,9 +243,9 @@ functor
       | AST.Var s -> (s, false)
       | AST.Name s -> (s, false)
       | AST.RecordConstructor (f, args) ->
-          ( "Build_"
-            ^ term_to_string_without_paren f depth
-            ^ record_args_to_string args depth,
+          ( "{|"
+            ^ record_args_to_string args depth
+            ^ "|}",
             true )
       | AST.Type t ->
           let _, ty_str = ty_to_string t in
@@ -310,8 +310,10 @@ functor
     and record_args_to_string (args : (string * AST.term) list) depth : string =
       match args with
       | (i, t) :: xs ->
-          " "
-          ^ term_to_string_with_paren t depth
+        " "
+        ^ i ^ " " ^ ":=" ^ " "
+        ^ term_to_string_without_paren t depth
+        ^ ";" ^ " "
           ^ record_args_to_string xs depth
       | _ -> ""
 
@@ -479,7 +481,7 @@ functor
       List.fold_left ~init:([], "")
         ~f:(fun (variant_definitions, variants_str) (ty_name, ty) ->
           let ty_definitions, ty_str = ty_to_string ty in
-          ( ty_definitions @ variant_definitions,
-            pre ^ ty_name ^ " " ^ ":" ^ " " ^ ty_str ^ post ^ variants_str ))
+          ( variant_definitions @ ty_definitions,
+            variants_str ^ pre ^ ty_name ^ " " ^ ":" ^ " " ^ ty_str ^ post ))
         variants
   end

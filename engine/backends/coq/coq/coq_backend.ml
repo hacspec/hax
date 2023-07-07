@@ -572,25 +572,6 @@ struct
         | _ ->
             C.AST.InductiveCase
               (name, C.AST.Product (List.map ~f:(snd >> pty span) arguments)))
-  (* match variants with _ -> [] *)
-  (* TODO: I don't get this pattern maching below. Variant with more than one payloads are rejected implicitely? *)
-  (* | { name; arguments = [ (arg_name, arg_ty) ] } :: xs -> *)
-  (*     if (index_of_field >> Option.is_some) arg_name then *)
-  (*       C.AST.InductiveCase (U.Concrete_ident_view.to_definition_name name, pty span arg_ty) *)
-  (*       :: p_inductive span xs parrent_name *)
-  (*     else *)
-  (*       C.AST.InductiveCase (U.Concrete_ident_view.to_definition_name arg_name, pty span arg_ty) *)
-  (*       :: p_inductive span xs parrent_name *)
-  (* | { name; arguments = [] } :: xs -> *)
-  (*     C.AST.BaseCase (U.Concrete_ident_view.to_definition_name name) *)
-  (*     :: p_inductive span xs parrent_name *)
-  (* | { name; arguments } :: xs -> *)
-  (*     C.AST.InductiveCase *)
-  (*       ( U.Concrete_ident_view.to_definition_name name, *)
-  (*         C.AST.RecordTy (pglobal_ident name, p_record_record span arguments) *)
-  (*       ) *)
-  (*     :: p_inductive span xs parrent_name *)
-  (* | _ -> [] *)
 
   and p_record span variants : (string * C.AST.ty) list =
     match variants with

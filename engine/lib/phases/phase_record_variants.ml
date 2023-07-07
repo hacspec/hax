@@ -15,10 +15,18 @@ module Make (FA : Features.T) = struct
         include Feature_gate.DefaultSubtype
 
         let record_variants = reject
+        (* let record_variants _ = Features.Off.Record_variants *)
 
         let metadata =
           Phase_utils.Metadata.make Diagnostics.Phase.RecordVariants
       end)
+
+  let dvariant (span : Ast.span) (v : A.variant) : B.variant =
+    {
+      name = v.name;
+      arguments = List.map ~f:(map_snd @@ dty span) v.arguments;
+      is_record = None;
+    }
 
   let rec ditems (items : A.item list) : B.item list =
     List.concat_map
@@ -44,6 +52,21 @@ module Make (FA : Features.T) = struct
                   ident = item.ident;
                 };
               ]
+        | Type { name; generics; variants; is_struct = true } ->
+          [
+            {
+              v =
+                B.Type
+                  {
+                    name;
+                    generics = dgenerics item.span generics;
+                    variants = List.map ~f:(dvariant item.span) variants;
+                    is_struct = true;
+                  };
+              span = item.span;
+              ident = item.ident;
+            };
+          ]
         | _ ->
             [
               {
@@ -54,8 +77,7 @@ module Make (FA : Features.T) = struct
             ])
       items
 
-  and flatten_variants span generics (v : A.variant) : B.variant * B.item option
-      =
+  and flatten_variants span generics (v : A.variant) : B.variant * B.item option =
     let b_v = dvariant span v in
     if Option.is_some v.is_record then
       let new_name : Ast.concrete_ident =
@@ -68,9 +90,8 @@ module Make (FA : Features.T) = struct
       let b_v' : B.variant =
         {
           name = b_v.name;
-          arguments =
-            [ (new_name, B.TApp { ident = `Concrete new_name; args = [] }) ];
-          is_record = b_v.is_record;
+          arguments = [ (new_name, B.TApp { ident = `Concrete new_name; args = [] }) ];
+          is_record = None;
         }
       in
       ( b_v',
