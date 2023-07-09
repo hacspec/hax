@@ -428,10 +428,7 @@ struct
         SSP.AST.Let
           {
             pattern = ppat lhs;
-            mut =
-              (match lhs.p with
-              | PBinding { mut = Mutable _ } -> true
-              | _ -> false);
+            mut = is_mutable_pat lhs;
             value = pexpr rhs;
             body = pexpr body;
             value_typ = pty lhs.span lhs.typ;
@@ -521,6 +518,24 @@ struct
         (* __TODO_term__ span "break" *)
     | _ -> .
 
+  and is_mutable_pat pat =
+    match pat.p with
+    | PWild -> false
+    | PAscription { typ; typ_span; pat } -> is_mutable_pat pat
+    | PConstruct { name = `TupleCons _; args } ->
+        List.fold ~init:false ~f:( || )
+          (List.map ~f:(fun p -> is_mutable_pat p.pat) args)
+    | PConstruct { name; args; is_record; is_struct } -> false
+    | PArray { args } ->
+        (* List.fold ~init:false ~f:(||) (List.map ~f:(fun p -> is_mutable_pat p) args) *)
+        false
+    | PDeref { subpat; witness } -> is_mutable_pat subpat
+    | PConstant { lit } -> false
+    | PBinding { mut = Mutable _ } -> true
+    | PBinding { mut; mode; var; typ; subpat = Some (spat, _) } ->
+        is_mutable_pat spat
+    | PBinding { mut; mode; var; typ; subpat } -> false
+
   let pgeneric_param span : generic_param -> _ = function
     | GPType { ident; default } -> ident.name
     | _ -> Error.unimplemented ~details:"Coq: TODO: generic_params" span
@@ -567,7 +582,7 @@ struct
                 (match params with [] -> "" | _ -> generalized_L ^ " :|: ")
                 ^ "fset ["
                 ^ List.fold ~f:( ^ ) ~init:""
-                    (List.intersperse ~sep:"; "
+                    (List.intersperse ~sep:";"
                        (List.map ~f:(fun x -> x.name ^ "_loc") mvars_ext))
                 ^ "]")
           ^ ")"
