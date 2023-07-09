@@ -9,39 +9,21 @@ module%inlined_contents Make (F : Features.T) = struct
 
   type pre_data = unit
 
-  (* include (val Comparator.make ~compare:Concrete_ident.compare ~sexp_of_t:(fun x -> Sexp.Atom "?")) *)
-  (* val Comparator.make ~compare:Concrete_ident.compare ~sexp_of_t:(fun x -> Sexp.Atom "?") *)
-
   type analysis_data =
-    ( concrete_ident,
-      concrete_ident list,
-      Concrete_ident.comparator_witness )
-    Map.t
-    * (concrete_ident, int, Concrete_ident.comparator_witness) Map.t
+    concrete_ident list Map.M(Concrete_ident).t * int Map.M(Concrete_ident).t
 
   module Flatten = Flatten_ast.Make (F)
 
-  (* No recursion *)
-  let rec flatten_map_index
-      (map :
-        ( concrete_ident,
-          concrete_ident list,
-          Concrete_ident.comparator_witness )
-        Map.t) (depth : int) (index : concrete_ident) :
-      concrete_ident list * int =
+  let rec flatten_map_index (map : concrete_ident list Map.M(Concrete_ident).t)
+      (depth : int) (index : concrete_ident) : concrete_ident list * int =
     match Map.find map index with
     | Some l ->
         let a, b = flatten_concat_map map (depth + 1) l in
         (l @ a, b)
     | None -> ([], depth)
 
-  and flatten_concat_map
-      (map :
-        ( concrete_ident,
-          concrete_ident list,
-          Concrete_ident.comparator_witness )
-        Map.t) (depth : int) (l : concrete_ident list) :
-      concrete_ident list * int =
+  and flatten_concat_map (map : concrete_ident list Map.M(Concrete_ident).t)
+      (depth : int) (l : concrete_ident list) : concrete_ident list * int =
     let a, b = List.unzip (List.map ~f:(flatten_map_index map (depth + 1)) l) in
     (l @ List.concat a, List.fold_left ~f:max ~init:0 b)
 
