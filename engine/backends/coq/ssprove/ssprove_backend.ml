@@ -96,19 +96,36 @@ module SSP = Coq (SSProveLibrary)
 open Analysis_utils
 open Analyses
 
-module FuncDep (* : ANALYSIS *) =
-[%functor_application
-Analyses.Function_dependency InputLanguage]
+module StaticAnalysis (* : ANALYSIS *) = struct
+  module A = InputLanguage
 
-module MutableVar (* : ANALYSIS *) =
-[%functor_application
-Analyses.Mutable_variables InputLanguage]
+  module FunctionDependency (* : ANALYSIS *) =
+  [%functor_application
+  Analyses.Function_dependency InputLanguage]
+
+  module MutableVariables (* : ANALYSIS *) =
+  [%functor_application
+  Analyses.Mutable_variables InputLanguage]
+
+  type pre_data = FunctionDependency.pre_data
+
+  type analysis_data = {
+    func_dep : FunctionDependency.analysis_data;
+    mut_var : MutableVariables.analysis_data;
+  }
+
+  let analyse (pre_data : FunctionDependency.pre_data) items =
+    let func_dep = FunctionDependency.analyse pre_data items in
+    let mut_var =
+      MutableVariables.analyse (func_dep : MutableVariables.pre_data) items
+    in
+    { func_dep; mut_var }
+end
 
 module Context = struct
   type t = {
     current_namespace : string * string list;
-    func_dep : FuncDep.analysis_data;
-    mut_vars : MutableVar.analysis_data;
+    analysis_data : StaticAnalysis.analysis_data;
   }
 end
 
@@ -507,8 +524,6 @@ struct
         (* __TODO_term__ span "break" *)
     | _ -> .
 
-  let temp (i : LocalIdent.T.id) : string = LocalIdent.show_id i
-
   let pgeneric_param span : generic_param -> _ = function
     | { ident; kind = GPType _; _ } -> ident.name
     | _ -> Error.unimplemented ~details:"Coq: TODO: generic_params" span
@@ -526,7 +541,13 @@ struct
         in
         let (mvars_ext, mvars_loc)
               : local_ident list * (local_ident * AST.ty * int) list =
-          match Map.find ctx.mut_vars name with
+          match
+            Map.find
+              (ctx.analysis_data.mut_var
+                : (local_ident list * ((local_ident * AST.ty) * int) list)
+                  Map.M(Concrete_ident).t)
+              name
+          with
           | Some l ->
               ( fst l,
                 List.map ~f:(fun ((x, x_ty), x_n) -> (x, x_ty, x_n)) (snd l) )
@@ -929,22 +950,19 @@ let make ctx =
     let ctx = ctx
   end) : S)
 
-type analysis_data = FuncDep.analysis_data * MutableVar.analysis_data
-
-let string_of_item (func_dep : FuncDep.analysis_data)
-    (mut_vars : MutableVar.analysis_data) (item : item) : string =
+let string_of_item (analysis_data : StaticAnalysis.analysis_data) (item : item)
+    : string =
   let (module Print) =
     make
       {
         current_namespace = U.Concrete_ident_view.to_namespace item.ident;
-        func_dep;
-        mut_vars;
+        analysis_data;
       }
   in
   List.map ~f:SSP.decl_to_string @@ Print.pitem item |> String.concat ~sep:"\n"
 
 let string_of_items =
-  (fun (x, (y, z)) -> List.map ~f:(string_of_item y z) x)
+  (fun (x, y) -> List.map ~f:(string_of_item y) x)
   >> List.map ~f:String.strip
   >> List.filter ~f:(String.is_empty >> not)
   >> String.concat ~sep:"\n\n"
@@ -973,8 +991,7 @@ let hardcoded_coq_headers =
 
 let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
     =
-  let func_dep = FuncDep.analyse () items in
-  let mut_var = MutableVar.analyse func_dep items in
+  let analysis_data = StaticAnalysis.analyse () items in
   U.group_items_by_namespace items
   |> Map.to_alist
   |> List.map ~f:(fun (ns, items) ->
@@ -990,7 +1007,7 @@ let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
              path = mod_name ^ ".v";
              contents =
                hardcoded_coq_headers ^ "\n"
-               ^ string_of_items (items, (func_dep, mut_var))
+               ^ string_of_items (items, analysis_data)
                ^ "\n";
            })
 
