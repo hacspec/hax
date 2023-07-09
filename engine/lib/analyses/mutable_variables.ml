@@ -4,20 +4,18 @@ open Utils
 module%inlined_contents Make (F : Features.T) = struct
   module FA = F
   module A = Ast.Make (F)
+  module U = Ast_utils.Make (F)
   open Ast
 
+  type id_order = int
+
   type pre_data =
-    ( concrete_ident,
-      concrete_ident list,
-      Concrete_ident.comparator_witness )
-    Map.t
-    * (concrete_ident, int, Concrete_ident.comparator_witness) Map.t
+    concrete_ident list Map.M(Concrete_ident).t
+    * id_order Map.M(Concrete_ident).t
 
   type analysis_data =
-    ( concrete_ident,
-      local_ident list * ((local_ident * A.ty) * int) list,
-      Concrete_ident.comparator_witness )
-    Map.t
+    (local_ident list * (U.TypedLocalIdent.t * id_order) list)
+    Map.M(Concrete_ident).t
 
   module Flatten = Flatten_ast.Make (F)
 
@@ -32,11 +30,8 @@ module%inlined_contents Make (F : Features.T) = struct
           | _ -> y)
         ~init:([], 0) items
     in
-    let mut_map :
-        ( concrete_ident,
-          ((local_ident * A.ty) * int) list,
-          Concrete_ident.comparator_witness )
-        Map.t =
+    let mut_map : (U.TypedLocalIdent.t * id_order) list Map.M(Concrete_ident).t
+        =
       List.fold_left
         ~f:(fun y x -> Map.set y ~key:(fst x) ~data:(snd x))
         ~init:(Map.empty (module Concrete_ident))
@@ -62,23 +57,28 @@ module%inlined_contents Make (F : Features.T) = struct
       ~init:(Map.empty (module Concrete_ident))
       (List.map ~f:fst mut_var_list)
 
-  and analyse_function_body (x : A.expr) (i : int) :
-      ((local_ident * A.ty) * int) list * int =
+  and analyse_function_body (x : A.expr) (i : id_order) :
+      (U.TypedLocalIdent.t * id_order) list * id_order =
     let mut_var_list =
-      List.dedup_and_sort
-        ~compare:(fun x y -> LocalIdent.compare (fst x) (fst y))
-        (List.filter_map
-           ~f:(fun x ->
-             match x.e with
-             | Assign { lhs = LhsLocalVar { var; typ }; witness } ->
-                 Some (var, typ)
-             | Let { lhs = { p = PBinding { mut = Mutable _; var; typ } }; _ }
-               ->
-                 Some (var, typ)
-             | _ -> None)
-           (Flatten.flatten_ast x))
+      Set.to_list
+        ((object
+            inherit [_] A.expr_reduce as super
+            inherit [_] U.Sets.TypedLocalIdent.monoid as m
+            method visit_t _ _ = m#zero
+            method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
+
+            method visit_expr s e =
+              match e.e with
+              | Assign { lhs = LhsLocalVar { var; typ }; witness } ->
+                  Set.singleton (module U.TypedLocalIdent) (var, typ)
+              | Let { lhs = { p = PBinding { mut = Mutable _; var; typ } }; _ }
+                ->
+                  Set.singleton (module U.TypedLocalIdent) (var, typ)
+              | _ -> super#visit_expr s e
+         end)
+           #visit_expr
+           () x)
     in
-    (* let unique_mut_var_list = *)
     number_list mut_var_list i
 
   (* State monad *)
