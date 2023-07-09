@@ -67,14 +67,40 @@ module%inlined_contents Make (F : Features.T) = struct
             method visit_t _ _ = m#zero
             method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
 
-            method visit_expr s e =
-              match e.e with
-              | Assign { lhs = LhsLocalVar { var; typ }; witness } ->
-                  Set.singleton (module U.TypedLocalIdent) (var, typ)
-              | Let { lhs = { p = PBinding { mut = Mutable _; var; typ } }; _ }
-                ->
-                  Set.singleton (module U.TypedLocalIdent) (var, typ)
-              | _ -> super#visit_expr s e
+            method visit_Assign env lhs e _wit =
+              let rec visit_lhs lhs =
+                match lhs with
+                | A.LhsLocalVar { var; typ } ->
+                    Set.singleton (module U.TypedLocalIdent) (var, typ)
+                | LhsFieldAccessor { e; _ } -> visit_lhs e
+                | LhsArrayAccessor { e; index; _ } ->
+                    Set.union (super#visit_expr env index) (visit_lhs e)
+                | LhsArbitraryExpr { witness; e } ->
+                    super#visit_expr env e (* TODO? *)
+              in
+              visit_lhs lhs
+
+            method! visit_PBinding env mut _ var typ subpat =
+              m#plus
+                (match mut with
+                | Mutable _ ->
+                    Set.singleton (module U.TypedLocalIdent) (var, typ)
+                | Immutable -> Set.empty (module U.TypedLocalIdent))
+                (Option.value_map subpat ~default:m#zero
+                   ~f:(fst >> super#visit_pat env))
+
+            method visit_Let env _monadic pat expr body =
+              Set.union
+                (Set.union
+                   (super#visit_expr env expr)
+                   (super#visit_expr env body))
+                (super#visit_pat env pat)
+            (* (match pat.p with *)
+            (*  | PBinding { mut = Mutable _; var; typ } -> Set.singleton (module U.TypedLocalIdent) (var, typ) *)
+            (*  | PAscription { (\* typ; *\) typ_span; pat = { p = PBinding { mut = Mutable _; var; typ } } } -> Set.singleton (module U.TypedLocalIdent) (var, typ) *)
+            (*  | PDeref { subpat = { p = PBinding { mut = Mutable _; var; typ } }; witness } -> Set.singleton (module U.TypedLocalIdent) (var, typ) *)
+            (*  (\* | PBinding { mut = _; var; typ } -> Set.singleton (module U.TypedLocalIdent) (var, typ) *\) *)
+            (*  | _ -> Set.empty (module U.TypedLocalIdent)) *)
          end)
            #visit_expr
            () x)
