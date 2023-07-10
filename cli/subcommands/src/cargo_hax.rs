@@ -85,10 +85,10 @@ fn check(backend: &hax_cli_options::Backend, metadata: &cargo_metadata::Metadata
         .packages
         .iter()
         .filter(|pkg| closure.contains(&pkg.id))
-        .map(|pkg| pkg.manifest_path.parent().unwrap())
-        .map(|path| path.join(&backend_path))
-        .filter(|path| path.exists())
-        .map(|path| path.to_string())
+        .map(|pkg| (pkg.name.clone(), pkg.manifest_path.parent().unwrap()))
+        .map(|(name, path)| (name, path.join(&backend_path)))
+        .filter(|(_, path)| path.exists())
+        .map(|(name, path)| format!("{}={}", name, path))
         .intersperse(":".to_string())
         .collect::<String>();
 
