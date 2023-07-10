@@ -21,7 +21,7 @@ for json in $(
                     | sort -u
                ); do
     name=$(
-        echo "$json" | base64 --decode \
+        echo -n "$json" | base64 --decode \
             | jq '(.krate | ((.[0:1] | ascii_upcase) + .[1:])) + "__" + (.path | map((.data | if type == "object" then to_entries | first | .value else . end) + (.disambiguator | if . == 0 then "" else "_" + (. | tostring) end)) | join("__"))' -r
         )
     if [[ "$name" == *"dummy_hax_concrete_ident_wrapper"* ]]; then
