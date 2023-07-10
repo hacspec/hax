@@ -94,8 +94,9 @@ fn check(backend: &hax_cli_options::Backend, metadata: &cargo_metadata::Metadata
 
     let mut cmd = std::process::Command::new("make");
     let cmd = cmd
-        .args(["-C", path.as_str()])
-        .env("HAX_PROOFS_PATH", proofs_path);
+        .current_dir(path)
+        .env("HAX_PROOFS_PATH", proofs_path)
+        .env("HAX_PKG_NAME", pkg_name);
 
     todo!()
 }
