@@ -21,9 +21,10 @@ functor
       type int_type = { size : int_size; signed : bool }
 
       type ty =
-        | Wild
+        | WildTy
         | Bool
         | Unit
+        | TypeTy
         | Int of int_type
         | Name of string
         | RecordTy of string * (string * ty) list
@@ -41,7 +42,7 @@ functor
         | Const_bool of bool
 
       type pat =
-        | Wild
+        | WildPat
         | UnitPat
         | Ident of string
         | Lit of literal
@@ -89,7 +90,7 @@ functor
         | Notation of string * ty
         | Record of string * (string * ty) list
         | Inductive of string * generics_type * inductive_case list
-        | Class of string * (string * ty) list * generics_type
+        | Class of string * (string * string list * ty) list * generics_type
         | Instance of string * ty * ty list * definition_type list
         | Require of string list * string option
     end
@@ -110,9 +111,10 @@ functor
 
     let rec ty_to_string (x : AST.ty) : AST.decl list * string =
       match x with
-      | AST.Wild -> ([], "_")
+      | AST.WildTy -> ([], "_")
       | AST.Bool -> ([], "bool")
       | AST.Unit -> ([], "unit")
+      | AST.TypeTy -> ([], "Type")
       | AST.Int { size = AST.USize; signed } -> ([], "uint_size")
       | AST.Int { size; signed } -> ([], "int" ^ int_size_to_string size)
       | AST.Name s -> ([], s)
@@ -176,7 +178,7 @@ functor
 
     let rec pat_to_string (x : AST.pat) (is_top_expr : bool) depth : string =
       match x with
-      | AST.Wild -> "_"
+      | AST.WildPat -> "_"
       | AST.UnitPat -> tick_if is_top_expr ^ "tt"
       | AST.Ident s -> s
       | AST.Lit l -> literal_to_string l
@@ -408,14 +410,27 @@ functor
       | AST.Class (name, trait_items, generics) ->
           let field_defs, field_str =
             List.fold_left ~init:([], "")
-              ~f:(fun x y ->
-                let definitions, ty_str = ty_to_string (snd y) in
+              ~f:(fun x (field_name, field_args, field_ty) ->
+                let field_arg_str =
+                  List.fold_left ~init:""
+                    ~f:(fun x arg_name -> x ^ " " ^ "`{" ^ arg_name ^ "}")
+                    field_args
+                in
+                let definitions, ty_str = ty_to_string field_ty in
                 ( definitions @ fst x,
-                  snd x ^ newline_indent 1 ^ fst y ^ ":" ^ ty_str ^ " " ^ ";" ))
+                  snd x ^ newline_indent 1 ^ field_name ^ field_arg_str ^ ":"
+                  ^ ty_str ^ " " ^ ";" ))
               trait_items
           in
           let name_generics =
-            name ^ List.fold_left ~init:"" ~f:(fun a b -> a ^ " " ^ b) generics
+            name
+            ^ List.fold_left ~init:"" ~f:(fun a b -> a ^ " " ^ b) generics
+            ^ List.fold_left ~init:""
+                ~f:(fun x (_, field_args, _) ->
+                  List.fold_left ~init:x
+                    ~f:(fun x arg_name -> x ^ " " ^ "`{" ^ arg_name ^ "}")
+                    field_args)
+                trait_items
           in
           decl_list_to_string field_defs
           ^ "Class" ^ " " ^ name_generics ^ " " ^ ":=" ^ " " ^ "{" ^ field_str

@@ -181,7 +181,7 @@ struct
     | TSlice { ty; _ } -> C.AST.SliceTy (pty span ty)
     | TParam i -> C.AST.Name i.name
     | TProjectedAssociatedType s ->
-        C.AST.Wild
+        C.AST.WildTy
         (* __TODO_ty__ span ("proj:assoc:type" ^ s) *)
         (* failwith "proj:assoc:type" *)
     | _ -> .
@@ -199,7 +199,7 @@ struct
 
   let rec ppat (p : pat) : C.AST.pat =
     match p.p with
-    | PWild -> C.AST.Wild
+    | PWild -> C.AST.WildPat
     | PAscription { typ; pat } -> C.AST.AscriptionPat (ppat pat, pty p.span typ)
     | PBinding
         {
@@ -536,6 +536,7 @@ struct
               List.map
                 ~f:(fun x ->
                   ( x.ti_name,
+                    [],
                     match x.ti_v with
                     | TIFn fn_ty -> pty span fn_ty
                     | _ -> __TODO_ty__ span "field_ty" ))
