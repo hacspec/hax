@@ -505,6 +505,7 @@ pub enum TraitItemKind {
     ProvidedFn(FnDef),
     #[custom_arm(
         rustc_hir::TraitItemKind::Type(b, ty) => {
+            // eprintln!("rustc_hir::TraitItemKind::Type: b: {:#?}", b);
             TraitItemKind::Type(b.sinto(tcx), ty.map(|t| t.sinto(tcx)))
         }
     )]
@@ -531,6 +532,18 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, Vec<Variant>> for rustc_hir
 
 impl<'a, S: BaseState<'a> + HasOwnerId> SInto<S, TraitItem> for rustc_hir::TraitItemRef {
     fn sinto(&self, s: &S) -> TraitItem {
+        let owner_id = self.id.owner_id;
+        let s = &State {
+            tcx: s.tcx(),
+            options: s.options(),
+            thir: (),
+            owner_id,
+            opt_def_id: s.opt_def_id(),
+            macro_infos: s.macro_infos(),
+            local_ctx: s.local_ctx(),
+            cached_thirs: s.cached_thirs(),
+            exported_spans: s.exported_spans(),
+        };
         let tcx: rustc_middle::ty::TyCtxt = s.tcx();
         tcx.hir().trait_item(self.clone().id).sinto(s)
     }
@@ -789,9 +802,37 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, GenericBounds>
         let hir_id = tcx
             .hir()
             .local_def_id_to_hir_id(s.owner_id().to_def_id().expect_local());
-        // eprintln!("tcx.hir().get(hir_id)={:#?}", tcx.hir().get(hir_id));
-        // let generics = tcx.generics_of(s.owner_id().to_def_id());
-        let predicates = tcx.predicates_of(s.owner_id().to_def_id()).predicates;
+
+        // According to what kind of node we are looking at, we should
+        // either call `predicates_of` or `item_bounds`
+        let use_item_bounds = {
+            let hir_id = tcx.hir().local_def_id_to_hir_id(s.owner_id().def_id);
+            let node = tcx.hir().get(hir_id);
+            use rustc_hir as hir;
+            matches!(
+                node,
+                hir::Node::TraitItem(hir::TraitItem {
+                    kind: hir::TraitItemKind::Type(..),
+                    ..
+                }) | hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { .. }),
+                    ..
+                })
+            )
+        };
+
+        let mut predicates: Vec<_> = if use_item_bounds {
+            let list = tcx.item_bounds(s.owner_id().to_def_id()).subst_identity();
+            let span = list.default_span(tcx);
+            use rustc_middle::query::Key;
+            list.into_iter().map(|x| (x, span)).collect()
+        } else {
+            tcx.predicates_of(s.owner_id().to_def_id())
+                .predicates
+                .into_iter()
+                .cloned()
+                .collect()
+        };
         predicates
             .iter()
             .map(|(pred, span)| {
@@ -809,23 +850,6 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, GenericBounds>
                 kind.sinto(s)
             })
             .collect()
-        // eprintln!("generics={:#?}", generics);
-        // eprintln!("predicates={:#?}", predicates);
-        // match tcx.hir().get(hir_id)
-        // let ctx = rustc_hir_analysis::collect::ItemCtxt::new(tcx, s.owner_id().to_def_id());
-        // let x = tcx.explicit_item_bounds(s.owner_id().to_def_id());
-        // x.iter().map(|(pred, span)| {
-        //     let pred: rustc_middle::ty::Predicate = pred.clone();
-        //     let kind: rustc_middle::ty::Binder<'_, rustc_middle::ty::PredicateKind>
-        //         = pred.kind();
-        //     let kind: rustc_middle::ty::PredicateKind = kind.no_bound_vars().unwrap();
-        //     kind.sinto(s)
-        // }).collect()
-        // let _ = ctx.to_ty(self).sinto(s);
-        // let self_param_ty = tcx.types.self_param;
-        // let x = ctx.compute_bounds_inner(self_param_ty, []);
-        // let tcx: rustc_middle::ty::TyCtxt = s.tcx();
-        // tcx.hir().item(self.clone()).sinto(s)
     }
 }
 
