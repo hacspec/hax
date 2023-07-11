@@ -929,6 +929,7 @@ pub struct Block {
 pub struct AliasTy {
     pub substs: Vec<GenericArg>,
     pub trait_def_id: DefId,
+    pub def_id: DefId,
 }
 
 fn get_param_env<'tcx, S: BaseState<'tcx>>(s: &S) -> rustc_middle::ty::ParamEnv<'tcx> {
@@ -998,6 +999,7 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, AliasTy> for rustc_middle::ty::AliasTy<'
         AliasTy {
             substs: self.substs.sinto(s),
             trait_def_id: self.trait_def_id(tcx).sinto(s),
+            def_id: self.def_id.sinto(s),
         }
     }
 }
