@@ -181,7 +181,7 @@ struct
         C.AST.ArrayTy (pty span typ, "TODO: Int.to_string length")
     | TSlice { ty; _ } -> C.AST.SliceTy (pty span ty)
     | TParam i -> C.AST.Name i.name
-    | TAssociatedType s -> C.AST.Wild
+    | TAssociatedType s -> C.AST.WildTy
     | TOpaque _ -> __TODO_ty__ span "pty: TAssociatedType/TOpaque"
     | _ -> .
 
@@ -198,7 +198,7 @@ struct
 
   let rec ppat (p : pat) : C.AST.pat =
     match p.p with
-    | PWild -> C.AST.Wild
+    | PWild -> C.AST.WildPat
     | PAscription { typ; pat } -> C.AST.AscriptionPat (ppat pat, pty p.span typ)
     | PBinding
         {
@@ -536,6 +536,7 @@ struct
               List.map
                 ~f:(fun x ->
                   ( U.Concrete_ident_view.to_definition_name x.ti_ident,
+                    [],
                     match x.ti_v with
                     | TIFn fn_ty -> pty span fn_ty
                     | _ -> __TODO_ty__ span "field_ty" ))

@@ -254,7 +254,7 @@ struct
         SSP.AST.ArrayTy (pty span typ, "TODO: Int.to_string length")
     | TSlice { ty; _ } -> SSP.AST.SliceTy (pty span ty)
     | TParam i -> SSP.AST.Name i.name
-    | TAssociatedType s -> SSP.AST.Wild
+    | TAssociatedType s -> SSP.AST.WildTy
     | TOpaque _ -> __TODO_ty__ span "pty: TAssociatedType/TOpaque"
     | _ -> .
 
@@ -271,7 +271,7 @@ struct
 
   let rec ppat (p : pat) : SSP.AST.pat =
     match p.p with
-    | PWild -> SSP.AST.Wild
+    | PWild -> SSP.AST.WildPat
     | PAscription { typ; pat } ->
         SSP.AST.AscriptionPat (ppat pat, pty p.span typ)
     | PBinding
@@ -543,7 +543,12 @@ struct
     | { ident; kind = GPType _; _ } -> ident.name
     | _ -> Error.unimplemented ~details:"Coq: TODO: generic_params" span
 
-  let rec pitem (e : AST.item) : SSP.AST.decl list =
+  let rec pitem (e : item) : SSP.AST.decl list =
+    try pitem_unwrapped e
+    with Diagnostics.SpanFreeError.Exn _kind ->
+      [ SSP.AST.Unimplemented "item error backend" ]
+
+  and pitem_unwrapped (e : AST.item) : SSP.AST.decl list =
     let span = e.span in
     match e.v with
     | Fn { name; generics; body; params } ->
@@ -873,22 +878,29 @@ struct
         [
           SSP.AST.Class
             ( pconcrete_ident name,
-              List.map
+              List.concat_map
                 ~f:(fun x ->
-                  ( U.Concrete_ident_view.to_definition_name x.ti_ident,
-                    match x.ti_v with
-                    | TIFn fn_ty -> pty span fn_ty
-                    | _ -> __TODO_ty__ span "field_ty" ))
+                  match x.ti_v with
+                  | TIFn fn_ty -> [ (U.Concrete_ident_view.to_definition_name x.ti_ident, [], pty x.ti_span fn_ty) ]
+                  | TIType trait_refs ->
+                      [
+                        ( U.Concrete_ident_view.to_definition_name x.ti_ident,
+                          List.map
+                            ~f:(fun tr -> pconcrete_ident tr.trait)
+                            trait_refs,
+                          SSP.AST.TypeTy );
+                      ])
                 items,
-              List.fold_left ~init:[]
-                ~f:(fun a b ->
-                  a
-                  @ [
-                      (match b with
-                      | { ident; kind = GPType _; _ } -> ident.name
-                      | _ -> failwith "SSProve: TODO: generic_params");
-                    ])
-                generics.params );
+              []
+              (* List.fold_left ~init:[] *)
+              (*   ~f:(fun a b -> *)
+              (*     a *)
+              (*     @ [ *)
+              (*         (match b with *)
+              (*         | GPType { ident; default } -> ident.name *)
+              (*         | _ -> failwith "SSProve: TODO: generic_params"); *)
+              (*       ]) *)
+              (*   generics.params *) );
         ]
     | Impl { generics; self_ty; of_trait = name, gen_vals; items } ->
         [
