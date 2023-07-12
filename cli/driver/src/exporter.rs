@@ -1,6 +1,6 @@
 use hax_cli_options::{PathOrDash, ENV_VAR_OPTIONS_FRONTEND};
 use hax_frontend_exporter;
-use hax_frontend_exporter::types::{ExportedSpans, LocalContextS};
+use hax_frontend_exporter::state::{ExportedSpans, LocalContextS};
 use hax_frontend_exporter::SInto;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::interface;
@@ -139,7 +139,7 @@ fn convert_thir<'tcx>(
 
     let items = hir.items();
     let macro_calls_r = Box::new(macro_calls);
-    let mut state = hax_frontend_exporter::State::new(&tcx, options);
+    let mut state = hax_frontend_exporter::state::State::new(&tcx, options);
     state.base.macro_infos = macro_calls_r;
     state.base.cached_thirs = thirs;
 
@@ -319,7 +319,7 @@ impl Callbacks for ExtractionCallbacks {
                     let options_frontend = Box::new(
                         hax_frontend_exporter_options::Options::from(self.clone()).clone(),
                     );
-                    let state = hax_frontend_exporter::State::new(&tcx, &options_frontend);
+                    let state = hax_frontend_exporter::state::State::new(&tcx, &options_frontend);
                     report_diagnostics(
                         &output,
                         &session,

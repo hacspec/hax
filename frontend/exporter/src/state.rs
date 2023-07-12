@@ -1,3 +1,4 @@
+use crate::prelude::*;
 use paste::paste;
 
 macro_rules! mk_aux {
@@ -94,7 +95,8 @@ macro_rules! mk {
     };
 }
 
-pub mod types {
+mod types {
+    use crate::prelude::*;
     use std::cell::RefCell;
     use std::collections::{HashMap, HashSet};
     use std::rc::Rc;
@@ -113,12 +115,15 @@ pub mod types {
 
     #[derive(Clone)]
     pub struct Base<'tcx> {
-        pub options: Options,
+        pub options: Box<hax_frontend_exporter_options::Options>,
         pub macro_infos: MacroCalls,
-        pub local_ctx: LocalContext,
-        pub opt_def_id: OptDefId,
+        pub local_ctx: Rc<RefCell<LocalContextS>>,
+        pub opt_def_id: Option<rustc_hir::def_id::DefId>,
         pub exported_spans: ExportedSpans,
-        pub cached_thirs: Thirs<'tcx>,
+        pub cached_thirs: HashMap<
+            rustc_span::def_id::LocalDefId,
+            (rustc_middle::thir::Thir<'tcx>, rustc_middle::thir::ExprId),
+        >,
         pub tcx: rustc_middle::ty::TyCtxt<'tcx>,
     }
 
@@ -139,18 +144,8 @@ pub mod types {
         }
     }
 
-    pub type LocalContext = Rc<RefCell<LocalContextS>>;
-    // pub type LocalIdentMap = Rc<RefCell<HashMap<rustc_middle::thir::LocalVarId, String>>>;
-    // pub type ConstParamIdMap = Rc<RefCell<HashMap<u32, rustc_span::def_id::DefId>>>;
-    pub type MacroCalls = Box<HashMap<crate::Span, crate::Span>>;
-    pub type Options = Box<hax_frontend_exporter_options::Options>;
-    pub type OptDefId = Option<rustc_hir::def_id::DefId>;
+    pub type MacroCalls = Box<HashMap<Span, Span>>;
     pub type ExportedSpans = Rc<RefCell<HashSet<rustc_span::Span>>>;
-    pub type Thirs<'tcx> = HashMap<
-        rustc_span::def_id::LocalDefId,
-        (rustc_middle::thir::Thir<'tcx>, rustc_middle::thir::ExprId),
-    >;
-    // pub type Predicates<'tcx> = Box<rustc_middle::ty::List<rustc_middle::ty::Predicate<'tcx>>>;
 }
 
 mk!(
@@ -161,7 +156,9 @@ mk!(
     }
 );
 
-impl<'tcx> State<types::Base<'tcx>, (), ()> {
+pub use types::*;
+
+impl<'tcx> State<Base<'tcx>, (), ()> {
     pub fn new(
         tcx: &rustc_middle::ty::TyCtxt<'tcx>,
         options: &hax_frontend_exporter_options::Options,
@@ -169,7 +166,9 @@ impl<'tcx> State<types::Base<'tcx>, (), ()> {
         Self {
             thir: (),
             owner_id: (),
-            base: types::Base::new(tcx, options),
+            base: Base::new(tcx, options),
         }
     }
 }
+
+pub trait BaseState<'tcx> = HasBase<'tcx> + Clone + IsState<'tcx>;
