@@ -332,8 +332,9 @@ struct
     | Construct { is_record = false; constructor; fields = [ (f, e) ]; base } ->
         C.AST.App (C.AST.Var (pglobal_ident constructor), [ pexpr e ])
     | Construct { constructor; fields; base } ->
-        C.AST.Var
-          (pglobal_ident constructor ^ snd (C.ty_to_string (pty span e.typ)))
+        __TODO_term__ span "constructor"
+        (* C.AST.Var *)
+        (*   (pglobal_ident constructor ^ (C.ty_to_string (pty span e.typ))) *)
     | Closure { params; body } ->
         C.AST.Lambda (List.map ~f:ppat params, pexpr body)
     | MacroInvokation { macro; args; witness } ->
@@ -349,8 +350,9 @@ struct
     with Diagnostics.SpanFreeError.Exn _ ->
       [ C.AST.Unimplemented "item error backend" ]
 
-  and pgeneric_param span : generic_param -> _ = function
-    | { ident; kind = GPType _; _ } -> ident.name
+  and pgeneric_param span : generic_param -> string * C.AST.ty = function
+    | { ident; kind = GPType { default = Some t }; _} -> (ident.name, pty span t)
+    | { ident; kind = GPType { default = None }; _} -> (ident.name, C.AST.WildTy)
     | _ -> Error.unimplemented ~details:"Coq: TODO: generic_params" span
 
   and pitem_unwrapped (e : item) : C.AST.decl list =
@@ -368,13 +370,14 @@ struct
               pty span body.typ );
         ]
     | TyAlias { name; generics; ty } ->
-        [ C.AST.Notation (pconcrete_ident name ^ "_t", pty span ty) ]
+        [ C.AST.Notation (pconcrete_ident name ^ "_t", [], pty span ty) ]
     (* record *)
     | Type { name; generics; variants = [ v ]; is_struct = true } ->
         [
           (* TODO: generics *)
           C.AST.Record
             ( U.Concrete_ident_view.to_definition_name name,
+              List.map ~f:(pgeneric_param span) generics.params,
               p_record_record span v.arguments );
         ]
     (* enum *)
@@ -415,6 +418,7 @@ struct
                 [
                   C.AST.Notation
                     ( o.type_name ^ "_t",
+                      [],
                       C.AST.NatMod
                         (o.type_of_canvas, o.bit_size_of_field, o.modulo_value)
                     );
@@ -435,6 +439,7 @@ struct
                 [
                   C.AST.Notation
                     ( o.bytes_name ^ "_t",
+                      [],
                       C.AST.ArrayTy
                         ( C.AST.Int { size = C.AST.U8; signed = false },
                           (* int_of_string *) o.size ) );
@@ -455,6 +460,7 @@ struct
                 [
                   C.AST.Notation
                     ( o.integer_name ^ "_t",
+                      [],
                       C.AST.ArrayTy
                         ( C.AST.Int { size = C.AST.U8; signed = false },
                           Int.to_string ((o.bits + 7) / 8) ) );
@@ -478,7 +484,7 @@ struct
                       (* int_of_string *) o.size )
                 in
                 [
-                  C.AST.Notation (o.bytes_name ^ "_t", typ);
+                  C.AST.Notation (o.bytes_name ^ "_t", [], typ);
                   C.AST.Definition
                     ( o.bytes_name,
                       [],
@@ -510,6 +516,7 @@ struct
                 [
                   C.AST.Notation
                     ( o.array_name ^ "_t",
+                      [],
                       C.AST.ArrayTy
                         ( C.AST.Int { size = typ; signed = false },
                           (* int_of_string *) o.size ) );
@@ -533,6 +540,10 @@ struct
         [
           C.AST.Class
             ( U.Concrete_ident_view.to_definition_name name,
+              List.map ~f:(pgeneric_param span)
+                (match List.rev generics.params with
+                | _ :: xs -> List.rev xs
+                | _ -> []),
               List.map
                 ~f:(fun x ->
                   ( U.Concrete_ident_view.to_definition_name x.ti_ident,
@@ -540,18 +551,7 @@ struct
                     match x.ti_v with
                     | TIFn fn_ty -> pty span fn_ty
                     | _ -> __TODO_ty__ span "field_ty" ))
-                items,
-              List.fold_left ~init:[]
-                ~f:(fun a b ->
-                  a
-                  @ [
-                      (match b with
-                      | { ident; kind = GPType _; _ } -> ident.name
-                      | _ ->
-                          Error.unimplemented
-                            ~details:"Coq: TODO: generic_params" span);
-                    ])
-                generics.params );
+                items );
         ]
     | Impl { generics; self_ty; of_trait = name, gen_vals; items } ->
         [
