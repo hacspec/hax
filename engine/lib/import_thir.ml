@@ -810,6 +810,11 @@ module Exn = struct
       | Tuple types ->
           let types = List.map ~f:(fun ty -> GType (c_ty span ty)) types in
           TApp { ident = `TupleType (List.length types); args = types }
+      | Alias (Projection, { substs = generic_args; trait_def_id; def_id = id })
+        ->
+          let ident = def_id Type id in
+          (* let args = List.map ~f:(c_generic_value span) generic_args in *)
+          TApp { ident; args = [] }
       | Alias _ -> TProjectedAssociatedType (Thir.show_ty ty)
       (* | Opaque _ -> unimplemented [span] "type Opaque" *)
       | Param { index; name } ->

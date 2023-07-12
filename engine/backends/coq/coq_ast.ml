@@ -80,17 +80,17 @@ functor
       type definition_type =
         string * (pat * ty) list * (pat * ty) list * term * ty
 
-      type generics_type = string list
+      type generics_type = (string * ty) list
 
       type decl =
         | Unimplemented of string
         | Definition of definition_type
         | ProgramDefinition of definition_type
         | Equations of definition_type
-        | Notation of string * ty
-        | Record of string * (string * ty) list
+        | Notation of string * generics_type * ty
+        | Record of string * generics_type * (string * ty) list
         | Inductive of string * generics_type * inductive_case list
-        | Class of string * (string * string list * ty) list * generics_type
+        | Class of string * generics_type * (string * string list * ty) list
         | Instance of string * ty * ty list * definition_type list
         | Require of string list * string option
     end
@@ -109,56 +109,53 @@ functor
       | AST.U128 -> "128"
       | AST.USize -> "32"
 
-    let rec ty_to_string (x : AST.ty) : AST.decl list * string =
+    let rec ty_to_string (x : AST.ty) : string =
       match x with
-      | AST.WildTy -> ([], "_")
-      | AST.Bool -> ([], "bool")
-      | AST.Unit -> ([], "unit")
-      | AST.TypeTy -> ([], "Type")
-      | AST.Int { size = AST.USize; signed } -> ([], "uint_size")
-      | AST.Int { size; signed } -> ([], "int" ^ int_size_to_string size)
-      | AST.Name s -> ([], s)
-      | AST.RecordTy (name, fields) -> ([ AST.Record (name, fields) ], name)
-      | AST.Product [] -> ([], "unit")
-      | AST.Product l ->
-          let p_decl, p_str = product_to_string l (" " ^ "×" ^ " ") in
-          (p_decl, "(" ^ p_str ^ ")")
+      | AST.WildTy -> "_"
+      | AST.Bool -> "bool"
+      | AST.Unit -> "unit"
+      | AST.TypeTy -> "Type"
+      | AST.Int { size = AST.USize; signed } -> "uint_size"
+      | AST.Int { size; signed } -> "int" ^ int_size_to_string size
+      | AST.Name s -> s
+      | AST.RecordTy (name, fields) -> (* [ AST.Record (name, fields) ] *) name
+      | AST.Product [] -> "unit"
+      | AST.Product l -> "(" ^ product_to_string l (" " ^ "×" ^ " ") ^ ")"
       | AST.Arrow (a, b) ->
-          let a_ty_def, a_ty_str = ty_to_string a in
-          let b_ty_def, b_ty_str = ty_to_string b in
-          (a_ty_def @ b_ty_def, a_ty_str ^ " " ^ "->" ^ " " ^ b_ty_str)
+          let a_ty_str = ty_to_string a in
+          let b_ty_str = ty_to_string b in
+          a_ty_str ^ " " ^ "->" ^ " " ^ b_ty_str
       | AST.ArrayTy (t, l) ->
-          let ty_def, ty_str = ty_to_string t in
-          (ty_def, "nseq" ^ " " ^ ty_str ^ " " ^ (* Int.to_string *) l)
+          let ty_str = ty_to_string t in
+          "nseq" ^ " " ^ ty_str ^ " " ^ (* Int.to_string *) l
       | AST.SliceTy t ->
-          let ty_def, ty_str = ty_to_string t in
-          (ty_def, "seq" ^ " " ^ ty_str)
-      | AST.AppTy (i, []) -> ([], i)
+          let ty_str = ty_to_string t in
+          "seq" ^ " " ^ ty_str
+      | AST.AppTy (i, []) -> i
       (* | AST.AppTy (i, [ y ]) -> *)
       (*     let ty_defs, ty_str = ty_to_string y in *)
       (*     (ty_defs, i ^ " " ^ ty_str) *)
       | AST.AppTy (i, p) ->
-          let ty_def, ty_str = product_to_string p ") (" in
-          (ty_def, i ^ " " ^ "(" ^ ty_str ^ ")")
+          let ty_str = product_to_string p ") (" in
+          i ^ " " ^ "(" ^ ty_str ^ ")"
       | AST.NatMod (t, i, s) ->
-          ( [
-              AST.Notation
-                ( t,
-                  AST.ArrayTy
-                    (AST.Int { size = U8; signed = false }, Int.to_string i) );
-            ],
-            "nat_mod 0x" ^ s )
+          (* [ *)
+          (*   AST.Notation *)
+          (*     ( t, *)
+          (*       AST.ArrayTy *)
+          (*         (AST.Int { size = U8; signed = false }, Int.to_string i) ); *)
+          (* ] *)
+          "nat_mod 0x" ^ s
       | _ -> .
 
-    and product_to_string (x : AST.ty list) (sep : string) :
-        AST.decl list * string =
+    and product_to_string (x : AST.ty list) (sep : string) : string =
       match x with
       | [ y ] -> ty_to_string y
       | y :: ys ->
-          let ty_defs, ty_str = ty_to_string y in
-          let ys_defs, ys_str = product_to_string ys sep in
-          (ty_defs @ ys_defs, ty_str ^ sep ^ ys_str)
-      | [] -> ([], "")
+          let ty_str = ty_to_string y in
+          let ys_str = product_to_string ys sep in
+          ty_str ^ sep ^ ys_str
+      | [] -> ""
     (* and record_fields_to_string (x : (string * AST.ty) list) : AST.decl list * string = *)
     (*   match x with *)
     (*   | (name, ty) :: xs -> *)
@@ -218,7 +215,7 @@ functor
       | AST.UnitTerm -> ("tt", false)
       | AST.Let
           { pattern = pat; mut; value = bind; value_typ = typ; body = term } ->
-          let _, ty_str = ty_to_string typ in
+          let ty_str = ty_to_string typ in
           (* TODO: propegate type definition *)
           ( (if mut then Lib.Notation.let_mut_stmt else Lib.Notation.let_stmt)
               (pat_to_string pat true depth)
@@ -262,7 +259,7 @@ functor
             ^ record_args_to_string args depth,
             true )
       | AST.Type t ->
-          let _, ty_str = ty_to_string t in
+          let ty_str = ty_to_string t in
           (* TODO: Make definitions? *)
           (ty_str, true (* TODO? does this always need paren? *))
       | AST.Lambda (params, body) ->
@@ -346,18 +343,16 @@ functor
       match x with
       | AST.Unimplemented s -> "(*" ^ s ^ "*)"
       | AST.Definition (name, implicit_params, params, term, ty) ->
-          let definitions, ty_str = ty_to_string ty in
-          decl_list_to_string definitions
-          ^ "Definition" ^ " " ^ name ^ " "
+          let ty_str = ty_to_string ty in
+          "Definition" ^ " " ^ name ^ " "
           ^ params_to_string_typed (fun x -> "{" ^ x ^ "}") implicit_params
           ^ params_to_string_typed (fun x -> "(" ^ x ^ ")") params
           ^ ":" ^ " " ^ ty_str ^ " " ^ ":=" ^ newline_indent 1
           ^ term_to_string_without_paren term 1
           ^ "."
       | AST.ProgramDefinition (name, implicit_params, params, term, ty) ->
-          let definitions, ty_str = ty_to_string ty in
-          decl_list_to_string definitions
-          ^ "Program" ^ " " ^ "Definition" ^ " " ^ name ^ " "
+          let ty_str = ty_to_string ty in
+          "Program" ^ " " ^ "Definition" ^ " " ^ name ^ " "
           ^ params_to_string_typed (fun x -> "{" ^ x ^ "}") implicit_params
           ^ params_to_string_typed (fun x -> "(" ^ x ^ ")") params
           ^ ":" ^ " " ^ ty_str ^ " " ^ ":=" ^ newline_indent 1
@@ -365,9 +360,8 @@ functor
           ^ " " ^ ":" ^ " " ^ ty_str ^ "." ^ newline_indent 0 ^ "Fail" ^ " "
           ^ "Next" ^ " " ^ "Obligation."
       | AST.Equations (name, implicit_params, params, term, ty) ->
-          let definitions, ty_str = ty_to_string ty in
-          decl_list_to_string definitions
-          ^ "Equations" ^ " " ^ name ^ " "
+          let ty_str = ty_to_string ty in
+          "Equations" ^ " " ^ name ^ " "
           ^ params_to_string_typed (fun x -> "{" ^ x ^ "}") implicit_params
           ^ params_to_string_typed (fun x -> "(" ^ x ^ ")") params
           ^ ":" ^ " " ^ ty_str ^ " " ^ ":=" ^ newline_indent 1 ^ name ^ " "
@@ -375,56 +369,53 @@ functor
           ^ term_to_string_without_paren term 2
           ^ " " ^ ":" ^ " " ^ ty_str ^ "." ^ newline_indent 0 ^ "Fail" ^ " "
           ^ "Next" ^ " " ^ "Obligation."
-      | AST.Notation (name, ty) ->
-          let definitions, ty_str = ty_to_string ty in
-          decl_list_to_string definitions
-          ^ "Notation" ^ " " ^ name ^ " " ^ ":=" ^ " " ^ "(" ^ ty_str ^ ")"
-          ^ "."
-      | AST.Record (name, variants) ->
-          let definitions, variants_str =
+      | AST.Notation (name, generics, ty) ->
+          let ty_str = ty_to_string ty in
+          "Notation" ^ " " ^ name
+          ^ generics_to_string generics
+          ^ " " ^ ":=" ^ " " ^ "(" ^ ty_str ^ ")" ^ "."
+      | AST.Record (name, generics, variants) ->
+          let variants_str =
             variants_to_string variants (newline_indent 1) ";"
           in
-          decl_list_to_string definitions
-          ^ "Record" ^ " " ^ name ^ " " ^ ":" ^ " " ^ "Type" ^ " " ^ ":=" ^ "{"
-          ^ variants_str ^ newline_indent 0 ^ "}."
+          "Record" ^ " " ^ name
+          ^ generics_to_string generics
+          ^ " " ^ ":" ^ " " ^ "Type" ^ " " ^ ":=" ^ "{" ^ variants_str
+          ^ newline_indent 0 ^ "}."
       | AST.Inductive (name, generics, variants) ->
-          let name_generics =
-            name ^ List.fold_left ~init:"" ~f:(fun a b -> a ^ " " ^ b) generics
-          in
-          let definitions, variants_str =
+          let name_generics = name ^ generics_to_string generics in
+          let variants_str =
             inductive_case_to_string variants
               (newline_indent 0 ^ "|" ^ " ")
               name_generics
           in
-          let _, args_str =
-            if List.is_empty generics then ([], "")
+          let args_str =
+            if List.is_empty generics then ""
             else
               inductive_case_args_to_string variants
                 (newline_indent 0 ^ "Arguments" ^ " ")
                 (List.fold_left ~init:"" ~f:(fun a b -> a ^ " {_}") generics)
                 "."
           in
-          decl_list_to_string definitions
-          ^ "Inductive" ^ " " ^ name_generics ^ " " ^ ":" ^ " " ^ "Type" ^ " "
+          "Inductive" ^ " " ^ name_generics ^ " " ^ ":" ^ " " ^ "Type" ^ " "
           ^ ":=" ^ variants_str ^ "." ^ args_str
-      | AST.Class (name, trait_items, generics) ->
-          let field_defs, field_str =
-            List.fold_left ~init:([], "")
+      | AST.Class (name, generics, trait_items) ->
+          let field_str =
+            List.fold_left ~init:""
               ~f:(fun x (field_name, field_args, field_ty) ->
                 let field_arg_str =
                   List.fold_left ~init:""
                     ~f:(fun x arg_name -> x ^ " " ^ "`{" ^ arg_name ^ "}")
                     field_args
                 in
-                let definitions, ty_str = ty_to_string field_ty in
-                ( definitions @ fst x,
-                  snd x ^ newline_indent 1 ^ field_name ^ field_arg_str ^ ":"
-                  ^ ty_str ^ " " ^ ";" ))
+                let ty_str = ty_to_string field_ty in
+                x ^ newline_indent 1 ^ field_name ^ field_arg_str ^ " " ^ ":"
+                ^ " " ^ ty_str ^ " " ^ ";")
               trait_items
           in
           let name_generics =
             name
-            ^ List.fold_left ~init:"" ~f:(fun a b -> a ^ " " ^ b) generics
+            ^ generics_to_string generics
             ^ List.fold_left ~init:""
                 ~f:(fun x (_, field_args, _) ->
                   List.fold_left ~init:x
@@ -432,15 +423,12 @@ functor
                     field_args)
                 trait_items
           in
-          decl_list_to_string field_defs
-          ^ "Class" ^ " " ^ name_generics ^ " " ^ ":=" ^ " " ^ "{" ^ field_str
+          "Class" ^ " " ^ name_generics ^ " " ^ ":=" ^ " " ^ "{" ^ field_str
           ^ newline_indent 0 ^ "}" ^ "."
       | AST.Instance (name, self_ty, ty_list, impl_list) ->
-          let ty_list_defs, ty_list_str =
-            List.fold_left ~init:([], "")
-              ~f:(fun x y ->
-                let definitions, ty_str = ty_to_string y in
-                (definitions @ fst x, snd x ^ ty_str ^ " "))
+          let ty_list_str =
+            List.fold_left ~init:""
+              ~f:(fun x y -> x ^ ty_to_string y ^ " ")
               ty_list
           in
           let impl_str =
@@ -457,11 +445,10 @@ functor
                 ^ ";")
               impl_list
           in
-          let ty_defs, ty_str = ty_to_string self_ty in
-          decl_list_to_string (ty_list_defs @ ty_defs)
-          ^ "Instance" ^ " " ^ ty_str ^ "_" ^ name ^ " " ^ ":" ^ " " ^ name
-          ^ " " ^ ty_list_str ^ ":=" ^ " " ^ "{" ^ impl_str ^ newline_indent 0
-          ^ "}" ^ "."
+          let ty_str = ty_to_string self_ty in
+          "Instance" ^ " " ^ ty_str ^ "_" ^ name ^ " " ^ ":" ^ " " ^ name ^ " "
+          ^ ty_list_str ^ ":=" ^ " " ^ "{" ^ impl_str ^ newline_indent 0 ^ "}"
+          ^ "."
       | AST.Require ([], rename) -> ""
       | AST.Require (import :: imports, rename) -> (
           "Require Import" ^ " "
@@ -470,15 +457,17 @@ functor
           ^ "."
           ^ match rename with Some s -> " (* " ^ "as " ^ s ^ " *)" | _ -> "")
 
-    and decl_list_to_string (x : AST.decl list) : string =
-      List.fold_right ~init:""
-        ~f:(fun x y -> decl_to_string x ^ newline_indent 0 ^ y)
-        x
+    and generics_to_string generics =
+      List.fold_left ~init:""
+        ~f:(fun a (b_name, b_ty) ->
+          let ty_str = ty_to_string b_ty in
+          a ^ " " ^ "(" ^ b_name ^ " " ^ ":" ^ " " ^ ty_str ^ ")")
+        generics
 
     and params_to_string_typed paren params : string =
       match params with
       | (pat, ty) :: xs ->
-          let _, ty_str = ty_to_string ty in
+          let ty_str = ty_to_string ty in
           paren (pat_to_string pat true 0 ^ " " ^ ":" ^ " " ^ ty_str)
           ^ " "
           ^ params_to_string_typed paren
@@ -488,50 +477,42 @@ functor
     and params_to_string params : string =
       match params with
       | (pat, ty) :: xs ->
-          let _, ty_str = ty_to_string ty in
+          let ty_str = ty_to_string ty in
           pat_to_string pat true 0 ^ " "
           ^ params_to_string xs (* TODO: Should pat_to_string have tick here? *)
       | [] -> ""
 
-    and inductive_case_to_string variants pre post : AST.decl list * string =
+    and inductive_case_to_string variants pre post : string =
       match variants with
       | x :: xs ->
-          let ty_def, mid_str =
+          let mid_str =
             match x with
-            | AST.BaseCase ty_name -> ([], ty_name)
+            | AST.BaseCase ty_name -> ty_name
             | AST.InductiveCase (ty_name, ty) ->
-                let ty_definitions, ty_str = ty_to_string ty in
-                ( ty_definitions,
-                  ty_name ^ " " ^ ":" ^ " " ^ ty_str ^ " " ^ "->" ^ " " )
+                let ty_str = ty_to_string ty in
+                ty_name ^ " " ^ ":" ^ " " ^ ty_str ^ " " ^ "->" ^ " "
           in
-          let variant_definitions, variants_str =
-            inductive_case_to_string xs pre post
-          in
-          (ty_def @ variant_definitions, pre ^ mid_str ^ post ^ variants_str)
-      | [] -> ([], "")
+          let variants_str = inductive_case_to_string xs pre post in
+          pre ^ mid_str ^ post ^ variants_str
+      | [] -> ""
 
-    and inductive_case_args_to_string variants pre mid post :
-        AST.decl list * string =
-      List.fold_left ~init:([], "")
-        ~f:(fun y x ->
+    and inductive_case_args_to_string variants pre mid post : string =
+      List.fold_left ~init:""
+        ~f:(fun variants_str x ->
           let mid_str, ty_str =
             match x with
             | AST.BaseCase ty_name -> (ty_name, "")
             | AST.InductiveCase (ty_name, ty) ->
-                let _, ty_str = ty_to_string ty in
+                let ty_str = ty_to_string ty in
                 (ty_name, " " ^ ty_str)
           in
-          match y with
-          | variant_definitions, variants_str ->
-              ( variant_definitions,
-                pre ^ mid_str ^ mid ^ ty_str ^ post ^ variants_str ))
+          pre ^ mid_str ^ mid ^ ty_str ^ post ^ variants_str)
         variants
 
-    and variants_to_string variants pre post : AST.decl list * string =
-      List.fold_left ~init:([], "")
-        ~f:(fun (variant_definitions, variants_str) (ty_name, ty) ->
-          let ty_definitions, ty_str = ty_to_string ty in
-          ( ty_definitions @ variant_definitions,
-            pre ^ ty_name ^ " " ^ ":" ^ " " ^ ty_str ^ post ^ variants_str ))
+    and variants_to_string variants pre post : string =
+      List.fold_left ~init:""
+        ~f:(fun variants_str (ty_name, ty) ->
+          let ty_str = ty_to_string ty in
+          pre ^ ty_name ^ " " ^ ":" ^ " " ^ ty_str ^ post ^ variants_str)
         variants
   end

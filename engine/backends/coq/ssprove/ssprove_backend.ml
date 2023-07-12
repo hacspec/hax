@@ -165,14 +165,16 @@ struct
   open Ctx
 
   let pconcrete_ident (id : concrete_ident) : string =
+    (* U.Concrete_ident_view.to_definition_name id *)
+    (* U.Concrete_ident_view.show id *)
     let id = U.Concrete_ident_view.to_view id in
-    let crate, path = ctx.current_namespace in
-    if String.(crate = id.crate) && [%eq: string list] id.path path then
-      id.definition
-    else
-      (* id.crate ^ "_" ^ *)
-      (* List.fold_left ~init:"" ~f:(fun x y -> x ^ "_" ^ y) *)
-      id.definition
+    (* let crate, path = ctx.current_namespace in *)
+    (* if String.(crate = id.crate) && [%eq: string list] id.path path then *)
+    (*   id.definition *)
+    (* else *)
+    (*   id.crate ^ "_" ^ *)
+    (*   (\* List.fold_left ~init:"" ~f:(fun x y -> x ^ "_" ^ y) *\) *)
+    id.definition
 
   let pglobal_ident (id : global_ident) : string =
     match id with
@@ -454,8 +456,9 @@ struct
     | Construct { constructor; fields = [ (f, e) ]; base } ->
         SSP.AST.App (SSP.AST.Var (pglobal_ident constructor), [ pexpr e ])
     | Construct { constructor; fields; base } ->
-        SSP.AST.Var
-          (pglobal_ident constructor ^ snd (SSP.ty_to_string (pty span e.typ)))
+        __TODO_term__ span "constructor"
+        (* SSP.AST.Var *)
+        (*   (pglobal_ident constructor ^ (SSP.ty_to_string (pty span e.typ))) *)
     | Closure { params; body } ->
         SSP.AST.Lambda (List.map ~f:ppat params, pexpr body)
     | MacroInvokation { macro; args; witness } ->
@@ -538,9 +541,10 @@ struct
         is_mutable_pat spat
     | PBinding { mut; mode; var; typ; subpat } -> false
 
-  let pgeneric_param span : generic_param -> _ = function
-    | GPType { ident; default } -> ident.name
-    | _ -> Error.unimplemented ~details:"Coq: TODO: generic_params" span
+  let pgeneric_param span : generic_param -> string * SSP.AST.ty = function
+    | GPType { ident; default = Some t } -> (ident.name, pty span t)
+    | GPType { ident; default = None } -> (ident.name, SSP.AST.WildTy)
+    | _ -> Error.unimplemented ~details:"SSProve: TODO: generic_params" span
 
   let rec pitem (e : item) : SSP.AST.decl list =
     try pitem_unwrapped e
@@ -625,7 +629,7 @@ struct
                 SSP.AST.Const
                   (SSP.AST.Const_string
                      ("("
-                     ^ snd (SSP.ty_to_string (pty (Span.dummy ()) x_ty))
+                     ^ SSP.ty_to_string (pty (Span.dummy ()) x_ty)
                      ^ " ; " ^ Int.to_string x_n ^ "%nat)")),
                 SSP.AST.Name "Location" )
             :: y)
@@ -659,7 +663,7 @@ struct
                     [ pty span body.typ ] ) );
           ]
     | TyAlias { name; generics; ty } ->
-        [ SSP.AST.Notation (pconcrete_ident name, pty span ty) ]
+        [ SSP.AST.Notation (pconcrete_ident name, List.map ~f:(pgeneric_param span) generics.params, pty span ty) ]
     (* record *)
     | Type
         {
@@ -670,7 +674,8 @@ struct
         } ->
         [
           SSP.AST.Record
-            ( pconcrete_ident name ^ pconcrete_ident record_name,
+            ( pconcrete_ident name (* ^ pconcrete_ident record_name *),
+              List.map ~f:(pgeneric_param span) generics.params,
               p_record_record span arguments );
         ]
     (* enum *)
@@ -685,6 +690,7 @@ struct
         [
           SSP.AST.Notation
             ( "t_" ^ pconcrete_ident name,
+              List.map ~f:(pgeneric_param span) generics.params,
               SSP.AST.Product (List.map ~f:snd (p_record span variants name)) );
           SSP.AST.Definition
             ( pconcrete_ident name,
@@ -718,6 +724,7 @@ struct
                 [
                   SSP.AST.Notation
                     ( "t_" ^ o.type_name,
+                      [],
                       SSP.AST.NatMod
                         (o.type_of_canvas, o.bit_size_of_field, o.modulo_value)
                     );
@@ -746,6 +753,7 @@ struct
                 [
                   SSP.AST.Notation
                     ( "t_" ^ o.bytes_name,
+                      [],
                       SSP.AST.ArrayTy
                         ( SSP.AST.Int { size = SSP.AST.U8; signed = false },
                           (* int_of_string *) o.size ) );
@@ -774,6 +782,7 @@ struct
                 [
                   SSP.AST.Notation
                     ( "t_" ^ o.integer_name,
+                      [],
                       SSP.AST.ArrayTy
                         ( SSP.AST.Int { size = SSP.AST.U8; signed = false },
                           Int.to_string ((o.bits + 7) / 8) ) );
@@ -806,7 +815,7 @@ struct
                       (* int_of_string *) o.size )
                 in
                 [
-                  SSP.AST.Notation ("t_" ^ o.bytes_name, typ);
+                  SSP.AST.Notation ("t_" ^ o.bytes_name, [], typ);
                   SSP.AST.Definition
                     ( o.bytes_name,
                       [
@@ -846,6 +855,7 @@ struct
                 [
                   SSP.AST.Notation
                     ( "t_" ^ o.array_name,
+                      [],
                       SSP.AST.ArrayTy
                         ( SSP.AST.Int { size = typ; signed = false },
                           (* int_of_string *) o.size ) );
@@ -874,31 +884,26 @@ struct
     | NotImplementedYet -> [ __TODO_item__ span "Not implemented yet?" ]
     | Trait { name; generics; items } ->
         [
+          (* SSP.AST.Unimplemented (AST.show_item e); *)
           SSP.AST.Class
             ( pconcrete_ident name,
-              List.concat_map
+              List.map ~f:(pgeneric_param span)
+                (match List.rev generics.params with
+                | _ :: xs -> List.rev xs
+                | _ -> []),
+              List.map
                 ~f:(fun x ->
                   match x.ti_v with
-                  | TIFn fn_ty -> [ (x.ti_name, [], pty x.ti_span fn_ty) ]
+                  | TIFn fn_ty -> (x.ti_name, [], pty x.ti_span fn_ty)
                   | TIType trait_refs ->
-                      [
-                        ( x.ti_name,
-                          List.map
-                            ~f:(fun tr -> pconcrete_ident tr.trait)
-                            trait_refs,
-                          SSP.AST.TypeTy );
-                      ])
-                items,
-              []
-              (* List.fold_left ~init:[] *)
-              (*   ~f:(fun a b -> *)
-              (*     a *)
-              (*     @ [ *)
-              (*         (match b with *)
-              (*         | GPType { ident; default } -> ident.name *)
-              (*         | _ -> failwith "SSProve: TODO: generic_params"); *)
-              (*       ]) *)
-              (*   generics.params *) );
+                      ( "t_" ^ x.ti_name,
+                        List.map
+                          ~f:(fun tr -> pconcrete_ident tr.trait)
+                          (match List.rev trait_refs with
+                          | _ :: xs -> List.rev xs
+                          | _ -> []),
+                        SSP.AST.TypeTy ))
+                items );
         ]
     | Impl { generics; self_ty; of_trait = name, gen_vals; items } ->
         [
