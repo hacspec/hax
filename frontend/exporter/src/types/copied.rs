@@ -179,10 +179,7 @@ impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, ConstantKind>
                         },
                     ..
                 } => ConstantKind::Lit(node),
-                e => {
-                    eprintln!(">>> {:#?}", e);
-                    ConstantKind::Ty(Box::new(e))
-                }
+                e => ConstantKind::Ty(Box::new(e)),
             },
             _ => ConstantKind::Todo(format!("{:#?}", self)),
         }
@@ -413,14 +410,6 @@ pub struct FieldDef {
     pub vis: Visibility<DefId>,
 }
 
-// impl<I: rustc_index::vec::Idx, S, D: Clone, T: SInto<S, D>> SInto<S, Vec<D>>
-//     for rustc_index::vec::IndexVec<I, T>
-// {
-//     fn sinto(&self, s: &S) -> Vec<D> {
-//         self.into_iter().map(|x| x.sinto(s)).collect()
-//     }
-// }
-
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::ty::VariantDef, state: S as state)]
 pub struct VariantDef {
@@ -465,28 +454,14 @@ impl<'a, 's, S: BaseState<'s>> SInto<S, AdtDef> for rustc_middle::ty::AdtDef<'a>
     }
 }
 
-// #[derive(AdtInto)]
-// #[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::AdtExpr<'tcx>, state: S as gstate)]
-// #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-// pub struct AdtExpr {
-//     pub adt_def: DefId,
-//     pub variant_index: VariantIdx,
-//     pub substs: Vec<GenericArg>,
-//     pub user_ty: Option<CanonicalUserType>,
-//     pub fields: Vec<FieldExpr>,
-//     pub base: Option<FruInfo>,
-// }
-
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: ExprState<'tcx>>, from: rustc_middle::thir::FruInfo<'tcx>, state: S as gstate)]
-// Field renaming u.. ?
+/// This is [Constructor {⟨field_types⟩, ..base}]
 pub struct FruInfo {
     pub base: Expr,
     pub field_types: Vec<Ty>,
 }
 
-// #[derive(AdtInto)]
-// #[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::FieldExpr, state: S as gstate)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct FieldExpr {
     pub field: DefId,
@@ -494,7 +469,6 @@ pub struct FieldExpr {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-// #[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::FieldPat<'tcx>, state: S as gstate)]
 pub struct FieldPat {
     pub field: DefId,
     pub pattern: Pat,
@@ -1229,18 +1203,9 @@ pub enum AliasKind {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum Ty {
     Bool,
-
-    /// The primitive character type; holds a Unicode scalar value
-    /// (a non-surrogate code point). Written as `char`.
     Char,
-
-    /// A primitive signed integer type. For example, `i32`.
     Int(IntTy),
-
-    /// A primitive unsigned integer type. For example, `u32`.
     Uint(UintTy),
-
-    /// A primitive floating-point type. For example, `f64`.
     Float(FloatTy),
 
     #[custom_arm(
@@ -1271,153 +1236,23 @@ pub enum Ty {
         generic_args: Vec<GenericArg>,
         def_id: DefId,
     },
-
-    /*
-    /// Algebraic data types (ADT). For example: structures, enumerations and unions.
-    ///
-    /// For example, the type `List<i32>` would be represented using the `AdtDef`
-    /// for `struct List<T>` and the substs `[i32]`.
-    ///
-    /// Note that generic parameters in fields only get lazily substituted
-    /// by using something like `adt_def.all_fields().map(|field| field.ty(tcx, substs))`.
-    Adt(x: AdtDef, y: Vec<GenericArg>),
-     */
-    /// An unsized FFI type that is opaque to Rust. Written as `extern type T`.
     Foreign(DefId),
-
-    /// The pointee of a string slice. Written as `str`.
     Str,
-
-    /// An array with the given length. Written as `[T; N]`.
     Array(Box<Ty>, Const),
-
-    /// The pointee of an array slice. Written as `[T]`.
     Slice(Box<Ty>),
-
-    /// A raw pointer. Written as `*mut T` or `*const T`
     RawPtr(TypeAndMut),
-
-    /// A reference; a pointer with an associated lifetime. Written as
-    /// `&'a mut T` or `&'a T`.
     Ref(Region, Box<Ty>, Mutability),
-
-    // /// The anonymous type of a function declaration/definition. Each
-    // /// function has a unique type.
-    // ///
-    // /// For the function `fn foo() -> i32 { 3 }` this type would be
-    // /// shown to the user as `fn() -> i32 {foo}`.
-    // ///
-    // /// For example the type of `bar` here:
-    // /// ```rust
-    // /// fn foo() -> i32 { 1 }
-    // /// let bar = foo; // bar: fn() -> i32 {foo}
-    // /// ```
-    // FnDef(d: DefId, r: Vec<GenericArg>),
-
-    // /// A pointer to a function. Written as `fn() -> i32`.
-    // ///
-    // /// Note that both functions and closures start out as either
-    // /// [FnDef] or [Closure] which can be then be coerced to this variant.
-    // ///
-    // /// For example the type of `bar` here:
-    // ///
-    // /// ```rust
-    // /// fn foo() -> i32 { 1 }
-    // /// let bar: fn() -> i32 = foo;
-    // /// ```
-    // FnPtr(x: PolyFnSig),
-    /// A trait object. Written as `dyn for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
-
-    // /// The anonymous type of a closure. Used to represent the type of `|a| a`.
-    // ///
-    // /// Closure substs contain both the - potentially substituted - generic parameters
-    // /// of its parent and some synthetic parameters. See the documentation for
-    // /// `ClosureSubsts` for more details.
-    // Closure(DefId, Vec<GenericArg>),
-    /// The anonymous type of a generator. Used to represent the type of
-    /// `|a| yield a`.
-    ///
-    /// For more info about generator substs, visit the documentation for
-    /// `GeneratorSubsts`.
     Generator(DefId, Vec<GenericArg>, Movability),
-
-    /*
-    /// A type representing the types stored inside a generator.
-    /// This should only appear as part of the `GeneratorSubsts`.
-    ///
-    /// Note that the captured variables for generators are stored separately
-    /// using a tuple in the same way as for closures.
-    ///
-    /// Unlike upvars, the witness can reference lifetimes from
-    /// inside of the generator itself. To deal with them in
-    /// the type of the generator, we convert them to higher ranked
-    /// lifetimes bound by the witness itself.
-    ///
-    /// Looking at the following example, the witness for this generator
-    /// may end up as something like `for<'a> [Vec<i32>, &'a Vec<i32>]`:
-    ///
-    /// ```ignore UNSOLVED (ask @compiler-errors, should this error? can we just swap the yields?)
-    /// #![feature(generators)]
-    /// |a| {
-    ///     let x = &vec![3];
-    ///     yield a;
-    ///     yield x[0];
-    /// }
-    /// # ;
-    /// ```
-     */
-    // GeneratorWitness(Binder<Vec<Ty>>) use {
-    //     rustc_middle::ty::TyKind::GeneratorWitness(b) => {
-
-    //         Ty::GeneratorWitness(
-    //             None // TODO
-    //             // b.map_bound::<>(|x| x.sinto(state)).sinto(state)
-    //         )
-    //     }
-    // },
-    /// The never type `!`.
     Never,
-
-    /// A tuple type. For example, `(i32, bool)`.
     Tuple(Vec<Ty>),
-
     Alias(AliasKind, AliasTy),
-
-    /// A type parameter; for example, `T` in `fn f<T>(x: T) {}`.
     Param(ParamTy),
-
-    /// Bound type variable, used to represent the `'a` in `for<'a> fn(&'a ())`.
-    ///
-    /// For canonical queries, we replace inference variables with bound variables,
-    /// so e.g. when checking whether `&'_ (): Trait<_>` holds, we canonicalize that to
-    /// `for<'a, T> &'a (): Trait<T>` and then convert the introduced bound variables
-    /// back to inference variables in a new inference context when inside of the query.
-    ///
-    /// See the `rustc-dev-guide` for more details about
-    /// [higher-ranked trait bounds][1] and [canonical queries][2].
-    ///
-    /// [1]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
-    /// [2]: https://rustc-dev-guide.rust-lang.org/traits/canonical-queries.html
     Bound(DebruijnIndex, BoundTy),
-
-    /// A placeholder type, used during higher ranked subtyping to instantiate
-    /// bound variables.
     Placeholder(PlaceholderType),
-
-    /// A type variable used during type checking.
-    ///
-    /// Similar to placeholders, inference variables also live in a universe to
-    /// correctly deal with higher ranked types. Though unlike placeholders,
-    /// that universe is stored in the `InferCtxt` instead of directly
-    /// inside of the type.
     Infer(InferTy),
-
-    /// A placeholder for a type which could not be computed; this is
-    /// propagated to avoid useless error messages.
     #[custom_arm(rustc_middle::ty::TyKind::Error(..) => Ty::Error,)]
     Error,
-
     #[todo]
     Todo(String),
 }
@@ -1517,14 +1352,11 @@ pub struct AdtExpr {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[append(rustc_middle::thir::PatKind::Leaf {..} => fatal!(gstate, "PatKind::Leaf: should never come up"),)]
 pub enum PatKind {
-    /// A wildcard pattern: `_`.
     Wild,
-
     AscribeUserType {
         ascription: Ascription,
         subpattern: Pat,
     },
-
     #[custom_arm(
         rustc_middle::thir::PatKind::Binding {mutability, name, mode, var, ty, subpattern, is_primary} => {
             let local_ctx = gstate.base().local_ctx;
@@ -1539,15 +1371,12 @@ pub enum PatKind {
             }
         }
     )]
-    /// `x`, `ref x`, `x @ P`, etc.
     Binding {
         mutability: Mutability,
         mode: BindingMode,
         var: LocalIdent, // name VS var? TODO
         ty: Ty,
         subpattern: Option<Pat>,
-        /// Is this the leftmost occurrence of the binding, i.e., is `var` the
-        /// `HirId` of this pattern?
         is_primary: bool,
     },
     #[custom_arm(
@@ -1567,7 +1396,6 @@ pub enum PatKind {
             }
         }
     )]
-    /// Any variant, TODO rename into constructor?
     Variant {
         info: VariantInformations,
         // constructs_record: bool,
@@ -1581,41 +1409,23 @@ pub enum PatKind {
     Tuple {
         subpatterns: Vec<Pat>,
     },
-    /// `box P`, `&P`, `&mut P`, etc.
     Deref {
         subpattern: Pat,
     },
-
-    /// One of the following:
-    /// * `&str`, which will be handled as a string pattern and thus exhaustiveness
-    ///   checking will detect if you use the same string twice in different patterns.
-    /// * integer, bool, char or float, which will be handled by exhaustiveness to cover exactly
-    ///   its own value, similar to `&str`, but these values are much simpler.
-    /// * Opaque constants, that must not be matched structurally. So anything that does not derive
-    ///   `PartialEq` and `Eq`.
     Constant {
         value: TypedConstantKind,
     },
-
     Range(PatRange),
-    /// Matches against a slice, checking the length and extracting elements.
-    /// irrefutable when there is a slice pattern and both `prefix` and `suffix` are empty.
-    /// e.g., `&[ref xs @ ..]`.
     Slice {
         prefix: Vec<Pat>,
         slice: Option<Pat>,
         suffix: Vec<Pat>,
     },
-
-    /// Fixed match against an array; irrefutable.
     Array {
         prefix: Vec<Pat>,
         slice: Option<Pat>,
         suffix: Vec<Pat>,
     },
-
-    /// An or-pattern, e.g. `p | q`.
-    /// Invariant: `pats.len() >= 2`.
     Or {
         pats: Vec<Pat>,
     },
@@ -1789,9 +1599,6 @@ pub type Body = Expr;
 #[args(<'tcx, S: ExprState<'tcx>>, from: rustc_middle::thir::ExprKind<'tcx>, state: S as gstate)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[append(
-    // rustc_middle::thir::ExprKind::Scope {region_scope, lint_level, value} => {
-    //     gstate.thir().exprs[*value].clone().unroll_scope(gstate).sinto(gstate).kind
-    // },
     rustc_middle::thir::ExprKind::Scope {..} => {
         fatal!(gstate, "Scope should have been eliminated at this point");
     },
@@ -1803,28 +1610,17 @@ pub type Body = Expr;
     },
 )]
 pub enum ExprKind {
-    // /// and to track the `HirId` of the expressions within the scope.
-    // Scope {
-    //     region_scope: Scope,
-    //     lint_level: LintLevel,
-    //     value: Expr,
-    // },
-    /// A `box <value>` expression.
     Box {
         value: Expr,
     },
-    /// TODO
     #[disable_mapping]
     MacroInvokation(MacroInvokation),
-    /// An `if` expression.
     If {
         if_then_scope: Scope,
         cond: Expr,
         then: Expr,
         else_opt: Option<Expr>,
     },
-
-    /// A function call. Method calls and overloaded operators are converted to plain function calls.
     #[map({
         let e = gstate.thir().exprs[*fun].unroll_scope(gstate);
         let (def, substs) = match &e.kind {
@@ -1849,28 +1645,6 @@ pub enum ExprKind {
                 fatal!(gstate, "CallNotZstLiteral")
             }
         };
-        let tcx = gstate.base().tcx;
-        match tcx.trait_of_item(*def) {
-            Some(trait_def_id) => {
-                // println!("########################");
-                // println!("expr={:#?}", self);
-                // printlnresolve!("x={:#?}", x);
-                // resolve_trait(
-                //     rustc_middle::ty::TraitRef::new(trait_def_id, substs),
-                //     gstate
-                // );
-                ()
-            },
-            None => ()
-        }
-        // if false {
-        //     let tcx = gstate.base().tcx;
-        //     let g = tcx.generics_of(def);
-        //     let g = tcx.predicates_of(def);
-        //     let g = g.parent.unwrap();
-        //     let g = tcx.predicates_of(g);
-        //     panic!("generics={:#?}", g);
-        // }
         TO_TYPE::Call {
             ty: ty.sinto(gstate),
             args: args.sinto(gstate),
@@ -1888,30 +1662,15 @@ pub enum ExprKind {
         }
     })]
     Call {
-        /// The type of the function. This is often a [`FnDef`] or a [`FnPtr`].
-        ///
-        /// [`FnDef`]: ty::TyKind::FnDef
-        /// [`FnPtr`]: ty::TyKind::FnPtr
         ty: Ty,
-        /// The function itself.
         fun: Expr, // TODO: can [ty] and [fun.ty] be different?
-        /// The arguments passed to the function.
-        ///
-        /// Note: in some cases (like calling a closure), the function call `f(...args)` gets
-        /// rewritten as a call to a function trait method (e.g. `FnOnce::call_once(f, (...args))`).
         args: Vec<Expr>,
-        /// Whether this is from an overloaded operator rather than a
-        /// function call from HIR. `true` for overloaded function call.
         from_hir_call: bool,
-        /// The span of the function, without the dot and receiver
-        /// (e.g. `foo(a, b)` in `x.foo(a, b)`).
         fn_span: Span,
     },
-    /// A *non-overloaded* dereference.
     Deref {
         arg: Expr,
     },
-    /// A *non-overloaded* binary operation.
     Binary {
         op: BinOp,
         lhs: Expr,
@@ -1922,42 +1681,31 @@ pub enum ExprKind {
         lhs: Expr,
         rhs: Expr,
     },
-    /// A *non-overloaded* unary operation. Note that here the deref (`*`)
-    /// operator is represented by `ExprKind::Deref`.
     Unary {
         op: UnOp,
         arg: Expr,
     },
-    /// A cast: `<source> as <type>`. The type we cast to is the type of
-    /// the parent expression.
     Cast {
         source: Expr,
     },
     Use {
-        // TODO: what is Use?
-        // #[map({supposely_unreachable!("Expr::Use": self); panic!()})]
         source: Expr,
     }, // Use a lexpr to get a vexpr.
-    /// A coercion from `!` to any type.
     NeverToAny {
         source: Expr,
     },
-    /// A pointer cast. More information can be found in [`PointerCast`].
     Pointer {
         cast: PointerCast,
         source: Expr,
     },
-    /// A `loop` expression.
     Loop {
         body: Expr,
     },
-    /// A `match` expression.
     Match {
         scrutinee: Expr,
         arms: Vec<Arm>,
     },
     Let {
-        // Is [Let] only for [if let _ = ... {}...]?
         expr: Expr,
         pat: Pat,
     },
@@ -1973,12 +1721,10 @@ pub enum ExprKind {
             }
         },
     )]
-    /// A block.
     Block {
         #[serde(flatten)]
         block: Block,
     },
-    /// A *non-overloaded* operation assignment, e.g. `lhs += rhs`.
     Assign {
         lhs: Expr,
         rhs: Expr,
@@ -1988,7 +1734,6 @@ pub enum ExprKind {
         lhs: Expr,
         rhs: Expr,
     },
-    /// Access to a field of a struct, an union, or an enum.
     #[disable_mapping]
     Field {
         field: DefId,
@@ -2000,92 +1745,66 @@ pub enum ExprKind {
         field: usize,
         lhs: Expr,
     },
-
-    /// A *non-overloaded* indexing operation.
     Index {
         lhs: Expr,
         index: Expr,
     },
-    /// A local variable.
     VarRef {
         id: LocalIdent,
     },
-
     #[disable_mapping]
-    /// A local (const) variable.
     ConstRef {
         id: ParamConst,
     },
-
     #[disable_mapping]
     GlobalName {
         id: GlobalIdent,
     },
-    // TODO
-    /// Used to represent upvars mentioned in a closure/generator
     UpvarRef {
-        /// DefId of the closure/generator
         closure_def_id: DefId,
-
-        /// HirId of the root variable
         var_hir_id: LocalIdent,
     },
-    /// A borrow, e.g. `&arg`.
     Borrow {
         borrow_kind: BorrowKind,
         arg: Expr,
     },
-    /// A `&raw [const|mut] $place_expr` raw borrow resulting in type `*[const|mut] T`.
     AddressOf {
         mutability: Mutability,
         arg: Expr,
     },
-    /// A `break` expression.
     Break {
         label: Scope,
         value: Option<Expr>,
     },
-    /// A `continue` expression.
     Continue {
         label: Scope,
     },
-    /// A `return` expression.
     Return {
         value: Option<Expr>,
     },
-    /// An inline `const` block, e.g. `const {}`.
     ConstBlock {
         did: DefId,
         substs: Vec<GenericArg>,
     },
-    /// An array literal constructed from one repeated element, e.g. `[1; 5]`.
     Repeat {
         value: Expr,
         count: Const,
     },
-    /// An array, e.g. `[a, b, c, d]`.
     Array {
         fields: Vec<Expr>,
     },
-    /// A tuple, e.g. `(a, b, c, d)`.
     Tuple {
         fields: Vec<Expr>,
     },
-    /// An ADT constructor, e.g. `Foo {x: 1, y: 2}`.
     Adt(AdtExpr),
-    /// A type ascription on a place.
     PlaceTypeAscription {
         source: Expr,
-        /// Type that the user gave to this expression
         user_ty: Option<CanonicalUserType>,
     },
-    /// A type ascription on a value, e.g. `42: i32`.
     ValueTypeAscription {
         source: Expr,
-        /// Type that the user gave to this expression
         user_ty: Option<CanonicalUserType>,
     },
-    /// A closure definition.
     #[custom_arm(FROM_TYPE::Closure(e) => {
         let (_, params, body) = inspect_local_def_id(e.closure_id, gstate.owner_id(), gstate);
         TO_TYPE::Closure {
@@ -2102,18 +1821,15 @@ pub enum ExprKind {
         upvars: Vec<Expr>,
         movability: Option<Movability>,
     },
-    /// A literal.
     Literal {
         lit: Spanned<LitKind>,
         neg: bool, // TODO
     },
-    /// A literal of a ZST type.
     //zero space type
     // This is basically used for functions! e.g. `<T>::from`
     ZstLiteral {
         user_ty: Option<CanonicalUserType>,
     },
-    /// Associated constants and named constants
     NamedConst {
         def_id: GlobalIdent,
         substs: Vec<GenericArg>,
@@ -2123,26 +1839,11 @@ pub enum ExprKind {
         param: ParamConst,
         def_id: GlobalIdent,
     },
-    // FIXME improve docs for `StaticRef` by distinguishing it from `NamedConst`
-    /// A literal containing the address of a `static`.
-    ///
-    /// This is only distinguished from `Literal` so that we can register some
-    /// info for diagnostics.
     StaticRef {
         alloc_id: u64,
         ty: Ty,
         def_id: GlobalIdent,
     },
-    // /// Inline assembly, i.e. `asm!()`.
-    // InlineAsm {
-    //     template: &'tcx [InlineAsmTemplatePiece],
-    //     operands: Box<[InlineAsmOperand<'tcx>]>,
-    //     options: InlineAsmOptions,
-    //     line_spans: &'tcx [Span],
-    // },
-    // /// An expression taking a reference to a thread local.
-    // ThreadLocalRef(DefId),
-    /// A `yield` expression.
     Yield {
         value: Expr,
     },
@@ -2310,9 +2011,6 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ImplItem> for rustc_hir::Im
         impl_item.sinto(s)
     }
 }
-
-// #[derive(AdtInto)]
-// #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::ParamName, state: S as tcx)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum ParamName {
     Plain(LocalIdent),
@@ -2617,15 +2315,6 @@ pub enum ItemKind {
 
 pub type EnumDef = Vec<Variant>;
 
-// sinto_enum!(
-//     {'tcx, S: BaseState<'tcx> + HasOwnerId} tcx: S as state,
-//     #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-//     pub enum TraitFn (rustc_hir::TraitFn<'tcx>) {
-//         Required(id: Vec<Ident>),
-//         Provided(body: FnBody),
-//     }
-// );
-
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::TraitItemKind<'tcx>, state: S as tcx)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -2645,7 +2334,6 @@ pub enum TraitItemKind {
     ProvidedFn(FnDef),
     #[custom_arm(
         rustc_hir::TraitItemKind::Type(b, ty) => {
-            // eprintln!("rustc_hir::TraitItemKind::Type: b: {:#?}", b);
             TraitItemKind::Type(b.sinto(tcx), ty.map(|t| t.sinto(tcx)))
         }
     )]
@@ -2748,85 +2436,6 @@ pub struct Lifetime {
     pub ident: Ident,
     pub res: LifetimeName,
 }
-
-/*
-#[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_hir::TraitRef<'tcx>, state: S as tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct TraitRef {
-    #[map(vec![])] //TODO!
-    pub path: Path,
-    pub hir_ref_id: HirId,
-}
-
-#[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::PolyTraitRef<'tcx>, state: S as tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct PolyTraitRef {
-    pub bound_generic_params: Vec<GenericParam>,
-    pub trait_ref: TraitRef,
-    pub span: Span,
-}
-
-#[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::TraitBoundModifier, state: S as tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub enum TraitBoundModifier {
-    None,
-    Maybe,
-    MaybeConst,
-}
-
-#[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::Term<'tcx>, state: S as tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub enum Term {
-    Ty(Ty),
-    Const(AnonConst),
-}
-
-#[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::TypeBindingKind<'tcx>, state: S as tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub enum TypeBindingKind {
-    Constraint { bounds: Vec<GenericBound> },
-    Equality { term: Term },
-}
-
-#[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::TypeBinding<'tcx>, state: S as tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct TypeBinding {
-    pub hir_id: HirId,
-    pub ident: Ident,
-    pub gen_args: GenericArgs,
-    pub kind: TypeBindingKind,
-    pub span: Span,
-}
-
-#[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::GenericArgs<'tcx>, state: S as tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct GenericArgs {
-    #[map(vec![])]
-    pub args: Vec<GenericArg>,
-    #[map(vec![])]
-    pub bindings: Vec<TypeBinding>,
-    pub parenthesized: bool,
-    pub span_ext: Span,
-}
-
-#[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::GenericBound<'tcx>, state: S as tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub enum GenericBound {
-    Trait(PolyTraitRef, TraitBoundModifier),
-    // LangItemTrait(LangItem, Span, HirId, GenericArgs),
-    Outlives(Lifetime),
-    #[todo]
-    Todo(String),
-}
- */
 
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::TraitRef<'tcx>, state: S as tcx)]
@@ -2993,12 +2602,6 @@ pub struct Item {
     #[not_in_source]
     #[map(span.macro_backtrace().map(|o| o.sinto(state)).collect())]
     pub expn_backtrace: Vec<ExpnData>,
-    // #[map({
-    //     let tcx = state.base().tcx;
-    //     tcx.hir().attrs(rustc_hir::hir_id::HirId::from(owner_id.clone())).sinto(state)
-    // })]
-    // #[not_in_source]
-    // pub comes_from_ex: Vec<Attribute>,
 }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Item> for rustc_hir::ItemId {
@@ -3008,15 +2611,7 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, Item> for rustc_hir::ItemId {
     }
 }
 
-// pub type GenericBounds = Vec<GenericBound>;
-
-// #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub type Ident = (Symbol, Span);
-// pub struct Ident {
-// pub name: String,
-//     pub span: Span,
-//     pub id: u32,
-// }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Ident> for rustc_span::symbol::Ident {
     fn sinto(&self, s: &S) -> Ident {
