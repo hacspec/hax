@@ -111,6 +111,34 @@ pub mod types {
         }
     }
 
+    #[derive(Clone)]
+    pub struct Base<'tcx> {
+        pub options: Options,
+        pub macro_infos: MacroCalls,
+        pub local_ctx: LocalContext,
+        pub opt_def_id: OptDefId,
+        pub exported_spans: ExportedSpans,
+        pub cached_thirs: Thirs<'tcx>,
+        pub tcx: rustc_middle::ty::TyCtxt<'tcx>,
+    }
+
+    impl<'tcx> Base<'tcx> {
+        pub fn new(
+            tcx: &rustc_middle::ty::TyCtxt<'tcx>,
+            options: &hax_frontend_exporter_options::Options,
+        ) -> Self {
+            Self {
+                tcx: tcx.clone(),
+                macro_infos: Box::new(HashMap::new()),
+                cached_thirs: HashMap::new(),
+                options: Box::new(options.clone()),
+                opt_def_id: None,
+                local_ctx: Rc::new(RefCell::new(LocalContextS::new())),
+                exported_spans: Rc::new(RefCell::new(HashSet::new())),
+            }
+        }
+    }
+
     pub type LocalContext = Rc<RefCell<LocalContextS>>;
     // pub type LocalIdentMap = Rc<RefCell<HashMap<rustc_middle::thir::LocalVarId, String>>>;
     // pub type ConstParamIdMap = Rc<RefCell<HashMap<u32, rustc_span::def_id::DefId>>>;
@@ -127,25 +155,21 @@ pub mod types {
 
 mk!(
     struct State<'tcx> {
-        tcx: {'tcx} rustc_middle::ty::TyCtxt,
-        options: {} types::Options,
+        base: {'tcx} types::Base,
         thir: {'tcx} rustc_middle::thir::Thir,
         owner_id: {} rustc_hir::hir_id::OwnerId,
-        opt_def_id: {} types::OptDefId,
-        macro_infos: {} types::MacroCalls,
-        local_ctx: {} types::LocalContext,
-        cached_thirs: {'tcx} types::Thirs,
-        exported_spans: {} types::ExportedSpans
     }
 );
 
-// trait IsStateX {
-//     type TCX;
-//     type OPTIONS;
-//     type THIR;
-//     type DEF_ID;
-//     type MACRO_INFOS;
-//     type LOCAL_IDENT_MAP;
-
-//     fn tcx();
-// }
+impl<'tcx> State<types::Base<'tcx>, (), ()> {
+    pub fn new(
+        tcx: &rustc_middle::ty::TyCtxt<'tcx>,
+        options: &hax_frontend_exporter_options::Options,
+    ) -> Self {
+        Self {
+            thir: (),
+            owner_id: (),
+            base: types::Base::new(tcx, options),
+        }
+    }
+}

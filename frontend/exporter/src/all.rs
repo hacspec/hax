@@ -6,16 +6,7 @@ use std::path::PathBuf;
 
 use crate::{AdtInto, SInto};
 
-pub trait BaseState<'tcx> = HasTcx<'tcx>
-    + HasOptions
-    + HasMacroInfos
-    + HasLocalCtx
-    + IsState<'tcx>
-    + Clone
-    + HasOptDefId
-    + HasCachedThirs<'tcx>
-    + HasExportedSpans;
-// + std::fmt::Debug;
+pub trait BaseState<'tcx> = HasBase<'tcx> + Clone + IsState<'tcx>;
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'a, S: BaseState<'a>>, from: rustc_hir::definitions::DisambiguatedDefPathData, state: S as s)]
@@ -32,7 +23,7 @@ pub struct DefId {
 
 impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
     fn sinto(&self, s: &S) -> DefId {
-        let tcx = s.tcx();
+        let tcx = s.base().tcx;
         let def_path = tcx.def_path(self.clone());
         let krate = tcx.crate_name(def_path.krate);
         DefId {
@@ -48,20 +39,20 @@ pub type ProjectionPath = Vec<String>; // x::y::z, TODO
 
 macro_rules! span_fatal {
     ($s:ident, $span:expr, $($other:tt)*) => {
-        $s.tcx().sess.span_fatal($span,format!($($other)*))
+        $s.base().tcx.sess.span_fatal($span,format!($($other)*))
     }
 }
 
 macro_rules! no_span_fatal {
     ($s:ident, $($other:tt)*) => {
-        $s.tcx().sess.fatal(format!($($other)*))
+        $s.base().tcx.sess.fatal(format!($($other)*))
     }
 }
 
 macro_rules! fatal {
     ($s:ident, $($other:tt)*) => {
-        {let tcx = $s.tcx();
-        match $s.opt_def_id() {
+        {let tcx = $s.base().tcx;
+        match $s.base().opt_def_id {
             Some(did) =>
                 tcx.sess.span_fatal(tcx.def_span(did), format!($($other)*)),
             None =>
@@ -239,7 +230,7 @@ impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, ConstantKind>
 {
     fn sinto(&self, s: &S) -> ConstantKind {
         use rustc_middle::mir::ConstantKind as RustConstantKind;
-        match self.eval(s.tcx(), get_param_env(s)) {
+        match self.eval(s.base().tcx, get_param_env(s)) {
             RustConstantKind::Val(const_value, ty) => {
                 use rustc_middle::mir::interpret::ConstValue;
                 match const_value {
@@ -380,9 +371,14 @@ pub type Const = Box<Expr>;
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Const> for rustc_middle::ty::Const<'tcx> {
     fn sinto(&self, s: &S) -> Const {
-        let x = self.eval(s.tcx(), get_param_env(s));
+        let x = self.eval(s.base().tcx, get_param_env(s));
         use rustc_middle::query::Key;
-        Box::new(const_to_expr(s, x.clone(), x.ty(), x.default_span(s.tcx())))
+        Box::new(const_to_expr(
+            s,
+            x.clone(),
+            x.ty(),
+            x.default_span(s.base().tcx),
+        ))
     }
 }
 
@@ -800,9 +796,9 @@ pub fn translate_span(span: rustc_span::Span, sess: &rustc_session::Session) -> 
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Span> for rustc_span::Span {
     fn sinto(&self, s: &S) -> Span {
-        let set: crate::state::types::ExportedSpans = s.exported_spans();
+        let set: crate::state::types::ExportedSpans = s.base().exported_spans;
         set.borrow_mut().insert(self.clone());
-        translate_span(self.clone(), s.tcx().sess)
+        translate_span(self.clone(), s.base().tcx.sess)
     }
 }
 
@@ -818,7 +814,8 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, LocalIdent> for rustc_middle::thir::Loca
     fn sinto(&self, s: &S) -> LocalIdent {
         LocalIdent {
             name: s
-                .local_ctx()
+                .base()
+                .local_ctx
                 .borrow()
                 .vars
                 .get(self)
@@ -933,14 +930,14 @@ pub struct AliasTy {
 }
 
 fn get_param_env<'tcx, S: BaseState<'tcx>>(s: &S) -> rustc_middle::ty::ParamEnv<'tcx> {
-    match s.opt_def_id() {
-        Some(id) => s.tcx().param_env(id),
+    match s.base().opt_def_id {
+        Some(id) => s.base().tcx.param_env(id),
         None => rustc_middle::ty::ParamEnv::empty(),
     }
 }
 
 fn _resolve_trait<'tcx, S: BaseState<'tcx>>(trait_ref: rustc_middle::ty::TraitRef<'tcx>, s: &S) {
-    let tcx = s.tcx();
+    let tcx = s.base().tcx;
     let param_env = get_param_env(s);
     use rustc_middle::ty::Binder;
     let binder: Binder<'tcx, _> = Binder::dummy(trait_ref);
@@ -951,7 +948,7 @@ fn _resolve_trait<'tcx, S: BaseState<'tcx>>(trait_ref: rustc_middle::ty::TraitRe
     use rustc_middle::ty::{ParamEnv, ParamEnvAnd};
     use rustc_trait_selection::infer::InferCtxtBuilderExt;
     use rustc_trait_selection::traits::SelectionContext;
-    // let id = s.opt_def_id().unwrap();
+    // let id = s.base().opt_def_id.unwrap();
     let inter_ctxt = tcx.infer_ctxt().ignoring_regions().build();
     let mut selection_ctxt = SelectionContext::new(&inter_ctxt);
     use std::collections::VecDeque;
@@ -993,7 +990,7 @@ fn _resolve_trait<'tcx, S: BaseState<'tcx>>(trait_ref: rustc_middle::ty::TraitRe
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, AliasTy> for rustc_middle::ty::AliasTy<'tcx> {
     fn sinto(&self, s: &S) -> AliasTy {
-        let tcx = s.tcx();
+        let tcx = s.base().tcx;
         let trait_ref = self.trait_ref(tcx);
         // resolve_trait(trait_ref, s);
         AliasTy {
@@ -1171,10 +1168,10 @@ pub fn raw_macro_invocation_of_span<'t, S: BaseState<'t>>(
     span: rustc_span::Span,
     state: &S,
 ) -> Option<(DefId, rustc_span::hygiene::ExpnData)> {
-    let box opts: Box<hax_frontend_exporter_options::Options> = state.options();
-    let box macro_calls: crate::state::types::MacroCalls = state.macro_infos();
+    let box opts: Box<hax_frontend_exporter_options::Options> = state.base().options;
+    let box macro_calls: crate::state::types::MacroCalls = state.base().macro_infos;
 
-    let sess = state.tcx().sess;
+    let sess = state.base().tcx.sess;
 
     span.macro_backtrace().find_map(|expn_data| {
         let expn_data_ret = expn_data.clone();
@@ -1205,9 +1202,9 @@ pub fn macro_invocation_of_raw_mac_invocation<'t, S: BaseState<'t>>(
     expn_data: &rustc_span::hygiene::ExpnData,
     state: &S,
 ) -> MacroInvokation {
-    let macro_infos = state.macro_infos();
+    let macro_infos = state.base().macro_infos;
     let mac_call_span = macro_infos
-        .get(&translate_span(expn_data.call_site, state.tcx().sess))
+        .get(&translate_span(expn_data.call_site, state.base().tcx.sess))
         .unwrap_or_else(|| fatal!(state, "{:#?}", expn_data.call_site));
     MacroInvokation {
         macro_ident: macro_ident.clone(),
@@ -1243,10 +1240,10 @@ fn attribute_from_scope<'tcx, S: ExprState<'tcx>>(
     scope: &rustc_middle::middle::region::Scope,
 ) -> (Option<rustc_hir::hir_id::HirId>, Vec<Attribute>) {
     let owner = s.owner_id();
-    let tcx = s.tcx();
+    let tcx = s.base().tcx;
     let scope_tree = tcx.region_scope_tree(owner.to_def_id());
     let hir_id = scope.hir_id(scope_tree);
-    let tcx = s.tcx();
+    let tcx = s.base().tcx;
     let map = tcx.hir();
     let attributes = hir_id
         .map(|hir_id| map.attrs(hir_id).sinto(s))
@@ -1278,7 +1275,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                 },
                 rustc_middle::thir::ExprKind::ZstLiteral { .. } => match ty.kind() {
                     rustc_middle::ty::TyKind::FnDef(def, substs) => {
-                        let tcx = s.tcx();
+                        let tcx = s.base().tcx;
                         let sig = &tcx.fn_sig(*def).subst(tcx, substs);
                         let ret: rustc_middle::ty::Ty = tcx.erase_late_bound_regions(sig.output());
                         let inputs = sig.inputs();
@@ -1544,7 +1541,7 @@ fn arrow_of_sig<'tcx, S: BaseState<'tcx>>(
     sig: &rustc_middle::ty::PolyFnSig<'tcx>,
     state: &S,
 ) -> Ty {
-    let tcx = state.tcx();
+    let tcx = state.base().tcx;
     let ret: rustc_middle::ty::Ty = tcx.erase_late_bound_regions(sig.output());
     let inputs = sig.inputs();
     let indexes = inputs.skip_binder().iter().enumerate().map(|(i, _)| i);
@@ -1637,8 +1634,8 @@ fn valtree_to_expr<'tcx, S: BaseState<'tcx>>(
         },
         (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
             let contents: rustc_middle::ty::DestructuredConst = s
-                .tcx()
-                .destructure_const(s.tcx().mk_const(valtree.clone(), ty));
+                .base().tcx
+                .destructure_const(s.base().tcx.mk_const(valtree.clone(), ty));
             let fields = contents.fields.iter().copied();
             match ty.kind() {
                 ty::Array(inner_ty, _) => ExprKind::Array {
@@ -1664,7 +1661,7 @@ fn valtree_to_expr<'tcx, S: BaseState<'tcx>>(
                             .zip(&variant_def.fields)
                             .map(|(value, field)| FieldExpr {
                                 field: field.did.sinto(s),
-                                value: const_to_expr(s, value, field.ty(s.tcx(), substs), span),
+                                value: const_to_expr(s, value, field.ty(s.base().tcx, substs), span),
                             })
                             .collect(),
                         base: None,
@@ -1729,12 +1726,12 @@ pub enum Ty {
     #[custom_arm(
         rustc_middle::ty::TyKind::FnPtr(sig) => arrow_of_sig(sig, state),
         x @ rustc_middle::ty::TyKind::FnDef(def, substs) => {
-            let tcx = state.tcx();
+            let tcx = state.base().tcx;
             arrow_of_sig(&tcx.fn_sig(*def).subst(tcx, substs), state)
         },
         FROM_TYPE::Closure (defid, substs) => {
             let sig = substs.as_closure().sig();
-            let sig = state.tcx().signature_unclosure(sig, rustc_hir::Unsafety::Normal);
+            let sig = state.base().tcx.signature_unclosure(sig, rustc_hir::Unsafety::Normal);
             arrow_of_sig(&sig, state)
         },
     )]
@@ -2016,7 +2013,7 @@ fn get_variant_information<'s, S: BaseState<'s>>(
             path: match constructs_type.path.as_slice() {
                 [init @ .., _] => init.to_vec(),
                 _ => {
-                    let span = s.tcx().def_span(variant);
+                    let span = s.base().tcx.def_span(variant);
                     span_fatal!(
                         s,
                         span,
@@ -2053,7 +2050,7 @@ pub enum PatKind {
 
     #[custom_arm(
         rustc_middle::thir::PatKind::Binding {mutability, name, mode, var, ty, subpattern, is_primary} => {
-            let local_ctx = gstate.local_ctx();
+            let local_ctx = gstate.base().local_ctx;
             local_ctx.borrow_mut().vars.insert(var.clone(), name.to_string());
             PatKind::Binding {
                 mutability: mutability.sinto(gstate),
@@ -2304,7 +2301,7 @@ pub struct Param {
     pub hir_id: Option<HirId>,
     #[not_in_source]
     #[map(hir_id.map(|id| {
-        s.tcx().hir().attrs(id).sinto(s)
+        s.base().tcx.hir().attrs(id).sinto(s)
     }).unwrap_or(vec![]))]
     pub attributes: Vec<Attribute>,
 }
@@ -2315,23 +2312,17 @@ pub fn inspect_local_def_id<'tcx, S: BaseState<'tcx>>(
     owner_id: rustc_hir::hir_id::OwnerId,
     s: &S,
 ) -> (rustc_middle::thir::Thir<'tcx>, Vec<Param>, Body) {
-    let tcx: rustc_middle::ty::TyCtxt = s.tcx();
-    let thirs = s.cached_thirs();
+    let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
+    let thirs = s.base().cached_thirs;
 
     let (thir, expr) = thirs
         .get(&did)
         .unwrap_or_else(|| span_fatal!(s, tcx.def_span(did), "Could not load body for id {did:?}"));
 
     let s = State {
-        tcx: s.tcx(),
-        options: s.options(),
         thir: thir.clone(),
         owner_id,
-        opt_def_id: s.opt_def_id(),
-        macro_infos: s.macro_infos(),
-        local_ctx: s.local_ctx(),
-        cached_thirs: s.cached_thirs(),
-        exported_spans: s.exported_spans(),
+        base: s.base(),
     };
     let params: Vec<Param> = thir.params.iter().map(|x| x.sinto(&s)).collect();
     let body = expr.sinto(&s);
@@ -2402,7 +2393,7 @@ pub enum ExprKind {
                 fatal!(gstate, "CallNotZstLiteral")
             }
         };
-        let tcx = gstate.tcx();
+        let tcx = gstate.base().tcx;
         match tcx.trait_of_item(*def) {
             Some(trait_def_id) => {
                 // println!("########################");
@@ -2417,7 +2408,7 @@ pub enum ExprKind {
             None => ()
         }
         // if false {
-        //     let tcx = gstate.tcx();
+        //     let tcx = gstate.base().tcx;
         //     let g = tcx.generics_of(def);
         //     let g = tcx.predicates_of(def);
         //     let g = g.parent.unwrap();

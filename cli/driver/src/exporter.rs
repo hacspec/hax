@@ -139,20 +139,12 @@ fn convert_thir<'tcx>(
 
     let items = hir.items();
     let macro_calls_r = Box::new(macro_calls);
-    let state = hax_frontend_exporter::State {
-        tcx,
-        options: Box::new(options.clone()),
-        thir: (),
-        owner_id: (),
-        opt_def_id: None,
-        macro_infos: macro_calls_r,
-        local_ctx: Rc::new(RefCell::new(LocalContextS::new())),
-        cached_thirs: thirs,
-        exported_spans: Rc::new(RefCell::new(HashSet::new())),
-    };
+    let mut state = hax_frontend_exporter::State::new(&tcx, options);
+    state.base.macro_infos = macro_calls_r;
+    state.base.cached_thirs = thirs;
 
     let result = hax_frontend_exporter::inline_macro_invocations(&items.collect(), &state);
-    let exported_spans = state.exported_spans.borrow().clone();
+    let exported_spans = state.base.exported_spans.borrow().clone();
     (exported_spans.into_iter().collect(), result)
 }
 
@@ -327,17 +319,7 @@ impl Callbacks for ExtractionCallbacks {
                     let options_frontend = Box::new(
                         hax_frontend_exporter_options::Options::from(self.clone()).clone(),
                     );
-                    let state = hax_frontend_exporter::State {
-                        tcx,
-                        options: options_frontend,
-                        thir: (),
-                        owner_id: (),
-                        opt_def_id: None::<rustc_hir::def_id::DefId>,
-                        macro_infos: Box::new(HashMap::new()),
-                        local_ctx: Rc::new(RefCell::new(LocalContextS::new())),
-                        cached_thirs: HashMap::new(),
-                        exported_spans: Rc::new(RefCell::new(HashSet::new())),
-                    };
+                    let state = hax_frontend_exporter::State::new(&tcx, &options_frontend);
                     report_diagnostics(
                         &output,
                         &session,
