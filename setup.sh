@@ -45,9 +45,17 @@ install_ocaml_engine() {
     (set -x; opam install --yes ./engine)
 }
 
+# Install backends
+install_backends() {
+    HAX_BACKENDS_DIR=${HAX_BACKENDS_DIR:-"$HOME/.hax"}
+    rm -rf "$HAX_BACKENDS_DIR"
+    cp -rf ./backends "$HAX_BACKENDS_DIR"
+}
+
 for binary in opam node rustup jq; do
     ensure_binary_available $binary
 done
 install_rust_binaries
 install_ocaml_engine
+install_backends
 check_PATH

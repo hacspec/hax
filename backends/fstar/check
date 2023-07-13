@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -eu
+
+FLAGS=$(
+IFS=":"
+for chunk in $HAX_PROOFS_PATH
+do
+    IFS="=" read name path <<< "$chunk"
+    printf -- "--include %s " "$path/extraction"
+done
+)
+
+FSTAR="fstar.exe $FLAGS"
+
+for file in ./extraction/*
+do
+    $FSTAR $file
+done
