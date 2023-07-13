@@ -104,6 +104,7 @@ fn check(
     let mut cmd = std::process::Command::new(&check_script);
     let cmd = cmd
         .current_dir(path)
+        .env("HAX_BACKENDS_DIR", hax_backends_dir)
         .env("HAX_PROOFS_PATH", proofs_path)
         .env("HAX_PKG_NAME", pkg_name);
 

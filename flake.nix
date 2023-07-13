@@ -72,6 +72,9 @@
               })
             ];
             LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+            shellHook = ''
+              export HAX_BACKENDS_DIR=$(git rev-parse --show-toplevel)/backends
+            '';
           };
         };
       }

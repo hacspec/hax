@@ -9,6 +9,7 @@ do
     IFS="=" read name path <<< "$chunk"
     printf -- "--include %s " "$path/extraction"
 done
+printf -- "--include %s " "$HAX_BACKENDS_DIR/fstar/libs/core"
 )
 
 FSTAR="fstar.exe $FLAGS"
