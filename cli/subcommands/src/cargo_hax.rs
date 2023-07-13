@@ -99,11 +99,13 @@ fn check(
         .intersperse(":".to_string())
         .collect::<String>();
 
-    let hax_backends_dir = std::env::var("HAX_BACKENDS_DIR").unwrap_or_else(|_| {
-        let home = std::env::var("HOME").unwrap();
-        format!("{}/.hax", home)
-    });
-    let check_script = format!("{}/{}/check", hax_backends_dir, backend);
+    let hax_backends_dir = std::env::var("HAX_BACKENDS_DIR")
+        .map(|path| std::path::PathBuf::new().join(path))
+        .unwrap_or_else(|_| {
+            let home = std::env::var("HOME").unwrap();
+            std::path::PathBuf::new().join(home).join(".hax")
+        });
+    let check_script = hax_backends_dir.join(format!("{backend}")).join("check");
     let mut cmd = std::process::Command::new(&check_script);
     let cmd = cmd
         .current_dir(path)
@@ -112,7 +114,7 @@ fn check(
         .env("HAX_PKG_NAME", pkg_name);
 
     cmd.status()
-        .expect(&format!("failed to execute {}", check_script))
+        .expect(&format!("failed to execute {:?}", check_script))
         .success()
 }
 
