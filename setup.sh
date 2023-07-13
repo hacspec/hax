@@ -2,6 +2,16 @@
 
 set -eu
 
+# Check if the path is correctly set
+check_PATH() {
+    for path in .cargo/bin
+    do
+        if [[ ! ":$PATH:" == *":$HOME/$path:"* ]]; then
+            printf '\e[33mWarning: your path is missing \e[1m~/%s\e[0m\e[33m, you might want to add it.\e[0m\n' "$path"
+        fi
+    done
+}
+
 # Ensures a given binary is available in PATH
 ensure_binary_available() {
     command -v "$1" >/dev/null 2>&1 || {
@@ -40,4 +50,4 @@ for binary in opam node rustup jq; do
 done
 install_rust_binaries
 install_ocaml_engine
-
+check_PATH
