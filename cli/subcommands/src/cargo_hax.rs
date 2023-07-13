@@ -64,6 +64,9 @@ fn check(
         return false;
     }
 
+    // We make the assumption that `metadata.resolve` is `Some(_)`.
+    // It is unclear in the documentation when it can be `None`,
+    // but in practice it *seems* to always be `Some(_)`.
     let resolve = metadata.resolve.as_ref().unwrap();
     let mut graph: HashMap<PackageId, HashSet<PackageId>> = HashMap::new();
     for node in &resolve.nodes {
