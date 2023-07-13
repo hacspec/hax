@@ -42,7 +42,11 @@ pub fn get_args(subcommand: &str) -> Vec<String> {
     args
 }
 
-fn check(backend: &hax_cli_options::Backend, metadata: &cargo_metadata::Metadata, pkg_name: &str) {
+fn check(
+    backend: &hax_cli_options::Backend,
+    metadata: &cargo_metadata::Metadata,
+    pkg_name: &str,
+) -> bool {
     use cargo_metadata::PackageId;
 
     let backend_path: cargo_metadata::camino::Utf8PathBuf =
@@ -57,7 +61,7 @@ fn check(backend: &hax_cli_options::Backend, metadata: &cargo_metadata::Metadata
 
     if !path.exists() {
         eprintln!("no {backend} proofs found for package {pkg_name}");
-        return;
+        return false;
     }
 
     let resolve = metadata.resolve.as_ref().unwrap();
@@ -92,13 +96,20 @@ fn check(backend: &hax_cli_options::Backend, metadata: &cargo_metadata::Metadata
         .intersperse(":".to_string())
         .collect::<String>();
 
-    let mut cmd = std::process::Command::new("make");
+    let hax_backends_dir = std::env::var("HAX_BACKENDS_DIR").unwrap_or_else(|_| {
+        let home = std::env::var("HOME").unwrap();
+        format!("{}/.hax", home)
+    });
+    let check_script = format!("{}/{}/check", hax_backends_dir, backend);
+    let mut cmd = std::process::Command::new(&check_script);
     let cmd = cmd
         .current_dir(path)
         .env("HAX_PROOFS_PATH", proofs_path)
         .env("HAX_PKG_NAME", pkg_name);
 
-    todo!()
+    cmd.status()
+        .expect(&format!("failed to execute {}", check_script))
+        .success()
 }
 
 fn main() {
@@ -135,7 +146,7 @@ fn main() {
             ]);
             let output = cmd.output().unwrap();
             let build_plan: serde_json::Value = serde_json::from_slice(&output.stdout[..]).unwrap();
-            let primary_packages = build_plan["invocations"]
+            let mut primary_packages = build_plan["invocations"]
                 .as_array()
                 .unwrap()
                 .iter()
@@ -152,7 +163,11 @@ fn main() {
             let metadata = cargo_metadata::MetadataCommand::new().exec().unwrap();
 
             // check the primary packages
-            primary_packages.for_each(|pkg_name| check(&backend, &metadata, pkg_name));
+            if primary_packages.all(|pkg_name| check(&backend, &metadata, pkg_name)) {
+                std::process::exit(0)
+            } else {
+                std::process::exit(1)
+            }
         }
     }
 }
