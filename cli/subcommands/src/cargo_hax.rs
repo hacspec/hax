@@ -1,5 +1,6 @@
 #![feature(type_changing_struct_update)]
 
+use cargo_metadata::camino::Utf8PathBuf;
 use clap::Parser;
 use colored::Colorize;
 use hax_cli_options::{Command, NormalizePaths, Options, RustcCommand};
@@ -49,8 +50,7 @@ fn check(
 ) -> bool {
     use cargo_metadata::PackageId;
 
-    let backend_path: cargo_metadata::camino::Utf8PathBuf =
-        ["proofs", format!("{backend}").as_str()].iter().collect();
+    let backend_path: Utf8PathBuf = ["proofs", format!("{backend}").as_str()].iter().collect();
     let pkg = metadata
         .packages
         .iter()
@@ -100,12 +100,19 @@ fn check(
         .collect::<String>();
 
     let hax_backends_dir = std::env::var("HAX_BACKENDS_DIR")
-        .map(|path| std::path::PathBuf::new().join(path))
+        .map(|path| Utf8PathBuf::new().join(path))
         .unwrap_or_else(|_| {
             let home = std::env::var("HOME").unwrap();
-            std::path::PathBuf::new().join(home).join(".hax")
+            Utf8PathBuf::new().join(home).join(".hax")
         });
-    let check_script = hax_backends_dir.join(format!("{backend}")).join("check");
+
+    let check_script = path.join("check");
+    let check_script = if check_script.exists() {
+        check_script
+    } else {
+        hax_backends_dir.join(format!("{backend}")).join("check")
+    };
+
     let mut cmd = std::process::Command::new(&check_script);
     let cmd = cmd
         .current_dir(path)
@@ -114,7 +121,7 @@ fn check(
         .env("HAX_PKG_NAME", pkg_name);
 
     cmd.status()
-        .expect(&format!("failed to execute {:?}", check_script))
+        .expect(&format!("failed to execute {check_script}"))
         .success()
 }
 
