@@ -54,7 +54,7 @@ stdenv.mkDerivation {
       mkdir -p $out/bin
       makeWrapper ${hax}/bin/cargo-hax $out/bin/cargo-hax \
         --prefix PATH : ${lib.makeBinPath binaries} \
-        --set HAX_BACKENDS_DIR : ${../backends}
+        --set HAX_BACKENDS_DIR ${../backends}
     '';
   meta.mainProgram = "cargo-hax";
   passthru = {
