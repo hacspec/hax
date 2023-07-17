@@ -93,11 +93,13 @@ fn setup_logging() {
         /* Respect [never] in [RUST_LOG_STYLE] */
         !std::env::var("RUST_LOG_STYLE").is_ok_and(|style| style == "never")
     };
-    let subscriber = tracing_subscriber::Registry::default().with(
-        tracing_tree::HierarchicalLayer::new(2)
-            .with_ansi(enable_colors)
-            .with_indent_lines(true),
-    );
+    let subscriber = tracing_subscriber::Registry::default()
+        .with(tracing_subscriber::EnvFilter::from_default_env())
+        .with(
+            tracing_tree::HierarchicalLayer::new(2)
+                .with_ansi(enable_colors)
+                .with_indent_lines(true),
+        );
     tracing::subscriber::set_global_default(subscriber).unwrap();
 }
 
