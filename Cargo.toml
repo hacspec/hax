@@ -28,8 +28,10 @@ syn = { version = "1.0.107", features = [
      "full",
 ] }
 adt-into = { path = "frontend/exporter/adt-into" }
-log = "0.4"
-pretty_env_logger = "0.4.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+tracing-tree = "^0.2"
+
 # Crates in this repository
 hax-frontend-exporter = { path = "frontend/exporter" }
 hax-cli-options = { path = "cli/options" }

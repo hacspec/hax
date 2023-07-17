@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+#[tracing::instrument(skip(state))]
 pub(crate) fn arrow_of_sig<'tcx, S: BaseState<'tcx>>(
     sig: &rustc_middle::ty::PolyFnSig<'tcx>,
     state: &S,
@@ -17,6 +18,7 @@ pub(crate) fn arrow_of_sig<'tcx, S: BaseState<'tcx>>(
     }
 }
 
+#[tracing::instrument(skip(s))]
 pub(crate) fn scalar_int_to_literal<'tcx, S: BaseState<'tcx>>(
     s: &S,
     x: rustc_middle::ty::ScalarInt,
@@ -44,6 +46,8 @@ pub(crate) fn scalar_int_to_literal<'tcx, S: BaseState<'tcx>>(
         ),
     }
 }
+
+#[tracing::instrument(skip(s))]
 pub(crate) fn const_to_expr<'tcx, S: BaseState<'tcx>>(
     s: &S,
     c: rustc_middle::ty::Const<'tcx>,
@@ -73,6 +77,7 @@ pub(crate) fn const_to_expr<'tcx, S: BaseState<'tcx>>(
         attributes: vec![],
     }
 }
+#[tracing::instrument(skip(s))]
 pub(crate) fn valtree_to_expr<'tcx, S: BaseState<'tcx>>(
     s: &S,
     valtree: rustc_middle::ty::ValTree<'tcx>,
@@ -158,6 +163,7 @@ pub(crate) fn valtree_to_expr<'tcx, S: BaseState<'tcx>>(
     }
 }
 
+#[tracing::instrument(skip(s))]
 pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
     adt_def: &rustc_middle::ty::AdtDef<'s>,
     variant: &rustc_hir::def_id::DefId,
@@ -201,6 +207,7 @@ pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
     }
 }
 
+#[tracing::instrument(skip(s))]
 pub(crate) fn inspect_local_def_id<'tcx, S: BaseState<'tcx>>(
     did: rustc_hir::def_id::LocalDefId,
     owner_id: rustc_hir::hir_id::OwnerId,
@@ -223,6 +230,7 @@ pub(crate) fn inspect_local_def_id<'tcx, S: BaseState<'tcx>>(
     (thir.clone(), params, body)
 }
 
+#[tracing::instrument]
 pub(crate) fn read_span_from_file(span: &Span) -> Result<String, ReadSpanErr> {
     use ReadSpanErr::*;
     let realpath = (match span.filename.clone() {
@@ -259,6 +267,7 @@ pub(crate) fn read_span_from_file(span: &Span) -> Result<String, ReadSpanErr> {
     }
 }
 
+#[tracing::instrument(skip(sess))]
 pub fn translate_span(span: rustc_span::Span, sess: &rustc_session::Session) -> Span {
     let smap: &rustc_span::source_map::SourceMap = sess.parse_sess.source_map();
     let span_data = span.data();
@@ -274,6 +283,7 @@ pub fn translate_span(span: rustc_span::Span, sess: &rustc_session::Session) -> 
     }
 }
 
+#[tracing::instrument(skip(s))]
 pub(crate) fn get_param_env<'tcx, S: BaseState<'tcx>>(s: &S) -> rustc_middle::ty::ParamEnv<'tcx> {
     match s.base().opt_def_id {
         Some(id) => s.base().tcx.param_env(id),
@@ -281,6 +291,7 @@ pub(crate) fn get_param_env<'tcx, S: BaseState<'tcx>>(s: &S) -> rustc_middle::ty
     }
 }
 
+#[tracing::instrument(skip(s))]
 pub(crate) fn _resolve_trait<'tcx, S: BaseState<'tcx>>(
     trait_ref: rustc_middle::ty::TraitRef<'tcx>,
     s: &S,
@@ -336,10 +347,12 @@ pub(crate) fn _resolve_trait<'tcx, S: BaseState<'tcx>>(
     // let nested = impl_source.clone().nested_obligations();
 }
 
+#[tracing::instrument]
 pub fn argument_span_of_mac_call(mac_call: &rustc_ast::ast::MacCall) -> rustc_span::Span {
     (*mac_call.args).dspan.entire()
 }
 
+#[tracing::instrument(skip(state))]
 pub(crate) fn raw_macro_invocation_of_span<'t, S: BaseState<'t>>(
     span: rustc_span::Span,
     state: &S,
@@ -373,6 +386,7 @@ pub(crate) fn raw_macro_invocation_of_span<'t, S: BaseState<'t>>(
     })
 }
 
+#[tracing::instrument(skip(state))]
 pub(crate) fn macro_invocation_of_raw_mac_invocation<'t, S: BaseState<'t>>(
     macro_ident: &DefId,
     expn_data: &rustc_span::hygiene::ExpnData,
@@ -389,6 +403,7 @@ pub(crate) fn macro_invocation_of_raw_mac_invocation<'t, S: BaseState<'t>>(
     }
 }
 
+#[tracing::instrument(skip(state))]
 pub(crate) fn macro_invocation_of_span<'t, S: BaseState<'t>>(
     span: rustc_span::Span,
     state: &S,
@@ -401,6 +416,7 @@ pub(crate) fn macro_invocation_of_span<'t, S: BaseState<'t>>(
     ))
 }
 
+#[tracing::instrument(skip(s))]
 pub(crate) fn attribute_from_scope<'tcx, S: ExprState<'tcx>>(
     s: &S,
     scope: &rustc_middle::middle::region::Scope,
@@ -417,6 +433,7 @@ pub(crate) fn attribute_from_scope<'tcx, S: ExprState<'tcx>>(
     (hir_id, attributes)
 }
 
+#[tracing::instrument(skip(s))]
 pub(crate) fn make_fn_def<'tcx, S: BaseState<'tcx>>(
     fn_sig: &rustc_hir::FnSig,
     body_id: &rustc_hir::BodyId,
@@ -442,6 +459,7 @@ pub(crate) fn make_fn_def<'tcx, S: BaseState<'tcx>>(
 
 use itertools::Itertools;
 
+#[tracing::instrument(skip(s))]
 pub fn inline_macro_invocations<'t, S: BaseState<'t>>(
     ids: &Vec<rustc_hir::ItemId>,
     s: &S,

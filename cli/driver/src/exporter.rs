@@ -55,6 +55,7 @@ fn write_files(
 
 /// Browse a crate and translate every item from HIR+THIR to "THIR'"
 /// (I call "THIR'" the AST described in this crate)
+#[tracing::instrument(skip_all)]
 fn convert_thir<'tcx>(
     options: &hax_frontend_exporter_options::Options,
     macro_calls: HashMap<hax_frontend_exporter::Span, hax_frontend_exporter::Span>,
@@ -149,6 +150,7 @@ fn convert_thir<'tcx>(
 }
 
 /// Collect a map from spans to macro calls
+#[tracing::instrument(skip_all)]
 fn collect_macros(
     crate_ast: &rustc_ast::ast::Crate,
 ) -> HashMap<rustc_span::Span, rustc_ast::ast::MacCall> {
