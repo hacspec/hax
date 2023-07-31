@@ -1617,17 +1617,45 @@ pub enum ExprKind {
     },
     #[map({
         let e = gstate.thir().exprs[*fun].unroll_scope(gstate);
-        let (def, substs) = match &e.kind {
-            rustc_middle::thir::ExprKind::ZstLiteral {user_ty: _ /* TODO: see whether this is relevant or not */} => {
+        let fun = match &e.kind {
+            rustc_middle::thir::ExprKind::VarRef { .. } => {
                 match ty.kind() {
-                    rustc_middle::ty::TyKind::FnDef(def, substs) =>
-                        (def, substs),
+                    rustc_middle::ty::TyKind::FnPtr(sig) => {
+                        e.sinto(gstate)
+                    },
                     ty_kind => {
                         supposely_unreachable!(
                             "CallNotTyFnDef":
                             e, ty_kind
                         );
-                        fatal!(gstate, "CallNotTyFnDef")
+                        fatal!(gstate, "RefCallNotTyFnPtr")
+                    }
+                }
+            },
+            /* TODO: see whether [user_ty] below is relevant or not */
+            rustc_middle::thir::ExprKind::ZstLiteral {user_ty: _ } => {
+                match ty.kind() {
+                    /* should we extract substitutions? */
+                    rustc_middle::ty::TyKind::FnDef(def, _substs) => {
+                        let (hir_id, attributes) = e.hir_id_and_attributes(gstate);
+                        let hir_id = hir_id.map(|hir_id| hir_id.index());
+                        let contents = Box::new(ExprKind::GlobalName {
+                            id: def.sinto(gstate)
+                        });
+                        Expr {
+                            contents,
+                            span: e.span.sinto(gstate),
+                            ty: e.ty.sinto(gstate),
+                            hir_id,
+                            attributes,
+                        }
+                    },
+                    ty_kind => {
+                        supposely_unreachable!(
+                            "CallNotTyFnDef":
+                            e, ty_kind
+                        );
+                        fatal!(gstate, "ZstCallNotTyFnDef")
                     }
                 }
             },
@@ -1644,15 +1672,7 @@ pub enum ExprKind {
             args: args.sinto(gstate),
             from_hir_call: from_hir_call.sinto(gstate),
             fn_span: fn_span.sinto(gstate),
-            fun: Expr {
-                contents: Box::new(ExprKind::GlobalName {
-                    id: def.sinto(gstate)
-                }),
-                span: e.span.sinto(gstate),
-                ty: e.ty.sinto(gstate),
-                hir_id: None, /* Todo: this is incorrect */
-                attributes: vec![],
-            },
+            fun,
         }
     })]
     Call {
