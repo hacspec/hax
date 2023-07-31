@@ -44,7 +44,7 @@ pub fn get_args(subcommand: &str) -> Vec<String> {
 /// is set, [rust_log_style] checks wether the [cargo hax] command was
 /// run inside a terminal. If it was inside a terminal,
 /// [rust_log_style] returns ["always"], which is the usual default
-/// behavior. Otherwise we return ["auto"]. When [RUST_LOG_STYLE] is
+/// behavior. Otherwise we return ["never"]. When [RUST_LOG_STYLE] is
 /// set, we just return its value.
 fn rust_log_style() -> String {
     std::env::var("RUST_LOG_STYLE").unwrap_or_else(|_| {
@@ -52,7 +52,7 @@ fn rust_log_style() -> String {
         if std::io::stderr().is_terminal() {
             "always".to_string()
         } else {
-            "auto".to_string()
+            "never".to_string()
         }
     })
 }
