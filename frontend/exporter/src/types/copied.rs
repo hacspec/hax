@@ -905,13 +905,7 @@ pub trait ExprState<'tcx> = BaseState<'tcx> + HasThir<'tcx> + HasOwnerId;
 
 impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx> {
     fn sinto(&self, s: &S) -> Expr {
-        let (hir_id, attributes) = match &self.kind {
-            rustc_middle::thir::ExprKind::Scope {
-                region_scope: scope,
-                ..
-            } => attribute_from_scope(s, scope),
-            _ => (None, vec![]),
-        };
+        let (hir_id, attributes) = self.hir_id_and_attributes(s);
         let hir_id = hir_id.map(|hir_id| hir_id.index());
         let unrolled = self.unroll_scope(s);
         let rustc_middle::thir::Expr { span, kind, ty, .. } = unrolled;
@@ -1852,6 +1846,10 @@ pub enum ExprKind {
 }
 
 pub trait ExprKindExt<'tcx> {
+    fn hir_id_and_attributes<S: ExprState<'tcx>>(
+        &self,
+        s: &S,
+    ) -> (Option<rustc_hir::HirId>, Vec<Attribute>);
     fn unroll_scope<S: IsState<'tcx> + HasThir<'tcx>>(
         &self,
         s: &S,
@@ -1859,6 +1857,18 @@ pub trait ExprKindExt<'tcx> {
 }
 
 impl<'tcx> ExprKindExt<'tcx> for rustc_middle::thir::Expr<'tcx> {
+    fn hir_id_and_attributes<S: ExprState<'tcx>>(
+        &self,
+        s: &S,
+    ) -> (Option<rustc_hir::HirId>, Vec<Attribute>) {
+        match &self.kind {
+            rustc_middle::thir::ExprKind::Scope {
+                region_scope: scope,
+                ..
+            } => attribute_from_scope(s, scope),
+            _ => (None, vec![]),
+        }
+    }
     fn unroll_scope<S: IsState<'tcx> + HasThir<'tcx>>(
         &self,
         s: &S,
