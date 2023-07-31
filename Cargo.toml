@@ -28,7 +28,7 @@ syn = { version = "1.0.107", features = [
      "full",
 ] }
 adt-into = { path = "frontend/exporter/adt-into" }
-tracing = "0.1"
+tracing = { version = "0.1", features = ["max_level_trace", "release_max_level_warn"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "std", "fmt"] }
 tracing-tree = "^0.2"
 
