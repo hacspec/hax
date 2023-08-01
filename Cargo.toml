@@ -10,7 +10,7 @@ members = [
      "cli/driver",
      "test-harness",
 ]
-exclude = ["tests"]
+exclude = ["tests", "test-crate"]
 resolver = "2"
 
 [workspace.dependencies]

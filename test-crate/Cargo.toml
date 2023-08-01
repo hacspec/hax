@@ -1,0 +1,9 @@
+[package]
+name = "test-crate"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tls_codec = { git = "https://github.com/rustcrypto/formats", features = [
+    "derive",
+], branch = "franziskus/no-append" }
