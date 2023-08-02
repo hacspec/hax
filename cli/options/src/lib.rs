@@ -51,9 +51,12 @@ impl std::convert::From<&std::ffi::OsStr> for PathOrDash {
 
 impl PathOrDash {
     pub fn open_or_stdout(&self) -> Box<dyn std::io::Write> {
+        use std::io::BufWriter;
         match self {
-            PathOrDash::Dash => Box::new(std::io::stdout()),
-            PathOrDash::Path(path) => Box::new(std::fs::File::create(&path).unwrap()),
+            PathOrDash::Dash => Box::new(BufWriter::new(std::io::stdout())),
+            PathOrDash::Path(path) => {
+                Box::new(BufWriter::new(std::fs::File::create(&path).unwrap()))
+            }
         }
     }
     pub fn map_path<F: FnOnce(&Path) -> PathBuf>(&self, f: F) -> Self {

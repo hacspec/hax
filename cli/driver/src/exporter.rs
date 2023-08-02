@@ -289,10 +289,12 @@ impl Callbacks for ExtractionCallbacks {
                         .unwrap();
 
                     serde_json::to_writer(
-                        engine_subprocess
-                            .stdin
-                            .as_mut()
-                            .expect("Could not write on stdin"),
+                        std::io::BufWriter::new(
+                            engine_subprocess
+                                .stdin
+                                .as_mut()
+                                .expect("Could not write on stdin"),
+                        ),
                         &engine_options,
                     )
                     .unwrap();
