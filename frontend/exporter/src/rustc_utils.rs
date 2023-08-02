@@ -68,8 +68,8 @@ pub(crate) fn const_to_expr<'tcx, S: BaseState<'tcx>>(
             span_fatal!(s, span, "ty::ConstKind::Expr {:#?}", e)
         }
         kind => {
-            supposely_unreachable!("const_to_expr": c, kind, span);
-            span_fatal!(s, span, "const_to_expr, unexpected case")
+            supposely_unreachable!("const_to_expr": c, kind);
+            fatal!(s, "const_to_expr, unexpected case")
         }
     };
     Decorated {
