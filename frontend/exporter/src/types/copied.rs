@@ -905,13 +905,7 @@ pub trait ExprState<'tcx> = BaseState<'tcx> + HasThir<'tcx> + HasOwnerId;
 
 impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx> {
     fn sinto(&self, s: &S) -> Expr {
-        let (hir_id, attributes) = match &self.kind {
-            rustc_middle::thir::ExprKind::Scope {
-                region_scope: scope,
-                ..
-            } => attribute_from_scope(s, scope),
-            _ => (None, vec![]),
-        };
+        let (hir_id, attributes) = self.hir_id_and_attributes(s);
         let hir_id = hir_id.map(|hir_id| hir_id.index());
         let unrolled = self.unroll_scope(s);
         let rustc_middle::thir::Expr { span, kind, ty, .. } = unrolled;
@@ -1623,17 +1617,45 @@ pub enum ExprKind {
     },
     #[map({
         let e = gstate.thir().exprs[*fun].unroll_scope(gstate);
-        let (def, substs) = match &e.kind {
-            rustc_middle::thir::ExprKind::ZstLiteral {user_ty: _ /* TODO: see whether this is relevant or not */} => {
+        let fun = match &e.kind {
+            rustc_middle::thir::ExprKind::VarRef { .. } => {
                 match ty.kind() {
-                    rustc_middle::ty::TyKind::FnDef(def, substs) =>
-                        (def, substs),
+                    rustc_middle::ty::TyKind::FnPtr(sig) => {
+                        e.sinto(gstate)
+                    },
                     ty_kind => {
                         supposely_unreachable!(
                             "CallNotTyFnDef":
                             e, ty_kind
                         );
-                        fatal!(gstate, "CallNotTyFnDef")
+                        fatal!(gstate, "RefCallNotTyFnPtr")
+                    }
+                }
+            },
+            /* TODO: see whether [user_ty] below is relevant or not */
+            rustc_middle::thir::ExprKind::ZstLiteral {user_ty: _ } => {
+                match ty.kind() {
+                    /* should we extract substitutions? */
+                    rustc_middle::ty::TyKind::FnDef(def, _substs) => {
+                        let (hir_id, attributes) = e.hir_id_and_attributes(gstate);
+                        let hir_id = hir_id.map(|hir_id| hir_id.index());
+                        let contents = Box::new(ExprKind::GlobalName {
+                            id: def.sinto(gstate)
+                        });
+                        Expr {
+                            contents,
+                            span: e.span.sinto(gstate),
+                            ty: e.ty.sinto(gstate),
+                            hir_id,
+                            attributes,
+                        }
+                    },
+                    ty_kind => {
+                        supposely_unreachable!(
+                            "CallNotTyFnDef":
+                            e, ty_kind
+                        );
+                        fatal!(gstate, "ZstCallNotTyFnDef")
                     }
                 }
             },
@@ -1650,15 +1672,7 @@ pub enum ExprKind {
             args: args.sinto(gstate),
             from_hir_call: from_hir_call.sinto(gstate),
             fn_span: fn_span.sinto(gstate),
-            fun: Expr {
-                contents: Box::new(ExprKind::GlobalName {
-                    id: def.sinto(gstate)
-                }),
-                span: e.span.sinto(gstate),
-                ty: e.ty.sinto(gstate),
-                hir_id: None, /* Todo: this is incorrect */
-                attributes: vec![],
-            },
+            fun,
         }
     })]
     Call {
@@ -1852,6 +1866,10 @@ pub enum ExprKind {
 }
 
 pub trait ExprKindExt<'tcx> {
+    fn hir_id_and_attributes<S: ExprState<'tcx>>(
+        &self,
+        s: &S,
+    ) -> (Option<rustc_hir::HirId>, Vec<Attribute>);
     fn unroll_scope<S: IsState<'tcx> + HasThir<'tcx>>(
         &self,
         s: &S,
@@ -1859,6 +1877,18 @@ pub trait ExprKindExt<'tcx> {
 }
 
 impl<'tcx> ExprKindExt<'tcx> for rustc_middle::thir::Expr<'tcx> {
+    fn hir_id_and_attributes<S: ExprState<'tcx>>(
+        &self,
+        s: &S,
+    ) -> (Option<rustc_hir::HirId>, Vec<Attribute>) {
+        match &self.kind {
+            rustc_middle::thir::ExprKind::Scope {
+                region_scope: scope,
+                ..
+            } => attribute_from_scope(s, scope),
+            _ => (None, vec![]),
+        }
+    }
     fn unroll_scope<S: IsState<'tcx> + HasThir<'tcx>>(
         &self,
         s: &S,
