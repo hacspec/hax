@@ -87,8 +87,24 @@ impl<'a> Callbacks for CallbacksWrapper<'a> {
     }
 }
 
+fn setup_logging() {
+    use tracing_subscriber::prelude::*;
+    let enable_colors = {
+        /* Respect [never] in [RUST_LOG_STYLE] */
+        !std::env::var("RUST_LOG_STYLE").is_ok_and(|style| style == "never")
+    };
+    let subscriber = tracing_subscriber::Registry::default()
+        .with(tracing_subscriber::EnvFilter::from_default_env())
+        .with(
+            tracing_tree::HierarchicalLayer::new(2)
+                .with_ansi(enable_colors)
+                .with_indent_lines(true),
+        );
+    tracing::subscriber::set_global_default(subscriber).unwrap();
+}
+
 fn main() {
-    let _ = pretty_env_logger::try_init();
+    setup_logging();
 
     let options: hax_cli_options::Options =
         serde_json::from_str(&std::env::var(ENV_VAR_OPTIONS_FRONTEND).expect(&formatcp!(

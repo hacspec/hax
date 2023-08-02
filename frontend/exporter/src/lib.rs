@@ -26,26 +26,18 @@ extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate rustc_type_ir;
 
-mod all;
-mod items;
-mod manual;
-mod sinto;
+mod rustc_utils;
 pub mod state;
-pub mod utils;
+mod types;
+
+mod prelude;
+
+pub use prelude::{
+    argument_span_of_mac_call, inline_macro_invocations, translate_span, Item, Span,
+};
+
+mod sinto;
+mod utils;
 
 pub use adt_into::AdtInto;
 pub use sinto::SInto;
-
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
-pub use all::*;
-pub use items::*;
-pub use state::*;
-
-// #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-// #[args(<S>, from: rustc_hir::Movability, state: S as state)]
-// pub enum Movability {
-//     Static,
-//     Movable,
-// }

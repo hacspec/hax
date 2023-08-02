@@ -28,7 +28,7 @@ macro_rules! sinto_todo {
 #[macro_export]
 macro_rules! sinto_as_usize {
     ($($mod:ident)::+, $type:ident$(<$($lts:lifetime),*$(,)?>)?) => {
-        type $type = usize;
+        pub type $type = usize;
         impl<$($($lts,)*)? S> SInto<S, $type> for $($mod)::+::$type$(<$($lts,)*>)? {
             fn sinto(&self, _: &S) -> $type {
                 self.as_usize()

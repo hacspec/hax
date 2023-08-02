@@ -1,3 +1,4 @@
+use crate::prelude::*;
 use paste::paste;
 
 macro_rules! mk_aux {
@@ -94,10 +95,10 @@ macro_rules! mk {
     };
 }
 
-pub mod types {
+mod types {
+    use crate::prelude::*;
     use std::cell::RefCell;
     use std::collections::{HashMap, HashSet};
-    use std::rc::Rc;
 
     pub struct LocalContextS {
         pub vars: HashMap<rustc_middle::thir::LocalVarId, String>,
@@ -111,41 +112,68 @@ pub mod types {
         }
     }
 
-    pub type LocalContext = Rc<RefCell<LocalContextS>>;
-    // pub type LocalIdentMap = Rc<RefCell<HashMap<rustc_middle::thir::LocalVarId, String>>>;
-    // pub type ConstParamIdMap = Rc<RefCell<HashMap<u32, rustc_span::def_id::DefId>>>;
-    pub type MacroCalls = Box<HashMap<crate::Span, crate::Span>>;
-    pub type Options = Box<hax_frontend_exporter_options::Options>;
-    pub type OptDefId = Option<rustc_hir::def_id::DefId>;
+    #[derive(Clone)]
+    pub struct Base<'tcx> {
+        pub options: Rc<hax_frontend_exporter_options::Options>,
+        pub macro_infos: MacroCalls,
+        pub local_ctx: Rc<RefCell<LocalContextS>>,
+        pub opt_def_id: Option<rustc_hir::def_id::DefId>,
+        pub exported_spans: ExportedSpans,
+        pub cached_thirs: Rc<
+            HashMap<
+                rustc_span::def_id::LocalDefId,
+                (
+                    Rc<rustc_middle::thir::Thir<'tcx>>,
+                    rustc_middle::thir::ExprId,
+                ),
+            >,
+        >,
+        pub tcx: rustc_middle::ty::TyCtxt<'tcx>,
+    }
+
+    impl<'tcx> Base<'tcx> {
+        pub fn new(
+            tcx: &rustc_middle::ty::TyCtxt<'tcx>,
+            options: &hax_frontend_exporter_options::Options,
+        ) -> Self {
+            Self {
+                tcx: tcx.clone(),
+                macro_infos: Rc::new(HashMap::new()),
+                cached_thirs: Rc::new(HashMap::new()),
+                options: Rc::new(options.clone()),
+                opt_def_id: None,
+                local_ctx: Rc::new(RefCell::new(LocalContextS::new())),
+                exported_spans: Rc::new(RefCell::new(HashSet::new())),
+            }
+        }
+    }
+
+    pub type MacroCalls = Rc<HashMap<Span, Span>>;
     pub type ExportedSpans = Rc<RefCell<HashSet<rustc_span::Span>>>;
-    pub type Thirs<'tcx> = HashMap<
-        rustc_span::def_id::LocalDefId,
-        (rustc_middle::thir::Thir<'tcx>, rustc_middle::thir::ExprId),
-    >;
-    // pub type Predicates<'tcx> = Box<rustc_middle::ty::List<rustc_middle::ty::Predicate<'tcx>>>;
+    pub type RcThir<'tcx> = Rc<rustc_middle::thir::Thir<'tcx>>;
 }
 
 mk!(
     struct State<'tcx> {
-        tcx: {'tcx} rustc_middle::ty::TyCtxt,
-        options: {} types::Options,
-        thir: {'tcx} rustc_middle::thir::Thir,
+        base: {'tcx} types::Base,
+        thir: {'tcx} types::RcThir,
         owner_id: {} rustc_hir::hir_id::OwnerId,
-        opt_def_id: {} types::OptDefId,
-        macro_infos: {} types::MacroCalls,
-        local_ctx: {} types::LocalContext,
-        cached_thirs: {'tcx} types::Thirs,
-        exported_spans: {} types::ExportedSpans
     }
 );
 
-// trait IsStateX {
-//     type TCX;
-//     type OPTIONS;
-//     type THIR;
-//     type DEF_ID;
-//     type MACRO_INFOS;
-//     type LOCAL_IDENT_MAP;
+pub use types::*;
 
-//     fn tcx();
-// }
+impl<'tcx> State<Base<'tcx>, (), ()> {
+    pub fn new(
+        tcx: &rustc_middle::ty::TyCtxt<'tcx>,
+        options: &hax_frontend_exporter_options::Options,
+    ) -> Self {
+        Self {
+            thir: (),
+            owner_id: (),
+            base: Base::new(tcx, options),
+        }
+    }
+}
+
+pub trait BaseState<'tcx> = HasBase<'tcx> + Clone + IsState<'tcx>;

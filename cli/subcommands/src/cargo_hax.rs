@@ -39,6 +39,24 @@ pub fn get_args(subcommand: &str) -> Vec<String> {
     args
 }
 
+/// Our custom rustc driver will *not* be run in an proper terminal,
+/// thus logs would appear uncolored. When no RUST_LOG_STYLE env. var.
+/// is set, [rust_log_style] checks wether the [cargo hax] command was
+/// run inside a terminal. If it was inside a terminal,
+/// [rust_log_style] returns ["always"], which is the usual default
+/// behavior. Otherwise we return ["never"]. When [RUST_LOG_STYLE] is
+/// set, we just return its value.
+fn rust_log_style() -> String {
+    std::env::var("RUST_LOG_STYLE").unwrap_or_else(|_| {
+        use is_terminal::IsTerminal;
+        if std::io::stderr().is_terminal() {
+            "always".to_string()
+        } else {
+            "never".to_string()
+        }
+    })
+}
+
 fn main() {
     let args: Vec<String> = get_args("hax");
     // eprintln!("args: {args:?}");
@@ -54,6 +72,7 @@ fn main() {
         "RUSTC_WORKSPACE_WRAPPER",
         std::env::var("HAX_RUSTC_DRIVER_BINARY").unwrap_or("driver-hax-frontend-exporter".into()),
     )
+    .env("RUST_LOG_STYLE", rust_log_style())
     .env(
         hax_cli_options::ENV_VAR_OPTIONS_FRONTEND,
         serde_json::to_string(&options).expect("Options could not be converted to a JSON string"),

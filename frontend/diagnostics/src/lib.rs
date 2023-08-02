@@ -73,7 +73,7 @@ impl<S: PartialEq + Clone, I: IntoIterator<Item = S> + Clone> Diagnostics<I> {
 
 impl<S> std::fmt::Display for Diagnostics<S> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}:", self.context);
+        write!(f, "{}:", self.context)?;
         match &self.kind {
             Kind::Unimplemented { issue_id, details } => write!(
                 f,
