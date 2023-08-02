@@ -67,7 +67,10 @@ pub(crate) fn const_to_expr<'tcx, S: BaseState<'tcx>>(
             use rustc_middle::ty::Expr as CE;
             span_fatal!(s, span, "ty::ConstKind::Expr {:#?}", e)
         }
-        _ => span_fatal!(s, span, "const_to_expr, unexpected case"),
+        kind => {
+            supposely_unreachable!("const_to_expr": c, kind, span);
+            span_fatal!(s, span, "const_to_expr, unexpected case")
+        }
     };
     Decorated {
         ty: ty.sinto(s),
