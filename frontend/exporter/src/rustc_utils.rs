@@ -212,7 +212,7 @@ pub(crate) fn inspect_local_def_id<'tcx, S: BaseState<'tcx>>(
     did: rustc_hir::def_id::LocalDefId,
     owner_id: rustc_hir::hir_id::OwnerId,
     s: &S,
-) -> (rustc_middle::thir::Thir<'tcx>, Vec<Param>, Body) {
+) -> (Rc<rustc_middle::thir::Thir<'tcx>>, Vec<Param>, Body) {
     let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
     let thirs = s.base().cached_thirs;
 
@@ -351,14 +351,13 @@ pub(crate) fn _resolve_trait<'tcx, S: BaseState<'tcx>>(
 pub fn argument_span_of_mac_call(mac_call: &rustc_ast::ast::MacCall) -> rustc_span::Span {
     (*mac_call.args).dspan.entire()
 }
-
 #[tracing::instrument(skip(state))]
 pub(crate) fn raw_macro_invocation_of_span<'t, S: BaseState<'t>>(
     span: rustc_span::Span,
     state: &S,
 ) -> Option<(DefId, rustc_span::hygiene::ExpnData)> {
-    let box opts: Box<hax_frontend_exporter_options::Options> = state.base().options;
-    let box macro_calls: crate::state::MacroCalls = state.base().macro_infos;
+    let opts: Rc<hax_frontend_exporter_options::Options> = state.base().options;
+    let macro_calls: crate::state::MacroCalls = state.base().macro_infos;
 
     let sess = state.base().tcx.sess;
 

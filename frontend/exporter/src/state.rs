@@ -99,7 +99,6 @@ mod types {
     use crate::prelude::*;
     use std::cell::RefCell;
     use std::collections::{HashMap, HashSet};
-    use std::rc::Rc;
 
     pub struct LocalContextS {
         pub vars: HashMap<rustc_middle::thir::LocalVarId, String>,
@@ -115,14 +114,19 @@ mod types {
 
     #[derive(Clone)]
     pub struct Base<'tcx> {
-        pub options: Box<hax_frontend_exporter_options::Options>,
+        pub options: Rc<hax_frontend_exporter_options::Options>,
         pub macro_infos: MacroCalls,
         pub local_ctx: Rc<RefCell<LocalContextS>>,
         pub opt_def_id: Option<rustc_hir::def_id::DefId>,
         pub exported_spans: ExportedSpans,
-        pub cached_thirs: HashMap<
-            rustc_span::def_id::LocalDefId,
-            (rustc_middle::thir::Thir<'tcx>, rustc_middle::thir::ExprId),
+        pub cached_thirs: Rc<
+            HashMap<
+                rustc_span::def_id::LocalDefId,
+                (
+                    Rc<rustc_middle::thir::Thir<'tcx>>,
+                    rustc_middle::thir::ExprId,
+                ),
+            >,
         >,
         pub tcx: rustc_middle::ty::TyCtxt<'tcx>,
     }
@@ -134,9 +138,9 @@ mod types {
         ) -> Self {
             Self {
                 tcx: tcx.clone(),
-                macro_infos: Box::new(HashMap::new()),
-                cached_thirs: HashMap::new(),
-                options: Box::new(options.clone()),
+                macro_infos: Rc::new(HashMap::new()),
+                cached_thirs: Rc::new(HashMap::new()),
+                options: Rc::new(options.clone()),
                 opt_def_id: None,
                 local_ctx: Rc::new(RefCell::new(LocalContextS::new())),
                 exported_spans: Rc::new(RefCell::new(HashSet::new())),
@@ -144,14 +148,15 @@ mod types {
         }
     }
 
-    pub type MacroCalls = Box<HashMap<Span, Span>>;
+    pub type MacroCalls = Rc<HashMap<Span, Span>>;
     pub type ExportedSpans = Rc<RefCell<HashSet<rustc_span::Span>>>;
+    pub type RcThir<'tcx> = Rc<rustc_middle::thir::Thir<'tcx>>;
 }
 
 mk!(
     struct State<'tcx> {
         base: {'tcx} types::Base,
-        thir: {'tcx} rustc_middle::thir::Thir,
+        thir: {'tcx} types::RcThir,
         owner_id: {} rustc_hir::hir_id::OwnerId,
     }
 );

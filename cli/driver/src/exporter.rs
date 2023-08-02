@@ -91,7 +91,7 @@ fn convert_thir<'tcx>(
 
     let thirs: std::collections::HashMap<
         rustc_span::def_id::LocalDefId,
-        (rustc_middle::thir::Thir<'tcx>, ExprId),
+        (Rc<rustc_middle::thir::Thir<'tcx>>, ExprId),
     > = bodies
         .map(|did| {
             let span = hir.span(hir.local_def_id_to_hir_id(did));
@@ -111,7 +111,7 @@ fn convert_thir<'tcx>(
                     temp_lifetime: None,
                     span,
                 });
-                (did, (thir, expr))
+                (did, (Rc::new(thir), expr))
             };
             let (thir, expr) = match tcx.thir_body(did) {
                 Ok(x) => x,
@@ -134,15 +134,15 @@ fn convert_thir<'tcx>(
                     return mk_error_thir();
                 }
             };
-            (did, (thir, expr))
+            (did, (Rc::new(thir), expr))
         })
         .collect();
 
     let items = hir.items();
-    let macro_calls_r = Box::new(macro_calls);
+    let macro_calls_r = Rc::new(macro_calls);
     let mut state = hax_frontend_exporter::state::State::new(&tcx, options);
     state.base.macro_infos = macro_calls_r;
-    state.base.cached_thirs = thirs;
+    state.base.cached_thirs = Rc::new(thirs);
 
     let result = hax_frontend_exporter::inline_macro_invocations(&items.collect(), &state);
     let exported_spans = state.base.exported_spans.borrow().clone();
