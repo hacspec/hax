@@ -266,8 +266,7 @@ impl Callbacks for ExtractionCallbacks {
             use hax_cli_options::ExporterCommand;
             match self.command.clone() {
                 ExporterCommand::JSON { output_file } => {
-                    serde_json::to_writer_pretty(output_file.open_or_stdout(), &converted_items)
-                        .unwrap()
+                    serde_json::to_writer(output_file.open_or_stdout(), &converted_items).unwrap()
                 }
                 ExporterCommand::Backend(backend) => {
                     let engine_options = hax_cli_options_engine::EngineOptions {
