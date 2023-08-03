@@ -369,8 +369,29 @@ pub struct UserSubsts {
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::UserType<'tcx>, state: S as gstate)]
 pub enum UserType {
-    Ty(Ty),
-    TypeOf(DefId, UserSubsts),
+    // TODO: for now, we don't use user types at all.
+    // We disable it for now, since it cause the following to fail:
+    //
+    //    pub const MY_VAL: u16 = 5;
+    //    pub type Alias = MyStruct<MY_VAL>; // Using the literal 5, it goes through
+    //
+    //    pub struct MyStruct<const VAL: u16> {}
+    //
+    //    impl<const VAL: u16> MyStruct<VAL> {
+    //        pub const MY_CONST: u16 = VAL;
+    //    }
+    //
+    //    pub fn do_something() -> u32 {
+    //        u32::from(Alias::MY_CONST)
+    //    }
+    //
+    // In this case, we get a [rustc_middle::ty::ConstKind::Bound] in
+    // [do_something], which we are not able to translate.
+
+    // Ty(Ty),
+    // TypeOf(DefId, UserSubsts),
+    #[todo]
+    Todo(String),
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
