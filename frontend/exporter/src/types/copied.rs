@@ -1223,10 +1223,10 @@ pub enum Ty {
         rustc_middle::ty::TyKind::Adt(adt_def, substs) => {
             let def_id = adt_def.did().sinto(state);
             let generic_args: Vec<GenericArg> = substs.sinto(state);
-            Ty::NamedType { def_id, generic_args }
+            Ty::Adt { def_id, generic_args }
         },
     )]
-    NamedType {
+    Adt {
         generic_args: Vec<GenericArg>,
         def_id: DefId,
     },
