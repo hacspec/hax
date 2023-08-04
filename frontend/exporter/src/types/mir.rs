@@ -307,11 +307,11 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx>> SInto<S, Place> for rustc_middle::
                                 rustc_abi::VariantIdx::from_usize(0)
                             } else {
                                 supposely_unreachable_fatal!(
-                                    "DowncastExpected":
-                                    index,
-                                    adt_def, substs,
+                                    "DowncastExpected": index,
+                                    adt_def,
+                                    substs,
                                     variant_idx,
-                                    &cur_ty, // TODO
+                                    &cur_ty,   // TODO
                                     &cur_kind, // TODO
                                 );
                             }
@@ -327,11 +327,10 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx>> SInto<S, Place> for rustc_middle::
                     }
                     ty_kind => {
                         supposely_unreachable_fatal!(
-                            "ProjectionElemFieldBadType":
-                            index,
+                            "ProjectionElemFieldBadType": index,
                             ty_kind,
                             variant_idx,
-                            &cur_ty, // TODO
+                            &cur_ty,   // TODO
                             &cur_kind, // TODO
                         );
                     }
@@ -354,8 +353,7 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx>> SInto<S, Place> for rustc_middle::
                                 TyKind::Adt(def, substs) if def.is_box() => substs.type_at(0),
                                 _ => {
                                     supposely_unreachable_fatal!(
-                                        "PlaceDerefNotRefNorBox":
-                                        current_ty,
+                                        "PlaceDerefNotRefNorBox": current_ty,
                                         current_kind,
                                         elem
                                     );
