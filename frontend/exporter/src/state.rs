@@ -151,25 +151,28 @@ mod types {
     pub type MacroCalls = Rc<HashMap<Span, Span>>;
     pub type ExportedSpans = Rc<RefCell<HashSet<rustc_span::Span>>>;
     pub type RcThir<'tcx> = Rc<rustc_middle::thir::Thir<'tcx>>;
+    pub type RcMir<'tcx> = Rc<rustc_middle::mir::Body<'tcx>>;
 }
 
 mk!(
     struct State<'tcx> {
         base: {'tcx} types::Base,
         thir: {'tcx} types::RcThir,
+        mir: {'tcx} types::RcMir,
         owner_id: {} rustc_hir::hir_id::OwnerId,
     }
 );
 
 pub use types::*;
 
-impl<'tcx> State<Base<'tcx>, (), ()> {
+impl<'tcx> State<Base<'tcx>, (), (), ()> {
     pub fn new(
         tcx: rustc_middle::ty::TyCtxt<'tcx>,
         options: &hax_frontend_exporter_options::Options,
     ) -> Self {
         Self {
             thir: (),
+            mir: (),
             owner_id: (),
             base: Base::new(tcx, options),
         }

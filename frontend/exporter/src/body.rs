@@ -32,6 +32,7 @@ pub fn make_fn_def<'tcx, Body: IsBody, S: BaseState<'tcx>>(
         thir: thir.clone(),
         owner_id,
         base: s.base(),
+        mir: (),
     };
     FnDef {
         params: thir.params.raw.sinto(s),
@@ -63,6 +64,7 @@ mod implementations {
                 thir,
                 owner_id,
                 base: s.base(),
+                mir: (),
             })
         }
     }
@@ -70,6 +72,19 @@ mod implementations {
     impl<A: IsBody, B: IsBody> IsBody for (A, B) {
         fn body<'tcx, S: BaseState<'tcx>>(did: RLocalDefId, owner_id: ROwnerId, s: &S) -> Self {
             (A::body(did, owner_id, s), B::body(did, owner_id, s))
+        }
+    }
+
+    impl<MirKind: IsMirKind + Clone> IsBody for MirBody<MirKind> {
+        fn body<'tcx, S: BaseState<'tcx>>(did: RLocalDefId, owner_id: ROwnerId, s: &S) -> Self {
+            let (thir, _) = get_thir(did, s);
+            let mir = Rc::new(s.base().tcx.mir_built(did).borrow().clone());
+            mir.sinto(&State {
+                thir,
+                owner_id,
+                base: s.base(),
+                mir: mir.clone(),
+            })
         }
     }
 }

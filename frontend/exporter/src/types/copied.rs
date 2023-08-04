@@ -1816,6 +1816,7 @@ pub enum ExprKind {
             thir: thir.clone(),
             owner_id: gstate.owner_id(),
             base: gstate.base(),
+            mir: (),
         };
         TO_TYPE::Closure {
             params: thir.params.raw.sinto(s),
@@ -2051,6 +2052,7 @@ pub struct AnonConst<Body: IsBody> {
             thir: (),
             owner_id: hir_id.owner,
             base: s.base(),
+            mir: (),
         })
     })]
     pub body: Body,
@@ -2610,6 +2612,7 @@ pub struct Item<Body: IsBody> {
                 ..state.base()
             },
             thir: (),
+            mir: (),
             owner_id: self.owner_id,
         })
     })]
