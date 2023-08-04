@@ -133,7 +133,7 @@ mod types {
 
     impl<'tcx> Base<'tcx> {
         pub fn new(
-            tcx: &rustc_middle::ty::TyCtxt<'tcx>,
+            tcx: rustc_middle::ty::TyCtxt<'tcx>,
             options: &hax_frontend_exporter_options::Options,
         ) -> Self {
             Self {
@@ -165,7 +165,7 @@ pub use types::*;
 
 impl<'tcx> State<Base<'tcx>, (), ()> {
     pub fn new(
-        tcx: &rustc_middle::ty::TyCtxt<'tcx>,
+        tcx: rustc_middle::ty::TyCtxt<'tcx>,
         options: &hax_frontend_exporter_options::Options,
     ) -> Self {
         Self {

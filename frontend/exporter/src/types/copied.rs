@@ -106,14 +106,14 @@ pub struct Decorated<T> {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'slt, S: BaseState<'slt> + HasThir<'slt>>, from: rustc_middle::mir::UnOp, state: S as gstate)]
+#[args(<'slt, S: BaseState<'slt>>, from: rustc_middle::mir::UnOp, state: S as gstate)]
 pub enum UnOp {
     Not,
     Neg,
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'slt, S: BaseState<'slt> + HasThir<'slt>>, from: rustc_middle::mir::BinOp, state: S as gstate)]
+#[args(<'slt, S: BaseState<'slt>>, from: rustc_middle::mir::BinOp, state: S as gstate)]
 pub enum BinOp {
     Add,
     Sub,
@@ -1920,7 +1920,6 @@ impl Expr {
 pub struct FnDef {
     pub header: FnHeader,
     pub params: Vec<Param>,
-    // c_variadic: bool,
     pub ret: Ty,
     pub body: Body,
     pub sig_span: Span,

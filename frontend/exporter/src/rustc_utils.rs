@@ -155,14 +155,11 @@ pub(crate) fn _resolve_trait<'tcx, S: BaseState<'tcx>>(
     let param_env = get_param_env(s);
     use rustc_middle::ty::Binder;
     let binder: Binder<'tcx, _> = Binder::dummy(trait_ref);
-    // let x: Result<&rustc_middle::traits::ImplSource<'tcx, ()>, _> =
-    //     tcx.codegen_select_candidate((param_env, binder));
     use rustc_infer::infer::TyCtxtInferExt;
     use rustc_infer::traits;
     use rustc_middle::ty::{ParamEnv, ParamEnvAnd};
     use rustc_trait_selection::infer::InferCtxtBuilderExt;
     use rustc_trait_selection::traits::SelectionContext;
-    // let id = s.base().opt_def_id.unwrap();
     let inter_ctxt = tcx.infer_ctxt().ignoring_regions().build();
     let mut selection_ctxt = SelectionContext::new(&inter_ctxt);
     use std::collections::VecDeque;
