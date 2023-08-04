@@ -56,7 +56,7 @@
               pkgs.ocamlPackages.odoc
               pkgs.ocamlPackages.utop
 
-              # pkgs.cargo-expand
+              pkgs.cargo-expand
               pkgs.openssl.dev
               pkgs.pkg-config
               pkgs.rust-analyzer
