@@ -27,6 +27,6 @@ jobs:
     - uses: DeterminateSystems/nix-installer-action@main
     - name: Run Rust formatter
       run: |
-        nix shell nixpkgs#rustfmt -c \
+        nix shell .#rustfmt -c \
           rustfmt --check $(find . -name '*.rs')
 

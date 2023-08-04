@@ -21,9 +21,10 @@
         rustc = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
         craneLib = (crane.mkLib pkgs).overrideToolchain rustc;
         ocamlformat = pkgs.ocamlformat_0_24_1;
+        rustfmt = pkgs.rustfmt;
       in rec {
         packages = {
-          inherit rustc ocamlformat;
+          inherit rustc ocamlformat rustfmt;
           hax-engine = pkgs.callPackage ./engine {
             hax-rust-frontend = packages.hax-rust-frontend.unwrapped;
             inherit rustc;
@@ -60,6 +61,7 @@
               pkgs.openssl.dev
               pkgs.pkg-config
               pkgs.rust-analyzer
+              rustfmt
               rustc
 
               (pkgs.stdenv.mkDerivation {
