@@ -387,6 +387,7 @@ pub enum UserType {
     //
     // In this case, we get a [rustc_middle::ty::ConstKind::Bound] in
     // [do_something], which we are not able to translate.
+    // See: https://github.com/hacspec/hacspec-v2/pull/209
 
     // Ty(Ty),
     // TypeOf(DefId, UserSubsts),
