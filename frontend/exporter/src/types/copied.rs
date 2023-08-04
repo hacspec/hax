@@ -1616,20 +1616,6 @@ pub enum ExprKind {
     #[map({
         let e = gstate.thir().exprs[*fun].unroll_scope(gstate);
         let fun = match &e.kind {
-            rustc_middle::thir::ExprKind::VarRef { .. } => {
-                match ty.kind() {
-                    rustc_middle::ty::TyKind::FnPtr(sig) => {
-                        e.sinto(gstate)
-                    },
-                    ty_kind => {
-                        supposely_unreachable!(
-                            "CallNotTyFnDef":
-                            e, ty_kind
-                        );
-                        fatal!(gstate, "RefCallNotTyFnPtr")
-                    }
-                }
-            },
             /* TODO: see whether [user_ty] below is relevant or not */
             rustc_middle::thir::ExprKind::ZstLiteral {user_ty: _ } => {
                 match ty.kind() {
@@ -1658,11 +1644,18 @@ pub enum ExprKind {
                 }
             },
             kind => {
-                supposely_unreachable!(
-                    "CallNotZstLiteral":
-                    e, kind
-                );
-                fatal!(gstate, "CallNotZstLiteral")
+                match ty.kind() {
+                    rustc_middle::ty::TyKind::FnPtr(sig) => {
+                        e.sinto(gstate)
+                    },
+                    ty_kind => {
+                        supposely_unreachable!(
+                            "CallNotTyFnDef":
+                            e, kind, ty_kind
+                        );
+                        fatal!(gstate, "RefCallNotTyFnPtr")
+                    }
+                }
             }
         };
         TO_TYPE::Call {
