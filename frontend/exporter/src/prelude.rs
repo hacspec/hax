@@ -7,6 +7,7 @@ pub use std::collections::HashMap;
 pub use std::path::PathBuf;
 pub use std::rc::Rc;
 
+pub use crate::body::*;
 pub use crate::rustc_utils::*;
 pub use crate::state::*;
 pub use crate::types::*;

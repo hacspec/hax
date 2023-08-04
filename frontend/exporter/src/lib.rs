@@ -32,6 +32,7 @@ extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate rustc_type_ir;
 
+mod body;
 mod constant_utils;
 mod rustc_utils;
 pub mod state;
@@ -40,7 +41,8 @@ mod types;
 mod prelude;
 
 pub use prelude::{
-    argument_span_of_mac_call, inline_macro_invocations, translate_span, Item, Span,
+    argument_span_of_mac_call, inline_macro_invocations, translate_span, IsBody, Item, Span,
+    ThirBody,
 };
 
 mod sinto;

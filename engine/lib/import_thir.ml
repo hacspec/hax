@@ -1,4 +1,18 @@
-module Thir = Types
+module Thir = struct
+  include Types
+
+  type item = item_for__decorated_for__expr_kind
+  type item_kind = item_kind_for__decorated_for__expr_kind
+  type impl_item = impl_item_for__decorated_for__expr_kind
+  type impl_item_kind = impl_item_kind_for__decorated_for__expr_kind
+  type generics = generics_for__decorated_for__expr_kind
+  type trait_item_kind = trait_item_kind_for__decorated_for__expr_kind
+  type generic_param = generic_param_for__decorated_for__expr_kind
+  type generic_param_kind = generic_param_kind_for__decorated_for__expr_kind
+  type where_predicate = where_predicate_for__decorated_for__expr_kind
+  type trait_item = trait_item_for__decorated_for__expr_kind
+end
+
 open Utils
 open Base
 open Diagnostics

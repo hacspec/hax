@@ -62,29 +62,6 @@ pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
     }
 }
 
-#[tracing::instrument(skip(s))]
-pub(crate) fn inspect_local_def_id<'tcx, S: BaseState<'tcx>>(
-    did: rustc_hir::def_id::LocalDefId,
-    owner_id: rustc_hir::hir_id::OwnerId,
-    s: &S,
-) -> (Rc<rustc_middle::thir::Thir<'tcx>>, Vec<Param>, Body) {
-    let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
-    let thirs = s.base().cached_thirs;
-
-    let (thir, expr) = thirs
-        .get(&did)
-        .unwrap_or_else(|| span_fatal!(s, tcx.def_span(did), "Could not load body for id {did:?}"));
-
-    let s = State {
-        thir: thir.clone(),
-        owner_id,
-        base: s.base(),
-    };
-    let params: Vec<Param> = thir.params.iter().map(|x| x.sinto(&s)).collect();
-    let body = expr.sinto(&s);
-    (thir.clone(), params, body)
-}
-
 #[tracing::instrument]
 pub(crate) fn read_span_from_file(span: &Span) -> Result<String, ReadSpanErr> {
     use ReadSpanErr::*;
@@ -284,37 +261,13 @@ pub(crate) fn attribute_from_scope<'tcx, S: ExprState<'tcx>>(
     (hir_id, attributes)
 }
 
-#[tracing::instrument(skip(s))]
-pub(crate) fn make_fn_def<'tcx, S: BaseState<'tcx>>(
-    fn_sig: &rustc_hir::FnSig,
-    body_id: &rustc_hir::BodyId,
-    s: &S,
-) -> FnDef {
-    let hir_id = body_id.hir_id;
-    let (thir, params, body) =
-        inspect_local_def_id(hir_id.clone().owner.def_id, hir_id.clone().owner, s);
-    let ret = body.ty.clone();
-    let s = State {
-        thir: thir.clone(),
-        base: s.base(),
-        owner_id: (),
-    };
-    FnDef {
-        params,
-        ret,
-        body,
-        sig_span: fn_sig.span.sinto(&s),
-        header: fn_sig.header.sinto(&s),
-    }
-}
-
 use itertools::Itertools;
 
 #[tracing::instrument(skip(s))]
-pub fn inline_macro_invocations<'t, S: BaseState<'t>>(
+pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
     ids: &Vec<rustc_hir::ItemId>,
     s: &S,
-) -> Vec<Item> {
+) -> Vec<Item<Body>> {
     let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
     let hir = tcx.hir();
 

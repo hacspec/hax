@@ -56,11 +56,14 @@ fn write_files(
 /// Browse a crate and translate every item from HIR+THIR to "THIR'"
 /// (I call "THIR'" the AST described in this crate)
 #[tracing::instrument(skip_all)]
-fn convert_thir<'tcx>(
+fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
     options: &hax_frontend_exporter_options::Options,
     macro_calls: HashMap<hax_frontend_exporter::Span, hax_frontend_exporter::Span>,
     tcx: TyCtxt<'tcx>,
-) -> (Vec<rustc_span::Span>, Vec<hax_frontend_exporter::Item>) {
+) -> (
+    Vec<rustc_span::Span>,
+    Vec<hax_frontend_exporter::Item<Body>>,
+) {
     let hir = tcx.hir();
 
     let bodies = {
@@ -94,6 +97,7 @@ fn convert_thir<'tcx>(
         (Rc<rustc_middle::thir::Thir<'tcx>>, ExprId),
     > = bodies
         .map(|did| {
+            tracing::debug!("⏳ Type-checking THIR body for {:#?}", did);
             let span = hir.span(hir.local_def_id_to_hir_id(did));
             let mk_error_thir = || {
                 let ty = tcx.mk_ty_from_kind(rustc_type_ir::sty::TyKind::Never);
@@ -134,13 +138,14 @@ fn convert_thir<'tcx>(
                     return mk_error_thir();
                 }
             };
+            tracing::debug!("✅ Type-checked THIR body for {:#?}", did);
             (did, (Rc::new(thir), expr))
         })
         .collect();
 
     let items = hir.items();
     let macro_calls_r = Rc::new(macro_calls);
-    let mut state = hax_frontend_exporter::state::State::new(&tcx, options);
+    let mut state = hax_frontend_exporter::state::State::new(tcx, options);
     state.base.macro_infos = macro_calls_r;
     state.base.cached_thirs = Rc::new(thirs);
 
@@ -322,7 +327,7 @@ impl Callbacks for ExtractionCallbacks {
                     let options_frontend = Box::new(
                         hax_frontend_exporter_options::Options::from(self.clone()).clone(),
                     );
-                    let state = hax_frontend_exporter::state::State::new(&tcx, &options_frontend);
+                    let state = hax_frontend_exporter::state::State::new(tcx, &options_frontend);
                     report_diagnostics(
                         &output,
                         &session,
