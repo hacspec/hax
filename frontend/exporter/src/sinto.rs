@@ -50,6 +50,12 @@ mod test {
 sinto_todo!(test, Foo);
 // sinto_as_usize!(test, Foo);
 
+impl<S, LL, RR, L: SInto<S, LL>, R: SInto<S, RR>> SInto<S, (LL, RR)> for (L, R) {
+    fn sinto(&self, s: &S) -> (LL, RR) {
+        (self.0.sinto(s), self.1.sinto(s))
+    }
+}
+
 impl<S, D, T: SInto<S, D>> SInto<S, Option<D>> for Option<T> {
     fn sinto(&self, s: &S) -> Option<D> {
         self.as_ref().map(|x| x.sinto(s))
