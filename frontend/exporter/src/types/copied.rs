@@ -164,9 +164,9 @@ impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, ConstantKind>
             RustConstantKind::Val(const_value, ty) => {
                 use rustc_middle::mir::interpret::ConstValue;
                 match const_value {
-                    ConstValue::Scalar(scalar) => {
-                        ConstantKind::Lit(scalar_int_to_literal(s, scalar.assert_int(), ty.clone()))
-                    }
+                    ConstValue::Scalar(scalar) => ConstantKind::Lit(
+                        constant_utils::scalar_int_to_lit_kind(s, scalar.assert_int(), ty.clone()),
+                    ),
                     _ => ConstantKind::Todo(format!("{:#?}", self)),
                 }
             }
@@ -914,7 +914,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
             None => match kind {
                 rustc_middle::thir::ExprKind::NonHirLiteral { lit, .. } => ExprKind::Literal {
                     lit: Spanned {
-                        node: scalar_int_to_literal(s, lit, ty),
+                        node: constant_utils::scalar_int_to_lit_kind(s, lit, ty),
                         span: span.sinto(s),
                     },
                     neg: false,
