@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -159,7 +159,27 @@ pub enum ExporterCommand {
             default_value = "hax_frontend_export.json"
         )]
         output_file: PathOrDash,
+        /// Wether the bodies are exported as THIR, built MIR, const
+        /// MIR, or a combination. Repeat this option to extract a
+        /// combination (e.g. [-k thir -k mir-built]).
+        #[arg(
+            value_enum,
+            short,
+            long = "kind",
+            num_args = 0..=3,
+            default_values_t = [ExportBodyKind::Thir]
+        )]
+        kind: Vec<ExportBodyKind>,
     },
+}
+
+#[derive(
+    JsonSchema, ValueEnum, Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub enum ExportBodyKind {
+    Thir,
+    MirBuilt,
+    MirConst,
 }
 
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
@@ -226,8 +246,9 @@ impl NormalizePaths for ExporterCommand {
     fn normalize_paths(self) -> Self {
         use ExporterCommand::*;
         match self {
-            JSON { output_file } => JSON {
+            JSON { output_file, kind } => JSON {
                 output_file: output_file.normalize_paths(),
+                kind,
             },
             Backend(o) => Backend(o),
         }
