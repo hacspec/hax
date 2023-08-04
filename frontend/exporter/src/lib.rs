@@ -2,12 +2,18 @@
 #![feature(box_patterns)]
 #![feature(concat_idents)]
 #![feature(trait_alias)]
+#![feature(type_changing_struct_update)]
+#![feature(macro_metavar_expr)]
+#![feature(if_let_guard)]
+#![feature(let_chains)]
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 #![allow(unreachable_code)]
 #![allow(dead_code)]
-#![feature(macro_metavar_expr)]
+#![allow(incomplete_features)]
+#![feature(specialization)]
 
+extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_data_structures;
