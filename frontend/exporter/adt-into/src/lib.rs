@@ -1,3 +1,5 @@
+#![feature(trait_alias)]
+
 use quote::quote;
 use quote::quote_spanned;
 use syn::parse::ParseStream;
@@ -256,6 +258,52 @@ pub fn adt_into(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         state_type,
     } = parse_attr("args", attrs).expect("An [args] attribute was expected");
 
+    let generics = {
+        let mut generics = generics;
+        generics.params = merge_generic_params(
+            to_generics.params.clone().into_iter(),
+            generics.params.into_iter(),
+        )
+        .collect();
+        generics
+    };
+
+    trait DropBounds {
+        fn drop_bounds(&mut self);
+    }
+
+    impl DropBounds for syn::GenericParam {
+        fn drop_bounds(&mut self) {
+            use syn::GenericParam::*;
+            match self {
+                Lifetime(lf) => {
+                    lf.colon_token = None;
+                    lf.bounds.clear()
+                }
+                Type(t) => {
+                    t.colon_token = None;
+                    t.bounds.clear();
+                    t.eq_token = None;
+                    t.default = None;
+                }
+                Const(c) => {
+                    c.eq_token = None;
+                    c.default = None;
+                }
+            }
+        }
+    }
+    impl DropBounds for syn::Generics {
+        fn drop_bounds(&mut self) {
+            self.params.iter_mut().for_each(DropBounds::drop_bounds);
+        }
+    }
+    let to_generics = {
+        let mut to_generics = to_generics;
+        to_generics.drop_bounds();
+        to_generics
+    };
+
     let from = drop_generics(from_with_generics.clone());
 
     let append: proc_macro2::TokenStream = tokens_of_attr("append", &dinput.attrs)
@@ -311,6 +359,24 @@ pub fn adt_into(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         };
     }
     .into()
+}
+
+/// Merge two collections of generic params, with params from [a]
+/// before the ones from [b]. This function ensures lifetimes
+/// appear before anything else.
+fn merge_generic_params(
+    a: impl Iterator<Item = syn::GenericParam>,
+    b: impl Iterator<Item = syn::GenericParam>,
+) -> impl Iterator<Item = syn::GenericParam> {
+    fn partition(
+        a: impl Iterator<Item = syn::GenericParam>,
+    ) -> (Vec<syn::GenericParam>, Vec<syn::GenericParam>) {
+        a.partition(|g| matches!(g, syn::GenericParam::Lifetime(_)))
+    }
+    let (a_lt, a_others) = partition(a);
+    let (b_lt, b_others) = partition(b);
+    let h = |x: Vec<_>, y: Vec<_>| x.into_iter().chain(y.into_iter());
+    h(a_lt, b_lt).chain(h(a_others, b_others))
 }
 
 fn drop_generics(type_path: syn::TypePath) -> syn::TypePath {
