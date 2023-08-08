@@ -56,11 +56,14 @@ fn write_files(
 /// Browse a crate and translate every item from HIR+THIR to "THIR'"
 /// (I call "THIR'" the AST described in this crate)
 #[tracing::instrument(skip_all)]
-fn convert_thir<'tcx>(
+fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
     options: &hax_frontend_exporter_options::Options,
     macro_calls: HashMap<hax_frontend_exporter::Span, hax_frontend_exporter::Span>,
     tcx: TyCtxt<'tcx>,
-) -> (Vec<rustc_span::Span>, Vec<hax_frontend_exporter::Item>) {
+) -> (
+    Vec<rustc_span::Span>,
+    Vec<hax_frontend_exporter::Item<Body>>,
+) {
     let hir = tcx.hir();
 
     let bodies = {
@@ -94,6 +97,7 @@ fn convert_thir<'tcx>(
         (Rc<rustc_middle::thir::Thir<'tcx>>, ExprId),
     > = bodies
         .map(|did| {
+            tracing::debug!("⏳ Type-checking THIR body for {:#?}", did);
             let span = hir.span(hir.local_def_id_to_hir_id(did));
             let mk_error_thir = || {
                 let ty = tcx.mk_ty_from_kind(rustc_type_ir::sty::TyKind::Never);
@@ -134,13 +138,14 @@ fn convert_thir<'tcx>(
                     return mk_error_thir();
                 }
             };
+            tracing::debug!("✅ Type-checked THIR body for {:#?}", did);
             (did, (Rc::new(thir), expr))
         })
         .collect();
 
     let items = hir.items();
     let macro_calls_r = Rc::new(macro_calls);
-    let mut state = hax_frontend_exporter::state::State::new(&tcx, options);
+    let mut state = hax_frontend_exporter::state::State::new(tcx, options);
     state.base.macro_infos = macro_calls_r;
     state.base.cached_thirs = Rc::new(thirs);
 
@@ -260,15 +265,72 @@ impl Callbacks for ExtractionCallbacks {
         use std::ops::{Deref, DerefMut};
 
         queries.global_ctxt().unwrap().enter(|tcx| {
-            let (spans, converted_items) =
-                convert_thir(&self.clone().into(), self.macro_calls.clone(), tcx);
-
             use hax_cli_options::ExporterCommand;
             match self.command.clone() {
-                ExporterCommand::JSON { output_file } => {
-                    serde_json::to_writer(output_file.open_or_stdout(), &converted_items).unwrap()
+                ExporterCommand::JSON {
+                    output_file,
+                    mut kind,
+                } => {
+                    struct Driver<'tcx> {
+                        options: hax_frontend_exporter_options::Options,
+                        macro_calls:
+                            HashMap<hax_frontend_exporter::Span, hax_frontend_exporter::Span>,
+                        tcx: TyCtxt<'tcx>,
+                        output_file: PathOrDash,
+                    }
+                    impl<'tcx> Driver<'tcx> {
+                        fn to_json<Body: hax_frontend_exporter::IsBody + Serialize>(self) {
+                            let (_, converted_items) = convert_thir::<Body>(
+                                &self.options,
+                                self.macro_calls.clone(),
+                                self.tcx,
+                            );
+
+                            serde_json::to_writer(
+                                self.output_file.open_or_stdout(),
+                                &converted_items,
+                            )
+                            .unwrap()
+                        }
+                    }
+                    let driver = Driver {
+                        options: self.clone().into(),
+                        macro_calls: self.macro_calls.clone(),
+                        tcx,
+                        output_file,
+                    };
+                    mod from {
+                        pub use hax_cli_options::ExportBodyKind::{
+                            MirBuilt as MB, MirConst as MC, Thir as T,
+                        };
+                    }
+                    mod to {
+                        pub type T = hax_frontend_exporter::ThirBody;
+                        pub type MB =
+                            hax_frontend_exporter::MirBody<hax_frontend_exporter::mir_kinds::Built>;
+                        pub type MC =
+                            hax_frontend_exporter::MirBody<hax_frontend_exporter::mir_kinds::Const>;
+                    }
+                    kind.sort();
+                    kind.dedup();
+                    match kind.as_slice() {
+                        [from::MB] => driver.to_json::<to::MB>(),
+                        [from::MC] => driver.to_json::<to::MC>(),
+                        [from::T] => driver.to_json::<to::T>(),
+                        [from::MB, from::MC] => driver.to_json::<(to::MB, to::MC)>(),
+                        [from::T, from::MB] => driver.to_json::<(to::MB, to::T)>(),
+                        [from::T, from::MC] => driver.to_json::<(to::MC, to::T)>(),
+                        [from::T, from::MB, from::MC] => {
+                            driver.to_json::<(to::MB, (to::MC, to::T))>()
+                        }
+                        [] => driver.to_json::<()>(),
+                        _ => panic!("Unsupported kind {:#?}", kind),
+                    }
                 }
                 ExporterCommand::Backend(backend) => {
+                    let (spans, converted_items) =
+                        convert_thir(&self.clone().into(), self.macro_calls.clone(), tcx);
+
                     let engine_options = hax_cli_options_engine::EngineOptions {
                         backend: backend.clone(),
                         input: converted_items,
@@ -322,7 +384,7 @@ impl Callbacks for ExtractionCallbacks {
                     let options_frontend = Box::new(
                         hax_frontend_exporter_options::Options::from(self.clone()).clone(),
                     );
-                    let state = hax_frontend_exporter::state::State::new(&tcx, &options_frontend);
+                    let state = hax_frontend_exporter::state::State::new(tcx, &options_frontend);
                     report_diagnostics(
                         &output,
                         &session,

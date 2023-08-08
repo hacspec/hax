@@ -1,4 +1,18 @@
-module Thir = Types
+module Thir = struct
+  include Types
+
+  type item = item_for__decorated_for__expr_kind
+  type item_kind = item_kind_for__decorated_for__expr_kind
+  type impl_item = impl_item_for__decorated_for__expr_kind
+  type impl_item_kind = impl_item_kind_for__decorated_for__expr_kind
+  type generics = generics_for__decorated_for__expr_kind
+  type trait_item_kind = trait_item_kind_for__decorated_for__expr_kind
+  type generic_param = generic_param_for__decorated_for__expr_kind
+  type generic_param_kind = generic_param_kind_for__decorated_for__expr_kind
+  type where_predicate = where_predicate_for__decorated_for__expr_kind
+  type trait_item = trait_item_for__decorated_for__expr_kind
+end
+
 open Utils
 open Base
 open Diagnostics
@@ -755,7 +769,7 @@ module Exn = struct
       | Float k -> TFloat (match k with F32 -> F32 | F64 -> F64)
       | Arrow { params; ret } ->
           TArrow (List.map ~f:(c_ty span) params, c_ty span ret)
-      | NamedType { def_id = id; generic_args } ->
+      | Adt { def_id = id; generic_args } ->
           let ident = def_id Type id in
           let args = List.map ~f:(c_generic_value span) generic_args in
           TApp { ident; args }

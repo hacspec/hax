@@ -18,6 +18,7 @@ macro_rules! mk_aux {
                 fn [<with_ $field>](self: Self, $field: $($field_type)+<$($lts)*>) -> Self::Out;
             }
             // const _: &str = stringify!(
+            #[allow(unused)]
             impl<$($lts,)*$($gen_full)*> [<Has $field:camel Setter>]<$($lts,)*> for $state<$($gen_full)*> {
                 type Out = $state<$($params)*>;
                 fn [<with_ $field>](self: Self, $field: $($field_type)+<$($lts)*>) -> Self::Out {
@@ -133,7 +134,7 @@ mod types {
 
     impl<'tcx> Base<'tcx> {
         pub fn new(
-            tcx: &rustc_middle::ty::TyCtxt<'tcx>,
+            tcx: rustc_middle::ty::TyCtxt<'tcx>,
             options: &hax_frontend_exporter_options::Options,
         ) -> Self {
             Self {
@@ -151,25 +152,28 @@ mod types {
     pub type MacroCalls = Rc<HashMap<Span, Span>>;
     pub type ExportedSpans = Rc<RefCell<HashSet<rustc_span::Span>>>;
     pub type RcThir<'tcx> = Rc<rustc_middle::thir::Thir<'tcx>>;
+    pub type RcMir<'tcx> = Rc<rustc_middle::mir::Body<'tcx>>;
 }
 
 mk!(
     struct State<'tcx> {
         base: {'tcx} types::Base,
         thir: {'tcx} types::RcThir,
+        mir: {'tcx} types::RcMir,
         owner_id: {} rustc_hir::hir_id::OwnerId,
     }
 );
 
 pub use types::*;
 
-impl<'tcx> State<Base<'tcx>, (), ()> {
+impl<'tcx> State<Base<'tcx>, (), (), ()> {
     pub fn new(
-        tcx: &rustc_middle::ty::TyCtxt<'tcx>,
+        tcx: rustc_middle::ty::TyCtxt<'tcx>,
         options: &hax_frontend_exporter_options::Options,
     ) -> Self {
         Self {
             thir: (),
+            mir: (),
             owner_id: (),
             base: Base::new(tcx, options),
         }

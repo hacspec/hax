@@ -44,6 +44,14 @@ Meta-information:
     };
 }
 
+macro_rules! supposely_unreachable_fatal {
+    ($($tt:tt)*) => {
+        supposely_unreachable!($($tt)*);
+        panic!()
+    }
+}
+
 pub(crate) use fatal;
 pub(crate) use span_fatal;
 pub(crate) use supposely_unreachable;
+pub(crate) use supposely_unreachable_fatal;

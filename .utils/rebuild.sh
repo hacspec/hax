@@ -5,7 +5,14 @@
 
 set -euo pipefail
 
+OFFLINE_FLAG="--offline"
+if [[ "${1:-}" == "--online" ]]; then
+    OFFLINE_FLAG=""
+    shift 1
+fi
+
 TARGETS="${1:-rust ocaml}"
+
 
 cd_rootwise () {
     cd $(git rev-parse --show-toplevel)/$1
@@ -15,7 +22,7 @@ rust () {
     cd_rootwise "cli"
     for i in driver subcommands; do
         CURRENT="rust/$i"
-        cargo install --quiet --offline --debug --path $i
+        cargo install --quiet $OFFLINE_FLAG --debug --path $i
     done
 }
 

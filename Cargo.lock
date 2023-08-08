@@ -6,6 +6,7 @@ version = 3
 name = "adt-into"
 version = "0.1.0"
 dependencies = [
+ "itertools 0.11.0",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
@@ -392,7 +393,7 @@ dependencies = [
  "hax-diagnostics",
  "hax-frontend-exporter",
  "hax-frontend-exporter-options",
- "itertools",
+ "itertools 0.11.0",
  "path-clean",
  "schemars",
  "serde",
@@ -435,7 +436,7 @@ version = "0.1.0"
 dependencies = [
  "adt-into",
  "hax-frontend-exporter-options",
- "itertools",
+ "itertools 0.11.0",
  "paste",
  "schemars",
  "serde",
@@ -475,7 +476,7 @@ dependencies = [
  "hax-frontend-exporter",
  "hax-frontend-exporter-options",
  "is-terminal",
- "itertools",
+ "itertools 0.11.0",
  "paste",
  "path-clean",
  "rustup-toolchain",
@@ -596,6 +597,15 @@ name = "itertools"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
 dependencies = [
  "either",
 ]
@@ -783,7 +793,7 @@ checksum = "09963355b9f467184c04017ced4a2ba2d75cbcb4e7462690d388233253d4b1a9"
 dependencies = [
  "anstyle",
  "difflib",
- "itertools",
+ "itertools 0.10.5",
  "predicates-core",
 ]
 

@@ -1,4 +1,4 @@
-use schemars::{schema_for, JsonSchema};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 pub trait SInto<S, To> {
@@ -37,6 +37,7 @@ macro_rules! sinto_as_usize {
     }
 }
 
+#[allow(dead_code)]
 mod test {
     #[derive(Debug)]
     pub struct Foo(usize);
@@ -49,6 +50,12 @@ mod test {
 
 sinto_todo!(test, Foo);
 // sinto_as_usize!(test, Foo);
+
+impl<S, LL, RR, L: SInto<S, LL>, R: SInto<S, RR>> SInto<S, (LL, RR)> for (L, R) {
+    fn sinto(&self, s: &S) -> (LL, RR) {
+        (self.0.sinto(s), self.1.sinto(s))
+    }
+}
 
 impl<S, D, T: SInto<S, D>> SInto<S, Option<D>> for Option<T> {
     fn sinto(&self, s: &S) -> Option<D> {
@@ -79,7 +86,7 @@ impl<S, D: Clone, T: SInto<S, D>> SInto<S, Vec<D>> for Vec<T> {
     }
 }
 impl<S> SInto<S, Vec<u8>> for rustc_data_structures::sync::Lrc<[u8]> {
-    fn sinto(&self, s: &S) -> Vec<u8> {
+    fn sinto(&self, _s: &S) -> Vec<u8> {
         (**self).iter().cloned().collect()
     }
 }

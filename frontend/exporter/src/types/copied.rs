@@ -47,7 +47,7 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, GlobalIdent> for rustc_hir::def_id::Loca
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'a, S>, from: rustc_middle::thir::LogicalOp, state: S as s)]
+#[args(<'a, S>, from: rustc_middle::thir::LogicalOp, state: S as _s)]
 pub enum LogicalOp {
     And,
     Or,
@@ -80,7 +80,7 @@ pub enum LintLevel {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<S>, from: rustc_ast::ast::AttrStyle, state: S as gstate)]
+#[args(<S>, from: rustc_ast::ast::AttrStyle, state: S as _s)]
 pub enum AttrStyle {
     Outer,
     Inner,
@@ -106,14 +106,14 @@ pub struct Decorated<T> {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'slt, S: BaseState<'slt> + HasThir<'slt>>, from: rustc_middle::mir::UnOp, state: S as gstate)]
+#[args(<'slt, S: BaseState<'slt>>, from: rustc_middle::mir::UnOp, state: S as _s)]
 pub enum UnOp {
     Not,
     Neg,
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'slt, S: BaseState<'slt> + HasThir<'slt>>, from: rustc_middle::mir::BinOp, state: S as gstate)]
+#[args(<'slt, S: BaseState<'slt>>, from: rustc_middle::mir::BinOp, state: S as _s)]
 pub enum BinOp {
     Add,
     Sub,
@@ -160,13 +160,16 @@ impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, ConstantKind>
 {
     fn sinto(&self, s: &S) -> ConstantKind {
         use rustc_middle::mir::ConstantKind as RustConstantKind;
+
         match self.eval(s.base().tcx, get_param_env(s)) {
             RustConstantKind::Val(const_value, ty) => {
                 use rustc_middle::mir::interpret::ConstValue;
                 match const_value {
-                    ConstValue::Scalar(scalar) => {
-                        ConstantKind::Lit(scalar_int_to_literal(s, scalar.assert_int(), ty.clone()))
-                    }
+                    ConstValue::Scalar(scalar) => ConstantKind::Lit(scalar_int_to_lit_kind(
+                        s,
+                        scalar.assert_int(),
+                        ty.clone(),
+                    )),
                     _ => ConstantKind::Todo(format!("{:#?}", self)),
                 }
             }
@@ -197,7 +200,7 @@ pub enum ConstantKind {
 }
 
 impl<S> SInto<S, u64> for rustc_middle::mir::interpret::AllocId {
-    fn sinto(&self, s: &S) -> u64 {
+    fn sinto(&self, _: &S) -> u64 {
         self.0.get()
     }
 }
@@ -236,7 +239,7 @@ pub enum LitFloatType {
     Unsuffixed,
 }
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S>, from: rustc_hir::Movability, state: S as gstate)]
+#[args(<'tcx, S>, from: rustc_hir::Movability, state: S as _s)]
 pub enum Movability {
     Static,
     Movable,
@@ -265,7 +268,7 @@ pub struct ParamConst {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<S>, from: rustc_middle::ty::DynKind, state: S as gstate)]
+#[args(<S>, from: rustc_middle::ty::DynKind, state: S as _s)]
 pub enum DynKind {
     Dyn,
     DynStar,
@@ -367,7 +370,7 @@ pub struct UserSubsts {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::UserType<'tcx>, state: S as gstate)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::UserType<'tcx>, state: S as _s)]
 pub enum UserType {
     // TODO: for now, we don't use user types at all.
     // We disable it for now, since it cause the following to fail:
@@ -396,7 +399,7 @@ pub enum UserType {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<S>, from: rustc_hir::def::CtorKind, state: S as gstate)]
+#[args(<S>, from: rustc_hir::def::CtorKind, state: S as _s)]
 pub enum CtorKind {
     Fn,
     Const,
@@ -436,7 +439,6 @@ pub struct FieldDef {
 #[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::ty::VariantDef, state: S as state)]
 pub struct VariantDef {
     pub def_id: DefId,
-    #[map(todo!())]
     pub ctor: Option<(CtorKind, DefId)>,
     pub name: Symbol,
     pub discr: VariantDiscr,
@@ -523,7 +525,7 @@ pub struct Loc {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<S>, from: rustc_span::hygiene::DesugaringKind, state: S as gstate)]
+#[args(<S>, from: rustc_span::hygiene::DesugaringKind, state: S as _s)]
 pub enum DesugaringKind {
     CondTemporary,
     QuestionMark,
@@ -537,7 +539,7 @@ pub enum DesugaringKind {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<S>, from: rustc_span::hygiene::AstPass, state: S as gstate)]
+#[args(<S>, from: rustc_span::hygiene::AstPass, state: S as _s)]
 pub enum AstPass {
     StdImports,
     TestHarness,
@@ -545,7 +547,7 @@ pub enum AstPass {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<S>, from: rustc_span::hygiene::MacroKind, state: S as gstate)]
+#[args(<S>, from: rustc_span::hygiene::MacroKind, state: S as _s)]
 pub enum MacroKind {
     Bang,
     Attr,
@@ -563,7 +565,7 @@ pub enum ExpnKind {
 }
 
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_span::edition::Edition, state: S as gstate)]
+#[args(<S>, from: rustc_span::edition::Edition, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum Edition {
     Edition2015,
@@ -596,19 +598,6 @@ pub struct Span {
     pub hi: Loc,
     pub filename: FileName,
     // expn_backtrace: Vec<ExpnData>,
-}
-
-#[derive(Debug)]
-pub enum ReadSpanErr {
-    NotRealFileName(String),
-    WhileReading(std::io::Error),
-    NotEnoughLines { span: Span },
-    Todo,
-}
-impl std::convert::From<std::io::Error> for ReadSpanErr {
-    fn from(value: std::io::Error) -> Self {
-        ReadSpanErr::WhileReading(value)
-    }
 }
 
 impl Into<Loc> for rustc_span::Loc {
@@ -668,13 +657,13 @@ impl<'s, S: BaseState<'s>, T: SInto<S, U>, U> SInto<S, Spanned<U>>
 }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, String> for PathBuf {
-    fn sinto(&self, s: &S) -> String {
+    fn sinto(&self, _: &S) -> String {
         self.as_path().display().to_string()
     }
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash)]
-#[args(<S>, from: rustc_span::RealFileName, state: S as gstate)]
+#[args(<S>, from: rustc_span::RealFileName, state: S as _s)]
 pub enum RealFileName {
     LocalPath(#[map(x.to_str().unwrap().into())] String),
     #[map(RealFileName::Remapped {
@@ -688,7 +677,7 @@ pub enum RealFileName {
 }
 
 impl<S> SInto<S, u64> for rustc_data_structures::stable_hasher::Hash64 {
-    fn sinto(&self, s: &S) -> u64 {
+    fn sinto(&self, _: &S) -> u64 {
         self.as_u64()
     }
 }
@@ -726,7 +715,7 @@ pub enum InferTy {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S>, from: rustc_middle::thir::BlockSafety, state: S as gstate)]
+#[args(<'tcx, S>, from: rustc_middle::thir::BlockSafety, state: S as _s)]
 pub enum BlockSafety {
     Safe,
     BuiltinUnsafe,
@@ -756,7 +745,7 @@ pub struct AliasTy {
 impl<'tcx, S: BaseState<'tcx>> SInto<S, AliasTy> for rustc_middle::ty::AliasTy<'tcx> {
     fn sinto(&self, s: &S) -> AliasTy {
         let tcx = s.base().tcx;
-        let trait_ref = self.trait_ref(tcx);
+        // let trait_ref = self.trait_ref(tcx);
         // resolve_trait(trait_ref, s);
         AliasTy {
             substs: self.substs.sinto(s),
@@ -767,7 +756,7 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, AliasTy> for rustc_middle::ty::AliasTy<'
 }
 
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_middle::thir::BindingMode, state: S as gstate)]
+#[args(<S>, from: rustc_middle::thir::BindingMode, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum BindingMode {
     ByValue,
@@ -775,7 +764,7 @@ pub enum BindingMode {
 }
 
 #[derive(AdtInto)]
-#[args(<'tcx, S: ExprState<'tcx>>, from: rustc_middle::thir::Stmt<'tcx>, state: S as gstate)]
+#[args(<'tcx, S: ExprState<'tcx>>, from: rustc_middle::thir::Stmt<'tcx>, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Stmt {
     pub kind: StmtKind,
@@ -783,7 +772,7 @@ pub struct Stmt {
 }
 
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_ast::ast::MacDelimiter, state: S as gstate)]
+#[args(<S>, from: rustc_ast::ast::MacDelimiter, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum MacDelimiter {
     Parenthesis,
@@ -792,7 +781,7 @@ pub enum MacDelimiter {
 }
 
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_ast::token::Delimiter, state: S as gstate)]
+#[args(<S>, from: rustc_ast::token::Delimiter, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum Delimiter {
     Parenthesis,
@@ -802,7 +791,7 @@ pub enum Delimiter {
 }
 
 #[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::tokenstream::TokenTree, state: S as gstate)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::tokenstream::TokenTree, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum TokenTree {
     Token(Token, Spacing),
@@ -810,7 +799,7 @@ pub enum TokenTree {
 }
 
 #[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::tokenstream::Spacing, state: S as gstate)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::tokenstream::Spacing, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum Spacing {
     Alone,
@@ -818,7 +807,7 @@ pub enum Spacing {
 }
 
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_ast::token::BinOpToken, state: S as gstate)]
+#[args(<S>, from: rustc_ast::token::BinOpToken, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum BinOpToken {
     Plus,
@@ -906,7 +895,7 @@ pub struct MacCall {
 
 pub type TokenStream = String;
 impl<'t, S> SInto<S, TokenStream> for rustc_ast::tokenstream::TokenStream {
-    fn sinto(&self, s: &S) -> String {
+    fn sinto(&self, _: &S) -> String {
         rustc_ast_pretty::pprust::tts_to_string(self)
     }
 }
@@ -936,13 +925,14 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
             None => match kind {
                 rustc_middle::thir::ExprKind::NonHirLiteral { lit, .. } => ExprKind::Literal {
                     lit: Spanned {
-                        node: scalar_int_to_literal(s, lit, ty),
+                        node: scalar_int_to_lit_kind(s, lit, ty),
                         span: span.sinto(s),
                     },
                     neg: false,
                 },
                 rustc_middle::thir::ExprKind::ZstLiteral { .. } => match ty.kind() {
-                    rustc_middle::ty::TyKind::FnDef(def, substs) => {
+                    rustc_middle::ty::TyKind::FnDef(def, _substs) => {
+                        /* TODO: translate substs
                         let tcx = s.base().tcx;
                         let sig = &tcx.fn_sig(*def).subst(tcx, substs);
                         let ret: rustc_middle::ty::Ty = tcx.erase_late_bound_regions(sig.output());
@@ -950,7 +940,8 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                         let indexes = inputs.skip_binder().iter().enumerate().map(|(i, _)| i);
                         let params = indexes.map(|i| inputs.map_bound(|tys| tys[i]));
                         let params: Vec<rustc_middle::ty::Ty> =
-                            params.map(|i| tcx.erase_late_bound_regions(i)).collect();
+                        params.map(|i| tcx.erase_late_bound_regions(i)).collect();
+                        */
                         return Expr {
                             contents: Box::new(ExprKind::GlobalName { id: def.sinto(s) }),
                             span: self.span.sinto(s),
@@ -980,7 +971,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                         );
                     };
                     match lhs_ty {
-                        rustc_middle::ty::TyKind::Adt(adt_def, substs) => {
+                        rustc_middle::ty::TyKind::Adt(adt_def, _substs) => {
                             let variant = adt_def.variant(variant_index);
                             ExprKind::Field {
                                 field: variant.fields[name].did.sinto(s),
@@ -1035,7 +1026,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Pat> for rustc_middle::thir::Pat<'tcx> {
                     })
                     .sinto(s)
                 }
-                rustc_middle::ty::TyKind::Tuple(types) => PatKind::Tuple {
+                rustc_middle::ty::TyKind::Tuple(..) => PatKind::Tuple {
                     subpatterns: subpatterns
                         .iter()
                         .map(|pat| pat.pattern.clone())
@@ -1071,7 +1062,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Arm> for rustc_middle::thir::ArmId {
 }
 
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_type_ir::IntTy, state: S as gstate)]
+#[args(<S>, from: rustc_type_ir::IntTy, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum IntTy {
     Isize,
@@ -1083,7 +1074,7 @@ pub enum IntTy {
 }
 
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_type_ir::FloatTy, state: S as gstate)]
+#[args(<S>, from: rustc_type_ir::FloatTy, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum FloatTy {
     F32,
@@ -1091,7 +1082,7 @@ pub enum FloatTy {
 }
 
 impl<'tcx, S> SInto<S, FloatTy> for rustc_ast::ast::FloatTy {
-    fn sinto(&self, s: &S) -> FloatTy {
+    fn sinto(&self, _: &S) -> FloatTy {
         use rustc_ast::ast::FloatTy as T;
         match self {
             T::F32 => FloatTy::F32,
@@ -1101,7 +1092,7 @@ impl<'tcx, S> SInto<S, FloatTy> for rustc_ast::ast::FloatTy {
 }
 
 impl<'tcx, S> SInto<S, IntTy> for rustc_ast::ast::IntTy {
-    fn sinto(&self, s: &S) -> IntTy {
+    fn sinto(&self, _: &S) -> IntTy {
         use rustc_ast::ast::IntTy as T;
         match self {
             T::Isize => IntTy::Isize,
@@ -1114,7 +1105,7 @@ impl<'tcx, S> SInto<S, IntTy> for rustc_ast::ast::IntTy {
     }
 }
 impl<'tcx, S> SInto<S, UintTy> for rustc_ast::ast::UintTy {
-    fn sinto(&self, s: &S) -> UintTy {
+    fn sinto(&self, _: &S) -> UintTy {
         use rustc_ast::ast::UintTy as T;
         match self {
             T::Usize => UintTy::Usize,
@@ -1128,7 +1119,7 @@ impl<'tcx, S> SInto<S, UintTy> for rustc_ast::ast::UintTy {
 }
 
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_type_ir::UintTy, state: S as gstate)]
+#[args(<S>, from: rustc_type_ir::UintTy, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum UintTy {
     Usize,
@@ -1206,7 +1197,7 @@ pub struct TyGenerics {
 }
 
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_type_ir::sty::AliasKind, state: S as state)]
+#[args(<S>, from: rustc_type_ir::sty::AliasKind, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum AliasKind {
     Projection,
@@ -1226,11 +1217,11 @@ pub enum Ty {
 
     #[custom_arm(
         rustc_middle::ty::TyKind::FnPtr(sig) => arrow_of_sig(sig, state),
-        x @ rustc_middle::ty::TyKind::FnDef(def, substs) => {
+        rustc_middle::ty::TyKind::FnDef(def, substs) => {
             let tcx = state.base().tcx;
             arrow_of_sig(&tcx.fn_sig(*def).subst(tcx, substs), state)
         },
-        FROM_TYPE::Closure (defid, substs) => {
+        FROM_TYPE::Closure (_defid, substs) => {
             let sig = substs.as_closure().sig();
             let sig = state.base().tcx.signature_unclosure(sig, rustc_hir::Unsafety::Normal);
             arrow_of_sig(&sig, state)
@@ -1245,10 +1236,10 @@ pub enum Ty {
         rustc_middle::ty::TyKind::Adt(adt_def, substs) => {
             let def_id = adt_def.did().sinto(state);
             let generic_args: Vec<GenericArg> = substs.sinto(state);
-            Ty::NamedType { def_id, generic_args }
+            Ty::Adt { def_id, generic_args }
         },
     )]
-    NamedType {
+    Adt {
         generic_args: Vec<GenericArg>,
         def_id: DefId,
     },
@@ -1295,7 +1286,7 @@ pub enum StmtKind {
 }
 
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_middle::ty::Variance, state: S as gstate)]
+#[args(<S>, from: rustc_middle::ty::Variance, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum Variance {
     Covariant,
@@ -1322,7 +1313,7 @@ pub struct Ascription {
 }
 
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::RangeEnd, state: S as gstate)]
+#[args(<S>, from: rustc_hir::RangeEnd, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum RangeEnd {
     Included,
@@ -1471,7 +1462,7 @@ pub struct Arm {
 }
 
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::Unsafety, state: S as gstate)]
+#[args(<S>, from: rustc_hir::Unsafety, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum Unsafety {
     Unsafe,
@@ -1531,7 +1522,7 @@ pub struct MacroInvokation {
 }
 
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::ImplicitSelfKind, state: S as tcx)]
+#[args(<S>, from: rustc_hir::ImplicitSelfKind, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum ImplicitSelfKind {
     Imm,
@@ -1542,7 +1533,7 @@ pub enum ImplicitSelfKind {
 }
 
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_ast::token::CommentKind, state: S as tcx)]
+#[args(<S>, from: rustc_ast::token::CommentKind, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum CommentKind {
     Line,
@@ -1609,8 +1600,6 @@ pub struct Param {
     pub attributes: Vec<Attribute>,
 }
 
-pub type Body = Expr;
-
 #[derive(AdtInto)]
 #[args(<'tcx, S: ExprState<'tcx>>, from: rustc_middle::thir::ExprKind<'tcx>, state: S as gstate)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -1640,20 +1629,6 @@ pub enum ExprKind {
     #[map({
         let e = gstate.thir().exprs[*fun].unroll_scope(gstate);
         let fun = match &e.kind {
-            rustc_middle::thir::ExprKind::VarRef { .. } => {
-                match ty.kind() {
-                    rustc_middle::ty::TyKind::FnPtr(sig) => {
-                        e.sinto(gstate)
-                    },
-                    ty_kind => {
-                        supposely_unreachable!(
-                            "CallNotTyFnDef":
-                            e, ty_kind
-                        );
-                        fatal!(gstate, "RefCallNotTyFnPtr")
-                    }
-                }
-            },
             /* TODO: see whether [user_ty] below is relevant or not */
             rustc_middle::thir::ExprKind::ZstLiteral {user_ty: _ } => {
                 match ty.kind() {
@@ -1682,11 +1657,18 @@ pub enum ExprKind {
                 }
             },
             kind => {
-                supposely_unreachable!(
-                    "CallNotZstLiteral":
-                    e, kind
-                );
-                fatal!(gstate, "CallNotZstLiteral")
+                match ty.kind() {
+                    rustc_middle::ty::TyKind::FnPtr(..) => {
+                        e.sinto(gstate)
+                    },
+                    ty_kind => {
+                        supposely_unreachable!(
+                            "CallNotTyFnDef":
+                            e, kind, ty_kind
+                        );
+                        fatal!(gstate, "RefCallNotTyFnPtr")
+                    }
+                }
             }
         };
         TO_TYPE::Call {
@@ -1842,10 +1824,16 @@ pub enum ExprKind {
         user_ty: Option<CanonicalUserType>,
     },
     #[custom_arm(FROM_TYPE::Closure(e) => {
-        let (_, params, body) = inspect_local_def_id(e.closure_id, gstate.owner_id(), gstate);
+        let (thir, expr_entrypoint) = get_thir(e.closure_id, gstate);
+        let s = &State {
+            thir: thir.clone(),
+            owner_id: gstate.owner_id(),
+            base: gstate.base(),
+            mir: (),
+        };
         TO_TYPE::Closure {
-            params,
-            body,
+            params: thir.params.raw.sinto(s),
+            body: expr_entrypoint.sinto(s),
             upvars: e.upvars.sinto(gstate),
             movability: e.movability.sinto(gstate)
         }
@@ -1853,7 +1841,7 @@ pub enum ExprKind {
     )]
     Closure {
         params: Vec<Param>,
-        body: Body,
+        body: Expr,
         upvars: Vec<Expr>,
         movability: Option<Movability>,
     },
@@ -1918,11 +1906,9 @@ impl<'tcx> ExprKindExt<'tcx> for rustc_middle::thir::Expr<'tcx> {
         // TODO: when we see a loop, we should lookup its label! label is actually a scope id
         // we remove scopes here, whence the TODO
         match self.kind {
-            rustc_middle::thir::ExprKind::Scope {
-                region_scope,
-                lint_level,
-                value,
-            } => s.thir().exprs[value].unroll_scope(s),
+            rustc_middle::thir::ExprKind::Scope { value, .. } => {
+                s.thir().exprs[value].unroll_scope(s)
+            }
             _ => self.clone(),
         }
     }
@@ -1939,10 +1925,9 @@ impl Expr {
 
 /// [FnDef] is a
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct FnDef {
+pub struct FnDef<Body: IsBody> {
     pub header: FnHeader,
     pub params: Vec<Param>,
-    // c_variadic: bool,
     pub ret: Ty,
     pub body: Body,
     pub sig_span: Span,
@@ -1975,18 +1960,7 @@ pub struct FnHeader {
     pub abi: Abi,
 }
 
-pub type FnBody = Expr;
-
-impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, Body> for rustc_hir::BodyId {
-    fn sinto(&self, s: &S) -> Body {
-        inspect_local_def_id(
-            s.base().tcx.hir().body_owner_def_id(self.clone()),
-            s.owner_id(),
-            s,
-        )
-        .2
-    }
-}
+pub type ThirBody = Expr;
 
 impl<'x, 'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, Ty> for rustc_hir::Ty<'x> {
     fn sinto(self: &rustc_hir::Ty<'x>, s: &S) -> Ty {
@@ -1996,7 +1970,7 @@ impl<'x, 'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, Ty> for rustc_hir::Ty<'
 }
 
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::UseKind, state: S as state)]
+#[args(<S>, from: rustc_hir::UseKind, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum UseKind {
     Single,
@@ -2005,7 +1979,7 @@ pub enum UseKind {
 }
 
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::IsAuto, state: S as tcx)]
+#[args(<S>, from: rustc_hir::IsAuto, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum IsAuto {
     Yes,
@@ -2029,7 +2003,7 @@ pub enum ImplPolarity {
 }
 
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::Constness, state: S as tcx)]
+#[args(<S>, from: rustc_hir::Constness, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum Constness {
     Const,
@@ -2039,9 +2013,9 @@ pub enum Constness {
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::Generics<'tcx>, state: S as tcx)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct Generics {
-    pub params: Vec<GenericParam>,
-    pub predicates: Vec<WherePredicate>,
+pub struct Generics<Body: IsBody> {
+    pub params: Vec<GenericParam<Body>>,
+    pub predicates: Vec<WherePredicate<Body>>,
     pub has_where_clause_predicates: bool,
     pub where_clause_span: Span,
     pub span: Span,
@@ -2050,14 +2024,16 @@ pub struct Generics {
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::WherePredicate<'tcx>, state: S as tcx)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub enum WherePredicate {
-    BoundPredicate(WhereBoundPredicate),
+pub enum WherePredicate<Body: IsBody> {
+    BoundPredicate(WhereBoundPredicate<Body>),
     RegionPredicate(WhereRegionPredicate),
     EqPredicate(WhereEqPredicate),
 }
 
-impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ImplItem> for rustc_hir::ImplItemRef {
-    fn sinto(&self, s: &S) -> ImplItem {
+impl<'tcx, S: BaseState<'tcx> + HasOwnerId, Body: IsBody> SInto<S, ImplItem<Body>>
+    for rustc_hir::ImplItemRef
+{
+    fn sinto(&self, s: &S) -> ImplItem<Body> {
         let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
         let impl_item = tcx.hir().impl_item(self.id.clone());
         impl_item.sinto(s)
@@ -2070,7 +2046,7 @@ pub enum ParamName {
     Error,
 }
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::LifetimeParamKind, state: S as tcx)]
+#[args(<S>, from: rustc_hir::LifetimeParamKind, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum LifetimeParamKind {
     Explicit,
@@ -2079,23 +2055,23 @@ pub enum LifetimeParamKind {
 }
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_hir::AnonConst, state: S as s)]
-pub struct AnonConst {
+pub struct AnonConst<Body: IsBody> {
     pub hir_id: HirId,
     pub def_id: GlobalIdent,
     #[map({
-        let s = State {
+        body_from_id::<Body, _>(*x, &State {
             thir: (),
             owner_id: hir_id.owner,
             base: s.base(),
-        };
-        x.sinto(&s)
+            mir: (),
+        })
     })]
     pub body: Body,
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::GenericParamKind<'tcx>, state: S as tcx)]
-pub enum GenericParamKind {
+pub enum GenericParamKind<Body: IsBody> {
     Lifetime {
         kind: LifetimeParamKind,
     },
@@ -2106,13 +2082,13 @@ pub enum GenericParamKind {
     },
     Const {
         ty: Ty,
-        default: Option<AnonConst>,
+        default: Option<AnonConst<Body>>,
     },
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::GenericParam<'tcx>, state: S as s)]
-pub struct GenericParam {
+pub struct GenericParam<Body: IsBody> {
     pub hir_id: HirId,
     pub def_id: GlobalIdent,
     #[map(match x {
@@ -2129,7 +2105,7 @@ pub struct GenericParam {
     pub name: ParamName,
     pub span: Span,
     pub pure_wrt_drop: bool,
-    pub kind: GenericParamKind,
+    pub kind: GenericParamKind<Body>,
     pub colon_span: Option<Span>,
     #[not_in_source]
     #[map(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
@@ -2138,11 +2114,11 @@ pub struct GenericParam {
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::ImplItem<'tcx>, state: S as tcx)]
-pub struct ImplItem {
+pub struct ImplItem<Body: IsBody> {
     pub ident: Ident,
     pub owner_id: DefId,
-    pub generics: Generics,
-    pub kind: ImplItemKind,
+    pub generics: Generics<Body>,
+    pub kind: ImplItemKind<Body>,
     pub defaultness: Defaultness,
     pub span: Span,
     pub vis_span: Span,
@@ -2151,12 +2127,12 @@ pub struct ImplItem {
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::ImplItemKind<'tcx>, state: S as tcx)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub enum ImplItemKind {
+pub enum ImplItemKind<Body: IsBody> {
     Const(Ty, Body),
     #[custom_arm(rustc_hir::ImplItemKind::Fn(sig, body) => {
-                ImplItemKind::Fn(make_fn_def(sig, body, tcx))
+                ImplItemKind::Fn(make_fn_def::<Body, _>(sig, body, tcx))
         },)]
-    Fn(FnDef),
+    Fn(FnDef<Body>),
     Type(Ty),
 }
 
@@ -2177,7 +2153,6 @@ impl<
     > SInto<S, D> for rustc_middle::ty::subst::EarlyBinder<T>
 {
     fn sinto(&self, s: &S) -> D {
-        use rustc_middle::ty::TypeFoldable;
         self.clone().subst_identity().sinto(s)
     }
 }
@@ -2185,23 +2160,23 @@ impl<
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::Impl<'tcx>, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct Impl {
+pub struct Impl<Body: IsBody> {
     pub unsafety: Unsafety,
     pub polarity: ImplPolarity,
     pub defaultness: Defaultness,
     pub defaultness_span: Option<Span>,
     pub constness: Constness,
-    pub generics: Generics,
+    pub generics: Generics<Body>,
     #[map({
         s.base().tcx.impl_trait_ref(s.owner_id().to_def_id()).sinto(s)
     })]
     pub of_trait: Option<TraitRef>,
     pub self_ty: Ty,
-    pub items: Vec<ImplItem>,
+    pub items: Vec<ImplItem<Body>>,
 }
 
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::IsAsync, state: S as tcx)]
+#[args(<S>, from: rustc_hir::IsAsync, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum IsAsync {
     Async,
@@ -2242,12 +2217,12 @@ pub struct HirFieldDef {
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::Variant<'tcx>, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct Variant {
+pub struct Variant<Body: IsBody> {
     pub ident: Ident,
     pub hir_id: HirId,
     pub def_id: GlobalIdent,
     pub data: VariantData,
-    pub disr_expr: Option<AnonConst>,
+    pub disr_expr: Option<AnonConst<Body>>,
     pub span: Span,
     #[not_in_source]
     #[map(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
@@ -2334,43 +2309,48 @@ pub struct PathSegment {
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::ItemKind<'tcx>, state: S as tcx)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub enum ItemKind {
+pub enum ItemKind<Body: IsBody> {
     #[disable_mapping]
     MacroInvokation(MacroInvokation),
     ExternCrate(Option<Symbol>),
     Use(UsePath, UseKind),
     Static(Ty, Mutability, Body),
     Const(Ty, Body),
-    // Fn(s: FnSig, g: Generics, body: FnBody),
     #[custom_arm(
             rustc_hir::ItemKind::Fn(sig, generics, body) => {
-                ItemKind::Fn(generics.sinto(tcx), make_fn_def(sig, body, tcx))
+                ItemKind::Fn(generics.sinto(tcx), make_fn_def::<Body, _>(sig, body, tcx))
             }
         )]
-    Fn(Generics, FnDef),
+    Fn(Generics<Body>, FnDef<Body>),
     Macro(MacroDef, MacroKind),
-    Mod(Vec<Item>),
+    Mod(Vec<Item<Body>>),
     ForeignMod {
         abi: Abi,
-        items: Vec<ForeignItem>,
+        items: Vec<ForeignItem<Body>>,
     },
     GlobalAsm(InlineAsm),
-    TyAlias(Ty, Generics),
-    OpaqueTy(OpaqueTy),
-    Enum(EnumDef, Generics),
-    Struct(VariantData, Generics),
-    Union(VariantData, Generics),
-    Trait(IsAuto, Unsafety, Generics, GenericBounds, Vec<TraitItem>),
-    TraitAlias(Generics, GenericBounds),
-    Impl(Impl),
+    TyAlias(Ty, Generics<Body>),
+    OpaqueTy(OpaqueTy<Body>),
+    Enum(EnumDef<Body>, Generics<Body>),
+    Struct(VariantData, Generics<Body>),
+    Union(VariantData, Generics<Body>),
+    Trait(
+        IsAuto,
+        Unsafety,
+        Generics<Body>,
+        GenericBounds,
+        Vec<TraitItem<Body>>,
+    ),
+    TraitAlias(Generics<Body>, GenericBounds),
+    Impl(Impl<Body>),
 }
 
-pub type EnumDef = Vec<Variant>;
+pub type EnumDef<Body> = Vec<Variant<Body>>;
 
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::TraitItemKind<'tcx>, state: S as tcx)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub enum TraitItemKind {
+pub enum TraitItemKind<Body: IsBody> {
     Const(Ty, Option<Body>),
     #[custom_arm(
         rustc_hir::TraitItemKind::Fn(sig, rustc_hir::TraitFn::Required(id)) => {
@@ -2380,10 +2360,10 @@ pub enum TraitItemKind {
     RequiredFn(FnSig, Vec<Ident>),
     #[custom_arm(
         rustc_hir::TraitItemKind::Fn(sig, rustc_hir::TraitFn::Provided(body)) => {
-            TraitItemKind::ProvidedFn(make_fn_def(sig, body, tcx))
+            TraitItemKind::ProvidedFn(make_fn_def::<Body, _>(sig, body, tcx))
         }
     )]
-    ProvidedFn(FnDef),
+    ProvidedFn(FnDef<Body>),
     #[custom_arm(
         rustc_hir::TraitItemKind::Type(b, ty) => {
             TraitItemKind::Type(b.sinto(tcx), ty.map(|t| t.sinto(tcx)))
@@ -2395,36 +2375,34 @@ pub enum TraitItemKind {
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::TraitItem<'tcx>, state: S as tcx)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct TraitItem {
+pub struct TraitItem<Body: IsBody> {
     pub ident: Ident,
     pub owner_id: DefId,
-    pub generics: Generics,
-    pub kind: TraitItemKind,
+    pub generics: Generics<Body>,
+    pub kind: TraitItemKind<Body>,
     pub span: Span,
     pub defaultness: Defaultness,
 }
 
-impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, Vec<Variant>> for rustc_hir::EnumDef<'tcx> {
-    fn sinto(&self, s: &S) -> Vec<Variant> {
+impl<'tcx, S: BaseState<'tcx> + HasOwnerId, Body: IsBody> SInto<S, EnumDef<Body>>
+    for rustc_hir::EnumDef<'tcx>
+{
+    fn sinto(&self, s: &S) -> EnumDef<Body> {
         self.variants.iter().map(|v| v.sinto(s)).collect()
     }
 }
 
-impl<'a, S: BaseState<'a> + HasOwnerId> SInto<S, TraitItem> for rustc_hir::TraitItemRef {
-    fn sinto(&self, s: &S) -> TraitItem {
-        let owner_id = self.id.owner_id;
-        let s = &State {
-            owner_id,
-            base: s.base(),
-            thir: (),
-        };
+impl<'a, S: BaseState<'a> + HasOwnerId, Body: IsBody> SInto<S, TraitItem<Body>>
+    for rustc_hir::TraitItemRef
+{
+    fn sinto(&self, s: &S) -> TraitItem<Body> {
         let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
         tcx.hir().trait_item(self.clone().id).sinto(s)
     }
 }
 
-impl<'a, 'tcx, S: BaseState<'tcx>> SInto<S, Vec<Item>> for rustc_hir::Mod<'a> {
-    fn sinto(&self, s: &S) -> Vec<Item> {
+impl<'a, 'tcx, S: BaseState<'tcx>, Body: IsBody> SInto<S, Vec<Item<Body>>> for rustc_hir::Mod<'a> {
+    fn sinto(&self, s: &S) -> Vec<Item<Body>> {
         inline_macro_invocations(&self.item_ids.iter().cloned().collect(), s)
         // .iter()
         // .map(|item_id| item_id.sinto(s))
@@ -2435,8 +2413,8 @@ impl<'a, 'tcx, S: BaseState<'tcx>> SInto<S, Vec<Item>> for rustc_hir::Mod<'a> {
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::ForeignItemKind<'tcx>, state: S as tcx)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub enum ForeignItemKind {
-    Fn(FnDecl, Vec<Ident>, Generics),
+pub enum ForeignItemKind<Body: IsBody> {
+    Fn(FnDecl, Vec<Ident>, Generics<Body>),
     Static(Ty, Mutability),
     Type,
 }
@@ -2444,16 +2422,18 @@ pub enum ForeignItemKind {
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::ForeignItem<'tcx>, state: S as tcx)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct ForeignItem {
+pub struct ForeignItem<Body: IsBody> {
     pub ident: Ident,
-    pub kind: ForeignItemKind,
+    pub kind: ForeignItemKind<Body>,
     pub owner_id: DefId,
     pub span: Span,
     pub vis_span: Span,
 }
 
-impl<'a, S: BaseState<'a> + HasOwnerId> SInto<S, ForeignItem> for rustc_hir::ForeignItemRef {
-    fn sinto(&self, s: &S) -> ForeignItem {
+impl<'a, S: BaseState<'a> + HasOwnerId, Body: IsBody> SInto<S, ForeignItem<Body>>
+    for rustc_hir::ForeignItemRef
+{
+    fn sinto(&self, s: &S) -> ForeignItem<Body> {
         let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
         tcx.hir().foreign_item(self.clone().id).sinto(s)
     }
@@ -2462,8 +2442,8 @@ impl<'a, S: BaseState<'a> + HasOwnerId> SInto<S, ForeignItem> for rustc_hir::For
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::OpaqueTy<'tcx>, state: S as tcx)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct OpaqueTy {
-    pub generics: Generics,
+pub struct OpaqueTy<Body: IsBody> {
+    pub generics: Generics<Body>,
     pub bounds: GenericBounds,
     pub origin: OpaqueTyOrigin,
     pub in_trait: bool,
@@ -2548,9 +2528,6 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, GenericBounds>
 {
     fn sinto(&self, s: &S) -> GenericBounds {
         let tcx = s.base().tcx;
-        let hir_id = tcx
-            .hir()
-            .local_def_id_to_hir_id(s.owner_id().to_def_id().expect_local());
 
         // According to what kind of node we are looking at, we should
         // either call `predicates_of` or `item_bounds`
@@ -2622,7 +2599,7 @@ pub struct MacroDef {
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_hir::Item<'tcx>, state: S as state)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct Item {
+pub struct Item<Body: IsBody> {
     #[map({
         let name: String = self.ident.name.to_ident_string();
         let owner_id: DefId = self.owner_id.sinto(state);
@@ -2641,10 +2618,11 @@ pub struct Item {
                 ..state.base()
             },
             thir: (),
+            mir: (),
             owner_id: self.owner_id,
         })
     })]
-    pub kind: ItemKind,
+    pub kind: ItemKind<Body>,
     #[map({
         let tcx = state.base().tcx;
         tcx.hir().attrs(rustc_hir::hir_id::HirId::from(owner_id.clone())).sinto(state)
@@ -2656,8 +2634,8 @@ pub struct Item {
     pub expn_backtrace: Vec<ExpnData>,
 }
 
-impl<'tcx, S: BaseState<'tcx>> SInto<S, Item> for rustc_hir::ItemId {
-    fn sinto(&self, s: &S) -> Item {
+impl<'tcx, S: BaseState<'tcx>, Body: IsBody> SInto<S, Item<Body>> for rustc_hir::ItemId {
+    fn sinto(&self, s: &S) -> Item<Body> {
         let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
         tcx.hir().item(self.clone()).sinto(s)
     }
@@ -2674,17 +2652,17 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, Ident> for rustc_span::symbol::Ident {
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::WhereBoundPredicate<'tcx>, state: S as tcx)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct WhereBoundPredicate {
+pub struct WhereBoundPredicate<Body: IsBody> {
     pub hir_id: HirId,
     pub span: Span,
     pub origin: PredicateOrigin,
-    pub bound_generic_params: Vec<GenericParam>,
+    pub bound_generic_params: Vec<GenericParam<Body>>,
     pub bounded_ty: Ty,
     pub bounds: GenericBounds,
 }
 
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::PredicateOrigin, state: S as tcx)]
+#[args(<S>, from: rustc_hir::PredicateOrigin, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum PredicateOrigin {
     WhereClause,

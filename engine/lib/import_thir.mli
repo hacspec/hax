@@ -9,4 +9,6 @@ type error =
   | IllTypedIntLiteral
 [@@deriving show]
 
-val c_item : Types.item -> (Ast.Rust.item list, error) Result.t
+val c_item :
+  Types.item_for__decorated_for__expr_kind ->
+  (Ast.Rust.item list, error) Result.t
