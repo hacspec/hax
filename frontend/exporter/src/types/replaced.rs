@@ -26,14 +26,6 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, Const> for rustc_middle::ty::Const<'tcx>
     fn sinto(&self, s: &S) -> Const {
         let x = self.eval(s.base().tcx, get_param_env(s));
         use rustc_middle::query::Key;
-        Box::new(
-            constant_utils::const_to_constant_expr(
-                s,
-                x.clone(),
-                x.ty(),
-                x.default_span(s.base().tcx),
-            )
-            .into(),
-        )
+        Box::new(const_to_constant_expr(s, x.clone(), x.ty(), x.default_span(s.base().tcx)).into())
     }
 }
