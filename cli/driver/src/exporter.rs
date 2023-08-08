@@ -311,7 +311,6 @@ impl Callbacks for ExtractionCallbacks {
                         pub type MC =
                             hax_frontend_exporter::MirBody<hax_frontend_exporter::mir_kinds::Const>;
                     }
-                    use itertools::Itertools;
                     kind.sort();
                     kind.dedup();
                     match kind.as_slice() {

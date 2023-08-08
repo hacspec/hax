@@ -23,7 +23,6 @@ hax-diagnostics.workspace = true
 which.workspace = true
 inquire = "0.6"
 const_format = "0.2"
-itertools.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
