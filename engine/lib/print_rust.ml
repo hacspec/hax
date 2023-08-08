@@ -324,23 +324,127 @@ module Raw = struct
     let e = pexpr' e in
     if need_braces then !"{" & e & !"}" else e
 
+  let pattr (attr : attr) =
+    let ( ! ) = pure attr.span in
+    match attr.kind with
+    | Tool { path; tokens } -> !"#[" & !path & !"(" & !tokens & !")" & !"]"
+    | DocComment { kind; body } -> !"/**" & !body & !"*/"
+
+  let pattrs attrs = List.map ~f:pattr attrs |> concat
+
+  let pgeneric_param_kind span (pk : generic_param_kind) =
+    let ( ! ) = pure span in
+    match pk with
+    | GPLifetime _ -> (empty, !": '_")
+    | GPType { default = Some default } -> (empty, !" = " & pty span default)
+    | GPType { default = None } -> (empty, empty)
+    | GPConst { typ } -> (!"const ", !":" & pty span typ)
+
+  let pgeneric_param (p : generic_param) =
+    let ( ! ) = pure p.span in
+    let prefix, suffix = pgeneric_param_kind p.span p.kind in
+    pattrs p.attrs & prefix & plocal_ident p.span p.ident & suffix
+
+  let pgeneric_params (pl : generic_param list) =
+    match pl with
+    | { span; _ } :: _ ->
+        let ( ! ) = pure span in
+        !"<" & concat ~sep:!", " (List.map ~f:pgeneric_param pl) & !">"
+    | _ -> empty
+
+  let ptrait_ref span { trait; args; bindings } =
+    let ( ! ) = pure span in
+    let args = List.map ~f:(pgeneric_value span) args |> concat ~sep:!", " in
+    !(Concrete_ident_view.show trait)
+    & if List.is_empty args then empty else !"<" & args & !">"
+
+  let pgeneric_constraint span (p : generic_constraint) =
+    let ( ! ) = pure span in
+    match p with
+    | GCLifetime _ -> !"'_: '_"
+    | GCType { typ; implements } ->
+        pty span typ & !":" & ptrait_ref span implements
+
+  let pgeneric_constraints span (constraints : generic_constraint list) =
+    if List.is_empty constraints then empty
+    else
+      let ( ! ) = pure span in
+      !"where "
+      & concat ~sep:!"," (List.map ~f:(pgeneric_constraint span) constraints)
+
+  let pvariant_body span { name; arguments; attrs; is_record } =
+    let ( ! ) = pure span in
+    if is_record then
+      !"{"
+      & concat ~sep:!","
+          (List.map arguments ~f:(fun (id, ty, attrs) ->
+               pattrs attrs
+               & !(Concrete_ident_view.to_definition_name id)
+               & !":" & pty span ty))
+      & !"}"
+    else
+      !"("
+      & concat ~sep:!","
+          (List.map arguments ~f:(fun (_, ty, attrs) ->
+               pattrs attrs & pty span ty))
+      & !")"
+
+  let pvariant span (variant : variant) =
+    let ( ! ) = pure span in
+    pattrs variant.attrs
+    & !(Concrete_ident_view.to_definition_name variant.name)
+    & pvariant_body span variant
+
+  let pvariants span variants =
+    let ( ! ) = pure span in
+    concat ~sep:!", " (List.map ~f:(pvariant span) variants)
+
   let pitem (e : item) =
+    let exception NotImplemented in
     let ( ! ) = pure e.span in
-    match e.v with
-    | Fn { name; body; generics = _todo; params } ->
-        let return_type = pty e.span body.typ in
-        let params =
-          List.map
-            ~f:(fun { pat; typ; typ_span } ->
-              ppat pat & !": "
-              & pty (Option.value ~default:pat.span typ_span) typ)
-            params
-          |> concat ~sep:!","
-        in
-        !"fn "
-        & !(Concrete_ident_view.to_definition_name name)
-        & !"(" & params & !") -> " & return_type & !"{" & pexpr body & !"}"
-    | _ -> !"/* TO DO */"
+    try
+      let pi =
+        match e.v with
+        | Fn { name; body; generics; params } ->
+            let return_type = pty e.span body.typ in
+            let params =
+              List.map
+                ~f:(fun { pat; typ; typ_span } ->
+                  ppat pat & !": "
+                  & pty (Option.value ~default:pat.span typ_span) typ)
+                params
+              |> concat ~sep:!","
+            in
+            !"fn "
+            & !(Concrete_ident_view.to_definition_name name)
+            & pgeneric_params generics.params
+            & !"(" & params & !") -> " & return_type
+            & pgeneric_constraints e.span generics.constraints
+            & !"{" & pexpr body & !"}"
+        | TyAlias { name; generics; ty } ->
+            !"type "
+            & !(Concrete_ident_view.to_definition_name name)
+            & pgeneric_params generics.params
+            & pgeneric_constraints e.span generics.constraints
+            & !"=" & pty e.span ty & !";"
+        | Type { name; generics; variants = [ variant ]; is_struct = true } ->
+            !"struct "
+            & !(Concrete_ident_view.to_definition_name name)
+            & pgeneric_params generics.params
+            & pgeneric_constraints e.span generics.constraints
+            & pvariant_body e.span variant
+        | Type { name; generics; variants : _ } ->
+            !"enum "
+            & !(Concrete_ident_view.to_definition_name name)
+            & pgeneric_params generics.params
+            & pgeneric_constraints e.span generics.constraints
+            &
+            if List.is_empty variants then empty
+            else !"{" & pvariants e.span variants & !"}"
+        | _ -> raise NotImplemented
+      in
+      pattrs e.attrs & pi
+    with NotImplemented -> !"/* print_rust: pitem: not implemented */"
 end
 
 let rustfmt (s : string) : string =

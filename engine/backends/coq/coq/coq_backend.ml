@@ -355,7 +355,7 @@ struct
       [ C.AST.Unimplemented "item error backend" ]
 
   and pgeneric_param span : generic_param -> _ = function
-    | GPType { ident; default } -> ident.name
+    | { ident; kind = GPType _; _ } -> ident.name
     | _ -> Error.unimplemented ~details:"Coq: TODO: generic_params" span
 
   and pitem_unwrapped (e : item) : C.AST.decl list =
@@ -543,7 +543,7 @@ struct
                   a
                   @ [
                       (match b with
-                      | GPType { ident; default } -> ident.name
+                      | { ident; kind = GPType _; _ } -> ident.name
                       | _ ->
                           Error.unimplemented
                             ~details:"Coq: TODO: generic_params" span);
@@ -586,10 +586,11 @@ struct
           let name = U.Concrete_ident_view.to_definition_name name in
           match arguments with
           | [] -> C.AST.BaseCase name
-          | [ (arg_name, arg_ty) ] -> C.AST.InductiveCase (name, pty span arg_ty)
+          | [ (arg_name, arg_ty, _arg_attrs) ] ->
+              C.AST.InductiveCase (name, pty span arg_ty)
           | _ ->
               C.AST.InductiveCase
-                (name, C.AST.Product (List.map ~f:(snd >> pty span) arguments)))
+                (name, C.AST.Product (List.map ~f:(snd3 >> pty span) arguments)))
   (* match variants with _ -> [] *)
   (* TODO: I don't get this pattern maching below. Variant with more than one payloads are rejected implicitely? *)
   (* | { name; arguments = [ (arg_name, arg_ty) ] } :: xs -> *)
@@ -612,7 +613,7 @@ struct
 
   and p_record span variants parrent_name : (string * C.AST.ty) list =
     match variants with
-    | { name; arguments = [ (arg_name, arg_ty) ] } :: xs ->
+    | { name; arguments = [ (arg_name, arg_ty, _arg_attrs) ] } :: xs ->
         (U.Concrete_ident_view.to_definition_name arg_name, pty span arg_ty)
         :: p_record span xs parrent_name
     | { name; arguments = [] } :: xs ->
@@ -628,7 +629,7 @@ struct
   and p_record_record span arguments : (string * C.AST.ty) list =
     List.map
       ~f:(function
-        | arg_name, arg_ty ->
+        | arg_name, arg_ty, _arg_attrs ->
             (U.Concrete_ident_view.to_definition_name arg_name, pty span arg_ty))
       arguments
 end

@@ -9,6 +9,9 @@ let ( *** ) (f : 'a -> 'b) (g : 'c -> 'd) ((l, r) : 'a * 'c) : 'b * 'd =
 
 let map_fst f = f *** Fn.id
 let map_snd g = Fn.id *** g
+let map_fst3 f (x, y, z) = (f x, y, z)
+let map_snd3 f (x, y, z) = (x, f y, z)
+let map_thd3 f (x, y, z) = (x, y, f z)
 let fst3 (x, _, _) = x
 let snd3 (_, y, _) = y
 let thd3 (_, _, z) = z

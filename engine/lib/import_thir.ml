@@ -114,6 +114,28 @@ module Exn = struct
     | And -> And
     | Or -> Or
 
+  let c_attr (attr : Thir.attribute) : attr =
+    let kind =
+      match attr.kind with
+      | Normal { item = { args; path; tokens = subtokens }; tokens } ->
+          let args_tokens =
+            match args with Delimited { tokens; _ } -> Some tokens | _ -> None
+          in
+          let tokens =
+            let ( || ) = Option.first_some in
+            Option.value ~default:"" (args_tokens || tokens || subtokens)
+          in
+          Tool { path; tokens }
+      | DocComment (kind, body) ->
+          let kind =
+            match kind with Thir.Line -> Line | Thir.Block -> Block
+          in
+          DocComment { kind; body }
+    in
+    { kind; span = Span.of_thir attr.span }
+
+  let c_attrs : Thir.attribute list -> attrs = List.map ~f:c_attr
+
   type extended_literal =
     | EL_Lit of literal
     | EL_U8Array of literal list (* EL_U8Array only encodes arrays of [u8]s *)
@@ -820,6 +842,7 @@ module Exn = struct
         typ_span = Option.map ~f:Span.of_thir param.ty_span;
         typ = c_ty (Option.value ~default:span param.ty_span) param.ty;
         pat = c_pat (Option.value_exn param.pat);
+        attrs = c_attrs param.attributes;
       }
 
     let c_generic_param (param : Thir.generic_param) : generic_param =
@@ -833,15 +856,19 @@ module Exn = struct
         | Error -> assertion_failure [ param.span ] "[Error] ident"
         | Plain n -> local_ident n
       in
-      match (param.kind : Thir.generic_param_kind) with
-      | Lifetime _ -> GPLifetime { ident; witness = W.lifetime }
-      | Type { default; _ } ->
-          let default = Option.map ~f:(c_ty param.span) default in
-          GPType { ident; default }
-      | Const { default = Some _; _ } ->
-          unimplemented [ param.span ] "c_generic_param:Const with a default"
-      | Const { default = None; ty } ->
-          GPConst { ident; typ = c_ty param.span ty }
+      let kind =
+        match (param.kind : Thir.generic_param_kind) with
+        | Lifetime _ -> GPLifetime { witness = W.lifetime }
+        | Type { default; _ } ->
+            let default = Option.map ~f:(c_ty param.span) default in
+            GPType { default }
+        | Const { default = Some _; _ } ->
+            unimplemented [ param.span ] "c_generic_param:Const with a default"
+        | Const { default = None; ty } -> GPConst { typ = c_ty param.span ty }
+      in
+      let span = Span.of_thir param.span in
+      let attrs = c_attrs param.attributes in
+      { ident; span; attrs; kind }
 
     let c_predicate_kind span (p : Thir.predicate_kind) : trait_ref option =
       match p with
@@ -928,6 +955,7 @@ module Exn = struct
       ti_generics = { params; constraints };
       ti_v = c_trait_item' item.span item.kind;
       ti_name = fst item.ident;
+      ti_attrs = c_attrs item.attributes;
     }
 
   let rec c_item (item : Thir.item) : item list =
@@ -947,7 +975,9 @@ module Exn = struct
     else
       let span = Span.of_thir item.span in
       let mk_one v =
-        { span; v; ident = Concrete_ident.of_def_id Value item.owner_id }
+        let ident = Concrete_ident.of_def_id Value item.owner_id in
+        let attrs = c_attrs item.attributes in
+        { span; v; ident; attrs }
       in
       let mk v = [ mk_one v ] in
       (* TODO: things might be unnamed (e.g. constants) *)
@@ -988,19 +1018,22 @@ module Exn = struct
           let variants =
             let kind = Concrete_ident.Kind.Constructor { is_struct } in
             List.map
-              ~f:(fun { data; def_id = variant_id; _ } ->
+              ~f:(fun { data; def_id = variant_id; attributes; _ } ->
                 let is_record = [%matches? Types.Struct (_ :: _, _)] data in
                 let name = Concrete_ident.of_def_id kind variant_id in
                 let arguments =
                   match data with
                   | Tuple (fields, _, _) | Struct (fields, _) ->
                       List.map
-                        ~f:(fun { def_id = id; ty; span; _ } ->
-                          (Concrete_ident.of_def_id Field id, c_ty span ty))
+                        ~f:(fun { def_id = id; ty; span; attributes; _ } ->
+                          ( Concrete_ident.of_def_id Field id,
+                            c_ty span ty,
+                            c_attrs attributes ))
                         fields
                   | Unit _ -> []
                 in
-                { name; arguments; is_record })
+                let attrs = c_attrs attributes in
+                { name; arguments; is_record; attrs })
               variants
           in
           let name = Concrete_ident.of_def_id Type def_id in
@@ -1009,22 +1042,26 @@ module Exn = struct
           let generics = c_generics generics in
           let def_id = Option.value_exn item.def_id in
           let is_struct = true in
+          (* repeating the attributes of the item in the variant: TODO is that ok? *)
+          let attrs = c_attrs item.attributes in
           let v =
             let kind = Concrete_ident.Kind.Constructor { is_struct } in
             let name = Concrete_ident.of_def_id kind def_id in
             let mk fields is_record =
               let arguments =
                 List.map
-                  ~f:(fun Thir.{ def_id = id; ty; span; _ } ->
-                    (Concrete_ident.of_def_id Field id, c_ty span ty))
+                  ~f:(fun Thir.{ def_id = id; ty; span; attributes; _ } ->
+                    ( Concrete_ident.of_def_id Field id,
+                      c_ty span ty,
+                      c_attrs attributes ))
                   fields
               in
-              { name; arguments; is_record }
+              { name; arguments; is_record; attrs }
             in
             match v with
             | Tuple (fields, _, _) -> mk fields false
             | Struct ((_ :: _ as fields), _) -> mk fields true
-            | _ -> { name; arguments = []; is_record = false }
+            | _ -> { name; arguments = []; is_record = false; attrs }
           in
           let variants = [ v ] in
           let name = Concrete_ident.of_def_id Type def_id in
@@ -1043,25 +1080,16 @@ module Exn = struct
             Concrete_ident.of_def_id Trait (Option.value_exn item.def_id)
           in
           let { params; constraints } = c_generics generics in
-          let params =
-            GPType
-              {
-                ident =
-                  {
-                    name = "Self";
-                    id = LocalIdent.ty_param_id_of_int 0 (* todo *);
-                  };
-                default = None;
-              }
-            :: params
+          let self =
+            let id = LocalIdent.ty_param_id_of_int 0 (* todo *) in
+            let ident = LocalIdent.{ name = "Self"; id } in
+            let kind = GPType { default = None } in
+            { ident; span; attrs = []; kind }
           in
-          mk
-          @@ Trait
-               {
-                 name;
-                 generics = { params; constraints };
-                 items = List.map ~f:c_trait_item items;
-               }
+          let params = self :: params in
+          let generics = { params; constraints } in
+          let items = List.map ~f:c_trait_item items in
+          mk @@ Trait { name; generics; items }
       | Trait (Yes, _, _, _, _) -> unimplemented [ item.span ] "Auto trait"
       | Trait (_, Unsafe, _, _, _) -> unimplemented [ item.span ] "Unsafe trait"
       | Impl { of_trait = None; generics; items; _ } ->
@@ -1094,7 +1122,8 @@ module Exn = struct
                        (https://doc.rust-lang.org/reference/items/implementations.html#inherent-implementations)."
               in
               let ident = Concrete_ident.of_def_id Value item.owner_id in
-              { span = Span.of_thir item.span; v; ident })
+              let attrs = c_attrs item.attributes in
+              { span = Span.of_thir item.span; v; ident; attrs })
             items
       | Impl { unsafety = Unsafe; _ } -> unsafe_block [ item.span ]
       | Impl
@@ -1135,6 +1164,7 @@ module Exn = struct
                                IIFn { body = c_expr e; params = [] }
                            | Type ty -> IIType (c_ty item.span ty));
                          ii_name = fst item.ident;
+                         ii_attrs = c_attrs item.attributes;
                        })
                      items;
                }
@@ -1159,7 +1189,8 @@ module Exn = struct
                 @ [ Types.{ data = ValueNs "DUMMY"; disambiguator = 0 } ];
             }
           in
-          [ { span; v; ident = Concrete_ident.of_def_id Value def_id } ]
+          let attrs = c_attrs item.attributes in
+          [ { span; v; ident = Concrete_ident.of_def_id Value def_id; attrs } ]
       | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
       | OpaqueTy _ | Union _ | TraitAlias _ ->
           mk NotImplementedYet

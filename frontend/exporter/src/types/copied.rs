@@ -2113,7 +2113,7 @@ pub struct GenericParam<Body: IsBody> {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::ImplItem<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::ImplItem<'tcx>, state: S as s)]
 pub struct ImplItem<Body: IsBody> {
     pub ident: Ident,
     pub owner_id: DefId,
@@ -2122,6 +2122,12 @@ pub struct ImplItem<Body: IsBody> {
     pub defaultness: Defaultness,
     pub span: Span,
     pub vis_span: Span,
+    #[map({
+        let tcx = s.base().tcx;
+        tcx.hir().attrs(rustc_hir::hir_id::HirId::from(owner_id.clone())).sinto(s)
+    })]
+    #[not_in_source]
+    pub attributes: Vec<Attribute>,
 }
 
 #[derive(AdtInto)]
@@ -2373,7 +2379,7 @@ pub enum TraitItemKind<Body: IsBody> {
 }
 
 #[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::TraitItem<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::TraitItem<'tcx>, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct TraitItem<Body: IsBody> {
     pub ident: Ident,
@@ -2382,6 +2388,12 @@ pub struct TraitItem<Body: IsBody> {
     pub kind: TraitItemKind<Body>,
     pub span: Span,
     pub defaultness: Defaultness,
+    #[map({
+        let tcx = s.base().tcx;
+        tcx.hir().attrs(rustc_hir::hir_id::HirId::from(owner_id.clone())).sinto(s)
+    })]
+    #[not_in_source]
+    pub attributes: Vec<Attribute>,
 }
 
 impl<'tcx, S: BaseState<'tcx> + HasOwnerId, Body: IsBody> SInto<S, EnumDef<Body>>

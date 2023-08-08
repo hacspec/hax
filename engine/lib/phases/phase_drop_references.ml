@@ -116,13 +116,18 @@ struct
         bindings = r.bindings;
       }
 
-    let dgeneric_param (span : span) (p : A.generic_param) :
+    let dgeneric_param (span : span)
+        ({ ident; kind; attrs; span } : A.generic_param) :
         B.generic_param option =
-      match p with
-      | GPLifetime _ -> None
-      | GPType { ident; default } ->
-          Some (GPType { ident; default = Option.map ~f:(dty span) default })
-      | GPConst { ident; typ } -> Some (GPConst { ident; typ = dty span typ })
+      let ( let* ) x f = Option.bind ~f x in
+      let* kind =
+        match kind with
+        | GPLifetime _ -> None
+        | GPType { default } ->
+            Some (B.GPType { default = Option.map ~f:(dty span) default })
+        | GPConst { typ } -> Some (B.GPConst { typ = dty span typ })
+      in
+      Some B.{ ident; kind; attrs; span }
 
     let dgeneric_constraint (span : span) (p : A.generic_constraint) :
         B.generic_constraint option =

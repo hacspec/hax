@@ -437,14 +437,14 @@ struct
       in
       F.pat @@ F.AST.PatAscribed (v, (ty, None))
     in
-    match p with
-    | GPLifetime { ident } ->
-        Error.assertion_failure span "pgeneric_param:LIFETIME"
-    | GPType { ident; default = None } ->
+    let ident = p.ident in
+    match p.kind with
+    | GPLifetime _ -> Error.assertion_failure span "pgeneric_param:LIFETIME"
+    | GPType { default = None } ->
         mk_implicit ident (F.term @@ F.AST.Name (F.lid [ "Type" ]))
-    | GPType { ident; default = _ } ->
+    | GPType _ ->
         Error.unimplemented span ~details:"pgeneric_param:Type with default"
-    | GPConst { ident; typ } -> mk_implicit ident (pty span typ)
+    | GPConst { typ } -> mk_implicit ident (pty span typ)
 
   let rec pgeneric_constraint span (nth : int) (c : generic_constraint) =
     match c with
@@ -460,15 +460,15 @@ struct
              (F.pat_var_tcresolve @@ Some ("__" ^ string_of_int nth), (tc, None))
 
   let rec pgeneric_param_bd span (p : generic_param) =
-    match p with
-    | GPLifetime { ident } ->
-        Error.assertion_failure span "pgeneric_param_bd:LIFETIME"
-    | GPType { ident; default = None } ->
+    let ident = p.ident in
+    match p.kind with
+    | GPLifetime _ -> Error.assertion_failure span "pgeneric_param_bd:LIFETIME"
+    | GPType { default = None } ->
         let t = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
         F.mk_e_binder (F.AST.Annotated (plocal_ident ident, t))
-    | GPType { ident; default = _ } ->
+    | GPType _ ->
         Error.unimplemented span ~details:"pgeneric_param_bd:Type with default"
-    | GPConst { ident; typ } ->
+    | GPConst { typ } ->
         Error.unimplemented span ~details:"pgeneric_param_bd:const todo"
 
   let rec pgeneric_constraint_bd span (c : generic_constraint) =
@@ -560,7 +560,7 @@ struct
                      None,
                      [],
                      List.map
-                       ~f:(fun (field, ty) ->
+                       ~f:(fun (field, ty, _attrs) ->
                          ( F.id @@ U.Concrete_ident_view.to_definition_name field,
                            None,
                            [],
@@ -577,12 +577,12 @@ struct
               ( F.id (U.Concrete_ident_view.to_definition_name name),
                 Some
                   (let field_indexes =
-                     List.map ~f:(fst >> index_of_field_concrete) arguments
+                     List.map ~f:(fst3 >> index_of_field_concrete) arguments
                    in
                    if is_record then
                      F.AST.VpRecord
                        ( List.map
-                           ~f:(fun (field, ty) ->
+                           ~f:(fun (field, ty, _attrs) ->
                              ( F.id
                                @@ U.Concrete_ident_view.to_definition_name field,
                                None,
@@ -595,7 +595,7 @@ struct
                        (F.term
                        @@ F.AST.Product
                             ( List.map
-                                ~f:(fun (_, ty) ->
+                                ~f:(fun (_, ty, _) ->
                                   F.mk_e_binder @@ F.AST.NoName (pty e.span ty))
                                 arguments,
                               self ))),
