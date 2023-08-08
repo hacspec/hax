@@ -2321,7 +2321,6 @@ pub struct PathSegment {
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_hir::ItemKind<'tcx>, state: S as tcx)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-// #[derive(Deserialize)]
 pub enum ItemKind<Body: IsBody> {
     #[disable_mapping]
     MacroInvokation(MacroInvokation),
