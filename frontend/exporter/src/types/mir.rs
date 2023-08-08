@@ -40,7 +40,7 @@ impl<S, TT, T: SInto<S, TT>> SInto<S, ClearCrossCrate<TT>>
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<S>, from: rustc_middle::mir::RuntimePhase, state: S as s)]
+#[args(<S>, from: rustc_middle::mir::RuntimePhase, state: S as _s)]
 pub enum RuntimePhase {
     Initial,
     PostCleanup,
@@ -48,7 +48,7 @@ pub enum RuntimePhase {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<S>, from: rustc_middle::mir::AnalysisPhase, state: S as s)]
+#[args(<S>, from: rustc_middle::mir::AnalysisPhase, state: S as _s)]
 pub enum AnalysisPhase {
     Initial,
     PostCleanup,
@@ -322,7 +322,7 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx>> SInto<S, Place> for rustc_middle::
                             index: index.sinto(s),
                         }
                     }
-                    rustc_middle::ty::TyKind::Tuple(types) => {
+                    rustc_middle::ty::TyKind::Tuple(_types) => {
                         ProjectionElemFieldKind::Tuple(index.as_u32())
                     }
                     ty_kind => {

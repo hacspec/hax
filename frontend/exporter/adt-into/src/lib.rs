@@ -114,7 +114,7 @@ fn fields_to_arm(
         let mapped_value = if not_in_source {
             quote_spanned! {span=> {#translation}}
         } else {
-            quote_spanned! {span=> {let #point = #name_source; #translation}}
+            quote_spanned! {span=> {#[allow(unused_variables)] let #point = #name_source; #translation}}
         };
         let prefix = if is_struct {
             quote_spanned! {field_name_span=> #name_destination:}

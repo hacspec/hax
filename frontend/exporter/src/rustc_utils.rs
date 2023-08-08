@@ -62,6 +62,18 @@ pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
     }
 }
 
+#[derive(Debug)]
+pub enum ReadSpanErr {
+    NotRealFileName(String),
+    WhileReading(std::io::Error),
+    NotEnoughLines { span: Span },
+}
+impl std::convert::From<std::io::Error> for ReadSpanErr {
+    fn from(value: std::io::Error) -> Self {
+        ReadSpanErr::WhileReading(value)
+    }
+}
+
 #[tracing::instrument]
 pub(crate) fn read_span_from_file(span: &Span) -> Result<String, ReadSpanErr> {
     use ReadSpanErr::*;
@@ -70,7 +82,7 @@ pub(crate) fn read_span_from_file(span: &Span) -> Result<String, ReadSpanErr> {
         _ => Err(NotRealFileName(format!("{:#?}", span.filename))),
     })?;
     use std::fs::File;
-    use std::io::{self, prelude::*, BufReader};
+    use std::io::{prelude::*, BufReader};
     let file = File::open(realpath)?;
     let reader = BufReader::new(file);
     let lines = reader
@@ -102,7 +114,6 @@ pub(crate) fn read_span_from_file(span: &Span) -> Result<String, ReadSpanErr> {
 #[tracing::instrument(skip(sess))]
 pub fn translate_span(span: rustc_span::Span, sess: &rustc_session::Session) -> Span {
     let smap: &rustc_span::source_map::SourceMap = sess.parse_sess.source_map();
-    let span_data = span.data();
     let filename = smap.span_to_filename(span);
 
     let lo = smap.lookup_char_pos(span.lo());
@@ -124,6 +135,8 @@ pub(crate) fn get_param_env<'tcx, S: BaseState<'tcx>>(s: &S) -> rustc_middle::ty
 }
 
 #[tracing::instrument(skip(s))]
+#[allow(dead_code)]
+#[allow(unused)]
 pub(crate) fn _resolve_trait<'tcx, S: BaseState<'tcx>>(
     trait_ref: rustc_middle::ty::TraitRef<'tcx>,
     s: &S,
@@ -269,7 +282,6 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
     s: &S,
 ) -> Vec<Item<Body>> {
     let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
-    let hir = tcx.hir();
 
     struct SpanEq(Option<(DefId, rustc_span::hygiene::ExpnData)>);
     impl core::cmp::PartialEq for SpanEq {

@@ -53,7 +53,7 @@ pub fn body_from_id<'tcx, Body: IsBody, S: BaseState<'tcx> + HasOwnerId>(
 mod implementations {
     use super::*;
     impl IsBody for () {
-        fn body<'tcx, S: BaseState<'tcx>>(did: RLocalDefId, owner: ROwnerId, s: &S) -> Self {
+        fn body<'tcx, S: BaseState<'tcx>>(_did: RLocalDefId, _owner: ROwnerId, _s: &S) -> Self {
             ()
         }
     }

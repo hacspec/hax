@@ -1,4 +1,4 @@
-pub use crate::utils::*;
+pub(crate) use crate::utils::*;
 pub use crate::*;
 pub use schemars::{schema_for, JsonSchema};
 pub use serde::{Deserialize, Serialize};

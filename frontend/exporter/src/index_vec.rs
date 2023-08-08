@@ -51,7 +51,7 @@ macro_rules! make_idx_wrapper {
                 }
             }
             impl<S> SInto<S, $type> for OriginalType {
-                fn sinto(&self, s: &S) -> $type {
+                fn sinto(&self, _s: &S) -> $type {
                     $type::new(self.index())
                 }
             }

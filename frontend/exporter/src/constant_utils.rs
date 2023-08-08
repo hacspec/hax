@@ -106,7 +106,9 @@ pub(crate) fn scalar_int_to_lit_kind<'tcx, S: BaseState<'tcx>>(
     }
 }
 
-fn translate_constant_integer_like_value<'tcx, S: BaseState<'tcx>>(
+// TODO: This function is not used for now, but will be for Mir translation
+#[allow(dead_code)]
+pub(crate) fn translate_constant_integer_like_value<'tcx, S: BaseState<'tcx>>(
     ty: rustc_middle::ty::Ty<'tcx>,
     s: &S,
     scalar: &rustc_middle::mir::interpret::Scalar,
@@ -158,7 +160,6 @@ fn translate_constant_integer_like_value<'tcx, S: BaseState<'tcx>>(
         // A [Scalar] might also be any zero-sized [Adt] or [Tuple]
         ty::Tuple(ty) if ty.is_empty() => ConstantExprKind::Tuple { fields: vec![] },
         ty::Adt(def, _) if let [variant_def] = &def.variants().raw && variant_def.fields.is_empty() => {
-            let variant_idx = rustc_abi::VariantIdx::from_u32(0);
             ConstantExprKind::Adt{
                 info: get_variant_information(def, &variant_def.def_id, s),
                 fields: vec![],
@@ -191,7 +192,6 @@ pub(crate) fn const_to_constant_expr<'tcx, S: BaseState<'tcx>>(
         ty::ConstKind::Value(valtree) => return valtree_to_constant_expr(s, valtree, ty, span),
         ty::ConstKind::Error(_) => span_fatal!(s, span, "ty::ConstKind::Error"),
         ty::ConstKind::Expr(e) => {
-            use rustc_middle::ty::Expr as CE;
             span_fatal!(s, span, "ty::ConstKind::Expr {:#?}", e)
         }
         ty::ConstKind::Bound(i, bound) => {

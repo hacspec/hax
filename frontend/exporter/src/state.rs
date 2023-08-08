@@ -18,6 +18,7 @@ macro_rules! mk_aux {
                 fn [<with_ $field>](self: Self, $field: $($field_type)+<$($lts)*>) -> Self::Out;
             }
             // const _: &str = stringify!(
+            #[allow(unused)]
             impl<$($lts,)*$($gen_full)*> [<Has $field:camel Setter>]<$($lts,)*> for $state<$($gen_full)*> {
                 type Out = $state<$($params)*>;
                 fn [<with_ $field>](self: Self, $field: $($field_type)+<$($lts)*>) -> Self::Out {
