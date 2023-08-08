@@ -273,14 +273,18 @@ struct
         bindings = r.bindings;
       }
 
-    let dgeneric_param (span : span) (generic_param : A.generic_param) :
-        B.generic_param =
-      match generic_param with
-      | GPLifetime { ident; witness } ->
-          GPLifetime { ident; witness = S.lifetime witness }
-      | GPType { ident; default } ->
-          GPType { ident; default = Option.map ~f:(dty span) default }
-      | GPConst { ident; typ } -> GPConst { ident; typ = dty span typ }
+    (* TODO: remvove span argument *)
+    let dgeneric_param (span : span)
+        ({ ident; span; attrs; kind } : A.generic_param) : B.generic_param =
+      let kind =
+        match kind with
+        | GPLifetime { witness } ->
+            B.GPLifetime { witness = S.lifetime witness }
+        | GPType { default } ->
+            GPType { default = Option.map ~f:(dty span) default }
+        | GPConst { typ } -> GPConst { typ = dty span typ }
+      in
+      { ident; span; kind; attrs }
 
     let dgeneric_constraint (span : span)
         (generic_constraint : A.generic_constraint) : B.generic_constraint =
@@ -301,13 +305,15 @@ struct
         pat = dpat p.pat;
         typ = dty (Option.value ~default:span p.typ_span) p.typ;
         typ_span = p.typ_span;
+        attrs = p.attrs;
       }
 
     let dvariant (span : span) (v : A.variant) : B.variant =
       {
         name = v.name;
-        arguments = List.map ~f:(map_snd @@ dty span) v.arguments;
+        arguments = List.map ~f:(map_snd3 @@ dty span) v.arguments;
         is_record = v.is_record;
+        attrs = v.attrs;
       }
 
     let rec dtrait_item' (span : span) (ti : A.trait_item') : B.trait_item' =
@@ -321,6 +327,7 @@ struct
         ti_generics = dgenerics ti.ti_span ti.ti_generics;
         ti_v = dtrait_item' ti.ti_span ti.ti_v;
         ti_name = ti.ti_name;
+        ti_attrs = ti.ti_attrs;
       }
 
     let rec dimpl_item' (span : span) (ii : A.impl_item') : B.impl_item' =
@@ -335,6 +342,7 @@ struct
         ii_generics = dgenerics ii.ii_span ii.ii_generics;
         ii_v = dimpl_item' ii.ii_span ii.ii_v;
         ii_name = ii.ii_name;
+        ii_attrs = ii.ii_attrs;
       }
 
     let rec ditem (i : A.item) : B.item list =
@@ -347,7 +355,14 @@ struct
         [ B.make_hax_error_item i.span i.ident msg ]
 
     and ditem_unwrapped (item : A.item) : B.item list =
-      [ { v = ditem' item.span item.v; span = item.span; ident = item.ident } ]
+      [
+        {
+          v = ditem' item.span item.v;
+          span = item.span;
+          ident = item.ident;
+          attrs = item.attrs;
+        };
+      ]
 
     and ditem' (span : span) (item : A.item') : B.item' =
       match item with

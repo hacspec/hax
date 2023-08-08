@@ -76,6 +76,22 @@ type global_ident = (Global_ident.t[@visitors.opaque])
     visitors { variety = "mapreduce"; name = "global_ident_mapreduce" },
     visitors { variety = "map"; name = "global_ident_map" }]
 
+type attr_kind =
+  | Tool of { path : string; tokens : string }
+  | DocComment of { kind : doc_comment_kind; body : string }
+
+and attr = { kind : attr_kind; span : span }
+and doc_comment_kind = Line | Block
+
+and attrs = attr list
+[@@deriving
+  show,
+    yojson,
+    eq,
+    visitors { variety = "reduce"; name = "attrs_reduce" },
+    visitors { variety = "mapreduce"; name = "attrs_mapreduce" },
+    visitors { variety = "map"; name = "attrs_map" }]
+
 module LocalIdent = struct
   module T : sig
     type id [@@deriving show, yojson, compare, sexp, eq]
@@ -429,13 +445,17 @@ functor
               ];
           }]
 
-    type generic_param =
-      | GPLifetime of {
-          ident : local_ident;
-          witness : (F.lifetime[@visitors.opaque]);
-        }
-      | GPType of { ident : local_ident; default : ty option }
-      | GPConst of { ident : local_ident; typ : ty }
+    type generic_param = {
+      ident : local_ident;
+      span : span;
+      attrs : attrs;
+      kind : generic_param_kind;
+    }
+
+    and generic_param_kind =
+      | GPLifetime of { witness : (F.lifetime[@visitors.opaque]) }
+      | GPType of { default : ty option }
+      | GPConst of { typ : ty }
     [@@deriving
       show,
         yojson,
@@ -513,7 +533,7 @@ functor
             ancestors = [ "trait_ref_map" ];
           }]
 
-    type param = { pat : pat; typ : ty; typ_span : span option }
+    type param = { pat : pat; typ : ty; typ_span : span option; attrs : attrs }
 
     and generics = {
       params : generic_param list;
@@ -522,8 +542,9 @@ functor
 
     and variant = {
       name : concrete_ident;
-      arguments : (concrete_ident * ty) list;
+      arguments : (concrete_ident * ty * attrs) list;
       is_record : bool;
+      attrs : attrs;
     }
 
     and item' =
@@ -566,7 +587,7 @@ functor
       | HaxError of string
       | NotImplementedYet
 
-    and item = { v : item'; span : span; ident : concrete_ident }
+    and item = { v : item'; span : span; ident : concrete_ident; attrs : attrs }
 
     and impl_item' =
       | IIType of ty
@@ -577,6 +598,7 @@ functor
       ii_generics : generics;
       ii_v : impl_item';
       ii_name : string;
+      ii_attrs : attrs;
     }
 
     and trait_item' = TIType of trait_ref list | TIFn of ty
@@ -587,6 +609,7 @@ functor
       ti_generics : generics;
       ti_v : trait_item';
       ti_name : string;
+      ti_attrs : attrs;
     }
     [@@deriving
       show,
@@ -601,6 +624,7 @@ functor
                 "generic_constraint_reduce";
                 "expr_reduce";
                 "generic_param_reduce";
+                "attrs_reduce";
               ];
           },
         visitors
@@ -612,6 +636,7 @@ functor
                 "generic_constraint_mapreduce";
                 "expr_mapreduce";
                 "generic_param_mapreduce";
+                "attrs_mapreduce";
               ];
           },
         visitors
@@ -619,16 +644,19 @@ functor
             variety = "map";
             name = "item_map";
             ancestors =
-              [ "generic_constraint_map"; "expr_map"; "generic_param_map" ];
+              [
+                "generic_constraint_map";
+                "expr_map";
+                "generic_param_map";
+                "attrs_map";
+              ];
           }]
-    (* [@@deriving *)
-    (*   show, yojson, eq] *)
 
     type modul = item list
 
     let make_hax_error_item (span : span) (ident : Concrete_ident.t)
         (s : string) : item =
-      { v = HaxError s; span; ident }
+      { v = HaxError s; span; ident; attrs = [] }
 
     module F = F
   end
@@ -637,7 +665,12 @@ module type T = sig
   type expr [@@deriving show, yojson]
   type item' [@@deriving show, yojson]
 
-  type item = { v : item'; span : span; ident : Concrete_ident.t }
+  type item = {
+    v : item';
+    span : span;
+    ident : Concrete_ident.t;
+    attrs : attrs;
+  }
   [@@deriving show, yojson]
 
   val make_hax_error_item : span -> Concrete_ident.t -> string -> item
