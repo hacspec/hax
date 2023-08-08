@@ -1,5 +1,3 @@
-#![feature(trait_alias)]
-
 use quote::quote;
 use quote::quote_spanned;
 use syn::parse::ParseStream;
