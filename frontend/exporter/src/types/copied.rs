@@ -9,6 +9,10 @@ pub struct DisambiguatedDefPathItem {
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct DefId {
+    /// We make this field an option because the deserializer needs to be
+    /// able to provide a default value.
+    #[serde(skip)]
+    pub rust_def_id: Option<rustc_hir::def_id::DefId>,
     pub krate: String,
     pub path: Vec<DisambiguatedDefPathItem>,
 }
@@ -19,6 +23,7 @@ impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
         let def_path = tcx.def_path(self.clone());
         let krate = tcx.crate_name(def_path.krate);
         DefId {
+            rust_def_id: Option::Some(*self),
             path: def_path.data.iter().map(|x| x.sinto(s)).collect(),
             krate: format!("{}", krate),
         }
