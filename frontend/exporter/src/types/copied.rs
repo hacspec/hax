@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use crate::rustc_middle::query::Key;
 
 #[derive(
     AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
@@ -528,11 +529,15 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, Region> for rustc_middle::ty::Region<'tc
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::subst::GenericArgKind<'tcx>, state: S as gstate)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::subst::GenericArgKind<'tcx>, state: S as s)]
 pub enum GenericArg {
     Lifetime(Region),
     Type(Ty),
-    Const(Const),
+    Const(
+        // SH: not sure where to get the span from - for now I get it from the type
+        #[map(const_to_constant_expr(s, x.clone(), x.ty(), x.default_span(s.base().tcx)))]
+        ConstantExpr,
+    ),
 }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Vec<GenericArg>>
@@ -2651,7 +2656,6 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, GenericBounds>
         let predicates: Vec<_> = if use_item_bounds {
             let list = tcx.item_bounds(s.owner_id().to_def_id()).subst_identity();
             let span = list.default_span(tcx);
-            use rustc_middle::query::Key;
             list.into_iter().map(|x| (x, span)).collect()
         } else {
             tcx.predicates_of(s.owner_id().to_def_id())
