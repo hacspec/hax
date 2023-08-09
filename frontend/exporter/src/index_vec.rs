@@ -1,6 +1,8 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct IndexVec<I: rustc_index::Idx, T> {
     raw: Vec<T>,
     _marker: std::marker::PhantomData<fn(_: &I)>,
@@ -22,6 +24,22 @@ impl<
         I: rustc_index::Idx + SInto<S, II>,
         T: SInto<S, TT>,
     > SInto<S, IndexVec<II, TT>> for rustc_index::IndexVec<I, T>
+{
+    fn sinto(&self, s: &S) -> IndexVec<II, TT> {
+        IndexVec {
+            raw: self.raw.sinto(s),
+            _marker: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<
+        S,
+        II: rustc_index::Idx,
+        TT: Clone, /*TODO: remove me?*/
+        I: rustc_index::Idx + SInto<S, II>,
+        T: SInto<S, TT>,
+    > SInto<S, IndexVec<II, TT>> for rustc_index::IndexSlice<I, T>
 {
     fn sinto(&self, s: &S) -> IndexVec<II, TT> {
         IndexVec {

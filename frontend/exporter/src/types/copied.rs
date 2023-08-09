@@ -557,13 +557,6 @@ pub enum LitIntType {
     Unsuffixed,
 }
 
-pub type AdtDef = DefId;
-impl<'a, 's, S: BaseState<'s>> SInto<S, AdtDef> for rustc_middle::ty::AdtDef<'a> {
-    fn sinto(&self, s: &S) -> AdtDef {
-        self.did().sinto(s)
-    }
-}
-
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: ExprState<'tcx>>, from: rustc_middle::thir::FruInfo<'tcx>, state: S as gstate)]
 /// This is [Constructor {⟨field_types⟩, ..base}]
@@ -1421,6 +1414,28 @@ pub struct PatRange {
     pub lo: TypedConstantKind,
     pub hi: TypedConstantKind,
     pub end: RangeEnd,
+}
+
+// This comes from MIR
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct AdtDef {
+    pub did: DefId,
+    pub variants: IndexVec<VariantIdx, VariantDef>,
+    pub flags: AdtFlags,
+    pub repr: ReprOptions,
+}
+
+impl<'tcx, S: BaseState<'tcx> + state::HasThir<'tcx>> SInto<S, AdtDef>
+    for rustc_middle::ty::AdtDef<'tcx>
+{
+    fn sinto(&self, s: &S) -> AdtDef {
+        AdtDef {
+            did: self.did().sinto(s),
+            variants: self.variants().sinto(s),
+            flags: self.flags().sinto(s),
+            repr: self.repr().sinto(s),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
