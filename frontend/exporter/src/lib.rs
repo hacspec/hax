@@ -37,10 +37,8 @@ mod types;
 mod index_vec;
 mod prelude;
 
-pub use prelude::{
-    argument_span_of_mac_call, inline_macro_invocations, mir_kinds, translate_span, IsBody, Item,
-    MirBody, Span, ThirBody,
-};
+pub use hax_frontend_exporter_options as options;
+pub use prelude::*;
 
 mod sinto;
 mod utils;
