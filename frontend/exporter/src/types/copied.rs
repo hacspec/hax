@@ -1,13 +1,17 @@
 use crate::prelude::*;
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 #[args(<'a, S: BaseState<'a>>, from: rustc_hir::definitions::DisambiguatedDefPathData, state: S as s)]
 pub struct DisambiguatedDefPathItem {
     pub data: DefPathItem,
     pub disambiguator: u32,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct DefId {
     /// We make this field an option because the deserializer needs to be
     /// able to provide a default value.
@@ -58,7 +62,9 @@ pub enum LogicalOp {
     Or,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 #[args(<'a, S: BaseState<'a>>, from: rustc_hir::definitions::DefPathData, state: S as s)]
 pub enum DefPathItem {
     CrateRoot,
@@ -293,7 +299,9 @@ pub struct BoundTy {
     pub kind: BoundTyKind,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::BoundRegionKind, state: S as gstate)]
 pub enum BoundRegionKind {
     BrAnon(Option<Span>),
@@ -301,7 +309,9 @@ pub enum BoundRegionKind {
     BrEnv,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::BoundRegion, state: S as gstate)]
 pub struct BoundRegion {
     pub var: BoundVar,
@@ -312,7 +322,9 @@ pub type PlaceholderRegion = Placeholder<BoundRegion>;
 pub type PlaceholderConst = Placeholder<BoundVar>;
 pub type PlaceholderType = Placeholder<BoundTy>;
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct Placeholder<T> {
     pub universe: UniverseIndex,
     pub bound: T,
@@ -451,7 +463,9 @@ pub struct VariantDef {
     pub fields: Vec<FieldDef>,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::EarlyBoundRegion, state: S as gstate)]
 pub struct EarlyBoundRegion {
     pub def_id: DefId,
@@ -459,14 +473,18 @@ pub struct EarlyBoundRegion {
     pub name: Symbol,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::FreeRegion, state: S as gstate)]
 pub struct FreeRegion {
     pub scope: DefId,
     pub bound_region: BoundRegionKind,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct RegionVid {
     pub index: u32,
 }
@@ -479,7 +497,9 @@ impl<S> SInto<S, RegionVid> for rustc_middle::ty::RegionVid {
     }
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::RegionKind<'tcx>, state: S as gstate)]
 pub enum RegionKind {
     ReEarlyBound(EarlyBoundRegion),
@@ -492,7 +512,9 @@ pub enum RegionKind {
     ReError(ErrorGuaranteed),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct Region {
     pub kind: RegionKind,
 }
@@ -577,7 +599,9 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, AdtExpr> for rustc_middle::thir::AdtExpr
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash, PartialOrd, Ord,
+)]
 pub struct Loc {
     pub line: usize,
     pub col: usize,
@@ -651,7 +675,9 @@ pub struct ExpnData {
     pub collapse_debuginfo: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash, PartialOrd, Ord,
+)]
 pub struct Span {
     pub lo: Loc,
     pub hi: Loc,
@@ -721,7 +747,9 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, String> for PathBuf {
     }
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash)]
+#[derive(
+    AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash, PartialOrd, Ord,
+)]
 #[args(<S>, from: rustc_span::RealFileName, state: S as _s)]
 pub enum RealFileName {
     LocalPath(#[map(x.to_str().unwrap().into())] String),
@@ -743,7 +771,9 @@ impl<S> SInto<S, u64> for rustc_data_structures::stable_hasher::Hash64 {
 
 #[derive(AdtInto)]
 #[args(<S>, from: rustc_span::FileName, state: S as gstate)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash, PartialOrd, Ord,
+)]
 pub enum FileName {
     Real(RealFileName),
     QuoteExpansion(u64),

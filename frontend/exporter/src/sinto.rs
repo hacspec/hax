@@ -8,7 +8,7 @@ pub trait SInto<S, To> {
 #[macro_export]
 macro_rules! sinto_todo {
     ($($mod:ident)::+, $type:ident$(<$($lts:lifetime),*$(,)?>)? as $renamed:ident) => {
-        #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+        #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
         pub enum $renamed {
             $type {
                 todo: String
