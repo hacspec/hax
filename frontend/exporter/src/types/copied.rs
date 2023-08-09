@@ -452,6 +452,51 @@ pub struct VariantDef {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::EarlyBoundRegion, state: S as gstate)]
+pub struct EarlyBoundRegion {
+    pub def_id: DefId,
+    pub index: u32,
+    pub name: Symbol,
+}
+
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::FreeRegion, state: S as gstate)]
+pub struct FreeRegion {
+    pub scope: DefId,
+    pub bound_region: BoundRegionKind,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct RegionVid {
+    pub index: u32,
+}
+
+impl<S> SInto<S, RegionVid> for rustc_middle::ty::RegionVid {
+    fn sinto(&self, _: &S) -> RegionVid {
+        RegionVid {
+            index: self.as_u32(),
+        }
+    }
+}
+
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::RegionKind<'tcx>, state: S as gstate)]
+pub enum RegionKind {
+    ReEarlyBound(EarlyBoundRegion),
+    ReLateBound(DebruijnIndex, BoundRegion),
+    ReFree(FreeRegion),
+    ReStatic,
+    ReVar(RegionVid),
+    RePlaceholder(PlaceholderRegion),
+    ReErased,
+    ReError(ErrorGuaranteed),
+}
+
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::Region<'tcx>, state: S as gstate)]
+pub struct Region(RegionKind);
+
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::subst::GenericArgKind<'tcx>, state: S as gstate)]
 pub enum GenericArg {
     Lifetime(Region),
