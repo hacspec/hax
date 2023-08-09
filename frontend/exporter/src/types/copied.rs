@@ -424,7 +424,7 @@ pub enum CtorKind {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::ty::VariantDiscr, state: S as gstate)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::VariantDiscr, state: S as gstate)]
 pub enum VariantDiscr {
     Explicit(DefId),
     Relative(u32),
@@ -446,7 +446,7 @@ impl<S, T: SInto<S, U>, U> SInto<S, Visibility<U>> for rustc_middle::ty::Visibil
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::ty::FieldDef, state: S as state)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::FieldDef, state: S as state)]
 pub struct FieldDef {
     pub did: DefId,
     pub name: Symbol,
@@ -454,7 +454,7 @@ pub struct FieldDef {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::ty::VariantDef, state: S as state)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::VariantDef, state: S as state)]
 pub struct VariantDef {
     pub def_id: DefId,
     pub ctor: Option<(CtorKind, DefId)>,
@@ -1425,9 +1425,7 @@ pub struct AdtDef {
     pub repr: ReprOptions,
 }
 
-impl<'tcx, S: BaseState<'tcx> + state::HasThir<'tcx>> SInto<S, AdtDef>
-    for rustc_middle::ty::AdtDef<'tcx>
-{
+impl<'tcx, S: BaseState<'tcx>> SInto<S, AdtDef> for rustc_middle::ty::AdtDef<'tcx> {
     fn sinto(&self, s: &S) -> AdtDef {
         AdtDef {
             did: self.did().sinto(s),
