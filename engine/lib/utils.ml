@@ -54,6 +54,14 @@ let split_str (s : string) ~(on : string) : string list =
 let last_init (l : 'a list) : ('a list * 'a) option =
   Option.both (List.drop_last l) (List.last l)
 
+let inits (type a) (l : a list) : (a list * a) list =
+  List.fold_map ~init:[]
+    ~f:(fun trace x ->
+      let trace = trace @ [ x ] in
+      (trace, (trace, x)))
+    l
+  |> snd
+
 let tabsize = 2
 let newline_indent depth : string = "\n" ^ String.make (tabsize * depth) ' '
 

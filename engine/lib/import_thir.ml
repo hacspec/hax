@@ -958,20 +958,28 @@ module Exn = struct
       ti_attrs = c_attrs item.attributes;
     }
 
+  let is_automatically_derived (item : Thir.item) =
+    List.exists (* We need something better here, see issue #108 *)
+      ~f:(function
+        | { kind = Normal { item = { path; _ }; _ }; _ } ->
+            String.equal path "automatically_derived"
+        | _ -> false)
+      item.attributes
+
+  let is_hax_skip (item : Thir.item) =
+    List.exists
+      ~f:(function
+        | { kind = Normal { item = { path; _ }; _ }; _ } ->
+            String.equal path "_hax::skip"
+        | _ -> false)
+      item.attributes
+
   let rec c_item (item : Thir.item) : item list =
     try c_item_unwrapped item with Diagnostics.SpanFreeError.Exn _kind -> []
 
   and c_item_unwrapped (item : Thir.item) : item list =
     let open (val make ~krate:item.owner_id.krate : EXPR) in
-    if
-      (* We need something better here, see issue #108 *)
-      List.exists
-        ~f:(function
-          | { kind = Normal { item = { path; _ }; _ }; _ } ->
-              String.equal path "automatically_derived"
-          | _ -> false)
-        item.attributes
-    then []
+    if is_automatically_derived item || is_hax_skip item then []
     else
       let span = Span.of_thir item.span in
       let mk_one v =

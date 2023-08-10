@@ -152,6 +152,19 @@ fn main() {
         Box::new(CallbacksNoop)
     };
 
+    if translate_package {
+        rustc_args = [rustc_args[0].clone()]
+            .into_iter()
+            .chain(["--cfg".into(), "hax_compilation".into()])
+            .chain(
+                ["feature(register_tool)", "register_tool(_hax)"]
+                    .iter()
+                    .map(|s| format!("-Zcrate-attr={}", s)),
+            )
+            .chain(rustc_args[1..].iter().cloned())
+            .collect();
+    };
+
     let mut callbacks = CallbacksWrapper {
         sub: &mut *callbacks,
         options: hax_cli_options::Options {

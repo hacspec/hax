@@ -16,6 +16,7 @@ members = [
         "even",
         "odd",
         "never-type",
+        "attributes",
         "raw-attributes",
 ]
 resolver = "2"
