@@ -167,9 +167,7 @@ pub struct Scope {
     pub data: ScopeData,
 }
 
-impl<'tcx, S: BaseState<'tcx> + HasThir<'tcx>> SInto<S, ConstantKind>
-    for rustc_middle::mir::ConstantKind<'tcx>
-{
+impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantKind> for rustc_middle::mir::ConstantKind<'tcx> {
     fn sinto(&self, s: &S) -> ConstantKind {
         use rustc_middle::mir::ConstantKind as RustConstantKind;
 
@@ -1186,7 +1184,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Arm> for rustc_middle::thir::ArmId {
 
 #[derive(AdtInto)]
 #[args(<S>, from: rustc_type_ir::IntTy, state: S as _s)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum IntTy {
     Isize,
     I8,
@@ -1198,7 +1196,7 @@ pub enum IntTy {
 
 #[derive(AdtInto)]
 #[args(<S>, from: rustc_type_ir::FloatTy, state: S as _s)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum FloatTy {
     F32,
     F64,

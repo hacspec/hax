@@ -8,6 +8,16 @@ pub struct IndexVec<I: rustc_index::Idx, T> {
     _marker: std::marker::PhantomData<fn(_: &I)>,
 }
 
+impl<I: rustc_index::Idx, T> IndexVec<I, T> {
+    pub fn get(&self, x: I) -> Option<&T> {
+        self.raw.get(x.index())
+    }
+
+    pub fn get_mut(&mut self, x: I) -> Option<&mut T> {
+        self.raw.get_mut(x.index())
+    }
+}
+
 impl<I: rustc_index::Idx, T> Into<IndexVec<I, T>> for rustc_index::IndexVec<I, T> {
     fn into(self) -> IndexVec<I, T> {
         IndexVec {
