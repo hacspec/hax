@@ -4,7 +4,7 @@ use crate::prelude::*;
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub struct IndexVec<I: rustc_index::Idx, T> {
-    raw: Vec<T>,
+    pub raw: Vec<T>,
     _marker: std::marker::PhantomData<fn(_: &I)>,
 }
 

@@ -106,8 +106,6 @@ pub(crate) fn scalar_int_to_lit_kind<'tcx, S: BaseState<'tcx>>(
     }
 }
 
-// TODO: This function is not used for now, but will be for Mir translation
-#[allow(dead_code)]
 pub(crate) fn translate_constant_integer_like_value<'tcx, S: BaseState<'tcx>>(
     ty: rustc_middle::ty::Ty<'tcx>,
     s: &S,
@@ -117,6 +115,8 @@ pub(crate) fn translate_constant_integer_like_value<'tcx, S: BaseState<'tcx>>(
     use rustc_middle::mir::Mutability;
     use rustc_middle::ty;
     let cspan = span.sinto(s);
+    // The documentation explicitly says not to match on a scalar.
+    // We match on the type and use it to convert the value.
     let kind = match ty.kind() {
         ty::Char | ty::Bool | ty::Int(_) | ty::Uint(_) => {
             let scalar_int = scalar.try_to_int().unwrap_or_else(|_| {
@@ -179,29 +179,35 @@ pub(crate) fn translate_constant_integer_like_value<'tcx, S: BaseState<'tcx>>(
 pub(crate) fn const_to_constant_expr<'tcx, S: BaseState<'tcx>>(
     s: &S,
     c: rustc_middle::ty::Const<'tcx>,
-    ty: rustc_middle::ty::Ty<'tcx>,
-    span: rustc_span::Span,
 ) -> ConstantExpr {
+    use rustc_middle::query::Key;
     use rustc_middle::ty;
+    let span = c.default_span(s.base().tcx);
     let kind = match c.kind() {
         ty::ConstKind::Param(p) => ConstantExprKind::ConstRef { id: p.sinto(s) },
         ty::ConstKind::Infer(..) => span_fatal!(s, span, "ty::ConstKind::Infer node? {:#?}", c),
-        ty::ConstKind::Unevaluated(..) => {
-            span_fatal!(s, span, "ty::ConstKind::Unevaluated node? {:#?}", c)
+        ty::ConstKind::Unevaluated(ucv) => {
+            // We do not evaluate the constant (we could)
+            // If we wanted to evaluate the constant, we could use [TyCtxt::const_eval_resolve].
+            // There is also: [rustc_middle::ty::Const::eval(...)]
+            // We can also use [TyCtxt.const_eval_resolve_for_typeck] to retrieve a [ValTree].
+            // We would need a parameter env that we can retrieve with [TyCtxt.param_env(DefId)].
+            let id = ucv.def.sinto(s);
+            ConstantExprKind::GlobalName { id }
         }
-        ty::ConstKind::Value(valtree) => return valtree_to_constant_expr(s, valtree, ty, span),
+        ty::ConstKind::Value(valtree) => return valtree_to_constant_expr(s, valtree, c.ty(), span),
         ty::ConstKind::Error(_) => span_fatal!(s, span, "ty::ConstKind::Error"),
         ty::ConstKind::Expr(e) => {
             span_fatal!(s, span, "ty::ConstKind::Expr {:#?}", e)
         }
         ty::ConstKind::Bound(i, bound) => {
-            supposely_unreachable!("ty::ConstKind::Bound": i, bound, ty);
+            supposely_unreachable!("ty::ConstKind::Bound": i, bound, c.ty());
             span_fatal!(s, span, "ty::ConstKind::Bound")
         }
         _ => span_fatal!(s, span, "unexpected case"),
     };
     Decorated {
-        ty: ty.sinto(s),
+        ty: c.ty().sinto(s),
         span: span.sinto(s),
         contents: Box::new(kind),
         hir_id: None,
@@ -233,18 +239,17 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
                 .destructure_const(s.base().tcx.mk_const(valtree.clone(), ty));
             let fields = contents.fields.iter().copied();
             match ty.kind() {
-                ty::Array(inner_ty, _) => ConstantExprKind::Array {
+                ty::Array(_, _) => ConstantExprKind::Array {
                     fields: fields
-                        .map(|field| const_to_constant_expr(s, field, *inner_ty, span))
+                        .map(|field| const_to_constant_expr(s, field))
                         .collect(),
                 },
-                ty::Tuple(typs) => ConstantExprKind::Tuple {
+                ty::Tuple(_) => ConstantExprKind::Tuple {
                     fields: fields
-                        .zip(typs.into_iter())
-                        .map(|(field, inner_ty)| const_to_constant_expr(s, field, inner_ty, span))
+                        .map(|field| const_to_constant_expr(s, field))
                         .collect(),
                 },
-                ty::Adt(def, substs) => {
+                ty::Adt(def, _) => {
                     let variant_idx = contents
                         .variant
                         .expect("destructed const of adt without variant idx");
@@ -255,7 +260,7 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
                             .zip(&variant_def.fields)
                             .map(|(value, field)| ConstantFieldExpr {
                                 field: field.did.sinto(s),
-                                value: const_to_constant_expr(s, value, field.ty(s.base().tcx, substs), span),
+                                value: const_to_constant_expr(s, value),
                             })
                             .collect(),
                     }
