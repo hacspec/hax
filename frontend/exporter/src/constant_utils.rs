@@ -106,9 +106,9 @@ pub(crate) fn scalar_int_to_lit_kind<'tcx, S: BaseState<'tcx>>(
     }
 }
 
-pub(crate) fn translate_constant_integer_like_value<'tcx, S: BaseState<'tcx>>(
-    ty: rustc_middle::ty::Ty<'tcx>,
+pub(crate) fn scalar_to_constant_expr<'tcx, S: BaseState<'tcx>>(
     s: &S,
+    ty: rustc_middle::ty::Ty<'tcx>,
     scalar: &rustc_middle::mir::interpret::Scalar,
     span: rustc_span::Span,
 ) -> ConstantExpr {
@@ -157,8 +157,9 @@ pub(crate) fn translate_constant_integer_like_value<'tcx, S: BaseState<'tcx>>(
                 attributes: vec![],
             })
         }
-        // A [Scalar] might also be any zero-sized [Adt] or [Tuple]
+        // A [Scalar] might also be any zero-sized [Adt] or [Tuple] (i.e., unit)
         ty::Tuple(ty) if ty.is_empty() => ConstantExprKind::Tuple { fields: vec![] },
+        // It seems we can have ADTs when there is only one variant, and this variant doesn't have any fields.
         ty::Adt(def, _) if let [variant_def] = &def.variants().raw && variant_def.fields.is_empty() => {
             ConstantExprKind::Adt{
                 info: get_variant_information(def, &variant_def.def_id, s),
@@ -286,5 +287,96 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
         contents: Box::new(kind),
         hir_id: None,
         attributes: vec![],
+    }
+}
+
+pub(crate) fn const_value_reference_to_constant_expr<'tcx, S: BaseState<'tcx>>(
+    s: &S,
+    ty: rustc_middle::ty::Ty<'tcx>,
+    val: rustc_middle::mir::interpret::ConstValue<'tcx>,
+    span: rustc_span::Span,
+) -> ConstantExpr {
+    use rustc_middle::mir::interpret;
+    use rustc_middle::ty;
+
+    let tcx = s.base().tcx;
+
+    // We use [try_destructure_mir_constant] to destructure the constant
+    let param_env = get_param_env(s);
+    // We have to clone some values: it is a bit annoying, but I don't
+    // manage to get the lifetimes working otherwise...
+    let cvalue = rustc_middle::mir::ConstantKind::Val(val, ty);
+    let param_env_and_const = rustc_middle::ty::ParamEnvAnd {
+        param_env,
+        value: cvalue,
+    };
+
+    let dc = tcx
+        .try_destructure_mir_constant(param_env_and_const)
+        .unwrap();
+
+    // Iterate over the fields, which should be values
+    assert!(dc.variant.is_none());
+
+    // The type should be tuple
+    let hax_ty = ty.sinto(s);
+    match &hax_ty {
+        Ty::Tuple(_) => (),
+        _ => {
+            span_fatal!(s, span, "Expected the type to be tuple: {:?}", val)
+        }
+    };
+
+    // The fields should be of the variant: [ConstantKind::Value]
+    let fields: Vec<(ty::Ty, interpret::ConstValue)> = dc
+        .fields
+        .iter()
+        .map(|f| (f.ty(), f.try_to_value(tcx).unwrap()))
+        .collect();
+
+    // Below: we are mutually recursive with [translate_constant_kind],
+    // which takes a [ConstantKind] as input (see `cvalue` above), but it should be
+    // ok because we call it on a strictly smaller value.
+    let fields: Vec<ConstantExpr> = fields
+        .into_iter()
+        .map(|(ty, f)| const_value_to_constant_expr(s, ty, f, span))
+        .collect();
+    let cv = ConstantExprKind::Tuple { fields };
+    Decorated {
+        ty: hax_ty,
+        span: span.sinto(s),
+        contents: Box::new(cv),
+        hir_id: Option::None,
+        attributes: Vec::new(),
+    }
+}
+
+pub fn const_value_to_constant_expr<'tcx, S: BaseState<'tcx>>(
+    s: &S,
+    ty: rustc_middle::ty::Ty<'tcx>,
+    val: rustc_middle::mir::interpret::ConstValue<'tcx>,
+    span: rustc_span::Span,
+) -> ConstantExpr {
+    use rustc_middle::mir::interpret::ConstValue;
+    match val {
+        ConstValue::Scalar(scalar) => scalar_to_constant_expr(s, ty, &scalar, span),
+        ConstValue::ByRef { .. } => const_value_reference_to_constant_expr(s, ty, val, span),
+        ConstValue::Slice { .. } => span_fatal!(s, span, "ConstantValue::Slice: {:?}", val),
+        ConstValue::ZeroSized { .. } => {
+            // Should be unit
+            let ty = ty.sinto(s);
+            if let Ty::Tuple(tys) = &ty && tys.is_empty() {}
+            else {
+                span_fatal!(s, span, "Expected the type to be tuple: {:?}", val)
+            }
+            let cv = ConstantExprKind::Tuple { fields: Vec::new() };
+            Decorated {
+                ty,
+                span: span.sinto(s),
+                contents: Box::new(cv),
+                hir_id: Option::None,
+                attributes: Vec::new(),
+            }
+        }
     }
 }
