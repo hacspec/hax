@@ -1,10 +1,10 @@
 use crate::prelude::*;
 
 #[tracing::instrument(skip(state))]
-pub(crate) fn arrow_of_sig<'tcx, S: BaseState<'tcx>>(
+pub(crate) fn arrow_of_sig<'tcx, S: BaseState<'tcx>, O: IsOptions>(
     sig: &rustc_middle::ty::PolyFnSig<'tcx>,
     state: &S,
-) -> Ty {
+) -> Ty<O> {
     let tcx = state.base().tcx;
     let ret: rustc_middle::ty::Ty = tcx.erase_late_bound_regions(sig.output());
     let inputs = sig.inputs();
@@ -277,10 +277,10 @@ pub(crate) fn attribute_from_scope<'tcx, S: ExprState<'tcx>>(
 use itertools::Itertools;
 
 #[tracing::instrument(skip(s))]
-pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
+pub fn inline_macro_invocations<'t, S: BaseState<'t>, O: IsOptions>(
     ids: &Vec<rustc_hir::ItemId>,
     s: &S,
-) -> Vec<Item<Body>> {
+) -> Vec<Item<O>> {
     let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
 
     struct SpanEq(Option<(DefId, rustc_span::hygiene::ExpnData)>);

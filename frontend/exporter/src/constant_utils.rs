@@ -1,38 +1,38 @@
 use crate::prelude::*;
 
 /// The subset of [Expr] that corresponds to constants.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub enum ConstantExprKind {
+#[derive(Clone, Debug, Serialize, JsonSchema)]
+pub enum ConstantExprKind<O: IsOptions> {
     Literal(LitKind),
     Adt {
         info: VariantInformations,
-        fields: Vec<ConstantFieldExpr>,
+        fields: Vec<ConstantFieldExpr<O>>,
     },
     Array {
-        fields: Vec<ConstantExpr>,
+        fields: Vec<ConstantExpr<O>>,
     },
     Tuple {
-        fields: Vec<ConstantExpr>,
+        fields: Vec<ConstantExpr<O>>,
     },
     GlobalName {
         id: GlobalIdent,
     },
-    Borrow(ConstantExpr),
+    Borrow(ConstantExpr<O>),
     ConstRef {
         id: ParamConst,
     },
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct ConstantFieldExpr {
+#[derive(Clone, Debug, Serialize, JsonSchema)]
+pub struct ConstantFieldExpr<O: IsOptions> {
     pub field: DefId,
-    pub value: ConstantExpr,
+    pub value: ConstantExpr<O>,
 }
 
-pub type ConstantExpr = Decorated<ConstantExprKind>;
+pub type ConstantExpr<O> = Decorated<O, ConstantExprKind<O>>;
 
-impl From<ConstantFieldExpr> for FieldExpr {
-    fn from(c: ConstantFieldExpr) -> FieldExpr {
+impl<O: IsOptions> From<ConstantFieldExpr<O>> for FieldExpr<O> {
+    fn from(c: ConstantFieldExpr<O>) -> FieldExpr<O> {
         FieldExpr {
             value: c.value.into(),
             field: c.field,
@@ -40,8 +40,8 @@ impl From<ConstantFieldExpr> for FieldExpr {
     }
 }
 
-impl From<ConstantExpr> for Expr {
-    fn from(c: ConstantExpr) -> Expr {
+impl<O: IsOptions> From<ConstantExpr<O>> for Expr<O> {
+    fn from(c: ConstantExpr<O>) -> Expr<O> {
         use ConstantExprKind::*;
         let kind = match *c.contents {
             Literal(kind) => ExprKind::Literal {
@@ -108,12 +108,12 @@ pub(crate) fn scalar_int_to_lit_kind<'tcx, S: BaseState<'tcx>>(
 
 // TODO: This function is not used for now, but will be for Mir translation
 #[allow(dead_code)]
-pub(crate) fn translate_constant_integer_like_value<'tcx, S: BaseState<'tcx>>(
+pub(crate) fn translate_constant_integer_like_value<'tcx, S: BaseState<'tcx>, O: IsOptions>(
     ty: rustc_middle::ty::Ty<'tcx>,
     s: &S,
     scalar: &rustc_middle::mir::interpret::Scalar,
     span: rustc_span::Span,
-) -> ConstantExpr {
+) -> ConstantExpr<O> {
     use rustc_middle::mir::Mutability;
     use rustc_middle::ty;
     let cspan = span.sinto(s);
@@ -176,12 +176,12 @@ pub(crate) fn translate_constant_integer_like_value<'tcx, S: BaseState<'tcx>>(
     }
 }
 
-pub(crate) fn const_to_constant_expr<'tcx, S: BaseState<'tcx>>(
+pub(crate) fn const_to_constant_expr<'tcx, S: BaseState<'tcx>, O: IsOptions>(
     s: &S,
     c: rustc_middle::ty::Const<'tcx>,
     ty: rustc_middle::ty::Ty<'tcx>,
     span: rustc_span::Span,
-) -> ConstantExpr {
+) -> ConstantExpr<O> {
     use rustc_middle::ty;
     let kind = match c.kind() {
         ty::ConstKind::Param(p) => ConstantExprKind::ConstRef { id: p.sinto(s) },
@@ -210,12 +210,12 @@ pub(crate) fn const_to_constant_expr<'tcx, S: BaseState<'tcx>>(
 }
 
 // #[tracing::instrument(skip(s))]
-pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
+pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>, O: IsOptions>(
     s: &S,
     valtree: rustc_middle::ty::ValTree<'tcx>,
     ty: rustc_middle::ty::Ty<'tcx>,
     span: rustc_span::Span,
-) -> ConstantExpr {
+) -> ConstantExpr<O> {
     use rustc_middle::ty;
     let kind = match (valtree, ty.kind()) {
         (_, ty::Ref(_, inner_ty, _)) => {

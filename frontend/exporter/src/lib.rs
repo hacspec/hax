@@ -38,8 +38,8 @@ mod index_vec;
 mod prelude;
 
 pub use prelude::{
-    argument_span_of_mac_call, inline_macro_invocations, mir_kinds, translate_span, IsBody, Item,
-    MirBody, Span, ThirBody,
+    argument_span_of_mac_call, inline_macro_invocations, mir_kinds, options, translate_span,
+    IsBody, Item, MirBody, Span, ThirBody,
 };
 
 mod sinto;
