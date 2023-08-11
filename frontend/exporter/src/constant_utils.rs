@@ -86,7 +86,7 @@ pub(crate) fn scalar_int_to_lit_kind<'tcx, S: BaseState<'tcx>>(
     use rustc_middle::ty;
     match ty.kind() {
         ty::Char => LitKind::Char(
-            x.try_to_u8()
+            char::try_from(x)
                 .expect("scalar_int_to_lit_kind: expected a char")
                 .into(),
         ),
