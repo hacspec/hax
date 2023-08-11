@@ -274,8 +274,25 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantKind> for rustc_middle::mir::Con
     fn sinto(&self, s: &S) -> ConstantKind {
         use rustc_middle::mir;
 
-        // We always attempt to evaluate the constant
-        match self.eval(s.base().tcx, get_param_env(s)) {
+        // We evaluate the constant *only* if it is a non-evaluated anonymous
+        // constant.
+        let constant = if let mir::ConstantKind::Unevaluated(ucv, _) = self {
+            // Use the id to check if we need to evaluate
+            let id = ucv.def.sinto(s);
+            let last = id.path.last().unwrap();
+            if let DefPathItem::AnonConst = &last.data {
+                // Anonymous constant: evaluate
+                self.eval(s.base().tcx, get_param_env(s))
+            } else {
+                // Not an anonymous constant: do not evaluate
+                self.clone()
+            }
+        } else {
+            self.clone()
+        };
+
+        // Do the translation
+        match constant {
             mir::ConstantKind::Val(const_value, ty) => {
                 let c = const_value_to_constant_expr(
                     s,
@@ -289,9 +306,23 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantKind> for rustc_middle::mir::Con
                 // The Ty case is just a subcase of the val case
                 ConstantKind::Const(c.sinto(s))
             }
-            mir::ConstantKind::Unevaluated(..) => {
-                // Could not evaluate: just return a string to debug
-                ConstantKind::Unevaluated(format!("{:#?}", self))
+            mir::ConstantKind::Unevaluated(ucv, ty) => {
+                // This should be a top-level constant
+                let tcx = s.base().tcx;
+                let span = match tcx.def_ident_span(ucv.def) {
+                    Option::None => ucv.def.default_span(tcx),
+                    Option::Some(span) => span,
+                };
+                let id = ucv.def.sinto(s);
+                let kind = ConstantExprKind::GlobalName { id };
+                let constant = Decorated {
+                    ty: ty.sinto(s),
+                    span: span.sinto(s),
+                    contents: Box::new(kind),
+                    hir_id: None,
+                    attributes: vec![],
+                };
+                ConstantKind::Const(constant)
             }
         }
     }
