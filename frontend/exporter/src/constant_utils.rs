@@ -27,6 +27,8 @@ pub enum ConstantExprKind {
     Literal(ConstantLiteral),
     Adt {
         info: VariantInformations,
+        /// Variant index
+        vid: Option<VariantIdx>,
         fields: Vec<ConstantFieldExpr>,
     },
     Array {
@@ -95,7 +97,11 @@ impl From<ConstantExpr> for Expr {
                     neg: false,
                 }
             }
-            Adt { info, fields } => ExprKind::Adt(AdtExpr {
+            Adt {
+                info,
+                vid: _,
+                fields,
+            } => ExprKind::Adt(AdtExpr {
                 info,
                 fields: fields.into_iter().map(|field| field.into()).collect(),
                 base: None,
@@ -211,6 +217,7 @@ pub(crate) fn scalar_to_constant_expr<'tcx, S: BaseState<'tcx>>(
         ty::Adt(def, _) if let [variant_def] = &def.variants().raw && variant_def.fields.is_empty() => {
             ConstantExprKind::Adt{
                 info: get_variant_information(def, &variant_def.def_id, s),
+                vid: Option::Some(0),
                 fields: vec![],
             }
         },
@@ -303,15 +310,54 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
                         .variant
                         .expect("destructed const of adt without variant idx");
                     let variant_def = &def.variant(variant_idx);
-                    ConstantExprKind::Adt{
-                        info: get_variant_information(def, &variant_def.def_id, s),
-                        fields: fields
+                    let mut fields_it = fields.into_iter();
+
+                    // Retrieve the variant index, if it is an enumeration
+                    let vid: Option<VariantIdx> = if def.is_enum() {
+                        // According to the documentation: the first field
+                        // gives the discriminant (i.e., the index of the
+                        // variant)
+                        let vid = fields_it.next().unwrap();
+                        let vid = const_to_constant_expr(s, vid);
+                        if let ConstantExprKind::Literal(ConstantLiteral::Int(ConstantInt::Uint(v, _))) = *vid.contents {
+                            Option::Some(v as VariantIdx)
+                        }
+                        else {
+                            span_fatal!(
+                                s,
+                                span,
+                                "valtree_to_expr: cannot handle valtree{:#?} ty={:#?}",
+                                valtree,
+                                ty
+                            )
+                        }
+                    }
+                    else if def.is_struct() {
+                        Option::None
+                    }
+                    else {
+                        // Union case
+                        span_fatal!(
+                            s,
+                            span,
+                            "valtree_to_expr: cannot handle valtree{:#?} ty={:#?}",
+                            valtree,
+                            ty
+                        )
+                    };
+
+                    let fields: Vec<ConstantFieldExpr> = fields_it
                             .zip(&variant_def.fields)
                             .map(|(value, field)| ConstantFieldExpr {
                                 field: field.did.sinto(s),
                                 value: const_to_constant_expr(s, value),
                             })
-                            .collect(),
+                        .collect();
+
+                    ConstantExprKind::Adt{
+                        info: get_variant_information(def, &variant_def.def_id, s),
+                        vid,
+                        fields,
                     }
                 }
                 _ => unreachable!(),
