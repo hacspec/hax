@@ -61,7 +61,7 @@ impl<
 
 macro_rules! make_idx_wrapper {
     ($($mod:ident)::+, $type:ident) => {
-        #[derive(Copy, Clone, Eq, Debug, Hash, PartialEq, Serialize, Deserialize, JsonSchema)]
+        #[derive(Copy, Clone, Eq, Debug, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
         #[serde(untagged)]
         pub enum $type {
             $type(usize),

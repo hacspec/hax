@@ -1,7 +1,9 @@
 use crate::prelude::*;
 
 /// The subset of [Expr] that corresponds to constants.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub enum ConstantExprKind {
     Literal(LitKind),
     Adt {
@@ -23,7 +25,9 @@ pub enum ConstantExprKind {
     },
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct ConstantFieldExpr {
     pub field: DefId,
     pub value: ConstantExpr,
@@ -229,7 +233,7 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
             ConstantExprKind::Borrow(valtree_to_constant_expr(s, valtree, *inner_ty, span))
         }
         (ty::ValTree::Branch(valtrees), ty::Str) => ConstantExprKind::Literal(
-            LitKind::ByteStr(valtrees.into_iter().map(|x| match x {
+            LitKind::ByteStr(valtrees.iter().map(|x| match x {
                 ty::ValTree::Leaf(leaf) => leaf.try_to_u8().unwrap_or_else(|e| span_fatal!(s, span, "Expected a u8 leaf while translating a str literal, got something else. Error: {:#?}", e)),
                 _ => span_fatal!(s, span, "Expected a flat list of leaves while translating a str literal, got a arbitrary valtree.")
             }).collect(), StrStyle::Cooked)
@@ -237,7 +241,7 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
         (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
             let contents: rustc_middle::ty::DestructuredConst = s
                 .base().tcx
-                .destructure_const(s.base().tcx.mk_const(valtree.clone(), ty));
+                .destructure_const(s.base().tcx.mk_const(valtree, ty));
             let fields = contents.fields.iter().copied();
             match ty.kind() {
                 ty::Array(_, _) => ConstantExprKind::Array {
@@ -334,7 +338,7 @@ pub(crate) fn const_value_reference_to_constant_expr<'tcx, S: BaseState<'tcx>>(
         .map(|f| (f.ty(), f.try_to_value(tcx).unwrap()))
         .collect();
 
-    // Below: we are mutually recursive with [translate_constant_kind],
+    // Below: we are mutually recursive with [const_value_to_constant_expr],
     // which takes a [ConstantKind] as input (see `cvalue` above), but it should be
     // ok because we call it on a strictly smaller value.
     let fields: Vec<ConstantExpr> = fields

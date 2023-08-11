@@ -9,6 +9,13 @@ pub enum MirPhase {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::mir::SourceInfo, state: S as s)]
+pub struct SourceInfo {
+    pub span: Span,
+    pub scope: SourceScope,
+}
+
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::mir::LocalDecl<'tcx>, state: S as s)]
 pub struct LocalDecl {
     pub mutability: Mutability,
@@ -145,6 +152,39 @@ pub struct MirBody<KIND> {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::mir::SourceScopeData<'tcx>, state: S as s)]
+pub struct SourceScopeData {
+    pub span: Span,
+    pub parent_scope: Option<SourceScope>,
+    pub inlined: Option<(Instance, Span)>,
+    pub inlined_parent_scope: Option<SourceScope>,
+    pub local_data: ClearCrossCrate<SourceScopeLocalData>,
+}
+
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::Instance<'tcx>, state: S as s)]
+pub struct Instance {
+    pub def: InstanceDef,
+    pub substs: Vec<GenericArg>,
+}
+
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::mir::SourceScopeLocalData, state: S as s)]
+pub struct SourceScopeLocalData {
+    pub lint_root: HirId,
+    pub safety: Safety,
+}
+
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::mir::Safety, state: S as s)]
+pub enum Safety {
+    Safe,
+    BuiltinUnsafe,
+    FnUnsafe,
+    ExplicitUnsafe(HirId),
+}
+
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::Operand<'tcx>, state: S as s)]
 pub enum Operand {
     Copy(Place),
@@ -222,8 +262,8 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx>>(
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ScalarInt {
     /// Little-endian representation of the integer
-    data_le_bytes: [u8; 16],
-    int_ty: IntTy,
+    pub data_le_bytes: [u8; 16],
+    pub int_ty: IntTy,
 }
 
 // TODO: naming conventions: is "translate" ok?
@@ -402,6 +442,7 @@ pub enum StatementKind {
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Place {
+    /// The type of the element on which we apply the projection given by [kind]
     pub ty: Ty,
     pub kind: PlaceKind,
 }
@@ -417,10 +458,10 @@ pub enum PlaceKind {
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum ProjectionElemFieldKind {
-    Tuple(u32),
-    Ast {
-        variant: DefId,
+    Tuple(FieldIdx),
+    Adt {
         typ: DefId,
+        variant: Option<VariantIdx>,
         index: FieldIdx,
     },
 }
@@ -460,29 +501,19 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx>> SInto<S, Place> for rustc_middle::
             let mk_field = |index: &rustc_abi::FieldIdx,
                             variant_idx: Option<rustc_abi::VariantIdx>| {
                 ProjectionElem::Field(match cur_ty.kind() {
-                    rustc_middle::ty::TyKind::Adt(adt_def, substs) => {
-                        let variant_idx = variant_idx.unwrap_or_else(|| {
-                            if adt_def.is_struct() {
-                                rustc_abi::VariantIdx::from_usize(0)
-                            } else {
-                                supposely_unreachable_fatal!(
-                                    "DowncastExpected": index,
-                                    adt_def,
-                                    substs,
-                                    variant_idx,
-                                    &cur_ty,   // TODO
-                                    &cur_kind, // TODO
-                                );
-                            }
-                        });
-                        ProjectionElemFieldKind::Ast {
+                    rustc_middle::ty::TyKind::Adt(adt_def, _) => {
+                        assert!(
+                            (adt_def.is_struct() && variant_idx.is_none())
+                                || (adt_def.is_enum() && variant_idx.is_some())
+                        );
+                        ProjectionElemFieldKind::Adt {
                             typ: adt_def.did().sinto(s),
-                            variant: adt_def.variant(variant_idx.clone()).def_id.sinto(s),
+                            variant: variant_idx.map(|id| id.sinto(s)),
                             index: index.sinto(s),
                         }
                     }
                     rustc_middle::ty::TyKind::Tuple(_types) => {
-                        ProjectionElemFieldKind::Tuple(index.as_u32())
+                        ProjectionElemFieldKind::Tuple(index.sinto(s))
                     }
                     ty_kind => {
                         supposely_unreachable_fatal!(
@@ -596,9 +627,20 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx>> SInto<S, Place> for rustc_middle::
 pub enum AggregateKind {
     Array(Ty),
     Tuple,
+    #[custom_arm(rustc_middle::mir::AggregateKind::Adt(def_id, vid, args, annot, fid) => {
+        let adt_kind = s.base().tcx.adt_def(def_id).adt_kind().sinto(s);
+        AggregateKind::Adt(
+            def_id.sinto(s),
+            vid.sinto(s),
+            adt_kind,
+            args.sinto(s),
+            annot.sinto(s),
+            fid.sinto(s))
+    })]
     Adt(
         DefId,
         VariantIdx,
+        AdtKind,
         Vec<GenericArg>,
         Option<UserTypeAnnotationIndex>,
         Option<FieldIdx>,
@@ -664,11 +706,7 @@ pub struct BasicBlockData {
     pub statements: Vec<Statement>,
     pub terminator: Option<Terminator>,
     pub is_cleanup: bool,
-    // #[not_in_source]
-    // #[map(panic!())]
-    // pub hello: T,
 }
-// use hello::*;
 
 pub type CanonicalUserTypeAnnotations =
     IndexVec<UserTypeAnnotationIndex, CanonicalUserTypeAnnotation>;
@@ -679,7 +717,7 @@ make_idx_wrapper!(rustc_middle::mir, Local);
 make_idx_wrapper!(rustc_middle::ty, UserTypeAnnotationIndex);
 make_idx_wrapper!(rustc_abi, FieldIdx);
 
-sinto_todo!(rustc_middle::mir, SourceInfo);
+sinto_todo!(rustc_middle::ty, InstanceDef<'tcx>);
 sinto_todo!(rustc_middle::mir, UserTypeProjections);
 sinto_todo!(rustc_middle::mir, LocalInfo<'tcx>);
 sinto_todo!(rustc_ast::ast, InlineAsmTemplatePiece);
@@ -687,7 +725,6 @@ sinto_todo!(rustc_ast::ast, InlineAsmOptions);
 sinto_todo!(rustc_middle::mir, InlineAsmOperand<'tcx>);
 sinto_todo!(rustc_middle::mir, AssertMessage<'tcx>);
 sinto_todo!(rustc_middle::mir, UnwindAction);
-sinto_todo!(rustc_middle::mir, SourceScopeData<'tcx>);
 sinto_todo!(rustc_middle::mir, FakeReadCause);
 sinto_todo!(rustc_middle::mir, RetagKind);
 sinto_todo!(rustc_middle::mir, Coverage);
