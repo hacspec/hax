@@ -738,18 +738,25 @@ pub struct Block {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct AliasTy {
     pub substs: Vec<GenericArg>,
-    pub trait_def_id: DefId,
+    pub trait_def_id: Option<DefId>,
     pub def_id: DefId,
 }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, AliasTy> for rustc_middle::ty::AliasTy<'tcx> {
     fn sinto(&self, s: &S) -> AliasTy {
         let tcx = s.base().tcx;
-        // let trait_ref = self.trait_ref(tcx);
-        // resolve_trait(trait_ref, s);
+        use rustc_hir::def::DefKind::*;
+        let trait_def_id = matches!(
+            tcx.def_kind(self.def_id),
+            AssocTy | AssocConst | ImplTraitPlaceholder
+        )
+        .then(|| {
+            let _trait_ref = self.trait_ref(tcx);
+            self.trait_def_id(tcx).sinto(s)
+        });
         AliasTy {
             substs: self.substs.sinto(s),
-            trait_def_id: self.trait_def_id(tcx).sinto(s),
+            trait_def_id,
             def_id: self.def_id.sinto(s),
         }
     }
