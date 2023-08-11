@@ -77,7 +77,27 @@ impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
                     // `impl` blocks are defined for types
                     // We retrieve the type name
                     let ty = tcx.type_of(id).subst_identity().sinto(s);
-                    DefPathItem::Impl(ty)
+
+                    let bounds = tcx
+                        .predicates_of(id)
+                        .predicates
+                        .into_iter()
+                        .cloned()
+                        .map(|(pred, span)| {
+                            pred.clone()
+                                .kind()
+                                .no_bound_vars()
+                                .unwrap_or_else(|| {
+                                    tcx.sess.span_err(
+                                        span.clone(),
+                                        format!("[GenericBounds(Impl)]: [no_bound_vars] failed"),
+                                    );
+                                    rustc_middle::ty::PredicateKind::Ambiguous
+                                })
+                                .sinto(s)
+                        })
+                        .collect();
+                    DefPathItem::Impl { ty, bounds }
                 }
             };
 
@@ -144,7 +164,7 @@ pub enum LogicalOp {
 )]
 pub enum DefPathItem {
     CrateRoot,
-    Impl(Ty),
+    Impl { ty: Ty, bounds: Vec<PredicateKind> },
     ForeignMod,
     Use,
     GlobalAsm,
@@ -2786,7 +2806,9 @@ pub struct Lifetime {
 
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::TraitRef<'tcx>, state: S as tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct TraitRef {
     pub def_id: DefId,
     #[from(substs)]
@@ -2795,7 +2817,9 @@ pub struct TraitRef {
 
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::TraitPredicate<'tcx>, state: S as tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct TraitPredicate {
     pub trait_ref: TraitRef,
     #[from(constness)]
@@ -2808,7 +2832,9 @@ pub struct TraitPredicate {
 
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::Clause<'tcx>, state: S as tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub enum Clause {
     Trait(TraitPredicate),
     #[todo]
@@ -2820,7 +2846,9 @@ pub enum Clause {
 
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::PredicateKind<'tcx>, state: S as tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub enum PredicateKind {
     Clause(Clause),
     // WellFormed(GenericArg),
