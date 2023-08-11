@@ -46,11 +46,6 @@ impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
         // In order to lookup types, we remember the id of the current sub-path.
         let mut id = *self;
         let mut path: Vec<DisambiguatedDefPathItem> = Vec::new();
-
-        // Rk.: below we try to be as tight as possible with regards to sanity
-        // checks, to make sure we understand what happens with def paths, and
-        // fail whenever we get something which is even slightly outside what
-        // we expect.
         loop {
             // Retrieve the id key
             let id_key = tcx.def_key(id);
@@ -256,40 +251,41 @@ pub struct Scope {
 }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantKind> for rustc_middle::mir::ConstantKind<'tcx> {
-    // TODO: shouldn't we convert this to a ConstantExprKind?
     fn sinto(&self, s: &S) -> ConstantKind {
-        use rustc_middle::mir::ConstantKind as RustConstantKind;
+        use rustc_middle::mir;
 
+        // We always attempt to evaluate the constant
         match self.eval(s.base().tcx, get_param_env(s)) {
-            RustConstantKind::Val(const_value, ty) => {
-                use rustc_middle::mir::interpret::ConstValue;
-                match const_value {
-                    ConstValue::Scalar(scalar) => {
-                        ConstantKind::Lit(scalar_int_to_lit_kind(s, scalar.assert_int(), ty))
-                    }
-                    _ => ConstantKind::Todo(format!("{:#?}", self)),
-                }
+            mir::ConstantKind::Val(const_value, ty) => {
+                let c = const_value_to_constant_expr(
+                    s,
+                    ty,
+                    const_value,
+                    self.default_span(s.base().tcx),
+                );
+                ConstantKind::Const(c)
             }
-            RustConstantKind::Ty(c) => match c.sinto(s) {
-                Decorated {
-                    contents: box ConstantExprKind::Literal(lit),
-                    ..
-                } => ConstantKind::Lit(lit),
-                e => ConstantKind::Ty(e),
-            },
-            _ => ConstantKind::Todo(format!("{:#?}", self)),
+            mir::ConstantKind::Ty(c) => {
+                // The Ty case is just a subcase of the val case
+                ConstantKind::Const(c.sinto(s))
+            }
+            mir::ConstantKind::Unevaluated(..) => {
+                // Could not evaluate: just return a string to debug
+                ConstantKind::Unevaluated(format!("{:#?}", self))
+            }
         }
     }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum ConstantKind {
-    Ty(Const),
-    // Unevaluated(Unevaluated<'tcx, Option<Promoted>>, Ty),
-    Lit(LitKind),
-
-    // Val(ConstValue, Ty),
-    Todo(String),
+    /// We merge the different [ConstantKind] variants into this one.
+    /// The reason is that the [Ty] variant is just a subcase of the [Val] variant.
+    /// For the unevaluated case: we attempt to evaluate it, if it fails
+    /// we generate the [Unevaluated] variant below.
+    Const(ConstantExpr),
+    /// An unevaluated constant kind that we could not evaluate.
+    Unevaluated(String),
 }
 
 impl<S> SInto<S, u64> for rustc_middle::mir::interpret::AllocId {
@@ -2225,15 +2221,6 @@ impl<'tcx> ExprKindExt<'tcx> for rustc_middle::thir::Expr<'tcx> {
             rustc_middle::thir::ExprKind::Scope { value, .. } => {
                 s.thir().exprs[value].unroll_scope(s)
             }
-            _ => self.clone(),
-        }
-    }
-}
-
-impl Expr {
-    fn unwrap_borrow(&self) -> Self {
-        match &self.contents {
-            box ExprKind::Borrow { arg, .. } => arg.clone(),
             _ => self.clone(),
         }
     }
