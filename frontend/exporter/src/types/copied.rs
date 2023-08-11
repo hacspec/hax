@@ -294,20 +294,9 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantKind> for rustc_middle::mir::Con
         // Do the translation
         match constant {
             mir::ConstantKind::Val(const_value, ty) => {
-                let constant = const_value_to_constant_expr(
-                    s,
-                    ty,
-                    const_value,
-                    self.default_span(s.base().tcx),
-                );
-                ConstantKind { constant }
+                const_value_to_constant_expr(s, ty, const_value, self.default_span(s.base().tcx))
             }
-            mir::ConstantKind::Ty(c) => {
-                // The Ty case is just a subcase of the val case
-                ConstantKind {
-                    constant: c.sinto(s),
-                }
-            }
+            mir::ConstantKind::Ty(c) => c.sinto(s),
             mir::ConstantKind::Unevaluated(ucv, ty) => {
                 // This should be a top-level constant
                 let tcx = s.base().tcx;
@@ -317,25 +306,20 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantKind> for rustc_middle::mir::Con
                 };
                 let id = ucv.def.sinto(s);
                 let kind = ConstantExprKind::GlobalName { id };
-                let constant = Decorated {
+                Decorated {
                     ty: ty.sinto(s),
                     span: span.sinto(s),
                     contents: Box::new(kind),
                     hir_id: None,
                     attributes: vec![],
-                };
-                ConstantKind { constant }
+                }
             }
         }
     }
 }
 
-// SH: simplify to: `type ConstantKind = ConstantExpr` ?
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct ConstantKind {
-    /// We merge the different [ConstantKind] variants into a [ConstantExpr].
-    pub constant: ConstantExpr,
-}
+// For ConstantKind we merge all the cases (Ty, Val, Unevaluated) into one
+pub type ConstantKind = ConstantExpr;
 
 impl<S> SInto<S, u64> for rustc_middle::mir::interpret::AllocId {
     fn sinto(&self, _: &S) -> u64 {
