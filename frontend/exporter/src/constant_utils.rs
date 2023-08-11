@@ -44,6 +44,7 @@ pub enum ConstantExprKind {
     ConstRef {
         id: ParamConst,
     },
+    Todo(String),
 }
 
 #[derive(
@@ -119,6 +120,7 @@ impl From<ConstantExpr> for Expr {
             Tuple { fields } => ExprKind::Tuple {
                 fields: fields.into_iter().map(|field| field.into()).collect(),
             },
+            Todo(msg) => ExprKind::Todo(msg),
         };
         Decorated {
             contents: Box::new(kind),
@@ -455,7 +457,17 @@ pub fn const_value_to_constant_expr<'tcx, S: BaseState<'tcx>>(
     match val {
         ConstValue::Scalar(scalar) => scalar_to_constant_expr(s, ty, &scalar, span),
         ConstValue::ByRef { .. } => const_value_reference_to_constant_expr(s, ty, val, span),
-        ConstValue::Slice { .. } => span_fatal!(s, span, "ConstantValue::Slice: {:?}", val),
+        ConstValue::Slice { .. } => {
+            let ty = ty.sinto(s);
+            let cv = ConstantExprKind::Todo(format!("ConstValue::Slice: {:?}", val));
+            Decorated {
+                ty,
+                span: span.sinto(s),
+                contents: Box::new(cv),
+                hir_id: Option::None,
+                attributes: Vec::new(),
+            }
+        }
         ConstValue::ZeroSized { .. } => {
             // Should be unit
             let ty = ty.sinto(s);
