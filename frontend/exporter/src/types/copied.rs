@@ -958,8 +958,33 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                         };
                     }
                     _ => {
-                        supposely_unreachable!("ZstLiteral ty≠FnDef(...)": kind, span, ty);
-                        kind.sinto(s)
+                        if ty.is_phantom_data() {
+                            let rustc_middle::ty::Adt(def, _) = ty.kind() else {
+                                panic!()
+                            };
+                            let variant_id = rustc_abi::VariantIdx::from_u32(0);
+                            let variant = def.variant(variant_id);
+                            let adt_def = AdtExpr {
+                                info: get_variant_information(def, &variant.def_id, s),
+                                user_ty: None,
+                                base: None,
+                                fields: vec![],
+                            };
+                            return Expr {
+                                contents: Box::new(ExprKind::Adt(adt_def)),
+                                span: self.span.sinto(s),
+                                ty: ty.sinto(s),
+                                hir_id,
+                                attributes,
+                            };
+                        } else {
+                            supposely_unreachable!(
+                                "ZstLiteral ty≠FnDef(...) or PhantomData": kind,
+                                span,
+                                ty
+                            );
+                            kind.sinto(s)
+                        }
                     }
                 },
                 rustc_middle::thir::ExprKind::Field {
