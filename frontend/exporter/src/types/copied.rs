@@ -294,17 +294,19 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantKind> for rustc_middle::mir::Con
         // Do the translation
         match constant {
             mir::ConstantKind::Val(const_value, ty) => {
-                let c = const_value_to_constant_expr(
+                let constant = const_value_to_constant_expr(
                     s,
                     ty,
                     const_value,
                     self.default_span(s.base().tcx),
                 );
-                ConstantKind::Const(c)
+                ConstantKind { constant }
             }
             mir::ConstantKind::Ty(c) => {
                 // The Ty case is just a subcase of the val case
-                ConstantKind::Const(c.sinto(s))
+                ConstantKind {
+                    constant: c.sinto(s),
+                }
             }
             mir::ConstantKind::Unevaluated(ucv, ty) => {
                 // This should be a top-level constant
@@ -322,21 +324,17 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantKind> for rustc_middle::mir::Con
                     hir_id: None,
                     attributes: vec![],
                 };
-                ConstantKind::Const(constant)
+                ConstantKind { constant }
             }
         }
     }
 }
 
+// SH: simplify to: `type ConstantKind = ConstantExpr` ?
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub enum ConstantKind {
-    /// We merge the different [ConstantKind] variants into this one.
-    /// The reason is that the [Ty] variant is just a subcase of the [Val] variant.
-    /// For the unevaluated case: we attempt to evaluate it, if it fails
-    /// we generate the [Unevaluated] variant below.
-    Const(ConstantExpr),
-    /// An unevaluated constant kind that we could not evaluate.
-    Unevaluated(String),
+pub struct ConstantKind {
+    /// We merge the different [ConstantKind] variants into a [ConstantExpr].
+    pub constant: ConstantExpr,
 }
 
 impl<S> SInto<S, u64> for rustc_middle::mir::interpret::AllocId {
