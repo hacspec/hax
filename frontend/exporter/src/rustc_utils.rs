@@ -276,7 +276,6 @@ pub(crate) fn attribute_from_scope<'tcx, S: ExprState<'tcx>>(
 
 use itertools::Itertools;
 
-#[tracing::instrument(skip(s))]
 pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
     ids: impl Iterator<Item = rustc_hir::ItemId>,
     s: &S,
