@@ -2,49 +2,76 @@ use crate::prelude::*;
 use crate::rustc_middle::query::Key;
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct DisambiguatedDefPathItem {
+pub struct DisambiguatedDefPathItem<DefPathItem> {
     pub data: DefPathItem,
     pub disambiguator: u32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct DefId {
+pub struct GenericDefId<DefPathItem> {
     /// We make this field an option because the deserializer needs to be
     /// able to provide a default value.
     #[serde(skip)]
     pub rust_def_id: Option<rustc_hir::def_id::DefId>,
     pub krate: String,
-    pub path: Vec<DisambiguatedDefPathItem>,
+    pub path: Vec<DisambiguatedDefPathItem<DefPathItem>>,
 }
 
-impl std::hash::Hash for DefId {
+pub type DefId = GenericDefId<DefPathItem>;
+pub type ExtendedDefId = GenericDefId<ExtendedDefPathItem>;
+
+impl<T> std::hash::Hash for GenericDefId<T> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.rust_def_id.hash(state)
     }
 }
 
-impl std::cmp::PartialEq for DefId {
+impl<T> std::cmp::PartialEq for GenericDefId<T> {
     fn eq(&self, other: &Self) -> bool {
         self.rust_def_id == other.rust_def_id
     }
 }
 
-impl std::cmp::Eq for DefId {}
+impl<T> std::cmp::Eq for GenericDefId<T> {}
 
-impl std::cmp::PartialOrd for DefId {
+impl<T> std::cmp::PartialOrd for GenericDefId<T> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.rust_def_id.partial_cmp(&other.rust_def_id)
     }
 }
 
-impl std::cmp::Ord for DefId {
+impl<T> std::cmp::Ord for GenericDefId<T> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.rust_def_id.cmp(&other.rust_def_id)
     }
 }
 
+impl<'s, S: BaseState<'s>> SInto<S, DisambiguatedDefPathItem<DefPathItem>>
+    for rustc_hir::definitions::DisambiguatedDefPathData
+{
+    fn sinto(&self, s: &S) -> DisambiguatedDefPathItem<DefPathItem> {
+        DisambiguatedDefPathItem {
+            data: self.data.sinto(s),
+            disambiguator: self.disambiguator,
+        }
+    }
+}
+
 impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
     fn sinto(&self, s: &S) -> DefId {
+        let tcx = s.base().tcx;
+        let def_path = tcx.def_path(self.clone());
+        let krate = tcx.crate_name(def_path.krate);
+        GenericDefId {
+            rust_def_id: Option::Some(*self),
+            path: def_path.data.iter().map(|x| x.sinto(s)).collect(),
+            krate: format!("{}", krate),
+        }
+    }
+}
+
+impl<'s, S: BaseState<'s>> SInto<S, ExtendedDefId> for rustc_hir::def_id::DefId {
+    fn sinto(&self, s: &S) -> ExtendedDefId {
         let tcx = s.base().tcx;
         let krate = tcx.crate_name(self.krate).to_ident_string();
 
@@ -67,7 +94,7 @@ impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
 
         // In order to lookup types, we remember the id of the current sub-path.
         let mut id = *self;
-        let mut path: Vec<DisambiguatedDefPathItem> = Vec::new();
+        let mut path: Vec<DisambiguatedDefPathItem<ExtendedDefPathItem>> = Vec::new();
         loop {
             // Retrieve the id key
             let id_key = tcx.def_key(id);
@@ -76,24 +103,24 @@ impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
             let data = id_key.disambiguated_data;
             use rustc_hir::definitions::DefPathData;
             let path_item = match data.data {
-                DefPathData::CrateRoot => DefPathItem::CrateRoot,
-                DefPathData::ForeignMod => DefPathItem::ForeignMod,
-                DefPathData::Use => DefPathItem::Use,
-                DefPathData::GlobalAsm => DefPathItem::GlobalAsm,
-                DefPathData::TypeNs(symbol) => DefPathItem::TypeNs(symbol.sinto(s)),
-                DefPathData::ValueNs(symbol) => DefPathItem::ValueNs(symbol.sinto(s)),
-                DefPathData::MacroNs(symbol) => DefPathItem::MacroNs(symbol.sinto(s)),
-                DefPathData::LifetimeNs(symbol) => DefPathItem::LifetimeNs(symbol.sinto(s)),
-                DefPathData::ClosureExpr => DefPathItem::ClosureExpr,
-                DefPathData::Ctor => DefPathItem::Ctor,
-                DefPathData::AnonConst => DefPathItem::AnonConst,
+                DefPathData::CrateRoot => ExtendedDefPathItem::CrateRoot,
+                DefPathData::ForeignMod => ExtendedDefPathItem::ForeignMod,
+                DefPathData::Use => ExtendedDefPathItem::Use,
+                DefPathData::GlobalAsm => ExtendedDefPathItem::GlobalAsm,
+                DefPathData::TypeNs(symbol) => ExtendedDefPathItem::TypeNs(symbol.sinto(s)),
+                DefPathData::ValueNs(symbol) => ExtendedDefPathItem::ValueNs(symbol.sinto(s)),
+                DefPathData::MacroNs(symbol) => ExtendedDefPathItem::MacroNs(symbol.sinto(s)),
+                DefPathData::LifetimeNs(symbol) => ExtendedDefPathItem::LifetimeNs(symbol.sinto(s)),
+                DefPathData::ClosureExpr => ExtendedDefPathItem::ClosureExpr,
+                DefPathData::Ctor => ExtendedDefPathItem::Ctor,
+                DefPathData::AnonConst => ExtendedDefPathItem::AnonConst,
                 DefPathData::ImplTrait => {
                     // TODO: probably need to add information here
-                    DefPathItem::ImplTrait
+                    ExtendedDefPathItem::ImplTrait
                 }
                 DefPathData::ImplTraitAssocTy => {
                     // TODO: probably need to add information here
-                    DefPathItem::ImplTraitAssocTy
+                    ExtendedDefPathItem::ImplTraitAssocTy
                 }
                 DefPathData::Impl => {
                     // `impl` blocks are defined for types
@@ -119,7 +146,7 @@ impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
                                 .sinto(s)
                         })
                         .collect();
-                    DefPathItem::Impl { ty, bounds }
+                    ExtendedDefPathItem::Impl { ty, bounds }
                 }
             };
 
@@ -143,7 +170,7 @@ impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
         path.reverse();
 
         // Finish
-        DefId {
+        GenericDefId {
             rust_def_id: Option::Some(*self),
             path,
             krate,
@@ -182,9 +209,30 @@ pub enum LogicalOp {
 }
 
 #[derive(
+    AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+#[args(<'ctx, S: BaseState<'ctx>>, from: rustc_hir::definitions::DefPathData, state: S as state)]
+pub enum DefPathItem {
+    CrateRoot,
+    Impl,
+    ForeignMod,
+    Use,
+    GlobalAsm,
+    TypeNs(Symbol),
+    ValueNs(Symbol),
+    MacroNs(Symbol),
+    LifetimeNs(Symbol),
+    ClosureExpr,
+    Ctor,
+    AnonConst,
+    ImplTrait,
+    ImplTraitAssocTy,
+}
+
+#[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
-pub enum DefPathItem {
+pub enum ExtendedDefPathItem {
     CrateRoot,
     Impl { ty: Ty, bounds: Vec<PredicateKind> },
     ForeignMod,
@@ -300,7 +348,7 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantKind> for rustc_middle::mir::Con
         // constant.
         let constant = if let mir::ConstantKind::Unevaluated(ucv, _) = self {
             // Use the id to check if we need to evaluate
-            let id = ucv.def.sinto(s);
+            let id: DefId = ucv.def.sinto(s);
             let last = id.path.last().unwrap();
             if let DefPathItem::AnonConst = &last.data {
                 // Anonymous constant: evaluate

@@ -35,7 +35,7 @@ pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
         .into_iter()
         .find(|v| v.def_id == variant.clone())
         .unwrap();
-    let constructs_type = adt_def.did().sinto(s);
+    let constructs_type: DefId = adt_def.did().sinto(s);
     VariantInformations {
         typ: constructs_type.clone(),
         variant: variant.sinto(s),
@@ -210,7 +210,7 @@ pub(crate) fn raw_macro_invocation_of_span<'t, S: BaseState<'t>>(
             (rustc_span::hygiene::ExpnKind::Macro(_, _), Some(mac_def_id))
                 if macro_calls.keys().any(|span| span.clone() == call_site) =>
             {
-                let macro_ident = mac_def_id.sinto(state);
+                let macro_ident: DefId = mac_def_id.sinto(state);
                 let path = Path::from(macro_ident.clone());
                 if opts
                     .inline_macro_calls
