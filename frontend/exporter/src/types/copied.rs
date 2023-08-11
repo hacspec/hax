@@ -1,17 +1,13 @@
 use crate::prelude::*;
 use crate::rustc_middle::query::Key;
 
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct DisambiguatedDefPathItem {
     pub data: DefPathItem,
     pub disambiguator: u32,
 }
 
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct DefId {
     /// We make this field an option because the deserializer needs to be
     /// able to provide a default value.
@@ -19,6 +15,32 @@ pub struct DefId {
     pub rust_def_id: Option<rustc_hir::def_id::DefId>,
     pub krate: String,
     pub path: Vec<DisambiguatedDefPathItem>,
+}
+
+impl std::hash::Hash for DefId {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.rust_def_id.hash(state)
+    }
+}
+
+impl std::cmp::PartialEq for DefId {
+    fn eq(&self, other: &Self) -> bool {
+        self.rust_def_id == other.rust_def_id
+    }
+}
+
+impl std::cmp::Eq for DefId {}
+
+impl std::cmp::PartialOrd for DefId {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.rust_def_id.partial_cmp(&other.rust_def_id)
+    }
+}
+
+impl std::cmp::Ord for DefId {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.rust_def_id.cmp(&other.rust_def_id)
+    }
 }
 
 impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
