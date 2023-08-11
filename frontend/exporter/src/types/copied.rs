@@ -2605,20 +2605,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, GenericBounds>
         };
         predicates
             .iter()
-            .map(|(pred, span)| {
-                let pred: rustc_middle::ty::Predicate = pred.clone();
-                let kind: rustc_middle::ty::Binder<'_, rustc_middle::ty::PredicateKind> =
-                    pred.kind();
-                let kind: rustc_middle::ty::PredicateKind =
-                    kind.no_bound_vars().unwrap_or_else(|| {
-                        tcx.sess.span_err(
-                            span.clone(),
-                            format!("[GenericBounds]: [no_bound_vars] failed"),
-                        );
-                        rustc_middle::ty::PredicateKind::Ambiguous
-                    });
-                kind.sinto(s)
-            })
+            .map(|(pred, _span)| tcx.erase_late_bound_regions(pred.clone().kind()).sinto(s))
             .collect()
     }
 }
