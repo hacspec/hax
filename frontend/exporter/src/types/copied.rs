@@ -1187,13 +1187,9 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
         let contents = match macro_invocation_of_span(span, s).map(ExprKind::MacroInvokation) {
             Some(contents) => contents,
             None => match kind {
-                rustc_middle::thir::ExprKind::NonHirLiteral { lit, .. } => ExprKind::Literal {
-                    lit: Spanned {
-                        node: scalar_int_to_lit_kind(s, lit, ty),
-                        span: span.sinto(s),
-                    },
-                    neg: false,
-                },
+                rustc_middle::thir::ExprKind::NonHirLiteral { .. } => {
+                    ExprKind::Todo(format!("{:?}", kind))
+                }
                 rustc_middle::thir::ExprKind::ZstLiteral { .. } => match ty.kind() {
                     rustc_middle::ty::TyKind::FnDef(def, _substs) => {
                         /* TODO: translate substs

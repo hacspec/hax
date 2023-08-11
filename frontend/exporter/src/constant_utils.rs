@@ -1,11 +1,30 @@
 use crate::prelude::*;
 
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub enum ConstantInt {
+    Int(i128, IntTy),
+    Uint(u128, UintTy),
+}
+
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub enum ConstantLiteral {
+    // TODO: add Str, etc.
+    Bool(bool),
+    Char(char),
+    Int(ConstantInt),
+    ByteStr(Vec<u8>, StrStyle),
+}
+
 /// The subset of [Expr] that corresponds to constants.
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub enum ConstantExprKind {
-    Literal(LitKind),
+    Literal(ConstantLiteral),
     Adt {
         info: VariantInformations,
         fields: Vec<ConstantFieldExpr>,
@@ -48,13 +67,34 @@ impl From<ConstantExpr> for Expr {
     fn from(c: ConstantExpr) -> Expr {
         use ConstantExprKind::*;
         let kind = match *c.contents {
-            Literal(kind) => ExprKind::Literal {
-                lit: Spanned {
-                    span: c.span.clone(),
-                    node: kind,
-                },
-                neg: false,
-            },
+            Literal(lit) => {
+                use ConstantLiteral::*;
+                let kind = match lit {
+                    Bool(b) => LitKind::Bool(b),
+                    Char(c) => LitKind::Char(c),
+                    Int(i) => {
+                        // This is slightly tricky, especially because
+                        // of the `neg` boolean. Doing nothing for now:
+                        // we have to test.
+                        let kind = ExprKind::Todo(format!(
+                            "Todo: int ConstantLiteral::Int to Expr: {:?}",
+                            i
+                        ));
+                        return Decorated {
+                            contents: Box::new(kind),
+                            ..c
+                        };
+                    }
+                    ByteStr(raw, str_style) => LitKind::ByteStr(raw, str_style),
+                };
+                ExprKind::Literal {
+                    lit: Spanned {
+                        span: c.span.clone(),
+                        node: kind,
+                    },
+                    neg: false,
+                }
+            }
             Adt { info, fields } => ExprKind::Adt(AdtExpr {
                 info,
                 fields: fields.into_iter().map(|field| field.into()).collect(),
@@ -82,29 +122,33 @@ impl From<ConstantExpr> for Expr {
 }
 
 // #[tracing::instrument(skip(s))]
-pub(crate) fn scalar_int_to_lit_kind<'tcx, S: BaseState<'tcx>>(
+pub(crate) fn scalar_int_to_constant_literal<'tcx, S: BaseState<'tcx>>(
     s: &S,
     x: rustc_middle::ty::ScalarInt,
     ty: rustc_middle::ty::Ty,
-) -> LitKind {
+) -> ConstantLiteral {
     use rustc_middle::ty;
     match ty.kind() {
-        ty::Char => LitKind::Char(
+        ty::Char => ConstantLiteral::Char(
             x.try_to_u8()
-                .expect("scalar_int_to_lit_kind: expected a char")
+                .expect("scalar_int_to_constant_literal: expected a char")
                 .into(),
         ),
-        ty::Bool => LitKind::Bool(
+        ty::Bool => ConstantLiteral::Bool(
             x.try_to_bool()
-                .expect("scalar_int_to_lit_kind: expected a bool"),
+                .expect("scalar_int_to_constant_literal: expected a bool"),
         ),
-        ty::Int(kind) => LitKind::Int(x.assert_bits(x.size()), LitIntType::Signed(kind.sinto(s))),
+        ty::Int(kind) => {
+            let v = x.try_to_int(x.size()).unwrap();
+            ConstantLiteral::Int(ConstantInt::Int(v, kind.sinto(s)))
+        }
         ty::Uint(kind) => {
-            LitKind::Int(x.assert_bits(x.size()), LitIntType::Unsigned(kind.sinto(s)))
+            let v = x.try_to_uint(x.size()).unwrap();
+            ConstantLiteral::Int(ConstantInt::Uint(v, kind.sinto(s)))
         }
         _ => fatal!(
             s,
-            "scalar_int_to_lit_kind: the type {:?} is not a literal",
+            "scalar_int_to_constant_literal: the type {:?} is not a literal",
             ty
         ),
     }
@@ -131,7 +175,7 @@ pub(crate) fn scalar_to_constant_expr<'tcx, S: BaseState<'tcx>>(
                     scalar
                 )
             });
-            ConstantExprKind::Literal(scalar_int_to_lit_kind(s, scalar_int, ty))
+            ConstantExprKind::Literal(scalar_int_to_constant_literal(s, scalar_int, ty))
         }
         ty::Ref(region, ty, Mutability::Not) if region.is_erased() => {
             let tcx = s.base().tcx;
@@ -233,11 +277,11 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
             ConstantExprKind::Borrow(valtree_to_constant_expr(s, valtree, *inner_ty, span))
         }
         (ty::ValTree::Branch(valtrees), ty::Str) => ConstantExprKind::Literal(
-            LitKind::ByteStr(valtrees.iter().map(|x| match x {
+            ConstantLiteral::ByteStr(valtrees.iter().map(|x| match x {
                 ty::ValTree::Leaf(leaf) => leaf.try_to_u8().unwrap_or_else(|e| span_fatal!(s, span, "Expected a u8 leaf while translating a str literal, got something else. Error: {:#?}", e)),
                 _ => span_fatal!(s, span, "Expected a flat list of leaves while translating a str literal, got a arbitrary valtree.")
-            }).collect(), StrStyle::Cooked)
-        ),
+            }).collect(), StrStyle::Cooked))
+        ,
         (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
             let contents: rustc_middle::ty::DestructuredConst = s
                 .base().tcx
@@ -274,7 +318,7 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
             }
         }
         (ty::ValTree::Leaf(x), _) => ConstantExprKind::Literal (
-            scalar_int_to_lit_kind(s, x, ty)
+            scalar_int_to_constant_literal(s, x, ty)
         ),
         _ => span_fatal!(
             s,
