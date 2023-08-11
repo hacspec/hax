@@ -2415,7 +2415,7 @@ impl<'a, S: BaseState<'a> + HasOwnerId, Body: IsBody> SInto<S, TraitItem<Body>>
 
 impl<'a, 'tcx, S: BaseState<'tcx>, Body: IsBody> SInto<S, Vec<Item<Body>>> for rustc_hir::Mod<'a> {
     fn sinto(&self, s: &S) -> Vec<Item<Body>> {
-        inline_macro_invocations(&self.item_ids.iter().cloned().collect(), s)
+        inline_macro_invocations(self.item_ids.iter().copied(), s)
         // .iter()
         // .map(|item_id| item_id.sinto(s))
         // .collect()

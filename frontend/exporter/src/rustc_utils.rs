@@ -278,7 +278,7 @@ use itertools::Itertools;
 
 #[tracing::instrument(skip(s))]
 pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
-    ids: &Vec<rustc_hir::ItemId>,
+    ids: impl Iterator<Item = rustc_hir::ItemId>,
     s: &S,
 ) -> Vec<Item<Body>> {
     let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
@@ -291,9 +291,7 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
         }
     }
 
-    ids.iter()
-        .cloned()
-        .map(|id| tcx.hir().item(id))
+    ids.map(|id| tcx.hir().item(id))
         .group_by(|item| SpanEq(raw_macro_invocation_of_span(item.span, s)))
         .into_iter()
         .map(|(mac, items)| match mac.0 {
