@@ -205,14 +205,14 @@ pub struct Decorated<T> {
     pub attributes: Vec<Attribute>,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(AdtInto, Copy, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'slt, S: BaseState<'slt>>, from: rustc_middle::mir::UnOp, state: S as _s)]
 pub enum UnOp {
     Not,
     Neg,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(AdtInto, Copy, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'slt, S: BaseState<'slt>>, from: rustc_middle::mir::BinOp, state: S as _s)]
 pub enum BinOp {
     Add,
@@ -256,6 +256,7 @@ pub struct Scope {
 }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantKind> for rustc_middle::mir::ConstantKind<'tcx> {
+    // TODO: shouldn't we convert this to a ConstantExprKind?
     fn sinto(&self, s: &S) -> ConstantKind {
         use rustc_middle::mir::ConstantKind as RustConstantKind;
 
@@ -269,16 +270,12 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantKind> for rustc_middle::mir::Con
                     _ => ConstantKind::Todo(format!("{:#?}", self)),
                 }
             }
-            RustConstantKind::Ty(c) => match c.sinto(s).unwrap_borrow() {
+            RustConstantKind::Ty(c) => match c.sinto(s) {
                 Decorated {
-                    contents:
-                        box ExprKind::Literal {
-                            lit: Spanned { node, .. },
-                            ..
-                        },
+                    contents: box ConstantExprKind::Literal(lit),
                     ..
-                } => ConstantKind::Lit(node),
-                e => ConstantKind::Ty(Box::new(e)),
+                } => ConstantKind::Lit(lit),
+                e => ConstantKind::Ty(e),
             },
             _ => ConstantKind::Todo(format!("{:#?}", self)),
         }
@@ -1376,7 +1373,7 @@ impl<'tcx, S> SInto<S, UintTy> for rustc_ast::ast::UintTy {
 #[derive(AdtInto)]
 #[args(<S>, from: rustc_type_ir::UintTy, state: S as _s)]
 #[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+    Copy, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub enum UintTy {
     Usize,
@@ -1787,7 +1784,7 @@ pub enum PointerCast {
 #[derive(AdtInto)]
 #[args(<S>, from: rustc_middle::mir::BorrowKind, state: S as gstate)]
 #[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+    Copy, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub enum BorrowKind {
     Shared,

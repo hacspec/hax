@@ -19,13 +19,13 @@ impl<S> SInto<S, Mutability> for rustc_hir::Mutability {
     }
 }
 
-pub type Const = Box<Expr>;
+pub type Const = ConstantExpr;
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Const> for rustc_middle::ty::Const<'tcx> {
     fn sinto(&self, s: &S) -> Const {
         // SH: TODO: are you sure you want to evaluate the constant straight away?
         // I put some code for the [Unevaluated] case in [const_to_constant_expr]
         let x = self.eval(s.base().tcx, get_param_env(s));
-        Box::new(const_to_constant_expr(s, x).into())
+        const_to_constant_expr(s, x)
     }
 }

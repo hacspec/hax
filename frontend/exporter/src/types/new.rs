@@ -10,6 +10,7 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, TypedConstantKind>
         }
     }
 }
+
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct TypedConstantKind {
     pub typ: Ty,
