@@ -129,7 +129,6 @@ impl From<ConstantExpr> for Expr {
     }
 }
 
-// #[tracing::instrument(skip(s))]
 pub(crate) fn scalar_int_to_constant_literal<'tcx, S: BaseState<'tcx>>(
     s: &S,
     x: rustc_middle::ty::ScalarInt,
@@ -138,7 +137,7 @@ pub(crate) fn scalar_int_to_constant_literal<'tcx, S: BaseState<'tcx>>(
     use rustc_middle::ty;
     match ty.kind() {
         ty::Char => ConstantLiteral::Char(
-            x.try_to_u8()
+            char::try_from(x)
                 .expect("scalar_int_to_constant_literal: expected a char")
                 .into(),
         ),

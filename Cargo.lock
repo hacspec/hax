@@ -422,6 +422,7 @@ dependencies = [
  "hax-frontend-exporter-options",
  "hax-lint",
  "inquire",
+ "itertools 0.11.0",
  "serde",
  "serde_json",
  "tracing",
