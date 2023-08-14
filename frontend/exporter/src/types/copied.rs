@@ -738,18 +738,25 @@ pub struct Block {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct AliasTy {
     pub substs: Vec<GenericArg>,
-    pub trait_def_id: DefId,
+    pub trait_def_id: Option<DefId>,
     pub def_id: DefId,
 }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, AliasTy> for rustc_middle::ty::AliasTy<'tcx> {
     fn sinto(&self, s: &S) -> AliasTy {
         let tcx = s.base().tcx;
-        // let trait_ref = self.trait_ref(tcx);
-        // resolve_trait(trait_ref, s);
+        use rustc_hir::def::DefKind::*;
+        let trait_def_id = matches!(
+            tcx.def_kind(self.def_id),
+            AssocTy | AssocConst | ImplTraitPlaceholder
+        )
+        .then(|| {
+            let _trait_ref = self.trait_ref(tcx);
+            self.trait_def_id(tcx).sinto(s)
+        });
         AliasTy {
             substs: self.substs.sinto(s),
-            trait_def_id: self.trait_def_id(tcx).sinto(s),
+            trait_def_id,
             def_id: self.def_id.sinto(s),
         }
     }
@@ -951,8 +958,33 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                         };
                     }
                     _ => {
-                        supposely_unreachable!("ZstLiteral ty≠FnDef(...)": kind, span, ty);
-                        kind.sinto(s)
+                        if ty.is_phantom_data() {
+                            let rustc_middle::ty::Adt(def, _) = ty.kind() else {
+                                panic!()
+                            };
+                            let variant_id = rustc_abi::VariantIdx::from_u32(0);
+                            let variant = def.variant(variant_id);
+                            let adt_def = AdtExpr {
+                                info: get_variant_information(def, &variant.def_id, s),
+                                user_ty: None,
+                                base: None,
+                                fields: vec![],
+                            };
+                            return Expr {
+                                contents: Box::new(ExprKind::Adt(adt_def)),
+                                span: self.span.sinto(s),
+                                ty: ty.sinto(s),
+                                hir_id,
+                                attributes,
+                            };
+                        } else {
+                            supposely_unreachable!(
+                                "ZstLiteral ty≠FnDef(...) or PhantomData": kind,
+                                span,
+                                ty
+                            );
+                            kind.sinto(s)
+                        }
                     }
                 },
                 rustc_middle::thir::ExprKind::Field {
@@ -2415,7 +2447,7 @@ impl<'a, S: BaseState<'a> + HasOwnerId, Body: IsBody> SInto<S, TraitItem<Body>>
 
 impl<'a, 'tcx, S: BaseState<'tcx>, Body: IsBody> SInto<S, Vec<Item<Body>>> for rustc_hir::Mod<'a> {
     fn sinto(&self, s: &S) -> Vec<Item<Body>> {
-        inline_macro_invocations(&self.item_ids.iter().cloned().collect(), s)
+        inline_macro_invocations(self.item_ids.iter().copied(), s)
         // .iter()
         // .map(|item_id| item_id.sinto(s))
         // .collect()
@@ -2573,20 +2605,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, GenericBounds>
         };
         predicates
             .iter()
-            .map(|(pred, span)| {
-                let pred: rustc_middle::ty::Predicate = pred.clone();
-                let kind: rustc_middle::ty::Binder<'_, rustc_middle::ty::PredicateKind> =
-                    pred.kind();
-                let kind: rustc_middle::ty::PredicateKind =
-                    kind.no_bound_vars().unwrap_or_else(|| {
-                        tcx.sess.span_err(
-                            span.clone(),
-                            format!("[GenericBounds]: [no_bound_vars] failed"),
-                        );
-                        rustc_middle::ty::PredicateKind::Ambiguous
-                    });
-                kind.sinto(s)
-            })
+            .map(|(pred, _span)| tcx.erase_late_bound_regions(pred.clone().kind()).sinto(s))
             .collect()
     }
 }

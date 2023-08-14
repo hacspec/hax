@@ -53,6 +53,106 @@ fn write_files(
     }
 }
 
+type ThirBundle<'tcx> = (Rc<rustc_middle::thir::Thir<'tcx>>, ExprId);
+/// Generates a dummy THIR body with an error literal as first expression
+fn dummy_thir_body<'tcx>(tcx: TyCtxt<'tcx>, span: rustc_span::Span) -> ThirBundle<'tcx> {
+    use rustc_middle::thir::*;
+    let ty = tcx.mk_ty_from_kind(rustc_type_ir::sty::TyKind::Never);
+    let mut thir = Thir::new(BodyTy::Const(ty));
+    const ERR_LITERAL: &'static rustc_hir::Lit = &rustc_span::source_map::Spanned {
+        node: rustc_ast::ast::LitKind::Err,
+        span: rustc_span::DUMMY_SP,
+    };
+    let expr = thir.exprs.push(Expr {
+        kind: ExprKind::Literal {
+            lit: ERR_LITERAL,
+            neg: false,
+        },
+        ty,
+        temp_lifetime: None,
+        span,
+    });
+    (Rc::new(thir), expr)
+}
+
+/// Precompute all THIR bodies in a certain order so that we avoid
+/// stealing issues (theoretically...)
+fn precompute_local_thir_bodies<'tcx>(
+    tcx: TyCtxt<'tcx>,
+) -> std::collections::HashMap<rustc_span::def_id::LocalDefId, ThirBundle<'tcx>> {
+    let hir = tcx.hir();
+    use rustc_hir::def::DefKind::*;
+    use rustc_hir::*;
+
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+    enum ConstLevel {
+        Const,
+        ConstFn,
+        NotConst,
+    }
+
+    #[tracing::instrument(skip(tcx))]
+    fn const_level_of(tcx: TyCtxt<'_>, ldid: rustc_span::def_id::LocalDefId) -> ConstLevel {
+        let did = ldid.to_def_id();
+        if matches!(
+            tcx.def_kind(did),
+            Const | ConstParam | AssocConst | AnonConst | InlineConst
+        ) {
+            ConstLevel::Const
+        } else if tcx.is_const_fn_raw(ldid.to_def_id()) {
+            ConstLevel::ConstFn
+        } else {
+            ConstLevel::NotConst
+        }
+    }
+
+    use itertools::Itertools;
+    hir.body_owners()
+        .filter(|ldid| {
+            match tcx.def_kind(ldid.to_def_id()) {
+                InlineConst | AnonConst => {
+                    fn is_fn<'tcx>(tcx: TyCtxt<'tcx>, did: rustc_span::def_id::DefId) -> bool {
+                        use rustc_hir::def::DefKind;
+                        matches!(
+                            tcx.def_kind(did),
+                            DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) | DefKind::Closure
+                        )
+                    }
+                    !is_fn(tcx, tcx.local_parent(*ldid).to_def_id())
+                },
+                _ => true
+            }
+        })
+        .sorted_by_key(|ldid| const_level_of(tcx, *ldid))
+        .filter(|ldid| hir.maybe_body_owned_by(*ldid).is_some())
+        .map(|ldid| {
+            tracing::debug!("⏳ Type-checking THIR body for {:#?}", ldid);
+            let span = hir.span(hir.local_def_id_to_hir_id(ldid));
+            let (thir, expr) = match tcx.thir_body(ldid) {
+                Ok(x) => x,
+                Err(e) => {
+                    tcx.sess.span_err(
+                        span,
+                        "While trying to reach a body's THIR defintion, got a typechecking error.",
+                    );
+                    return (ldid, dummy_thir_body(tcx, span));
+                }
+            };
+            let thir = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                thir.borrow().clone()
+            })) {
+                Ok(x) => x,
+                Err(e) => {
+                    tcx.sess.span_err(span, format!("The THIR body of item {:?} was stolen.\nThis is not supposed to happen.\nThis is a bug in Hax's frontend.\nThis is discussed in issue https://github.com/hacspec/hacspec-v2/issues/27.\nPlease comment this issue if you see this error message!", ldid));
+                    return (ldid, dummy_thir_body(tcx, span));
+                }
+            };
+            tracing::debug!("✅ Type-checked THIR body for {:#?}", ldid);
+            (ldid, (Rc::new(thir), expr))
+        })
+        .collect()
+}
+
 /// Browse a crate and translate every item from HIR+THIR to "THIR'"
 /// (I call "THIR'" the AST described in this crate)
 #[tracing::instrument(skip_all)]
@@ -64,92 +164,11 @@ fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
     Vec<rustc_span::Span>,
     Vec<hax_frontend_exporter::Item<Body>>,
 ) {
-    let hir = tcx.hir();
-
-    let bodies = {
-        // Here, we partition the bodies so that constant items appear
-        // first.
-        let (consts, others): (Vec<rustc_span::def_id::LocalDefId>, _) = hir
-            .body_owners()
-            .partition(|x: &rustc_span::def_id::LocalDefId| {
-                matches!(
-                    hir.get_by_def_id(x.clone()),
-                    rustc_hir::Node::AnonConst(_)
-                        | rustc_hir::Node::Item(rustc_hir::Item {
-                            kind: rustc_hir::ItemKind::Const(..),
-                            ..
-                        })
-                        | rustc_hir::Node::TraitItem(rustc_hir::TraitItem {
-                            kind: rustc_hir::TraitItemKind::Const(..),
-                            ..
-                        })
-                        | rustc_hir::Node::ImplItem(rustc_hir::ImplItem {
-                            kind: rustc_hir::ImplItemKind::Const(..),
-                            ..
-                        })
-                )
-            });
-        consts.into_iter().chain(others.into_iter())
-    };
-
-    let thirs: std::collections::HashMap<
-        rustc_span::def_id::LocalDefId,
-        (Rc<rustc_middle::thir::Thir<'tcx>>, ExprId),
-    > = bodies
-        .map(|did| {
-            tracing::debug!("⏳ Type-checking THIR body for {:#?}", did);
-            let span = hir.span(hir.local_def_id_to_hir_id(did));
-            let mk_error_thir = || {
-                let ty = tcx.mk_ty_from_kind(rustc_type_ir::sty::TyKind::Never);
-                let mut thir = rustc_middle::thir::Thir::new(rustc_middle::thir::BodyTy::Const(ty));
-                const ERR_LITERAL: &'static rustc_hir::Lit = &rustc_span::source_map::Spanned {
-                    node: rustc_ast::ast::LitKind::Err,
-                    span: rustc_span::DUMMY_SP,
-                };
-                let expr = thir.exprs.push(rustc_middle::thir::Expr {
-                    kind: rustc_middle::thir::ExprKind::Literal {
-                        lit: ERR_LITERAL,
-                        neg: false,
-                    },
-                    ty,
-                    temp_lifetime: None,
-                    span,
-                });
-                (did, (Rc::new(thir), expr))
-            };
-            let (thir, expr) = match tcx.thir_body(did) {
-                Ok(x) => x,
-                Err(e) => {
-                    tcx.sess.span_err(
-                        span,
-                        "While trying to reach a body's THIR defintion, got a typechecking error.",
-                    );
-                    return mk_error_thir();
-                }
-            };
-            let thir = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                // Borrowing `Thir` from a `Steal`!
-                thir.borrow().clone()
-            })) {
-                Ok(x) => x,
-                Err(e) => {
-                    let message = format!("The THIR body of item {:?} was stolen.\nThis is not supposed to happen.\nThis is a bug in Hax's frontend.\nThis is discussed in issue https://github.com/hacspec/hacspec-v2/issues/27.\nPlease comment this issue if you see this error message!", did);
-                    tcx.sess.span_err(span, message);
-                    return mk_error_thir();
-                }
-            };
-            tracing::debug!("✅ Type-checked THIR body for {:#?}", did);
-            (did, (Rc::new(thir), expr))
-        })
-        .collect();
-
-    let items = hir.items();
-    let macro_calls_r = Rc::new(macro_calls);
     let mut state = hax_frontend_exporter::state::State::new(tcx, options);
-    state.base.macro_infos = macro_calls_r;
-    state.base.cached_thirs = Rc::new(thirs);
+    state.base.macro_infos = Rc::new(macro_calls);
+    state.base.cached_thirs = Rc::new(precompute_local_thir_bodies(tcx));
 
-    let result = hax_frontend_exporter::inline_macro_invocations(&items.collect(), &state);
+    let result = hax_frontend_exporter::inline_macro_invocations(tcx.hir().items(), &state);
     let exported_spans = state.base.exported_spans.borrow().clone();
     (exported_spans.into_iter().collect(), result)
 }

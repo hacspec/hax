@@ -20,6 +20,7 @@ hax-cli-options-engine.workspace = true
 hax-frontend-exporter-options.workspace = true
 hax-lint.workspace = true
 hax-diagnostics.workspace = true
+itertools.workspace = true
 which.workspace = true
 inquire = "0.6"
 const_format = "0.2"
