@@ -135,13 +135,13 @@ mod types {
     impl<'tcx> Base<'tcx> {
         pub fn new(
             tcx: rustc_middle::ty::TyCtxt<'tcx>,
-            options: &hax_frontend_exporter_options::Options,
+            options: hax_frontend_exporter_options::Options,
         ) -> Self {
             Self {
                 tcx: tcx.clone(),
                 macro_infos: Rc::new(HashMap::new()),
                 cached_thirs: Rc::new(HashMap::new()),
-                options: Rc::new(options.clone()),
+                options: Rc::new(options),
                 opt_def_id: None,
                 local_ctx: Rc::new(RefCell::new(LocalContextS::new())),
                 exported_spans: Rc::new(RefCell::new(HashSet::new())),
@@ -169,7 +169,7 @@ pub use types::*;
 impl<'tcx> State<Base<'tcx>, (), (), ()> {
     pub fn new(
         tcx: rustc_middle::ty::TyCtxt<'tcx>,
-        options: &hax_frontend_exporter_options::Options,
+        options: hax_frontend_exporter_options::Options,
     ) -> Self {
         Self {
             thir: (),
@@ -183,12 +183,12 @@ impl<'tcx> State<Base<'tcx>, (), (), ()> {
 impl<'tcx> State<Base<'tcx>, (), Rc<rustc_middle::mir::Body<'tcx>>, ()> {
     pub fn new_from_mir(
         tcx: rustc_middle::ty::TyCtxt<'tcx>,
-        options: &hax_frontend_exporter_options::Options,
-        mir: rustc_middle::mir::Body<'tcx>,
+        options: hax_frontend_exporter_options::Options,
+        mir: Rc<rustc_middle::mir::Body<'tcx>>,
     ) -> Self {
         Self {
             thir: (),
-            mir: Rc::new(mir),
+            mir,
             owner_id: (),
             base: Base::new(tcx, options),
         }
