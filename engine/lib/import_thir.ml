@@ -958,28 +958,30 @@ module Exn = struct
       ti_attrs = c_attrs item.attributes;
     }
 
-  let is_automatically_derived (item : Thir.item) =
+  let is_automatically_derived (attrs : Thir.attribute list) =
     List.exists (* We need something better here, see issue #108 *)
       ~f:(function
         | { kind = Normal { item = { path; _ }; _ }; _ } ->
             String.equal path "automatically_derived"
         | _ -> false)
-      item.attributes
+      attrs
 
-  let is_hax_skip (item : Thir.item) =
+  let is_hax_skip (attrs : Thir.attribute list) =
     List.exists
       ~f:(function
         | { kind = Normal { item = { path; _ }; _ }; _ } ->
             String.equal path "_hax::skip"
         | _ -> false)
-      item.attributes
+      attrs
+
+  let should_skip attrs = is_hax_skip attrs || is_automatically_derived attrs
 
   let rec c_item (item : Thir.item) : item list =
     try c_item_unwrapped item with Diagnostics.SpanFreeError.Exn _kind -> []
 
   and c_item_unwrapped (item : Thir.item) : item list =
     let open (val make ~krate:item.owner_id.krate : EXPR) in
-    if is_automatically_derived item || is_hax_skip item then []
+    if should_skip item.attributes then []
     else
       let span = Span.of_thir item.span in
       let mk_one v =
@@ -1084,6 +1086,11 @@ module Exn = struct
                  witness = W.macro;
                }
       | Trait (No, Normal, generics, _bounds, items) ->
+          let items =
+            List.filter
+              ~f:(fun { attributes; _ } -> not (should_skip attributes))
+              items
+          in
           let name =
             Concrete_ident.of_def_id Trait (Option.value_exn item.def_id)
           in
@@ -1101,6 +1108,11 @@ module Exn = struct
       | Trait (Yes, _, _, _, _) -> unimplemented [ item.span ] "Auto trait"
       | Trait (_, Unsafe, _, _, _) -> unimplemented [ item.span ] "Unsafe trait"
       | Impl { of_trait = None; generics; items; _ } ->
+          let items =
+            List.filter
+              ~f:(fun { attributes; _ } -> not (should_skip attributes))
+              items
+          in
           List.map
             ~f:(fun (item : Thir.impl_item) ->
               let item_def_id = Concrete_ident.of_def_id Impl item.owner_id in
@@ -1143,6 +1155,11 @@ module Exn = struct
             unsafety = Normal;
             _;
           } ->
+          let items =
+            List.filter
+              ~f:(fun { attributes; _ } -> not (should_skip attributes))
+              items
+          in
           mk
           @@ Impl
                {
