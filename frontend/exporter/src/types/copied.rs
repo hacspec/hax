@@ -1511,6 +1511,34 @@ pub enum UintTy {
     U128,
 }
 
+impl ToString for IntTy {
+    fn to_string(&self) -> String {
+        use IntTy::*;
+        match self {
+            Isize => "isize".to_string(),
+            I8 => "i8".to_string(),
+            I16 => "i16".to_string(),
+            I32 => "i32".to_string(),
+            I64 => "i64".to_string(),
+            I128 => "i128".to_string(),
+        }
+    }
+}
+
+impl ToString for UintTy {
+    fn to_string(&self) -> String {
+        use UintTy::*;
+        match self {
+            Usize => "usize".to_string(),
+            U8 => "u8".to_string(),
+            U16 => "u16".to_string(),
+            U32 => "u32".to_string(),
+            U64 => "u64".to_string(),
+            U128 => "u128".to_string(),
+        }
+    }
+}
+
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::TypeAndMut<'tcx>, state: S as gstate)]
 #[derive(
