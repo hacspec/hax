@@ -1,24 +1,45 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 // use syn::parse::Parse;
-use proc_macro2::{Span, TokenStream as TokenStream2};
+use proc_macro2::TokenStream as TokenStream2;
+use proc_macro_error::*;
 use syn::parse_macro_input;
 use syn::Item;
 
 const HAX_COMPILATION: &str = "hax_compilation";
 const HAX_TOOL: &str = "_hax";
 
+macro_rules! no_argument {
+    () => {
+        |at: TokenStream2| {
+            if !at.is_empty() {
+                abort!(at, "this attribute doesn't take any argument")
+            }
+            at
+        }
+    };
+}
+
 /// `passthrough_attribute!(NAME)` generates a proc-macro that expands
 /// into the tool attribute `HAX_TOOL::NAME` when the cfg flag
 /// `HAX_COMPILATION` is set.
 macro_rules! passthrough_attribute {
-    ($name:ident) => {
+    ($(#$a:tt)*$name:ident) => {
+        passthrough_attribute!($(#$a)*$name, no_argument!());
+    };
+    ($(#$a:tt)*$name:ident, |$x:pat_param| $e:expr) => {
+        passthrough_attribute!($(#$a)*$name, |$x: TokenStream2| $e);
+    };
+    ($(#$a:tt)*$name:ident, $validator:expr) => {
+        #[proc_macro_error]
         #[proc_macro_attribute]
+        $(#$a)*
         pub fn $name(attr: TokenStream, item: TokenStream) -> TokenStream {
             let attr: TokenStream2 = attr.into();
             let item: TokenStream2 = item.into();
             let hax_compilation = format_ident!("{}", HAX_COMPILATION);
             let hax_tool = format_ident!("{}", HAX_TOOL);
+            let attr: TokenStream2 = $validator(attr);
             quote! {
                 #[cfg_attr(#hax_compilation, #hax_tool::$name(#attr))]
                 #item
@@ -28,19 +49,31 @@ macro_rules! passthrough_attribute {
     };
 }
 
-passthrough_attribute!(skip);
+passthrough_attribute!(
+    /// Makes Hax ignore a function, a type, a trait or any other
+    /// item. Hax's engine won't look at the item at all.
+    skip
+);
 
+passthrough_attribute!(
+    /// Makes Hax backends ignore a function, a type, a trait or any
+    /// other item. Hax still processes the items up to the backends,
+    /// and then drop them. This is useful for generating helper
+    /// functions aimed at being inlined, for example, refinements.
+    late_skip
+);
+
+#[proc_macro_error]
 #[proc_macro_attribute]
-pub fn hax(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let item: Item = {
-        let item = item.clone();
-        parse_macro_input!(item as Item)
-    };
+/// Enable the following attrubutes in the annotated item:
+///  - (in a struct) `refine`: refine a type with a logical formula
+pub fn hax_attributes(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let item: Item = parse_macro_input!(item as Item);
 
     struct AttrVisitor {}
 
     use syn::visit_mut;
-    use syn::{Attribute, Expr, Ident, ItemFn, ItemStruct};
+    use syn::{Attribute, Expr};
     use visit_mut::VisitMut;
     impl VisitMut for AttrVisitor {
         fn visit_item_mut(&mut self, item: &mut Item) {
@@ -88,6 +121,7 @@ pub fn hax(_attr: TokenStream, item: TokenStream) -> TokenStream {
                             extra.push(syn::parse_quote! {
                                 #[cfg(#hax_compilation)]const _: () = {
                                     #[#hax_tool::associated_with(#uuid, refinement)]
+                                    #[#hax_tool::late_skip]
                                     fn refinement(#binders) -> bool { #refine }
                                 };
                             })
