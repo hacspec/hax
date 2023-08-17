@@ -61,6 +61,13 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     unsafe {
         let _ = *ptr.offset(1) as char;
     }
+
+    const _: () = {
+        use std::ops::DerefMut;
+        fn f<T: DerefMut>(x: T) {
+            let _: &mut _ = { x }.deref_mut();
+        }
+    };
 }
 
 macro_rules! impl_arith {

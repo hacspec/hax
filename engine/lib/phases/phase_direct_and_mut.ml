@@ -32,6 +32,59 @@ struct
     module UA = Ast_utils.Make (FA)
     module UB = Ast_utils.Make (FB)
 
+    let ( let* ) x f = Option.bind ~f x
+
+    module Expr = struct
+      let expect_mut_borrow (e : A.expr) : A.expr option =
+        match e.e with A.Borrow { kind = Mut _; e; _ } -> Some e | _ -> None
+
+      let expect_deref (e : A.expr) : A.expr option =
+        match e.e with
+        | App { f = { e = GlobalVar (`Primitive Deref); _ }; args = [ e ]; _ }
+          ->
+            Some e
+        | _ -> None
+
+      let expect_concrete_app1 (f : Concrete_ident.name) (e : A.expr) :
+          A.expr option =
+        match e.e with
+        | App { f = { e = GlobalVar (`Concrete f') }; args = [ e ] }
+          when Concrete_ident.eq_name f f' ->
+            Some e
+        | _ -> None
+
+      let expect_deref_mut_app =
+        expect_concrete_app1 Core__ops__deref__DerefMut__deref_mut
+
+      let expect_local_var (e : A.expr) : A.expr option =
+        match e.e with LocalVar i -> Some e | _ -> None
+    end
+
+    let deref_mut_allowed (t : A.ty) : bool =
+      match t with
+      | TApp { ident; _ } -> Global_ident.eq_name Alloc__vec__Vec ident
+      | _ -> false
+
+    let match_mut_borrow (e : A.expr) : A.expr option =
+      let* e = Expr.expect_mut_borrow e in
+      match Expr.expect_local_var e with
+      | Some e -> Some e (* we have a `&mut x`, `x` is a local identifier *)
+      | None -> (
+          match
+            let* e = Expr.expect_deref e in
+            let* e = Expr.expect_deref_mut_app e in
+            Expr.expect_mut_borrow e
+          with
+          | Some e ->
+              (* we have a `&mut *(&mut x).deref_mut()` with x local id *)
+              (* we allow this only for know "identity-like" instances of `deref_mut` *)
+              if deref_mut_allowed e.typ then Some e else None
+          | None ->
+              (* We entered a `&mut`, but then we get an arbitrary
+                 expression.  Since we reject every function call that
+                 returns a `&mut`, that is fine *)
+              Some e)
+
     [%%inline_defs dmutability]
 
     let rec dty (span : span) (ty : A.ty) : B.ty =
@@ -49,18 +102,12 @@ struct
       | Mut _ -> Shared
 
     and extract_direct_ref_mut (ty_span : span) (t : A.ty) (e : A.expr) :
-        (B.ty * (local_ident * B.ty * span), B.ty * B.expr) Either.t =
+        (B.ty * B.expr, B.ty * B.expr) Either.t =
       let e = UA.Mappers.normalize_borrow_mut#visit_expr () e in
-      match (t, e.e) with
-      | ( A.TRef { witness; typ; mut = Mutable _; region },
-          A.Borrow
-            {
-              kind = Mut _;
-              e = { e = LocalVar i; typ = e_typ; span };
-              witness = _;
-            } ) ->
-          let t = A.TRef { witness; typ; mut = Immutable; region } in
-          Either.First (dty ty_span t, (i, dty ty_span e_typ, span))
+      match match_mut_borrow e with
+      | Some e ->
+          let e = dexpr e in
+          Either.First (e.typ, e)
       | _ -> Either.Second (dty ty_span t, dexpr e)
 
     and dexpr_unwrapped (expr : A.expr) : B.expr =
@@ -134,10 +181,7 @@ struct
                       };
                     args =
                       List.map
-                        ~f:(function
-                          | First (_, (i, typ, span)) ->
-                              B.{ e = LocalVar i; typ; span }
-                          | Second (_, e) -> e)
+                        ~f:(function First (_, e) | Second (_, e) -> e)
                         typed_inputs;
                   }
               in
@@ -150,32 +194,41 @@ struct
                   }
               in
               match mut_typed_inputs with
-              | [ (_, (var, typ, _)) ] when ret_unit ->
-                  {
-                    expr with
-                    typ = UB.unit_typ;
-                    e =
-                      B.Assign
-                        {
-                          lhs = LhsLocalVar { var; typ };
-                          witness = Features.On.mutable_variable;
-                          e = expr;
-                        };
-                  }
+              | [ (_, e) ] when ret_unit -> (
+                  match e.e with
+                  | LocalVar var ->
+                      {
+                        expr with
+                        typ = UB.unit_typ;
+                        e =
+                          B.Assign
+                            {
+                              lhs = LhsLocalVar { var; typ = e.typ };
+                              witness = Features.On.mutable_variable;
+                              e = expr;
+                            };
+                      }
+                  | _ ->
+                      UB.make_let
+                        (UB.make_wild_pat e.typ e.span)
+                        expr (UB.unit_expr e.span))
               | _ ->
                   let idents =
                     List.map
-                      ~f:(fun (ty, (i, _, span)) ->
-                        (* TODO, generate fresh variable here *)
-                        let i_temp =
-                          LocalIdent.{ i with name = i.name ^ "_temp" }
-                        in
-                        (ty, i, i_temp, span))
+                      ~f:(fun (ty, e) ->
+                        match e.e with
+                        | LocalVar i ->
+                            (* TODO, generate fresh variable here *)
+                            let i_temp =
+                              LocalIdent.{ i with name = i.name ^ "_temp" }
+                            in
+                            Either.First (ty, i, i_temp, e.span)
+                        | _ -> Either.Second (ty, e.span))
                       mut_typed_inputs
                   in
                   let assigns =
                     List.map
-                      ~f:(fun (typ, i, i_temp, span) ->
+                      ~f:(fun (typ, i, var, span) ->
                         {
                           expr with
                           typ = UB.unit_typ;
@@ -184,23 +237,27 @@ struct
                               {
                                 lhs = LhsLocalVar { var = i; typ };
                                 witness = Features.On.mutable_variable;
-                                e = { typ; span; e = LocalVar i_temp };
+                                e = { typ; span; e = LocalVar var };
                               };
                         })
-                      idents
+                      (List.filter_map ~f:Either.First.to_option idents)
                   in
                   UB.make_let
                     (UB.make_tuple_pat
-                    @@ List.map ~f:(fun (typ, _, i_temp, span) ->
-                           UB.make_var_pat i_temp typ span)
+                    @@ List.map ~f:(function
+                         | Either.Second (typ, span) ->
+                             UB.make_wild_pat typ span
+                         | Either.First (typ, _, i_temp, span) ->
+                             UB.make_var_pat i_temp typ span)
                     @@ Option.to_list
                          (if ret_unit then None
                          else
                            Some
-                             ( dty expr.span type_output0,
-                               returned_value_ident,
-                               returned_value_ident,
-                               expr.span ))
+                             (Either.First
+                                ( dty expr.span type_output0,
+                                  returned_value_ident,
+                                  returned_value_ident,
+                                  expr.span )))
                     @ idents)
                     expr
                   @@ List.fold_right
