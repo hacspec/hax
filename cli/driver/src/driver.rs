@@ -138,7 +138,7 @@ fn main() {
         // We want to enable certain features, but only if the crate
         // itself doesn't enable those
         let features = Features {
-            adt_const_params: true,
+            adt_const_params: false,    // not useful for now
             generic_const_exprs: false, // not useful for now
             register_tool: true,
             registered_tools: HashSet::from_iter(vec!["_hax".to_string()].into_iter()),
