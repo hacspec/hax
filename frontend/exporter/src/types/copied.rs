@@ -2140,12 +2140,9 @@ pub struct ImplItem<Body: IsBody> {
     pub defaultness: Defaultness,
     pub span: Span,
     pub vis_span: Span,
-    #[map({
-        let tcx = s.base().tcx;
-        tcx.hir().attrs(rustc_hir::hir_id::HirId::from(owner_id.clone())).sinto(s)
-    })]
+    #[map(ItemAttributes::from_owner_id(s, *owner_id))]
     #[not_in_source]
-    pub attributes: Vec<Attribute>,
+    pub attributes: ItemAttributes,
 }
 
 #[derive(AdtInto)]
@@ -2406,12 +2403,9 @@ pub struct TraitItem<Body: IsBody> {
     pub kind: TraitItemKind<Body>,
     pub span: Span,
     pub defaultness: Defaultness,
-    #[map({
-        let tcx = s.base().tcx;
-        tcx.hir().attrs(rustc_hir::hir_id::HirId::from(owner_id.clone())).sinto(s)
-    })]
+    #[map(ItemAttributes::from_owner_id(s, *owner_id))]
     #[not_in_source]
-    pub attributes: Vec<Attribute>,
+    pub attributes: ItemAttributes,
 }
 
 impl<'tcx, S: BaseState<'tcx> + HasOwnerId, Body: IsBody> SInto<S, EnumDef<Body>>
@@ -2640,12 +2634,9 @@ pub struct Item<Body: IsBody> {
         })
     })]
     pub kind: ItemKind<Body>,
-    #[map({
-        let tcx = state.base().tcx;
-        tcx.hir().attrs(rustc_hir::hir_id::HirId::from(owner_id.clone())).sinto(state)
-    })]
+    #[map(ItemAttributes::from_owner_id(state, *owner_id))]
     #[not_in_source]
-    pub attributes: Vec<Attribute>,
+    pub attributes: ItemAttributes,
     #[not_in_source]
     #[map(span.macro_backtrace().map(|o| o.sinto(state)).collect())]
     pub expn_backtrace: Vec<ExpnData>,

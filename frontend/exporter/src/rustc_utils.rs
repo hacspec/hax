@@ -306,7 +306,7 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
                     kind: ItemKind::MacroInvokation(invocation),
                     span,
                     vis_span: rustc_span::DUMMY_SP.sinto(s),
-                    attributes: vec![],
+                    attributes: ItemAttributes::new(),
                     expn_backtrace: vec![],
                 }]
             }
