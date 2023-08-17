@@ -304,7 +304,7 @@ struct
 
   and pexpr (e : expr) =
     try pexpr_unwrapped e
-    with Diagnostics.SpanFreeError kind ->
+    with Diagnostics.SpanFreeError.Exn _ ->
       (* let typ = *)
       (* try pty e.span e.typ *)
       (* with Diagnostics.SpanFreeError _ -> U.hax_failure_typ *)
@@ -492,7 +492,7 @@ struct
   let rec pitem (e : item) : [> `Item of F.AST.decl | `Comment of string ] list
       =
     try pitem_unwrapped e
-    with Diagnostics.SpanFreeError _kind -> [ `Comment "item error backend" ]
+    with Diagnostics.SpanFreeError.Exn _ -> [ `Comment "item error backend" ]
 
   and pitem_unwrapped (e : item) :
       [> `Item of F.AST.decl | `Comment of string ] list =

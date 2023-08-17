@@ -112,4 +112,24 @@ include Core
 let failure ~context ~span kind =
   Core.raise_fatal_error { context; kind; span = Span.to_thir span }
 
-exception SpanFreeError of (Context.t * kind)
+module SpanFreeError : sig
+  type t = private Data of Context.t * kind
+
+  exception Exn of t
+
+  val payload : t -> Context.t * kind
+  val raise : ?span:T.span list -> Context.t -> kind -> 'a
+end = struct
+  type t = Data of Context.t * kind
+
+  exception Exn of t
+
+  let payload (Data (ctx, kind)) = (ctx, kind)
+
+  let raise_without_reporting (ctx : Context.t) (kind : kind) =
+    raise (Exn (Data (ctx, kind)))
+
+  let raise ?(span = []) (ctx : Context.t) (kind : kind) =
+    report { span; kind; context = ThirImport };
+    raise_without_reporting ctx kind
+end

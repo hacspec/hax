@@ -266,7 +266,7 @@ struct
 
   let rec pexpr (e : expr) =
     try pexpr_unwrapped e
-    with Diagnostics.SpanFreeError kind ->
+    with Diagnostics.SpanFreeError.Exn _ ->
       TODOs_debug.__TODO_term__ e.span "failure"
 
   and pexpr_unwrapped (e : expr) : C.AST.term =
@@ -351,7 +351,7 @@ struct
 
   let rec pitem (e : item) : C.AST.decl list =
     try pitem_unwrapped e
-    with Diagnostics.SpanFreeError _kind ->
+    with Diagnostics.SpanFreeError.Exn _ ->
       [ C.AST.Unimplemented "item error backend" ]
 
   and pgeneric_param span : generic_param -> _ = function

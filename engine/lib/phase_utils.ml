@@ -63,14 +63,9 @@ struct
   module Error = struct
     type t = { kind : Diagnostics.kind; span : Ast.span } [@@deriving show, eq]
 
-    let lift { kind; span } : Diagnostics.t =
-      { kind; span = Span.to_thir span; context = Phase M.phase_id }
-
-    (* exception E of t *)
-
     let raise err =
-      Diagnostics.report @@ lift err;
-      raise @@ Diagnostics.SpanFreeError (Phase M.phase_id, err.kind)
+      let span = Span.to_thir err.span in
+      Diagnostics.SpanFreeError.raise ~span (Phase M.phase_id) err.kind
 
     let unimplemented ?issue_id ?details span =
       raise { kind = Unimplemented { issue_id; details }; span }

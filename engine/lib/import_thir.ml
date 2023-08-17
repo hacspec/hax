@@ -19,8 +19,7 @@ open Diagnostics
 
 let assertion_failure (span : Thir.span list) (details : string) =
   let kind = T.AssertionFailure { details } in
-  report { span; kind; context = ThirImport };
-  raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
+  Diagnostics.SpanFreeError.raise ~span ThirImport kind
 
 let unimplemented ?issue_id (span : Thir.span list) (details : string) =
   let kind =
@@ -30,13 +29,11 @@ let unimplemented ?issue_id (span : Thir.span list) (details : string) =
         details = String.(if details = "" then None else Some details);
       }
   in
-  report { span; kind; context = ThirImport };
-  raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
+  Diagnostics.SpanFreeError.raise ~span ThirImport kind
 
 let unsafe_block (span : Thir.span list) =
   let kind = T.UnsafeBlock in
-  report { span; kind; context = ThirImport };
-  raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
+  Diagnostics.SpanFreeError.raise ~span ThirImport kind
 
 let todo (span : Thir.span) = unimplemented [ span ] "TODO"
 
@@ -313,13 +310,13 @@ module Exn = struct
 
     let rec c_expr (e : Thir.decorated_for__expr_kind) : expr =
       try c_expr_unwrapped e
-      with Diagnostics.SpanFreeError report ->
+      with Diagnostics.SpanFreeError.Exn (Data (ctx, kind)) ->
         let typ : ty =
           try c_ty e.span e.ty
-          with Diagnostics.SpanFreeError _ -> U.hax_failure_typ
+          with Diagnostics.SpanFreeError.Exn _ -> U.hax_failure_typ
         in
         let span = Span.of_thir e.span in
-        U.hax_failure_expr' span typ report
+        U.hax_failure_expr' span typ (ctx, kind)
           ([%show: Thir.decorated_for__expr_kind] e)
 
     and c_expr_unwrapped (e : Thir.decorated_for__expr_kind) : expr =
@@ -959,7 +956,7 @@ module Exn = struct
     }
 
   let rec c_item (item : Thir.item) : item list =
-    try c_item_unwrapped item with Diagnostics.SpanFreeError _kind -> []
+    try c_item_unwrapped item with Diagnostics.SpanFreeError.Exn _kind -> []
 
   and c_item_unwrapped (item : Thir.item) : item list =
     let open (val make ~krate:item.owner_id.krate : EXPR) in
