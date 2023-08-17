@@ -622,6 +622,42 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx>> SInto<S, Place> for rustc_middle::
     }
 }
 
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct MirFnSig {
+    pub inputs: Vec<Ty>,
+    pub output: Ty,
+    pub c_variadic: bool,
+    pub unsafety: Unsafety,
+    pub abi: Abi,
+}
+
+pub type MirPolyFnSig = Binder<MirFnSig>;
+
+impl<'tcx, S: BaseState<'tcx>> SInto<S, MirFnSig> for rustc_middle::ty::FnSig<'tcx> {
+    fn sinto(&self, s: &S) -> MirFnSig {
+        let inputs = self.inputs().sinto(s);
+        let output = self.output().sinto(s);
+        MirFnSig {
+            inputs,
+            output,
+            c_variadic: self.c_variadic,
+            unsafety: self.unsafety.sinto(s),
+            abi: self.abi.sinto(s),
+        }
+    }
+}
+
+// TODO: we need this function because sometimes, Rust doesn't infer the proper
+// typeclass instance.
+pub(crate) fn poly_fn_sig_to_mir_poly_fn_sig<'tcx, S: BaseState<'tcx>>(
+    sig: &rustc_middle::ty::PolyFnSig<'tcx>,
+    s: &S,
+) -> MirPolyFnSig {
+    sig.sinto(s)
+}
+
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::AggregateKind<'tcx>, state: S as s)]
 pub enum AggregateKind {

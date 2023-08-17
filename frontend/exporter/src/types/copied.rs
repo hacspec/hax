@@ -1615,10 +1615,8 @@ pub enum Ty {
             arrow_of_sig(&sig, state)
         },
     )]
-    Arrow {
-        params: Vec<Ty>,
-        ret: Box<Ty>,
-    },
+    // TODO: rename the MirPolyFnSig, MirFnSig types
+    Arrow(Box<MirPolyFnSig>),
 
     #[custom_arm(
         rustc_middle::ty::TyKind::Adt(adt_def, substs) => {
@@ -1891,7 +1889,9 @@ pub struct Arm {
 
 #[derive(AdtInto)]
 #[args(<S>, from: rustc_hir::Unsafety, state: S as _s)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub enum Unsafety {
     Unsafe,
     Normal,
@@ -3017,8 +3017,8 @@ pub enum BoundVariableKind {
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub struct Binder<T> {
-    value: T,
-    bound_vars: Vec<BoundVariableKind>,
+    pub value: T,
+    pub bound_vars: Vec<BoundVariableKind>,
 }
 
 #[derive(AdtInto)]

@@ -5,17 +5,11 @@ pub(crate) fn arrow_of_sig<'tcx, S: BaseState<'tcx>>(
     sig: &rustc_middle::ty::PolyFnSig<'tcx>,
     state: &S,
 ) -> Ty {
-    let tcx = state.base().tcx;
-    let ret: rustc_middle::ty::Ty = tcx.erase_late_bound_regions(sig.output());
-    let inputs = sig.inputs();
-    let indexes = inputs.skip_binder().iter().enumerate().map(|(i, _)| i);
-    let params = indexes.map(|i| inputs.map_bound(|tys| tys[i]));
-    let params: Vec<rustc_middle::ty::Ty> =
-        params.map(|i| tcx.erase_late_bound_regions(i)).collect();
-    Ty::Arrow {
-        params: params.sinto(state),
-        ret: ret.sinto(state),
-    }
+    // TODO: here, Rust doesn't manage to infer the proper typeclass
+    // instance, even if we annotate the type.
+    //    let sig: MirPolyFnSig = sig.sinto(&state.base().tcx);
+    let sig = poly_fn_sig_to_mir_poly_fn_sig(sig, state);
+    Ty::Arrow(Box::new(sig))
 }
 
 #[tracing::instrument(skip(s))]
