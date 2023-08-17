@@ -124,27 +124,14 @@ impl<'s, S: BaseState<'s>> SInto<S, ExtendedDefId> for rustc_hir::def_id::DefId 
                 }
                 DefPathData::Impl => {
                     // `impl` blocks are defined for types
-                    // We retrieve the type name
+                    // We retrieve the type name and the predicatesx
                     let ty = tcx.type_of(id).subst_identity().sinto(s);
 
                     let bounds = tcx
                         .predicates_of(id)
                         .predicates
                         .into_iter()
-                        .cloned()
-                        .map(|(pred, span)| {
-                            pred.clone()
-                                .kind()
-                                .no_bound_vars()
-                                .unwrap_or_else(|| {
-                                    tcx.sess.span_err(
-                                        span.clone(),
-                                        format!("[GenericBounds(Impl)]: [no_bound_vars] failed"),
-                                    );
-                                    rustc_middle::ty::PredicateKind::Ambiguous
-                                })
-                                .sinto(s)
-                        })
+                        .map(|(x, _)| x.sinto(s))
                         .collect();
                     ExtendedDefPathItem::Impl { ty, bounds }
                 }
@@ -234,7 +221,7 @@ pub enum DefPathItem {
 )]
 pub enum ExtendedDefPathItem {
     CrateRoot,
-    Impl { ty: Ty, bounds: Vec<PredicateKind> },
+    Impl { ty: Ty, bounds: Vec<Predicate> },
     ForeignMod,
     Use,
     GlobalAsm,
@@ -3015,17 +3002,23 @@ pub enum Clause {
     ConstArgHasType(Const, Ty),
 }
 
-/// We deviate from the rustc version.
-///
-/// The Rust compiler uses DeBruijn indices. In order to make the manipulations
-/// less error prone, we substitute those with free variables, that we track in
-/// the [bound_vars] field.
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::BoundVariableKind, state: S as tcx)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub enum BoundVariableKind {
+    Ty(BoundTyKind),
+    Region(BoundRegionKind),
+    Const,
+}
+
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub struct Binder<T> {
     value: T,
-    bound_vars: Vec<GenericArg>,
+    bound_vars: Vec<BoundVariableKind>,
 }
 
 #[derive(AdtInto)]
@@ -3040,48 +3033,13 @@ pub struct GenericPredicates {
 
 pub type Predicate = Binder<PredicateKind>;
 
-/// Structure that we use to generate free variables with which to substitute
-/// bound variables.
-struct FreeVarsGenerator<'a> {
-    /// The free variables introduced by the generator
-    vars: &'a mut Vec<GenericArg>,
-}
-
-impl<'a, 'tcx> rustc_middle::ty::fold::BoundVarReplacerDelegate<'tcx> for FreeVarsGenerator<'a> {
-    fn replace_region(
-        &mut self,
-        br: rustc_middle::ty::BoundRegion,
-    ) -> rustc_middle::ty::Region<'tcx> {
-        todo!()
-    }
-
-    fn replace_ty(&mut self, bt: rustc_middle::ty::BoundTy) -> rustc_middle::ty::Ty<'tcx> {
-        todo!()
-    }
-
-    fn replace_const(
-        &mut self,
-        bv: rustc_middle::ty::BoundVar,
-        ty: rustc_middle::ty::Ty<'tcx>,
-    ) -> rustc_middle::ty::Const<'tcx> {
-        todo!()
-    }
-}
-
 impl<'tcx, S: BaseState<'tcx>, T1, T2> SInto<S, Binder<T2>> for rustc_middle::ty::Binder<'tcx, T1>
 where
     T1: SInto<S, T2> + Clone + rustc_middle::ty::TypeFoldable<rustc_middle::ty::TyCtxt<'tcx>>,
 {
     fn sinto(&self, s: &S) -> Binder<T2> {
-        let mut bound_vars = Vec::new();
-        let replacer = FreeVarsGenerator {
-            vars: &mut bound_vars,
-        };
-        let value = s
-            .base()
-            .tcx
-            .replace_bound_vars_uncached(self.clone(), replacer)
-            .sinto(s);
+        let bound_vars = self.bound_vars().sinto(s);
+        let value = self.as_ref().skip_binder().sinto(s);
         Binder { value, bound_vars }
     }
 }
@@ -3114,7 +3072,7 @@ pub struct CoercePredicate {
 }
 
 #[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::AliasRelationDirection, state: S as tcx)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::AliasRelationDirection, state: S as _tcx)]
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
