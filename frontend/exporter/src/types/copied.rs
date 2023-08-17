@@ -1549,20 +1549,6 @@ pub struct TypeAndMut {
     pub mutbl: Mutability,
 }
 
-pub type Binder<T> = Option<T>;
-
-impl<
-        's,
-        S,
-        U,
-        T: SInto<S, U> + rustc_middle::ty::visit::TypeVisitable<rustc_middle::ty::TyCtxt<'s>>,
-    > SInto<S, Binder<U>> for rustc_middle::ty::Binder<'s, T>
-{
-    fn sinto(&self, s: &S) -> Binder<U> {
-        self.clone().no_bound_vars().map(|x| x.sinto(s))
-    }
-}
-
 impl<S, U, T: SInto<S, U>> SInto<S, Vec<U>> for rustc_middle::ty::List<T> {
     fn sinto(&self, s: &S) -> Vec<U> {
         self.iter().map(|x| x.sinto(s)).collect()
@@ -2969,6 +2955,53 @@ pub struct TraitPredicate {
     pub is_positive: bool,
 }
 
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct OutlivesPredicate<A, B>(pub A, pub B);
+
+impl<'tcx, S: BaseState<'tcx>, A1, A2, B1, B2> SInto<S, OutlivesPredicate<A2, B2>>
+    for rustc_middle::ty::OutlivesPredicate<A1, B1>
+where
+    A1: SInto<S, A2>,
+    B1: SInto<S, B2>,
+{
+    fn sinto(&self, s: &S) -> OutlivesPredicate<A2, B2> where {
+        OutlivesPredicate(self.0.sinto(s), self.1.sinto(s))
+    }
+}
+
+pub type RegionOutlivesPredicate = OutlivesPredicate<Region, Region>;
+pub type TypeOutlivesPredicate = OutlivesPredicate<Ty, Region>;
+
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub enum Term {
+    Ty(Ty),
+    Const(Const),
+}
+
+impl<'tcx, S: BaseState<'tcx>> SInto<S, Term> for rustc_middle::ty::Term<'tcx> {
+    fn sinto(&self, s: &S) -> Term {
+        use rustc_middle::ty::TermKind;
+        match self.unpack() {
+            TermKind::Ty(ty) => Term::Ty(ty.sinto(s)),
+            TermKind::Const(c) => Term::Const(c.sinto(s)),
+        }
+    }
+}
+
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::ProjectionPredicate<'tcx>, state: S as tcx)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct ProjectionPredicate {
+    pub projection_ty: AliasTy,
+    pub term: Term,
+}
+
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::Clause<'tcx>, state: S as tcx)]
 #[derive(
@@ -2976,11 +3009,118 @@ pub struct TraitPredicate {
 )]
 pub enum Clause {
     Trait(TraitPredicate),
-    #[todo]
-    Todo(String),
-    // RegionOutlives(RegionOutlivesPredicate<'tcx>),
-    // TypeOutlives(TypeOutlivesPredicate<'tcx>),
-    // Projection(ProjectionPredicate<'tcx>),
+    RegionOutlives(RegionOutlivesPredicate),
+    TypeOutlives(TypeOutlivesPredicate),
+    Projection(ProjectionPredicate),
+    ConstArgHasType(Const, Ty),
+}
+
+/// We deviate from the rustc version.
+///
+/// The Rust compiler uses DeBruijn indices. In order to make the manipulations
+/// less error prone, we substitute those with free variables, that we track in
+/// the [bound_vars] field.
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct Binder<T> {
+    value: T,
+    bound_vars: Vec<GenericArg>,
+}
+
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::GenericPredicates<'tcx>, state: S as tcx)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct GenericPredicates {
+    pub parent: Option<DefId>,
+    pub predicates: Vec<(Predicate, Span)>,
+}
+
+pub type Predicate = Binder<PredicateKind>;
+
+/// Structure that we use to generate free variables with which to substitute
+/// bound variables.
+struct FreeVarsGenerator<'a> {
+    /// The free variables introduced by the generator
+    vars: &'a mut Vec<GenericArg>,
+}
+
+impl<'a, 'tcx> rustc_middle::ty::fold::BoundVarReplacerDelegate<'tcx> for FreeVarsGenerator<'a> {
+    fn replace_region(
+        &mut self,
+        br: rustc_middle::ty::BoundRegion,
+    ) -> rustc_middle::ty::Region<'tcx> {
+        todo!()
+    }
+
+    fn replace_ty(&mut self, bt: rustc_middle::ty::BoundTy) -> rustc_middle::ty::Ty<'tcx> {
+        todo!()
+    }
+
+    fn replace_const(
+        &mut self,
+        bv: rustc_middle::ty::BoundVar,
+        ty: rustc_middle::ty::Ty<'tcx>,
+    ) -> rustc_middle::ty::Const<'tcx> {
+        todo!()
+    }
+}
+
+impl<'tcx, S: BaseState<'tcx>, T1, T2> SInto<S, Binder<T2>> for rustc_middle::ty::Binder<'tcx, T1>
+where
+    T1: SInto<S, T2> + Clone + rustc_middle::ty::TypeFoldable<rustc_middle::ty::TyCtxt<'tcx>>,
+{
+    fn sinto(&self, s: &S) -> Binder<T2> {
+        let mut bound_vars = Vec::new();
+        let replacer = FreeVarsGenerator {
+            vars: &mut bound_vars,
+        };
+        let value = s
+            .base()
+            .tcx
+            .replace_bound_vars_uncached(self.clone(), replacer)
+            .sinto(s);
+        Binder { value, bound_vars }
+    }
+}
+
+impl<'tcx, S: BaseState<'tcx>> SInto<S, Predicate> for rustc_middle::ty::Predicate<'tcx> {
+    fn sinto(&self, s: &S) -> Predicate {
+        self.kind().sinto(s)
+    }
+}
+
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::SubtypePredicate<'tcx>, state: S as tcx)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct SubtypePredicate {
+    pub a_is_expected: bool,
+    pub a: Ty,
+    pub b: Ty,
+}
+
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::CoercePredicate<'tcx>, state: S as tcx)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct CoercePredicate {
+    pub a: Ty,
+    pub b: Ty,
+}
+
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::AliasRelationDirection, state: S as tcx)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub enum AliasRelationDirection {
+    Equate,
+    Subtype,
 }
 
 #[derive(AdtInto)]
@@ -2990,15 +3130,13 @@ pub enum Clause {
 )]
 pub enum PredicateKind {
     Clause(Clause),
-    // WellFormed(GenericArg),
     ObjectSafe(DefId),
     // ClosureKind(DefId, SubstsRef, ClosureKind),
-    // Subtype(SubtypePredicate),
-    // Coerce(CoercePredicate),
-    // ConstEvaluatable(Const),
-    // ConstEquate(Const, Const),
-    // TypeWellFormedFromEnv(Ty),
+    Subtype(SubtypePredicate),
+    Coerce(CoercePredicate),
+    ConstEquate(Const, Const),
     Ambiguous,
+    AliasRelate(Term, Term, AliasRelationDirection),
     #[todo]
     Todo(String),
 }
