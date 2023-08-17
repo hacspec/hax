@@ -159,7 +159,10 @@ struct
     | `TupleType n | `TupleCons n ->
         let reason = "F* doesn't support tuple of size greater than 14" in
         Error.raise
-          { kind = UnsupportedTupleSize { tuple_size = n; reason }; span }
+          {
+            kind = UnsupportedTupleSize { tuple_size = Int64.of_int n; reason };
+            span;
+          }
     | `TupleField _ | `Projector _ ->
         Error.assertion_failure span
           ("pglobal_ident: expected to be handled somewhere else: "

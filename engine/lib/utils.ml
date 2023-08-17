@@ -84,3 +84,15 @@ module Command = struct
     Unix.close @@ Unix.descr_of_in_channel stderr;
     { stdout = strout; stderr = strerr }
 end
+
+module MyInt64 = struct
+  include Base.Int64
+
+  let t_of_yojson (json : Yojson.Safe.t) : t =
+    match json with
+    | `Intlit s -> of_string s
+    | `Int i -> of_int i
+    | _ -> failwith "Couldn't parse MyInt64.t"
+
+  let yojson_of_t (x : t) : Yojson.Safe.t = failwith "x"
+end

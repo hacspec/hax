@@ -7,6 +7,7 @@
 #![allow(unreachable_code)]
 #![allow(dead_code)]
 #![feature(macro_metavar_expr)]
+#![feature(internal_output_capture)]
 
 extern crate rustc_ast;
 extern crate rustc_data_structures;

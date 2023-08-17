@@ -25,7 +25,7 @@ let unimplemented ?issue_id (span : Thir.span list) (details : string) =
   let kind =
     T.Unimplemented
       {
-        issue_id;
+        issue_id = Option.map ~f:MyInt64.of_int_exn issue_id;
         details = String.(if details = "" then None else Some details);
       }
   in
@@ -139,7 +139,7 @@ module Exn = struct
 
   let c_lit' span (lit : Thir.lit_kind) (ty : ty) : extended_literal =
     let mk l = EL_Lit l in
-    let mku8 n =
+    let mku8 (n : int) =
       let kind = { size = S8; signedness = Unsigned } in
       Int { value = Int.to_string n; kind }
     in
@@ -497,7 +497,8 @@ module Exn = struct
             let tuple_len = 0 (* todo, lookup type *) in
             let lhs = c_expr lhs in
             let projector =
-              GlobalVar (`Projector (`TupleField (field, tuple_len)))
+              GlobalVar
+                (`Projector (`TupleField (Int.of_string field, tuple_len)))
             in
             let span = Span.of_thir e.span in
             App
@@ -534,7 +535,10 @@ module Exn = struct
         | ConstParam { param = id; _ } (* TODO: shadowing? *) | ConstRef { id }
           ->
             LocalVar
-              { name = id.name; id = LocalIdent.const_id_of_int id.index }
+              {
+                name = id.name;
+                id = LocalIdent.const_id_of_int (MyInt64.to_int_exn id.index);
+              }
         | Repeat { value; count } ->
             let value = c_expr value in
             let count = c_expr count in
@@ -814,7 +818,11 @@ module Exn = struct
       (* | Opaque _ -> unimplemented [span] "type Opaque" *)
       | Param { index; name } ->
           (* TODO: [id] might not unique *)
-          TParam { name; id = LocalIdent.ty_param_id_of_int index }
+          TParam
+            {
+              name;
+              id = LocalIdent.ty_param_id_of_int (MyInt64.to_int_exn index);
+            }
       | Error -> unimplemented [ span ] "type Error"
       | Dynamic _ -> unimplemented [ span ] "type Dynamic"
       | Generator _ -> unimplemented [ span ] "type Generator"
@@ -1211,7 +1219,13 @@ module Exn = struct
               def_id with
               path =
                 def_id.path
-                @ [ Types.{ data = ValueNs "DUMMY"; disambiguator = 0 } ];
+                @ [
+                    Types.
+                      {
+                        data = ValueNs "DUMMY";
+                        disambiguator = MyInt64.of_int 0;
+                      };
+                  ];
             }
           in
           let attrs = c_attrs item.attributes in

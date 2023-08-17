@@ -1,4 +1,5 @@
 open Base
+open Utils
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
 module Metadata : sig
@@ -68,7 +69,13 @@ struct
       Diagnostics.SpanFreeError.raise ~span (Phase M.phase_id) err.kind
 
     let unimplemented ?issue_id ?details span =
-      raise { kind = Unimplemented { issue_id; details }; span }
+      raise
+        {
+          kind =
+            Unimplemented
+              { issue_id = Option.map ~f:MyInt64.of_int issue_id; details };
+          span;
+        }
 
     let assertion_failure span details =
       raise { kind = AssertionFailure { details }; span }

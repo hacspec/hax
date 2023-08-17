@@ -65,6 +65,14 @@ passthrough_attribute!(
 
 #[proc_macro_error]
 #[proc_macro_attribute]
+/// Replace a Rust item with an item in the backend.
+pub fn replace_with(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let path = parse_macro_input!(item as syn::Path);
+    quote! {#path}.into()
+}
+
+#[proc_macro_error]
+#[proc_macro_attribute]
 /// Enable the following attrubutes in the annotated item:
 ///  - (in a struct) `refine`: refine a type with a logical formula
 pub fn hax_attributes(_attr: TokenStream, item: TokenStream) -> TokenStream {
