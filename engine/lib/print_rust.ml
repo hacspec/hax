@@ -344,7 +344,13 @@ module Raw = struct
   let pgeneric_param (p : generic_param) =
     let ( ! ) = pure p.span in
     let prefix, suffix = pgeneric_param_kind p.span p.kind in
-    pattrs p.attrs & prefix & plocal_ident p.span p.ident & suffix
+    let id =
+      plocal_ident p.span
+        (if String.equal p.ident.name "_" then
+         { p.ident with name = "Anonymous" }
+        else p.ident)
+    in
+    pattrs p.attrs & prefix & id & suffix
 
   let pgeneric_params (pl : generic_param list) =
     match pl with
@@ -370,7 +376,7 @@ module Raw = struct
     if List.is_empty constraints then empty
     else
       let ( ! ) = pure span in
-      !"where "
+      !" where "
       & concat ~sep:!"," (List.map ~f:(pgeneric_constraint span) constraints)
 
   let pvariant_body span { name; arguments; attrs; is_record } =
