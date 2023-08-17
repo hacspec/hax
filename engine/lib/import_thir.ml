@@ -133,6 +133,11 @@ module Exn = struct
 
   let c_attrs : Thir.attribute list -> attrs = List.map ~f:c_attr
 
+  let c_item_attrs (attrs : Thir.item_attributes) : attrs =
+    (* TODO: This is a quite coarse approximation, we need to reflect
+       that parent/self structure in our AST. *)
+    c_attrs (attrs.parent_attributes @ attrs.attributes)
+
   type extended_literal =
     | EL_Lit of literal
     | EL_U8Array of literal list (* EL_U8Array only encodes arrays of [u8]s *)
@@ -963,7 +968,7 @@ module Exn = struct
       ti_generics = { params; constraints };
       ti_v = c_trait_item' item.span item.kind;
       ti_name = fst item.ident;
-      ti_attrs = c_attrs item.attributes;
+      ti_attrs = c_item_attrs item.attributes;
     }
 
   let is_automatically_derived (attrs : Thir.attribute list) =
@@ -982,7 +987,9 @@ module Exn = struct
         | _ -> false)
       attrs
 
-  let should_skip attrs = is_hax_skip attrs || is_automatically_derived attrs
+  let should_skip (attrs : Thir.item_attributes) =
+    let attrs = attrs.attributes @ attrs.parent_attributes in
+    is_hax_skip attrs || is_automatically_derived attrs
 
   let rec c_item (item : Thir.item) : item list =
     try c_item_unwrapped item with Diagnostics.SpanFreeError.Exn _kind -> []
@@ -994,7 +1001,7 @@ module Exn = struct
       let span = Span.of_thir item.span in
       let mk_one v =
         let ident = Concrete_ident.of_def_id Value item.owner_id in
-        let attrs = c_attrs item.attributes in
+        let attrs = c_item_attrs item.attributes in
         { span; v; ident; attrs }
       in
       let mk v = [ mk_one v ] in
@@ -1061,7 +1068,7 @@ module Exn = struct
           let def_id = Option.value_exn item.def_id in
           let is_struct = true in
           (* repeating the attributes of the item in the variant: TODO is that ok? *)
-          let attrs = c_attrs item.attributes in
+          let attrs = c_item_attrs item.attributes in
           let v =
             let kind = Concrete_ident.Kind.Constructor { is_struct } in
             let name = Concrete_ident.of_def_id kind def_id in
@@ -1150,7 +1157,7 @@ module Exn = struct
                        (https://doc.rust-lang.org/reference/items/implementations.html#inherent-implementations)."
               in
               let ident = Concrete_ident.of_def_id Value item.owner_id in
-              let attrs = c_attrs item.attributes in
+              let attrs = c_item_attrs item.attributes in
               { span = Span.of_thir item.span; v; ident; attrs })
             items
       | Impl { unsafety = Unsafe; _ } -> unsafe_block [ item.span ]
@@ -1197,7 +1204,7 @@ module Exn = struct
                                IIFn { body = c_expr e; params = [] }
                            | Type ty -> IIType (c_ty item.span ty));
                          ii_name = fst item.ident;
-                         ii_attrs = c_attrs item.attributes;
+                         ii_attrs = c_item_attrs item.attributes;
                        })
                      items;
                }
@@ -1228,7 +1235,7 @@ module Exn = struct
                   ];
             }
           in
-          let attrs = c_attrs item.attributes in
+          let attrs = c_item_attrs item.attributes in
           [ { span; v; ident = Concrete_ident.of_def_id Value def_id; attrs } ]
       | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
       | OpaqueTy _ | Union _ | TraitAlias _ ->
