@@ -763,6 +763,12 @@ pub enum GenericArg {
     Const(#[map(const_to_constant_expr(s, *x))] ConstantExpr),
 }
 
+impl<'tcx, S: BaseState<'tcx>> SInto<S, GenericArg> for rustc_middle::ty::GenericArg<'tcx> {
+    fn sinto(&self, s: &S) -> GenericArg {
+        self.unpack().sinto(s)
+    }
+}
+
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Vec<GenericArg>>
     for rustc_middle::ty::subst::SubstsRef<'tcx>
 {
@@ -3082,21 +3088,33 @@ pub enum AliasRelationDirection {
 }
 
 #[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::ClosureKind, state: S as _tcx)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub enum ClosureKind {
+    Fn,
+    FnMut,
+    FnOnce,
+}
+
+#[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::PredicateKind<'tcx>, state: S as tcx)]
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub enum PredicateKind {
     Clause(Clause),
+    WellFormed(GenericArg),
     ObjectSafe(DefId),
-    // ClosureKind(DefId, SubstsRef, ClosureKind),
+    ClosureKind(DefId, Vec<GenericArg>, ClosureKind),
     Subtype(SubtypePredicate),
     Coerce(CoercePredicate),
+    ConstEvaluatable(Const),
     ConstEquate(Const, Const),
+    TypeWellFormedFromEnv(Ty),
     Ambiguous,
     AliasRelate(Term, Term, AliasRelationDirection),
-    #[todo]
-    Todo(String),
 }
 
 type GenericBounds = Vec<PredicateKind>;
