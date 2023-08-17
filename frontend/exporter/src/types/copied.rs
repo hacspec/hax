@@ -979,9 +979,9 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                             };
                         } else {
                             supposely_unreachable!(
-                                "ZstLiteral ty≠FnDef(...) or PhantomData": kind,
-                                span,
-                                ty
+                                s[span],
+                                "ZstLiteral ty≠FnDef(...) or PhantomData";
+                                {kind, span, ty}
                             );
                             kind.sinto(s)
                         }
@@ -995,11 +995,14 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                     let lhs_ty = s.thir().exprs[lhs].ty.kind();
                     let idx = variant_index.index();
                     if idx != 0 {
-                        supposely_unreachable!(
-                            "ExprKindFieldIdxNonZero": kind,
-                            span,
-                            ty,
-                            ty.kind()
+                        let _ = supposely_unreachable!(
+                            s[span],
+                            "ExprKindFieldIdxNonZero"; {
+                                kind,
+                                span,
+                                ty,
+                                ty.kind()
+                            }
                         );
                     };
                     match lhs_ty {
@@ -1014,15 +1017,15 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                             field: name.index(),
                             lhs: lhs.sinto(s),
                         },
-                        _ => {
-                            supposely_unreachable!(
-                                "ExprKindFieldBadTy": kind,
+                        _ => supposely_unreachable_fatal!(
+                            s[span],
+                            "ExprKindFieldBadTy"; {
+                                kind,
                                 span,
                                 ty.kind(),
                                 lhs_ty
-                            );
-                            fatal!(s, "ExprKindFieldBadTy")
-                        }
+                            }
+                        ),
                     }
                 }
                 _ => kind.sinto(s),
@@ -1065,15 +1068,11 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Pat> for rustc_middle::thir::Pat<'tcx> {
                         .collect::<Vec<_>>()
                         .sinto(s),
                 },
-                _ => {
-                    supposely_unreachable!(
-                        "PatLeafNonAdtTy":
-                        ty.kind(),
-                        kind,
-                        span.sinto(s)
-                    );
-                    fatal!(s, "PatLeafNonAdtTy")
-                }
+                _ => supposely_unreachable_fatal!(
+                    s[span],
+                    "PatLeafNonAdtTy";
+                    {ty.kind(), kind}
+                ),
             },
             _ => kind.sinto(s),
         };
@@ -1679,13 +1678,11 @@ pub enum ExprKind {
                             attributes,
                         }
                     },
-                    ty_kind => {
-                        supposely_unreachable!(
-                            "CallNotTyFnDef":
-                            e, ty_kind
-                        );
-                        fatal!(gstate, "ZstCallNotTyFnDef")
-                    }
+                    ty_kind => supposely_unreachable_fatal!(
+                        gstate[e.span],
+                        "CallNotTyFnDef";
+                        {e, ty_kind}
+                    )
                 }
             },
             kind => {
@@ -1695,8 +1692,9 @@ pub enum ExprKind {
                     },
                     ty_kind => {
                         supposely_unreachable!(
-                            "CallNotTyFnDef":
-                            e, kind, ty_kind
+                            gstate[e.span],
+                            "CallNotTyFnDef";
+                            {e, kind, ty_kind}
                         );
                         fatal!(gstate, "RefCallNotTyFnPtr")
                     }

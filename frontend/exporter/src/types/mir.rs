@@ -307,13 +307,9 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx>> SInto<S, Place> for rustc_middle::
                                 rustc_abi::VariantIdx::from_usize(0)
                             } else {
                                 supposely_unreachable_fatal!(
-                                    "DowncastExpected": index,
-                                    adt_def,
-                                    substs,
-                                    variant_idx,
-                                    &cur_ty,   // TODO
-                                    &cur_kind, // TODO
-                                );
+                                    s, "CallNotTyFnDef";
+                                    {index, adt_def, substs, variant_idx, &cur_ty, &cur_kind}
+                                )
                             }
                         });
                         ProjectionElemFieldKind::Ast {
@@ -327,12 +323,9 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx>> SInto<S, Place> for rustc_middle::
                     }
                     ty_kind => {
                         supposely_unreachable_fatal!(
-                            "ProjectionElemFieldBadType": index,
-                            ty_kind,
-                            variant_idx,
-                            &cur_ty,   // TODO
-                            &cur_kind, // TODO
-                        );
+                            s, "ProjectionElemFieldBadType";
+                            {index, variant_idx, &cur_ty, &cur_kind}
+                        )
                     }
                 })
             };
@@ -351,13 +344,10 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx>> SInto<S, Place> for rustc_middle::
                             current_ty = match current_ty.kind() {
                                 TyKind::Ref(_, ty, _) => ty.clone(),
                                 TyKind::Adt(def, substs) if def.is_box() => substs.type_at(0),
-                                _ => {
-                                    supposely_unreachable_fatal!(
-                                        "PlaceDerefNotRefNorBox": current_ty,
-                                        current_kind,
-                                        elem
-                                    );
-                                }
+                                _ => supposely_unreachable_fatal!(
+                                    s, "PlaceDerefNotRefNorBox";
+                                    {current_ty, current_kind, elem}
+                                ),
                             };
                             ProjectionElem::Deref
                         }
@@ -369,11 +359,9 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx>> SInto<S, Place> for rustc_middle::
                         Index(local) => {
                             let (TyKind::Slice(ty) | TyKind::Array(ty, _)) = current_ty.kind() else {
                                 supposely_unreachable_fatal!(
-                                    "PlaceIndexNotSlice":
-                                    current_ty,
-                                    current_kind,
-                                    elem
-                                );
+                                    s, "PlaceIndexNotSlice";
+                                    {current_ty, current_kind, elem}
+                                )
                             };
                             current_ty = ty.clone();
                             ProjectionElem::Index(local.sinto(s))
@@ -385,11 +373,9 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx>> SInto<S, Place> for rustc_middle::
                         } => {
                             let TyKind::Slice(ty) = current_ty.kind() else {
                                 supposely_unreachable_fatal!(
-                                    "PlaceConstantIndexNotSlice":
-                                    current_ty,
-                                    current_kind,
-                                    elem
-                                );
+                                    s, "PlaceConstantIndexNotSlice";
+                                    {current_ty, current_kind, elem}
+                                )
                             };
                             current_ty = ty.clone();
                             ProjectionElem::ConstantIndex {

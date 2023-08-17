@@ -195,7 +195,7 @@ pub(crate) fn const_to_constant_expr<'tcx, S: BaseState<'tcx>>(
             span_fatal!(s, span, "ty::ConstKind::Expr {:#?}", e)
         }
         ty::ConstKind::Bound(i, bound) => {
-            supposely_unreachable!("ty::ConstKind::Bound": i, bound, ty);
+            supposely_unreachable!(s[span], "ty::ConstKind::Bound"; {i, bound, ty});
             span_fatal!(s, span, "ty::ConstKind::Bound")
         }
         _ => span_fatal!(s, span, "unexpected case"),
