@@ -608,43 +608,42 @@ module Exn = struct
       in
       { e = v; span; typ }
 
-    and c_expr_assign lhs rhs =
-      let rec mk_lhs lhs =
-        match lhs.e with
-        | LocalVar var -> LhsLocalVar { var; typ = lhs.typ }
-        | _ -> (
-            match resugar_index_mut lhs with
-            | Some (e, index) ->
-                LhsArrayAccessor
+    and c_lhs lhs =
+      match lhs.e with
+      | LocalVar var -> LhsLocalVar { var; typ = lhs.typ }
+      | _ -> (
+          match resugar_index_mut lhs with
+          | Some (e, index) ->
+              LhsArrayAccessor
+                {
+                  e = c_lhs e;
+                  typ = lhs.typ;
+                  index;
+                  witness = W.nontrivial_lhs;
+                }
+          | None -> (
+              match (U.unbox_underef_expr lhs).e with
+              | App
                   {
-                    e = mk_lhs e;
-                    typ = lhs.typ;
-                    index;
-                    witness = W.nontrivial_lhs;
-                  }
-            | None -> (
-                match (U.unbox_underef_expr lhs).e with
-                | App
-                    {
-                      f =
-                        {
-                          e = GlobalVar (`Projector _ as field);
-                          typ = TArrow ([ _ ], _);
-                          span = _;
-                        };
-                      args = [ e ];
-                    } ->
-                    LhsFieldAccessor
+                    f =
                       {
-                        e = mk_lhs e;
-                        typ = lhs.typ;
-                        field;
-                        witness = W.nontrivial_lhs;
-                      }
-                | _ -> LhsArbitraryExpr { e = lhs; witness = W.arbitrary_lhs }))
-      in
+                        e = GlobalVar (`Projector _ as field);
+                        typ = TArrow ([ _ ], _);
+                        span = _;
+                      };
+                    args = [ e ];
+                  } ->
+                  LhsFieldAccessor
+                    {
+                      e = c_lhs e;
+                      typ = lhs.typ;
+                      field;
+                      witness = W.nontrivial_lhs;
+                    }
+              | _ -> LhsArbitraryExpr { e = lhs; witness = W.arbitrary_lhs }))
 
-      Assign { lhs = mk_lhs lhs; e = rhs; witness = W.mutable_variable }
+    and c_expr_assign lhs rhs =
+      Assign { lhs = c_lhs lhs; e = rhs; witness = W.mutable_variable }
 
     and c_pat (pat : Thir.decorated_for__pat_kind) : pat =
       let span = Span.of_thir pat.span in
