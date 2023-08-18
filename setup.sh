@@ -2,6 +2,20 @@
 
 set -eu
 
+opam_jobs=2
+
+# Parse command line arguments.
+all_args=("$@")
+while [ $# -gt 0 ]; do
+    case "$1" in
+    -j)
+        opam_jobs=$2
+        shift
+        ;;
+    esac
+    shift
+done
+
 # Ensures a given binary is available in PATH
 ensure_binary_available() {
     command -v "$1" >/dev/null 2>&1 || {
@@ -14,7 +28,10 @@ ensure_binary_available() {
 # Installs the Rust CLI & frontend, providing `cargo-hax` and `driver-hax`
 install_rust_binaries() {
     for i in driver subcommands; do
-        ( set -x; cargo install --force --path "cli/$i")
+        (
+            set -x
+            cargo install --force --path "cli/$i"
+        )
     done
 }
 
@@ -23,7 +40,7 @@ install_ocaml_engine() {
     # Fixes out of memory issues (https://github.com/hacspec/hacspec-v2/issues/197)
     {
         # Limit the number of thread spawned by opam
-        export OPAMJOBS=2
+        export OPAMJOBS=$opam_jobs
         # Make the garbadge collector of OCaml more agressive (see
         # https://discuss.ocaml.org/t/how-to-limit-the-amount-of-memory-the-ocaml-compiler-is-allowed-to-use/797)
         export OCAMLRUNPARAM="o=20"
@@ -32,7 +49,11 @@ install_ocaml_engine() {
     export OPAMERRLOGLEN=0
     # Make opam ignore system dependencies (it doesn't handle properly certain situations)
     export OPAMASSUMEDEPEXTS=1
-    (set -x; opam install --yes ./engine)
+    (
+        set -x
+        opam uninstall hax-engine || true
+        opam install --yes ./engine
+    )
 }
 
 for binary in opam node rustup jq; do
@@ -40,4 +61,3 @@ for binary in opam node rustup jq; do
 done
 install_rust_binaries
 install_ocaml_engine
-
