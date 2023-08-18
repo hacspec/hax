@@ -354,6 +354,9 @@ struct
                   in
                   ({ e with e = App { f; args } }, effects))
           | Literal _ -> (e, m#zero)
+          | Block inner ->
+              HoistSeq.one env (super#visit_expr env e) (fun inner effects ->
+                  ({ e with e = Block inner }, effects))
           | Array l ->
               HoistSeq.many env
                 (List.map ~f:(super#visit_expr env) l)

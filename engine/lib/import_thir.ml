@@ -432,7 +432,11 @@ module Exn = struct
               lift_last_statement_as_expr_if_possible o.expr o.stmts e.ty
             in
             let init =
-              Option.map ~f:c_expr o_expr
+              Option.map
+                ~f:(fun e ->
+                  let e = c_expr e in
+                  { e with e = Block e })
+                o_expr
               |> Option.value ~default:(unit_expr span)
             in
             let { e; _ } =

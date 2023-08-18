@@ -155,6 +155,7 @@ struct
             rhs = dexpr rhs;
             body = dexpr body;
           }
+    | Block e -> Block (dexpr e)
     | LocalVar local_ident -> LocalVar local_ident
     | GlobalVar global_ident -> GlobalVar global_ident
     | Ascription { e; typ } -> Ascription { e = dexpr e; typ = dty span typ }
