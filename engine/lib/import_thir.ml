@@ -125,7 +125,7 @@ module Exn = struct
           Tool { path; tokens }
       | DocComment (kind, body) ->
           let kind =
-            match kind with Thir.Line -> Line | Thir.Block -> Block
+            match kind with Thir.Line -> DCKLine | Thir.Block -> DCKBlock
           in
           DocComment { kind; body }
     in

@@ -81,7 +81,7 @@ type attr_kind =
   | DocComment of { kind : doc_comment_kind; body : string }
 
 and attr = { kind : attr_kind; span : span }
-and doc_comment_kind = Line | Block
+and doc_comment_kind = DCKLine | DCKBlock
 
 and attrs = attr list
 [@@deriving
