@@ -35,8 +35,9 @@ struct Pair<T> {
 
 fn g(x: Pair<Vec<u8>>) -> Vec<u8> {
     let mut x = x;
-    x.a.push(1);
-    x.a.push(2);
+    for i in 1..10 {
+        x.a.push(i);
+    }
     x.a.swap(0, 1);
     x.b.field.swap(0, 1);
     x.a
