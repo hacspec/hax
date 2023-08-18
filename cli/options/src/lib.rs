@@ -218,7 +218,7 @@ pub struct Options {
         value_delimiter = ',',
         default_values = [
             "hacspec_lib::array::array", "hacspec_lib::array::public_bytes", "hacspec_lib::array::bytes",
-            "hacspec_lib::math_integers::public_nat_mod", "hacspec_lib::math_integers::unsigned_public_integer",
+            "hacspec_lib::public_nat_mod", "hacspec_lib::math_integers::public_nat_mod", "hacspec_lib::math_integers::unsigned_public_integer",
         ],
     )]
     pub inline_macro_calls: Vec<Namespace>,
