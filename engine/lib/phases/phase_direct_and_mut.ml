@@ -89,26 +89,43 @@ struct
       and place' =
         | LocalVar of LocalIdent.t
         | Deref of expr (* TODO: add Index, rename Proj in field acc. *)
-        | Projection of { place : t; projector : global_ident }
+        | IndexProjection of { place : t; index : expr }
+        | FieldProjection of { place : t; projector : global_ident }
       [@@deriving show]
 
+      let deref_mut_allowed (t : ty) : bool =
+        match t with
+        | TApp { ident; _ } -> Global_ident.eq_name Alloc__vec__Vec ident
+        | _ -> false
+
       let rec of_expr (e : expr) : t option =
-        let* place =
-          match e.e with
-          | App { f = { e = GlobalVar (`Primitive Deref); _ }; args = [ e ]; _ }
-            ->
-              Some (Deref e)
-          | LocalVar i -> Some (LocalVar i)
-          | App
-              {
-                f = { e = GlobalVar (`Projector _ as projector) };
-                args = [ place ];
-              } ->
-              let* place = of_expr place in
-              Some (Projection { place; projector })
-          | _ -> None
-        in
-        Some { place; span = e.span; typ = e.typ }
+        let wrap place = Some { place; span = e.span; typ = e.typ } in
+        match e.e with
+        | App { f = { e = GlobalVar (`Primitive Deref); _ }; args = [ e ]; _ }
+          -> (
+            match of_expr e with
+            | Some { place = IndexProjection _; _ } as value -> value
+            | _ -> wrap @@ Deref e)
+        | LocalVar i -> wrap @@ LocalVar i
+        | App
+            {
+              f = { e = GlobalVar (`Projector _ as projector) };
+              args = [ place ];
+            } ->
+            let* place = of_expr place in
+            wrap @@ FieldProjection { place; projector }
+        | App { f = { e = GlobalVar f }; args = [ place; index ] }
+          when Global_ident.eq_name Core__ops__index__IndexMut__index_mut f ->
+            (* Note that here, we allow any type to be `index_mut`ed:
+               Hax translates that to `Rust_primitives.Hax.update_at`.
+               This will typecheck IFF there is an implementation.
+            *)
+            let* typ = Ty.expect_mut_ref e.typ in
+            let* place = Expr.expect_mut_borrow place in
+            let* place = of_expr place in
+            let place = IndexProjection { place; index } in
+            Some { place; span = e.span; typ }
+        | _ -> None
 
       let rec to_expr (p : t) : expr =
         let open UA in
@@ -117,9 +134,12 @@ struct
             let e : expr' = LocalVar v in
             { e; typ = p.typ; span = p.span }
         | Deref e -> call' (`Primitive Deref) [ e ] p.span p.typ
-        | Projection { place; projector } ->
+        | FieldProjection { place; projector } ->
             let e = to_expr place in
             call' projector [ e ] p.span p.typ
+        | IndexProjection { place; index } ->
+            let e = to_expr place in
+            call Core__ops__index__IndexMut__index_mut [ e; index ] p.span p.typ
 
       let expect_deref_mut (p : t) : t option =
         match p.place with
@@ -128,11 +148,6 @@ struct
             let* e = Expr.expect_mut_borrow e in
             of_expr e
         | _ -> None
-
-      let deref_mut_allowed (t : ty) : bool =
-        match t with
-        | TApp { ident; _ } -> Global_ident.eq_name Alloc__vec__Vec ident
-        | _ -> false
 
       let expect_allowed_deref_mut (p : t) : t option =
         let* p = expect_deref_mut p in
@@ -175,7 +190,7 @@ struct
       let typ = dty p.span p.typ in
       match p.place with
       | LocalVar var -> LhsLocalVar { var; typ }
-      | Projection { place; projector } ->
+      | FieldProjection { place; projector } ->
           let e = place_to_lhs place in
           let field =
             match projector with
@@ -186,6 +201,11 @@ struct
           in
           LhsFieldAccessor
             { witness = Features.On.nontrivial_lhs; field; typ; e }
+      | IndexProjection { place; index } ->
+          let e = place_to_lhs place in
+          let index = dexpr index in
+          LhsArrayAccessor
+            { e; typ; index; witness = Features.On.nontrivial_lhs }
       | _ ->
           let e = Place.to_expr p |> dexpr in
           LhsArbitraryExpr { witness = Features.On.arbitrary_lhs; e }

@@ -1,5 +1,11 @@
 #![allow(dead_code)]
 
+fn index_mutation(x: core::ops::Range<usize>, a: &'static [u8]) {
+    let mut v = vec![1];
+    v[x].copy_from_slice(a);
+    v[1] = 3;
+}
+
 fn build_vec() -> Vec<u8> {
     vec![1, 2, 3]
 }
