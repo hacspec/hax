@@ -51,7 +51,7 @@ install_ocaml_engine() {
     export OPAMASSUMEDEPEXTS=1
     (
         set -x
-        opam uninstall hax-engine
+        opam uninstall hax-engine || true
         opam install --yes ./engine
     )
 }
