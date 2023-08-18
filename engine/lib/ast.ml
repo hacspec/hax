@@ -372,6 +372,7 @@ functor
         }
 
     and loop_state = { init : expr; bpat : pat; witness : F.state_passing_loop }
+
     (* | WhileLoop of { *)
     (*     condition: expr; *)
     (*     witness : F.while_loop; *)
