@@ -231,9 +231,7 @@ struct
                  let v =
                    expect_mut_borrow_of_place_or_pure_expr arg
                    |> Option.value_or_thunk ~default:(fun _ ->
-                          Error.assertion_failure arg.span
-                            "TODO: CLASSIFY THIS ERROR PROPERLY. We expected a \
-                             &mut, but got nothing")
+                          Error.raise { kind = ExpectedMutRef; span = arg.span })
                  in
                  (v, true)
                else (Either.second arg, false))

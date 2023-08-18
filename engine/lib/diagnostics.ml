@@ -131,6 +131,6 @@ end = struct
     raise (Exn (Data (ctx, kind)))
 
   let raise ?(span = []) (ctx : Context.t) (kind : kind) =
-    report { span; kind; context = ThirImport };
+    report { span; kind; context = ctx };
     raise_without_reporting ctx kind
 end

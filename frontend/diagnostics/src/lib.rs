@@ -73,7 +73,7 @@ impl<S: PartialEq + Clone, I: IntoIterator<Item = S> + Clone> Diagnostics<I> {
 
 impl<S> std::fmt::Display for Diagnostics<S> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}:", self.context)?;
+        write!(f, "({}) ", self.context)?;
         match &self.kind {
             Kind::Unimplemented { issue_id, details } => write!(
                 f,
@@ -105,6 +105,16 @@ impl<S> std::fmt::Display for Diagnostics<S> {
                 "The mutation of this {} is not allowed here.",
                 "&mut".bold()
             ),
+            Kind::ExpectedMutRef => write!(
+                f,
+                "At this position, Hax was expecting an expression of the shape `&mut _`. Hax forbids `f(x)` (where `f` expects a mutable reference as input) when `x` is not a {}{} or when it is a dereference expression.
+
+{}
+",
+                "place expression".bold(),
+                "[1]".bright_black(),
+                "[1]: https://doc.rust-lang.org/reference/expressions.html#place-expressions-and-value-expressions"
+            ),
             Kind::ClosureMutatesParentBindings {bindings} => write!(
                 f,
                 "The bindings {:?} cannot be mutated here: they don't belong to the closure scope, and this is not allowed.",
@@ -132,28 +142,44 @@ pub enum Kind {
     /// Unknown error
     // This is useful when doing sanity checks (i.e. one can yield
     // this error kind for cases that should never happen)
-    AssertionFailure { details: String } = 2,
+    AssertionFailure {
+        details: String,
+    } = 2,
 
     /// Unallowed mutable reference
     UnallowedMutRef = 3,
 
     /// Unsupported macro invokation
-    UnsupportedMacro { id: String } = 4,
+    UnsupportedMacro {
+        id: String,
+    } = 4,
 
     /// Error parsing a macro invocation to a macro treated specifcially by a backend
-    ErrorParsingMacroInvocation { macro_id: String, details: String } = 5,
+    ErrorParsingMacroInvocation {
+        macro_id: String,
+        details: String,
+    } = 5,
 
     /// Mutation of bindings living outside a closure scope are not supported
-    ClosureMutatesParentBindings { bindings: Vec<String> } = 6,
+    ClosureMutatesParentBindings {
+        bindings: Vec<String>,
+    } = 6,
 
     /// Assignation of an arbitrary left-hand side is not supported. [lhs = e] is fine only when [lhs] is a combination of local identifiers, field accessors and index accessors.
     ArbitraryLHS = 7,
 
     /// A phase explicitely rejected this chunk of code
-    ExplicitRejection { reason: String } = 8,
+    ExplicitRejection {
+        reason: String,
+    } = 8,
 
     /// A backend doesn't support a tuple size
-    UnsupportedTupleSize { tuple_size: u32, reason: String } = 9,
+    UnsupportedTupleSize {
+        tuple_size: u32,
+        reason: String,
+    } = 9,
+
+    ExpectedMutRef = 10,
 }
 
 impl Kind {
