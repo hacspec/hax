@@ -435,7 +435,7 @@ module Exn = struct
               Option.map
                 ~f:(fun e ->
                   let e = c_expr e in
-                  { e with e = Block e })
+                  { e with e = Block (e, W.block) })
                 o_expr
               |> Option.value ~default:(unit_expr span)
             in

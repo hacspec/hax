@@ -35,6 +35,7 @@ module SubtypeToInputLanguage
              and type arbitrary_lhs = Features.Off.arbitrary_lhs
              and type nontrivial_lhs = Features.Off.nontrivial_lhs
              and type loop = Features.Off.loop
+             and type block = Features.Off.block
              and type for_loop = Features.Off.for_loop
              and type for_index_loop = Features.Off.for_index_loop
              and type state_passing_loop = Features.Off.state_passing_loop) =
@@ -689,6 +690,7 @@ module TransformToInputLanguage =
   |> Phases.Reject.Arbitrary_lhs
   |> Phases.Reconstruct_for_loops
   |> Phases.Direct_and_mut
+  |> Phases.Drop_blocks
   |> Phases.Reject.Continue
   |> Phases.Drop_references
   |> Phases.Trivialize_assign_lhs

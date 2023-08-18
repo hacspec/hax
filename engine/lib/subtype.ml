@@ -155,7 +155,7 @@ struct
             rhs = dexpr rhs;
             body = dexpr body;
           }
-    | Block e -> Block (dexpr e)
+    | Block (e, witness) -> Block (dexpr e, S.block witness)
     | LocalVar local_ident -> LocalVar local_ident
     | GlobalVar global_ident -> GlobalVar global_ident
     | Ascription { e; typ } -> Ascription { e = dexpr e; typ = dty span typ }

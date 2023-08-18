@@ -306,7 +306,8 @@ functor
           rhs : expr;
           body : expr;
         }
-      | Block of expr (* Corresponds to `{e}`: this is important for places *)
+      | Block of (expr * F.block)
+        (* Corresponds to `{e}`: this is important for places *)
       | LocalVar of local_ident
       | GlobalVar of global_ident
       | Ascription of { e : expr; typ : ty }

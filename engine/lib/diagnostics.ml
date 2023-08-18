@@ -27,6 +27,7 @@ module Phase = struct
     | DirectAndMut
     | Identity
     | DropReferences
+    | DropBlocks
     | RefMut
     | ResugarForLoops
     | ResugarForIndexLoops
