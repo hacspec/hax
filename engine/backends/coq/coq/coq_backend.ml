@@ -687,9 +687,9 @@ open Phase_utils
 module TransformToInputLanguage =
   [%functor_application
   Phases.Reject.RawOrMutPointer(Features.Rust)
+  |> Phases.Direct_and_mut
   |> Phases.Reject.Arbitrary_lhs
   |> Phases.Reconstruct_for_loops
-  |> Phases.Direct_and_mut
   |> Phases.Drop_blocks
   |> Phases.Reject.Continue
   |> Phases.Drop_references

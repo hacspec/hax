@@ -1763,8 +1763,9 @@ pub enum ExprKind {
         rustc_middle::thir::ExprKind::Block { block: block_id } => {
             let block = gstate.thir().blocks[block_id.clone()].clone();
             match (block.stmts, block.expr, block.safety_mode, block.targeted_by_break) {
-                (box [], Some(e), rustc_middle::thir::BlockSafety::Safe, false) =>
-                    *e.sinto(gstate).contents,
+                // TODO: remove that for good
+                // (box [], Some(e), rustc_middle::thir::BlockSafety::Safe, false) =>
+                //     *e.sinto(gstate).contents,
                 _ => ExprKind::Block {
                     block: block_id.sinto(gstate)
                 }

@@ -377,6 +377,7 @@ functor
     (*     witness : F.while_loop; *)
     (*   } *)
 
+    (* TODO: LHS should be places or "compositions" of places, see [assignee expression] in https://doc.rust-lang.org/reference/expressions.html#place-expressions-and-value-expressions  *)
     and lhs =
       | LhsLocalVar of { var : LocalIdent.t; typ : ty }
       | LhsArbitraryExpr of { e : expr; witness : F.arbitrary_lhs }
