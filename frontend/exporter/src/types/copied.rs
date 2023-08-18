@@ -46,6 +46,12 @@ impl<T> std::cmp::Ord for GenericDefId<T> {
     }
 }
 
+impl DefId {
+    pub fn is_anon_const(&self) -> bool {
+        self.path.last().unwrap().data.is_anon_const()
+    }
+}
+
 impl<'s, S: BaseState<'s>> SInto<S, DisambiguatedDefPathItem<DefPathItem>>
     for rustc_hir::definitions::DisambiguatedDefPathData
 {
@@ -216,6 +222,16 @@ pub enum DefPathItem {
     ImplTraitAssocTy,
 }
 
+impl DefPathItem {
+    pub fn is_anon_const(&self) -> bool {
+        if let DefPathItem::AnonConst = self {
+            true
+        } else {
+            false
+        }
+    }
+}
+
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
@@ -234,6 +250,16 @@ pub enum ExtendedDefPathItem {
     AnonConst,
     ImplTrait,
     ImplTraitAssocTy,
+}
+
+impl ExtendedDefPathItem {
+    pub fn is_anon_const(&self) -> bool {
+        if let ExtendedDefPathItem::AnonConst = self {
+            true
+        } else {
+            false
+        }
+    }
 }
 
 #[derive(
@@ -331,13 +357,11 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantKind> for rustc_middle::mir::Con
     fn sinto(&self, s: &S) -> ConstantKind {
         use rustc_middle::mir;
 
-        // We evaluate the constant *only* if it is a non-evaluated anonymous
-        // constant.
+        // Evaluate the non-evaluated **anonymous constants**.
         let constant = if let mir::ConstantKind::Unevaluated(ucv, _) = self {
             // Use the id to check if we need to evaluate
             let id: DefId = ucv.def.sinto(s);
-            let last = id.path.last().unwrap();
-            if let DefPathItem::AnonConst = &last.data {
+            if must_evaluate_constant(&id) {
                 // Anonymous constant: evaluate
                 self.eval(s.base().tcx, get_param_env(s))
             } else {

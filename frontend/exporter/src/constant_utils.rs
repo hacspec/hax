@@ -233,22 +233,45 @@ pub(crate) fn scalar_to_constant_expr<'tcx, S: BaseState<'tcx>>(
     }
 }
 
+/// We evaluate the anonymous constants
+pub(crate) fn must_evaluate_constant(id: &DefId) -> bool {
+    let last = id.path.last().unwrap();
+    if let DefPathItem::AnonConst = &last.data {
+        // Anonymous constant: evaluate
+        true
+    } else {
+        // Not an anonymous constant: do not evaluate
+        false
+    }
+}
+
 pub(crate) fn const_to_constant_expr<'tcx, S: BaseState<'tcx>>(
     s: &S,
     c: rustc_middle::ty::Const<'tcx>,
 ) -> ConstantExpr {
     use rustc_middle::query::Key;
     use rustc_middle::ty;
+
+    // Evaluate the non-evaluated **anonymous constants**.
+    let c = if let ty::ConstKind::Unevaluated(ucv) = c.kind() {
+        let id: DefId = ucv.def.sinto(s);
+        if must_evaluate_constant(&id) {
+            // Anonymous constant: evaluate
+            c.eval(s.base().tcx, get_param_env(s))
+        } else {
+            // Not an anonymous constant: do not evaluate
+            c
+        }
+    } else {
+        c
+    };
+
     let span = c.default_span(s.base().tcx);
     let kind = match c.kind() {
         ty::ConstKind::Param(p) => ConstantExprKind::ConstRef { id: p.sinto(s) },
         ty::ConstKind::Infer(..) => span_fatal!(s, span, "ty::ConstKind::Infer node? {:#?}", c),
         ty::ConstKind::Unevaluated(ucv) => {
-            // We do not evaluate the constant (we could)
-            // If we wanted to evaluate the constant, we could use [TyCtxt::const_eval_resolve].
-            // There is also: [rustc_middle::ty::Const::eval(...)]
-            // We can also use [TyCtxt.const_eval_resolve_for_typeck] to retrieve a [ValTree].
-            // We would need a parameter env that we can retrieve with [TyCtxt.param_env(DefId)].
+            // This should be a top-level constant (otherwise would have been evaluated)
             let id = ucv.def.sinto(s);
             ConstantExprKind::GlobalName { id }
         }
