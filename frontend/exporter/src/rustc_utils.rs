@@ -49,9 +49,8 @@ pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
                 [init @ .., _] => init.to_vec(),
                 _ => {
                     let span = s.base().tcx.def_span(variant);
-                    span_fatal!(
-                        s,
-                        span,
+                    fatal!(
+                        s[span],
                         "Type {:#?} appears to have no path",
                         constructs_type
                     )

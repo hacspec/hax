@@ -120,9 +120,8 @@ pub(crate) fn translate_constant_integer_like_value<'tcx, S: BaseState<'tcx>>(
     let kind = match ty.kind() {
         ty::Char | ty::Bool | ty::Int(_) | ty::Uint(_) => {
             let scalar_int = scalar.try_to_int().unwrap_or_else(|_| {
-                span_fatal!(
-                    s,
-                    span,
+                fatal!(
+                    s[span],
                     "Type is primitive, but the scalar {:#?} is not a [Int]",
                     scalar
                 )
@@ -132,9 +131,8 @@ pub(crate) fn translate_constant_integer_like_value<'tcx, S: BaseState<'tcx>>(
         ty::Ref(region, ty, Mutability::Not) if region.is_erased() => {
             let tcx = s.base().tcx;
             let pointer = scalar.to_pointer(&tcx).unwrap_or_else(|_| {
-                span_fatal!(
-                    s,
-                    span,
+                fatal!(
+                    s[span],
                     "Type is [Ref], but the scalar {:#?} is not a [Pointer]",
                     scalar
                 )
@@ -142,9 +140,8 @@ pub(crate) fn translate_constant_integer_like_value<'tcx, S: BaseState<'tcx>>(
             let provenance = tcx.global_alloc(pointer.provenance.unwrap());
             use rustc_middle::mir::interpret::GlobalAlloc;
             let GlobalAlloc::Static(did) = provenance else {
-                span_fatal!(
-                    s,
-                    span,
+                fatal!(
+                    s[span],
                     "Expected provenance to be GlobalAlloc::Static, got {:#?} instead",
                     provenance
                 )
@@ -165,7 +162,7 @@ pub(crate) fn translate_constant_integer_like_value<'tcx, S: BaseState<'tcx>>(
                 fields: vec![],
             }
         },
-        _ => span_fatal!(s, span, "Unexpected type {:#?} for scalar {:#?}", ty, scalar),
+        _ => fatal!(s[span], "Unexpected type {:#?} for scalar {:#?}", ty, scalar),
     };
     Decorated {
         ty: ty.sinto(s),
@@ -185,20 +182,20 @@ pub(crate) fn const_to_constant_expr<'tcx, S: BaseState<'tcx>>(
     use rustc_middle::ty;
     let kind = match c.kind() {
         ty::ConstKind::Param(p) => ConstantExprKind::ConstRef { id: p.sinto(s) },
-        ty::ConstKind::Infer(..) => span_fatal!(s, span, "ty::ConstKind::Infer node? {:#?}", c),
+        ty::ConstKind::Infer(..) => fatal!(s[span], "ty::ConstKind::Infer node? {:#?}", c),
         ty::ConstKind::Unevaluated(..) => {
-            span_fatal!(s, span, "ty::ConstKind::Unevaluated node? {:#?}", c)
+            fatal!(s[span], "ty::ConstKind::Unevaluated node? {:#?}", c)
         }
         ty::ConstKind::Value(valtree) => return valtree_to_constant_expr(s, valtree, ty, span),
-        ty::ConstKind::Error(_) => span_fatal!(s, span, "ty::ConstKind::Error"),
+        ty::ConstKind::Error(_) => fatal!(s[span], "ty::ConstKind::Error"),
         ty::ConstKind::Expr(e) => {
-            span_fatal!(s, span, "ty::ConstKind::Expr {:#?}", e)
+            fatal!(s[span], "ty::ConstKind::Expr {:#?}", e)
         }
         ty::ConstKind::Bound(i, bound) => {
             supposely_unreachable!(s[span], "ty::ConstKind::Bound"; {i, bound, ty});
-            span_fatal!(s, span, "ty::ConstKind::Bound")
+            fatal!(s[span], "ty::ConstKind::Bound")
         }
-        _ => span_fatal!(s, span, "unexpected case"),
+        _ => fatal!(s[span], "unexpected case"),
     };
     Decorated {
         ty: ty.sinto(s),
@@ -223,8 +220,8 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
         }
         (ty::ValTree::Branch(valtrees), ty::Str) => ConstantExprKind::Literal(
             LitKind::ByteStr(valtrees.into_iter().map(|x| match x {
-                ty::ValTree::Leaf(leaf) => leaf.try_to_u8().unwrap_or_else(|e| span_fatal!(s, span, "Expected a u8 leaf while translating a str literal, got something else. Error: {:#?}", e)),
-                _ => span_fatal!(s, span, "Expected a flat list of leaves while translating a str literal, got a arbitrary valtree.")
+                ty::ValTree::Leaf(leaf) => leaf.try_to_u8().unwrap_or_else(|e| fatal!(s[span], "Expected a u8 leaf while translating a str literal, got something else. Error: {:#?}", e)),
+                _ => fatal!(s[span], "Expected a flat list of leaves while translating a str literal, got a arbitrary valtree.")
             }).collect(), StrStyle::Cooked)
         ),
         (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
@@ -266,12 +263,9 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
         (ty::ValTree::Leaf(x), _) => ConstantExprKind::Literal (
             scalar_int_to_lit_kind(s, x, ty)
         ),
-        _ => span_fatal!(
-            s,
-            span,
-            "valtree_to_expr: cannot handle valtree{:#?} ty={:#?}",
-            valtree,
-            ty
+        _ => supposely_unreachable_fatal!(
+            s[span], "valtree_to_expr";
+            {valtree, ty}
         ),
     };
 

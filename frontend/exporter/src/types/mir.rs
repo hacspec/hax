@@ -324,7 +324,7 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx>> SInto<S, Place> for rustc_middle::
                     ty_kind => {
                         supposely_unreachable_fatal!(
                             s, "ProjectionElemFieldBadType";
-                            {index, variant_idx, &cur_ty, &cur_kind}
+                            {index, variant_idx, ty_kind, &cur_ty, &cur_kind}
                         )
                     }
                 })

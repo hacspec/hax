@@ -69,12 +69,6 @@ pub(crate) use internal_helpers::_span_verb_base;
 pub(crate) use internal_helpers::_verb;
 pub(crate) use report;
 
-macro_rules! span_fatal {
-    ($s:ident, $span:expr, $($other:tt)*) => {
-        $s.base().tcx.sess.span_fatal($span,format!($($other)*))
-    }
-}
-
 macro_rules! supposely_unreachable_message {
     ($label:literal) => {
         concat!(
@@ -100,8 +94,8 @@ macro_rules! supposely_unreachable_fatal {
 
 pub(crate) use error;
 pub(crate) use fatal;
-pub(crate) use span_fatal;
 pub(crate) use supposely_unreachable;
 pub(crate) use supposely_unreachable_fatal;
 pub(crate) use supposely_unreachable_message;
+#[allow(unused_imports)]
 pub(crate) use warning;
