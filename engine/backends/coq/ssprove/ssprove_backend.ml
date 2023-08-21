@@ -12,7 +12,6 @@ include
       include On.Monadic_binding
       include On.Macro
       include On.Construct_base
-      include On.Mutable_variable
       include On.Loop
       include On.For_loop
       include On.For_index_loop
@@ -28,7 +27,7 @@ module SubtypeToInputLanguage
              and type continue = Features.Off.continue
              and type break = Features.Off.break
              and type mutable_pointer = Features.Off.mutable_pointer
-             and type mutable_variable = Features.On.mutable_variable
+             and type mutable_variable = Features.Off.mutable_variable
              and type reference = Features.Off.reference
              and type raw_pointer = Features.Off.raw_pointer
              and type early_exit = Features.Off.early_exit
@@ -78,10 +77,10 @@ module SSProveLibrary : Library = struct
 
     let let_stmt (var : string) (expr : string) (typ : string) (body : string)
         (depth : int) : string =
-      "letb" ^ " " ^ var ^ " " ^ ":="
+      "letb0" ^ " " ^ var ^ " " ^ ":="
       ^ " " ^ expr ^ " "
       (* ^ " (" ^ expr ^ ") "  *)
-      ^ ":of:" ^ " " ^ typ
+      ^ ":of0:" ^ " " ^ typ
       (* ^ ":" ^ " " *)
       (* ^ "both _ _" ^ " " ^ "(" ^ typ ^ ")" *)
       ^ " " ^ "in" ^ newline_indent depth
@@ -89,7 +88,7 @@ module SSProveLibrary : Library = struct
 
     let let_mut_stmt (var : string) (expr : string) (typ : string)
         (body : string) (depth : int) : string =
-      "letbm" ^ " " ^ var ^ " " ^ "loc(" ^ var ^ "_loc" ^ ")" ^ " " ^ ":="
+      "letbm0" ^ " " ^ var ^ " " ^ "loc(" ^ var ^ "_loc" ^ ")" ^ " " ^ ":="
       ^ " (" ^ expr ^ ") " ^ ":" ^ " " ^ "both _ _" ^ " " ^ "(" ^ typ ^ ")"
       ^ " " ^ "in" ^ newline_indent depth ^ body
 
@@ -99,7 +98,7 @@ module SSProveLibrary : Library = struct
 
     let if_stmt (cond : string) (then_e : string) (else_e : string)
         (depth : int) : string =
-      "ifb" ^ " " ^ cond ^ newline_indent depth ^ "then" ^ " " ^ then_e
+      "ifb0" ^ " " ^ cond ^ newline_indent depth ^ "then" ^ " " ^ then_e
       ^ newline_indent depth ^ "else" ^ " " ^ else_e
 
     let match_stmt (expr : string) (arms : (string * string) list) (depth : int)
@@ -116,39 +115,10 @@ module SSProveLibrary : Library = struct
 end
 
 module SSP = Coq (SSProveLibrary)
-open Analysis_utils
-open Analyses
-
-module StaticAnalysis (* : ANALYSIS *) = struct
-  module A = InputLanguage
-
-  module FunctionDependency (* : ANALYSIS *) =
-  [%functor_application
-  Analyses.Function_dependency InputLanguage]
-
-  module MutableVariables (* : ANALYSIS *) =
-  [%functor_application
-  Analyses.Mutable_variables InputLanguage]
-
-  type pre_data = FunctionDependency.pre_data
-
-  type analysis_data = {
-    func_dep : FunctionDependency.analysis_data;
-    mut_var : MutableVariables.analysis_data;
-  }
-
-  let analyse (pre_data : FunctionDependency.pre_data) items =
-    let func_dep = FunctionDependency.analyse pre_data items in
-    let mut_var =
-      MutableVariables.analyse (func_dep : MutableVariables.pre_data) items
-    in
-    { func_dep; mut_var }
-end
 
 module Context = struct
   type t = {
     current_namespace : string * string list;
-    analysis_data : StaticAnalysis.analysis_data;
   }
 end
 
@@ -170,8 +140,8 @@ module TransformToInputLanguage (* : PHASE *) =
   |> Phases.Trivialize_assign_lhs
   |> Phases.Reconstruct_question_marks
   |> Side_effect_utils.Hoist
-  (* |> Phases.Local_mutation *)
-  |> Phases.State_passing_loop
+  |> Phases.Local_mutation
+  (* |> Phases.State_passing_loop *)
   |> Phases.Reject.Continue
   |> Phases.Cf_into_monads
   |> Phases.Reject.EarlyExit
@@ -579,17 +549,17 @@ struct
             _;
           } ->
           SSP.AST.App
-            ( SSP.AST.Var "foldi_both",
+            ( SSP.AST.Var "foldi_both0",
               [
                 (pexpr add_solve) start;
                 (pexpr add_solve) end_;
                 SSP.AST.Lambda
-                  ( [ SSP.AST.Ident "{L I _ _}"; SSP.AST.Ident var.name ],
-                    SSP.AST.App
-                      ( SSP.AST.Var "ssp",
-                        [
-                          SSP.AST.Lambda ([ ppat bpat ], (pexpr true) body);
-                        ] ) );
+                  ([ SSP.AST.Ident var.name ],
+                   SSP.AST.App
+                     ( SSP.AST.Var "ssp",
+                       [
+                         SSP.AST.Lambda ([ ppat bpat ], (pexpr true) body);
+                       ] ));
                 (pexpr add_solve) init;
               ] )
       | Loop
@@ -601,16 +571,16 @@ struct
             _;
           } ->
           SSP.AST.App
-            ( SSP.AST.Var "foldi_both_list",
+            ( SSP.AST.Var "foldi_both0_list",
               [
                 (pexpr add_solve) it;
                 SSP.AST.Lambda
-                  ( [ SSP.AST.Ident "{L I _ _}"; ppat pat ],
-                    SSP.AST.App
-                      ( SSP.AST.Var "ssp",
-                        [
-                          SSP.AST.Lambda ([ ppat bpat ], (pexpr true) body);
-                        ] ) );
+                  ([ ppat pat ],
+                   SSP.AST.App
+                     ( SSP.AST.Var "ssp",
+                       [
+                         SSP.AST.Lambda ([ ppat bpat ], (pexpr true) body);
+                       ] ));
                 (pexpr add_solve) init;
               ] )
       | Loop { body; kind; state; label; _ } ->
@@ -688,8 +658,8 @@ struct
         | _ -> v)
       (pgeneric span generics)
 
-  let wrap_type_in_both (l : string) (i : string) (a : SSP.AST.ty) =
-    SSP.AST.AppTy (SSP.AST.NameTy ("both" ^ " " ^ l ^ " " ^ i), [ a ])
+  let wrap_type_in_both (a : SSP.AST.ty) =
+    SSP.AST.AppTy (SSP.AST.NameTy ("both (fset []) (fset [])"), [ a ])
 
   let rec split_arrow_in_args (a : SSP.AST.ty) : SSP.AST.ty list * SSP.AST.ty =
     match a with
@@ -707,34 +677,23 @@ struct
   (*   | _ -> *)
   (*     i+1, wrap_type_in_both (li i) (ii i) a *)
 
-  let rec wrap_type_in_enumerator (li : int -> string) (ii : int -> string)
-      (i : int) (a : SSP.AST.ty) =
+  let rec wrap_type_in_enumerator (a : SSP.AST.ty) =
     let l, r = split_arrow_in_args a in
-    let size, t =
+    let t =
       List.fold_left
-        ~f:(fun (yi, ys) x ->
-          let size, x_val = wrap_type_in_enumerator li ii yi x in
-          ( size,
-            match ys with
+        ~f:(fun (ys) x ->
+          let x_val = wrap_type_in_enumerator x in
+          ( match ys with
             | Some v -> Some (SSP.AST.Arrow (v, x_val))
             | None -> Some x_val ))
-        ~init:(i, None) l
-    in
-    let lis, iis =
-      List.unzip (List.map ~f:(fun i -> (li i, ii i)) (List.range i size))
+        ~init:(None) l
     in
     match t with
     | Some v ->
-        ( size,
-          SSP.AST.Arrow
+        ( SSP.AST.Arrow
             ( v,
-              wrap_type_in_both
-                (let lis_str = String.concat ~sep:" :|: " lis in
-                 if List.length lis <= 1 then lis_str else "(" ^ lis_str ^ ")")
-                (let iis_str = String.concat ~sep:" :|: " iis in
-                 if List.length iis <= 1 then iis_str else "(" ^ iis_str ^ ")")
-                r ) )
-    | None -> (size + 1, wrap_type_in_both (li i) (ii i) r)
+              wrap_type_in_both r ) )
+    | None -> (wrap_type_in_both r)
 
   let rec pitem (e : item) : SSP.AST.decl list =
     try pitem_unwrapped e
@@ -745,110 +704,21 @@ struct
     let span = e.span in
     match e.v with
     | Fn { name; generics; body; params } ->
-        let ndep =
-          []
-          (* match Map.find (fst ctx.func_dep) name with *)
-          (* | Some l -> l *)
-          (* | None -> [] *)
-          (* Not relevant yet *)
-        in
-        let (mvars_ext, mvars_loc)
-              : local_ident list * (local_ident * AST.ty * int) list =
-          match
-            Map.find
-              (ctx.analysis_data.mut_var
-                : (local_ident list * ((local_ident * AST.ty) * int) list)
-                  Map.M(Concrete_ident).t)
-              name
-          with
-          | Some l ->
-              ( fst l,
-                List.map ~f:(fun ((x, x_ty), x_n) -> (x, x_ty, x_n)) (snd l) )
-          | None -> ([], [])
-        in
-        let mvars_str =
-          let generalized_L =
-            match params with
-            | [] -> ""
-            | x :: xs ->
-                List.fold_left
-                  ~f:(fun y x -> y ^ ":|:" ^ "L" ^ Int.to_string (x + 1))
-                  ~init:"L1"
-                  (List.init (List.length xs) (fun x -> x + 1))
-          in
-          "("
-          ^ (match (params, mvars_ext) with
-            | _ :: _, [] -> generalized_L
-            | _, _ ->
-                (match params with [] -> "" | _ -> generalized_L ^ " :|: ")
-                ^ "fset ["
-                ^ String.concat ~sep:"; "
-                    (List.map ~f:(fun x -> x.name ^ "_loc") mvars_ext)
-                ^ "]")
-          ^ ")"
-        in
-        let ndep_str =
-          let generalized_I =
-            match params with
-            | [] -> ""
-            | x :: xs ->
-                List.fold_left
-                  ~f:(fun y x -> y ^ ":|:" ^ "I" ^ Int.to_string (x + 1))
-                  ~init:"I1"
-                  (List.init (List.length xs) (fun x -> x + 1))
-          in
-          "("
-          ^ (match (params, ndep) with
-            | _ :: _, [] -> generalized_I
-            | _, _ ->
-                (match params with [] -> "" | _ -> generalized_I ^ " :|: ")
-                ^ "[interface "
-                ^ String.concat ~sep:"; " (List.map ~f:pconcrete_ident ndep)
-                ^ "]")
-          ^ ")"
-        in
-        List.fold_left ~init:[]
-          ~f:(fun y (x, x_ty, x_n) ->
-            SSP.AST.Definition
-              ( x.name ^ "_loc",
-                pgeneric_implicit span generics,
-                SSP.AST.Const
-                  (SSP.AST.Const_string
-                     ("("
-                     ^ SSP.ty_to_string (pty (Span.dummy ()) x_ty)
-                     ^ " ; " ^ Int.to_string x_n ^ "%nat)")),
-                SSP.AST.NameTy "Location" )
-            :: y)
-          mvars_loc
-        @ [
+        [
             (* SSP.AST.ProgramDefinition *)
             SSP.AST.Equations
               (* Questionmark *)
               ( pconcrete_ident name,
                 pgeneric span generics
                 @ List.map
-                    ~f:(fun x ->
-                      SSP.AST.Implicit
-                        ( SSP.AST.Ident ("L" ^ Int.to_string x),
-                          (SSP.AST.NameTy "{fset Location}" : SSP.AST.ty) ))
-                    (List.init (List.length params) (fun x -> x + 1))
-                @ List.map
-                    ~f:(fun x ->
-                      SSP.AST.Implicit
-                        ( SSP.AST.Ident ("I" ^ Int.to_string x),
-                          (SSP.AST.NameTy "Interface" : SSP.AST.ty) ))
-                    (List.init (List.length params) (fun x -> x + 1))
-                @ List.mapi
-                    ~f:(fun i { pat; typ; typ_span } ->
+                    ~f:(fun { pat; typ; typ_span } ->
                       SSP.AST.Explicit
                         ( ppat pat,
                           wrap_type_in_both
-                            ("L" ^ Int.to_string (i + 1))
-                            ("I" ^ Int.to_string (i + 1))
                             (pty span typ) ))
                     params,
                 pexpr true body,
-                wrap_type_in_both mvars_str ndep_str (pty span body.typ) );
+                wrap_type_in_both (pty span body.typ) );
           ]
     | TyAlias { name; generics; ty } ->
         let g = pgeneric span generics in
@@ -879,15 +749,6 @@ struct
         (*         (p_record_record span arguments) ); *)
         (* ] *)
         let fields = p_record_record span arguments in
-        let implicit_LI =
-          [
-            SSP.AST.Implicit
-              ( SSP.AST.Ident "L",
-                (SSP.AST.NameTy "{fset Location}" : SSP.AST.ty) );
-            SSP.AST.Implicit
-              (SSP.AST.Ident "I", (SSP.AST.NameTy "Interface" : SSP.AST.ty));
-          ]
-        in
         let ty_name =
           "("
           ^ String.concat ~sep:" "
@@ -909,12 +770,11 @@ struct
               SSP.AST.TypeTy );
           SSP.AST.Equations
             ( "Build_" ^ U.Concrete_ident_view.to_definition_name name,
-              implicit_LI
-              @ pgeneric_implicit span generics
+              pgeneric_implicit span generics
               @ List.map
                   ~f:(fun (x, y) ->
                     SSP.AST.Explicit
-                      (SSP.AST.Ident x, wrap_type_in_both "L" "I" y))
+                      (SSP.AST.Ident x, wrap_type_in_both y))
                   fields,
               List.fold_left
                 ~init:
@@ -938,12 +798,12 @@ struct
                       [ SSP.AST.Var x; SSP.AST.Lambda ([ SSP.AST.Ident x ], z) ]
                     ))
                 fields,
-              SSP.AST.NameTy ("both L I" ^ " " ^ ty_name) )
+              SSP.AST.NameTy ("both (fset []) (fset [])" ^ " " ^ ty_name) )
           (* :: SSP.AST.Arguments ("Build_" ^ pconcrete_ident name,) *);
         ]
     (* Definition t_Error : choice_type := t_ErrorKind × t_ErrorKind. *)
     (* (\* Uncurry is Build_.. fn *\) *)
-    (* Equations Build_Error {L I} {f_kind1 : both L I t_ErrorKind} {f_kind2 : both L I t_ErrorKind} : both L I t_Error := *)
+    (* Equations Build_Error {L I} {f_kind1 : both (fset []) (fset []) t_ErrorKind} {f_kind2 : both (fset []) (fset []) t_ErrorKind} : both (fset []) (fset []) t_Error := *)
     (*   Build_Error (f_kind1 := x) (f_kind2 := y) := *)
     (*   bind_both x (fun x' => *)
     (*   bind_both y (fun y' => *)
@@ -987,16 +847,16 @@ struct
                     ^ ") (m:=" ^ Int.to_string i ^ ") eq_refl : "
                     ^ pconcrete_ident name ^ ")"),
                    if is_record then
-                     SSP.AST.NameTy ("both L I " ^ pconcrete_ident name)
+                     SSP.AST.NameTy ("both (fset []) (fset []) " ^ pconcrete_ident name)
                    else
                      match arguments with
-                     | [] -> SSP.AST.NameTy ("both L I " ^ pconcrete_ident name)
+                     | [] -> SSP.AST.NameTy ("both (fset []) (fset []) " ^ pconcrete_ident name)
                      | [ (arg_name, arg_ty, attr) ] ->
                          SSP.AST.AppTy
                            ( pty span arg_ty,
                              [
                                SSP.AST.NameTy
-                                 ("both L I " ^ pconcrete_ident name);
+                                 ("both (fset []) (fset []) " ^ pconcrete_ident name);
                              ] )
                      | _ ->
                          SSP.AST.Arrow
@@ -1004,7 +864,7 @@ struct
                                (List.map
                                   ~f:((fun (x, y, z) -> y) >> pty span)
                                   arguments),
-                             SSP.AST.NameTy ("both L I " ^ pconcrete_ident name)
+                             SSP.AST.NameTy ("both (fset []) (fset []) " ^ pconcrete_ident name)
                            ) ))
     | Type { name; generics; variants } ->
         let g = pgeneric span generics in
@@ -1034,9 +894,9 @@ struct
               ],
               SSP.AST.Var "id",
               SSP.AST.Arrow
-                ( wrap_type_in_both "L" "I"
+                ( wrap_type_in_both
                     (SSP.AST.NameTy ("t_" ^ pconcrete_ident name)),
-                  wrap_type_in_both "L" "I"
+                  wrap_type_in_both
                     (SSP.AST.NameTy ("t_" ^ pconcrete_ident name)) ) );
         ]
     | IMacroInvokation { macro; argument; span } -> (
@@ -1073,9 +933,9 @@ struct
                       ],
                       SSP.AST.Var "id",
                       SSP.AST.Arrow
-                        ( wrap_type_in_both "L" "I"
+                        ( wrap_type_in_both
                             (SSP.AST.NameTy ("t_" ^ o.type_name)),
-                          wrap_type_in_both "L" "I"
+                          wrap_type_in_both
                             (SSP.AST.NameTy ("t_" ^ o.type_name)) ) );
                 ]
             | "bytes" ->
@@ -1102,9 +962,9 @@ struct
                       ],
                       SSP.AST.Var "id",
                       SSP.AST.Arrow
-                        ( wrap_type_in_both "L" "I"
+                        ( wrap_type_in_both
                             (SSP.AST.NameTy ("t_" ^ o.bytes_name)),
-                          wrap_type_in_both "L" "I"
+                          wrap_type_in_both
                             (SSP.AST.NameTy ("t_" ^ o.bytes_name)) ) );
                 ]
             | "unsigned_public_integer" ->
@@ -1131,9 +991,9 @@ struct
                       ],
                       SSP.AST.Var "id",
                       SSP.AST.Arrow
-                        ( wrap_type_in_both "L" "I"
+                        ( wrap_type_in_both
                             (SSP.AST.NameTy ("t_" ^ o.integer_name)),
-                          wrap_type_in_both "L" "I"
+                          wrap_type_in_both
                             (SSP.AST.NameTy ("t_" ^ o.integer_name)) ) );
                 ]
             | "public_bytes" ->
@@ -1160,9 +1020,9 @@ struct
                       ],
                       SSP.AST.Var "id",
                       SSP.AST.Arrow
-                        ( wrap_type_in_both "L" "I"
+                        ( wrap_type_in_both
                             (SSP.AST.NameTy ("t_" ^ o.bytes_name)),
-                          wrap_type_in_both "L" "I"
+                          wrap_type_in_both
                             (SSP.AST.NameTy ("t_" ^ o.bytes_name)) ) );
                 ]
             | "array" ->
@@ -1203,9 +1063,9 @@ struct
                       ],
                       SSP.AST.Var "id",
                       SSP.AST.Arrow
-                        ( wrap_type_in_both "L" "I"
+                        ( wrap_type_in_both
                             (SSP.AST.NameTy ("t_" ^ o.array_name)),
-                          wrap_type_in_both "L" "I"
+                          wrap_type_in_both
                             (SSP.AST.NameTy ("t_" ^ o.array_name)) ) );
                 ]
             | _ -> unsupported ())
@@ -1231,24 +1091,10 @@ struct
                 ~f:(fun x ->
                   match x.ti_v with
                   | TIFn fn_ty ->
-                      let size, value =
-                        wrap_type_in_enumerator
-                          (fun (i : int) -> "L" ^ Int.to_string i)
-                          (fun (i : int) -> "I" ^ Int.to_string i)
-                          0 (pty x.ti_span fn_ty)
-                      in
+                      let value = wrap_type_in_enumerator (pty x.ti_span fn_ty) in
                       [
                         SSP.AST.Named
-                          ( x.ti_name,
-                            SSP.AST.Forall
-                              ( List.map
-                                  ~f:(fun (i : int) -> "L" ^ Int.to_string i)
-                                  (List.range 0 size)
-                                @ List.map
-                                    ~f:(fun (i : int) -> "I" ^ Int.to_string i)
-                                    (List.range 0 size),
-                                [],
-                                value ) );
+                          ( x.ti_name, value );
                       ]
                   | TIType trait_refs ->
                       SSP.AST.Named ("t_" ^ x.ti_name, SSP.AST.TypeTy)
@@ -1343,19 +1189,18 @@ let make ctx =
     let ctx = ctx
   end) : S)
 
-let string_of_item (analysis_data : StaticAnalysis.analysis_data) (item : item)
+let string_of_item (item : item)
     : string =
   let (module Print) =
     make
       {
         current_namespace = U.Concrete_ident_view.to_namespace item.ident;
-        analysis_data;
       }
   in
   List.map ~f:SSP.decl_to_string @@ Print.pitem item |> String.concat ~sep:"\n"
 
 let string_of_items =
-  (fun (x, y) -> List.map ~f:(string_of_item y) x)
+  (fun x -> List.map ~f:(string_of_item) x)
   >> List.map ~f:String.strip
   >> List.filter ~f:(String.is_empty >> not)
   >> String.concat ~sep:"\n\n"
@@ -1385,7 +1230,6 @@ let hardcoded_coq_headers =
 
 let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
     =
-  let analysis_data = StaticAnalysis.analyse () items in
   U.group_items_by_namespace items
   |> Map.to_alist
   |> List.map ~f:(fun (ns, items) ->
@@ -1401,7 +1245,7 @@ let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
              path = mod_name ^ ".v";
              contents =
                hardcoded_coq_headers ^ "\n"
-               ^ string_of_items (items, analysis_data)
+               ^ string_of_items (items)
                ^ "\n";
            })
 

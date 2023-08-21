@@ -723,7 +723,6 @@ module TransformToInputLanguage =
   |> Phases.Reject.Arbitrary_lhs
   |> Phases.Reconstruct_for_loops
   |> Phases.Direct_and_mut
-  |> Phases.Reject.Continue
   |> Phases.Drop_references
   |> Phases.Trivialize_assign_lhs
   |> Phases.Reconstruct_question_marks
