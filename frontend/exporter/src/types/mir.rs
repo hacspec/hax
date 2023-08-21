@@ -277,24 +277,18 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         let tr_ref = TraitRef::new(tcx, tr, subst);
         let tr_ref = rustc_middle::ty::Binder::dummy(tr_ref);
 
-        // Find the source
+        // Check if we can resolve
         let param_env = tcx.param_env(s.owner_id());
-        let source = tcx.codegen_select_candidate((param_env, tr_ref));
+        if tcx.codegen_select_candidate((param_env, tr_ref)).is_ok() {
+            // Get the full trait information
+            let selection = select_trait_candidate(tcx, (param_env, tr_ref));
 
-        match source {
-            Result::Err(_) => Option::None,
-            Result::Ok(impl_source) => {
-                let impl_source = impl_source.sinto(s);
-
-                // More
-                let selection = select_trait_candidate(tcx, (param_env, tr_ref));
-
-                // Return
-                Option::Some(TraitInfo {
-                    impl_source,
-                    selection: format!("{:?}", selection),
-                })
-            }
+            // Return
+            Option::Some(TraitInfo {
+                selection: format!("{:?}", selection),
+            })
+        } else {
+            Option::None
         }
     } else {
         Option::None

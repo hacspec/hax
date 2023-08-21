@@ -11,42 +11,6 @@ pub enum ImplSource {
 }
 */
 
-// Small trick: we need to instantiate the type parameter, but can't do it
-// in the AdtInto macro, so we define a type alias.
-type UnitImplSource<'tcx> = rustc_middle::traits::ImplSource<'tcx, ()>;
-
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: UnitImplSource<'tcx>, state: S as s)]
-pub enum ImplSource {
-    /*    UserDefined(ImplSourceUserDefinedData<N>),
-    AutoImpl(ImplSourceAutoImplData),
-    Param(Vec<N>, BoundConstness),
-    Object(ImplSourceObjectData<N>),
-    Builtin(ImplSourceBuiltinData<N>),
-    TraitUpcasting(ImplSourceTraitUpcastingData<N>),
-    Closure(ImplSourceClosureData<N>),
-    FnPointer(ImplSourceFnPointerData<N>),
-    Generator(ImplSourceGeneratorData<N>),
-    Future(ImplSourceFutureData<N>),
-    TraitAlias(ImplSourceTraitAliasData<N>),
-    ConstDestruct(ImplSourceConstDestructData<N>), */
-    //    UserDefined(String),
-    //    Param(Vec<()>, String),
-    //    Closure(String),
-    //    FnPointer(String),
-    #[todo]
-    Todo(String),
-}
-
-/*impl<'tcx, S: BaseState<'tcx>, N> SInto<S, ImplSource<N>>
-    for rustc_middle::traits::ImplSource<'tcx, N>
-{
-    fn sinto(self: &rustc_middle::traits::ImplSource<'tcx, N>, s: &S) -> ImplSource<N> {
-        let ctx = rustc_hir_analysis::collect::ItemCtxt::new(s.base().tcx, s.owner_id().def_id);
-        ctx.to_ty(self).sinto(s)
-    }
-}*/
-
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_trait_selection::traits::ObligationCause<'tcx>, state: S as s)]
 pub struct ObligationCause {
@@ -164,6 +128,5 @@ pub fn select_trait_candidate<'tcx>(
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct TraitInfo {
-    pub impl_source: ImplSource,
     pub selection: String,
 }
