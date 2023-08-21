@@ -57,11 +57,9 @@ macro_rules! report {
     };
 }
 
-#[allow(unused_macros)]
 macro_rules! error { ($($tt:tt)*) => {$crate::utils::report!(error, $($tt)*)} }
 #[allow(unused_macros)]
 macro_rules! warning { ($($tt:tt)*) => {$crate::utils::report!(warn, $($tt)*)} }
-#[allow(unused_macros)]
 macro_rules! fatal { ($($tt:tt)*) => {$crate::utils::report!(fatal, $($tt)*)} }
 
 pub(crate) use format_with_context;
