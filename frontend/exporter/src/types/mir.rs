@@ -117,7 +117,7 @@ pub struct Constant {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::Body<'tcx>, state: S as s)]
+#[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>, from: rustc_middle::mir::Body<'tcx>, state: S as s)]
 pub struct MirBody<KIND> {
     #[map(x.clone().as_mut().sinto(s))]
     pub basic_blocks: BasicBlocks,
@@ -202,10 +202,167 @@ impl Operand {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::Terminator<'tcx>, state: S as s)]
+#[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>, from: rustc_middle::mir::Terminator<'tcx>, state: S as s)]
 pub struct Terminator {
     pub source_info: SourceInfo,
     pub kind: TerminatorKind,
+}
+
+// Small trick: we need to instantiate the type parameter, but can't do it
+// in the AdtInto macro, so we define a type alias.
+type UnitImplSource<'tcx> = rustc_middle::traits::ImplSource<'tcx, ()>;
+
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: UnitImplSource<'tcx>, state: S as s)]
+pub enum ImplSource {
+    /*    UserDefined(ImplSourceUserDefinedData<N>),
+    AutoImpl(ImplSourceAutoImplData),
+    Param(Vec<N>, BoundConstness),
+    Object(ImplSourceObjectData<N>),
+    Builtin(ImplSourceBuiltinData<N>),
+    TraitUpcasting(ImplSourceTraitUpcastingData<N>),
+    Closure(ImplSourceClosureData<N>),
+    FnPointer(ImplSourceFnPointerData<N>),
+    Generator(ImplSourceGeneratorData<N>),
+    Future(ImplSourceFutureData<N>),
+    TraitAlias(ImplSourceTraitAliasData<N>),
+    ConstDestruct(ImplSourceConstDestructData<N>), */
+    //    UserDefined(String),
+    //    Param(Vec<()>, String),
+    //    Closure(String),
+    //    FnPointer(String),
+    #[todo]
+    Todo(String),
+}
+
+/*impl<'tcx, S: BaseState<'tcx>, N> SInto<S, ImplSource<N>>
+    for rustc_middle::traits::ImplSource<'tcx, N>
+{
+    fn sinto(self: &rustc_middle::traits::ImplSource<'tcx, N>, s: &S) -> ImplSource<N> {
+        let ctx = rustc_hir_analysis::collect::ItemCtxt::new(s.base().tcx, s.owner_id().def_id);
+        ctx.to_ty(self).sinto(s)
+    }
+}*/
+
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_trait_selection::traits::ObligationCause<'tcx>, state: S as s)]
+pub struct ObligationCause {
+    pub span: Span,
+    #[map(x.to_def_id().sinto(s))]
+    pub body_id: DefId,
+    //code: InternedObligationCauseCode,
+}
+
+pub type ParamEnv = Vec<Predicate>;
+
+impl<'tcx, S: BaseState<'tcx>> SInto<S, ParamEnv> for rustc_middle::ty::ParamEnv<'tcx> {
+    fn sinto(&self, s: &S) -> ParamEnv {
+        self.caller_bounds().sinto(s)
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct Obligation<T> {
+    pub cause: ObligationCause,
+    pub param_env: ParamEnv,
+    pub predicate: T,
+    pub recursion_depth: usize,
+}
+
+impl<'tcx, S: BaseState<'tcx>, T1, T2> SInto<S, Obligation<T2>>
+    for rustc_trait_selection::traits::Obligation<'tcx, T1>
+where
+    T1: SInto<S, T2>,
+{
+    fn sinto(&self, s: &S) -> Obligation<T2> {
+        let cause = self.cause.sinto(s);
+        let param_env = self.param_env.sinto(s);
+        let predicate = self.predicate.sinto(s);
+        let recursion_depth = self.recursion_depth;
+        Obligation {
+            cause,
+            param_env,
+            predicate,
+            recursion_depth,
+        }
+    }
+}
+
+/// Adapted from [rustc_trait_selection::traits::SelectionContext::select]:
+/// we want to preserve the nested obligations to resolve them afterwards.
+///
+/// Example:
+/// ========
+/// ```text
+/// struct Wrapper<T> {
+///    x: T,
+/// }
+///
+/// impl<T: ToU64> ToU64 for Wrapper<T> {
+///     fn to_u64(self) -> u64 {
+///         self.x.to_u64()
+///     }
+/// }
+///
+/// fn h(x: Wrapper<u64>) -> u64 {
+///     x.to_u64()
+/// }
+/// ```
+///
+/// When resolving the trait for `x.to_u64()` in `h`, we get that it uses the
+/// implementation for `Wrapper`. But we also need to know the obligation generated
+/// for `Wrapper` (in this case: `u64 : ToU64`) and resolve it.
+pub fn select_trait_candidate<'tcx>(
+    tcx: rustc_middle::ty::TyCtxt<'tcx>,
+    (param_env, trait_ref): (
+        rustc_middle::ty::ParamEnv<'tcx>,
+        rustc_middle::ty::PolyTraitRef<'tcx>,
+    ),
+) -> Result<
+    rustc_trait_selection::traits::Selection<'tcx>,
+    rustc_middle::traits::CodegenObligationError,
+> {
+    use rustc_infer::infer::TyCtxtInferExt;
+    use rustc_middle::traits::CodegenObligationError;
+    use rustc_trait_selection::traits::{
+        Obligation, ObligationCause, SelectionContext, Unimplemented,
+    };
+
+    // We expect the input to be fully normalized.
+    debug_assert_eq!(
+        trait_ref,
+        tcx.normalize_erasing_regions(param_env, trait_ref)
+    );
+
+    // Do the initial selection for the obligation. This yields the
+    // shallow result we are looking for -- that is, what specific impl.
+    let infcx = tcx.infer_ctxt().ignoring_regions().build();
+    let mut selcx = SelectionContext::new(&infcx);
+
+    let obligation_cause = ObligationCause::dummy();
+    let obligation = Obligation::new(tcx, obligation_cause, param_env, trait_ref);
+
+    match selcx.select(&obligation) {
+        Ok(Some(selection)) => Ok(selection),
+        Ok(None) => Err(CodegenObligationError::Ambiguity),
+        Err(Unimplemented) =>
+        // The trait is not implemented
+        {
+            Err(CodegenObligationError::Unimplemented)
+        }
+        Err(e) => {
+            panic!(
+                "Encountered error `{:?}` selecting `{:?}` during codegen",
+                e, trait_ref
+            )
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct TraitInfo {
+    pub impl_source: ImplSource,
+    pub selection: String,
 }
 
 /// Return the [DefId] of the function referenced by an operand, with the
@@ -213,16 +370,16 @@ pub struct Terminator {
 /// The [Operand] comes from a [TerminatorKind::Call].
 /// Only supports calls to top-level functions (which are considered as constants
 /// by rustc); doesn't support closures for now.
-fn get_function_from_operand<'tcx, S: BaseState<'tcx>>(
+fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     func: &rustc_middle::mir::Operand<'tcx>,
-) -> (DefId, Vec<GenericArg>) {
+) -> (DefId, Vec<GenericArg>, Option<TraitInfo>) {
     use std::ops::Deref;
     // Match on the func operand: it should be a constant as we don't support
     // closures for now.
     use rustc_middle::mir::{ConstantKind, Operand};
     use rustc_middle::ty::TyKind;
-    match func {
+    let (def_id, subst) = match func {
         Operand::Constant(c) => {
             let c = c.deref();
             match &c.literal {
@@ -232,7 +389,7 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx>>(
                     let c_ty = c.ty();
                     assert!(c_ty.is_fn());
                     match c_ty.kind() {
-                        TyKind::FnDef(def_id, subst) => (def_id.sinto(s), subst.sinto(s)),
+                        TyKind::FnDef(def_id, subst) => (*def_id, *subst),
                         _ => {
                             unreachable!();
                         }
@@ -242,7 +399,7 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx>>(
                     // Same as for the `Ty` case above
                     assert!(c_ty.is_fn());
                     match c_ty.kind() {
-                        TyKind::FnDef(def_id, subst) => (def_id.sinto(s), subst.sinto(s)),
+                        TyKind::FnDef(def_id, subst) => (*def_id, *subst),
                         _ => {
                             unreachable!();
                         }
@@ -256,7 +413,51 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx>>(
         Operand::Move(_place) | Operand::Copy(_place) => {
             unimplemented!();
         }
-    }
+    };
+
+    // Check if this is a trait method call: retrieve the trait source if
+    // it is the case (i.e., where does the method come from? Does it refer
+    // to a top-level implementation? Or the method of a parameter? etc.).
+    let tcx = s.base().tcx;
+    let source = if let Some(assoc) = tcx.opt_associated_item(def_id) {
+        // There is an associated item - should be a trait
+        use tracing::*;
+        trace!("def_id: {:?}", def_id);
+        trace!("assoc: def_id: {:?}", assoc.def_id);
+
+        // Retrieve the trait
+        let tr = tcx.trait_of_item(assoc.def_id).unwrap();
+        trace!("tr: {:?}", tr);
+
+        // Create the reference to the trait
+        use rustc_middle::ty::TraitRef;
+        let tr_ref = TraitRef::new(tcx, tr, subst);
+        let tr_ref = rustc_middle::ty::Binder::dummy(tr_ref);
+
+        // Find the source
+        let param_env = tcx.param_env(s.owner_id());
+        let source = tcx.codegen_select_candidate((param_env, tr_ref));
+
+        match source {
+            Result::Err(_) => Option::None,
+            Result::Ok(impl_source) => {
+                let impl_source = impl_source.sinto(s);
+
+                // More
+                let selection = select_trait_candidate(tcx, (param_env, tr_ref));
+
+                // Return
+                Option::Some(TraitInfo {
+                    impl_source,
+                    selection: format!("{:?}", selection),
+                })
+            }
+        }
+    } else {
+        Option::None
+    };
+
+    (def_id.sinto(s), subst.sinto(s), source)
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -323,7 +524,7 @@ pub enum SwitchTargets {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::TerminatorKind<'tcx>, state: S as s)]
+#[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>, from: rustc_middle::mir::TerminatorKind<'tcx>, state: S as s)]
 pub enum TerminatorKind {
     Goto {
         target: BasicBlock,
@@ -356,7 +557,7 @@ pub enum TerminatorKind {
         rustc_middle::mir::TerminatorKind::Call {
             func, args, destination, target, unwind, from_hir_call, fn_span,
         } => {
-          let (fun_id, substs) = get_function_from_operand(s, func);
+          let (fun_id, substs, trait_info) = get_function_from_operand(s, func);
           TerminatorKind::Call {
             fun_id,
             substs,
@@ -366,6 +567,7 @@ pub enum TerminatorKind {
             unwind: unwind.sinto(s),
             from_hir_call: from_hir_call.sinto(s),
             fn_span: fn_span.sinto(s),
+            trait_info,
           }
         }
     )]
@@ -378,6 +580,7 @@ pub enum TerminatorKind {
         unwind: UnwindAction,
         from_hir_call: bool,
         fn_span: Span,
+        trait_info: Option<TraitInfo>,
     },
     Assert {
         cond: Operand,
@@ -737,7 +940,7 @@ pub enum Rvalue {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::BasicBlockData<'tcx>, state: S as s)]
+#[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>, from: rustc_middle::mir::BasicBlockData<'tcx>, state: S as s)]
 pub struct BasicBlockData {
     pub statements: Vec<Statement>,
     pub terminator: Option<Terminator>,

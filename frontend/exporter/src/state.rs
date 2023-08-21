@@ -180,16 +180,17 @@ impl<'tcx> State<Base<'tcx>, (), (), ()> {
     }
 }
 
-impl<'tcx> State<Base<'tcx>, (), Rc<rustc_middle::mir::Body<'tcx>>, ()> {
+impl<'tcx> State<Base<'tcx>, (), Rc<rustc_middle::mir::Body<'tcx>>, rustc_hir::OwnerId> {
     pub fn new_from_mir(
         tcx: rustc_middle::ty::TyCtxt<'tcx>,
         options: hax_frontend_exporter_options::Options,
         mir: rustc_middle::mir::Body<'tcx>,
+        owner_id: rustc_hir::OwnerId,
     ) -> Self {
         Self {
             thir: (),
             mir: Rc::new(mir),
-            owner_id: (),
+            owner_id,
             base: Base::new(tcx, options),
         }
     }
