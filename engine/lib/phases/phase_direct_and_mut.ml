@@ -88,7 +88,7 @@ struct
 
       and place' =
         | LocalVar of LocalIdent.t
-        | Deref of expr (* TODO: add Index, rename Proj in field acc. *)
+        | Deref of expr
         | IndexProjection of { place : t; index : expr }
         | FieldProjection of { place : t; projector : global_ident }
       [@@deriving show]
@@ -247,7 +247,7 @@ struct
           let args = List.map ~f:dexpr raw_args in
           B.{ e = B.App { f; args }; typ; span }
       | _ -> (
-          (* TODO: when LHS are better, compress `p1 = tmp1; ...; pN = tmpN` in `(p1...pN) = ...` *)
+          (* TODO: when LHS are better (issue #222), compress `p1 = tmp1; ...; pN = tmpN` in `(p1...pN) = ...` *)
           (* we are generating:
              ```
              let (tmp1, …, tmpN, out) = ⟨f⟩(⟨…un-&mut args⟩);
@@ -325,7 +325,7 @@ struct
                 span = pat.span;
               }
           in
-          (* when lhs type accepts tuple, assigns will be an option instead of a list *)
+          (* when lhs type accepts tuple (issue #222), assigns will be an option instead of a list *)
           let assigns =
             let flatten (o, meta) = Option.map o Fn.(id &&& const meta) in
             List.filter_map ~f:flatten mutargs
@@ -334,7 +334,7 @@ struct
                    let witness = Features.On.mutable_variable in
                    B.{ e = Assign { lhs; e; witness }; span; typ = UB.unit_typ })
           in
-          (* TODO: this should be greatly simplified when `lhs` type will accept tuples *)
+          (* TODO: this should be greatly simplified when `lhs` type will accept tuples (issue #222) *)
           match assigns with
           | [ { e = Assign { lhs; witness; _ }; span; typ } ]
             when UB.is_unit_typ otype ->
