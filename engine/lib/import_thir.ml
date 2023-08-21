@@ -19,8 +19,7 @@ open Diagnostics
 
 let assertion_failure (span : Thir.span list) (details : string) =
   let kind = T.AssertionFailure { details } in
-  report { span; kind; context = ThirImport };
-  raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
+  Diagnostics.SpanFreeError.raise ~span ThirImport kind
 
 let unimplemented ?issue_id (span : Thir.span list) (details : string) =
   let kind =
@@ -30,13 +29,11 @@ let unimplemented ?issue_id (span : Thir.span list) (details : string) =
         details = String.(if details = "" then None else Some details);
       }
   in
-  report { span; kind; context = ThirImport };
-  raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
+  Diagnostics.SpanFreeError.raise ~span ThirImport kind
 
 let unsafe_block (span : Thir.span list) =
   let kind = T.UnsafeBlock in
-  report { span; kind; context = ThirImport };
-  raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
+  Diagnostics.SpanFreeError.raise ~span ThirImport kind
 
 let todo (span : Thir.span) = unimplemented [ span ] "TODO"
 
@@ -128,7 +125,7 @@ module Exn = struct
           Tool { path; tokens }
       | DocComment (kind, body) ->
           let kind =
-            match kind with Thir.Line -> Line | Thir.Block -> Block
+            match kind with Thir.Line -> DCKLine | Thir.Block -> DCKBlock
           in
           DocComment { kind; body }
     in
@@ -313,13 +310,13 @@ module Exn = struct
 
     let rec c_expr (e : Thir.decorated_for__expr_kind) : expr =
       try c_expr_unwrapped e
-      with Diagnostics.SpanFreeError report ->
+      with Diagnostics.SpanFreeError.Exn (Data (ctx, kind)) ->
         let typ : ty =
           try c_ty e.span e.ty
-          with Diagnostics.SpanFreeError _ -> U.hax_failure_typ
+          with Diagnostics.SpanFreeError.Exn _ -> U.hax_failure_typ
         in
         let span = Span.of_thir e.span in
-        U.hax_failure_expr' span typ report
+        U.hax_failure_expr' span typ (ctx, kind)
           ([%show: Thir.decorated_for__expr_kind] e)
 
     and c_expr_unwrapped (e : Thir.decorated_for__expr_kind) : expr =
@@ -435,7 +432,11 @@ module Exn = struct
               lift_last_statement_as_expr_if_possible o.expr o.stmts e.ty
             in
             let init =
-              Option.map ~f:c_expr o_expr
+              Option.map
+                ~f:(fun e ->
+                  let e = c_expr e in
+                  { e with e = Block (e, W.block) })
+                o_expr
               |> Option.value ~default:(unit_expr span)
             in
             let { e; _ } =
@@ -611,43 +612,42 @@ module Exn = struct
       in
       { e = v; span; typ }
 
-    and c_expr_assign lhs rhs =
-      let rec mk_lhs lhs =
-        match lhs.e with
-        | LocalVar var -> LhsLocalVar { var; typ = lhs.typ }
-        | _ -> (
-            match resugar_index_mut lhs with
-            | Some (e, index) ->
-                LhsArrayAccessor
+    and c_lhs lhs =
+      match lhs.e with
+      | LocalVar var -> LhsLocalVar { var; typ = lhs.typ }
+      | _ -> (
+          match resugar_index_mut lhs with
+          | Some (e, index) ->
+              LhsArrayAccessor
+                {
+                  e = c_lhs e;
+                  typ = lhs.typ;
+                  index;
+                  witness = W.nontrivial_lhs;
+                }
+          | None -> (
+              match (U.unbox_underef_expr lhs).e with
+              | App
                   {
-                    e = mk_lhs e;
-                    typ = lhs.typ;
-                    index;
-                    witness = W.nontrivial_lhs;
-                  }
-            | None -> (
-                match (U.unbox_underef_expr lhs).e with
-                | App
-                    {
-                      f =
-                        {
-                          e = GlobalVar (`Projector _ as field);
-                          typ = TArrow ([ _ ], _);
-                          span = _;
-                        };
-                      args = [ e ];
-                    } ->
-                    LhsFieldAccessor
+                    f =
                       {
-                        e = mk_lhs e;
-                        typ = lhs.typ;
-                        field;
-                        witness = W.nontrivial_lhs;
-                      }
-                | _ -> LhsArbitraryExpr { e = lhs; witness = W.arbitrary_lhs }))
-      in
+                        e = GlobalVar (`Projector _ as field);
+                        typ = TArrow ([ _ ], _);
+                        span = _;
+                      };
+                    args = [ e ];
+                  } ->
+                  LhsFieldAccessor
+                    {
+                      e = c_lhs e;
+                      typ = lhs.typ;
+                      field;
+                      witness = W.nontrivial_lhs;
+                    }
+              | _ -> LhsArbitraryExpr { e = lhs; witness = W.arbitrary_lhs }))
 
-      Assign { lhs = mk_lhs lhs; e = rhs; witness = W.mutable_variable }
+    and c_expr_assign lhs rhs =
+      Assign { lhs = c_lhs lhs; e = rhs; witness = W.mutable_variable }
 
     and c_pat (pat : Thir.decorated_for__pat_kind) : pat =
       let span = Span.of_thir pat.span in
@@ -959,7 +959,7 @@ module Exn = struct
     }
 
   let rec c_item (item : Thir.item) : item list =
-    try c_item_unwrapped item with Diagnostics.SpanFreeError _kind -> []
+    try c_item_unwrapped item with Diagnostics.SpanFreeError.Exn _kind -> []
 
   and c_item_unwrapped (item : Thir.item) : item list =
     let open (val make ~krate:item.owner_id.krate : EXPR) in

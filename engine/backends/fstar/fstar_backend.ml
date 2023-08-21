@@ -34,6 +34,7 @@ module SubtypeToInputLanguage
              and type arbitrary_lhs = Features.Off.arbitrary_lhs
              and type nontrivial_lhs = Features.Off.nontrivial_lhs
              and type loop = Features.Off.loop
+             and type block = Features.Off.block
              and type for_loop = Features.Off.for_loop
              and type for_index_loop = Features.Off.for_index_loop
              and type state_passing_loop = Features.Off.state_passing_loop) =
@@ -304,7 +305,7 @@ struct
 
   and pexpr (e : expr) =
     try pexpr_unwrapped e
-    with Diagnostics.SpanFreeError kind ->
+    with Diagnostics.SpanFreeError.Exn _ ->
       (* let typ = *)
       (* try pty e.span e.typ *)
       (* with Diagnostics.SpanFreeError _ -> U.hax_failure_typ *)
@@ -492,7 +493,7 @@ struct
   let rec pitem (e : item) : [> `Item of F.AST.decl | `Comment of string ] list
       =
     try pitem_unwrapped e
-    with Diagnostics.SpanFreeError _kind -> [ `Comment "item error backend" ]
+    with Diagnostics.SpanFreeError.Exn _ -> [ `Comment "item error backend" ]
 
   and pitem_unwrapped (e : item) :
       [> `Item of F.AST.decl | `Comment of string ] list =
@@ -821,9 +822,10 @@ open Phase_utils
 module TransformToInputLanguage =
   [%functor_application
   Phases.Reject.RawOrMutPointer(Features.Rust)
-  |> Phases.Reject.Arbitrary_lhs
   |> Phases.Reconstruct_for_loops
   |> Phases.Direct_and_mut
+  |> Phases.Reject.Arbitrary_lhs
+  |> Phases.Drop_blocks
   |> Phases.Drop_references
   |> Phases.Trivialize_assign_lhs
   |> Phases.Reconstruct_question_marks

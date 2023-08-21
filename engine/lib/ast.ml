@@ -81,7 +81,7 @@ type attr_kind =
   | DocComment of { kind : doc_comment_kind; body : string }
 
 and attr = { kind : attr_kind; span : span }
-and doc_comment_kind = Line | Block
+and doc_comment_kind = DCKLine | DCKBlock
 
 and attrs = attr list
 [@@deriving
@@ -306,6 +306,8 @@ functor
           rhs : expr;
           body : expr;
         }
+      | Block of (expr * F.block)
+        (* Corresponds to `{e}`: this is important for places *)
       | LocalVar of local_ident
       | GlobalVar of global_ident
       | Ascription of { e : expr; typ : ty }
@@ -370,11 +372,13 @@ functor
         }
 
     and loop_state = { init : expr; bpat : pat; witness : F.state_passing_loop }
+
     (* | WhileLoop of { *)
     (*     condition: expr; *)
     (*     witness : F.while_loop; *)
     (*   } *)
 
+    (* TODO: LHS should be places or "compositions" of places, see [assignee expression] in https://doc.rust-lang.org/reference/expressions.html#place-expressions-and-value-expressions (issue #222) *)
     and lhs =
       | LhsLocalVar of { var : LocalIdent.t; typ : ty }
       | LhsArbitraryExpr of { e : expr; witness : F.arbitrary_lhs }

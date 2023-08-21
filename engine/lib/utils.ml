@@ -17,6 +17,8 @@ let snd3 (_, y, _) = y
 let thd3 (_, _, z) = z
 let curry f x y = f (x, y)
 let uncurry f (x, y) = f x y
+let curry3 f x y z = f (x, y, z)
+let uncurry3 f (x, y, z) = f x y z
 let tup2 a b = (a, b)
 
 let map_first_letter (f : string -> string) (s : string) =

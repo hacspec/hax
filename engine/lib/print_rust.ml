@@ -218,6 +218,7 @@ module Raw = struct
         let args = concat ~sep:!"," @@ List.map ~f:pexpr args in
         pexpr f & !"(" & args & !")"
     | Literal l -> pliteral e.span l
+    | Block (e, _) -> !"{" & pexpr e & !"}"
     | Array l -> !"[" & concat ~sep:!"," (List.map ~f:pexpr l) & !"]"
     | Construct { is_record = false; constructor; fields; base = _ } ->
         let fields = List.map ~f:(snd >> pexpr) fields |> concat ~sep:!"," in
