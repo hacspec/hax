@@ -160,23 +160,37 @@ functor
           (*       AST.ArrayTy *)
           (*         (AST.Int { size = U8; signed = false }, Int.to_string i) ); *)
           (* ] *)
-        "nat_mod 0x" ^ s
-      | AST.Forall ([], [], ty) ->
-        ty_to_string ty
+          "nat_mod 0x" ^ s
+      | AST.Forall ([], [], ty) -> ty_to_string ty
       | AST.Forall (implicit_vars, [], ty) ->
-          "forall" ^ " " ^ "{" ^ String.concat ~sep:" " implicit_vars ^ "}" ^ "," ^ " " ^ ty_to_string ty
+          "forall" ^ " " ^ "{"
+          ^ String.concat ~sep:" " implicit_vars
+          ^ "}" ^ "," ^ " " ^ ty_to_string ty
       | AST.Forall ([], vars, ty) ->
-          "forall" ^ " " ^ String.concat ~sep:" " vars ^ "," ^ " " ^ ty_to_string ty
+          "forall" ^ " "
+          ^ String.concat ~sep:" " vars
+          ^ "," ^ " " ^ ty_to_string ty
       | AST.Forall (implicit_vars, vars, ty) ->
-          "forall" ^ " " ^ "{" ^ String.concat ~sep:" " implicit_vars ^ "}" ^ "," ^ " " ^ String.concat ~sep:" " vars ^ "," ^ " " ^ ty_to_string ty
-      | AST.Exists ([], [], ty) ->
-        ty_to_string ty
+          "forall" ^ " " ^ "{"
+          ^ String.concat ~sep:" " implicit_vars
+          ^ "}" ^ "," ^ " "
+          ^ String.concat ~sep:" " vars
+          ^ "," ^ " " ^ ty_to_string ty
+      | AST.Exists ([], [], ty) -> ty_to_string ty
       | AST.Exists (implicit_vars, [], ty) ->
-          "exists" ^ " " ^ "{" ^ String.concat ~sep:" " implicit_vars ^ "}" ^ "," ^ " " ^ ty_to_string ty
+          "exists" ^ " " ^ "{"
+          ^ String.concat ~sep:" " implicit_vars
+          ^ "}" ^ "," ^ " " ^ ty_to_string ty
       | AST.Exists ([], vars, ty) ->
-          "exists" ^ " " ^ String.concat ~sep:" " vars ^ "," ^ " " ^ ty_to_string ty
+          "exists" ^ " "
+          ^ String.concat ~sep:" " vars
+          ^ "," ^ " " ^ ty_to_string ty
       | AST.Exists (implicit_vars, vars, ty) ->
-          "exists" ^ " " ^ "{" ^ String.concat ~sep:" " implicit_vars ^ "}" ^ "," ^ " " ^ String.concat ~sep:" " vars ^ "," ^ " " ^ ty_to_string ty
+          "exists" ^ " " ^ "{"
+          ^ String.concat ~sep:" " implicit_vars
+          ^ "}" ^ "," ^ " "
+          ^ String.concat ~sep:" " vars
+          ^ "," ^ " " ^ ty_to_string ty
       | _ -> .
 
     and product_to_string (x : AST.ty list) (sep : string) : string =
@@ -265,12 +279,14 @@ functor
             true )
       | AST.Match (match_val, arms) ->
           ( Lib.Notation.match_stmt
-            (term_to_string_without_paren match_val (depth + 1))
-            (List.map ~f:(fun (pat, body) -> (pat_to_string pat true depth,
-                                              term_to_string_without_paren body (depth + 1)))
-               arms)
-            depth
-            , false )
+              (term_to_string_without_paren match_val (depth + 1))
+              (List.map
+                 ~f:(fun (pat, body) ->
+                   ( pat_to_string pat true depth,
+                     term_to_string_without_paren body (depth + 1) ))
+                 arms)
+              depth,
+            false )
       | AST.Const c -> (literal_to_string c, false)
       | AST.Literal s -> (s, false)
       | AST.AppFormat (format, args) ->
@@ -279,14 +295,14 @@ functor
             true (* TODO? Notation does not always need paren *) )
       | AST.App (f, args) ->
           let f_s, f_b = term_to_string f depth in
-          (f_s ^ args_to_string args depth, f_b || List.length args > 0)
+          (f_s ^ term_list_to_string args depth, f_b || List.length args > 0)
       | AST.Var s -> (s, false)
       | AST.NameTerm s -> (s, false)
       | AST.RecordConstructor (f, args) ->
           ( "Build_t_"
             ^ term_to_string_without_paren f depth
             ^ " "
-            ^ record_args_to_string args depth,
+            ^ (term_list_to_string (List.map ~f:snd args) depth),
             true )
       | AST.Type t ->
           let ty_str = ty_to_string t in
@@ -348,17 +364,8 @@ functor
           match args with x :: xs -> f ^ x ^ format_to_string fs xs | [] -> f)
       | [] -> failwith "incorrect formatting"
 
-    and record_args_to_string (args : (string * AST.term) list) depth : string =
-      match args with
-      | (i, t) :: xs ->
-          term_to_string_with_paren t depth ^ record_args_to_string xs depth
-      | _ -> ""
-
-    and args_to_string (args : AST.term list) depth : string =
-      match args with
-      | x :: xs ->
-          " " ^ term_to_string_with_paren x depth ^ args_to_string xs depth
-      | _ -> ""
+    and term_list_to_string (terms : AST.term list) depth : string =
+      (if List.is_empty terms then "" else " ") ^ String.concat ~sep:" " (List.map ~f:(fun t -> term_to_string_with_paren t depth) terms)
 
     let rec decl_to_string (x : AST.decl) : string =
       match x with
@@ -371,11 +378,11 @@ functor
           ^ definition_value_to_string (name, arguments, term, ty)
           ^ fail_next_obligation
       | AST.Equations (name, arguments, term, ty) ->
-          "Equations" ^ " " ^
-          definition_value_to_equation_definition (name, arguments, term, ty)
+          "Equations" ^ " "
+          ^ definition_value_to_equation_definition (name, arguments, term, ty)
       | AST.EquationsQuestionmark (name, arguments, term, ty) ->
-          "Equations?" ^ " " ^
-          definition_value_to_equation_definition (name, arguments, term, ty)
+          "Equations?" ^ " "
+          ^ definition_value_to_equation_definition (name, arguments, term, ty)
       | AST.Notation (name, value) ->
           "Notation" ^ " " ^ name ^ " " ^ ":=" ^ " "
           ^ term_to_string_with_paren value 0
@@ -485,30 +492,39 @@ functor
           ^ " " ^ ":" ^ " " ^ name ^ " " ^ ty_list_str ^ ":=" ^ " " ^ "{"
           ^ impl_str ^ newline_indent 0 ^ "}" ^ "."
       | AST.Require ([], rename) -> ""
-      | AST.Require (import :: imports, rename) -> 
-(* map_first_letter String.uppercase import *)
-          let import_name = (match rename with Some s -> s | _ -> (List.fold_left ~init:(map_first_letter String.uppercase import) ~f:(fun x y -> x ^ "_" ^ (map_first_letter String.uppercase y)) imports)) in
+      | AST.Require (import :: imports, rename) ->
+          (* map_first_letter String.uppercase import *)
+          let import_name =
+            match rename with
+            | Some s -> s
+            | _ ->
+                List.fold_left
+                  ~init:(map_first_letter String.uppercase import)
+                  ~f:(fun x y -> x ^ "_" ^ map_first_letter String.uppercase y)
+                  imports
+          in
           "Require Import" ^ " " ^ import_name ^ "." ^ newline_indent 0
- ^ "Export" ^ " " ^ import_name ^ "."
+          ^ "Export" ^ " " ^ import_name ^ "."
 
-    and definition_value_to_equation_definition ((name, arguments, term, ty) : AST.definition_type) =
+    and definition_value_to_equation_definition
+        ((name, arguments, term, ty) : AST.definition_type) =
       let ty_str = ty_to_string ty in
       definition_value_to_shell_string
         (name, arguments, term, ty)
         (name ^ " "
-         ^ params_to_string
-           (List.filter_map
-              ~f:(fun x ->
-                  match x with Explicit (y, z) -> Some (y, z) | _ -> None)
-              arguments)
-         ^ " " ^ ":=" ^ newline_indent 2
-         ^ term_to_string_without_paren term 2
-         ^ " " ^ ":" ^ " " ^ ty_str)
+        ^ params_to_string
+            (List.filter_map
+               ~f:(fun x ->
+                 match x with Explicit (y, z) -> Some (y, z) | _ -> None)
+               arguments)
+        ^ " " ^ ":=" ^ newline_indent 2
+        ^ term_to_string_without_paren term 2
+        ^ " " ^ ":" ^ " " ^ ty_str)
       ^ fail_next_obligation
 
     and definition_value_to_shell_string
         ((name, arguments, _, ty) : AST.definition_type) (body : string) :
-      string =
+        string =
       let ty_str = ty_to_string ty in
       name
       ^ params_to_string_typed arguments
