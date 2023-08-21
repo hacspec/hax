@@ -83,8 +83,18 @@ module CoqLibrary : Library = struct
         (depth : int) : string =
       "if" ^ " " ^ cond ^ newline_indent depth ^ "then" ^ " " ^ then_e
       ^ newline_indent depth ^ "else" ^ " " ^ else_e
-    let match_stmt (expr : string) (arms : (string * string) list) (depth : int) : string =
-           ( "match" ^ " " ^ expr ^ " " ^ "with" ^ newline_indent depth ^ String.concat ~sep:"" (List.map ~f:(fun (a,b) -> "|" ^ " " ^ a ^ " " ^ "=>" ^ newline_indent (depth+1) ^ b ^ newline_indent depth) arms) ^ "end" )
+
+    let match_stmt (expr : string) (arms : (string * string) list) (depth : int)
+        : string =
+      "match" ^ " " ^ expr ^ " " ^ "with" ^ newline_indent depth
+      ^ String.concat ~sep:""
+          (List.map
+             ~f:(fun (a, b) ->
+               "|" ^ " " ^ a ^ " " ^ "=>"
+               ^ newline_indent (depth + 1)
+               ^ b ^ newline_indent depth)
+             arms)
+      ^ "end"
   end
 end
 
@@ -356,13 +366,19 @@ struct
     | _ -> .
 
   let pgeneric_param span : generic_param -> string * C.AST.ty = function
-    | { ident; kind = GPType { default = Some t }; _} -> (ident.name, pty span t)
-    | { ident; kind = GPType { default = None }; _} -> (ident.name, C.AST.WildTy)
+    | { ident; kind = GPType { default }; _ } -> (
+        ( ident.name,
+          match default with Some t -> pty span t | None -> C.AST.WildTy ))
     | _ -> Error.unimplemented ~details:"Coq: TODO: generic_params" span
 
 
   let pgeneric_param_as_argument span : generic_param -> C.AST.argument =
-    pgeneric_param span >> fun (y, z) -> C.AST.Typeclass (Some y, z)
+    function
+    | { ident; kind = GPType { default }; _ } ->
+        C.AST.Explicit
+          ( C.AST.Ident ident.name,
+            match default with Some t -> pty span t | None -> C.AST.WildTy )
+    | _ -> Error.unimplemented ~details:"Coq: TODO: generic_params" span
 
   let rec pitem (e : item) : C.AST.decl list =
     try pitem_unwrapped e
