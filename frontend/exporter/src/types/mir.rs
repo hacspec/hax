@@ -279,17 +279,15 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
 
         // Check if we can resolve
         let param_env = tcx.param_env(s.owner_id());
-        if tcx.codegen_select_candidate((param_env, tr_ref)).is_ok() {
-            // Get the full trait information
-            let selection = select_trait_candidate(tcx, (param_env, tr_ref));
+        let _ = tcx.codegen_select_candidate((param_env, tr_ref)).unwrap();
 
-            // Return
-            Option::Some(TraitInfo {
-                selection: format!("{:?}", selection),
-            })
-        } else {
-            Option::None
-        }
+        // Get the full trait information
+        let selection = select_trait_candidate(tcx, (param_env, tr_ref));
+
+        // Return
+        Option::Some(TraitInfo {
+            selection: format!("{:?}", selection),
+        })
     } else {
         Option::None
     };

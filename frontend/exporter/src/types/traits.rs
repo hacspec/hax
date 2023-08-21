@@ -1,7 +1,6 @@
 use crate::prelude::*;
-use crate::rustc_middle::query::Key;
 
-/*
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum ImplSource {
     UserDefined(ImplSourceUserDefinedData),
     Param(Vec<ImplSource>, BoundConstness),
@@ -9,50 +8,33 @@ pub enum ImplSource {
     Builtin(Vec<ImplSource>),
     TraitUpcasting(ImplSourceTraitUpcastingData),
 }
-*/
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_trait_selection::traits::ObligationCause<'tcx>, state: S as s)]
-pub struct ObligationCause {
-    pub span: Span,
-    #[map(x.to_def_id().sinto(s))]
-    pub body_id: DefId,
-    //code: InternedObligationCauseCode,
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct ImplSourceUserDefinedData {
+    pub impl_def_id: DefId,
+    pub substs: Vec<GenericArg>,
+    pub nested: Vec<ImplSource>,
 }
 
-pub type ParamEnv = Vec<Predicate>;
-
-impl<'tcx, S: BaseState<'tcx>> SInto<S, ParamEnv> for rustc_middle::ty::ParamEnv<'tcx> {
-    fn sinto(&self, s: &S) -> ParamEnv {
-        self.caller_bounds().sinto(s)
-    }
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::BoundConstness, state: S as _s)]
+pub enum BoundConstness {
+    NotConst,
+    ConstIfConst,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct Obligation<T> {
-    pub cause: ObligationCause,
-    pub param_env: ParamEnv,
-    pub predicate: T,
-    pub recursion_depth: usize,
+pub struct ImplSourceObjectData {
+    pub upcast_trait_ref: Binder<TraitRef>,
+    pub vtable_base: usize,
+    pub nested: Vec<ImplSource>,
 }
 
-impl<'tcx, S: BaseState<'tcx>, T1, T2> SInto<S, Obligation<T2>>
-    for rustc_trait_selection::traits::Obligation<'tcx, T1>
-where
-    T1: SInto<S, T2>,
-{
-    fn sinto(&self, s: &S) -> Obligation<T2> {
-        let cause = self.cause.sinto(s);
-        let param_env = self.param_env.sinto(s);
-        let predicate = self.predicate.sinto(s);
-        let recursion_depth = self.recursion_depth;
-        Obligation {
-            cause,
-            param_env,
-            predicate,
-            recursion_depth,
-        }
-    }
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct ImplSourceTraitUpcastingData {
+    pub upcast_trait_ref: Binder<TraitRef>,
+    pub vtable_vptr_slot: Option<usize>,
+    pub nested: Vec<ImplSource>,
 }
 
 /// Adapted from [rustc_trait_selection::traits::SelectionContext::select]:
@@ -124,6 +106,115 @@ pub fn select_trait_candidate<'tcx>(
             )
         }
     }
+}
+
+/// Compute the full trait information (recursively solve the nested obligations).
+pub fn get_trait_info<'tcx, S: BaseState<'tcx>>(
+    s: &S,
+    (param_env, trait_ref): (
+        rustc_middle::ty::ParamEnv<'tcx>,
+        rustc_middle::ty::PolyTraitRef<'tcx>,
+    ),
+) -> ImplSource {
+    let tcx = s.base().tcx;
+
+    use rustc_trait_selection::traits::ImplSource as RustImplSource;
+    match select_trait_candidate(tcx, (param_env, trait_ref)).unwrap() {
+        RustImplSource::UserDefined(rustc_trait_selection::traits::ImplSourceUserDefinedData {
+            impl_def_id,
+            substs,
+            nested,
+        }) => ImplSource::UserDefined(ImplSourceUserDefinedData {
+            impl_def_id: impl_def_id.sinto(s),
+            substs: substs.sinto(s),
+            nested: solve_obligations(s, nested),
+        }),
+        RustImplSource::Param(obligations, constness) => {
+            let obligations = solve_obligations(s, obligations);
+            let constness = constness.sinto(s);
+            ImplSource::Param(obligations, constness)
+        }
+        RustImplSource::Object(rustc_trait_selection::traits::ImplSourceObjectData {
+            upcast_trait_ref,
+            vtable_base,
+            nested,
+        }) => {
+            ImplSource::Object(ImplSourceObjectData {
+                upcast_trait_ref: upcast_trait_ref.sinto(s),
+                // TODO: we probably need to add information for the vtable
+                vtable_base,
+                nested: solve_obligations(s, nested),
+            })
+        }
+        RustImplSource::Builtin(rustc_trait_selection::traits::ImplSourceBuiltinData {
+            nested,
+        }) => ImplSource::Builtin(solve_obligations(s, nested)),
+        RustImplSource::TraitUpcasting(
+            rustc_trait_selection::traits::ImplSourceTraitUpcastingData {
+                upcast_trait_ref,
+                vtable_vptr_slot,
+                nested,
+            },
+        ) => {
+            ImplSource::TraitUpcasting(ImplSourceTraitUpcastingData {
+                upcast_trait_ref: upcast_trait_ref.sinto(s),
+                // TODO: we probably need to add information for the vtable
+                vtable_vptr_slot,
+                nested: solve_obligations(s, nested),
+            })
+        }
+        _ => {
+            unimplemented!()
+        }
+    }
+}
+
+fn solve_obligation<'tcx, S: BaseState<'tcx>>(
+    s: &S,
+    obligation: rustc_trait_selection::traits::Obligation<'tcx, rustc_middle::ty::Predicate<'tcx>>,
+) -> ImplSource {
+    let predicate = obligation.predicate.kind();
+    // For now we assume the predicate is necessarily a trait predicate.
+    // We thus convert it to that: this implies diving into the predicate
+    // to retrieve the proper information.
+    match predicate.skip_binder() {
+        rustc_middle::ty::PredicateKind::Clause(clause) => {
+            match clause {
+                rustc_middle::ty::Clause::Trait(trait_pred) => {
+                    let trait_ref = trait_pred.trait_ref;
+
+                    // Create the trait obligation by using the above binder
+                    let trait_ref =
+                        rustc_middle::ty::Binder::bind_with_vars(trait_ref, predicate.bound_vars());
+
+                    // Solve
+                    get_trait_info(s, (obligation.param_env, trait_ref))
+                }
+                x => {
+                    // Unexpected.
+                    // Actually, we probably need to just ignore those.
+                    unreachable!("Unexpected clause kind: {:?}", x)
+                }
+            }
+        }
+        x => {
+            // Unexpected
+            // Actually, we probably need to just ignore those.
+            unreachable!("Unexpected predicate kind: {:?}", x)
+        }
+    }
+}
+
+fn solve_obligations<'tcx, S: BaseState<'tcx>>(
+    s: &S,
+    obligations: Vec<
+        rustc_trait_selection::traits::Obligation<'tcx, rustc_middle::ty::Predicate<'tcx>>,
+    >,
+) -> Vec<ImplSource> {
+    obligations
+        .into_iter()
+        .map(|o| solve_obligation(s, o))
+        .collect()
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
