@@ -282,12 +282,10 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         let _ = tcx.codegen_select_candidate((param_env, tr_ref)).unwrap();
 
         // Get the full trait information
-        let selection = select_trait_candidate(tcx, (param_env, tr_ref));
+        let trait_info = get_trait_info(s, param_env, tr_ref);
 
         // Return
-        Option::Some(TraitInfo {
-            selection: format!("{:?}", selection),
-        })
+        Option::Some(trait_info)
     } else {
         Option::None
     };

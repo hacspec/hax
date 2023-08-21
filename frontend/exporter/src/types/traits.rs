@@ -3,9 +3,10 @@ use crate::prelude::*;
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum ImplSource {
     UserDefined(ImplSourceUserDefinedData),
-    Param(Vec<ImplSource>, BoundConstness),
+    Param(Binder<TraitRef>, Vec<ImplSource>, BoundConstness),
     Object(ImplSourceObjectData),
-    Builtin(Vec<ImplSource>),
+    /// For builtin traits such as [core::marker::Sized].
+    Builtin(Binder<TraitRef>, Vec<ImplSource>),
     TraitUpcasting(ImplSourceTraitUpcastingData),
 }
 
@@ -111,10 +112,8 @@ pub fn select_trait_candidate<'tcx>(
 /// Compute the full trait information (recursively solve the nested obligations).
 pub fn get_trait_info<'tcx, S: BaseState<'tcx>>(
     s: &S,
-    (param_env, trait_ref): (
-        rustc_middle::ty::ParamEnv<'tcx>,
-        rustc_middle::ty::PolyTraitRef<'tcx>,
-    ),
+    param_env: rustc_middle::ty::ParamEnv<'tcx>,
+    trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
 ) -> ImplSource {
     let tcx = s.base().tcx;
 
@@ -130,9 +129,12 @@ pub fn get_trait_info<'tcx, S: BaseState<'tcx>>(
             nested: solve_obligations(s, nested),
         }),
         RustImplSource::Param(obligations, constness) => {
+            // We preserve the trait ref, because we will need it to figure out
+            // **which** where clause actually solves this trait obligation.
+            let trait_ref = trait_ref.sinto(s);
             let obligations = solve_obligations(s, obligations);
             let constness = constness.sinto(s);
-            ImplSource::Param(obligations, constness)
+            ImplSource::Param(trait_ref, obligations, constness)
         }
         RustImplSource::Object(rustc_trait_selection::traits::ImplSourceObjectData {
             upcast_trait_ref,
@@ -148,7 +150,11 @@ pub fn get_trait_info<'tcx, S: BaseState<'tcx>>(
         }
         RustImplSource::Builtin(rustc_trait_selection::traits::ImplSourceBuiltinData {
             nested,
-        }) => ImplSource::Builtin(solve_obligations(s, nested)),
+        }) => {
+            // Same as for the Param case: we preserve the trait ref
+            let trait_ref = trait_ref.sinto(s);
+            ImplSource::Builtin(trait_ref, solve_obligations(s, nested))
+        }
         RustImplSource::TraitUpcasting(
             rustc_trait_selection::traits::ImplSourceTraitUpcastingData {
                 upcast_trait_ref,
@@ -169,18 +175,26 @@ pub fn get_trait_info<'tcx, S: BaseState<'tcx>>(
     }
 }
 
+/// Solve an obligation.
+///
+/// Note that we skip some obligations (for instance, obligations stating that a
+/// lifetime outlives another lifetime). The reason is that, provided those
+/// obligations are satisfiable (this is done at type checking time) we don't
+/// need to return any information about this obligation, and in particular we
+/// don't need a witness (contrary to the traits).
 fn solve_obligation<'tcx, S: BaseState<'tcx>>(
     s: &S,
     obligation: rustc_trait_selection::traits::Obligation<'tcx, rustc_middle::ty::Predicate<'tcx>>,
-) -> ImplSource {
+) -> Option<ImplSource> {
     let predicate = obligation.predicate.kind();
     // For now we assume the predicate is necessarily a trait predicate.
     // We thus convert it to that: this implies diving into the predicate
     // to retrieve the proper information.
     match predicate.skip_binder() {
         rustc_middle::ty::PredicateKind::Clause(clause) => {
+            use rustc_middle::ty::Clause;
             match clause {
-                rustc_middle::ty::Clause::Trait(trait_pred) => {
+                Clause::Trait(trait_pred) => {
                     let trait_ref = trait_pred.trait_ref;
 
                     // Create the trait obligation by using the above binder
@@ -188,18 +202,18 @@ fn solve_obligation<'tcx, S: BaseState<'tcx>>(
                         rustc_middle::ty::Binder::bind_with_vars(trait_ref, predicate.bound_vars());
 
                     // Solve
-                    get_trait_info(s, (obligation.param_env, trait_ref))
+                    Option::Some(get_trait_info(s, obligation.param_env, trait_ref))
                 }
-                x => {
-                    // Unexpected.
-                    // Actually, we probably need to just ignore those.
-                    unreachable!("Unexpected clause kind: {:?}", x)
-                }
+                Clause::RegionOutlives(..)
+                | Clause::TypeOutlives(..)
+                | Clause::ConstArgHasType(..)
+                | Clause::Projection(..) => Option::None,
             }
         }
         x => {
-            // Unexpected
-            // Actually, we probably need to just ignore those.
+            // SH: We probably just need to ignore those, like for the Clauses,
+            // but I'm not familiar enough with the meaning of those predicates
+            // to actually do anything about them yet.
             unreachable!("Unexpected predicate kind: {:?}", x)
         }
     }
@@ -213,11 +227,8 @@ fn solve_obligations<'tcx, S: BaseState<'tcx>>(
 ) -> Vec<ImplSource> {
     obligations
         .into_iter()
-        .map(|o| solve_obligation(s, o))
+        .filter_map(|o| solve_obligation(s, o))
         .collect()
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct TraitInfo {
-    pub selection: String,
-}
+pub type TraitInfo = ImplSource;
