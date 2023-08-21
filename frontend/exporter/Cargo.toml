@@ -15,7 +15,3 @@ itertools.workspace = true
 hax-frontend-exporter-options.workspace = true
 tracing.workspace = true
 paste = "1.0.11"
-
-[features]
-default = ["minimal-ast"]
-minimal-ast = []
