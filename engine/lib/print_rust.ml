@@ -336,7 +336,7 @@ module Raw = struct
   let pgeneric_param_kind span (pk : generic_param_kind) =
     let ( ! ) = pure span in
     match pk with
-    | GPLifetime _ -> (empty, !": '_")
+    | GPLifetime _ -> (empty, !": 'unk")
     | GPType { default = Some default } -> (empty, !" = " & pty span default)
     | GPType { default = None } -> (empty, empty)
     | GPConst { typ } -> (!"const ", !":" & pty span typ)
@@ -344,7 +344,13 @@ module Raw = struct
   let pgeneric_param (p : generic_param) =
     let ( ! ) = pure p.span in
     let prefix, suffix = pgeneric_param_kind p.span p.kind in
-    pattrs p.attrs & prefix & plocal_ident p.span p.ident & suffix
+    let id =
+      plocal_ident p.span
+        (if String.equal p.ident.name "_" then
+         { p.ident with name = "Anonymous" }
+        else p.ident)
+    in
+    pattrs p.attrs & prefix & id & suffix
 
   let pgeneric_params (pl : generic_param list) =
     match pl with
@@ -362,7 +368,7 @@ module Raw = struct
   let pgeneric_constraint span (p : generic_constraint) =
     let ( ! ) = pure span in
     match p with
-    | GCLifetime _ -> !"'_: '_"
+    | GCLifetime _ -> !"'unk: 'unk"
     | GCType { typ; implements } ->
         pty span typ & !":" & ptrait_ref span implements
 
@@ -370,7 +376,7 @@ module Raw = struct
     if List.is_empty constraints then empty
     else
       let ( ! ) = pure span in
-      !"where "
+      !" where "
       & concat ~sep:!"," (List.map ~f:(pgeneric_constraint span) constraints)
 
   let pvariant_body span { name; arguments; attrs; is_record } =
@@ -434,6 +440,7 @@ module Raw = struct
             & pgeneric_params generics.params
             & pgeneric_constraints e.span generics.constraints
             & pvariant_body e.span variant
+            & if variant.is_record then !"" else !";"
         | Type { name; generics; variants : _ } ->
             !"enum "
             & !(Concrete_ident_view.to_definition_name name)

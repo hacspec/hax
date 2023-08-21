@@ -1,4 +1,5 @@
 open Base
+open Utils
 open Ast
 
 module type BACKEND_OPTIONS = sig
@@ -49,7 +50,13 @@ module Make (InputLanguage : Features.T) (M : BackendMetadata) = struct
       Diagnostics.SpanFreeError.raise ~span context kind
 
     let unimplemented ?issue_id ?details span =
-      raise { kind = Unimplemented { issue_id; details }; span }
+      raise
+        {
+          kind =
+            Unimplemented
+              { issue_id = Option.map ~f:MyInt64.of_int issue_id; details };
+          span;
+        }
 
     let assertion_failure span details =
       raise { kind = AssertionFailure { details }; span }

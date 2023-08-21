@@ -121,6 +121,14 @@ module Make (F : Features.T) = struct
           expr e
       end
 
+    let rename_local_idents (f : local_ident -> local_ident) =
+      object
+        inherit [_] item_map as super
+        method visit_t () x = x
+        method visit_mutability _ () m = m
+        method! visit_local_ident () ident = f ident
+      end
+
     let rename_global_idents (f : visit_level -> global_ident -> global_ident) =
       object
         inherit [_] item_map as super

@@ -1,11 +1,10 @@
 [package]
-name = "attributes"
+name = "raw-attributes"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 hax-lib-macros = { path = "../../hax-lib-macros" }
-serde = { version = "1.0", features = ["derive"] }
 
 [package.metadata.hax-tests]
 into."fstar" = { snapshot = "none" }

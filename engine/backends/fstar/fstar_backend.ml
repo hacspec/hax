@@ -82,8 +82,10 @@ let decl_to_string : F.AST.decl -> string =
   FStar_Parser_ToDocument.decl_to_document >> doc_to_string
 
 module Context = struct
-  type t = { current_namespace : string * string list }
+  type t = { current_namespace : string * string list; items : item list }
 end
+
+let magic_id_raw_local_ident = LocalIdent.var_id_of_int (-765142)
 
 module Make (Ctx : sig
   val ctx : Context.t
@@ -157,14 +159,20 @@ struct
     | `TupleType n | `TupleCons n ->
         let reason = "F* doesn't support tuple of size greater than 14" in
         Error.raise
-          { kind = UnsupportedTupleSize { tuple_size = n; reason }; span }
+          {
+            kind = UnsupportedTupleSize { tuple_size = Int64.of_int n; reason };
+            span;
+          }
     | `TupleField _ | `Projector _ ->
         Error.assertion_failure span
           ("pglobal_ident: expected to be handled somewhere else: "
          ^ show_global_ident id)
 
   let rec plocal_ident (e : LocalIdent.t) =
-    F.id @@ U.Concrete_ident_view.local_name e.name
+    F.id
+    @@
+    if [%eq: LocalIdent.id] e.id magic_id_raw_local_ident then e.name
+    else U.Concrete_ident_view.local_name e.name
 
   let pgeneric_param_name (name : string) : string =
     String.lowercase
@@ -490,6 +498,100 @@ struct
             battributes = [];
           }
 
+  let get_attr (type a) (name : string) (map : string -> a) (attrs : attrs) :
+      a option =
+    List.find_map
+      ~f:(fun attr ->
+        match attr.kind with
+        | Tool { path; tokens } when [%eq: string] path name ->
+            Some (map tokens)
+        | _ -> None)
+      attrs
+
+  module UUID : sig
+    type t
+
+    val of_attrs : attrs -> t option
+    val associated_items : ?kind:string -> t option -> item list
+    val associated_item : ?kind:string -> t option -> item option
+  end = struct
+    (* TODO: parse_quoted_string is incorrect *)
+    let parse_quoted_string = String.strip ~drop:([%eq: char] '"')
+
+    let parse_associated_with s =
+      let uuid, kind = String.lsplit2 ~on:',' s |> Option.value_exn in
+      let uuid = parse_quoted_string uuid in
+      let kind = String.strip ~drop:([%eq: char] ' ') kind in
+      (uuid, kind)
+
+    type t = string
+
+    let of_attrs : attrs -> t option = get_attr "_hax::uuid" parse_quoted_string
+
+    let associated_items ?kind (uuid : t option) : item list =
+      let ( let* ) x f = Option.bind ~f x in
+      Option.value ~default:[]
+        (let* uuid = uuid in
+         List.filter
+           ~f:(fun item ->
+             Option.value ~default:false
+               (let* uuid', kind' =
+                  get_attr "_hax::associated_with" parse_associated_with
+                    item.attrs
+                in
+                let kind_eq =
+                  match kind with
+                  | Some kind -> String.equal kind' kind
+                  | None -> true
+                in
+                Some (kind_eq && String.equal uuid' uuid)))
+           ctx.items
+         |> Option.some)
+
+    let associated_item ?kind (uuid : t option) : item option =
+      match associated_items ?kind uuid with
+      | [ i ] -> Some i
+      | [] -> None
+      | _ -> failwith "expected 0-1 items"
+  end
+
+  (* TODO: incorrect *)
+  let fvar_of_params = function
+    | { pat = { p = PBinding { var; _ }; _ }; _ } -> var
+    | _ -> failwith "?? todo"
+
+  let associated_refinement (free_variables : string list) (attrs : attrs) :
+      expr option =
+    UUID.associated_item ~kind:"refinement" (UUID.of_attrs attrs)
+    |> Option.map ~f:(function
+         | { v = Fn { params; body; _ }; _ } ->
+             let substs =
+               List.zip_exn
+                 (List.map ~f:fvar_of_params params)
+                 (List.map
+                    ~f:(fun name ->
+                      LocalIdent.{ id = magic_id_raw_local_ident; name })
+                    free_variables)
+             in
+             let v =
+               U.Mappers.rename_local_idents (fun i ->
+                   match List.find ~f:(fst >> [%eq: local_ident] i) substs with
+                   | None -> i
+                   | Some (_, i) -> i)
+             in
+             v#visit_expr () body
+         | _ -> failwith "expected associated_refinement")
+
+  let pmaybe_refined_ty span (free_variables : string list) (attrs : attrs)
+      (binder_name : string) (ty : ty) : F.AST.term =
+    match associated_refinement free_variables attrs with
+    | Some refinement ->
+        F.mk_refined binder_name (pty span ty) (fun ~x -> pexpr refinement)
+    | None -> pty span ty
+  (* let prefined_ty span (binder : string) (ty : ty) (refinement : expr) : *)
+  (*     F.AST.term = *)
+  (*   F.mk_refined binder (pty span ty) (pexpr refinement) *)
+
   let rec pitem (e : item) : [> `Item of F.AST.decl | `Comment of string ] list
       =
     try pitem_unwrapped e
@@ -561,12 +663,19 @@ struct
                      None,
                      [],
                      List.map
-                       ~f:(fun (field, ty, _attrs) ->
-                         ( F.id @@ U.Concrete_ident_view.to_definition_name field,
+                       ~f:(fun (prev, (field, ty, attrs)) ->
+                         let fname : string =
+                           U.Concrete_ident_view.to_definition_name field
+                         in
+                         let fvars =
+                           List.map prev ~f:(fun (field, _, _) ->
+                               U.Concrete_ident_view.to_definition_name field)
+                         in
+                         ( F.id fname,
                            None,
                            [],
-                           pty e.span ty ))
-                       arguments );
+                           pmaybe_refined_ty e.span fvars attrs fname ty ))
+                       (inits arguments) );
                ] )
     | Type { name; generics; variants; _ } ->
         let self =
@@ -574,7 +683,7 @@ struct
         in
         let constructors =
           List.map
-            ~f:(fun { name; arguments; is_record } ->
+            ~f:(fun { name; arguments; is_record; _ } ->
               ( F.id (U.Concrete_ident_view.to_definition_name name),
                 Some
                   (let field_indexes =
@@ -583,12 +692,11 @@ struct
                    if is_record then
                      F.AST.VpRecord
                        ( List.map
-                           ~f:(fun (field, ty, _attrs) ->
-                             ( F.id
-                               @@ U.Concrete_ident_view.to_definition_name field,
-                               None,
-                               [],
-                               pty e.span ty ))
+                           ~f:(fun (field, ty, attrs) ->
+                             let fname : string =
+                               U.Concrete_ident_view.to_definition_name field
+                             in
+                             (F.id fname, None, [], pty e.span ty))
                            arguments,
                          Some self )
                    else
@@ -780,9 +888,13 @@ let make ctx =
     let ctx = ctx
   end) : S)
 
-let string_of_item (item : item) : string =
+let string_of_item items (item : item) : string =
   let (module Print) =
-    make { current_namespace = U.Concrete_ident_view.to_namespace item.ident }
+    make
+      {
+        current_namespace = U.Concrete_ident_view.to_namespace item.ident;
+        items;
+      }
   in
   List.map ~f:(function
     | `Item i -> decl_to_string i
@@ -790,10 +902,11 @@ let string_of_item (item : item) : string =
   @@ Print.pitem item
   |> String.concat ~sep:"\n"
 
-let string_of_items =
-  List.map ~f:string_of_item >> List.map ~f:String.strip
-  >> List.filter ~f:(String.is_empty >> not)
-  >> String.concat ~sep:"\n\n"
+let string_of_items items =
+  List.map ~f:(string_of_item items) items
+  |> List.map ~f:String.strip
+  |> List.filter ~f:(String.is_empty >> not)
+  |> String.concat ~sep:"\n\n"
 
 let hardcoded_fstar_headers =
   "\n#set-options \"--fuel 0 --ifuel 1 --z3rlimit 15\"\nopen Core"
