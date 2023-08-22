@@ -5,6 +5,8 @@ module%inlined_contents Make
     (FA : Features.T
             with type mutable_variable = Features.On.mutable_variable
              and type mutable_reference = Features.On.mutable_reference
+             and type nontrivial_lhs = Features.On.nontrivial_lhs
+             and type arbitrary_lhs = Features.On.arbitrary_lhs
              and type reference = Features.On.reference) =
 struct
   open Ast
@@ -102,10 +104,13 @@ struct
       let wrap_in_identity_let (e : expr) : expr =
         let var = LocalIdent.{ id = var_id_of_int 0; name = "output" } in
         let f (e : expr) : expr =
-          let lhs = UB.make_var_pat var e.typ e.span in
-          let rhs = e in
-          let body = { e with e = LocalVar var } in
-          { body with e = Let { monadic = None; lhs; rhs; body } }
+          match e.e with
+          | GlobalVar (`TupleCons 0) -> e
+          | _ ->
+              let lhs = UB.make_var_pat var e.typ e.span in
+              let rhs = e in
+              let body = { e with e = LocalVar var } in
+              { body with e = Let { monadic = None; lhs; rhs; body } }
         in
         UB.map_body_of_nested_lets f e
 
@@ -138,6 +143,48 @@ struct
           end
         in
         visitor#visit_expr ()
+
+      let convert_lhs =
+        let rec place_to_lhs (p : Place.t) : lhs =
+          let typ = p.typ in
+          match p.place with
+          | LocalVar var -> LhsLocalVar { var; typ }
+          | FieldProjection { place; projector } ->
+              let e = place_to_lhs place in
+              let field =
+                match projector with
+                | `Projector field -> (field :> global_ident)
+                | _ ->
+                    Error.unimplemented
+                      ~details:"try to borrow a projected tuple component?"
+                      p.span
+              in
+              LhsFieldAccessor
+                { witness = Features.On.nontrivial_lhs; field; typ; e }
+          | IndexProjection { place; index } ->
+              let e = place_to_lhs place in
+              LhsArrayAccessor
+                { e; typ; index; witness = Features.On.nontrivial_lhs }
+          | _ ->
+              let e = Place.to_expr p in
+              LhsArbitraryExpr { witness = Features.On.arbitrary_lhs; e }
+        in
+
+        let visitor =
+          object
+            inherit [_] expr_map as super
+            method visit_t () x = x
+            method visit_mutability _ () m = m
+
+            method visit_Assign () lhs e witness =
+              let lhs =
+                UB.expr_of_lhs e.span lhs |> Place.of_expr |> Option.value_exn
+                |> place_to_lhs
+              in
+              Assign { lhs; e; witness }
+          end
+        in
+        visitor#visit_expr ()
     end
 
     include M
@@ -167,8 +214,8 @@ struct
                         (vars @ if UB.is_unit_typ e.typ then [] else [ e ])
                     in
                     let body =
-                      body |> mutref_to_mut_expr idents |> map_returns ~f
-                      |> wrap_in_identity_let
+                      body |> mutref_to_mut_expr idents |> convert_lhs
+                      |> map_returns ~f |> wrap_in_identity_let
                       |> UB.map_body_of_nested_lets f
                     in
                     Fn { name; generics; body; params }
