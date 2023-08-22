@@ -42,7 +42,8 @@ module SubtypeToInputLanguage
              and type block = Features.Off.block
              (* and type for_loop = Features.Off.for_loop *)
              (* and type for_index_loop = Features.Off.for_index_loop *)
-             (* and type state_passing_loop = Features.On.state_passing_loop *)) =
+             (* and type state_passing_loop = Features.Off.state_passing_loo *)
+   ) =
 struct
   module FB = InputLanguage
 
@@ -170,7 +171,7 @@ module TransformToInputLanguage (* : PHASE *) =
     |> Phases.Direct_and_mut
     |> Phases.Reject.Arbitrary_lhs
     |> Phases.Drop_blocks
-    |> Phases.Reject.Continue
+    (* |> Phases.Reject.Continue *)
     |> Phases.Drop_references
     |> Phases.Trivialize_assign_lhs
     |> Phases.Reconstruct_question_marks
