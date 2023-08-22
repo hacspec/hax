@@ -48,3 +48,22 @@ fn g(x: Pair<Vec<u8>>) -> Vec<u8> {
     x.b.field.swap(0, 1);
     x.a
 }
+
+struct Bar {
+    a: u8,
+    b: u8,
+}
+
+fn h(x: &mut u8) {
+    *x += 10;
+}
+
+fn i(bar: &mut Bar) -> u8 {
+    (*bar).b += bar.a;
+    h(&mut bar.a);
+    bar.a + bar.b
+}
+
+fn j(x: &mut Bar) -> u8 {
+    i(x)
+}
