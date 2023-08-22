@@ -219,12 +219,53 @@ struct
 
           method visit_impl_item' () item' =
             (match item' with
-            | IIFn { body; params } ->
+            | IIFn { params; body } ->
                 let* params, body = rewrite_function params body in
                 Some (B.IIFn { body; params })
             | _ -> None)
             |> Option.value_or_thunk
                  ~default:(Fn.flip super#visit_impl_item' item')
+
+          method visit_trait_item () item =
+            let span = item.ti_span in
+            let ti_v =
+              (match item.ti_v with
+              | TIFn ty ->
+                  let inputs, output = UB.Expect.arrow ty |> Option.value_exn in
+                  (* Here, we craft a dummy function so that we can
+                     call `rewrite_function` *)
+                  let var =
+                    LocalIdent.{ id = var_id_of_int 0; name = "dummy" }
+                  in
+                  let params =
+                    List.map
+                      ~f:(fun typ ->
+                        let pat = UB.make_var_pat var typ span in
+                        (* let pat : B.pat = { typ; p; span } in *)
+                        B.{ pat; typ; typ_span = None; attrs = [] })
+                      inputs
+                  in
+                  let body =
+                    B.
+                      {
+                        e =
+                          (* this is wrongly typed, though it's fine,
+                             we throw this away before returning *)
+                          (UB.unit_expr span).e;
+                        typ = output;
+                        span;
+                      }
+                  in
+                  let* params, body = rewrite_function params body in
+                  let inputs = List.map ~f:(fun p -> p.typ) params in
+                  let output = body.typ in
+                  let ty = B.TArrow (inputs, output) in
+                  Some (B.TIFn ty)
+              | _ -> None)
+              |> Option.value_or_thunk
+                   ~default:(Fn.flip super#visit_trait_item' item.ti_v)
+            in
+            { item with ti_v }
 
           method visit_item' () item' =
             (match item' with

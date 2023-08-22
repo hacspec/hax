@@ -67,3 +67,10 @@ fn i(bar: &mut Bar) -> u8 {
 fn j(x: &mut Bar) -> u8 {
     i(x)
 }
+
+trait FooTrait {
+    fn z(&mut self);
+}
+impl FooTrait for Foo {
+    fn z(&mut self) {}
+}
