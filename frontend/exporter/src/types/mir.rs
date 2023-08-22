@@ -216,13 +216,13 @@ pub struct Terminator {
 fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     func: &rustc_middle::mir::Operand<'tcx>,
-) -> (DefId, Vec<GenericArg>, Option<TraitInfo>) {
+) -> (DefId, Vec<GenericArg>, Vec<ImplSource>, Option<TraitInfo>) {
     use std::ops::Deref;
     // Match on the func operand: it should be a constant as we don't support
     // closures for now.
     use rustc_middle::mir::{ConstantKind, Operand};
     use rustc_middle::ty::TyKind;
-    let (def_id, subst) = match func {
+    let (def_id, substs) = match func {
         Operand::Constant(c) => {
             let c = c.deref();
             match &c.literal {
@@ -232,7 +232,7 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
                     let c_ty = c.ty();
                     assert!(c_ty.is_fn());
                     match c_ty.kind() {
-                        TyKind::FnDef(def_id, subst) => (*def_id, *subst),
+                        TyKind::FnDef(def_id, substs) => (*def_id, *substs),
                         _ => {
                             unreachable!();
                         }
@@ -242,7 +242,7 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
                     // Same as for the `Ty` case above
                     assert!(c_ty.is_fn());
                     match c_ty.kind() {
-                        TyKind::FnDef(def_id, subst) => (*def_id, *subst),
+                        TyKind::FnDef(def_id, substs) => (*def_id, *substs),
                         _ => {
                             unreachable!();
                         }
@@ -258,10 +258,42 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         }
     };
 
+    let tcx = s.base().tcx;
+    let param_env = tcx.param_env(s.owner_id());
+
+    // Retrieve the trait requirements for the **method**.
+    // For instance, if we write:
+    // ```
+    // fn foo<T : Bar>(...)
+    //            ^^^
+    // ```
+    let method_traits = solve_method_traits(s, param_env, def_id, substs);
+
     // Check if this is a trait method call: retrieve the trait source if
     // it is the case (i.e., where does the method come from? Does it refer
     // to a top-level implementation? Or the method of a parameter? etc.).
-    let tcx = s.base().tcx;
+    // At the same time, retrieve the trait obligations for this **trait**.
+    // Remark: the trait obligations for the method are not the same as
+    // the trait obligations for the trait. More precisely:
+    //
+    // ```
+    // trait Foo<T : Bar> {
+    //              ^^^^^
+    //      trait level trait obligation
+    //   fn baz(...) where T : ... {
+    //      ...                ^^^
+    //             method level trait obligation
+    //   }
+    // }
+    // ```
+    //
+    // Also, a function doesn't need to belong to a trait to have trait
+    // obligations:
+    // ```
+    // fn foo<T : Bar>(...)
+    //            ^^^
+    //     method level trait obligation
+    // ```
     let source = if let Some(assoc) = tcx.opt_associated_item(def_id) {
         // There is an associated item - should be a trait
         use tracing::*;
@@ -274,15 +306,14 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
 
         // Create the reference to the trait
         use rustc_middle::ty::TraitRef;
-        let tr_ref = TraitRef::new(tcx, tr, subst);
+        let tr_ref = TraitRef::new(tcx, tr, substs);
         let tr_ref = rustc_middle::ty::Binder::dummy(tr_ref);
 
-        // Check if we can resolve
-        let param_env = tcx.param_env(s.owner_id());
+        // Check if we can resolve - not sure if really necessary
         let _ = tcx.codegen_select_candidate((param_env, tr_ref)).unwrap();
 
         // Get the full trait information
-        let trait_info = get_trait_info(s, param_env, tr_ref);
+        let trait_info = solve_trait(s, param_env, tr_ref);
 
         // Return
         Option::Some(trait_info)
@@ -290,7 +321,7 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         Option::None
     };
 
-    (def_id.sinto(s), subst.sinto(s), source)
+    (def_id.sinto(s), substs.sinto(s), method_traits, source)
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -390,7 +421,7 @@ pub enum TerminatorKind {
         rustc_middle::mir::TerminatorKind::Call {
             func, args, destination, target, unwind, from_hir_call, fn_span,
         } => {
-          let (fun_id, substs, trait_info) = get_function_from_operand(s, func);
+          let (fun_id, substs, method_traits, trait_info) = get_function_from_operand(s, func);
           TerminatorKind::Call {
             fun_id,
             substs,
@@ -400,6 +431,7 @@ pub enum TerminatorKind {
             unwind: unwind.sinto(s),
             from_hir_call: from_hir_call.sinto(s),
             fn_span: fn_span.sinto(s),
+            method_traits,
             trait_info,
           }
         }
@@ -413,6 +445,7 @@ pub enum TerminatorKind {
         unwind: UnwindAction,
         from_hir_call: bool,
         fn_span: Span,
+        method_traits: Vec<ImplSource>,
         trait_info: Option<TraitInfo>,
     },
     Assert {

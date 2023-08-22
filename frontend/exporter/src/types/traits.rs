@@ -17,7 +17,7 @@ pub struct ImplSourceUserDefinedData {
     pub nested: Vec<ImplSource>,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(AdtInto, Copy, Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::BoundConstness, state: S as _s)]
 pub enum BoundConstness {
     NotConst,
@@ -64,10 +64,8 @@ pub struct ImplSourceTraitUpcastingData {
 /// for `Wrapper` (in this case: `u64 : ToU64`) and resolve it.
 pub fn select_trait_candidate<'tcx>(
     tcx: rustc_middle::ty::TyCtxt<'tcx>,
-    (param_env, trait_ref): (
-        rustc_middle::ty::ParamEnv<'tcx>,
-        rustc_middle::ty::PolyTraitRef<'tcx>,
-    ),
+    param_env: rustc_middle::ty::ParamEnv<'tcx>,
+    trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
 ) -> Result<
     rustc_trait_selection::traits::Selection<'tcx>,
     rustc_middle::traits::CodegenObligationError,
@@ -93,7 +91,10 @@ pub fn select_trait_candidate<'tcx>(
     let obligation = Obligation::new(tcx, obligation_cause, param_env, trait_ref);
 
     match selcx.select(&obligation) {
-        Ok(Some(selection)) => Ok(selection),
+        Ok(Some(selection)) => {
+            let selection = infcx.resolve_vars_if_possible(selection);
+            Ok(selection)
+        }
         Ok(None) => Err(CodegenObligationError::Ambiguity),
         Err(Unimplemented) =>
         // The trait is not implemented
@@ -109,8 +110,64 @@ pub fn select_trait_candidate<'tcx>(
     }
 }
 
+/// Solve an obligation.
+///
+/// Note that we skip some obligations (for instance, obligations stating that a
+/// lifetime outlives another lifetime). The reason is that, provided those
+/// obligations are satisfiable (this is done at type checking time) we don't
+/// need to return any information about this obligation, and in particular we
+/// don't need a witness (contrary to the traits).
+fn solve_obligation<'tcx, S: BaseState<'tcx>>(
+    s: &S,
+    obligation: rustc_trait_selection::traits::Obligation<'tcx, rustc_middle::ty::Predicate<'tcx>>,
+) -> Option<ImplSource> {
+    let predicate = obligation.predicate.kind();
+    // For now we assume the predicate is necessarily a trait predicate.
+    // We thus convert it to that: this implies diving into the predicate
+    // to retrieve the proper information.
+    match predicate.skip_binder() {
+        rustc_middle::ty::PredicateKind::Clause(clause) => {
+            use rustc_middle::ty::Clause;
+            match clause {
+                Clause::Trait(trait_pred) => {
+                    let trait_ref = trait_pred.trait_ref;
+
+                    // Create the trait obligation by using the above binder
+                    let trait_ref =
+                        rustc_middle::ty::Binder::bind_with_vars(trait_ref, predicate.bound_vars());
+
+                    // Solve
+                    Option::Some(solve_trait(s, obligation.param_env, trait_ref))
+                }
+                Clause::RegionOutlives(..)
+                | Clause::TypeOutlives(..)
+                | Clause::ConstArgHasType(..)
+                | Clause::Projection(..) => Option::None,
+            }
+        }
+        x => {
+            // SH: We probably just need to ignore those, like for the Clauses,
+            // but I'm not familiar enough with the meaning of those predicates
+            // to actually do anything about them yet.
+            unreachable!("Unexpected predicate kind: {:?}", x)
+        }
+    }
+}
+
+fn solve_obligations<'tcx, S: BaseState<'tcx>>(
+    s: &S,
+    obligations: Vec<
+        rustc_trait_selection::traits::Obligation<'tcx, rustc_middle::ty::Predicate<'tcx>>,
+    >,
+) -> Vec<ImplSource> {
+    obligations
+        .into_iter()
+        .filter_map(|o| solve_obligation(s, o))
+        .collect()
+}
+
 /// Compute the full trait information (recursively solve the nested obligations).
-pub fn get_trait_info<'tcx, S: BaseState<'tcx>>(
+pub fn solve_trait<'tcx, S: BaseState<'tcx>>(
     s: &S,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
@@ -118,7 +175,7 @@ pub fn get_trait_info<'tcx, S: BaseState<'tcx>>(
     let tcx = s.base().tcx;
 
     use rustc_trait_selection::traits::ImplSource as RustImplSource;
-    match select_trait_candidate(tcx, (param_env, trait_ref)).unwrap() {
+    match select_trait_candidate(tcx, param_env, trait_ref).unwrap() {
         RustImplSource::UserDefined(rustc_trait_selection::traits::ImplSourceUserDefinedData {
             impl_def_id,
             substs,
@@ -175,60 +232,45 @@ pub fn get_trait_info<'tcx, S: BaseState<'tcx>>(
     }
 }
 
-/// Solve an obligation.
-///
-/// Note that we skip some obligations (for instance, obligations stating that a
-/// lifetime outlives another lifetime). The reason is that, provided those
-/// obligations are satisfiable (this is done at type checking time) we don't
-/// need to return any information about this obligation, and in particular we
-/// don't need a witness (contrary to the traits).
-fn solve_obligation<'tcx, S: BaseState<'tcx>>(
+pub type TraitInfo = ImplSource;
+
+pub fn solve_method_traits<'tcx, S: BaseState<'tcx>>(
     s: &S,
-    obligation: rustc_trait_selection::traits::Obligation<'tcx, rustc_middle::ty::Predicate<'tcx>>,
-) -> Option<ImplSource> {
-    let predicate = obligation.predicate.kind();
-    // For now we assume the predicate is necessarily a trait predicate.
-    // We thus convert it to that: this implies diving into the predicate
-    // to retrieve the proper information.
-    match predicate.skip_binder() {
-        rustc_middle::ty::PredicateKind::Clause(clause) => {
-            use rustc_middle::ty::Clause;
-            match clause {
-                Clause::Trait(trait_pred) => {
-                    let trait_ref = trait_pred.trait_ref;
+    param_env: rustc_middle::ty::ParamEnv<'tcx>,
+    def_id: rustc_hir::def_id::DefId,
+    substs: rustc_middle::ty::subst::SubstsRef<'tcx>,
+) -> Vec<ImplSource> {
+    let tcx = s.base().tcx;
 
-                    // Create the trait obligation by using the above binder
-                    let trait_ref =
-                        rustc_middle::ty::Binder::bind_with_vars(trait_ref, predicate.bound_vars());
+    let mut trait_infos = Vec::new();
 
-                    // Solve
-                    Option::Some(get_trait_info(s, obligation.param_env, trait_ref))
-                }
-                Clause::RegionOutlives(..)
-                | Clause::TypeOutlives(..)
-                | Clause::ConstArgHasType(..)
-                | Clause::Projection(..) => Option::None,
-            }
-        }
-        x => {
-            // SH: We probably just need to ignore those, like for the Clauses,
-            // but I'm not familiar enough with the meaning of those predicates
-            // to actually do anything about them yet.
-            unreachable!("Unexpected predicate kind: {:?}", x)
+    // Lookup the predicates and iter through them: we want to solve all the
+    // trait requirements.
+    let predicates = tcx.predicates_of(def_id);
+    for (pred, _) in predicates.predicates {
+        // SH: We need to apply the substitution. Not sure this is the proper way,
+        // but it seems to work so far. My reasoning:
+        // - I don't know how to get rid of the Binder, because there is no
+        //   Binder::subst method.
+        // - However I notice that EarlyBinder is just a wrapper (it doesn't
+        //   contain any information) and comes with substitution methods.
+        // So I skip the Binder, wrap the value in an EarlyBinder and apply
+        // the substitution.
+        // Remark: there is also EarlyBinder::subst(...)
+        let pred_kind = rustc_middle::ty::EarlyBinder::bind(pred.kind().skip_binder());
+        let pred_kind = tcx.subst_and_normalize_erasing_regions(substs, param_env, pred_kind);
+
+        // Just explore the trait predicates
+        use rustc_middle::ty::{Clause, PredicateKind};
+        if let PredicateKind::Clause(Clause::Trait(trait_pred)) = pred_kind {
+            // SH: We also need to introduce a binder here. I'm not sure what we
+            // whould bind this with: the variables to bind with are those
+            // given by the definition we are exploring, and they should already
+            // be in the param environment. So I just wrap in a dummy binder
+            // (this also seems to work so far).
+            let trait_ref = rustc_middle::ty::Binder::dummy(trait_pred.trait_ref);
+            trait_infos.push(solve_trait(s, param_env, trait_ref));
         }
     }
+    trait_infos
 }
-
-fn solve_obligations<'tcx, S: BaseState<'tcx>>(
-    s: &S,
-    obligations: Vec<
-        rustc_trait_selection::traits::Obligation<'tcx, rustc_middle::ty::Predicate<'tcx>>,
-    >,
-) -> Vec<ImplSource> {
-    obligations
-        .into_iter()
-        .filter_map(|o| solve_obligation(s, o))
-        .collect()
-}
-
-pub type TraitInfo = ImplSource;
