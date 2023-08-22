@@ -91,7 +91,8 @@ module SSProveLibrary : Library = struct
     let let_mut_stmt (var : string) (expr : string) (typ : string)
         (body : string) (depth : int) : string =
       "letbm" ^ " " ^ var ^ " " ^ "loc(" ^ var ^ "_loc" ^ ")" ^ " " ^ ":="
-      ^ " (" ^ expr ^ ") " ^ ":" ^ " " ^ "both _ _" ^ " " ^ "(" ^ typ ^ ")"
+      (* ^ " (" ^ expr ^ ") " ^ ":" ^ " " ^ "both _ _" ^ " " ^ "(" ^ typ ^ ")" *)
+      ^ " " ^ expr ^ " " ^ ":of:" ^ " " ^ typ
       ^ " " ^ "in" ^ newline_indent depth ^ body
 
     let type_str : string = "choice_type"
@@ -428,6 +429,7 @@ struct
     let span = e.span in
     (match (add_solve, e.e) with
     | true, (Construct { is_record = true; _ }
+    | If _
     | Match _
     | Literal _
     | Construct { constructor = `TupleCons _; _ }
@@ -468,10 +470,10 @@ struct
           SSP.AST.App (base, args)
       | If { cond; then_; else_ } ->
           SSP.AST.If
-            ( (pexpr add_solve) cond,
-              (pexpr add_solve) then_,
+            ( (pexpr false) cond,
+              (pexpr false) then_,
               Option.value_map else_ ~default:(SSP.AST.Literal "()")
-                ~f:(pexpr add_solve) )
+                ~f:(pexpr false) )
       | Array l -> SSP.AST.Array (List.map ~f:(pexpr add_solve) l)
       | Let { lhs; rhs; body; monadic } ->
           SSP.AST.Let
@@ -743,6 +745,18 @@ struct
 
   and pitem_unwrapped (e : AST.item) : SSP.AST.decl list =
     let span = e.span in
+    let decls_from_attr =
+      if List.is_empty e.attrs
+      then []
+      else [ SSP.AST.Comment (
+          String.concat ~sep:"\n"
+            (List.map ~f:(fun { kind; span } ->
+                 match kind with
+                 | Tool { path; tokens } -> "Tool" ^ ":" ^ " " ^ path ^ " " ^ "_" ^ " " ^ tokens
+                 | DocComment { kind; body } -> "DocComment" ^ ":" ^ " " ^ body
+               ) e.attrs)
+        ) ] in
+    let decls_from_item =
     match e.v with
     | Fn { name; generics; body; params } ->
         let ndep =
@@ -820,8 +834,7 @@ struct
                 SSP.AST.NameTy "Location" )
             :: y)
           mvars_loc
-        @ [
-            (* SSP.AST.ProgramDefinition *)
+        @ [ (* SSP.AST.ProgramDefinition *)
             SSP.AST.Equations
               (* Questionmark *)
               ( pconcrete_ident name,
@@ -839,7 +852,7 @@ struct
                           (SSP.AST.NameTy "Interface" : SSP.AST.ty) ))
                     (List.init (List.length params) (fun x -> x + 1))
                 @ List.mapi
-                    ~f:(fun i { pat; typ; typ_span } ->
+                    ~f:(fun i { pat; typ; typ_span; attrs } ->
                       SSP.AST.Explicit
                         ( ppat pat,
                           wrap_type_in_both
@@ -1290,6 +1303,8 @@ struct
                         SSP.AST.TypeTy ))
                 items );
         ]
+    in
+    decls_from_attr @ decls_from_item
 
   and p_inductive span variants parrent_name : SSP.AST.inductive_case list =
     List.map variants ~f:(fun { name; arguments; is_record } ->

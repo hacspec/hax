@@ -95,6 +95,7 @@ functor
 
       type decl =
         | Unimplemented of string
+        | Comment of string
         | Definition of definition_type
         | ProgramDefinition of definition_type
         | Equations of definition_type
@@ -370,6 +371,7 @@ functor
     let rec decl_to_string (x : AST.decl) : string =
       match x with
       | AST.Unimplemented s -> "(*" ^ s ^ "*)"
+      | AST.Comment s -> "(**" ^ " " ^ s ^ " " ^ "**)"
       | AST.Definition (name, arguments, term, ty) ->
           "Definition" ^ " "
           ^ definition_value_to_string (name, arguments, term, ty)
