@@ -25,6 +25,7 @@ module Phase = struct
 
   type t =
     | DirectAndMut
+    | AndMutDefSite
     | Identity
     | DropReferences
     | DropBlocks

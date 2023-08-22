@@ -2,7 +2,10 @@ open Base
 open Utils
 
 module%inlined_contents Make
-    (FA : Features.T with type mutable_variable = Features.On.mutable_variable) =
+    (FA : Features.T
+            with type mutable_variable = Features.On.mutable_variable
+             and type mutable_reference = Features.On.mutable_reference
+             and type reference = Features.On.reference) =
 struct
   open Ast
   module FB = FA
@@ -10,7 +13,7 @@ struct
   include
     Phase_utils.MakeBase (FA) (FB)
       (struct
-        let phase_id = Diagnostics.Phase.RefMut
+        let phase_id = Diagnostics.Phase.AndMutDefSite
       end)
 
   module A = Ast.Make (FA)
@@ -21,13 +24,8 @@ struct
 
     module S = struct
       include Features.SUBTYPE.Id
-
-      let mutable_variable = Fn.const Features.On.mutable_variable
-      let nontrivial_lhs = Fn.const Features.On.nontrivial_lhs
-      let arbitrary_lhs = Fn.const Features.On.arbitrary_lhs
     end
 
-    (* module UA = Ast_utils.Make (FA) *)
     module UB = Ast_utils.Make (FB)
 
     module M = struct
@@ -38,10 +36,27 @@ struct
         | TRef { mut = Mutable _; typ; _ } -> Some typ
         | _ -> None
 
-      (* let expect_by_value_binding (pat : A.pat) : A.pat option = *)
-      (*   match pat with *)
-      (*   | PBinding { mut = Mutable _; typ; _ } -> Some typ *)
-      (*   | _ -> None *)
+      let expect_mut_borrow (e : expr) : expr option =
+        match e.e with Borrow { kind = Mut _; e; _ } -> Some e | _ -> None
+
+      (* given `ty`, produces type `&mut ty` *)
+      let mut_ref (typ : ty) : ty =
+        let mut = Mutable Features.On.mutable_reference in
+        TRef { witness = Features.On.reference; region = ""; typ; mut }
+
+      (* given `e`, produces well-typed expr `&mut e` *)
+      let mut_borrow (e : expr) : expr =
+        let kind = Mut Features.On.mutable_reference in
+        let witness = Features.On.reference in
+        let e' = Borrow { kind; e; witness } in
+        { e with e = e'; typ = mut_ref e.typ }
+
+      let expect_deref (e : expr) : expr option =
+        match e.e with
+        | App { f = { e = GlobalVar (`Primitive Deref); _ }; args = [ e ]; _ }
+          ->
+            Some e
+        | _ -> None
 
       let expect_mut_ref_param (param : param) :
           (local_ident * ty * span) option =
@@ -101,23 +116,99 @@ struct
       let wrap_in_identity_let (e : expr) : expr =
         let var = LocalIdent.{ id = var_id_of_int 0; name = "output" } in
         let f (e : expr) : expr =
-          let pat = UB.make_var_pat var e.typ e.span in
-          UB.make_let pat e { e with e = LocalVar var }
+          let lhs = UB.make_var_pat var e.typ e.span in
+          let rhs = e in
+          let body = { e with e = LocalVar var } in
+          { body with e = Let { monadic = None; lhs; rhs; body } }
         in
         UB.map_body_of_nested_lets f e
 
       let mutref_to_mut_expr (vars : local_ident list) : expr -> expr =
+        let ( <|?> ) (type a) (x : a option) (f : unit -> a option) : a option =
+          x |> Option.map ~f:Option.some |> Option.value_or_thunk ~default:f
+        in
+        let rec unwrap_mut_borrow_deref x =
+          match
+            let* x = expect_mut_borrow x in
+            expect_deref x
+          with
+          | Some x -> unwrap_mut_borrow_deref x
+          | None -> x
+        in
+        let in_vars = List.mem vars ~equal:[%equal: local_ident] in
+        let expect_in_vars_local_var (x : expr) : local_ident option =
+          match x.e with LocalVar v when in_vars v -> Some v | _ -> None
+        in
+        let retyped_local_var_in_vars e =
+          let* var = expect_in_vars_local_var e in
+          (* var is supposed to be typed `&mut _` *)
+          let* typ = expect_mut_ref e.typ in
+          (* we reconstruct `e` to type it correctly *)
+          Some { e = LocalVar var; typ; span = e.span }
+        in
         let visitor =
           object
             inherit [_] expr_map as super
             method visit_t () x = x
             method visit_mutability _ () m = m
 
-            method visit_expr () e =
-              match e.e with
-              | LocalVar v when List.mem vars v ~equal:[%equal: local_ident] ->
-                  Error.unimplemented ~details:"????" e.span
-              | _ -> super#visit_expr () e
+            method visit_expr () =
+              let rec visit_expr e =
+                prerr_endline @@ "# " ^ Print_rust.pexpr_str (Obj.magic e);
+                match e.e with
+                | App
+                    {
+                      f = { e = GlobalVar (`Primitive Deref); _ };
+                      args = [ arg ];
+                      _;
+                    } ->
+                    prerr_endline @@ "*0> "
+                    ^ Print_rust.pexpr_str (Obj.magic arg);
+                    (let arg = unwrap_mut_borrow_deref arg in
+                     prerr_endline @@ "*1> "
+                     ^ Print_rust.pexpr_str (Obj.magic arg);
+                     let* arg = retyped_local_var_in_vars arg in
+                     prerr_endline @@ "*2> "
+                     ^ Print_rust.pexpr_str (Obj.magic arg);
+                     Some arg)
+                    |> Option.value_or_thunk ~default:(fun _ ->
+                           super#visit_expr () e)
+                | App { f; args } ->
+                    prerr_endline @@ "A0> ";
+                    let map_arg arg =
+                      (let arg = unwrap_mut_borrow_deref arg in
+                       prerr_endline @@ "A:arg:0> "
+                       ^ Print_rust.pexpr_str (Obj.magic arg);
+                       let* arg = retyped_local_var_in_vars arg in
+                       prerr_endline @@ "A:arg:1> "
+                       ^ Print_rust.pexpr_str (Obj.magic arg);
+                       Some (mut_borrow arg))
+                      |> Option.value_or_thunk ~default:(fun _ ->
+                             prerr_endline @@ "A:other> "
+                             ^ Print_rust.pexpr_str (Obj.magic arg);
+                             visit_expr arg)
+                    in
+                    let f = visit_expr f in
+                    prerr_endline @@ "A2> " ^ Print_rust.pexpr_str (Obj.magic f);
+                    let args = List.map ~f:map_arg args in
+                    prerr_endline @@ "A3> "
+                    ^ Print_rust.pexpr_str
+                        (Obj.magic { e with e = App { f; args } });
+                    { e with e = App { f; args } }
+                    (* | Assign { lhs; e = e'; witness } -> visit_expr () e *)
+                    (* { e with e = Assign { lhs; e; witness } } *)
+                | LocalVar v when in_vars v -> (
+                    try Error.unimplemented ~details:"????" e.span
+                    with
+                    | Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
+                      let error =
+                        Diagnostics.pretty_print_context_kind context kind
+                      in
+                      UB.hax_failure_expr e.span e.typ (context, kind)
+                        (UB.LiftToFullAst.expr e))
+                | _ -> super#visit_expr () e
+              in
+              visit_expr
           end
         in
         visitor#visit_expr ()
@@ -138,6 +229,7 @@ struct
             | Fn { name; generics; body; params } -> (
                 match rewrite_fn_sig params body.typ with
                 | Some (params, body_typ, vars) ->
+                    let idents = List.map ~f:fst3 vars in
                     let vars =
                       List.map
                         ~f:(fun (var, typ, span) ->
@@ -146,10 +238,11 @@ struct
                     in
                     let f (e : B.expr) : B.expr =
                       UB.make_tuple_expr ~span:e.span
-                        (vars @ if UB.is_unit_typ body.typ then [] else [ body ])
+                        (vars @ if UB.is_unit_typ e.typ then [] else [ e ])
                     in
                     let body =
-                      map_returns ~f body |> wrap_in_identity_let
+                      body |> mutref_to_mut_expr idents |> map_returns ~f
+                      |> wrap_in_identity_let
                       |> UB.map_body_of_nested_lets f
                     in
                     Fn { name; generics; body; params }
