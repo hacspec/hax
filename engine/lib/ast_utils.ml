@@ -588,6 +588,18 @@ module Make (F : Features.T) = struct
   let rec unbox_underef_expr e =
     (unbox_expr' unbox_underef_expr >> underef_expr' unbox_underef_expr) e
 
+  let rec expr_of_lhs (span : span) (lhs : lhs) : expr =
+    match lhs with
+    | LhsLocalVar { var; typ } -> { e = LocalVar var; typ; span }
+    | LhsFieldAccessor { e; typ; field; _ } ->
+        let e = expr_of_lhs span e in
+        let f = { e = GlobalVar field; typ = TArrow ([ e.typ ], typ); span } in
+        { e = App { f; args = [ e ] }; typ = e.typ; span }
+    | LhsArrayAccessor { e; typ; index; _ } ->
+        let args = [ expr_of_lhs span e; index ] in
+        call Core__ops__index__Index__index args span typ
+    | LhsArbitraryExpr { e; _ } -> e
+
   (* module Box = struct *)
   (*   module Ty = struct *)
   (*     let destruct (t : ty) : ty option = *)
