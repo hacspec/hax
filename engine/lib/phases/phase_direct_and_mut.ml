@@ -38,51 +38,9 @@ struct
 
     let ( let* ) x f = Option.bind ~f x
 
-    module Expr = struct
-      let expect_mut_borrow (e : A.expr) : A.expr option =
-        match e.e with A.Borrow { kind = Mut _; e; _ } -> Some e | _ -> None
-
-      let expect_deref (e : A.expr) : A.expr option =
-        match e.e with
-        | App { f = { e = GlobalVar (`Primitive Deref); _ }; args = [ e ]; _ }
-          ->
-            Some e
-        | _ -> None
-
-      let expect_concrete_app1 (f : Concrete_ident.name) (e : A.expr) :
-          A.expr option =
-        match e.e with
-        | App { f = { e = GlobalVar (`Concrete f') }; args = [ e ] }
-          when Concrete_ident.eq_name f f' ->
-            Some e
-        | _ -> None
-
-      let expect_deref_mut_app =
-        expect_concrete_app1 Core__ops__deref__DerefMut__deref_mut
-
-      let expect_local_var (e : A.expr) : A.expr option =
-        match e.e with LocalVar i -> Some e | _ -> None
-    end
-
-    module Ty = struct
-      let expect_arrow (typ : A.ty) : (A.ty list * A.ty) option =
-        match typ with
-        | TArrow (inputs, output) -> Some (inputs, output)
-        | _ -> None
-
-      let expect_arrow_b (typ : B.ty) : (B.ty list * B.ty) option =
-        match typ with
-        | TArrow (inputs, output) -> Some (inputs, output)
-        | _ -> None
-
-      let expect_mut_ref (typ : A.ty) : A.ty option =
-        match typ with
-        | TRef { mut = Mutable _; typ; _ } -> Some typ
-        | _ -> None
-    end
-
     module Place = struct
       open A
+      open UA
 
       type t = { place : place'; span : span; typ : ty }
 
@@ -120,8 +78,8 @@ struct
                Hax translates that to `Rust_primitives.Hax.update_at`.
                This will typecheck IFF there is an implementation.
             *)
-            let* typ = Ty.expect_mut_ref e.typ in
-            let* place = Expr.expect_mut_borrow place in
+            let* typ = Expect.mut_ref e.typ in
+            let* place = Expect.mut_borrow place in
             let* place = of_expr place in
             let place = IndexProjection { place; index } in
             Some { place; span = e.span; typ }
@@ -144,8 +102,8 @@ struct
       let expect_deref_mut (p : t) : t option =
         match p.place with
         | Deref e ->
-            let* e = Expr.expect_deref_mut_app e in
-            let* e = Expr.expect_mut_borrow e in
+            let* e = Expect.deref_mut_app e in
+            let* e = Expect.mut_borrow e in
             of_expr e
         | _ -> None
 
@@ -160,7 +118,7 @@ struct
     let expect_mut_borrow_of_place_or_pure_expr (e : A.expr) :
         (Place.t, A.expr) Either.t option =
       let e = UA.Mappers.normalize_borrow_mut#visit_expr () e in
-      let* e = Expr.expect_mut_borrow e in
+      let* e = UA.Expect.mut_borrow e in
       Option.some
       @@
       match
@@ -213,7 +171,7 @@ struct
     and translate_app (f : A.expr) (raw_args : A.expr list) (span : span) :
         B.expr =
       let arg_types, otype =
-        Ty.expect_arrow f.typ
+        UA.Expect.arrow f.typ
         |> Option.value_or_thunk ~default:(fun _ ->
                Error.assertion_failure span "expected an arrow type here")
       in
@@ -226,7 +184,7 @@ struct
         | Ok inputs -> inputs
         | _ -> Error.assertion_failure span "application: bad arity")
         |> List.map ~f:(fun (typ, (arg : A.expr)) ->
-               if Ty.expect_mut_ref typ |> Option.is_some then
+               if UA.Expect.mut_ref typ |> Option.is_some then
                  (* the argument of the function is mutable *)
                  let v =
                    expect_mut_borrow_of_place_or_pure_expr arg
@@ -371,7 +329,7 @@ struct
       match e' with
       | App { f; _ } ->
           let typ =
-            Ty.expect_arrow_b f.typ
+            UB.Expect.arrow f.typ
             |> Option.value_or_thunk ~default:(fun _ ->
                    Error.assertion_failure span "expected an arrow type here")
             |> snd

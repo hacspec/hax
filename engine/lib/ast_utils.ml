@@ -307,6 +307,37 @@ module Make (F : Features.T) = struct
       end
   end
 
+  module Expect = struct
+    let mut_borrow (e : expr) : expr option =
+      match e.e with Borrow { kind = Mut _; e; _ } -> Some e | _ -> None
+
+    let deref (e : expr) : expr option =
+      match e.e with
+      | App { f = { e = GlobalVar (`Primitive Deref); _ }; args = [ e ]; _ } ->
+          Some e
+      | _ -> None
+
+    let concrete_app1 (f : Concrete_ident.name) (e : expr) : expr option =
+      match e.e with
+      | App { f = { e = GlobalVar (`Concrete f') }; args = [ e ] }
+        when Concrete_ident.eq_name f f' ->
+          Some e
+      | _ -> None
+
+    let deref_mut_app = concrete_app1 Core__ops__deref__DerefMut__deref_mut
+
+    let local_var (e : expr) : expr option =
+      match e.e with LocalVar i -> Some e | _ -> None
+
+    let arrow (typ : ty) : (ty list * ty) option =
+      match typ with
+      | TArrow (inputs, output) -> Some (inputs, output)
+      | _ -> None
+
+    let mut_ref (typ : ty) : ty option =
+      match typ with TRef { mut = Mutable _; typ; _ } -> Some typ | _ -> None
+  end
+
   (** Produces a local identifier which is locally fresh **with respect
       to expressions {exprs}**. *)
   let fresh_local_ident_in_expr (exprs : expr list) (prefix : string) :

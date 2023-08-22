@@ -30,14 +30,7 @@ struct
 
     module M = struct
       open B
-
-      let expect_mut_ref (typ : ty) : ty option =
-        match typ with
-        | TRef { mut = Mutable _; typ; _ } -> Some typ
-        | _ -> None
-
-      let expect_mut_borrow (e : expr) : expr option =
-        match e.e with Borrow { kind = Mut _; e; _ } -> Some e | _ -> None
+      open UB
 
       (* given `ty`, produces type `&mut ty` *)
       let mut_ref (typ : ty) : ty =
@@ -51,17 +44,10 @@ struct
         let e' = Borrow { kind; e; witness } in
         { e with e = e'; typ = mut_ref e.typ }
 
-      let expect_deref (e : expr) : expr option =
-        match e.e with
-        | App { f = { e = GlobalVar (`Primitive Deref); _ }; args = [ e ]; _ }
-          ->
-            Some e
-        | _ -> None
-
       let expect_mut_ref_param (param : param) :
           (local_ident * ty * span) option =
         let x = 0 in
-        let* typ = expect_mut_ref param.typ in
+        let* typ = Expect.mut_ref param.typ in
         match param.pat.p with
         | PBinding
             { mut = Immutable; mode = ByValue; var; typ = _; subpat = None } ->
@@ -129,8 +115,8 @@ struct
         in
         let rec unwrap_mut_borrow_deref x =
           match
-            let* x = expect_mut_borrow x in
-            expect_deref x
+            let* x = Expect.mut_borrow x in
+            Expect.deref x
           with
           | Some x -> unwrap_mut_borrow_deref x
           | None -> x
