@@ -128,7 +128,7 @@ struct
         let retyped_local_var_in_vars e =
           let* var = expect_in_vars_local_var e in
           (* var is supposed to be typed `&mut _` *)
-          let* typ = expect_mut_ref e.typ in
+          let typ = Expect.mut_ref e.typ |> Option.value_exn in
           (* we reconstruct `e` to type it correctly *)
           Some { e = LocalVar var; typ; span = e.span }
         in
