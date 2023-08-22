@@ -138,63 +138,11 @@ struct
             method visit_t () x = x
             method visit_mutability _ () m = m
 
-            method visit_expr () =
-              let rec visit_expr e =
-                prerr_endline @@ "# " ^ Print_rust.pexpr_str (Obj.magic e);
-                match e.e with
-                | App
-                    {
-                      f = { e = GlobalVar (`Primitive Deref); _ };
-                      args = [ arg ];
-                      _;
-                    } ->
-                    prerr_endline @@ "*0> "
-                    ^ Print_rust.pexpr_str (Obj.magic arg);
-                    (let arg = unwrap_mut_borrow_deref arg in
-                     prerr_endline @@ "*1> "
-                     ^ Print_rust.pexpr_str (Obj.magic arg);
-                     let* arg = retyped_local_var_in_vars arg in
-                     prerr_endline @@ "*2> "
-                     ^ Print_rust.pexpr_str (Obj.magic arg);
-                     Some arg)
-                    |> Option.value_or_thunk ~default:(fun _ ->
-                           super#visit_expr () e)
-                | App { f; args } ->
-                    prerr_endline @@ "A0> ";
-                    let map_arg arg =
-                      (let arg = unwrap_mut_borrow_deref arg in
-                       prerr_endline @@ "A:arg:0> "
-                       ^ Print_rust.pexpr_str (Obj.magic arg);
-                       let* arg = retyped_local_var_in_vars arg in
-                       prerr_endline @@ "A:arg:1> "
-                       ^ Print_rust.pexpr_str (Obj.magic arg);
-                       Some (mut_borrow arg))
-                      |> Option.value_or_thunk ~default:(fun _ ->
-                             prerr_endline @@ "A:other> "
-                             ^ Print_rust.pexpr_str (Obj.magic arg);
-                             visit_expr arg)
-                    in
-                    let f = visit_expr f in
-                    prerr_endline @@ "A2> " ^ Print_rust.pexpr_str (Obj.magic f);
-                    let args = List.map ~f:map_arg args in
-                    prerr_endline @@ "A3> "
-                    ^ Print_rust.pexpr_str
-                        (Obj.magic { e with e = App { f; args } });
-                    { e with e = App { f; args } }
-                    (* | Assign { lhs; e = e'; witness } -> visit_expr () e *)
-                    (* { e with e = Assign { lhs; e; witness } } *)
-                | LocalVar v when in_vars v -> (
-                    try Error.unimplemented ~details:"????" e.span
-                    with
-                    | Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
-                      let error =
-                        Diagnostics.pretty_print_context_kind context kind
-                      in
-                      UB.hax_failure_expr e.span e.typ (context, kind)
-                        (UB.LiftToFullAst.expr e))
-                | _ -> super#visit_expr () e
-              in
-              visit_expr
+            method visit_expr () e =
+              (let* e = Expect.deref e in
+               retyped_local_var_in_vars e)
+              <|?> (fun _ -> retyped_local_var_in_vars e)
+              |> Option.value_or_thunk ~default:(fun _ -> super#visit_expr () e)
           end
         in
         visitor#visit_expr ()
