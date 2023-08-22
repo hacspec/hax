@@ -113,14 +113,6 @@ struct
         let ( <|?> ) (type a) (x : a option) (f : unit -> a option) : a option =
           x |> Option.map ~f:Option.some |> Option.value_or_thunk ~default:f
         in
-        let rec unwrap_mut_borrow_deref x =
-          match
-            let* x = Expect.mut_borrow x in
-            Expect.deref x
-          with
-          | Some x -> unwrap_mut_borrow_deref x
-          | None -> x
-        in
         let in_vars = List.mem vars ~equal:[%equal: local_ident] in
         let expect_in_vars_local_var (x : expr) : local_ident option =
           match x.e with LocalVar v when in_vars v -> Some v | _ -> None
