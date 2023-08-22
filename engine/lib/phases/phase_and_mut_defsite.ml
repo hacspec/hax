@@ -185,6 +185,26 @@ struct
           end
         in
         visitor#visit_expr ()
+
+      let rewrite_function (params : param list) (body : expr) :
+          (param list * expr) option =
+        let* params, body_typ, vars = rewrite_fn_sig params body.typ in
+        let idents = List.map ~f:fst3 vars in
+        let vars =
+          List.map
+            ~f:(fun (var, typ, span) -> B.{ span; typ; e = LocalVar var })
+            vars
+        in
+        let f (e : B.expr) : B.expr =
+          UB.make_tuple_expr ~span:e.span
+            (vars @ if UB.is_unit_typ e.typ then [] else [ e ])
+        in
+        let body =
+          body |> mutref_to_mut_expr idents |> convert_lhs |> map_returns ~f
+          |> wrap_in_identity_let
+          |> UB.map_body_of_nested_lets f
+        in
+        Some (params, body)
     end
 
     include M
@@ -197,30 +217,22 @@ struct
           method visit_t () x = x
           method visit_mutability _ () m = m
 
+          method visit_impl_item' () item' =
+            (match item' with
+            | IIFn { body; params } ->
+                let* params, body = rewrite_function params body in
+                Some (B.IIFn { body; params })
+            | _ -> None)
+            |> Option.value_or_thunk
+                 ~default:(Fn.flip super#visit_impl_item' item')
+
           method visit_item' () item' =
-            match item' with
-            | Fn { name; generics; body; params } -> (
-                match rewrite_fn_sig params body.typ with
-                | Some (params, body_typ, vars) ->
-                    let idents = List.map ~f:fst3 vars in
-                    let vars =
-                      List.map
-                        ~f:(fun (var, typ, span) ->
-                          B.{ span; typ; e = LocalVar var })
-                        vars
-                    in
-                    let f (e : B.expr) : B.expr =
-                      UB.make_tuple_expr ~span:e.span
-                        (vars @ if UB.is_unit_typ e.typ then [] else [ e ])
-                    in
-                    let body =
-                      body |> mutref_to_mut_expr idents |> convert_lhs
-                      |> map_returns ~f |> wrap_in_identity_let
-                      |> UB.map_body_of_nested_lets f
-                    in
-                    Fn { name; generics; body; params }
-                | _ -> item')
-            | _ -> super#visit_item' () item'
+            (match item' with
+            | Fn { name; generics; body; params } ->
+                let* params, body = rewrite_function params body in
+                Some (B.Fn { name; generics; body; params })
+            | _ -> None)
+            |> Option.value_or_thunk ~default:(Fn.flip super#visit_item' item')
         end
       in
       List.map ~f:(visitor#visit_item ()) items
