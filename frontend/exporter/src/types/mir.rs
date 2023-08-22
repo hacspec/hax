@@ -267,7 +267,7 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     // fn foo<T : Bar>(...)
     //            ^^^
     // ```
-    let method_traits = solve_method_traits(s, param_env, def_id, substs);
+    let method_traits = solve_item_traits(s, param_env, def_id, substs);
 
     // Check if this is a trait method call: retrieve the trait source if
     // it is the case (i.e., where does the method come from? Does it refer

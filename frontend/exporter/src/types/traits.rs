@@ -234,7 +234,8 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx>>(
 
 pub type TraitInfo = ImplSource;
 
-pub fn solve_method_traits<'tcx, S: BaseState<'tcx>>(
+/// Solve the trait obligations for a specific item.
+pub fn solve_item_traits<'tcx, S: BaseState<'tcx>>(
     s: &S,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     def_id: rustc_hir::def_id::DefId,
