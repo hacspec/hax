@@ -16,7 +16,7 @@ pub struct SourceInfo {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::mir::LocalDecl<'tcx>, state: S as s)]
+#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_middle::mir::LocalDecl<'tcx>, state: S as s)]
 pub struct LocalDecl {
     pub mutability: Mutability,
     pub local_info: ClearCrossCrate<LocalInfo>,
@@ -109,7 +109,7 @@ pub mod mir_kinds {
 pub use mir_kinds::IsMirKind;
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::mir::Constant<'tcx>, state: S as s)]
+#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_middle::mir::Constant<'tcx>, state: S as s)]
 pub struct Constant {
     pub span: Span,
     pub user_ty: Option<UserTypeAnnotationIndex>,
@@ -152,7 +152,7 @@ pub struct MirBody<KIND> {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::mir::SourceScopeData<'tcx>, state: S as s)]
+#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_middle::mir::SourceScopeData<'tcx>, state: S as s)]
 pub struct SourceScopeData {
     pub span: Span,
     pub parent_scope: Option<SourceScope>,
@@ -162,7 +162,7 @@ pub struct SourceScopeData {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::Instance<'tcx>, state: S as s)]
+#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_middle::ty::Instance<'tcx>, state: S as s)]
 pub struct Instance {
     pub def: InstanceDef,
     pub substs: Vec<GenericArg>,
@@ -185,7 +185,7 @@ pub enum Safety {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::Operand<'tcx>, state: S as s)]
+#[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>, from: rustc_middle::mir::Operand<'tcx>, state: S as s)]
 pub enum Operand {
     Copy(Place),
     Move(Place),
@@ -504,7 +504,7 @@ pub enum TerminatorKind {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::Statement<'tcx>, state: S as s)]
+#[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>, from: rustc_middle::mir::Statement<'tcx>, state: S as s)]
 pub struct Statement {
     pub source_info: SourceInfo,
     #[map(Box::new(x.sinto(s)))]
@@ -512,7 +512,7 @@ pub struct Statement {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::StatementKind<'tcx>, state: S as s)]
+#[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>, from: rustc_middle::mir::StatementKind<'tcx>, state: S as s)]
 pub enum StatementKind {
     Assign((Place, Rvalue)),
     FakeRead((FakeReadCause, Place)),
@@ -578,7 +578,9 @@ pub enum ProjectionElem {
 }
 
 // refactor
-impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx>> SInto<S, Place> for rustc_middle::mir::Place<'tcx> {
+impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId> SInto<S, Place>
+    for rustc_middle::mir::Place<'tcx>
+{
     #[tracing::instrument(level = "info", skip(s))]
     fn sinto(&self, s: &S) -> Place {
         let local_decl = &s.mir().local_decls[self.local];
@@ -727,7 +729,7 @@ pub struct MirFnSig {
 
 pub type MirPolyFnSig = Binder<MirFnSig>;
 
-impl<'tcx, S: BaseState<'tcx>> SInto<S, MirFnSig> for rustc_middle::ty::FnSig<'tcx> {
+impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, MirFnSig> for rustc_middle::ty::FnSig<'tcx> {
     fn sinto(&self, s: &S) -> MirFnSig {
         let inputs = self.inputs().sinto(s);
         let output = self.output().sinto(s);
@@ -743,7 +745,7 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, MirFnSig> for rustc_middle::ty::FnSig<'t
 
 // TODO: we need this function because sometimes, Rust doesn't infer the proper
 // typeclass instance.
-pub(crate) fn poly_fn_sig_to_mir_poly_fn_sig<'tcx, S: BaseState<'tcx>>(
+pub(crate) fn poly_fn_sig_to_mir_poly_fn_sig<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     sig: &rustc_middle::ty::PolyFnSig<'tcx>,
     s: &S,
 ) -> MirPolyFnSig {
@@ -751,7 +753,7 @@ pub(crate) fn poly_fn_sig_to_mir_poly_fn_sig<'tcx, S: BaseState<'tcx>>(
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::AggregateKind<'tcx>, state: S as s)]
+#[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>, from: rustc_middle::mir::AggregateKind<'tcx>, state: S as s)]
 pub enum AggregateKind {
     Array(Ty),
     Tuple,
@@ -802,7 +804,7 @@ pub enum NullOp {
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::Rvalue<'tcx>, state: S as s)]
+#[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>, from: rustc_middle::mir::Rvalue<'tcx>, state: S as s)]
 pub enum Rvalue {
     Use(Operand),
     #[custom_arm(

@@ -161,7 +161,7 @@ pub(crate) fn scalar_int_to_constant_literal<'tcx, S: BaseState<'tcx>>(
     }
 }
 
-pub(crate) fn scalar_to_constant_expr<'tcx, S: BaseState<'tcx>>(
+pub(crate) fn scalar_to_constant_expr<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     ty: rustc_middle::ty::Ty<'tcx>,
     scalar: &rustc_middle::mir::interpret::Scalar,
@@ -245,7 +245,7 @@ pub(crate) fn must_evaluate_constant(id: &DefId) -> bool {
     }
 }
 
-pub(crate) fn const_to_constant_expr<'tcx, S: BaseState<'tcx>>(
+pub(crate) fn const_to_constant_expr<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     c: rustc_middle::ty::Const<'tcx>,
 ) -> ConstantExpr {
@@ -296,7 +296,7 @@ pub(crate) fn const_to_constant_expr<'tcx, S: BaseState<'tcx>>(
 }
 
 // #[tracing::instrument(skip(s))]
-pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
+pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     valtree: rustc_middle::ty::ValTree<'tcx>,
     ty: rustc_middle::ty::Ty<'tcx>,
@@ -408,7 +408,7 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
     }
 }
 
-pub(crate) fn const_value_reference_to_constant_expr<'tcx, S: BaseState<'tcx>>(
+pub(crate) fn const_value_reference_to_constant_expr<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     ty: rustc_middle::ty::Ty<'tcx>,
     val: rustc_middle::mir::interpret::ConstValue<'tcx>,
@@ -469,7 +469,7 @@ pub(crate) fn const_value_reference_to_constant_expr<'tcx, S: BaseState<'tcx>>(
     }
 }
 
-pub fn const_value_to_constant_expr<'tcx, S: BaseState<'tcx>>(
+pub fn const_value_to_constant_expr<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     ty: rustc_middle::ty::Ty<'tcx>,
     val: rustc_middle::mir::interpret::ConstValue<'tcx>,

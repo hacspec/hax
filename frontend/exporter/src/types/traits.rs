@@ -1,6 +1,8 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub enum ImplSource {
     UserDefined(ImplSourceUserDefinedData),
     Param(Binder<TraitRef>, Vec<ImplSource>, BoundConstness),
@@ -12,35 +14,56 @@ pub enum ImplSource {
     AutoImpl(ImplSourceAutoImplData),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct ImplSourceUserDefinedData {
     pub impl_def_id: DefId,
     pub substs: Vec<GenericArg>,
     pub nested: Vec<ImplSource>,
 }
 
-#[derive(AdtInto, Copy, Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[derive(
+    AdtInto,
+    Copy,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    JsonSchema,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::BoundConstness, state: S as _s)]
 pub enum BoundConstness {
     NotConst,
     ConstIfConst,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct ImplSourceObjectData {
     pub upcast_trait_ref: Binder<TraitRef>,
     pub vtable_base: usize,
     pub nested: Vec<ImplSource>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct ImplSourceTraitUpcastingData {
     pub upcast_trait_ref: Binder<TraitRef>,
     pub vtable_vptr_slot: Option<usize>,
     pub nested: Vec<ImplSource>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct ImplSourceAutoImplData {
     pub trait_def_id: DefId,
     /// Solving the nested obligations sometimes loops.
@@ -115,7 +138,7 @@ pub struct ParamsInfo {
 }
 
 /// Compute the parameters information for a definition. See [ParamsInfo].
-pub fn get_params_info<'tcx, S: BaseState<'tcx>>(
+pub fn get_params_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     def_id: rustc_hir::def_id::DefId,
 ) -> ParamsInfo {
@@ -156,7 +179,7 @@ pub fn get_params_info<'tcx, S: BaseState<'tcx>>(
 }
 
 /// Compute the parameters information for a definition's parent. See [ParamsInfo].
-pub fn get_parent_params_info<'tcx, S: BaseState<'tcx>>(
+pub fn get_parent_params_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     def_id: rustc_hir::def_id::DefId,
 ) -> Option<ParamsInfo> {
@@ -246,7 +269,7 @@ pub fn select_trait_candidate<'tcx>(
 /// obligations are satisfiable (this is done at type checking time) we don't
 /// need to return any information about this obligation, and in particular we
 /// don't need a witness (contrary to the traits).
-fn solve_obligation<'tcx, S: BaseState<'tcx>>(
+fn solve_obligation<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     obligation: rustc_trait_selection::traits::Obligation<'tcx, rustc_middle::ty::Predicate<'tcx>>,
 ) -> Option<ImplSource> {
@@ -283,7 +306,7 @@ fn solve_obligation<'tcx, S: BaseState<'tcx>>(
     }
 }
 
-fn solve_obligations<'tcx, S: BaseState<'tcx>>(
+fn solve_obligations<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     obligations: Vec<
         rustc_trait_selection::traits::Obligation<'tcx, rustc_middle::ty::Predicate<'tcx>>,
@@ -296,7 +319,7 @@ fn solve_obligations<'tcx, S: BaseState<'tcx>>(
 }
 
 /// Compute the full trait information (recursively solve the nested obligations).
-pub fn solve_trait<'tcx, S: BaseState<'tcx>>(
+pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
@@ -378,7 +401,7 @@ pub struct TraitInfo {
 }
 
 /// Retrieve the trait information, typically for a function call.
-pub fn get_trait_info<'tcx, S: BaseState<'tcx>>(
+pub fn get_trait_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     method_def_id: rustc_hir::def_id::DefId,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
@@ -471,8 +494,9 @@ pub fn get_trait_info<'tcx, S: BaseState<'tcx>>(
     (truncated_generics, info)
 }
 
-/// Solve the trait obligations for a specific item.
-pub fn solve_item_traits<'tcx, S: BaseState<'tcx>>(
+/// Solve the trait obligations for a specific item use (for example, a method
+/// call, an ADT, etc.).
+pub fn solve_item_traits<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     def_id: rustc_hir::def_id::DefId,

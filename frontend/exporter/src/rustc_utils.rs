@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 #[tracing::instrument(skip(state))]
-pub(crate) fn arrow_of_sig<'tcx, S: BaseState<'tcx>>(
+pub(crate) fn arrow_of_sig<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     sig: &rustc_middle::ty::PolyFnSig<'tcx>,
     state: &S,
 ) -> Ty {
