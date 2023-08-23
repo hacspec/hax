@@ -307,6 +307,37 @@ module Make (F : Features.T) = struct
       end
   end
 
+  module Expect = struct
+    let mut_borrow (e : expr) : expr option =
+      match e.e with Borrow { kind = Mut _; e; _ } -> Some e | _ -> None
+
+    let deref (e : expr) : expr option =
+      match e.e with
+      | App { f = { e = GlobalVar (`Primitive Deref); _ }; args = [ e ]; _ } ->
+          Some e
+      | _ -> None
+
+    let concrete_app1 (f : Concrete_ident.name) (e : expr) : expr option =
+      match e.e with
+      | App { f = { e = GlobalVar (`Concrete f') }; args = [ e ] }
+        when Concrete_ident.eq_name f f' ->
+          Some e
+      | _ -> None
+
+    let deref_mut_app = concrete_app1 Core__ops__deref__DerefMut__deref_mut
+
+    let local_var (e : expr) : expr option =
+      match e.e with LocalVar i -> Some e | _ -> None
+
+    let arrow (typ : ty) : (ty list * ty) option =
+      match typ with
+      | TArrow (inputs, output) -> Some (inputs, output)
+      | _ -> None
+
+    let mut_ref (typ : ty) : ty option =
+      match typ with TRef { mut = Mutable _; typ; _ } -> Some typ | _ -> None
+  end
+
   (** Produces a local identifier which is locally fresh **with respect
       to expressions {exprs}**. *)
   let fresh_local_ident_in_expr (exprs : expr list) (prefix : string) :
@@ -557,6 +588,18 @@ module Make (F : Features.T) = struct
   let rec unbox_underef_expr e =
     (unbox_expr' unbox_underef_expr >> underef_expr' unbox_underef_expr) e
 
+  let rec expr_of_lhs (span : span) (lhs : lhs) : expr =
+    match lhs with
+    | LhsLocalVar { var; typ } -> { e = LocalVar var; typ; span }
+    | LhsFieldAccessor { e; typ; field; _ } ->
+        let e = expr_of_lhs span e in
+        let f = { e = GlobalVar field; typ = TArrow ([ e.typ ], typ); span } in
+        { e = App { f; args = [ e ] }; typ = e.typ; span }
+    | LhsArrayAccessor { e; typ; index; _ } ->
+        let args = [ expr_of_lhs span e; index ] in
+        call Core__ops__index__Index__index args span typ
+    | LhsArbitraryExpr { e; _ } -> e
+
   (* module Box = struct *)
   (*   module Ty = struct *)
   (*     let destruct (t : ty) : ty option = *)
@@ -647,6 +690,79 @@ module Make (F : Features.T) = struct
             args = [ tuple ];
           };
     }
+
+  module Place = struct
+    type t = { place : place'; span : span; typ : ty }
+
+    and place' =
+      | LocalVar of LocalIdent.t
+      | Deref of expr
+      | IndexProjection of { place : t; index : expr }
+      | FieldProjection of { place : t; projector : global_ident }
+    [@@deriving show]
+
+    let deref_mut_allowed (t : ty) : bool =
+      match t with
+      | TApp { ident; _ } -> Global_ident.eq_name Alloc__vec__Vec ident
+      | _ -> false
+
+    let rec of_expr (e : expr) : t option =
+      let wrap place = Some { place; span = e.span; typ = e.typ } in
+      match e.e with
+      | App { f = { e = GlobalVar (`Primitive Deref); _ }; args = [ e ]; _ }
+        -> (
+          match of_expr e with
+          | Some { place = IndexProjection _; _ } as value -> value
+          | _ -> wrap @@ Deref e)
+      | LocalVar i -> wrap @@ LocalVar i
+      | App
+          {
+            f = { e = GlobalVar (`Projector _ as projector) };
+            args = [ place ];
+          } ->
+          let* place = of_expr place in
+          wrap @@ FieldProjection { place; projector }
+      | App { f = { e = GlobalVar f }; args = [ place; index ] }
+        when Global_ident.eq_name Core__ops__index__IndexMut__index_mut f ->
+          (* Note that here, we allow any type to be `index_mut`ed:
+             Hax translates that to `Rust_primitives.Hax.update_at`.
+             This will typecheck IFF there is an implementation.
+          *)
+          let* typ = Expect.mut_ref e.typ in
+          let* place = Expect.mut_borrow place in
+          let* place = of_expr place in
+          let place = IndexProjection { place; index } in
+          Some { place; span = e.span; typ }
+      | _ -> None
+
+    let rec to_expr (p : t) : expr =
+      match p.place with
+      | LocalVar v ->
+          let e : expr' = LocalVar v in
+          { e; typ = p.typ; span = p.span }
+      | Deref e -> call' (`Primitive Deref) [ e ] p.span p.typ
+      | FieldProjection { place; projector } ->
+          let e = to_expr place in
+          call' projector [ e ] p.span p.typ
+      | IndexProjection { place; index } ->
+          let e = to_expr place in
+          call Core__ops__index__IndexMut__index_mut [ e; index ] p.span p.typ
+
+    let expect_deref_mut (p : t) : t option =
+      match p.place with
+      | Deref e ->
+          let* e = Expect.deref_mut_app e in
+          let* e = Expect.mut_borrow e in
+          of_expr e
+      | _ -> None
+
+    let expect_allowed_deref_mut (p : t) : t option =
+      let* p = expect_deref_mut p in
+      if deref_mut_allowed p.typ then Some p else None
+
+    let skip_allowed_deref_mut (p : t) : t =
+      Option.value ~default:p (expect_deref_mut p)
+  end
 
   module StringList = struct
     module U = struct

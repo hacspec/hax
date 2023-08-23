@@ -364,11 +364,26 @@ struct
           in
           F.term @@ F.AST.Name (pconcrete_ident id)
         in
-        F.term_of_string
-          ("(let l = " ^ term_to_string body
-         ^ " in assert_norm (List.Tot.length l == " ^ Int.to_string len ^ "); "
-          ^ term_to_string array_of_list
-          ^ " l)")
+        let list_ident = F.id "list" in
+        let list = F.term_of_lid [ "list" ] in
+        let array = F.mk_e_app array_of_list [ list ] in
+        let assert_norm =
+          F.term_of_lid [ "FStar"; "Pervasives"; "assert_norm" ]
+        in
+        let equality = F.term_of_lid [ "Prims"; "eq2" ] in
+        let length = F.term_of_lid [ "List"; "Tot"; "length" ] in
+        let length = F.mk_e_app length [ list ] in
+        let len =
+          F.term @@ F.AST.Const (F.Const.Const_int (Int.to_string len, None))
+        in
+        let formula = F.mk_e_app equality [ length; len ] in
+        let assertion = F.mk_e_app assert_norm [ formula ] in
+        let pat = F.AST.PatVar (list_ident, None, []) |> F.pat in
+        F.term
+        @@ F.AST.Let
+             ( NoLetQualifier,
+               [ (None, (pat, body)) ],
+               F.term @@ F.AST.Seq (assertion, array) )
     | Let { lhs; rhs; body; monadic = Some monad } ->
         let p =
           F.pat @@ F.AST.PatAscribed (ppat lhs, (pty lhs.span lhs.typ, None))
@@ -935,6 +950,7 @@ open Phase_utils
 module TransformToInputLanguage =
   [%functor_application
   Phases.Reject.RawOrMutPointer(Features.Rust)
+  |> Phases.And_mut_defsite
   |> Phases.Reconstruct_for_loops
   |> Phases.Direct_and_mut
   |> Phases.Reject.Arbitrary_lhs
