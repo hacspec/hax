@@ -129,15 +129,21 @@ impl<'s, S: BaseState<'s> + HasOwnerId> SInto<S, ExtendedDefId> for rustc_hir::d
                     ExtendedDefPathItem::ImplTraitAssocTy
                 }
                 DefPathData::Impl => {
-                    // `impl` blocks are defined for types
-                    // We retrieve the type name and the predicatesx
-                    let ty = tcx.type_of(id).subst_identity().sinto(s);
+                    // `impl` blocks are defined for types: we retrieve the
+                    // type name and the predicates.
+
+                    // Remark: we need to change the state before calling
+                    // sinto, because we need to change the owner id:
+                    // otherwise we risk using a wrong parameter environment
+                    // to solve the trait obligations, for instance.
+                    let s1 = &State::new_from_state_and_id(s, id);
+                    let ty = tcx.type_of(id).subst_identity().sinto(s1);
 
                     let bounds = tcx
                         .predicates_of(id)
                         .predicates
                         .into_iter()
-                        .map(|(x, _)| x.sinto(s))
+                        .map(|(x, _)| x.sinto(s1))
                         .collect();
                     ExtendedDefPathItem::Impl { ty, bounds }
                 }
