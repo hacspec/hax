@@ -2436,7 +2436,13 @@ pub type ThirBody = Expr;
 
 impl<'x, 'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, Ty> for rustc_hir::Ty<'x> {
     fn sinto(self: &rustc_hir::Ty<'x>, s: &S) -> Ty {
-        let ctx = rustc_hir_analysis::collect::ItemCtxt::new(s.base().tcx, s.owner_id().def_id);
+        // **Important:**
+        // We need a local id here, and we get it from the owner id, which must
+        // be local. It is safe to do so, because if we have access to a HIR ty,
+        // it necessarily means we are exploring a local item (we don't have
+        // access to the HIR of external objects, only their MIR).
+        let local_id = s.owner_id().as_local().unwrap();
+        let ctx = rustc_hir_analysis::collect::ItemCtxt::new(s.base().tcx, local_id);
         ctx.to_ty(self).sinto(s)
     }
 }
@@ -2533,7 +2539,7 @@ pub struct AnonConst<Body: IsBody> {
     #[map({
         body_from_id::<Body, _>(*x, &State {
             thir: (),
-            owner_id: hir_id.owner,
+            owner_id: hir_id.owner.to_def_id(),
             base: s.base(),
             mir: (),
         })
@@ -2646,7 +2652,7 @@ pub struct Impl<Body: IsBody> {
     pub constness: Constness,
     pub generics: Generics<Body>,
     #[map({
-        s.base().tcx.impl_trait_ref(s.owner_id().to_def_id()).sinto(s)
+        s.base().tcx.impl_trait_ref(s.owner_id()).sinto(s)
     })]
     pub of_trait: Option<TraitRef>,
     pub self_ty: Ty,
@@ -3161,7 +3167,13 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, GenericBounds>
         // According to what kind of node we are looking at, we should
         // either call `predicates_of` or `item_bounds`
         let use_item_bounds = {
-            let hir_id = tcx.hir().local_def_id_to_hir_id(s.owner_id().def_id);
+            // **Important:**
+            // We need a local id here, and we get it from the owner id, which must
+            // be local. It is safe to do so, because if we have access to HIR objects,
+            // it necessarily means we are exploring a local item (we don't have
+            // access to the HIR of external objects, only their MIR).
+            let local_id = s.owner_id().as_local().unwrap();
+            let hir_id = tcx.hir().local_def_id_to_hir_id(local_id);
             let node = tcx.hir().get(hir_id);
             use rustc_hir as hir;
             matches!(
@@ -3177,11 +3189,11 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, GenericBounds>
         };
 
         let predicates: Vec<_> = if use_item_bounds {
-            let list = tcx.item_bounds(s.owner_id().to_def_id()).subst_identity();
+            let list = tcx.item_bounds(s.owner_id()).subst_identity();
             let span = list.default_span(tcx);
             list.into_iter().map(|x| (x, span)).collect()
         } else {
-            tcx.predicates_of(s.owner_id().to_def_id())
+            tcx.predicates_of(s.owner_id())
                 .predicates
                 .into_iter()
                 .cloned()
@@ -3234,7 +3246,7 @@ pub struct Item<Body: IsBody> {
             },
             thir: (),
             mir: (),
-            owner_id: self.owner_id,
+            owner_id: self.owner_id.to_def_id(),
         })
     })]
     pub kind: ItemKind<Body>,

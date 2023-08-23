@@ -30,7 +30,7 @@ pub fn make_fn_def<'tcx, Body: IsBody, S: BaseState<'tcx>>(
     let (thir, expr_entrypoint) = get_thir(did, s);
     let s = &State {
         thir: thir.clone(),
-        owner_id,
+        owner_id: owner_id.to_def_id(),
         base: s.base(),
         mir: (),
     };
@@ -47,7 +47,14 @@ pub fn body_from_id<'tcx, Body: IsBody, S: BaseState<'tcx> + HasOwnerId>(
     id: rustc_hir::BodyId,
     s: &S,
 ) -> Body {
-    Body::body(s.base().tcx.hir().body_owner_def_id(id), s.owner_id(), s)
+    // **Important:**
+    // We need a local id here, and we get it from the owner id, which must
+    // be local. It is safe to do so, because if we have access to HIR objects,
+    // it necessarily means we are exploring a local item (we don't have
+    // access to the HIR of external objects, only their MIR).
+    let def_id = s.owner_id().as_local().unwrap();
+    let owner_id = rustc_hir::OwnerId { def_id };
+    Body::body(s.base().tcx.hir().body_owner_def_id(id), owner_id, s)
 }
 
 mod implementations {
@@ -62,7 +69,7 @@ mod implementations {
             let (thir, expr) = get_thir(did, s);
             expr.sinto(&State {
                 thir,
-                owner_id,
+                owner_id: owner_id.to_def_id(),
                 base: s.base(),
                 mir: (),
             })
@@ -81,7 +88,7 @@ mod implementations {
             let mir = Rc::new(s.base().tcx.mir_built(did).borrow().clone());
             mir.sinto(&State {
                 thir,
-                owner_id,
+                owner_id: owner_id.to_def_id(),
                 base: s.base(),
                 mir: mir.clone(),
             })

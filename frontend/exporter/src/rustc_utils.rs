@@ -258,7 +258,7 @@ pub(crate) fn attribute_from_scope<'tcx, S: ExprState<'tcx>>(
 ) -> (Option<rustc_hir::hir_id::HirId>, Vec<Attribute>) {
     let owner = s.owner_id();
     let tcx = s.base().tcx;
-    let scope_tree = tcx.region_scope_tree(owner.to_def_id());
+    let scope_tree = tcx.region_scope_tree(owner);
     let hir_id = scope.hir_id(scope_tree);
     let tcx = s.base().tcx;
     let map = tcx.hir();
