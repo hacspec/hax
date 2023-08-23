@@ -267,7 +267,7 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     // fn foo<T : Bar>(...)
     //            ^^^
     // ```
-    let method_traits = solve_item_traits(s, param_env, def_id, substs);
+    let trait_refs = solve_item_traits(s, param_env, def_id, substs);
 
     // Check if this is a trait method call: retrieve the trait source if
     // it is the case (i.e., where does the method come from? Does it refer
@@ -294,8 +294,8 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     //            ^^^
     //     method level trait obligation
     // ```
-    let (substs, source) = if let Some(assoc) = tcx.opt_associated_item(def_id) {
-        // There is an associated item - should be a trait
+    let (substs, source) = if let Some(assoc) = tcx.opt_associated_item(def_id) && assoc.trait_item_def_id.is_some() {
+        // There is an associated item, and it is a trait
         use tracing::*;
         trace!("def_id: {:?}", def_id);
         trace!("assoc: def_id: {:?}", assoc.def_id);
@@ -318,10 +318,11 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         // Return
         (substs, Option::Some(trait_info))
     } else {
+        // Regular function call
         (substs.sinto(s), Option::None)
     };
 
-    (def_id.sinto(s), substs, method_traits, source)
+    (def_id.sinto(s), substs, trait_refs, source)
 }
 
 fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>(
@@ -338,7 +339,7 @@ fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasO
         fn_span,
     } = terminator
     {
-        let (fun_id, substs, method_traits, trait_info) = get_function_from_operand(s, func);
+        let (fun_id, substs, trait_refs, trait_info) = get_function_from_operand(s, func);
 
         TerminatorKind::Call {
             fun_id,
@@ -349,7 +350,7 @@ fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasO
             unwind: unwind.sinto(s),
             from_hir_call: from_hir_call.sinto(s),
             fn_span: fn_span.sinto(s),
-            method_traits,
+            trait_refs,
             trait_info,
         }
     } else {
@@ -467,7 +468,7 @@ pub enum TerminatorKind {
         unwind: UnwindAction,
         from_hir_call: bool,
         fn_span: Span,
-        method_traits: Vec<ImplSource>,
+        trait_refs: Vec<ImplSource>,
         trait_info: Option<TraitInfo>,
     },
     Assert {

@@ -8,6 +8,8 @@ pub enum ImplSource {
     /// For builtin traits such as [core::marker::Sized].
     Builtin(Binder<TraitRef>, Vec<ImplSource>),
     TraitUpcasting(ImplSourceTraitUpcastingData),
+    /// For instance of [core::marker::Sync] for instance
+    AutoImpl(ImplSourceAutoImplData),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -36,6 +38,18 @@ pub struct ImplSourceTraitUpcastingData {
     pub upcast_trait_ref: Binder<TraitRef>,
     pub vtable_vptr_slot: Option<usize>,
     pub nested: Vec<ImplSource>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct ImplSourceAutoImplData {
+    pub trait_def_id: DefId,
+    /// Solving the nested obligations sometimes loops.
+    /// For instance, if you query a candidate for [core::marker::Syn<u8>],
+    /// it returns the an auto impl with the nested proof obligation that
+    /// we have [core::marker::Syn<u8>].
+    /// We could detect those cases, but as we don't use the auto impls for
+    /// now, we prefer to ignore the nested obligations.
+    pub nested: Vec<String>,
 }
 
 /// We use this to store information about the parameters in parent blocks.
@@ -341,8 +355,15 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx>>(
                 nested: solve_obligations(s, nested),
             })
         }
-        _ => {
-            unimplemented!()
+        RustImplSource::AutoImpl(rustc_trait_selection::traits::ImplSourceAutoImplData {
+            trait_def_id,
+            nested,
+        }) => ImplSource::AutoImpl(ImplSourceAutoImplData {
+            trait_def_id: trait_def_id.sinto(s),
+            nested: nested.iter().map(|x| format!("{:?}", x)).collect(),
+        }),
+        impl_source => {
+            unimplemented!("impl source: {:?}", impl_source)
         }
     }
 }
@@ -421,6 +442,16 @@ pub fn get_trait_info<'tcx, S: BaseState<'tcx>>(
             // update_generics(&mut trait_ref.value.generic_args)
         }
         ImplSource::TraitUpcasting(_data) => {
+            // TODO: not sure
+            todo!(
+                "- trait_ref:\n{:?}\n- params info:\n{:?}\n- impl source:{:?}",
+                trait_ref,
+                params_info,
+                impl_source
+            )
+            // update_generics(&mut data.upcast_trait_ref.value.generic_args)
+        }
+        ImplSource::AutoImpl(_data) => {
             // TODO: not sure
             todo!(
                 "- trait_ref:\n{:?}\n- params info:\n{:?}\n- impl source:{:?}",
