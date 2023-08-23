@@ -1,172 +1,64 @@
 use crate::prelude::*;
 use crate::rustc_middle::query::Key;
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct DisambiguatedDefPathItem<DefPathItem> {
+#[derive(
+    AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+#[args(<'a, S: BaseState<'a>>, from: rustc_hir::definitions::DisambiguatedDefPathData, state: S as s)]
+pub struct DisambiguatedDefPathItem {
     pub data: DefPathItem,
     pub disambiguator: u32,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct GenericDefId<DefPathItem> {
-    /// We make this field an option because the deserializer needs to be
-    /// able to provide a default value.
-    #[serde(skip)]
-    pub rust_def_id: Option<rustc_hir::def_id::DefId>,
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct DefId {
     pub krate: String,
-    pub path: Vec<DisambiguatedDefPathItem<DefPathItem>>,
+    pub path: Vec<DisambiguatedDefPathItem>,
+    pub index: (u32, u32),
 }
 
-pub type DefId = GenericDefId<DefPathItem>;
-pub type ExtendedDefId = GenericDefId<ExtendedDefPathItem>;
-
-impl<T> std::hash::Hash for GenericDefId<T> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.rust_def_id.hash(state)
+impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
+    fn sinto(&self, s: &S) -> DefId {
+        s.base().exported_def_ids.borrow_mut().insert(self.clone());
+        let tcx = s.base().tcx;
+        let def_path = tcx.def_path(self.clone());
+        let krate = tcx.crate_name(def_path.krate);
+        DefId {
+            path: def_path.data.iter().map(|x| x.sinto(s)).collect(),
+            krate: format!("{}", krate),
+            index: (
+                rustc_hir::def_id::CrateNum::as_u32(self.krate),
+                rustc_hir::def_id::DefIndex::as_u32(self.index),
+            ),
+        }
     }
 }
 
-impl<T> std::cmp::PartialEq for GenericDefId<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.rust_def_id == other.rust_def_id
-    }
-}
-
-impl<T> std::cmp::Eq for GenericDefId<T> {}
-
-impl<T> std::cmp::PartialOrd for GenericDefId<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.rust_def_id.partial_cmp(&other.rust_def_id)
-    }
-}
-
-impl<T> std::cmp::Ord for GenericDefId<T> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.rust_def_id.cmp(&other.rust_def_id)
-    }
-}
-
+// TODO: this should not be there
 impl DefId {
     pub fn is_anon_const(&self) -> bool {
         self.path.last().unwrap().data.is_anon_const()
     }
 }
-
-impl<'s, S: BaseState<'s>> SInto<S, DisambiguatedDefPathItem<DefPathItem>>
-    for rustc_hir::definitions::DisambiguatedDefPathData
-{
-    fn sinto(&self, s: &S) -> DisambiguatedDefPathItem<DefPathItem> {
-        DisambiguatedDefPathItem {
-            data: self.data.sinto(s),
-            disambiguator: self.disambiguator,
+impl From<&DefId> for rustc_span::def_id::DefId {
+    fn from<'tcx>(def_id: &DefId) -> Self {
+        let (krate, index) = def_id.index;
+        Self {
+            krate: rustc_hir::def_id::CrateNum::from_u32(krate),
+            index: rustc_hir::def_id::DefIndex::from_u32(index),
         }
     }
 }
 
-impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
-    fn sinto(&self, s: &S) -> DefId {
-        let tcx = s.base().tcx;
-        let def_path = tcx.def_path(self.clone());
-        let krate = tcx.crate_name(def_path.krate);
-        GenericDefId {
-            rust_def_id: Option::Some(*self),
-            path: def_path.data.iter().map(|x| x.sinto(s)).collect(),
-            krate: format!("{}", krate),
-        }
-    }
-}
-
-impl<'s, S: BaseState<'s>> SInto<S, ExtendedDefId> for rustc_hir::def_id::DefId {
-    fn sinto(&self, s: &S) -> ExtendedDefId {
-        let tcx = s.base().tcx;
-        let krate = tcx.crate_name(self.krate).to_ident_string();
-
-        // An important subcase in a path is the `Impl` block:
-        // ```
-        // impl<T> List<T> {
-        //   fn new() ...
-        // }
-        // ```
-        //
-        // One issue here is that "List" *doesn't appear* in the path, which would
-        // look like the following:
-        //
-        //   `TypeNS("Crate") :: Impl :: ValueNs("new")`
-        //                       ^^^
-        //           This is where "List" should be
-        //
-        // Because of this, we enrich the `Impl` path data with type information.
-        // For technical reasons, we convert the path starting *with the end*.
-
-        // In order to lookup types, we remember the id of the current sub-path.
-        let mut id = *self;
-        let mut path: Vec<DisambiguatedDefPathItem<ExtendedDefPathItem>> = Vec::new();
-        loop {
-            // Retrieve the id key
-            let id_key = tcx.def_key(id);
-
-            // Match over the key data
-            let data = id_key.disambiguated_data;
-            use rustc_hir::definitions::DefPathData;
-            let path_item = match data.data {
-                DefPathData::CrateRoot => ExtendedDefPathItem::CrateRoot,
-                DefPathData::ForeignMod => ExtendedDefPathItem::ForeignMod,
-                DefPathData::Use => ExtendedDefPathItem::Use,
-                DefPathData::GlobalAsm => ExtendedDefPathItem::GlobalAsm,
-                DefPathData::TypeNs(symbol) => ExtendedDefPathItem::TypeNs(symbol.sinto(s)),
-                DefPathData::ValueNs(symbol) => ExtendedDefPathItem::ValueNs(symbol.sinto(s)),
-                DefPathData::MacroNs(symbol) => ExtendedDefPathItem::MacroNs(symbol.sinto(s)),
-                DefPathData::LifetimeNs(symbol) => ExtendedDefPathItem::LifetimeNs(symbol.sinto(s)),
-                DefPathData::ClosureExpr => ExtendedDefPathItem::ClosureExpr,
-                DefPathData::Ctor => ExtendedDefPathItem::Ctor,
-                DefPathData::AnonConst => ExtendedDefPathItem::AnonConst,
-                DefPathData::ImplTrait => {
-                    // TODO: probably need to add information here
-                    ExtendedDefPathItem::ImplTrait
-                }
-                DefPathData::ImplTraitAssocTy => {
-                    // TODO: probably need to add information here
-                    ExtendedDefPathItem::ImplTraitAssocTy
-                }
-                DefPathData::Impl => {
-                    // `impl` blocks are defined for types
-                    // We retrieve the type name and the predicatesx
-                    let ty = tcx.type_of(id).subst_identity().sinto(s);
-
-                    let bounds = tcx
-                        .predicates_of(id)
-                        .predicates
-                        .into_iter()
-                        .map(|(x, _)| x.sinto(s))
-                        .collect();
-                    ExtendedDefPathItem::Impl { ty, bounds }
-                }
-            };
-
-            // Push the path item
-            path.push(DisambiguatedDefPathItem {
-                data: path_item,
-                disambiguator: data.disambiguator,
-            });
-
-            // Update the id to be the parent id
-            match id_key.parent {
-                Some(parent_index) => id.index = parent_index,
-                None => {
-                    // We finished exploring the path
-                    break;
-                }
-            }
-        }
-
-        // Reverse the name
-        path.reverse();
-
-        // Finish
-        GenericDefId {
-            rust_def_id: Option::Some(*self),
-            path,
-            krate,
+// TODO: this should not be there
+impl DefPathItem {
+    pub fn is_anon_const(&self) -> bool {
+        if let DefPathItem::AnonConst = self {
+            true
+        } else {
+            false
         }
     }
 }
@@ -220,46 +112,6 @@ pub enum DefPathItem {
     AnonConst,
     ImplTrait,
     ImplTraitAssocTy,
-}
-
-impl DefPathItem {
-    pub fn is_anon_const(&self) -> bool {
-        if let DefPathItem::AnonConst = self {
-            true
-        } else {
-            false
-        }
-    }
-}
-
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
-pub enum ExtendedDefPathItem {
-    CrateRoot,
-    Impl { ty: Ty, bounds: Vec<Predicate> },
-    ForeignMod,
-    Use,
-    GlobalAsm,
-    TypeNs(Symbol),
-    ValueNs(Symbol),
-    MacroNs(Symbol),
-    LifetimeNs(Symbol),
-    ClosureExpr,
-    Ctor,
-    AnonConst,
-    ImplTrait,
-    ImplTraitAssocTy,
-}
-
-impl ExtendedDefPathItem {
-    pub fn is_anon_const(&self) -> bool {
-        if let ExtendedDefPathItem::AnonConst = self {
-            true
-        } else {
-            false
-        }
-    }
 }
 
 #[derive(
