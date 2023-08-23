@@ -294,7 +294,7 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     //            ^^^
     //     method level trait obligation
     // ```
-    let source = if let Some(assoc) = tcx.opt_associated_item(def_id) {
+    let (substs, source) = if let Some(assoc) = tcx.opt_associated_item(def_id) {
         // There is an associated item - should be a trait
         use tracing::*;
         trace!("def_id: {:?}", def_id);
@@ -313,15 +313,48 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         let _ = tcx.codegen_select_candidate((param_env, tr_ref)).unwrap();
 
         // Get the full trait information
-        let trait_info = solve_trait(s, param_env, tr_ref);
+        let (substs, trait_info) = get_trait_info(s, def_id, param_env, tr_ref);
 
         // Return
-        Option::Some(trait_info)
+        (substs, Option::Some(trait_info))
     } else {
-        Option::None
+        (substs.sinto(s), Option::None)
     };
 
-    (def_id.sinto(s), substs.sinto(s), method_traits, source)
+    (def_id.sinto(s), substs, method_traits, source)
+}
+
+fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>(
+    s: &S,
+    terminator: &rustc_middle::mir::TerminatorKind<'tcx>,
+) -> TerminatorKind {
+    if let rustc_middle::mir::TerminatorKind::Call {
+        func,
+        args,
+        destination,
+        target,
+        unwind,
+        from_hir_call,
+        fn_span,
+    } = terminator
+    {
+        let (fun_id, substs, method_traits, trait_info) = get_function_from_operand(s, func);
+
+        TerminatorKind::Call {
+            fun_id,
+            substs,
+            args: args.sinto(s),
+            destination: destination.sinto(s),
+            target: target.sinto(s),
+            unwind: unwind.sinto(s),
+            from_hir_call: from_hir_call.sinto(s),
+            fn_span: fn_span.sinto(s),
+            method_traits,
+            trait_info,
+        }
+    } else {
+        unreachable!()
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -418,26 +451,15 @@ pub enum TerminatorKind {
         replace: bool,
     },
     #[custom_arm(
-        rustc_middle::mir::TerminatorKind::Call {
-            func, args, destination, target, unwind, from_hir_call, fn_span,
-        } => {
-          let (fun_id, substs, method_traits, trait_info) = get_function_from_operand(s, func);
-          TerminatorKind::Call {
-            fun_id,
-            substs,
-            args: args.sinto(s),
-            destination: destination.sinto(s),
-            target: target.sinto(s),
-            unwind: unwind.sinto(s),
-            from_hir_call: from_hir_call.sinto(s),
-            fn_span: fn_span.sinto(s),
-            method_traits,
-            trait_info,
-          }
+        x @ rustc_middle::mir::TerminatorKind::Call { .. } => {
+          translate_terminator_kind_call(s, x)
         }
     )]
     Call {
         fun_id: DefId,
+        /// We truncate the substitution so as to only include the arguments
+        /// relevant to the method (and not the trait) if it is a trait method
+        /// call. See [ParamsInfo] for the full details.
         substs: Vec<GenericArg>,
         args: Vec<Operand>,
         destination: Place,

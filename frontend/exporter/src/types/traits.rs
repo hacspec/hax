@@ -38,6 +38,121 @@ pub struct ImplSourceTraitUpcastingData {
     pub nested: Vec<ImplSource>,
 }
 
+/// We use this to store information about the parameters in parent blocks.
+/// This is necessary because when querying the generics of a definition,
+/// rustc gives us *all* the generics used in this definition, including
+/// those coming from the outer impl block.
+///
+/// For instance:
+/// ```text
+/// impl Foo<T> {
+///         ^^^
+///       outer block generics
+///   fn bar<U>(...)  { ... }
+///         ^^^
+///       generics local to the function bar
+/// }
+/// ```
+///
+/// `TyCtxt.generics_of(bar)` gives us: `[T, U]`.
+///
+/// We however sometimes need to make a distinction between those two kinds
+/// of generics, in particular when manipulating trait instances. For instance:
+///
+/// ```text
+/// impl<T> Foo for Bar<T> {
+///   fn baz<U>(...)  { ... }
+/// }
+///
+/// fn test(...) {
+///    // Here:
+///    x.baz(...);
+///    // We should refer to this call as:
+///    // > Foo<T>::baz<U>(...)
+///    //
+///    // If baz hadn't been a method implementation of a trait,
+///    // we would have refered to it as:
+///    // > baz<T, U>(...)
+///    //
+///    // The reason is that with traits, we refer to the whole
+///    // trait implementation (as if it were a structure), then
+///    // pick a specific method inside (as if projecting a field
+///    // from a structure).
+/// }
+/// ```
+///
+/// **Remark**: Rust only allows refering to the generics of the **immediately**
+/// outer block. For this reason, when we need to store the information about
+/// the generics of the outer block(s), we need to do it only for one level
+/// (this definitely makes things simpler).
+/// **Additional remark**: it is not possible to directly write an impl block
+/// or a trait definition inside an impl/trait block. However it is possible
+/// to define an impl/trait inside a function, which can itself be inside a
+/// block, leading to nested impl blocks.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct ParamsInfo {
+    /// The total number of generic parameters (regions + types + consts).
+    /// We do not consider the trait clauses as generic parameters.
+    pub num_generic_params: usize,
+    pub num_region_params: usize,
+    pub num_type_params: usize,
+    pub num_const_generic_params: usize,
+    pub num_trait_clauses: usize,
+}
+
+/// Compute the parameters information for a definition. See [ParamsInfo].
+pub fn get_params_info<'tcx, S: BaseState<'tcx>>(
+    s: &S,
+    def_id: rustc_hir::def_id::DefId,
+) -> ParamsInfo {
+    let tcx = s.base().tcx;
+
+    // Compute the number of generics
+    let mut num_region_params = 0;
+    let mut num_type_params = 0;
+    let mut num_const_generic_params = 0;
+
+    let generics = tcx.generics_of(def_id);
+    let num_generic_params = generics.params.len();
+    use rustc_middle::ty::GenericParamDefKind;
+    for param in &generics.params {
+        match param.kind {
+            GenericParamDefKind::Lifetime => num_region_params += 1,
+            GenericParamDefKind::Type { .. } => num_type_params += 1,
+            GenericParamDefKind::Const { .. } => num_const_generic_params += 1,
+        }
+    }
+
+    // Compute the number of trait clauses
+    let mut num_trait_clauses = 0;
+    let preds = tcx.predicates_of(def_id).sinto(s);
+    for (pred, _) in preds.predicates {
+        if let PredicateKind::Clause(Clause::Trait(_)) = &pred.value {
+            num_trait_clauses += 1;
+        }
+    }
+
+    ParamsInfo {
+        num_generic_params,
+        num_region_params,
+        num_type_params,
+        num_const_generic_params,
+        num_trait_clauses,
+    }
+}
+
+/// Compute the parameters information for a definition's parent. See [ParamsInfo].
+pub fn get_parent_params_info<'tcx, S: BaseState<'tcx>>(
+    s: &S,
+    def_id: rustc_hir::def_id::DefId,
+) -> Option<ParamsInfo> {
+    s.base()
+        .tcx
+        .generics_of(def_id)
+        .parent
+        .map(|parent_id| get_params_info(s, parent_id))
+}
+
 /// Adapted from [rustc_trait_selection::traits::SelectionContext::select]:
 /// we want to preserve the nested obligations to resolve them afterwards.
 ///
@@ -232,7 +347,98 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx>>(
     }
 }
 
-pub type TraitInfo = ImplSource;
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct TraitInfo {
+    pub impl_source: ImplSource,
+    pub params_info: ParamsInfo,
+    /// All the generics (from before truncating them - see the documentation
+    /// for [ParamsInfo]). We store this information mostly for debugging purposes.
+    pub all_generics: Vec<GenericArg>,
+}
+
+/// Retrieve the trait information, typically for a function call.
+pub fn get_trait_info<'tcx, S: BaseState<'tcx>>(
+    s: &S,
+    method_def_id: rustc_hir::def_id::DefId,
+    param_env: rustc_middle::ty::ParamEnv<'tcx>,
+    trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
+) -> (Vec<GenericArg>, TraitInfo) {
+    let mut impl_source = solve_trait(s, param_env, trait_ref);
+
+    // We need to remove the arguments which are for the method: we keep the
+    // arguments which are specific to the trait instance (see the comments
+    // in [ParamsInfo]).
+    //
+    // For instance:
+    // ```
+    // impl<T> Foo<T> for Bar {
+    //   fn baz<U>(...) { ... }
+    // }
+    //
+    // fn test(x: Bar) {
+    //   x.baz(...); // Gets desugared to: Foo::baz<Bar, T, U>(x, ...);
+    //   ...
+    // }
+    // ```
+    // Above, we want to drop the `Bar` and `T` arguments.
+    let params_info = get_parent_params_info(s, method_def_id).unwrap();
+
+    let update_generics = |x: &mut Vec<GenericArg>| {
+        let original = x.clone();
+        *x = x[0..params_info.num_generic_params].to_vec();
+        (original, x.clone())
+    };
+
+    // SH: For some reason we don't need to filter the generics everywhere.
+    // I don't understand the logic.
+    let (all_generics, truncated_generics) = match &mut impl_source {
+        ImplSource::UserDefined(data) => {
+            // We don't need to do anything here
+            (data.substs.clone(), data.substs.clone())
+        }
+        ImplSource::Param(trait_ref, _, _) => {
+            // We need to filter here
+            update_generics(&mut trait_ref.value.generic_args)
+        }
+        ImplSource::Object(_data) => {
+            // TODO: not sure
+            todo!(
+                "- trait_ref:\n{:?}\n- params info:\n{:?}\n- impl source:{:?}",
+                trait_ref,
+                params_info,
+                impl_source
+            )
+            // update_generics(&mut data.upcast_trait_ref.value.generic_args)
+        }
+        ImplSource::Builtin(_trait_ref, _) => {
+            // TODO: not sure
+            todo!(
+                "- trait_ref:\n{:?}\n- params info:\n{:?}\n- impl source:{:?}",
+                trait_ref,
+                params_info,
+                impl_source
+            )
+            // update_generics(&mut trait_ref.value.generic_args)
+        }
+        ImplSource::TraitUpcasting(_data) => {
+            // TODO: not sure
+            todo!(
+                "- trait_ref:\n{:?}\n- params info:\n{:?}\n- impl source:{:?}",
+                trait_ref,
+                params_info,
+                impl_source
+            )
+            // update_generics(&mut data.upcast_trait_ref.value.generic_args)
+        }
+    };
+
+    let info = TraitInfo {
+        impl_source,
+        params_info,
+        all_generics,
+    };
+    (truncated_generics, info)
+}
 
 /// Solve the trait obligations for a specific item.
 pub fn solve_item_traits<'tcx, S: BaseState<'tcx>>(
