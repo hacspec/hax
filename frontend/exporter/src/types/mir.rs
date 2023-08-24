@@ -276,33 +276,39 @@ fn translate_switch_targets<'tcx, S: BaseState<'tcx>>(
 
     match switch_ty {
         Ty::Bool => {
-            // This is an: `if ... then ... else ...`
-            assert!(targets_vec.len() == 1);
-            // It seems the block targets are inverted
-            let (test_val, otherwise_block) = targets_vec[0];
+            // This is an: `if ... then ... else ...`. We are matching
+            // on a boolean casted to an integer: `false` is `0`,
+            // `true` is `1`. Thus the `otherwise` branch correspond
+            // to the `then` branch.
+            const FALSE: u128 = false as u128;
+            let [(FALSE, else_branch)] =  targets_vec.as_slice() else {
+                supposely_unreachable_fatal!("MirSwitchBool": targets_vec, switch_ty);
+            };
 
-            assert!(test_val == 0);
-
-            // It seems the block targets are inverted
-            let if_block = targets.otherwise().sinto(s);
-
-            SwitchTargets::If(if_block, otherwise_block)
+            SwitchTargets::If {
+                then_branch: targets.otherwise().sinto(s),
+                else_branch: *else_branch,
+            }
         }
         Ty::Int(int_ty) => {
             // This is a: switch(int).
             // Convert all the test values to the proper values.
-            let mut targets_map: Vec<(ScalarInt, BasicBlock)> = Vec::new();
-            for (v, tgt) in targets_vec {
-                // We need to reinterpret the bytes (`v as i128` is not correct)
-                let v = ScalarInt {
-                    data_le_bytes: v.to_le_bytes(),
-                    int_ty: *int_ty,
-                };
-                targets_map.push((v, tgt));
+            SwitchTargets::SwitchInt {
+                scrutinee_type: *int_ty,
+                branches: targets_vec
+                    .into_iter()
+                    .map(|(v, tgt)| {
+                        (
+                            ScalarInt {
+                                data_le_bytes: v.to_le_bytes(),
+                                int_ty: *int_ty,
+                            },
+                            tgt,
+                        )
+                    })
+                    .collect(),
+                otherwise_branch: targets.otherwise().sinto(s),
             }
-            let otherwise_block = targets.otherwise().sinto(s);
-
-            SwitchTargets::SwitchInt(*int_ty, targets_map, otherwise_block)
         }
         _ => {
             fatal!(s, "Unexpected switch_ty: {:?}", switch_ty)
@@ -312,12 +318,18 @@ fn translate_switch_targets<'tcx, S: BaseState<'tcx>>(
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum SwitchTargets {
-    /// Gives the `if` block and the `else` block
-    If(BasicBlock, BasicBlock),
+    If {
+        then_branch: BasicBlock,
+        else_branch: BasicBlock,
+    },
     /// Gives the integer type, a map linking values to switch branches, and the
     /// otherwise block. Note that matches over enumerations are performed by
     /// switching over the discriminant, which is an integer.
-    SwitchInt(IntTy, Vec<(ScalarInt, BasicBlock)>, BasicBlock),
+    SwitchInt {
+        scrutinee_type: IntTy,
+        branches: Vec<(ScalarInt, BasicBlock)>,
+        otherwise_branch: BasicBlock,
+    },
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
