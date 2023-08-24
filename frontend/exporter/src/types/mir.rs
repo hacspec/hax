@@ -350,25 +350,12 @@ pub enum TerminatorKind {
         unwind: UnwindAction,
         replace: bool,
     },
-    #[custom_arm(
-        rustc_middle::mir::TerminatorKind::Call {
-            func, args, destination, target, unwind, from_hir_call, fn_span,
-        } => {
-          let (fun_id, substs) = get_function_from_operand(s, func);
-          TerminatorKind::Call {
-            fun_id,
-            substs,
-            args: args.sinto(s),
-            destination: destination.sinto(s),
-            target: target.sinto(s),
-            unwind: unwind.sinto(s),
-            from_hir_call: from_hir_call.sinto(s),
-            fn_span: fn_span.sinto(s),
-          }
-        }
-    )]
+    #[use_field(func)]
+    #[prepend(let (fun_id, substs) = get_function_from_operand(s, func);)]
     Call {
+        #[value(fun_id)]
         fun_id: DefId,
+        #[value(substs)]
         substs: Vec<GenericArg>,
         args: Vec<Operand>,
         destination: Place,

@@ -50,19 +50,31 @@ mod option_parse {
 
 /// Returns the token stream corresponding to an attribute (if it
 /// exists), stripping parenthesis already.
-fn tokens_of_attr(attr_name: &str, attrs: &Vec<syn::Attribute>) -> Option<proc_macro::TokenStream> {
+fn tokens_of_attrs<'a>(
+    attr_name: &'a str,
+    attrs: &'a Vec<syn::Attribute>,
+) -> impl Iterator<Item = proc_macro2::TokenStream> + 'a {
     attrs
         .iter()
-        .find(|attr| attr.path.is_ident(attr_name))
+        .filter(|attr| attr.path.is_ident(attr_name))
         .map(|attr| attr.clone().tokens.into())
-        .and_then(strip_parenthesis)
+        .flat_map(strip_parenthesis)
+        .map(|x| x.into())
+}
+
+fn parse_attrs<'a, T: syn::parse::Parse>(
+    attr_name: &'a str,
+    attrs: &'a Vec<syn::Attribute>,
+) -> impl Iterator<Item = T> + 'a {
+    tokens_of_attrs(attr_name, attrs).map(move |x| {
+        syn::parse::<T>(x.clone().into())
+            .expect(format!("expected attribtue {}", attr_name).as_str())
+    })
 }
 
 /// Parse an attribute as a T if it exists.
 fn parse_attr<T: syn::parse::Parse>(attr_name: &str, attrs: &Vec<syn::Attribute>) -> Option<T> {
-    tokens_of_attr(attr_name, attrs).map(|x| {
-        syn::parse::<T>(x.into()).expect(format!("expected attribtue {}", attr_name).as_str())
-    })
+    parse_attrs(attr_name, attrs).next()
 }
 
 /*
@@ -81,6 +93,8 @@ fn fields_to_arm(
     to_record_name: proc_macro2::TokenStream,
     fields: Vec<syn::Field>,
     full_span: proc_macro2::Span,
+    prepend: proc_macro2::TokenStream,
+    used_fields: Vec<syn::Ident>,
     state: syn::Ident,
 ) -> proc_macro2::TokenStream {
     if fields.is_empty() {
@@ -119,6 +133,7 @@ fn fields_to_arm(
         } else {
             quote_spanned! {span=> {#[allow(unused_variables)] let #point = #name_source; #translation}}
         };
+
         let prefix = if is_struct {
             quote_spanned! {field_name_span=> #name_destination:}
         } else {
@@ -134,13 +149,17 @@ fn fields_to_arm(
         )
     });
 
-    let bindings: proc_macro2::TokenStream = data.clone().map(|(x, _)| x).collect();
+    let bindings: proc_macro2::TokenStream = data
+        .clone()
+        .map(|(x, _)| x)
+        .chain(used_fields.iter().map(|f| quote! {#f,}))
+        .collect();
     let fields: proc_macro2::TokenStream = data.clone().map(|(_, x)| x).collect();
 
     if is_struct {
-        quote_spanned! {full_span=> #from_record_name { #bindings .. } => #to_record_name { #fields }, }
+        quote_spanned! {full_span=> #from_record_name { #bindings .. } => {#prepend #to_record_name { #fields }}, }
     } else {
-        quote_spanned! {full_span=> #from_record_name ( #bindings ) => #to_record_name ( #fields ), }
+        quote_spanned! {full_span=> #from_record_name ( #bindings ) => {#prepend #to_record_name ( #fields )}, }
     }
 }
 
@@ -172,7 +191,7 @@ fn variant_to_arm(
     let disable_mapping = attrs
         .iter()
         .any(|attr| attr.path.is_ident("disable_mapping"));
-    let custom_arm = tokens_of_attr("custom_arm", attrs);
+    let custom_arm = tokens_of_attrs("custom_arm", attrs).next();
     // TODO: either complete map or drop it
     let map = parse_attr::<syn::Expr>("map", attrs);
     // ensure_no_attr(
@@ -222,7 +241,15 @@ fn variant_to_arm(
             quote_spanned!(variant.span()=> #from_variant (#names) => #map,)
         }
     } else {
-        fields_to_arm(from_variant, to_variant, fields, variant.span(), state)
+        fields_to_arm(
+            from_variant,
+            to_variant,
+            fields,
+            variant.span(),
+            tokens_of_attrs("prepend", attrs).collect(),
+            parse_attrs("use_field", attrs).collect(),
+            state,
+        )
     }
 }
 
@@ -236,6 +263,8 @@ fn variant_to_arm(
         from,
         custom_arm,
         disable_mapping,
+        use_field,
+        prepend,
         append,
         args,
         todo,
@@ -308,7 +337,8 @@ pub fn adt_into(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let from = drop_generics(from_with_generics.clone());
 
-    let append: proc_macro2::TokenStream = tokens_of_attr("append", &dinput.attrs)
+    let append: proc_macro2::TokenStream = tokens_of_attrs("append", &dinput.attrs)
+        .next()
         .unwrap_or((quote! {}).into())
         .into();
 
@@ -320,6 +350,8 @@ pub fn adt_into(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 quote! {#to},
                 field_vec_of_fields(fields.clone()),
                 span,
+                tokens_of_attrs("prepend", attrs).collect(),
+                parse_attrs("use_field", attrs).collect(),
                 state.clone(),
             );
             quote! { match self { #arm #append } }
