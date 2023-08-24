@@ -1643,6 +1643,7 @@ pub struct VariantInformations {
 
     pub typ: DefId,
     pub variant: DefId,
+    pub variant_index: VariantIdx,
 
     // A record type is a type with only one variant which is a record variant.
     pub typ_is_record: bool,

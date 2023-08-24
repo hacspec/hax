@@ -18,21 +18,24 @@ pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
     variant: &rustc_hir::def_id::DefId,
     s: &S,
 ) -> VariantInformations {
+    // TODO: transform assert into good error
+    assert!(!adt_def.is_enum());
     fn is_record<'s, I: std::iter::Iterator<Item = &'s rustc_middle::ty::FieldDef> + Clone>(
         it: I,
     ) -> bool {
         it.clone()
             .any(|field| !field.name.to_ident_string().parse::<u64>().is_ok())
     }
-    let variant_def = adt_def
+    let (variant_index, variant_def) = adt_def
         .variants()
-        .into_iter()
-        .find(|v| v.def_id == variant.clone())
-        .unwrap();
+        .iter_enumerated()
+        .find(|(_, v)| v.def_id == variant.clone())
+       .unwrap(); /* TODO: unwrap */
     let constructs_type: DefId = adt_def.did().sinto(s);
     VariantInformations {
         typ: constructs_type.clone(),
         variant: variant.sinto(s),
+        variant_index: variant_index.into(),
 
         typ_is_record: adt_def.is_struct() && is_record(adt_def.all_fields()),
         variant_is_record: is_record(variant_def.fields.iter()),
