@@ -2420,6 +2420,16 @@ impl<'a, S: BaseState<'a> + HasOwnerId, Body: IsBody> SInto<S, TraitItem<Body>>
     for rustc_hir::TraitItemRef
 {
     fn sinto(&self, s: &S) -> TraitItem<Body> {
+        let owner_id = self.id.owner_id;
+        let s = &State {
+            base: crate::state::Base {
+                opt_def_id: Some(owner_id.to_def_id()),
+                ..s.base()
+            },
+            thir: (),
+            mir: (),
+            owner_id,
+        };
         let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
         tcx.hir().trait_item(self.clone().id).sinto(s)
     }
