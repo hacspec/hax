@@ -458,7 +458,7 @@ pub enum ProjectionElemFieldKind {
     Tuple(FieldIdx),
     Adt {
         typ: DefId,
-        variant: Option<VariantIdx>,
+        variant_info: VariantInformations,
         index: FieldIdx,
     },
 }
@@ -499,14 +499,18 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx>> SInto<S, Place> for rustc_middle::
                             variant_idx: Option<rustc_abi::VariantIdx>| {
                 ProjectionElem::Field(match cur_ty.kind() {
                     rustc_middle::ty::TyKind::Adt(adt_def, _) => {
-                        assert!(
-                            (adt_def.is_struct() && variant_idx.is_none())
-                                || (adt_def.is_enum() && variant_idx.is_some())
+                        let variant_info = get_variant_information(
+                            adt_def,
+                            // This is silly: `get_variant_information` will reconstruct the VariantIdx...
+                            &adt_def
+                                .variant(variant_idx.unwrap_or(rustc_abi::VariantIdx::from_u32(0)))
+                                .def_id,
+                            s,
                         );
                         ProjectionElemFieldKind::Adt {
                             typ: adt_def.did().sinto(s),
-                            variant: variant_idx.map(|id| id.sinto(s)),
                             index: index.sinto(s),
+                            variant_info,
                         }
                     }
                     rustc_middle::ty::TyKind::Tuple(_types) => {
