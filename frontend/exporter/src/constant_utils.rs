@@ -70,31 +70,25 @@ impl From<ConstantExpr> for Expr {
         let kind = match *c.contents {
             Literal(lit) => {
                 use ConstantLiteral::*;
-                let kind = match lit {
+                let mut neg = false;
+                let node = match lit {
                     Bool(b) => LitKind::Bool(b),
                     Char(c) => LitKind::Char(c),
                     Int(i) => {
-                        // This is slightly tricky, especially because
-                        // of the `neg` boolean. Doing nothing for now:
-                        // we have to test.
-                        let kind = ExprKind::Todo(format!(
-                            "Todo: int ConstantLiteral::Int to Expr: {:?}",
-                            i
-                        ));
-                        return Decorated {
-                            contents: Box::new(kind),
-                            ..c
-                        };
+                        use LitIntType::*;
+                        match i {
+                            ConstantInt::Uint(v, t) => LitKind::Int(v, Unsigned(t)),
+                            ConstantInt::Int(v, t) => {
+                                neg = v.is_negative();
+                                LitKind::Int(v.abs_diff(0), Signed(t))
+                            }
+                        }
                     }
                     ByteStr(raw, str_style) => LitKind::ByteStr(raw, str_style),
                 };
-                ExprKind::Literal {
-                    lit: Spanned {
-                        span: c.span.clone(),
-                        node: kind,
-                    },
-                    neg: false,
-                }
+                let span = c.span.clone();
+                let lit = Spanned { span, node };
+                ExprKind::Literal { lit, neg }
             }
             Adt { info, fields } => ExprKind::Adt(AdtExpr {
                 info,
