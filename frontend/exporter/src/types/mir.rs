@@ -649,15 +649,6 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, MirFnSig> for rustc_middle::ty::FnSig<'t
     }
 }
 
-// TODO: we need this function because sometimes, Rust doesn't infer the proper
-// typeclass instance.
-pub(crate) fn poly_fn_sig_to_mir_poly_fn_sig<'tcx, S: BaseState<'tcx>>(
-    sig: &rustc_middle::ty::PolyFnSig<'tcx>,
-    s: &S,
-) -> MirPolyFnSig {
-    sig.sinto(s)
-}
-
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::AggregateKind<'tcx>, state: S as s)]
 pub enum AggregateKind {

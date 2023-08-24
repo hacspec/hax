@@ -1,15 +1,11 @@
 use crate::prelude::*;
 
-#[tracing::instrument(skip(state))]
+#[tracing::instrument(skip(s))]
 pub(crate) fn arrow_of_sig<'tcx, S: BaseState<'tcx>>(
     sig: &rustc_middle::ty::PolyFnSig<'tcx>,
-    state: &S,
+    s: &S,
 ) -> Ty {
-    // TODO: here, Rust doesn't manage to infer the proper typeclass
-    // instance, even if we annotate the type.
-    //    let sig: MirPolyFnSig = sig.sinto(&state.base().tcx);
-    let sig = poly_fn_sig_to_mir_poly_fn_sig(sig, state);
-    Ty::Arrow(Box::new(sig))
+    Ty::Arrow(Box::new(sig.sinto(s)))
 }
 
 #[tracing::instrument(skip(s))]
