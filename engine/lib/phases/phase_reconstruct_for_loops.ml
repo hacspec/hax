@@ -190,28 +190,7 @@ struct
                                                                           _;
                                                                         };
                                                                   };
-                                                                body =
-                                                                  ( {
-                                                                      e =
-                                                                        Let
-                                                                          {
-                                                                            lhs =
-                                                                              {
-                                                                                p =
-                                                                                PWild;
-                                                                              };
-                                                                            rhs =
-                                                                              body;
-                                                                            body =
-                                                                              {
-                                                                                e =
-                                                                                GlobalVar
-                                                                                (`TupleCons
-                                                                                0);
-                                                                              };
-                                                                          };
-                                                                    }
-                                                                  | body );
+                                                                body;
                                                               };
                                                           };
                                                         ];
@@ -235,6 +214,19 @@ struct
                && Concrete_ident.eq_name Core__option__Option__Some some_ctor
                && Global_ident.eq_name Rust_primitives__hax__never_to_any
                     never_to_any ->
+            let body =
+              match body.e with
+              | Let
+                  {
+                    lhs = { p = PWild };
+                    rhs;
+                    body = { e = GlobalVar (`TupleCons 0) };
+                  }
+                when UA.is_unit_typ rhs.typ ->
+                  rhs
+              | _ -> body
+            in
+
             Some { it; pat; body; state; label; witness }
         | _ -> None
                [@ocamlformat "disable"]
