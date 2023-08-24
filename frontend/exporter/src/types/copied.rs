@@ -1483,8 +1483,7 @@ pub enum Ty {
             arrow_of_sig(&sig, state)
         },
     )]
-    // TODO: rename the MirPolyFnSig, MirFnSig types
-    Arrow(Box<MirPolyFnSig>),
+    Arrow(Box<PolyFnSig>),
 
     #[custom_arm(
         rustc_middle::ty::TyKind::Adt(adt_def, substs) => {
@@ -2227,7 +2226,24 @@ impl<'tcx> ExprKindExt<'tcx> for rustc_middle::thir::Expr<'tcx> {
     }
 }
 
-/// [FnDef] is a
+#[derive(
+    AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::FnSig<'tcx>, state: S as s)]
+pub struct TyFnSig {
+    #[not_in_source]
+    #[map(self.inputs().sinto(s))]
+    pub inputs: Vec<Ty>,
+    #[not_in_source]
+    #[map(self.output().sinto(s))]
+    pub output: Ty,
+    pub c_variadic: bool,
+    pub unsafety: Unsafety,
+    pub abi: Abi,
+}
+
+pub type PolyFnSig = Binder<TyFnSig>;
+
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct FnDef<Body: IsBody> {
     pub header: FnHeader,
