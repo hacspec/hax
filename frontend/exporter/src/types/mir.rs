@@ -757,13 +757,16 @@ pub(crate) fn poly_fn_sig_to_mir_poly_fn_sig<'tcx, S: BaseState<'tcx> + HasOwner
 pub enum AggregateKind {
     Array(Ty),
     Tuple,
-    #[custom_arm(rustc_middle::mir::AggregateKind::Adt(def_id, vid, args, annot, fid) => {
+    #[custom_arm(rustc_middle::mir::AggregateKind::Adt(def_id, vid, substs, annot, fid) => {
         let adt_kind = s.base().tcx.adt_def(def_id).adt_kind().sinto(s);
+        let param_env = s.base().tcx.param_env(s.owner_id());
+        let trait_refs = solve_item_traits(s, param_env, *def_id, substs);
         AggregateKind::Adt(
             def_id.sinto(s),
             vid.sinto(s),
             adt_kind,
-            args.sinto(s),
+            substs.sinto(s),
+            trait_refs,
             annot.sinto(s),
             fid.sinto(s))
     })]
@@ -772,6 +775,7 @@ pub enum AggregateKind {
         VariantIdx,
         AdtKind,
         Vec<GenericArg>,
+        Vec<ImplSource>,
         Option<UserTypeAnnotationIndex>,
         Option<FieldIdx>,
     ),
