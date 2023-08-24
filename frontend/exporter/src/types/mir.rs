@@ -113,7 +113,7 @@ pub use mir_kinds::IsMirKind;
 pub struct Constant {
     pub span: Span,
     pub user_ty: Option<UserTypeAnnotationIndex>,
-    pub literal: TypedConstantKind,
+    pub literal: ConstantExpr,
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -196,7 +196,7 @@ impl Operand {
     pub(crate) fn ty(&self) -> &Ty {
         match self {
             Operand::Copy(p) | Operand::Move(p) => &p.ty,
-            Operand::Constant(c) => &c.literal.typ,
+            Operand::Constant(c) => &c.literal.ty,
         }
     }
 }

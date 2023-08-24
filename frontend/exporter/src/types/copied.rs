@@ -205,8 +205,8 @@ pub struct Scope {
     pub data: ScopeData,
 }
 
-impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantKind> for rustc_middle::mir::ConstantKind<'tcx> {
-    fn sinto(&self, s: &S) -> ConstantKind {
+impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::mir::ConstantKind<'tcx> {
+    fn sinto(&self, s: &S) -> ConstantExpr {
         use rustc_middle::mir;
         let tcx = s.base().tcx;
         match self {
@@ -236,9 +236,6 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantKind> for rustc_middle::mir::Con
         }
     }
 }
-
-// For ConstantKind we merge all the cases (Ty, Val, Unevaluated) into one
-pub type ConstantKind = ConstantExpr;
 
 impl<S> SInto<S, u64> for rustc_middle::mir::interpret::AllocId {
     fn sinto(&self, _: &S) -> u64 {
@@ -1584,8 +1581,8 @@ pub enum RangeEnd {
 #[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::PatRange<'tcx>, state: S as state)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct PatRange {
-    pub lo: TypedConstantKind,
-    pub hi: TypedConstantKind,
+    pub lo: ConstantExpr,
+    pub hi: ConstantExpr,
     pub end: RangeEnd,
 }
 
@@ -1714,7 +1711,7 @@ pub enum PatKind {
         subpattern: Pat,
     },
     Constant {
-        value: TypedConstantKind,
+        value: ConstantExpr,
     },
     Range(PatRange),
     Slice {
