@@ -208,43 +208,29 @@ pub struct Scope {
 impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantKind> for rustc_middle::mir::ConstantKind<'tcx> {
     fn sinto(&self, s: &S) -> ConstantKind {
         use rustc_middle::mir;
-
-        // Evaluate the non-evaluated **anonymous constants**.
-        let constant = if let mir::ConstantKind::Unevaluated(ucv, _) = self {
-            // Use the id to check if we need to evaluate
-            let id: DefId = ucv.def.sinto(s);
-            if must_evaluate_constant(&id) {
-                // Anonymous constant: evaluate
-                self.eval(s.base().tcx, get_param_env(s))
-            } else {
-                // Not an anonymous constant: do not evaluate
-                self.clone()
-            }
-        } else {
-            self.clone()
-        };
-
-        // Do the translation
-        match constant {
-            mir::ConstantKind::Val(const_value, ty) => {
-                const_value_to_constant_expr(s, ty, const_value, self.default_span(s.base().tcx))
-            }
+        let tcx = s.base().tcx;
+        match self {
+            mir::ConstantKind::Val(const_value, ty) => const_value_to_constant_expr(
+                s,
+                ty.clone(),
+                const_value.clone(),
+                self.default_span(tcx),
+            ),
             mir::ConstantKind::Ty(c) => c.sinto(s),
             mir::ConstantKind::Unevaluated(ucv, ty) => {
-                // This should be a top-level constant
-                let tcx = s.base().tcx;
-                let span = match tcx.def_ident_span(ucv.def) {
-                    Option::None => ucv.def.default_span(tcx),
-                    Option::Some(span) => span,
-                };
-                let id = ucv.def.sinto(s);
-                let kind = ConstantExprKind::GlobalName { id };
-                Decorated {
-                    ty: ty.sinto(s),
-                    span: span.sinto(s),
-                    contents: Box::new(kind),
-                    hir_id: None,
-                    attributes: vec![],
+                if is_anon_const(ucv.def, tcx) {
+                    let evaluated_c = self.eval(tcx, get_param_env(s));
+                    if &evaluated_c == self {
+                        supposely_unreachable_fatal!("EvalAnonConstFailed[Mir]": self, evaluated_c);
+                    }
+                    evaluated_c.sinto(s)
+                } else {
+                    let id = ucv.def.sinto(s);
+                    let span = tcx
+                        .def_ident_span(ucv.def)
+                        .unwrap_or_else(|| ucv.def.default_span(tcx))
+                        .sinto(s);
+                    (ConstantExprKind::GlobalName { id }).decorate(ty.sinto(s), span)
                 }
             }
         }
