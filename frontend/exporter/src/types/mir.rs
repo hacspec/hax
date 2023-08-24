@@ -24,8 +24,7 @@ pub struct LocalDecl {
     pub ty: Ty,
     pub user_ty: Option<UserTypeProjections>,
     pub source_info: SourceInfo,
-    #[not_in_source]
-    #[map(None)]
+    #[value(None)]
     pub name: Option<String>, // This information is contextual, thus the SInto instance initializes it to None, and then we fill it while `SInto`ing MirBody
 }
 
@@ -146,8 +145,7 @@ pub struct MirBody<KIND> {
     pub is_polymorphic: bool,
     pub injection_phase: Option<MirPhase>,
     pub tainted_by_errors: Option<ErrorGuaranteed>,
-    #[not_in_source]
-    #[map(std::marker::PhantomData)]
+    #[value(std::marker::PhantomData)]
     pub _kind: std::marker::PhantomData<KIND>,
 }
 

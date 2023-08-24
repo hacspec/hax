@@ -1536,8 +1536,7 @@ pub enum StmtKind {
         initializer: Option<Expr>,
         else_block: Option<Block>,
         lint_level: LintLevel,
-        #[not_in_source]
-        #[map(attribute_from_scope(gstate, init_scope).1)]
+        #[value(attribute_from_scope(gstate, init_scope).1)]
         attributes: Vec<Attribute>,
     },
 }
@@ -1747,8 +1746,7 @@ pub struct Arm {
     pub lint_level: LintLevel,
     pub scope: Scope,
     pub span: Span,
-    #[not_in_source]
-    #[map(attribute_from_scope(gstate, scope).1)]
+    #[value(attribute_from_scope(gstate, scope).1)]
     attributes: Vec<Attribute>,
 }
 
@@ -1902,8 +1900,7 @@ pub struct Param {
     pub ty_span: Option<Span>,
     pub self_kind: Option<ImplicitSelfKind>,
     pub hir_id: Option<HirId>,
-    #[not_in_source]
-    #[map(hir_id.map(|id| {
+    #[value(hir_id.map(|id| {
         s.base().tcx.hir().attrs(id).sinto(s)
     }).unwrap_or(vec![]))]
     pub attributes: Vec<Attribute>,
@@ -2228,11 +2225,9 @@ impl<'tcx> ExprKindExt<'tcx> for rustc_middle::thir::Expr<'tcx> {
 )]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::FnSig<'tcx>, state: S as s)]
 pub struct TyFnSig {
-    #[not_in_source]
-    #[map(self.inputs().sinto(s))]
+    #[value(self.inputs().sinto(s))]
     pub inputs: Vec<Ty>,
-    #[not_in_source]
-    #[map(self.output().sinto(s))]
+    #[value(self.output().sinto(s))]
     pub output: Ty,
     pub c_variadic: bool,
     pub unsafety: Unsafety,
@@ -2424,8 +2419,7 @@ pub struct GenericParam<Body: IsBody> {
     pub pure_wrt_drop: bool,
     pub kind: GenericParamKind<Body>,
     pub colon_span: Option<Span>,
-    #[not_in_source]
-    #[map(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
+    #[value(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
     attributes: Vec<Attribute>,
 }
 
@@ -2439,11 +2433,10 @@ pub struct ImplItem<Body: IsBody> {
     pub defaultness: Defaultness,
     pub span: Span,
     pub vis_span: Span,
-    #[map({
+    #[value({
         let tcx = s.base().tcx;
         tcx.hir().attrs(rustc_hir::hir_id::HirId::from(owner_id.clone())).sinto(s)
     })]
-    #[not_in_source]
     pub attributes: Vec<Attribute>,
 }
 
@@ -2532,8 +2525,7 @@ pub struct HirFieldDef {
     pub hir_id: HirId,
     pub def_id: GlobalIdent,
     pub ty: Ty,
-    #[not_in_source]
-    #[map(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
+    #[value(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
     attributes: Vec<Attribute>,
 }
 
@@ -2547,8 +2539,7 @@ pub struct Variant<Body: IsBody> {
     pub data: VariantData,
     pub disr_expr: Option<AnonConst<Body>>,
     pub span: Span,
-    #[not_in_source]
-    #[map(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
+    #[value(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
     attributes: Vec<Attribute>,
 }
 
@@ -2560,8 +2551,7 @@ pub struct UsePath {
     #[map(x.iter().map(|res| res.sinto(s)).collect())]
     pub res: Vec<Res>,
     pub segments: Vec<PathSegment>,
-    #[not_in_source]
-    #[map(self.segments.iter().last().map_or(None, |segment| {
+    #[value(self.segments.iter().last().map_or(None, |segment| {
             match s.base().tcx.hir().find_by_def_id(segment.hir_id.owner.def_id) {
                 Some(rustc_hir::Node::Item(rustc_hir::Item {
                     ident,
@@ -2705,11 +2695,10 @@ pub struct TraitItem<Body: IsBody> {
     pub kind: TraitItemKind<Body>,
     pub span: Span,
     pub defaultness: Defaultness,
-    #[map({
+    #[value({
         let tcx = s.base().tcx;
         tcx.hir().attrs(rustc_hir::hir_id::HirId::from(owner_id.clone())).sinto(s)
     })]
-    #[not_in_source]
     pub attributes: Vec<Attribute>,
 }
 
@@ -3058,13 +3047,11 @@ pub struct MacroDef {
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_hir::Item<'tcx>, state: S as state)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Item<Body: IsBody> {
-    #[map({
+    #[value({
         let name: String = self.ident.name.to_ident_string();
         let owner_id: DefId = self.owner_id.sinto(state);
-        let path = Path::from(owner_id.clone());
-        if path.ends_with(&[name]) {Some(owner_id.clone())} else {None}
+        Path::from(owner_id.clone()).ends_with(&[name]).then(|| owner_id.clone())
     })]
-    #[not_in_source]
     pub def_id: Option<GlobalIdent>,
     pub owner_id: DefId,
     pub span: Span,
@@ -3081,14 +3068,12 @@ pub struct Item<Body: IsBody> {
         })
     })]
     pub kind: ItemKind<Body>,
-    #[map({
+    #[value({
         let tcx = state.base().tcx;
         tcx.hir().attrs(rustc_hir::hir_id::HirId::from(owner_id.clone())).sinto(state)
     })]
-    #[not_in_source]
     pub attributes: Vec<Attribute>,
-    #[not_in_source]
-    #[map(span.macro_backtrace().map(|o| o.sinto(state)).collect())]
+    #[value(span.macro_backtrace().map(|o| o.sinto(state)).collect())]
     pub expn_backtrace: Vec<ExpnData>,
 }
 

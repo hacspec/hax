@@ -103,13 +103,16 @@ fn fields_to_arm(
         let field_name_span = field.clone().ident.map(|x| x.span()).unwrap_or(span);
         let name_source =
             parse_attr::<syn::Ident>("from", attrs).unwrap_or(name_destination.clone());
-        let not_in_source = attrs.iter().any(|attr| attr.path.is_ident("not_in_source"));
+        let value = parse_attr::<syn::Expr>("value", attrs);
+        let not_in_source =
+            value.is_some() ||
+            attrs.iter().any(|attr| attr.path.is_ident("not_in_source"));
         let typ = &field.ty;
         let point = syn::Ident::new("x", field_name_span);
 
-        let translation = parse_attr::<syn::Expr>("map", attrs).unwrap_or(
+        let translation = parse_attr::<syn::Expr>("map", attrs).or(value).unwrap_or(
             syn::parse::<syn::Expr>((quote_spanned! {typ.span()=> #point.sinto(#state)}).into())
-                .expect("Could not default [translation]"),
+                .expect("Could not default [translation]")
         );
         let mapped_value = if not_in_source {
             quote_spanned! {span=> {#translation}}
@@ -236,7 +239,8 @@ fn variant_to_arm(
         append,
         args,
         todo,
-        not_in_source
+        not_in_source,
+        value,
     )
 )]
 pub fn adt_into(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
