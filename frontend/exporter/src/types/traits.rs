@@ -72,6 +72,8 @@ pub struct ImplSourceAutoImplData {
     /// we have [core::marker::Syn<u8>].
     /// We could detect those cases, but as we don't use the auto impls for
     /// now, we prefer to ignore the nested obligations.
+    /// TODO: maybe an issue with using [TyCtxt::predicates_of] instead of
+    /// [TyCtxt::predicates_defined_on]?
     pub nested: Vec<String>,
 }
 
@@ -162,7 +164,11 @@ pub fn get_params_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
 
     // Compute the number of trait clauses
     let mut num_trait_clauses = 0;
-    let preds = tcx.predicates_of(def_id).sinto(s);
+    // **IMPORTANT**: we do NOT want to [TyCtxt::predicates_of].
+    // If we use [TyCtxt::predicates_of] on a trait `Foo`, we get an
+    // additional predicate `Self : Foo` (i.e., the trait requires itself),
+    // which is not what we want.
+    let preds = tcx.predicates_defined_on(def_id).sinto(s);
     for (pred, _) in preds.predicates {
         if let PredicateKind::Clause(Clause::Trait(_)) = &pred.value {
             num_trait_clauses += 1;
@@ -508,6 +514,7 @@ pub fn solve_item_traits<'tcx, S: BaseState<'tcx> + HasOwnerId>(
 
     // Lookup the predicates and iter through them: we want to solve all the
     // trait requirements.
+    // TODO: should we use predicates_defined_on?
     let predicates = tcx.predicates_of(def_id);
     for (pred, _) in predicates.predicates {
         // SH: We need to apply the substitution. Not sure this is the proper way,
