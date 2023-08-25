@@ -396,33 +396,24 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ConstantKind>
                     Option::Some(span) => span,
                 };
 
-                match s.base().tcx.opt_associated_item(ucv.def) {
+                let kind = match s.base().tcx.opt_associated_item(ucv.def) {
                     None => {
                         // No associated item: top-level constant
                         let id = ucv.def.sinto(s);
-                        let kind = ConstantExprKind::GlobalName { id };
-                        Decorated {
-                            ty: ty.sinto(s),
-                            span: span.sinto(s),
-                            contents: Box::new(kind),
-                            hir_id: None,
-                            attributes: vec![],
-                        }
+                        ConstantExprKind::GlobalName { id }
                     }
                     Some(assoc) => {
                         // This must be a trait constant
-                        assert!(assoc.trait_item_def_id.is_some());
-                        let name = assoc.name.to_string();
-
-                        // Retrieve the trait information
-                        let (substs, trait_info) = get_trait_info(s, ucv.def, ucv.substs, &assoc);
-                        todo!(
-                            "- assoc: {:?}\n- substs: {:?}\n- trait_info: {:?}",
-                            assoc,
-                            substs,
-                            trait_info
-                        )
+                        trait_const_to_constant_expr_kind(s, ucv.def, ucv.substs, &assoc)
                     }
+                };
+
+                Decorated {
+                    ty: ty.sinto(s),
+                    span: span.sinto(s),
+                    contents: Box::new(kind),
+                    hir_id: None,
+                    attributes: vec![],
                 }
             }
         }

@@ -40,6 +40,19 @@ pub enum ConstantExprKind {
     GlobalName {
         id: GlobalIdent,
     },
+    /// A trait constant
+    ///
+    /// Ex.:
+    /// ```text
+    /// impl Foo for Bar {
+    ///   const C : usize = 32; // <-
+    /// }
+    /// ```
+    TraitConst {
+        impl_source: ImplSource,
+        substs: Vec<GenericArg>,
+        name: String,
+    },
     Borrow(ConstantExpr),
     ConstRef {
         id: ParamConst,
@@ -108,6 +121,10 @@ impl From<ConstantExpr> for Expr {
                 base: None,
                 user_ty: None,
             }),
+            TraitConst { .. } => {
+                // SH: I leave this for you Lucas
+                unimplemented!()
+            }
             GlobalName { id } => ExprKind::GlobalName { id },
             Borrow(e) => ExprKind::Borrow {
                 borrow_kind: BorrowKind::Shared,
@@ -245,6 +262,29 @@ pub(crate) fn must_evaluate_constant(id: &DefId) -> bool {
     }
 }
 
+pub(crate) fn trait_const_to_constant_expr_kind<'tcx, S: BaseState<'tcx> + HasOwnerId>(
+    s: &S,
+    const_def_id: rustc_hir::def_id::DefId,
+    substs: rustc_middle::ty::SubstsRef<'tcx>,
+    assoc: &rustc_middle::ty::AssocItem,
+) -> ConstantExprKind {
+    assert!(assoc.trait_item_def_id.is_some());
+    let name = assoc.name.to_string();
+
+    // Retrieve the trait information
+    let (mut substs, trait_info) = get_trait_info(s, const_def_id, substs, &assoc);
+
+    // Truncate the substitution to keep what is relevant to the const (and
+    // remove the arguments which actually apply to the trait instance)
+    let substs = substs.split_off(trait_info.params_info.num_generic_params);
+
+    ConstantExprKind::TraitConst {
+        impl_source: trait_info.impl_source,
+        substs,
+        name,
+    }
+}
+
 pub(crate) fn const_to_constant_expr<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     c: rustc_middle::ty::Const<'tcx>,
@@ -282,8 +322,7 @@ pub(crate) fn const_to_constant_expr<'tcx, S: BaseState<'tcx> + HasOwnerId>(
                 }
                 Some(assoc) => {
                     // This must be a trait constant
-                    assert!(assoc.trait_item_def_id.is_some());
-                    todo!()
+                    trait_const_to_constant_expr_kind(s, ucv.def, ucv.substs, &assoc)
                 }
             }
         }
