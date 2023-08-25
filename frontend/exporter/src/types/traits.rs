@@ -407,9 +407,36 @@ pub struct TraitInfo {
 }
 
 /// Retrieve the trait information, typically for a function call.
+/// [ref_def_id]: id of the method being called, the global being used, etc.
 pub fn get_trait_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
-    method_def_id: rustc_hir::def_id::DefId,
+    ref_def_id: rustc_hir::def_id::DefId,
+    substs: rustc_middle::ty::SubstsRef<'tcx>,
+    assoc: &rustc_middle::ty::AssocItem,
+) -> (Vec<GenericArg>, TraitInfo) {
+    let tcx = s.base().tcx;
+    let param_env = tcx.param_env(s.owner_id());
+
+    // Retrieve the trait
+    let tr = tcx.trait_of_item(assoc.def_id).unwrap();
+
+    // Create the reference to the trait
+    use rustc_middle::ty::TraitRef;
+    let tr_ref = TraitRef::new(tcx, tr, substs);
+    let tr_ref = rustc_middle::ty::Binder::dummy(tr_ref);
+
+    // Check if we can resolve - not sure if really necessary
+    let _ = tcx.codegen_select_candidate((param_env, tr_ref)).unwrap();
+
+    // Get the full trait information
+    get_trait_info_for_trait_ref(s, ref_def_id, param_env, tr_ref)
+}
+
+/// Retrieve the trait information, typically for a function call.
+/// [ref_def_id]: id of the method being called, the global being used, etc.
+pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
+    s: &S,
+    ref_def_id: rustc_hir::def_id::DefId,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
 ) -> (Vec<GenericArg>, TraitInfo) {
@@ -431,7 +458,7 @@ pub fn get_trait_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     // }
     // ```
     // Above, we want to drop the `Bar` and `T` arguments.
-    let params_info = get_parent_params_info(s, method_def_id).unwrap();
+    let params_info = get_parent_params_info(s, ref_def_id).unwrap();
 
     let update_generics = |x: &mut Vec<GenericArg>| {
         let original = x.clone();

@@ -271,9 +271,21 @@ pub(crate) fn const_to_constant_expr<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         ty::ConstKind::Param(p) => ConstantExprKind::ConstRef { id: p.sinto(s) },
         ty::ConstKind::Infer(..) => span_fatal!(s, span, "ty::ConstKind::Infer node? {:#?}", c),
         ty::ConstKind::Unevaluated(ucv) => {
-            // This should be a top-level constant (otherwise would have been evaluated)
-            let id = ucv.def.sinto(s);
-            ConstantExprKind::GlobalName { id }
+            // There are two possibilities:
+            // - it is a top-level constant
+            // - it is a trait constant
+            match s.base().tcx.opt_associated_item(ucv.def) {
+                None => {
+                    // No associated item: top-level constant
+                    let id = ucv.def.sinto(s);
+                    ConstantExprKind::GlobalName { id }
+                }
+                Some(assoc) => {
+                    // This must be a trait constant
+                    assert!(assoc.trait_item_def_id.is_some());
+                    todo!()
+                }
+            }
         }
         ty::ConstKind::Value(valtree) => return valtree_to_constant_expr(s, valtree, c.ty(), span),
         ty::ConstKind::Error(_) => span_fatal!(s, span, "ty::ConstKind::Error"),

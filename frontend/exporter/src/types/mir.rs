@@ -300,20 +300,8 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         trace!("def_id: {:?}", def_id);
         trace!("assoc: def_id: {:?}", assoc.def_id);
 
-        // Retrieve the trait
-        let tr = tcx.trait_of_item(assoc.def_id).unwrap();
-        trace!("tr: {:?}", tr);
-
-        // Create the reference to the trait
-        use rustc_middle::ty::TraitRef;
-        let tr_ref = TraitRef::new(tcx, tr, substs);
-        let tr_ref = rustc_middle::ty::Binder::dummy(tr_ref);
-
-        // Check if we can resolve - not sure if really necessary
-        let _ = tcx.codegen_select_candidate((param_env, tr_ref)).unwrap();
-
-        // Get the full trait information
-        let (substs, trait_info) = get_trait_info(s, def_id, param_env, tr_ref);
+        // Retrieve the trait information
+        let (substs, trait_info) = get_trait_info(s, def_id, substs, &assoc);
 
         // Return
         (substs, Option::Some(trait_info))

@@ -387,20 +387,42 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ConstantKind>
             }
             mir::ConstantKind::Ty(c) => c.sinto(s),
             mir::ConstantKind::Unevaluated(ucv, ty) => {
-                // This should be a top-level constant
+                // There are two possibilities:
+                // - it is a top-level constant
+                // - it is a trait constant
                 let tcx = s.base().tcx;
                 let span = match tcx.def_ident_span(ucv.def) {
                     Option::None => ucv.def.default_span(tcx),
                     Option::Some(span) => span,
                 };
-                let id = ucv.def.sinto(s);
-                let kind = ConstantExprKind::GlobalName { id };
-                Decorated {
-                    ty: ty.sinto(s),
-                    span: span.sinto(s),
-                    contents: Box::new(kind),
-                    hir_id: None,
-                    attributes: vec![],
+
+                match s.base().tcx.opt_associated_item(ucv.def) {
+                    None => {
+                        // No associated item: top-level constant
+                        let id = ucv.def.sinto(s);
+                        let kind = ConstantExprKind::GlobalName { id };
+                        Decorated {
+                            ty: ty.sinto(s),
+                            span: span.sinto(s),
+                            contents: Box::new(kind),
+                            hir_id: None,
+                            attributes: vec![],
+                        }
+                    }
+                    Some(assoc) => {
+                        // This must be a trait constant
+                        assert!(assoc.trait_item_def_id.is_some());
+                        let name = assoc.name.to_string();
+
+                        // Retrieve the trait information
+                        let (substs, trait_info) = get_trait_info(s, ucv.def, ucv.substs, &assoc);
+                        todo!(
+                            "- assoc: {:?}\n- substs: {:?}\n- trait_info: {:?}",
+                            assoc,
+                            substs,
+                            trait_info
+                        )
+                    }
                 }
             }
         }
