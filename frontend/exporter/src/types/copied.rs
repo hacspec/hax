@@ -1667,8 +1667,23 @@ fn translate_ty_alias<'tcx, S: BaseState<'tcx> + HasOwnerId>(
                 get_trait_info(s, alias_ty.def_id, alias_ty.substs, &assoc);
 
             // Truncate the substitution to keep what is relevant to the type alias (and
-            // remove the arguments which actually apply to the trait instance)
-            let substs = substs.split_off(trait_info.params_info.num_generic_params);
+            // remove the arguments which actually apply to the trait instance).
+            let substs = match &trait_info.impl_source {
+                ImplSource::UserDefined(data) => {
+                    // TODO: not completely sure about that
+                    substs.split_off(data.substs.len())
+                }
+                _ => {
+                    assert!(
+                        substs.len() >= trait_info.params_info.num_generic_params,
+                        "- trait_info: {:?}\n- substs: {:?}\n",
+                        trait_info,
+                        substs
+                    );
+                    // TODO: not completely sure about that
+                    substs.split_off(trait_info.params_info.num_generic_params)
+                }
+            };
 
             AliasKind::Projection {
                 impl_source: trait_info.impl_source,
