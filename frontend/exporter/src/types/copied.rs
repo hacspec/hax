@@ -1633,15 +1633,53 @@ pub struct TyGenerics {
     pub has_late_bound_regions: Option<Span>,
 }
 
-#[derive(AdtInto)]
-#[args(<S>, from: rustc_type_ir::sty::AliasKind, state: S as _s)]
+/// This type merges the information from [rustc_type_ir::sty::AliasKind] and [rustc_middle::ty::AliasTy]
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub enum AliasKind {
-    Projection,
-    Inherent,
-    Opaque,
+    /// The projection of a trait type: `<Ty as Trait<...>>::N<...>`
+    Projection {
+        impl_source: ImplSource,
+        substs: Vec<GenericArg>,
+        name: String,
+    },
+    // TODO
+    Inherent(AliasTy),
+    // TODO
+    Opaque(AliasTy),
+}
+
+fn translate_ty_alias<'tcx, S: BaseState<'tcx> + HasOwnerId>(
+    s: &S,
+    alias_kind: &rustc_type_ir::sty::AliasKind,
+    alias_ty: &rustc_middle::ty::AliasTy<'tcx>,
+) -> Ty {
+    use rustc_type_ir::sty::AliasKind as RustAliasKind;
+    let tcx = s.base().tcx;
+    let kind = match alias_kind {
+        RustAliasKind::Projection => {
+            // Projection of a trait type: `<Ty as Trait<...>>::N<...>`
+            let assoc = tcx.associated_item(alias_ty.def_id);
+            // Retrieve the trait information
+            let name = assoc.name.to_string();
+            let (mut substs, trait_info) =
+                get_trait_info(s, alias_ty.def_id, alias_ty.substs, &assoc);
+
+            // Truncate the substitution to keep what is relevant to the type alias (and
+            // remove the arguments which actually apply to the trait instance)
+            let substs = substs.split_off(trait_info.params_info.num_generic_params);
+
+            AliasKind::Projection {
+                impl_source: trait_info.impl_source,
+                substs,
+                name,
+            }
+        }
+        RustAliasKind::Inherent => AliasKind::Inherent(alias_ty.sinto(s)),
+        RustAliasKind::Opaque => AliasKind::Opaque(alias_ty.sinto(s)),
+    };
+    Ty::Alias(kind)
 }
 
 #[derive(AdtInto)]
@@ -1702,7 +1740,12 @@ pub enum Ty {
     Generator(DefId, Vec<GenericArg>, Movability),
     Never,
     Tuple(Vec<Ty>),
-    Alias(AliasKind, AliasTy),
+    #[custom_arm(
+        rustc_middle::ty::TyKind::Alias(alias_kind, alias_ty) => {
+            translate_ty_alias(state, alias_kind, alias_ty)
+        },
+    )]
+    Alias(AliasKind),
     Param(ParamTy),
     Bound(DebruijnIndex, BoundTy),
     Placeholder(PlaceholderType),

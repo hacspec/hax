@@ -272,7 +272,7 @@ pub(crate) fn trait_const_to_constant_expr_kind<'tcx, S: BaseState<'tcx> + HasOw
     let name = assoc.name.to_string();
 
     // Retrieve the trait information
-    let (mut substs, trait_info) = get_trait_info(s, const_def_id, substs, &assoc);
+    let (mut substs, trait_info) = get_trait_info(s, const_def_id, substs, assoc);
 
     // Truncate the substitution to keep what is relevant to the const (and
     // remove the arguments which actually apply to the trait instance)
