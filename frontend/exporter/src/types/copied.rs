@@ -3047,19 +3047,127 @@ pub struct TraitRef {
     pub generic_args: Vec<GenericArg>,
 }
 
-#[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_middle::ty::TraitPredicate<'tcx>, state: S as tcx)]
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub struct TraitPredicate {
     pub trait_ref: TraitRef,
-    #[from(constness)]
-    #[map(x.clone() == rustc_middle::ty::BoundConstness::ConstIfConst)]
     pub is_const: bool,
-    #[map(x.clone() == rustc_middle::ty::ImplPolarity::Positive)]
-    #[from(polarity)]
     pub is_positive: bool,
+    /// Information about the parent traits.
+    /// We need this to later solve the `Param` impl sources.
+    /// TODO: the fact that rustc doesn't tell us where the impl sources come
+    /// from exactly when they are of kind `Param` is very annoying. This forces
+    /// us to do a bit of manual work, in particular by doing a recursive
+    /// exploration of the traits which are referenced.
+    ///
+    /// For instance, if we have the trait:
+    /// ```text
+    /// trait Foo<U> : Bar<U> { ...}
+    /// ```
+    ///
+    /// In the below function:
+    /// ```text
+    /// fn f<T : Foo<u32>>(...)
+    /// ```
+    /// we extract the fact that `T : Foo<u32>`, but additionally: `T : Bar<u32>`.
+    ///
+    /// Note that we correctly apply the substitutions.
+    pub parent_preds: Vec<TraitPredicate>,
+    /// Information about the traits applying to the associated types.
+    ///
+    /// Similar to [parent_preds], but lists the traits which apply to the
+    /// associated types.
+    pub types_preds: Vec<(String, Vec<Binder<TraitPredicate>>)>,
+}
+
+impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, TraitPredicate>
+    for rustc_middle::ty::TraitPredicate<'tcx>
+{
+    fn sinto(&self, s: &S) -> TraitPredicate {
+        let trait_ref = self.trait_ref.sinto(s);
+        let is_const = self.constness == rustc_middle::ty::BoundConstness::ConstIfConst;
+        let is_positive = self.polarity == rustc_middle::ty::ImplPolarity::Positive;
+
+        let tcx = s.base().tcx;
+        let trait_id = self.trait_ref.def_id;
+        let param_env = tcx.param_env(s.owner_id());
+
+        // Lookup the trait predicates which apply to the trait itself
+        let parent_preds = {
+            // **IMPORTANT**: we use [TyCtxt:predicates_defined_on], not
+            // [TyCtxt::predicates_of].
+            let preds = tcx.predicates_defined_on(trait_id);
+
+            // Apply the substitution - not sure this is the way, but works in practice
+            let preds: Vec<_> = preds
+                .predicates
+                .into_iter()
+                .map(|pred| {
+                    subst_binder(tcx, self.trait_ref.substs, param_env, pred.0.kind()).sinto(s)
+                })
+                .collect();
+
+            // Filter the bounds: we want to keep the trait predicates only
+            preds
+                .into_iter()
+                .filter_map(|x| {
+                    if let PredicateKind::Clause(Clause::Trait(c)) = x {
+                        Some(c)
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        };
+
+        // Lookup the trait predicates which apply to the trait associated types
+        let mut types_preds = Vec::new();
+        for item in tcx.associated_items(trait_id).in_definition_order() {
+            if item.kind == rustc_middle::ty::AssocKind::Type {
+                // We need to use [item_bounds], otherwise we don't get the
+                // predicates we want.
+                let bounds = tcx.item_bounds(item.def_id);
+
+                // Apply the substitution - not sure this is the way, but works in practice
+                let bounds = tcx.subst_and_normalize_erasing_regions(
+                    self.trait_ref.substs,
+                    param_env,
+                    bounds,
+                );
+                let span = bounds.default_span(tcx);
+
+                // Convert
+                let bounds: Vec<_> = bounds.into_iter().map(|x| (x, span)).collect();
+                let bounds = bounds.sinto(s);
+
+                // Filter the bounds: we want to keep the trait predicates only
+                let preds: Vec<_> = bounds
+                    .into_iter()
+                    .filter_map(|x| {
+                        if let PredicateKind::Clause(Clause::Trait(c)) = x.0.value {
+                            Some(Binder {
+                                value: c,
+                                bound_vars: x.0.bound_vars,
+                            })
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                types_preds.push((item.name.to_string(), preds));
+            }
+        }
+
+        TraitPredicate {
+            trait_ref,
+            is_const,
+            is_positive,
+            parent_preds,
+            types_preds,
+        }
+    }
 }
 
 #[derive(

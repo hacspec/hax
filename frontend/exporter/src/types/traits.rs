@@ -540,6 +540,30 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     (truncated_generics, info)
 }
 
+/// Small helper.
+///
+/// Introducing this to make sure all binders are handled in a consistent manner.
+pub(crate) fn subst_binder<'tcx, T>(
+    tcx: rustc_middle::ty::TyCtxt<'tcx>,
+    param_substs: rustc_middle::ty::SubstsRef<'tcx>,
+    param_env: rustc_middle::ty::ParamEnv<'tcx>,
+    value: rustc_middle::ty::Binder<'tcx, T>,
+) -> T
+where
+    T: rustc_middle::ty::TypeFoldable<rustc_middle::ty::TyCtxt<'tcx>>,
+{
+    // SH: Not sure this is the proper way, but it seems to work so far. My reasoning:
+    // - I don't know how to get rid of the Binder, because there is no
+    //   Binder::subst method.
+    // - However I notice that EarlyBinder is just a wrapper (it doesn't
+    //   contain any information) and comes with substitution methods.
+    // So I skip the Binder, wrap the value in an EarlyBinder and apply
+    // the substitution.
+    // Remark: there is also EarlyBinder::subst(...)
+    let value = rustc_middle::ty::EarlyBinder::bind(value.skip_binder());
+    tcx.subst_and_normalize_erasing_regions(param_substs, param_env, value)
+}
+
 /// Solve the trait obligations for a specific item use (for example, a method
 /// call, an ADT, etc.).
 pub fn solve_item_traits<'tcx, S: BaseState<'tcx> + HasOwnerId>(
@@ -557,17 +581,8 @@ pub fn solve_item_traits<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     // TODO: should we use predicates_defined_on?
     let predicates = tcx.predicates_of(def_id);
     for (pred, _) in predicates.predicates {
-        // SH: We need to apply the substitution. Not sure this is the proper way,
-        // but it seems to work so far. My reasoning:
-        // - I don't know how to get rid of the Binder, because there is no
-        //   Binder::subst method.
-        // - However I notice that EarlyBinder is just a wrapper (it doesn't
-        //   contain any information) and comes with substitution methods.
-        // So I skip the Binder, wrap the value in an EarlyBinder and apply
-        // the substitution.
-        // Remark: there is also EarlyBinder::subst(...)
-        let pred_kind = rustc_middle::ty::EarlyBinder::bind(pred.kind().skip_binder());
-        let pred_kind = tcx.subst_and_normalize_erasing_regions(substs, param_env, pred_kind);
+        // Apply the substitution
+        let pred_kind = subst_binder(tcx, substs, param_env, pred.kind());
 
         // Just explore the trait predicates
         use rustc_middle::ty::{Clause, PredicateKind};
