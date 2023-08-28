@@ -137,6 +137,9 @@ pub struct ParamsInfo {
     pub num_type_params: usize,
     pub num_const_generic_params: usize,
     pub num_trait_clauses: usize,
+    pub num_regions_outlive: usize,
+    pub num_types_outlive: usize,
+    pub num_trait_type_constraints: usize,
 }
 
 /// Compute the parameters information for a definition. See [ParamsInfo].
@@ -150,6 +153,9 @@ pub fn get_params_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     let mut num_region_params = 0;
     let mut num_type_params = 0;
     let mut num_const_generic_params = 0;
+    let mut num_regions_outlive = 0;
+    let mut num_types_outlive = 0;
+    let mut num_trait_type_constraints = 0;
 
     let generics = tcx.generics_of(def_id);
     let num_generic_params = generics.params.len();
@@ -170,8 +176,12 @@ pub fn get_params_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     // which is not what we want.
     let preds = tcx.predicates_defined_on(def_id).sinto(s);
     for (pred, _) in preds.predicates {
-        if let PredicateKind::Clause(Clause::Trait(_)) = &pred.value {
-            num_trait_clauses += 1;
+        match &pred.value {
+            PredicateKind::Clause(Clause::Trait(_)) => num_trait_clauses += 1,
+            PredicateKind::Clause(Clause::RegionOutlives(_)) => num_regions_outlive += 1,
+            PredicateKind::Clause(Clause::TypeOutlives(_)) => num_types_outlive += 1,
+            PredicateKind::Clause(Clause::Projection(_)) => num_trait_type_constraints += 1,
+            _ => (),
         }
     }
 
@@ -181,6 +191,9 @@ pub fn get_params_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         num_type_params,
         num_const_generic_params,
         num_trait_clauses,
+        num_regions_outlive,
+        num_types_outlive,
+        num_trait_type_constraints,
     }
 }
 

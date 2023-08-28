@@ -1102,6 +1102,7 @@ pub struct Block {
     pub safety_mode: BlockSafety,
 }
 
+// TODO: remove?
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
@@ -1650,14 +1651,14 @@ pub enum AliasKind {
     Opaque(AliasTy),
 }
 
-fn translate_ty_alias<'tcx, S: BaseState<'tcx> + HasOwnerId>(
+pub fn translate_ty_alias<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     alias_kind: &rustc_type_ir::sty::AliasKind,
     alias_ty: &rustc_middle::ty::AliasTy<'tcx>,
-) -> Ty {
+) -> AliasKind {
     use rustc_type_ir::sty::AliasKind as RustAliasKind;
     let tcx = s.base().tcx;
-    let kind = match alias_kind {
+    match alias_kind {
         RustAliasKind::Projection => {
             // Projection of a trait type: `<Ty as Trait<...>>::N<...>`
             let assoc = tcx.associated_item(alias_ty.def_id);
@@ -1693,8 +1694,7 @@ fn translate_ty_alias<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         }
         RustAliasKind::Inherent => AliasKind::Inherent(alias_ty.sinto(s)),
         RustAliasKind::Opaque => AliasKind::Opaque(alias_ty.sinto(s)),
-    };
-    Ty::Alias(kind)
+    }
 }
 
 #[derive(AdtInto)]
@@ -1757,7 +1757,7 @@ pub enum Ty {
     Tuple(Vec<Ty>),
     #[custom_arm(
         rustc_middle::ty::TyKind::Alias(alias_kind, alias_ty) => {
-            translate_ty_alias(state, alias_kind, alias_ty)
+            Ty::Alias(translate_ty_alias(state, alias_kind, alias_ty))
         },
     )]
     Alias(AliasKind),
@@ -3099,18 +3099,45 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, Term> for rustc_middle::ty:
     }
 }
 
-#[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_middle::ty::ProjectionPredicate<'tcx>, state: S as tcx)]
+/// Expresses a constraints over an associated type.
+///
+/// For instance:
+/// ```
+/// fn f<T : Foo<S = String>>(...)
+///              ^^^^^^^^^^
+/// ```
+/// (provided the trait `Foo` has an associated type `S`).
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub struct ProjectionPredicate {
-    pub projection_ty: AliasTy,
-    pub term: Term,
+    pub impl_source: ImplSource,
+    pub substs: Vec<GenericArg>,
+    pub type_name: String,
+    pub ty: Ty,
+}
+
+impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ProjectionPredicate>
+    for rustc_middle::ty::ProjectionPredicate<'tcx>
+{
+    fn sinto(&self, s: &S) -> ProjectionPredicate {
+        let AliasKind::Projection{impl_source, substs, name} = translate_ty_alias(
+            s,
+            &rustc_middle::ty::AliasKind::Projection,
+            &self.projection_ty,
+        ) else { unreachable!() };
+        let Term::Ty(ty) = self.term.sinto(s) else { unreachable!() };
+        ProjectionPredicate {
+            impl_source,
+            substs,
+            type_name: name,
+            ty,
+        }
+    }
 }
 
 #[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_middle::ty::Clause<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_middle::ty::Clause<'tcx>, state: S as s)]
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
