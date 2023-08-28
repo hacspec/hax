@@ -3074,11 +3074,11 @@ pub struct TraitPredicate {
     ///
     /// Note that we correctly apply the substitutions.
     pub parent_preds: Vec<TraitPredicate>,
-    /// Information about the traits applying to the associated types.
+    /// Trait predicates coming from the associated items (the associated types, to be precise).
     ///
     /// Similar to [parent_preds], but lists the traits which apply to the
     /// associated types.
-    pub types_preds: Vec<(String, Vec<Binder<TraitPredicate>>)>,
+    pub items_preds: Vec<(String, Vec<Binder<TraitPredicate>>)>,
 }
 
 impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, TraitPredicate>
@@ -3122,7 +3122,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, TraitPredicate>
         };
 
         // Lookup the trait predicates which apply to the trait associated types
-        let mut types_preds = Vec::new();
+        let mut items_preds = Vec::new();
         for item in tcx.associated_items(trait_id).in_definition_order() {
             if item.kind == rustc_middle::ty::AssocKind::Type {
                 // We need to use [item_bounds], otherwise we don't get the
@@ -3156,7 +3156,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, TraitPredicate>
                     })
                     .collect();
 
-                types_preds.push((item.name.to_string(), preds));
+                items_preds.push((item.name.to_string(), preds));
             }
         }
 
@@ -3165,7 +3165,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, TraitPredicate>
             is_const,
             is_positive,
             parent_preds,
-            types_preds,
+            items_preds,
         }
     }
 }
