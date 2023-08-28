@@ -653,6 +653,9 @@ struct
         is_mutable_pat spat
     | PBinding { mut; mode; var; typ; subpat } -> false
 
+  let wrap_type_in_both (l : string) (i : string) (a : SSP.AST.ty) =
+    SSP.AST.AppTy (SSP.AST.NameTy ("both" ^ " " ^ l ^ " " ^ i), [ a ])
+
   let pgeneric_param span : generic_param -> string * SSP.AST.ty = function
     | { ident; kind; _ } ->
       ( ident.name,
