@@ -26,6 +26,16 @@ module%inlined_contents Make (F : Features.T) = struct
           | Fn { name; generics = _; body; params = _ } ->
               let items, count = analyse_function_body body (snd y) in
               ([ (name, items) ] @ fst y, count)
+          | Impl { generics = _; self_ty = _; of_trait = (_name, _gen_vals); items } ->
+            List.fold_left
+              ~f:(fun z w ->
+                  match w.ii_v with
+                  | IIFn { body; params = _ } ->
+                    let items, count = analyse_function_body body (snd z) in
+                    ([ ( w.ii_ident, items) ] @ fst z, count)
+                  | _ -> z)
+              ~init:y
+              items
           | _ -> y)
         ~init:([], 0) items
     in

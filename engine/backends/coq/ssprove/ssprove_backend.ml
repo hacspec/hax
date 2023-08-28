@@ -187,6 +187,17 @@ module TransformToInputLanguage (* : PHASE *) =
     |> Identity
   ]
   [@ocamlformat "disable"]
+let token_list (tokens : string) : string list list =
+  List.map ~f:(split_str ~on:"=") (split_str ~on:"," tokens)
+
+let get_argument (s : string) (token_list : string list list) =
+  List.find_map
+    ~f:(function
+      | [ v; a ] when String.equal (String.strip v) s -> Some a | _ -> None)
+    token_list
+
+let wrap_type_in_both (l : string) (i : string) (a : SSP.AST.ty) =
+  SSP.AST.AppTy (SSP.AST.NameTy ("both" ^ " " ^ l ^ " " ^ i), [ a ])
 
 module Make (Ctx : sig
   val ctx : Context.t
@@ -377,8 +388,8 @@ struct
     | arg :: xs ->
         (match arg with
         | GLifetime { lt; witness } -> __TODO_ty__ span "lifetime"
-        | GType x -> pty span x
-        | GConst _ -> __TODO_ty__ span "const")
+        | GType typ 
+        | GConst {typ; _} -> pty span typ)
         :: args_ty span xs
     | [] -> []
 
@@ -643,20 +654,23 @@ struct
     | PBinding { mut; mode; var; typ; subpat } -> false
 
   let pgeneric_param span : generic_param -> string * SSP.AST.ty = function
-    | { ident; kind = GPType { default }; _ } -> (
-        ( ident.name,
-          match default with Some t -> pty span t | None -> SSP.AST.WildTy ))
-    | _ -> Error.unimplemented ~details:"SSProve: TODO: generic_params" span
+    | { ident; kind; _ } ->
+      ( ident.name,
+        match kind with
+        | GPType { default = Some t } -> pty span t
+        | GPConst { typ = t } -> wrap_type_in_both "(fset [])" "(fset [])" (pty span t)
+        | GPType { default = None } -> SSP.AST.WildTy
+        | _ -> Error.unimplemented ~details:"SSProve: TODO: generic_params" span)
 
   let pgeneric_param_as_argument span : generic_param -> SSP.AST.argument =
     function
-    | { ident; kind = GPType { default }; _ } ->
-        SSP.AST.Implicit
-          (* SSP.AST.Explicit *)
-          (* TODO: make explicit, and add generic arguments to function call ! *)
-          ( SSP.AST.Ident ident.name,
-            match default with Some t -> pty span t | None -> SSP.AST.WildTy )
-    | _ -> Error.unimplemented ~details:"SSProve: TODO: generic_params" span
+    | { ident; kind; _ } ->
+      SSP.AST.Implicit (
+        SSP.AST.Ident ident.name,
+        match kind with
+        | GPType { default = Some t } | GPConst { typ = t } -> pty span t
+        | GPType { default = None } -> SSP.AST.WildTy
+        | _ -> Error.unimplemented ~details:"SSProve: TODO: generic_params_argument" span)
 
   let pgeneric_constraints_as_argument span :
       generic_constraint -> SSP.AST.argument list = function
@@ -669,13 +683,14 @@ struct
                 ( SSP.AST.NameTy (pconcrete_ident trait),
                   List.map
                     ~f:(function
-                      | GType ty -> pty span ty
-                      | _ ->
+                        | GType typ
+                        | GConst { typ } -> pty span typ
+                        | _ ->
                           Error.unimplemented
-                            ~details:"SSProve: TODO: generic_params" span)
+                            ~details:"SSProve: TODO: generic_params_constraint1" span)
                     args ) );
         ]
-    | _ -> Error.unimplemented ~details:"SSProve: TODO: generic_params" span
+    | _ -> Error.unimplemented ~details:"SSProve: TODO: generic_params_constraint2" span
 
   let pgeneric span generics : SSP.AST.argument list =
     List.map ~f:(pgeneric_param_as_argument span) generics.params
@@ -690,9 +705,6 @@ struct
         | SSP.AST.Explicit (a, b) -> SSP.AST.Implicit (a, b)
         | _ -> v)
       (pgeneric span generics)
-
-  let wrap_type_in_both (l : string) (i : string) (a : SSP.AST.ty) =
-    SSP.AST.AppTy (SSP.AST.NameTy ("both" ^ " " ^ l ^ " " ^ i), [ a ])
 
   let rec split_arrow_in_args (a : SSP.AST.ty) : SSP.AST.ty list * SSP.AST.ty =
     match a with
@@ -1279,25 +1291,85 @@ struct
                   (* | _ -> []) *))
                 items );
         ]
+
     | Impl { generics; self_ty; of_trait = name, gen_vals; items } ->
-        [
-          SSP.AST.Instance
+      let mvars_loc =
+        List.concat
+          (List.map ~f:(fun x ->
+               let (mvars_ext, mvars_loc)
+                 : local_ident list * (local_ident * AST.ty * int) list =
+                 match
+                   Map.find
+                     (ctx.analysis_data.mut_var
+                      : (local_ident list * ((local_ident * AST.ty) * int) list)
+                          Map.M(Concrete_ident).t)
+                     x.ii_ident
+                 with
+                 | Some l ->
+                   ( fst l,
+                     List.map ~f:(fun ((x, x_ty), x_n) -> (x, x_ty, x_n)) (snd l) )
+                 | None -> ([], [])
+               in
+               mvars_loc)
+              items)
+      in
+      [SSP.AST.Unimplemented (Map.fold ~init:"" ~f:(fun ~key:k ~data:d x -> x ^ " " ^ pconcrete_ident k (* ^ " " ^ d *)) ctx.analysis_data.mut_var)] @
+      List.fold_left ~init:[]
+        ~f:(fun y (x, x_ty, x_n) ->
+            SSP.AST.Definition
+              ( x.name ^ "_loc",
+                pgeneric_implicit span generics,
+                SSP.AST.Const
+                  (SSP.AST.Const_string
+                     ("("
+                      ^ SSP.ty_to_string (pty (Span.dummy ()) x_ty)
+                      ^ " ; " ^ Int.to_string x_n ^ "%nat)")),
+                SSP.AST.NameTy "Location" )
+            :: y)
+        mvars_loc
+      @ [
+          SSP.AST.ProgramInstance
             ( pglobal_ident name,
               pgeneric span generics,
               pty span self_ty,
               args_ty span gen_vals,
               List.map
                 ~f:(fun x ->
-                  match x.ii_v with
-                  | IIFn { body; params } ->
+                    match x.ii_v with
+                    | IIFn { body; params } ->
                       ( U.Concrete_ident_view.to_definition_name x.ii_ident,
-                        List.map
-                          ~f:(fun { pat; typ; typ_span } ->
-                            SSP.AST.Explicit (ppat pat, pty span typ))
-                          params,
+                        (if List.is_empty params
+                         then [SSP.AST.Implicit
+                                 ( SSP.AST.Ident ("L"),
+                                   (SSP.AST.NameTy "{fset Location}" : SSP.AST.ty) ) ;
+                               SSP.AST.Implicit
+                                 ( SSP.AST.Ident ("I"),
+                                   (SSP.AST.NameTy "Interface" : SSP.AST.ty) )]
+                         else
+                           List.map
+                             ~f:(fun x ->
+                                 SSP.AST.Implicit
+                                   ( SSP.AST.Ident ("L" ^ Int.to_string x),
+                                     (SSP.AST.NameTy "{fset Location}" : SSP.AST.ty) ))
+                             (List.init (List.length params) (fun x -> x + 1))
+                           @ List.map
+                             ~f:(fun x ->
+                                 SSP.AST.Implicit
+                                   ( SSP.AST.Ident ("I" ^ Int.to_string x),
+                                     (SSP.AST.NameTy "Interface" : SSP.AST.ty) ))
+                             (List.init (List.length params) (fun x -> x + 1))
+                           @ List.mapi
+                             ~f:(fun i { pat; typ; typ_span; attrs } ->
+                                 SSP.AST.Explicit
+                                   ( ppat pat,
+                                     wrap_type_in_both
+                                       ("L" ^ Int.to_string (i + 1))
+                                       ("I" ^ Int.to_string (i + 1))
+                                       (pty span typ) ))
+                             params),
                         pexpr true body,
                         pty span body.typ )
-                  | IIType ty ->
+                    | IIType ty ->
                       ( "t_" ^ U.Concrete_ident_view.to_definition_name x.ii_ident,
                         [],
                         SSP.AST.Type (pty span ty),

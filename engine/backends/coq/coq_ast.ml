@@ -106,6 +106,8 @@ functor
         | Class of string * argument list * record_field list
         | Instance of
             string * argument list * ty * ty list * definition_type list
+        | ProgramInstance of
+            string * argument list * ty * ty list * definition_type list
         | Require of string list * string option
         | ModuleType of string * argument list * record_field list
         | Module of string * string * argument list * record_field list
@@ -493,6 +495,34 @@ functor
           ^ params_to_string_typed arguments
           ^ " " ^ ":" ^ " " ^ name ^ " " ^ ty_list_str ^ ":=" ^ " " ^ "{"
           ^ impl_str ^ newline_indent 0 ^ "}" ^ "."
+      | AST.ProgramInstance (name, arguments, self_ty, ty_list, impl_list) ->
+          let ty_list_str =
+            List.fold_left ~init:""
+              ~f:(fun x y -> x ^ ty_to_string y ^ " ")
+              ty_list
+          in
+          let impl_str =
+            String.concat ~sep:(newline_indent 1)
+            (List.map
+              ~f:(fun (name, arguments, term, ty) ->
+                "let" ^ " " ^ name ^ " " ^ ":=" ^ " "
+                ^ (if List.is_empty arguments then "" else "fun" ^ " " ^ params_to_string_typed arguments ^ " " ^ "=>")
+                ^ term_to_string_without_paren term 1 ^ " " ^ "in")
+              impl_list)
+          in
+          let arg_str =
+            String.concat ~sep:" "
+            (List.map
+              ~f:(fun (name, arguments, term, ty) ->
+                "(" ^ "@" ^ name ^ ")")
+              impl_list)
+          in
+          let ty_str = ty_to_string self_ty in
+          "#[global] Program Instance" ^ " " ^ ty_str ^ "_" ^ name
+          ^ params_to_string_typed arguments
+          ^ " " ^ ":" ^ " " ^ name ^ " " ^ ty_list_str ^ ":="  ^ newline_indent 1
+          ^ impl_str ^ newline_indent 1
+          ^ "Build_" ^ name ^ " " ^ ty_list_str ^ " " ^ arg_str ^ "."
       | AST.Require ([], rename) -> ""
       | AST.Require (import :: imports, rename) ->
           (* map_first_letter String.uppercase import *)
