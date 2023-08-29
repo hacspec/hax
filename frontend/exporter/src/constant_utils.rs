@@ -236,6 +236,46 @@ impl ConstantExprKind {
     }
 }
 
+pub enum TranslateUnevalRes<T> {
+    GlobalName(ConstantExprKind),
+    EvaluatedConstant(T),
+}
+
+pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
+    fn eval_constant<S: BaseState<'tcx>>(&self, s: &S) -> Option<Self>;
+
+    /// Performs a one-step translation of a constant.
+    ///  - When a constant refers to a named top-level constant, we want to use that, thus we translate the constant to a `ConstantExprKind::GlobalName`. This is captured by the variant `TranslateUnevalRes::GlobalName`.
+    ///  - When a constant refers to a anonymous top-level constant, we evaluate it. If the evaluation fails, we report an error: we expect every AnonConst to be reducible. Otherwise, we return the variant `TranslateUnevalRes::EvaluatedConstant`.
+    fn translate_uneval(
+        &self,
+        s: &impl BaseState<'tcx>,
+        ucv: rustc_middle::ty::UnevaluatedConst,
+    ) -> TranslateUnevalRes<Self> {
+        let tcx = s.base().tcx;
+        if is_anon_const(ucv.def, tcx) {
+            TranslateUnevalRes::EvaluatedConstant(self.eval_constant(s).unwrap_or_else(|| {
+                supposely_unreachable_fatal!("TranslateUneval": self, ucv);
+            }))
+        } else {
+            let id = ucv.def.sinto(s);
+            TranslateUnevalRes::GlobalName(ConstantExprKind::GlobalName { id })
+        }
+    }
+}
+impl<'tcx> ConstantExt<'tcx> for rustc_middle::ty::Const<'tcx> {
+    fn eval_constant<S: BaseState<'tcx>>(&self, s: &S) -> Option<Self> {
+        let evaluated = self.eval(s.base().tcx, get_param_env(s));
+        (&evaluated != self).then_some(evaluated)
+    }
+}
+impl<'tcx> ConstantExt<'tcx> for rustc_middle::mir::ConstantKind<'tcx> {
+    fn eval_constant<S: BaseState<'tcx>>(&self, s: &S) -> Option<Self> {
+        let evaluated = self.eval(s.base().tcx, get_param_env(s));
+        (&evaluated != self).then_some(evaluated)
+    }
+}
+
 pub(crate) fn const_to_constant_expr<'tcx, S: BaseState<'tcx>>(
     s: &S,
     c: rustc_middle::ty::Const<'tcx>,
@@ -247,18 +287,12 @@ pub(crate) fn const_to_constant_expr<'tcx, S: BaseState<'tcx>>(
     let kind = match c.kind() {
         ty::ConstKind::Param(p) => ConstantExprKind::ConstRef { id: p.sinto(s) },
         ty::ConstKind::Infer(..) => span_fatal!(s, span, "ty::ConstKind::Infer node? {:#?}", c),
-        ty::ConstKind::Unevaluated(ucv) => {
-            if is_anon_const(ucv.def, tcx) {
-                let evaluated_c = c.eval(tcx, get_param_env(s));
-                if evaluated_c == c {
-                    supposely_unreachable_fatal!("EvalAnonConstFailed[Ty]": c, ucv);
-                }
-                return const_to_constant_expr(s, evaluated_c);
-            } else {
-                let id = ucv.def.sinto(s);
-                ConstantExprKind::GlobalName { id }
+        ty::ConstKind::Unevaluated(ucv) => match c.translate_uneval(s, ucv) {
+            TranslateUnevalRes::EvaluatedConstant(c) => {
+                return const_to_constant_expr(s, c);
             }
-        }
+            TranslateUnevalRes::GlobalName(c) => c,
+        },
         ty::ConstKind::Value(valtree) => return valtree_to_constant_expr(s, valtree, c.ty(), span),
         ty::ConstKind::Error(_) => span_fatal!(s, span, "ty::ConstKind::Error"),
         ty::ConstKind::Expr(e) => {

@@ -207,32 +207,26 @@ pub struct Scope {
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::mir::ConstantKind<'tcx> {
     fn sinto(&self, s: &S) -> ConstantExpr {
-        use rustc_middle::mir;
+        use rustc_middle::mir::ConstantKind;
         let tcx = s.base().tcx;
         match self {
-            mir::ConstantKind::Val(const_value, ty) => const_value_to_constant_expr(
+            ConstantKind::Val(const_value, ty) => const_value_to_constant_expr(
                 s,
                 ty.clone(),
                 const_value.clone(),
                 self.default_span(tcx),
             ),
-            mir::ConstantKind::Ty(c) => c.sinto(s),
-            mir::ConstantKind::Unevaluated(ucv, ty) => {
-                if is_anon_const(ucv.def, tcx) {
-                    let evaluated_c = self.eval(tcx, get_param_env(s));
-                    if &evaluated_c == self {
-                        supposely_unreachable_fatal!("EvalAnonConstFailed[Mir]": self, evaluated_c);
-                    }
-                    evaluated_c.sinto(s)
-                } else {
-                    let id = ucv.def.sinto(s);
+            ConstantKind::Ty(c) => c.sinto(s),
+            ConstantKind::Unevaluated(ucv, ty) => match self.translate_uneval(s, ucv.shrink()) {
+                TranslateUnevalRes::EvaluatedConstant(c) => c.sinto(s),
+                TranslateUnevalRes::GlobalName(c) => {
                     let span = tcx
                         .def_ident_span(ucv.def)
                         .unwrap_or_else(|| ucv.def.default_span(tcx))
                         .sinto(s);
-                    (ConstantExprKind::GlobalName { id }).decorate(ty.sinto(s), span)
+                    c.decorate(ty.sinto(s), span)
                 }
-            }
+            },
         }
     }
 }
