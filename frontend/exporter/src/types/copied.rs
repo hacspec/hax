@@ -396,17 +396,16 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ConstantKind>
                     Option::Some(span) => span,
                 };
 
-                let kind = match s.base().tcx.opt_associated_item(ucv.def) {
-                    None => {
-                        // No associated item: top-level constant
-                        let id = ucv.def.sinto(s);
-                        ConstantExprKind::GlobalName { id }
-                    }
-                    Some(assoc) => {
-                        // This must be a trait constant
+                let kind = if let Some(assoc) = s.base().tcx.opt_associated_item(ucv.def) && 
+                    assoc.trait_item_def_id.is_some() {
+                        // This must be a trait declaration constant
                         trait_const_to_constant_expr_kind(s, ucv.def, ucv.substs, &assoc)
                     }
-                };
+                    else {
+                        // Top-level constant or a constant appearing in an impl block
+                        let id = ucv.def.sinto(s);
+                        ConstantExprKind::GlobalName { id }
+                    };
 
                 Decorated {
                     ty: ty.sinto(s),
