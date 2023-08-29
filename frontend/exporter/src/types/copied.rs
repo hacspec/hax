@@ -565,18 +565,12 @@ pub enum RegionKind {
 }
 
 #[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+    AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::Region<'tcx>, state: S as s)]
 pub struct Region {
+    #[value(self.kind().sinto(s))]
     pub kind: RegionKind,
-}
-
-impl<'tcx, S: BaseState<'tcx>> SInto<S, Region> for rustc_middle::ty::Region<'tcx> {
-    fn sinto(&self, s: &S) -> Region {
-        Region {
-            kind: self.kind().sinto(s),
-        }
-    }
 }
 
 #[derive(
