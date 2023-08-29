@@ -3093,6 +3093,10 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, TraitPredicate>
         let trait_id = self.trait_ref.def_id;
         let param_env = tcx.param_env(s.owner_id());
 
+        // Do not normalize the types and do not erase the regions.
+        // See the comments inside [subst_early_binder]
+        let normalize_erase = false;
+
         // Lookup the trait predicates which apply to the trait itself
         let parent_preds = {
             // **IMPORTANT**: we use [TyCtxt:predicates_defined_on], not
@@ -3104,7 +3108,14 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, TraitPredicate>
                 .predicates
                 .into_iter()
                 .map(|pred| {
-                    subst_binder(tcx, self.trait_ref.substs, param_env, pred.0.kind()).sinto(s)
+                    subst_binder(
+                        tcx,
+                        self.trait_ref.substs,
+                        param_env,
+                        pred.0.kind(),
+                        normalize_erase,
+                    )
+                    .sinto(s)
                 })
                 .collect();
 
@@ -3129,11 +3140,25 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, TraitPredicate>
                 // predicates we want.
                 let bounds = tcx.item_bounds(item.def_id);
 
-                // Apply the substitution - not sure this is the way, but works in practice
-                let bounds = tcx.subst_and_normalize_erasing_regions(
+                // Apply the substitution.
+                // Remark: we used to call [TyCtxt::subst_and_normalize_erasing_regions],
+                // but this normalizes the types, leading to issues. For instance
+                // here:
+                // ```
+                // pub fn f<T: Foo<S = U::S>, U: Foo>() {}
+                // ```
+                // The issue is that T refers `U : Foo` before the clause is
+                // defined. If we normalize the types in the items of `T : Foo`,
+                // when exploring the items of `Foo<T>` we find the clause
+                // `Sized<U::S>` (instead of `Sized<T::S>`) because `T::S` has
+                // been normalized to `U::S`. This can be problematic when
+                // solving the parameters.
+                let bounds = subst_early_binder(
+                    tcx,
                     self.trait_ref.substs,
                     param_env,
                     bounds,
+                    normalize_erase,
                 );
                 let span = bounds.default_span(tcx);
 

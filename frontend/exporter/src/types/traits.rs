@@ -540,14 +540,60 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     (truncated_generics, info)
 }
 
+/// Small helper
+///
+/// Introducing this to make sure all binders are handled in a consistent manner.
+pub(crate) fn subst_early_binder<'tcx, T>(
+    tcx: rustc_middle::ty::TyCtxt<'tcx>,
+    param_substs: rustc_middle::ty::SubstsRef<'tcx>,
+    param_env: rustc_middle::ty::ParamEnv<'tcx>,
+    value: rustc_middle::ty::EarlyBinder<T>,
+    normalize_erase: bool,
+) -> T
+where
+    T: rustc_middle::ty::TypeFoldable<rustc_middle::ty::TyCtxt<'tcx>>,
+{
+    // SH: Not sure this is the proper way, but it seems to work so far. My reasoning:
+    // - I don't know how to get rid of the Binder, because there is no
+    //   Binder::subst method.
+    // - However I notice that EarlyBinder is just a wrapper (it doesn't
+    //   contain any information) and comes with substitution methods.
+    // So I skip the Binder, wrap the value in an EarlyBinder and apply
+    // the substitution.
+    // Remark: there is also EarlyBinder::subst(...)
+
+    // Apply the substitution.
+    //
+    // **Remark:** we used to always call [TyCtxt::subst_and_normalize_erasing_regions],
+    // but this normalizes the types, leading to issues. For instance here:
+    // ```
+    // pub fn f<T: Foo<S = U::S>, U: Foo>() {}
+    // ```
+    // The issue is that T refers `U : Foo` before the clause is
+    // defined. If we normalize the types in the items of `T : Foo`,
+    // when exploring the items of `Foo<T>` we find the clause
+    // `Sized<U::S>` (instead of `Sized<T::S>`) because `T::S` has
+    // been normalized to `U::S`. This can be problematic when
+    // solving the parameters.
+    if normalize_erase {
+        tcx.subst_and_normalize_erasing_regions(param_substs, param_env, value)
+    } else {
+        // Remark: in more recent versions of the compiler: [instantiate]
+        value.subst(tcx, param_substs)
+    }
+}
+
 /// Small helper.
 ///
 /// Introducing this to make sure all binders are handled in a consistent manner.
+///
+/// [normalize_erase]: should we normalize the types and erase the regions?
 pub(crate) fn subst_binder<'tcx, T>(
     tcx: rustc_middle::ty::TyCtxt<'tcx>,
     param_substs: rustc_middle::ty::SubstsRef<'tcx>,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     value: rustc_middle::ty::Binder<'tcx, T>,
+    normalize_erase: bool,
 ) -> T
 where
     T: rustc_middle::ty::TypeFoldable<rustc_middle::ty::TyCtxt<'tcx>>,
@@ -561,7 +607,7 @@ where
     // the substitution.
     // Remark: there is also EarlyBinder::subst(...)
     let value = rustc_middle::ty::EarlyBinder::bind(value.skip_binder());
-    tcx.subst_and_normalize_erasing_regions(param_substs, param_env, value)
+    subst_early_binder(tcx, param_substs, param_env, value, normalize_erase)
 }
 
 /// Solve the trait obligations for a specific item use (for example, a method
@@ -582,7 +628,7 @@ pub fn solve_item_traits<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     let predicates = tcx.predicates_of(def_id);
     for (pred, _) in predicates.predicates {
         // Apply the substitution
-        let pred_kind = subst_binder(tcx, substs, param_env, pred.kind());
+        let pred_kind = subst_binder(tcx, substs, param_env, pred.kind(), true);
 
         // Just explore the trait predicates
         use rustc_middle::ty::{Clause, PredicateKind};
