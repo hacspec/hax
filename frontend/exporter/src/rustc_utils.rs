@@ -14,7 +14,6 @@ pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
     variant: &rustc_hir::def_id::DefId,
     s: &S,
 ) -> VariantInformations {
-    // TODO: transform assert into good error
     s_assert!(s, !adt_def.is_enum());
     fn is_record<'s, I: std::iter::Iterator<Item = &'s rustc_middle::ty::FieldDef> + Clone>(
         it: I,
@@ -26,7 +25,7 @@ pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
         .variants()
         .iter_enumerated()
         .find(|(_, v)| v.def_id == variant.clone())
-       .s_unwrap(s);
+        .s_unwrap(s);
     let constructs_type: DefId = adt_def.did().sinto(s);
     VariantInformations {
         typ: constructs_type.clone(),
