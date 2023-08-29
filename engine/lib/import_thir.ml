@@ -733,29 +733,27 @@ module Exn = struct
             (List.map ~f:c_pat subpatterns |> U.make_tuple_pat').p
         | Deref { subpattern } ->
             PDeref { subpat = c_pat subpattern; witness = W.reference }
-        | Constant { value } -> (
-            match c_constant_expr value |> extended_literal_of_expr with
-            | EL_Lit lit -> PConstant { lit }
-            | EL_U8Array l ->
-                PArray
-                  {
-                    args =
-                      List.map
-                        ~f:(fun lit ->
-                          {
-                            p = PConstant { lit };
-                            span;
-                            typ = TInt { size = S8; signedness = Unsigned };
-                          })
-                        l;
-                  })
+        | Constant { value } ->
+            let rec pat_of_expr (e : expr) =
+              { p = pat'_of_expr' e.e e.span; span = e.span; typ = e.typ }
+            and pat'_of_expr' (e : expr') span =
+              match e with
+              | Literal lit -> PConstant { lit }
+              | Array l -> PArray { args = List.map ~f:pat_of_expr l }
+              | Borrow { kind = _; e; witness } ->
+                  PDeref { subpat = pat_of_expr e; witness }
+              | _ ->
+                  assertion_failure (Span.to_thir span)
+                    ("expected a pattern, got " ^ [%show: expr'] e)
+            in
+            (c_constant_expr value |> pat_of_expr).p
         | Array _ -> unimplemented [ pat.span ] "Pat:Array"
         | Or _ ->
             unimplemented [ pat.span ] ~issue_id:161
               "Or patterns (see \
                https://rust-lang.github.io/rfcs/2535-or-patterns.html)"
-        | Slice _ -> unimplemented [ pat.span ] "Slice"
-        | Range _ -> unimplemented [ pat.span ] "Range"
+        | Slice _ -> unimplemented [ pat.span ] "pat Slice"
+        | Range _ -> unimplemented [ pat.span ] "pat Range"
       in
       { p = v; span; typ }
 
