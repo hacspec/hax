@@ -36,29 +36,12 @@ impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
     }
 }
 
-// TODO: this should not be there
-impl DefId {
-    pub fn is_anon_const(&self) -> bool {
-        self.path.last().unwrap().data.is_anon_const()
-    }
-}
 impl From<&DefId> for rustc_span::def_id::DefId {
     fn from<'tcx>(def_id: &DefId) -> Self {
         let (krate, index) = def_id.index;
         Self {
             krate: rustc_hir::def_id::CrateNum::from_u32(krate),
             index: rustc_hir::def_id::DefIndex::from_u32(index),
-        }
-    }
-}
-
-// TODO: this should not be there
-impl DefPathItem {
-    pub fn is_anon_const(&self) -> bool {
-        if let DefPathItem::AnonConst = self {
-            true
-        } else {
-            false
         }
     }
 }
