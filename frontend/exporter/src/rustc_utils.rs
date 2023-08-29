@@ -15,7 +15,7 @@ pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
     s: &S,
 ) -> VariantInformations {
     // TODO: transform assert into good error
-    assert!(!adt_def.is_enum());
+    s_assert!(s, !adt_def.is_enum());
     fn is_record<'s, I: std::iter::Iterator<Item = &'s rustc_middle::ty::FieldDef> + Clone>(
         it: I,
     ) -> bool {
@@ -26,7 +26,7 @@ pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
         .variants()
         .iter_enumerated()
         .find(|(_, v)| v.def_id == variant.clone())
-       .unwrap(); /* TODO: unwrap */
+       .s_unwrap(s);
     let constructs_type: DefId = adt_def.did().sinto(s);
     VariantInformations {
         typ: constructs_type.clone(),
@@ -232,7 +232,7 @@ pub(crate) fn macro_invocation_of_raw_mac_invocation<'t, S: BaseState<'t>>(
         .unwrap_or_else(|| fatal!(state, "{:#?}", expn_data.call_site));
     MacroInvokation {
         macro_ident: macro_ident.clone(),
-        argument: read_span_from_file(mac_call_span).unwrap(),
+        argument: read_span_from_file(mac_call_span).s_unwrap(state),
         span: expn_data.call_site.sinto(state),
     }
 }
@@ -288,7 +288,7 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
         .into_iter()
         .map(|(mac, items)| match mac.0 {
             Some((macro_ident, expn_data)) => {
-                let owner_id = items.into_iter().map(|x| x.owner_id).next().unwrap();
+                let owner_id = items.into_iter().map(|x| x.owner_id).next().s_unwrap(s);
                 // owner_id.reduce()
                 let invocation =
                     macro_invocation_of_raw_mac_invocation(&macro_ident, &expn_data, s);
@@ -296,7 +296,6 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
                 vec![Item {
                     def_id: None,
                     owner_id: owner_id.sinto(s),
-                    // owner_id: expn_data.parent_module.unwrap().sinto(s),
                     kind: ItemKind::MacroInvokation(invocation),
                     span,
                     vis_span: rustc_span::DUMMY_SP.sinto(s),

@@ -126,19 +126,19 @@ pub(crate) fn scalar_int_to_constant_literal<'tcx, S: BaseState<'tcx>>(
     match ty.kind() {
         ty::Char => ConstantLiteral::Char(
             char::try_from(x)
-                .expect("scalar_int_to_constant_literal: expected a char")
+                .s_expect(s, "scalar_int_to_constant_literal: expected a char")
                 .into(),
         ),
         ty::Bool => ConstantLiteral::Bool(
             x.try_to_bool()
-                .expect("scalar_int_to_constant_literal: expected a bool"),
+                .s_expect(s, "scalar_int_to_constant_literal: expected a bool"),
         ),
         ty::Int(kind) => {
-            let v = x.try_to_int(x.size()).unwrap();
+            let v = x.try_to_int(x.size()).s_unwrap(s);
             ConstantLiteral::Int(ConstantInt::Int(v, kind.sinto(s)))
         }
         ty::Uint(kind) => {
-            let v = x.try_to_uint(x.size()).unwrap();
+            let v = x.try_to_uint(x.size()).s_unwrap(s);
             ConstantLiteral::Int(ConstantInt::Uint(v, kind.sinto(s)))
         }
         _ => fatal!(
@@ -182,7 +182,7 @@ pub(crate) fn scalar_to_constant_expr<'tcx, S: BaseState<'tcx>>(
                     scalar
                 )
             });
-            let provenance = tcx.global_alloc(pointer.provenance.unwrap());
+            let provenance = tcx.global_alloc(pointer.provenance.s_unwrap(s));
             use rustc_middle::mir::interpret::GlobalAlloc;
             let GlobalAlloc::Static(did) = provenance else {
                 span_fatal!(
@@ -344,8 +344,7 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
                 ty::Adt(def, _) => {
                     let variant_idx = contents
                         .variant
-                        // TODO: proper error
-                        .expect("destructed const of adt without variant idx");
+                        .s_expect(s, "destructed const of adt without variant idx");
                     let variant_def = &def.variant(variant_idx);
 
                     ConstantExprKind::Adt{
@@ -399,7 +398,7 @@ pub(crate) fn const_value_reference_to_constant_expr<'tcx, S: BaseState<'tcx>>(
 
     let dc = tcx
         .try_destructure_mir_constant(param_env_and_const)
-        .unwrap();
+        .s_unwrap(s);
 
     // Iterate over the fields, which should be values
     assert!(dc.variant.is_none());
@@ -417,7 +416,7 @@ pub(crate) fn const_value_reference_to_constant_expr<'tcx, S: BaseState<'tcx>>(
     let fields: Vec<(ty::Ty, interpret::ConstValue)> = dc
         .fields
         .iter()
-        .map(|f| (f.ty(), f.try_to_value(tcx).unwrap()))
+        .map(|f| (f.ty(), f.try_to_value(tcx).s_unwrap(s)))
         .collect();
 
     // Below: we are mutually recursive with [const_value_to_constant_expr],

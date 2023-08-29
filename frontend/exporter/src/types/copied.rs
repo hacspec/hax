@@ -783,7 +783,7 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, LocalIdent> for rustc_middle::thir::Loca
                 .vars
                 .get(self)
                 .clone()
-                .unwrap()
+                .s_unwrap(s)
                 .to_string(),
             id: self.clone().0.sinto(s),
         }

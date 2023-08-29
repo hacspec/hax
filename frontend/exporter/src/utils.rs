@@ -56,9 +56,13 @@ pub(crate) use span_fatal;
 pub(crate) use supposely_unreachable;
 pub(crate) use supposely_unreachable_fatal;
 
-pub trait SExpect {
+pub trait SExpect: Sized {
     type Output;
     fn s_expect<'tcx, S: crate::BaseState<'tcx>>(self, s: &S, message: &str) -> Self::Output;
+
+    fn s_unwrap<'tcx, S: crate::BaseState<'tcx>>(self, s: &S) -> Self::Output {
+        self.s_expect(s, "")
+    }
 }
 
 mod s_expect_impls {
@@ -93,3 +97,14 @@ mod s_expect_impls {
         }
     }
 }
+
+macro_rules! s_assert {
+    ($s:ident, $assertion:expr) => {{
+        if $assertion {
+            ()
+        } else {
+            fatal!($s, "assertion failed: {}", stringify!($assertion))
+        }
+    }};
+}
+pub(crate) use s_assert;
