@@ -678,13 +678,6 @@ pub enum NullOp {
 #[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::Rvalue<'tcx>, state: S as s)]
 pub enum Rvalue {
     Use(Operand),
-    #[custom_arm(
-        rustc_middle::mir::Rvalue::Repeat(op, ce) => {
-            let op = op.sinto(s);
-            let ce = const_to_constant_expr(s, *ce);
-            Rvalue::Repeat(op, ce)
-        },
-    )]
     Repeat(Operand, ConstantExpr),
     Ref(Region, BorrowKind, Place),
     ThreadLocalRef(DefId),

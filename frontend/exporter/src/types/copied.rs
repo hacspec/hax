@@ -580,7 +580,7 @@ pub struct Region {
 pub enum GenericArg {
     Lifetime(Region),
     Type(Ty),
-    Const(#[map(const_to_constant_expr(s, *x))] ConstantExpr),
+    Const(ConstantExpr),
 }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, GenericArg> for rustc_middle::ty::GenericArg<'tcx> {
@@ -1459,14 +1459,7 @@ pub enum Ty {
     },
     Foreign(DefId),
     Str,
-    #[custom_arm(
-        rustc_middle::ty::TyKind::Array(ty, cg) => {
-            let ty : Ty = ty.sinto(state);
-            let cg : ConstantExpr = const_to_constant_expr(state, *cg);
-            Ty::Array(Box::new(ty), Box::new(cg))
-        },
-    )]
-    Array(Box<Ty>, Box<ConstantExpr>),
+    Array(Box<Ty>, #[map(Box::new(x.sinto(state)))] Box<ConstantExpr>),
     Slice(Box<Ty>),
     RawPtr(TypeAndMut),
     Ref(Region, Box<Ty>, Mutability),
@@ -2076,7 +2069,7 @@ pub enum ExprKind {
     },
     Repeat {
         value: Expr,
-        count: Const,
+        count: ConstantExpr,
     },
     Array {
         fields: Vec<Expr>,
@@ -2801,7 +2794,7 @@ pub type TypeOutlivesPredicate = OutlivesPredicate<Ty, Region>;
 )]
 pub enum Term {
     Ty(Ty),
-    Const(Const),
+    Const(ConstantExpr),
 }
 
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Term> for rustc_middle::ty::Term<'tcx> {
@@ -2834,7 +2827,7 @@ pub enum Clause {
     RegionOutlives(RegionOutlivesPredicate),
     TypeOutlives(TypeOutlivesPredicate),
     Projection(ProjectionPredicate),
-    ConstArgHasType(Const, Ty),
+    ConstArgHasType(ConstantExpr, Ty),
 }
 
 #[derive(AdtInto)]
@@ -2939,8 +2932,8 @@ pub enum PredicateKind {
     ClosureKind(DefId, Vec<GenericArg>, ClosureKind),
     Subtype(SubtypePredicate),
     Coerce(CoercePredicate),
-    ConstEvaluatable(Const),
-    ConstEquate(Const, Const),
+    ConstEvaluatable(ConstantExpr),
+    ConstEquate(ConstantExpr, ConstantExpr),
     TypeWellFormedFromEnv(Ty),
     Ambiguous,
     AliasRelate(Term, Term, AliasRelationDirection),

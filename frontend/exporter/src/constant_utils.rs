@@ -275,36 +275,34 @@ impl<'tcx> ConstantExt<'tcx> for rustc_middle::mir::ConstantKind<'tcx> {
         (&evaluated != self).then_some(evaluated)
     }
 }
-
-pub(crate) fn const_to_constant_expr<'tcx, S: BaseState<'tcx>>(
-    s: &S,
-    c: rustc_middle::ty::Const<'tcx>,
-) -> ConstantExpr {
-    use rustc_middle::{query::Key, ty};
-    let tcx = s.base().tcx;
-
-    let span = c.default_span(s.base().tcx);
-    let kind = match c.kind() {
-        ty::ConstKind::Param(p) => ConstantExprKind::ConstRef { id: p.sinto(s) },
-        ty::ConstKind::Infer(..) => span_fatal!(s, span, "ty::ConstKind::Infer node? {:#?}", c),
-        ty::ConstKind::Unevaluated(ucv) => match c.translate_uneval(s, ucv) {
-            TranslateUnevalRes::EvaluatedConstant(c) => {
-                return const_to_constant_expr(s, c);
+impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::ty::Const<'tcx> {
+    fn sinto(&self, s: &S) -> ConstantExpr {
+        use rustc_middle::{query::Key, ty};
+        let span = self.default_span(s.base().tcx);
+        let kind = match self.kind() {
+            ty::ConstKind::Param(p) => ConstantExprKind::ConstRef { id: p.sinto(s) },
+            ty::ConstKind::Infer(..) => {
+                span_fatal!(s, span, "ty::ConstKind::Infer node? {:#?}", self)
             }
-            TranslateUnevalRes::GlobalName(c) => c,
-        },
-        ty::ConstKind::Value(valtree) => return valtree_to_constant_expr(s, valtree, c.ty(), span),
-        ty::ConstKind::Error(_) => span_fatal!(s, span, "ty::ConstKind::Error"),
-        ty::ConstKind::Expr(e) => {
-            span_fatal!(s, span, "ty::ConstKind::Expr {:#?}", e)
-        }
-        ty::ConstKind::Bound(i, bound) => {
-            supposely_unreachable!("ty::ConstKind::Bound": i, bound, c.ty());
-            span_fatal!(s, span, "ty::ConstKind::Bound")
-        }
-        _ => span_fatal!(s, span, "unexpected case"),
-    };
-    kind.decorate(c.ty().sinto(s), span.sinto(s))
+            ty::ConstKind::Unevaluated(ucv) => match self.translate_uneval(s, ucv) {
+                TranslateUnevalRes::EvaluatedConstant(c) => return c.sinto(s),
+                TranslateUnevalRes::GlobalName(c) => c,
+            },
+            ty::ConstKind::Value(valtree) => {
+                return valtree_to_constant_expr(s, valtree, self.ty(), span)
+            }
+            ty::ConstKind::Error(_) => span_fatal!(s, span, "ty::ConstKind::Error"),
+            ty::ConstKind::Expr(e) => {
+                span_fatal!(s, span, "ty::ConstKind::Expr {:#?}", e)
+            }
+            ty::ConstKind::Bound(i, bound) => {
+                supposely_unreachable!("ty::ConstKind::Bound": i, bound, self.ty());
+                span_fatal!(s, span, "ty::ConstKind::Bound")
+            }
+            _ => span_fatal!(s, span, "unexpected case"),
+        };
+        kind.decorate(self.ty().sinto(s), span.sinto(s))
+    }
 }
 
 // #[tracing::instrument(skip(s))]
@@ -333,12 +331,12 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
             match ty.kind() {
                 ty::Array(_, _) => ConstantExprKind::Array {
                     fields: fields
-                        .map(|field| const_to_constant_expr(s, field))
+                        .map(|field| field.sinto(s))
                         .collect(),
                 },
                 ty::Tuple(_) => ConstantExprKind::Tuple {
                     fields: fields
-                        .map(|field| const_to_constant_expr(s, field))
+                        .map(|field| field.sinto(s))
                         .collect(),
                 },
                 ty::Adt(def, _) => {
@@ -353,7 +351,7 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
                             .zip(&variant_def.fields)
                             .map(|(value, field)| ConstantFieldExpr {
                                 field: field.did.sinto(s),
-                                value: const_to_constant_expr(s, value),
+                                value: value.sinto(s),
                             })
                         .collect(),
                     }
