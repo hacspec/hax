@@ -14,7 +14,7 @@ pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
     variant: &rustc_hir::def_id::DefId,
     s: &S,
 ) -> VariantInformations {
-    s_assert!(s, !adt_def.is_enum());
+    s_assert!(s, !adt_def.is_union());
     fn is_record<'s, I: std::iter::Iterator<Item = &'s rustc_middle::ty::FieldDef> + Clone>(
         it: I,
     ) -> bool {
