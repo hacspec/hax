@@ -2773,7 +2773,10 @@ pub struct TraitPredicate {
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
-pub struct OutlivesPredicate<A, B>(pub A, pub B);
+pub struct OutlivesPredicate<A, B> {
+    pub lhs: A,
+    pub rhs: B,
+}
 
 impl<'tcx, S: BaseState<'tcx>, A1, A2, B1, B2> SInto<S, OutlivesPredicate<A2, B2>>
     for rustc_middle::ty::OutlivesPredicate<A1, B1>
@@ -2782,7 +2785,10 @@ where
     B1: SInto<S, B2>,
 {
     fn sinto(&self, s: &S) -> OutlivesPredicate<A2, B2> where {
-        OutlivesPredicate(self.0.sinto(s), self.1.sinto(s))
+        OutlivesPredicate {
+            lhs: self.0.sinto(s),
+            rhs: self.1.sinto(s),
+        }
     }
 }
 
