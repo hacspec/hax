@@ -536,7 +536,7 @@ module Exn = struct
               { name = id.name; id = LocalIdent.const_id_of_int id.index }
         | Repeat { value; count } ->
             let value = c_expr value in
-            let count = c_expr count in
+            let count = c_constant_expr count in
             let inner =
               U.call Rust_primitives__hax__repeat [ value; count ] span typ
             in
@@ -649,6 +649,53 @@ module Exn = struct
 
       Assign { lhs = mk_lhs lhs; e = rhs; witness = W.mutable_variable }
 
+    and c_constant_expr (ce : Thir.decorated_for__constant_expr_kind) : expr =
+      let rec constant_expr_to_expr
+          (ce : Thir.decorated_for__constant_expr_kind) :
+          Thir.decorated_for__expr_kind =
+        {
+          attributes = ce.attributes;
+          contents = constant_expr_kind_to_expr_kind ce.contents ce.span;
+          hir_id = ce.hir_id;
+          span = ce.span;
+          ty = ce.ty;
+        }
+      and constant_expr_kind_to_expr_kind (ce : Thir.constant_expr_kind) span :
+          Thir.expr_kind =
+        match ce with
+        | Literal lit ->
+            let lit, neg = constant_lit_to_lit lit in
+            Literal { lit = { node = lit; span }; neg }
+        | Adt { fields; info } ->
+            let fields = List.map ~f:constant_field_expr fields in
+            Adt { fields; info; base = None; user_ty = None }
+        | Array { fields } ->
+            Array { fields = List.map ~f:constant_expr_to_expr fields }
+        | Tuple { fields } ->
+            Tuple { fields = List.map ~f:constant_expr_to_expr fields }
+        | GlobalName { id } -> GlobalName { id }
+        | Borrow arg ->
+            Borrow
+              { arg = constant_expr_to_expr arg; borrow_kind = Thir.Shared }
+        | ConstRef { id } -> ConstRef { id }
+        | Todo _ -> unimplemented [ span ] "ConstantExpr::Todo"
+      and constant_lit_to_lit (l : Thir.constant_literal) : Thir.lit_kind * bool
+          =
+        match l with
+        | Bool v -> (Bool v, false)
+        | Char v -> (Char v, false)
+        | Int (Int (v, ty)) -> (
+            match String.chop_prefix v ~prefix:"-" with
+            | Some v -> (Int (v, Signed ty), true)
+            | None -> (Int (v, Signed ty), false))
+        | Int (Uint (v, ty)) -> (Int (v, Unsigned ty), false)
+        | ByteStr (v, style) -> (ByteStr (v, style), false)
+      and constant_field_expr ({ field; value } : Thir.constant_field_expr) :
+          Thir.field_expr =
+        { field; value = constant_expr_to_expr value }
+      in
+      c_expr (constant_expr_to_expr ce)
+
     and c_pat (pat : Thir.decorated_for__pat_kind) : pat =
       let span = Span.of_thir pat.span in
       let typ = c_ty pat.span pat.ty in
@@ -687,7 +734,7 @@ module Exn = struct
         | Deref { subpattern } ->
             PDeref { subpat = c_pat subpattern; witness = W.reference }
         | Constant { value } -> (
-            match c_typed_constant_kind pat.span value with
+            match c_constant_expr value |> extended_literal_of_expr with
             | EL_Lit lit -> PConstant { lit }
             | EL_U8Array l ->
                 PArray
@@ -738,13 +785,6 @@ module Exn = struct
                lits)
       | _ -> not_a_literal ()
 
-    and c_typed_constant_kind span (k : Thir.typed_constant_kind) :
-        extended_literal =
-      match k.constant_kind with
-      | Ty e -> extended_literal_of_expr (c_expr e)
-      | Lit lit -> c_lit' span lit (c_ty span k.typ)
-      | Todo s -> unimplemented [ span ] ("TODO node: " ^ s)
-
     and c_canonical_user_type_annotation
         (annotation : Thir.canonical_user_type_annotation) : ty * span =
       (c_ty annotation.span annotation.inferred_ty, Span.of_thir annotation.span)
@@ -789,15 +829,17 @@ module Exn = struct
       | Int k -> TInt (c_int_ty k)
       | Uint k -> TInt (c_uint_ty k)
       | Float k -> TFloat (match k with F32 -> F32 | F64 -> F64)
-      | Arrow { params; ret } ->
-          TArrow (List.map ~f:(c_ty span) params, c_ty span ret)
+      | Arrow value ->
+          let ({ inputs; output } : Thir.ty_fn_sig) = value.value in
+          TArrow (List.map ~f:(c_ty span) inputs, c_ty span output)
       | Adt { def_id = id; generic_args } ->
           let ident = def_id Type id in
           let args = List.map ~f:(c_generic_value span) generic_args in
           TApp { ident; args }
       | Foreign _ -> unimplemented [ span ] "Foreign"
       | Str -> TStr
-      | Array (ty, len) -> TArray { typ = c_ty span ty; length = c_expr len }
+      | Array (ty, len) ->
+          TArray { typ = c_ty span ty; length = c_constant_expr len }
       | Slice ty ->
           let ty = c_ty span ty in
           TSlice { ty; witness = W.slice }
@@ -828,7 +870,7 @@ module Exn = struct
         generic_value =
       match ty with
       | Type ty -> GType (c_ty span ty)
-      | Const e -> GConst (c_expr e)
+      | Const e -> GConst (c_constant_expr e)
       | _ -> GLifetime { lt = "todo generics"; witness = W.lifetime }
 
     and c_arm (arm : Thir.arm) : arm =
@@ -925,7 +967,7 @@ module Exn = struct
           unimplemented [ span ]
             "TODO: traits: no support for defaults in funcitons for now"
       | RequiredFn (sg, _) ->
-          let Thir.{ inputs; output; _ } = sg.decl in
+          let (Thir.{ inputs; output; _ } : Thir.fn_decl) = sg.decl in
           let output =
             match output with
             | DefaultReturn _span -> unit_typ
