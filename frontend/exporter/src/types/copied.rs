@@ -501,28 +501,17 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, FieldDef> for rustc_middle::ty::FieldDef
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::VariantDef, state: S as s)]
 pub struct VariantDef {
     pub def_id: DefId,
     pub ctor: Option<(CtorKind, DefId)>,
     pub name: Symbol,
     pub discr: VariantDiscr,
+    #[value(self.fields.raw.sinto(s))]
     pub fields: Vec<FieldDef>,
+    #[value(s.base().tcx.def_span(self.def_id).sinto(s))]
     pub span: Span,
-}
-
-impl<'tcx, S: BaseState<'tcx>> SInto<S, VariantDef> for rustc_middle::ty::VariantDef {
-    // TODO: we implement this manually because we add the span field...
-    fn sinto(&self, s: &S) -> VariantDef {
-        VariantDef {
-            def_id: self.def_id.sinto(s),
-            ctor: self.ctor.sinto(s),
-            name: self.name.sinto(s),
-            discr: self.discr.sinto(s),
-            fields: self.fields.raw.sinto(s),
-            span: s.base().tcx.def_span(self.def_id).sinto(s),
-        }
-    }
 }
 
 #[derive(
