@@ -31,7 +31,7 @@ let rewrite = f => o => f(
         ? o.map(rewrite(f))
         : (o instanceof Object ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, rewrite(f)(v)])) : o)
 );
-let loc_to_string = ({col, line}) => `${col}:${line}`;
+let loc_to_string = ({col, line}) => `${line}:${col}`;
 let filename_to_string = name =>
     ((name instanceof Array && name[0] == 'Real' && name[1]?.[0] =='LocalPath') ?
      name?.[1]?.[1] : null) || JSON.stringify(name);
