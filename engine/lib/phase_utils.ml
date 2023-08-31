@@ -139,13 +139,25 @@ end = struct
              let filename =
                Printf.sprintf "%02d" nth ^ "_" ^ [%show: DebugPhaseInfo.t] k
              in
-             let rustish = Print_rust.pitems !l in
+             let regenerate_span_ids =
+               (object
+                  inherit [_] Ast.Full.item_map
+                  method visit_t () x = x
+                  method visit_mutability _ () m = m
+                  method visit_span = Fn.const Span.refresh_id
+               end)
+                 #visit_item
+                 ()
+             in
+             (* we regenerate spans IDs, so that we have more precise regions *)
+             let l = List.map ~f:regenerate_span_ids !l in
+             let rustish = Print_rust.pitems l in
              let json =
                `Assoc
                  [
                    ("name", `String ([%show: DebugPhaseInfo.t] k));
                    ("nth", `Int nth);
-                   ("items", [%yojson_of: Ast.Full.item list] !l);
+                   ("items", [%yojson_of: Ast.Full.item list] l);
                    ( "rustish",
                      [%yojson_of: Print_rust.AnnotatedString.Output.t] rustish
                    );
