@@ -1668,8 +1668,8 @@ pub fn translate_ty_alias<'tcx, S: BaseState<'tcx> + HasOwnerId>(
 
             // Truncate the substitution to keep what is relevant to the type alias (and
             // remove the arguments which actually apply to the trait instance).
-            let substs = match &trait_info.impl_source {
-                ImplSource::UserDefined(data) => {
+            let substs = match &trait_info.impl_source.kind {
+                ImplSourceKind::UserDefined(data) => {
                     // TODO: not completely sure about that
                     substs.split_off(data.substs.len())
                 }

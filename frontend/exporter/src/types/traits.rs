@@ -3,7 +3,7 @@ use crate::prelude::*;
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
-pub enum ImplSource {
+pub enum ImplSourceKind {
     UserDefined(ImplSourceUserDefinedData),
     Param(Binder<TraitRef>, Vec<ImplSource>, BoundConstness),
     Object(ImplSourceObjectData),
@@ -12,6 +12,26 @@ pub enum ImplSource {
     TraitUpcasting(ImplSourceTraitUpcastingData),
     /// For instance of [core::marker::Sync] for instance
     AutoImpl(ImplSourceAutoImplData),
+}
+
+/// We extend the impl source information with predicate information, in order
+/// to remember which trait obligation was solved (this gives us useful typing
+/// information about the impl source).
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct ImplSource {
+    pub kind: ImplSourceKind,
+    pub trait_ref: FullTraitRef,
+}
+
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct FullTraitRef {
+    pub def_id: DefId,
+    pub generic_args: Vec<GenericArg>,
+    pub traits: Vec<ImplSource>,
 }
 
 #[derive(
@@ -346,12 +366,12 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     let tcx = s.base().tcx;
 
     use rustc_trait_selection::traits::ImplSource as RustImplSource;
-    match select_trait_candidate(tcx, param_env, trait_ref).unwrap() {
+    let kind = match select_trait_candidate(tcx, param_env, trait_ref).unwrap() {
         RustImplSource::UserDefined(rustc_trait_selection::traits::ImplSourceUserDefinedData {
             impl_def_id,
             substs,
             nested,
-        }) => ImplSource::UserDefined(ImplSourceUserDefinedData {
+        }) => ImplSourceKind::UserDefined(ImplSourceUserDefinedData {
             impl_def_id: impl_def_id.sinto(s),
             substs: substs.sinto(s),
             nested: solve_obligations(s, nested),
@@ -362,14 +382,14 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             let trait_ref = trait_ref.sinto(s);
             let obligations = solve_obligations(s, obligations);
             let constness = constness.sinto(s);
-            ImplSource::Param(trait_ref, obligations, constness)
+            ImplSourceKind::Param(trait_ref, obligations, constness)
         }
         RustImplSource::Object(rustc_trait_selection::traits::ImplSourceObjectData {
             upcast_trait_ref,
             vtable_base,
             nested,
         }) => {
-            ImplSource::Object(ImplSourceObjectData {
+            ImplSourceKind::Object(ImplSourceObjectData {
                 upcast_trait_ref: upcast_trait_ref.sinto(s),
                 // TODO: we probably need to add information for the vtable
                 vtable_base,
@@ -381,7 +401,7 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         }) => {
             // Same as for the Param case: we preserve the trait ref
             let trait_ref = trait_ref.sinto(s);
-            ImplSource::Builtin(trait_ref, solve_obligations(s, nested))
+            ImplSourceKind::Builtin(trait_ref, solve_obligations(s, nested))
         }
         RustImplSource::TraitUpcasting(
             rustc_trait_selection::traits::ImplSourceTraitUpcastingData {
@@ -390,7 +410,7 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
                 nested,
             },
         ) => {
-            ImplSource::TraitUpcasting(ImplSourceTraitUpcastingData {
+            ImplSourceKind::TraitUpcasting(ImplSourceTraitUpcastingData {
                 upcast_trait_ref: upcast_trait_ref.sinto(s),
                 // TODO: we probably need to add information for the vtable
                 vtable_vptr_slot,
@@ -400,14 +420,28 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         RustImplSource::AutoImpl(rustc_trait_selection::traits::ImplSourceAutoImplData {
             trait_def_id,
             nested,
-        }) => ImplSource::AutoImpl(ImplSourceAutoImplData {
+        }) => ImplSourceKind::AutoImpl(ImplSourceAutoImplData {
             trait_def_id: trait_def_id.sinto(s),
             nested: nested.iter().map(|x| format!("{:?}", x)).collect(),
         }),
         impl_source => {
             unimplemented!("impl source: {:?}", impl_source)
         }
-    }
+    };
+
+    // Solve the trait ref
+    let trait_ref = {
+        let tr = trait_ref.sinto(s);
+        assert!(trait_ref.bound_vars().is_empty());
+        let trait_ref = trait_ref.skip_binder();
+        let traits = solve_item_traits(s, param_env, trait_ref.def_id, trait_ref.substs);
+        FullTraitRef {
+            def_id: tr.value.def_id,
+            generic_args: tr.value.generic_args,
+            traits,
+        }
+    };
+    ImplSource { kind, trait_ref }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -481,16 +515,16 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
 
     // SH: For some reason we don't need to filter the generics everywhere.
     // I don't understand the logic.
-    let (all_generics, truncated_generics) = match &mut impl_source {
-        ImplSource::UserDefined(data) => {
+    let (all_generics, truncated_generics) = match &mut impl_source.kind {
+        ImplSourceKind::UserDefined(data) => {
             // We don't need to do anything here
             (data.substs.clone(), data.substs.clone())
         }
-        ImplSource::Param(trait_ref, _, _) => {
+        ImplSourceKind::Param(trait_ref, _, _) => {
             // We need to filter here
             update_generics(&mut trait_ref.value.generic_args)
         }
-        ImplSource::Object(_data) => {
+        ImplSourceKind::Object(_data) => {
             // TODO: not sure
             todo!(
                 "- trait_ref:\n{:?}\n- params info:\n{:?}\n- impl source:{:?}",
@@ -500,7 +534,7 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             )
             // update_generics(&mut data.upcast_trait_ref.value.generic_args)
         }
-        ImplSource::Builtin(_trait_ref, _) => {
+        ImplSourceKind::Builtin(_trait_ref, _) => {
             // TODO: not sure
             todo!(
                 "- trait_ref:\n{:?}\n- params info:\n{:?}\n- impl source:{:?}",
@@ -510,7 +544,7 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             )
             // update_generics(&mut trait_ref.value.generic_args)
         }
-        ImplSource::TraitUpcasting(_data) => {
+        ImplSourceKind::TraitUpcasting(_data) => {
             // TODO: not sure
             todo!(
                 "- trait_ref:\n{:?}\n- params info:\n{:?}\n- impl source:{:?}",
@@ -520,7 +554,7 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             )
             // update_generics(&mut data.upcast_trait_ref.value.generic_args)
         }
-        ImplSource::AutoImpl(_data) => {
+        ImplSourceKind::AutoImpl(_data) => {
             // TODO: not sure
             todo!(
                 "- trait_ref:\n{:?}\n- params info:\n{:?}\n- impl source:{:?}",
@@ -624,8 +658,8 @@ pub fn solve_item_traits<'tcx, S: BaseState<'tcx> + HasOwnerId>(
 
     // Lookup the predicates and iter through them: we want to solve all the
     // trait requirements.
-    // TODO: should we use predicates_defined_on?
-    let predicates = tcx.predicates_of(def_id);
+    // IMPORTANT: we use [TyCtxt::predicates_defined_on] and not [TyCtxt::predicated_of]
+    let predicates = tcx.predicates_defined_on(def_id);
     for (pred, _) in predicates.predicates {
         // Apply the substitution
         let pred_kind = subst_binder(tcx, substs, param_env, pred.kind(), true);
