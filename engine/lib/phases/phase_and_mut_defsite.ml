@@ -125,7 +125,12 @@ struct
         let retyped_local_var_in_vars e =
           let* var = expect_in_vars_local_var e in
           (* var is supposed to be typed `&mut _` *)
-          let typ = Expect.mut_ref e.typ |> Option.value_exn in
+          let typ =
+            Expect.mut_ref e.typ
+            |> Option.value_or_thunk ~default:(fun () ->
+                   Error.assertion_failure e.span
+                   @@ "Expect.mut_ref: got `None`")
+          in
           (* we reconstruct `e` to type it correctly *)
           Some { e = LocalVar var; typ; span = e.span }
         in
@@ -176,9 +181,21 @@ struct
             method visit_t () x = x
             method visit_mutability _ () m = m
 
+            method visit_expr () e =
+              try super#visit_expr () e
+              with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
+                UB.hax_failure_expr e.span e.typ (context, kind)
+                  (UB.LiftToFullAst.expr e)
+
             method visit_Assign () lhs e witness =
+              let span = e.span in
+              let lhs = UB.expr_of_lhs span lhs in
               let lhs =
-                UB.expr_of_lhs e.span lhs |> Place.of_expr |> Option.value_exn
+                lhs |> Place.of_expr
+                |> Option.value_or_thunk ~default:(fun () ->
+                       Error.assertion_failure span
+                       @@ "Place.of_expr: got `None` for: "
+                       ^ Print_rust.pexpr_str (UB.LiftToFullAst.expr e))
                 |> place_to_lhs
               in
               Assign { lhs; e; witness }
@@ -231,7 +248,12 @@ struct
             let ti_v =
               (match item.ti_v with
               | TIFn ty ->
-                  let inputs, output = UB.Expect.arrow ty |> Option.value_exn in
+                  let inputs, output =
+                    UB.Expect.arrow ty
+                    |> Option.value_or_thunk ~default:(fun () ->
+                           Error.assertion_failure span
+                           @@ "Expect.arrow ty: got None")
+                  in
                   (* Here, we craft a dummy function so that we can
                      call `rewrite_function` *)
                   let var =
@@ -266,6 +288,17 @@ struct
                    ~default:(Fn.flip super#visit_trait_item' item.ti_v)
             in
             { item with ti_v }
+
+          method visit_item () i =
+            try super#visit_item () i
+            with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
+              let error = Diagnostics.pretty_print_context_kind context kind in
+              let cast_item : B.item -> Ast.Full.item = Obj.magic in
+              let ast = cast_item i |> Print_rust.pitem_str in
+              let msg =
+                error ^ "\nLast available AST for this item:\n\n" ^ ast
+              in
+              B.make_hax_error_item i.span i.ident msg
 
           method visit_item' () item' =
             (match item' with

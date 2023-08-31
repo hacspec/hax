@@ -109,11 +109,9 @@ struct
   and dexpr (e : A.expr) : B.expr =
     try dexpr_unwrapped e
     with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
-      let error = Diagnostics.pretty_print_context_kind context kind in
       let typ : B.ty =
         try dty e.span e.typ
         with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
-          let error = Diagnostics.pretty_print_context_kind context kind in
           UB.hax_failure_typ
       in
       UB.hax_failure_expr e.span typ (context, kind) (UA.LiftToFullAst.expr e)
