@@ -20,4 +20,5 @@ pub struct File {
 pub struct Output {
     pub diagnostics: Vec<hax_diagnostics::Diagnostics<Vec<hax_frontend_exporter::Span>>>,
     pub files: Vec<File>,
+    pub debug_json: Option<String>,
 }

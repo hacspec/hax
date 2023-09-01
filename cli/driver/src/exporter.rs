@@ -417,6 +417,16 @@ impl Callbacks for ExtractionCallbacks {
                     } else {
                         write_files(&output, &session, backend.backend);
                     }
+                    if let Some(debug_json) = &output.debug_json {
+                        eprintln!("----------------------------------------------");
+                        eprintln!("----------------------------------------------");
+                        eprintln!("----------------------------------------------");
+                        eprintln!("-- Engine debug mode. Press CTRL+C to exit. --");
+                        eprintln!("----------------------------------------------");
+                        eprintln!("----------------------------------------------");
+                        eprintln!("----------------------------------------------");
+                        phase_debug_webapp::run(|| debug_json.clone())
+                    }
                 }
             };
             Compilation::Continue

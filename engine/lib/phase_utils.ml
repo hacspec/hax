@@ -112,33 +112,30 @@ end
 
 module DebugBindPhase : sig
   val add : DebugPhaseInfo.t -> int -> (unit -> Ast.Full.item list) -> unit
-  val export : unit -> unit
-  val enable : string -> unit
+  val export : unit -> string option
+  val enable : unit -> unit
 end = struct
-  let prefix_path = ref None
-  let enable (path : string) = prefix_path := Some path
-  let enabled () = Option.is_some !prefix_path
+  let enabled = ref false
+  let enable () = enabled := true
 
   let cache : (DebugPhaseInfo.t, int * Ast.Full.item list ref) Hashtbl.t =
     Hashtbl.create (module DebugPhaseInfo)
 
   let add (phase_info : DebugPhaseInfo.t) (nth : int)
       (mk_item : unit -> Ast.Full.item list) =
-    if enabled () then
+    if !enabled (* `!` is not `not` *) then
       let _, l =
         Hashtbl.find_or_add cache phase_info ~default:(fun _ -> (nth, ref []))
       in
       l := !l @ mk_item ()
     else ()
 
-  let export' prefix_path =
-    let files, json =
+  let export' () =
+    Logs.info (fun m -> m "Exporting debug informations");
+    let json =
       Hashtbl.to_alist cache
       |> List.sort ~compare:(fun (_, (a, _)) (_, (b, _)) -> Int.compare a b)
       |> List.map ~f:(fun (k, (nth, l)) ->
-             let filename =
-               Printf.sprintf "%02d" nth ^ "_" ^ [%show: DebugPhaseInfo.t] k
-             in
              let regenerate_span_ids =
                (object
                   inherit [_] Ast.Full.item_map
@@ -163,27 +160,14 @@ end = struct
                    );
                  ]
              in
-             let rustish =
-               Print_rust.AnnotatedString.Output.raw_string rustish
-             in
-
-             ((filename, rustish), json))
-      |> List.unzip
+             json)
     in
-    List.iter
-      ~f:(fun (path, data) ->
-        Core.Out_channel.write_all ~data
-        @@ [%string "%{prefix_path}/%{path}.rs"])
-      files;
-    Core.Out_channel.write_all ~data:(`List json |> Yojson.Safe.pretty_to_string)
-    @@ prefix_path ^ "/debug-hax-engine.json"
+    `List json |> Yojson.Safe.pretty_to_string
 
   let export () =
-    match !prefix_path with
-    | Some prefix_path ->
-        Logs.info (fun m -> m "Exporting debug informations");
-        export' prefix_path
-    | None -> ()
+    if !enabled (* recall: ! is deref, not `not`, great op. choice..... *) then
+      Some (export' ())
+    else None
 end
 
 module type S = sig
