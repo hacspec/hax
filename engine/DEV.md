@@ -46,10 +46,7 @@ You can also use `dune utop` and then `#show_type Hax_engine.Types.SOME_TYPE` an
 You can enable a debug mode that prints a Rustish AST at each phase,
 that you can browse interactively along with the actual AST.
 
-Just add the flag `--debug-engine DIR` to the `into` subcommand, where
-`DIR` is a directory where will be outputted debug informations. Make
-sure to create the folder beforehand.
-
-To browse the debug information, run
-`./engine/utils/phase_debug_webapp/server.js DIR`. Note you can change
-to port by setting the environment variable `PORT`.
+Just add the flag `--debug-engine` (or `-d`) to the `into` subcommand.
+At the end of the translation, `cargo hax` will spawn a webserver that
+let you browse the debug information. Note you can change to port by
+setting the environment variable `HAX_DEBUGGER_PORT`.
