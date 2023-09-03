@@ -400,11 +400,10 @@ impl Callbacks for ExtractionCallbacks {
                                 String::from_utf8(out.stdout).unwrap()
                             )
                         });
-                    let options_frontend = Box::new(
-                        hax_frontend_exporter_options::Options::from(self.clone()).clone(),
-                    );
+                    let options_frontend =
+                        hax_frontend_exporter_options::Options::from(self.clone());
                     let state =
-                        hax_frontend_exporter::state::State::new(tcx, (*options_frontend).clone());
+                        hax_frontend_exporter::state::State::new(tcx, options_frontend.clone());
                     report_diagnostics(
                         &output,
                         &session,

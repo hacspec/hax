@@ -55,3 +55,56 @@ pub(crate) use fatal;
 pub(crate) use span_fatal;
 pub(crate) use supposely_unreachable;
 pub(crate) use supposely_unreachable_fatal;
+
+pub trait SExpect: Sized {
+    type Output;
+    fn s_expect<'tcx, S: crate::BaseState<'tcx>>(self, s: &S, message: &str) -> Self::Output;
+
+    fn s_unwrap<'tcx, S: crate::BaseState<'tcx>>(self, s: &S) -> Self::Output {
+        self.s_expect(s, "")
+    }
+}
+
+mod s_expect_impls {
+    use super::*;
+    struct Dummy;
+    impl std::fmt::Debug for Dummy {
+        fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            write!(f, "...")
+        }
+    }
+
+    fn s_expect_error<'tcx>(
+        s: &impl crate::BaseState<'tcx>,
+        expected: impl std::fmt::Debug,
+        got: impl std::fmt::Debug,
+        message: &str,
+    ) -> ! {
+        fatal!(s, "s_expect: expected {expected:?}, got {got:?}. {message}")
+    }
+
+    impl<T: std::fmt::Debug> SExpect for Option<T> {
+        type Output = T;
+        fn s_expect<'tcx, S: crate::BaseState<'tcx>>(self, s: &S, message: &str) -> Self::Output {
+            self.unwrap_or_else(|| s_expect_error(s, Some(Dummy), None::<()>, message))
+        }
+    }
+
+    impl<T: std::fmt::Debug, E: std::fmt::Debug> SExpect for Result<T, E> {
+        type Output = T;
+        fn s_expect<'tcx, S: crate::BaseState<'tcx>>(self, s: &S, message: &str) -> Self::Output {
+            self.unwrap_or_else(|e| s_expect_error(s, Ok::<_, ()>(Dummy), Err::<(), _>(e), message))
+        }
+    }
+}
+
+macro_rules! s_assert {
+    ($s:ident, $assertion:expr) => {{
+        if $assertion {
+            ()
+        } else {
+            fatal!($s, "assertion failed: {}", stringify!($assertion))
+        }
+    }};
+}
+pub(crate) use s_assert;

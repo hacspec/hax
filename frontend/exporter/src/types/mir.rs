@@ -24,8 +24,7 @@ pub struct LocalDecl {
     pub ty: Ty,
     pub user_ty: Option<UserTypeProjections>,
     pub source_info: SourceInfo,
-    #[not_in_source]
-    #[map(None)]
+    #[value(None)]
     pub name: Option<String>, // This information is contextual, thus the SInto instance initializes it to None, and then we fill it while `SInto`ing MirBody
 }
 
@@ -113,7 +112,7 @@ pub use mir_kinds::IsMirKind;
 pub struct Constant {
     pub span: Span,
     pub user_ty: Option<UserTypeAnnotationIndex>,
-    pub literal: TypedConstantKind,
+    pub literal: ConstantExpr,
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -146,8 +145,7 @@ pub struct MirBody<KIND> {
     pub is_polymorphic: bool,
     pub injection_phase: Option<MirPhase>,
     pub tainted_by_errors: Option<ErrorGuaranteed>,
-    #[not_in_source]
-    #[map(std::marker::PhantomData)]
+    #[value(std::marker::PhantomData)]
     pub _kind: std::marker::PhantomData<KIND>,
 }
 
@@ -196,7 +194,7 @@ impl Operand {
     pub(crate) fn ty(&self) -> &Ty {
         match self {
             Operand::Copy(p) | Operand::Move(p) => &p.ty,
-            Operand::Constant(c) => &c.literal.typ,
+            Operand::Constant(c) => &c.literal.ty,
         }
     }
 }
@@ -278,33 +276,39 @@ fn translate_switch_targets<'tcx, S: BaseState<'tcx>>(
 
     match switch_ty {
         Ty::Bool => {
-            // This is an: `if ... then ... else ...`
-            assert!(targets_vec.len() == 1);
-            // It seems the block targets are inverted
-            let (test_val, otherwise_block) = targets_vec[0];
+            // This is an: `if ... then ... else ...`. We are matching
+            // on a boolean casted to an integer: `false` is `0`,
+            // `true` is `1`. Thus the `otherwise` branch correspond
+            // to the `then` branch.
+            const FALSE: u128 = false as u128;
+            let [(FALSE, else_branch)] =  targets_vec.as_slice() else {
+                supposely_unreachable_fatal!("MirSwitchBool": targets_vec, switch_ty);
+            };
 
-            assert!(test_val == 0);
-
-            // It seems the block targets are inverted
-            let if_block = targets.otherwise().sinto(s);
-
-            SwitchTargets::If(if_block, otherwise_block)
+            SwitchTargets::If {
+                then_branch: targets.otherwise().sinto(s),
+                else_branch: *else_branch,
+            }
         }
         Ty::Int(int_ty) => {
             // This is a: switch(int).
             // Convert all the test values to the proper values.
-            let mut targets_map: Vec<(ScalarInt, BasicBlock)> = Vec::new();
-            for (v, tgt) in targets_vec {
-                // We need to reinterpret the bytes (`v as i128` is not correct)
-                let v = ScalarInt {
-                    data_le_bytes: v.to_le_bytes(),
-                    int_ty: *int_ty,
-                };
-                targets_map.push((v, tgt));
+            SwitchTargets::SwitchInt {
+                scrutinee_type: *int_ty,
+                branches: targets_vec
+                    .into_iter()
+                    .map(|(v, tgt)| {
+                        (
+                            ScalarInt {
+                                data_le_bytes: v.to_le_bytes(),
+                                int_ty: *int_ty,
+                            },
+                            tgt,
+                        )
+                    })
+                    .collect(),
+                otherwise_branch: targets.otherwise().sinto(s),
             }
-            let otherwise_block = targets.otherwise().sinto(s);
-
-            SwitchTargets::SwitchInt(*int_ty, targets_map, otherwise_block)
         }
         _ => {
             fatal!(s, "Unexpected switch_ty: {:?}", switch_ty)
@@ -314,12 +318,18 @@ fn translate_switch_targets<'tcx, S: BaseState<'tcx>>(
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum SwitchTargets {
-    /// Gives the `if` block and the `else` block
-    If(BasicBlock, BasicBlock),
+    If {
+        then_branch: BasicBlock,
+        else_branch: BasicBlock,
+    },
     /// Gives the integer type, a map linking values to switch branches, and the
     /// otherwise block. Note that matches over enumerations are performed by
     /// switching over the discriminant, which is an integer.
-    SwitchInt(IntTy, Vec<(ScalarInt, BasicBlock)>, BasicBlock),
+    SwitchInt {
+        scrutinee_type: IntTy,
+        branches: Vec<(ScalarInt, BasicBlock)>,
+        otherwise_branch: BasicBlock,
+    },
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -352,25 +362,12 @@ pub enum TerminatorKind {
         unwind: UnwindAction,
         replace: bool,
     },
-    #[custom_arm(
-        rustc_middle::mir::TerminatorKind::Call {
-            func, args, destination, target, unwind, from_hir_call, fn_span,
-        } => {
-          let (fun_id, substs) = get_function_from_operand(s, func);
-          TerminatorKind::Call {
-            fun_id,
-            substs,
-            args: args.sinto(s),
-            destination: destination.sinto(s),
-            target: target.sinto(s),
-            unwind: unwind.sinto(s),
-            from_hir_call: from_hir_call.sinto(s),
-            fn_span: fn_span.sinto(s),
-          }
-        }
-    )]
+    #[use_field(func)]
+    #[prepend(let (fun_id, substs) = get_function_from_operand(s, func);)]
     Call {
+        #[value(fun_id)]
         fun_id: DefId,
+        #[value(substs)]
         substs: Vec<GenericArg>,
         args: Vec<Operand>,
         destination: Place,
@@ -461,7 +458,7 @@ pub enum ProjectionElemFieldKind {
     Tuple(FieldIdx),
     Adt {
         typ: DefId,
-        variant: Option<VariantIdx>,
+        variant_info: VariantInformations,
         index: FieldIdx,
     },
 }
@@ -502,14 +499,18 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx>> SInto<S, Place> for rustc_middle::
                             variant_idx: Option<rustc_abi::VariantIdx>| {
                 ProjectionElem::Field(match cur_ty.kind() {
                     rustc_middle::ty::TyKind::Adt(adt_def, _) => {
-                        assert!(
-                            (adt_def.is_struct() && variant_idx.is_none())
-                                || (adt_def.is_enum() && variant_idx.is_some())
+                        let variant_info = get_variant_information(
+                            adt_def,
+                            // This is silly: `get_variant_information` will reconstruct the VariantIdx...
+                            &adt_def
+                                .variant(variant_idx.unwrap_or(rustc_abi::VariantIdx::from_u32(0)))
+                                .def_id,
+                            s,
                         );
                         ProjectionElemFieldKind::Adt {
                             typ: adt_def.did().sinto(s),
-                            variant: variant_idx.map(|id| id.sinto(s)),
                             index: index.sinto(s),
+                            variant_info,
                         }
                     }
                     rustc_middle::ty::TyKind::Tuple(_types) => {
@@ -622,42 +623,6 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx>> SInto<S, Place> for rustc_middle::
     }
 }
 
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
-pub struct MirFnSig {
-    pub inputs: Vec<Ty>,
-    pub output: Ty,
-    pub c_variadic: bool,
-    pub unsafety: Unsafety,
-    pub abi: Abi,
-}
-
-pub type MirPolyFnSig = Binder<MirFnSig>;
-
-impl<'tcx, S: BaseState<'tcx>> SInto<S, MirFnSig> for rustc_middle::ty::FnSig<'tcx> {
-    fn sinto(&self, s: &S) -> MirFnSig {
-        let inputs = self.inputs().sinto(s);
-        let output = self.output().sinto(s);
-        MirFnSig {
-            inputs,
-            output,
-            c_variadic: self.c_variadic,
-            unsafety: self.unsafety.sinto(s),
-            abi: self.abi.sinto(s),
-        }
-    }
-}
-
-// TODO: we need this function because sometimes, Rust doesn't infer the proper
-// typeclass instance.
-pub(crate) fn poly_fn_sig_to_mir_poly_fn_sig<'tcx, S: BaseState<'tcx>>(
-    sig: &rustc_middle::ty::PolyFnSig<'tcx>,
-    s: &S,
-) -> MirPolyFnSig {
-    sig.sinto(s)
-}
-
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::AggregateKind<'tcx>, state: S as s)]
 pub enum AggregateKind {
@@ -713,13 +678,6 @@ pub enum NullOp {
 #[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::Rvalue<'tcx>, state: S as s)]
 pub enum Rvalue {
     Use(Operand),
-    #[custom_arm(
-        rustc_middle::mir::Rvalue::Repeat(op, ce) => {
-            let op = op.sinto(s);
-            let ce = const_to_constant_expr(s, *ce);
-            Rvalue::Repeat(op, ce)
-        },
-    )]
     Repeat(Operand, ConstantExpr),
     Ref(Region, BorrowKind, Place),
     ThreadLocalRef(DefId),
