@@ -1,0 +1,18 @@
+[package]
+name = "hax-lib-macros-types"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+edition.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+quote.workspace = true
+proc-macro2.workspace = true
+uuid = { version = "1.4.1", features = ["v4"] }
+

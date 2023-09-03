@@ -47,5 +47,6 @@ hax-frontend-exporter.workspace = true
 hax-diagnostics.workspace = true
 hax-cli-options.workspace = true
 hax-cli-options-engine.workspace = true
+hax-lib-macros-types.workspace = true
 version_check = "0.9"
 toml = "0.7"
