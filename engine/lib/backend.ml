@@ -22,6 +22,7 @@ module type T = sig
     end
   end
 
+  module Error : Phase_utils.ERROR
   module BackendOptions : BACKEND_OPTIONS
 
   val apply_phases : BackendOptions.t -> Ast.Rust.item list -> AST.item list

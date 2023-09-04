@@ -43,6 +43,14 @@ end
 
 exception ReportError of Diagnostics.kind
 
+module type ERROR = sig
+  type t = { kind : Diagnostics.kind; span : Ast.span }
+
+  val raise : t -> 'never
+  val unimplemented : ?issue_id:int -> ?details:string -> Ast.span -> 'never
+  val assertion_failure : Ast.span -> string -> 'never
+end
+
 module MakeBase
     (FA : Features.T)
     (FB : Features.T) (M : sig
@@ -59,7 +67,7 @@ struct
   let metadata = Metadata.make phase_id
   let failwith = ()
 
-  module Error = struct
+  module Error : ERROR = struct
     type t = { kind : Diagnostics.kind; span : Ast.span } [@@deriving show, eq]
 
     let raise err =
