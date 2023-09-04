@@ -100,7 +100,7 @@ struct
          into
           `(let … = … in)* let output = expr in output` *)
       let wrap_in_identity_let (e : expr) : expr =
-        let var = LocalIdent.{ id = mk_id Expr 0; name = "output" } in
+        let var = Local_ident.{ id = mk_id Expr 0; name = "output" } in
         let f (e : expr) : expr =
           match e.e with
           | GlobalVar (`TupleCons 0) -> e
@@ -248,7 +248,7 @@ struct
               | TIFn (TArrow (inputs, output)) ->
                   (* Here, we craft a dummy function so that we can
                      call `rewrite_function` *)
-                  let var = LocalIdent.{ id = mk_id Expr 0; name = "dummy" } in
+                  let var = Local_ident.{ id = mk_id Expr 0; name = "dummy" } in
                   let params =
                     List.map
                       ~f:(fun typ ->

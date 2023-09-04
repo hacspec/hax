@@ -87,7 +87,7 @@ module Context = struct
   type t = { current_namespace : string * string list; items : item list }
 end
 
-let magic_id_raw_local_ident = LocalIdent.mk_id Expr (-765142)
+let magic_id_raw_local_ident = Local_ident.mk_id Expr (-765142)
 
 module Make (Ctx : sig
   val ctx : Context.t
@@ -181,15 +181,18 @@ struct
           ("pglobal_ident: expected to be handled somewhere else: "
          ^ show_global_ident id)
 
-  let plocal_ident (e : LocalIdent.t) =
+  let plocal_ident (e : Local_ident.t) =
+    (* let name = U.Concrete_ident_view.local_ident e.name in *)
     F.id
     @@
-    if [%eq: LocalIdent.id] e.id magic_id_raw_local_ident then e.name
+    if [%eq: Local_ident.id] e.id magic_id_raw_local_ident then e.name
     else
-      U.Concrete_ident_view.local_name
+      U.Concrete_ident_view.local_ident
         (match String.chop_prefix ~prefix:"impl " e.name with
-        | Some name -> "impl_" ^ Int.to_string ([%hash: string] name)
-        | _ -> e.name)
+        | Some name ->
+            let name = "impl_" ^ Int.to_string ([%hash: string] name) in
+            { e with name }
+        | _ -> e)
 
   let pfield_ident span (f : global_ident) : F.Ident.lident =
     match f with
@@ -289,7 +292,7 @@ struct
     | Concrete tr -> c_trait_ref span tr |> some
     | LocalBound { id } ->
         let local_ident =
-          LocalIdent.{ name = id; id = LocalIdent.mk_id Expr 0 }
+          Local_ident.{ name = id; id = Local_ident.mk_id Expr 0 }
         in
         F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident local_ident) |> some
     | ImplApp { impl; _ } when not hax_unstable_impl_exprs ->
@@ -636,7 +639,7 @@ struct
                  (List.map ~f:fvar_of_params params)
                  (List.map
                     ~f:(fun name ->
-                      LocalIdent.{ id = magic_id_raw_local_ident; name })
+                      Local_ident.{ id = magic_id_raw_local_ident; name })
                     free_variables)
              in
              let v =

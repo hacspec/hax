@@ -438,16 +438,18 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
          crate :: (path @ [ definition ]))
     |> String.concat ~sep:"::"
 
-  let local_name name =
-    to_definition_name
-      {
-        def_id =
-          {
-            krate = "dummy_for_local_name";
-            path = [ { data = ValueNs name; disambiguator = 0 } ];
-          };
-        kind = Value;
-      }
+  let local_ident (li : Local_ident.t) =
+    if Local_ident.is_final li then li.name
+    else
+      to_definition_name
+        {
+          def_id =
+            {
+              krate = "dummy_for_local_name";
+              path = [ { data = ValueNs li.name; disambiguator = 0 } ];
+            };
+          kind = Value;
+        }
 end
 
 let to_debug_string = T.show

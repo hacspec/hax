@@ -8,11 +8,11 @@ module TypedLocalIdent (Ty : sig
 end) =
 struct
   module T = struct
-    type t = Ast.LocalIdent.t * Ty.ty [@@deriving show, yojson]
+    type t = Local_ident.t * Ty.ty [@@deriving show, yojson]
 
-    let sexp_of_t : t -> _ = fst >> Ast.LocalIdent.sexp_of_t
-    let compare (a : t) (b : t) = [%compare: Ast.LocalIdent.t] (fst a) (fst b)
-    let equal (a : t) (b : t) = [%eq: Ast.LocalIdent.t] (fst a) (fst b)
+    let sexp_of_t : t -> _ = fst >> Local_ident.sexp_of_t
+    let compare (a : t) (b : t) = [%compare: Local_ident.t] (fst a) (fst b)
+    let equal (a : t) (b : t) = [%eq: Local_ident.t] (fst a) (fst b)
   end
 
   include Base.Comparator.Make (T)
@@ -107,13 +107,13 @@ module Make (F : Features.T) = struct
         end
     end
 
-    module LocalIdent = struct
-      include Set.M (LocalIdent)
+    module Local_ident = struct
+      include Set.M (Local_ident)
 
       class ['s] monoid =
         object
           inherit ['s] VisitorsRuntime.monoid
-          method private zero = Set.empty (module LocalIdent)
+          method private zero = Set.empty (module Local_ident)
           method private plus = Set.union
         end
     end
@@ -261,10 +261,10 @@ module Make (F : Features.T) = struct
     let collect_local_idents =
       object
         inherit [_] item_reduce as _super
-        inherit [_] Sets.LocalIdent.monoid as m
+        inherit [_] Sets.Local_ident.monoid as m
         method visit_t _ _ = m#zero
         method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
-        method! visit_local_ident _ x = Set.singleton (module LocalIdent) x
+        method! visit_local_ident _ x = Set.singleton (module Local_ident) x
       end
 
     let collect_global_idents =
@@ -294,27 +294,27 @@ module Make (F : Features.T) = struct
           Set.singleton (module Concrete_ident) x
       end
 
-    let variables_of_pat (p : pat) : Sets.LocalIdent.t =
+    let variables_of_pat (p : pat) : Sets.Local_ident.t =
       (object
          inherit [_] expr_reduce as super
-         inherit [_] Sets.LocalIdent.monoid as m
+         inherit [_] Sets.Local_ident.monoid as m
          method visit_t _ _ = m#zero
          method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
 
          method! visit_PBinding env _ _ var _ subpat =
            m#plus
-             (Set.singleton (module LocalIdent) var)
+             (Set.singleton (module Local_ident) var)
              (Option.value_map subpat ~default:m#zero
                 ~f:(fst >> super#visit_pat env))
       end)
         #visit_pat
         () p
 
-    let variables_of_pats : pat list -> Sets.LocalIdent.t =
-      List.map ~f:variables_of_pat >> Set.union_list (module LocalIdent)
+    let variables_of_pats : pat list -> Sets.Local_ident.t =
+      List.map ~f:variables_of_pat >> Set.union_list (module Local_ident)
 
     let without_vars (mut_vars : Sets.TypedLocalIdent.t)
-        (vars : Sets.LocalIdent.t) =
+        (vars : Sets.Local_ident.t) =
       Set.filter mut_vars ~f:(fst >> Set.mem vars >> not)
 
     let without_pats_vars (mut_vars : Sets.TypedLocalIdent.t) :
@@ -368,7 +368,7 @@ module Make (F : Features.T) = struct
             @ (state
               |> Option.map ~f:(fun { bpat; _ } -> variables_of_pat bpat)
               |> Option.to_list)
-            |> Set.union_list (module LocalIdent)
+            |> Set.union_list (module Local_ident)
           in
           m#plus
             (super#visit_loop_kind env kind)
@@ -404,10 +404,10 @@ module Make (F : Features.T) = struct
   (** Produces a local identifier which is locally fresh **with respect
       to expressions {exprs}**. *)
   let fresh_local_ident_in_expr (exprs : expr list) (prefix : string) :
-      LocalIdent.t =
+      Local_ident.t =
     let free_suffix =
       List.map ~f:(Reducers.collect_local_idents#visit_expr ()) exprs
-      |> Set.union_list (module LocalIdent)
+      |> Set.union_list (module Local_ident)
       |> Set.to_list
       |> List.filter_map ~f:(fun ({ name; _ } : local_ident) ->
              String.chop_prefix ~prefix name)
@@ -423,7 +423,7 @@ module Make (F : Features.T) = struct
       name = prefix ^ free_suffix;
       id =
         (* TODO: freshness is local and name-only here... *)
-        LocalIdent.mk_id Expr (-1);
+        Local_ident.mk_id Expr (-1);
     }
 
   let never_typ : ty =
@@ -758,7 +758,7 @@ module Make (F : Features.T) = struct
     type t = { place : place'; span : span; typ : ty }
 
     and place' =
-      | LocalVar of LocalIdent.t
+      | LocalVar of Local_ident.t
       | Deref of expr
       | IndexProjection of { place : t; index : expr }
       | FieldProjection of { place : t; projector : global_ident }

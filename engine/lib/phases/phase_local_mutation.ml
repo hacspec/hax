@@ -62,7 +62,7 @@ struct
     let rec dpat' (span : span) (p : A.pat') : B.pat' =
       match p with
       | [%inline_arms "dpat'.*" - PBinding - PDeref] -> auto
-      | PBinding { var : LocalIdent.t; typ; subpat; _ } ->
+      | PBinding { var : Local_ident.t; typ; subpat; _ } ->
           PBinding
             {
               mut = Immutable;
@@ -150,7 +150,7 @@ struct
           let vars =
             List.map
               ~f:(fun (i, typ) : B.expr ->
-                if LocalIdent.equal i var then
+                if Local_ident.equal i var then
                   dexpr_s { s with expr_level = []; drop_expr = false } e
                 else { e = LocalVar i; typ; span })
               s.expr_level
@@ -173,7 +173,7 @@ struct
                     {
                       bindings =
                         Set.to_list observable_mutations
-                        |> List.map ~f:(fun (LocalIdent.{ name; _ }, _) -> name);
+                        |> List.map ~f:(fun (Local_ident.{ name; _ }, _) -> name);
                     };
                 span;
               };
@@ -239,10 +239,10 @@ struct
                    (module UB.TypedLocalIdent)
                    ~f:(fun (i, t) -> (i, dty span t))
             in
-            let idents_of_set = Set.map (module LocalIdent) ~f:fst set in
+            let idents_of_set = Set.map (module Local_ident) ~f:fst set in
             let idents_of_variables_to_output =
               variables_to_output |> List.map ~f:fst
-              |> Set.of_list (module LocalIdent)
+              |> Set.of_list (module Local_ident)
             in
             (* if we mutate exactly s.expr_level, return that in this order *)
             if Set.equal idents_of_set idents_of_variables_to_output then
