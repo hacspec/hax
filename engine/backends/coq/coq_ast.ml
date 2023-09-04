@@ -93,6 +93,9 @@ functor
       type definition_type = string * argument list * term * ty
       type record_field = Named of string * ty | Coercion of string * ty
 
+      type instance_decls = InlineDef of definition_type
+                          | LetDef of definition_type
+
       type decl =
         | Unimplemented of string
         | Comment of string
@@ -107,7 +110,7 @@ functor
         | Instance of
             string * argument list * ty * ty list * definition_type list
         | ProgramInstance of
-            string * argument list * ty * ty list * definition_type list
+            string * argument list * ty * ty list * instance_decls list
         | Require of string list * string option
         | ModuleType of string * argument list * record_field list
         | Module of string * string * argument list * record_field list
@@ -344,7 +347,7 @@ functor
           term_to_string_without_paren t depth
           ^ ","
           ^ tuple_term_to_string ts depth
-      | [] -> "!TODO empty tuple!"
+      | [] -> "_" (* TODO: Empty tuple? *)
 
     and lambda_params_to_string (params : AST.pat list) depth : string =
       match params with
@@ -503,18 +506,24 @@ functor
           in
           let impl_str =
             String.concat ~sep:(newline_indent 1)
-            (List.map
-              ~f:(fun (name, arguments, term, ty) ->
-                "let" ^ " " ^ name ^ " " ^ ":=" ^ " "
-                ^ (if List.is_empty arguments then "" else "fun" ^ " " ^ params_to_string_typed arguments ^ " " ^ "=>")
-                ^ term_to_string_without_paren term 1 ^ " " ^ "in")
+            (List.filter_map
+               ~f:(function
+                   | LetDef (name, arguments, term, ty) ->
+                     Some ("let" ^ " " ^ name ^ " " ^ ":=" ^ " "
+                           ^  (if List.is_empty arguments then "" else "fun" ^ " " ^ params_to_string_typed arguments ^ " " ^ "=>" ^ " ")
+                           ^ term_to_string_without_paren term 1 ^ " " ^ ":" ^ " " ^ ty_to_string ty ^ " " ^ "in")
+                   | _ -> None)
               impl_list)
           in
           let arg_str =
             String.concat ~sep:" "
             (List.map
-              ~f:(fun (name, arguments, term, ty) ->
-                "(" ^ "@" ^ name ^ ")")
+               ~f:(function
+                   | LetDef (name, arguments, term, ty) ->
+                     "(" ^ "@" ^ name ^ ")"
+                   | InlineDef (name, arguments, term, ty) ->
+                     "(" ^ (if List.is_empty arguments then "" else "fun" ^ " " ^ params_to_string_typed arguments ^ " " ^ "=>" ^ " ")
+                           ^ term_to_string_without_paren term 1 ^ " " ^ ":" ^ " " ^ ty_to_string ty ^ ")")
               impl_list)
           in
           let ty_str = ty_to_string self_ty in
@@ -523,6 +532,7 @@ functor
           ^ " " ^ ":" ^ " " ^ name ^ " " ^ ty_list_str ^ ":="  ^ newline_indent 1
           ^ impl_str ^ newline_indent 1
           ^ "Build_" ^ name ^ " " ^ ty_list_str ^ " " ^ arg_str ^ "."
+^ fail_next_obligation
       | AST.Require ([], rename) -> ""
       | AST.Require (import :: imports, rename) ->
           (* map_first_letter String.uppercase import *)

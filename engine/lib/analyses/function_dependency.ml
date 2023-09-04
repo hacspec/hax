@@ -27,12 +27,20 @@ module%inlined_contents Make (F : Features.T) = struct
 
   let rec analyse (_ : pre_data) (items : A.item list) : analysis_data =
     let func_dep_list =
-      List.filter_map
+      List.concat_map
         ~f:(fun x ->
           match x.v with
           | Fn { name; generics = _; body; params = _ } ->
-              Some (name, analyse_function_body body)
-          | _ -> None)
+              [(name, analyse_function_body body)]
+          | Impl { generics = _; self_ty = _; of_trait = (_name, _gen_vals); items } ->
+            List.concat_map
+              ~f:(fun w ->
+                  match w.ii_v with
+                  | IIFn { body; params = _ } ->
+                    [(w.ii_ident, analyse_function_body body)]
+                  | _ -> [])
+              items
+          | _ -> [])
         items
     in
     let graph_map =

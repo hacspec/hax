@@ -149,3 +149,15 @@ pub fn hax_attributes(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     quote! { #item }.into()
 }
+
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn hax_no_unfold_attr(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let attr: TokenStream2 = attr.into();
+    let item: TokenStream2 = item.into();
+    quote! {
+        #[hax::#attr]
+        #[cfg_attr(not(feature = "hax_compilation"), #attr )]
+        #item
+    }.into()
+}
