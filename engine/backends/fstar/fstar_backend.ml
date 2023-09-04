@@ -87,11 +87,10 @@ module Context = struct
   type t = { current_namespace : string * string list; items : item list }
 end
 
-let magic_id_raw_local_ident = Local_ident.mk_id Expr (-765142)
-
-module Make (Ctx : sig
-  val ctx : Context.t
-end) =
+module Make
+    (Attrs : Attrs.WITH_ITEMS) (Ctx : sig
+      val ctx : Context.t
+    end) =
 struct
   open Ctx
 
@@ -184,15 +183,12 @@ struct
   let plocal_ident (e : Local_ident.t) =
     (* let name = U.Concrete_ident_view.local_ident e.name in *)
     F.id
-    @@
-    if [%eq: Local_ident.id] e.id magic_id_raw_local_ident then e.name
-    else
-      U.Concrete_ident_view.local_ident
-        (match String.chop_prefix ~prefix:"impl " e.name with
-        | Some name ->
-            let name = "impl_" ^ Int.to_string ([%hash: string] name) in
-            { e with name }
-        | _ -> e)
+    @@ U.Concrete_ident_view.local_ident
+         (match String.chop_prefix ~prefix:"impl " e.name with
+         | Some name ->
+             let name = "impl_" ^ Int.to_string ([%hash: string] name) in
+             { e with name }
+         | _ -> e)
 
   let pfield_ident span (f : global_ident) : F.Ident.lident =
     match f with
@@ -637,10 +633,7 @@ struct
              let substs =
                List.zip_exn
                  (List.map ~f:fvar_of_params params)
-                 (List.map
-                    ~f:(fun name ->
-                      Local_ident.{ id = magic_id_raw_local_ident; name })
-                    free_variables)
+                 (List.map ~f:Local_ident.make_final free_variables)
              in
              let v =
                U.Mappers.rename_local_idents (fun i ->
@@ -653,13 +646,41 @@ struct
 
   let pmaybe_refined_ty span (free_variables : string list) (attrs : attrs)
       (binder_name : string) (ty : ty) : F.AST.term =
-    match associated_refinement free_variables attrs with
+    prerr_endline @@ "pmaybe_refined_ty[attrs]=" ^ [%show: attrs] attrs;
+    match Attrs.associated_refinement_in_type free_variables attrs with
     | Some refinement ->
         F.mk_refined binder_name (pty span ty) (fun ~x -> pexpr refinement)
     | None -> pty span ty
+
   (* let prefined_ty span (binder : string) (ty : ty) (refinement : expr) : *)
   (*     F.AST.term = *)
   (*   F.mk_refined binder (pty span ty) (pexpr refinement) *)
+
+  let add_clauses_effect_type (attrs : attrs) typ : F.AST.typ =
+    let decreases =
+      Attrs.associated_expr Decreases attrs
+      |> Option.map ~f:(fun m ->
+             FStar_Parser_AST.Decreases (pexpr m, None) |> F.term)
+    in
+    (* let requires = *)
+    (*   Attrs.associated_expr Requires attrs *)
+    (*   |> Option.map ~f:(fun phi -> FStar_Parser_AST.Requires (pexpr phi, None)) *)
+    (* in *)
+    (* let ensures = *)
+    (*   Attrs.associated_expr Ensures attrs *)
+    (*   |> Option.map ~f:(fun phi -> FStar_Parser_AST.Ensures (pexpr phi, None)) *)
+    (* in *)
+    (* let effect = *)
+    (*   if Option.is_some decreases || Option.is_some requires then *)
+    (*     F.lid [ "prims"; "Pure" ] *)
+    (*   else if Option.is_some decreases then Some (F.lid [ "prims"; "Tot" ]) *)
+    (*   else None *)
+    (* in *)
+    let tot = F.term_of_lid [ "prims"; "Tot" ] in
+    match decreases with Some d -> F.mk_e_app tot [ typ; d ] | _ -> typ
+
+  (* let decreases, requires = match  *)
+  (*   match effect with Some effect -> F.mk_e_app effect ([typ] @ Option.to_list ) 0 | None -> typ *)
 
   let rec pitem (e : item) : [> `Item of F.AST.decl | `Comment of string ] list
       =
@@ -692,24 +713,35 @@ struct
           @@ F.AST.PatVar
                (F.id @@ U.Concrete_ident_view.to_definition_name name, None, [])
         in
-        let pat =
-          F.pat
-          @@ F.AST.PatApp
-               ( pat,
-                 List.map ~f:(pgeneric_param e.span) generics.params
-                 @ List.mapi
-                     ~f:(pgeneric_constraint e.span)
-                     generics.constraints
-                 @ List.map
-                     ~f:(fun { pat; typ_span; typ } ->
-                       let span = Option.value ~default:e.span typ_span in
-                       F.pat
-                       @@ F.AST.PatAscribed (ppat pat, (pty span typ, None)))
-                     params )
+        let pat_args =
+          List.map ~f:(pgeneric_param e.span) generics.params
+          @ List.mapi ~f:(pgeneric_constraint e.span) generics.constraints
+          @ List.map
+              ~f:(fun { pat; typ_span; typ } ->
+                let span = Option.value ~default:e.span typ_span in
+                F.pat @@ F.AST.PatAscribed (ppat pat, (pty span typ, None)))
+              params
         in
-        let pat =
-          F.pat @@ F.AST.PatAscribed (pat, (pty body.span body.typ, None))
-        in
+        (* let pat_args = *)
+        (*   match Attrs.associated_expr Requires e.attrs with *)
+        (*   | Some phi -> ( *)
+        (*       match (List.drop_last pat_args, List.last params) with *)
+        (*       | Some init, Some { pat; typ_span; typ } -> *)
+        (*           let span = Option.value ~default:e.span typ_span in *)
+        (*           let typ = pty span typ in *)
+        (*           let typ = F.term @@ F.AST.Refine () in *)
+        (*           let last = *)
+        (*             F.pat @@ F.AST.PatAscribed (ppat pat, (typ, None)) *)
+        (*           in *)
+        (*           init @ last *)
+        (*       | _ -> failwith "drop_last last") *)
+        (*   | None -> pat_args *)
+        (*   (\*            match List.drop_last pat_args, List.last pat_args with *\) *)
+        (*   (\* | *\) *)
+        (* in *)
+        let pat = F.pat @@ F.AST.PatApp (pat, pat_args) in
+        let ty = add_clauses_effect_type e.attrs (pty body.span body.typ) in
+        let pat = F.pat @@ F.AST.PatAscribed (pat, (ty, None)) in
         F.decls @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, pexpr body) ])
     | TyAlias { name; generics; ty } ->
         let pat =
@@ -1013,14 +1045,16 @@ module type S = sig
   val pitem : item -> [> `Item of F.AST.decl | `Comment of string ] list
 end
 
-let make ctx =
-  (module Make (struct
-    let ctx = ctx
-  end) : S)
+let make (module M : Attrs.WITH_ITEMS) ctx =
+  (module Make
+            (M)
+            (struct
+              let ctx = ctx
+            end) : S)
 
-let string_of_item items (item : item) : string =
+let string_of_item m items (item : item) : string =
   let (module Print) =
-    make
+    make m
       {
         current_namespace = U.Concrete_ident_view.to_namespace item.ident;
         items;
@@ -1032,8 +1066,8 @@ let string_of_item items (item : item) : string =
   @@ Print.pitem item
   |> String.concat ~sep:"\n"
 
-let string_of_items items =
-  List.map ~f:(string_of_item items) items
+let string_of_items m items =
+  List.map ~f:(string_of_item m items) items
   |> List.map ~f:String.strip
   |> List.filter ~f:(String.is_empty >> not)
   |> String.concat ~sep:"\n\n"
@@ -1041,8 +1075,8 @@ let string_of_items items =
 let hardcoded_fstar_headers =
   "\n#set-options \"--fuel 0 --ifuel 1 --z3rlimit 15\"\nopen Core"
 
-let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
-    =
+let translate m (bo : BackendOptions.t) (items : AST.item list) :
+    Types.file list =
   let show_view Concrete_ident.{ crate; path; definition } =
     crate :: (path @ [ definition ]) |> String.concat ~sep:"::"
   in
@@ -1060,7 +1094,7 @@ let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
              path = mod_name ^ ".fst";
              contents =
                "module " ^ mod_name ^ hardcoded_fstar_headers ^ "\n\n"
-               ^ string_of_items items;
+               ^ string_of_items m items;
            })
 
 open Phase_utils

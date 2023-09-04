@@ -310,6 +310,9 @@ module Make (F : Features.T) = struct
         #visit_pat
         () p
 
+    let variables_of_param (p : param) : Local_ident.t list =
+      variables_of_pat p.pat |> Set.to_list
+
     let variables_of_pats : pat list -> Sets.Local_ident.t =
       List.map ~f:variables_of_pat >> Set.union_list (module Local_ident)
 
