@@ -400,11 +400,10 @@ impl Callbacks for ExtractionCallbacks {
                                 String::from_utf8(out.stdout).unwrap()
                             )
                         });
-                    let options_frontend = Box::new(
-                        hax_frontend_exporter_options::Options::from(self.clone()).clone(),
-                    );
+                    let options_frontend =
+                        hax_frontend_exporter_options::Options::from(self.clone());
                     let state =
-                        hax_frontend_exporter::state::State::new(tcx, (*options_frontend).clone());
+                        hax_frontend_exporter::state::State::new(tcx, options_frontend.clone());
                     report_diagnostics(
                         &output,
                         &session,
@@ -417,6 +416,16 @@ impl Callbacks for ExtractionCallbacks {
                         serde_json::to_writer(std::io::stdout(), &output.files).unwrap();
                     } else {
                         write_files(&output, &session, backend.backend);
+                    }
+                    if let Some(debug_json) = &output.debug_json {
+                        eprintln!("----------------------------------------------");
+                        eprintln!("----------------------------------------------");
+                        eprintln!("----------------------------------------------");
+                        eprintln!("-- Engine debug mode. Press CTRL+C to exit. --");
+                        eprintln!("----------------------------------------------");
+                        eprintln!("----------------------------------------------");
+                        eprintln!("----------------------------------------------");
+                        phase_debug_webapp::run(|| debug_json.clone())
                     }
                 }
             };

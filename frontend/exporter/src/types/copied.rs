@@ -1,178 +1,47 @@
 use crate::prelude::*;
 use crate::rustc_middle::query::Key;
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct DisambiguatedDefPathItem<DefPathItem> {
+#[derive(
+    AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+#[args(<'a, S: BaseState<'a>>, from: rustc_hir::definitions::DisambiguatedDefPathData, state: S as s)]
+pub struct DisambiguatedDefPathItem {
     pub data: DefPathItem,
     pub disambiguator: u32,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct GenericDefId<DefPathItem> {
-    /// We make this field an option because the deserializer needs to be
-    /// able to provide a default value.
-    #[serde(skip)]
-    pub rust_def_id: Option<rustc_hir::def_id::DefId>,
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct DefId {
     pub krate: String,
-    pub path: Vec<DisambiguatedDefPathItem<DefPathItem>>,
-}
-
-pub type DefId = GenericDefId<DefPathItem>;
-pub type ExtendedDefId = GenericDefId<ExtendedDefPathItem>;
-
-impl<T> std::hash::Hash for GenericDefId<T> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.rust_def_id.hash(state)
-    }
-}
-
-impl<T> std::cmp::PartialEq for GenericDefId<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.rust_def_id == other.rust_def_id
-    }
-}
-
-impl<T> std::cmp::Eq for GenericDefId<T> {}
-
-impl<T> std::cmp::PartialOrd for GenericDefId<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.rust_def_id.partial_cmp(&other.rust_def_id)
-    }
-}
-
-impl<T> std::cmp::Ord for GenericDefId<T> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.rust_def_id.cmp(&other.rust_def_id)
-    }
-}
-
-impl DefId {
-    pub fn is_anon_const(&self) -> bool {
-        self.path.last().unwrap().data.is_anon_const()
-    }
-}
-
-impl<'s, S: BaseState<'s>> SInto<S, DisambiguatedDefPathItem<DefPathItem>>
-    for rustc_hir::definitions::DisambiguatedDefPathData
-{
-    fn sinto(&self, s: &S) -> DisambiguatedDefPathItem<DefPathItem> {
-        DisambiguatedDefPathItem {
-            data: self.data.sinto(s),
-            disambiguator: self.disambiguator,
-        }
-    }
+    pub path: Vec<DisambiguatedDefPathItem>,
+    pub index: (u32, u32),
 }
 
 impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
     fn sinto(&self, s: &S) -> DefId {
+        s.base().exported_def_ids.borrow_mut().insert(self.clone());
         let tcx = s.base().tcx;
         let def_path = tcx.def_path(self.clone());
         let krate = tcx.crate_name(def_path.krate);
-        GenericDefId {
-            rust_def_id: Option::Some(*self),
+        DefId {
             path: def_path.data.iter().map(|x| x.sinto(s)).collect(),
             krate: format!("{}", krate),
+            index: (
+                rustc_hir::def_id::CrateNum::as_u32(self.krate),
+                rustc_hir::def_id::DefIndex::as_u32(self.index),
+            ),
         }
     }
 }
 
-impl<'s, S: BaseState<'s> + HasOwnerId> SInto<S, ExtendedDefId> for rustc_hir::def_id::DefId {
-    fn sinto(&self, s: &S) -> ExtendedDefId {
-        let tcx = s.base().tcx;
-        let krate = tcx.crate_name(self.krate).to_ident_string();
-
-        // An important subcase in a path is the `Impl` block:
-        // ```
-        // impl<T> List<T> {
-        //   fn new() ...
-        // }
-        // ```
-        //
-        // One issue here is that "List" *doesn't appear* in the path, which would
-        // look like the following:
-        //
-        //   `TypeNS("Crate") :: Impl :: ValueNs("new")`
-        //                       ^^^
-        //           This is where "List" should be
-        //
-        // Because of this, we enrich the `Impl` path data with type information.
-        // For technical reasons, we convert the path starting *with the end*.
-
-        // In order to lookup types, we remember the id of the current sub-path.
-        let mut id = *self;
-        let mut path: Vec<DisambiguatedDefPathItem<ExtendedDefPathItem>> = Vec::new();
-        loop {
-            // Retrieve the id key
-            let id_key = tcx.def_key(id);
-
-            // Match over the key data
-            let data = id_key.disambiguated_data;
-            use rustc_hir::definitions::DefPathData;
-            let path_item = match data.data {
-                DefPathData::CrateRoot => ExtendedDefPathItem::CrateRoot,
-                DefPathData::ForeignMod => ExtendedDefPathItem::ForeignMod,
-                DefPathData::Use => ExtendedDefPathItem::Use,
-                DefPathData::GlobalAsm => ExtendedDefPathItem::GlobalAsm,
-                DefPathData::TypeNs(symbol) => ExtendedDefPathItem::TypeNs(symbol.sinto(s)),
-                DefPathData::ValueNs(symbol) => ExtendedDefPathItem::ValueNs(symbol.sinto(s)),
-                DefPathData::MacroNs(symbol) => ExtendedDefPathItem::MacroNs(symbol.sinto(s)),
-                DefPathData::LifetimeNs(symbol) => ExtendedDefPathItem::LifetimeNs(symbol.sinto(s)),
-                DefPathData::ClosureExpr => ExtendedDefPathItem::ClosureExpr,
-                DefPathData::Ctor => ExtendedDefPathItem::Ctor,
-                DefPathData::AnonConst => ExtendedDefPathItem::AnonConst,
-                DefPathData::ImplTrait => {
-                    // TODO: probably need to add information here
-                    ExtendedDefPathItem::ImplTrait
-                }
-                DefPathData::ImplTraitAssocTy => {
-                    // TODO: probably need to add information here
-                    ExtendedDefPathItem::ImplTraitAssocTy
-                }
-                DefPathData::Impl => {
-                    // `impl` blocks are defined for types: we retrieve the
-                    // type name and the predicates.
-
-                    // Remark: we need to change the state before calling
-                    // sinto, because we need to change the owner id:
-                    // otherwise we risk using a wrong parameter environment
-                    // to solve the trait obligations, for instance.
-                    let s1 = &State::new_from_state_and_id(s, id);
-                    let ty = tcx.type_of(id).subst_identity().sinto(s1);
-
-                    let bounds = tcx
-                        .predicates_of(id)
-                        .predicates
-                        .into_iter()
-                        .map(|(x, _)| x.sinto(s1))
-                        .collect();
-                    ExtendedDefPathItem::Impl { ty, bounds }
-                }
-            };
-
-            // Push the path item
-            path.push(DisambiguatedDefPathItem {
-                data: path_item,
-                disambiguator: data.disambiguator,
-            });
-
-            // Update the id to be the parent id
-            match id_key.parent {
-                Some(parent_index) => id.index = parent_index,
-                None => {
-                    // We finished exploring the path
-                    break;
-                }
-            }
-        }
-
-        // Reverse the name
-        path.reverse();
-
-        // Finish
-        GenericDefId {
-            rust_def_id: Option::Some(*self),
-            path,
-            krate,
+impl From<&DefId> for rustc_span::def_id::DefId {
+    fn from<'tcx>(def_id: &DefId) -> Self {
+        let (krate, index) = def_id.index;
+        Self {
+            krate: rustc_hir::def_id::CrateNum::from_u32(krate),
+            index: rustc_hir::def_id::DefIndex::from_u32(index),
         }
     }
 }
@@ -226,46 +95,6 @@ pub enum DefPathItem {
     AnonConst,
     ImplTrait,
     ImplTraitAssocTy,
-}
-
-impl DefPathItem {
-    pub fn is_anon_const(&self) -> bool {
-        if let DefPathItem::AnonConst = self {
-            true
-        } else {
-            false
-        }
-    }
-}
-
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
-pub enum ExtendedDefPathItem {
-    CrateRoot,
-    Impl { ty: Ty, bounds: Vec<Predicate> },
-    ForeignMod,
-    Use,
-    GlobalAsm,
-    TypeNs(Symbol),
-    ValueNs(Symbol),
-    MacroNs(Symbol),
-    LifetimeNs(Symbol),
-    ClosureExpr,
-    Ctor,
-    AnonConst,
-    ImplTrait,
-    ImplTraitAssocTy,
-}
-
-impl ExtendedDefPathItem {
-    pub fn is_anon_const(&self) -> bool {
-        if let ExtendedDefPathItem::AnonConst = self {
-            true
-        } else {
-            false
-        }
-    }
 }
 
 #[derive(
@@ -359,68 +188,31 @@ pub struct Scope {
     pub data: ScopeData,
 }
 
-impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ConstantKind>
-    for rustc_middle::mir::ConstantKind<'tcx>
-{
-    fn sinto(&self, s: &S) -> ConstantKind {
-        use rustc_middle::mir;
-
-        // Evaluate the non-evaluated **anonymous constants**.
-        let constant = if let mir::ConstantKind::Unevaluated(ucv, _) = self {
-            // Use the id to check if we need to evaluate
-            let id: DefId = ucv.def.sinto(s);
-            if must_evaluate_constant(&id) {
-                // Anonymous constant: evaluate
-                self.eval(s.base().tcx, get_param_env(s))
-            } else {
-                // Not an anonymous constant: do not evaluate
-                self.clone()
-            }
-        } else {
-            self.clone()
-        };
-
-        // Do the translation
-        match constant {
-            mir::ConstantKind::Val(const_value, ty) => {
-                const_value_to_constant_expr(s, ty, const_value, self.default_span(s.base().tcx))
-            }
-            mir::ConstantKind::Ty(c) => c.sinto(s),
-            mir::ConstantKind::Unevaluated(ucv, ty) => {
-                // There are two possibilities:
-                // - it is a top-level constant
-                // - it is a trait constant
-                let tcx = s.base().tcx;
-                let span = match tcx.def_ident_span(ucv.def) {
-                    Option::None => ucv.def.default_span(tcx),
-                    Option::Some(span) => span,
-                };
-
-                let kind = if let Some(assoc) = s.base().tcx.opt_associated_item(ucv.def) && 
-                    assoc.trait_item_def_id.is_some() {
-                        // This must be a trait declaration constant
-                        trait_const_to_constant_expr_kind(s, ucv.def, ucv.substs, &assoc)
-                    }
-                    else {
-                        // Top-level constant or a constant appearing in an impl block
-                        let id = ucv.def.sinto(s);
-                        ConstantExprKind::GlobalName { id }
-                    };
-
-                Decorated {
-                    ty: ty.sinto(s),
-                    span: span.sinto(s),
-                    contents: Box::new(kind),
-                    hir_id: None,
-                    attributes: vec![],
+impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::mir::ConstantKind<'tcx> {
+    fn sinto(&self, s: &S) -> ConstantExpr {
+        use rustc_middle::mir::ConstantKind;
+        let tcx = s.base().tcx;
+        match self {
+            ConstantKind::Val(const_value, ty) => const_value_to_constant_expr(
+                s,
+                ty.clone(),
+                const_value.clone(),
+                self.default_span(tcx),
+            ),
+            ConstantKind::Ty(c) => c.sinto(s),
+            ConstantKind::Unevaluated(ucv, ty) => match self.translate_uneval(s, ucv.shrink()) {
+                TranslateUnevalRes::EvaluatedConstant(c) => c.sinto(s),
+                TranslateUnevalRes::GlobalName(c) => {
+                    let span = tcx
+                        .def_ident_span(ucv.def)
+                        .unwrap_or_else(|| ucv.def.default_span(tcx))
+                        .sinto(s);
+                    c.decorate(ty.sinto(s), span)
                 }
-            }
+            },
         }
     }
 }
-
-// For ConstantKind we merge all the cases (Ty, Val, Unevaluated) into one
-pub type ConstantKind = ConstantExpr;
 
 impl<S> SInto<S, u64> for rustc_middle::mir::interpret::AllocId {
     fn sinto(&self, _: &S) -> u64 {
@@ -685,52 +477,42 @@ pub struct FieldDef {
 impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, FieldDef> for rustc_middle::ty::FieldDef {
     fn sinto(&self, s: &S) -> FieldDef {
         let tcx = s.base().tcx;
-        let substs = rustc_middle::ty::subst::InternalSubsts::identity_for_item(tcx, self.did);
-
-        // SH: Note that the only way I found of checking if the user wrote the name or if it
-        // is just an integer generated by rustc is by checking if it is just made of
-        // numerals...
-        let name: Symbol = self.name.sinto(s);
+        let ty = {
+            let substs = rustc_middle::ty::subst::InternalSubsts::identity_for_item(tcx, self.did);
+            self.ty(tcx, substs).sinto(s)
+        };
         let name = {
-            let field_id: std::result::Result<usize, std::num::ParseIntError> = name.parse();
-            match field_id {
-                std::result::Result::Ok(_) => None,
-                std::result::Result::Err(_) => Some(name),
-            }
+            let name = self.name.sinto(s);
+            let is_user_provided = {
+                // SH: Note that the only way I found of checking if the user wrote the name or if it
+                // is just an integer generated by rustc is by checking if it is just made of
+                // numerals...
+                name.parse::<usize>().is_err()
+            };
+            is_user_provided.then_some(name)
         };
 
         FieldDef {
             did: self.did.sinto(s),
             name,
             vis: self.vis.sinto(s),
-            ty: self.ty(s.base().tcx, substs).sinto(s),
+            ty,
             span: tcx.def_span(self.did).sinto(s),
         }
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::VariantDef, state: S as s)]
 pub struct VariantDef {
     pub def_id: DefId,
     pub ctor: Option<(CtorKind, DefId)>,
     pub name: Symbol,
     pub discr: VariantDiscr,
+    #[value(self.fields.raw.sinto(s))]
     pub fields: Vec<FieldDef>,
+    #[value(s.base().tcx.def_span(self.def_id).sinto(s))]
     pub span: Span,
-}
-
-impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, VariantDef> for rustc_middle::ty::VariantDef {
-    // TODO: we implement this manually because we add the span field...
-    fn sinto(&self, s: &S) -> VariantDef {
-        VariantDef {
-            def_id: self.def_id.sinto(s),
-            ctor: self.ctor.sinto(s),
-            name: self.name.sinto(s),
-            discr: self.discr.sinto(s),
-            fields: self.fields.raw.sinto(s),
-            span: s.base().tcx.def_span(self.def_id).sinto(s),
-        }
-    }
 }
 
 #[derive(
@@ -783,18 +565,12 @@ pub enum RegionKind {
 }
 
 #[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+    AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::Region<'tcx>, state: S as s)]
 pub struct Region {
+    #[value(self.kind().sinto(s))]
     pub kind: RegionKind,
-}
-
-impl<'tcx, S: BaseState<'tcx>> SInto<S, Region> for rustc_middle::ty::Region<'tcx> {
-    fn sinto(&self, s: &S) -> Region {
-        Region {
-            kind: self.kind().sinto(s),
-        }
-    }
 }
 
 #[derive(
@@ -804,7 +580,7 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, Region> for rustc_middle::ty::Region<'tc
 pub enum GenericArg {
     Lifetime(Region),
     Type(Ty),
-    Const(#[map(const_to_constant_expr(s, *x))] ConstantExpr),
+    Const(ConstantExpr),
 }
 
 impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, GenericArg>
@@ -859,7 +635,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, AdtExpr> for rustc_middle::thir::AdtExpr
         let variants = self.adt_def.variants();
         let variant: &rustc_middle::ty::VariantDef = &variants[self.variant_index];
         AdtExpr {
-            info: get_variant_information(&self.adt_def, &variant.def_id, s),
+            info: get_variant_information(&self.adt_def, self.variant_index, s),
             fields: self
                 .fields
                 .iter()
@@ -993,7 +769,7 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, LocalIdent> for rustc_middle::thir::Loca
                 .vars
                 .get(self)
                 .clone()
-                .unwrap()
+                .s_unwrap(s)
                 .to_string(),
             id: self.clone().0.sinto(s),
         }
@@ -1317,8 +1093,11 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
         let contents = match macro_invocation_of_span(span, s).map(ExprKind::MacroInvokation) {
             Some(contents) => contents,
             None => match kind {
-                rustc_middle::thir::ExprKind::NonHirLiteral { .. } => {
-                    ExprKind::Todo(format!("{:?}", kind))
+                rustc_middle::thir::ExprKind::NonHirLiteral { lit, .. } => {
+                    let cexpr: ConstantExpr =
+                        (ConstantExprKind::Literal(scalar_int_to_constant_literal(s, lit, ty)))
+                            .decorate(ty.sinto(s), span.sinto(s));
+                    return cexpr.into();
                 }
                 rustc_middle::thir::ExprKind::ZstLiteral { .. } => match ty.kind() {
                     rustc_middle::ty::TyKind::FnDef(def, _substs) => {
@@ -1343,12 +1122,10 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                     _ => {
                         if ty.is_phantom_data() {
                             let rustc_middle::ty::Adt(def, _) = ty.kind() else {
-                                panic!()
+                                supposely_unreachable_fatal!(s[span], "PhantomDataNotAdt"; {kind, ty})
                             };
-                            let variant_id = rustc_abi::VariantIdx::from_u32(0);
-                            let variant = def.variant(variant_id);
                             let adt_def = AdtExpr {
-                                info: get_variant_information(def, &variant.def_id, s),
+                                info: get_variant_information(def, rustc_abi::FIRST_VARIANT, s),
                                 user_ty: None,
                                 base: None,
                                 fields: vec![],
@@ -1362,9 +1139,9 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                             };
                         } else {
                             supposely_unreachable!(
-                                "ZstLiteral ty≠FnDef(...) or PhantomData": kind,
-                                span,
-                                ty
+                                s[span],
+                                "ZstLiteral ty≠FnDef(...) or PhantomData";
+                                {kind, span, ty}
                             );
                             kind.sinto(s)
                         }
@@ -1378,11 +1155,14 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                     let lhs_ty = s.thir().exprs[lhs].ty.kind();
                     let idx = variant_index.index();
                     if idx != 0 {
-                        supposely_unreachable!(
-                            "ExprKindFieldIdxNonZero": kind,
-                            span,
-                            ty,
-                            ty.kind()
+                        let _ = supposely_unreachable!(
+                            s[span],
+                            "ExprKindFieldIdxNonZero"; {
+                                kind,
+                                span,
+                                ty,
+                                ty.kind()
+                            }
                         );
                     };
                     match lhs_ty {
@@ -1397,15 +1177,15 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                             field: name.index(),
                             lhs: lhs.sinto(s),
                         },
-                        _ => {
-                            supposely_unreachable!(
-                                "ExprKindFieldBadTy": kind,
+                        _ => supposely_unreachable_fatal!(
+                            s[span],
+                            "ExprKindFieldBadTy"; {
+                                kind,
                                 span,
                                 ty.kind(),
                                 lhs_ty
-                            );
-                            fatal!(s, "ExprKindFieldBadTy")
-                        }
+                            }
+                        ),
                     }
                 }
                 _ => kind.sinto(s),
@@ -1448,15 +1228,11 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Pat> for rustc_middle::thir::Pat<'tcx> {
                         .collect::<Vec<_>>()
                         .sinto(s),
                 },
-                _ => {
-                    supposely_unreachable!(
-                        "PatLeafNonAdtTy":
-                        ty.kind(),
-                        kind,
-                        span.sinto(s)
-                    );
-                    fatal!(s, "PatLeafNonAdtTy")
-                }
+                _ => supposely_unreachable_fatal!(
+                    s[span],
+                    "PatLeafNonAdtTy";
+                    {ty.kind(), kind}
+                ),
             },
             _ => kind.sinto(s),
         };
@@ -1720,8 +1496,7 @@ pub enum Ty {
             arrow_of_sig(&sig, state)
         },
     )]
-    // TODO: rename the MirPolyFnSig, MirFnSig types
-    Arrow(Box<MirPolyFnSig>),
+    Arrow(Box<PolyFnSig>),
 
     #[custom_arm(
         rustc_middle::ty::TyKind::Adt(adt_def, substs) => {
@@ -1739,14 +1514,7 @@ pub enum Ty {
     },
     Foreign(DefId),
     Str,
-    #[custom_arm(
-        rustc_middle::ty::TyKind::Array(ty, cg) => {
-            let ty : Ty = ty.sinto(state);
-            let cg : ConstantExpr = const_to_constant_expr(state, *cg);
-            Ty::Array(Box::new(ty), Box::new(cg))
-        },
-    )]
-    Array(Box<Ty>, Box<ConstantExpr>),
+    Array(Box<Ty>, #[map(Box::new(x.sinto(state)))] Box<ConstantExpr>),
     Slice(Box<Ty>),
     RawPtr(TypeAndMut),
     Ref(Region, Box<Ty>, Mutability),
@@ -1785,8 +1553,7 @@ pub enum StmtKind {
         initializer: Option<Expr>,
         else_block: Option<Block>,
         lint_level: LintLevel,
-        #[not_in_source]
-        #[map(attribute_from_scope(gstate, init_scope).1)]
+        #[value(attribute_from_scope(gstate, init_scope).1)]
         attributes: Vec<Attribute>,
     },
 }
@@ -1830,8 +1597,8 @@ pub enum RangeEnd {
 #[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx> + HasOwnerId>, from: rustc_middle::thir::PatRange<'tcx>, state: S as state)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct PatRange {
-    pub lo: TypedConstantKind,
-    pub hi: TypedConstantKind,
+    pub lo: ConstantExpr,
+    pub hi: ConstantExpr,
     pub end: RangeEnd,
 }
 
@@ -1874,6 +1641,7 @@ pub struct VariantInformations {
 
     pub typ: DefId,
     pub variant: DefId,
+    pub variant_index: VariantIdx,
 
     // A record type is a type with only one variant which is a record variant.
     pub typ_is_record: bool,
@@ -1928,9 +1696,9 @@ pub enum PatKind {
     #[custom_arm(
         FROM_TYPE::Variant {adt_def, variant_index, substs, subpatterns} => {
             let variants = adt_def.variants();
-            let variant: &rustc_middle::ty::VariantDef = &variants[variant_index.clone()];
+            let variant: &rustc_middle::ty::VariantDef = &variants[*variant_index];
             TO_TYPE::Variant {
-                info: get_variant_information(adt_def, &variant.def_id, gstate),
+                info: get_variant_information(adt_def, *variant_index, gstate),
                 subpatterns: subpatterns
                     .iter()
                     .map(|f| FieldPat {
@@ -1959,7 +1727,7 @@ pub enum PatKind {
         subpattern: Pat,
     },
     Constant {
-        value: TypedConstantKind,
+        value: ConstantExpr,
     },
     Range(PatRange),
     Slice {
@@ -1995,8 +1763,7 @@ pub struct Arm {
     pub lint_level: LintLevel,
     pub scope: Scope,
     pub span: Span,
-    #[not_in_source]
-    #[map(attribute_from_scope(gstate, scope).1)]
+    #[value(attribute_from_scope(gstate, scope).1)]
     attributes: Vec<Attribute>,
 }
 
@@ -2150,8 +1917,7 @@ pub struct Param {
     pub ty_span: Option<Span>,
     pub self_kind: Option<ImplicitSelfKind>,
     pub hir_id: Option<HirId>,
-    #[not_in_source]
-    #[map(hir_id.map(|id| {
+    #[value(hir_id.map(|id| {
         s.base().tcx.hir().attrs(id).sinto(s)
     }).unwrap_or(vec![]))]
     pub attributes: Vec<Attribute>,
@@ -2204,13 +1970,11 @@ pub enum ExprKind {
                             attributes,
                         }
                     },
-                    ty_kind => {
-                        supposely_unreachable!(
-                            "CallNotTyFnDef":
-                            e, ty_kind
-                        );
-                        fatal!(gstate, "ZstCallNotTyFnDef")
-                    }
+                    ty_kind => supposely_unreachable_fatal!(
+                        gstate[e.span],
+                        "CallNotTyFnDef";
+                        {e, ty_kind}
+                    )
                 }
             },
             kind => {
@@ -2220,8 +1984,9 @@ pub enum ExprKind {
                     },
                     ty_kind => {
                         supposely_unreachable!(
-                            "CallNotTyFnDef":
-                            e, kind, ty_kind
+                            gstate[e.span],
+                            "CallNotTyFnDef";
+                            {e, kind, ty_kind}
                         );
                         fatal!(gstate, "RefCallNotTyFnPtr")
                     }
@@ -2284,18 +2049,6 @@ pub enum ExprKind {
         expr: Expr,
         pat: Pat,
     },
-    #[custom_arm(
-        rustc_middle::thir::ExprKind::Block { block: block_id } => {
-            let block = gstate.thir().blocks[block_id.clone()].clone();
-            match (block.stmts, block.expr, block.safety_mode, block.targeted_by_break) {
-                (box [], Some(e), rustc_middle::thir::BlockSafety::Safe, false) =>
-                    *e.sinto(gstate).contents,
-                _ => ExprKind::Block {
-                    block: block_id.sinto(gstate)
-                }
-            }
-        },
-    )]
     Block {
         #[serde(flatten)]
         block: Block,
@@ -2363,7 +2116,7 @@ pub enum ExprKind {
     },
     Repeat {
         value: Expr,
-        count: Const,
+        count: ConstantExpr,
     },
     Array {
         fields: Vec<Expr>,
@@ -2471,7 +2224,22 @@ impl<'tcx> ExprKindExt<'tcx> for rustc_middle::thir::Expr<'tcx> {
     }
 }
 
-/// [FnDef] is a
+#[derive(
+    AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::FnSig<'tcx>, state: S as s)]
+pub struct TyFnSig {
+    #[value(self.inputs().sinto(s))]
+    pub inputs: Vec<Ty>,
+    #[value(self.output().sinto(s))]
+    pub output: Ty,
+    pub c_variadic: bool,
+    pub unsafety: Unsafety,
+    pub abi: Abi,
+}
+
+pub type PolyFnSig = Binder<TyFnSig>;
+
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct FnDef<Body: IsBody> {
     pub header: FnHeader,
@@ -2661,8 +2429,7 @@ pub struct GenericParam<Body: IsBody> {
     pub pure_wrt_drop: bool,
     pub kind: GenericParamKind<Body>,
     pub colon_span: Option<Span>,
-    #[not_in_source]
-    #[map(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
+    #[value(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
     attributes: Vec<Attribute>,
 }
 
@@ -2676,12 +2443,9 @@ pub struct ImplItem<Body: IsBody> {
     pub defaultness: Defaultness,
     pub span: Span,
     pub vis_span: Span,
-    #[map({
-        let tcx = s.base().tcx;
-        tcx.hir().attrs(rustc_hir::hir_id::HirId::from(owner_id.clone())).sinto(s)
-    })]
+    #[value(ItemAttributes::from_owner_id(s, *owner_id))]
     #[not_in_source]
-    pub attributes: Vec<Attribute>,
+    pub attributes: ItemAttributes,
 }
 
 #[derive(AdtInto)]
@@ -2769,8 +2533,7 @@ pub struct HirFieldDef {
     pub hir_id: HirId,
     pub def_id: GlobalIdent,
     pub ty: Ty,
-    #[not_in_source]
-    #[map(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
+    #[value(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
     attributes: Vec<Attribute>,
 }
 
@@ -2784,9 +2547,8 @@ pub struct Variant<Body: IsBody> {
     pub data: VariantData,
     pub disr_expr: Option<AnonConst<Body>>,
     pub span: Span,
-    #[not_in_source]
-    #[map(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
-    attributes: Vec<Attribute>,
+    #[value(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
+    pub attributes: Vec<Attribute>,
 }
 
 #[derive(AdtInto)]
@@ -2797,8 +2559,7 @@ pub struct UsePath {
     #[map(x.iter().map(|res| res.sinto(s)).collect())]
     pub res: Vec<Res>,
     pub segments: Vec<PathSegment>,
-    #[not_in_source]
-    #[map(self.segments.iter().last().map_or(None, |segment| {
+    #[value(self.segments.iter().last().map_or(None, |segment| {
             match s.base().tcx.hir().find_by_def_id(segment.hir_id.owner.def_id) {
                 Some(rustc_hir::Node::Item(rustc_hir::Item {
                     ident,
@@ -2942,12 +2703,9 @@ pub struct TraitItem<Body: IsBody> {
     pub kind: TraitItemKind<Body>,
     pub span: Span,
     pub defaultness: Defaultness,
-    #[map({
-        let tcx = s.base().tcx;
-        tcx.hir().attrs(rustc_hir::hir_id::HirId::from(owner_id.clone())).sinto(s)
-    })]
+    #[value(ItemAttributes::from_owner_id(s, *owner_id))]
     #[not_in_source]
-    pub attributes: Vec<Attribute>,
+    pub attributes: ItemAttributes,
 }
 
 impl<'tcx, S: BaseState<'tcx> + HasOwnerId, Body: IsBody> SInto<S, EnumDef<Body>>
@@ -2962,6 +2720,16 @@ impl<'a, S: BaseState<'a> + HasOwnerId, Body: IsBody> SInto<S, TraitItem<Body>>
     for rustc_hir::TraitItemRef
 {
     fn sinto(&self, s: &S) -> TraitItem<Body> {
+        let owner_id = self.id.owner_id;
+        let s = &State {
+            base: crate::state::Base {
+                opt_def_id: Some(owner_id.to_def_id()),
+                ..s.base()
+            },
+            thir: (),
+            mir: (),
+            owner_id,
+        };
         let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
         tcx.hir().trait_item(self.clone().id).sinto(s)
     }
@@ -3197,7 +2965,10 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, TraitPredicate>
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
-pub struct OutlivesPredicate<A, B>(pub A, pub B);
+pub struct OutlivesPredicate<A, B> {
+    pub lhs: A,
+    pub rhs: B,
+}
 
 impl<'tcx, S: BaseState<'tcx>, A1, A2, B1, B2> SInto<S, OutlivesPredicate<A2, B2>>
     for rustc_middle::ty::OutlivesPredicate<A1, B1>
@@ -3206,7 +2977,10 @@ where
     B1: SInto<S, B2>,
 {
     fn sinto(&self, s: &S) -> OutlivesPredicate<A2, B2> where {
-        OutlivesPredicate(self.0.sinto(s), self.1.sinto(s))
+        OutlivesPredicate {
+            lhs: self.0.sinto(s),
+            rhs: self.1.sinto(s),
+        }
     }
 }
 
@@ -3218,7 +2992,7 @@ pub type TypeOutlivesPredicate = OutlivesPredicate<Ty, Region>;
 )]
 pub enum Term {
     Ty(Ty),
-    Const(Const),
+    Const(ConstantExpr),
 }
 
 impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, Term> for rustc_middle::ty::Term<'tcx> {
@@ -3278,7 +3052,7 @@ pub enum Clause {
     RegionOutlives(RegionOutlivesPredicate),
     TypeOutlives(TypeOutlivesPredicate),
     Projection(ProjectionPredicate),
-    ConstArgHasType(Const, Ty),
+    ConstArgHasType(ConstantExpr, Ty),
 }
 
 #[derive(AdtInto)]
@@ -3385,8 +3159,8 @@ pub enum PredicateKind {
     ClosureKind(DefId, Vec<GenericArg>, ClosureKind),
     Subtype(SubtypePredicate),
     Coerce(CoercePredicate),
-    ConstEvaluatable(Const),
-    ConstEquate(Const, Const),
+    ConstEvaluatable(ConstantExpr),
+    ConstEquate(ConstantExpr, ConstantExpr),
     TypeWellFormedFromEnv(Ty),
     Ambiguous,
     AliasRelate(Term, Term, AliasRelationDirection),
@@ -3463,13 +3237,11 @@ pub struct MacroDef {
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_hir::Item<'tcx>, state: S as state)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Item<Body: IsBody> {
-    #[map({
+    #[value({
         let name: String = self.ident.name.to_ident_string();
         let owner_id: DefId = self.owner_id.sinto(state);
-        let path = Path::from(owner_id.clone());
-        if path.ends_with(&[name]) {Some(owner_id.clone())} else {None}
+        Path::from(owner_id.clone()).ends_with(&[name]).then(|| owner_id.clone())
     })]
-    #[not_in_source]
     pub def_id: Option<GlobalIdent>,
     pub owner_id: DefId,
     pub span: Span,
@@ -3486,12 +3258,9 @@ pub struct Item<Body: IsBody> {
         })
     })]
     pub kind: ItemKind<Body>,
-    #[map({
-        let tcx = state.base().tcx;
-        tcx.hir().attrs(rustc_hir::hir_id::HirId::from(owner_id.clone())).sinto(state)
-    })]
+    #[map(ItemAttributes::from_owner_id(state, *owner_id))]
     #[not_in_source]
-    pub attributes: Vec<Attribute>,
+    pub attributes: ItemAttributes,
     #[not_in_source]
     #[map(span.macro_backtrace().map(|o| o.sinto(state)).collect())]
     pub expn_backtrace: Vec<ExpnData>,

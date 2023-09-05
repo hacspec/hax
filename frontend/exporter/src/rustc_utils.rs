@@ -1,38 +1,33 @@
 use crate::prelude::*;
 
-#[tracing::instrument(skip(state))]
+#[tracing::instrument(skip(s))]
 pub(crate) fn arrow_of_sig<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     sig: &rustc_middle::ty::PolyFnSig<'tcx>,
-    state: &S,
+    s: &S,
 ) -> Ty {
-    // TODO: here, Rust doesn't manage to infer the proper typeclass
-    // instance, even if we annotate the type.
-    //    let sig: MirPolyFnSig = sig.sinto(&state.base().tcx);
-    let sig = poly_fn_sig_to_mir_poly_fn_sig(sig, state);
-    Ty::Arrow(Box::new(sig))
+    Ty::Arrow(Box::new(sig.sinto(s)))
 }
 
 #[tracing::instrument(skip(s))]
 pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
     adt_def: &rustc_middle::ty::AdtDef<'s>,
-    variant: &rustc_hir::def_id::DefId,
+    variant_index: rustc_abi::VariantIdx,
     s: &S,
 ) -> VariantInformations {
+    s_assert!(s, !adt_def.is_union());
     fn is_record<'s, I: std::iter::Iterator<Item = &'s rustc_middle::ty::FieldDef> + Clone>(
         it: I,
     ) -> bool {
         it.clone()
             .any(|field| !field.name.to_ident_string().parse::<u64>().is_ok())
     }
-    let variant_def = adt_def
-        .variants()
-        .into_iter()
-        .find(|v| v.def_id == variant.clone())
-        .unwrap();
+    let variant_def = adt_def.variant(variant_index);
+    let variant = variant_def.def_id;
     let constructs_type: DefId = adt_def.did().sinto(s);
     VariantInformations {
         typ: constructs_type.clone(),
         variant: variant.sinto(s),
+        variant_index: variant_index.into(),
 
         typ_is_record: adt_def.is_struct() && is_record(adt_def.all_fields()),
         variant_is_record: is_record(variant_def.fields.iter()),
@@ -43,9 +38,8 @@ pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
                 [init @ .., _] => init.to_vec(),
                 _ => {
                     let span = s.base().tcx.def_span(variant);
-                    span_fatal!(
-                        s,
-                        span,
+                    fatal!(
+                        s[span],
                         "Type {:#?} appears to have no path",
                         constructs_type
                     )
@@ -233,7 +227,7 @@ pub(crate) fn macro_invocation_of_raw_mac_invocation<'t, S: BaseState<'t>>(
         .unwrap_or_else(|| fatal!(state, "{:#?}", expn_data.call_site));
     MacroInvokation {
         macro_ident: macro_ident.clone(),
-        argument: read_span_from_file(mac_call_span).unwrap(),
+        argument: read_span_from_file(mac_call_span).s_unwrap(state),
         span: expn_data.call_site.sinto(state),
     }
 }
@@ -289,7 +283,7 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
         .into_iter()
         .map(|(mac, items)| match mac.0 {
             Some((macro_ident, expn_data)) => {
-                let owner_id = items.into_iter().map(|x| x.owner_id).next().unwrap();
+                let owner_id = items.into_iter().map(|x| x.owner_id).next().s_unwrap(s);
                 // owner_id.reduce()
                 let invocation =
                     macro_invocation_of_raw_mac_invocation(&macro_ident, &expn_data, s);
@@ -297,11 +291,10 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
                 vec![Item {
                     def_id: None,
                     owner_id: owner_id.sinto(s),
-                    // owner_id: expn_data.parent_module.unwrap().sinto(s),
                     kind: ItemKind::MacroInvokation(invocation),
                     span,
                     vis_span: rustc_span::DUMMY_SP.sinto(s),
-                    attributes: vec![],
+                    attributes: ItemAttributes::new(),
                     expn_backtrace: vec![],
                 }]
             }

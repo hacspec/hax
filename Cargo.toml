@@ -9,8 +9,9 @@ members = [
      "cli/subcommands",
      "cli/driver",
      "test-harness",
+     "engine/utils/phase_debug_webapp",
 ]
-exclude = ["tests"]
+exclude = ["tests", "hax-lib-macros"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -31,6 +32,8 @@ adt-into = { path = "frontend/exporter/adt-into" }
 tracing = { version = "0.1", features = ["max_level_trace", "release_max_level_warn"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "std", "fmt"] }
 tracing-tree = "^0.2"
+cargo_metadata = "0.15"
+colored = "2"
 
 # Crates in this repository
 hax-frontend-exporter = { path = "frontend/exporter" }
@@ -39,4 +42,4 @@ hax-cli-options-engine = { path = "cli/options/engine" }
 hax-frontend-exporter-options = { path = "frontend/exporter/options" }
 hax-diagnostics = { path = "frontend/diagnostics" }
 hax-lint = { version = "=0.1.0", path = "frontend/lint" }
-cargo_metadata = "0.15"
+phase_debug_webapp = { version = "=0.1.0", path = "engine/utils/phase_debug_webapp" }

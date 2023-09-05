@@ -50,7 +50,7 @@ struct
             let context : Diagnostics.Context.t =
               Phase S0.metadata.current_phase
             in
-            raise @@ Diagnostics.SpanFreeError (context, kind)
+            Diagnostics.SpanFreeError.raise context kind
       end)
 
   include Subtype.Make (FA) (FB) (S)

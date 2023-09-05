@@ -27,3 +27,4 @@ const_format = "0.2"
 tracing.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
+phase_debug_webapp.workspace = true

@@ -7,11 +7,13 @@
 #![allow(unreachable_code)]
 #![allow(dead_code)]
 #![feature(macro_metavar_expr)]
+#![feature(internal_output_capture)]
 
 extern crate rustc_ast;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_errors;
+extern crate rustc_feature;
 extern crate rustc_hir;
 extern crate rustc_hir_analysis;
 extern crate rustc_index;
@@ -24,11 +26,19 @@ extern crate rustc_target;
 extern crate rustc_type_ir;
 
 mod exporter;
+
+use std::collections::HashSet;
+
 use exporter::ExtractionCallbacks;
 use hax_lint::Type;
 
 mod linter;
 use linter::LinterCallbacks;
+
+mod callbacks_wrapper;
+mod features;
+use callbacks_wrapper::*;
+use features::*;
 
 use const_format::formatcp;
 use hax_cli_options::{Command, ENV_VAR_OPTIONS_FRONTEND};
@@ -45,46 +55,6 @@ fn rustc_sysroot() -> String {
         .and_then(|out| String::from_utf8(out.stdout).ok())
         .map(|s| s.trim().to_string())
         .unwrap()
-}
-
-/// Wraps a [Callbacks] structure, and injects some cache-related
-/// configuration in the `config` phase of rustc
-struct CallbacksWrapper<'a> {
-    sub: &'a mut (dyn Callbacks + Send + 'a),
-    options: hax_cli_options::Options,
-}
-impl<'a> Callbacks for CallbacksWrapper<'a> {
-    fn config(&mut self, config: &mut interface::Config) {
-        let options = self.options.clone();
-        config.parse_sess_created = Some(Box::new(move |parse_sess| {
-            parse_sess.env_depinfo.get_mut().insert((
-                Symbol::intern(hax_cli_options::ENV_VAR_OPTIONS_FRONTEND),
-                Some(Symbol::intern(&serde_json::to_string(&options).unwrap())),
-            ));
-        }));
-        self.sub.config(config)
-    }
-    fn after_parsing<'tcx>(
-        &mut self,
-        compiler: &interface::Compiler,
-        queries: &'tcx Queries<'tcx>,
-    ) -> Compilation {
-        self.sub.after_parsing(compiler, queries)
-    }
-    fn after_expansion<'tcx>(
-        &mut self,
-        compiler: &interface::Compiler,
-        queries: &'tcx Queries<'tcx>,
-    ) -> Compilation {
-        self.sub.after_expansion(compiler, queries)
-    }
-    fn after_analysis<'tcx>(
-        &mut self,
-        compiler: &interface::Compiler,
-        queries: &'tcx Queries<'tcx>,
-    ) -> Compilation {
-        self.sub.after_analysis(compiler, queries)
-    }
 }
 
 fn setup_logging() {
@@ -122,6 +92,18 @@ fn main() {
         rustc_args.extend(vec!["--sysroot".into(), rustc_sysroot()])
     };
 
+    // When `HAX_FEATURES_DETECTION_MODE` is set, we just detect
+    // features for the current crate, output them in JSON on stdout
+    // and exit immediately
+    if std::env::var("HAX_FEATURES_DETECTION_MODE").is_ok() {
+        use std::io::BufWriter;
+        return serde_json::to_writer(
+            BufWriter::new(std::io::stdout()),
+            &Features::detect(&options, &rustc_args),
+        )
+        .unwrap();
+    }
+
     // fetch the correct callback structure given the command, and
     // coerce options
     let is_primary_package = std::env::var("CARGO_PRIMARY_PACKAGE").is_ok();
@@ -150,6 +132,23 @@ fn main() {
         struct CallbacksNoop;
         impl Callbacks for CallbacksNoop {}
         Box::new(CallbacksNoop)
+    };
+
+    if translate_package {
+        // We want to enable certain features, but only if the crate
+        // itself doesn't enable those
+        let features = Features {
+            adt_const_params: false,    // not useful for now
+            generic_const_exprs: false, // not useful for now
+            register_tool: true,
+            registered_tools: HashSet::from_iter(vec!["_hax".to_string()].into_iter()),
+        } - Features::detect_forking();
+        rustc_args = [rustc_args[0].clone()]
+            .into_iter()
+            .chain(["--cfg".into(), "hax_compilation".into()])
+            .chain(features.into_iter().map(|s| format!("-Zcrate-attr={}", s)))
+            .chain(rustc_args[1..].iter().cloned())
+            .collect();
     };
 
     let mut callbacks = CallbacksWrapper {

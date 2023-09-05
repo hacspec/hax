@@ -31,7 +31,7 @@ tempfile = "3.4"
 which.workspace = true
 version_check = "0.9"
 rustup-toolchain = "0.1"
-colored = "2"
+colored.workspace = true
 is-terminal = "0.4.9"
 
 [build-dependencies]

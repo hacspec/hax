@@ -10,7 +10,7 @@ pub fn get_thir<'tcx, S: BaseState<'tcx>>(
     rustc_middle::thir::ExprId,
 ) {
     let base = s.base();
-    let msg = || span_fatal!(s, base.tcx.def_span(did), "THIR not found for {did:?}");
+    let msg = || fatal!(s[base.tcx.def_span(did)], "THIR not found for {:?}", did);
     base.cached_thirs.get(&did).unwrap_or_else(msg).clone()
 }
 

@@ -85,4 +85,16 @@ mod for_loops {
         }
         acc
     }
+
+    fn bool_returning(x: u8) -> bool {
+        x < 10
+    }
+
+    fn f() {
+        let mut acc = 0;
+        for i in 1..10 {
+            acc += i;
+            bool_returning(i);
+        }
+    }
 }

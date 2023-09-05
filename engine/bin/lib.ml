@@ -18,16 +18,7 @@ let setup_logs (options : Types.engine_options) =
 let run () : Types.output =
   let options = read_options_from_stdin () in
   setup_logs options;
-  (match options.backend.debug_engine with
-  | Some path ->
-      if not (Caml.Sys.file_exists path && Caml.Sys.is_directory path) then
-        failwith
-          [%string
-            "Engine error: the environment variable HAX_ENGINE_DEBUG is set to \
-             [%{path}] which was expected to be a valid existing directory. \
-             Aborting."];
-      Phase_utils.DebugBindPhase.enable path
-  | None -> ());
+  if options.backend.debug_engine then Phase_utils.DebugBindPhase.enable ();
   let run (type options_type)
       (module M : Backend.T with type BackendOptions.t = options_type)
       (backend_options : options_type) : Types.file list =
@@ -61,6 +52,7 @@ let run () : Types.output =
   {
     diagnostics = List.map ~f:Diagnostics.to_thir_diagnostic diagnostics;
     files = Option.value ~default:[] files;
+    debug_json = None;
   }
 
 let main () =
@@ -68,9 +60,10 @@ let main () =
   let result =
     try Ok (run ()) with e -> Error (e, Printexc.get_raw_backtrace ())
   in
-  Phase_utils.DebugBindPhase.export ();
   match result with
   | Ok results ->
+      let debug_json = Phase_utils.DebugBindPhase.export () in
+      let results = { results with debug_json } in
       Logs.info (fun m -> m "Outputting JSON");
       Types.to_json_output results
       |> Yojson.Safe.pretty_to_string |> print_endline;

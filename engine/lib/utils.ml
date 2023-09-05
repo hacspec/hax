@@ -17,7 +17,10 @@ let snd3 (_, y, _) = y
 let thd3 (_, _, z) = z
 let curry f x y = f (x, y)
 let uncurry f (x, y) = f x y
+let curry3 f x y z = f (x, y, z)
+let uncurry3 f (x, y, z) = f x y z
 let tup2 a b = (a, b)
+let ( let* ) x f = Option.bind ~f x
 
 let map_first_letter (f : string -> string) (s : string) =
   let first, rest = String.(prefix s 1, drop_prefix s 1) in
@@ -52,6 +55,14 @@ let split_str (s : string) ~(on : string) : string list =
 let last_init (l : 'a list) : ('a list * 'a) option =
   Option.both (List.drop_last l) (List.last l)
 
+let inits (type a) (l : a list) : (a list * a) list =
+  List.fold_map ~init:[]
+    ~f:(fun trace x ->
+      let trace = trace @ [ x ] in
+      (trace, (trace, x)))
+    l
+  |> snd
+
 let tabsize = 2
 let newline_indent depth : string = "\n" ^ String.make (tabsize * depth) ' '
 
@@ -73,4 +84,16 @@ module Command = struct
     Unix.close @@ Unix.descr_of_in_channel stdout;
     Unix.close @@ Unix.descr_of_in_channel stderr;
     { stdout = strout; stderr = strerr }
+end
+
+module MyInt64 = struct
+  include Base.Int64
+
+  let t_of_yojson (json : Yojson.Safe.t) : t =
+    match json with
+    | `Intlit s -> of_string s
+    | `Int i -> of_int i
+    | _ -> failwith "Couldn't parse MyInt64.t"
+
+  let yojson_of_t (x : t) : Yojson.Safe.t = failwith "x"
 end
