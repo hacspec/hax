@@ -633,7 +633,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, AdtExpr> for rustc_middle::thir::AdtExpr
         let variants = self.adt_def.variants();
         let variant: &rustc_middle::ty::VariantDef = &variants[self.variant_index];
         AdtExpr {
-            info: get_variant_information(&self.adt_def, &variant.def_id, s),
+            info: get_variant_information(&self.adt_def, self.variant_index, s),
             fields: self
                 .fields
                 .iter()
@@ -1121,10 +1121,8 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                             let rustc_middle::ty::Adt(def, _) = ty.kind() else {
                                 supposely_unreachable_fatal!(s[span], "PhantomDataNotAdt"; {kind, ty})
                             };
-                            let variant_id = rustc_abi::VariantIdx::from_u32(0);
-                            let variant = def.variant(variant_id);
                             let adt_def = AdtExpr {
-                                info: get_variant_information(def, &variant.def_id, s),
+                                info: get_variant_information(def, rustc_abi::FIRST_VARIANT, s),
                                 user_ty: None,
                                 base: None,
                                 fields: vec![],
@@ -1635,9 +1633,9 @@ pub enum PatKind {
     #[custom_arm(
         FROM_TYPE::Variant {adt_def, variant_index, substs, subpatterns} => {
             let variants = adt_def.variants();
-            let variant: &rustc_middle::ty::VariantDef = &variants[variant_index.clone()];
+            let variant: &rustc_middle::ty::VariantDef = &variants[*variant_index];
             TO_TYPE::Variant {
-                info: get_variant_information(adt_def, &variant.def_id, gstate),
+                info: get_variant_information(adt_def, *variant_index, gstate),
                 subpatterns: subpatterns
                     .iter()
                     .map(|f| FieldPat {

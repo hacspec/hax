@@ -11,7 +11,7 @@ pub(crate) fn arrow_of_sig<'tcx, S: BaseState<'tcx>>(
 #[tracing::instrument(skip(s))]
 pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
     adt_def: &rustc_middle::ty::AdtDef<'s>,
-    variant: &rustc_hir::def_id::DefId,
+    variant_index: rustc_abi::VariantIdx,
     s: &S,
 ) -> VariantInformations {
     s_assert!(s, !adt_def.is_union());
@@ -21,11 +21,8 @@ pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
         it.clone()
             .any(|field| !field.name.to_ident_string().parse::<u64>().is_ok())
     }
-    let (variant_index, variant_def) = adt_def
-        .variants()
-        .iter_enumerated()
-        .find(|(_, v)| v.def_id == variant.clone())
-        .s_unwrap(s);
+    let variant_def = adt_def.variant(variant_index);
+    let variant = variant_def.def_id;
     let constructs_type: DefId = adt_def.did().sinto(s);
     VariantInformations {
         typ: constructs_type.clone(),

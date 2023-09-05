@@ -499,14 +499,8 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx>> SInto<S, Place> for rustc_middle::
                             variant_idx: Option<rustc_abi::VariantIdx>| {
                 ProjectionElem::Field(match cur_ty.kind() {
                     rustc_middle::ty::TyKind::Adt(adt_def, _) => {
-                        let variant_info = get_variant_information(
-                            adt_def,
-                            // This is silly: `get_variant_information` will reconstruct the VariantIdx...
-                            &adt_def
-                                .variant(variant_idx.unwrap_or(rustc_abi::VariantIdx::from_u32(0)))
-                                .def_id,
-                            s,
-                        );
+                        let variant_info =
+                            get_variant_information(adt_def, rustc_abi::FIRST_VARIANT, s);
                         ProjectionElemFieldKind::Adt {
                             typ: adt_def.did().sinto(s),
                             index: index.sinto(s),

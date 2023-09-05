@@ -196,7 +196,7 @@ pub(crate) fn scalar_to_constant_expr<'tcx, S: BaseState<'tcx>>(
         // It seems we can have ADTs when there is only one variant, and this variant doesn't have any fields.
         ty::Adt(def, _) if let [variant_def] = &def.variants().raw && variant_def.fields.is_empty() => {
             ConstantExprKind::Adt{
-                info: get_variant_information(def, &variant_def.def_id, s),
+                info: get_variant_information(def, rustc_abi::FIRST_VARIANT, s),
                 fields: vec![],
             }
         },
@@ -340,7 +340,7 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
                     let variant_def = &def.variant(variant_idx);
 
                     ConstantExprKind::Adt{
-                        info: get_variant_information(def, &variant_def.def_id, s),
+                        info: get_variant_information(def, variant_idx, s),
                         fields: fields.into_iter()
                             .zip(&variant_def.fields)
                             .map(|(value, field)| ConstantFieldExpr {
