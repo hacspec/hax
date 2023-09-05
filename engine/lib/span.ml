@@ -17,15 +17,15 @@ module Imported = struct
 
   and file_name =
     | Real of real_file_name
-    | QuoteExpansion of int
-    | Anon of int
-    | MacroExpansion of int
-    | ProcMacroSourceCode of int
-    | CfgSpec of int
-    | CliCrateAttr of int
+    | QuoteExpansion of string
+    | Anon of string
+    | MacroExpansion of string
+    | ProcMacroSourceCode of string
+    | CfgSpec of string
+    | CliCrateAttr of string
     | Custom of string
     | DocTest of string
-    | InlineAsm of int
+    | InlineAsm of string
 
   and real_file_name =
     | LocalPath of string
@@ -49,7 +49,8 @@ module Imported = struct
     | DocTest x -> DocTest x
     | InlineAsm x -> InlineAsm x
 
-  let loc_of_thir ({ col; line } : Types.loc) : loc = { col; line }
+  let loc_of_thir ({ col; line } : Types.loc) : loc =
+    { col = Int.of_string col; line = Int.of_string line }
 
   let span_of_thir (s : Types.span) : span =
     {
@@ -75,7 +76,8 @@ module Imported = struct
     | DocTest x -> DocTest x
     | InlineAsm x -> InlineAsm x
 
-  let loc_to_thir ({ col; line } : loc) : Types.loc = { col; line }
+  let loc_to_thir ({ col; line } : loc) : Types.loc =
+    { col = Int.to_string col; line = Int.to_string line }
 
   let span_to_thir (s : span) : Types.span =
     {

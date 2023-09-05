@@ -1,0 +1,9 @@
+[package]
+name = "phase_debug_webapp"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+
+[dependencies]
+tiny_http = "0.12"

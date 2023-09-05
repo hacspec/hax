@@ -133,12 +133,14 @@ pub struct BackendOptions {
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
 
-    /// Enable debugging in the engine. When this option is enabled,
-    /// the engine will dump the transformed AST at each phase in the
-    /// specified directory. Those ASTs will be available in two
-    /// different formats: Rust-ish files, and plain JSON ASTs.
-    #[arg(long = "debug-engine")]
-    debug_engine: Option<PathBuf>,
+    /// Enable debugging of the engine, and visualize interactively in
+    /// a webapp how a crate was transformed by each phase, both in
+    /// Rust-like syntax and browsing directly the internal AST. By
+    /// default, the webapp is hosted on http://localhost:8000, the
+    /// port can be override by setting the `HAX_DEBUGGER_PORT`
+    /// environment variable.
+    #[arg(short, long = "debug-engine")]
+    debug_engine: bool,
 }
 
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]

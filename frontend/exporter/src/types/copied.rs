@@ -1138,9 +1138,9 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                             };
                         } else {
                             supposely_unreachable!(
-                                "ZstLiteral ty≠FnDef(...) or PhantomData": kind,
-                                span,
-                                ty
+                                s[span],
+                                "ZstLiteral ty≠FnDef(...) or PhantomData";
+                                {kind, span, ty}
                             );
                             kind.sinto(s)
                         }
@@ -1154,11 +1154,14 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                     let lhs_ty = s.thir().exprs[lhs].ty.kind();
                     let idx = variant_index.index();
                     if idx != 0 {
-                        supposely_unreachable!(
-                            "ExprKindFieldIdxNonZero": kind,
-                            span,
-                            ty,
-                            ty.kind()
+                        let _ = supposely_unreachable!(
+                            s[span],
+                            "ExprKindFieldIdxNonZero"; {
+                                kind,
+                                span,
+                                ty,
+                                ty.kind()
+                            }
                         );
                     };
                     match lhs_ty {
@@ -1173,15 +1176,15 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                             field: name.index(),
                             lhs: lhs.sinto(s),
                         },
-                        _ => {
-                            supposely_unreachable!(
-                                "ExprKindFieldBadTy": kind,
+                        _ => supposely_unreachable_fatal!(
+                            s[span],
+                            "ExprKindFieldBadTy"; {
+                                kind,
                                 span,
                                 ty.kind(),
                                 lhs_ty
-                            );
-                            fatal!(s, "ExprKindFieldBadTy")
-                        }
+                            }
+                        ),
                     }
                 }
                 _ => kind.sinto(s),
@@ -1224,15 +1227,11 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Pat> for rustc_middle::thir::Pat<'tcx> {
                         .collect::<Vec<_>>()
                         .sinto(s),
                 },
-                _ => {
-                    supposely_unreachable!(
-                        "PatLeafNonAdtTy":
-                        ty.kind(),
-                        kind,
-                        span.sinto(s)
-                    );
-                    fatal!(s, "PatLeafNonAdtTy")
-                }
+                _ => supposely_unreachable_fatal!(
+                    s[span],
+                    "PatLeafNonAdtTy";
+                    {ty.kind(), kind}
+                ),
             },
             _ => kind.sinto(s),
         };
@@ -1910,13 +1909,11 @@ pub enum ExprKind {
                             attributes,
                         }
                     },
-                    ty_kind => {
-                        supposely_unreachable!(
-                            "CallNotTyFnDef":
-                            e, ty_kind
-                        );
-                        fatal!(gstate, "ZstCallNotTyFnDef")
-                    }
+                    ty_kind => supposely_unreachable_fatal!(
+                        gstate[e.span],
+                        "CallNotTyFnDef";
+                        {e, ty_kind}
+                    )
                 }
             },
             kind => {
@@ -1926,8 +1923,9 @@ pub enum ExprKind {
                     },
                     ty_kind => {
                         supposely_unreachable!(
-                            "CallNotTyFnDef":
-                            e, kind, ty_kind
+                            gstate[e.span],
+                            "CallNotTyFnDef";
+                            {e, kind, ty_kind}
                         );
                         fatal!(gstate, "RefCallNotTyFnPtr")
                     }
@@ -1990,18 +1988,6 @@ pub enum ExprKind {
         expr: Expr,
         pat: Pat,
     },
-    #[custom_arm(
-        rustc_middle::thir::ExprKind::Block { block: block_id } => {
-            let block = gstate.thir().blocks[block_id.clone()].clone();
-            match (block.stmts, block.expr, block.safety_mode, block.targeted_by_break) {
-                (box [], Some(e), rustc_middle::thir::BlockSafety::Safe, false) =>
-                    *e.sinto(gstate).contents,
-                _ => ExprKind::Block {
-                    block: block_id.sinto(gstate)
-                }
-            }
-        },
-    )]
     Block {
         #[serde(flatten)]
         block: Block,
@@ -2390,11 +2376,9 @@ pub struct ImplItem<Body: IsBody> {
     pub defaultness: Defaultness,
     pub span: Span,
     pub vis_span: Span,
-    #[value({
-        let tcx = s.base().tcx;
-        tcx.hir().attrs(rustc_hir::hir_id::HirId::from(owner_id.clone())).sinto(s)
-    })]
-    pub attributes: Vec<Attribute>,
+    #[value(ItemAttributes::from_owner_id(s, *owner_id))]
+    #[not_in_source]
+    pub attributes: ItemAttributes,
 }
 
 #[derive(AdtInto)]
@@ -2652,11 +2636,9 @@ pub struct TraitItem<Body: IsBody> {
     pub kind: TraitItemKind<Body>,
     pub span: Span,
     pub defaultness: Defaultness,
-    #[value({
-        let tcx = s.base().tcx;
-        tcx.hir().attrs(rustc_hir::hir_id::HirId::from(owner_id.clone())).sinto(s)
-    })]
-    pub attributes: Vec<Attribute>,
+    #[value(ItemAttributes::from_owner_id(s, *owner_id))]
+    #[not_in_source]
+    pub attributes: ItemAttributes,
 }
 
 impl<'tcx, S: BaseState<'tcx> + HasOwnerId, Body: IsBody> SInto<S, EnumDef<Body>>
@@ -2671,6 +2653,16 @@ impl<'a, S: BaseState<'a> + HasOwnerId, Body: IsBody> SInto<S, TraitItem<Body>>
     for rustc_hir::TraitItemRef
 {
     fn sinto(&self, s: &S) -> TraitItem<Body> {
+        let owner_id = self.id.owner_id;
+        let s = &State {
+            base: crate::state::Base {
+                opt_def_id: Some(owner_id.to_def_id()),
+                ..s.base()
+            },
+            thir: (),
+            mir: (),
+            owner_id,
+        };
         let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
         tcx.hir().trait_item(self.clone().id).sinto(s)
     }
@@ -3031,12 +3023,11 @@ pub struct Item<Body: IsBody> {
         })
     })]
     pub kind: ItemKind<Body>,
-    #[value({
-        let tcx = state.base().tcx;
-        tcx.hir().attrs(rustc_hir::hir_id::HirId::from(owner_id.clone())).sinto(state)
-    })]
-    pub attributes: Vec<Attribute>,
-    #[value(span.macro_backtrace().map(|o| o.sinto(state)).collect())]
+    #[map(ItemAttributes::from_owner_id(state, *owner_id))]
+    #[not_in_source]
+    pub attributes: ItemAttributes,
+    #[not_in_source]
+    #[map(span.macro_backtrace().map(|o| o.sinto(state)).collect())]
     pub expn_backtrace: Vec<ExpnData>,
 }
 

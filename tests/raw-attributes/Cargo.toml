@@ -1,0 +1,10 @@
+[package]
+name = "raw-attributes"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+hax-lib-macros = { path = "../../hax-lib-macros" }
+
+[package.metadata.hax-tests]
+into."fstar" = { snapshot = "none" }

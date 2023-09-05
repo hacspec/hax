@@ -9,5 +9,5 @@ rustc_private=true
 [dependencies]
 serde.workspace = true
 schemars.workspace = true
-colored = "2"
+colored.workspace = true
 

@@ -163,9 +163,8 @@ pub(crate) fn scalar_to_constant_expr<'tcx, S: BaseState<'tcx>>(
     let kind = match ty.kind() {
         ty::Char | ty::Bool | ty::Int(_) | ty::Uint(_) => {
             let scalar_int = scalar.try_to_int().unwrap_or_else(|_| {
-                span_fatal!(
-                    s,
-                    span,
+                fatal!(
+                    s[span],
                     "Type is primitive, but the scalar {:#?} is not a [Int]",
                     scalar
                 )
@@ -175,9 +174,8 @@ pub(crate) fn scalar_to_constant_expr<'tcx, S: BaseState<'tcx>>(
         ty::Ref(region, ty, Mutability::Not) if region.is_erased() => {
             let tcx = s.base().tcx;
             let pointer = scalar.to_pointer(&tcx).unwrap_or_else(|_| {
-                span_fatal!(
-                    s,
-                    span,
+                fatal!(
+                    s[span],
                     "Type is [Ref], but the scalar {:#?} is not a [Pointer]",
                     scalar
                 )
@@ -185,9 +183,8 @@ pub(crate) fn scalar_to_constant_expr<'tcx, S: BaseState<'tcx>>(
             let provenance = tcx.global_alloc(pointer.provenance.s_unwrap(s));
             use rustc_middle::mir::interpret::GlobalAlloc;
             let GlobalAlloc::Static(did) = provenance else {
-                span_fatal!(
-                    s,
-                    span,
+                fatal!(
+                    s[span],
                     "Expected provenance to be GlobalAlloc::Static, got {:#?} instead",
                     provenance
                 )
@@ -203,7 +200,7 @@ pub(crate) fn scalar_to_constant_expr<'tcx, S: BaseState<'tcx>>(
                 fields: vec![],
             }
         },
-        _ => span_fatal!(s, span, "Unexpected type {:#?} for scalar {:#?}", ty, scalar),
+        _ => fatal!(s[span], "Unexpected type {:#?} for scalar {:#?}", ty, scalar),
     };
     kind.decorate(ty.sinto(s), cspan)
 }
@@ -362,12 +359,9 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
         (ty::ValTree::Leaf(x), _) => ConstantExprKind::Literal (
             scalar_int_to_constant_literal(s, x, ty)
         ),
-        _ => span_fatal!(
-            s,
-            span,
-            "valtree_to_expr: cannot handle valtree{:#?} ty={:#?}",
-            valtree,
-            ty
+        _ => supposely_unreachable_fatal!(
+            s[span], "valtree_to_expr";
+            {valtree, ty}
         ),
     };
     kind.decorate(ty.sinto(s), span.sinto(s))

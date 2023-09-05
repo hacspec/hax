@@ -19,24 +19,21 @@ open Diagnostics
 
 let assertion_failure (span : Thir.span list) (details : string) =
   let kind = T.AssertionFailure { details } in
-  report { span; kind; context = ThirImport };
-  raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
+  Diagnostics.SpanFreeError.raise ~span ThirImport kind
 
 let unimplemented ?issue_id (span : Thir.span list) (details : string) =
   let kind =
     T.Unimplemented
       {
-        issue_id;
+        issue_id = Option.map ~f:MyInt64.of_int_exn issue_id;
         details = String.(if details = "" then None else Some details);
       }
   in
-  report { span; kind; context = ThirImport };
-  raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
+  Diagnostics.SpanFreeError.raise ~span ThirImport kind
 
 let unsafe_block (span : Thir.span list) =
   let kind = T.UnsafeBlock in
-  report { span; kind; context = ThirImport };
-  raise @@ Diagnostics.SpanFreeError (ThirImport, kind)
+  Diagnostics.SpanFreeError.raise ~span ThirImport kind
 
 let todo (span : Thir.span) = unimplemented [ span ] "TODO"
 
@@ -128,7 +125,7 @@ module Exn = struct
           Tool { path; tokens }
       | DocComment (kind, body) ->
           let kind =
-            match kind with Thir.Line -> Line | Thir.Block -> Block
+            match kind with Thir.Line -> DCKLine | Thir.Block -> DCKBlock
           in
           DocComment { kind; body }
     in
@@ -136,13 +133,18 @@ module Exn = struct
 
   let c_attrs : Thir.attribute list -> attrs = List.map ~f:c_attr
 
+  let c_item_attrs (attrs : Thir.item_attributes) : attrs =
+    (* TODO: This is a quite coarse approximation, we need to reflect
+       that parent/self structure in our AST. *)
+    c_attrs (attrs.parent_attributes @ attrs.attributes)
+
   type extended_literal =
     | EL_Lit of literal
     | EL_U8Array of literal list (* EL_U8Array only encodes arrays of [u8]s *)
 
   let c_lit' span (lit : Thir.lit_kind) (ty : ty) : extended_literal =
     let mk l = EL_Lit l in
-    let mku8 n =
+    let mku8 (n : int) =
       let kind = { size = S8; signedness = Unsigned } in
       Int { value = Int.to_string n; kind }
     in
@@ -313,13 +315,13 @@ module Exn = struct
 
     let rec c_expr (e : Thir.decorated_for__expr_kind) : expr =
       try c_expr_unwrapped e
-      with Diagnostics.SpanFreeError report ->
+      with Diagnostics.SpanFreeError.Exn (Data (ctx, kind)) ->
         let typ : ty =
           try c_ty e.span e.ty
-          with Diagnostics.SpanFreeError _ -> U.hax_failure_typ
+          with Diagnostics.SpanFreeError.Exn _ -> U.hax_failure_typ
         in
         let span = Span.of_thir e.span in
-        U.hax_failure_expr' span typ report
+        U.hax_failure_expr' span typ (ctx, kind)
           ([%show: Thir.decorated_for__expr_kind] e)
 
     and c_expr_unwrapped (e : Thir.decorated_for__expr_kind) : expr =
@@ -435,7 +437,11 @@ module Exn = struct
               lift_last_statement_as_expr_if_possible o.expr o.stmts e.ty
             in
             let init =
-              Option.map ~f:c_expr o_expr
+              Option.map
+                ~f:(fun e ->
+                  let e = c_expr e in
+                  { e with e = Block (e, W.block) })
+                o_expr
               |> Option.value ~default:(unit_expr span)
             in
             let { e; _ } =
@@ -496,7 +502,8 @@ module Exn = struct
             let tuple_len = 0 (* todo, lookup type *) in
             let lhs = c_expr lhs in
             let projector =
-              GlobalVar (`Projector (`TupleField (field, tuple_len)))
+              GlobalVar
+                (`Projector (`TupleField (Int.of_string field, tuple_len)))
             in
             let span = Span.of_thir e.span in
             App
@@ -533,7 +540,10 @@ module Exn = struct
         | ConstParam { param = id; _ } (* TODO: shadowing? *) | ConstRef { id }
           ->
             LocalVar
-              { name = id.name; id = LocalIdent.const_id_of_int id.index }
+              {
+                name = id.name;
+                id = LocalIdent.const_id_of_int (MyInt64.to_int_exn id.index);
+              }
         | Repeat { value; count } ->
             let value = c_expr value in
             let count = c_constant_expr count in
@@ -611,43 +621,42 @@ module Exn = struct
       in
       { e = v; span; typ }
 
-    and c_expr_assign lhs rhs =
-      let rec mk_lhs lhs =
-        match lhs.e with
-        | LocalVar var -> LhsLocalVar { var; typ = lhs.typ }
-        | _ -> (
-            match resugar_index_mut lhs with
-            | Some (e, index) ->
-                LhsArrayAccessor
+    and c_lhs lhs =
+      match lhs.e with
+      | LocalVar var -> LhsLocalVar { var; typ = lhs.typ }
+      | _ -> (
+          match resugar_index_mut lhs with
+          | Some (e, index) ->
+              LhsArrayAccessor
+                {
+                  e = c_lhs e;
+                  typ = lhs.typ;
+                  index;
+                  witness = W.nontrivial_lhs;
+                }
+          | None -> (
+              match (U.unbox_underef_expr lhs).e with
+              | App
                   {
-                    e = mk_lhs e;
-                    typ = lhs.typ;
-                    index;
-                    witness = W.nontrivial_lhs;
-                  }
-            | None -> (
-                match (U.unbox_underef_expr lhs).e with
-                | App
-                    {
-                      f =
-                        {
-                          e = GlobalVar (`Projector _ as field);
-                          typ = TArrow ([ _ ], _);
-                          span = _;
-                        };
-                      args = [ e ];
-                    } ->
-                    LhsFieldAccessor
+                    f =
                       {
-                        e = mk_lhs e;
-                        typ = lhs.typ;
-                        field;
-                        witness = W.nontrivial_lhs;
-                      }
-                | _ -> LhsArbitraryExpr { e = lhs; witness = W.arbitrary_lhs }))
-      in
+                        e = GlobalVar (`Projector _ as field);
+                        typ = TArrow ([ _ ], _);
+                        span = _;
+                      };
+                    args = [ e ];
+                  } ->
+                  LhsFieldAccessor
+                    {
+                      e = c_lhs e;
+                      typ = lhs.typ;
+                      field;
+                      witness = W.nontrivial_lhs;
+                    }
+              | _ -> LhsArbitraryExpr { e = lhs; witness = W.arbitrary_lhs }))
 
-      Assign { lhs = mk_lhs lhs; e = rhs; witness = W.mutable_variable }
+    and c_expr_assign lhs rhs =
+      Assign { lhs = c_lhs lhs; e = rhs; witness = W.mutable_variable }
 
     and c_constant_expr (ce : Thir.decorated_for__constant_expr_kind) : expr =
       let rec constant_expr_to_expr
@@ -854,7 +863,11 @@ module Exn = struct
       (* | Opaque _ -> unimplemented [span] "type Opaque" *)
       | Param { index; name } ->
           (* TODO: [id] might not unique *)
-          TParam { name; id = LocalIdent.ty_param_id_of_int index }
+          TParam
+            {
+              name;
+              id = LocalIdent.ty_param_id_of_int (MyInt64.to_int_exn index);
+            }
       | Error -> unimplemented [ span ] "type Error"
       | Dynamic _ -> unimplemented [ span ] "type Dynamic"
       | Generator _ -> unimplemented [ span ] "type Generator"
@@ -995,28 +1008,40 @@ module Exn = struct
       ti_generics = { params; constraints };
       ti_v = c_trait_item' item.span item.kind;
       ti_name = fst item.ident;
-      ti_attrs = c_attrs item.attributes;
+      ti_attrs = c_item_attrs item.attributes;
     }
 
+  let is_automatically_derived (attrs : Thir.attribute list) =
+    List.exists (* We need something better here, see issue #108 *)
+      ~f:(function
+        | { kind = Normal { item = { path; _ }; _ }; _ } ->
+            String.equal path "automatically_derived"
+        | _ -> false)
+      attrs
+
+  let is_hax_skip (attrs : Thir.attribute list) =
+    List.exists
+      ~f:(function
+        | { kind = Normal { item = { path; _ }; _ }; _ } ->
+            String.equal path "_hax::skip"
+        | _ -> false)
+      attrs
+
+  let should_skip (attrs : Thir.item_attributes) =
+    let attrs = attrs.attributes @ attrs.parent_attributes in
+    is_hax_skip attrs || is_automatically_derived attrs
+
   let rec c_item (item : Thir.item) : item list =
-    try c_item_unwrapped item with Diagnostics.SpanFreeError _kind -> []
+    try c_item_unwrapped item with Diagnostics.SpanFreeError.Exn _kind -> []
 
   and c_item_unwrapped (item : Thir.item) : item list =
     let open (val make ~krate:item.owner_id.krate : EXPR) in
-    if
-      (* We need something better here, see issue #108 *)
-      List.exists
-        ~f:(function
-          | { kind = Normal { item = { path; _ }; _ }; _ } ->
-              String.equal path "automatically_derived"
-          | _ -> false)
-        item.attributes
-    then []
+    if should_skip item.attributes then []
     else
       let span = Span.of_thir item.span in
       let mk_one v =
         let ident = Concrete_ident.of_def_id Value item.owner_id in
-        let attrs = c_attrs item.attributes in
+        let attrs = c_item_attrs item.attributes in
         { span; v; ident; attrs }
       in
       let mk v = [ mk_one v ] in
@@ -1083,7 +1108,7 @@ module Exn = struct
           let def_id = Option.value_exn item.def_id in
           let is_struct = true in
           (* repeating the attributes of the item in the variant: TODO is that ok? *)
-          let attrs = c_attrs item.attributes in
+          let attrs = c_item_attrs item.attributes in
           let v =
             let kind = Concrete_ident.Kind.Constructor { is_struct } in
             let name = Concrete_ident.of_def_id kind def_id in
@@ -1116,6 +1141,11 @@ module Exn = struct
                  witness = W.macro;
                }
       | Trait (No, Normal, generics, _bounds, items) ->
+          let items =
+            List.filter
+              ~f:(fun { attributes; _ } -> not (should_skip attributes))
+              items
+          in
           let name =
             Concrete_ident.of_def_id Trait (Option.value_exn item.def_id)
           in
@@ -1133,6 +1163,11 @@ module Exn = struct
       | Trait (Yes, _, _, _, _) -> unimplemented [ item.span ] "Auto trait"
       | Trait (_, Unsafe, _, _, _) -> unimplemented [ item.span ] "Unsafe trait"
       | Impl { of_trait = None; generics; items; _ } ->
+          let items =
+            List.filter
+              ~f:(fun { attributes; _ } -> not (should_skip attributes))
+              items
+          in
           List.map
             ~f:(fun (item : Thir.impl_item) ->
               let item_def_id = Concrete_ident.of_def_id Impl item.owner_id in
@@ -1162,7 +1197,7 @@ module Exn = struct
                        (https://doc.rust-lang.org/reference/items/implementations.html#inherent-implementations)."
               in
               let ident = Concrete_ident.of_def_id Value item.owner_id in
-              let attrs = c_attrs item.attributes in
+              let attrs = c_item_attrs item.attributes in
               { span = Span.of_thir item.span; v; ident; attrs })
             items
       | Impl { unsafety = Unsafe; _ } -> unsafe_block [ item.span ]
@@ -1175,6 +1210,11 @@ module Exn = struct
             unsafety = Normal;
             _;
           } ->
+          let items =
+            List.filter
+              ~f:(fun { attributes; _ } -> not (should_skip attributes))
+              items
+          in
           mk
           @@ Impl
                {
@@ -1204,7 +1244,7 @@ module Exn = struct
                                IIFn { body = c_expr e; params = [] }
                            | Type ty -> IIType (c_ty item.span ty));
                          ii_name = fst item.ident;
-                         ii_attrs = c_attrs item.attributes;
+                         ii_attrs = c_item_attrs item.attributes;
                        })
                      items;
                }
@@ -1226,10 +1266,16 @@ module Exn = struct
               def_id with
               path =
                 def_id.path
-                @ [ Types.{ data = ValueNs "DUMMY"; disambiguator = 0 } ];
+                @ [
+                    Types.
+                      {
+                        data = ValueNs "DUMMY";
+                        disambiguator = MyInt64.of_int 0;
+                      };
+                  ];
             }
           in
-          let attrs = c_attrs item.attributes in
+          let attrs = c_item_attrs item.attributes in
           [ { span; v; ident = Concrete_ident.of_def_id Value def_id; attrs } ]
       | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
       | OpaqueTy _ | Union _ | TraitAlias _ ->

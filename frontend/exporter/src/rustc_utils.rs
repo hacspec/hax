@@ -41,9 +41,8 @@ pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
                 [init @ .., _] => init.to_vec(),
                 _ => {
                     let span = s.base().tcx.def_span(variant);
-                    span_fatal!(
-                        s,
-                        span,
+                    fatal!(
+                        s[span],
                         "Type {:#?} appears to have no path",
                         constructs_type
                     )
@@ -298,7 +297,7 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
                     kind: ItemKind::MacroInvokation(invocation),
                     span,
                     vis_span: rustc_span::DUMMY_SP.sinto(s),
-                    attributes: vec![],
+                    attributes: ItemAttributes::new(),
                     expn_backtrace: vec![],
                 }]
             }

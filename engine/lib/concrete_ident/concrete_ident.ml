@@ -46,7 +46,10 @@ module Imported = struct
   let of_disambiguated_def_path_item :
       Types.disambiguated_def_path_item -> disambiguated_def_path_item =
    fun Types.{ data; disambiguator } ->
-    { data = of_def_path_item data; disambiguator }
+    {
+      data = of_def_path_item data;
+      disambiguator = MyInt64.to_int_exn disambiguator;
+    }
 
   let of_def_id Types.{ krate; path } =
     { krate; path = List.map ~f:of_disambiguated_def_path_item path }

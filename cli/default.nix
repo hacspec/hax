@@ -1,12 +1,13 @@
 {craneLib, stdenv, makeWrapper, lib, rustc, gcc, hax-engine, doCheck ? true }:
 let
   pname = "hax";
+  is-webapp-static-asset = path: builtins.match ".*(script[.]js|index[.]html)" path != null;
   commonArgs = {
     version = "0.0.1";
     src = lib.cleanSourceWith {
       src = craneLib.path ./..;
       filter = path: type: builtins.isNull (builtins.match ".*/tests/.*" path) &&
-                           (craneLib.filterCargoSources path type);
+                           (craneLib.filterCargoSources path type || is-webapp-static-asset path);
     };
     inherit doCheck;
   } // (if doCheck then {

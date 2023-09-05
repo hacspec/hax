@@ -35,6 +35,7 @@ module SubtypeToInputLanguage
              and type arbitrary_lhs = Features.Off.arbitrary_lhs
              and type nontrivial_lhs = Features.Off.nontrivial_lhs
              and type loop = Features.Off.loop
+             and type block = Features.Off.block
              and type for_loop = Features.Off.for_loop
              and type for_index_loop = Features.Off.for_index_loop
              and type state_passing_loop = Features.Off.state_passing_loop) =
@@ -266,7 +267,7 @@ struct
 
   let rec pexpr (e : expr) =
     try pexpr_unwrapped e
-    with Diagnostics.SpanFreeError kind ->
+    with Diagnostics.SpanFreeError.Exn _ ->
       TODOs_debug.__TODO_term__ e.span "failure"
 
   and pexpr_unwrapped (e : expr) : C.AST.term =
@@ -351,7 +352,7 @@ struct
 
   let rec pitem (e : item) : C.AST.decl list =
     try pitem_unwrapped e
-    with Diagnostics.SpanFreeError _kind ->
+    with Diagnostics.SpanFreeError.Exn _ ->
       [ C.AST.Unimplemented "item error backend" ]
 
   and pgeneric_param span : generic_param -> _ = function
@@ -686,9 +687,11 @@ open Phase_utils
 module TransformToInputLanguage =
   [%functor_application
   Phases.Reject.RawOrMutPointer(Features.Rust)
-  |> Phases.Reject.Arbitrary_lhs
+  |> Phases.And_mut_defsite
   |> Phases.Reconstruct_for_loops
   |> Phases.Direct_and_mut
+  |> Phases.Reject.Arbitrary_lhs
+  |> Phases.Drop_blocks
   |> Phases.Reject.Continue
   |> Phases.Drop_references
   |> Phases.Trivialize_assign_lhs
