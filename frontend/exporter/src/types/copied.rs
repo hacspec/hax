@@ -204,7 +204,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ConstantExpr>
             ConstantKind::Ty(c) => c.sinto(s),
             ConstantKind::Unevaluated(ucv, ty) => match self.translate_uneval(s, ucv.shrink()) {
                 TranslateUnevalRes::EvaluatedConstant(c) => c.sinto(s),
-                TranslateUnevalRes::GlobalName(c) => {
+                TranslateUnevalRes::Translated(c) => {
                     let span = tcx
                         .def_ident_span(ucv.def)
                         .unwrap_or_else(|| ucv.def.default_span(tcx))

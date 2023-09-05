@@ -251,7 +251,7 @@ impl ConstantExprKind {
 }
 
 pub enum TranslateUnevalRes<T> {
-    GlobalName(ConstantExprKind),
+    Translated(ConstantExprKind),
     EvaluatedConstant(T),
 }
 
@@ -284,12 +284,10 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
     /// Performs a one-step translation of a constant.
     ///  - When a constant refers to a named top-level constant, we want to use that, thus we translate the constant to a `ConstantExprKind::GlobalName`. This is captured by the variant `TranslateUnevalRes::GlobalName`.
     ///  - When a constant refers to a anonymous top-level constant, we evaluate it. If the evaluation fails, we report an error: we expect every AnonConst to be reducible. Otherwise, we return the variant `TranslateUnevalRes::EvaluatedConstant`.
-
-    // TODO after meging `fast` in: 6a074cf19785b3a3718a6f863a32cfb893f3cc6b + 269b625aab173d0297cb6a8371677f83800cbf40
-    fn translate_uneval(
+    fn translate_uneval<S: BaseState<'tcx> + HasOwnerId>(
         &self,
-        s: &impl BaseState<'tcx>,
-        ucv: rustc_middle::ty::UnevaluatedConst,
+        s: &S,
+        ucv: rustc_middle::ty::UnevaluatedConst<'tcx>,
     ) -> TranslateUnevalRes<Self> {
         let tcx = s.base().tcx;
         if is_anon_const(ucv.def, tcx) {
@@ -297,8 +295,16 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
                 supposely_unreachable_fatal!(s, "TranslateUneval"; {self, ucv});
             }))
         } else {
-            let id = ucv.def.sinto(s);
-            TranslateUnevalRes::GlobalName(ConstantExprKind::GlobalName { id })
+            TranslateUnevalRes::Translated(
+                if let Some(assoc) = s.base().tcx.opt_associated_item(ucv.def) &&
+                    assoc.trait_item_def_id.is_some() {
+                        trait_const_to_constant_expr_kind(s, ucv.def, ucv.substs, &assoc)
+                } else {
+                    ConstantExprKind::GlobalName {
+                        id: ucv.def.sinto(s),
+                    }
+                },
+            )
         }
     }
 }
@@ -326,7 +332,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ConstantExpr>
 
             ty::ConstKind::Unevaluated(ucv) => match self.translate_uneval(s, ucv) {
                 TranslateUnevalRes::EvaluatedConstant(c) => return c.sinto(s),
-                TranslateUnevalRes::GlobalName(c) => c,
+                TranslateUnevalRes::Translated(c) => c,
             },
             ty::ConstKind::Value(valtree) => {
                 return valtree_to_constant_expr(s, valtree, self.ty(), span)
