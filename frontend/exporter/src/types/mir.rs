@@ -311,39 +311,6 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     (def_id.sinto(s), substs, trait_refs, source)
 }
 
-fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>(
-    s: &S,
-    terminator: &rustc_middle::mir::TerminatorKind<'tcx>,
-) -> TerminatorKind {
-    if let rustc_middle::mir::TerminatorKind::Call {
-        func,
-        args,
-        destination,
-        target,
-        unwind,
-        from_hir_call,
-        fn_span,
-    } = terminator
-    {
-        let (fun_id, substs, trait_refs, trait_info) = get_function_from_operand(s, func);
-
-        TerminatorKind::Call {
-            fun_id,
-            substs,
-            args: args.sinto(s),
-            destination: destination.sinto(s),
-            target: target.sinto(s),
-            unwind: unwind.sinto(s),
-            from_hir_call: from_hir_call.sinto(s),
-            fn_span: fn_span.sinto(s),
-            trait_refs,
-            trait_info,
-        }
-    } else {
-        unreachable!()
-    }
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ScalarInt {
     /// Little-endian representation of the integer
@@ -449,20 +416,15 @@ pub enum TerminatorKind {
         unwind: UnwindAction,
         replace: bool,
     },
-    // TODO after merging `fast` in: use this
-    // #[use_field(func)]
-    // #[prepend(let (fun_id, substs) = get_function_from_operand(s, func);)]
-    #[custom_arm(
-        x @ rustc_middle::mir::TerminatorKind::Call { .. } => {
-          translate_terminator_kind_call(s, x)
-        }
-    )]
+    #[use_field(func)]
+    #[prepend(let (fun_id, substs, trait_refs, trait_info) = get_function_from_operand(s, func);)]
     Call {
         #[value(fun_id)]
         fun_id: DefId,
         /// We truncate the substitution so as to only include the arguments
         /// relevant to the method (and not the trait) if it is a trait method
         /// call. See [ParamsInfo] for the full details.
+        #[value(substs)]
         substs: Vec<GenericArg>,
         args: Vec<Operand>,
         destination: Place,
@@ -470,7 +432,9 @@ pub enum TerminatorKind {
         unwind: UnwindAction,
         from_hir_call: bool,
         fn_span: Span,
+        #[value(trait_refs)]
         trait_refs: Vec<ImplSource>,
+        #[value(trait_info)]
         trait_info: Option<TraitInfo>,
     },
     Assert {
