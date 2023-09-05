@@ -1119,7 +1119,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                     _ => {
                         if ty.is_phantom_data() {
                             let rustc_middle::ty::Adt(def, _) = ty.kind() else {
-                                panic!()
+                                supposely_unreachable_fatal!(s[span], "PhantomDataNotAdt"; {kind, ty})
                             };
                             let variant_id = rustc_abi::VariantIdx::from_u32(0);
                             let variant = def.variant(variant_id);

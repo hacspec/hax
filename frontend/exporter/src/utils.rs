@@ -122,7 +122,13 @@ mod s_expect_impls {
         got: impl std::fmt::Debug,
         message: &str,
     ) -> ! {
-        fatal!(s, "s_expect: expected {expected:?}, got {got:?}. {message}")
+        fatal!(
+            s,
+            "s_expect: expected {:?}, got {:?}. {}",
+            expected,
+            got,
+            message
+        )
     }
 
     impl<T: std::fmt::Debug> SExpect for Option<T> {

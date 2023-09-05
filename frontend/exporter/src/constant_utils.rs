@@ -252,7 +252,7 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
         let tcx = s.base().tcx;
         if is_anon_const(ucv.def, tcx) {
             TranslateUnevalRes::EvaluatedConstant(self.eval_constant(s).unwrap_or_else(|| {
-                supposely_unreachable_fatal!("TranslateUneval": self, ucv);
+                supposely_unreachable_fatal!(s, "TranslateUneval"; {self, ucv});
             }))
         } else {
             let id = ucv.def.sinto(s);
@@ -278,9 +278,8 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::ty::Cons
         let span = self.default_span(s.base().tcx);
         let kind = match self.kind() {
             ty::ConstKind::Param(p) => ConstantExprKind::ConstRef { id: p.sinto(s) },
-            ty::ConstKind::Infer(..) => {
-                span_fatal!(s, span, "ty::ConstKind::Infer node? {:#?}", self)
-            }
+            ty::ConstKind::Infer(..) => fatal!(s[span], "ty::ConstKind::Infer node? {:#?}", self),
+
             ty::ConstKind::Unevaluated(ucv) => match self.translate_uneval(s, ucv) {
                 TranslateUnevalRes::EvaluatedConstant(c) => return c.sinto(s),
                 TranslateUnevalRes::GlobalName(c) => c,
@@ -288,15 +287,13 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::ty::Cons
             ty::ConstKind::Value(valtree) => {
                 return valtree_to_constant_expr(s, valtree, self.ty(), span)
             }
-            ty::ConstKind::Error(_) => span_fatal!(s, span, "ty::ConstKind::Error"),
-            ty::ConstKind::Expr(e) => {
-                span_fatal!(s, span, "ty::ConstKind::Expr {:#?}", e)
-            }
+            ty::ConstKind::Error(_) => fatal!(s[span], "ty::ConstKind::Error"),
+            ty::ConstKind::Expr(e) => fatal!(s[span], "ty::ConstKind::Expr {:#?}", e),
+
             ty::ConstKind::Bound(i, bound) => {
-                supposely_unreachable!("ty::ConstKind::Bound": i, bound, self.ty());
-                span_fatal!(s, span, "ty::ConstKind::Bound")
+                supposely_unreachable_fatal!(s[span], "ty::ConstKind::Bound"; {i, bound, self.ty()});
             }
-            _ => span_fatal!(s, span, "unexpected case"),
+            _ => fatal!(s[span], "unexpected case"),
         };
         kind.decorate(self.ty().sinto(s), span.sinto(s))
     }
@@ -316,8 +313,8 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
         }
         (ty::ValTree::Branch(valtrees), ty::Str) => ConstantExprKind::Literal(
             ConstantLiteral::ByteStr(valtrees.iter().map(|x| match x {
-                ty::ValTree::Leaf(leaf) => leaf.try_to_u8().unwrap_or_else(|e| span_fatal!(s, span, "Expected a u8 leaf while translating a str literal, got something else. Error: {:#?}", e)),
-                _ => span_fatal!(s, span, "Expected a flat list of leaves while translating a str literal, got a arbitrary valtree.")
+                ty::ValTree::Leaf(leaf) => leaf.try_to_u8().unwrap_or_else(|e| fatal!(s[span], "Expected a u8 leaf while translating a str literal, got something else. Error: {:#?}", e)),
+                _ => fatal!(s[span], "Expected a flat list of leaves while translating a str literal, got a arbitrary valtree.")
             }).collect(), StrStyle::Cooked))
         ,
         (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
@@ -400,7 +397,7 @@ pub(crate) fn const_value_reference_to_constant_expr<'tcx, S: BaseState<'tcx>>(
     match &hax_ty {
         Ty::Tuple(_) => (),
         _ => {
-            span_fatal!(s, span, "Expected the type to be tuple: {:?}", val)
+            fatal!(s[span], "Expected the type to be tuple: {:?}", val)
         }
     };
 
@@ -439,7 +436,7 @@ pub fn const_value_to_constant_expr<'tcx, S: BaseState<'tcx>>(
             let ty = ty.sinto(s);
             let is_ty_unit = matches!(&ty, Ty::Tuple(tys) if tys.is_empty());
             if !is_ty_unit {
-                supposely_unreachable_fatal!("ExpectedTyUnit": val, ty);
+                supposely_unreachable_fatal!(s[span], "ExpectedTyUnit"; {val, ty});
             }
             (ConstantExprKind::Tuple { fields: vec![] }).decorate(ty, span.sinto(s))
         }

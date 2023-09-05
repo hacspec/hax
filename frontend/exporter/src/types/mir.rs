@@ -282,7 +282,7 @@ fn translate_switch_targets<'tcx, S: BaseState<'tcx>>(
             // to the `then` branch.
             const FALSE: u128 = false as u128;
             let [(FALSE, else_branch)] =  targets_vec.as_slice() else {
-                supposely_unreachable_fatal!("MirSwitchBool": targets_vec, switch_ty);
+                supposely_unreachable_fatal!(s, "MirSwitchBool"; {targets_vec, switch_ty});
             };
 
             SwitchTargets::If {
