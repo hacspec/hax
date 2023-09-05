@@ -188,7 +188,9 @@ pub struct Scope {
     pub data: ScopeData,
 }
 
-impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::mir::ConstantKind<'tcx> {
+impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ConstantExpr>
+    for rustc_middle::mir::ConstantKind<'tcx>
+{
     fn sinto(&self, s: &S) -> ConstantExpr {
         use rustc_middle::mir::ConstantKind;
         let tcx = s.base().tcx;
@@ -503,7 +505,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, FieldDef> for rustc_middle:
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::VariantDef, state: S as s)]
+#[args(<'tcx, S: BaseState<'tcx>  + HasOwnerId>, from: rustc_middle::ty::VariantDef, state: S as s)]
 pub struct VariantDef {
     pub def_id: DefId,
     pub ctor: Option<(CtorKind, DefId)>,
@@ -2227,7 +2229,7 @@ impl<'tcx> ExprKindExt<'tcx> for rustc_middle::thir::Expr<'tcx> {
 #[derive(
     AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::FnSig<'tcx>, state: S as s)]
+#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_middle::ty::FnSig<'tcx>, state: S as s)]
 pub struct TyFnSig {
     #[value(self.inputs().sinto(s))]
     pub inputs: Vec<Ty>,
@@ -2720,10 +2722,10 @@ impl<'a, S: BaseState<'a> + HasOwnerId, Body: IsBody> SInto<S, TraitItem<Body>>
     for rustc_hir::TraitItemRef
 {
     fn sinto(&self, s: &S) -> TraitItem<Body> {
-        let owner_id = self.id.owner_id;
+        let owner_id = self.id.owner_id.to_def_id();
         let s = &State {
             base: crate::state::Base {
-                opt_def_id: Some(owner_id.to_def_id()),
+                opt_def_id: Some(owner_id),
                 ..s.base()
             },
             thir: (),

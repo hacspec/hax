@@ -314,7 +314,9 @@ impl<'tcx> ConstantExt<'tcx> for rustc_middle::mir::ConstantKind<'tcx> {
         (&evaluated != self).then_some(evaluated)
     }
 }
-impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::ty::Const<'tcx> {
+impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ConstantExpr>
+    for rustc_middle::ty::Const<'tcx>
+{
     fn sinto(&self, s: &S) -> ConstantExpr {
         use rustc_middle::{query::Key, ty};
         let span = self.default_span(s.base().tcx);

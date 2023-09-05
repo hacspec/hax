@@ -250,6 +250,15 @@ pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: BaseState<'tcx>>(
             )
         })
         .map(|did| {
+            let s = &State {
+                base: crate::state::Base {
+                    opt_def_id: Some(did),
+                    ..s.base()
+                },
+                thir: (),
+                mir: (),
+                owner_id: did,
+            };
             let ty = tcx.type_of(did).subst_identity().sinto(s);
             let bounds = tcx
                 .predicates_of(did)
