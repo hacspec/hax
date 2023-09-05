@@ -120,6 +120,7 @@ mod types {
         pub local_ctx: Rc<RefCell<LocalContextS>>,
         pub opt_def_id: Option<rustc_hir::def_id::DefId>,
         pub exported_spans: ExportedSpans,
+        pub exported_def_ids: ExportedDefIds,
         pub cached_thirs: Rc<
             HashMap<
                 rustc_span::def_id::LocalDefId,
@@ -135,22 +136,24 @@ mod types {
     impl<'tcx> Base<'tcx> {
         pub fn new(
             tcx: rustc_middle::ty::TyCtxt<'tcx>,
-            options: &hax_frontend_exporter_options::Options,
+            options: hax_frontend_exporter_options::Options,
         ) -> Self {
             Self {
                 tcx: tcx.clone(),
                 macro_infos: Rc::new(HashMap::new()),
                 cached_thirs: Rc::new(HashMap::new()),
-                options: Rc::new(options.clone()),
+                options: Rc::new(options),
                 opt_def_id: None,
                 local_ctx: Rc::new(RefCell::new(LocalContextS::new())),
                 exported_spans: Rc::new(RefCell::new(HashSet::new())),
+                exported_def_ids: Rc::new(RefCell::new(HashSet::new())),
             }
         }
     }
 
     pub type MacroCalls = Rc<HashMap<Span, Span>>;
     pub type ExportedSpans = Rc<RefCell<HashSet<rustc_span::Span>>>;
+    pub type ExportedDefIds = Rc<RefCell<HashSet<rustc_hir::def_id::DefId>>>;
     pub type RcThir<'tcx> = Rc<rustc_middle::thir::Thir<'tcx>>;
     pub type RcMir<'tcx> = Rc<rustc_middle::mir::Body<'tcx>>;
 }
@@ -169,7 +172,7 @@ pub use types::*;
 impl<'tcx> State<Base<'tcx>, (), (), ()> {
     pub fn new(
         tcx: rustc_middle::ty::TyCtxt<'tcx>,
-        options: &hax_frontend_exporter_options::Options,
+        options: hax_frontend_exporter_options::Options,
     ) -> Self {
         Self {
             thir: (),
@@ -180,4 +183,69 @@ impl<'tcx> State<Base<'tcx>, (), (), ()> {
     }
 }
 
+impl<'tcx> State<Base<'tcx>, (), Rc<rustc_middle::mir::Body<'tcx>>, ()> {
+    pub fn new_from_mir(
+        tcx: rustc_middle::ty::TyCtxt<'tcx>,
+        options: hax_frontend_exporter_options::Options,
+        mir: rustc_middle::mir::Body<'tcx>,
+    ) -> Self {
+        Self {
+            thir: (),
+            mir: Rc::new(mir),
+            owner_id: (),
+            base: Base::new(tcx, options),
+        }
+    }
+}
+
 pub trait BaseState<'tcx> = HasBase<'tcx> + Clone + IsState<'tcx>;
+
+/// Returns a map from every implementation (`Impl`) `DefId`s to the
+/// type they implement, plus the bounds.
+pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: BaseState<'tcx>>(
+    s: &S,
+) -> HashMap<DefId, (Ty, Vec<Predicate>)> {
+    let Base {
+        tcx,
+        exported_def_ids,
+        ..
+    } = s.base();
+
+    let def_ids = exported_def_ids.as_ref().borrow();
+    let with_parents = |mut did: rustc_hir::def_id::DefId| {
+        let mut acc = vec![did.clone()];
+        while let Some(parent) = tcx.opt_parent(did) {
+            did = parent;
+            acc.push(did);
+        }
+        acc.into_iter()
+    };
+    use itertools::Itertools;
+    def_ids
+        .iter()
+        .cloned()
+        .map(with_parents)
+        .flatten()
+        .unique()
+        .filter(|&did| {
+            // keep only DefIds that corresponds to implementations
+            matches!(
+                tcx.def_path(did).data.last(),
+                Some(rustc_hir::definitions::DisambiguatedDefPathData {
+                    data: rustc_hir::definitions::DefPathData::Impl,
+                    ..
+                })
+            )
+        })
+        .map(|did| {
+            let ty = tcx.type_of(did).subst_identity().sinto(s);
+            let bounds = tcx
+                .predicates_of(did)
+                .predicates
+                .iter()
+                .map(|(x, _)| x.sinto(s))
+                .collect();
+            (did.sinto(s), (ty, bounds))
+        })
+        .collect()
+}

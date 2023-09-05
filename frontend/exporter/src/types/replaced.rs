@@ -18,13 +18,3 @@ impl<S> SInto<S, Mutability> for rustc_hir::Mutability {
         }
     }
 }
-
-pub type Const = Box<Expr>;
-
-impl<'tcx, S: BaseState<'tcx>> SInto<S, Const> for rustc_middle::ty::Const<'tcx> {
-    fn sinto(&self, s: &S) -> Const {
-        let x = self.eval(s.base().tcx, get_param_env(s));
-        use rustc_middle::query::Key;
-        Box::new(const_to_constant_expr(s, x.clone(), x.ty(), x.default_span(s.base().tcx)).into())
-    }
-}

@@ -164,7 +164,7 @@ fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
     Vec<rustc_span::Span>,
     Vec<hax_frontend_exporter::Item<Body>>,
 ) {
-    let mut state = hax_frontend_exporter::state::State::new(tcx, options);
+    let mut state = hax_frontend_exporter::state::State::new(tcx, options.clone());
     state.base.macro_infos = Rc::new(macro_calls);
     state.base.cached_thirs = Rc::new(precompute_local_thir_bodies(tcx));
 
@@ -400,10 +400,10 @@ impl Callbacks for ExtractionCallbacks {
                                 String::from_utf8(out.stdout).unwrap()
                             )
                         });
-                    let options_frontend = Box::new(
-                        hax_frontend_exporter_options::Options::from(self.clone()).clone(),
-                    );
-                    let state = hax_frontend_exporter::state::State::new(tcx, &options_frontend);
+                    let options_frontend =
+                        hax_frontend_exporter_options::Options::from(self.clone());
+                    let state =
+                        hax_frontend_exporter::state::State::new(tcx, options_frontend.clone());
                     report_diagnostics(
                         &output,
                         &session,
