@@ -66,24 +66,13 @@ module type MakeT = sig
 end
 
 module Make (Opts : OPTS) : MakeT = struct
-  let included_inclusion_clauses' (def_id : Concrete_ident.t) :
+  let included_inclusion_clauses (def_id : Concrete_ident.t) :
       Types.inclusion_kind =
     Opts.inclusion_clauses |> List.rev
     |> List.find ~f:(fun clause ->
            Concrete_ident.matches_namespace clause.Types.namespace def_id)
-    |> (fun x ->
-         prerr_endline @@ "GOT: " ^ [%show: Types.inclusion_clause option] x;
-         x)
     |> Option.map ~f:(fun (clause : Types.inclusion_clause) -> clause.kind)
     |> Option.value ~default:(Included : Types.inclusion_kind)
-
-  let included_inclusion_clauses (def_id : Concrete_ident.t) =
-    let r = included_inclusion_clauses' def_id in
-    prerr_endline @@ "included_inclusion_clauses("
-    ^ [%show: Concrete_ident.t] def_id
-    ^ ") = "
-    ^ [%show: Types.inclusion_kind] r;
-    r
 
   let def_id kind (def_id : Thir.def_id) : global_ident =
     `Concrete (Concrete_ident.of_def_id kind def_id)
