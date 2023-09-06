@@ -818,7 +818,7 @@ struct
         let fields =
           List.concat_map
             ~f:(fun i ->
-              let name = map_first_letter String.lowercase @@ i.ti_name in
+              let name = U.Concrete_ident_view.to_definition_name i.ti_ident in
               match i.ti_v with
               | TIType bounds ->
                   let t = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
@@ -859,35 +859,35 @@ struct
             (List.map ~f:(pgeneric_value e.span) generic_args)
         in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (typ, None)) in
-        let body =
-          F.term
-          @@ F.AST.Record
-               ( None,
-                 List.map
-                   ~f:(fun { ii_span; ii_generics; ii_v; ii_name } ->
-                     ( F.lid [ map_first_letter String.lowercase @@ ii_name ],
-                       match ii_v with
-                       | IIFn { body; params } ->
-                           let pats =
-                             List.map ~f:(pgeneric_param ii_span)
-                               generics.params
-                             @ List.mapi
-                                 ~f:(pgeneric_constraint ii_span)
-                                 generics.constraints
-                             @ List.map
-                                 ~f:(fun { pat; typ_span; typ } ->
-                                   let span =
-                                     Option.value ~default:ii_span typ_span
-                                   in
-                                   F.pat
-                                   @@ F.AST.PatAscribed
-                                        (ppat pat, (pty span typ, None)))
-                                 params
-                           in
-                           F.term @@ F.AST.Abs (pats, pexpr body)
-                       | IIType ty -> pty ii_span ty ))
-                   items )
+        let fields =
+          List.map
+            ~f:(fun { ii_span; ii_generics; ii_v; ii_ident } ->
+              let name = U.Concrete_ident_view.to_definition_name ii_ident in
+              ( F.lid [ name ],
+                match ii_v with
+                | IIFn { body; params } ->
+                    let pats =
+                      List.map ~f:(pgeneric_param ii_span) generics.params
+                      @ List.mapi
+                          ~f:(pgeneric_constraint ii_span)
+                          generics.constraints
+                      @ List.map
+                          ~f:(fun { pat; typ_span; typ } ->
+                            let span = Option.value ~default:ii_span typ_span in
+                            F.pat
+                            @@ F.AST.PatAscribed (ppat pat, (pty span typ, None)))
+                          params
+                    in
+                    F.mk_e_abs pats (pexpr body)
+                | IIType ty -> pty ii_span ty ))
+            items
         in
+        let fields =
+          if List.is_empty fields then
+            [ (F.lid [ "__marker_trait" ], pexpr (U.unit_expr e.span)) ]
+          else fields
+        in
+        let body = F.term @@ F.AST.Record (None, fields) in
         F.decls @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
     | HaxError details -> [ `Comment details ]
     | Use _ (* TODO: Not Yet Implemented *) | NotImplementedYet -> []

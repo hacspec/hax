@@ -613,7 +613,7 @@ functor
       ii_span : span;
       ii_generics : generics;
       ii_v : impl_item';
-      ii_name : string;
+      ii_ident : concrete_ident;
       ii_attrs : attrs;
     }
 

@@ -1019,11 +1019,13 @@ module Make (Opts : OPTS) : MakeT = struct
   let c_trait_item (item : Thir.trait_item) : trait_item =
     let open (val make ~krate:item.owner_id.krate : EXPR) in
     let { params; constraints } = c_generics item.generics in
+    (* TODO: see TODO in impl items *)
+    let ti_ident = Concrete_ident.of_def_id Field item.owner_id in
     {
       ti_span = Span.of_thir item.span;
       ti_generics = { params; constraints };
       ti_v = c_trait_item' item.span item.kind;
-      ti_name = fst item.ident;
+      ti_ident;
       ti_attrs = c_item_attrs item.attributes;
     }
 
@@ -1253,6 +1255,13 @@ module Make (Opts : OPTS) : MakeT = struct
                  items =
                    List.map
                      ~f:(fun (item : Thir.impl_item) ->
+                       (* TODO: introduce a Kind.TraitImplItem or
+                          something. Otherwise we have to assume every
+                          backend will see traits and impls as
+                          records. *)
+                       let ii_ident =
+                         Concrete_ident.of_def_id Field item.owner_id
+                       in
                        {
                          ii_span = Span.of_thir item.span;
                          ii_generics = c_generics item.generics;
@@ -1268,7 +1277,7 @@ module Make (Opts : OPTS) : MakeT = struct
                            | Const (_ty, e) ->
                                IIFn { body = c_expr e; params = [] }
                            | Type ty -> IIType (c_ty item.span ty));
-                         ii_name = fst item.ident;
+                         ii_ident;
                          ii_attrs = c_item_attrs item.attributes;
                        })
                      items;
