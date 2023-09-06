@@ -281,5 +281,26 @@ module DefaultNamePolicy = struct
   let index_field_transform = Fn.id
 end
 
+let matches_namespace (ns : Types.namespace) (did : t) : bool =
+  let did = did.def_id in
+  let path : string option list =
+    did.path
+    |> List.map ~f:(fun (x : Imported.disambiguated_def_path_item) ->
+           View.Utils.string_of_def_path_item x.data)
+  in
+  let rec aux (pattern : Types.namespace_chunk list) (path : string option list)
+      =
+    match (pattern, path) with
+    | [], [] -> true
+    | Exact x :: pattern, Some y :: path ->
+        [%equal: string] x y && aux pattern path
+    | Glob One :: pattern, _ :: path -> aux pattern path
+    | Glob Many :: pattern, [] -> aux pattern []
+    | Glob Many :: pattern', _ :: path' ->
+        aux pattern' path || aux pattern path'
+    | _ -> false
+  in
+  aux ns.chunks path
+
 module DefaultViewAPI = MakeViewAPI (DefaultNamePolicy)
 include DefaultViewAPI

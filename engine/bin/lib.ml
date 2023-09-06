@@ -28,7 +28,8 @@ let run () : Types.output =
       |> List.concat_map ~f:(fun item ->
              try
                Result.map_error ~f:Import_thir.show_error
-                 (Import_thir.c_item item)
+                 (Import_thir.c_item
+                    options.backend.translation_options.include_namespaces item)
                |> Result.ok_or_failwith
              with Failure e -> failwith e)
     in

@@ -119,6 +119,51 @@ impl fmt::Display for Backend {
     }
 }
 
+#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+enum InclusionKind {
+    Included,
+    Excluded,
+}
+
+#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+struct InclusionClause {
+    kind: InclusionKind,
+    namespace: Namespace,
+}
+
+fn parse_inclusion_clause(
+    s: &str,
+) -> Result<InclusionClause, Box<dyn std::error::Error + Send + Sync + 'static>> {
+    let s = s.trim();
+    if s.is_empty() {
+        Err("Expected `-` or `+`, got an empty string")?
+    }
+    let (prefix, namespace) = s.split_at(1);
+    let kind = match prefix {
+        "+" => InclusionKind::Included,
+        "-" => InclusionKind::Excluded,
+        prefix => Err(format!("Expected `-` or `+`, got an `{prefix}`"))?,
+    };
+    Ok(InclusionClause {
+        kind,
+        namespace: namespace.to_string().into(),
+    })
+}
+
+#[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
+pub struct TranslationOptions {
+    /// Space-separated list of inclusion clauses. An inclusion clause
+    /// is a Rust path prefixed with either `+` or `-`. By default,
+    /// every item is included. Rust path chunks can be either a
+    /// concrete string, `*` or `**`. The two latter are globs.
+    #[arg(
+        value_parser = parse_inclusion_clause,
+        value_delimiter = ' ',
+    )]
+    #[arg(short, allow_hyphen_values(true))]
+    include_namespaces: Vec<InclusionClause>,
+}
+
 #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
 pub struct BackendOptions {
     #[command(subcommand)]
@@ -141,6 +186,9 @@ pub struct BackendOptions {
     /// environment variable.
     #[arg(short, long = "debug-engine")]
     debug_engine: bool,
+
+    #[command(flatten)]
+    translation_options: TranslationOptions,
 }
 
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]

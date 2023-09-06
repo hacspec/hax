@@ -10,5 +10,6 @@ type error =
 [@@deriving show]
 
 val c_item :
+  Types.inclusion_clause list ->
   Types.item_for__decorated_for__expr_kind ->
   (Ast.Rust.item list, error) Result.t
