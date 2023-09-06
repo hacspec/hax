@@ -3010,7 +3010,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, Term> for rustc_middle::ty:
 /// Expresses a constraints over an associated type.
 ///
 /// For instance:
-/// ```
+/// ```ignore
 /// fn f<T : Foo<S = String>>(...)
 ///              ^^^^^^^^^^
 /// ```
