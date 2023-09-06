@@ -64,7 +64,7 @@ pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
     variant_index: rustc_abi::VariantIdx,
     s: &S,
 ) -> VariantInformations {
-    s_assert!(s, !adt_def.is_union());
+    s_assert!(s, !adt_def.is_union() || *CORE_EXTRACTION_MODE);
     fn is_record<'s, I: std::iter::Iterator<Item = &'s ty::FieldDef> + Clone>(it: I) -> bool {
         it.clone()
             .any(|field| !field.name.to_ident_string().parse::<u64>().is_ok())
