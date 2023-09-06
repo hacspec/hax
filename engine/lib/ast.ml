@@ -4,6 +4,7 @@ type todo = string
 [@@deriving
   show,
     yojson,
+    hash,
     eq,
     visitors { variety = "reduce"; name = "todo_reduce" },
     visitors { variety = "mapreduce"; name = "todo_mapreduce" },
@@ -13,6 +14,7 @@ type span = (Span.t[@visitors.opaque])
 [@@deriving
   show,
     yojson,
+    hash,
     compare,
     sexp,
     eq,
@@ -24,6 +26,7 @@ type concrete_ident = (Concrete_ident.t[@visitors.opaque])
 [@@deriving
   show,
     yojson,
+    hash,
     compare,
     sexp,
     eq,
@@ -34,7 +37,7 @@ type concrete_ident = (Concrete_ident.t[@visitors.opaque])
 type logical_op = And | Or
 
 and primitive_ident = Deref | Cast | LogicalOp of logical_op
-[@@deriving show, yojson, compare, sexp, eq]
+[@@deriving show, yojson, hash, compare, sexp, eq]
 
 module Global_ident = struct
   module T = struct
@@ -46,7 +49,7 @@ module Global_ident = struct
       | `TupleField of int * int
       | `Projector of [ `Concrete of concrete_ident | `TupleField of int * int ]
       ]
-    [@@deriving show, yojson, compare, sexp, eq]
+    [@@deriving show, yojson, hash, compare, sexp, eq]
   end
 
   module M = struct
@@ -69,6 +72,7 @@ type global_ident = (Global_ident.t[@visitors.opaque])
 [@@deriving
   show,
     yojson,
+    hash,
     eq,
     visitors { variety = "reduce"; name = "global_ident_reduce" },
     visitors { variety = "mapreduce"; name = "global_ident_mapreduce" },
@@ -85,6 +89,7 @@ and attrs = attr list
 [@@deriving
   show,
     yojson,
+    hash,
     eq,
     visitors { variety = "reduce"; name = "attrs_reduce" },
     visitors { variety = "mapreduce"; name = "attrs_mapreduce" },
@@ -92,24 +97,24 @@ and attrs = attr list
 
 module LocalIdent = struct
   module T : sig
-    type id [@@deriving show, yojson, compare, sexp, eq]
+    type id [@@deriving show, yojson, hash, compare, sexp, eq]
 
     val var_id_of_int : int -> id
     val ty_param_id_of_int : int -> id
     val const_id_of_int : int -> id
 
     type t = { name : string; id : id }
-    [@@deriving show, yojson, compare, sexp, eq]
+    [@@deriving show, yojson, hash, compare, sexp, eq]
   end = struct
     type id = Typ of int | Cnst of int | Expr of int
-    [@@deriving show, yojson, compare, sexp, eq]
+    [@@deriving show, yojson, hash, compare, sexp, eq]
 
     let var_id_of_int id = Expr id
     let ty_param_id_of_int id = Typ id
     let const_id_of_int id = Cnst id
 
     type t = { name : string; id : id }
-    [@@deriving show, yojson, compare, sexp, eq]
+    [@@deriving show, yojson, hash, compare, sexp, eq]
   end
 
   include Base.Comparator.Make (T)
@@ -120,6 +125,7 @@ type local_ident = (LocalIdent.t[@visitors.opaque])
 [@@deriving
   show,
     yojson,
+    hash,
     compare,
     sexp,
     eq,
@@ -128,7 +134,7 @@ type local_ident = (LocalIdent.t[@visitors.opaque])
     visitors { variety = "map"; name = "local_ident_map" }]
 
 type size = S8 | S16 | S32 | S64 | S128 | SSize
-[@@deriving show, yojson, compare, eq]
+[@@deriving show, yojson, hash, compare, eq]
 
 let int_of_size = function
   | S8 -> Some 8
@@ -140,10 +146,11 @@ let int_of_size = function
 
 let string_of_size = int_of_size >> Option.map ~f:Int.to_string
 
-type signedness = Signed | Unsigned [@@deriving show, yojson, compare, eq]
+type signedness = Signed | Unsigned
+[@@deriving show, yojson, hash, compare, eq]
 
 type int_kind = { size : size; signedness : signedness }
-[@@deriving show, yojson, compare, eq]
+[@@deriving show, yojson, hash, compare, eq]
 
 let show_int_kind { size; signedness } =
   (match signedness with Signed -> "i" | Unsigned -> "u")
@@ -151,7 +158,7 @@ let show_int_kind { size; signedness } =
     |> Option.map ~f:Int.to_string
     |> Option.value ~default:"size")
 
-type float_kind = F32 | F64 [@@deriving show, yojson, compare, eq]
+type float_kind = F32 | F64 [@@deriving show, yojson, hash, compare, eq]
 
 let show_float_kind = function F32 -> "f32" | F64 -> "f64"
 
@@ -164,15 +171,16 @@ type literal =
 [@@deriving
   show,
     yojson,
+    hash,
     eq,
     visitors { variety = "reduce"; name = "literal_reduce" },
     visitors { variety = "mapreduce"; name = "literal_mapreduce" },
     visitors { variety = "map"; name = "literal_map" }]
 
-(* type 't spanned = { v : 't; span : span } [@@deriving show, yojson, eq] *)
+(* type 't spanned = { v : 't; span : span } [@@deriving show, yojson, hash, eq] *)
 
 type 'mut_witness mutability = Mutable of 'mut_witness | Immutable
-[@@deriving show, yojson, eq]
+[@@deriving show, yojson, hash, eq]
 
 module Make =
 functor
@@ -183,6 +191,7 @@ functor
     [@@deriving
       show,
         yojson,
+        hash,
         eq,
         visitors { variety = "reduce"; name = "borrow_kind_reduce" },
         visitors { variety = "mapreduce"; name = "borrow_kind_mapreduce" },
@@ -194,6 +203,7 @@ functor
     [@@deriving
       show,
         yojson,
+        hash,
         eq,
         visitors
           {
@@ -400,6 +410,7 @@ functor
     [@@deriving
       show,
         yojson,
+        hash,
         eq,
         visitors
           {
@@ -461,6 +472,7 @@ functor
     [@@deriving
       show,
         yojson,
+        hash,
         eq,
         visitors
           {
@@ -489,6 +501,7 @@ functor
     [@@deriving
       show,
         yojson,
+        hash,
         eq,
         visitors
           {
@@ -515,6 +528,7 @@ functor
     [@@deriving
       show,
         yojson,
+        hash,
         eq,
         visitors
           {
@@ -610,12 +624,13 @@ functor
       ti_span : span;
       ti_generics : generics;
       ti_v : trait_item';
-      ti_name : string;
+      ti_ident : concrete_ident;
       ti_attrs : attrs;
     }
     [@@deriving
       show,
         yojson,
+        hash,
         eq,
         visitors
           {

@@ -39,7 +39,7 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
         List.map
           ~f:(fun txt ->
             (rename [ ("placeholder", txt) ])#signature_item
-              [%sigi: type placeholder [@@deriving show, yojson, eq]])
+              [%sigi: type placeholder [@@deriving show, yojson, hash, eq]])
           features
         |> B.pmty_signature]
       end
@@ -67,7 +67,7 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
               ptype_attributes =
                 [
                   B.attribute ~name:{ loc; txt = "deriving" }
-                    ~payload:(PStr [%str show, yojson, eq]);
+                    ~payload:(PStr [%str show, yojson, hash, eq]);
                 ];
             };
           ]]
@@ -179,7 +179,7 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
 
       (*
       module MapFeatureTypes (T : sig
-        type t [@@deriving show, yojson, eq]
+        type t [@@deriving show, yojson, hash, eq]
       end) =
       struct
         include T
@@ -196,7 +196,7 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
                 #structure
                 [%str
                   module Placeholder = struct
-                    type placeholder = Placeholder of T.t [@@deriving show, yojson, eq]
+                    type placeholder = Placeholder of T.t [@@deriving show, yojson, hash, eq]
                   end
                       
                   include Placeholder])
@@ -205,11 +205,11 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
       end
 
       module On = MapFeatureTypes (struct
-        type t = on [@@deriving show, yojson, eq]
+        type t = on [@@deriving show, yojson, hash, eq]
       end)
 
       module Off = MapFeatureTypes (struct
-        type t = off [@@deriving show, yojson, eq]
+        type t = off [@@deriving show, yojson, hash, eq]
             end)
             *)
 
@@ -222,11 +222,12 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
             #structure
             [%str
               module Placeholder : sig
-                type placeholder [@@deriving show, yojson, eq]
+                type placeholder [@@deriving show, yojson, hash, eq]
 
                 val placeholder : placeholder
               end = struct
-                type placeholder = Placeholder [@@deriving show, yojson, eq]
+                type placeholder = Placeholder
+                [@@deriving show, yojson, hash, eq]
 
                 let placeholder = Placeholder
               end
@@ -255,7 +256,7 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
             #structure
             [%str
               module Placeholder = struct
-                type placeholder = | [@@deriving show, yojson, eq]
+                type placeholder = | [@@deriving show, yojson, hash, eq]
               end
 
               include Placeholder])
