@@ -57,7 +57,34 @@ type error =
   | IllTypedIntLiteral
 [@@deriving show]
 
-module Exn = struct
+module type OPTS = sig
+  val inclusion_clauses : Types.inclusion_clause list
+end
+
+module type MakeT = sig
+  val c_item : Types.item_for__decorated_for__expr_kind -> Ast.Rust.item list
+end
+
+module Make (Opts : OPTS) : MakeT = struct
+  let included_inclusion_clauses' (def_id : Concrete_ident.t) :
+      Types.inclusion_kind =
+    Opts.inclusion_clauses |> List.rev
+    |> List.find ~f:(fun clause ->
+           Concrete_ident.matches_namespace clause.Types.namespace def_id)
+    |> (fun x ->
+         prerr_endline @@ "GOT: " ^ [%show: Types.inclusion_clause option] x;
+         x)
+    |> Option.map ~f:(fun (clause : Types.inclusion_clause) -> clause.kind)
+    |> Option.value ~default:(Included : Types.inclusion_kind)
+
+  let included_inclusion_clauses (def_id : Concrete_ident.t) =
+    let r = included_inclusion_clauses' def_id in
+    prerr_endline @@ "included_inclusion_clauses("
+    ^ [%show: Concrete_ident.t] def_id
+    ^ ") = "
+    ^ [%show: Types.inclusion_kind] r;
+    r
+
   let def_id kind (def_id : Thir.def_id) : global_ident =
     `Concrete (Concrete_ident.of_def_id kind def_id)
 
@@ -1027,20 +1054,23 @@ module Exn = struct
         | _ -> false)
       attrs
 
-  let should_skip (attrs : Thir.item_attributes) =
+  let should_skip (attrs : Thir.item_attributes) did =
     let attrs = attrs.attributes @ attrs.parent_attributes in
-    is_hax_skip attrs || is_automatically_derived attrs
+    is_hax_skip attrs
+    || is_automatically_derived attrs
+    || [%matches? (Types.Excluded : Types.inclusion_kind)]
+         (included_inclusion_clauses did)
 
   let rec c_item (item : Thir.item) : item list =
     try c_item_unwrapped item with Diagnostics.SpanFreeError.Exn _kind -> []
 
   and c_item_unwrapped (item : Thir.item) : item list =
     let open (val make ~krate:item.owner_id.krate : EXPR) in
-    if should_skip item.attributes then []
+    let ident = Concrete_ident.of_def_id Value item.owner_id in
+    if should_skip item.attributes ident then []
     else
       let span = Span.of_thir item.span in
       let mk_one v =
-        let ident = Concrete_ident.of_def_id Value item.owner_id in
         let attrs = c_item_attrs item.attributes in
         { span; v; ident; attrs }
       in
@@ -1143,7 +1173,9 @@ module Exn = struct
       | Trait (No, Normal, generics, _bounds, items) ->
           let items =
             List.filter
-              ~f:(fun { attributes; _ } -> not (should_skip attributes))
+              ~f:(fun { attributes; owner_id; _ } ->
+                let did = Concrete_ident.of_def_id Value owner_id in
+                not (should_skip attributes did))
               items
           in
           let name =
@@ -1165,7 +1197,9 @@ module Exn = struct
       | Impl { of_trait = None; generics; items; _ } ->
           let items =
             List.filter
-              ~f:(fun { attributes; _ } -> not (should_skip attributes))
+              ~f:(fun { attributes; owner_id; _ } ->
+                let did = Concrete_ident.of_def_id Value owner_id in
+                not (should_skip attributes did))
               items
           in
           List.map
@@ -1212,7 +1246,9 @@ module Exn = struct
           } ->
           let items =
             List.filter
-              ~f:(fun { attributes; _ } -> not (should_skip attributes))
+              ~f:(fun { attributes; owner_id; _ } ->
+                let did = Concrete_ident.of_def_id Value owner_id in
+                not (should_skip attributes did))
               items
           in
           mk
@@ -1282,5 +1318,12 @@ module Exn = struct
           mk NotImplementedYet
 end
 
-let c_item (item : Thir.item) : (item list, error) Result.t =
-  Exn.c_item item |> Result.return
+let c_item inclusion_clauses (item : Thir.item) : (item list, error) Result.t =
+  let (module M) =
+    (module Make (struct
+      let inclusion_clauses =
+        prerr_endline @@ [%show: Types.inclusion_clause list] inclusion_clauses;
+        inclusion_clauses
+    end) : MakeT)
+  in
+  M.c_item item |> Result.return
