@@ -534,7 +534,7 @@ struct
             ( U.Concrete_ident_view.to_definition_name name,
               List.map
                 ~f:(fun x ->
-                  ( x.ti_name,
+                  ( U.Concrete_ident_view.to_definition_name x.ti_ident,
                     match x.ti_v with
                     | TIFn fn_ty -> pty span fn_ty
                     | _ -> __TODO_ty__ span "field_ty" ))
@@ -561,7 +561,7 @@ struct
                 ~f:(fun x ->
                   match x.ii_v with
                   | IIFn { body; params } ->
-                      ( x.ii_name,
+                      ( U.Concrete_ident_view.to_definition_name x.ii_ident,
                         List.map
                           ~f:(fun { pat; typ; typ_span } ->
                             (ppat pat, pty span typ))
