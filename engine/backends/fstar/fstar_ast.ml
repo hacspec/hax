@@ -39,6 +39,9 @@ let pat_var_tcresolve (var : string option) =
 let pat_app name l = pat @@ AST.PatApp (name, l)
 let wild = pat @@ AST.PatWild (None, [])
 
+let mk_e_abs args body =
+  if List.is_empty args then body else term (AST.Abs (args, body))
+
 let mk_e_app base args =
   AST.mkApp base (List.map ~f:(fun arg -> (arg, AST.Nothing)) args) dummyRange
 

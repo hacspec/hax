@@ -437,7 +437,7 @@ struct
           (F.term @@ F.AST.Name (pglobal_ident e.span constructor))
           [ r ]
     | Closure { params; body } ->
-        F.term @@ F.AST.Abs (List.map ~f:ppat params, pexpr body)
+        F.mk_e_abs (List.map ~f:ppat params) (pexpr body)
     | Return { e } ->
         F.term @@ F.AST.App (F.term_of_lid [ "RETURN_STMT" ], pexpr e, Nothing)
     | MacroInvokation { macro; args; witness } ->
