@@ -60,12 +60,23 @@ mod implementations {
     impl IsBody for ThirBody {
         fn body<'tcx, S: BaseState<'tcx>>(did: RLocalDefId, owner_id: ROwnerId, s: &S) -> Self {
             let (thir, expr) = get_thir(did, s);
-            expr.sinto(&State {
-                thir,
-                owner_id,
-                base: s.base(),
-                mir: (),
-            })
+            if *CORE_EXTRACTION_MODE {
+                let expr = &thir.exprs[expr.clone()];
+                Decorated {
+                    contents: Box::new(ExprKind::Tuple { fields: vec![] }),
+                    hir_id: None,
+                    attributes: vec![],
+                    ty: expr.ty.sinto(s),
+                    span: expr.span.sinto(s),
+                }
+            } else {
+                expr.sinto(&State {
+                    thir,
+                    owner_id,
+                    base: s.base(),
+                    mir: (),
+                })
+            }
         }
     }
 
