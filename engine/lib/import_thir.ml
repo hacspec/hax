@@ -1310,9 +1310,7 @@ end
 let c_item inclusion_clauses (item : Thir.item) : (item list, error) Result.t =
   let (module M) =
     (module Make (struct
-      let inclusion_clauses =
-        prerr_endline @@ [%show: Types.inclusion_clause list] inclusion_clauses;
-        inclusion_clauses
+      let inclusion_clauses = inclusion_clauses
     end) : MakeT)
   in
   M.c_item item |> Result.return
