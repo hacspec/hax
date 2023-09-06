@@ -19,6 +19,7 @@ let lid path =
 
 let lid_of_id id = Ident.lid_of_ids [ id ]
 let term (tm : AST.term') = AST.{ tm; range = dummyRange; level = Expr }
+let generate_fresh_ident () = Ident.gen dummyRange
 
 let decl ?(quals = []) (d : AST.decl') =
   `Item AST.{ d; drange = dummyRange; quals = []; attrs = [] }
