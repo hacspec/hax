@@ -172,7 +172,11 @@ struct
     F.id
     @@
     if [%eq: LocalIdent.id] e.id magic_id_raw_local_ident then e.name
-    else U.Concrete_ident_view.local_name e.name
+    else
+      U.Concrete_ident_view.local_name
+        (match String.chop_prefix ~prefix:"impl " e.name with
+        | Some name -> "impl_" ^ Int.to_string ([%hash: string] name)
+        | _ -> e.name)
 
   let pgeneric_param_name (name : string) : string =
     String.lowercase
@@ -506,7 +510,7 @@ struct
         let tc = F.mk_e_app trait (*pty typ::*) args in
         F.AST.
           {
-            b = F.AST.NoName tc;
+            b = F.AST.Annotated (F.generate_fresh_ident (), tc);
             brange = F.dummyRange;
             blevel = Un;
             aqual = None;
@@ -829,21 +833,23 @@ struct
                            F.term @@ F.AST.Name (pconcrete_ident trait)
                          in
                          let args = List.map ~f:(pgeneric_value e.span) args in
-                         ( F.id
-                             (name ^ "_implements_"
-                             ^ U.Concrete_ident_view.to_definition_name trait),
-                           None,
-                           [],
-                           F.mk_e_app base args ))
+                         (F.id name, None, [], F.mk_e_app base args))
                        bounds
               | TIFn ty -> [ (F.id name, None, [], pty e.span ty) ])
             items
+        in
+        let fields =
+          if List.is_empty fields then
+            [ (F.id "__marker_trait", None, [], pty e.span U.unit_typ) ]
+          else fields
         in
         let tcdef = F.AST.TyconRecord (name, bds, None, [], fields) in
         let d = F.AST.Tycon (false, true, [ tcdef ]) in
         [ `Item { d; drange = F.dummyRange; quals = []; attrs = [] } ]
     | Impl { generics; self_ty = _; of_trait = trait, generic_args; items } ->
-        let pat = F.pat @@ F.AST.PatVar (F.id "impl", None, []) in
+        (* this unique name is stupid, we have disambiguators... *)
+        let unique_name_todo = "impl_" ^ Int.to_string ([%hash: item] e) in
+        let pat = F.pat @@ F.AST.PatVar (F.id unique_name_todo, None, []) in
         let pat =
           F.pat
           @@ F.AST.PatApp
