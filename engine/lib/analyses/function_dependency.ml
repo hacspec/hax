@@ -3,65 +3,53 @@ open! Prelude
 module%inlined_contents Make (F : Features.T) = struct
   module FA = F
   module A = Ast.Make (F)
+  module U = Ast_utils.Make (F)
   open Ast
 
   type pre_data = unit
 
   type analysis_data =
-    concrete_ident list Map.M(Concrete_ident).t * int Map.M(Concrete_ident).t
+    concrete_ident list Map.M(Concrete_ident).t
 
-  module Flatten = Flatten_ast.Make (F)
+  type id_order = int
 
-  let rec flatten_map_index (map : concrete_ident list Map.M(Concrete_ident).t)
-      (depth : int) (index : concrete_ident) : concrete_ident list * int =
-    match Map.find map index with
-    | Some l ->
-        let a, b = flatten_concat_map map (depth + 1) l in
-        (l @ a, b)
-    | None -> ([], depth)
+  module Uprint = (Ast_utils.MakeWithNamePolicy (F) (Concrete_ident.DefaultNamePolicy))
 
-  and flatten_concat_map (map : concrete_ident list Map.M(Concrete_ident).t)
-      (depth : int) (l : concrete_ident list) : concrete_ident list * int =
-    let a, b = List.unzip (List.map ~f:(flatten_map_index map (depth + 1)) l) in
-    (l @ List.concat a, List.fold_left ~f:max ~init:0 b)
+  let analyse_function_body (x : A.expr) :
+    (* (Concrete_ident.t) *)
+    concrete_ident list =
+    (* U.Reducers.collect_global_idents *)
+    let collect_global_idents =
+      (object
+        inherit ['self] A.item_reduce as _super
+        inherit [_] U.Sets.Global_ident.monoid as m
+        method visit_t _ _ = m#zero
+        method visit_mutability (f : unit -> _ -> _) () mu =
+          match mu with
+          | Mutable wit -> f () wit
+          | _ -> m#zero
 
-  let rec analyse (_ : pre_data) (items : A.item list) : analysis_data =
-    let func_dep_list =
-      List.concat_map
-        ~f:(fun x ->
+        method! visit_global_ident (_env : unit) (x : Global_ident.t) =
+          Set.singleton (module Global_ident) x
+      end)#visit_expr () x
+    in
+    (List.filter_map ~f:(function | `Projector (`Concrete cid) | `Concrete cid -> Some cid | _ -> None) (Set.to_list collect_global_idents))
+
+  let analyse (_ : pre_data) (items : A.item list) : analysis_data =
+    let temp_list =
+       (List.concat_map ~f:(fun x ->
           match x.v with
-          | Fn { name; generics = _; body; params = _ } ->
-              [(name, analyse_function_body body)]
+          | Fn { name; generics = _; body; params = _ } -> [(name, body)]
           | Impl { generics = _; self_ty = _; of_trait = (_name, _gen_vals); items } ->
-            List.concat_map
+            List.filter_map
               ~f:(fun w ->
                   match w.ii_v with
-                  | IIFn { body; params = _ } ->
-                    [(w.ii_ident, analyse_function_body body)]
-                  | _ -> [])
+                  | IIFn { body; params = _ } -> Some ( w.ii_ident, body )
+                  | _ -> None)
               items
           | _ -> [])
-        items
+          items)
     in
-    let graph_map =
-      List.fold_left
-        ~f:(fun y x -> Map.set y ~key:(fst x) ~data:(snd x))
-        ~init:(Map.empty (module Concrete_ident))
-        func_dep_list
-    in
-    List.fold_left
-      ~f:(fun y x ->
-        let values, depth = flatten_concat_map graph_map 0 (snd x) in
-        ( Map.set (fst y) ~key:(fst x)
-            ~data:(Set.elements (Set.of_list (module Concrete_ident) values)),
-          Map.set (snd y) ~key:(fst x) ~data:depth ))
-      ~init:
-        (Map.empty (module Concrete_ident), Map.empty (module Concrete_ident))
-      func_dep_list
+    List.fold_left ~init:(Map.empty (module Concrete_ident)) ~f:(fun y (name, body) -> Map.set y ~key:(name) ~data:(analyse_function_body body)) temp_list
 
-  and analyse_function_body (x : A.expr) : concrete_ident list =
-    List.filter_map
-      ~f:(fun x ->
-        match x.e with GlobalVar (`Concrete g) -> Some g | _ -> None)
-      (Flatten.flatten_ast x)
 end

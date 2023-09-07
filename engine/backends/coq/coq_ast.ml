@@ -305,7 +305,7 @@ functor
       | AST.Var s -> (s, false)
       | AST.NameTerm s -> (s, false)
       | AST.RecordConstructor (f, args) ->
-          ( "Build_t_"
+          ( "Build_" (* t_ *)
             ^ term_to_string_without_paren f depth
             ^ " "
             ^ (term_list_to_string (List.map ~f:snd args) depth),
@@ -516,13 +516,13 @@ functor
               impl_list)
           in
           let arg_str =
-            String.concat ~sep:" "
+            String.concat ~sep:(";" ^ newline_indent 1)
             (List.map
                ~f:(function
                    | LetDef (name, arguments, term, ty) ->
-                     "(" ^ "@" ^ name ^ ")"
+                     name ^ " " ^ ":=" ^ " " ^ "(" ^ "@" ^ name ^ ")"
                    | InlineDef (name, arguments, term, ty) ->
-                     "(" ^ (if List.is_empty arguments then "" else "fun" ^ " " ^ params_to_string_typed arguments ^ " " ^ "=>" ^ " ")
+                     name ^ " " ^ ":=" ^ " " ^ "(" ^ (if List.is_empty arguments then "" else "fun" ^ " " ^ params_to_string_typed arguments ^ " " ^ "=>" ^ " ")
                            ^ term_to_string_without_paren term 1 ^ " " ^ ":" ^ " " ^ ty_to_string ty ^ ")")
               impl_list)
           in
@@ -531,7 +531,7 @@ functor
           ^ params_to_string_typed arguments
           ^ " " ^ ":" ^ " " ^ name ^ " " ^ ty_list_str ^ ":="  ^ newline_indent 1
           ^ impl_str ^ newline_indent 1
-          ^ "Build_" ^ name ^ " " ^ ty_list_str ^ " " ^ arg_str ^ "."
+          ^ "{|" (* ^ name ^ " " ^ ty_list_str *) ^ " " ^ arg_str ^ "|}" ^ "."
 ^ fail_next_obligation
       | AST.Require ([], rename) -> ""
       | AST.Require (import :: imports, rename) ->
