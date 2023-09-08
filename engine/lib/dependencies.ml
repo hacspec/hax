@@ -1,7 +1,4 @@
-open Base
-open Ppx_yojson_conv_lib.Yojson_conv.Primitives
-open Utils
-open Ast
+open! Prelude
 
 module Make (F : Features.T) = struct
   module AST = Ast.Make (F)
@@ -136,8 +133,6 @@ module Make (F : Features.T) = struct
       (f b.non_mut_rec, List.map ~f b.mut_rec_bundles)
     in
     let transform (bundle : item list) =
-      prerr_endline @@ "###### TRANSFORM";
-      prerr_endline @@ "transform bundle=" ^ [%show: item list] bundle;
       let ns : Concrete_ident.t =
         Concrete_ident.Create.fresh_module ~from:(List.map ~f:ident_of bundle)
       in
@@ -155,9 +150,6 @@ module Make (F : Features.T) = struct
       let shallow, bundle =
         List.map ~f:(shallow_copy rename) bundle |> List.unzip
       in
-      prerr_endline @@ "shallow=" ^ [%show: item list] shallow;
-      prerr_endline @@ "bundle=" ^ [%show: item list] bundle;
-      prerr_endline @@ "###### END";
       bundle @ shallow
     in
     let mut_rec_bundles =

@@ -1,5 +1,3 @@
-open Base
-open Utils
 
 module Make
     (F : Features.T

@@ -1,6 +1,4 @@
-open Base
-open Utils
-open Ppx_yojson_conv_lib.Yojson_conv.Primitives
+open! Prelude
 
 type todo = string
 [@@deriving
