@@ -946,6 +946,7 @@ let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
            })
 
 open Phase_utils
+module DepGraph = Dependencies.Make (InputLanguage)
 
 module TransformToInputLanguage =
   [%functor_application
@@ -974,3 +975,4 @@ let apply_phases (bo : BackendOptions.t) (items : Ast.Rust.item list) :
     AST.item list =
   TransformToInputLanguage.ditems items
   |> List.map ~f:U.Mappers.add_typ_ascription
+  |> GG.name_me

@@ -180,6 +180,7 @@ end
 
 include T
 include View.T
+include (val Comparator.make ~compare ~sexp_of_t)
 
 include Concrete_ident_sig.Make (struct
   type t_ = t
@@ -301,6 +302,42 @@ let matches_namespace (ns : Types.namespace) (did : t) : bool =
     | _ -> false
   in
   aux ns.chunks path
+
+module Create = struct
+  let parent (id : t) : t = { id with def_id = Imported.parent id.def_id }
+
+  let fresh_module ~from =
+    let len x = List.length x.def_id.path in
+    let compare x y = len x - len y in
+    let id = List.min_elt ~compare from |> Option.value_exn in
+    let parent = parent id in
+    {
+      kind = Kind.Value;
+      def_id =
+        {
+          parent.def_id with
+          path =
+            parent.def_id.path
+            @ [
+                {
+                  data = TypeNs "rec_bundle";
+                  disambiguator = [%hash: t list] from;
+                };
+              ];
+        };
+    }
+
+  let move_under ~new_parent old =
+    let new_parent = new_parent.def_id in
+    {
+      kind = old.kind;
+      def_id =
+        {
+          new_parent with
+          path = new_parent.path @ [ List.last_exn old.def_id.path ];
+        };
+    }
+end
 
 module DefaultViewAPI = MakeViewAPI (DefaultNamePolicy)
 include DefaultViewAPI

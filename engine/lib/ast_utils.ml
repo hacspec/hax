@@ -63,6 +63,17 @@ module Make (F : Features.T) = struct
         end
     end
 
+    module Concrete_ident = struct
+      include Set.M (Concrete_ident)
+
+      class ['s] monoid =
+        object
+          inherit ['s] VisitorsRuntime.monoid
+          method private zero = Set.empty (module Concrete_ident)
+          method private plus = Set.union
+        end
+    end
+
     module LocalIdent = struct
       include Set.M (LocalIdent)
 
@@ -139,6 +150,22 @@ module Make (F : Features.T) = struct
         (* method visit_GlobalVar (lvl : level) i = GlobalVar (f lvl i) *)
       end
 
+    let rename_concrete_idents
+        (f : visit_level -> Concrete_ident.t -> Concrete_ident.t) =
+      object
+        inherit [_] item_map as super
+        method visit_t (_lvl : visit_level) x = x
+        method visit_mutability _ (_lvl : visit_level) m = m
+        method! visit_concrete_ident (lvl : visit_level) ident = f lvl ident
+
+        method! visit_global_ident lvl (x : Global_ident.t) =
+          match x with
+          | `Concrete x -> `Concrete (f lvl x)
+          | _ -> super#visit_global_ident lvl x
+
+        method! visit_ty _ t = super#visit_ty TypeLevel t
+      end
+
     let rename_global_idents_item
         (f : visit_level -> global_ident -> global_ident) : item -> item =
       (rename_global_idents f)#visit_item ExprLevel
@@ -182,7 +209,7 @@ module Make (F : Features.T) = struct
   module Reducers = struct
     let collect_local_idents =
       object
-        inherit [_] expr_reduce as _super
+        inherit [_] item_reduce as _super
         inherit [_] Sets.LocalIdent.monoid as m
         method visit_t _ _ = m#zero
         method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
@@ -191,13 +218,29 @@ module Make (F : Features.T) = struct
 
     let collect_global_idents =
       object
-        inherit ['self] expr_reduce as _super
+        inherit ['self] item_reduce as _super
         inherit [_] Sets.Global_ident.monoid as m
         method visit_t _ _ = m#zero
         method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
 
         method! visit_global_ident (_env : unit) (x : Global_ident.t) =
           Set.singleton (module Global_ident) x
+      end
+
+    let collect_concrete_idents =
+      object
+        inherit ['self] item_reduce as super
+        inherit [_] Sets.Concrete_ident.monoid as m
+        method visit_t _ _ = m#zero
+        method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
+
+        method! visit_global_ident (_env : unit) (x : Global_ident.t) =
+          match x with
+          | `Concrete x -> Set.singleton (module Concrete_ident) x
+          | _ -> super#visit_global_ident () x
+
+        method! visit_concrete_ident (_env : unit) (x : Concrete_ident.t) =
+          Set.singleton (module Concrete_ident) x
       end
 
     let variables_of_pat (p : pat) : Sets.LocalIdent.t =

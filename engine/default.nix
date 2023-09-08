@@ -42,7 +42,7 @@ let
       visitors pprint non_empty_list bignum
       ppx_deriving_yojson ppx_matches ppx_let cmdliner
       angstrom ppx_string logs
-      core re
+      core re ocamlgraph
     ] ++
     # F* dependencies
     [ batteries menhirLib ppx_deriving

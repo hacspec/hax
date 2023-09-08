@@ -28,6 +28,7 @@ type concrete_ident = (Concrete_ident.t[@visitors.opaque])
     yojson,
     compare,
     sexp,
+    hash,
     eq,
     visitors { variety = "reduce"; name = "concrete_ident_reduce" },
     visitors { variety = "mapreduce"; name = "concrete_ident_mapreduce" },
@@ -36,7 +37,7 @@ type concrete_ident = (Concrete_ident.t[@visitors.opaque])
 type logical_op = And | Or
 
 and primitive_ident = Deref | Cast | LogicalOp of logical_op
-[@@deriving show, yojson, compare, sexp, eq]
+[@@deriving show, yojson, hash, compare, sexp, eq]
 
 module Global_ident = struct
   module T = struct
@@ -48,7 +49,7 @@ module Global_ident = struct
       | `TupleField of int * int
       | `Projector of [ `Concrete of concrete_ident | `TupleField of int * int ]
       ]
-    [@@deriving show, yojson, compare, sexp, eq]
+    [@@deriving show, yojson, compare, hash, sexp, eq]
   end
 
   module M = struct
