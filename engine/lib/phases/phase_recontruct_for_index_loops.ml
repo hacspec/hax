@@ -1,5 +1,4 @@
-open Base
-open Utils
+open! Prelude
 
 module%inlined_contents Make (FA : Features.T) = struct
   open Ast
@@ -38,7 +37,7 @@ module%inlined_contents Make (FA : Features.T) = struct
                 e =
                   App
                     {
-                      f = { e = GlobalVar (`Concrete into_iter_meth) };
+                      f = { e = GlobalVar (`Concrete into_iter_meth); _ };
                       args =
                         [
                           {
@@ -55,6 +54,7 @@ module%inlined_contents Make (FA : Features.T) = struct
                                     ];
                                   base = None;
                                 };
+                            _;
                           };
                         ];
                     };
@@ -65,10 +65,10 @@ module%inlined_contents Make (FA : Features.T) = struct
               {
                 p =
                   PBinding
-                    { mut = Immutable; mode = ByValue; var; subpat = None };
-                typ = _;
+                    { mut = Immutable; mode = ByValue; var; subpat = None; _ };
+                _;
               };
-            witness;
+            _;
           }
         when Concrete_ident.eq_name
                Core__iter__traits__collect__IntoIterator__into_iter

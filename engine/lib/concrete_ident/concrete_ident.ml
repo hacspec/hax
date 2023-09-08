@@ -1,6 +1,4 @@
-open Base
-open Utils
-open Ppx_yojson_conv_lib.Yojson_conv.Primitives
+open! Prelude
 
 module Imported = struct
   type def_id = { krate : string; path : disambiguated_def_path_item list }
@@ -51,12 +49,12 @@ module Imported = struct
       disambiguator = MyInt64.to_int_exn disambiguator;
     }
 
-  let of_def_id Types.{ krate; path } =
+  let of_def_id Types.{ krate; path; _ } =
     { krate; path = List.map ~f:of_disambiguated_def_path_item path }
 
-  let parent { krate; path } = { krate; path = List.drop_last_exn path }
+  let parent { krate; path; _ } = { krate; path = List.drop_last_exn path }
 
-  let drop_ctor { krate; path } =
+  let drop_ctor { krate; path; _ } =
     {
       krate;
       path =
@@ -192,8 +190,8 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
   let pp fmt = show >> Caml.Format.pp_print_string fmt
   let is_reserved_word : string -> bool = Hash_set.mem NP.reserved_words
 
-  let rename_definition (path : string list) (name : string) (kind : Kind.t)
-      type_name =
+  let rename_definition (_path : string list) (name : string) (kind : Kind.t)
+      _type_name =
     (* let path, name = *)
     (*   match kind with *)
     (*   | Constructor { is_struct = false } -> *)

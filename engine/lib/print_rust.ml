@@ -1,8 +1,6 @@
-open Base
-open Ppx_yojson_conv_lib.Yojson_conv.Primitives
+open! Prelude
 open Ast
 open Ast.Full
-open Utils
 
 module Concrete_ident_view = Concrete_ident.MakeViewAPI (struct
   include Concrete_ident.DefaultNamePolicy
@@ -216,10 +214,10 @@ module Raw = struct
     | Literal l -> pliteral e.span l
     | Block (e, _) -> !"{" & pexpr e & !"}"
     | Array l -> !"[" & concat ~sep:!"," (List.map ~f:pexpr l) & !"]"
-    | Construct { is_record = false; constructor; fields; base = _ } ->
+    | Construct { is_record = false; constructor; fields; _ } ->
         let fields = List.map ~f:(snd >> pexpr) fields |> concat ~sep:!"," in
         pglobal_ident e.span constructor & !"(" & fields & !")"
-    | Construct { is_record = true; constructor; fields; base } ->
+    | Construct { is_record = true; constructor; fields; base; _ } ->
         let fields =
           List.map
             ~f:(fun (field, value) ->
@@ -325,7 +323,7 @@ module Raw = struct
     let ( ! ) = pure attr.span in
     match attr.kind with
     | Tool { path; tokens } -> !"#[" & !path & !"(" & !tokens & !")" & !"]"
-    | DocComment { kind; body } -> !"/**" & !body & !"*/"
+    | DocComment { kind = _; body } -> !"/**" & !body & !"*/"
 
   let pattrs attrs = List.map ~f:pattr attrs |> concat
 
@@ -338,7 +336,6 @@ module Raw = struct
     | GPConst { typ } -> (!"const ", !":" & pty span typ)
 
   let pgeneric_param (p : generic_param) =
-    let ( ! ) = pure p.span in
     let prefix, suffix = pgeneric_param_kind p.span p.kind in
     let id =
       plocal_ident p.span
@@ -355,7 +352,7 @@ module Raw = struct
         !"<" & concat ~sep:!", " (List.map ~f:pgeneric_param pl) & !">"
     | _ -> empty
 
-  let ptrait_ref span { trait; args; bindings } =
+  let ptrait_ref span { trait; args; bindings = _ } =
     let ( ! ) = pure span in
     let args = List.map ~f:(pgeneric_value span) args |> concat ~sep:!", " in
     !(Concrete_ident_view.show trait)
@@ -375,7 +372,7 @@ module Raw = struct
       !" where "
       & concat ~sep:!"," (List.map ~f:(pgeneric_constraint span) constraints)
 
-  let pvariant_body span { name; arguments; attrs; is_record } =
+  let pvariant_body span { name = _; arguments; attrs = _; is_record } =
     let ( ! ) = pure span in
     if is_record then
       !"{"
@@ -412,8 +409,8 @@ module Raw = struct
             let return_type = pty e.span body.typ in
             let params =
               List.map
-                ~f:(fun { pat; typ; typ_span } ->
-                  ppat pat & !": "
+                ~f:(fun { pat; typ; typ_span; attrs } ->
+                  pattrs attrs & ppat pat & !": "
                   & pty (Option.value ~default:pat.span typ_span) typ)
                 params
               |> concat ~sep:!","
@@ -437,7 +434,7 @@ module Raw = struct
             & pgeneric_constraints e.span generics.constraints
             & pvariant_body e.span variant
             & if variant.is_record then !"" else !";"
-        | Type { name; generics; variants : _ } ->
+        | Type { name; generics; variants; _ } ->
             !"enum "
             & !(Concrete_ident_view.to_definition_name name)
             & pgeneric_params generics.params
@@ -467,7 +464,7 @@ let rustfmt (s : string) : string =
          %{stderr}\n\
          #######################################################\n"]
     in
-    Caml.prerr_endline err;
+    Stdio.prerr_endline err;
     [%string "/*\n%{err}\n*/\n\n%{s}"]
 
 exception RetokenizationFailure
@@ -493,9 +490,9 @@ let rustfmt_annotated' (x : AnnotatedString.t) : AnnotatedString.t =
             (* if [s] is a symbol as well, this is fine *)
             (original, (Span.dummy (), s))
           else (
-            prerr_endline @@ "\n##### RUSTFMT TOKEN ERROR #####";
-            prerr_endline @@ "prev=" ^ [%show: AnnotatedString.t] prev;
-            prerr_endline @@ "s=" ^ s;
+            Stdio.prerr_endline @@ "\n##### RUSTFMT TOKEN ERROR #####";
+            Stdio.prerr_endline @@ "prev=" ^ [%show: AnnotatedString.t] prev;
+            Stdio.prerr_endline @@ "s=" ^ s;
             raise RetokenizationFailure)
       | _ -> (original, (last, s))
     in

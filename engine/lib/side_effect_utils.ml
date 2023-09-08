@@ -1,5 +1,4 @@
-open Base
-open Utils
+open! Prelude
 
 module MakeSI
     (F : Features.T
@@ -355,7 +354,8 @@ struct
                   ({ e with e = App { f; args } }, effects))
           | Literal _ -> (e, m#zero)
           | Block (inner, witness) ->
-              HoistSeq.one env (super#visit_expr env e) (fun inner effects ->
+              HoistSeq.one env (super#visit_expr env inner)
+                (fun inner effects ->
                   ({ e with e = Block (inner, witness) }, effects))
           | Array l ->
               HoistSeq.many env

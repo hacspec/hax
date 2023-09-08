@@ -1,5 +1,4 @@
 open Utils
-open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 module T = Types
 
 module Backend = struct

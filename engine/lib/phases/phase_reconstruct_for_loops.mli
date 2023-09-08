@@ -1,9 +1,7 @@
-open Base
-open Utils
+open! Prelude
 
 module Make (F : Features.T) : sig
   include module type of struct
-    open Ast
     module FA = F
 
     module FB = struct

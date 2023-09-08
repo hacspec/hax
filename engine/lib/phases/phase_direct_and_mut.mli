@@ -1,5 +1,4 @@
-open Base
-open Utils
+open! Prelude
 
 module Make
     (F : Features.T
