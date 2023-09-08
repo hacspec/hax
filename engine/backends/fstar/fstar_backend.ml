@@ -962,6 +962,7 @@ let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
            })
 
 open Phase_utils
+module DepGraph = Dependencies.Make (InputLanguage)
 
 module TransformToInputLanguage =
   [%functor_application
