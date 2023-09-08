@@ -204,9 +204,7 @@ let rec plus_minus_list_of_expr' (e : expression) : (flag * pm_atom) list =
 
 let plus_minus_list_of_expr (e : expression) : (flag * pm_atom) list option =
   try Some (plus_minus_list_of_expr' e)
-  with InlineError NotPlusMinusList ->
-    failwith "InlineError NotPlusMinusList";
-    None
+  with InlineError NotPlusMinusList -> failwith "InlineError NotPlusMinusList"
 
 let elast l =
   match (List.last l, List.drop_last l) with
@@ -276,15 +274,15 @@ let map_inline_nodes opens _loc =
              }
     | l -> l
   in
-  let find (type a) ?(show_a = fun x -> "?") ~loc ~context
-      (flags : (flag * pm_atom) list) (f : inlinable_item_kind -> a option) =
+  let find (type a) ~loc ~context (flags : (flag * pm_atom) list)
+      (f : inlinable_item_kind -> a option) =
     List.fold_left ~init:[]
       ~f:(fun acc (flag, path) ->
         let matches =
           find_one ~loc ~context path.apath (fun { path = path'; kind = i } ->
               match (path.aqualifier, i) with
               | ( Some AllBindings,
-                  StrItem { pstr_desc = Pstr_value (_, bindings) } ) ->
+                  StrItem { pstr_desc = Pstr_value (_, bindings); _ } ) ->
                   let prefix = List.drop_last_exn path' in
                   List.filter_map
                     ~f:(fun b ->
@@ -296,8 +294,6 @@ let map_inline_nodes opens _loc =
               | _ ->
                   Option.to_list @@ Option.map ~f:(fun i -> (path', i)) @@ f i)
         in
-        let show_a (p, _) = String.concat ~sep:"." p in
-        let show_a_list l = List.map ~f:show_a l |> String.concat ~sep:" " in
         let acc =
           match flag with
           | Include -> acc @ matches
@@ -357,13 +353,9 @@ let map_inline_nodes opens _loc =
                               b
                               ::
                               (let bindings =
-                                 find
-                                   ~show_a:(fun (_, x) ->
-                                     Option.value ~default:"??"
-                                     @@ name_of_binding x)
-                                   ~context:"inline_ands" ~loc opts
-                                   (function
-                                     | Binding b' -> Some b' | _ -> None)
+                                 find ~context:"inline_ands" ~loc opts (function
+                                   | Binding b' -> Some b'
+                                   | _ -> None)
                                in
                                List.filter
                                  ~f:(fun b' ->
