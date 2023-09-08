@@ -1,5 +1,4 @@
-open Base
-open Utils
+open! Prelude
 
 module%inlined_contents Make
     (F : Features.T
@@ -65,7 +64,6 @@ struct
     and dexpr' (span : span) (e : A.expr') : B.expr' =
       match (UA.unbox_underef_expr { e; span; typ = UA.never_typ }).e with
       | [%inline_arms If + Literal + Array + App + Block] -> auto
-      | App { f; args } -> App { f = dexpr f; args = List.map ~f:dexpr args }
       | Construct { constructor; is_record; is_struct; fields; base } ->
           Construct
             {
@@ -116,7 +114,7 @@ struct
         bindings = r.bindings;
       }
 
-    let dgeneric_param (span : span)
+    let dgeneric_param (_span : span)
         ({ ident; kind; attrs; span } : A.generic_param) :
         B.generic_param option =
       let ( let* ) x f = Option.bind ~f x in

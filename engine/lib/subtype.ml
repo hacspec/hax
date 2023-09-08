@@ -1,5 +1,4 @@
-open Base
-open Utils
+open! Prelude
 
 module Make
     (FA : Features.T)
@@ -111,7 +110,7 @@ struct
     with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
       let typ : B.ty =
         try dty e.span e.typ
-        with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
+        with Diagnostics.SpanFreeError.Exn (Data (_context, _kind)) ->
           UB.hax_failure_typ
       in
       UB.hax_failure_expr e.span typ (context, kind) (UA.LiftToFullAst.expr e)
@@ -276,7 +275,7 @@ struct
       }
 
     (* TODO: remvove span argument *)
-    let dgeneric_param (span : span)
+    let dgeneric_param (_span : span)
         ({ ident; span; attrs; kind } : A.generic_param) : B.generic_param =
       let kind =
         match kind with
@@ -351,7 +350,7 @@ struct
       try ditem_unwrapped i
       with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
         let error = Diagnostics.pretty_print_context_kind context kind in
-        let cast_item : A.item -> Ast.Full.item = Obj.magic in
+        let cast_item : A.item -> Ast.Full.item = Caml.Obj.magic in
         let ast = cast_item i |> Print_rust.pitem_str in
         let msg = error ^ "\nLast available AST for this item:\n\n" ^ ast in
         [ B.make_hax_error_item i.span i.ident msg ]

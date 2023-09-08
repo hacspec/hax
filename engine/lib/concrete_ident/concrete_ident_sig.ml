@@ -1,4 +1,4 @@
-open Base
+open! Prelude
 
 module Make (T : sig
   type t_
@@ -18,7 +18,7 @@ struct
 
   module type VIEW_API = sig
     val show : t_ -> string
-    val pp : Format.formatter -> t_ -> unit
+    val pp : Formatter.t -> t_ -> unit
     val to_view : t_ -> view_
     val to_definition_name : t_ -> string
     val to_crate_name : t_ -> string

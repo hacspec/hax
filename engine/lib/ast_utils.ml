@@ -1,6 +1,4 @@
-open Base
-open Ppx_yojson_conv_lib.Yojson_conv.Primitives
-open Utils
+open! Prelude
 open Ast
 
 type visit_level = ExprLevel | TypeLevel
@@ -123,7 +121,7 @@ module Make (F : Features.T) = struct
 
     let rename_local_idents (f : local_ident -> local_ident) =
       object
-        inherit [_] item_map as super
+        inherit [_] item_map as _super
         method visit_t () x = x
         method visit_mutability _ () m = m
         method! visit_local_ident () ident = f ident
@@ -148,13 +146,13 @@ module Make (F : Features.T) = struct
     that don't support them well (F* for instance). *)
     let add_typ_ascription =
       let is_app : expr' -> bool =
-        [%matches? App { f = { e = GlobalVar (`Concrete _) }; _ }]
+        [%matches? App { f = { e = GlobalVar (`Concrete _); _ }; _ }]
       in
       let o =
         object
           inherit [_] item_map as super
-          method visit_t (ascribe_app : bool) x = x
-          method visit_mutability _ (ascribe_app : bool) m = m
+          method visit_t (_ascribe_app : bool) x = x
+          method visit_mutability _ (_ascribe_app : bool) m = m
 
           method! visit_expr' (ascribe_app : bool) e =
             (* Enable type ascription of underlying function
@@ -319,7 +317,7 @@ module Make (F : Features.T) = struct
 
     let concrete_app1 (f : Concrete_ident.name) (e : expr) : expr option =
       match e.e with
-      | App { f = { e = GlobalVar (`Concrete f') }; args = [ e ] }
+      | App { f = { e = GlobalVar (`Concrete f'); _ }; args = [ e ] }
         when Concrete_ident.eq_name f f' ->
           Some e
       | _ -> None
@@ -327,7 +325,7 @@ module Make (F : Features.T) = struct
     let deref_mut_app = concrete_app1 Core__ops__deref__DerefMut__deref_mut
 
     let local_var (e : expr) : expr option =
-      match e.e with LocalVar i -> Some e | _ -> None
+      match e.e with LocalVar _ -> Some e | _ -> None
 
     let arrow (typ : ty) : (ty list * ty) option =
       match typ with
@@ -431,7 +429,7 @@ module Make (F : Features.T) = struct
         inherit [_] item_map
         method visit_t () x = x
         method visit_mutability _ () m = m
-        method! visit_span s = function _ -> Span.default
+        method! visit_span _ = function _ -> Span.default
       end
     in
     let a = replace_spans#visit_ty () a in
@@ -518,7 +516,6 @@ module Make (F : Features.T) = struct
        for LHS things. *)
   let call_Constructor' (constructor : global_ident) is_struct
       (args : expr list) span ret_typ =
-    let typ = TArrow (List.map ~f:(fun arg -> arg.typ) args, ret_typ) in
     let mk_field =
       let len = List.length args in
       fun n -> `TupleField (len, n)
@@ -565,8 +562,8 @@ module Make (F : Features.T) = struct
     TApp { ident; args = [] }
 
   module LiftToFullAst = struct
-    let expr : AST.expr -> Ast.Full.expr = Obj.magic
-    let item : AST.expr -> Ast.Full.expr = Obj.magic
+    let expr : AST.expr -> Ast.Full.expr = Caml.Obj.magic
+    let item : AST.expr -> Ast.Full.expr = Caml.Obj.magic
   end
 
   let unbox_expr' (next : expr -> expr) (e : expr) : expr =
@@ -583,7 +580,7 @@ module Make (F : Features.T) = struct
     | _ -> e
 
   let rec unbox_expr e = unbox_expr' unbox_expr e
-  let rec underef_expr e = underef_expr' unbox_expr e
+  let underef_expr e = underef_expr' unbox_expr e
 
   let rec unbox_underef_expr e =
     (unbox_expr' unbox_underef_expr >> underef_expr' unbox_underef_expr) e
@@ -717,12 +714,12 @@ module Make (F : Features.T) = struct
       | LocalVar i -> wrap @@ LocalVar i
       | App
           {
-            f = { e = GlobalVar (`Projector _ as projector) };
+            f = { e = GlobalVar (`Projector _ as projector); _ };
             args = [ place ];
           } ->
           let* place = of_expr place in
           wrap @@ FieldProjection { place; projector }
-      | App { f = { e = GlobalVar f }; args = [ place; index ] }
+      | App { f = { e = GlobalVar f; _ }; args = [ place; index ] }
         when Global_ident.eq_name Core__ops__index__IndexMut__index_mut f ->
           (* Note that here, we allow any type to be `index_mut`ed:
              Hax translates that to `Rust_primitives.Hax.update_at`.

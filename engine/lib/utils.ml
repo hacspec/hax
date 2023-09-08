@@ -95,5 +95,5 @@ module MyInt64 = struct
     | `Int i -> of_int i
     | _ -> failwith "Couldn't parse MyInt64.t"
 
-  let yojson_of_t (x : t) : Yojson.Safe.t = failwith "x"
+  let yojson_of_t (int64 : t) : Yojson.Safe.t = `Intlit (to_string int64)
 end

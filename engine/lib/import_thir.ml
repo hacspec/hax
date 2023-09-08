@@ -13,8 +13,7 @@ module Thir = struct
   type trait_item = trait_item_for__decorated_for__expr_kind
 end
 
-open Utils
-open Base
+open! Prelude
 open Diagnostics
 
 let assertion_failure (span : Thir.span list) (details : string) =
@@ -386,7 +385,8 @@ module Make (Opts : OPTS) : MakeT = struct
             let args = List.map ~f:c_expr args in
             let f = c_expr fun' in
             App { f; args }
-        | Box { value } -> (U.call Rust_primitives__hax__box_new [] span typ).e
+        | Box { value } ->
+            (U.call Rust_primitives__hax__box_new [ c_expr value ] span typ).e
         | Deref { arg } ->
             let inner_typ = c_ty arg.span arg.ty in
             call (mk_global ([ inner_typ ] ->. typ) @@ `Primitive Deref) [ arg ]
@@ -853,7 +853,7 @@ module Make (Opts : OPTS) : MakeT = struct
       | Uint k -> TInt (c_uint_ty k)
       | Float k -> TFloat (match k with F32 -> F32 | F64 -> F64)
       | Arrow value ->
-          let ({ inputs; output } : Thir.ty_fn_sig) = value.value in
+          let ({ inputs; output; _ } : Thir.ty_fn_sig) = value.value in
           TArrow (List.map ~f:(c_ty span) inputs, c_ty span output)
       | Adt { def_id = id; generic_args } ->
           let ident = def_id Type id in

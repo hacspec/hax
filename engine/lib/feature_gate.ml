@@ -1,6 +1,4 @@
-open Base
-open Ppx_yojson_conv_lib.Yojson_conv.Primitives
-open Utils
+open! Prelude
 
 module DefaultSubtype = struct
   type error = Err [@@deriving show, yojson, eq]
@@ -31,8 +29,6 @@ module Make
     with module A = FA
      and module B = FB) =
 struct
-  open Ast
-
   let metadata = S0.metadata
 
   module S =
@@ -43,7 +39,6 @@ struct
             (x : a) : b =
           try f x
           with S0.E err ->
-            let message = S0.explain err feature_kind in
             let kind : Diagnostics.kind =
               ExplicitRejection { reason = S0.explain err feature_kind }
             in
