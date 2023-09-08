@@ -619,6 +619,16 @@ struct
   and pitem_unwrapped (e : item) :
       [> `Item of F.AST.decl | `Comment of string ] list =
     match e.v with
+    | Alias { name; item } ->
+        let pat =
+          F.pat
+          @@ F.AST.PatVar
+               (F.id @@ U.Concrete_ident_view.to_definition_name name, None, [])
+        in
+        F.decls ~quals:[ F.AST.Unfold_for_unification_and_vcgen ]
+        @@ F.AST.TopLevelLet
+             ( NoLetQualifier,
+               [ (pat, F.term @@ F.AST.Name (pconcrete_ident item)) ] )
     | Fn { name; generics; body; params } ->
         let pat =
           F.pat
@@ -978,5 +988,9 @@ module TransformToInputLanguage =
 
 let apply_phases (bo : BackendOptions.t) (items : Ast.Rust.item list) :
     AST.item list =
-  TransformToInputLanguage.ditems items
-  |> List.map ~f:U.Mappers.add_typ_ascription
+  let items =
+    TransformToInputLanguage.ditems items
+    |> List.map ~f:U.Mappers.add_typ_ascription
+    |> DepGraph.name_me
+  in
+  items

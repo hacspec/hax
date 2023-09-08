@@ -595,6 +595,10 @@ functor
           of_trait : global_ident * generic_value list;
           items : impl_item list;
         }
+      (* | ModuleInclusion of { item : concrete_ident } *)
+      | Alias of { name : concrete_ident; item : concrete_ident }
+          (** `Alias {name; item}` is basically a `use
+              <item> as _;` where `name` is the renamed ident. *)
       | Use of {
           path : string list;
           is_external : bool;
