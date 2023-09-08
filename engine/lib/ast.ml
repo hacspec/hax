@@ -29,6 +29,7 @@ type concrete_ident = (Concrete_ident.t[@visitors.opaque])
     hash,
     compare,
     sexp,
+    hash,
     eq,
     visitors { variety = "reduce"; name = "concrete_ident_reduce" },
     visitors { variety = "mapreduce"; name = "concrete_ident_mapreduce" },
@@ -49,7 +50,7 @@ module Global_ident = struct
       | `TupleField of int * int
       | `Projector of [ `Concrete of concrete_ident | `TupleField of int * int ]
       ]
-    [@@deriving show, yojson, hash, compare, sexp, eq]
+    [@@deriving show, yojson, compare, hash, sexp, eq]
   end
 
   module M = struct
