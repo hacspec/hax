@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 RUST_SOURCE=$(cat "$1")
 TEMPDIR=$(mktemp -d)
 trap '{ rm -rf -- "$TEMPDIR/"; }' EXIT
