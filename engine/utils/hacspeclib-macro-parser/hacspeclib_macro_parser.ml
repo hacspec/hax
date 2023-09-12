@@ -59,8 +59,8 @@ end = struct
     match parse_string ~consume:All (parens parser <* end_of_input) input with
     | Ok e -> Ok e
     | Error e ->
-        Caml.prerr_endline @@ "########## Error while parsing: (" ^ name ^ ")";
-        Caml.prerr_endline input;
+        Stdlib.prerr_endline @@ "########## Error while parsing: (" ^ name ^ ")";
+        Stdlib.prerr_endline input;
         Error e
 end
 

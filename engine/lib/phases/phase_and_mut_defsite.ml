@@ -225,7 +225,7 @@ struct
     include M
 
     let ditems (items : A.item list) : B.item list =
-      let items : B.item list = Caml.Obj.magic items in
+      let items : B.item list = Stdlib.Obj.magic items in
       let visitor =
         object
           inherit [_] B.item_map as super
@@ -291,7 +291,7 @@ struct
             try super#visit_item () i
             with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
               let error = Diagnostics.pretty_print_context_kind context kind in
-              let cast_item : B.item -> Ast.Full.item = Caml.Obj.magic in
+              let cast_item : B.item -> Ast.Full.item = Stdlib.Obj.magic in
               let ast = cast_item i |> Print_rust.pitem_str in
               let msg =
                 error ^ "\nLast available AST for this item:\n\n" ^ ast
@@ -310,7 +310,7 @@ struct
       List.map ~f:(visitor#visit_item ()) items
 
     let dexpr (_e : A.expr) : B.expr =
-      Caml.failwith "Should not be called directly"
+      Stdlib.failwith "Should not be called directly"
   end
 
   include Implem

@@ -93,14 +93,14 @@ let replace_every_location (location : location) =
 
 let locate_module (name : string) : string =
   let rec find = function
-    | path when Caml.Sys.is_directory path ->
-        Caml.Sys.readdir path
+    | path when Stdlib.Sys.is_directory path ->
+        Stdlib.Sys.readdir path
         |> Array.find_map ~f:(fun name ->
-               find @@ Caml.Filename.concat path name)
-    | path when String.(Caml.Filename.basename path = name) -> Some path
+               find @@ Stdlib.Filename.concat path name)
+    | path when String.(Stdlib.Filename.basename path = name) -> Some path
     | _ -> None
   in
-  find (Caml.Sys.getcwd ())
+  find (Stdlib.Sys.getcwd ())
   |> Option.value_exn ~message:("ppx_inline: could not locate module " ^ name)
 
 let inlinable_items_of_module : loc:location -> string -> inlinable_item list =
@@ -110,7 +110,7 @@ let inlinable_items_of_module : loc:location -> string -> inlinable_item list =
       ~default:(fun () ->
         let results = ref [] in
         let _ =
-          locate_module path |> Caml.open_in |> Lexing.from_channel
+          locate_module path |> Stdlib.open_in |> Lexing.from_channel
           |> Parse.implementation |> (replace_every_location loc)#structure
           |> (collect_ast_nodes results)#structure [ path ]
         in
