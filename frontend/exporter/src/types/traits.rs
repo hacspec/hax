@@ -447,7 +447,6 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct TraitInfo {
     pub impl_source: ImplSource,
-    pub params_info: ParamsInfo,
     /// All the generics (from before truncating them - see the documentation
     /// for [ParamsInfo]). We store this information mostly for debugging purposes.
     pub all_generics: Vec<GenericArg>,
@@ -483,15 +482,15 @@ pub fn get_trait_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
 /// [ref_def_id]: id of the method being called, the global being used, etc.
 pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
-    ref_def_id: rustc_hir::def_id::DefId,
+    _ref_def_id: rustc_hir::def_id::DefId,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
 ) -> (Vec<GenericArg>, TraitInfo) {
     let mut impl_source = solve_trait(s, param_env, trait_ref);
 
-    // We need to remove the arguments which are for the method: we keep the
-    // arguments which are specific to the trait instance (see the comments
-    // in [ParamsInfo]).
+    // We need to remove the generic arguments which are for the method: we keep
+    // the generic arguments which are specific to the trait instance (see the
+    // comments in [ParamsInfo]).
     //
     // For instance:
     // ```
@@ -505,31 +504,33 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     // }
     // ```
     // Above, we want to drop the `Bar` and `T` arguments.
-    let params_info = get_parent_params_info(s, ref_def_id).unwrap();
 
-    let update_generics = |x: &mut Vec<GenericArg>| {
-        let original = x.clone();
-        *x = x[0..params_info.num_generic_params].to_vec();
-        (original, x.clone())
+    // Small helper.
+    // The source id must refer to:
+    // - a top-level impl (which implements the trait)
+    // - a trait decl (in the case we can't resolve to a top-level impl)
+    // The list of generics is the concatenation of the generics for the
+    // top-level impl/the trait ref and the generics for the trait item.
+    // We count the number of generics of the top-level impl/the trait decl
+    // and split there.
+    let update_generics = |src_id: &DefId, x: &mut Vec<GenericArg>| {
+        let src_id = src_id.rust_def_id.unwrap();
+        let params_info = get_params_info(s, src_id);
+        let num_trait_generics = params_info.num_generic_params;
+        let all_generics = x.clone();
+        (all_generics, x.split_off(num_trait_generics))
     };
 
-    // SH: For some reason we don't need to filter the generics everywhere.
-    // I don't understand the logic.
     let (all_generics, truncated_generics) = match &mut impl_source.kind {
-        ImplSourceKind::UserDefined(data) => {
-            // We don't need to do anything here
-            (data.substs.clone(), data.substs.clone())
-        }
+        ImplSourceKind::UserDefined(data) => update_generics(&data.impl_def_id, &mut data.substs),
         ImplSourceKind::Param(trait_ref, _, _) => {
-            // We need to filter here
-            update_generics(&mut trait_ref.value.generic_args)
+            update_generics(&trait_ref.value.def_id, &mut trait_ref.value.generic_args)
         }
         ImplSourceKind::Object(_data) => {
             // TODO: not sure
             todo!(
-                "- trait_ref:\n{:?}\n- params info:\n{:?}\n- impl source:{:?}",
+                "- trait_ref:\n{:?}\n- impl source:{:?}",
                 trait_ref,
-                params_info,
                 impl_source
             )
             // update_generics(&mut data.upcast_trait_ref.value.generic_args)
@@ -537,9 +538,8 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         ImplSourceKind::Builtin(_trait_ref, _) => {
             // TODO: not sure
             todo!(
-                "- trait_ref:\n{:?}\n- params info:\n{:?}\n- impl source:{:?}",
+                "- trait_ref:\n{:?}\n- impl source:{:?}",
                 trait_ref,
-                params_info,
                 impl_source
             )
             // update_generics(&mut trait_ref.value.generic_args)
@@ -547,9 +547,8 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         ImplSourceKind::TraitUpcasting(_data) => {
             // TODO: not sure
             todo!(
-                "- trait_ref:\n{:?}\n- params info:\n{:?}\n- impl source:{:?}",
+                "- trait_ref:\n{:?}\n- impl source:{:?}",
                 trait_ref,
-                params_info,
                 impl_source
             )
             // update_generics(&mut data.upcast_trait_ref.value.generic_args)
@@ -557,9 +556,8 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         ImplSourceKind::AutoImpl(_data) => {
             // TODO: not sure
             todo!(
-                "- trait_ref:\n{:?}\n- params info:\n{:?}\n- impl source:{:?}",
+                "- trait_ref:\n{:?}\n- impl source:{:?}",
                 trait_ref,
-                params_info,
                 impl_source
             )
             // update_generics(&mut data.upcast_trait_ref.value.generic_args)
@@ -568,7 +566,6 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
 
     let info = TraitInfo {
         impl_source,
-        params_info,
         all_generics,
     };
     (truncated_generics, info)
