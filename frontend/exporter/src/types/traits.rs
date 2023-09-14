@@ -253,8 +253,8 @@ pub fn get_parent_params_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
 /// When resolving the trait for `x.to_u64()` in `h`, we get that it uses the
 /// implementation for `Wrapper`. But we also need to know the obligation generated
 /// for `Wrapper` (in this case: `u64 : ToU64`) and resolve it.
-pub fn select_trait_candidate<'tcx>(
-    tcx: rustc_middle::ty::TyCtxt<'tcx>,
+pub fn select_trait_candidate<'tcx, S: BaseState<'tcx>>(
+    s: &S,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
 ) -> Result<
@@ -266,6 +266,7 @@ pub fn select_trait_candidate<'tcx>(
     use rustc_trait_selection::traits::{
         Obligation, ObligationCause, SelectionContext, Unimplemented,
     };
+    let tcx = s.base().tcx;
 
     // We expect the input to be fully normalized.
     debug_assert_eq!(
@@ -293,9 +294,11 @@ pub fn select_trait_candidate<'tcx>(
             Err(CodegenObligationError::Unimplemented)
         }
         Err(e) => {
-            panic!(
+            fatal!(
+                s,
                 "Encountered error `{:?}` selecting `{:?}` during codegen",
-                e, trait_ref
+                e,
+                trait_ref
             )
         }
     }
@@ -336,11 +339,15 @@ fn solve_obligation<'tcx, S: BaseState<'tcx> + HasOwnerId>(
                 | Clause::Projection(..) => Option::None,
             }
         }
-        x => {
+        predicate => {
             // SH: We probably just need to ignore those, like for the Clauses,
             // but I'm not familiar enough with the meaning of those predicates
             // to actually do anything about them yet.
-            unreachable!("Unexpected predicate kind: {:?}", x)
+            supposely_unreachable_fatal!(
+                s,
+                "Unexpected predicate kind";
+                {predicate, obligation}
+            );
         }
     }
 }
@@ -366,7 +373,7 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     let tcx = s.base().tcx;
 
     use rustc_trait_selection::traits::ImplSource as RustImplSource;
-    let kind = match select_trait_candidate(tcx, param_env, trait_ref).unwrap() {
+    let kind = match select_trait_candidate(s, param_env, trait_ref).s_unwrap(s) {
         RustImplSource::UserDefined(rustc_trait_selection::traits::ImplSourceUserDefinedData {
             impl_def_id,
             substs,
@@ -425,7 +432,7 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             nested: nested.iter().map(|x| format!("{:?}", x)).collect(),
         }),
         impl_source => {
-            unimplemented!("impl source: {:?}", impl_source)
+            fatal!(s, "Unimplemented: impl source"; {impl_source, trait_ref})
         }
     };
 
@@ -465,7 +472,7 @@ pub fn get_trait_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     let param_env = tcx.param_env(s.owner_id());
 
     // Retrieve the trait
-    let tr = tcx.trait_of_item(assoc.def_id).unwrap();
+    let tr = tcx.trait_of_item(assoc.def_id).s_unwrap(s);
 
     // Create the reference to the trait
     use rustc_middle::ty::TraitRef;
@@ -473,7 +480,9 @@ pub fn get_trait_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     let tr_ref = rustc_middle::ty::Binder::dummy(tr_ref);
 
     // Check if we can resolve - not sure if really necessary
-    let _ = tcx.codegen_select_candidate((param_env, tr_ref)).unwrap();
+    let _ = tcx
+        .codegen_select_candidate((param_env, tr_ref))
+        .s_unwrap(s);
 
     // Get the full trait information
     get_trait_info_for_trait_ref(s, ref_def_id, param_env, tr_ref)
@@ -505,7 +514,7 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     // }
     // ```
     // Above, we want to drop the `Bar` and `T` arguments.
-    let params_info = get_parent_params_info(s, ref_def_id).unwrap();
+    let params_info = get_parent_params_info(s, ref_def_id).s_unwrap(s);
 
     let update_generics = |x: &mut Vec<GenericArg>| {
         let original = x.clone();
