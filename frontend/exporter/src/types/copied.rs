@@ -593,14 +593,6 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, GenericArg>
     }
 }
 
-impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, Vec<GenericArg>>
-    for rustc_middle::ty::subst::SubstsRef<'tcx>
-{
-    fn sinto(&self, s: &S) -> Vec<GenericArg> {
-        self.iter().map(|v| v.unpack().sinto(s)).collect()
-    }
-}
-
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasThir<'tcx>>, from: rustc_ast::ast::LitIntType, state: S as gstate)]
 #[derive(
