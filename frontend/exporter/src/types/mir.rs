@@ -281,7 +281,7 @@ fn translate_switch_targets<'tcx, S: BaseState<'tcx>>(
             // `true` is `1`. Thus the `otherwise` branch correspond
             // to the `then` branch.
             const FALSE: u128 = false as u128;
-            let [(FALSE, else_branch)] =  targets_vec.as_slice() else {
+            let [(FALSE, else_branch)] = targets_vec.as_slice() else {
                 supposely_unreachable_fatal!(s, "MirSwitchBool"; {targets_vec, switch_ty});
             };
 
@@ -546,7 +546,8 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx>> SInto<S, Place> for rustc_middle::
                             r
                         }
                         Index(local) => {
-                            let (TyKind::Slice(ty) | TyKind::Array(ty, _)) = current_ty.kind() else {
+                            let (TyKind::Slice(ty) | TyKind::Array(ty, _)) = current_ty.kind()
+                            else {
                                 supposely_unreachable_fatal!(
                                     s, "PlaceIndexNotSlice";
                                     {current_ty, current_kind, elem}
