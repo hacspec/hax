@@ -2392,8 +2392,7 @@ pub enum GenericParamKind<Body: IsBody> {
         kind: LifetimeParamKind,
     },
     Type {
-        #[map(x.map(|ty| ty.sinto(tcx)))]
-        default: Option<Ty>,
+        // TODO: we don't extract `default`, see https://github.com/hacspec/hacspec-v2/pull/243#issuecomment-1719038654
         synthetic: bool,
     },
     Const {
