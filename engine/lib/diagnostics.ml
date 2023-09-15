@@ -3,7 +3,7 @@ open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 module T = Types
 
 module Backend = struct
-  type t = Coq | FStar | EasyCrypt
+  type t = Coq | FStar | EasyCrypt | Lean
   [@@deriving show { with_path = false }, eq, yojson, compare, hash, sexp]
 end
 
