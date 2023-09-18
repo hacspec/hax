@@ -34,7 +34,7 @@ let
     doCheck = true;
     CI = "true";
     cargoBuildCommand = "true";
-    cargoTestCommand = ''
+    checkPhaseCargoCommand = ''
       SNAPS_DIR=test-harness/src/snapshots && rmdir "$SNAPS_DIR"
       TESTS_DIR=tests                      && rmdir "$TESTS_DIR"
 
