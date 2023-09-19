@@ -41,6 +41,7 @@ pub use hax_frontend_exporter_options as options;
 pub use prelude::*;
 
 mod sinto;
+mod traits;
 mod utils;
 
 pub use adt_into::AdtInto;
