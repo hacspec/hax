@@ -1888,24 +1888,28 @@ pub enum ExprKind {
     },
     #[map({
         let e = gstate.thir().exprs[*fun].unroll_scope(gstate);
-        let fun = match &e.kind {
+        let (fun, r#impl) = match &e.kind {
             /* TODO: see whether [user_ty] below is relevant or not */
             rustc_middle::thir::ExprKind::ZstLiteral {user_ty: _ } => {
                 match ty.kind() {
                     /* should we extract substitutions? */
-                    rustc_middle::ty::TyKind::FnDef(def, _substs) => {
+                    rustc_middle::ty::TyKind::FnDef(def_id, substs) => {
                         let (hir_id, attributes) = e.hir_id_and_attributes(gstate);
                         let hir_id = hir_id.map(|hir_id| hir_id.index());
                         let contents = Box::new(ExprKind::GlobalName {
-                            id: def.sinto(gstate)
+                            id: def_id.sinto(gstate)
                         });
-                        Expr {
+                        let tcx = gstate.base().tcx;
+                        let r#impl = tcx.opt_associated_item(*def_id).as_ref().and_then(|assoc| {
+                            poly_trait_ref(gstate, assoc, substs)
+                        }).map(|poly_trait_ref| poly_trait_ref.impl_expr(gstate, tcx.param_env(gstate.owner_id())));
+                        (Expr {
                             contents,
                             span: e.span.sinto(gstate),
                             ty: e.ty.sinto(gstate),
                             hir_id,
                             attributes,
-                        }
+                        }, r#impl)
                     },
                     ty_kind => supposely_unreachable_fatal!(
                         gstate[e.span],
@@ -1917,7 +1921,7 @@ pub enum ExprKind {
             kind => {
                 match ty.kind() {
                     rustc_middle::ty::TyKind::FnPtr(..) => {
-                        e.sinto(gstate)
+                        (e.sinto(gstate), None)
                     },
                     ty_kind => {
                         supposely_unreachable!(
@@ -1935,6 +1939,7 @@ pub enum ExprKind {
             args: args.sinto(gstate),
             from_hir_call: from_hir_call.sinto(gstate),
             fn_span: fn_span.sinto(gstate),
+            r#impl,
             fun,
         }
     })]
@@ -1944,6 +1949,8 @@ pub enum ExprKind {
         args: Vec<Expr>,
         from_hir_call: bool,
         fn_span: Span,
+        #[not_in_source]
+        r#impl: Option<ImplExpr>,
     },
     Deref {
         arg: Expr,
@@ -2375,7 +2382,6 @@ pub struct ImplItem<Body: IsBody> {
     pub span: Span,
     pub vis_span: Span,
     #[value(ItemAttributes::from_owner_id(s, *owner_id))]
-    #[not_in_source]
     pub attributes: ItemAttributes,
 }
 
@@ -2635,7 +2641,6 @@ pub struct TraitItem<Body: IsBody> {
     pub span: Span,
     pub defaultness: Defaultness,
     #[value(ItemAttributes::from_owner_id(s, *owner_id))]
-    #[not_in_source]
     pub attributes: ItemAttributes,
 }
 
@@ -2818,12 +2823,30 @@ pub struct ProjectionPredicate {
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
-pub enum Clause {
+pub enum ClauseKind {
     Trait(TraitPredicate),
     RegionOutlives(RegionOutlivesPredicate),
     TypeOutlives(TypeOutlivesPredicate),
     Projection(ProjectionPredicate),
     ConstArgHasType(ConstantExpr, Ty),
+}
+
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct Clause {
+    pub kind: ClauseKind,
+    pub id: u64,
+}
+
+impl<'tcx, S: BaseState<'tcx>> SInto<S, Clause> for rustc_middle::ty::Clause<'tcx> {
+    fn sinto(&self, s: &S) -> Clause {
+        use rustc_middle::ty::ToPredicate;
+        Clause {
+            id: clause_id_of_predicate(self.clone().to_predicate(s.base().tcx)),
+            kind: self.sinto(s),
+        }
+    }
 }
 
 #[derive(AdtInto)]
@@ -3063,4 +3086,47 @@ pub enum PredicateOrigin {
     WhereClause,
     GenericParam,
     ImplTrait,
+}
+
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::AssocItem, state: S as tcx)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct AssocItem {
+    pub def_id: DefId,
+    pub name: Symbol,
+    pub kind: AssocKind,
+    pub container: AssocItemContainer,
+    pub trait_item_def_id: Option<DefId>,
+    pub fn_has_self_parameter: bool,
+    pub opt_rpitit_info: Option<ImplTraitInTraitData>,
+}
+
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::ImplTraitInTraitData, state: S as _tcx)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub enum ImplTraitInTraitData {
+    Trait {
+        fn_def_id: DefId,
+        opaque_def_id: DefId,
+    },
+    Impl {
+        fn_def_id: DefId,
+    },
+}
+
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_middle::ty::AssocItemContainer, state: S as _tcx)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub enum AssocItemContainer {
+    TraitContainer,
+    ImplContainer,
+}
+
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_middle::ty::AssocKind, state: S as _tcx)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub enum AssocKind {
+    Const,
+    Fn,
+    Type,
 }
