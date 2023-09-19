@@ -1,23 +1,51 @@
 use crate::prelude::*;
+use rustc_middle::ty;
+
+#[extension_traits::extension(pub trait SubstBinder)]
+impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
+    fn subst(self, tcx: ty::TyCtxt<'tcx>, substs: &[ty::subst::GenericArg<'tcx>]) -> T {
+        ty::EarlyBinder::bind(self.skip_binder()).subst(tcx, substs)
+    }
+}
+
+#[extension_traits::extension(pub trait PredicateToPolyTraitRef)]
+impl<'tcx> ty::Predicate<'tcx> {
+    fn as_poly_trait_ref(self) -> Option<ty::PolyTraitRef<'tcx>> {
+        self.kind()
+            .try_map_bound(|kind| {
+                if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) = kind {
+                    Ok(trait_predicate.trait_ref)
+                } else {
+                    Err(())
+                }
+            })
+            .ok()
+    }
+}
+
+pub fn poly_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
+    s: &S,
+    assoc: &ty::AssocItem,
+    substs: ty::SubstsRef<'tcx>,
+) -> Option<ty::PolyTraitRef<'tcx>> {
+    let tcx = s.base().tcx;
+    let r#trait = tcx.trait_of_item(assoc.def_id)?;
+    Some(ty::Binder::dummy(ty::TraitRef::new(tcx, r#trait, substs)))
+}
 
 #[tracing::instrument(skip(s))]
-pub(crate) fn arrow_of_sig<'tcx, S: BaseState<'tcx>>(
-    sig: &rustc_middle::ty::PolyFnSig<'tcx>,
-    s: &S,
-) -> Ty {
+pub(crate) fn arrow_of_sig<'tcx, S: BaseState<'tcx>>(sig: &ty::PolyFnSig<'tcx>, s: &S) -> Ty {
     Ty::Arrow(Box::new(sig.sinto(s)))
 }
 
 #[tracing::instrument(skip(s))]
 pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
-    adt_def: &rustc_middle::ty::AdtDef<'s>,
+    adt_def: &ty::AdtDef<'s>,
     variant_index: rustc_abi::VariantIdx,
     s: &S,
 ) -> VariantInformations {
     s_assert!(s, !adt_def.is_union());
-    fn is_record<'s, I: std::iter::Iterator<Item = &'s rustc_middle::ty::FieldDef> + Clone>(
-        it: I,
-    ) -> bool {
+    fn is_record<'s, I: std::iter::Iterator<Item = &'s ty::FieldDef> + Clone>(it: I) -> bool {
         it.clone()
             .any(|field| !field.name.to_ident_string().parse::<u64>().is_ok())
     }
@@ -115,66 +143,11 @@ pub fn translate_span(span: rustc_span::Span, sess: &rustc_session::Session) -> 
 }
 
 #[tracing::instrument(skip(s))]
-pub(crate) fn get_param_env<'tcx, S: BaseState<'tcx>>(s: &S) -> rustc_middle::ty::ParamEnv<'tcx> {
+pub(crate) fn get_param_env<'tcx, S: BaseState<'tcx>>(s: &S) -> ty::ParamEnv<'tcx> {
     match s.base().opt_def_id {
         Some(id) => s.base().tcx.param_env(id),
-        None => rustc_middle::ty::ParamEnv::empty(),
+        None => ty::ParamEnv::empty(),
     }
-}
-
-#[tracing::instrument(skip(s))]
-#[allow(dead_code)]
-#[allow(unused)]
-pub(crate) fn _resolve_trait<'tcx, S: BaseState<'tcx>>(
-    trait_ref: rustc_middle::ty::TraitRef<'tcx>,
-    s: &S,
-) {
-    let tcx = s.base().tcx;
-    let param_env = get_param_env(s);
-    use rustc_middle::ty::Binder;
-    let binder: Binder<'tcx, _> = Binder::dummy(trait_ref);
-    use rustc_infer::infer::TyCtxtInferExt;
-    use rustc_infer::traits;
-    use rustc_middle::ty::{ParamEnv, ParamEnvAnd};
-    use rustc_trait_selection::infer::InferCtxtBuilderExt;
-    use rustc_trait_selection::traits::SelectionContext;
-    let inter_ctxt = tcx.infer_ctxt().ignoring_regions().build();
-    let mut selection_ctxt = SelectionContext::new(&inter_ctxt);
-    use std::collections::VecDeque;
-    let mut queue = VecDeque::new();
-    let obligation = traits::Obligation::new(
-        tcx,
-        traits::ObligationCause::dummy(),
-        param_env,
-        rustc_middle::ty::Binder::dummy(trait_ref),
-    );
-    use rustc_middle::traits::ImplSource;
-    queue.push_back(obligation);
-    loop {
-        match queue.pop_front() {
-            Some(obligation) => {
-                let impl_source = selection_ctxt.select(&obligation).unwrap().unwrap();
-                println!("impl_source={:#?}", impl_source);
-                let nested = impl_source.clone().nested_obligations();
-                for subobligation in nested {
-                    let bound_predicate = subobligation.predicate.kind();
-                    match bound_predicate.skip_binder() {
-                        rustc_middle::ty::PredicateKind::Clause(
-                            rustc_middle::ty::Clause::Trait(trait_pred),
-                        ) => {
-                            let trait_pred = bound_predicate.rebind(trait_pred);
-                            let subobligation = subobligation.with(tcx, trait_pred);
-                            queue.push_back(subobligation);
-                        }
-                        _ => (),
-                    }
-                }
-            }
-            None => break,
-        }
-    }
-    // let impl_source = selection_ctxt.select(&obligation).unwrap().unwrap();
-    // let nested = impl_source.clone().nested_obligations();
 }
 
 #[tracing::instrument]
@@ -268,7 +241,7 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
     ids: impl Iterator<Item = rustc_hir::ItemId>,
     s: &S,
 ) -> Vec<Item<Body>> {
-    let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
+    let tcx: ty::TyCtxt = s.base().tcx;
 
     struct SpanEq(Option<(DefId, rustc_span::hygiene::ExpnData)>);
     impl core::cmp::PartialEq for SpanEq {
