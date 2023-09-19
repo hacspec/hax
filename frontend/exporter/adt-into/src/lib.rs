@@ -226,6 +226,11 @@ fn variant_to_arm(
         // TODO: refactor
         let names: proc_macro2::TokenStream = fields
             .iter()
+            .filter(|f| {
+                let attrs = &f.attrs;
+                !(parse_attr::<syn::Expr>("value", attrs).is_some()
+                    || attrs.iter().any(|attr| attr.path.is_ident("not_in_source")))
+            })
             .enumerate()
             .map(|(nth, f)| {
                 f.clone()
