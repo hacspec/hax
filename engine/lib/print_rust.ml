@@ -470,6 +470,8 @@ let rustfmt (s : string) : string =
     Caml.prerr_endline err;
     [%string "/*\n%{err}\n*/\n\n%{s}"]
 
+exception RetokenizationFailure
+
 let rustfmt_annotated' (x : AnnotatedString.t) : AnnotatedString.t =
   let original = AnnotatedString.tokenize x in
   let tokens = AnnotatedString.(to_string x |> rustfmt |> split) in
@@ -494,7 +496,7 @@ let rustfmt_annotated' (x : AnnotatedString.t) : AnnotatedString.t =
             prerr_endline @@ "\n##### RUSTFMT TOKEN ERROR #####";
             prerr_endline @@ "prev=" ^ [%show: AnnotatedString.t] prev;
             prerr_endline @@ "s=" ^ s;
-            failwith "rustfmt retokenization")
+            raise RetokenizationFailure)
       | _ -> (original, (last, s))
     in
     (original', tuple :: result)
@@ -504,7 +506,8 @@ let rustfmt_annotated' (x : AnnotatedString.t) : AnnotatedString.t =
 
 let rustfmt_annotated (x : AnnotatedString.t) : AnnotatedString.t =
   let rf = Option.value ~default:"" (Sys.getenv "HAX_RUSTFMT") in
-  if String.equal rf "no" then x else rustfmt_annotated' x
+  if String.equal rf "no" then x
+  else try rustfmt_annotated' x with RetokenizationFailure -> x
 
 let pitem : item -> AnnotatedString.Output.t =
   Raw.pitem >> rustfmt_annotated >> AnnotatedString.Output.convert
