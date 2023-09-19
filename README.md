@@ -60,9 +60,6 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 3. Run the [setup.sh](./setup.sh) script: `./setup.sh`.
 4. Run `cargo-hax --help`
 
-The librustc library path needs to be added to `DYLD_LIBRARY_PATH=$(rustc --print=sysroot)/lib`
-Make sure to use the right Rust nightly version (see [`rust-toolchain.toml`](./rust-toolchain.toml)).
-
 ## Hacking on Hax
 ### Edit the sources (Nix)
 
