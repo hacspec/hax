@@ -523,7 +523,7 @@ let pexpr_str (e : expr) : string =
   let suffix = "}" in
   let item = !prefix & e & !suffix in
   rustfmt_annotated item |> AnnotatedString.Output.convert
-  |> AnnotatedString.Output.raw_string |> Caml.String.trim
+  |> AnnotatedString.Output.raw_string |> Stdlib.String.trim
   |> String.chop_suffix_if_exists ~suffix
   |> String.chop_prefix_if_exists ~prefix
-  |> Caml.String.trim
+  |> Stdlib.String.trim

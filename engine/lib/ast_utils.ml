@@ -78,8 +78,8 @@ module Make (F : Features.T) = struct
       let show (x : t) : string =
         [%show: TypedLocalIdent.t list] @@ Set.to_list x
 
-      let pp (fmt : Caml.Format.formatter) (s : t) : unit =
-        Caml.Format.pp_print_string fmt @@ show s
+      let pp (fmt : Stdlib.Format.formatter) (s : t) : unit =
+        Stdlib.Format.pp_print_string fmt @@ show s
 
       class ['s] monoid =
         object
@@ -347,7 +347,7 @@ module Make (F : Features.T) = struct
       |> List.filter_map ~f:(fun ({ name; _ } : local_ident) ->
              String.chop_prefix ~prefix name)
       |> List.map ~f:(function "" -> "0" | s -> s)
-      |> List.filter_map ~f:Caml.int_of_string_opt
+      |> List.filter_map ~f:Stdlib.int_of_string_opt
       |> List.fold ~init:(-1) ~f:Int.max
       |> ( + ) 1
       |> function
@@ -562,8 +562,8 @@ module Make (F : Features.T) = struct
     TApp { ident; args = [] }
 
   module LiftToFullAst = struct
-    let expr : AST.expr -> Ast.Full.expr = Caml.Obj.magic
-    let item : AST.expr -> Ast.Full.expr = Caml.Obj.magic
+    let expr : AST.expr -> Ast.Full.expr = Stdlib.Obj.magic
+    let item : AST.expr -> Ast.Full.expr = Stdlib.Obj.magic
   end
 
   let unbox_expr' (next : expr -> expr) (e : expr) : expr =

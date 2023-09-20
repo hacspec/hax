@@ -118,7 +118,7 @@ module View = struct
              | 0 -> (
                  match String.rsplit2 ~on:'_' base with
                  | Some (_, "") -> base ^ "_"
-                 | Some (_, r) when Option.is_some @@ Caml.int_of_string_opt r
+                 | Some (_, r) when Option.is_some @@ Stdlib.int_of_string_opt r
                    ->
                      base ^ "_" (* potentially conflicting name, adding a `_` *)
                  | _ -> base)
@@ -187,7 +187,7 @@ end)
 module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
   type t = T.t
 
-  let pp fmt = show >> Caml.Format.pp_print_string fmt
+  let pp fmt = show >> Stdlib.Format.pp_print_string fmt
   let is_reserved_word : string -> bool = Hash_set.mem NP.reserved_words
 
   let rename_definition (_path : string list) (name : string) (kind : Kind.t)
@@ -216,7 +216,7 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
         if start_lowercase name || is_reserved_word name then "C_" ^ name
         else escape name
     | Field -> (
-        match Caml.int_of_string_opt name with
+        match Stdlib.int_of_string_opt name with
         | Some _ -> NP.index_field_transform name
         (* | _ -> "f_" ^ Option.value_exn type_name ^ "_" ^ name *)
         | _ -> "f_" ^ name)

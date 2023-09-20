@@ -205,7 +205,7 @@ struct
           (next : expr -> t -> expr * t) =
         many ctx [ e ] (function
           | [ e ] -> next e
-          | _ -> err_hoist_invariant (fst e).span Caml.__LOC__)
+          | _ -> err_hoist_invariant (fst e).span Stdlib.__LOC__)
     end
 
     let let_of_binding ((pat, rhs) : pat * expr) (body : expr) : expr =
@@ -305,14 +305,14 @@ struct
                         ForLoop { pat; witness; it }
                     | ([ _ ] | []), UnconditionalLoop -> UnconditionalLoop
                     | _, ForIndexLoop _ -> .
-                    | _ -> HoistSeq.err_hoist_invariant e.span Caml.__LOC__
+                    | _ -> HoistSeq.err_hoist_invariant e.span Stdlib.__LOC__
                   in
                   let state =
                     match (l, state) with
                     | (_ :: [ state ] | [ state ]), Some { witness; bpat; _ } ->
                         Some { witness; bpat; init = state }
                     | ([ _ ] | []), None -> None
-                    | _ -> HoistSeq.err_hoist_invariant e.span Caml.__LOC__
+                    | _ -> HoistSeq.err_hoist_invariant e.span Stdlib.__LOC__
                   in
                   (* by now, the "inputs" of the loop are hoisted as let if needed *)
                   let body, { lbs; effects = body_effects } =
@@ -349,7 +349,7 @@ struct
                   let f, args =
                     match l with
                     | f :: args -> (f, args)
-                    | _ -> HoistSeq.err_hoist_invariant e.span Caml.__LOC__
+                    | _ -> HoistSeq.err_hoist_invariant e.span Stdlib.__LOC__
                   in
                   ({ e with e = App { f; args } }, effects))
           | Literal _ -> (e, m#zero)
@@ -386,13 +386,13 @@ struct
                     match (l, base) with
                     | hd :: tl, Some (_, witness) -> (Some (hd, witness), tl)
                     | _, None -> (None, l)
-                    | _ -> HoistSeq.err_hoist_invariant e.span Caml.__LOC__
+                    | _ -> HoistSeq.err_hoist_invariant e.span Stdlib.__LOC__
                   in
                   let fields =
                     match List.zip (List.map ~f:fst fields) fields_expr with
                     | Ok fields -> fields
                     | Unequal_lengths ->
-                        HoistSeq.err_hoist_invariant e.span Caml.__LOC__
+                        HoistSeq.err_hoist_invariant e.span Stdlib.__LOC__
                   in
                   ( {
                       e with
