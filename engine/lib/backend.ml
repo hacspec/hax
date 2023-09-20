@@ -1,5 +1,4 @@
-open Base
-open Utils
+open! Prelude
 open Ast
 
 module type BACKEND_OPTIONS = sig

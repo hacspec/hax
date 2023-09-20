@@ -1,5 +1,4 @@
-open Utils
-open Ppx_yojson_conv_lib.Yojson_conv.Primitives
+open! Prelude
 module T = Types
 
 module Backend = struct
@@ -77,7 +76,8 @@ let to_thir_diagnostic (d : t) : Types.diagnostics_for__array_of__span =
 let run_hax_pretty_print_diagnostics (s : string) : string =
   try (Utils.Command.run "hax-pretty-print-diagnostics" s).stdout
   with e ->
-    "[run_hax_pretty_print_diagnostics] failed. Exn: " ^ Printexc.to_string e
+    "[run_hax_pretty_print_diagnostics] failed. Exn: "
+    ^ "[run_hax_pretty_print_diagnostics] failed. Exn: " ^ Exn.to_string e
     ^ ". Here is the JSON representation of the error that occurred:\n" ^ s
 
 let pretty_print : t -> string =

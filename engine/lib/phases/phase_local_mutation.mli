@@ -1,5 +1,4 @@
-open Base
-open Utils
+open! Prelude
 
 module Make
     (F : Features.T
@@ -12,7 +11,6 @@ module Make
             and type monadic_binding = Features.Off.monadic_binding
             and type for_index_loop = Features.Off.for_index_loop) : sig
   include module type of struct
-    open Ast
     module FA = F
 
     module FB = struct

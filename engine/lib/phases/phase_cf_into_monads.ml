@@ -1,5 +1,4 @@
-open Base
-open Utils
+open! Prelude
 
 module%inlined_contents Make
     (F : Features.T
@@ -117,15 +116,14 @@ struct
             in
             Option.some
               (match (m1, m2) with
-              | (B.MResult _ | B.MOption _), (B.MException _ as m)
-              | (B.MException _ as m), (B.MResult _ | B.MOption _) ->
+              | (B.MResult _ | B.MOption), (B.MException _ as m)
+              | (B.MException _ as m), (B.MResult _ | B.MOption) ->
                   m
               | B.MResult _, B.MResult _
-              | B.MOption _, B.MOption _
+              | B.MOption, B.MOption
               | B.MException _, B.MException _ ->
                   m1
-              | B.MResult _, B.MOption _ | B.MOption _, B.MResult _ ->
-                  impossible ())
+              | B.MResult _, B.MOption | B.MOption, B.MResult _ -> impossible ())
 
       (** after transformation, are we **getting** inside a monad? *)
       let from_typ dty (old : A.ty) (new_ : B.ty) : t =

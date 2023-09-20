@@ -1,6 +1,4 @@
-open Base
-open Utils
-open Ppx_yojson_conv_lib.Yojson_conv.Primitives
+open! Prelude
 
 module Imported = struct
   type def_id = { krate : string; path : disambiguated_def_path_item list }
@@ -51,12 +49,12 @@ module Imported = struct
       disambiguator = MyInt64.to_int_exn disambiguator;
     }
 
-  let of_def_id Types.{ krate; path } =
+  let of_def_id Types.{ krate; path; _ } =
     { krate; path = List.map ~f:of_disambiguated_def_path_item path }
 
-  let parent { krate; path } = { krate; path = List.drop_last_exn path }
+  let parent { krate; path; _ } = { krate; path = List.drop_last_exn path }
 
-  let drop_ctor { krate; path } =
+  let drop_ctor { krate; path; _ } =
     {
       krate;
       path =
@@ -120,7 +118,7 @@ module View = struct
              | 0 -> (
                  match String.rsplit2 ~on:'_' base with
                  | Some (_, "") -> base ^ "_"
-                 | Some (_, r) when Option.is_some @@ Caml.int_of_string_opt r
+                 | Some (_, r) when Option.is_some @@ Stdlib.int_of_string_opt r
                    ->
                      base ^ "_" (* potentially conflicting name, adding a `_` *)
                  | _ -> base)
@@ -189,11 +187,11 @@ end)
 module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
   type t = T.t
 
-  let pp fmt = show >> Caml.Format.pp_print_string fmt
+  let pp fmt = show >> Stdlib.Format.pp_print_string fmt
   let is_reserved_word : string -> bool = Hash_set.mem NP.reserved_words
 
-  let rename_definition (path : string list) (name : string) (kind : Kind.t)
-      type_name =
+  let rename_definition (_path : string list) (name : string) (kind : Kind.t)
+      _type_name =
     (* let path, name = *)
     (*   match kind with *)
     (*   | Constructor { is_struct = false } -> *)
@@ -218,7 +216,7 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
         if start_lowercase name || is_reserved_word name then "C_" ^ name
         else escape name
     | Field -> (
-        match Caml.int_of_string_opt name with
+        match Stdlib.int_of_string_opt name with
         | Some _ -> NP.index_field_transform name
         (* | _ -> "f_" ^ Option.value_exn type_name ^ "_" ^ name *)
         | _ -> "f_" ^ name)

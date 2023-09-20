@@ -1,6 +1,5 @@
 (* TODO: handle Exn report *)
-open Base
-open Utils
+open! Prelude
 open Side_effect_utils
 
 module%inlined_contents Make

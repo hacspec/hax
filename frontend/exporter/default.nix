@@ -1,17 +1,25 @@
-{craneLib, stdenv, makeWrapper, lib, rustc, gcc }:
-let
+{
+  craneLib,
+  stdenv,
+  makeWrapper,
+  lib,
+  rustc,
+  gcc,
+}: let
   commonArgs = {
     version = "0.0.1";
     src = craneLib.cleanCargoSource ./.;
   };
   pname = "hax-rust-frontend";
-  cargoArtifacts = craneLib.buildDepsOnly (commonArgs // {
-    pname = "${pname}-deps";
-  });
+  cargoArtifacts = craneLib.buildDepsOnly (commonArgs
+    // {
+      pname = "${pname}-deps";
+    });
 in
-craneLib.buildPackage (commonArgs // {
-  inherit cargoArtifacts pname;
-})
+  craneLib.buildPackage (commonArgs
+    // {
+      inherit cargoArtifacts pname;
+    })
 # hax // {
 #   passthru = hax.passthru or {} // {
 #     wrapped = hax-engine: stdenv.mkDerivation {
@@ -33,3 +41,4 @@ craneLib.buildPackage (commonArgs // {
 #     };
 #   };
 # }
+

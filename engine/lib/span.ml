@@ -1,6 +1,4 @@
-open Base
-open Utils
-open Ppx_yojson_conv_lib.Yojson_conv.Primitives
+open! Prelude
 
 module FreshId = struct
   let current = ref 1
@@ -101,7 +99,7 @@ end
 type t = { id : int; data : Imported.span list }
 [@@deriving show, yojson, sexp, compare, eq, hash]
 
-let display { id; data } =
+let display { id = _; data } =
   match data with
   | [] -> "<dummy>"
   | [ span ] -> Imported.display_span span

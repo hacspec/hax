@@ -9,13 +9,13 @@ on:
     
 jobs:
   docker:
-    if: ${{ github.event_name == 'merge_group' }}
+    if: ${{ github.event_name == 'workflow_dispatch'  || github.event_name == 'merge_group'  }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - run: docker build -f .docker/Dockerfile . -t hacspec-v2
   setup_sh:
-    if: ${{ github.event_name == 'merge_group' }}
+    if: ${{ github.event_name == 'workflow_dispatch'  || github.event_name == 'merge_group'   }}
     strategy:
       matrix:
         os:
@@ -47,7 +47,7 @@ jobs:
   setup_sh_status:
     if: |
       always() &&
-      github.event_name == 'merge_group'
+      github.event_name ==  'workflow_dispatch'  ||github.event_name ==  'merge_group'  
     needs: setup_sh
     runs-on: ubuntu-latest
     steps:

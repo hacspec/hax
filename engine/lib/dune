@@ -33,6 +33,17 @@
 (include_subdirs unqualified)
 
 (rule
+  (alias universe-hash)
+  (target universe-hash)
+  (deps (:universe_hash ../utils/universe-hash.sh)
+        (universe)
+  )
+  (action
+    (with-stdout-to universe-hash
+      (run bash %{universe_hash})))
+)
+
+(rule
  (target concrete_ident_generated.ml)
  (deps
   (:generate_sh concrete_ident/generate.sh)
@@ -45,6 +56,7 @@
 (rule
  (target types.ml)
  (deps
+  (alias universe-hash)
   (env_var HAX_JSON_SCHEMA_EXPORTER_BINARY)
   (:ocaml_of_json_schema
    ../utils/ocaml_of_json_schema/ocaml_of_json_schema.js))
@@ -58,4 +70,4 @@
 (env
  (_
   (flags
-   (:standard -g -warn-error "-A+8" -w "-17-7-30-56-32"))))
+   (:standard -g -warn-error "+A" -w "-17-7-30-56-32"))))

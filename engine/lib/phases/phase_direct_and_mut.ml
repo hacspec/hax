@@ -1,5 +1,4 @@
-open Base
-open Utils
+open! Prelude
 
 module%inlined_contents Make
     (FA : Features.T
@@ -210,7 +209,7 @@ struct
           in
           (* when lhs type accepts tuple (issue #222), assigns will be an option instead of a list *)
           let assigns =
-            let flatten (o, meta) = Option.map o Fn.(id &&& const meta) in
+            let flatten (o, meta) = Option.map o ~f:Fn.(id &&& const meta) in
             List.filter_map ~f:flatten mutargs
             |> List.map ~f:(fun ((var, lhs), (typ, span)) ->
                    let e = B.{ e = LocalVar var; span; typ } in
