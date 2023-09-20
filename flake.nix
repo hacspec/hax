@@ -11,9 +11,15 @@
     rust-overlay.follows = "crane/rust-overlay";
   };
 
-  outputs = {flake-utils, nixpkgs, rust-overlay, crane, ...}:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
+  outputs = {
+    flake-utils,
+    nixpkgs,
+    rust-overlay,
+    crane,
+    ...
+  }:
+    flake-utils.lib.eachDefaultSystem (
+      system: let
         pkgs = import nixpkgs {
           inherit system;
           overlays = [rust-overlay.overlays.default];
@@ -38,10 +44,13 @@
         };
         checks.default = packages.hax.tests;
         apps = {
-          serve-rustc-docs = { type = "app"; program = "${pkgs.writeScript "serve-rustc-docs" ''
-             cd ${packages.rustc.passthru.availableComponents.rustc-docs}/share/doc/rust/html/rustc
-             ${pkgs.python3}/bin/python -m http.server
-          ''}"; };
+          serve-rustc-docs = {
+            type = "app";
+            program = "${pkgs.writeScript "serve-rustc-docs" ''
+              cd ${packages.rustc.passthru.availableComponents.rustc-docs}/share/doc/rust/html/rustc
+              ${pkgs.python3}/bin/python -m http.server
+            ''}";
+          };
         };
         devShells = {
           default = pkgs.mkShell {
@@ -66,7 +75,7 @@
 
               (pkgs.stdenv.mkDerivation {
                 name = "rebuild-script";
-                phases = [ "installPhase" ];
+                phases = ["installPhase"];
                 installPhase = ''
                   mkdir -p $out/bin
                   cp ${./.utils/rebuild.sh} $out/bin/rebuild

@@ -80,7 +80,7 @@ module Command = struct
       flush stdin;
       close stdin);
     let strout = In_channel.input_all stdout in
-    let strerr = In_channel.input_all stderr |> Caml.String.trim in
+    let strerr = In_channel.input_all stderr |> Stdlib.String.trim in
     Unix.close @@ Unix.descr_of_in_channel stdout;
     Unix.close @@ Unix.descr_of_in_channel stderr;
     { stdout = strout; stderr = strerr }

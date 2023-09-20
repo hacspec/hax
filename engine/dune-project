@@ -22,7 +22,7 @@
  (depends
         ocaml
         dune
-        base
+        (base (>= "0.16.2"))
         core
         yojson
         non_empty_list

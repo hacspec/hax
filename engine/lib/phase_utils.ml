@@ -104,8 +104,8 @@ module DebugPhaseInfo = struct
     | Before -> "initial_input"
     | Phase p -> Diagnostics.Phase.display p
 
-  let pp (fmt : Caml.Format.formatter) (s : t) : unit =
-    Caml.Format.pp_print_string fmt @@ show s
+  let pp (fmt : Stdlib.Format.formatter) (s : t) : unit =
+    Stdlib.Format.pp_print_string fmt @@ show s
 end
 
 module DebugBindPhase : sig
@@ -205,11 +205,11 @@ struct
   let ditems (items : A.item list) : B.item list =
     let nth = List.length @@ Metadata.previous_phases D1'.metadata in
     (if Int.equal nth 0 then
-     let coerce_to_full_ast : D1'.A.item -> Ast.Full.item = Caml.Obj.magic in
+     let coerce_to_full_ast : D1'.A.item -> Ast.Full.item = Stdlib.Obj.magic in
      DebugBindPhase.add Before 0 (fun _ -> List.map ~f:coerce_to_full_ast items));
     let items' = D1'.ditems items in
     let coerce_to_full_ast : D2'.A.item list -> Ast.Full.item list =
-      Caml.Obj.magic
+      Stdlib.Obj.magic
     in
     DebugBindPhase.add (Phase D1'.metadata.current_phase) (nth + 1) (fun _ ->
         coerce_to_full_ast items');
