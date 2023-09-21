@@ -529,53 +529,54 @@ struct
     | HaxError s -> [ __TODO_item__ span s ]
     | NotImplementedYet -> [ __TODO_item__ span "Not implemented yet?" ]
     | Alias _ -> [ __TODO_item__ span "Not implemented yet? alias" ]
-    | Trait { name; generics; items } ->
-        [
-          C.AST.Class
-            ( U.Concrete_ident_view.to_definition_name name,
-              List.map
-                ~f:(fun x ->
-                  ( x.ti_name,
-                    match x.ti_v with
-                    | TIFn fn_ty -> pty span fn_ty
-                    | _ -> __TODO_ty__ span "field_ty" ))
-                items,
-              List.fold_left ~init:[]
-                ~f:(fun a b ->
-                  a
-                  @ [
-                      (match b with
-                      | { ident; kind = GPType _; _ } -> ident.name
-                      | _ ->
-                          Error.unimplemented
-                            ~details:"Coq: TODO: generic_params" span);
-                    ])
-                generics.params );
-        ]
-    | Impl { generics; self_ty; of_trait = name, gen_vals; items } ->
-        [
-          C.AST.Instance
-            ( pglobal_ident name,
-              pty span self_ty,
-              args_ty span gen_vals,
-              List.map
-                ~f:(fun x ->
-                  match x.ii_v with
-                  | IIFn { body; params } ->
-                      ( x.ii_name,
-                        List.map
-                          ~f:(fun { pat; typ; typ_span } ->
-                            (ppat pat, pty span typ))
-                          params,
-                        pexpr body,
-                        pty span body.typ )
-                  | _ ->
-                      ( "todo_name",
-                        [],
-                        __TODO_term__ span "body",
-                        __TODO_ty__ span "typ" ))
-                items );
-        ]
+    | _ -> Caml.failwith "todo"
+  (* | Trait { name; generics; items } -> *)
+  (*     [ *)
+  (*       C.AST.Class *)
+  (*         ( U.Concrete_ident_view.to_definition_name name, *)
+  (*           List.map *)
+  (*             ~f:(fun x -> *)
+  (*               ( x.ti_name, *)
+  (*                 match x.ti_v with *)
+  (*                 | TIFn fn_ty -> pty span fn_ty *)
+  (*                 | _ -> __TODO_ty__ span "field_ty" )) *)
+  (*             items, *)
+  (*           List.fold_left ~init:[] *)
+  (*             ~f:(fun a b -> *)
+  (*               a *)
+  (*               @ [ *)
+  (*                   (match b with *)
+  (*                   | { ident; kind = GPType _; _ } -> ident.name *)
+  (*                   | _ -> *)
+  (*                       Error.unimplemented *)
+  (*                         ~details:"Coq: TODO: generic_params" span); *)
+  (*                 ]) *)
+  (*             generics.params ); *)
+  (*     ] *)
+  (* | Impl { generics; self_ty; of_trait = name, gen_vals; items } -> *)
+  (*     [ *)
+  (*       C.AST.Instance *)
+  (*         ( pglobal_ident name, *)
+  (*           pty span self_ty, *)
+  (*           args_ty span gen_vals, *)
+  (*           List.map *)
+  (*             ~f:(fun x -> *)
+  (*               match x.ii_v with *)
+  (*               | IIFn { body; params } -> *)
+  (*                   ( x.ii_name, *)
+  (*                     List.map *)
+  (*                       ~f:(fun { pat; typ; typ_span } -> *)
+  (*                         (ppat pat, pty span typ)) *)
+  (*                       params, *)
+  (*                     pexpr body, *)
+  (*                     pty span body.typ ) *)
+  (*               | _ -> *)
+  (*                   ( "todo_name", *)
+  (*                     [], *)
+  (*                     __TODO_term__ span "body", *)
+  (*                     __TODO_ty__ span "typ" )) *)
+  (*             items ); *)
+  (*     ] *)
 
   and p_inductive span variants parrent_name : C.AST.inductive_case list =
     List.map variants ~f:(fun { name; arguments; is_record } ->

@@ -71,6 +71,20 @@ module Make (F : Features.T) = struct
     let of_items : item list -> G.t =
       vertices_of_items >> List.fold ~init:G.empty ~f:(G.add_edge >> uncurry)
 
+    let transitive_dependencies_of (selection : Concrete_ident.t list) (g : G.t)
+        : (Concrete_ident.t, _) Set.t =
+      let empty = Set.empty (module Concrete_ident) in
+      List.filter ~f:(G.mem_vertex g) selection
+      |> List.map ~f:(fun i ->
+             G.fold_succ (fun i set -> Set.add set i) g i empty)
+      |> Set.union_list (module Concrete_ident)
+
+    let transitive_dependencies_of_items (selection : Concrete_ident.t list)
+        (items : item list) : item list =
+      let g = of_items items in
+      let set = transitive_dependencies_of selection g in
+      items |> List.filter ~f:(ident_of >> Set.mem set)
+
     module MutRec = struct
       module Bundle = struct
         type t = concrete_ident list
@@ -150,6 +164,8 @@ module Make (F : Features.T) = struct
       |> List.concat_map ~f:(fun (x, ys) -> List.map ~f:(fun y -> (x, y)) ys)
       |> List.fold ~init:G.empty ~f:(G.add_edge >> uncurry)
 
+    module SCC = Graph.Components.Make (G)
+
     open Graph.Graphviz.Dot (struct
       include G
 
@@ -162,7 +178,24 @@ module Make (F : Features.T) = struct
       let edge_attributes _ = []
     end)
 
-    let print oc items = output_graph oc (of_items items)
+    let print oc items =
+      let g = of_items items in
+      let complicated_ones =
+        SCC.scc_list g
+        |> List.concat_map ~f:(function [] | [ _ ] -> [] | bundle -> bundle)
+      in
+      let g =
+        List.concat_map
+          ~f:(fun ns ->
+            List.map
+              ~f:(fun y -> (ns, y))
+              (G.succ g ns
+              |> List.filter
+                   ~f:(List.mem ~equal:[%equal: Namespace.t] complicated_ones)))
+          complicated_ones
+        |> List.fold ~init:G.empty ~f:(G.add_edge >> uncurry)
+      in
+      output_graph oc g
   end
 
   (* Construct the new item `f item` (say `item'`), and create a
@@ -174,12 +207,12 @@ module Make (F : Features.T) = struct
 
   let name_me' (items : item list) : item list =
     let g = ItemGraph.of_items items in
-    let from_ident ident : item =
-      List.find_exn ~f:(fun i -> [%equal: Concrete_ident.t] i.ident ident) items
+    let from_ident ident : item option =
+      List.find ~f:(fun i -> [%equal: Concrete_ident.t] i.ident ident) items
     in
     let non_mut_rec, mut_rec_bundles =
       let b = ItemGraph.MutRec.of_graph g in
-      let f = List.map ~f:from_ident in
+      let f = List.filter_map ~f:from_ident in
       (f b.non_mut_rec, List.map ~f b.mut_rec_bundles)
     in
     let transform (bundle : item list) =
@@ -222,7 +255,7 @@ module Make (F : Features.T) = struct
     in
     h ItemGraph.print "items_before" items;
     let items = name_me' items in
-    h ItemGraph.print "items_after" items;
+    (* h ItemGraph.print "items_after" items; *)
     h ModGraph.print "mods" items;
     items
 end

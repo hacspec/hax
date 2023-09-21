@@ -963,6 +963,7 @@ let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
 
 open Phase_utils
 module DepGraph = Dependencies.Make (InputLanguage)
+module DepGraphR = Dependencies.Make (Features.Rust)
 
 module TransformToInputLanguage =
   [%functor_application
@@ -987,8 +988,20 @@ module TransformToInputLanguage =
   ]
   [@ocamlformat "disable"]
 
+let option_some =
+  Types.parse_def_id
+    (Yojson.Safe.from_string
+       {hax_generated_name|{"krate":"core","path":[{"data":{"TypeNs":"option"},"disambiguator":0},{"data":{"TypeNs":"Option"},"disambiguator":0}],"index":[2,41362]}|hax_generated_name})
+
 let apply_phases (bo : BackendOptions.t) (items : Ast.Rust.item list) :
     AST.item list =
+  let names =
+    Core_names.names |> List.map ~f:(Concrete_ident.of_def_id Value)
+  in
+  let items =
+    DepGraphR.ItemGraph.transitive_dependencies_of_items names items
+  in
+  prerr_endline "B here";
   let items =
     TransformToInputLanguage.ditems items
     |> List.map ~f:U.Mappers.add_typ_ascription
