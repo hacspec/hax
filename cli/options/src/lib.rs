@@ -82,19 +82,19 @@ fn absolute_path(path: impl AsRef<std::path::Path>) -> std::io::Result<std::path
 }
 
 pub trait NormalizePaths {
-    fn normalize_paths(self) -> Self;
+    fn normalize_paths(&mut self);
 }
 
 impl NormalizePaths for PathBuf {
-    fn normalize_paths(self) -> Self {
-        absolute_path(self).unwrap()
+    fn normalize_paths(&mut self) {
+        *self = absolute_path(&self).unwrap();
     }
 }
 impl NormalizePaths for PathOrDash {
-    fn normalize_paths(self) -> Self {
+    fn normalize_paths(&mut self) {
         match self {
-            PathOrDash::Dash => PathOrDash::Dash,
-            PathOrDash::Path(p) => PathOrDash::Path(p.normalize_paths()),
+            PathOrDash::Path(p) => p.normalize_paths(),
+            PathOrDash::Dash => (),
         }
     }
 }
@@ -220,6 +220,10 @@ pub enum ExporterCommand {
             default_values_t = [ExportBodyKind::Thir]
         )]
         kind: Vec<ExportBodyKind>,
+
+        /// Wether to include the list of def_id exported.
+        #[arg(short = 'D', long = "def-ids", default_value = "false")]
+        include_def_ids: bool,
     },
 }
 
@@ -293,31 +297,27 @@ pub struct Options {
 }
 
 impl NormalizePaths for ExporterCommand {
-    fn normalize_paths(self) -> Self {
+    fn normalize_paths(&mut self) {
         use ExporterCommand::*;
         match self {
-            JSON { output_file, kind } => JSON {
-                output_file: output_file.normalize_paths(),
-                kind,
-            },
-            Backend(o) => Backend(o),
+            JSON { output_file, .. } => output_file.normalize_paths(),
+            _ => (),
         }
     }
 }
 
 impl NormalizePaths for Command {
-    fn normalize_paths(self) -> Self {
+    fn normalize_paths(&mut self) {
         match self {
-            Command::ExporterCommand(cmd) => Command::ExporterCommand(cmd.normalize_paths()),
-            _ => self,
+            Command::ExporterCommand(cmd) => cmd.normalize_paths(),
+            _ => (),
         }
     }
 }
 impl NormalizePaths for Options {
-    fn normalize_paths(self) -> Self {
-        Options {
-            command: self.command.map(|c| c.normalize_paths()),
-            ..self
+    fn normalize_paths(&mut self) {
+        if let Some(c) = &mut self.command {
+            c.normalize_paths()
         }
     }
 }

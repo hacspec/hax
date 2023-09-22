@@ -59,9 +59,8 @@ fn rust_log_style() -> String {
 
 fn main() {
     let args: Vec<String> = get_args("hax");
-    // eprintln!("args: {args:?}");
-    let options = Options::parse_from(args.iter()).normalize_paths();
-    // eprintln!("options: {options:?}");
+    let mut options = Options::parse_from(args.iter());
+    options.normalize_paths();
 
     let mut cmd = Command::new("cargo");
     if let Some(toolchain) = toolchain() {

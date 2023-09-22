@@ -22,3 +22,11 @@ pub struct Output {
     pub files: Vec<File>,
     pub debug_json: Option<String>,
 }
+
+// This is located here for dependency reason, but this is not related
+// to the engine (yet?).
+#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+pub struct WithDefIds<Body: hax_frontend_exporter::IsBody> {
+    pub def_ids: Vec<hax_frontend_exporter::DefId>,
+    pub items: Vec<hax_frontend_exporter::Item<Body>>,
+}

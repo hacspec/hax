@@ -162,6 +162,7 @@ fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
     tcx: TyCtxt<'tcx>,
 ) -> (
     Vec<rustc_span::Span>,
+    Vec<hax_frontend_exporter::DefId>,
     Vec<hax_frontend_exporter::Item<Body>>,
 ) {
     let mut state = hax_frontend_exporter::state::State::new(tcx, options.clone());
@@ -170,7 +171,17 @@ fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
 
     let result = hax_frontend_exporter::inline_macro_invocations(tcx.hir().items(), &state);
     let exported_spans = state.base.exported_spans.borrow().clone();
-    (exported_spans.into_iter().collect(), result)
+
+    let exported_def_ids = {
+        let def_ids = state.base.exported_def_ids.borrow();
+        let state = hax_frontend_exporter::state::State::new(tcx, options.clone());
+        def_ids.iter().map(|did| did.sinto(&state)).collect()
+    };
+    (
+        exported_spans.into_iter().collect(),
+        exported_def_ids,
+        result,
+    )
 }
 
 /// Collect a map from spans to macro calls
@@ -289,6 +300,7 @@ impl Callbacks for ExtractionCallbacks {
                 ExporterCommand::JSON {
                     output_file,
                     mut kind,
+                    include_def_ids,
                 } => {
                     struct Driver<'tcx> {
                         options: hax_frontend_exporter_options::Options,
@@ -296,19 +308,28 @@ impl Callbacks for ExtractionCallbacks {
                             HashMap<hax_frontend_exporter::Span, hax_frontend_exporter::Span>,
                         tcx: TyCtxt<'tcx>,
                         output_file: PathOrDash,
+                        include_def_ids: bool,
                     }
                     impl<'tcx> Driver<'tcx> {
                         fn to_json<Body: hax_frontend_exporter::IsBody + Serialize>(self) {
-                            let (_, converted_items) = convert_thir::<Body>(
+                            let (_, def_ids, converted_items) = convert_thir::<Body>(
                                 &self.options,
                                 self.macro_calls.clone(),
                                 self.tcx,
                             );
 
-                            serde_json::to_writer(
-                                self.output_file.open_or_stdout(),
-                                &converted_items,
-                            )
+                            let dest = self.output_file.open_or_stdout();
+                            (if self.include_def_ids {
+                                serde_json::to_writer(
+                                    dest,
+                                    &hax_cli_options_engine::WithDefIds {
+                                        def_ids,
+                                        items: converted_items,
+                                    },
+                                )
+                            } else {
+                                serde_json::to_writer(dest, &converted_items)
+                            })
                             .unwrap()
                         }
                     }
@@ -317,6 +338,7 @@ impl Callbacks for ExtractionCallbacks {
                         macro_calls: self.macro_calls.clone(),
                         tcx,
                         output_file,
+                        include_def_ids,
                     };
                     mod from {
                         pub use hax_cli_options::ExportBodyKind::{
@@ -347,7 +369,7 @@ impl Callbacks for ExtractionCallbacks {
                     }
                 }
                 ExporterCommand::Backend(backend) => {
-                    let (spans, converted_items) =
+                    let (spans, _def_ids, converted_items) =
                         convert_thir(&self.clone().into(), self.macro_calls.clone(), tcx);
 
                     let engine_options = hax_cli_options_engine::EngineOptions {
