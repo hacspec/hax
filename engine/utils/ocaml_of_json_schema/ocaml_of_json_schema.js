@@ -204,7 +204,7 @@ let ocaml_arms_of_type_expr = (o, path) => {
             ],
             int: [
                 [`\`Int i`, 'i'],
-                [`\`Intlit s`, 'failwith "Got Intlit while parsing small int"']
+                [`\`Intlit s`, 'Base.Int.of_string s']
             ]
         })[o.repr],
         name: payload => [['remains', `parse_${typeNameOf(payload)} remains`]],
