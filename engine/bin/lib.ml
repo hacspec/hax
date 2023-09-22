@@ -1,9 +1,10 @@
 open Hax_engine
 open Base
 
-let read_options_from_stdin () : Types.engine_options =
+let read_options_from_stdin (yojson_from_string : string -> Yojson.Safe.t) :
+    Types.engine_options =
   In_channel.input_all In_channel.stdin
-  |> Yojson.Safe.from_string |> Types.parse_engine_options
+  |> yojson_from_string |> Types.parse_engine_options
 
 let setup_logs (options : Types.engine_options) =
   let level : Logs.level option =
@@ -15,8 +16,7 @@ let setup_logs (options : Types.engine_options) =
   Logs.set_level level;
   Logs.set_reporter @@ Logs.format_reporter ()
 
-let run () : Types.output =
-  let options = read_options_from_stdin () in
+let run (options : Types.engine_options) : Types.output =
   setup_logs options;
   if options.backend.debug_engine then Phase_utils.DebugBindPhase.enable ();
   let run (type options_type)
@@ -56,10 +56,10 @@ let run () : Types.output =
     debug_json = None;
   }
 
-let main () =
+let main (options : Types.engine_options) =
   Printexc.record_backtrace true;
   let result =
-    try Ok (run ()) with e -> Error (e, Printexc.get_raw_backtrace ())
+    try Ok (run options) with e -> Error (e, Printexc.get_raw_backtrace ())
   in
   match result with
   | Ok results ->
