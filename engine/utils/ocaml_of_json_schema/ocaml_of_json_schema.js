@@ -108,6 +108,7 @@ let ocaml_of_type_expr = (o, path) => {
     let {kind, payload} = o;
     return (({
         option: type => `(${ocaml_of_type_expr(type, [...path, 'option'])} option)`,
+        unit: _ => `unit`,
         tuple: types => `(${types.map((t, i) => ocaml_of_type_expr(t, [...path, 'tuple', i])).join(' * ')})`,
         array: type => `(${ocaml_of_type_expr(type, [...path, 'array'])} list)`,
         boolean: _ => `bool`,
@@ -147,6 +148,7 @@ let ocaml_yojson_of_type_expr = (o, subject, path) => {
     let {kind, payload} = o;
     return `(${(({
         option: type => `match ${subject} with | Option.Some x -> ${ocaml_yojson_of_type_expr(type, 'x', [...path, 'Some'])} | _ -> \`Null`,
+        unit: _ => `\`Null`,
         tuple: types =>
             `let (${types.map((t, i) => 'x' + i)}) = ${subject} in \`List [${types.map((t, i) => ocaml_yojson_of_type_expr(t, 'x' + i, [...path, 'tuple', i])).join(';')}]`,
         array: type => 
@@ -176,6 +178,7 @@ let ocaml_arms_of_type_expr = (o, path) => {
             [`\`Null`, `Option.None`],
             ...ocaml_arms_of_type_expr(type, [...path, 'option']).map(([pat, expr]) => [pat, `Option.Some (${expr})`])
         ],
+        unit: _ => [[`\`Null`, '()']],
         tuple: types => {
             let sub_matches = types.map((type, i) => 
                 mk_match(`v${i}`, ocaml_arms_of_type_expr(type, [...path, 'tuple', i]), [...path, 'tuple']));
@@ -240,6 +243,15 @@ let is_type = {
         return false;
     },
     
+    unit: def => {
+        if (exact_keys(def, 'type')
+            && def.type === 'null')
+            return {
+                kind: 'unit',
+            };
+        return false;
+    },
+
     tuple: def => {
         if (exact_keys(def, 'type', 'items')
             && def.type === 'array'
@@ -269,6 +281,7 @@ let is_type = {
     } : false)
         || is_type.option(def)
         || is_type.array(def)
+        || is_type.unit(def)
         || is_type.tuple(def)
         || (def.type === 'integer'
             ? {kind: 'integer', repr: int_repr_of_format(def.format)}
