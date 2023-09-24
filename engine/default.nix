@@ -8,6 +8,7 @@
   closurecompiler,
   gnused,
   lib,
+  stdenv,
 }: let
   non_empty_list = ocamlPackages.buildDunePackage rec {
     pname = "non_empty_list";
@@ -84,7 +85,7 @@
       jq
     ];
     strictDeps = true;
-    passthru = {
+    passthru = rec {
       js = hax-engine.overrideAttrs (old: {
         name = "hax-engine.js";
         nativeBuildInputs = old.nativeBuildInputs ++ [closurecompiler gnused];
@@ -100,6 +101,16 @@
         checkPhase = "true";
         installPhase = "cp hax-engine.js $out";
       });
+      renamed-js = stdenv.mkDerivation {
+        name = "hax-engine-js";
+        phases = [ "installPhase" ];
+        installPhase = ''
+          mkdir -p $out
+          HASH=$( ${hax-rust-frontend}/bin/cargo-hax -V |
+                  ${jq}/bin/jq -Rr '. | match("rust_src_hash=([^ ]+)") | .captures[0].string' )
+          ln -s "${js}" "$out/$HASH.js"
+        '';
+      };
     };
   };
 in
