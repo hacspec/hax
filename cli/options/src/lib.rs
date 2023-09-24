@@ -164,6 +164,27 @@ pub struct TranslationOptions {
     include_namespaces: Vec<InclusionClause>,
 }
 
+impl std::convert::From<&std::ffi::OsStr> for HaxEnginePath {
+    fn from(s: &std::ffi::OsStr) -> Self {
+        use HaxEnginePath::*;
+        let s = s.to_str().unwrap();
+        if s == "auto-detect" {
+            AutoDetect
+        } else if let Some(js) = s.strip_prefix("js:") {
+            NodeJs(PathBuf::from(js))
+        } else {
+            Native(PathBuf::from(s.strip_prefix("native:").unwrap_or(s)))
+        }
+    }
+}
+
+#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+pub enum HaxEnginePath {
+    Native(PathBuf),
+    NodeJs(PathBuf),
+    AutoDetect,
+}
+
 #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
 pub struct BackendOptions {
     #[command(subcommand)]
@@ -176,7 +197,13 @@ pub struct BackendOptions {
 
     /// Verbose mode for the Hax engine. Set [-vv] for maximal verbosity.
     #[arg(short, long, action = clap::ArgAction::Count)]
-    verbose: u8,
+    pub verbose: u8,
+
+    /// Override the path to the Hax Engine. By default, we uses the
+    /// `hax-engine` binary if available in PATH, otherwise we
+    /// download a prebuilt version from GitHub (after user confirmation).
+    #[arg(long = "hax-engine-path", default_value = "auto-detect")]
+    pub hax_engine_path: HaxEnginePath,
 
     /// Enable debugging of the engine, and visualize interactively in
     /// a webapp how a crate was transformed by each phase, both in
@@ -185,10 +212,10 @@ pub struct BackendOptions {
     /// port can be override by setting the `HAX_DEBUGGER_PORT`
     /// environment variable.
     #[arg(short, long = "debug-engine")]
-    debug_engine: bool,
+    pub debug_engine: bool,
 
     #[command(flatten)]
-    translation_options: TranslationOptions,
+    pub translation_options: TranslationOptions,
 }
 
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
@@ -252,8 +279,10 @@ pub enum Command {
     LintCommand(LinterCommand),
 }
 
+pub const RUST_SRC_HASH: &str = env!("HAX_RUST_SRC_HASH");
+
 #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
-#[command(author, version = concat!("commit=", env!("HAX_GIT_COMMIT_HASH"), " ", "describe=", env!("HAX_GIT_DESCRIBE")), name = "hax", about, long_about = None)]
+#[command(author, version = concat!("commit=", env!("HAX_GIT_COMMIT_HASH"), " ", "describe=", env!("HAX_GIT_DESCRIBE"), " ", "rust_src_hash=", env!("HAX_RUST_SRC_HASH")), name = "hax", about, long_about = None)]
 pub struct Options {
     /// Replace the expansion of each macro matching PATTERN by their
     /// invocation. PATTERN denotes a rust path (i.e. [A::B::c]) in

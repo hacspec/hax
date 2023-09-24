@@ -12,6 +12,7 @@
   };
 
   outputs = {
+    self,
     flake-utils,
     nixpkgs,
     rust-overlay,
@@ -28,6 +29,7 @@
         craneLib = (crane.mkLib pkgs).overrideToolchain rustc;
         ocamlformat = pkgs.ocamlformat_0_24_1;
         rustfmt = pkgs.rustfmt;
+        version = self.rev or "dirty";
       in rec {
         packages = {
           inherit rustc ocamlformat rustfmt;
@@ -36,7 +38,7 @@
             inherit rustc;
           };
           hax-rust-frontend = pkgs.callPackage ./cli {
-            inherit rustc craneLib;
+            inherit rustc craneLib version;
             inherit (packages) hax-engine;
           };
           hax = packages.hax-rust-frontend;
