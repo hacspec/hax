@@ -8,6 +8,7 @@ type ThirBody = hax_frontend_exporter::ThirBody;
 pub struct EngineOptions {
     pub backend: BackendOptions,
     pub input: Vec<hax_frontend_exporter::Item<ThirBody>>,
+    pub rust_src_hash: String,
 }
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]

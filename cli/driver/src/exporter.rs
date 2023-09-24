@@ -205,51 +205,6 @@ fn collect_macros(
     v.macro_calls
 }
 
-const ENGINE_BINARY_NAME: &str = "hax-engine";
-const ENGINE_BINARY_NOT_FOUND: &str = const_format::formatcp!(
-    "The binary [{}] was not found in your [PATH].",
-    ENGINE_BINARY_NAME,
-);
-
-/// Dynamically looks for binary [ENGINE_BINARY_NAME].  First, we
-/// check whether [HAX_ENGINE_BINARY] is set, and use that if it
-/// is. Then, we try to find [ENGINE_BINARY_NAME] in PATH. If not
-/// found, detect whether nodejs is available, download the JS-compiled
-/// engine and use it.
-use std::process;
-fn find_hax_engine() -> process::Command {
-    use which::which;
-
-    std::env::var("HAX_ENGINE_BINARY")
-        .ok()
-        .map(|name| process::Command::new(name))
-        .or_else(|| {
-            which(ENGINE_BINARY_NAME)
-                .ok()
-                .map(|name| process::Command::new(name))
-        })
-        .or_else(|| {
-            which("node").ok().and_then(|_| {
-                if let Ok(true) = inquire::Confirm::new(&format!(
-                    "{} Should I try to download it from GitHub?",
-                    ENGINE_BINARY_NOT_FOUND,
-                ))
-                .with_default(true)
-                .prompt()
-                {
-                    let cmd = process::Command::new("node");
-                    let engine_js_path: String =
-                        panic!("TODO: Downloading from GitHub is not supported yet.");
-                    cmd.arg(engine_js_path);
-                    Some(cmd)
-                } else {
-                    None
-                }
-            })
-        })
-        .expect(&ENGINE_BINARY_NOT_FOUND)
-}
-
 /// Callback for extraction
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct ExtractionCallbacks {
@@ -375,17 +330,26 @@ impl Callbacks for ExtractionCallbacks {
                     let engine_options = hax_cli_options_engine::EngineOptions {
                         backend: backend.clone(),
                         input: converted_items,
+                        rust_src_hash: hax_cli_options::RUST_SRC_HASH.to_string(),
                     };
-                    let mut engine_subprocess = find_hax_engine()
+                    use std::process::Command;
+                    use hax_cli_options::HaxEnginePath;
+                    let mut engine_command = match backend.hax_engine_path {
+                        HaxEnginePath::Native(path) => Command::new(path),
+                        HaxEnginePath::NodeJs(path) => {
+                            let mut command = Command::new("node");
+                            command.arg(path);
+                            command
+                        },
+                        HaxEnginePath::AutoDetect => panic!(),
+                    };
+                    let mut engine_subprocess = engine_command
                         .stdin(std::process::Stdio::piped())
                         .stdout(std::process::Stdio::piped())
                         .spawn()
                         .map_err(|e| {
                             if let std::io::ErrorKind::NotFound = e.kind() {
-                                panic!(
-                                    "The binary [{}] was not found in your [PATH].",
-                                    ENGINE_BINARY_NAME
-                                )
+                                panic!("Could not run [hax-engine], the binary was not found while running command {:?}", engine_command)
                             }
                             e
                         })
@@ -406,8 +370,7 @@ impl Callbacks for ExtractionCallbacks {
                     let session = compiler.session();
                     if !out.status.success() {
                         session.fatal(format!(
-                            "{} exited with non-zero code {}\nstdout: {}\n stderr: {}",
-                            ENGINE_BINARY_NAME,
+                            "Hax engine exited with non-zero code {}\nstdout: {}\n stderr: {}",
                             out.status.code().unwrap_or(-1),
                             String::from_utf8(out.stdout).unwrap(),
                             String::from_utf8(out.stderr).unwrap(),
@@ -417,8 +380,7 @@ impl Callbacks for ExtractionCallbacks {
                     let output: hax_cli_options_engine::Output =
                         serde_json::from_slice(out.stdout.as_slice()).unwrap_or_else(|_| {
                             panic!(
-                                "{} outputed incorrect JSON {}",
-                                ENGINE_BINARY_NAME,
+                                "Hax engine outputed incorrect JSON {}",
                                 String::from_utf8(out.stdout).unwrap()
                             )
                         });

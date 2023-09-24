@@ -5,7 +5,10 @@
   lib,
   rustc,
   gcc,
+  openssl,
+  pkg-config,
   hax-engine,
+  version,
   doCheck ? true,
 }: let
   pname = "hax";
@@ -19,6 +22,11 @@
           builtins.isNull (builtins.match ".*/tests/.*" path)
           && (craneLib.filterCargoSources path type || is-webapp-static-asset path);
       };
+      nativeBuildInputs = [
+        openssl
+        pkg-config
+      ];
+      HAX_GIT_COMMIT_HASH = version;
       inherit doCheck;
     }
     // (

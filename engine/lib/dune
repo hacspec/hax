@@ -44,6 +44,16 @@
 )
 
 (rule
+ (target rust_src_hash.ml)
+ (deps (alias universe-hash))
+ (action
+  (with-stdout-to
+   rust_src_hash.ml
+    (pipe-stdout
+      (run cargo hax -V)
+      (run jq -Rr ". | match(\"(rust_src_hash)=([^ ]+)\") | .captures | map(.string) | \"let \" + .[0] + \" = \" + (.[1] | tojson)")))))
+    
+(rule
  (target concrete_ident_generated.ml)
  (deps
   (:generate_sh concrete_ident/generate.sh)

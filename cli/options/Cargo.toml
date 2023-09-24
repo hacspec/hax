@@ -12,3 +12,6 @@ clap.workspace = true
 hax-frontend-exporter-options.workspace = true
 path-clean = "1.0.1"
 
+[build-dependencies]
+sha2 = "0.10.7"
+

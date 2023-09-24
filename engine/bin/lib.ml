@@ -56,8 +56,19 @@ let run (options : Types.engine_options) : Types.output =
     debug_json = None;
   }
 
+let ensure_frontend_compatibility (options : Types.engine_options) =
+  if String.equal options.rust_src_hash Rust_src_hash.rust_src_hash |> not then (
+    prerr_endline
+    @@ "Error: the installed Hax engine is not compatible the installed Hax \
+        frontend. Please reinstall Hax.\n\n\
+        Details:\n\
+       \ - Engine hash:   [" ^ Rust_src_hash.rust_src_hash
+    ^ "]\n - Frontend hash: [" ^ options.rust_src_hash ^ "]\n";
+    Stdlib.exit 1)
+
 let main (options : Types.engine_options) =
   Printexc.record_backtrace true;
+  ensure_frontend_compatibility options;
   let result =
     try Ok (run options) with e -> Error (e, Printexc.get_raw_backtrace ())
   in
