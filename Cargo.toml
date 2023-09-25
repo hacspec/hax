@@ -14,6 +14,9 @@ members = [
 exclude = ["tests", "hax-lib-macros"]
 resolver = "2"
 
+[workspace.package]
+version = "0.0.1"
+
 [workspace.dependencies]
 itertools = "0.11.0"
 schemars = "0.8"
@@ -41,5 +44,5 @@ hax-cli-options = { path = "cli/options" }
 hax-cli-options-engine = { path = "cli/options/engine" }
 hax-frontend-exporter-options = { path = "frontend/exporter/options" }
 hax-diagnostics = { path = "frontend/diagnostics" }
-hax-lint = { version = "=0.1.0", path = "frontend/lint" }
-phase_debug_webapp = { version = "=0.1.0", path = "engine/utils/phase_debug_webapp" }
+hax-lint = { path = "frontend/lint" }
+phase_debug_webapp = { path = "engine/utils/phase_debug_webapp" }
