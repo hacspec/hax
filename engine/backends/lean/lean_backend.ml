@@ -22,5 +22,6 @@ include
 module BackendOptions = Backend.UnitBackendOptions
 module AST = Ast.Make (InputLanguage)
 
-let apply_phases _ = failwith "xx"
-let translate _ = failwith "xx"
+let apply_phases (_opts: BackendOptions.t) (items: Ast.Rust.item list) = []
+
+let translate (_opts: BackendOptions.t) (items: AST.item list) = []
