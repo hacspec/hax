@@ -5,7 +5,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
   open Generic_printer_base
   open Generic_printer_base.Make (F)
 
-  include Api (struct
+  module Class = struct
     module U = Ast_utils.Make (F)
     open! AST
     open PPrint
@@ -420,5 +420,11 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
             let body = print#expr_at Arm_body body in
             pat ^^ string " => " ^^ body ^^ comma
       end
+  end
+
+  include Class
+
+  include Api (struct
+    let new_print () = (new Class.print :> print_object)
   end)
 end
