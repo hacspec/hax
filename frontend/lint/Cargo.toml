@@ -1,13 +1,13 @@
 [package]
 name = "hax-lint"
-version = "0.1.0"
+version = { workspace = true }
 edition = "2021"
 
 [package.metadata.rust-analyzer]
 rustc_private=true
 
 [dependencies]
-hax-diagnostics = { version = "=0.1.0", path = "../diagnostics" }
+hax-diagnostics.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
