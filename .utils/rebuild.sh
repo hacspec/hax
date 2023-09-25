@@ -51,11 +51,14 @@ trap on_exit                EXIT ERR
 trap "status $RED 'SIGINT'" SIGINT
 
 CURRENT="none"
+started() { [ -z ${QUIET+x} ] && status $BLACK "$1 build started" || true; }
 if [[ "$TARGETS" == *rust* ]]; then
+    started rust
     rust
     status $GREEN "rust succeed"
 fi
 if [[ "$TARGETS" == *ml* ]]; then
+    started ocaml
     ocaml
     status $GREEN "ocaml succeed"
 fi
