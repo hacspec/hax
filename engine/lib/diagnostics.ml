@@ -54,6 +54,7 @@ module Context = struct
     | Backend of Backend.t
     | ThirImport
     | DebugPrintRust
+    | GenericPrinter of string
     | Other of string
   [@@deriving show, eq, yojson]
 
@@ -62,6 +63,7 @@ module Context = struct
     | Backend backend -> [%show: Backend.t] backend ^ " backend"
     | ThirImport -> "AST import"
     | DebugPrintRust -> "Rust debug printer"
+    | GenericPrinter kind -> kind ^ " generic printer"
     | Other s -> "Other (" ^ s ^ ")"
 end
 
