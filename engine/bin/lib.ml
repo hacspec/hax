@@ -48,7 +48,8 @@ let run () : Types.output =
         match options.backend.backend with
         | Fstar -> run (module Fstar_backend) ()
         | Coq -> run (module Coq_backend) ()
-        | Easycrypt -> run (module Easycrypt_backend) ())
+        | Easycrypt -> run (module Easycrypt_backend) ()
+        | Lean -> run (module Lean_backend) ())
   in
   {
     diagnostics = List.map ~f:Diagnostics.to_thir_diagnostic diagnostics;
