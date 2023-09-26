@@ -2,6 +2,7 @@
 
 RUST_SOURCE=$(cat "$1")
 TEMPDIR=$(mktemp -d)
+# TEMPDIR="/tmp/hey"
 trap '{ rm -rf -- "$TEMPDIR/"; }' EXIT
 DIR="$TEMPDIR/rust-primitives"
 

@@ -880,7 +880,7 @@ pub struct Block {
 )]
 pub struct AliasTy {
     pub substs: Vec<GenericArg>,
-    pub trait_def_id: Option<DefId>,
+    pub trait_def_id: Option<(DefId, ImplExpr)>,
     pub def_id: DefId,
 }
 
@@ -893,8 +893,17 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, AliasTy> for rustc_middle::ty::AliasTy<'
             AssocTy | AssocConst | ImplTraitPlaceholder
         )
         .then(|| {
-            let _trait_ref = self.trait_ref(tcx);
-            self.trait_def_id(tcx).sinto(s)
+            let trait_ref = self.trait_ref(tcx);
+            let poly_trait_ref = rustc_middle::ty::Binder::dummy(trait_ref);
+            let param_env = s
+                .base()
+                .opt_def_id
+                .map(|did| tcx.param_env(did))
+                .unwrap_or(rustc_middle::ty::ParamEnv::empty());
+            (
+                self.trait_def_id(tcx).sinto(s),
+                poly_trait_ref.impl_expr(s, param_env),
+            )
         });
         AliasTy {
             substs: self.substs.sinto(s),
@@ -2319,12 +2328,7 @@ pub struct AnonConst<Body: IsBody> {
     pub hir_id: HirId,
     pub def_id: GlobalIdent,
     #[map({
-        body_from_id::<Body, _>(*x, &State {
-            thir: (),
-            owner_id: hir_id.owner,
-            base: s.base(),
-            mir: (),
-        })
+        body_from_id::<Body, _>(*x, &with_owner_id(s.base(), (), (), hir_id.owner))
     })]
     pub body: Body,
 }
@@ -2618,10 +2622,10 @@ pub enum TraitItemKind<Body: IsBody> {
     RequiredFn(FnSig, Vec<Ident>),
     #[custom_arm(
         rustc_hir::TraitItemKind::Fn(sig, rustc_hir::TraitFn::Provided(body)) => {
-            TraitItemKind::ProvidedFn(make_fn_def::<Body, _>(sig, body, tcx))
+            TraitItemKind::ProvidedFn(sig.sinto(tcx), make_fn_def::<Body, _>(sig, body, tcx))
         }
     )]
-    ProvidedFn(FnDef<Body>),
+    ProvidedFn(FnSig, FnDef<Body>),
     #[custom_arm(
         rustc_hir::TraitItemKind::Type(b, ty) => {
             TraitItemKind::Type(b.sinto(tcx), ty.map(|t| t.sinto(tcx)))
@@ -3033,15 +3037,7 @@ pub struct Item<Body: IsBody> {
     pub span: Span,
     pub vis_span: Span,
     #[map({
-        self.kind.sinto(&State {
-            base: crate::state::Base {
-                opt_def_id: Some(self.owner_id.to_def_id()),
-                ..state.base()
-            },
-            thir: (),
-            mir: (),
-            owner_id: self.owner_id,
-        })
+        self.kind.sinto(&with_owner_id(state.base(), (), (), self.owner_id))
     })]
     pub kind: ItemKind<Body>,
     #[map(ItemAttributes::from_owner_id(state, *owner_id))]
@@ -3090,7 +3086,9 @@ pub enum PredicateOrigin {
 
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::AssocItem, state: S as tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct AssocItem {
     pub def_id: DefId,
     pub name: Symbol,
@@ -3103,7 +3101,9 @@ pub struct AssocItem {
 
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::ImplTraitInTraitData, state: S as _tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub enum ImplTraitInTraitData {
     Trait {
         fn_def_id: DefId,
@@ -3116,7 +3116,9 @@ pub enum ImplTraitInTraitData {
 
 #[derive(AdtInto)]
 #[args(<S>, from: rustc_middle::ty::AssocItemContainer, state: S as _tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub enum AssocItemContainer {
     TraitContainer,
     ImplContainer,
@@ -3124,7 +3126,9 @@ pub enum AssocItemContainer {
 
 #[derive(AdtInto)]
 #[args(<S>, from: rustc_middle::ty::AssocKind, state: S as _tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub enum AssocKind {
     Const,
     Fn,

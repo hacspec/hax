@@ -63,6 +63,7 @@
         logs
         core
         re
+        ocamlgraph
       ]
       ++
       # F* dependencies

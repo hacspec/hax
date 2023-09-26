@@ -28,6 +28,7 @@ module Make (F : Features.T) = struct
 
   module ItemGraph = struct
     module G = Graph.Persistent.Digraph.Concrete (Concrete_ident)
+    module Oper = Graph.Oper.P (G)
 
     let vertices_of_item (i : item) : G.V.t list =
       let ( @ ) = Set.union in
@@ -72,18 +73,42 @@ module Make (F : Features.T) = struct
       vertices_of_items >> List.fold ~init:G.empty ~f:(G.add_edge >> uncurry)
 
     let transitive_dependencies_of (selection : Concrete_ident.t list) (g : G.t)
-        : (Concrete_ident.t, _) Set.t =
-      let empty = Set.empty (module Concrete_ident) in
-      List.filter ~f:(G.mem_vertex g) selection
-      |> List.map ~f:(fun i ->
-             G.fold_succ (fun i set -> Set.add set i) g i empty)
-      |> Set.union_list (module Concrete_ident)
+        : Concrete_ident.t Hash_set.t =
+      let set = Hash_set.create (module Concrete_ident) in
+      let rec visit vertex =
+        if Hash_set.mem set vertex |> not then (
+          Hash_set.add set vertex;
+          G.iter_succ visit g vertex)
+      in
+      List.filter ~f:(G.mem_vertex g) selection |> List.iter ~f:visit;
+      set
+
+    (* let transitive_dependencies_of (selection : Concrete_ident.t list) (g : G.t) *)
+    (*     : (Concrete_ident.t, _) Set.t = *)
+    (*   Stdlib.prerr_endline "+transitive_dependencies_of A"; *)
+    (*   let empty = Set.empty (module Concrete_ident) in *)
+    (*   Stdlib.prerr_endline "+transitive_dependencies_of B"; *)
+    (*   let g = Oper.transitive_closure g in *)
+    (*   Stdlib.prerr_endline "+transitive_dependencies_of C"; *)
+    (*   List.filter ~f:(G.mem_vertex g) selection *)
+    (*   |> (fun x -> *)
+    (*        Stdlib.prerr_endline "+transitive_dependencies_of D"; *)
+    (*        x) *)
+    (*   |> List.map ~f:(fun i -> *)
+    (*          G.fold_succ (fun i set -> Set.add set i) g i empty) *)
+    (*   |> (fun x -> *)
+    (*        Stdlib.prerr_endline "+transitive_dependencies_of E"; *)
+    (*        x) *)
+    (*   |> Set.union_list (module Concrete_ident) *)
+    (*   |> fun x -> *)
+    (*   Stdlib.prerr_endline "+transitive_dependencies_of F"; *)
+    (*   x *)
 
     let transitive_dependencies_of_items (selection : Concrete_ident.t list)
         (items : item list) : item list =
       let g = of_items items in
       let set = transitive_dependencies_of selection g in
-      items |> List.filter ~f:(ident_of >> Set.mem set)
+      items |> List.filter ~f:(ident_of >> Hash_set.mem set)
 
     module MutRec = struct
       module Bundle = struct
@@ -249,13 +274,13 @@ module Make (F : Features.T) = struct
 
   let name_me (items : item list) : item list =
     let h f name items =
-      let file = Caml.open_out @@ "/tmp/graph_" ^ name ^ ".dot" in
+      let file = Stdlib.open_out @@ "/tmp/graph_" ^ name ^ ".dot" in
       f file items;
-      Caml.close_out file
+      Stdlib.close_out file
     in
     h ItemGraph.print "items_before" items;
     let items = name_me' items in
-    (* h ItemGraph.print "items_after" items; *)
+    h ItemGraph.print "items_after" items;
     h ModGraph.print "mods" items;
     items
 end

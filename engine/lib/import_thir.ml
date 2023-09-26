@@ -381,7 +381,8 @@ module Make (Opts : OPTS) : MakeT = struct
             let then_ = c_expr then' in
             let else_ = Option.map ~f:c_expr else_opt in
             If { cond; else_; then_ }
-        | Call { args; fn_span = _; from_hir_call = _; fun'; ty = _ } ->
+        | Call { args; fn_span = _; impl = _; from_hir_call = _; fun'; ty = _ }
+          ->
             let args = List.map ~f:c_expr args in
             let f = c_expr fun' in
             App { f; args }
@@ -941,7 +942,11 @@ module Make (Opts : OPTS) : MakeT = struct
 
     let c_predicate_kind span (p : Thir.predicate_kind) : trait_ref option =
       match p with
-      | Clause (Trait { is_positive = true; is_const = _; trait_ref }) ->
+      | Clause
+          {
+            kind = Trait { is_positive = true; is_const = _; trait_ref };
+            id = _;
+          } ->
           let args =
             List.map ~f:(c_generic_value span) trait_ref.generic_args
           in
@@ -990,10 +995,10 @@ module Make (Opts : OPTS) : MakeT = struct
           unimplemented [ span ]
             "TODO: traits: no support for defaults in traits for now"
       | Const (ty, None) -> TIFn (c_ty span ty)
-      | ProvidedFn _ ->
-          unimplemented [ span ]
-            "TODO: traits: no support for defaults in funcitons for now"
-      | RequiredFn (sg, _) ->
+      (* | ProvidedFn _ -> *)
+      (*     unimplemented [ span ] *)
+      (*       "TODO: traits: no support for defaults in funcitons for now" *)
+      | ProvidedFn (sg, _) | RequiredFn (sg, _) ->
           let (Thir.{ inputs; output; _ } : Thir.fn_decl) = sg.decl in
           let output =
             match output with

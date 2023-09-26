@@ -6,9 +6,6 @@ extern crate alloc;
  * exported and made available automatically in OCaml. */
 
 fn dummy_hax_concrete_ident_wrapper() {
-    fn hello<T: core::ops::Add<T, Output = T>>(x: T) -> T {
-        x + x
-    }
     let _: Option<u8> = Some(3);
     let mut acc = vec![];
     for i in 0..10 {

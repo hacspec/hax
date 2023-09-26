@@ -117,6 +117,11 @@ impl Features {
         use std::process::{Command, Stdio};
         let stdout = Command::new(std::env::args().next().unwrap())
             .args(std::env::args().skip(1))
+            .env(
+                "RUSTC_WORKSPACE_WRAPPER",
+                std::env::var("HAX_RUSTC_DRIVER_BINARY")
+                    .unwrap_or("driver-hax-frontend-exporter".into()),
+            )
             .env("HAX_FEATURES_DETECTION_MODE", "1")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -125,6 +130,9 @@ impl Features {
             .wait_with_output()
             .unwrap()
             .stdout;
-        serde_json::from_str(&std::str::from_utf8(&stdout).unwrap()).unwrap()
+        let output = &std::str::from_utf8(&stdout).unwrap();
+        serde_json::from_str(output).unwrap_or_else(|_| {
+            panic!("Failed parsing the following as JSON: {}", output);
+        })
     }
 }

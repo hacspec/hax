@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #!/usr/bin/env bash
 
 # this script computes the hash of [hax-export-json-schemas], so that
@@ -36,25 +35,3 @@ else
     echo "  - you have `~/.cargo/bin` in your PATH ($DIAG)." >&2
     exit 1
 fi
-
-||||||| parent of 5a59f92 (WIP)
-=======
-#!/usr/bin/env bash
-
-function hash() {
-    if command -v sha256sum &> /dev/null; then
-        sha256sum "$1"
-    elif command -v md5sum &> /dev/null; then
-        md5sum "$1"
-    elif command -v openssl &> /dev/null; then
-        openssl sha256 "$1"
-    else
-        # Don't know how to compute a hash
-        echo "${RANDOM}_$(date +%s)"
-    fi
-}
-
-HAX_JSON_SCHEMA_EXPORTER_BINARY=${HAX_JSON_SCHEMA_EXPORTER_BINARY:-hax-export-json-schemas}
-
-hash "$(which "$HAX_JSON_SCHEMA_EXPORTER_BINARY")"
->>>>>>> 5a59f92 (WIP)

@@ -445,7 +445,10 @@ module Raw = struct
         | _ -> raise NotImplemented
       in
       pattrs e.attrs & pi
-    with NotImplemented -> !"/* print_rust: pitem: not implemented */"
+    with NotImplemented ->
+      !("/* print_rust: pitem: not implemented  (item: "
+       ^ [%show: concrete_ident] e.ident
+       ^ ") */")
 end
 
 let rustfmt (s : string) : string =
