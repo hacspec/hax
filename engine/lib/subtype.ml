@@ -350,6 +350,7 @@ struct
       | IIType g -> IIType (dty span g)
       | IIFn { body; params } ->
           IIFn { body = dexpr body; params = List.map ~f:(dparam span) params }
+      | IIConst { body } -> IIConst { body = dexpr body }
 
     and dimpl_item (ii : A.impl_item) : B.impl_item =
       {

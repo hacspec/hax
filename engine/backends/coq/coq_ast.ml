@@ -4,9 +4,12 @@ open Base
 
 module type Library = sig
   module Notation : sig
+    val additional_identifier : string
     val int_repr : string -> string -> string
     val let_stmt : string -> string -> string -> string -> int -> string
     val let_mut_stmt : string -> string -> string -> string -> int -> string
+    val let_bind_stmt : string -> string -> string -> string -> int -> string
+    val let_bind_mut_stmt : string -> string -> string -> string -> int -> string
     val type_str : string
     val bool_str : string
     val unit_str : string
@@ -57,29 +60,44 @@ functor
         | TuplePat of pat list
         | AscriptionPat of pat * ty
 
+      type monad_type =
+        | Option
+        | Result of ty
+        | Exception of ty
+
       type term =
         | UnitTerm
-        | Let of {
-            pattern : pat;
-            mut : bool;
-            value : term;
-            body : term;
-            value_typ : ty;
-          }
+        | Let of let_args
         | If of term * term * term
         | Match of term * (pat * term) list
         | Const of literal
         | Literal of string
-        | AppFormat of string list * term list
+        | AppFormat of string list * notation_elements list
         | App of term * term list
         | Var of string
         | NameTerm of string
-        | RecordConstructor of term * (string * term) list
+        | RecordConstructor of string * (string * term) list
+        | RecordUpdate of string * term * (string * term) list
         | Type of ty
         | Lambda of pat list * term
         | Tuple of term list
         | Array of term list
         | TypedTerm of term * ty
+
+      and notation_elements =
+        | Newline of int
+        | Typing of ty
+        | Variable of pat
+        | Value of term * bool
+
+      and let_args = {
+        pattern : pat;
+        mut : bool;
+        value : term;
+        body : term;
+        value_typ : ty;
+        monad_typ : monad_type option;
+      }
 
       (* TODO: I don't get why you've got InductiveCase VS BaseCase. Why not an inductive case (i.e. a variant, right?) is a name + a list of types? *)
       type inductive_case = InductiveCase of string * ty | BaseCase of string
@@ -93,8 +111,9 @@ functor
       type definition_type = string * argument list * term * ty
       type record_field = Named of string * ty | Coercion of string * ty
 
-      type instance_decls = InlineDef of definition_type
-                          | LetDef of definition_type
+      type instance_decls =
+        | InlineDef of definition_type
+        | LetDef of definition_type
 
       type decl =
         | Unimplemented of string
@@ -115,6 +134,7 @@ functor
         | ModuleType of string * argument list * record_field list
         | Module of string * string * argument list * record_field list
         | Parameter of string * ty (* definition_type minus 'term' *)
+        | HintUnfold of string * ty option
     end
 
     let __TODO_pat__ s = AST.Ident (s ^ " todo(pat)")
@@ -241,7 +261,7 @@ functor
       | AST.TuplePat vals ->
           tick_if is_top_expr ^ "(" ^ tuple_pat_to_string vals (depth + 1) ^ ")"
       | AST.AscriptionPat (p, ty) ->
-          pat_to_string p true depth (* TODO: Should this be true of false? *)
+          "(" ^ pat_to_string p true depth ^ ":" ^ ty_to_string ty ^ ")" (* TODO: Should this be true of false? *)
 
     and tick_if is_top_expr = if is_top_expr then "'" else ""
 
@@ -266,16 +286,24 @@ functor
       | AST.UnitTerm ->
           ("(" ^ "tt" ^ " " ^ ":" ^ " " ^ ty_to_string AST.Unit ^ ")", false)
       | AST.Let
-          { pattern = pat; mut; value = bind; value_typ = typ; body = term } ->
-          let ty_str = ty_to_string typ in
-          (* TODO: propegate type definition *)
-          ( (if mut then Lib.Notation.let_mut_stmt else Lib.Notation.let_stmt)
-              (pat_to_string pat true depth)
-              (term_to_string_without_paren bind (depth + 1))
-              ty_str
-              (term_to_string_without_paren term depth)
-              depth,
-            true )
+          { pattern = pat; mut; value = bind; value_typ = typ; body = term; monad_typ } ->
+        (* TODO: propegate type definition *)
+        let var_str = pat_to_string pat true depth in
+        let expr_str = term_to_string_without_paren bind (depth + 1) in
+        let typ_str = ty_to_string typ in
+        let body_str = term_to_string_without_paren term depth in
+        (Lib.Notation.additional_identifier ^ "let"
+         ^ (if mut then " "^"loc("^ var_str^"_loc" ^")" else "")
+         ^ (match monad_typ with
+             | Some (AST.Option) -> " " ^ "m_O()"
+             | Some (AST.Result mon_typ) -> " " ^ "m_R(" ^ ty_to_string mon_typ ^ ")"
+             | Some (AST.Exception mon_typ) -> " " ^ "m_E(" ^ ty_to_string mon_typ ^ ")"
+             | None -> "")
+         ^ " " ^ var_str
+         ^ " " ^ ":=" ^ " " ^ expr_str
+         ^ " " ^ ":" ^ " " ^ typ_str
+         ^ " " ^ "in" ^ newline_indent depth ^ body_str,
+         true )
       | AST.If (cond, then_, else_) ->
           ( Lib.Notation.if_stmt
               (term_to_string_without_paren cond (depth + 1))
@@ -297,7 +325,12 @@ functor
       | AST.Literal s -> (s, false)
       | AST.AppFormat (format, args) ->
           ( format_to_string format
-              (List.map ~f:(fun x -> term_to_string_with_paren x depth) args),
+              (List.map ~f:(function
+| AST.Newline n -> newline_indent (depth+n)
+| AST.Typing typ -> ty_to_string typ
+                   | AST.Value (x, true) -> term_to_string_with_paren x depth
+| AST.Value (x, false) -> term_to_string_without_paren x depth
+                   | AST.Variable p -> pat_to_string p true depth ) args ),
             true (* TODO? Notation does not always need paren *) )
       | AST.App (f, args) ->
           let f_s, f_b = term_to_string f depth in
@@ -305,10 +338,15 @@ functor
       | AST.Var s -> (s, false)
       | AST.NameTerm s -> (s, false)
       | AST.RecordConstructor (f, args) ->
-          ( "Build_" (* t_ *)
-            ^ term_to_string_without_paren f depth
-            ^ " "
-            ^ (term_list_to_string (List.map ~f:snd args) depth),
+          ( "Build_" ^ f
+            ^ (if List.length args > 0 then " " else "")
+            ^ String.concat ~sep:" " (List.map ~f:(fun (n, t) -> "(" ^ n ^ " " ^ ":=" ^ " " ^ term_to_string_without_paren t depth ^ ")") args),
+            true )
+      | AST.RecordUpdate (f, base, args) ->
+          ( "Build_" ^ f
+            ^ "[" ^ term_to_string_without_paren base depth ^ "]"
+            ^ (if List.length args > 0 then " " else "")
+            ^ String.concat ~sep:" " (List.map ~f:(fun (n, t) -> "(" ^ n ^ " " ^ ":=" ^ " " ^ term_to_string_without_paren t depth ^ ")") args),
             true )
       | AST.Type t ->
           let ty_str = ty_to_string t in
@@ -371,7 +409,9 @@ functor
       | [] -> failwith "incorrect formatting"
 
     and term_list_to_string (terms : AST.term list) depth : string =
-      (if List.is_empty terms then "" else " ") ^ String.concat ~sep:" " (List.map ~f:(fun t -> term_to_string_with_paren t depth) terms)
+      (if List.is_empty terms then "" else " ")
+      ^ String.concat ~sep:" "
+          (List.map ~f:(fun t -> term_to_string_with_paren t depth) terms)
 
     let rec decl_to_string (x : AST.decl) : string =
       match x with
@@ -390,8 +430,8 @@ functor
       | AST.EquationsQuestionmark (name, arguments, term, ty) ->
           "Equations?" ^ " "
           ^ definition_value_to_equation_definition (name, arguments, term, ty)
-      | AST.Notation (name, value) ->
-          "Notation" ^ " " ^ name ^ " " ^ ":=" ^ " "
+      | AST.Notation (notation, value) ->
+          "Notation" ^ " " ^ "\"" ^ notation ^ "\"" ^ " " ^ ":=" ^ " "
           ^ term_to_string_with_paren value 0
           ^ "."
       | AST.Record (name, arguments, variants) ->
@@ -506,33 +546,45 @@ functor
           in
           let impl_str =
             String.concat ~sep:(newline_indent 1)
-            (List.filter_map
-               ~f:(function
+              (List.filter_map
+                 ~f:(function
                    | LetDef (name, arguments, term, ty) ->
-                     Some ("let" ^ " " ^ name ^ " " ^ ":=" ^ " "
-                           ^  (if List.is_empty arguments then "" else "fun" ^ " " ^ params_to_string_typed arguments ^ " " ^ "=>" ^ " ")
-                           ^ term_to_string_without_paren term 1 ^ " " ^ ":" ^ " " ^ ty_to_string ty ^ " " ^ "in")
+                       Some
+                         ("let" ^ " " ^ name ^ " " ^ ":=" ^ " "
+                         ^ (if List.is_empty arguments then ""
+                           else
+                             "fun" ^ " "
+                             ^ params_to_string_typed arguments
+                             ^ " " ^ "=>" ^ " ")
+                         ^ term_to_string_without_paren term 1
+                         ^ " " ^ ":" ^ " " ^ ty_to_string ty ^ " " ^ "in")
                    | _ -> None)
-              impl_list)
+                 impl_list)
           in
           let arg_str =
-            String.concat ~sep:(";" ^ newline_indent 1)
-            (List.map
-               ~f:(function
+            String.concat
+              ~sep:(";" ^ newline_indent 1)
+              (List.map
+                 ~f:(function
                    | LetDef (name, arguments, term, ty) ->
-                     name ^ " " ^ ":=" ^ " " ^ "(" ^ "@" ^ name ^ ")"
+                       name ^ " " ^ ":=" ^ " " ^ "(" ^ "@" ^ name ^ ")"
                    | InlineDef (name, arguments, term, ty) ->
-                     name ^ " " ^ ":=" ^ " " ^ "(" ^ (if List.is_empty arguments then "" else "fun" ^ " " ^ params_to_string_typed arguments ^ " " ^ "=>" ^ " ")
-                           ^ term_to_string_without_paren term 1 ^ " " ^ ":" ^ " " ^ ty_to_string ty ^ ")")
-              impl_list)
+                       name ^ " " ^ ":=" ^ " " ^ "("
+                       ^ (if List.is_empty arguments then ""
+                         else
+                           "fun" ^ " "
+                           ^ params_to_string_typed arguments
+                           ^ " " ^ "=>" ^ " ")
+                       ^ term_to_string_without_paren term 1
+                       ^ " " ^ ":" ^ " " ^ ty_to_string ty ^ ")")
+                 impl_list)
           in
           let ty_str = ty_to_string self_ty in
           "#[global] Program Instance" ^ " " ^ ty_str ^ "_" ^ name
           ^ params_to_string_typed arguments
-          ^ " " ^ ":" ^ " " ^ name ^ " " ^ ty_list_str ^ ":="  ^ newline_indent 1
-          ^ impl_str ^ newline_indent 1
-          ^ "{|" (* ^ name ^ " " ^ ty_list_str *) ^ " " ^ arg_str ^ "|}" ^ "."
-^ fail_next_obligation
+          ^ " " ^ ":" ^ " " ^ name ^ " " ^ ty_list_str ^ ":=" ^ newline_indent 1
+          ^ impl_str ^ "{|" (* ^ name ^ " " ^ ty_list_str *)
+          ^ " " ^ arg_str ^ "|}" ^ "." ^ fail_next_obligation
       | AST.Require ([], rename) -> ""
       | AST.Require (import :: imports, rename) ->
           (* map_first_letter String.uppercase import *)
@@ -547,6 +599,10 @@ functor
           in
           "Require Import" ^ " " ^ import_name ^ "." ^ newline_indent 0
           ^ "Export" ^ " " ^ import_name ^ "."
+| AST.HintUnfold (n, Some typ) -> let ty_str = ty_to_string typ in
+"Hint Unfold" ^ " " ^ ty_str ^ "_" ^ n ^ "."
+| AST.HintUnfold (n, None) -> 
+"Hint Unfold" ^ " " ^ n ^ "."
 
     and definition_value_to_equation_definition
         ((name, arguments, term, ty) : AST.definition_type) =

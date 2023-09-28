@@ -66,6 +66,8 @@ open AST
 
 module CoqLibrary : Library = struct
   module Notation = struct
+    let additional_identifier : string = ""
+
     let int_repr (x : string) (i : string) : string =
       "(@repr" ^ " " ^ "WORDSIZE" ^ x ^ " " ^ i ^ ")"
 
@@ -75,6 +77,8 @@ module CoqLibrary : Library = struct
       ^ " " ^ "in" ^ newline_indent depth ^ body
 
     let let_mut_stmt = let_stmt
+    let let_bind_stmt = let_stmt (* TODO *)
+    let let_bind_mut_stmt = let_stmt
     let type_str : string = "Type"
     let bool_str : string = "bool"
     let unit_str : string = "unit"
@@ -307,7 +311,7 @@ struct
         let arity, op = Map.find_exn operators x in
         if List.length args <> arity then
           Error.assertion_failure span "expr: function application: bad arity";
-        let args = List.map ~f:pexpr args in
+        let args = List.map ~f:(fun x -> C.AST.Value (pexpr x, true)) args in
         C.AST.AppFormat (op, args)
     (* | App { f = { e = GlobalVar x }; args } -> *)
     (*    __TODO_term__ span "GLOBAL APP?" *)
@@ -321,7 +325,7 @@ struct
             pexpr then_,
             Option.value_map else_ ~default:(C.AST.Literal "()") ~f:pexpr )
     | Array l -> C.AST.Array (List.map ~f:pexpr l)
-    | Let { lhs; rhs; body; monadic } ->
+    | Let { lhs; rhs; body; monadic  } ->
         C.AST.Let
           {
             pattern = ppat lhs;
@@ -332,6 +336,10 @@ struct
             value = pexpr rhs;
             body = pexpr body;
             value_typ = pty span lhs.typ;
+            monad_typ = Option.map ~f:(fun (m, _) -> match m with
+                | MException (typ) -> C.AST.Exception (pty span typ)
+                | MResult (typ) -> C.AST.Result (pty span typ)
+                | MOption -> C.AST.Option) monadic;
           }
     | EffectAction _ -> __TODO_term__ span "monadic action"
     | Match { scrutinee; arms } ->
@@ -345,9 +353,9 @@ struct
         pexpr e
     | Construct { constructor = `TupleCons n; fields; base } ->
         C.AST.Tuple (List.map ~f:(snd >> pexpr) fields)
-    | Construct { is_record = true; constructor; fields; base } ->
+    | Construct { is_record = true; constructor; fields; base } -> (* TODO: handle base *)
         C.AST.RecordConstructor
-          ( C.AST.Var (pglobal_ident constructor),
+          ( pglobal_ident constructor,
             List.map ~f:(fun (f, e) -> (pglobal_ident f, pexpr e)) fields )
     | Construct { is_record = false; constructor; fields = [ (f, e) ]; base } ->
         C.AST.App (C.AST.Var (pglobal_ident constructor), [ pexpr e ])
@@ -401,7 +409,7 @@ struct
         ]
     | TyAlias { name; generics; ty } ->
         [
-          C.AST.Notation (pconcrete_ident name ^ "_t", C.AST.Type (pty span ty));
+          C.AST.Notation ("'" ^ pconcrete_ident name ^ "_t" ^ "'", C.AST.Type (pty span ty));
         ]
     (* record *)
     | Type { name; generics; variants = [ v ]; is_struct = true } ->
@@ -451,7 +459,7 @@ struct
                 in
                 [
                   C.AST.Notation
-                    ( o.type_name ^ "_t",
+                    ( "'" ^ o.type_name ^ "_t" ^ "'",
                       C.AST.Type
                         (C.AST.NatMod
                            ( o.type_of_canvas,
@@ -472,7 +480,7 @@ struct
                 in
                 [
                   C.AST.Notation
-                    ( o.bytes_name ^ "_t",
+                    ( "'" ^ o.bytes_name ^ "_t" ^ "'",
                       C.AST.Type
                         (C.AST.ArrayTy
                            ( C.AST.Int { size = C.AST.U8; signed = false },
@@ -492,7 +500,7 @@ struct
                 in
                 [
                   C.AST.Notation
-                    ( o.integer_name ^ "_t",
+                    ( "'" ^ o.integer_name ^ "_t" ^ "'",
                       C.AST.Type
                         (C.AST.ArrayTy
                            ( C.AST.Int { size = C.AST.U8; signed = false },
@@ -516,7 +524,7 @@ struct
                       (* int_of_string *) o.size )
                 in
                 [
-                  C.AST.Notation (o.bytes_name ^ "_t", C.AST.Type typ);
+                  C.AST.Notation ("'" ^ o.bytes_name ^ "_t" ^ "'", C.AST.Type typ);
                   C.AST.Definition
                     ( o.bytes_name,
                       [],
@@ -546,7 +554,7 @@ struct
                 in
                 [
                   C.AST.Notation
-                    ( o.array_name ^ "_t",
+                    ( "'" ^ o.array_name ^ "_t" ^ "'",
                       C.AST.Type
                         (C.AST.ArrayTy
                            ( C.AST.Int { size = typ; signed = false },

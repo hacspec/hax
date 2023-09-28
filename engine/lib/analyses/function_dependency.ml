@@ -13,7 +13,8 @@ module%inlined_contents Make (F : Features.T) = struct
 
   type id_order = int
 
-  module Uprint = (Ast_utils.MakeWithNamePolicy (F) (Concrete_ident.DefaultNamePolicy))
+  module Uprint =
+    Ast_utils.MakeWithNamePolicy (F) (Concrete_ident.DefaultNamePolicy)
 
   let analyse_function_body (x : A.expr) :
     (* (Concrete_ident.t) *)
@@ -21,35 +22,44 @@ module%inlined_contents Make (F : Features.T) = struct
     (* U.Reducers.collect_global_idents *)
     let collect_global_idents =
       (object
-        inherit ['self] A.item_reduce as _super
-        inherit [_] U.Sets.Global_ident.monoid as m
-        method visit_t _ _ = m#zero
-        method visit_mutability (f : unit -> _ -> _) () mu =
-          match mu with
-          | Mutable wit -> f () wit
-          | _ -> m#zero
+         inherit ['self] A.item_reduce as _super
+         inherit [_] U.Sets.Global_ident.monoid as m
+         method visit_t _ _ = m#zero
 
-        method! visit_global_ident (_env : unit) (x : Global_ident.t) =
-          Set.singleton (module Global_ident) x
-      end)#visit_expr () x
+         method visit_mutability (f : unit -> _ -> _) () mu =
+           match mu with Mutable wit -> f () wit | _ -> m#zero
+
+         method! visit_global_ident (_env : unit) (x : Global_ident.t) =
+           Set.singleton (module Global_ident) x
+      end)
+        #visit_expr
+        () x
     in
-    (List.filter_map ~f:(function | `Projector (`Concrete cid) | `Concrete cid -> Some cid | _ -> None) (Set.to_list collect_global_idents))
+      (List.filter_map
+         ~f:(function
+           | `Projector (`Concrete cid) | `Concrete cid -> Some cid | _ -> None)
+         (Set.to_list collect_global_idents))
 
   let analyse (_ : pre_data) (items : A.item list) : analysis_data =
     let temp_list =
-       (List.concat_map ~f:(fun x ->
+      List.concat_map
+        ~f:(fun x ->
           match x.v with
-          | Fn { name; generics = _; body; params = _ } -> [(name, body)]
+          | Fn { name; generics = _; body; params = _ } ->
+              [ (name, body) ]
           | Impl { generics = _; self_ty = _; of_trait = (_name, _gen_vals); items } ->
-            List.filter_map
-              ~f:(fun w ->
+              List.filter_map
+                ~f:(fun w ->
                   match w.ii_v with
-                  | IIFn { body; params = _ } -> Some ( w.ii_ident, body )
+                  | IIFn { body; params = _ } -> Some (w.ii_ident, body)
                   | _ -> None)
-              items
+                items
           | _ -> [])
-          items)
+        items
     in
-    List.fold_left ~init:(Map.empty (module Concrete_ident)) ~f:(fun y (name, body) -> Map.set y ~key:(name) ~data:(analyse_function_body body)) temp_list
-
+    List.fold_left
+      ~init:(Map.empty (module Concrete_ident))
+      ~f:(fun y (name, body) ->
+        Map.set y ~key:name ~data:(analyse_function_body body))
+      temp_list
 end

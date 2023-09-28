@@ -237,6 +237,9 @@ struct
             | IIFn { params; body } ->
                 let* params, body = rewrite_function params body in
                 Some (B.IIFn { body; params })
+            | IIConst { body } ->
+                let* _, body = rewrite_function [] body in
+                Some (B.IIConst { body })
             | _ -> None)
             |> Option.value_or_thunk
                  ~default:(Fn.flip super#visit_impl_item' item')

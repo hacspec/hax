@@ -594,6 +594,7 @@ functor
     and impl_item' =
       | IIType of ty
       | IIFn of { body : expr; params : param list }
+      | IIConst of { body : expr }
 
     and impl_item = {
       ii_span : span;

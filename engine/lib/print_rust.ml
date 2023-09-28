@@ -445,6 +445,10 @@ module Raw = struct
         let return_type = pty span body.typ in
         !"fn " & ident & generics & pparams span params & !" -> " & return_type
         & bounds & !"{" & pexpr body & !"}"
+    | IIConst { body } ->
+      let return_type = pty span body.typ in
+      !"fn " & ident & generics & !" -> " & return_type
+      & bounds & !"{" & pexpr body & !"}"
 
   let pitem (e : item) =
     let exception NotImplemented in
