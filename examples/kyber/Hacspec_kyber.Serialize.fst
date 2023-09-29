@@ -4,7 +4,7 @@ open Core
 
 let bits_to_bytes (bits: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
     : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
-  admit ();
+  // admit ();
   let _:Prims.unit =
     if ~.(((Alloc.Vec.len_under_impl_1 bits <: usize) %. 8sz <: usize) =. 0sz <: bool)
     then
@@ -45,11 +45,12 @@ let bits_to_bytes (bits: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
   in
   bytes
 
-(*
+type t_PrimeFieldElement (m: usize) = nat
+
 let byte_encode
       (bits_per_coefficient: usize)
       (re:
-          Hacspec_lib.Ring.t_PolynomialRingElement (Hacspec_lib.Field.t_PrimeFieldElement 3329us)
+          Hacspec_lib.Ring.t_PolynomialRingElement (t_PrimeFieldElement 3329us)
             256sz)
     : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
   let _:Prims.unit =
@@ -91,4 +92,4 @@ let byte_encode
           re_bits)
   in
   bits_to_bytes re_bits
-*)
+

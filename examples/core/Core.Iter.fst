@@ -28,7 +28,7 @@ instance iterator_enumerate it {| i: iterator it |}: iterator (Core.Iter.Adapter
     fold = magic ();
     enumerate = magic ();
   }
-  
+
 open Core.Ops.Range.Range
 
 instance iterator_slice (t: eqtype): iterator (slice t) = {

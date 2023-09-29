@@ -25,4 +25,7 @@ let array_create (x: 'a) (len: usize): array 'a len =
 instance update_at_vec t: update_at (Alloc.Vec.t_Vec t ()) usize =
   magic ()
 
+let map_under_impl_23 #t #u #n (self: array t n) (f: t -> u): array u n 
+  = magic ()
+
 
