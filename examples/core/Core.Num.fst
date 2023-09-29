@@ -31,4 +31,6 @@ let to_le_bytes_under_impl_10: u128 -> array u8 16sz = magic ()
 let to_be_bytes_under_impl_10: u128 -> array u8 16sz = magic ()
 let rotate_right_under_impl_10: u128 -> u128 -> u128 = magic ()
 
+let pow_under_impl_6: u8 -> u8 -> u8 = magic ()
+
 
