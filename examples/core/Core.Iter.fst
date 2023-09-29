@@ -8,9 +8,27 @@ class iterator self = {
   size_hint: self -> option usize;
   in_range: self -> item -> Type0;
   fold: #b:Type -> s:self -> b -> (b -> i:item{in_range s i} -> b) -> b;
-  enumerate: self -> Core.Iter.Adapters.Enumerate.t_Enumerate item;
+  enumerate: self -> Core.Iter.Adapters.Enumerate.t_Enumerate self;
 }
 
+instance iterator_enumerate it {| i: iterator it |}: iterator (Core.Iter.Adapters.Enumerate.t_Enumerate it) = 
+  let open Core.Iter.Adapters.Enumerate in
+  {
+    item = (usize * i.item);
+    next = (fun {iter; count} -> 
+      let open Core.Ops in
+      let iter, opt = next iter in
+      match opt with
+      | Some value -> {iter; count = (admit (); count +. 1sz)}, Some (count, value)
+      | None -> {iter; count}, None
+    );
+    size_hint = (fun s -> i.size_hint s.iter);
+    // in_range = (fun s -> i.in_range s.iter);
+    in_range = magic ();
+    fold = magic ();
+    enumerate = magic ();
+  }
+  
 open Core.Ops.Range.Range
 
 instance iterator_slice (t: eqtype): iterator (slice t) = {
