@@ -103,6 +103,8 @@ impl NormalizePaths for PathOrDash {
 pub enum Backend {
     /// Use the F* backend
     Fstar,
+    /// Use the Semantics backend
+    Semantics,
     /// Use the Coq backend
     Coq,
     /// Use the EasyCrypt backend
@@ -114,6 +116,7 @@ impl fmt::Display for Backend {
         match self {
             Backend::Fstar => write!(f, "fstar"),
             Backend::Coq => write!(f, "coq"),
+            Backend::Semantics => write!(f, "semantics"),
             Backend::Easycrypt => write!(f, "easycrypt"),
         }
     }

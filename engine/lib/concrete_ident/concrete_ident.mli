@@ -22,7 +22,7 @@ val to_debug_string : t -> string
 type view = { crate : string; path : string list; definition : string }
 
 val map_path_strings : f:(string -> string) -> t -> t
-val matches_namespace: Types.namespace -> t -> bool
+val matches_namespace : Types.namespace -> t -> bool
 
 include module type of struct
   include Concrete_ident_sig.Make (struct

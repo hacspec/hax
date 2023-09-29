@@ -47,6 +47,7 @@ let run () : Types.output =
     Diagnostics.try_ (fun () ->
         match options.backend.backend with
         | Fstar -> run (module Fstar_backend) ()
+        | Semantics -> run (module Semantics_backend) ()
         | Coq -> run (module Coq_backend) ()
         | Easycrypt -> run (module Easycrypt_backend) ())
   in
