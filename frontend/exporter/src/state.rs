@@ -163,7 +163,7 @@ mk!(
         base: {'tcx} types::Base,
         thir: {'tcx} types::RcThir,
         mir: {'tcx} types::RcMir,
-        owner_id: {} rustc_hir::hir_id::OwnerId,
+        owner_id: {} rustc_hir::def_id::DefId,
     }
 );
 
@@ -204,9 +204,9 @@ pub fn with_owner_id<'tcx, THIR, MIR>(
     mut base: types::Base<'tcx>,
     thir: THIR,
     mir: MIR,
-    owner_id: rustc_hir::hir_id::OwnerId,
-) -> State<types::Base<'tcx>, THIR, MIR, rustc_hir::hir_id::OwnerId> {
-    base.opt_def_id = Some(owner_id.to_def_id());
+    owner_id: rustc_hir::def_id::DefId,
+) -> State<types::Base<'tcx>, THIR, MIR, rustc_hir::def_id::DefId> {
+    base.opt_def_id = Some(owner_id);
     State {
         thir,
         owner_id,
@@ -221,7 +221,7 @@ pub trait UnderOwnerState<'tcx> = BaseState<'tcx> + HasOwnerId;
 
 /// Returns a map from every implementation (`Impl`) `DefId`s to the
 /// type they implement, plus the bounds.
-pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: UnderOwnerState<'tcx>>(
+pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: BaseState<'tcx>>(
     s: &S,
 ) -> HashMap<DefId, (Ty, Vec<Predicate>)> {
     let Base {
@@ -230,7 +230,7 @@ pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: UnderOwnerState<'tcx>>(
         ..
     } = s.base();
 
-    let def_ids = exported_def_ids.as_ref().borrow();
+    let def_ids = exported_def_ids.as_ref().borrow().clone();
     let with_parents = |mut did: rustc_hir::def_id::DefId| {
         let mut acc = vec![did.clone()];
         while let Some(parent) = tcx.opt_parent(did) {
@@ -257,6 +257,7 @@ pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: UnderOwnerState<'tcx>>(
             )
         })
         .map(|did| {
+            let s = &with_owner_id(s.base(), (), (), did);
             let ty = tcx.type_of(did).subst_identity().sinto(s);
             let bounds = tcx
                 .predicates_of(did)

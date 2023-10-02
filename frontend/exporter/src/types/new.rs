@@ -21,7 +21,7 @@ lazy_static::lazy_static! {
 }
 
 impl ItemAttributes {
-    pub fn from_owner_id<'tcx, S: UnderOwnerState<'tcx>>(
+    pub fn from_owner_id<'tcx, S: BaseState<'tcx>>(
         s: &S,
         oid: rustc_hir::hir_id::OwnerId,
     ) -> ItemAttributes {
@@ -40,6 +40,16 @@ impl ItemAttributes {
                 .map(attrs_of)
                 .flatten()
                 .collect(),
+        }
+    }
+    pub fn from_def_id<'tcx, S: BaseState<'tcx>>(
+        s: &S,
+        did: rustc_span::def_id::DefId,
+    ) -> ItemAttributes {
+        if let Some(def_id) = did.as_local() {
+            Self::from_owner_id(s, rustc_hir::hir_id::OwnerId { def_id })
+        } else {
+            return ItemAttributes::new();
         }
     }
 }

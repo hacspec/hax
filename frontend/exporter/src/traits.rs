@@ -205,7 +205,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
             ImplSource::Param(nested, _constness) => {
                 use search_clause::TraitPredicateExt;
                 let tcx = s.base().tcx;
-                let predicates = &tcx.predicates_defined_on_or_above(s.owner_id().to_def_id());
+                let predicates = &tcx.predicates_defined_on_or_above(s.owner_id());
                 let Some((predicate, path)) = predicates.into_iter().find_map(|(predicate, _)| {
                     predicate
                         .to_opt_poly_trait_pred()
@@ -216,6 +216,8 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                         })
                         .map(|path| (predicate, path))
                 }) else {
+                    eprintln!("implsource::param {:#?}", self);
+                    eprintln!("predicates {:#?}", predicates);
                     return ImplExprAtom::Todo(format!("implsource::param \n\n{:#?}", self))
                         .with_args(impl_exprs(s, &nested));
                 };

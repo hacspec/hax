@@ -118,7 +118,7 @@ pub enum AttrStyle {
 #[derive(
     AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
-#[args(<'slt, S: UnderOwnerState<'slt>>, from: rustc_ast::ast::Attribute, state: S as gstate)]
+#[args(<'slt, S: BaseState<'slt>>, from: rustc_ast::ast::Attribute, state: S as gstate)]
 pub struct Attribute {
     pub kind: AttrKind,
     #[map(x.as_usize())]
@@ -2235,7 +2235,8 @@ pub type ThirBody = Expr;
 
 impl<'x, 'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_hir::Ty<'x> {
     fn sinto(self: &rustc_hir::Ty<'x>, s: &S) -> Ty {
-        let ctx = rustc_hir_analysis::collect::ItemCtxt::new(s.base().tcx, s.owner_id().def_id);
+        let ctx =
+            rustc_hir_analysis::collect::ItemCtxt::new(s.base().tcx, s.owner_id().expect_local());
         ctx.to_ty(self).sinto(s)
     }
 }
@@ -2330,7 +2331,7 @@ pub struct AnonConst<Body: IsBody> {
     pub hir_id: HirId,
     pub def_id: GlobalIdent,
     #[map({
-        body_from_id::<Body, _>(*x, &with_owner_id(s.base(), (), (), hir_id.owner))
+        body_from_id::<Body, _>(*x, &with_owner_id(s.base(), (), (), hir_id.owner.to_def_id()))
     })]
     pub body: Body,
 }
@@ -2435,7 +2436,7 @@ pub struct Impl<Body: IsBody> {
     pub constness: Constness,
     pub generics: Generics<Body>,
     #[map({
-        s.base().tcx.impl_trait_ref(s.owner_id().to_def_id()).sinto(s)
+        s.base().tcx.impl_trait_ref(s.owner_id()).sinto(s)
     })]
     pub of_trait: Option<TraitRef>,
     pub self_ty: Ty,
@@ -2662,18 +2663,9 @@ impl<'a, S: UnderOwnerState<'a>, Body: IsBody> SInto<S, TraitItem<Body>>
     for rustc_hir::TraitItemRef
 {
     fn sinto(&self, s: &S) -> TraitItem<Body> {
-        let owner_id = self.id.owner_id;
-        let s = &State {
-            base: crate::state::Base {
-                opt_def_id: Some(owner_id.to_def_id()),
-                ..s.base()
-            },
-            thir: (),
-            mir: (),
-            owner_id,
-        };
+        let s = with_owner_id(s.base(), (), (), self.id.owner_id.to_def_id());
         let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
-        tcx.hir().trait_item(self.clone().id).sinto(s)
+        tcx.hir().trait_item(self.clone().id).sinto(&s)
     }
 }
 
@@ -2976,27 +2968,31 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, GenericBounds> for rustc_hir::Gene
         // According to what kind of node we are looking at, we should
         // either call `predicates_of` or `item_bounds`
         let use_item_bounds = {
-            let hir_id = tcx.hir().local_def_id_to_hir_id(s.owner_id().def_id);
-            let node = tcx.hir().get(hir_id);
-            use rustc_hir as hir;
-            matches!(
-                node,
-                hir::Node::TraitItem(hir::TraitItem {
-                    kind: hir::TraitItemKind::Type(..),
-                    ..
-                }) | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { .. }),
-                    ..
-                })
-            )
+            if let Some(oid) = s.owner_id().as_local() {
+                let hir_id = tcx.hir().local_def_id_to_hir_id(oid);
+                let node = tcx.hir().get(hir_id);
+                use rustc_hir as hir;
+                matches!(
+                    node,
+                    hir::Node::TraitItem(hir::TraitItem {
+                        kind: hir::TraitItemKind::Type(..),
+                        ..
+                    }) | hir::Node::Item(hir::Item {
+                        kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { .. }),
+                        ..
+                    })
+                )
+            } else {
+                false
+            }
         };
 
         let predicates: Vec<_> = if use_item_bounds {
-            let list = tcx.item_bounds(s.owner_id().to_def_id()).subst_identity();
+            let list = tcx.item_bounds(s.owner_id()).subst_identity();
             let span = list.default_span(tcx);
             list.into_iter().map(|x| (x, span)).collect()
         } else {
-            tcx.predicates_of(s.owner_id().to_def_id())
+            tcx.predicates_of(s.owner_id())
                 .predicates
                 .into_iter()
                 .cloned()
@@ -3040,7 +3036,7 @@ pub struct Item<Body: IsBody> {
 impl<'tcx, S: BaseState<'tcx>, Body: IsBody> SInto<S, Item<Body>> for rustc_hir::Item<'tcx> {
     fn sinto(&self, s: &S) -> Item<Body> {
         let name: String = self.ident.name.to_ident_string();
-        let s = &with_owner_id(s.base(), (), (), self.owner_id);
+        let s = &with_owner_id(s.base(), (), (), self.owner_id.to_def_id());
         let owner_id: DefId = self.owner_id.sinto(s);
         let def_id = Path::from(owner_id.clone())
             .ends_with(&[name])
