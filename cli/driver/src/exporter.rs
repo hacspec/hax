@@ -382,12 +382,16 @@ impl Callbacks for ExtractionCallbacks {
                     }
                 }
                 ExporterCommand::Backend(backend) => {
-                    let (spans, _def_ids, _impl_infos, converted_items) =
+                    let (spans, _def_ids, impl_infos, converted_items) =
                         convert_thir(&self.clone().into(), self.macro_calls.clone(), tcx);
 
                     let engine_options = hax_cli_options_engine::EngineOptions {
                         backend: backend.clone(),
                         input: converted_items,
+                        impl_infos: impl_infos
+                            .iter()
+                            .map(|(k, (t, p))| (k.clone(), (t.clone(), p.clone())))
+                            .collect(),
                     };
                     let mut engine_subprocess = find_hax_engine()
                         .stdin(std::process::Stdio::piped())
@@ -404,7 +408,7 @@ impl Callbacks for ExtractionCallbacks {
                         })
                         .unwrap();
 
-                    serde_json::to_writer(
+                    serde_json::to_writer::<_, hax_cli_options_engine::EngineOptions>(
                         std::io::BufWriter::new(
                             engine_subprocess
                                 .stdin
