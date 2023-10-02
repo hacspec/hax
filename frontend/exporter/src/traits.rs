@@ -206,23 +206,22 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
             ImplSource::Param(nested, _constness) => {
                 use search_clause::TraitPredicateExt;
                 let tcx = s.base().tcx;
-                let predicates = &tcx.predicates_defined_on_or_above(s.owner_id().to_def_id());
-                let Some((predicate, path)) = predicates
-                    .into_iter()
-                    .find_map(|(predicate, _)| {
-                        predicate
-                            .to_opt_poly_trait_pred()
-                            .map(|poly_trait_predicate| poly_trait_predicate)
-                            .and_then(|poly_trait_predicate| poly_trait_predicate.no_bound_vars())
-                            .and_then(|trait_predicate| {
-                                trait_predicate.path_to(s, self.clone(), param_env)
-                            })
-                            .map(|path| (predicate, path))
-                    }) else {
-                        eprintln!("implsource::param {:#?}", self);
-                        eprintln!("predicates {:#?}", predicates);
-                        return ImplExprAtom::Todo(format!("implsource::param \n\n{:#?}", self)).with_args(impl_exprs(s, &nested));
-                    };
+                let predicates = &tcx.predicates_defined_on_or_above(s.owner_id());
+                let Some((predicate, path)) = predicates.into_iter().find_map(|(predicate, _)| {
+                    predicate
+                        .to_opt_poly_trait_pred()
+                        .map(|poly_trait_predicate| poly_trait_predicate)
+                        .and_then(|poly_trait_predicate| poly_trait_predicate.no_bound_vars())
+                        .and_then(|trait_predicate| {
+                            trait_predicate.path_to(s, self.clone(), param_env)
+                        })
+                        .map(|path| (predicate, path))
+                }) else {
+                    eprintln!("implsource::param {:#?}", self);
+                    eprintln!("predicates {:#?}", predicates);
+                    return ImplExprAtom::Todo(format!("implsource::param \n\n{:#?}", self))
+                        .with_args(impl_exprs(s, &nested));
+                };
                 // .s_expect(s, format!("implsource::param \n\n{:#?}", self).as_str());
                 let clause_id: u64 = clause_id_of_predicate(*predicate);
                 ImplExprAtom::LocalBound {
