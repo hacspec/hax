@@ -75,6 +75,8 @@
               rustfmt
               rustc
 
+              pkgs.cargo-release
+
               (pkgs.stdenv.mkDerivation {
                 name = "rebuild-script";
                 phases = ["installPhase"];

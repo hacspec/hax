@@ -282,7 +282,7 @@ pub enum Command {
 pub const RUST_SRC_HASH: &str = env!("HAX_RUST_SRC_HASH");
 
 #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
-#[command(author, version = concat!("commit=", env!("HAX_GIT_COMMIT_HASH"), " ", "describe=", env!("HAX_GIT_DESCRIBE"), " ", "rust_src_hash=", env!("HAX_RUST_SRC_HASH")), name = "hax", about, long_about = None)]
+#[command(author, version = concat!("commit=", env!("HAX_GIT_COMMIT_HASH"), "\n", "describe=", env!("HAX_GIT_DESCRIBE"), "\n", "rust_src_hash=", env!("HAX_RUST_SRC_HASH"), "\n", "version=", env!("CARGO_PKG_VERSION")), name = "hax", about, long_about = None)]
 pub struct Options {
     /// Replace the expansion of each macro matching PATTERN by their
     /// invocation. PATTERN denotes a rust path (i.e. [A::B::c]) in
