@@ -2123,6 +2123,14 @@ pub enum ExprKind {
         def_id: GlobalIdent,
         substs: Vec<GenericArg>,
         user_ty: Option<CanonicalUserType>,
+        #[not_in_source]
+        #[value({
+            let tcx = gstate.base().tcx;
+            tcx.opt_associated_item(*def_id).as_ref().and_then(|assoc| {
+                poly_trait_ref(gstate, assoc, substs)
+            }).map(|poly_trait_ref| poly_trait_ref.impl_expr(gstate, tcx.param_env(gstate.owner_id())))
+        })]
+        r#impl: Option<ImplExpr>,
     },
     ConstParam {
         param: ParamConst,

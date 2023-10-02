@@ -252,6 +252,7 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
         let tcx = s.base().tcx;
         if is_anon_const(ucv.def, tcx) {
             TranslateUnevalRes::EvaluatedConstant(self.eval_constant(s).unwrap_or_else(|| {
+                // TODO: This is triggered when compiling using `generic_const_exprs`
                 supposely_unreachable_fatal!(s, "TranslateUneval"; {self, ucv});
             }))
         } else {
