@@ -156,7 +156,7 @@ struct
         self.fresh_id <- self.fresh_id + 1;
         {
           name = "hoist" ^ Int.to_string self.fresh_id;
-          id = LocalIdent.var_id_of_int (-1) (* todo *);
+          id = LocalIdent.mk_id Expr (-1) (* todo *);
         }
 
       let empty = { fresh_id = 0 }

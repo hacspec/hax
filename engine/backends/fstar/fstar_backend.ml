@@ -87,7 +87,7 @@ module Context = struct
   type t = { current_namespace : string * string list; items : item list }
 end
 
-let magic_id_raw_local_ident = LocalIdent.var_id_of_int (-765142)
+let magic_id_raw_local_ident = LocalIdent.mk_id Expr (-765142)
 
 module Make (Ctx : sig
   val ctx : Context.t
