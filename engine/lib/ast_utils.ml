@@ -408,7 +408,7 @@ module Make (F : Features.T) = struct
       name = prefix ^ free_suffix;
       id =
         (* TODO: freshness is local and name-only here... *)
-        LocalIdent.var_id_of_int (-1);
+        LocalIdent.mk_id Expr (-1);
     }
 
   let never_typ : ty =

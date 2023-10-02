@@ -98,21 +98,22 @@ and attrs = attr list
 
 module LocalIdent = struct
   module T : sig
+    type kind = Typ | Cnst | Expr | LILifetime
+    [@@deriving show, yojson, hash, compare, sexp, eq]
+
     type id [@@deriving show, yojson, hash, compare, sexp, eq]
 
-    val var_id_of_int : int -> id
-    val ty_param_id_of_int : int -> id
-    val const_id_of_int : int -> id
+    val mk_id : kind -> int -> id
 
     type t = { name : string; id : id }
     [@@deriving show, yojson, hash, compare, sexp, eq]
   end = struct
-    type id = Typ of int | Cnst of int | Expr of int
+    type kind = Typ | Cnst | Expr | LILifetime
     [@@deriving show, yojson, hash, compare, sexp, eq]
 
-    let var_id_of_int id = Expr id
-    let ty_param_id_of_int id = Typ id
-    let const_id_of_int id = Cnst id
+    type id = kind * int [@@deriving show, yojson, hash, compare, sexp, eq]
+
+    let mk_id kind id = (kind, id)
 
     type t = { name : string; id : id }
     [@@deriving show, yojson, hash, compare, sexp, eq]

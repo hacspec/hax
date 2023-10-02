@@ -167,7 +167,7 @@ struct
               | Either.First (place : Place.t) ->
                   let var =
                     LocalIdent.
-                      { id = var_id_of_int 0; name = "tmp" ^ Int.to_string i }
+                      { id = mk_id Expr 0; name = "tmp" ^ Int.to_string i }
                   in
                   Some (var, place_to_lhs place)
               | _ -> None
@@ -179,7 +179,7 @@ struct
             List.mapi ~f:(fun i -> to_ident_lhs i &&& to_ty_span) mutargs
           in
 
-          let out_var = LocalIdent.{ id = var_id_of_int 0; name = "out" } in
+          let out_var = LocalIdent.{ id = mk_id Expr 0; name = "out" } in
           let otype = dty f.span otype in
           let pat =
             let out =
