@@ -245,13 +245,7 @@ struct
             let span = item.ti_span in
             let ti_v =
               (match item.ti_v with
-              | TIFn ty ->
-                  let inputs, output =
-                    UB.Expect.arrow ty
-                    |> Option.value_or_thunk ~default:(fun () ->
-                           Error.assertion_failure span
-                           @@ "Expect.arrow ty: got None")
-                  in
+              | TIFn (TArrow (inputs, output)) ->
                   (* Here, we craft a dummy function so that we can
                      call `rewrite_function` *)
                   let var =
