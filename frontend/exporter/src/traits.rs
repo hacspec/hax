@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 #[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: search_clause::PathChunk<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: search_clause::PathChunk<'tcx>, state: S as tcx)]
 #[derive(
     Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
 )]
@@ -46,7 +46,8 @@ pub struct ImplExpr {
 
 mod search_clause {
     use super::SubstBinder;
-    use crate::prelude::BaseState;
+    use crate::prelude::UnderOwnerState;
+    use crate::rustc_utils::TyCtxtExtPredOrAbove;
     use rustc_middle::ty::*;
 
     fn predicates_to_trait_predicates<'tcx>(
@@ -70,7 +71,7 @@ mod search_clause {
     pub type Path<'tcx> = Vec<PathChunk<'tcx>>;
 
     #[extension_traits::extension(pub trait TraitPredicateExt)]
-    impl<'tcx, S: BaseState<'tcx>> TraitPredicate<'tcx> {
+    impl<'tcx, S: UnderOwnerState<'tcx>> TraitPredicate<'tcx> {
         fn parents_trait_predicates(self, s: &S) -> Vec<TraitPredicate<'tcx>> {
             let tcx = s.base().tcx;
             let predicates = tcx
@@ -159,7 +160,7 @@ impl From<ImplExprAtom> for ImplExpr {
     }
 }
 
-fn impl_exprs<'tcx, S: BaseState<'tcx> + HasOwnerId>(
+fn impl_exprs<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     obligations: &Vec<
         rustc_trait_selection::traits::Obligation<'tcx, rustc_middle::ty::Predicate<'tcx>>,
@@ -177,7 +178,7 @@ fn impl_exprs<'tcx, S: BaseState<'tcx> + HasOwnerId>(
 }
 
 pub trait IntoImplExpr<'tcx> {
-    fn impl_expr<S: BaseState<'tcx> + HasOwnerId>(
+    fn impl_expr<S: UnderOwnerState<'tcx>>(
         &self,
         s: &S,
         param_env: rustc_middle::ty::ParamEnv<'tcx>,
@@ -185,7 +186,7 @@ pub trait IntoImplExpr<'tcx> {
 }
 
 impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
-    fn impl_expr<S: BaseState<'tcx> + HasOwnerId>(
+    fn impl_expr<S: UnderOwnerState<'tcx>>(
         &self,
         s: &S,
         param_env: rustc_middle::ty::ParamEnv<'tcx>,
@@ -280,7 +281,7 @@ pub fn clause_id_of_predicate(predicate: rustc_middle::ty::Predicate) -> u64 {
 /// TODO: returns an Option for now, `None` means we hit the indexing
 /// bug (see https://github.com/rust-lang/rust/issues/112242).
 #[tracing::instrument(level = "trace", skip(s))]
-pub fn select_trait_candidate<'tcx, S: BaseState<'tcx>>(
+pub fn select_trait_candidate<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,

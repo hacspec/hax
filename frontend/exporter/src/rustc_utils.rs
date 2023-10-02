@@ -23,7 +23,7 @@ impl<'tcx> ty::Predicate<'tcx> {
     }
 }
 
-pub fn poly_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
+pub fn poly_trait_ref<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     assoc: &ty::AssocItem,
     substs: ty::SubstsRef<'tcx>,
@@ -34,12 +34,12 @@ pub fn poly_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
 }
 
 #[tracing::instrument(skip(s))]
-pub(crate) fn arrow_of_sig<'tcx, S: BaseState<'tcx>>(sig: &ty::PolyFnSig<'tcx>, s: &S) -> Ty {
+pub(crate) fn arrow_of_sig<'tcx, S: UnderOwnerState<'tcx>>(sig: &ty::PolyFnSig<'tcx>, s: &S) -> Ty {
     Ty::Arrow(Box::new(sig.sinto(s)))
 }
 
 #[tracing::instrument(skip(s))]
-pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
+pub(crate) fn get_variant_information<'s, S: UnderOwnerState<'s>>(
     adt_def: &ty::AdtDef<'s>,
     variant_index: rustc_abi::VariantIdx,
     s: &S,
@@ -143,7 +143,7 @@ pub fn translate_span(span: rustc_span::Span, sess: &rustc_session::Session) -> 
 }
 
 #[tracing::instrument(skip(s))]
-pub(crate) fn get_param_env<'tcx, S: BaseState<'tcx>>(s: &S) -> ty::ParamEnv<'tcx> {
+pub(crate) fn get_param_env<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> ty::ParamEnv<'tcx> {
     match s.base().opt_def_id {
         Some(id) => s.base().tcx.param_env(id),
         None => ty::ParamEnv::empty(),
@@ -206,7 +206,7 @@ pub(crate) fn macro_invocation_of_raw_mac_invocation<'t, S: BaseState<'t>>(
 }
 
 #[tracing::instrument(skip(state))]
-pub(crate) fn macro_invocation_of_span<'t, S: BaseState<'t>>(
+pub(crate) fn macro_invocation_of_span<'t, S: UnderOwnerState<'t>>(
     span: rustc_span::Span,
     state: &S,
 ) -> Option<MacroInvokation> {
@@ -256,14 +256,15 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
         .into_iter()
         .map(|(mac, items)| match mac.0 {
             Some((macro_ident, expn_data)) => {
-                let owner_id = items.into_iter().map(|x| x.owner_id).next().s_unwrap(s);
-                // owner_id.reduce()
+                let owner_id: rustc_hir::hir_id::OwnerId =
+                    items.into_iter().map(|x| x.owner_id).next().s_unwrap(s);
                 let invocation =
                     macro_invocation_of_raw_mac_invocation(&macro_ident, &expn_data, s);
                 let span = expn_data.call_site.sinto(s);
+                let owner_id: DefId = owner_id.sinto(s);
                 vec![Item {
                     def_id: None,
-                    owner_id: owner_id.sinto(s),
+                    owner_id,
                     kind: ItemKind::MacroInvokation(invocation),
                     span,
                     vis_span: rustc_span::DUMMY_SP.sinto(s),
