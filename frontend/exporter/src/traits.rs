@@ -14,7 +14,7 @@ pub enum ImplExprPathChunk {
     Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
 )]
 pub enum ImplExprAtom {
-    CurrentSelf,
+    // CurrentSelf,
     Concrete {
         id: GlobalIdent,
         generics: Vec<GenericArg>,
@@ -75,11 +75,9 @@ mod search_clause {
         fn parents_trait_predicates(self, s: &S) -> Vec<TraitPredicate<'tcx>> {
             let tcx = s.base().tcx;
             let predicates = tcx
-                .predicates_defined_on(self.def_id())
-                .predicates
+                .predicates_defined_on_or_above(self.def_id())
                 .into_iter()
-                .map(|(predicate, _)| predicate)
-                .copied();
+                .map(|(predicate, _)| predicate);
             predicates_to_trait_predicates(tcx, predicates, self.trait_ref.substs).collect()
         }
         fn associated_items_trait_predicates(
@@ -208,7 +206,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
             ImplSource::Param(nested, _constness) => {
                 use search_clause::TraitPredicateExt;
                 let tcx = s.base().tcx;
-                let predicates = tcx.predicates_defined_on(s.owner_id()).predicates;
+                let predicates = &tcx.predicates_defined_on_or_above(s.owner_id().to_def_id());
                 let Some((predicate, path)) = predicates
                     .into_iter()
                     .find_map(|(predicate, _)| {
@@ -221,6 +219,8 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                             })
                             .map(|path| (predicate, path))
                     }) else {
+                        eprintln!("implsource::param {:#?}", self);
+                        eprintln!("predicates {:#?}", predicates);
                         return ImplExprAtom::Todo(format!("implsource::param \n\n{:#?}", self)).with_args(impl_exprs(s, &nested));
                     };
                 // .s_expect(s, format!("implsource::param \n\n{:#?}", self).as_str());

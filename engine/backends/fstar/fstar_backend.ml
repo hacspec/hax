@@ -65,6 +65,8 @@ module FStarNamePolicy = struct
 
   [@@@ocamlformat "disable"]
 
+  let index_field_transform index = "_" ^ index
+
   let reserved_words = Hash_set.of_list (module String) ["attributes";"noeq";"unopteq";"and";"assert";"assume";"begin";"by";"calc";"class";"default";"decreases";"effect";"eliminate";"else";"end";"ensures";"exception";"exists";"false";"friend";"forall";"fun";"λ";"function";"if";"in";"include";"inline";"inline_for_extraction";"instance";"introduce";"irreducible";"let";"logic";"match";"returns";"as";"module";"new";"new_effect";"layered_effect";"polymonadic_bind";"polymonadic_subcomp";"noextract";"of";"open";"opaque";"private";"quote";"range_of";"rec";"reifiable";"reify";"reflectable";"requires";"set_range_of";"sub_effect";"synth";"then";"total";"true";"try";"type";"unfold";"unfoldable";"val";"when";"with";"_";"__SOURCE_FILE__";"__LINE__";"match";"if";"let";"and"]
 end
 
@@ -222,6 +224,8 @@ struct
       (c Core__cmp__PartialEq__ne, (2, "<>."));
       (c Core__cmp__PartialOrd__ge, (2, ">=."));
       (c Core__cmp__PartialOrd__gt, (2, ">."));
+      (`Primitive (LogicalOp And), (2, "&&"));
+      (`Primitive (LogicalOp Or), (2, "||"));
     ]
     |> Map.of_alist_exn (module Global_ident)
 
@@ -256,7 +260,8 @@ struct
     | TArray { typ; length } ->
         F.mk_e_app (F.term_of_lid [ "array" ]) [ pty span typ; pexpr length ]
     | TParam i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident i)
-    | TProjectedAssociatedType s -> F.term @@ F.AST.Wild
+    | TAssociatedType s -> F.term @@ F.AST.Wild
+    | TOpaque s -> F.term @@ F.AST.Wild
     | _ -> .
 
   and pgeneric_value span (g : generic_value) =
@@ -389,8 +394,8 @@ struct
     | Let { lhs; rhs; body; monadic = None } ->
         let p =
           (* TODO: temp patch that remove annotation when we see an associated type *)
-          if [%matches? TProjectedAssociatedType _] @@ U.remove_tuple1 lhs.typ
-          then ppat lhs
+          if [%matches? TAssociatedType _] @@ U.remove_tuple1 lhs.typ then
+            ppat lhs
           else
             F.pat @@ F.AST.PatAscribed (ppat lhs, (pty lhs.span lhs.typ, None))
         in
@@ -465,14 +470,13 @@ struct
   let rec pgeneric_constraint span (nth : int) (c : generic_constraint) =
     match c with
     | GCLifetime _ -> .
-    | GCType { typ; implements } ->
+    | GCType { typ; implements; id } ->
         let implements : trait_ref = implements in
         let trait = F.term @@ F.AST.Name (pconcrete_ident implements.trait) in
         let args = List.map ~f:(pgeneric_value span) implements.args in
         let tc = F.mk_e_app trait (*pty typ::*) args in
         F.pat
-        @@ F.AST.PatAscribed
-             (F.pat_var_tcresolve @@ Some ("__" ^ string_of_int nth), (tc, None))
+        @@ F.AST.PatAscribed (F.pat_var_tcresolve @@ Some ("i" ^ id), (tc, None))
 
   let rec pgeneric_param_bd span (p : generic_param) =
     let ident = p.ident in
@@ -490,11 +494,6 @@ struct
     match (pgeneric_param_bd span p).b with
     | Annotated (ident, _) -> ident
     | _ -> failwith "pgeneric_param_ident"
-
-  (* let rec ptrait_ref span (typ : F.AST.term) (trait_ref : trait_ref) = *)
-  (*   let trait = F.term @@ F.AST.Name (pconcrete_ident implements.trait) in *)
-  (*   let args = List.map ~f:(pgeneric_value span) implements.args in *)
-  (*   F.mk_e_app trait args *)
 
   let rec pgeneric_constraint_type span (c : generic_constraint) =
     match c with
@@ -857,7 +856,7 @@ struct
                     (* in *)
                     (F.id name, None, [], t)
                     :: List.map
-                         ~f:(fun { trait; args; bindings = _ } ->
+                         ~f:(fun { trait; args } ->
                            let base =
                              F.term @@ F.AST.Name (pconcrete_ident trait)
                            in
@@ -892,8 +891,9 @@ struct
         let d = F.AST.Tycon (false, true, [ tcdef ]) in
         [ `Item { d; drange = F.dummyRange; quals = []; attrs = [] } ]
     | Impl { generics; self_ty = _; of_trait = trait, generic_args; items } ->
-        (* this unique name is stupid, we have disambiguators... And things will be refered differently! very stupid, TODO *)
-        let unique_name_todo = "impl_" ^ Int.to_string ([%hash: item] e) in
+        let unique_name_todo =
+          U.Concrete_ident_view.to_definition_name e.ident
+        in
         let pat = F.pat @@ F.AST.PatVar (F.id unique_name_todo, None, []) in
         let pat =
           F.pat
@@ -939,7 +939,9 @@ struct
           else fields
         in
         let body = F.term @@ F.AST.Record (None, fields) in
-        F.decls @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
+        let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
+        F.decls ~quals:[ tcinst ]
+        @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
     | HaxError details ->
         [
           `Comment
@@ -1053,7 +1055,7 @@ let apply_phases (bo : BackendOptions.t) (items : Ast.Rust.item list) :
   in
   let items =
     TransformToInputLanguage.ditems items
-    |> List.map ~f:U.Mappers.add_typ_ascription
+    (* |> List.map ~f:U.Mappers.add_typ_ascription *)
     (* |> DepGraph.name_me *)
   in
   items

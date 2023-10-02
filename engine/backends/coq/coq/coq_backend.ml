@@ -181,9 +181,10 @@ struct
         C.AST.ArrayTy (pty span typ, "TODO: Int.to_string length")
     | TSlice { ty; _ } -> C.AST.SliceTy (pty span ty)
     | TParam i -> C.AST.Name i.name
-    | TProjectedAssociatedType s ->
-        C.AST.Wild
-        (* __TODO_ty__ span ("proj:assoc:type" ^ s) *)
+    | TAssociatedType _ | TOpaque _ -> __TODO_ty__ span "pty: TAssociatedType/TOpaque"
+    (* | TAssociatedType s -> *)
+    (*     C.AST.Wild *)
+    (*     (\* __TODO_ty__ span ("proj:assoc:type" ^ s) *\) *)
         (* failwith "proj:assoc:type" *)
     | _ -> .
 

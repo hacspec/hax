@@ -130,6 +130,16 @@ module Make (F : Features.T) = struct
           expr e
       end
 
+    (* let rename_generic_constraints = *)
+    (*   object *)
+    (*     inherit [_] item_map as _super *)
+    (*     method visit_t () x = x *)
+    (*     method visit_mutability _ () m = m *)
+
+    (*     method! visit_GCType () { typ; implements; id } = *)
+    (*       { typ; implements; id } *)
+    (*   end *)
+
     let rename_local_idents (f : local_ident -> local_ident) =
       object
         inherit [_] item_map as _super
