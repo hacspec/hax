@@ -76,8 +76,8 @@ module Make (Opts : OPTS) : MakeT = struct
   let def_id kind (def_id : Thir.def_id) : global_ident =
     `Concrete (Concrete_ident.of_def_id kind def_id)
 
-  let local_ident (ident : Thir.local_ident) : local_ident =
-    { name = ident.name; id = LocalIdent.var_id_of_int 123 (* todo! *) }
+  let local_ident kind (ident : Thir.local_ident) : local_ident =
+    { name = ident.name; id = LocalIdent.mk_id kind 123 (* todo! *) }
 
   let int_ty_to_size : Thir.int_ty -> size = function
     | Isize -> SSize
@@ -501,7 +501,7 @@ module Make (Opts : OPTS) : MakeT = struct
         | AssignOp { lhs; op; rhs } ->
             let lhs = c_expr lhs in
             c_expr_assign lhs @@ c_binop op lhs (c_expr rhs) span typ
-        | VarRef { id } -> LocalVar (local_ident id)
+        | VarRef { id } -> LocalVar (local_ident Expr id)
         | Field { lhs; field } ->
             let lhs = c_expr lhs in
             let projector =
@@ -529,7 +529,7 @@ module Make (Opts : OPTS) : MakeT = struct
                 args = [ lhs ];
               }
         | GlobalName { id } -> GlobalVar (def_id Value id)
-        | UpvarRef { var_hir_id = id; _ } -> LocalVar (local_ident id)
+        | UpvarRef { var_hir_id = id; _ } -> LocalVar (local_ident Expr id)
         | Borrow { arg; borrow_kind = kind } ->
             let e' = c_expr arg in
             let kind = c_borrow_kind e.span kind in
@@ -559,7 +559,7 @@ module Make (Opts : OPTS) : MakeT = struct
             LocalVar
               {
                 name = id.name;
-                id = LocalIdent.const_id_of_int (MyInt64.to_int_exn id.index);
+                id = LocalIdent.mk_id Cnst (MyInt64.to_int_exn id.index);
               }
         | Repeat { value; count } ->
             let value = c_expr value in
@@ -739,7 +739,7 @@ module Make (Opts : OPTS) : MakeT = struct
             in
             let typ = c_ty pat.span ty in
             let mode = c_binding_mode pat.span mode in
-            let var = local_ident var in
+            let var = local_ident Expr var in
             PBinding { mut; mode; var; typ; subpat }
         | Variant { info; subpatterns; _ } ->
             let name =
@@ -884,11 +884,7 @@ module Make (Opts : OPTS) : MakeT = struct
           TOpaque (Concrete_ident.of_def_id Type def_id)
       | Param { index; name } ->
           (* TODO: [id] might not unique *)
-          TParam
-            {
-              name;
-              id = LocalIdent.ty_param_id_of_int (MyInt64.to_int_exn index);
-            }
+          TParam { name; id = LocalIdent.mk_id Typ (MyInt64.to_int_exn index) }
       | Error -> unimplemented [ span ] "type Error"
       | Dynamic _ -> unimplemented [ span ] "type Dynamic"
       | Generator _ -> unimplemented [ span ] "type Generator"
@@ -924,14 +920,19 @@ module Make (Opts : OPTS) : MakeT = struct
 
     let c_generic_param (param : Thir.generic_param) : generic_param =
       let ident =
+        let kind =
+          match (param.kind : Thir.generic_param_kind) with
+          | Lifetime _ -> LocalIdent.LILifetime
+          | Type _ -> LocalIdent.Typ
+          | Const _ -> LocalIdent.Cnst
+        in
         match param.name with
         | Fresh ->
             (* fail with ("[Fresh] ident? " ^ Thir.show_generic_param param) *)
             (* TODO might be wrong to just have a wildcard here *)
-            ({ name = "_"; id = LocalIdent.ty_param_id_of_int 123 }
-              : local_ident)
+            ({ name = "_"; id = LocalIdent.mk_id kind 123 } : local_ident)
         | Error -> assertion_failure [ param.span ] "[Error] ident"
-        | Plain n -> local_ident n
+        | Plain n -> local_ident kind n
       in
       let kind =
         match (param.kind : Thir.generic_param_kind) with
@@ -1183,7 +1184,7 @@ module Make (Opts : OPTS) : MakeT = struct
           in
           let { params; constraints } = c_generics generics in
           let self =
-            let id = LocalIdent.ty_param_id_of_int 0 (* todo *) in
+            let id = LocalIdent.mk_id Typ 0 (* todo *) in
             let ident = LocalIdent.{ name = "Self"; id } in
             let kind = GPType { default = None } in
             { ident; span; attrs = []; kind }
