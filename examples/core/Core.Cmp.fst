@@ -38,7 +38,7 @@ class t_PartialOrd (v_Self: Type) (v_Rhs: Type) = {
 
 type t_Reverse t = | Reverse of t
 
-let then_under_impl x y = x
+let impl__then x y = x
 
 instance ord_u64: t_Ord u64 = magic ()
 instance ord_reverse t {| t_Ord t |}: t_Ord (t_Reverse t) = magic ()

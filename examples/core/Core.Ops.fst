@@ -80,24 +80,27 @@ instance _: add_tc SizeT.t SizeT.t = {
 }
 
 
-let ( ^. ) x y = x
-let ( /. ) = SizeT.div
-let ( %. ) = SizeT.rem  
-let ( *. ) (x y: 'a) = x
-let ( |. ) (x y: 'a) = x
-let ( ~. ) (x: 'a): 'a = x
-let ( <<. ) #a #t: a -> t -> a = magic ()
-let ( >>. ) #a #t: a -> t -> a = magic ()
-
 let ( =. ) = (=)
-let ( >=. ) (x y: 'a) = true
-let ( <=. ) (x y: 'a) = true
-let ( >. ) (x y: 'a) = true
-let ( <. ) (x y: 'a) = true
+let ( <>. ) = ( <> )
 
-let ( <>. ) (x y: 'a) = true
-let ( &. ) (x y: 'a) = x 
-let ( -. ) (x y: 'a) = x 
+open FStar.Integers
 
-let cast #a #b (x: a): b = magic ()
+let ( -. ) #w = op_Subtraction #w
+let ( ^. ) #w = ( ^^ ) #w
+
+let ( /. )  #w = ( / )  #w
+let ( %. )  #w = ( % ) #w
+let ( *. )  #w = ( * ) #w
+let ( |. )  #w = ( |^ ) #w
+let ( <<. )  #w = ( <<^ ) #w
+let ( >>. )  #w = ( >>^ ) #w
+
+let ( >=. ) #w = ( >= ) #w
+let ( <=. ) #w = ( <= ) #w
+let ( >. ) #w = ( > ) #w
+let ( <. ) #w = ( < ) #w
+let ( &. ) #w = ( &^ ) #w
+
+let cast #from #to = cast #from #to
+
 
