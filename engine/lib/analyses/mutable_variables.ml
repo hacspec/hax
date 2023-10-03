@@ -21,7 +21,8 @@ module%inlined_contents Make (F : Features.T) = struct
     Ast_utils.MakeWithNamePolicy (F) (Concrete_ident.DefaultNamePolicy)
 
   let rec analyse (func_dep : pre_data) (items : A.item list) : analysis_data =
-    let (mut_var_list, _) : (concrete_ident * (U.TypedLocalIdent.t * id_order) list) list * _ =
+    let (mut_var_list, _)
+          : (concrete_ident * (U.TypedLocalIdent.t * id_order) list) list * _ =
       (* (U.TypedLocalIdent.t * id_order) list * id_order *)
       List.fold_left
         ~f:(fun (y, count) x ->

@@ -325,7 +325,7 @@ struct
             pexpr then_,
             Option.value_map else_ ~default:(C.AST.Literal "()") ~f:pexpr )
     | Array l -> C.AST.Array (List.map ~f:pexpr l)
-    | Let { lhs; rhs; body; monadic  } ->
+    | Let { lhs; rhs; body; monadic } ->
         C.AST.Let
           {
             pattern = ppat lhs;
@@ -336,10 +336,14 @@ struct
             value = pexpr rhs;
             body = pexpr body;
             value_typ = pty span lhs.typ;
-            monad_typ = Option.map ~f:(fun (m, _) -> match m with
-                | MException (typ) -> C.AST.Exception (pty span typ)
-                | MResult (typ) -> C.AST.Result (pty span typ)
-                | MOption -> C.AST.Option) monadic;
+            monad_typ =
+              Option.map
+                ~f:(fun (m, _) ->
+                  match m with
+                  | MException typ -> C.AST.Exception (pty span typ)
+                  | MResult typ -> C.AST.Result (pty span typ)
+                  | MOption -> C.AST.Option)
+                monadic;
           }
     | EffectAction _ -> __TODO_term__ span "monadic action"
     | Match { scrutinee; arms } ->
@@ -353,7 +357,8 @@ struct
         pexpr e
     | Construct { constructor = `TupleCons n; fields; base } ->
         C.AST.Tuple (List.map ~f:(snd >> pexpr) fields)
-    | Construct { is_record = true; constructor; fields; base } -> (* TODO: handle base *)
+    | Construct { is_record = true; constructor; fields; base } ->
+        (* TODO: handle base *)
         C.AST.RecordConstructor
           ( pglobal_ident constructor,
             List.map ~f:(fun (f, e) -> (pglobal_ident f, pexpr e)) fields )
@@ -409,7 +414,8 @@ struct
         ]
     | TyAlias { name; generics; ty } ->
         [
-          C.AST.Notation ("'" ^ pconcrete_ident name ^ "_t" ^ "'", C.AST.Type (pty span ty));
+          C.AST.Notation
+            ("'" ^ pconcrete_ident name ^ "_t" ^ "'", C.AST.Type (pty span ty));
         ]
     (* record *)
     | Type { name; generics; variants = [ v ]; is_struct = true } ->
@@ -524,7 +530,8 @@ struct
                       (* int_of_string *) o.size )
                 in
                 [
-                  C.AST.Notation ("'" ^ o.bytes_name ^ "_t" ^ "'", C.AST.Type typ);
+                  C.AST.Notation
+                    ("'" ^ o.bytes_name ^ "_t" ^ "'", C.AST.Type typ);
                   C.AST.Definition
                     ( o.bytes_name,
                       [],
