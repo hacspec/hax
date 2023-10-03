@@ -47,7 +47,7 @@ module%inlined_contents Make (F : Features.T) = struct
           match x.v with
           | Fn { name; generics = _; body; params = _ } ->
               [ (name, body) ]
-          | Impl { generics = _; self_ty = _; of_trait = (_name, _gen_vals); items } ->
+          | Impl { generics = _; self_ty = _; of_trait = _ (* name, gen_vals *); items } ->
               List.filter_map
                 ~f:(fun w ->
                   match w.ii_v with

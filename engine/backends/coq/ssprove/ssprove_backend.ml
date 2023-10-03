@@ -752,7 +752,7 @@ struct
                   ( [ (* SSP.AST.Ident "{L I _ _}";  *) SSP.AST.Ident var.name ],
                     SSP.AST.App
                       ( SSP.AST.Var "ssp",
-                        [ SSP.AST.Lambda ([ ppat bpat ], (pexpr true) body) ] )
+                        [ SSP.AST.Lambda ([ ppat bpat ], SSP.AST.TypedTerm ((pexpr true) body, wrap_type_in_both "_" "_" (pty body.span body.typ))) ] )
                   );
                 (pexpr false) init;
               ] )
@@ -1574,12 +1574,10 @@ struct
                       | IIConst { body } ->
                           [
                             SSP.AST.LetDef
-                              (lift_definition_type_to_both
-                                 ( x.ii_ident,
+                                 ( pconcrete_ident x.ii_ident,
                                    [],
                                    pexpr true body,
-                                   pty span body.typ )
-                                 []);
+                                   wrap_type_in_both "(fset [])" "(fset [])" (pty span body.typ) );
                           ]
                       | IIType ty ->
                           [
