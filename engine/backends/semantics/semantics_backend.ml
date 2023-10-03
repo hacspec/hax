@@ -101,14 +101,6 @@ struct
         "TODO (global ident) tuple field"
     | _ -> .
 
-  (* let rec pliteral span (e : literal) = *)
-  (*   match e with *)
-  (*   | String s -> C.AST.Unimplemented "string" *)
-  (*   | Char c -> C.AST.Unimplemented "char" *)
-  (*   | Int { value; kind } -> C.AST.Int *)
-  (*   | Float _ -> C.AST.Unimplemented "float" *)
-  (*   | Bool b -> C.AST.Const_bool b *)
-
   let rec pty (t : ty) : C.AST.ty =
     match t with
     | TBool -> C.AST.Bool
@@ -128,13 +120,13 @@ struct
           (List.map ~f:pty inputs)
     | TFloat _ -> C.AST.Unimplemented "float"
     | TArray { typ; length } ->
-        C.AST.Product [ C.AST.List (pty typ); C.AST.Name "of size (*TODO*)" ]
+        C.AST.Array (pty typ, pexpr length)
     | TSlice { ty; _ } -> C.AST.List (pty ty)
     | TParam i -> C.AST.Name i.name
-    | TProjectedAssociatedType s -> C.AST.Wild
+    | TProjectedAssociatedType s -> C.AST.Wild (* TODO? *)
     | _ -> .
 
-  let rec ppat (p : pat) : C.AST.pat =
+  and ppat (p : pat) : C.AST.pat =
     match p.p with
     | PWild -> C.AST.WildPat
     | PAscription { typ; pat } -> C.AST.TypedPat (ppat pat, pty typ)
@@ -147,10 +139,9 @@ struct
           typ = _ (* we skip type annot here *);
         } ->
         C.AST.Ident var.name
-    | PArray { args } -> C.AST.Unimplemented "Parray?"
+    | PArray { args } -> ListPat (List.map ~f:ppat args)
     | PConstruct { name = `TupleCons 0; args = [] } -> C.AST.UnitPat
-    | PConstruct { name = `TupleCons 1; args = [ { pat } ] } ->
-        C.AST.Unimplemented "tuple 1"
+    | PConstruct { name = `TupleCons 1; args = [ { pat } ] } -> ppat pat
     | PConstruct { name = `TupleCons n; args } ->
         C.AST.ProductPat (List.map ~f:(fun { pat } -> ppat pat) args)
     | PConstruct { name; args; is_record = true } ->
@@ -159,7 +150,6 @@ struct
         C.AST.EnumPat
           (pglobal_ident name, List.map ~f:(fun p -> ppat p.pat) args)
     | PConstant { lit } -> C.AST.Unimplemented "lit"
-    (* | PDeref { subpat } -> C.AST.Unimplemented "deref" *)
     | _ -> .
 
   and pfield_pats (args : field_pat list) : (string * C.AST.pat) list =
@@ -167,7 +157,7 @@ struct
     | { field; pat } :: xs -> (pglobal_ident field, ppat pat) :: pfield_pats xs
     | _ -> []
 
-  let rec pexpr (e : expr) : C.AST.term =
+  and pexpr (e : expr) : C.AST.term =
     let span = e.span in
     match e.e with
     | Literal l -> (
@@ -180,7 +170,7 @@ struct
     | LocalVar local_ident -> C.AST.Ident local_ident.name
     | GlobalVar (`TupleCons 0)
     | Construct { constructor = `TupleCons 0; fields = [] } ->
-        C.AST.Unimplemented "Unit"
+        C.AST.UnitTerm
     | GlobalVar global_ident -> C.AST.Ident (pglobal_ident global_ident)
     | App
         {
@@ -192,31 +182,40 @@ struct
         List.fold_left ~init:(pexpr f)
           ~f:(fun y a -> C.AST.App (y, a))
           (List.map ~f:pexpr args)
-    | If { cond; then_; else_ } -> C.AST.Unimplemented "If"
+    | If { cond; then_; else_ = Some e } ->
+      C.AST.App (C.AST.Lambda
+                   [([C.AST.BoolPat true], pexpr then_);
+                    ([C.AST.BoolPat false], pexpr e)],
+                 pexpr cond)
+    | If { cond; then_; else_ = None } ->
+      C.AST.App (C.AST.Lambda
+                   [([C.AST.BoolPat true], pexpr then_)],
+                 pexpr cond)
     | Array l -> C.AST.Array (List.map ~f:pexpr l)
     | Let { lhs; rhs; body; monadic = Some monad } ->
-        C.AST.Let
-          {
-            pattern = ppat lhs;
-            value = pexpr rhs;
-            body = pexpr body;
-            value_typ = pty lhs.typ;
-          }
+      C.AST.Let
+        {
+          pattern = ppat lhs;
+          value = pexpr rhs;
+          body = pexpr body;
+          value_typ = pty lhs.typ;
+        }
     | Let { lhs; rhs; body; monadic = None } ->
-        C.AST.Let
-          {
-            pattern = ppat lhs;
-            value = pexpr rhs;
-            body = pexpr body;
-            value_typ = pty lhs.typ;
-          }
+      C.AST.Let
+        {
+          pattern = ppat lhs;
+          value = pexpr rhs;
+          body = pexpr body;
+          value_typ = pty lhs.typ;
+        }
     | EffectAction _ -> C.AST.Unimplemented "EffectAction"
-    | Match { scrutinee; arms } -> C.AST.Unimplemented "Match"
+    | Match { scrutinee; arms } ->
+      C.AST.App (C.AST.Lambda (List.map ~f:(fun {arm = { arm_pat; body }; } -> ([ppat arm_pat], pexpr body)) arms), pexpr scrutinee)
     | Ascription { e; typ } -> C.AST.Unimplemented "Ascription"
     | Construct { constructor = `TupleCons 1; fields = [ (_, e) ]; base } ->
         pexpr e
     | Construct { constructor = `TupleCons n; fields; base } ->
-        C.AST.Unimplemented "Construct n"
+        C.AST.ProductTerm (List.map ~f:(snd >> pexpr) fields, n)
     | Construct { is_record = true; constructor; fields; base } ->
         List.fold_left
           ~init:(C.AST.Ident (pglobal_ident constructor))
@@ -227,21 +226,12 @@ struct
     | Construct { constructor; fields; base } ->
         C.AST.Unimplemented "Construct default"
     | Closure { params; body } ->
-        C.AST.Lambda (List.map ~f:ppat params, pexpr body)
+        C.AST.Lambda [(List.map ~f:ppat params, pexpr body)]
     | MacroInvokation { macro; args; witness } ->
         C.AST.Unimplemented "MacroInvokation"
     | _ -> .
 
   let rec pitem (e : item) : C.AST.decl list =
-    try pitem_unwrapped e
-    with Diagnostics.SpanFreeError.Exn _ ->
-      [ C.AST.Unimplemented "item error backend" ]
-
-  and pgeneric_param span : generic_param -> _ = function
-    | { ident; kind = GPType _; _ } -> ident.name
-    | _ -> Error.unimplemented ~details:"Coq: TODO: generic_params" span
-
-  and pitem_unwrapped (e : item) : C.AST.decl list =
     let span = e.span in
     match e.v with
     | Fn { name; generics; body; params } ->
@@ -249,20 +239,28 @@ struct
           C.AST.Definition
             ( pconcrete_ident name,
               C.AST.Lambda
-                ( List.map
+                [( List.map
                     ~f:(fun { pat; typ; typ_span; attrs } ->
                       C.AST.TypedPat (ppat pat, pty typ))
                     params,
-                  pexpr body ) );
+                  pexpr body )] );
         ]
-    | TyAlias { name; generics; ty } -> [ C.AST.Unimplemented "TyAlias" ]
+    | TyAlias { name; generics; ty } -> [ C.AST.TypeDefinition (pconcrete_ident name, pty ty)  ]
+    (* record *)
     | Type { name; generics; variants = [ v ]; is_struct = true } ->
-        [ C.AST.Unimplemented " Type" ]
+        [ C.AST.TypeDefinition
+            ( pconcrete_ident name,
+              C.AST.Record (List.map ~f:(fun (name,typ,attrs) -> (pconcrete_ident name, pty typ)) v.arguments) ); ]
     (* enum *)
     | Type { name; generics; variants } -> [ C.AST.Unimplemented "Type" ]
     | IMacroInvokation { macro; argument; span } ->
-        [ C.AST.Unimplemented "IMacroInvokation" ]
-    | Use { path; is_external; rename } -> [ C.AST.Unimplemented "Use" ]
+      (match U.Concrete_ident_view.to_view macro with
+       | { crate = "hacspec_lib"; path = _; definition = name } ->
+         [ C.AST.Macro (name, split_str (String.drop_suffix (String.drop_prefix argument 1) 1) ~on:",") ]
+       | { crate; path = _; definition = name } ->
+         [C.AST.Unimplemented (crate ^ " " ^ "is" ^ " " ^ name ^ argument) ])
+    | Use { path; is_external; rename = Some name } -> [ C.AST.Import ((String.concat ~sep:" " path) ^ " " ^ "as" ^ " " ^ name) ]
+    | Use { path; is_external; rename = None } -> [ C.AST.Import (String.concat ~sep:" " path) ]
     | HaxError s -> [ C.AST.Unimplemented "HaxError" ]
     | NotImplementedYet -> [ C.AST.Unimplemented "NotImplementedYet" ]
     | Trait { name; generics; items } -> [ C.AST.Unimplemented "Trait" ]
@@ -272,16 +270,23 @@ struct
             ( pglobal_ident name,
               List.map
                 ~f:(fun x ->
-                  match x.ii_v with
-                  | IIFn { body; params } ->
+                    match x.ii_v with
+                    | IIFn { body; params = [] } ->
+                      C.AST.Definition
+                        ( x.ii_name, pexpr body )
+                    | IIFn { body; params } ->
                       C.AST.Definition
                         ( x.ii_name,
                           C.AST.Lambda
-                            ( List.map
+                            [( List.map
                                 ~f:(fun { pat; typ; typ_span } -> ppat pat)
                                 params,
-                              pexpr body ) )
-                  | _ -> C.AST.Unimplemented "impl not function")
+                              pexpr body )] )
+                  | IIType typ ->
+                    C.AST.TypeDefinition (
+                      x.ii_name,
+                      pty typ
+                    ))
                 items );
         ]
 end
@@ -299,7 +304,7 @@ let string_of_item (item : item) : string =
   let (module Print) =
     make { current_namespace = U.Concrete_ident_view.to_namespace item.ident }
   in
-  List.map ~f:C.decl_to_string @@ Print.pitem item |> String.concat ~sep:"\n"
+  List.map ~f:C.(decl_to_string ~depth:0) @@ Print.pitem item |> String.concat ~sep:"\n"
 
 let string_of_items =
   List.map ~f:string_of_item >> List.map ~f:String.strip
