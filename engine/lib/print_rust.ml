@@ -363,8 +363,7 @@ module Raw = struct
     let ( ! ) = pure span in
     match p with
     | GCLifetime _ -> !"'unk: 'unk"
-    | GCType { typ; implements; _ } ->
-        pty span typ & !":" & ptrait_ref span implements
+    | GCType { bound; _ } -> !"_:" & ptrait_ref span bound
 
   let pgeneric_constraints span (constraints : generic_constraint list) =
     if List.is_empty constraints then empty

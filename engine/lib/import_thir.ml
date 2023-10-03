@@ -9,7 +9,6 @@ module Thir = struct
   type trait_item_kind = trait_item_kind_for__decorated_for__expr_kind
   type generic_param = generic_param_for__decorated_for__expr_kind
   type generic_param_kind = generic_param_kind_for__decorated_for__expr_kind
-  type where_predicate = where_predicate_for__decorated_for__expr_kind
   type trait_item = trait_item_for__decorated_for__expr_kind
 end
 
@@ -218,7 +217,7 @@ module Make (Opts : OPTS) : MakeT = struct
     val c_generic_value : Thir.span -> Thir.generic_arg -> generic_value
     val c_generics : Thir.generics -> generics
     val c_param : Thir.span -> Thir.param -> param
-    val c_trait_item' : Thir.span -> Thir.trait_item_kind -> trait_item'
+    val c_trait_item' : Thir.trait_item -> Thir.trait_item_kind -> trait_item'
   end
 
   (* BinOp to [core::ops::*] overloaded functions *)
@@ -381,10 +380,15 @@ module Make (Opts : OPTS) : MakeT = struct
             let then_ = c_expr then' in
             let else_ = Option.map ~f:c_expr else_opt in
             If { cond; else_; then_ }
-        | Call { args; fn_span = _; impl = _; from_hir_call = _; fun'; ty = _ }
-          ->
+        | Call { args; fn_span = _; impl; from_hir_call = _; fun'; ty = _ } ->
             let args = List.map ~f:c_expr args in
-            let f = c_expr fun' in
+            let f =
+              let f = c_expr fun' in
+              match (impl, fun'.contents) with
+              | Some _, GlobalName { id } ->
+                  { f with e = GlobalVar (def_id (AssociatedItem Value) id) }
+              | _ -> f
+            in
             App { f; args }
         | Box { value } ->
             (U.call Rust_primitives__hax__box_new [ c_expr value ] span typ).e
@@ -878,7 +882,7 @@ module Make (Opts : OPTS) : MakeT = struct
           TApp { ident = `TupleType (List.length types); args = types }
       | Alias (_kind, { trait_def_id = Some (_did, impl_expr); def_id; _ }) ->
           let impl = c_impl_expr span impl_expr in
-          let item = Concrete_ident.of_def_id Type def_id in
+          let item = Concrete_ident.of_def_id (AssociatedItem Type) def_id in
           TAssociatedType { impl; item }
       | Alias (_kind, { def_id; trait_def_id = None; _ }) ->
           TOpaque (Concrete_ident.of_def_id Type def_id)
@@ -894,8 +898,45 @@ module Make (Opts : OPTS) : MakeT = struct
       | Todo _ -> unimplemented [ span ] "type Todo"
     (* fun _ -> Ok Bool *)
 
-    and c_impl_expr (_span : Thir.span) (_ty : Thir.impl_expr) : impl_expr =
-      failwith "todo"
+    and c_impl_expr (span : Thir.span) (ie : Thir.impl_expr) : impl_expr =
+      let impl = c_impl_expr_atom span ie.impl in
+      match ie.args with
+      | [] -> impl
+      | args ->
+          let args = List.map ~f:(c_impl_expr span) args in
+          ImplApp { impl; args }
+
+    and c_impl_expr_atom (span : Thir.span) (ie : Thir.impl_expr_atom) :
+        impl_expr =
+      let c_trait_ref (tr : Thir.trait_ref) : trait_ref =
+        let trait = Concrete_ident.of_def_id Trait tr.def_id in
+        let args = List.map ~f:(c_generic_value span) tr.generic_args in
+        { trait; args }
+      in
+      match ie with
+      | Concrete { id; generics } ->
+          let trait = Concrete_ident.of_def_id Trait id in
+          let args = List.map ~f:(c_generic_value span) generics in
+          Concrete { trait; args }
+      | LocalBound { clause_id; path } ->
+          let init = LocalBound { id = clause_id } in
+          let f (impl : impl_expr) (chunk : Thir.impl_expr_path_chunk) =
+            match chunk with
+            | AssocItem (item, { trait_ref; _ }) ->
+                let trait = c_trait_ref trait_ref in
+                let kind : Concrete_ident.Kind.t =
+                  match item.kind with Const | Fn -> Value | Type -> Type
+                in
+                let item = Concrete_ident.of_def_id kind item.def_id in
+                Projection { impl; trait; item }
+            | Parent { trait_ref; _ } ->
+                let trait = c_trait_ref trait_ref in
+                Parent { impl; trait }
+          in
+          List.fold ~init ~f path
+      | Dyn { trait } -> Dyn (c_trait_ref trait)
+      | Builtin { trait } -> Builtin (c_trait_ref trait)
+      | Todo str -> failwith @@ "impl_expr_atom: Todo " ^ str
 
     and c_generic_value (span : Thir.span) (ty : Thir.generic_arg) :
         generic_value =
@@ -964,17 +1005,17 @@ module Make (Opts : OPTS) : MakeT = struct
     let c_predicate_kind span (p : Thir.predicate_kind) : trait_ref option =
       c_predicate_kind' span p |> Option.map ~f:fst
 
-    let c_constraint span (c : Thir.where_predicate) : generic_constraint list =
-      match c with
-      | BoundPredicate { bounded_ty; bounds; span; _ } ->
-          let typ = c_ty span bounded_ty in
-          let traits = List.filter_map ~f:(c_predicate_kind' span) bounds in
-          List.map
-            ~f:(fun (trait, id) : generic_constraint ->
-              GCType { typ; implements = trait; id })
-            traits
-      | RegionPredicate _ -> unimplemented [ span ] "region prediate"
-      | EqPredicate _ -> unimplemented [ span ] "EqPredicate"
+    (* let c_constraint span (c : Thir.where_predicate) : generic_constraint list = *)
+    (*   match c with *)
+    (*   | BoundPredicate { bounded_ty; bounds; span; _ } -> *)
+    (*       let typ = c_ty span bounded_ty in *)
+    (*       let traits = List.filter_map ~f:(c_predicate_kind' span) bounds in *)
+    (*       List.map *)
+    (*         ~f:(fun (trait, id) : generic_constraint -> *)
+    (*           GCType { typ; implements = trait; id }) *)
+    (*         traits *)
+    (*   | RegionPredicate _ -> unimplemented [ span ] "region prediate" *)
+    (*   | EqPredicate _ -> unimplemented [ span ] "EqPredicate" *)
 
     let list_dedup (equal : 'a -> 'a -> bool) : 'a list -> 'a list =
       let rec aux (seen : 'a list) (todo : 'a list) : 'a list =
@@ -987,14 +1028,19 @@ module Make (Opts : OPTS) : MakeT = struct
       aux []
 
     let c_generics (generics : Thir.generics) : generics =
+      let bounds =
+        List.filter_map ~f:(c_predicate_kind' generics.span) generics.bounds
+        |> List.map ~f:(fun (trait, id) : generic_constraint ->
+               GCType { bound = trait; id })
+      in
       {
         params = List.map ~f:c_generic_param generics.params;
-        constraints =
-          List.concat_map ~f:(c_constraint generics.span) generics.predicates
-          |> list_dedup equal_generic_constraint;
+        constraints = bounds |> list_dedup equal_generic_constraint;
       }
 
-    let c_trait_item' span (item : Thir.trait_item_kind) : trait_item' =
+    let c_trait_item' (super : Thir.trait_item) (item : Thir.trait_item_kind) :
+        trait_item' =
+      let span = super.span in
       match item with
       | Const (_, Some _) ->
           unimplemented [ span ]
@@ -1034,7 +1080,7 @@ module Make (Opts : OPTS) : MakeT = struct
     {
       ti_span = Span.of_thir item.span;
       ti_generics = { params; constraints };
-      ti_v = c_trait_item' item.span item.kind;
+      ti_v = c_trait_item' item item.kind;
       ti_ident;
       ti_attrs = c_item_attrs item.attributes;
     }
@@ -1333,4 +1379,9 @@ let c_item inclusion_clauses (item : Thir.item) : (item list, error) Result.t =
       let inclusion_clauses = inclusion_clauses
     end) : MakeT)
   in
-  M.c_item item |> Result.return
+  M.c_item item
+  |> List.map
+       ~f:
+         (U.Mappers.rename_generic_constraints#visit_item
+            (Hashtbl.create (module String)))
+  |> Result.return

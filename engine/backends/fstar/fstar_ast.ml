@@ -46,9 +46,10 @@ let mk_e_abs args body =
 let mk_e_app base args =
   AST.mkApp base (List.map ~f:(fun arg -> (arg, AST.Nothing)) args) dummyRange
 
-let mk_e_binder b =
-  AST.{ b; brange = dummyRange; blevel = Un; aqual = None; battributes = [] }
+let mk_binder ?aqual b =
+  AST.{ b; brange = dummyRange; blevel = Un; aqual; battributes = [] }
 
+let mk_e_binder b = mk_binder b
 let term_of_lid path = term @@ AST.Name (lid path)
 let binder_of_term (t : AST.term) : AST.binder = mk_e_binder @@ AST.NoName t
 let unit = term AST.(Const Const_unit)

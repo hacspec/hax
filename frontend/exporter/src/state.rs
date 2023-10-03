@@ -270,6 +270,7 @@ pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: BaseState<'tcx>>(
                 })
             )
         })
+        .inspect(|did| eprintln!(">> {:?}", did))
         .map(|did| {
             let s = &with_owner_id(s.base(), (), (), did);
             let ty = tcx.type_of(did).subst_identity().sinto(s);

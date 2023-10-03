@@ -72,6 +72,7 @@ mod search_clause {
 
     #[extension_traits::extension(pub trait TraitPredicateExt)]
     impl<'tcx, S: UnderOwnerState<'tcx>> TraitPredicate<'tcx> {
+        #[tracing::instrument(skip(s))]
         fn parents_trait_predicates(self, s: &S) -> Vec<TraitPredicate<'tcx>> {
             let tcx = s.base().tcx;
             let predicates = tcx
@@ -80,6 +81,7 @@ mod search_clause {
                 .map(|(predicate, _)| predicate);
             predicates_to_trait_predicates(tcx, predicates, self.trait_ref.substs).collect()
         }
+        #[tracing::instrument(skip(s))]
         fn associated_items_trait_predicates(
             self,
             s: &S,
@@ -103,6 +105,7 @@ mod search_clause {
                 .collect()
         }
 
+        #[tracing::instrument(skip(s))]
         fn path_to(
             self,
             s: &S,
@@ -112,17 +115,44 @@ mod search_clause {
             {
                 let self_p: Predicate = self.to_predicate(s.base().tcx);
                 let target_p: Predicate = target.to_predicate(s.base().tcx);
-                // TODO: How should we compare those? normalizing is not helping
+                // TODO: Sometimes there are too much generic_args
+                // given to TraitRef: I noticed this happens for
+                // core::hash::Hash, where often a `__H` is
+                // prepend.
 
-                // eprintln!("   target_p = {target_p:?}");
-                // eprintln!("VS   self_p = {self_p:?}");
-                // eprintln!("-----> {:?}", self_p == target_p);
+                // This __H seems to be inserted by
+                // https://github.com/rust-lang/rust/blob/b0889cb4ed0e6f3ed9f440180678872b02e7052c/compiler/rustc_builtin_macros/src/deriving/hash.rs#L20
+
+                // Also, in the compiler, the
+                // `ty::print::default_print_def_path` method seems to
+                // ignore such extra
+                // arguments. https://github.com/rust-lang/rust/blob/b0889cb4ed0e6f3ed9f440180678872b02e7052c/compiler/rustc_middle/src/ty/print/mod.rs#L141
+
+                // Hence, for now I just compare their debug display,
+                // which is very clunky.
+
+                // Sometimes, things are even worse: after `sinto`ing,
+                // I cannot see any difference.
+
                 if format!("{:?}", self_p) == format!("{:?}", target_p) {
+                    // use crate::{Predicate, SInto};
+
+                    // let self_p: Predicate = self_p.sinto(s);
+                    // let target_p: Predicate = target_p.sinto(s);
+
+                    // if self_p != target_p {
+                    //     eprintln!("{:#?}\n/////////////\n{:#?}", self_p, target_p);
+                    // }
                     return Some(vec![]);
                 }
             }
 
-            let recurse = |p: Self| p.path_to(s, target, param_env);
+            let recurse = |p: Self| {
+                if p == self {
+                    return None;
+                }
+                p.path_to(s, target, param_env)
+            };
             fn cons<T>(hd: T, tail: Vec<T>) -> Vec<T> {
                 vec![hd].into_iter().chain(tail.into_iter()).collect()
             }
@@ -184,6 +214,7 @@ pub trait IntoImplExpr<'tcx> {
 }
 
 impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
+    #[tracing::instrument(skip(s))]
     fn impl_expr<S: UnderOwnerState<'tcx>>(
         &self,
         s: &S,
@@ -193,6 +224,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
         let Some(impl_source) = select_trait_candidate(s, param_env, *self) else {
             return ImplExprAtom::Todo(format!("impl_expr failed on {:#?}", self)).into();
         };
+        tracing::debug!("impl_source={:#?}", impl_source);
         match impl_source {
             ImplSource::UserDefined(ImplSourceUserDefinedData {
                 impl_def_id,
@@ -217,8 +249,8 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                         })
                         .map(|path| (predicate, path))
                 }) else {
-                    eprintln!("implsource::param {:#?}", self);
-                    eprintln!("predicates {:#?}", predicates);
+                    // eprintln!("implsource::param {:#?}", self);
+                    // eprintln!("predicates {:#?}", predicates);
                     return ImplExprAtom::Todo(format!("implsource::param \n\n{:#?}", self))
                         .with_args(impl_exprs(s, &nested));
                 };
@@ -291,12 +323,9 @@ pub fn select_trait_candidate<'tcx, S: UnderOwnerState<'tcx>>(
         Obligation, ObligationCause, SelectionContext, Unimplemented,
     };
     let tcx = s.base().tcx;
-
-    // We expect the input to be fully normalized.
-    debug_assert_eq!(
-        trait_ref,
-        tcx.normalize_erasing_regions(param_env, trait_ref)
-    );
+    let trait_ref = tcx
+        .try_normalize_erasing_regions(param_env, trait_ref)
+        .unwrap_or(trait_ref);
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
@@ -306,23 +335,6 @@ pub fn select_trait_candidate<'tcx, S: UnderOwnerState<'tcx>>(
     let obligation_cause = ObligationCause::dummy();
     let obligation = Obligation::new(tcx, obligation_cause, param_env, trait_ref);
 
-    if format!("{:#?}", obligation) == "Obligation(predicate=Binder(TraitPredicate(<_ as marker::Sized>, polarity:Positive), []), depth=0)" {
-        let tr = trait_ref.skip_binder();
-        let ty = tr.self_ty();
-        eprintln!("span={:#?}", s.base().opt_def_id.map(|did| tcx.def_span(did)));
-        eprintln!("obligation={:#?}", obligation);
-        eprintln!("ty={}", match ty.kind() {
-            rustc_middle::ty::Infer(var) => format!("Infer({:#?})", match var {
-                rustc_middle::ty::InferTy::TyVar(payload) => format!("TyVar({:?})", payload),
-                rustc_middle::ty::InferTy::IntVar(payload) => format!("IntVar({:?})", payload),
-                rustc_middle::ty::InferTy::FloatVar(payload) => format!("FloatVar({:?})", payload),
-                rustc_middle::ty::InferTy::FreshTy(payload) => format!("FreshTy({:?})", payload),
-                rustc_middle::ty::InferTy::FreshIntTy(payload) => format!("FreshIntTy({:?})", payload),
-                rustc_middle::ty::InferTy::FreshFloatTy(payload) => format!("FreshFloatTy({:?})", payload),
-            }),
-            k => format!("{:?}", k)
-        });
-    }
     let selection = {
         use std::panic;
         panic::set_hook(Box::new(|_info| {}));

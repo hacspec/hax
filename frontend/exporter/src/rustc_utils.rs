@@ -28,17 +28,21 @@ impl<'tcx> ty::TyCtxt<'tcx> {
     /// Just like `TyCtxt::predicates_defined_on`, but in the case of
     /// a trait or impl item, also includes the predicates defined on
     /// the parent.
+    #[tracing::instrument(skip(self))]
     fn predicates_defined_on_or_above(
         self,
         did: rustc_span::def_id::DefId,
     ) -> Vec<(ty::Predicate<'tcx>, rustc_span::Span)> {
+        tracing::debug!(">>>>>>>>>");
         let mut next_did = Some(did);
         let mut predicates = vec![];
         while let Some(did) = next_did {
-            let gen_preds = self.predicates_defined_on(did);
+            tracing::debug!("did={:#?}", did);
+            let gen_preds = self.predicates_of(did);
             next_did = gen_preds.parent;
             predicates.extend(gen_preds.predicates.into_iter())
         }
+        tracing::debug!("<<<<<<<<<<<");
         predicates
     }
 }

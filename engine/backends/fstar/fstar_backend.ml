@@ -170,7 +170,7 @@ struct
           ("pglobal_ident: expected to be handled somewhere else: "
          ^ show_global_ident id)
 
-  let rec plocal_ident (e : LocalIdent.t) =
+  let plocal_ident (e : LocalIdent.t) =
     F.id
     @@
     if [%eq: LocalIdent.id] e.id magic_id_raw_local_ident then e.name
@@ -216,8 +216,8 @@ struct
       (c Core__ops__arith__Mul__mul, (2, "*."));
       (c Core__ops__arith__Div__div, (2, "/."));
       (c Core__ops__arith__Rem__rem, (2, "%."));
-      (c Core__ops__bit__Shl__shl, (2, ">>."));
-      (c Core__ops__bit__Shr__shr, (2, "<<."));
+      (c Core__ops__bit__Shl__shl, (2, "<<."));
+      (c Core__ops__bit__Shr__shr, (2, ">>."));
       (c Core__cmp__PartialEq__eq, (2, "=."));
       (c Core__cmp__PartialOrd__lt, (2, "<."));
       (c Core__cmp__PartialOrd__le, (2, "<=."));
@@ -260,9 +260,27 @@ struct
     | TArray { typ; length } ->
         F.mk_e_app (F.term_of_lid [ "array" ]) [ pty span typ; pexpr length ]
     | TParam i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident i)
-    | TAssociatedType s -> F.term @@ F.AST.Wild
+    | TAssociatedType { impl; item } ->
+        let impl = p_impl_expr span impl in
+        F.term
+        @@ F.AST.Project
+             (impl, F.lid [ U.Concrete_ident_view.to_definition_name item ])
     | TOpaque s -> F.term @@ F.AST.Wild
     | _ -> .
+
+  and p_impl_expr span (ie : impl_expr) =
+    match ie with
+    | Concrete tr -> c_trait_ref span tr
+    | LocalBound { id } ->
+        let local_ident =
+          LocalIdent.{ name = id; id = LocalIdent.mk_id Expr 0 }
+        in
+        F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident local_ident)
+    | _ -> F.term @@ F.AST.Wild
+
+  and c_trait_ref span trait_ref =
+    let trait = F.term @@ F.AST.Name (pconcrete_ident trait_ref.trait) in
+    List.map ~f:(pgeneric_value span) trait_ref.args |> F.mk_e_app trait
 
   and pgeneric_value span (g : generic_value) =
     match g with
@@ -470,11 +488,8 @@ struct
   let rec pgeneric_constraint span (nth : int) (c : generic_constraint) =
     match c with
     | GCLifetime _ -> .
-    | GCType { typ; implements; id } ->
-        let implements : trait_ref = implements in
-        let trait = F.term @@ F.AST.Name (pconcrete_ident implements.trait) in
-        let args = List.map ~f:(pgeneric_value span) implements.args in
-        let tc = F.mk_e_app trait (*pty typ::*) args in
+    | GCType { bound; id; _ } ->
+        let tc = c_trait_ref span bound in
         F.pat
         @@ F.AST.PatAscribed (F.pat_var_tcresolve @@ Some ("i" ^ id), (tc, None))
 
@@ -484,11 +499,12 @@ struct
     | GPLifetime _ -> .
     | GPType { default = _ } ->
         let t = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
-        F.mk_e_binder (F.AST.Annotated (plocal_ident ident, t))
+        F.mk_binder ~aqual:Implicit (F.AST.Annotated (plocal_ident ident, t))
     | GPType _ ->
         Error.unimplemented span ~details:"pgeneric_param_bd:Type with default"
     | GPConst { typ } ->
-        F.mk_e_binder (F.AST.Annotated (plocal_ident ident, pty span typ))
+        F.mk_binder ~aqual:Implicit
+          (F.AST.Annotated (plocal_ident ident, pty span typ))
 
   let pgeneric_param_ident span (p : generic_param) =
     match (pgeneric_param_bd span p).b with
@@ -499,11 +515,7 @@ struct
     match c with
     | GCLifetime _ ->
         Error.assertion_failure span "pgeneric_constraint_bd:LIFETIME"
-    | GCType { typ; implements } ->
-        let implements : trait_ref = implements in
-        let trait = F.term @@ F.AST.Name (pconcrete_ident implements.trait) in
-        let args = List.map ~f:(pgeneric_value span) implements.args in
-        F.mk_e_app trait args
+    | GCType { bound; _ } -> c_trait_ref span bound
 
   let rec pgeneric_constraint_bd span (c : generic_constraint) =
     let tc = pgeneric_constraint_type span c in
@@ -512,7 +524,7 @@ struct
         b = F.AST.Annotated (F.generate_fresh_ident (), tc);
         brange = F.dummyRange;
         blevel = Un;
-        aqual = None;
+        aqual = Some TypeClassArg;
         battributes = [];
       }
 
@@ -865,7 +877,13 @@ struct
                            in
                            (F.id name, None, [], F.mk_e_app base args))
                          bounds
-                | TIFn ty -> [ (F.id name, None, [], pty e.span ty) ]
+                | TIFn ty ->
+                    let ty = pty e.span ty in
+                    let ty =
+                      F.term
+                      @@ F.AST.Product (pgenerics i.ti_span i.ti_generics, ty)
+                    in
+                    [ (F.id name, None, [], ty) ]
               in
               List.map ~f:Fn.id
                 (* ~f:(fun (n, q, a, ty) -> (n, q, a, F.mk_e_app bds ty)) *)
