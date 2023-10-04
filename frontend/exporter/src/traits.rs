@@ -121,7 +121,12 @@ mod search_clause {
                 }
             }
 
-            let recurse = |p: Self| p.path_to(s, target, param_env);
+            let recurse = |p: Self| {
+                if p == self {
+                    return None;
+                }
+                p.path_to(s, target, param_env)
+            };
             fn cons<T>(hd: T, tail: Vec<T>) -> Vec<T> {
                 vec![hd].into_iter().chain(tail.into_iter()).collect()
             }
@@ -288,12 +293,9 @@ pub fn select_trait_candidate<'tcx, S: UnderOwnerState<'tcx>>(
         Obligation, ObligationCause, SelectionContext, Unimplemented,
     };
     let tcx = s.base().tcx;
-
-    // We expect the input to be fully normalized.
-    debug_assert_eq!(
-        trait_ref,
-        tcx.normalize_erasing_regions(param_env, trait_ref)
-    );
+    let trait_ref = tcx
+        .try_normalize_erasing_regions(param_env, trait_ref)
+        .unwrap_or(trait_ref);
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
