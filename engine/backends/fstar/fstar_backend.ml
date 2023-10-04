@@ -267,7 +267,8 @@ struct
     | TArray { typ; length } ->
         F.mk_e_app (F.term_of_lid [ "array" ]) [ pty span typ; pexpr length ]
     | TParam i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident i)
-    | TProjectedAssociatedType s -> F.term @@ F.AST.Wild
+    | TAssociatedType s -> F.term @@ F.AST.Wild
+    | TOpaque s -> F.term @@ F.AST.Wild
     | _ -> .
 
   and pgeneric_value span (g : generic_value) =
@@ -400,8 +401,8 @@ struct
     | Let { lhs; rhs; body; monadic = None } ->
         let p =
           (* TODO: temp patch that remove annotation when we see an associated type *)
-          if [%matches? TProjectedAssociatedType _] @@ U.remove_tuple1 lhs.typ
-          then ppat lhs
+          if [%matches? TAssociatedType _] @@ U.remove_tuple1 lhs.typ then
+            ppat lhs
           else
             F.pat @@ F.AST.PatAscribed (ppat lhs, (pty lhs.span lhs.typ, None))
         in
@@ -476,14 +477,13 @@ struct
   let rec pgeneric_constraint span (nth : int) (c : generic_constraint) =
     match c with
     | GCLifetime _ -> .
-    | GCType { typ; implements } ->
+    | GCType { typ; implements; id } ->
         let implements : trait_ref = implements in
         let trait = F.term @@ F.AST.Name (pconcrete_ident implements.trait) in
         let args = List.map ~f:(pgeneric_value span) implements.args in
         let tc = F.mk_e_app trait (*pty typ::*) args in
         F.pat
-        @@ F.AST.PatAscribed
-             (F.pat_var_tcresolve @@ Some ("__" ^ string_of_int nth), (tc, None))
+        @@ F.AST.PatAscribed (F.pat_var_tcresolve @@ Some ("i" ^ id), (tc, None))
 
   let rec pgeneric_param_bd span (p : generic_param) =
     let ident = p.ident in
@@ -863,7 +863,7 @@ struct
                     (* in *)
                     (F.id name, None, [], t)
                     :: List.map
-                         ~f:(fun { trait; args; bindings = _ } ->
+                         ~f:(fun { trait; args } ->
                            let base =
                              F.term @@ F.AST.Name (pconcrete_ident trait)
                            in

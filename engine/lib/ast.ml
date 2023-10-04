@@ -273,12 +273,23 @@ functor
         }
       | TParam of local_ident
       | TArrow of ty list * ty
-      | TProjectedAssociatedType of string
+      | TAssociatedType of { impl : impl_expr; item : concrete_ident }
+      | TOpaque of concrete_ident
 
     and generic_value =
       | GLifetime of { lt : todo; witness : F.lifetime }
       | GType of ty
       | GConst of expr
+
+    and impl_expr =
+      | Concrete of trait_ref
+      | LocalBound of { id : string }
+      | Parent of { impl : impl_expr; trait : trait_ref }
+      | Projection of { impl : impl_expr; item : concrete_ident }
+      | Dyn of trait_ref
+      | Builtin of trait_ref
+
+    and trait_ref = { trait : concrete_ident; args : generic_value list }
 
     and pat' =
       | PWild
@@ -434,6 +445,7 @@ functor
                 "DefaultClasses.default_reduce_features";
                 "binding_mode_reduce";
                 "span_reduce";
+                "concrete_ident_reduce";
               ];
           },
         visitors
@@ -449,6 +461,7 @@ functor
                 "DefaultClasses.default_mapreduce_features";
                 "binding_mode_mapreduce";
                 "span_mapreduce";
+                "concrete_ident_mapreduce";
               ];
           },
         visitors
@@ -464,6 +477,7 @@ functor
                 "DefaultClasses.default_map_features";
                 "binding_mode_map";
                 "span_map";
+                "concrete_ident_map";
               ];
           }]
 
@@ -478,62 +492,10 @@ functor
       | GPLifetime of { witness : (F.lifetime[@visitors.opaque]) }
       | GPType of { default : ty option }
       | GPConst of { typ : ty }
-    [@@deriving
-      show,
-        yojson,
-        hash,
-        eq,
-        visitors
-          {
-            variety = "reduce";
-            name = "generic_param_reduce";
-            ancestors = [ "expr_reduce" ];
-          },
-        visitors
-          {
-            variety = "mapreduce";
-            name = "generic_param_mapreduce";
-            ancestors = [ "expr_mapreduce" ];
-          },
-        visitors
-          {
-            variety = "map";
-            name = "generic_param_map";
-            ancestors = [ "expr_map" ];
-          }]
 
-    type trait_ref = {
-      trait : concrete_ident;
-      args : generic_value list;
-      bindings : todo list;
-    }
-    [@@deriving
-      show,
-        yojson,
-        hash,
-        eq,
-        visitors
-          {
-            variety = "reduce";
-            name = "trait_ref_reduce";
-            ancestors = [ "expr_reduce"; "concrete_ident_reduce" ];
-          },
-        visitors
-          {
-            variety = "mapreduce";
-            name = "trait_ref_mapreduce";
-            ancestors = [ "expr_mapreduce"; "concrete_ident_mapreduce" ];
-          },
-        visitors
-          {
-            variety = "map";
-            name = "trait_ref_map";
-            ancestors = [ "expr_map"; "concrete_ident_map" ];
-          }]
-
-    type generic_constraint =
+    and generic_constraint =
       | GCLifetime of todo * (F.lifetime[@visitors.opaque])
-      | GCType of { typ : ty; implements : trait_ref }
+      | GCType of { typ : ty; implements : trait_ref; id : string }
     [@@deriving
       show,
         yojson,
@@ -543,19 +505,19 @@ functor
           {
             variety = "reduce";
             name = "generic_constraint_reduce";
-            ancestors = [ "trait_ref_reduce" ];
+            ancestors = [ "expr_reduce" ];
           },
         visitors
           {
             variety = "mapreduce";
             name = "generic_constraint_mapreduce";
-            ancestors = [ "trait_ref_mapreduce" ];
+            ancestors = [ "expr_mapreduce" ];
           },
         visitors
           {
             variety = "map";
             name = "generic_constraint_map";
-            ancestors = [ "trait_ref_map" ];
+            ancestors = [ "expr_map" ];
           }]
 
     type param = { pat : pat; typ : ty; typ_span : span option; attrs : attrs }
@@ -649,12 +611,7 @@ functor
             variety = "reduce";
             name = "item_reduce";
             ancestors =
-              [
-                "generic_constraint_reduce";
-                "expr_reduce";
-                "generic_param_reduce";
-                "attrs_reduce";
-              ];
+              [ "generic_constraint_reduce"; "expr_reduce"; "attrs_reduce" ];
           },
         visitors
           {
@@ -664,7 +621,6 @@ functor
               [
                 "generic_constraint_mapreduce";
                 "expr_mapreduce";
-                "generic_param_mapreduce";
                 "attrs_mapreduce";
               ];
           },
@@ -672,13 +628,7 @@ functor
           {
             variety = "map";
             name = "item_map";
-            ancestors =
-              [
-                "generic_constraint_map";
-                "expr_map";
-                "generic_param_map";
-                "attrs_map";
-              ];
+            ancestors = [ "generic_constraint_map"; "expr_map"; "attrs_map" ];
           }]
 
     type modul = item list

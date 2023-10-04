@@ -46,6 +46,12 @@ struct
       | [%inline_arms "dgeneric_value.*" - GLifetime] ->
           map (Option.some : B.generic_value -> _)
 
+    and dtrait_ref (span : span) (r : A.trait_ref) : B.trait_ref =
+      {
+        trait = r.trait;
+        args = List.filter_map ~f:(dgeneric_value span) r.args;
+      }
+
     and dpat' (span : span) (p : A.pat') : B.pat' =
       match p with
       | [%inline_arms "dpat'.*" - PBinding - PDeref] -> auto
@@ -107,13 +113,6 @@ struct
       | _ -> .
       [@@inline_ands bindings_of dexpr - dbinding_mode]
 
-    let dtrait_ref (span : span) (r : A.trait_ref) : B.trait_ref =
-      {
-        trait = r.trait;
-        args = List.filter_map ~f:(dgeneric_value span) r.args;
-        bindings = r.bindings;
-      }
-
     let dgeneric_param (_span : span)
         ({ ident; kind; attrs; span } : A.generic_param) :
         B.generic_param option =
@@ -131,10 +130,14 @@ struct
         B.generic_constraint option =
       match p with
       | GCLifetime _ -> None
-      | GCType { typ; implements } ->
+      | GCType { typ; implements; id } ->
           Some
             (B.GCType
-               { typ = dty span typ; implements = dtrait_ref span implements })
+               {
+                 typ = dty span typ;
+                 implements = dtrait_ref span implements;
+                 id;
+               })
 
     let dgenerics (span : span) (g : A.generics) : B.generics =
       {
