@@ -1,8 +1,4 @@
 module Hax.Lib
-open Core.Types
-open Core.Array
-
-open FStar.SizeT
 
 type bounded_index (max: usize) = 
   | Bounded: n: usize {v n < v max} -> bounded_index max
