@@ -221,9 +221,9 @@ pub enum ExporterCommand {
         )]
         kind: Vec<ExportBodyKind>,
 
-        /// Wether to include the list of def_id exported.
-        #[arg(short = 'D', long = "def-ids", default_value = "false")]
-        include_def_ids: bool,
+        /// Wether to include extra informations about `DefId`s.
+        #[arg(short = 'E', long = "include-extra", default_value = "false")]
+        include_extra: bool,
     },
 }
 
