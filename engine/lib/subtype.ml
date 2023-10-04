@@ -406,6 +406,7 @@ struct
                 (trait_id, List.map ~f:(dgeneric_value span) trait_generics);
               items = List.map ~f:dimpl_item items;
             }
+      | Alias { name; item } -> B.Alias { name; item }
       | Use { path; is_external; rename } -> B.Use { path; is_external; rename }
       | HaxError e -> B.HaxError e
       | NotImplementedYet -> B.NotImplementedYet

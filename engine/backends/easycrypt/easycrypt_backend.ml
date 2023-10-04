@@ -139,6 +139,7 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) : Types.file list
              | HaxError _ -> ()
              | IMacroInvokation mi -> ()
              | Use _ -> ()
+             | Alias _ -> ()
              | NotImplementedYet -> ())
     in
 
