@@ -235,6 +235,8 @@ struct
       (c Core__cmp__PartialEq__ne, (2, "<>."));
       (c Core__cmp__PartialOrd__ge, (2, ">=."));
       (c Core__cmp__PartialOrd__gt, (2, ">."));
+      (`Primitive (LogicalOp And), (2, "&&"));
+      (`Primitive (LogicalOp Or), (2, "||"));
     ]
     |> Map.of_alist_exn (module Global_ident)
 
