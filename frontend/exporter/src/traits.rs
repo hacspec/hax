@@ -69,6 +69,46 @@ mod search_clause {
     }
     pub type Path<'tcx> = Vec<PathChunk<'tcx>>;
 
+    /// Custom equality on `Predicate`s.
+    ///
+    /// Sometimes Rustc inserts extra generic arguments: I noticed
+    /// some `__H` second argument given to core::hash::Hash for
+    /// instance. `__H` seems to be inserted in [1]. Such extra
+    /// arguments seems to be ignored by `default_print_def_path` [2].
+    ///
+    /// Hence, for now, equality is decided by comparing the debug
+    /// string representations of `Predicate`s.
+    ///
+    /// Note there exist also predicates that are different,
+    /// `Eq`-wise, but whose `sinto` counterpart are equal.
+    ///
+    /// TODO: figure out how to implement this function in a sane way.
+    ///
+    /// [1]: https://github.com/rust-lang/rust/blob/b0889cb4ed0e6f3ed9f440180678872b02e7052c/compiler/rustc_builtin_macros/src/deriving/hash.rs#L20
+    /// [2]: https://github.com/rust-lang/rust/blob/b0889cb4ed0e6f3ed9f440180678872b02e7052c/compiler/rustc_middle/src/ty/print/mod.rs#L141
+    fn predicate_equality<'tcx, S: UnderOwnerState<'tcx>>(
+        x: Predicate<'tcx>,
+        y: Predicate<'tcx>,
+        s: &S,
+    ) -> bool {
+        let result = format!("{:?}", x) == format!("{:?}", y);
+        const DEBUG: bool = false;
+        if DEBUG && result {
+            use crate::{Predicate, SInto};
+            let xs: Predicate = x.sinto(s);
+            let ys: Predicate = y.sinto(s);
+            if x != y {
+                eprintln!("######################## predicate_equality ########################");
+                eprintln!("x={:#?}", x);
+                eprintln!("y={:#?}", y);
+                eprintln!("########################        sinto       ########################");
+                eprintln!("sinto(x)={:#?}", xs);
+                eprintln!("sinto(y)={:#?}", ys);
+            }
+        }
+        result
+    }
+
     #[extension_traits::extension(pub trait TraitPredicateExt)]
     impl<'tcx, S: UnderOwnerState<'tcx>> TraitPredicate<'tcx> {
         fn parents_trait_predicates(self, s: &S) -> Vec<TraitPredicate<'tcx>> {
@@ -108,17 +148,9 @@ mod search_clause {
             target: PolyTraitRef<'tcx>,
             param_env: rustc_middle::ty::ParamEnv<'tcx>,
         ) -> Option<Path<'tcx>> {
-            {
-                let self_p: Predicate = self.to_predicate(s.base().tcx);
-                let target_p: Predicate = target.to_predicate(s.base().tcx);
-                // TODO: How should we compare those? normalizing is not helping
-
-                // eprintln!("   target_p = {target_p:?}");
-                // eprintln!("VS   self_p = {self_p:?}");
-                // eprintln!("-----> {:?}", self_p == target_p);
-                if format!("{:?}", self_p) == format!("{:?}", target_p) {
-                    return Some(vec![]);
-                }
+            let tcx = s.base().tcx;
+            if predicate_equality(self.to_predicate(tcx), target.to_predicate(tcx), s) {
+                return Some(vec![]);
             }
 
             let recurse = |p: Self| {
