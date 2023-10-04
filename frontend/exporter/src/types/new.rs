@@ -21,7 +21,7 @@ lazy_static::lazy_static! {
 }
 
 impl ItemAttributes {
-    pub fn from_owner_id<'tcx, S: BaseState<'tcx>>(
+    pub fn from_owner_id<'tcx, S: UnderOwnerState<'tcx>>(
         s: &S,
         oid: rustc_hir::hir_id::OwnerId,
     ) -> ItemAttributes {

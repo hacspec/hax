@@ -216,10 +216,12 @@ pub fn with_owner_id<'tcx, THIR, MIR>(
 }
 
 pub trait BaseState<'tcx> = HasBase<'tcx> + Clone + IsState<'tcx>;
+/// State of anything below a `owner_id`
+pub trait UnderOwnerState<'tcx> = BaseState<'tcx> + HasOwnerId;
 
 /// Returns a map from every implementation (`Impl`) `DefId`s to the
 /// type they implement, plus the bounds.
-pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: BaseState<'tcx>>(
+pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
 ) -> HashMap<DefId, (Ty, Vec<Predicate>)> {
     let Base {

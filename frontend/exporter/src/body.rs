@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 pub use rustc_hir::{def_id::LocalDefId as RLocalDefId, hir_id::OwnerId as ROwnerId};
 
-pub fn get_thir<'tcx, S: BaseState<'tcx>>(
+pub fn get_thir<'tcx, S: UnderOwnerState<'tcx>>(
     did: RLocalDefId,
     s: &S,
 ) -> (
@@ -15,10 +15,10 @@ pub fn get_thir<'tcx, S: BaseState<'tcx>>(
 }
 
 pub trait IsBody: Sized + Clone {
-    fn body<'tcx, S: BaseState<'tcx>>(did: RLocalDefId, owner: ROwnerId, s: &S) -> Self;
+    fn body<'tcx, S: UnderOwnerState<'tcx>>(did: RLocalDefId, owner: ROwnerId, s: &S) -> Self;
 }
 
-pub fn make_fn_def<'tcx, Body: IsBody, S: BaseState<'tcx>>(
+pub fn make_fn_def<'tcx, Body: IsBody, S: UnderOwnerState<'tcx>>(
     fn_sig: &rustc_hir::FnSig,
     body_id: &rustc_hir::BodyId,
     s: &S,
@@ -43,7 +43,7 @@ pub fn make_fn_def<'tcx, Body: IsBody, S: BaseState<'tcx>>(
     }
 }
 
-pub fn body_from_id<'tcx, Body: IsBody, S: BaseState<'tcx> + HasOwnerId>(
+pub fn body_from_id<'tcx, Body: IsBody, S: UnderOwnerState<'tcx>>(
     id: rustc_hir::BodyId,
     s: &S,
 ) -> Body {
@@ -53,12 +53,20 @@ pub fn body_from_id<'tcx, Body: IsBody, S: BaseState<'tcx> + HasOwnerId>(
 mod implementations {
     use super::*;
     impl IsBody for () {
-        fn body<'tcx, S: BaseState<'tcx>>(_did: RLocalDefId, _owner: ROwnerId, _s: &S) -> Self {
+        fn body<'tcx, S: UnderOwnerState<'tcx>>(
+            _did: RLocalDefId,
+            _owner: ROwnerId,
+            _s: &S,
+        ) -> Self {
             ()
         }
     }
     impl IsBody for ThirBody {
-        fn body<'tcx, S: BaseState<'tcx>>(did: RLocalDefId, owner_id: ROwnerId, s: &S) -> Self {
+        fn body<'tcx, S: UnderOwnerState<'tcx>>(
+            did: RLocalDefId,
+            owner_id: ROwnerId,
+            s: &S,
+        ) -> Self {
             let (thir, expr) = get_thir(did, s);
             if *CORE_EXTRACTION_MODE {
                 let expr = &thir.exprs[expr.clone()];
@@ -81,13 +89,21 @@ mod implementations {
     }
 
     impl<A: IsBody, B: IsBody> IsBody for (A, B) {
-        fn body<'tcx, S: BaseState<'tcx>>(did: RLocalDefId, owner_id: ROwnerId, s: &S) -> Self {
+        fn body<'tcx, S: UnderOwnerState<'tcx>>(
+            did: RLocalDefId,
+            owner_id: ROwnerId,
+            s: &S,
+        ) -> Self {
             (A::body(did, owner_id, s), B::body(did, owner_id, s))
         }
     }
 
     impl<MirKind: IsMirKind + Clone> IsBody for MirBody<MirKind> {
-        fn body<'tcx, S: BaseState<'tcx>>(did: RLocalDefId, owner_id: ROwnerId, s: &S) -> Self {
+        fn body<'tcx, S: UnderOwnerState<'tcx>>(
+            did: RLocalDefId,
+            owner_id: ROwnerId,
+            s: &S,
+        ) -> Self {
             let (thir, _) = get_thir(did, s);
             let mir = Rc::new(s.base().tcx.mir_built(did).borrow().clone());
             mir.sinto(&State {
@@ -100,7 +116,7 @@ mod implementations {
     }
 }
 
-impl<'tcx, S: BaseState<'tcx> + HasOwnerId, Body: IsBody> SInto<S, Body> for rustc_hir::BodyId {
+impl<'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, Body> for rustc_hir::BodyId {
     fn sinto(&self, s: &S) -> Body {
         body_from_id::<Body, _>(self.clone(), s)
     }
