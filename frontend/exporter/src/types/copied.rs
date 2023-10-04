@@ -2319,12 +2319,7 @@ pub struct AnonConst<Body: IsBody> {
     pub hir_id: HirId,
     pub def_id: GlobalIdent,
     #[map({
-        body_from_id::<Body, _>(*x, &State {
-            thir: (),
-            owner_id: hir_id.owner,
-            base: s.base(),
-            mir: (),
-        })
+        body_from_id::<Body, _>(*x, &with_owner_id(s.base(), (), (), hir_id.owner))
     })]
     pub body: Body,
 }
@@ -3033,15 +3028,7 @@ pub struct Item<Body: IsBody> {
     pub span: Span,
     pub vis_span: Span,
     #[map({
-        self.kind.sinto(&State {
-            base: crate::state::Base {
-                opt_def_id: Some(self.owner_id.to_def_id()),
-                ..state.base()
-            },
-            thir: (),
-            mir: (),
-            owner_id: self.owner_id,
-        })
+        self.kind.sinto(&with_owner_id(state.base(), (), (), self.owner_id))
     })]
     pub kind: ItemKind<Body>,
     #[map(ItemAttributes::from_owner_id(state, *owner_id))]
