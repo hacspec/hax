@@ -876,8 +876,12 @@ module Make (Opts : OPTS) : MakeT = struct
       | Tuple types ->
           let types = List.map ~f:(fun ty -> GType (c_ty span ty)) types in
           TApp { ident = `TupleType (List.length types); args = types }
-      | Alias _ -> TProjectedAssociatedType (Thir.show_ty ty)
-      (* | Opaque _ -> unimplemented [span] "type Opaque" *)
+      | Alias (_kind, { trait_def_id = Some (_did, impl_expr); def_id; _ }) ->
+          let impl = c_impl_expr span impl_expr in
+          let item = Concrete_ident.of_def_id Type def_id in
+          TAssociatedType { impl; item }
+      | Alias (_kind, { def_id; trait_def_id = None; _ }) ->
+          TOpaque (Concrete_ident.of_def_id Type def_id)
       | Param { index; name } ->
           (* TODO: [id] might not unique *)
           TParam
@@ -893,6 +897,9 @@ module Make (Opts : OPTS) : MakeT = struct
       | Infer _ -> unimplemented [ span ] "type Infer"
       | Todo _ -> unimplemented [ span ] "type Todo"
     (* fun _ -> Ok Bool *)
+
+    and c_impl_expr (_span : Thir.span) (_ty : Thir.impl_expr) : impl_expr =
+      failwith "todo"
 
     and c_generic_value (span : Thir.span) (ty : Thir.generic_arg) :
         generic_value =
@@ -940,33 +947,30 @@ module Make (Opts : OPTS) : MakeT = struct
       let attrs = c_attrs param.attributes in
       { ident; span; attrs; kind }
 
-    let c_predicate_kind span (p : Thir.predicate_kind) : trait_ref option =
+    let c_predicate_kind' span (p : Thir.predicate_kind) :
+        (trait_ref * string) option =
       match p with
       | Clause
-          {
-            kind = Trait { is_positive = true; is_const = _; trait_ref };
-            id = _;
-          } ->
+          { kind = Trait { is_positive = true; is_const = _; trait_ref }; id }
+        ->
           let args =
             List.map ~f:(c_generic_value span) trait_ref.generic_args
           in
-          Some
-            {
-              trait = Concrete_ident.of_def_id Trait trait_ref.def_id;
-              args;
-              bindings = [];
-            }
+          let trait = Concrete_ident.of_def_id Trait trait_ref.def_id in
+          Some ({ trait; args }, id)
       | _ -> None
+
+    let c_predicate_kind span (p : Thir.predicate_kind) : trait_ref option =
+      c_predicate_kind' span p |> Option.map ~f:fst
 
     let c_constraint span (c : Thir.where_predicate) : generic_constraint list =
       match c with
       | BoundPredicate { bounded_ty; bounds; span; _ } ->
           let typ = c_ty span bounded_ty in
-          let traits = List.map ~f:(c_predicate_kind span) bounds in
-          let traits = List.filter_map ~f:Fn.id traits in
+          let traits = List.filter_map ~f:(c_predicate_kind' span) bounds in
           List.map
-            ~f:(fun trait : generic_constraint ->
-              GCType { typ; implements = trait })
+            ~f:(fun (trait, id) : generic_constraint ->
+              GCType { typ; implements = trait; id })
             traits
       | RegionPredicate _ -> unimplemented [ span ] "region prediate"
       | EqPredicate _ -> unimplemented [ span ] "EqPredicate"
