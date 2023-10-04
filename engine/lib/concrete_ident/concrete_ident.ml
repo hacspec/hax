@@ -239,6 +239,8 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
       | Constructor { is_struct = false } ->
           ( List.drop_last_exn path,
             Option.value_exn type_name ^ "_" ^ definition )
+      | Field when List.last path |> [%equal: string option] type_name ->
+          (List.drop_last_exn path, definition)
       | _ -> (path, definition)
     in
     let definition = rename_definition path definition kind type_name in
