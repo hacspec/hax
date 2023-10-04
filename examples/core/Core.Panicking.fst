@@ -1,6 +1,6 @@
 module Core.Panicking
 
-open Core.Types
+open Rust_primitives
 open Rust_primitives.Hax
 
 type t_AssertKind = | AssertKind_Eq

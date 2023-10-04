@@ -1,5 +1,5 @@
 module Core.Convert
-open Core.Types
+open Rust_primitives
 
 class try_into_tc self t = {
   error: Type;

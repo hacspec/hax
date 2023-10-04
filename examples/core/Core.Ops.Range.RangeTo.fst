@@ -1,5 +1,6 @@
 module Core.Ops.Range.RangeTo
-open Core.Types
+open Rust_primitives
+
 
 type range = {f_end: usize}
 

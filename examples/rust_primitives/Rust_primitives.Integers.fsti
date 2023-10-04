@@ -16,11 +16,12 @@ unfold
 type uinttype = t:inttype{unsigned t}
 
 unfold
-type int_t t = LI.int_t t LI.PUB
+let int_t t : ty:Type{hasEq ty} = LI.int_t t LI.PUB
+
 unfold
 let bits t = LI.bits t
-val usize_inttype: t:inttype{unsigned t}
-val isize_inttype: t:inttype{signed t}
+val usize_inttype: t:inttype{unsigned t /\ (t = LI.U32 \/ t = LI.U64)}
+val isize_inttype: t:inttype{signed t /\ (t = LI.U32 \/ t = LI.U64)}
 
 unfold
 type u8 = int_t LI.U8 
@@ -49,12 +50,19 @@ type usize = int_t usize_inttype
 unfold
 type isize = int_t isize_inttype
 
+
 unfold
 let minint (t:LI.inttype) = LI.minint t
 unfold
 let maxint (t:LI.inttype) = LI.maxint t
 unfold
 let modulus (t:LI.inttype) = LI.modulus t
+
+unfold
+let max_usize = maxint usize_inttype
+
+unfold
+let max_isize = maxint isize_inttype
 
 let range (n:int) (t:inttype) : Type0 = LI.range n t
 
@@ -69,6 +77,9 @@ let v #t (x:int_t t) : range_t t = LI.v #t x
 unfold
 let mk_int #t (n:range_t t) : u:int_t t{v u == n} =
   LI.mk_int #t n
+
+inline_for_extraction
+let sz (n:nat{n <= max_usize}) : usize = mk_int n
 
 val v_injective: #t:inttype -> a:int_t t -> Lemma
   (mk_int (v #t a) == a)

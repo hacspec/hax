@@ -1,6 +1,6 @@
 module Core.Iter
 
-open Core.Types
+open Rust_primitives
 
 class iterator self = {
   item: Type;
@@ -19,7 +19,7 @@ instance iterator_enumerate it {| i: iterator it |}: iterator (Core.Iter.Adapter
       let open Core.Ops in
       let iter, opt = next iter in
       match opt with
-      | Some value -> {iter; count = (admit (); count +. 1sz)}, Some (count, value)
+      | Some value -> {iter; count (* + 1 *)}, Some (count, value)
       | None -> {iter; count}, None
     );
     size_hint = (fun s -> i.size_hint s.iter);
@@ -50,31 +50,30 @@ instance iterator_array (t: eqtype) len: iterator (array t len) = {
 }
 
 let rec fold_range'
-  (min: SizeT.t) (max: SizeT.t {SizeT.v min <= SizeT.v max})
-  (init: 'a) (f: ('a -> i:usize{SizeT.v i < SizeT.v max /\ SizeT.v i >= SizeT.v min} -> 'a))
-  : Tot 'a (decreases (SizeT.v max - SizeT.v min))
-  = let open FStar.SizeT in
-    if min = max
+  (min: usize) (max: usize {v min <= v max})
+  (init: 'a) (f: ('a -> i:usize{v i < v max /\ v i >= v min} -> 'a))
+  : Tot 'a (decreases (v max - v min))
+  = if min = max
     then init
-    else fold_range' (min +^ 1sz) max (f init min) f
-  
+    else fold_range' (add min (sz 1)) max (f init min) f
+
+(* 
 instance iterator_range: iterator range = 
-  let open FStar.SizeT in
   {
   item = usize;
   next = (fun {f_start; f_end} -> 
-    if f_start <^ f_end
-    then ({f_start = f_start `SizeT.add` 1sz; f_end}, Some f_start)
+    if f_start <. f_end
+    then ({f_start = f_start +. sz 1; f_end}, Some f_start)
     else ({f_start; f_end}, None)
   );
   size_hint = (fun {f_start; f_end} -> 
-    Some (if f_start <^ f_end
-          then f_end -^ f_start 
+    Some (if f_start <. f_end
+          then f_end -. f_start 
           else 0sz)
   );
-  in_range = (fun x i -> SizeT.v i < SizeT.v x.f_end /\ SizeT.v i >= SizeT.v x.f_start);
+  in_range = (fun x i -> v i < v x.f_end /\ v i >= v x.f_start);
   fold = (fun #b r init f -> 
-    if r.f_start <^ r.f_end
+    if r.f_start <. r.f_end
     then fold_range' r.f_start r.f_end init (fun x i -> f x i)
     else init
   );
@@ -82,27 +81,27 @@ instance iterator_range: iterator range =
 }
 
 instance range_index t len : index (array t len) range = {
-  output = Core.Types.slice t;
+  output = slice t;
   in_range = (fun (arr: array t len) {f_start; f_end} -> 
-    SizeT.v f_start <= SizeT.v len &&
-    SizeT.v f_end   <= SizeT.v len
+    v f_start <= v len &&
+    v f_end   <= v len
   );
   (.[]) = (fun arr {f_start; f_end} -> 
-      if f_start `SizeT.lt` f_end
-      then Seq.slice arr (SizeT.v f_start) (SizeT.v f_end)
+      if f_start <. f_end
+      then Seq.slice arr (v f_start) (v f_end)
       else Seq.empty
     );
 }
 
 instance range_index_slice t : index (slice t) Core.Ops.Range.Range.range = {
-  output = Core.Types.slice t;
+  output = slice t;
   in_range = (fun (arr: slice t) {f_start; f_end} -> 
-    SizeT.v f_start <= Seq.length arr &&
-    SizeT.v f_end   <= Seq.length arr
+    v f_start <= Seq.length arr &&
+    v f_end   <= Seq.length arr
   );
   (.[]) = (fun arr {f_start; f_end} -> 
-      if f_start `SizeT.lt` f_end
-      then Seq.slice arr (SizeT.v f_start) (SizeT.v f_end)
+      if f_start <. f_end
+      then Seq.slice arr (v f_start) (v f_end)
       else Seq.empty
     );
 }
@@ -110,36 +109,36 @@ instance range_index_slice t : index (slice t) Core.Ops.Range.Range.range = {
 module RangeTo = Core.Ops.Range.RangeTo
 
 instance rangeTo_index t len : index (array t len) RangeTo.range = {
-  output = Core.Types.slice t;
+  output = slice t;
   in_range = (fun (arr: array t len) { RangeTo.f_end } -> 
-    SizeT.v f_end   <= Seq.length arr
+    v f_end   <= Seq.length arr
   );
   (.[]) = (fun arr { f_end } -> 
-      Seq.slice arr 0 (SizeT.v f_end)
+      Seq.slice arr 0 (v f_end)
     );
 }
 
 module RangeFrom = Core.Ops.Range.RangeFrom
 
 instance rangeFrom_index t len : index (array t len) RangeFrom.range = {
-  output = Core.Types.slice t;
+  output = slice t;
   in_range = (fun (arr: array t len) { RangeFrom.f_start } -> 
-    SizeT.v f_start < SizeT.v len
+    v f_start < v len
   );
   (.[]) = (fun arr { f_start } -> 
-      Seq.slice arr (SizeT.v f_start) (Seq.length arr)
+      Seq.slice arr (v f_start) (Seq.length arr)
     );
 }
 
 instance rangeFrom_index_slice_usize t : index (slice t) usize = magic ()
 
 instance rangeFrom_index_slice t : index (slice t) RangeFrom.range = {
-  output = Core.Types.slice t;
+  output = slice t;
   in_range = (fun (arr: slice t) { RangeFrom.f_start } -> 
-    SizeT.v f_start < Seq.length arr
+    v f_start < Seq.length arr
   );
   (.[]) = (fun arr { f_start } -> 
-      Seq.slice arr (SizeT.v f_start) (Seq.length arr)
+      Seq.slice arr (v f_start) (Seq.length arr)
     );
 }
 
@@ -163,3 +162,4 @@ instance collect_tc_slice_slice (t: eqtype): collect_tc (slice t) (slice t)
 // }
 
 
+*)

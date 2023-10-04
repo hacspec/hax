@@ -1,4 +1,7 @@
 module Hax.Lib
+open Rust_primitives.Integers
+open Rust_primitives.Arrays
+open Core.Array
 
 type bounded_index (max: usize) = 
   | Bounded: n: usize {v n < v max} -> bounded_index max

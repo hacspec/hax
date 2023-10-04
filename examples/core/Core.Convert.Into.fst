@@ -1,6 +1,6 @@
 module Core.Convert.Into
 
-open Core.Types
+open Rust_primitives
 
 class into_tc self t = {
   into: self -> t;

@@ -1,5 +1,5 @@
 module Core.Ops.Range
-open Core.Types
+open Rust_primitives
 
 include Core.Ops.Range.Range
 // type t_Range = {f_start: usize; f_end: usize}
