@@ -63,6 +63,7 @@
         logs
         core
         re
+        js_of_ocaml
       ]
       ++
       # F* dependencies

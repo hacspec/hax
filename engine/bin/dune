@@ -24,7 +24,7 @@
  (modules js_driver)
  (js_of_ocaml
   (javascript_files js_stubs/mutex.js js_stubs/stdint.js js_stubs/unix.js))
- (libraries zarith_stubs_js lib))
+ (libraries zarith_stubs_js js_of_ocaml lib))
 
 (env
  (_
