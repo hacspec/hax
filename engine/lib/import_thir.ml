@@ -998,10 +998,7 @@ module Make (Opts : OPTS) : MakeT = struct
           unimplemented [ span ]
             "TODO: traits: no support for defaults in traits for now"
       | Const (ty, None) -> TIFn (c_ty span ty)
-      | ProvidedFn _ ->
-          unimplemented [ span ]
-            "TODO: traits: no support for defaults in funcitons for now"
-      | RequiredFn (sg, _) ->
+      | ProvidedFn (sg, _) | RequiredFn (sg, _) ->
           let (Thir.{ inputs; output; _ } : Thir.fn_decl) = sg.decl in
           let output =
             match output with
