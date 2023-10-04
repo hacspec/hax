@@ -9,7 +9,6 @@ module Thir = struct
   type trait_item_kind = trait_item_kind_for__decorated_for__expr_kind
   type generic_param = generic_param_for__decorated_for__expr_kind
   type generic_param_kind = generic_param_kind_for__decorated_for__expr_kind
-  type where_predicate = where_predicate_for__decorated_for__expr_kind
   type trait_item = trait_item_for__decorated_for__expr_kind
 end
 
@@ -218,7 +217,7 @@ module Make (Opts : OPTS) : MakeT = struct
     val c_generic_value : Thir.span -> Thir.generic_arg -> generic_value
     val c_generics : Thir.generics -> generics
     val c_param : Thir.span -> Thir.param -> param
-    val c_trait_item' : Thir.span -> Thir.trait_item_kind -> trait_item'
+    val c_trait_item' : Thir.trait_item -> Thir.trait_item_kind -> trait_item'
   end
 
   (* BinOp to [core::ops::*] overloaded functions *)
@@ -964,18 +963,6 @@ module Make (Opts : OPTS) : MakeT = struct
     let c_predicate_kind span (p : Thir.predicate_kind) : trait_ref option =
       c_predicate_kind' span p |> Option.map ~f:fst
 
-    let c_constraint span (c : Thir.where_predicate) : generic_constraint list =
-      match c with
-      | BoundPredicate { bounded_ty; bounds; span; _ } ->
-          let typ = c_ty span bounded_ty in
-          let traits = List.filter_map ~f:(c_predicate_kind' span) bounds in
-          List.map
-            ~f:(fun (trait, id) : generic_constraint ->
-              GCType { typ; implements = trait; id })
-            traits
-      | RegionPredicate _ -> unimplemented [ span ] "region prediate"
-      | EqPredicate _ -> unimplemented [ span ] "EqPredicate"
-
     let list_dedup (equal : 'a -> 'a -> bool) : 'a list -> 'a list =
       let rec aux (seen : 'a list) (todo : 'a list) : 'a list =
         match todo with
@@ -987,11 +974,14 @@ module Make (Opts : OPTS) : MakeT = struct
       aux []
 
     let c_generics (generics : Thir.generics) : generics =
+      let bounds =
+        List.filter_map ~f:(c_predicate_kind' generics.span) generics.bounds
+        |> List.map ~f:(fun (trait, id) : generic_constraint ->
+               GCType { bound = trait; id })
+      in
       {
         params = List.map ~f:c_generic_param generics.params;
-        constraints =
-          List.concat_map ~f:(c_constraint generics.span) generics.predicates
-          |> list_dedup equal_generic_constraint;
+        constraints = bounds |> list_dedup equal_generic_constraint;
       }
 
     let c_trait_item' span (item : Thir.trait_item_kind) : trait_item' =
