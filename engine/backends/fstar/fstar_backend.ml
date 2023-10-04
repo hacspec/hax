@@ -495,11 +495,6 @@ struct
     | Annotated (ident, _) -> ident
     | _ -> failwith "pgeneric_param_ident"
 
-  (* let rec ptrait_ref span (typ : F.AST.term) (trait_ref : trait_ref) = *)
-  (*   let trait = F.term @@ F.AST.Name (pconcrete_ident implements.trait) in *)
-  (*   let args = List.map ~f:(pgeneric_value span) implements.args in *)
-  (*   F.mk_e_app trait args *)
-
   let rec pgeneric_constraint_type span (c : generic_constraint) =
     match c with
     | GCLifetime _ ->
