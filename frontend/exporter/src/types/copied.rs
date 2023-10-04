@@ -2624,10 +2624,10 @@ pub enum TraitItemKind<Body: IsBody> {
     RequiredFn(FnSig, Vec<Ident>),
     #[custom_arm(
         rustc_hir::TraitItemKind::Fn(sig, rustc_hir::TraitFn::Provided(body)) => {
-            TraitItemKind::ProvidedFn(make_fn_def::<Body, _>(sig, body, tcx))
+            TraitItemKind::ProvidedFn(sig.sinto(tcx), make_fn_def::<Body, _>(sig, body, tcx))
         }
     )]
-    ProvidedFn(FnDef<Body>),
+    ProvidedFn(FnSig, FnDef<Body>),
     #[custom_arm(
         rustc_hir::TraitItemKind::Type(b, ty) => {
             TraitItemKind::Type(b.sinto(tcx), ty.map(|t| t.sinto(tcx)))
