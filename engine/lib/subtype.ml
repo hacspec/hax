@@ -327,7 +327,7 @@ struct
         ti_span = ti.ti_span;
         ti_generics = dgenerics ti.ti_span ti.ti_generics;
         ti_v = dtrait_item' ti.ti_span ti.ti_v;
-        ti_name = ti.ti_name;
+        ti_ident = ti.ti_ident;
         ti_attrs = ti.ti_attrs;
       }
 
@@ -342,7 +342,7 @@ struct
         ii_span = ii.ii_span;
         ii_generics = dgenerics ii.ii_span ii.ii_generics;
         ii_v = dimpl_item' ii.ii_span ii.ii_v;
-        ii_name = ii.ii_name;
+        ii_ident = ii.ii_ident;
         ii_attrs = ii.ii_attrs;
       }
 

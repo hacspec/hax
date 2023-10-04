@@ -613,7 +613,7 @@ functor
       ii_span : span;
       ii_generics : generics;
       ii_v : impl_item';
-      ii_name : string;
+      ii_ident : concrete_ident;
       ii_attrs : attrs;
     }
 
@@ -624,7 +624,7 @@ functor
       ti_span : span;
       ti_generics : generics;
       ti_v : trait_item';
-      ti_name : string;
+      ti_ident : concrete_ident;
       ti_attrs : attrs;
     }
     [@@deriving
