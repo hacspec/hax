@@ -4,9 +4,9 @@ open Core
 
 let v_FIELD_MODULUS: i32 = 3329l
 
-let v_BITS_PER_COEFFICIENT: usize = 12sz
+let v_BITS_PER_COEFFICIENT: usize = sz 12
 
-let v_COEFFICIENTS_IN_RING_ELEMENT: usize = 256sz
+let v_COEFFICIENTS_IN_RING_ELEMENT: usize = sz 256
 
 // let v_BITS_PER_RING_ELEMENT: usize = v_COEFFICIENTS_IN_RING_ELEMENT *. 12sz
 

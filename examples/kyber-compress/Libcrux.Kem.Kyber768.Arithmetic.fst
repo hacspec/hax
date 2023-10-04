@@ -6,24 +6,27 @@ let t_KyberFieldElement = i32
 
 let v_BARRETT_SHIFT: i32 = 26l
 
-let v_BARRETT_R: i32 = 1l >>. v_BARRETT_SHIFT
+let v_BARRETT_R: i32 =
+  let s = (cast usize_inttype v_BARRETT_SHIFT) in
+  admit();
+  1l <<. s
 
 let v_BARRETT_MULTIPLIER: i32 = 20159l
 
 let barrett_reduce (value: i32) : i32 =
-  let quotient:i32 = value *. v_BARRETT_MULTIPLIER +. (v_BARRETT_R <<. 1l) <<. v_BARRETT_SHIFT in
+  let quotient:i32 = value *. v_BARRETT_MULTIPLIER +. (v_BARRETT_R <<. 1l) <<. (cast usize_inttype v_BARRETT_SHIFT) in
   value -. quotient *. Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS
 
 let v_MONTGOMERY_SHIFT: i64 = 16L
 
-let v_MONTGOMERY_R: i64 = 1L >>. v_MONTGOMERY_SHIFT
+let v_MONTGOMERY_R: i64 = 1L >>. (cast usize_inttype v_MONTGOMERY_SHIFT)
 
 let v_INVERSE_OF_MODULUS_MOD_R: i64 = 3327L
 
 let montgomery_reduce (value: i32) : i32 =
   let (t: i64):i64 = Core.Convert.f_from value *. v_INVERSE_OF_MODULUS_MOD_R in
-  let (t: i32):i32 = cast (t &. v_MONTGOMERY_R -. 1L) in
-  value -. t *. Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS <<. v_MONTGOMERY_SHIFT
+  let (t: i32):i32 = cast Lib.IntTypes.S32 (t &. v_MONTGOMERY_R -. 1L) in
+  value -. t *. Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS <<. (cast usize_inttype v_MONTGOMERY_SHIFT)
 
 let to_montgomery_domain (value: i32) : i32 = montgomery_reduce (1353l *. value)
 

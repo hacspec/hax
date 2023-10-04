@@ -2,9 +2,6 @@ module Libcrux.Kem.Kyber768.Compress
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 35"
 open Core
 
-let ( ~. ) = not
-
-open FStar.Integers
 
 let compress_q (fe: u16) (to_bit_size: u32 {v to_bit_size <= 12}) : i32 =
   let two_pow_bit_size:u32 = 1ul <<. to_bit_size in

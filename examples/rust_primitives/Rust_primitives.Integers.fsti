@@ -375,46 +375,46 @@ val cast_mod: #t:inttype{signed t}
 ///
 
 unfold
-let (+!) #t #l = add #t
+let (+!) #t = add #t
 
 unfold
-let (+.) #t #l = add_mod #t
+let (+.) #t = add_mod #t
 
 unfold
-let ( *! ) #t #l = mul #t
+let ( *! ) #t = mul #t
 
 unfold
-let ( *. ) #t #l = mul_mod #t
+let ( *. ) #t = mul_mod #t
 
 unfold
-let ( -! ) #t #l = sub #t
+let ( -! ) #t = sub #t
 
 unfold
-let ( -. ) #t #l = sub_mod #t
+let ( -. ) #t = sub_mod #t
 
 unfold
-let ( >>. ) #t #l = shift_right #t
+let ( >>. ) #t = shift_right #t
 
 unfold
-let ( <<. ) #t #l = shift_left #t
+let ( <<. ) #t = shift_left #t
 
 unfold
-let ( >>>. ) #t #l = rotate_right #t
+let ( >>>. ) #t = rotate_right #t
 
 unfold
-let ( <<<. ) #t #l = rotate_left #t
+let ( <<<. ) #t = rotate_left #t
 
 unfold
-let ( ^. ) #t #l = logxor #t
+let ( ^. ) #t = logxor #t
 
 unfold
-let ( |. ) #t #l = logor #t
+let ( |. ) #t = logor #t
 
 unfold
-let ( &. ) #t #l = logand #t
+let ( &. ) #t = logand #t
 
 unfold
-let ( ~. ) #t #l = lognot #t
+let ( ~. ) #t = lognot #t
 
 ///
 /// Operations on public integers
