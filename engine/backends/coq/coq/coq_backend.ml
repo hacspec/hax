@@ -528,6 +528,7 @@ struct
         if is_external then [] else [ C.AST.Require (path, rename) ]
     | HaxError s -> [ __TODO_item__ span s ]
     | NotImplementedYet -> [ __TODO_item__ span "Not implemented yet?" ]
+    | Alias _ -> [ __TODO_item__ span "Not implemented yet? alias" ]
     | Trait { name; generics; items } ->
         [
           C.AST.Class
