@@ -305,23 +305,6 @@ pub fn select_trait_candidate<'tcx, S: UnderOwnerState<'tcx>>(
     let obligation_cause = ObligationCause::dummy();
     let obligation = Obligation::new(tcx, obligation_cause, param_env, trait_ref);
 
-    if format!("{:#?}", obligation) == "Obligation(predicate=Binder(TraitPredicate(<_ as marker::Sized>, polarity:Positive), []), depth=0)" {
-        let tr = trait_ref.skip_binder();
-        let ty = tr.self_ty();
-        eprintln!("span={:#?}", s.base().opt_def_id.map(|did| tcx.def_span(did)));
-        eprintln!("obligation={:#?}", obligation);
-        eprintln!("ty={}", match ty.kind() {
-            rustc_middle::ty::Infer(var) => format!("Infer({:#?})", match var {
-                rustc_middle::ty::InferTy::TyVar(payload) => format!("TyVar({:?})", payload),
-                rustc_middle::ty::InferTy::IntVar(payload) => format!("IntVar({:?})", payload),
-                rustc_middle::ty::InferTy::FloatVar(payload) => format!("FloatVar({:?})", payload),
-                rustc_middle::ty::InferTy::FreshTy(payload) => format!("FreshTy({:?})", payload),
-                rustc_middle::ty::InferTy::FreshIntTy(payload) => format!("FreshIntTy({:?})", payload),
-                rustc_middle::ty::InferTy::FreshFloatTy(payload) => format!("FreshFloatTy({:?})", payload),
-            }),
-            k => format!("{:?}", k)
-        });
-    }
     let selection = {
         use std::panic;
         panic::set_hook(Box::new(|_info| {}));
