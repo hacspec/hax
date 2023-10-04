@@ -2,13 +2,17 @@ use crate::prelude::*;
 
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: search_clause::PathChunk<'tcx>, state: S as tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
+)]
 pub enum ImplExprPathChunk {
     AssocItem(AssocItem, TraitPredicate),
     Parent(TraitPredicate),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
+)]
 pub enum ImplExprAtom {
     Concrete {
         id: GlobalIdent,
@@ -31,7 +35,9 @@ pub enum ImplExprAtom {
     Todo(String),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
+)]
 pub struct ImplExpr {
     r#impl: ImplExprAtom,
     args: Box<Vec<ImplExpr>>,
