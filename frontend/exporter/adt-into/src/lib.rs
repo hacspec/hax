@@ -223,7 +223,6 @@ fn variant_to_arm(
     let fields = field_vec_of_fields(variant.clone().fields);
 
     if let Some(map) = map {
-        // TODO: refactor
         let names: proc_macro2::TokenStream = fields
             .iter()
             .filter(|f| {
@@ -239,7 +238,6 @@ fn variant_to_arm(
             })
             .map(|name| quote! {#name, })
             .collect();
-        // panic!("{:#?}", names);
         if fields.iter().any(|f| f.ident.is_some()) {
             quote_spanned!(variant.span()=> #from_variant {#names ..} => #map,)
         } else {
