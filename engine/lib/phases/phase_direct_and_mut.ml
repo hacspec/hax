@@ -24,6 +24,10 @@ struct
   module Implem : ImplemT.T = struct
     let metadata = metadata
 
+    let hax_core_extraction =
+      Sys.getenv "HAX_CORE_EXTRACTION_MODE"
+      |> [%equal: string option] (Some "on")
+
     module S = struct
       include Features.SUBTYPE.Id
 
@@ -57,8 +61,14 @@ struct
     let rec dty (span : span) (ty : A.ty) : B.ty =
       match ty with
       | [%inline_arms "dty.*" - TRef] -> auto
-      | TRef { mut = Mutable _; _ } ->
-          Error.raise { kind = UnallowedMutRef; span }
+      | TRef { mut = Mutable _; typ; _ } ->
+          if hax_core_extraction then
+            TApp
+              {
+                ident = Global_ident.of_name Type Rust_primitives__hax__MutRef;
+                args = [ GType (dty span typ) ];
+              }
+          else Error.raise { kind = UnallowedMutRef; span }
       | TRef { witness; typ; mut = Immutable as mut; region } ->
           TRef { witness; typ = dty span typ; mut; region }
 
