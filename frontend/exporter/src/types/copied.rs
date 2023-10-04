@@ -3077,7 +3077,9 @@ pub enum PredicateOrigin {
 
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::AssocItem, state: S as tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct AssocItem {
     pub def_id: DefId,
     pub name: Symbol,
@@ -3090,7 +3092,9 @@ pub struct AssocItem {
 
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::ImplTraitInTraitData, state: S as _tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub enum ImplTraitInTraitData {
     Trait {
         fn_def_id: DefId,
@@ -3103,7 +3107,9 @@ pub enum ImplTraitInTraitData {
 
 #[derive(AdtInto)]
 #[args(<S>, from: rustc_middle::ty::AssocItemContainer, state: S as _tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub enum AssocItemContainer {
     TraitContainer,
     ImplContainer,
@@ -3111,7 +3117,9 @@ pub enum AssocItemContainer {
 
 #[derive(AdtInto)]
 #[args(<S>, from: rustc_middle::ty::AssocKind, state: S as _tcx)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub enum AssocKind {
     Const,
     Fn,
