@@ -337,12 +337,13 @@ module Raw = struct
 
   let pgeneric_param (p : generic_param) =
     let prefix, suffix = pgeneric_param_kind p.span p.kind in
-    let id =
-      plocal_ident p.span
-        (if String.equal p.ident.name "_" then
-         { p.ident with name = "Anonymous" }
-        else p.ident)
+    let name =
+      match p.ident.name with
+      | "_" -> "Anonymous"
+      | "Self" -> "Self_"
+      | name -> name
     in
+    let id = plocal_ident p.span { p.ident with name } in
     pattrs p.attrs & prefix & id & suffix
 
   let pgeneric_params (pl : generic_param list) =
@@ -399,6 +400,49 @@ module Raw = struct
     let ( ! ) = pure span in
     concat ~sep:!", " (List.map ~f:(pvariant span) variants)
 
+  let ptrait_item (ti : trait_item) =
+    let ( ! ) = pure ti.ti_span in
+    let generics = pgeneric_params ti.ti_generics.params in
+    let bounds = pgeneric_constraints ti.ti_span ti.ti_generics.constraints in
+    let ident = !(Concrete_ident_view.to_definition_name ti.ti_ident) in
+    match ti.ti_v with
+    | TIType _ -> !"type " & ident & !": TodoPrintRustBoundsTyp;"
+    | TIFn ty ->
+        let inputs, output =
+          match ty with
+          | TArrow (inputs, output) -> (inputs, output)
+          | ty -> ([], ty)
+        in
+        let return_type = pty ti.ti_span output in
+        let params =
+          List.map ~f:(fun typ -> !"_: " & pty ti.ti_span typ) inputs
+          |> concat ~sep:!","
+        in
+        !"fn " & ident & generics & !"(" & params & !") -> " & return_type
+        & bounds & !";"
+
+  let pparam span ({ pat; typ; typ_span; attrs } : param) =
+    let ( ! ) = pure span in
+    pattrs attrs & ppat pat & !": "
+    & pty (Option.value ~default:pat.span typ_span) typ
+
+  let pparams span (l : param list) =
+    let ( ! ) = pure span in
+    !"(" & List.map ~f:(pparam span) l |> concat ~sep:!"," & !")"
+
+  let pimpl_item (ii : impl_item) =
+    let span = ii.ii_span in
+    let ( ! ) = pure span in
+    let generics = pgeneric_params ii.ii_generics.params in
+    let bounds = pgeneric_constraints span ii.ii_generics.constraints in
+    let ident = !(Concrete_ident_view.to_definition_name ii.ii_ident) in
+    match ii.ii_v with
+    | IIType _ -> !"type " & ident & !": TodoPrintRustBoundsTyp;"
+    | IIFn { body; params } ->
+        let return_type = pty span body.typ in
+        !"fn " & ident & generics & pparams span params & !" -> " & return_type
+        & bounds & !"{" & pexpr body & !"}"
+
   let pitem (e : item) =
     let exception NotImplemented in
     let ( ! ) = pure e.span in
@@ -407,18 +451,10 @@ module Raw = struct
         match e.v with
         | Fn { name; body; generics; params } ->
             let return_type = pty e.span body.typ in
-            let params =
-              List.map
-                ~f:(fun { pat; typ; typ_span; attrs } ->
-                  pattrs attrs & ppat pat & !": "
-                  & pty (Option.value ~default:pat.span typ_span) typ)
-                params
-              |> concat ~sep:!","
-            in
             !"fn "
             & !(Concrete_ident_view.to_definition_name name)
             & pgeneric_params generics.params
-            & !"(" & params & !") -> " & return_type
+            & pparams e.span params & !" -> " & return_type
             & pgeneric_constraints e.span generics.constraints
             & !"{" & pexpr body & !"}"
         | TyAlias { name; generics; ty } ->
@@ -442,10 +478,36 @@ module Raw = struct
             &
             if List.is_empty variants then empty
             else !"{" & pvariants e.span variants & !"}"
+        | Trait { name; generics; items } ->
+            !"trait "
+            & !(Concrete_ident_view.to_definition_name name)
+            & pgeneric_params generics.params
+            & pgeneric_constraints e.span generics.constraints
+            & !"{"
+            & List.map ~f:ptrait_item items |> concat ~sep:!"\n"
+            & !"}"
+        | Impl { generics; self_ty; of_trait; items } ->
+            let trait =
+              pglobal_ident e.span (fst of_trait)
+              & !"<"
+              & concat ~sep:!","
+                  (List.map ~f:(pgeneric_value e.span) (snd of_trait))
+              & !">"
+            in
+            !"impl "
+            & pgeneric_params generics.params
+            & trait & !" for " & pty e.span self_ty
+            & pgeneric_constraints e.span generics.constraints
+            & !"{"
+            & List.map ~f:pimpl_item items |> concat ~sep:!"\n"
+            & !"}"
         | _ -> raise NotImplemented
       in
       pattrs e.attrs & pi
-    with NotImplemented -> !"/* print_rust: pitem: not implemented */"
+    with NotImplemented ->
+      !("\n/* print_rust: pitem: not implemented  (item: "
+       ^ [%show: concrete_ident] e.ident
+       ^ ") */\n")
 end
 
 let rustfmt (s : string) : string =
