@@ -606,7 +606,7 @@ module Make (F : Features.T) = struct
 
   module LiftToFullAst = struct
     let expr : AST.expr -> Ast.Full.expr = Stdlib.Obj.magic
-    let item : AST.expr -> Ast.Full.expr = Stdlib.Obj.magic
+    let item : AST.item -> Ast.Full.item = Stdlib.Obj.magic
   end
 
   let unbox_expr' (next : expr -> expr) (e : expr) : expr =
