@@ -111,12 +111,34 @@ mod search_clause {
             {
                 let self_p: Predicate = self.to_predicate(s.base().tcx);
                 let target_p: Predicate = target.to_predicate(s.base().tcx);
-                // TODO: How should we compare those? normalizing is not helping
+                // TODO: Sometimes there are too much generic_args
+                // given to TraitRef: I noticed this happens for
+                // core::hash::Hash, where often a `__H` is
+                // prepend.
 
-                // eprintln!("   target_p = {target_p:?}");
-                // eprintln!("VS   self_p = {self_p:?}");
-                // eprintln!("-----> {:?}", self_p == target_p);
+                // This __H seems to be inserted by
+                // https://github.com/rust-lang/rust/blob/b0889cb4ed0e6f3ed9f440180678872b02e7052c/compiler/rustc_builtin_macros/src/deriving/hash.rs#L20
+
+                // Also, in the compiler, the
+                // `ty::print::default_print_def_path` method seems to
+                // ignore such extra
+                // arguments. https://github.com/rust-lang/rust/blob/b0889cb4ed0e6f3ed9f440180678872b02e7052c/compiler/rustc_middle/src/ty/print/mod.rs#L141
+
+                // Hence, for now I just compare their debug display,
+                // which is very clunky.
+
+                // Sometimes, things are even worse: after `sinto`ing,
+                // I cannot see any difference.
+
                 if format!("{:?}", self_p) == format!("{:?}", target_p) {
+                    // use crate::{Predicate, SInto};
+
+                    // let self_p: Predicate = self_p.sinto(s);
+                    // let target_p: Predicate = target_p.sinto(s);
+
+                    // if self_p != target_p {
+                    //     eprintln!("{:#?}\n/////////////\n{:#?}", self_p, target_p);
+                    // }
                     return Some(vec![]);
                 }
             }
