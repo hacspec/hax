@@ -1,9 +1,9 @@
 module Core.Slice
-open Core.Types
+open Rust_primitives
 
 let impl__len (s: slice 'a)
-  : len: usize {len == SizeT.uint_to_t (Seq.length s)} = 
-  SizeT.uint_to_t (Seq.length s)
+  : len: usize {len == sz (Seq.length s)} = 
+  sz (Seq.length s)
 
 open Core.Slice.Iter
 

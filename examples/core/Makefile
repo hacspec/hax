@@ -1,7 +1,7 @@
 EXAMPLES_HOME=$(realpath ..)
 CACHE_DIR     ?= $(EXAMPLES_HOME)/.cache
 HINT_DIR      ?= $(EXAMPLES_HOME)/.hints
-
+HACL_HOME     ?= $(EXAMPLES_HOME)/../../hacl-star
 
 .PHONY: all verify clean
 
@@ -14,7 +14,7 @@ all:
 # *extend* the set of relevant files with the tests.
 ROOTS = $(wildcard *.fst)
 
-FSTAR_INCLUDE_DIRS = $(EXAMPLES_HOME)/core $(EXAMPLES_HOME)/rust_primitives
+FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib $(EXAMPLES_HOME)/rust_primitives $(EXAMPLES_HOME)/core
 
 FSTAR_FLAGS = --cmi \
   --warn_error -331 \

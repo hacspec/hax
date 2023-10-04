@@ -1,4 +1,5 @@
 module Alloc.Collections.Binary_heap
+open Rust_primitives
 
 type t_BinaryHeap (t: Type): eqtype = | BinaryHeap
 
@@ -10,6 +11,6 @@ let impl_9__pop #t_Self (self: t_BinaryHeap t_Self): (t_BinaryHeap t_Self * Core
 
 let impl_9__push #t (self: t_BinaryHeap t) (item: t): t_BinaryHeap t = self
 
-let impl_10__len #t (self: t_BinaryHeap t): Core.Types.usize = magic ()
+let impl_10__len #t (self: t_BinaryHeap t): usize = magic ()
 
-let impl_10__iter #t (self: t_BinaryHeap t): Core.Types.slice t = magic ()
+let impl_10__iter #t (self: t_BinaryHeap t): slice t = magic ()

@@ -1,5 +1,5 @@
 module Core.Cmp
-open Core.Types
+open Rust_primitives
 
 let min a b = a
 
