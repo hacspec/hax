@@ -198,6 +198,23 @@ impl<'tcx> State<Base<'tcx>, (), Rc<rustc_middle::mir::Body<'tcx>>, ()> {
     }
 }
 
+/// Updates the OnwerId in a state, making sure to override `opt_def_id` in base as well.
+// TODO: is `opt_def_id` useful at all? (see https://github.com/hacspec/hacspec-v2/issues/273)
+pub fn with_owner_id<'tcx, THIR, MIR>(
+    mut base: types::Base<'tcx>,
+    thir: THIR,
+    mir: MIR,
+    owner_id: rustc_hir::hir_id::OwnerId,
+) -> State<types::Base<'tcx>, THIR, MIR, rustc_hir::hir_id::OwnerId> {
+    base.opt_def_id = Some(owner_id.to_def_id());
+    State {
+        thir,
+        owner_id,
+        base,
+        mir,
+    }
+}
+
 pub trait BaseState<'tcx> = HasBase<'tcx> + Clone + IsState<'tcx>;
 
 /// Returns a map from every implementation (`Impl`) `DefId`s to the
