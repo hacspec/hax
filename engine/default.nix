@@ -64,6 +64,7 @@
         core
         re
         js_of_ocaml
+        ocamlgraph
       ]
       ++
       # F* dependencies
