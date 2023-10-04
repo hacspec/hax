@@ -1302,6 +1302,7 @@ module Make (Opts : OPTS) : MakeT = struct
               }
           in
           (* ident is supposed to always be an actual item, thus here we need to cheat a bit *)
+          (* TODO: is this DUMMY thing really needed? there's a `Use` segment (see #272) *)
           let def_id = item.owner_id in
           let def_id : Types.def_id =
             {
