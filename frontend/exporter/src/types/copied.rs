@@ -3014,29 +3014,35 @@ pub struct MacroDef {
     pub macro_rules: bool,
 }
 
-#[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_hir::Item<'tcx>, state: S as state)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Item<Body: IsBody> {
-    #[value({
-        let name: String = self.ident.name.to_ident_string();
-        let owner_id: DefId = self.owner_id.sinto(state);
-        Path::from(owner_id.clone()).ends_with(&[name]).then(|| owner_id.clone())
-    })]
     pub def_id: Option<GlobalIdent>,
     pub owner_id: DefId,
     pub span: Span,
     pub vis_span: Span,
-    #[map({
-        self.kind.sinto(&with_owner_id(state.base(), (), (), self.owner_id))
-    })]
     pub kind: ItemKind<Body>,
-    #[map(ItemAttributes::from_owner_id(state, *owner_id))]
-    #[not_in_source]
     pub attributes: ItemAttributes,
-    #[not_in_source]
-    #[map(span.macro_backtrace().map(|o| o.sinto(state)).collect())]
     pub expn_backtrace: Vec<ExpnData>,
+}
+
+impl<'tcx, S: BaseState<'tcx>, Body: IsBody> SInto<S, Item<Body>> for rustc_hir::Item<'tcx> {
+    fn sinto(&self, s: &S) -> Item<Body> {
+        let name: String = self.ident.name.to_ident_string();
+        let s = &with_owner_id(s.base(), (), (), self.owner_id);
+        let owner_id: DefId = self.owner_id.sinto(s);
+        let def_id = Path::from(owner_id.clone())
+            .ends_with(&[name])
+            .then(|| owner_id.clone());
+        Item {
+            def_id,
+            owner_id,
+            span: self.span.sinto(s),
+            vis_span: self.span.sinto(s),
+            kind: self.kind.sinto(s),
+            attributes: ItemAttributes::from_owner_id(s, self.owner_id),
+            expn_backtrace: self.span.macro_backtrace().map(|o| o.sinto(s)).collect(),
+        }
+    }
 }
 
 impl<'tcx, S: BaseState<'tcx>, Body: IsBody> SInto<S, Item<Body>> for rustc_hir::ItemId {
