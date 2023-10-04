@@ -178,10 +178,6 @@ struct
         | Some name -> "impl_" ^ Int.to_string ([%hash: string] name)
         | _ -> e.name)
 
-  let pgeneric_param_name (name : string) : string =
-    String.lowercase
-      name (* TODO: this is not robust, might produce name clashes *)
-
   let pfield_ident span (f : global_ident) : F.Ident.lident =
     match f with
     | `Concrete cid -> pconcrete_ident cid
@@ -259,11 +255,7 @@ struct
     | TFloat _ -> Error.unimplemented ~details:"pty: Float" span
     | TArray { typ; length } ->
         F.mk_e_app (F.term_of_lid [ "array" ]) [ pty span typ; pexpr length ]
-    | TParam i ->
-        F.term
-        @@ F.AST.Var
-             (F.lid_of_id
-             @@ plocal_ident { i with name = pgeneric_param_name i.name })
+    | TParam i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident i)
     | TProjectedAssociatedType s -> F.term @@ F.AST.Wild
     | _ -> .
 
@@ -454,14 +446,10 @@ struct
 
   and parm { arm = { arm_pat; body } } = (ppat arm_pat, None, pexpr body)
 
-  let rec pgeneric_param span (p : generic_param) =
+  let rec pgeneric_param span (p : generic_param) : F.AST.pattern =
     let mk_implicit (ident : local_ident) ty =
       let v =
-        F.pat
-        @@ F.AST.PatVar
-             ( plocal_ident { ident with name = pgeneric_param_name ident.name },
-               Some F.AST.Implicit,
-               [] )
+        F.pat @@ F.AST.PatVar (plocal_ident ident, Some F.AST.Implicit, [])
       in
       F.pat @@ F.AST.PatAscribed (v, (ty, None))
     in
@@ -476,8 +464,7 @@ struct
 
   let rec pgeneric_constraint span (nth : int) (c : generic_constraint) =
     match c with
-    | GCLifetime _ ->
-        Error.assertion_failure span "pgeneric_constraint:LIFETIME"
+    | GCLifetime _ -> .
     | GCType { typ; implements } ->
         let implements : trait_ref = implements in
         let trait = F.term @@ F.AST.Name (pconcrete_ident implements.trait) in
@@ -490,16 +477,26 @@ struct
   let rec pgeneric_param_bd span (p : generic_param) =
     let ident = p.ident in
     match p.kind with
-    | GPLifetime _ -> Error.assertion_failure span "pgeneric_param_bd:LIFETIME"
-    | GPType { default = None } ->
+    | GPLifetime _ -> .
+    | GPType { default = _ } ->
         let t = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
         F.mk_e_binder (F.AST.Annotated (plocal_ident ident, t))
     | GPType _ ->
         Error.unimplemented span ~details:"pgeneric_param_bd:Type with default"
     | GPConst { typ } ->
-        Error.unimplemented span ~details:"pgeneric_param_bd:const todo"
+        F.mk_e_binder (F.AST.Annotated (plocal_ident ident, pty span typ))
 
-  let rec pgeneric_constraint_bd span (c : generic_constraint) =
+  let pgeneric_param_ident span (p : generic_param) =
+    match (pgeneric_param_bd span p).b with
+    | Annotated (ident, _) -> ident
+    | _ -> failwith "pgeneric_param_ident"
+
+  (* let rec ptrait_ref span (typ : F.AST.term) (trait_ref : trait_ref) = *)
+  (*   let trait = F.term @@ F.AST.Name (pconcrete_ident implements.trait) in *)
+  (*   let args = List.map ~f:(pgeneric_value span) implements.args in *)
+  (*   F.mk_e_app trait args *)
+
+  let rec pgeneric_constraint_type span (c : generic_constraint) =
     match c with
     | GCLifetime _ ->
         Error.assertion_failure span "pgeneric_constraint_bd:LIFETIME"
@@ -507,15 +504,22 @@ struct
         let implements : trait_ref = implements in
         let trait = F.term @@ F.AST.Name (pconcrete_ident implements.trait) in
         let args = List.map ~f:(pgeneric_value span) implements.args in
-        let tc = F.mk_e_app trait (*pty typ::*) args in
-        F.AST.
-          {
-            b = F.AST.Annotated (F.generate_fresh_ident (), tc);
-            brange = F.dummyRange;
-            blevel = Un;
-            aqual = None;
-            battributes = [];
-          }
+        F.mk_e_app trait args
+
+  let rec pgeneric_constraint_bd span (c : generic_constraint) =
+    let tc = pgeneric_constraint_type span c in
+    F.AST.
+      {
+        b = F.AST.Annotated (F.generate_fresh_ident (), tc);
+        brange = F.dummyRange;
+        blevel = Un;
+        aqual = None;
+        battributes = [];
+      }
+
+  let pgenerics span generics =
+    List.map ~f:(pgeneric_param_bd span) generics.params
+    @ List.map ~f:(pgeneric_constraint_bd span) generics.constraints
 
   let get_attr (type a) (name : string) (map : string -> a) (attrs : attrs) :
       a option =
@@ -614,7 +618,14 @@ struct
   let rec pitem (e : item) : [> `Item of F.AST.decl | `Comment of string ] list
       =
     try pitem_unwrapped e
-    with Diagnostics.SpanFreeError.Exn _ -> [ `Comment "item error backend" ]
+    with Diagnostics.SpanFreeError.Exn error ->
+      let error = Diagnostics.SpanFreeError.payload error in
+      let error = [%show: Diagnostics.Context.t * Diagnostics.kind] error in
+      [
+        `Comment
+          ("item error backend: " ^ error ^ "\n\nLast AST:\n"
+          ^ (U.LiftToFullAst.item e |> Print_rust.pitem_str));
+      ]
 
   and pitem_unwrapped (e : item) :
       [> `Item of F.AST.decl | `Comment of string ] list =
@@ -687,8 +698,7 @@ struct
                [
                  F.AST.TyconRecord
                    ( F.id @@ U.Concrete_ident_view.to_definition_name name,
-                     [],
-                     (* todo type parameters & constraints *)
+                     pgenerics e.span generics,
                      None,
                      [],
                      List.map
@@ -708,8 +718,12 @@ struct
                ] )
     | Type { name; generics; variants; _ } ->
         let self =
-          F.term_of_lid [ U.Concrete_ident_view.to_definition_name name ]
+          F.mk_e_app
+            (F.term_of_lid [ U.Concrete_ident_view.to_definition_name name ])
+            (List.map ~f:(pgeneric_param_ident e.span) generics.params
+            |> List.map ~f:(fun id -> F.term @@ F.AST.Name (F.lid_of_id id)))
         in
+
         let constructors =
           List.map
             ~f:(fun { name; arguments; is_record; _ } ->
@@ -747,8 +761,7 @@ struct
                [
                  F.AST.TyconVariant
                    ( F.id @@ U.Concrete_ident_view.to_definition_name name,
-                     [],
-                     (* todo type parameters & constraints *)
+                     pgenerics e.span generics,
                      None,
                      constructors );
                ] )
@@ -824,40 +837,62 @@ struct
             | _ -> unsupported_macro ())
         | _ -> unsupported_macro ())
     | Trait { name; generics; items } ->
-        let bds =
-          List.map ~f:(pgeneric_param_bd e.span) generics.params
-          @ List.map ~f:(pgeneric_constraint_bd e.span) generics.constraints
-        in
-        let name = F.id @@ U.Concrete_ident_view.to_definition_name name in
+        let bds = List.map ~f:(pgeneric_param_bd e.span) generics.params in
+        let name_str = U.Concrete_ident_view.to_definition_name name in
+        let name = F.id @@ name_str in
         let fields =
           List.concat_map
             ~f:(fun i ->
               let name = U.Concrete_ident_view.to_definition_name i.ti_ident in
-              match i.ti_v with
-              | TIType bounds ->
-                  let t = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
-                  (F.id name, None, [], t)
-                  :: List.map
-                       ~f:(fun { trait; args; bindings = _ } ->
-                         let base =
-                           F.term @@ F.AST.Name (pconcrete_ident trait)
-                         in
-                         let args = List.map ~f:(pgeneric_value e.span) args in
-                         (F.id name, None, [], F.mk_e_app base args))
-                       bounds
-              | TIFn ty -> [ (F.id name, None, [], pty e.span ty) ])
+              let bds = pgenerics i.ti_span i.ti_generics in
+              let fields =
+                match i.ti_v with
+                | TIType bounds ->
+                    let t = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
+                    (* let constraints = *)
+                    (*   List.map *)
+                    (*     ~f:(fun implements -> *)
+                    (*       { typ = TApp { ident = i.ti_ident } }) *)
+                    (*     bounds *)
+                    (* in *)
+                    (F.id name, None, [], t)
+                    :: List.map
+                         ~f:(fun { trait; args; bindings = _ } ->
+                           let base =
+                             F.term @@ F.AST.Name (pconcrete_ident trait)
+                           in
+                           let args =
+                             List.map ~f:(pgeneric_value e.span) args
+                           in
+                           (F.id name, None, [], F.mk_e_app base args))
+                         bounds
+                | TIFn ty -> [ (F.id name, None, [], pty e.span ty) ]
+              in
+              List.map ~f:Fn.id
+                (* ~f:(fun (n, q, a, ty) -> (n, q, a, F.mk_e_app bds ty)) *)
+                fields)
             items
         in
+        let constraints_fields =
+          generics.constraints
+          |> List.map ~f:(fun c ->
+                 let hash = Int.to_string ([%hash: generic_constraint] c) in
+                 let name = "__constraint_" ^ hash ^ "_" ^ name_str in
+                 let typ = pgeneric_constraint_type e.span c in
+                 (F.id name, None, [], typ))
+        in
+        let fields = constraints_fields @ fields in
         let fields =
           if List.is_empty fields then
-            [ (F.id "__marker_trait", None, [], pty e.span U.unit_typ) ]
+            let marker_field = "__marker_trait_" ^ name_str in
+            [ (F.id marker_field, None, [], pty e.span U.unit_typ) ]
           else fields
         in
         let tcdef = F.AST.TyconRecord (name, bds, None, [], fields) in
         let d = F.AST.Tycon (false, true, [ tcdef ]) in
         [ `Item { d; drange = F.dummyRange; quals = []; attrs = [] } ]
     | Impl { generics; self_ty = _; of_trait = trait, generic_args; items } ->
-        (* this unique name is stupid, we have disambiguators... *)
+        (* this unique name is stupid, we have disambiguators... And things will be refered differently! very stupid, TODO *)
         let unique_name_todo = "impl_" ^ Int.to_string ([%hash: item] e) in
         let pat = F.pat @@ F.AST.PatVar (F.id unique_name_todo, None, []) in
         let pat =
@@ -905,7 +940,12 @@ struct
         in
         let body = F.term @@ F.AST.Record (None, fields) in
         F.decls @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
-    | HaxError details -> [ `Comment details ]
+    | HaxError details ->
+        [
+          `Comment
+            ("item error backend: " ^ details ^ "\n\nLast AST:\n"
+            ^ (U.LiftToFullAst.item e |> Print_rust.pitem_str));
+        ]
     | Use _ (* TODO: Not Yet Implemented *) | NotImplementedYet -> []
     | _ -> .
 end
@@ -944,6 +984,14 @@ let hardcoded_fstar_headers =
 
 let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
     =
+  let show_view Concrete_ident.{ crate; path; definition } =
+    crate :: (path @ [ definition ]) |> String.concat ~sep:"::"
+  in
+  Stdlib.prerr_endline @@ "[translate]"
+  ^ [%show: string list]
+      (List.map
+         ~f:(fun i -> U.Concrete_ident_view.to_view i.ident |> show_view)
+         items);
   U.group_items_by_namespace items
   |> Map.to_alist
   |> List.map ~f:(fun (ns, items) ->
@@ -963,6 +1011,7 @@ let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
 
 open Phase_utils
 module DepGraph = Dependencies.Make (InputLanguage)
+module DepGraphR = Dependencies.Make (Features.Rust)
 
 module TransformToInputLanguage =
   [%functor_application
@@ -990,8 +1039,21 @@ module TransformToInputLanguage =
 let apply_phases (bo : BackendOptions.t) (items : Ast.Rust.item list) :
     AST.item list =
   let items =
+    (* let hax_core_extraction = *)
+    (*   Sys.getenv "HAX_CORE_EXTRACTION_MODE" *)
+    (*   |> [%equal: string option] (Some "on") *)
+    (* in *)
+    (* if hax_core_extraction then *)
+    (*   let names = *)
+    (*     Core_names.names |> List.map ~f:(Concrete_ident.of_def_id Value) *)
+    (*   in *)
+    (*   DepGraphR.ItemGraph.transitive_dependencies_of_items names items *)
+    (* else *)
+    items
+  in
+  let items =
     TransformToInputLanguage.ditems items
     |> List.map ~f:U.Mappers.add_typ_ascription
-    |> DepGraph.name_me
+    (* |> DepGraph.name_me *)
   in
   items
