@@ -69,5 +69,5 @@ open Core
 //   }
 
 let to_unsigned_representative (fe: i32) : u16 =
-  cast (fe +. (fe <<. 15l &. Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS))
+  cast #i32 #u16 (fe +. (fe <<. 15l &. Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS))
   

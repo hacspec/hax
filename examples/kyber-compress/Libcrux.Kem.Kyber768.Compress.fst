@@ -29,52 +29,52 @@ let compress_q (fe: u16) (to_bit_size: u32 {v to_bit_size <= 12}) : i32 =
   // assume (v result < pow2 31);
   cast result
 
-// let compress
-//       (re: Libcrux.Kem.Kyber768.Arithmetic.t_KyberPolynomialRingElement)
-//       (bits_per_compressed_coefficient: usize)
-//     : Libcrux.Kem.Kyber768.Arithmetic.t_KyberPolynomialRingElement =
-//   let re:Libcrux.Kem.Kyber768.Arithmetic.t_KyberPolynomialRingElement =
-//     {
-//       re with
-//       Libcrux.Kem.Kyber768.Arithmetic.f_coefficients
-//       =
-//       Core.Array.impl_23__map re.Libcrux.Kem.Kyber768.Arithmetic.f_coefficients
-//         (fun coefficient ->
-//             compress_q (Libcrux.Kem.Kyber768.Conversions.to_unsigned_representative coefficient)
-//               bits_per_compressed_coefficient)
-//     }
-//   in
-//   re
+let compress
+      (re: Libcrux.Kem.Kyber768.Arithmetic.t_KyberPolynomialRingElement)
+      (bits_per_compressed_coefficient: usize)
+    : Libcrux.Kem.Kyber768.Arithmetic.t_KyberPolynomialRingElement =
+  let re:Libcrux.Kem.Kyber768.Arithmetic.t_KyberPolynomialRingElement =
+    {
+      re with
+      Libcrux.Kem.Kyber768.Arithmetic.f_coefficients
+      =
+      Core.Array.impl_23__map re.Libcrux.Kem.Kyber768.Arithmetic.f_coefficients
+        (fun coefficient ->
+            compress_q (Libcrux.Kem.Kyber768.Conversions.to_unsigned_representative coefficient)
+              bits_per_compressed_coefficient)
+    }
+  in
+  re
 
-// let decompress_q (fe: i32) (to_bit_size: usize) : i32 =
-//   let _:Prims.unit =
-//     if true
-//     then
-//       let _:Prims.unit =
-//         if ~.(to_bit_size <=. Libcrux.Kem.Kyber768.Parameters.v_BITS_PER_COEFFICIENT)
-//         then
-//           Rust_primitives.Hax.never_to_any (Core.Panicking.panic "assertion failed: to_bit_size <= BITS_PER_COEFFICIENT"
-//               )
-//       in
-//       ()
-//   in
-//   let decompressed:u32 = cast fe *. cast Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS in
-//   let decompressed:u32 = (decompressed >>. 1l) +. (1ul >>. to_bit_size) in
-//   let decompressed = decompressed <<. to_bit_size +. 1sz in
-//   cast decompressed
+let decompress_q (fe: i32) (to_bit_size: usize) : i32 =
+  let _:Prims.unit =
+    if true
+    then
+      let _:Prims.unit =
+        if ~.(to_bit_size <=. Libcrux.Kem.Kyber768.Parameters.v_BITS_PER_COEFFICIENT)
+        then
+          Rust_primitives.Hax.never_to_any (Core.Panicking.panic "assertion failed: to_bit_size <= BITS_PER_COEFFICIENT"
+              )
+      in
+      ()
+  in
+  let decompressed:u32 = cast fe *. cast Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS in
+  let decompressed:u32 = (decompressed >>. 1l) +. (1ul >>. to_bit_size) in
+  let decompressed = decompressed <<. to_bit_size +. 1sz in
+  cast decompressed
   
-// let decompress
-//       (re: Libcrux.Kem.Kyber768.Arithmetic.t_KyberPolynomialRingElement)
-//       (bits_per_compressed_coefficient: usize)
-//     : Libcrux.Kem.Kyber768.Arithmetic.t_KyberPolynomialRingElement =
-//   let re:Libcrux.Kem.Kyber768.Arithmetic.t_KyberPolynomialRingElement =
-//     {
-//       re with
-//       Libcrux.Kem.Kyber768.Arithmetic.f_coefficients
-//       =
-//       Core.Array.impl_23__map re.Libcrux.Kem.Kyber768.Arithmetic.f_coefficients
-//         (fun coefficient -> decompress_q coefficient bits_per_compressed_coefficient)
-//     }
-//   in
-//   re
+let decompress
+      (re: Libcrux.Kem.Kyber768.Arithmetic.t_KyberPolynomialRingElement)
+      (bits_per_compressed_coefficient: usize)
+    : Libcrux.Kem.Kyber768.Arithmetic.t_KyberPolynomialRingElement =
+  let re:Libcrux.Kem.Kyber768.Arithmetic.t_KyberPolynomialRingElement =
+    {
+      re with
+      Libcrux.Kem.Kyber768.Arithmetic.f_coefficients
+      =
+      Core.Array.impl_23__map re.Libcrux.Kem.Kyber768.Arithmetic.f_coefficients
+        (fun coefficient -> decompress_q coefficient bits_per_compressed_coefficient)
+    }
+  in
+  re
 
