@@ -949,7 +949,9 @@ struct
           else fields
         in
         let body = F.term @@ F.AST.Record (None, fields) in
-        F.decls @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
+        let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
+        F.decls ~quals:[ tcinst ]
+        @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
     | HaxError details ->
         [
           `Comment
