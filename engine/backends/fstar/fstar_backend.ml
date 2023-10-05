@@ -525,7 +525,7 @@ struct
         b = F.AST.Annotated (F.generate_fresh_ident (), tc);
         brange = F.dummyRange;
         blevel = Un;
-        aqual = None;
+        aqual = Some TypeClassArg;
         battributes = [];
       }
 
