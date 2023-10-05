@@ -72,7 +72,7 @@ module Make (F : Features.T) = struct
     let of_items : item list -> G.t =
       vertices_of_items >> List.fold ~init:G.empty ~f:(G.add_edge >> uncurry)
 
-    let transitive_dependencies_of (selection : Concrete_ident.t list) (g : G.t)
+    let transitive_dependencies_of (g : G.t) (selection : Concrete_ident.t list)
         : Concrete_ident.t Hash_set.t =
       let set = Hash_set.create (module Concrete_ident) in
       let rec visit vertex =
@@ -83,10 +83,10 @@ module Make (F : Features.T) = struct
       List.filter ~f:(G.mem_vertex g) selection |> List.iter ~f:visit;
       set
 
-    let transitive_dependencies_of_items (selection : Concrete_ident.t list)
-        (items : item list) : item list =
-      let g = of_items items in
-      let set = transitive_dependencies_of selection g in
+    let transitive_dependencies_of_items (items : item list)
+        ?(graph = of_items items) (selection : Concrete_ident.t list) :
+        item list =
+      let set = transitive_dependencies_of graph selection in
       items |> List.filter ~f:(ident_of >> Hash_set.mem set)
 
     module MutRec = struct
@@ -201,6 +201,35 @@ module Make (F : Features.T) = struct
       in
       output_graph oc g
   end
+
+  let ident_list_to_string =
+    List.map ~f:Concrete_ident.DefaultViewAPI.show >> String.concat ~sep:", "
+
+  let filter_by_inclusion_clauses (clauses : Types.inclusion_clause list)
+      (items : item list) : item list =
+    let graph = ItemGraph.of_items items in
+    let of_list = Set.of_list (module Concrete_ident) in
+    let selection = List.map ~f:ident_of items |> of_list in
+    let deps_of =
+      let to_set = Hash_set.to_list >> of_list in
+      Set.to_list >> ItemGraph.transitive_dependencies_of graph >> to_set
+    in
+    let apply_clause selection' (clause : Types.inclusion_clause) =
+      let matches = Concrete_ident.matches_namespace clause.Types.namespace in
+      let matched = Set.filter ~f:matches selection in
+      let with_deps =
+        [%matches? (Included { with_deps = true } : Types.inclusion_kind)]
+          clause.kind
+      in
+      let matched = matched |> if with_deps then deps_of else Fn.id in
+      let f =
+        match clause.kind with Included _ -> Set.union | Excluded -> Set.diff
+      in
+      let result = f selection' matched in
+      result
+    in
+    let selection = List.fold ~init:selection ~f:apply_clause clauses in
+    List.filter ~f:(ident_of >> Set.mem selection) items
 
   (* Construct the new item `f item` (say `item'`), and create a
      "symbolic link" to `item'`. Returns a pair that consists in the
