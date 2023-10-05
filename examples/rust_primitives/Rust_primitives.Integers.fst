@@ -120,7 +120,19 @@ let ct_abs #t a = LI.ct_abs a
 let mod_mask_lemma #t a m = admit(); LI.mod_mask_lemma a (cast LI.U32 m)
 #pop-options
 
-let cast_mod #t t' a = LI.cast_mod #t #LI.PUB t' LI.PUB a
+let cast_mod #t #t' a = mk_int (v #t a @%. t')
+
+[@(strict_on_arguments [0])]
+let div_noerr #t x y = admit();
+  match t with
+  | LI.U128 | LI.S128 -> mk_int #t (v x / v y)
+  | _ -> LI.div x y
+
+let div_noerr_lemma #t x y =
+  match t with
+  | LI.U128 | LI.S128 -> admit()
+  | _ -> ()
+
 
 [@(strict_on_arguments [0])]
 let div #t x y =

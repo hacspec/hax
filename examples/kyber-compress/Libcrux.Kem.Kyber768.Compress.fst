@@ -21,10 +21,10 @@ let compress_q (fe: u16) (to_bit_size: u32 {v to_bit_size > 0 /\ v to_bit_size <
   in
   let result = compressed &. two_pow_bit_size -. 1ul in
     //assert (v (two_pow_bit_size -. 1ul) == pow2 (v to_bit_size) - 1);
-  logand_mask compressed (two_pow_bit_size -. 1ul) (v to_bit_size);
+    //logand_mask compressed (two_pow_bit_size -. 1ul) (v to_bit_size);
     //  assert (v result < pow2 (v to_bit_size));
-    //  FStar.Math.Lemmas.pow2_lt_compat 31 (v to_bit_size);
-  cast Lib.IntTypes.S32 result
+    //FStar.Math.Lemmas.pow2_lt_compat 31 (v to_bit_size);
+  cast_mod result
   
 (*
 let compress
@@ -48,19 +48,20 @@ let compress
 let decompress_q (fe: i32) (to_bit_size: usize) : i32 =
   let _:Prims.unit =
     if true
-    then (admit();
+    then (
       let _:Prims.unit =
         if not (to_bit_size <=. Libcrux.Kem.Kyber768.Parameters.v_BITS_PER_COEFFICIENT)
         then
-          Rust_primitives.Hax.never_to_any (Core.Panicking.panic "assertion failed: to_bit_size <= BITS_PER_COEFFICIENT"
+          Rust_primitives.Hax.never_to_any (admit();Core.Panicking.panic "assertion failed: to_bit_size <= BITS_PER_COEFFICIENT"
               )
       in
       ())
   in
+//  assert(False);
   let decompressed:u32 = cast Lib.IntTypes.U32 fe *. cast Lib.IntTypes.U32 Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS in
-  let decompressed:u32 = (decompressed >>. 1l) +. (1ul >>. to_bit_size) in
-  let decompressed = decompressed <<. to_bit_size +. 1sz in
-  cast Lib.IntTypes.S32 decompressed
+  let decompressed:u32 = (decompressed >>. 1ul) +. (1ul >>. (cast Lib.IntTypes.U32 to_bit_size)) in
+  let decompressed = decompressed <<. (cast Lib.IntTypes.U32 (to_bit_size +. (sz 1))) in
+  cast_mod decompressed
 
 (*
 let decompress
