@@ -227,8 +227,8 @@ struct
       (c Core__ops__arith__Mul__mul, (2, "*!"));
       (c Core__ops__arith__Div__div, (2, "/!"));
       (c Core__ops__arith__Rem__rem, (2, "%!"));
-      (c Core__ops__bit__Shl__shl, (2, ">>!"));
-      (c Core__ops__bit__Shr__shr, (2, "<<!"));
+      (c Core__ops__bit__Shl__shl, (2, "<<!"));
+      (c Core__ops__bit__Shr__shr, (2, ">>!"));
       (c Core__cmp__PartialEq__eq, (2, "=."));
       (c Core__cmp__PartialOrd__lt, (2, "<."));
       (c Core__cmp__PartialOrd__le, (2, "<=."));
