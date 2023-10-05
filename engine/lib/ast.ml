@@ -278,7 +278,12 @@ functor
       | Concrete of trait_ref
       | LocalBound of { id : string }
       | Parent of { impl : impl_expr; trait : trait_ref }
-      | Projection of { impl : impl_expr; item : concrete_ident }
+      | Projection of {
+          impl : impl_expr;
+          trait : trait_ref;
+          item : concrete_ident;
+        }
+      | ImplApp of { impl : impl_expr; args : impl_expr list }
       | Dyn of trait_ref
       | Builtin of trait_ref
 
@@ -488,7 +493,12 @@ functor
 
     and generic_constraint =
       | GCLifetime of todo * (F.lifetime[@visitors.opaque])
-      | GCType of { typ : ty; implements : trait_ref; id : string }
+      | GCType of {
+          bound : trait_ref;
+              (* trait_ref is always applied with the type the trait implements.
+                 For instance, `T: Clone` is actually `Clone<T> *)
+          id : string;
+        }
     [@@deriving
       show,
         yojson,

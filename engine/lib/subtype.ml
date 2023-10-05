@@ -54,8 +54,15 @@ struct
     | LocalBound { id } -> LocalBound { id }
     | Parent { impl; trait } ->
         Parent { impl = dimpl_expr span impl; trait = dtrait_ref span trait }
-    | Projection { impl; item } ->
-        Projection { impl = dimpl_expr span impl; item }
+    | Projection { impl; item; trait } ->
+        Projection
+          { impl = dimpl_expr span impl; item; trait = dtrait_ref span trait }
+    | ImplApp { impl; args } ->
+        ImplApp
+          {
+            impl = dimpl_expr span impl;
+            args = List.map ~f:(dimpl_expr span) args;
+          }
     | Dyn tr -> Dyn (dtrait_ref span tr)
     | Builtin tr -> Builtin (dtrait_ref span tr)
 
@@ -300,9 +307,7 @@ struct
         (generic_constraint : A.generic_constraint) : B.generic_constraint =
       match generic_constraint with
       | GCLifetime (lf, witness) -> B.GCLifetime (lf, S.lifetime witness)
-      | GCType { typ; implements; id } ->
-          B.GCType
-            { typ = dty span typ; implements = dtrait_ref span implements; id }
+      | GCType { bound; id } -> B.GCType { bound = dtrait_ref span bound; id }
 
     let dgenerics (span : span) (g : A.generics) : B.generics =
       {

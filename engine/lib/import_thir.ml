@@ -898,8 +898,45 @@ module Make (Opts : OPTS) : MakeT = struct
       | Todo _ -> unimplemented [ span ] "type Todo"
     (* fun _ -> Ok Bool *)
 
-    and c_impl_expr (_span : Thir.span) (_ty : Thir.impl_expr) : impl_expr =
-      failwith "todo"
+    and c_impl_expr (span : Thir.span) (ie : Thir.impl_expr) : impl_expr =
+      let impl = c_impl_expr_atom span ie.impl in
+      match ie.args with
+      | [] -> impl
+      | args ->
+          let args = List.map ~f:(c_impl_expr span) args in
+          ImplApp { impl; args }
+
+    and c_impl_expr_atom (span : Thir.span) (ie : Thir.impl_expr_atom) :
+        impl_expr =
+      let c_trait_ref (tr : Thir.trait_ref) : trait_ref =
+        let trait = Concrete_ident.of_def_id Trait tr.def_id in
+        let args = List.map ~f:(c_generic_value span) tr.generic_args in
+        { trait; args }
+      in
+      match ie with
+      | Concrete { id; generics } ->
+          let trait = Concrete_ident.of_def_id Trait id in
+          let args = List.map ~f:(c_generic_value span) generics in
+          Concrete { trait; args }
+      | LocalBound { clause_id; path } ->
+          let init = LocalBound { id = clause_id } in
+          let f (impl : impl_expr) (chunk : Thir.impl_expr_path_chunk) =
+            match chunk with
+            | AssocItem (item, { trait_ref; _ }) ->
+                let trait = c_trait_ref trait_ref in
+                let kind : Concrete_ident.Kind.t =
+                  match item.kind with Const | Fn -> Value | Type -> Type
+                in
+                let item = Concrete_ident.of_def_id kind item.def_id in
+                Projection { impl; trait; item }
+            | Parent { trait_ref; _ } ->
+                let trait = c_trait_ref trait_ref in
+                Parent { impl; trait }
+          in
+          List.fold ~init ~f path
+      | Dyn { trait } -> Dyn (c_trait_ref trait)
+      | Builtin { trait } -> Builtin (c_trait_ref trait)
+      | Todo str -> failwith @@ "impl_expr_atom: Todo " ^ str
 
     and c_generic_value (span : Thir.span) (ty : Thir.generic_arg) :
         generic_value =
@@ -989,7 +1026,9 @@ module Make (Opts : OPTS) : MakeT = struct
         constraints = bounds |> list_dedup equal_generic_constraint;
       }
 
-    let c_trait_item' span (item : Thir.trait_item_kind) : trait_item' =
+    let c_trait_item' (super : Thir.trait_item) (item : Thir.trait_item_kind) :
+        trait_item' =
+      let span = super.span in
       match item with
       | Const (_, Some _) ->
           unimplemented [ span ]
@@ -1026,7 +1065,7 @@ module Make (Opts : OPTS) : MakeT = struct
     {
       ti_span = Span.of_thir item.span;
       ti_generics = { params; constraints };
-      ti_v = c_trait_item' item.span item.kind;
+      ti_v = c_trait_item' item item.kind;
       ti_ident;
       ti_attrs = c_item_attrs item.attributes;
     }

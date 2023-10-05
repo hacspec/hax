@@ -130,14 +130,8 @@ struct
         B.generic_constraint option =
       match p with
       | GCLifetime _ -> None
-      | GCType { typ; implements; id } ->
-          Some
-            (B.GCType
-               {
-                 typ = dty span typ;
-                 implements = dtrait_ref span implements;
-                 id;
-               })
+      | GCType { bound; id } ->
+          Some (B.GCType { bound = dtrait_ref span bound; id })
 
     let dgenerics (span : span) (g : A.generics) : B.generics =
       {
