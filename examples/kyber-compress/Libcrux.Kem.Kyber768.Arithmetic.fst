@@ -1,21 +1,34 @@
 module Libcrux.Kem.Kyber768.Arithmetic
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+#set-options "--fuel 0 --ifuel 0 --z3rlimit 15"
+open FStar.Mul
 open Core
 
 let t_KyberFieldElement = i32
 
 let v_BARRETT_SHIFT: i32 = 26l
 
-let v_BARRETT_R: i32 =
-  let s = (cast usize_inttype v_BARRETT_SHIFT) in
-  admit();
-  1l <<. s
+let v_BARRETT_R: i32 = 1l <<. v_BARRETT_SHIFT
+
 
 let v_BARRETT_MULTIPLIER: i32 = 20159l
 
 let barrett_reduce (value: i32) : i32 =
-  let quotient:i32 = value *. v_BARRETT_MULTIPLIER +. (v_BARRETT_R <<. 1l) <<. (cast usize_inttype v_BARRETT_SHIFT) in
-  value -. quotient *. Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS
+  shift_left_lemma #Lib.IntTypes.S32 1l v_BARRETT_SHIFT;
+  assume (range (v value * v v_BARRETT_MULTIPLIER + v (v_BARRETT_R <<. 1l)) Lib.IntTypes.S32);
+//  assume (v v_BARRETT_R > 0);
+  shift_left_lemma #Lib.IntTypes.S32 v_BARRETT_R 1l;
+  let quotient:i32 =
+    ((value *. v_BARRETT_MULTIPLIER <: i32) +. (v_BARRETT_R <<. 1l <: i32) <: i32) <<.
+    v_BARRETT_SHIFT 
+  in
+  value -. (quotient *. Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS <: i32)
+
+#push-options "--query_stats --z3rlimit 200"
+let barrett_reduce (value: i32) =
+  let x:i32 = (value *. v_BARRETT_MULTIPLIER <: i32) in
+  let y:i32 = x +. v_BARRETT_R in
+  admit()
+
 
 let v_MONTGOMERY_SHIFT: i64 = 16L
 

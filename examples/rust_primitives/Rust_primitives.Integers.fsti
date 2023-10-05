@@ -6,6 +6,29 @@ module LI = Lib.IntTypes
 
 #set-options "--max_fuel 0 --max_ifuel 1 --z3rlimit 20"
 
+val pow2_values: x:nat -> Lemma
+  (let p = pow2 x in
+   match x with
+   | 0  -> p=1
+   | 1  -> p=2
+   | 8  -> p=256
+   | 16 -> p=65536
+   | 31 -> p=2147483648
+   | 32 -> p=4294967296
+   | 63 -> p=9223372036854775808
+   | 64 -> p=18446744073709551616
+   | 2 | 3 | 4 | 5 | 6 | 7
+   | 9 | 10 | 11 | 12 | 13 | 14 | 15 
+   | 17 | 18 | 19 | 20 | 21 | 22 | 23
+   | 24 | 25 | 26 | 27 | 28 | 29 | 30
+   | 33 | 34 | 35 | 36 | 37 | 38 | 39
+   | 40 | 41 | 42 | 43 | 44 | 45 | 46
+   | 47 | 48 | 49 | 50 | 51 | 52 | 53
+   | 54 | 55 | 56 | 57 | 58 | 59 | 60
+   | 61 | 62 | 65 -> p = normalize_term (pow2 x)
+   | _ -> True)
+  [SMTPat (pow2 x)]
+
 unfold
 type inttype = LI.inttype
 unfold
@@ -16,12 +39,13 @@ unfold
 type uinttype = t:inttype{unsigned t}
 
 unfold
-let int_t t : ty:Type{hasEq ty} = LI.int_t t LI.PUB
+let int_t t = LI.int_t t LI.PUB //LI.pub_int_t t
+
 
 unfold
 let bits t = LI.bits t
 val usize_inttype: t:inttype{unsigned t /\ (t = LI.U32 \/ t = LI.U64)}
-val isize_inttype: t:inttype{signed t /\ (t = LI.U32 \/ t = LI.U64)}
+val isize_inttype: t:inttype{signed t /\ (t = LI.S32 \/ t = LI.S64)}
 
 unfold
 type u8 = int_t LI.U8 
@@ -64,19 +88,20 @@ let max_usize = maxint usize_inttype
 unfold
 let max_isize = maxint isize_inttype
 
-let range (n:int) (t:inttype) : Type0 = LI.range n t
+let range (n:int) (t:inttype) : bool =
+  minint t <= n && n <= maxint t
 
 unfold
 type range_t (t:inttype) = x:int{range x t}
 
 [@(strict_on_arguments [0])]
 unfold
-let v #t (x:int_t t) : range_t t = LI.v #t x
+let v #t (x:int_t t) : range_t t = LI.v #t #LI.PUB x
 
 [@(strict_on_arguments [0])]
 unfold
 let mk_int #t (n:range_t t) : u:int_t t{v u == n} =
-  LI.mk_int #t n
+  LI.mk_int #t #LI.PUB n
 
 inline_for_extraction
 let sz (n:nat{n <= max_usize}) : usize = mk_int n
@@ -125,12 +150,12 @@ val zero: t:inttype -> n:int_t t{v n = 0}
 
 [@(strict_on_arguments [0])]
 inline_for_extraction
-val add_mod: #t:uinttype
+val add_mod: #t:inttype
   -> int_t t
   -> int_t t
   -> int_t t
 
-val add_mod_lemma: #t:uinttype
+val add_mod_lemma: #t:inttype
   -> a:int_t t
   -> b:int_t t
   -> Lemma
@@ -164,12 +189,12 @@ val incr_lemma: #t:inttype
 
 [@(strict_on_arguments [0])]
 inline_for_extraction
-val mul_mod: #t:inttype{unsigned t /\ ~(LI.U128? t)}
+val mul_mod: #t:inttype
   -> int_t t
   -> int_t t
   -> int_t t
 
-val mul_mod_lemma: #t:inttype{unsigned t /\ ~(LI.U128? t)}
+val mul_mod_lemma: #t:inttype
   -> a:int_t t
   -> b:int_t t
   -> Lemma (v (mul_mod a b) == (v a * v b) @%. t)
@@ -177,12 +202,12 @@ val mul_mod_lemma: #t:inttype{unsigned t /\ ~(LI.U128? t)}
 
 [@(strict_on_arguments [0])]
 inline_for_extraction
-val mul: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}
+val mul: #t:inttype//{~(LI.U128? t) /\ ~(LI.S128? t)}
   -> a:int_t t
   -> b:int_t t{range (v a * v b) t}
   -> int_t t
 
-val mul_lemma: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}
+val mul_lemma: #t:inttype//{~(LI.U128? t) /\ ~(LI.S128? t)}
   -> a:int_t t
   -> b:int_t t{range (v a * v b) t}
   -> Lemma (v #t (mul #t a b) == v a * v b)
@@ -190,12 +215,12 @@ val mul_lemma: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}
 
 [@(strict_on_arguments [0])]
 inline_for_extraction
-val sub_mod: #t:uinttype
+val sub_mod: #t:inttype
   -> int_t t
   -> int_t t
   -> int_t t
 
-val sub_mod_lemma: #t:uinttype -> a:int_t t -> b:int_t t
+val sub_mod_lemma: #t:inttype -> a:int_t t -> b:int_t t
   -> Lemma (v (sub_mod a b) == (v a - v b) @%. t)
   [SMTPat (v #t (sub_mod #t a b))]
 
@@ -282,11 +307,27 @@ val logor_ones: #t: uinttype -> a: int_t t ->
 inline_for_extraction
 val lognot: #t:inttype -> int_t t -> int_t t
 
-inline_for_extraction
-type shiftval (t:inttype) = LI.shiftval t
+// Unlike HACL* we enforce the Rust type rules for the shiftval
+unfold
+type shiftval (t:inttype) = x:int_t t {v x >= 0 /\ v x < bits t}
 
+// Unlike HACL* we enforce the Rust type rules for the rotval
+unfold
+type rotval (t:inttype) = x:int_t t {v x > 0 /\ v x < bits t}
+
+[@(strict_on_arguments [0])]
 inline_for_extraction
-type rotval (t:inttype) = LI.rotval t
+val shift_right_mod: #t:inttype
+  -> int_t t
+  -> int_t t
+  -> int_t t
+
+val shift_right_mod_lemma: #t:inttype
+  -> a:int_t t
+  -> b:shiftval t
+  -> Lemma
+    (v (shift_right_mod a b) == v a / pow2 (v b))
+    [SMTPat (v #t (shift_right_mod #t a b))]
 
 [@(strict_on_arguments [0])]
 inline_for_extraction
@@ -302,6 +343,21 @@ val shift_right_lemma: #t:inttype
     (v (shift_right a b) == v a / pow2 (v b))
     [SMTPat (v #t (shift_right #t a b))]
 
+[@(strict_on_arguments [0])]
+inline_for_extraction
+val shift_left_mod: #t:inttype
+  -> a:int_t t
+  -> s:int_t t
+  -> int_t t
+
+val shift_left_mod_lemma:
+    #t:inttype
+  -> a:int_t t{unsigned t \/ 0 <= v a}
+  -> s:shiftval t{unsigned t \/ (0 <= v a /\ v a * pow2 (v s) <= maxint t)}
+  -> Lemma
+    (v (shift_left_mod a s) == (v a * pow2 (v s)) @%. t)
+    [SMTPat (v #t (shift_left_mod #t a s))]
+    
 [@(strict_on_arguments [0])]
 inline_for_extraction
 val shift_left: #t:inttype
@@ -354,7 +410,7 @@ val ct_abs: #t:inttype{signed t /\ ~(LI.S128? t)}
 
 [@(strict_on_arguments [0])]
 inline_for_extraction
-let mod_mask (#t:inttype) (m:shiftval t{pow2 (v m) <= maxint t}) : int_t t = LI.mod_mask #t #LI.PUB m
+let mod_mask (#t:inttype) (m:shiftval t{pow2 (v m) <= maxint t}) : int_t t = LI.mod_mask #t #LI.PUB (cast LI.U32 m)
 
 
 val mod_mask_lemma: #t:inttype
@@ -374,11 +430,18 @@ val cast_mod: #t:inttype{signed t}
 /// Operators available for all machine integers
 ///
 
+// Strict: with precondition
 unfold
 let (+!) #t = add #t
 
+// Wrapping: no precondition
 unfold
 let (+.) #t = add_mod #t
+
+// Strict - doesn't exist yet: no precondition but panics
+unfold
+let (+?) #t = add #t
+
 
 unfold
 let ( *! ) #t = mul #t
@@ -422,12 +485,12 @@ let ( ~. ) #t = lognot #t
 
 [@(strict_on_arguments [0])]
 inline_for_extraction
-val div: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}
+val div: #t:inttype
   -> a:int_t t
   -> b:int_t t{v b <> 0 /\ (unsigned t \/ range FStar.Int.(v a / v b) t)}
   -> int_t t
 
-val div_lemma: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}
+val div_lemma: #t:inttype//{~(LI.U128? t) /\ ~(LI.S128? t)}
   -> a:int_t t
   -> b:int_t t{v b <> 0 /\ (unsigned t \/ range FStar.Int.(v a / v b) t)}
   -> Lemma (v (div a b) == FStar.Int.(v a / v b))
@@ -435,12 +498,12 @@ val div_lemma: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}
 
 [@(strict_on_arguments [0])]
 inline_for_extraction
-val mod: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}
+val mod: #t:inttype//{~(LI.U128? t) /\ ~(LI.S128? t)}
   -> a:int_t t
   -> b:int_t t{v b <> 0 /\ (unsigned t \/ range FStar.Int.(v a / v b) t)}
   -> int_t t
 
-val mod_lemma: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}
+val mod_lemma: #t:inttype//{~(LI.U128? t) /\ ~(LI.S128? t)}
   -> a:int_t t
   -> b:int_t t{v b <> 0 /\ (unsigned t \/ range FStar.Int.(v a / v b) t)}
   -> Lemma (if signed t then
