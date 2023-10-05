@@ -2,7 +2,7 @@ module Libcrux.Kem.Kyber768.Compress
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 35"
 open FStar.Mul
 open Core
-
+open Rust_primitives
 
 let compress_q (fe: u16) (to_bit_size: u32 {v to_bit_size > 0 /\ v to_bit_size <= 12}) : i32 =
   let two_pow_bit_size:u32 = 1ul <<. to_bit_size in
@@ -15,7 +15,7 @@ let compress_q (fe: u16) (to_bit_size: u32 {v to_bit_size > 0 /\ v to_bit_size <
     //  assert (v fe * v tmp < pow2 (13 + 16));
     //  assert_norm (pow2 (13 + 16) < pow2 32);
     //  assert (v fe * v tmp < pow2 32);
-  let compressed:u32 = (cast Lib.IntTypes.U32 fe <: u32) *. (two_pow_bit_size <<. 1ul) in
+  let compressed:u32 = (cast fe <: u32) *. (two_pow_bit_size <<. 1ul) in
   let compressed =
     compressed /. (3329ul <<. 1ul)
   in
@@ -45,7 +45,7 @@ let compress
   re
 *)
 
-let decompress_q (fe: i32) (to_bit_size: usize) : i32 =
+let decompress_q (fe: i32{v fe < 100 /\ v fe > -100}) (to_bit_size: usize) : i32 =
   let _:Prims.unit =
     if true
     then (
@@ -58,9 +58,9 @@ let decompress_q (fe: i32) (to_bit_size: usize) : i32 =
       ())
   in
 //  assert(False);
-  let decompressed:u32 = cast Lib.IntTypes.U32 fe *. cast Lib.IntTypes.U32 Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS in
-  let decompressed:u32 = (decompressed >>. 1ul) +. (1ul >>. (cast Lib.IntTypes.U32 to_bit_size)) in
-  let decompressed = decompressed <<. (cast Lib.IntTypes.U32 (to_bit_size +. (sz 1))) in
+  let decompressed:u32 = (cast fe <: u32) *. cast Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS <: u32 in
+  let decompressed:u32 = (decompressed >>. 1ul) +. (1ul >>. (cast to_bit_size <: u32)) in
+  let decompressed = decompressed <<. (cast (to_bit_size +. (sz 1)) <: u32) in
   cast_mod decompressed
 
 (*
