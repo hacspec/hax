@@ -8,6 +8,11 @@
 # We expect HACL_HOME to be set to your HACL* repo location
 # We expect EXAMPLES_HOME to be set to the folder containing core, rust_primitives etc.
 #
+# ROOTS contains all the top-level F* files you wish to verify
+# The default target `verify` verified ROOTS and its dependencies
+# To lax-check instead, set `OTHERFLAGS="--lax"` on the command-line
+#
+#
 # To make F* emacs mode use the settings in this file, you need to
 # add the following lines to your .emacs
 #
