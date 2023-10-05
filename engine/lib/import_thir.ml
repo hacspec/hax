@@ -383,10 +383,15 @@ module Make (Opts : OPTS) : MakeT = struct
             let then_ = c_expr then' in
             let else_ = Option.map ~f:c_expr else_opt in
             If { cond; else_; then_ }
-        | Call { args; fn_span = _; impl = _; from_hir_call = _; fun'; ty = _ }
-          ->
+        | Call { args; fn_span = _; impl; from_hir_call = _; fun'; ty = _ } ->
             let args = List.map ~f:c_expr args in
-            let f = c_expr fun' in
+            let f =
+              let f = c_expr fun' in
+              match (impl, fun'.contents) with
+              | Some _, GlobalName { id } ->
+                  { f with e = GlobalVar (def_id (AssociatedItem Value) id) }
+              | _ -> f
+            in
             App { f; args }
         | Box { value } ->
             (U.call Rust_primitives__hax__box_new [ c_expr value ] span typ).e
@@ -880,7 +885,7 @@ module Make (Opts : OPTS) : MakeT = struct
           TApp { ident = `TupleType (List.length types); args = types }
       | Alias (_kind, { trait_def_id = Some (_did, impl_expr); def_id; _ }) ->
           let impl = c_impl_expr span impl_expr in
-          let item = Concrete_ident.of_def_id Type def_id in
+          let item = Concrete_ident.of_def_id (AssociatedItem Type) def_id in
           TAssociatedType { impl; item }
       | Alias (_kind, { def_id; trait_def_id = None; _ }) ->
           TOpaque (Concrete_ident.of_def_id Type def_id)

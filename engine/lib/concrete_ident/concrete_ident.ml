@@ -85,6 +85,7 @@ module Kind = struct
     | Macro
     | Trait
     | Impl
+    | AssociatedItem of t
   [@@deriving show, yojson, compare, sexp, eq, hash]
 
   let of_def_path_item : Imported.def_path_item -> t option = function
@@ -132,23 +133,21 @@ module View = struct
       List.filter_map ~f:string_of_disambiguated_def_path_item def_id.path
       |> last_init |> Option.value_exn
     in
+    let sep = "__" in
+    let subst = String.substr_replace_all ~pattern:sep ~with_:(sep ^ "_") in
     let fake_path, real_path =
+      let f = string_of_disambiguated_def_path_item >> Option.map ~f:subst in
       (* Detects paths of nested items *)
       List.rev def_id.path |> List.tl_exn
       |> List.split_while ~f:(fun (x : Imported.disambiguated_def_path_item) ->
              [%matches? Imported.ValueNs _ | Imported.Impl] x.data)
-      |> Fn.id *** List.rev
-      |> List.filter_map ~f:string_of_disambiguated_def_path_item
-         *** List.filter_map ~f:string_of_disambiguated_def_path_item
+      |> List.rev *** List.rev
+      |> List.filter_map ~f *** List.filter_map ~f
     in
-    let sep = "_under_" in
-    if List.is_empty fake_path then
-      let definition =
-        String.substr_replace_all ~pattern:sep ~with_:(sep ^ "_") definition
-      in
-      { crate = def_id.krate; path; definition }
+    let definition = subst definition in
+    if List.is_empty fake_path then { crate = def_id.krate; path; definition }
     else
-      let definition = String.concat ~sep (definition :: fake_path) in
+      let definition = String.concat ~sep (fake_path @ [ definition ]) in
       { crate = def_id.krate; path = real_path; definition }
 
   let to_definition_name x = (to_view x).definition
@@ -200,23 +199,25 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
     (*       (path, type_name ^ "_" ^ name) *)
     (*   | _ -> (path, name) *)
     (* in *)
-    let prefixes = [ "t"; "C"; "v"; "f" ] in
+    let prefixes = [ "t"; "C"; "v"; "f"; "i" ] in
     let escape s =
       match String.lsplit2 ~on:'_' s with
-      | Some (prefix, leftover)
-        when List.mem ~equal:String.equal prefixes prefix ->
-          prefix ^ "__" ^ leftover
+      | Some (prefix, _) when List.mem ~equal:String.equal prefixes prefix ->
+          String.prefix prefix 1 ^ s
       | _ -> s
     in
     match kind with
     | Type | Trait -> "t_" ^ name
-    | Value | Impl ->
+    | Impl ->
+        if start_uppercase name || is_reserved_word name then "i_" ^ name
+        else escape name
+    | Value ->
         if start_uppercase name || is_reserved_word name then "v_" ^ name
         else escape name
     | Constructor _ ->
         if start_lowercase name || is_reserved_word name then "C_" ^ name
         else escape name
-    | Field -> (
+    | Field | AssociatedItem _ -> (
         match Stdlib.int_of_string_opt name with
         | Some _ -> NP.index_field_transform name
         (* | _ -> "f_" ^ Option.value_exn type_name ^ "_" ^ name *)
@@ -241,6 +242,7 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
             Option.value_exn type_name ^ "_" ^ definition )
       | Field when List.last path |> [%equal: string option] type_name ->
           (List.drop_last_exn path, definition)
+      | AssociatedItem _ -> (List.drop_last_exn path, definition)
       | _ -> (path, definition)
     in
     let definition = rename_definition path definition kind type_name in
