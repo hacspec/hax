@@ -1364,4 +1364,9 @@ let c_item inclusion_clauses (item : Thir.item) : (item list, error) Result.t =
       let inclusion_clauses = inclusion_clauses
     end) : MakeT)
   in
-  M.c_item item |> Result.return
+  M.c_item item
+  |> List.map
+       ~f:
+         (U.Mappers.rename_generic_constraints#visit_item
+            (Hashtbl.create (module String)))
+  |> Result.return

@@ -130,6 +130,21 @@ module Make (F : Features.T) = struct
           expr e
       end
 
+    let rename_generic_constraints =
+      object
+        inherit [_] item_map as _super
+        method visit_t _ x = x
+        method visit_mutability _ _ m = m
+
+        method! visit_GCType (s : (string, string) Hashtbl.t) bound id =
+          let data = "i" ^ Int.to_string (Hashtbl.length s) in
+          let _ = Hashtbl.add s ~key:id ~data in
+          GCType { bound; id = data }
+
+        method! visit_LocalBound s id =
+          LocalBound { id = Hashtbl.find s id |> Option.value ~default:id }
+      end
+
     let rename_local_idents (f : local_ident -> local_ident) =
       object
         inherit [_] item_map as _super
