@@ -31,14 +31,13 @@ let montgomery_reduce (value: i32) : i32 =
 
 let to_montgomery_domain (value: i32) : i32 = montgomery_reduce (1353l *. value <: i32)
 
-type t_KyberPolynomialRingElement = { f_coefficients:array i32 256sz }
+type t_KyberPolynomialRingElement = { f_coefficients:array i32 (sz 256) }
 
 let v_ZERO_under_impl: t_KyberPolynomialRingElement =
   {
-    f_coefficients = Rust_primitives.Hax.repeat 0l 256sz
+    f_coefficients = Rust_primitives.Hax.repeat 0l (sz 256)
   }
 
-(*
 let impl: Core.Ops.Index.t_Index t_KyberPolynomialRingElement usize =
   {
     output = i32;
@@ -51,7 +50,7 @@ let impl: Core.Ops.Index.t_Index t_KyberPolynomialRingElement usize =
 let impl: Core.Iter.Traits.Collect.t_IntoIterator t_KyberPolynomialRingElement =
   {
     item = i32;
-    intoIter = Core.Array.Iter.t_IntoIter i32 256sz;
+    intoIter = Core.Array.Iter.t_IntoIter i32 (sz 256);
     into_iter
     =
     fun (self: t_KyberPolynomialRingElement) ->
@@ -68,7 +67,7 @@ let impl: Core.Ops.Arith.t_Add t_KyberPolynomialRingElement t_KyberPolynomialRin
       let result:t_KyberPolynomialRingElement = v_ZERO_under_impl in
       let result:t_KyberPolynomialRingElement =
         Core.Iter.Traits.Iterator.Iterator.fold (Core.Iter.Traits.Collect.IntoIterator.into_iter ({
-                  Core.Ops.Range.Range.f_start = 0sz;
+                  Core.Ops.Range.Range.f_start = sz 0;
                   Core.Ops.Range.Range.f_end
                   =
                   Libcrux.Kem.Kyber768.Parameters.v_COEFFICIENTS_IN_RING_ELEMENT
@@ -110,7 +109,7 @@ let impl: Core.Ops.Arith.t_Sub t_KyberPolynomialRingElement t_KyberPolynomialRin
       let result:t_KyberPolynomialRingElement = v_ZERO_under_impl in
       let result:t_KyberPolynomialRingElement =
         Core.Iter.Traits.Iterator.Iterator.fold (Core.Iter.Traits.Collect.IntoIterator.into_iter ({
-                  Core.Ops.Range.Range.f_start = 0sz;
+                  Core.Ops.Range.Range.f_start = sz 0;
                   Core.Ops.Range.Range.f_end
                   =
                   Libcrux.Kem.Kyber768.Parameters.v_COEFFICIENTS_IN_RING_ELEMENT
@@ -142,4 +141,3 @@ let impl: Core.Ops.Arith.t_Sub t_KyberPolynomialRingElement t_KyberPolynomialRin
       in
       result
   }
-*)

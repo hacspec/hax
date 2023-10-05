@@ -1,6 +1,7 @@
 module Libcrux.Kem.Kyber768.Arithmetic
 #set-options "--fuel 0 --ifuel 0 --z3rlimit 15"
 open FStar.Mul
+open Rust_primitives
 open Core
 
 let t_KyberFieldElement = i32
@@ -13,37 +14,28 @@ let v_BARRETT_R: i32 = 1l <<. v_BARRETT_SHIFT
 let v_BARRETT_MULTIPLIER: i32 = 20159l
 
 let barrett_reduce (value: i32) : i32 =
-  shift_left_lemma #Lib.IntTypes.S32 1l v_BARRETT_SHIFT;
-  assume (range (v value * v v_BARRETT_MULTIPLIER + v (v_BARRETT_R <<. 1l)) Lib.IntTypes.S32);
-//  assume (v v_BARRETT_R > 0);
-  shift_left_lemma #Lib.IntTypes.S32 v_BARRETT_R 1l;
   let quotient:i32 =
     ((value *. v_BARRETT_MULTIPLIER <: i32) +. (v_BARRETT_R <<. 1l <: i32) <: i32) <<.
     v_BARRETT_SHIFT 
   in
   value -. (quotient *. Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS <: i32)
 
-#push-options "--query_stats --z3rlimit 200"
-let barrett_reduce (value: i32) =
-  let x:i32 = (value *. v_BARRETT_MULTIPLIER <: i32) in
-  let y:i32 = x +. v_BARRETT_R in
-  admit()
-
 
 let v_MONTGOMERY_SHIFT: i64 = 16L
 
-let v_MONTGOMERY_R: i64 = 1L >>. (cast usize_inttype v_MONTGOMERY_SHIFT)
+let v_MONTGOMERY_R: i64 = 1L >>. v_MONTGOMERY_SHIFT
 
 let v_INVERSE_OF_MODULUS_MOD_R: i64 = 3327L
 
 let montgomery_reduce (value: i32) : i32 =
-  let (t: i64):i64 = Core.Convert.f_from value *. v_INVERSE_OF_MODULUS_MOD_R in
-  let (t: i32):i32 = cast Lib.IntTypes.S32 (t &. v_MONTGOMERY_R -. 1L) in
-  value -. t *. Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS <<. (cast usize_inttype v_MONTGOMERY_SHIFT)
+  let (t: i64):i64 = (Core.Convert.f_from value <: i64) *. v_INVERSE_OF_MODULUS_MOD_R in
+  let (t: i32):i32 = cast_mod Lib.IntTypes.S32 (t &. (v_MONTGOMERY_R -. 1L <: i64)) in
+  (value -. (t *. Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS <: i32) <: i32) <<.
+  (cast Lib.IntTypes.S32 v_MONTGOMERY_SHIFT)
 
 let to_montgomery_domain (value: i32) : i32 = montgomery_reduce (1353l *. value)
 
-type t_KyberPolynomialRingElement = { f_coefficients:array i32 256sz }
+type t_KyberPolynomialRingElement = { f_coefficients:array i32 (sz 256) }
 
 let impl__ZERO: t_KyberPolynomialRingElement =
   { f_coefficients = Rust_primitives.Hax.repeat 0l 256sz }
