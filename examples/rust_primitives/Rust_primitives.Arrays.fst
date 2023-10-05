@@ -41,6 +41,7 @@ let update_at
   : t
   = admit ()
   *)
-  
+
+let never_to_any x = admit()
 let array_of_list = Seq.seq_of_list
 

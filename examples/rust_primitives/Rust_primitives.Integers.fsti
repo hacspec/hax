@@ -222,7 +222,7 @@ val sub_mod: #t:inttype
 
 val sub_mod_lemma: #t:inttype -> a:int_t t -> b:int_t t
   -> Lemma (v (sub_mod a b) == (v a - v b) @%. t)
-  [SMTPat (v #t (sub_mod #t a b))]
+  [SMTPat (sub_mod #t a b)]
 
 [@(strict_on_arguments [0])]
 inline_for_extraction
@@ -281,7 +281,8 @@ val logand_mask: #t:uinttype
   Lemma
     (requires v b == pow2 m - 1)
     (ensures v (logand #t a b) == v a % pow2 m)
-
+    [SMTPat (logand #t a b)]
+    
 [@(strict_on_arguments [0])]
 inline_for_extraction
 val logor: #t:inttype
@@ -356,7 +357,7 @@ val shift_left_mod_lemma:
   -> s:shiftval t{unsigned t \/ (0 <= v a /\ v a * pow2 (v s) <= maxint t)}
   -> Lemma
     (v (shift_left_mod a s) == (v a * pow2 (v s)) @%. t)
-    [SMTPat (v #t (shift_left_mod #t a s))]
+    [SMTPat (shift_left_mod #t a s)]
     
 [@(strict_on_arguments [0])]
 inline_for_extraction
@@ -491,6 +492,19 @@ let ( ~. ) #t = lognot #t
 
 [@(strict_on_arguments [0])]
 inline_for_extraction
+val div_noerr: #t:inttype
+  -> a:int_t t
+  -> b:int_t t
+  -> int_t t
+
+val div_noerr_lemma: #t:inttype
+  -> a:int_t t
+  -> b:int_t t{v b <> 0 /\ (unsigned t \/ range FStar.Int.(v a / v b) t)}
+  -> Lemma (v (div_noerr a b) == FStar.Int.(v a / v b))
+  [SMTPat (v #t (div_noerr #t a b))]
+
+[@(strict_on_arguments [0])]
+inline_for_extraction
 val div: #t:inttype
   -> a:int_t t
   -> b:int_t t{v b <> 0 /\ (unsigned t \/ range FStar.Int.(v a / v b) t)}
@@ -580,7 +594,10 @@ val gte_lemma: #t:inttype
   [SMTPat (gte #t a b)]
 
 unfold
-let (/.) #t = div #t
+let (/!) #t = div #t
+
+unfold
+let (/.) #t = div_noerr #t
 
 unfold
 let (%.) #t = mod #t
