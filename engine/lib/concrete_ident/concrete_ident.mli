@@ -1,6 +1,12 @@
 type t [@@deriving show, yojson, compare, sexp, eq, hash]
 type name = Concrete_ident_generated.name
 
+module ImplInfos : sig
+  val init :
+    (Types.def_id * (Types.ty * Types.binder_for__predicate_kind list)) list ->
+    unit
+end
+
 module Kind : sig
   type t =
     | Type
