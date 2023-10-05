@@ -39,7 +39,7 @@ type t_KyberPolynomialRingElement = { f_coefficients:array i32 (sz 256) }
 
 let impl__ZERO: t_KyberPolynomialRingElement =
   { f_coefficients = Rust_primitives.Hax.repeat 0l 256sz }
-
+(*
 let impl_1: Core.Ops.Index.t_Index t_KyberPolynomialRingElement usize =
   {
     f_Output = i32;
@@ -114,3 +114,4 @@ let impl_1: Core.Ops.Index.t_Index t_KyberPolynomialRingElement usize =
 //       result
 //   }
   
+*)
