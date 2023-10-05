@@ -23,6 +23,7 @@ let run (options : Types.engine_options) : Types.output =
       (module M : Backend.T with type BackendOptions.t = options_type)
       (backend_options : options_type) : Types.file list =
     let open M in
+    Concrete_ident.ImplInfos.init options.impl_infos;
     let items =
       options.input
       |> List.concat_map ~f:(fun item ->

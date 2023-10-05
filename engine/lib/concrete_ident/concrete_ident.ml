@@ -75,6 +75,34 @@ module Imported = struct
     { did with path = List.map ~f did.path }
 end
 
+module ImplInfos = struct
+  let state :
+      ( Imported.def_id,
+        Types.ty * Types.binder_for__predicate_kind list )
+      Hashtbl.t
+      option
+      ref =
+    ref None
+
+  module T = struct
+    type t = Imported.def_id [@@deriving show, yojson, compare, sexp, eq, hash]
+  end
+
+  let init impl_infos =
+    state :=
+      impl_infos
+      |> List.map ~f:(map_fst Imported.of_def_id)
+      |> Hashtbl.of_alist_exn (module T)
+      |> Option.some
+
+  let get () =
+    match !state with
+    | None -> failwith "ImplInfos: state not initialized!"
+    | Some state -> state
+
+  let query k = Hashtbl.find_exn (get ()) k
+end
+
 module Kind = struct
   type t =
     | Type
