@@ -891,16 +891,19 @@ struct
                 fields)
             items
         in
-        let constraints_fields =
+        let constraints_fields : FStar_Parser_AST.tycon_record =
           generics.constraints
           |> List.map ~f:(fun c ->
-                 let hash = Int.to_string ([%hash: generic_constraint] c) in
-                 let name = "__constraint_" ^ hash ^ "_" ^ name_str in
+                 let name =
+                   "_super_" ^ Int.to_string ([%hash: generic_constraint] c)
+                 in
                  let typ = pgeneric_constraint_type e.span c in
-                 (F.id name, None, [], typ))
+                 (F.id name, None, [ F.Attrs.no_method ], typ))
         in
-        let fields = constraints_fields @ fields in
-        let fields =
+        let fields : FStar_Parser_AST.tycon_record =
+          constraints_fields @ fields
+        in
+        let fields : FStar_Parser_AST.tycon_record =
           if List.is_empty fields then
             let marker_field = "__marker_trait_" ^ name_str in
             [ (F.id marker_field, None, [], pty e.span U.unit_typ) ]
