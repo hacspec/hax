@@ -500,11 +500,12 @@ struct
     | GPLifetime _ -> .
     | GPType { default = _ } ->
         let t = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
-        F.mk_e_binder (F.AST.Annotated (plocal_ident ident, t))
+        F.mk_binder ~aqual:Implicit (F.AST.Annotated (plocal_ident ident, t))
     | GPType _ ->
         Error.unimplemented span ~details:"pgeneric_param_bd:Type with default"
     | GPConst { typ } ->
-        F.mk_e_binder (F.AST.Annotated (plocal_ident ident, pty span typ))
+        F.mk_binder ~aqual:Implicit
+          (F.AST.Annotated (plocal_ident ident, pty span typ))
 
   let pgeneric_param_ident span (p : generic_param) =
     match (pgeneric_param_bd span p).b with
