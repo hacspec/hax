@@ -2296,6 +2296,8 @@ pub enum Constness {
 pub struct Generics<Body: IsBody> {
     pub params: Vec<GenericParam<Body>>,
     pub predicates: Vec<WherePredicate<Body>>,
+    #[value(region_bounds_at_current_owner(tcx))]
+    pub bounds: GenericBounds,
     pub has_where_clause_predicates: bool,
     pub where_clause_span: Span,
     pub span: Span,
@@ -2969,47 +2971,51 @@ pub enum PredicateKind {
 
 type GenericBounds = Vec<PredicateKind>;
 
+fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> GenericBounds {
+    let tcx = s.base().tcx;
+
+    // According to what kind of node we are looking at, we should
+    // either call `predicates_of` or `item_bounds`
+    let use_item_bounds = {
+        if let Some(oid) = s.owner_id().as_local() {
+            let hir_id = tcx.hir().local_def_id_to_hir_id(oid);
+            let node = tcx.hir().get(hir_id);
+            use rustc_hir as hir;
+            matches!(
+                node,
+                hir::Node::TraitItem(hir::TraitItem {
+                    kind: hir::TraitItemKind::Type(..),
+                    ..
+                }) | hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { .. }),
+                    ..
+                })
+            )
+        } else {
+            false
+        }
+    };
+
+    let predicates: Vec<_> = if use_item_bounds {
+        let list = tcx.item_bounds(s.owner_id()).subst_identity();
+        let span = list.default_span(tcx);
+        list.into_iter().map(|x| (x, span)).collect()
+    } else {
+        tcx.predicates_of(s.owner_id())
+            .predicates
+            .into_iter()
+            .cloned()
+            .collect()
+    };
+    predicates
+        .iter()
+        .map(|(pred, _span)| tcx.erase_late_bound_regions(pred.clone().kind()).sinto(s))
+        .collect()
+}
+
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, GenericBounds> for rustc_hir::GenericBounds<'tcx> {
     fn sinto(&self, s: &S) -> GenericBounds {
-        let tcx = s.base().tcx;
-
-        // According to what kind of node we are looking at, we should
-        // either call `predicates_of` or `item_bounds`
-        let use_item_bounds = {
-            if let Some(oid) = s.owner_id().as_local() {
-                let hir_id = tcx.hir().local_def_id_to_hir_id(oid);
-                let node = tcx.hir().get(hir_id);
-                use rustc_hir as hir;
-                matches!(
-                    node,
-                    hir::Node::TraitItem(hir::TraitItem {
-                        kind: hir::TraitItemKind::Type(..),
-                        ..
-                    }) | hir::Node::Item(hir::Item {
-                        kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { .. }),
-                        ..
-                    })
-                )
-            } else {
-                false
-            }
-        };
-
-        let predicates: Vec<_> = if use_item_bounds {
-            let list = tcx.item_bounds(s.owner_id()).subst_identity();
-            let span = list.default_span(tcx);
-            list.into_iter().map(|x| (x, span)).collect()
-        } else {
-            tcx.predicates_of(s.owner_id())
-                .predicates
-                .into_iter()
-                .cloned()
-                .collect()
-        };
-        predicates
-            .iter()
-            .map(|(pred, _span)| tcx.erase_late_bound_regions(pred.clone().kind()).sinto(s))
-            .collect()
+        region_bounds_at_current_owner(s)
     }
 }
 
@@ -3085,7 +3091,8 @@ pub struct WhereBoundPredicate<Body: IsBody> {
     pub origin: PredicateOrigin,
     pub bound_generic_params: Vec<GenericParam<Body>>,
     pub bounded_ty: Ty,
-    pub bounds: GenericBounds,
+    // TODO: What to do with WhereBoundPredicate?
+    // pub bounds: GenericBounds,
 }
 
 #[derive(AdtInto)]

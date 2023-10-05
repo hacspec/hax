@@ -271,9 +271,28 @@ struct
     | TArray { typ; length } ->
         F.mk_e_app (F.term_of_lid [ "array" ]) [ pty span typ; pexpr length ]
     | TParam i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident i)
-    | TAssociatedType s -> F.term @@ F.AST.Wild
+    | TAssociatedType { impl; item } ->
+        let impl = pimpl_expr span impl in
+        F.term
+        @@ F.AST.Project
+             (impl, F.lid [ U.Concrete_ident_view.to_definition_name item ])
     | TOpaque s -> F.term @@ F.AST.Wild
     | _ -> .
+
+  and pimpl_expr span (ie : impl_expr) =
+    match ie with
+    | Concrete tr -> c_trait_ref span tr
+    | LocalBound { id } ->
+        let local_ident =
+          LocalIdent.{ name = id; id = LocalIdent.mk_id Expr 0 }
+        in
+        F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident local_ident)
+    (* | tParent *)
+    | _ -> F.term @@ F.AST.Wild
+
+  and c_trait_ref span trait_ref =
+    let trait = F.term @@ F.AST.Name (pconcrete_ident trait_ref.trait) in
+    List.map ~f:(pgeneric_value span) trait_ref.args |> F.mk_e_app trait
 
   and pgeneric_value span (g : generic_value) =
     match g with
@@ -481,11 +500,8 @@ struct
   let rec pgeneric_constraint span (nth : int) (c : generic_constraint) =
     match c with
     | GCLifetime _ -> .
-    | GCType { typ; implements; id } ->
-        let implements : trait_ref = implements in
-        let trait = F.term @@ F.AST.Name (pconcrete_ident implements.trait) in
-        let args = List.map ~f:(pgeneric_value span) implements.args in
-        let tc = F.mk_e_app trait (*pty typ::*) args in
+    | GCType { bound; id; _ } ->
+        let tc = c_trait_ref span bound in
         F.pat
         @@ F.AST.PatAscribed (F.pat_var_tcresolve @@ Some ("i" ^ id), (tc, None))
 
@@ -510,11 +526,7 @@ struct
     match c with
     | GCLifetime _ ->
         Error.assertion_failure span "pgeneric_constraint_bd:LIFETIME"
-    | GCType { typ; implements } ->
-        let implements : trait_ref = implements in
-        let trait = F.term @@ F.AST.Name (pconcrete_ident implements.trait) in
-        let args = List.map ~f:(pgeneric_value span) implements.args in
-        F.mk_e_app trait args
+    | GCType { bound; _ } -> c_trait_ref span bound
 
   let rec pgeneric_constraint_bd span (c : generic_constraint) =
     let tc = pgeneric_constraint_type span c in
