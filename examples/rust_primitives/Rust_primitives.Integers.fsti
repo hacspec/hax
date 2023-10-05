@@ -281,7 +281,7 @@ val logand_mask: #t:uinttype
   Lemma
     (requires v b == pow2 m - 1)
     (ensures v (logand #t a b) == v a % pow2 m)
-    [SMTPat (logand #t a b)]
+    [SMTPat (logand #t a b); SMTPat (pow2 m)]
     
 [@(strict_on_arguments [0])]
 inline_for_extraction
@@ -419,11 +419,11 @@ val mod_mask_lemma: #t:inttype
   -> Lemma (v (a `logand` mod_mask m) == v a % pow2 (v m))
   [SMTPat (a `logand` mod_mask #t m)]
 
-(** Casts a value between two signed types using modular reduction *)
+(** Casts a value between two types using modular reduction *)
 [@(strict_on_arguments [0;2])]
 inline_for_extraction
-val cast_mod: #t:inttype{signed t}
-  -> t':inttype{signed t'}
+val cast_mod: #t:inttype
+  -> #t':inttype
   -> a:int_t t
   -> b:int_t t'{v b == v a @%. t'}
 
@@ -494,7 +494,7 @@ let ( ~. ) #t = lognot #t
 inline_for_extraction
 val div_noerr: #t:inttype
   -> a:int_t t
-  -> b:int_t t
+  -> b:int_t t{v b <> 0}
   -> int_t t
 
 val div_noerr_lemma: #t:inttype
