@@ -878,7 +878,13 @@ struct
                            in
                            (F.id name, None, [], F.mk_e_app base args))
                          bounds
-                | TIFn ty -> [ (F.id name, None, [], pty e.span ty) ]
+                | TIFn ty ->
+                    let ty = pty e.span ty in
+                    let ty =
+                      F.term
+                      @@ F.AST.Product (pgenerics i.ti_span i.ti_generics, ty)
+                    in
+                    [ (F.id name, None, [], ty) ]
               in
               List.map ~f:Fn.id
                 (* ~f:(fun (n, q, a, ty) -> (n, q, a, F.mk_e_app bds ty)) *)
