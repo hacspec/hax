@@ -170,7 +170,7 @@ struct
           ("pglobal_ident: expected to be handled somewhere else: "
          ^ show_global_ident id)
 
-  let rec plocal_ident (e : LocalIdent.t) =
+  let plocal_ident (e : LocalIdent.t) =
     F.id
     @@
     if [%eq: LocalIdent.id] e.id magic_id_raw_local_ident then e.name
