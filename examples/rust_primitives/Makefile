@@ -1,9 +1,5 @@
 EXAMPLES_HOME=$(realpath ..)
-CACHE_DIR     ?= $(EXAMPLES_HOME)/.cache
-HINT_DIR      ?= $(EXAMPLES_HOME)/.hints
-HACL_HOME     ?= $(EXAMPLES_HOME)/../../hacl-star
-
-.PHONY: all verify clean
+include $(EXAMPLES_HOME)/Makefile.include
 
 all:
 	rm -f .depend && $(MAKE) .depend
@@ -13,50 +9,3 @@ all:
 # By default, we process all the files in the current directory. Here, we
 # *extend* the set of relevant files with the tests.
 ROOTS = $(wildcard *.fst)
-
-FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib $(EXAMPLES_HOME)/rust_primitives $(EXAMPLES_HOME)/core
-
-FSTAR_FLAGS = --cmi \
-  --warn_error -331 \
-  --cache_checked_modules --cache_dir $(CACHE_DIR) \
-  --already_cached "+Prims+FStar+LowStar+C+Spec.Loops+TestLib" \
-  $(addprefix --include ,$(FSTAR_INCLUDE_DIRS))
-
-FSTAR = $(FSTAR_HOME)/bin/fstar.exe $(FSTAR_FLAGS) $(OTHERFLAGS)
-
-
-.depend: $(HINT_DIR) $(CACHE_DIR)
-	$(info $(ROOTS))
-	$(FSTAR) --cmi --dep full $(ROOTS) --extract '* -Prims -LowStar -FStar' > $@
-
-include .depend
-
-$(HINT_DIR):
-	mkdir -p $@
-
-$(CACHE_DIR):
-	mkdir -p $@
-
-$(CACHE_DIR)/%.checked: | .depend $(HINT_DIR) $(CACHE_DIR)
-	$(FSTAR) $< $(ENABLE_HINTS) --hint_file $(HINT_DIR)/$(notdir $*).hints
-
-verify: $(addsuffix .checked, $(addprefix $(CACHE_DIR)/,$(ROOTS)))
-
-# Targets for interactive mode
-
-%.fst-in:
-	$(info $(FSTAR_FLAGS) \
-	  $(ENABLE_HINTS) --hint_file $(HINT_DIR)/$(basename $@).fst.hints)
-
-%.fsti-in:
-	$(info $(FSTAR_FLAGS) \
-	  $(ENABLE_HINTS) --hint_file $(HINT_DIR)/$(basename $@).fsti.hints)
-
-
-# Clean targets
-
-SHELL=/bin/bash
-
-clean:
-	rm -rf $(CACHE_DIR)/*
-
