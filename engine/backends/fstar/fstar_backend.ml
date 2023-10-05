@@ -924,9 +924,10 @@ struct
         let d = F.AST.Tycon (false, true, [ tcdef ]) in
         [ `Item { d; drange = F.dummyRange; quals = []; attrs = [] } ]
     | Impl { generics; self_ty = _; of_trait = trait, generic_args; items } ->
-        (* this unique name is stupid, we have disambiguators... And things will be refered differently! very stupid, TODO *)
-        let unique_name_todo = "impl_" ^ Int.to_string ([%hash: item] e) in
-        let pat = F.pat @@ F.AST.PatVar (F.id unique_name_todo, None, []) in
+        let pat =
+          let name = U.Concrete_ident_view.to_definition_name e.ident in
+          F.pat @@ F.AST.PatVar (F.id name, None, [])
+        in
         let pat =
           F.pat
           @@ F.AST.PatApp
