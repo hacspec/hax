@@ -16,6 +16,8 @@ let setup_logs (options : Types.engine_options) =
   Logs.set_level level;
   Logs.set_reporter @@ Logs.format_reporter ()
 
+module Deps = Dependencies.Make (Features.Rust)
+
 let run (options : Types.engine_options) : Types.output =
   setup_logs options;
   if options.backend.debug_engine then Phase_utils.DebugBindPhase.enable ();
@@ -33,6 +35,8 @@ let run (options : Types.engine_options) : Types.output =
                     options.backend.translation_options.include_namespaces item)
                |> Result.ok_or_failwith
              with Failure e -> failwith e)
+      |> Deps.filter_by_inclusion_clauses
+           options.backend.translation_options.include_namespaces
     in
     Logs.info (fun m ->
         m "Applying phase for backend %s"
