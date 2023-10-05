@@ -456,10 +456,16 @@ unfold
 let ( -. ) #t = sub_mod #t
 
 unfold
-let ( >>. ) #t = shift_right #t
+let ( >>! ) #t = shift_right #t
 
 unfold
-let ( <<. ) #t = shift_left #t
+let ( >>. ) #t = shift_right_mod #t
+
+unfold
+let ( <<! ) #t = shift_left #t
+
+unfold
+let ( <<. ) #t = shift_left_mod #t
 
 unfold
 let ( >>>. ) #t = rotate_right #t
