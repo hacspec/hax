@@ -102,11 +102,13 @@ struct
         | And -> F.lid [ "Prims"; "op_AmpAmp" ]
         | Or -> F.lid [ "Prims"; "op_BarBar" ])
 
+  let pnegative = function true -> "-" | false -> ""
+
   let rec pliteral span (e : literal) =
     match e with
     | String s -> F.Const.Const_string (s, F.dummyRange)
     | Char c -> F.Const.Const_char (Char.to_int c)
-    | Int { value; kind = { size; signedness } } ->
+    | Int { value; kind = { size; signedness }; negative } ->
         let open F.Const in
         let size =
           match size with
@@ -121,7 +123,7 @@ struct
           | SSize -> Sizet
         in
         F.Const.Const_int
-          ( value,
+          ( pnegative negative ^ value,
             Some
               ( (match signedness with Signed -> Signed | Unsigned -> Unsigned),
                 size ) )
