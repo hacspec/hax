@@ -157,11 +157,11 @@ module Make (Opts : OPTS) : MakeT = struct
     | EL_Lit of literal
     | EL_U8Array of literal list (* EL_U8Array only encodes arrays of [u8]s *)
 
-  let c_lit' span (lit : Thir.lit_kind) (ty : ty) : extended_literal =
+  let c_lit' span negative (lit : Thir.lit_kind) (ty : ty) : extended_literal =
     let mk l = EL_Lit l in
     let mku8 (n : int) =
       let kind = { size = S8; signedness = Unsigned } in
-      Int { value = Int.to_string n; kind }
+      Int { value = Int.to_string n; kind; negative = false }
     in
     let error kind =
       assertion_failure [ span ]
@@ -184,6 +184,7 @@ module Make (Opts : OPTS) : MakeT = struct
         @@ Int
              {
                value;
+               negative;
                kind = (match ty with TInt k -> k | _ -> error "integer");
              }
     | Float (value, _kind) ->
@@ -191,12 +192,14 @@ module Make (Opts : OPTS) : MakeT = struct
         @@ Float
              {
                value;
+               negative;
                kind = (match ty with TFloat k -> k | _ -> error "float");
              }
     | Bool b -> mk @@ Bool b
 
-  let c_lit span (lit : Thir.spanned_for__lit_kind) : ty -> extended_literal =
-    c_lit' span lit.node
+  let c_lit span neg (lit : Thir.spanned_for__lit_kind) : ty -> extended_literal
+      =
+    c_lit' span neg lit.node
 
   let resugar_index_mut (e : expr) : (expr * expr) option =
     match (U.unbox_underef_expr e).e with
@@ -597,8 +600,8 @@ module Make (Opts : OPTS) : MakeT = struct
                 fields;
                 base;
               }
-        | Literal { lit; _ } -> (
-            match c_lit e.span lit typ with
+        | Literal { lit; neg; _ } -> (
+            match c_lit e.span neg lit typ with
             | EL_Lit lit -> Literal lit
             | EL_U8Array l ->
                 Array

@@ -69,14 +69,17 @@ module Raw = struct
   open AnnotatedString
 
   let pliteral span (e : literal) : AnnotatedString.t =
+    let pnegative = function true -> "-" | _ -> "" in
     pure span
     @@
     match e with
     | String s -> "\"" ^ String.escaped s ^ "\""
     | Char c -> "'" ^ Char.to_string c ^ "'"
     | Int { value; _ } -> value
-    | Float { value; kind = F32 } -> value ^ "f32"
-    | Float { value; kind = F64 } -> value ^ "f64"
+    | Float { value; kind = F32; negative } ->
+        pnegative negative ^ value ^ "f32"
+    | Float { value; kind = F64; negative } ->
+        pnegative negative ^ value ^ "f64"
     | Bool b -> Bool.to_string b
 
   let pprimitive_ident span : _ -> AnnotatedString.t =
