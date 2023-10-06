@@ -13,9 +13,9 @@ let v_BARRETT_R: i32 = 1l <<. v_BARRETT_SHIFT
 
 let v_BARRETT_MULTIPLIER: i32 = 20159l
 
-let barrett_reduce (value: i32) : i32 =
+let barrett_reduce (value: i32{range (v value) Lib.IntTypes.S16}): i32 =
   let quotient:i32 =
-    ((value *. v_BARRETT_MULTIPLIER <: i32) +. (v_BARRETT_R <<. 1l <: i32) <: i32) <<.
+    ((value *. v_BARRETT_MULTIPLIER <: i32) +. (v_BARRETT_R <<. 1l <: i32) <: i32) >>.
     v_BARRETT_SHIFT 
   in
   value -. (quotient *. Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS <: i32)

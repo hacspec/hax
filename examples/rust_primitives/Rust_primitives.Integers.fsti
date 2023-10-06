@@ -52,12 +52,18 @@ type i128 = int_t LI.S128
 type usize = int_t usize_inttype
 type isize = int_t isize_inttype
 
-let minint (t:LI.inttype) = LI.minint t
-let maxint (t:LI.inttype) = LI.maxint t
-let modulus (t:LI.inttype) = LI.modulus t
+let minint (t:LI.inttype) =
+  if unsigned t then 0 else -(pow2 (bits t - 1))
+let maxint (t:LI.inttype) =
+  if unsigned t then pow2 (bits t) - 1
+  else pow2 (bits t - 1) - 1
+let modulus (t:LI.inttype) = pow2 (bits t)
 
 let max_usize = maxint usize_inttype
 let max_isize = maxint isize_inttype
+
+let range_bits (n:int) (n:bits) : bool =
+  minint t <= n && n <= maxint t
 
 let range (n:int) (t:inttype) : bool =
   minint t <= n && n <= maxint t
@@ -106,7 +112,7 @@ val add_mod_equiv_lemma: #t:uinttype
   -> a:int_t t
   -> b:int_t t
   -> Lemma
-    (add_mod a b == LI.(a +. b))
+    (add_mod a b == LI.add_mod #t #LI.PUB a b)
 
 let add (#t:inttype) (a:int_t t)
         (b:int_t t{range (v a + v b) t}) =
@@ -116,14 +122,14 @@ val add_equiv_lemma: #t:uinttype
   -> a:int_t t
   -> b:int_t t{range (v a + v b) t}
   -> Lemma
-    (add a b == LI.(a +! b))
+    (add a b == LI.add #t #LI.PUB a b)
 
 let incr (#t:inttype) (a:int_t t{v a < maxint t}) =
     mk_int #t (v a + 1)
 
 val incr_equiv_lemma: #t:inttype
   -> a:int_t t{v a < maxint t}
-  -> Lemma (incr a == LI.incr a)
+  -> Lemma (incr a == LI.incr #t #LI.PUB a)
 
 let mul_mod (#t:inttype) (a:int_t t)
             (b:int_t t) =
@@ -132,7 +138,7 @@ let mul_mod (#t:inttype) (a:int_t t)
 val mul_mod_equiv_lemma: #t:uinttype{not (LI.U128? t)}
   -> a:int_t t
   -> b:int_t t
-  -> Lemma (mul_mod a b == LI.mul_mod a b)
+  -> Lemma (mul_mod a b == LI.mul_mod #t #LI.PUB a b)
 
 let mul (#t:inttype) (a:int_t t)
         (b:int_t t{range (v a * v b) t}) =
@@ -141,7 +147,7 @@ let mul (#t:inttype) (a:int_t t)
 val mul_equiv_lemma: #t:uinttype{not (LI.U128? t)}
   -> a:int_t t
   -> b:int_t t{range (v a * v b) t}
-  -> Lemma (mul a b == LI.mul a b)
+  -> Lemma (mul a b == LI.mul #t #LI.PUB a b)
 
 let sub_mod (#t:inttype) (a:int_t t) (b:int_t t) =
     mk_int #t ((v a - v b) @%. t)
@@ -150,7 +156,7 @@ val sub_mod_equiv_lemma: #t:uinttype
   -> a:int_t t
   -> b:int_t t
   -> Lemma
-    (sub_mod a b == LI.(a -. b))
+    (sub_mod a b == LI.sub_mod #t #LI.PUB a b)
 
 let sub (#t:inttype) (a:int_t t)
         (b:int_t t{range (v a - v b) t}) =
@@ -160,14 +166,14 @@ val sub_equiv_lemma: #t:uinttype
   -> a:int_t t
   -> b:int_t t{range (v a - v b) t}
   -> Lemma
-    (sub a b == LI.(a -! b))
+    (sub a b == LI.sub #t #LI.PUB a b)
 
 let decr (#t:inttype) (a:int_t t{minint t < v a}) =
     mk_int #t (v a - 1)
 
 val decr_equiv_lemma: #t:inttype
   -> a:int_t t{minint t < v a}
-  -> Lemma (decr a == LI.decr a)
+  -> Lemma (decr a == LI.decr #t #LI.PUB a)
 
 let div (#t:inttype) (a:int_t t) (b:int_t t{v b <> 0}) =
   assume (range (v a / v b) t);
@@ -190,9 +196,8 @@ val mod_equiv_lemma: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}
 
 /// Comparison Operators
 /// 
-
-let eq (#t:inttype) (a:int_t t) (b:int_t t) = a = b
-let ne (#t:inttype) (a:int_t t) (b:int_t t) = a <> b
+let eq (#t:inttype) (a:int_t t) (b:int_t t) = v a = v b
+let ne (#t:inttype) (a:int_t t) (b:int_t t) = v b <> v b
 let lt (#t:inttype) (a:int_t t) (b:int_t t) = v a < v b
 let lte (#t:inttype) (a:int_t t) (b:int_t t) = v a <= v b
 let gt (#t:inttype) (a:int_t t) (b:int_t t) = v a > v b
@@ -211,7 +216,7 @@ let zero (#t:inttype) : n:int_t t =
 
 val lognot: #t:inttype -> int_t t -> int_t t
 val lognot_lemma: #t:inttype -> a:int_t t -> Lemma
-  (lognot a == LI.lognot a /\
+  (lognot a == LI.lognot #t #LI.PUB a /\
    lognot #t zero == ones /\
    lognot #t ones == zero /\
    lognot (lognot a) == a)
@@ -221,7 +226,7 @@ val logxor: #t:inttype
   -> int_t t
   -> int_t t
 val logxor_lemma: #t:inttype -> a:int_t t -> b:int_t t -> Lemma
-  (logxor a b == LI.logxor a b /\
+  (logxor a b == LI.logxor #t #LI.PUB a b /\
    a `logxor` (a `logxor` b) == b /\
    a `logxor` (b `logxor` a) == b /\
    a `logxor` zero == a /\
@@ -233,11 +238,11 @@ val logand: #t:inttype
   -> int_t t
 
 val logand_lemma: #t:inttype -> a:int_t t -> b:int_t t ->
-  Lemma (logand a b == LI.logand a b /\
+  Lemma (logand a b == LI.logand #t #LI.PUB a b /\
          logand a zero == zero /\
          logand a ones == a)
 
-val logand_mask: #t:uinttype
+val logand_mask_lemma: #t:uinttype
   -> a:int_t t
   -> m:pos{m < bits t} ->
   Lemma (pow2 m < maxint t /\
@@ -251,7 +256,7 @@ val logor: #t:inttype
   -> int_t t
 
 val logor_lemma: #t:inttype -> a:int_t t -> b:int_t t ->
-  Lemma (logor a b == LI.logor a b /\
+  Lemma (logor a b == LI.logor #t #LI.PUB a b /\
          logor a zero == a /\
          logor a ones == ones)
 
@@ -262,7 +267,7 @@ unfold type rotval (t:inttype) (t':inttype) =
 
 let shift_right (#t:inttype) (#t':inttype)
     (a:int_t t) (b:shiftval t t') =
-    LI.shift_right_lemma a (LI.size (v b));
+    LI.shift_right_lemma #t #LI.PUB a (LI.size (v b));
     mk_int #t (v a / pow2 (v b))
 
 val shift_right_equiv_lemma: #t:inttype -> #t':inttype
@@ -270,7 +275,7 @@ val shift_right_equiv_lemma: #t:inttype -> #t':inttype
   -> Lemma
     (v (cast b <: u32) < bits t /\
      shift_right #t #t' a b ==
-     LI.shift_right a (cast b))
+     LI.shift_right #t #LI.PUB a (cast b))
      
 let shift_left (#t:inttype) (#t':inttype)
     (a:int_t t{v a >= 0}) (b:shiftval t t') =
@@ -283,7 +288,7 @@ val shift_left_equiv_lemma: #t:inttype -> #t':inttype
     ((v a >= 0 /\ v a * pow2 (v b) <= maxint t) ==>
      (v (cast b <: u32) < bits t /\
       shift_left #t #t' a b ==
-      LI.shift_left a (cast b)))
+      LI.shift_left #t #LI.PUB a (cast b)))
 
 val rotate_right: #t:uinttype -> #t':inttype
   -> a:int_t t
@@ -294,7 +299,7 @@ val rotate_right_equiv_lemma: #t:uinttype -> #t':inttype
   -> a:int_t t -> b:rotval t t'
   -> Lemma (v (cast b <: u32) > 0 /\ 
            rotate_right a b ==
-           LI.rotate_right a (cast b))
+           LI.rotate_right #t #LI.PUB a (cast b))
   
 val rotate_left: #t:uinttype -> #t':inttype
   -> a:int_t t
@@ -305,7 +310,7 @@ val rotate_left_equiv_lemma: #t:uinttype -> #t':inttype
   -> a:int_t t -> b:rotval t t'
   -> Lemma (v (cast b <: u32) > 0 /\ 
            rotate_left a b ==
-           LI.rotate_left a (cast b))
+           LI.rotate_left #t #LI.PUB a (cast b))
 
 let shift_right_i (#t:inttype) (#t':inttype) (s:shiftval t t') (u:int_t t) : int_t t = shift_right u s
 
@@ -315,13 +320,12 @@ let rotate_right_i (#t:uinttype) (#t':inttype) (s:rotval t t') (u:int_t t) : int
 
 let rotate_left_i (#t:uinttype) (#t':inttype) (s:rotval t t') (u:int_t t) : int_t t = rotate_left u s
 
-val abs_int: #t:inttype
-  -> a:int_t t{minint t < v a}
-  -> b:int_t t{v b == abs (v a)}
+let abs_int (#t:inttype) (a:int_t t{minint t < v a}) =
+    mk_int #t (abs (v a))
 
 val abs_int_equiv_lemma: #t:inttype{signed t /\ not (LI.S128? t)}
   -> a:int_t t{minint t < v a}
-  -> Lemma (abs_int a == LI.ct_abs a)
+  -> Lemma (abs_int a == LI.ct_abs #t #LI.PUB a)
 
 
 ///
