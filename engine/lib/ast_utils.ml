@@ -49,6 +49,41 @@ module Make (F : Features.T) = struct
   open AST
   module TypedLocalIdent = TypedLocalIdent (AST)
 
+  module Expect = struct
+    let mut_borrow (e : expr) : expr option =
+      match e.e with Borrow { kind = Mut _; e; _ } -> Some e | _ -> None
+
+    let deref (e : expr) : expr option =
+      match e.e with
+      | App { f = { e = GlobalVar (`Primitive Deref); _ }; args = [ e ]; _ } ->
+          Some e
+      | _ -> None
+
+    let concrete_app1 (f : Concrete_ident.name) (e : expr) : expr option =
+      match e.e with
+      | App { f = { e = GlobalVar (`Concrete f'); _ }; args = [ e ] }
+        when Concrete_ident.eq_name f f' ->
+          Some e
+      | _ -> None
+
+    let deref_mut_app = concrete_app1 Core__ops__deref__DerefMut__deref_mut
+
+    let local_var (e : expr) : expr option =
+      match e.e with LocalVar _ -> Some e | _ -> None
+
+    let arrow (typ : ty) : (ty list * ty) option =
+      match typ with
+      | TArrow (inputs, output) -> Some (inputs, output)
+      | _ -> None
+
+    let mut_ref (typ : ty) : ty option =
+      match typ with TRef { mut = Mutable _; typ; _ } -> Some typ | _ -> None
+
+    let concrete_app' : expr' -> concrete_ident option = function
+      | App { f = { e = GlobalVar (`Concrete c); _ }; _ } -> Some c
+      | _ -> None
+  end
+
   module Sets = struct
     module Global_ident = struct
       include Set.M (Global_ident)
@@ -145,9 +180,7 @@ module Make (F : Features.T) = struct
     type inference in the presence of associated types in backends
     that don't support them well (F* for instance). *)
     let add_typ_ascription =
-      let is_app : expr' -> bool =
-        [%matches? App { f = { e = GlobalVar (`Concrete _); _ }; _ }]
-      in
+      let is_app = Expect.concrete_app' >> Option.is_some in
       let o =
         object
           inherit [_] item_map as super
@@ -168,8 +201,13 @@ module Make (F : Features.T) = struct
 
           method! visit_expr (ascribe_app : bool) e =
             let e = super#visit_expr ascribe_app e in
+            let is_cast_app =
+              match e.e with
+              | App { f = { e = GlobalVar (`Primitive Cast); _ }; _ } -> true
+              | _ -> false
+            in
             (* Ascribe the return type of a function application *)
-            if ascribe_app && is_app e.e then
+            if is_cast_app || (ascribe_app && is_app e.e) then
               { e with e = Ascription { e; typ = e.typ } }
             else e
         end
@@ -303,37 +341,6 @@ module Make (F : Features.T) = struct
         method visit_Loop _ _ _ _ _ _ = (* Do *NOT* visit sub nodes *)
                                         m#zero
       end
-  end
-
-  module Expect = struct
-    let mut_borrow (e : expr) : expr option =
-      match e.e with Borrow { kind = Mut _; e; _ } -> Some e | _ -> None
-
-    let deref (e : expr) : expr option =
-      match e.e with
-      | App { f = { e = GlobalVar (`Primitive Deref); _ }; args = [ e ]; _ } ->
-          Some e
-      | _ -> None
-
-    let concrete_app1 (f : Concrete_ident.name) (e : expr) : expr option =
-      match e.e with
-      | App { f = { e = GlobalVar (`Concrete f'); _ }; args = [ e ] }
-        when Concrete_ident.eq_name f f' ->
-          Some e
-      | _ -> None
-
-    let deref_mut_app = concrete_app1 Core__ops__deref__DerefMut__deref_mut
-
-    let local_var (e : expr) : expr option =
-      match e.e with LocalVar _ -> Some e | _ -> None
-
-    let arrow (typ : ty) : (ty list * ty) option =
-      match typ with
-      | TArrow (inputs, output) -> Some (inputs, output)
-      | _ -> None
-
-    let mut_ref (typ : ty) : ty option =
-      match typ with TRef { mut = Mutable _; typ; _ } -> Some typ | _ -> None
   end
 
   (** Produces a local identifier which is locally fresh **with respect
