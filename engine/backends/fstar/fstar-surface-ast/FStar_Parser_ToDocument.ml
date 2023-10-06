@@ -4757,7 +4757,11 @@ and (p_constant : FStar_Const.sconst -> FStar_Pprint.document) =
                    let uu___4 = width w in
                    FStar_Pprint.op_Hat_Hat uu___3 uu___4) in
         let ending = default_or_map FStar_Pprint.empty suffix sign_width_opt in
-        let uu___1 = str repr in FStar_Pprint.op_Hat_Hat uu___1 ending
+        let uu___1 = str repr in
+        let result = FStar_Pprint.op_Hat_Hat uu___1 ending in
+        let ( ^^ ) = FStar_Pprint.op_Hat_Hat in
+        if String.get repr 0 == '-'
+        then str "(" ^^ result ^^ str ")" else result
     | FStar_Const.Const_range_of -> str "range_of"
     | FStar_Const.Const_set_range_of -> str "set_range_of"
     | FStar_Const.Const_range r ->

@@ -102,11 +102,13 @@ struct
         | And -> F.lid [ "Prims"; "op_AmpAmp" ]
         | Or -> F.lid [ "Prims"; "op_BarBar" ])
 
+  let pnegative = function true -> "-" | false -> ""
+
   let rec pliteral span (e : literal) =
     match e with
     | String s -> F.Const.Const_string (s, F.dummyRange)
     | Char c -> F.Const.Const_char (Char.to_int c)
-    | Int { value; kind = { size; signedness } } ->
+    | Int { value; kind = { size; signedness }; negative } ->
         let open F.Const in
         let size =
           match size with
@@ -118,10 +120,14 @@ struct
               Error.unimplemented
                 ~details:
                   "128 literals (fail if pattern maching, otherwise TODO)" span
-          | SSize -> Sizet
+          | SSize ->
+              Error.unimplemented
+                ~details:
+                  "usize literals (fail if pattern maching, otherwise TODO)"
+                span
         in
         F.Const.Const_int
-          ( value,
+          ( pnegative negative ^ value,
             Some
               ( (match signedness with Signed -> Signed | Unsigned -> Unsigned),
                 size ) )
@@ -129,13 +135,18 @@ struct
     | Bool b -> F.Const.Const_bool b
 
   let pliteral_as_expr span (e : literal) =
-    let h e = F.term @@ F.AST.Const (pliteral span e) in
+    let mk_const c = F.AST.Const c |> F.term in
+    let mk_nat value negative =
+      mk_const (F.Const.Const_int (pnegative negative ^ value, None))
+    in
+    let wrap_app fn x n = F.mk_e_app (F.term_of_lid [ fn ]) [ mk_nat x n ] in
     match e with
-    | Int { value; kind = { size = S128; signedness } as s } ->
-        let lit = h (Int { value; kind = { s with size = SSize } }) in
-        let prefix = match signedness with Signed -> "i" | Unsigned -> "u" in
-        F.mk_e_app (F.term_of_lid [ "pub_" ^ prefix ^ "128" ]) [ lit ]
-    | _ -> h e
+    | Int { value; kind = { size = SSize; signedness = sn }; negative = n } ->
+        wrap_app (match sn with Signed -> "isz" | Unsigned -> "sz") value n
+    | Int { value; kind = { size = S128; signedness = sn }; negative } ->
+        let prefix = match sn with Signed -> "i" | Unsigned -> "u" in
+        wrap_app ("pub_" ^ prefix ^ "128") value negative
+    | _ -> mk_const @@ pliteral span e
 
   let pconcrete_ident (id : concrete_ident) =
     let id = U.Concrete_ident_view.to_view id in
@@ -209,13 +220,13 @@ struct
       (c Core__ops__bit__BitAnd__bitand, (2, "&."));
       (c Core__ops__bit__BitOr__bitor, (2, "|."));
       (c Core__ops__bit__Not__not, (1, "~."));
-      (c Core__ops__arith__Add__add, (2, "+."));
-      (c Core__ops__arith__Sub__sub, (2, "-."));
-      (c Core__ops__arith__Mul__mul, (2, "*."));
-      (c Core__ops__arith__Div__div, (2, "/."));
-      (c Core__ops__arith__Rem__rem, (2, "%."));
-      (c Core__ops__bit__Shl__shl, (2, ">>."));
-      (c Core__ops__bit__Shr__shr, (2, "<<."));
+      (c Core__ops__arith__Add__add, (2, "+!"));
+      (c Core__ops__arith__Sub__sub, (2, "-!"));
+      (c Core__ops__arith__Mul__mul, (2, "*!"));
+      (c Core__ops__arith__Div__div, (2, "/!"));
+      (c Core__ops__arith__Rem__rem, (2, "%!"));
+      (c Core__ops__bit__Shl__shl, (2, ">>!"));
+      (c Core__ops__bit__Shr__shr, (2, "<<!"));
       (c Core__cmp__PartialEq__eq, (2, "=."));
       (c Core__cmp__PartialOrd__lt, (2, "<."));
       (c Core__cmp__PartialOrd__le, (2, "<=."));

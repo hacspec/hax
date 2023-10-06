@@ -165,8 +165,16 @@ let show_float_kind = function F32 -> "f32" | F64 -> "f64"
 type literal =
   | String of string
   | Char of char
-  | Int of { value : string; kind : (int_kind[@visitors.opaque]) }
-  | Float of { value : string; kind : float_kind [@visitors.opaque] }
+  | Int of {
+      value : string;
+      negative : bool;
+      kind : (int_kind[@visitors.opaque]);
+    }
+  | Float of {
+      value : string;
+      negative : bool;
+      kind : float_kind; [@visitors.opaque]
+    }
   | Bool of bool
 [@@deriving
   show,
