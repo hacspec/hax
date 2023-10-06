@@ -78,6 +78,10 @@ module Make (F : Features.T) = struct
 
     let mut_ref (typ : ty) : ty option =
       match typ with TRef { mut = Mutable _; typ; _ } -> Some typ | _ -> None
+
+    let concrete_app' : expr' -> concrete_ident option = function
+      | App { f = { e = GlobalVar (`Concrete c); _ }; _ } -> Some c
+      | _ -> None
   end
 
   module Sets = struct
