@@ -11,6 +11,14 @@ struct Foo {
 
 const CONSTANT: Foo = Foo { field: 3 };
 
+fn numeric() {
+    let _: usize = 123;
+    let _: isize = -42;
+    let _: isize = 42;
+    let _: i32 = -42;
+    let _: u128 = 22222222222222222222;
+}
+
 pub fn patterns() {
     match 1u8 {
         2 => (),
