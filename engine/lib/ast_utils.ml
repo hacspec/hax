@@ -180,9 +180,7 @@ module Make (F : Features.T) = struct
     type inference in the presence of associated types in backends
     that don't support them well (F* for instance). *)
     let add_typ_ascription =
-      let is_app : expr' -> bool =
-        [%matches? App { f = { e = GlobalVar (`Concrete _); _ }; _ }]
-      in
+      let is_app = Expect.concrete_app' >> Option.is_some in
       let o =
         object
           inherit [_] item_map as super
