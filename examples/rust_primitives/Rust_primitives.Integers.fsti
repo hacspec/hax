@@ -25,7 +25,7 @@ val pow2_values: x:nat -> Lemma
    | 40 | 41 | 42 | 43 | 44 | 45 | 46
    | 47 | 48 | 49 | 50 | 51 | 52 | 53
    | 54 | 55 | 56 | 57 | 58 | 59 | 60
-   | 61 | 62 | 65 -> p = normalize_term (pow2 x)
+   | 61 | 62 | 65 | 127 | 128 -> p = normalize_term (pow2 x)
    | _ -> True)
   [SMTPat (pow2 x)]
 
@@ -62,8 +62,8 @@ let modulus (t:LI.inttype) = pow2 (bits t)
 let max_usize = maxint usize_inttype
 let max_isize = maxint isize_inttype
 
-let range_bits (n:int) (n:bits) : bool =
-  minint t <= n && n <= maxint t
+//let range_bits (n:int) (n:bits) : bool =
+//  minint t <= n && n <= maxint t
 
 let range (n:int) (t:inttype) : bool =
   minint t <= n && n <= maxint t
@@ -242,7 +242,7 @@ val logand_lemma: #t:inttype -> a:int_t t -> b:int_t t ->
          logand a zero == zero /\
          logand a ones == a)
 
-val logand_mask_lemma: #t:uinttype
+val logand_mask_lemma: #t:inttype
   -> a:int_t t
   -> m:pos{m < bits t} ->
   Lemma (pow2 m < maxint t /\

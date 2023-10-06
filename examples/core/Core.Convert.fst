@@ -1,3 +1,4 @@
+
 module Core.Convert
 open Rust_primitives
 
@@ -25,13 +26,13 @@ class t_From self t = {
 
 
 instance i64_from_i8: t_From i64 i8 = {
-  f_from = (fun (x: i8) -> FStar.Int64.int_to_t (FStar.Int8.v x))
+  f_from = (fun (x: i8) -> cast x)
 }
 instance i64_from_i16: t_From i64 i16 = {
-  f_from = (fun (x: i16) -> FStar.Int64.int_to_t (FStar.Int16.v x))
+  f_from = (fun (x: i16) -> cast x)
 }
 instance i64_from_i32: t_From i64 i32 = {
-  f_from = (fun (x: i32) -> FStar.Int64.int_to_t (FStar.Int32.v x))
+  f_from = (fun (x: i32) -> cast x)
 }
 
 instance into_from_from a b {| t_From a b |}: t_Into b a = {
