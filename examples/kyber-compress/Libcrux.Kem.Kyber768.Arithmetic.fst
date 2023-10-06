@@ -35,12 +35,14 @@ let montgomery_reduce (value: i32) : i32 =
   (value -. (t *. Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS <: i32) <: i32) >>.
   v_MONTGOMERY_SHIFT
 
-let to_montgomery_domain (value: i32) : i32 = montgomery_reduce (1353l *. value)
+let to_montgomery_domain (value: i32) : i32 =
+    admit();
+    montgomery_reduce (1353l *. value)
 
 type t_KyberPolynomialRingElement = { f_coefficients:array i32 (sz 256) }
 
 let impl__ZERO: t_KyberPolynomialRingElement =
-  { f_coefficients = Rust_primitives.Hax.repeat 0l 256sz }
+  { f_coefficients = Rust_primitives.Hax.repeat 0l (sz 256) }
 (*
 let impl_1: Core.Ops.Index.t_Index t_KyberPolynomialRingElement usize =
   {
