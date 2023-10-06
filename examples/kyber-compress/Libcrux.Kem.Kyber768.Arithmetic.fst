@@ -1,5 +1,5 @@
 module Libcrux.Kem.Kyber768.Arithmetic
-#set-options "--fuel 0 --ifuel 0 --z3rlimit 15"
+#set-options "--fuel 0 --ifuel 0 --z3rlimit 50"
 open FStar.Mul
 open Rust_primitives
 open Core
@@ -17,21 +17,23 @@ let barrett_reduce (value: i32{range (v value) Lib.IntTypes.S16}): i32 =
   let quotient:i32 =
     ((value *. v_BARRETT_MULTIPLIER <: i32) +. (v_BARRETT_R <<. 1l <: i32) <: i32) >>.
     v_BARRETT_SHIFT 
-  in
+  in 
   value -. (quotient *. Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS <: i32)
 
 
 let v_MONTGOMERY_SHIFT: i64 = 16L
 
-let v_MONTGOMERY_R: i64 = 1L >>. v_MONTGOMERY_SHIFT
+let v_MONTGOMERY_R: i64 = 1L <<. v_MONTGOMERY_SHIFT
 
 let v_INVERSE_OF_MODULUS_MOD_R: i64 = 3327L
 
 let montgomery_reduce (value: i32) : i32 =
+  assume (range (v value) Lib.IntTypes.S16);
   let (t: i64):i64 = (Core.Convert.f_from value <: i64) *. v_INVERSE_OF_MODULUS_MOD_R in
-  let (t: i32):i32 = cast_mod Lib.IntTypes.S32 (t &. (v_MONTGOMERY_R -. 1L <: i64)) in
-  (value -. (t *. Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS <: i32) <: i32) <<.
-  (cast Lib.IntTypes.S32 v_MONTGOMERY_SHIFT)
+  logand_mask_lemma t 16;
+  let (t: i32):i32 = cast (t &. (v_MONTGOMERY_R -. 1L <: i64)) <: i32 in
+  (value -. (t *. Libcrux.Kem.Kyber768.Parameters.v_FIELD_MODULUS <: i32) <: i32) >>.
+  v_MONTGOMERY_SHIFT
 
 let to_montgomery_domain (value: i32) : i32 = montgomery_reduce (1353l *. value)
 
