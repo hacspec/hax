@@ -178,6 +178,7 @@ end
 
 include T
 include View.T
+include (val Comparator.make ~compare ~sexp_of_t)
 
 include Concrete_ident_sig.Make (struct
   type t_ = t

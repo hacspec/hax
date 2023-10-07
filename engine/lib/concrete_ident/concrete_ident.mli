@@ -34,3 +34,7 @@ end
 module MakeViewAPI (NP : NAME_POLICY) : VIEW_API
 module DefaultNamePolicy : NAME_POLICY
 module DefaultViewAPI : VIEW_API
+
+
+type comparator_witness
+val comparator : (t, comparator_witness) Base.Comparator.comparator
