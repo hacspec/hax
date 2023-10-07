@@ -19,6 +19,11 @@ val of_name : Kind.t -> name -> t
 val eq_name : name -> t -> bool
 val to_debug_string : t -> string
 
+module Create: sig
+  val fresh_module: from:t list -> t
+  val move_under: new_parent:t -> t -> t
+end
+
 type view = { crate : string; path : string list; definition : string }
 
 val map_path_strings : f:(string -> string) -> t -> t
