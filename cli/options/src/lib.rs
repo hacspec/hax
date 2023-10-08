@@ -17,8 +17,8 @@ impl std::default::Default for ForceCargoBuild {
     }
 }
 
-impl std::convert::From<&std::ffi::OsStr> for ForceCargoBuild {
-    fn from(s: &std::ffi::OsStr) -> Self {
+impl std::convert::From<&str> for ForceCargoBuild {
+    fn from(s: &str) -> Self {
         use std::time::{SystemTime, UNIX_EPOCH};
         if s == "false" {
             ForceCargoBuild {
@@ -39,12 +39,11 @@ pub enum PathOrDash {
     Path(PathBuf),
 }
 
-impl std::convert::From<&std::ffi::OsStr> for PathOrDash {
-    fn from(s: &std::ffi::OsStr) -> Self {
-        if s == "-" {
-            PathOrDash::Dash
-        } else {
-            PathOrDash::Path(PathBuf::from(s))
+impl std::convert::From<&str> for PathOrDash {
+    fn from(s: &str) -> Self {
+        match s {
+            "-" => PathOrDash::Dash,
+            _ => PathOrDash::Path(PathBuf::from(s)),
         }
     }
 }
