@@ -7,6 +7,21 @@ use std::path::{Path, PathBuf};
 pub use hax_frontend_exporter_options::*;
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+pub enum DebugEngineMode {
+    File(PathOrDash),
+    Interactive,
+}
+
+impl std::convert::From<&str> for DebugEngineMode {
+    fn from(s: &str) -> Self {
+        match s {
+            "i" | "interactively" => DebugEngineMode::Interactive,
+            s => DebugEngineMode::File(s.strip_prefix("file:").unwrap_or(s).into()),
+        }
+    }
+}
+
+#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
 pub struct ForceCargoBuild {
     pub data: u128,
 }
@@ -186,19 +201,26 @@ pub struct BackendOptions {
 
     /// Verbose mode for the Hax engine. Set [-vv] for maximal verbosity.
     #[arg(short, long, action = clap::ArgAction::Count)]
-    verbose: u8,
+    pub verbose: u8,
 
-    /// Enable debugging of the engine, and visualize interactively in
-    /// a webapp how a crate was transformed by each phase, both in
-    /// Rust-like syntax and browsing directly the internal AST. By
-    /// default, the webapp is hosted on http://localhost:8000, the
-    /// port can be override by setting the `HAX_DEBUGGER_PORT`
-    /// environment variable.
+    /// Enable engine debugging: dumps the AST at each phase.
+    ///
+    /// The value of <DEBUG_ENGINE> can be either:
+    ///
+    ///  - [interactive] (or [i]): enables debugging of the engine, and
+    /// visualize interactively in a webapp how a crate was
+    /// transformed by each phase, both in Rust-like syntax and
+    /// browsing directly the internal AST. By default, the webapp is
+    /// hosted on http://localhost:8000, the port can be override by
+    /// setting the `HAX_DEBUGGER_PORT` environment variable.
+    ///
+    /// - [<FILE>] or [file:<FILE>]: outputs the different AST as JSON
+    /// to <FILE>. <FILE> can be either [-] or a path.
     #[arg(short, long = "debug-engine")]
-    debug_engine: bool,
+    pub debug_engine: Option<DebugEngineMode>,
 
     #[command(flatten)]
-    translation_options: TranslationOptions,
+    pub translation_options: TranslationOptions,
 }
 
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]

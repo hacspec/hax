@@ -452,19 +452,29 @@ impl Callbacks for ExtractionCallbacks {
                             .collect(),
                     );
                     if backend.dry_run {
-                        serde_json::to_writer(std::io::stdout(), &output.files).unwrap();
+                        serde_json::to_writer(std::io::BufWriter::new(std::io::stdout()), &output)
+                            .unwrap()
                     } else {
                         write_files(&output, &session, backend.backend);
                     }
                     if let Some(debug_json) = &output.debug_json {
-                        eprintln!("----------------------------------------------");
-                        eprintln!("----------------------------------------------");
-                        eprintln!("----------------------------------------------");
-                        eprintln!("-- Engine debug mode. Press CTRL+C to exit. --");
-                        eprintln!("----------------------------------------------");
-                        eprintln!("----------------------------------------------");
-                        eprintln!("----------------------------------------------");
-                        phase_debug_webapp::run(|| debug_json.clone())
+                        use hax_cli_options::DebugEngineMode;
+                        match backend.debug_engine {
+                            Some(DebugEngineMode::Interactive) => {
+                                eprintln!("----------------------------------------------");
+                                eprintln!("----------------------------------------------");
+                                eprintln!("----------------------------------------------");
+                                eprintln!("-- Engine debug mode. Press CTRL+C to exit. --");
+                                eprintln!("----------------------------------------------");
+                                eprintln!("----------------------------------------------");
+                                eprintln!("----------------------------------------------");
+                                phase_debug_webapp::run(|| debug_json.clone())
+                            }
+                            Some(DebugEngineMode::File(file)) if !backend.dry_run => {
+                                println!("{}", debug_json)
+                            }
+                            _ => (),
+                        }
                     }
                 }
             };

@@ -20,7 +20,8 @@ module Deps = Dependencies.Make (Features.Rust)
 
 let run (options : Types.engine_options) : Types.output =
   setup_logs options;
-  if options.backend.debug_engine then Phase_utils.DebugBindPhase.enable ();
+  if options.backend.debug_engine |> Option.is_some then
+    Phase_utils.DebugBindPhase.enable ();
   let run (type options_type)
       (module M : Backend.T with type BackendOptions.t = options_type)
       (backend_options : options_type) : Types.file list =
