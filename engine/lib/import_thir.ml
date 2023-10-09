@@ -42,17 +42,6 @@ module U = Ast_utils.Make (Features.Rust)
 module W = Features.On
 open Ast
 
-type error =
-  | UnsafeBlock
-  | LetElse
-  | LetWithoutInit
-  | GotErrLiteral
-  | BadSpanUnion
-  | ShallowMutUnsupported
-  | GotTypeInLitPat
-  | IllTypedIntLiteral
-[@@deriving show]
-
 let def_id kind (def_id : Thir.def_id) : global_ident =
   `Concrete (Concrete_ident.of_def_id kind def_id)
 
@@ -1051,12 +1040,16 @@ let should_skip (attrs : Thir.item_attributes) =
   let attrs = attrs.attributes @ attrs.parent_attributes in
   is_hax_skip attrs || is_automatically_derived attrs
 
-let rec c_item (item : Thir.item) : item list =
-  try c_item_unwrapped item with Diagnostics.SpanFreeError.Exn _kind -> []
+let rec c_item ~ident (item : Thir.item) : item list =
+  try c_item_unwrapped ~ident item
+  with Diagnostics.SpanFreeError.Exn payload ->
+    let context, kind = Diagnostics.SpanFreeError.payload payload in
+    let error = Diagnostics.pretty_print_context_kind context kind in
+    let span = Span.of_thir item.span in
+    [ make_hax_error_item span ident error ]
 
-and c_item_unwrapped (item : Thir.item) : item list =
+and c_item_unwrapped ~ident (item : Thir.item) : item list =
   let open (val make ~krate:item.owner_id.krate : EXPR) in
-  let ident = Concrete_ident.of_def_id Value item.owner_id in
   if should_skip item.attributes then []
   else
     let span = Span.of_thir item.span in
@@ -1304,10 +1297,15 @@ and c_item_unwrapped (item : Thir.item) : item list =
     | OpaqueTy _ | Union _ | TraitAlias _ ->
         mk NotImplementedYet
 
-let c_item _inclusion_clauses (item : Thir.item) : (item list, error) Result.t =
-  c_item item
-  |> List.map
-       ~f:
-         (U.Mappers.rename_generic_constraints#visit_item
-            (Hashtbl.create (module String)))
-  |> Result.return
+let import_item (item : Thir.item) :
+    concrete_ident * (item list * Diagnostics.t list) =
+  let ident = Concrete_ident.of_def_id Value item.owner_id in
+  let r, reports =
+    Diagnostics.Core.capture (fun _ ->
+        c_item item ~ident
+        |> List.map
+             ~f:
+               (U.Mappers.rename_generic_constraints#visit_item
+                  (Hashtbl.create (module String))))
+  in
+  (ident, (r, reports))
