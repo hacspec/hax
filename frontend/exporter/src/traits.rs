@@ -320,10 +320,7 @@ pub fn select_trait_candidate<'tcx, S: UnderOwnerState<'tcx>>(
     trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
 ) -> Option<rustc_trait_selection::traits::Selection<'tcx>> {
     use rustc_infer::infer::TyCtxtInferExt;
-    use rustc_middle::traits::CodegenObligationError;
-    use rustc_trait_selection::traits::{
-        Obligation, ObligationCause, SelectionContext, Unimplemented,
-    };
+    use rustc_trait_selection::traits::{Obligation, ObligationCause, SelectionContext};
     let tcx = s.base().tcx;
     let trait_ref = tcx
         .try_normalize_erasing_regions(param_env, trait_ref)
