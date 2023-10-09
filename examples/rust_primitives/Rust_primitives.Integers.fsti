@@ -392,10 +392,10 @@ unfold
 let (%.) #t = mod #t
 
 unfold
-let (=.) #t = eq #t
+let (=.) = (=)
 
 unfold
-let (<>.) #t = ne #t
+let (<>.) = (<>)
 
 unfold
 let (<.) #t = lt #t
