@@ -11,6 +11,7 @@ class unsize_tc source = {
 
 instance array_to_slice_unsize t n: unsize_tc (array t n) = {
   output = slice t;
-  unsize = (fun (arr: array t n) -> arr);
+  unsize = (fun (arr: array t n) -> 
+            arr <: slice t);
 }
 
