@@ -241,7 +241,7 @@ pub enum ExporterCommand {
             default_value = "hax_frontend_export.json"
         )]
         output_file: PathOrDash,
-        /// Wether the bodies are exported as THIR, built MIR, const
+        /// Whether the bodies are exported as THIR, built MIR, const
         /// MIR, or a combination. Repeat this option to extract a
         /// combination (e.g. [-k thir -k mir-built]).
         #[arg(
@@ -253,7 +253,7 @@ pub enum ExporterCommand {
         )]
         kind: Vec<ExportBodyKind>,
 
-        /// Wether to include extra informations about `DefId`s.
+        /// Whether to include extra informations about `DefId`s.
         #[arg(short = 'E', long = "include-extra", default_value = "false")]
         include_extra: bool,
     },
