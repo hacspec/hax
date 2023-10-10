@@ -57,7 +57,6 @@ let rec fold_range'
     then init
     else fold_range' (add min (sz 1)) max (f init min) f
 
-(* 
 instance iterator_range: iterator range = 
   {
   item = usize;
@@ -67,9 +66,10 @@ instance iterator_range: iterator range =
     else ({f_start; f_end}, None)
   );
   size_hint = (fun {f_start; f_end} -> 
-    Some (if f_start <. f_end
-          then f_end -. f_start 
-          else 0sz)
+    magic ()
+    // Some (if f_start <. f_end
+    //       then f_end -. f_start 
+    //       else 0sz)
   );
   in_range = (fun x i -> v i < v x.f_end /\ v i >= v x.f_start);
   fold = (fun #b r init f -> 
@@ -80,6 +80,7 @@ instance iterator_range: iterator range =
   enumerate = magic ();
 }
 
+(* 
 instance range_index t len : index (array t len) range = {
   output = slice t;
   in_range = (fun (arr: array t len) {f_start; f_end} -> 
