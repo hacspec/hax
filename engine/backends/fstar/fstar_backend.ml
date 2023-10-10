@@ -271,24 +271,47 @@ struct
     | TArray { typ; length } ->
         F.mk_e_app (F.term_of_lid [ "array" ]) [ pty span typ; pexpr length ]
     | TParam i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident i)
-    | TAssociatedType { impl; item } ->
-        let impl = pimpl_expr span impl in
-        F.term
-        @@ F.AST.Project
-             (impl, F.lid [ U.Concrete_ident_view.to_definition_name item ])
+    | TAssociatedType { impl; item } -> (
+        match pimpl_expr span impl with
+        | Some impl ->
+            F.term
+            @@ F.AST.Project
+                 (impl, F.lid [ U.Concrete_ident_view.to_definition_name item ])
+        | None -> F.term @@ F.AST.Wild)
     | TOpaque s -> F.term @@ F.AST.Wild
     | _ -> .
 
   and pimpl_expr span (ie : impl_expr) =
+    let some = Option.some in
+    let hax_unstable_impl_exprs = false in
     match ie with
-    | Concrete tr -> c_trait_ref span tr
+    | Concrete tr -> c_trait_ref span tr |> some
     | LocalBound { id } ->
         let local_ident =
           LocalIdent.{ name = id; id = LocalIdent.mk_id Expr 0 }
         in
-        F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident local_ident)
-    (* | tParent *)
-    | _ -> F.term @@ F.AST.Wild
+        F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident local_ident) |> some
+    | ImplApp { impl; _ } when not hax_unstable_impl_exprs ->
+        pimpl_expr span impl
+    | Parent { impl; trait } when hax_unstable_impl_exprs ->
+        let* impl = pimpl_expr span impl in
+        let trait = "_super_" ^ name_of_trait_ref span trait in
+        F.term @@ F.AST.Project (impl, F.lid [ trait ]) |> some
+    | ImplApp { impl; args = [] } when hax_unstable_impl_exprs ->
+        pimpl_expr span impl
+    | ImplApp { impl; args } when hax_unstable_impl_exprs ->
+        let* impl = pimpl_expr span impl in
+        let* args = List.map ~f:(pimpl_expr span) args |> Option.all in
+        F.mk_e_app impl args |> some
+    | Projection _ when hax_unstable_impl_exprs ->
+        F.term_of_lid [ "_Projection" ] |> some
+    | Dyn _ when hax_unstable_impl_exprs -> F.term_of_lid [ "_Dyn" ] |> some
+    | Builtin _ when hax_unstable_impl_exprs ->
+        F.term_of_lid [ "_Builtin" ] |> some
+    | _ -> None
+
+  and name_of_trait_ref _span : trait_ref -> string =
+    [%hash: trait_ref] >> Int.to_string
 
   and c_trait_ref span trait_ref =
     let trait = F.term @@ F.AST.Name (pconcrete_ident trait_ref.trait) in
@@ -905,9 +928,10 @@ struct
         let constraints_fields : FStar_Parser_AST.tycon_record =
           generics.constraints
           |> List.map ~f:(fun c ->
-                 let name =
-                   "_super_" ^ Int.to_string ([%hash: generic_constraint] c)
+                 let bound =
+                   match c with GCType { bound; _ } -> bound | _ -> .
                  in
+                 let name = "_super_" ^ name_of_trait_ref e.span bound in
                  let typ = pgeneric_constraint_type e.span c in
                  (F.id name, None, [ F.Attrs.no_method ], typ))
         in
