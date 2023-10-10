@@ -19,13 +19,14 @@ let compress_q (fe: u16) (to_bit_size: u32 {v to_bit_size > 0 /\ v to_bit_size <
   let compressed =
     compressed /. (3329ul <<. 1ul)
   in
-  let result = compressed &. two_pow_bit_size -. 1ul in
-    //assert (v (two_pow_bit_size -. 1ul) == pow2 (v to_bit_size) - 1);
-    //logand_mask compressed (two_pow_bit_size -. 1ul) (v to_bit_size);
-    //  assert (v result < pow2 (v to_bit_size));
-    //FStar.Math.Lemmas.pow2_lt_compat 31 (v to_bit_size);
-  cast_mod result
-  
+  let result = compressed &. (two_pow_bit_size -. 1ul) in
+  assert (two_pow_bit_size == mk_int (pow2 (v to_bit_size)));
+  assert (result == (compressed &. (mk_int #Lib.IntTypes.U32 (pow2 (v to_bit_size)) -. (mk_int 1)))); 
+  logand_mask_lemma compressed (v to_bit_size);
+  assert (result == mk_int (v compressed % pow2 (v to_bit_size))); 
+  cast result <: i32
+
+
 (*
 let compress
       (re: Libcrux.Kem.Kyber768.Arithmetic.t_KyberPolynomialRingElement)
