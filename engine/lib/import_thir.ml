@@ -471,7 +471,7 @@ end) : EXPR = struct
           c_expr_assign lhs rhs
       | AssignOp { lhs; op; rhs } ->
           let lhs = c_expr lhs in
-          c_expr_assign lhs @@ c_binop op lhs (c_expr rhs) span typ
+          c_expr_assign lhs @@ c_binop op lhs (c_expr rhs) span lhs.typ
       | VarRef { id } -> LocalVar (local_ident Expr id)
       | Field { lhs; field } ->
           let lhs = c_expr lhs in
