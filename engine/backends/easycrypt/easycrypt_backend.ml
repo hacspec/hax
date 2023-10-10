@@ -139,6 +139,7 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) : Types.file list
              | HaxError _ -> ()
              | IMacroInvokation mi -> ()
              | Use _ -> ()
+             | Alias _ -> ()
              | NotImplementedYet -> ())
     in
 
@@ -181,7 +182,8 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) : Types.file list
     | TRef _ -> assert false
     | TParam _ -> assert false
     | TArrow (_, _) -> assert false
-    | TProjectedAssociatedType _ -> assert false
+    | TAssociatedType _ -> assert false
+    | TOpaque _ -> assert false
   and doit_type_arg (fmt : Format.formatter) (tyarg : generic_value) =
     match tyarg with GType ty -> doit_type fmt ty | _ -> assert false
   and doit_stmt (fmt : Format.formatter) (expr : expr) =

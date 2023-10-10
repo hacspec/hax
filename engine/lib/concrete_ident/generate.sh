@@ -11,7 +11,7 @@ cargo init --lib
 
 echo "$RUST_SOURCE" > src/lib.rs
 
-cargo hax json --def-ids -o - | jq -r "$(cat - <<JQ_SCRIPT
+cargo hax json --include-extra -o - | jq -r "$(cat - <<JQ_SCRIPT
   .def_ids | . as \$ids
   | map(  (.krate | ((.[0:1] | ascii_upcase) + .[1:]))
         + "__"

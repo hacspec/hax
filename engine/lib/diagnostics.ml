@@ -55,7 +55,7 @@ module Context = struct
     | ThirImport
     | DebugPrintRust
     | Other of string
-  [@@deriving show, eq, yojson]
+  [@@deriving show, eq, yojson, compare]
 
   let display = function
     | Phase p -> Phase.display p
@@ -67,8 +67,16 @@ end
 
 type kind = T.kind [@@deriving show, eq]
 
-type t = { context : Context.t; kind : kind; span : T.span list }
-[@@deriving show, eq]
+let compare_kind (a : kind) (b : kind) =
+  [%compare: string] ([%show: kind] a) ([%show: kind] b)
+
+type thir_span = T.span [@@deriving show, eq]
+
+let compare_thir_span (a : thir_span) (b : thir_span) =
+  [%compare: string] ([%show: thir_span] a) ([%show: thir_span] b)
+
+type t = { context : Context.t; kind : kind; span : thir_span list }
+[@@deriving show, eq, compare]
 
 let to_thir_diagnostic (d : t) : Types.diagnostics_for__array_of__span =
   { kind = d.kind; context = Context.display d.context; span = d.span }
@@ -93,6 +101,7 @@ module Core : sig
   val raise_fatal_error : 'never. t -> 'never
   val report : t -> unit
   val try_ : 'x. (unit -> 'x) -> t list * 'x option
+  val capture : 'a. (unit -> 'a) -> 'a * t list
 end = struct
   (* a mutable state for collecting errors *)
   let state = ref []
@@ -107,6 +116,12 @@ end = struct
   let try_ f =
     let result = try Some (f ()) with Error -> None in
     (!state, result)
+
+  let capture (type a) (f : unit -> a) : a * t list =
+    let previous_state = !state in
+    let result = (f (), !state) in
+    state := previous_state;
+    result
 end
 
 include Core

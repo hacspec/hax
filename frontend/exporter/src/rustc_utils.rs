@@ -1,23 +1,71 @@
 use crate::prelude::*;
+use rustc_middle::ty;
+
+#[extension_traits::extension(pub trait SubstBinder)]
+impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
+    fn subst(self, tcx: ty::TyCtxt<'tcx>, substs: &[ty::subst::GenericArg<'tcx>]) -> T {
+        ty::EarlyBinder::bind(self.skip_binder()).subst(tcx, substs)
+    }
+}
+
+#[extension_traits::extension(pub trait PredicateToPolyTraitRef)]
+impl<'tcx> ty::Predicate<'tcx> {
+    fn as_poly_trait_ref(self) -> Option<ty::PolyTraitRef<'tcx>> {
+        self.kind()
+            .try_map_bound(|kind| {
+                if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) = kind {
+                    Ok(trait_predicate.trait_ref)
+                } else {
+                    Err(())
+                }
+            })
+            .ok()
+    }
+}
+
+#[extension_traits::extension(pub trait TyCtxtExtPredOrAbove)]
+impl<'tcx> ty::TyCtxt<'tcx> {
+    /// Just like `TyCtxt::predicates_defined_on`, but in the case of
+    /// a trait or impl item, also includes the predicates defined on
+    /// the parent.
+    fn predicates_defined_on_or_above(
+        self,
+        did: rustc_span::def_id::DefId,
+    ) -> Vec<(ty::Predicate<'tcx>, rustc_span::Span)> {
+        let mut next_did = Some(did);
+        let mut predicates = vec![];
+        while let Some(did) = next_did {
+            let gen_preds = self.predicates_of(did);
+            next_did = gen_preds.parent;
+            predicates.extend(gen_preds.predicates.into_iter())
+        }
+        predicates
+    }
+}
+
+pub fn poly_trait_ref<'tcx, S: UnderOwnerState<'tcx>>(
+    s: &S,
+    assoc: &ty::AssocItem,
+    substs: ty::SubstsRef<'tcx>,
+) -> Option<ty::PolyTraitRef<'tcx>> {
+    let tcx = s.base().tcx;
+    let r#trait = tcx.trait_of_item(assoc.def_id)?;
+    Some(ty::Binder::dummy(ty::TraitRef::new(tcx, r#trait, substs)))
+}
 
 #[tracing::instrument(skip(s))]
-pub(crate) fn arrow_of_sig<'tcx, S: BaseState<'tcx>>(
-    sig: &rustc_middle::ty::PolyFnSig<'tcx>,
-    s: &S,
-) -> Ty {
+pub(crate) fn arrow_of_sig<'tcx, S: UnderOwnerState<'tcx>>(sig: &ty::PolyFnSig<'tcx>, s: &S) -> Ty {
     Ty::Arrow(Box::new(sig.sinto(s)))
 }
 
 #[tracing::instrument(skip(s))]
-pub(crate) fn get_variant_information<'s, S: BaseState<'s>>(
-    adt_def: &rustc_middle::ty::AdtDef<'s>,
+pub(crate) fn get_variant_information<'s, S: UnderOwnerState<'s>>(
+    adt_def: &ty::AdtDef<'s>,
     variant_index: rustc_abi::VariantIdx,
     s: &S,
 ) -> VariantInformations {
-    s_assert!(s, !adt_def.is_union());
-    fn is_record<'s, I: std::iter::Iterator<Item = &'s rustc_middle::ty::FieldDef> + Clone>(
-        it: I,
-    ) -> bool {
+    s_assert!(s, !adt_def.is_union() || *CORE_EXTRACTION_MODE);
+    fn is_record<'s, I: std::iter::Iterator<Item = &'s ty::FieldDef> + Clone>(it: I) -> bool {
         it.clone()
             .any(|field| !field.name.to_ident_string().parse::<u64>().is_ok())
     }
@@ -115,66 +163,11 @@ pub fn translate_span(span: rustc_span::Span, sess: &rustc_session::Session) -> 
 }
 
 #[tracing::instrument(skip(s))]
-pub(crate) fn get_param_env<'tcx, S: BaseState<'tcx>>(s: &S) -> rustc_middle::ty::ParamEnv<'tcx> {
+pub(crate) fn get_param_env<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> ty::ParamEnv<'tcx> {
     match s.base().opt_def_id {
         Some(id) => s.base().tcx.param_env(id),
-        None => rustc_middle::ty::ParamEnv::empty(),
+        None => ty::ParamEnv::empty(),
     }
-}
-
-#[tracing::instrument(skip(s))]
-#[allow(dead_code)]
-#[allow(unused)]
-pub(crate) fn _resolve_trait<'tcx, S: BaseState<'tcx>>(
-    trait_ref: rustc_middle::ty::TraitRef<'tcx>,
-    s: &S,
-) {
-    let tcx = s.base().tcx;
-    let param_env = get_param_env(s);
-    use rustc_middle::ty::Binder;
-    let binder: Binder<'tcx, _> = Binder::dummy(trait_ref);
-    use rustc_infer::infer::TyCtxtInferExt;
-    use rustc_infer::traits;
-    use rustc_middle::ty::{ParamEnv, ParamEnvAnd};
-    use rustc_trait_selection::infer::InferCtxtBuilderExt;
-    use rustc_trait_selection::traits::SelectionContext;
-    let inter_ctxt = tcx.infer_ctxt().ignoring_regions().build();
-    let mut selection_ctxt = SelectionContext::new(&inter_ctxt);
-    use std::collections::VecDeque;
-    let mut queue = VecDeque::new();
-    let obligation = traits::Obligation::new(
-        tcx,
-        traits::ObligationCause::dummy(),
-        param_env,
-        rustc_middle::ty::Binder::dummy(trait_ref),
-    );
-    use rustc_middle::traits::ImplSource;
-    queue.push_back(obligation);
-    loop {
-        match queue.pop_front() {
-            Some(obligation) => {
-                let impl_source = selection_ctxt.select(&obligation).unwrap().unwrap();
-                println!("impl_source={:#?}", impl_source);
-                let nested = impl_source.clone().nested_obligations();
-                for subobligation in nested {
-                    let bound_predicate = subobligation.predicate.kind();
-                    match bound_predicate.skip_binder() {
-                        rustc_middle::ty::PredicateKind::Clause(
-                            rustc_middle::ty::Clause::Trait(trait_pred),
-                        ) => {
-                            let trait_pred = bound_predicate.rebind(trait_pred);
-                            let subobligation = subobligation.with(tcx, trait_pred);
-                            queue.push_back(subobligation);
-                        }
-                        _ => (),
-                    }
-                }
-            }
-            None => break,
-        }
-    }
-    // let impl_source = selection_ctxt.select(&obligation).unwrap().unwrap();
-    // let nested = impl_source.clone().nested_obligations();
 }
 
 #[tracing::instrument]
@@ -233,7 +226,7 @@ pub(crate) fn macro_invocation_of_raw_mac_invocation<'t, S: BaseState<'t>>(
 }
 
 #[tracing::instrument(skip(state))]
-pub(crate) fn macro_invocation_of_span<'t, S: BaseState<'t>>(
+pub(crate) fn macro_invocation_of_span<'t, S: UnderOwnerState<'t>>(
     span: rustc_span::Span,
     state: &S,
 ) -> Option<MacroInvokation> {
@@ -252,7 +245,7 @@ pub(crate) fn attribute_from_scope<'tcx, S: ExprState<'tcx>>(
 ) -> (Option<rustc_hir::hir_id::HirId>, Vec<Attribute>) {
     let owner = s.owner_id();
     let tcx = s.base().tcx;
-    let scope_tree = tcx.region_scope_tree(owner.to_def_id());
+    let scope_tree = tcx.region_scope_tree(owner);
     let hir_id = scope.hir_id(scope_tree);
     let tcx = s.base().tcx;
     let map = tcx.hir();
@@ -268,7 +261,7 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
     ids: impl Iterator<Item = rustc_hir::ItemId>,
     s: &S,
 ) -> Vec<Item<Body>> {
-    let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
+    let tcx: ty::TyCtxt = s.base().tcx;
 
     struct SpanEq(Option<(DefId, rustc_span::hygiene::ExpnData)>);
     impl core::cmp::PartialEq for SpanEq {
@@ -283,14 +276,15 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
         .into_iter()
         .map(|(mac, items)| match mac.0 {
             Some((macro_ident, expn_data)) => {
-                let owner_id = items.into_iter().map(|x| x.owner_id).next().s_unwrap(s);
-                // owner_id.reduce()
+                let owner_id: rustc_hir::hir_id::OwnerId =
+                    items.into_iter().map(|x| x.owner_id).next().s_unwrap(s);
                 let invocation =
                     macro_invocation_of_raw_mac_invocation(&macro_ident, &expn_data, s);
                 let span = expn_data.call_site.sinto(s);
+                let owner_id: DefId = owner_id.sinto(s);
                 vec![Item {
                     def_id: None,
-                    owner_id: owner_id.sinto(s),
+                    owner_id,
                     kind: ItemKind::MacroInvokation(invocation),
                     span,
                     vis_span: rustc_span::DUMMY_SP.sinto(s),

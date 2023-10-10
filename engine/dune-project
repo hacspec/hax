@@ -40,6 +40,7 @@
         ppx_matches
         ppx_string
         logs
+        ocamlgraph
 
         js_of_ocaml-compiler
         zarith_stubs_js

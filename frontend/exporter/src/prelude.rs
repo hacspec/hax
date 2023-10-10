@@ -11,4 +11,5 @@ pub use crate::constant_utils::*;
 pub use crate::index_vec::*;
 pub use crate::rustc_utils::*;
 pub use crate::state::*;
+pub use crate::traits::*;
 pub use crate::types::*;

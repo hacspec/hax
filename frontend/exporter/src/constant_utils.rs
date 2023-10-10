@@ -117,7 +117,7 @@ impl From<ConstantExpr> for Expr {
     }
 }
 
-pub(crate) fn scalar_int_to_constant_literal<'tcx, S: BaseState<'tcx>>(
+pub(crate) fn scalar_int_to_constant_literal<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     x: rustc_middle::ty::ScalarInt,
     ty: rustc_middle::ty::Ty,
@@ -149,7 +149,7 @@ pub(crate) fn scalar_int_to_constant_literal<'tcx, S: BaseState<'tcx>>(
     }
 }
 
-pub(crate) fn scalar_to_constant_expr<'tcx, S: BaseState<'tcx>>(
+pub(crate) fn scalar_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     ty: rustc_middle::ty::Ty<'tcx>,
     scalar: &rustc_middle::mir::interpret::Scalar,
@@ -239,19 +239,20 @@ pub enum TranslateUnevalRes<T> {
 }
 
 pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
-    fn eval_constant<S: BaseState<'tcx>>(&self, s: &S) -> Option<Self>;
+    fn eval_constant<S: UnderOwnerState<'tcx>>(&self, s: &S) -> Option<Self>;
 
     /// Performs a one-step translation of a constant.
     ///  - When a constant refers to a named top-level constant, we want to use that, thus we translate the constant to a `ConstantExprKind::GlobalName`. This is captured by the variant `TranslateUnevalRes::GlobalName`.
     ///  - When a constant refers to a anonymous top-level constant, we evaluate it. If the evaluation fails, we report an error: we expect every AnonConst to be reducible. Otherwise, we return the variant `TranslateUnevalRes::EvaluatedConstant`.
     fn translate_uneval(
         &self,
-        s: &impl BaseState<'tcx>,
+        s: &impl UnderOwnerState<'tcx>,
         ucv: rustc_middle::ty::UnevaluatedConst,
     ) -> TranslateUnevalRes<Self> {
         let tcx = s.base().tcx;
         if is_anon_const(ucv.def, tcx) {
             TranslateUnevalRes::EvaluatedConstant(self.eval_constant(s).unwrap_or_else(|| {
+                // TODO: This is triggered when compiling using `generic_const_exprs`
                 supposely_unreachable_fatal!(s, "TranslateUneval"; {self, ucv});
             }))
         } else {
@@ -261,18 +262,18 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
     }
 }
 impl<'tcx> ConstantExt<'tcx> for rustc_middle::ty::Const<'tcx> {
-    fn eval_constant<S: BaseState<'tcx>>(&self, s: &S) -> Option<Self> {
+    fn eval_constant<S: UnderOwnerState<'tcx>>(&self, s: &S) -> Option<Self> {
         let evaluated = self.eval(s.base().tcx, get_param_env(s));
         (&evaluated != self).then_some(evaluated)
     }
 }
 impl<'tcx> ConstantExt<'tcx> for rustc_middle::mir::ConstantKind<'tcx> {
-    fn eval_constant<S: BaseState<'tcx>>(&self, s: &S) -> Option<Self> {
+    fn eval_constant<S: UnderOwnerState<'tcx>>(&self, s: &S) -> Option<Self> {
         let evaluated = self.eval(s.base().tcx, get_param_env(s));
         (&evaluated != self).then_some(evaluated)
     }
 }
-impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::ty::Const<'tcx> {
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::ty::Const<'tcx> {
     fn sinto(&self, s: &S) -> ConstantExpr {
         use rustc_middle::{query::Key, ty};
         let span = self.default_span(s.base().tcx);
@@ -300,7 +301,7 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::ty::Cons
 }
 
 // #[tracing::instrument(skip(s))]
-pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
+pub(crate) fn valtree_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     valtree: rustc_middle::ty::ValTree<'tcx>,
     ty: rustc_middle::ty::Ty<'tcx>,
@@ -364,7 +365,7 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: BaseState<'tcx>>(
     kind.decorate(ty.sinto(s), span.sinto(s))
 }
 
-pub(crate) fn const_value_reference_to_constant_expr<'tcx, S: BaseState<'tcx>>(
+pub(crate) fn const_value_reference_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     ty: rustc_middle::ty::Ty<'tcx>,
     val: rustc_middle::mir::interpret::ConstValue<'tcx>,
@@ -418,7 +419,7 @@ pub(crate) fn const_value_reference_to_constant_expr<'tcx, S: BaseState<'tcx>>(
     (ConstantExprKind::Tuple { fields }).decorate(hax_ty, span.sinto(s))
 }
 
-pub fn const_value_to_constant_expr<'tcx, S: BaseState<'tcx>>(
+pub fn const_value_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     ty: rustc_middle::ty::Ty<'tcx>,
     val: rustc_middle::mir::interpret::ConstValue<'tcx>,

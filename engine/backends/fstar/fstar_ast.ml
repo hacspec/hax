@@ -19,12 +19,17 @@ let lid path =
 
 let lid_of_id id = Ident.lid_of_ids [ id ]
 let term (tm : AST.term') = AST.{ tm; range = dummyRange; level = Expr }
+let generate_fresh_ident () = Ident.gen dummyRange
 
 let decl ?(quals = []) (d : AST.decl') =
   `Item AST.{ d; drange = dummyRange; quals = []; attrs = [] }
 
 let decls ?(quals = []) x = [ decl ~quals x ]
 let pat (pat : AST.pattern') = AST.{ pat; prange = dummyRange }
+
+module Attrs = struct
+  let no_method = term @@ AST.Var FStar_Parser_Const.no_method_lid
+end
 
 let pat_var_tcresolve (var : string option) =
   let tcresolve =
@@ -45,9 +50,10 @@ let mk_e_abs args body =
 let mk_e_app base args =
   AST.mkApp base (List.map ~f:(fun arg -> (arg, AST.Nothing)) args) dummyRange
 
-let mk_e_binder b =
-  AST.{ b; brange = dummyRange; blevel = Un; aqual = None; battributes = [] }
+let mk_binder ?aqual b =
+  AST.{ b; brange = dummyRange; blevel = Un; aqual; battributes = [] }
 
+let mk_e_binder b = mk_binder b
 let term_of_lid path = term @@ AST.Name (lid path)
 let binder_of_term (t : AST.term) : AST.binder = mk_e_binder @@ AST.NoName t
 let unit = term AST.(Const Const_unit)

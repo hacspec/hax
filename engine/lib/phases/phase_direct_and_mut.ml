@@ -24,6 +24,10 @@ struct
   module Implem : ImplemT.T = struct
     let metadata = metadata
 
+    let hax_core_extraction =
+      Sys.getenv "HAX_CORE_EXTRACTION_MODE"
+      |> [%equal: string option] (Some "on")
+
     module S = struct
       include Features.SUBTYPE.Id
 
@@ -57,8 +61,14 @@ struct
     let rec dty (span : span) (ty : A.ty) : B.ty =
       match ty with
       | [%inline_arms "dty.*" - TRef] -> auto
-      | TRef { mut = Mutable _; _ } ->
-          Error.raise { kind = UnallowedMutRef; span }
+      | TRef { mut = Mutable _; typ; _ } ->
+          if hax_core_extraction then
+            TApp
+              {
+                ident = Global_ident.of_name Type Rust_primitives__hax__MutRef;
+                args = [ GType (dty span typ) ];
+              }
+          else Error.raise { kind = UnallowedMutRef; span }
       | TRef { witness; typ; mut = Immutable as mut; region } ->
           TRef { witness; typ = dty span typ; mut; region }
 
@@ -157,7 +167,7 @@ struct
               | Either.First (place : Place.t) ->
                   let var =
                     LocalIdent.
-                      { id = var_id_of_int 0; name = "tmp" ^ Int.to_string i }
+                      { id = mk_id Expr 0; name = "tmp" ^ Int.to_string i }
                   in
                   Some (var, place_to_lhs place)
               | _ -> None
@@ -169,7 +179,7 @@ struct
             List.mapi ~f:(fun i -> to_ident_lhs i &&& to_ty_span) mutargs
           in
 
-          let out_var = LocalIdent.{ id = var_id_of_int 0; name = "out" } in
+          let out_var = LocalIdent.{ id = mk_id Expr 0; name = "out" } in
           let otype = dty f.span otype in
           let pat =
             let out =
@@ -225,7 +235,7 @@ struct
               let body =
                 let init =
                   if UB.is_unit_typ otype then UB.unit_expr f.span
-                  else B.{ typ = pat.typ; span = f.span; e = LocalVar out_var }
+                  else B.{ typ = otype; span = f.span; e = LocalVar out_var }
                 in
                 List.fold_right ~init ~f:UB.make_seq assigns
               in

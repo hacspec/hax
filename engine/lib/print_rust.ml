@@ -153,7 +153,8 @@ module Raw = struct
           List.map ~f:(pty span) (inputs @ [ output ]) |> concat ~sep:!" -> "
         in
         !"arrow!(" & arrow & !")"
-    | TProjectedAssociatedType _ -> !"proj_asso_type!()"
+    | TAssociatedType _ -> !"proj_asso_type!()"
+    | TOpaque ident -> !(Concrete_ident_view.show ident)
 
   and pgeneric_value span (e : generic_value) : AnnotatedString.t =
     match e with
@@ -356,7 +357,7 @@ module Raw = struct
         !"<" & concat ~sep:!", " (List.map ~f:pgeneric_param pl) & !">"
     | _ -> empty
 
-  let ptrait_ref span { trait; args; bindings = _ } =
+  let ptrait_ref span { trait; args } =
     let ( ! ) = pure span in
     let args = List.map ~f:(pgeneric_value span) args |> concat ~sep:!", " in
     !(Concrete_ident_view.show trait)
@@ -366,8 +367,7 @@ module Raw = struct
     let ( ! ) = pure span in
     match p with
     | GCLifetime _ -> !"'unk: 'unk"
-    | GCType { typ; implements } ->
-        pty span typ & !":" & ptrait_ref span implements
+    | GCType { bound; _ } -> !"_:" & ptrait_ref span bound
 
   let pgeneric_constraints span (constraints : generic_constraint list) =
     if List.is_empty constraints then empty

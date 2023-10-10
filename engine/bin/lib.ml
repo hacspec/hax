@@ -16,23 +16,44 @@ let setup_logs (options : Types.engine_options) =
   Logs.set_level level;
   Logs.set_reporter @@ Logs.format_reporter ()
 
+module Deps = Dependencies.Make (Features.Rust)
+
+let import_thir_items (include_clauses : Types.inclusion_clause list)
+    (items : Types.item_for__decorated_for__expr_kind list) : Ast.Rust.item list
+    =
+  let result = List.map ~f:Import_thir.import_item items |> List.map ~f:snd in
+  let items = List.concat_map ~f:fst result in
+  let ident_to_reports =
+    List.concat_map
+      ~f:(fun (items, reports) ->
+        List.map ~f:(fun (item : Ast.Rust.item) -> (item.ident, reports)) items)
+      result
+    |> Map.of_alist_exn (module Concrete_ident)
+  in
+  let items = Deps.filter_by_inclusion_clauses include_clauses items in
+  let reports =
+    List.concat_map
+      ~f:(fun (item : Ast.Rust.item) ->
+        Map.find_exn ident_to_reports item.ident)
+      items
+    |> List.dedup_and_sort ~compare:Diagnostics.compare
+  in
+  List.iter ~f:Diagnostics.Core.report reports;
+  items
+
 let run (options : Types.engine_options) : Types.output =
   setup_logs options;
-  if options.backend.debug_engine then Phase_utils.DebugBindPhase.enable ();
+  if options.backend.debug_engine |> Option.is_some then
+    Phase_utils.DebugBindPhase.enable ();
   let run (type options_type)
       (module M : Backend.T with type BackendOptions.t = options_type)
       (backend_options : options_type) : Types.file list =
     let open M in
-    let items =
-      options.input
-      |> List.concat_map ~f:(fun item ->
-             try
-               Result.map_error ~f:Import_thir.show_error
-                 (Import_thir.c_item
-                    options.backend.translation_options.include_namespaces item)
-               |> Result.ok_or_failwith
-             with Failure e -> failwith e)
+    Concrete_ident.ImplInfos.init options.impl_infos;
+    let include_clauses =
+      options.backend.translation_options.include_namespaces
     in
+    let items = import_thir_items include_clauses options.input in
     Logs.info (fun m ->
         m "Applying phase for backend %s"
           ([%show: Diagnostics.Backend.t] M.backend));

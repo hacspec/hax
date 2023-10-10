@@ -7,6 +7,21 @@ use std::path::{Path, PathBuf};
 pub use hax_frontend_exporter_options::*;
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+pub enum DebugEngineMode {
+    File(PathOrDash),
+    Interactive,
+}
+
+impl std::convert::From<&str> for DebugEngineMode {
+    fn from(s: &str) -> Self {
+        match s {
+            "i" | "interactively" => DebugEngineMode::Interactive,
+            s => DebugEngineMode::File(s.strip_prefix("file:").unwrap_or(s).into()),
+        }
+    }
+}
+
+#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
 pub struct ForceCargoBuild {
     pub data: u128,
 }
@@ -17,8 +32,8 @@ impl std::default::Default for ForceCargoBuild {
     }
 }
 
-impl std::convert::From<&std::ffi::OsStr> for ForceCargoBuild {
-    fn from(s: &std::ffi::OsStr) -> Self {
+impl std::convert::From<&str> for ForceCargoBuild {
+    fn from(s: &str) -> Self {
         use std::time::{SystemTime, UNIX_EPOCH};
         if s == "false" {
             ForceCargoBuild {
@@ -39,12 +54,11 @@ pub enum PathOrDash {
     Path(PathBuf),
 }
 
-impl std::convert::From<&std::ffi::OsStr> for PathOrDash {
-    fn from(s: &std::ffi::OsStr) -> Self {
-        if s == "-" {
-            PathOrDash::Dash
-        } else {
-            PathOrDash::Path(PathBuf::from(s))
+impl std::convert::From<&str> for PathOrDash {
+    fn from(s: &str) -> Self {
+        match s {
+            "-" => PathOrDash::Dash,
+            _ => PathOrDash::Path(PathBuf::from(s)),
         }
     }
 }
@@ -121,7 +135,7 @@ impl fmt::Display for Backend {
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
 enum InclusionKind {
-    Included,
+    Included { with_deps: bool },
     Excluded,
 }
 
@@ -138,9 +152,17 @@ fn parse_inclusion_clause(
     if s.is_empty() {
         Err("Expected `-` or `+`, got an empty string")?
     }
-    let (prefix, namespace) = s.split_at(1);
+    let (prefix, mut namespace) = s.split_at(1);
     let kind = match prefix {
-        "+" => InclusionKind::Included,
+        "+" => InclusionKind::Included {
+            with_deps: match namespace.split_at(1) {
+                ("!", rest) => {
+                    namespace = rest;
+                    false
+                }
+                _ => true,
+            },
+        },
         "-" => InclusionKind::Excluded,
         prefix => Err(format!("Expected `-` or `+`, got an `{prefix}`"))?,
     };
@@ -153,9 +175,12 @@ fn parse_inclusion_clause(
 #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
 pub struct TranslationOptions {
     /// Space-separated list of inclusion clauses. An inclusion clause
-    /// is a Rust path prefixed with either `+` or `-`. By default,
-    /// every item is included. Rust path chunks can be either a
-    /// concrete string, `*` or `**`. The two latter are globs.
+    /// is a Rust path prefixed with `+`, `+!` or `-`. `-` excludes
+    /// any matched item, `+` includes any matched item and their
+    /// dependencies, `+!` includes any matched item strictly (without
+    /// including dependencies). By default, every item is
+    /// included. Rust path chunks can be either a concrete string, or
+    /// a glob (just like bash globs, but with Rust paths).
     #[arg(
         value_parser = parse_inclusion_clause,
         value_delimiter = ' ',
@@ -176,19 +201,26 @@ pub struct BackendOptions {
 
     /// Verbose mode for the Hax engine. Set [-vv] for maximal verbosity.
     #[arg(short, long, action = clap::ArgAction::Count)]
-    verbose: u8,
+    pub verbose: u8,
 
-    /// Enable debugging of the engine, and visualize interactively in
-    /// a webapp how a crate was transformed by each phase, both in
-    /// Rust-like syntax and browsing directly the internal AST. By
-    /// default, the webapp is hosted on http://localhost:8000, the
-    /// port can be override by setting the `HAX_DEBUGGER_PORT`
-    /// environment variable.
+    /// Enable engine debugging: dumps the AST at each phase.
+    ///
+    /// The value of <DEBUG_ENGINE> can be either:
+    ///
+    ///  - [interactive] (or [i]): enables debugging of the engine, and
+    /// visualize interactively in a webapp how a crate was
+    /// transformed by each phase, both in Rust-like syntax and
+    /// browsing directly the internal AST. By default, the webapp is
+    /// hosted on http://localhost:8000, the port can be override by
+    /// setting the `HAX_DEBUGGER_PORT` environment variable.
+    ///
+    /// - [<FILE>] or [file:<FILE>]: outputs the different AST as JSON
+    /// to <FILE>. <FILE> can be either [-] or a path.
     #[arg(short, long = "debug-engine")]
-    debug_engine: bool,
+    pub debug_engine: Option<DebugEngineMode>,
 
     #[command(flatten)]
-    translation_options: TranslationOptions,
+    pub translation_options: TranslationOptions,
 }
 
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
@@ -209,7 +241,7 @@ pub enum ExporterCommand {
             default_value = "hax_frontend_export.json"
         )]
         output_file: PathOrDash,
-        /// Wether the bodies are exported as THIR, built MIR, const
+        /// Whether the bodies are exported as THIR, built MIR, const
         /// MIR, or a combination. Repeat this option to extract a
         /// combination (e.g. [-k thir -k mir-built]).
         #[arg(
@@ -221,9 +253,9 @@ pub enum ExporterCommand {
         )]
         kind: Vec<ExportBodyKind>,
 
-        /// Wether to include the list of def_id exported.
-        #[arg(short = 'D', long = "def-ids", default_value = "false")]
-        include_def_ids: bool,
+        /// Whether to include extra informations about `DefId`s.
+        #[arg(short = 'E', long = "include-extra", default_value = "false")]
+        include_extra: bool,
     },
 }
 

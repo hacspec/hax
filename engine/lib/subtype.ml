@@ -40,8 +40,31 @@ struct
     | TParam local_ident -> TParam local_ident
     | TArrow (inputs, output) ->
         TArrow (List.map ~f:(dty span) inputs, dty span output)
-    | TProjectedAssociatedType string -> TProjectedAssociatedType string
+    | TAssociatedType { impl; item } ->
+        TAssociatedType { impl = dimpl_expr span impl; item }
+    | TOpaque ident -> TOpaque ident
     | TRawPointer { witness } -> TRawPointer { witness = S.raw_pointer witness }
+
+  and dtrait_ref (span : span) (r : A.trait_ref) : B.trait_ref =
+    { trait = r.trait; args = List.map ~f:(dgeneric_value span) r.args }
+
+  and dimpl_expr (span : span) (i : A.impl_expr) : B.impl_expr =
+    match i with
+    | Concrete tr -> Concrete (dtrait_ref span tr)
+    | LocalBound { id } -> LocalBound { id }
+    | Parent { impl; trait } ->
+        Parent { impl = dimpl_expr span impl; trait = dtrait_ref span trait }
+    | Projection { impl; item; trait } ->
+        Projection
+          { impl = dimpl_expr span impl; item; trait = dtrait_ref span trait }
+    | ImplApp { impl; args } ->
+        ImplApp
+          {
+            impl = dimpl_expr span impl;
+            args = List.map ~f:(dimpl_expr span) args;
+          }
+    | Dyn tr -> Dyn (dtrait_ref span tr)
+    | Builtin tr -> Builtin (dtrait_ref span tr)
 
   and dgeneric_value (span : span) (generic_value : A.generic_value) :
       B.generic_value =
@@ -267,13 +290,6 @@ struct
         LhsArbitraryExpr { e = dexpr e; witness = S.arbitrary_lhs witness }
 
   module Item = struct
-    let dtrait_ref (span : span) (r : A.trait_ref) : B.trait_ref =
-      {
-        trait = r.trait;
-        args = List.map ~f:(dgeneric_value span) r.args;
-        bindings = r.bindings;
-      }
-
     (* TODO: remvove span argument *)
     let dgeneric_param (_span : span)
         ({ ident; span; attrs; kind } : A.generic_param) : B.generic_param =
@@ -291,9 +307,7 @@ struct
         (generic_constraint : A.generic_constraint) : B.generic_constraint =
       match generic_constraint with
       | GCLifetime (lf, witness) -> B.GCLifetime (lf, S.lifetime witness)
-      | GCType { typ; implements } ->
-          B.GCType
-            { typ = dty span typ; implements = dtrait_ref span implements }
+      | GCType { bound; id } -> B.GCType { bound = dtrait_ref span bound; id }
 
     let dgenerics (span : span) (g : A.generics) : B.generics =
       {
@@ -406,6 +420,7 @@ struct
                 (trait_id, List.map ~f:(dgeneric_value span) trait_generics);
               items = List.map ~f:dimpl_item items;
             }
+      | Alias { name; item } -> B.Alias { name; item }
       | Use { path; is_external; rename } -> B.Use { path; is_external; rename }
       | HaxError e -> B.HaxError e
       | NotImplementedYet -> B.NotImplementedYet

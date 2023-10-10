@@ -111,6 +111,9 @@ mod hax {
     struct Failure;
     enum Never {}
 
+    // Only useful when HAX_CORE_EXTRACTION_MODE in `on`
+    enum MutRef {}
+
     fn repeat() {}
     fn update_at() {}
     // TODO: Should that live here? (this is F* specific)

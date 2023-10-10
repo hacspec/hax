@@ -163,6 +163,13 @@ fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
 ) -> (
     Vec<rustc_span::Span>,
     Vec<hax_frontend_exporter::DefId>,
+    std::collections::HashMap<
+        hax_frontend_exporter::DefId,
+        (
+            hax_frontend_exporter::Ty,
+            Vec<hax_frontend_exporter::Predicate>,
+        ),
+    >,
     Vec<hax_frontend_exporter::Item<Body>>,
 ) {
     let mut state = hax_frontend_exporter::state::State::new(tcx, options.clone());
@@ -170,6 +177,7 @@ fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
     state.base.cached_thirs = Rc::new(precompute_local_thir_bodies(tcx));
 
     let result = hax_frontend_exporter::inline_macro_invocations(tcx.hir().items(), &state);
+    let impl_infos = hax_frontend_exporter::impl_def_ids_to_impled_types_and_bounds(&state);
     let exported_spans = state.base.exported_spans.borrow().clone();
 
     let exported_def_ids = {
@@ -180,6 +188,7 @@ fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
     (
         exported_spans.into_iter().collect(),
         exported_def_ids,
+        impl_infos,
         result,
     )
 }
@@ -300,7 +309,7 @@ impl Callbacks for ExtractionCallbacks {
                 ExporterCommand::JSON {
                     output_file,
                     mut kind,
-                    include_def_ids,
+                    include_extra,
                 } => {
                     struct Driver<'tcx> {
                         options: hax_frontend_exporter_options::Options,
@@ -308,22 +317,26 @@ impl Callbacks for ExtractionCallbacks {
                             HashMap<hax_frontend_exporter::Span, hax_frontend_exporter::Span>,
                         tcx: TyCtxt<'tcx>,
                         output_file: PathOrDash,
-                        include_def_ids: bool,
+                        include_extra: bool,
                     }
                     impl<'tcx> Driver<'tcx> {
                         fn to_json<Body: hax_frontend_exporter::IsBody + Serialize>(self) {
-                            let (_, def_ids, converted_items) = convert_thir::<Body>(
+                            let (_, def_ids, impl_infos, converted_items) = convert_thir::<Body>(
                                 &self.options,
                                 self.macro_calls.clone(),
                                 self.tcx,
                             );
 
                             let dest = self.output_file.open_or_stdout();
-                            (if self.include_def_ids {
+                            (if self.include_extra {
                                 serde_json::to_writer(
                                     dest,
                                     &hax_cli_options_engine::WithDefIds {
                                         def_ids,
+                                        impl_infos: impl_infos
+                                            .iter()
+                                            .map(|(k, (t, p))| (k.clone(), (t.clone(), p.clone())))
+                                            .collect(),
                                         items: converted_items,
                                     },
                                 )
@@ -338,7 +351,7 @@ impl Callbacks for ExtractionCallbacks {
                         macro_calls: self.macro_calls.clone(),
                         tcx,
                         output_file,
-                        include_def_ids,
+                        include_extra,
                     };
                     mod from {
                         pub use hax_cli_options::ExportBodyKind::{
@@ -369,12 +382,16 @@ impl Callbacks for ExtractionCallbacks {
                     }
                 }
                 ExporterCommand::Backend(backend) => {
-                    let (spans, _def_ids, converted_items) =
+                    let (spans, _def_ids, impl_infos, converted_items) =
                         convert_thir(&self.clone().into(), self.macro_calls.clone(), tcx);
 
                     let engine_options = hax_cli_options_engine::EngineOptions {
                         backend: backend.clone(),
                         input: converted_items,
+                        impl_infos: impl_infos
+                            .iter()
+                            .map(|(k, (t, p))| (k.clone(), (t.clone(), p.clone())))
+                            .collect(),
                     };
                     let mut engine_subprocess = find_hax_engine()
                         .stdin(std::process::Stdio::piped())
@@ -391,7 +408,7 @@ impl Callbacks for ExtractionCallbacks {
                         })
                         .unwrap();
 
-                    serde_json::to_writer(
+                    serde_json::to_writer::<_, hax_cli_options_engine::EngineOptions>(
                         std::io::BufWriter::new(
                             engine_subprocess
                                 .stdin
@@ -435,19 +452,29 @@ impl Callbacks for ExtractionCallbacks {
                             .collect(),
                     );
                     if backend.dry_run {
-                        serde_json::to_writer(std::io::stdout(), &output.files).unwrap();
+                        serde_json::to_writer(std::io::BufWriter::new(std::io::stdout()), &output)
+                            .unwrap()
                     } else {
                         write_files(&output, &session, backend.backend);
                     }
                     if let Some(debug_json) = &output.debug_json {
-                        eprintln!("----------------------------------------------");
-                        eprintln!("----------------------------------------------");
-                        eprintln!("----------------------------------------------");
-                        eprintln!("-- Engine debug mode. Press CTRL+C to exit. --");
-                        eprintln!("----------------------------------------------");
-                        eprintln!("----------------------------------------------");
-                        eprintln!("----------------------------------------------");
-                        phase_debug_webapp::run(|| debug_json.clone())
+                        use hax_cli_options::DebugEngineMode;
+                        match backend.debug_engine {
+                            Some(DebugEngineMode::Interactive) => {
+                                eprintln!("----------------------------------------------");
+                                eprintln!("----------------------------------------------");
+                                eprintln!("----------------------------------------------");
+                                eprintln!("-- Engine debug mode. Press CTRL+C to exit. --");
+                                eprintln!("----------------------------------------------");
+                                eprintln!("----------------------------------------------");
+                                eprintln!("----------------------------------------------");
+                                phase_debug_webapp::run(|| debug_json.clone())
+                            }
+                            Some(DebugEngineMode::File(file)) if !backend.dry_run => {
+                                println!("{}", debug_json)
+                            }
+                            _ => (),
+                        }
                     }
                 }
             };
