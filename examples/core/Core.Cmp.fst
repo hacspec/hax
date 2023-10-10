@@ -1,7 +1,9 @@
 module Core.Cmp
 open Rust_primitives
 
-let min a b = a
+unfold 
+let min #t (x y: int_t t): int_t t = 
+  if x <. y then x else y
 
 type t_Ordering =
   | Ordering_Less : t_Ordering
