@@ -22,8 +22,7 @@ val lemma_peek_len: #t:Type -> h: t_BinaryHeap t
 val lemma_pop_len: #t:Type -> h: t_BinaryHeap t 
   -> Lemma (Option_Some? (snd (impl_9__pop h)) <==> nonempty h)
 
-let lemma_peek_pop: #t:Type -> h: t_BinaryHeap t 
-  -> Lemma (Option_Some? (impl_10__peek h) <==> Option_Some? (snd (impl_9__pop h)))
+val lemma_peek_pop: #t:Type -> h: t_BinaryHeap t 
+  -> Lemma (impl_10__peek h == snd (impl_9__pop h))
           [SMTPat (impl_10__peek h)]
-  = fun h -> lemma_peek_len h; lemma_pop_len h
 
