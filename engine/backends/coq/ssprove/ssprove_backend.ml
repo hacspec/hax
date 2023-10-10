@@ -1887,12 +1887,6 @@ module ConCert = struct
                     SSP.AST.Definition
                       ( "init_" ^ contract,
                         [
-                          SSP.AST.Implicit
-                            ( SSP.AST.Ident "L",
-                              (SSP.AST.NameTy "{fset Location}" : SSP.AST.ty) );
-                          SSP.AST.Implicit
-                            ( SSP.AST.Ident "I",
-                              (SSP.AST.NameTy "Interface" : SSP.AST.ty) );
                           SSP.AST.Explicit
                             (SSP.AST.Ident "chain", SSP.AST.NameTy "Chain");
                           SSP.AST.Explicit
@@ -1900,7 +1894,6 @@ module ConCert = struct
                               SSP.AST.NameTy "ContractCallContext" );
                           SSP.AST.Explicit
                             ( SSP.AST.Ident "st",
-                              wrap_type_in_both "L" "I"
                                 (SSP.AST.NameTy ("state_" ^ contract)) );
                         ],
                         SSP.AST.App
@@ -1908,7 +1901,6 @@ module ConCert = struct
                         SSP.AST.AppTy
                           ( SSP.AST.NameTy "ResultMonad.result",
                             [
-                              wrap_type_in_both "L" "I"
                                 (SSP.AST.NameTy ("state_" ^ contract));
                               SSP.AST.NameTy "t_ParseError";
                             ] ) );
@@ -1929,16 +1921,24 @@ module ConCert = struct
                   (* let payable = get_argument "payable" token_list in *)
                   let param_instances, param_list, count, param_vars = (match parameter with
                       | Some x ->
-                        [SSP.AST.Instance ("t_HasReceiveContext",
-                                      [],
-                                      SSP.AST.NameTy ("t_" ^ strip x),
-                                      [SSP.AST.NameTy ("t_" ^ strip x); SSP.AST.Unit],
-                                           []);
+                        [SSP.AST.ProgramInstance (
+                            "t_HasReceiveContext",
+                            [],
+                            SSP.AST.NameTy ("t_" ^ strip x),
+                            [SSP.AST.NameTy ("t_" ^ strip x); SSP.AST.Unit],
+                            [SSP.AST.InlineDef
+                               ( "get",
+                                 [SSP.AST.Explicit ( SSP.AST.Ident "x", (SSP.AST.WildTy) );
+                                  SSP.AST.Implicit ( SSP.AST.Ident "L", (SSP.AST.NameTy "{fset Location}" : SSP.AST.ty) );
+                                  SSP.AST.Implicit ( SSP.AST.Ident "I", (SSP.AST.NameTy "Interface" : SSP.AST.ty) )],
+                                 SSP.AST.Var "(solve_lift (@ret_both (t_ParamType × t_Result x t_ParseError)) (tt, inr tt))",
+                                 SSP.AST.WildTy );]);
                          SSP.AST.Instance ("t_Sized",
                                            [],
                                            SSP.AST.NameTy ("t_" ^ strip x),
                                            [SSP.AST.NameTy ("t_" ^ strip x)],
-                                           [])],
+                                           [SSP.AST.InlineDef
+                               ( "Sized", [SSP.AST.Explicit ( SSP.AST.Ident "x", (SSP.AST.WildTy) );], SSP.AST.Var "x", SSP.AST.WildTy );])],
                         [
                           SSP.AST.Explicit
                             (SSP.AST.Ident "ctx", wrap_type_in_both "L0" "I0" (SSP.AST.NameTy ("t_" ^ strip x)));
@@ -2030,147 +2030,154 @@ module ConCert = struct
 
   let concert_contract_type_decls (items : item list) : SSP.AST.decl list list =
     (* List.dedup_and_sort ~compare:String.compare *)
-    let contract_map =
-      List.fold_left
-        ~init:(Map.empty (module String))
-        ~f:(fun y (x_name, x_parameter, x_item) ->
-            Map.set y ~key:x_name
-              ~data:
-                (Option.value ~default:[] (Map.find y x_name)
-                 @ [ (x_parameter, x_item) ]))
-        (List.filter_map
-           ~f:(function
-               | { kind = Tool { path; tokens }; span }
-                 when String.equal path "hax::receive" ->
-                 let token_list = token_list tokens in
-                 let contract =
-                   strip_or_error "contract argument missing"
-                     (get_argument "contract" token_list)
-                     (Span.dummy ())
-                     (* TODO: carry span information *)
-                 in
-                 let name =
-                   strip_or_error "name argument missing"
-                     (get_argument "name" token_list)
-                     (Span.dummy ())
-                     (* TODO: carry span information *)
-                 in
-                 let parameter = get_argument "parameter" token_list in
-                 Some (contract, parameter, name)
-               | _ -> None)
-           (List.concat_map ~f:(fun x -> x.attrs) items))
-    in
-    List.map
-      ~f:(fun contract ->
-          let receive_functions : (_ * string) list =
-            Option.value ~default:[] (Map.find contract_map contract)
-          in
-          [
-            SSP.AST.Inductive
-              ( "Msg_" ^ contract,
-                [],
-                List.map
-                  ~f:(function
-                      | Some param, x_item ->
-                        SSP.AST.InductiveCase
-                          ( "msg_" ^ contract ^ "_" ^ x_item,
-                            SSP.AST.NameTy ("t_" ^ strip param) )
-                      | None, x_item ->
-                        SSP.AST.BaseCase ("msg_" ^ contract ^ "_" ^ x_item))
-                  receive_functions );
-            SSP.AST.Instance ("t_HasReceiveContext",
-                              [],
-                              SSP.AST.NameTy ("state_" ^ contract),
-                              [SSP.AST.NameTy ("state_" ^ contract); SSP.AST.Unit],
-                              []);
-            SSP.AST.Instance ("t_Sized",
-                              [],
-                              SSP.AST.NameTy ("state_" ^ contract),
-                              [SSP.AST.NameTy ("state_" ^ contract)],
-                              []);
-            SSP.AST.Instance ("t_HasActions",
-                              [],
-                              SSP.AST.NameTy ("state_" ^ contract),
-                              [SSP.AST.NameTy ("state_" ^ contract)],
-                              []);
-            SSP.AST.Equations
-              ( "receive_" ^ contract,
-                [
-                  SSP.AST.Implicit (SSP.AST.Ident "L", (SSP.AST.NameTy "{fset Location}" : SSP.AST.ty));
-                  SSP.AST.Implicit (SSP.AST.Ident "I", (SSP.AST.NameTy "Interface" : SSP.AST.ty));
-                  SSP.AST.Explicit (SSP.AST.Ident "chain", SSP.AST.NameTy "Chain");
-                  SSP.AST.Explicit
-                    (SSP.AST.Ident "ctx", SSP.AST.NameTy "ContractCallContext");
-                  SSP.AST.Explicit
-                    ( SSP.AST.Ident "st",
-                      wrap_type_in_both "L" "I"
-                        (SSP.AST.NameTy ("state_" ^ contract)) );
-                  SSP.AST.Explicit
-                    ( SSP.AST.Ident "msg",
-                      SSP.AST.NameTy ("Datatypes.option Msg_" ^ contract) );
-                ],
-                SSP.AST.Match
-                  ( SSP.AST.Var "msg",
-                    List.map
-                      ~f:(function
-                          | Some param, x_item ->
-                            ( SSP.AST.Ident
-                                ("Some" ^ " " ^ "(" ^ "msg_" ^ contract ^ "_" ^ x_item
-                                 ^ " " ^ "val" ^ ")"),
-                              SSP.AST.Var
-                                ("match (is_pure (both_prog (receive_" ^ contract
-                                 ^ "_" ^ x_item
-                                 ^ " (ret_both val) (st)))) with\n\
-                                   \         | inl x => ResultMonad.Ok (solve_lift \
-                                    ret_both (fst x), [])\n\
-                                   \         | inr x => ResultMonad.Err x\n\
-                                   \         end") )
-                          | None, x_item ->
-                            ( SSP.AST.Ident
-                                ("Some" ^ " " ^ "msg_" ^ contract ^ "_" ^ x_item),
-                              SSP.AST.Var
-                                ("match (is_pure (both_prog (receive_" ^ contract
-                                 ^ "_" ^ x_item
-                                 ^ " (st)))) with\n\
-                                   \         | inl x => ResultMonad.Ok (solve_lift \
-                                    ret_both (fst x), [])\n\
-                                   \         | inr x => ResultMonad.Err x\n\
-                                   \         end") ))
-                      receive_functions
-                    @ [ (SSP.AST.WildPat, SSP.AST.Var "ResultMonad.Err tt") ] ),
-                SSP.AST.NameTy
-                  ("ResultMonad.result (both L I state_" ^ contract
-                   ^ " * list ActionBody) t_ParseError") );
-            SSP.AST.Instance ("Serializable",
-                              [],
-                              SSP.AST.NameTy ("state_" ^ contract),
-                              [SSP.AST.NameTy ("state_" ^ contract)],
-                              []);
-            SSP.AST.Instance ("Serializable",
-                              [],
-                              SSP.AST.NameTy ("Msg_" ^ contract),
-                              [SSP.AST.NameTy ("Msg_" ^ contract)],
-                              []);
-            SSP.AST.Definition
-              ( "contract_" ^ contract,
-                [SSP.AST.Implicit (SSP.AST.Ident "L", (SSP.AST.NameTy "{fset Location}" : SSP.AST.ty));
-                  SSP.AST.Implicit (SSP.AST.Ident "I", (SSP.AST.NameTy "Interface" : SSP.AST.ty));],
-                SSP.AST.App
-                  ( SSP.AST.Var "build_contract",
-                    [
-                      SSP.AST.Var ("init_" ^ contract);
-                      SSP.AST.Var ("receive_" ^ contract);
-                    ] ),
-                SSP.AST.AppTy
-                  ( SSP.AST.NameTy "Contract",
-                    [
-                      wrap_type_in_both "L" "I" (SSP.AST.NameTy ("state_" ^ contract));
-                      SSP.AST.NameTy ("Msg_" ^ contract);
-                      wrap_type_in_both "L" "I" (SSP.AST.NameTy ("state_" ^ contract));
-                      SSP.AST.NameTy "t_ParseError";
-                    ] ) );
-          ])
-      (Map.keys contract_map)
+    let contract_items =
+      (List.filter_map
+         ~f:(function
+             | { kind = Tool { path; tokens }; span }
+               when String.equal path "hax::receive" ->
+               let token_list = token_list tokens in
+               let contract =
+                 strip_or_error "contract argument missing"
+                   (get_argument "contract" token_list)
+                   (Span.dummy ())
+                   (* TODO: carry span information *)
+               in
+               let name =
+                 strip_or_error "name argument missing"
+                   (get_argument "name" token_list)
+                   (Span.dummy ())
+                   (* TODO: carry span information *)
+               in
+               let parameter = get_argument "parameter" token_list in
+               Some (contract, parameter, name)
+             | _ -> None)
+         (List.concat_map ~f:(fun x -> x.attrs) items)) in
+    if List.length contract_items == 0
+    then []
+    else
+      let contract_map =
+        List.fold_left
+          ~init:(Map.empty (module String))
+          ~f:(fun y (x_name, x_parameter, x_item) ->
+              Map.set y ~key:x_name
+                ~data:
+                  (Option.value ~default:[] (Map.find y x_name)
+                   @ [ (x_parameter, x_item) ]))
+          contract_items
+      in
+      List.map
+        ~f:(fun contract ->
+            let receive_functions : (_ * string) list =
+              Option.value ~default:[] (Map.find contract_map contract)
+            in
+            [
+              SSP.AST.Inductive
+                ( "Msg_" ^ contract,
+                  [],
+                  List.map
+                    ~f:(function
+                        | Some param, x_item ->
+                          SSP.AST.InductiveCase
+                            ( "msg_" ^ contract ^ "_" ^ x_item,
+                              SSP.AST.NameTy ("t_" ^ strip param) )
+                        | None, x_item ->
+                          SSP.AST.BaseCase ("msg_" ^ contract ^ "_" ^ x_item))
+                    receive_functions );
+              SSP.AST.ProgramInstance ("t_HasReceiveContext",
+                                [],
+                                SSP.AST.NameTy ("state_" ^ contract),
+                                [SSP.AST.NameTy ("state_" ^ contract); SSP.AST.Unit],
+                                [SSP.AST.InlineDef
+                               ( "get",
+                                 [SSP.AST.Explicit ( SSP.AST.Ident "x", (SSP.AST.WildTy) );
+                                  SSP.AST.Implicit ( SSP.AST.Ident "L", (SSP.AST.NameTy "{fset Location}" : SSP.AST.ty) );
+                                  SSP.AST.Implicit ( SSP.AST.Ident "I", (SSP.AST.NameTy "Interface" : SSP.AST.ty) )],
+                                 SSP.AST.Var "(solve_lift (@ret_both (t_ParamType × t_Result x t_ParseError)) (tt, inr tt))",
+                                 SSP.AST.WildTy );]);
+              SSP.AST.Instance ("t_Sized",
+                                [],
+                                SSP.AST.NameTy ("state_" ^ contract),
+                                [SSP.AST.NameTy ("state_" ^ contract)],
+                                [SSP.AST.InlineDef
+                               ( "Sized", [SSP.AST.Explicit ( SSP.AST.Ident "x", (SSP.AST.WildTy) );], SSP.AST.Var "x", SSP.AST.WildTy );]);
+              SSP.AST.Instance ("t_HasActions",
+                                [],
+                                SSP.AST.NameTy ("state_" ^ contract),
+                                [SSP.AST.NameTy ("state_" ^ contract)],
+                                []);
+              SSP.AST.Equations
+                ( "receive_" ^ contract,
+                  [
+                    SSP.AST.Explicit (SSP.AST.Ident "chain", SSP.AST.NameTy "Chain");
+                    SSP.AST.Explicit
+                      (SSP.AST.Ident "ctx", SSP.AST.NameTy "ContractCallContext");
+                    SSP.AST.Explicit
+                      ( SSP.AST.Ident "st", (SSP.AST.NameTy ("state_" ^ contract)) );
+                    SSP.AST.Explicit
+                      ( SSP.AST.Ident "msg",
+                        SSP.AST.NameTy ("Datatypes.option Msg_" ^ contract) );
+                  ],
+                  SSP.AST.Match
+                    ( SSP.AST.Var "msg",
+                      List.map
+                        ~f:(function
+                            | Some param, x_item ->
+                              ( SSP.AST.Ident
+                                  ("Some" ^ " " ^ "(" ^ "msg_" ^ contract ^ "_" ^ x_item
+                                   ^ " " ^ "val" ^ ")"),
+                                SSP.AST.Var
+                                  ("match (is_pure (both_prog (receive_" ^ contract
+                                   ^ "_" ^ x_item
+                                   ^ " (ret_both val) (ret_both st)))) with\n\
+                                     \         | inl x => ResultMonad.Ok (\
+                                      (fst x), [])\n\
+                                     \         | inr x => ResultMonad.Err x\n\
+                                     \         end") )
+                            | None, x_item ->
+                              ( SSP.AST.Ident
+                                  ("Some" ^ " " ^ "msg_" ^ contract ^ "_" ^ x_item),
+                                SSP.AST.Var
+                                  ("match (is_pure (both_prog (receive_" ^ contract
+                                   ^ "_" ^ x_item
+                                   ^ " (ret_both st)))) with\n\
+                                     \         | inl x => ResultMonad.Ok (\
+                                      (fst x), [])\n\
+                                     \         | inr x => ResultMonad.Err x\n\
+                                     \         end") ))
+                        receive_functions
+                      @ [ (SSP.AST.WildPat, SSP.AST.Var "ResultMonad.Err tt") ] ),
+                  SSP.AST.NameTy
+                    ("ResultMonad.result (state_" ^ contract
+                     ^ " * list ActionBody) t_ParseError") );
+              SSP.AST.Instance ("Serializable",
+                                [],
+                                SSP.AST.NameTy ("state_" ^ contract),
+                                [SSP.AST.NameTy ("state_" ^ contract)],
+                                []);
+              SSP.AST.Instance ("Serializable",
+                                [],
+                                SSP.AST.NameTy ("Msg_" ^ contract),
+                                [SSP.AST.NameTy ("Msg_" ^ contract)],
+                                []);
+              SSP.AST.Definition
+                ( "contract_" ^ contract,
+                  [],
+                  SSP.AST.App
+                    ( SSP.AST.Var "build_contract",
+                      [
+                        SSP.AST.Var ("init_" ^ contract);
+                        SSP.AST.Var ("receive_" ^ contract);
+                      ] ),
+                  SSP.AST.AppTy
+                    ( SSP.AST.NameTy "Contract",
+                      [
+                        (SSP.AST.NameTy ("state_" ^ contract));
+                        SSP.AST.NameTy ("Msg_" ^ contract);
+                        (SSP.AST.NameTy ("state_" ^ contract));
+                        SSP.AST.NameTy "t_ParseError";
+                      ] ) );
+            ])
+        (Map.keys contract_map)
 
   let concert_header =
     [SSP.AST.Comment "Concert lib part";
@@ -2185,7 +2192,11 @@ end
 
 let process_annotation (x : 'a list) (f2 : ('b * ('a -> 'b)) list) :
     'b list =
-  List.concat_map ~f:(fun (d, f) -> d :: List.map ~f:f x) f2
+  List.concat_map ~f:(fun (d, f) ->
+      let temp = List.map ~f:f x in
+      if List.length (List.concat temp) == 0
+      then []
+      else d :: temp) f2
 
   (* List.fold_left ~init:(List.map ~f:f1 x) *)
   (*   ~f:(fun y f -> List.map ~f:(fun (x, y) -> y @ f x) (List.zip_exn x y)) *)
