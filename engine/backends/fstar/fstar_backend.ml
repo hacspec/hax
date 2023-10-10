@@ -351,13 +351,9 @@ struct
         if is_struct && is_record then pat_rec ()
         else
           let pat_name = F.pat @@ F.AST.PatName (pglobal_ident p.span name) in
-          let is_payload_record =
-            List.for_all ~f:(fun { field } -> is_field_an_index field) args
-            |> not
-          in
           F.pat_app pat_name
           @@
-          if is_payload_record then [ pat_rec () ]
+          if is_record then [ pat_rec () ]
           else List.map ~f:(fun { field; pat } -> ppat pat) args
     | PConstant { lit } -> F.pat @@ F.AST.PatConst (pliteral p.span lit)
     | _ -> .
