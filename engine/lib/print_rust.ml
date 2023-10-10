@@ -423,6 +423,10 @@ module Raw = struct
         in
         !"fn " & ident & generics & !"(" & params & !") -> " & return_type
         & bounds & !";"
+    | TIConst ty ->
+      let return_type = pty ti.ti_span ty in
+      !"fn " & ident & generics & !" -> " & return_type
+      & bounds & !";"
 
   let pparam span ({ pat; typ; typ_span; attrs } : param) =
     let ( ! ) = pure span in

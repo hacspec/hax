@@ -130,7 +130,7 @@ functor
             string * argument list * ty * ty list * definition_type list
         | ProgramInstance of
             string * argument list * ty * ty list * instance_decls list
-        | Require of string list * string option
+        | Require of string option * string list * string option
         | ModuleType of string * argument list * record_field list
         | Module of string * string * argument list * record_field list
         | Parameter of string * ty (* definition_type minus 'term' *)
@@ -469,9 +469,16 @@ functor
       | AST.Inductive (name, arguments, variants) ->
           let name_arguments = name ^ params_to_string_typed arguments in
           let variants_str =
-            inductive_case_to_string variants
-              (newline_indent 0 ^ "|" ^ " ")
-              (" : " ^ name_arguments)
+            String.concat ~sep:(newline_indent 0) (List.map ~f:(fun x ->
+                let mid_str =
+                  match x with
+                  | AST.BaseCase ty_name -> ty_name ^ " : "
+                  | AST.InductiveCase (ty_name, ty) ->
+                    let ty_str = ty_to_string ty in
+                    ty_name ^ " " ^ ":" ^ " " ^ ty_str ^ " " ^ "->" ^ " "
+                in
+                ("|" ^ " ") ^ mid_str ^ name_arguments)
+              variants)
           in
           let args_str =
             if List.is_empty arguments then ""
@@ -481,8 +488,7 @@ functor
                 (List.fold_left ~init:"" ~f:(fun a b -> a ^ " {_}") arguments)
                 "."
           in
-          "Inductive" ^ " " ^ name_arguments ^ ":" ^ " " ^ "Type" ^ " " ^ ":="
-          ^ variants_str ^ "." ^ args_str
+          "Inductive" ^ " " ^ name_arguments ^ ":" ^ " " ^ "Type" ^ " " ^ ":=" ^ newline_indent 0 ^ variants_str ^ "." ^ args_str
       | AST.Class (name, arguments, trait_items) ->
           let field_str =
             List.fold_left ~init:""
@@ -613,8 +619,8 @@ functor
           ^ (if impl_str_empty then "" else newline_indent 1)
           ^ "{|" (* ^ name ^ " " ^ ty_list_str *) ^ " "
           ^ arg_str ^ "|}" ^ "." ^ fail_next_obligation
-      | AST.Require ([], rename) -> ""
-      | AST.Require (import :: imports, rename) ->
+      | AST.Require (_, [], rename) -> ""
+      | AST.Require (None, import :: imports, rename) ->
           (* map_first_letter String.uppercase import *)
           let import_name =
             match rename with
@@ -627,6 +633,8 @@ functor
           in
           "Require Import" ^ " " ^ import_name ^ "." ^ newline_indent 0
           ^ "Export" ^ " " ^ import_name ^ "."
+      | AST.Require (Some x, imports, rename) ->
+          "From" ^ " " ^ x ^ " " ^ decl_to_string (AST.Require (None, imports, rename))
       | AST.HintUnfold (n, Some typ) ->
           let ty_str = ty_to_string typ in
           "Hint Unfold" ^ " " ^ ty_str ^ "_" ^ n ^ "."
@@ -685,12 +693,11 @@ functor
                params)
 
     and params_to_string params : string =
-      match params with
-      | (pat, ty) :: xs ->
-          let ty_str = ty_to_string ty in
-          pat_to_string pat true 0 ^ " "
-          ^ params_to_string xs (* TODO: Should pat_to_string have tick here? *)
-      | [] -> ""
+      String.concat ~sep:"" (List.map ~f:(fun (pat, ty) ->
+             let ty_str = ty_to_string ty in
+             pat_to_string pat true 0 ^ " "
+           ) params)
+
 
     and inductive_case_to_string variants pre post : string =
       match variants with

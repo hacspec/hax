@@ -335,6 +335,7 @@ struct
       match ti with
       | TIType g -> TIType (List.map ~f:(dtrait_ref span) g)
       | TIFn t -> TIFn (dty span t)
+      | TIConst t -> TIConst (dty span t)
 
     and dtrait_item (ti : A.trait_item) : B.trait_item =
       {

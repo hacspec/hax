@@ -15,10 +15,99 @@ module%inlined_contents Make (F : Features.T) = struct
     (local_ident list * (U.TypedLocalIdent.t * id_order) list) (* external mut_vars vs new variables (e.g. needs def / local) *)
     Map.M(Concrete_ident).t
 
-  module Flatten = Flatten_ast.Make (F)
+  module LocalIdentOrData (Ty : sig
+      type ty [@@deriving compare, sexp]
+    end) = struct
+    module W = struct
+      module T = struct
+        type t = Data of Ty.ty
+               | Identifier of Ast.LocalIdent.t
+        [@@deriving compare, sexp]
+      end
 
-  module Uprint =
-    Ast_utils.MakeWithNamePolicy (F) (Concrete_ident.DefaultNamePolicy)
+      include T
+      module C = Base.Comparator.Make (T)
+      include C
+    end
+
+    include W
+    include Set.M (W)
+
+    (* class ['s] set_monoid = *)
+    (*   object *)
+    (*     inherit ['s] VisitorsRuntime.monoid *)
+    (*     method private zero = Set.empty (module W) *)
+    (*     method private plus = Set.union *)
+    (*   end *)
+
+    (* class ['s] map_monoid = *)
+    (*   object *)
+    (*     inherit ['s] VisitorsRuntime.monoid *)
+    (*     method private zero = Map.empty (module LocalIdent) *)
+    (*     method private plus = Map.merge_skewed ~combine:(fun ~key a b -> a @ b) *)
+    (*   end *)
+
+    (* class virtual ['s] pair_monoid ~a b = *)
+    (*   object *)
+    (*     inherit ['s] VisitorsRuntime.monoid *)
+    (*     method private zero = (a#zero, b#zero) *)
+    (*     method private plus (xa,xb) (ya,yb) = (a#plus xa ya, b#plus xb yb) *)
+    (*   end *)
+
+    class ['s] monoid = object
+      inherit ['s] VisitorsRuntime.monoid
+      method private zero = (Set.empty (module W), Map.empty (module LocalIdent))
+      method private plus (xa,xb) (ya,yb) = (Set.union xa ya, Map.merge_skewed ~combine:(fun ~key:_ a b -> a @ b) xb yb)
+    end
+
+
+    let analyse_expr (data : analysis_data) (env : (W.t list) Map.M(LocalIdent).t) (expr : A.expr) : W.t list * (W.t list) Map.M(LocalIdent).t =
+      let mut_var_set, new_env =
+          ((object
+            inherit [_] A.expr_reduce as super
+            inherit [_] monoid as m
+            method visit_t _ _ = m#zero
+
+            method visit_mutability (f : (W.t list) Map.M(LocalIdent).t -> _ -> _) (ctx : (W.t list) Map.M(LocalIdent).t) mu =
+              match mu with Mutable wit -> f ctx wit | _ -> m#zero
+
+            (* method! visit_PBinding env mut _ var _typ subpat = *)
+            (*   m#plus *)
+            (*     (m#plus *)
+            (*        (match mut with *)
+            (*         | Mutable _ -> *)
+            (*           (Set.empty (module W), Map.singleton (module LocalIdent) var ([Identifier var])) *)
+            (*         | _ -> m#zero) *)
+            (*        (Option.value_map subpat ~default:m#zero *)
+            (*           ~f:(fst >> super#visit_pat env))) *)
+            (*     (Option.value_map (Map.find env var) ~default:m#zero ~f:(fun x -> (Set.of_list (module W) x, Map.empty (module LocalIdent)))) *)
+
+            method visit_Let env _monadic pat expr body =
+              let new_set , new_env = (super#visit_expr env expr) in
+              m#plus (super#visit_expr
+                        (Map.merge_skewed ~combine:(fun ~key:_ a b -> a @ b) 
+                           (Map.merge_skewed ~combine:(fun ~key:_ a b -> a @ b) env new_env)
+                           (Map.of_alist_exn (module LocalIdent)
+                              (List.map
+                                 ~f:(fun v -> (v, Set.to_list new_set))
+                                 (Set.to_list (U.Reducers.variables_of_pat pat))))
+                        )
+                        body) (new_set, Map.empty (module LocalIdent))
+
+            method! visit_local_ident (env : (W.t list) Map.M(LocalIdent).t) ident =
+              (Option.value_map (Map.find env ident) ~default:m#zero ~f:(fun x -> (Set.of_list (module W) x, Map.empty (module LocalIdent))))
+
+            method! visit_global_ident (_env : (W.t list) Map.M(LocalIdent).t) (x : Global_ident.t) =
+              match x with
+              | `Projector (`Concrete cid) | `Concrete cid ->
+                (match Map.find data cid with
+                 | Some (x,_) -> (Set.of_list (module W) (List.map ~f:(fun x -> W.Identifier x) x), Map.empty (module LocalIdent))
+                 | _ -> m#zero)
+              | _ -> m#zero
+          end)#visit_expr env expr)
+      in
+      Set.to_list mut_var_set, new_env
+  end
 
   let rec analyse (func_dep : pre_data) (items : A.item list) : analysis_data =
     let (mut_var_list, _)
@@ -95,5 +184,5 @@ module%inlined_contents Make (F : Features.T) = struct
 
   (* State monad *)
   and number_list (l : 'a list) (i : int) : ('a * int) list * int =
-    List.fold_left ~init:([], i) ~f:(fun (y, i) x -> ((x, i) :: y, i + 1)) l
+    List.fold_left ~init:([], i) ~f:(fun (y, i) x -> (y @ [(x, i)], i + 1)) l
 end
