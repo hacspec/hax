@@ -29,6 +29,8 @@ jobs:
     - if: runner.os == 'macOS'
       run: brew install opam nodejs rustup-init jq
     - if: runner.os == 'Linux'
+      run: sudo apt-get update
+    - if: runner.os == 'Linux'
       run: sudo apt-get install -y opam nodejs jq
     - run: curl --proto '=https' --tlsv1.3 https://sh.rustup.rs -sSf | sh -s -- -y
     - run: opam init --bare -y && opam switch create -y 4.14.1
