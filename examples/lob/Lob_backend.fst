@@ -20,9 +20,6 @@ type t_Match = {
   f_quantity:u64
 }
 
-let ( =. ) = ( = )
-let ( <>. ) = ( <> )
-
 let is_match (order other: t_Order) : bool =
   order.f_quantity >. 0uL && other.f_quantity >. 0uL && order.f_side <>. other.f_side &&
   (order.f_side =. Side_Buy && order.f_price >=. other.f_price ||
@@ -60,17 +57,17 @@ let process_order
               Core.Ops.Range.f_end = Alloc.Collections.Binary_heap.impl_10__len other_side <: usize
             })
         <:
-        _)
+        (Core.Iter.Traits.Collect.t_impl (Core.Ops.Range.t_Range usize)).f_IntoIter)
       (done, matches, order, other_side)
       (fun (done, matches, order, other_side) v__i ->
-          if not done <: bool
+          if ~.done <: bool
           then
             match
               Core.Option.impl__and_then (Alloc.Collections.Binary_heap.impl_10__peek other_side
                   <:
                   Core.Option.t_Option v_T)
                 (fun other ->
-                    impl__try_match (Core.Convert.f_into (Core.Clone.clone other <: v_T)
+                    impl__try_match (Core.Convert.f_into (Core.Clone.f_clone other <: v_T)
                         <:
                         t_Order)
                       order
@@ -79,7 +76,6 @@ let process_order
               <:
               Core.Option.t_Option t_Match
             with
-            // | Core.Option.Option_Some { Core.Option.Option._0 = m } ->
             | Core.Option.Option_Some m ->
               let order:t_Order = { order with f_quantity = order.f_quantity -! m.f_quantity } in
               let tmp0, out:(Alloc.Collections.Binary_heap.t_BinaryHeap v_T &
@@ -87,10 +83,7 @@ let process_order
                 Alloc.Collections.Binary_heap.impl_9__pop other_side
               in
               let other_side:Alloc.Collections.Binary_heap.t_BinaryHeap v_T = tmp0 in
-              let hoist1(*: TODO: badly typed *)
-              =
-                out
-              in
+              let hoist1:Core.Option.t_Option v_T = out in
               let hoist2:v_T = Core.Option.impl__unwrap hoist1 in
               let (other: t_Order):t_Order = Core.Convert.f_into hoist2 in
               let other:t_Order = { other with f_quantity = other.f_quantity -! m.f_quantity } in
@@ -99,7 +92,7 @@ let process_order
                 then
                   let other_side:Alloc.Collections.Binary_heap.t_BinaryHeap v_T =
                     Alloc.Collections.Binary_heap.impl_9__push other_side
-                      (Core.Convert.f_from (Core.Clone.clone other <: t_Order) <: v_T)
+                      (Core.Convert.f_from (Core.Clone.f_clone other <: t_Order) <: v_T)
                   in
                   other_side
                 else other_side
