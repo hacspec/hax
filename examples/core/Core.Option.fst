@@ -7,5 +7,5 @@ let impl__and_then (self: t_Option 'self) (f: 'self -> t_Option 't): t_Option 't
   | Option_Some x -> f x
   | Option_None -> Option_None
 
-let impl__unwrap #t (_: t_Option t): t = magic ()
+let impl__unwrap #t (x: t_Option t {Option_Some? x}): t = Option_Some?._0 x
 
