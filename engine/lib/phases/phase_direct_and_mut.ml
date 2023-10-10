@@ -235,7 +235,7 @@ struct
               let body =
                 let init =
                   if UB.is_unit_typ otype then UB.unit_expr f.span
-                  else B.{ typ = pat.typ; span = f.span; e = LocalVar out_var }
+                  else B.{ typ = otype; span = f.span; e = LocalVar out_var }
                 in
                 List.fold_right ~init ~f:UB.make_seq assigns
               in
