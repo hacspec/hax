@@ -214,6 +214,22 @@ module Make (F : Features.T) = struct
       let to_set = Hash_set.to_list >> of_list in
       Set.to_list >> ItemGraph.transitive_dependencies_of graph >> to_set
     in
+    let show_ident_set =
+      Set.to_list
+      >> List.map ~f:Concrete_ident.DefaultViewAPI.show
+      >> List.map ~f:(fun s -> " - " ^ s)
+      >> String.concat ~sep:"\n"
+    in
+    let show_inclusion_clause Types.{ kind; namespace } =
+      (match kind with
+      | Excluded -> "-"
+      | Included { with_deps = true } -> "+"
+      | Included _ -> "+!")
+      ^ (List.map
+           ~f:(function Glob One -> "*" | Glob Many -> "**" | Exact s -> s)
+           namespace.chunks
+        |> String.concat ~sep:"::")
+    in
     let apply_clause selection' (clause : Types.inclusion_clause) =
       let matches = Concrete_ident.matches_namespace clause.Types.namespace in
       let matched = Set.filter ~f:matches selection in
@@ -222,6 +238,11 @@ module Make (F : Features.T) = struct
           clause.kind
       in
       let matched = matched |> if with_deps then deps_of else Fn.id in
+      Logs.info (fun m ->
+          m "The clause [%s] will %s the following Rust items:\n%s"
+            (show_inclusion_clause clause)
+            (match clause.kind with Excluded -> "remove" | _ -> "add")
+          @@ show_ident_set matched);
       let f =
         match clause.kind with Included _ -> Set.union | Excluded -> Set.diff
       in
@@ -229,6 +250,9 @@ module Make (F : Features.T) = struct
       result
     in
     let selection = List.fold ~init:selection ~f:apply_clause clauses in
+    Logs.info (fun m ->
+        m "The following Rust items are going to be extracted:\n%s"
+        @@ show_ident_set selection);
     List.filter ~f:(ident_of >> Set.mem selection) items
 
   (* Construct the new item `f item` (say `item'`), and create a
