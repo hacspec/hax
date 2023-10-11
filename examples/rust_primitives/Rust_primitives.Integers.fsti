@@ -362,10 +362,10 @@ unfold
 let ( -. ) #t = sub #t
 
 unfold
-let ( >>. ) #t #t' = shift_right #t #t'
+let ( >>! ) #t #t' = shift_right #t #t'
 
 unfold
-let ( <<. ) #t #t' = shift_left #t #t'
+let ( <<! ) #t #t' = shift_left #t #t'
 
 unfold
 let ( >>>. ) #t #t' = rotate_right #t #t'
@@ -386,7 +386,7 @@ unfold
 let ( ~. ) #t = lognot #t
 
 unfold
-let (/.) #t = div #t
+let (/!) #t = div #t
 
 unfold
 let (%.) #t = mod #t
