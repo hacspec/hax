@@ -315,9 +315,10 @@ end
 let matches_namespace (ns : Types.namespace) (did : t) : bool =
   let did = did.def_id in
   let path : string option list =
-    did.path
-    |> List.map ~f:(fun (x : Imported.disambiguated_def_path_item) ->
-           View.Utils.string_of_def_path_item x.data)
+    Some did.krate
+    :: (did.path
+       |> List.map ~f:(fun (x : Imported.disambiguated_def_path_item) ->
+              View.Utils.string_of_def_path_item x.data))
   in
   let rec aux (pattern : Types.namespace_chunk list) (path : string option list)
       =
