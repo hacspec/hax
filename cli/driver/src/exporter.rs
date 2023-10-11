@@ -478,7 +478,7 @@ impl Callbacks for ExtractionCallbacks {
                     }
                 }
             };
-            Compilation::Continue
+            Compilation::Stop
         })
     }
 }
