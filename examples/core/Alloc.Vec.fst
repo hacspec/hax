@@ -11,7 +11,7 @@ let impl_2__extend_from_slice #t (self: t_Vec t ()) (other: slice t{Seq.length s
 let impl__with_capacity (_capacity: usize) = impl__new
 
 let impl_1__push
-  (v: t_Vec 't (){Seq.length v + 1 <= max_usize})
+  (v: t_Vec 't ())// Removed: {Seq.length v + 1 <= max_usize})
   (x: 't)
   : t_Vec 't () = 
     FStar.Seq.append v (FStar.Seq.create 1 x)
