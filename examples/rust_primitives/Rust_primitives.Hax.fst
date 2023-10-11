@@ -1,3 +1,4 @@
 module Rust_primitives.Hax
 
-include Rust_primitives.Arrays
+type t_Never = False
+let never_to_any #t: t_Never -> t = (fun _ -> match () with)
