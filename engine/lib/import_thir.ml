@@ -868,7 +868,7 @@ end) : EXPR = struct
     in
     match ie with
     | Concrete { id; generics } ->
-        let trait = Concrete_ident.of_def_id Trait id in
+        let trait = Concrete_ident.of_def_id Impl id in
         let args = List.map ~f:(c_generic_value span) generics in
         Concrete { trait; args }
     | LocalBound { clause_id; path } ->
