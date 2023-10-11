@@ -3,6 +3,8 @@ module Rust_primitives
 include Rust_primitives.Integers
 include Rust_primitives.Arrays
 
+type t_Never = False
+
 class unsize_tc source = {
   output: Type;
   unsize: source -> output;
