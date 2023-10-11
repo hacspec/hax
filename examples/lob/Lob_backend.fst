@@ -100,8 +100,7 @@ let process_order
               let matches:Alloc.Vec.t_Vec t_Match Alloc.Alloc.t_Global =
                 Alloc.Vec.impl_1__push matches m
               in
-              (admit();
-              done, matches, order, other_side)
+              done, matches, order, other_side
             | _ ->
               let done:bool = true in
               done, matches, order, other_side
