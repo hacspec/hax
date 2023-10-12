@@ -75,7 +75,26 @@ module Imported = struct
     { did with path = List.map ~f did.path }
 end
 
-module ImplInfos = struct
+module ImplInfos : sig
+  (* the `T<...>` in `impl ... for T<...> {...}` *)
+  type impl_subject = Types.ty * Types.binder_for__predicate_kind list
+
+  val init :
+    (Types.def_id * (Types.ty * Types.binder_for__predicate_kind list)) list ->
+    unit
+
+  val find :
+    Imported.def_id -> (Types.ty * Types.binder_for__predicate_kind list) option
+
+  val is_under_impl :
+    Imported.def_id ->
+    (impl_subject option
+    * Imported.disambiguated_def_path_item list
+    * Imported.disambiguated_def_path_item list)
+    option
+end = struct
+  type impl_subject = Types.ty * Types.binder_for__predicate_kind list
+
   let state :
       ( Imported.def_id,
         Types.ty * Types.binder_for__predicate_kind list )
@@ -95,12 +114,27 @@ module ImplInfos = struct
       |> Hashtbl.of_alist_exn (module T)
       |> Option.some
 
-  let get () =
+  let get_state () =
     match !state with
     | None -> failwith "ImplInfos: state not initialized!"
     | Some state -> state
 
-  let query k = Hashtbl.find_exn (get ()) k
+  let find k = Hashtbl.find (get_state ()) k
+
+  let is_under_impl (did : Imported.def_id) =
+    let krate = did.krate in
+    let is_impl : Imported.def_path_item -> bool = function
+      | Impl -> true
+      | _ -> false
+    in
+    let before, rest =
+      List.split_while did.path ~f:(fun x -> is_impl x.data |> not)
+    in
+    let* impl_chunk = List.hd rest in
+    let* after = List.tl rest in
+    let path = before @ [ impl_chunk ] in
+    let did : Imported.def_id = { krate; path } in
+    Some (find did, before, after)
 end
 
 module Kind = struct
@@ -157,6 +191,12 @@ module View = struct
   open Utils
 
   let to_view (def_id : Imported.def_id) : view =
+    let def_id =
+      match ImplInfos.is_under_impl def_id with
+      | Some (Some _, lpath, rpath) when not (List.is_empty rpath) ->
+          Imported.{ krate = def_id.krate; path = lpath @ rpath }
+      | _ -> def_id
+    in
     let path, definition =
       List.filter_map ~f:string_of_disambiguated_def_path_item def_id.path
       |> last_init |> Option.value_exn
