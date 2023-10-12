@@ -75,33 +75,34 @@ module Imported = struct
     { did with path = List.map ~f did.path }
 end
 
-module ImplInfos : sig
-  (* the `T<...>` in `impl ... for T<...> {...}` *)
-  type impl_subject = Types.ty * Types.binder_for__predicate_kind list
+module ImplInfos = struct
+  type t = Types.impl_infos
+  (** Contains the informations `Generics`, `Trait` (if not an
+  inherent type), `Type` and `Bounds` for an `impl` block
+  `impl<Generics> [Trait for] Type where Bounds {}` *)
+end
 
-  val init :
-    (Types.def_id * (Types.ty * Types.binder_for__predicate_kind list)) list ->
-    unit
+(** Stateful store that maps `def_id`s to implementation informations
+(which trait is implemented? for which type? under which constraints?) *)
+module ImplInfoStore : sig
+  val init : (Types.def_id * ImplInfos.t) list -> unit
+  val find : Imported.def_id -> ImplInfos.t option
 
-  val find :
-    Imported.def_id -> (Types.ty * Types.binder_for__predicate_kind list) option
-
-  val is_under_impl :
+  val has_impl_prefix :
     Imported.def_id ->
-    (impl_subject option
+    (ImplInfos.t
     * Imported.disambiguated_def_path_item list
     * Imported.disambiguated_def_path_item list)
     option
+  (** If a `def_id` `did` points to an item that is an `impl` or a
+      child of an `impl`, `has_impl_prefix did` returns `Some (infos,
+      before, after)`. `infos` is of type `ImplInfos.t` (cf its
+      documentation). `before` and `after` are the partial paths
+      before and after the `impl` in `did`'s path. Note that if
+      `after` is empty, that means `did` points to the `impl`
+      itself. *)
 end = struct
-  type impl_subject = Types.ty * Types.binder_for__predicate_kind list
-
-  let state :
-      ( Imported.def_id,
-        Types.ty * Types.binder_for__predicate_kind list )
-      Hashtbl.t
-      option
-      ref =
-    ref None
+  let state : (Imported.def_id, ImplInfos.t) Hashtbl.t option ref = ref None
 
   module T = struct
     type t = Imported.def_id [@@deriving show, yojson, compare, sexp, eq, hash]
@@ -116,12 +117,12 @@ end = struct
 
   let get_state () =
     match !state with
-    | None -> failwith "ImplInfos: state not initialized!"
+    | None -> failwith "ImplInfoStore was not initialized"
     | Some state -> state
 
   let find k = Hashtbl.find (get_state ()) k
 
-  let is_under_impl (did : Imported.def_id) =
+  let has_impl_prefix (did : Imported.def_id) =
     let krate = did.krate in
     let is_impl : Imported.def_path_item -> bool = function
       | Impl -> true
@@ -134,7 +135,9 @@ end = struct
     let* after = List.tl rest in
     let path = before @ [ impl_chunk ] in
     let did : Imported.def_id = { krate; path } in
-    Some (find did, before, after)
+    match find did with
+    | Some infos -> Some (infos, before, after)
+    | None -> failwith "invariant error"
 end
 
 module Kind = struct
@@ -190,10 +193,72 @@ module View = struct
 
   open Utils
 
-  let to_view (def_id : Imported.def_id) : view =
+  let simple_ty_to_string ~(namespace : Imported.def_id) :
+      Types.ty -> string option =
+    let escape =
+      let re = Re.Pcre.regexp "_((?:e_)*)of_" in
+      let f group = "_e_" ^ Re.Group.get group 1 ^ "of_" in
+      Re.replace ~all:true re ~f
+    in
+    let adt def_id =
+      let* () =
+        [%equal: Imported.def_id]
+          (Imported.(of_def_id >> parent) def_id)
+          namespace
+        |> some_if_true
+      in
+      let* last = List.last def_id.path in
+      let* () = some_if_true Int64.(last.disambiguator = zero) in
+      last.data |> Imported.of_def_path_item |> string_of_def_path_item
+      |> Option.map ~f:escape
+    in
+    let arity0 =
+      Option.map ~f:escape << function
+      | Types.Bool -> Some "bool"
+      | Char -> Some "char"
+      | Str -> Some "str"
+      | Never -> Some "never"
+      | Int Isize -> Some "isize"
+      | Int I8 -> Some "i8"
+      | Int I16 -> Some "i16"
+      | Int I32 -> Some "i32"
+      | Int I64 -> Some "i64"
+      | Int I128 -> Some "i128"
+      | Uint Usize -> Some "usize"
+      | Uint U8 -> Some "u8"
+      | Uint U16 -> Some "u16"
+      | Uint U32 -> Some "u32"
+      | Uint U64 -> Some "u64"
+      | Uint U128 -> Some "u128"
+      | Float F32 -> Some "f32"
+      | Float F64 -> Some "f64"
+      | Tuple [] -> Some "unit"
+      | Adt { def_id; generic_args = [] } -> adt def_id
+      | _ -> None
+    in
+    let apply left right = left ^ "_of_" ^ right in
+    let rec arity1 = function
+      | Types.Slice sub -> arity1 sub |> Option.map ~f:(apply "slice")
+      | Ref (_, sub, _) -> arity1 sub |> Option.map ~f:(apply "ref")
+      | Adt { def_id; generic_args = [ Type arg ] } ->
+          let* adt = adt def_id in
+          let* arg = arity1 arg in
+          Some (apply adt arg)
+      | Tuple l ->
+          let* l = List.map ~f:arity0 l |> Option.all in
+          Some ("tuple_" ^ String.concat ~sep:"_" l)
+      | otherwise -> arity0 otherwise
+    in
+    arity1
+
+  let rec to_view (def_id : Imported.def_id) : view =
+    let impl_infos = ImplInfoStore.has_impl_prefix def_id in
     let def_id =
-      match ImplInfos.is_under_impl def_id with
-      | Some (Some _, lpath, rpath) when not (List.is_empty rpath) ->
+      match impl_infos with
+      (* inherent impl: we don't want the `impl` keyword to appear *)
+      | Some ({ trait_ref = Some _; _ }, lpath, rpath)
+        when not (List.is_empty rpath) ->
+          (* this basically amounts exactly to dropping the `impl` chunk *)
           Imported.{ krate = def_id.krate; path = lpath @ rpath }
       | _ -> def_id
     in
@@ -204,21 +269,67 @@ module View = struct
     let sep = "__" in
     let subst = String.substr_replace_all ~pattern:sep ~with_:(sep ^ "_") in
     let fake_path, real_path =
-      let f = string_of_disambiguated_def_path_item >> Option.map ~f:subst in
       (* Detects paths of nested items *)
       List.rev def_id.path |> List.tl_exn
       |> List.split_while ~f:(fun (x : Imported.disambiguated_def_path_item) ->
              [%matches? Imported.ValueNs _ | Imported.Impl] x.data)
       |> List.rev *** List.rev
-      |> List.filter_map ~f *** List.filter_map ~f
+    in
+    let subst_dpi =
+      string_of_disambiguated_def_path_item >> Option.map ~f:subst
     in
     let definition = subst definition in
+    let fake_path, definition =
+      let fake_path' = List.filter_map ~f:subst_dpi fake_path in
+      match impl_infos with
+      | Some
+          ( { trait_ref = None; generics = { params = []; _ }; typ; _ },
+            before,
+            _ )
+        when [%matches? [ Imported.{ data = Impl; _ } ]] fake_path ->
+          let namespace = Imported.{ krate = def_id.krate; path = before } in
+          simple_ty_to_string ~namespace typ
+          |> Option.map ~f:(fun typ -> ([ typ ], definition))
+          |> Option.value ~default:(fake_path', definition)
+      | Some
+          ( {
+              trait_ref = Some { def_id = trait; generic_args = [ _self ] };
+              generics = { params = []; _ };
+              typ;
+              _;
+            },
+            before,
+            [] ) ->
+          let namespace = Imported.{ krate = def_id.krate; path = before } in
+          (let* () =
+             some_if_true
+             @@ [%equal: Imported.def_id]
+                  (Imported.(of_def_id >> parent) trait)
+                  namespace
+           in
+           let* typ = simple_ty_to_string ~namespace typ in
+           let* trait = List.last trait.path in
+           let* trait =
+             Imported.of_def_path_item trait.data |> string_of_def_path_item
+           in
+           let sep = "_for_" in
+           let trait =
+             let re = Re.Pcre.regexp "_((?:e_)*)for_" in
+             let f group = "_e_" ^ Re.Group.get group 1 ^ "for_" in
+             Re.replace ~all:true re ~f trait
+           in
+           Some ("impl_" ^ trait ^ sep ^ typ))
+          |> Option.value ~default:definition
+          |> tup2 fake_path'
+      | _ -> (fake_path', definition)
+    in
+    let real_path = List.filter_map ~f:subst_dpi real_path in
     if List.is_empty fake_path then { crate = def_id.krate; path; definition }
     else
       let definition = String.concat ~sep (fake_path @ [ definition ]) in
       { crate = def_id.krate; path = real_path; definition }
 
-  let to_definition_name x = (to_view x).definition
+  and to_definition_name x = (to_view x).definition
 end
 
 module T = struct
@@ -276,9 +387,7 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
     in
     match kind with
     | Type | Trait -> "t_" ^ name
-    | Impl ->
-        if start_uppercase name || is_reserved_word name then "i_" ^ name
-        else escape name
+    | Impl -> name
     | Value ->
         if start_uppercase name || is_reserved_word name then "v_" ^ name
         else escape name
