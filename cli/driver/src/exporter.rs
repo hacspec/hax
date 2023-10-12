@@ -163,13 +163,10 @@ fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
 ) -> (
     Vec<rustc_span::Span>,
     Vec<hax_frontend_exporter::DefId>,
-    std::collections::HashMap<
+    Vec<(
         hax_frontend_exporter::DefId,
-        (
-            hax_frontend_exporter::Ty,
-            Vec<hax_frontend_exporter::Predicate>,
-        ),
-    >,
+        hax_frontend_exporter::ImplInfos,
+    )>,
     Vec<hax_frontend_exporter::Item<Body>>,
 ) {
     let mut state = hax_frontend_exporter::state::State::new(tcx, options.clone());
@@ -177,7 +174,9 @@ fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
     state.base.cached_thirs = Rc::new(precompute_local_thir_bodies(tcx));
 
     let result = hax_frontend_exporter::inline_macro_invocations(tcx.hir().items(), &state);
-    let impl_infos = hax_frontend_exporter::impl_def_ids_to_impled_types_and_bounds(&state);
+    let impl_infos = hax_frontend_exporter::impl_def_ids_to_impled_types_and_bounds(&state)
+        .into_iter()
+        .collect();
     let exported_spans = state.base.exported_spans.borrow().clone();
 
     let exported_def_ids = {
@@ -333,10 +332,7 @@ impl Callbacks for ExtractionCallbacks {
                                     dest,
                                     &hax_cli_options_engine::WithDefIds {
                                         def_ids,
-                                        impl_infos: impl_infos
-                                            .iter()
-                                            .map(|(k, (t, p))| (k.clone(), (t.clone(), p.clone())))
-                                            .collect(),
+                                        impl_infos,
                                         items: converted_items,
                                     },
                                 )
@@ -388,10 +384,7 @@ impl Callbacks for ExtractionCallbacks {
                     let engine_options = hax_cli_options_engine::EngineOptions {
                         backend: backend.clone(),
                         input: converted_items,
-                        impl_infos: impl_infos
-                            .iter()
-                            .map(|(k, (t, p))| (k.clone(), (t.clone(), p.clone())))
-                            .collect(),
+                        impl_infos,
                     };
                     let mut engine_subprocess = find_hax_engine()
                         .stdin(std::process::Stdio::piped())
