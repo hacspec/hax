@@ -1,11 +1,11 @@
-## Examples for Hax
+## Libraries for Hax
 
 The goal of this directory is to serve as a snapshot of the current
 F* libraries and verified examples using Hax.
 
 The dependency chain is:
 
-rust_primitives <- core <- hax_lib <- examples
+`rust_primitives` <- `core` <- `hax_lib`
 
 # Rust Primitives
 
@@ -32,14 +32,4 @@ The `/hax_lib` directory contains hand-written and generated code
 for the Hax library which adds new features and functionality to Rust
 to help programmers. For example, this library includes bounded indexes
 for arrays, unbounded integers etc.
-
-# Examples
-
-The `/lob` directory includes an example inspired by the Internet Computer.
-
-The `/kyber-compress` directory includes a minimal example taken from Kyber.
-
-The `/kyber` directory contains a relatively complete extraction of Kyber.
-
-
 
