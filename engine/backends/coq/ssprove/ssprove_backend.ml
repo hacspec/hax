@@ -244,17 +244,6 @@ let pconcrete_ident (id : concrete_ident) : string =
 
 let magic_id_raw_local_ident = LocalIdent.mk_id Expr (-765142)
 
-let chop_impl s =
-  let s = match String.chop_prefix ~prefix:"impl__" s with
-    | Some name -> name
-    | _ -> s
-  in
-  let s =  match String.chop_prefix ~prefix:"f_impl__" s with
-    | Some name -> name
-    | _ -> s
-  in
-  s
-
 let plocal_ident (e : LocalIdent.t) =
   U.Concrete_ident_view.local_name
     (match String.chop_prefix ~prefix:"impl " e.name with
@@ -482,7 +471,7 @@ struct
         } ->
         SSP.AST.Ident (plocal_ident var) (* TODO Mutable binding ! *)
     | PArray { args } -> __TODO_pat__ p.span "Parray?"
-    | PConstruct { name = `TupleCons 0; args = [] } -> SSP.AST.UnitPat
+    | PConstruct { name = `TupleCons 0; args = [] } -> SSP.AST.WildPat (* UnitPat *)
     | PConstruct { name = `TupleCons 1; args = [ { pat } ] } ->
         __TODO_pat__ p.span "tuple 1"
     | PConstruct { name = `TupleCons n; args } ->
@@ -576,7 +565,17 @@ struct
               Option.value_map else_ ~default:(SSP.AST.Literal "()")
                 ~f:(pexpr env false) )
       | Array l -> SSP.AST.Array (List.map ~f:(pexpr env add_solve) l)
-      | Let { lhs; rhs; body; monadic } -> (
+      | Let { lhs; rhs; body; monadic } ->
+        let extra_set, extra_env = LocalIdentOrLisIis.analyse_expr ctx.analysis_data.mut_var env rhs in
+        let new_env =
+          extend_env
+            env
+            (Map.of_alist_exn (module LocalIdent)
+               (List.map
+                  ~f:(fun v -> (v, extra_set))
+                  (Set.to_list (U.Reducers.variables_of_pat lhs))))
+        in
+        (
           match monadic with
           | Some (MException typ, _) ->
               SSP.AST.AppFormat
@@ -597,7 +596,7 @@ struct
                     SSP.AST.Variable (ppat lhs);
                     SSP.AST.Value ((pexpr env false) rhs, false);
                     SSP.AST.Newline 0;
-                    SSP.AST.Value ((pexpr env add_solve) body, false);
+                    SSP.AST.Value ((pexpr new_env add_solve) body, false);
                   ] )
           | Some (MResult typ, _) ->
               SSP.AST.AppFormat
@@ -618,7 +617,7 @@ struct
                     SSP.AST.Variable (ppat lhs);
                     SSP.AST.Value ((pexpr env false) rhs, false);
                     SSP.AST.Newline 0;
-                    SSP.AST.Value ((pexpr env add_solve) body, false);
+                    SSP.AST.Value ((pexpr new_env add_solve) body, false);
                   ] )
           | Some (MOption, _) ->
               SSP.AST.AppFormat
@@ -636,7 +635,7 @@ struct
                     SSP.AST.Variable (ppat lhs);
                     SSP.AST.Value ((pexpr env false) rhs, false);
                     SSP.AST.Newline 0;
-                    SSP.AST.Value ((pexpr env add_solve) body, false);
+                    SSP.AST.Value ((pexpr new_env add_solve) body, false);
                   ] )
           | None ->
               if is_mutable_pat lhs then
@@ -655,21 +654,22 @@ struct
                     [
                       SSP.AST.Variable (ppat lhs);
                       SSP.AST.Variable
-                        (SSP.AST.Ident
-                           (match ppat lhs with
-                           | SSP.AST.Ident p -> p ^ "_loc"
-                           | _ -> "TODO_loc"));
+                        (match (List.map ~f:(fun x -> SSP.AST.Ident (x.name ^ "_loc")) (Set.to_list (U.Reducers.variables_of_pat lhs))) with
+                         | [] -> SSP.AST.WildPat
+                         | [x] -> x
+                         | xs -> SSP.AST.TuplePat xs
+                        );
                       SSP.AST.Value ((pexpr env false) rhs, false);
                       SSP.AST.Newline 0;
-                      SSP.AST.Value ((pexpr (let env =
+                      SSP.AST.Value ((pexpr (let new_env =
                                                extend_env
-                                                 env
+                                                 new_env
                                                  (Map.of_alist_exn (module LocalIdent)
                                                     (List.map
                                                        ~f:(fun v -> (v, [LocalIdentOrLisIis.W.Identifier v]))
                                                        (Set.to_list (U.Reducers.variables_of_pat lhs))))
                                              in
-                                             env) add_solve) body, false);
+                                             new_env) add_solve) body, false);
                     ] )
               else
                 SSP.AST.AppFormat
@@ -678,7 +678,7 @@ struct
                       SSP.AST.Variable (ppat lhs);
                       SSP.AST.Value ((pexpr env false) rhs, false);
                       SSP.AST.Newline 0;
-                      SSP.AST.Value ((pexpr env add_solve) body, false);
+                      SSP.AST.Value ((pexpr new_env add_solve) body, false);
                     ] )
                 (* SSP.AST.Let *)
                 (*   { *)
@@ -1667,67 +1667,68 @@ struct
                   pgeneric span generics,
                   pty span self_ty,
                   args_ty span gen_vals,
-                  List.concat_map
-                    ~f:(fun x ->
-                      match x.ii_v with
-                      | IIFn { body; params } ->
-                          let mvars_ext_fset_str =
-                            "fset" ^ " " ^ "["
-                            ^ String.concat ~sep:";"
-                                (List.map
-                                   ~f:(fun x -> (plocal_ident x) ^ "_loc")
+                  SSP.AST.InstanceDecls
+                    (List.concat_map
+                       ~f:(fun x ->
+                           match x.ii_v with
+                           | IIFn { body; params } ->
+                             let mvars_ext_fset_str =
+                               "fset" ^ " " ^ "["
+                               ^ String.concat ~sep:";"
+                                 (List.map
+                                    ~f:(fun x -> (plocal_ident x) ^ "_loc")
+                                    (match
+                                       Map.find ctx.analysis_data.mut_var
+                                         (U.Concrete_ident_view.to_definition_name x.ii_ident)
+                                     with
+                                     | Some (l, _) -> l
+                                     | _ -> []))
+                               ^ "]"
+                             in
+                             [
+                               SSP.AST.InlineDef
+                                 ( (pconcrete_ident x.ii_ident ^ "_loc"),
+                                   [],
+                                   SSP.AST.NameTerm mvars_ext_fset_str,
+                                   SSP.AST.NameTy "{fset Location}" );
+                               let args, ret_typ = lift_definition_type_to_both
+                                   x.ii_ident
+                                   (List.map
+                                      ~f:(fun { pat; typ; typ_span; attrs } ->
+                                          SSP.AST.Explicit (ppat pat, pty span typ))
+                                      params)
+                                   (pty span body.typ)
                                    (match
-                                      Map.find ctx.analysis_data.mut_var
-                                        x.ii_ident
+                                      Map.find ctx.analysis_data.mut_var (U.Concrete_ident_view.to_definition_name x.ii_ident)
                                     with
-                                   | Some (l, _) -> l
-                                   | _ -> []))
-                            ^ "]"
-                          in
-                          [
-                            SSP.AST.InlineDef
-                              ( "f_" ^ chop_impl (pconcrete_ident x.ii_ident ^ "_loc"),
-                                [],
-                                SSP.AST.NameTerm mvars_ext_fset_str,
-                                SSP.AST.NameTy "{fset Location}" );
-                            let args, ret_typ = lift_definition_type_to_both
-                                x.ii_ident
-                                (List.map
-                                   ~f:(fun { pat; typ; typ_span; attrs } ->
-                                       SSP.AST.Explicit (ppat pat, pty span typ))
-                                   params)
-                                (pty span body.typ)
-                                (match
-                                   Map.find ctx.analysis_data.mut_var x.ii_ident
-                                 with
-                                 | Some (_ :: _, _) -> []
-                                 | _ -> [ "fset []" ])
-                            in
-                            SSP.AST.LetDef
-                              ("f_" ^ chop_impl (pconcrete_ident x.ii_ident),
-                               args,
-                               (pexpr (extend_env_with_params
-                                         (Map.empty (module LocalIdent))
-                                         (List.map ~f:(fun { pat; typ; typ_span; attrs } -> pat) params)) true) body,
-                               ret_typ
-                              )]
-                      | IIConst { body } ->
-                          [
-                            SSP.AST.LetDef
-                                 ( chop_impl (pconcrete_ident x.ii_ident),
+                                    | Some (_ :: _, _) -> []
+                                    | _ -> [ "fset []" ])
+                               in
+                               SSP.AST.LetDef
+                                 ((pconcrete_ident x.ii_ident),
+                                  args,
+                                  (pexpr (extend_env_with_params
+                                            (Map.empty (module LocalIdent))
+                                            (List.map ~f:(fun { pat; typ; typ_span; attrs } -> pat) params)) true) body,
+                                  ret_typ
+                                 )]
+                           | IIConst { body } ->
+                             [
+                               SSP.AST.LetDef
+                                 ( (pconcrete_ident x.ii_ident),
                                    [],
                                    (pexpr (Map.empty (module LocalIdent)) false) body,
                                    wrap_type_in_both "(fset [])" "(fset [])" (pty span body.typ) );
-                          ]
-                      | IIType ty ->
-                          [
-                            SSP.AST.LetDef
-                              ( "f_" ^ chop_impl (pconcrete_ident x.ii_ident),
-                                [],
-                                SSP.AST.Type (pty span ty),
-                                SSP.AST.TypeTy );
-                          ])
-                    items );
+                             ]
+                           | IIType ty ->
+                             [
+                               SSP.AST.LetDef
+                                 ( (pconcrete_ident x.ii_ident),
+                                   [],
+                                   SSP.AST.Type (pty span ty),
+                                   SSP.AST.TypeTy );
+                             ])
+                       items) );
             ]
           @ [ SSP.AST.HintUnfold (pglobal_ident name, Some (pty span self_ty)) ]
     in
@@ -1735,18 +1736,17 @@ struct
 
   and loc_defs_from_name (name : concrete_ident) generics : SSP.AST.decl list =
     List.map
-      ~f:(fun (x, x_ty, x_n) ->
-        SSP.AST.Definition
-          ( (plocal_ident x) ^ "_loc",
-            generics,
-            SSP.AST.Const
-              (SSP.AST.Const_string
-                 ("("
-                 ^ SSP.ty_to_string (pty (Span.dummy ()) x_ty)
-                 ^ " ; " ^ Int.to_string x_n ^ "%nat)")),
-            SSP.AST.NameTy "Location" ))
-      (match Map.find ctx.analysis_data.mut_var name with
-      | Some l -> List.map ~f:(fun ((x, x_ty), x_n) -> (x, x_ty, x_n)) (snd l)
+      ~f:(fun ((x, x_ty), x_n) -> (* x_ty should not be (totally) resolved! *)
+          SSP.AST.Definition
+            ( (plocal_ident x) ^ "_loc",
+              generics,
+              SSP.AST.AppFormat (
+                ["(";";";"%nat)"],
+                [SSP.AST.Typing (pty (Span.dummy ()) x_ty);
+                 SSP.AST.Value (SSP.AST.Literal (Int.to_string x_n), false)]),
+              SSP.AST.NameTy "Location" ))
+      (match Map.find ctx.analysis_data.mut_var (U.Concrete_ident_view.to_definition_name name) with
+      | Some l -> snd l
       | None -> [])
 
   and new_arguments lis iis (arguments : SSP.AST.argument list) =
@@ -1785,7 +1785,7 @@ struct
 
   and both_return_type_from_name lis iis name typ (extra_L : string list) =
     let mvars_ext_L =
-      match Map.find ctx.analysis_data.mut_var name with
+      match Map.find ctx.analysis_data.mut_var (U.Concrete_ident_view.to_definition_name name) with
       | Some (l, l2) when List.length l > 0 ->
         [
           "fset" ^ " " ^ "["
@@ -1956,8 +1956,8 @@ module ConCert = struct
                             [],
                             SSP.AST.NameTy ("t_" ^ strip x),
                             [SSP.AST.NameTy ("t_" ^ strip x); SSP.AST.Unit],
-                            [SSP.AST.InlineDef
-                               ( "get",
+                            SSP.AST.InstanceDecls [SSP.AST.InlineDef
+                               ( "f_get",
                                  [SSP.AST.Explicit ( SSP.AST.Ident "x", (SSP.AST.WildTy) );
                                   SSP.AST.Implicit ( SSP.AST.Ident "L", (SSP.AST.NameTy "{fset Location}" : SSP.AST.ty) );
                                   SSP.AST.Implicit ( SSP.AST.Ident "I", (SSP.AST.NameTy "Interface" : SSP.AST.ty) )],
@@ -1968,8 +1968,7 @@ module ConCert = struct
                             [],
                             SSP.AST.NameTy ("t_" ^ strip x),
                             [SSP.AST.NameTy ("t_" ^ strip x)],
-                            [SSP.AST.InlineDef
-                               ( "Sized", [SSP.AST.Explicit ( SSP.AST.Ident "x", (SSP.AST.WildTy) );], SSP.AST.Var "x", SSP.AST.WildTy );])],
+                            SSP.AST.TermDef (SSP.AST.Lambda ( [SSP.AST.Ident "x"], SSP.AST.Ident "x")),
                         [
                           SSP.AST.Explicit
                             (SSP.AST.Ident "ctx", wrap_type_in_both "L0" "I0" (SSP.AST.NameTy ("t_" ^ strip x)));
@@ -2005,7 +2004,7 @@ module ConCert = struct
                             param_vars @ [ SSP.AST.Var "st" ] ),
                         wrap_type_in_both "_" "_"
                           (SSP.AST.NameTy
-                             ("t_Result ((A × state_" ^ contract
+                             ("t_Result ((v_A × state_" ^ contract
                               ^ ")) (t_ParseError)")) );
                     (* TODO: L , I *)
                   ]
@@ -2118,7 +2117,7 @@ module ConCert = struct
                                 [],
                                 SSP.AST.NameTy ("state_" ^ contract),
                                 [SSP.AST.NameTy ("state_" ^ contract); SSP.AST.Unit],
-                                [SSP.AST.InlineDef
+                                SSP.AST.InstanceDecls [SSP.AST.InlineDef
                                ( "get",
                                  [SSP.AST.Explicit ( SSP.AST.Ident "x", (SSP.AST.WildTy) );
                                   SSP.AST.Implicit ( SSP.AST.Ident "L", (SSP.AST.NameTy "{fset Location}" : SSP.AST.ty) );
@@ -2129,13 +2128,12 @@ module ConCert = struct
                                 [],
                                 SSP.AST.NameTy ("state_" ^ contract),
                                 [SSP.AST.NameTy ("state_" ^ contract)],
-                                [SSP.AST.InlineDef
-                               ( "Sized", [SSP.AST.Explicit ( SSP.AST.Ident "x", (SSP.AST.WildTy) );], SSP.AST.Var "x", SSP.AST.WildTy );]);
+                               SSP.AST.TermDef (SSP.AST.Lambda ( [SSP.AST.Ident "x"], SSP.AST.Ident "x")));
               SSP.AST.ProgramInstance ("t_HasActions",
                                 [],
                                 SSP.AST.NameTy ("state_" ^ contract),
                                 [SSP.AST.NameTy ("state_" ^ contract)],
-                                []);
+                                SSP.AST.TermDef (SSP.AST.Var "Admitted"));
               SSP.AST.Equations
                 ( "receive_" ^ contract,
                   [
@@ -2184,12 +2182,13 @@ module ConCert = struct
                                 [],
                                 SSP.AST.NameTy ("state_" ^ contract),
                                 [SSP.AST.NameTy ("state_" ^ contract)],
-                                []);
-              SSP.AST.ProgramInstance ("Serializable",
-                                [],
-                                SSP.AST.NameTy ("Msg_" ^ contract),
-                                [SSP.AST.NameTy ("Msg_" ^ contract)],
-                                []);
+                                SSP.AST.InstanceDecls[]);
+              SSP.AST.ProgramInstance (
+                "Serializable",
+                [],
+                SSP.AST.NameTy ("Msg_" ^ contract),
+                [SSP.AST.NameTy ("Msg_" ^ contract)],
+                SSP.AST.TermDef (SSP.AST.Var ("Derive Serializable Msg_OVN_rect<" ^ String.concat ~sep:"," (List.map ~f:(fun x -> "msg_" ^ contract ^ "_" ^ snd x) receive_functions) ^ ">")));
               SSP.AST.Definition
                 ( "contract_" ^ contract,
                   [],

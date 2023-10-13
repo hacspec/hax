@@ -9,11 +9,14 @@ module%inlined_contents Make (F : Features.T) = struct
   type id_order = int
 
   type pre_data =
-    concrete_ident list Map.M(Concrete_ident).t
+    string list Map.M(String).t
 
   type analysis_data =
     (local_ident list * (U.TypedLocalIdent.t * id_order) list) (* external mut_vars vs new variables (e.g. needs def / local) *)
-    Map.M(Concrete_ident).t
+    Map.M(String).t
+
+  module Uprint =
+    Ast_utils.MakeWithNamePolicy (F) (Concrete_ident.DefaultNamePolicy)
 
   module LocalIdentOrData (Ty : sig
       type ty [@@deriving compare, sexp]
@@ -100,7 +103,7 @@ module%inlined_contents Make (F : Features.T) = struct
             method! visit_global_ident (_env : (W.t list) Map.M(LocalIdent).t) (x : Global_ident.t) =
               match x with
               | `Projector (`Concrete cid) | `Concrete cid ->
-                (match Map.find data cid with
+                (match Map.find data (Uprint.Concrete_ident_view.to_definition_name cid) with
                  | Some (x,_) -> (Set.of_list (module W) (List.map ~f:(fun x -> W.Identifier x) x), Map.empty (module LocalIdent))
                  | _ -> m#zero)
               | _ -> m#zero
@@ -111,8 +114,7 @@ module%inlined_contents Make (F : Features.T) = struct
 
   let rec analyse (func_dep : pre_data) (items : A.item list) : analysis_data =
     let (mut_var_list, _)
-          : (concrete_ident * (U.TypedLocalIdent.t * id_order) list) list * _ =
-      (* (U.TypedLocalIdent.t * id_order) list * id_order *)
+          : (string * (U.TypedLocalIdent.t * id_order) list) list * _ =
       List.fold_left
         ~f:(fun (y, count) x ->
           match x.v with
@@ -120,7 +122,7 @@ module%inlined_contents Make (F : Features.T) = struct
               let items, count = analyse_function_body body count in
               ( y
                 @ [
-                    (name, items);
+                    (Uprint.Concrete_ident_view.to_definition_name name, items);
                   ],
                 count )
           | Impl { generics = _; self_ty = _; of_trait = _ (* name, gen_vals *); items } ->
@@ -130,7 +132,7 @@ module%inlined_contents Make (F : Features.T) = struct
                   | IIFn { body; params = _ } ->
                       let items, count = analyse_function_body body count in
                       (* let extra_item, count = ([(LocalIdent.{ name = w.ii_name ^ "_loc"; id = LocalIdent.ty_param_id_of_int 0 (\* todo *\) }, body.typ), count] : (U.TypedLocalIdent.t * id_order) list), count + 1 in *)
-                      (z @ [ (w.ii_ident, items (* @ extra_item *)) ], count)
+                      (z @ [ (Uprint.Concrete_ident_view.to_definition_name w.ii_ident, items (* @ extra_item *)) ], count)
                   | _ -> (z, count))
                 ~init:(y, count) items
           | _ -> (y, count))
@@ -138,9 +140,9 @@ module%inlined_contents Make (F : Features.T) = struct
     in
     let mut_map :
         (local_ident list * (U.TypedLocalIdent.t * id_order) list)
-        Map.M(Concrete_ident).t =
+        Map.M(String).t =
       List.fold_left
-        ~init:(Map.empty (module Concrete_ident))
+        ~init:(Map.empty (module String))
         ~f:(fun y (x_name, x_items) ->
           Map.set y ~key:x_name
             ~data:

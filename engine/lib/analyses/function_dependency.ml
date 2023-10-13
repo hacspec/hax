@@ -9,7 +9,7 @@ module%inlined_contents Make (F : Features.T) = struct
   type pre_data = unit
 
   type analysis_data =
-    concrete_ident list Map.M(Concrete_ident).t
+    string list Map.M(String).t
 
   type id_order = int
 
@@ -18,7 +18,7 @@ module%inlined_contents Make (F : Features.T) = struct
 
   let analyse_function_body (x : A.expr) :
     (* (Concrete_ident.t) *)
-    concrete_ident list =
+    string list =
     (* U.Reducers.collect_global_idents *)
     let collect_global_idents =
       (object
@@ -37,7 +37,7 @@ module%inlined_contents Make (F : Features.T) = struct
     in
       (List.filter_map
          ~f:(function
-           | `Projector (`Concrete cid) | `Concrete cid -> Some cid | _ -> None)
+           | `Projector (`Concrete cid) | `Concrete cid -> Some (Uprint.Concrete_ident_view.to_definition_name cid) | _ -> None)
          (Set.to_list collect_global_idents))
 
   let analyse (_ : pre_data) (items : A.item list) : analysis_data =
@@ -46,19 +46,19 @@ module%inlined_contents Make (F : Features.T) = struct
         ~f:(fun x ->
           match x.v with
           | Fn { name; generics = _; body; params = _ } ->
-              [ (name, body) ]
+              [ (Uprint.Concrete_ident_view.to_definition_name name, body) ]
           | Impl { generics = _; self_ty = _; of_trait = _ (* name, gen_vals *); items } ->
               List.filter_map
                 ~f:(fun w ->
                   match w.ii_v with
-                  | IIFn { body; params = _ } -> Some (w.ii_ident, body)
+                  | IIFn { body; params = _ } -> Some (Uprint.Concrete_ident_view.to_definition_name w.ii_ident, body)
                   | _ -> None)
                 items
           | _ -> [])
         items
     in
     List.fold_left
-      ~init:(Map.empty (module Concrete_ident))
+      ~init:(Map.empty (module String))
       ~f:(fun y (name, body) ->
         Map.set y ~key:name ~data:(analyse_function_body body))
       temp_list

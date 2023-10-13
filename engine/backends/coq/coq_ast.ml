@@ -111,9 +111,13 @@ functor
       type definition_type = string * argument list * term * ty
       type record_field = Named of string * ty | Coercion of string * ty
 
-      type instance_decls =
+      type instance_decl =
         | InlineDef of definition_type
         | LetDef of definition_type
+
+      type instance_decls =
+        | InstanceDecls of instance_decl list
+        | TermDef of term
 
       type decl =
         | Unimplemented of string
@@ -129,7 +133,7 @@ functor
         | Instance of
             string * argument list * ty * ty list * definition_type list
         | ProgramInstance of
-            string * argument list * ty * ty list * instance_decls list
+            string * argument list * ty * ty list * instance_decls
         | Require of string option * string list * string option
         | ModuleType of string * argument list * record_field list
         | Module of string * string * argument list * record_field list
@@ -568,7 +572,7 @@ functor
           ^ params_to_string_typed arguments
           ^ " " ^ ":" ^ " " ^ name ^ " " ^ ty_list_str ^ ":=" ^ " " ^ "{"
           ^ impl_str ^ newline_indent 0 ^ "}" ^ "."
-      | AST.ProgramInstance (name, arguments, self_ty, ty_list, impl_list) ->
+      | AST.ProgramInstance (name, arguments, self_ty, ty_list, InstanceDecls impl_list) ->
           let ty_list_str =
             List.fold_left ~init:""
               ~f:(fun x y -> x ^ ty_to_string y ^ " ")
@@ -617,8 +621,22 @@ functor
           ^ " " ^ ":" ^ " " ^ name ^ " " ^ ty_list_str ^ ":=" ^ newline_indent 1
           ^ impl_str
           ^ (if impl_str_empty then "" else newline_indent 1)
-          ^ "{|" (* ^ name ^ " " ^ ty_list_str *) ^ " "
-          ^ arg_str ^ "|}" ^ "." ^ fail_next_obligation
+          ^ (match impl_list with
+              | [] -> "_"
+              | _ -> "{|" (* ^ name ^ " " ^ ty_list_str *) ^ " "
+                     ^ arg_str ^ "|}")
+          ^ "." ^ fail_next_obligation
+      | AST.ProgramInstance (name, arguments, self_ty, ty_list, TermDef term) ->
+          let ty_list_str =
+            List.fold_left ~init:""
+              ~f:(fun x y -> x ^ ty_to_string y ^ " ")
+              ty_list
+          in
+          let ty_str = ty_to_string self_ty in
+          "#[global] Program Instance" ^ " " ^ ty_str ^ "_" ^ name
+          ^ params_to_string_typed arguments
+          ^ " " ^ ":" ^ " " ^ name ^ " " ^ ty_list_str ^ ":=" ^ newline_indent 1
+          ^ term_to_string_without_paren term 1 ^ "." ^ fail_next_obligation
       | AST.Require (_, [], rename) -> ""
       | AST.Require (None, import :: imports, rename) ->
           (* map_first_letter String.uppercase import *)
