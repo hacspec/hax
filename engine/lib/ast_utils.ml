@@ -606,8 +606,9 @@ module Make (F : Features.T) = struct
     let e = GlobalVar f in
     { e = App { f = { e; typ; span }; args }; typ = ret_typ; span }
 
-  let call (f_name : Concrete_ident.name) (args : expr list) span ret_typ =
-    call' (`Concrete (Concrete_ident.of_name Value f_name)) args span ret_typ
+  let call ?(kind : Concrete_ident.Kind.t = Value)
+      (f_name : Concrete_ident.name) (args : expr list) span ret_typ =
+    call' (`Concrete (Concrete_ident.of_name kind f_name)) args span ret_typ
 
   let string_lit span (s : string) : expr =
     { span; typ = TStr; e = Literal (String s) }
