@@ -15,10 +15,10 @@ unfold type t_enumerate self
   = self -> Core.Iter.Adapters.Enumerate.t_Enumerate self
 
 class iterator self = {
-  item: Type;
-  next:      t_next      self item;
-  contains:  t_contains  self item; (* hax-specific method *)
-  fold:      t_fold      self item contains;
-  enumerate: t_enumerate self;
+  f_Item: Type;
+  f_next:      t_next      self f_Item;
+  f_contains:  t_contains  self f_Item; (* hax-specific method *)
+  f_fold:      t_fold      self f_Item f_contains;
+  f_enumerate: t_enumerate self;
 }
 

@@ -1,3 +1,3 @@
-module Core.Ops.Deref.Deref
+module Core.Ops.Deref
 
 let deref = id
