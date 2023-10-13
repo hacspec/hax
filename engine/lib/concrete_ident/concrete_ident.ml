@@ -289,7 +289,7 @@ module View = struct
         when [%matches? [ Imported.{ data = Impl; _ } ]] fake_path ->
           let namespace = Imported.{ krate = def_id.krate; path = before } in
           simple_ty_to_string ~namespace typ
-          |> Option.map ~f:(fun typ -> ([ typ ], definition))
+          |> Option.map ~f:(fun typ -> ([ "impl"; typ ], definition))
           |> Option.value ~default:(fake_path', definition)
       | Some
           ( {
