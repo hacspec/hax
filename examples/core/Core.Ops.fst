@@ -19,3 +19,9 @@ instance negation_for_bool: negation_tc bool = {
   ( ~. ) = not
 }
 
+open Core.Ops.Index
+
+let ( .[] ) #self #idx {| inst: t_Index self idx |}
+  : self -> idx -> inst.f_Output
+  = f_index
+
