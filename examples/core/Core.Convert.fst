@@ -24,16 +24,17 @@ class t_From self t = {
   f_from: t -> self;
 }
 
-
-instance i64_from_i8: t_From i64 i8 = {
-  f_from = (fun (x: i8) -> cast x)
-}
-instance i64_from_i16: t_From i64 i16 = {
-  f_from = (fun (x: i16) -> cast x)
-}
-instance i64_from_i32: t_From i64 i32 = {
-  f_from = (fun (x: i32) -> cast x)
-}
+#push-options "--z3rlimit 20"
+instance integer_into
+  (t:inttype) (t':inttype { Lib.IntTypes.bits   t' > Lib.IntTypes.bits   t 
+                          /\ Lib.IntTypes.signed t' = Lib.IntTypes.signed t})
+  : t_From (int_t t') (int_t t)
+  = { f_from = (fun (x: int_t t) -> 
+        assert (minint t >= minint t' /\ maxint t <= maxint t');
+        cast #t #t' x
+      )
+    }
+#pop-options
 
 instance into_from_from a b {| t_From a b |}: t_Into b a = {
   f_into = (fun x -> f_from x)

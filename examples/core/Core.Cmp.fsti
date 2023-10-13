@@ -41,5 +41,8 @@ type t_Reverse t = | Reverse of t
 
 let impl__then x y = x
 
-instance ord_u64: t_Ord u64 = magic ()
-instance ord_reverse t {| t_Ord t |}: t_Ord (t_Reverse t) = magic ()
+[@FStar.Tactics.Typeclasses.tcinstance]
+val ord_u64: t_Ord u64
+
+[@FStar.Tactics.Typeclasses.tcinstance]
+val ord_reverse t {| t_Ord t |}: t_Ord (t_Reverse t)

@@ -6,7 +6,7 @@ class into_iterator self = {
   f_into_iter: self -> f_IntoIter;
 }
 
-instance t_impl t {| Core.Iter.iterator t |}: into_iterator (Core.Ops.Range.Range.t_Range t) = {
-  f_IntoIter = Core.Ops.Range.Range.t_Range t;
+unfold instance impl t {| Core.Iter.iterator t |}: into_iterator t = {
+  f_IntoIter = t;
   f_into_iter = id;
 }
