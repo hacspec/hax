@@ -387,8 +387,7 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
     in
     match kind with
     | Type | Trait -> "t_" ^ name
-    | Impl -> name
-    | Value ->
+    | Value | Impl ->
         if start_uppercase name || is_reserved_word name then "v_" ^ name
         else escape name
     | Constructor _ ->
