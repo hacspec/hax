@@ -90,7 +90,7 @@ verify: $(addsuffix .checked, $(addprefix $(CACHE_DIR)/,$(ROOTS)))
 
 # Clean targets
 
-SHELL=/bin/bash
+SHELL=/usr/bin/env bash
 
 clean:
 	rm -rf $(CACHE_DIR)/*
