@@ -489,7 +489,13 @@ pub(crate) fn const_value_reference_to_constant_expr<'tcx, S: BaseState<'tcx> + 
     match &hax_ty {
         Ty::Tuple(_) => (),
         _ => {
-            span_fatal!(s, span, "Expected the type to be tuple: {:?}", val)
+            span_fatal!(
+                s,
+                span,
+                "Expected the type to be tuple: {:?} : {:?}",
+                val,
+                ty
+            )
         }
     };
 
@@ -542,8 +548,9 @@ pub fn const_value_to_constant_expr<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             // Should be unit
             let ty = ty.sinto(s);
             if let Ty::Tuple(tys) = &ty && tys.is_empty() {}
+            else if let Ty::Arrow(_) = &ty {}
             else {
-                span_fatal!(s, span, "Expected the type to be tuple: {:?}", val)
+                span_fatal!(s, span, "Expected the type to be tuple or arrow: {:?} : {:?}", val, ty)
             }
             let cv = ConstantExprKind::Tuple { fields: Vec::new() };
             Decorated {
