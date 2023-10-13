@@ -61,7 +61,7 @@ pub struct ImplSourceUserDefinedData {
 )]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::BoundConstness, state: S as _s)]
 pub enum BoundConstness {
-    NotCongst,
+    NotConst,
     ConstIfConst,
 }
 
