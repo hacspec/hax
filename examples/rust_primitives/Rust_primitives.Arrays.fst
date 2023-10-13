@@ -7,7 +7,7 @@ unfold type t_Array t (l:usize) = s: Seq.seq t { Seq.length s == v l }
 unfold type slice = t_Slice
 unfold type array = t_Array
 
-let of_list (#t:Type) l = Seq.of_list l
+let of_list (#t:Type) l = Seq.seq_of_list l
 let to_list (#t:Type) s = Seq.seq_to_list s
 
 let to_of_list_lemma t l = Seq.lemma_list_seq_bij l

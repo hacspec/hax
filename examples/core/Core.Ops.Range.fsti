@@ -18,15 +18,15 @@ let rec fold_range' #t
 val iterator_range_enumerate t: t_enumerate (t_Range (Rust_primitives.int_t t))
 
 instance iterator_range t: iterator (t_Range (Rust_primitives.int_t t)) = 
-  { item = Rust_primitives.int_t t;
-    next = (fun {f_start; f_end} -> 
+  { f_Item = Rust_primitives.int_t t;
+    f_next = (fun {f_start; f_end} -> 
        if f_start >=. f_end then ({f_start; f_end}, None)
        else ({f_start = f_start +. Rust_primitives.mk_int 0; f_end}, Some f_start)
     );
-    contains = (fun x i -> v i < v x.f_end /\ v i >= v x.f_start);
-    fold = (fun #b r init f ->  if r.f_start >=. r.f_end then init
+    f_contains = (fun x i -> v i < v x.f_end /\ v i >= v x.f_start);
+    f_fold = (fun #b r init f ->  if r.f_start >=. r.f_end then init
                              else fold_range' r.f_start r.f_end init (fun x i -> f x i));
-    enumerate = iterator_range_enumerate t;
+    f_enumerate = iterator_range_enumerate t;
   }
 
 open Core.Ops.Index
