@@ -12,6 +12,8 @@ pub enum ImplSourceKind {
     TraitUpcasting(ImplSourceTraitUpcastingData),
     /// For instance of [core::marker::Sync] for instance
     AutoImpl(ImplSourceAutoImplData),
+    /// When using a function pointer as an object implementing `Fn`, `FnMut`, etc.
+    FnPointer(ImplSourceFnPointerData),
 }
 
 /// We extend the impl source information with predicate information, in order
@@ -59,7 +61,7 @@ pub struct ImplSourceUserDefinedData {
 )]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::BoundConstness, state: S as _s)]
 pub enum BoundConstness {
-    NotConst,
+    NotCongst,
     ConstIfConst,
 }
 
@@ -95,6 +97,14 @@ pub struct ImplSourceAutoImplData {
     /// TODO: maybe an issue with using [TyCtxt::predicates_of] instead of
     /// [TyCtxt::predicates_defined_on]?
     pub nested: Vec<String>,
+}
+
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct ImplSourceFnPointerData {
+    pub fn_ty: Box<Ty>,
+    pub nested: Vec<ImplSource>,
 }
 
 /// We use this to store information about the parameters in parent blocks.
@@ -424,6 +434,15 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             trait_def_id: trait_def_id.sinto(s),
             nested: nested.iter().map(|x| format!("{:?}", x)).collect(),
         }),
+        // Happens when we use a function pointer as an object implementing
+        // a trait like `FnMut`
+        RustImplSource::FnPointer(rustc_trait_selection::traits::ImplSourceFnPointerData {
+            fn_ty,
+            nested,
+        }) => ImplSourceKind::FnPointer(ImplSourceFnPointerData {
+            fn_ty: fn_ty.sinto(s),
+            nested: solve_obligations(s, nested),
+        }),
         impl_source => {
             unimplemented!("impl source: {:?}", impl_source)
         }
@@ -554,6 +573,15 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             // update_generics(&mut data.upcast_trait_ref.value.generic_args)
         }
         ImplSourceKind::AutoImpl(_data) => {
+            // TODO: not sure
+            todo!(
+                "- trait_ref:\n{:?}\n- impl source:{:?}",
+                trait_ref,
+                impl_source
+            )
+            // update_generics(&mut data.upcast_trait_ref.value.generic_args)
+        }
+        ImplSourceKind::FnPointer(_data) => {
             // TODO: not sure
             todo!(
                 "- trait_ref:\n{:?}\n- impl source:{:?}",

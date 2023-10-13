@@ -137,15 +137,14 @@ impl<'s, S: BaseState<'s> + HasOwnerId> SInto<S, ExtendedDefId> for rustc_hir::d
                     // otherwise we risk using a wrong parameter environment
                     // to solve the trait obligations, for instance.
                     let s1 = &State::new_from_state_and_id(s, id);
-                    let ty = tcx.type_of(id).subst_identity().sinto(s1);
-
                     let bounds = tcx
                         .predicates_of(id)
                         .predicates
                         .into_iter()
                         .map(|(x, _)| x.sinto(s1))
                         .collect();
-                    ExtendedDefPathItem::Impl { ty, bounds }
+                    let ty = tcx.type_of(id).subst_identity().sinto(s1);
+                    ExtendedDefPathItem::Impl { bounds, ty }
                 }
             };
 
