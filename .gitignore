@@ -8,3 +8,8 @@ TODO.org
 _build
 result
 .DS_Store
+.depend
+.cache
+**/proofs/*/extraction/*
+!**/proofs/*/extraction/Makefile
+!**/proofs/*/extraction/*.diff
