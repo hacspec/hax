@@ -2,7 +2,7 @@ module Core.Slice
 open Rust_primitives.Arrays
 open Rust_primitives.Integers
 
-let impl__len (s: t_Slice 'a)
+let impl__len (#t: Type) (s: t_Slice t)
   : len: usize {len == sz (Seq.length s)} = 
   sz (Seq.length s)
 

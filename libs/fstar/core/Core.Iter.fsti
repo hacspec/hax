@@ -9,10 +9,10 @@ open Core.Iter.Traits.Iterator
 (**** Enumerate *)
 (** This lives in this file for cyclic dependencies reasons. *)
 
-val iterator_enumerate_contains it {| i: iterator it |}
+val iterator_enumerate_contains it (i: iterator it)
   : t_contains (Core.Iter.Adapters.Enumerate.t_Enumerate it) (usize * i.f_Item)
-val iterator_enumerate_fold it {| i: iterator it |}
-  : t_fold (Core.Iter.Adapters.Enumerate.t_Enumerate it) (usize * i.f_Item) (iterator_enumerate_contains it)
+val iterator_enumerate_fold it (i: iterator it)
+  : t_fold (Core.Iter.Adapters.Enumerate.t_Enumerate it) (usize * i.f_Item) (iterator_enumerate_contains it i)
 val iterator_enumerate_enumerate it
   : t_enumerate (Core.Iter.Adapters.Enumerate.t_Enumerate it)
 
@@ -29,8 +29,8 @@ instance iterator_enumerate it {| i: iterator it |}: iterator (Core.Iter.Adapter
                      else {iter; count = count +. sz 1}, Some (count, value)
       | None -> {iter; count}, None
     );
-    f_contains  = iterator_enumerate_contains  it;
-    f_fold      = iterator_enumerate_fold      it;
+    f_contains  = iterator_enumerate_contains  it i;
+    f_fold      = iterator_enumerate_fold      it i;
     f_enumerate = iterator_enumerate_enumerate it;
   }
 
