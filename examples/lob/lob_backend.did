@@ -1,0 +1,18 @@
+type GetBookResult = record { asks : vec Order; bids : vec Order };
+type Match = record {
+  ask_id : nat64;
+  quantity : nat64;
+  price : nat64;
+  bid_id : nat64;
+};
+type Order = record {
+  id : nat64;
+  side : Side;
+  quantity : nat64;
+  price : nat64;
+};
+type Side = variant { Buy; Sell };
+service : (opt principal) -> {
+  add_order : (Order) -> (vec Match);
+  get_book : () -> (GetBookResult) query;
+}
