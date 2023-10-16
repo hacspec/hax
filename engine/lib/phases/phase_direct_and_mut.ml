@@ -102,9 +102,12 @@ struct
           let e = Place.to_expr p |> dexpr in
           LhsArbitraryExpr { witness = Features.On.arbitrary_lhs; e }
 
-    and translate_app (f : A.expr) (raw_args : A.expr list) (span : span) :
-        B.expr =
-      let arg_types, otype =
+    and translate_app (span : span) (otype : A.ty) (f : A.expr)
+        (raw_args : A.expr list) : B.expr =
+      (* `otype` and `_otype` (below) are supposed to be the same
+         type, but sometimes `_otype` is less precise (i.e. an associated
+         type while a concrete type is available) *)
+      let arg_types, _otype =
         UA.Expect.arrow f.typ
         |> Option.value_or_thunk ~default:(fun _ ->
                Error.assertion_failure span "expected an arrow type here")
@@ -243,7 +246,7 @@ struct
 
     and dexpr' (span : span) (e : A.expr') : B.expr' =
       match e with
-      | [%inline_arms "dexpr'.*" - App - Borrow] -> auto
+      | [%inline_arms "dexpr'.*" - Borrow - App] -> auto
       | Borrow { kind; e; witness } ->
           Borrow
             {
@@ -255,21 +258,17 @@ struct
               e = dexpr e;
               witness;
             }
-      | App { f; args } -> (translate_app f args span).e
+      | App _ ->
+          Error.assertion_failure span
+            "should have been handled by dexpr_unwrapped"
 
-    and dexpr_unwrapped (e : A.expr) : B.expr =
-      let span = e.span in
-      let e' = dexpr' span e.e in
-      match e' with
-      | App { f; _ } ->
-          let typ =
-            UB.Expect.arrow f.typ
-            |> Option.value_or_thunk ~default:(fun _ ->
-                   Error.assertion_failure span "expected an arrow type here")
-            |> snd
-          in
-          { e = e'; span; typ }
-      | _ -> { e = e'; span; typ = dty e.span e.typ }
+    and dexpr_unwrapped (expr : A.expr) : B.expr =
+      let span = expr.span in
+      match expr.e with
+      | App { f; args } -> translate_app span expr.typ f args
+      | _ ->
+          let e = dexpr' span expr.e in
+          B.{ e; typ = dty expr.span expr.typ; span = expr.span }
       [@@inline_ands bindings_of dexpr]
 
     [%%inline_defs "Item.*"]
