@@ -246,7 +246,8 @@ struct
     | TChar -> F.term_of_lid [ "char" ]
     | TInt k -> F.term_of_lid [ show_int_kind k ]
     | TStr -> F.term_of_lid [ "string" ]
-    | TSlice { ty; _ } -> F.mk_e_app (F.term_of_lid [ "slice" ]) [ pty span ty ]
+    | TSlice { ty; _ } ->
+        F.mk_e_app (F.term_of_lid [ "t_Slice" ]) [ pty span ty ]
     | TApp { ident = `TupleType 0 as ident; args = [] } ->
         F.term @@ F.AST.Name (pglobal_ident span ident)
     | TApp { ident = `TupleType 1; args = [ GType ty ] } -> pty span ty
@@ -269,7 +270,7 @@ struct
         F.mk_e_arrow (List.map ~f:(pty span) inputs) (pty span output)
     | TFloat _ -> Error.unimplemented ~details:"pty: Float" span
     | TArray { typ; length } ->
-        F.mk_e_app (F.term_of_lid [ "array" ]) [ pty span typ; pexpr length ]
+        F.mk_e_app (F.term_of_lid [ "t_Array" ]) [ pty span typ; pexpr length ]
     | TParam i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident i)
     | TAssociatedType { impl; item } -> (
         match pimpl_expr span impl with
