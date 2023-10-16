@@ -219,11 +219,41 @@ pub trait BaseState<'tcx> = HasBase<'tcx> + Clone + IsState<'tcx>;
 /// State of anything below a `owner_id`
 pub trait UnderOwnerState<'tcx> = BaseState<'tcx> + HasOwnerId;
 
+/// Meta-informations about an `impl<GENERICS[: PREDICATES]> TRAIT for
+/// TYPE where PREDICATES {}`
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct ImplInfos {
+    pub generics: TyGenerics,
+    pub predicates: Vec<Predicate>,
+    pub typ: Ty,
+    pub trait_ref: Option<TraitRef>,
+}
+
+impl ImplInfos {
+    fn from<'tcx>(base: Base<'tcx>, did: rustc_hir::def_id::DefId) -> Self {
+        let tcx = base.tcx;
+        let s = &with_owner_id(base, (), (), did);
+
+        let predicates = tcx
+            .predicates_of(did)
+            .predicates
+            .iter()
+            .map(|(x, _)| x.sinto(s))
+            .collect();
+        Self {
+            generics: tcx.generics_of(did).sinto(s),
+            typ: tcx.type_of(did).subst_identity().sinto(s),
+            trait_ref: tcx.impl_trait_ref(did).sinto(s),
+            predicates,
+        }
+    }
+}
+
 /// Returns a map from every implementation (`Impl`) `DefId`s to the
 /// type they implement, plus the bounds.
 pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: BaseState<'tcx>>(
     s: &S,
-) -> HashMap<DefId, (Ty, Vec<Predicate>)> {
+) -> HashMap<DefId, ImplInfos> {
     let Base {
         tcx,
         exported_def_ids,
@@ -256,16 +286,6 @@ pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: BaseState<'tcx>>(
                 })
             )
         })
-        .map(|did| {
-            let s = &with_owner_id(s.base(), (), (), did);
-            let ty = tcx.type_of(did).subst_identity().sinto(s);
-            let bounds = tcx
-                .predicates_of(did)
-                .predicates
-                .iter()
-                .map(|(x, _)| x.sinto(s))
-                .collect();
-            (did.sinto(s), (ty, bounds))
-        })
+        .map(|did| (did.sinto(s), ImplInfos::from(s.base(), did)))
         .collect()
 }

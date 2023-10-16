@@ -21,6 +21,7 @@ let curry3 f x y z = f (x, y, z)
 let uncurry3 f (x, y, z) = f x y z
 let tup2 a b = (a, b)
 let ( let* ) x f = Option.bind ~f x
+let some_if_true = function true -> Some () | _ -> None
 
 let map_first_letter (f : string -> string) (s : string) =
   let first, rest = String.(prefix s 1, drop_prefix s 1) in

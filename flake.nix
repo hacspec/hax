@@ -67,6 +67,7 @@
               pkgs.ocamlPackages.utop
 
               pkgs.cargo-expand
+              pkgs.cargo-insta
               pkgs.openssl.dev
               pkgs.pkg-config
               pkgs.rust-analyzer

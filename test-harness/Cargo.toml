@@ -19,3 +19,4 @@ assert_cmd = "2.0"
 insta = {version = "1.29.0", features = ["filters", "toml"]}
 serde = { version = "1.0", features = ["derive"] }
 regex = "1"
+hax-cli-options-engine.workspace = true

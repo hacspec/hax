@@ -10,10 +10,7 @@ pub struct EngineOptions {
     pub input: Vec<hax_frontend_exporter::Item<ThirBody>>,
     pub impl_infos: Vec<(
         hax_frontend_exporter::DefId,
-        (
-            hax_frontend_exporter::Ty,
-            Vec<hax_frontend_exporter::Predicate>,
-        ),
+        hax_frontend_exporter::ImplInfos,
     )>,
 }
 
@@ -37,10 +34,7 @@ pub struct WithDefIds<Body: hax_frontend_exporter::IsBody> {
     pub def_ids: Vec<hax_frontend_exporter::DefId>,
     pub impl_infos: Vec<(
         hax_frontend_exporter::DefId,
-        (
-            hax_frontend_exporter::Ty,
-            Vec<hax_frontend_exporter::Predicate>,
-        ),
+        hax_frontend_exporter::ImplInfos,
     )>,
     pub items: Vec<hax_frontend_exporter::Item<Body>>,
 }
