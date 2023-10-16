@@ -1,11 +1,11 @@
 module Alloc.Vec
 open Rust_primitives
 
-unfold type t_Vec t (_: unit) = s:slice t{Seq.length s <= max_usize}
+unfold type t_Vec t (_: unit) = s:t_Slice t{Seq.length s <= max_usize}
 
 let impl__new #t: t_Vec t () = FStar.Seq.empty
 
-let impl_2__extend_from_slice #t (self: t_Vec t ()) (other: slice t{Seq.length self + Seq.length other <= max_usize}): t_Vec t ()
+let impl_2__extend_from_slice #t (self: t_Vec t ()) (other: t_Slice t{Seq.length self + Seq.length other <= max_usize}): t_Vec t ()
   = FStar.Seq.append self other
 
 let impl__with_capacity (_capacity: usize) = impl__new

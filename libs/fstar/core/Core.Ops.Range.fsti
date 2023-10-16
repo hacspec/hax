@@ -31,9 +31,9 @@ instance iterator_range t: iterator (t_Range (Rust_primitives.int_t t)) =
 
 open Core.Ops.Index
 
-instance impl_range_index_slice t len n : t_Index (array t len) (t_Range (int_t n)) = {
-  f_Output = slice t;
-  in_range = (fun (arr: array t len) {f_start; f_end} -> 
+instance impl_range_index_slice t len n : t_Index (t_Array t len) (t_Range (int_t n)) = {
+  f_Output = t_Slice t;
+  in_range = (fun (arr: t_Array t len) {f_start; f_end} -> 
     v f_start >= 0     /\
     v f_start <= v len /\
     v f_end   <= v len
@@ -45,9 +45,9 @@ instance impl_range_index_slice t len n : t_Index (array t len) (t_Range (int_t 
     );
 }
 
-instance impl_index_range_array t n : t_Index (slice t) (t_Range (int_t n)) = {
-  f_Output = slice t;
-  in_range = (fun (s: slice t) {f_start; f_end} -> 
+instance impl_index_range_array t n : t_Index (t_Slice t) (t_Range (int_t n)) = {
+  f_Output = t_Slice t;
+  in_range = (fun (s: t_Slice t) {f_start; f_end} -> 
     let len = Rust_primitives.length s in
     v f_start >= 0     /\
     v f_start <= v len /\

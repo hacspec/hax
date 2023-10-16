@@ -3,16 +3,16 @@ module Core.Convert
 open Rust_primitives
 
 class try_into_tc self t = {
-  error: Type;
-  try_into: self -> Core.Result.t_Result t error
+  f_Error: Type;
+  f_try_into: self -> Core.Result.t_Result t f_Error
 }
 
-instance try_into_tc_slice t len: try_into_tc (slice t) (array t len) = {
-  error = unit;
-  try_into = (fun (s: slice t) -> 
+instance impl_6 (t: Type0) (len: usize): try_into_tc (t_Slice t) (t_Array t len) = {
+  f_Error = Core.Array.t_TryFromSliceError;
+  f_try_into = (fun (s: t_Slice t) -> 
     if Core.Slice.impl__len s = len
-    then Core.Result.Ok (s <: array t len)
-    else Core.Result.Err ()
+    then Core.Result.Ok (s <: t_Array t len)
+    else Core.Result.Err Core.Array.TryFromSliceError
   )
 }
 
@@ -31,7 +31,7 @@ instance integer_into
   : t_From (int_t t') (int_t t)
   = { f_from = (fun (x: int_t t) -> 
         assert (minint t >= minint t' /\ maxint t <= maxint t');
-        cast #t #t' x
+        Rust_primitives.Integers.cast #t #t' x
       )
     }
 #pop-options

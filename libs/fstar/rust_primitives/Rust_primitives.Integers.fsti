@@ -389,7 +389,7 @@ unfold
 let (/!) #t = div #t
 
 unfold
-let (%.) #t = mod #t
+let (%!) #t = mod #t
 
 unfold
 let (=.) = (=)
