@@ -1,0 +1,10 @@
+[package]
+name = "sha256"
+version = "0.1.0"
+authors = ["Franziskus Kiefer <franziskuskiefer@gmail.com>"]
+edition = "2021"
+
+[lib]
+path = "src/sha256.rs"
+
+[dependencies]

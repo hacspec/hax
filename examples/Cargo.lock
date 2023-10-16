@@ -465,6 +465,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "sha256"
+version = "0.1.0"
+
+[[package]]
 name = "stacker"
 version = "0.1.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
