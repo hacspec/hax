@@ -6,7 +6,7 @@ val t_BinaryHeap: Type -> eqtype
 val impl_9__new: #t:Type -> t_BinaryHeap t
 val impl_9__push: #t:Type -> t_BinaryHeap t -> t -> t_BinaryHeap t
 val impl_10__len: #t:Type -> t_BinaryHeap t -> usize
-val impl_10__iter: #t:Type -> t_BinaryHeap t -> slice t
+val impl_10__iter: #t:Type -> t_BinaryHeap t -> t_Slice t
 
 open Core.Option
 
