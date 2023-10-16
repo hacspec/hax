@@ -109,6 +109,7 @@ Definition reserved_names (val : int8) (noeq : int8) (of : int8) : int8 :=
   (val.+noeq).+of.
 
 Record t_Arity1 : Type :={
+  0 : T;
 }.
 
 Class t_T1 Self := {
