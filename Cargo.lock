@@ -1185,6 +1185,7 @@ dependencies = [
  "assert_cmd",
  "cargo_metadata",
  "enum-iterator",
+ "hax-cli-options-engine",
  "insta",
  "lazy_static",
  "libtest-mimic",
