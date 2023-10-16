@@ -64,7 +64,7 @@ fn reserved_names(val: u8, noeq: u8, of: u8) -> u8 {
     val + noeq + of
 }
 
-struct Arity1<T>;
+struct Arity1<T>(T);
 
 trait T1 {}
 impl T1 for Foo {}
