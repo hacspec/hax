@@ -1,0 +1,7 @@
+[workspace]
+members = [
+     "chacha20",
+     "lob",
+     "sha256",
+]
+resolver = "2"

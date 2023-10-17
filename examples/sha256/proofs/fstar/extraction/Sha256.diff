@@ -1,0 +1,18 @@
+--- Sha256.fst	2023-10-16 12:51:03.631404695 +0200
++++ /tmp/Sha256.fst	2023-10-16 12:28:52.597599645 +0200
+@@ -264,7 +264,7 @@
+         <:
+         Core.Slice.Iter.t_Chunks u8)
+       (h, last_block, last_block_len)
+-      (fun (h, last_block, last_block_len) block ->
++      (fun (h, last_block, last_block_len) (block: t_Slice u8) ->
+           if (Core.Slice.impl__len block <: usize) <. v_BLOCK_SIZE <: bool
+           then
+             let last_block:t_Array u8 (sz 64) =
+@@ -343,4 +343,4 @@
+   in
+   u32s_to_be_bytes h
+ 
+-let sha256 (msg: t_Slice u8) : t_Array u8 (sz 32) = hash msg
+\ No newline at end of file
++let sha256 (msg: t_Slice u8) : t_Array u8 (sz 32) = hash msg
