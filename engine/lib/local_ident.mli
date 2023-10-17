@@ -1,4 +1,4 @@
-module T: sig
+module T : sig
   type kind = Typ | Cnst | Expr | LILifetime | Final
   [@@deriving show, yojson, hash, compare, sexp, eq]
 
@@ -11,11 +11,10 @@ module T: sig
 
   (* Create a frozen final local identifier: such an indentifier won't be rewritten by a name policy *)
   val make_final : string -> t
-  val is_final: t -> bool
+  val is_final : t -> bool
 end
 
 include module type of struct
   include Base.Comparator.Make (T)
   include T
 end
-
