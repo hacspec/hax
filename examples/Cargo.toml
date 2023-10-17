@@ -4,3 +4,4 @@ members = [
      "lob",
      "sha256",
 ]
+resolver = "2"
