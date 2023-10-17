@@ -99,16 +99,12 @@ pub fn chacha20_update(st0: State, m: &[u8]) -> Vec<u8> {
     let mut blocks_out = Vec::new();
     let num_blocks = m.len() / 64;
     let remainder_len = m.len() % 64;
-    // for (i, msg_block) in m.chunks(64).enumerate() {
     for i in 0..num_blocks {
         let i: usize = i;
-        // if msg_block.len() != 64 {
-        // } else {
         // Full block
         let b =
             chacha20_encrypt_block(st0, i as u32, &m[64 * i..(64 * i + 64)].try_into().unwrap());
         blocks_out.extend_from_slice(&b);
-        // }
     }
     if remainder_len != 0 {
         // Last block
