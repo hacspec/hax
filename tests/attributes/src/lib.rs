@@ -1,40 +1,44 @@
 use hax_lib_macros as hax;
 use serde::Deserialize;
 
-#[hax::decreases(123)]
-fn test(x: u32, y: u32, z: u32) -> u32 {
+// dummy max value
+const u32_max: u32 = 90000;
+
+#[hax::requires(x > 10 && y > 10 && z > 10 && x + y + z < u32_max)]
+#[hax::ensures(|result| result > 32)]
+fn add3(x: u32, y: u32, z: u32) -> u32 {
     x + y + z
 }
 
-// #[derive(Deserialize, Debug)]
-// pub struct SerdeTest {
-//     foo: u32,
-// }
+#[hax::lemma_statement]
+fn add3_lemma(x: u32) -> bool {
+    x <= 10 || x >= u32_max / 3 || add3(x, x, x) == x * 3
+}
 
-// #[skip]
-// pub fn f<'a, T>(c: bool, x: &'a mut T, y: &'a mut T) -> &'a mut T {
-//     if c {
-//         x
-//     } else {
-//         y
-//     }
-// }
+#[hax::exclude]
+pub fn f<'a, T>(c: bool, x: &'a mut T, y: &'a mut T) -> &'a mut T {
+    if c {
+        x
+    } else {
+        y
+    }
+}
 
-// #[hax::attributes]
-// pub struct Foo {
-//     pub x: u32,
-//     #[refine(y > 3)]
-//     pub y: u32,
-//     #[refine(y + x + z > 3)]
-//     pub z: u32,
-// }
+#[hax::attributes]
+pub struct Foo {
+    pub x: u32,
+    #[refine(y > 3)]
+    pub y: u32,
+    #[refine(y + x + z > 3)]
+    pub z: u32,
+}
 
-// #[skip]
-// impl Foo {
-//     fn g(&self) {}
-// }
+#[hax::exclude]
+impl Foo {
+    fn g(&self) {}
+}
 
-// impl Foo {
-//     #[skip]
-//     fn h(&self) {}
-// }
+impl Foo {
+    #[hax::exclude]
+    fn h(&self) {}
+}

@@ -734,7 +734,9 @@ struct
         let pat = F.pat @@ F.AST.PatApp (pat, pat_args) in
         if Attrs.lemma e.attrs then
           let ty =
-            F.mk_e_app (F.term_of_lid [ "FStar"; "Pervasives"; "Lemma" ]) [ pexpr body ]
+            F.mk_e_app
+              (F.term_of_lid [ "FStar"; "Pervasives"; "Lemma" ])
+              [ pexpr body ]
           in
           let pat = F.pat @@ F.AST.PatAscribed (pat, (ty, None)) in
           let admit =
