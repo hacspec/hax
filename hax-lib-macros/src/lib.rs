@@ -1,4 +1,5 @@
 #![feature(let_chains)]
+#![feature(box_patterns)]
 
 mod rewrite_self;
 mod syn_ext;
@@ -158,13 +159,23 @@ pub fn requires(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream
     let phi: syn::Expr = parse_macro_input!(attr);
     let item: FnLike = parse_macro_input!(item);
     let (requires, attr) = make_fn_decoration(
-        phi,
+        phi.clone(),
         item.sig.clone(),
         FnDecorationKind::Requires,
         None,
         None,
     );
-    quote! {#requires #attr #item}.into()
+    let mut item_with_debug = item.clone();
+    item_with_debug
+        .block
+        .stmts
+        .insert(0, parse_quote! {debug_assert!(#phi);});
+    quote! {
+        #requires #attr
+        #[cfg(    all(not(#HaxCompilation),     debug_assertions )) ] #item_with_debug
+        #[cfg(not(all(not(#HaxCompilation),     debug_assertions )))] #item
+    }
+    .into()
 }
 
 /// Add a logical postcondition to a function. Note you can use the
@@ -187,9 +198,20 @@ pub fn ensures(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream 
         body: phi,
     } = parse_macro_input!(attr);
     let item: FnLike = parse_macro_input!(item);
-    let kind = FnDecorationKind::Ensures { ret_binder };
-    let (ensures, attr) = make_fn_decoration(phi, item.sig.clone(), kind, None, None);
-    quote! {#ensures #attr #item}.into()
+    let kind = FnDecorationKind::Ensures {
+        ret_binder: ret_binder.clone(),
+    };
+    let (ensures, attr) = make_fn_decoration(phi.clone(), item.sig.clone(), kind, None, None);
+    let mut item_with_debug = item.clone();
+    let body = item.block.clone();
+    item_with_debug.block.stmts =
+        parse_quote!(let #ret_binder = #body; debug_assert!(#phi); #ret_binder);
+    quote! {
+        #ensures #attr
+        #[cfg(    all(not(#HaxCompilation),     debug_assertions )) ] #item_with_debug
+        #[cfg(not(all(not(#HaxCompilation),     debug_assertions )))] #item
+    }
+    .into()
 }
 
 struct ImplFnDecoration {
@@ -374,9 +396,11 @@ pub fn attributes(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStr
                             };
                             *attr = syn::parse_quote! { #assoc_attr };
                             let status_attr =
-                                AttrPayload::ItemStatus(ItemStatus::Included { late_skip: true });
+                                &AttrPayload::ItemStatus(ItemStatus::Included { late_skip: true });
                             extra.push(syn::parse_quote! {
-                                #[cfg(#HaxCompilation)]const _: () = {
+                                #[cfg(#HaxCompilation)]
+                                #status_attr
+                                const _: () = {
                                     #uid_attr
                                     #status_attr
                                     fn refinement(#binders) -> bool { #refine }

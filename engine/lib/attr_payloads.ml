@@ -68,9 +68,10 @@ module MakeBase (Error : Phase_utils.ERROR) = struct
     with
     | [ (attr, _) ] -> Some attr
     | [] -> None
-    | (_, first) :: (_, second) :: _ ->
-        Error.assertion_failure (Span.union first second)
-          "This attribute is supposed to be unique"
+    | (attr, _first) :: (_, _second) :: _ -> Some attr
+  (* TODO: when parent attributes are handled correctly (see issue #288) revive the error below *)
+  (* Error.assertion_failure (Span.union first second) *)
+  (*   "This attribute is supposed to be unique" *)
 
   (* we should have multi span errors, basically make somethings really close to Rustc diagnostics! *)
 
@@ -119,7 +120,9 @@ module Make (F : Features.T) (Error : Phase_utils.ERROR) = struct
     val associated_fn :
       AssocRole.t -> attrs -> (generics * param list * expr) option
 
-    val associated_expr : AssocRole.t -> attrs -> expr option
+    val associated_expr :
+      ?keep_last_args:int -> AssocRole.t -> attrs -> expr option
+
     val associated_refinement_in_type : string list -> attrs -> expr option
 
     include module type of MakeBase (Error)
@@ -183,8 +186,17 @@ module Make (F : Features.T) (Error : Phase_utils.ERROR) = struct
                Error.assertion_failure span
                  "this associated item was expected to be a `fn` item")
 
-    let associated_expr (role : AssocRole.t) : attrs -> expr option =
-      associated_fn role >> Option.map ~f:thd3
+    let associated_expr ?(keep_last_args = 0) (role : AssocRole.t) :
+        attrs -> expr option =
+      associated_fn role
+      >> Option.map ~f:(fun (_generics, params, body) ->
+             let params =
+               List.drop params (List.length params - keep_last_args)
+               |> List.map ~f:(fun p -> p.pat)
+             in
+             match params with
+             | [] -> body
+             | _ -> { body with e = Closure { params; body; captures = [] } })
 
     (* For type, there is a special treatment. The name of fields are
        global identifiers, and thus are subject to rewriting by

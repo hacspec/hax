@@ -18,12 +18,15 @@ impl BlockExt for Block {
 pub struct HaxQuantifiers;
 impl ToTokens for HaxQuantifiers {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let status_attr = &AttrPayload::ItemStatus(ItemStatus::Included { late_skip: true });
         quote! {
             #AttrHaxLang
+            #status_attr
             fn forall<T, F: Fn(T) -> bool>(f: F) -> bool {
                 true
             }
             #AttrHaxLang
+            #status_attr
             fn exists<T, F: Fn(T) -> bool>(f: F) -> bool {
                 true
             }
@@ -96,14 +99,38 @@ fn merge_generics(x: Generics, y: Generics) -> Generics {
     }
 }
 
+fn drop_mut_ref(sig: &mut Signature) -> bool {
+    let mut any_mut_ref = false;
+    for input in &mut sig.inputs {
+        if let FnArg::Receiver(syn::Receiver {
+            reference: Some(_),
+            mutability,
+            ..
+        })
+        | FnArg::Typed(syn::PatType {
+            ty: box syn::Type::Reference(syn::TypeReference { mutability, .. }),
+            ..
+        }) = input
+        {
+            any_mut_ref |= mutability.is_some();
+            *mutability = None;
+        }
+    }
+    any_mut_ref
+}
+
 pub fn make_fn_decoration(
     mut phi: Expr,
-    signature: Signature,
+    mut signature: Signature,
     kind: FnDecorationKind,
     generics: Option<Generics>,
     self_type: Option<Type>,
 ) -> (TokenStream, AttrPayload) {
     let uid = ItemUid::fresh();
+    let any_mut_ref = drop_mut_ref(&mut signature);
+    if any_mut_ref && let FnDecorationKind::Ensures { .. } = kind {
+        panic!("For now, ensures clause don't work on funciton that have `&mut` inputs")
+    }
 
     let self_ident: Ident = syn::parse_quote! {self_};
     let mut rewriter = RewriteSelf::new(self_ident, self_type);
@@ -131,7 +158,7 @@ pub fn make_fn_decoration(
             sig
         };
         let uid_attr = AttrPayload::Uid(uid.clone());
-        let status_attr = AttrPayload::ItemStatus(ItemStatus::Included { late_skip: true });
+        let late_skip = &AttrPayload::ItemStatus(ItemStatus::Included { late_skip: true });
         let any_trait = if let FnDecorationKind::Decreases = &kind {
             phi = parse_quote! {Box::new(#phi)};
             quote! {#AttrHaxLang #[allow(unused)] trait Any {} impl<T> Any for T {}}
@@ -143,12 +170,19 @@ pub fn make_fn_decoration(
         } else {
             Some(HaxQuantifiers)
         };
+        let future = if let FnDecorationKind::Ensures { .. } = &kind {
+            quote! { #late_skip #AttrHaxLang fn future<T>(x: &mut T) -> &T { x } }
+        } else {
+            quote! {}
+        };
         quote! {
+            #late_skip
             const _: () = {
                 #quantifiers
                 #any_trait
+                #future
                 #uid_attr
-                #status_attr
+                #late_skip
                 #[allow(unused)]
                 #decoration_sig {
                     #phi

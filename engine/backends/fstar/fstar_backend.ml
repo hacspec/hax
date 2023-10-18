@@ -657,27 +657,36 @@ struct
   (*   F.mk_refined binder (pty span ty) (pexpr refinement) *)
 
   let add_clauses_effect_type (attrs : attrs) typ : F.AST.typ =
-    let decreases =
-      Attrs.associated_expr Decreases attrs
-      |> Option.map ~f:(fun m ->
-             FStar_Parser_AST.Decreases (pexpr m, None) |> F.term)
+    let attr_term ?keep_last_args kind f =
+      Attrs.associated_expr ?keep_last_args kind attrs
+      |> Option.map ~f:(pexpr >> f >> F.term)
     in
-    (* let requires = *)
-    (*   Attrs.associated_expr Requires attrs *)
-    (*   |> Option.map ~f:(fun phi -> FStar_Parser_AST.Requires (pexpr phi, None)) *)
-    (* in *)
-    (* let ensures = *)
-    (*   Attrs.associated_expr Ensures attrs *)
-    (*   |> Option.map ~f:(fun phi -> FStar_Parser_AST.Ensures (pexpr phi, None)) *)
-    (* in *)
-    (* let effect = *)
-    (*   if Option.is_some decreases || Option.is_some requires then *)
-    (*     F.lid [ "prims"; "Pure" ] *)
-    (*   else if Option.is_some decreases then Some (F.lid [ "prims"; "Tot" ]) *)
-    (*   else None *)
-    (* in *)
-    let tot = F.term_of_lid [ "prims"; "Tot" ] in
-    match decreases with Some d -> F.mk_e_app tot [ typ; d ] | _ -> typ
+    let decreases = attr_term Decreases (fun t -> F.AST.Decreases (t, None)) in
+    let prepost_bundle =
+      let trivial_pre = F.term_of_lid [ "Prims"; "l_True" ] in
+      let trivial_post =
+        F.mk_e_abs [ F.pat @@ F.AST.PatWild (None, []) ] trivial_pre
+      in
+      let pre = attr_term Requires (fun t -> F.AST.Requires (t, None)) in
+      let post =
+        attr_term ~keep_last_args:1 Ensures (fun t -> F.AST.Ensures (t, None))
+      in
+      if Option.is_some pre || Option.is_some post then
+        Some
+          ( Option.value ~default:trivial_pre pre,
+            Option.value ~default:trivial_post post )
+      else None
+    in
+    let args =
+      (Option.map ~f:(fun (req, ens) -> [ req; ens ]) prepost_bundle
+      |> Option.value ~default:[])
+      @ Option.to_list decreases
+    in
+    match args with
+    | [] -> typ
+    | _ ->
+        let effect = if Option.is_some prepost_bundle then "Pure" else "Tot" in
+        F.mk_e_app (F.term_of_lid [ "Prims"; effect ]) (typ :: args)
 
   (* let decreases, requires = match  *)
   (*   match effect with Some effect -> F.mk_e_app effect ([typ] @ Option.to_list ) 0 | None -> typ *)
@@ -722,27 +731,22 @@ struct
                 F.pat @@ F.AST.PatAscribed (ppat pat, (pty span typ, None)))
               params
         in
-        (* let pat_args = *)
-        (*   match Attrs.associated_expr Requires e.attrs with *)
-        (*   | Some phi -> ( *)
-        (*       match (List.drop_last pat_args, List.last params) with *)
-        (*       | Some init, Some { pat; typ_span; typ } -> *)
-        (*           let span = Option.value ~default:e.span typ_span in *)
-        (*           let typ = pty span typ in *)
-        (*           let typ = F.term @@ F.AST.Refine () in *)
-        (*           let last = *)
-        (*             F.pat @@ F.AST.PatAscribed (ppat pat, (typ, None)) *)
-        (*           in *)
-        (*           init @ last *)
-        (*       | _ -> failwith "drop_last last") *)
-        (*   | None -> pat_args *)
-        (*   (\*            match List.drop_last pat_args, List.last pat_args with *\) *)
-        (*   (\* | *\) *)
-        (* in *)
         let pat = F.pat @@ F.AST.PatApp (pat, pat_args) in
-        let ty = add_clauses_effect_type e.attrs (pty body.span body.typ) in
-        let pat = F.pat @@ F.AST.PatAscribed (pat, (ty, None)) in
-        F.decls @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, pexpr body) ])
+        if Attrs.lemma e.attrs then
+          let ty =
+            F.mk_e_app (F.term_of_lid [ "FStar"; "Pervasives"; "Lemma" ]) [ pexpr body ]
+          in
+          let pat = F.pat @@ F.AST.PatAscribed (pat, (ty, None)) in
+          let admit =
+            F.mk_e_app
+              (F.term_of_lid [ "Prims"; "admit" ])
+              [ F.AST.unit_const F.dummyRange ]
+          in
+          F.decls @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, admit) ])
+        else
+          let ty = add_clauses_effect_type e.attrs (pty body.span body.typ) in
+          let pat = F.pat @@ F.AST.PatAscribed (pat, (ty, None)) in
+          F.decls @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, pexpr body) ])
     | TyAlias { name; generics; ty } ->
         let pat =
           F.pat

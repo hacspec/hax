@@ -51,6 +51,28 @@ module type ERROR = sig
   val assertion_failure : Ast.span -> string -> 'never
 end
 
+module MakeError (Ctx : sig
+  val ctx : Diagnostics.Context.t
+end) : ERROR = struct
+  type t = { kind : Diagnostics.kind; span : Ast.span } [@@deriving show, eq]
+
+  let raise err =
+    let span = Span.to_thir err.span in
+    Diagnostics.SpanFreeError.raise ~span Ctx.ctx err.kind
+
+  let unimplemented ?issue_id ?details span =
+    raise
+      {
+        kind =
+          Unimplemented
+            { issue_id = Option.map ~f:MyInt64.of_int issue_id; details };
+        span;
+      }
+
+  let assertion_failure span details =
+    raise { kind = AssertionFailure { details }; span }
+end
+
 module MakeBase
     (FA : Features.T)
     (FB : Features.T) (M : sig
@@ -67,25 +89,9 @@ struct
   let metadata = Metadata.make phase_id
   let failwith = ()
 
-  module Error : ERROR = struct
-    type t = { kind : Diagnostics.kind; span : Ast.span } [@@deriving show, eq]
-
-    let raise err =
-      let span = Span.to_thir err.span in
-      Diagnostics.SpanFreeError.raise ~span (Phase M.phase_id) err.kind
-
-    let unimplemented ?issue_id ?details span =
-      raise
-        {
-          kind =
-            Unimplemented
-              { issue_id = Option.map ~f:MyInt64.of_int issue_id; details };
-          span;
-        }
-
-    let assertion_failure span details =
-      raise { kind = AssertionFailure { details }; span }
-  end
+  module Error : ERROR = MakeError (struct
+    let ctx = Diagnostics.Context.Phase M.phase_id
+  end)
 end
 
 module Identity (F : Features.T) = struct

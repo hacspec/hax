@@ -18,6 +18,12 @@ let setup_logs (options : Types.engine_options) =
 
 module Deps = Dependencies.Make (Features.Rust)
 
+module Error : Phase_utils.ERROR = Phase_utils.MakeError (struct
+  let ctx = Diagnostics.Context.ThirImport
+end)
+
+module Attrs = Attr_payloads.MakeBase (Error)
+
 let import_thir_items (include_clauses : Types.inclusion_clause list)
     (items : Types.item_for__decorated_for__expr_kind list) : Ast.Rust.item list
     =
@@ -31,6 +37,12 @@ let import_thir_items (include_clauses : Types.inclusion_clause list)
     |> Map.of_alist_exn (module Concrete_ident)
   in
   let items = Deps.filter_by_inclusion_clauses include_clauses items in
+  let items =
+    List.filter
+      ~f:(fun i ->
+        match Attrs.status i.attrs with Included _ -> true | _ -> false)
+      items
+  in
   let reports =
     List.concat_map
       ~f:(fun (item : Ast.Rust.item) ->

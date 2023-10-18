@@ -120,7 +120,7 @@ let c_attrs : Thir.attribute list -> attrs = List.map ~f:c_attr
 let c_item_attrs (attrs : Thir.item_attributes) : attrs =
   (* TODO: This is a quite coarse approximation, we need to reflect
      that parent/self structure in our AST. *)
-  c_attrs (attrs.parent_attributes @ attrs.attributes)
+  c_attrs (attrs.attributes @ attrs.parent_attributes)
 
 type extended_literal =
   | EL_Lit of literal
