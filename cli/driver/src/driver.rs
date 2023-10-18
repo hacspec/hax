@@ -142,6 +142,8 @@ fn main() {
             generic_const_exprs: false, // not useful for now
             register_tool: true,
             registered_tools: HashSet::from_iter(vec!["_hax".to_string()].into_iter()),
+            auto_traits: true,
+            negative_impls: true,
         } - Features::detect_forking();
         rustc_args = [rustc_args[0].clone()]
             .into_iter()
