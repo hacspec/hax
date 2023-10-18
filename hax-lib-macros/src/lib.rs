@@ -144,7 +144,8 @@ pub fn decreases(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStrea
 ///
 /// ```
 /// use hax_lib_macros::*;
-/// #[requires(x.len() == y.len() && forall(|i: usize| i >= x.len() || y[i] > 0))]
+/// #[requires(x.len() == y.len())]
+// #[requires(x.len() == y.len() && forall(|i: usize| i >= x.len() || y[i] > 0))]
 /// pub fn div_pairwise(x: Vec<u64>, y: Vec<u64>) -> Vec<u64> {
 ///     x.iter()
 ///         .copied()
