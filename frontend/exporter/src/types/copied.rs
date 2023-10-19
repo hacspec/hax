@@ -1983,7 +1983,7 @@ pub struct Arm {
 #[derive(AdtInto)]
 #[args(<S>, from: rustc_hir::Unsafety, state: S as _s)]
 #[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+    Clone, Copy, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub enum Unsafety {
     Unsafe,

@@ -767,7 +767,17 @@ pub enum AggregateKind {
         Option<UserTypeAnnotationIndex>,
         Option<FieldIdx>,
     ),
-    Closure(DefId, Vec<GenericArg>),
+    #[custom_arm(rustc_middle::mir::AggregateKind::Closure(def_id, substs) => {
+        let def_id = def_id.sinto(s);
+        // The substs is meant to be converted to a function signature. Note
+        // that Rustc does its job: the PolyFnSig binds the captured local
+        // type, regions, etc. variables, which means we can treat the local
+        // closure like any top-level function.
+        let sig = substs.as_closure().sig();
+        let sig = poly_fn_sig_to_mir_poly_fn_sig(&sig, s);
+        AggregateKind::Closure(def_id, sig)
+    })]
+    Closure(DefId, MirPolyFnSig),
     Generator(DefId, Vec<GenericArg>, Movability),
 }
 
