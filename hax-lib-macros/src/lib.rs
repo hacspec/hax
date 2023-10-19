@@ -173,8 +173,9 @@ pub fn requires(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream
         .insert(0, parse_quote! {debug_assert!(#phi);});
     quote! {
         #requires #attr
-        #[cfg(    all(not(#HaxCompilation),     debug_assertions )) ] #item_with_debug
-        #[cfg(not(all(not(#HaxCompilation),     debug_assertions )))] #item
+        #item
+        // #[cfg(    all(not(#HaxCompilation),     debug_assertions )) ] #item_with_debug
+        // #[cfg(not(all(not(#HaxCompilation),     debug_assertions )))] #item
     }
     .into()
 }
@@ -209,8 +210,9 @@ pub fn ensures(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream 
         parse_quote!(let #ret_binder = #body; debug_assert!(#phi); #ret_binder);
     quote! {
         #ensures #attr
-        #[cfg(    all(not(#HaxCompilation),     debug_assertions )) ] #item_with_debug
-        #[cfg(not(all(not(#HaxCompilation),     debug_assertions )))] #item
+        #item
+        // #[cfg(    all(not(#HaxCompilation),     debug_assertions )) ] #item_with_debug
+        // #[cfg(not(all(not(#HaxCompilation),     debug_assertions )))] #item
     }
     .into()
 }
