@@ -49,6 +49,7 @@ ROOTS = Chacha20.fst Chacha20.Hacspec_helper.fst
 
 $(ROOTS):
 	cargo hax into fstar
+	patch -i *.diff
 
 FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib $(HAX_LIBS_HOME)/rust_primitives $(HAX_LIBS_HOME)/core $(HAX_LIBS_HOME)/hax_lib
 
@@ -72,6 +73,9 @@ $(HINT_DIR):
 
 $(CACHE_DIR):
 	mkdir -p $@
+
+$(CACHE_DIR)/Chacha20.Hacspec_helper.fst.checked: | .depend $(HINT_DIR) $(CACHE_DIR)
+	$(FSTAR) --lax $(OTHERFLAGS) $< $(ENABLE_HINTS) --hint_file $(HINT_DIR)/$(notdir $*).hints
 
 $(CACHE_DIR)/%.checked: | .depend $(HINT_DIR) $(CACHE_DIR)
 	$(FSTAR) $(OTHERFLAGS) $< $(ENABLE_HINTS) --hint_file $(HINT_DIR)/$(notdir $*).hints
