@@ -208,56 +208,11 @@ pub struct Terminator {
     pub kind: TerminatorKind,
 }
 
-/// Return the [DefId] of the function referenced by an operand, with the
-/// parameters substitution.
-/// The [Operand] comes from a [TerminatorKind::Call].
-/// Only supports calls to top-level functions (which are considered as constants
-/// by rustc); doesn't support closures for now.
-fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
+pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
-    func: &rustc_middle::mir::Operand<'tcx>,
+    def_id: rustc_hir::def_id::DefId,
+    substs: rustc_middle::ty::subst::SubstsRef<'tcx>,
 ) -> (DefId, Vec<GenericArg>, Vec<ImplSource>, Option<TraitInfo>) {
-    use std::ops::Deref;
-    // Match on the func operand: it should be a constant as we don't support
-    // closures for now.
-    use rustc_middle::mir::{ConstantKind, Operand};
-    use rustc_middle::ty::TyKind;
-    let (def_id, substs) = match func {
-        Operand::Constant(c) => {
-            let c = c.deref();
-            match &c.literal {
-                ConstantKind::Ty(c) => {
-                    // The type of the constant should be a FnDef, allowing
-                    // us to retrieve the function's identifier and instantiation.
-                    let c_ty = c.ty();
-                    assert!(c_ty.is_fn());
-                    match c_ty.kind() {
-                        TyKind::FnDef(def_id, substs) => (*def_id, *substs),
-                        _ => {
-                            unreachable!();
-                        }
-                    }
-                }
-                ConstantKind::Val(_, c_ty) => {
-                    // Same as for the `Ty` case above
-                    assert!(c_ty.is_fn());
-                    match c_ty.kind() {
-                        TyKind::FnDef(def_id, substs) => (*def_id, *substs),
-                        _ => {
-                            unreachable!();
-                        }
-                    }
-                }
-                ConstantKind::Unevaluated(_, _) => {
-                    unimplemented!();
-                }
-            }
-        }
-        Operand::Move(_place) | Operand::Copy(_place) => {
-            unimplemented!();
-        }
-    };
-
     let tcx = s.base().tcx;
     let param_env = tcx.param_env(s.owner_id());
 
@@ -311,6 +266,59 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     };
 
     (def_id.sinto(s), substs, trait_refs, source)
+}
+
+/// Return the [DefId] of the function referenced by an operand, with the
+/// parameters substitution.
+/// The [Operand] comes from a [TerminatorKind::Call].
+/// Only supports calls to top-level functions (which are considered as constants
+/// by rustc); doesn't support closures for now.
+fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
+    s: &S,
+    func: &rustc_middle::mir::Operand<'tcx>,
+) -> (DefId, Vec<GenericArg>, Vec<ImplSource>, Option<TraitInfo>) {
+    use std::ops::Deref;
+    // Match on the func operand: it should be a constant as we don't support
+    // closures for now.
+    use rustc_middle::mir::{ConstantKind, Operand};
+    use rustc_middle::ty::TyKind;
+    let (def_id, substs) = match func {
+        Operand::Constant(c) => {
+            let c = c.deref();
+            match &c.literal {
+                ConstantKind::Ty(c) => {
+                    // The type of the constant should be a FnDef, allowing
+                    // us to retrieve the function's identifier and instantiation.
+                    let c_ty = c.ty();
+                    assert!(c_ty.is_fn());
+                    match c_ty.kind() {
+                        TyKind::FnDef(def_id, substs) => (*def_id, *substs),
+                        _ => {
+                            unreachable!();
+                        }
+                    }
+                }
+                ConstantKind::Val(_, c_ty) => {
+                    // Same as for the `Ty` case above
+                    assert!(c_ty.is_fn());
+                    match c_ty.kind() {
+                        TyKind::FnDef(def_id, substs) => (*def_id, *substs),
+                        _ => {
+                            unreachable!();
+                        }
+                    }
+                }
+                ConstantKind::Unevaluated(_, _) => {
+                    unimplemented!();
+                }
+            }
+        }
+        Operand::Move(_place) | Operand::Copy(_place) => {
+            unimplemented!();
+        }
+    };
+
+    get_function_from_def_id_and_substs(s, def_id, substs)
 }
 
 fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>(

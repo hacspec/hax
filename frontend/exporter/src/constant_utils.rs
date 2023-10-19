@@ -57,7 +57,7 @@ pub enum ConstantExprKind {
     ConstRef {
         id: ParamConst,
     },
-    FnPtr(DefId, Vec<GenericArg>, Vec<ImplSource>),
+    FnPtr(DefId, Vec<GenericArg>, Vec<ImplSource>, Option<TraitInfo>),
     Todo(String),
 }
 
@@ -559,19 +559,8 @@ pub fn const_value_to_constant_expr<'tcx, S: BaseState<'tcx> + HasOwnerId>(
                 // The constant value is actually a function pointer: retrieve the function
                 match ty.kind() {
                     rustc_middle::ty::TyKind::FnDef(def_id, substs) => {
-                        // Retrieve the trait requirements, if there are
-                        // For instance, if we write:
-                        // ```
-                        // fn foo<T : Bar>(...)
-                        //            ^^^
-                        // ```
-                        let tcx = s.base().tcx;
-                        let param_env = tcx.param_env(s.owner_id());
-                        let trait_refs = solve_item_traits(s, param_env, *def_id, substs);
-
-                        // TODO: is it possible to use a trait method as a function
-                        // pointer? If yes, we need to resolve the method here.
-                        ConstantExprKind::FnPtr(def_id.sinto(s), substs.sinto(s), trait_refs)
+                        let (def_id, generics, trait_refs, trait_info) = get_function_from_def_id_and_substs(s, *def_id, substs);
+                        ConstantExprKind::FnPtr(def_id, generics, trait_refs, trait_info)
                     }
                     kind => {
                         panic!("Unexpected: {:?}", kind)

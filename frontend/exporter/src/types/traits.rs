@@ -463,7 +463,9 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     ImplSource { kind, trait_ref }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
 pub struct TraitInfo {
     pub impl_source: ImplSource,
     /// All the generics (from before truncating them - see the documentation
