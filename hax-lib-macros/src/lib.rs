@@ -42,6 +42,9 @@ pub fn exclude(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream 
     quote! {#attr #item}.into()
 }
 
+/*
+TODO: no support in any backends (see #297)
+
 /// Exclude this item from the Hax translation, and replace it with a
 /// axiomatized model in each backends. The path of the axiomatized
 /// model should be given in Rust syntax.
@@ -66,6 +69,7 @@ pub fn modeled_by(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStre
     });
     quote! {#attr #item}.into()
 }
+*/
 
 /// Mark a boolean-returning function as a lemma statement. In the
 /// backend, this will generate a lemma with an empty proof.
@@ -104,6 +108,9 @@ pub fn lemma_statement(attr: pm::TokenStream, item: pm::TokenStream) -> pm::Toke
     .into()
 }
 
+/*
+TODO: this is disabled for now, we need `dyn` types (see issue #296)
+
 /// Provide a measure for a function: this measure will be used once
 /// extracted in a backend for checking termination. The expression
 /// that decreases can be of any type. (TODO: this is probably as it
@@ -136,16 +143,17 @@ pub fn decreases(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStrea
     );
     quote! {#requires #attr #item}.into()
 }
+*/
 
-/// Add a logical precondition to a function. Note you can use the
-/// `forall` and `exists` operators.
+/// Add a logical precondition to a function.
+// Note you can use the `forall` and `exists` operators. (TODO: commented out for now, see #297)
 ///
 /// # Example
 ///
 /// ```
 /// use hax_lib_macros::*;
 /// #[requires(x.len() == y.len())]
-// #[requires(x.len() == y.len() && forall(|i: usize| i >= x.len() || y[i] > 0))]
+// #[requires(x.len() == y.len() && forall(|i: usize| i >= x.len() || y[i] > 0))] (TODO: commented out for now, see #297)
 /// pub fn div_pairwise(x: Vec<u64>, y: Vec<u64>) -> Vec<u64> {
 ///     x.iter()
 ///         .copied()
@@ -173,6 +181,7 @@ pub fn requires(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream
         .insert(0, parse_quote! {debug_assert!(#phi);});
     quote! {
         #requires #attr
+        // TODO: disable `assert!`s for now (see #297)
         #item
         // #[cfg(    all(not(#HaxCompilation),     debug_assertions )) ] #item_with_debug
         // #[cfg(not(all(not(#HaxCompilation),     debug_assertions )))] #item
@@ -210,6 +219,7 @@ pub fn ensures(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream 
         parse_quote!(let #ret_binder = #body; debug_assert!(#phi); #ret_binder);
     quote! {
         #ensures #attr
+        // TODO: disable `assert!`s for now (see #297)
         #item
         // #[cfg(    all(not(#HaxCompilation),     debug_assertions )) ] #item_with_debug
         // #[cfg(not(all(not(#HaxCompilation),     debug_assertions )))] #item
