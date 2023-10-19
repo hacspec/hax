@@ -57,6 +57,7 @@ pub enum ConstantExprKind {
     ConstRef {
         id: ParamConst,
     },
+    FnPtr(DefId, Vec<GenericArg>, Vec<ImplSource>),
     Todo(String),
 }
 
@@ -137,6 +138,10 @@ impl From<ConstantExpr> for Expr {
             Tuple { fields } => ExprKind::Tuple {
                 fields: fields.into_iter().map(|field| field.into()).collect(),
             },
+            FnPtr { .. } => {
+                // SH: I see the `Closure` kind, but it's not the same as function pointer?
+                unimplemented!()
+            }
             Todo(msg) => ExprKind::Todo(msg),
         };
         Decorated {
@@ -546,15 +551,38 @@ pub fn const_value_to_constant_expr<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         }
         ConstValue::ZeroSized { .. } => {
             // Should be unit
-            let ty = ty.sinto(s);
-            if let Ty::Tuple(tys) = &ty && tys.is_empty() {}
-            else if let Ty::Arrow(_) = &ty {}
+            let hty = ty.sinto(s);
+            let cv = if let Ty::Tuple(tys) = &hty && tys.is_empty() {
+                ConstantExprKind::Tuple { fields: Vec::new() }
+            }
+            else if let Ty::Arrow(_) = &hty {
+                // The constant value is actually a function pointer: retrieve the function
+                match ty.kind() {
+                    rustc_middle::ty::TyKind::FnDef(def_id, substs) => {
+                        // Retrieve the trait requirements, if there are
+                        // For instance, if we write:
+                        // ```
+                        // fn foo<T : Bar>(...)
+                        //            ^^^
+                        // ```
+                        let tcx = s.base().tcx;
+                        let param_env = tcx.param_env(s.owner_id());
+                        let trait_refs = solve_item_traits(s, param_env, *def_id, substs);
+
+                        // TODO: is it possible to use a trait method as a function
+                        // pointer? If yes, we need to resolve the method here.
+                        ConstantExprKind::FnPtr(def_id.sinto(s), substs.sinto(s), trait_refs)
+                    }
+                    kind => {
+                        panic!("Unexpected: {:?}", kind)
+                    }
+                }
+            }
             else {
                 span_fatal!(s, span, "Expected the type to be tuple or arrow: {:?} : {:?}", val, ty)
-            }
-            let cv = ConstantExprKind::Tuple { fields: Vec::new() };
+            };
             Decorated {
-                ty,
+                ty: hty,
                 span: span.sinto(s),
                 contents: Box::new(cv),
                 hir_id: Option::None,
