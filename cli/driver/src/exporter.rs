@@ -461,7 +461,7 @@ impl Callbacks for ExtractionCallbacks {
                                 eprintln!("----------------------------------------------");
                                 eprintln!("----------------------------------------------");
                                 eprintln!("----------------------------------------------");
-                                phase_debug_webapp::run(|| debug_json.clone())
+                                hax_phase_debug_webapp::run(|| debug_json.clone())
                             }
                             Some(DebugEngineMode::File(file)) if !backend.dry_run => {
                                 println!("{}", debug_json)

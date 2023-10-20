@@ -19,5 +19,6 @@ members = [
         "attributes",
         "raw-attributes",
         "traits",
+        "nested-derefs",
 ]
 resolver = "2"

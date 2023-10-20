@@ -1,5 +1,5 @@
 [package]
-name = "hax-diagnostics"
+name = "hax-phase-debug-webapp"
 version.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -8,11 +8,7 @@ edition.workspace = true
 repository.workspace = true
 readme.workspace = true
 
-[package.metadata.rust-analyzer]
-rustc_private=true
+[lib]
 
 [dependencies]
-serde.workspace = true
-schemars.workspace = true
-colored.workspace = true
-
+tiny_http = "0.12"
