@@ -43,13 +43,14 @@ and primitive_ident = Deref | Cast | LogicalOp of logical_op
 module Global_ident = struct
   module T = struct
     type t =
-      [ `Concrete of concrete_ident
-      | `Primitive of primitive_ident
-      | `TupleType of int
-      | `TupleCons of int
-      | `TupleField of int * int
-      | `Projector of [ `Concrete of concrete_ident | `TupleField of int * int ]
-      ]
+      [ `Concrete of concrete_ident [@name "`Concrete"]
+      | `Primitive of primitive_ident [@name "`Primitive"]
+      | `TupleType of int [@name "`TupleType"]
+      | `TupleCons of int [@name "`TupleCons"]
+      | `TupleField of int * int [@name "`TupleField"]
+      | `Projector of
+        [ `Concrete of concrete_ident [@name "`Concrete"]
+        | `TupleField of int * int [@name "`TupleField"] ] ]
     [@@deriving show, yojson, compare, hash, sexp, eq]
   end
 

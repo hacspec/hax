@@ -217,6 +217,10 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
       [%m
       List.concat_map
         ~f:(fun txt ->
+          let variant_json_name =
+            Ast_builder.Default.pexp_constant ~loc
+              (Parsetree.Pconst_string ("FeatureWitness_" ^ txt, loc, None))
+          in
           (rename
              [ ("placeholder", txt); ("Placeholder", uppercase_first_char txt) ])
             #structure
@@ -226,7 +230,7 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
 
                 val placeholder : placeholder
               end = struct
-                type placeholder = Placeholder
+                type placeholder = Placeholder [@name [%e variant_json_name]]
                 [@@deriving show, yojson, hash, eq]
 
                 let placeholder = Placeholder

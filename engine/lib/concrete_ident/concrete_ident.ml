@@ -347,6 +347,10 @@ module T = struct
 
   let of_name k = Concrete_ident_generated.def_id_of >> of_def_id k
 
+  let eq_def_id def_id ident =
+    let def_id = Imported.of_def_id def_id in
+    [%equal: Imported.def_id] def_id ident.def_id
+
   let eq_name name id =
     let of_name =
       Concrete_ident_generated.def_id_of name |> Imported.of_def_id

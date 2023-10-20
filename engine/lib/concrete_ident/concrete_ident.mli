@@ -20,6 +20,7 @@ module Kind : sig
 end
 
 val of_def_id : Kind.t -> Types.def_id -> t
+val eq_def_id : Types.def_id -> t -> bool
 val of_name : Kind.t -> name -> t
 val eq_name : name -> t -> bool
 val to_debug_string : t -> string
