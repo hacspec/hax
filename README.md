@@ -27,6 +27,22 @@ Note:
 
 ## Installation
 <details>
+  <summary><b>Manual installation</b></summary>
+
+1. Make sure to have the following installed on your system:
+
+- [`opam`](https://opam.ocaml.org/) (`opam switch create 4.14.1`)
+- [`rustup`](https://rustup.rs/)
+- [`nodejs`](https://nodejs.org/)
+- [`jq`](https://jqlang.github.io/jq/)
+
+2. Clone this repo: `git clone git@github.com:hacspec/hacspec-v2.git && cd hacspec-v2`
+3. Run the [setup.sh](./setup.sh) script: `./setup.sh`.
+4. Run `cargo-hax --help`
+
+</details>
+
+<details>
   <summary><b>Nix</b></summary>
 
  This should work on [Linux](https://nixos.org/download.html#nix-install-linux), [MacOS](https://nixos.org/download.html#nix-install-macos) and [Windows](https://nixos.org/download.html#nix-install-windows).
@@ -61,22 +77,6 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 3. Build the docker image: `docker build -f .docker/Dockerfile . -t hacspec-v2`
 4. Get a shell: `docker run -it --rm -v /some/dir/with/a/crate:/work hacspec-v2 bash`
 5. You can now run `cargo-hax --help` (notice here we use `cargo-hax` instead of `cargo hax`)
-
-</details>
-
-<details>
-  <summary><b>Manual installation</b></summary>
-
-1. Make sure to have the following installed on your system:
-
-- `opam` (`opam switch create 4.14.1`)
-- `rustup`
-- `nodejs`
-- `jq`
-
-2. Clone this repo: `git clone git@github.com:hacspec/hacspec-v2.git && cd hacspec-v2`
-3. Run the [setup.sh](./setup.sh) script: `./setup.sh`.
-4. Run `cargo-hax --help`
 
 </details>
 

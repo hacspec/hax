@@ -137,7 +137,6 @@ where
     T: Into<Order> + From<Order> + Ord + Clone,
 {
     let mut matches = Vec::new();
-    // [hax]: early returns aren't finished yet hacspec/hacspec-v2#96
     let mut done = false;
     for _i in 1..other_side.len() {
         if !done {
@@ -145,8 +144,11 @@ where
                 .peek()
                 .and_then(|other| Into::into(other.clone()).try_match(&order))
             {
+                // Goal 1: prove `order.quantity` does not underflow
                 order.quantity -= m.quantity;
+                // Goal 2: prove this `unwrap()` does not panic
                 let mut other: Order = Into::into(other_side.pop().unwrap());
+                // Goal 3: prove `other.quantity` does not underflow
                 other.quantity -= m.quantity;
                 if other.quantity > 0 {
                     other_side.push(From::from(other.clone()));
@@ -157,20 +159,6 @@ where
             }
         }
     }
-    /* [hax] doesn't deal with while loops
-    while let Some(m) = other_side
-        .peek()
-        .and_then(|other| Into::into(other.clone()).try_match(&order))
-    {
-        order.quantity -= m.quantity;
-        let mut other: Order = Into::into(other_side.pop().unwrap());
-        other.quantity -= m.quantity;
-        if other.quantity > 0 {
-            other_side.push(From::from(other.clone()));
-        }
-        matches.push(m);
-    }
-    */
     (
         matches,
         if order.quantity > 0 {

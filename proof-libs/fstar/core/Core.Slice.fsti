@@ -12,7 +12,7 @@ val impl__chunks (x: t_Slice 'a) (cs: usize): t_Chunks 'a
 
 let impl__iter (s: t_Slice 't): t_Slice 't = s
 
-val impl__chunks_exact (x: t_Slice 'a) (cs: usize): t_ChunksExact 'a
+val impl__chunks_exact (x: t_Slice 'a) (cs: usize): t_Slice (s: t_Slice 'a {length s == cs})
 
 open Core.Ops.Index
 

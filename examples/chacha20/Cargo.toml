@@ -5,3 +5,5 @@ authors = ["Franziskus Kiefer <franziskuskiefer@gmail.com>"]
 edition = "2021"
 
 [dependencies]
+hax-lib-macros = { git = "https://github.com/hacspec/hax.git", branch = "attributes" }
+

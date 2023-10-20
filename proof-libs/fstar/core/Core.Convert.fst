@@ -16,6 +16,14 @@ instance impl_6 (t: Type0) (len: usize): try_into_tc (t_Slice t) (t_Array t len)
   )
 }
 
+
+instance impl_6_refined (t: Type0) (len: usize): try_into_tc (s: t_Slice t {Core.Slice.impl__len s == len}) (t_Array t len) = {
+  f_Error = Core.Array.t_TryFromSliceError;
+  f_try_into = (fun (s: t_Slice t {Core.Slice.impl__len s == len}) -> 
+    Core.Result.Ok (s <: t_Array t len)
+  )
+}
+
 class t_Into self t = {
   f_into: self -> t;
 }
