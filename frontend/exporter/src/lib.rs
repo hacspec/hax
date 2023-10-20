@@ -44,5 +44,5 @@ mod sinto;
 mod traits;
 mod utils;
 
-pub use adt_into::AdtInto;
+pub use hax_adt_into::AdtInto;
 pub use sinto::SInto;

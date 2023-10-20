@@ -3,16 +3,6 @@
 version = 3
 
 [[package]]
-name = "adt-into"
-version = "0.0.1"
-dependencies = [
- "itertools 0.11.0",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "aho-corasick"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -414,6 +404,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
+name = "hax-adt-into"
+version = "0.0.1"
+dependencies = [
+ "itertools 0.11.0",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "hax-cli-options"
 version = "0.0.1"
 dependencies = [
@@ -462,9 +462,9 @@ dependencies = [
  "hax-frontend-exporter",
  "hax-frontend-exporter-options",
  "hax-lint",
+ "hax-phase-debug-webapp",
  "inquire",
  "itertools 0.11.0",
- "phase_debug_webapp",
  "serde",
  "serde_json",
  "tracing",
@@ -477,8 +477,8 @@ dependencies = [
 name = "hax-frontend-exporter"
 version = "0.0.1"
 dependencies = [
- "adt-into",
  "extension-traits",
+ "hax-adt-into",
  "hax-frontend-exporter-options",
  "itertools 0.11.0",
  "lazy_static",
@@ -510,6 +510,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "hax-phase-debug-webapp"
+version = "0.0.1"
+dependencies = [
+ "tiny_http",
+]
+
+[[package]]
 name = "hax-subcommands"
 version = "0.0.1"
 dependencies = [
@@ -532,6 +539,22 @@ dependencies = [
  "toml 0.7.3",
  "version_check",
  "which",
+]
+
+[[package]]
+name = "hax-test-harness"
+version = "0.0.1"
+dependencies = [
+ "assert_cmd",
+ "cargo_metadata",
+ "enum-iterator",
+ "hax-cli-options-engine",
+ "insta",
+ "lazy_static",
+ "libtest-mimic",
+ "regex",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -829,13 +852,6 @@ name = "path-clean"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "17359afc20d7ab31fdb42bb844c8b3bb1dabd7dcf7e68428492da7f16966fcef"
-
-[[package]]
-name = "phase_debug_webapp"
-version = "0.0.1"
-dependencies = [
- "tiny_http",
-]
 
 [[package]]
 name = "pin-project-lite"
@@ -1177,22 +1193,6 @@ name = "termtree"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3369f5ac52d5eb6ab48c6b4ffdc8efbcad6b89c765749064ba298f2c68a16a76"
-
-[[package]]
-name = "test-harness"
-version = "0.1.0"
-dependencies = [
- "assert_cmd",
- "cargo_metadata",
- "enum-iterator",
- "hax-cli-options-engine",
- "insta",
- "lazy_static",
- "libtest-mimic",
- "regex",
- "serde",
- "serde_json",
-]
 
 [[package]]
 name = "thiserror"

@@ -1,7 +1,12 @@
 [package]
-name = "adt-into"
-version = { workspace = true }
-edition = "2021"
+name = "hax-adt-into"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+edition.workspace = true
+repository.workspace = true
+readme.workspace = true
 
 [lib]
 proc-macro = true

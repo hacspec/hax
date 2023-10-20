@@ -1,9 +1,0 @@
-[package]
-name = "phase_debug_webapp"
-version = { workspace = true }
-edition = "2021"
-
-[lib]
-
-[dependencies]
-tiny_http = "0.12"

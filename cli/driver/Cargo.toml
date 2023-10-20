@@ -1,7 +1,12 @@
 [package]
 name = "hax-driver"
-version = { workspace = true }
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+edition.workspace = true
+repository.workspace = true
+readme.workspace = true
 
 [package.metadata.rust-analyzer]
 rustc_private = true
@@ -27,4 +32,4 @@ const_format = "0.2"
 tracing.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
-phase_debug_webapp.workspace = true
+hax-phase-debug-webapp.workspace = true
