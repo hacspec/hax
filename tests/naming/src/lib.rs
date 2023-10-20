@@ -70,7 +70,7 @@ trait T1 {}
 impl T1 for Foo {}
 impl T1 for (Foo, u8) {}
 
-trait T2_for_a {}
-impl T2_for_a for Arity1<(Foo, u8)> {}
-trait T3_e_for_a {}
-impl T3_e_for_a for Foo {}
+trait T2ForA {}
+impl T2ForA for Arity1<(Foo, u8)> {}
+trait T3EForA {}
+impl T3EForA for Foo {}
