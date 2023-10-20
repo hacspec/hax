@@ -16,4 +16,4 @@ proc-macro-error = "1.0.4"
 proc-macro2.workspace = true
 quote.workspace = true
 hax-lib-macros-types.workspace = true
-syn = { version = "2.0.28", features = ["full", "visit-mut", "extra-traits", "parsing"] }
+syn = { version = "2.0", features = ["full", "visit-mut", "extra-traits", "parsing"] }
