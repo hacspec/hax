@@ -2,4 +2,4 @@
 default:
 	make -C limited-order-book
 	make -C chacha20
-	make -C sha256
+	OTHERFLAGS="--lax" make -C sha256
