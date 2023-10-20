@@ -24,6 +24,6 @@ This will enable automatic generation of `core` models with consistent
 semantics in all of hax backends (for now F\* and Coq).
 
 Note that we already started experimenting with this second approach:
-hax is already able to digest and generate signature-only F\* for a
-huge part of core.
+hax is already able to digest and generate signature-only F\* for
+more than 80% of core definitions.
 
