@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 /// Each item can be marked with a *u*nique *id*entifier. This is
 /// useful whenever the payload of an attribute is a piece of Rust code
 /// (an expression, a path, a type...). We don't want to retrieve those
+/// pieces of Rust code as raw token stream: we want to let Rustc give
 /// meaning to those. For instance, we want Rustc to type expressions
 /// and to resolve paths.
 ///

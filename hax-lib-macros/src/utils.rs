@@ -2,12 +2,12 @@ use crate::prelude::*;
 use crate::rewrite_self::*;
 
 pub trait BlockExt {
+    /// Bring in the scope of the block quantifiers helpers (the `forall` and `exists` functions)
     fn make_quantifiers_available(&mut self);
 }
 
 impl BlockExt for Block {
     fn make_quantifiers_available(&mut self) {
-        // self.stmts.insert(0, parse_quote! {#HaxQuantifiers});
         self.stmts.insert(
             0,
             Stmt::Item(Item::Verbatim(HaxQuantifiers.to_token_stream())),
@@ -15,6 +15,7 @@ impl BlockExt for Block {
     }
 }
 
+/// `HaxQuantifiers` expands to the definition of the `forall` and `exists` functions
 pub struct HaxQuantifiers;
 impl ToTokens for HaxQuantifiers {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
@@ -35,6 +36,7 @@ impl ToTokens for HaxQuantifiers {
     }
 }
 
+/// Meta informations about functions decorations
 pub enum FnDecorationKind {
     Requires,
     Ensures { ret_binder: Pat },
@@ -61,6 +63,7 @@ impl From<FnDecorationKind> for AssociationRole {
     }
 }
 
+/// Merge two `syn::Generics`, respecting lifetime orders
 fn merge_generics(x: Generics, y: Generics) -> Generics {
     Generics {
         lt_token: x.lt_token.or(y.lt_token),
@@ -99,7 +102,8 @@ fn merge_generics(x: Generics, y: Generics) -> Generics {
     }
 }
 
-fn drop_mut_ref(sig: &mut Signature) -> bool {
+/// Transform every `x: &mut T` input into `x: &T` in a signature
+fn unmut_references_in_inputs(sig: &mut Signature) -> bool {
     let mut any_mut_ref = false;
     for input in &mut sig.inputs {
         if let FnArg::Receiver(syn::Receiver {
@@ -119,6 +123,7 @@ fn drop_mut_ref(sig: &mut Signature) -> bool {
     any_mut_ref
 }
 
+/// Common logic when generating a function decoration
 pub fn make_fn_decoration(
     mut phi: Expr,
     mut signature: Signature,
@@ -127,7 +132,7 @@ pub fn make_fn_decoration(
     self_type: Option<Type>,
 ) -> (TokenStream, AttrPayload) {
     let uid = ItemUid::fresh();
-    let any_mut_ref = drop_mut_ref(&mut signature);
+    let any_mut_ref = unmut_references_in_inputs(&mut signature);
     if any_mut_ref && let FnDecorationKind::Ensures { .. } = kind {
         panic!("For now, ensures clause don't work on funciton that have `&mut` inputs (see https://github.com/hacspec/hacspec-v2/issues/290)")
     }
