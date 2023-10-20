@@ -3,7 +3,7 @@
 | Name     | Status of the F* extraction |
 | -------- | -------------- |
 | chacha20 | Lax-typechecks |
-| lob      | Typechecks     |
+| limited-order-book | Typechecks     |
 | sha256   | Lax-typechecks |
 
 ## How to extract and typecheck an example
