@@ -405,7 +405,7 @@ checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
 name = "hax-adt-into"
-version = "0.0.1"
+version = "0.1.0-pre.1"
 dependencies = [
  "itertools 0.11.0",
  "proc-macro2",
@@ -415,7 +415,7 @@ dependencies = [
 
 [[package]]
 name = "hax-cli-options"
-version = "0.0.1"
+version = "0.1.0-pre.1"
 dependencies = [
  "clap",
  "hax-frontend-exporter-options",
@@ -427,7 +427,7 @@ dependencies = [
 
 [[package]]
 name = "hax-cli-options-engine"
-version = "0.0.1"
+version = "0.1.0-pre.1"
 dependencies = [
  "clap",
  "hax-cli-options",
@@ -443,7 +443,7 @@ dependencies = [
 
 [[package]]
 name = "hax-diagnostics"
-version = "0.0.1"
+version = "0.1.0-pre.1"
 dependencies = [
  "colored",
  "schemars",
@@ -452,7 +452,7 @@ dependencies = [
 
 [[package]]
 name = "hax-driver"
-version = "0.0.1"
+version = "0.1.0-pre.1"
 dependencies = [
  "clap",
  "const_format",
@@ -475,7 +475,7 @@ dependencies = [
 
 [[package]]
 name = "hax-frontend-exporter"
-version = "0.0.1"
+version = "0.1.0-pre.1"
 dependencies = [
  "extension-traits",
  "hax-adt-into",
@@ -491,7 +491,7 @@ dependencies = [
 
 [[package]]
 name = "hax-frontend-exporter-options"
-version = "0.0.1"
+version = "0.1.0-pre.1"
 dependencies = [
  "schemars",
  "serde",
@@ -500,7 +500,7 @@ dependencies = [
 
 [[package]]
 name = "hax-lint"
-version = "0.0.1"
+version = "0.1.0-pre.1"
 dependencies = [
  "assert_cmd",
  "hax-diagnostics",
@@ -511,14 +511,14 @@ dependencies = [
 
 [[package]]
 name = "hax-phase-debug-webapp"
-version = "0.0.1"
+version = "0.1.0-pre.1"
 dependencies = [
  "tiny_http",
 ]
 
 [[package]]
 name = "hax-subcommands"
-version = "0.0.1"
+version = "0.1.0-pre.1"
 dependencies = [
  "clap",
  "colored",
@@ -543,7 +543,7 @@ dependencies = [
 
 [[package]]
 name = "hax-test-harness"
-version = "0.0.1"
+version = "0.1.0-pre.1"
 dependencies = [
  "assert_cmd",
  "cargo_metadata",
