@@ -42,18 +42,13 @@ jobs:
       run: |
         export HACL_HOME="$GITHUB_WORKSPACE/hacl-star"
         export CACHE_DIR=$(mktemp -d)
-        echo GITHUB_WORKSPACE=$GITHUB_WORKSPACE
-        ls
-        echo HACL_HOME=$HACL_HOME
-        ls $HACL_HOME
-        echo cd examples
         cd examples
         typecheck () {
           ( cd "$1/proofs/fstar/extraction"
             OTHERFLAGS="$2" make )
         }
-        typecheck lob      ""
-        typecheck chacha20 "--lax"
+        typecheck limited-order-book ""
+        typecheck chacha20
         typecheck sha256   "--lax"
 
     - name: Checkout specifications
