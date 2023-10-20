@@ -74,7 +74,7 @@ dependencies = [
 
 [[package]]
 name = "hax-lib-macros"
-version = "0.1.0"
+version = "0.1.0-pre.1"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -111,6 +111,10 @@ version = "0.1.0"
 
 [[package]]
 name = "naming"
+version = "0.1.0"
+
+[[package]]
+name = "nested-derefs"
 version = "0.1.0"
 
 [[package]]
