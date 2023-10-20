@@ -1,0 +1,30 @@
+--- Chacha20.fst	2023-10-19 14:27:45.792270343 +0200
++++ /tmp/Chacha20.fst	2023-10-19 14:26:05.909081013 +0200
+@@ -1,6 +1,7 @@
+ module Chacha20
+ #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+ open Core
++open FStar.Mul
+ 
+ let t_State = t_Array u32 (sz 16)
+ 
+@@ -152,10 +153,12 @@
+                 t_Array u8 (sz 64))
+           in
+           let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
++            assume (v (length blocks_out) == v i * 64);
+             Alloc.Vec.impl_2__extend_from_slice blocks_out (Rust_primitives.unsize b <: t_Slice u8)
+           in
+           blocks_out)
+   in
++  assume (v (length blocks_out) == v num_blocks * 64);
+   let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
+     if remainder_len <>. sz 0
+     then
+@@ -180,4 +183,4 @@
+ let chacha20 (m: t_Slice u8) (key: t_Array u8 (sz 32)) (iv: t_Array u8 (sz 12)) (ctr: u32)
+     : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
+   let state:t_Array u32 (sz 16) = chacha20_init key iv ctr in
+-  chacha20_update state m
+\ No newline at end of file
++  chacha20_update state m

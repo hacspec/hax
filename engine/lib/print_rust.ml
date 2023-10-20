@@ -100,7 +100,7 @@ module Raw = struct
 
   let pglobal_ident = pglobal_ident' ""
 
-  let plocal_ident span (e : LocalIdent.t) : AnnotatedString.t =
+  let plocal_ident span (e : Local_ident.t) : AnnotatedString.t =
     pure span e.name
 
   let dmutability span : _ -> AnnotatedString.t =

@@ -10,8 +10,10 @@ members = [
      "cli/driver",
      "test-harness",
      "engine/utils/phase-debug-webapp",
+     "hax-lib-macros",
+     "hax-lib-macros/types",
 ]
-exclude = ["tests", "hax-lib-macros"]
+exclude = ["tests"]
 resolver = "2"
 
 [workspace.package]
@@ -40,6 +42,8 @@ syn = { version = "1.0.107", features = [
 tracing = { version = "0.1", features = ["max_level_trace", "release_max_level_warn"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "std", "fmt"] }
 tracing-tree = "^0.2"
+quote = "1.0.32"
+proc-macro2 = "1.0.66"
 cargo_metadata = "0.15"
 colored = "2"
 
@@ -52,3 +56,4 @@ hax-frontend-exporter-options = { path = "frontend/exporter/options" }
 hax-diagnostics = { path = "frontend/diagnostics" }
 hax-lint = { path = "frontend/lint" }
 hax-phase-debug-webapp = { path = "engine/utils/phase-debug-webapp" }
+hax-lib-macros-types = { path = "hax-lib-macros/types" }

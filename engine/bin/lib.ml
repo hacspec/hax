@@ -18,6 +18,12 @@ let setup_logs (options : Types.engine_options) =
 
 module Deps = Dependencies.Make (Features.Rust)
 
+module Error : Phase_utils.ERROR = Phase_utils.MakeError (struct
+  let ctx = Diagnostics.Context.ThirImport
+end)
+
+module Attrs = Attr_payloads.MakeBase (Error)
+
 let import_thir_items (include_clauses : Types.inclusion_clause list)
     (items : Types.item_for__decorated_for__expr_kind list) : Ast.Rust.item list
     =
@@ -31,6 +37,12 @@ let import_thir_items (include_clauses : Types.inclusion_clause list)
     |> Map.of_alist_exn (module Concrete_ident)
   in
   let items = Deps.filter_by_inclusion_clauses include_clauses items in
+  let items =
+    List.filter
+      ~f:(fun i ->
+        match Attrs.status i.attrs with Included _ -> true | _ -> false)
+      items
+  in
   let reports =
     List.concat_map
       ~f:(fun (item : Ast.Rust.item) ->
@@ -58,10 +70,15 @@ let run (options : Types.engine_options) : Types.output =
         m "Applying phase for backend %s"
           ([%show: Diagnostics.Backend.t] M.backend));
     let items = apply_phases backend_options items in
+    let with_items = Attrs.with_items items in
+    let items =
+      List.filter items ~f:(fun (i : AST.item) ->
+          Attrs.late_skip i.attrs |> not)
+    in
     Logs.info (fun m ->
         m "Translating items with backend %s"
           ([%show: Diagnostics.Backend.t] M.backend));
-    let items = translate backend_options items in
+    let items = translate with_items backend_options items in
     items
   in
   let diagnostics, files =

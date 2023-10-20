@@ -69,13 +69,13 @@ struct
           break = merge_opts merge_ty x.break y.break;
         }
 
-    let reads (var : LocalIdent.t) (ty : ty) =
+    let reads (var : Local_ident.t) (ty : ty) =
       {
         zero with
         reads_local_mut = Set.singleton (module U.TypedLocalIdent) (var, ty);
       }
 
-    let writes (var : LocalIdent.t) (ty : ty) =
+    let writes (var : Local_ident.t) (ty : ty) =
       {
         zero with
         writes_local_mut = Set.singleton (module U.TypedLocalIdent) (var, ty);
@@ -113,7 +113,7 @@ struct
         method private plus = plus
       end
 
-    let without_rw_vars (vars : U.Sets.LocalIdent.t) (effects : t) =
+    let without_rw_vars (vars : U.Sets.Local_ident.t) (effects : t) =
       let without = Set.filter ~f:(fst >> Set.mem vars >> not) in
       {
         effects with
@@ -152,11 +152,11 @@ struct
     module CollectContext = struct
       type t = { mutable fresh_id : int }
 
-      let fresh_local_ident (self : t) : LocalIdent.t =
+      let fresh_local_ident (self : t) : Local_ident.t =
         self.fresh_id <- self.fresh_id + 1;
         {
           name = "hoist" ^ Int.to_string self.fresh_id;
-          id = LocalIdent.mk_id Expr (-1) (* todo *);
+          id = Local_ident.mk_id Expr (-1) (* todo *);
         }
 
       let empty = { fresh_id = 0 }
@@ -464,7 +464,7 @@ struct
               let body, body_effects =
                 let body, { lbs; effects } = super#visit_expr env body in
                 let vars =
-                  Set.union_list (module LocalIdent)
+                  Set.union_list (module Local_ident)
                   @@ List.map ~f:U.Reducers.variables_of_pat params
                 in
                 let body = lets_of_bindings lbs body in

@@ -58,7 +58,7 @@ module%inlined_contents Make (F : Features.T) = struct
       | LhsArbitraryExpr _ -> Error.raise { kind = ArbitraryLHS; span }
 
     and updater_of_lhs (lhs : A.lhs) (rhs : B.expr) (span : span) :
-        (LocalIdent.t * B.ty) * B.expr =
+        (Local_ident.t * B.ty) * B.expr =
       match lhs with
       | LhsLocalVar { var; typ } -> ((var, dty span typ), rhs)
       | LhsFieldAccessor { e; field; _ } -> (

@@ -1,3 +1,4 @@
+use hax_lib_macros as hax;
 use std::convert::TryInto;
 
 const BLOCK_SIZE: usize = 64;
@@ -49,6 +50,7 @@ const HASH_INIT: Hash = [
     0x5be0cd19u32,
 ];
 
+#[hax::requires(i < 4)]
 pub fn sigma(x: u32, i: usize, op: usize) -> u32 {
     let mut tmp: u32 = x.rotate_right(OP_TABLE[3 * i + 2].into());
     if op == 0 {
@@ -61,7 +63,7 @@ pub fn sigma(x: u32, i: usize, op: usize) -> u32 {
 
 fn to_be_u32s(block: Block) -> Vec<u32> {
     let mut out = Vec::with_capacity(BLOCK_SIZE / 4);
-    for block_chunk in block.chunks(4) {
+    for block_chunk in block.chunks_exact(4) {
         let block_chunk_array = u32::from_be_bytes(block_chunk.try_into().unwrap());
         out.push(block_chunk_array);
     }
