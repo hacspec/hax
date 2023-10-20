@@ -16,3 +16,8 @@ modules using F\*.
 
 Note the generated modules live in the
 `<EXAMPLE>/proofs/fstar/extraction` folders.
+
+## Coq
+For those examples, we generated Coq modules without typechecking them.
+The `<EXAMPLE>/proofs/coq/extraction` folders contain the generated Coq modules.
+
