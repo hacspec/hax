@@ -114,7 +114,7 @@ TODO: this is disabled for now, we need `dyn` types (see issue #296)
 /// Provide a measure for a function: this measure will be used once
 /// extracted in a backend for checking termination. The expression
 /// that decreases can be of any type. (TODO: this is probably as it
-/// is true only for F*)
+/// is true only for F*, see #297)
 ///
 /// # Example
 ///
