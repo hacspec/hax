@@ -8,3 +8,4 @@ edition = "2021"
 path = "src/sha256.rs"
 
 [dependencies]
+hax-lib-macros = { git = "https://github.com/hacspec/hax.git", branch = "attributes" }
