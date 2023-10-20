@@ -1,7 +1,7 @@
 ## Libraries for Hax
 
-The goal of this directory is to serve as a snapshot of the current
-F* libraries and verified examples using Hax.
+The goal of this directory is to serve as a snapshot of the current F*
+supporting libraries for Hax.
 
 The dependency chain is:
 
@@ -12,8 +12,8 @@ The dependency chain is:
 The `/rust_primitives` directory contains hand-written models for Rust
 built-in features like machine integers and arrays. In particular, the
 code in this directory reconciles any type or semantic differences
-between Rust and F*. A number of files in this directory use the HACL
-Library.
+between Rust and F*. A number of files in this directory use the 
+[HACL Library](https://github.com/hacl-star/hacl-star/tree/main/lib).
 
 # Core & Alloc
 
