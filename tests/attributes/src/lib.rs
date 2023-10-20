@@ -1,5 +1,4 @@
 use hax_lib_macros as hax;
-use serde::Deserialize;
 
 // dummy max value
 const u32_max: u32 = 90000;
