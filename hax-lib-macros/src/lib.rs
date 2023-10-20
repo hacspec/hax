@@ -78,7 +78,7 @@ pub fn modeled_by(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStre
 ///
 /// ```
 /// use hax_lib_macros::*;
-/// #[decreases((m, n))]
+// #[decreases((m, n))] (TODO: see #297)
 /// pub fn ackermann(m: u64, n: u64) -> u64 {
 ///     match (m, n) {
 ///         (0, _) => n + 1,
