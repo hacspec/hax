@@ -8,7 +8,7 @@ pub struct ExprClosure1 {
 }
 
 pub trait PatExt {
-    // Make sure to remove type abscriptions
+    // Make sure to remove type ascriptions
     fn untype(mut pat: syn::Pat) -> syn::Pat {
         if let syn::Pat::Type(sub) = pat {
             pat = *sub.pat.clone();
@@ -33,7 +33,7 @@ impl Parse for ExprClosure1 {
 
 pub trait PathExt {
     /// Checks whether a `syn::Path` ends with a certain ident. This
-    /// is a bit bad: we have no way of differenciating an Hax
+    /// is a bit bad: we have no way of differentiating an Hax
     /// attribute from an attribute from another crate that share a
     /// common name.
     fn ends_with(&self, i: &str) -> bool;
