@@ -47,7 +47,7 @@ all:
 # *extend* the set of relevant files with the tests.
 ROOTS = Chacha20.fst Chacha20.Hacspec_helper.fst
 
-$(ROOTS):
+$(ROOTS): ../../../src/lib.rs ../../../src/hacspec_helper.rs
 	cargo hax into fstar
 	patch -i *.diff
 
@@ -99,3 +99,4 @@ SHELL=/usr/bin/env bash
 
 clean:
 	rm -rf $(CACHE_DIR)/*
+	rm *.fst

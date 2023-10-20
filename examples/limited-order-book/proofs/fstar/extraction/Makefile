@@ -47,7 +47,7 @@ all:
 # *extend* the set of relevant files with the tests.
 ROOTS = Lob_backend.fst
 
-$(ROOTS):
+$(ROOTS): ../../../src/canister.rs ../../../src/lib.rs
 	cargo hax into -i '-** +**::process_order' fstar
 
 FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib $(HAX_LIBS_HOME)/rust_primitives $(HAX_LIBS_HOME)/core $(HAX_LIBS_HOME)/hax_lib
@@ -95,3 +95,4 @@ SHELL=/usr/bin/env bash
 
 clean:
 	rm -rf $(CACHE_DIR)/*
+	rm *.fst

@@ -2,7 +2,7 @@
 
 | Name     | Status of the F* extraction |
 | -------- | -------------- |
-| chacha20 | Lax-typechecks |
+| chacha20 | Typechecks |
 | limited-order-book | Typechecks     |
 | sha256   | Lax-typechecks |
 
