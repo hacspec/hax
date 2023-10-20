@@ -1,7 +1,7 @@
 [workspace]
 members = [
      "chacha20",
-     "lob",
+     "limited-order-book",
      "sha256",
 ]
 resolver = "2"
