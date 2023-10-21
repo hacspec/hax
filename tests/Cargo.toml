@@ -6,6 +6,7 @@ members = [
         "naming",
         "if-let",
         "enum-repr",
+        "pattern-or",
         "side-effects",
         "lint/hacspec/v1-lib",
         "lint/hacspec/mut_args",

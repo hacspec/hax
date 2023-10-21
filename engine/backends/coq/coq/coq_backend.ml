@@ -209,17 +209,19 @@ struct
           typ = _ (* we skip type annot here *);
         } ->
         C.AST.Ident var.name
+    | POr { subpats } ->
+       C.AST.DisjunctivePat (List.map ~f:ppat subpats)
     | PArray { args } -> __TODO_pat__ p.span "Parray?"
     | PConstruct { name = `TupleCons 0; args = [] } -> C.AST.UnitPat
     | PConstruct { name = `TupleCons 1; args = [ { pat } ] } ->
         __TODO_pat__ p.span "tuple 1"
     | PConstruct { name = `TupleCons n; args } ->
-        C.AST.TuplePat (List.map ~f:(fun { pat } -> ppat pat) args)
+        C.AST.TuplePat (List.map ~f:ppat args)
     | PConstruct { name; args; is_record = true } ->
         C.AST.RecordPat (pglobal_ident name, pfield_pats args)
     | PConstruct { name; args; is_record = false } ->
         C.AST.ConstructorPat
-          (pglobal_ident name, List.map ~f:(fun p -> ppat p.pat) args)
+          (pglobal_ident name, List.map ~f:ppat args)
     | PConstant { lit } -> C.AST.Lit (pliteral p.span lit)
     | PDeref { subpat } -> __TODO_pat__ p.span "deref"
     | _ -> .

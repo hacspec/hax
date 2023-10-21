@@ -731,10 +731,7 @@ end) : EXPR = struct
           in
           (c_constant_expr value |> pat_of_expr).p
       | Array _ -> unimplemented [ pat.span ] "Pat:Array"
-      | Or _ ->
-          unimplemented [ pat.span ] ~issue_id:161
-            "Or patterns (see \
-             https://rust-lang.github.io/rfcs/2535-or-patterns.html)"
+      | Or { pats } -> POr { subpats = List.map ~f:c_pat pats }
       | Slice _ -> unimplemented [ pat.span ] "pat Slice"
       | Range _ -> unimplemented [ pat.span ] "pat Range"
     in

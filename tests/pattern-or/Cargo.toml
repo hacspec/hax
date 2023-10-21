@@ -1,0 +1,9 @@
+[package]
+name = "pattern-or"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[package.metadata.hax-tests]
+into."fstar+coq" = { broken = false, snapshot = "none", issue_id = "161" }

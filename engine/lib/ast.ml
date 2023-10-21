@@ -279,6 +279,9 @@ functor
           is_record : bool; (* are fields named? *)
           is_struct : bool; (* a struct has one constructor *)
         }
+      (* An or-pattern, e.g. `p | q`.
+         Invariant: `List.length subpats >= 2`. *)
+      | POr of { subpats: pat list }
       | PArray of { args : pat list }
       | PDeref of { subpat : pat; witness : F.reference }
       | PConstant of { lit : literal }
