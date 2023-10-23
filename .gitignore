@@ -13,3 +13,5 @@ result
 **/proofs/*/extraction/*
 !**/proofs/*/extraction/Makefile
 !**/proofs/*/extraction/*.diff
+!**/proofs/fstar/extraction/*.fst
+!**/proofs/coq/extraction/*.v

@@ -96,34 +96,7 @@ and attrs = attr list
     visitors { variety = "mapreduce"; name = "attrs_mapreduce" },
     visitors { variety = "map"; name = "attrs_map" }]
 
-module LocalIdent = struct
-  module T : sig
-    type kind = Typ | Cnst | Expr | LILifetime
-    [@@deriving show, yojson, hash, compare, sexp, eq]
-
-    type id [@@deriving show, yojson, hash, compare, sexp, eq]
-
-    val mk_id : kind -> int -> id
-
-    type t = { name : string; id : id }
-    [@@deriving show, yojson, hash, compare, sexp, eq]
-  end = struct
-    type kind = Typ | Cnst | Expr | LILifetime
-    [@@deriving show, yojson, hash, compare, sexp, eq]
-
-    type id = kind * int [@@deriving show, yojson, hash, compare, sexp, eq]
-
-    let mk_id kind id = (kind, id)
-
-    type t = { name : string; id : id }
-    [@@deriving show, yojson, hash, compare, sexp, eq]
-  end
-
-  include Base.Comparator.Make (T)
-  include T
-end
-
-type local_ident = (LocalIdent.t[@visitors.opaque])
+type local_ident = (Local_ident.t[@visitors.opaque])
 [@@deriving
   show,
     yojson,
@@ -414,7 +387,7 @@ functor
 
     (* TODO: LHS should be places or "compositions" of places, see [assignee expression] in https://doc.rust-lang.org/reference/expressions.html#place-expressions-and-value-expressions (issue #222) *)
     and lhs =
-      | LhsLocalVar of { var : LocalIdent.t; typ : ty }
+      | LhsLocalVar of { var : Local_ident.t; typ : ty }
       | LhsArbitraryExpr of { e : expr; witness : F.arbitrary_lhs }
       | LhsFieldAccessor of {
           e : lhs;

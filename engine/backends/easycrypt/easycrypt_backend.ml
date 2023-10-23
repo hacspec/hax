@@ -331,8 +331,8 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) : Types.file list
   doit Format.err_formatter items;
   []
 
-let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
-    =
+let translate _ (bo : BackendOptions.t) (items : AST.item list) :
+    Types.file list =
   try translate' bo items
   with Assert_failure (file, line, col) ->
     Diagnostics.failure ~context:(Backend FStar) ~span:(Span.dummy ())

@@ -1,18 +1,19 @@
 [package]
 name = "hax-lib-macros"
-version = "0.1.0-pre.1"
-authors = ["hax Authors"]
-license = "Apache-2.0"
-homepage = "https://github.com/hacspec/hax"
-edition = "2021"
-repository = "https://github.com/hacspec/hax"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+edition.workspace = true
+repository.workspace = true
+readme.workspace = true
 
 [lib]
 proc-macro = true
 
 [dependencies]
 proc-macro-error = "1.0.4"
-proc-macro2 = "1.0.66"
-quote = "1.0.32"
-syn = { version = "2.0.28", features = ["full", "visit-mut", "extra-traits"] }
-uuid = { version = "1.4.1", features = ["v4"] }
+proc-macro2.workspace = true
+quote.workspace = true
+hax-lib-macros-types.workspace = true
+syn = { version = "2.0", features = ["full", "visit-mut", "extra-traits", "parsing"] }

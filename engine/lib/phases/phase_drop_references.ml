@@ -55,7 +55,7 @@ struct
     and dpat' (span : span) (p : A.pat') : B.pat' =
       match p with
       | [%inline_arms "dpat'.*" - PBinding - PDeref] -> auto
-      | PBinding { mut; var : LocalIdent.t; typ; subpat; _ } ->
+      | PBinding { mut; var : Local_ident.t; typ; subpat; _ } ->
           PBinding
             {
               mut;

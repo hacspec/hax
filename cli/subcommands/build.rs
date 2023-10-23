@@ -21,6 +21,7 @@ fn json_schema_static_asset() {
         hax_cli_options_engine::EngineOptions,
         hax_cli_options_engine::Output,
         hax_cli_options_engine::WithDefIds<hax_frontend_exporter::ThirBody>,
+        hax_lib_macros_types::AttrPayload,
     ));
     serde_json::to_writer(
         std::fs::File::create(format!("{}/schema.json", std::env::var("OUT_DIR").unwrap()))

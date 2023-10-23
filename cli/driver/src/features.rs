@@ -14,6 +14,8 @@ pub struct Features {
     pub adt_const_params: bool,
     pub generic_const_exprs: bool,
     pub register_tool: bool,
+    pub auto_traits: bool,
+    pub negative_impls: bool,
     pub registered_tools: HashSet<String>,
 }
 
@@ -23,6 +25,8 @@ impl From<&rustc_feature::Features> for Features {
             adt_const_params: rfeatures.adt_const_params,
             generic_const_exprs: rfeatures.generic_const_exprs,
             register_tool: rfeatures.register_tool,
+            auto_traits: rfeatures.auto_traits,
+            negative_impls: rfeatures.negative_impls,
             registered_tools: HashSet::new(),
         }
     }
@@ -38,6 +42,8 @@ impl core::ops::Sub for Features {
             adt_const_params: sub(self.adt_const_params, rhs.adt_const_params),
             generic_const_exprs: sub(self.generic_const_exprs, rhs.generic_const_exprs),
             register_tool: sub(self.register_tool, rhs.register_tool),
+            auto_traits: sub(self.auto_traits, rhs.auto_traits),
+            negative_impls: sub(self.negative_impls, rhs.negative_impls),
             registered_tools: self
                 .registered_tools
                 .difference(&rhs.registered_tools)

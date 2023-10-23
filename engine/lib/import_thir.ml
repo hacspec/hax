@@ -46,7 +46,7 @@ let def_id kind (def_id : Thir.def_id) : global_ident =
   `Concrete (Concrete_ident.of_def_id kind def_id)
 
 let local_ident kind (ident : Thir.local_ident) : local_ident =
-  { name = ident.name; id = LocalIdent.mk_id kind 123 (* todo! *) }
+  { name = ident.name; id = Local_ident.mk_id kind 123 (* todo! *) }
 
 let int_ty_to_size : Thir.int_ty -> size = function
   | Isize -> SSize
@@ -120,7 +120,7 @@ let c_attrs : Thir.attribute list -> attrs = List.map ~f:c_attr
 let c_item_attrs (attrs : Thir.item_attributes) : attrs =
   (* TODO: This is a quite coarse approximation, we need to reflect
      that parent/self structure in our AST. *)
-  c_attrs (attrs.parent_attributes @ attrs.attributes)
+  c_attrs (attrs.attributes @ attrs.parent_attributes)
 
 type extended_literal =
   | EL_Lit of literal
@@ -529,7 +529,7 @@ end) : EXPR = struct
           LocalVar
             {
               name = id.name;
-              id = LocalIdent.mk_id Cnst (MyInt64.to_int_exn id.index);
+              id = Local_ident.mk_id Cnst (MyInt64.to_int_exn id.index);
             }
       | Repeat { value; count } ->
           let value = c_expr value in
@@ -841,7 +841,7 @@ end) : EXPR = struct
         TOpaque (Concrete_ident.of_def_id Type def_id)
     | Param { index; name } ->
         (* TODO: [id] might not unique *)
-        TParam { name; id = LocalIdent.mk_id Typ (MyInt64.to_int_exn index) }
+        TParam { name; id = Local_ident.mk_id Typ (MyInt64.to_int_exn index) }
     | Error -> unimplemented [ span ] "type Error"
     | Dynamic _ -> unimplemented [ span ] "type Dynamic"
     | Generator _ -> unimplemented [ span ] "type Generator"
@@ -916,15 +916,15 @@ end) : EXPR = struct
     let ident =
       let kind =
         match (param.kind : Thir.generic_param_kind) with
-        | Lifetime _ -> LocalIdent.LILifetime
-        | Type _ -> LocalIdent.Typ
-        | Const _ -> LocalIdent.Cnst
+        | Lifetime _ -> Local_ident.LILifetime
+        | Type _ -> Local_ident.Typ
+        | Const _ -> Local_ident.Cnst
       in
       match param.name with
       | Fresh ->
           (* fail with ("[Fresh] ident? " ^ Thir.show_generic_param param) *)
           (* TODO might be wrong to just have a wildcard here *)
-          ({ name = "_"; id = LocalIdent.mk_id kind 123 } : local_ident)
+          ({ name = "_"; id = Local_ident.mk_id kind 123 } : local_ident)
       | Error -> assertion_failure [ param.span ] "[Error] ident"
       | Plain n -> local_ident kind n
     in
@@ -1164,8 +1164,8 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
         in
         let { params; constraints } = c_generics generics in
         let self =
-          let id = LocalIdent.mk_id Typ 0 (* todo *) in
-          let ident = LocalIdent.{ name = "Self"; id } in
+          let id = Local_ident.mk_id Typ 0 (* todo *) in
+          let ident = Local_ident.{ name = "Self"; id } in
           let kind = GPType { default = None } in
           { ident; span; attrs = []; kind }
         in

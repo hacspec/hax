@@ -99,7 +99,7 @@ struct
           }
     | PArray { args } -> PArray { args = List.map ~f:dpat args }
     | PConstant { lit } -> PConstant { lit }
-    | PBinding { mut; mode; var : LocalIdent.t; typ; subpat } ->
+    | PBinding { mut; mode; var : Local_ident.t; typ; subpat } ->
         PBinding
           {
             mut = dmutability span S.mutable_variable mut;
