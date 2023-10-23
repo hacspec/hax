@@ -249,7 +249,8 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
     //            ^^^
     //     method level trait obligation
     // ```
-    let (substs, source) = if let Some(assoc) = tcx.opt_associated_item(def_id) && assoc.trait_item_def_id.is_some() {
+    let (substs, source) = if let Some(assoc) = tcx.opt_associated_item(def_id) &&
+        assoc.container == rustc_middle::ty::AssocItemContainer::TraitContainer {
         // There is an associated item, and it is a trait
         use tracing::*;
         trace!("def_id: {:?}", def_id);
