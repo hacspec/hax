@@ -26,7 +26,7 @@ readme = "README.md"
 [workspace.dependencies]
 itertools = "0.11.0"
 schemars = "0.8"
-which = "4.4.0"
+which = "4.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 clap = { version = "4.0", features = ["derive"] }
@@ -37,18 +37,25 @@ syn = { version = "1.0.107", features = [
      "parsing",
      "full",
 ] }
-tracing = { version = "0.1", features = ["max_level_trace", "release_max_level_warn"] }
-tracing-subscriber = { version = "0.3", features = ["env-filter", "std", "fmt"] }
+tracing = { version = "0.1", features = [
+     "max_level_trace",
+     "release_max_level_warn",
+] }
+tracing-subscriber = { version = "0.3", features = [
+     "env-filter",
+     "std",
+     "fmt",
+] }
 tracing-tree = "^0.2"
 cargo_metadata = "0.15"
 colored = "2"
 
 # Crates in this repository
-hax-frontend-exporter = { path = "frontend/exporter" }
-hax-adt-into = { path = "frontend/exporter/adt-into" }
-hax-cli-options = { path = "cli/options" }
-hax-cli-options-engine = { path = "cli/options/engine" }
-hax-frontend-exporter-options = { path = "frontend/exporter/options" }
-hax-diagnostics = { path = "frontend/diagnostics" }
-hax-lint = { path = "frontend/lint" }
-hax-phase-debug-webapp = { path = "engine/utils/phase-debug-webapp" }
+hax-frontend-exporter = { path = "frontend/exporter", version = "=0.1.0-pre.1" }
+hax-adt-into = { path = "frontend/exporter/adt-into", version = "=0.1.0-pre.1" }
+hax-cli-options = { path = "cli/options", version = "=0.1.0-pre.1" }
+hax-cli-options-engine = { path = "cli/options/engine", version = "=0.1.0-pre.1" }
+hax-frontend-exporter-options = { path = "frontend/exporter/options", version = "=0.1.0-pre.1" }
+hax-diagnostics = { path = "frontend/diagnostics", version = "=0.1.0-pre.1" }
+hax-lint = { path = "frontend/lint", version = "=0.1.0-pre.1" }
+hax-phase-debug-webapp = { path = "engine/utils/phase-debug-webapp", version = "=0.1.0-pre.1" }
