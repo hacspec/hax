@@ -7,13 +7,13 @@ type t_CList (#v_N_QUEUES: usize) (#v_N_THREADS: usize) = {
   f_next_idxs:t_Array u8 v_N_THREADS
 }
 
+let impl__sentinel (#v_N_QUEUES #v_N_THREADS: usize) : u8 = 255uy
+
 let impl__new (#v_N_QUEUES #v_N_THREADS: usize) : t_CList v_N_QUEUES v_N_THREADS =
   {
     f_tail = Rust_primitives.Hax.repeat (impl__sentinel <: u8) v_N_QUEUES;
     f_next_idxs = Rust_primitives.Hax.repeat (impl__sentinel <: u8) v_N_THREADS
   }
-
-let impl__sentinel (#v_N_QUEUES #v_N_THREADS: usize) : u8 = 255uy
 
 let impl__is_empty (#v_N_QUEUES #v_N_THREADS: usize) (self: t_CList v_N_QUEUES v_N_THREADS) (rq: u8)
     : bool = (self.f_tail.[ cast rq <: usize ] <: u8) =. (impl__sentinel <: u8)
@@ -28,58 +28,113 @@ let impl__push (#v_N_QUEUES #v_N_THREADS: usize) (self: t_CList v_N_QUEUES v_N_T
           <:
           Rust_primitives.Hax.t_Never)
   in
-  let output:Prims.unit =
+  let self, output:(t_CList v_N_QUEUES v_N_THREADS & Prims.unit) =
     if (self.f_next_idxs.[ cast n <: usize ] <: u8) =. (impl__sentinel <: u8)
     then
       if (self.f_tail.[ cast rq <: usize ] <: u8) =. (impl__sentinel <: u8)
       then
-        let _:Prims.unit = Rust_primitives.Hax.failure "" "(self.f_tail[cast(rq)] = n)" in
-        let _:Prims.unit = Rust_primitives.Hax.failure "" "(self.f_next_idxs[cast(n)] = n)" in
-        ()
+        let self:t_CList v_N_QUEUES v_N_THREADS =
+          {
+            self with
+            f_tail
+            =
+            Rust_primitives.Hax.update_at (self.f_tail <: t_CList v_N_QUEUES v_N_THREADS)
+              (cast rq <: usize)
+              n
+          }
+        in
+        let self:t_CList v_N_QUEUES v_N_THREADS =
+          {
+            self with
+            f_next_idxs
+            =
+            Rust_primitives.Hax.update_at (self.f_next_idxs <: t_CList v_N_QUEUES v_N_THREADS)
+              (cast n <: usize)
+              n
+          }
+        in
+        self, ()
       else
-        let _:Prims.unit =
-          Rust_primitives.Hax.failure ""
-            "(self.f_next_idxs[cast(n)] = core::ops::index::Index::index(\n        proj_riot_rs_runqueue::runqueue::clist::f_next_idxs(self),\n        cast(core::ops::index::Index::index(\n            proj_riot_rs_runqueue::runqueue::clist::f_tail(self),\n            cast(rq),\n        )),\n    ))"
-
+        let self:t_CList v_N_QUEUES v_N_THREADS =
+          {
+            self with
+            f_next_idxs
+            =
+            Rust_primitives.Hax.update_at (self.f_next_idxs <: t_CList v_N_QUEUES v_N_THREADS)
+              (cast n <: usize)
+              (self.f_next_idxs.[ cast (self.f_tail.[ cast rq <: usize ] <: u8) <: usize ] <: u8)
+          }
         in
-        let _:Prims.unit =
-          Rust_primitives.Hax.failure ""
-            "(self.f_next_idxs[cast(core::ops::index::Index::index(\n        proj_riot_rs_runqueue::runqueue::clist::f_tail(self),\n        cast(rq),\n    ))] = n)"
-
+        let self:t_CList v_N_QUEUES v_N_THREADS =
+          {
+            self with
+            f_next_idxs
+            =
+            Rust_primitives.Hax.update_at (self.f_next_idxs <: t_CList v_N_QUEUES v_N_THREADS)
+              (cast (self.f_tail.[ cast rq <: usize ] <: u8) <: usize)
+              n
+          }
         in
-        let _:Prims.unit = Rust_primitives.Hax.failure "" "(self.f_tail[cast(rq)] = n)" in
-        ()
+        let self:t_CList v_N_QUEUES v_N_THREADS =
+          {
+            self with
+            f_tail
+            =
+            Rust_primitives.Hax.update_at (self.f_tail <: t_CList v_N_QUEUES v_N_THREADS)
+              (cast rq <: usize)
+              n
+          }
+        in
+        self, ()
+    else self, ()
   in
   self
 
 let impl__pop_head (#v_N_QUEUES #v_N_THREADS: usize) (self: t_CList v_N_QUEUES v_N_THREADS) (rq: u8)
     : (t_CList v_N_QUEUES v_N_THREADS & Core.Option.t_Option u8) =
-  let output:Core.Option.t_Option u8 =
+  let self, output:(t_CList v_N_QUEUES v_N_THREADS & Core.Option.t_Option u8) =
     if (self.f_tail.[ cast rq <: usize ] <: u8) =. (impl__sentinel <: u8)
-    then Core.Option.Option_None
+    then self, Core.Option.Option_None
     else
       let head:u8 = self.f_next_idxs.[ cast (self.f_tail.[ cast rq <: usize ] <: u8) <: usize ] in
-      let _:Prims.unit =
+      let self:t_CList v_N_QUEUES v_N_THREADS =
         if head =. (self.f_tail.[ cast rq <: usize ] <: u8)
         then
-          let _:Prims.unit =
-            Rust_primitives.Hax.failure ""
-              "(self.f_tail[cast(rq)] = riot_rs_runqueue::runqueue::clist::impl__sentinel())"
+          let self:t_CList v_N_QUEUES v_N_THREADS =
+            {
+              self with
+              f_tail
+              =
+              Rust_primitives.Hax.update_at (self.f_tail <: t_CList v_N_QUEUES v_N_THREADS)
+                (cast rq <: usize)
+                (impl__sentinel <: u8)
+            }
           in
-          ()
+          self
         else
-          let _:Prims.unit =
-            Rust_primitives.Hax.failure ""
-              "(self.f_next_idxs[cast(core::ops::index::Index::index(\n        proj_riot_rs_runqueue::runqueue::clist::f_tail(self),\n        cast(rq),\n    ))] = core::ops::index::Index::index(\n        proj_riot_rs_runqueue::runqueue::clist::f_next_idxs(self),\n        cast(head),\n    ))"
-
+          let self:t_CList v_N_QUEUES v_N_THREADS =
+            {
+              self with
+              f_next_idxs
+              =
+              Rust_primitives.Hax.update_at (self.f_next_idxs <: t_CList v_N_QUEUES v_N_THREADS)
+                (cast (self.f_tail.[ cast rq <: usize ] <: u8) <: usize)
+                (self.f_next_idxs.[ cast head <: usize ] <: u8)
+            }
           in
-          ()
+          self
       in
-      let _:Prims.unit =
-        Rust_primitives.Hax.failure ""
-          "(self.f_next_idxs[cast(head)] = riot_rs_runqueue::runqueue::clist::impl__sentinel())"
+      let self:t_CList v_N_QUEUES v_N_THREADS =
+        {
+          self with
+          f_next_idxs
+          =
+          Rust_primitives.Hax.update_at (self.f_next_idxs <: t_CList v_N_QUEUES v_N_THREADS)
+            (cast head <: usize)
+            (impl__sentinel <: u8)
+        }
       in
-      Core.Option.Option_Some head
+      self, Core.Option.Option_Some head
   in
   self, output
 
@@ -96,14 +151,20 @@ let impl__peek_head
 
 let impl__advance (#v_N_QUEUES #v_N_THREADS: usize) (self: t_CList v_N_QUEUES v_N_THREADS) (rq: u8)
     : t_CList v_N_QUEUES v_N_THREADS =
-  let output:Prims.unit =
+  let self, output:(t_CList v_N_QUEUES v_N_THREADS & Prims.unit) =
     if (self.f_tail.[ cast rq <: usize ] <: u8) <>. (impl__sentinel <: u8)
     then
-      let _:Prims.unit =
-        Rust_primitives.Hax.failure ""
-          "(self.f_tail[cast(rq)] = core::ops::index::Index::index(\n        proj_riot_rs_runqueue::runqueue::clist::f_next_idxs(self),\n        cast(core::ops::index::Index::index(\n            proj_riot_rs_runqueue::runqueue::clist::f_tail(self),\n            cast(rq),\n        )),\n    ))"
-
+      let self:t_CList v_N_QUEUES v_N_THREADS =
+        {
+          self with
+          f_tail
+          =
+          Rust_primitives.Hax.update_at (self.f_tail <: t_CList v_N_QUEUES v_N_THREADS)
+            (cast rq <: usize)
+            (self.f_next_idxs.[ cast (self.f_tail.[ cast rq <: usize ] <: u8) <: usize ] <: u8)
+        }
       in
-      ()
+      self, ()
+    else self, ()
   in
   self
