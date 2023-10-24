@@ -483,6 +483,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "riot-rs-runqueue"
+version = "0.1.2"
+
+[[package]]
 name = "rustversion"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"

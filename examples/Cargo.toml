@@ -1,7 +1,3 @@
 [workspace]
-members = [
-     "chacha20",
-     "limited-order-book",
-     "sha256",
-]
+members = ["chacha20", "limited-order-book", "sha256", "riot-rs-runqueue"]
 resolver = "2"
