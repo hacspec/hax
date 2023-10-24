@@ -14,6 +14,8 @@ pub enum ImplSourceKind {
     AutoImpl(ImplSourceAutoImplData),
     /// When using a function pointer as an object implementing `Fn`, `FnMut`, etc.
     FnPointer(ImplSourceFnPointerData),
+    /// When the resolution failed
+    Error(String),
 }
 
 /// We extend the impl source information with predicate information, in order
@@ -376,75 +378,87 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     let tcx = s.base().tcx;
 
     use rustc_trait_selection::traits::ImplSource as RustImplSource;
-    let kind = match select_trait_candidate(tcx, param_env, trait_ref).unwrap() {
-        RustImplSource::UserDefined(rustc_trait_selection::traits::ImplSourceUserDefinedData {
-            impl_def_id,
-            substs,
-            nested,
-        }) => ImplSourceKind::UserDefined(ImplSourceUserDefinedData {
-            impl_def_id: impl_def_id.sinto(s),
-            substs: substs.sinto(s),
-            nested: solve_obligations(s, nested),
-        }),
-        RustImplSource::Param(obligations, constness) => {
-            // We preserve the trait ref, because we will need it to figure out
-            // **which** where clause actually solves this trait obligation.
-            let trait_ref = trait_ref.sinto(s);
-            let obligations = solve_obligations(s, obligations);
-            let constness = constness.sinto(s);
-            ImplSourceKind::Param(trait_ref, obligations, constness)
-        }
-        RustImplSource::Object(rustc_trait_selection::traits::ImplSourceObjectData {
-            upcast_trait_ref,
-            vtable_base,
-            nested,
-        }) => {
-            ImplSourceKind::Object(ImplSourceObjectData {
-                upcast_trait_ref: upcast_trait_ref.sinto(s),
-                // TODO: we probably need to add information for the vtable
-                vtable_base,
-                nested: solve_obligations(s, nested),
-            })
-        }
-        RustImplSource::Builtin(rustc_trait_selection::traits::ImplSourceBuiltinData {
-            nested,
-        }) => {
-            // Same as for the Param case: we preserve the trait ref
-            let trait_ref = trait_ref.sinto(s);
-            ImplSourceKind::Builtin(trait_ref, solve_obligations(s, nested))
-        }
-        RustImplSource::TraitUpcasting(
-            rustc_trait_selection::traits::ImplSourceTraitUpcastingData {
-                upcast_trait_ref,
-                vtable_vptr_slot,
-                nested,
-            },
-        ) => {
-            ImplSourceKind::TraitUpcasting(ImplSourceTraitUpcastingData {
-                upcast_trait_ref: upcast_trait_ref.sinto(s),
-                // TODO: we probably need to add information for the vtable
-                vtable_vptr_slot,
-                nested: solve_obligations(s, nested),
-            })
-        }
-        RustImplSource::AutoImpl(rustc_trait_selection::traits::ImplSourceAutoImplData {
-            trait_def_id,
-            nested,
-        }) => ImplSourceKind::AutoImpl(ImplSourceAutoImplData {
-            trait_def_id: trait_def_id.sinto(s),
-            nested: nested.iter().map(|x| format!("{:?}", x)).collect(),
-        }),
-        // Happens when we use a function pointer as an object implementing
-        // a trait like `FnMut`
-        RustImplSource::FnPointer(rustc_trait_selection::traits::ImplSourceFnPointerData {
-            fn_ty,
-            nested,
-        }) => ImplSourceKind::FnPointer(ImplSourceFnPointerData {
-            fn_ty: fn_ty.sinto(s),
-            nested: solve_obligations(s, nested),
-        }),
-        impl_source => {
-            unimplemented!("impl source: {:?}", impl_source)
+    use std::result::Result::*;
+    let kind = match select_trait_candidate(tcx, param_env, trait_ref) {
+        Err(e) => ImplSourceKind::Error(format!(
+            "Error ({:?}) when solving trait obligation: {:?}",
+            e, trait_ref
+        )),
+        Ok(kind) => {
+            match kind {
+                RustImplSource::UserDefined(
+                    rustc_trait_selection::traits::ImplSourceUserDefinedData {
+                        impl_def_id,
+                        substs,
+                        nested,
+                    },
+                ) => ImplSourceKind::UserDefined(ImplSourceUserDefinedData {
+                    impl_def_id: impl_def_id.sinto(s),
+                    substs: substs.sinto(s),
+                    nested: solve_obligations(s, nested),
+                }),
+                RustImplSource::Param(obligations, constness) => {
+                    // We preserve the trait ref, because we will need it to figure out
+                    // **which** where clause actually solves this trait obligation.
+                    let trait_ref = trait_ref.sinto(s);
+                    let obligations = solve_obligations(s, obligations);
+                    let constness = constness.sinto(s);
+                    ImplSourceKind::Param(trait_ref, obligations, constness)
+                }
+                RustImplSource::Object(rustc_trait_selection::traits::ImplSourceObjectData {
+                    upcast_trait_ref,
+                    vtable_base,
+                    nested,
+                }) => {
+                    ImplSourceKind::Object(ImplSourceObjectData {
+                        upcast_trait_ref: upcast_trait_ref.sinto(s),
+                        // TODO: we probably need to add information for the vtable
+                        vtable_base,
+                        nested: solve_obligations(s, nested),
+                    })
+                }
+                RustImplSource::Builtin(rustc_trait_selection::traits::ImplSourceBuiltinData {
+                    nested,
+                }) => {
+                    // Same as for the Param case: we preserve the trait ref
+                    let trait_ref = trait_ref.sinto(s);
+                    ImplSourceKind::Builtin(trait_ref, solve_obligations(s, nested))
+                }
+                RustImplSource::TraitUpcasting(
+                    rustc_trait_selection::traits::ImplSourceTraitUpcastingData {
+                        upcast_trait_ref,
+                        vtable_vptr_slot,
+                        nested,
+                    },
+                ) => {
+                    ImplSourceKind::TraitUpcasting(ImplSourceTraitUpcastingData {
+                        upcast_trait_ref: upcast_trait_ref.sinto(s),
+                        // TODO: we probably need to add information for the vtable
+                        vtable_vptr_slot,
+                        nested: solve_obligations(s, nested),
+                    })
+                }
+                RustImplSource::AutoImpl(
+                    rustc_trait_selection::traits::ImplSourceAutoImplData {
+                        trait_def_id,
+                        nested,
+                    },
+                ) => ImplSourceKind::AutoImpl(ImplSourceAutoImplData {
+                    trait_def_id: trait_def_id.sinto(s),
+                    nested: nested.iter().map(|x| format!("{:?}", x)).collect(),
+                }),
+                // Happens when we use a function pointer as an object implementing
+                // a trait like `FnMut`
+                RustImplSource::FnPointer(
+                    rustc_trait_selection::traits::ImplSourceFnPointerData { fn_ty, nested },
+                ) => ImplSourceKind::FnPointer(ImplSourceFnPointerData {
+                    fn_ty: fn_ty.sinto(s),
+                    nested: solve_obligations(s, nested),
+                }),
+                impl_source => {
+                    unimplemented!("impl source: {:?}", impl_source)
+                }
+            }
         }
     };
 
@@ -491,9 +505,6 @@ pub fn get_trait_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     use rustc_middle::ty::TraitRef;
     let tr_ref = TraitRef::new(tcx, tr, substs);
     let tr_ref = rustc_middle::ty::Binder::dummy(tr_ref);
-
-    // Check if we can resolve - not sure if really necessary
-    let _ = tcx.codegen_select_candidate((param_env, tr_ref)).unwrap();
 
     // Get the full trait information
     get_trait_info_for_trait_ref(s, ref_def_id, param_env, tr_ref)
@@ -545,6 +556,11 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     let (all_generics, truncated_generics) = match &mut impl_source.kind {
         ImplSourceKind::UserDefined(data) => update_generics(&data.impl_def_id, &mut data.substs),
         ImplSourceKind::Param(trait_ref, _, _) => {
+            update_generics(&trait_ref.value.def_id, &mut trait_ref.value.generic_args)
+        }
+        ImplSourceKind::Error(_) => {
+            // We do something similar to the param case
+            let mut trait_ref = trait_ref.sinto(s);
             update_generics(&trait_ref.value.def_id, &mut trait_ref.value.generic_args)
         }
         ImplSourceKind::Object(_data) => {
@@ -699,8 +715,37 @@ pub fn solve_item_traits<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             // given by the definition we are exploring, and they should already
             // be in the param environment. So I just wrap in a dummy binder
             // (this also seems to work so far).
-            let trait_ref = rustc_middle::ty::Binder::dummy(trait_pred.trait_ref);
-            trait_infos.push(solve_trait(s, param_env, trait_ref));
+            //
+            // Also, we can't wrap in a dummy binder if there are escaping bound vars.
+            // For now, we fail if there are escaping bound vars.
+            // **SH:** I encountered this issue several times, but the "error"
+            // clause never made it to the final code. I think it is because it
+            // was introduced when computing the "full trait ref" information.
+            let trait_ref = trait_pred.trait_ref;
+            use crate::rustc_middle::ty::TypeVisitableExt;
+            let trait_info = if trait_ref.has_escaping_bound_vars() {
+                // Error
+                let kind =
+                    ImplSourceKind::Error(format!("{:?} has escaping bound vars", trait_ref));
+                let trait_ref = {
+                    let tr = trait_ref.sinto(s);
+                    let traits =
+                        solve_item_traits(s, param_env, trait_ref.def_id, trait_ref.substs);
+                    FullTraitRef {
+                        def_id: tr.def_id,
+                        generic_args: tr.generic_args,
+                        traits,
+                    }
+                };
+
+                ImplSource { kind, trait_ref }
+            } else {
+                // Ok
+                let trait_ref = rustc_middle::ty::Binder::dummy(trait_pred.trait_ref);
+                solve_trait(s, param_env, trait_ref)
+            };
+
+            trait_infos.push(trait_info);
         }
     }
     trait_infos
