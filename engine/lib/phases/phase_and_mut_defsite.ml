@@ -193,7 +193,7 @@ struct
                 |> Option.value_or_thunk ~default:(fun () ->
                        Error.assertion_failure span
                        @@ "Place.of_expr: got `None` for: "
-                       ^ Print_rust.pexpr_str (UB.LiftToFullAst.expr e))
+                       ^ Print_rust.pexpr_str (UB.LiftToFullAst.expr lhs))
                 |> place_to_lhs
               in
               Assign { lhs; e; witness }
