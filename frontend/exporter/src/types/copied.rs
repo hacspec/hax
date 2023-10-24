@@ -3015,15 +3015,26 @@ pub struct Lifetime {
     pub res: LifetimeName,
 }
 
-#[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx> + HasOwnerId>, from: rustc_middle::ty::TraitRef<'tcx>, state: S as tcx)]
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub struct TraitRef {
     pub def_id: DefId,
-    #[from(substs)]
     pub generic_args: Vec<GenericArg>,
+    pub trait_refs : Vec<ImplSource>,
+}
+
+impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, TraitRef>
+    for rustc_middle::ty::TraitRef<'tcx>
+{
+    fn sinto(&self, s: &S) -> TraitRef {
+        let def_id = self.def_id.sinto(s);
+        let generic_args = self.substs.sinto(s);
+
+        let param_env = s.base().tcx.param_env(s.owner_id());
+        let trait_refs = solve_item_traits(s, param_env, self.def_id, self.substs);
+        TraitRef { def_id, generic_args, trait_refs }
+    }
 }
 
 #[derive(
