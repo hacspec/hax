@@ -36,7 +36,7 @@ Note:
 - [`nodejs`](https://nodejs.org/)
 - [`jq`](https://jqlang.github.io/jq/)
 
-2. Clone this repo: `git clone git@github.com:hacspec/hacspec-v2.git && cd hacspec-v2`
+2. Clone this repo: `git clone git@github.com:hacspec/hax.git && cd hax`
 3. Run the [setup.sh](./setup.sh) script: `./setup.sh`.
 4. Run `cargo-hax --help`
 
@@ -61,11 +61,11 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 
 + Run hax on a crate to get F\*/Coq/...:
    - `cd path/to/your/crate`
-   - `nix run github:hacspec/hacspec-v2 -- into fstar`  
-      will create `fst` modules in the directory `hax/extraction/fstar`.  
+   - `nix run github:hacspec/hax -- into fstar`
+      will create `fst` modules in the directory `hax/extraction/fstar`.
       *Note: replace `fstar` by your backend of choice*
 
-+ Install the tool:  `nix profile install github:hacspec/hacspec-v2`
++ Install the tool:  `nix profile install github:hacspec/hax`
    - then run `cargo hax --help` anywhere
 
 </details>
@@ -73,9 +73,9 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 <details>
   <summary><b>Using Docker</b></summary>
 
-1. Clone this repo: `git clone git@github.com:hacspec/hacspec-v2.git && cd hacspec-v2`
-3. Build the docker image: `docker build -f .docker/Dockerfile . -t hacspec-v2`
-4. Get a shell: `docker run -it --rm -v /some/dir/with/a/crate:/work hacspec-v2 bash`
+1. Clone this repo: `git clone git@github.com:hacspec/hax.git && cd hax`
+3. Build the docker image: `docker build -f .docker/Dockerfile . -t hax`
+4. Get a shell: `docker run -it --rm -v /some/dir/with/a/crate:/work hax bash`
 5. You can now run `cargo-hax --help` (notice here we use `cargo-hax` instead of `cargo hax`)
 
 </details>
