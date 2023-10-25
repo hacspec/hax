@@ -789,6 +789,11 @@ module Make (F : Features.T) = struct
           let* place = of_expr place in
           wrap @@ FieldProjection { place; projector }
       | App { f = { e = GlobalVar f; _ }; args = [ place; index ] }
+        when Global_ident.eq_name Core__ops__index__Index__index f ->
+          let* place = of_expr place in
+          let place = IndexProjection { place; index } in
+          Some { place; span = e.span; typ = e.typ }
+      | App { f = { e = GlobalVar f; _ }; args = [ place; index ] }
         when Global_ident.eq_name Core__ops__index__IndexMut__index_mut f ->
           (* Note that here, we allow any type to be `index_mut`ed:
              Hax translates that to `Rust_primitives.Hax.update_at`.
