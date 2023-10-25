@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#[warn(non_camel_case_types)]
 
 enum Foo {
     A,
