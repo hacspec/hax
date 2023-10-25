@@ -7,6 +7,6 @@ pub enum E {
 
 pub fn bar(x: E) {
     match x {
-        E::A | E::B => ()
+        E::A | E::B => (),
     }
 }
