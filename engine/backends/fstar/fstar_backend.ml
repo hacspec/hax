@@ -337,7 +337,8 @@ struct
           typ = _ (* we skip type annot here *);
         } ->
         F.pat @@ F.AST.PatVar (plocal_ident var, None, [])
-    | POr { subpats } -> Error.unimplemented p.span ~details:"ppat:Disjuntive patterns"
+    | POr { subpats } ->
+        Error.unimplemented p.span ~details:"ppat:Disjuntive patterns"
     | PArray { args } -> F.pat @@ F.AST.PatList (List.map ~f:ppat args)
     | PConstruct { name = `TupleCons 0; args = [] } ->
         F.pat @@ F.AST.PatConst F.Const.Const_unit

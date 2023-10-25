@@ -209,8 +209,7 @@ struct
           typ = _ (* we skip type annot here *);
         } ->
         C.AST.Ident var.name
-    | POr { subpats } ->
-       C.AST.DisjunctivePat (List.map ~f:ppat subpats)
+    | POr { subpats } -> C.AST.DisjunctivePat (List.map ~f:ppat subpats)
     | PArray { args } -> __TODO_pat__ p.span "Parray?"
     | PConstruct { name = `TupleCons 0; args = [] } -> C.AST.UnitPat
     | PConstruct { name = `TupleCons 1; args = [ { pat } ] } ->
