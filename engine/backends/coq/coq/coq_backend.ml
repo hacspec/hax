@@ -216,12 +216,12 @@ struct
     | PConstruct { name = `TupleCons 1; args = [ { pat } ] } ->
         __TODO_pat__ p.span "tuple 1"
     | PConstruct { name = `TupleCons n; args } ->
-        C.AST.TuplePat (List.map ~f:ppat args)
+        C.AST.TuplePat (List.map ~f:(fun { pat } -> ppat pat) args)
     | PConstruct { name; args; is_record = true } ->
         C.AST.RecordPat (pglobal_ident name, pfield_pats args)
     | PConstruct { name; args; is_record = false } ->
         C.AST.ConstructorPat
-          (pglobal_ident name, List.map ~f:ppat args)
+          (pglobal_ident name, List.map ~f:(fun p -> ppat p.pat) args)
     | PConstant { lit } -> C.AST.Lit (pliteral p.span lit)
     | PDeref { subpat } -> __TODO_pat__ p.span "deref"
     | _ -> .
