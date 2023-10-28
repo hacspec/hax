@@ -375,7 +375,10 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
 ) -> ImplSource {
+    // Normalize the trait reference (TODO: we do this because for now
+    // [select_trait_candidate] expects the input to be fully normalized).
     let tcx = s.base().tcx;
+    let trait_ref = tcx.normalize_erasing_regions(param_env, trait_ref);
 
     use rustc_trait_selection::traits::ImplSource as RustImplSource;
     use std::result::Result::*;
