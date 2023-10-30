@@ -7,6 +7,7 @@ homepage.workspace = true
 edition.workspace = true
 repository.workspace = true
 readme.workspace = true
+description = "hax frontend exporter helper crate"
 
 [package.metadata.rust-analyzer]
 rustc_private=true

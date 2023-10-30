@@ -8,6 +8,7 @@ edition.workspace = true
 repository.workspace = true
 readme.workspace = true
 build = "build.rs"
+description = "hax cli options"
 
 [dependencies]
 serde.workspace = true
@@ -16,4 +17,3 @@ schemars.workspace = true
 clap.workspace = true
 hax-frontend-exporter-options.workspace = true
 path-clean = "1.0.1"
-
