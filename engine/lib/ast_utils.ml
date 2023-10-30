@@ -457,6 +457,13 @@ module Make (F : Features.T) = struct
     | TApp { ident = `TupleType 1; args = [ GType t ] } -> remove_tuple1 t
     | _ -> t
 
+  let remove_unsize (e : expr) : expr =
+    match e.e with
+    | App { f = { e = GlobalVar f; _ }; args = [ e ] }
+      when Global_ident.eq_name Rust_primitives__unsize f ->
+        e
+    | _ -> e
+
   (* let rec remove_empty_tap *)
 
   let is_unit_typ : ty -> bool =
