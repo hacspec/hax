@@ -7,8 +7,6 @@ class t_Index t_Self t_Idx = {
 }
 
 open Rust_primitives
-open Core.Ops.Index
-
 instance impl__index t l n: t_Index (t_Array t l) (int_t n)
   = { f_Output = t;
       in_range = (fun (s: t_Array t l) (i: int_t n) -> v i >= 0 && v i < v l);

@@ -22,3 +22,4 @@ instance impl__index t n: t_Index (t_Slice t) (int_t n)
       f_index = (fun s i -> Seq.index s (v i));
     }
 
+let impl__copy_from_slice #t (x:t -> t_Slice t) (y:t_Slice t) : t_Slice t = y
