@@ -26,13 +26,6 @@ Note:
  * The subcommand `cargo hax into` takes also options, list them with `cargo hax into --help`.
 
 ## Installation
-
-Install the latest release from crates.io with
-
-```bash
-cargo +nightly-2023-06-02 install hax-subcommands
-```
-
 <details>
   <summary><b>Manual installation</b></summary>
 

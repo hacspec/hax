@@ -1,5 +1,5 @@
 [package]
-name = "hax-subcommands"
+name = "cargo-hax"
 version.workspace = true
 authors.workspace = true
 license.workspace = true
