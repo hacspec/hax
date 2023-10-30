@@ -524,21 +524,24 @@ struct
         F.pat
         @@ F.AST.PatAscribed (F.pat_var_tcresolve @@ Some ("i" ^ id), (tc, None))
 
-  let rec pgeneric_param_bd span (p : generic_param) =
+  let rec pgeneric_param_bd
+      ?(aqual : F.AST.arg_qualifier option = Some FStar_Parser_AST.Implicit)
+      span (p : generic_param) =
     let ident = p.ident in
     match p.kind with
     | GPLifetime _ -> .
     | GPType { default = _ } ->
         let t = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
-        F.mk_binder ~aqual:Implicit (F.AST.Annotated (plocal_ident ident, t))
+        F.mk_binder ~aqual (F.AST.Annotated (plocal_ident ident, t))
     | GPType _ ->
         Error.unimplemented span ~details:"pgeneric_param_bd:Type with default"
     | GPConst { typ } ->
-        F.mk_binder ~aqual:Implicit
-          (F.AST.Annotated (plocal_ident ident, pty span typ))
+        F.mk_binder ~aqual (F.AST.Annotated (plocal_ident ident, pty span typ))
 
-  let pgeneric_param_ident span (p : generic_param) =
-    match (pgeneric_param_bd span p).b with
+  let pgeneric_param_ident
+      ?(aqual : F.AST.arg_qualifier option = Some FStar_Parser_AST.Implicit)
+      span (p : generic_param) =
+    match (pgeneric_param_bd ~aqual span p).b with
     | Annotated (ident, _) -> ident
     | _ -> failwith "pgeneric_param_ident"
 
@@ -559,8 +562,10 @@ struct
         battributes = [];
       }
 
-  let pgenerics span generics =
-    List.map ~f:(pgeneric_param_bd span) generics.params
+  let pgenerics
+      ?(aqual : F.AST.arg_qualifier option = Some FStar_Parser_AST.Implicit)
+      span generics =
+    List.map ~f:(pgeneric_param_bd ~aqual span) generics.params
     @ List.map ~f:(pgeneric_constraint_bd span) generics.constraints
 
   let get_attr (type a) (name : string) (map : string -> a) (attrs : attrs) :
@@ -782,7 +787,7 @@ struct
                [
                  F.AST.TyconRecord
                    ( F.id @@ U.Concrete_ident_view.to_definition_name name,
-                     pgenerics e.span generics,
+                     pgenerics ~aqual:None e.span generics,
                      None,
                      [],
                      List.map
@@ -845,7 +850,7 @@ struct
                [
                  F.AST.TyconVariant
                    ( F.id @@ U.Concrete_ident_view.to_definition_name name,
-                     pgenerics e.span generics,
+                     pgenerics ~aqual:None e.span generics,
                      None,
                      constructors );
                ] )
@@ -1013,10 +1018,10 @@ struct
                 match ii_v with
                 | IIFn { body; params } ->
                     let pats =
-                      List.map ~f:(pgeneric_param ii_span) generics.params
+                      List.map ~f:(pgeneric_param ii_span) ii_generics.params
                       @ List.mapi
                           ~f:(pgeneric_constraint ii_span)
-                          generics.constraints
+                          ii_generics.constraints
                       @ List.map
                           ~f:(fun { pat; typ_span; typ } ->
                             let span = Option.value ~default:ii_span typ_span in
