@@ -46,6 +46,7 @@ struct
     let expect_mut_borrow_of_place_or_pure_expr (e : A.expr) :
         (Place.t, A.expr) Either.t option =
       let e = UA.Mappers.normalize_borrow_mut#visit_expr () e in
+      let e = UA.remove_unsize e in
       let* e = UA.Expect.mut_borrow e in
       Option.some
       @@
