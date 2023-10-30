@@ -119,6 +119,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "cargo-hax"
+version = "0.1.0-pre.1"
+dependencies = [
+ "clap",
+ "colored",
+ "hax-cli-options",
+ "hax-cli-options-engine",
+ "hax-diagnostics",
+ "hax-frontend-exporter",
+ "hax-frontend-exporter-options",
+ "hax-lib-macros-types",
+ "is-terminal",
+ "itertools",
+ "paste",
+ "path-clean",
+ "rustup-toolchain",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "toml 0.8.3",
+ "version_check",
+ "which",
+]
+
+[[package]]
 name = "cargo-platform"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -519,32 +545,6 @@ name = "hax-phase-debug-webapp"
 version = "0.1.0-pre.1"
 dependencies = [
  "tiny_http",
-]
-
-[[package]]
-name = "hax-subcommands"
-version = "0.1.0-pre.1"
-dependencies = [
- "clap",
- "colored",
- "hax-cli-options",
- "hax-cli-options-engine",
- "hax-diagnostics",
- "hax-frontend-exporter",
- "hax-frontend-exporter-options",
- "hax-lib-macros-types",
- "is-terminal",
- "itertools",
- "paste",
- "path-clean",
- "rustup-toolchain",
- "schemars",
- "serde",
- "serde_json",
- "tempfile",
- "toml 0.8.3",
- "version_check",
- "which",
 ]
 
 [[package]]
