@@ -74,3 +74,7 @@ trait FooTrait {
 impl FooTrait for Foo {
     fn z(&mut self) {}
 }
+
+fn array(x: &mut [u8; 10]) {
+    x[1] = x[2];
+}
