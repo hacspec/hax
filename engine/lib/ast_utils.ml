@@ -817,7 +817,7 @@ module Make (F : Features.T) = struct
           call' projector [ e ] p.span p.typ
       | IndexProjection { place; index } ->
           let e = to_expr place in
-          call Core__ops__index__IndexMut__index_mut [ e; index ] p.span p.typ
+          call Core__ops__index__Index__index [ e; index ] p.span p.typ
 
     let expect_deref_mut (p : t) : t option =
       match p.place with
