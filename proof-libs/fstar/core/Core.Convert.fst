@@ -52,3 +52,6 @@ instance from_id a: t_From a a = {
   f_from = (fun x -> x)
 }
 
+class t_AsRef self t = {
+  f_as_ref:  self -> t;
+}
