@@ -39,6 +39,7 @@ functor
         | NameTy of string
         | RecordTy of string * (string * ty) list
         | Product of ty list
+        | Coproduct of ty list
         | Arrow of ty * ty
         | ArrayTy of ty * string (* int *)
         | SliceTy of ty
@@ -120,6 +121,7 @@ functor
         | TermDef of term
 
       type decl =
+        | MultipleDecls of decl list
         | Unimplemented of string
         | Comment of string
         | Definition of definition_type
@@ -159,13 +161,19 @@ functor
       match x with
       | AST.WildTy -> "_"
       | AST.Bool -> Lib.Notation.bool_str
+      | AST.Coproduct [] -> "⊥"
+      | AST.Coproduct l ->
+        let ty_str = String.concat ~sep:(" " ^ "∐" ^ " ") (List.map ~f:ty_to_string l) in
+        "(" ^ ty_str ^ ")"
       | AST.Product [] | AST.Unit -> Lib.Notation.unit_str
       | AST.TypeTy -> Lib.Notation.type_str
       | AST.Int { size = AST.USize; signed } -> "uint_size"
       | AST.Int { size; signed } -> "int" ^ int_size_to_string size
       | AST.NameTy s -> s
       | AST.RecordTy (name, fields) -> (* [ AST.Record (name, fields) ] *) name
-      | AST.Product l -> "(" ^ product_to_string l (" " ^ "×" ^ " ") ^ ")"
+      | AST.Product l ->
+        let ty_str = String.concat ~sep:(" " ^ "×" ^ " ") (List.map ~f:ty_to_string l) in
+        "(" ^ ty_str ^ ")"
       | AST.Arrow (a, b) ->
           let a_ty_str = ty_to_string a in
           let b_ty_str = ty_to_string b in
@@ -181,7 +189,7 @@ functor
       (*     let ty_defs, ty_str = ty_to_string y in *)
       (*     (ty_defs, i ^ " " ^ ty_str) *)
       | AST.AppTy (i, p) ->
-          let ty_str = product_to_string p ") (" in
+          let ty_str = String.concat ~sep:") (" (List.map ~f:ty_to_string p) in
           ty_to_string i ^ " " ^ "(" ^ ty_str ^ ")"
       | AST.NatMod (t, i, s) ->
           (* [ *)
@@ -223,22 +231,6 @@ functor
           ^ "," ^ " " ^ ty_to_string ty
       | _ -> .
 
-    and product_to_string (x : AST.ty list) (sep : string) : string =
-      match x with
-      | [ y ] -> ty_to_string y
-      | y :: ys ->
-          let ty_str = ty_to_string y in
-          let ys_str = product_to_string ys sep in
-          ty_str ^ sep ^ ys_str
-      | [] -> ""
-    (* and record_fields_to_string (x : (string * AST.ty) list) : AST.decl list * string = *)
-    (*   match x with *)
-    (*   | (name, ty) :: xs -> *)
-    (*      let ty_def, ty_str = ty_to_string ty in *)
-    (*      let xs_def, xs_str = record_fields_to_string xs in *)
-    (*      ty_def @ xs_def, newline_indent 1 ^ name ^ ":" ^ " " ^ ty_str ^ ";" ^ xs_str *)
-    (*   | _ -> [], "" *)
-
     let literal_to_string (x : AST.literal) : string =
       match x with
       | Const_string s -> s
@@ -257,34 +249,20 @@ functor
       | AST.ConstructorPat (name, args) ->
           name ^ " " ^ String.concat ~sep:" "
           @@ List.map ~f:(fun pat -> pat_to_string pat true depth) args
+      | AST.RecordPat (name, []) -> "(* Empty Record *)" (* TODO *)
       | AST.RecordPat (name, args) ->
           (* name ^ " " ^ *)
-          "{|"
-          ^ record_pat_to_string args (depth + 1)
-          ^ newline_indent depth ^ "|}"
+        "{|"
+        ^ String.concat ~sep:(";") (List.map ~f:(fun (name, pat) -> newline_indent (depth+1) ^ name ^ " " ^ ":=" ^ " " ^ pat_to_string pat true (depth+1)) args)
+        ^ newline_indent depth ^ "|}"
+      | AST.TuplePat [] -> "todo empty tuple pattern?"
       | AST.TuplePat vals ->
-          tick_if is_top_expr ^ "(" ^ tuple_pat_to_string vals (depth + 1) ^ ")"
+          tick_if is_top_expr ^ "(" ^ String.concat ~sep:"," (List.map ~f:(fun t -> pat_to_string t false (depth+1)) vals) ^ ")"
       | AST.AscriptionPat (p, ty) ->
           "(" ^ pat_to_string p true depth ^ ":" ^ ty_to_string ty
           ^ ")" (* TODO: Should this be true of false? *)
 
     and tick_if is_top_expr = if is_top_expr then "'" else ""
-
-    and tuple_pat_to_string vals depth =
-      match vals with
-      | [ t ] -> pat_to_string t false depth
-      | t :: ts ->
-          pat_to_string t false depth ^ "," ^ tuple_pat_to_string ts depth
-      | [] -> "todo empty tuple pattern?"
-
-    and record_pat_to_string args depth : string =
-      match args with
-      | (name, pat) :: xs ->
-          newline_indent depth ^ name ^ " " ^ ":=" ^ " "
-          ^ pat_to_string pat true depth
-          ^ ";"
-          ^ record_pat_to_string xs depth
-      | _ -> ""
 
     let rec term_to_string (x : AST.term) depth : string * bool =
       match x with
@@ -381,13 +359,13 @@ functor
           (* TODO: Make definitions? *)
           (ty_str, true (* TODO? does this always need paren? *))
       | AST.Lambda (params, body) ->
-          ( lambda_params_to_string params depth
+          ( String.concat ~sep:" " (List.map ~f:(fun x -> "fun" ^ " " ^ pat_to_string x true depth ^ " " ^ "=>") params)
             ^ newline_indent (depth + 1)
             ^ term_to_string_without_paren body (depth + 1),
             true )
+      | AST.Tuple [] -> ("tt (* Empty tuple *)", false) (* TODO: Empty tuple? *)
       | AST.Tuple vals ->
-          ("(" ^ tuple_term_to_string vals (depth + 1) ^ ")", false)
-          (* List.fold_left ~init:(term_to_string_without_paren t (depth+1)) ~f:(fun x y -> "(" ^ x ^ "," ^ term_to_string_without_paren y (depth+1) ^ ")") ts, false *)
+        ("(" ^ String.concat ~sep:(",") (List.map ~f:(fun t -> term_to_string_without_paren t (depth+1)) vals) ^ ")", false)
       | AST.Array (t :: ts) ->
           ( "array_from_list" ^ " " ^ "["
             ^ List.fold_left
@@ -406,22 +384,6 @@ functor
             true )
       | _ -> .
 
-    and tuple_term_to_string vals depth : string =
-      match vals with
-      | [ t ] -> term_to_string_without_paren t depth
-      | t :: ts ->
-          term_to_string_without_paren t depth
-          ^ ","
-          ^ tuple_term_to_string ts depth
-      | [] -> "_" (* TODO: Empty tuple? *)
-
-    and lambda_params_to_string (params : AST.pat list) depth : string =
-      match params with
-      | x :: xs ->
-          "fun" ^ " " ^ pat_to_string x true depth ^ " " ^ "=>"
-          ^ lambda_params_to_string xs depth
-      | [] -> ""
-
     and term_to_string_with_paren (x : AST.term) depth : string =
       let s, b = term_to_string x depth in
       if b then "(" ^ s ^ ")" else s
@@ -433,7 +395,9 @@ functor
     and format_to_string (format : string list) (args : string list) : string =
       match format with
       | f :: fs -> (
-          match args with x :: xs -> f ^ x ^ format_to_string fs xs | [] -> f)
+          match args with
+          | x :: xs -> f ^ x ^ format_to_string fs xs
+          | [] -> f)
       | [] -> failwith "incorrect formatting"
 
     and term_list_to_string (terms : AST.term list) depth : string =
@@ -443,6 +407,7 @@ functor
 
     let rec decl_to_string (x : AST.decl) : string =
       match x with
+      | AST.MultipleDecls decls -> String.concat ~sep:"\n" (List.map ~f:decl_to_string decls)
       | AST.Unimplemented s -> "(*" ^ s ^ "*)"
       | AST.Comment s -> "(**" ^ " " ^ s ^ " " ^ "**)"
       | AST.Definition (name, arguments, term, ty) ->
@@ -716,42 +681,43 @@ functor
              pat_to_string pat true 0 ^ " "
            ) params)
 
-
-    and inductive_case_to_string variants pre post : string =
-      match variants with
-      | x :: xs ->
-          let mid_str =
-            match x with
-            | AST.BaseCase ty_name -> ty_name
-            | AST.InductiveCase (ty_name, ty) ->
-                let ty_str = ty_to_string ty in
-                ty_name ^ " " ^ ":" ^ " " ^ ty_str ^ " " ^ "->" ^ " "
-          in
-          let variants_str = inductive_case_to_string xs pre post in
-          pre ^ mid_str ^ post ^ variants_str
-      | [] -> ""
+    (* and inductive_case_to_string variants pre post : string = *)
+    (*   match variants with *)
+    (*   | x :: xs -> *)
+    (*       let mid_str = *)
+    (*         match x with *)
+    (*         | AST.BaseCase ty_name -> ty_name *)
+    (*         | AST.InductiveCase (ty_name, ty) -> *)
+    (*             let ty_str = ty_to_string ty in *)
+    (*             ty_name ^ " " ^ ":" ^ " " ^ ty_str ^ " " ^ "->" ^ " " *)
+    (*       in *)
+    (*       let variants_str = inductive_case_to_string xs pre post in *)
+    (*       pre ^ mid_str ^ post ^ variants_str *)
+    (*   | [] -> "" *)
 
     and inductive_case_args_to_string variants pre mid post : string =
-      List.fold_left ~init:""
-        ~f:(fun variants_str x ->
-          let mid_str, ty_str =
-            match x with
-            | AST.BaseCase ty_name -> (ty_name, "")
-            | AST.InductiveCase (ty_name, ty) -> (ty_name, " " ^ ty_to_string ty)
-          in
-          pre ^ mid_str ^ mid ^ ty_str ^ post ^ variants_str)
-        variants
+      String.concat ~sep:""
+        (List.map
+           ~f:(fun x ->
+               let mid_str, ty_str =
+                 match x with
+                 | AST.BaseCase ty_name -> (ty_name, "")
+                 | AST.InductiveCase (ty_name, ty) -> (ty_name, " " ^ ty_to_string ty)
+               in
+               pre ^ mid_str ^ mid ^ ty_str ^ post)
+           variants)
 
     and variants_to_string variants pre post : string =
-      List.fold_left ~init:""
-        ~f:(fun variants_str y ->
-          let ty_name, sep, ty =
-            match y with
-            | Named (ty_name, ty) -> (ty_name, ":", ty)
-            | Coercion (ty_name, ty) -> (ty_name, ":>", ty)
-            (* Should be "::" in newer versions of coq *)
-          in
-          pre ^ ty_name ^ " " ^ ":" ^ " " ^ ty_to_string ty ^ post
-          ^ variants_str)
-        variants
+      String.concat ~sep:""
+        (List.map
+           ~f:(fun y ->
+               let ty_name, sep, ty =
+                 match y with
+                 | Named (ty_name, ty) -> (ty_name, ":", ty)
+                 | Coercion (ty_name, ty) -> (ty_name, ":>", ty)
+                 (* Should be "::" in newer versions of coq *)
+               in
+               pre ^ ty_name ^ " " ^ ":" ^ " " ^ ty_to_string ty ^ post
+             )
+           variants)
   end
