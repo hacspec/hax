@@ -188,6 +188,7 @@ pub fn make_fn_decoration(
             quote! {}
         };
         quote! {
+            #[cfg(#DebugOrHaxCfgExpr)]
             #late_skip
             const _: () = {
                 #quantifiers

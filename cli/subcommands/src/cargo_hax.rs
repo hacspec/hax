@@ -46,8 +46,9 @@ pub fn get_args(subcommand: &str) -> Vec<String> {
 /// [rust_log_style] returns ["always"], which is the usual default
 /// behavior. Otherwise we return ["never"]. When [RUST_LOG_STYLE] is
 /// set, we just return its value.
+const RUST_LOG_STYLE: &str = "RUST_LOG_STYLE";
 fn rust_log_style() -> String {
-    std::env::var("RUST_LOG_STYLE").unwrap_or_else(|_| {
+    std::env::var(RUST_LOG_STYLE).unwrap_or_else(|_| {
         use is_terminal::IsTerminal;
         if std::io::stderr().is_terminal() {
             "always".to_string()
@@ -55,6 +56,15 @@ fn rust_log_style() -> String {
             "never".to_string()
         }
     })
+}
+
+/// We set `cfg(hax)` so that client crates can include dependencies
+/// or cfg-gate pieces of code.
+const RUSTFLAGS: &str = "RUSTFLAGS";
+fn rustflags() -> String {
+    let rustflags = std::env::var(RUSTFLAGS).unwrap_or("".into());
+    let space = rustflags.is_empty().then_some(" ").unwrap_or("");
+    format!("{rustflags}{space}--cfg hax")
 }
 
 fn main() {
@@ -71,7 +81,8 @@ fn main() {
         "RUSTC_WORKSPACE_WRAPPER",
         std::env::var("HAX_RUSTC_DRIVER_BINARY").unwrap_or("driver-hax-frontend-exporter".into()),
     )
-    .env("RUST_LOG_STYLE", rust_log_style())
+    .env(RUST_LOG_STYLE, rust_log_style())
+    .env(RUSTFLAGS, rustflags())
     .env(
         hax_cli_options::ENV_VAR_OPTIONS_FRONTEND,
         serde_json::to_string(&options).expect("Options could not be converted to a JSON string"),

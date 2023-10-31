@@ -70,18 +70,24 @@ pub enum AttrPayload {
 }
 
 pub const HAX_TOOL: &str = "_hax";
-pub const HAX_COMPILATION: &str = "hax_compilation";
+pub const HAX_CFG_OPTION_NAME: &str = "hax_compilation";
 
 pub struct HaxTool;
-pub struct HaxCompilation;
+pub struct HaxCfgOptionName;
+pub struct DebugOrHaxCfgExpr;
 impl ToTokens for HaxTool {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         format_ident!("{}", HAX_TOOL).to_tokens(tokens)
     }
 }
-impl ToTokens for HaxCompilation {
+impl ToTokens for HaxCfgOptionName {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        format_ident!("{}", HAX_COMPILATION).to_tokens(tokens)
+        format_ident!("{}", HAX_CFG_OPTION_NAME).to_tokens(tokens)
+    }
+}
+impl ToTokens for DebugOrHaxCfgExpr {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        quote! {any(#HaxCfgOptionName, debug_assertion)}.to_tokens(tokens)
     }
 }
 
@@ -90,7 +96,7 @@ use quote::*;
 impl From<&AttrPayload> for proc_macro2::TokenStream {
     fn from(payload: &AttrPayload) -> Self {
         let payload: String = serde_json::to_string(payload).unwrap();
-        quote! {#[cfg_attr(#HaxCompilation, #HaxTool::json(#payload))]}
+        quote! {#[cfg_attr(#HaxCfgOptionName, #HaxTool::json(#payload))]}
     }
 }
 

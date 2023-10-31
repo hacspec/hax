@@ -141,13 +141,18 @@ fn main() {
             adt_const_params: false,    // not useful for now
             generic_const_exprs: false, // not useful for now
             register_tool: true,
-            registered_tools: HashSet::from_iter(vec!["_hax".to_string()].into_iter()),
+            registered_tools: HashSet::from_iter(
+                vec![hax_lib_macros_types::HAX_TOOL.into()].into_iter(),
+            ),
             auto_traits: true,
             negative_impls: true,
         } - Features::detect_forking();
         rustc_args = [rustc_args[0].clone()]
             .into_iter()
-            .chain(["--cfg".into(), "hax_compilation".into()])
+            .chain([
+                "--cfg".into(),
+                hax_lib_macros_types::HAX_CFG_OPTION_NAME.into(),
+            ])
             .chain(features.into_iter().map(|s| format!("-Zcrate-attr={}", s)))
             .chain(rustc_args[1..].iter().cloned())
             .collect();
