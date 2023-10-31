@@ -180,8 +180,8 @@ pub fn requires(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream
         #requires #attr
         // TODO: disable `assert!`s for now (see #297)
         #item
-        // #[cfg(    all(not(#HaxCompilation),     debug_assertions )) ] #item_with_debug
-        // #[cfg(not(all(not(#HaxCompilation),     debug_assertions )))] #item
+        // #[cfg(    all(not(#HaxCfgOptionName),     debug_assertions )) ] #item_with_debug
+        // #[cfg(not(all(not(#HaxCfgOptionName),     debug_assertions )))] #item
     }
     .into()
 }
@@ -218,8 +218,8 @@ pub fn ensures(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream 
         #ensures #attr
         // TODO: disable `assert!`s for now (see #297)
         #item
-        // #[cfg(    all(not(#HaxCompilation),     debug_assertions )) ] #item_with_debug
-        // #[cfg(not(all(not(#HaxCompilation),     debug_assertions )))] #item
+        // #[cfg(    all(not(#HaxCfgOptionName),     debug_assertions )) ] #item_with_debug
+        // #[cfg(not(all(not(#HaxCfgOptionName),     debug_assertions )))] #item
     }
     .into()
 }
@@ -408,7 +408,7 @@ pub fn attributes(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStr
                             let status_attr =
                                 &AttrPayload::ItemStatus(ItemStatus::Included { late_skip: true });
                             extra.push(syn::parse_quote! {
-                                #[cfg(#HaxCompilation)]
+                                #[cfg(#HaxCfgOptionName)]
                                 #status_attr
                                 const _: () = {
                                     #uid_attr
