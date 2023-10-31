@@ -75,6 +75,7 @@ fn main() {
     .env(
         hax_cli_options::ENV_VAR_OPTIONS_FRONTEND,
         serde_json::to_string(&options).expect("Options could not be converted to a JSON string"),
-    );
+    )
+    .env("RUSTFLAGS", "--cfg hax");
     std::process::exit(cmd.spawn().unwrap().wait().unwrap().code().unwrap_or(254))
 }
