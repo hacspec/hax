@@ -97,6 +97,7 @@ struct
             is_record;
             is_struct;
           }
+    | POr { subpats } -> POr { subpats = List.map ~f:dpat subpats }
     | PArray { args } -> PArray { args = List.map ~f:dpat args }
     | PConstant { lit } -> PConstant { lit }
     | PBinding { mut; mode; var : Local_ident.t; typ; subpat } ->
