@@ -74,6 +74,7 @@ pub const HAX_CFG_OPTION_NAME: &str = "hax_compilation";
 
 pub struct HaxTool;
 pub struct HaxCfgOptionName;
+pub struct DebugOrHaxCfgExpr;
 impl ToTokens for HaxTool {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         format_ident!("{}", HAX_TOOL).to_tokens(tokens)
@@ -81,7 +82,12 @@ impl ToTokens for HaxTool {
 }
 impl ToTokens for HaxCfgOptionName {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        format_ident!("{}", HAX_COMPILATION).to_tokens(tokens)
+        format_ident!("{}", HAX_CFG_OPTION_NAME).to_tokens(tokens)
+    }
+}
+impl ToTokens for DebugOrHaxCfgExpr {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        quote! {any(#HaxCfgOptionName, debug_assertion)}.to_tokens(tokens)
     }
 }
 
