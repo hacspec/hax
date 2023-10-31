@@ -33,7 +33,7 @@ pub use rewrite_self::*;
 
 impl visit_mut::VisitMut for RewriteSelf {
     fn visit_expr_path_mut(&mut self, i: &mut ExprPath) {
-        if let ExprPath {
+        let ExprPath {
             qself: None,
             path:
                 Path {
@@ -42,16 +42,22 @@ impl visit_mut::VisitMut for RewriteSelf {
                 },
             ..
         } = i
-            && segments.len() == 1
-            && let Some(PathSegment {
-                ident,
-                arguments: PathArguments::None,
-            }) = segments.first_mut()
-        {
-            if ident.to_string() == "self" {
-                let into = self.self_ident().clone();
-                *ident = parse_quote! {#into}
-            }
+        else {
+            return ();
+        };
+        if segments.len() != 1 {
+            return ();
+        }
+        let Some(PathSegment {
+            ident,
+            arguments: PathArguments::None,
+        }) = segments.first_mut()
+        else {
+            return ();
+        };
+        if ident.to_string() == "self" {
+            let into = self.self_ident().clone();
+            *ident = parse_quote! {#into}
         }
     }
     fn visit_fn_arg_mut(&mut self, arg: &mut FnArg) {
