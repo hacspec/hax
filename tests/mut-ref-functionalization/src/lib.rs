@@ -6,6 +6,11 @@ fn index_mutation(x: core::ops::Range<usize>, a: &'static [u8]) {
     v[1] = 3;
 }
 
+fn index_mutation_unsize(mut x: [u8; 12]) -> u8 {
+    x[4..5].copy_from_slice(&[1, 2]);
+    42
+}
+
 fn build_vec() -> Vec<u8> {
     vec![1, 2, 3]
 }

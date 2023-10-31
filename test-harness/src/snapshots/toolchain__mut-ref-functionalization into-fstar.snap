@@ -50,12 +50,30 @@ let index_mutation (x: Core.Ops.Range.t_Range usize) (a: t_Slice u8) : Prims.uni
   let v:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
     Rust_primitives.Hax.update_at v
       x
-      (Core.Slice.impl__copy_from_slice (Core.Ops.Index.IndexMut.index_mut v x <: t_Slice u8) a
-        <:
-        t_Slice u8)
+      (Core.Slice.impl__copy_from_slice (v.[ x ] <: t_Slice u8) a <: t_Slice u8)
   in
   let v:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Rust_primitives.Hax.update_at v (sz 1) 3uy in
   ()
+
+let index_mutation_unsize (x: t_Array u8 (sz 12)) : u8 =
+  let x:t_Array u8 (sz 12) =
+    Rust_primitives.Hax.update_at x
+      ({ Core.Ops.Range.f_start = sz 4; Core.Ops.Range.f_end = sz 5 })
+      (Core.Slice.impl__copy_from_slice (x.[ {
+                Core.Ops.Range.f_start = sz 4;
+                Core.Ops.Range.f_end = sz 5
+              } ]
+            <:
+            t_Slice u8)
+          (Rust_primitives.unsize (let list = [1uy; 2uy] in
+                FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 2);
+                Rust_primitives.Hax.array_of_list list)
+            <:
+            t_Slice u8)
+        <:
+        t_Slice u8)
+  in
+  42uy
 
 let build_vec: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
   Alloc.Slice.impl__into_vec (Rust_primitives.unsize (Rust_primitives.Hax.box_new (let list =
