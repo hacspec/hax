@@ -7,7 +7,7 @@ info:
       linter: hacspec
   info:
     name: v1-lib
-    manifest: /home/lucas/repos/thir-export/custom-test-harness/tests/lint/hacspec/v1-lib/Cargo.toml
+    manifest: lint/hacspec/v1-lib/Cargo.toml
     description: ~
   spec:
     optional: false

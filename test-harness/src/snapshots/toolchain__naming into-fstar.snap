@@ -7,7 +7,7 @@ info:
       backend: fstar
   info:
     name: naming
-    manifest: /home/lucas/repos/thir-export/extract-core/tests/naming/Cargo.toml
+    manifest: naming/Cargo.toml
     description: ~
   spec:
     optional: false
