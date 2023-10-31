@@ -7,7 +7,7 @@ info:
       backend: fstar
   info:
     name: naming
-    manifest: /home/lucas/repos/thir-export/extract-core/tests/naming/Cargo.toml
+    manifest: naming/Cargo.toml
     description: ~
   spec:
     optional: false
@@ -74,7 +74,7 @@ let ff__g__impl_1__g (self: t_Foo) : usize = sz 1
 
 let reserved_names (v_val v_noeq v_of: u8) : u8 = (v_val +! v_noeq <: u8) +! v_of
 
-type t_Arity1 (#v_T: Type) {| _: Core.Marker.t_Sized v_T |} = | Arity1 : v_T -> t_Arity1 v_T
+type t_Arity1 (v_T: Type) {| _: Core.Marker.t_Sized v_T |} = | Arity1 : v_T -> t_Arity1 v_T
 
 class t_T1 (#v_Self: Type) = {
   [@@@ FStar.Tactics.Typeclasses.no_method]_super_723352217:t_T1 v_Self

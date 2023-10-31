@@ -7,6 +7,7 @@ homepage.workspace = true
 edition.workspace = true
 repository.workspace = true
 readme.workspace = true
+description = "hax cli options engine helper crate"
 
 [dependencies]
 serde.workspace = true
