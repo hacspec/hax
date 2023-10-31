@@ -7,7 +7,7 @@ info:
       linter: rust
   info:
     name: fnmut
-    manifest: /home/lucas/repos/thir-export/custom-test-harness/tests/lint/rust/fnmut/Cargo.toml
+    manifest: lint/rust/fnmut/Cargo.toml
     description: ~
   spec:
     optional: false

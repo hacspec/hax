@@ -188,8 +188,10 @@ impl Test {
             let snapshot = Value::Object(snapshot);
             let name = format!("{} {}", self.info.name, self.kind.as_name());
 
+            let mut info = self.clone();
+            info.info.manifest = info.info.manifest.strip_prefix(workspace).unwrap().into();
             insta::with_settings!({
-                info => &self,
+                info => &info,
             }, { insta::assert_toml_snapshot!(name, snapshot) })
         }
 
