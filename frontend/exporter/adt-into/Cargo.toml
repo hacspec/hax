@@ -7,6 +7,7 @@ homepage.workspace = true
 edition.workspace = true
 repository.workspace = true
 readme.workspace = true
+description = "hax adt into helper crate"
 
 [lib]
 proc-macro = true

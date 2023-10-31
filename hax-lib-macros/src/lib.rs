@@ -1,6 +1,3 @@
-#![feature(let_chains)]
-#![feature(box_patterns)]
-
 mod rewrite_self;
 mod syn_ext;
 mod utils;

@@ -106,16 +106,23 @@ fn merge_generics(x: Generics, y: Generics) -> Generics {
 fn unmut_references_in_inputs(sig: &mut Signature) -> bool {
     let mut any_mut_ref = false;
     for input in &mut sig.inputs {
-        if let FnArg::Receiver(syn::Receiver {
-            reference: Some(_),
-            mutability,
-            ..
-        })
-        | FnArg::Typed(syn::PatType {
-            ty: box syn::Type::Reference(syn::TypeReference { mutability, .. }),
-            ..
-        }) = input
-        {
+        if let Some(mutability) = match input {
+            FnArg::Receiver(syn::Receiver {
+                reference: Some(_),
+                mutability,
+                ..
+            }) => Some(mutability),
+            FnArg::Typed(syn::PatType { ty, .. }) => {
+                use std::borrow::BorrowMut;
+                if let syn::Type::Reference(syn::TypeReference { mutability, .. }) = ty.borrow_mut()
+                {
+                    Some(mutability)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        } {
             any_mut_ref |= mutability.is_some();
             *mutability = None;
         }
@@ -133,8 +140,8 @@ pub fn make_fn_decoration(
 ) -> (TokenStream, AttrPayload) {
     let uid = ItemUid::fresh();
     let any_mut_ref = unmut_references_in_inputs(&mut signature);
-    if any_mut_ref && let FnDecorationKind::Ensures { .. } = kind {
-        panic!("For now, ensures clause don't work on funciton that have `&mut` inputs (see https://github.com/hacspec/hacspec-v2/issues/290)")
+    if any_mut_ref && matches!(kind, FnDecorationKind::Ensures { .. }) {
+        panic!("For now, ensures clause don't work on function that have `&mut` inputs (see https://github.com/hacspec/hacspec-v2/issues/290)")
     }
 
     let self_ident: Ident = syn::parse_quote! {self_};

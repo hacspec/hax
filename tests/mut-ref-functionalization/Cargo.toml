@@ -6,5 +6,5 @@ edition = "2021"
 [dependencies]
 
 [package.metadata.hax-tests]
-into.fstar = {broken = false, issue_id = 90, snapshot = "none"}
+into.fstar = {broken = false, issue_id = 90, snapshot = "stdout"}
 

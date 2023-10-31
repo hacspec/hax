@@ -2,7 +2,7 @@ fn rustc_version_env_var() {
     let (_version, channel, date) = version_check::triple().unwrap();
     println!("cargo:rustc-env=HAX_RUSTC_VERSION={channel}-{date}");
 
-    let rust_toolchain_file = include_str!("../../rust-toolchain.toml")
+    let rust_toolchain_file = include_str!("rust-toolchain.toml")
         .parse::<toml::Table>()
         .unwrap();
     println!(
