@@ -26,18 +26,19 @@ module%inlined_contents Make (F : Features.T) = struct
 
     [%%inline_defs dmutability]
 
-    let rec project_pat (p : A.pat) : A.pat * (local_ident * A.pat) list =
+    (* ({ e = LocalVar ident; typ = pat.typ; span = pat.span } : A.expr) *)
+    let rec project_pat (p : A.pat) : A.pat * (A.pat * A.expr) list =
       let simple_pat, remaining_pats = project_pat' p.span p.p in
       { p = simple_pat; span = p.span; typ = p.typ },
       remaining_pats
       (* List.map ~f:(fun simple_pat -> { p = simple_pat; span = p.span; typ = p.typ }) remaining_pats *)
 
-    and project_field_pat (_span : span) (p : A.field_pat) : A.field_pat * (local_ident * A.pat) list =
+    and project_field_pat (_span : span) (p : A.field_pat) : A.field_pat * (A.pat * A.expr) list =
       let pat, pat_list = project_pat p.pat in
       { field = p.field; pat = pat}, pat_list
       (* { field = p.field; pat = dpat p.pat } *)
 
-    and project_pat' (span : span) (pat : A.pat') : A.pat' * (local_ident * A.pat) list =
+    and project_pat' (span : span) (pat : A.pat') : A.pat' * (A.pat * A.expr) list =
       match pat with
       | PWild -> PWild, []
       | PAscription { typ; typ_span; pat } ->
@@ -99,8 +100,7 @@ module%inlined_contents Make (F : Features.T) = struct
             lhs = dpat simple_pat;
             rhs = dexpr rhs;
             body =
-              dexpr
-                (lets_of_bindings (List.map ~f:(fun (ident, pat) -> (pat, ({ e = LocalVar ident; typ = pat.typ; span = pat.span } : A.expr))) remaining_pats) (body)) ;
+              dexpr (lets_of_bindings remaining_pats body) ;
           }
       | Loop { body; kind; state; label; witness } ->
         Loop
@@ -112,12 +112,21 @@ module%inlined_contents Make (F : Features.T) = struct
             witness = S.loop witness;
           }
       | Closure { params; body; captures } ->
+        let projected_params = List.map ~f:project_pat params in
         Closure
           {
-            params = List.map ~f:dpat params;
-            body = dexpr body;
+            params = List.map ~f:dpat (List.map ~f:fst projected_params);
+            body = dexpr (lets_of_bindings (List.concat_map ~f:snd projected_params) body);
             captures = List.map ~f:dexpr captures;
           }
+
+    and darm (a : A.arm) : B.arm =
+      { span = a.span;
+        arm =  darm' a.span a.arm}
+    and darm' (_span : span) (a : A.arm') : B.arm' =
+      let simple_pat, remaining_pats = project_pat a.arm_pat in
+      { arm_pat = dpat simple_pat;
+        body = dexpr (lets_of_bindings remaining_pats a.body) }
     [@@inline_ands bindings_of dexpr]
 
     [%%inline_defs "Item.*"]

@@ -599,6 +599,7 @@ module TransformToInputLanguage (* : PHASE *) =
     |> Phases.Reject.EarlyExit
     (* |> Phases.Functionalize_loops *)
     |> Phases.Reject.As_pattern
+    |> Phases.Project_instead_of_match
     |> SubtypeToInputLanguage
     |> Identity
   ]
