@@ -1,0 +1,9 @@
+[package]
+name = "pattern-struct"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[package.metadata.hax-tests]
+into."coq" = { broken = false, snapshot = "none", issue_id = "161" }

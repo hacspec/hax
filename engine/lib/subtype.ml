@@ -97,7 +97,11 @@ struct
           {
             name;
             args = List.map ~f:(dfield_pat span) args;
-            is_record;
+            is_record =
+              Option.map
+                ~f:(fun x : FB.struct_pattern ->
+                  S.struct_pattern span x)
+                is_record;
             is_struct;
           }
     | POr { subpats } -> POr { subpats = List.map ~f:dpat subpats }

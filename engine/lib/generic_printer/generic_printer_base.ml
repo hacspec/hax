@@ -213,7 +213,8 @@ module Make (F : Features.T) = struct
           | PConstruct { name; args; is_record; is_struct } -> (
               match name with
               | `Concrete constructor ->
-                  print#doc_construct_inductive ~is_record ~is_struct
+                  print#doc_construct_inductive
+                    ~is_record:(Option.is_some is_record) ~is_struct
                     ~constructor ~base:None
                     (List.map
                        ~f:(fun fp ->

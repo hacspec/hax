@@ -277,7 +277,7 @@ functor
       | PConstruct of {
           name : global_ident;
           args : field_pat list;
-          is_record : bool; (* are fields named? *)
+          is_record : F.struct_pattern option; (* are fields named? *)
           is_struct : bool; (* a struct has one constructor *)
         }
       (* An or-pattern, e.g. `p | q`.

@@ -8,6 +8,7 @@ include
       open Features
       include Off
       include On.Macro
+      include On.Struct_pattern
     end)
     (struct
       let backend = Diagnostics.Backend.ProVerif
@@ -51,6 +52,7 @@ struct
 
         let continue = reject
         let loop = reject
+        let struct_pattern _ _ = Features.On.struct_pattern
         let for_loop = reject
         let for_index_loop = reject
         let state_passing_loop = reject
