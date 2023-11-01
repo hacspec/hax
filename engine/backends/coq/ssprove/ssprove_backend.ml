@@ -38,6 +38,7 @@ module SubtypeToInputLanguage
              and type monadic_action = Features.Off.monadic_action
              and type arbitrary_lhs = Features.Off.arbitrary_lhs
              and type nontrivial_lhs = Features.Off.nontrivial_lhs
+             and type project_instead_of_match = Features.Off.project_instead_of_match
              and type block = Features.Off.block) =
 struct
   module FB = InputLanguage
@@ -134,6 +135,8 @@ open Analyses
 module SSPExtraDefinitions (* : ANALYSIS *) = struct
   let wrap_type_in_both (l : string) (i : string) (a : SSP.AST.ty) =
     SSP.AST.AppTy (SSP.AST.NameTy ("both" ^ " " ^ l ^ " " ^ i), [ a ])
+
+  let unit_term : SSP.AST.term = SSP.AST.TypedTerm (SSP.AST.UnitTerm, SSP.AST.Unit)
 
   let matchb ((expr, arms) : SSP.AST.term * (SSP.AST.pat * SSP.AST.term) list) : SSP.AST.term =
     SSP.AST.AppFormat
@@ -454,7 +457,7 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
                                          (SSP.AST.Var x, [ SSP.AST.Var "x" ])),
                                     false );
                               ] ))
-                      fields ) ))
+                      fields ) , None))
         fields)
 
   let both_enum ((name, arguments, cases) : string * SSP.AST.argument list * SSP.AST.inductive_case list) : SSP.AST.decl =
@@ -482,12 +485,25 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
                          SSP.AST.TypeTy )
         ::
         (* Index names and constructors *)
-        List.mapi cases
+        List.concat_mapi cases
           ~f:(fun i c ->
               let v_name, curr_typ = (match c with
                   | BaseCase v_name -> v_name, []
                   | InductiveCase (v_name, typ) -> v_name, [typ]
                 )
+              in
+              let injections =
+                fun inner_val ->
+                  List.fold_left
+                    ~init:inner_val
+                    ~f:(fun y x ->
+                        SSP.AST.App
+                          (SSP.AST.Var x, [ y ]))
+                    ((if i != 0 then [ "inr" ]
+                      else [])
+                     @ List.init
+                       (List.length cases - 1 - i)
+                       (fun _ -> "inl"))
               in
               let definition_body =
                 (let inject_argument =
@@ -497,21 +513,10 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
                          [
                            SSP.AST.App
                              ( SSP.AST.Var "ret_both",
-                               [SSP.AST.TypedTerm (
-                                   List.fold_left
-                                     ~init:inner_val
-                                     ~f:(fun y x ->
-                                         SSP.AST.App
-                                           (SSP.AST.Var x, [ y ]))
-                                     ((if i != 0 then [ "inr" ]
-                                       else [])
-                                      @ List.init
-                                        (List.length cases - 1 - i)
-                                        (fun _ -> "inl")),
-                                   (SSP.AST.NameTy name))])])
+                               [SSP.AST.TypedTerm (injections inner_val, SSP.AST.NameTy name)])])
                  in
                  match curr_typ with
-                 | [] -> inject_argument (SSP.AST.UnitTerm)
+                 | [] -> inject_argument (unit_term)
                  | _ ->
                    SSP.AST.App
                      ( SSP.AST.Var "bind_both",
@@ -520,11 +525,17 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
                          SSP.AST.Lambda ( [ SSP.AST.Ident "x" ], inject_argument (SSP.AST.Var "x"))
                        ]))
               in
-              SSP.AST.Equations
+              [(let (arg, body) =
+                  match curr_typ with
+                  | [] -> ("", injections SSP.AST.UnitTerm) (* TODO: Fix unit translation *)
+                  | _ -> (" " ^ "x", injections (SSP.AST.Var "x"))
+                in
+                SSP.AST.Notation ("'" ^ v_name ^ "_case" ^ "'" ^ arg, body, Some "at level 100"));
+                SSP.AST.Equations
                 ( v_name,
                   implicit_LI @ (List.map ~f:(fun x -> SSP.AST.Explicit (SSP.AST.Ident "x", wrap_type_in_both "L" "I" x)) curr_typ),
                   definition_body,
-                  wrap_type_in_both "L" "I" (SSP.AST.NameTy name))))
+                  wrap_type_in_both "L" "I" (SSP.AST.NameTy name))]))
 end
 
 module StaticAnalysis (* : ANALYSIS *) = struct
@@ -779,7 +790,7 @@ struct
     match p.p with
     | PWild -> SSP.AST.WildPat
     | PAscription { typ; pat } ->
-        SSP.AST.AscriptionPat (ppat pat, pty p.span typ)
+      SSP.AST.AscriptionPat (ppat pat, pty p.span typ)
     | PBinding
         {
           mut = Immutable;
@@ -804,12 +815,17 @@ struct
     | PConstruct { name = `TupleCons 1; args = [ { pat } ] } ->
         __TODO_pat__ p.span "tuple 1"
     | PConstruct { name = `TupleCons n; args } ->
-        SSP.AST.TuplePat (List.map ~f:(fun { pat } -> ppat pat) args)
+      SSP.AST.TuplePat (List.map ~f:(fun { pat } -> ppat pat) args)
+    (* Record *)
     | PConstruct { name; args; is_record = true } ->
-        SSP.AST.RecordPat (pglobal_ident name, List.map ~f:(fun {field; pat} -> (pglobal_ident field, ppat pat)) args)
+(* SSP.AST.Ident (pglobal_ident name) *)
+(* SSP.AST.RecordPat (pglobal_ident name, List.map ~f:(fun {field; pat} -> (pglobal_ident field, ppat pat)) args) *)
+      SSP.AST.ConstructorPat (pglobal_ident name ^ "_case", [SSP.AST.Ident "temp"])
+      (* List.map ~f:(fun {field; pat} -> (pat, SSP.AST.App (SSP.AST.Var (pglobal_ident field), [SSP.AST.Var "temp"]))) args *)
+    (* Enum *)
     | PConstruct { name; args; is_record = false } ->
         SSP.AST.ConstructorPat
-          (pglobal_ident name, List.map ~f:(fun p -> ppat p.pat) args)
+          (pglobal_ident name ^ "_case", [SSP.AST.TuplePat (List.map ~f:(fun p -> ppat p.pat) args)])
     | PConstant { lit } -> SSP.AST.Lit (pliteral lit)
     | _ -> .
 
@@ -851,7 +867,7 @@ struct
     (match (add_solve, e.e) with
     | ( true,
         ( Construct { is_record = true; _ }
-        | If _ | Match _ | Literal _
+        | If _ (* | Match _ *) | Literal _
         | Construct { constructor = `TupleCons _; _ }
         | App _ | GlobalVar _ | LocalVar _ ) ) ->
         fun x -> SSP.AST.App (SSP.AST.Var "solve_lift", [ x ])
@@ -866,7 +882,7 @@ struct
       | LocalVar local_ident -> SSP.AST.NameTerm (plocal_ident local_ident)
       | GlobalVar (`TupleCons 0)
       | Construct { constructor = `TupleCons 0; fields = [] } ->
-          SSP.AST.App (SSP.AST.Var "ret_both", [ SSP.AST.UnitTerm ])
+          SSP.AST.App (SSP.AST.Var "ret_both", [ SSPExtraDefinitions.unit_term ])
       | GlobalVar global_ident -> SSP.AST.Var (pglobal_ident global_ident)
       | App
           {
@@ -937,7 +953,7 @@ struct
           ( (pexpr env false) scrutinee,
             List.map
               ~f:(fun { arm = { arm_pat; body } } ->
-                  (ppat arm_pat, (pexpr env false) body))
+                  (ppat arm_pat, (pexpr env true) body))
               arms )
       | Ascription { e; typ } -> __TODO_term__ span "asciption"
       | Construct { constructor = `TupleCons 1; fields = [ (_, e) ]; base } ->
@@ -1314,7 +1330,7 @@ struct
           [
             (if List.is_empty g then
              SSP.AST.Notation
-               ("'" ^ pconcrete_ident name ^ "'", SSP.AST.Type (pty span ty))
+               ("'" ^ pconcrete_ident name ^ "'", SSP.AST.Type (pty span ty), None)
             else
               SSP.AST.Definition
                 ( pconcrete_ident name,
@@ -1392,7 +1408,7 @@ struct
                ( "'" ^ "t_" ^ pconcrete_ident name ^ "'",
                  SSP.AST.Type
                    (SSP.AST.Product
-                      (List.map ~f:snd (p_record span variants name))) )
+                      (List.map ~f:snd (p_record span variants name))) , None)
             else
               SSP.AST.Definition
                 ( "t_" ^ pconcrete_ident name,
@@ -1439,7 +1455,7 @@ struct
                           (SSP.AST.NatMod
                              ( o.type_of_canvas,
                                o.bit_size_of_field,
-                               o.modulo_value )) );
+                               o.modulo_value )) , None);
                     SSP.AST.Definition
                       ( o.type_name,
                         [
@@ -1468,7 +1484,7 @@ struct
                         SSP.AST.Type
                           (SSP.AST.ArrayTy
                              ( SSP.AST.Int { size = SSP.AST.U8; signed = false },
-                               (* int_of_string *) o.size )) );
+                               (* int_of_string *) o.size )) , None);
                     SSP.AST.Definition
                       ( o.bytes_name,
                         [
@@ -1498,7 +1514,7 @@ struct
                         SSP.AST.Type
                           (SSP.AST.ArrayTy
                              ( SSP.AST.Int { size = SSP.AST.U8; signed = false },
-                               Int.to_string ((o.bits + 7) / 8) )) );
+                               Int.to_string ((o.bits + 7) / 8) )) , None);
                     SSP.AST.Definition
                       ( o.integer_name,
                         [
@@ -1528,7 +1544,7 @@ struct
                   in
                   [
                     SSP.AST.Notation
-                      ("'" ^ "t_" ^ o.bytes_name ^ "'", SSP.AST.Type typ);
+                      ("'" ^ "t_" ^ o.bytes_name ^ "'", SSP.AST.Type typ, None);
                     SSP.AST.Definition
                       ( o.bytes_name,
                         [
@@ -1566,7 +1582,7 @@ struct
                         SSP.AST.Type
                           (SSP.AST.ArrayTy
                              ( SSP.AST.Int { size = typ; signed = false },
-                               (* int_of_string *) o.size )) );
+                               (* int_of_string *) o.size )) , None);
                     SSP.AST.Definition
                       ( o.array_name,
                         [

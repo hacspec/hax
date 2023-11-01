@@ -6,18 +6,11 @@ module type Library = sig
   module Notation : sig
     val additional_identifier : string
     val int_repr : string -> string -> string
-    val let_stmt : string -> string -> string -> string -> int -> string
-    val let_mut_stmt : string -> string -> string -> string -> int -> string
-    val let_bind_stmt : string -> string -> string -> string -> int -> string
-
-    val let_bind_mut_stmt :
-      string -> string -> string -> string -> int -> string
 
     val type_str : string
     val bool_str : string
     val unit_str : string
     val if_stmt : string -> string -> string -> int -> string
-    val match_stmt : string -> (string * string) list -> int -> string
   end
 end
 
@@ -128,7 +121,7 @@ functor
         | ProgramDefinition of definition_type
         | Equations of definition_type
         | EquationsQuestionmark of definition_type
-        | Notation of string * term
+        | Notation of string * term * string option
         | Record of string * argument list * record_field list
         | Inductive of string * argument list * inductive_case list
         | Class of string * argument list * record_field list
@@ -248,14 +241,14 @@ functor
       | AST.Lit l -> literal_to_string l
       | AST.ConstructorPat (name, args) ->
           name ^ " " ^ String.concat ~sep:" "
-          @@ List.map ~f:(fun pat -> pat_to_string pat true depth) args
+          @@ List.map ~f:(fun pat -> pat_to_string pat false depth) args
       | AST.RecordPat (name, []) -> "(* Empty Record *)" (* TODO *)
       | AST.RecordPat (name, args) ->
           (* name ^ " " ^ *)
         "{|"
         ^ String.concat ~sep:(";") (List.map ~f:(fun (name, pat) -> newline_indent (depth+1) ^ name ^ " " ^ ":=" ^ " " ^ pat_to_string pat true (depth+1)) args)
         ^ newline_indent depth ^ "|}"
-      | AST.TuplePat [] -> "todo empty tuple pattern?"
+      | AST.TuplePat [] -> ""  (* TODO: empty tuple pattern? *)
       | AST.TuplePat vals ->
           tick_if is_top_expr ^ "(" ^ String.concat ~sep:"," (List.map ~f:(fun t -> pat_to_string t false (depth+1)) vals) ^ ")"
       | AST.AscriptionPat (p, ty) ->
@@ -267,7 +260,7 @@ functor
     let rec term_to_string (x : AST.term) depth : string * bool =
       match x with
       | AST.UnitTerm ->
-          ("(" ^ "tt" ^ " " ^ ":" ^ " " ^ ty_to_string AST.Unit ^ ")", false)
+          ("tt", false)
       | AST.Let
           {
             pattern = pat;
@@ -282,35 +275,23 @@ functor
           let expr_str = term_to_string_without_paren bind (depth + 1) in
           let typ_str = ty_to_string typ in
           let body_str = term_to_string_without_paren term depth in
-          ( Lib.Notation.additional_identifier ^ "let"
-            ^ (if mut then " " ^ "loc(" ^ var_str ^ "_loc" ^ ")" else "")
-            ^ (match monad_typ with
-              | Some AST.Option -> " " ^ "m_O()"
-              | Some (AST.Result mon_typ) ->
-                  " " ^ "m_R(" ^ ty_to_string mon_typ ^ ")"
-              | Some (AST.Exception mon_typ) ->
-                  " " ^ "m_E(" ^ ty_to_string mon_typ ^ ")"
-              | None -> "")
-            ^ " " ^ var_str ^ " " ^ ":=" ^ " " ^ expr_str ^ " " ^ ":" ^ " "
+          ( "let" ^ " " ^ var_str ^ " " ^ ":=" ^ " " ^ expr_str ^ " " ^ ":" ^ " "
             ^ typ_str ^ " " ^ "in" ^ newline_indent depth ^ body_str,
             true )
       | AST.If (cond, then_, else_) ->
-          ( Lib.Notation.if_stmt
-              (term_to_string_without_paren cond (depth + 1))
-              (term_to_string_without_paren then_ (depth + 1))
-              (term_to_string_without_paren else_ (depth + 1))
-              depth,
-            true )
+        ("if" ^ " " ^ (term_to_string_without_paren cond (depth + 1)) ^ newline_indent depth
+         ^ "then" ^ " " ^ (term_to_string_without_paren then_ (depth + 1)) ^ newline_indent depth
+         ^ "else" ^ " " ^ (term_to_string_without_paren else_ (depth + 1)),
+         true )
       | AST.Match (match_val, arms) ->
-          ( Lib.Notation.match_stmt
-              (term_to_string_without_paren match_val (depth + 1))
-              (List.map
-                 ~f:(fun (pat, body) ->
-                   ( pat_to_string pat true depth,
-                     term_to_string_without_paren body (depth + 1) ))
-                 arms)
-              depth,
-            false )
+        ("match" ^ " " ^ (term_to_string_without_paren match_val (depth + 1)) ^ " " ^ "with" ^ newline_indent depth
+         ^ String.concat ~sep:(newline_indent depth) (List.map
+                                                        ~f:(fun (pat, body) ->
+                                                            "|" ^ " " ^ (pat_to_string pat true depth) ^ " " ^ "=>"
+                                                            ^ newline_indent (depth + 1))
+                                                        arms)
+         ^ newline_indent depth ^ "end",
+         false )
       | AST.Const c -> (literal_to_string c, false)
       | AST.Literal s -> (s, false)
       | AST.AppFormat (format, args) ->
@@ -423,9 +404,10 @@ functor
       | AST.EquationsQuestionmark (name, arguments, term, ty) ->
           "Equations?" ^ " "
           ^ definition_value_to_equation_definition (name, arguments, term, ty)
-      | AST.Notation (notation, value) ->
+      | AST.Notation (notation, value, extra) ->
           "Notation" ^ " " ^ "\"" ^ notation ^ "\"" ^ " " ^ ":=" ^ " "
           ^ term_to_string_with_paren value 0
+          ^ (match extra with | None -> "" | Some x -> " " ^ "(" ^ x ^ ")")
           ^ "."
       | AST.Record (name, arguments, variants) ->
           let variants_str =

@@ -60,6 +60,7 @@ module RejectNotEC (FA : Features.T) = struct
         let state_passing_loop = reject
         let nontrivial_lhs = reject
         let block = reject
+        let project_instead_of_match = reject
         let construct_base _ = Features.On.construct_base
         let for_loop = reject
         let for_index_loop _ = Features.On.for_index_loop

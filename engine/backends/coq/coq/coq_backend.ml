@@ -36,6 +36,7 @@ module SubtypeToInputLanguage
              and type nontrivial_lhs = Features.Off.nontrivial_lhs
              and type loop = Features.Off.loop
              and type block = Features.Off.block
+             and type project_instead_of_match = Features.Off.project_instead_of_match
              and type for_loop = Features.Off.for_loop
              and type for_index_loop = Features.Off.for_index_loop
              and type state_passing_loop = Features.Off.state_passing_loop) =
@@ -87,18 +88,6 @@ module CoqLibrary : Library = struct
         (depth : int) : string =
       "if" ^ " " ^ cond ^ newline_indent depth ^ "then" ^ " " ^ then_e
       ^ newline_indent depth ^ "else" ^ " " ^ else_e
-
-    let match_stmt (expr : string) (arms : (string * string) list) (depth : int)
-        : string =
-      "match" ^ " " ^ expr ^ " " ^ "with" ^ newline_indent depth
-      ^ String.concat ~sep:""
-          (List.map
-             ~f:(fun (a, b) ->
-               "|" ^ " " ^ a ^ " " ^ "=>"
-               ^ newline_indent (depth + 1)
-               ^ b ^ newline_indent depth)
-             arms)
-      ^ "end"
   end
 end
 
@@ -415,7 +404,7 @@ struct
     | TyAlias { name; generics; ty } ->
         [
           C.AST.Notation
-            ("'" ^ pconcrete_ident name ^ "_t" ^ "'", C.AST.Type (pty span ty));
+            ("'" ^ pconcrete_ident name ^ "_t" ^ "'", C.AST.Type (pty span ty), None);
         ]
     (* record *)
     | Type { name; generics; variants = [ v ]; is_struct = true } ->
@@ -470,7 +459,7 @@ struct
                         (C.AST.NatMod
                            ( o.type_of_canvas,
                              o.bit_size_of_field,
-                             o.modulo_value )) );
+                             o.modulo_value )) , None);
                   C.AST.Definition
                     ( o.type_name,
                       [],
@@ -490,7 +479,7 @@ struct
                       C.AST.Type
                         (C.AST.ArrayTy
                            ( C.AST.Int { size = C.AST.U8; signed = false },
-                             (* int_of_string *) o.size )) );
+                             (* int_of_string *) o.size )), None );
                   C.AST.Definition
                     ( o.bytes_name,
                       [],
@@ -510,7 +499,7 @@ struct
                       C.AST.Type
                         (C.AST.ArrayTy
                            ( C.AST.Int { size = C.AST.U8; signed = false },
-                             Int.to_string ((o.bits + 7) / 8) )) );
+                             Int.to_string ((o.bits + 7) / 8) )) , None);
                   C.AST.Definition
                     ( o.integer_name,
                       [],
@@ -531,7 +520,7 @@ struct
                 in
                 [
                   C.AST.Notation
-                    ("'" ^ o.bytes_name ^ "_t" ^ "'", C.AST.Type typ);
+                    ("'" ^ o.bytes_name ^ "_t" ^ "'", C.AST.Type typ, None);
                   C.AST.Definition
                     ( o.bytes_name,
                       [],
@@ -565,7 +554,7 @@ struct
                       C.AST.Type
                         (C.AST.ArrayTy
                            ( C.AST.Int { size = typ; signed = false },
-                             (* int_of_string *) o.size )) );
+                             (* int_of_string *) o.size )) , None);
                   C.AST.Definition
                     ( o.array_name,
                       [],

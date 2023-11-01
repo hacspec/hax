@@ -21,7 +21,8 @@ loop,
   construct_base,
   monadic_action,
   monadic_binding,
-  block]
+  block,
+  project_instead_of_match]
 
 module Full = On
 
@@ -33,6 +34,7 @@ module Rust = struct
   include Off.Monadic_action
   include Off.Monadic_binding
   include Off.State_passing_loop
+  include Off.Project_instead_of_match
 end
 
 module _ = struct
