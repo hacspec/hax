@@ -37,6 +37,7 @@ module Phase = struct
     | TrivializeAssignLhs
     | CfIntoMonads
     | FunctionalizeLoops
+    | ProjectInsteadOfMatch
     | DummyA
     | DummyB
     | DummyC

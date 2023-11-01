@@ -8,6 +8,7 @@ include
       open Features
       include Off
       include On.Macro
+      include On.Project_instead_of_match
     end)
     (struct
       let backend = Diagnostics.Backend.ProVerif
@@ -51,6 +52,7 @@ struct
 
         let continue = reject
         let loop = reject
+        let project_instead_of_match _ _ = Features.On.project_instead_of_match
         let for_loop = reject
         let for_index_loop = reject
         let state_passing_loop = reject
