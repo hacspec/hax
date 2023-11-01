@@ -11,6 +11,7 @@ include
       include On.Slice
       include On.Macro
       include On.Construct_base
+      include On.Struct_pattern
     end)
     (struct
       let backend = Diagnostics.Backend.FStar
@@ -35,6 +36,8 @@ module SubtypeToInputLanguage
              and type nontrivial_lhs = Features.Off.nontrivial_lhs
              and type loop = Features.Off.loop
              and type block = Features.Off.block
+             and type struct_pattern =
+              Features.On.struct_pattern
              and type for_loop = Features.Off.for_loop
              and type for_index_loop = Features.Off.for_index_loop
              and type state_passing_loop = Features.Off.state_passing_loop) =
@@ -51,6 +54,7 @@ struct
         include Features.SUBTYPE.On.Construct_base
         include Features.SUBTYPE.On.Slice
         include Features.SUBTYPE.On.Macro
+        include Features.SUBTYPE.On.Struct_pattern
       end)
 
   let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
@@ -358,12 +362,12 @@ struct
         let pat_rec () =
           F.pat @@ F.AST.PatRecord (List.map ~f:pfield_pat args)
         in
-        if is_struct && is_record then pat_rec ()
+        if is_struct && Option.is_some is_record then pat_rec ()
         else
           let pat_name = F.pat @@ F.AST.PatName (pglobal_ident p.span name) in
           F.pat_app pat_name
           @@
-          if is_record then [ pat_rec () ]
+          if Option.is_some is_record then [ pat_rec () ]
           else List.map ~f:(fun { field; pat } -> ppat pat) args
     | PConstant { lit } -> F.pat @@ F.AST.PatConst (pliteral p.span lit)
     | _ -> .

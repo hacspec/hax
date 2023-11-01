@@ -15,6 +15,7 @@ include
       include On.Mutable_variable
       include On.Macro
       include On.Construct_base
+      include On.Struct_pattern
     end)
     (struct
       let backend = Diagnostics.Backend.EasyCrypt
@@ -60,6 +61,7 @@ module RejectNotEC (FA : Features.T) = struct
         let state_passing_loop = reject
         let nontrivial_lhs = reject
         let block = reject
+        let struct_pattern _ _ = Features.On.struct_pattern
         let for_loop = reject
         let construct_base _ _ = Features.On.construct_base
         let for_index_loop _ _ = Features.On.for_index_loop

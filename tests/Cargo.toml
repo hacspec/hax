@@ -7,6 +7,7 @@ members = [
         "if-let",
         "enum-repr",
         "pattern-or",
+	"pattern-struct",
         "side-effects",
         "lint/hacspec/v1-lib",
         "lint/hacspec/mut_args",
