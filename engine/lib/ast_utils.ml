@@ -682,7 +682,7 @@ module Make (F : Features.T) = struct
               {
                 name = `TupleCons len;
                 args = tuple;
-                is_record = false;
+                is_record = None;
                 is_struct = true;
               };
           typ = make_tuple_typ @@ List.map ~f:(fun { pat; _ } -> pat.typ) tuple;

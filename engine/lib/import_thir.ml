@@ -741,7 +741,12 @@ end) : EXPR = struct
             {
               name;
               args;
-              is_record = info.variant_is_record;
+              is_record =
+                (if info.variant_is_record then Some W.project_instead_of_match
+                else None (* W.project_instead_of_match *));
+              (* if info.variant_is_record *)
+              (* then Some W.project_instead_of_match *)
+              (* else None; *)
               is_struct = info.typ_is_struct;
             }
       | Tuple { subpatterns } ->

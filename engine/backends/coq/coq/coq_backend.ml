@@ -12,6 +12,7 @@ include
       include On.Monadic_binding
       include On.Macro
       include On.Construct_base
+      include On.Project_instead_of_match
     end)
     (struct
       let backend = Diagnostics.Backend.Coq
@@ -36,6 +37,8 @@ module SubtypeToInputLanguage
              and type nontrivial_lhs = Features.Off.nontrivial_lhs
              and type loop = Features.Off.loop
              and type block = Features.Off.block
+             and type project_instead_of_match =
+              Features.On.project_instead_of_match
              and type for_loop = Features.Off.for_loop
              and type for_index_loop = Features.Off.for_index_loop
              and type state_passing_loop = Features.Off.state_passing_loop) =
@@ -52,6 +55,7 @@ struct
         include Features.SUBTYPE.On.Construct_base
         include Features.SUBTYPE.On.Slice
         include Features.SUBTYPE.On.Macro
+        include Features.SUBTYPE.On.Project_instead_of_match
       end)
 
   let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
@@ -216,9 +220,9 @@ struct
         __TODO_pat__ p.span "tuple 1"
     | PConstruct { name = `TupleCons n; args } ->
         C.AST.TuplePat (List.map ~f:(fun { pat } -> ppat pat) args)
-    | PConstruct { name; args; is_record = true } ->
+    | PConstruct { name; args; is_record = Some _ } ->
         C.AST.RecordPat (pglobal_ident name, pfield_pats args)
-    | PConstruct { name; args; is_record = false } ->
+    | PConstruct { name; args; is_record = None } ->
         C.AST.ConstructorPat
           (pglobal_ident name, List.map ~f:(fun p -> ppat p.pat) args)
     | PConstant { lit } -> C.AST.Lit (pliteral p.span lit)

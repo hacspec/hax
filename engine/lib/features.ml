@@ -21,7 +21,8 @@ loop,
   construct_base,
   monadic_action,
   monadic_binding,
-  block]
+  block,
+  project_instead_of_match]
 
 module Full = On
 
