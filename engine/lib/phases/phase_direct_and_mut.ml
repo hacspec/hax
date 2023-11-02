@@ -86,15 +86,8 @@ struct
       | LocalVar var -> LhsLocalVar { var; typ }
       | FieldProjection { place; projector } ->
           let e = place_to_lhs place in
-          let field =
-            match projector with
-            | `Projector field -> (field :> global_ident)
-            | _ ->
-                Error.unimplemented
-                  ~details:"try to borrow a projected tuple component?" p.span
-          in
           LhsFieldAccessor
-            { witness = Features.On.nontrivial_lhs; field; typ; e }
+            { witness = Features.On.nontrivial_lhs; field = projector; typ; e }
       | IndexProjection { place; index } ->
           let e = place_to_lhs place in
           let index = dexpr index in
