@@ -172,7 +172,7 @@ module Raw = struct
         pglobal_ident e.span name
         &
         if List.is_empty args then !""
-        else if is_record then
+        else if Option.is_some is_record then
           !"{"
           & concat ~sep:!", "
               (List.map

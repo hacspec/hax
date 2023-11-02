@@ -248,7 +248,8 @@ functor
         "{|"
         ^ String.concat ~sep:(";") (List.map ~f:(fun (name, pat) -> newline_indent (depth+1) ^ name ^ " " ^ ":=" ^ " " ^ pat_to_string pat true (depth+1)) args)
         ^ newline_indent depth ^ "|}"
-      | AST.TuplePat [] -> ""  (* TODO: empty tuple pattern? *)
+      | AST.TuplePat [] -> "_"  (* TODO: empty tuple pattern? *)
+      | AST.TuplePat [v] -> pat_to_string v is_top_expr (depth+1)
       | AST.TuplePat vals ->
           tick_if is_top_expr ^ "(" ^ String.concat ~sep:"," (List.map ~f:(fun t -> pat_to_string t false (depth+1)) vals) ^ ")"
       | AST.AscriptionPat (p, ty) ->

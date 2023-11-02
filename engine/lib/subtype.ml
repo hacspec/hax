@@ -94,7 +94,7 @@ struct
           {
             name;
             args = List.map ~f:(dfield_pat span) args;
-            is_record;
+            is_record = Option.map ~f:(fun x -> (S.project_instead_of_match x : FB.project_instead_of_match)) is_record; (* S.project_instead_of_match *)
             is_struct;
           }
     | PArray { args } -> PArray { args = List.map ~f:dpat args }

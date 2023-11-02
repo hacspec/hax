@@ -17,6 +17,7 @@ include
       include On.For_loop
       include On.For_index_loop
       include On.State_passing_loop
+      (* include On.Project_instead_of_match *)
     end)
     (struct
       let backend = Diagnostics.Backend.SSProve
@@ -57,6 +58,7 @@ struct
         include Features.SUBTYPE.On.For_loop
         include Features.SUBTYPE.On.For_index_loop
         include Features.SUBTYPE.On.State_passing_loop
+        (* include Features.SUBTYPE.Off.Project_instead_of_match *)
       end)
 
   let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
@@ -137,21 +139,6 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
     SSP.AST.AppTy (SSP.AST.NameTy ("both" ^ " " ^ l ^ " " ^ i), [ a ])
 
   let unit_term : SSP.AST.term = SSP.AST.TypedTerm (SSP.AST.UnitTerm, SSP.AST.Unit)
-
-  let matchb ((expr, arms) : SSP.AST.term * (SSP.AST.pat * SSP.AST.term) list) : SSP.AST.term =
-    SSP.AST.AppFormat
-      ( ["matchb "; (*expr*) " with"] @ List.concat_map ~f:(fun _ -> ["| "; " =>"; ""; "";]) arms @ ["end"],
-        [
-          SSP.AST.Value (expr, false);
-          SSP.AST.Newline 0;
-        ] @ List.concat_map
-          ~f:(fun (arm_pat, body) ->
-              [SSP.AST.Variable arm_pat;
-               SSP.AST.Newline 1;
-               SSP.AST.Value (body, false);
-               SSP.AST.Newline 0])
-          arms
-      )
 
   let rec variables_of_ssp_pat (p : SSP.AST.pat) : string list =
     match p with
@@ -266,6 +253,47 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
               SSP.AST.Newline 0;
               SSP.AST.Value (body, false);
             ] )
+
+  let rec pat_as_expr (p : SSP.AST.pat) : SSP.AST.term =
+    match p with
+    | WildPat | UnitPat -> SSP.AST.UnitTerm
+    | Ident s -> SSP.AST.Var s
+    | Lit l -> Const l
+    | RecordPat (s, sps) ->
+      SSP.AST.RecordConstructor (s, List.map ~f:(Fn.id *** pat_as_expr) sps)
+    | ConstructorPat (_ , ps) | TuplePat ps ->
+      SSP.AST.Tuple (List.map ~f:(pat_as_expr) ps)
+    | AscriptionPat (p, t) ->
+      TypedTerm (pat_as_expr p, t)
+  
+  let matchb ((expr, arms) : SSP.AST.term * (SSP.AST.pat * SSP.AST.term) list) : SSP.AST.term =
+    SSP.AST.AppFormat
+      ( ["matchb "; (*expr*) " with"] @ List.concat_map ~f:(fun _ -> ["| "; " =>"; ""; "";]) arms @ ["end"],
+        [
+          SSP.AST.Value (expr, false);
+          SSP.AST.Newline 0;
+        ] @ List.concat_map
+          ~f:(fun (arm_pat, body) ->
+              [SSP.AST.Variable arm_pat;
+               SSP.AST.Newline 1;
+               SSP.AST.Value (
+                 (match arm_pat with
+                  | ConstructorPat (_ , [])
+                  | ConstructorPat (_ , [UnitPat])
+                  | ConstructorPat (_ , [WildPat]) -> body
+                  | ConstructorPat (_ , (_ :: _ as ps)) ->
+                    letb {
+                      pattern = TuplePat ps (* TODO *);
+                      mut = false;
+                      value = SSP.AST.App (SSP.AST.Var "ret_both", [SSP.AST.TypedTerm (pat_as_expr (TuplePat ps), SSP.AST.WildTy)]);
+                      body = body;
+                      value_typ = SSP.AST.WildTy;
+                      monad_typ = None;
+                    }
+                  | _ -> body), false);
+               SSP.AST.Newline 0])
+          arms
+      )
 
   let updatable_record ((name, arguments, variants) : string * SSP.AST.argument list * SSP.AST.record_field list) : SSP.AST.decl =
     let fields =
@@ -817,14 +845,14 @@ struct
         __TODO_pat__ p.span "tuple 1"
     | PConstruct { name = `TupleCons n; args } ->
       SSP.AST.TuplePat (List.map ~f:(fun { pat } -> ppat pat) args)
-    (* Record *)
-    | PConstruct { name; args; is_record = true } ->
-(* SSP.AST.Ident (pglobal_ident name) *)
+    (* (\* Record *\) *)
+(*     | PConstruct { name; args; is_record = Some _ } -> *)
+(* (\* SSP.AST.Ident (pglobal_ident name) *\) *)
 (* SSP.AST.RecordPat (pglobal_ident name, List.map ~f:(fun {field; pat} -> (pglobal_ident field, ppat pat)) args) *)
-      SSP.AST.ConstructorPat (pglobal_ident name ^ "_case", [SSP.AST.Ident "temp"])
-      (* List.map ~f:(fun {field; pat} -> (pat, SSP.AST.App (SSP.AST.Var (pglobal_ident field), [SSP.AST.Var "temp"]))) args *)
+(*       (\* SSP.AST.ConstructorPat (pglobal_ident name ^ "_case", [SSP.AST.Ident "temp"]) *\) *)
+(*       (\* List.map ~f:(fun {field; pat} -> (pat, SSP.AST.App (SSP.AST.Var (pglobal_ident field), [SSP.AST.Var "temp"]))) args *\) *)
     (* Enum *)
-    | PConstruct { name; args; is_record = false } ->
+    | PConstruct { name; args; is_record = None } ->
         SSP.AST.ConstructorPat
           (pglobal_ident name ^ "_case", [SSP.AST.TuplePat (List.map ~f:(fun p -> ppat p.pat) args)])
     | PConstant { lit } -> SSP.AST.Lit (pliteral lit)
@@ -1029,7 +1057,7 @@ struct
                                 {
                                   name = `TupleCons 0;
                                   args = [];
-                                  is_record = false;
+                                  is_record = None;
                                   is_struct = false;
                                 };
                             span = Span.dummy ();
