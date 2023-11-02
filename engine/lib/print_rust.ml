@@ -111,9 +111,10 @@ module Raw = struct
 
   let pborrow_kind span = pure span << function Mut _ -> "mut " | _ -> ""
 
-  let last_of_global_ident (g : global_ident) span =
+  let rec last_of_global_ident (g : global_ident) span =
     match g with
     | `Concrete c -> Concrete_ident_view.to_definition_name c
+    | `Projector c -> last_of_global_ident (c :> global_ident) span
     | _ ->
         Diagnostics.report
           {

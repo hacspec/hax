@@ -70,7 +70,7 @@ module%inlined_contents Make (F : Features.T) = struct
           {
             e = Assign { lhs; e; witness };
             span = expr.span;
-            typ = dty expr.span expr.typ;
+            typ = UB.unit_typ;
           }
       | [%inline_arms "dexpr'.*" - Assign] ->
           map (fun e -> B.{ e; typ = dty expr.span expr.typ; span = expr.span })
