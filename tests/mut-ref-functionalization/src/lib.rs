@@ -1,5 +1,15 @@
 #![allow(dead_code)]
 
+struct S {
+    b: [u8; 5],
+}
+
+impl S {
+    fn update(&mut self, x: u8) {
+        self.b[0] = x;
+    }
+}
+
 fn index_mutation(x: core::ops::Range<usize>, a: &'static [u8]) {
     let mut v = vec![1];
     v[x].copy_from_slice(a);
