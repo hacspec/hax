@@ -395,6 +395,7 @@ functor
       | LhsFieldAccessor of {
           e : lhs;
           typ : ty;
+          (* TODO: change type (see #316) *)
           field : global_ident;
           witness : F.nontrivial_lhs;
         }

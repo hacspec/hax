@@ -79,6 +79,7 @@ struct
       | [%inline_arms "dborrow_kind.*" - Mut] -> auto
       | Mut _ -> Shared
 
+    (* TODO: refactor (see #316) *)
     and place_to_lhs (p : Place.t) : B.lhs =
       let typ = dty p.span p.typ in
       match p.place with

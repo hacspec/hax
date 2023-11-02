@@ -148,6 +148,7 @@ struct
         visitor#visit_expr ()
 
       let convert_lhs =
+        (* TODO: refactor (see #316) *)
         let rec place_to_lhs (p : Place.t) : lhs =
           let typ = p.typ in
           match p.place with
