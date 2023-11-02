@@ -16,6 +16,7 @@ let rec fold_range' #t
     else fold_range' (add min (Rust_primitives.mk_int 1)) max (f init min) f
 
 val iterator_range_enumerate t: t_enumerate (t_Range (Rust_primitives.int_t t))
+val iterator_range_all t: t_all (t_Range (Rust_primitives.int_t t)) (Rust_primitives.int_t t)
 
 instance iterator_range t: iterator (t_Range (Rust_primitives.int_t t)) = 
   { f_Item = Rust_primitives.int_t t;
@@ -27,6 +28,7 @@ instance iterator_range t: iterator (t_Range (Rust_primitives.int_t t)) =
     f_fold = (fun #b r init f ->  if r.f_start >=. r.f_end then init
                              else fold_range' r.f_start r.f_end init (fun x i -> f x i));
     f_enumerate = iterator_range_enumerate t;
+    f_all = iterator_range_all t;
   }
 
 open Core.Ops.Index
