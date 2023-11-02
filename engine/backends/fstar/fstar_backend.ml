@@ -653,7 +653,6 @@ struct
 
   let pmaybe_refined_ty span (free_variables : string list) (attrs : attrs)
       (binder_name : string) (ty : ty) : F.AST.term =
-    prerr_endline @@ "pmaybe_refined_ty[attrs]=" ^ [%show: attrs] attrs;
     match Attrs.associated_refinement_in_type free_variables attrs with
     | Some refinement ->
         F.mk_refined binder_name (pty span ty) (fun ~x -> pexpr refinement)
@@ -928,7 +927,9 @@ struct
             | _ -> unsupported_macro ())
         | _ -> unsupported_macro ())
     | Trait { name; generics; items } ->
-        let bds = List.map ~f:(pgeneric_param_bd e.span) generics.params in
+        let bds =
+          List.map ~f:(pgeneric_param_bd ~aqual:None e.span) generics.params
+        in
         let name_str = U.Concrete_ident_view.to_definition_name name in
         let name = F.id @@ name_str in
         let fields =

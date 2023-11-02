@@ -457,6 +457,13 @@ module Make (F : Features.T) = struct
     | TApp { ident = `TupleType 1; args = [ GType t ] } -> remove_tuple1 t
     | _ -> t
 
+  let remove_unsize (e : expr) : expr =
+    match e.e with
+    | App { f = { e = GlobalVar f; _ }; args = [ e ] }
+      when Global_ident.eq_name Rust_primitives__unsize f ->
+        e
+    | _ -> e
+
   (* let rec remove_empty_tap *)
 
   let is_unit_typ : ty -> bool =
@@ -660,7 +667,7 @@ module Make (F : Features.T) = struct
     | LhsFieldAccessor { e; typ; field; _ } ->
         let e = expr_of_lhs span e in
         let f = { e = GlobalVar field; typ = TArrow ([ e.typ ], typ); span } in
-        { e = App { f; args = [ e ] }; typ = e.typ; span }
+        { e = App { f; args = [ e ] }; typ; span }
     | LhsArrayAccessor { e; typ; index; _ } ->
         let args = [ expr_of_lhs span e; index ] in
         call Core__ops__index__Index__index args span typ
@@ -817,7 +824,7 @@ module Make (F : Features.T) = struct
           call' projector [ e ] p.span p.typ
       | IndexProjection { place; index } ->
           let e = to_expr place in
-          call Core__ops__index__IndexMut__index_mut [ e; index ] p.span p.typ
+          call Core__ops__index__Index__index [ e; index ] p.span p.typ
 
     let expect_deref_mut (p : t) : t option =
       match p.place with

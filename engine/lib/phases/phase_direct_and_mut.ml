@@ -46,6 +46,7 @@ struct
     let expect_mut_borrow_of_place_or_pure_expr (e : A.expr) :
         (Place.t, A.expr) Either.t option =
       let e = UA.Mappers.normalize_borrow_mut#visit_expr () e in
+      let e = UA.remove_unsize e in
       let* e = UA.Expect.mut_borrow e in
       Option.some
       @@
@@ -78,21 +79,15 @@ struct
       | [%inline_arms "dborrow_kind.*" - Mut] -> auto
       | Mut _ -> Shared
 
+    (* TODO: refactor (see #316) *)
     and place_to_lhs (p : Place.t) : B.lhs =
       let typ = dty p.span p.typ in
       match p.place with
       | LocalVar var -> LhsLocalVar { var; typ }
       | FieldProjection { place; projector } ->
           let e = place_to_lhs place in
-          let field =
-            match projector with
-            | `Projector field -> (field :> global_ident)
-            | _ ->
-                Error.unimplemented
-                  ~details:"try to borrow a projected tuple component?" p.span
-          in
           LhsFieldAccessor
-            { witness = Features.On.nontrivial_lhs; field; typ; e }
+            { witness = Features.On.nontrivial_lhs; field = projector; typ; e }
       | IndexProjection { place; index } ->
           let e = place_to_lhs place in
           let index = dexpr index in

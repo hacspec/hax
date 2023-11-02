@@ -148,22 +148,20 @@ struct
         visitor#visit_expr ()
 
       let convert_lhs =
+        (* TODO: refactor (see #316) *)
         let rec place_to_lhs (p : Place.t) : lhs =
           let typ = p.typ in
           match p.place with
           | LocalVar var -> LhsLocalVar { var; typ }
           | FieldProjection { place; projector } ->
               let e = place_to_lhs place in
-              let field =
-                match projector with
-                | `Projector field -> (field :> global_ident)
-                | _ ->
-                    Error.unimplemented
-                      ~details:"try to borrow a projected tuple component?"
-                      p.span
-              in
               LhsFieldAccessor
-                { witness = Features.On.nontrivial_lhs; field; typ; e }
+                {
+                  witness = Features.On.nontrivial_lhs;
+                  field = projector;
+                  typ;
+                  e;
+                }
           | IndexProjection { place; index } ->
               let e = place_to_lhs place in
               LhsArrayAccessor

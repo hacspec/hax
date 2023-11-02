@@ -1,9 +1,32 @@
 #![allow(dead_code)]
 
+struct S {
+    b: [u8; 5],
+}
+
+pub fn foo(mut lhs: S, rhs: &S) -> S {
+    for i in 0..1 {
+        lhs.b[i] += rhs.b[i];
+    }
+
+    lhs
+}
+
+impl S {
+    fn update(&mut self, x: u8) {
+        self.b[0] = x;
+    }
+}
+
 fn index_mutation(x: core::ops::Range<usize>, a: &'static [u8]) {
     let mut v = vec![1];
     v[x].copy_from_slice(a);
     v[1] = 3;
+}
+
+fn index_mutation_unsize(mut x: [u8; 12]) -> u8 {
+    x[4..5].copy_from_slice(&[1, 2]);
+    42
 }
 
 fn build_vec() -> Vec<u8> {
@@ -49,13 +72,13 @@ fn g(x: Pair<Vec<u8>>) -> Vec<u8> {
     x.a
 }
 
+fn h(x: &mut u8) {
+    *x += 10;
+}
+
 struct Bar {
     a: u8,
     b: u8,
-}
-
-fn h(x: &mut u8) {
-    *x += 10;
 }
 
 fn i(bar: &mut Bar) -> u8 {
