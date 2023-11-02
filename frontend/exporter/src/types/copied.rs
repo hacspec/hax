@@ -2975,7 +2975,7 @@ fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> Gene
     let tcx = s.base().tcx;
 
     // According to what kind of node we are looking at, we should
-    // either call `predicates_of` or `item_bounds`
+    // either call `predicates_defined_on` or `item_bounds`
     let use_item_bounds = {
         if let Some(oid) = s.owner_id().as_local() {
             let hir_id = tcx.hir().local_def_id_to_hir_id(oid);
@@ -3001,7 +3001,7 @@ fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> Gene
         let span = list.default_span(tcx);
         list.into_iter().map(|x| (x, span)).collect()
     } else {
-        tcx.predicates_of(s.owner_id())
+        tcx.predicates_defined_on(s.owner_id())
             .predicates
             .into_iter()
             .cloned()

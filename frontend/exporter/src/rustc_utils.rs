@@ -35,7 +35,7 @@ impl<'tcx> ty::TyCtxt<'tcx> {
         let mut next_did = Some(did);
         let mut predicates = vec![];
         while let Some(did) = next_did {
-            let gen_preds = self.predicates_of(did);
+            let gen_preds = self.predicates_defined_on(did);
             next_did = gen_preds.parent;
             predicates.extend(gen_preds.predicates.into_iter())
         }
