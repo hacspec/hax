@@ -927,7 +927,9 @@ struct
             | _ -> unsupported_macro ())
         | _ -> unsupported_macro ())
     | Trait { name; generics; items } ->
-        let bds = List.map ~f:(pgeneric_param_bd e.span) generics.params in
+        let bds =
+          List.map ~f:(pgeneric_param_bd ~aqual:None e.span) generics.params
+        in
         let name_str = U.Concrete_ident_view.to_definition_name name in
         let name = F.id @@ name_str in
         let fields =
