@@ -4,6 +4,14 @@ struct S {
     b: [u8; 5],
 }
 
+pub fn foo(mut lhs: S, rhs: &S) -> S {
+    for i in 0..1 {
+        lhs.b[i] += rhs.b[i];
+    }
+
+    lhs
+}
+
 impl S {
     fn update(&mut self, x: u8) {
         self.b[0] = x;
