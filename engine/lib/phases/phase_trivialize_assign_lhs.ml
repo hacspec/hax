@@ -30,44 +30,12 @@ module%inlined_contents Make (F : Features.T) = struct
 
     [%%inline_defs dmutability]
 
-    let rec expr_of_lhs (lhs : A.lhs) (span : span) : B.expr =
-      match lhs with
-      | LhsLocalVar { var; typ } ->
-          { e = LocalVar var; typ = dty span typ; span }
-      | LhsFieldAccessor { e; typ; field; _ } ->
-          let e = expr_of_lhs e span in
-          {
-            e =
-              App
-                {
-                  f =
-                    {
-                      e = GlobalVar field;
-                      typ = TArrow ([ e.typ ], dty span typ);
-                      span;
-                    };
-                  args = [ e ];
-                };
-            typ = e.typ;
-            span;
-          }
-      | LhsArrayAccessor { e; typ; index; _ } ->
-          UB.call Core__ops__index__Index__index
-            [ expr_of_lhs e span; dexpr index ]
-            span (dty span typ)
-      | LhsArbitraryExpr _ -> Error.raise { kind = ArbitraryLHS; span }
-
-    and updater_of_lhs (lhs : A.lhs) (rhs : B.expr) (span : span) :
+    let rec updater_of_lhs (lhs : A.lhs) (rhs : B.expr) (span : span) :
         (Local_ident.t * B.ty) * B.expr =
       match lhs with
       | LhsLocalVar { var; typ } -> ((var, dty span typ), rhs)
       | LhsFieldAccessor { e; field; _ } -> (
-          let lhs = expr_of_lhs e span in
-          let field =
-            match field with
-            | `Projector field -> (field :> global_ident)
-            | _ -> field
-          in
+          let lhs = UA.expr_of_lhs span e |> dexpr in
           match lhs.typ with
           | TApp { ident; _ } ->
               let rhs' =
@@ -84,7 +52,7 @@ module%inlined_contents Make (F : Features.T) = struct
               updater_of_lhs e rhs span
           | _ -> Error.raise { kind = ArbitraryLHS; span })
       | LhsArrayAccessor { e; typ = _; index; _ } ->
-          let lhs = expr_of_lhs e span in
+          let lhs = UA.expr_of_lhs span e |> dexpr in
           let rhs =
             UB.call Rust_primitives__hax__update_at
               [ lhs; dexpr index; rhs ]
