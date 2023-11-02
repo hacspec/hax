@@ -152,10 +152,7 @@ let j (x: t_Bar) : (t_Bar & u8) =
   let output:u8 = out in
   x, output
 
-class t_FooTrait (#v_Self: Type) = {
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_986909191:t_FooTrait v_Self;
-  f_z:v_Self -> v_Self
-}
+class t_FooTrait (#v_Self: Type) = { f_z:v_Self -> v_Self }
 
 let impl_FooTrait_for_Foo: t_FooTrait t_Foo = { f_z = fun (self: t_Foo) -> self }
 

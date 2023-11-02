@@ -76,23 +76,17 @@ let reserved_names (v_val v_noeq v_of: u8) : u8 = (v_val +! v_noeq <: u8) +! v_o
 
 type t_Arity1 (v_T: Type) {| _: Core.Marker.t_Sized v_T |} = | Arity1 : v_T -> t_Arity1 v_T
 
-class t_T1 (#v_Self: Type) = {
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_723352217:t_T1 v_Self
-}
+class t_T1 (#v_Self: Type) = { __marker_trait_t_T1:Prims.unit }
 
 let impl_T1_for_Foo: t_T1 t_Foo = { __marker_trait = () }
 
 let impl_T1_for_tuple_Foo_u8: t_T1 (t_Foo & u8) = { __marker_trait = () }
 
-class t_T2_for_a (#v_Self: Type) = {
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_762600345:t_T2_for_a v_Self
-}
+class t_T2_for_a (#v_Self: Type) = { __marker_trait_t_T2_for_a:Prims.unit }
 
 let impl_T2_e_for_a_for_Arity1_of_tuple_Foo_u8: t_T2_for_a (t_Arity1 (t_Foo & u8)) =
   { __marker_trait = () }
 
-class t_T3_e_for_a (#v_Self: Type) = {
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_87461598:t_T3_e_for_a v_Self
-}
+class t_T3_e_for_a (#v_Self: Type) = { __marker_trait_t_T3_e_for_a:Prims.unit }
 
 let impl_T3_e_e_for_a_for_Foo: t_T3_e_for_a t_Foo = { __marker_trait = () }'''

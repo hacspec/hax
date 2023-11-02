@@ -235,7 +235,7 @@ impl ImplInfos {
         let s = &with_owner_id(base, (), (), did);
 
         let predicates = tcx
-            .predicates_of(did)
+            .predicates_defined_on(did)
             .predicates
             .iter()
             .map(|(x, _)| x.sinto(s))
