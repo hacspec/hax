@@ -3,6 +3,7 @@ module Core.Convert
 open Rust_primitives
 
 class try_into_tc self t = {
+  [@@@FStar.Tactics.Typeclasses.no_method]
   f_Error: Type;
   f_try_into: self -> Core.Result.t_Result t f_Error
 }
@@ -11,8 +12,8 @@ instance impl_6 (t: Type0) (len: usize): try_into_tc (t_Slice t) (t_Array t len)
   f_Error = Core.Array.t_TryFromSliceError;
   f_try_into = (fun (s: t_Slice t) -> 
     if Core.Slice.impl__len s = len
-    then Core.Result.Ok (s <: t_Array t len)
-    else Core.Result.Err Core.Array.TryFromSliceError
+    then Core.Result.Result_Ok (s <: t_Array t len)
+    else Core.Result.Result_Err Core.Array.TryFromSliceError
   )
 }
 
@@ -20,7 +21,7 @@ instance impl_6 (t: Type0) (len: usize): try_into_tc (t_Slice t) (t_Array t len)
 instance impl_6_refined (t: Type0) (len: usize): try_into_tc (s: t_Slice t {Core.Slice.impl__len s == len}) (t_Array t len) = {
   f_Error = Core.Array.t_TryFromSliceError;
   f_try_into = (fun (s: t_Slice t {Core.Slice.impl__len s == len}) -> 
-    Core.Result.Ok (s <: t_Array t len)
+    Core.Result.Result_Ok (s <: t_Array t len)
   )
 }
 
@@ -30,6 +31,12 @@ class t_Into self t = {
 
 class t_From self t = {
   f_from: t -> self;
+}
+
+class t_TryFrom self t = {
+  [@@@FStar.Tactics.Typeclasses.no_method]
+  f_Error: Type;
+  f_try_from: t -> Core.Result.t_Result self f_Error;
 }
 
 #push-options "--z3rlimit 20"
