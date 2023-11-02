@@ -667,7 +667,7 @@ module Make (F : Features.T) = struct
     | LhsFieldAccessor { e; typ; field; _ } ->
         let e = expr_of_lhs span e in
         let f = { e = GlobalVar field; typ = TArrow ([ e.typ ], typ); span } in
-        { e = App { f; args = [ e ] }; typ = e.typ; span }
+        { e = App { f; args = [ e ] }; typ; span }
     | LhsArrayAccessor { e; typ; index; _ } ->
         let args = [ expr_of_lhs span e; index ] in
         call Core__ops__index__Index__index args span typ
