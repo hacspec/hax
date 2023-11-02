@@ -72,11 +72,11 @@ module%inlined_contents Make (F : Features.T) = struct
                               mut = Immutable;
                               mode = ByValue;
                               var = new_id (* name *);
-                              typ = TParam new_id; (* TODO? *)
+                              typ = TApp {ident = name; args = []}; (* TODO? *)
                               subpat = None;
                             };
                         span = span ;
-                        typ = TParam new_id (* TODO *)
+                        typ = TApp {ident = name; args = []}
                       }}];
             is_record = (None : FB.project_instead_of_match option);
             is_struct;
@@ -88,7 +88,7 @@ module%inlined_contents Make (F : Features.T) = struct
                                          span = pat.span;
                                        };
                                    args = [{ e = LocalVar new_id;
-                                             typ = TParam new_id;
+                                             typ = TApp {ident = name; args = []};
                                              span = pat.span;
                                            }]};
                                   typ = pat.typ;
