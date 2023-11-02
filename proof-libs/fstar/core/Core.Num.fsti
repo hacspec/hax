@@ -3,6 +3,9 @@ open Rust_primitives
 
 let impl__u8__wrapping_sub: u8 -> u8 -> u8 = sub_mod
 
+let impl__i32__wrapping_add: i32 -> i32 -> i32 = add_mod
+val impl__i32__abs: i32 -> i32
+
 let impl__u32__wrapping_add: u32 -> u32 -> u32 = add_mod
 val impl__u32__rotate_left: u32 -> u32 -> u32
 val impl__u32__from_le_bytes: t_Array u8 (sz 4) -> u32
