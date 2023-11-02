@@ -72,13 +72,13 @@ fn g(x: Pair<Vec<u8>>) -> Vec<u8> {
     x.a
 }
 
+fn h(x: &mut u8) {
+    *x += 10;
+}
+
 struct Bar {
     a: u8,
     b: u8,
-}
-
-fn h(x: &mut u8) {
-    *x += 10;
 }
 
 fn i(bar: &mut Bar) -> u8 {

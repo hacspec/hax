@@ -37,6 +37,29 @@ open Core
 
 type t_S = { f_b:t_Array u8 (sz 5) }
 
+let foo (lhs rhs: t_S) : t_S =
+  let lhs:t_S =
+    Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter ({
+              Core.Ops.Range.f_start = sz 0;
+              Core.Ops.Range.f_end = sz 1
+            })
+        <:
+        Core.Ops.Range.t_Range usize)
+      lhs
+      (fun lhs i ->
+          {
+            lhs with
+            f_b
+            =
+            Rust_primitives.Hax.update_at lhs.f_b
+              i
+              ((lhs.f_b.[ i ] <: u8) +! (rhs.f_b.[ i ] <: u8) <: u8)
+            <:
+            t_Array u8 (sz 5)
+          })
+  in
+  lhs
+
 let impl__S__update (self: t_S) (x: u8) : t_S =
   let self:t_S = { self with f_b = Rust_primitives.Hax.update_at self.f_b (sz 0) x } in
   self
@@ -155,14 +178,14 @@ let g (x: t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
   in
   x.f_a
 
+let h (x: u8) : u8 =
+  let x:u8 = x +! 10uy in
+  x
+
 type t_Bar = {
   f_a:u8;
   f_b:u8
 }
-
-let h (x: u8) : u8 =
-  let x:u8 = x +! 10uy in
-  x
 
 let i (bar: t_Bar) : (t_Bar & u8) =
   let bar:t_Bar = { bar with f_b = bar.f_b +! bar.f_a } in

@@ -34,7 +34,7 @@ module%inlined_contents Make (F : Features.T) = struct
         (Local_ident.t * B.ty) * B.expr =
       match lhs with
       | LhsLocalVar { var; typ } -> ((var, dty span typ), rhs)
-      | LhsFieldAccessor { e; field; typ; _ } -> (
+      | LhsFieldAccessor { e; field; _ } -> (
           let lhs = UA.expr_of_lhs span e |> dexpr in
           match lhs.typ with
           | TApp { ident; _ } ->
@@ -48,7 +48,7 @@ module%inlined_contents Make (F : Features.T) = struct
                     base = Some (lhs, Features.On.construct_base);
                   }
               in
-              let rhs = { B.e = rhs'; typ = dty span typ; span } in
+              let rhs = { B.e = rhs'; typ = lhs.typ; span } in
               updater_of_lhs e rhs span
           | _ -> Error.raise { kind = ArbitraryLHS; span })
       | LhsArrayAccessor { e; typ = _; index; _ } ->
@@ -70,7 +70,7 @@ module%inlined_contents Make (F : Features.T) = struct
           {
             e = Assign { lhs; e; witness };
             span = expr.span;
-            typ = dty expr.span expr.typ;
+            typ = UB.unit_typ;
           }
       | [%inline_arms "dexpr'.*" - Assign] ->
           map (fun e -> B.{ e; typ = dty expr.span expr.typ; span = expr.span })
