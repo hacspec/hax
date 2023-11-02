@@ -13,6 +13,8 @@ unfold type t_fold self (item: Type0) (contains: t_contains self item)
   = #b:Type -> s:self -> b -> (b -> i:item{contains s i} -> b) -> b
 unfold type t_enumerate self
   = self -> Core.Iter.Adapters.Enumerate.t_Enumerate self
+unfold type t_all self item
+  = self -> (item -> bool) -> bool
 
 (* Inference behaves strangly with type synonyms... :( *)
 // class iterator (self: Type) = {
@@ -29,5 +31,6 @@ class iterator (self: Type) = {
   f_contains:  self -> f_Item -> Type0;
   f_fold:      #b:Type -> s:self -> b -> (b -> i:f_Item{f_contains s i} -> b) -> b;
   f_enumerate: self -> Core.Iter.Adapters.Enumerate.t_Enumerate self;
+  f_all:       self -> (f_Item -> bool) -> bool
 }
 
