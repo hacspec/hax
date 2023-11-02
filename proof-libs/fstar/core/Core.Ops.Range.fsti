@@ -59,3 +59,17 @@ instance impl_index_range_array t n : t_Index (t_Slice t) (t_Range (int_t n)) = 
       else Seq.empty
     );
 }
+
+open Rust_primitives.Hax
+
+let update_at_tc_array_range_super t l n: t_Index (t_Array t l) (t_Range (int_t n))
+  = FStar.Tactics.Typeclasses.solve
+
+val update_at_array_range t l n
+  (s: t_Array t l) (i: t_Range (int_t n) {(update_at_tc_array_range_super t l n).in_range s i})
+  : (update_at_tc_array_range_super t l n).f_Output -> t_Array t l
+  
+instance update_at_tc_array t l n: update_at_tc (t_Array t l) (t_Range (int_t n)) = {
+  super_index = update_at_tc_array_range_super t l n;
+  update_at = update_at_array_range t l n
+}
