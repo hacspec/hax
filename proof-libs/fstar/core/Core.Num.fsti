@@ -36,3 +36,6 @@ val impl__u32__pow: u32 -> u32 -> u32
 val impl__u64__pow: u64 -> u32 -> u64
 val impl__u128__pow: u128 -> u32 -> u128
 
+val impl__u8__from_str_radix: string -> u32 -> Core.Result.t_Result u8 Core.Num.Error.t_ParseIntError
+
+
