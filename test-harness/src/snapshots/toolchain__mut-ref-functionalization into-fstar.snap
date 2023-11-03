@@ -35,6 +35,7 @@ module Mut_ref_functionalization
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 
+<<<<<<< HEAD
 type t_S = { f_b:t_Array u8 (sz 5) }
 
 let foo (lhs rhs: t_S) : t_S =
@@ -83,6 +84,40 @@ let index_mutation (x: Core.Ops.Range.t_Range usize) (a: t_Slice u8) : Prims.uni
   in
   let v:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Rust_primitives.Hax.update_at v (sz 1) 3uy in
   ()
+||||||| 0db60a5e
+let index_mutation (x: Core.Ops.Range.t_Range usize) (a: t_Slice u8) : Prims.unit =
+  let v:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
+    Alloc.Slice.impl__into_vec (Rust_primitives.unsize (Rust_primitives.Hax.box_new (let list =
+                  [1uy]
+                in
+                FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 1);
+                Rust_primitives.Hax.array_of_list list)
+            <:
+            Alloc.Boxed.t_Box (t_Array u8 (sz 1)) Alloc.Alloc.t_Global)
+        <:
+        Alloc.Boxed.t_Box (t_Slice u8) Alloc.Alloc.t_Global)
+  in
+  let v:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
+    Rust_primitives.Hax.update_at v
+      x
+      (Core.Slice.impl__copy_from_slice (Core.Ops.Index.IndexMut.index_mut v x <: t_Slice u8) a
+        <:
+        t_Slice u8)
+  in
+  let v:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Rust_primitives.Hax.update_at v (sz 1) 3uy in
+  ()
+=======
+type t_Bar = {
+  f_a:u8;
+  f_b:u8
+}
+
+let h (x: u8) : u8 =
+  let x:u8 = x +! 10uy in
+  x
+
+type t_Foo = { f_field:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global }
+>>>>>>> fstar-annotate-closure-binders
 
 let index_mutation_unsize (x: t_Array u8 (sz 12)) : u8 =
   let x:t_Array u8 (sz 12) =
@@ -115,6 +150,21 @@ let build_vec: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
       <:
       Alloc.Boxed.t_Box (t_Slice u8) Alloc.Alloc.t_Global)
 
+let i (bar: t_Bar) : (t_Bar & u8) =
+  let bar:t_Bar = { bar with f_b = bar.f_b +! bar.f_a } in
+  let bar:t_Bar = { bar with f_a = h bar.f_a } in
+  let output:u8 = bar.f_a +! bar.f_b in
+  bar, output
+
+type t_Pair (v_T: Type) {| _: Core.Marker.t_Sized v_T |} = {
+  f_a:v_T;
+  f_b:t_Foo
+}
+
+type t_S = { f_b:t_Array u8 (sz 5) }
+
+class t_FooTrait (v_Self: Type) = { f_z:v_Self -> v_Self }
+
 let test_append: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
   let vec1:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Alloc.Vec.impl__new in
   let vec2:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
@@ -140,20 +190,51 @@ let test_append: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
   in
   vec1
 
-let f: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
-  let vec:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Alloc.Vec.impl__new in
-  let vec:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Alloc.Vec.impl_1__push vec 1uy in
-  let vec:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Alloc.Vec.impl_1__push vec 2uy in
-  let vec:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Core.Slice.impl__swap vec (sz 0) (sz 1) in
-  let vec:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Core.Slice.impl__swap vec (sz 0) (sz 1) in
-  vec
+let j (x: t_Bar) : (t_Bar & u8) =
+  let tmp0, out:(t_Bar & u8) = i x in
+  let x:t_Bar = tmp0 in
+  let output:u8 = out in
+  x, output
 
-type t_Foo = { f_field:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global }
+let index_mutation_unsize (x: t_Array u8 (sz 12)) : u8 =
+  let x:t_Array u8 (sz 12) =
+    Rust_primitives.Hax.update_at x
+      ({ Core.Ops.Range.f_start = sz 4; Core.Ops.Range.f_end = sz 5 })
+      (Core.Slice.impl__copy_from_slice (x.[ {
+                Core.Ops.Range.f_start = sz 4;
+                Core.Ops.Range.f_end = sz 5
+              } ]
+            <:
+            t_Slice u8)
+          (Rust_primitives.unsize (let list = [1uy; 2uy] in
+                FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 2);
+                Rust_primitives.Hax.array_of_list list)
+            <:
+            t_Slice u8)
+        <:
+        t_Slice u8)
+  in
+  42uy
 
-type t_Pair (v_T: Type) {| _: Core.Marker.t_Sized v_T |} = {
-  f_a:v_T;
-  f_b:t_Foo
-}
+let index_mutation (x: Core.Ops.Range.t_Range usize) (a: t_Slice u8) : Prims.unit =
+  let v:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
+    Alloc.Slice.impl__into_vec (Rust_primitives.unsize (Rust_primitives.Hax.box_new (let list =
+                  [1uy]
+                in
+                FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 1);
+                Rust_primitives.Hax.array_of_list list)
+            <:
+            Alloc.Boxed.t_Box (t_Array u8 (sz 1)) Alloc.Alloc.t_Global)
+        <:
+        Alloc.Boxed.t_Box (t_Slice u8) Alloc.Alloc.t_Global)
+  in
+  let v:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
+    Rust_primitives.Hax.update_at v
+      x
+      (Core.Slice.impl__copy_from_slice (v.[ x ] <: t_Slice u8) a <: t_Slice u8)
+  in
+  let v:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Rust_primitives.Hax.update_at v (sz 1) 3uy in
+  ()
 
 let g (x: t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
     : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
@@ -166,7 +247,7 @@ let g (x: t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
         <:
         Core.Ops.Range.t_Range u8)
       x
-      (fun x i ->
+      (fun (x: t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)) (i: u8) ->
           { x with f_a = Alloc.Vec.impl_1__push x.f_a i <: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global }
       )
   in
@@ -178,6 +259,7 @@ let g (x: t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
   in
   x.f_a
 
+<<<<<<< HEAD
 let h (x: u8) : u8 =
   let x:u8 = x +! 10uy in
   x
@@ -186,6 +268,56 @@ type t_Bar = {
   f_a:u8;
   f_b:u8
 }
+||||||| 0db60a5e
+type t_Bar = {
+  f_a:u8;
+  f_b:u8
+}
+=======
+let foo (lhs rhs: t_S) : t_S =
+  let lhs:t_S =
+    Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter ({
+              Core.Ops.Range.f_start = sz 0;
+              Core.Ops.Range.f_end = sz 1
+            })
+        <:
+        Core.Ops.Range.t_Range usize)
+      lhs
+      (fun (lhs: t_S) (i: usize) ->
+          {
+            lhs with
+            f_b
+            =
+            Rust_primitives.Hax.update_at lhs.f_b
+              i
+              ((lhs.f_b.[ i ] <: u8) +! (rhs.f_b.[ i ] <: u8) <: u8)
+            <:
+            t_Array u8 (sz 5)
+          })
+  in
+  lhs
+>>>>>>> fstar-annotate-closure-binders
+
+<<<<<<< HEAD
+let i (bar: t_Bar) : (t_Bar & u8) =
+  let bar:t_Bar = { bar with f_b = bar.f_b +! bar.f_a } in
+  let bar:t_Bar = { bar with f_a = h bar.f_a } in
+  let output:u8 = bar.f_a +! bar.f_b in
+  bar, output
+
+let j (x: t_Bar) : (t_Bar & u8) =
+  let tmp0, out:(t_Bar & u8) = i x in
+  let x:t_Bar = tmp0 in
+  let output:u8 = out in
+  x, output
+
+class t_FooTrait (#v_Self: Type) = { f_z:v_Self -> v_Self }
+
+let impl_FooTrait_for_Foo: t_FooTrait t_Foo = { f_z = fun (self: t_Foo) -> self }
+||||||| 0db60a5e
+let h (x: u8) : u8 =
+  let x:u8 = x +! 10uy in
+  x
 
 let i (bar: t_Bar) : (t_Bar & u8) =
   let bar:t_Bar = { bar with f_b = bar.f_b +! bar.f_a } in
@@ -202,7 +334,22 @@ let j (x: t_Bar) : (t_Bar & u8) =
 class t_FooTrait (#v_Self: Type) = { f_z:v_Self -> v_Self }
 
 let impl_FooTrait_for_Foo: t_FooTrait t_Foo = { f_z = fun (self: t_Foo) -> self }
+=======
+let f: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
+  let vec:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Alloc.Vec.impl__new in
+  let vec:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Alloc.Vec.impl_1__push vec 1uy in
+  let vec:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Alloc.Vec.impl_1__push vec 2uy in
+  let vec:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Core.Slice.impl__swap vec (sz 0) (sz 1) in
+  let vec:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Core.Slice.impl__swap vec (sz 0) (sz 1) in
+  vec
+>>>>>>> fstar-annotate-closure-binders
 
 let array (x: t_Array u8 (sz 10)) : t_Array u8 (sz 10) =
   let x:t_Array u8 (sz 10) = Rust_primitives.Hax.update_at x (sz 1) (x.[ sz 2 ] <: u8) in
-  x'''
+  x
+
+let impl_FooTrait_for_Foo: t_FooTrait t_Foo = { f_z = fun (self: t_Foo) -> self }
+
+let impl__S__update (self: t_S) (x: u8) : t_S =
+  let self:t_S = { self with f_b = Rust_primitives.Hax.update_at self.f_b (sz 0) x } in
+  self'''

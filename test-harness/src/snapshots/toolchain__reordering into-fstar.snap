@@ -1,0 +1,40 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: fstar
+  info:
+    name: reordering
+    manifest: reordering/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: false
+      stdout: true
+---
+exit = 0
+
+[stdout]
+diagnostics = []
+
+[stdout.files]
+"Reordering.fst" = '''
+module Reordering
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+
+type t_Foo =
+  | Foo_A : t_Foo
+  | Foo_B : t_Foo
+
+type t_Bar = | Bar : t_Foo -> t_Bar
+
+let f (_: u32) : t_Foo = Foo_A
+
+let g: t_Bar = Bar (f 32ul)'''
