@@ -28,6 +28,7 @@ module Make (F : Features.T) = struct
 
   module ItemGraph = struct
     module G = Graph.Persistent.Digraph.Concrete (Concrete_ident)
+    module Topological = Graph.Topological.Make (G)
     module Oper = Graph.Oper.P (G)
 
     let vertices_of_item (i : item) : G.V.t list =
@@ -204,6 +205,15 @@ module Make (F : Features.T) = struct
 
   let ident_list_to_string =
     List.map ~f:Concrete_ident.DefaultViewAPI.show >> String.concat ~sep:", "
+
+  let sort (items : item list) : item list =
+    let g = ItemGraph.of_items items in
+    let lookup (name : concrete_ident) =
+      List.find ~f:(ident_of >> Concrete_ident.equal name) items
+    in
+    ItemGraph.Topological.fold List.cons g []
+    (* |> List.rev *)
+    |> List.filter_map ~f:lookup
 
   let filter_by_inclusion_clauses (clauses : Types.inclusion_clause list)
       (items : item list) : item list =

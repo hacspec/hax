@@ -20,6 +20,7 @@ members = [
         "attributes",
         "raw-attributes",
         "traits",
+        "reordering",
         "nested-derefs",
 ]
 resolver = "2"
