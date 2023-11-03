@@ -70,8 +70,11 @@ module Make (F : Features.T) = struct
       List.concat_map ~f:(fun i ->
           vertices_of_item i |> List.map ~f:(Fn.const i.ident &&& Fn.id))
 
-    let of_items : item list -> G.t =
-      vertices_of_items >> List.fold ~init:G.empty ~f:(G.add_edge >> uncurry)
+    let of_items (items : item list) : G.t =
+      let init =
+        List.fold ~init:G.empty ~f:(fun g -> ident_of >> G.add_vertex g) items
+      in
+      vertices_of_items items |> List.fold ~init ~f:(G.add_edge >> uncurry)
 
     let transitive_dependencies_of (g : G.t) (selection : Concrete_ident.t list)
         : Concrete_ident.t Hash_set.t =
