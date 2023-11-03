@@ -1,4 +1,5 @@
 module Core.Iter.Traits.Iterator
+open Rust_primitives
 
 (*** Definition of the `iterator` trait *)
 (** We define the types of the different method of the iterator trait
@@ -14,9 +15,9 @@ unfold type t_fold self (item: Type0) (contains: t_contains self item)
 unfold type t_enumerate self
   = self -> Core.Iter.Adapters.Enumerate.t_Enumerate self
 unfold type t_step_by self
-  = self -> Core.Iter.Adapters.Step_by.t_StepBy self
+  = self -> usize -> Core.Iter.Adapters.Step_by.t_StepBy self
 unfold type t_all self item
-  = self -> (item -> bool) -> bool
+  = self -> (item -> bool) -> self * bool
 
 (* Inference behaves strangly with type synonyms... :( *)
 // class iterator (self: Type) = {
@@ -34,7 +35,7 @@ class iterator (self: Type u#0): Type u#1 = {
   f_contains:  self -> f_Item -> Type0;
   f_fold:      #b:Type0 -> s:self -> b -> (b -> i:f_Item{f_contains s i} -> b) -> b;
   f_enumerate: self -> Core.Iter.Adapters.Enumerate.t_Enumerate self;
-  f_step_by:   self -> Core.Iter.Adapters.Step_by.t_StepBy self;
-  f_all:       self -> (f_Item -> bool) -> bool;
+  f_step_by:   self -> usize -> Core.Iter.Adapters.Step_by.t_StepBy self;
+  f_all:       self -> (f_Item -> bool) -> self * bool;
 }
 
