@@ -289,7 +289,8 @@ functor
          ^ String.concat ~sep:(newline_indent depth) (List.map
                                                         ~f:(fun (pat, body) ->
                                                             "|" ^ " " ^ (pat_to_string pat true depth) ^ " " ^ "=>"
-                                                            ^ newline_indent (depth + 1))
+                                                            ^ newline_indent (depth + 1)
+                                                            ^ (term_to_string_without_paren body (depth+1)))
                                                         arms)
          ^ newline_indent depth ^ "end",
          false )

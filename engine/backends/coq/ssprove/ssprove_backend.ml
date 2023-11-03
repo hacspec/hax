@@ -267,7 +267,19 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
       Some (TuplePat (List.map ~f:fst pt_list), SSP.AST.Tuple (List.map ~f:snd pt_list))
     | AscriptionPat (p, t) ->
       pat_as_expr p (* TypedTerm (, t) *)
-  
+
+  let ifb ((cond, then_, else_) : SSP.AST.term * SSP.AST.term * SSP.AST.term) : SSP.AST.term =
+    SSP.AST.AppFormat
+      ( ["ifb "; (*expr*) ""; "then "; ""; "else "; ""],
+        [
+          SSP.AST.Value (cond, false);
+          SSP.AST.Newline 0;
+          SSP.AST.Value (then_, false);
+          SSP.AST.Newline 0;
+          SSP.AST.Value (else_, false);
+        ]
+      )
+
   let matchb ((expr, arms) : SSP.AST.term * (SSP.AST.pat * SSP.AST.term) list) : SSP.AST.term =
     SSP.AST.AppFormat
       ( ["matchb "; (*expr*) " with"] @ List.concat_map ~f:(fun _ -> ["| "; " =>"; ""; "";]) arms @ ["end"],
@@ -924,7 +936,7 @@ struct
          let args = List.map ~f:(pexpr env false) args in
          SSP.AST.App (base, args)
        | If { cond; then_; else_ } ->
-         SSP.AST.If
+         SSPExtraDefinitions.ifb
            ( (pexpr env false) cond,
              (pexpr env false) then_,
              Option.value_map else_ ~default:(SSP.AST.Literal "()")
@@ -968,14 +980,15 @@ struct
                    | MOption -> SSP.AST.Option) monadic;
              })
        | EffectAction _ -> . (* __TODO_term__ span "monadic action" *)
-       | Match { scrutinee; arms = [{arm = { arm_pat = { p = PConstruct { name; args = [arg]; is_record = None ; is_struct = true }; }; body }}] } ->
+       | Match { scrutinee; arms = [{arm = { arm_pat = { p = PConstruct { name; args = [{field; pat; }]; is_record = None ; is_struct = true }; }; body }}] } ->
          (* Record match expressions *)
+(* (pexpr env true) body *)
          (SSPExtraDefinitions.letb {
-              pattern = ppat arg.pat ;
+              pattern = ppat pat ;
               mut = false;
-              value = SSP.AST.Var (pglobal_ident arg.field);
+              value = (pexpr env false) scrutinee;
               body = (pexpr env true) body;
-              value_typ = pty arg.pat.span arg.pat.typ;
+              value_typ = pty pat.span pat.typ;
               monad_typ = None;
             })
        | Match { scrutinee; arms } ->
