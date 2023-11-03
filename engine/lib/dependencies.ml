@@ -214,7 +214,17 @@ module Make (F : Features.T) = struct
     let lookup (name : concrete_ident) =
       List.find ~f:(ident_of >> Concrete_ident.equal name) items
     in
-    ItemGraph.Topological.fold List.cons g [] |> List.filter_map ~f:lookup
+    let items' =
+      ItemGraph.Topological.fold List.cons g [] |> List.filter_map ~f:lookup
+    in
+    assert (
+      let of_list =
+        List.map ~f:ident_of >> Set.of_list (module Concrete_ident)
+      in
+      let items = of_list items in
+      let items' = of_list items' in
+      Set.equal items items');
+    items'
 
   let filter_by_inclusion_clauses (clauses : Types.inclusion_clause list)
       (items : item list) : item list =
