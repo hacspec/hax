@@ -243,15 +243,20 @@ module Make (F : Features.T) = struct
 
           method! visit_expr (ascribe_app : bool) e =
             let e = super#visit_expr ascribe_app e in
-            let is_cast_app =
-              match e.e with
-              | App { f = { e = GlobalVar (`Primitive Cast); _ }; _ } -> true
-              | _ -> false
+            let ascribe (e : expr) =
+              if [%matches? Ascription _] e.e then e
+              else { e with e = Ascription { e; typ = e.typ } }
             in
-            (* Ascribe the return type of a function application *)
-            if is_cast_app || (ascribe_app && is_app e.e) then
-              { e with e = Ascription { e; typ = e.typ } }
-            else e
+            match e.e with
+            | App
+                {
+                  f = { e = GlobalVar (`Primitive Cast); _ } as f;
+                  args = [ arg ];
+                } ->
+                ascribe { e with e = App { f; args = [ ascribe arg ] } }
+            | _ ->
+                (* Ascribe the return type of a function application *)
+                if ascribe_app && is_app e.e then ascribe e else e
         end
       in
       o#visit_item false
