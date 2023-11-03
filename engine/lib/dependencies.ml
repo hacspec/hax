@@ -28,6 +28,7 @@ module Make (F : Features.T) = struct
 
   module ItemGraph = struct
     module G = Graph.Persistent.Digraph.Concrete (Concrete_ident)
+    module Topological = Graph.Topological.Make (G)
     module Oper = Graph.Oper.P (G)
 
     let vertices_of_item (i : item) : G.V.t list =
@@ -69,8 +70,11 @@ module Make (F : Features.T) = struct
       List.concat_map ~f:(fun i ->
           vertices_of_item i |> List.map ~f:(Fn.const i.ident &&& Fn.id))
 
-    let of_items : item list -> G.t =
-      vertices_of_items >> List.fold ~init:G.empty ~f:(G.add_edge >> uncurry)
+    let of_items (items : item list) : G.t =
+      let init =
+        List.fold ~init:G.empty ~f:(fun g -> ident_of >> G.add_vertex g) items
+      in
+      vertices_of_items items |> List.fold ~init ~f:(G.add_edge >> uncurry)
 
     let transitive_dependencies_of (g : G.t) (selection : Concrete_ident.t list)
         : Concrete_ident.t Hash_set.t =
@@ -204,6 +208,23 @@ module Make (F : Features.T) = struct
 
   let ident_list_to_string =
     List.map ~f:Concrete_ident.DefaultViewAPI.show >> String.concat ~sep:", "
+
+  let sort (items : item list) : item list =
+    let g = ItemGraph.of_items items in
+    let lookup (name : concrete_ident) =
+      List.find ~f:(ident_of >> Concrete_ident.equal name) items
+    in
+    let items' =
+      ItemGraph.Topological.fold List.cons g [] |> List.filter_map ~f:lookup
+    in
+    assert (
+      let of_list =
+        List.map ~f:ident_of >> Set.of_list (module Concrete_ident)
+      in
+      let items = of_list items in
+      let items' = of_list items' in
+      Set.equal items items');
+    items'
 
   let filter_by_inclusion_clauses (clauses : Types.inclusion_clause list)
       (items : item list) : item list =
