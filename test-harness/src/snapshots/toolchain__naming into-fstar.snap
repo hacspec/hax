@@ -24,6 +24,12 @@ exit = 0
 diagnostics = []
 
 [stdout.files]
+"Naming.F.G.Impl_1.G.Hello.fst" = '''
+module Naming.F.G.Impl_1.G.Hello
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+
+let h: Prims.unit = ()'''
 "Naming.fst" = '''
 module Naming
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
@@ -63,6 +69,8 @@ type t_f__g__impl__g__Foo =
   | C_f__g__impl__g__Foo_B { f_x:usize }: t_f__g__impl__g__Foo
 
 let ff__g__impl__g (self: t_B) : usize = sz 0
+
+let ff__g: Prims.unit = ()
 
 let f (x: t_Foobar) : usize = ff__g__impl_1__g x.f_a
 
