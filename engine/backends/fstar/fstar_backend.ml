@@ -489,7 +489,10 @@ struct
           (F.term @@ F.AST.Name (pglobal_ident e.span constructor))
           [ r ]
     | Closure { params; body } ->
-        F.mk_e_abs (List.map ~f:ppat params) (pexpr body)
+        let ppat_ascribed pat =
+          F.pat @@ F.AST.PatAscribed (ppat pat, (pty pat.span pat.typ, None))
+        in
+        F.mk_e_abs (List.map ~f:ppat_ascribed params) (pexpr body)
     | Return { e } ->
         F.term @@ F.AST.App (F.term_of_lid [ "RETURN_STMT" ], pexpr e, Nothing)
     | MacroInvokation { macro; args; witness } ->
