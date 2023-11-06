@@ -26,16 +26,7 @@ pub enum ImplSourceKind {
 )]
 pub struct ImplSource {
     pub kind: ImplSourceKind,
-    pub trait_ref: FullTraitRef,
-}
-
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
-pub struct FullTraitRef {
-    pub def_id: DefId,
-    pub generic_args: Vec<GenericArg>,
-    pub traits: Vec<ImplSource>,
+    pub trait_ref: TraitRef,
 }
 
 #[derive(
@@ -206,9 +197,10 @@ pub fn get_params_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     // If we use [TyCtxt::predicates_of] on a trait `Foo`, we get an
     // additional predicate `Self : Foo` (i.e., the trait requires itself),
     // which is not what we want.
-    let preds = tcx.predicates_defined_on(def_id).sinto(s);
+    let preds = tcx.predicates_defined_on(def_id);
     for (pred, _) in preds.predicates {
-        match &pred.value {
+        use rustc_middle::ty::{Clause, PredicateKind};
+        match &pred.kind().skip_binder() {
             PredicateKind::Clause(Clause::Trait(_)) => num_trait_clauses += 1,
             PredicateKind::Clause(Clause::RegionOutlives(_)) => num_regions_outlive += 1,
             PredicateKind::Clause(Clause::TypeOutlives(_)) => num_types_outlive += 1,
@@ -404,6 +396,7 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
                     // We preserve the trait ref, because we will need it to figure out
                     // **which** where clause actually solves this trait obligation.
                     let trait_ref = trait_ref.sinto(s);
+                    assert!(obligations.is_empty());
                     let obligations = solve_obligations(s, obligations);
                     let constness = constness.sinto(s);
                     ImplSourceKind::Param(trait_ref, obligations, constness)
@@ -469,12 +462,9 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     let trait_ref = {
         let tr = trait_ref.sinto(s);
         assert!(trait_ref.bound_vars().is_empty());
-        let trait_ref = trait_ref.skip_binder();
-        let traits = solve_item_traits(s, param_env, trait_ref.def_id, trait_ref.substs);
-        FullTraitRef {
+        TraitRef {
             def_id: tr.value.def_id,
             generic_args: tr.value.generic_args,
-            traits,
         }
     };
     ImplSource { kind, trait_ref }
@@ -732,12 +722,9 @@ pub fn solve_item_traits<'tcx, S: BaseState<'tcx> + HasOwnerId>(
                     ImplSourceKind::Error(format!("{:?} has escaping bound vars", trait_ref));
                 let trait_ref = {
                     let tr = trait_ref.sinto(s);
-                    let traits =
-                        solve_item_traits(s, param_env, trait_ref.def_id, trait_ref.substs);
-                    FullTraitRef {
+                    TraitRef {
                         def_id: tr.def_id,
                         generic_args: tr.generic_args,
-                        traits,
                     }
                 };
 

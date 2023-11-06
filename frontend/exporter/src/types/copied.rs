@@ -3021,7 +3021,6 @@ pub struct Lifetime {
 pub struct TraitRef {
     pub def_id: DefId,
     pub generic_args: Vec<GenericArg>,
-    pub trait_refs : Vec<ImplSource>,
 }
 
 impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, TraitRef>
@@ -3030,10 +3029,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, TraitRef>
     fn sinto(&self, s: &S) -> TraitRef {
         let def_id = self.def_id.sinto(s);
         let generic_args = self.substs.sinto(s);
-
-        let param_env = s.base().tcx.param_env(s.owner_id());
-        let trait_refs = solve_item_traits(s, param_env, self.def_id, self.substs);
-        TraitRef { def_id, generic_args, trait_refs }
+        TraitRef { def_id, generic_args }
     }
 }
 
