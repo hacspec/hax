@@ -3071,6 +3071,8 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, TraitPredicate>
     for rustc_middle::ty::TraitPredicate<'tcx>
 {
     fn sinto(&self, s: &S) -> TraitPredicate {
+        // TODO: give the possibility of normalizing the types. This is
+        // necessary when solving trait obligations.
         let trait_ref = self.trait_ref.sinto(s);
         let is_const = self.constness == rustc_middle::ty::BoundConstness::ConstIfConst;
         let is_positive = self.polarity == rustc_middle::ty::ImplPolarity::Positive;
@@ -3133,7 +3135,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, TraitPredicate>
                 // ```
                 // pub fn f<T: Foo<S = U::S>, U: Foo>() {}
                 // ```
-                // The issue is that T refers `U : Foo` before the clause is
+                // The issue is that T refers to `U : Foo` before the clause is
                 // defined. If we normalize the types in the items of `T : Foo`,
                 // when exploring the items of `Foo<T>` we find the clause
                 // `Sized<U::S>` (instead of `Sized<T::S>`) because `T::S` has
