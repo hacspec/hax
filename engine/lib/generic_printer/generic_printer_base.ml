@@ -47,6 +47,7 @@ type ast_position =
   | Pat_ConcreteInductive
   | Pat_Ascription_pat
   | Pat_Ascription_typ
+  | Pat_Or
   | Param_pat
   | Param_typ
   | GenericParam_GPType

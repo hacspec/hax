@@ -54,17 +54,18 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
           | LogicalOp And -> string "and"
           | LogicalOp Or -> string "or"
 
-        method local_ident : local_ident fn =
-          fun { name; _ } -> View.local_name name |> utf8string
+        method local_ident : local_ident fn = View.local_ident >> utf8string
 
         method literal : literal_ctx -> literal fn =
           (* TODO : escape *)
           fun _ctx -> function
             | String s -> utf8string s |> dquotes
             | Char c -> char c |> bquotes
-            | Int { value; _ } -> string value
-            | Float { value; kind } ->
+            | Int { value; negative; _ } ->
+                string value |> precede (if negative then minus else empty)
+            | Float { value; kind; negative } ->
                 string value
+                |> precede (if negative then minus else empty)
                 |> terminate
                      (string (match kind with F32 -> "f32" | F64 -> "f64"))
             | Bool b -> OCaml.bool b
@@ -139,7 +140,8 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
                 ^/^ semi
                 ^/^ print#expr_at Ty_TArray_length length
                 |> brackets
-            | TProjectedAssociatedType _ -> string "proj_asso_type!()"
+            | TAssociatedType _ -> string "assoc_type!()"
+            | TOpaque _ -> string "opaque_type!()"
             | TApp _ -> super#ty ctx ty
 
         method expr' : par_state -> expr' fn =
@@ -350,6 +352,8 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
             | PDeref { subpat; _ } ->
                 ampersand ^^ print#pat_at Pat_PDeref subpat
             | (PConstruct _ | PConstant _) as pat -> super#pat' ctx pat
+            | POr { subpats } ->
+                separate_map (bar ^^ break 1) (print#pat_at Pat_Or) subpats
 
         method pat_ascription : typ:ty -> typ_span:span -> pat fn =
           fun ~typ ~typ_span pat ->
