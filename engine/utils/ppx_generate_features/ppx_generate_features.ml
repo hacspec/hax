@@ -67,7 +67,14 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
               ptype_attributes =
                 [
                   B.attribute ~name:{ loc; txt = "deriving" }
-                    ~payload:(PStr [%str show, yojson, hash, eq, enumerate]);
+                    ~payload:
+                      (PStr
+                         [%str
+                           show { with_path = false },
+                             yojson,
+                             hash,
+                             eq,
+                             enumerate]);
                 ];
             };
           ]]
