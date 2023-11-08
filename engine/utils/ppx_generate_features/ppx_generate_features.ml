@@ -280,13 +280,15 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
           List.map
             ~f:(fun txt ->
               (rename [ ("placeholder", txt) ])#signature_item
-                [%sigi: val placeholder : A.placeholder -> B.placeholder])
+                [%sigi:
+                  val placeholder : Span.t -> A.placeholder -> B.placeholder])
             features
           |> B.pmty_signature]
         end
 
         module type MAPPER = sig
-          val map : 'a 'b. ('a -> 'b) -> Enumeration.t -> 'a -> 'b
+          val map :
+            'a 'b. (Span.t -> 'a -> 'b) -> Enumeration.t -> Span.t -> 'a -> 'b
         end
 
         module Map (S : T) (Mapper : MAPPER) =
@@ -319,7 +321,7 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
               #structure
               [%str
                 module Placeholder = struct
-                  let placeholder _ = On.placeholder
+                  let placeholder _span _witness = On.placeholder
                 end
 
                 include Placeholder])
@@ -339,7 +341,7 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
               #structure
               [%str
                 module Placeholder = struct
-                  let placeholder _ = R.reject ()
+                  let placeholder _span _witness = R.reject ()
                 end
 
                 include Placeholder])
@@ -349,7 +351,8 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
         module Id =
         [%m
         List.map
-          ~f:(fun txt -> [%stri let [%p B.ppat_var { loc; txt }] = Base.Fn.id])
+          ~f:(fun txt ->
+            [%stri let [%p B.ppat_var { loc; txt }] = fun _span -> Base.Fn.id])
           features
         |> B.pmod_structure]
       end
