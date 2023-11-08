@@ -59,14 +59,19 @@ let process_order
         <:
         Core.Ops.Range.t_Range usize)
       (done, matches, order, other_side)
-      (fun (done, matches, order, other_side) v__i ->
+      (fun
+          (done, matches, order, other_side:
+            (bool & Alloc.Vec.t_Vec t_Match Alloc.Alloc.t_Global & t_Order &
+              Alloc.Collections.Binary_heap.t_BinaryHeap v_T))
+          (v__i: usize)
+          ->
           if ~.done <: bool
           then
             match
               Core.Option.impl__and_then (Alloc.Collections.Binary_heap.impl_10__peek other_side
                   <:
                   Core.Option.t_Option v_T)
-                (fun other ->
+                (fun (other: v_T) ->
                     impl__Order__try_match (Core.Convert.f_into (Core.Clone.f_clone other <: v_T)
                         <:
                         t_Order)
