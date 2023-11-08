@@ -57,6 +57,7 @@
         ppx_deriving_yojson
         ppx_matches
         ppx_let
+        ppx_enumerate
         cmdliner
         angstrom
         ppx_string

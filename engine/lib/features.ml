@@ -35,6 +35,8 @@ module Rust = struct
   include Off.State_passing_loop
 end
 
+let _ = Enumeration.all
+
 module _ = struct
   module _ : T = Full
   module _ : T = Rust
