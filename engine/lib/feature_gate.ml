@@ -10,7 +10,10 @@ module DefaultSubtype = struct
   include Features.SUBTYPE.Id
 
   let explain : error -> Features.Enumeration.t -> string =
-   fun _ _ -> "unknown reason"
+   fun _ feat ->
+    "a node of kind ["
+    ^ [%show: Features.Enumeration.t] feat
+    ^ "] have been found in the AST"
 end
 
 module Make
