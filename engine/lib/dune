@@ -29,6 +29,7 @@
    ppx_inline
    ppx_generate_features
    ppx_functor_application
+   ppx_enumerate
    ppx_matches)))
 
 (include_subdirs unqualified)
