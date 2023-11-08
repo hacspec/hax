@@ -332,7 +332,7 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
               #structure
               [%str
                 module Placeholder = struct
-                  let placeholder _ = R.reject
+                  let placeholder _ = R.reject ()
                 end
 
                 include Placeholder])
