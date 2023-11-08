@@ -39,17 +39,10 @@ class t_TryFrom self t = {
   f_try_from: t -> Core.Result.t_Result self f_Error;
 }
 
-#push-options "--z3rlimit 20"
 instance integer_into
-  (t:inttype) (t':inttype { Lib.IntTypes.bits   t' > Lib.IntTypes.bits   t 
-                          /\ Lib.IntTypes.signed t' = Lib.IntTypes.signed t})
+  (t:inttype) (t':inttype { minint t >= minint t' /\ maxint t <= maxint t' })
   : t_From (int_t t') (int_t t)
-  = { f_from = (fun (x: int_t t) -> 
-        assert (minint t >= minint t' /\ maxint t <= maxint t');
-        Rust_primitives.Integers.cast #t #t' x
-      )
-    }
-#pop-options
+  = { f_from = (fun (x: int_t t) -> Rust_primitives.Integers.cast #t #t' x) }
 
 instance into_from_from a b {| t_From a b |}: t_Into b a = {
   f_into = (fun x -> f_from x)
