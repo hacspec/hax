@@ -36,8 +36,7 @@ struct
 
     module S = struct
       include Features.SUBTYPE.Id
-
-      let state_passing_loop _ = Features.On.state_passing_loop
+      include Features.SUBTYPE.On.State_passing_loop
     end
 
     module SI = MakeSI (FB)

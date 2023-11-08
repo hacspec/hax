@@ -1,11 +1,11 @@
 open! Prelude
 
 module DefaultSubtype = struct
-  type error = Err [@@deriving show, yojson, eq]
+  type error = Err of Span.t [@@deriving show, yojson, eq]
 
   exception E of error
 
-  let reject (type a b) : a -> b = fun _ -> raise @@ E Err
+  let reject (type a b) : Span.t -> a -> b = fun span _ -> raise @@ E (Err span)
 
   include Features.SUBTYPE.Id
 
@@ -38,17 +38,19 @@ struct
     Features.SUBTYPE.Map
       (S0)
       (struct
-        let map (type a b) (f : a -> b) (feature_kind : Features.Enumeration.t)
-            (x : a) : b =
-          try f x
+        let map (type a b) (f : Span.t -> a -> b)
+            (feature_kind : Features.Enumeration.t) (span : Span.t) (x : a) : b
+            =
+          try f span x
           with S0.E err ->
+            let span = Span.to_thir span in
             let kind : Diagnostics.kind =
               ExplicitRejection { reason = S0.explain err feature_kind }
             in
             let context : Diagnostics.Context.t =
               Phase S0.metadata.current_phase
             in
-            Diagnostics.SpanFreeError.raise context kind
+            Diagnostics.SpanFreeError.raise ~span context kind
       end)
 
   include Subtype.Make (FA) (FB) (S)

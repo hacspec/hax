@@ -39,8 +39,8 @@ module RejectNotEC (FA : Features.T) = struct
         module B = FB
         include Feature_gate.DefaultSubtype
 
-        let mutable_variable _ = Features.On.mutable_variable
-        let loop _ = Features.On.loop
+        let mutable_variable _ _ = Features.On.mutable_variable
+        let loop _ _ = Features.On.loop
         let continue = reject
         let mutable_reference = reject
         let mutable_pointer = reject
@@ -51,7 +51,7 @@ module RejectNotEC (FA : Features.T) = struct
         let early_exit = reject
         let question_mark = reject
         let break = reject
-        let macro _ = Features.On.macro
+        let macro _ _ = Features.On.macro
         let as_pattern = reject
         let lifetime = reject
         let monadic_action = reject
@@ -60,9 +60,9 @@ module RejectNotEC (FA : Features.T) = struct
         let state_passing_loop = reject
         let nontrivial_lhs = reject
         let block = reject
-        let construct_base _ = Features.On.construct_base
         let for_loop = reject
-        let for_index_loop _ = Features.On.for_index_loop
+        let construct_base _ _ = Features.On.construct_base
+        let for_index_loop _ _ = Features.On.for_index_loop
 
         let metadata =
           Phase_utils.Metadata.make (Reject (NotInBackendLang EasyCrypt))

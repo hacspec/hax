@@ -30,10 +30,9 @@ struct
 
     module S = struct
       include Features.SUBTYPE.Id
-
-      let mutable_variable = Fn.const Features.On.mutable_variable
-      let nontrivial_lhs = Fn.const Features.On.nontrivial_lhs
-      let arbitrary_lhs = Fn.const Features.On.arbitrary_lhs
+      include Features.SUBTYPE.On.Mutable_variable
+      include Features.SUBTYPE.On.Nontrivial_lhs
+      include Features.SUBTYPE.On.Arbitrary_lhs
     end
 
     module UA = Ast_utils.Make (FA)
