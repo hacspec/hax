@@ -1,4 +1,4 @@
-#[cfg(hax_compilation)]
+#[cfg(hax)]
 #[macro_export]
 macro_rules! proxy_macro_if_not_hax {
     ($macro:path, no, $($arg:tt)*) => {
@@ -8,7 +8,7 @@ macro_rules! proxy_macro_if_not_hax {
         $f($cond)
     };
 }
-#[cfg(not(hax_compilation))]
+#[cfg(not(hax))]
 #[macro_export]
 macro_rules! proxy_macro_if_not_hax {
     ($macro:path, $f:expr, $($arg:tt)*) => {
@@ -30,20 +30,20 @@ macro_rules! assert {
     };
 }
 
-#[cfg(hax_compilation)]
+#[cfg(hax)]
 pub fn assert(_formula: bool) {}
 
-#[cfg(hax_compilation)]
+#[cfg(hax)]
 pub fn assume(_formula: bool) {}
 
-#[cfg(hax_compilation)]
+#[cfg(hax)]
 #[macro_export]
 macro_rules! assume {
     ($formula:expr) => {
         $crate::assume($formula)
     };
 }
-#[cfg(not(hax_compilation))]
+#[cfg(not(hax))]
 #[macro_export]
 macro_rules! assume {
     ($formula:expr) => {
