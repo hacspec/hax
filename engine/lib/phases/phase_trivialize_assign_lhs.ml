@@ -21,8 +21,7 @@ module%inlined_contents Make (F : Features.T) = struct
 
     module S = struct
       include Features.SUBTYPE.Id
-
-      let construct_base _ = Features.On.construct_base
+      include Features.SUBTYPE.On.Construct_base
     end
 
     module UA = Ast_utils.Make (F)

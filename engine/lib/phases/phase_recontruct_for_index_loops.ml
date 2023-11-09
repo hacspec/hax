@@ -22,8 +22,7 @@ module%inlined_contents Make (FA : Features.T) = struct
 
     module S = struct
       include Features.SUBTYPE.Id
-
-      let for_index_loop = Fn.const Features.On.for_index_loop
+      include Features.SUBTYPE.On.For_index_loop
     end
 
     [%%inline_defs dmutability]

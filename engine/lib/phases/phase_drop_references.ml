@@ -77,7 +77,7 @@ struct
               is_record;
               is_struct;
               fields = List.map ~f:(fun (i, e) -> (i, dexpr e)) fields;
-              base = Option.map ~f:(dexpr *** S.construct_base) base;
+              base = Option.map ~f:(dexpr *** S.construct_base span) base;
             }
       | Match { scrutinee; arms } ->
           Match { scrutinee = dexpr scrutinee; arms = List.map ~f:darm arms }
