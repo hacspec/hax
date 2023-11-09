@@ -507,13 +507,13 @@ struct
                     p ))
             params
         in
-        let lbs =
-          List.map
-            ~f:(fun (lid, pat) ->
-              (lid, { e = LocalVar lid; span = pat.span; typ = pat.typ }))
-            params
+        let body =
+          let f (lid, (pat : pat)) =
+            let rhs = { e = LocalVar lid; span = pat.span; typ = pat.typ } in
+            U.make_let pat rhs
+          in
+          List.fold_right ~init:body ~f params
         in
-        let body = U.lets_of_bindings lbs body in
         let mk_pat ((lid, pat) : local_ident * pat) =
           ppat (U.make_var_pat lid pat.typ pat.span)
         in

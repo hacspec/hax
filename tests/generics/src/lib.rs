@@ -8,22 +8,6 @@ fn f() -> bool {
 //     (x.clone(), x.clone())
 // }
 
-<<<<<<< HEAD
-fn repeat<const LEN: usize, T: Copy>(x: T) -> [T; LEN] {
-    [x; LEN]
-}
-
-fn g() -> usize {
-    f::<10>(3) + 3
-}
-fn f<const N: usize>(x: usize) -> usize {
-    N + N + x
-}
-||||||| cce6a8de
-fn repeat<const LEN: usize, T: Copy>(x: T) -> [T; LEN] {
-    [x; LEN]
-}
-=======
 // fn foo<const LEN: usize>(arr: [usize; LEN]) -> usize {
 //     let mut acc = LEN + 9;
 //     for i in 0..LEN {
@@ -59,4 +43,3 @@ fn repeat<const LEN: usize, T: Copy>(x: T) -> [T; LEN] {
 //         self + N
 //     }
 // }
->>>>>>> add-hax-lib
