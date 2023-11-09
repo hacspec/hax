@@ -496,10 +496,28 @@ struct
           (F.term @@ F.AST.Name (pglobal_ident e.span constructor))
           [ r ]
     | Closure { params; body } ->
-        let ppat_ascribed pat =
-          F.pat @@ F.AST.PatAscribed (ppat pat, (pty pat.span pat.typ, None))
+        let params =
+          List.mapi
+            ~f:(fun i p ->
+              match p.p with
+              | PBinding { var; subpat = None; _ } -> (var, p)
+              | _ ->
+                  ( Local_ident.
+                      { name = "temp_" ^ Int.to_string i; id = mk_id Expr (-1) },
+                    p ))
+            params
         in
-        F.mk_e_abs (List.map ~f:ppat_ascribed params) (pexpr body)
+        let lbs =
+          List.map
+            ~f:(fun (lid, pat) ->
+              (lid, { e = LocalVar lid; span = pat.span; typ = pat.typ }))
+            params
+        in
+        let body = U.lets_of_bindings lbs body in
+        let mk_pat ((lid, pat) : local_ident * pat) =
+          ppat (U.make_var_pat lid pat.typ pat.span)
+        in
+        F.mk_e_abs (List.map ~f:mk_pat params) (pexpr body)
     | Return { e } ->
         F.term @@ F.AST.App (F.term_of_lid [ "RETURN_STMT" ], pexpr e, Nothing)
     | MacroInvokation { macro; args; witness } ->
