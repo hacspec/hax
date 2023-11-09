@@ -118,6 +118,8 @@ struct
                                                                           };
                                                                     };
                                                                   ];
+                                                                _;
+                                                                (* TODO: see issue #328 *)
                                                               };
                                                         };
                                                       arms =
@@ -165,6 +167,8 @@ struct
                                                                                 };
                                                                               };
                                                                             ];
+                                                                          _;
+                                                                          (* TODO: see issue #328 *)
                                                                         };
                                                                   };
                                                               };

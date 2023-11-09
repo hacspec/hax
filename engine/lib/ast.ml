@@ -299,7 +299,11 @@ functor
     and expr' =
       (* pure fragment *)
       | If of { cond : expr; then_ : expr; else_ : expr option }
-      | App of { f : expr; args : expr list (* ; f_span: span *) }
+      | App of {
+          f : expr;
+          args : expr list (* ; f_span: span *);
+          generic_args : generic_value list;
+        }
       | Literal of literal
       | Array of expr list
       | Construct of {
