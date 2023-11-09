@@ -5,6 +5,7 @@ let impl__u8__wrapping_sub: u8 -> u8 -> u8 = sub_mod
 
 let impl__i32__wrapping_add: i32 -> i32 -> i32 = add_mod
 val impl__i32__abs: i32 -> i32
+val impl__i32__pow: i32 -> u32 -> i32
 
 let impl__u32__wrapping_add: u32 -> u32 -> u32 = add_mod
 val impl__u32__rotate_left: u32 -> u32 -> u32
@@ -37,5 +38,7 @@ val impl__u64__pow: u64 -> u32 -> u64
 val impl__u128__pow: u128 -> u32 -> u128
 
 val impl__u8__from_str_radix: string -> u32 -> Core.Result.t_Result u8 Core.Num.Error.t_ParseIntError
+
+val impl__usize__ilog2: i32 -> u32 
 
 
