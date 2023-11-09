@@ -97,7 +97,8 @@ struct
           LhsArbitraryExpr { witness = Features.On.arbitrary_lhs; e }
 
     and translate_app (span : span) (otype : A.ty) (f : A.expr)
-        (raw_args : A.expr list) : B.expr =
+        (raw_args : A.expr list) (generic_args : B.generic_value list) : B.expr
+        =
       (* `otype` and `_otype` (below) are supposed to be the same
          type, but sometimes `_otype` is less precise (i.e. an associated
          type while a concrete type is available) *)
@@ -134,7 +135,7 @@ struct
           (* there is no mutation, we can reconstruct the expression right away *)
           let f, typ = (dexpr f, dty span otype) in
           let args = List.map ~f:dexpr raw_args in
-          B.{ e = B.App { f; args }; typ; span }
+          B.{ e = B.App { f; args; generic_args }; typ; span }
       | _ -> (
           (* TODO: when LHS are better (issue #222), compress `p1 = tmp1; ...; pN = tmpN` in `(p1...pN) = ...` *)
           (* we are generating:
@@ -209,7 +210,7 @@ struct
             in
             B.
               {
-                e = App { f; args = unmut_args };
+                e = App { f; args = unmut_args; generic_args };
                 typ = pat.typ;
                 span = pat.span;
               }
@@ -259,7 +260,9 @@ struct
     and dexpr_unwrapped (expr : A.expr) : B.expr =
       let span = expr.span in
       match expr.e with
-      | App { f; args } -> translate_app span expr.typ f args
+      | App { f; args; generic_args } ->
+          let generic_args = List.map ~f:(dgeneric_value span) generic_args in
+          translate_app span expr.typ f args generic_args
       | _ ->
           let e = dexpr' span expr.e in
           B.{ e; typ = dty expr.span expr.typ; span = expr.span }

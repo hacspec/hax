@@ -398,7 +398,14 @@ struct
           Error.assertion_failure e.span
             "pexpr: bad arity for operator application";
         F.term @@ F.AST.Op (F.Ident.id_of_text op, List.map ~f:pexpr args)
-    | App { f; args } -> F.mk_e_app (pexpr f) @@ List.map ~f:pexpr args
+    | App { f; args; generic_args } ->
+        let const_generics =
+          List.filter_map
+            ~f:(function GConst e -> Some e | _ -> None)
+            generic_args
+        in
+        let args = const_generics @ args in
+        F.mk_e_app (pexpr f) @@ List.map ~f:pexpr args
     | If { cond; then_; else_ } ->
         F.term
         @@ F.AST.If
@@ -506,20 +513,19 @@ struct
   and parm { arm = { arm_pat; body } } = (ppat arm_pat, None, pexpr body)
 
   let rec pgeneric_param span (p : generic_param) : F.AST.pattern =
-    let mk_implicit (ident : local_ident) ty =
-      let v =
-        F.pat @@ F.AST.PatVar (plocal_ident ident, Some F.AST.Implicit, [])
-      in
+    let mk ~aqual (ident : local_ident) ty =
+      let v = F.pat @@ F.AST.PatVar (plocal_ident ident, aqual, []) in
       F.pat @@ F.AST.PatAscribed (v, (ty, None))
     in
     let ident = p.ident in
     match p.kind with
     | GPLifetime _ -> Error.assertion_failure span "pgeneric_param:LIFETIME"
     | GPType { default = None } ->
-        mk_implicit ident (F.term @@ F.AST.Name (F.lid [ "Type" ]))
+        mk ~aqual:(Some F.AST.Implicit) ident
+          (F.term @@ F.AST.Name (F.lid [ "Type" ]))
     | GPType _ ->
         Error.unimplemented span ~details:"pgeneric_param:Type with default"
-    | GPConst { typ } -> mk_implicit ident (pty span typ)
+    | GPConst { typ } -> mk ~aqual:None ident (pty span typ)
 
   let rec pgeneric_constraint span (nth : int) (c : generic_constraint) =
     match c with
@@ -541,7 +547,8 @@ struct
     | GPType _ ->
         Error.unimplemented span ~details:"pgeneric_param_bd:Type with default"
     | GPConst { typ } ->
-        F.mk_binder ~aqual (F.AST.Annotated (plocal_ident ident, pty span typ))
+        F.mk_binder ~aqual:None
+          (F.AST.Annotated (plocal_ident ident, pty span typ))
 
   let pgeneric_param_ident
       ?(aqual : F.AST.arg_qualifier option = Some FStar_Parser_AST.Implicit)
@@ -696,9 +703,6 @@ struct
     | _ ->
         let effect = if Option.is_some prepost_bundle then "Pure" else "Tot" in
         F.mk_e_app (F.term_of_lid [ "Prims"; effect ]) (typ :: args)
-
-  (* let decreases, requires = match  *)
-  (*   match effect with Some effect -> F.mk_e_app effect ([typ] @ Option.to_list ) 0 | None -> typ *)
 
   let rec pitem (e : item) : [> `Item of F.AST.decl | `Comment of string ] list
       =

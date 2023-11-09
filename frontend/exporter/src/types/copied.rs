@@ -1899,7 +1899,7 @@ pub enum ExprKind {
     },
     #[map({
         let e = gstate.thir().exprs[*fun].unroll_scope(gstate);
-        let (fun, r#impl) = match &e.kind {
+        let (fun, r#impl, generic_args) = match &e.kind {
             /* TODO: see whether [user_ty] below is relevant or not */
             rustc_middle::thir::ExprKind::ZstLiteral {user_ty: _ } => {
                 match ty.kind() {
@@ -1920,7 +1920,7 @@ pub enum ExprKind {
                             ty: e.ty.sinto(gstate),
                             hir_id,
                             attributes,
-                        }, r#impl)
+                        }, r#impl, substs.sinto(gstate))
                     },
                     ty_kind => supposely_unreachable_fatal!(
                         gstate[e.span],
@@ -1932,7 +1932,7 @@ pub enum ExprKind {
             kind => {
                 match ty.kind() {
                     rustc_middle::ty::TyKind::FnPtr(..) => {
-                        (e.sinto(gstate), None)
+                        (e.sinto(gstate), None, vec![])
                     },
                     ty_kind => {
                         supposely_unreachable!(
@@ -1948,6 +1948,7 @@ pub enum ExprKind {
         TO_TYPE::Call {
             ty: ty.sinto(gstate),
             args: args.sinto(gstate),
+            generic_args,
             from_hir_call: from_hir_call.sinto(gstate),
             fn_span: fn_span.sinto(gstate),
             r#impl,
@@ -1960,6 +1961,8 @@ pub enum ExprKind {
         args: Vec<Expr>,
         from_hir_call: bool,
         fn_span: Span,
+        #[not_in_source]
+        generic_args: Vec<GenericArg>,
         #[not_in_source]
         r#impl: Option<ImplExpr>,
     },

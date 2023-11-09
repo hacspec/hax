@@ -211,12 +211,14 @@ module Raw = struct
           match else_ with Some e -> !" else {" & pexpr e & !"}" | None -> !""
         in
         !"(" & !"if " & pexpr cond & !"{" & pexpr then_ & !"}" & else_ & !")"
-    | App { f = { e = GlobalVar _; _ } as f; args } ->
+    | App { f; args; generic_args } ->
         let args = concat ~sep:!"," @@ List.map ~f:pexpr args in
-        pexpr f & !"(" & args & !")"
-    | App { f; args } ->
-        let args = concat ~sep:!"," @@ List.map ~f:pexpr args in
-        pexpr f & !"(" & args & !")"
+        let generic_args =
+          let f = pgeneric_value e.span in
+          if List.is_empty generic_args then !""
+          else !"<" & (concat ~sep:!"," @@ List.map ~f generic_args) & !">"
+        in
+        pexpr f & generic_args & !"(" & args & !")"
     | Literal l -> pliteral e.span l
     | Block (e, _) -> !"{" & pexpr e & !"}"
     | Array l -> !"[" & concat ~sep:!"," (List.map ~f:pexpr l) & !"]"
