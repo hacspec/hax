@@ -693,6 +693,17 @@ module Make (F : Features.T) = struct
   let rec unbox_underef_expr e =
     (unbox_expr' unbox_underef_expr >> underef_expr' unbox_underef_expr) e
 
+  (* extracts a `param` out of a `generic_param` if it's a const
+     generic, otherwise returns `None`` *)
+  let param_of_generic_const_param (g : generic_param) : param option =
+    let* typ = match g.kind with GPConst { typ } -> Some typ | _ -> None in
+    let ({ span; ident = var; _ } : generic_param) = g in
+    let pat =
+      let mode, mut, subpat = (ByValue, Immutable, None) in
+      { p = PBinding { mut; mode; var; typ; subpat }; span; typ }
+    in
+    Some { pat; typ; typ_span = Some span; attrs = [] }
+
   let rec expr_of_lhs (span : span) (lhs : lhs) : expr =
     match lhs with
     | LhsLocalVar { var; typ } -> { e = LocalVar var; typ; span }
