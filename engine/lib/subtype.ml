@@ -151,7 +151,13 @@ struct
             then_ = dexpr then_;
             else_ = Option.map ~f:dexpr else_;
           }
-    | App { f; args } -> App { f = dexpr f; args = List.map ~f:dexpr args }
+    | App { f; args; generic_args } ->
+        App
+          {
+            f = dexpr f;
+            args = List.map ~f:dexpr args;
+            generic_args = List.map ~f:(dgeneric_value span) generic_args;
+          }
     | Literal lit -> Literal lit
     | Array l -> Array (List.map ~f:dexpr l)
     | Construct { constructor; is_record; is_struct; fields; base } ->

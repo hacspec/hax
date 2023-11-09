@@ -69,7 +69,7 @@ struct
 
     and dexpr' (span : span) (e : A.expr') : B.expr' =
       match (UA.unbox_underef_expr { e; span; typ = UA.never_typ }).e with
-      | [%inline_arms If + Literal + Array + App + Block] -> auto
+      | [%inline_arms If + Literal + Array + Block] -> auto
       | Construct { constructor; is_record; is_struct; fields; base } ->
           Construct
             {
@@ -110,6 +110,13 @@ struct
               body = dexpr body;
               captures = List.map ~f:dexpr captures;
             }
+      | App { f; args; generic_args } ->
+          let f = dexpr f in
+          let args = List.map ~f:dexpr args in
+          let generic_args =
+            List.filter_map ~f:(dgeneric_value span) generic_args
+          in
+          App { f; args; generic_args }
       | _ -> .
       [@@inline_ands bindings_of dexpr - dbinding_mode]
 

@@ -19,6 +19,7 @@ name = "driver-hax-frontend-exporter"
 serde.workspace = true
 serde_json.workspace = true
 clap.workspace = true
+colored.workspace = true
 hax-frontend-exporter.workspace = true
 hax-cli-options.workspace = true
 hax-cli-options-engine.workspace = true
