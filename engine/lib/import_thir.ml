@@ -175,10 +175,16 @@ let resugar_index_mut (e : expr) : (expr * expr) option =
       {
         f = { e = GlobalVar (`Concrete meth); _ };
         args = [ { e = Borrow { e = x; _ }; _ }; index ];
+        generic_args = _ (* TODO: see issue #328 *);
       }
     when Concrete_ident.eq_name Core__ops__index__IndexMut__index_mut meth ->
       Some (x, index)
-  | App { f = { e = GlobalVar (`Concrete meth); _ }; args = [ x; index ] }
+  | App
+      {
+        f = { e = GlobalVar (`Concrete meth); _ };
+        args = [ x; index ];
+        generic_args = _ (* TODO: see issue #328 *);
+      }
     when Concrete_ident.eq_name Core__ops__index__Index__index meth ->
       Some (x, index)
   | _ -> None
@@ -308,7 +314,10 @@ end) : EXPR = struct
         ([%show: Thir.decorated_for__expr_kind] e)
 
   and c_expr_unwrapped (e : Thir.decorated_for__expr_kind) : expr =
-    let call f args = App { f; args = List.map ~f:c_expr args } in
+    (* TODO: eliminate that `call`, use the one from `ast_utils` *)
+    let call f args =
+      App { f; args = List.map ~f:c_expr args; generic_args = [] }
+    in
     let typ = c_ty e.span e.ty in
     let span = Span.of_thir e.span in
     let mk_global typ v : expr = { span; typ; e = GlobalVar v } in
@@ -349,8 +358,20 @@ end) : EXPR = struct
           let then_ = c_expr then' in
           let else_ = Option.map ~f:c_expr else_opt in
           If { cond; else_; then_ }
-      | Call { args; fn_span = _; impl; from_hir_call = _; fun'; ty = _ } ->
+      | Call
+          {
+            args;
+            fn_span = _;
+            impl;
+            from_hir_call = _;
+            fun';
+            ty = _;
+            generic_args;
+          } ->
           let args = List.map ~f:c_expr args in
+          let generic_args =
+            List.map ~f:(c_generic_value e.span) generic_args
+          in
           let f =
             let f = c_expr fun' in
             match (impl, fun'.contents) with
@@ -358,7 +379,7 @@ end) : EXPR = struct
                 { f with e = GlobalVar (def_id (AssociatedItem Value) id) }
             | _ -> f
           in
-          App { f; args }
+          App { f; args; generic_args }
       | Box { value } ->
           (U.call Rust_primitives__hax__box_new [ c_expr value ] span typ).e
       | Deref { arg } ->
@@ -484,6 +505,7 @@ end) : EXPR = struct
             {
               f = { e = projector; typ = TArrow ([ lhs.typ ], typ); span };
               args = [ lhs ];
+              generic_args = [] (* TODO: see issue #328 *);
             }
       | TupleField { lhs; field } ->
           (* TODO: refactor *)
@@ -498,6 +520,7 @@ end) : EXPR = struct
             {
               f = { e = projector; typ = TArrow ([ lhs.typ ], typ); span };
               args = [ lhs ];
+              generic_args = [] (* TODO: see issue #328 *);
             }
       | GlobalName { id } -> GlobalVar (def_id Value id)
       | UpvarRef { var_hir_id = id; _ } -> LocalVar (local_ident Expr id)
@@ -624,6 +647,8 @@ end) : EXPR = struct
                       span = _;
                     };
                   args = [ e ];
+                  generic_args = _;
+                (* TODO: see issue #328 *)
                 } ->
                 LhsFieldAccessor
                   {

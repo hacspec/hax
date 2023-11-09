@@ -61,7 +61,13 @@ module Make (F : Features.T) = struct
 
     let concrete_app1 (f : Concrete_ident.name) (e : expr) : expr option =
       match e.e with
-      | App { f = { e = GlobalVar (`Concrete f'); _ }; args = [ e ] }
+      | App
+          {
+            f = { e = GlobalVar (`Concrete f'); _ };
+            args = [ e ];
+            generic_args = _;
+          (* TODO: see issue #328 *)
+          }
         when Concrete_ident.eq_name f f' ->
           Some e
       | _ -> None
@@ -158,6 +164,8 @@ module Make (F : Features.T) = struct
                 {
                   f = { e = GlobalVar (`Primitive Deref); _ };
                   args = [ { e = Borrow { e = sub; _ }; _ } ];
+                  generic_args = _;
+                (* TODO: see issue #328 *)
                 } ->
                 expr sub
             | _ -> super#visit_expr s e
@@ -252,8 +260,10 @@ module Make (F : Features.T) = struct
                 {
                   f = { e = GlobalVar (`Primitive Cast); _ } as f;
                   args = [ arg ];
+                  generic_args;
                 } ->
-                ascribe { e with e = App { f; args = [ ascribe arg ] } }
+                ascribe
+                  { e with e = App { f; args = [ ascribe arg ]; generic_args } }
             | _ ->
                 (* Ascribe the return type of a function application *)
                 if ascribe_app && is_app e.e then ascribe e else e
@@ -464,7 +474,7 @@ module Make (F : Features.T) = struct
 
   let remove_unsize (e : expr) : expr =
     match e.e with
-    | App { f = { e = GlobalVar f; _ }; args = [ e ] }
+    | App { f = { e = GlobalVar f; _ }; args = [ e ]; generic_args = _ }
       when Global_ident.eq_name Rust_primitives__unsize f ->
         e
     | _ -> e
@@ -619,7 +629,19 @@ module Make (F : Features.T) = struct
   let call' f (args : expr list) span ret_typ =
     let typ = TArrow (List.map ~f:(fun arg -> arg.typ) args, ret_typ) in
     let e = GlobalVar f in
-    { e = App { f = { e; typ; span }; args }; typ = ret_typ; span }
+    {
+      e =
+        App
+          {
+            f = { e; typ; span };
+            args;
+            generic_args =
+              []
+              (* TODO: see issue #328, and check that for evrey call to `call'` *);
+          };
+      typ = ret_typ;
+      span;
+    }
 
   let call ?(kind : Concrete_ident.Kind.t = Value)
       (f_name : Concrete_ident.name) (args : expr list) span ret_typ =
@@ -649,14 +671,19 @@ module Make (F : Features.T) = struct
 
   let unbox_expr' (next : expr -> expr) (e : expr) : expr =
     match e.e with
-    | App { f = { e = GlobalVar f; _ }; args = [ e ] }
+    | App { f = { e = GlobalVar f; _ }; args = [ e ]; generic_args = _ }
       when Global_ident.eq_name Alloc__boxed__Impl__new f ->
         next e
     | _ -> e
 
   let underef_expr' (next : expr -> expr) (e : expr) : expr =
     match e.e with
-    | App { f = { e = GlobalVar (`Primitive Ast.Deref); _ }; args = [ e ] } ->
+    | App
+        {
+          f = { e = GlobalVar (`Primitive Ast.Deref); _ };
+          args = [ e ];
+          generic_args = _;
+        } ->
         next e
     | _ -> e
 
@@ -672,7 +699,13 @@ module Make (F : Features.T) = struct
     | LhsFieldAccessor { e; typ; field; _ } ->
         let e = expr_of_lhs span e in
         let f = { e = GlobalVar field; typ = TArrow ([ e.typ ], typ); span } in
-        { e = App { f; args = [ e ] }; typ; span }
+        {
+          e =
+            App
+              { f; args = [ e ]; generic_args = [] (* TODO: see issue #328 *) };
+          typ;
+          span;
+        }
     | LhsArrayAccessor { e; typ; index; _ } ->
         let args = [ expr_of_lhs span e; index ] in
         call Core__ops__index__Index__index args span typ
@@ -766,6 +799,7 @@ module Make (F : Features.T) = struct
           {
             f = tuple_projector tuple.span tuple.typ len nth type_at_nth;
             args = [ tuple ];
+            generic_args = [] (* TODO: see issue #328 *);
           };
     }
 
@@ -797,15 +831,29 @@ module Make (F : Features.T) = struct
           {
             f = { e = GlobalVar (`Projector _ as projector); _ };
             args = [ place ];
+            generic_args = _;
+          (* TODO: see issue #328 *)
           } ->
           let* place = of_expr place in
           wrap @@ FieldProjection { place; projector }
-      | App { f = { e = GlobalVar f; _ }; args = [ place; index ] }
+      | App
+          {
+            f = { e = GlobalVar f; _ };
+            args = [ place; index ];
+            generic_args = _;
+          (* TODO: see issue #328 *)
+          }
         when Global_ident.eq_name Core__ops__index__Index__index f ->
           let* place = of_expr place in
           let place = IndexProjection { place; index } in
           Some { place; span = e.span; typ = e.typ }
-      | App { f = { e = GlobalVar f; _ }; args = [ place; index ] }
+      | App
+          {
+            f = { e = GlobalVar f; _ };
+            args = [ place; index ];
+            generic_args = _;
+          (* TODO: see issue #328 *)
+          }
         when Global_ident.eq_name Core__ops__index__IndexMut__index_mut f ->
           (* Note that here, we allow any type to be `index_mut`ed:
              Hax translates that to `Rust_primitives.Hax.update_at`.
