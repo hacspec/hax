@@ -398,7 +398,14 @@ struct
           Error.assertion_failure e.span
             "pexpr: bad arity for operator application";
         F.term @@ F.AST.Op (F.Ident.id_of_text op, List.map ~f:pexpr args)
-    | App { f; args } -> F.mk_e_app (pexpr f) @@ List.map ~f:pexpr args
+    | App { f; args; generic_args } ->
+        let const_generics =
+          List.filter_map
+            ~f:(function GConst e -> Some e | _ -> None)
+            generic_args
+        in
+        let args = const_generics @ args in
+        F.mk_e_app (pexpr f) @@ List.map ~f:pexpr args
     | If { cond; then_; else_ } ->
         F.term
         @@ F.AST.If
@@ -730,6 +737,14 @@ struct
           F.pat
           @@ F.AST.PatVar
                (F.id @@ U.Concrete_ident_view.to_definition_name name, None, [])
+        in
+        let const_generics =
+          List.filter_map ~f:U.param_of_generic_const_param generics.params
+        in
+        let params = const_generics @ params in
+        let generics =
+          let f x = [%matches? GPConst _] x.kind |> not in
+          { generics with params = List.filter ~f generics.params }
         in
         let pat_args =
           List.map ~f:(pgeneric_param e.span) generics.params
