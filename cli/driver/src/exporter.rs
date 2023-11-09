@@ -255,7 +255,19 @@ fn find_hax_engine() -> process::Command {
                 }
             })
         })
-        .expect(&ENGINE_BINARY_NOT_FOUND)
+        .unwrap_or_else(|| {
+            fn is_opam_setup_correctly() -> bool {
+                std::env::var("OPAM_SWITCH_PREFIX").is_ok()
+            }
+            use colored::Colorize;
+            eprintln!("\n{}\n{}\n\n{} {}\n",
+                      &ENGINE_BINARY_NOT_FOUND,
+                      "Please make sure the engine is installed and is in PATH!",
+                      "Hint: With OPAM, `eval $(opam env)` is necessary for OPAM binaries to be in PATH: make sure to run `eval $(opam env)` before running `cargo hax`.".bright_black(),
+                      format!("(diagnostics: {})", if is_opam_setup_correctly() { "opam seems okay ✓" } else {"opam seems not okay ❌"}).bright_black()
+            );
+            panic!("{}", &ENGINE_BINARY_NOT_FOUND)
+        })
 }
 
 /// Callback for extraction
