@@ -15,3 +15,10 @@ fn foo<const LEN: usize>(arr: [usize; LEN]) -> usize {
 fn repeat<const LEN: usize, T: Copy>(x: T) -> [T; LEN] {
     [x; LEN]
 }
+
+fn g() -> usize {
+    f::<10>(3) + 3
+}
+fn f<const N: usize>(x: usize) -> usize {
+    N + N + x
+}
