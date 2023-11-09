@@ -2,7 +2,7 @@ module Core.Num
 open Rust_primitives
 
 let impl__u8__wrapping_sub: u8 -> u8 -> u8 = sub_mod
-
+let impl__u16__wrapping_add: u16 -> u16 ->  u16 = add_mod
 let impl__i32__wrapping_add: i32 -> i32 -> i32 = add_mod
 val impl__i32__abs: i32 -> i32
 val impl__i32__pow: i32 -> u32 -> i32
@@ -32,10 +32,11 @@ val impl__u128__to_be_bytes: u128 -> t_Array u8 (sz 16)
 val impl__u128__rotate_right: u128 -> u128 -> u128
 
 val impl__u8__pow: u8 -> u32 -> u8
-val impl__u16__pow: u16 -> u32 -> u16
-val impl__u32__pow: u32 -> u32 -> u32
+val impl__u16__pow (base: u16) (exponent: u32): result : u16 {v base == 2 /\ v exponent < 16 ==> result == mk_int #Lib.IntTypes.U16 (pow2 (v exponent))}
+val impl__u32__pow (base: u32) (exponent: u32): result : u32 {v base == 2 /\ v exponent <= 16 ==> result == mk_int #Lib.IntTypes.U32 (pow2 (v exponent))}
 val impl__u64__pow: u64 -> u32 -> u64
 val impl__u128__pow: u128 -> u32 -> u128
+val impl__i32__pow (base: i32) (exponent: u32): result: i32 {v base == 2 /\ v exponent <= 16 ==> result == mk_int #Lib.IntTypes.S32 (pow2 (v exponent))}
 
 val impl__u8__from_str_radix: string -> u32 -> Core.Result.t_Result u8 Core.Num.Error.t_ParseIntError
 
