@@ -173,14 +173,14 @@ module Make (F : Features.T) = struct
       method expr' : par_state -> expr' fn =
         fun _ctx e ->
           match e with
-          | App { f = { e = GlobalVar i; _ } as f; args } -> (
+          | App { f = { e = GlobalVar i; _ } as f; args; generic_args } -> (
               let expect_one_arg where =
                 match args with
                 | [ arg ] -> arg
                 | _ -> print#assertion_failure @@ "Expected one arg at " ^ where
               in
               match i with
-              | `Concrete _ | `Primitive _ -> print#expr_app f args
+              | `Concrete _ | `Primitive _ -> print#expr_app f args generic_args
               | `TupleType _ | `TupleCons _ | `TupleField _ ->
                   print#assertion_failure "App: unexpected tuple"
               | `Projector (`TupleField (nth, size)) ->
@@ -189,7 +189,7 @@ module Make (F : Features.T) = struct
               | `Projector (`Concrete i) ->
                   let arg = expect_one_arg "projector concrete" in
                   print#field_projection i arg)
-          | App { f; args } -> print#expr_app f args
+          | App { f; args; generic_args } -> print#expr_app f args generic_args
           | Construct { constructor; fields; base; is_record; is_struct } -> (
               match constructor with
               | `Concrete constructor ->
@@ -303,7 +303,7 @@ module Make (F : Features.T) = struct
       method expr_let : lhs:pat -> rhs:expr -> expr fn
       method tuple_projection : size:int -> nth:int -> expr fn
       method field_projection : concrete_ident -> expr fn
-      method expr_app : expr -> expr list fn
+      method expr_app : expr -> expr list -> generic_value list fn
       method doc_construct_tuple : document list fn
       method expr_construct_tuple : expr list fn
       method pat_construct_tuple : pat list fn
