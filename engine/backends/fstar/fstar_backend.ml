@@ -496,10 +496,28 @@ struct
           (F.term @@ F.AST.Name (pglobal_ident e.span constructor))
           [ r ]
     | Closure { params; body } ->
-        let ppat_ascribed pat =
-          F.pat @@ F.AST.PatAscribed (ppat pat, (pty pat.span pat.typ, None))
+        let params =
+          List.mapi
+            ~f:(fun i p ->
+              match p.p with
+              | PBinding { var; subpat = None; _ } -> (var, p)
+              | _ ->
+                  ( Local_ident.
+                      { name = "temp_" ^ Int.to_string i; id = mk_id Expr (-1) },
+                    p ))
+            params
         in
-        F.mk_e_abs (List.map ~f:ppat_ascribed params) (pexpr body)
+        let lbs =
+          List.map
+            ~f:(fun (lid, pat) ->
+              (lid, { e = LocalVar lid; span = pat.span; typ = pat.typ }))
+            params
+        in
+        let body = U.lets_of_bindings lbs body in
+        let mk_pat ((lid, pat) : local_ident * pat) =
+          ppat (U.make_var_pat lid pat.typ pat.span)
+        in
+        F.mk_e_abs (List.map ~f:mk_pat params) (pexpr body)
     | Return { e } ->
         F.term @@ F.AST.App (F.term_of_lid [ "RETURN_STMT" ], pexpr e, Nothing)
     | MacroInvokation { macro; args; witness } ->
@@ -513,20 +531,19 @@ struct
   and parm { arm = { arm_pat; body } } = (ppat arm_pat, None, pexpr body)
 
   let rec pgeneric_param span (p : generic_param) : F.AST.pattern =
-    let mk_implicit (ident : local_ident) ty =
-      let v =
-        F.pat @@ F.AST.PatVar (plocal_ident ident, Some F.AST.Implicit, [])
-      in
+    let mk ~aqual (ident : local_ident) ty =
+      let v = F.pat @@ F.AST.PatVar (plocal_ident ident, aqual, []) in
       F.pat @@ F.AST.PatAscribed (v, (ty, None))
     in
     let ident = p.ident in
     match p.kind with
     | GPLifetime _ -> Error.assertion_failure span "pgeneric_param:LIFETIME"
     | GPType { default = None } ->
-        mk_implicit ident (F.term @@ F.AST.Name (F.lid [ "Type" ]))
+        mk ~aqual:(Some F.AST.Implicit) ident
+          (F.term @@ F.AST.Name (F.lid [ "Type" ]))
     | GPType _ ->
         Error.unimplemented span ~details:"pgeneric_param:Type with default"
-    | GPConst { typ } -> mk_implicit ident (pty span typ)
+    | GPConst { typ } -> mk ~aqual:None ident (pty span typ)
 
   let rec pgeneric_constraint span (nth : int) (c : generic_constraint) =
     match c with
@@ -548,7 +565,8 @@ struct
     | GPType _ ->
         Error.unimplemented span ~details:"pgeneric_param_bd:Type with default"
     | GPConst { typ } ->
-        F.mk_binder ~aqual (F.AST.Annotated (plocal_ident ident, pty span typ))
+        F.mk_binder ~aqual:None
+          (F.AST.Annotated (plocal_ident ident, pty span typ))
 
   let pgeneric_param_ident
       ?(aqual : F.AST.arg_qualifier option = Some FStar_Parser_AST.Implicit)
@@ -703,9 +721,6 @@ struct
     | _ ->
         let effect = if Option.is_some prepost_bundle then "Pure" else "Tot" in
         F.mk_e_app (F.term_of_lid [ "Prims"; effect ]) (typ :: args)
-
-  (* let decreases, requires = match  *)
-  (*   match effect with Some effect -> F.mk_e_app effect ([typ] @ Option.to_list ) 0 | None -> typ *)
 
   let rec pitem (e : item) : [> `Item of F.AST.decl | `Comment of string ] list
       =
