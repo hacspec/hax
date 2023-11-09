@@ -36,7 +36,8 @@ module SubtypeToInputLanguage
              and type nontrivial_lhs = Features.Off.nontrivial_lhs
              and type loop = Features.Off.loop
              and type block = Features.Off.block
-             and type project_instead_of_match = Features.On.project_instead_of_match
+             and type project_instead_of_match =
+              Features.On.project_instead_of_match
              and type for_loop = Features.Off.for_loop
              and type for_index_loop = Features.Off.for_index_loop
              and type state_passing_loop = Features.Off.state_passing_loop) =

@@ -37,7 +37,8 @@ module SubtypeToInputLanguage
              and type nontrivial_lhs = Features.Off.nontrivial_lhs
              and type loop = Features.Off.loop
              and type block = Features.Off.block
-             and type project_instead_of_match = Features.On.project_instead_of_match
+             and type project_instead_of_match =
+              Features.On.project_instead_of_match
              and type for_loop = Features.Off.for_loop
              and type for_index_loop = Features.Off.for_index_loop
              and type state_passing_loop = Features.Off.state_passing_loop) =
@@ -375,7 +376,6 @@ struct
           match default with Some t -> pty span t | None -> C.AST.WildTy ))
     | _ -> Error.unimplemented ~details:"Coq: TODO: generic_params" span
 
-
   let pgeneric_param_as_argument span : generic_param -> C.AST.argument =
     function
     | { ident; kind = GPType { default }; _ } ->
@@ -406,7 +406,9 @@ struct
     | TyAlias { name; generics; ty } ->
         [
           C.AST.Notation
-            ("'" ^ pconcrete_ident name ^ "_t" ^ "'", C.AST.Type (pty span ty), None);
+            ( "'" ^ pconcrete_ident name ^ "_t" ^ "'",
+              C.AST.Type (pty span ty),
+              None );
         ]
     (* record *)
     | Type { name; generics; variants = [ v ]; is_struct = true } ->
@@ -461,7 +463,8 @@ struct
                         (C.AST.NatMod
                            ( o.type_of_canvas,
                              o.bit_size_of_field,
-                             o.modulo_value )) , None);
+                             o.modulo_value )),
+                      None );
                   C.AST.Definition
                     ( o.type_name,
                       [],
@@ -481,7 +484,8 @@ struct
                       C.AST.Type
                         (C.AST.ArrayTy
                            ( C.AST.Int { size = C.AST.U8; signed = false },
-                             (* int_of_string *) o.size )), None );
+                             (* int_of_string *) o.size )),
+                      None );
                   C.AST.Definition
                     ( o.bytes_name,
                       [],
@@ -501,7 +505,8 @@ struct
                       C.AST.Type
                         (C.AST.ArrayTy
                            ( C.AST.Int { size = C.AST.U8; signed = false },
-                             Int.to_string ((o.bits + 7) / 8) )) , None);
+                             Int.to_string ((o.bits + 7) / 8) )),
+                      None );
                   C.AST.Definition
                     ( o.integer_name,
                       [],
@@ -556,7 +561,8 @@ struct
                       C.AST.Type
                         (C.AST.ArrayTy
                            ( C.AST.Int { size = typ; signed = false },
-                             (* int_of_string *) o.size )) , None);
+                             (* int_of_string *) o.size )),
+                      None );
                   C.AST.Definition
                     ( o.array_name,
                       [],

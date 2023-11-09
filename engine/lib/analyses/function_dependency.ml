@@ -7,18 +7,14 @@ module%inlined_contents Make (F : Features.T) = struct
   open Ast
 
   type pre_data = unit
-
-  type analysis_data =
-    string list Map.M(String).t
-
+  type analysis_data = string list Map.M(String).t
   type id_order = int
 
   module Uprint =
     Ast_utils.MakeWithNamePolicy (F) (Concrete_ident.DefaultNamePolicy)
 
-  let analyse_function_body (x : A.expr) :
-    (* (Concrete_ident.t) *)
-    string list =
+  let analyse_function_body (x : A.expr) : (* (Concrete_ident.t) *)
+      string list =
     (* U.Reducers.collect_global_idents *)
     let collect_global_idents =
       (object
@@ -35,10 +31,12 @@ module%inlined_contents Make (F : Features.T) = struct
         #visit_expr
         () x
     in
-      (List.filter_map
-         ~f:(function
-           | `Projector (`Concrete cid) | `Concrete cid -> Some (Uprint.Concrete_ident_view.to_definition_name cid) | _ -> None)
-         (Set.to_list collect_global_idents))
+    List.filter_map
+      ~f:(function
+        | `Projector (`Concrete cid) | `Concrete cid ->
+            Some (Uprint.Concrete_ident_view.to_definition_name cid)
+        | _ -> None)
+      (Set.to_list collect_global_idents)
 
   let analyse (_ : pre_data) (items : A.item list) : analysis_data =
     let temp_list =
@@ -47,11 +45,21 @@ module%inlined_contents Make (F : Features.T) = struct
           match x.v with
           | Fn { name; generics = _; body; params = _ } ->
               [ (Uprint.Concrete_ident_view.to_definition_name name, body) ]
-          | Impl { generics = _; self_ty = _; of_trait = _ (* name, gen_vals *); items } ->
+          | Impl
+              {
+                generics = _;
+                self_ty = _;
+                of_trait = _ (* name, gen_vals *);
+                items;
+              } ->
               List.filter_map
                 ~f:(fun w ->
                   match w.ii_v with
-                  | IIFn { body; params = _ } -> Some (Uprint.Concrete_ident_view.to_definition_name w.ii_ident, body)
+                  | IIFn { body; params = _ } ->
+                      Some
+                        ( Uprint.Concrete_ident_view.to_definition_name
+                            w.ii_ident,
+                          body )
                   | _ -> None)
                 items
           | _ -> [])

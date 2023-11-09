@@ -299,14 +299,15 @@ functor
     and trait_ref = { trait : concrete_ident; args : generic_value list }
 
     (* and is_record_construct = { witness : F.project_instead_of_match } *)
-
     and pat' =
       | PWild
       | PAscription of { typ : ty; typ_span : span; pat : pat }
       | PConstruct of {
           name : global_ident;
           args : field_pat list;
-          is_record : F.project_instead_of_match option; (* are fields named? *) (* F.project_instead_of_match *)
+          is_record : F.project_instead_of_match option;
+          (* are fields named? *)
+          (* F.project_instead_of_match *)
           is_struct : bool; (* a struct has one constructor *)
         }
       | PArray of { args : pat list }

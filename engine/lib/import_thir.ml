@@ -709,10 +709,12 @@ end) : EXPR = struct
             {
               name;
               args;
-              is_record = if info.variant_is_record then Some (W.project_instead_of_match) else None (* W.project_instead_of_match *) ;
-                (* if info.variant_is_record *)
-                (* then Some W.project_instead_of_match *)
-                (* else None; *)
+              is_record =
+                (if info.variant_is_record then Some W.project_instead_of_match
+                else None (* W.project_instead_of_match *));
+              (* if info.variant_is_record *)
+              (* then Some W.project_instead_of_match *)
+              (* else None; *)
               is_struct = info.typ_is_struct;
             }
       | Tuple { subpatterns } ->
@@ -1014,7 +1016,11 @@ let c_trait_item (item : Thir.trait_item) : trait_item =
   let open (val make ~krate:item.owner_id.krate : EXPR) in
   let { params; constraints } = c_generics item.generics in
   (* TODO: see TODO in impl items *)
-  let ti_ident = Concrete_ident.of_def_id (match (item.kind : _) with | Const _ -> Value | _ -> Field) item.owner_id in
+  let ti_ident =
+    Concrete_ident.of_def_id
+      (match (item.kind : _) with Const _ -> Value | _ -> Field)
+      item.owner_id
+  in
   {
     ti_span = Span.of_thir item.span;
     ti_generics = { params; constraints };
@@ -1248,7 +1254,11 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
                         backend will see traits and impls as
                         records. See https://github.com/hacspec/hacspec-v2/issues/271. *)
                      let ii_ident =
-                       Concrete_ident.of_def_id (match (item.kind : _) with | Const _ -> Value | _ -> Field) item.owner_id
+                       Concrete_ident.of_def_id
+                         (match (item.kind : _) with
+                         | Const _ -> Value
+                         | _ -> Field)
+                         item.owner_id
                      in
                      {
                        ii_span = Span.of_thir item.span;
@@ -1261,8 +1271,7 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
                                  body = c_expr body;
                                  params = List.map ~f:(c_param item.span) params;
                                }
-                         | Const (_ty, e) ->
-                             IIConst { body = c_expr e }
+                         | Const (_ty, e) -> IIConst { body = c_expr e }
                          | Type ty -> IIType (c_ty item.span ty));
                        ii_ident;
                        ii_attrs = c_item_attrs item.attributes;

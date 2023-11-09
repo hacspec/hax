@@ -18,6 +18,7 @@ struct
 
   module FB = struct
     include F
+
     (* include Features.Off.Mutable_variable *)
     include Features.On.State_passing_loop
   end
