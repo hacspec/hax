@@ -1,41 +1,45 @@
 #![allow(dead_code)]
 
-fn dup<T: Clone>(x: T) -> (T, T) {
-    (x.clone(), x.clone())
+fn f() -> bool {
+    vec![1, 2, 3].into_iter().all(|x| x > 3)
 }
 
-fn foo<const LEN: usize>(arr: [usize; LEN]) -> usize {
-    let mut acc = LEN + 9;
-    for i in 0..LEN {
-        acc += arr[i];
-    }
-    acc
-}
+// fn dup<T: Clone>(x: T) -> (T, T) {
+//     (x.clone(), x.clone())
+// }
 
-fn repeat<const LEN: usize, T: Copy>(x: T) -> [T; LEN] {
-    [x; LEN]
-}
+// fn foo<const LEN: usize>(arr: [usize; LEN]) -> usize {
+//     let mut acc = LEN + 9;
+//     for i in 0..LEN {
+//         acc += arr[i];
+//     }
+//     acc
+// }
 
-fn call_f() -> usize {
-    f::<10>(3) + 3
-}
-fn f<const N: usize>(x: usize) -> usize {
-    N + N + x
-}
+// fn repeat<const LEN: usize, T: Copy>(x: T) -> [T; LEN] {
+//     [x; LEN]
+// }
 
-fn call_g() -> usize {
-    g::<3, [usize; 3]>([42, 3, 49]) + 3
-}
-fn g<const N: usize, T: Into<[usize; N]>>(arr: T) -> usize {
-    arr.into().into_iter().max().unwrap_or(N) + N
-}
+// fn call_f() -> usize {
+//     f::<10>(3) + 3
+// }
+// fn f<const N: usize>(x: usize) -> usize {
+//     N + N + x
+// }
 
-trait Foo {
-    fn const_add<const N: usize>(self) -> usize;
-}
+// fn call_g() -> usize {
+//     g::<3, [usize; 3]>([42, 3, 49]) + 3
+// }
+// fn g<const N: usize, T: Into<[usize; N]>>(arr: T) -> usize {
+//     arr.into().into_iter().max().unwrap_or(N) + N
+// }
 
-impl Foo for usize {
-    fn const_add<const N: usize>(self) -> usize {
-        self + N
-    }
-}
+// trait Foo {
+//     fn const_add<const N: usize>(self) -> usize;
+// }
+
+// impl Foo for usize {
+//     fn const_add<const N: usize>(self) -> usize {
+//         self + N
+//     }
+// }
