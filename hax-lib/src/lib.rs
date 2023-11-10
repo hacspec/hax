@@ -2,6 +2,7 @@
 //! no-ops when compiled normally but meaningful when compiled under
 //! hax.
 
+#[doc(hidden)]
 #[cfg(hax)]
 #[macro_export]
 macro_rules! proxy_macro_if_not_hax {
@@ -12,6 +13,7 @@ macro_rules! proxy_macro_if_not_hax {
         $f($cond)
     };
 }
+#[doc(hidden)]
 #[cfg(not(hax))]
 #[macro_export]
 macro_rules! proxy_macro_if_not_hax {
@@ -38,12 +40,14 @@ macro_rules! assert {
     };
 }
 
+#[doc(hidden)]
 #[cfg(hax)]
 /// This function exists only when compiled with `hax`, and is not
 /// meant to be used directly. It is called by `assert!` only in
 /// appropriate situations.
 pub fn assert(_formula: bool) {}
 
+#[doc(hidden)]
 #[cfg(hax)]
 /// This function exists only when compiled with `hax`, and is not
 /// meant to be used directly. It is called by `assume!` only in
