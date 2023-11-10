@@ -247,7 +247,9 @@ let g (x: t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
         <:
         Core.Ops.Range.t_Range u8)
       x
-      (fun (x: t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)) (i: u8) ->
+      (fun x i ->
+          let x:t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) = x in
+          let i:u8 = i in
           { x with f_a = Alloc.Vec.impl_1__push x.f_a i <: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global }
       )
   in
@@ -283,7 +285,9 @@ let foo (lhs rhs: t_S) : t_S =
         <:
         Core.Ops.Range.t_Range usize)
       lhs
-      (fun (lhs: t_S) (i: usize) ->
+      (fun lhs i ->
+          let lhs:t_S = lhs in
+          let i:usize = i in
           {
             lhs with
             f_b
