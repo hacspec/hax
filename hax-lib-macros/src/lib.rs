@@ -68,8 +68,10 @@ pub fn modeled_by(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStre
 }
 */
 
-/// Mark a boolean-returning function as a lemma statement. In the
-/// backend, this will generate a lemma with an empty proof.
+/// Mark a `Proof<{STATEMENT}>`-returning function as a lemma, where
+/// `STATEMENT` is a boolean expression capturing any input
+/// variable.
+/// In the backends, this will generate a lemma with an empty proof.
 ///
 /// # Example
 ///
@@ -84,25 +86,65 @@ pub fn modeled_by(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStre
 ///     }
 /// }
 ///
-/// #[lemma_statement]
+/// #[lemma]
 /// /// $`\forall n \in \mathbb{N}, \textrm{ackermann}(2, n) = 2 (n + 3) - 3`$
-/// pub fn ackermann_property_m1(n: u64) -> bool {
-///     ackermann(2, n) == 2 * (n + 3) - 3
-/// }
+/// pub fn ackermann_property_m1(n: u64) -> Proof<{ ackermann(2, n) == 2 * (n + 3) - 3 }> {}
 /// ```
 #[proc_macro_error]
 #[proc_macro_attribute]
-pub fn lemma_statement(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+pub fn lemma(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
     let mut item: syn::ItemFn = parse_macro_input!(item as ItemFn);
-    let _ = parse_macro_input!(attr as parse::Nothing);
-    item.block.make_quantifiers_available();
+    use std::borrow::Borrow;
+    use syn::{spanned::Spanned, GenericArgument, PathArguments, ReturnType};
 
-    let attr = &AttrPayload::Lemma;
-    quote! {
-        #attr
-        #item
+    /// Parses a `syn::Type` of the shape `Proof<{FORMULA}>`.
+    fn parse_proof_type(r#type: syn::Type) -> Option<syn::Expr> {
+        let syn::Type::Path(syn::TypePath {
+            qself: None,
+            path:
+                syn::Path {
+                    leading_colon: None,
+                    segments,
+                },
+        }) = r#type
+        else {
+            return None;
+        };
+        let ps = (segments.len() == 1).then_some(()).and(segments.first())?;
+        (ps.ident.to_string() == "Proof").then_some(())?;
+        let PathArguments::AngleBracketed(args) = &ps.arguments else {
+            None?
+        };
+        let args = args.args.clone();
+        let GenericArgument::Const(e) = (args.len() == 1).then_some(()).and(args.first())? else {
+            None?
+        };
+        Some(e.clone())
     }
-    .into()
+    let _ = parse_macro_input!(attr as parse::Nothing);
+    let attr = &AttrPayload::Lemma;
+    if let ReturnType::Type(_, r#type) = &item.sig.output {
+        if !match r#type.borrow() {
+            syn::Type::Tuple(tt) => tt.elems.is_empty(),
+            _ => match parse_proof_type(*r#type.clone()) {
+                Some(ensures_clause) => {
+                    item.sig.output = ReturnType::Default;
+                    return ensures(
+                        quote! {|_| #ensures_clause}.into(),
+                        quote! { #attr #item }.into(),
+                    )
+                    .into();
+                }
+                None => false,
+            },
+        } {
+            abort!(
+                item.sig.output.span(),
+                "A lemma is expected to return a `Proof<{STATEMENT}>`, where {STATEMENT} is a boolean expression."
+            );
+        }
+    }
+    quote! { #attr #item }.into()
 }
 
 /*
