@@ -243,10 +243,8 @@ let j (x: t_Bar) : (t_Bar & u8) =
   let output:u8 = out in
   x, output
 
-type t_Pair (v_T: Type) {| _: Core.Marker.t_Sized v_T |} = {
-  f_a:v_T;
-  f_b:t_Foo
-}
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_FooTrait_for_Foo: t_FooTrait t_Foo = { f_z = fun (self: t_Foo) -> self }
 
 let impl__S__update (self: t_S) (x: u8) : t_S =
   let self:t_S = { self with f_b = Rust_primitives.Hax.update_at self.f_b (sz 0) x } <: t_S in
