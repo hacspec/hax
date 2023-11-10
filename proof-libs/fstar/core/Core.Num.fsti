@@ -13,6 +13,7 @@ val impl__u32__from_be_bytes: t_Array u8 (sz 4) -> u32
 val impl__u32__to_le_bytes: u32 -> t_Array u8 (sz 4)
 val impl__u32__to_be_bytes: u32 -> t_Array u8 (sz 4)
 val impl__u32__rotate_right: u32 -> u32 -> u32
+let impl__u32__BITS: u32 = 32ul
 
 let impl__u64__wrapping_add: u64 -> u64 -> u64 = add_mod
 val impl__u64__rotate_left: u32 -> u32 -> u32
