@@ -205,6 +205,7 @@ let array (x: t_Array u8 (sz 10)) : t_Array u8 (sz 10) =
   let x:t_Array u8 (sz 10) = Rust_primitives.Hax.update_at x (sz 1) (x.[ sz 2 ] <: u8) in
   x
 
+[@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_FooTrait_for_Foo: t_FooTrait t_Foo = { f_z = fun (self: t_Foo) -> self }
 
 let impl__S__update (self: t_S) (x: u8) : t_S =
