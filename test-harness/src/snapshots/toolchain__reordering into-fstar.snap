@@ -33,12 +33,8 @@ type t_Foo =
   | Foo_A : t_Foo
   | Foo_B : t_Foo
 
-let f (_: u32) : t_Foo = Foo_A
-
-let no_dependency_1_: Prims.unit = ()
-
-let no_dependency_2_: Prims.unit = ()
-
 type t_Bar = | Bar : t_Foo -> t_Bar
 
-let g: t_Bar = Bar (f 32ul)'''
+let f (_: u32) : t_Foo = Foo_A <: t_Foo
+
+let g: t_Bar = Bar (f 32ul) <: t_Bar'''
