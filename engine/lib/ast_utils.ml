@@ -265,8 +265,10 @@ module Make (F : Features.T) = struct
                 ascribe
                   { e with e = App { f; args = [ ascribe arg ]; generic_args } }
             | _ ->
-                (* Ascribe the return type of a function application *)
-                if ascribe_app && is_app e.e then ascribe e else e
+                (* Ascribe the return type of a function application & constructors *)
+                if (ascribe_app && is_app e.e) || [%matches? Construct _] e.e
+                then ascribe e
+                else e
         end
       in
       o#visit_item false

@@ -67,6 +67,24 @@ Record t_Foobar : Type :={
 Definition ff__g__impl_1__g (self : t_Foo_t) : uint_size :=
   (@repr WORDSIZE32 1).
 
+Record t_StructA : Type :={
+  f_a : uint_size;
+}.
+
+Record t_StructB : Type :={
+  f_b : uint_size;
+  f_a : uint_size;
+}.
+
+Record t_StructC : Type :={
+  f_a : uint_size;
+}.
+
+Record t_StructD : Type :={
+  f_b : uint_size;
+  f_a : uint_size;
+}.
+
 Class t_T3_e_for_a Self := {
 }.
 
@@ -105,6 +123,13 @@ Definition ff__g : unit :=
 
 Definition f (x : t_Foobar_t) : uint_size :=
   ff__g__impl_1__g (f_a x).
+
+Definition construct_structs (a : uint_size) (b : uint_size) : unit :=
+  let _ := (Build_StructA a) : t_StructA_t in
+  let _ := (Build_StructB ab) : t_StructB_t in
+  let _ := (Build_StructC a) : t_StructC_t in
+  let _ := (Build_StructD ab) : t_StructD_t in
+  tt.
 
 (*Not implemented yet? todo(item)*)
 
