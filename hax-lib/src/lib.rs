@@ -1,3 +1,7 @@
+//! Hax-specific helpers for Rust programs. Those helpers are usually
+//! no-ops when compiled normally but meaningful when compiled under
+//! hax.
+
 #[cfg(hax)]
 #[macro_export]
 macro_rules! proxy_macro_if_not_hax {
