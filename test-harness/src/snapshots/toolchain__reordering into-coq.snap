@@ -36,15 +36,21 @@ Inductive t_Foo : Type :=
 | Foo_At_Foo
 | Foo_Bt_Foo.
 
-Record t_Bar : Type :={
-  0 : t_Foo_t;
-}.
+(*Not implemented yet? todo(item)*)
 
 Definition f (_ : int32) : t_Foo_t :=
   Foo_At_Foo_t.
 
+Definition no_dependency_1_ : unit :=
+  tt.
+
+Definition no_dependency_2_ : unit :=
+  tt.
+
+Record t_Bar : Type :={
+  0 : t_Foo_t;
+}.
+
 Definition g : t_Bar_t :=
   Bar (f (@repr WORDSIZE32 32)).
-
-(*Not implemented yet? todo(item)*)
 '''
