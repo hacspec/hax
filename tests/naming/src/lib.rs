@@ -75,3 +75,24 @@ trait T2_for_a {}
 impl T2_for_a for Arity1<(Foo, u8)> {}
 trait T3_e_for_a {}
 impl T3_e_for_a for Foo {}
+
+struct StructA {
+    a: usize,
+}
+struct StructB {
+    a: usize,
+    b: usize,
+}
+struct StructC {
+    a: usize,
+}
+struct StructD {
+    a: usize,
+    b: usize,
+}
+fn construct_structs(a: usize, b: usize) {
+    let _ = StructA { a };
+    let _ = StructB { a, b };
+    let _ = StructC { a };
+    let _ = StructD { a, b };
+}
