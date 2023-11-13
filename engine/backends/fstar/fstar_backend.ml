@@ -57,7 +57,11 @@ struct
 end
 
 module AST = Ast.Make (InputLanguage)
-module BackendOptions = Backend.UnitBackendOptions
+
+module BackendOptions = struct
+  type t = Hax_engine.Types.f_star_options
+end
+
 open Ast
 
 module FStarNamePolicy = struct
@@ -1106,8 +1110,12 @@ let string_of_items m items =
   |> List.filter ~f:(String.is_empty >> not)
   |> String.concat ~sep:"\n\n"
 
-let hardcoded_fstar_headers =
-  "\n#set-options \"--fuel 0 --ifuel 1 --z3rlimit 30\"\nopen Core"
+let fstar_headers (bo : BackendOptions.t) =
+  let opts =
+    Printf.sprintf {|#set-options "--fuel %Ld --ifuel %Ld --z3rlimit %Ld"|}
+      bo.fuel bo.ifuel bo.z3rlimit
+  in
+  [ opts; "open Core"; "open FStar.Mul" ] |> String.concat ~sep:"\n"
 
 let translate m (bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =
@@ -1127,8 +1135,8 @@ let translate m (bo : BackendOptions.t) (items : AST.item list) :
            {
              path = mod_name ^ ".fst";
              contents =
-               "module " ^ mod_name ^ hardcoded_fstar_headers ^ "\n\n"
-               ^ string_of_items m items;
+               "module " ^ mod_name ^ "\n" ^ fstar_headers bo ^ "\n\n"
+               ^ string_of_items m items ^ "\n";
            })
 
 open Phase_utils

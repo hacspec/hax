@@ -26,14 +26,17 @@ diagnostics = []
 [stdout.files]
 "Naming.F.G.Impl_1.G.Hello.fst" = '''
 module Naming.F.G.Impl_1.G.Hello
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 30"
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
+open FStar.Mul
 
-let h: Prims.unit = ()'''
+let h: Prims.unit = ()
+'''
 "Naming.fst" = '''
 module Naming
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 30"
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
+open FStar.Mul
 
 type t_Foo =
   | Foo_A : t_Foo
@@ -110,4 +113,5 @@ let impl_T1_for_Foo: t_T1 t_Foo = { __marker_trait = () }
 
 let impl__B__f (self: t_B) : t_B = B <: t_B
 
-let impl__Foo__f (self: t_Foo) : t_Foo = Foo_A <: t_Foo'''
+let impl__Foo__f (self: t_Foo) : t_Foo = Foo_A <: t_Foo
+'''

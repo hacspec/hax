@@ -26,8 +26,9 @@ diagnostics = []
 [stdout.files]
 "Reordering.fst" = '''
 module Reordering
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 30"
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
+open FStar.Mul
 
 type t_Foo =
   | Foo_A : t_Foo
@@ -37,4 +38,5 @@ type t_Bar = | Bar : t_Foo -> t_Bar
 
 let f (_: u32) : t_Foo = Foo_A <: t_Foo
 
-let g: t_Bar = Bar (f 32ul) <: t_Bar'''
+let g: t_Bar = Bar (f 32ul) <: t_Bar
+'''

@@ -1,14 +1,6 @@
 --- Chacha20.fst	2023-11-10 11:27:38.259410207 +0100
 +++ /tmp/Chacha20.fst	2023-11-10 11:27:32.638440011 +0100
-@@ -1,6 +1,7 @@
- module Chacha20
- #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
- open Core
-+open FStar.Mul
- 
- let chacha20_line (a b d: usize) (s: u32) (m: t_Array u32 (sz 16))
-     : Prims.Pure (t_Array u32 (sz 16))
-@@ -144,10 +145,12 @@
+@@ -144,9 +145,11 @@
                  t_Array u8 (sz 64))
            in
            let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
@@ -20,11 +12,4 @@
 +  assume (v (length blocks_out) == v num_blocks * 64);
    let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
      if remainder_len <>. sz 0
-     then
-@@ -184,4 +187,4 @@
- 
- let t_ChaChaIV = t_Array u8 (sz 12)
- 
--let t_Block = t_Array u8 (sz 64)
-\ No newline at end of file
-+let t_Block = t_Array u8 (sz 64)
+     then 

@@ -26,14 +26,17 @@ diagnostics = []
 [stdout.files]
 "Mut_ref_functionalization.F.fst" = '''
 module Mut_ref_functionalization.F
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 30"
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
+open FStar.Mul
+
 
 '''
 "Mut_ref_functionalization.fst" = '''
 module Mut_ref_functionalization
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 30"
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
+open FStar.Mul
 
 type t_Bar = {
   f_a:u8;
@@ -227,4 +230,5 @@ let impl_FooTrait_for_Foo: t_FooTrait t_Foo = { f_z = fun (self: t_Foo) -> self 
 
 let impl__S__update (self: t_S) (x: u8) : t_S =
   let self:t_S = { self with f_b = Rust_primitives.Hax.update_at self.f_b (sz 0) x } <: t_S in
-  self'''
+  self
+'''

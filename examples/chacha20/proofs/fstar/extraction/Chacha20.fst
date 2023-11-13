@@ -48,7 +48,9 @@ let chacha20_rounds (state: t_Array u32 (sz 16)) : t_Array u32 (sz 16) =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter ({
               Core.Ops.Range.f_start = 0l;
               Core.Ops.Range.f_end = 10l
-            })
+            }
+            <:
+            Core.Ops.Range.t_Range i32)
         <:
         Core.Ops.Range.t_Range i32)
       st
@@ -88,7 +90,9 @@ let chacha20_encrypt_last (st0: t_Array u32 (sz 16)) (ctr: u32) (plain: t_Slice 
   Alloc.Slice.impl__to_vec (b.[ {
           Core.Ops.Range.f_start = sz 0;
           Core.Ops.Range.f_end = Core.Slice.impl__len plain <: usize
-        } ]
+        }
+        <:
+        Core.Ops.Range.t_Range usize ]
       <:
       t_Slice u8)
 
@@ -123,7 +127,9 @@ let chacha20_update (st0: t_Array u32 (sz 16)) (m: t_Slice u8)
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter ({
               Core.Ops.Range.f_start = sz 0;
               Core.Ops.Range.f_end = num_blocks
-            })
+            }
+            <:
+            Core.Ops.Range.t_Range usize)
         <:
         Core.Ops.Range.t_Range usize)
       blocks_out
@@ -136,7 +142,9 @@ let chacha20_update (st0: t_Array u32 (sz 16)) (m: t_Slice u8)
               (Core.Result.impl__unwrap (Core.Convert.f_try_into (m.[ {
                             Core.Ops.Range.f_start = sz 64 *! i <: usize;
                             Core.Ops.Range.f_end = (sz 64 *! i <: usize) +! sz 64 <: usize
-                          } ]
+                          }
+                          <:
+                          Core.Ops.Range.t_Range usize ]
                         <:
                         t_Slice u8)
                     <:
@@ -160,7 +168,9 @@ let chacha20_update (st0: t_Array u32 (sz 16)) (m: t_Slice u8)
           (m.[ {
                 Core.Ops.Range.f_start = sz 64 *! num_blocks <: usize;
                 Core.Ops.Range.f_end = Core.Slice.impl__len m <: usize
-              } ]
+              }
+              <:
+              Core.Ops.Range.t_Range usize ]
             <:
             t_Slice u8)
       in
