@@ -26,7 +26,7 @@ diagnostics = []
 [stdout.files]
 "Reordering.fst" = '''
 module Reordering
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 30"
 open Core
 
 type t_Foo =

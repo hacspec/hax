@@ -26,13 +26,13 @@ diagnostics = []
 [stdout.files]
 "Mut_ref_functionalization.F.fst" = '''
 module Mut_ref_functionalization.F
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 30"
 open Core
 
 '''
 "Mut_ref_functionalization.fst" = '''
 module Mut_ref_functionalization
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 30"
 open Core
 
 type t_Bar = {
