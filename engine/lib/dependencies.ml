@@ -28,7 +28,7 @@ module Make (F : Features.T) = struct
 
   module ItemGraph = struct
     module G = Graph.Persistent.Digraph.Concrete (Concrete_ident)
-    module Topological = Graph.Topological.Make (G)
+    module Topological = Graph.Topological.Make_stable (G)
     module Oper = Graph.Oper.P (G)
 
     let vertices_of_item (i : item) : G.V.t list =
@@ -210,12 +210,13 @@ module Make (F : Features.T) = struct
     List.map ~f:Concrete_ident.DefaultViewAPI.show >> String.concat ~sep:", "
 
   let sort (items : item list) : item list =
-    let g = ItemGraph.of_items items in
+    let g = ItemGraph.of_items items |> ItemGraph.Oper.mirror in
     let lookup (name : concrete_ident) =
       List.find ~f:(ident_of >> Concrete_ident.equal name) items
     in
     let items' =
-      ItemGraph.Topological.fold List.cons g [] |> List.filter_map ~f:lookup
+      ItemGraph.Topological.fold List.cons g []
+      |> List.filter_map ~f:lookup |> List.rev
     in
     assert (
       let of_list =
