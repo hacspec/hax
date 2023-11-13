@@ -1,13 +1,16 @@
 module Chacha20.Hacspec_helper
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
+open FStar.Mul
 
 let add_state (state other: t_Array u32 (sz 16)) : t_Array u32 (sz 16) =
   let state:t_Array u32 (sz 16) =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter ({
               Core.Ops.Range.f_start = sz 0;
               Core.Ops.Range.f_end = sz 16
-            })
+            }
+            <:
+            Core.Ops.Range.t_Range usize)
         <:
         Core.Ops.Range.t_Range usize)
       state
@@ -28,7 +31,9 @@ let to_le_u32s_16_ (bytes: t_Slice u8) : t_Array u32 (sz 16) =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter ({
               Core.Ops.Range.f_start = sz 0;
               Core.Ops.Range.f_end = sz 16
-            })
+            }
+            <:
+            Core.Ops.Range.t_Range usize)
         <:
         Core.Ops.Range.t_Range usize)
       out
@@ -41,7 +46,9 @@ let to_le_u32s_16_ (bytes: t_Slice u8) : t_Array u32 (sz 16) =
                             {
                               Core.Ops.Range.f_start = sz 4 *! i <: usize;
                               Core.Ops.Range.f_end = (sz 4 *! i <: usize) +! sz 4 <: usize
-                            } ]
+                            }
+                            <:
+                            Core.Ops.Range.t_Range usize ]
                           <:
                           t_Slice u8)
                       <:
@@ -63,7 +70,9 @@ let u32s_to_le_bytes (state: t_Array u32 (sz 16)) : t_Array u8 (sz 64) =
               Core.Ops.Range.f_end
               =
               Core.Slice.impl__len (Rust_primitives.unsize state <: t_Slice u32) <: usize
-            })
+            }
+            <:
+            Core.Ops.Range.t_Range usize)
         <:
         Core.Ops.Range.t_Range usize)
       out
@@ -74,7 +83,9 @@ let u32s_to_le_bytes (state: t_Array u32 (sz 16)) : t_Array u8 (sz 64) =
           Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter ({
                     Core.Ops.Range.f_start = sz 0;
                     Core.Ops.Range.f_end = sz 4
-                  })
+                  }
+                  <:
+                  Core.Ops.Range.t_Range usize)
               <:
               Core.Ops.Range.t_Range usize)
             out
@@ -94,7 +105,9 @@ let xor_state (state other: t_Array u32 (sz 16)) : t_Array u32 (sz 16) =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter ({
               Core.Ops.Range.f_start = sz 0;
               Core.Ops.Range.f_end = sz 16
-            })
+            }
+            <:
+            Core.Ops.Range.t_Range usize)
         <:
         Core.Ops.Range.t_Range usize)
       state
@@ -121,7 +134,9 @@ let update_array (array: t_Array u8 (sz 64)) (v_val: t_Slice u8) : t_Array u8 (s
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter ({
               Core.Ops.Range.f_start = sz 0;
               Core.Ops.Range.f_end = Core.Slice.impl__len v_val <: usize
-            })
+            }
+            <:
+            Core.Ops.Range.t_Range usize)
         <:
         Core.Ops.Range.t_Range usize)
       array
@@ -138,7 +153,9 @@ let to_le_u32s_3_ (bytes: t_Slice u8) : t_Array u32 (sz 3) =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter ({
               Core.Ops.Range.f_start = sz 0;
               Core.Ops.Range.f_end = sz 3
-            })
+            }
+            <:
+            Core.Ops.Range.t_Range usize)
         <:
         Core.Ops.Range.t_Range usize)
       out
@@ -151,7 +168,9 @@ let to_le_u32s_3_ (bytes: t_Slice u8) : t_Array u32 (sz 3) =
                             {
                               Core.Ops.Range.f_start = sz 4 *! i <: usize;
                               Core.Ops.Range.f_end = (sz 4 *! i <: usize) +! sz 4 <: usize
-                            } ]
+                            }
+                            <:
+                            Core.Ops.Range.t_Range usize ]
                           <:
                           t_Slice u8)
                       <:
@@ -171,7 +190,9 @@ let to_le_u32s_8_ (bytes: t_Slice u8) : t_Array u32 (sz 8) =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter ({
               Core.Ops.Range.f_start = sz 0;
               Core.Ops.Range.f_end = sz 8
-            })
+            }
+            <:
+            Core.Ops.Range.t_Range usize)
         <:
         Core.Ops.Range.t_Range usize)
       out
@@ -184,7 +205,9 @@ let to_le_u32s_8_ (bytes: t_Slice u8) : t_Array u32 (sz 8) =
                             {
                               Core.Ops.Range.f_start = sz 4 *! i <: usize;
                               Core.Ops.Range.f_end = (sz 4 *! i <: usize) +! sz 4 <: usize
-                            } ]
+                            }
+                            <:
+                            Core.Ops.Range.t_Range usize ]
                           <:
                           t_Slice u8)
                       <:
