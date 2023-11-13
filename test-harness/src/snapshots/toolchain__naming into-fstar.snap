@@ -26,13 +26,13 @@ diagnostics = []
 [stdout.files]
 "Naming.F.G.Impl_1.G.Hello.fst" = '''
 module Naming.F.G.Impl_1.G.Hello
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 30"
 open Core
 
 let h: Prims.unit = ()'''
 "Naming.fst" = '''
 module Naming
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 30"
 open Core
 
 type t_Foo =

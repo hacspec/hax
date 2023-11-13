@@ -1107,7 +1107,7 @@ let string_of_items m items =
   |> String.concat ~sep:"\n\n"
 
 let hardcoded_fstar_headers =
-  "\n#set-options \"--fuel 0 --ifuel 1 --z3rlimit 15\"\nopen Core"
+  "\n#set-options \"--fuel 0 --ifuel 1 --z3rlimit 30\"\nopen Core"
 
 let translate m (bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =

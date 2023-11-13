@@ -44,7 +44,8 @@ jobs:
         export CACHE_DIR=$(mktemp -d)
         cd examples
         typecheck () {
-          ( cd "$1/proofs/fstar/extraction"
+          ( cd "$1"
+            make clean
             OTHERFLAGS="$2" make )
         }
         typecheck limited-order-book ""
