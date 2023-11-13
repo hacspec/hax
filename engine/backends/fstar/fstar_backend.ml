@@ -496,7 +496,28 @@ struct
           (F.term @@ F.AST.Name (pglobal_ident e.span constructor))
           [ r ]
     | Closure { params; body } ->
-        F.mk_e_abs (List.map ~f:ppat params) (pexpr body)
+        let params =
+          List.mapi
+            ~f:(fun i p ->
+              match p.p with
+              | PBinding { var; subpat = None; _ } -> (var, p)
+              | _ ->
+                  ( Local_ident.
+                      { name = "temp_" ^ Int.to_string i; id = mk_id Expr (-1) },
+                    p ))
+            params
+        in
+        let body =
+          let f (lid, (pat : pat)) =
+            let rhs = { e = LocalVar lid; span = pat.span; typ = pat.typ } in
+            U.make_let pat rhs
+          in
+          List.fold_right ~init:body ~f params
+        in
+        let mk_pat ((lid, pat) : local_ident * pat) =
+          ppat (U.make_var_pat lid pat.typ pat.span)
+        in
+        F.mk_e_abs (List.map ~f:mk_pat params) (pexpr body)
     | Return { e } ->
         F.term @@ F.AST.App (F.term_of_lid [ "RETURN_STMT" ], pexpr e, Nothing)
     | MacroInvokation { macro; args; witness } ->
