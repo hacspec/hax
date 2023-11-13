@@ -143,6 +143,7 @@ type t_Bar = {
 
 type t_Foo = { f_field:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global }
 
+[@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_FooTrait_for_Foo: t_FooTrait t_Foo = { f_z = fun (self: t_Foo) -> self }
 
 type t_S = { f_b:t_Array u8 (sz 5) }
