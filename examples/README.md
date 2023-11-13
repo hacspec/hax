@@ -8,6 +8,20 @@
 
 ## How to generate the F\* code and typecheck it for the examples
 
+<details>
+  <summary><b>Requirements</b></summary>
+  
+  First, make sure to have hax installed in PATH. Then:
+  
+  * With Nix, `nix develop .#fstar-examples` setups a shell automatically for you.
+     
+  * Without Nix:
+    1. install F* `v2023.09.03` manually (see https://github.com/FStarLang/FStar/blob/master/INSTALL.md);
+    2. clone [Hacl*]() somewhere;
+    3. `export HACL_HOME=THE_DIRECTORY_WHERE_YOU_HAVE_HACL_STAR`;
+    3. `export HACL_HOME=THE_DIRECTORY_WHERE_YOU_HAVE_HACL_STAR`.
+</details>
+
 To generate F\* code for all the example and then typecheck
 everything, just run `make` in this directory.
 
