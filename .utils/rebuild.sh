@@ -4,7 +4,7 @@
 # OCaml engine) quickly.
 
 # Options:
-#  - the flag `--online` allow Cargo to ook for updates on the internet;
+#  - the flag `--online` allow Cargo to look for updates on the internet;
 #  - the environment variable `DUNEJOBS` limits the number of jobs `dune`
 #    is allowed to spawn in parallel while building.
 
