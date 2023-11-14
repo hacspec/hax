@@ -115,9 +115,16 @@ module Print = struct
   end)
 end
 
+(* Insert a (empty, for now) top level process. *)
+let insert_top_level contents = contents ^ "\n\nprocess\n    0\n"
+
+(* Insert ProVerif code that will be necessary in any development.*)
+let insert_preamble contents = "channel c.\n\n" ^ contents
+
 let translate m (bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =
   let contents, _ = Print.items items in
+  let contents = contents |> insert_top_level |> insert_preamble in
   let file = Types.{ path = "output.pv"; contents } in
   [ file ]
 
