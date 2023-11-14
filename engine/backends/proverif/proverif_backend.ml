@@ -104,6 +104,8 @@ module Print = struct
   open Generic_printer_base.Make (InputLanguage)
   open PPrint
 
+  let iblock f = group >> jump 2 0 >> terminate (break 0) >> f >> group
+
   class print =
     object (print)
       inherit GenericPrint.print as super
