@@ -89,7 +89,9 @@ module ProVerifNamePolicy = struct
   [@@@ocamlformat "disable"]
 
   let index_field_transform index = "_" ^ index
-  let reserved_words = Hash_set.of_list (module String) []
+  let reserved_words = Hash_set.of_list (module String) [
+"among"; "axiom"; "channel"; "choice"; "clauses"; "const"; "def"; "diff"; "do"; "elimtrue"; "else"; "equation"; "equivalence"; "event"; "expand"; "fail"; "for"; "forall"; "foreach"; "free"; "fun"; "get"; "if"; "implementation"; "in"; "inj-event"; "insert"; "lemma"; "let"; "letfun"; "letproba"; "new"; "noninterf"; "noselect"; "not"; "nounif"; "or"; "otherwise"; "out"; "param"; "phase"; "pred"; "proba"; "process"; "proof"; "public vars"; "putbegin"; "query"; "reduc"; "restriction"; "secret"; "select"; "set"; "suchthat"; "sync"; "table"; "then"; "type"; "weaksecret"; "yield"
+  ]
 end
 
 module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (ProVerifNamePolicy)
