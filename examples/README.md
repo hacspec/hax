@@ -19,7 +19,7 @@
     1. install F* `v2023.09.03` manually (see https://github.com/FStarLang/FStar/blob/master/INSTALL.md);
        1. make sure to have `fstar.exe` in PATH;
        2. or set the `FSTAR_HOME` environment variable.
-    2. clone [Hacl*](https://github.com/hacl-star/hacl-star/pull) somewhere;
+    2. clone [Hacl*](https://github.com/hacl-star/hacl-star) somewhere;
     3. `export HACL_HOME=THE_DIRECTORY_WHERE_YOU_HAVE_HACL_STAR`.
 </details>
 
