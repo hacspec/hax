@@ -111,6 +111,13 @@ module Print = struct
       inherit GenericPrint.print as super
       method ty_bool = string "bool"
       method ty_int _ = string "bitstring"
+      method! item' item = match item with
+        | Fn {name; generics; body; params} ->
+          let params_string =
+            iblock parens
+              (separate_map (comma ^^ break 1) print#param params)
+          in string "letfun" ^^ space ^^ print#concrete_ident name ^^ params_string ^^ string " = 0."
+        | _ -> string ""
     end
 
   include Api (struct
