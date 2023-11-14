@@ -49,9 +49,9 @@ ROOTS = Chacha20.fst Chacha20.Hacspec_helper.fst
 
 $(ROOTS): ../../../src/lib.rs ../../../src/hacspec_helper.rs
 	cargo hax into fstar
-	patch -i *.diff
 
-FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib $(HAX_LIBS_HOME)/rust_primitives $(HAX_LIBS_HOME)/core $(HAX_LIBS_HOME)/hax_lib
+FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib $(HAX_LIBS_HOME)/rust_primitives \
+	$(HAX_LIBS_HOME)/core $(HAX_LIBS_HOME)/hax_lib $(HAX_LIBS_HOME)/../../hax-lib/proofs/fstar/extraction
 
 FSTAR_FLAGS = --cmi \
   --warn_error -331 \

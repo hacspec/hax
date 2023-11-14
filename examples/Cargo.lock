@@ -116,7 +116,8 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 name = "chacha20"
 version = "0.1.0"
 dependencies = [
- "hax-lib-macros",
+ "hax-lib",
+ "hax-lib-macros 0.1.0-pre.1",
 ]
 
 [[package]]
@@ -219,15 +220,42 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7dfda62a12f55daeae5015f81b0baea145391cb4520f86c248fc615d72640d12"
 
 [[package]]
+name = "hax-lib"
+version = "0.1.0-pre.1"
+
+[[package]]
 name = "hax-lib-macros"
-version = "0.1.0"
-source = "git+https://github.com/hacspec/hax.git?branch=attributes#75044cf7e2859062d742208ec0cf6e4ebf6ba5cf"
+version = "0.1.0-pre.1"
 dependencies = [
- "hax-lib-macros-types",
+ "hax-lib-macros-types 0.1.0-pre.1",
  "proc-macro-error",
  "proc-macro2",
  "quote",
  "syn 2.0.38",
+]
+
+[[package]]
+name = "hax-lib-macros"
+version = "0.1.0"
+source = "git+https://github.com/hacspec/hax.git?branch=attributes#75044cf7e2859062d742208ec0cf6e4ebf6ba5cf"
+dependencies = [
+ "hax-lib-macros-types 0.1.0",
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.38",
+]
+
+[[package]]
+name = "hax-lib-macros-types"
+version = "0.1.0-pre.1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "schemars",
+ "serde",
+ "serde_json",
+ "uuid",
 ]
 
 [[package]]
@@ -595,7 +623,7 @@ dependencies = [
 name = "sha256"
 version = "0.1.0"
 dependencies = [
- "hax-lib-macros",
+ "hax-lib-macros 0.1.0",
 ]
 
 [[package]]

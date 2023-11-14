@@ -1,15 +1,6 @@
 module Chacha20
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 30"
 open Core
-open FStar.Mul
-
-let t_Block = t_Array u8 (sz 64)
-
-let t_ChaChaIV = t_Array u8 (sz 12)
-
-let t_ChaChaKey = t_Array u8 (sz 32)
-
-let t_State = t_Array u32 (sz 16)
 
 let chacha20_line (a b d: usize) (s: u32) (m: t_Array u32 (sz 16))
     : Prims.Pure (t_Array u32 (sz 16))
@@ -126,10 +117,6 @@ let chacha20_key_block (state: t_Array u32 (sz 16)) : t_Array u8 (sz 64) =
   let state:t_Array u32 (sz 16) = chacha20_core 0ul state in
   Chacha20.Hacspec_helper.u32s_to_le_bytes state
 
-let chacha20_key_block0 (key: t_Array u8 (sz 32)) (iv: t_Array u8 (sz 12)) : t_Array u8 (sz 64) =
-  let state:t_Array u32 (sz 16) = chacha20_init key iv 0ul in
-  chacha20_key_block state
-
 let chacha20_update (st0: t_Array u32 (sz 16)) (m: t_Slice u8)
     : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
   let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Alloc.Vec.impl__new in
@@ -164,13 +151,21 @@ let chacha20_update (st0: t_Array u32 (sz 16)) (m: t_Slice u8)
                 <:
                 t_Array u8 (sz 64))
           in
+          let _:Prims.unit =
+            Hax_lib.v_assume ((Alloc.Vec.impl_1__len blocks_out <: usize) =. (i *! sz 64 <: usize)
+                <:
+                bool)
+          in
           let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
-            assume (v (length blocks_out) == v i * 64);
             Alloc.Vec.impl_2__extend_from_slice blocks_out (Rust_primitives.unsize b <: t_Slice u8)
           in
           blocks_out)
   in
-  assume (v (length blocks_out) == v num_blocks * 64);
+  let _:Prims.unit =
+    Hax_lib.v_assume ((Alloc.Vec.impl_1__len blocks_out <: usize) =. (num_blocks *! sz 64 <: usize)
+        <:
+        bool)
+  in
   let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
     if remainder_len <>. sz 0
     then
@@ -194,7 +189,19 @@ let chacha20_update (st0: t_Array u32 (sz 16)) (m: t_Slice u8)
   in
   blocks_out
 
+let chacha20_key_block0 (key: t_Array u8 (sz 32)) (iv: t_Array u8 (sz 12)) : t_Array u8 (sz 64) =
+  let state:t_Array u32 (sz 16) = chacha20_init key iv 0ul in
+  chacha20_key_block state
+
 let chacha20 (m: t_Slice u8) (key: t_Array u8 (sz 32)) (iv: t_Array u8 (sz 12)) (ctr: u32)
     : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
   let state:t_Array u32 (sz 16) = chacha20_init key iv ctr in
   chacha20_update state m
+
+let t_State = t_Array u32 (sz 16)
+
+let t_ChaChaKey = t_Array u8 (sz 32)
+
+let t_ChaChaIV = t_Array u8 (sz 12)
+
+let t_Block = t_Array u8 (sz 64)
