@@ -109,7 +109,7 @@ module Print = struct
   class print =
     object (print)
       inherit GenericPrint.print as super
-      method ty_bool = string "somethign"
+      method ty_bool = string "bool"
     end
 
   include Api (struct
