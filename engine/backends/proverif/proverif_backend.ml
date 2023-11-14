@@ -83,7 +83,7 @@ module AST = Ast.Make (InputLanguage)
 module BackendOptions = Backend.UnitBackendOptions
 open Ast
 
-module FStarNamePolicy = struct
+module ProVerifNamePolicy = struct
   include Concrete_ident.DefaultNamePolicy
 
   [@@@ocamlformat "disable"]
@@ -92,7 +92,7 @@ module FStarNamePolicy = struct
   let reserved_words = Hash_set.of_list (module String) []
 end
 
-module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (FStarNamePolicy)
+module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (ProVerifNamePolicy)
 open AST
 
 module Print = struct
