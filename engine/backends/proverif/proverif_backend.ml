@@ -89,8 +89,9 @@ module ProVerifNamePolicy = struct
   [@@@ocamlformat "disable"]
 
   let index_field_transform index = "_" ^ index
+
   let reserved_words = Hash_set.of_list (module String) [
-"among"; "axiom"; "channel"; "choice"; "clauses"; "const"; "def"; "diff"; "do"; "elimtrue"; "else"; "equation"; "equivalence"; "event"; "expand"; "fail"; "for"; "forall"; "foreach"; "free"; "fun"; "get"; "if"; "implementation"; "in"; "inj-event"; "insert"; "lemma"; "let"; "letfun"; "letproba"; "new"; "noninterf"; "noselect"; "not"; "nounif"; "or"; "otherwise"; "out"; "param"; "phase"; "pred"; "proba"; "process"; "proof"; "public vars"; "putbegin"; "query"; "reduc"; "restriction"; "secret"; "select"; "set"; "suchthat"; "sync"; "table"; "then"; "type"; "weaksecret"; "yield"
+  "among"; "axiom"; "channel"; "choice"; "clauses"; "const"; "def"; "diff"; "do"; "elimtrue"; "else"; "equation"; "equivalence"; "event"; "expand"; "fail"; "for"; "forall"; "foreach"; "free"; "fun"; "get"; "if"; "implementation"; "in"; "inj-event"; "insert"; "lemma"; "let"; "letfun"; "letproba"; "new"; "noninterf"; "noselect"; "not"; "nounif"; "or"; "otherwise"; "out"; "param"; "phase"; "pred"; "proba"; "process"; "proof"; "public vars"; "putbegin"; "query"; "reduc"; "restriction"; "secret"; "select"; "set"; "suchthat"; "sync"; "table"; "then"; "type"; "weaksecret"; "yield"
   ]
 end
 
@@ -111,12 +112,15 @@ module Print = struct
       inherit GenericPrint.print as super
       method ty_bool = string "bool"
       method ty_int _ = string "bitstring"
-      method! item' item = match item with
-        | Fn {name; generics; body; params} ->
-          let params_string =
-            iblock parens
-              (separate_map (comma ^^ break 1) print#param params)
-          in string "letfun" ^^ space ^^ print#concrete_ident name ^^ params_string ^^ string " = 0."
+
+      method! item' item =
+        match item with
+        | Fn { name; generics; body; params } ->
+            let params_string =
+              iblock parens (separate_map (comma ^^ break 1) print#param params)
+            in
+            string "letfun" ^^ space ^^ print#concrete_ident name
+            ^^ params_string ^^ string " = 0."
         | _ -> string ""
     end
 
