@@ -110,6 +110,7 @@ module Print = struct
     object (print)
       inherit GenericPrint.print as super
       method ty_bool = string "bool"
+      method ty_int _ = string "bitstring"
     end
 
   include Api (struct
