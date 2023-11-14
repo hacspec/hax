@@ -11,6 +11,8 @@
     src = lib.cleanSourceWith {
       src = craneLib.path ./..;
       filter = path: type:
+        # We include only certain files, notably we exclude generated
+        # files (`.fst`, `.v`, etc.)
         !builtins.isNull (builtins.match ".*(Makefile|.*[.](rs|toml|lock|diff))$" path)
         || ("directory" == type);
     };
@@ -34,6 +36,7 @@ in
         export CACHE_DIR=$(mktemp -d)
         export HINT_DIR=$(mktemp -d)
         export SHELL=${stdenv.shell}
+        make clean # Should be a no-op (see `filter` above)
         make
       '';
       buildInputs = [hax fstar];
