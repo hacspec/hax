@@ -10,7 +10,7 @@ include
       include On.Macro
     end)
     (struct
-      let backend = Diagnostics.Backend.FStar
+      let backend = Diagnostics.Backend.ProVerif
     end)
 
 module SubtypeToInputLanguage
