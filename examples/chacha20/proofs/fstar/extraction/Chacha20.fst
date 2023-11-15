@@ -1,14 +1,18 @@
 module Chacha20
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 30"
 open Core
 open FStar.Mul
 
+unfold
 let t_Block = t_Array u8 (sz 64)
 
+unfold
 let t_ChaChaIV = t_Array u8 (sz 12)
 
+unfold
 let t_ChaChaKey = t_Array u8 (sz 32)
 
+unfold
 let t_State = t_Array u32 (sz 16)
 
 let chacha20_line (a b d: usize) (s: u32) (m: t_Array u32 (sz 16))
@@ -62,10 +66,7 @@ let chacha20_rounds (state: t_Array u32 (sz 16)) : t_Array u32 (sz 16) =
         <:
         Core.Ops.Range.t_Range i32)
       st
-      (fun st v__i ->
-          let st:t_Array u32 (sz 16) = st in
-          let v__i:i32 = v__i in
-          chacha20_double_round st <: t_Array u32 (sz 16))
+      (fun st v__i -> chacha20_double_round st <: t_Array u32 (sz 16))
   in
   st
 
@@ -146,8 +147,6 @@ let chacha20_update (st0: t_Array u32 (sz 16)) (m: t_Slice u8)
         Core.Ops.Range.t_Range usize)
       blocks_out
       (fun blocks_out i ->
-          let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = blocks_out in
-          let i:usize = i in
           let b:t_Array u8 (sz 64) =
             chacha20_encrypt_block st0
               (cast (i <: usize) <: u32)
@@ -164,13 +163,21 @@ let chacha20_update (st0: t_Array u32 (sz 16)) (m: t_Slice u8)
                 <:
                 t_Array u8 (sz 64))
           in
+          let _:Prims.unit =
+            Hax_lib.v_assume ((Alloc.Vec.impl_1__len blocks_out <: usize) =. (i *! sz 64 <: usize)
+                <:
+                bool)
+          in
           let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
-            assume (v (length blocks_out) == v i * 64);
             Alloc.Vec.impl_2__extend_from_slice blocks_out (Rust_primitives.unsize b <: t_Slice u8)
           in
           blocks_out)
   in
-  assume (v (length blocks_out) == v num_blocks * 64);
+  let _:Prims.unit =
+    Hax_lib.v_assume ((Alloc.Vec.impl_1__len blocks_out <: usize) =. (num_blocks *! sz 64 <: usize)
+        <:
+        bool)
+  in
   let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
     if remainder_len <>. sz 0
     then

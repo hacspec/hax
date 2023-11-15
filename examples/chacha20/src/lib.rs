@@ -108,8 +108,10 @@ pub fn chacha20_update(st0: State, m: &[u8]) -> Vec<u8> {
         // Full block
         let b =
             chacha20_encrypt_block(st0, i as u32, &m[64 * i..(64 * i + 64)].try_into().unwrap());
+        hax_lib::assume!(blocks_out.len() == i * 64);
         blocks_out.extend_from_slice(&b);
     }
+    hax_lib::assume!(blocks_out.len() == num_blocks * 64);
     if remainder_len != 0 {
         // Last block
         let b = chacha20_encrypt_last(st0, num_blocks as u32, &m[64 * num_blocks..m.len()]);

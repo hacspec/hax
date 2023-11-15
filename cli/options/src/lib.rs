@@ -132,8 +132,10 @@ pub enum Backend {
     Fstar(FStarOptions),
     /// Use the Coq backend
     Coq,
-    /// Use the EasyCrypt backend
+    /// Use the EasyCrypt backend (warning: work in progress!)
     Easycrypt,
+    /// Use the ProVerif backend (warning: work in progress!)
+    ProVerif,
 }
 
 impl fmt::Display for Backend {
@@ -142,6 +144,7 @@ impl fmt::Display for Backend {
             Backend::Fstar(..) => write!(f, "fstar"),
             Backend::Coq => write!(f, "coq"),
             Backend::Easycrypt => write!(f, "easycrypt"),
+            Backend::ProVerif => write!(f, "proverif"),
         }
     }
 }
