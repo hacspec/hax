@@ -60,3 +60,8 @@ subcommand](https://insta.rs/docs/cli/).
 
 [^1]: https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-harness-field
 [^2]: https://nexte.st/book/custom-test-harnesses.html
+
+## Miscelaneous
+ - If the environment variable `DUNEJOBS` is set, it will set the `-j`
+   flag when `dune build`ing, controlling the maximum number of jobs
+   `dune build` will run in parallel.

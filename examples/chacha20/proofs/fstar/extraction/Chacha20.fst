@@ -3,12 +3,16 @@ module Chacha20
 open Core
 open FStar.Mul
 
+unfold
 let t_Block = t_Array u8 (sz 64)
 
+unfold
 let t_ChaChaIV = t_Array u8 (sz 12)
 
+unfold
 let t_ChaChaKey = t_Array u8 (sz 32)
 
+unfold
 let t_State = t_Array u32 (sz 16)
 
 let chacha20_line (a b d: usize) (s: u32) (m: t_Array u32 (sz 16))
@@ -159,13 +163,21 @@ let chacha20_update (st0: t_Array u32 (sz 16)) (m: t_Slice u8)
                 <:
                 t_Array u8 (sz 64))
           in
+          let _:Prims.unit =
+            Hax_lib.v_assume ((Alloc.Vec.impl_1__len blocks_out <: usize) =. (i *! sz 64 <: usize)
+                <:
+                bool)
+          in
           let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
-            assume (v (length blocks_out) == v i * 64);
             Alloc.Vec.impl_2__extend_from_slice blocks_out (Rust_primitives.unsize b <: t_Slice u8)
           in
           blocks_out)
   in
-  assume (v (length blocks_out) == v num_blocks * 64);
+  let _:Prims.unit =
+    Hax_lib.v_assume ((Alloc.Vec.impl_1__len blocks_out <: usize) =. (num_blocks *! sz 64 <: usize)
+        <:
+        bool)
+  in
   let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
     if remainder_len <>. sz 0
     then
