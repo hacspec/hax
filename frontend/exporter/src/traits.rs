@@ -312,7 +312,7 @@ pub fn clause_id_of_predicate(predicate: rustc_middle::ty::Predicate) -> u64 {
 /// for `Wrapper` (in this case: `u64 : ToU64`) and resolve it.
 ///
 /// TODO: returns an Option for now, `None` means we hit the indexing
-/// bug (see https://github.com/rust-lang/rust/issues/112242).
+/// bug (see <https://github.com/rust-lang/rust/issues/112242>).
 #[tracing::instrument(level = "trace", skip(s))]
 pub fn select_trait_candidate<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
