@@ -119,9 +119,9 @@ pub enum Backend {
     Fstar,
     /// Use the Coq backend
     Coq,
-    /// Use the EasyCrypt backend
+    /// Use the EasyCrypt backend (warning: work in progress!)
     Easycrypt,
-    /// Use the ProVerif backend
+    /// Use the ProVerif backend (warning: work in progress!)
     ProVerif,
 }
 

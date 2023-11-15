@@ -10,7 +10,7 @@ include
       include On.Macro
     end)
     (struct
-      let backend = Diagnostics.Backend.FStar
+      let backend = Diagnostics.Backend.ProVerif
     end)
 
 module SubtypeToInputLanguage
@@ -83,16 +83,19 @@ module AST = Ast.Make (InputLanguage)
 module BackendOptions = Backend.UnitBackendOptions
 open Ast
 
-module FStarNamePolicy = struct
+module ProVerifNamePolicy = struct
   include Concrete_ident.DefaultNamePolicy
 
   [@@@ocamlformat "disable"]
 
   let index_field_transform index = "_" ^ index
-  let reserved_words = Hash_set.of_list (module String) []
+
+  let reserved_words = Hash_set.of_list (module String) [
+  "among"; "axiom"; "channel"; "choice"; "clauses"; "const"; "def"; "diff"; "do"; "elimtrue"; "else"; "equation"; "equivalence"; "event"; "expand"; "fail"; "for"; "forall"; "foreach"; "free"; "fun"; "get"; "if"; "implementation"; "in"; "inj-event"; "insert"; "lemma"; "let"; "letfun"; "letproba"; "new"; "noninterf"; "noselect"; "not"; "nounif"; "or"; "otherwise"; "out"; "param"; "phase"; "pred"; "proba"; "process"; "proof"; "public vars"; "putbegin"; "query"; "reduc"; "restriction"; "secret"; "select"; "set"; "suchthat"; "sync"; "table"; "then"; "type"; "weaksecret"; "yield"
+  ]
 end
 
-module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (FStarNamePolicy)
+module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (ProVerifNamePolicy)
 open AST
 
 module Print = struct
@@ -102,10 +105,23 @@ module Print = struct
   open Generic_printer_base.Make (InputLanguage)
   open PPrint
 
+  let iblock f = group >> jump 2 0 >> terminate (break 0) >> f >> group
+
   class print =
     object (print)
       inherit GenericPrint.print as super
-      method ty_bool = string "somethign"
+      method ty_bool = string "bool"
+      method ty_int _ = string "bitstring"
+
+      method! item' item =
+        match item with
+        | Fn { name; generics; body; params } ->
+            let params_string =
+              iblock parens (separate_map (comma ^^ break 1) print#param params)
+            in
+            string "letfun" ^^ space ^^ print#concrete_ident name
+            ^^ params_string ^^ string " = 0."
+        | _ -> string ""
     end
 
   include Api (struct
@@ -113,9 +129,16 @@ module Print = struct
   end)
 end
 
+(* Insert a (empty, for now) top level process. *)
+let insert_top_level contents = contents ^ "\n\nprocess\n    0\n"
+
+(* Insert ProVerif code that will be necessary in any development.*)
+let insert_preamble contents = "channel c.\n\n" ^ contents
+
 let translate m (bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =
   let contents, _ = Print.items items in
+  let contents = contents |> insert_top_level |> insert_preamble in
   let file = Types.{ path = "output.pv"; contents } in
   [ file ]
 
