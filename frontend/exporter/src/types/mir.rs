@@ -439,7 +439,7 @@ pub enum StatementKind {
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Place {
-    /// The type of the element on which we apply the projection given by [kind]
+    /// The type of the element on which we apply the projection given by `kind`
     pub ty: Ty,
     pub kind: PlaceKind,
 }

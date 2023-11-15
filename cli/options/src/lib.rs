@@ -215,23 +215,23 @@ pub struct BackendOptions {
     #[arg(long = "dry-run")]
     pub dry_run: bool,
 
-    /// Verbose mode for the Hax engine. Set [-vv] for maximal verbosity.
+    /// Verbose mode for the Hax engine. Set `-vv` for maximal verbosity.
     #[arg(short, long, action = clap::ArgAction::Count)]
     pub verbose: u8,
 
     /// Enable engine debugging: dumps the AST at each phase.
     ///
-    /// The value of <DEBUG_ENGINE> can be either:
+    /// The value of `<DEBUG_ENGINE>` can be either:
     ///
-    ///  - [interactive] (or [i]): enables debugging of the engine, and
-    /// visualize interactively in a webapp how a crate was
+    ///  - `interactive` (or `i`): enables debugging of the engine,
+    /// and visualize interactively in a webapp how a crate was
     /// transformed by each phase, both in Rust-like syntax and
     /// browsing directly the internal AST. By default, the webapp is
-    /// hosted on http://localhost:8000, the port can be override by
+    /// hosted on `http://localhost:8000`, the port can be override by
     /// setting the `HAX_DEBUGGER_PORT` environment variable.
     ///
-    /// - [<FILE>] or [file:<FILE>]: outputs the different AST as JSON
-    /// to <FILE>. <FILE> can be either [-] or a path.
+    /// - `<FILE>` or `file:<FILE>`: outputs the different AST as JSON
+    /// to `<FILE>`. `<FILE>` can be either [-] or a path.
     #[arg(short, long = "debug-engine")]
     pub debug_engine: Option<DebugEngineMode>,
 
@@ -242,9 +242,9 @@ pub struct BackendOptions {
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
 pub enum ExporterCommand {
     /// Translate to a backend. The translated modules will be written
-    /// under the directory [<PKG>/proofs/<BACKEND>/extraction], where
-    /// <PKG> is the translated cargo package name and <BACKEND> the
-    /// name of the backend.
+    /// under the directory `<PKG>/proofs/<BACKEND>/extraction`, where
+    /// `<PKG>` is the translated cargo package name and `<BACKEND>`
+    /// the name of the backend.
     #[clap(name = "into")]
     Backend(BackendOptions),
 
@@ -259,7 +259,7 @@ pub enum ExporterCommand {
         output_file: PathOrDash,
         /// Whether the bodies are exported as THIR, built MIR, const
         /// MIR, or a combination. Repeat this option to extract a
-        /// combination (e.g. [-k thir -k mir-built]).
+        /// combination (e.g. `-k thir -k mir-built`).
         #[arg(
             value_enum,
             short,
@@ -304,11 +304,11 @@ pub enum Command {
 #[command(author, version = concat!("commit=", env!("HAX_GIT_COMMIT_HASH"), " ", "describe=", env!("HAX_GIT_DESCRIBE")), name = "hax", about, long_about = None)]
 pub struct Options {
     /// Replace the expansion of each macro matching PATTERN by their
-    /// invocation. PATTERN denotes a rust path (i.e. [A::B::c]) in
+    /// invocation. PATTERN denotes a rust path (i.e. `A::B::c`) in
     /// which glob patterns are allowed. The glob pattern * matches
     /// any name, the glob pattern ** matches zero, one or more
-    /// names. For instance, [A::B::C::D::X] and [A::E::F::D::Y]
-    /// matches [A::**::D::*].
+    /// names. For instance, `A::B::C::D::X` and `A::E::F::D::Y`
+    /// matches `A::**::D::*`.
     #[arg(
         short = 'i',
         long = "inline-macro-call",
@@ -323,23 +323,23 @@ pub struct Options {
     pub inline_macro_calls: Vec<Namespace>,
 
     /// Semi-colon terminated list of arguments to pass to the
-    /// [cargo build] invocation. For example, to apply this
-    /// program on a package [foo], use [-C -p foo ;]. (make sure
-    /// to escape [;] correctly in your shell)
+    /// `cargo build` invocation. For example, to apply this
+    /// program on a package `foo`, use `-C -p foo ;`. (make sure
+    /// to escape `;` correctly in your shell)
     #[arg(default_values = Vec::<&str>::new(), short='C', allow_hyphen_values=true, num_args=1.., long="cargo-args", value_terminator=";")]
     pub cargo_flags: Vec<String>,
 
     #[command(subcommand)]
     pub command: Option<Command>,
 
-    /// [cargo] caching is disabled by default, this flag enables it back.
+    /// `cargo` caching is disabled by default, this flag enables it back.
     #[arg(long="enable-cargo-cache", action=clap::builder::ArgAction::SetTrue)]
     pub force_cargo_build: ForceCargoBuild,
 
     /// Apply the command to every local package of the dependency closure. By
     /// default, the command is only applied to the primary packages (i.e. the
     /// package(s) of the current directory, or the ones selected with cargo
-    /// options like [-C -p <PKG> ;]).
+    /// options like `-C -p <PKG> ;`).
     #[arg(long = "deps")]
     pub deps: bool,
 }

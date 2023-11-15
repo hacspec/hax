@@ -256,9 +256,10 @@ fn variant_to_arm(
     }
 }
 
-/// [`AdtInto`] derives a [`SInto`] instance. This helps at
-/// transporting a algebraic data type `A` to another ADT `B` when `A`
-/// and `B` shares a lot of structure.
+/// [`AdtInto`] derives a
+/// [`SInto`](../hax_frontend_exporter/trait.SInto.html)
+/// instance. This helps at transporting a algebraic data type `A` to
+/// another ADT `B` when `A` and `B` shares a lot of structure.
 #[proc_macro_derive(
     AdtInto,
     attributes(
