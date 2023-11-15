@@ -5,3 +5,6 @@ members = [
      "sha256",
 ]
 resolver = "2"
+
+[workspace.dependencies]
+hax-lib-macros = { path = "../hax-lib-macros" }

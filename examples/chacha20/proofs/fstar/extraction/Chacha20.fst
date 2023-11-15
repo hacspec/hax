@@ -1,5 +1,5 @@
 module Chacha20
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 30"
 open Core
 open FStar.Mul
 
@@ -62,10 +62,7 @@ let chacha20_rounds (state: t_Array u32 (sz 16)) : t_Array u32 (sz 16) =
         <:
         Core.Ops.Range.t_Range i32)
       st
-      (fun st v__i ->
-          let st:t_Array u32 (sz 16) = st in
-          let v__i:i32 = v__i in
-          chacha20_double_round st <: t_Array u32 (sz 16))
+      (fun st v__i -> chacha20_double_round st <: t_Array u32 (sz 16))
   in
   st
 
@@ -146,8 +143,6 @@ let chacha20_update (st0: t_Array u32 (sz 16)) (m: t_Slice u8)
         Core.Ops.Range.t_Range usize)
       blocks_out
       (fun blocks_out i ->
-          let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = blocks_out in
-          let i:usize = i in
           let b:t_Array u8 (sz 64) =
             chacha20_encrypt_block st0
               (cast (i <: usize) <: u32)
