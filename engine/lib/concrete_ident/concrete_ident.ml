@@ -137,7 +137,15 @@ end = struct
     let did : Imported.def_id = { krate; path } in
     match find did with
     | Some infos -> Some (infos, before, after)
-    | None -> failwith "invariant error"
+    | None ->
+        (* TODO: This happens in actual code but should not, see #363 and #360.
+                 Make this into an error when #363 is fixed. *)
+        Logs.warn (fun m ->
+            m
+              "concrete_ident: invariant error, no `impl_info` found for \
+               identifier `%s`."
+              ([%show: Imported.def_id] did));
+        None
 end
 
 module Kind = struct
