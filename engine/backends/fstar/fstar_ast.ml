@@ -21,10 +21,10 @@ let lid_of_id id = Ident.lid_of_ids [ id ]
 let term (tm : AST.term') = AST.{ tm; range = dummyRange; level = Expr }
 let generate_fresh_ident () = Ident.gen dummyRange
 
-let decl ?(quals = []) (d : AST.decl') =
-  `Item AST.{ d; drange = dummyRange; quals = []; attrs = [] }
+let decl ?(quals = []) ?(attrs = []) (d : AST.decl') =
+  `Item AST.{ d; drange = dummyRange; quals; attrs }
 
-let decls ?(quals = []) x = [ decl ~quals x ]
+let decls ?(quals = []) ?(attrs = []) x = [ decl ~quals ~attrs x ]
 let pat (pat : AST.pattern') = AST.{ pat; prange = dummyRange }
 
 module Attrs = struct

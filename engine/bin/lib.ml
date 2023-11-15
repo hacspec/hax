@@ -85,7 +85,7 @@ let run (options : Types.engine_options) : Types.output =
   let diagnostics, files =
     Diagnostics.try_ (fun () ->
         match options.backend.backend with
-        | Fstar -> run (module Fstar_backend) ()
+        | Fstar opts -> run (module Fstar_backend) opts
         | Coq -> run (module Coq_backend) ()
         | Easycrypt -> run (module Easycrypt_backend) ()
         | ProVerif -> run (module Proverif_backend) ())

@@ -49,7 +49,6 @@ ROOTS = Sha256.fst
 
 $(ROOTS):
 	cargo hax into fstar
-	patch -i *.diff
 
 FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib $(HAX_LIBS_HOME)/rust_primitives $(HAX_LIBS_HOME)/core $(HAX_LIBS_HOME)/hax_lib
 
@@ -92,7 +91,7 @@ verify: $(addsuffix .checked, $(addprefix $(CACHE_DIR)/,$(ROOTS)))
 
 # Clean targets
 
-SHELL=/usr/bin/env bash
+SHELL ?= /usr/bin/env bash
 
 clean:
 	rm -rf $(CACHE_DIR)/*

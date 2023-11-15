@@ -57,7 +57,11 @@ struct
 end
 
 module AST = Ast.Make (InputLanguage)
-module BackendOptions = Backend.UnitBackendOptions
+
+module BackendOptions = struct
+  type t = Hax_engine.Types.f_star_options
+end
+
 open Ast
 
 module FStarNamePolicy = struct
@@ -398,7 +402,14 @@ struct
           Error.assertion_failure e.span
             "pexpr: bad arity for operator application";
         F.term @@ F.AST.Op (F.Ident.id_of_text op, List.map ~f:pexpr args)
-    | App { f; args } -> F.mk_e_app (pexpr f) @@ List.map ~f:pexpr args
+    | App { f; args; generic_args } ->
+        let const_generics =
+          List.filter_map
+            ~f:(function GConst e -> Some e | _ -> None)
+            generic_args
+        in
+        let args = const_generics @ args in
+        F.mk_e_app (pexpr f) @@ List.map ~f:pexpr args
     | If { cond; then_; else_ } ->
         F.term
         @@ F.AST.If
@@ -489,10 +500,28 @@ struct
           (F.term @@ F.AST.Name (pglobal_ident e.span constructor))
           [ r ]
     | Closure { params; body } ->
-        let ppat_ascribed pat =
-          F.pat @@ F.AST.PatAscribed (ppat pat, (pty pat.span pat.typ, None))
+        let params =
+          List.mapi
+            ~f:(fun i p ->
+              match p.p with
+              | PBinding { var; subpat = None; _ } -> (var, p)
+              | _ ->
+                  ( Local_ident.
+                      { name = "temp_" ^ Int.to_string i; id = mk_id Expr (-1) },
+                    p ))
+            params
         in
-        F.mk_e_abs (List.map ~f:ppat_ascribed params) (pexpr body)
+        let body =
+          let f (lid, (pat : pat)) =
+            let rhs = { e = LocalVar lid; span = pat.span; typ = pat.typ } in
+            U.make_let pat rhs
+          in
+          List.fold_right ~init:body ~f params
+        in
+        let mk_pat ((lid, pat) : local_ident * pat) =
+          ppat (U.make_var_pat lid pat.typ pat.span)
+        in
+        F.mk_e_abs (List.map ~f:mk_pat params) (pexpr body)
     | Return { e } ->
         F.term @@ F.AST.App (F.term_of_lid [ "RETURN_STMT" ], pexpr e, Nothing)
     | MacroInvokation { macro; args; witness } ->
@@ -506,20 +535,19 @@ struct
   and parm { arm = { arm_pat; body } } = (ppat arm_pat, None, pexpr body)
 
   let rec pgeneric_param span (p : generic_param) : F.AST.pattern =
-    let mk_implicit (ident : local_ident) ty =
-      let v =
-        F.pat @@ F.AST.PatVar (plocal_ident ident, Some F.AST.Implicit, [])
-      in
+    let mk ~aqual (ident : local_ident) ty =
+      let v = F.pat @@ F.AST.PatVar (plocal_ident ident, aqual, []) in
       F.pat @@ F.AST.PatAscribed (v, (ty, None))
     in
     let ident = p.ident in
     match p.kind with
     | GPLifetime _ -> Error.assertion_failure span "pgeneric_param:LIFETIME"
     | GPType { default = None } ->
-        mk_implicit ident (F.term @@ F.AST.Name (F.lid [ "Type" ]))
+        mk ~aqual:(Some F.AST.Implicit) ident
+          (F.term @@ F.AST.Name (F.lid [ "Type" ]))
     | GPType _ ->
         Error.unimplemented span ~details:"pgeneric_param:Type with default"
-    | GPConst { typ } -> mk_implicit ident (pty span typ)
+    | GPConst { typ } -> mk ~aqual:None ident (pty span typ)
 
   let rec pgeneric_constraint span (nth : int) (c : generic_constraint) =
     match c with
@@ -541,7 +569,8 @@ struct
     | GPType _ ->
         Error.unimplemented span ~details:"pgeneric_param_bd:Type with default"
     | GPConst { typ } ->
-        F.mk_binder ~aqual (F.AST.Annotated (plocal_ident ident, pty span typ))
+        F.mk_binder ~aqual:None
+          (F.AST.Annotated (plocal_ident ident, pty span typ))
 
   let pgeneric_param_ident
       ?(aqual : F.AST.arg_qualifier option = Some FStar_Parser_AST.Implicit)
@@ -671,16 +700,19 @@ struct
       |> Option.map ~f:(pexpr >> f >> F.term)
     in
     let decreases = attr_term Decreases (fun t -> F.AST.Decreases (t, None)) in
+    let is_lemma = Attrs.lemma attrs in
     let prepost_bundle =
       let trivial_pre = F.term_of_lid [ "Prims"; "l_True" ] in
       let trivial_post =
-        F.mk_e_abs [ F.pat @@ F.AST.PatWild (None, []) ] trivial_pre
+        if is_lemma then trivial_pre
+        else F.mk_e_abs [ F.pat @@ F.AST.PatWild (None, []) ] trivial_pre
       in
       let pre = attr_term Requires (fun t -> F.AST.Requires (t, None)) in
       let post =
-        attr_term ~keep_last_args:1 Ensures (fun t -> F.AST.Ensures (t, None))
+        let keep_last_args = if is_lemma then 0 else 1 in
+        attr_term ~keep_last_args Ensures (fun t -> F.AST.Ensures (t, None))
       in
-      if Option.is_some pre || Option.is_some post then
+      if is_lemma || Option.is_some pre || Option.is_some post then
         Some
           ( Option.value ~default:trivial_pre pre,
             Option.value ~default:trivial_post post )
@@ -694,11 +726,14 @@ struct
     match args with
     | [] -> typ
     | _ ->
-        let effect = if Option.is_some prepost_bundle then "Pure" else "Tot" in
-        F.mk_e_app (F.term_of_lid [ "Prims"; effect ]) (typ :: args)
-
-  (* let decreases, requires = match  *)
-  (*   match effect with Some effect -> F.mk_e_app effect ([typ] @ Option.to_list ) 0 | None -> typ *)
+        let mk namespace effect = F.term_of_lid (namespace @ [ effect ]) in
+        let prims = mk [ "Prims" ] in
+        let effect =
+          if Option.is_some prepost_bundle then
+            if is_lemma then mk [] "Lemma" else prims "Pure"
+          else prims "Tot"
+        in
+        F.mk_e_app effect (if is_lemma then args else typ :: args)
 
   let rec pitem (e : item) : [> `Item of F.AST.decl | `Comment of string ] list
       =
@@ -741,23 +776,9 @@ struct
               params
         in
         let pat = F.pat @@ F.AST.PatApp (pat, pat_args) in
-        if Attrs.lemma e.attrs then
-          let ty =
-            F.mk_e_app
-              (F.term_of_lid [ "FStar"; "Pervasives"; "Lemma" ])
-              [ pexpr body ]
-          in
-          let pat = F.pat @@ F.AST.PatAscribed (pat, (ty, None)) in
-          let admit =
-            F.mk_e_app
-              (F.term_of_lid [ "Prims"; "admit" ])
-              [ F.AST.unit_const F.dummyRange ]
-          in
-          F.decls @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, admit) ])
-        else
-          let ty = add_clauses_effect_type e.attrs (pty body.span body.typ) in
-          let pat = F.pat @@ F.AST.PatAscribed (pat, (ty, None)) in
-          F.decls @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, pexpr body) ])
+        let ty = add_clauses_effect_type e.attrs (pty body.span body.typ) in
+        let pat = F.pat @@ F.AST.PatAscribed (pat, (ty, None)) in
+        F.decls @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, pexpr body) ])
     | TyAlias { name; generics; ty } ->
         let pat =
           F.pat
@@ -1046,7 +1067,7 @@ struct
         in
         let body = F.term @@ F.AST.Record (None, fields) in
         let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
-        F.decls ~quals:[ tcinst ]
+        F.decls ~attrs:[ tcinst ]
         @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
     | HaxError details ->
         [
@@ -1089,8 +1110,12 @@ let string_of_items m items =
   |> List.filter ~f:(String.is_empty >> not)
   |> String.concat ~sep:"\n\n"
 
-let hardcoded_fstar_headers =
-  "\n#set-options \"--fuel 0 --ifuel 1 --z3rlimit 15\"\nopen Core"
+let fstar_headers (bo : BackendOptions.t) =
+  let opts =
+    Printf.sprintf {|#set-options "--fuel %Ld --ifuel %Ld --z3rlimit %Ld"|}
+      bo.fuel bo.ifuel bo.z3rlimit
+  in
+  [ opts; "open Core"; "open FStar.Mul" ] |> String.concat ~sep:"\n"
 
 let translate m (bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =
@@ -1110,8 +1135,8 @@ let translate m (bo : BackendOptions.t) (items : AST.item list) :
            {
              path = mod_name ^ ".fst";
              contents =
-               "module " ^ mod_name ^ hardcoded_fstar_headers ^ "\n\n"
-               ^ string_of_items m items;
+               "module " ^ mod_name ^ "\n" ^ fstar_headers bo ^ "\n\n"
+               ^ string_of_items m items ^ "\n";
            })
 
 open Phase_utils

@@ -56,6 +56,8 @@ module%inlined_contents Make (FA : Features.T) = struct
                             _;
                           };
                         ];
+                      _;
+                      (* TODO: see issue #328 *)
                     };
                 typ;
                 _;

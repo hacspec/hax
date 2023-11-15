@@ -113,10 +113,23 @@ impl NormalizePaths for PathOrDash {
     }
 }
 
+#[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
+pub struct FStarOptions {
+    /// Set the Z3 per-query resource limit
+    #[arg(long, default_value = "15")]
+    z3rlimit: u32,
+    /// Number of unrolling of recursive functions to try
+    #[arg(long, default_value = "0")]
+    fuel: u32,
+    ///  Number of unrolling of inductive datatypes to try
+    #[arg(long, default_value = "1")]
+    ifuel: u32,
+}
+
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
 pub enum Backend {
     /// Use the F* backend
-    Fstar,
+    Fstar(FStarOptions),
     /// Use the Coq backend
     Coq,
     /// Use the EasyCrypt backend (warning: work in progress!)
@@ -128,7 +141,7 @@ pub enum Backend {
 impl fmt::Display for Backend {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Backend::Fstar => write!(f, "fstar"),
+            Backend::Fstar(..) => write!(f, "fstar"),
             Backend::Coq => write!(f, "coq"),
             Backend::Easycrypt => write!(f, "easycrypt"),
             Backend::ProVerif => write!(f, "proverif"),

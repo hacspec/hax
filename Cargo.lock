@@ -463,6 +463,7 @@ name = "hax-driver"
 version = "0.1.0-pre.1"
 dependencies = [
  "clap",
+ "colored",
  "const_format",
  "hax-cli-options",
  "hax-cli-options-engine",
@@ -506,6 +507,10 @@ dependencies = [
  "serde",
  "serde_json",
 ]
+
+[[package]]
+name = "hax-lib"
+version = "0.1.0-pre.1"
 
 [[package]]
 name = "hax-lib-macros"

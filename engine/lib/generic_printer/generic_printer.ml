@@ -253,8 +253,8 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
             print#expr_at Expr_FieldProjection e
             |> terminate (dot ^^ print#name_of_concrete_ident i)
 
-        method expr_app : expr -> expr list fn =
-          fun f args ->
+        method expr_app : expr -> expr list -> generic_value list fn =
+          fun f args _generic_args ->
             let args =
               separate_map
                 (comma ^^ break 1)

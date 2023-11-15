@@ -10,6 +10,7 @@ members = [
      "cli/driver",
      "test-harness",
      "engine/utils/phase-debug-webapp",
+     "hax-lib",
      "hax-lib-macros",
      "hax-lib-macros/types",
 ]

@@ -26,30 +26,11 @@ jobs:
         
     - name: Test the toolchain
       run: |
-        nix flake check -L
-
-    - name: Install F*
-      run: nix profile install github:FStarLang/FStar/bc622701c668f6b4092760879372968265d4a4e1
-      # run: nix profile install github:FStarLang/FStar/v2023.09.03
-
-    - name: Checkout Hacl
-      uses: actions/checkout@v3
-      with:
-        repository: 'hacl-star/hacl-star'
-        path: "hacl-star"
-      
-    - name: Extract and typecheck examples
+        nix build .#check-toolchain -L
+        
+    - name: Test the examples
       run: |
-        export HACL_HOME="$GITHUB_WORKSPACE/hacl-star"
-        export CACHE_DIR=$(mktemp -d)
-        cd examples
-        typecheck () {
-          ( cd "$1/proofs/fstar/extraction"
-            OTHERFLAGS="$2" make )
-        }
-        typecheck limited-order-book ""
-        typecheck chacha20
-        typecheck sha256   "--lax"
+        nix build .#check-examples -L
 
     - name: Checkout specifications
       uses: actions/checkout@v3

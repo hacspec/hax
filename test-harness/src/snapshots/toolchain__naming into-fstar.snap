@@ -28,65 +28,94 @@ diagnostics = []
 module Naming.F.G.Impl_1.G.Hello
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
+open FStar.Mul
 
-let h: Prims.unit = ()'''
+let h: Prims.unit = ()
+'''
 "Naming.fst" = '''
 module Naming
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
+open FStar.Mul
 
 type t_Foo =
   | Foo_A : t_Foo
   | Foo_B { f_x:usize }: t_Foo
 
-type t_C = { f_x:usize }
-
-type t_X = | X : t_X
-
-type t_B = | B : t_B
-
-type t_Foobar = { f_a:t_Foo }
-
-let ff__g__impl_1__g (self: t_Foo) : usize = sz 1
-
-class t_T3_e_for_a (v_Self: Type) = { __marker_trait_t_T3_e_for_a:Prims.unit }
-
-type t_Arity1 (v_T: Type) {| _: Core.Marker.t_Sized v_T |} = | Arity1 : v_T -> t_Arity1 v_T
-
-class t_T2_for_a (v_Self: Type) = { __marker_trait_t_T2_for_a:Prims.unit }
-
-class t_T1 (v_Self: Type) = { __marker_trait_t_T1:Prims.unit }
-
-let reserved_names (v_val v_noeq v_of: u8) : u8 = (v_val +! v_noeq <: u8) +! v_of
-
-let mk_c: t_C =
-  let _:t_Foo = Foo_B ({ Naming.Foo.f_x = sz 3 }) in
-  let _:t_X = X in
-  { f_x = sz 3 }
-
-type t_f__g__impl__g__Foo =
-  | C_f__g__impl__g__Foo_A : t_f__g__impl__g__Foo
-  | C_f__g__impl__g__Foo_B { f_x:usize }: t_f__g__impl__g__Foo
-
-let ff__g__impl__g (self: t_B) : usize = sz 0
-
-let ff__g: Prims.unit = ()
-
-let f (x: t_Foobar) : usize = ff__g__impl_1__g x.f_a
+let impl__Foo__f (self: t_Foo) : t_Foo = Foo_A <: t_Foo
 
 type t_Foo2 =
   | Foo2_A : t_Foo2
   | Foo2_B { f_x:usize }: t_Foo2
 
+class t_T1 (v_Self: Type) = { __marker_trait_t_T1:Prims.unit }
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_T1_for_Foo: t_T1 t_Foo = { __marker_trait = () }
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_T1_for_tuple_Foo_u8: t_T1 (t_Foo & u8) = { __marker_trait = () }
+
+class t_T2_for_a (v_Self: Type) = { __marker_trait_t_T2_for_a:Prims.unit }
+
+class t_T3_e_for_a (v_Self: Type) = { __marker_trait_t_T3_e_for_a:Prims.unit }
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_T3_e_e_for_a_for_Foo: t_T3_e_for_a t_Foo = { __marker_trait = () }
 
+let ff__g: Prims.unit = ()
+
+type t_f__g__impl__g__Foo =
+  | C_f__g__impl__g__Foo_A : t_f__g__impl__g__Foo
+  | C_f__g__impl__g__Foo_B { f_x:usize }: t_f__g__impl__g__Foo
+
+let ff__g__impl_1__g (self: t_Foo) : usize = sz 1
+
+let reserved_names (v_val v_noeq v_of: u8) : u8 = (v_val +! v_noeq <: u8) +! v_of
+
+type t_Arity1 (v_T: Type) {| _: Core.Marker.t_Sized v_T |} = | Arity1 : v_T -> t_Arity1 v_T
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_T2_e_for_a_for_Arity1_of_tuple_Foo_u8: t_T2_for_a (t_Arity1 (t_Foo & u8)) =
   { __marker_trait = () }
 
-let impl_T1_for_tuple_Foo_u8: t_T1 (t_Foo & u8) = { __marker_trait = () }
+type t_B = | B : t_B
 
-let impl_T1_for_Foo: t_T1 t_Foo = { __marker_trait = () }
+let impl__B__f (self: t_B) : t_B = B <: t_B
 
-let impl__B__f (self: t_B) : t_B = B
+type t_C = { f_x:usize }
 
-let impl__Foo__f (self: t_Foo) : t_Foo = Foo_A'''
+type t_Foobar = { f_a:t_Foo }
+
+type t_StructA = { f_a:usize }
+
+type t_StructB = {
+  f_a:usize;
+  f_b:usize
+}
+
+type t_StructC = { f_a:usize }
+
+type t_StructD = {
+  f_a:usize;
+  f_b:usize
+}
+
+type t_X = | X : t_X
+
+let construct_structs (a b: usize) : Prims.unit =
+  let _:t_StructA = { f_a = a } <: t_StructA in
+  let _:t_StructB = { f_a = a; f_b = b } <: t_StructB in
+  let _:t_StructC = { f_a = a } <: t_StructC in
+  let _:t_StructD = { f_a = a; f_b = b } <: t_StructD in
+  ()
+
+let f (x: t_Foobar) : usize = ff__g__impl_1__g x.f_a
+
+let ff__g__impl__g (self: t_B) : usize = sz 0
+
+let mk_c: t_C =
+  let _:t_Foo = Foo_B ({ Naming.Foo.f_x = sz 3 }) <: t_Foo in
+  let _:t_X = X <: t_X in
+  { f_x = sz 3 } <: t_C
+'''

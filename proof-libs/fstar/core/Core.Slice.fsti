@@ -22,3 +22,6 @@ instance impl__index t n: t_Index (t_Slice t) (int_t n)
       f_index = (fun s i -> Seq.index s (v i));
     }
 
+let impl__copy_from_slice #t (x: t_Slice t) (y:t_Slice t) : t_Slice t = y
+
+val impl__split_at #t (s: t_Slice t) (mid: usize): (t_Slice t * t_Slice t)

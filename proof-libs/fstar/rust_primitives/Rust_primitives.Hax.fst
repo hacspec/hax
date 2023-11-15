@@ -18,6 +18,12 @@ class update_at_tc self idx = {
 
 open Core.Slice
 
+instance impl__index t l n: t_Index (t_Array t l) (int_t n)
+  = { f_Output = t;
+      in_range = (fun (s: t_Array t l) (i: int_t n) -> v i >= 0 && v i < v l);
+      f_index = (fun s i -> Seq.index s (v i));
+    }
+
 instance update_at_tc_array t l n: update_at_tc (t_Array t l) (int_t n) = {
   super_index = FStar.Tactics.Typeclasses.solve <: t_Index (t_Array t l) (int_t n);
   update_at = (fun arr i x -> FStar.Seq.upd arr (v i) x);
@@ -27,6 +33,8 @@ let (.[]<-) #self #idx {| update_at_tc self idx |} (s: self) (i: idx {in_range s
   = update_at s i
 
 let array_of_list #t = Rust_primitives.Arrays.of_list #t
+
+
 
 // class index self idx = {
 //   [@@@FStar.Tactics.Typeclasses.no_method]

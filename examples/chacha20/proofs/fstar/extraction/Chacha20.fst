@@ -1,15 +1,15 @@
 module Chacha20
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 30"
 open Core
 open FStar.Mul
-
-let t_State = t_Array u32 (sz 16)
 
 let t_Block = t_Array u8 (sz 64)
 
 let t_ChaChaIV = t_Array u8 (sz 12)
 
 let t_ChaChaKey = t_Array u8 (sz 32)
+
+let t_State = t_Array u32 (sz 16)
 
 let chacha20_line (a b d: usize) (s: u32) (m: t_Array u32 (sz 16))
     : Prims.Pure (t_Array u32 (sz 16))
@@ -56,7 +56,9 @@ let chacha20_rounds (state: t_Array u32 (sz 16)) : t_Array u32 (sz 16) =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter ({
               Core.Ops.Range.f_start = 0l;
               Core.Ops.Range.f_end = 10l
-            })
+            }
+            <:
+            Core.Ops.Range.t_Range i32)
         <:
         Core.Ops.Range.t_Range i32)
       st
@@ -73,6 +75,31 @@ let chacha20_core (ctr: u32) (st0: t_Array u32 (sz 16)) : t_Array u32 (sz 16) =
   in
   let k:t_Array u32 (sz 16) = chacha20_rounds state in
   Chacha20.Hacspec_helper.add_state state k
+
+let chacha20_encrypt_block (st0: t_Array u32 (sz 16)) (ctr: u32) (plain: t_Array u8 (sz 64))
+    : t_Array u8 (sz 64) =
+  let st:t_Array u32 (sz 16) = chacha20_core ctr st0 in
+  let (pl: t_Array u32 (sz 16)):t_Array u32 (sz 16) =
+    Chacha20.Hacspec_helper.to_le_u32s_16_ (Rust_primitives.unsize plain <: t_Slice u8)
+  in
+  let encrypted:t_Array u32 (sz 16) = Chacha20.Hacspec_helper.xor_state st pl in
+  Chacha20.Hacspec_helper.u32s_to_le_bytes encrypted
+
+let chacha20_encrypt_last (st0: t_Array u32 (sz 16)) (ctr: u32) (plain: t_Slice u8)
+    : Prims.Pure (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
+      (requires (Core.Slice.impl__len plain <: usize) <=. sz 64)
+      (fun _ -> Prims.l_True) =
+  let (b: t_Array u8 (sz 64)):t_Array u8 (sz 64) = Rust_primitives.Hax.repeat 0uy (sz 64) in
+  let b:t_Array u8 (sz 64) = Chacha20.Hacspec_helper.update_array b plain in
+  let b:t_Array u8 (sz 64) = chacha20_encrypt_block st0 ctr b in
+  Alloc.Slice.impl__to_vec (b.[ {
+          Core.Ops.Range.f_start = sz 0;
+          Core.Ops.Range.f_end = Core.Slice.impl__len plain <: usize
+        }
+        <:
+        Core.Ops.Range.t_Range usize ]
+      <:
+      t_Slice u8)
 
 let chacha20_init (key: t_Array u8 (sz 32)) (iv: t_Array u8 (sz 12)) (ctr: u32)
     : t_Array u32 (sz 16) =
@@ -100,29 +127,6 @@ let chacha20_key_block0 (key: t_Array u8 (sz 32)) (iv: t_Array u8 (sz 12)) : t_A
   let state:t_Array u32 (sz 16) = chacha20_init key iv 0ul in
   chacha20_key_block state
 
-let chacha20_encrypt_block (st0: t_Array u32 (sz 16)) (ctr: u32) (plain: t_Array u8 (sz 64))
-    : t_Array u8 (sz 64) =
-  let st:t_Array u32 (sz 16) = chacha20_core ctr st0 in
-  let (pl: t_Array u32 (sz 16)):t_Array u32 (sz 16) =
-    Chacha20.Hacspec_helper.to_le_u32s_16_ (Rust_primitives.unsize plain <: t_Slice u8)
-  in
-  let encrypted:t_Array u32 (sz 16) = Chacha20.Hacspec_helper.xor_state st pl in
-  Chacha20.Hacspec_helper.u32s_to_le_bytes encrypted
-
-let chacha20_encrypt_last (st0: t_Array u32 (sz 16)) (ctr: u32) (plain: t_Slice u8)
-    : Prims.Pure (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
-      (requires (Core.Slice.impl__len plain <: usize) <=. sz 64)
-      (fun _ -> Prims.l_True) =
-  let (b: t_Array u8 (sz 64)):t_Array u8 (sz 64) = Rust_primitives.Hax.repeat 0uy (sz 64) in
-  let b:t_Array u8 (sz 64) = Chacha20.Hacspec_helper.update_array b plain in
-  let b:t_Array u8 (sz 64) = chacha20_encrypt_block st0 ctr b in
-  Alloc.Slice.impl__to_vec (b.[ {
-          Core.Ops.Range.f_start = sz 0;
-          Core.Ops.Range.f_end = Core.Slice.impl__len plain <: usize
-        } ]
-      <:
-      t_Slice u8)
-
 let chacha20_update (st0: t_Array u32 (sz 16)) (m: t_Slice u8)
     : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
   let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Alloc.Vec.impl__new in
@@ -132,19 +136,22 @@ let chacha20_update (st0: t_Array u32 (sz 16)) (m: t_Slice u8)
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter ({
               Core.Ops.Range.f_start = sz 0;
               Core.Ops.Range.f_end = num_blocks
-            })
+            }
+            <:
+            Core.Ops.Range.t_Range usize)
         <:
         Core.Ops.Range.t_Range usize)
       blocks_out
       (fun blocks_out i ->
-          let (i: usize):usize = i in
           let b:t_Array u8 (sz 64) =
             chacha20_encrypt_block st0
-              (cast i <: u32)
+              (cast (i <: usize) <: u32)
               (Core.Result.impl__unwrap (Core.Convert.f_try_into (m.[ {
                             Core.Ops.Range.f_start = sz 64 *! i <: usize;
                             Core.Ops.Range.f_end = (sz 64 *! i <: usize) +! sz 64 <: usize
-                          } ]
+                          }
+                          <:
+                          Core.Ops.Range.t_Range usize ]
                         <:
                         t_Slice u8)
                     <:
@@ -164,11 +171,13 @@ let chacha20_update (st0: t_Array u32 (sz 16)) (m: t_Slice u8)
     then
       let b:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
         chacha20_encrypt_last st0
-          (cast num_blocks <: u32)
+          (cast (num_blocks <: usize) <: u32)
           (m.[ {
                 Core.Ops.Range.f_start = sz 64 *! num_blocks <: usize;
                 Core.Ops.Range.f_end = Core.Slice.impl__len m <: usize
-              } ]
+              }
+              <:
+              Core.Ops.Range.t_Range usize ]
             <:
             t_Slice u8)
       in
