@@ -390,6 +390,16 @@ impl Callbacks for ExtractionCallbacks {
                     }
                 }
                 ExporterCommand::Backend(backend) => {
+                    match backend.backend {
+                        hax_cli_options::Backend::Easycrypt
+                        | hax_cli_options::Backend::ProVerif => {
+                            eprintln!(
+                                "⚠️ Warning: Experimental backend \"{}\" is work in progress.",
+                                backend.backend
+                            )
+                        }
+                        _ => (),
+                    };
                     let (spans, _def_ids, impl_infos, converted_items) =
                         convert_thir(&self.clone().into(), self.macro_calls.clone(), tcx);
 
