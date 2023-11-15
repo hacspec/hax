@@ -6,7 +6,8 @@
 #
 # We expect FSTAR_HOME to be set to your FSTAR repo/install directory
 # We expect HACL_HOME to be set to your HACL* repo location
-# We expect HAX_LIBS_HOME to be set to the folder containing core, rust_primitives etc.
+# We expect HAX_PROOF_LIBS to be set to the folder containing core, rust_primitives etc.
+# We expect HAX_LIB to be set to the folder containing the crate `hax-lib`.
 #
 # ROOTS contains all the top-level F* files you wish to verify
 # The default target `verify` verified ROOTS and its dependencies
@@ -29,13 +30,17 @@
 # (setq fstar-subp-prover-args #'my-fstar-compute-prover-args-using-make)
 #
 
-HAX_LIBS_HOME ?= $(shell git rev-parse --show-toplevel)/proof-libs/fstar
-FSTAR_HOME    ?= $(HAX_LIBS_HOME)/../../../FStar
-HACL_HOME     ?= $(HAX_LIBS_HOME)/../../../hacl-star
-FSTAR_BIN     ?= $(shell command -v fstar.exe 1>&2 2> /dev/null && echo "fstar.exe" || echo "$(FSTAR_HOME)/bin/fstar.exe")
+HAX_HOME       ?= $(shell git rev-parse --show-toplevel)
+FSTAR_HOME     ?= $(HAX_HOME)/../../../FStar
+HACL_HOME      ?= $(HAX_HOME)/../../../hacl-star
 
-CACHE_DIR     ?= $(HAX_LIBS_HOME)/.cache
-HINT_DIR      ?= $(HAX_LIBS_HOME)/.hints
+FSTAR_BIN      ?= $(shell command -v fstar.exe 1>&2 2> /dev/null && echo "fstar.exe" || echo "$(FSTAR_HOME)/bin/fstar.exe")
+
+HAX_PROOF_LIBS ?= $(HAX_HOME)/proof-libs/fstar
+HAX_LIB        ?= $(HAX_HOME)/hax-lib
+
+CACHE_DIR      ?= $(HAX_PROOF_LIBS)/.cache
+HINT_DIR       ?= $(HAX_PROOF_LIBS)/.hints
 
 .PHONY: all verify clean
 
@@ -50,8 +55,10 @@ ROOTS = Chacha20.fst Chacha20.Hacspec_helper.fst
 $(ROOTS): ../../../src/lib.rs ../../../src/hacspec_helper.rs
 	cargo hax into fstar
 
-FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib $(HAX_LIBS_HOME)/rust_primitives \
-	$(HAX_LIBS_HOME)/core $(HAX_LIBS_HOME)/hax_lib $(HAX_LIBS_HOME)/../../hax-lib/proofs/fstar/extraction
+FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib \
+	$(HAX_PROOF_LIBS)/rust_primitives $(HAX_PROOF_LIBS)/core \
+	$(HAX_PROOF_LIBS)/hax_lib \
+	$(HAX_LIB)/proofs/fstar/extraction
 
 FSTAR_FLAGS = --cmi \
   --warn_error -331 \
