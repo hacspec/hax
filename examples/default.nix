@@ -40,6 +40,7 @@ in
         make
       '';
       buildInputs = [hax fstar];
-      HAX_LIBS_HOME = "${../proof-libs/fstar}";
+      HAX_PROOF_LIBS = "${../proof-libs/fstar}";
+      HAX_LIB = "${../hax-lib}";
       HACL_HOME = "${hacl-star}";
     })
