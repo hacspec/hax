@@ -1,7 +1,7 @@
 [workspace]
-members = [
-     "chacha20",
-     "limited-order-book",
-     "sha256",
-]
+members = ["chacha20", "limited-order-book", "sha256"]
 resolver = "2"
+
+[workspace.dependencies]
+hax-lib-macros = { path = "../hax-lib-macros" }
+hax-lib = { path = "../hax-lib" }
