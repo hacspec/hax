@@ -41,7 +41,7 @@
     pname = "hax-engine";
     version = "0.0.1";
     duneVersion = "3";
-    src = lib.sourceFilesBySuffices ./. [".ml" ".mli" ".js" "dune" "dune-project" "sh" "rs"];
+    src = lib.sourceFilesBySuffices ./. [".ml" ".mli" ".js" "dune" "dune-project" "sh" "rs" "mld"];
     buildInputs = with ocamlPackages;
       [
         zarith_stubs_js
@@ -87,6 +87,14 @@
     ];
     strictDeps = true;
     passthru = {
+      docs = hax-engine.overrideAttrs (old: {
+        name = "hax-engine-docs";
+        nativeBuildInputs = old.nativeBuildInputs ++ [
+          ocamlPackages.odoc
+        ];
+        buildPhase = ''dune build @doc'';
+        installPhase = "cp -rf _build/default/_doc/_html $out";
+      });
       js = hax-engine.overrideAttrs (old: {
         name = "hax-engine.js";
         nativeBuildInputs = old.nativeBuildInputs ++ [closurecompiler gnused];
