@@ -1,0 +1,21 @@
+{0 Hax Engine}
+
+The engine of hax is written in OCaml, and has the following structure:
+{ul {- the {!module-Hax_engine} library (located in `/engine/lib`)}
+    {- the {!module-Native_driver} binary (located in `/engine/bin`)}
+    {- the backends (located in `/engine/backends`):
+       {ul {- {!module-Fstar_backend}}
+           {- {!module-Coq_ast}}
+           {- {!module-Easycrypt_ast}}
+       }
+    }
+    {- utilities and PPXs:
+       {ul {- {!module-Hacspeclib_macro_parser}}
+           {- {!module-Ppx_functor_application}}
+           {- {!module-Ppx_generate_features}}
+           {- {!module-Ppx_inline}}
+        }
+    }
+}
+
+
