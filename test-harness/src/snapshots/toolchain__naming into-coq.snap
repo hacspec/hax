@@ -60,6 +60,10 @@ Inductive t_Foo2 : Type :=
 | Foo2_At_Foo2
 | Foo2_B : Foo2_B -> t_Foo2.
 
+Class t_FooTrait Self := {
+  f_ASSOCIATED_CONSTANT:uint_size ;
+}.
+
 Class t_T1 Self := {
 }.
 
@@ -79,6 +83,12 @@ Instance t_Foo_t_t_T3_e_for_a : t_T3_e_for_a t_Foo_t := {
 }.
 
 (*Not implemented yet? todo(item)*)
+
+Definition v_INHERENT_CONSTANT : uint_size :=
+  (@repr WORDSIZE32 3).
+
+Definition constants : uint_size :=
+  f_ASSOCIATED_CONSTANT.+v_INHERENT_CONSTANT.
 
 Definition ff__g : unit :=
   tt.

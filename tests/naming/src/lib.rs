@@ -96,3 +96,12 @@ fn construct_structs(a: usize, b: usize) {
     let _ = StructC { a };
     let _ = StructD { a, b };
 }
+
+const INHERENT_CONSTANT: usize = 3;
+trait FooTrait {
+    const ASSOCIATED_CONSTANT: usize;
+}
+
+fn constants<T: FooTrait>() -> usize {
+    <T as FooTrait>::ASSOCIATED_CONSTANT + INHERENT_CONSTANT
+}
