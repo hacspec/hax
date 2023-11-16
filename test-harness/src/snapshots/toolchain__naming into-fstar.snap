@@ -48,6 +48,8 @@ type t_Foo2 =
   | Foo2_A : t_Foo2
   | Foo2_B { f_x:usize }: t_Foo2
 
+class t_FooTrait (v_Self: Type) = { f_ASSOCIATED_CONSTANT:usize }
+
 class t_T1 (v_Self: Type) = { __marker_trait_t_T1:Prims.unit }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
@@ -62,6 +64,14 @@ class t_T3_e_for_a (v_Self: Type) = { __marker_trait_t_T3_e_for_a:Prims.unit }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_T3_e_e_for_a_for_Foo: t_T3_e_for_a t_Foo = { __marker_trait = () }
+
+let v_INHERENT_CONSTANT: usize = sz 3
+
+let constants
+      (#v_T: Type)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] ii0: Core.Marker.t_Sized v_T)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] ii1: t_FooTrait v_T)
+    : usize = f_ASSOCIATED_CONSTANT +! v_INHERENT_CONSTANT
 
 let ff__g: Prims.unit = ()
 
