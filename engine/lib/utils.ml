@@ -48,6 +48,7 @@ let is_uppercase s = String.equal s (String.uppercase s)
 let is_lowercase s = String.equal s (String.lowercase s)
 let start_uppercase = first_letter >> is_uppercase
 let start_lowercase = first_letter >> is_lowercase
+let string_to_int s = try Some (Int.of_string s) with _ -> None
 
 let split_str (s : string) ~(on : string) : string list =
   split_list ~equal:Char.equal ~needle:(String.to_list on) (String.to_list s)
