@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-#![warn(non_camel_case_types)]
+#![allow(non_camel_case_types)]
 
 enum Foo {
     A,
@@ -104,4 +104,27 @@ trait FooTrait {
 
 fn constants<T: FooTrait>() -> usize {
     <T as FooTrait>::ASSOCIATED_CONSTANT + INHERENT_CONSTANT
+}
+
+mod ambiguous_names {
+    fn debug(label: &str, value: u32) {
+        println!("[{}] a={}", label, value)
+    }
+
+    macro_rules! hello {
+        ($label:expr, $value:expr, $($e:tt)*) => {
+            let a = $value;
+            $($e)*
+            debug($label, a)
+        };
+    }
+
+    fn f() {
+        hello!("1", 104,
+               hello!("2", 205,
+                      hello!("3", 306, let a = 123;);
+               );
+        );
+        debug("last", a)
+    }
 }
