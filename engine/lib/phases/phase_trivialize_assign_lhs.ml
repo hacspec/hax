@@ -52,11 +52,28 @@ module%inlined_contents Make (F : Features.T) = struct
           | _ -> Error.raise { kind = ArbitraryLHS; span })
       | LhsArrayAccessor { e; typ = _; index; _ } ->
           let lhs = UA.expr_of_lhs span e |> dexpr in
-          let rhs =
-            UB.call Rust_primitives__hax__update_at
-              [ lhs; dexpr index; rhs ]
-              span lhs.typ
+          let update_at : Concrete_ident.name =
+            let index_typ =
+              match index.typ with TRef { typ; _ } -> typ | _ -> index.typ
+            in
+            match index_typ with
+            | TInt { size = SSize; signedness = Unsigned } ->
+                Rust_primitives__hax__monomorphized_update_at__update_at_usize
+            | TApp { ident; _ }
+              when Global_ident.eq_name Core__ops__range__Range ident ->
+                Rust_primitives__hax__monomorphized_update_at__update_at_range
+            | TApp { ident; _ }
+              when Global_ident.eq_name Core__ops__range__RangeFrom ident ->
+                Rust_primitives__hax__monomorphized_update_at__update_at_range_from
+            | TApp { ident; _ }
+              when Global_ident.eq_name Core__ops__range__RangeTo ident ->
+                Rust_primitives__hax__monomorphized_update_at__update_at_range_to
+            | TApp { ident; _ }
+              when Global_ident.eq_name Core__ops__range__RangeFull ident ->
+                Rust_primitives__hax__monomorphized_update_at__update_at_range_full
+            | _ -> Rust_primitives__hax__update_at
           in
+          let rhs = UB.call update_at [ lhs; dexpr index; rhs ] span lhs.typ in
           updater_of_lhs e rhs span
       | LhsArbitraryExpr _ -> Error.raise { kind = ArbitraryLHS; span }
 

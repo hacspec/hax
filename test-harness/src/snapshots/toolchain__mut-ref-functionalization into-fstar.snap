@@ -41,7 +41,9 @@ open FStar.Mul
 class t_FooTrait (v_Self: Type) = { f_z:v_Self -> v_Self }
 
 let array (x: t_Array u8 (sz 10)) : t_Array u8 (sz 10) =
-  let x:t_Array u8 (sz 10) = Rust_primitives.Hax.update_at x (sz 1) (x.[ sz 2 ] <: u8) in
+  let x:t_Array u8 (sz 10) =
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize x (sz 1) (x.[ sz 2 ] <: u8)
+  in
   x
 
 let f: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
@@ -80,16 +82,18 @@ let index_mutation (x: Core.Ops.Range.t_Range usize) (a: t_Slice u8) : Prims.uni
         Alloc.Boxed.t_Box (t_Slice u8) Alloc.Alloc.t_Global)
   in
   let v:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
-    Rust_primitives.Hax.update_at v
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_range v
       x
       (Core.Slice.impl__copy_from_slice (v.[ x ] <: t_Slice u8) a <: t_Slice u8)
   in
-  let v:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Rust_primitives.Hax.update_at v (sz 1) 3uy in
+  let v:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize v (sz 1) 3uy
+  in
   ()
 
 let index_mutation_unsize (x: t_Array u8 (sz 12)) : u8 =
   let x:t_Array u8 (sz 12) =
-    Rust_primitives.Hax.update_at x
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_range x
       ({ Core.Ops.Range.f_start = sz 4; Core.Ops.Range.f_end = sz 5 }
         <:
         Core.Ops.Range.t_Range usize)
@@ -149,7 +153,14 @@ let impl_FooTrait_for_Foo: t_FooTrait t_Foo = { f_z = fun (self: t_Foo) -> self 
 type t_S = { f_b:t_Array u8 (sz 5) }
 
 let impl__S__update (self: t_S) (x: u8) : t_S =
-  let self:t_S = { self with f_b = Rust_primitives.Hax.update_at self.f_b (sz 0) x } <: t_S in
+  let self:t_S =
+    {
+      self with
+      f_b = Rust_primitives.Hax.Monomorphized_update_at.update_at_usize self.f_b (sz 0) x
+    }
+    <:
+    t_S
+  in
   self
 
 let foo (lhs rhs: t_S) : t_S =
@@ -170,7 +181,7 @@ let foo (lhs rhs: t_S) : t_S =
             lhs with
             f_b
             =
-            Rust_primitives.Hax.update_at lhs.f_b
+            Rust_primitives.Hax.Monomorphized_update_at.update_at_usize lhs.f_b
               i
               ((lhs.f_b.[ i ] <: u8) +! (rhs.f_b.[ i ] <: u8) <: u8)
             <:
