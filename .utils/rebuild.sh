@@ -17,6 +17,7 @@ if [[ "${1:-}" == "--online" ]]; then
 fi
 
 TARGETS="${1:-rust ocaml}"
+DUNEJOBS=${DUNEJOBS:-} # required since `set -u`
 
 YELLOW=43
 GREEN=42

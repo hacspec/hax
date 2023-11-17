@@ -602,7 +602,11 @@ end) : EXPR = struct
                        typ = TInt { size = S8; signedness = Unsigned };
                      })
                    l))
-      | NamedConst { def_id = id; _ } -> GlobalVar (def_id Value id)
+      | NamedConst { def_id = id; impl; _ } ->
+          let kind : Concrete_ident.Kind.t =
+            match impl with Some _ -> AssociatedItem Value | _ -> Value
+          in
+          GlobalVar (def_id kind id)
       | Closure { body; params; upvars; _ } ->
           let params =
             List.filter_map ~f:(fun p -> Option.map ~f:c_pat p.pat) params
