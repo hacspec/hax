@@ -59,6 +59,46 @@
         "type": "github"
       }
     },
+    "fstar-flake": {
+      "inputs": {
+        "flake-utils": [
+          "flake-utils"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1693761108,
+        "narHash": "sha256-ymoP5DvaLdrdwJcnhZnLEvwNxUFzhkICajPyK4lvacc=",
+        "owner": "FStarLang",
+        "repo": "FStar",
+        "rev": "7363057dc7dceb13e39d5afb2b1dd46161314f25",
+        "type": "github"
+      },
+      "original": {
+        "owner": "FStarLang",
+        "ref": "v2023.09.03",
+        "repo": "FStar",
+        "type": "github"
+      }
+    },
+    "hacl-star": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1699634660,
+        "narHash": "sha256-/mAi8wdlO1HHYKVj8pN/y5FUM/AwVPNazYFSy9pDlpY=",
+        "owner": "hacl-star",
+        "repo": "hacl-star",
+        "rev": "7f42aba60b37bc011d19472284bfcd3b95c1538e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hacl-star",
+        "repo": "hacl-star",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1694343207,
@@ -77,6 +117,8 @@
       "inputs": {
         "crane": "crane",
         "flake-utils": "flake-utils",
+        "fstar-flake": "fstar-flake",
+        "hacl-star": "hacl-star",
         "nixpkgs": "nixpkgs",
         "rust-overlay": [
           "crane",

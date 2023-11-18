@@ -19,11 +19,12 @@ The command `cargo hax` accepts the following subcommands:
  * **`json`** (`cargo hax json`): extract the typed AST of your crate as a JSON file.
  
 Note:
- * `BACKEND` can be `fstar`, `coq` or `easycrypt`. The list of
-   supported backends can be displayed running `cargo hax into
-   --help`.
- * The subcommand `cargo hax` takes options, list them with `cargo hax --help`.
- * The subcommand `cargo hax into` takes also options, list them with `cargo hax into --help`.
+ * `BACKEND` can be `fstar`, `coq` or `easycrypt`. `cargo hax into
+   --help` gives the full list of supported backends.
+ * The subcommands `cargo hax`, `cargo hax into` and `cargo hax into
+   <BACKEND>` takes options. For instance, you can `cargo hax into
+   fstar --z3rlimit 100`. Use `--help` on those subcommands to list
+   all options.
 
 ## Installation
 <details>

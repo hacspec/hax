@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 
 # This is a small script to rebuild Hax (the Rust CLI & frontend and
-# OCaml engine) quickly
+# OCaml engine) quickly.
+
+# Options:
+#  - the flag `--online` allow Cargo to look for updates on the internet;
+#  - the environment variable `DUNEJOBS` limits the number of jobs `dune`
+#    is allowed to spawn in parallel while building.
 
 set -euo pipefail
 
@@ -12,6 +17,7 @@ if [[ "${1:-}" == "--online" ]]; then
 fi
 
 TARGETS="${1:-rust ocaml}"
+DUNEJOBS=${DUNEJOBS:-} # required since `set -u`
 
 YELLOW=43
 GREEN=42
@@ -34,7 +40,7 @@ rust () {
 ocaml () {
     cd_rootwise "engine"
     CURRENT="ocaml"
-    dune build
+    dune build $([ -z $DUNEJOBS ] || echo "-j $DUNEJOBS")
     CURRENT="ocaml/install"
     # Small hack for those that are not using [opam] at all: by
     # default install OCaml binaries in `~/.cargo` (which is supposed

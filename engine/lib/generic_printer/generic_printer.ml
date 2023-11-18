@@ -277,7 +277,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
 
         method global_ident_projector : global_ident fn =
           function
-          | `Projector (`Concrete i) -> print#concrete_ident i
+          | `Projector (`Concrete i) | `Concrete i -> print#concrete_ident i
           | _ ->
               print#assertion_failure "global_ident_projector: not a projector"
 

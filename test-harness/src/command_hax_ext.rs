@@ -5,6 +5,16 @@ pub trait CommandHaxExt {
     fn hax<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(args: I) -> Self;
 }
 
+/// Computes a list of arguments that setup the number of parallel
+/// jobs for dune accordingly to environment variable `DUNEJOBS`.
+fn dune_jobs_args() -> Vec<String> {
+    if let Ok(jobs) = std::env::var("DUNEJOBS") {
+        vec!["-j".into(), jobs]
+    } else {
+        vec![]
+    }
+}
+
 impl CommandHaxExt for Command {
     fn hax<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(args: I) -> Command {
         use assert_cmd::cargo::cargo_bin;
@@ -31,6 +41,7 @@ impl CommandHaxExt for Command {
                         .success());
                 assert!(Command::new("dune")
                         .args(&["build"])
+                        .args(dune_jobs_args())
                         .env("HAX_JSON_SCHEMA_EXPORTER_BINARY", cargo_bin("hax-export-json-schemas"))
                         .current_dir(engine_dir.clone())
                         .status()
