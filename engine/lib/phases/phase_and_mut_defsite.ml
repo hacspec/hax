@@ -100,7 +100,7 @@ struct
          into
           `(let … = … in)* let output = expr in output` *)
       let wrap_in_identity_let (e : expr) : expr =
-        let var = Local_ident.{ id = mk_id Expr 0; name = "output" } in
+        let var = Local_ident.{ id = mk_id Expr 0; name = "hax_temp_output" } in
         let f (e : expr) : expr =
           match e.e with
           | GlobalVar (`TupleCons 0) -> e
