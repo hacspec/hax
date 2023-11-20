@@ -184,14 +184,14 @@ let foo (lhs rhs: t_S) : t_S =
 let i (bar: t_Bar) : (t_Bar & u8) =
   let bar:t_Bar = { bar with f_b = bar.f_b +! bar.f_a } <: t_Bar in
   let bar:t_Bar = { bar with f_a = h bar.f_a } <: t_Bar in
-  let output:u8 = bar.f_a +! bar.f_b in
-  bar, output <: (t_Bar & u8)
+  let hax_temp_output:u8 = bar.f_a +! bar.f_b in
+  bar, hax_temp_output <: (t_Bar & u8)
 
 let j (x: t_Bar) : (t_Bar & u8) =
   let tmp0, out:(t_Bar & u8) = i x in
   let x:t_Bar = tmp0 in
-  let output:u8 = out in
-  x, output <: (t_Bar & u8)
+  let hax_temp_output:u8 = out in
+  x, hax_temp_output <: (t_Bar & u8)
 
 type t_Pair (v_T: Type) {| _: Core.Marker.t_Sized v_T |} = {
   f_a:v_T;
