@@ -44,6 +44,32 @@
     // {
       inherit cargoArtifacts pname;
     });
+  frontend-docs = craneLib.cargoDoc (commonArgs // {inherit cargoArtifacts pname;});
+  docs = stdenv.mkDerivation {
+    name = "hax-docs";
+    unpackPhase = "true";
+    buildPhase = "true";
+    installPhase = ''
+      mkdir $out
+      cp -r ${frontend-docs}/share/doc $out/frontend
+      cp -r ${hax-engine.docs}         $out/engine
+      cd $out
+      INDEX=$(mktemp)
+      (
+        echo "<style>"
+        echo "body {font-family: Sans-Serif; margin: 0px; padding: 20px;}"
+        echo "h1 {font-size: 140%;  font-weight: inherit;}"
+        echo "</style>"
+        echo "<h1>Hax docs</h1>"
+        echo "<p>Hax is written both in Rust and OCaml. Documentation for each is available below:</p>"
+        echo "<ul>"
+        echo "<li><a href=\"frontend/hax_frontend_exporter/index.html\">Frontend documentation</a> (Rust)</li>"
+        echo "<li><a href=\"engine/hax-engine/index.html\">Engine documentation</a> (OCaml)</li>"
+        echo "</ul>"
+      ) > $INDEX
+      mv $INDEX index.html
+    '';
+  };
   binaries = [hax hax-engine rustc gcc];
   tests = craneLib.buildPackage (commonArgs
     // {
@@ -77,6 +103,7 @@ in
     meta.mainProgram = "cargo-hax";
     passthru = {
       unwrapped = hax;
-      inherit tests;
+      engine-docs = hax-engine.docs;
+      inherit tests docs frontend-docs;
     };
   }
