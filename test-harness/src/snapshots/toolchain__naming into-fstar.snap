@@ -24,6 +24,56 @@ exit = 0
 diagnostics = []
 
 [stdout.files]
+"Naming.Ambiguous_names.fst" = '''
+module Naming.Ambiguous_names
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let debug (label value: u32) : Prims.unit =
+  let _:Prims.unit =
+    Std.Io.Stdio.v__print (Core.Fmt.impl_2__new_v1 (Rust_primitives.unsize (let list =
+                  ["["; "] a="; "\n"]
+                in
+                FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 3);
+                Rust_primitives.Hax.array_of_list list)
+            <:
+            t_Slice string)
+          (Rust_primitives.unsize (let list =
+                  [
+                    Core.Fmt.Rt.impl_1__new_display label <: Core.Fmt.Rt.t_Argument;
+                    Core.Fmt.Rt.impl_1__new_display value <: Core.Fmt.Rt.t_Argument
+                  ]
+                in
+                FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 2);
+                Rust_primitives.Hax.array_of_list list)
+            <:
+            t_Slice Core.Fmt.Rt.t_Argument)
+        <:
+        Core.Fmt.t_Arguments)
+  in
+  ()
+
+let f: Prims.unit =
+  let a_1_:u32 = 104ul in
+  let a_2_:u32 = 205ul in
+  let a_3_:u32 = 306ul in
+  let a:u32 = 123ul in
+  let _:Prims.unit = debug 3ul a_3_ in
+  let _:Prims.unit = debug 2ul a_2_ in
+  let _:Prims.unit = debug 1ul a_1_ in
+  debug 4ul a
+
+let ff_expand: Prims.unit =
+  let a:i32 = 104l in
+  let a:i32 = 205l in
+  let a:i32 = 306l in
+  let a:u32 = 123ul in
+  let _:Prims.unit = debug 3ul a in
+  let _:Prims.unit = debug 2ul a in
+  let _:Prims.unit = debug 1ul a in
+  debug 0ul a
+'''
 "Naming.F.G.Impl_1.G.Hello.fst" = '''
 module Naming.F.G.Impl_1.G.Hello
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"

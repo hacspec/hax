@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-#![warn(non_camel_case_types)]
+#![allow(non_camel_case_types)]
 
 enum Foo {
     A,
@@ -104,4 +104,54 @@ trait FooTrait {
 
 fn constants<T: FooTrait>() -> usize {
     <T as FooTrait>::ASSOCIATED_CONSTANT + INHERENT_CONSTANT
+}
+
+/// Test for ambiguous local names renaming: when two local vars are
+/// ambiguous by name but not by their internal IDs.
+/// Such situation can occur playing with *hygenic* macros.
+/// Also, this happens with some internal Rustc rewrite. (e.g. assignment of tuples)
+mod ambiguous_names {
+    fn debug(label: u32, value: u32) {
+        println!("[{}] a={}", label, value)
+    }
+
+    /// This macro surround a given expression with a let binding for
+    /// an identifier `a` and a print of that `a`.
+    macro_rules! introduce_binding_to_new_name_a {
+        ($label:expr, $value:expr, $($e:tt)*) => {
+            let a = $value;
+            $($e)*
+            debug($label, a)
+        };
+    }
+
+    /// `f` stacks mutliple let bindings declaring different `a`s.
+    fn f() {
+        introduce_binding_to_new_name_a!(1, 104,
+               introduce_binding_to_new_name_a!(2, 205,
+                      introduce_binding_to_new_name_a!(3, 306, let a = 123;);
+               );
+        );
+        debug(4, a)
+    }
+
+    /// `f` is expanded into `f_expand` below, while the execution of `f` gives:
+    ///
+    /// ```plaintext
+    ///  [3] a=306
+    ///  [2] a=205
+    ///  [1] a=104
+    ///  [last] a=123
+    /// ```
+    #[allow(unused)]
+    fn f_expand() {
+        let a = 104;
+        let a = 205;
+        let a = 306;
+        let a = 123;
+        debug(3, a);
+        debug(2, a);
+        debug(1, a);
+        debug(0, a)
+    }
 }
