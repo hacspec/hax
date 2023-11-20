@@ -253,8 +253,17 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                         })
                         .map(|path| (predicate, path))
                 }) else {
-                    return ImplExprAtom::Todo(format!("implsource::param \n\n{:#?}", self))
-                        .with_args(impl_exprs(s, &nested));
+                    return
+                        if predicates.is_empty() {
+                            ImplExprAtom::LocalBound {
+                                clause_id: rand::random(), // TODO
+                                path: Vec::<search_clause::PathChunk>::new().sinto(s)
+                            }
+                        }
+                        else {
+                            ImplExprAtom::Todo(format!("implsource::param \n\n{:#?}", self))
+                        }
+                        .with_args(impl_exprs(s, &nested))
                 };
                 // .s_expect(s, format!("implsource::param \n\n{:#?}", self).as_str());
                 let clause_id: u64 = clause_id_of_predicate(*predicate);
