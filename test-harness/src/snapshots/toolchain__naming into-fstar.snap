@@ -30,7 +30,7 @@ module Naming.Ambiguous_names
 open Core
 open FStar.Mul
 
-let debug (label: string) (value: u32) : Prims.unit =
+let debug (label value: u32) : Prims.unit =
   let _:Prims.unit =
     Std.Io.Stdio.v__print (Core.Fmt.impl_2__new_v1 (Rust_primitives.unsize (let list =
                   ["["; "] a="; "\n"]
@@ -59,10 +59,20 @@ let f: Prims.unit =
   let a_2_:u32 = 205ul in
   let a_3_:u32 = 306ul in
   let a:u32 = 123ul in
-  let _:Prims.unit = debug "3" a_3_ in
-  let _:Prims.unit = debug "2" a_2_ in
-  let _:Prims.unit = debug "1" a_1_ in
-  debug "last" a
+  let _:Prims.unit = debug 3ul a_3_ in
+  let _:Prims.unit = debug 2ul a_2_ in
+  let _:Prims.unit = debug 1ul a_1_ in
+  debug 4ul a
+
+let ff_expand: Prims.unit =
+  let a:i32 = 104l in
+  let a:i32 = 205l in
+  let a:i32 = 306l in
+  let a:u32 = 123ul in
+  let _:Prims.unit = debug 3ul a in
+  let _:Prims.unit = debug 2ul a in
+  let _:Prims.unit = debug 1ul a in
+  debug 0ul a
 '''
 "Naming.F.G.Impl_1.G.Hello.fst" = '''
 module Naming.F.G.Impl_1.G.Hello
