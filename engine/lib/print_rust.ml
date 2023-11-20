@@ -560,7 +560,6 @@ let rustfmt_annotated' (x : AnnotatedString.t) : AnnotatedString.t =
             (original, (Span.dummy (), s))
           else (
             Stdio.prerr_endline @@ "\n##### RUSTFMT TOKEN ERROR #####";
-            (* Stdio.prerr_endline @@ "prev=" ^ [%show: AnnotatedString.t] prev; *)
             Stdio.prerr_endline @@ "s=" ^ s;
             raise RetokenizationFailure)
       | _ -> (original, (last, s))
