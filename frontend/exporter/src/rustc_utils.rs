@@ -27,6 +27,13 @@ impl<'tcx> ty::Predicate<'tcx> {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct AnnotatedPredicate<'tcx> {
+    pub is_extra_self_predicate: bool,
+    pub predicate: ty::Predicate<'tcx>,
+    pub span: rustc_span::Span,
+}
+
 #[extension_traits::extension(pub trait TyCtxtExtPredOrAbove)]
 impl<'tcx> ty::TyCtxt<'tcx> {
     /// Just like `TyCtxt::predicates_defined_on`, but in the case of
@@ -35,15 +42,45 @@ impl<'tcx> ty::TyCtxt<'tcx> {
     fn predicates_defined_on_or_above(
         self,
         did: rustc_span::def_id::DefId,
-    ) -> Vec<(ty::Predicate<'tcx>, rustc_span::Span)> {
+    ) -> Vec<AnnotatedPredicate<'tcx>> {
         let mut next_did = Some(did);
         let mut predicates = vec![];
         while let Some(did) = next_did {
-            let gen_preds = self.predicates_defined_on(did);
-            next_did = gen_preds.parent;
-            predicates.extend(gen_preds.predicates.into_iter())
+            let (preds, parent) = self.annotated_predicates_of(did);
+            next_did = parent;
+            predicates.extend(preds)
         }
         predicates
+    }
+
+    fn annotated_predicates_of(
+        self,
+        did: rustc_span::def_id::DefId,
+    ) -> (
+        impl Iterator<Item = AnnotatedPredicate<'tcx>>,
+        Option<rustc_span::def_id::DefId>,
+    ) {
+        let with_self = self.predicates_of(did);
+        let parent = with_self.parent;
+        let with_self = with_self.predicates;
+        let without_self: Vec<ty::Predicate> = self
+            .predicates_defined_on(did)
+            .predicates
+            .into_iter()
+            .cloned()
+            .map(|(pred, _)| pred)
+            .collect();
+        (
+            with_self
+                .into_iter()
+                .cloned()
+                .map(move |(predicate, span)| AnnotatedPredicate {
+                    is_extra_self_predicate: !without_self.contains(&predicate),
+                    predicate,
+                    span,
+                }),
+            parent,
+        )
     }
 }
 

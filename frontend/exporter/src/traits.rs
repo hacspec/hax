@@ -30,6 +30,7 @@ pub enum ImplExprAtom {
         r#trait: Binder<TraitRef>,
         path: Vec<ImplExprPathChunk>,
     },
+    SelfImpl,
     /// `dyn TRAIT` is a wrapped value with a virtual table for trait
     /// `TRAIT`.  In other words, a value `dyn TRAIT` is a dependent
     /// triple that gathers a type τ, a value of type τ and an
@@ -142,7 +143,7 @@ mod search_clause {
             let predicates = tcx
                 .predicates_defined_on_or_above(self.def_id())
                 .into_iter()
-                .map(|(predicate, _)| predicate);
+                .map(|apred| apred.predicate);
             predicates_to_trait_predicates(tcx, predicates, self.trait_ref.substs)
                 .enumerate()
                 .collect()
@@ -295,15 +296,16 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                 use search_clause::TraitPredicateExt;
                 let tcx = s.base().tcx;
                 let predicates = &tcx.predicates_defined_on_or_above(s.owner_id());
-                let Some((predicate, path)) = predicates.into_iter().find_map(|(predicate, _)| {
-                    predicate
+                let Some((apred, path)) = predicates.into_iter().find_map(|apred| {
+                    apred
+                        .predicate
                         .to_opt_poly_trait_pred()
                         .map(|poly_trait_predicate| poly_trait_predicate)
                         .and_then(|poly_trait_predicate| poly_trait_predicate.no_bound_vars())
                         .and_then(|trait_predicate| {
                             trait_predicate.path_to(s, self.clone(), param_env)
                         })
-                        .map(|path| (predicate, path))
+                        .map(|path| (apred, path))
                 }) else {
                     return ImplExprAtom::Todo(format!("implsource::param \n\n{:#?}", self))
                         .with_args(impl_exprs(s, &nested), trait_ref);
@@ -315,12 +317,22 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                     .s_unwrap(s)
                     .to_poly_trait_ref()
                     .sinto(s);
-                ImplExprAtom::LocalBound {
-                    clause_id,
-                    r#trait,
-                    path: path.sinto(s),
+                if apred.is_extra_self_predicate {
+                    if !path.is_empty() {
+                        supposely_unreachable_fatal!(s[apred.span], "SelfWithNonEmptyPath"; {
+                            self, apred, path
+                        });
+                    }
+                    ImplExprAtom::SelfImpl.with_args(vec![], trait_ref)
+                } else {
+                    let clause_id: u64 = clause_id_of_predicate(apred.predicate);
+                    ImplExprAtom::LocalBound {
+                        clause_id,
+                        r#trait,
+                        path: path.sinto(s),
+                    }
+                    .with_args(impl_exprs(s, &nested), trait_ref)
                 }
-                .with_args(impl_exprs(s, &nested), trait_ref)
             }
             // Happens when we use a function pointer as an object implementing
             // a trait like `FnMut`
@@ -354,9 +366,8 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                 r#trait: self.skip_binder().sinto(s),
             }
             .with_args(impl_exprs(s, &x.nested), trait_ref),
-            x => {
-                ImplExprAtom::Todo(format!("{:#?}\n\n{:#?}", x, self)).with_args(vec![], trait_ref)
-            }
+            x => ImplExprAtom::Todo(format!("ImplExprAtom::Todo {:#?}\n\n{:#?}", x, self))
+                .with_args(vec![], trait_ref),
         }
     }
 }
