@@ -1,5 +1,5 @@
 // Record struct with single field
-struct A_initial {
+struct Ainitial {
     x: u8,
 }
 
