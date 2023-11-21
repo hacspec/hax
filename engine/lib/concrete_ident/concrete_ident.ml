@@ -1,7 +1,8 @@
 open! Prelude
 
 module Imported = struct
-  type def_id = { krate : string; path : disambiguated_def_path_item list }
+  type def_id = { krate : string; path : path }
+  and path = disambiguated_def_path_item list
 
   and disambiguated_def_path_item = {
     data : def_path_item;
@@ -73,34 +74,95 @@ module Imported = struct
     in
     let f x = { x with data = f x.data } in
     { did with path = List.map ~f did.path }
+
+  module AssociatedItem : sig
+    type t [@@deriving show, yojson, compare, sexp, eq, hash]
+    (** An identifier that is an associated item *)
+
+    val from : def_id -> t option
+    (** If [id] is an associated item [ai], then [from id] evalues to [ai]. *)
+
+    val impl : t -> def_id
+    (** Lookup the def_id of the [impl] block of an associated item. *)
+
+    val path_decomposition : t -> path * disambiguated_def_path_item * path
+    (** [some::path::to::Impl#42::assoc::item] is decomposed into [(some::path::to, Impl#42, assoc::item)] *)
+  end = struct
+    let is_def_path_item_impl : def_path_item -> bool = function
+      | Impl -> true
+      | _ -> false
+
+    (** Cuts a path in two if there is a [Impl] chunk. *)
+    let decompose_impl_path (path : path) :
+        (path * disambiguated_def_path_item * path) option =
+      let l, r =
+        List.split_while path ~f:(fun x -> is_def_path_item_impl x.data |> not)
+      in
+      let* impl_chunk = List.hd r in
+      let* r = List.tl r in
+      Some (l, impl_chunk, r)
+
+    type t = {
+      impl_prefix : def_id;
+          (** the [def_id] of the impl in which the associated item
+          lives, but **without** the [Impl] chunk. Do not use this
+          directly. *)
+      impl_chunk : disambiguated_def_path_item;  (** the [Impl] chunk *)
+      relative_path : path;
+          (** the (non-empty) relative path to the associated item *)
+    }
+    [@@deriving show, yojson, compare, sexp, eq, hash]
+
+    let from (did : def_id) : t option =
+      let* impl_prefix, impl_chunk, relative_path =
+        decompose_impl_path did.path
+      in
+      let impl_prefix : def_id = { did with path = impl_prefix } in
+      if List.is_empty relative_path then None
+      else Some { impl_prefix; impl_chunk; relative_path }
+
+    let impl { impl_prefix; impl_chunk; _ } =
+      { impl_prefix with path = impl_prefix.path @ [ impl_chunk ] }
+
+    let path_decomposition
+        { impl_prefix = { path = prefix; _ }; impl_chunk; relative_path } =
+      (prefix, impl_chunk, relative_path)
+  end
 end
 
 module ImplInfos = struct
   type t = Types.impl_infos
-  (** Contains the informations `Generics`, `Trait` (if not an
-  inherent type), `Type` and `Bounds` for an `impl` block
-  `impl<Generics> [Trait for] Type where Bounds {}` *)
+  (** Contains the informations [Generics], [Trait] (if not an
+  inherent type), [Type] and [Bounds] for an [impl] block
+  [impl<Generics> [Trait for] Type where Bounds {}] *)
 end
 
-(** Stateful store that maps `def_id`s to implementation informations
+(** Stateful store that maps [def_id]s to implementation informations
 (which trait is implemented? for which type? under which constraints?) *)
 module ImplInfoStore : sig
   val init : (Types.def_id * ImplInfos.t) list -> unit
+
   val find : Imported.def_id -> ImplInfos.t option
+  (** Given a [id] of type [def_id], [find id] will return [Some
+      impl_info] when [id] is an (non-inherent[1]) impl. [impl_info]
+      contains information about the trait being implemented and for
+      which type.
+
+      [1]: https://doc.rust-lang.org/reference/items/implementations.html#inherent-implementations
+  *)
 
   val has_impl_prefix :
-    Imported.def_id ->
-    (ImplInfos.t
-    * Imported.disambiguated_def_path_item list
-    * Imported.disambiguated_def_path_item list)
-    option
-  (** If a `def_id` `did` points to an item that is an `impl` or a
-      child of an `impl`, `has_impl_prefix did` returns `Some (infos,
-      before, after)`. `infos` is of type `ImplInfos.t` (cf its
-      documentation). `before` and `after` are the partial paths
-      before and after the `impl` in `did`'s path. Note that if
-      `after` is empty, that means `did` points to the `impl`
-      itself. *)
+    Imported.def_id -> (ImplInfos.t * Imported.path * Imported.path) option
+  (** If a [def_id] [did] points to an item that is an [impl] or a
+      child of an [impl], [has_impl_prefix did] returns [Some (infos,
+      before, after)]. [infos] is of type [ImplInfos.t] (cf its
+      documentation). [before] and [after] are the partial paths
+      before and after the [impl] in [did]'s path. Note that if
+      [after] is empty, that means [did] points to the [impl]
+      itself.
+
+      TODO: drop that in favor of [Imported.AssociatedItem] API.
+   *)
 end = struct
   let state : (Imported.def_id, ImplInfos.t) Hashtbl.t option ref = ref None
 
@@ -123,29 +185,26 @@ end = struct
   let find k = Hashtbl.find (get_state ()) k
 
   let has_impl_prefix (did : Imported.def_id) =
-    let krate = did.krate in
-    let is_impl : Imported.def_path_item -> bool = function
-      | Impl -> true
-      | _ -> false
-    in
-    let before, rest =
-      List.split_while did.path ~f:(fun x -> is_impl x.data |> not)
-    in
-    let* impl_chunk = List.hd rest in
-    let* after = List.tl rest in
-    let path = before @ [ impl_chunk ] in
-    let did : Imported.def_id = { krate; path } in
-    match find did with
-    | Some infos -> Some (infos, before, after)
+    match Imported.AssociatedItem.from did with
     | None ->
-        (* TODO: This happens in actual code but should not, see #363 and #360.
-                 Make this into an error when #363 is fixed. *)
-        Logs.warn (fun m ->
-            m
-              "concrete_ident: invariant error, no `impl_info` found for \
-               identifier `%s`."
-              ([%show: Imported.def_id] did));
-        None
+        let* before = List.tl did.path in
+        find did |> Option.map ~f:(fun infos -> (infos, before, []))
+    | Some assoc_item -> (
+        match Imported.AssociatedItem.impl assoc_item |> find with
+        | Some infos ->
+            let before, _, after =
+              Imported.AssociatedItem.path_decomposition assoc_item
+            in
+            Some (infos, before, after)
+        | None ->
+            (* TODO: This happens in actual code but should not, see #363 and #360.
+                     Make this into an error when #363 is fixed. *)
+            Logs.warn (fun m ->
+                m
+                  "concrete_ident: invariant error, no `impl_info` found for \
+                   identifier `%s`."
+                  ([%show: Imported.def_id] did));
+            None)
 end
 
 module Kind = struct
@@ -263,10 +322,10 @@ module View = struct
     let impl_infos = ImplInfoStore.has_impl_prefix def_id in
     let def_id =
       match impl_infos with
-      (* inherent impl: we don't want the `impl` keyword to appear *)
+      (* inherent impl: we don't want the [impl] keyword to appear *)
       | Some ({ trait_ref = Some _; _ }, lpath, rpath)
         when not (List.is_empty rpath) ->
-          (* this basically amounts exactly to dropping the `impl` chunk *)
+          (* this basically amounts exactly to dropping the [impl] chunk *)
           Imported.{ krate = def_id.krate; path = lpath @ rpath }
       | _ -> def_id
     in
@@ -527,6 +586,14 @@ module Create = struct
         };
     }
 end
+
+let lookup_raw_impl_info (impl : t) : Types.impl_infos option =
+  ImplInfoStore.find impl.def_id
+
+let parent_impl (id : t) : t option =
+  let* assoc_item = Imported.AssociatedItem.from id.def_id in
+  let def_id = Imported.AssociatedItem.impl assoc_item in
+  Some { def_id; kind = Kind.Impl }
 
 module DefaultViewAPI = MakeViewAPI (DefaultNamePolicy)
 include DefaultViewAPI

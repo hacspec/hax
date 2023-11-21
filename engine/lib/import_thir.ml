@@ -199,6 +199,8 @@ module type EXPR = sig
   val c_generics : Thir.generics -> generics
   val c_param : Thir.span -> Thir.param -> param
   val c_trait_item' : Thir.trait_item -> Thir.trait_item_kind -> trait_item'
+  val c_trait_ref : Thir.span -> Thir.trait_ref -> trait_ref
+  val c_predicate_kind : Thir.span -> Thir.predicate_kind -> trait_ref option
 end
 
 (* BinOp to [core::ops::*] overloaded functions *)
@@ -888,13 +890,13 @@ end) : EXPR = struct
         let args = List.map ~f:(c_impl_expr span) args in
         ImplApp { impl; args }
 
+  and c_trait_ref span (tr : Thir.trait_ref) : trait_ref =
+    let trait = Concrete_ident.of_def_id Trait tr.def_id in
+    let args = List.map ~f:(c_generic_value span) tr.generic_args in
+    { trait; args }
+
   and c_impl_expr_atom (span : Thir.span) (ie : Thir.impl_expr_atom) : impl_expr
       =
-    let c_trait_ref (tr : Thir.trait_ref) : trait_ref =
-      let trait = Concrete_ident.of_def_id Trait tr.def_id in
-      let args = List.map ~f:(c_generic_value span) tr.generic_args in
-      { trait; args }
-    in
     match ie with
     | Concrete { id; generics } ->
         let trait = Concrete_ident.of_def_id Impl id in
@@ -905,19 +907,19 @@ end) : EXPR = struct
         let f (impl : impl_expr) (chunk : Thir.impl_expr_path_chunk) =
           match chunk with
           | AssocItem (item, { trait_ref; _ }) ->
-              let trait = c_trait_ref trait_ref in
+              let trait = c_trait_ref span trait_ref in
               let kind : Concrete_ident.Kind.t =
                 match item.kind with Const | Fn -> Value | Type -> Type
               in
               let item = Concrete_ident.of_def_id kind item.def_id in
               Projection { impl; trait; item }
           | Parent { trait_ref; _ } ->
-              let trait = c_trait_ref trait_ref in
+              let trait = c_trait_ref span trait_ref in
               Parent { impl; trait }
         in
         List.fold ~init ~f path
-    | Dyn { trait } -> Dyn (c_trait_ref trait)
-    | Builtin { trait } -> Builtin (c_trait_ref trait)
+    | Dyn { trait } -> Dyn (c_trait_ref span trait)
+    | Builtin { trait } -> Builtin (c_trait_ref span trait)
     | Todo str -> failwith @@ "impl_expr_atom: Todo " ^ str
 
   and c_generic_value (span : Thir.span) (ty : Thir.generic_arg) : generic_value
@@ -1027,6 +1029,21 @@ end) : EXPR = struct
     | Type (_, Some _) ->
         unimplemented [ span ]
           "TODO: traits: no support for defaults in type for now"
+end
+
+include struct
+  open Make (struct
+    let is_core_item = false
+  end)
+
+  let import_ty : Types.span -> Types.ty -> Ast.Rust.ty = c_ty
+
+  let import_trait_ref : Types.span -> Types.trait_ref -> Ast.Rust.trait_ref =
+    c_trait_ref
+
+  let import_predicate_kind :
+      Types.span -> Types.predicate_kind -> Ast.Rust.trait_ref option =
+    c_predicate_kind
 end
 
 let make ~krate : (module EXPR) =
