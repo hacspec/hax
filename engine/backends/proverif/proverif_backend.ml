@@ -133,7 +133,7 @@ end
 let insert_top_level contents = contents ^ "\n\nprocess\n    0\n"
 
 (* Insert ProVerif code that will be necessary in any development.*)
-let insert_preamble contents = "channel c.\n\n" ^ contents
+let insert_preamble contents = "channel c.\ntype state.\n" ^ contents
 
 let translate m (bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =
