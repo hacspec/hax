@@ -53,6 +53,7 @@ struct
 
   and dimpl_expr (span : span) (i : A.impl_expr) : B.impl_expr =
     match i with
+    | Self -> Self
     | Concrete tr -> Concrete (dtrait_ref span tr)
     | LocalBound { id } -> LocalBound { id }
     | Parent { impl; trait } ->
@@ -153,12 +154,13 @@ struct
             then_ = dexpr then_;
             else_ = Option.map ~f:dexpr else_;
           }
-    | App { f; args; generic_args } ->
+    | App { f; args; generic_args; impl } ->
         App
           {
             f = dexpr f;
             args = List.map ~f:dexpr args;
             generic_args = List.map ~f:(dgeneric_value span) generic_args;
+            impl = Option.map ~f:(dimpl_expr span) impl;
           }
     | Literal lit -> Literal lit
     | Array l -> Array (List.map ~f:dexpr l)
