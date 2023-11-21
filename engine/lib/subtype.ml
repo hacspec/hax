@@ -355,7 +355,6 @@ struct
       match ti with
       | TIType g -> TIType (List.map ~f:(dtrait_ref span) g)
       | TIFn t -> TIFn (dty span t)
-      | TIConst t -> TIConst (dty span t)
 
     and dtrait_item (ti : A.trait_item) : B.trait_item =
       {
@@ -371,7 +370,6 @@ struct
       | IIType g -> IIType (dty span g)
       | IIFn { body; params } ->
           IIFn { body = dexpr body; params = List.map ~f:(dparam span) params }
-      | IIConst { body } -> IIConst { body = dexpr body }
 
     and dimpl_item (ii : A.impl_item) : B.impl_item =
       {

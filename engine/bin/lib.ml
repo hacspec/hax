@@ -43,7 +43,7 @@ let import_thir_items (include_clauses : Types.inclusion_clause list)
         match Attrs.status i.attrs with Included _ -> true | _ -> false)
       items
   in
-  let items = Deps.sort items in
+  (* let items = Deps.sort items in *)
   let reports =
     List.concat_map
       ~f:(fun (item : Ast.Rust.item) ->

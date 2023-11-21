@@ -1504,7 +1504,7 @@ struct
     let decls_from_item =
       match e.v with
       | Fn { name = f_name; generics; body; params } ->
-          loc_defs_from_name f_name
+        loc_defs_from_name f_name
             (List.map
                ~f:(fun v ->
                  match v with
@@ -1829,14 +1829,7 @@ struct
                 List.concat_map
                   ~f:(fun x ->
                     match x.ti_v with
-                    | TIConst const_ty ->
-                        [
-                          SSP.AST.Named
-                            ( pconcrete_ident x.ti_ident,
-                              SSPExtraDefinitions.wrap_type_in_both "(fset[])"
-                                "(fset[])" (pty x.ti_span const_ty) );
-                        ]
-                    | TIFn fn_ty ->
+                      | TIFn fn_ty ->
                         let loc_name = pconcrete_ident x.ti_ident ^ "_loc" in
                         let include_extra_loc =
                           match fn_ty with
@@ -1899,6 +1892,12 @@ struct
                 | _ -> [])
               items
       | Impl { generics; self_ty; of_trait = name, gen_vals; items } ->
+        (* let fdm = Ast.concrete_ident Map.M(Concrete_ident).t in *)
+        [SSP.AST.Comment (String.concat ~sep:"\n" (List.map ~f:(fun x -> [%show: concrete_ident] x ^ "{" ^ String.concat ~sep:"," (List.map ~f:[%show: concrete_ident] (match Map.find (ctx.analysis_data.func_dep) x with | Some l -> l | _ -> [])) ^ "}") (Map.keys (ctx.analysis_data.func_dep))))] @
+        [SSP.AST.Comment "\n"] @
+        (* let mvm = (Local_ident.t list * (U.TypedLocalIdent.t * id_order) list) Map.M(Concrete_ident).t in *)
+        [SSP.AST.Comment (String.concat ~sep:"\n" (List.map ~f:(fun x -> [%show: concrete_ident] x ^ "{" ^ (match Map.find (ctx.analysis_data.mut_var) x with Some (l1, l2) -> String.concat ~sep:"," (List.map ~f:(fun x -> x.name) l1) ^ ";**;" ^ String.concat ~sep:"," (List.map ~f:(fun ((x,_),_) -> x.name) l2) | _ -> "") ^ "}") (Map.keys (ctx.analysis_data.mut_var))))] @
+        [SSP.AST.Comment "\n"] @
           List.concat_map
             ~f:(fun x ->
               loc_defs_from_name x.ii_ident
@@ -1920,17 +1919,18 @@ struct
                        ~f:(fun x ->
                          match x.ii_v with
                          | IIFn { body; params } ->
+                           ((* if List.length params == 0 *)
+                             (* then *)
                              let mvars_ext_fset_str =
                                "fset" ^ " " ^ "["
                                ^ String.concat ~sep:";"
-                                   (List.map
-                                      ~f:(fun x -> plocal_ident x ^ "_loc")
-                                      (match
-                                         Map.find ctx.analysis_data.mut_var
-                                           x.ii_ident
-                                       with
-                                      | Some (l, _) -> l
-                                      | _ -> []))
+                                 (List.map
+                                    ~f:(fun x -> plocal_ident x ^ "_loc")
+                                    (match
+                                       Map.find ctx.analysis_data.mut_var x.ii_ident
+                                     with
+                                     | Some (l, _) -> l
+                                     | _ -> []))
                                ^ "]"
                              in
                              [
@@ -1938,62 +1938,51 @@ struct
                                  ( pconcrete_ident x.ii_ident ^ "_loc",
                                    [],
                                    SSP.AST.NameTerm mvars_ext_fset_str,
-                                   SSP.AST.NameTy "{fset Location}" );
-                               (let args, ret_typ =
-                                  lift_definition_type_to_both x.ii_ident
-                                    (List.map
-                                       ~f:(fun { pat; typ; typ_span; attrs } ->
-                                         SSP.AST.Explicit
-                                           (ppat pat, pty span typ))
-                                       params)
-                                    (pty span body.typ)
-                                    (match
-                                       Map.find ctx.analysis_data.mut_var
-                                         x.ii_ident
-                                     with
-                                    | Some (_ :: _, _) -> []
-                                    | _ -> [ "fset []" ])
-                                in
-                                SSP.AST.LetDef
-                                  ( pconcrete_ident x.ii_ident,
-                                    args,
-                                    (pexpr
-                                       (extend_env_with_params
-                                          (Map.empty (module Local_ident))
-                                          (List.map
-                                             ~f:
-                                               (fun {
-                                                      pat;
-                                                      typ;
-                                                      typ_span;
-                                                      attrs;
-                                                    } -> pat)
-                                             params))
-                                       true)
-                                      body,
-                                    ret_typ ));
-                             ]
-                         | IIConst { body } ->
-                             [
-                               SSP.AST.LetDef
-                                 ( pconcrete_ident x.ii_ident,
-                                   [],
-                                   (pexpr
-                                      (Map.empty (module Local_ident))
-                                      false)
-                                     body,
-                                   SSPExtraDefinitions.wrap_type_in_both
-                                     "(fset [])" "(fset [])" (pty span body.typ)
-                                 );
-                             ]
+                                   SSP.AST.NameTy "{fset Location}" )]
+                             (* else [] *))
+                           @
+                           [(let args, ret_typ =
+                               lift_definition_type_to_both x.ii_ident
+                                 (List.map
+                                    ~f:(fun { pat; typ; typ_span; attrs } ->
+                                        SSP.AST.Explicit
+                                          (ppat pat, pty span typ))
+                                    params)
+                                 (pty span body.typ)
+                                 (match
+                                    Map.find ctx.analysis_data.mut_var
+                                      x.ii_ident
+                                  with
+                                  | Some (_ :: _, _) -> []
+                                  | _ -> [ "fset []" ])
+                             in
+                             SSP.AST.LetDef
+                               ( pconcrete_ident x.ii_ident,
+                                 args,
+                                 (pexpr
+                                    (extend_env_with_params
+                                       (Map.empty (module Local_ident))
+                                       (List.map
+                                          ~f:
+                                            (fun {
+                                               pat;
+                                               typ;
+                                               typ_span;
+                                               attrs;
+                                             } -> pat)
+                                          params))
+                                    true)
+                                   body,
+                                 ret_typ ));
+                           ]
                          | IIType ty ->
-                             [
-                               SSP.AST.LetDef
-                                 ( pconcrete_ident x.ii_ident,
-                                   [],
-                                   SSP.AST.Type (pty span ty),
-                                   SSP.AST.TypeTy );
-                             ])
+                           [
+                             SSP.AST.LetDef
+                               ( pconcrete_ident x.ii_ident,
+                                 [],
+                                 SSP.AST.Type (pty span ty),
+                                 SSP.AST.TypeTy );
+                           ])
                        items) );
             ]
           @ [ SSP.AST.HintUnfold (pglobal_ident name, Some (pty span self_ty)) ]

@@ -578,7 +578,6 @@ functor
     and impl_item' =
       | IIType of ty
       | IIFn of { body : expr; params : param list }
-      | IIConst of { body : expr }
 
     and impl_item = {
       ii_span : span;
@@ -588,7 +587,7 @@ functor
       ii_attrs : attrs;
     }
 
-    and trait_item' = TIType of trait_ref list | TIFn of ty | TIConst of ty
+    and trait_item' = TIType of trait_ref list | TIFn of ty
 
     and trait_item = {
       (* TODO: why do I need to prefix by `ti_` here? I guess visitors fail or something *)
