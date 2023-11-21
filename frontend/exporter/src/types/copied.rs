@@ -137,6 +137,8 @@ impl<'s, S: BaseState<'s> + HasOwnerId> SInto<S, ExtendedDefId> for rustc_hir::d
                     // otherwise we risk using a wrong parameter environment
                     // to solve the trait obligations, for instance.
                     let s1 = &State::new_from_state_and_id(s, id);
+                    let substs = rustc_middle::ty::subst::InternalSubsts::identity_for_item(tcx, id)
+                        .sinto(s1);
                     let bounds = tcx
                         .predicates_of(id)
                         .predicates
@@ -144,7 +146,7 @@ impl<'s, S: BaseState<'s> + HasOwnerId> SInto<S, ExtendedDefId> for rustc_hir::d
                         .map(|(x, _)| x.sinto(s1))
                         .collect();
                     let ty = tcx.type_of(id).subst_identity().sinto(s1);
-                    ExtendedDefPathItem::Impl { bounds, ty }
+                    ExtendedDefPathItem::Impl { id: Some(id), substs, bounds, ty }
                 }
             };
 
@@ -242,7 +244,8 @@ impl DefPathItem {
 )]
 pub enum ExtendedDefPathItem {
     CrateRoot,
-    Impl { ty: Ty, bounds: Vec<Predicate> },
+    /// Using an option for the id so that it implements Default.
+    Impl { #[serde(skip)] id: Option<rustc_hir::def_id::DefId>, substs: Vec<GenericArg>, bounds: Vec<Predicate>, ty: Ty },
     ForeignMod,
     Use,
     GlobalAsm,

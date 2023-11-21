@@ -315,7 +315,7 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             }
         }
         Operand::Move(_place) | Operand::Copy(_place) => {
-            unimplemented!();
+            unimplemented!("{:?}", func);
         }
     };
 
