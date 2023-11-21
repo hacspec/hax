@@ -7,12 +7,15 @@ module%inlined_contents Make (F : Features.T) = struct
   open Ast
 
   type id_order = int
-  type pre_data = concrete_ident list Map.M(Concrete_ident).t
+  type pre_data = concrete_ident list Map.M(String).t (* Concrete_ident *)
 
   type analysis_data =
     (Local_ident.t list * (U.TypedLocalIdent.t * id_order) list)
     (* external mut_vars vs new variables (e.g. needs def / local) *)
-    Map.M(Concrete_ident).t
+    Map.M(String).t
+
+  module Uprint =
+    Ast_utils.MakeWithNamePolicy (F) (Concrete_ident.DefaultNamePolicy)
 
   module LocalIdentOrData (Ty : sig
     type ty [@@deriving compare, sexp]
@@ -130,7 +133,8 @@ module%inlined_contents Make (F : Features.T) = struct
                          (module W)
                          (List.map ~f:(fun x -> W.Identifier x) x),
                        m#snd#zero ))
-                   (Map.find data cid)
+                   (Map.find data
+                      (Uprint.Concrete_ident_view.to_definition_name cid))
              | _ -> super#visit_global_ident env x
 
            method! visit_concrete_ident (_env : W.t list Map.M(Local_ident).t)
@@ -141,7 +145,8 @@ module%inlined_contents Make (F : Features.T) = struct
                      (module W)
                      (List.map ~f:(fun x -> W.Identifier x) x),
                    m#snd#zero ))
-               (Map.find data cid)
+               (Map.find data
+                  (Uprint.Concrete_ident_view.to_definition_name cid))
         end)
           #visit_expr
           env expr
@@ -152,44 +157,31 @@ module%inlined_contents Make (F : Features.T) = struct
   let rec analyse (func_dep : pre_data) (items : A.item list) : analysis_data =
     let (mut_var_list, _)
           : (concrete_ident * (U.TypedLocalIdent.t * id_order) list) list * _ =
-      List.fold_left
-        ~f:(fun (y, count) x ->
-          match x.v with
-          | Fn { name; generics = _; body; params = _ } ->
-              let items, count = analyse_function_body body count in
-              (y @ [ (name, items) ], count)
-          | Impl
-              {
-                generics = _;
-                self_ty = _;
-                of_trait = _ (* name, gen_vals *);
-                items;
-              } ->
-              List.fold_left
-                ~f:(fun (z, count) w ->
-                  match w.ii_v with
-                  | IIFn { body; params = _ } ->
-                      let items, count = analyse_function_body body count in
-                      (* let extra_item, count = ([(LocalIdent.{ name = w.ii_name ^ "_loc"; id = LocalIdent.ty_param_id_of_int 0 (\* todo *\) }, body.typ), count] : (U.TypedLocalIdent.t * id_order) list), count + 1 in *)
-                      (z @ [ (w.ii_ident, items (* @ extra_item *)) ], count)
-                  | _ -> (z, count))
-                ~init:(y, count) items
-          | _ -> (y, count))
-        ~init:([], 0) items
+      List.fold_left ~init:([], 0)
+        ~f:(fun (y, count) (name, body) ->
+          let items, count = analyse_function_body body count in
+          (y @ [ (name, items) ], count))
+        (List.concat_map ~f:U.functions_of_item items)
     in
-    let mut_map :
+    let mut_map (* Concrete_ident *) :
         (Local_ident.t list * (U.TypedLocalIdent.t * id_order) list)
-        Map.M(Concrete_ident).t =
+        Map.M(String).t =
       List.fold_left
-        ~init:(Map.empty (module Concrete_ident))
+        ~init:(Map.empty (module String (* Concrete_ident *)))
         ~f:(fun y (x_name, x_items) ->
-          Map.set y ~key:x_name
+          Map.set y
+            ~key:(Uprint.Concrete_ident_view.to_definition_name x_name)
             ~data:
               ( List.map ~f:(fst >> fst) x_items
                 @ Option.value_map ~default:[]
                     ~f:
-                      (List.filter_map ~f:(Map.find y) >> List.concat_map ~f:fst)
-                    (Map.find func_dep x_name),
+                      (List.filter_map
+                         ~f:
+                           (Uprint.Concrete_ident_view.to_definition_name
+                          >> Map.find y)
+                      >> List.concat_map ~f:fst)
+                    (Map.find func_dep
+                       (Uprint.Concrete_ident_view.to_definition_name x_name)),
                 x_items ))
         mut_var_list
     in
