@@ -113,25 +113,61 @@ module Print = struct
       method ty_bool = string "bool"
       method ty_int _ = string "bitstring"
 
-
       method! item' item =
-        let fun_and_reduc name variants = 
+        let fun_and_reduc name variants =
           let constructor = List.hd variants in
           match constructor with
           | None -> empty
           | Some constructor ->
-            let field_prefix = if constructor.is_record then string "" else print#concrete_ident name in
-            let fun_args = constructor.arguments in 
-            let fun_args_full = separate_map (comma ^^ break 1) (fun (x, y, _z) -> field_prefix ^^ print#concrete_ident x ^^ string ": " ^^ print#ty_at Param_typ y) fun_args  in
-            let fun_args_names = separate_map (comma ^^ break 1) (fst3 >> (fun x -> field_prefix ^^ print#concrete_ident x)) fun_args in
-            let fun_args_types = separate_map (comma ^^ break 1) (snd3 >> print#ty_at Param_typ) fun_args in
-            let fun_line = string "fun" ^^ space ^^ print#concrete_ident name ^^ (iblock parens fun_args_types) ^^ string ": state." in
-            let reduc_line = string "reduc forall " ^^ (iblock Fn.id fun_args_full) ^^ string ";" in
-            let build_accessor (ident, ty, attr) = string "accessor_" ^^ print#concrete_ident name ^^ string "_" ^^ print#concrete_ident ident ^^ iblock parens fun_args_names ^^ string " = " ^^ field_prefix ^^ print#concrete_ident ident in
-            let reduc_lines = separate_map (string "." ^^ hardline) (fun arg -> reduc_line ^^ (nest 4 (hardline ^^ (build_accessor arg)))) fun_args
-            in
-            fun_line ^^ hardline ^^ reduc_lines ^^ string "."
-          in      
+              let field_prefix =
+                if constructor.is_record then string ""
+                else print#concrete_ident name
+              in
+              let fun_args = constructor.arguments in
+              let fun_args_full =
+                separate_map
+                  (comma ^^ break 1)
+                  (fun (x, y, _z) ->
+                    field_prefix ^^ print#concrete_ident x ^^ string ": "
+                    ^^ print#ty_at Param_typ y)
+                  fun_args
+              in
+              let fun_args_names =
+                separate_map
+                  (comma ^^ break 1)
+                  (fst3 >> fun x -> field_prefix ^^ print#concrete_ident x)
+                  fun_args
+              in
+              let fun_args_types =
+                separate_map
+                  (comma ^^ break 1)
+                  (snd3 >> print#ty_at Param_typ)
+                  fun_args
+              in
+              let fun_line =
+                string "fun" ^^ space ^^ print#concrete_ident name
+                ^^ iblock parens fun_args_types
+                ^^ string ": state."
+              in
+              let reduc_line =
+                string "reduc forall " ^^ iblock Fn.id fun_args_full
+                ^^ string ";"
+              in
+              let build_accessor (ident, ty, attr) =
+                string "accessor_" ^^ print#concrete_ident name ^^ string "_"
+                ^^ print#concrete_ident ident
+                ^^ iblock parens fun_args_names
+                ^^ string " = " ^^ field_prefix ^^ print#concrete_ident ident
+              in
+              let reduc_lines =
+                separate_map
+                  (string "." ^^ hardline)
+                  (fun arg ->
+                    reduc_line ^^ nest 4 (hardline ^^ build_accessor arg))
+                  fun_args
+              in
+              fun_line ^^ hardline ^^ reduc_lines ^^ string "."
+        in
         match item with
         (* `fn`s are transformed into `letfun` process macros. *)
         | Fn { name; generics; body; params } ->
@@ -139,12 +175,12 @@ module Print = struct
               iblock parens (separate_map (comma ^^ break 1) print#param params)
             in
             string "letfun" ^^ space ^^ print#concrete_ident name
-            ^^ params_string ^^ string " =" ^^ nest 4 (hardline ^^ print#expr_at Item_Fn_body  body ^^ string ".")
+            ^^ params_string ^^ string " ="
+            ^^ nest 4 (hardline ^^ print#expr_at Item_Fn_body body ^^ string ".")
         (* `struct` definitions are transformed into simple constructors and `reduc`s for accessing fields. *)
-        | Type {name; generics; variants; is_struct} ->
+        | Type { name; generics; variants; is_struct } ->
             if is_struct then fun_and_reduc name variants else empty
         | _ -> empty
-        
     end
 
   include Api (struct
