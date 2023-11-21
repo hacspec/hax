@@ -284,6 +284,112 @@ module Make (F : Features.T) = struct
         method! visit_local_ident _ x = Set.singleton (module Local_ident) x
       end
 
+    include struct
+      open struct
+        type env = Local_ident.t list
+
+        let id_shadows ~(env : env) (id : Local_ident.t) =
+          List.find env ~f:(fun x -> String.equal x.name id.name)
+          |> Option.value ~default:id
+          |> [%equal: Local_ident.t] id
+          |> not
+
+        let ( ++ ) = Set.union
+
+        let shadows' (type a) ~env vars (x : a) next =
+          (* account for shadowing within `vars` *)
+          List.filter ~f:(id_shadows ~env:vars) (List.rev vars)
+          |> Set.of_list (module Local_ident)
+          |> Set.union (next (vars @ env) x)
+
+        let shadows (type a) ~(env : env) (pats : pat list) (x : a)
+            (next : env -> a -> Sets.Local_ident.t) =
+          let vars =
+            List.map pats ~f:(collect_local_idents#visit_pat ())
+            |> Set.(union_list (module Local_ident) >> to_list)
+          in
+          shadows' ~env vars x next
+      end
+
+      let collect_ambiguous_local_idents =
+        object (self)
+          inherit [_] item_reduce as super
+          inherit [_] Sets.Local_ident.monoid as m
+          method visit_t (_ : env) _ = m#zero
+          method visit_mutability (_f : env -> _ -> _) _ _ = m#zero
+
+          method visit_arm' env { arm_pat; body } =
+            shadows ~env [ arm_pat ] body super#visit_expr
+
+          method visit_expr' env e =
+            match e with
+            | Let { monadic = _; lhs; rhs; body } ->
+                super#visit_expr env rhs
+                ++ shadows ~env [ lhs ] body super#visit_expr
+            | Loop { kind; state; body; _ } ->
+                let empty = Set.empty (module Local_ident) |> Fn.(id &&& id) in
+                let ikind, ukind =
+                  match kind with
+                  | UnconditionalLoop -> empty
+                  | ForLoop { pat; it; _ } ->
+                      ( collect_local_idents#visit_pat () pat,
+                        super#visit_expr env it )
+                  | ForIndexLoop { start; end_; var; _ } ->
+                      ( Set.singleton (module Local_ident) var,
+                        super#visit_expr (var :: env) start
+                        ++ super#visit_expr (var :: env) end_ )
+                in
+                let istate, ustate =
+                  match state with
+                  | Some { init; bpat; _ } ->
+                      ( collect_local_idents#visit_pat () bpat,
+                        super#visit_expr (Set.to_list ikind @ env) init )
+                  | _ -> empty
+                in
+                let intro = ikind ++ istate |> Set.to_list in
+                ukind ++ ustate ++ shadows' ~env intro body super#visit_expr
+            | Closure { params; body; _ } ->
+                shadows ~env params body super#visit_expr
+            | _ -> super#visit_expr' env e
+
+          method visit_IIFn = self#visit_function_like
+          method visit_Fn env _ _ = self#visit_function_like env
+
+          method visit_function_like env body params =
+            let f p = p.pat in
+            shadows ~env (List.map ~f params) body super#visit_expr
+
+          method visit_local_ident env id =
+            Set.(if id_shadows ~env id then Fn.flip singleton id else empty)
+              (module Local_ident)
+        end
+
+      let disambiguate_local_idents (item : item) =
+        let ambiguous = collect_ambiguous_local_idents#visit_item [] item in
+        let local_vars = collect_local_idents#visit_item () item |> ref in
+        let refresh env (id : Local_ident.t) : string =
+          let extract_suffix (id' : Local_ident.t) =
+            String.chop_prefix ~prefix:(id.name ^ "_") id'.name
+            |> Option.bind ~f:string_to_int
+          in
+          let suffix =
+            Set.filter_map (module Int) env ~f:extract_suffix
+            |> Set.max_elt |> Option.value ~default:0 |> ( + ) 1
+          in
+          id.name ^ "_" ^ Int.to_string suffix
+        in
+        let new_names =
+          ambiguous |> Set.to_list
+          |> List.map ~f:(fun (var : Local_ident.t) ->
+                 let var' = { var with name = refresh !local_vars var } in
+                 local_vars := Set.add !local_vars var';
+                 (var, var'))
+          |> Map.of_alist_exn (module Local_ident)
+        in
+        let rename var = Map.find new_names var |> Option.value ~default:var in
+        (Mappers.rename_local_idents rename)#visit_item () item
+    end
+
     let collect_global_idents =
       object
         inherit ['self] item_reduce as _super

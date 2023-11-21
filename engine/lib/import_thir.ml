@@ -46,7 +46,10 @@ let def_id kind (def_id : Thir.def_id) : global_ident =
   `Concrete (Concrete_ident.of_def_id kind def_id)
 
 let local_ident kind (ident : Thir.local_ident) : local_ident =
-  { name = ident.name; id = Local_ident.mk_id kind 123 (* todo! *) }
+  {
+    name = ident.name;
+    id = Local_ident.mk_id kind (Int.of_string ident.id.local_id);
+  }
 
 let int_ty_to_size : Thir.int_ty -> size = function
   | Isize -> SSize
@@ -602,7 +605,11 @@ end) : EXPR = struct
                        typ = TInt { size = S8; signedness = Unsigned };
                      })
                    l))
-      | NamedConst { def_id = id; _ } -> GlobalVar (def_id Value id)
+      | NamedConst { def_id = id; impl; _ } ->
+          let kind : Concrete_ident.Kind.t =
+            match impl with Some _ -> AssociatedItem Value | _ -> Value
+          in
+          GlobalVar (def_id kind id)
       | Closure { body; params; upvars; _ } ->
           let params =
             List.filter_map ~f:(fun p -> Option.map ~f:c_pat p.pat) params
@@ -1323,11 +1330,11 @@ let import_item (item : Thir.item) :
     concrete_ident * (item list * Diagnostics.t list) =
   let ident = Concrete_ident.of_def_id Value item.owner_id in
   let r, reports =
-    Diagnostics.Core.capture (fun _ ->
-        c_item item ~ident
-        |> List.map
-             ~f:
-               (U.Mappers.rename_generic_constraints#visit_item
-                  (Hashtbl.create (module String))))
+    let f =
+      U.Mappers.rename_generic_constraints#visit_item
+        (Hashtbl.create (module String))
+      >> U.Reducers.disambiguate_local_idents
+    in
+    Diagnostics.Core.capture (fun _ -> c_item item ~ident |> List.map ~f)
   in
   (ident, (r, reports))

@@ -120,7 +120,7 @@ impl<S> std::fmt::Display for Diagnostics<S> {
                 "The bindings {:?} cannot be mutated here: they don't belong to the closure scope, and this is not allowed.",
                 bindings
             ),
-            Kind::ArbitraryLHS => write!(f, "Assignation of an arbitrary left-hand side is not supported. [lhs = e] is fine only when [lhs] is a combination of local identifiers, field accessors and index accessors."),
+            Kind::ArbitraryLHS => write!(f, "Assignation of an arbitrary left-hand side is not supported. `lhs = e` is fine only when `lhs` is a combination of local identifiers, field accessors and index accessors."),
             _ => write!(f, "{:?}", self.kind),
         }
     }
@@ -165,7 +165,7 @@ pub enum Kind {
         bindings: Vec<String>,
     } = 6,
 
-    /// Assignation of an arbitrary left-hand side is not supported. [lhs = e] is fine only when [lhs] is a combination of local identifiers, field accessors and index accessors.
+    /// Assignation of an arbitrary left-hand side is not supported. `lhs = e` is fine only when `lhs` is a combination of local identifiers, field accessors and index accessors.
     ArbitraryLHS = 7,
 
     /// A phase explicitely rejected this chunk of code
