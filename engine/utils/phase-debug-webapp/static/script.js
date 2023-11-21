@@ -16,7 +16,7 @@ let mk = (kind, body = [], classes = []) => {
         console.error('wrong type for body', body);
     }
     return e;
-}
+};
 
 function findNode(o, search){
     let h = o => o instanceof Object ? (search(o) ? o : Object.values(o).map(h).find(x => x)) : null;
@@ -49,16 +49,32 @@ function json(json) {
     let o = JSON.parse(JSON.stringify(json));
     let root = mk('div', [], ['json-viewer']);
     let state = {
-        open: new Map()
+        open: new Map(),
+        default_open: false,
     };
     function render_all() {
         root.replaceChildren(render(o, []));
+        let expand_button = mk('button', state.default_open ? '🡒🡐' : '🡘', ['expand-all']);
+        expand_button.style = `
+            position: absolute;
+            top: 1px;
+            right: 1px;
+            padding: 0 3px;
+            margin: 0;
+            line-height: 0;
+            height: 16px;
+        `;
+        expand_button.onclick = () => {
+            state.default_open = !state.default_open;
+            render_all();
+        };
+        root.prepend(expand_button);
     }
     let key_of_path = path => JSON.stringify(path);
     let set_open = (path, v) => state.open.set(key_of_path(path), v);
     let is_open = (path, def = path.length < 6) => {
         let b = state.open.get(key_of_path(path));
-        return b === undefined ? def : b;
+        return b === undefined ? (state.default_open || def) : b;
     };
     let swap = (path, def) => {
         set_open(path, !is_open(path, def), false);
@@ -71,7 +87,7 @@ function json(json) {
                 return true;
             }
         }
-        return false;   
+        return false;
     };
     let is_simple = o => {
         if (o instanceof Object) {
