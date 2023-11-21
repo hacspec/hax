@@ -22,6 +22,7 @@ members = [
         "traits",
         "reordering",
         "nested-derefs",
-        "proverif-minimal"
+        "proverif-minimal",
+        "proverif-basic-structs"
 ]
 resolver = "2"

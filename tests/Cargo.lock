@@ -266,6 +266,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "proverif-basic-structs"
+version = "0.1.0"
+
+[[package]]
 name = "proverif-minimal"
 version = "0.1.0"
 
