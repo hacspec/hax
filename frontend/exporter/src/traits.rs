@@ -22,6 +22,7 @@ pub enum ImplExprAtom {
         clause_id: u64,
         path: Vec<ImplExprPathChunk>,
     },
+    SelfImpl,
     /// `dyn TRAIT` is a wrapped value with a virtual table for trait
     /// `TRAIT`.  In other words, a value `dyn TRAIT` is a dependent
     /// triple that gathers a type τ, a value of type τ and an
@@ -116,7 +117,8 @@ mod search_clause {
             let predicates = tcx
                 .predicates_defined_on_or_above(self.def_id())
                 .into_iter()
-                .map(|(predicate, _)| predicate);
+                // .map(|(predicate, _)| predicate);
+                .map(|apred| apred.predicate);
             predicates_to_trait_predicates(tcx, predicates, self.trait_ref.substs).collect()
         }
         fn associated_items_trait_predicates(
@@ -243,26 +245,35 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                 use search_clause::TraitPredicateExt;
                 let tcx = s.base().tcx;
                 let predicates = &tcx.predicates_defined_on_or_above(s.owner_id());
-                let Some((predicate, path)) = predicates.into_iter().find_map(|(predicate, _)| {
-                    predicate
+                let Some((apred, path)) = predicates.into_iter().find_map(|apred| {
+                    apred
+                        .predicate
                         .to_opt_poly_trait_pred()
                         .map(|poly_trait_predicate| poly_trait_predicate)
                         .and_then(|poly_trait_predicate| poly_trait_predicate.no_bound_vars())
                         .and_then(|trait_predicate| {
                             trait_predicate.path_to(s, self.clone(), param_env)
                         })
-                        .map(|path| (predicate, path))
+                        .map(|path| (apred, path))
                 }) else {
                     return ImplExprAtom::Todo(format!("implsource::param \n\n{:#?}", self))
                         .with_args(impl_exprs(s, &nested));
                 };
-                // .s_expect(s, format!("implsource::param \n\n{:#?}", self).as_str());
-                let clause_id: u64 = clause_id_of_predicate(*predicate);
-                ImplExprAtom::LocalBound {
-                    clause_id,
-                    path: path.sinto(s),
+                if apred.is_extra_self_predicate {
+                    if !path.is_empty() {
+                        supposely_unreachable_fatal!(s[apred.span], "SelfWithNonEmptyPath"; {
+                            self, apred, path
+                        });
+                    }
+                    ImplExprAtom::SelfImpl.with_args(vec![])
+                } else {
+                    let clause_id: u64 = clause_id_of_predicate(apred.predicate);
+                    ImplExprAtom::LocalBound {
+                        clause_id,
+                        path: path.sinto(s),
+                    }
+                    .with_args(impl_exprs(s, &nested))
                 }
-                .with_args(impl_exprs(s, &nested))
             }
             ImplSource::Object(data) => ImplExprAtom::Dyn {
                 r#trait: data.upcast_trait_ref.skip_binder().sinto(s),
@@ -272,7 +283,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                 r#trait: self.skip_binder().sinto(s),
             }
             .with_args(impl_exprs(s, &x.nested)),
-            x => ImplExprAtom::Todo(format!("{:#?}\n\n{:#?}", x, self)).into(),
+            x => ImplExprAtom::Todo(format!("ImplExprAtom::Todo {:#?}\n\n{:#?}", x, self)).into(),
         }
     }
 }
