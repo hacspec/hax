@@ -173,7 +173,9 @@ module Make (F : Features.T) = struct
       method expr' : par_state -> expr' fn =
         fun _ctx e ->
           match e with
-          | App { f = { e = GlobalVar i; _ } as f; args; generic_args } -> (
+          | App
+              { f = { e = GlobalVar i; _ } as f; args; generic_args; impl = _ }
+            -> (
               let expect_one_arg where =
                 match args with
                 | [ arg ] -> arg
@@ -189,7 +191,8 @@ module Make (F : Features.T) = struct
               | `Projector (`Concrete i) ->
                   let arg = expect_one_arg "projector concrete" in
                   print#field_projection i arg)
-          | App { f; args; generic_args } -> print#expr_app f args generic_args
+          | App { f; args; generic_args; _ } ->
+              print#expr_app f args generic_args
           | Construct { constructor; fields; base; is_record; is_struct } -> (
               match constructor with
               | `Concrete constructor ->

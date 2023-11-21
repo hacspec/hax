@@ -179,6 +179,7 @@ let resugar_index_mut (e : expr) : (expr * expr) option =
         f = { e = GlobalVar (`Concrete meth); _ };
         args = [ { e = Borrow { e = x; _ }; _ }; index ];
         generic_args = _ (* TODO: see issue #328 *);
+        impl = _ (* TODO: see issue #328 *);
       }
     when Concrete_ident.eq_name Core__ops__index__IndexMut__index_mut meth ->
       Some (x, index)
@@ -187,6 +188,7 @@ let resugar_index_mut (e : expr) : (expr * expr) option =
         f = { e = GlobalVar (`Concrete meth); _ };
         args = [ x; index ];
         generic_args = _ (* TODO: see issue #328 *);
+        impl = _ (* TODO: see issue #328 *);
       }
     when Concrete_ident.eq_name Core__ops__index__Index__index meth ->
       Some (x, index)
@@ -319,7 +321,7 @@ end) : EXPR = struct
   and c_expr_unwrapped (e : Thir.decorated_for__expr_kind) : expr =
     (* TODO: eliminate that `call`, use the one from `ast_utils` *)
     let call f args =
-      App { f; args = List.map ~f:c_expr args; generic_args = [] }
+      App { f; args = List.map ~f:c_expr args; generic_args = []; impl = None }
     in
     let typ = c_ty e.span e.ty in
     let span = Span.of_thir e.span in
@@ -382,7 +384,13 @@ end) : EXPR = struct
                 { f with e = GlobalVar (def_id (AssociatedItem Value) id) }
             | _ -> f
           in
-          App { f; args; generic_args }
+          App
+            {
+              f;
+              args;
+              generic_args;
+              impl = Option.map ~f:(c_impl_expr e.span) impl;
+            }
       | Box { value } ->
           (U.call Rust_primitives__hax__box_new [ c_expr value ] span typ).e
       | Deref { arg } ->
@@ -509,6 +517,7 @@ end) : EXPR = struct
               f = { e = projector; typ = TArrow ([ lhs.typ ], typ); span };
               args = [ lhs ];
               generic_args = [] (* TODO: see issue #328 *);
+              impl = None (* TODO: see issue #328 *);
             }
       | TupleField { lhs; field } ->
           (* TODO: refactor *)
@@ -524,6 +533,7 @@ end) : EXPR = struct
               f = { e = projector; typ = TArrow ([ lhs.typ ], typ); span };
               args = [ lhs ];
               generic_args = [] (* TODO: see issue #328 *);
+              impl = None (* TODO: see issue #328 *);
             }
       | GlobalName { id } -> GlobalVar (def_id Value id)
       | UpvarRef { var_hir_id = id; _ } -> LocalVar (local_ident Expr id)
@@ -655,6 +665,7 @@ end) : EXPR = struct
                     };
                   args = [ e ];
                   generic_args = _;
+                  impl = _;
                 (* TODO: see issue #328 *)
                 } ->
                 LhsFieldAccessor
@@ -917,6 +928,7 @@ end) : EXPR = struct
         in
         List.fold ~init ~f path
     | Dyn { trait } -> Dyn (c_trait_ref trait)
+    | SelfImpl -> Self
     | Builtin { trait } -> Builtin (c_trait_ref trait)
     | Todo str -> failwith @@ "impl_expr_atom: Todo " ^ str
 
