@@ -156,7 +156,8 @@ module Print = struct
               let build_accessor (ident, ty, attr) =
                 string "accessor_" ^^ print#concrete_ident name ^^ string "_"
                 ^^ print#concrete_ident ident
-                ^^ iblock parens fun_args_names
+                ^^ iblock parens
+                     (print#concrete_ident name ^^ iblock parens fun_args_names)
                 ^^ string " = " ^^ field_prefix ^^ print#concrete_ident ident
               in
               let reduc_lines =
