@@ -150,19 +150,18 @@ module Print = struct
                 ^^ string ": state."
               in
               let reduc_line =
-                string "reduc forall " ^^ iblock Fn.id fun_args_full
-                ^^ semi
+                string "reduc forall " ^^ iblock Fn.id fun_args_full ^^ semi
               in
               let build_accessor (ident, ty, attr) =
                 string "accessor_" ^^ print#concrete_ident name ^^ underscore
                 ^^ print#concrete_ident ident
                 ^^ iblock parens
                      (print#concrete_ident name ^^ iblock parens fun_args_names)
-                ^^ blank 1 ^^ equals ^^ blank 1 ^^ field_prefix ^^ print#concrete_ident ident
+                ^^ blank 1 ^^ equals ^^ blank 1 ^^ field_prefix
+                ^^ print#concrete_ident ident
               in
               let reduc_lines =
-                separate_map
-                  (dot ^^ hardline)
+                separate_map (dot ^^ hardline)
                   (fun arg ->
                     reduc_line ^^ nest 4 (hardline ^^ build_accessor arg))
                   fun_args
