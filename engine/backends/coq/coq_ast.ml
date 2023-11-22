@@ -78,9 +78,9 @@ functor
 
       and notation_elements =
         | Newline of int
-        | Typing of ty
-        | Variable of pat
-        | Value of term * bool
+        | Typing of ty * int
+        | Variable of pat * int
+        | Value of term * bool * int
 
       and let_args = {
         pattern : pat;
@@ -322,11 +322,12 @@ functor
               (List.map
                  ~f:(function
                    | AST.Newline n -> newline_indent (depth + n)
-                   | AST.Typing typ -> ty_to_string typ
-                   | AST.Value (x, true) -> term_to_string_with_paren x depth
-                   | AST.Value (x, false) ->
-                       term_to_string_without_paren x depth
-                   | AST.Variable p -> pat_to_string p true depth)
+                   | AST.Typing (typ, n) -> ty_to_string typ
+                   | AST.Value (x, true, n) ->
+                       term_to_string_with_paren x (depth + n)
+                   | AST.Value (x, false, n) ->
+                       term_to_string_without_paren x (depth + n)
+                   | AST.Variable (p, n) -> pat_to_string p true (depth + n))
                  args),
             true (* TODO? Notation does not always need paren *) )
       | AST.App (f, args) ->

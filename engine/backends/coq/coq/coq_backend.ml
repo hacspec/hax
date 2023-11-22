@@ -285,7 +285,7 @@ struct
         let arity, op = Map.find_exn operators x in
         if List.length args <> arity then
           Error.assertion_failure span "expr: function application: bad arity";
-        let args = List.map ~f:(fun x -> C.AST.Value (pexpr x, true)) args in
+        let args = List.map ~f:(fun x -> C.AST.Value (pexpr x, true, 0)) args in
         C.AST.AppFormat (op, args)
     (* | App { f = { e = GlobalVar x }; args } -> *)
     (*    __TODO_term__ span "GLOBAL APP?" *)
