@@ -17,7 +17,7 @@ include
       include On.For_loop
       include On.For_index_loop
       include On.State_passing_loop
-      (* include On.Project_instead_of_match *)
+      (* include On.Project_struct_pattern *)
     end)
     (struct
       let backend = Diagnostics.Backend.SSProve
@@ -39,8 +39,7 @@ module SubtypeToInputLanguage
              and type monadic_action = Features.Off.monadic_action
              and type arbitrary_lhs = Features.Off.arbitrary_lhs
              and type nontrivial_lhs = Features.Off.nontrivial_lhs
-             and type project_instead_of_match =
-              Features.Off.project_instead_of_match
+             and type struct_pattern = Features.Off.struct_pattern
              and type block = Features.Off.block) =
 struct
   module FB = InputLanguage
@@ -59,7 +58,7 @@ struct
         include Features.SUBTYPE.On.For_loop
         include Features.SUBTYPE.On.For_index_loop
         include Features.SUBTYPE.On.State_passing_loop
-        (* include Features.SUBTYPE.Off.Project_instead_of_match *)
+        (* include Features.SUBTYPE.Off.Struct_pattern *)
       end)
 
   let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
@@ -160,11 +159,11 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
               "";
             ],
             [
-              SSP.AST.Typing value_typ;
-              SSP.AST.Variable pattern;
-              SSP.AST.Value (value, false);
+              SSP.AST.Typing (value_typ, 0);
+              SSP.AST.Variable (pattern, 0);
+              SSP.AST.Value (value, false, 0);
               SSP.AST.Newline 0;
-              SSP.AST.Value (body, false);
+              SSP.AST.Value (body, false, 0);
             ] )
     | Some (Result typ) ->
         SSP.AST.AppFormat
@@ -181,11 +180,11 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
               "";
             ],
             [
-              SSP.AST.Typing value_typ;
-              SSP.AST.Variable pattern;
-              SSP.AST.Value (value, false);
+              SSP.AST.Typing (value_typ, 0);
+              SSP.AST.Variable (pattern, 0);
+              SSP.AST.Value (value, false, 0);
               SSP.AST.Newline 0;
-              SSP.AST.Value (body, false);
+              SSP.AST.Value (body, false, 0);
             ] )
     | Some Option ->
         SSP.AST.AppFormat
@@ -200,10 +199,10 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
               "";
             ],
             [
-              SSP.AST.Variable pattern;
-              SSP.AST.Value (value, false);
+              SSP.AST.Variable (pattern, 0);
+              SSP.AST.Value (value, false, 0);
               SSP.AST.Newline 0;
-              SSP.AST.Value (body, false);
+              SSP.AST.Value (body, false, 0);
             ] )
     | None ->
         if mut then
@@ -220,28 +219,29 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
                 "";
               ],
               [
-                SSP.AST.Variable pattern;
+                SSP.AST.Variable (pattern, 0);
                 SSP.AST.Variable
-                  (match
-                     List.map
-                       ~f:(fun x -> SSP.AST.Ident (x ^ "_loc"))
-                       (variables_of_ssp_pat pattern)
-                   with
-                  | [] -> SSP.AST.WildPat
-                  | [ x ] -> x
-                  | xs -> SSP.AST.TuplePat xs);
-                SSP.AST.Value (value, false);
+                  ( (match
+                       List.map
+                         ~f:(fun x -> SSP.AST.Ident (x ^ "_loc"))
+                         (variables_of_ssp_pat pattern)
+                     with
+                    | [] -> SSP.AST.WildPat
+                    | [ x ] -> x
+                    | xs -> SSP.AST.TuplePat xs),
+                    0 );
+                SSP.AST.Value (value, false, 0);
                 SSP.AST.Newline 0;
-                SSP.AST.Value (body, false);
+                SSP.AST.Value (body, false, 0);
               ] )
         else
           SSP.AST.AppFormat
             ( [ "letb "; (*p*) " := "; (*expr*) " in"; ""; (*body*) "" ],
               [
-                SSP.AST.Variable pattern;
-                SSP.AST.Value (value, false);
+                SSP.AST.Variable (pattern, 0);
+                SSP.AST.Value (value, false, 0);
                 SSP.AST.Newline 0;
-                SSP.AST.Value (body, false);
+                SSP.AST.Value (body, false, 0);
               ] )
 
   let rec pat_as_expr (p : SSP.AST.pat) : (SSP.AST.pat * SSP.AST.term) option =
@@ -276,11 +276,11 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
     SSP.AST.AppFormat
       ( [ "ifb "; (*expr*) ""; "then "; ""; "else "; "" ],
         [
-          SSP.AST.Value (cond, false);
+          SSP.AST.Value (cond, false, 0);
           SSP.AST.Newline 0;
-          SSP.AST.Value (then_, false);
+          SSP.AST.Value (then_, false, 0);
           SSP.AST.Newline 0;
-          SSP.AST.Value (else_, false);
+          SSP.AST.Value (else_, false, 0);
         ] )
 
   let matchb ((expr, arms) : SSP.AST.term * (SSP.AST.pat * SSP.AST.term) list) :
@@ -289,13 +289,13 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
       ( [ "matchb "; (*expr*) " with" ]
         @ List.concat_map ~f:(fun _ -> [ "| "; " =>"; ""; "" ]) arms
         @ [ "end" ],
-        [ SSP.AST.Value (expr, false); SSP.AST.Newline 0 ]
+        [ SSP.AST.Value (expr, false, 0); SSP.AST.Newline 0 ]
         @ List.concat_map
             ~f:(fun (arm_pat, body) ->
               [
-                SSP.AST.Variable arm_pat;
+                SSP.AST.Variable (arm_pat, 0);
                 SSP.AST.Newline 1;
-                SSP.AST.Value (body, false);
+                SSP.AST.Value (body, false, 1);
                 SSP.AST.Newline 0;
               ])
             arms )
@@ -473,7 +473,8 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
                                   else
                                     SSP.AST.App
                                       (SSP.AST.Var x, [ SSP.AST.Var "x" ])),
-                                  false );
+                                  false,
+                                  0 );
                             ] ))
                       fields ),
                 None ))
@@ -624,7 +625,7 @@ module TransformToInputLanguage (* : PHASE *) =
     |> Phases.Reject.EarlyExit
     (* |> Phases.Functionalize_loops *)
     |> Phases.Reject.As_pattern
-    |> Phases.Project_instead_of_match
+    |> Phases.Struct_pattern
     |> SubtypeToInputLanguage
     |> Identity
   ]
@@ -941,7 +942,7 @@ struct
           if List.length args <> arity then failwith "Bad arity";
           let args =
             List.map
-              ~f:(fun x -> SSP.AST.Value ((pexpr env false) x, true))
+              ~f:(fun x -> SSP.AST.Value ((pexpr env false) x, true, 0))
               args
           in
           SSP.AST.AppFormat (op, args)
@@ -1990,8 +1991,8 @@ struct
             SSP.AST.AppFormat
               ( [ "("; ";"; "%nat)" ],
                 [
-                  SSP.AST.Typing (pty (Span.dummy ()) x_ty);
-                  SSP.AST.Value (SSP.AST.Literal (Int.to_string x_n), false);
+                  SSP.AST.Typing (pty (Span.dummy ()) x_ty, 0);
+                  SSP.AST.Value (SSP.AST.Literal (Int.to_string x_n), false, 0);
                 ] ),
             SSP.AST.NameTy "Location" ))
       (match Map.find ctx.analysis_data.mut_var (pconcrete_ident name) with
