@@ -114,14 +114,73 @@ module Print = struct
       method ty_int _ = string "bitstring"
 
       method! item' item =
+        let fun_and_reduc name variants =
+          let constructor = List.hd variants in
+          match constructor with
+          | None -> empty
+          | Some constructor ->
+              let field_prefix =
+                if constructor.is_record then empty
+                else print#concrete_ident name
+              in
+              let fun_args = constructor.arguments in
+              let fun_args_full =
+                separate_map
+                  (comma ^^ break 1)
+                  (fun (x, y, _z) ->
+                    field_prefix ^^ print#concrete_ident x ^^ string ": "
+                    ^^ print#ty_at Param_typ y)
+                  fun_args
+              in
+              let fun_args_names =
+                separate_map
+                  (comma ^^ break 1)
+                  (fst3 >> fun x -> field_prefix ^^ print#concrete_ident x)
+                  fun_args
+              in
+              let fun_args_types =
+                separate_map
+                  (comma ^^ break 1)
+                  (snd3 >> print#ty_at Param_typ)
+                  fun_args
+              in
+              let fun_line =
+                string "fun" ^^ space ^^ print#concrete_ident name
+                ^^ iblock parens fun_args_types
+                ^^ string ": state."
+              in
+              let reduc_line =
+                string "reduc forall " ^^ iblock Fn.id fun_args_full ^^ semi
+              in
+              let build_accessor (ident, ty, attr) =
+                string "accessor_" ^^ print#concrete_ident name ^^ underscore
+                ^^ print#concrete_ident ident
+                ^^ iblock parens
+                     (print#concrete_ident name ^^ iblock parens fun_args_names)
+                ^^ blank 1 ^^ equals ^^ blank 1 ^^ field_prefix
+                ^^ print#concrete_ident ident
+              in
+              let reduc_lines =
+                separate_map (dot ^^ hardline)
+                  (fun arg ->
+                    reduc_line ^^ nest 4 (hardline ^^ build_accessor arg))
+                  fun_args
+              in
+              fun_line ^^ hardline ^^ reduc_lines ^^ dot
+        in
         match item with
+        (* `fn`s are transformed into `letfun` process macros. *)
         | Fn { name; generics; body; params } ->
             let params_string =
               iblock parens (separate_map (comma ^^ break 1) print#param params)
             in
             string "letfun" ^^ space ^^ print#concrete_ident name
-            ^^ params_string ^^ string " = 0."
-        | _ -> string ""
+            ^^ params_string ^/^ equals
+            ^^ nest 4 (hardline ^^ print#expr_at Item_Fn_body body ^^ dot)
+        (* `struct` definitions are transformed into simple constructors and `reduc`s for accessing fields. *)
+        | Type { name; generics; variants; is_struct } ->
+            if is_struct then fun_and_reduc name variants else empty
+        | _ -> empty
     end
 
   include Api (struct
@@ -133,7 +192,7 @@ end
 let insert_top_level contents = contents ^ "\n\nprocess\n    0\n"
 
 (* Insert ProVerif code that will be necessary in any development.*)
-let insert_preamble contents = "channel c.\n\n" ^ contents
+let insert_preamble contents = "channel c.\ntype state.\n" ^ contents
 
 let translate m (bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =
