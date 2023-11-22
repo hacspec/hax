@@ -120,7 +120,7 @@ module Print = struct
           | None -> empty
           | Some constructor ->
               let field_prefix =
-                if constructor.is_record then string ""
+                if constructor.is_record then empty
                 else print#concrete_ident name
               in
               let fun_args = constructor.arguments in
@@ -151,23 +151,23 @@ module Print = struct
               in
               let reduc_line =
                 string "reduc forall " ^^ iblock Fn.id fun_args_full
-                ^^ string ";"
+                ^^ semi
               in
               let build_accessor (ident, ty, attr) =
-                string "accessor_" ^^ print#concrete_ident name ^^ string "_"
+                string "accessor_" ^^ print#concrete_ident name ^^ underscore
                 ^^ print#concrete_ident ident
                 ^^ iblock parens
                      (print#concrete_ident name ^^ iblock parens fun_args_names)
-                ^^ string " = " ^^ field_prefix ^^ print#concrete_ident ident
+                ^^ blank 1 ^^ equals ^^ blank 1 ^^ field_prefix ^^ print#concrete_ident ident
               in
               let reduc_lines =
                 separate_map
-                  (string "." ^^ hardline)
+                  (dot ^^ hardline)
                   (fun arg ->
                     reduc_line ^^ nest 4 (hardline ^^ build_accessor arg))
                   fun_args
               in
-              fun_line ^^ hardline ^^ reduc_lines ^^ string "."
+              fun_line ^^ hardline ^^ reduc_lines ^^ dot
         in
         match item with
         (* `fn`s are transformed into `letfun` process macros. *)
@@ -176,8 +176,8 @@ module Print = struct
               iblock parens (separate_map (comma ^^ break 1) print#param params)
             in
             string "letfun" ^^ space ^^ print#concrete_ident name
-            ^^ params_string ^^ string " ="
-            ^^ nest 4 (hardline ^^ print#expr_at Item_Fn_body body ^^ string ".")
+            ^^ params_string ^/^ equals
+            ^^ nest 4 (hardline ^^ print#expr_at Item_Fn_body body ^^ dot)
         (* `struct` definitions are transformed into simple constructors and `reduc`s for accessing fields. *)
         | Type { name; generics; variants; is_struct } ->
             if is_struct then fun_and_reduc name variants else empty
