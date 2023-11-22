@@ -1,5 +1,5 @@
 [%%declare_features
-  loop,
+loop,
   for_loop,
   for_index_loop,
   state_passing_loop,

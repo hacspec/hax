@@ -37,8 +37,7 @@ module SubtypeToInputLanguage
              and type nontrivial_lhs = Features.Off.nontrivial_lhs
              and type loop = Features.Off.loop
              and type block = Features.Off.block
-             and type struct_pattern =
-              Features.On.struct_pattern
+             and type struct_pattern = Features.On.struct_pattern
              and type for_loop = Features.Off.for_loop
              and type for_index_loop = Features.Off.for_index_loop
              and type state_passing_loop = Features.Off.state_passing_loop) =
