@@ -760,8 +760,7 @@ end) : EXPR = struct
               name;
               args;
               is_record =
-                (if info.variant_is_record then Some W.struct_pattern
-                else None);
+                (if info.variant_is_record then Some W.struct_pattern else None);
               is_struct = info.typ_is_struct;
             }
       | Tuple { subpatterns } ->

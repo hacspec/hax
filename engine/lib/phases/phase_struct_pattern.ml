@@ -26,142 +26,170 @@ module%inlined_contents Make (F : Features.T) = struct
       include Features.Off.Struct_pattern
     end
 
+    type 'a project_pat_accum = {
+      value : 'a;
+      sub_result : (B.pat * B.expr) list;
+    }
+
+    let empty_accum : unit project_pat_accum = { value = (); sub_result = [] }
+
+    let project_pat_list (f : 'a project_pat_accum -> 'b project_pat_accum)
+        (pl : 'a list project_pat_accum) : 'b list project_pat_accum =
+      List.fold_left ~init:{ pl with value = [] }
+        ~f:(fun y x ->
+          let simple_pat = f { empty_accum with value = x } in
+          {
+            value = y.value @ [ simple_pat.value ];
+            sub_result = y.sub_result @ simple_pat.sub_result;
+          })
+        pl.value
+
     [%%inline_defs dmutability]
 
-    let rec dty (span : span) (ty : A.ty) : B.ty =
-      match ty with [%inline_arms "dty.*"] -> auto
+    let rec dpat' (span : span) (pat : A.pat') : B.pat' =
+      (project_pat' span { empty_accum with value = pat }).value
 
-    and dpat' (span : span) (pat : A.pat') : B.pat' =
-      match pat with
-      | [%inline_arms "dpat'.*" - PConstruct] -> auto
-      | PConstruct { name; args; is_record = _; is_struct } ->
-          PConstruct
-            {
-              name;
-              args = List.map ~f:(dfield_pat span) args;
-              is_record = None;
-              is_struct;
-            }
+    and project_pat (p_accum : A.pat project_pat_accum) :
+        B.pat project_pat_accum =
+      let p = p_accum.value in
+      let simple_pat = project_pat' p.span { p_accum with value = p.p } in
+      {
+        simple_pat with
+        value = { p = simple_pat.value; span = p.span; typ = dty p.span p.typ };
+      }
 
-    and project_pat (p : A.pat) : B.pat * (B.pat * B.expr) list =
-      let simple_pat, remaining_pats = project_pat' p.span p.p in
-      ({ p = simple_pat; span = p.span; typ = dty p.span p.typ }, remaining_pats)
+    and project_field_pat (p_accum : A.field_pat project_pat_accum) :
+        B.field_pat project_pat_accum =
+      let p = p_accum.value in
+      let projections = project_pat { p_accum with value = p.pat } in
+      { projections with value = { field = p.field; pat = projections.value } }
 
-    and project_field_pat (_span : span) (p : A.field_pat) :
-        B.field_pat * (B.pat * B.expr) list =
-      let pat, pat_list = project_pat p.pat in
-      ({ field = p.field; pat }, pat_list)
-
-    and project_pat' (span : span) (pat : A.pat') :
-        B.pat' * (B.pat * B.expr) list =
-      match pat with
-      | PWild -> (PWild, [])
+    and project_pat' (span : span) (pat_accum : A.pat' project_pat_accum) :
+        B.pat' project_pat_accum =
+      match pat_accum.value with
+      | PWild -> { empty_accum with value = PWild }
       | PAscription { typ; typ_span; pat } ->
-          let simple_pat, remaining_pats = project_pat pat in
-          ( PAscription { typ = dty span typ; pat = simple_pat; typ_span },
-            remaining_pats )
-      | PConstruct { name; args; is_record = Some _; is_struct } ->
-          let update_args = List.map ~f:(project_field_pat span) args in
-          let new_id = UA.fresh_local_ident_in_expr [List.map ~f:(snd >> List.map ~f: snd)] "some_name" in
-          ( PConstruct
-              {
-                name;
-                args =
-                  [
-                    {
-                      field = name;
-                      pat =
-                        {
-                          p =
-                            PBinding
-                              {
-                                mut = Immutable;
-                                mode = ByValue;
-                                var = new_id (* name *);
-                                typ = TApp { ident = name; args = [] };
-                                (* TODO? *)
-                                subpat = None;
-                              };
-                          span;
-                          typ = TApp { ident = name; args = [] };
-                        };
-                    };
-                  ];
-                is_record = (None : FB.project_instead_of_match option);
-                is_struct;
-              },
-            List.map
-              ~f:(fun ({ field; pat }, _) ->
-                ( pat,
-                  ({
-                     e =
-                       App
-                         {
-                           f =
-                             {
-                               e = GlobalVar field;
-                               typ = TApp { ident = field; args = [] };
-                               (* TODO *)
-                               span = pat.span;
-                             };
-                           args =
-                             [
+          let simple_pat = project_pat { pat_accum with value = pat } in
+          {
+            simple_pat with
+            value =
+              PAscription
+                { typ = dty span typ; typ_span; pat = simple_pat.value };
+          }
+      | PConstruct { name; args; is_record = Some _; is_struct = _ } ->
+          let update_args =
+            project_pat_list project_field_pat { pat_accum with value = args }
+          in
+          let new_id =
+            UB.fresh_local_ident_in_expr
+              (List.map ~f:snd update_args.sub_result)
+              "some_name"
+          in
+          {
+            value =
+              PBinding
+                {
+                  mut = Immutable;
+                  mode = ByValue;
+                  var = new_id (* name *);
+                  typ = TApp { ident = name; args = [] };
+                  (* TODO? *)
+                  subpat = None;
+                };
+            sub_result =
+              List.map
+                ~f:(fun { field; pat } ->
+                  ( pat,
+                    ({
+                       e =
+                         App
+                           {
+                             f =
                                {
-                                 e = LocalVar new_id;
-                                 typ = TApp { ident = name; args = [] };
+                                 e = GlobalVar field;
+                                 typ = TApp { ident = field; args = [] };
+                                 (* TODO *)
                                  span = pat.span;
                                };
-                             ];
-                           generic_args = [];
-                           (* TODO *)
-                           impl = None;
-                         };
-                     typ = pat.typ;
-                     span = pat.span;
-                   }
-                    : B.expr) ))
-              update_args
-            @ List.concat_map ~f:snd update_args )
+                             args =
+                               [
+                                 {
+                                   e = LocalVar new_id;
+                                   typ = TApp { ident = name; args = [] };
+                                   span = pat.span;
+                                 };
+                               ];
+                             generic_args = [];
+                             (* TODO *)
+                             impl = None;
+                           };
+                       typ = pat.typ;
+                       span = pat.span;
+                     }
+                      : B.expr) ))
+                update_args.value
+              @ update_args.sub_result;
+          }
       | PConstruct { name; args; is_record = None; is_struct } ->
-          let update_args = List.map ~f:(project_field_pat span) args in
-          ( PConstruct
-              {
-                name;
-                args = List.map ~f:fst update_args;
-                is_record = None;
-                is_struct;
-              },
-            List.concat_map ~f:snd update_args )
+          let update_args =
+            project_pat_list project_field_pat { pat_accum with value = args }
+          in
+          {
+            update_args with
+            value =
+              PConstruct
+                { name; args = update_args.value; is_record = None; is_struct };
+          }
       | PArray { args } ->
-          let update_args = List.map ~f:project_pat args in
-          ( PArray { args = List.map ~f:fst update_args },
-            List.concat_map ~f:snd update_args )
-      | PConstant { lit } -> (PConstant { lit }, [])
+          let update_args =
+            project_pat_list project_pat { pat_accum with value = args }
+          in
+          { update_args with value = PArray { args = update_args.value } }
+      | PConstant { lit } -> { empty_accum with value = PConstant { lit } }
       | PBinding { mut; mode; var : Local_ident.t; typ; subpat } ->
-          let simple_pat, remaining_pats =
+          let simple_pat =
             match subpat with
             | Some (subpat, as_pat) ->
-                let simple_pat, remaining_pats = project_pat subpat in
-                (Some (simple_pat, S.as_pattern span as_pat), remaining_pats)
-            | None -> (None, [])
+                let simple_pat =
+                  project_pat { pat_accum with value = subpat }
+                in
+                {
+                  simple_pat with
+                  value = Some (simple_pat.value, S.as_pattern span as_pat);
+                }
+            | None -> { empty_accum with value = None }
           in
-          ( PBinding
-              {
-                mut = dmutability span S.mutable_variable mut;
-                mode = dbinding_mode span mode;
-                var;
-                typ = dty span typ;
-                subpat = simple_pat;
-              },
-            remaining_pats )
+          {
+            simple_pat with
+            value =
+              PBinding
+                {
+                  mut = dmutability span S.mutable_variable mut;
+                  mode = dbinding_mode span mode;
+                  var;
+                  typ = dty span typ;
+                  subpat = simple_pat.value;
+                };
+          }
       | PDeref { subpat; witness } ->
-          let simple_pat, remaining_pats = project_pat subpat in
-          ( PDeref { subpat = simple_pat; witness = S.reference span witness },
-            remaining_pats )
+          let simple_pat = project_pat { pat_accum with value = subpat } in
+          {
+            simple_pat with
+            value =
+              PDeref
+                {
+                  subpat = simple_pat.value;
+                  witness = S.reference span witness;
+                };
+          }
       | POr { subpats } ->
-          let updated_subpats = List.map ~f:project_pat subpats in
-          ( POr { subpats = List.map ~f:fst updated_subpats },
-            List.concat_map ~f:snd updated_subpats )
+          let updated_subpats =
+            project_pat_list project_pat { pat_accum with value = subpats }
+          in
+          {
+            updated_subpats with
+            value = POr { subpats = updated_subpats.value };
+          }
 
     and let_of_pat_binding ((p, rhs) : B.pat * B.expr) (body : B.expr) : B.expr
         =
@@ -175,18 +203,25 @@ module%inlined_contents Make (F : Features.T) = struct
       match (UA.unbox_underef_expr { e; span; typ = UA.never_typ }).e with
       | [%inline_arms "dexpr'.*" - Let - Closure - Loop - Match] -> auto
       | Match { scrutinee; arms } ->
-          Match { scrutinee = dexpr scrutinee; arms = List.map ~f:darm arms }
+          Match
+            {
+              scrutinee = dexpr scrutinee;
+              arms =
+                (project_pat_list project_darm
+                   { empty_accum with value = arms })
+                  .value;
+            }
       | Let { monadic; lhs; rhs; body } ->
-          let simple_pat, remaining_pats = project_pat lhs in
+          let simple_pat = project_pat { empty_accum with value = lhs } in
           Let
             {
               monadic =
                 Option.map
                   ~f:(dsupported_monads span *** S.monadic_binding span)
                   monadic;
-              lhs = simple_pat;
+              lhs = simple_pat.value;
               rhs = dexpr rhs;
-              body = lets_of_pat_bindings remaining_pats (dexpr body);
+              body = lets_of_pat_bindings simple_pat.sub_result (dexpr body);
             }
       | Loop { body; kind; state; label; witness } ->
           Loop
@@ -198,22 +233,37 @@ module%inlined_contents Make (F : Features.T) = struct
               witness = S.loop span witness;
             }
       | Closure { params; body; captures } ->
-          let projected_params = List.map ~f:project_pat params in
+          let projected_params =
+            project_pat_list project_pat { empty_accum with value = params }
+          in
           Closure
             {
-              params = List.map ~f:fst projected_params;
+              params = projected_params.value;
               body =
-                lets_of_pat_bindings
-                  (List.concat_map ~f:snd projected_params)
-                  (dexpr body);
+                lets_of_pat_bindings projected_params.sub_result (dexpr body);
               captures = List.map ~f:dexpr captures;
             }
 
-    and darm' (_span : span) (a : A.arm') : B.arm' =
-      let simple_pat, remaining_pats = project_pat a.arm_pat in
+    and project_darm (arm_accum : A.arm project_pat_accum) :
+        B.arm project_pat_accum =
+      let arm = arm_accum.value in
+      let projected_arm = project_darm' { arm_accum with value = arm.arm } in
       {
-        arm_pat = simple_pat;
-        body = lets_of_pat_bindings remaining_pats (dexpr a.body);
+        projected_arm with
+        value = { arm = projected_arm.value; span = arm.span };
+      }
+
+    and project_darm' (a_accum : A.arm' project_pat_accum) :
+        B.arm' project_pat_accum =
+      let a = a_accum.value in
+      let simple_pat = project_pat { a_accum with value = a.arm_pat } in
+      {
+        simple_pat with
+        value =
+          {
+            arm_pat = simple_pat.value;
+            body = lets_of_pat_bindings simple_pat.sub_result (dexpr a.body);
+          };
       }
       [@@inline_ands bindings_of dexpr]
 

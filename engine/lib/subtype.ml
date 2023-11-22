@@ -99,8 +99,7 @@ struct
             args = List.map ~f:(dfield_pat span) args;
             is_record =
               Option.map
-                ~f:(fun x : FB.struct_pattern ->
-                  S.struct_pattern span x)
+                ~f:(fun x : FB.struct_pattern -> S.struct_pattern span x)
                 is_record;
             is_struct;
           }
