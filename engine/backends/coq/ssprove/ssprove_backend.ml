@@ -611,6 +611,7 @@ module TransformToInputLanguage (* : PHASE *) =
     |> Phases.And_mut_defsite
     |> Phases.Reconstruct_for_loops
     |> Phases.Direct_and_mut
+    |> Phases.Struct_pattern
     |> Phases.Reject.Arbitrary_lhs
     |> Phases.Drop_blocks
     (* |> Phases.Reject.Continue *)
@@ -625,7 +626,6 @@ module TransformToInputLanguage (* : PHASE *) =
     |> Phases.Reject.EarlyExit
     (* |> Phases.Functionalize_loops *)
     |> Phases.Reject.As_pattern
-    |> Phases.Struct_pattern
     |> SubtypeToInputLanguage
     |> Identity
   ]
@@ -908,6 +908,65 @@ struct
   (*   #visit_expr *)
   (*     "" *)
 
+  and parms_list body : AST.pat list -> SSP.AST.pat list * SSP.AST.term =
+    List.fold_left ~init:([], body) ~f:(fun (l, y) x ->
+        let p, t = parms y x in
+        (p :: l, t))
+
+  and parms (body : SSP.AST.term) (pat : AST.pat) : SSP.AST.pat * SSP.AST.term =
+    match pat.p with
+    | PWild | PConstruct { name = `TupleCons 0; args = [] } | PConstant _ ->
+        (ppat pat, body)
+    | PAscription { typ; pat } -> parms body pat
+    | PBinding { mut = _; mode = _; subpat; var; typ = _ } ->
+        (SSP.AST.Ident (plocal_ident var), body)
+    | POr { subpats } ->
+        let subpats', body' = parms_list body subpats in
+        (SSP.AST.DisjunctivePat subpats', body')
+    | PArray { args } -> (__TODO_pat__ pat.span "Parray?", body)
+    | PConstruct { name = `TupleCons 1; args = [ { pat } ] } -> parms body pat
+    | PConstruct { name = `TupleCons n; args } ->
+        let args', body' =
+          parms_list body (List.map ~f:(fun p -> p.pat) args)
+        in
+        (SSP.AST.TuplePat args', body')
+    | PConstruct { name; args } -> (
+        let args', body' =
+          parms_list body (List.map ~f:(fun p -> p.pat) args)
+        in
+        let arg_tuple = SSP.AST.TuplePat args' in
+        ( SSP.AST.ConstructorPat
+            ( pglobal_ident name ^ "_case",
+              match args with [] -> [] | _ -> [ arg_tuple ] ),
+          match (args, SSPExtraDefinitions.pat_as_expr arg_tuple) with
+          | _ :: _, Some (redefine_pat, redefine_expr) ->
+              let prod_typ =
+                SSP.AST.Product
+                  (List.map ~f:(fun x -> pty pat.span x.pat.typ) args)
+              in
+              SSPExtraDefinitions.letb
+                {
+                  pattern = redefine_pat (* TODO *);
+                  mut = false;
+                  value =
+                    SSP.AST.App
+                      ( SSP.AST.Var "ret_both",
+                        [ SSP.AST.TypedTerm (redefine_expr, prod_typ) ] );
+                  body = body';
+                  value_typ = prod_typ;
+                  monad_typ = None;
+                }
+          | _, _ -> body' ))
+    | _ -> .
+
+  and pmatch env (scrutinee : AST.expr) (arms : AST.arm list) =
+    SSPExtraDefinitions.matchb
+      ( (pexpr env false) scrutinee,
+        List.map
+          ~f:(fun { arm = { arm_pat; body } } ->
+            parms ((pexpr env true) body) arm_pat)
+          arms )
+
   and pexpr (env : LocalIdentOrLisIis.W.t list Map.M(Local_ident).t)
       (add_solve : bool) (e : expr) : SSP.AST.term =
     let span = e.span in
@@ -1005,87 +1064,42 @@ struct
                   monadic;
             }
       | EffectAction _ -> . (* __TODO_term__ span "monadic action" *)
-      | Match
-          {
-            scrutinee;
-            arms =
-              [
-                {
-                  arm =
-                    {
-                      arm_pat =
-                        {
-                          p =
-                            PConstruct
-                              {
-                                name;
-                                args = [ { field; pat } ];
-                                is_record = None;
-                                is_struct = true;
-                              };
-                        };
-                      body;
-                    };
-                };
-              ];
-          } ->
-          (* Record match expressions *)
-          (* (pexpr env true) body *)
-          SSPExtraDefinitions.letb
-            {
-              pattern = ppat pat;
-              mut = false;
-              value = (pexpr env false) scrutinee;
-              body = (pexpr env true) body;
-              value_typ = pty pat.span pat.typ;
-              monad_typ = None;
-            }
-      | Match { scrutinee; arms } ->
-          SSPExtraDefinitions.matchb
-            ( (pexpr env false) scrutinee,
-              List.map
-                ~f:(fun { arm = { arm_pat; body } } ->
-                  match arm_pat.p with
-                  | PConstruct
-                      { name; args; is_record = None; is_struct = false } -> (
-                      let arg_tuple =
-                        SSP.AST.TuplePat
-                          (List.map ~f:(fun p -> ppat p.pat) args)
-                      in
-                      ( SSP.AST.ConstructorPat
-                          ( pglobal_ident name ^ "_case",
-                            match args with [] -> [] | _ -> [ arg_tuple ] ),
-                        match
-                          (args, SSPExtraDefinitions.pat_as_expr arg_tuple)
-                        with
-                        | _ :: _, Some (redefine_pat, redefine_expr) ->
-                            SSPExtraDefinitions.letb
-                              {
-                                pattern = redefine_pat (* TODO *);
-                                mut = false;
-                                value =
-                                  SSP.AST.App
-                                    ( SSP.AST.Var "ret_both",
-                                      [
-                                        SSP.AST.TypedTerm
-                                          ( redefine_expr,
-                                            SSP.AST.Product
-                                              (List.map
-                                                 ~f:(fun x ->
-                                                   pty arm_pat.span x.pat.typ)
-                                                 args) );
-                                      ] );
-                                body = (pexpr env true) body;
-                                value_typ =
-                                  SSP.AST.Product
-                                    (List.map
-                                       ~f:(fun x -> pty arm_pat.span x.pat.typ)
-                                       args);
-                                monad_typ = None;
-                              }
-                        | _, _ -> (pexpr env true) body ))
-                  | _ -> (ppat arm_pat, (pexpr env true) body))
-                arms )
+      (* | Match *)
+      (*     { *)
+      (*       scrutinee; *)
+      (*       arms = *)
+      (*         [ *)
+      (*           { *)
+      (*             arm = *)
+      (*               { *)
+      (*                 arm_pat = *)
+      (*                   { *)
+      (*                     p = *)
+      (*                       PConstruct *)
+      (*                         { *)
+      (*                           name; *)
+      (*                           args = [ { field; pat } ]; *)
+      (*                           is_record = None; *)
+      (*                           is_struct = true; *)
+      (*                         }; *)
+      (*                   }; *)
+      (*                 body; *)
+      (*               }; *)
+      (*           }; *)
+      (*         ]; *)
+      (*     } -> *)
+      (*     (\* Record match expressions *\) *)
+      (*     (\* (pexpr env true) body *\) *)
+      (*     SSPExtraDefinitions.letb *)
+      (*       { *)
+      (*         pattern = ppat pat; *)
+      (*         mut = false; *)
+      (*         value = (pexpr env false) scrutinee; *)
+      (*         body = (pexpr env true) body; *)
+      (*         value_typ = pty pat.span pat.typ; *)
+      (*         monad_typ = None; *)
+      (*       } *)
+      | Match { scrutinee; arms } -> pmatch env scrutinee arms
       | Ascription { e; typ } -> __TODO_term__ span "asciption"
       | Construct { constructor = `TupleCons 1; fields = [ (_, e) ]; base } ->
           (pexpr env false) e
