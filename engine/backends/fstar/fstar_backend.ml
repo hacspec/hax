@@ -8,10 +8,12 @@ include
       open Features
       include Off
       include On.Monadic_binding
+
       (* include On.Mutable_reference *)
       (* include On.Reference *)
       include On.Slice
       include On.Macro
+
       (* include On.Lifetime *)
       include On.Construct_base
     end)
@@ -50,6 +52,7 @@ struct
         module B = FB
         include Features.SUBTYPE.Id
         include Features.SUBTYPE.On.Monadic_binding
+
         (* include Features.SUBTYPE.On.Mutable_reference *)
         (* include Features.SUBTYPE.On.Reference *)
         (* include Features.SUBTYPE.On.Lifetime *)
@@ -699,7 +702,11 @@ struct
   (*     F.AST.term = *)
   (*   F.mk_refined binder (pty span ty) (pexpr refinement) *)
 
-  let add_clauses_effect_type (attrs : attrs) typ : F.AST.typ =
+  let is_scalar (ty : ty) =
+    match ty with TBool | TChar | TInt _ | TFloat _ -> true | _ -> false
+
+  let add_clauses_effect_type (scalar_inputs : bool) scalar_output
+      (attrs : attrs) typ : F.AST.typ * bool =
     let attr_term ?keep_last_args kind f =
       Attrs.associated_expr ?keep_last_args kind attrs
       |> Option.map ~f:(pexpr >> f >> F.term)
@@ -730,18 +737,30 @@ struct
       |> Option.value ~default:[])
       @ Option.to_list decreases
     in
-    match args with
-    (* | _ -> typ *)
-    | _ ->
-        let mk namespace effect = F.term_of_lid (namespace @ [ effect ]) in
-        let prims = mk [ "Prims" ] in
-        let effect =
-          mk ["FStar"; "HyperStack"; "ST"] "St"
-        (*   if Option.is_some prepost_bundle then *)
-        (*     if is_lemma then mk [] "Lemma" else prims "Pure" *)
-        (*   else prims ["FStar"; "HyperStack"] "ST" *)
-        in
-        F.mk_e_app effect (if is_lemma then args else [typ])
+    let mk namespace effect = F.term_of_lid (namespace @ [ effect ]) in
+    let prims = mk [ "Prims" ] in
+    let st = mk [ "FStar"; "HyperStack"; "ST" ] "St" in
+    let stack_inline = mk [ "FStar"; "HyperStack"; "ST" ] "StackInline" in
+    if is_lemma then
+      (F.mk_e_app (prims "Tot") (if is_lemma then args else [ typ ]), false)
+    else
+      match (scalar_output, scalar_inputs) with
+      | true, true -> (typ, false)
+      | _, false -> (F.mk_e_app st [ typ ], false)
+      | _, _ ->
+          ( F.mk_e_app stack_inline
+              [
+                typ;
+                F.term_of_string "(fun _ -> True)";
+                F.term_of_string "(fun _ _ _ -> True)";
+              ],
+            true )
+  (* if scalar_output && scalar_inputs then typ *)
+  (* else *)
+  (*   match args with *)
+  (*   (\* | _ -> typ *\) *)
+  (*   | _ -> *)
+  (*       F.mk_e_app effect (if is_lemma then args else [ typ ]) *)
 
   let rec pitem (e : item) : [> `Item of F.AST.decl | `Comment of string ] list
       =
@@ -784,12 +803,23 @@ struct
               params
         in
         let pat = F.pat @@ F.AST.PatApp (pat, pat_args) in
-        let ty = match params with
-            | [] -> pty body.span body.typ
-            | _ -> add_clauses_effect_type e.attrs (pty body.span body.typ)
+        let scalar_inputs =
+          List.for_all ~f:(fun { typ; _ } -> is_scalar typ) params
+        in
+        let scalar_output = is_scalar body.typ in
+        let ty, inline_for_extraction =
+          match params with
+          | [] -> (pty body.span body.typ, false)
+          | _ ->
+              add_clauses_effect_type scalar_inputs scalar_output e.attrs
+                (pty body.span body.typ)
+        in
+        let quals =
+          if inline_for_extraction then [ F.AST.Inline_for_extraction ] else []
         in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (ty, None)) in
-        F.decls ~quals:[Inline_for_extraction] @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, pexpr body) ])
+        F.decls ~quals
+        @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, pexpr body) ])
     | TyAlias { name; generics; ty } ->
         let pat =
           F.pat
@@ -879,7 +909,7 @@ struct
                 [] ))
             variants
         in
-        F.decls ~quals:[Noeq]
+        F.decls ~quals:[ Noeq ]
         @@ F.AST.Tycon
              ( false,
                false,
