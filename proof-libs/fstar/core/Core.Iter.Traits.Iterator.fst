@@ -1,23 +1,29 @@
 module Core.Iter.Traits.Iterator
 open Rust_primitives
 
+open LowStar.BufferOps
+module B = LowStar.Buffer
+module HS = FStar.HyperStack
+module HST = FStar.HyperStack.ST
+
+
 (*** Definition of the `iterator` trait *)
 (** We define the types of the different method of the iterator trait
 on their own. This is handy for revealing only certain fields of the
 instances of the `iterator` trait. *)
 
 unfold type t_next self item
-  = self -> self * option item
+  = self -> HST.St (self * option item)
 unfold type t_contains self item
   = self -> item -> Type0
 unfold type t_fold self (item: Type0) (contains: t_contains self item)
-  = #b:Type -> s:self -> b -> (b -> i:item{contains s i} -> b) -> b
+  = #b:Type -> s:self -> b -> (b -> i:item{contains s i} -> HST.St b) -> HST.St b
 unfold type t_enumerate self
   = self -> Core.Iter.Adapters.Enumerate.t_Enumerate self
 unfold type t_step_by self
   = self -> usize -> Core.Iter.Adapters.Step_by.t_StepBy self
 unfold type t_all self item
-  = self -> (item -> bool) -> self * bool
+  = self -> (item -> bool) -> HST.St (self * bool)
 
 (* Inference behaves strangly with type synonyms... :( *)
 // class iterator (self: Type) = {
@@ -31,11 +37,11 @@ unfold type t_all self item
 class iterator (self: Type u#0): Type u#1 = {
   [@@@FStar.Tactics.Typeclasses.no_method]
   f_Item: Type0;
-  f_next:      self -> self * option f_Item;
+  f_next:      self -> HST.St (self * option f_Item);
   f_contains:  self -> f_Item -> Type0;
-  f_fold:      #b:Type0 -> s:self -> b -> (b -> i:f_Item{f_contains s i} -> b) -> b;
+  f_fold:      #b:Type0 -> s:self -> b -> (b -> i:f_Item{f_contains s i} -> HST.St b) -> HST.St b;
   f_enumerate: self -> Core.Iter.Adapters.Enumerate.t_Enumerate self;
   f_step_by:   self -> usize -> Core.Iter.Adapters.Step_by.t_StepBy self;
-  f_all:       self -> (f_Item -> bool) -> self * bool;
+  f_all:       self -> (f_Item -> bool) -> HST.St (self * bool);
 }
 

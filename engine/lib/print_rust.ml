@@ -278,7 +278,7 @@ module Raw = struct
           | UnconditionalLoop -> !"loop"
           | ForLoop { it; pat; _ } ->
               !"for " & ppat pat & !" in (" & pexpr it & !")"
-          | ForIndexLoop { start; end_; var; _ } ->
+          | ForIndexLoop { start; end_; var = var, _, _; _ } ->
               !"for " & plocal_ident e.span var & !" in (" & pexpr start
               & !")..(" & pexpr end_ & !")"
         in

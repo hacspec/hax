@@ -3,7 +3,7 @@ open! Prelude
 module MakeSI
     (F : Features.T
            with type monadic_binding = Features.Off.monadic_binding
-            and type for_index_loop = Features.Off.for_index_loop) =
+    ) =
 struct
   module AST = Ast.Make (F)
   module U = Ast_utils.Make (F)
@@ -288,6 +288,10 @@ struct
                 match kind with
                 | UnconditionalLoop -> []
                 | ForLoop { it; _ } -> [ super#visit_expr env it ]
+                | ForIndexLoop { start; end_; _ } -> [
+                      super#visit_expr env start;
+                      super#visit_expr env end_
+                    ]
                 | _ -> .
               in
               let state' =
@@ -303,15 +307,17 @@ struct
                     match (l, kind) with
                     | it :: ([ _ ] | []), ForLoop { pat; witness; _ } ->
                         ForLoop { pat; witness; it }
+                    | start :: end_ :: ([ _ ] | []), ForIndexLoop { var; witness; _ } ->
+                        ForIndexLoop { start; end_; var; witness }
                     | ([ _ ] | []), UnconditionalLoop -> UnconditionalLoop
-                    | _, ForIndexLoop _ -> .
+                    (* | _, ForIndexLoop _ -> . *)
                     | _ -> HoistSeq.err_hoist_invariant e.span Stdlib.__LOC__
                   in
                   let state =
                     match (l, state) with
-                    | (_ :: [ state ] | [ state ]), Some { witness; bpat; _ } ->
+                    | ([_; _; state ] | [_; state ] | [ state ]), Some { witness; bpat; _ } ->
                         Some { witness; bpat; init = state }
-                    | ([ _ ] | []), None -> None
+                    | ([ _ ] | [_; _] | []), None -> None
                     | _ -> HoistSeq.err_hoist_invariant e.span Stdlib.__LOC__
                   in
                   (* by now, the "inputs" of the loop are hoisted as let if needed *)
@@ -494,8 +500,7 @@ end
 
 module%inlined_contents Hoist
     (F : Features.T
-           with type monadic_binding = Features.Off.monadic_binding
-            and type for_index_loop = Features.Off.for_index_loop) =
+           with type monadic_binding = Features.Off.monadic_binding) =
 struct
   module FA = F
 

@@ -16,6 +16,14 @@
         flake-utils.follows = "flake-utils";
       };
     };
+    karamel = {
+      url = "github:FStarLang/karamel";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        fstar.follows = "fstar-flake";
+        flake-utils.follows = "flake-utils";
+      };
+    };
     hacl-star = {
       url = "github:hacl-star/hacl-star";
       flake = false;
@@ -29,6 +37,7 @@
     crane,
     fstar-flake,
     hacl-star,
+    karamel,
     ...
   }:
     flake-utils.lib.eachDefaultSystem (
@@ -42,9 +51,10 @@
         ocamlformat = pkgs.ocamlformat_0_24_1;
         rustfmt = pkgs.rustfmt;
         fstar = fstar-flake.packages.${system}.default;
+        krml = karamel.packages.${system}.default;
       in rec {
         packages = {
-          inherit rustc ocamlformat rustfmt fstar;
+          inherit rustc ocamlformat rustfmt fstar krml;
           hax-engine = pkgs.callPackage ./engine {
             hax-rust-frontend = packages.hax-rust-frontend.unwrapped;
             inherit rustc;
@@ -97,6 +107,8 @@
             rustfmt
             rustc
 
+            krml
+
             (pkgs.stdenv.mkDerivation {
               name = "rebuild-script";
               phases = ["installPhase"];
@@ -111,9 +123,10 @@
           fstar-examples = pkgs.mkShell {
             inherit inputsFrom LIBCLANG_PATH;
             HACL_HOME = "${hacl-star}";
-            packages = packages ++ [fstar];
+            packages = packages ++ [fstar krml];
           };
           default = pkgs.mkShell {
+            KRMLLIB = "${krml}/lib/krml";
             inherit packages inputsFrom LIBCLANG_PATH;
           };
         };

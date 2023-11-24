@@ -262,13 +262,12 @@ struct
     | ForLoop { it; pat; witness } ->
         ForLoop
           { it = dexpr it; pat = dpat pat; witness = S.for_loop span witness }
-    | ForIndexLoop { start; end_; var; var_typ; witness } ->
+    | ForIndexLoop { start; end_; var; witness } ->
         ForIndexLoop
           {
             start = dexpr start;
             end_ = dexpr end_;
-            var;
-            var_typ = dty span var_typ;
+            var = map_snd3 (dty span) var;
             witness = S.for_index_loop span witness;
           }
 

@@ -99,6 +99,32 @@
         "type": "github"
       }
     },
+    "karamel": {
+      "inputs": {
+        "flake-utils": [
+          "flake-utils"
+        ],
+        "fstar": [
+          "fstar-flake"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1698968585,
+        "narHash": "sha256-x3ZaGrmuKF5+7xaWHu0yDikl4mrawkY5tQnfovgyPh8=",
+        "owner": "FStarLang",
+        "repo": "karamel",
+        "rev": "a7be2a7c43eca637ceb57fe8f3ffd16fc6627ebd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "FStarLang",
+        "repo": "karamel",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1694343207,
@@ -119,6 +145,7 @@
         "flake-utils": "flake-utils",
         "fstar-flake": "fstar-flake",
         "hacl-star": "hacl-star",
+        "karamel": "karamel",
         "nixpkgs": "nixpkgs",
         "rust-overlay": [
           "crane",

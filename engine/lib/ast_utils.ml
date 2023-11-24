@@ -340,7 +340,7 @@ module Make (F : Features.T) = struct
                   | ForLoop { pat; it; _ } ->
                       ( collect_local_idents#visit_pat () pat,
                         super#visit_expr env it )
-                  | ForIndexLoop { start; end_; var; _ } ->
+                  | ForIndexLoop { start; end_; var = var, _, _; _ } ->
                       ( Set.singleton (module Local_ident) var,
                         super#visit_expr (var :: env) start
                         ++ super#visit_expr (var :: env) end_ )

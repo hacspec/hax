@@ -117,14 +117,22 @@ mod hax {
     // Only useful when HAX_CORE_EXTRACTION_MODE in `on`
     enum MutRef {}
 
+    fn for_loop() {}
+
     fn repeat() {}
     fn update_at() {}
     mod monomorphized_update_at {
-        fn update_at_usize() {}
-        fn update_at_range() {}
-        fn update_at_range_from() {}
-        fn update_at_range_to() {}
-        fn update_at_range_full() {}
+        fn update_array_at_usize() {}
+        fn update_array_at_range() {}
+        fn update_array_at_range_from() {}
+        fn update_array_at_range_to() {}
+        fn update_array_at_range_full() {}
+
+        fn update_slice_at_usize() {}
+        fn update_slice_at_range() {}
+        fn update_slice_at_range_from() {}
+        fn update_slice_at_range_to() {}
+        fn update_slice_at_range_full() {}
     }
     // TODO: Should that live here? (this is F* specific)
     fn array_of_list() {}

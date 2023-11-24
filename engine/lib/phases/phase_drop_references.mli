@@ -4,7 +4,8 @@ module Make
     (F : Features.T
            with type raw_pointer = Features.Off.raw_pointer
             and type question_mark = Features.Off.question_mark
-            and type mutable_reference = Features.Off.mutable_reference) : sig
+      (* and type mutable_reference = Features.Off.mutable_reference *)
+    ) : sig
   include module type of struct
     module FA = F
 
@@ -13,6 +14,7 @@ module Make
       include Features.Off.Mutable_pointer
       include Features.Off.Lifetime
       include Features.Off.Reference
+      include Features.Off.Mutable_reference
     end
 
     module A = Ast.Make (F)

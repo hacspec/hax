@@ -3,7 +3,7 @@ open! Prelude
 module%inlined_contents Make
     (F : Features.T
            with type raw_pointer = Features.Off.raw_pointer
-            and type mutable_reference = Features.Off.mutable_reference
+            (* and type mutable_reference = Features.Off.mutable_reference *)
             and type question_mark = Features.Off.question_mark) =
 struct
   open Ast
@@ -14,6 +14,7 @@ struct
     include Features.Off.Mutable_pointer
     include Features.Off.Lifetime
     include Features.Off.Reference
+      include Features.Off.Mutable_reference
   end
 
   include
@@ -36,7 +37,7 @@ struct
       | [%inline_arms "dty.*" - TApp - TRef] -> auto
       | TApp { ident; args } ->
           TApp { ident; args = List.filter_map ~f:(dgeneric_value span) args }
-      | TRef { typ; mut = Immutable; _ } -> dty span typ
+      | TRef { typ; _ } -> dty span typ
       | TRef _ -> .
 
     and dgeneric_value (span : span) (g : A.generic_value) :
@@ -67,7 +68,7 @@ struct
             }
       | PDeref { subpat; _ } -> (dpat subpat).p
 
-    and dexpr' (span : span) (e : A.expr') : B.expr' =
+and dexpr' (span : span) (e : A.expr') : B.expr' =
       match (UA.unbox_underef_expr { e; span; typ = UA.never_typ }).e with
       | [%inline_arms If + Literal + Array + Block] -> auto
       | Construct { constructor; is_record; is_struct; fields; base } ->
@@ -119,7 +120,7 @@ struct
           in
           App { f; args; generic_args; impl }
       | _ -> .
-      [@@inline_ands bindings_of dexpr - dbinding_mode]
+      [@@inline_ands bindings_of dexpr - dbinding_mode - dmutability - dborrow_kind]
 
     let dgeneric_param (_span : span)
         ({ ident; kind; attrs; span } : A.generic_param) :
