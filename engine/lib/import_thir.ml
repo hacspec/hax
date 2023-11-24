@@ -656,7 +656,7 @@ end) : EXPR = struct
     { e = v; span; typ }
 
   and c_lhs lhs =
-    match lhs.e with
+    match (U.unbox_underef_expr lhs).e with
     | LocalVar var -> LhsLocalVar { var; typ = lhs.typ }
     | _ -> (
         match resugar_index_mut lhs with
