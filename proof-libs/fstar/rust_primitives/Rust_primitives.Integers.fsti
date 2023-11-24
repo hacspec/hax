@@ -333,39 +333,36 @@ val abs_int_equiv_lemma: #t:inttype{signed t /\ not (LI.S128? t)}
 ///
 
 // Strict: with precondition
-unfold
-let (+!) #t = add #t
+inline_for_extraction unfold
+let (+!) #t (x: int_t t) (y: int_t t): int_t t = admit (); LI.add #t #LI.PUB x y
 
 // Wrapping: no precondition
-unfold
+inline_for_extraction unfold
 let (+%) #t = add #t
 
-unfold
+inline_for_extraction unfold
 let (+.) #t = add #t
 
-unfold
-let ( *! ) #t = mul #t
+inline_for_extraction unfold
+let ( *! ) #t (x: int_t t) (y: int_t t): int_t t = admit (); LI.mul #t #LI.PUB x y
 
-unfold
-let ( *% ) #t = mul_mod #t
-
-unfold
+inline_for_extraction unfold
 let ( *. ) #t = mul #t
 
-unfold
-let ( -! ) #t = sub #t
+inline_for_extraction unfold
+let ( -! ) #t (x: int_t t) (y: int_t t): int_t t = admit (); LI.sub #t #LI.PUB x y
 
-unfold
+inline_for_extraction unfold
 let ( -% ) #t = sub_mod #t
 
 unfold
 let ( -. ) #t = sub #t
 
-unfold
-let ( >>! ) #t #t' = shift_right #t #t'
+inline_for_extraction unfold
+let ( >>! ) #t (x: int_t t) (y: u8): i32 = admit (); LI.shift_right #t #LI.PUB x y
 
-unfold
-let ( <<! ) #t #t' = shift_left #t #t'
+inline_for_extraction unfold
+let ( <<! ) #t (x: int_t t) (y: u8): i32 = admit (); LI.shift_left #t #LI.PUB x y
 
 unfold
 let ( >>>. ) #t #t' = rotate_right #t #t'
@@ -385,8 +382,9 @@ let ( &. ) #t = logand #t
 unfold
 let ( ~. ) #t = lognot #t
 
-unfold
-let (/!) #t = div #t
+
+inline_for_extraction unfold
+let ( /! ) #t (x: int_t t) (y: int_t t): int_t t = admit (); LI.div #t x y
 
 unfold
 let (%!) #t = mod #t
