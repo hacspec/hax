@@ -744,7 +744,7 @@ struct
     if is_lemma then
       (F.mk_e_app (prims "Tot") (if is_lemma then args else [ typ ]), false)
     else
-      match (scalar_output, scalar_inputs) with
+      match (scalar_inputs, scalar_output) with
       | true, true -> (typ, false)
       | _, false -> (F.mk_e_app st [ typ ], false)
       | _, _ ->
