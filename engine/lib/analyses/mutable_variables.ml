@@ -7,11 +7,14 @@ module%inlined_contents Make (F : Features.T) = struct
   open Ast
 
   type id_order = int
-  type pre_data = concrete_ident list Map.M(String).t (* Concrete_ident *)
 
+  (* TODO: Swap to Concrete_ident see: https://github.com/hacspec/hax/issues/375 *)
+  type pre_data = concrete_ident list Map.M(String).t
+
+  (* TODO: Swap to Concrete_ident see: https://github.com/hacspec/hax/issues/375 *)
   type analysis_data =
     (Local_ident.t list * (U.TypedLocalIdent.t * id_order) list)
-    (* external mut_vars vs new variables (e.g. needs def / local) *)
+    (* external mut_vars and new variables (e.g. needs def / local) *)
     Map.M(String).t
 
   module Uprint =
@@ -204,9 +207,7 @@ module%inlined_contents Make (F : Features.T) = struct
                 (match mut with
                 | Mutable _ ->
                     Set.singleton (module U.TypedLocalIdent) (var, typ)
-                | Immutable ->
-                    (* Set.singleton (module U.TypedLocalIdent) (var, typ) *)
-                    Set.empty (module U.TypedLocalIdent))
+                | Immutable -> Set.empty (module U.TypedLocalIdent))
                 (Option.value_map subpat ~default:m#zero
                    ~f:(fst >> super#visit_pat env))
          end)

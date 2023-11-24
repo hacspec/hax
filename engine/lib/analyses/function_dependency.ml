@@ -6,7 +6,8 @@ module%inlined_contents Make (F : Features.T) = struct
   module U = Ast_utils.Make (F)
   open Ast
 
-  type analysis_data = concrete_ident list Map.M(String).t (* Concrete_ident *)
+  (* TODO: Swap to Concrete_ident see: https://github.com/hacspec/hax/issues/375 *)
+  type analysis_data = concrete_ident list Map.M(String).t
   type id_order = int
 
   module Uprint =
@@ -15,7 +16,7 @@ module%inlined_contents Make (F : Features.T) = struct
   let analyse (items : A.item list) : analysis_data =
     let temp_list = List.concat_map ~f:U.functions_of_item items in
     List.fold_left
-      ~init:(Map.empty (module String (* Concrete_ident *)))
+      ~init:(Map.empty (module String))
       ~f:(fun y (name, body) ->
         Map.set y
           ~key:(Uprint.Concrete_ident_view.to_definition_name name)
