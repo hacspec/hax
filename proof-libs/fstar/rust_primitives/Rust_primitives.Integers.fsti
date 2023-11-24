@@ -49,8 +49,8 @@ type u64 = int_t LI.U64
 type i64=  int_t LI.S64
 type u128 = int_t LI.U128
 type i128 = int_t LI.S128
-type usize = int_t usize_inttype
-type isize = int_t isize_inttype
+unfold type usize = u32 // int_t usize_inttype
+unfold type isize = i32 //int_t isize_inttype
 
 let minint (t:LI.inttype) =
   if unsigned t then 0 else -(pow2 (bits t - 1))
@@ -59,8 +59,8 @@ let maxint (t:LI.inttype) =
   else pow2 (bits t - 1) - 1
 let modulus (t:LI.inttype) = pow2 (bits t)
 
-let max_usize = maxint usize_inttype
-let max_isize = maxint isize_inttype
+let max_usize = maxint LI.U32
+let max_isize = maxint LI.S32
 
 //let range_bits (n:int) (n:bits) : bool =
 //  minint t <= n && n <= maxint t

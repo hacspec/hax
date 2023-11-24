@@ -8,8 +8,11 @@ include
       open Features
       include Off
       include On.Monadic_binding
+      (* include On.Mutable_reference *)
+      (* include On.Reference *)
       include On.Slice
       include On.Macro
+      (* include On.Lifetime *)
       include On.Construct_base
     end)
     (struct
@@ -18,13 +21,12 @@ include
 
 module SubtypeToInputLanguage
     (FA : Features.T
-            with type mutable_reference = Features.Off.mutable_reference
-             and type continue = Features.Off.continue
+            with type continue = Features.Off.continue
              and type break = Features.Off.break
-             and type mutable_reference = Features.Off.mutable_reference
              and type mutable_pointer = Features.Off.mutable_pointer
              and type mutable_variable = Features.Off.mutable_variable
              and type reference = Features.Off.reference
+             and type mutable_reference = Features.Off.mutable_reference
              and type raw_pointer = Features.Off.raw_pointer
              and type early_exit = Features.Off.early_exit
              and type question_mark = Features.Off.question_mark
@@ -48,6 +50,9 @@ struct
         module B = FB
         include Features.SUBTYPE.Id
         include Features.SUBTYPE.On.Monadic_binding
+        (* include Features.SUBTYPE.On.Mutable_reference *)
+        (* include Features.SUBTYPE.On.Reference *)
+        (* include Features.SUBTYPE.On.Lifetime *)
         include Features.SUBTYPE.On.Construct_base
         include Features.SUBTYPE.On.Slice
         include Features.SUBTYPE.On.Macro
@@ -705,7 +710,9 @@ struct
       let trivial_pre = F.term_of_lid [ "Prims"; "l_True" ] in
       let trivial_post =
         if is_lemma then trivial_pre
-        else F.mk_e_abs [ F.pat @@ F.AST.PatWild (None, []) ] trivial_pre
+        else
+          let wild = F.pat @@ F.AST.PatWild (None, []) in
+          F.mk_e_abs [ wild; wild; wild ] trivial_pre
       in
       let pre = attr_term Requires (fun t -> F.AST.Requires (t, None)) in
       let post =
@@ -724,16 +731,17 @@ struct
       @ Option.to_list decreases
     in
     match args with
-    | [] -> typ
+    (* | _ -> typ *)
     | _ ->
         let mk namespace effect = F.term_of_lid (namespace @ [ effect ]) in
         let prims = mk [ "Prims" ] in
         let effect =
-          if Option.is_some prepost_bundle then
-            if is_lemma then mk [] "Lemma" else prims "Pure"
-          else prims "Tot"
+          mk ["FStar"; "HyperStack"; "ST"] "St"
+        (*   if Option.is_some prepost_bundle then *)
+        (*     if is_lemma then mk [] "Lemma" else prims "Pure" *)
+        (*   else prims ["FStar"; "HyperStack"] "ST" *)
         in
-        F.mk_e_app effect (if is_lemma then args else typ :: args)
+        F.mk_e_app effect (if is_lemma then args else [typ])
 
   let rec pitem (e : item) : [> `Item of F.AST.decl | `Comment of string ] list
       =
@@ -776,9 +784,12 @@ struct
               params
         in
         let pat = F.pat @@ F.AST.PatApp (pat, pat_args) in
-        let ty = add_clauses_effect_type e.attrs (pty body.span body.typ) in
+        let ty = match params with
+            | [] -> pty body.span body.typ
+            | _ -> add_clauses_effect_type e.attrs (pty body.span body.typ)
+        in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (ty, None)) in
-        F.decls @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, pexpr body) ])
+        F.decls ~quals:[Inline_for_extraction] @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, pexpr body) ])
     | TyAlias { name; generics; ty } ->
         let pat =
           F.pat
@@ -868,7 +879,7 @@ struct
                 [] ))
             variants
         in
-        F.decls
+        F.decls ~quals:[Noeq]
         @@ F.AST.Tycon
              ( false,
                false,
@@ -1146,9 +1157,10 @@ module DepGraphR = Dependencies.Make (Features.Rust)
 module TransformToInputLanguage =
   [%functor_application
   Phases.Reject.RawOrMutPointer(Features.Rust)
-  |> Phases.And_mut_defsite
+  (* |> Phases.And_mut_defsite *)
   |> Phases.Reconstruct_for_loops
-  |> Phases.Direct_and_mut
+  |> Phases.Reconstruct_for_index_loops
+  (* |> Phases.Direct_and_mut *)
   |> Phases.Reject.Arbitrary_lhs
   |> Phases.Drop_blocks
   |> Phases.Drop_references

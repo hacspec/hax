@@ -30,7 +30,7 @@ instance iterator_enumerate it {| i: iterator it |}: iterator (Core.Iter.Adapter
       match opt with
       | Some value -> if v count = max_usize
                      then {iter; count                }, None
-                     else {iter; count = count +. sz 1}, Some (count, value)
+                     else {iter; count = count +.  1ul}, Some (count, value)
       | None -> {iter; count}, None
     );
     f_contains  = iterator_enumerate_contains  it i;
@@ -75,7 +75,7 @@ open Core.Ops.Range
 val iterator_slice_next t: t_next (t_Slice t) t
 unfold
 let iterator_slice_contains (t: eqtype): t_contains (t_Slice t) t
-  = fun s x -> Rust_primitives.Arrays.contains s x
+  = fun s x -> Rust_primitives.Arrays.contains_spec s x
 val iterator_slice_fold (t: eqtype): t_fold (t_Slice t) t (iterator_slice_contains t)
 val iterator_slice_enumerate (t: eqtype): t_enumerate (t_Slice t)
 val iterator_slice_step_by (t: eqtype): t_step_by (t_Slice t)
@@ -97,7 +97,7 @@ instance iterator_slice (t: eqtype): iterator (t_Slice t) = {
 val iterator_array_next t len: t_next (t_Array t len) t
 unfold
 let iterator_array_contains (t: eqtype) len: t_contains (t_Array t len) t
-  = fun s x -> Rust_primitives.Arrays.contains s x
+  = fun s x -> Rust_primitives.Arrays.arr_contains_spec s x
 val iterator_array_fold (t: eqtype) len: t_fold (t_Array t len) t (iterator_array_contains t len)
 val iterator_array_enumerate (t: eqtype) len: t_enumerate (t_Array t len)
 val iterator_array_step_by (t: eqtype) len: t_step_by (t_Array t len)

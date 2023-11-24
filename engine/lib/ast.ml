@@ -382,8 +382,7 @@ functor
       | ForIndexLoop of {
           start : expr;
           end_ : expr;
-          var : local_ident;
-          var_typ : ty;
+          var : local_ident * ty * span;
           witness : F.for_index_loop;
         }
 

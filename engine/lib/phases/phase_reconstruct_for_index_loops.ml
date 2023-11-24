@@ -59,15 +59,15 @@ module%inlined_contents Make (FA : Features.T) = struct
                       _;
                       (* TODO: see issue #328 *)
                     };
-                typ;
-                _;
+                _
               };
             pat =
               {
                 p =
                   PBinding
                     { mut = Immutable; mode = ByValue; var; subpat = None; _ };
-                _;
+                typ = var_typ;
+                span = var_span;
               };
             _;
           }
@@ -82,8 +82,7 @@ module%inlined_contents Make (FA : Features.T) = struct
             {
               start = dexpr start;
               end_ = dexpr end_;
-              var;
-              var_typ = dty span typ;
+              var = (var, dty span var_typ, var_span);
               witness = Features.On.for_index_loop;
             }
       | [%inline_arms "dloop_kind.*"] -> auto

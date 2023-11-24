@@ -173,15 +173,23 @@ let c_lit span neg (lit : Thir.spanned_for__lit_kind) : ty -> extended_literal =
   c_lit' span neg lit.node
 
 let resugar_index_mut (e : expr) : (expr * expr) option =
-  match (U.unbox_underef_expr e).e with
+  let e = U.unbox_underef_expr e in
+  let underef (e : expr) : expr =
+    match e.e with
+    | App { f = { e = GlobalVar (`Primitive Deref); _ }; args = [ e ]; _ } ->
+        e
+    | _ -> e
+  in
+  (* let e = underef e  in *)
+  match e.e with
   | App
       {
         f = { e = GlobalVar (`Concrete meth); _ };
-        args = [ { e = Borrow { e = x; _ }; _ }; index ];
+        args = [ { e = Borrow { e = x; _ }; _ } | x; index ];
         generic_args = _ (* TODO: see issue #328 *);
         impl = _ (* TODO: see issue #328 *);
       }
-    when Concrete_ident.eq_name Core__ops__index__IndexMut__index_mut meth ->
+      when Concrete_ident.eq_name Core__ops__index__IndexMut__index_mut meth ->
       Some (x, index)
   | App
       {
@@ -191,6 +199,8 @@ let resugar_index_mut (e : expr) : (expr * expr) option =
         impl = _ (* TODO: see issue #328 *);
       }
     when Concrete_ident.eq_name Core__ops__index__Index__index meth ->
+      let x = underef x in
+  (* Stdio.prerr_endline @@ "########>>>>\n" ^ [%show: expr] x; *)
       Some (x, index)
   | _ -> None
 

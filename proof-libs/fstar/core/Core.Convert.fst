@@ -1,27 +1,32 @@
-
 module Core.Convert
 open Rust_primitives
+
+open LowStar.BufferOps
+module B = LowStar.Buffer
+module HS = FStar.HyperStack
+module HST = FStar.HyperStack.ST
+
 
 class try_into_tc self t = {
   [@@@FStar.Tactics.Typeclasses.no_method]
   f_Error: Type;
-  f_try_into: self -> Core.Result.t_Result t f_Error
+  f_try_into: self -> HST.St (Core.Result.t_Result t f_Error)
 }
 
 instance impl_6 (t: Type0) (len: usize): try_into_tc (t_Slice t) (t_Array t len) = {
   f_Error = Core.Array.t_TryFromSliceError;
   f_try_into = (fun (s: t_Slice t) -> 
     if Core.Slice.impl__len s = len
-    then Core.Result.Result_Ok (s <: t_Array t len)
+    then Core.Result.Result_Ok (magic ()) //(unsize s <: t_Array t len)
     else Core.Result.Result_Err Core.Array.TryFromSliceError
   )
 }
 
 
-instance impl_6_refined (t: Type0) (len: usize): try_into_tc (s: t_Slice t {Core.Slice.impl__len s == len}) (t_Array t len) = {
+instance impl_6_refined (t: Type0) (len: usize): try_into_tc (s: t_Slice t {spec_length s == len}) (t_Array t len) = {
   f_Error = Core.Array.t_TryFromSliceError;
-  f_try_into = (fun (s: t_Slice t {Core.Slice.impl__len s == len}) -> 
-    Core.Result.Result_Ok (s <: t_Array t len)
+  f_try_into = (fun (s: t_Slice t {spec_length s == len}) -> 
+    Core.Result.Result_Ok (magic ())//s <: t_Array t len)
   )
 }
 
@@ -36,8 +41,9 @@ class t_From self t = {
 class t_TryFrom self t = {
   [@@@FStar.Tactics.Typeclasses.no_method]
   f_Error: Type;
-  f_try_from: t -> Core.Result.t_Result self f_Error;
+  f_try_from: t -> HST.St (Core.Result.t_Result self f_Error);
 }
+
 
 instance integer_into
   (t:inttype) (t':inttype { minint t >= minint t' /\ maxint t <= maxint t' })

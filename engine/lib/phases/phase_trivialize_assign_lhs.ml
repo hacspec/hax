@@ -30,9 +30,9 @@ module%inlined_contents Make (F : Features.T) = struct
     [%%inline_defs dmutability]
 
     let rec updater_of_lhs (lhs : A.lhs) (rhs : B.expr) (span : span) :
-        (Local_ident.t * B.ty) * B.expr =
+        (Local_ident.t * B.ty) option * B.expr =
       match lhs with
-      | LhsLocalVar { var; typ } -> ((var, dty span typ), rhs)
+      | LhsLocalVar { var; typ } -> (Some (var, dty span typ), rhs)
       | LhsFieldAccessor { e; field; _ } -> (
           let lhs = UA.expr_of_lhs span e |> dexpr in
           match lhs.typ with
@@ -52,43 +52,71 @@ module%inlined_contents Make (F : Features.T) = struct
           | _ -> Error.raise { kind = ArbitraryLHS; span })
       | LhsArrayAccessor { e; typ = _; index; _ } ->
           let lhs = UA.expr_of_lhs span e |> dexpr in
-          let update_at: Concrete_ident.name =
-            let index_typ =
-              match index.typ with
-                TRef { typ; _ } -> typ | _ -> index.typ
+          let update_at : Concrete_ident.name =
+            let typ =
+              match lhs.typ with B.TRef { typ; _ } -> typ | typ -> typ
             in
-            match index_typ with
-            | TInt {size = SSize; signedness = Unsigned} ->
-                Rust_primitives__hax__monomorphized_update_at__update_at_usize 
-            | TApp { ident; _ }
-                when Global_ident.eq_name Core__ops__range__Range ident -> Rust_primitives__hax__monomorphized_update_at__update_at_range
-            | TApp { ident; _ }
-                when Global_ident.eq_name Core__ops__range__RangeFrom ident -> Rust_primitives__hax__monomorphized_update_at__update_at_range_from
-            | TApp { ident; _ }
-                when Global_ident.eq_name Core__ops__range__RangeTo ident -> Rust_primitives__hax__monomorphized_update_at__update_at_range_to
-            | TApp { ident; _ }
-                when Global_ident.eq_name Core__ops__range__RangeFull ident -> Rust_primitives__hax__monomorphized_update_at__update_at_range_full
-            | _ -> Rust_primitives__hax__update_at
+            let is_array = [%matches? B.TArray _] typ in
+            let is_slice = [%matches? B.TSlice _] typ in
+            Stdio.prerr_endline @@ "typ=" ^ [%show: B.ty] typ;
+            if is_array || is_slice then
+              let h (arr : Concrete_ident.name) (slice : Concrete_ident.name) =
+                if is_array then arr else slice
+              in
+              let index_typ =
+                match index.typ with TRef { typ; _ } -> typ | typ -> typ
+              in
+              match index_typ with
+              | TInt { size = SSize; signedness = Unsigned } ->
+                  h
+                    Rust_primitives__hax__monomorphized_update_at__update_array_at_usize
+                    Rust_primitives__hax__monomorphized_update_at__update_slice_at_usize
+              | TApp { ident; _ }
+                when Global_ident.eq_name Core__ops__range__Range ident ->
+                  h
+                    Rust_primitives__hax__monomorphized_update_at__update_array_at_range
+                    Rust_primitives__hax__monomorphized_update_at__update_slice_at_range
+              | TApp { ident; _ }
+                when Global_ident.eq_name Core__ops__range__RangeFrom ident ->
+                  h
+                    Rust_primitives__hax__monomorphized_update_at__update_array_at_range_from
+                    Rust_primitives__hax__monomorphized_update_at__update_slice_at_range_from
+              | TApp { ident; _ }
+                when Global_ident.eq_name Core__ops__range__RangeTo ident ->
+                  h
+                    Rust_primitives__hax__monomorphized_update_at__update_array_at_range_to
+                    Rust_primitives__hax__monomorphized_update_at__update_slice_at_range_to
+              | TApp { ident; _ }
+                when Global_ident.eq_name Core__ops__range__RangeFull ident ->
+                  h
+                    Rust_primitives__hax__monomorphized_update_at__update_array_at_range_full
+                    Rust_primitives__hax__monomorphized_update_at__update_slice_at_range_full
+              | _ -> Rust_primitives__hax__update_at
+            else Rust_primitives__hax__update_at
           in
           let rhs =
             UB.call update_at
               [ lhs; dexpr index; rhs ]
-              span lhs.typ
+              span (*lhs.typ*) UB.unit_typ
           in
-          updater_of_lhs e rhs span
+          (None, rhs)
+          (* updater_of_lhs e rhs span *)
       | LhsArbitraryExpr _ -> Error.raise { kind = ArbitraryLHS; span }
 
     and dexpr_unwrapped (expr : A.expr) : B.expr =
       let span = expr.span in
       match expr.e with
-      | Assign { lhs; e; witness } ->
-          let (var, typ), e = updater_of_lhs lhs (dexpr e) expr.span in
-          let lhs : B.lhs = LhsLocalVar { var; typ } in
-          {
-            e = Assign { lhs; e; witness };
-            span = expr.span;
-            typ = UB.unit_typ;
-          }
+      | Assign { lhs; e; witness } -> (
+          let bundle, e = updater_of_lhs lhs (dexpr e) expr.span in
+          match bundle with
+          | Some (var, typ) ->
+              let lhs : B.lhs = LhsLocalVar { var; typ } in
+              {
+                e = Assign { lhs; e; witness };
+                span = expr.span;
+                typ = UB.unit_typ;
+              }
+          | None -> e)
       | [%inline_arms "dexpr'.*" - Assign] ->
           map (fun e -> B.{ e; typ = dty expr.span expr.typ; span = expr.span })
       [@@inline_ands bindings_of dexpr - dlhs - dexpr']
