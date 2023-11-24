@@ -1,3 +1,11 @@
+struct Wrapped {
+    contents: [u8; 10],
+}
+
+fn wrapped(x: &mut Wrapped) {
+    x.contents[3] = 3;
+}
+
 fn hello(x: &mut [u8]) {
     let y = &[10, 20, 30, 40];
     let mut aa = 3;
