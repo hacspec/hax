@@ -6,6 +6,7 @@ open FStar.Mul
 inline_for_extraction
 let hello (x: t_Slice u8) : FStar.HyperStack.ST.St Prims.unit =
   let y:t_Array u8 (sz 4) =
+    [@inline_let]
     let list = [10uy; 20uy; 30uy; 40uy] in
     FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 4);
     Rust_primitives.Hax.array_of_list list
@@ -23,9 +24,11 @@ let hello (x: t_Slice u8) : FStar.HyperStack.ST.St Prims.unit =
         in
         ())
 
+
 inline_for_extraction
-let main: u8 =
+let main (): FStar.HyperStack.ST.St u8 =
   let (x: t_Array u8 (sz 4)):t_Array u8 (sz 4) =
+    [@inline_let]
     let list = [1uy; 2uy; 3uy; 4uy] in
     FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 4);
     Rust_primitives.Hax.array_of_list list

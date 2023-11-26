@@ -7,6 +7,7 @@ module HS = FStar.HyperStack
 module HST = FStar.HyperStack.ST
 
 
+inline_for_extraction
 class t_IndexMut t_Self t_Idx = {
   out_type: Type0;
   in_range: t_Self -> t_Idx -> Type0;
@@ -14,6 +15,7 @@ class t_IndexMut t_Self t_Idx = {
 }
 
 open Rust_primitives
+inline_for_extraction
 instance impl__index_mut_array t l n: t_IndexMut (t_Array t l) (int_t n)
   = { out_type = B.pointer t;
       in_range = (fun (s: t_Array t l) (i: int_t n) -> v i >= 0 && v i < v l);
@@ -23,6 +25,7 @@ instance impl__index_mut_array t l n: t_IndexMut (t_Array t l) (int_t n)
       );
     }
 
+inline_for_extraction
 instance impl__index_mut_slice t n: t_IndexMut (t_Slice t) (int_t n)
   = { out_type = B.pointer t;
       in_range = (fun (s: t_Slice t) (i: int_t n) -> v i >= 0 && v i < v (spec_length s));

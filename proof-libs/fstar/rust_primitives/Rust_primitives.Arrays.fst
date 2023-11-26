@@ -7,6 +7,7 @@ module B = LowStar.Buffer
 module HS = FStar.HyperStack
 module HST = FStar.HyperStack.ST
 
+inline_for_extraction
 noeq type t_nonempty_Slice t = {
    buffer: B.buffer t;
    len:    len: usize {len == B.len buffer}

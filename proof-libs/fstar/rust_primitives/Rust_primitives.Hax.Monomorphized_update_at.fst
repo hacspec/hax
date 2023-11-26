@@ -31,6 +31,7 @@ let update_slice_at_usize
   = admit ();
     (Some?.v s).buffer.(i) <- v
 
+inline_for_extraction
 let update_array_at_range #n
   (s: t_Array 't 'n)
   (i: t_Range (int_t n) (* TODO *))
@@ -38,6 +39,7 @@ let update_array_at_range #n
   : HST.St unit
   = admit ()
 
+inline_for_extraction
 let update_slice_at_range #n
   (s: t_Slice 't)
   (i: t_Range (int_t n) {(impl_index_range_slice 't n).in_range s i}) 
@@ -45,6 +47,7 @@ let update_slice_at_range #n
   : HST.St unit
   = admit ()
   
+inline_for_extraction
 let update_slice_at_range_to #n
   (s: t_Slice 't)
   (i: t_RangeTo (int_t n) {(impl_index_range_to_slice 't n).in_range s i}) 
@@ -52,6 +55,7 @@ let update_slice_at_range_to #n
   : HST.St unit
   = admit ()
   
+inline_for_extraction
 let update_array_at_range_to #n
   (s: t_Array 't 'n)
   (i: t_RangeTo (int_t n) (* TODO *)) 
@@ -59,6 +63,7 @@ let update_array_at_range_to #n
   : HST.St unit
   = admit ()
   
+inline_for_extraction
 let update_slice_at_range_from #n
   (s: t_Slice 't)
   (i: t_RangeFrom (int_t n) {(impl_index_range_from_slice 't n).in_range s i}) 
@@ -66,6 +71,7 @@ let update_slice_at_range_from #n
   : HST.St unit
   = admit ()
   
+inline_for_extraction
 let update_array_at_range_from #n
   (s: t_Array 't 'n)
   (i: t_RangeFrom (int_t n) (* TODO *)) 
@@ -73,6 +79,7 @@ let update_array_at_range_from #n
   : HST.St unit
   = admit ()
 
+inline_for_extraction
 let update_slice_at_range_full
   (s: t_Slice 't)
   (i: t_RangeFull {(impl_index_range_full_slice 't).in_range s i}) 
@@ -80,6 +87,7 @@ let update_slice_at_range_full
   : HST.St unit
   = admit ()
 
+inline_for_extraction
 let update_array_at_range_full
   (s: t_Array 't 'n)
   (i: t_RangeFull (* TODO *)) 

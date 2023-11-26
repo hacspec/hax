@@ -1,117 +1,248 @@
-# This is a generically useful Makefile for F* that is self-contained
+#############################
+# This is the main Makefile #
+#############################
+
+# This tutorial assumes you have a degree of familiarity with GNU make,
+# including automatic variables such as $@, $< and $^. Some mandatory reading if
+# you are not fluent in GNU make:
+# - https://www.gnu.org/software/make/manual/html_node/Automatic-Variables.html#Automatic-Variables
+# - https://www.gnu.org/software/make/manual/html_node/Pattern-Intro.html#Pattern-Intro
+# - https://www.gnu.org/software/make/manual/html_node/Pattern_002dspecific.html#Pattern_002dspecific
+
+# I usually prefer to rule out OSX make on the basis that it doesn't have the
+# shortest stem rule, which is incredibly useful.
+ifeq (3.81,$(MAKE_VERSION))
+  $(error You seem to be using the OSX antiquated Make version. Hint: brew \
+    install make, then invoke gmake instead of make)
+endif
+
+
+# Main entry points (first one is default)
+# ----------------------------------------
+
+all: dist/Makefile.basic
+
+include Makefile.include
+
+# Definition of F* flags
+# ----------------------
+
+FSTAR_HINTS ?= --use_hints --use_hint_hashes --record_hints
+
+# This flag controls what gets extracted to OCaml. Generally, we don't extract
+# the FStar namespace since it's already extracted and packaged as the ocamlfind
+# package fstar.lib. Here, unlike in -bundle, +Spec matches both Spec and
+# Spec.*
+FSTAR_EXTRACT = --extract 'OCaml:-* +Spec'
+
+# Some reasonable flags to turn on:
+# - 247: checked file not written because some of its dependencies...
+# - 285: missing or file not found, almost always something to act on
+# - 241: stale dependencies, almost always a sign that the build is incorrect
 #
-# It is tempting to factor this out into multiple Makefiles but that
-# makes it less portable, so resist temptation, or move to a more
-# sophisticated build system.
-#
-# We expect FSTAR_HOME to be set to your FSTAR repo/install directory
-# We expect HACL_HOME to be set to your HACL* repo location
-# We expect HAX_PROOF_LIBS to be set to the folder containing core, rust_primitives etc.
-# We expect HAX_LIB to be set to the folder containing the crate `hax-lib`.
-#
-# ROOTS contains all the top-level F* files you wish to verify
-# The default target `verify` verified ROOTS and its dependencies
-# To lax-check instead, set `OTHERFLAGS="--lax"` on the command-line
-#
-#
-# To make F* emacs mode use the settings in this file, you need to
-# add the following lines to your .emacs
-#
-# (setq-default fstar-executable "<YOUR_FSTAR_HOME>/bin/fstar.exe")
-# (setq-default fstar-smt-executable "<YOUR_Z3_HOME>/bin/z3")
-#
-# (defun my-fstar-compute-prover-args-using-make ()
-#   "Construct arguments to pass to F* by calling make."
-#   (with-demoted-errors "Error when constructing arg string: %S"
-#     (let* ((fname (file-name-nondirectory buffer-file-name))
-# 	   (target (concat fname "-in"))
-# 	   (argstr (car (process-lines "make" "--quiet" target))))
-#       (split-string argstr))))
-# (setq fstar-subp-prover-args #'my-fstar-compute-prover-args-using-make)
-#
+# But also:
+# - --cmi, for cross-module inlining, a must-have for anyone who relies on
+#   inline_for_extraction in the presence of interfaces
+# - --cache_checked_modules to rely on a pre-built ulib and krmllib
+# - --cache_dir, to avoid polluting our generated build artifacts outside o
 
-HAX_HOME       ?= $(shell git rev-parse --show-toplevel)
-FSTAR_HOME     ?= $(HAX_HOME)/../../../FStar
-HACL_HOME      ?= $(HAX_HOME)/../../../hacl-star
+# Where is F* ?
+ifndef FSTAR_HOME
+  FSTAR_EXE=$(shell which fstar.exe)
+  ifneq ($(FSTAR_EXE),)
+    # Assuming that fstar.exe is in some ..../bin directory
+    FSTAR_HOME=$(dir $(FSTAR_EXE))/..
+  else
+    $(error "fstar.exe not found, please install FStar")
+  endif
+endif
+export FSTAR_HOME
 
-FSTAR_BIN      ?= $(shell command -v fstar.exe 1>&2 2> /dev/null && echo "fstar.exe" || echo "$(FSTAR_HOME)/bin/fstar.exe")
+FSTAR_NO_FLAGS = $(FSTAR_HOME)/bin/fstar.exe $(FSTAR_HINTS) \
+  --odir obj --cache_checked_modules $(FSTAR_INCLUDES) --cmi \
+  --already_cached 'Prims FStar LowStar C Spec.Loops TestLib WasmSupport' --warn_error '+241@247+285' \
+  --cache_dir obj --hint_dir hints
 
-HAX_PROOF_LIBS ?= $(HAX_HOME)/proof-libs/fstar
-HAX_LIB        ?= $(HAX_HOME)/hax-lib
+# Initial dependency analysis
+# ---------------------------
 
-CACHE_DIR      ?= $(HAX_PROOF_LIBS)/.cache
-HINT_DIR       ?= $(HAX_PROOF_LIBS)/.hints
-
-.PHONY: all verify clean
-
-all:
-	rm -f .depend && $(MAKE) .depend
-	$(MAKE) verify
-
-# By default, we process all the files in the current directory. Here, we
-# *extend* the set of relevant files with the tests.
-ROOTS = $(wildcard *.fst)
-
-PROJECT_ROOT   ?= $(shell git rev-parse --show-toplevel)
-
-FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib \
-	$(HAX_PROOF_LIBS)/rust_primitives $(HAX_PROOF_LIBS)/core \
-	$(HAX_PROOF_LIBS)/hax_lib \
-	$(HAX_LIB)/proofs/fstar/extraction \
-	$(shell find "$(PROJECT_ROOT)" -path '*/proofs/fstar/extraction')
-
-FSTAR_FLAGS = --cmi \
-  --warn_error -331 \
-  --cache_checked_modules \
-  --include "$(KRMLLIB)" \
-  --cache_dir $(CACHE_DIR) \
-  --include /nix/store/ldnbj8nlhi6mqg0c5sh8315r0lp2zhsc-fstar-ed2cb3a8cee6a4233756d681cba2c73d14434bdb/lib/fstar/.cache \
-  $(addprefix --include ,$(FSTAR_INCLUDE_DIRS))
-  # --already_cached "+Prims+FStar+LowStar+C+Spec.Loops+TestLib" \
-
-FSTAR = $(FSTAR_BIN) $(FSTAR_FLAGS)
+# Important to wildcard both fst and fsti since there are fstis without fsts,
+# etc. Note that I'm using wildcard rather than assume $(SHELL) is bash and has
+# fancy globbing rules -- particularly true on Windows.
+FSTAR_ROOTS = $(wildcard $(addsuffix /*.fsti,$(SOURCE_DIRS))) \
+  $(wildcard $(addsuffix /*.fst,$(SOURCE_DIRS))) \
 
 
-.depend: $(CACHE_DIR) $(ROOTS)
-	$(info $(ROOTS))
-	$(FSTAR) --cmi --dep full $(ROOTS) --extract '*' > $@
-	# $(FSTAR) --cmi --dep full $(ROOTS) --extract '* -Prims -LowStar -FStar' > $@
+# This is the only bulletproof way that I know of forcing a regeneration of the
+# .depend file every single time. Why, you may ask? Well, it's frequent enough
+# to add a new file that you don't want to decipher a cryptic error only to
+# remember you should run `make depend`. Also, if you move files around, it's
+# good to force regeneration even though .depend may be more recent than the
+# mtime of the moved files.
+ifndef MAKE_RESTARTS
+.depend: .FORCE
+	$(FSTAR_NO_FLAGS) --dep full $(notdir $(FSTAR_ROOTS)) $(FSTAR_EXTRACT) --extract 'krml:* -FStar.Tactics -FStar.Reflection -FStar.Stubs' --output_deps_to $@
+
+.PHONY: .FORCE
+.FORCE:
+endif
 
 include .depend
 
-$(HINT_DIR):
-	mkdir -p $@
+# Verification
+# ------------
 
-$(CACHE_DIR):
-	mkdir -p $@
+# Everest-specific idiom: all makefiles accept OTHERFLAGS, for instance, if one
+# wants to rebuild with OTHERFLAGS="--admit_smt_queries true". We just don't
+# pass such flags to the dependency analysis.
+FSTAR = $(FSTAR_NO_FLAGS) $(OTHERFLAGS)
 
-$(CACHE_DIR)/%.checked: | .depend $(HINT_DIR) $(CACHE_DIR)
-	$(FSTAR) --cmi $(OTHERFLAGS) $<
+# Creating these directories via a make rule, rather than rely on F* creating
+# them, as two calls to F* might race.
+hints:
+	mkdir $@
 
-verify: $(addsuffix .checked, $(addprefix $(CACHE_DIR)/,$(ROOTS)))
+obj:
+	mkdir $@
 
-# Targets for interactive mode
+# We allow some specific pattern rules to be added here, relying on the shortest
+# stem rule for them to take precedence. For instance, you may want to do:
+#
+# obj/Bignum.Impl.fst.checked: FSTAR_FLAGS = "--query_stats"
+#
+# (Note: for options that control the SMT encoding, such as
+# --smtencoding.nl_arith_repr native, please make sure you also define them in
+# Makefile.common for %.fst-in otherwise you'll observe different behaviors
+# between interactive and batch modes.)
+#
+# By default, however, variables are inherited through the dependencies, meaning
+# that the example above would normally set these FSTAR_FLAGS for any .checked
+# that is rebuilt because it's a dependency of Bignum.Impl.fst.checked.
+#
+# To avoid this unpleasant behavior, the most general pattern rule (longest
+# stem) also defines a suitable default value for FSTAR_FLAGS.
+%.checked: FSTAR_FLAGS=
 
-%.fst-in:
-	$(info $(FSTAR_FLAGS) \
-	  $(ENABLE_HINTS) --hint_file $(HINT_DIR)/$(basename $@).fst.hints)
+# Note: F* will not change the mtime of a checked file if it is
+# up-to-date (checksum matches, file unchanged), but this will confuse
+# make and result in endless rebuilds. So, we touch that file.
+%.checked: | hints obj
+	$(FSTAR) $< $(FSTAR_FLAGS) && touch -c $@
 
-%.fsti-in:
-	$(info $(FSTAR_FLAGS) \
-	  $(ENABLE_HINTS) --hint_file $(HINT_DIR)/$(basename $@).fsti.hints)
+# Extraction
+# ----------
+
+# A few mismatches here between the dependencies present in the .depend and the
+# expected F* invocation. In .depend:
+#
+# obj/Bignum_Impl.ml: obj/Bignum.Impl.fst.checked ... more dependencies ...
+#
+# But F* wants (remember that F* searches for source files anywhere on the
+# include path):
+#
+# fstar Bignum.Impl.fst --extract_module BigNum.Impl
+#
+# We use basename because we may also extract krml files from .fsti.checked
+# files (not true for OCaml, we don't extract mlis from fstis).
+.PRECIOUS: obj/%.ml
+obj/%.ml:
+	$(FSTAR) $(notdir $(subst .checked,,$<)) --codegen OCaml \
+	--extract_module $(basename $(notdir $(subst .checked,,$<)))
 
 .PRECIOUS: obj/%.krml
-%.krml:
-	$(FSTAR) --cmi --codegen krml --extract_module "Attributes" Attributes.fst
-	# $(FSTAR) $(notdir $(subst .checked,,$<)) --codegen krml --extract_module $<
-	# --extract_module $(basename $(notdir $(subst .checked,,$<)))
+obj/%.krml:
+	$(FSTAR) $(notdir $(subst .checked,,$<)) --codegen krml \
+	--extract_module $(basename $(notdir $(subst .checked,,$<)))
+
+obj/Specs_Driver.ml: specs/ml/Specs_Driver.ml
+	# This ensures that all the source directories are not polluted with
+	# build artifacts
+	cp $< $@
+
+# F* --> C
+# --------
+
+KRML=$(KRML_HOME)/krml
+
+# Note: the implementation of the intrinsic uses external linkage, but you could
+# easily turn this file into a .h, use -add-include '"Impl_Bignum_Intrinsics.h"'
+# and pass -static-header Impl.Bignum.Intrinsics as described in the
+# documentation.
+
+HAND_WRITTEN_C		= Lib.PrintBuffer Lib.RandomBuffer.System
+
+# Always copied into the destination directory, always passed to karamel.
+HAND_WRITTEN_FILES 	= $(wildcard $(LIB_DIR)/c/*.c)
+
+# Always copied into the destination directory, not passed to karamel.
+HAND_WRITTEN_H_FILES	= $(filter-out $(LIB_DIR)/c/libintvector_debug.h, \
+				$(wildcard $(LIB_DIR)/c/*.h))
+
+# This is now the preferred and recommended way to compile C code with KaRaMeL.
+#
+# KaRaMeL (via -skip-compilation) only generates a stub Makefile in dist/,
+# instead of acting as a C compilation driver like it did before. The Makefile
+# that is generated by KaRaMeL is basic, but takes into account:
+# - the -o option to determine what is being built
+# - the C files passed on the command line, which will be linked together
+# - C compiler flags passed to KaRaMeL via -ccopts
+#
+# This Makefile is called Makefile.basic and should be enough for all your basic
+# needs. If you need something more fancy, you can easily author your own custom
+# dist/Makefile, which includes Makefile.basic, then proceeds to redefine /
+# tweak some variables.
+#
+# Note that you are of course more than welcome to define your own
+# CMakeLists.txt or whatever your favorite build system is: this tutorial only
+# describes the supported canonical way of compiling code.
+#
+# See the advanced topics section for an in-depth explanation of how the -bundle
+# option works. We also use -minimal.
+dist/Makefile.basic: $(filter-out %prims.krml,$(ALL_KRML_FILES)) $(HAND_WRITTEN_C_FILES)
+	mkdir -p $(dir $@)
+#	cp $(HAND_WRITTEN_C_FILES) $(dir $@)
+	$(KRML) -tmpdir $(dir $@) -skip-compilation \
+	  $(filter %.krml,$^) \
+	  -warn-error @4@5@18 \
+	  -fparentheses \
+	  -bundle 'LowStar.*,Prims' \
+	  -bundle Attributes=Rust_primitives.*,Rust_primitives,Core.*,Core,Hax_lib.*,Hax_lib,Attributes \
+	  -minimal \
+	  -bundle 'FStar.*' \
+	  -add-include '<stdint.h>' \
+	  -add-include '"krml/internal/target.h"' \
+	  $(notdir $(HAND_WRITTEN_C_FILES)) \
+	  -bundle Hacl.Spec.*,Spec.*[rename=Hacl_Spec] \
+	  -bundle Lib.*[rename=Hacl_Lib] \
+	  -drop Lib.IntVector.Intrinsics \
+	  -drop Lib.IntTypes.Intrinsics \
+	  -drop Lib.IntTypes.Intrinsics_128 \
+	  -fparentheses -fno-shadow -fcurly-braces -fnoreturn-else \
+	  -bundle Prims,C.Failure,C,C.String,C.Loops,Spec.Loops,C.Endianness,FStar.*,LowStar.*[rename=Hacl_Krmllib] \
+	  -bundle 'Meta.*' \
+	  -minimal \
+	  -add-early-include '<string.h>' \
+	  -add-early-include '"krml/internal/types.h"' \
+	  -add-early-include '"krml/lowstar_endianness.h"' \
+	  -dmonomorphization
 
 
+# Compiling the generated C code
+# ------------------------------
 
-# Clean targets
+# Here we do a recursive make invocation because a new dependency analysis needs
+# to be performed on the generated C files. This recursive make deals with all
+# the files copied in dist, which includes karamel-generated and hand-written,
+# copied files from HAND_WRITTEN_C_FILES.
 
-SHELL=/usr/bin/env bash
+dist/libbignum.a: dist/Makefile.basic
+	$(MAKE) -C $(dir $@) -f $(notdir $<)
 
-clean:
-	rm -rf $(CACHE_DIR)/*
-	rm *.fst
+# Compiling the hand-written test
+# -------------------------------
+
+CFLAGS += -I dist -I $(KRML_HOME)/include
+
+tests/c-tests.exe: tests/c-tests.o
+	$(CC) $^ -o $@
+
