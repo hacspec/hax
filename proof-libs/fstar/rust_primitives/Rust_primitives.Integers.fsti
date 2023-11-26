@@ -6,6 +6,7 @@ module LI = Lib.IntTypes
 
 #set-options "--max_fuel 0 --max_ifuel 1 --z3rlimit 20"
 
+noextract
 val pow2_values: x:nat -> Lemma
   (let p = pow2 x in
    match x with
@@ -29,198 +30,331 @@ val pow2_values: x:nat -> Lemma
    | _ -> True)
   [SMTPat (pow2 x)]
 
+inline_for_extraction
 type inttype = LI.inttype
+inline_for_extraction
 let unsigned = LI.unsigned
+inline_for_extraction
 let signed = LI.signed
+inline_for_extraction
 type uinttype = t:inttype{unsigned t}
+inline_for_extraction
 let int_t t = LI.int_t t LI.PUB
 
+inline_for_extraction
 let bits t = LI.bits t
+inline_for_extraction
 val usize_inttype: t:inttype{unsigned t /\ (t = LI.U32 \/ t = LI.U64)}
+inline_for_extraction
 val isize_inttype: t:inttype{signed t /\ (t = LI.S32 \/ t = LI.S64)}
 
+inline_for_extraction
 type u8 = int_t LI.U8 
+inline_for_extraction
 type i8 = int_t LI.S8
+inline_for_extraction
 type u16 = int_t LI.U16
+inline_for_extraction
 type i16 = int_t LI.S16
+inline_for_extraction
 type u32 = int_t LI.U32
+inline_for_extraction
 type i32 = int_t LI.S32
+inline_for_extraction
 type u64 = int_t LI.U64
+inline_for_extraction
 type i64=  int_t LI.S64
+inline_for_extraction
 type u128 = int_t LI.U128
+inline_for_extraction
 type i128 = int_t LI.S128
+inline_for_extraction
 unfold type usize = u32 // int_t usize_inttype
+inline_for_extraction
 unfold type isize = i32 //int_t isize_inttype
 
+inline_for_extraction
 let minint (t:LI.inttype) =
   if unsigned t then 0 else -(pow2 (bits t - 1))
+inline_for_extraction
 let maxint (t:LI.inttype) =
   if unsigned t then pow2 (bits t) - 1
   else pow2 (bits t - 1) - 1
+inline_for_extraction
 let modulus (t:LI.inttype) = pow2 (bits t)
 
+inline_for_extraction
 let max_usize = maxint LI.U32
+inline_for_extraction
 let max_isize = maxint LI.S32
 
 //let range_bits (n:int) (n:bits) : bool =
 //  minint t <= n && n <= maxint t
 
+inline_for_extraction
 let range (n:int) (t:inttype) : bool =
   minint t <= n && n <= maxint t
+inline_for_extraction
 type range_t (t:inttype) = x:int{range x t}
 
 [@(strict_on_arguments [0])]
+noextract
 let v (#t:inttype) (x:int_t t) : range_t t = LI.v #t #LI.PUB x
 
-[@(strict_on_arguments [0])]
+inline_for_extraction
 val mk_int (#t:inttype) (n:range_t t) : int_t t
 
-let sz (n:range_t usize_inttype) : usize = mk_int n
-let isz (n:range_t isize_inttype) : isize = mk_int n
+noextract
+val mk_int_lemma (#t:inttype) (n:range_t t) :
+  Lemma (mk_int #t n == LI.mk_int #t #LI.PUB n)
+  [SMTPat (mk_int #t n)]
+  
+inline_for_extraction noextract
+val sz (n:range_t LI.U32) : usize
 
+inline_for_extraction noextract
+val sz_lemma (n:range_t LI.U32) :
+  Lemma (sz n == mk_int n)
+  [SMTPat (sz n)]
+
+inline_for_extraction
+val isz (n:range_t LI.S32) : isize
+
+inline_for_extraction
+val isz_lemma (n:range_t LI.S32) :
+  Lemma (isz n == mk_int n)
+  [SMTPat (isz n)]
+
+noextract
 val mk_int_v_lemma: #t:inttype -> a:int_t t -> Lemma
   (mk_int #t (v #t a) == a)
   [SMTPat (mk_int #t (v #t a))]
 
+noextract
 val v_mk_int_lemma: #t:inttype -> n:range_t t -> Lemma
   (v #t (mk_int #t n) == n)
   [SMTPat (v #t (mk_int #t n))]
 
 (* Wrap-around modulo: wraps into [-p/2; p/2[ *)
+noextract
 let op_At_Percent (v:int) (p:int{p>0/\ p%2=0}) : Tot int =
   let m = v % p in if m >= p/2 then m - p else m
 
 [@(strict_on_arguments [0])]
+noextract
 let op_At_Percent_Dot x t : range_t t =
   if unsigned t then x % modulus t
   else x @% modulus t
 
-let cast (#t:inttype) (#t':inttype)
-    (u1:int_t t{range (v u1) t'}) =
-    mk_int #t' (v u1)
+inline_for_extraction
+val cast (#t:inttype) (#t':inttype)
+         (u1:int_t t{range (v u1) t'}):
+         int_t t'
 
-let cast_mod (#t:inttype) (#t':inttype)
-    (u1:int_t t) = 
-    mk_int #t' (v u1 @%. t')
+noextract
+val cast_lemma (#t:inttype) (#t':inttype)
+    (u1:int_t t{range (v u1) t'}):
+    Lemma (cast #t #t' u1 == mk_int #t' (v u1))
+    [SMTPat (cast #t #t' u1)]
+
+inline_for_extraction
+val cast_mod (#t:inttype) (#t':inttype)
+         (u1:int_t t) : int_t t'
+
+noextract 
+val cast_mod_lemma (#t:inttype) (#t':inttype)
+    (u1:int_t t) : 
+    Lemma (cast_mod #t #t' u1 == mk_int #t' (v u1 @%. t'))
+    [SMTPat (cast_mod #t #t' u1)]
 
 /// Arithmetic operations
 /// 
-let add_mod (#t:inttype) (a:int_t t) (b:int_t t) =
-    mk_int #t ((v a + v b) @%. t)
 
-val add_mod_equiv_lemma: #t:uinttype
+
+inline_for_extraction
+val add_mod (#t:uinttype) (a:int_t t) (b:int_t t) : int_t t
+
+noextract
+val add_mod_lemma: #t:uinttype
   -> a:int_t t
   -> b:int_t t
   -> Lemma
-    (add_mod a b == LI.add_mod #t #LI.PUB a b)
+    (add_mod a b == mk_int #t ((v a + v b) @%. t))
+    [SMTPat (add_mod #t a b)]
+    
+inline_for_extraction
+val add (#t:inttype) (a:int_t t)
+        (b:int_t t{range (v a + v b) t}) : int_t t
 
-let add (#t:inttype) (a:int_t t)
-        (b:int_t t{range (v a + v b) t}) =
-    mk_int #t (v a + v b)
-
-val add_equiv_lemma: #t:uinttype
+noextract
+val add_lemma: #t:uinttype
   -> a:int_t t
   -> b:int_t t{range (v a + v b) t}
   -> Lemma
-    (add a b == LI.add #t #LI.PUB a b)
+    (add a b == mk_int #t (v a + v b))
+    [SMTPat (add #t a b)]
 
-let incr (#t:inttype) (a:int_t t{v a < maxint t}) =
-    mk_int #t (v a + 1)
+inline_for_extraction
+val incr (#t:inttype) (a:int_t t{v a < maxint t}) : int_t t
 
-val incr_equiv_lemma: #t:inttype
+noextract
+val incr_lemma: #t:inttype
   -> a:int_t t{v a < maxint t}
-  -> Lemma (incr a == LI.incr #t #LI.PUB a)
+  -> Lemma (incr a == mk_int #t (v a + 1))
+    [SMTPat (incr #t a)]
 
-let mul_mod (#t:inttype) (a:int_t t)
-            (b:int_t t) =
-            mk_int #t (v a * v b @%. t)
-
-val mul_mod_equiv_lemma: #t:uinttype{not (LI.U128? t)}
+inline_for_extraction
+val mul_mod (#t:uinttype{not (LI.U128? t)}) (a:int_t t)
+            (b:int_t t) : int_t t
+            
+noextract
+val mul_mod_lemma: #t:uinttype{not (LI.U128? t)}
   -> a:int_t t
   -> b:int_t t
-  -> Lemma (mul_mod a b == LI.mul_mod #t #LI.PUB a b)
+  -> Lemma (mul_mod a b == mk_int #t (v a * v b @%. t))
+    [SMTPat (mul_mod #t a b)]
 
-let mul (#t:inttype) (a:int_t t)
-        (b:int_t t{range (v a * v b) t}) =
-        mk_int #t (v a * v b)
+inline_for_extraction
+val mul (#t:uinttype{not (LI.U128? t)}) (a:int_t t)
+        (b:int_t t{range (v a * v b) t}) : int_t t
 
-val mul_equiv_lemma: #t:uinttype{not (LI.U128? t)}
+noextract
+val mul_lemma: #t:uinttype{not (LI.U128? t)}
   -> a:int_t t
   -> b:int_t t{range (v a * v b) t}
-  -> Lemma (mul a b == LI.mul #t #LI.PUB a b)
-
-let sub_mod (#t:inttype) (a:int_t t) (b:int_t t) =
-    mk_int #t ((v a - v b) @%. t)
-
-val sub_mod_equiv_lemma: #t:uinttype
+  -> Lemma (mul a b == mk_int #t (v a * v b))
+    [SMTPat (mul #t a b)]
+  
+inline_for_extraction
+val sub_mod (#t:inttype) (a:int_t t) (b:int_t t): int_t t
+ 
+noextract
+val sub_mod_lemma: #t:uinttype
   -> a:int_t t
   -> b:int_t t
   -> Lemma
-    (sub_mod a b == LI.sub_mod #t #LI.PUB a b)
+    (sub_mod a b == mk_int #t ((v a - v b) @%. t))
+    [SMTPat (sub_mod a b)]
 
-let sub (#t:inttype) (a:int_t t)
-        (b:int_t t{range (v a - v b) t}) =
-    mk_int #t (v a - v b)
+inline_for_extraction
+val sub (#t:inttype) (a:int_t t)
+        (b:int_t t{range (v a - v b) t}) : int_t t
 
-val sub_equiv_lemma: #t:uinttype
+noextract
+val sub_lemma: #t:uinttype
   -> a:int_t t
   -> b:int_t t{range (v a - v b) t}
   -> Lemma
-    (sub a b == LI.sub #t #LI.PUB a b)
+    (sub a b ==  mk_int #t (v a - v b))
+    [SMTPat (sub #t a b)]
+    
+inline_for_extraction
+val decr (#t:inttype) (a:int_t t{minint t < v a}) : int_t t
 
-let decr (#t:inttype) (a:int_t t{minint t < v a}) =
-    mk_int #t (v a - 1)
-
-val decr_equiv_lemma: #t:inttype
+noextract
+val decr_lemma: #t:inttype
   -> a:int_t t{minint t < v a}
-  -> Lemma (decr a == LI.decr #t #LI.PUB a)
+  -> Lemma (decr a == mk_int #t (v a - 1))
+    [SMTPat (decr #t a)]
 
-let div (#t:inttype) (a:int_t t) (b:int_t t{v b <> 0}) =
-  assume(unsigned t \/ range (v a / v b) t);
-  mk_int #t (v a / v b)
-  
-val div_equiv_lemma: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}
+
+inline_for_extraction
+val div (#t:inttype) (a:int_t t) (b:int_t t{v b <> 0}): int_t t
+
+// assume (unsigned t \/ range (v a / v b) t);
+noextract
+val div_lemma: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}
   -> a:int_t t
   -> b:int_t t{v b <> 0 /\ (unsigned t \/ range FStar.Int.(v a / v b) t)}
-  -> Lemma (div a b == LI.div a b)
+  -> Lemma (div a b == mk_int #t (v a / v b))
+    [SMTPat (div #t a b)]
 
-let mod (#t:inttype) (a:int_t t) (b:int_t t{v b <> 0}) =
-  mk_int #t (v a % v b)
+inline_for_extraction
+val mod (#t:inttype) (a:int_t t) (b:int_t t{v b <> 0}) : int_t t
 
-
-val mod_equiv_lemma: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}
+noextract
+val mod_lemma: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}
   -> a:int_t t
   -> b:int_t t{v b <> 0 /\ (unsigned t \/ range FStar.Int.(v a / v b) t)}
-  -> Lemma (mod a b == LI.mod a b)
+  -> Lemma (mod a b == mk_int #t (v a % v b))
+
   
 
 /// Comparison Operators
 /// 
-let eq (#t:inttype) (a:int_t t) (b:int_t t) = v a = v b
-let ne (#t:inttype) (a:int_t t) (b:int_t t) = v b <> v b
-let lt (#t:inttype) (a:int_t t) (b:int_t t) = v a < v b
-let lte (#t:inttype) (a:int_t t) (b:int_t t) = v a <= v b
-let gt (#t:inttype) (a:int_t t) (b:int_t t) = v a > v b
-let gte (#t:inttype) (a:int_t t) (b:int_t t) = v a >= v b
 
+inline_for_extraction
+val eq (#t:inttype) (a:int_t t) (b:int_t t): bool
+noextract
+val eq_lemma (#t:inttype) (a:int_t t) (b:int_t t):
+  Lemma (eq #t a b == (v a = v b))
+  [SMTPat (eq #t a b)]
+
+inline_for_extraction
+val ne (#t:inttype) (a:int_t t) (b:int_t t): bool
+noextract
+val ne_lemma (#t:inttype) (a:int_t t) (b:int_t t):
+  Lemma (ne #t a b == (v a <> v b))
+  [SMTPat (ne #t a b)]
+
+inline_for_extraction
+val lt (#t:inttype) (a:int_t t) (b:int_t t): bool
+noextract
+val lt_lemma (#t:inttype) (a:int_t t) (b:int_t t):
+  Lemma (lt #t a b == (v a < v b))
+  [SMTPat (lt #t a b)]
+
+inline_for_extraction
+val lte (#t:inttype) (a:int_t t) (b:int_t t): bool
+noextract
+val lte_lemma (#t:inttype) (a:int_t t) (b:int_t t):
+  Lemma (lte #t a b == (v a <= v b))
+  [SMTPat (lte #t a b)]
+
+inline_for_extraction
+val gt (#t:inttype) (a:int_t t) (b:int_t t): bool
+noextract
+val gt_lemma (#t:inttype) (a:int_t t) (b:int_t t):
+  Lemma (gt #t a b == (v a > v b))
+  [SMTPat (gt #t a b)]
+
+inline_for_extraction
+val gte (#t:inttype) (a:int_t t) (b:int_t t): bool
+noextract
+val gte_lemma (#t:inttype) (a:int_t t) (b:int_t t):
+  Lemma (gte #t a b == (v a >= v b))
+  [SMTPat (gte #t a b)]
 
 /// Bitwise Operations
 
+inline_for_extraction
+val ones (#t:inttype) : n:int_t t
 
-let ones (#t:inttype) : n:int_t t =
-  if unsigned t then mk_int #t (pow2 (bits t) - 1)
-  else mk_int #t (-1)
+noextract
+val ones_lemma (#t:inttype) : Lemma
+  (ones #t == (if unsigned t then mk_int #t (pow2 (bits t) - 1)
+               else mk_int #t (-1)))
+  [SMTPat (ones #t)]
 
-let zero (#t:inttype) : n:int_t t =
-  mk_int #t 0
+inline_for_extraction
+val zero (#t:inttype) : n:int_t t
 
+inline_for_extraction
+val zero_lemma (#t:inttype) :
+  Lemma (zero #t == mk_int 0)
+  [SMTPat (zero #t)]
+
+
+inline_for_extraction
 val lognot: #t:inttype -> int_t t -> int_t t
 val lognot_lemma: #t:inttype -> a:int_t t -> Lemma
   (lognot a == LI.lognot #t #LI.PUB a /\
    lognot #t zero == ones /\
    lognot #t ones == zero /\
    lognot (lognot a) == a)
-
+  [SMTPat (lognot #t a)]
+  
+inline_for_extraction
 val logxor: #t:inttype
   -> int_t t
   -> int_t t
@@ -231,25 +365,31 @@ val logxor_lemma: #t:inttype -> a:int_t t -> b:int_t t -> Lemma
    a `logxor` (b `logxor` a) == b /\
    a `logxor` zero == a /\
    a `logxor` ones == lognot a)
-    
+  [SMTPat (logxor #t a b)]
+  
+inline_for_extraction
 val logand: #t:inttype
   -> int_t t
   -> int_t t
   -> int_t t
 
+noextract
 val logand_lemma: #t:inttype -> a:int_t t -> b:int_t t ->
   Lemma (logand a b == LI.logand #t #LI.PUB a b /\
          logand a zero == zero /\
          logand a ones == a)
+  [SMTPat (logand #t a b)]
 
+noextract
 val logand_mask_lemma: #t:inttype
   -> a:int_t t
   -> m:pos{m < bits t} ->
   Lemma (pow2 m < maxint t /\
-         logand a (sub_mod #t (mk_int #t (pow2 m)) (mk_int #t 1)) ==
+         logand a (sub #t (mk_int #t (pow2 m)) (mk_int #t 1)) ==
          mk_int (v a % pow2 m))
-  [SMTPat (logand #t a (sub_mod #t (mk_int #t (pow2 m)) (mk_int #t 1)))]
+  [SMTPat (logand #t a (sub #t (mk_int #t (pow2 m)) (mk_int #t 1)))]
 
+inline_for_extraction
 val logor: #t:inttype
   -> int_t t
   -> int_t t
@@ -259,74 +399,85 @@ val logor_lemma: #t:inttype -> a:int_t t -> b:int_t t ->
   Lemma (logor a b == LI.logor #t #LI.PUB a b /\
          logor a zero == a /\
          logor a ones == ones)
+  [SMTPat (logor #t a b)]
 
 unfold type shiftval (t:inttype) (t':inttype) =
      b:int_t t'{v b >= 0 /\ v b < bits t}
 unfold type rotval (t:inttype) (t':inttype) =
      b:int_t t'{v b > 0 /\ v b < bits t}
 
-let shift_right (#t:inttype) (#t':inttype)
-    (a:int_t t) (b:shiftval t t') =
-    LI.shift_right_lemma #t #LI.PUB a (LI.size (v b));
-    mk_int #t (v a / pow2 (v b))
+inline_for_extraction
+val shift_right (#t:inttype) (#t':inttype)
+    (a:int_t t) (b:shiftval t t') : int_t t
 
-val shift_right_equiv_lemma: #t:inttype -> #t':inttype
-  -> a:int_t t -> b:shiftval t t'
-  -> Lemma
-    (v (cast b <: u32) < bits t /\
-     shift_right #t #t' a b ==
-     LI.shift_right #t #LI.PUB a (cast b))
+inline_for_extraction
+val shift_right_lemma (#t:inttype) (#t':inttype)
+    (a:int_t t) (b:shiftval t t') :
+    Lemma (LI.shift_right_lemma #t #LI.PUB a (LI.size (v b));
+           shift_right #t #t' a b ==
+           mk_int #t (v a / pow2 (v b)))
+    [SMTPat (shift_right #t #t' a b)]
      
-let shift_left (#t:inttype) (#t':inttype)
-    (a:int_t t{v a >= 0}) (b:shiftval t t') =
-    let x:range_t t = (v a * pow2 (v b)) @%. t in
-    mk_int #t x
+inline_for_extraction
+val shift_left (#t:inttype) (#t':inttype)
+    (a:int_t t{v a >= 0}) (b:shiftval t t') : int_t t
 
-val shift_left_equiv_lemma: #t:inttype -> #t':inttype
-  -> a:int_t t -> b:shiftval t t'
+noextract
+val shift_left_lemma: #t:inttype -> #t':inttype
+  -> a:int_t t{v a >= 0} -> b:shiftval t t'
   -> Lemma
-    ((v a >= 0 /\ v a * pow2 (v b) <= maxint t) ==>
-     (v (cast b <: u32) < bits t /\
-      shift_left #t #t' a b ==
-      LI.shift_left #t #LI.PUB a (cast b)))
+    (let x:range_t t = (v a * pow2 (v b)) @%. t in
+     shift_left #t #t' a b = mk_int x) 
+  [SMTPat (shift_left #t #t' a b)]
 
+inline_for_extraction
 val rotate_right: #t:uinttype -> #t':inttype
   -> a:int_t t
   -> rotval t t'
   -> int_t t
 
-val rotate_right_equiv_lemma: #t:uinttype -> #t':inttype
+noextract
+val rotate_right_lemma: #t:uinttype -> #t':inttype
   -> a:int_t t -> b:rotval t t'
   -> Lemma (v (cast b <: u32) > 0 /\ 
            rotate_right a b ==
            LI.rotate_right #t #LI.PUB a (cast b))
-  
+    [SMTPat (rotate_right #t #t' a b)]
+
+inline_for_extraction
 val rotate_left: #t:uinttype -> #t':inttype
   -> a:int_t t
   -> rotval t t'
   -> int_t t
 
-val rotate_left_equiv_lemma: #t:uinttype -> #t':inttype
+inline_for_extraction
+val rotate_left_lemma: #t:uinttype -> #t':inttype
   -> a:int_t t -> b:rotval t t'
   -> Lemma (v (cast b <: u32) > 0 /\ 
            rotate_left a b ==
            LI.rotate_left #t #LI.PUB a (cast b))
+   [SMTPat (rotate_left #t #t' a b)]
 
+inline_for_extraction
 let shift_right_i (#t:inttype) (#t':inttype) (s:shiftval t t') (u:int_t t) : int_t t = shift_right u s
 
+inline_for_extraction
 let shift_left_i (#t:inttype) (#t':inttype) (s:shiftval t t') (u:int_t t{v u >= 0}) : int_t t = shift_left u s
 
+inline_for_extraction
 let rotate_right_i (#t:uinttype) (#t':inttype) (s:rotval t t') (u:int_t t) : int_t t = rotate_right u s
 
+inline_for_extraction
 let rotate_left_i (#t:uinttype) (#t':inttype) (s:rotval t t') (u:int_t t) : int_t t = rotate_left u s
 
-let abs_int (#t:inttype) (a:int_t t{minint t < v a}) =
-    mk_int #t (abs (v a))
+inline_for_extraction
+val abs_int (#t:inttype) (a:int_t t{minint t < v a}) : int_t t
 
-val abs_int_equiv_lemma: #t:inttype{signed t /\ not (LI.S128? t)}
+noextract
+val abs_int_lemma: #t:inttype{signed t /\ not (LI.S128? t)}
   -> a:int_t t{minint t < v a}
-  -> Lemma (abs_int a == LI.ct_abs #t #LI.PUB a)
-
+  -> Lemma (abs_int a == mk_int #t (abs (v a)))
+  [SMTPat (abs_int #t a)]
 
 ///
 /// Operators available for all machine integers

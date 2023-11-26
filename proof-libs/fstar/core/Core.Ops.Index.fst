@@ -6,6 +6,7 @@ module B = LowStar.Buffer
 module HS = FStar.HyperStack
 module HST = FStar.HyperStack.ST
 
+inline_for_extraction
 class t_Index t_Self t_Idx = {
   f_Output: Type;
   in_range: t_Self -> t_Idx -> Type0;

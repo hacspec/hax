@@ -1,5 +1,57 @@
-USER_TARGET=
-USER_CFLAGS=
-USER_C_FILES=
-ALL_C_FILES=
-ALL_H_FILES=
+# This Makefile may be included from any sub-directory, provided BIGNUM_HOME is
+# suitably defined, in order to define the %.fst-in and %.fsti-in targets for
+# computing the arguments to the interactive mode.
+
+HAX_HOME       ?= /Users/bhargava/Desktop/repositories/hax
+FSTAR_HOME     ?= $(HAX_HOME)/../FStar
+KRML_HOME      ?= $(HAX_HOME)/../karamel
+HACL_HOME      ?= $(HAX_HOME)/../hacl-star
+
+FSTAR_BIN      ?= $(shell command -v fstar.exe 1>&2 2> /dev/null && echo "fstar.exe" || echo "$(FSTAR_HOME)/bin/fstar.exe")
+
+HAX_PROOF_LIBS ?= $(HAX_HOME)/proof-libs/fstar
+HAX_LIB        ?= $(HAX_HOME)/hax-lib
+
+# Where is F* ?
+ifndef FSTAR_HOME
+  FSTAR_EXE=$(shell which fstar.exe)
+  ifneq ($(FSTAR_EXE),)
+    # Assuming that fstar.exe is in some ..../bin directory
+    FSTAR_HOME=$(dir $(FSTAR_EXE))/..
+  else
+    $(error "fstar.exe not found, please install FStar")
+  endif
+endif
+export FSTAR_HOME
+
+ifeq (,$(KRML_HOME))
+  $(error KRML_HOME is not defined)
+endif
+
+# I prefer to always check all fst files in the source directories; otherwise,
+# it's too easy to add a new file only to find out later that it's not being
+# checked. Note the usage of BIGNUM_HOME
+SOURCE_DIRS = .
+
+# We want our source tree on the include path, along with pre-built ulib and
+# krmllib so that F* can reuse these build artifacts rather than reverify F* and
+# krmllib as part of this build (which would be doomed to fail since there's a
+# lot of trickery involved in building ulib -- better leave it up to the F*
+# build!).
+#
+# Also note that we have our own directory on the include path for the sake of
+# the interactive mode, for finding checked files for our own F* files.
+INCLUDE_DIRS = \
+  $(SOURCE_DIRS) \
+  $(KRML_HOME)/krmllib \
+  $(KRML_HOME)/krmllib/obj \
+  $(HACL_HOME)/lib \
+  $(HAX_PROOF_LIBS)/rust_primitives $(HAX_PROOF_LIBS)/core $(HAX_PROOF_LIBS)/hax_lib \
+  $(HAX_LIB)/proofs/fstar/extraction
+
+
+FSTAR_INCLUDES = $(addprefix --include ,$(INCLUDE_DIRS))
+
+%.fst-in %.fsti-in:
+	@echo $(FSTAR_INCLUDES)
+
