@@ -28,7 +28,7 @@ inline_for_extraction
 instance array_to_slice_unsize t n: unsize_tc (t_Array t n) = {
   output = t_Slice t;
   unsize = (fun (arr: t_Array t n) -> 
-    Some {buffer = arr; len = n}
+    {buffer = arr; len = n}
   );
 }
 

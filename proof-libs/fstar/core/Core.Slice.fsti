@@ -31,7 +31,7 @@ inline_for_extraction
 instance impl__index t n: t_Index (t_Slice t) (int_t n)
   = { f_Output = t;
       in_range = (fun (s: t_Slice t) (i: int_t n) -> v i >= 0 && v i < v (spec_length s));
-      f_index = (fun (Some s) i -> 
+      f_index = (fun s i -> 
         admit ();
         s.buffer.(i)
       );

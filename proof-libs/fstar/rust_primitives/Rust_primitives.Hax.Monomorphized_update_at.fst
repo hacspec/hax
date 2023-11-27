@@ -8,12 +8,12 @@ module B = LowStar.Buffer
 module HS = FStar.HyperStack
 module HST = FStar.HyperStack.ST
 
-// let update_at_usize
-//   (s: t_Slice 't)
-//   (i: usize {i <. spec_length s}) 
-//   (v: 't)
-//   : HST.St unit//(t_Array 't (length s))
-//   = update_at s i v
+let update_at_usize
+   (s: t_Slice 't)
+   (i: usize {i <. spec_length s}) 
+   (v: 't)
+   : HST.St unit//(t_Array 't (length s))
+   = update_at s i v
 
 inline_for_extraction
 let update_array_at_usize
@@ -29,7 +29,7 @@ let update_slice_at_usize
   (i: usize {i <. spec_length s}) // {i <. 'l}) 
   (v: 't): HST.St unit
   = admit ();
-    (Some?.v s).buffer.(i) <- v
+    (s).buffer.(i) <- v
 
 inline_for_extraction
 let update_array_at_range #n

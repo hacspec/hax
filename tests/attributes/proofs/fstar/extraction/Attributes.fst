@@ -3,7 +3,14 @@ module Attributes
 open Core
 open FStar.Mul
 
-inline_for_extraction
+let allocating (x y: u8) : FStar.HyperStack.ST.St (t_Array u8 (sz 2)) =
+  [@inline_let]
+  let list = [x; y] in
+  FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 2);
+  Rust_primitives.Hax.array_of_list list
+
+let pure (x y: u8) : u8 = ((x +! y <: u8) +! y <: u8) +! x
+
 let hello (x: t_Slice u8) : FStar.HyperStack.ST.St Prims.unit =
   let y:t_Array u8 (sz 4) =
     [@inline_let]
@@ -17,19 +24,17 @@ let hello (x: t_Slice u8) : FStar.HyperStack.ST.St Prims.unit =
     (Core.Slice.impl__len x <: usize)
     (fun i ->
         let i:usize = i in
-        let lhs:u8 = x.[ i ] in
-        let rhs:u8 = y.[ i ] in
-        let _:Prims.unit =
-          Rust_primitives.Hax.Monomorphized_update_at.update_slice_at_usize x i (lhs +! rhs <: u8)
-        in
-        ())
-
+        Rust_primitives.Hax.Monomorphized_update_at.update_slice_at_usize x
+          i
+          ((x.[ i ] <: u8) +! (y.[ i ] <: u8) <: u8)
+        <:
+        Prims.unit)
 
 inline_for_extraction
-let main (): FStar.HyperStack.ST.St u8 =
+let main (unit: Prims.unit) : FStar.HyperStack.ST.StackInline u8 (fun _ -> True) (fun _ _ _ -> True) =
   let (x: t_Array u8 (sz 4)):t_Array u8 (sz 4) =
-    [@inline_let]
-    let list = [1uy; 2uy; 3uy; 4uy] in
+   [@inline_let]
+   let list = [1uy; 2uy; 3uy; 4uy] in
     FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 4);
     Rust_primitives.Hax.array_of_list list
   in
@@ -40,3 +45,11 @@ let main (): FStar.HyperStack.ST.St u8 =
     Rust_primitives.Hax.Monomorphized_update_at.update_array_at_usize x (sz 0) (x1 +! x0 <: u8)
   in
   x.[ sz 0 ]
+
+type t_Wrapped = { f_contents:t_Array u8 (sz 10) }
+
+let wrapped (x: t_Wrapped) : FStar.HyperStack.ST.St Prims.unit =
+  let _:Prims.unit =
+    Rust_primitives.Hax.Monomorphized_update_at.update_array_at_usize x.f_contents (sz 3) 3uy
+  in
+  ()
