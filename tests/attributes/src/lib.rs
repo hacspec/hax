@@ -11,9 +11,7 @@ fn hello(x: &mut [u8]) {
     let mut aa = 3;
     aa += 1;
     for i in 0..x.len() {
-        let lhs = x[i];
-        let rhs = y[i];
-        x[i] = lhs + rhs;
+        x[i] = x[i] + y[i];
     }
 }
 
