@@ -29,7 +29,7 @@ inline_for_extraction
 instance impl__index_mut_slice t n: t_IndexMut (t_Slice t) (int_t n)
   = { out_type = B.pointer t;
       in_range = (fun (s: t_Slice t) (i: int_t n) -> v i >= 0 && v i < v (spec_length s));
-      f_index_mut = (fun (Some s) i -> 
+      f_index_mut = (fun s i -> 
         admit ();
         B.sub s.buffer (cast i) 1ul
       );

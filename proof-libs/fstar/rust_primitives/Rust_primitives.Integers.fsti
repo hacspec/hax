@@ -261,13 +261,12 @@ val decr_lemma: #t:inttype
 inline_for_extraction
 val div (#t:inttype) (a:int_t t) (b:int_t t{v b <> 0}): int_t t
 
-// assume (unsigned t \/ range (v a / v b) t);
 noextract
 val div_lemma: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}
   -> a:int_t t
   -> b:int_t t{v b <> 0 /\ (unsigned t \/ range FStar.Int.(v a / v b) t)}
-  -> Lemma (div a b == mk_int #t (v a / v b))
-    [SMTPat (div #t a b)]
+  -> Lemma (assume (unsigned t \/ range (v a / v b) t); div a b == mk_int #t (v a / v b))
+    [SMTPat (div #t a b)] 
 
 inline_for_extraction
 val mod (#t:inttype) (a:int_t t) (b:int_t t{v b <> 0}) : int_t t
@@ -556,5 +555,5 @@ unfold
 let (>.) #t = gt #t
 
 unfold
-let (>=.) #t = gte #t
+let (>=.) #t = gte #t 
 

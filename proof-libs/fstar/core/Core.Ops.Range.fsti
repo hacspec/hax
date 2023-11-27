@@ -51,12 +51,12 @@ instance impl_index_range_slice t n : t_Index (t_Slice t) (t_Range (int_t n))
           if f_start <. f_end 
           then
             let len = f_end -. f_start in
-            let Some s = s in
+            let s = s in
             admit ();
             let buffer: B.buffer t = B.sub s.buffer (cast f_start) (Ghost.hide (cast len)) in
             let len: B.buffer usize = B.alloca (cast len <: usize) 1ul in
-            Some {buffer; len}
-          else None
+            {buffer; len}
+          else admit()
           )
        }
 
@@ -204,8 +204,8 @@ instance impl__index_mut_array t l n: t_IndexMut (t_Array t l) (t_Range (int_t n
              ( admit ();
                let len = f_end -! f_start in
                let buffer = B.sub s f_start len in
-               Some {buffer; len})
-           else None
+               {buffer; len})
+           else admit()
       );
     }
 
@@ -213,15 +213,12 @@ instance impl__index_mut_slice t n: t_IndexMut (t_Slice t) (t_Range (int_t n))
   = { out_type = t_Slice t;
       in_range = (fun (s: t_Slice t) (i: t_Range (int_t n)) -> True);
       f_index_mut = (fun s {f_start; f_end} -> 
-        match s with
-        | None -> None
-        | Some s ->
            if f_end >=. f_start
            then
              ( admit ();
                let len = f_end -! f_start in
                let buffer = B.sub s.buffer f_start len in
-               Some {buffer; len})
-           else None
+               {buffer; len})
+           else admit()
       );
     }

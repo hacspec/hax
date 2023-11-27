@@ -13,7 +13,7 @@ noeq type t_nonempty_Slice t = {
    len:    len: usize {len == B.len buffer}
 }
 // Use Low* null thing
-inline_for_extraction type t_Slice t = option (t_nonempty_Slice t)
+inline_for_extraction type t_Slice t = t_nonempty_Slice t
 inline_for_extraction type t_Array t (l:usize) = b: B.buffer t {B.length b = v l}
 
 inline_for_extraction
@@ -38,14 +38,10 @@ let of_list (#t:Type) (l: list t {
 inline_for_extraction
 let length (s: t_Slice 'a)
   : usize
-  = match s with
-  | Some s -> s.len
-  | None -> 0ul
+  = s.len
     
 unfold let spec_length (s: t_Slice 'a): GTot usize 
-  = match s with
-  | Some s -> B.len s.buffer
-  | None -> 0ul
+  = B.len s.buffer
 
 let arr_contains_spec (#t: eqtype) (s: t_Array t 'l) (x: t): Type0 = admit ()
 let contains_spec (#t: eqtype) (s: t_Slice t) (x: t): Type0 = admit ()
