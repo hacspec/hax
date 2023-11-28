@@ -83,10 +83,10 @@ let gt_lemma #t a b = admit()
 let gte #t a b = LI.gte a b
 let gte_lemma #t a b = admit()
 
-let ones #t = admit() //LI.ones t LI.PUB
+let ones #t = LI.ones t LI.PUB
 let ones_lemma #t = admit()
 
-let zero #t = admit() //LI.zeros t LI.PUB
+let zero #t = LI.zeros t LI.PUB
 let zero_lemma #t = admit()
 
 let lognot #t a = LI.lognot #t #LI.PUB a
