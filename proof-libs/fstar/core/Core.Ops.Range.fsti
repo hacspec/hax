@@ -92,64 +92,53 @@ instance impl_index_range_from_slice t n : t_Index (t_Slice t) (t_RangeFrom (int
           )
        }
 
-//   = { f_Output = t_Slice t
-//     ; in_range = (fun (s: t_Slice t) ({f_start}: t_RangeFrom (int_t n)) -> 
-// <<<<<<< Updated upstream
-//          let len = Rust_primitives.length s in v f_start >= 0 /\ v f_start <= v len)
-//     ; f_index = (fun s {f_start} -> 
-//          let len = Rust_primitives.length s in
-//          if v f_start = v len then Seq.empty else Seq.slice s (v f_start) (v len))}
-         
 inline_for_extraction
-instance impl_index_range_full_slice t : t_Index (t_Slice t) t_RangeFull
-         = admit ()
-//   = { f_Output = t_Slice t
-//     ; in_range = (fun (s: t_Slice t) _ -> True)
-//     ; f_index = (fun s _ -> s)}
-// ||||||| Stash base
-//          let len = Rust_primitives.length s in v f_start >= 0 /\ v f_start <= v len)
-//     ; f_index = (fun s {f_start} -> 
-//          let len = Rust_primitives.length s in
-//          if v f_start = v len then Seq.empty else Seq.slice s (v f_start) (v len))}
-// =======
-//          let len = Rust_primitives.spec_length s in v f_start >= 0 /\ v f_start <= v len)
-//     // ; f_index = (fun s {f_start} -> 
-//     ; f_index = (fun s {f_start} -> admit ())}
-//     //      let len = Rust_primitives.spec_length s in
-//     //      if v f_start = v len then Seq.empty else Seq.slice s (v f_start) (v len))}
-// >>>>>>> Stashed changes
+instance impl_index_range_full_slice t : t_Index (t_Slice t) (t_RangeFull) 
+  = { f_Output = t_Slice t
+    ; in_range = (fun (s: t_Slice t) (r:t_RangeFull) -> True)
+    ; f_index = (fun s (r:t_RangeFull) ->
+            s)
+}
 
 inline_for_extraction
 instance impl_range_index_array t len n : t_Index (t_Array t len) (t_Range (int_t n)) = 
-  let i = impl_index_range_slice t n in
-  admit ()
-  // { f_Output = i.f_Output
-  // ; in_range = (fun (s: t_Array t len) r -> i.in_range s r)
-  // ; f_index = (fun s r -> i.f_index s r) }
+  { f_Output = t_Slice t
+  ; in_range = (fun (s: t_Array t len) (r:t_Range (int_t n)) -> True)
+  ; f_index = (fun s r ->
+            let len = r.f_end -. r.f_start in
+            let subbuf: B.buffer t = B.sub s (cast r.f_start) len in
+            {buffer=subbuf;len=len})
+  }
   
 inline_for_extraction
 instance impl_range_to_index_array t len n : t_Index (t_Array t len) (t_RangeTo (int_t n)) = 
-  let i = impl_index_range_to_slice t n in
-  admit ()
-  // { f_Output = i.f_Output
-  // ; in_range = (fun (s: t_Array t len) r -> i.in_range s r)
-  // ; f_index = (fun s r -> i.f_index s r) }
+  { f_Output = t_Slice t
+  ; in_range = (fun (s: t_Array t len) (r:t_RangeTo (int_t n)) -> True)
+  ; f_index = (fun s (r:t_RangeTo (int_t n)) ->
+            let len = r.f_end in
+            let subbuf: B.buffer t = B.sub s 0ul len in
+            {buffer=subbuf;len=len})
+  }
 
 inline_for_extraction
 instance impl_range_from_index_array t len n : t_Index (t_Array t len) (t_RangeFrom (int_t n)) = 
-  admit ()
-  // let i = impl_index_range_from_slice t n in
-  // { f_Output = i.f_Output
-  // ; in_range = (fun (s: t_Array t len) r -> i.in_range s r)
-  // ; f_index = (fun s r -> i.f_index s r) }
+  { f_Output = t_Slice t
+  ; in_range = (fun (s: t_Array t len) (r:t_RangeFrom (int_t n)) -> True)
+  ; f_index = (fun s (r:t_RangeFrom (int_t n)) ->
+            let len = len -. r.f_start in
+            let subbuf: B.buffer t = B.sub s r.f_start len in
+            {buffer=subbuf;len=len})
+}
 
 inline_for_extraction
 instance impl_range_full_index_array t len : t_Index (t_Array t len) t_RangeFull = 
-  let i = impl_index_range_full_slice t in
-  admit ()
-  // { f_Output = i.f_Output
-  // ; in_range = (fun (s: t_Array t len) r -> i.in_range s r)
-  // ; f_index = (fun s r -> i.f_index s r) }
+  { f_Output = t_Slice t
+  ; in_range = (fun (s: t_Array t len) (r:t_RangeFull) -> True)
+  ; f_index = (fun s (r:t_RangeFull) ->
+            let len = len in
+            let subbuf: B.buffer t = B.sub s 0ul len in
+            {buffer=subbuf;len=len})
+}
 
 open Rust_primitives.Hax
 
