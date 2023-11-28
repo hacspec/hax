@@ -355,11 +355,20 @@ fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasO
     }
 }
 
+// We don't use the LitIntType on purpose (we don't want the "unsuffixed" case)
+#[derive(
+    Clone, Copy, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub enum IntUintTy {
+    Int(IntTy),
+    Uint(UintTy),
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ScalarInt {
     /// Little-endian representation of the integer
     pub data_le_bytes: [u8; 16],
-    pub int_ty: IntTy,
+    pub int_ty: IntUintTy,
 }
 
 // TODO: naming conventions: is "translate" ok?
@@ -386,7 +395,13 @@ fn translate_switch_targets<'tcx, S: BaseState<'tcx>>(
 
             SwitchTargets::If(if_block, otherwise_block)
         }
-        Ty::Int(int_ty) => {
+        Ty::Int(_) | Ty::Uint(_) => {
+            let int_ty = match switch_ty {
+                Ty::Int(ty) => IntUintTy::Int(*ty),
+                Ty::Uint(ty) => IntUintTy::Uint(*ty),
+                _ => unreachable!(),
+            };
+
             // This is a: switch(int).
             // Convert all the test values to the proper values.
             let mut targets_map: Vec<(ScalarInt, BasicBlock)> = Vec::new();
@@ -394,13 +409,13 @@ fn translate_switch_targets<'tcx, S: BaseState<'tcx>>(
                 // We need to reinterpret the bytes (`v as i128` is not correct)
                 let v = ScalarInt {
                     data_le_bytes: v.to_le_bytes(),
-                    int_ty: *int_ty,
+                    int_ty,
                 };
                 targets_map.push((v, tgt));
             }
             let otherwise_block = targets.otherwise().sinto(s);
 
-            SwitchTargets::SwitchInt(*int_ty, targets_map, otherwise_block)
+            SwitchTargets::SwitchInt(int_ty, targets_map, otherwise_block)
         }
         _ => {
             fatal!(s, "Unexpected switch_ty: {:?}", switch_ty)
@@ -415,7 +430,7 @@ pub enum SwitchTargets {
     /// Gives the integer type, a map linking values to switch branches, and the
     /// otherwise block. Note that matches over enumerations are performed by
     /// switching over the discriminant, which is an integer.
-    SwitchInt(IntTy, Vec<(ScalarInt, BasicBlock)>, BasicBlock),
+    SwitchInt(IntUintTy, Vec<(ScalarInt, BasicBlock)>, BasicBlock),
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
