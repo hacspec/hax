@@ -18,7 +18,7 @@ instance impl_6 (t: Type0) (len: usize): try_into_tc (t_Slice t) (t_Array t len)
   f_Error = Core.Array.t_TryFromSliceError;
   f_try_into = (fun (s: t_Slice t) -> 
     if Core.Slice.impl__len s = len
-    then Core.Result.Result_Ok (magic ()) //(unsize s <: t_Array t len)
+    then Core.Result.Result_Ok (s.buffer)
     else Core.Result.Result_Err Core.Array.TryFromSliceError
   )
 }

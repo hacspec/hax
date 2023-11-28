@@ -39,7 +39,13 @@ instance impl__index t n: t_Index (t_Slice t) (int_t n)
 
 inline_for_extraction
 let impl__copy_from_slice #t (x: t_Slice t) (y:t_Slice t) : HST.St unit
-    = admit ()
+    = LowStar.BufferOps.blit x.buffer 0ul y.buffer 0ul y.len
 
 inline_for_extraction
-val impl__split_at #t (s: t_Slice t) (mid: usize): (t_Slice t * t_Slice t)
+let impl__split_at #t (s: t_Slice t) (mid: usize): HST.St (t_Slice t * t_Slice t) =
+  let b1 = B.sub s.buffer 0ul mid in
+  let l2 = s.len -. mid in
+  let b2 = B.sub s.buffer mid l2 in
+  let s1 = {buffer = b1; len = mid} in
+  let s2 = {buffer = b2; len = l2} in
+  (s1,s2)

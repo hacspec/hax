@@ -67,14 +67,31 @@ instance impl_index_range_slice t n : t_Index (t_Slice t) (t_Range (int_t n))
 inline_for_extraction
 instance impl_index_range_to_slice t n : t_Index (t_Slice t) (t_RangeTo (int_t n)) 
   = { f_Output = t_Slice t
-    ; in_range = (fun (s: t_Slice t) ({f_end}: t_RangeTo (int_t n)) -> 
-         let len = Rust_primitives.spec_length s in v f_end <= v len)
-    ; f_index = admit ()}
-    // ; f_index = (fun s {f_end} -> if 0 < v f_end then Seq.slice s 0 (v f_end) else Seq.empty)}
+    ; in_range = (fun (s: t_Slice t) (r:t_RangeTo (int_t n)) -> 
+         let len = Rust_primitives.spec_length s in
+         v r.f_end <= v len)
+    ; f_index = (fun s (r:t_RangeTo (int_t n)) ->
+            admit ();
+            let len = r.f_end in
+            let subbuf: B.buffer t = B.sub s.buffer 0ul len in
+            {buffer = subbuf; len} <: t_Slice t
+          )
+       }
 
 inline_for_extraction
 instance impl_index_range_from_slice t n : t_Index (t_Slice t) (t_RangeFrom (int_t n)) 
-   = admit ()
+  = { f_Output = t_Slice t
+    ; in_range = (fun (s: t_Slice t) (r:t_RangeFrom (int_t n)) -> 
+         let len = Rust_primitives.spec_length s in
+         v r.f_start >= 0 /\ v r.f_start <= v len)
+    ; f_index = (fun s (r:t_RangeFrom (int_t n)) ->
+            admit ();
+            let len = s.len -. r.f_start in
+            let subbuf: B.buffer t = B.sub s.buffer (cast r.f_start) len in
+            {buffer = subbuf; len} <: t_Slice t
+          )
+       }
+
 //   = { f_Output = t_Slice t
 //     ; in_range = (fun (s: t_Slice t) ({f_start}: t_RangeFrom (int_t n)) -> 
 // <<<<<<< Updated upstream
@@ -215,18 +232,39 @@ val update_at_array_range_full t l n
 open Rust_primitives.Integers
 
 inline_for_extraction
-instance impl__index_mut_array t l n: t_IndexMut (t_Array t l) (t_Range (int_t n))
+instance impl__index_mut_array_range t l n: t_IndexMut (t_Array t l) (t_Range (int_t n))
   = { out_type = t_Slice t;
       in_range = (fun (s: t_Array t l) (i: t_Range (int_t n)) -> True);
-      f_index_mut = (fun s {f_start; f_end} -> 
-           if f_end >=. f_start
-           then
-             ( admit ();
-               let len = f_end -! f_start in
-               let buffer = B.sub s f_start len in
-               {buffer; len})
-           else admit()
-      );
+      f_index_mut = (fun s r ->
+           let f_start = r.f_start in
+           let f_end = r.f_end in
+           assume (v f_end > v f_start);
+           let len = f_end -! f_start in
+           let buffer = B.sub s f_start len in
+           {buffer; len});
+    }
+
+inline_for_extraction
+instance impl__index_mut_array_range_from t l n: t_IndexMut (t_Array t l) (t_RangeFrom (int_t n))
+  = { out_type = t_Slice t;
+      in_range = (fun (s: t_Array t l) (i: t_RangeFrom (int_t n)) -> True);
+      f_index_mut = (fun s r -> 
+           let f_start = r.f_start in
+           let f_end = l in
+           let len =  f_end -! f_start in
+           let buffer = B.sub s f_start len in
+           {buffer; len});
+    }
+
+inline_for_extraction
+instance impl__index_mut_array_range_to t l n: t_IndexMut (t_Array t l) (t_RangeTo (int_t n))
+  = { out_type = t_Slice t;
+      in_range = (fun (s: t_Array t l) (i: t_RangeTo (int_t n)) -> True);
+      f_index_mut = (fun s r -> 
+           let f_end = r.f_end in
+           let len = f_end in
+           let buffer = B.sub s 0ul len in
+           {buffer; len});
     }
 
 inline_for_extraction
