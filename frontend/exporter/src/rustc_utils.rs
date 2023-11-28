@@ -117,6 +117,7 @@ pub fn translate_span(span: rustc_span::Span, sess: &rustc_session::Session) -> 
         lo: lo.into(),
         hi: hi.into(),
         filename: filename.sinto(&()),
+        rust_span: span,
     }
 }
 

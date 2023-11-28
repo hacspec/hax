@@ -959,6 +959,10 @@ pub struct Span {
     pub lo: Loc,
     pub hi: Loc,
     pub filename: FileName,
+    /// We need to keep the original Rust span if we want to use the rustc
+    /// functions for error reporting.
+    #[serde(skip)]
+    pub rust_span: rustc_span::Span,
     // expn_backtrace: Vec<ExpnData>,
 }
 
