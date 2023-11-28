@@ -14,6 +14,9 @@ pub enum ImplSourceKind {
     AutoImpl(ImplSourceAutoImplData),
     /// When using a function pointer as an object implementing `Fn`, `FnMut`, etc.
     FnPointer(ImplSourceFnPointerData),
+    Closure(ImplSourceClosureData),
+    ///
+    Todo(String),
     /// When the resolution failed
     Error(String),
 }
@@ -97,6 +100,15 @@ pub struct ImplSourceAutoImplData {
 )]
 pub struct ImplSourceFnPointerData {
     pub fn_ty: Box<Ty>,
+    pub nested: Vec<ImplSource>,
+}
+
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct ImplSourceClosureData {
+    pub closure_def_id: DefId,
+    pub substs: Vec<GenericArg>,
     pub nested: Vec<ImplSource>,
 }
 
@@ -340,6 +352,10 @@ fn solve_obligation<'tcx, S: BaseState<'tcx> + HasOwnerId>(
                 | Clause::Projection(..) => Option::None,
             }
         }
+        rustc_middle::ty::PredicateKind::ClosureKind(..) => {
+            // Ignoring those - TODO: not sure what to do here
+            Option::None
+        }
         x => {
             // SH: We probably just need to ignore those, like for the Clauses,
             // but I'm not familiar enough with the meaning of those predicates
@@ -451,9 +467,16 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
                     fn_ty: fn_ty.sinto(s),
                     nested: solve_obligations(s, nested),
                 }),
-                impl_source => {
-                    unimplemented!("impl source: {:?}", impl_source)
-                }
+                RustImplSource::Closure(rustc_trait_selection::traits::ImplSourceClosureData {
+                    closure_def_id,
+                    substs,
+                    nested,
+                }) => ImplSourceKind::Closure(ImplSourceClosureData {
+                    closure_def_id: closure_def_id.sinto(s),
+                    substs: substs.sinto(s),
+                    nested: solve_obligations(s, nested),
+                }),
+                impl_source => ImplSourceKind::Todo(format!("impl source: {:?}", impl_source)),
             }
         }
     };
@@ -551,7 +574,7 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         ImplSourceKind::Param(trait_ref, _, _) => {
             update_generics(&trait_ref.value.def_id, &mut trait_ref.value.generic_args)
         }
-        ImplSourceKind::Error(_) => {
+        ImplSourceKind::Error(_) | ImplSourceKind::Todo(_) => {
             // We do something similar to the param case
             let mut trait_ref = trait_ref.sinto(s);
             update_generics(&trait_ref.value.def_id, &mut trait_ref.value.generic_args)
@@ -600,6 +623,14 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
                 impl_source
             )
             // update_generics(&mut data.upcast_trait_ref.value.generic_args)
+        }
+        ImplSourceKind::Closure(_data) => {
+            // TODO: not sure
+            todo!(
+                "- trait_ref:\n{:?}\n- impl source:{:?}",
+                trait_ref,
+                impl_source
+            )
         }
     };
 
