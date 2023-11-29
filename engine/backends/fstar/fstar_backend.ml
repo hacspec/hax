@@ -1086,7 +1086,15 @@ struct
         in
         let tcdef = F.AST.TyconRecord (name, bds, None, [], fields) in
         let d = F.AST.Tycon (false, true, [ tcdef ]) in
-        [ `Item { d; drange = F.dummyRange; quals = []; attrs = [] } ]
+        [
+          `Item
+            {
+              d;
+              drange = F.dummyRange;
+              quals = [ F.AST.Inline_for_extraction ];
+              attrs = [];
+            };
+        ]
     | Impl { generics; self_ty = _; of_trait = trait, generic_args; items } ->
         let pat =
           let name = U.Concrete_ident_view.to_definition_name e.ident in
