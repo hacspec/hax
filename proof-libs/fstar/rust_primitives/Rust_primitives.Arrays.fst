@@ -18,7 +18,7 @@ inline_for_extraction type t_Array t (l:usize) = b: B.buffer t {B.length b = v l
 
 inline_for_extraction
 let of_list (#t:Type) (l: list t {
-    FStar.List.Tot.length l < maxint Lib.IntTypes.U16
+    FStar.List.Tot.length l < maxint Lib.IntTypes.U32
   /\ FStar.List.Tot.length l > 0
   })
   : HST.StackInline 
