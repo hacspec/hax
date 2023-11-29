@@ -836,8 +836,17 @@ struct
           if inline_for_extraction then [ F.AST.Inline_for_extraction ] else []
         in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (ty, None)) in
-        F.decls ~quals
-        @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, pexpr body) ])
+        let body = pexpr body in
+        let body =
+          if List.is_empty params then
+            let normalize_term =
+              F.term_of_lid [ "FStar"; "Pervasives"; "normalize_term" ]
+            in
+
+            F.mk_e_app normalize_term [ body ]
+          else body
+        in
+        F.decls ~quals @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
     | TyAlias { name; generics; ty } ->
         let pat =
           F.pat
