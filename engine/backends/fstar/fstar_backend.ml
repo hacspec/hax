@@ -1112,7 +1112,7 @@ struct
         in
         let body = F.term @@ F.AST.Record (None, fields) in
         let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
-        F.decls ~attrs:[ tcinst ]
+        F.decls ~quals:[ F.AST.Inline_for_extraction ] ~attrs:[ tcinst ]
         @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
     | HaxError details ->
         [
