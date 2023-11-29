@@ -11,7 +11,3 @@ result
 .depend
 .cache
 proof-libs/fstar/rust_primitives/#*#
-**/proofs/*/extraction/*
-!**/proofs/*/extraction/*.diff
-!**/proofs/fstar/extraction/*.fst
-!**/proofs/coq/extraction/*.v

@@ -453,7 +453,11 @@ struct
         F.term
         @@ F.AST.Let
              ( NoLetQualifier,
-               [ (None, (pat, body)) ],
+               [
+                 ( Some
+                     [ F.term @@ F.AST.Var FStar_Parser_Const.inline_let_attr ],
+                   (pat, body) );
+               ],
                F.term @@ F.AST.Seq (assertion, array) )
     | Let { lhs; rhs; body; monadic = Some monad } ->
         let p =
