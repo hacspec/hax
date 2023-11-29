@@ -117,6 +117,9 @@ struct
 
   let pnegative = function true -> "-" | false -> ""
 
+  let is_never_to_any : expr -> bool =
+    U.Expect.concrete_app1 Rust_primitives__hax__never_to_any >> Option.is_some
+
   let rec pliteral span (e : literal) =
     match e with
     | String s -> F.Const.Const_string (s, F.dummyRange)
@@ -477,6 +480,9 @@ struct
         @@ F.AST.Let (NoLetQualifier, [ (None, (p, pexpr rhs)) ], pexpr body)
     | EffectAction _ -> .
     | Match { scrutinee; arms } ->
+        let arms =
+          List.filter ~f:(fun arm -> is_never_to_any arm.arm.body |> not) arms
+        in
         F.term
         @@ F.AST.Match (pexpr scrutinee, None, None, List.map ~f:parm arms)
     | Ascription { e; typ } ->
