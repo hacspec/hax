@@ -1053,7 +1053,19 @@ struct
                            (F.id name, None, [], F.mk_e_app base args))
                          bounds
                 | TIFn ty ->
-                    let ty = pty e.span ty in
+                    let ty =
+                      match ty with
+                      | TArrow (ins, out) ->
+                          let out, _ =
+                            let scalar_inputs = List.for_all ~f:is_scalar ins in
+                            let scalar_output = is_scalar out in
+                            add_clauses_effect_type scalar_inputs scalar_output
+                              [] (pty e.span out)
+                          in
+                          let ins = List.map ~f:(pty e.span) ins in
+                          F.mk_e_arrow ins out
+                      | _ -> pty e.span ty
+                    in
                     let ty =
                       F.term
                       @@ F.AST.Product (pgenerics i.ti_span i.ti_generics, ty)
