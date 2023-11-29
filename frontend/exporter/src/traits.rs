@@ -279,8 +279,9 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
         let trait_ref = trait_ref.value;
 
         let Some(impl_source) = select_trait_candidate(s, param_env, *self) else {
-            return ImplExprAtom::Todo(format!("impl_expr failed on {:#?}", self))
-                .with_args(vec![], trait_ref);
+            supposely_unreachable_fatal!(s, "ImplExprSelectTraitCandidate"; {
+                self, param_env, trait_ref
+            })
         };
         match impl_source {
             ImplSource::UserDefined(ImplSourceUserDefinedData {
@@ -307,8 +308,9 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                         })
                         .map(|path| (apred, path))
                 }) else {
-                    return ImplExprAtom::Todo(format!("implsource::param \n\n{:#?}", self))
-                        .with_args(impl_exprs(s, &nested), trait_ref);
+                    supposely_unreachable_fatal!(s, "ImplExprPredNotFound"; {
+                        self, nested, predicates, trait_ref
+                    })
                 };
                 let clause_id: u64 = clause_id_of_predicate(*predicate);
                 use rustc_middle::ty::ToPolyTraitRef;
@@ -366,8 +368,11 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                 r#trait: self.skip_binder().sinto(s),
             }
             .with_args(impl_exprs(s, &x.nested), trait_ref),
-            x => ImplExprAtom::Todo(format!("ImplExprAtom::Todo {:#?}\n\n{:#?}", x, self))
-                .with_args(vec![], trait_ref),
+            x => ImplExprAtom::Todo(format!(
+                "ImplExprAtom::Todo(see https://github.com/hacspec/hax/issues/381) {:#?}\n\n{:#?}",
+                x, self
+            ))
+            .with_args(vec![], trait_ref),
         }
     }
 }
