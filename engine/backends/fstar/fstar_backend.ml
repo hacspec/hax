@@ -756,7 +756,7 @@ struct
     else
       match (scalar_inputs, scalar_output) with
       | true, true -> (typ, false)
-      | _, false -> (F.mk_e_app st [ typ ], false)
+      | _, true -> (F.mk_e_app st [ typ ], false)
       | _, _ ->
           ( F.mk_e_app stack_inline
               [
