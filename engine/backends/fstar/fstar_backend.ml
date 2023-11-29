@@ -818,6 +818,14 @@ struct
               add_clauses_effect_type scalar_inputs scalar_output e.attrs
                 (pty body.span body.typ)
         in
+        let inline_for_extraction =
+          inline_for_extraction
+          || List.exists
+               ~f:
+                 [%matches?
+                   { kind = Tool { path = "inline"; tokens = "always" } }]
+               e.attrs
+        in
         let quals =
           if inline_for_extraction then [ F.AST.Inline_for_extraction ] else []
         in
