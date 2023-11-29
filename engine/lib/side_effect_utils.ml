@@ -357,7 +357,17 @@ struct
                     | f :: args -> (f, args)
                     | _ -> HoistSeq.err_hoist_invariant e.span Stdlib.__LOC__
                   in
-                  ({ e with e = App { f; args; generic_args; impl } }, effects))
+                  let effectful_operations =
+                    match f.e with
+                    | GlobalVar f
+                      when Global_ident.eq_name Core__ops__index__Index__index f
+                           || Global_ident.eq_name
+                                Core__ops__index__IndexMut__index_mut f ->
+                        no_lbs { SideEffects.zero with deep_mutation = true }
+                    | _ -> m#zero
+                  in
+                  ( { e with e = App { f; args; generic_args; impl } },
+                    m#plus effectful_operations effects ))
           | Literal _ -> (e, m#zero)
           | Block (inner, witness) ->
               HoistSeq.one env (super#visit_expr env inner)
