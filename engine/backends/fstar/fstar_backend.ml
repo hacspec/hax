@@ -833,7 +833,9 @@ struct
                e.attrs
         in
         let quals =
-          if inline_for_extraction then [ F.AST.Inline_for_extraction ] else []
+          if inline_for_extraction then
+            [ F.AST.Inline_for_extraction; F.AST.NoExtract ]
+          else []
         in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (ty, None)) in
         let body = pexpr body in
