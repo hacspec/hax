@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use tracing::trace;
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<S>, from: rustc_middle::mir::MirPhase, state: S as s)]
@@ -274,19 +275,25 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
 /// The [Operand] comes from a [TerminatorKind::Call].
 /// Only supports calls to top-level functions (which are considered as constants
 /// by rustc); doesn't support closures for now.
-fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
+fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>(
     s: &S,
     func: &rustc_middle::mir::Operand<'tcx>,
-) -> (DefId, Vec<GenericArg>, Vec<ImplSource>, Option<TraitInfo>) {
+) -> (
+    FunOperand,
+    Vec<GenericArg>,
+    Vec<ImplSource>,
+    Option<TraitInfo>,
+) {
     use std::ops::Deref;
     // Match on the func operand: it should be a constant as we don't support
     // closures for now.
     use rustc_middle::mir::{ConstantKind, Operand};
     use rustc_middle::ty::TyKind;
-    let (def_id, substs) = match func {
+    match func {
         Operand::Constant(c) => {
+            // Regular function case
             let c = c.deref();
-            match &c.literal {
+            let (def_id, substs) = match &c.literal {
                 ConstantKind::Ty(c) => {
                     // The type of the constant should be a FnDef, allowing
                     // us to retrieve the function's identifier and instantiation.
@@ -312,14 +319,33 @@ fn get_function_from_operand<'tcx, S: BaseState<'tcx> + HasOwnerId>(
                 ConstantKind::Unevaluated(_, _) => {
                     unimplemented!();
                 }
-            }
+            };
+
+            let (fun_id, substs, trait_refs, trait_info) =
+                get_function_from_def_id_and_substs(s, def_id, substs);
+            (FunOperand::Id(fun_id), substs, trait_refs, trait_info)
         }
-        Operand::Move(_place) | Operand::Copy(_place) => {
+        Operand::Move(place) => {
+            // Closure case.
+            // The closure can not have bound variables nor trait references,
+            // so we don't need to extract generics, trait refs, etc.
+            let body = s.mir();
+            let ty = func.ty(&body.local_decls, s.base().tcx);
+            trace!("type: {:?}", ty);
+            trace!("type kind: {:?}", ty.kind());
+            let sig = match ty.kind() {
+                rustc_middle::ty::TyKind::FnPtr(sig) => sig,
+                _ => unreachable!(),
+            };
+            trace!("FnPtr: {:?}", sig);
+            let place = place.sinto(s);
+
+            (FunOperand::Move(place), Vec::new(), Vec::new(), None)
+        }
+        Operand::Copy(_place) => {
             unimplemented!("{:?}", func);
         }
-    };
-
-    get_function_from_def_id_and_substs(s, def_id, substs)
+    }
 }
 
 fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>(
@@ -336,10 +362,10 @@ fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasO
         fn_span,
     } = terminator
     {
-        let (fun_id, substs, trait_refs, trait_info) = get_function_from_operand(s, func);
+        let (fun, substs, trait_refs, trait_info) = get_function_from_operand(s, func);
 
         TerminatorKind::Call {
-            fun_id,
+            fun,
             substs,
             args: args.sinto(s),
             destination: destination.sinto(s),
@@ -433,6 +459,14 @@ pub enum SwitchTargets {
     SwitchInt(IntUintTy, Vec<(ScalarInt, BasicBlock)>, BasicBlock),
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub enum FunOperand {
+    /// Call to a top-level function designated by its id
+    Id(DefId),
+    /// Use of a closure
+    Move(Place),
+}
+
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>, from: rustc_middle::mir::TerminatorKind<'tcx>, state: S as s)]
 pub enum TerminatorKind {
@@ -469,7 +503,7 @@ pub enum TerminatorKind {
         }
     )]
     Call {
-        fun_id: DefId,
+        fun: FunOperand,
         /// We truncate the substitution so as to only include the arguments
         /// relevant to the method (and not the trait) if it is a trait method
         /// call. See [ParamsInfo] for the full details.
