@@ -602,6 +602,8 @@ pub enum ProjectionElemFieldKind {
         variant: Option<VariantIdx>,
         index: FieldIdx,
     },
+    /// Get access to one of the fields of the state of a closure
+    ClosureState(FieldIdx),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -638,10 +640,11 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId> SInto<S, Place>
             use rustc_middle::mir::ProjectionElem::*;
             let cur_ty = current_ty.clone();
             let cur_kind = current_kind.clone();
+            use rustc_middle::ty::TyKind;
             let mk_field = |index: &rustc_abi::FieldIdx,
                             variant_idx: Option<rustc_abi::VariantIdx>| {
                 ProjectionElem::Field(match cur_ty.kind() {
-                    rustc_middle::ty::TyKind::Adt(adt_def, _) => {
+                    TyKind::Adt(adt_def, _) => {
                         assert!(
                             (adt_def.is_struct() && variant_idx.is_none())
                                 || (adt_def.is_enum() && variant_idx.is_some())
@@ -652,9 +655,7 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId> SInto<S, Place>
                             index: index.sinto(s),
                         }
                     }
-                    rustc_middle::ty::TyKind::Tuple(_types) => {
-                        ProjectionElemFieldKind::Tuple(index.sinto(s))
-                    }
+                    TyKind::Tuple(_types) => ProjectionElemFieldKind::Tuple(index.sinto(s)),
                     ty_kind => {
                         supposely_unreachable_fatal!(
                             "ProjectionElemFieldBadType": index,
@@ -692,9 +693,21 @@ impl<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId> SInto<S, Place>
                             ProjectionElem::Deref
                         }
                         Field(index, ty) => {
-                            let r = mk_field(index, None);
-                            current_ty = ty.clone();
-                            r
+                            if let TyKind::Closure(_, substs) = cur_ty.kind() {
+                                // We get there when we access one of the fields
+                                // of the the state captured by a closure.
+                                use crate::rustc_index::Idx;
+                                let substs = substs.as_closure();
+                                let upvar_tys: Vec<_> = substs.upvar_tys().collect();
+                                current_ty = upvar_tys[index.sinto(s).index()].clone();
+                                ProjectionElem::Field(ProjectionElemFieldKind::ClosureState(
+                                    index.sinto(s),
+                                ))
+                            } else {
+                                let r = mk_field(index, None);
+                                current_ty = ty.clone();
+                                r
+                            }
                         }
                         Index(local) => {
                             let (TyKind::Slice(ty) | TyKind::Array(ty, _)) = current_ty.kind() else {
@@ -825,8 +838,8 @@ pub enum AggregateKind {
         Option<UserTypeAnnotationIndex>,
         Option<FieldIdx>,
     ),
-    #[custom_arm(rustc_middle::mir::AggregateKind::Closure(def_id, substs) => {
-        let def_id = def_id.sinto(s);
+    #[custom_arm(rustc_middle::mir::AggregateKind::Closure(rust_id, substs) => {
+        let def_id : DefId = rust_id.sinto(s);
         // The substs is meant to be converted to a function signature. Note
         // that Rustc does its job: the PolyFnSig binds the captured local
         // type, regions, etc. variables, which means we can treat the local

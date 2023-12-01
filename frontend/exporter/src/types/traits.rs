@@ -589,7 +589,7 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         ImplSourceKind::Object(_data) => {
             // TODO: not sure
             todo!(
-                "- trait_ref:\n{:?}\n- impl source:{:?}",
+                "\n- trait_ref:\n{:?}\n\n- impl source:\n{:?}",
                 trait_ref,
                 impl_source
             )
@@ -598,7 +598,7 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         ImplSourceKind::Builtin(_trait_ref, _) => {
             // TODO: not sure
             todo!(
-                "- trait_ref:\n{:?}\n- impl source:{:?}",
+                "\n- trait_ref:\n{:?}\n\n- impl source:\n{:?}",
                 trait_ref,
                 impl_source
             )
@@ -607,7 +607,7 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         ImplSourceKind::TraitUpcasting(_data) => {
             // TODO: not sure
             todo!(
-                "- trait_ref:\n{:?}\n- impl source:{:?}",
+                "\n- trait_ref:\n{:?}\n\n- impl source:\n{:?}",
                 trait_ref,
                 impl_source
             )
@@ -616,7 +616,7 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         ImplSourceKind::AutoImpl(_data) => {
             // TODO: not sure
             todo!(
-                "- trait_ref:\n{:?}\n- impl source:{:?}",
+                "\n- trait_ref:\n{:?}\n\n- impl source:\n{:?}",
                 trait_ref,
                 impl_source
             )
@@ -625,18 +625,18 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         ImplSourceKind::FnPointer(_data) => {
             // TODO: not sure
             todo!(
-                "- trait_ref:\n{:?}\n- impl source:{:?}",
+                "\n- trait_ref:\n{:?}\n\n- impl source:\n{:?}",
                 trait_ref,
                 impl_source
             )
             // update_generics(&mut data.upcast_trait_ref.value.generic_args)
         }
-        ImplSourceKind::Closure(_data) => {
-            // TODO: not sure
-            todo!(
-                "- trait_ref:\n{:?}\n- impl source:{:?}",
-                trait_ref,
-                impl_source
+        ImplSourceKind::Closure(_) => {
+            // We don't need to truncate the generics (there shouldn't be any)
+            let trait_ref = trait_ref.sinto(s);
+            (
+                trait_ref.value.generic_args.clone(),
+                trait_ref.value.generic_args,
             )
         }
     };
