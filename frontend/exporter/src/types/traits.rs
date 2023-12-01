@@ -108,7 +108,8 @@ pub struct ImplSourceFnPointerData {
 )]
 pub struct ImplSourceClosureData {
     pub closure_def_id: DefId,
-    pub substs: Vec<GenericArg>,
+    pub parent_substs: Vec<GenericArg>,
+    pub sig: Box<MirPolyFnSig>,
     pub nested: Vec<ImplSource>,
 }
 
@@ -471,11 +472,17 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
                     closure_def_id,
                     substs,
                     nested,
-                }) => ImplSourceKind::Closure(ImplSourceClosureData {
-                    closure_def_id: closure_def_id.sinto(s),
-                    substs: substs.sinto(s),
-                    nested: solve_obligations(s, nested),
-                }),
+                }) => {
+                    let substs = substs.as_closure();
+                    let parent_substs = substs.parent_substs().sinto(s);
+                    let sig = Box::new(substs.sig().sinto(s));
+                    ImplSourceKind::Closure(ImplSourceClosureData {
+                        closure_def_id: closure_def_id.sinto(s),
+                        parent_substs,
+                        sig,
+                        nested: solve_obligations(s, nested),
+                    })
+                }
                 impl_source => ImplSourceKind::Todo(format!("impl source: {:?}", impl_source)),
             }
         }
