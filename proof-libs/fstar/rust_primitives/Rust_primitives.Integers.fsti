@@ -36,6 +36,16 @@ type uinttype = t:inttype{unsigned t}
 let int_t t = LI.int_t t LI.PUB
 
 let bits t = LI.bits t
+let u8_inttype = LI.U8
+let i8_inttype = LI.S8
+let u16_inttype = LI.U16
+let i16_inttype = LI.S16
+let u32_inttype = LI.U32
+let i32_inttype = LI.S32
+let u64_inttype = LI.U64
+let i64_inttype = LI.S64
+let u128_inttype = LI.U128
+let i128_inttype = LI.S128
 val usize_inttype: t:inttype{unsigned t /\ (t = LI.U32 \/ t = LI.U64)}
 val isize_inttype: t:inttype{signed t /\ (t = LI.S32 \/ t = LI.S64)}
 
@@ -278,14 +288,14 @@ val shift_right_equiv_lemma: #t:inttype -> #t':inttype
      LI.shift_right #t #LI.PUB a (cast b))
      
 let shift_left (#t:inttype) (#t':inttype)
-    (a:int_t t{v a >= 0}) (b:shiftval t t') =
+    (a:int_t t) (b:shiftval t t') =
     let x:range_t t = (v a * pow2 (v b)) @%. t in
     mk_int #t x
 
 val shift_left_equiv_lemma: #t:inttype -> #t':inttype
   -> a:int_t t -> b:shiftval t t'
   -> Lemma
-    ((v a >= 0 /\ v a * pow2 (v b) <= maxint t) ==>
+    ((v a >= 0 /\ range (v a * pow2 (v b)) t) ==>
      (v (cast b <: u32) < bits t /\
       shift_left #t #t' a b ==
       LI.shift_left #t #LI.PUB a (cast b)))
@@ -338,28 +348,19 @@ let (+!) #t = add #t
 
 // Wrapping: no precondition
 unfold
-let (+%) #t = add #t
-
-unfold
-let (+.) #t = add #t
+let (+.) #t = add_mod #t
 
 unfold
 let ( *! ) #t = mul #t
 
 unfold
-let ( *% ) #t = mul_mod #t
-
-unfold
-let ( *. ) #t = mul #t
+let ( *. ) #t = mul_mod #t
 
 unfold
 let ( -! ) #t = sub #t
 
 unfold
-let ( -% ) #t = sub_mod #t
-
-unfold
-let ( -. ) #t = sub #t
+let ( -. ) #t = sub_mod #t
 
 unfold
 let ( >>! ) #t #t' = shift_right #t #t'
