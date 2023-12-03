@@ -85,6 +85,22 @@ let v (#t:inttype) (x:int_t t) : range_t t = LI.v #t #LI.PUB x
 [@(strict_on_arguments [0])]
 val mk_int (#t:inttype) (n:range_t t) : int_t t
 
+[@(strict_on_arguments [0])]
+val mk_int_equiv_lemma #t (n:range_t t) :
+    Lemma (
+    match t with
+    | LI.U8 -> mk_int #u8_inttype n == UInt8.uint_to_t n   
+    | LI.S8 -> mk_int #i8_inttype n == Int8.int_to_t n   
+    | LI.U16 -> mk_int #u16_inttype n == UInt16.uint_to_t n   
+    | LI.S16 -> mk_int #i16_inttype n == Int16.int_to_t n   
+    | LI.U32 -> mk_int #u32_inttype n == UInt32.uint_to_t n   
+    | LI.S32 -> mk_int #i32_inttype n == Int32.int_to_t n   
+    | LI.U64 -> mk_int #u64_inttype n == UInt64.uint_to_t n   
+    | LI.S64 -> mk_int #i64_inttype n == Int64.int_to_t n   
+    | LI.U128 -> mk_int #u128_inttype n == UInt128.uint_to_t n   
+    | LI.S128 -> mk_int #i128_inttype n == Int128.int_to_t n  
+    | _ -> True)
+
 let sz (n:range_t usize_inttype) : usize = mk_int n
 let isz (n:range_t isize_inttype) : isize = mk_int n
 
@@ -108,7 +124,6 @@ let op_At_Percent_Dot x t : range_t t =
 let cast (#t:inttype) (#t':inttype)
     (u1:int_t t{range (v u1) t'}) =
     mk_int #t' (v u1)
-
 let cast_mod (#t:inttype) (#t':inttype)
     (u1:int_t t) = 
     mk_int #t' (v u1 @%. t')
