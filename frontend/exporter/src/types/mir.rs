@@ -223,7 +223,7 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
     // fn foo<T : Bar>(...)
     //            ^^^
     // ```
-    let trait_refs = solve_item_traits(s, param_env, def_id, substs);
+    let trait_refs = solve_item_traits(s, param_env, def_id, substs, None);
 
     // Check if this is a trait method call: retrieve the trait source if
     // it is the case (i.e., where does the method come from? Does it refer
@@ -819,7 +819,7 @@ pub enum AggregateKind {
     #[custom_arm(rustc_middle::mir::AggregateKind::Adt(def_id, vid, substs, annot, fid) => {
         let adt_kind = s.base().tcx.adt_def(def_id).adt_kind().sinto(s);
         let param_env = s.base().tcx.param_env(s.owner_id());
-        let trait_refs = solve_item_traits(s, param_env, *def_id, substs);
+        let trait_refs = solve_item_traits(s, param_env, *def_id, substs, None);
         AggregateKind::Adt(
             def_id.sinto(s),
             vid.sinto(s),
@@ -844,11 +844,23 @@ pub enum AggregateKind {
         // that Rustc does its job: the PolyFnSig binds the captured local
         // type, regions, etc. variables, which means we can treat the local
         // closure like any top-level function.
-        let sig = substs.as_closure().sig();
+        let closure = substs.as_closure();
+        let sig = closure.sig();
         let sig = poly_fn_sig_to_mir_poly_fn_sig(&sig, s);
-        AggregateKind::Closure(def_id, sig)
+
+        // Solve the trait obligations. Note that we solve the parent
+        let tcx = s.base().tcx;
+        let param_env = tcx.param_env(s.owner_id());
+        let parent_substs = closure.parent_substs();
+        let substs = tcx.mk_substs(parent_substs);
+        // Retrieve the predicates from the parent (i.e., the function which calls
+        // the closure).
+        let predicates = tcx.predicates_defined_on(tcx.generics_of(rust_id).parent.unwrap());
+
+        let trait_refs = solve_item_traits(s, param_env, *rust_id, substs, Some(predicates));
+        AggregateKind::Closure(def_id, parent_substs.sinto(s), trait_refs, sig)
     })]
-    Closure(DefId, MirPolyFnSig),
+    Closure(DefId, Vec<GenericArg>, Vec<ImplSource>, MirPolyFnSig),
     Generator(DefId, Vec<GenericArg>, Movability),
 }
 

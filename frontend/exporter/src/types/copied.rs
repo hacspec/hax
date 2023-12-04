@@ -1715,7 +1715,7 @@ pub enum Ty {
             let def_id = adt_def.did().sinto(state);
             let generic_args: Vec<GenericArg> = substs.sinto(state);
             let param_env = state.base().tcx.param_env(state.owner_id());
-            let trait_refs = solve_item_traits(state, param_env, adt_def.did(), substs);
+            let trait_refs = solve_item_traits(state, param_env, adt_def.did(), substs, None);
             Ty::Adt { def_id, generic_args, trait_refs }
         },
     )]

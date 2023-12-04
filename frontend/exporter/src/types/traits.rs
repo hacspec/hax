@@ -720,11 +720,15 @@ where
 
 /// Solve the trait obligations for a specific item use (for example, a method
 /// call, an ADT, etc.).
+///
+/// [predicates]: optional predicates, in case we want to solve custom predicates
+/// (instead of the ones returned by [TyCtxt::predicates_defined_on].
 pub fn solve_item_traits<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     def_id: rustc_hir::def_id::DefId,
     substs: rustc_middle::ty::subst::SubstsRef<'tcx>,
+    predicates: Option<rustc_middle::ty::GenericPredicates<'tcx>>,
 ) -> Vec<ImplSource> {
     let tcx = s.base().tcx;
 
@@ -733,7 +737,10 @@ pub fn solve_item_traits<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     // Lookup the predicates and iter through them: we want to solve all the
     // trait requirements.
     // IMPORTANT: we use [TyCtxt::predicates_defined_on] and not [TyCtxt::predicated_of]
-    let predicates = tcx.predicates_defined_on(def_id);
+    let predicates = match predicates {
+        None => tcx.predicates_defined_on(def_id),
+        Some(preds) => preds,
+    };
     for (pred, _) in predicates.predicates {
         // Apply the substitution
         let pred_kind = subst_binder(tcx, substs, param_env, pred.kind(), true);
