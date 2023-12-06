@@ -165,7 +165,8 @@ module Print = struct
                     reduc_line ^^ nest 4 (hardline ^^ build_accessor arg))
                   fun_args
               in
-              fun_line ^^ hardline ^^ reduc_lines ^^ dot
+              fun_line ^^ hardline ^^ reduc_lines
+              ^^ if reduc_lines == empty then empty else dot
         in
         match item with
         (* `fn`s are transformed into `letfun` process macros. *)
