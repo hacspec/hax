@@ -26,6 +26,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
+name = "basic-structs"
+version = "0.1.0"
+
+[[package]]
 name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -48,6 +52,10 @@ version = "0.1.0"
 [[package]]
 name = "even"
 version = "0.0.1"
+
+[[package]]
+name = "fn-to-letfun"
+version = "0.1.0"
 
 [[package]]
 name = "fnmut"
@@ -123,6 +131,10 @@ version = "0.1.0"
 
 [[package]]
 name = "loops"
+version = "0.1.0"
+
+[[package]]
+name = "minimal"
 version = "0.1.0"
 
 [[package]]
@@ -264,14 +276,6 @@ checksum = "18fb31db3f9bddb2ea821cde30a9f70117e3f119938b5ee630b7403aa6e2ead9"
 dependencies = [
  "unicode-ident",
 ]
-
-[[package]]
-name = "proverif-basic-structs"
-version = "0.1.0"
-
-[[package]]
-name = "proverif-minimal"
-version = "0.1.0"
 
 [[package]]
 name = "quote"
