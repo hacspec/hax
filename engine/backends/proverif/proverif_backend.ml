@@ -79,7 +79,6 @@ struct
   let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
 end
 
-module AST = Ast.Make (InputLanguage)
 module BackendOptions = Backend.UnitBackendOptions
 open Ast
 
