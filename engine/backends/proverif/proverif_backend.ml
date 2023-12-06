@@ -174,13 +174,81 @@ module Print = struct
             let params_string =
               iblock parens (separate_map (comma ^^ break 1) print#param params)
             in
-            string "letfun" ^^ space ^^ print#concrete_ident name
-            ^^ params_string ^/^ equals
-            ^^ nest 4 (hardline ^^ print#expr_at Item_Fn_body body ^^ dot)
+            string "letfun" ^^ space
+            ^^ align
+                 (print#concrete_ident name ^^ params_string ^^ space ^^ equals
+                ^^ hardline
+                 ^^ print#expr_at Item_Fn_body body
+                 ^^ dot)
         (* `struct` definitions are transformed into simple constructors and `reduc`s for accessing fields. *)
         | Type { name; generics; variants; is_struct } ->
             if is_struct then fun_and_reduc name variants else empty
         | _ -> empty
+
+      method! expr_let : lhs:pat -> rhs:expr -> expr fn =
+        fun ~lhs ~rhs body ->
+          string "let" ^^ space
+          ^^ iblock Fn.id (print#pat_at Expr_Let_lhs lhs)
+          ^^ space ^^ equals ^^ space
+          ^^ iblock Fn.id (print#expr_at Expr_Let_rhs rhs)
+          ^^ space ^^ string "in" ^^ hardline
+          ^^ (print#expr_at Expr_Let_body body |> group)
+
+      method! doc_construct_inductive
+          : is_record:bool ->
+            is_struct:bool ->
+            constructor:concrete_ident ->
+            base:document option ->
+            (global_ident * document) list fn =
+        fun ~is_record ~is_struct:_ ~constructor ~base:_ args ->
+          if is_record then
+            string "t_"
+            (* FIXME: How do I get at the ident from the struct definition instead? *)
+            ^^ print#concrete_ident constructor
+            ^^ iblock parens
+                 (separate_map
+                    (break 0 ^^ comma)
+                    (fun (field, body) -> iblock Fn.id body |> group)
+                    args)
+          else
+            print#concrete_ident constructor
+            ^^ iblock parens (separate_map (break 0) snd args)
+
+      method ty : Generic_printer_base.par_state -> ty fn =
+        fun ctx ty ->
+          match ty with
+          | TBool -> print#ty_bool
+          | TParam i -> print#local_ident i
+          | TApp _ -> super#ty ctx ty
+          | _ -> string "bitstring"
+
+      method! expr_app : expr -> expr list -> generic_value list fn =
+        fun f args _generic_args ->
+          let dummy_fn =
+            match List.length args with
+            | n when n < 8 -> string "dummy_fn_" ^^ PPrint.OCaml.int n
+            | _ -> string "not_supported"
+          in
+          let args =
+            separate_map
+              (comma ^^ break 1)
+              (print#expr_at Expr_App_arg >> group)
+              args
+          in
+          let f = dummy_fn |> group in
+          f ^^ iblock parens args
+
+      method! literal : Generic_printer_base.literal_ctx -> literal fn =
+        fun _ctx -> function
+          | String s -> string "no char literals in ProVerif"
+          | Char c -> string "no char literals in ProVerif"
+          | Int { value; negative; _ } ->
+              string "int2bitstring"
+              ^^ iblock parens
+                   (string value |> precede (if negative then minus else empty))
+          | Float { value; kind; negative } ->
+              string "no float literals in ProVerif"
+          | Bool b -> OCaml.bool b
     end
 
   include Api (struct
@@ -192,7 +260,21 @@ end
 let insert_top_level contents = contents ^ "\n\nprocess\n    0\n"
 
 (* Insert ProVerif code that will be necessary in any development.*)
-let insert_preamble contents = "channel c.\ntype state.\n" ^ contents
+let insert_preamble contents =
+  "channel c.\n\
+   type state.\n\
+   fun int2bitstring(nat): bitstring.\n\
+   fun dummy_fn_0(): bitstring.\n\
+   fun dummy_fn_1(bitstring): bitstring.\n\
+   fun dummy_fn_2(bitstring, bitstring): bitstring.\n\
+   fun dummy_fn_3(bitstring, bitstring, bitstring): bitstring.\n\
+   fun dummy_fn_4(bitstring, bitstring, bitstring, bitstring): bitstring.\n\
+   fun dummy_fn_5(bitstring, bitstring, bitstring, bitstring, bitstring): \
+   bitstring.\n\
+   fun dummy_fn_6(bitstring, bitstring, bitstring, bitstring, bitstring, \
+   bitstring): bitstring.\n\
+   fun dummy_fn_7(bitstring, bitstring, bitstring, bitstring, bitstring, \
+   bitstring, bitstring): bitstring.\n" ^ contents
 
 let translate m (bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =
