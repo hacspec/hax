@@ -166,7 +166,7 @@ module Print = struct
                   fun_args
               in
               fun_line ^^ hardline ^^ reduc_lines
-              ^^ if reduc_lines == empty then empty else dot
+              ^^ if is_empty reduc_lines then empty else dot
         in
         match item with
         (* `fn`s are transformed into `letfun` process macros. *)
