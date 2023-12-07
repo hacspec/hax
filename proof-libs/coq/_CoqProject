@@ -1,0 +1,27 @@
+-R src/ Hacspec
+# -Q src/_vc "" # Folder should be ignored!
+-arg -w
+-arg all
+
+src/MachineIntegers.v
+src/Hacspec_Lib.v
+src/QuickChickLib.v
+
+# # src/Hacspec_Coverage_Test.v
+# # src/Hacspec_Aes.v # TODO: not currently working ?
+# # src/Hacspec_Aes128_Gcm.v # requires Aes
+# src/Hacspec_Bls12_381.v
+# # src/Hacspec_Bls12_381_Hash.v
+# src/Hacspec_Chacha20.v
+# src/Hacspec_Poly1305.v
+# # src/Hacspec_Chacha20poly1305.v
+# src/Hacspec_Curve25519.v
+# # src/Hacspec_Ecdsa_P256_Sha256.v
+# src/Hacspec_Gf128.v
+# # src/Hacspec_Gimli.v # ArrayName::length() impl missing
+# # src/Hacspec_Hkdf.v # Cannot infer M for bind (should use result_monad)
+# # src/Hacspec_Hmac.v
+# # src/Hacspec_Ntru_Prime.v # missing mul_poly_irr /// Polynomial multiplication of two size fixed polynomials in R_modulo \ irr
+# # src/Hacspec_P256.v
+# # src/Hacspec_Sha3.v # Issues with operations with different types eg ".*" vs "*"
+# src/Hacspec_Sha256.v
