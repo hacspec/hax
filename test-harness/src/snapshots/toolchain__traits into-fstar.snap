@@ -33,6 +33,10 @@ module Traits
 open Core
 open FStar.Mul
 
+let impl_2__method (x: v_T) : Prims.unit = f_bar x
+
+class t_Bar (v_Self: Type) = { f_bar:v_Self -> Prims.unit }
+
 class t_SuperTrait (v_Self: Type) = {
   [@@@ FStar.Tactics.Typeclasses.no_method]_super_590399929:Core.Clone.t_Clone v_Self;
   f_function_of_super_trait:v_Self -> u32
@@ -78,4 +82,6 @@ let impl_Foo_for_tuple_: t_Foo Prims.unit =
     f_assoc_f = () <: Prims.unit;
     f_method_f = fun (self: Prims.unit) -> f_assoc_f
   }
+
+type t_Struct = | Struct : t_Struct
 '''

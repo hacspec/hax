@@ -36,3 +36,15 @@ fn f<T: Foo>(x: T) {
 fn g<T: Foo>(x: T::AssocType) -> u32 {
     x.function_of_super_trait()
 }
+
+struct Struct;
+
+trait Bar<'a> {
+    fn bar(self);
+}
+
+impl<'a> Struct {
+    fn method<T: Bar<'a>>(x: T) {
+        x.bar()
+    }
+}

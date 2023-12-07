@@ -116,8 +116,12 @@ mod search_clause {
     fn predicate_equality<'tcx, S: UnderOwnerState<'tcx>>(
         x: Predicate<'tcx>,
         y: Predicate<'tcx>,
+        param_env: rustc_middle::ty::ParamEnv<'tcx>,
         s: &S,
     ) -> bool {
+        let tcx = s.base().tcx;
+        let x = tcx.try_normalize_erasing_regions(param_env, x).unwrap_or(x);
+        let y = tcx.try_normalize_erasing_regions(param_env, y).unwrap_or(y);
         let result = format!("{:?}", x) == format!("{:?}", y);
         const DEBUG: bool = false;
         if DEBUG && result {
@@ -182,7 +186,12 @@ mod search_clause {
             param_env: rustc_middle::ty::ParamEnv<'tcx>,
         ) -> Option<Path<'tcx>> {
             let tcx = s.base().tcx;
-            if predicate_equality(self.to_predicate(tcx), target.to_predicate(tcx), s) {
+            if predicate_equality(
+                self.to_predicate(tcx),
+                target.to_predicate(tcx),
+                param_env,
+                s,
+            ) {
                 return Some(vec![]);
             }
 
