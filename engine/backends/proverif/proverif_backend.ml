@@ -240,15 +240,19 @@ module Print = struct
 
       method! literal : Generic_printer_base.literal_ctx -> literal fn =
         fun _ctx -> function
-          | String s -> string "no char literals in ProVerif"
-          | Char c -> string "no char literals in ProVerif"
           | Int { value; negative; _ } ->
               string "int2bitstring"
               ^^ iblock parens
                    (string value |> precede (if negative then minus else empty))
-          | Float { value; kind; negative } ->
-              string "no float literals in ProVerif"
           | Bool b -> OCaml.bool b
+          | _ ->
+              Error.raise
+                {
+                  kind =
+                    ExplicitRejection
+                      { reason = "Literal unsupported by ProVerif backend." };
+                  span = current_span;
+                }
     end
 
   include Api (struct
