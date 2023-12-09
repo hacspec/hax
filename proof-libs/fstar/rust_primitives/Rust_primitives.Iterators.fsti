@@ -23,5 +23,20 @@ val foldi_chunks_exact
                                   v i >= 0 /\
                                   v i < Seq.length s / v chunk_len /\
                                   inv acc i}
-                       -> acc':acc_t{inv acc' (fst it +! mk_int 1)}))
+                       -> acc':acc_t{inv acc' (fst it +! sz 1)}))
                  : res:acc_t{inv res (length s /! chunk_len)}
+
+
+val foldi_slice  (#t:Type) (#acc_t:Type)
+                 (#inv:(acc_t -> usize -> Type))
+                 (sl: t_Slice t)
+                 (acc:acc_t{inv acc (sz 0)})
+                 (f: (acc:acc_t -> it:(usize & t){
+                                  let (i,item) = it in
+                                  v i >= 0 /\
+                                  v i < Seq.length sl /\
+                                  Seq.index sl (v i) == item /\
+                                  inv acc i}
+                       -> acc':acc_t{inv acc' (fst it +! sz 1)}))
+                 : res:acc_t{inv res (length sl)}
+
