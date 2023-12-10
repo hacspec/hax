@@ -22,6 +22,7 @@ val foldi_chunks_exact
                                   let (i,item) = it in
                                   v i >= 0 /\
                                   v i < Seq.length s / v chunk_len /\
+                                  length item == chunk_len /\
                                   inv acc i}
                        -> acc':acc_t{inv acc' (fst it +! sz 1)}))
                  : res:acc_t{inv res (length s /! chunk_len)}
