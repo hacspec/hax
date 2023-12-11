@@ -138,7 +138,7 @@ let chacha20_key_block0 (key: t_Array u8 (sz 32)) (iv: t_Array u8 (sz 12)) : t_A
 
 let chacha20_update (st0: t_Array u32 (sz 16)) (m: t_Slice u8)
     : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
-  let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Alloc.Vec.impl__new in
+  let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Alloc.Vec.impl__new () in
   let num_blocks:usize = (Core.Slice.impl__len m <: usize) /! sz 64 in
   let remainder_len:usize = (Core.Slice.impl__len m <: usize) %! sz 64 in
   let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
