@@ -4,7 +4,7 @@ use hax_lib_macros as hax;
 const u32_max: u32 = 90000;
 
 #[hax::requires(x > 10 && y > 10 && z > 10 && x + y + z < u32_max)]
-#[hax::ensures(|result| result > 32)]
+#[hax::ensures(|result| hax_lib::implies(true, || result > 32))]
 fn add3(x: u32, y: u32, z: u32) -> u32 {
     x + y + z
 }
