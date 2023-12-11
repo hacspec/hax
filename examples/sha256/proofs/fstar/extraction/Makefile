@@ -30,7 +30,7 @@
 # (setq fstar-subp-prover-args #'my-fstar-compute-prover-args-using-make)
 #
 
-HAX_HOME       ?= $(shell githuhu rev-parse --show-toplevel)
+HAX_HOME       ?= $(shell git rev-parse --show-toplevel)
 FSTAR_HOME     ?= $(HAX_HOME)/../../../FStar
 HACL_HOME      ?= $(HAX_HOME)/../../../hacl-star
 
