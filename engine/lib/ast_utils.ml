@@ -653,6 +653,11 @@ module Make (F : Features.T) = struct
 
   let make_wild_pat (typ : ty) (span : span) : pat = { p = PWild; span; typ }
 
+  let make_unit_param (span : span) : param =
+    let typ = unit_typ in
+    let pat = make_wild_pat typ span in
+    { pat; typ; typ_span = None; attrs = [] }
+
   let make_seq (e1 : expr) (e2 : expr) : expr =
     make_let (make_wild_pat e1.typ e1.span) e1 e2
 
