@@ -226,6 +226,91 @@ module Make (F : Features.T) = struct
         (f : visit_level -> global_ident -> global_ident) : item -> item =
       (rename_global_idents f)#visit_item ExprLevel
 
+    (* Move somewhere else *)
+    module type ERROR = sig
+      val assertion_failure : Ast.span -> string -> 'never
+    end
+
+    (* Lifts subexpression based on type *)
+    let insert_coercions (module Error : ERROR) (lift_fun : expr -> expr option)
+        (lift_arg : expr -> goal:ty -> expr option) : expr -> expr =
+      let lift_arg (e : expr) ~goal =
+        if [%equal: ty] goal e.typ then Some e
+        else
+          let e' = lift_arg e ~goal in
+          (match e' with
+          | Some e' when [%equal: ty] goal e'.typ |> not ->
+              Error.assertion_failure e.span
+                "`lift_arg` violated an invariant: returned expression doesn't \
+                 have goal type"
+          | _ -> ());
+          e'
+      in
+      let obj =
+        object
+          inherit [_] item_map as super
+          method visit_t (_ : unit) x = x
+          method visit_mutability _ (_ : unit) m = m
+          (* method! visit_concrete_ident (_ : unit) ident = f lvl ident *)
+
+          method! visit_expr _ { e; span; typ } =
+            match e with
+            | App { f; args = []; generic_args } ->
+                { e = App { f; args = []; generic_args }; span; typ }
+            | App { f; args; generic_args } ->
+                let f = super#visit_expr () f in
+                let args = List.map ~f:(super#visit_expr ()) args in
+                let inputs =
+                  Expect.arrow f.typ |> Option.map ~f:fst
+                  |> Option.value ~default:[]
+                in
+                let failure : 'a. string -> 'a = Error.assertion_failure span in
+                let zip_args inputs : (ty * expr) list =
+                  match List.zip inputs args with
+                  | Ok l -> l
+                  | Unequal_lengths -> failure "bad number of argument"
+                in
+                let need_lift =
+                  let f (typ, (arg : expr)) = [%equal: ty] arg.typ typ in
+                  zip_args inputs |> List.for_all ~f |> not
+                in
+                if need_lift then (
+                  let f =
+                    lift_fun f
+                    |> Option.value_or_thunk ~default:(fun _ ->
+                           failure "Could not lift function")
+                  in
+                  let inputs', _ =
+                    Expect.arrow f.typ
+                    |> Option.value_or_thunk ~default:(fun _ ->
+                           failure
+                             "`lift_fun` returned something which is not a \
+                              function")
+                  in
+                  if [%equal: int] (List.length inputs) (List.length inputs)
+                  then
+                    failure
+                      "`lift_fun` returned a function with different arity";
+                  let args =
+                    zip_args inputs'
+                    |> List.map ~f:(fun (goal, (arg : expr)) ->
+                           lift_arg arg ~goal
+                           |> Option.value_or_thunk ~default:(fun _ ->
+                                  Error.assertion_failure arg.span
+                                    "cannot lift argument"))
+                  in
+                  { e = App { f; args; generic_args }; span; typ })
+                else { e = App { f; args; generic_args }; span; typ }
+            | _ -> { e; span; typ }
+        end
+      in
+      obj#visit_expr ()
+
+    let insert_prop_coercions : (module ERROR) -> expr -> expr =
+      let lift_fun _f = None in
+      let lift_arg _arg ~goal:_ = None in
+      fun err -> insert_coercions err lift_fun lift_arg
+
     (** Add type ascription nodes in nested function calls.  This helps
     type inference in the presence of associated types in backends
     that don't support them well (F* for instance). *)

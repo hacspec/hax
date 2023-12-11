@@ -112,6 +112,7 @@ fn unsize() {}
 mod hax {
     fn failure() {}
     struct Failure;
+    struct Prop;
     enum Never {}
 
     // Only useful when HAX_CORE_EXTRACTION_MODE in `on`
