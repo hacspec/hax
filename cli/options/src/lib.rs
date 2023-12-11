@@ -121,9 +121,25 @@ pub struct FStarOptions {
     /// Number of unrolling of recursive functions to try
     #[arg(long, default_value = "0")]
     fuel: u32,
-    ///  Number of unrolling of inductive datatypes to try
+    /// Number of unrolling of inductive datatypes to try
     #[arg(long, default_value = "1")]
     ifuel: u32,
+    /// Modules for which Hax should extract interfaces (`*.fsti`
+    /// files). By default we extract no interface. This flag expects
+    /// a space-separated list of inclusion clauses. An inclusion
+    /// clause is a Rust path prefixed with `+` or `-`. `-` excludes
+    /// any matched item, `+` includes any matched item. By default,
+    /// every item is included. Rust path chunks can be either a
+    /// concrete string, or a glob (just like bash globs, but with
+    /// Rust paths).
+    #[arg(
+        long,
+        value_parser = parse_inclusion_clause,
+        value_delimiter = ' ',
+        allow_hyphen_values(true)
+    )]
+    // TODO: InclusionKind is a bit too expressive here (i.e. `!` makes no sense)
+    interfaces: Vec<InclusionClause>,
 }
 
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
