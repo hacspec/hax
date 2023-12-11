@@ -4,7 +4,7 @@ open Rust_primitives
 let impl__u8__wrapping_sub: u8 -> u8 -> u8 = sub_mod
 let impl__u16__wrapping_add: u16 -> u16 ->  u16 = add_mod
 let impl__i32__wrapping_add: i32 -> i32 -> i32 = add_mod
-let impl__i32__abs: i32 -> i32 = abs_int
+let impl__i32__abs (a:i32{minint i32_inttype < v a}) : i32 = abs_int a
 
 let impl__u32__wrapping_add: u32 -> u32 -> u32 = add_mod
 val impl__u32__rotate_left: u32 -> u32 -> u32

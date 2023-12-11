@@ -265,7 +265,9 @@ val logand: #t:inttype
 val logand_lemma: #t:inttype -> a:int_t t -> b:int_t t ->
   Lemma (logand a b == LI.logand #t #LI.PUB a b /\
          logand a zero == zero /\
-         logand a ones == a)
+         logand a ones == a /\
+         (v a >= 0 ==> lt (logand a b) a) /\
+         (v b >= 0 ==> lt (logand a b) b))
 
 val logand_mask_lemma: #t:inttype
   -> a:int_t t
@@ -351,6 +353,13 @@ let abs_int (#t:inttype) (a:int_t t{minint t < v a}) =
 val abs_int_equiv_lemma: #t:inttype{signed t /\ not (LI.S128? t)}
   -> a:int_t t{minint t < v a}
   -> Lemma (abs_int a == LI.ct_abs #t #LI.PUB a)
+
+let neg (#t:inttype{signed t}) (a:int_t t{range (0 - v a) t}) =
+    mk_int #t (0 - (v a))
+
+val neg_equiv_lemma: #t:inttype{signed t /\ not (LI.S128? t)}
+  -> a:int_t t{range (0 - v a) t}
+  -> Lemma (neg a == sub #t (mk_int 0) a)
 
 
 ///
