@@ -196,7 +196,7 @@ let j (x: t_Bar) : (t_Bar & u8) =
   let hax_temp_output:u8 = out in
   x, hax_temp_output <: (t_Bar & u8)
 
-type t_Pair (v_T: Type) {| _: Core.Marker.t_Sized v_T |} = {
+type t_Pair (v_T: Type) {| i0: Core.Marker.t_Sized v_T |} = {
   f_a:v_T;
   f_b:t_Foo
 }

@@ -538,73 +538,73 @@ struct
 
   and parm { arm = { arm_pat; body } } = (ppat arm_pat, None, pexpr body)
 
-  let rec pgeneric_param span (p : generic_param) : F.AST.pattern =
-    let mk ~aqual (ident : local_ident) ty =
-      let v = F.pat @@ F.AST.PatVar (plocal_ident ident, aqual, []) in
-      F.pat @@ F.AST.PatAscribed (v, (ty, None))
-    in
-    let ident = p.ident in
-    match p.kind with
-    | GPLifetime _ -> Error.assertion_failure span "pgeneric_param:LIFETIME"
-    | GPType { default = None } ->
-        mk ~aqual:(Some F.AST.Implicit) ident
-          (F.term @@ F.AST.Name (F.lid [ "Type" ]))
-    | GPType _ ->
-        Error.unimplemented span ~details:"pgeneric_param:Type with default"
-    | GPConst { typ } -> mk ~aqual:None ident (pty span typ)
+  module FStarBinder = struct
+    type kind = Implicit | Tcresolve | Explicit
+    type t = { kind : kind; ident : F.Ident.ident; typ : F.AST.term }
 
-  let rec pgeneric_constraint span (nth : int) (c : generic_constraint) =
-    match c with
-    | GCLifetime _ -> .
-    | GCType { bound; id; _ } ->
-        let tc = c_trait_ref span bound in
-        F.pat
-        @@ F.AST.PatAscribed (F.pat_var_tcresolve @@ Some ("i" ^ id), (tc, None))
+    let of_generic_param ?(kind : kind = Implicit) span (p : generic_param) : t
+        =
+      let ident = plocal_ident p.ident in
+      match p.kind with
+      | GPLifetime _ -> Error.assertion_failure span "pgeneric_param:LIFETIME"
+      | GPType { default = None } ->
+          { kind; typ = F.term @@ F.AST.Name (F.lid [ "Type" ]); ident }
+      | GPType _ ->
+          Error.unimplemented span ~details:"pgeneric_param:Type with default"
+      | GPConst { typ } -> { kind = Explicit; typ = pty span typ; ident }
 
-  let rec pgeneric_param_bd
-      ?(aqual : F.AST.arg_qualifier option = Some FStar_Parser_AST.Implicit)
-      span (p : generic_param) =
-    let ident = p.ident in
-    match p.kind with
-    | GPLifetime _ -> .
-    | GPType { default = _ } ->
-        let t = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
-        F.mk_binder ~aqual (F.AST.Annotated (plocal_ident ident, t))
-    | GPType _ ->
-        Error.unimplemented span ~details:"pgeneric_param_bd:Type with default"
-    | GPConst { typ } ->
-        F.mk_binder ~aqual:None
-          (F.AST.Annotated (plocal_ident ident, pty span typ))
+    let of_generic_constraint span (nth : int) (c : generic_constraint) =
+      match c with
+      | GCLifetime _ -> .
+      | GCType { bound; id; _ } ->
+          let typ = c_trait_ref span bound in
+          { kind = Tcresolve; ident = F.id id; typ }
 
-  let pgeneric_param_ident
-      ?(aqual : F.AST.arg_qualifier option = Some FStar_Parser_AST.Implicit)
-      span (p : generic_param) =
-    match (pgeneric_param_bd ~aqual span p).b with
-    | Annotated (ident, _) -> ident
-    | _ -> failwith "pgeneric_param_ident"
+    let of_generics ?(kind : kind = Implicit) span generics : t list =
+      List.map ~f:(of_generic_param ~kind span) generics.params
+      @ List.mapi ~f:(of_generic_constraint span) generics.constraints
+
+    let to_pattern (x : t) : F.AST.pattern =
+      let subpat =
+        match x.kind with
+        | Tcresolve ->
+            let tcresolve =
+              Some
+                (F.AST.Meta
+                   (F.term @@ F.AST.Var FStar_Parser_Const.tcresolve_lid))
+            in
+            F.pat @@ F.AST.PatVar (x.ident, tcresolve, [])
+        | _ ->
+            let aqual =
+              match x.kind with Implicit -> Some F.AST.Implicit | _ -> None
+            in
+            F.pat @@ F.AST.PatVar (x.ident, aqual, [])
+      in
+      F.pat @@ F.AST.PatAscribed (subpat, (x.typ, None))
+
+    let to_typ (x : t) : F.AST.term = x.typ
+    let to_ident (x : t) : F.Ident.ident = x.ident
+
+    let to_binder (x : t) : F.AST.binder =
+      F.AST.
+        {
+          b = F.AST.Annotated (x.ident, x.typ);
+          brange = F.dummyRange;
+          blevel = Un;
+          aqual =
+            (match x.kind with
+            | Tcresolve -> Some TypeClassArg
+            | Implicit -> Some Implicit
+            | Explicit -> None);
+          battributes = [];
+        }
+  end
 
   let rec pgeneric_constraint_type span (c : generic_constraint) =
     match c with
     | GCLifetime _ ->
         Error.assertion_failure span "pgeneric_constraint_bd:LIFETIME"
     | GCType { bound; _ } -> c_trait_ref span bound
-
-  let rec pgeneric_constraint_bd span (c : generic_constraint) =
-    let tc = pgeneric_constraint_type span c in
-    F.AST.
-      {
-        b = F.AST.Annotated (F.generate_fresh_ident (), tc);
-        brange = F.dummyRange;
-        blevel = Un;
-        aqual = Some TypeClassArg;
-        battributes = [];
-      }
-
-  let pgenerics
-      ?(aqual : F.AST.arg_qualifier option = Some FStar_Parser_AST.Implicit)
-      span generics =
-    List.map ~f:(pgeneric_param_bd ~aqual span) generics.params
-    @ List.map ~f:(pgeneric_constraint_bd span) generics.constraints
 
   let get_attr (type a) (name : string) (map : string -> a) (attrs : attrs) :
       a option =
@@ -768,9 +768,9 @@ struct
     | Fn { name; generics; body; params } ->
         let name = F.id @@ U.Concrete_ident_view.to_definition_name name in
         let pat = F.pat @@ F.AST.PatVar (name, None, []) in
+        let generics = FStarBinder.of_generics e.span generics in
         let pat_args =
-          List.map ~f:(pgeneric_param e.span) generics.params
-          @ List.mapi ~f:(pgeneric_constraint e.span) generics.constraints
+          List.map ~f:FStarBinder.to_pattern generics
           @ List.map
               ~f:(fun { pat; typ_span; typ } ->
                 let span = Option.value ~default:e.span typ_span in
@@ -787,12 +787,23 @@ struct
           add_clauses_effect_type ~no_tot_abbrev:interface_mode e.attrs
             (pty body.span body.typ)
         in
+        let arrow_typ =
+          F.term
+          @@ F.AST.Product
+               ( List.map ~f:FStarBinder.to_binder generics
+                 @ List.map
+                     ~f:(fun { pat = _; typ_span; typ } ->
+                       let span = Option.value ~default:e.span typ_span in
+                       pty span typ |> F.binder_of_term)
+                     params,
+                 ty )
+        in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (ty, None)) in
         let full =
           F.decl @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, pexpr body) ])
         in
 
-        let intf = F.decl ~fsti:true (F.AST.Val (name, ty)) in
+        let intf = F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) in
         if interface_mode then [ impl; intf ] else [ full ]
     | TyAlias { name; generics; ty } ->
         let pat =
@@ -807,10 +818,9 @@ struct
                  ( F.pat
                    @@ F.AST.PatApp
                         ( pat,
-                          List.map ~f:(pgeneric_param e.span) generics.params
-                          @ List.mapi
-                              ~f:(pgeneric_constraint e.span)
-                              generics.constraints ),
+                          FStarBinder.(
+                            of_generics e.span generics
+                            |> List.map ~f:to_pattern) ),
                    pty e.span ty );
                ] )
     | Type
@@ -827,7 +837,8 @@ struct
                [
                  F.AST.TyconRecord
                    ( F.id @@ U.Concrete_ident_view.to_definition_name name,
-                     pgenerics ~aqual:None e.span generics,
+                     FStarBinder.of_generics ~kind:Explicit e.span generics
+                     |> List.map ~f:FStarBinder.to_binder,
                      None,
                      [],
                      List.map
@@ -849,7 +860,9 @@ struct
         let self =
           F.mk_e_app
             (F.term_of_lid [ U.Concrete_ident_view.to_definition_name name ])
-            (List.map ~f:(pgeneric_param_ident e.span) generics.params
+            (List.map
+               ~f:FStarBinder.(of_generic_param e.span >> to_ident)
+               generics.params
             |> List.map ~f:(fun id -> F.term @@ F.AST.Name (F.lid_of_id id)))
         in
 
@@ -890,7 +903,8 @@ struct
                [
                  F.AST.TyconVariant
                    ( F.id @@ U.Concrete_ident_view.to_definition_name name,
-                     pgenerics ~aqual:None e.span generics,
+                     FStarBinder.of_generics ~kind:Explicit e.span generics
+                     |> List.map ~f:FStarBinder.to_binder,
                      None,
                      constructors );
                ] )
@@ -967,7 +981,9 @@ struct
         | _ -> unsupported_macro ())
     | Trait { name; generics; items } ->
         let bds =
-          List.map ~f:(pgeneric_param_bd ~aqual:None e.span) generics.params
+          List.map
+            ~f:FStarBinder.(of_generic_param ~kind:Explicit e.span >> to_binder)
+            generics.params
         in
         let name_str = U.Concrete_ident_view.to_definition_name name in
         let name = F.id @@ name_str in
@@ -975,7 +991,10 @@ struct
           List.concat_map
             ~f:(fun i ->
               let name = U.Concrete_ident_view.to_definition_name i.ti_ident in
-              let bds = pgenerics i.ti_span i.ti_generics in
+              let generics =
+                FStarBinder.of_generics ~kind:Implicit i.ti_span i.ti_generics
+              in
+              let bds = generics |> List.map ~f:FStarBinder.to_binder in
               let fields =
                 match i.ti_v with
                 | TIType bounds ->
@@ -1001,7 +1020,8 @@ struct
                     let ty = pty e.span ty in
                     let ty =
                       F.term
-                      @@ F.AST.Product (pgenerics i.ti_span i.ti_generics, ty)
+                      @@ F.AST.Product
+                           (generics |> List.map ~f:FStarBinder.to_binder, ty)
                     in
                     [ (F.id name, None, [], ty) ]
               in
@@ -1035,14 +1055,10 @@ struct
     | Impl { generics; self_ty = _; of_trait = trait, generic_args; items } ->
         let name = U.Concrete_ident_view.to_definition_name e.ident |> F.id in
         let pat = F.pat @@ F.AST.PatVar (name, None, []) in
+        let generics = FStarBinder.of_generics e.span generics in
         let pat =
           F.pat
-          @@ F.AST.PatApp
-               ( pat,
-                 List.map ~f:(pgeneric_param e.span) generics.params
-                 @ List.mapi
-                     ~f:(pgeneric_constraint e.span)
-                     generics.constraints )
+          @@ F.AST.PatApp (pat, List.map ~f:FStarBinder.to_pattern generics)
         in
         let typ =
           F.mk_e_app
@@ -1058,10 +1074,9 @@ struct
                 match ii_v with
                 | IIFn { body; params } ->
                     let pats =
-                      List.map ~f:(pgeneric_param ii_span) ii_generics.params
-                      @ List.mapi
-                          ~f:(pgeneric_constraint ii_span)
-                          ii_generics.constraints
+                      FStarBinder.(
+                        of_generics ii_span ii_generics
+                        |> List.map ~f:to_pattern)
                       @ List.map
                           ~f:(fun { pat; typ_span; typ } ->
                             let span = Option.value ~default:ii_span typ_span in
@@ -1085,6 +1100,10 @@ struct
           @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
         in
         let intf =
+          let typ =
+            F.term
+            @@ F.AST.Product (List.map ~f:FStarBinder.to_binder generics, typ)
+          in
           F.decl ~fsti:true ~attrs:[ tcinst ] @@ F.AST.Val (name, typ)
         in
         if ctx.interface_mode then [ impl; intf ] else [ impl ]
