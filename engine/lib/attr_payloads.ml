@@ -37,7 +37,15 @@ end
 
 module AssocRole = struct
   module T = struct
-    type t = Requires | Ensures | Decreases | Refine
+    type t =
+      | Requires
+      | Ensures
+      | Decreases
+      | Refine
+      | ProcessRead
+      | ProcessWrite
+      | ProcessInit
+      | ProtocolMessages
     [@@deriving show, yojson, compare, sexp, eq]
   end
 
@@ -54,6 +62,10 @@ module AssocRole = struct
     | Ensures -> Ensures
     | Decreases -> Decreases
     | Refine -> Refine
+    | ProcessRead -> ProcessRead
+    | ProcessWrite -> ProcessWrite
+    | ProcessInit -> ProcessInit
+    | ProtocolMessages -> ProtocolMessages
 end
 
 module MakeBase (Error : Phase_utils.ERROR) = struct
