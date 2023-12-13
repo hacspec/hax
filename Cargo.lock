@@ -536,6 +536,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "hax-lib-protocol"
+version = "0.1.0-pre.1"
+
+[[package]]
 name = "hax-lint"
 version = "0.1.0-pre.1"
 dependencies = [
