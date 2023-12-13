@@ -11,4 +11,4 @@ let v_assume (v__formula: bool) = assume v__formula
 
 unfold let v_exists (v__f: 'a -> Type0): Type0 = exists (x: 'a). v__f x
 unfold let v_forall (v__f: 'a -> Type0): Type0 = forall (x: 'a). v__f x
-unfold let implies (lhs: bool) (rhs: bool): bool = (not lhs) || rhs
+unfold let implies (lhs: Type0) (rhs: unit -> Type0): Type0 = lhs ==> rhs ()
