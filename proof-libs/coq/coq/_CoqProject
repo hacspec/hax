@@ -4,4 +4,5 @@
 
 src/MachineIntegers.v
 src/Hacspec_Lib.v
+src/Hacspec_lib.v
 src/QuickChickLib.v
