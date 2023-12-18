@@ -13,4 +13,10 @@ val of_list (#t:Type) (l: list t {FStar.List.Tot.length l < maxint Lib.IntTypes.
 val to_list (#t:Type) (s: t_Slice t): list t
 
 val map_array #n (arr: t_Array 'a n) (f: 'a -> 'b): t_Array 'b n 
-  
+
+val createi #t (l:usize) (f:(u:usize{u <. l} -> t))
+    : Pure (t_Array t l)
+      (requires True)
+      (ensures (fun res -> (forall i. Seq.index res (v i) == f i)))
+
+

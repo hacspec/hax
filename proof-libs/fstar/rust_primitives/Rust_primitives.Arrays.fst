@@ -12,3 +12,4 @@ let map_array #n (arr: t_Array 'a n) (f: 'a -> 'b): t_Array 'b n
   = FStar.Seq.map_seq_len f arr;
     FStar.Seq.map_seq f arr 
 
+let createi #t l f = admit()
