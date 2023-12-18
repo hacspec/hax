@@ -18,6 +18,7 @@ let usize_to_uint64 x = Int.Cast.uint32_to_uint64 x
 let size_to_uint64 x = Int.Cast.uint32_to_uint64 x
 
 let mk_int #t a = LI.mk_int #t #LI.PUB a
+let mk_int_equiv_lemma #_ = admit ()
 let mk_int_v_lemma #t a = ()
 let v_mk_int_lemma #t a = ()
 let add_mod_equiv_lemma #t a b = LI.add_mod_lemma #t #LI.PUB a b
@@ -55,3 +56,15 @@ let rotate_left #t a b = LI.rotate_left #t #LI.PUB a (cast b)
 let rotate_left_equiv_lemma #t a b = ()
 
 let abs_int_equiv_lemma #t a = admit()
+
+let neg_equiv_lemma #_ _ = ()
+
+let get_bit_and _x _y _i = admit ()
+let get_bit_or _x _y _i = admit ()
+let get_bit_shl _x _y _i = admit ()
+let get_bit_shr _x _y _i = admit ()
+
+let get_bit_cast #t #u x nth
+  = reveal_opaque (`%get_bit) (get_bit x nth);
+    reveal_opaque (`%get_bit) (get_bit (cast_mod #t #u x <: int_t u) nth);
+    admit ()

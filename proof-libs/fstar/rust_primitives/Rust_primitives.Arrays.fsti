@@ -19,4 +19,8 @@ val createi #t (l:usize) (f:(u:usize{u <. l} -> t))
       (requires True)
       (ensures (fun res -> (forall i. Seq.index res (v i) == f i)))
 
+unfold let map #p
+  (f:(x:'a{p x} -> 'b))
+  (s: t_Slice 'a {forall (i:nat). i < Seq.length s ==> p (Seq.index s i)}): t_Slice 'b
+  = createi (length s) (fun i -> f (Seq.index s (v i)))
 

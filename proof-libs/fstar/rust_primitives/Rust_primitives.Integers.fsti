@@ -434,3 +434,58 @@ let (>.) #t = gt #t
 unfold
 let (>=.) #t = gte #t
 
+
+
+
+
+type bit = n: nat {n < 2}
+
+/// Mathematical `get_bit` definition on `nat`s
+let get_bit_nat (x: nat) (nth: nat): bit
+  = (x / pow2 nth) % 2
+
+/// `get_bit` definition for machine integer of any size and signedness
+[@"opaque_to_smt"]
+let get_bit (#n: inttype) (x: int_t n) (nth: usize {v nth < bits n}): bit
+  = if v x >= 0 then get_bit_nat (v x) (v nth)
+               else // two's complement
+                    get_bit_nat (pow2 (bits n) + v x) (v nth)
+
+unfold let bit_and (x y: bit): bit = match x, y with | (1, 1) -> 1 | _ -> 0
+unfold let bit_or  (x y: bit): bit = (x + y) % 2
+
+/// Bit-wise semantics for `&.`
+val get_bit_and #t (x y: int_t t) (i: usize {v i < bits t})
+  : Lemma (get_bit (x &. y) i == get_bit x i `bit_and` get_bit y i)
+          [SMTPat (get_bit (x &. y) i)]
+
+/// Bit-wise semantics for `|.`
+val get_bit_or #t (x y: int_t t) (i: usize {v i < bits t})
+  : Lemma (get_bit (x |. y) i == get_bit x i `bit_or` get_bit y i)
+          [SMTPat (get_bit (x |. y) i)]
+
+/// Bit-wise semantics for `<<!`
+val get_bit_shl #t #u (x: int_t t) (y: int_t u) (i: usize {v i < bits t})
+  : Lemma (requires v y >= 0 /\ v y < bits t)
+          (ensures get_bit (x <<! y) i 
+                == (if v i < v y then 0 else get_bit x (mk_int (v i - v y))))
+    [SMTPat (get_bit (x <<! y) i)]
+
+/// Bit-wise semantics for `>>!`
+val get_bit_shr #t #u (x: int_t t) (y: int_t u) (i: usize {v i < bits t})
+  : Lemma (requires v y >= 0 /\ v y < bits t)
+          (ensures get_bit (x >>! y) i 
+                == (if v i < bits t - v y
+                    then get_bit x (mk_int (v i + v y))
+                    else if signed t
+                         then get_bit x (mk_int (bits t - 1))
+                         else 0))
+    [SMTPat (get_bit (x >>! y) i)]
+
+// TODO: cehck for neg numbers
+/// Bit-wise semantics of integer casts
+val get_bit_cast #t #u
+  (x: int_t t) (nth: usize)
+  : Lemma (requires v nth < bits u /\ v nth < bits t)
+          (ensures get_bit x nth == get_bit (cast_mod #t #u x <: int_t u) nth)
+          [SMTPat (get_bit (cast_mod #t #u x <: int_t u) nth)]
