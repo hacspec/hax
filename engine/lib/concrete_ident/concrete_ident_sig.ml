@@ -14,6 +14,10 @@ struct
 
     val index_field_transform : string -> string
     (** Transformation applied to indexes fields name (i.e. [x.1]) *)
+
+    val field_name_transform : struct_name:string -> string -> string
+    val enum_constructor_name_transform : enum_name:string -> string -> string
+    val struct_constructor_name_transform : string -> string
   end
 
   module type VIEW_API = sig
