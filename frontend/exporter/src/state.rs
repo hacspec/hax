@@ -120,6 +120,7 @@ mod types {
         pub local_ctx: Rc<RefCell<LocalContextS>>,
         pub opt_def_id: Option<rustc_hir::def_id::DefId>,
         pub exported_spans: ExportedSpans,
+        pub exported_def_ids: ExportedDefIds,
         pub cached_thirs: Rc<
             HashMap<
                 rustc_span::def_id::LocalDefId,
@@ -145,12 +146,14 @@ mod types {
                 opt_def_id: None,
                 local_ctx: Rc::new(RefCell::new(LocalContextS::new())),
                 exported_spans: Rc::new(RefCell::new(HashSet::new())),
+                exported_def_ids: Rc::new(RefCell::new(HashSet::new())),
             }
         }
     }
 
     pub type MacroCalls = Rc<HashMap<Span, Span>>;
     pub type ExportedSpans = Rc<RefCell<HashSet<rustc_span::Span>>>;
+    pub type ExportedDefIds = Rc<RefCell<HashSet<rustc_hir::def_id::DefId>>>;
     pub type RcThir<'tcx> = Rc<rustc_middle::thir::Thir<'tcx>>;
     pub type RcMir<'tcx> = Rc<rustc_middle::mir::Body<'tcx>>;
 }
@@ -190,7 +193,6 @@ impl<'tcx> State<Base<'tcx>, (), (), rustc_hir::def_id::DefId> {
         }
     }
 }
-
 impl<'tcx> State<Base<'tcx>, (), Rc<rustc_middle::mir::Body<'tcx>>, rustc_hir::def_id::DefId> {
     pub fn new_from_mir(
         tcx: rustc_middle::ty::TyCtxt<'tcx>,
@@ -207,4 +209,94 @@ impl<'tcx> State<Base<'tcx>, (), Rc<rustc_middle::mir::Body<'tcx>>, rustc_hir::d
     }
 }
 
+/// Updates the OnwerId in a state, making sure to override `opt_def_id` in base as well.
+// TODO: is `opt_def_id` useful at all? (see https://github.com/hacspec/hacspec-v2/issues/273)
+pub fn with_owner_id<'tcx, THIR, MIR>(
+    mut base: types::Base<'tcx>,
+    thir: THIR,
+    mir: MIR,
+    owner_id: rustc_hir::def_id::DefId,
+) -> State<types::Base<'tcx>, THIR, MIR, rustc_hir::def_id::DefId> {
+    base.opt_def_id = Some(owner_id);
+    State {
+        thir,
+        owner_id,
+        base,
+        mir,
+    }
+}
+
 pub trait BaseState<'tcx> = HasBase<'tcx> + Clone + IsState<'tcx>;
+/// State of anything below a `owner_id`
+pub trait UnderOwnerState<'tcx> = BaseState<'tcx> + HasOwnerId;
+
+/// Meta-informations about an `impl<GENERICS[: PREDICATES]> TRAIT for
+/// TYPE where PREDICATES {}`
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct ImplInfos {
+    pub generics: TyGenerics,
+    pub predicates: Vec<Predicate>,
+    pub typ: Ty,
+    pub trait_ref: Option<TraitRef>,
+}
+
+impl ImplInfos {
+    fn from<'tcx>(base: Base<'tcx>, did: rustc_hir::def_id::DefId) -> Self {
+        let tcx = base.tcx;
+        let s = &with_owner_id(base, (), (), did);
+
+        let predicates = tcx
+            .predicates_defined_on(did)
+            .predicates
+            .iter()
+            .map(|(x, _)| x.sinto(s))
+            .collect();
+        Self {
+            generics: tcx.generics_of(did).sinto(s),
+            typ: tcx.type_of(did).subst_identity().sinto(s),
+            trait_ref: tcx.impl_trait_ref(did).sinto(s),
+            predicates,
+        }
+    }
+}
+
+/// Returns a map from every implementation (`Impl`) `DefId`s to the
+/// type they implement, plus the bounds.
+pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: BaseState<'tcx>>(
+    s: &S,
+) -> HashMap<DefId, ImplInfos> {
+    let Base {
+        tcx,
+        exported_def_ids,
+        ..
+    } = s.base();
+
+    let def_ids = exported_def_ids.as_ref().borrow().clone();
+    let with_parents = |mut did: rustc_hir::def_id::DefId| {
+        let mut acc = vec![did.clone()];
+        while let Some(parent) = tcx.opt_parent(did) {
+            did = parent;
+            acc.push(did);
+        }
+        acc.into_iter()
+    };
+    use itertools::Itertools;
+    def_ids
+        .iter()
+        .cloned()
+        .map(with_parents)
+        .flatten()
+        .unique()
+        .filter(|&did| {
+            // keep only DefIds that corresponds to implementations
+            matches!(
+                tcx.def_path(did).data.last(),
+                Some(rustc_hir::definitions::DisambiguatedDefPathData {
+                    data: rustc_hir::definitions::DefPathData::Impl,
+                    ..
+                })
+            )
+        })
+        .map(|did| (did.sinto(s), ImplInfos::from(s.base(), did)))
+        .collect()
+}
