@@ -87,11 +87,19 @@ module ProVerifNamePolicy = struct
 
   [@@@ocamlformat "disable"]
 
-  let index_field_transform index = "_" ^ index
+  let index_field_transform index = Fn.id index
 
   let reserved_words = Hash_set.of_list (module String) [
   "among"; "axiom"; "channel"; "choice"; "clauses"; "const"; "def"; "diff"; "do"; "elimtrue"; "else"; "equation"; "equivalence"; "event"; "expand"; "fail"; "for"; "forall"; "foreach"; "free"; "fun"; "get"; "if"; "implementation"; "in"; "inj-event"; "insert"; "lemma"; "let"; "letfun"; "letproba"; "new"; "noninterf"; "noselect"; "not"; "nounif"; "or"; "otherwise"; "out"; "param"; "phase"; "pred"; "proba"; "process"; "proof"; "public vars"; "putbegin"; "query"; "reduc"; "restriction"; "secret"; "select"; "set"; "suchthat"; "sync"; "table"; "then"; "type"; "weaksecret"; "yield"
   ]
+
+  let field_name_transform ~struct_name field_name = struct_name ^ "_" ^ field_name
+
+  let enum_constructor_name_transform ~enum_name constructor_name = enum_name ^ "_" ^ constructor_name ^ "_c"
+
+  let struct_constructor_name_transform constructor_name =  constructor_name ^ "_c"
+
+  
 end
 
 module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (ProVerifNamePolicy)
@@ -113,60 +121,60 @@ module Print = struct
       method ty_int _ = string "bitstring"
 
       method! item' item =
-        let fun_and_reduc name variants =
-          let constructor = List.hd variants in
-          match constructor with
-          | None -> empty
-          | Some constructor ->
-              let field_prefix =
-                if constructor.is_record then empty
-                else print#concrete_ident name
-              in
-              let fun_args = constructor.arguments in
-              let fun_args_full =
-                separate_map
-                  (comma ^^ break 1)
-                  (fun (x, y, _z) ->
-                    field_prefix ^^ print#concrete_ident x ^^ string ": "
-                    ^^ print#ty_at Param_typ y)
-                  fun_args
-              in
-              let fun_args_names =
-                separate_map
-                  (comma ^^ break 1)
-                  (fst3 >> fun x -> field_prefix ^^ print#concrete_ident x)
-                  fun_args
-              in
-              let fun_args_types =
-                separate_map
-                  (comma ^^ break 1)
-                  (snd3 >> print#ty_at Param_typ)
-                  fun_args
-              in
-              let fun_line =
-                string "fun" ^^ space ^^ print#concrete_ident name
-                ^^ iblock parens fun_args_types
-                ^^ string ": state."
-              in
-              let reduc_line =
-                string "reduc forall " ^^ iblock Fn.id fun_args_full ^^ semi
-              in
-              let build_accessor (ident, ty, attr) =
-                string "accessor_" ^^ print#concrete_ident name ^^ underscore
-                ^^ print#concrete_ident ident
-                ^^ iblock parens
-                     (print#concrete_ident name ^^ iblock parens fun_args_names)
-                ^^ blank 1 ^^ equals ^^ blank 1 ^^ field_prefix
-                ^^ print#concrete_ident ident
-              in
-              let reduc_lines =
-                separate_map (dot ^^ hardline)
-                  (fun arg ->
-                    reduc_line ^^ nest 4 (hardline ^^ build_accessor arg))
-                  fun_args
-              in
-              fun_line ^^ hardline ^^ reduc_lines
-              ^^ if is_empty reduc_lines then empty else dot
+        let fun_and_reduc base_name constructor =
+          let field_prefix =
+            if constructor.is_record then empty
+            else print#concrete_ident base_name
+          in
+          let fun_args = constructor.arguments in
+          let fun_args_full =
+            separate_map
+              (comma ^^ break 1)
+              (fun (x, y, _z) ->
+                print#concrete_ident x ^^ string ": "
+                ^^ print#ty_at Param_typ y)
+              fun_args
+          in
+          let fun_args_names =
+            separate_map
+              (comma ^^ break 1)
+              (fst3 >> fun x -> print#concrete_ident x)
+              fun_args
+          in
+          let fun_args_types =
+            separate_map
+              (comma ^^ break 1)
+              (snd3 >> print#ty_at Param_typ)
+              fun_args
+          in
+          let constructor_name =
+            print#concrete_ident constructor.name
+          in
+
+          let fun_line =
+            string "fun" ^^ space ^^ constructor_name
+            ^^ iblock parens fun_args_types
+            ^^ string ": "
+            ^^ print#concrete_ident base_name
+            ^^ dot
+          in
+          let reduc_line =
+            string "reduc forall " ^^ iblock Fn.id fun_args_full ^^ semi
+          in
+          let build_accessor (ident, ty, attr) =
+            string "accessor" ^^ underscore ^^ print#concrete_ident ident
+            ^^ iblock parens (constructor_name ^^ iblock parens fun_args_names)
+            ^^ blank 1 ^^ equals ^^ blank 1
+            ^^ print#concrete_ident ident
+          in
+          let reduc_lines =
+            separate_map (dot ^^ hardline)
+              (fun arg -> reduc_line ^^ nest 4 (hardline ^^ build_accessor arg))
+              fun_args
+          in
+          fun_line ^^ hardline ^^ reduc_lines
+          ^^ if reduc_lines == empty then empty else dot
+          (* let fun_and_reduc_variants = map (fun_and_reduc ) *)
         in
         match item with
         (* `fn`s are transformed into `letfun` process macros. *)
