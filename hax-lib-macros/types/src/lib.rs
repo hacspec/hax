@@ -53,7 +53,7 @@ pub enum AssociationRole {
     ProcessRead,
     ProcessWrite,
     ProcessInit,
-    ProtocolMessages
+    ProtocolMessages,
 }
 
 /// Hax only understands one attribute: `#[hax::json(PAYLOAD)]` where
@@ -74,7 +74,7 @@ pub enum AttrPayload {
     ProcessRead,
     ProcessWrite,
     ProcessInit,
-    ProtocolMessages
+    ProtocolMessages,
 }
 
 pub const HAX_TOOL: &str = "_hax";
