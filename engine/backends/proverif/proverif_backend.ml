@@ -168,7 +168,6 @@ module Print = struct
           in
           fun_line ^^ hardline ^^ reduc_lines
           ^^ if reduc_lines == empty then empty else dot
-          (* let fun_and_reduc_variants = map (fun_and_reduc ) *)
         in
         match item with
         (* `fn`s are transformed into `letfun` process macros. *)
@@ -184,7 +183,27 @@ module Print = struct
                  ^^ dot)
         (* `struct` definitions are transformed into simple constructors and `reduc`s for accessing fields. *)
         | Type { name; generics; variants; is_struct } ->
-            if is_struct then fun_and_reduc name variants else empty
+            let type_line =
+              string "type " ^^ print#concrete_ident name ^^ dot
+            in
+            let type_converter_line =
+              string "fun " ^^ print#concrete_ident name
+              ^^ string "_to_bitstring"
+              ^^ iblock parens (print#concrete_ident name)
+              ^^ string ": bitstring [typeConverter]."
+            in
+            if is_struct then
+              let struct_constructor = List.hd variants in
+              match struct_constructor with
+              | None -> empty
+              | Some constructor ->
+                  type_line ^^ hardline ^^ type_converter_line ^^ hardline
+                  ^^ fun_and_reduc name constructor
+            else
+              type_line ^^ hardline ^^ type_converter_line ^^ hardline
+              ^^ separate_map (hardline ^^ hardline)
+                   (fun variant -> fun_and_reduc name variant)
+                   variants
         | _ -> empty
 
       method! expr_let : lhs:pat -> rhs:expr -> expr fn =
@@ -204,9 +223,8 @@ module Print = struct
             (global_ident * document) list fn =
         fun ~is_record ~is_struct:_ ~constructor ~base:_ args ->
           if is_record then
-            string "t_"
-            (* FIXME: How do I get at the ident from the struct definition instead? *)
-            ^^ print#concrete_ident constructor
+            print#concrete_ident constructor
+            ^^ string "_c"
             ^^ iblock parens
                  (separate_map
                     (break 0 ^^ comma)
