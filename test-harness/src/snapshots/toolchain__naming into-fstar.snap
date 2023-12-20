@@ -54,7 +54,7 @@ let debug (label value: u32) : Prims.unit =
   in
   ()
 
-let f: Prims.unit =
+let f (_: Prims.unit) : Prims.unit =
   let a_1_:u32 = 104ul in
   let a_2_:u32 = 205ul in
   let a_3_:u32 = 306ul in
@@ -64,7 +64,7 @@ let f: Prims.unit =
   let _:Prims.unit = debug 1ul a_1_ in
   debug 4ul a
 
-let ff_expand: Prims.unit =
+let ff_expand (_: Prims.unit) : Prims.unit =
   let a:i32 = 104l in
   let a:i32 = 205l in
   let a:i32 = 306l in
@@ -80,7 +80,7 @@ module Naming.F.G.Impl_1.G.Hello
 open Core
 open FStar.Mul
 
-let h: Prims.unit = ()
+let h (_: Prims.unit) : Prims.unit = ()
 '''
 "Naming.fst" = '''
 module Naming
@@ -121,9 +121,10 @@ let constants
       (#v_T: Type)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] ii0: Core.Marker.t_Sized v_T)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] ii1: t_FooTrait v_T)
+      (_: Prims.unit)
     : usize = f_ASSOCIATED_CONSTANT +! v_INHERENT_CONSTANT
 
-let ff__g: Prims.unit = ()
+let ff__g (_: Prims.unit) : Prims.unit = ()
 
 type t_f__g__impl__g__Foo =
   | C_f__g__impl__g__Foo_A : t_f__g__impl__g__Foo
@@ -174,7 +175,7 @@ let f (x: t_Foobar) : usize = ff__g__impl_1__g x.f_a
 
 let ff__g__impl__g (self: t_B) : usize = sz 0
 
-let mk_c: t_C =
+let mk_c (_: Prims.unit) : t_C =
   let _:t_Foo = Foo_B ({ Naming.Foo.f_x = sz 3 }) <: t_Foo in
   let _:t_X = X <: t_X in
   { f_x = sz 3 } <: t_C

@@ -54,7 +54,7 @@ let process_order
       (other_side: Alloc.Collections.Binary_heap.t_BinaryHeap v_T)
     : (Alloc.Collections.Binary_heap.t_BinaryHeap v_T &
       (Alloc.Vec.t_Vec t_Match Alloc.Alloc.t_Global & Core.Option.t_Option t_Order)) =
-  let matches:Alloc.Vec.t_Vec t_Match Alloc.Alloc.t_Global = Alloc.Vec.impl__new in
+  let matches:Alloc.Vec.t_Vec t_Match Alloc.Alloc.t_Global = Alloc.Vec.impl__new () in
   let done:bool = false in
   let done, matches, order, other_side:(bool & Alloc.Vec.t_Vec t_Match Alloc.Alloc.t_Global &
     t_Order &
@@ -139,7 +139,8 @@ let process_order
             (bool & Alloc.Vec.t_Vec t_Match Alloc.Alloc.t_Global & t_Order &
               Alloc.Collections.Binary_heap.t_BinaryHeap v_T))
   in
-  let output:(Alloc.Vec.t_Vec t_Match Alloc.Alloc.t_Global & Core.Option.t_Option t_Order) =
+  let hax_temp_output:(Alloc.Vec.t_Vec t_Match Alloc.Alloc.t_Global & Core.Option.t_Option t_Order)
+  =
     matches,
     (if order.f_quantity >. 0uL
       then Core.Option.Option_Some order <: Core.Option.t_Option t_Order
@@ -147,7 +148,7 @@ let process_order
     <:
     (Alloc.Vec.t_Vec t_Match Alloc.Alloc.t_Global & Core.Option.t_Option t_Order)
   in
-  other_side, output
+  other_side, hax_temp_output
   <:
   (Alloc.Collections.Binary_heap.t_BinaryHeap v_T &
     (Alloc.Vec.t_Vec t_Match Alloc.Alloc.t_Global & Core.Option.t_Option t_Order))

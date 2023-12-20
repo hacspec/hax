@@ -15,6 +15,7 @@ dependencies = [
 name = "attributes"
 version = "0.1.0"
 dependencies = [
+ "hax-lib",
  "hax-lib-macros",
  "serde",
 ]
@@ -85,6 +86,10 @@ dependencies = [
  "num",
  "secret_integers",
 ]
+
+[[package]]
+name = "hax-lib"
+version = "0.1.0-pre.1"
 
 [[package]]
 name = "hax-lib-macros"

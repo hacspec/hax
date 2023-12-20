@@ -42,7 +42,7 @@ Definition debug (label : int32) (value : int32) : unit :=
       impl_1__new_display value])))) : unit in
   tt.
 
-Definition f : unit :=
+Definition f (_ : unit) : unit :=
   let a_1 := ((@repr WORDSIZE32 104)) : int32 in
   let a_2 := ((@repr WORDSIZE32 205)) : int32 in
   let a_3 := ((@repr WORDSIZE32 306)) : int32 in
@@ -52,7 +52,7 @@ Definition f : unit :=
   let _ := (debug (@repr WORDSIZE32 1) a_1) : unit in
   debug (@repr WORDSIZE32 4) a.
 
-Definition ff_expand : unit :=
+Definition ff_expand (_ : unit) : unit :=
   let a := ((@repr WORDSIZE32 104)) : int32 in
   let a := ((@repr WORDSIZE32 205)) : int32 in
   let a := ((@repr WORDSIZE32 306)) : int32 in
@@ -70,7 +70,7 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 
-Definition h : unit :=
+Definition h (_ : unit) : unit :=
   tt.
 '''
 "Naming.v" = '''
@@ -127,10 +127,10 @@ Instance t_Foo_t_t_T3_e_for_a : t_T3_e_for_a t_Foo_t := {
 Definition v_INHERENT_CONSTANT : uint_size :=
   (@repr WORDSIZE32 3).
 
-Definition constants : uint_size :=
+Definition constants (_ : unit) : uint_size :=
   f_ASSOCIATED_CONSTANT.+v_INHERENT_CONSTANT.
 
-Definition ff__g : unit :=
+Definition ff__g (_ : unit) : unit :=
   tt.
 
 Record C_f__g__impl__g__Foo_B : Type :={
@@ -203,7 +203,7 @@ Definition f (x : t_Foobar_t) : uint_size :=
 Definition ff__g__impl__g (self : t_B_t) : uint_size :=
   (@repr WORDSIZE32 0).
 
-Definition mk_c : t_C_t :=
+Definition mk_c (_ : unit) : t_C_t :=
   let _ := (Build_Foo_B (@repr WORDSIZE32 3)) : t_Foo_t in
   let _ := (Xt_X_t) : t_X_t in
   Build_C (@repr WORDSIZE32 3).

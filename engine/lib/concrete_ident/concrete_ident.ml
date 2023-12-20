@@ -437,7 +437,7 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
   let is_reserved_word : string -> bool = Hash_set.mem NP.reserved_words
 
   let rename_definition (_path : string list) (name : string) (kind : Kind.t)
-      _type_name =
+      type_name =
     (* let path, name = *)
     (*   match kind with *)
     (*   | Constructor { is_struct = false } -> *)
@@ -457,14 +457,21 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
     | Value | Impl ->
         if start_uppercase name || is_reserved_word name then "v_" ^ name
         else escape name
-    | Constructor _ ->
-        if start_lowercase name || is_reserved_word name then "C_" ^ name
-        else escape name
-    | Field | AssociatedItem _ -> (
-        match Stdlib.int_of_string_opt name with
-        | Some _ -> NP.index_field_transform name
-        (* | _ -> "f_" ^ Option.value_exn type_name ^ "_" ^ name *)
-        | _ -> "f_" ^ name)
+    | Constructor { is_struct } ->
+        let name =
+          if start_lowercase name || is_reserved_word name then "C_" ^ name
+          else escape name
+        in
+        if is_struct then NP.struct_constructor_name_transform name
+        else
+          let enum_name = type_name |> Option.value_exn in
+          NP.enum_constructor_name_transform ~enum_name name
+    | Field | AssociatedItem _ ->
+        let struct_name = type_name |> Option.value_exn in
+        NP.field_name_transform ~struct_name
+          (match Stdlib.int_of_string_opt name with
+          | Some _ -> NP.index_field_transform name
+          | _ -> "f_" ^ name)
     | Lifetime | Macro -> escape name
 
   let rec to_view ({ def_id; kind } : t) : view =
@@ -527,6 +534,9 @@ let map_path_strings ~(f : string -> string) (cid : t) : t =
 module DefaultNamePolicy = struct
   let reserved_words = Hash_set.create (module String)
   let index_field_transform = Fn.id
+  let field_name_transform ~struct_name:_ = Fn.id
+  let enum_constructor_name_transform ~enum_name:_ = Fn.id
+  let struct_constructor_name_transform = Fn.id
 end
 
 let matches_namespace (ns : Types.namespace) (did : t) : bool =
