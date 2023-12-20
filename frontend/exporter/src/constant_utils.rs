@@ -284,6 +284,7 @@ pub(crate) fn const_to_constant_expr<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     use rustc_middle::ty;
 }
 pub enum TranslateUnevalRes<T> {
+    // TODO: rename
     GlobalName(ConstantExprKind),
     EvaluatedConstant(T),
 }
@@ -306,8 +307,17 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
                 supposely_unreachable_fatal!(s, "TranslateUneval"; {self, ucv});
             }))
         } else {
-            let id = ucv.def.sinto(s);
-            TranslateUnevalRes::GlobalName(ConstantExprKind::GlobalName { id })
+            let cv = if let Some(assoc) = s.base().tcx.opt_associated_item(ucv.def) && 
+                assoc.trait_item_def_id.is_some() {
+                    // This must be a trait declaration constant
+                    trait_const_to_constant_expr_kind(s, ucv.def, ucv.substs, &assoc)
+                }
+            else {
+                // Top-level constant or a constant appearing in an impl block
+                let id = ucv.def.sinto(s);
+                ConstantExprKind::GlobalName { id }
+            };
+            TranslateUnevalRes::GlobalName(cv)
         }
     }
 }
