@@ -98,8 +98,6 @@ module ProVerifNamePolicy = struct
   let enum_constructor_name_transform ~enum_name constructor_name = enum_name ^ "_" ^ constructor_name ^ "_c"
 
   let struct_constructor_name_transform constructor_name =  constructor_name ^ "_c"
-
-  
 end
 
 module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (ProVerifNamePolicy)
@@ -131,8 +129,7 @@ module Print = struct
             separate_map
               (comma ^^ break 1)
               (fun (x, y, _z) ->
-                print#concrete_ident x ^^ string ": "
-                ^^ print#ty_at Param_typ y)
+                print#concrete_ident x ^^ string ": " ^^ print#ty_at Param_typ y)
               fun_args
           in
           let fun_args_names =
@@ -147,9 +144,7 @@ module Print = struct
               (snd3 >> print#ty_at Param_typ)
               fun_args
           in
-          let constructor_name =
-            print#concrete_ident constructor.name
-          in
+          let constructor_name = print#concrete_ident constructor.name in
 
           let fun_line =
             string "fun" ^^ space ^^ constructor_name
@@ -164,8 +159,7 @@ module Print = struct
           let build_accessor (ident, ty, attr) =
             string "accessor" ^^ underscore ^^ print#concrete_ident ident
             ^^ iblock parens (constructor_name ^^ iblock parens fun_args_names)
-            ^^ blank 1 ^^ equals ^^ blank 1
-            ^^ print#concrete_ident ident
+            ^^ blank 1 ^^ equals ^^ blank 1 ^^ print#concrete_ident ident
           in
           let reduc_lines =
             separate_map (dot ^^ hardline)
