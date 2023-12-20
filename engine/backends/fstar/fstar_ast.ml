@@ -21,10 +21,13 @@ let lid_of_id id = Ident.lid_of_ids [ id ]
 let term (tm : AST.term') = AST.{ tm; range = dummyRange; level = Expr }
 let generate_fresh_ident () = Ident.gen dummyRange
 
-let decl ?(quals = []) ?(attrs = []) (d : AST.decl') =
-  `Item AST.{ d; drange = dummyRange; quals; attrs }
+let decl ?(fsti = true) ?(quals = []) ?(attrs = []) (d : AST.decl') =
+  let decl = AST.{ d; drange = dummyRange; quals; attrs } in
+  if fsti then `Intf decl else `Impl decl
 
-let decls ?(quals = []) ?(attrs = []) x = [ decl ~quals ~attrs x ]
+let decls ?(fsti = true) ?(quals = []) ?(attrs = []) x =
+  [ decl ~fsti ~quals ~attrs x ]
+
 let pat (pat : AST.pattern') = AST.{ pat; prange = dummyRange }
 
 module Attrs = struct
@@ -92,7 +95,7 @@ let term_of_string s =
 
 let decls_of_string s =
   match parse_string (fun x -> Toplevel x) s with
-  | ASTFragment (Inr l, _) -> List.map ~f:(fun i -> `Item i) l
+  | ASTFragment (Inr l, _) -> List.map ~f:(fun i -> `Impl i) l
   | _ -> failwith "parse failed"
 
 let decl_of_string s =
