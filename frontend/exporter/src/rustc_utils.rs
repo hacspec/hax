@@ -1,16 +1,8 @@
 use crate::prelude::*;
 use rustc_middle::ty;
 
-#[tracing::instrument(skip(state))]
-pub(crate) fn arrow_of_sig<'tcx, S: BaseState<'tcx> + HasOwnerId>(
-    sig: &rustc_middle::ty::PolyFnSig<'tcx>,
-    state: &S,
-) -> Ty {
-    // TODO: here, Rust doesn't manage to infer the proper typeclass
-    // instance, even if we annotate the type.
-    //    let sig: MirPolyFnSig = sig.sinto(&state.base().tcx);
-    let sig = poly_fn_sig_to_mir_poly_fn_sig(sig, state);
-    Ty::Arrow(Box::new(sig))
+pub(crate) fn arrow_of_sig<'tcx, S: UnderOwnerState<'tcx>>(sig: &ty::PolyFnSig<'tcx>, s: &S) -> Ty {
+    Ty::Arrow(Box::new(sig.sinto(s)))
 }
 
 #[extension_traits::extension(pub trait SubstBinder)]
@@ -65,29 +57,17 @@ pub fn poly_trait_ref<'tcx, S: UnderOwnerState<'tcx>>(
     Some(ty::Binder::dummy(ty::TraitRef::new(tcx, r#trait, substs)))
 }
 
-pub(crate) fn arrow_of_sig<'tcx, S: UnderOwnerState<'tcx>>(sig: &ty::PolyFnSig<'tcx>, s: &S) -> Ty {
-    Ty::Arrow(Box::new(sig.sinto(s)))
-}
-
 #[tracing::instrument(skip(s))]
 pub(crate) fn get_variant_information<'s, S: UnderOwnerState<'s>>(
     adt_def: &ty::AdtDef<'s>,
     variant_index: rustc_abi::VariantIdx,
     s: &S,
 ) -> VariantInformations {
-    fn is_record<'s, I: std::iter::Iterator<Item = &'s rustc_middle::ty::FieldDef> + Clone>(
-        it: I,
-    ) -> bool {
     s_assert!(s, !adt_def.is_union() || *CORE_EXTRACTION_MODE);
     fn is_record<'s, I: std::iter::Iterator<Item = &'s ty::FieldDef> + Clone>(it: I) -> bool {
         it.clone()
             .any(|field| !field.name.to_ident_string().parse::<u64>().is_ok())
     }
-    let variant_def = adt_def
-        .variants()
-        .into_iter()
-        .find(|v| v.def_id == variant.clone())
-        .unwrap();
     let variant_def = adt_def.variant(variant_index);
     let variant = variant_def.def_id;
     let constructs_type: DefId = adt_def.did().sinto(s);

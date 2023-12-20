@@ -273,7 +273,7 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
 /// The [Operand] comes from a [TerminatorKind::Call].
 /// Only supports calls to top-level functions (which are considered as constants
 /// by rustc); doesn't support closures for now.
-fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx>>(
+fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
     s: &S,
     func: &rustc_middle::mir::Operand<'tcx>,
 ) -> (
@@ -656,11 +656,8 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                     TyKind::Tuple(_types) => ProjectionElemFieldKind::Tuple(index.sinto(s)),
                     ty_kind => {
                         supposely_unreachable_fatal!(
-                            "ProjectionElemFieldBadType": index,
-                            ty_kind,
-                            variant_idx,
-                            &cur_ty,   // TODO
-                            &cur_kind, // TODO
+                            s, "ProjectionElemFieldBadType";
+                            {index, ty_kind, variant_idx, &cur_ty, &cur_kind}
                         );
                     }
                 })
@@ -705,12 +702,12 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                             }
                         }
                         Index(local) => {
-                            let (TyKind::Slice(ty) | TyKind::Array(ty, _)) = current_ty.kind() else {
+                            let (TyKind::Slice(ty) | TyKind::Array(ty, _)) = current_ty.kind()
+                            else {
                                 supposely_unreachable_fatal!(
-                                    "PlaceIndexNotSlice":
-                                    current_ty,
-                                    current_kind,
-                                    elem
+                                    s,
+                                    "PlaceIndexNotSlice";
+                                    {current_ty, current_kind, elem}
                                 );
                             };
                             current_ty = ty.clone();
@@ -888,8 +885,7 @@ pub enum Rvalue {
     #[custom_arm(
         rustc_middle::mir::Rvalue::Repeat(op, ce) => {
             let op = op.sinto(s);
-            let ce = const_to_constant_expr(s, *ce);
-            Rvalue::Repeat(op, ce)
+            Rvalue::Repeat(op, ce.sinto(s))
         },
     )]
     Repeat(Operand, ConstantExpr),

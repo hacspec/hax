@@ -910,7 +910,6 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, AliasTy> for rustc_middle::ty::Ali
                 .opt_def_id
                 .map(|did| tcx.param_env(did))
                 .unwrap_or(rustc_middle::ty::ParamEnv::empty());
-            todo!();
             (
                 self.trait_def_id(tcx).sinto(s),
                 poly_trait_ref.impl_expr(s, param_env),
@@ -1456,8 +1455,7 @@ pub fn translate_ty_alias<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             let assoc = tcx.associated_item(alias_ty.def_id);
             // Retrieve the trait information
             let name = assoc.name.to_string();
-            let (substs, trait_info) =
-                get_trait_info(s, alias_ty.def_id, alias_ty.substs, &assoc);
+            let (substs, trait_info) = get_trait_info(s, alias_ty.def_id, alias_ty.substs, &assoc);
 
             AliasKind::Projection {
                 impl_source: trait_info.impl_source,
@@ -2888,7 +2886,11 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, TraitPredicate>
             preds
                 .into_iter()
                 .filter_map(|x| {
-                    if let PredicateKind::Clause(Clause::Trait(c)) = x {
+                    if let PredicateKind::Clause(Clause {
+                        kind: ClauseKind::Trait(c),
+                        ..
+                    }) = x
+                    {
                         Some(c)
                     } else {
                         None
@@ -2935,7 +2937,11 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, TraitPredicate>
                 let preds: Vec<_> = bounds
                     .into_iter()
                     .filter_map(|x| {
-                        if let PredicateKind::Clause(Clause::Trait(c)) = x.0.value {
+                        if let PredicateKind::Clause(Clause {
+                            kind: ClauseKind::Trait(c),
+                            ..
+                        }) = x.0.value
+                        {
                             Some(Binder {
                                 value: c,
                                 bound_vars: x.0.bound_vars,
@@ -3025,12 +3031,21 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ProjectionPredicate>
     for rustc_middle::ty::ProjectionPredicate<'tcx>
 {
     fn sinto(&self, s: &S) -> ProjectionPredicate {
-        let AliasKind::Projection{impl_source, substs, name} = translate_ty_alias(
+        let AliasKind::Projection {
+            impl_source,
+            substs,
+            name,
+        } = translate_ty_alias(
             s,
             &rustc_middle::ty::AliasKind::Projection,
             &self.projection_ty,
-        ) else { unreachable!() };
-        let Term::Ty(ty) = self.term.sinto(s) else { unreachable!() };
+        )
+        else {
+            unreachable!()
+        };
+        let Term::Ty(ty) = self.term.sinto(s) else {
+            unreachable!()
+        };
         ProjectionPredicate {
             impl_source,
             substs,

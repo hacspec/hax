@@ -27,8 +27,6 @@ pub enum ConstantExprKind {
     Literal(ConstantLiteral),
     Adt {
         info: VariantInformations,
-        /// Variant index
-        vid: Option<VariantIdx>,
         fields: Vec<ConstantFieldExpr>,
     },
     Array {
@@ -220,7 +218,6 @@ pub(crate) fn scalar_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
         // It seems we can have ADTs when there is only one variant, and this variant doesn't have any fields.
         ty::Adt(def, _) if let [variant_def] = &def.variants().raw && variant_def.fields.is_empty() => {
             ConstantExprKind::Adt{
-                vid: Option::Some(0),
                 info: get_variant_information(def, rustc_abi::FIRST_VARIANT, s),
                 fields: vec![],
             }
@@ -276,13 +273,6 @@ impl ConstantExprKind {
     }
 }
 
-pub(crate) fn const_to_constant_expr<'tcx, S: BaseState<'tcx> + HasOwnerId>(
-    s: &S,
-    c: rustc_middle::ty::Const<'tcx>,
-) -> ConstantExpr {
-    use rustc_middle::query::Key;
-    use rustc_middle::ty;
-}
 pub enum TranslateUnevalRes<T> {
     // TODO: rename
     GlobalName(ConstantExprKind),
@@ -298,7 +288,7 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
     fn translate_uneval(
         &self,
         s: &impl UnderOwnerState<'tcx>,
-        ucv: rustc_middle::ty::UnevaluatedConst,
+        ucv: rustc_middle::ty::UnevaluatedConst<'tcx>,
     ) -> TranslateUnevalRes<Self> {
         let tcx = s.base().tcx;
         if is_anon_const(ucv.def, tcx) {
@@ -307,7 +297,7 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
                 supposely_unreachable_fatal!(s, "TranslateUneval"; {self, ucv});
             }))
         } else {
-            let cv = if let Some(assoc) = s.base().tcx.opt_associated_item(ucv.def) && 
+            let cv = if let Some(assoc) = s.base().tcx.opt_associated_item(ucv.def) &&
                 assoc.trait_item_def_id.is_some() {
                     // This must be a trait declaration constant
                     trait_const_to_constant_expr_kind(s, ucv.def, ucv.substs, &assoc)
@@ -408,7 +398,7 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
                                 field: field.did.sinto(s),
                                 value: value.sinto(s),
                             })
-                        .collect(),
+                            .collect(),
                     }
                 }
                 _ => unreachable!(),
@@ -496,7 +486,6 @@ pub fn const_value_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
         ConstValue::ZeroSized { .. } => {
             // Should be unit
             let hty = ty.sinto(s);
-            let is_ty_unit = matches!(&hty, Ty::Tuple(tys) if tys.is_empty());
             let cv = match &hty {
                 Ty::Tuple(tys) if tys.is_empty() => ConstantExprKind::Tuple { fields: Vec::new() },
                 Ty::Arrow(_) => match ty.kind() {
@@ -506,13 +495,13 @@ pub fn const_value_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
                         ConstantExprKind::FnPtr(def_id, generics, trait_refs, trait_info)
                     }
                     kind => {
-                        fatal!(s[span], "Unexpected: {:?}"; {kind})
+                        fatal!(s[span], "Unexpected:"; {kind})
                     }
                 },
                 _ => {
-                    span_fatal!(
+                    fatal!(
                         s[span],
-                        "Expected the type to be tuple or arrow: {:?} : {:?}";
+                        "Expected the type to be tuple or arrow";
                         {val, ty}
                     )
                 }

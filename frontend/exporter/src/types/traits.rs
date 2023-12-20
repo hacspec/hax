@@ -569,7 +569,7 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     // We count the number of generics of the top-level impl/the trait decl
     // and split there.
     let update_generics = |src_id: &DefId, x: &mut Vec<GenericArg>| {
-        let src_id = src_id.rust_def_id.unwrap();
+        let src_id: rustc_hir::def_id::DefId = src_id.into();
         let params_info = get_params_info(s, src_id);
         let num_trait_generics = params_info.num_generic_params;
         let all_generics = x.clone();
