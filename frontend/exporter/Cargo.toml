@@ -1,13 +1,19 @@
 [package]
 name = "hax-frontend-exporter"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+edition.workspace = true
+repository.workspace = true
+readme.workspace = true
+description = "hax frontend exporter helper crate"
 
 [package.metadata.rust-analyzer]
 rustc_private=true
 
 [dependencies]
-adt-into.workspace = true
+hax-adt-into.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 schemars.workspace = true
@@ -15,7 +21,5 @@ itertools.workspace = true
 hax-frontend-exporter-options.workspace = true
 tracing.workspace = true
 paste = "1.0.11"
-
-[features]
-default = ["minimal-ast"]
-minimal-ast = []
+extension-traits = "1.0.1"
+lazy_static = "1.4.0"

@@ -2,7 +2,6 @@ use crate::prelude::*;
 use crate::sinto_todo;
 sinto_todo!(rustc_middle::ty, ScalarInt);
 sinto_todo!(rustc_middle::ty, ExistentialPredicate<'a>);
-sinto_todo!(rustc_middle::ty, PolyFnSig<'s>);
 sinto_todo!(rustc_middle::ty, AdtFlags);
 sinto_todo!(rustc_middle::ty, ReprOptions);
 sinto_todo!(rustc_middle::mir::interpret, ConstAllocation<'a>);
