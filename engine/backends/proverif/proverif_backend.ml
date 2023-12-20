@@ -229,7 +229,13 @@ module Print = struct
           let dummy_fn =
             match List.length args with
             | n when n < 8 -> string "dummy_fn_" ^^ PPrint.OCaml.int n
-            | _ -> string "not_supported"
+            | _ -> Error.raise
+                {
+                  kind =
+                    ExplicitRejection
+                      { reason = "Unsupported function arity." };
+                  span = current_span;
+                }
           in
           let args =
             separate_map
