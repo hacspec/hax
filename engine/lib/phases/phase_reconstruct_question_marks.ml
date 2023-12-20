@@ -1,5 +1,4 @@
-open Base
-open Utils
+open! Prelude
 
 module%inlined_contents Make (FA : Features.T) = struct
   open Ast
@@ -23,8 +22,7 @@ module%inlined_contents Make (FA : Features.T) = struct
 
     module S = struct
       include Features.SUBTYPE.Id
-
-      let question_mark = Fn.const Features.On.question_mark
+      include Features.SUBTYPE.On.Question_mark
     end
 
     module QuestionMarks = struct

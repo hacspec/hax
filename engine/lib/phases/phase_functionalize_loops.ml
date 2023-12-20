@@ -1,5 +1,4 @@
-open Base
-open Utils
+open! Prelude
 
 module%inlined_contents Make
     (F : Features.T
@@ -59,7 +58,8 @@ struct
               span = body.span;
             }
           in
-          UB.call Core__iter__traits__iterator__Iterator__fold
+          UB.call ~kind:(AssociatedItem Value)
+            Core__iter__traits__iterator__Iterator__fold
             [ it; dexpr init; fn ]
             span (dty span expr.typ)
       | Loop { state = None; _ } ->

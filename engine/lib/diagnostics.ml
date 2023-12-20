@@ -1,9 +1,8 @@
-open Utils
-open Ppx_yojson_conv_lib.Yojson_conv.Primitives
+open! Prelude
 module T = Types
 
 module Backend = struct
-  type t = Coq | FStar | EasyCrypt
+  type t = Coq | FStar | EasyCrypt | ProVerif
   [@@deriving show { with_path = false }, eq, yojson, compare, hash, sexp]
 end
 
@@ -25,8 +24,10 @@ module Phase = struct
 
   type t =
     | DirectAndMut
+    | AndMutDefSite
     | Identity
     | DropReferences
+    | DropBlocks
     | RefMut
     | ResugarForLoops
     | ResugarForIndexLoops
@@ -53,21 +54,31 @@ module Context = struct
     | Backend of Backend.t
     | ThirImport
     | DebugPrintRust
+    | GenericPrinter of string
     | Other of string
-  [@@deriving show, eq, yojson]
+  [@@deriving show, eq, yojson, compare]
 
   let display = function
     | Phase p -> Phase.display p
     | Backend backend -> [%show: Backend.t] backend ^ " backend"
     | ThirImport -> "AST import"
     | DebugPrintRust -> "Rust debug printer"
+    | GenericPrinter kind -> kind ^ " generic printer"
     | Other s -> "Other (" ^ s ^ ")"
 end
 
 type kind = T.kind [@@deriving show, eq]
 
-type t = { context : Context.t; kind : kind; span : T.span list }
-[@@deriving show, eq]
+let compare_kind (a : kind) (b : kind) =
+  [%compare: string] ([%show: kind] a) ([%show: kind] b)
+
+type thir_span = T.span [@@deriving show, eq]
+
+let compare_thir_span (a : thir_span) (b : thir_span) =
+  [%compare: string] ([%show: thir_span] a) ([%show: thir_span] b)
+
+type t = { context : Context.t; kind : kind; span : thir_span list }
+[@@deriving show, eq, compare]
 
 let to_thir_diagnostic (d : t) : Types.diagnostics_for__array_of__span =
   { kind = d.kind; context = Context.display d.context; span = d.span }
@@ -75,7 +86,8 @@ let to_thir_diagnostic (d : t) : Types.diagnostics_for__array_of__span =
 let run_hax_pretty_print_diagnostics (s : string) : string =
   try (Utils.Command.run "hax-pretty-print-diagnostics" s).stdout
   with e ->
-    "[run_hax_pretty_print_diagnostics] failed. Exn: " ^ Printexc.to_string e
+    "[run_hax_pretty_print_diagnostics] failed. Exn: "
+    ^ "[run_hax_pretty_print_diagnostics] failed. Exn: " ^ Exn.to_string e
     ^ ". Here is the JSON representation of the error that occurred:\n" ^ s
 
 let pretty_print : t -> string =
@@ -91,6 +103,7 @@ module Core : sig
   val raise_fatal_error : 'never. t -> 'never
   val report : t -> unit
   val try_ : 'x. (unit -> 'x) -> t list * 'x option
+  val capture : 'a. (unit -> 'a) -> 'a * t list
 end = struct
   (* a mutable state for collecting errors *)
   let state = ref []
@@ -105,6 +118,12 @@ end = struct
   let try_ f =
     let result = try Some (f ()) with Error -> None in
     (!state, result)
+
+  let capture (type a) (f : unit -> a) : a * t list =
+    let previous_state = !state in
+    let result = (f (), !state) in
+    state := previous_state;
+    result
 end
 
 include Core
@@ -112,4 +131,24 @@ include Core
 let failure ~context ~span kind =
   Core.raise_fatal_error { context; kind; span = Span.to_thir span }
 
-exception SpanFreeError of (Context.t * kind)
+module SpanFreeError : sig
+  type t = private Data of Context.t * kind
+
+  exception Exn of t
+
+  val payload : t -> Context.t * kind
+  val raise : ?span:T.span list -> Context.t -> kind -> 'a
+end = struct
+  type t = Data of Context.t * kind
+
+  exception Exn of t
+
+  let payload (Data (ctx, kind)) = (ctx, kind)
+
+  let raise_without_reporting (ctx : Context.t) (kind : kind) =
+    raise (Exn (Data (ctx, kind)))
+
+  let raise ?(span = []) (ctx : Context.t) (kind : kind) =
+    report { span; kind; context = ctx };
+    raise_without_reporting ctx kind
+end

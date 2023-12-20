@@ -22,7 +22,7 @@
  (depends
         ocaml
         dune
-        base
+        (base (>= "0.16.2"))
         core
         yojson
         non_empty_list
@@ -40,8 +40,11 @@
         ppx_matches
         ppx_string
         logs
+        ocamlgraph
 
         js_of_ocaml-compiler
+        js_of_ocaml
+        js_of_ocaml-ppx
         zarith_stubs_js
         
         ; F*-specific dependencies

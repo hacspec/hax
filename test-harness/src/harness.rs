@@ -168,6 +168,16 @@ impl Test {
             snapshot.insert(
                 "stdout".to_string(),
                 serde_json::from_str(&sout)
+                    .map(|out: hax_cli_options_engine::Output| {
+                        use serde_json::json;
+                        json!({
+                            "diagnostics": Value::Array(out.diagnostics.into_iter().map(|diag| json!({
+                                "spans": Value::Array(diag.span.clone().into_iter().map(|span| Value::String(format!("{:?}", span))).collect()),
+                                "message": Value::String(format!("{}", diag)),
+                            })).collect()),
+                            "files": Value::Object(out.files.into_iter().map(|file| (file.path, Value::String(file.contents))).collect())
+                        })
+                    })
                     .unwrap_or_else(|_| Value::String(cleanup(sout.clone()))),
             );
         }
@@ -178,8 +188,10 @@ impl Test {
             let snapshot = Value::Object(snapshot);
             let name = format!("{} {}", self.info.name, self.kind.as_name());
 
+            let mut info = self.clone();
+            info.info.manifest = info.info.manifest.strip_prefix(workspace).unwrap().into();
             insta::with_settings!({
-                info => &self,
+                info => &info,
             }, { insta::assert_toml_snapshot!(name, snapshot) })
         }
 

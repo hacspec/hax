@@ -1,0 +1,24 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: fstar
+  info:
+    name: traits
+    manifest: traits/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: true
+      stdout: false
+---
+exit = 0
+stderr = '''
+Compiling traits v0.1.0 (WORKSPACE_ROOT/traits)
+    Finished dev [unoptimized + debuginfo] target(s) in XXs'''

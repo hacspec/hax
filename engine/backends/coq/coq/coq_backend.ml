@@ -35,6 +35,7 @@ module SubtypeToInputLanguage
              and type arbitrary_lhs = Features.Off.arbitrary_lhs
              and type nontrivial_lhs = Features.Off.nontrivial_lhs
              and type loop = Features.Off.loop
+             and type block = Features.Off.block
              and type for_loop = Features.Off.for_loop
              and type for_index_loop = Features.Off.for_index_loop
              and type state_passing_loop = Features.Off.state_passing_loop) =
@@ -180,10 +181,8 @@ struct
         C.AST.ArrayTy (pty span typ, "TODO: Int.to_string length")
     | TSlice { ty; _ } -> C.AST.SliceTy (pty span ty)
     | TParam i -> C.AST.Name i.name
-    | TProjectedAssociatedType s ->
-        C.AST.Wild
-        (* __TODO_ty__ span ("proj:assoc:type" ^ s) *)
-        (* failwith "proj:assoc:type" *)
+    | TAssociatedType s -> C.AST.Wild
+    | TOpaque _ -> __TODO_ty__ span "pty: TAssociatedType/TOpaque"
     | _ -> .
 
   and args_ty span (args : generic_value list) : C.AST.ty list =
@@ -210,6 +209,7 @@ struct
           typ = _ (* we skip type annot here *);
         } ->
         C.AST.Ident var.name
+    | POr { subpats } -> C.AST.DisjunctivePat (List.map ~f:ppat subpats)
     | PArray { args } -> __TODO_pat__ p.span "Parray?"
     | PConstruct { name = `TupleCons 0; args = [] } -> C.AST.UnitPat
     | PConstruct { name = `TupleCons 1; args = [ { pat } ] } ->
@@ -266,7 +266,7 @@ struct
 
   let rec pexpr (e : expr) =
     try pexpr_unwrapped e
-    with Diagnostics.SpanFreeError kind ->
+    with Diagnostics.SpanFreeError.Exn _ ->
       TODOs_debug.__TODO_term__ e.span "failure"
 
   and pexpr_unwrapped (e : expr) : C.AST.term =
@@ -351,7 +351,7 @@ struct
 
   let rec pitem (e : item) : C.AST.decl list =
     try pitem_unwrapped e
-    with Diagnostics.SpanFreeError _kind ->
+    with Diagnostics.SpanFreeError.Exn _ ->
       [ C.AST.Unimplemented "item error backend" ]
 
   and pgeneric_param span : generic_param -> _ = function
@@ -527,13 +527,14 @@ struct
         if is_external then [] else [ C.AST.Require (path, rename) ]
     | HaxError s -> [ __TODO_item__ span s ]
     | NotImplementedYet -> [ __TODO_item__ span "Not implemented yet?" ]
+    | Alias _ -> [ __TODO_item__ span "Not implemented yet? alias" ]
     | Trait { name; generics; items } ->
         [
           C.AST.Class
             ( U.Concrete_ident_view.to_definition_name name,
               List.map
                 ~f:(fun x ->
-                  ( x.ti_name,
+                  ( U.Concrete_ident_view.to_definition_name x.ti_ident,
                     match x.ti_v with
                     | TIFn fn_ty -> pty span fn_ty
                     | _ -> __TODO_ty__ span "field_ty" ))
@@ -560,7 +561,7 @@ struct
                 ~f:(fun x ->
                   match x.ii_v with
                   | IIFn { body; params } ->
-                      ( x.ii_name,
+                      ( U.Concrete_ident_view.to_definition_name x.ii_ident,
                         List.map
                           ~f:(fun { pat; typ; typ_span } ->
                             (ppat pat, pty span typ))
@@ -662,8 +663,8 @@ let hardcoded_coq_headers =
    Open Scope Z_scope.\n\
    Open Scope bool_scope.\n"
 
-let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
-    =
+let translate _ (bo : BackendOptions.t) (items : AST.item list) :
+    Types.file list =
   U.group_items_by_namespace items
   |> Map.to_alist
   |> List.map ~f:(fun (ns, items) ->
@@ -686,9 +687,11 @@ open Phase_utils
 module TransformToInputLanguage =
   [%functor_application
   Phases.Reject.RawOrMutPointer(Features.Rust)
-  |> Phases.Reject.Arbitrary_lhs
+  |> Phases.And_mut_defsite
   |> Phases.Reconstruct_for_loops
   |> Phases.Direct_and_mut
+  |> Phases.Reject.Arbitrary_lhs
+  |> Phases.Drop_blocks
   |> Phases.Reject.Continue
   |> Phases.Drop_references
   |> Phases.Trivialize_assign_lhs

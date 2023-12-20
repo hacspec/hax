@@ -2,7 +2,7 @@ fn rustc_version_env_var() {
     let (_version, channel, date) = version_check::triple().unwrap();
     println!("cargo:rustc-env=HAX_RUSTC_VERSION={channel}-{date}");
 
-    let rust_toolchain_file = include_str!("../../rust-toolchain.toml")
+    let rust_toolchain_file = include_str!("rust-toolchain.toml")
         .parse::<toml::Table>()
         .unwrap();
     println!(
@@ -20,6 +20,8 @@ fn json_schema_static_asset() {
         hax_diagnostics::Diagnostics<hax_frontend_exporter::Span>,
         hax_cli_options_engine::EngineOptions,
         hax_cli_options_engine::Output,
+        hax_cli_options_engine::WithDefIds<hax_frontend_exporter::ThirBody>,
+        hax_lib_macros_types::AttrPayload,
     ));
     serde_json::to_writer(
         std::fs::File::create(format!("{}/schema.json", std::env::var("OUT_DIR").unwrap()))

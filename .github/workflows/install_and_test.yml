@@ -26,7 +26,11 @@ jobs:
         
     - name: Test the toolchain
       run: |
-        nix flake check -L
+        nix build .#check-toolchain -L
+        
+    - name: Test the examples
+      run: |
+        nix build .#check-examples -L
 
     - name: Checkout specifications
       uses: actions/checkout@v3

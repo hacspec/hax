@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+hax-lib-macros = { path = "../../hax-lib-macros" }
+hax-lib = { path = "../../hax-lib" }
+serde = { version = "1.0", features = ["derive"] }
 
 [package.metadata.hax-tests]
-into."fstar" = { snapshot = "none" }
+into."fstar" = { snapshot = "stdout" }

@@ -1,7 +1,12 @@
 [package]
 name = "hax-driver"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+edition.workspace = true
+repository.workspace = true
+readme.workspace = true
 
 [package.metadata.rust-analyzer]
 rustc_private = true
@@ -14,12 +19,14 @@ name = "driver-hax-frontend-exporter"
 serde.workspace = true
 serde_json.workspace = true
 clap.workspace = true
+colored.workspace = true
 hax-frontend-exporter.workspace = true
 hax-cli-options.workspace = true
 hax-cli-options-engine.workspace = true
 hax-frontend-exporter-options.workspace = true
 hax-lint.workspace = true
 hax-diagnostics.workspace = true
+hax-lib-macros-types.workspace = true
 itertools.workspace = true
 which.workspace = true
 inquire = "0.6"
@@ -27,3 +34,4 @@ const_format = "0.2"
 tracing.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
+hax-phase-debug-webapp.workspace = true

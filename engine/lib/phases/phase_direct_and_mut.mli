@@ -1,5 +1,4 @@
-open Base
-open Utils
+open! Prelude
 
 module Make
     (F : Features.T
@@ -9,6 +8,8 @@ module Make
     module FB = struct
       include F
       include Features.On.Mutable_variable
+      include Features.On.Arbitrary_lhs
+      include Features.On.Nontrivial_lhs
       include Features.Off.Mutable_reference
     end
 

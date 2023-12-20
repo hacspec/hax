@@ -1,5 +1,4 @@
-open Base
-open Utils
+open! Prelude
 
 module%inlined_contents Make (F : Features.T) = struct
   open Ast
@@ -22,8 +21,7 @@ module%inlined_contents Make (F : Features.T) = struct
 
     module S = struct
       include Features.SUBTYPE.Id
-
-      let construct_base _ = Features.On.construct_base
+      include Features.SUBTYPE.On.Construct_base
     end
 
     module UA = Ast_utils.Make (F)
@@ -31,46 +29,14 @@ module%inlined_contents Make (F : Features.T) = struct
 
     [%%inline_defs dmutability]
 
-    let rec expr_of_lhs (lhs : A.lhs) (span : span) : B.expr =
-      match lhs with
-      | LhsLocalVar { var; typ } ->
-          { e = LocalVar var; typ = dty span typ; span }
-      | LhsFieldAccessor { e; typ; field; _ } ->
-          let e = expr_of_lhs e span in
-          {
-            e =
-              App
-                {
-                  f =
-                    {
-                      e = GlobalVar field;
-                      typ = TArrow ([ e.typ ], dty span typ);
-                      span;
-                    };
-                  args = [ e ];
-                };
-            typ = e.typ;
-            span;
-          }
-      | LhsArrayAccessor { e; typ; index; _ } ->
-          UB.call Core__ops__index__Index__index
-            [ expr_of_lhs e span; dexpr index ]
-            span (dty span typ)
-      | LhsArbitraryExpr _ -> Error.raise { kind = ArbitraryLHS; span }
-
-    and updater_of_lhs (lhs : A.lhs) (rhs : B.expr) (span : span) :
-        (LocalIdent.t * B.ty) * B.expr =
+    let rec updater_of_lhs (lhs : A.lhs) (rhs : B.expr) (span : span) :
+        (Local_ident.t * B.ty) * B.expr =
       match lhs with
       | LhsLocalVar { var; typ } -> ((var, dty span typ), rhs)
-      | LhsFieldAccessor { e; typ; field; _ } -> (
-          let lhs = expr_of_lhs e span in
-          let field =
-            match field with
-            | `Projector field -> (field :> global_ident)
-            | _ -> field
-          in
+      | LhsFieldAccessor { e; field; _ } -> (
+          let lhs = UA.expr_of_lhs span e |> dexpr in
           match lhs.typ with
-          | TApp { ident; args } ->
+          | TApp { ident; _ } ->
               let rhs' =
                 B.Construct
                   {
@@ -85,12 +51,29 @@ module%inlined_contents Make (F : Features.T) = struct
               updater_of_lhs e rhs span
           | _ -> Error.raise { kind = ArbitraryLHS; span })
       | LhsArrayAccessor { e; typ = _; index; _ } ->
-          let lhs = expr_of_lhs e span in
-          let rhs =
-            UB.call Rust_primitives__hax__update_at
-              [ lhs; dexpr index; rhs ]
-              span lhs.typ
+          let lhs = UA.expr_of_lhs span e |> dexpr in
+          let update_at : Concrete_ident.name =
+            let index_typ =
+              match index.typ with TRef { typ; _ } -> typ | _ -> index.typ
+            in
+            match index_typ with
+            | TInt { size = SSize; signedness = Unsigned } ->
+                Rust_primitives__hax__monomorphized_update_at__update_at_usize
+            | TApp { ident; _ }
+              when Global_ident.eq_name Core__ops__range__Range ident ->
+                Rust_primitives__hax__monomorphized_update_at__update_at_range
+            | TApp { ident; _ }
+              when Global_ident.eq_name Core__ops__range__RangeFrom ident ->
+                Rust_primitives__hax__monomorphized_update_at__update_at_range_from
+            | TApp { ident; _ }
+              when Global_ident.eq_name Core__ops__range__RangeTo ident ->
+                Rust_primitives__hax__monomorphized_update_at__update_at_range_to
+            | TApp { ident; _ }
+              when Global_ident.eq_name Core__ops__range__RangeFull ident ->
+                Rust_primitives__hax__monomorphized_update_at__update_at_range_full
+            | _ -> Rust_primitives__hax__update_at
           in
+          let rhs = UB.call update_at [ lhs; dexpr index; rhs ] span lhs.typ in
           updater_of_lhs e rhs span
       | LhsArbitraryExpr _ -> Error.raise { kind = ArbitraryLHS; span }
 
@@ -103,7 +86,7 @@ module%inlined_contents Make (F : Features.T) = struct
           {
             e = Assign { lhs; e; witness };
             span = expr.span;
-            typ = dty expr.span expr.typ;
+            typ = UB.unit_typ;
           }
       | [%inline_arms "dexpr'.*" - Assign] ->
           map (fun e -> B.{ e; typ = dty expr.span expr.typ; span = expr.span })

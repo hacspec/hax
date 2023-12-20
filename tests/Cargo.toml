@@ -6,6 +6,7 @@ members = [
         "naming",
         "if-let",
         "enum-repr",
+        "pattern-or",
         "side-effects",
         "lint/hacspec/v1-lib",
         "lint/hacspec/mut_args",
@@ -17,5 +18,11 @@ members = [
         "odd",
         "never-type",
         "attributes",
+        "raw-attributes",
+        "traits",
+        "reordering",
+        "nested-derefs",
+        "proverif-minimal",
+        "proverif-basic-structs"
 ]
 resolver = "2"

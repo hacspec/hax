@@ -20,7 +20,8 @@ loop,
   lifetime,
   construct_base,
   monadic_action,
-  monadic_binding]
+  monadic_binding,
+  block]
 
 module Full = On
 
@@ -33,6 +34,8 @@ module Rust = struct
   include Off.Monadic_binding
   include Off.State_passing_loop
 end
+
+let _ = Enumeration.all
 
 module _ = struct
   module _ : T = Full

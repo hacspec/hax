@@ -108,14 +108,18 @@ let ocaml_of_type_expr = (o, path) => {
     let {kind, payload} = o;
     return (({
         option: type => `(${ocaml_of_type_expr(type, [...path, 'option'])} option)`,
+        unit: _ => `unit`,
         tuple: types => `(${types.map((t, i) => ocaml_of_type_expr(t, [...path, 'tuple', i])).join(' * ')})`,
         array: type => `(${ocaml_of_type_expr(type, [...path, 'array'])} list)`,
         boolean: _ => `bool`,
         string: _ => `string`,
         char: _ => `char`,
-        integer: _ => o.bigint ? `string` : `int`,
+        integer: _ => ({
+            int64: 'Base.Int64.t',
+            string: 'string',
+            int: 'int'
+        })[o.repr],
         name: payload => typeNameOf(payload),
-        // name: payload => payload,
     })[kind] || (_ => {
         log_full(o);
         throw "ocaml_of_type_expr: bad kind "+kind;
@@ -144,13 +148,18 @@ let ocaml_yojson_of_type_expr = (o, subject, path) => {
     let {kind, payload} = o;
     return `(${(({
         option: type => `match ${subject} with | Option.Some x -> ${ocaml_yojson_of_type_expr(type, 'x', [...path, 'Some'])} | _ -> \`Null`,
+        unit: _ => `\`Null`,
         tuple: types =>
             `let (${types.map((t, i) => 'x' + i)}) = ${subject} in \`List [${types.map((t, i) => ocaml_yojson_of_type_expr(t, 'x' + i, [...path, 'tuple', i])).join(';')}]`,
         array: type => 
             `\`List (List.map (fun x -> ${ocaml_yojson_of_type_expr(type, 'x', [...path, 'array'])}) ${subject})`,
         boolean: _ => `\`Bool ${subject}`,
         string: _ => `\`String ${subject}`,
-        integer: _ => `\`${o.bigint ? 'Intlit' : 'Int'} ${subject}`,
+        integer: _ => ({
+            string: `\`Intlit ${subject}`,
+            int64: `\`Intlit (Int64.to_string ${subject})`,
+            int: `\`Int ${subject}`
+        })[o.repr],
         char: _ => `\`String (Base.Char.to_string ${subject})`,
         name: payload => `to_json_${typeNameOf(payload)} ${subject}`,
     })[kind] || (_ => {
@@ -169,6 +178,7 @@ let ocaml_arms_of_type_expr = (o, path) => {
             [`\`Null`, `Option.None`],
             ...ocaml_arms_of_type_expr(type, [...path, 'option']).map(([pat, expr]) => [pat, `Option.Some (${expr})`])
         ],
+        unit: _ => [[`\`Null`, '()']],
         tuple: types => {
             let sub_matches = types.map((type, i) => 
                 mk_match(`v${i}`, ocaml_arms_of_type_expr(type, [...path, 'tuple', i]), [...path, 'tuple']));
@@ -186,15 +196,20 @@ let ocaml_arms_of_type_expr = (o, path) => {
         boolean: _ => [[`\`Bool b`, 'b']],
         string: _ => [[`\`String s`, 's']],
         char: _ => [[`\`String s`, 'String.get s 0']],
-        integer: _ => o.bigint ?
-            [
+        integer: _ => ({
+            int64: [
+                [`\`Int i`, 'Base.Int64.of_int i'],
+                [`\`Intlit lit`, `(try Base.Int64.of_string lit with | _ -> failwith ("Base.Int64.of_string failed for " ^ lit))`]
+            ],
+            string: [
                 [`\`Int i`, 'string_of_int i'],
                 [`\`Intlit s`, 's']
-            ] : [
+            ],
+            int: [
                 [`\`Int i`, 'i'],
-                [`\`Intlit lit`, 'failwith "Got big number, while a int was expected"']
+                [`\`Intlit s`, 'Base.Int.of_string s']
             ]
-        ,
+        })[o.repr],
         name: payload => [['remains', `parse_${typeNameOf(payload)} remains`]],
     })[kind] || (_ => {
         log_full(o);
@@ -208,6 +223,10 @@ let parse_type_name = s => {
     return s.split('/').slice(-1)[0];
 };
 
+let int_repr_of_format = format => 
+  (format.endsWith('int128') || format == 'uint64' || format == 'uint' /*`uint`s are `usize`s actually, so that's safer to assume it's a uint64, see https://github.com/GREsau/schemars/blob/386e3d7f5ac601795fb4e247291bbef31512ded3/schemars/src/json_schema_impls/primitives.rs#L85C16-L85C21*/)
+    ? 'string'
+    : (format == 'int64' || format == 'uint32' ? 'int64' : 'int');
 
 let is_type = {
     option: def => {
@@ -224,6 +243,15 @@ let is_type = {
         return false;
     },
     
+    unit: def => {
+        if (exact_keys(def, 'type')
+            && def.type === 'null')
+            return {
+                kind: 'unit',
+            };
+        return false;
+    },
+
     tuple: def => {
         if (exact_keys(def, 'type', 'items')
             && def.type === 'array'
@@ -253,9 +281,10 @@ let is_type = {
     } : false)
         || is_type.option(def)
         || is_type.array(def)
+        || is_type.unit(def)
         || is_type.tuple(def)
         || (def.type === 'integer'
-            ? {kind: 'integer', bigint: def.format.endsWith('int128')}
+            ? {kind: 'integer', repr: int_repr_of_format(def.format)}
             : false)
         || (def.type === 'string' && def.maxLength === def.minLength && def.minLength === 1
             ? {kind: 'char'}

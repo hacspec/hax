@@ -1,8 +1,6 @@
-open Base
-open Ppx_yojson_conv_lib.Yojson_conv.Primitives
+open! Prelude
 open Ast
 open Ast.Full
-open Utils
 
 module Concrete_ident_view = Concrete_ident.MakeViewAPI (struct
   include Concrete_ident.DefaultNamePolicy
@@ -35,8 +33,7 @@ module AnnotatedString = struct
            | _ -> [])
 
     let tokenize : t -> t =
-      List.concat_map
-        ~f:(Fn.id *** split >> uncurry (fun span -> List.map ~f:(tup2 span)))
+      List.concat_map ~f:(fun (span, s) -> split s |> List.map ~f:(tup2 span))
   end
 
   include T
@@ -66,23 +63,23 @@ module AnnotatedString = struct
 end
 
 let re_matches rex (s : string) : bool =
-  try
-    let _ = Re.Pcre.pmatch ~rex s in
-    true
-  with _ -> false
+  try Re.Pcre.pmatch ~rex s with _ -> false
 
 module Raw = struct
   open AnnotatedString
 
   let pliteral span (e : literal) : AnnotatedString.t =
+    let pnegative = function true -> "-" | _ -> "" in
     pure span
     @@
     match e with
     | String s -> "\"" ^ String.escaped s ^ "\""
     | Char c -> "'" ^ Char.to_string c ^ "'"
     | Int { value; _ } -> value
-    | Float { value; kind = F32 } -> value ^ "f32"
-    | Float { value; kind = F64 } -> value ^ "f64"
+    | Float { value; kind = F32; negative } ->
+        pnegative negative ^ value ^ "f32"
+    | Float { value; kind = F64; negative } ->
+        pnegative negative ^ value ^ "f64"
     | Bool b -> Bool.to_string b
 
   let pprimitive_ident span : _ -> AnnotatedString.t =
@@ -103,7 +100,7 @@ module Raw = struct
 
   let pglobal_ident = pglobal_ident' ""
 
-  let plocal_ident span (e : LocalIdent.t) : AnnotatedString.t =
+  let plocal_ident span (e : Local_ident.t) : AnnotatedString.t =
     pure span e.name
 
   let dmutability span : _ -> AnnotatedString.t =
@@ -114,9 +111,10 @@ module Raw = struct
 
   let pborrow_kind span = pure span << function Mut _ -> "mut " | _ -> ""
 
-  let last_of_global_ident (g : global_ident) span =
+  let rec last_of_global_ident (g : global_ident) span =
     match g with
     | `Concrete c -> Concrete_ident_view.to_definition_name c
+    | `Projector c -> last_of_global_ident (c :> global_ident) span
     | _ ->
         Diagnostics.report
           {
@@ -156,7 +154,8 @@ module Raw = struct
           List.map ~f:(pty span) (inputs @ [ output ]) |> concat ~sep:!" -> "
         in
         !"arrow!(" & arrow & !")"
-    | TProjectedAssociatedType _ -> !"proj_asso_type!()"
+    | TAssociatedType _ -> !"proj_asso_type!()"
+    | TOpaque ident -> !(Concrete_ident_view.show ident)
 
   and pgeneric_value span (e : generic_value) : AnnotatedString.t =
     match e with
@@ -186,6 +185,7 @@ module Raw = struct
           !"("
           & concat ~sep:!", " (List.map ~f:(fun { pat; _ } -> ppat pat) args)
           & !")"
+    | POr { subpats } -> concat ~sep:!" | " (List.map ~f:ppat subpats)
     | PArray { args } -> !"[" & concat ~sep:!"," (List.map ~f:ppat args) & !"]"
     | PDeref { subpat; _ } -> !"&" & ppat subpat
     | PConstant { lit } -> pliteral e.span lit
@@ -211,18 +211,21 @@ module Raw = struct
           match else_ with Some e -> !" else {" & pexpr e & !"}" | None -> !""
         in
         !"(" & !"if " & pexpr cond & !"{" & pexpr then_ & !"}" & else_ & !")"
-    | App { f = { e = GlobalVar _; _ } as f; args } ->
+    | App { f; args; generic_args } ->
         let args = concat ~sep:!"," @@ List.map ~f:pexpr args in
-        pexpr f & !"(" & args & !")"
-    | App { f; args } ->
-        let args = concat ~sep:!"," @@ List.map ~f:pexpr args in
-        pexpr f & !"(" & args & !")"
+        let generic_args =
+          let f = pgeneric_value e.span in
+          if List.is_empty generic_args then !""
+          else !"::<" & (concat ~sep:!"," @@ List.map ~f generic_args) & !">"
+        in
+        pexpr f & generic_args & !"(" & args & !")"
     | Literal l -> pliteral e.span l
+    | Block (e, _) -> !"{" & pexpr e & !"}"
     | Array l -> !"[" & concat ~sep:!"," (List.map ~f:pexpr l) & !"]"
-    | Construct { is_record = false; constructor; fields; base = _ } ->
+    | Construct { is_record = false; constructor; fields; _ } ->
         let fields = List.map ~f:(snd >> pexpr) fields |> concat ~sep:!"," in
         pglobal_ident e.span constructor & !"(" & fields & !")"
-    | Construct { is_record = true; constructor; fields; base } ->
+    | Construct { is_record = true; constructor; fields; base; _ } ->
         let fields =
           List.map
             ~f:(fun (field, value) ->
@@ -328,22 +331,28 @@ module Raw = struct
     let ( ! ) = pure attr.span in
     match attr.kind with
     | Tool { path; tokens } -> !"#[" & !path & !"(" & !tokens & !")" & !"]"
-    | DocComment { kind; body } -> !"/**" & !body & !"*/"
+    | DocComment { kind = _; body } -> !"/**" & !body & !"*/"
 
   let pattrs attrs = List.map ~f:pattr attrs |> concat
 
   let pgeneric_param_kind span (pk : generic_param_kind) =
     let ( ! ) = pure span in
     match pk with
-    | GPLifetime _ -> (empty, !": '_")
+    | GPLifetime _ -> (empty, !": 'unk")
     | GPType { default = Some default } -> (empty, !" = " & pty span default)
     | GPType { default = None } -> (empty, empty)
     | GPConst { typ } -> (!"const ", !":" & pty span typ)
 
   let pgeneric_param (p : generic_param) =
-    let ( ! ) = pure p.span in
     let prefix, suffix = pgeneric_param_kind p.span p.kind in
-    pattrs p.attrs & prefix & plocal_ident p.span p.ident & suffix
+    let name =
+      match p.ident.name with
+      | "_" -> "Anonymous"
+      | "Self" -> "Self_"
+      | name -> name
+    in
+    let id = plocal_ident p.span { p.ident with name } in
+    pattrs p.attrs & prefix & id & suffix
 
   let pgeneric_params (pl : generic_param list) =
     match pl with
@@ -352,7 +361,7 @@ module Raw = struct
         !"<" & concat ~sep:!", " (List.map ~f:pgeneric_param pl) & !">"
     | _ -> empty
 
-  let ptrait_ref span { trait; args; bindings } =
+  let ptrait_ref span { trait; args } =
     let ( ! ) = pure span in
     let args = List.map ~f:(pgeneric_value span) args |> concat ~sep:!", " in
     !(Concrete_ident_view.show trait)
@@ -361,18 +370,17 @@ module Raw = struct
   let pgeneric_constraint span (p : generic_constraint) =
     let ( ! ) = pure span in
     match p with
-    | GCLifetime _ -> !"'_: '_"
-    | GCType { typ; implements } ->
-        pty span typ & !":" & ptrait_ref span implements
+    | GCLifetime _ -> !"'unk: 'unk"
+    | GCType { bound; _ } -> !"_:" & ptrait_ref span bound
 
   let pgeneric_constraints span (constraints : generic_constraint list) =
     if List.is_empty constraints then empty
     else
       let ( ! ) = pure span in
-      !"where "
+      !" where "
       & concat ~sep:!"," (List.map ~f:(pgeneric_constraint span) constraints)
 
-  let pvariant_body span { name; arguments; attrs; is_record } =
+  let pvariant_body span { name = _; arguments; attrs = _; is_record } =
     let ( ! ) = pure span in
     if is_record then
       !"{"
@@ -399,6 +407,49 @@ module Raw = struct
     let ( ! ) = pure span in
     concat ~sep:!", " (List.map ~f:(pvariant span) variants)
 
+  let ptrait_item (ti : trait_item) =
+    let ( ! ) = pure ti.ti_span in
+    let generics = pgeneric_params ti.ti_generics.params in
+    let bounds = pgeneric_constraints ti.ti_span ti.ti_generics.constraints in
+    let ident = !(Concrete_ident_view.to_definition_name ti.ti_ident) in
+    match ti.ti_v with
+    | TIType _ -> !"type " & ident & !": TodoPrintRustBoundsTyp;"
+    | TIFn ty ->
+        let inputs, output =
+          match ty with
+          | TArrow (inputs, output) -> (inputs, output)
+          | ty -> ([], ty)
+        in
+        let return_type = pty ti.ti_span output in
+        let params =
+          List.map ~f:(fun typ -> !"_: " & pty ti.ti_span typ) inputs
+          |> concat ~sep:!","
+        in
+        !"fn " & ident & generics & !"(" & params & !") -> " & return_type
+        & bounds & !";"
+
+  let pparam span ({ pat; typ; typ_span; attrs } : param) =
+    let ( ! ) = pure span in
+    pattrs attrs & ppat pat & !": "
+    & pty (Option.value ~default:pat.span typ_span) typ
+
+  let pparams span (l : param list) =
+    let ( ! ) = pure span in
+    !"(" & List.map ~f:(pparam span) l |> concat ~sep:!"," & !")"
+
+  let pimpl_item (ii : impl_item) =
+    let span = ii.ii_span in
+    let ( ! ) = pure span in
+    let generics = pgeneric_params ii.ii_generics.params in
+    let bounds = pgeneric_constraints span ii.ii_generics.constraints in
+    let ident = !(Concrete_ident_view.to_definition_name ii.ii_ident) in
+    match ii.ii_v with
+    | IIType _ -> !"type " & ident & !": TodoPrintRustBoundsTyp;"
+    | IIFn { body; params } ->
+        let return_type = pty span body.typ in
+        !"fn " & ident & generics & pparams span params & !" -> " & return_type
+        & bounds & !"{" & pexpr body & !"}"
+
   let pitem (e : item) =
     let exception NotImplemented in
     let ( ! ) = pure e.span in
@@ -407,18 +458,10 @@ module Raw = struct
         match e.v with
         | Fn { name; body; generics; params } ->
             let return_type = pty e.span body.typ in
-            let params =
-              List.map
-                ~f:(fun { pat; typ; typ_span } ->
-                  ppat pat & !": "
-                  & pty (Option.value ~default:pat.span typ_span) typ)
-                params
-              |> concat ~sep:!","
-            in
             !"fn "
             & !(Concrete_ident_view.to_definition_name name)
             & pgeneric_params generics.params
-            & !"(" & params & !") -> " & return_type
+            & pparams e.span params & !" -> " & return_type
             & pgeneric_constraints e.span generics.constraints
             & !"{" & pexpr body & !"}"
         | TyAlias { name; generics; ty } ->
@@ -433,7 +476,8 @@ module Raw = struct
             & pgeneric_params generics.params
             & pgeneric_constraints e.span generics.constraints
             & pvariant_body e.span variant
-        | Type { name; generics; variants : _ } ->
+            & if variant.is_record then !"" else !";"
+        | Type { name; generics; variants; _ } ->
             !"enum "
             & !(Concrete_ident_view.to_definition_name name)
             & pgeneric_params generics.params
@@ -441,10 +485,36 @@ module Raw = struct
             &
             if List.is_empty variants then empty
             else !"{" & pvariants e.span variants & !"}"
+        | Trait { name; generics; items } ->
+            !"trait "
+            & !(Concrete_ident_view.to_definition_name name)
+            & pgeneric_params generics.params
+            & pgeneric_constraints e.span generics.constraints
+            & !"{"
+            & List.map ~f:ptrait_item items |> concat ~sep:!"\n"
+            & !"}"
+        | Impl { generics; self_ty; of_trait; items } ->
+            let trait =
+              pglobal_ident e.span (fst of_trait)
+              & !"<"
+              & concat ~sep:!","
+                  (List.map ~f:(pgeneric_value e.span) (snd of_trait))
+              & !">"
+            in
+            !"impl "
+            & pgeneric_params generics.params
+            & trait & !" for " & pty e.span self_ty
+            & pgeneric_constraints e.span generics.constraints
+            & !"{"
+            & List.map ~f:pimpl_item items |> concat ~sep:!"\n"
+            & !"}"
         | _ -> raise NotImplemented
       in
       pattrs e.attrs & pi
-    with NotImplemented -> !"/* print_rust: pitem: not implemented */"
+    with NotImplemented ->
+      !("\n/* print_rust: pitem: not implemented  (item: "
+       ^ [%show: concrete_ident] e.ident
+       ^ ") */\n")
 end
 
 let rustfmt (s : string) : string =
@@ -463,38 +533,48 @@ let rustfmt (s : string) : string =
          %{stderr}\n\
          #######################################################\n"]
     in
-    Caml.prerr_endline err;
+    Stdio.prerr_endline err;
     [%string "/*\n%{err}\n*/\n\n%{s}"]
 
-let rustfmt_annotated (x : AnnotatedString.t) : AnnotatedString.t =
-  let x = AnnotatedString.tokenize x in
-  let s = AnnotatedString.to_string x |> rustfmt |> AnnotatedString.split in
-  let f (x, result) s =
+exception RetokenizationFailure
+
+let rustfmt_annotated' (x : AnnotatedString.t) : AnnotatedString.t =
+  let original = AnnotatedString.tokenize x in
+  let tokens = AnnotatedString.(to_string x |> rustfmt |> split) in
+  let is_symbol = re_matches AnnotatedString.split_re in
+  let all_symbol = List.for_all ~f:(snd >> is_symbol) in
+  let f (original, result) s =
     let last =
       List.hd result |> Option.map ~f:fst
       |> Option.value_or_thunk ~default:Span.dummy
     in
-    let x, tuple =
-      match List.split_while ~f:(snd >> String.equal s >> not) x with
-      | prev, (span, s') :: x' ->
-          let symbols_only =
-            List.for_all prev ~f:(snd >> re_matches AnnotatedString.split_re)
-          in
-          if symbols_only then (x', (span, s))
-          else
-            let span, _ = List.hd_exn prev in
-            (x, (span, s))
-      | _ -> (x, (last, s))
+    let original', tuple =
+      match List.split_while ~f:(snd >> String.equal s >> not) original with
+      | prev, (span, s') :: original' ->
+          assert (String.equal s s');
+          if all_symbol prev then
+            (* it is fine to skip symbols *)
+            (original', (span, s))
+          else if is_symbol s then
+            (* if [s] is a symbol as well, this is fine *)
+            (original, (Span.dummy (), s))
+          else (
+            Stdio.prerr_endline @@ "\n##### RUSTFMT TOKEN ERROR #####";
+            Stdio.prerr_endline @@ "s=" ^ s;
+            raise RetokenizationFailure)
+      | _ -> (original, (last, s))
     in
-    (x, tuple :: result)
+    (original', tuple :: result)
   in
-  let r = snd @@ List.fold_left s ~init:(x, []) ~f in
+  let r = snd @@ List.fold_left tokens ~init:(original, []) ~f in
   List.rev r
 
-(* module U = Ast_utils.Make (Features.Full) *)
+let rustfmt_annotated (x : AnnotatedString.t) : AnnotatedString.t =
+  let rf = Option.value ~default:"" (Sys.getenv "HAX_RUSTFMT") in
+  if String.equal rf "no" then x
+  else try rustfmt_annotated' x with RetokenizationFailure -> x
 
 let pitem : item -> AnnotatedString.Output.t =
-  (* U.Mappers.regenerate_span_ids#visit_item () *)
   Raw.pitem >> rustfmt_annotated >> AnnotatedString.Output.convert
 
 let pitems : item list -> AnnotatedString.Output.t =
@@ -511,7 +591,7 @@ let pexpr_str (e : expr) : string =
   let suffix = "}" in
   let item = !prefix & e & !suffix in
   rustfmt_annotated item |> AnnotatedString.Output.convert
-  |> AnnotatedString.Output.raw_string |> Caml.String.trim
+  |> AnnotatedString.Output.raw_string |> Stdlib.String.trim
   |> String.chop_suffix_if_exists ~suffix
   |> String.chop_prefix_if_exists ~prefix
-  |> Caml.String.trim
+  |> Stdlib.String.trim

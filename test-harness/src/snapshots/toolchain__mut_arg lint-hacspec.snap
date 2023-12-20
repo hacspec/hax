@@ -7,7 +7,7 @@ info:
       linter: hacspec
   info:
     name: mut_arg
-    manifest: /home/lucas/repos/thir-export/custom-test-harness/tests/lint/hacspec/mut_args/Cargo.toml
+    manifest: lint/hacspec/mut_args/Cargo.toml
     description: ~
   spec:
     optional: false

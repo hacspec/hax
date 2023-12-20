@@ -1,0 +1,19 @@
+[package]
+name = "hax-lib-macros"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+edition.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro-error = "1.0.4"
+proc-macro2.workspace = true
+quote.workspace = true
+hax-lib-macros-types.workspace = true
+syn = { version = "2.0", features = ["full", "visit-mut", "extra-traits", "parsing"] }

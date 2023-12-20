@@ -9,11 +9,30 @@
       };
     };
     rust-overlay.follows = "crane/rust-overlay";
+    fstar-flake = {
+      url = "github:FStarLang/FStar/v2023.09.03";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        flake-utils.follows = "flake-utils";
+      };
+    };
+    hacl-star = {
+      url = "github:hacl-star/hacl-star";
+      flake = false;
+    };
   };
 
-  outputs = {flake-utils, nixpkgs, rust-overlay, crane, ...}:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
+  outputs = {
+    flake-utils,
+    nixpkgs,
+    rust-overlay,
+    crane,
+    fstar-flake,
+    hacl-star,
+    ...
+  }:
+    flake-utils.lib.eachDefaultSystem (
+      system: let
         pkgs = import nixpkgs {
           inherit system;
           overlays = [rust-overlay.overlays.default];
@@ -22,9 +41,10 @@
         craneLib = (crane.mkLib pkgs).overrideToolchain rustc;
         ocamlformat = pkgs.ocamlformat_0_24_1;
         rustfmt = pkgs.rustfmt;
+        fstar = fstar-flake.packages.${system}.default;
       in rec {
         packages = {
-          inherit rustc ocamlformat rustfmt;
+          inherit rustc ocamlformat rustfmt fstar;
           hax-engine = pkgs.callPackage ./engine {
             hax-rust-frontend = packages.hax-rust-frontend.unwrapped;
             inherit rustc;
@@ -35,45 +55,66 @@
           };
           hax = packages.hax-rust-frontend;
           default = packages.hax;
+
+          check-toolchain = checks.toolchain;
+          check-examples = checks.examples;
         };
-        checks.default = packages.hax.tests;
+        checks = {
+          toolchain = packages.hax.tests;
+          examples = pkgs.callPackage ./examples {
+            inherit (packages) hax;
+            inherit craneLib fstar hacl-star;
+          };
+        };
         apps = {
-          serve-rustc-docs = { type = "app"; program = "${pkgs.writeScript "serve-rustc-docs" ''
-             cd ${packages.rustc.passthru.availableComponents.rustc-docs}/share/doc/rust/html/rustc
-             ${pkgs.python3}/bin/python -m http.server
-          ''}"; };
+          serve-rustc-docs = {
+            type = "app";
+            program = "${pkgs.writeScript "serve-rustc-docs" ''
+              cd ${packages.rustc.passthru.availableComponents.rustc-docs}/share/doc/rust/html/rustc
+              ${pkgs.python3}/bin/python -m http.server
+            ''}";
+          };
         };
-        devShells = {
+        devShells = let
+          inputsFrom = [
+            packages.hax-rust-frontend.unwrapped
+            packages.hax-engine
+          ];
+        in let
+          packages = [
+            ocamlformat
+            pkgs.ocamlPackages.ocaml-lsp
+            pkgs.ocamlPackages.ocamlformat-rpc-lib
+            pkgs.ocamlPackages.ocaml-print-intf
+            pkgs.ocamlPackages.odoc
+            pkgs.ocamlPackages.utop
+
+            pkgs.cargo-expand
+            pkgs.cargo-insta
+            pkgs.openssl.dev
+            pkgs.pkg-config
+            pkgs.rust-analyzer
+            rustfmt
+            rustc
+
+            (pkgs.stdenv.mkDerivation {
+              name = "rebuild-script";
+              phases = ["installPhase"];
+              installPhase = ''
+                mkdir -p $out/bin
+                cp ${./.utils/rebuild.sh} $out/bin/rebuild
+              '';
+            })
+          ];
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+        in {
+          fstar-examples = pkgs.mkShell {
+            inherit inputsFrom LIBCLANG_PATH;
+            HACL_HOME = "${hacl-star}";
+            packages = packages ++ [fstar];
+          };
           default = pkgs.mkShell {
-            inputsFrom = [
-              packages.hax-rust-frontend.unwrapped
-              packages.hax-engine
-            ];
-            packages = [
-              ocamlformat
-              pkgs.ocamlPackages.ocaml-lsp
-              pkgs.ocamlPackages.ocamlformat-rpc-lib
-              pkgs.ocamlPackages.ocaml-print-intf
-              pkgs.ocamlPackages.odoc
-              pkgs.ocamlPackages.utop
-
-              pkgs.cargo-expand
-              pkgs.openssl.dev
-              pkgs.pkg-config
-              pkgs.rust-analyzer
-              rustfmt
-              rustc
-
-              (pkgs.stdenv.mkDerivation {
-                name = "rebuild-script";
-                phases = [ "installPhase" ];
-                installPhase = ''
-                  mkdir -p $out/bin
-                  cp ${./.utils/rebuild.sh} $out/bin/rebuild
-                '';
-              })
-            ];
-            LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+            inherit packages inputsFrom LIBCLANG_PATH;
           };
         };
       }

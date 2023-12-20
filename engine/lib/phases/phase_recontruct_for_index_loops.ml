@@ -1,5 +1,4 @@
-open Base
-open Utils
+open! Prelude
 
 module%inlined_contents Make (FA : Features.T) = struct
   open Ast
@@ -23,8 +22,7 @@ module%inlined_contents Make (FA : Features.T) = struct
 
     module S = struct
       include Features.SUBTYPE.Id
-
-      let for_index_loop = Fn.const Features.On.for_index_loop
+      include Features.SUBTYPE.On.For_index_loop
     end
 
     [%%inline_defs dmutability]
@@ -38,7 +36,7 @@ module%inlined_contents Make (FA : Features.T) = struct
                 e =
                   App
                     {
-                      f = { e = GlobalVar (`Concrete into_iter_meth) };
+                      f = { e = GlobalVar (`Concrete into_iter_meth); _ };
                       args =
                         [
                           {
@@ -55,8 +53,11 @@ module%inlined_contents Make (FA : Features.T) = struct
                                     ];
                                   base = None;
                                 };
+                            _;
                           };
                         ];
+                      _;
+                      (* TODO: see issue #328 *)
                     };
                 typ;
                 _;
@@ -65,10 +66,10 @@ module%inlined_contents Make (FA : Features.T) = struct
               {
                 p =
                   PBinding
-                    { mut = Immutable; mode = ByValue; var; subpat = None };
-                typ = _;
+                    { mut = Immutable; mode = ByValue; var; subpat = None; _ };
+                _;
               };
-            witness;
+            _;
           }
         when Concrete_ident.eq_name
                Core__iter__traits__collect__IntoIterator__into_iter

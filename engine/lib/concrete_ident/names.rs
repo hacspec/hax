@@ -24,6 +24,9 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
 
     let _ = [()].into_iter();
     let _ = 1..2;
+    let _ = 1..;
+    let _ = ..;
+    let _ = ..1;
 
     const _: () = {
         use core::{cmp::*, ops::*};
@@ -61,6 +64,13 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     unsafe {
         let _ = *ptr.offset(1) as char;
     }
+
+    const _: () = {
+        use std::ops::DerefMut;
+        fn f<T: DerefMut>(x: T) {
+            let _: &mut _ = { x }.deref_mut();
+        }
+    };
 }
 
 macro_rules! impl_arith {
@@ -104,11 +114,20 @@ mod hax {
     struct Failure;
     enum Never {}
 
+    // Only useful when HAX_CORE_EXTRACTION_MODE in `on`
+    enum MutRef {}
+
     fn repeat() {}
     fn update_at() {}
+    mod monomorphized_update_at {
+        fn update_at_usize() {}
+        fn update_at_range() {}
+        fn update_at_range_from() {}
+        fn update_at_range_to() {}
+        fn update_at_range_full() {}
+    }
     // TODO: Should that live here? (this is F* specific)
     fn array_of_list() {}
-
     fn never_to_any() {}
 
     mod control_flow_monad {

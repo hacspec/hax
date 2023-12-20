@@ -39,8 +39,8 @@ module RejectNotEC (FA : Features.T) = struct
         module B = FB
         include Feature_gate.DefaultSubtype
 
-        let mutable_variable _ = Features.On.mutable_variable
-        let loop _ = Features.On.loop
+        let mutable_variable _ _ = Features.On.mutable_variable
+        let loop _ _ = Features.On.loop
         let continue = reject
         let mutable_reference = reject
         let mutable_pointer = reject
@@ -51,7 +51,7 @@ module RejectNotEC (FA : Features.T) = struct
         let early_exit = reject
         let question_mark = reject
         let break = reject
-        let macro _ = Features.On.macro
+        let macro _ _ = Features.On.macro
         let as_pattern = reject
         let lifetime = reject
         let monadic_action = reject
@@ -59,9 +59,10 @@ module RejectNotEC (FA : Features.T) = struct
         let arbitrary_lhs = reject
         let state_passing_loop = reject
         let nontrivial_lhs = reject
-        let construct_base _ = Features.On.construct_base
+        let block = reject
         let for_loop = reject
-        let for_index_loop _ = Features.On.for_index_loop
+        let construct_base _ _ = Features.On.construct_base
+        let for_index_loop _ _ = Features.On.for_index_loop
 
         let metadata =
           Phase_utils.Metadata.make (Reject (NotInBackendLang EasyCrypt))
@@ -138,6 +139,7 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) : Types.file list
              | HaxError _ -> ()
              | IMacroInvokation mi -> ()
              | Use _ -> ()
+             | Alias _ -> ()
              | NotImplementedYet -> ())
     in
 
@@ -180,7 +182,8 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) : Types.file list
     | TRef _ -> assert false
     | TParam _ -> assert false
     | TArrow (_, _) -> assert false
-    | TProjectedAssociatedType _ -> assert false
+    | TAssociatedType _ -> assert false
+    | TOpaque _ -> assert false
   and doit_type_arg (fmt : Format.formatter) (tyarg : generic_value) =
     match tyarg with GType ty -> doit_type fmt ty | _ -> assert false
   and doit_stmt (fmt : Format.formatter) (expr : expr) =
@@ -328,8 +331,8 @@ let translate' (bo : BackendOptions.t) (items : AST.item list) : Types.file list
   doit Format.err_formatter items;
   []
 
-let translate (bo : BackendOptions.t) (items : AST.item list) : Types.file list
-    =
+let translate _ (bo : BackendOptions.t) (items : AST.item list) :
+    Types.file list =
   try translate' bo items
   with Assert_failure (file, line, col) ->
     Diagnostics.failure ~context:(Backend FStar) ~span:(Span.dummy ())
@@ -344,9 +347,9 @@ open Phase_utils
 
 module TransformToInputLanguage =
 [%functor_application
-Phases.Reject.RawOrMutPointer Features.Rust |> Phases.Reconstruct_for_loops
-|> Phases.Direct_and_mut |> Phases.Reject.Continue |> Phases.Drop_references
-|> RejectNotEC]
+Phases.Reject.RawOrMutPointer Features.Rust |> Phases.And_mut_defsite
+|> Phases.Reconstruct_for_loops |> Phases.Direct_and_mut |> Phases.Drop_blocks
+|> Phases.Reject.Continue |> Phases.Drop_references |> RejectNotEC]
 
 let apply_phases (bo : BackendOptions.t) (items : Ast.Rust.item list) :
     AST.item list =

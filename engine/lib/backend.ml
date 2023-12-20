@@ -1,4 +1,4 @@
-open Base
+open! Prelude
 open Ast
 
 module type BACKEND_OPTIONS = sig
@@ -11,7 +11,7 @@ end
 
 module type T = sig
   module InputLanguage : Features.T
-  module AST : Ast.T
+  module AST : module type of Ast.Make (InputLanguage)
 
   module U : sig
     module Mappers : sig
@@ -22,10 +22,18 @@ module type T = sig
     end
   end
 
+  module Error : Phase_utils.ERROR
   module BackendOptions : BACKEND_OPTIONS
+  module Attrs : module type of Attr_payloads.Make (InputLanguage) (Error)
 
   val apply_phases : BackendOptions.t -> Ast.Rust.item list -> AST.item list
-  val translate : BackendOptions.t -> AST.item list -> Types.file list
+
+  val translate :
+    (module Attrs.WITH_ITEMS) ->
+    BackendOptions.t ->
+    AST.item list ->
+    Types.file list
+
   val backend : Diagnostics.Backend.t
 end
 
@@ -46,15 +54,22 @@ module Make (InputLanguage : Features.T) (M : BackendMetadata) = struct
       let context = Diagnostics.Context.Backend M.backend in
       let kind = err.kind in
       let span = Span.to_thir err.span in
-      Diagnostics.report { context; kind; span };
-      raise @@ Diagnostics.SpanFreeError (context, kind)
+      Diagnostics.SpanFreeError.raise ~span context kind
 
     let unimplemented ?issue_id ?details span =
-      raise { kind = Unimplemented { issue_id; details }; span }
+      raise
+        {
+          kind =
+            Unimplemented
+              { issue_id = Option.map ~f:MyInt64.of_int issue_id; details };
+          span;
+        }
 
     let assertion_failure span details =
       raise { kind = AssertionFailure { details }; span }
   end
+
+  module Attrs = Attr_payloads.Make (InputLanguage) (Error)
 
   let failwith ?(span = Span.default) msg =
     Error.unimplemented

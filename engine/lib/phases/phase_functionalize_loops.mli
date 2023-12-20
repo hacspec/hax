@@ -1,12 +1,10 @@
-open Base
-open Utils
+open! Prelude
 
 module Make
     (F : Features.T
            with type continue = Features.Off.continue
             and type early_exit = Features.Off.early_exit) : sig
   include module type of struct
-    open Ast
     module FA = F
 
     module FB = struct

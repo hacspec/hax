@@ -1,4 +1,4 @@
-use hax_cli_options::{PathOrDash, ENV_VAR_OPTIONS_FRONTEND};
+use hax_cli_options::{Backend, PathOrDash, ENV_VAR_OPTIONS_FRONTEND};
 use hax_frontend_exporter;
 use hax_frontend_exporter::state::{ExportedSpans, LocalContextS};
 use hax_frontend_exporter::SInto;
@@ -162,6 +162,11 @@ fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
     tcx: TyCtxt<'tcx>,
 ) -> (
     Vec<rustc_span::Span>,
+    Vec<hax_frontend_exporter::DefId>,
+    Vec<(
+        hax_frontend_exporter::DefId,
+        hax_frontend_exporter::ImplInfos,
+    )>,
     Vec<hax_frontend_exporter::Item<Body>>,
 ) {
     let mut state = hax_frontend_exporter::state::State::new(tcx, options.clone());
@@ -169,8 +174,22 @@ fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
     state.base.cached_thirs = Rc::new(precompute_local_thir_bodies(tcx));
 
     let result = hax_frontend_exporter::inline_macro_invocations(tcx.hir().items(), &state);
+    let impl_infos = hax_frontend_exporter::impl_def_ids_to_impled_types_and_bounds(&state)
+        .into_iter()
+        .collect();
     let exported_spans = state.base.exported_spans.borrow().clone();
-    (exported_spans.into_iter().collect(), result)
+
+    let exported_def_ids = {
+        let def_ids = state.base.exported_def_ids.borrow();
+        let state = hax_frontend_exporter::state::State::new(tcx, options.clone());
+        def_ids.iter().map(|did| did.sinto(&state)).collect()
+    };
+    (
+        exported_spans.into_iter().collect(),
+        exported_def_ids,
+        impl_infos,
+        result,
+    )
 }
 
 /// Collect a map from spans to macro calls
@@ -236,7 +255,19 @@ fn find_hax_engine() -> process::Command {
                 }
             })
         })
-        .expect(&ENGINE_BINARY_NOT_FOUND)
+        .unwrap_or_else(|| {
+            fn is_opam_setup_correctly() -> bool {
+                std::env::var("OPAM_SWITCH_PREFIX").is_ok()
+            }
+            use colored::Colorize;
+            eprintln!("\n{}\n{}\n\n{} {}\n",
+                      &ENGINE_BINARY_NOT_FOUND,
+                      "Please make sure the engine is installed and is in PATH!",
+                      "Hint: With OPAM, `eval $(opam env)` is necessary for OPAM binaries to be in PATH: make sure to run `eval $(opam env)` before running `cargo hax`.".bright_black(),
+                      format!("(diagnostics: {})", if is_opam_setup_correctly() { "opam seems okay ✓" } else {"opam seems not okay ❌"}).bright_black()
+            );
+            panic!("{}", &ENGINE_BINARY_NOT_FOUND)
+        })
 }
 
 /// Callback for extraction
@@ -289,6 +320,7 @@ impl Callbacks for ExtractionCallbacks {
                 ExporterCommand::JSON {
                     output_file,
                     mut kind,
+                    include_extra,
                 } => {
                     struct Driver<'tcx> {
                         options: hax_frontend_exporter_options::Options,
@@ -296,19 +328,29 @@ impl Callbacks for ExtractionCallbacks {
                             HashMap<hax_frontend_exporter::Span, hax_frontend_exporter::Span>,
                         tcx: TyCtxt<'tcx>,
                         output_file: PathOrDash,
+                        include_extra: bool,
                     }
                     impl<'tcx> Driver<'tcx> {
                         fn to_json<Body: hax_frontend_exporter::IsBody + Serialize>(self) {
-                            let (_, converted_items) = convert_thir::<Body>(
+                            let (_, def_ids, impl_infos, converted_items) = convert_thir::<Body>(
                                 &self.options,
                                 self.macro_calls.clone(),
                                 self.tcx,
                             );
 
-                            serde_json::to_writer(
-                                self.output_file.open_or_stdout(),
-                                &converted_items,
-                            )
+                            let dest = self.output_file.open_or_stdout();
+                            (if self.include_extra {
+                                serde_json::to_writer(
+                                    dest,
+                                    &hax_cli_options_engine::WithDefIds {
+                                        def_ids,
+                                        impl_infos,
+                                        items: converted_items,
+                                    },
+                                )
+                            } else {
+                                serde_json::to_writer(dest, &converted_items)
+                            })
                             .unwrap()
                         }
                     }
@@ -317,6 +359,7 @@ impl Callbacks for ExtractionCallbacks {
                         macro_calls: self.macro_calls.clone(),
                         tcx,
                         output_file,
+                        include_extra,
                     };
                     mod from {
                         pub use hax_cli_options::ExportBodyKind::{
@@ -347,12 +390,20 @@ impl Callbacks for ExtractionCallbacks {
                     }
                 }
                 ExporterCommand::Backend(backend) => {
-                    let (spans, converted_items) =
+                    if matches!(backend.backend, Backend::Easycrypt | Backend::ProVerif) {
+                        eprintln!(
+                            "⚠️ Warning: Experimental backend \"{}\" is work in progress.",
+                            backend.backend
+                        )
+                    }
+
+                    let (spans, _def_ids, impl_infos, converted_items) =
                         convert_thir(&self.clone().into(), self.macro_calls.clone(), tcx);
 
                     let engine_options = hax_cli_options_engine::EngineOptions {
                         backend: backend.clone(),
                         input: converted_items,
+                        impl_infos,
                     };
                     let mut engine_subprocess = find_hax_engine()
                         .stdin(std::process::Stdio::piped())
@@ -369,7 +420,7 @@ impl Callbacks for ExtractionCallbacks {
                         })
                         .unwrap();
 
-                    serde_json::to_writer(
+                    serde_json::to_writer::<_, hax_cli_options_engine::EngineOptions>(
                         std::io::BufWriter::new(
                             engine_subprocess
                                 .stdin
@@ -400,11 +451,10 @@ impl Callbacks for ExtractionCallbacks {
                                 String::from_utf8(out.stdout).unwrap()
                             )
                         });
-                    let options_frontend = Box::new(
-                        hax_frontend_exporter_options::Options::from(self.clone()).clone(),
-                    );
+                    let options_frontend =
+                        hax_frontend_exporter_options::Options::from(self.clone());
                     let state =
-                        hax_frontend_exporter::state::State::new(tcx, (*options_frontend).clone());
+                        hax_frontend_exporter::state::State::new(tcx, options_frontend.clone());
                     report_diagnostics(
                         &output,
                         &session,
@@ -414,13 +464,33 @@ impl Callbacks for ExtractionCallbacks {
                             .collect(),
                     );
                     if backend.dry_run {
-                        serde_json::to_writer(std::io::stdout(), &output.files).unwrap();
+                        serde_json::to_writer(std::io::BufWriter::new(std::io::stdout()), &output)
+                            .unwrap()
                     } else {
                         write_files(&output, &session, backend.backend);
                     }
+                    if let Some(debug_json) = &output.debug_json {
+                        use hax_cli_options::DebugEngineMode;
+                        match backend.debug_engine {
+                            Some(DebugEngineMode::Interactive) => {
+                                eprintln!("----------------------------------------------");
+                                eprintln!("----------------------------------------------");
+                                eprintln!("----------------------------------------------");
+                                eprintln!("-- Engine debug mode. Press CTRL+C to exit. --");
+                                eprintln!("----------------------------------------------");
+                                eprintln!("----------------------------------------------");
+                                eprintln!("----------------------------------------------");
+                                hax_phase_debug_webapp::run(|| debug_json.clone())
+                            }
+                            Some(DebugEngineMode::File(file)) if !backend.dry_run => {
+                                println!("{}", debug_json)
+                            }
+                            _ => (),
+                        }
+                    }
                 }
             };
-            Compilation::Continue
+            Compilation::Stop
         })
     }
 }

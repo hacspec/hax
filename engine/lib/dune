@@ -11,7 +11,8 @@
   base
   core
   logs
-  re)
+  re
+  ocamlgraph)
  (preprocessor_deps
   ; `ppx_inline` is used on the `Subtype` module, thus we need it at PPX time
   (file subtype.ml))
@@ -28,9 +29,21 @@
    ppx_inline
    ppx_generate_features
    ppx_functor_application
+   ppx_enumerate
    ppx_matches)))
 
 (include_subdirs unqualified)
+
+(rule
+ (alias universe-hash)
+ (target universe-hash)
+ (deps
+  (:universe_hash ../utils/universe-hash.sh)
+  (universe))
+ (action
+  (with-stdout-to
+   universe-hash
+   (run bash %{universe_hash}))))
 
 (rule
  (target concrete_ident_generated.ml)
@@ -40,11 +53,12 @@
  (action
   (with-stdout-to
    concrete_ident_generated.ml
-    (run bash %{generate_sh} %{names}))))
-    
+   (run bash %{generate_sh} %{names}))))
+
 (rule
  (target types.ml)
  (deps
+  (alias universe-hash)
   (env_var HAX_JSON_SCHEMA_EXPORTER_BINARY)
   (:ocaml_of_json_schema
    ../utils/ocaml_of_json_schema/ocaml_of_json_schema.js))
@@ -58,4 +72,4 @@
 (env
  (_
   (flags
-   (:standard -g -warn-error "-A+8" -w "-17-7-30-56-32"))))
+   (:standard -g -warn-error "+A" -w "-17-7-30-56-32"))))

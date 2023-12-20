@@ -1,9 +1,9 @@
 #![allow(dead_code)]
-fn add3(x: usize, y: usize, z: usize) -> usize {
+fn add3(x: u32, y: u32, z: u32) -> u32 {
     x + y + z
 }
 
-fn local_mutation(mut x: usize) -> usize {
+fn local_mutation(mut x: u32) -> u32 {
     let mut y = 0;
     if {
         x = x + 1;
@@ -39,7 +39,7 @@ fn local_mutation(mut x: usize) -> usize {
     }
 }
 
-fn early_returns(mut x: usize) -> usize {
+fn early_returns(mut x: u32) -> u32 {
     return (123
         + if {
             if x > 3 {
@@ -58,14 +58,14 @@ fn early_returns(mut x: usize) -> usize {
         + x;
 }
 
-fn question_mark(mut x: usize) -> Result<usize, usize> {
-    if x > 40usize {
+fn question_mark(mut x: u32) -> Result<u32, u32> {
+    if x > 40u32 {
         let mut y = 0;
         x = x + 3;
         y = x + y;
         if {
             x = x + y;
-            x > 90usize
+            x > 90u32
         } {
             Err(1u8)?
         }

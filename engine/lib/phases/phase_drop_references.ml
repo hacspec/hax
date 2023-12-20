@@ -1,5 +1,4 @@
-open Base
-open Utils
+open! Prelude
 
 module%inlined_contents Make
     (F : Features.T
@@ -47,10 +46,16 @@ struct
       | [%inline_arms "dgeneric_value.*" - GLifetime] ->
           map (Option.some : B.generic_value -> _)
 
+    and dtrait_ref (span : span) (r : A.trait_ref) : B.trait_ref =
+      {
+        trait = r.trait;
+        args = List.filter_map ~f:(dgeneric_value span) r.args;
+      }
+
     and dpat' (span : span) (p : A.pat') : B.pat' =
       match p with
       | [%inline_arms "dpat'.*" - PBinding - PDeref] -> auto
-      | PBinding { mut; var : LocalIdent.t; typ; subpat; _ } ->
+      | PBinding { mut; var : Local_ident.t; typ; subpat; _ } ->
           PBinding
             {
               mut;
@@ -64,8 +69,7 @@ struct
 
     and dexpr' (span : span) (e : A.expr') : B.expr' =
       match (UA.unbox_underef_expr { e; span; typ = UA.never_typ }).e with
-      | [%inline_arms If + Literal + Array + App] -> auto
-      | App { f; args } -> App { f = dexpr f; args = List.map ~f:dexpr args }
+      | [%inline_arms If + Literal + Array + Block] -> auto
       | Construct { constructor; is_record; is_struct; fields; base } ->
           Construct
             {
@@ -73,7 +77,7 @@ struct
               is_record;
               is_struct;
               fields = List.map ~f:(fun (i, e) -> (i, dexpr e)) fields;
-              base = Option.map ~f:(dexpr *** S.construct_base) base;
+              base = Option.map ~f:(dexpr *** S.construct_base span) base;
             }
       | Match { scrutinee; arms } ->
           Match { scrutinee = dexpr scrutinee; arms = List.map ~f:darm arms }
@@ -106,17 +110,17 @@ struct
               body = dexpr body;
               captures = List.map ~f:dexpr captures;
             }
+      | App { f; args; generic_args } ->
+          let f = dexpr f in
+          let args = List.map ~f:dexpr args in
+          let generic_args =
+            List.filter_map ~f:(dgeneric_value span) generic_args
+          in
+          App { f; args; generic_args }
       | _ -> .
       [@@inline_ands bindings_of dexpr - dbinding_mode]
 
-    let dtrait_ref (span : span) (r : A.trait_ref) : B.trait_ref =
-      {
-        trait = r.trait;
-        args = List.filter_map ~f:(dgeneric_value span) r.args;
-        bindings = r.bindings;
-      }
-
-    let dgeneric_param (span : span)
+    let dgeneric_param (_span : span)
         ({ ident; kind; attrs; span } : A.generic_param) :
         B.generic_param option =
       let ( let* ) x f = Option.bind ~f x in
@@ -133,10 +137,8 @@ struct
         B.generic_constraint option =
       match p with
       | GCLifetime _ -> None
-      | GCType { typ; implements } ->
-          Some
-            (B.GCType
-               { typ = dty span typ; implements = dtrait_ref span implements })
+      | GCType { bound; id } ->
+          Some (B.GCType { bound = dtrait_ref span bound; id })
 
     let dgenerics (span : span) (g : A.generics) : B.generics =
       {

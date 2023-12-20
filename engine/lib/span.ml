@@ -1,6 +1,4 @@
-open Base
-open Utils
-open Ppx_yojson_conv_lib.Yojson_conv.Primitives
+open! Prelude
 
 module FreshId = struct
   let current = ref 1
@@ -17,15 +15,15 @@ module Imported = struct
 
   and file_name =
     | Real of real_file_name
-    | QuoteExpansion of int
-    | Anon of int
-    | MacroExpansion of int
-    | ProcMacroSourceCode of int
-    | CfgSpec of int
-    | CliCrateAttr of int
+    | QuoteExpansion of string
+    | Anon of string
+    | MacroExpansion of string
+    | ProcMacroSourceCode of string
+    | CfgSpec of string
+    | CliCrateAttr of string
     | Custom of string
     | DocTest of string
-    | InlineAsm of int
+    | InlineAsm of string
 
   and real_file_name =
     | LocalPath of string
@@ -49,7 +47,8 @@ module Imported = struct
     | DocTest x -> DocTest x
     | InlineAsm x -> InlineAsm x
 
-  let loc_of_thir ({ col; line } : Types.loc) : loc = { col; line }
+  let loc_of_thir ({ col; line } : Types.loc) : loc =
+    { col = Int.of_string col; line = Int.of_string line }
 
   let span_of_thir (s : Types.span) : span =
     {
@@ -75,7 +74,8 @@ module Imported = struct
     | DocTest x -> DocTest x
     | InlineAsm x -> InlineAsm x
 
-  let loc_to_thir ({ col; line } : loc) : Types.loc = { col; line }
+  let loc_to_thir ({ col; line } : loc) : Types.loc =
+    { col = Int.to_string col; line = Int.to_string line }
 
   let span_to_thir (s : span) : Types.span =
     {
@@ -99,7 +99,7 @@ end
 type t = { id : int; data : Imported.span list }
 [@@deriving show, yojson, sexp, compare, eq, hash]
 
-let display { id; data } =
+let display { id = _; data } =
   match data with
   | [] -> "<dummy>"
   | [ span ] -> Imported.display_span span

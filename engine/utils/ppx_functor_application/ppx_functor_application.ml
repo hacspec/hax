@@ -1,6 +1,6 @@
 open Base
 open Ppxlib
-module Format = Caml.Format
+module Format = Stdlib.Format
 
 let name = "functor_application"
 

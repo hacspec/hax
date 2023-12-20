@@ -49,6 +49,7 @@ functor
         | ConstructorPat of string * pat list
         | TuplePat of pat list
         | AscriptionPat of pat * ty
+        | DisjunctivePat of pat list
 
       type term =
         | UnitTerm
@@ -182,6 +183,9 @@ functor
           tick_if is_top_expr ^ "(" ^ tuple_pat_to_string vals (depth + 1) ^ ")"
       | AST.AscriptionPat (p, ty) ->
           pat_to_string p true depth (* TODO: Should this be true of false? *)
+      | AST.DisjunctivePat pats ->
+          let f pat = pat_to_string pat true depth in
+          String.concat ~sep:" | " @@ List.map ~f pats
 
     and tick_if is_top_expr = if is_top_expr then "'" else ""
 

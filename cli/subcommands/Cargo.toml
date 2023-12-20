@@ -1,8 +1,14 @@
 [package]
-name = "hax-subcommands"
-version = "0.1.0"
-edition = "2021"
+name = "cargo-hax"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+edition.workspace = true
+repository.workspace = true
+readme.workspace = true
 build = "build.rs"
+description = "The high assurance translation toolchain"
 
 [[bin]]
 path = "src/cargo_hax.rs"
@@ -27,11 +33,11 @@ hax-cli-options.workspace = true
 hax-frontend-exporter-options.workspace = true
 hax-diagnostics.workspace = true
 path-clean = "1.0.1"
-tempfile = "3.4"
+tempfile = "3.8"
 which.workspace = true
 version_check = "0.9"
 rustup-toolchain = "0.1"
-colored = "2"
+colored.workspace = true
 is-terminal = "0.4.9"
 
 [build-dependencies]
@@ -42,5 +48,6 @@ hax-frontend-exporter.workspace = true
 hax-diagnostics.workspace = true
 hax-cli-options.workspace = true
 hax-cli-options-engine.workspace = true
+hax-lib-macros-types.workspace = true
 version_check = "0.9"
-toml = "0.7"
+toml = "0.8"

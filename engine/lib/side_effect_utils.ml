@@ -1,5 +1,4 @@
-open Base
-open Utils
+open! Prelude
 
 module MakeSI
     (F : Features.T
@@ -70,13 +69,13 @@ struct
           break = merge_opts merge_ty x.break y.break;
         }
 
-    let reads (var : LocalIdent.t) (ty : ty) =
+    let reads (var : Local_ident.t) (ty : ty) =
       {
         zero with
         reads_local_mut = Set.singleton (module U.TypedLocalIdent) (var, ty);
       }
 
-    let writes (var : LocalIdent.t) (ty : ty) =
+    let writes (var : Local_ident.t) (ty : ty) =
       {
         zero with
         writes_local_mut = Set.singleton (module U.TypedLocalIdent) (var, ty);
@@ -114,7 +113,7 @@ struct
         method private plus = plus
       end
 
-    let without_rw_vars (vars : U.Sets.LocalIdent.t) (effects : t) =
+    let without_rw_vars (vars : U.Sets.Local_ident.t) (effects : t) =
       let without = Set.filter ~f:(fst >> Set.mem vars >> not) in
       {
         effects with
@@ -153,11 +152,11 @@ struct
     module CollectContext = struct
       type t = { mutable fresh_id : int }
 
-      let fresh_local_ident (self : t) : LocalIdent.t =
+      let fresh_local_ident (self : t) : Local_ident.t =
         self.fresh_id <- self.fresh_id + 1;
         {
           name = "hoist" ^ Int.to_string self.fresh_id;
-          id = LocalIdent.var_id_of_int (-1) (* todo *);
+          id = Local_ident.mk_id Expr (-1) (* todo *);
         }
 
       let empty = { fresh_id = 0 }
@@ -206,7 +205,7 @@ struct
           (next : expr -> t -> expr * t) =
         many ctx [ e ] (function
           | [ e ] -> next e
-          | _ -> err_hoist_invariant (fst e).span Caml.__LOC__)
+          | _ -> err_hoist_invariant (fst e).span Stdlib.__LOC__)
     end
 
     let let_of_binding ((pat, rhs) : pat * expr) (body : expr) : expr =
@@ -306,14 +305,14 @@ struct
                         ForLoop { pat; witness; it }
                     | ([ _ ] | []), UnconditionalLoop -> UnconditionalLoop
                     | _, ForIndexLoop _ -> .
-                    | _ -> HoistSeq.err_hoist_invariant e.span Caml.__LOC__
+                    | _ -> HoistSeq.err_hoist_invariant e.span Stdlib.__LOC__
                   in
                   let state =
                     match (l, state) with
                     | (_ :: [ state ] | [ state ]), Some { witness; bpat; _ } ->
                         Some { witness; bpat; init = state }
                     | ([ _ ] | []), None -> None
-                    | _ -> HoistSeq.err_hoist_invariant e.span Caml.__LOC__
+                    | _ -> HoistSeq.err_hoist_invariant e.span Stdlib.__LOC__
                   in
                   (* by now, the "inputs" of the loop are hoisted as let if needed *)
                   let body, { lbs; effects = body_effects } =
@@ -343,17 +342,21 @@ struct
                     m#plus (m#plus (no_lbs ethen) (no_lbs eelse)) effects
                   in
                   ({ e with e = If { cond; then_; else_ } }, effects))
-          | App { f; args } ->
+          | App { f; args; generic_args } ->
               HoistSeq.many env
                 (List.map ~f:(super#visit_expr env) (f :: args))
                 (fun l effects ->
                   let f, args =
                     match l with
                     | f :: args -> (f, args)
-                    | _ -> HoistSeq.err_hoist_invariant e.span Caml.__LOC__
+                    | _ -> HoistSeq.err_hoist_invariant e.span Stdlib.__LOC__
                   in
-                  ({ e with e = App { f; args } }, effects))
+                  ({ e with e = App { f; args; generic_args } }, effects))
           | Literal _ -> (e, m#zero)
+          | Block (inner, witness) ->
+              HoistSeq.one env (super#visit_expr env inner)
+                (fun inner effects ->
+                  ({ e with e = Block (inner, witness) }, effects))
           | Array l ->
               HoistSeq.many env
                 (List.map ~f:(super#visit_expr env) l)
@@ -383,13 +386,13 @@ struct
                     match (l, base) with
                     | hd :: tl, Some (_, witness) -> (Some (hd, witness), tl)
                     | _, None -> (None, l)
-                    | _ -> HoistSeq.err_hoist_invariant e.span Caml.__LOC__
+                    | _ -> HoistSeq.err_hoist_invariant e.span Stdlib.__LOC__
                   in
                   let fields =
                     match List.zip (List.map ~f:fst fields) fields_expr with
                     | Ok fields -> fields
                     | Unequal_lengths ->
-                        HoistSeq.err_hoist_invariant e.span Caml.__LOC__
+                        HoistSeq.err_hoist_invariant e.span Stdlib.__LOC__
                   in
                   ( {
                       e with
@@ -461,7 +464,7 @@ struct
               let body, body_effects =
                 let body, { lbs; effects } = super#visit_expr env body in
                 let vars =
-                  Set.union_list (module LocalIdent)
+                  Set.union_list (module Local_ident)
                   @@ List.map ~f:U.Reducers.variables_of_pat params
                 in
                 let body = lets_of_bindings lbs body in

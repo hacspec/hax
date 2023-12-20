@@ -1,5 +1,4 @@
-open Base
-open Ppx_yojson_conv_lib.Yojson_conv.Primitives
+open! Prelude
 
 module Metadata : sig
   type t = private {
@@ -44,6 +43,36 @@ end
 
 exception ReportError of Diagnostics.kind
 
+module type ERROR = sig
+  type t = { kind : Diagnostics.kind; span : Ast.span }
+
+  val raise : t -> 'never
+  val unimplemented : ?issue_id:int -> ?details:string -> Ast.span -> 'never
+  val assertion_failure : Ast.span -> string -> 'never
+end
+
+module MakeError (Ctx : sig
+  val ctx : Diagnostics.Context.t
+end) : ERROR = struct
+  type t = { kind : Diagnostics.kind; span : Ast.span } [@@deriving show, eq]
+
+  let raise err =
+    let span = Span.to_thir err.span in
+    Diagnostics.SpanFreeError.raise ~span Ctx.ctx err.kind
+
+  let unimplemented ?issue_id ?details span =
+    raise
+      {
+        kind =
+          Unimplemented
+            { issue_id = Option.map ~f:MyInt64.of_int issue_id; details };
+        span;
+      }
+
+  let assertion_failure span details =
+    raise { kind = AssertionFailure { details }; span }
+end
+
 module MakeBase
     (FA : Features.T)
     (FB : Features.T) (M : sig
@@ -60,24 +89,9 @@ struct
   let metadata = Metadata.make phase_id
   let failwith = ()
 
-  module Error = struct
-    type t = { kind : Diagnostics.kind; span : Ast.span } [@@deriving show, eq]
-
-    let lift { kind; span } : Diagnostics.t =
-      { kind; span = Span.to_thir span; context = Phase M.phase_id }
-
-    (* exception E of t *)
-
-    let raise err =
-      Diagnostics.report @@ lift err;
-      raise @@ Diagnostics.SpanFreeError (Phase M.phase_id, err.kind)
-
-    let unimplemented ?issue_id ?details span =
-      raise { kind = Unimplemented { issue_id; details }; span }
-
-    let assertion_failure span details =
-      raise { kind = AssertionFailure { details }; span }
-  end
+  module Error : ERROR = MakeError (struct
+    let ctx = Diagnostics.Context.Phase M.phase_id
+  end)
 end
 
 module Identity (F : Features.T) = struct
@@ -104,72 +118,68 @@ module DebugPhaseInfo = struct
     | Before -> "initial_input"
     | Phase p -> Diagnostics.Phase.display p
 
-  let pp (fmt : Caml.Format.formatter) (s : t) : unit =
-    Caml.Format.pp_print_string fmt @@ show s
+  let pp (fmt : Stdlib.Format.formatter) (s : t) : unit =
+    Stdlib.Format.pp_print_string fmt @@ show s
 end
 
 module DebugBindPhase : sig
   val add : DebugPhaseInfo.t -> int -> (unit -> Ast.Full.item list) -> unit
-  val export : unit -> unit
-  val enable : string -> unit
+  val export : unit -> string option
+  val enable : unit -> unit
 end = struct
-  let prefix_path = ref None
-  let enable (path : string) = prefix_path := Some path
-  let enabled () = Option.is_some !prefix_path
+  let enabled = ref false
+  let enable () = enabled := true
 
   let cache : (DebugPhaseInfo.t, int * Ast.Full.item list ref) Hashtbl.t =
     Hashtbl.create (module DebugPhaseInfo)
 
   let add (phase_info : DebugPhaseInfo.t) (nth : int)
       (mk_item : unit -> Ast.Full.item list) =
-    if enabled () then
+    if !enabled (* `!` is not `not` *) then
       let _, l =
         Hashtbl.find_or_add cache phase_info ~default:(fun _ -> (nth, ref []))
       in
       l := !l @ mk_item ()
     else ()
 
-  let export' prefix_path =
-    let files, json =
+  let export' () =
+    Logs.info (fun m -> m "Exporting debug informations");
+    let json =
       Hashtbl.to_alist cache
       |> List.sort ~compare:(fun (_, (a, _)) (_, (b, _)) -> Int.compare a b)
       |> List.map ~f:(fun (k, (nth, l)) ->
-             let filename =
-               Printf.sprintf "%02d" nth ^ "_" ^ [%show: DebugPhaseInfo.t] k
+             let regenerate_span_ids =
+               (object
+                  inherit [_] Ast.Full.item_map
+                  method visit_t () x = x
+                  method visit_mutability _ () m = m
+                  method visit_span = Fn.const Span.refresh_id
+               end)
+                 #visit_item
+                 ()
              in
-             let rustish = Print_rust.pitems !l in
+             (* we regenerate spans IDs, so that we have more precise regions *)
+             let l = List.map ~f:regenerate_span_ids !l in
+             let rustish = Print_rust.pitems l in
              let json =
                `Assoc
                  [
                    ("name", `String ([%show: DebugPhaseInfo.t] k));
                    ("nth", `Int nth);
-                   ("items", [%yojson_of: Ast.Full.item list] !l);
+                   ("items", [%yojson_of: Ast.Full.item list] l);
                    ( "rustish",
                      [%yojson_of: Print_rust.AnnotatedString.Output.t] rustish
                    );
                  ]
              in
-             let rustish =
-               Print_rust.AnnotatedString.Output.raw_string rustish
-             in
-
-             ((filename, rustish), json))
-      |> List.unzip
+             json)
     in
-    List.iter
-      ~f:(fun (path, data) ->
-        Core.Out_channel.write_all ~data
-        @@ [%string "%{prefix_path}/%{path}.rs"])
-      files;
-    Core.Out_channel.write_all ~data:(`List json |> Yojson.Safe.pretty_to_string)
-    @@ prefix_path ^ "/debug-hax-engine.json"
+    `List json |> Yojson.Safe.pretty_to_string
 
   let export () =
-    match !prefix_path with
-    | Some prefix_path ->
-        Logs.info (fun m -> m "Exporting debug informations");
-        export' prefix_path
-    | None -> ()
+    if !enabled (* recall: ! is deref, not `not`, great op. choice..... *) then
+      Some (export' ())
+    else None
 end
 
 module type S = sig
@@ -209,11 +219,11 @@ struct
   let ditems (items : A.item list) : B.item list =
     let nth = List.length @@ Metadata.previous_phases D1'.metadata in
     (if Int.equal nth 0 then
-     let coerce_to_full_ast : D1'.A.item -> Ast.Full.item = Caml.Obj.magic in
+     let coerce_to_full_ast : D1'.A.item -> Ast.Full.item = Stdlib.Obj.magic in
      DebugBindPhase.add Before 0 (fun _ -> List.map ~f:coerce_to_full_ast items));
     let items' = D1'.ditems items in
     let coerce_to_full_ast : D2'.A.item list -> Ast.Full.item list =
-      Caml.Obj.magic
+      Stdlib.Obj.magic
     in
     DebugBindPhase.add (Phase D1'.metadata.current_phase) (nth + 1) (fun _ ->
         coerce_to_full_ast items');
