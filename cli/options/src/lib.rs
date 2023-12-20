@@ -138,7 +138,7 @@ pub struct FStarOptions {
         value_delimiter = ' ',
         allow_hyphen_values(true)
     )]
-    // TODO: InclusionKind is a bit too expressive here (i.e. `!` makes no sense)
+    // TODO: InclusionKind is a bit too expressive here, see https://github.com/hacspec/hax/issues/397
     interfaces: Vec<InclusionClause>,
 }
 
