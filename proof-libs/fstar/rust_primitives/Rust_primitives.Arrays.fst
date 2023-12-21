@@ -13,3 +13,9 @@ let map_array #n (arr: t_Array 'a n) (f: 'a -> 'b): t_Array 'b n
     FStar.Seq.map_seq f arr 
 
 let createi #t l f = admit()
+
+let lemma_index_concat x y i = admit()
+
+let lemma_index_slice x y i = admit()
+
+let eq_intro a b = admit()
