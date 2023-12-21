@@ -59,7 +59,13 @@ let mk_binder ?(aqual : FStar_Parser_AST.arg_qualifier option = Some Implicit) b
 
 let mk_e_binder b = mk_binder ~aqual:None b
 let term_of_lid path = term @@ AST.Name (lid path)
-let binder_of_term (t : AST.term) : AST.binder = mk_e_binder @@ AST.NoName t
+
+let binder_of_term ?name (t : AST.term) : AST.binder =
+  let b =
+    match name with None -> AST.NoName t | Some n -> AST.Annotated (n, t)
+  in
+  mk_e_binder b
+
 let unit = term AST.(Const Const_unit)
 
 let mk_e_arrow inputs output =
