@@ -6,46 +6,31 @@ open Rust_primitives.Integers
 
 
 /// Number of bits carried by an integer of type `t`
-type bit_num t = d: usize {v d > 0 /\ v d <= bits t}
+type bit_num t = d: nat {d > 0 /\ d <= bits t}
 
 /// Integer of type `t` that carries `d` bits
 type int_t_d t (d: bit_num t) = 
-  n: int_t t {forall (i: usize). (v i < bits t /\ v i >= v d) ==> get_bit n i == 0}
+  n: int_t t {forall (i: usize). (v i < bits t /\ v i >= d) ==> get_bit n i == 0}
 
-/// `get_bit` within an array of integers carrying `d` bits each
+type bit_vec (len: nat) = i:nat {i < len} -> bit
+
+/// Transform an array of integers to a bit vector
 #push-options "--fuel 0 --ifuel 1 --z3rlimit 50"
-let get_bit_arr (#n: inttype) (#len: usize) 
+let bit_vec_of_int_arr (#n: inttype) (#len: usize) 
                 (arr: t_Array (int_t n) len)
-                (d: bit_num n)
-                (nth: usize {v nth < v len * v d}): bit
-  = get_bit (Seq.index arr (v (nth /! d))) (nth %! d)
+                (d: bit_num n): bit_vec (v len * d)
+  = fun i -> get_bit (Seq.index arr (i / d)) (sz (i % d))
 #pop-options
 
 
-/// `get_bit` within an array of integers carrying `d` bits each
+/// Transform an array of `nat`s to a bit vector
 #push-options "--fuel 0 --ifuel 1 --z3rlimit 50"
-let get_bit_nat_arr (#len: usize)
-                (arr: t_Array nat len)
-                (d: usize)
-                (nth: usize {v nth < v len * v d}): bit
-                : bit
-  = get_bit_nat (Seq.index arr (v (nth /! d))) (v (nth %! d))
+let bit_vec_of_nat_arr (#len: usize)
+                       (arr: t_Array nat len)
+                       (d: nat)
+                       : bit_vec (v len * d)
+  = fun i -> get_bit_nat (Seq.index arr (i / d)) (i % d)
 #pop-options
-
-
-/// Same as `get_bit_arr`, but inputs are `nat`s instead of `usize`s
-let get_bit_arr_nat (#n: inttype) (#len: nat {len < max_usize})
-                    (arr: t_Array (int_t n) (sz len))
-                    (d: nat {d > 0 /\ d <= bits n})
-                    (nth: nat {nth < len * d /\ nth < max_usize}): bit
-  = get_bit_arr arr (mk_int d) (mk_int nth)
-
-/// Create a bit vector given an array of integers carrying `d` bits each
-let bit_vector (#n: inttype) (#len: usize)
-               (arr: t_Array (int_t n) len)
-               (d: bit_num n {v len * v d < max_usize})
-  : t_Array bit (len *! d)
-  = createi (len *! d) (get_bit_arr arr d)
 
 /// Bit-wise semantics of `2^n-1`
 val get_bit_pow2_minus_one #t
@@ -74,6 +59,14 @@ val get_bit_pow2_minus_one_i32
   : Lemma ( get_bit (FStar.Int32.int_to_t x) nth 
         == (if v nth < Some?.v (mask_inv_opt x) then 1 else 0))
   [SMTPat (get_bit (FStar.Int32.int_to_t x) nth)]
+
+/// Specialized `get_bit_pow2_minus_one` lemmas with SMT patterns
+/// targetting machine integer literals of type `i32`
+val get_bit_pow2_minus_one_u16
+  (x: int {Some? (mask_inv_opt x)}) (nth: usize {v nth < 16})
+  : Lemma ( get_bit (FStar.UInt16.uint_to_t x) nth 
+        == (if v nth < Some?.v (mask_inv_opt x) then 1 else 0))
+  [SMTPat (get_bit (FStar.UInt16.uint_to_t x) nth)]
 
 /// Specialized `get_bit_pow2_minus_one` lemmas with SMT patterns
 /// targetting machine integer literals of type `u8`  

@@ -28,6 +28,11 @@ let get_bit_pow2_minus_one_i32 x nth
     mk_int_equiv_lemma #i32_inttype x;
     get_bit_pow2_minus_one #i32_inttype n nth
 
+let get_bit_pow2_minus_one_u16 x nth
+  = let n = Some?.v (mask_inv_opt x) in
+    mk_int_equiv_lemma #u16_inttype x;
+    get_bit_pow2_minus_one #u16_inttype n nth
+
 let get_bit_pow2_minus_one_u8 t x nth
   = let n = Some?.v (mask_inv_opt x) in
     mk_int_equiv_lemma #u8_inttype x;
