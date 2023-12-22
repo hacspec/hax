@@ -739,7 +739,7 @@ pub struct Span {
     /// We need to keep the original Rust span if we want to use the rustc
     /// functions for error reporting.
     #[serde(skip)]
-    pub rust_span: rustc_span::Span,
+    pub rust_span_data: Option<rustc_span::SpanData>,
     // expn_backtrace: Vec<ExpnData>,
 }
 
