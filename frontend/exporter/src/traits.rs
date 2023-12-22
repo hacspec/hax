@@ -52,7 +52,7 @@ pub enum ImplExprAtom {
 pub struct ImplExpr {
     pub r#impl: ImplExprAtom,
     pub args: Box<Vec<ImplExpr>>,
-    pub trait_ref: TraitRef,
+    pub r#trait: TraitRef,
 }
 
 mod search_clause {
@@ -193,11 +193,11 @@ mod search_clause {
 }
 
 impl ImplExprAtom {
-    fn with_args(self, args: Vec<ImplExpr>, trait_ref: TraitRef) -> ImplExpr {
+    fn with_args(self, args: Vec<ImplExpr>, r#trait: TraitRef) -> ImplExpr {
         ImplExpr {
             r#impl: self,
             args: Box::new(args),
-            trait_ref,
+            r#trait,
         }
     }
 }
@@ -239,7 +239,8 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
         let trait_ref = trait_ref.value;
 
         let Some(impl_source) = select_trait_candidate(s, param_env, *self) else {
-            return ImplExprAtom::Todo(format!("impl_expr failed on {:#?}", self)).with_args(vec![], trait_ref);
+            return ImplExprAtom::Todo(format!("impl_expr failed on {:#?}", self))
+                .with_args(vec![], trait_ref);
         };
         match impl_source {
             ImplSource::UserDefined(ImplSourceUserDefinedData {
@@ -268,11 +269,16 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                     return ImplExprAtom::Todo(format!("implsource::param \n\n{:#?}", self))
                         .with_args(impl_exprs(s, &nested), trait_ref);
                 };
-                // .s_expect(s, format!("implsource::param \n\n{:#?}", self).as_str());
                 let clause_id: u64 = clause_id_of_predicate(*predicate);
+                use rustc_middle::ty::ToPolyTraitRef;
+                let r#trait = predicate
+                    .to_opt_poly_trait_pred()
+                    .s_unwrap(s)
+                    .to_poly_trait_ref()
+                    .sinto(s);
                 ImplExprAtom::LocalBound {
                     clause_id,
-                    r#trait: self.sinto(s),
+                    r#trait,
                     path: path.sinto(s),
                 }
                 .with_args(impl_exprs(s, &nested), trait_ref)

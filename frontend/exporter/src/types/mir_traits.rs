@@ -202,7 +202,7 @@ pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
                     r#impl: kind,
                     // Empty args for now
                     args: Box::new(Vec::new()),
-                    trait_ref,
+                    r#trait: trait_ref,
                 }
             } else {
                 // Ok
