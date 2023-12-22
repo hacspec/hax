@@ -6,8 +6,15 @@ use crate::prelude::*;
     Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
 )]
 pub enum ImplExprPathChunk {
-    AssocItem(AssocItem, TraitPredicate),
-    Parent(TraitPredicate),
+    AssocItem {
+        item: AssocItem,
+        predicate: TraitPredicate,
+        index: usize,
+    },
+    Parent {
+        predicate: TraitPredicate,
+        index: usize,
+    },
 }
 
 #[derive(
@@ -76,8 +83,15 @@ mod search_clause {
 
     #[derive(Clone, Debug)]
     pub enum PathChunk<'tcx> {
-        AssocItem(AssocItem, TraitPredicate<'tcx>),
-        Parent(TraitPredicate<'tcx>),
+        AssocItem {
+            item: AssocItem,
+            predicate: TraitPredicate<'tcx>,
+            index: usize,
+        },
+        Parent {
+            predicate: TraitPredicate<'tcx>,
+            index: usize,
+        },
     }
     pub type Path<'tcx> = Vec<PathChunk<'tcx>>;
 
@@ -123,18 +137,23 @@ mod search_clause {
 
     #[extension_traits::extension(pub trait TraitPredicateExt)]
     impl<'tcx, S: UnderOwnerState<'tcx>> TraitPredicate<'tcx> {
-        fn parents_trait_predicates(self, s: &S) -> Vec<TraitPredicate<'tcx>> {
+        fn parents_trait_predicates(self, s: &S) -> Vec<(usize, TraitPredicate<'tcx>)> {
             let tcx = s.base().tcx;
             let predicates = tcx
                 .predicates_defined_on_or_above(self.def_id())
                 .into_iter()
                 .map(|(predicate, _)| predicate);
-            predicates_to_trait_predicates(tcx, predicates, self.trait_ref.substs).collect()
+            predicates_to_trait_predicates(tcx, predicates, self.trait_ref.substs)
+                .enumerate()
+                .collect()
         }
         fn associated_items_trait_predicates(
             self,
             s: &S,
-        ) -> Vec<(AssocItem, subst::EarlyBinder<Vec<TraitPredicate<'tcx>>>)> {
+        ) -> Vec<(
+            AssocItem,
+            subst::EarlyBinder<Vec<(usize, TraitPredicate<'tcx>)>>,
+        )> {
             let tcx = s.base().tcx;
             tcx.associated_items(self.def_id())
                 .in_definition_order()
@@ -147,6 +166,7 @@ mod search_clause {
                             predicates.into_iter(),
                             self.trait_ref.substs,
                         )
+                        .enumerate()
                         .collect()
                     });
                     (item, bounds)
@@ -176,14 +196,33 @@ mod search_clause {
             }
             self.parents_trait_predicates(s)
                 .into_iter()
-                .filter_map(|p| recurse(p).map(|path| cons(PathChunk::Parent(p), path)))
+                .filter_map(|(index, p)| {
+                    recurse(p).map(|path| {
+                        cons(
+                            PathChunk::Parent {
+                                predicate: p,
+                                index,
+                            },
+                            path,
+                        )
+                    })
+                })
                 .max_by_key(|path| path.len())
                 .or_else(|| {
                     self.associated_items_trait_predicates(s)
                         .into_iter()
                         .filter_map(|(item, binder)| {
-                            binder.skip_binder().into_iter().find_map(|p| {
-                                recurse(p).map(|path| cons(PathChunk::AssocItem(item, p), path))
+                            binder.skip_binder().into_iter().find_map(|(index, p)| {
+                                recurse(p).map(|path| {
+                                    cons(
+                                        PathChunk::AssocItem {
+                                            item,
+                                            predicate: p,
+                                            index,
+                                        },
+                                        path,
+                                    )
+                                })
                             })
                         })
                         .max_by_key(|path| path.len())
