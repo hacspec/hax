@@ -38,10 +38,24 @@ pub enum ConstantExprKind {
     GlobalName {
         id: GlobalIdent,
     },
+    /// A trait constant
+    ///
+    /// Ex.:
+    /// ```text
+    /// impl Foo for Bar {
+    ///   const C : usize = 32; // <-
+    /// }
+    /// ```
+    TraitConst {
+        impl_source: ImplSource,
+        substs: Vec<GenericArg>,
+        name: String,
+    },
     Borrow(ConstantExpr),
     ConstRef {
         id: ParamConst,
     },
+    FnPtr(DefId, Vec<GenericArg>, Vec<ImplSource>, Option<TraitInfo>),
     Todo(String),
 }
 
@@ -96,6 +110,10 @@ impl From<ConstantExpr> for Expr {
                 base: None,
                 user_ty: None,
             }),
+            TraitConst { .. } => {
+                // SH: I leave this for you Lucas
+                unimplemented!()
+            }
             GlobalName { id } => ExprKind::GlobalName { id },
             Borrow(e) => ExprKind::Borrow {
                 borrow_kind: BorrowKind::Shared,
@@ -108,6 +126,10 @@ impl From<ConstantExpr> for Expr {
             Tuple { fields } => ExprKind::Tuple {
                 fields: fields.into_iter().map(|field| field.into()).collect(),
             },
+            FnPtr { .. } => {
+                // SH: I see the `Closure` kind, but it's not the same as function pointer?
+                unimplemented!()
+            }
             Todo(msg) => ExprKind::Todo(msg),
         };
         Decorated {
@@ -221,6 +243,24 @@ pub(crate) fn is_anon_const<'tcx>(
     )
 }
 
+pub(crate) fn trait_const_to_constant_expr_kind<'tcx, S: BaseState<'tcx> + HasOwnerId>(
+    s: &S,
+    const_def_id: rustc_hir::def_id::DefId,
+    substs: rustc_middle::ty::SubstsRef<'tcx>,
+    assoc: &rustc_middle::ty::AssocItem,
+) -> ConstantExprKind {
+    assert!(assoc.trait_item_def_id.is_some());
+    let name = assoc.name.to_string();
+
+    // Retrieve the trait information
+    let (substs, trait_info) = get_trait_info(s, const_def_id, substs, assoc);
+
+    ConstantExprKind::TraitConst {
+        impl_source: trait_info.impl_source,
+        substs,
+        name,
+    }
+}
 impl ConstantExprKind {
     pub fn decorate(self, ty: Ty, span: Span) -> Decorated<Self> {
         Decorated {
@@ -234,6 +274,7 @@ impl ConstantExprKind {
 }
 
 pub enum TranslateUnevalRes<T> {
+    // TODO: rename
     GlobalName(ConstantExprKind),
     EvaluatedConstant(T),
 }
@@ -247,7 +288,7 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
     fn translate_uneval(
         &self,
         s: &impl UnderOwnerState<'tcx>,
-        ucv: rustc_middle::ty::UnevaluatedConst,
+        ucv: rustc_middle::ty::UnevaluatedConst<'tcx>,
     ) -> TranslateUnevalRes<Self> {
         let tcx = s.base().tcx;
         if is_anon_const(ucv.def, tcx) {
@@ -256,8 +297,17 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
                 supposely_unreachable_fatal!(s, "TranslateUneval"; {self, ucv});
             }))
         } else {
-            let id = ucv.def.sinto(s);
-            TranslateUnevalRes::GlobalName(ConstantExprKind::GlobalName { id })
+            let cv = if let Some(assoc) = s.base().tcx.opt_associated_item(ucv.def) &&
+                assoc.trait_item_def_id.is_some() {
+                    // This must be a trait declaration constant
+                    trait_const_to_constant_expr_kind(s, ucv.def, ucv.substs, &assoc)
+                }
+            else {
+                // Top-level constant or a constant appearing in an impl block
+                let id = ucv.def.sinto(s);
+                ConstantExprKind::GlobalName { id }
+            };
+            TranslateUnevalRes::GlobalName(cv)
         }
     }
 }
@@ -348,7 +398,7 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
                                 field: field.did.sinto(s),
                                 value: value.sinto(s),
                             })
-                        .collect(),
+                            .collect(),
                     }
                 }
                 _ => unreachable!(),
@@ -434,12 +484,30 @@ pub fn const_value_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
                 .decorate(ty.sinto(s), span.sinto(s))
         }
         ConstValue::ZeroSized { .. } => {
-            let ty = ty.sinto(s);
-            let is_ty_unit = matches!(&ty, Ty::Tuple(tys) if tys.is_empty());
-            if !is_ty_unit {
-                supposely_unreachable_fatal!(s[span], "ExpectedTyUnit"; {val, ty});
-            }
-            (ConstantExprKind::Tuple { fields: vec![] }).decorate(ty, span.sinto(s))
+            // Should be unit
+            let hty = ty.sinto(s);
+            let cv = match &hty {
+                Ty::Tuple(tys) if tys.is_empty() => ConstantExprKind::Tuple { fields: Vec::new() },
+                Ty::Arrow(_) => match ty.kind() {
+                    rustc_middle::ty::TyKind::FnDef(def_id, substs) => {
+                        let (def_id, generics, trait_refs, trait_info) =
+                            get_function_from_def_id_and_substs(s, *def_id, substs);
+                        ConstantExprKind::FnPtr(def_id, generics, trait_refs, trait_info)
+                    }
+                    kind => {
+                        fatal!(s[span], "Unexpected:"; {kind})
+                    }
+                },
+                _ => {
+                    fatal!(
+                        s[span],
+                        "Expected the type to be tuple or arrow";
+                        {val, ty}
+                    )
+                }
+            };
+
+            cv.decorate(hty, span.sinto(s))
         }
     }
 }

@@ -1,6 +1,10 @@
 use crate::prelude::*;
 use rustc_middle::ty;
 
+pub(crate) fn arrow_of_sig<'tcx, S: UnderOwnerState<'tcx>>(sig: &ty::PolyFnSig<'tcx>, s: &S) -> Ty {
+    Ty::Arrow(Box::new(sig.sinto(s)))
+}
+
 #[extension_traits::extension(pub trait SubstBinder)]
 impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
     fn subst(self, tcx: ty::TyCtxt<'tcx>, substs: &[ty::subst::GenericArg<'tcx>]) -> T {
@@ -51,11 +55,6 @@ pub fn poly_trait_ref<'tcx, S: UnderOwnerState<'tcx>>(
     let tcx = s.base().tcx;
     let r#trait = tcx.trait_of_item(assoc.def_id)?;
     Some(ty::Binder::dummy(ty::TraitRef::new(tcx, r#trait, substs)))
-}
-
-#[tracing::instrument(skip(s))]
-pub(crate) fn arrow_of_sig<'tcx, S: UnderOwnerState<'tcx>>(sig: &ty::PolyFnSig<'tcx>, s: &S) -> Ty {
-    Ty::Arrow(Box::new(sig.sinto(s)))
 }
 
 #[tracing::instrument(skip(s))]
@@ -159,6 +158,7 @@ pub fn translate_span(span: rustc_span::Span, sess: &rustc_session::Session) -> 
         lo: lo.into(),
         hi: hi.into(),
         filename: filename.sinto(&()),
+        rust_span: span,
     }
 }
 

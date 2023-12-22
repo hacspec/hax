@@ -733,6 +733,10 @@ pub struct Span {
     pub lo: Loc,
     pub hi: Loc,
     pub filename: FileName,
+    /// We need to keep the original Rust span if we want to use the rustc
+    /// functions for error reporting.
+    #[serde(skip)]
+    pub rust_span: rustc_span::Span,
     // expn_backtrace: Vec<ExpnData>,
 }
 
@@ -1458,11 +1462,14 @@ pub enum Ty {
         rustc_middle::ty::TyKind::Adt(adt_def, substs) => {
             let def_id = adt_def.did().sinto(state);
             let generic_args: Vec<GenericArg> = substs.sinto(state);
-            Ty::Adt { def_id, generic_args }
+            let param_env = state.base().tcx.param_env(state.owner_id());
+            let trait_refs = solve_item_traits(state, param_env, adt_def.did(), substs, None);
+            Ty::Adt { def_id, generic_args, trait_refs }
         },
     )]
     Adt {
         generic_args: Vec<GenericArg>,
+        trait_refs: Vec<ImplSource>,
         def_id: DefId,
     },
     Foreign(DefId),
@@ -2246,6 +2253,11 @@ pub type ThirBody = Expr;
 
 impl<'x, 'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_hir::Ty<'x> {
     fn sinto(self: &rustc_hir::Ty<'x>, s: &S) -> Ty {
+        // **Important:**
+        // We need a local id here, and we get it from the owner id, which must
+        // be local. It is safe to do so, because if we have access to a HIR ty,
+        // it necessarily means we are exploring a local item (we don't have
+        // access to the HIR of external objects, only their MIR).
         let ctx =
             rustc_hir_analysis::collect::ItemCtxt::new(s.base().tcx, s.owner_id().expect_local());
         ctx.to_ty(self).sinto(s)

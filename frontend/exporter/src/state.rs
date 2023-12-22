@@ -139,7 +139,7 @@ mod types {
             options: hax_frontend_exporter_options::Options,
         ) -> Self {
             Self {
-                tcx: tcx.clone(),
+                tcx,
                 macro_infos: Rc::new(HashMap::new()),
                 cached_thirs: Rc::new(HashMap::new()),
                 options: Rc::new(options),
@@ -183,16 +183,27 @@ impl<'tcx> State<Base<'tcx>, (), (), ()> {
     }
 }
 
-impl<'tcx> State<Base<'tcx>, (), Rc<rustc_middle::mir::Body<'tcx>>, ()> {
+impl<'tcx> State<Base<'tcx>, (), (), rustc_hir::def_id::DefId> {
+    pub fn new_from_state_and_id<S: BaseState<'tcx>>(s: &S, id: rustc_hir::def_id::DefId) -> Self {
+        State {
+            thir: (),
+            mir: (),
+            owner_id: id,
+            base: s.base().clone(),
+        }
+    }
+}
+impl<'tcx> State<Base<'tcx>, (), Rc<rustc_middle::mir::Body<'tcx>>, rustc_hir::def_id::DefId> {
     pub fn new_from_mir(
         tcx: rustc_middle::ty::TyCtxt<'tcx>,
         options: hax_frontend_exporter_options::Options,
         mir: rustc_middle::mir::Body<'tcx>,
+        owner_id: rustc_hir::def_id::DefId,
     ) -> Self {
         Self {
             thir: (),
             mir: Rc::new(mir),
-            owner_id: (),
+            owner_id,
             base: Base::new(tcx, options),
         }
     }
