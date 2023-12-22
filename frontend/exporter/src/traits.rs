@@ -20,6 +20,7 @@ pub enum ImplExprAtom {
     },
     LocalBound {
         clause_id: u64,
+        r#trait: Binder<TraitRef>,
         path: Vec<ImplExprPathChunk>,
     },
     /// `dyn TRAIT` is a wrapped value with a virtual table for trait
@@ -32,6 +33,16 @@ pub enum ImplExprAtom {
     Builtin {
         r#trait: TraitRef,
     },
+    FnPointer {
+        fn_ty: Box<Ty>,
+    },
+    Closure {
+        closure_def_id: DefId,
+        parent_substs: Vec<GenericArg>,
+        sig: Box<MirPolyFnSig>,
+    },
+    /// If failed to solve a trait ref
+    Error(String),
     Todo(String),
 }
 
@@ -39,8 +50,9 @@ pub enum ImplExprAtom {
     Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
 )]
 pub struct ImplExpr {
-    r#impl: ImplExprAtom,
-    args: Box<Vec<ImplExpr>>,
+    pub r#impl: ImplExprAtom,
+    pub args: Box<Vec<ImplExpr>>,
+    pub trait_ref: TraitRef,
 }
 
 mod search_clause {
@@ -181,16 +193,12 @@ mod search_clause {
 }
 
 impl ImplExprAtom {
-    fn with_args(self, args: Vec<ImplExpr>) -> ImplExpr {
+    fn with_args(self, args: Vec<ImplExpr>, trait_ref: TraitRef) -> ImplExpr {
         ImplExpr {
             r#impl: self,
             args: Box::new(args),
+            trait_ref,
         }
-    }
-}
-impl From<ImplExprAtom> for ImplExpr {
-    fn from(implem: ImplExprAtom) -> ImplExpr {
-        implem.with_args(vec![])
     }
 }
 
@@ -226,8 +234,12 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
         param_env: rustc_middle::ty::ParamEnv<'tcx>,
     ) -> ImplExpr {
         use rustc_trait_selection::traits::*;
+        assert!(self.bound_vars().is_empty());
+        let trait_ref: Binder<TraitRef> = self.sinto(s);
+        let trait_ref = trait_ref.value;
+
         let Some(impl_source) = select_trait_candidate(s, param_env, *self) else {
-            return ImplExprAtom::Todo(format!("impl_expr failed on {:#?}", self)).into();
+            return ImplExprAtom::Todo(format!("impl_expr failed on {:#?}", self)).with_args(vec![], trait_ref);
         };
         match impl_source {
             ImplSource::UserDefined(ImplSourceUserDefinedData {
@@ -238,7 +250,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                 id: impl_def_id.sinto(s),
                 generics: substs.sinto(s),
             }
-            .with_args(impl_exprs(s, &nested)),
+            .with_args(impl_exprs(s, &nested), trait_ref),
             ImplSource::Param(nested, _constness) => {
                 use search_clause::TraitPredicateExt;
                 let tcx = s.base().tcx;
@@ -254,25 +266,52 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                         .map(|path| (predicate, path))
                 }) else {
                     return ImplExprAtom::Todo(format!("implsource::param \n\n{:#?}", self))
-                        .with_args(impl_exprs(s, &nested));
+                        .with_args(impl_exprs(s, &nested), trait_ref);
                 };
                 // .s_expect(s, format!("implsource::param \n\n{:#?}", self).as_str());
                 let clause_id: u64 = clause_id_of_predicate(*predicate);
                 ImplExprAtom::LocalBound {
                     clause_id,
+                    r#trait: self.sinto(s),
                     path: path.sinto(s),
                 }
-                .with_args(impl_exprs(s, &nested))
+                .with_args(impl_exprs(s, &nested), trait_ref)
+            }
+            // Happens when we use a function pointer as an object implementing
+            // a trait like `FnMut`
+            ImplSource::FnPointer(rustc_trait_selection::traits::ImplSourceFnPointerData {
+                fn_ty,
+                nested,
+            }) => ImplExprAtom::FnPointer {
+                fn_ty: fn_ty.sinto(s),
+            }
+            .with_args(impl_exprs(s, &nested), trait_ref),
+            ImplSource::Closure(rustc_trait_selection::traits::ImplSourceClosureData {
+                closure_def_id,
+                substs,
+                nested,
+            }) => {
+                let substs = substs.as_closure();
+                let parent_substs = substs.parent_substs().sinto(s);
+                let sig = Box::new(substs.sig().sinto(s));
+                ImplExprAtom::Closure {
+                    closure_def_id: closure_def_id.sinto(s),
+                    parent_substs,
+                    sig,
+                }
+                .with_args(impl_exprs(s, &nested), trait_ref)
             }
             ImplSource::Object(data) => ImplExprAtom::Dyn {
                 r#trait: data.upcast_trait_ref.skip_binder().sinto(s),
             }
-            .with_args(impl_exprs(s, &data.nested)),
+            .with_args(impl_exprs(s, &data.nested), trait_ref),
             ImplSource::Builtin(x) => ImplExprAtom::Builtin {
                 r#trait: self.skip_binder().sinto(s),
             }
-            .with_args(impl_exprs(s, &x.nested)),
-            x => ImplExprAtom::Todo(format!("{:#?}\n\n{:#?}", x, self)).into(),
+            .with_args(impl_exprs(s, &x.nested), trait_ref),
+            x => {
+                ImplExprAtom::Todo(format!("{:#?}\n\n{:#?}", x, self)).with_args(vec![], trait_ref)
+            }
         }
     }
 }

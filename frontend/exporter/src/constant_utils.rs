@@ -47,15 +47,14 @@ pub enum ConstantExprKind {
     /// }
     /// ```
     TraitConst {
-        impl_source: ImplSource,
-        substs: Vec<GenericArg>,
+        impl_expr: ImplExpr,
         name: String,
     },
     Borrow(ConstantExpr),
     ConstRef {
         id: ParamConst,
     },
-    FnPtr(DefId, Vec<GenericArg>, Vec<ImplSource>, Option<TraitInfo>),
+    FnPtr(DefId, Vec<GenericArg>, Vec<ImplExpr>, Option<TraitInfo>),
     Todo(String),
 }
 
@@ -253,11 +252,10 @@ pub(crate) fn trait_const_to_constant_expr_kind<'tcx, S: BaseState<'tcx> + HasOw
     let name = assoc.name.to_string();
 
     // Retrieve the trait information
-    let (substs, trait_info) = get_trait_info(s, const_def_id, substs, assoc);
+    let (_, trait_info) = get_trait_info(s, const_def_id, substs, assoc);
 
     ConstantExprKind::TraitConst {
-        impl_source: trait_info.impl_source,
-        substs,
+        impl_expr: trait_info.impl_expr,
         name,
     }
 }

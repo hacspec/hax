@@ -211,7 +211,7 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
     s: &S,
     def_id: rustc_hir::def_id::DefId,
     substs: rustc_middle::ty::subst::SubstsRef<'tcx>,
-) -> (DefId, Vec<GenericArg>, Vec<ImplSource>, Option<TraitInfo>) {
+) -> (DefId, Vec<GenericArg>, Vec<ImplExpr>, Option<TraitInfo>) {
     let tcx = s.base().tcx;
     let param_env = tcx.param_env(s.owner_id());
 
@@ -256,10 +256,29 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
         trace!("assoc: def_id: {:?}", assoc.def_id);
 
         // Retrieve the trait information
-        let (substs, trait_info) = get_trait_info(s, def_id, substs, &assoc);
+        let (truncated_substs, trait_info) = get_trait_info(s, def_id, substs, &assoc);
+
+        // TODO: update the comment
+        // We need to compute the concatenation of the arguments arguments which
+        // are for the parent (i.e., the trait) and those which are specific to
+        // the method:
+        //
+        // For instance:
+        // ```
+        // impl<T> Foo<T> for Bar {
+        //   fn baz<U>(...) { ... }
+        // }
+        //
+        // fn test(x: Bar) {
+        //   x.baz(...);
+        //   ...
+        // }
+        // ```
+        // We need to compute the concatenation: `<Bar, T, U>`
+
 
         // Return
-        (substs, Option::Some(trait_info))
+        (truncated_substs, Option::Some(trait_info))
     } else {
         // Regular function call
         (substs.sinto(s), Option::None)
@@ -279,7 +298,7 @@ fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
 ) -> (
     FunOperand,
     Vec<GenericArg>,
-    Vec<ImplSource>,
+    Vec<ImplExpr>,
     Option<TraitInfo>,
 ) {
     use std::ops::Deref;
@@ -512,7 +531,7 @@ pub enum TerminatorKind {
         unwind: UnwindAction,
         from_hir_call: bool,
         fn_span: Span,
-        trait_refs: Vec<ImplSource>,
+        trait_refs: Vec<ImplExpr>,
         trait_info: Option<TraitInfo>,
     },
     Assert {
@@ -824,7 +843,7 @@ pub enum AggregateKind {
         VariantIdx,
         AdtKind,
         Vec<GenericArg>,
-        Vec<ImplSource>,
+        Vec<ImplExpr>,
         Option<UserTypeAnnotationIndex>,
         Option<FieldIdx>,
     ),
@@ -850,7 +869,7 @@ pub enum AggregateKind {
         let trait_refs = solve_item_traits(s, param_env, *rust_id, substs, Some(predicates));
         AggregateKind::Closure(def_id, parent_substs.sinto(s), trait_refs, sig)
     })]
-    Closure(DefId, Vec<GenericArg>, Vec<ImplSource>, MirPolyFnSig),
+    Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, MirPolyFnSig),
     Generator(DefId, Vec<GenericArg>, Movability),
 }
 

@@ -1432,8 +1432,7 @@ pub struct TyGenerics {
 pub enum AliasKind {
     /// The projection of a trait type: `<Ty as Trait<...>>::N<...>`
     Projection {
-        impl_source: ImplSource,
-        substs: Vec<GenericArg>,
+        impl_expr: ImplExpr,
         name: String,
     },
     // TODO
@@ -1455,11 +1454,10 @@ pub fn translate_ty_alias<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             let assoc = tcx.associated_item(alias_ty.def_id);
             // Retrieve the trait information
             let name = assoc.name.to_string();
-            let (substs, trait_info) = get_trait_info(s, alias_ty.def_id, alias_ty.substs, &assoc);
+            let (_, trait_info) = get_trait_info(s, alias_ty.def_id, alias_ty.substs, &assoc);
 
             AliasKind::Projection {
-                impl_source: trait_info.impl_source,
-                substs,
+                impl_expr: trait_info.impl_expr,
                 name,
             }
         }
@@ -1505,7 +1503,7 @@ pub enum Ty {
     )]
     Adt {
         generic_args: Vec<GenericArg>,
-        trait_refs: Vec<ImplSource>,
+        trait_refs: Vec<ImplExpr>,
         def_id: DefId,
     },
     Foreign(DefId),
