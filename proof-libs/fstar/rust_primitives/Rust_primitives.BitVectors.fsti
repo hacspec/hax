@@ -14,6 +14,8 @@ unfold let int_t_has_bit_num #t (n: int_t t) (d: bit_num t)
 /// Integer of type `t` that carries `d` bits
 type int_t_d t (d: bit_num t) = n: int_t t {int_t_has_bit_num n d}
 
+val cast_int_t_d #t (d: bit_num t) (x:int_t t{v x < pow2 d}): r:int_t_d t d{v r == v x}
+
 type bit_vec (len: nat) = i:nat {i < len} -> bit
 
 /// Transform an array of integers to a bit vector
@@ -52,20 +54,53 @@ unfold let mask_inv_opt =
            | 63  -> Some 6
            | 127 -> Some 7
            | 255 -> Some 8
+           | 511 -> Some 9
+           | 1023  -> Some  10
+           | 2047  -> Some  11
+           | 4095  -> Some  12
+           | 8191  -> Some  13
+           | 16383  -> Some  14
+           | 32767  -> Some  15
+           | 65535  -> Some  16
+           | 131071  -> Some  17
+           | 262143  -> Some  18
+           | 524287  -> Some  19
+           | 1048575  -> Some  20
+           | 2097151  -> Some  21
+           | 4194303  -> Some  22
+           | 8388607  -> Some  23
+           | 16777215  -> Some  24
+           | 33554431  -> Some  25
+           | 67108863  -> Some  26
+           | 134217727  -> Some  27
+           | 268435455  -> Some  28
+           | 536870911  -> Some  29
+           | 1073741823  -> Some  30
+           | 2147483647  -> Some  31
+           | 4294967295  -> Some  32
            | _   -> None
+
 
 /// Specialized `get_bit_pow2_minus_one` lemmas with SMT patterns
 /// targetting machine integer literals of type `i32`
 val get_bit_pow2_minus_one_i32
-  (x: int {Some? (mask_inv_opt x)}) (nth: usize {v nth < 32})
+  (x: int {x < pow2 31 /\ Some? (mask_inv_opt x)}) (nth: usize {v nth < 32})
   : Lemma ( get_bit (FStar.Int32.int_to_t x) nth 
         == (if v nth < Some?.v (mask_inv_opt x) then 1 else 0))
   [SMTPat (get_bit (FStar.Int32.int_to_t x) nth)]
 
 /// Specialized `get_bit_pow2_minus_one` lemmas with SMT patterns
-/// targetting machine integer literals of type `i32`
+/// targetting machine integer literals of type `u32`
+val get_bit_pow2_minus_one_u32
+  (x: int {x < pow2 32 /\ Some? (mask_inv_opt x)}) (nth: usize {v nth < 32})
+  : Lemma ( get_bit (FStar.UInt32.uint_to_t x) nth 
+        == (if v nth < Some?.v (mask_inv_opt x) then 1 else 0))
+  [SMTPat (get_bit (FStar.UInt16.uint_to_t x) nth)]
+
+/// Specialized `get_bit_pow2_minus_one` lemmas with SMT patterns
+/// targetting machine integer literals of type `u16`
 val get_bit_pow2_minus_one_u16
-  (x: int {Some? (mask_inv_opt x)}) (nth: usize {v nth < 16})
+  (x: int {x < pow2 16 /\ Some? (mask_inv_opt x)}) (nth: usize {v nth < 16})
   : Lemma ( get_bit (FStar.UInt16.uint_to_t x) nth 
         == (if v nth < Some?.v (mask_inv_opt x) then 1 else 0))
   [SMTPat (get_bit (FStar.UInt16.uint_to_t x) nth)]
@@ -73,7 +108,7 @@ val get_bit_pow2_minus_one_u16
 /// Specialized `get_bit_pow2_minus_one` lemmas with SMT patterns
 /// targetting machine integer literals of type `u8`  
 val get_bit_pow2_minus_one_u8
-  (t: _ {t == u8_inttype}) (x: int {Some? (mask_inv_opt x)}) (nth: usize {v nth < 8})
+  (t: _ {t == u8_inttype}) (x: int {x < pow2 8 /\ Some? (mask_inv_opt x)}) (nth: usize {v nth < 8})
   : Lemma ( get_bit #t (FStar.UInt8.uint_to_t x) nth 
         == (if v nth < Some?.v (mask_inv_opt x) then 1 else 0))
   [SMTPat (get_bit #t (FStar.UInt8.uint_to_t x) nth)]

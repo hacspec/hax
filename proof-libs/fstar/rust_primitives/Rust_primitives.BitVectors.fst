@@ -6,6 +6,8 @@ open Rust_primitives.Integers
 
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 40"
 
+let cast_int_t_d #t d x = admit()
+
 let pow2_minus_one_mod_lemma1 (n: nat) (m: nat {m < n})
    : Lemma (((pow2 n - 1) / pow2 m) % 2 == 1)
    = let d: pos = n - m in
