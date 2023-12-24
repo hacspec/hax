@@ -271,11 +271,11 @@ val logand_lemma: #t:inttype -> a:int_t t -> b:int_t t ->
 
 val logand_mask_lemma: #t:inttype
   -> a:int_t t
-  -> m:pos{m < bits t} ->
+  -> m:nat{m < bits t} ->
   Lemma (pow2 m < maxint t /\
-         logand a (sub_mod #t (mk_int #t (pow2 m)) (mk_int #t 1)) ==
+         logand a (sub #t (mk_int #t (pow2 m)) (mk_int #t 1)) ==
          mk_int (v a % pow2 m))
-  [SMTPat (logand #t a (sub_mod #t (mk_int #t (pow2 m)) (mk_int #t 1)))]
+  [SMTPat (logand #t a (sub #t (mk_int #t (pow2 m)) (mk_int #t 1)))]
 
 val logor: #t:inttype
   -> int_t t
