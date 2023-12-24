@@ -4,11 +4,11 @@ open Rust_primitives
 open Rust_primitives.Hax
 open Core.Ops.Range
 
-let update_at_usize
-  (s: t_Slice 't)
-  (i: usize {i <. length s}) 
+let update_at_usize #n
+  (s: t_Array 't n)
+  (i: usize {i <. n}) 
   (x: 't)
-  : Pure (t_Array 't (length s))
+  : Pure (t_Array 't n)
     (requires (True))
     (ensures (fun res -> res == Seq.upd s (v i) x))
   = update_at s i x

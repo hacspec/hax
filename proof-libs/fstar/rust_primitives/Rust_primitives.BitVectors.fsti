@@ -8,9 +8,11 @@ open Rust_primitives.Integers
 /// Number of bits carried by an integer of type `t`
 type bit_num t = d: nat {d > 0 /\ d <= bits t}
 
+unfold let int_t_has_bit_num #t (n: int_t t) (d: bit_num t)
+  = forall (i: usize). (v i < bits t /\ v i >= d) ==> get_bit n i == 0
+
 /// Integer of type `t` that carries `d` bits
-type int_t_d t (d: bit_num t) = 
-  n: int_t t {forall (i: usize). (v i < bits t /\ v i >= d) ==> get_bit n i == 0}
+type int_t_d t (d: bit_num t) = n: int_t t {int_t_has_bit_num n d}
 
 type bit_vec (len: nat) = i:nat {i < len} -> bit
 

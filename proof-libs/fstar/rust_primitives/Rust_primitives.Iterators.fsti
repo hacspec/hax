@@ -27,13 +27,12 @@ val foldi_chunks_exact
                  (#t:Type) (#acc_t:Type)
                  (#inv:(acc_t -> usize -> Type))
                  (s:t_Slice t)
-                 (chunk_len:usize{v chunk_len > 0 /\ Seq.length s % v chunk_len == 0})
+                 (chunk_len:usize{v chunk_len > 0})
                  (acc:acc_t{inv acc (sz 0)})
-                 (f: (acc:acc_t -> it:(usize & t_Slice t){
+                 (f: (acc:acc_t -> it:(usize & t_Array t chunk_len){
                                   let (i,item) = it in
                                   v i >= 0 /\
                                   v i < Seq.length s / v chunk_len /\
-                                  length item == chunk_len /\
                                   inv acc i}
                        -> acc':acc_t{inv acc' (fst it +! sz 1)}))
                  : res:acc_t{inv res (length s /! chunk_len)}
