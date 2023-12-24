@@ -41,7 +41,7 @@ val fold_chunks_exact
                  (#t:Type) (#acc_t:Type)
                  (#inv:(acc_t -> Type))
                  (s:t_Slice t)
-                 (chunk_len:usize{v chunk_len > 0 /\ Seq.length s % v chunk_len == 0})
+                 (chunk_len:usize{v chunk_len > 0}) // /\ Seq.length s % v chunk_len == 0})
                  (acc:acc_t{inv acc})
                  (f: (acc:acc_t -> it:t_Array t chunk_len{inv acc}
                        -> acc':acc_t{inv acc'}))

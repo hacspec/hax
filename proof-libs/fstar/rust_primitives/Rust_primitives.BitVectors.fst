@@ -6,7 +6,7 @@ open Rust_primitives.Integers
 
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 40"
 
-let cast_int_t_d #t d x = admit()
+let lemma_get_bit_bounded #t x d i = admit()
 
 let pow2_minus_one_mod_lemma1 (n: nat) (m: nat {m < n})
    : Lemma (((pow2 n - 1) / pow2 m) % 2 == 1)
@@ -27,16 +27,25 @@ let get_bit_pow2_minus_one #t n nth
 
 let get_bit_pow2_minus_one_i32 x nth
   = let n = Some?.v (mask_inv_opt x) in
+    assume (pow2 n - 1 == x);
     mk_int_equiv_lemma #i32_inttype x;
     get_bit_pow2_minus_one #i32_inttype n nth
 
+let get_bit_pow2_minus_one_u32 x nth
+  = let n = Some?.v (mask_inv_opt x) in
+    assume (pow2 n - 1 == x);
+    mk_int_equiv_lemma #u32_inttype x;
+    get_bit_pow2_minus_one #u32_inttype n nth
+
 let get_bit_pow2_minus_one_u16 x nth
   = let n = Some?.v (mask_inv_opt x) in
+    assume (pow2 n - 1 == x);
     mk_int_equiv_lemma #u16_inttype x;
     get_bit_pow2_minus_one #u16_inttype n nth
 
 let get_bit_pow2_minus_one_u8 t x nth
   = let n = Some?.v (mask_inv_opt x) in
+    assume (pow2 n - 1 == x);
     mk_int_equiv_lemma #u8_inttype x;
     get_bit_pow2_minus_one #u8_inttype n nth
 

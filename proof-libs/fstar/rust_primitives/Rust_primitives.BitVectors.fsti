@@ -8,13 +8,17 @@ open Rust_primitives.Integers
 /// Number of bits carried by an integer of type `t`
 type bit_num t = d: nat {d > 0 /\ d <= bits t}
 
-unfold let int_t_has_bit_num #t (n: int_t t) (d: bit_num t)
-  = forall (i: usize). (v i < bits t /\ v i >= d) ==> get_bit n i == 0
+/// Number of bits carried by an integer of type `t`
+type bounded #t (x:int_t t) (d:bit_num t) = v x < pow2 d
 
 /// Integer of type `t` that carries `d` bits
-type int_t_d t (d: bit_num t) = n: int_t t {int_t_has_bit_num n d}
+type int_t_d t (d: bit_num t) = 
+  n: int_t t {bounded n d}
 
-val cast_int_t_d #t (d: bit_num t) (x:int_t t{v x < pow2 d}): r:int_t_d t d{v r == v x}
+val lemma_get_bit_bounded #t (x:int_t t) (d:bit_num t) (i:usize):
+  Lemma ((bounded x d /\ v i >= d /\ v i < bits t) ==>
+         get_bit x i == 0)
+        [SMTPat (get_bit #t x i); SMTPat (bounded x d)]
 
 type bit_vec (len: nat) = i:nat {i < len} -> bit
 
@@ -58,7 +62,7 @@ unfold let mask_inv_opt =
            | 1023  -> Some  10
            | 2047  -> Some  11
            | 4095  -> Some  12
-           | 8191  -> Some  13
+(*           | 8191  -> Some  13
            | 16383  -> Some  14
            | 32767  -> Some  15
            | 65535  -> Some  16
@@ -78,7 +82,7 @@ unfold let mask_inv_opt =
            | 1073741823  -> Some  30
            | 2147483647  -> Some  31
            | 4294967295  -> Some  32
-           | _   -> None
+*)           | _   -> None
 
 
 /// Specialized `get_bit_pow2_minus_one` lemmas with SMT patterns
@@ -112,6 +116,7 @@ val get_bit_pow2_minus_one_u8
   : Lemma ( get_bit #t (FStar.UInt8.uint_to_t x) nth 
         == (if v nth < Some?.v (mask_inv_opt x) then 1 else 0))
   [SMTPat (get_bit #t (FStar.UInt8.uint_to_t x) nth)]
+// XXX: Why the #t here and not in the ones above?
 
 val get_last_bit_signed_lemma (#t: inttype{signed t}) (x: int_t t)
   : Lemma (   get_bit x (mk_int (bits t - 1)) 

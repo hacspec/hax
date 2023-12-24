@@ -25,7 +25,7 @@ val pow2_values: x:nat -> Lemma
    | 40 | 41 | 42 | 43 | 44 | 45 | 46
    | 47 | 48 | 49 | 50 | 51 | 52 | 53
    | 54 | 55 | 56 | 57 | 58 | 59 | 60
-   | 61 | 62 | 65 | 127 | 128 -> p = normalize_term (pow2 x)
+   | 61 | 62 | 63 | 65 | 127 | 128 -> p = normalize_term (pow2 x)
    | _ -> True)
   [SMTPat (pow2 x)]
 
