@@ -37,3 +37,4 @@ let B =
 
 process
     A | B
+    
