@@ -1,7 +1,10 @@
 //! This crate provides types and traits for implementing a protocol state
 //! machine.
 //!
-//!
+//! A protocol party is conceived of as having a set of possible states, one of
+//! which is the initial state. Transitioning to a different state is possible
+//! either through receiving and processing a message or through writing a
+//! message.
 
 /// A protocol error type.
 #[derive(Debug)]
