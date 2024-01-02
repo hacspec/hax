@@ -905,11 +905,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, AliasTy> for rustc_middle::ty::Ali
         .then(|| {
             let trait_ref = self.trait_ref(tcx);
             let poly_trait_ref = rustc_middle::ty::Binder::dummy(trait_ref);
-            let param_env = s
-                .base()
-                .opt_def_id
-                .map(|did| tcx.param_env(did))
-                .unwrap_or(rustc_middle::ty::ParamEnv::empty());
+            let param_env = tcx.param_env(s.owner_id());
             (
                 self.trait_def_id(tcx).sinto(s),
                 poly_trait_ref.impl_expr(s, param_env),
