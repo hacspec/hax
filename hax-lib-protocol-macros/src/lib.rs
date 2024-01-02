@@ -4,9 +4,9 @@ use syn::{parse, parse_macro_input};
 /// This macro takes an `fn` as the basis of an `InitialState` implementation
 /// for the state type that is returned by the `fn` (on success).
 ///
-/// The `fn` is expected to build the state type from a `Vec<u8>`, i.e. the
-/// signature should be compatible with `TryFrom<Vec<u8>>` for the state type
-/// given as argument to the macro.
+/// The `fn` is expected to build the state type specified as a `Path` attribute
+/// argument from a `Vec<u8>`, i.e. the signature should be compatible with
+/// `TryFrom<Vec<u8>>` for the state type given as argument to the macro.
 ///
 /// Example:
 /// ```ignore
@@ -82,7 +82,8 @@ pub fn init(
 /// This macro takes an `fn` as the basis of an `InitialState` implementation
 /// for the state type that is returned by the `fn` (on success).
 ///
-/// The `fn` is expected to build the state type without additional input.
+/// The `fn` is expected to build the state type specified as a `Path` attribute
+/// argument without additional input.
 /// Example:
 /// ```ignore
 /// pub struct B0 {}
