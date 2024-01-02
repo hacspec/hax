@@ -1,7 +1,8 @@
 use quote::quote;
 use syn::{parse, parse_macro_input};
 
-/// This macro takes an `fn` as the basis of an `InitialState` implementation for the state type that is returned by the `fn` (on success).
+/// This macro takes an `fn` as the basis of an `InitialState` implementation
+/// for the state type that is returned by the `fn` (on success).
 ///
 /// The `fn` is expected to build the state type from a `Vec<u8>`.
 ///
@@ -76,7 +77,8 @@ pub fn init(
     return output.into();
 }
 
-/// This macro takes an `fn` as the basis of an `InitialState` implementation for the state type that is returned by the `fn` (on success).
+/// This macro takes an `fn` as the basis of an `InitialState` implementation
+/// for the state type that is returned by the `fn` (on success).
 ///
 /// The `fn` is expected to build the state type without additional input.
 /// Example:
@@ -161,7 +163,9 @@ impl syn::parse::Parse for Transition {
     }
 }
 
-/// Macro deriving a `WriteState` implementation for the origin state type, generating a message of `message_type` and a new state, as indicated by the transition tuple.
+/// Macro deriving a `WriteState` implementation for the origin state type,
+/// generating a message of `message_type` and a new state, as indicated by the
+/// transition tuple.
 ///
 /// Example:
 /// ```ignore
@@ -232,7 +236,9 @@ pub fn write(
     return output.into();
 }
 
-/// Macro deriving a `ReadState` implementation for the destination state type, consuming a message of `message_type` and the current state, as indicated by the transition tuple.
+/// Macro deriving a `ReadState` implementation for the destination state type,
+/// consuming a message of `message_type` and the current state, as indicated by
+/// the transition tuple.
 ///
 /// Example:
 /// ```ignore
