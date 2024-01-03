@@ -23,6 +23,7 @@ members = [
         "reordering",
         "nested-derefs",
         "proverif-minimal",
-        "proverif-basic-structs"
+        "proverif-basic-structs",
+        "proverif-ping-pong"
 ]
 resolver = "2"

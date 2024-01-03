@@ -1,0 +1,40 @@
+set attacker = passive.
+channel c.
+
+type ping_t.
+type pong_t.
+
+fun new_ping(): ping_t.
+fun ping2pong(ping_t): pong_t.
+
+event PingSent(ping_t).
+event PingReceived(ping_t).
+event PongSent(pong_t).
+event PongReceived(pong_t).
+
+query p: ping_t;
+    event(PingReceived(p)) ==> event(PingSent(p)).
+
+
+
+let A =
+    (
+        let ping = new_ping() in
+        event PingSent(ping);
+        out(c, ping)
+    ) | (
+        in(c, pong: pong_t);
+        event PongReceived(pong)
+    ).
+
+let B = 
+    in(c, ping: ping_t);
+    event PingReceived(ping);
+    let pong = ping2pong(ping) in
+    event PongSent(pong);
+    out(c, pong);
+    0.
+
+process
+    A | B
+    
