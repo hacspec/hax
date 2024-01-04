@@ -237,9 +237,8 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
     ) -> ImplExpr {
         use rustc_trait_selection::traits::*;
         let Some(impl_source) = select_trait_candidate(s, param_env, *self) else {
-            supposely_unreachable_fatal!(s, "ImplExprSelectTraitCandidate"; {
-                self, param_env
-            })
+            report!(warn, s, "Warning: the frontend could not resolve using `select_trait_candidate`.\nThis is a bug documented in `https://github.com/hacspec/hax/issues/416`.\nCurrently, this bug is non-fatal at the exporter level.");
+            return ImplExprAtom::Todo(format!("impl_expr failed on {:#?}", self)).into();
         };
         match impl_source {
             ImplSource::UserDefined(ImplSourceUserDefinedData {
