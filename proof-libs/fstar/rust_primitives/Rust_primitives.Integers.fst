@@ -68,3 +68,6 @@ let get_bit_cast #t #u x nth
   = reveal_opaque (`%get_bit) (get_bit x nth);
     reveal_opaque (`%get_bit) (get_bit (cast_mod #t #u x <: int_t u) nth);
     admit ()
+
+let get_bit_cast_extend #t #u x nth
+  = admit ()

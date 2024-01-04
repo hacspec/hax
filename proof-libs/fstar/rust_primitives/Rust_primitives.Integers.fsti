@@ -487,5 +487,12 @@ val get_bit_shr #t #u (x: int_t t) (y: int_t u) (i: usize {v i < bits t})
 val get_bit_cast #t #u
   (x: int_t t) (nth: usize)
   : Lemma (requires v nth < bits u /\ v nth < bits t)
-          (ensures get_bit x nth == get_bit (cast_mod #t #u x <: int_t u) nth)
-          [SMTPat (get_bit (cast_mod #t #u x <: int_t u) nth)]
+          (ensures get_bit (cast_mod #t #u x) nth == get_bit x nth)
+          [SMTPat (get_bit (cast_mod #t #u x) nth)]
+
+val get_bit_cast_extend #t #u
+  (x: int_t t) (nth: usize)
+  : Lemma (requires bits t < bits u /\ v nth >= bits t /\ v nth < bits u)
+          (ensures get_bit (cast_mod #t #u x) nth == 0)
+          [SMTPat (get_bit (cast_mod #t #u x) nth)]
+
