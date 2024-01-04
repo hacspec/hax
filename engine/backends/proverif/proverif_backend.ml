@@ -8,6 +8,8 @@ include
       open Features
       include Off
       include On.Macro
+      include On.Question_mark
+      include On.Early_exit
     end)
     (struct
       let backend = Diagnostics.Backend.ProVerif
@@ -15,7 +17,7 @@ include
 
 module SubtypeToInputLanguage
     (FA : Features.T
-    (*   with *)
+       with
     (*  type loop = Features.Off.loop *)
     (* and type for_loop = Features.Off.for_loop *)
     (* and type for_index_loop = Features.Off.for_index_loop *)
@@ -28,9 +30,9 @@ module SubtypeToInputLanguage
     (* and type reference = Features.Off.reference *)
     (* and type slice = Features.Off.slice *)
     (* and type raw_pointer = Features.Off.raw_pointer *)
-    (* and type early_exit = Features.Off.early_exit *)
-    (* and type question_mark = Features.Off.question_mark *)
-    (* and type macro = Features.On.macro *)
+    type early_exit = Features.On.early_exit
+    and type question_mark = Features.On.question_mark
+    and type macro = Features.On.macro 
     (* and type as_pattern = Features.Off.as_pattern *)
     (* and type nontrivial_lhs = Features.Off.nontrivial_lhs *)
     (* and type arbitrary_lhs = Features.Off.arbitrary_lhs *)
@@ -42,6 +44,7 @@ module SubtypeToInputLanguage
 struct
   module FB = InputLanguage
 
+  
   include
     Feature_gate.Make (FA) (FB)
       (struct
@@ -62,9 +65,6 @@ struct
         let reference = reject
         let slice = reject
         let raw_pointer = reject
-        let early_exit = reject
-        let question_mark = reject
-        let macro = reject
         let as_pattern = reject
         let nontrivial_lhs = reject
         let arbitrary_lhs = reject
@@ -304,14 +304,13 @@ module TransformToInputLanguage =
   |> Phases.Drop_blocks
   |> Phases.Drop_references
   |> Phases.Trivialize_assign_lhs
-  |> Phases.Reconstruct_question_marks
   |> Side_effect_utils.Hoist
   |> Phases.Local_mutation
   |> Phases.Reject.Continue
-  |> Phases.Cf_into_monads
-  |> Phases.Reject.EarlyExit
-  |> Phases.Functionalize_loops
-  |> Phases.Reject.As_pattern
+  |> Phases.Reconstruct_question_marks
+  (* |> Phases.Reject.EarlyExit *)
+  (* |> Phases.Functionalize_loops *)
+  (* |> Phases.Reject.As_pattern *)
   |> SubtypeToInputLanguage
   |> Identity
   ]
