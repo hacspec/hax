@@ -24,6 +24,7 @@ members = [
         "nested-derefs",
         "proverif-minimal",
         "proverif-basic-structs",
-        "proverif-ping-pong"
+        "proverif-ping-pong",
+        "proverif-fn-to-letfun"
 ]
 resolver = "2"
