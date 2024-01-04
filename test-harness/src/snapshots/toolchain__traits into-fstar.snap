@@ -54,23 +54,23 @@ class t_Foo (v_Self: Type) = {
   f_AssocType:Core.Clone.t_Clone _;
   f_AssocType:Core.Marker.t_Sized _;
   f_N:usize;
-  f_assoc_f:Prims.unit;
+  f_assoc_f:Prims.unit -> Prims.unit;
   f_method_f:v_Self -> Prims.unit
 }
 
 let f
       (#v_T: Type)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] ii0: Core.Marker.t_Sized v_T)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] ii1: t_Foo v_T)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: Core.Marker.t_Sized v_T)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_T)
       (x: v_T)
     : Prims.unit =
-  let _:Prims.unit = f_assoc_f in
+  let _:Prims.unit = f_assoc_f () in
   f_method_f x
 
 let g
       (#v_T: Type)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] ii0: Core.Marker.t_Sized v_T)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] ii1: t_Foo v_T)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: Core.Marker.t_Sized v_T)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_T)
       (x: i1.f_AssocType)
     : u32 = f_function_of_super_trait x
 
@@ -80,7 +80,7 @@ let impl_Foo_for_tuple_: t_Foo Prims.unit =
     f_AssocType = i32;
     f_N = sz 32;
     f_assoc_f = () <: Prims.unit;
-    f_method_f = fun (self: Prims.unit) -> f_assoc_f
+    f_method_f = fun (self: Prims.unit) -> f_assoc_f ()
   }
 
 type t_Struct = | Struct : t_Struct
