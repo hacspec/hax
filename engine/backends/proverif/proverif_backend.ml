@@ -223,8 +223,9 @@ module Print = struct
             (global_ident * document) list fn =
         fun ~is_record ~is_struct:_ ~constructor ~base:_ args ->
           if is_record then
-            print#concrete_ident constructor
-            ^^ string "_c"
+            string "t_"
+            (* FIXME: How do I get at the ident from the struct definition instead? *)
+            ^^ print#concrete_ident constructor
             ^^ iblock parens
                  (separate_map
                     (break 0 ^^ comma)
@@ -262,7 +263,7 @@ module Print = struct
               (print#expr_at Expr_App_arg >> group)
               args
           in
-          let f = dummy_fn |> group in
+          let f = print#expr_at Expr_App_f f |> group in
           f ^^ iblock parens args
 
       method! literal : Generic_printer_base.literal_ctx -> literal fn =
@@ -307,10 +308,34 @@ let insert_preamble contents =
    fun dummy_fn_7(bitstring, bitstring, bitstring, bitstring, bitstring, \
    bitstring, bitstring): bitstring.\n" ^ contents
 
+let is_process_read : attrs -> bool =
+  Attr_payloads.payloads >> List.exists ~f:(fst >> [%matches? Types.ProcessRead])
+
+let is_process_write : attrs -> bool =
+  Attr_payloads.payloads
+  >> List.exists ~f:(fst >> [%matches? Types.ProcessWrite])
+
+let is_process_init : attrs -> bool =
+  Attr_payloads.payloads >> List.exists ~f:(fst >> [%matches? Types.ProcessInit])
+
 let translate m (bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =
-  let contents, _ = Print.items items in
-  let contents = contents |> insert_top_level |> insert_preamble in
+  let processes, rest =
+    List.partition_tf
+      ~f:(fun item -> [%matches? Fn _] item.v && is_process_read item.attrs)
+      items
+  in
+  let letfuns, rest =
+    List.partition_tf ~f:(fun item -> [%matches? Fn _] item.v) rest
+  in
+  let letfun_content, _ = Print.items letfuns in
+  let process_content, _ = Print.items processes in
+  let contents, _ = Print.items rest in
+  let contents =
+    contents ^ "\n(* Process Macros *)\n\n" ^ letfun_content
+    ^ "\n(* Processes *)" ^ process_content
+    |> insert_top_level |> insert_preamble
+  in
   let file = Types.{ path = "output.pv"; contents } in
   [ file ]
 

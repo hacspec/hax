@@ -50,6 +50,10 @@ pub enum AssociationRole {
     Ensures,
     Decreases,
     Refine,
+    ProcessRead,
+    ProcessWrite,
+    ProcessInit,
+    ProtocolMessages,
 }
 
 /// Hax only understands one attribute: `#[hax::json(PAYLOAD)]` where
@@ -67,6 +71,10 @@ pub enum AttrPayload {
     /// Mark an item as a lemma statement to prove in the backend
     Lemma,
     Language,
+    ProcessRead,
+    ProcessWrite,
+    ProcessInit,
+    ProtocolMessages,
 }
 
 pub const HAX_TOOL: &str = "_hax";

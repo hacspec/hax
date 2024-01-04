@@ -143,6 +143,8 @@ mod types {
                 macro_infos: Rc::new(HashMap::new()),
                 cached_thirs: Rc::new(HashMap::new()),
                 options: Rc::new(options),
+                /// Always prefer `s.owner_id()` to `s.base().opt_def_id`.
+                /// `opt_def_id` is used in `utils` for error reporting
                 opt_def_id: None,
                 local_ctx: Rc::new(RefCell::new(LocalContextS::new())),
                 exported_spans: Rc::new(RefCell::new(HashSet::new())),
@@ -199,7 +201,6 @@ impl<'tcx> State<Base<'tcx>, (), Rc<rustc_middle::mir::Body<'tcx>>, ()> {
 }
 
 /// Updates the OnwerId in a state, making sure to override `opt_def_id` in base as well.
-// TODO: is `opt_def_id` useful at all? (see https://github.com/hacspec/hacspec-v2/issues/273)
 pub fn with_owner_id<'tcx, THIR, MIR>(
     mut base: types::Base<'tcx>,
     thir: THIR,

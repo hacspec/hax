@@ -115,6 +115,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "hax-lib-protocol"
+version = "0.1.0-pre.1"
+
+[[package]]
+name = "hax-lib-protocol-macros"
+version = "0.1.0-pre.1"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.28",
+]
+
+[[package]]
 name = "if-let"
 version = "0.1.0"
 
@@ -248,6 +262,15 @@ dependencies = [
 [[package]]
 name = "pattern-or"
 version = "0.1.0"
+
+[[package]]
+name = "ping-pong"
+version = "0.1.0"
+dependencies = [
+ "hax-lib-macros",
+ "hax-lib-protocol",
+ "hax-lib-protocol-macros",
+]
 
 [[package]]
 name = "proc-macro-error"
