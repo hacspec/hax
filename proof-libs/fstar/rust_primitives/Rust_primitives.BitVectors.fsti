@@ -20,6 +20,10 @@ val lemma_get_bit_bounded #t (x:int_t t) (d:bit_num t) (i:usize):
          get_bit x i == 0)
         [SMTPat (get_bit #t x i); SMTPat (bounded x d)]
 
+val lemma_get_bit_bounded' #t (x:int_t t) (d:bit_num t):
+  Lemma (requires forall i. v i > d ==> get_bit x i == 0)
+        (ensures bounded x d)
+
 type bit_vec (len: nat) = i:nat {i < len} -> bit
 
 /// Transform an array of integers to a bit vector
