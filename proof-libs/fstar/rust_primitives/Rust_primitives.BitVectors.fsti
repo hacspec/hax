@@ -6,13 +6,14 @@ open Rust_primitives.Integers
 
 
 /// Number of bits carried by an integer of type `t`
-type bit_num t = d: nat {d > 0 /\ d <= bits t}
+type bit_num t = d: nat {d > 0 /\ d <= bits t /\ (signed t ==> d <= bits t)}
 
 /// Number of bits carried by an integer of type `t`
-type bounded #t (x:int_t t) (d:bit_num t) = v x < pow2 d
+type bounded #t (x:int_t t) (d:bit_num t) =
+  v x >= 0 /\ v x < pow2 d
 
 /// Integer of type `t` that carries `d` bits
-type int_t_d t (d: bit_num t) = 
+type int_t_d t (d: bit_num t) =
   n: int_t t {bounded n d}
 
 val lemma_get_bit_bounded #t (x:int_t t) (d:bit_num t) (i:usize):
