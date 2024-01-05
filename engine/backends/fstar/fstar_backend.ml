@@ -791,10 +791,22 @@ struct
           F.term
           @@ F.AST.Product
                ( List.map ~f:FStarBinder.to_binder generics
-                 @ List.map
-                     ~f:(fun { pat = _; typ_span; typ } ->
+                 @ List.mapi
+                     ~f:(fun i { pat; typ_span; typ } ->
+                       let name =
+                         match pat.p with
+                         | PBinding { var; _ } ->
+                             Some (U.Concrete_ident_view.local_ident var)
+                         | _ ->
+                             (* TODO: this might generate bad code,
+                                see
+                                https://github.com/hacspec/hax/issues/402
+                             *)
+                             None
+                       in
+                       let name = Option.map ~f:F.id name in
                        let span = Option.value ~default:e.span typ_span in
-                       pty span typ |> F.binder_of_term)
+                       pty span typ |> F.binder_of_term ?name)
                      params,
                  ty )
         in
