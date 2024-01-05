@@ -16,9 +16,72 @@ info:
     positive: true
     snapshot:
       stderr: true
-      stdout: false
+      stdout: true
 ---
 exit = 0
 stderr = '''
 Compiling traits v0.1.0 (WORKSPACE_ROOT/traits)
     Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+
+[stdout]
+diagnostics = []
+
+[stdout.files]
+"Traits.fst" = '''
+module Traits
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let impl_2__method (x: v_T) : Prims.unit = f_bar x
+
+class t_Bar (v_Self: Type) = { f_bar:v_Self -> Prims.unit }
+
+class t_SuperTrait (v_Self: Type) = {
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_590399929:Core.Clone.t_Clone v_Self;
+  f_function_of_super_trait:v_Self -> u32
+}
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_SuperTrait_for_i32: t_SuperTrait i32 =
+  {
+    f_function_of_super_trait = fun (self: i32) -> cast (Core.Num.impl__i32__abs self <: i32) <: u32
+  }
+
+class t_Foo (v_Self: Type) = {
+  f_AssocType:Type;
+  f_AssocType:t_SuperTrait _;
+  f_AssocType:Core.Clone.t_Clone _;
+  f_AssocType:Core.Marker.t_Sized _;
+  f_N:usize;
+  f_assoc_f:Prims.unit -> Prims.unit;
+  f_method_f:v_Self -> Prims.unit
+}
+
+let f
+      (#v_T: Type)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: Core.Marker.t_Sized v_T)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_T)
+      (x: v_T)
+    : Prims.unit =
+  let _:Prims.unit = f_assoc_f () in
+  f_method_f x
+
+let g
+      (#v_T: Type)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: Core.Marker.t_Sized v_T)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_T)
+      (x: i1.f_AssocType)
+    : u32 = f_function_of_super_trait x
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_Foo_for_tuple_: t_Foo Prims.unit =
+  {
+    f_AssocType = i32;
+    f_N = sz 32;
+    f_assoc_f = () <: Prims.unit;
+    f_method_f = fun (self: Prims.unit) -> f_assoc_f ()
+  }
+
+type t_Struct = | Struct : t_Struct
+'''
