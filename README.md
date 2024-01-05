@@ -81,10 +81,22 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 
 </details>
 
+## Supported Subset of the Rust Language
+
+Hax is indented at supporting full Rust, with the two following exceptions, promotting a functional style:
+ 1. no `unsafe` code (see https://github.com/hacspec/hax/issues/417);
+ 2. mutable references (aka `&mut T`) on return type or with aliasing (see https://github.com/hacspec/hax/issues/420).
+
+Each unsupported Rust feature is documented as an issue labeled [`unsupported-rust`](https://github.com/hacspec/hax/issues?q=is%3Aissue+is%3Aopen+label%3Aunsupported-rust). When the issue is labeled [`wontfix`](https://github.com/hacspec/hax/issues?q=is%3Aissue+is%3Aopen+label%3Aunsupported-rust+label%3Awontfix), that means we don't plan on supporting that feature.
+
+Quicklinks:
+ - [🚫 Rejected rust we don't plan to support](https://github.com/hacspec/hax/issues?q=is%3Aissue+is%3Aopen+label%3Aunsupported-rust+label%3Awontfix);
+ - [🔨 Rejected rust we want to support](https://github.com/hacspec/hax/issues?q=is%3Aissue+is%3Aopen+label%3Aunsupported-rust+-label%3Awontfix).
+
 ## Examples
 
 There's a set of examples that show what hax can do for you.
-Please check out the [examples directory](examples/)
+Please check out the [examples directory](examples/).
 
 ## Hacking on Hax
 ### Edit the sources (Nix)
