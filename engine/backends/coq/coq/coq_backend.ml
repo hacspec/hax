@@ -340,9 +340,8 @@ struct
     | Construct { is_record = false; constructor; fields = [ (f, e) ]; base } ->
         C.AST.App (C.AST.Var (pglobal_ident constructor), [ pexpr e ])
     | Construct { constructor; fields; base } ->
-        __TODO_term__ span "constructor"
-        (* C.AST.Var *)
-        (*   (pglobal_ident constructor ^ (C.ty_to_string (pty span e.typ))) *)
+        (* __TODO_term__ span "constructor" *)
+        C.AST.Var (pglobal_ident constructor ^ C.ty_to_string (pty span e.typ))
     | Closure { params; body } ->
         C.AST.Lambda (List.map ~f:ppat params, pexpr body)
     | MacroInvokation { macro; args; witness } ->
@@ -353,10 +352,8 @@ struct
            }
     | _ -> .
 
-  let pgeneric_param span : generic_param -> string * C.AST.ty = function
-    | { ident; kind = GPType { default }; _ } -> (
-        ( ident.name,
-          match default with Some t -> pty span t | None -> C.AST.WildTy ))
+  let pgeneric_param span : generic_param -> _ = function
+    | { ident; kind = GPType _; _ } -> ident.name
     | _ -> Error.unimplemented ~details:"Coq: TODO: generic_params" span
 
   let pgeneric_param_as_argument span : generic_param -> C.AST.argument =
