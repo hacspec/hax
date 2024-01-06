@@ -32,9 +32,9 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 
-Inductive t_Foo : Type :=
-| Foo_At_Foo
-| Foo_Bt_Foo.
+Inductive t_Foo: Type :=
+| Foo_A : t_Foo
+| Foo_B : t_Foo.
 
 (*Not implemented yet? todo(item)*)
 

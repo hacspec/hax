@@ -45,9 +45,10 @@ let import_thir_items (include_clauses : Types.inclusion_clause list)
   in
   (* TODO: should keep order for non-dependent functions by default? This breaks ssprove extraction. Alternatively this should be a phase *)
   let items =
-    match options.backend.backend with
-    | Coq | Ssprove -> items
-    | _ -> Deps.sort items
+    Deps.sort items
+    (* match options.backend.backend with *)
+    (* | Coq | Ssprove -> items *)
+    (* | _ -> Deps.sort items *)
   in
   let reports =
     List.concat_map
