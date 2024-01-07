@@ -254,7 +254,9 @@ val logxor_lemma: #t:inttype -> a:int_t t -> b:int_t t -> Lemma
   (logxor a b == LI.logxor #t #LI.PUB a b /\
    a `logxor` (a `logxor` b) == b /\
    a `logxor` (b `logxor` a) == b /\
+   zero `logxor` a == a /\
    a `logxor` zero == a /\
+   ones `logxor` a == lognot a /\
    a `logxor` ones == lognot a)
     
 val logand: #t:inttype
@@ -265,9 +267,11 @@ val logand: #t:inttype
 val logand_lemma: #t:inttype -> a:int_t t -> b:int_t t ->
   Lemma (logand a b == LI.logand #t #LI.PUB a b /\
          logand a zero == zero /\
+         logand zero a == zero /\
          logand a ones == a /\
-         (v a >= 0 ==> lt (logand a b) a) /\
-         (v b >= 0 ==> lt (logand a b) b))
+         logand ones a == a /\
+         (v a >= 0 ==> (v (logand a b) >= 0) /\ (v (logand a b) <= v a)) /\
+         (v b >= 0 ==> (v (logand a b) >= 0) /\ (v (logand a b) <= v b)))
 
 val logand_mask_lemma: #t:inttype
   -> a:int_t t
@@ -359,7 +363,9 @@ let neg (#t:inttype{signed t}) (a:int_t t{range (0 - v a) t}) =
 
 val neg_equiv_lemma: #t:inttype{signed t /\ not (LI.S128? t)}
   -> a:int_t t{range (0 - v a) t}
-  -> Lemma (neg a == sub #t (mk_int 0) a)
+  -> Lemma (neg a == sub #t (mk_int 0) a /\
+          (lognot a = sub (neg a) (mk_int 1)))
+
 
 
 ///
@@ -482,7 +488,7 @@ val get_bit_shr #t #u (x: int_t t) (y: int_t u) (i: usize {v i < bits t})
                          else 0))
     [SMTPat (get_bit (x >>! y) i)]
 
-// TODO: cehck for neg numbers
+// TODO: check for neg numbers
 /// Bit-wise semantics of integer casts
 val get_bit_cast #t #u
   (x: int_t t) (nth: usize)
