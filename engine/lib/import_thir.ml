@@ -1322,7 +1322,7 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
                      (* TODO: introduce a Kind.TraitImplItem or
                         something. Otherwise we have to assume every
                         backend will see traits and impls as
-                        records. See https://github.com/hacspec/hacspec-v2/issues/271. *)
+                        records. See https://github.com/hacspec/hax/issues/271. *)
                      let ii_ident =
                        Concrete_ident.of_def_id Field item.owner_id
                      in

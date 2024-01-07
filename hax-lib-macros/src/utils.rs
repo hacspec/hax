@@ -141,7 +141,7 @@ pub fn make_fn_decoration(
     let uid = ItemUid::fresh();
     let any_mut_ref = unmut_references_in_inputs(&mut signature);
     if any_mut_ref && matches!(kind, FnDecorationKind::Ensures { .. }) {
-        panic!("For now, ensures clause don't work on function that have `&mut` inputs (see https://github.com/hacspec/hacspec-v2/issues/290)")
+        panic!("For now, ensures clause don't work on function that have `&mut` inputs (see https://github.com/hacspec/hax/issues/290)")
     }
 
     let self_ident: Ident = syn::parse_quote! {self_};

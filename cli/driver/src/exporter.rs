@@ -143,7 +143,7 @@ fn precompute_local_thir_bodies<'tcx>(
             })) {
                 Ok(x) => x,
                 Err(e) => {
-                    tcx.sess.span_err(span, format!("The THIR body of item {:?} was stolen.\nThis is not supposed to happen.\nThis is a bug in Hax's frontend.\nThis is discussed in issue https://github.com/hacspec/hacspec-v2/issues/27.\nPlease comment this issue if you see this error message!", ldid));
+                    tcx.sess.span_err(span, format!("The THIR body of item {:?} was stolen.\nThis is not supposed to happen.\nThis is a bug in Hax's frontend.\nThis is discussed in issue https://github.com/hacspec/hax/issues/27.\nPlease comment this issue if you see this error message!", ldid));
                     return (ldid, dummy_thir_body(tcx, span));
                 }
             };
