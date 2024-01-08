@@ -244,7 +244,10 @@ val lognot_lemma: #t:inttype -> a:int_t t -> Lemma
   (lognot a == LI.lognot #t #LI.PUB a /\
    lognot #t zero == ones /\
    lognot #t ones == zero /\
-   lognot (lognot a) == a)
+   lognot (lognot a) == a /\
+   (signed t ==> v (lognot a) = -1 - v a) /\
+   (unsigned t ==> v (lognot a)  = pow2 (bits t) - 1 - v a)
+   )
 
 val logxor: #t:inttype
   -> int_t t
@@ -252,6 +255,8 @@ val logxor: #t:inttype
   -> int_t t
 val logxor_lemma: #t:inttype -> a:int_t t -> b:int_t t -> Lemma
   (logxor a b == LI.logxor #t #LI.PUB a b /\
+   a `logxor` a == zero /\
+   (a `logxor` b == zero ==> b == a) /\
    a `logxor` (a `logxor` b) == b /\
    a `logxor` (b `logxor` a) == b /\
    zero `logxor` a == a /\
@@ -289,7 +294,10 @@ val logor: #t:inttype
 val logor_lemma: #t:inttype -> a:int_t t -> b:int_t t ->
   Lemma (logor a b == LI.logor #t #LI.PUB a b /\
          logor a zero == a /\
-         logor a ones == ones)
+         logor a ones == ones /\
+         logor zero a == a /\
+         logor ones a == ones /\
+         ((v a >= 0 /\ v b >= 0) ==> (v (logor a b) >= v a /\ v (logor a b) >= v b)))
 
 unfold type shiftval (t:inttype) (t':inttype) =
      b:int_t t'{v b >= 0 /\ v b < bits t}
