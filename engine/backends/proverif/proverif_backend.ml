@@ -118,6 +118,24 @@ module Print = struct
       method ty_bool = string "bool"
       method ty_int _ = string "bitstring"
 
+      method! expr' : Generic_printer_base.par_state -> expr' fn =
+        fun ctx e ->
+          let wrap_parens =
+            group
+            >>
+            match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock braces
+          in
+          match e with
+          | Match
+              {
+                scrutinee =
+                  { e = App { f = { e = GlobalVar n; _ }; args = [ expr ] }; _ };
+                arms = _;
+              }
+          (*[@ocamlformat "disable"]*)
+            when Global_ident.eq_name Core__ops__try_trait__Try__branch n -> super#expr' ctx expr.e
+          | _ -> super#expr' ctx e
+
       method! item' item =
         let fun_and_reduc base_name constructor =
           let field_prefix =
