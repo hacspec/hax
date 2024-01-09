@@ -245,18 +245,6 @@ module Print = struct
 
       method! expr_app : expr -> expr list -> generic_value list fn =
         fun f args _generic_args ->
-          let dummy_fn =
-            match List.length args with
-            | n when n < 8 -> string "dummy_fn_" ^^ PPrint.OCaml.int n
-            | _ ->
-                Error.raise
-                  {
-                    kind =
-                      ExplicitRejection
-                        { reason = "Unsupported function arity." };
-                    span = current_span;
-                  }
-          in
           let args =
             separate_map
               (comma ^^ break 1)
@@ -295,18 +283,7 @@ let insert_top_level contents = contents ^ "\n\nprocess\n    0\n"
 let insert_preamble contents =
   "channel c.\n\
    type state.\n\
-   fun int2bitstring(nat): bitstring.\n\
-   fun dummy_fn_0(): bitstring.\n\
-   fun dummy_fn_1(bitstring): bitstring.\n\
-   fun dummy_fn_2(bitstring, bitstring): bitstring.\n\
-   fun dummy_fn_3(bitstring, bitstring, bitstring): bitstring.\n\
-   fun dummy_fn_4(bitstring, bitstring, bitstring, bitstring): bitstring.\n\
-   fun dummy_fn_5(bitstring, bitstring, bitstring, bitstring, bitstring): \
-   bitstring.\n\
-   fun dummy_fn_6(bitstring, bitstring, bitstring, bitstring, bitstring, \
-   bitstring): bitstring.\n\
-   fun dummy_fn_7(bitstring, bitstring, bitstring, bitstring, bitstring, \
-   bitstring, bitstring): bitstring.\n" ^ contents
+   fun int2bitstring(nat): bitstring.\n" ^ contents
 
 let is_process_read : attrs -> bool =
   Attr_payloads.payloads >> List.exists ~f:(fst >> [%matches? Types.ProcessRead])
