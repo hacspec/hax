@@ -4,27 +4,29 @@ open FStar.Mul
 open Rust_primitives.Arrays
 open Rust_primitives.Integers
 
-
 /// Number of bits carried by an integer of type `t`
 type bit_num t = d: nat {d > 0 /\ d <= bits t /\ (signed t ==> d <= bits t)}
 
-/// Number of bits carried by an integer of type `t`
+/// States that `x` is a positive integer that fits in `d` bits
 type bounded #t (x:int_t t) (d:bit_num t) =
   v x >= 0 /\ v x < pow2 d
 
-/// Integer of type `t` that carries `d` bits
+/// Integer of type `t` that carries at most `d` bits
 type int_t_d t (d: bit_num t) =
   n: int_t t {bounded n d}
 
+/// If `x` fits in `d` bits, then upper bits are zero
 val lemma_get_bit_bounded #t (x:int_t t) (d:bit_num t) (i:usize):
   Lemma ((bounded x d /\ v i >= d /\ v i < bits t) ==>
          get_bit x i == 0)
         [SMTPat (get_bit #t x i); SMTPat (bounded x d)]
 
+/// If upper bits of `x` are zero, then `x` is bounded accordingly
 val lemma_get_bit_bounded' #t (x:int_t t) (d:bit_num t):
   Lemma (requires forall i. v i > d ==> get_bit x i == 0)
         (ensures bounded x d)
 
+/// A bit vector is a partial map from indexes to bits
 type bit_vec (len: nat) = i:nat {i < len} -> bit
 
 /// Transform an array of integers to a bit vector
@@ -34,7 +36,6 @@ let bit_vec_of_int_arr (#n: inttype) (#len: usize)
                 (d: bit_num n): bit_vec (v len * d)
   = fun i -> get_bit (Seq.index arr (i / d)) (sz (i % d))
 #pop-options
-
 
 /// Transform an array of `nat`s to a bit vector
 #push-options "--fuel 0 --ifuel 1 --z3rlimit 50"
