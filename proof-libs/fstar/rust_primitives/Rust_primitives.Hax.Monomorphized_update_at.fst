@@ -9,7 +9,7 @@ let update_at_usize s i x =
 
 let update_at_range #n s i x = 
   let res = update_at s i x in
-  admit(); // To be proved, see issue #423
+  admit(); // To be proved // see issue #423
   res
   
 let update_at_range_to #n s i x =
