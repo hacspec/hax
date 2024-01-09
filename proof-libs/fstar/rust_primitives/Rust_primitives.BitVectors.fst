@@ -50,6 +50,3 @@ let get_bit_pow2_minus_one_u8 t x nth
     assume (pow2 n - 1 == x); // see issue #423
     mk_int_equiv_lemma #u8_inttype x;
     get_bit_pow2_minus_one #u8_inttype n nth
-
-let get_last_bit_signed_lemma #t x
-  = admit () // see issue #423

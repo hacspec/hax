@@ -133,10 +133,3 @@ val get_bit_pow2_minus_one_u8
         == (if v nth < Some?.v (mask_inv_opt x) then 1 else 0))
   [SMTPat (get_bit #t (FStar.UInt8.uint_to_t x) nth)]
 
-val get_last_bit_signed_lemma (#t: inttype{signed t}) (x: int_t t)
-  : Lemma (   get_bit x (mk_int (bits t - 1)) 
-          == (if v x < 0 then 1 else 0))
-    // [SMTPat (get_bit x (mk_int (bits t - 1)))]
-
-
-
