@@ -1,10 +1,12 @@
 module Rust_primitives.Hax.Monomorphized_update_at
+#set-options "--z3rlimit 30"
+
+/// Monomorphized versions of the `update_at` operator.
 
 open Rust_primitives
 open Rust_primitives.Hax
 open Core.Ops.Range
 
-#set-options "--z3rlimit 30"
 
 val update_at_usize
   (s: t_Slice 't)
