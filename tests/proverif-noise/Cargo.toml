@@ -19,6 +19,9 @@ hacspec-curve25519 = { git = "https://github.com/hacspec/specs", version = "0.1.
 hacspec-sha256 = { git = "https://github.com/hacspec/specs", version = "0.1.0" }
 hacspec-hmac = { git = "https://github.com/hacspec/specs", version = "0.1.0" }
 hacspec-hkdf = { git = "https://github.com/hacspec/specs", version = "0.1.0" }
+hax-lib-protocol = { path = "../../hax-lib-protocol" }
+hax-lib-protocol-macros = { path = "../../hax-lib-protocol-macros" }
+hax-lib-macros = { path = "../../hax-lib-macros" }
 
 
 [dev-dependencies]
