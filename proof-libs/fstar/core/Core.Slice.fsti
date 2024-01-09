@@ -12,7 +12,10 @@ val impl__chunks (x: t_Slice 'a) (cs: usize): t_Chunks 'a
 
 let impl__iter (s: t_Slice 't): t_Slice 't = s
 
-val impl__chunks_exact (x: t_Slice 'a) (cs: usize): t_Slice (s: t_Slice 'a {length s == cs})
+val impl__chunks_exact (x: t_Slice 'a) (cs: usize):
+    Pure (t_Slice (t_Slice 'a))
+    (requires True)
+    (ensures (fun r -> forall i. i < v (length x) ==> length x ==  cs))
 
 open Core.Ops.Index
 
@@ -24,4 +27,8 @@ instance impl__index t n: t_Index (t_Slice t) (int_t n)
 
 let impl__copy_from_slice #t (x: t_Slice t) (y:t_Slice t) : t_Slice t = y
 
-val impl__split_at #t (s: t_Slice t) (mid: usize): (t_Slice t * t_Slice t)
+val impl__split_at #t (s: t_Slice t) (mid: usize): Pure (t_Slice t * t_Slice t)
+    (requires (v mid <= Seq.length s))
+    (ensures (fun (x,y) -> Seq.length x == v mid /\ Seq.length y == Seq.length s - v mid /\
+                        x == Seq.slice s 0 (v mid) /\ y == Seq.slice s (v mid) (Seq.length s) /\
+                        s == Seq.append x y))

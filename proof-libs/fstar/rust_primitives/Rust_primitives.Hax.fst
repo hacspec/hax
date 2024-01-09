@@ -34,27 +34,3 @@ let (.[]<-) #self #idx {| update_at_tc self idx |} (s: self) (i: idx {in_range s
 
 let array_of_list #t = Rust_primitives.Arrays.of_list #t
 
-
-
-// class index self idx = {
-//   [@@@FStar.Tactics.Typeclasses.no_method]
-//   output: Type;
-//   in_range: self -> idx -> bool;
-//   (.[]): s:self -> i:idx {in_range s i} -> output;
-// }
-
-// class update_at_tc self idx = {
-//   [@@@FStar.Tactics.Typeclasses.tcinstance]
-//   super_index: index self idx;
-//   (.[]<-): s: self -> i: idx {in_range s i} -> super_index.output -> self;
-// }
-// let update_at #self #idx {| update_at_tc self idx |} (s: self) (i: idx {in_range s i})
-//   = (.[]<-) s i
-
-// instance index_array t l n : index (array t l) (int_t n) = {
-//   output = t;
-//   in_range = (fun (_:array t l) (idx: int_t n) -> v idx >= 0 && v idx < v l);
-//   (.[]) = (fun (x:array t l) idx -> Seq.index x (v idx));
-// }
-
-

@@ -2,6 +2,7 @@ module Rust_primitives
 
 include Rust_primitives.Integers
 include Rust_primitives.Arrays
+include Rust_primitives.BitVectors
 
 class cast_tc a b = {
   cast: a -> b; 
