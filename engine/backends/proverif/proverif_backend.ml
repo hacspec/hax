@@ -333,9 +333,6 @@ module TransformToInputLanguage =
   |> Phases.Local_mutation
   |> Phases.Reject.Continue
   |> Phases.Reconstruct_question_marks
-  (* |> Phases.Reject.EarlyExit *)
-  (* |> Phases.Functionalize_loops *)
-  (* |> Phases.Reject.As_pattern *)
   |> SubtypeToInputLanguage
   |> Identity
   ]
