@@ -12,10 +12,10 @@ let map_array #n (arr: t_Array 'a n) (f: 'a -> 'b): t_Array 'b n
   = FStar.Seq.map_seq_len f arr;
     FStar.Seq.map_seq f arr 
 
-let createi #t l f = admit()
+let createi #t l f = admit() // see issue #423
 
-let lemma_index_concat x y i = admit()
+let lemma_index_concat x y i = admit() // see issue #423
 
-let lemma_index_slice x y i = admit()
+let lemma_index_slice x y i = admit() // see issue #423
 
-let eq_intro a b = admit()
+let eq_intro a b = admit() // see issue #423

@@ -201,7 +201,7 @@ val decr_equiv_lemma: #t:inttype
   -> Lemma (decr a == LI.decr #t #LI.PUB a)
 
 let div (#t:inttype) (a:int_t t) (b:int_t t{v b <> 0}) =
-  assume(unsigned t \/ range (v a / v b) t);
+  assume(unsigned t \/ range (v a / v b) t); // see issue #423
   mk_int #t (v a / v b)
   
 val div_equiv_lemma: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}

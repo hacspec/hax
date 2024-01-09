@@ -6,9 +6,9 @@ open Rust_primitives.Integers
 
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 40"
 
-let lemma_get_bit_bounded #t x d i = admit()
+let lemma_get_bit_bounded #t x d i = admit() // see issue #423
 
-let lemma_get_bit_bounded' #t x d = admit()
+let lemma_get_bit_bounded' #t x d = admit() // see issue #423
 
 let pow2_minus_one_mod_lemma1 (n: nat) (m: nat {m < n})
    : Lemma (((pow2 n - 1) / pow2 m) % 2 == 1)
@@ -29,27 +29,27 @@ let get_bit_pow2_minus_one #t n nth
 
 let get_bit_pow2_minus_one_i32 x nth
   = let n = Some?.v (mask_inv_opt x) in
-    assume (pow2 n - 1 == x);
+    assume (pow2 n - 1 == x); // see issue #423
     mk_int_equiv_lemma #i32_inttype x;
     get_bit_pow2_minus_one #i32_inttype n nth
 
 let get_bit_pow2_minus_one_u32 x nth
   = let n = Some?.v (mask_inv_opt x) in
-    assume (pow2 n - 1 == x);
+    assume (pow2 n - 1 == x); // see issue #423
     mk_int_equiv_lemma #u32_inttype x;
     get_bit_pow2_minus_one #u32_inttype n nth
 
 let get_bit_pow2_minus_one_u16 x nth
   = let n = Some?.v (mask_inv_opt x) in
-    assume (pow2 n - 1 == x);
+    assume (pow2 n - 1 == x); // see issue #423
     mk_int_equiv_lemma #u16_inttype x;
     get_bit_pow2_minus_one #u16_inttype n nth
 
 let get_bit_pow2_minus_one_u8 t x nth
   = let n = Some?.v (mask_inv_opt x) in
-    assume (pow2 n - 1 == x);
+    assume (pow2 n - 1 == x); // see issue #423
     mk_int_equiv_lemma #u8_inttype x;
     get_bit_pow2_minus_one #u8_inttype n nth
 
 let get_last_bit_signed_lemma #t x
-  = admit ()
+  = admit () // see issue #423
