@@ -118,11 +118,20 @@ val get_bit_pow2_minus_one_u16
 /// Specialized `get_bit_pow2_minus_one` lemmas with SMT patterns
 /// targetting machine integer literals of type `u8`  
 val get_bit_pow2_minus_one_u8
-  (t: _ {t == u8_inttype}) (x: int {x < pow2 8 /\ Some? (mask_inv_opt x)}) (nth: usize {v nth < 8})
+  // We use `Lib.IntTypes` (Hacl*'s library): every operation on
+  // integers is polymorphic in integer types. There is a one to one
+  // correspondence between F*'s machine integers (UInt16, UInt64...)
+  // and `Lib.IntTypes.inttype`'s variants (U16, U32...), but for `U8`
+  // and `U1`. Bits (`U1`) and `u8`s are using the same
+  // representation: `U8`. Thus, sometimes F* picks the wrong
+  // `inttype`. This is the reason for the refined type `t` below,
+  // which appears only on this version of the specialized
+  // `get_bit_pow2_minus_one` lemma.
+  (t: _ {t == u8_inttype})  
+  (x: int {x < pow2 8 /\ Some? (mask_inv_opt x)}) (nth: usize {v nth < 8})
   : Lemma ( get_bit #t (FStar.UInt8.uint_to_t x) nth 
         == (if v nth < Some?.v (mask_inv_opt x) then 1 else 0))
   [SMTPat (get_bit #t (FStar.UInt8.uint_to_t x) nth)]
-// XXX: Why the #t here and not in the ones above?
 
 val get_last_bit_signed_lemma (#t: inttype{signed t}) (x: int_t t)
   : Lemma (   get_bit x (mk_int (bits t - 1)) 
