@@ -282,7 +282,6 @@ let insert_top_level contents = contents ^ "\n\nprocess\n    0\n"
 (* Insert ProVerif code that will be necessary in any development.*)
 let insert_preamble contents =
   "channel c.\n\
-   type state.\n\
    fun int2bitstring(nat): bitstring.\n" ^ contents
 
 let is_process_read : attrs -> bool =
