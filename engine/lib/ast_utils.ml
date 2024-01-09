@@ -66,6 +66,7 @@ module Make (F : Features.T) = struct
             f = { e = GlobalVar (`Concrete f'); _ };
             args = [ e ];
             generic_args = _;
+            impl = _;
           (* TODO: see issue #328 *)
           }
         when Concrete_ident.eq_name f f' ->
@@ -142,6 +143,18 @@ module Make (F : Features.T) = struct
     end
   end
 
+  let functions_of_item (x : item) : (concrete_ident * expr) list =
+    match x.v with
+    | Fn { name; generics = _; body; params = _ } -> [ (name, body) ]
+    | Impl { items; _ } ->
+        List.filter_map
+          ~f:(fun w ->
+            match w.ii_v with
+            | IIFn { body; params = _ } -> Some (w.ii_ident, body)
+            | _ -> None)
+          items
+    | _ -> []
+
   module Mappers = struct
     let regenerate_span_ids =
       object
@@ -165,6 +178,7 @@ module Make (F : Features.T) = struct
                   f = { e = GlobalVar (`Primitive Deref); _ };
                   args = [ { e = Borrow { e = sub; _ }; _ } ];
                   generic_args = _;
+                  impl = _;
                 (* TODO: see issue #328 *)
                 } ->
                 expr sub
@@ -261,9 +275,13 @@ module Make (F : Features.T) = struct
                   f = { e = GlobalVar (`Primitive Cast); _ } as f;
                   args = [ arg ];
                   generic_args;
+                  impl;
                 } ->
                 ascribe
-                  { e with e = App { f; args = [ ascribe arg ]; generic_args } }
+                  {
+                    e with
+                    e = App { f; args = [ ascribe arg ]; generic_args; impl };
+                  }
             | _ ->
                 (* Ascribe the return type of a function application & constructors *)
                 if (ascribe_app && is_app e.e) || [%matches? Construct _] e.e
@@ -582,7 +600,7 @@ module Make (F : Features.T) = struct
 
   let remove_unsize (e : expr) : expr =
     match e.e with
-    | App { f = { e = GlobalVar f; _ }; args = [ e ]; generic_args = _ }
+    | App { f = { e = GlobalVar f; _ }; args = [ e ]; _ }
       when Global_ident.eq_name Rust_primitives__unsize f ->
         e
     | _ -> e
@@ -748,8 +766,9 @@ module Make (F : Features.T) = struct
           {
             f = { e; typ; span };
             args;
-            generic_args =
-              []
+            generic_args = [];
+            impl =
+              None
               (* TODO: see issue #328, and check that for evrey call to `call'` *);
           };
       typ = ret_typ;
@@ -784,7 +803,7 @@ module Make (F : Features.T) = struct
 
   let unbox_expr' (next : expr -> expr) (e : expr) : expr =
     match e.e with
-    | App { f = { e = GlobalVar f; _ }; args = [ e ]; generic_args = _ }
+    | App { f = { e = GlobalVar f; _ }; args = [ e ]; _ }
       when Global_ident.eq_name Alloc__boxed__Impl__new f ->
         next e
     | _ -> e
@@ -796,6 +815,7 @@ module Make (F : Features.T) = struct
           f = { e = GlobalVar (`Primitive Ast.Deref); _ };
           args = [ e ];
           generic_args = _;
+          impl = _;
         } ->
         next e
     | _ -> e
@@ -826,7 +846,12 @@ module Make (F : Features.T) = struct
         {
           e =
             App
-              { f; args = [ e ]; generic_args = [] (* TODO: see issue #328 *) };
+              {
+                f;
+                args = [ e ];
+                generic_args = [];
+                impl = None (* TODO: see issue #328 *);
+              };
           typ;
           span;
         }
@@ -924,6 +949,7 @@ module Make (F : Features.T) = struct
             f = tuple_projector tuple.span tuple.typ len nth type_at_nth;
             args = [ tuple ];
             generic_args = [] (* TODO: see issue #328 *);
+            impl = None (* TODO: see issue #328 *);
           };
     }
 
@@ -956,6 +982,7 @@ module Make (F : Features.T) = struct
             f = { e = GlobalVar (`Projector _ as projector); _ };
             args = [ place ];
             generic_args = _;
+            impl = _;
           (* TODO: see issue #328 *)
           } ->
           let* place = of_expr place in
@@ -965,6 +992,7 @@ module Make (F : Features.T) = struct
             f = { e = GlobalVar f; _ };
             args = [ place; index ];
             generic_args = _;
+            impl = _;
           (* TODO: see issue #328 *)
           }
         when Global_ident.eq_name Core__ops__index__Index__index f ->
@@ -976,6 +1004,7 @@ module Make (F : Features.T) = struct
             f = { e = GlobalVar f; _ };
             args = [ place; index ];
             generic_args = _;
+            impl = _;
           (* TODO: see issue #328 *)
           }
         when Global_ident.eq_name Core__ops__index__IndexMut__index_mut f ->

@@ -342,7 +342,7 @@ struct
                     m#plus (m#plus (no_lbs ethen) (no_lbs eelse)) effects
                   in
                   ({ e with e = If { cond; then_; else_ } }, effects))
-          | App { f; args; generic_args } ->
+          | App { f; args; generic_args; impl } ->
               HoistSeq.many env
                 (List.map ~f:(super#visit_expr env) (f :: args))
                 (fun l effects ->
@@ -351,7 +351,7 @@ struct
                     | f :: args -> (f, args)
                     | _ -> HoistSeq.err_hoist_invariant e.span Stdlib.__LOC__
                   in
-                  ({ e with e = App { f; args; generic_args } }, effects))
+                  ({ e with e = App { f; args; generic_args; impl } }, effects))
           | Literal _ -> (e, m#zero)
           | Block (inner, witness) ->
               HoistSeq.one env (super#visit_expr env inner)

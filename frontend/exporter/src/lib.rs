@@ -8,6 +8,7 @@
 #![feature(let_chains)]
 #![allow(incomplete_features)]
 #![feature(specialization)]
+#![feature(return_position_impl_trait_in_trait)]
 
 extern crate rustc_abi;
 extern crate rustc_ast;
