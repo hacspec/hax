@@ -125,17 +125,33 @@ let shuffle (ws: t_Array u32 (sz 64)) (hashi: t_Array u32 (sz 8)) : t_Array u32 
             Core.Num.impl__u32__wrapping_add (sigma a0 (sz 0) (sz 1) <: u32) (maj a0 b0 c0 <: u32)
           in
           let h:t_Array u32 (sz 8) =
-            Rust_primitives.Hax.update_at h (sz 0) (Core.Num.impl__u32__wrapping_add t1 t2 <: u32)
+            Rust_primitives.Hax.Monomorphized_update_at.update_at_usize h
+              (sz 0)
+              (Core.Num.impl__u32__wrapping_add t1 t2 <: u32)
           in
-          let h:t_Array u32 (sz 8) = Rust_primitives.Hax.update_at h (sz 1) a0 in
-          let h:t_Array u32 (sz 8) = Rust_primitives.Hax.update_at h (sz 2) b0 in
-          let h:t_Array u32 (sz 8) = Rust_primitives.Hax.update_at h (sz 3) c0 in
           let h:t_Array u32 (sz 8) =
-            Rust_primitives.Hax.update_at h (sz 4) (Core.Num.impl__u32__wrapping_add d0 t1 <: u32)
+            Rust_primitives.Hax.Monomorphized_update_at.update_at_usize h (sz 1) a0
           in
-          let h:t_Array u32 (sz 8) = Rust_primitives.Hax.update_at h (sz 5) e0 in
-          let h:t_Array u32 (sz 8) = Rust_primitives.Hax.update_at h (sz 6) f0 in
-          let h:t_Array u32 (sz 8) = Rust_primitives.Hax.update_at h (sz 7) g0 in
+          let h:t_Array u32 (sz 8) =
+            Rust_primitives.Hax.Monomorphized_update_at.update_at_usize h (sz 2) b0
+          in
+          let h:t_Array u32 (sz 8) =
+            Rust_primitives.Hax.Monomorphized_update_at.update_at_usize h (sz 3) c0
+          in
+          let h:t_Array u32 (sz 8) =
+            Rust_primitives.Hax.Monomorphized_update_at.update_at_usize h
+              (sz 4)
+              (Core.Num.impl__u32__wrapping_add d0 t1 <: u32)
+          in
+          let h:t_Array u32 (sz 8) =
+            Rust_primitives.Hax.Monomorphized_update_at.update_at_usize h (sz 5) e0
+          in
+          let h:t_Array u32 (sz 8) =
+            Rust_primitives.Hax.Monomorphized_update_at.update_at_usize h (sz 6) f0
+          in
+          let h:t_Array u32 (sz 8) =
+            Rust_primitives.Hax.Monomorphized_update_at.update_at_usize h (sz 7) g0
+          in
           h)
   in
   h
@@ -189,7 +205,9 @@ let schedule (block: t_Array u8 (sz 64)) : t_Array u32 (sz 64) =
           let i:usize = i in
           if i <. sz 16 <: bool
           then
-            let s:t_Array u32 (sz 64) = Rust_primitives.Hax.update_at s i (b.[ i ] <: u32) in
+            let s:t_Array u32 (sz 64) =
+              Rust_primitives.Hax.Monomorphized_update_at.update_at_usize s i (b.[ i ] <: u32)
+            in
             s
           else
             let t16:u32 = s.[ i -! sz 16 <: usize ] in
@@ -199,7 +217,7 @@ let schedule (block: t_Array u8 (sz 64)) : t_Array u32 (sz 64) =
             let s1:u32 = sigma t2 (sz 3) (sz 0) in
             let s0:u32 = sigma t15 (sz 2) (sz 0) in
             let s:t_Array u32 (sz 64) =
-              Rust_primitives.Hax.update_at s
+              Rust_primitives.Hax.Monomorphized_update_at.update_at_usize s
                 i
                 (Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add
                             s1
@@ -233,7 +251,7 @@ let compress (block: t_Array u8 (sz 64)) (h_in: t_Array u32 (sz 8)) : t_Array u3
       (fun h i ->
           let h:t_Array u32 (sz 8) = h in
           let i:usize = i in
-          Rust_primitives.Hax.update_at h
+          Rust_primitives.Hax.Monomorphized_update_at.update_at_usize h
             i
             (Core.Num.impl__u32__wrapping_add (h.[ i ] <: u32) (h_in.[ i ] <: u32) <: u32)
           <:
@@ -270,7 +288,7 @@ let u32s_to_be_bytes (state: t_Array u32 (sz 8)) : t_Array u8 (sz 32) =
             (fun out j ->
                 let out:t_Array u8 (sz 32) = out in
                 let j:usize = j in
-                Rust_primitives.Hax.update_at out
+                Rust_primitives.Hax.Monomorphized_update_at.update_at_usize out
                   ((i *! sz 4 <: usize) +! j <: usize)
                   (tmp.[ j ] <: u8)
                 <:
@@ -312,7 +330,9 @@ let hash (msg: t_Slice u8) : t_Array u8 (sz 32) =
                 (fun last_block i ->
                     let last_block:t_Array u8 (sz 64) = last_block in
                     let i:usize = i in
-                    Rust_primitives.Hax.update_at last_block i (block.[ i ] <: u8)
+                    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize last_block
+                      i
+                      (block.[ i ] <: u8)
                     <:
                     t_Array u8 (sz 64))
             in
@@ -330,7 +350,7 @@ let hash (msg: t_Slice u8) : t_Array u8 (sz 32) =
             h, last_block, last_block_len <: (t_Array u32 (sz 8) & t_Array u8 (sz 64) & usize))
   in
   let last_block:t_Array u8 (sz 64) =
-    Rust_primitives.Hax.update_at last_block last_block_len 128uy
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize last_block last_block_len 128uy
   in
   let len_bist:u64 = cast ((Core.Slice.impl__len msg <: usize) *! sz 8 <: usize) <: u64 in
   let len_bist_bytes:t_Array u8 (sz 8) = Core.Num.impl__u64__to_be_bytes len_bist in
@@ -350,7 +370,7 @@ let hash (msg: t_Slice u8) : t_Array u8 (sz 32) =
           (fun last_block i ->
               let last_block:t_Array u8 (sz 64) = last_block in
               let i:usize = i in
-              Rust_primitives.Hax.update_at last_block
+              Rust_primitives.Hax.Monomorphized_update_at.update_at_usize last_block
                 ((v_BLOCK_SIZE -! v_LEN_SIZE <: usize) +! i <: usize)
                 (len_bist_bytes.[ i ] <: u8)
               <:
@@ -375,7 +395,7 @@ let hash (msg: t_Slice u8) : t_Array u8 (sz 32) =
           (fun pad_block i ->
               let pad_block:t_Array u8 (sz 64) = pad_block in
               let i:usize = i in
-              Rust_primitives.Hax.update_at pad_block
+              Rust_primitives.Hax.Monomorphized_update_at.update_at_usize pad_block
                 ((v_BLOCK_SIZE -! v_LEN_SIZE <: usize) +! i <: usize)
                 (len_bist_bytes.[ i ] <: u8)
               <:

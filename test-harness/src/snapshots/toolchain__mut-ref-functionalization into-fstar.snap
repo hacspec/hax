@@ -24,14 +24,6 @@ exit = 0
 diagnostics = []
 
 [stdout.files]
-"Mut_ref_functionalization.F.fst" = '''
-module Mut_ref_functionalization.F
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
-open Core
-open FStar.Mul
-
-
-'''
 "Mut_ref_functionalization.fst" = '''
 module Mut_ref_functionalization
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
@@ -46,8 +38,8 @@ let array (x: t_Array u8 (sz 10)) : t_Array u8 (sz 10) =
   in
   x
 
-let f: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
-  let vec:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Alloc.Vec.impl__new in
+let f (_: Prims.unit) : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
+  let vec:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Alloc.Vec.impl__new () in
   let vec:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Alloc.Vec.impl_1__push vec 1uy in
   let vec:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Alloc.Vec.impl_1__push vec 2uy in
   let vec:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Core.Slice.impl__swap vec (sz 0) (sz 1) in
@@ -58,7 +50,7 @@ let h (x: u8) : u8 =
   let x:u8 = x +! 10uy in
   x
 
-let build_vec: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
+let build_vec (_: Prims.unit) : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
   Alloc.Slice.impl__into_vec (Rust_primitives.unsize (Rust_primitives.Hax.box_new (let list =
                 [1uy; 2uy; 3uy]
               in
@@ -115,8 +107,8 @@ let index_mutation_unsize (x: t_Array u8 (sz 12)) : u8 =
   in
   42uy
 
-let test_append: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
-  let vec1:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Alloc.Vec.impl__new in
+let test_append (_: Prims.unit) : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
+  let vec1:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Alloc.Vec.impl__new () in
   let vec2:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
     Alloc.Slice.impl__into_vec (Rust_primitives.unsize (Rust_primitives.Hax.box_new (let list =
                   [1uy; 2uy; 3uy]
@@ -136,7 +128,7 @@ let test_append: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
   let vec2:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = tmp1 in
   let _:Prims.unit = () in
   let vec1:(Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global & Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) =
-    Alloc.Vec.impl_1__append vec1 (build_vec <: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
+    Alloc.Vec.impl_1__append vec1 (build_vec () <: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
   in
   vec1
 
@@ -204,7 +196,7 @@ let j (x: t_Bar) : (t_Bar & u8) =
   let hax_temp_output:u8 = out in
   x, hax_temp_output <: (t_Bar & u8)
 
-type t_Pair (v_T: Type) {| _: Core.Marker.t_Sized v_T |} = {
+type t_Pair (v_T: Type) {| i0: Core.Marker.t_Sized v_T |} = {
   f_a:v_T;
   f_b:t_Foo
 }

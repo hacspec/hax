@@ -179,6 +179,7 @@ let resugar_index_mut (e : expr) : (expr * expr) option =
         f = { e = GlobalVar (`Concrete meth); _ };
         args = [ { e = Borrow { e = x; _ }; _ }; index ];
         generic_args = _ (* TODO: see issue #328 *);
+        impl = _ (* TODO: see issue #328 *);
       }
     when Concrete_ident.eq_name Core__ops__index__IndexMut__index_mut meth ->
       Some (x, index)
@@ -187,6 +188,7 @@ let resugar_index_mut (e : expr) : (expr * expr) option =
         f = { e = GlobalVar (`Concrete meth); _ };
         args = [ x; index ];
         generic_args = _ (* TODO: see issue #328 *);
+        impl = _ (* TODO: see issue #328 *);
       }
     when Concrete_ident.eq_name Core__ops__index__Index__index meth ->
       Some (x, index)
@@ -321,7 +323,7 @@ end) : EXPR = struct
   and c_expr_unwrapped (e : Thir.decorated_for__expr_kind) : expr =
     (* TODO: eliminate that `call`, use the one from `ast_utils` *)
     let call f args =
-      App { f; args = List.map ~f:c_expr args; generic_args = [] }
+      App { f; args = List.map ~f:c_expr args; generic_args = []; impl = None }
     in
     let typ = c_ty e.span e.ty in
     let span = Span.of_thir e.span in
@@ -384,7 +386,14 @@ end) : EXPR = struct
                 { f with e = GlobalVar (def_id (AssociatedItem Value) id) }
             | _ -> f
           in
-          App { f; args; generic_args }
+          let args = if List.is_empty args then [ unit_expr span ] else args in
+          App
+            {
+              f;
+              args;
+              generic_args;
+              impl = Option.map ~f:(c_impl_expr e.span) impl;
+            }
       | Box { value } ->
           (U.call Rust_primitives__hax__box_new [ c_expr value ] span typ).e
       | Deref { arg } ->
@@ -511,6 +520,7 @@ end) : EXPR = struct
               f = { e = projector; typ = TArrow ([ lhs.typ ], typ); span };
               args = [ lhs ];
               generic_args = [] (* TODO: see issue #328 *);
+              impl = None (* TODO: see issue #328 *);
             }
       | TupleField { lhs; field } ->
           (* TODO: refactor *)
@@ -526,6 +536,7 @@ end) : EXPR = struct
               f = { e = projector; typ = TArrow ([ lhs.typ ], typ); span };
               args = [ lhs ];
               generic_args = [] (* TODO: see issue #328 *);
+              impl = None (* TODO: see issue #328 *);
             }
       | GlobalName { id } -> GlobalVar (def_id Value id)
       | UpvarRef { var_hir_id = id; _ } -> LocalVar (local_ident Expr id)
@@ -616,6 +627,10 @@ end) : EXPR = struct
           let params =
             List.filter_map ~f:(fun p -> Option.map ~f:c_pat p.pat) params
           in
+          let params =
+            if List.is_empty params then [ U.make_wild_pat U.unit_typ span ]
+            else params
+          in
           let body = c_expr body in
           let upvars = List.map ~f:c_expr upvars in
           Closure { body; params; captures = upvars }
@@ -657,6 +672,7 @@ end) : EXPR = struct
                     };
                   args = [ e ];
                   generic_args = _;
+                  impl = _;
                 (* TODO: see issue #328 *)
                 } ->
                 LhsFieldAccessor
@@ -843,7 +859,11 @@ end) : EXPR = struct
     | Float k -> TFloat (match k with F32 -> F32 | F64 -> F64)
     | Arrow value ->
         let ({ inputs; output; _ } : Thir.ty_fn_sig) = value.value in
-        TArrow (List.map ~f:(c_ty span) inputs, c_ty span output)
+        let inputs =
+          if List.is_empty inputs then [ U.unit_typ ]
+          else List.map ~f:(c_ty span) inputs
+        in
+        TArrow (inputs, c_ty span output)
     | Adt { def_id = id; generic_args } ->
         let ident = def_id Type id in
         let args = List.map ~f:(c_generic_value span) generic_args in
@@ -919,6 +939,7 @@ end) : EXPR = struct
         in
         List.fold ~init ~f path
     | Dyn { trait } -> Dyn (c_trait_ref span trait)
+    | SelfImpl -> Self
     | Builtin { trait } -> Builtin (c_trait_ref span trait)
     | Todo str -> failwith @@ "impl_expr_atom: Todo " ^ str
 
@@ -1022,7 +1043,11 @@ end) : EXPR = struct
           | DefaultReturn _span -> unit_typ
           | Return ty -> c_ty span ty
         in
-        TIFn (TArrow (List.map ~f:(c_ty span) inputs, output))
+        let inputs =
+          if List.is_empty inputs then [ U.unit_typ ]
+          else List.map ~f:(c_ty span) inputs
+        in
+        TIFn (TArrow (inputs, output))
     | Type (bounds, None) ->
         let bounds = List.filter_map ~f:(c_predicate_kind span) bounds in
         TIType bounds
@@ -1126,6 +1151,10 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
                ty = c_ty item.span ty;
              }
     | Fn (generics, { body; params; _ }) ->
+        let params =
+          if List.is_empty params then [ U.make_unit_param span ]
+          else List.map ~f:(c_param item.span) params
+        in
         mk
         @@ Fn
              {
@@ -1133,7 +1162,7 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
                  Concrete_ident.of_def_id Value (Option.value_exn item.def_id);
                generics = c_generics generics;
                body = c_expr body;
-               params = List.map ~f:(c_param item.span) params;
+               params;
              }
     | Enum (variants, generics) ->
         let def_id = Option.value_exn item.def_id in
@@ -1233,12 +1262,16 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
             let v =
               match (item.kind : Thir.impl_item_kind) with
               | Fn { body; params; _ } ->
+                  let params =
+                    if List.is_empty params then [ U.make_unit_param span ]
+                    else List.map ~f:(c_param item.span) params
+                  in
                   Fn
                     {
                       name = item_def_id;
                       generics = c_generics generics;
                       body = c_expr body;
-                      params = List.map ~f:(c_param item.span) params;
+                      params;
                     }
               | Const (_ty, e) ->
                   Fn
@@ -1289,7 +1322,7 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
                      (* TODO: introduce a Kind.TraitImplItem or
                         something. Otherwise we have to assume every
                         backend will see traits and impls as
-                        records. See https://github.com/hacspec/hacspec-v2/issues/271. *)
+                        records. See https://github.com/hacspec/hax/issues/271. *)
                      let ii_ident =
                        Concrete_ident.of_def_id Field item.owner_id
                      in

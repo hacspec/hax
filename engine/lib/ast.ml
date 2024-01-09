@@ -256,6 +256,7 @@ functor
       | GConst of expr
 
     and impl_expr =
+      | Self
       | Concrete of trait_ref
       | LocalBound of { id : string }
       | Parent of { impl : impl_expr; trait : trait_ref }
@@ -303,6 +304,7 @@ functor
           f : expr;
           args : expr list (* ; f_span: span *);
           generic_args : generic_value list;
+          impl : impl_expr option;
         }
       | Literal of literal
       | Array of expr list

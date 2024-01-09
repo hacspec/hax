@@ -24,6 +24,16 @@ macro_rules! proxy_macro_if_not_hax {
         $f($cond)
     };
 }
+
+#[cfg(not(debug_assertions))]
+#[doc(hidden)]
+#[cfg(not(hax))]
+#[macro_export]
+macro_rules! proxy_macro_if_not_hax {
+    ($macro:path, $f:expr, $($arg:tt)*) => {};
+}
+
+#[cfg(debug_assertions)]
 #[doc(hidden)]
 #[cfg(not(hax))]
 #[macro_export]

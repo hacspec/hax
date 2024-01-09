@@ -21,10 +21,13 @@ let lid_of_id id = Ident.lid_of_ids [ id ]
 let term (tm : AST.term') = AST.{ tm; range = dummyRange; level = Expr }
 let generate_fresh_ident () = Ident.gen dummyRange
 
-let decl ?(quals = []) ?(attrs = []) (d : AST.decl') =
-  `Item AST.{ d; drange = dummyRange; quals; attrs }
+let decl ?(fsti = true) ?(quals = []) ?(attrs = []) (d : AST.decl') =
+  let decl = AST.{ d; drange = dummyRange; quals; attrs } in
+  if fsti then `Intf decl else `Impl decl
 
-let decls ?(quals = []) ?(attrs = []) x = [ decl ~quals ~attrs x ]
+let decls ?(fsti = true) ?(quals = []) ?(attrs = []) x =
+  [ decl ~fsti ~quals ~attrs x ]
+
 let pat (pat : AST.pattern') = AST.{ pat; prange = dummyRange }
 
 module Attrs = struct
@@ -56,7 +59,13 @@ let mk_binder ?(aqual : FStar_Parser_AST.arg_qualifier option = Some Implicit) b
 
 let mk_e_binder b = mk_binder ~aqual:None b
 let term_of_lid path = term @@ AST.Name (lid path)
-let binder_of_term (t : AST.term) : AST.binder = mk_e_binder @@ AST.NoName t
+
+let binder_of_term ?name (t : AST.term) : AST.binder =
+  let b =
+    match name with None -> AST.NoName t | Some n -> AST.Annotated (n, t)
+  in
+  mk_e_binder b
+
 let unit = term AST.(Const Const_unit)
 
 let mk_e_arrow inputs output =
@@ -92,7 +101,7 @@ let term_of_string s =
 
 let decls_of_string s =
   match parse_string (fun x -> Toplevel x) s with
-  | ASTFragment (Inr l, _) -> List.map ~f:(fun i -> `Item i) l
+  | ASTFragment (Inr l, _) -> List.map ~f:(fun i -> `Impl i) l
   | _ -> failwith "parse failed"
 
 let decl_of_string s =

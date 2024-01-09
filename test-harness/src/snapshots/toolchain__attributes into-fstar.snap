@@ -1,0 +1,57 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: fstar
+  info:
+    name: attributes
+    manifest: attributes/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: false
+      stdout: true
+---
+exit = 0
+
+[stdout]
+diagnostics = []
+
+[stdout.files]
+"Attributes.fst" = '''
+module Attributes
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let add3_lemma (x: u32)
+    : Lemma Prims.l_True
+      (ensures
+        x <=. 10ul || x >=. (u32_max /! 3ul <: u32) || (add3 x x x <: u32) =. (x *! 3ul <: u32)) =
+  ()
+
+let u32_max: u32 = 90000ul
+
+let add3 (x y z: u32)
+    : Prims.Pure u32
+      (requires x >. 10ul && y >. 10ul && z >. 10ul && ((x +! y <: u32) +! z <: u32) <. u32_max)
+      (ensures
+        fun result ->
+          let result:u32 = result in
+          Hax_lib.implies true
+            (fun temp_0_ ->
+                let _:Prims.unit = temp_0_ in
+                result >. 32ul <: bool)) = (x +! y <: u32) +! z
+
+type t_Foo = {
+  f_x:u32;
+  f_y:f_y: u32{f_y >. 3ul};
+  f_z:f_z: u32{((f_y +! f_x <: u32) +! f_z <: u32) >. 3ul}
+}
+'''

@@ -13,6 +13,8 @@ members = [
      "hax-lib",
      "hax-lib-macros",
      "hax-lib-macros/types",
+     "hax-lib-protocol",
+     "hax-lib-protocol-macros"
 ]
 exclude = ["tests"]
 resolver = "2"

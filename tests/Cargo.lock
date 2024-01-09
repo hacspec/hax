@@ -15,6 +15,7 @@ dependencies = [
 name = "attributes"
 version = "0.1.0"
 dependencies = [
+ "hax-lib",
  "hax-lib-macros",
  "serde",
 ]
@@ -24,6 +25,10 @@ name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
+
+[[package]]
+name = "basic-structs"
+version = "0.1.0"
 
 [[package]]
 name = "cfg-if"
@@ -48,6 +53,10 @@ version = "0.1.0"
 [[package]]
 name = "even"
 version = "0.0.1"
+
+[[package]]
+name = "fn-to-letfun"
+version = "0.1.0"
 
 [[package]]
 name = "fnmut"
@@ -79,6 +88,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "hax-lib"
+version = "0.1.0-pre.1"
+
+[[package]]
 name = "hax-lib-macros"
 version = "0.1.0-pre.1"
 dependencies = [
@@ -99,6 +112,20 @@ dependencies = [
  "serde",
  "serde_json",
  "uuid",
+]
+
+[[package]]
+name = "hax-lib-protocol"
+version = "0.1.0-pre.1"
+
+[[package]]
+name = "hax-lib-protocol-macros"
+version = "0.1.0-pre.1"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.28",
 ]
 
 [[package]]
@@ -123,6 +150,10 @@ version = "0.1.0"
 
 [[package]]
 name = "loops"
+version = "0.1.0"
+
+[[package]]
+name = "minimal"
 version = "0.1.0"
 
 [[package]]
@@ -233,6 +264,15 @@ name = "pattern-or"
 version = "0.1.0"
 
 [[package]]
+name = "ping-pong"
+version = "0.1.0"
+dependencies = [
+ "hax-lib-macros",
+ "hax-lib-protocol",
+ "hax-lib-protocol-macros",
+]
+
+[[package]]
 name = "proc-macro-error"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -264,14 +304,6 @@ checksum = "18fb31db3f9bddb2ea821cde30a9f70117e3f119938b5ee630b7403aa6e2ead9"
 dependencies = [
  "unicode-ident",
 ]
-
-[[package]]
-name = "proverif-basic-structs"
-version = "0.1.0"
-
-[[package]]
-name = "proverif-minimal"
-version = "0.1.0"
 
 [[package]]
 name = "quote"

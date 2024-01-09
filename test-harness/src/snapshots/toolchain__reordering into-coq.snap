@@ -41,16 +41,16 @@ Inductive t_Foo : Type :=
 Definition f (_ : int32) : t_Foo_t :=
   Foo_At_Foo_t.
 
-Definition no_dependency_1_ : unit :=
+Definition no_dependency_1_ (_ : unit) : unit :=
   tt.
 
-Definition no_dependency_2_ : unit :=
+Definition no_dependency_2_ (_ : unit) : unit :=
   tt.
 
 Record t_Bar : Type :={
   0 : t_Foo_t;
 }.
 
-Definition g : t_Bar_t :=
+Definition g (_ : unit) : t_Bar_t :=
   Bar (f (@repr WORDSIZE32 32)).
 '''
