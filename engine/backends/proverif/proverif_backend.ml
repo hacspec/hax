@@ -251,7 +251,7 @@ module Print = struct
                     args)
           else
             print#concrete_ident constructor
-            ^^ iblock parens (separate_map (break 0) snd args)
+            ^^ iblock parens (separate_map (comma ^^ break 1) snd args)
 
       method ty : Generic_printer_base.par_state -> ty fn =
         fun ctx ty ->
