@@ -9,8 +9,8 @@ class cast_tc a b = {
 }
 
 /// Rust's casts operations on integers are non-panicking
-instance cast_tc_integers (t:inttype) (t':inttype)
-  : cast_tc (int_t t) (int_t t')
+instance cast_tc_integers (t:inttype) (t':inttype) (l:Lib.IntTypes.secrecy_level)
+  : cast_tc (int_t_l t l) (int_t_l t' l)
   = { cast = (fun x -> Rust_primitives.Integers.cast_mod #t #t' x) }
 
 class unsize_tc source = {

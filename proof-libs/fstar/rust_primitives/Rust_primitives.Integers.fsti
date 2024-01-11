@@ -75,6 +75,18 @@ type u64 = int_t LI.U64
 type i64=  int_t LI.S64
 type u128 = int_t LI.U128
 type i128 = int_t LI.S128
+
+type pub_u8 = pub_int_t LI.U8 
+type pub_i8 = pub_int_t LI.S8
+type pub_u16 = pub_int_t LI.U16
+type pub_i16 = pub_int_t LI.S16
+type pub_u32 = pub_int_t LI.U32
+type pub_i32 = pub_int_t LI.S32
+type pub_u64 = pub_int_t LI.U64
+type pub_i64=  pub_int_t LI.S64
+type pub_u128 = pub_int_t LI.U128
+type pub_i128 = pub_int_t LI.S128
+
 type usize = int_t_l usize_inttype LI.PUB
 type isize = int_t_l isize_inttype LI.PUB
 
@@ -488,10 +500,10 @@ unfold
 let (%!) #t = mod #t
 
 unfold
-let (=.) = (=)
+let (=.) #t = eq #t
 
 unfold
-let (<>.) = (<>)
+let (<>.) #t = ne #t
 
 unfold
 let (<.) #t = lt #t
