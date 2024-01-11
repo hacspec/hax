@@ -52,17 +52,16 @@ fn disambiguated_def_path_item_to_str(defpath: DisambiguatedDefPathItem) -> Stri
     format!("{data}{disambiguator}")
 }
 
-fn def_id_to_str(DefId { krate, path, .. }: DefId) -> String {
+fn def_id_to_str(DefId { krate, path, .. }: &mut DefId) -> String {
+    if krate == HAX_ENGINE_NAMES_CRATE {
+        *krate = "rust_primitives".into();
+    };
     let path = path
+        .clone()
         .into_iter()
         .map(disambiguated_def_path_item_to_str)
         .collect::<Vec<String>>()
         .join(SEPARATOR);
-    let krate = if krate == HAX_ENGINE_NAMES_CRATE {
-        "rust_primitives".into()
-    } else {
-        krate
-    };
     format!("{}{SEPARATOR}{path}", uppercase_first_letter(&krate))
 }
 
@@ -76,7 +75,10 @@ fn reader_to_str(s: String) -> String {
 
     let def_ids = def_ids
         .into_iter()
-        .map(|did| (serde_json::to_string(&did).unwrap(), def_id_to_str(did)))
+        .map(|mut did| {
+            let krate_name = def_id_to_str(&mut did);
+            (serde_json::to_string(&did).unwrap(), krate_name)
+        })
         .collect::<Vec<_>>();
 
     const TAB: &str = "    ";

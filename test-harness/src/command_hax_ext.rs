@@ -43,7 +43,7 @@ impl CommandHaxExt for Command {
                         .args(&["build"])
                         .args(dune_jobs_args())
                         .env("HAX_JSON_SCHEMA_EXPORTER_BINARY", cargo_bin("hax-export-json-schemas"))
-                        .env("HAX_ENGINE_NAMES_EXTRACT_BINARY", cargo_bin("hax-export-json-schemas"))
+                        .env("HAX_ENGINE_NAMES_EXTRACT_BINARY", cargo_bin("hax-engine-names-extract"))
                         .current_dir(engine_dir.clone())
                         .status()
                         .unwrap()
