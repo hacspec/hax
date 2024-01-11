@@ -40,10 +40,13 @@
     // {
       pname = pname;
     });
-  hax = craneLib.buildPackage (commonArgs
+  hax = craneLib.buildPackage (
+    commonArgs
     // {
       inherit cargoArtifacts pname;
-    });
+      doInstallCargoArtifacts = true;
+    }
+  );
   frontend-docs = craneLib.cargoDoc (commonArgs // {inherit cargoArtifacts pname;});
   docs = stdenv.mkDerivation {
     name = "hax-docs";
@@ -103,6 +106,20 @@ in
     meta.mainProgram = "cargo-hax";
     passthru = {
       unwrapped = hax;
+      hax-engine-names-extract = craneLib.buildPackage (
+        commonArgs
+        // {
+          pname = "hax_engine_names_extract";
+          cargoLock = ../Cargo.lock;
+          cargoToml = ../engine/names/extract/Cargo.toml;
+          cargoArtifacts = hax;
+          nativeBuildInputs = [hax];
+          postUnpack = ''
+            cd $sourceRoot/engine/names/extract
+            sourceRoot="."
+          '';
+        }
+      );
       engine-docs = hax-engine.docs;
       inherit tests docs frontend-docs;
     };
