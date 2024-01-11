@@ -4,7 +4,6 @@ open FStar.Mul
 open Rust_primitives.Arrays
 open Rust_primitives.Integers
 
-
 /// Number of bits carried by an integer of type `t`
 type bit_num t = d: nat {d > 0 /\ d <= bits t /\ (signed t ==> d <= bits t)}
 
@@ -46,10 +45,10 @@ let bit_vec_of_nat_arr (#len: usize)
 #pop-options
 
 /// Bit-wise semantics of `2^n-1`
-val get_bit_pow2_minus_one #t
+val get_bit_pow2_minus_one #t #l
   (n: nat {pow2 n - 1 <= maxint t}) 
   (nth: usize {v nth < bits t})
-  : Lemma (  get_bit (mk_int #t (pow2 n - 1)) nth
+  : Lemma (  get_bit (mk_int_l #t #l (pow2 n - 1)) nth
           == (if v nth < n then 1 else 0))
 
 /// Log2 table
@@ -118,13 +117,13 @@ val get_bit_pow2_minus_one_u16
 /// targetting machine integer literals of type `u8`  
 val get_bit_pow2_minus_one_u8
   (t: _ {t == u8_inttype}) (x: int {x < pow2 8 /\ Some? (mask_inv_opt x)}) (nth: usize {v nth < 8})
-  : Lemma ( get_bit #t (FStar.UInt8.uint_to_t x) nth 
+  : Lemma ( get_bit #t #Lib.IntTypes.PUB (FStar.UInt8.uint_to_t x) nth 
         == (if v nth < Some?.v (mask_inv_opt x) then 1 else 0))
-  [SMTPat (get_bit #t (FStar.UInt8.uint_to_t x) nth)]
+  [SMTPat (get_bit #t #Lib.IntTypes.PUB (FStar.UInt8.uint_to_t x) nth)]
 // XXX: Why the #t here and not in the ones above?
 
 val get_last_bit_signed_lemma (#t: inttype{signed t}) (x: int_t t)
-  : Lemma (   get_bit x (mk_int (bits t - 1)) 
+  : Lemma (   get_bit x (mk_int_l (bits t - 1)) 
           == (if v x < 0 then 1 else 0))
     // [SMTPat (get_bit x (mk_int (bits t - 1)))]
 

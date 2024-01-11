@@ -22,8 +22,8 @@ let pow2_minus_one_mod_lemma2 (n: nat) (m: nat {n <= m})
   = Math.Lemmas.pow2_le_compat m n;
     Math.Lemmas.small_div (pow2 n - 1) (pow2 m)
 
-let get_bit_pow2_minus_one #t n nth
-  = reveal_opaque (`%get_bit) (get_bit (mk_int #t (pow2 n - 1)) nth);
+let get_bit_pow2_minus_one #t #l  n nth
+  = reveal_opaque (`%get_bit) (get_bit (mk_int_l #t #l (pow2 n - 1)) nth);
     if v nth < n then pow2_minus_one_mod_lemma1 n (v nth)
                  else pow2_minus_one_mod_lemma2 n (v nth)
 
@@ -31,25 +31,25 @@ let get_bit_pow2_minus_one_i32 x nth
   = let n = Some?.v (mask_inv_opt x) in
     assume (pow2 n - 1 == x);
     mk_int_equiv_lemma #i32_inttype x;
-    get_bit_pow2_minus_one #i32_inttype n nth
+    get_bit_pow2_minus_one #i32_inttype #Lib.IntTypes.PUB n nth
 
 let get_bit_pow2_minus_one_u32 x nth
   = let n = Some?.v (mask_inv_opt x) in
     assume (pow2 n - 1 == x);
     mk_int_equiv_lemma #u32_inttype x;
-    get_bit_pow2_minus_one #u32_inttype n nth
+    get_bit_pow2_minus_one #u32_inttype #Lib.IntTypes.PUB n nth
 
 let get_bit_pow2_minus_one_u16 x nth
   = let n = Some?.v (mask_inv_opt x) in
     assume (pow2 n - 1 == x);
     mk_int_equiv_lemma #u16_inttype x;
-    get_bit_pow2_minus_one #u16_inttype n nth
+    get_bit_pow2_minus_one #u16_inttype #Lib.IntTypes.PUB n nth
 
 let get_bit_pow2_minus_one_u8 t x nth
   = let n = Some?.v (mask_inv_opt x) in
     assume (pow2 n - 1 == x);
     mk_int_equiv_lemma #u8_inttype x;
-    get_bit_pow2_minus_one #u8_inttype n nth
+    get_bit_pow2_minus_one #u8_inttype #Lib.IntTypes.PUB n nth
 
 let get_last_bit_signed_lemma #t x
   = admit ()

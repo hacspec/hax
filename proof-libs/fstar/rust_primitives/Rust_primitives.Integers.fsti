@@ -33,7 +33,23 @@ type inttype = LI.inttype
 let unsigned = LI.unsigned
 let signed = LI.signed
 type uinttype = t:inttype{unsigned t}
-let int_t t = LI.int_t t LI.PUB
+let int_t_l t l = LI.int_t t l
+let int_t t = int_t_l t LI.SEC
+let pub_int_t t = int_t_l t LI.PUB
+
+let meet (l1 l2:LI.secrecy_level) : LI.secrecy_level =
+  match l1, l2 with
+  | LI.SEC, LI.PUB -> LI.SEC
+  | LI.SEC, LI.SEC -> LI.SEC
+  | LI.PUB, LI.SEC -> LI.SEC
+  | LI.PUB, LI.PUB -> LI.PUB
+
+let can_flow (l1 l2:LI.secrecy_level) : bool =
+  match l1, l2 with
+  | LI.PUB, LI.PUB -> true
+  | LI.SEC, LI.SEC -> true
+  | LI.PUB, LI.SEC -> true
+  | LI.SEC, LI.PUB -> false
 
 let bits t = LI.bits t
 let u8_inttype = LI.U8
@@ -59,8 +75,8 @@ type u64 = int_t LI.U64
 type i64=  int_t LI.S64
 type u128 = int_t LI.U128
 type i128 = int_t LI.S128
-type usize = int_t usize_inttype
-type isize = int_t isize_inttype
+type usize = int_t_l usize_inttype LI.PUB
+type isize = int_t_l isize_inttype LI.PUB
 
 let minint (t:LI.inttype) =
   if unsigned t then 0 else -(pow2 (bits t - 1))
@@ -80,300 +96,341 @@ let range (n:int) (t:inttype) : bool =
 type range_t (t:inttype) = x:int{range x t}
 
 [@(strict_on_arguments [0])]
-let v (#t:inttype) (x:int_t t) : range_t t = LI.v #t #LI.PUB x
+let v (#t:inttype) (#l) (x:int_t_l t l) : range_t t = LI.v #t #l x
 
 [@(strict_on_arguments [0])]
-val mk_int (#t:inttype) (n:range_t t) : int_t t
+val mk_int_l (#t:inttype) (#l:LI.secrecy_level) (n:range_t t) : int_t_l t l
+
+[@(strict_on_arguments [0])]
+let mk_int (#t:inttype) (n:range_t t) : int_t t = mk_int_l n
+
+[@(strict_on_arguments [0])]
+let mk_pub_int (#t:inttype) (n:range_t t) : int_t_l t LI.PUB = mk_int_l n
 
 [@(strict_on_arguments [0])]
 val mk_int_equiv_lemma #t (n:range_t t) :
     Lemma (
     match t with
-    | LI.U8 -> mk_int #u8_inttype n == UInt8.uint_to_t n   
-    | LI.S8 -> mk_int #i8_inttype n == Int8.int_to_t n   
-    | LI.U16 -> mk_int #u16_inttype n == UInt16.uint_to_t n   
-    | LI.S16 -> mk_int #i16_inttype n == Int16.int_to_t n   
-    | LI.U32 -> mk_int #u32_inttype n == UInt32.uint_to_t n   
-    | LI.S32 -> mk_int #i32_inttype n == Int32.int_to_t n   
-    | LI.U64 -> mk_int #u64_inttype n == UInt64.uint_to_t n   
-    | LI.S64 -> mk_int #i64_inttype n == Int64.int_to_t n   
-    | LI.U128 -> mk_int #u128_inttype n == UInt128.uint_to_t n   
-    | LI.S128 -> mk_int #i128_inttype n == Int128.int_to_t n  
+    | LI.U8 -> mk_int_l #u8_inttype n == UInt8.uint_to_t n   
+    | LI.S8 -> mk_int_l #i8_inttype n == Int8.int_to_t n   
+    | LI.U16 -> mk_int_l #u16_inttype n == UInt16.uint_to_t n   
+    | LI.S16 -> mk_int_l #i16_inttype n == Int16.int_to_t n   
+    | LI.U32 -> mk_int_l #u32_inttype n == UInt32.uint_to_t n   
+    | LI.S32 -> mk_int_l #i32_inttype n == Int32.int_to_t n   
+    | LI.U64 -> mk_int_l #u64_inttype n == UInt64.uint_to_t n   
+    | LI.S64 -> mk_int_l #i64_inttype n == Int64.int_to_t n   
+    | LI.U128 -> mk_int_l #u128_inttype n == UInt128.uint_to_t n   
+    | LI.S128 -> mk_int_l #i128_inttype n == Int128.int_to_t n  
     | _ -> True)
 
-let sz (n:range_t usize_inttype) : usize = mk_int n
-let isz (n:range_t isize_inttype) : isize = mk_int n
+let sz (n:range_t usize_inttype) : usize = mk_int_l n
+let isz (n:range_t isize_inttype) : isize = mk_int_l n
 
-val mk_int_v_lemma: #t:inttype -> a:int_t t -> Lemma
-  (mk_int #t (v #t a) == a)
-  [SMTPat (mk_int #t (v #t a))]
+val mk_int_v_lemma: #t:inttype -> #l:LI.secrecy_level -> a:int_t_l t l -> Lemma
+  (mk_int_l #t (v #t #l a) == a)
+  [SMTPat (mk_int_l #t #l (v #t #l a))]
 
-val v_mk_int_lemma: #t:inttype -> n:range_t t -> Lemma
-  (v #t (mk_int #t n) == n)
-  [SMTPat (v #t (mk_int #t n))]
+val v_mk_int_lemma: #t:inttype -> #l:LI.secrecy_level -> n:range_t t -> Lemma
+  (v #t #l (mk_int_l #t #l n) == n)
+  [SMTPat (v #t #l (mk_int_l #t #l n))]
 
 (* Wrap-around modulo: wraps into [-p/2; p/2[ *)
 let op_At_Percent (v:int) (p:int{p>0/\ p%2=0}) : Tot int =
-  let m = v % p in if m >= p/2 then m - p else m
+  let m = v % p in if m >= p/2 then m - p else m 
 
 [@(strict_on_arguments [0])]
 let op_At_Percent_Dot x t : range_t t =
   if unsigned t then x % modulus t
   else x @% modulus t
 
-let cast (#t:inttype) (#t':inttype)
-    (u1:int_t t{range (v u1) t'}) =
-    mk_int #t' (v u1)
-let cast_mod (#t:inttype) (#t':inttype)
-    (u1:int_t t) = 
-    mk_int #t' (v u1 @%. t')
+let cast (#t:inttype) (#t':inttype) (#l:LI.secrecy_level)
+    (u1:int_t_l t l{range (v u1) t'}) =
+    mk_int_l #t' #l (v u1)
+let cast_mod (#t:inttype) (#t':inttype) (#l:LI.secrecy_level)
+    (u1:int_t_l t l) = 
+    mk_int_l #t' #l (v u1 @%. t')
 
 /// Arithmetic operations
 /// 
-let add_mod (#t:inttype) (a:int_t t) (b:int_t t) =
-    mk_int #t ((v a + v b) @%. t)
+let add_mod (#t:inttype) 
+            (#l #l':LI.secrecy_level) 
+            (a:int_t_l t l) (b:int_t_l t l') =
+    mk_int_l #t #(meet l l') ((v a + v b) @%. t)
 
-val add_mod_equiv_lemma: #t:uinttype
-  -> a:int_t t
-  -> b:int_t t
+let classify #t #l (#l':LI.secrecy_level{can_flow l l'})
+    (a:int_t_l t l)    
+    : int_t_l t l' =
+    match l,l' with
+    | LI.PUB, LI.SEC -> LI.secret #t a
+    | LI.PUB, LI.PUB -> a
+    | LI.SEC, LI.SEC -> a
+   
+val add_mod_equiv_lemma: #t:uinttype 
+  -> #l:LI.secrecy_level
+  -> #l':LI.secrecy_level
+  -> a:int_t_l t l
+  -> b:int_t_l t l'
   -> Lemma
-    (add_mod a b == LI.add_mod #t #LI.PUB a b)
+    (add_mod a b == LI.add_mod #_ #(meet l l') (classify a) (classify b))
 
-let add (#t:inttype) (a:int_t t)
-        (b:int_t t{range (v a + v b) t}) =
-    mk_int #t (v a + v b)
+let add (#t:inttype) (#l #l':LI.secrecy_level) (a:int_t_l t l)
+        (b:int_t_l t l'{range (v a + v b) t}) =
+    mk_int_l #t #(meet l l') (v a + v b)
 
-val add_equiv_lemma: #t:uinttype
-  -> a:int_t t
-  -> b:int_t t{range (v a + v b) t}
+val add_equiv_lemma: #t:uinttype -> #l:LI.secrecy_level -> #l':LI.secrecy_level
+  -> a:int_t_l t l
+  -> b:int_t_l t l'{range (v a + v b) t}
   -> Lemma
-    (add a b == LI.add #t #LI.PUB a b)
+    (add a b == LI.add #t #(meet l l') (classify a) (classify b))
 
-let incr (#t:inttype) (a:int_t t{v a < maxint t}) =
-    mk_int #t (v a + 1)
+let incr (#t:inttype) (#l:LI.secrecy_level) (a:int_t_l t l{v a < maxint t}) =
+    mk_int_l #t #l (v a + 1)
 
-val incr_equiv_lemma: #t:inttype
-  -> a:int_t t{v a < maxint t}
-  -> Lemma (incr a == LI.incr #t #LI.PUB a)
+val incr_equiv_lemma: #t:inttype -> #l:LI.secrecy_level
+  -> a:int_t_l t l{v a < maxint t}
+  -> Lemma (incr a == LI.incr a)
 
-let mul_mod (#t:inttype) (a:int_t t)
-            (b:int_t t) =
-            mk_int #t (v a * v b @%. t)
+let mul_mod (#t:inttype) (#l #l':LI.secrecy_level)
+            (a:int_t_l t l)
+            (b:int_t_l t l') =
+            mk_int_l #t #(meet l l') (v a * v b @%. t)
 
 val mul_mod_equiv_lemma: #t:uinttype{not (LI.U128? t)}
-  -> a:int_t t
-  -> b:int_t t
-  -> Lemma (mul_mod a b == LI.mul_mod #t #LI.PUB a b)
+  -> #l:LI.secrecy_level
+  -> #l':LI.secrecy_level
+  -> a:int_t_l t l
+  -> b:int_t_l t l'
+  -> Lemma (mul_mod a b == LI.mul_mod #t #(meet l l') (classify a) (classify b))
 
-let mul (#t:inttype) (a:int_t t)
-        (b:int_t t{range (v a * v b) t}) =
-        mk_int #t (v a * v b)
+let mul (#t:inttype) (#l #l':LI.secrecy_level)
+        (a:int_t_l t l)
+        (b:int_t_l t l'{range (v a * v b) t}) =
+        mk_int_l #t #(meet l l') (v a * v b)
 
-val mul_equiv_lemma: #t:uinttype{not (LI.U128? t)}
-  -> a:int_t t
-  -> b:int_t t{range (v a * v b) t}
-  -> Lemma (mul a b == LI.mul #t #LI.PUB a b)
+val mul_equiv_lemma: #t:uinttype{not (LI.U128? t)} 
+  -> #l:LI.secrecy_level
+  -> #l':LI.secrecy_level
+  -> a:int_t_l t l
+  -> b:int_t_l t l'{range (v a * v b) t}
+  -> Lemma (mul a b == LI.mul #t #(meet l l') (classify a) (classify b))
 
-let sub_mod (#t:inttype) (a:int_t t) (b:int_t t) =
-    mk_int #t ((v a - v b) @%. t)
+let sub_mod (#t:inttype) (#l #l':LI.secrecy_level)
+  (a:int_t_l t l) (b:int_t_l t l') =
+    mk_int_l #t #(meet l l') ((v a - v b) @%. t)
 
 val sub_mod_equiv_lemma: #t:uinttype
-  -> a:int_t t
-  -> b:int_t t
+  -> #l:LI.secrecy_level
+  -> #l':LI.secrecy_level
+  -> a:int_t_l t l
+  -> b:int_t_l t l'
   -> Lemma
-    (sub_mod a b == LI.sub_mod #t #LI.PUB a b)
+    (sub_mod a b == LI.sub_mod #_ #(meet l l') (classify a) (classify b))
 
-let sub (#t:inttype) (a:int_t t)
-        (b:int_t t{range (v a - v b) t}) =
-    mk_int #t (v a - v b)
+let sub (#t:inttype) (#l #l':LI.secrecy_level)
+        (a:int_t_l t l)
+        (b:int_t_l t l'{range (v a - v b) t}) =
+    mk_int_l #t #(meet l l') (v a - v b) 
 
 val sub_equiv_lemma: #t:uinttype
-  -> a:int_t t
-  -> b:int_t t{range (v a - v b) t}
+  -> #l:LI.secrecy_level
+  -> #l':LI.secrecy_level
+  -> a:int_t_l t l
+  -> b:int_t_l t l'{range (v a - v b) t}
   -> Lemma
-    (sub a b == LI.sub #t #LI.PUB a b)
+    (sub a b == LI.sub #t #(meet l l') (classify a) (classify b))
 
-let decr (#t:inttype) (a:int_t t{minint t < v a}) =
-    mk_int #t (v a - 1)
+let decr (#t:inttype) (#l:LI.secrecy_level) (a:int_t_l t l{minint t < v a}) =
+    mk_int_l #t #l (v a - 1)
 
-val decr_equiv_lemma: #t:inttype
-  -> a:int_t t{minint t < v a}
-  -> Lemma (decr a == LI.decr #t #LI.PUB a)
+val decr_equiv_lemma: #t:inttype -> #l:LI.secrecy_level
+  -> a:int_t_l t l{minint t < v a}
+  -> Lemma (decr a == LI.decr  a)
 
-let div (#t:inttype) (a:int_t t) (b:int_t t{v b <> 0}) =
+let div (#t:inttype) (a:int_t_l t LI.PUB) (b:int_t_l t LI.PUB{v b <> 0}) =
   assume(unsigned t \/ range (v a / v b) t);
-  mk_int #t (v a / v b)
+  mk_int_l #t #LI.PUB (v a / v b)
   
 val div_equiv_lemma: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}
-  -> a:int_t t
-  -> b:int_t t{v b <> 0 /\ (unsigned t \/ range FStar.Int.(v a / v b) t)}
+  -> a:int_t_l t LI.PUB
+  -> b:int_t_l t LI.PUB{v b <> 0 /\ (unsigned t \/ range FStar.Int.(v a / v b) t)}
   -> Lemma (div a b == LI.div a b)
 
-let mod (#t:inttype) (a:int_t t) (b:int_t t{v b <> 0}) =
-  mk_int #t (v a % v b)
+let mod (#t:inttype) (a:int_t_l t LI.PUB) (b:int_t_l t LI.PUB{v b <> 0}) =
+  mk_int_l #t #LI.PUB (v a % v b)
 
 
 val mod_equiv_lemma: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}
-  -> a:int_t t
-  -> b:int_t t{v b <> 0 /\ (unsigned t \/ range FStar.Int.(v a / v b) t)}
+  -> a:int_t_l t LI.PUB
+  -> b:int_t_l t LI.PUB{v b <> 0 /\ (unsigned t \/ range FStar.Int.(v a / v b) t)}
   -> Lemma (mod a b == LI.mod a b)
   
 
 /// Comparison Operators
 /// 
-let eq (#t:inttype) (a:int_t t) (b:int_t t) = v a = v b
-let ne (#t:inttype) (a:int_t t) (b:int_t t) = v b <> v b
-let lt (#t:inttype) (a:int_t t) (b:int_t t) = v a < v b
-let lte (#t:inttype) (a:int_t t) (b:int_t t) = v a <= v b
-let gt (#t:inttype) (a:int_t t) (b:int_t t) = v a > v b
-let gte (#t:inttype) (a:int_t t) (b:int_t t) = v a >= v b
+let eq (#t:inttype) (a:int_t_l t LI.PUB) (b:int_t_l t LI.PUB) = v a = v b
+let ne (#t:inttype) (a:int_t_l t LI.PUB) (b:int_t_l t LI.PUB) = v b <> v b
+let lt (#t:inttype) (a:int_t_l t LI.PUB) (b:int_t_l t LI.PUB) = v a < v b
+let lte (#t:inttype) (a:int_t_l t LI.PUB) (b:int_t_l t LI.PUB) = v a <= v b
+let gt (#t:inttype) (a:int_t_l t LI.PUB) (b:int_t_l t LI.PUB) = v a > v b
+let gte (#t:inttype) (a:int_t_l t LI.PUB) (b:int_t_l t LI.PUB) = v a >= v b
 
 
 /// Bitwise Operations
 
 
-let ones (#t:inttype) : n:int_t t =
-  if unsigned t then mk_int #t (pow2 (bits t) - 1)
-  else mk_int #t (-1)
+let ones (#t:inttype) (#l:LI.secrecy_level) : n:int_t_l t l =
+  if unsigned t then mk_int_l #t #l (pow2 (bits t) - 1)
+  else mk_int_l #t #l (-1)
 
-let zero (#t:inttype) : n:int_t t =
-  mk_int #t 0
+let zero (#t:inttype) (#l:LI.secrecy_level) : n:int_t_l t l =
+  mk_int_l #t #l 0
 
-val lognot: #t:inttype -> int_t t -> int_t t
-val lognot_lemma: #t:inttype -> a:int_t t -> Lemma
-  (lognot a == LI.lognot #t #LI.PUB a /\
-   lognot #t zero == ones /\
-   lognot #t ones == zero /\
+val lognot: #t:inttype -> #l:LI.secrecy_level -> int_t_l t l -> int_t_l t l
+val lognot_lemma: #t:inttype -> #l:LI.secrecy_level -> a:int_t_l t l -> Lemma
+  (lognot a == LI.lognot  a /\
+   lognot #t #l zero == ones /\
+   lognot #t #l ones == zero /\
    lognot (lognot a) == a /\
    (signed t ==> v (lognot a) = -1 - v a) /\
    (unsigned t ==> v (lognot a)  = pow2 (bits t) - 1 - v a)
    )
 
-val logxor: #t:inttype
-  -> int_t t
-  -> int_t t
-  -> int_t t
-val logxor_lemma: #t:inttype -> a:int_t t -> b:int_t t -> Lemma
-  (logxor a b == LI.logxor #t #LI.PUB a b /\
-   a `logxor` a == zero /\
-   (a `logxor` b == zero ==> b == a) /\
-   a `logxor` (a `logxor` b) == b /\
-   a `logxor` (b `logxor` a) == b /\
-   zero `logxor` a == a /\
-   a `logxor` zero == a /\
-   ones `logxor` a == lognot a /\
-   a `logxor` ones == lognot a)
+val logxor: #t:inttype 
+  -> #l:LI.secrecy_level
+  -> #l':LI.secrecy_level
+  -> int_t_l t l
+  -> int_t_l t l'
+  -> int_t_l t (meet l l')
+  
+val logxor_lemma: #t:inttype 
+  -> #l:LI.secrecy_level
+  -> #l':LI.secrecy_level
+  -> a:int_t_l t l 
+  -> b:int_t_l t l' -> Lemma
+  (logxor a b == LI.logxor #t #(meet l l') (classify a) (classify b) /\
+   a `logxor` a == zero #t #l /\
+   (a `logxor` b == zero #t #(meet l l') ==> v b == v a) /\
+   v (a `logxor` (a `logxor` b)) == v b /\
+   v (a `logxor` (b `logxor` a)) == v b /\
+   zero #t #l' `logxor` a == classify a /\
+   a `logxor` zero #t #l' == classify a /\
+   v (ones #t #l' `logxor` a) == v (lognot a) /\
+   v (a `logxor` ones #t #l') == v (lognot a))
     
-val logand: #t:inttype
-  -> int_t t
-  -> int_t t
-  -> int_t t
+val logand: #t:inttype -> #l:LI.secrecy_level -> #l':LI.secrecy_level
+  -> int_t_l t l
+  -> int_t_l t l'
+  -> int_t_l t (meet l l')
 
-val logand_lemma: #t:inttype -> a:int_t t -> b:int_t t ->
-  Lemma (logand a b == LI.logand #t #LI.PUB a b /\
-         logand a zero == zero /\
-         logand zero a == zero /\
-         logand a ones == a /\
-         logand ones a == a /\
+val logand_lemma: #t:inttype -> #l:LI.secrecy_level -> #l':LI.secrecy_level -> a:int_t_l t l -> b:int_t_l t l' ->
+  Lemma (logand a b == LI.logand #t #(meet l l') (classify a) (classify b) /\
+         v (logand a (zero #t #l')) == v (zero #t #l') /\
+         v (logand (zero #t #l') a) == v (zero #t #l') /\
+         v (logand a (ones #t #l')) == v a /\
+         v (logand (ones #t #l') a) == v a /\
          (v a >= 0 ==> (v (logand a b) >= 0) /\ (v (logand a b) <= v a)) /\
          (v b >= 0 ==> (v (logand a b) >= 0) /\ (v (logand a b) <= v b)))
 
-val logand_mask_lemma: #t:inttype
-  -> a:int_t t
+val logand_mask_lemma: #t:inttype -> #l:LI.secrecy_level
+  -> a:int_t_l t l
   -> m:nat{m < bits t} ->
   Lemma (pow2 m < maxint t /\
-         logand a (sub #t (mk_int #t (pow2 m)) (mk_int #t 1)) ==
-         mk_int (v a % pow2 m))
-  [SMTPat (logand #t a (sub #t (mk_int #t (pow2 m)) (mk_int #t 1)))]
+         logand a (sub #t (mk_int_l #t #l (pow2 m)) (mk_int_l #t #l 1)) ==
+         mk_int_l #t #l (v a % pow2 m))
+  [SMTPat (logand #t a (sub #t (mk_int_l #t #l (pow2 m)) (mk_int_l #t #l 1)))]
 
-val logor: #t:inttype
-  -> int_t t
-  -> int_t t
-  -> int_t t
+val logor: #t:inttype -> #l:LI.secrecy_level -> #l':LI.secrecy_level
+  -> int_t_l t l
+  -> int_t_l t l'
+  -> int_t_l t (meet l l')
 
-val logor_lemma: #t:inttype -> a:int_t t -> b:int_t t ->
-  Lemma (logor a b == LI.logor #t #LI.PUB a b /\
-         logor a zero == a /\
-         logor a ones == ones /\
-         logor zero a == a /\
-         logor ones a == ones /\
+val logor_lemma: #t:inttype
+  -> #l:LI.secrecy_level
+  -> #l':LI.secrecy_level
+  -> a:int_t_l t l
+  -> b:int_t_l t l' ->
+  Lemma (logor a b == LI.logor #t #(meet l l') (classify a) (classify b) /\
+         v (logor a (zero #t #l')) == v a /\
+         v (logor a (ones #t #l')) == v (ones #t #l') /\
+         v (logor (zero #t #l') a) == v a /\
+         v (logor (ones #t #l') a) == v (ones #t #l') /\
          ((v a >= 0 /\ v b >= 0) ==> (v (logor a b) >= v a /\ v (logor a b) >= v b)))
 
 unfold type shiftval (t:inttype) (t':inttype) =
-     b:int_t t'{v b >= 0 /\ v b < bits t}
+     b:int_t_l t' LI.PUB{v b >= 0 /\ v b < bits t}
 unfold type rotval (t:inttype) (t':inttype) =
-     b:int_t t'{v b > 0 /\ v b < bits t}
+     b:int_t_l t' LI.PUB{v b > 0 /\ v b < bits t}
 
-let shift_right (#t:inttype) (#t':inttype)
-    (a:int_t t) (b:shiftval t t') =
-    LI.shift_right_lemma #t #LI.PUB a (LI.size (v b));
-    mk_int #t (v a / pow2 (v b))
+let shift_right (#t:inttype) (#t':inttype) (#l:LI.secrecy_level)
+    (a:int_t_l t l) (b:shiftval t t') =
+    LI.shift_right_lemma  a (LI.size (v b));
+    mk_int_l #t #l (v a / pow2 (v b))
 
-val shift_right_equiv_lemma: #t:inttype -> #t':inttype
-  -> a:int_t t -> b:shiftval t t'
+val shift_right_equiv_lemma: #t:inttype -> #t':inttype -> #l:LI.secrecy_level
+  -> a:int_t_l t l -> b:shiftval t t'
   -> Lemma
-    (v (cast b <: u32) < bits t /\
+    (v ((cast #t' #u32_inttype b <: LI.size_t)) < bits t /\
      shift_right #t #t' a b ==
-     LI.shift_right #t #LI.PUB a (cast b))
+     LI.shift_right a (cast #t' #u32_inttype b <: LI.size_t))
      
-let shift_left (#t:inttype) (#t':inttype)
-    (a:int_t t) (b:shiftval t t') =
+let shift_left (#t:inttype) (#t':inttype) (#l:LI.secrecy_level)
+    (a:int_t_l t l) (b:shiftval t t') =
     let x:range_t t = (v a * pow2 (v b)) @%. t in
-    mk_int #t x
+    mk_int_l #t #l x
 
-val shift_left_equiv_lemma: #t:inttype -> #t':inttype
-  -> a:int_t t -> b:shiftval t t'
+val shift_left_equiv_lemma: #t:inttype -> #t':inttype -> #l:LI.secrecy_level
+  -> a:int_t_l t l -> b:shiftval t t'
   -> Lemma
     ((v a >= 0 /\ range (v a * pow2 (v b)) t) ==>
-     (v (cast b <: u32) < bits t /\
+     (v (cast #_ #u32_inttype b) < bits t /\
       shift_left #t #t' a b ==
-      LI.shift_left #t #LI.PUB a (cast b)))
+      LI.shift_left  a (cast b)))
 
-val rotate_right: #t:uinttype -> #t':inttype
-  -> a:int_t t
+val rotate_right: #t:uinttype -> #t':inttype -> #l:LI.secrecy_level
+  -> a:int_t_l t l
   -> rotval t t'
-  -> int_t t
+  -> int_t_l t l
 
-val rotate_right_equiv_lemma: #t:uinttype -> #t':inttype
-  -> a:int_t t -> b:rotval t t'
-  -> Lemma (v (cast b <: u32) > 0 /\ 
+val rotate_right_equiv_lemma: #t:uinttype -> #t':inttype -> #l:LI.secrecy_level
+  -> a:int_t_l t l -> b:rotval t t'
+  -> Lemma (v (cast #_ #u32_inttype b) > 0 /\ 
            rotate_right a b ==
-           LI.rotate_right #t #LI.PUB a (cast b))
+           LI.rotate_right  a (cast b))
   
-val rotate_left: #t:uinttype -> #t':inttype
-  -> a:int_t t
+val rotate_left: #t:uinttype -> #t':inttype -> #l:LI.secrecy_level
+  -> a:int_t_l t l
   -> rotval t t'
-  -> int_t t
+  -> int_t_l t l
 
-val rotate_left_equiv_lemma: #t:uinttype -> #t':inttype
-  -> a:int_t t -> b:rotval t t'
-  -> Lemma (v (cast b <: u32) > 0 /\ 
+val rotate_left_equiv_lemma: #t:uinttype -> #t':inttype -> #l:LI.secrecy_level
+  -> a:int_t_l t l -> b:rotval t t'
+  -> Lemma (v (cast #_ #u32_inttype b) > 0 /\ 
            rotate_left a b ==
-           LI.rotate_left #t #LI.PUB a (cast b))
+           LI.rotate_left  a (cast b))
 
-let shift_right_i (#t:inttype) (#t':inttype) (s:shiftval t t') (u:int_t t) : int_t t = shift_right u s
+let shift_right_i (#t:inttype) (#t':inttype) (#l:LI.secrecy_level) (s:shiftval t t') (u:int_t_l t l) : int_t_l t l = shift_right u s
 
-let shift_left_i (#t:inttype) (#t':inttype) (s:shiftval t t') (u:int_t t{v u >= 0}) : int_t t = shift_left u s
+let shift_left_i (#t:inttype) (#t':inttype) (#l:LI.secrecy_level) (s:shiftval t t') (u:int_t_l t l{v u >= 0}) : int_t_l t l = shift_left u s
 
-let rotate_right_i (#t:uinttype) (#t':inttype) (s:rotval t t') (u:int_t t) : int_t t = rotate_right u s
+let rotate_right_i (#t:uinttype) (#t':inttype) (#l:LI.secrecy_level) (s:rotval t t') (u:int_t_l t l) : int_t_l t l = rotate_right u s
 
-let rotate_left_i (#t:uinttype) (#t':inttype) (s:rotval t t') (u:int_t t) : int_t t = rotate_left u s
+let rotate_left_i (#t:uinttype) (#t':inttype) (#l:LI.secrecy_level) (s:rotval t t') (u:int_t_l t l) : int_t_l t l = rotate_left u s
 
-let abs_int (#t:inttype) (a:int_t t{minint t < v a}) =
-    mk_int #t (abs (v a))
+let abs_int (#t:inttype) (#l:LI.secrecy_level) (a:int_t_l t l{minint t < v a}) =
+    mk_int_l #t #l (abs (v a))
 
-val abs_int_equiv_lemma: #t:inttype{signed t /\ not (LI.S128? t)}
-  -> a:int_t t{minint t < v a}
-  -> Lemma (abs_int a == LI.ct_abs #t #LI.PUB a)
+val abs_int_equiv_lemma: #t:inttype{signed t /\ not (LI.S128? t)} 
+  -> #l:LI.secrecy_level
+  -> a:int_t_l t l{minint t < v a}
+  -> Lemma (abs_int a == LI.ct_abs  a)
 
-let neg (#t:inttype{signed t}) (a:int_t t{range (0 - v a) t}) =
-    mk_int #t (0 - (v a))
+let neg (#t:inttype{signed t}) (#l:LI.secrecy_level) (a:int_t_l t l{range (0 - v a) t}) =
+    mk_int_l #t #l (0 - (v a))
 
-val neg_equiv_lemma: #t:inttype{signed t /\ not (LI.S128? t)}
-  -> a:int_t t{range (0 - v a) t}
-  -> Lemma (neg a == sub #t (mk_int 0) a /\
-          (lognot a = sub (neg a) (mk_int 1)))
-
+val neg_equiv_lemma: #t:inttype{signed t /\ not (LI.S128? t)} -> #l:LI.secrecy_level
+  -> a:int_t_l t l{range (0 - v a) t}
+  -> Lemma (neg a == sub (mk_int_l #t #l 0) a /\
+          (lognot a == sub (neg a) (mk_int_l #t #l 1)))
 
 
 ///
@@ -382,47 +439,47 @@ val neg_equiv_lemma: #t:inttype{signed t /\ not (LI.S128? t)}
 
 // Strict: with precondition
 unfold
-let (+!) #t = add #t
+let (+!) #t #l #l' = add #t #l #l'
 
 // Wrapping: no precondition
 unfold
-let (+.) #t = add_mod #t
+let (+.) #t #l #l' = add_mod #t #l #l'
 
 unfold
-let ( *! ) #t = mul #t
+let ( *! ) #t #l #l' = mul #t #l #l'
 
 unfold
-let ( *. ) #t = mul_mod #t
+let ( *. ) #t #l #l' = mul_mod #t #l #l'
 
 unfold
-let ( -! ) #t = sub #t
+let ( -! ) #t #l #l' = sub #t #l #l'
 
 unfold
-let ( -. ) #t = sub_mod #t
+let ( -. ) #t #l #l' = sub_mod #t #l #l'
 
 unfold
-let ( >>! ) #t #t' = shift_right #t #t'
+let ( >>! ) #t #t' #l = shift_right #t #t' #l
 
 unfold
-let ( <<! ) #t #t' = shift_left #t #t'
+let ( <<! ) #t #t' #l = shift_left #t #t' #l
 
 unfold
-let ( >>>. ) #t #t' = rotate_right #t #t'
+let ( >>>. ) #t #t' #l = rotate_right #t #t' #l
 
 unfold
-let ( <<<. ) #t #t' = rotate_left #t #t'
+let ( <<<. ) #t #t' #l = rotate_left #t #t' #l
 
 unfold
-let ( ^. ) #t = logxor #t
+let ( ^. ) #t #l #l' = logxor #t #l #l'
 
 unfold
-let ( |. ) #t = logor #t
+let ( |. ) #t #l #l' = logor #t #l #l'
 
 unfold
-let ( &. ) #t = logand #t
+let ( &. ) #t #l #l' = logand #t #l #l'
 
 unfold
-let ( ~. ) #t = lognot #t
+let ( ~. ) #t #l = lognot #t #l
 
 unfold
 let (/!) #t = div #t
@@ -449,9 +506,6 @@ unfold
 let (>=.) #t = gte #t
 
 
-
-
-
 type bit = n: nat {n < 2}
 
 /// Mathematical `get_bit` definition on `nat`s
@@ -460,52 +514,53 @@ let get_bit_nat (x: nat) (nth: nat): bit
 
 /// `get_bit` definition for machine integer of any size and signedness
 [@"opaque_to_smt"]
-let get_bit (#n: inttype) (x: int_t n) (nth: usize {v nth < bits n}): bit
+let get_bit (#t: inttype) (#l:LI.secrecy_level)
+            (x: int_t_l t l) (nth: usize {v nth < bits t}): bit
   = if v x >= 0 then get_bit_nat (v x) (v nth)
                else // two's complement
-                    get_bit_nat (pow2 (bits n) + v x) (v nth)
+                    get_bit_nat (pow2 (bits t) + v x) (v nth)
 
 unfold let bit_and (x y: bit): bit = match x, y with | (1, 1) -> 1 | _ -> 0
 unfold let bit_or  (x y: bit): bit = (x + y) % 2
 
 /// Bit-wise semantics for `&.`
-val get_bit_and #t (x y: int_t t) (i: usize {v i < bits t})
+val get_bit_and #t #l (x y: int_t_l t l) (i: usize {v i < bits t})
   : Lemma (get_bit (x &. y) i == get_bit x i `bit_and` get_bit y i)
           [SMTPat (get_bit (x &. y) i)]
 
 /// Bit-wise semantics for `|.`
-val get_bit_or #t (x y: int_t t) (i: usize {v i < bits t})
+val get_bit_or #t #l (x y: int_t_l t l) (i: usize {v i < bits t})
   : Lemma (get_bit (x |. y) i == get_bit x i `bit_or` get_bit y i)
           [SMTPat (get_bit (x |. y) i)]
 
 /// Bit-wise semantics for `<<!`
-val get_bit_shl #t #u (x: int_t t) (y: int_t u) (i: usize {v i < bits t})
+val get_bit_shl #t #u #l (x: int_t_l t l) (y: int_t_l u LI.PUB) (i: usize {v i < bits t})
   : Lemma (requires v y >= 0 /\ v y < bits t)
           (ensures get_bit (x <<! y) i 
-                == (if v i < v y then 0 else get_bit x (mk_int (v i - v y))))
+                == (if v i < v y then 0 else get_bit x (mk_int_l (v i - v y))))
     [SMTPat (get_bit (x <<! y) i)]
 
 /// Bit-wise semantics for `>>!`
-val get_bit_shr #t #u (x: int_t t) (y: int_t u) (i: usize {v i < bits t})
+val get_bit_shr #t #u #l (x: int_t_l t l) (y: int_t_l u LI.PUB) (i: usize {v i < bits t})
   : Lemma (requires v y >= 0 /\ v y < bits t)
           (ensures get_bit (x >>! y) i 
                 == (if v i < bits t - v y
-                    then get_bit x (mk_int (v i + v y))
+                    then get_bit x (mk_int_l (v i + v y))
                     else if signed t
-                         then get_bit x (mk_int (bits t - 1))
+                         then get_bit x (mk_int_l (bits t - 1))
                          else 0))
     [SMTPat (get_bit (x >>! y) i)]
 
 // TODO: check for neg numbers
 /// Bit-wise semantics of integer casts
-val get_bit_cast #t #u
-  (x: int_t t) (nth: usize)
+val get_bit_cast #t #u #l
+  (x: int_t_l t l) (nth: usize)
   : Lemma (requires v nth < bits u /\ v nth < bits t)
           (ensures get_bit (cast_mod #t #u x) nth == get_bit x nth)
           [SMTPat (get_bit (cast_mod #t #u x) nth)]
 
-val get_bit_cast_extend #t #u
-  (x: int_t t) (nth: usize)
+val get_bit_cast_extend #t #u #l
+  (x: int_t_l t l) (nth: usize)
   : Lemma (requires bits t < bits u /\ v nth >= bits t /\ v nth < bits u)
           (ensures get_bit (cast_mod #t #u x) nth == 0)
           [SMTPat (get_bit (cast_mod #t #u x) nth)]

@@ -16,7 +16,7 @@ val update_at_usize
 
 val update_at_range #n
   (s: t_Slice 't)
-  (i: t_Range (int_t n))
+  (i: t_Range (pub_int_t n))
   (x: t_Slice 't)
   : Pure (t_Array 't (length s))
     (requires (v i.f_start >= 0 /\ v i.f_start <= Seq.length s /\
@@ -29,7 +29,7 @@ val update_at_range #n
 
 val update_at_range_to #n
   (s: t_Slice 't)
-  (i: t_RangeTo (int_t n))
+  (i: t_RangeTo (pub_int_t n))
   (x: t_Slice 't)
   : Pure (t_Array 't (length s))
     (requires (v i.f_end >= 0 /\ v i.f_end <= Seq.length s /\
@@ -40,7 +40,7 @@ val update_at_range_to #n
 
 val update_at_range_from #n
   (s: t_Slice 't)
-  (i: t_RangeFrom (int_t n))
+  (i: t_RangeFrom (pub_int_t n))
   (x: t_Slice 't)
   : Pure (t_Array 't (length s))
     (requires ( v i.f_start >= 0 /\ v i.f_start <= Seq.length s /\
