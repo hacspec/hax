@@ -22,6 +22,8 @@ let mk_int_equiv_lemma #_ = admit ()
 let mk_int_v_lemma #t a = ()
 let v_mk_int_lemma #t a = ()
 
+let declassify #t #l #l' a = admit()
+
 let add_mod_equiv_lemma #t #l #l' a b =
   LI.add_mod_lemma #_ #(meet l l') (classify a) (classify b)
   

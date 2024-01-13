@@ -162,13 +162,6 @@ let cast_mod (#t:inttype) (#t':inttype) (#l:LI.secrecy_level)
     (u1:int_t_l t l) = 
     mk_int_l #t' #l (v u1 @%. t')
 
-/// Arithmetic operations
-/// 
-let add_mod (#t:inttype) 
-            (#l #l':LI.secrecy_level) 
-            (a:int_t_l t l) (b:int_t_l t l') =
-    mk_int_l #t #(meet l l') ((v a + v b) @%. t)
-
 let classify #t #l (#l':LI.secrecy_level{can_flow l l'})
     (a:int_t_l t l)    
     : int_t_l t l' =
@@ -176,7 +169,20 @@ let classify #t #l (#l':LI.secrecy_level{can_flow l l'})
     | LI.PUB, LI.SEC -> LI.secret #t a
     | LI.PUB, LI.PUB -> a
     | LI.SEC, LI.SEC -> a
-   
+
+(* NOTE: Use with extreme care, and clearly document each use case *)
+val declassify #t #l #l'
+    (a:int_t_l t l)    
+    : int_t_l t l'
+
+
+/// Arithmetic operations
+/// 
+let add_mod (#t:inttype) 
+            (#l #l':LI.secrecy_level) 
+            (a:int_t_l t l) (b:int_t_l t l') =
+    mk_int_l #t #(meet l l') ((v a + v b) @%. t)
+
 val add_mod_equiv_lemma: #t:uinttype 
   -> #l:LI.secrecy_level
   -> #l':LI.secrecy_level

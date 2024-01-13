@@ -78,6 +78,7 @@ let lemma_slice_append_3 #t (x:t_Slice t) (y:t_Slice t) (z:t_Slice t) (w:t_Slice
         (ensures (x == concat y (concat z w))) =
          assert (Seq.equal x (Seq.append y (Seq.append z w)))
 
+#push-options "--z3rlimit 100"
 let lemma_slice_append_4 #t (x y z w u:t_Slice t) :
   Lemma (requires (range (v (length y) + v (length z) + v (length w) + v (length u)) usize_inttype /\
                    length y +! length z +! length w +! length u == length x /\
@@ -87,5 +88,5 @@ let lemma_slice_append_4 #t (x y z w u:t_Slice t) :
                    u == slice x (length y +! length z +! length w) (length x)))
         (ensures (x == concat y (concat z (concat w u)))) =
          assert (Seq.equal x (Seq.append y (Seq.append z (Seq.append w u))))
-
+#pop-options
 
