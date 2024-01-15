@@ -17,22 +17,21 @@ include
 
 module SubtypeToInputLanguage
     (FA : Features.T
-       with
-    (*  type loop = Features.Off.loop *)
-    (* and type for_loop = Features.Off.for_loop *)
-    (* and type for_index_loop = Features.Off.for_index_loop *)
-    (* and type state_passing_loop = Features.Off.state_passing_loop *)
-    (* and type continue = Features.Off.continue *)
-    (* and type break = Features.Off.break *)
-    (* and type mutable_variable = Features.Off.mutable_variable *)
-    (* and type mutable_reference = Features.Off.mutable_reference *)
-    (* and type mutable_pointer = Features.Off.mutable_pointer *)
-    (* and type reference = Features.Off.reference *)
-    (* and type slice = Features.Off.slice *)
-    (* and type raw_pointer = Features.Off.raw_pointer *)
-    type early_exit = Features.On.early_exit
-    and type question_mark = Features.On.question_mark
-    and type macro = Features.On.macro 
+          (*  type loop = Features.Off.loop *)
+          (* and type for_loop = Features.Off.for_loop *)
+          (* and type for_index_loop = Features.Off.for_index_loop *)
+          (* and type state_passing_loop = Features.Off.state_passing_loop *)
+          (* and type continue = Features.Off.continue *)
+          (* and type break = Features.Off.break *)
+          (* and type mutable_variable = Features.Off.mutable_variable *)
+          (* and type mutable_reference = Features.Off.mutable_reference *)
+          (* and type mutable_pointer = Features.Off.mutable_pointer *)
+          (* and type reference = Features.Off.reference *)
+          (* and type slice = Features.Off.slice *)
+          (* and type raw_pointer = Features.Off.raw_pointer *)
+            with type early_exit = Features.On.early_exit
+             and type question_mark = Features.On.question_mark
+             and type macro = Features.On.macro
     (* and type as_pattern = Features.Off.as_pattern *)
     (* and type nontrivial_lhs = Features.Off.nontrivial_lhs *)
     (* and type arbitrary_lhs = Features.Off.arbitrary_lhs *)
@@ -44,7 +43,6 @@ module SubtypeToInputLanguage
 struct
   module FB = InputLanguage
 
-  
   include
     Feature_gate.Make (FA) (FB)
       (struct
@@ -122,8 +120,7 @@ module Print = struct
         fun ctx e ->
           let wrap_parens =
             group
-            >>
-            match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock braces
+            >> match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock braces
           in
           match e with
           | Match
@@ -133,7 +130,14 @@ module Print = struct
                 arms = _;
               }
           (*[@ocamlformat "disable"]*)
-            when Global_ident.eq_name Core__ops__try_trait__Try__branch n -> super#expr' ctx expr.e
+            when Global_ident.eq_name Core__ops__try_trait__Try__branch n ->
+              super#expr' ctx expr.e
+          | Construct { constructor; fields; _ }
+            when Global_ident.eq_name Core__result__Result__Ok constructor ->
+              super#expr' ctx (snd (Option.value_exn (List.hd fields))).e
+          | Construct { constructor; _ }
+            when Global_ident.eq_name Core__result__Result__Err constructor ->
+              string "fail"
           | _ -> super#expr' ctx e
 
       method! item' item =
