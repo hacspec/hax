@@ -1,7 +1,7 @@
 # `hax-engine-names`
 
 ## Purpose of the crate
-The create `hax-engine-names` is a dummy crate that contains all the
+The crate `hax-engine-names` is a dummy crate that contains all the
 Rust names the engine should be aware of.
 
 For instance, the engine needs to know about `Some` and `None` to
@@ -29,8 +29,8 @@ Note this will also make `Option` available.
 
 ## How names are generated in OCaml
 The subcrate `hax-engine-names-extract` runs `cargo hax into json` on
-the crate `hax-engine-names`, and extract all the names it finds,
-along with other informations.
+the crate `hax-engine-names`, and extracts all the names it finds,
+along with other information.
 
 Those names are compiled into the enumeration type
 `Concrete_ident_generated.name`. You can look at those names by
