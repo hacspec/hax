@@ -28,4 +28,4 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Test
-        run: cargo test --workspace --verbose
+        run: cargo test --workspace --exclude hax-engine-names-extract --verbose

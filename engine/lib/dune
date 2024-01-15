@@ -48,12 +48,12 @@
 (rule
  (target concrete_ident_generated.ml)
  (deps
-  (:generate_sh concrete_ident/generate.sh)
-  (:names concrete_ident/names.rs))
+  (alias universe-hash)
+  (env_var HAX_ENGINE_NAMES_EXTRACT_BINARY))
  (action
   (with-stdout-to
    concrete_ident_generated.ml
-   (run bash %{generate_sh} %{names}))))
+   (run %{env:HAX_ENGINE_NAMES_EXTRACT_BINARY=hax-engine-names-extract}))))
 
 (rule
  (target types.ml)

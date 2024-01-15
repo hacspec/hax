@@ -174,8 +174,8 @@ end = struct
     state :=
       impl_infos
       |> List.map ~f:(map_fst Imported.of_def_id)
-      |> Hashtbl.of_alist_exn (module T)
-      |> Option.some
+      |> Hashtbl.of_alist_multi (module T)
+      |> Hashtbl.map ~f:List.hd_exn |> Option.some
 
   let get_state () =
     match !state with

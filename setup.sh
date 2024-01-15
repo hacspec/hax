@@ -44,7 +44,7 @@ ensure_node_is_recent_enough() {
 
 # Installs the Rust CLI & frontend, providing `cargo-hax` and `driver-hax`
 install_rust_binaries() {
-    for i in driver subcommands; do
+    for i in driver subcommands ../engine/names/extract; do
         (
             set -x
             cargo install --force --path "cli/$i"

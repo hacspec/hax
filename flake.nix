@@ -47,6 +47,7 @@
           inherit rustc ocamlformat rustfmt fstar;
           hax-engine = pkgs.callPackage ./engine {
             hax-rust-frontend = packages.hax-rust-frontend.unwrapped;
+            hax-engine-names-extract = packages.hax-rust-frontend.hax-engine-names-extract;
             inherit rustc;
           };
           hax-rust-frontend = pkgs.callPackage ./cli {

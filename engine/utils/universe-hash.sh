@@ -20,19 +20,26 @@ function hash() {
     fi
 }
 
-HAX_JSON_SCHEMA_EXPORTER_BINARY=${HAX_JSON_SCHEMA_EXPORTER_BINARY:-hax-export-json-schemas}
-
-if BIN=$(command -v "$HAX_JSON_SCHEMA_EXPORTER_BINARY"); then
-    hash "$BIN"
-else
+function error() {
     DIAG="looks like it's **NOT** the case!"
     if [[ ":$PATH:" == *":$HOME/.cargo/bin"{,/}":"* ]]; then
         DIAG="this seems to be the case"
     fi
-    echo "Error: could not find [$HAX_JSON_SCHEMA_EXPORTER_BINARY] in PATH." >&2
+    echo "Error: could not find [$1] in PATH." >&2
     echo "Please make sure that:" >&2
-    echo "  - you ran Hax's `setup.sh` script;" >&2
+    echo '  - you ran Hax''s `setup.sh` script;' >&2
     echo "  - you have `~/.cargo/bin` in your PATH ($DIAG)." >&2
     exit 1
-fi
+}
+
+HAX_JSON_SCHEMA_EXPORTER_BINARY=${HAX_JSON_SCHEMA_EXPORTER_BINARY:-hax-export-json-schemas}
+HAX_ENGINE_NAMES_EXTRACT_BINARY=${HAX_ENGINE_NAMES_EXTRACT_BINARY:-hax-engine-names-extract}
+
+for binary in "$HAX_JSON_SCHEMA_EXPORTER_BINARY" "$HAX_ENGINE_NAMES_EXTRACT_BINARY"; do
+    if BIN=$(command -v "$binary"); then
+        hash "$BIN"
+    else
+        error "$binary"
+    fi
+done
 
