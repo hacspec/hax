@@ -25,7 +25,7 @@ val pow2_values: x:nat -> Lemma
    | 40 | 41 | 42 | 43 | 44 | 45 | 46
    | 47 | 48 | 49 | 50 | 51 | 52 | 53
    | 54 | 55 | 56 | 57 | 58 | 59 | 60
-   | 61 | 62 | 65 | 127 | 128 -> p = normalize_term (pow2 x)
+   | 61 | 62 | 63 | 65 | 127 | 128 -> p = normalize_term (pow2 x)
    | _ -> True)
   [SMTPat (pow2 x)]
 
@@ -36,6 +36,16 @@ type uinttype = t:inttype{unsigned t}
 let int_t t = LI.int_t t LI.PUB
 
 let bits t = LI.bits t
+let u8_inttype = LI.U8
+let i8_inttype = LI.S8
+let u16_inttype = LI.U16
+let i16_inttype = LI.S16
+let u32_inttype = LI.U32
+let i32_inttype = LI.S32
+let u64_inttype = LI.U64
+let i64_inttype = LI.S64
+let u128_inttype = LI.U128
+let i128_inttype = LI.S128
 val usize_inttype: t:inttype{unsigned t /\ (t = LI.U32 \/ t = LI.U64)}
 val isize_inttype: t:inttype{signed t /\ (t = LI.S32 \/ t = LI.S64)}
 
@@ -75,6 +85,22 @@ let v (#t:inttype) (x:int_t t) : range_t t = LI.v #t #LI.PUB x
 [@(strict_on_arguments [0])]
 val mk_int (#t:inttype) (n:range_t t) : int_t t
 
+[@(strict_on_arguments [0])]
+val mk_int_equiv_lemma #t (n:range_t t) :
+    Lemma (
+    match t with
+    | LI.U8 -> mk_int #u8_inttype n == UInt8.uint_to_t n   
+    | LI.S8 -> mk_int #i8_inttype n == Int8.int_to_t n   
+    | LI.U16 -> mk_int #u16_inttype n == UInt16.uint_to_t n   
+    | LI.S16 -> mk_int #i16_inttype n == Int16.int_to_t n   
+    | LI.U32 -> mk_int #u32_inttype n == UInt32.uint_to_t n   
+    | LI.S32 -> mk_int #i32_inttype n == Int32.int_to_t n   
+    | LI.U64 -> mk_int #u64_inttype n == UInt64.uint_to_t n   
+    | LI.S64 -> mk_int #i64_inttype n == Int64.int_to_t n   
+    | LI.U128 -> mk_int #u128_inttype n == UInt128.uint_to_t n   
+    | LI.S128 -> mk_int #i128_inttype n == Int128.int_to_t n  
+    | _ -> True)
+
 let sz (n:range_t usize_inttype) : usize = mk_int n
 let isz (n:range_t isize_inttype) : isize = mk_int n
 
@@ -98,7 +124,6 @@ let op_At_Percent_Dot x t : range_t t =
 let cast (#t:inttype) (#t':inttype)
     (u1:int_t t{range (v u1) t'}) =
     mk_int #t' (v u1)
-
 let cast_mod (#t:inttype) (#t':inttype)
     (u1:int_t t) = 
     mk_int #t' (v u1 @%. t')
@@ -176,7 +201,7 @@ val decr_equiv_lemma: #t:inttype
   -> Lemma (decr a == LI.decr #t #LI.PUB a)
 
 let div (#t:inttype) (a:int_t t) (b:int_t t{v b <> 0}) =
-  assume(unsigned t \/ range (v a / v b) t);
+  assume(unsigned t \/ range (v a / v b) t); // see issue #423
   mk_int #t (v a / v b)
   
 val div_equiv_lemma: #t:inttype{~(LI.U128? t) /\ ~(LI.S128? t)}
@@ -219,7 +244,10 @@ val lognot_lemma: #t:inttype -> a:int_t t -> Lemma
   (lognot a == LI.lognot #t #LI.PUB a /\
    lognot #t zero == ones /\
    lognot #t ones == zero /\
-   lognot (lognot a) == a)
+   lognot (lognot a) == a /\
+   (signed t ==> v (lognot a) = -1 - v a) /\
+   (unsigned t ==> v (lognot a)  = pow2 (bits t) - 1 - v a)
+   )
 
 val logxor: #t:inttype
   -> int_t t
@@ -227,9 +255,13 @@ val logxor: #t:inttype
   -> int_t t
 val logxor_lemma: #t:inttype -> a:int_t t -> b:int_t t -> Lemma
   (logxor a b == LI.logxor #t #LI.PUB a b /\
+   a `logxor` a == zero /\
+   (a `logxor` b == zero ==> b == a) /\
    a `logxor` (a `logxor` b) == b /\
    a `logxor` (b `logxor` a) == b /\
+   zero `logxor` a == a /\
    a `logxor` zero == a /\
+   ones `logxor` a == lognot a /\
    a `logxor` ones == lognot a)
     
 val logand: #t:inttype
@@ -240,15 +272,19 @@ val logand: #t:inttype
 val logand_lemma: #t:inttype -> a:int_t t -> b:int_t t ->
   Lemma (logand a b == LI.logand #t #LI.PUB a b /\
          logand a zero == zero /\
-         logand a ones == a)
+         logand zero a == zero /\
+         logand a ones == a /\
+         logand ones a == a /\
+         (v a >= 0 ==> (v (logand a b) >= 0) /\ (v (logand a b) <= v a)) /\
+         (v b >= 0 ==> (v (logand a b) >= 0) /\ (v (logand a b) <= v b)))
 
 val logand_mask_lemma: #t:inttype
   -> a:int_t t
-  -> m:pos{m < bits t} ->
+  -> m:nat{m < bits t} ->
   Lemma (pow2 m < maxint t /\
-         logand a (sub_mod #t (mk_int #t (pow2 m)) (mk_int #t 1)) ==
+         logand a (sub #t (mk_int #t (pow2 m)) (mk_int #t 1)) ==
          mk_int (v a % pow2 m))
-  [SMTPat (logand #t a (sub_mod #t (mk_int #t (pow2 m)) (mk_int #t 1)))]
+  [SMTPat (logand #t a (sub #t (mk_int #t (pow2 m)) (mk_int #t 1)))]
 
 val logor: #t:inttype
   -> int_t t
@@ -258,7 +294,10 @@ val logor: #t:inttype
 val logor_lemma: #t:inttype -> a:int_t t -> b:int_t t ->
   Lemma (logor a b == LI.logor #t #LI.PUB a b /\
          logor a zero == a /\
-         logor a ones == ones)
+         logor a ones == ones /\
+         logor zero a == a /\
+         logor ones a == ones /\
+         ((v a >= 0 /\ v b >= 0) ==> (v (logor a b) >= v a /\ v (logor a b) >= v b)))
 
 unfold type shiftval (t:inttype) (t':inttype) =
      b:int_t t'{v b >= 0 /\ v b < bits t}
@@ -278,14 +317,14 @@ val shift_right_equiv_lemma: #t:inttype -> #t':inttype
      LI.shift_right #t #LI.PUB a (cast b))
      
 let shift_left (#t:inttype) (#t':inttype)
-    (a:int_t t{v a >= 0}) (b:shiftval t t') =
+    (a:int_t t) (b:shiftval t t') =
     let x:range_t t = (v a * pow2 (v b)) @%. t in
     mk_int #t x
 
 val shift_left_equiv_lemma: #t:inttype -> #t':inttype
   -> a:int_t t -> b:shiftval t t'
   -> Lemma
-    ((v a >= 0 /\ v a * pow2 (v b) <= maxint t) ==>
+    ((v a >= 0 /\ range (v a * pow2 (v b)) t) ==>
      (v (cast b <: u32) < bits t /\
       shift_left #t #t' a b ==
       LI.shift_left #t #LI.PUB a (cast b)))
@@ -327,6 +366,15 @@ val abs_int_equiv_lemma: #t:inttype{signed t /\ not (LI.S128? t)}
   -> a:int_t t{minint t < v a}
   -> Lemma (abs_int a == LI.ct_abs #t #LI.PUB a)
 
+let neg (#t:inttype{signed t}) (a:int_t t{range (0 - v a) t}) =
+    mk_int #t (0 - (v a))
+
+val neg_equiv_lemma: #t:inttype{signed t /\ not (LI.S128? t)}
+  -> a:int_t t{range (0 - v a) t}
+  -> Lemma (neg a == sub #t (mk_int 0) a /\
+          (lognot a = sub (neg a) (mk_int 1)))
+
+
 
 ///
 /// Operators available for all machine integers
@@ -338,28 +386,19 @@ let (+!) #t = add #t
 
 // Wrapping: no precondition
 unfold
-let (+%) #t = add #t
-
-unfold
-let (+.) #t = add #t
+let (+.) #t = add_mod #t
 
 unfold
 let ( *! ) #t = mul #t
 
 unfold
-let ( *% ) #t = mul_mod #t
-
-unfold
-let ( *. ) #t = mul #t
+let ( *. ) #t = mul_mod #t
 
 unfold
 let ( -! ) #t = sub #t
 
 unfold
-let ( -% ) #t = sub_mod #t
-
-unfold
-let ( -. ) #t = sub #t
+let ( -. ) #t = sub_mod #t
 
 unfold
 let ( >>! ) #t #t' = shift_right #t #t'
@@ -408,4 +447,62 @@ let (>.) #t = gt #t
 
 unfold
 let (>=.) #t = gte #t
+
+type bit = n: nat {n < 2}
+
+/// Mathematical `get_bit` definition on `nat`s
+let get_bit_nat (x: nat) (nth: nat): bit
+  = (x / pow2 nth) % 2
+
+/// `get_bit` definition for machine integer of any size and signedness
+[@"opaque_to_smt"]
+let get_bit (#n: inttype) (x: int_t n) (nth: usize {v nth < bits n}): bit
+  = if v x >= 0 then get_bit_nat (v x) (v nth)
+               else // two's complement
+                    get_bit_nat (pow2 (bits n) + v x) (v nth)
+
+unfold let bit_and (x y: bit): bit = match x, y with | (1, 1) -> 1 | _ -> 0
+unfold let bit_or  (x y: bit): bit = (x + y) % 2
+
+/// Bit-wise semantics for `&.`
+val get_bit_and #t (x y: int_t t) (i: usize {v i < bits t})
+  : Lemma (get_bit (x &. y) i == get_bit x i `bit_and` get_bit y i)
+          [SMTPat (get_bit (x &. y) i)]
+
+/// Bit-wise semantics for `|.`
+val get_bit_or #t (x y: int_t t) (i: usize {v i < bits t})
+  : Lemma (get_bit (x |. y) i == get_bit x i `bit_or` get_bit y i)
+          [SMTPat (get_bit (x |. y) i)]
+
+/// Bit-wise semantics for `<<!`
+val get_bit_shl #t #u (x: int_t t) (y: int_t u) (i: usize {v i < bits t})
+  : Lemma (requires v y >= 0 /\ v y < bits t)
+          (ensures get_bit (x <<! y) i 
+                == (if v i < v y then 0 else get_bit x (mk_int (v i - v y))))
+    [SMTPat (get_bit (x <<! y) i)]
+
+/// Bit-wise semantics for `>>!`
+val get_bit_shr #t #u (x: int_t t) (y: int_t u) (i: usize {v i < bits t})
+  : Lemma (requires v y >= 0 /\ v y < bits t)
+          (ensures get_bit (x >>! y) i 
+                == (if v i < bits t - v y
+                    then get_bit x (mk_int (v i + v y))
+                    else if signed t
+                         then get_bit x (mk_int (bits t - 1))
+                         else 0))
+    [SMTPat (get_bit (x >>! y) i)]
+
+// TODO(issue #422): check for neg numbers
+/// Bit-wise semantics of integer casts
+val get_bit_cast #t #u
+  (x: int_t t) (nth: usize)
+  : Lemma (requires v nth < bits u /\ v nth < bits t)
+          (ensures get_bit (cast_mod #t #u x) nth == get_bit x nth)
+          [SMTPat (get_bit (cast_mod #t #u x) nth)]
+
+val get_bit_cast_extend #t #u
+  (x: int_t t) (nth: usize)
+  : Lemma (requires bits t < bits u /\ v nth >= bits t /\ v nth < bits u)
+          (ensures get_bit (cast_mod #t #u x) nth == 0)
+          [SMTPat (get_bit (cast_mod #t #u x) nth)]
 

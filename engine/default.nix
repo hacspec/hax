@@ -2,6 +2,7 @@
   ocamlPackages,
   fetchzip,
   hax-rust-frontend,
+  hax-engine-names-extract,
   rustc,
   nodejs,
   jq,
@@ -81,6 +82,7 @@
     nativeBuildInputs = [
       rustc
       hax-rust-frontend
+      hax-engine-names-extract
       nodejs
       ocamlPackages.js_of_ocaml-compiler
       jq
@@ -89,9 +91,11 @@
     passthru = {
       docs = hax-engine.overrideAttrs (old: {
         name = "hax-engine-docs";
-        nativeBuildInputs = old.nativeBuildInputs ++ [
-          ocamlPackages.odoc
-        ];
+        nativeBuildInputs =
+          old.nativeBuildInputs
+          ++ [
+            ocamlPackages.odoc
+          ];
         buildPhase = ''dune build @doc'';
         installPhase = "cp -rf _build/default/_doc/_html $out";
       });

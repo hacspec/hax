@@ -14,9 +14,29 @@ members = [
      "hax-lib-macros",
      "hax-lib-macros/types",
      "hax-lib-protocol",
-     "hax-lib-protocol-macros"
+     "hax-lib-protocol-macros",
+     "engine/names",
+     "engine/names/extract",
 ]
 exclude = ["tests"]
+default-members = [
+     "frontend/exporter",
+     "frontend/exporter/options",
+     "frontend/diagnostics",
+     "frontend/lint",
+     "cli/options",
+     "cli/options/engine",
+     "cli/subcommands",
+     "cli/driver",
+     "test-harness",
+     "engine/utils/phase-debug-webapp",
+     "hax-lib",
+     "hax-lib-macros",
+     "hax-lib-macros/types",
+     "hax-lib-protocol",
+     "hax-lib-protocol-macros",
+     "engine/names",
+]
 resolver = "2"
 
 [workspace.package]
@@ -67,3 +87,4 @@ hax-diagnostics = { path = "frontend/diagnostics", version = "=0.1.0-pre.1" }
 hax-lint = { path = "frontend/lint", version = "=0.1.0-pre.1" }
 hax-phase-debug-webapp = { path = "engine/utils/phase-debug-webapp", version = "=0.1.0-pre.1" }
 hax-lib-macros-types = { path = "hax-lib-macros/types", version = "=0.1.0-pre.1" }
+hax-engine-names = { path = "engine/names", version = "=0.1.0-pre.1" }

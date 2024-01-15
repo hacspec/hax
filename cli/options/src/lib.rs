@@ -275,7 +275,8 @@ pub enum ExporterCommand {
         output_file: PathOrDash,
         /// Whether the bodies are exported as THIR, built MIR, const
         /// MIR, or a combination. Repeat this option to extract a
-        /// combination (e.g. `-k thir -k mir-built`).
+        /// combination (e.g. `-k thir -k mir-built`). Pass `--kind`
+        /// alone with no value to disable body extraction.
         #[arg(
             value_enum,
             short,
