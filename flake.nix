@@ -79,7 +79,14 @@
         devShells = let
           inputsFrom = [
             packages.hax-rust-frontend.unwrapped
-            packages.hax-engine
+            # `hax-engine`'s build requires `hax-rust-frontend` and
+            # `hax-engine-names-extract`, but in a dev environment,
+            # those two packages are supposed to be built locally,
+            # thus we kill them here
+            (packages.hax-engine.override {
+              hax-rust-frontend = pkgs.hello;
+              hax-engine-names-extract = pkgs.hello;
+            })
           ];
         in let
           packages = [
