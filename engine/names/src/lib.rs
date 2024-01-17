@@ -21,12 +21,18 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     let _: Option<alloc::alloc::Global> = None;
     let _: Option<()> = Some(());
     let _: Option<()> = None;
+    let _: Result<(), u32> = Result::Err(3u8).map_err(u32::from);
 
     let _ = [()].into_iter();
     let _ = 1..2;
     let _ = 1..;
     let _ = ..;
     let _ = ..1;
+
+    fn question_mark_result<A, B: From<A>>(x: A) -> Result<(), B> {
+        Err(x)?;
+        Ok(())
+    }
 
     const _: () = {
         use core::{cmp::*, ops::*};
