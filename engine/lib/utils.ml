@@ -23,6 +23,10 @@ let tup2 a b = (a, b)
 let ( let* ) x f = Option.bind ~f x
 let some_if_true = function true -> Some () | _ -> None
 
+let ( let*? ) (type a) (x : bool) (f : unit -> a option) =
+  let* () = some_if_true x in
+  f ()
+
 let map_first_letter (f : string -> string) (s : string) =
   let first, rest = String.(prefix s 1, drop_prefix s 1) in
   f first ^ rest
