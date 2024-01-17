@@ -494,6 +494,7 @@ dependencies = [
  "camino",
  "cargo_metadata",
  "hax-cli-options-engine",
+ "hax-engine-names",
  "hax-frontend-exporter",
  "serde",
  "serde_json",
