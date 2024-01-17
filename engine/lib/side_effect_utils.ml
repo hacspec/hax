@@ -243,17 +243,14 @@ struct
         method! visit_expr (env : CollectContext.t) e =
           match e.e with
           | LocalVar v -> (e, no_lbs (SideEffects.reads v e.typ))
-          | QuestionMark { e = e'; converted_typ; witness } ->
+          | QuestionMark { e = e'; return_typ; witness } ->
               HoistSeq.one env (super#visit_expr env e') (fun e' effects ->
                   let effects =
                     m#plus effects
                       (no_lbs
-                         { SideEffects.zero with return = Some converted_typ })
+                         { SideEffects.zero with return = Some return_typ })
                   in
-                  ( {
-                      e with
-                      e = QuestionMark { e = e'; converted_typ; witness };
-                    },
+                  ( { e with e = QuestionMark { e = e'; return_typ; witness } },
                     effects ))
           | Return { e = e'; witness } ->
               HoistSeq.one env (super#visit_expr env e') (fun e' effects ->

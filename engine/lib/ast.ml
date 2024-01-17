@@ -348,7 +348,7 @@ functor
       | Return of { e : expr; witness : F.early_exit }
       | QuestionMark of {
           e : expr;
-          converted_typ : ty;
+          return_typ : ty;
               (** [converted_typ] is the converted type: when you do [e?], a convertion might be inserted by Rust on the fly (e.g. [Something::from_residual(e)]) *)
           witness : F.question_mark;
         }
