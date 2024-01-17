@@ -213,13 +213,7 @@ struct
       | Break _ ->
           Error.unimplemented ~issue_id:96
             ~details:"TODO: Monad for loop-related control flow" span
-      | QuestionMark { e; converted_typ; _ } ->
-          let e = dexpr e in
-          let converted_typ = dty span converted_typ in
-          if [%equal: B.ty] converted_typ e.typ then e
-          else
-            UB.call Core__ops__try_trait__FromResidual__from_residual [ e ] span
-              converted_typ
+      | QuestionMark { e; _ } -> dexpr e
       | Return { e; _ } ->
           let open KnownMonads in
           let e = dexpr e in
