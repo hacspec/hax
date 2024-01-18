@@ -36,19 +36,21 @@ open FStar.Mul
 let add3 (x y z: u32) : u32 =
   Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add x y <: u32) z
 
-let direct_result_1_ (y: Core.Result.t_Result i8 u32) : Core.Result.t_Result i8 u32 =
-  Rust_primitives.Hax.Control_flow_monad.Mresult.run (let| hoist1:i8 =
-        Core.Result.impl__map_err y (Core.Convert.f_from <: u32 -> u32)
-      in
-      Core.Result.Result_Ok (Core.Result.Result_Ok hoist1 <: Core.Result.t_Result i8 u32)
-      <:
-      Core.Result.t_Result (Core.Result.t_Result i8 u32) u32)
-
-let direct_result_2_ (y: Core.Result.t_Result Prims.unit u32) : Core.Result.t_Result i8 u32 =
+let direct_result_question_mark (y: Core.Result.t_Result Prims.unit u32)
+    : Core.Result.t_Result i8 u32 =
   Rust_primitives.Hax.Control_flow_monad.Mresult.run (let| _:Prims.unit =
         Core.Result.impl__map_err y (Core.Convert.f_from <: u32 -> u32)
       in
-      Core.Result.Result_Ok (Core.Result.Result_Ok 1y <: Core.Result.t_Result i8 u32)
+      Core.Result.Result_Ok (Core.Result.Result_Ok 0y <: Core.Result.t_Result i8 u32)
+      <:
+      Core.Result.t_Result (Core.Result.t_Result i8 u32) u32)
+
+let direct_result_question_mark_coercion (y: Core.Result.t_Result i8 u16)
+    : Core.Result.t_Result i8 u32 =
+  Rust_primitives.Hax.Control_flow_monad.Mresult.run (let| hoist1:i8 =
+        Core.Result.impl__map_err y (Core.Convert.f_from <: u16 -> u32)
+      in
+      Core.Result.Result_Ok (Core.Result.Result_Ok hoist1 <: Core.Result.t_Result i8 u32)
       <:
       Core.Result.t_Result (Core.Result.t_Result i8 u32) u32)
 
@@ -95,20 +97,6 @@ let early_returns (x: u32) : u32 =
       Core.Ops.Control_flow.ControlFlow_Continue (Rust_primitives.Hax.never_to_any hoist8)
       <:
       Core.Ops.Control_flow.t_ControlFlow u32 u32)
-
-let into_err (x: u8) : Core.Result.t_Result u8 u64 =
-  Rust_primitives.Hax.Control_flow_monad.Mresult.run (let| _:Prims.unit =
-        if x >. 200uy
-        then
-          Core.Result.impl__map_err (Core.Result.Result_Err x <: Core.Result.t_Result Prims.unit u8)
-            (Core.Convert.f_from <: u8 -> u64)
-        else Core.Result.Result_Ok () <: Core.Result.t_Result Prims.unit u64
-      in
-      Core.Result.Result_Ok
-      (Core.Result.Result_Ok (Core.Num.impl__u8__wrapping_add x 54uy) <: Core.Result.t_Result u8 u64
-      )
-      <:
-      Core.Result.t_Result (Core.Result.t_Result u8 u64) u64)
 
 let local_mutation (x: u32) : u32 =
   let y:u32 = 0ul in
@@ -232,27 +220,35 @@ type t_Bar = {
   f_b:(t_Array (bool & bool) (sz 6) & bool)
 }
 
-let monad_lifting (_: Prims.unit) : Core.Result.t_Result t_A t_B =
-  Rust_primitives.Hax.Control_flow_monad.Mexception.run (let! hoist33:t_A =
-        Core.Ops.Control_flow.ControlFlow_Continue
-        (Core.Result.impl__map_err (Core.Result.Result_Err (B <: t_B)
-              <:
-              Core.Result.t_Result t_A t_B)
-            (Core.Convert.f_from <: t_B -> t_B))
+let monad_lifting (x: u8) : Core.Result.t_Result t_A t_B =
+  Rust_primitives.Hax.Control_flow_monad.Mexception.run (if x >. 123uy <: bool
+      then
+        let! hoist33:t_A =
+          Core.Ops.Control_flow.ControlFlow_Continue
+          (Core.Result.impl__map_err (Core.Result.Result_Err (B <: t_B)
+                <:
+                Core.Result.t_Result t_A t_B)
+              (Core.Convert.f_from <: t_B -> t_B))
+          <:
+          Core.Ops.Control_flow.t_ControlFlow (Core.Result.t_Result t_A t_B)
+            (Core.Result.t_Result t_A t_B)
+        in
+        let hoist34:Core.Result.t_Result t_A t_B =
+          Core.Result.Result_Ok hoist33 <: Core.Result.t_Result t_A t_B
+        in
+        let! hoist35:Rust_primitives.Hax.t_Never =
+          Core.Ops.Control_flow.ControlFlow.v_Break hoist34
+        in
+        Core.Ops.Control_flow.ControlFlow_Continue (Rust_primitives.Hax.never_to_any hoist35)
         <:
         Core.Ops.Control_flow.t_ControlFlow (Core.Result.t_Result t_A t_B)
           (Core.Result.t_Result t_A t_B)
-      in
-      let hoist34:Core.Result.t_Result t_A t_B =
-        Core.Result.Result_Ok hoist33 <: Core.Result.t_Result t_A t_B
-      in
-      let! hoist35:Rust_primitives.Hax.t_Never =
-        Core.Ops.Control_flow.ControlFlow.v_Break hoist34
-      in
-      Core.Ops.Control_flow.ControlFlow_Continue (Rust_primitives.Hax.never_to_any hoist35)
-      <:
-      Core.Ops.Control_flow.t_ControlFlow (Core.Result.t_Result t_A t_B)
-        (Core.Result.t_Result t_A t_B))
+      else
+        Core.Ops.Control_flow.ControlFlow_Continue
+        (Core.Result.Result_Ok (A <: t_A) <: Core.Result.t_Result t_A t_B)
+        <:
+        Core.Ops.Control_flow.t_ControlFlow (Core.Result.t_Result t_A t_B)
+          (Core.Result.t_Result t_A t_B))
 
 type t_Foo = {
   f_x:bool;

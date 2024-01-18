@@ -1,8 +1,11 @@
 #![allow(dead_code)]
+
+/// Helper function
 fn add3(x: u32, y: u32, z: u32) -> u32 {
     x.wrapping_add(y).wrapping_add(z)
 }
 
+/// Exercise local mutation with control flow and loops
 fn local_mutation(mut x: u32) -> u32 {
     let mut y = 0;
     if {
@@ -39,6 +42,7 @@ fn local_mutation(mut x: u32) -> u32 {
     }
 }
 
+/// Exercise early returns with control flow and loops
 fn early_returns(mut x: u32) -> u32 {
     return (123u32.wrapping_add(
         if {
@@ -59,14 +63,18 @@ fn early_returns(mut x: u32) -> u32 {
     .wrapping_add(x);
 }
 
-fn direct_result_1(y: Result<i8, u32>) -> Result<i8, u32> {
-    Ok(y?)
-}
-fn direct_result_2(y: Result<(), u32>) -> Result<i8, u32> {
+/// Question mark without error coercion
+fn direct_result_question_mark(y: Result<(), u32>) -> Result<i8, u32> {
     y?;
-    Ok(1)
+    Ok(0)
 }
 
+/// Question mark with an error coercion
+fn direct_result_question_mark_coercion(y: Result<i8, u16>) -> Result<i8, u32> {
+    Ok(y?)
+}
+
+/// Test question mark on `Option`s with some control flow
 fn options(x: Option<u8>, y: Option<u8>, z: Option<u64>) -> Option<u8> {
     let v = match (if x? > 10 {
         Some(x?.wrapping_add(3))
@@ -80,6 +88,7 @@ fn options(x: Option<u8>, y: Option<u8>, z: Option<u64>) -> Option<u8> {
     Some(v.wrapping_add(x?).wrapping_add(y?))
 }
 
+/// Test question mark on `Result`s with local mutation
 fn question_mark(mut x: u32) -> Result<u32, u32> {
     if x > 40u32 {
         let mut y = 0;
@@ -98,15 +107,13 @@ fn question_mark(mut x: u32) -> Result<u32, u32> {
 struct A;
 struct B;
 
-fn monad_lifting() -> Result<A, B> {
-    return Ok(Err(B)?);
-}
-
-fn into_err(x: u8) -> Result<u8, u64> {
-    if x > 200 {
-        Err(x)?
+/// Combine `?` and early return
+fn monad_lifting(x: u8) -> Result<A, B> {
+    if x > 123 {
+        return Ok(Err(B)?);
+    } else {
+        Ok(A)
     }
-    Ok(x.wrapping_add(54))
 }
 
 struct Bar {
@@ -119,6 +126,8 @@ struct Foo {
     z: [Bar; 6],
     bar: Bar,
 }
+
+/// Test assignation on non-trivial places
 fn assign_non_trivial_lhs(mut foo: Foo) -> Foo {
     foo.x = true;
     foo.bar.a = true;

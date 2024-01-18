@@ -23,6 +23,8 @@ let tup2 a b = (a, b)
 let ( let* ) x f = Option.bind ~f x
 let some_if_true = function true -> Some () | _ -> None
 
+(** [let*? () = guard in body] acts as a guard: if [guard] holds, then
+[body] is executed, otherwise [None] is returned. *)
 let ( let*? ) (type a) (x : bool) (f : unit -> a option) =
   let* () = some_if_true x in
   f ()

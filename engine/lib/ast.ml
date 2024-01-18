@@ -346,12 +346,10 @@ functor
       (* ControlFlow *)
       | Break of { e : expr; label : string option; witness : F.break * F.loop }
       | Return of { e : expr; witness : F.early_exit }
-      | QuestionMark of {
-          e : expr;
-          return_typ : ty;
-              (** [converted_typ] is the converted type: when you do [e?], a convertion might be inserted by Rust on the fly (e.g. [Something::from_residual(e)]) *)
-          witness : F.question_mark;
-        }
+      | QuestionMark of { e : expr; return_typ : ty; witness : F.question_mark }
+          (** The expression `e?`. In opposition to Rust, no implicit
+      coercion is applied on the (potential) error payload of
+      `e`. Coercion should be made explicit within `e`. *)
       | Continue of {
           e : (F.state_passing_loop * expr) option;
           label : string option;

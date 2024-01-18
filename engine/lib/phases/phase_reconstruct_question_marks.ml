@@ -30,12 +30,10 @@ module%inlined_contents Make (FA : Features.T) = struct
 
       open A
 
+      (** The types supported for [e] in a [e?] expression *)
       type qm_kind = QMResult of { success : ty; error : ty } | QMOption of ty
 
-      let return_typ_of_qm_kind = function
-        | QMResult { error; _ } -> error
-        | QMOption _ -> UA.unit_typ
-
+      (** Interpret a type [t] as a [qm_kind] *)
       let qm_kind_of_typ span (t : ty) : qm_kind =
         let is_result = Global_ident.eq_name Core__result__Result in
         let is_option = Global_ident.eq_name Core__option__Option in
@@ -49,19 +47,9 @@ module%inlined_contents Make (FA : Features.T) = struct
                 got: "
               ^ [%show: ty] t)
 
-      type t = {
-        start : expr;
-        end_ : expr;
-        var : local_ident;
-        var_typ : ty;
-        body : expr;
-        state : loop_state option;
-        label : string option;
-        witness : FA.loop;
-      }
-      [@@deriving show]
-
-      (** expect residual impl result 27 *)
+      (** Expects [impl] to be an impl. expr. for the trait
+      `std::ops::FromResidual` for the type [Result<_, _>], and
+      extract its parent [From] impl expr *)
       let expect_residual_impl_result (impl : impl_expr) : impl_expr option =
         match impl with
         | ImplApp
@@ -70,6 +58,7 @@ module%inlined_contents Make (FA : Features.T) = struct
             Some from_impl
         | _ -> None
 
+      (** Expects [t] to be [Result<S, E>], and returns [(S, E)] *)
       let expect_result_type (t : ty) : (ty * ty) option =
         match t with
         | TApp { ident; args = [ GType s; GType e ] }
@@ -77,11 +66,12 @@ module%inlined_contents Make (FA : Features.T) = struct
             Some (s, e)
         | _ -> None
 
+      (** Construct [Result<S,E>] *)
       let make_result_type (success : ty) (error : ty) : ty =
         let ident = Global_ident.of_name Type Core__result__Result in
         TApp { ident; args = [ GType success; GType error ] }
 
-      (** Retype a `Err::<_, E>(x)` literal, as `Err::<success, E>(x)` *)
+      (** Retype a [Err::<_, E>(x)] literal, as [Err::<success, E>(x)] *)
       let retype_err_literal (e : expr) (success : ty) (error : ty) =
         match e.e with
         | Construct { constructor; _ }
@@ -89,6 +79,9 @@ module%inlined_contents Make (FA : Features.T) = struct
             { e with typ = make_result_type success error }
         | _ -> e
 
+      (** [map_err e error_dest impl] creates the expression
+      [e.map_err(from)] with the proper types and impl
+      informations. *)
       let map_err (e : expr) (error_dest : ty) impl : expr option =
         let* success, error_src = expect_result_type e.typ in
         let* impl = expect_residual_impl_result impl in
@@ -103,6 +96,9 @@ module%inlined_contents Make (FA : Features.T) = struct
         in
         Some call
 
+      (** [extract e] returns [Some (x, ty)] if [e] was a `y?`
+      desugared by rustc. `y` is `x` plus possibly a coercion. [ty] is
+      the return type of the function. *)
       let extract (e : expr) : (expr * ty) option =
         let extract_return (e : expr) =
           match e.e with
