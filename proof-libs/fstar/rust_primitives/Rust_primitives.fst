@@ -4,6 +4,17 @@ include Rust_primitives.Integers
 include Rust_primitives.Arrays
 include Rust_primitives.BitVectors
 
+let (let?) (x: Core.Option.t_Option 'a) (f: 'a -> Core.Option.t_Option 'b): Core.Option.t_Option 'b
+  = match x with
+  | Core.Option.Option_Some x -> f x
+  | Core.Option.Option_None   -> Core.Option.Option_None
+
+let (let|) #e #a #b (x: Core.Result.t_Result a e) (f: a -> Core.Result.t_Result b e)
+    : Core.Result.t_Result b e
+    = match x with
+    | Core.Result.Result_Ok x -> f x
+    | Core.Result.Result_Err e -> Core.Result.Result_Err e
+
 class cast_tc a b = {
   cast: a -> b; 
 }

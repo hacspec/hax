@@ -1,47 +1,51 @@
 #![allow(dead_code)]
+
+/// Helper function
 fn add3(x: u32, y: u32, z: u32) -> u32 {
-    x + y + z
+    x.wrapping_add(y).wrapping_add(z)
 }
 
+/// Exercise local mutation with control flow and loops
 fn local_mutation(mut x: u32) -> u32 {
     let mut y = 0;
     if {
-        x = x + 1;
+        x = x.wrapping_add(1);
         x > 3
     } {
-        x = x - 3;
+        x = x.wrapping_sub(3);
         let mut y = x / 2;
         for i in {
-            y = y + 2;
+            y = y.wrapping_add(2);
             0
         }..10
         {
-            y = x + i;
+            y = x.wrapping_add(i);
         }
-        x + y
+        x.wrapping_add(y)
     } else {
         x = match x {
             12 => {
-                y = x + y;
+                y = x.wrapping_add(y);
                 3
             }
             13 => add3(
                 x,
                 {
-                    x = x + 1;
-                    123 + x
+                    x = x.wrapping_add(1);
+                    123u32.wrapping_add(x)
                 },
                 x,
             ),
             _ => 0,
         };
-        x + y
+        x.wrapping_add(y)
     }
 }
 
+/// Exercise early returns with control flow and loops
 fn early_returns(mut x: u32) -> u32 {
-    return (123
-        + if {
+    return (123u32.wrapping_add(
+        if {
             if x > 3 {
                 return 0;
             };
@@ -54,27 +58,62 @@ fn early_returns(mut x: u32) -> u32 {
         } else {
             x = x + 9;
             x + 1
-        })
-        + x;
+        },
+    ))
+    .wrapping_add(x);
 }
 
+/// Question mark without error coercion
+fn direct_result_question_mark(y: Result<(), u32>) -> Result<i8, u32> {
+    y?;
+    Ok(0)
+}
+
+/// Question mark with an error coercion
+fn direct_result_question_mark_coercion(y: Result<i8, u16>) -> Result<i8, u32> {
+    Ok(y?)
+}
+
+/// Test question mark on `Option`s with some control flow
+fn options(x: Option<u8>, y: Option<u8>, z: Option<u64>) -> Option<u8> {
+    let v = match (if x? > 10 {
+        Some(x?.wrapping_add(3))
+    } else {
+        Some(x?.wrapping_add(y?))
+    })? {
+        3 => None?,
+        4 => 4 + (if z? > 4 { 0 } else { 3 }),
+        _ => 12u8,
+    };
+    Some(v.wrapping_add(x?).wrapping_add(y?))
+}
+
+/// Test question mark on `Result`s with local mutation
 fn question_mark(mut x: u32) -> Result<u32, u32> {
     if x > 40u32 {
         let mut y = 0;
-        x = x + 3;
-        y = x + y;
+        x = x.wrapping_add(3);
+        y = x.wrapping_add(y);
         if {
-            x = x + y;
+            x = x.wrapping_add(y);
             x > 90u32
         } {
-            Err(1u8)?
+            Err(12u8)?
         }
     };
-    match 3 {
-        123 => 3,
-        _ => 3,
-    };
-    Ok(3 + x)
+    Ok(3u32.wrapping_add(x))
+}
+
+struct A;
+struct B;
+
+/// Combine `?` and early return
+fn monad_lifting(x: u8) -> Result<A, B> {
+    if x > 123 {
+        return Ok(Err(B)?);
+    } else {
+        Ok(A)
+    }
 }
 
 struct Bar {
@@ -87,6 +126,8 @@ struct Foo {
     z: [Bar; 6],
     bar: Bar,
 }
+
+/// Test assignation on non-trivial places
 fn assign_non_trivial_lhs(mut foo: Foo) -> Foo {
     foo.x = true;
     foo.bar.a = true;
@@ -94,11 +135,4 @@ fn assign_non_trivial_lhs(mut foo: Foo) -> Foo {
     foo.z[3].a = true;
     foo.y.1[3].b.0[5].0 = true;
     foo
-}
-
-struct A;
-struct B;
-
-fn monad_lifting() -> Result<A, B> {
-    return Ok(Err(B)?);
 }

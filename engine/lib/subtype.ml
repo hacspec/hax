@@ -217,11 +217,11 @@ struct
           }
     | Return { e; witness } ->
         Return { e = dexpr e; witness = S.early_exit span witness }
-    | QuestionMark { e; converted_typ; witness } ->
+    | QuestionMark { e; return_typ; witness } ->
         QuestionMark
           {
             e = dexpr e;
-            converted_typ = dty span converted_typ;
+            return_typ = dty span return_typ;
             witness = S.question_mark span witness;
           }
     | Continue { e; label; witness = w1, w2 } ->
