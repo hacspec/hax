@@ -10,7 +10,7 @@
     };
     rust-overlay.follows = "crane/rust-overlay";
     fstar-flake = {
-      url = "github:FStarLang/FStar/v2023.09.03";
+      url = "github:FStarLang/FStar/v2024.01.13";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         flake-utils.follows = "flake-utils";
