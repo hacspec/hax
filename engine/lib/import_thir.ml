@@ -87,11 +87,6 @@ let c_binding_mode span : Thir.binding_mode -> binding_mode = function
   | ByValue -> ByValue
   | ByRef k -> ByRef (c_borrow_kind span k, W.reference)
 
-let unit_typ : ty = TApp { ident = `TupleType 0; args = [] }
-
-let unit_expr span : expr =
-  { typ = unit_typ; span; e = Ast.GlobalVar (`TupleCons 0) }
-
 let wild_pat span : ty -> pat = fun typ -> { typ; span; p = PWild }
 
 let c_logical_op : Thir.logical_op -> logical_op = function
@@ -307,17 +302,17 @@ end) : EXPR = struct
               ^ [%show: ty] lhs.typ)
       else Concrete_ident.of_name Value @@ overloaded_names_of_binop op
     in
-    U.call' (`Concrete name) [ lhs; rhs ] span typ
+    U.Construct.Expr.app' (`Concrete name) [ lhs; rhs ] span typ
 
   let rec c_expr (e : Thir.decorated_for__expr_kind) : expr =
     try c_expr_unwrapped e
     with Diagnostics.SpanFreeError.Exn (Data (ctx, kind)) ->
       let typ : ty =
         try c_ty e.span e.ty
-        with Diagnostics.SpanFreeError.Exn _ -> U.hax_failure_typ
+        with Diagnostics.SpanFreeError.Exn _ -> U.Construct.Ty.hax_failure
       in
       let span = Span.of_thir e.span in
-      U.hax_failure_expr' span typ (ctx, kind)
+      U.Construct.Expr.hax_failure' span typ (ctx, kind)
         ([%show: Thir.decorated_for__expr_kind] e)
 
   and c_expr_unwrapped (e : Thir.decorated_for__expr_kind) : expr =
@@ -349,7 +344,7 @@ end) : EXPR = struct
           let arm_pat = c_pat pat in
           let then_ = c_expr then' in
           let else_ =
-            Option.value ~default:(U.unit_expr span)
+            Option.value ~default:(U.Construct.Expr.unit span)
             @@ Option.map ~f:c_expr else_opt
           in
           let arm_then =
@@ -386,7 +381,7 @@ end) : EXPR = struct
                 { f with e = GlobalVar (def_id (AssociatedItem Value) id) }
             | _ -> f
           in
-          let args = if List.is_empty args then [ unit_expr span ] else args in
+          let args = if List.is_empty args then [ U.Construct.Expr.unit span ] else args in
           App
             {
               f;
@@ -395,7 +390,7 @@ end) : EXPR = struct
               impl = Option.map ~f:(c_impl_expr e.span) impl;
             }
       | Box { value } ->
-          (U.call Rust_primitives__hax__box_new [ c_expr value ] span typ).e
+          (U.Construct.Expr.app Rust_primitives__hax__box_new [ c_expr value ] span typ).e
       | Deref { arg } ->
           let inner_typ = c_ty arg.span arg.ty in
           call (mk_global ([ inner_typ ] ->. typ) @@ `Primitive Deref) [ arg ]
@@ -409,7 +404,7 @@ end) : EXPR = struct
             @@ `Primitive (LogicalOp (c_logical_op op)))
             [ lhs; rhs ]
       | Unary { arg; op } ->
-          (U.call
+          (U.Construct.Expr.app
              (match op with
              | Not -> Core__ops__bit__Not__not
              | Neg -> Core__ops__arith__Neg__neg)
@@ -423,7 +418,7 @@ end) : EXPR = struct
             [ source ]
       | Use { source } -> (c_expr source).e
       | NeverToAny { source } ->
-          (U.call Rust_primitives__hax__never_to_any [ c_expr source ] span typ)
+          (U.Construct.Expr.app Rust_primitives__hax__never_to_any [ c_expr source ] span typ)
             .e
       (* TODO: this is incorrect (NeverToAny) *)
       | Pointer { cast; source } -> c_pointer e typ span cast source
@@ -465,7 +460,7 @@ end) : EXPR = struct
                 let e = c_expr e in
                 { e with e = Block (e, W.block) })
               o_expr
-            |> Option.value ~default:(unit_expr span)
+            |> Option.value ~default:(U.Construct.Expr.unit span)
           in
           let { e; _ } =
             List.fold_right o_stmts ~init ~f:(fun { kind; _ } body ->
@@ -555,13 +550,13 @@ end) : EXPR = struct
       | Break { value; _ } ->
           (* TODO: labels! *)
           let e = Option.map ~f:c_expr value in
-          let e = Option.value ~default:(unit_expr span) e in
+          let e = Option.value ~default:(U.Construct.Expr.unit span) e in
           Break { e; label = None; witness = (W.break, W.loop) }
       | Continue _ ->
           Continue { e = None; label = None; witness = (W.continue, W.loop) }
       | Return { value } ->
           let e = Option.map ~f:c_expr value in
-          let e = Option.value ~default:(unit_expr span) e in
+          let e = Option.value ~default:(U.Construct.Expr.unit span) e in
           Return { e; witness = W.early_exit }
       | ConstBlock _ -> unimplemented [ e.span ] "ConstBlock"
       | ConstParam { param = id; _ } (* TODO: shadowing? *) | ConstRef { id } ->
@@ -574,11 +569,11 @@ end) : EXPR = struct
           let value = c_expr value in
           let count = c_constant_expr count in
           let inner =
-            U.call Rust_primitives__hax__repeat [ value; count ] span typ
+            U.Construct.Expr.app Rust_primitives__hax__repeat [ value; count ] span typ
           in
-          (U.call Alloc__boxed__Impl__new [ inner ] span typ).e
+          (U.Construct.Expr.app Alloc__boxed__Impl__new [ inner ] span typ).e
       | Tuple { fields } ->
-          (U.make_tuple_expr' ~span @@ List.map ~f:c_expr fields).e
+          (U.Construct.Expr.tuple' ~span @@ List.map ~f:c_expr fields).e
       | Array { fields } -> Array (List.map ~f:c_expr fields)
       | Adt { info; base; fields; _ } ->
           let constructor =
@@ -628,7 +623,7 @@ end) : EXPR = struct
             List.filter_map ~f:(fun p -> Option.map ~f:c_pat p.pat) params
           in
           let params =
-            if List.is_empty params then [ U.make_wild_pat U.unit_typ span ]
+            if List.is_empty params then [ U.Construct.Pat.wild U.Construct.Ty.unit span ]
             else params
           in
           let body = c_expr body in
@@ -763,7 +758,7 @@ end) : EXPR = struct
               is_struct = info.typ_is_struct;
             }
       | Tuple { subpatterns } ->
-          (List.map ~f:c_pat subpatterns |> U.make_tuple_pat').p
+          (List.map ~f:c_pat subpatterns |> U.Construct.Pat.tuple ~drop_tuple_1:false ~span).p
       | Deref { subpattern } ->
           PDeref { subpat = c_pat subpattern; witness = W.reference }
       | Constant { value } ->
@@ -824,7 +819,7 @@ end) : EXPR = struct
         (c_expr source).e
     | Unsize ->
         (* https://doc.rust-lang.org/std/marker/trait.Unsize.html *)
-        (U.call Rust_primitives__unsize [ c_expr source ] span typ).e
+        (U.Construct.Expr.app Rust_primitives__unsize [ c_expr source ] span typ).e
         (* let source = c_expr source in *)
         (* let from_typ = source.typ in *)
         (* let to_typ = typ in *)
@@ -860,7 +855,7 @@ end) : EXPR = struct
     | Arrow value ->
         let ({ inputs; output; _ } : Thir.ty_fn_sig) = value.value in
         let inputs =
-          if List.is_empty inputs then [ U.unit_typ ]
+          if List.is_empty inputs then [ U.Construct.Ty.unit ]
           else List.map ~f:(c_ty span) inputs
         in
         TArrow (inputs, c_ty span output)
@@ -880,7 +875,7 @@ end) : EXPR = struct
         let typ = c_ty span ty in
         let mut = c_mutability W.mutable_reference mut in
         TRef { witness = W.reference; region = "todo"; typ; mut }
-    | Never -> U.never_typ
+    | Never -> U.Construct.Ty.never
     | Tuple types ->
         let types = List.map ~f:(fun ty -> GType (c_ty span ty)) types in
         TApp { ident = `TupleType (List.length types); args = types }
@@ -1040,11 +1035,11 @@ end) : EXPR = struct
         let (Thir.{ inputs; output; _ } : Thir.fn_decl) = sg.decl in
         let output =
           match output with
-          | DefaultReturn _span -> unit_typ
+          | DefaultReturn _span -> U.Construct.Ty.unit
           | Return ty -> c_ty span ty
         in
         let inputs =
-          if List.is_empty inputs then [ U.unit_typ ]
+          if List.is_empty inputs then [ U.Construct.Ty.unit ]
           else List.map ~f:(c_ty span) inputs
         in
         TIFn (TArrow (inputs, output))
@@ -1152,7 +1147,7 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
              }
     | Fn (generics, { body; params; _ }) ->
         let params =
-          if List.is_empty params then [ U.make_unit_param span ]
+          if List.is_empty params then [ U.Construct.unit_param span ]
           else List.map ~f:(c_param item.span) params
         in
         mk
@@ -1263,7 +1258,7 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
               match (item.kind : Thir.impl_item_kind) with
               | Fn { body; params; _ } ->
                   let params =
-                    if List.is_empty params then [ U.make_unit_param span ]
+                    if List.is_empty params then [ U.Construct.unit_param span ]
                     else List.map ~f:(c_param item.span) params
                   in
                   Fn

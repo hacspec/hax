@@ -138,9 +138,9 @@ struct
       let typ : B.ty =
         try dty e.span e.typ
         with Diagnostics.SpanFreeError.Exn (Data (_context, _kind)) ->
-          UB.hax_failure_typ
+          UB.Construct.Ty.hax_failure
       in
-      UB.hax_failure_expr e.span typ (context, kind) (UA.LiftToFullAst.expr e)
+      UB.Construct.Expr.hax_failure e.span typ (context, kind) (UA.LiftToFullAst.expr e)
 
   and dexpr_unwrapped (e : A.expr) : B.expr =
     { e = dexpr' e.span e.e; span = e.span; typ = dty e.span e.typ }

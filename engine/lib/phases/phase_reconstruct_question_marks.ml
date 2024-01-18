@@ -87,11 +87,11 @@ module%inlined_contents Make (FA : Features.T) = struct
         let* impl = expect_residual_impl_result impl in
         let from_typ = TArrow ([ error_src ], error_dest) in
         let from =
-          UA.call ~kind:(AssociatedItem Value) ~impl Core__convert__From__from
-            [] e.span from_typ
+          UA.Construct.Expr.app ~kind:(AssociatedItem Value) ~impl
+            Core__convert__From__from [] e.span from_typ
         in
         let call =
-          UA.call Core__result__Impl__map_err [ e; from ] e.span
+          UA.Construct.Expr.app Core__result__Impl__map_err [ e; from ] e.span
             (make_result_type success error_dest)
         in
         Some call
@@ -164,7 +164,7 @@ module%inlined_contents Make (FA : Features.T) = struct
         (*[@ocamlformat "disable"]*)
           when Global_ident.eq_name Core__ops__try_trait__Try__branch n ->
             let* body =
-              UA.Expect.concrete_app1 Rust_primitives__hax__never_to_any body
+              UA.Destruct.Expr.concrete_app1 Rust_primitives__hax__never_to_any body
             in
             let* f, residual_var, fun_return_typ, residual_impl =
               extract_return body

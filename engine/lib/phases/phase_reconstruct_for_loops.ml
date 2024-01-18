@@ -224,7 +224,7 @@ struct
                     rhs;
                     body = { e = GlobalVar (`TupleCons 0) };
                   }
-                when UA.is_unit_typ rhs.typ ->
+                when UA.Destruct.Ty.unit rhs.typ ->
                   rhs
               | _ -> body
             in
@@ -257,7 +257,7 @@ struct
                   witness = S.loop expr.span witness;
                 };
             span = expr.span;
-            typ = UB.unit_typ;
+            typ = UB.Construct.Ty.unit;
           }
       | None -> h expr
       [@@inline_ands bindings_of dexpr]

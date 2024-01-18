@@ -14,7 +14,7 @@ module%inlined_contents Make (F : Features.T) = struct
     Ast_utils.MakeWithNamePolicy (F) (Concrete_ident.DefaultNamePolicy)
 
   let analyse (items : A.item list) : analysis_data =
-    let temp_list = List.concat_map ~f:U.functions_of_item items in
+    let temp_list = List.concat_map ~f:U.Destruct.Item.functions items in
     List.fold_left
       ~init:(Map.empty (module String))
       ~f:(fun y (name, body) ->

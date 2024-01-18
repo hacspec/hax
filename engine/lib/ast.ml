@@ -629,7 +629,7 @@ functor
         (s : string) : item =
       { v = HaxError s; span; ident; attrs = [] }
 
-    module F = F
+    (* module F = F *)
   end
 
 module type T = sig

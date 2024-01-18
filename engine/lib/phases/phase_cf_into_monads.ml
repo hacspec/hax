@@ -184,7 +184,7 @@ struct
                 arms
           in
           let typ =
-            match arms with [] -> UB.never_typ | hd :: _ -> hd.arm.body.typ
+            match arms with [] -> UB.Construct.Ty.never | hd :: _ -> hd.arm.body.typ
           in
           { e = Match { scrutinee = dexpr scrutinee; arms }; span; typ }
       | If { cond; then_; else_ } ->
@@ -217,7 +217,7 @@ struct
       | Return { e; _ } ->
           let open KnownMonads in
           let e = dexpr e in
-          UB.call Core__ops__control_flow__ControlFlow__Break [ e ] span
+          UB.Construct.Expr.app Core__ops__control_flow__ControlFlow__Break [ e ] span
             (to_typ @@ { monad = Some (MException e.typ); typ })
       | [%inline_arms
           "dexpr'.*" - Let - Match - If - Continue - Break - QuestionMark
@@ -227,7 +227,7 @@ struct
     and lift_if_necessary (e : B.expr) (target_type : B.ty) =
       if B.equal_ty e.typ target_type then e
       else
-        UB.call Rust_primitives__hax__control_flow_monad__ControlFlowMonad__lift
+        UB.Construct.Expr.app Rust_primitives__hax__control_flow_monad__ControlFlowMonad__lift
           [ e ] e.span target_type
       [@@inline_ands bindings_of dexpr - dexpr']
 
@@ -237,7 +237,7 @@ struct
           let e' = dexpr e in
           match KnownMonads.from_typ dty e.typ e'.typ with
           | { monad = Some m; typ } ->
-              UB.call
+              UB.Construct.Expr.app
                 (match m with
                 | MException _ ->
                     Rust_primitives__hax__control_flow_monad__mexception__run
