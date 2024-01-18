@@ -9,7 +9,7 @@
       };
     };
     rust-overlay.follows = "crane/rust-overlay";
-    fstar-flake = {
+    fstar = {
       url = "github:FStarLang/FStar/v2024.01.13";
       inputs = {
         nixpkgs.follows = "nixpkgs";
@@ -27,10 +27,9 @@
     nixpkgs,
     rust-overlay,
     crane,
-    fstar-flake,
     hacl-star,
     ...
-  }:
+  } @ inputs:
     flake-utils.lib.eachDefaultSystem (
       system: let
         pkgs = import nixpkgs {
@@ -41,7 +40,7 @@
         craneLib = (crane.mkLib pkgs).overrideToolchain rustc;
         ocamlformat = pkgs.ocamlformat_0_24_1;
         rustfmt = pkgs.rustfmt;
-        fstar = fstar-flake.packages.${system}.default;
+        fstar = inputs.fstar.packages.${system}.default;
       in rec {
         packages = {
           inherit rustc ocamlformat rustfmt fstar;
@@ -59,6 +58,7 @@
 
           check-toolchain = checks.toolchain;
           check-examples = checks.examples;
+          check-readme-coherency = checks.readme-coherency;
         };
         checks = {
           toolchain = packages.hax.tests;
@@ -66,8 +66,29 @@
             inherit (packages) hax;
             inherit craneLib fstar hacl-star;
           };
+          readme-coherency = let
+            src = pkgs.lib.sourceFilesBySuffices ./. [".md"];
+          in
+            pkgs.stdenv.mkDerivation {
+              name = "readme-coherency";
+              inherit src;
+              buildPhase = ''
+                ${apps.replace-fstar-versions-md.program}
+                diff -r . ${src}
+              '';
+              installPhase = "touch $out";
+            };
         };
         apps = {
+          replace-fstar-versions-md = {
+            type = "app";
+            program = "${pkgs.writeScript "replace-fstar-versions-md" ''
+              FSTAR_VERSION=$(cat ${./flake.lock} | ${pkgs.jq}/bin/jq '.nodes.fstar.original.ref' -r)
+              ${pkgs.fd}/bin/fd \
+                 -X ${pkgs.sd}/bin/sd '`.*?`(<!---FSTAR_VERSION-->)' '`'"$FSTAR_VERSION"'`$1' **/*.md \
+                 ";" --glob '*.md'
+            ''}";
+          };
           serve-rustc-docs = {
             type = "app";
             program = "${pkgs.writeScript "serve-rustc-docs" ''

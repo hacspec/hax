@@ -59,7 +59,7 @@
         "type": "github"
       }
     },
-    "fstar-flake": {
+    "fstar": {
       "inputs": {
         "flake-utils": [
           "flake-utils"
@@ -117,7 +117,7 @@
       "inputs": {
         "crane": "crane",
         "flake-utils": "flake-utils",
-        "fstar-flake": "fstar-flake",
+        "fstar": "fstar",
         "hacl-star": "hacl-star",
         "nixpkgs": "nixpkgs",
         "rust-overlay": [
