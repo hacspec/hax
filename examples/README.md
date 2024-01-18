@@ -13,7 +13,7 @@
   
   First, make sure to have hax installed in PATH. Then:
   
-  * With Nix, `nix develop .#fstar-examples` setups a shell automatically for you.
+  * With Nix, `nix develop .#fstar` setups a shell automatically for you.
      
   * Without Nix:
     1. install F* `v2023.09.03` manually (see https://github.com/FStarLang/FStar/blob/master/INSTALL.md);
