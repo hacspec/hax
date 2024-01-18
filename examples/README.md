@@ -16,7 +16,7 @@
   * With Nix, `nix develop .#fstar` setups a shell automatically for you.
      
   * Without Nix:
-    1. install F* `v2023.09.03`<!---FSTAR_VERSION--> manually (see https://github.com/FStarLang/FStar/blob/master/INSTALL.md);
+    1. install F* `v2024.01.13`<!---FSTAR_VERSION--> manually (see https://github.com/FStarLang/FStar/blob/master/INSTALL.md);
        1. make sure to have `fstar.exe` in PATH;
        2. or set the `FSTAR_HOME` environment variable.
     2. clone [Hacl*](https://github.com/hacl-star/hacl-star) somewhere;
