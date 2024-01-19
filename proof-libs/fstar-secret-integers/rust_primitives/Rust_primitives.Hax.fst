@@ -6,7 +6,7 @@ open Rust_primitives.Arrays
 type t_Never = False
 let never_to_any #t: t_Never -> t = (fun _ -> match () with)
 
-let repeat (x: 'a) (len: usize): t_Array 'a len = 
+let repeat (#t:Type0) (x: t) (len: usize): t_Array t len = 
   FStar.Seq.create (v len) x
 
 open Core.Ops.Index
