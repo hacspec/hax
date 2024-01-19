@@ -757,27 +757,20 @@ module Make (F : Features.T) = struct
         (Concrete_ident.of_name (Constructor { is_struct }) constructor_name))
       is_struct args span ret_typ
 
-  let call' f (args : expr list) span ret_typ =
+  let call' ?impl f (args : expr list) span ret_typ =
     let typ = TArrow (List.map ~f:(fun arg -> arg.typ) args, ret_typ) in
     let e = GlobalVar f in
     {
-      e =
-        App
-          {
-            f = { e; typ; span };
-            args;
-            generic_args = [];
-            impl =
-              None
-              (* TODO: see issue #328, and check that for evrey call to `call'` *);
-          };
+      e = App { f = { e; typ; span }; args; generic_args = []; impl };
       typ = ret_typ;
       span;
     }
 
-  let call ?(kind : Concrete_ident.Kind.t = Value)
+  let call ?(kind : Concrete_ident.Kind.t = Value) ?impl
       (f_name : Concrete_ident.name) (args : expr list) span ret_typ =
-    call' (`Concrete (Concrete_ident.of_name kind f_name)) args span ret_typ
+    call' ?impl
+      (`Concrete (Concrete_ident.of_name kind f_name))
+      args span ret_typ
 
   let string_lit span (s : string) : expr =
     { span; typ = TStr; e = Literal (String s) }

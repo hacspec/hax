@@ -451,11 +451,18 @@ struct
              ( NoLetQualifier,
                [ (None, (pat, body)) ],
                F.term @@ F.AST.Seq (assertion, array) )
-    | Let { lhs; rhs; body; monadic = Some monad } ->
+    | Let { lhs; rhs; body; monadic = Some (monad, _) } ->
         let p =
           F.pat @@ F.AST.PatAscribed (ppat lhs, (pty lhs.span lhs.typ, None))
         in
-        let op = "let" ^ match monad with _ -> "*" in
+        let op =
+          "let"
+          ^
+          match monad with
+          | MResult _ -> "|"
+          | MOption -> "?"
+          | MException _ -> "!"
+        in
         F.term @@ F.AST.LetOperator ([ (F.id op, p, pexpr rhs) ], pexpr body)
     | Let { lhs; rhs; body; monadic = None } ->
         let p =

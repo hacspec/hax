@@ -21,7 +21,7 @@ instance negation_for_bool: negation_tc bool = {
 
 open Core.Ops.Index
 
-let ( .[] ) #self #idx {| inst: t_Index self idx |}
+let ( .[] ) (#self:Type0) (#idx:Type0) {| inst: t_Index self idx |}
   : s:self -> i:idx{in_range s i} -> inst.f_Output
   = f_index
 
