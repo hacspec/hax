@@ -59,7 +59,7 @@
         "type": "github"
       }
     },
-    "fstar-flake": {
+    "fstar": {
       "inputs": {
         "flake-utils": [
           "flake-utils"
@@ -69,16 +69,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1693761108,
-        "narHash": "sha256-ymoP5DvaLdrdwJcnhZnLEvwNxUFzhkICajPyK4lvacc=",
+        "lastModified": 1705191588,
+        "narHash": "sha256-xjSWDP8mSjLcn+0hsRpEdzsBgBR+mKCZB8yLmHl+WqE=",
         "owner": "FStarLang",
         "repo": "FStar",
-        "rev": "7363057dc7dceb13e39d5afb2b1dd46161314f25",
+        "rev": "a32b316e521fa4f239b610ec8f1d15e78d62cbe8",
         "type": "github"
       },
       "original": {
         "owner": "FStarLang",
-        "ref": "v2023.09.03",
+        "ref": "v2024.01.13",
         "repo": "FStar",
         "type": "github"
       }
@@ -117,7 +117,7 @@
       "inputs": {
         "crane": "crane",
         "flake-utils": "flake-utils",
-        "fstar-flake": "fstar-flake",
+        "fstar": "fstar",
         "hacl-star": "hacl-star",
         "nixpkgs": "nixpkgs",
         "rust-overlay": [
