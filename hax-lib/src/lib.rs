@@ -13,6 +13,8 @@
 //! }
 //! ```
 
+#![no_std]
+
 #[doc(hidden)]
 #[cfg(hax)]
 #[macro_export]
@@ -48,7 +50,7 @@ macro_rules! proxy_macro_if_not_hax {
 /// disappears.
 macro_rules! debug_assert {
     ($($arg:tt)*) => {
-        $crate::proxy_macro_if_not_hax!(::std::debug_assert, no, $($arg)*)
+        $crate::proxy_macro_if_not_hax!(::core::debug_assert, no, $($arg)*)
     };
 }
 
@@ -57,7 +59,7 @@ macro_rules! debug_assert {
 /// into a `assert` in the backend.
 macro_rules! assert {
     ($($arg:tt)*) => {
-        $crate::proxy_macro_if_not_hax!(::std::assert, $crate::assert, $($arg)*)
+        $crate::proxy_macro_if_not_hax!(::core::assert, $crate::assert, $($arg)*)
     };
 }
 
