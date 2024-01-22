@@ -5,8 +5,8 @@ class t_FromResidual self r = {
 }
 
 class t_Try self = {
-   f_Output: Type;
-   f_Residual: Type;
+   f_Output: Type0;
+   f_Residual: Type0;
    [@@@FStar.Tactics.Typeclasses.tcresolve]
    parent_FromResidual: t_FromResidual f_Residual f_Residual;
 
