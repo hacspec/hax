@@ -21,7 +21,7 @@ unfold type t_all self item
 
 (* Inference behaves strangly with type synonyms... :( *)
 // class iterator (self: Type) = {
-//   f_Item: Type;
+//   f_Item: Type0;
 //   f_next:      t_next      self f_Item;
 //   f_contains:  t_contains  self f_Item; (* hax-specific method *)
 //   f_fold:      t_fold      self f_Item f_contains;

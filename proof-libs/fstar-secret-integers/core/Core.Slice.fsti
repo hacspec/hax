@@ -8,12 +8,12 @@ let impl__len (#t: Type) (s: t_Slice t)
 
 open Core.Slice.Iter
 
-val impl__chunks (x: t_Slice 'a) (cs: usize): t_Chunks 'a
+val impl__chunks #a (x: t_Slice a) (cs: usize): t_Chunks a
 
-let impl__iter (s: t_Slice 't): t_Slice 't = s
+let impl__iter #t (s: t_Slice t): t_Slice t = s
 
-val impl__chunks_exact (x: t_Slice 'a) (cs: usize):
-    Pure (t_Slice (t_Slice 'a))
+val impl__chunks_exact #a (x: t_Slice a) (cs: usize):
+    Pure (t_Slice (t_Slice a))
     (requires True)
     (ensures (fun r -> forall i. i < v (length x) ==> length x ==  cs))
 

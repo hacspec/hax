@@ -1,7 +1,7 @@
 module Core.Ops.Index.IndexMut
 
 class t_IndexMut t_Self t_Idx = {
-  f_Input: Type;
+  f_Input: Type0;
   in_range: t_Self -> t_Idx -> Type0;
   f_index_mut: s:t_Self -> i:t_Idx{in_range s i} -> v:f_Input -> t_Self;
 }
