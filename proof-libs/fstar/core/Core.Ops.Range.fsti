@@ -8,10 +8,10 @@ type t_RangeFull           = | RangeFull
 
 open Core.Iter.Traits.Iterator
 
-let rec fold_range' #t
+let rec fold_range' #a #t
   (min: Rust_primitives.int_t t) (max: Rust_primitives.int_t t {v min <= v max})
-  (init: 'a) (f: ('a -> i:Rust_primitives.int_t t{v i < v max /\ v i >= v min} -> 'a))
-  : Tot 'a (decreases (v max - v min))
+  (init: a) (f: (a -> i:Rust_primitives.int_t t{v i < v max /\ v i >= v min} -> a))
+  : Tot a (decreases (v max - v min))
   = if min = max
     then init
     else fold_range' (add min (Rust_primitives.mk_int 1)) max (f init min) f

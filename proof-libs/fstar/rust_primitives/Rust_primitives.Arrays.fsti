@@ -7,7 +7,7 @@ type t_Slice t = s:Seq.seq t{Seq.length s <= max_usize}
 type t_Array t (l:usize) = s: Seq.seq t { Seq.length s == v l }
 
 /// Length of a slice
-let length (s: t_Slice 'a): usize = sz (Seq.length s)
+let length (#a: Type) (s: t_Slice a): usize = sz (Seq.length s)
 
 /// Check whether a slice contains an item
 let contains (#t: eqtype) (s: t_Slice t) (x: t): bool = Seq.mem x s
@@ -18,7 +18,7 @@ val of_list (#t:Type) (l: list t {FStar.List.Tot.length l < maxint Lib.IntTypes.
 /// Converts an slice into a F* list
 val to_list (#t:Type) (s: t_Slice t): list t
 
-val map_array #n (arr: t_Array 'a n) (f: 'a -> 'b): t_Array 'b n
+val map_array (#a #b: Type) #n (arr: t_Array a n) (f: a -> b): t_Array b n
 
 /// Creates an array of size `l` using a function `f`
 val createi #t (l:usize) (f:(u:usize{u <. l} -> t))
@@ -26,9 +26,9 @@ val createi #t (l:usize) (f:(u:usize{u <. l} -> t))
       (requires True)
       (ensures (fun res -> (forall i. Seq.index res (v i) == f i)))
 
-unfold let map #p
-  (f:(x:'a{p x} -> 'b))
-  (s: t_Slice 'a {forall (i:nat). i < Seq.length s ==> p (Seq.index s i)}): t_Slice 'b
+unfold let map #a #b #p
+  (f:(x:a{p x} -> b))
+  (s: t_Slice a {forall (i:nat). i < Seq.length s ==> p (Seq.index s i)}): t_Slice b
   = createi (length s) (fun i -> f (Seq.index s (v i)))
 
 /// Concatenates two slices

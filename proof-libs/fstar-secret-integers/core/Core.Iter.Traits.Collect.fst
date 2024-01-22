@@ -1,8 +1,8 @@
 module Core.Iter.Traits.Collect
 
 class into_iterator self = {
-  f_IntoIter: Type0;
-  // f_Item: Type0;
+  f_IntoIter: Type;
+  // f_Item: Type;
   f_into_iter: self -> f_IntoIter;
 }
 
