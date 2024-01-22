@@ -17,7 +17,7 @@ val update_at_usize
     (ensures (fun res -> res == Seq.upd s (v i) x))
 
 val update_at_range #n
-  (t: Type0)
+  (#t: Type0)
   (s: t_Slice t)
   (i: t_Range (int_t n))
   (x: t_Slice t)
@@ -31,7 +31,7 @@ val update_at_range #n
                 Seq.slice res (v i.f_end) (Seq.length res) == Seq.slice s (v i.f_end) (Seq.length s)))
 
 val update_at_range_to #n
-  (t: Type0)
+  (#t: Type0)
   (s: t_Slice t)
   (i: t_RangeTo (int_t n))
   (x: t_Slice t)
@@ -43,7 +43,7 @@ val update_at_range_to #n
                 Seq.slice res (v i.f_end) (Seq.length res) == Seq.slice s (v i.f_end) (Seq.length s)))
 
 val update_at_range_from #n
-  (t: Type0)
+  (#t: Type0)
   (s: t_Slice t)
   (i: t_RangeFrom (int_t n))
   (x: t_Slice t)
@@ -55,7 +55,7 @@ val update_at_range_from #n
                 Seq.slice res (v i.f_start) (Seq.length res) == x))
 
 val update_at_range_full
-  (t: Type0)
+  (#t: Type0)
   (s: t_Slice t)
   (i: t_RangeFull)
   (x: t_Slice t)
