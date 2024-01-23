@@ -7,9 +7,6 @@ license = "MIT OR Apache-2.0"
 description = "hacspec chacha20 poly1305 authenticated encryption"
 readme = "README.md"
 
-[lib]
-git = "https://github.com/hacspec/specs"
-
 [dependencies]
 hacspec-lib = { git = "https://github.com/hacspec/hacspec.git" }
 hacspec-chacha20 = { git = "https://github.com/hacspec/specs", version = "0.1.0" }
