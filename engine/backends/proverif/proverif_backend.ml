@@ -111,16 +111,19 @@ module Print = struct
   let iblock f = group >> jump 2 0 >> terminate (break 0) >> f >> group
 
   (* TODO: Give definitions for core / known library functions, cf issues #447, #448 *)
-  let library_functions : (Concrete_ident_generated.name * (AST.expr list -> document)) list =
-    [ (Core__ops__try_trait__Try__branch, fun args -> empty); (* just an example *)
-
+  let library_functions :
+      (Concrete_ident_generated.name * (AST.expr list -> document)) list =
+    [
+      (Core__ops__try_trait__Try__branch, fun args -> empty);
+      (* just an example *)
     ]
 
   let assoc_known_function fname (known_name, _) =
     Global_ident.eq_name known_name fname
 
   let translate_known_function fname args =
-    (List.find_exn ~f:(assoc_known_function fname) library_functions |> snd) args
+    (List.find_exn ~f:(assoc_known_function fname) library_functions |> snd)
+      args
 
   let is_known_function fname =
     List.exists ~f:(assoc_known_function fname) library_functions
