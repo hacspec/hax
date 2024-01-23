@@ -298,13 +298,8 @@ module Print = struct
   end)
 end
 
-(* Insert a (empty, for now) top level process. *)
-let insert_top_level contents = contents ^ "\n\nprocess\n    0\n"
-
-(* Insert ProVerif code that will be necessary in any development.*)
-let insert_preamble contents =
-  "channel c.\n\
-   fun int2bitstring(nat): bitstring.\n" ^ contents
+let filter_crate_functions (items : AST.item list) =
+  List.filter ~f:(fun item -> [%matches? Fn _] item.v) items
 
 let is_process_read : attrs -> bool =
   Attr_payloads.payloads >> List.exists ~f:(fst >> [%matches? Types.ProcessRead])
@@ -316,23 +311,80 @@ let is_process_write : attrs -> bool =
 let is_process_init : attrs -> bool =
   Attr_payloads.payloads >> List.exists ~f:(fst >> [%matches? Types.ProcessInit])
 
+let is_process item =
+  is_process_read item.attrs
+  || is_process_write item.attrs
+  || is_process_init item.attrs
+
+module type Subprinter = sig
+  val print : AST.item list -> string
+end
+
+module MkSubprinter (Section : sig
+  val banner : string
+  val preamble : AST.item list -> string
+  val contents : AST.item list -> string
+end) =
+struct
+  let hline = "(*****************************************)\n"
+  let banner = hline ^ "(* " ^ Section.banner ^ " *)\n" ^ hline ^ "\n"
+
+  let print items =
+    banner ^ Section.preamble items ^ Section.contents items ^ "\n\n"
+end
+
+module Preamble = MkSubprinter (struct
+  let banner = "Preamble"
+  let preamble items = "channel c.\nfun int2bitstring(nat): bitstring.\n"
+  let contents items = ""
+end)
+
+module DataTypes = MkSubprinter (struct
+  let banner = "Types and Constructors"
+  let preamble items = "channel c.\nfun int2bitstring(nat): bitstring.\n"
+
+  let filter_data_types items =
+    List.filter ~f:(fun item -> [%matches? Type _] item.v) items
+
+  let contents items =
+    let contents, _ = Print.items (filter_data_types items) in
+    contents
+end)
+
+module Letfuns = MkSubprinter (struct
+  let banner = "Functions"
+  let preamble items = ""
+
+  let contents items =
+    let process_letfuns, pure_letfuns =
+      List.partition_tf ~f:is_process (filter_crate_functions items)
+    in
+    let pure_letfuns_print, _ = Print.items pure_letfuns in
+    let process_letfuns_print, _ = Print.items process_letfuns in
+    pure_letfuns_print ^ process_letfuns_print
+end)
+
+module Processes = MkSubprinter (struct
+  let banner = "Processes"
+  let preamble items = ""
+  let process_filter item = [%matches? Fn _] item.v && is_process item
+
+  let contents items =
+    let contents, _ = Print.items (List.filter ~f:process_filter items) in
+    contents
+end)
+
+module Toplevel = MkSubprinter (struct
+  let banner = "Top-level process"
+  let preamble items = "process\n    0\n"
+  let contents items = ""
+end)
+
 let translate m (bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =
-  let processes, rest =
-    List.partition_tf
-      ~f:(fun item -> [%matches? Fn _] item.v && is_process_read item.attrs)
-      items
-  in
-  let letfuns, rest =
-    List.partition_tf ~f:(fun item -> [%matches? Fn _] item.v) rest
-  in
-  let letfun_content, _ = Print.items letfuns in
-  let process_content, _ = Print.items processes in
-  let contents, _ = Print.items rest in
   let contents =
-    contents ^ "\n(* Process Macros *)\n\n" ^ letfun_content
-    ^ "\n(* Processes *)" ^ process_content
-    |> insert_top_level |> insert_preamble
+    Preamble.print items ^ DataTypes.print items ^ Letfuns.print items
+    ^ Processes.print items ^ Toplevel.print items
   in
   let file = Types.{ path = "output.pv"; contents } in
   [ file ]
