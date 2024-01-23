@@ -87,8 +87,8 @@ type pub_i64=  pub_int_t LI.S64
 type pub_u128 = pub_int_t LI.U128
 type pub_i128 = pub_int_t LI.S128
 
-type usize = int_t_l usize_inttype LI.PUB
-type isize = int_t_l isize_inttype LI.PUB
+type usize = pub_int_t usize_inttype
+type isize = pub_int_t isize_inttype
 
 let minint (t:LI.inttype) =
   if unsigned t then 0 else -(pow2 (bits t - 1))
@@ -117,7 +117,7 @@ val mk_int_l (#t:inttype) (#l:LI.secrecy_level) (n:range_t t) : int_t_l t l
 let mk_int (#t:inttype) (n:range_t t) : int_t t = mk_int_l n
 
 [@(strict_on_arguments [0])]
-let mk_pub_int (#t:inttype) (n:range_t t) : int_t_l t LI.PUB = mk_int_l n
+let mk_pub_int (#t:inttype) (n:range_t t) : pub_int_t t = mk_int_l n
 
 [@(strict_on_arguments [0])]
 val mk_int_equiv_lemma #t (n:range_t t) :

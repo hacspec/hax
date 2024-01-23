@@ -97,7 +97,7 @@ let update_at_tc_array_range_to_super t l n: t_Index (t_Array t l) (t_RangeTo (p
   = FStar.Tactics.Typeclasses.solve
 let update_at_tc_array_range_from_super t l n: t_Index (t_Array t l) (t_RangeFrom (pub_int_t n))
   = FStar.Tactics.Typeclasses.solve
-let update_at_tc_array_range_full_super t l n: t_Index (t_Array t l) t_RangeFull
+let update_at_tc_array_range_full_super t l: t_Index (t_Array t l) t_RangeFull
   = FStar.Tactics.Typeclasses.solve
 
 val update_at_array_range t l n
@@ -109,9 +109,9 @@ val update_at_array_range_to t l n
 val update_at_array_range_from t l n
   (s: t_Array t l) (i: t_RangeFrom (pub_int_t n) {(update_at_tc_array_range_from_super t l n).in_range s i})
   : (update_at_tc_array_range_from_super t l n).f_Output -> t_Array t l
-val update_at_array_range_full t l n
+val update_at_array_range_full t l
   (s: t_Array t l) (i: t_RangeFull)
-  : (update_at_tc_array_range_full_super t l n).f_Output -> t_Array t l
+  : (update_at_tc_array_range_full_super t l).f_Output -> t_Array t l
 
 instance update_at_tc_array_range t l n: update_at_tc (t_Array t l) (t_Range (pub_int_t n)) = {
   super_index = update_at_tc_array_range_super t l n;
@@ -125,7 +125,7 @@ instance update_at_tc_array_range_from t l n: update_at_tc (t_Array t l) (t_Rang
   super_index = update_at_tc_array_range_from_super t l n;
   update_at = update_at_array_range_from t l n
 }
-instance update_at_tc_array_range_full t l n: update_at_tc (t_Array t l) t_RangeFull = {
-  super_index = update_at_tc_array_range_full_super t l n;
-  update_at = update_at_array_range_full t l n
+instance update_at_tc_array_range_full t l: update_at_tc (t_Array t l) t_RangeFull = {
+  super_index = update_at_tc_array_range_full_super t l;
+  update_at = update_at_array_range_full t l
 }

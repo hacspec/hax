@@ -1,6 +1,7 @@
 module Core.Num
 open Rust_primitives
 
+let impl__u8__wrapping_add: u8 -> u8 -> u8 = add_mod
 let impl__u8__wrapping_sub: u8 -> u8 -> u8 = sub_mod
 let impl__u16__wrapping_add: u16 -> u16 ->  u16 = add_mod
 let impl__i32__wrapping_add: i32 -> i32 -> i32 = add_mod

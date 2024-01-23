@@ -4,7 +4,7 @@ open Rust_primitives
 
 class try_into_tc self t = {
   [@@@FStar.Tactics.Typeclasses.no_method]
-  f_Error: Type;
+  f_Error: Type0;
   f_try_into: self -> Core.Result.t_Result t f_Error
 }
 
@@ -35,7 +35,7 @@ class t_From self t = {
 
 class t_TryFrom self t = {
   [@@@FStar.Tactics.Typeclasses.no_method]
-  f_Error: Type;
+  f_Error: Type0;
   f_try_from: t -> Core.Result.t_Result self f_Error;
 }
 
