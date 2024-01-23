@@ -321,13 +321,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                         self, nested, predicates, trait_ref
                     })
                 };
-                let clause_id: u64 = clause_id_of_predicate(*predicate);
                 use rustc_middle::ty::ToPolyTraitRef;
-                let r#trait = predicate
-                    .to_opt_poly_trait_pred()
-                    .s_unwrap(s)
-                    .to_poly_trait_ref()
-                    .sinto(s);
                 if apred.is_extra_self_predicate {
                     if !path.is_empty() {
                         supposely_unreachable_fatal!(s[apred.span], "SelfWithNonEmptyPath"; {
@@ -337,6 +331,12 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                     ImplExprAtom::SelfImpl.with_args(vec![], trait_ref)
                 } else {
                     let clause_id: u64 = clause_id_of_predicate(apred.predicate);
+                    let r#trait = apred
+                        .predicate
+                        .to_opt_poly_trait_pred()
+                        .s_unwrap(s)
+                        .to_poly_trait_ref()
+                        .sinto(s);
                     ImplExprAtom::LocalBound {
                         clause_id,
                         r#trait,
