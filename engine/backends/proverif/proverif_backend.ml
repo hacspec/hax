@@ -110,6 +110,21 @@ module Print = struct
 
   let iblock f = group >> jump 2 0 >> terminate (break 0) >> f >> group
 
+  (* TODO: Give definitions for core / known library functions, cf issues #447, #448 *)
+  let library_functions : (Concrete_ident_generated.name * (AST.expr list -> document)) list =
+    [ (Core__ops__try_trait__Try__branch, fun args -> empty); (* just an example *)
+
+    ]
+
+  let assoc_known_function fname (known_name, _) =
+    Global_ident.eq_name known_name fname
+
+  let translate_known_function fname args =
+    (List.find_exn ~f:(assoc_known_function fname) library_functions |> snd) args
+
+  let is_known_function fname =
+    List.exists ~f:(assoc_known_function fname) library_functions
+
   class print =
     object (print)
       inherit GenericPrint.print as super
@@ -123,6 +138,9 @@ module Print = struct
             >> match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock braces
           in
           match e with
+          | App { f = { e = GlobalVar n; _ }; args } when is_known_function n ->
+              translate_known_function n args
+          (* Desugared `?` operator *)
           | Match
               {
                 scrutinee =
