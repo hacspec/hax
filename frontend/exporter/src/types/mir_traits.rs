@@ -133,6 +133,7 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
                 trait_ref.value.generic_args,
             )
         }
+        _ => todo!(),
     };
 
     let info = TraitInfo {
