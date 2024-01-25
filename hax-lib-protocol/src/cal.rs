@@ -3,8 +3,6 @@
 
 use crate::ProtocolError;
 
-use libcrux::ecdh::Algorithm;
-
 #[derive(Clone)]
 pub struct DHScalar(Vec<u8>);
 
@@ -21,30 +19,58 @@ impl DHElement {
         DHElement(bytes.to_vec())
     }
 }
+
+pub enum DHGroup {
+    X25519,
+    X448,
+    P256,
+    P384,
+    P521,
+}
+
+impl From<DHGroup> for libcrux::ecdh::Algorithm {
+    fn from(value: DHGroup) -> Self {
+        match value {
+            DHGroup::X25519 => libcrux::ecdh::Algorithm::X25519,
+            DHGroup::X448 => libcrux::ecdh::Algorithm::X448,
+            DHGroup::P256 => libcrux::ecdh::Algorithm::P256,
+            DHGroup::P384 => libcrux::ecdh::Algorithm::P384,
+            DHGroup::P521 => libcrux::ecdh::Algorithm::P521,
+        }
     }
 }
 
 /// Scalar multiplication of [scalar] and [element].
-pub fn dh_scalar_multiply(scalar: DHScalar, element: DHElement) -> Vec<u8> {
-    libcrux::ecdh::derive(Algorithm::X25519, element.0, scalar.0).unwrap()
+pub fn dh_scalar_multiply(group: DHGroup, scalar: DHScalar, element: DHElement) -> Vec<u8> {
+    libcrux::ecdh::derive(group.into(), element.0, scalar.0).unwrap()
 }
 
 /// Scalar multiplication of a fixed generator and [scalar].
-pub fn dh_scalar_multiply_base(scalar: DHScalar) -> Vec<u8> {
-    libcrux::ecdh::secret_to_public(Algorithm::X25519, scalar.0).unwrap()
+pub fn dh_scalar_multiply_base(group: DHGroup, scalar: DHScalar) -> Vec<u8> {
+    libcrux::ecdh::secret_to_public(group.into(), scalar.0).unwrap()
 }
 
 pub struct AEADKey(libcrux::aead::Key);
 
+pub enum AEADAlgorithm {
+    Aes128Gcm,
+    Aes256Gcm,
+    Chacha20Poly1305,
+}
+
+impl From<AEADAlgorithm> for libcrux::aead::Algorithm {
+    fn from(value: AEADAlgorithm) -> Self {
+        match value {
+            AEADAlgorithm::Aes128Gcm => libcrux::aead::Algorithm::Aes128Gcm,
+            AEADAlgorithm::Aes256Gcm => libcrux::aead::Algorithm::Aes256Gcm,
+            AEADAlgorithm::Chacha20Poly1305 => libcrux::aead::Algorithm::Chacha20Poly1305,
+        }
+    }
+}
+
 impl AEADKey {
-    pub fn from_bytes(bytes: &[u8]) -> Self {
-        AEADKey(
-            libcrux::aead::Key::from_bytes(
-                libcrux::aead::Algorithm::Chacha20Poly1305,
-                bytes.to_vec(),
-            )
-            .unwrap(),
-        )
+    pub fn from_bytes(algorithm: AEADAlgorithm, bytes: &[u8]) -> Self {
+        AEADKey(libcrux::aead::Key::from_bytes(algorithm.into(), bytes.to_vec()).unwrap())
     }
 }
 
@@ -80,10 +106,60 @@ pub fn aead_decrypt(
         .map_err(|_| ProtocolError::CryptoError)
 }
 
-pub fn hash(input: &[u8]) -> Vec<u8> {
-    libcrux::digest::hash(libcrux::digest::Algorithm::Sha256, input)
+pub enum HashAlgorithm {
+    Sha1,
+    Sha224,
+    Sha256,
+    Sha384,
+    Sha512,
+    Blake2s,
+    Blake2b,
+    Sha3_224,
+    Sha3_256,
+    Sha3_384,
+    Sha3_512,
 }
 
-pub fn hmac(key: &[u8], input: &[u8]) -> Vec<u8> {
-    libcrux::hmac::hmac(libcrux::hmac::Algorithm::Sha256, key, input, None)
+impl From<HashAlgorithm> for libcrux::digest::Algorithm {
+    fn from(value: HashAlgorithm) -> Self {
+        match value {
+            HashAlgorithm::Sha1 => libcrux::digest::Algorithm::Sha1,
+            HashAlgorithm::Sha224 => libcrux::digest::Algorithm::Sha224,
+            HashAlgorithm::Sha256 => libcrux::digest::Algorithm::Sha256,
+            HashAlgorithm::Sha384 => libcrux::digest::Algorithm::Sha384,
+            HashAlgorithm::Sha512 => libcrux::digest::Algorithm::Sha512,
+            HashAlgorithm::Blake2s => libcrux::digest::Algorithm::Blake2s,
+            HashAlgorithm::Blake2b => libcrux::digest::Algorithm::Blake2b,
+            HashAlgorithm::Sha3_224 => libcrux::digest::Algorithm::Sha3_224,
+            HashAlgorithm::Sha3_256 => libcrux::digest::Algorithm::Sha3_256,
+            HashAlgorithm::Sha3_384 => libcrux::digest::Algorithm::Sha3_384,
+            HashAlgorithm::Sha3_512 => libcrux::digest::Algorithm::Sha3_512,
+        }
+    }
+}
+
+pub fn hash(algorithm: HashAlgorithm, input: &[u8]) -> Vec<u8> {
+    libcrux::digest::hash(algorithm.into(), input)
+}
+
+pub enum HMACAlgorithm {
+    Sha1,
+    Sha256,
+    Sha384,
+    Sha512,
+}
+
+impl From<HMACAlgorithm> for libcrux::hmac::Algorithm {
+    fn from(value: HMACAlgorithm) -> Self {
+        match value {
+            HMACAlgorithm::Sha1 => libcrux::hmac::Algorithm::Sha1,
+            HMACAlgorithm::Sha256 => libcrux::hmac::Algorithm::Sha256,
+            HMACAlgorithm::Sha384 => libcrux::hmac::Algorithm::Sha384,
+            HMACAlgorithm::Sha512 => libcrux::hmac::Algorithm::Sha512,
+        }
+    }
+}
+
+pub fn hmac(algorithm: HMACAlgorithm, key: &[u8], input: &[u8]) -> Vec<u8> {
+    libcrux::hmac::hmac(algorithm.into(), key, input, None)
 }
