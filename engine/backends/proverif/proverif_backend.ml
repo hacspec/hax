@@ -114,19 +114,133 @@ module Print = struct
   let library_functions :
       (Concrete_ident_generated.name * (AST.expr list -> document)) list =
     [
-      (Core__ops__try_trait__Try__branch, fun args -> empty);
-      (* just an example *)
+      (* Core dependencies *)
+      (* core::clone::Clone_f_clone *)
+      ( Core__clone__Clone__clone,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* core::cmp::PartialEq::eq *)
+      ( Core__cmp__PartialEq__eq,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* core::cmp::PartialEq_f_ne *)
+      ( Core__cmp__PartialEq__ne,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* core::cmp::PartialOrd::lt *)
+      ( Core__cmp__PartialOrd__lt,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* core::ops::arith::Add::add *)
+      ( Core__ops__arith__Add__add,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* core::ops::arith::Sub::sub *)
+      ( Core__ops__arith__Sub__sub,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* core::option::Option_Option_None_c *)
+      ( Core__option__Option__None,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* core::option::Option_Option_Some_c *)
+      ( Core__option__Option__Some,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* core::result::impl__map_err *)
+      ( Core__result__Impl__map_err,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* Crypto dependencies *)
+      (* hacspec_curve25519::x25519_scalarmult *)
+      ( Hacspec_curve25519__x25519_scalarmult,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* hacspec_curve25519::x25519_secret_to_public *)
+      ( Hacspec_curve25519__x25519_secret_to_public,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* hacspec_chacha20poly1305::chacha20_poly1305_decrypt *)
+      ( Hacspec_chacha20poly1305__chacha20_poly1305_decrypt,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* hacspec_chacha20poly1305::chacha20_poly1305_encrypt *)
+      ( Hacspec_chacha20poly1305__chacha20_poly1305_encrypt,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* hacspec_hmac::hmac *)
+      (Hacspec_hmac__hmac, fun args -> string "PLACEHOLDER_library_function");
+      (* hacspec_lib::seq::impl_41__len *)
+      ( Hacspec_lib__seq__Impl_41__len,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* hacspec_lib::seq::impl_41__concat *)
+      ( Hacspec_lib__seq__Impl_41__concat,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* hacspec_lib::seq::impl_41__slice *)
+      ( Hacspec_lib__seq__Impl_41__slice,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* hacspec_lib::seq::impl_52__from_seq *)
+      ( Hacspec_lib__seq__Impl_52__from_seq,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* hacspec_lib::transmute::v_U64_to_le_bytes *)
+      ( Hacspec_lib__transmute__U64_to_le_bytes,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* hacspec_sha256::sha256 *)
+      (Hacspec_sha256__sha256, fun args -> string "PLACEHOLDER_library_function");
+      (* hacspec_lib::seq::impl_41__new *)
+      ( Hacspec_lib__seq__Impl_41__new,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* hacspec_chacha20::impl__ChaChaKey__from_seq *)
+      ( Hacspec_chacha20__Impl_156__from_seq,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* hacspec_chacha20::impl__ChaChaIV__from_seq *)
+      ( Hacspec_chacha20__Impl_121__from_seq,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* hacspec_curve25519::impl__X25519SerializedPoint__from_seq *)
+      ( Hacspec_curve25519__Impl_152__from_seq,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* hacspec_curve25519::impl__X25519SerializedScalar__from_seq *)
+      ( Hacspec_curve25519__Impl_187__from_seq,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* hacspec_poly1305::impl__Poly1305Tag__from_seq *)
+      ( Hacspec_poly1305__Impl_88__from_seq,
+        fun args -> string "PLACEHOLDER_library_function" );
     ]
 
-  let assoc_known_function fname (known_name, _) =
-    Global_ident.eq_name known_name fname
+  let library_constructors :
+      (Concrete_ident_generated.name
+      * ((global_ident * AST.expr) list -> document))
+      list =
+    [
+      ( Core__option__Option__Some,
+        fun args -> string "PLACEHOLDER_library_constructor" );
+      ( Core__option__Option__None,
+        fun args -> string "PLACEHOLDER_library_constructor" );
+    ]
+
+  let library_types : (Concrete_ident_generated.name * document) list =
+    [
+      (* hacspec_curve25519::t_X25519SerializedScalar *)
+      ( Hacspec_curve25519__X25519SerializedScalar,
+        string "PLACEHOLDER_library_type" );
+      (* hacspec_lib::seq::t_Seq *)
+      (Hacspec_lib__seq__Seq, string "PLACEHOLDER_library_type");
+    ]
+
+  (* Also need to translate the following types and potentially their constructors:
+     core::option::t_Option<hacspec_lib::seq::t_Seq<secret_integers::t_U8>>
+     core::option::Option_Option_None_c()
+     core::option::Option_Option_Some_c(..)
+  *)
+
+  let assoc_known_name name (known_name, _) =
+    Global_ident.eq_name known_name name
 
   let translate_known_function fname args =
-    (List.find_exn ~f:(assoc_known_function fname) library_functions |> snd)
-      args
+    (List.find_exn ~f:(assoc_known_name fname) library_functions |> snd) args
+
+  let translate_known_constructor cname fields =
+    (List.find_exn ~f:(assoc_known_name cname) library_constructors |> snd)
+      fields
+
+  let translate_known_type tname =
+    List.find_exn ~f:(assoc_known_name tname) library_types |> snd
 
   let is_known_function fname =
-    List.exists ~f:(assoc_known_function fname) library_functions
+    List.exists ~f:(assoc_known_name fname) library_functions
+
+  let is_known_constructor cname =
+    List.exists ~f:(assoc_known_name cname) library_constructors
+
+  let is_known_type tname =
+    List.exists ~f:(assoc_known_name tname) library_types
 
   class print =
     object (print)
@@ -141,8 +255,13 @@ module Print = struct
             >> match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock braces
           in
           match e with
+          (* Translate known functions *)
           | App { f = { e = GlobalVar n; _ }; args } when is_known_function n ->
               translate_known_function n args
+          (* Translate known constructors *)
+          | Construct { constructor; fields }
+            when is_known_constructor constructor ->
+              translate_known_constructor constructor fields
           (* Desugared `?` operator *)
           | Match
               {
@@ -283,6 +402,9 @@ module Print = struct
           match ty with
           | TBool -> print#ty_bool
           | TParam i -> print#local_ident i
+          (* Translate known types, no args at the moment *)
+          | TApp { ident } when is_known_type ident ->
+              translate_known_type ident
           | TApp _ -> super#ty ctx ty
           | _ -> string "bitstring"
 
