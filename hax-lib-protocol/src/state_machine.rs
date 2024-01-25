@@ -6,17 +6,7 @@
 //! either through receiving and processing a message or through writing a
 //! message.
 
-/// A protocol error type.
-#[derive(Debug)]
-pub enum ProtocolError {
-    /// On receiving an unexpected message, i.e. one that does not allow a state
-    /// transition from the current state.
-    InvalidMessage,
-    /// On receiving invalid initialization data.
-    InvalidPrologue,
-}
-
-pub type ProtocolResult<T> = Result<T, ProtocolError>;
+use crate::ProtocolResult;
 
 /// A trait for protocol initial states.
 pub trait InitialState {
