@@ -28,8 +28,8 @@ pub fn generate_keypair(sk: &[u8]) -> KeyPair {
 
 pub fn dh(sk: &KeyPair, pk: &[u8]) -> Vec<u8> {
     let pk = DHElement::from_bytes(pk);
-    let secret = dh_scalar_multiply(sk.private_key.clone(), pk);
-    secret
+    
+    dh_scalar_multiply(sk.private_key.clone(), pk)
 }
 
 /// Section 4.2 and 12.3: Cipher functions for ChaCha20-Poly1305
@@ -64,7 +64,7 @@ pub fn decrypt(key: &[u8], counter: u64, aad: &[u8], cipher: &[u8]) -> Result<Ve
 }
 
 pub fn rekey(key: &[u8]) -> Vec<u8> {
-    encrypt(key, 0xffffffffffffffffu64, &Vec::new(), &vec![0u8; 32])
+    encrypt(key, 0xffffffffffffffffu64, &Vec::new(), &[0u8; 32])
 }
 
 /// Section 4.3 and 12.5: Hash functions for SHA-256
@@ -84,7 +84,7 @@ pub fn hmac_hash(key: &[u8], input: &[u8]) -> Vec<u8> {
 /// Alternative would be to directly use HKDF
 
 pub fn kdf_next(secret: &[u8], prev: &[u8], counter: u8) -> Vec<u8> {
-    hmac_hash(secret, &[prev, &vec![counter]].concat())
+    hmac_hash(secret, &[prev, &[counter]].concat())
 }
 
 pub fn hkdf1(key: &[u8], ikm: &[u8]) -> Vec<u8> {

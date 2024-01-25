@@ -118,13 +118,13 @@ pub fn read_message1(
     let re = &ciphertext[0.. DHLEN];
     let ciphertext = &ciphertext[DHLEN..ciphertext.len()];
     let st = mix_key_and_hash(st, &psk);
-    let st = mix_hash(st, &re);
-    let st = mix_key(st, &re);
-    let es = dh(&s, &re);
+    let st = mix_hash(st, re);
+    let st = mix_key(st, re);
+    let es = dh(&s, re);
     let st = mix_key(st, &es);
     let ss = dh(&s, &rs);
     let st = mix_key(st, &ss);
-    let (st, plaintext) = decrypt_and_hash(st, &ciphertext)?;
+    let (st, plaintext) = decrypt_and_hash(st, ciphertext)?;
     let hs = HandshakeStateR1 { st, e, rs, re:re.to_vec() };
     Ok((hs, plaintext))
 }
@@ -157,13 +157,13 @@ pub fn read_message2(
     let HandshakeStateI1 { st, s, e } = hs;
     let re = &ciphertext[0.. DHLEN];
     let ciphertext = &ciphertext[DHLEN..ciphertext.len()];
-    let st = mix_hash(st, &re);
-    let st = mix_key(st, &re);
-    let ee = dh(&e, &re);
+    let st = mix_hash(st, re);
+    let st = mix_key(st, re);
+    let ee = dh(&e, re);
     let st = mix_key(st, &ee);
-    let se = dh(&s, &re);
+    let se = dh(&s, re);
     let st = mix_key(st, &se);
-    let (st, plaintext) = decrypt_and_hash(st, &ciphertext)?;
+    let (st, plaintext) = decrypt_and_hash(st, ciphertext)?;
     let (c1, c2, h) = split(st);
     let tx = Transport {
         send: c1,

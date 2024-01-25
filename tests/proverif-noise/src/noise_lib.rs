@@ -24,7 +24,7 @@ pub fn initialize_key(key: Option<Vec<u8>>) -> CipherState {
 }
 
 pub fn has_key(cs: &CipherState) -> bool {
-    cs.k != None
+    cs.k.is_some()
 }
 
 pub fn set_nonce(cs: CipherState, n: u64) -> CipherState {
@@ -97,12 +97,11 @@ pub fn rekey(cs: CipherState) -> Result<CipherState, Error> {
 
 pub fn initialize_symmetric(protocol_name: &[u8]) -> SymmetricState {
     let pnlen = protocol_name.len();
-    let hv: Vec<u8>;
-    if pnlen < HASHLEN {
-        hv = [protocol_name, &vec![0u8; 32 - pnlen]].concat();
+    let hv: Vec<u8> = if pnlen < HASHLEN {
+        [protocol_name, &vec![0u8; 32 - pnlen]].concat()
     } else {
-        hv = hash(protocol_name);
-    }
+        hash(protocol_name)
+    };
     let ck = hv.clone();
     SymmetricState {
         cs: initialize_key(None),
@@ -136,7 +135,7 @@ pub fn mix_hash(st: SymmetricState, data: &[u8]) -> SymmetricState {
 pub fn mix_key_and_hash(st: SymmetricState, input_key_material: &[u8]) -> SymmetricState {
     let SymmetricState { cs: _, ck, h } = st;
     let (ck, temp_h, mut temp_k) = hkdf3(&ck, input_key_material);
-    let mut new_h = h.clone();
+    let mut new_h = h;
     new_h.extend_from_slice(&temp_h);
     let new_h = hash(&new_h);
     if HASHLEN == 64 {
@@ -180,7 +179,7 @@ pub fn decrypt_and_hash(
 ) -> Result<(SymmetricState, Vec<u8>), Error> {
     let (new_cs, plaintext) = decrypt_with_ad(st.cs, &st.h, ciphertext)?;
     let mut new_h = st.h.clone();
-    new_h.extend_from_slice(&ciphertext);
+    new_h.extend_from_slice(ciphertext);
     let new_h = hash(&new_h);
     Ok((
         SymmetricState {
