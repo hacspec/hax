@@ -9,16 +9,18 @@ use libcrux::ecdh::Algorithm;
 pub struct DHScalar(Vec<u8>);
 
 impl DHScalar {
-    pub fn from_bytes(_bytes: &[u8]) -> Self {
-        todo!()
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        DHScalar(bytes.to_vec())
     }
 }
 
 pub struct DHElement(Vec<u8>);
 
 impl DHElement {
-    pub fn from_bytes(_bytes: &[u8]) -> Self {
-        todo!()
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        DHElement(bytes.to_vec())
+    }
+}
     }
 }
 
