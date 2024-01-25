@@ -286,17 +286,6 @@ module Print = struct
           | TApp _ -> super#ty ctx ty
           | _ -> string "bitstring"
 
-      method! expr_app : expr -> expr list -> generic_value list fn =
-        fun f args _generic_args ->
-          let args =
-            separate_map
-              (comma ^^ break 1)
-              (print#expr_at Expr_App_arg >> group)
-              args
-          in
-          let f = print#expr_at Expr_App_f f |> group in
-          f ^^ iblock parens args
-
       method! literal : Generic_printer_base.literal_ctx -> literal fn =
         fun _ctx -> function
           | Int { value; negative; _ } ->
