@@ -1,5 +1,6 @@
-pub mod state_machine;
 pub mod cal;
+pub mod state_machine;
+
 /// A protocol error type.
 #[derive(Debug)]
 pub enum ProtocolError {
