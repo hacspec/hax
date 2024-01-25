@@ -30,8 +30,8 @@ module SubtypeToInputLanguage
           (* and type reference = Features.Off.reference *)
           (* and type slice = Features.Off.slice *)
           (* and type raw_pointer = Features.Off.raw_pointer *)
-     with type early_exit = Features.On.early_exit
-                              and type slice = Features.On.slice
+            with type early_exit = Features.On.early_exit
+             and type slice = Features.On.slice
              and type question_mark = Features.On.question_mark
              and type macro = Features.On.macro
     (* and type as_pattern = Features.Off.as_pattern *)
