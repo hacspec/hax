@@ -20,3 +20,6 @@ rayon = "1.3.0"
 criterion = "0.4"
 rand = "0.8"
 hacspec-dev = { git = "https://github.com/hacspec/hacspec.git" }
+
+[package.metadata.hax-tests]
+into."pro-verif" = { broken = false, snapshot = "none" }
