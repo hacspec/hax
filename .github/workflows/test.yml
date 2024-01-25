@@ -41,4 +41,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Build no-std
-        run: cargo build -p hax-lib --target thumbv7em-none-eabi
+        run: |
+          rustup target add thumbv7em-none-eabi
+          cargo build -p hax-lib --target thumbv7em-none-eabi
