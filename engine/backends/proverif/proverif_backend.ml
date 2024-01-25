@@ -128,7 +128,7 @@ module Print = struct
   let is_known_function fname =
     List.exists ~f:(assoc_known_function fname) library_functions
 
-  class print =
+  class print aux =
     object (print)
       inherit GenericPrint.print as super
       method ty_bool = string "bool"
@@ -314,8 +314,12 @@ module Print = struct
                 }
     end
 
+  type proverif_aux_info = AstItems of AST.item list | NoAuxInfo
+
   include Api (struct
-    let new_print () = (new print :> print_object)
+    type aux_info = proverif_aux_info
+
+    let new_print aux = (new print aux :> print_object)
   end)
 end
 
@@ -368,7 +372,7 @@ module DataTypes = MkSubprinter (struct
     List.filter ~f:(fun item -> [%matches? Type _] item.v) items
 
   let contents items =
-    let contents, _ = Print.items (filter_data_types items) in
+    let contents, _ = Print.items NoAuxInfo (filter_data_types items) in
     contents
 end)
 
@@ -380,8 +384,8 @@ module Letfuns = MkSubprinter (struct
     let process_letfuns, pure_letfuns =
       List.partition_tf ~f:is_process (filter_crate_functions items)
     in
-    let pure_letfuns_print, _ = Print.items pure_letfuns in
-    let process_letfuns_print, _ = Print.items process_letfuns in
+    let pure_letfuns_print, _ = Print.items NoAuxInfo pure_letfuns in
+    let process_letfuns_print, _ = Print.items NoAuxInfo process_letfuns in
     pure_letfuns_print ^ process_letfuns_print
 end)
 
@@ -391,7 +395,9 @@ module Processes = MkSubprinter (struct
   let process_filter item = [%matches? Fn _] item.v && is_process item
 
   let contents items =
-    let contents, _ = Print.items (List.filter ~f:process_filter items) in
+    let contents, _ =
+      Print.items NoAuxInfo (List.filter ~f:process_filter items)
+    in
     contents
 end)
 
