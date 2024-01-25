@@ -1,4 +1,4 @@
-use hax_lib_protocol::*;
+use hax_lib_protocol::state_machine::*;
 
 use crate::Message;
 

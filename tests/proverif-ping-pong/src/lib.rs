@@ -11,7 +11,7 @@ pub enum Message {
 fn run() {
     use a::A0;
     use b::{B0, B1};
-    use hax_lib_protocol::{InitialState, ReadState, WriteState};
+    use hax_lib_protocol::state_machine::{InitialState, ReadState, WriteState};
     let a = A0::init(Some(vec![1])).unwrap();
     let b = B0::init(None).unwrap();
 
