@@ -10,12 +10,4 @@ readme.workspace = true
 description = "Dummy crate containing all the Rust names the hax engine should be aware of"
 
 [dependencies]
-hacspec-lib = { git = "https://github.com/hacspec/hacspec.git" }
-hacspec-chacha20 = { git = "https://github.com/hacspec/specs", version = "0.1.0" }
-hacspec-poly1305 = { git = "https://github.com/hacspec/specs", version = "0.1.0" }
-hacspec-chacha20poly1305 = { git = "https://github.com/hacspec/specs", version = "0.1.0" }
-hacspec-curve25519 = { git = "https://github.com/hacspec/specs", version = "0.1.0" }
-hacspec-sha256 = { git = "https://github.com/hacspec/specs", version = "0.1.0" }
-hacspec-hmac = { git = "https://github.com/hacspec/specs", version = "0.1.0" }
-
-
+hax-lib-protocol = {path = "../../hax-lib-protocol"}

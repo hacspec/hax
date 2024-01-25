@@ -2,53 +2,34 @@
 #![feature(try_trait_v2)]
 #![feature(allocator_api)]
 
-use hacspec_chacha20::{ChaChaIV, ChaChaKey};
-use hacspec_chacha20poly1305::{chacha20_poly1305_decrypt, chacha20_poly1305_encrypt};
-use hacspec_curve25519::{
-    x25519_scalarmult, x25519_secret_to_public, X25519SerializedPoint, X25519SerializedScalar,
-};
-use hacspec_hmac::hmac;
-use hacspec_lib::{U64_from_usize, U64_to_le_bytes};
-use hacspec_poly1305::Poly1305Tag;
-use hacspec_sha256::sha256;
+use hax_lib_protocol::cal::*;
 extern crate alloc;
 /* This is a dummy Rust file. Every path used in this file will be
  * exported and made available automatically in OCaml. */
 
 fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mut y: I) {
-    // Names for the noise example
-    let iv = ChaChaIV::from_seq(&hacspec_lib::Seq::new(0));
-    let key = ChaChaKey::from_seq(&hacspec_lib::Seq::new(0));
-    let seq = hacspec_lib::Seq::from_hex("ff");
-    let msg = hacspec_lib::Seq::from_slice(&seq, 0, 1);
+    // Crypto abstraction layer names
+    let bytes = vec![0u8; 32];
+    let iv = AEADIV::from_bytes(&bytes);
+    let key = AEADKey::from_bytes(AEADAlgorithm::Chacha20Poly1305, &bytes);
 
-    let aad = msg.concat(&seq);
-    let (cipher_text, tag) = chacha20_poly1305_encrypt(key, iv, &aad, &msg);
-    let _ = chacha20_poly1305_decrypt(key, iv, &aad, &cipher_text, tag);
-    let _ = cipher_text.len();
+    let (cipher_text, tag) = aead_encrypt(key, iv, &bytes, &bytes);
+    let iv = AEADIV::from_bytes(&bytes);
+    let key = AEADKey::from_bytes(AEADAlgorithm::Chacha20Poly1305, &bytes);
+    let _ = aead_decrypt(key, iv, &bytes, &cipher_text, AEADTag::from_bytes(&bytes));
 
-    let p = X25519SerializedPoint::from_seq(&msg);
-    let s: X25519SerializedScalar = X25519SerializedScalar::from_seq(&msg);
-    x25519_scalarmult(s, p);
-    x25519_secret_to_public(s);
+    let p = DHElement::from_bytes(&bytes);
+    let s = DHScalar::from_bytes(&bytes);
+    dh_scalar_multiply(DHGroup::X25519, s.clone(), p);
+    dh_scalar_multiply_base(DHGroup::X25519, s);
 
-    let _ = hmac(&seq, &msg);
-    msg.slice(0, 1);
-    let _ = hacspec_lib::Seq::from_seq(&msg);
+    let _ = hmac(HMACAlgorithm::Sha256, &bytes, &bytes);
 
-    let _ = U64_to_le_bytes(U64_from_usize(1));
+    let _ = 1u64.to_le_bytes();
 
-    let _ = Poly1305Tag::from_seq(&msg);
-
-    let _ = sha256(&msg);
+    let _ = hash(HashAlgorithm::Sha256, &bytes);
     let _ = cipher_text.clone();
-
-    enum E {
-        E,
-    }
-
-    let _: Result<(), E> = Err(E::E).map_err(|e| e);
-    // End noise example
+    // End crypto abstractions example
 
     let _: core::result::Result<u8, u8> = core::result::Result::Ok(0);
     let _: core::result::Result<u8, u8> = core::result::Result::Err(0);

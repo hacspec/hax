@@ -143,55 +143,7 @@ module Print = struct
       ( Core__result__Impl__map_err,
         fun args -> string "PLACEHOLDER_library_function" );
       (* Crypto dependencies *)
-      (* hacspec_curve25519::x25519_scalarmult *)
-      ( Hacspec_curve25519__x25519_scalarmult,
-        fun args -> string "PLACEHOLDER_library_function" );
-      (* hacspec_curve25519::x25519_secret_to_public *)
-      ( Hacspec_curve25519__x25519_secret_to_public,
-        fun args -> string "PLACEHOLDER_library_function" );
-      (* hacspec_chacha20poly1305::chacha20_poly1305_decrypt *)
-      ( Hacspec_chacha20poly1305__chacha20_poly1305_decrypt,
-        fun args -> string "PLACEHOLDER_library_function" );
-      (* hacspec_chacha20poly1305::chacha20_poly1305_encrypt *)
-      ( Hacspec_chacha20poly1305__chacha20_poly1305_encrypt,
-        fun args -> string "PLACEHOLDER_library_function" );
-      (* hacspec_hmac::hmac *)
-      (Hacspec_hmac__hmac, fun args -> string "PLACEHOLDER_library_function");
-      (* hacspec_lib::seq::impl_41__len *)
-      ( Hacspec_lib__seq__Impl_41__len,
-        fun args -> string "PLACEHOLDER_library_function" );
-      (* hacspec_lib::seq::impl_41__concat *)
-      ( Hacspec_lib__seq__Impl_41__concat,
-        fun args -> string "PLACEHOLDER_library_function" );
-      (* hacspec_lib::seq::impl_41__slice *)
-      ( Hacspec_lib__seq__Impl_41__slice,
-        fun args -> string "PLACEHOLDER_library_function" );
-      (* hacspec_lib::seq::impl_52__from_seq *)
-      ( Hacspec_lib__seq__Impl_52__from_seq,
-        fun args -> string "PLACEHOLDER_library_function" );
-      (* hacspec_lib::transmute::v_U64_to_le_bytes *)
-      ( Hacspec_lib__transmute__U64_to_le_bytes,
-        fun args -> string "PLACEHOLDER_library_function" );
-      (* hacspec_sha256::sha256 *)
-      (Hacspec_sha256__sha256, fun args -> string "PLACEHOLDER_library_function");
-      (* hacspec_lib::seq::impl_41__new *)
-      ( Hacspec_lib__seq__Impl_41__new,
-        fun args -> string "PLACEHOLDER_library_function" );
-      (* hacspec_chacha20::impl__ChaChaKey__from_seq *)
-      ( Hacspec_chacha20__Impl_156__from_seq,
-        fun args -> string "PLACEHOLDER_library_function" );
-      (* hacspec_chacha20::impl__ChaChaIV__from_seq *)
-      ( Hacspec_chacha20__Impl_121__from_seq,
-        fun args -> string "PLACEHOLDER_library_function" );
-      (* hacspec_curve25519::impl__X25519SerializedPoint__from_seq *)
-      ( Hacspec_curve25519__Impl_152__from_seq,
-        fun args -> string "PLACEHOLDER_library_function" );
-      (* hacspec_curve25519::impl__X25519SerializedScalar__from_seq *)
-      ( Hacspec_curve25519__Impl_187__from_seq,
-        fun args -> string "PLACEHOLDER_library_function" );
-      (* hacspec_poly1305::impl__Poly1305Tag__from_seq *)
-      ( Hacspec_poly1305__Impl_88__from_seq,
-        fun args -> string "PLACEHOLDER_library_function" );
+
     ]
 
   let library_constructors :
@@ -207,11 +159,6 @@ module Print = struct
 
   let library_types : (Concrete_ident_generated.name * document) list =
     [
-      (* hacspec_curve25519::t_X25519SerializedScalar *)
-      ( Hacspec_curve25519__X25519SerializedScalar,
-        string "PLACEHOLDER_library_type" );
-      (* hacspec_lib::seq::t_Seq *)
-      (Hacspec_lib__seq__Seq, string "PLACEHOLDER_library_type");
     ]
 
   (* Also need to translate the following types and potentially their constructors:
