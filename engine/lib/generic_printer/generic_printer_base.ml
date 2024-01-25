@@ -346,30 +346,37 @@ module Make (F : Features.T) = struct
     end
 
   module type API = sig
-    val items : item list -> annot_str
-    val item : item -> annot_str
-    val expr : expr -> annot_str
-    val pat : pat -> annot_str
-    val ty : ty -> annot_str
+    type aux_info
+
+    val items : aux_info -> item list -> annot_str
+    val item : aux_info -> item -> annot_str
+    val expr : aux_info -> expr -> annot_str
+    val pat : aux_info -> pat -> annot_str
+    val ty : aux_info -> ty -> annot_str
   end
 
   module Api (NewPrint : sig
-    val new_print : unit -> print_object
+    type aux_info
+
+    val new_print : aux_info -> print_object
   end) =
   struct
     open NewPrint
 
-    let mk (f : print_object -> 'a -> PPrint.document) (x : 'a) : annot_str =
-      let printer = new_print () in
+    let mk (f : print_object -> 'a -> PPrint.document) (aux : aux_info) (x : 'a)
+        : annot_str =
+      let printer = new_print aux in
       let doc = f printer x in
       let buf = Buffer.create 0 in
       PPrint.ToBuffer.pretty 1.0 80 buf doc;
       (Buffer.contents buf, printer#get_span_data ())
 
-    let items : item list -> annot_str = mk (fun p -> p#items)
-    let item : item -> annot_str = mk (fun p -> p#item)
-    let expr : expr -> annot_str = mk (fun p -> p#expr AlreadyPar)
-    let pat : pat -> annot_str = mk (fun p -> p#pat AlreadyPar)
-    let ty : ty -> annot_str = mk (fun p -> p#ty AlreadyPar)
+    type aux_info = NewPrint.aux_info
+
+    let items : aux_info -> item list -> annot_str = mk (fun p -> p#items)
+    let item : aux_info -> item -> annot_str = mk (fun p -> p#item)
+    let expr : aux_info -> expr -> annot_str = mk (fun p -> p#expr AlreadyPar)
+    let pat : aux_info -> pat -> annot_str = mk (fun p -> p#pat AlreadyPar)
+    let ty : aux_info -> ty -> annot_str = mk (fun p -> p#ty AlreadyPar)
   end
 end

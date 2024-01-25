@@ -25,6 +25,7 @@ members = [
         "proverif-minimal",
         "proverif-basic-structs",
         "proverif-ping-pong",
+        "proverif-noise",
         "proverif-fn-to-letfun"
 ]
 resolver = "2"

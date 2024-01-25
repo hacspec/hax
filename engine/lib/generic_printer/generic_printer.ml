@@ -429,6 +429,8 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
   include Class
 
   include Api (struct
+    type aux_info = unit
+
     let new_print () = (new Class.print :> print_object)
   end)
 end
