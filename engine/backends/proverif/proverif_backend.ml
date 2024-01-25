@@ -10,6 +10,7 @@ include
       include On.Macro
       include On.Question_mark
       include On.Early_exit
+      include On.Slice
     end)
     (struct
       let backend = Diagnostics.Backend.ProVerif
@@ -29,7 +30,8 @@ module SubtypeToInputLanguage
           (* and type reference = Features.Off.reference *)
           (* and type slice = Features.Off.slice *)
           (* and type raw_pointer = Features.Off.raw_pointer *)
-            with type early_exit = Features.On.early_exit
+     with type early_exit = Features.On.early_exit
+                              and type slice = Features.On.slice
              and type question_mark = Features.On.question_mark
              and type macro = Features.On.macro
     (* and type as_pattern = Features.Off.as_pattern *)
@@ -61,7 +63,6 @@ struct
         let mutable_reference = reject
         let mutable_pointer = reject
         let reference = reject
-        let slice = reject
         let raw_pointer = reject
         let as_pattern = reject
         let nontrivial_lhs = reject
@@ -354,17 +355,6 @@ module Print = struct
               translate_known_type ident
           | TApp _ -> super#ty ctx ty
           | _ -> string "bitstring"
-
-      method! expr_app : expr -> expr list -> generic_value list fn =
-        fun f args _generic_args ->
-          let args =
-            separate_map
-              (comma ^^ break 1)
-              (print#expr_at Expr_App_arg >> group)
-              args
-          in
-          let f = print#expr_at Expr_App_f f |> group in
-          f ^^ iblock parens args
 
       method! literal : Generic_printer_base.literal_ctx -> literal fn =
         fun _ctx -> function
