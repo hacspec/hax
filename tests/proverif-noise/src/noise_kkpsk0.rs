@@ -1,16 +1,14 @@
 // Import hacspec and all needed definitions.
-use hacspec_lib::*;
-
 use crate::*;
 use noise_crypto::*;
 use noise_lib::*;
 
 pub struct HandshakeStateI0 {
     st: SymmetricState,
-    psk: Seq<U8>,
+    psk: Vec<u8>,
     s: KeyPair,
     e: KeyPair,
-    rs: Seq<U8>,
+    rs: Vec<u8>,
 }
 
 pub struct HandshakeStateI1 {
@@ -21,73 +19,74 @@ pub struct HandshakeStateI1 {
 
 pub struct HandshakeStateR0 {
     st: SymmetricState,
-    psk: Seq<U8>,
+    psk: Vec<u8>,
     s: KeyPair,
     e: KeyPair,
-    rs: Seq<U8>,
+    rs: Vec<u8>,
 }
 
 pub struct HandshakeStateR1 {
     st: SymmetricState,
     e: KeyPair,
-    rs: Seq<U8>,
-    re: Seq<U8>,
+    rs: Vec<u8>,
+    re: Vec<u8>,
 }
 
 pub struct Transport {
     send: CipherState,
     recv: CipherState,
-    handshake_hash: Seq<U8>,
+    handshake_hash: Vec<u8>,
 }
 
+struct ProtocolName([u8;36]);
 #[allow(non_upper_case_globals)]
-const Noise_KKpsk0_25519_ChaChaPoly_SHA256: ProtocolName = ProtocolName(secret_bytes!([
+const Noise_KKpsk0_25519_ChaChaPoly_SHA256: ProtocolName = ProtocolName([
     78u8, 111u8, 105u8, 115u8, 101u8, 95u8, 75u8, 75u8, 112u8, 115u8, 107u8, 48u8, 95u8, 50u8,
     53u8, 53u8, 49u8, 57u8, 95u8, 67u8, 104u8, 97u8, 67u8, 104u8, 97u8, 80u8, 111u8, 108u8, 121u8,
-    95u8, 83u8, 72u8, 65u8, 50u8, 53u8, 54u8
-]));
+    95u8, 83u8, 72u8, 65u8, 50u8, 53u8, 54u8,
+]);
 
 ///  KKpsk0:
 ///    -> s
 ///    <- s
 ///    ...
 pub fn initialize_initiator(
-    prologue: &Seq<U8>,
-    psk: Seq<U8>,
+    prologue: &[u8],
+    psk: Vec<u8>,
     s: KeyPair,
     e: KeyPair,
-    rs: &Seq<U8>,
+    rs: &[u8],
 ) -> HandshakeStateI0 {
-    let st = initialize_symmetric(&Seq::from_seq(&Noise_KKpsk0_25519_ChaChaPoly_SHA256));
+    let st = initialize_symmetric(&Noise_KKpsk0_25519_ChaChaPoly_SHA256.0);
     let st = mix_hash(st, prologue);
-    let st = mix_hash(st, &Seq::from_seq(&s.public_key));
+    let st = mix_hash(st, &s.public_key);
     let st = mix_hash(st, rs);
     HandshakeStateI0 {
         psk,
         st,
         s,
         e,
-        rs: rs.clone(),
+        rs: rs.to_vec(),
     }
 }
 
 pub fn initialize_responder(
-    prologue: &Seq<U8>,
-    psk: Seq<U8>,
+    prologue: &[u8],
+    psk: Vec<u8>,
     s: KeyPair,
     e: KeyPair,
-    rs: &Seq<U8>,
+    rs: &[u8],
 ) -> HandshakeStateR0 {
-    let st = initialize_symmetric(&Seq::from_seq(&Noise_KKpsk0_25519_ChaChaPoly_SHA256));
+    let st = initialize_symmetric(&Noise_KKpsk0_25519_ChaChaPoly_SHA256.0);
     let st = mix_hash(st, prologue);
     let st = mix_hash(st, rs);
-    let st = mix_hash(st, &Seq::from_seq(&s.public_key));
+    let st = mix_hash(st, &s.public_key);
     HandshakeStateR0 {
         st,
         psk,
         s,
         e,
-        rs: rs.clone(),
+        rs: rs.to_vec(),
     }
 }
 
@@ -96,8 +95,8 @@ pub fn initialize_responder(
 ///    -> psk, e, es, ss
 pub fn write_message1(
     hs: HandshakeStateI0,
-    payload: &Seq<U8>,
-) -> Result<(HandshakeStateI1, Seq<U8>), Error> {
+    payload: &[u8],
+) -> Result<(HandshakeStateI1, Vec<u8>), Error> {
     let HandshakeStateI0 { st, psk, s, e, rs } = hs;
     let st = mix_key_and_hash(st, &psk);
     let st = mix_hash(st, &e.public_key);
@@ -113,11 +112,11 @@ pub fn write_message1(
 
 pub fn read_message1(
     hs: HandshakeStateR0,
-    ciphertext: &Seq<U8>,
-) -> Result<(HandshakeStateR1, Seq<U8>), Error> {
+    ciphertext: &[u8],
+) -> Result<(HandshakeStateR1, Vec<u8>), Error> {
     let HandshakeStateR0 { st, psk, s, e, rs } = hs;
-    let re = ciphertext.slice(0, DHLEN);
-    let ciphertext = ciphertext.slice(DHLEN, ciphertext.len() - DHLEN);
+    let re = &ciphertext[0.. DHLEN];
+    let ciphertext = &ciphertext[DHLEN..ciphertext.len()];
     let st = mix_key_and_hash(st, &psk);
     let st = mix_hash(st, &re);
     let st = mix_key(st, &re);
@@ -126,17 +125,14 @@ pub fn read_message1(
     let ss = dh(&s, &rs);
     let st = mix_key(st, &ss);
     let (st, plaintext) = decrypt_and_hash(st, &ciphertext)?;
-    let hs = HandshakeStateR1 { st, e, rs, re };
+    let hs = HandshakeStateR1 { st, e, rs, re:re.to_vec() };
     Ok((hs, plaintext))
 }
 
 ///  KKpsk0:
 ///    ...
 ///     <- e, ee, se
-pub fn write_message2(
-    hs: HandshakeStateR1,
-    payload: &Seq<U8>,
-) -> Result<(Transport, Seq<U8>), Error> {
+pub fn write_message2(hs: HandshakeStateR1, payload: &[u8]) -> Result<(Transport, Vec<u8>), Error> {
     let HandshakeStateR1 { st, e, rs, re } = hs;
     let st = mix_hash(st, &e.public_key);
     let st = mix_key(st, &e.public_key);
@@ -156,11 +152,11 @@ pub fn write_message2(
 
 pub fn read_message2(
     hs: HandshakeStateI1,
-    ciphertext: &Seq<U8>,
-) -> Result<(Transport, Seq<U8>), Error> {
+    ciphertext: &[u8],
+) -> Result<(Transport, Vec<u8>), Error> {
     let HandshakeStateI1 { st, s, e } = hs;
-    let re = ciphertext.slice(0, DHLEN);
-    let ciphertext = ciphertext.slice(DHLEN, ciphertext.len() - DHLEN);
+    let re = &ciphertext[0.. DHLEN];
+    let ciphertext = &ciphertext[DHLEN..ciphertext.len()];
     let st = mix_hash(st, &re);
     let st = mix_key(st, &re);
     let ee = dh(&e, &re);
@@ -182,9 +178,9 @@ pub fn read_message2(
 ///    <-
 pub fn write_transport(
     tx: Transport,
-    ad: &Seq<U8>,
-    payload: &Seq<U8>,
-) -> Result<(Transport, Seq<U8>), Error> {
+    ad: &[u8],
+    payload: &[u8],
+) -> Result<(Transport, Vec<u8>), Error> {
     let Transport {
         send,
         recv,
@@ -201,9 +197,9 @@ pub fn write_transport(
 
 pub fn read_transport(
     tx: Transport,
-    ad: &Seq<U8>,
-    ciphertext: &Seq<U8>,
-) -> Result<(Transport, Seq<U8>), Error> {
+    ad: &[u8],
+    ciphertext: &[u8],
+) -> Result<(Transport, Vec<u8>), Error> {
     let Transport {
         send,
         recv,
