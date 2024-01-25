@@ -38,7 +38,7 @@ pub struct Transport {
     handshake_hash: Vec<u8>,
 }
 
-struct ProtocolName([u8;36]);
+struct ProtocolName([u8; 36]);
 #[allow(non_upper_case_globals)]
 const Noise_KKpsk0_25519_ChaChaPoly_SHA256: ProtocolName = ProtocolName([
     78u8, 111u8, 105u8, 115u8, 101u8, 95u8, 75u8, 75u8, 112u8, 115u8, 107u8, 48u8, 95u8, 50u8,
@@ -115,7 +115,7 @@ pub fn read_message1(
     ciphertext: &[u8],
 ) -> Result<(HandshakeStateR1, Vec<u8>), Error> {
     let HandshakeStateR0 { st, psk, s, e, rs } = hs;
-    let re = &ciphertext[0.. DHLEN];
+    let re = &ciphertext[0..DHLEN];
     let ciphertext = &ciphertext[DHLEN..ciphertext.len()];
     let st = mix_key_and_hash(st, &psk);
     let st = mix_hash(st, re);
@@ -125,7 +125,12 @@ pub fn read_message1(
     let ss = dh(&s, &rs);
     let st = mix_key(st, &ss);
     let (st, plaintext) = decrypt_and_hash(st, ciphertext)?;
-    let hs = HandshakeStateR1 { st, e, rs, re:re.to_vec() };
+    let hs = HandshakeStateR1 {
+        st,
+        e,
+        rs,
+        re: re.to_vec(),
+    };
     Ok((hs, plaintext))
 }
 
@@ -155,7 +160,7 @@ pub fn read_message2(
     ciphertext: &[u8],
 ) -> Result<(Transport, Vec<u8>), Error> {
     let HandshakeStateI1 { st, s, e } = hs;
-    let re = &ciphertext[0.. DHLEN];
+    let re = &ciphertext[0..DHLEN];
     let ciphertext = &ciphertext[DHLEN..ciphertext.len()];
     let st = mix_hash(st, re);
     let st = mix_key(st, re);
