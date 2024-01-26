@@ -48,3 +48,42 @@ impl<'a> Struct {
         x.bar()
     }
 }
+
+// Test trait implementations
+// XXX: All functions from here on fail with "the frontend could not resolve using `select_trait_candidate`."
+pub(crate) type U8 = u8;
+pub struct Bytes(Vec<U8>);
+
+impl From<Vec<u8>> for Bytes {
+    fn from(x: Vec<u8>) -> Bytes {
+        Bytes(x.into_iter().map(|x| x.into()).collect())
+    }
+}
+
+impl Bytes {
+    pub fn declassify(&self) -> Vec<u8> {
+        self.0.iter().map(|&x| x).collect()
+    }
+
+    pub fn from_hex(s: &str) -> Bytes {
+        let s: String = s.split_whitespace().collect();
+        if s.len() % 2 == 0 {
+            Bytes(
+                (0..s.len())
+                    .step_by(2)
+                    .map(|i| {
+                        s.get(i..i + 2)
+                            .and_then(|sub| (u8::from_str_radix(sub, 16).ok()))
+                    })
+                    .collect::<Option<Vec<U8>>>()
+                    .expect("Not a hex string1"),
+            )
+        } else {
+            unreachable!("Not a hex string2")
+        }
+    }
+}
+
+pub fn random_bytes(len: usize) -> Vec<u8> {
+    (0..len).map(|i| i as u8).collect::<Vec<u8>>()
+}
