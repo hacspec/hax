@@ -44,3 +44,11 @@ fn casts(x8: u8, x16: u16, x32: u32, x64: u64, xs: usize) {
     let _: i16 = x8 as i16 + x16 as i16 + x32 as i16 + x64 as i16 + xs as i16;
     let _: i8 = x8 as i8 + x16 as i8 + x32 as i8 + x64 as i8 + xs as i8;
 }
+
+// XXX: Fails with "usize literals (fail if pattern maching, otherwise TODO)"
+fn matching(l: usize) {
+    match l {
+        1 => (),
+        _ => (),
+    }
+}

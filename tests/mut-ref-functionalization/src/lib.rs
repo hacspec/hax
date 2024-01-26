@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-struct S {
+pub struct S {
     b: [u8; 5],
 }
 
@@ -101,3 +101,7 @@ impl FooTrait for Foo {
 fn array(x: &mut [u8; 10]) {
     x[1] = x[2];
 }
+
+// Non-binding patterns for &mut inputs
+// XXX: This fails with "Non-binding patterns for `&mut` inputs"
+fn something_not_really_mut(_: &mut [u8]) {}
