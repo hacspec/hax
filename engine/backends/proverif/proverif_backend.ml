@@ -145,6 +145,40 @@ module Print = struct
         fun args -> string "PLACEHOLDER_library_function" );
       (* Crypto dependencies *)
 
+      (* hax_lib_protocol::cal::hash *)
+      ( Hax_lib_protocol__cal__hash,
+          fun args -> string "PLACEHOLDER_library_function" );
+      (* hax_lib_protocol::cal::hmac *)
+      (Hax_lib_protocol__cal__hmac,
+         fun args -> string "PLACEHOLDER_library_function" );
+      (* hax_lib_protocol::cal::aead_decrypt *)
+      (Hax_lib_protocol__cal__aead_decrypt,
+         fun args -> string "PLACEHOLDER_library_function" );
+        (* hax_lib_protocol::cal::aead_encrypt *)
+      (Hax_lib_protocol__cal__aead_encrypt,
+         fun args -> string "PLACEHOLDER_library_function" );
+
+  (* hax_lib_protocol::cal::dh_scalar_multiply *)
+      (Hax_lib_protocol__cal__dh_scalar_multiply,         fun args -> string "PLACEHOLDER_library_function" );
+
+      (* hax_lib_protocol::cal::dh_scalar_multiply_base *)
+      (Hax_lib_protocol__cal__dh_scalar_multiply_base,         fun args -> string "PLACEHOLDER_library_function" );
+
+      (* hax_lib_protocol::cal::impl__DHScalar__from_bytes *)
+      (Hax_lib_protocol__cal__Impl__from_bytes,         fun args -> string "PLACEHOLDER_library_function" );
+
+      (* hax_lib_protocol::cal::impl__DHElement__from_bytes *)
+      (Hax_lib_protocol__cal__Impl_1__from_bytes,         fun args -> string "PLACEHOLDER_library_function" );
+
+      (* hax_lib_protocol::cal::impl__AEADKey__from_bytes *)
+      (Hax_lib_protocol__cal__Impl_4__from_bytes,         fun args -> string "PLACEHOLDER_library_function" );
+
+      (* hax_lib_protocol::cal::impl__AEADIV__from_bytes *)
+      (Hax_lib_protocol__cal__Impl_5__from_bytes,         fun args -> string "PLACEHOLDER_library_function" );
+
+(* hax_lib_protocol::cal::impl__AEADTag__from_bytes *)
+(Hax_lib_protocol__cal__Impl_6__from_bytes,         fun args -> string "PLACEHOLDER_library_function" );
+
     ]
 
   let library_constructors :
@@ -156,17 +190,27 @@ module Print = struct
         fun args -> string "PLACEHOLDER_library_constructor" );
       ( Core__option__Option__None,
         fun args -> string "PLACEHOLDER_library_constructor" );
+      (Core__ops__range__Range, fun args -> string "PLACEHOLDER_library_constructor" );
+      (* hax_lib_protocol::cal::(HashAlgorithm_HashAlgorithm_Sha256_c *)
+      (Hax_lib_protocol__cal__HashAlgorithm__Sha256,        fun args -> string "PLACEHOLDER_library_constructor" );
+
+      (* hax_lib_protocol::cal::DHGroup_DHGroup_X25519_c *)
+      (Hax_lib_protocol__cal__DHGroup__X25519,        fun args -> string "PLACEHOLDER_library_constructor" );
+
+        (* hax_lib_protocol::cal::AEADAlgorithm_AEADAlgorithm_Chacha20Poly1305_c *)
+       (Hax_lib_protocol__cal__AEADAlgorithm__Chacha20Poly1305,        fun args -> string "PLACEHOLDER_library_constructor" );
+
+      (* hax_lib_protocol::cal::HMACAlgorithm_HMACAlgorithm_Sha256_c *)
+       (Hax_lib_protocol__cal__HMACAlgorithm__Sha256,        fun args -> string "PLACEHOLDER_library_constructor" );
+
     ]
 
   let library_types : (Concrete_ident_generated.name * document) list =
     [
+      (* hax_lib_protocol::cal::(t_DHScalar *)
+      (Hax_lib_protocol__cal__DHScalar,        string "PLACEHOLDER_library_type" );
+      (Core__option__Option, string "PLACEHOLDER_library_type");
     ]
-
-  (* Also need to translate the following types and potentially their constructors:
-     core::option::t_Option<hacspec_lib::seq::t_Seq<secret_integers::t_U8>>
-     core::option::Option_Option_None_c()
-     core::option::Option_Option_Some_c(..)
-  *)
 
   let assoc_known_name name (known_name, _) =
     Global_ident.eq_name known_name name
@@ -344,6 +388,8 @@ module Print = struct
           else
             print#concrete_ident constructor
             ^^ iblock parens (separate_map (comma ^^ break 1) snd args)
+
+
 
       method ty : Generic_printer_base.par_state -> ty fn =
         fun ctx ty ->
