@@ -106,7 +106,14 @@ fn main() {
         .unwrap();
     }
 
-    let vanilla_rustc = std::env::var(HAX_VANILLA_RUSTC).is_ok();
+    let (vanilla_rustc, vanilla_rustc_never) = {
+        let vanilla_rustc = std::env::var(HAX_VANILLA_RUSTC);
+        let vanilla_rustc_never = vanilla_rustc == Ok("never".into());
+        (
+            !vanilla_rustc_never && vanilla_rustc.is_ok(),
+            vanilla_rustc_never,
+        )
+    };
 
     // fetch the correct callback structure given the command, and
     // coerce options
@@ -180,14 +187,16 @@ fn main() {
         move || rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
     });
 
-    std::process::exit(if translate_package && exit_code == 0 {
-        // When the hax translation is successful, we need to re-run
-        // rustc. Indeed, hax translation doesn't actually build a
-        // package: no `rlib` will be written on disk.
-        self::vanilla_rustc()
-    } else {
-        exit_code
-    })
+    std::process::exit(
+        if !vanilla_rustc_never && translate_package && exit_code == 0 {
+            // When the hax translation is successful, we need to re-run
+            // rustc. Indeed, hax translation doesn't actually build a
+            // package: no `rlib` will be written on disk.
+            self::vanilla_rustc()
+        } else {
+            exit_code
+        },
+    )
 }
 
 /// Re-run rustc without doing any hax translation. This ensures a
