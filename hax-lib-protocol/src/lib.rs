@@ -1,3 +1,10 @@
+//! This crate provides tools for protocol authors to write protocol
+//! specifications for hax.
+//!
+//! It contains a collection traits describing state machine behaviour, as
+//! well as a library of abstract primitive cryptographic operations for
+//! use in protocol specifications.
+
 pub mod cal;
 pub mod state_machine;
 
