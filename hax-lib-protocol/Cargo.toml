@@ -11,3 +11,4 @@ readme.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+libcrux = "0.0.2-pre.2"
