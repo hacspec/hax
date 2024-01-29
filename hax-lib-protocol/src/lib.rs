@@ -5,7 +5,7 @@
 //! well as a library of abstract primitive cryptographic operations for
 //! use in protocol specifications.
 
-pub mod cal;
+pub mod crypto;
 pub mod state_machine;
 
 /// A protocol error type.

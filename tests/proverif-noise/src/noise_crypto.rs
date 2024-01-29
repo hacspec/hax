@@ -1,5 +1,5 @@
 // Import hacspec and all needed definitions.
-use hax_lib_protocol::cal::{DHGroup, *};
+use hax_lib_protocol::crypto::{DHGroup, *};
 
 /// This file formalizes the Crypto Functions from the Noise Specification
 /// Section 4: Crypto Functions
@@ -73,7 +73,7 @@ pub const HASHLEN: usize = 32;
 pub const BLOCKLEN: usize = 64;
 
 pub fn hash(input: &[u8]) -> Vec<u8> {
-    hax_lib_protocol::cal::hash(HashAlgorithm::Sha256, input)
+    hax_lib_protocol::crypto::hash(HashAlgorithm::Sha256, input)
 }
 
 pub fn hmac_hash(key: &[u8], input: &[u8]) -> Vec<u8> {
