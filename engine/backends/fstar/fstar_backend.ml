@@ -1157,7 +1157,7 @@ let make (module M : Attrs.WITH_ITEMS) ctx =
 
 let strings_of_item (bo : BackendOptions.t) m items (item : item) :
     [> `Impl of string | `Intf of string ] list =
-  let interface_mode =
+  let interface_mode' : Types.inclusion_kind =
     List.rev bo.interfaces
     |> List.find ~f:(fun (clause : Types.inclusion_clause) ->
            let namespace = clause.namespace in
@@ -1169,9 +1169,11 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
              }
            in
            Concrete_ident.matches_namespace namespace item.ident)
-    |> Option.map ~f:(fun (clause : Types.inclusion_clause) ->
-           match clause.kind with Types.Excluded -> false | _ -> true)
-    |> Option.value ~default:false
+    |> Option.map ~f:(fun (clause : Types.inclusion_clause) -> clause.kind)
+    |> Option.value ~default:(Types.Excluded : Types.inclusion_kind)
+  in
+  let interface_mode =
+    not ([%matches? (Types.Excluded : Types.inclusion_kind)] interface_mode')
   in
   let (module Print) =
     make m
@@ -1184,6 +1186,10 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
   let mk_impl = if interface_mode then fun i -> `Impl i else fun i -> `Impl i in
   let mk_intf = if interface_mode then fun i -> `Intf i else fun i -> `Impl i in
   Print.pitem item
+  |> (match interface_mode' with
+     | Types.Included { strict = true } ->
+         List.filter ~f:(function `Impl _ -> false | _ -> true)
+     | _ -> Fn.id)
   |> List.concat_map ~f:(function
        | `Impl i -> [ mk_impl (decl_to_string i) ]
        | `Intf i -> [ mk_intf (decl_to_string i) ]
