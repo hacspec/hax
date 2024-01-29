@@ -101,9 +101,9 @@ impl AEADIV {
 /// An abstract AEAD authentication tag.
 pub struct AEADTag(libcrux::aead::Tag);
 impl AEADTag {
+    /// Attempt deserialization of an AEAD tag from `bytes`. Panics if
+    /// number of `bytes` is insufficient.
     pub fn from_bytes(bytes: &[u8]) -> Self {
-        /// Attempt deserialization of an AEAD tag from `bytes`. Panics if
-        /// number of `bytes` is insufficient.
         let bytes: [u8; 16] = bytes.try_into().unwrap();
         AEADTag(libcrux::aead::Tag::from(bytes))
     }
