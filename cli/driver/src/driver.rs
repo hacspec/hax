@@ -93,12 +93,12 @@ fn main() {
     };
 
     // When `HAX_FEATURES_DETECTION_MODE` is set, we just detect
-    // features for the current crate, output them in JSON on stdout
+    // features for the current crate, output them in JSON on stderr
     // and exit immediately
     if std::env::var("HAX_FEATURES_DETECTION_MODE").is_ok() {
         use std::io::BufWriter;
         return serde_json::to_writer(
-            BufWriter::new(std::io::stdout()),
+            BufWriter::new(std::io::stderr()),
             &Features::detect(&options, &rustc_args),
         )
         .unwrap();

@@ -121,7 +121,7 @@ impl Features {
     /// Rustc messages twice.
     pub fn detect_forking() -> Self {
         use std::process::{Command, Stdio};
-        let stdout = Command::new(std::env::args().next().unwrap())
+        let output = Command::new(std::env::args().next().unwrap())
             .args(std::env::args().skip(1))
             .env("HAX_FEATURES_DETECTION_MODE", "1")
             .stdout(Stdio::piped())
@@ -129,8 +129,14 @@ impl Features {
             .spawn()
             .unwrap()
             .wait_with_output()
-            .unwrap()
-            .stdout;
-        serde_json::from_str(&std::str::from_utf8(&stdout).unwrap()).unwrap()
+            .unwrap();
+        let stderr = &std::str::from_utf8(&output.stderr).unwrap();
+        serde_json::from_str(stderr).unwrap_or_else(|e| {
+            let stdout = &std::str::from_utf8(&output.stdout).unwrap();
+            panic!(
+                "[detect_forking] could not parse `stdout`, got error `{e}`\n\n### STDERR{}\n\n### STDOUT{}",
+                stderr, stdout
+            );
+        })
     }
 }
