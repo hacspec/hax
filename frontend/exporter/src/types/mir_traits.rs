@@ -90,6 +90,14 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             ref id,
             ref mut generics,
         } => update_generics(id, generics),
+        ImplExprAtom::SelfImpl => {
+            // We don't need to truncate the generics (there shouldn't be any)
+            let trait_ref = trait_ref.sinto(s);
+            (
+                trait_ref.value.generic_args.clone(),
+                trait_ref.value.generic_args,
+            )
+        }
         ImplExprAtom::LocalBound {
             r#trait: trait_ref, ..
         } => update_generics(&trait_ref.value.def_id, &mut trait_ref.value.generic_args),
@@ -133,7 +141,6 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
                 trait_ref.value.generic_args,
             )
         }
-        _ => todo!(),
     };
 
     let info = TraitInfo {
