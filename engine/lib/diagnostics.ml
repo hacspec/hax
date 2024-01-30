@@ -121,7 +121,11 @@ end = struct
 
   let capture (type a) (f : unit -> a) : a * t list =
     let previous_state = !state in
-    let result = (f (), !state) in
+    state := [];
+    let result =
+      let x = f () in
+      (x, !state)
+    in
     state := previous_state;
     result
 end
