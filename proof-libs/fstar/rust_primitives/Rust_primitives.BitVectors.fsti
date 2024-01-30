@@ -46,6 +46,19 @@ let bit_vec_of_nat_arr (#len: usize)
   = fun i -> get_bit_nat (Seq.index arr (i / d)) (i % d)
 #pop-options
 
+/// Transforms a bit vector into an array of integers
+val bit_vec_to_int_arr #t (#len: usize) (d: bit_num t) (bv: bit_vec (v len * d))
+  : Pure (t_Array (int_t t) len)
+         (requires True)
+         (ensures fun r -> (forall i. bit_vec_of_int_arr r d i == bv i))
+
+/// Transforms a bit vector into an array of integers
+val bit_vec_to_nat_arr (#len: usize) (d: nat) (bv: bit_vec (v len * d))
+  : Pure (t_Array nat len)
+         (requires True)
+         (ensures fun r -> (forall i. bit_vec_of_nat_arr r d i == bv i)
+                      /\ (forall i. Seq.index r i < pow2 d))
+
 /// Bit-wise semantics of `2^n-1`
 val get_bit_pow2_minus_one #t
   (n: nat {pow2 n - 1 <= maxint t}) 
