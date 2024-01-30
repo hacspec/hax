@@ -56,8 +56,7 @@ struct
             }
       | PDeref { subpat; _ } -> (dpat subpat).p
 
-    and dexpr_unwrapped e = dexpr e
-      [@@inline_ands bindings_of dexpr - dexpr']
+    and dexpr_unwrapped e = dexpr e [@@inline_ands bindings_of dexpr - dexpr']
 
     [%%inline_defs "Item.*"]
   end
