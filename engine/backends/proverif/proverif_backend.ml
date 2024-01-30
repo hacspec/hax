@@ -240,6 +240,18 @@ module Print = struct
       method ty_bool = string "bool"
       method ty_int _ = string "bitstring"
 
+      method pat' : Generic_printer_base.par_state -> pat' fn =
+          fun ctx ->
+            let wrap_parens =
+              group
+              >>
+              match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock braces
+            in
+            fun pat ->
+              match pat with
+              | PConstruct {name; args} when is_known_constructor name -> string "PLACEHOLDER_library_constructor_pattern"
+              | _ -> super#pat' ctx pat
+
       method! expr' : Generic_printer_base.par_state -> expr' fn =
         fun ctx e ->
           let wrap_parens =
