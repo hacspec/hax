@@ -10,3 +10,11 @@ impl Error {
         || Self::Fail
     }
 }
+
+// error: The THIR body of item DefId(0:7 ~ rust_ast[d581]::main::_::{constant#1}) was stolen.
+
+const _MY_CONST: bool = true;
+
+pub fn main() {
+    const _: [(); 1] = [(); _MY_CONST as usize];
+}
