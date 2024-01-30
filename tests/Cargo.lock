@@ -782,6 +782,10 @@ name = "reordering"
 version = "0.1.0"
 
 [[package]]
+name = "rust-ast"
+version = "0.1.0"
+
+[[package]]
 name = "ryu"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"

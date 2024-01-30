@@ -1,0 +1,43 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: coq
+  info:
+    name: rust-ast
+    manifest: rust-ast/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: true
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: true
+      stdout: true
+---
+exit = 101
+stderr = '''
+Compiling rust-ast v0.1.0 (WORKSPACE_ROOT/rust-ast)
+error[HaxFront]: Supposely unreachable place in the Rust AST. The label is "ImplExprPredNotFound".
+                 This error report happend because some assumption about the Rust AST was broken.
+                 
+                 Context:
+                  - self: Binder(
+                     <impl FnOnce() -> Error as std::ops::FnOnce<()>>,
+                     [],
+                 )
+                  - nested: []
+                  - predicates: []
+ --> rust-ast/src/lib.rs:9:42
+  |
+9 |     pub fn for_application_callback() -> impl FnOnce() -> Self {
+  |                                          ^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: ⚠️ This is a bug in Hax's frontend.
+          Please report this error to https://github.com/hacspec/hax/issues with some context (e.g. the current crate)!
+
+error: could not compile `rust-ast` (lib) due to previous error'''
+stdout = ''
