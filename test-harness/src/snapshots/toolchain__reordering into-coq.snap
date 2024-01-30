@@ -32,7 +32,7 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 
-Inductive t_Foo: Type :=
+Inductive t_Foo : Type :=
 | Foo_A : t_Foo
 | Foo_B : t_Foo.
 
@@ -47,7 +47,7 @@ Definition no_dependency_1_ (_ : unit) : unit :=
 Definition no_dependency_2_ (_ : unit) : unit :=
   tt.
 
-Record t_Bar : Type :={
+Record t_Bar : Type := {
   0 : t_Foo_t;
 }.
 

@@ -108,9 +108,9 @@ struct
     match id with
     | `Projector (`Concrete cid) | `Concrete cid -> pconcrete_ident cid
     | `Primitive p_id -> primitive_to_string p_id
-    | `TupleType i -> "TODO (global ident) tuple type"
-    | `TupleCons i -> "TODO (global ident) tuple cons"
-    | `Projector (`TupleField (i, j)) | `TupleField (i, j) ->
+    | `TupleType _i -> "TODO (global ident) tuple type"
+    | `TupleCons _i -> "TODO (global ident) tuple cons"
+    | `Projector (`TupleField _) | `TupleField _ ->
         "TODO (global ident) tuple field"
     | _ -> .
 
@@ -131,7 +131,7 @@ struct
     let __TODO_term__ span s =
       Error.unimplemented ~details:("[expr] node " ^ s) span
 
-    let __TODO_item__ span s = C.AST.Unimplemented (s ^ " todo(item)")
+    let __TODO_item__ _span s = C.AST.Unimplemented (s ^ " todo(item)")
   end
 
   open TODOs
@@ -146,14 +146,14 @@ struct
         | S64 -> U64
         | S128 -> U128
         | SSize -> USize);
-      signed = k.signedness == Signed;
+      signed = (match k.signedness with Signed -> true | _ -> false);
     }
 
-  let rec pliteral span (e : literal) =
+  let pliteral span (e : literal) =
     match e with
     | String s -> C.AST.Const_string s
     | Char c -> C.AST.Const_char (Char.to_int c)
-    | Int { value; kind } -> C.AST.Const_int (value, pint_kind kind)
+    | Int { value; kind; _ } -> C.AST.Const_int (value, pint_kind kind)
     | Float _ -> Error.unimplemented ~details:"pliteral: Float" span
     | Bool b -> C.AST.Const_bool b
 
@@ -163,7 +163,7 @@ struct
     | TChar -> __TODO_ty__ span "char"
     | TInt k -> C.AST.Int (pint_kind k)
     | TStr -> __TODO_ty__ span "str"
-    | TApp { ident = `TupleType 0 as ident; args = [] } -> C.AST.Unit
+    | TApp { ident = `TupleType 0; args = [] } -> C.AST.Unit
     | TApp { ident = `TupleType 1; args = [ GType ty ] } -> pty span ty
     | TApp { ident = `TupleType n; args } when n >= 2 ->
         C.AST.Product (args_ty span args)
@@ -175,11 +175,11 @@ struct
           ~f:(fun x y -> C.AST.Arrow (x, y))
           (List.map ~f:(pty span) inputs)
     | TFloat _ -> __TODO_ty__ span "pty: Float"
-    | TArray { typ; length } ->
+    | TArray { typ; _ } ->
         C.AST.ArrayTy (pty span typ, "TODO: Int.to_string length")
     | TSlice { ty; _ } -> C.AST.SliceTy (pty span ty)
     | TParam i -> C.AST.NameTy i.name
-    | TAssociatedType s -> C.AST.WildTy
+    | TAssociatedType _ -> C.AST.WildTy
     | TOpaque _ -> __TODO_ty__ span "pty: TAssociatedType/TOpaque"
     | _ -> .
 
@@ -188,7 +188,7 @@ struct
     match args with
     | arg :: xs ->
         (match arg with
-        | GLifetime { lt; witness } -> __TODO_ty__ span "lifetime"
+        | GLifetime _ -> __TODO_ty__ span "lifetime"
         | GType x -> pty span x
         | GConst _ -> __TODO_ty__ span "const")
         :: args_ty span xs
@@ -197,7 +197,8 @@ struct
   let rec ppat (p : pat) : C.AST.pat =
     match p.p with
     | PWild -> C.AST.WildPat
-    | PAscription { typ; pat } -> C.AST.AscriptionPat (ppat pat, pty p.span typ)
+    | PAscription { typ; pat; _ } ->
+        C.AST.AscriptionPat (ppat pat, pty p.span typ)
     | PBinding
         {
           mut = Immutable;
@@ -208,19 +209,18 @@ struct
         } ->
         C.AST.Ident var.name
     | POr { subpats } -> C.AST.DisjunctivePat (List.map ~f:ppat subpats)
-    | PArray { args } -> __TODO_pat__ p.span "Parray?"
-    | PConstruct { name = `TupleCons 0; args = [] } -> C.AST.UnitPat
-    | PConstruct { name = `TupleCons 1; args = [ { pat } ] } ->
+    | PArray _ -> __TODO_pat__ p.span "Parray?"
+    | PConstruct { name = `TupleCons 0; args = []; _ } -> C.AST.UnitPat
+    | PConstruct { name = `TupleCons 1; args = [ _ ]; _ } ->
         __TODO_pat__ p.span "tuple 1"
-    | PConstruct { name = `TupleCons n; args } ->
-        C.AST.TuplePat (List.map ~f:(fun { pat } -> ppat pat) args)
-    | PConstruct { name; args; is_record = true } ->
+    | PConstruct { name = `TupleCons _n; args; _ } ->
+        C.AST.TuplePat (List.map ~f:(fun { pat; _ } -> ppat pat) args)
+    | PConstruct { name; args; is_record = true; _ } ->
         C.AST.RecordPat (pglobal_ident name, pfield_pats args)
-    | PConstruct { name; args; is_record = false } ->
+    | PConstruct { name; args; is_record = false; _ } ->
         C.AST.ConstructorPat
           (pglobal_ident name, List.map ~f:(fun p -> ppat p.pat) args)
     | PConstant { lit } -> C.AST.Lit (pliteral p.span lit)
-    | PDeref { subpat } -> __TODO_pat__ p.span "deref"
     | _ -> .
 
   and pfield_pats (args : field_pat list) : (string * C.AST.pat) list =
@@ -273,16 +273,17 @@ struct
     | Literal l -> C.AST.Const (pliteral e.span l)
     | LocalVar local_ident -> C.AST.NameTerm local_ident.name
     | GlobalVar (`TupleCons 0)
-    | Construct { constructor = `TupleCons 0; fields = [] } ->
+    | Construct { constructor = `TupleCons 0; fields = []; _ } ->
         C.AST.UnitTerm
     | GlobalVar global_ident -> C.AST.Var (pglobal_ident global_ident)
     | App
         {
-          f = { e = GlobalVar (`Projector (`TupleField (n, len))) };
-          args = [ arg ];
+          f = { e = GlobalVar (`Projector (`TupleField _)); _ };
+          args = [ _ ];
+          _;
         } ->
         __TODO_term__ span "app global vcar projector tuple"
-    | App { f = { e = GlobalVar x }; args } when Map.mem operators x ->
+    | App { f = { e = GlobalVar x; _ }; args; _ } when Map.mem operators x ->
         let arity, op = Map.find_exn operators x in
         if List.length args <> arity then
           Error.assertion_failure span "expr: function application: bad arity";
@@ -290,7 +291,7 @@ struct
         C.AST.AppFormat (op, args)
     (* | App { f = { e = GlobalVar x }; args } -> *)
     (*    __TODO_term__ span "GLOBAL APP?" *)
-    | App { f; args } ->
+    | App { f; args; _ } ->
         let base = pexpr f in
         let args = List.map ~f:pexpr args in
         C.AST.App (base, args)
@@ -306,7 +307,7 @@ struct
             pattern = ppat lhs;
             mut =
               (match lhs.p with
-              | PBinding { mut = Mutable _ } -> true
+              | PBinding { mut = Mutable _; _ } -> true
               | _ -> false);
             value = pexpr rhs;
             body = pexpr body;
@@ -320,41 +321,39 @@ struct
                   | MOption -> C.AST.Option)
                 monadic;
           }
-    | EffectAction _ -> __TODO_term__ span "monadic action"
     | Match { scrutinee; arms } ->
         C.AST.Match
           ( pexpr scrutinee,
             List.map
-              ~f:(fun { arm = { arm_pat; body } } -> (ppat arm_pat, pexpr body))
+              ~f:(fun { arm = { arm_pat; body; _ }; _ } ->
+                (ppat arm_pat, pexpr body))
               arms )
-    | Ascription { e; typ } -> __TODO_term__ span "asciption"
-    | Construct { constructor = `TupleCons 1; fields = [ (_, e) ]; base } ->
+    | Ascription _ -> __TODO_term__ span "asciption"
+    | Construct { constructor = `TupleCons 1; fields = [ (_, e) ]; _ } ->
         pexpr e
-    | Construct { constructor = `TupleCons n; fields; base } ->
+    | Construct { constructor = `TupleCons _n; fields; _ } ->
         C.AST.Tuple (List.map ~f:(snd >> pexpr) fields)
-    | Construct { is_record = true; constructor; fields; base } ->
+    | Construct { is_record = true; constructor; fields; _ } ->
         (* TODO: handle base *)
         C.AST.RecordConstructor
           ( pglobal_ident constructor,
             List.map ~f:(fun (f, e) -> (pglobal_ident f, pexpr e)) fields )
-    | Construct { is_record = false; constructor; fields = [ (f, e) ]; base } ->
+    | Construct { is_record = false; constructor; fields = [ (_f, e) ]; _ } ->
         C.AST.App (C.AST.Var (pglobal_ident constructor), [ pexpr e ])
-    | Construct { constructor; fields; base } ->
+    | Construct { constructor; _ } ->
         (* __TODO_term__ span "constructor" *)
-        C.AST.Var (pglobal_ident constructor ^ C.ty_to_string (pty span e.typ))
-    | Closure { params; body } ->
+        C.AST.Var
+          (pglobal_ident constructor
+          ^ C.ty_to_string_without_paren (pty span e.typ))
+    | Closure { params; body; _ } ->
         C.AST.Lambda (List.map ~f:ppat params, pexpr body)
-    | MacroInvokation { macro; args; witness } ->
+    | MacroInvokation { macro; _ } ->
         Error.raise
         @@ {
              kind = UnsupportedMacro { id = [%show: global_ident] macro };
              span = e.span;
            }
     | _ -> .
-
-  let pgeneric_param span : generic_param -> _ = function
-    | { ident; kind = GPType _; _ } -> ident.name
-    | _ -> Error.unimplemented ~details:"Coq: TODO: generic_params" span
 
   let pgeneric_param_as_argument span : generic_param -> C.AST.argument =
     function
@@ -372,18 +371,18 @@ struct
   and pitem_unwrapped (e : item) : C.AST.decl list =
     let span = e.span in
     match e.v with
-    | Fn { name; generics; body; params } ->
+    | Fn { name; body; params; _ } ->
         [
           C.AST.Definition
             ( pconcrete_ident name,
               List.map
-                ~f:(fun { pat; typ; typ_span } ->
+                ~f:(fun { pat; typ; _ } ->
                   C.AST.Explicit (ppat pat, pty span typ))
                 params,
               pexpr body,
               pty span body.typ );
         ]
-    | TyAlias { name; generics; ty } ->
+    | TyAlias { name; ty; _ } ->
         [
           C.AST.Notation
             ( "'" ^ pconcrete_ident name ^ "_t" ^ "'",
@@ -402,7 +401,7 @@ struct
                 (p_record_record span v.arguments) );
         ]
     (* enum *)
-    | Type { name; generics; variants } ->
+    | Type { name; generics; variants; _ } ->
         [
           C.AST.Inductive
             ( U.Concrete_ident_view.to_definition_name name,
@@ -423,7 +422,7 @@ struct
     (*             ( C.AST.Name (U.Concrete_ident_view.to_definition_name name), *)
     (*               C.AST.Name (U.Concrete_ident_view.to_definition_name name) ) ); *)
     (*     ] *)
-    | IMacroInvokation { macro; argument; span } -> (
+    | IMacroInvokation { macro; argument; _ } -> (
         let unsupported () =
           let id = [%show: concrete_ident] macro in
           Error.raise { kind = UnsupportedMacro { id }; span = e.span }
@@ -589,7 +588,7 @@ struct
                   | IIFn { body; params } ->
                       ( U.Concrete_ident_view.to_definition_name x.ii_ident,
                         List.map
-                          ~f:(fun { pat; typ; typ_span } ->
+                          ~f:(fun { pat; typ; _ } ->
                             C.AST.Explicit (ppat pat, pty span typ))
                           params,
                         pexpr body,
@@ -602,8 +601,8 @@ struct
                 items );
         ]
 
-  and p_inductive span variants parrent_name : C.AST.inductive_case list =
-    List.map variants ~f:(fun { name; arguments; is_record } ->
+  and p_inductive span variants _parrent_name : C.AST.inductive_case list =
+    List.map variants ~f:(fun { name; arguments; is_record; _ } ->
         if is_record then
           C.AST.InductiveCase
             ( U.Concrete_ident_view.to_definition_name name,
@@ -613,7 +612,7 @@ struct
           let name = U.Concrete_ident_view.to_definition_name name in
           match arguments with
           | [] -> C.AST.BaseCase name
-          | [ (arg_name, arg_ty, _arg_attrs) ] ->
+          | [ (_arg_name, arg_ty, _arg_attrs) ] ->
               C.AST.InductiveCase (name, pty span arg_ty)
           | _ ->
               C.AST.InductiveCase
@@ -638,21 +637,6 @@ struct
   (*     :: p_inductive span xs parrent_name *)
   (* | _ -> [] *)
 
-  and p_record span variants parrent_name : (string * C.AST.ty) list =
-    match variants with
-    | { name; arguments = [ (arg_name, arg_ty, _arg_attrs) ] } :: xs ->
-        (U.Concrete_ident_view.to_definition_name arg_name, pty span arg_ty)
-        :: p_record span xs parrent_name
-    | { name; arguments = [] } :: xs ->
-        ("TODO FIELD?", __TODO_ty__ span "TODO")
-        :: p_record span xs parrent_name
-    | { name; arguments } :: xs ->
-        ( U.Concrete_ident_view.to_definition_name name,
-          C.AST.RecordTy (pconcrete_ident name, p_record_record span arguments)
-        )
-        :: p_record span xs parrent_name
-    | _ -> []
-
   and p_record_record span arguments : (string * C.AST.ty) list =
     List.map
       ~f:(function
@@ -676,7 +660,7 @@ let string_of_item (item : item) : string =
   in
   List.map ~f:C.decl_to_string @@ Print.pitem item |> String.concat ~sep:"\n"
 
-let string_of_items =
+let string_of_items : AST.item list -> string =
   List.map ~f:string_of_item >> List.map ~f:String.strip
   >> List.filter ~f:(String.is_empty >> not)
   >> String.concat ~sep:"\n\n"
@@ -689,7 +673,7 @@ let hardcoded_coq_headers =
    Open Scope Z_scope.\n\
    Open Scope bool_scope.\n"
 
-let translate _ (bo : BackendOptions.t) (items : AST.item list) :
+let translate _ (_bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =
   U.group_items_by_namespace items
   |> Map.to_alist
@@ -724,7 +708,6 @@ module TransformToInputLanguage =
   |> Phases.Reconstruct_question_marks
   |> Side_effect_utils.Hoist
   |> Phases.Local_mutation
-  |> Phases.Remove_mutation
   |> Phases.Reject.Continue
   |> Phases.Cf_into_monads
   |> Phases.Reject.EarlyExit
@@ -735,6 +718,6 @@ module TransformToInputLanguage =
   ]
   [@ocamlformat "disable"]
 
-let apply_phases (bo : BackendOptions.t) (items : Ast.Rust.item list) :
+let apply_phases (_bo : BackendOptions.t) (items : Ast.Rust.item list) :
     AST.item list =
   TransformToInputLanguage.ditems items

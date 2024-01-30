@@ -35,7 +35,6 @@ module Phase = struct
     | ResugarQuestionMarks
     | HoistSideEffects
     | LocalMutation
-    | RemoveMutation
     | TrivializeAssignLhs
     | CfIntoMonads
     | FunctionalizeLoops
