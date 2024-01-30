@@ -471,7 +471,7 @@ end)
 
 module DataTypes = MkSubprinter (struct
   let banner = "Types and Constructors"
-  let preamble items = "channel c.\nfun int2bitstring(nat): bitstring.\n"
+  let preamble items = ""
 
   let filter_data_types items =
     List.filter ~f:(fun item -> [%matches? Type _] item.v) items
