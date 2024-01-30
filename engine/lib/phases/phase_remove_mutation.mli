@@ -9,15 +9,14 @@ module Make
             and type nontrivial_lhs = Features.Off.nontrivial_lhs
             and type monadic_action = Features.Off.monadic_action
             and type monadic_binding = Features.Off.monadic_binding
-            and type for_index_loop = Features.Off.for_index_loop) : sig
+            and type for_index_loop = Features.Off.for_index_loop
+            and type state_passing_loop = Features.On.state_passing_loop) : sig
   include module type of struct
     module FA = F
 
     module FB = struct
       include F
-
-      (* include Features.Off.Mutable_variable *)
-      include Features.On.State_passing_loop
+      include Features.Off.Mutable_variable
     end
 
     module A = Ast.Make (F)

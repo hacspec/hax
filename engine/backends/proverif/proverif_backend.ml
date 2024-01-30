@@ -678,6 +678,7 @@ module TransformToInputLanguage =
   |> Phases.Trivialize_assign_lhs
   |> Side_effect_utils.Hoist
   |> Phases.Local_mutation
+  |> Phases.Remove_mutation
   |> Phases.Reject.Continue
   |> Phases.Reconstruct_question_marks
   |> SubtypeToInputLanguage

@@ -1258,6 +1258,7 @@ module TransformToInputLanguage =
   |> Phases.Reconstruct_question_marks
   |> Side_effect_utils.Hoist
   |> Phases.Local_mutation
+  |> Phases.Remove_mutation
   |> Phases.Reject.Continue
   |> Phases.Cf_into_monads
   |> Phases.Reject.EarlyExit
