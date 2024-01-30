@@ -116,18 +116,28 @@ module Print = struct
       (Concrete_ident_generated.name * (AST.expr list -> document)) list =
     [
       (* Core dependencies *)
-      (Alloc__vec__from_elem,         fun args -> string "PLACEHOLDER_library_function" );
-      (Alloc__slice__Impl__to_vec,         fun args -> string "PLACEHOLDER_library_function" );
-      (Core__slice__Impl__len,         fun args -> string "PLACEHOLDER_library_function" );
-      (Core__ops__deref__Deref__deref,        fun args -> string "PLACEHOLDER_library_function" );
-      (Core__ops__index__Index__index,        fun args -> string "PLACEHOLDER_library_function" );
-      (Rust_primitives__unsize,        fun args -> string "PLACEHOLDER_library_function" );
-      (Core__num__Impl_9__to_le_bytes,        fun args -> string "PLACEHOLDER_library_function" );
-      (Alloc__slice__Impl__into_vec,        fun args -> string "PLACEHOLDER_library_function" );
-      (Alloc__vec__Impl_1__truncate,        fun args -> string "PLACEHOLDER_library_function" );
-      (Alloc__vec__Impl_2__extend_from_slice,        fun args -> string "PLACEHOLDER_library_function" );
-      (Alloc__slice__Impl__concat,        fun args -> string "PLACEHOLDER_library_function" );
-      (Core__option__Impl__is_some,        fun args -> string "PLACEHOLDER_library_function" );
+      (Alloc__vec__from_elem, fun args -> string "PLACEHOLDER_library_function");
+      ( Alloc__slice__Impl__to_vec,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (Core__slice__Impl__len, fun args -> string "PLACEHOLDER_library_function");
+      ( Core__ops__deref__Deref__deref,
+        fun args -> string "PLACEHOLDER_library_function" );
+      ( Core__ops__index__Index__index,
+        fun args -> string "PLACEHOLDER_library_function" );
+      ( Rust_primitives__unsize,
+        fun args -> string "PLACEHOLDER_library_function" );
+      ( Core__num__Impl_9__to_le_bytes,
+        fun args -> string "PLACEHOLDER_library_function" );
+      ( Alloc__slice__Impl__into_vec,
+        fun args -> string "PLACEHOLDER_library_function" );
+      ( Alloc__vec__Impl_1__truncate,
+        fun args -> string "PLACEHOLDER_library_function" );
+      ( Alloc__vec__Impl_2__extend_from_slice,
+        fun args -> string "PLACEHOLDER_library_function" );
+      ( Alloc__slice__Impl__concat,
+        fun args -> string "PLACEHOLDER_library_function" );
+      ( Core__option__Impl__is_some,
+        fun args -> string "PLACEHOLDER_library_function" );
       (* core::clone::Clone_f_clone *)
       ( Core__clone__Clone__clone,
         fun args -> string "PLACEHOLDER_library_function" );
@@ -155,42 +165,40 @@ module Print = struct
       (* core::result::impl__map_err *)
       ( Core__result__Impl__map_err,
         fun args -> string "PLACEHOLDER_library_function" );
-
       (* Crypto dependencies *)
       (* hax_lib_protocol::cal::hash *)
-      ( Hax_lib_protocol__cal__hash,
-          fun args -> string "PLACEHOLDER_library_function" );
+      ( Hax_lib_protocol__crypto__hash,
+        fun args -> string "PLACEHOLDER_library_function" );
       (* hax_lib_protocol::cal::hmac *)
-      (Hax_lib_protocol__cal__hmac,
-         fun args -> string "PLACEHOLDER_library_function" );
+      ( Hax_lib_protocol__crypto__hmac,
+        fun args -> string "PLACEHOLDER_library_function" );
       (* hax_lib_protocol::cal::aead_decrypt *)
-      (Hax_lib_protocol__cal__aead_decrypt,
-         fun args -> string "PLACEHOLDER_library_function" );
-        (* hax_lib_protocol::cal::aead_encrypt *)
-      (Hax_lib_protocol__cal__aead_encrypt,
-         fun args -> string "PLACEHOLDER_library_function" );
-
-  (* hax_lib_protocol::cal::dh_scalar_multiply *)
-      (Hax_lib_protocol__cal__dh_scalar_multiply,         fun args -> string "PLACEHOLDER_library_function" );
-
+      ( Hax_lib_protocol__crypto__aead_decrypt,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* hax_lib_protocol::cal::aead_encrypt *)
+      ( Hax_lib_protocol__crypto__aead_encrypt,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* hax_lib_protocol::cal::dh_scalar_multiply *)
+      ( Hax_lib_protocol__crypto__dh_scalar_multiply,
+        fun args -> string "PLACEHOLDER_library_function" );
       (* hax_lib_protocol::cal::dh_scalar_multiply_base *)
-      (Hax_lib_protocol__cal__dh_scalar_multiply_base,         fun args -> string "PLACEHOLDER_library_function" );
-
+      ( Hax_lib_protocol__crypto__dh_scalar_multiply_base,
+        fun args -> string "PLACEHOLDER_library_function" );
       (* hax_lib_protocol::cal::impl__DHScalar__from_bytes *)
-      (Hax_lib_protocol__cal__Impl__from_bytes,         fun args -> string "PLACEHOLDER_library_function" );
-
+      ( Hax_lib_protocol__crypto__Impl__from_bytes,
+        fun args -> string "PLACEHOLDER_library_function" );
       (* hax_lib_protocol::cal::impl__DHElement__from_bytes *)
-      (Hax_lib_protocol__cal__Impl_1__from_bytes,         fun args -> string "PLACEHOLDER_library_function" );
-
+      ( Hax_lib_protocol__crypto__Impl_1__from_bytes,
+        fun args -> string "PLACEHOLDER_library_function" );
       (* hax_lib_protocol::cal::impl__AEADKey__from_bytes *)
-      (Hax_lib_protocol__cal__Impl_4__from_bytes,         fun args -> string "PLACEHOLDER_library_function" );
-
+      ( Hax_lib_protocol__crypto__Impl_4__from_bytes,
+        fun args -> string "PLACEHOLDER_library_function" );
       (* hax_lib_protocol::cal::impl__AEADIV__from_bytes *)
-      (Hax_lib_protocol__cal__Impl_5__from_bytes,         fun args -> string "PLACEHOLDER_library_function" );
-
-(* hax_lib_protocol::cal::impl__AEADTag__from_bytes *)
-(Hax_lib_protocol__cal__Impl_6__from_bytes,         fun args -> string "PLACEHOLDER_library_function" );
-
+      ( Hax_lib_protocol__crypto__Impl_5__from_bytes,
+        fun args -> string "PLACEHOLDER_library_function" );
+      (* hax_lib_protocol::cal::impl__AEADTag__from_bytes *)
+      ( Hax_lib_protocol__crypto__Impl_6__from_bytes,
+        fun args -> string "PLACEHOLDER_library_function" );
     ]
 
   let library_constructors :
@@ -202,51 +210,51 @@ module Print = struct
         fun args -> string "PLACEHOLDER_library_constructor" );
       ( Core__option__Option__None,
         fun args -> string "PLACEHOLDER_library_constructor" );
-      (Core__ops__range__Range, fun args -> string "PLACEHOLDER_library_constructor" );
+      ( Core__ops__range__Range,
+        fun args -> string "PLACEHOLDER_library_constructor" );
       (* hax_lib_protocol::cal::(HashAlgorithm_HashAlgorithm_Sha256_c *)
-      (Hax_lib_protocol__cal__HashAlgorithm__Sha256,        fun args -> string "PLACEHOLDER_library_constructor" );
-
+      ( Hax_lib_protocol__crypto__HashAlgorithm__Sha256,
+        fun args -> string "PLACEHOLDER_library_constructor" );
       (* hax_lib_protocol::cal::DHGroup_DHGroup_X25519_c *)
-      (Hax_lib_protocol__cal__DHGroup__X25519,        fun args -> string "PLACEHOLDER_library_constructor" );
-
-        (* hax_lib_protocol::cal::AEADAlgorithm_AEADAlgorithm_Chacha20Poly1305_c *)
-       (Hax_lib_protocol__cal__AEADAlgorithm__Chacha20Poly1305,        fun args -> string "PLACEHOLDER_library_constructor" );
-
+      ( Hax_lib_protocol__crypto__DHGroup__X25519,
+        fun args -> string "PLACEHOLDER_library_constructor" );
+      (* hax_lib_protocol::cal::AEADAlgorithm_AEADAlgorithm_Chacha20Poly1305_c *)
+      ( Hax_lib_protocol__crypto__AEADAlgorithm__Chacha20Poly1305,
+        fun args -> string "PLACEHOLDER_library_constructor" );
       (* hax_lib_protocol::cal::HMACAlgorithm_HMACAlgorithm_Sha256_c *)
-       (Hax_lib_protocol__cal__HMACAlgorithm__Sha256,        fun args -> string "PLACEHOLDER_library_constructor" );
-
+      ( Hax_lib_protocol__crypto__HMACAlgorithm__Sha256,
+        fun args -> string "PLACEHOLDER_library_constructor" );
     ]
 
-    let library_constructors_patterns :
-      (Concrete_ident_generated.name
-      * (field_pat list -> document))
-      list =
+  let library_constructors_patterns :
+      (Concrete_ident_generated.name * (field_pat list -> document)) list =
     [
       ( Core__option__Option__Some,
         fun args -> string "PLACEHOLDER_library_constructor" );
       ( Core__option__Option__None,
         fun args -> string "PLACEHOLDER_library_constructor" );
-      (Core__ops__range__Range, fun args -> string "PLACEHOLDER_library_constructor" );
+      ( Core__ops__range__Range,
+        fun args -> string "PLACEHOLDER_library_constructor" );
       (* hax_lib_protocol::cal::(HashAlgorithm_HashAlgorithm_Sha256_c *)
-      (Hax_lib_protocol__cal__HashAlgorithm__Sha256,        fun args -> string "PLACEHOLDER_library_constructor" );
-
+      ( Hax_lib_protocol__crypto__HashAlgorithm__Sha256,
+        fun args -> string "PLACEHOLDER_library_constructor" );
       (* hax_lib_protocol::cal::DHGroup_DHGroup_X25519_c *)
-      (Hax_lib_protocol__cal__DHGroup__X25519,        fun args -> string "PLACEHOLDER_library_constructor" );
-
-        (* hax_lib_protocol::cal::AEADAlgorithm_AEADAlgorithm_Chacha20Poly1305_c *)
-       (Hax_lib_protocol__cal__AEADAlgorithm__Chacha20Poly1305,        fun args -> string "PLACEHOLDER_library_constructor" );
-
+      ( Hax_lib_protocol__crypto__DHGroup__X25519,
+        fun args -> string "PLACEHOLDER_library_constructor" );
+      (* hax_lib_protocol::cal::AEADAlgorithm_AEADAlgorithm_Chacha20Poly1305_c *)
+      ( Hax_lib_protocol__crypto__AEADAlgorithm__Chacha20Poly1305,
+        fun args -> string "PLACEHOLDER_library_constructor" );
       (* hax_lib_protocol::cal::HMACAlgorithm_HMACAlgorithm_Sha256_c *)
-       (Hax_lib_protocol__cal__HMACAlgorithm__Sha256,        fun args -> string "PLACEHOLDER_library_constructor" );
-
+      ( Hax_lib_protocol__crypto__HMACAlgorithm__Sha256,
+        fun args -> string "PLACEHOLDER_library_constructor" );
     ]
 
   let library_types : (Concrete_ident_generated.name * document) list =
     [
       (* hax_lib_protocol::cal::(t_DHScalar *)
-      (Hax_lib_protocol__cal__DHScalar,        string "PLACEHOLDER_library_type" );
+      (Hax_lib_protocol__crypto__DHScalar, string "PLACEHOLDER_library_type");
       (Core__option__Option, string "PLACEHOLDER_library_type");
-      (Alloc__vec__Vec , string "PLACEHOLDER_library_type");
+      (Alloc__vec__Vec, string "PLACEHOLDER_library_type");
     ]
 
   let assoc_known_name name (known_name, _) =
@@ -260,7 +268,8 @@ module Print = struct
       fields
 
   let translate_known_constructor_pat cname args =
-    (List.find_exn ~f:(assoc_known_name cname) library_constructors_patterns |> snd)
+    (List.find_exn ~f:(assoc_known_name cname) library_constructors_patterns
+    |> snd)
       args
 
   let translate_known_type tname =
@@ -282,16 +291,16 @@ module Print = struct
       method ty_int _ = string "bitstring"
 
       method pat' : Generic_printer_base.par_state -> pat' fn =
-          fun ctx ->
-            let wrap_parens =
-              group
-              >>
-              match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock braces
-            in
-            fun pat ->
-              match pat with
-              | PConstruct {name; args} when is_known_constructor name -> translate_known_constructor_pat name args
-              | _ -> super#pat' ctx pat
+        fun ctx ->
+          let wrap_parens =
+            group
+            >> match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock braces
+          in
+          fun pat ->
+            match pat with
+            | PConstruct { name; args } when is_known_constructor name ->
+                translate_known_constructor_pat name args
+            | _ -> super#pat' ctx pat
 
       method! expr' : Generic_printer_base.par_state -> expr' fn =
         fun ctx e ->
@@ -441,8 +450,6 @@ module Print = struct
           else
             print#concrete_ident constructor
             ^^ iblock parens (separate_map (comma ^^ break 1) snd args)
-
-
 
       method ty : Generic_printer_base.par_state -> ty fn =
         fun ctx ty ->
