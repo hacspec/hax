@@ -2,42 +2,13 @@
 #![feature(try_trait_v2)]
 #![feature(allocator_api)]
 
-use hax_lib_protocol::crypto::*;
 extern crate alloc;
 /* This is a dummy Rust file. Every path used in this file will be
  * exported and made available automatically in OCaml. */
 
+mod crypto_abstractions;
+
 fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mut y: I) {
-    // Crypto abstraction layer names
-    let bytes = vec![0u8; 32];
-    let iv = AEADIV::from_bytes(&bytes);
-    let key = AEADKey::from_bytes(AEADAlgorithm::Chacha20Poly1305, &bytes);
-
-    let (cipher_text, tag) = aead_encrypt(key, iv, &bytes, &bytes);
-    let iv = AEADIV::from_bytes(&bytes);
-    let key = AEADKey::from_bytes(AEADAlgorithm::Chacha20Poly1305, &bytes);
-    let _ = aead_decrypt(key, iv, &bytes, &cipher_text, AEADTag::from_bytes(&bytes));
-
-    let p = DHElement::from_bytes(&bytes);
-    let s = DHScalar::from_bytes(&bytes);
-    dh_scalar_multiply(DHGroup::X25519, s.clone(), p);
-    dh_scalar_multiply_base(DHGroup::X25519, s);
-
-    let _ = hmac(HMACAlgorithm::Sha256, &bytes, &bytes);
-
-    let _ = 1u64.to_le_bytes();
-    let slice = &bytes[0..1];
-    let _ = slice.len();
-    let _ = slice.to_vec();
-    let _ = [slice, slice].concat();
-    let mut v = vec![0];
-    v.extend_from_slice(slice);
-    v.truncate(1);
-
-    let _ = hash(HashAlgorithm::Sha256, &bytes);
-    let _ = cipher_text.clone();
-    // End crypto abstractions example
-
     let _: core::result::Result<u8, u8> = core::result::Result::Ok(0);
     let _: core::result::Result<u8, u8> = core::result::Result::Err(0);
     let _ = x.fold(0, |a, b| a + b);
