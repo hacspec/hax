@@ -25,8 +25,8 @@ end)
 module Attrs = Attr_payloads.MakeBase (Error)
 
 let import_thir_items (include_clauses : Types.inclusion_clause list)
-    (items : Types.item_for__decorated_for__expr_kind list)
-    (options : Types.engine_options) : Ast.Rust.item list =
+    (items : Types.item_for__decorated_for__expr_kind list) : Ast.Rust.item list
+    =
   let result = List.map ~f:Import_thir.import_item items |> List.map ~f:snd in
   let items = List.concat_map ~f:fst result in
   let ident_to_reports =
@@ -43,13 +43,7 @@ let import_thir_items (include_clauses : Types.inclusion_clause list)
         match Attrs.status i.attrs with Included _ -> true | _ -> false)
       items
   in
-  (* TODO: should keep order for non-dependent functions by default? This breaks ssprove extraction. Alternatively this should be a phase *)
-  let items =
-    Deps.sort items
-    (* match options.backend.backend with *)
-    (* | Coq | Ssprove -> items *)
-    (* | _ -> Deps.sort items *)
-  in
+  let items = Deps.sort items in
   let reports =
     List.concat_map
       ~f:(fun (item : Ast.Rust.item) ->
