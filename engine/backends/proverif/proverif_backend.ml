@@ -304,7 +304,7 @@ module Print = struct
                 }
     end
 
-  type proverif_aux_info = AstItems of AST.item list | NoAuxInfo
+  type proverif_aux_info = CrateFns of AST.item list | NoAuxInfo
 
   include Api (struct
     type aux_info = proverif_aux_info
@@ -314,7 +314,7 @@ module Print = struct
 end
 
 let filter_crate_functions (items : AST.item list) =
-  List.filter ~f:(fun item -> [%matches? Fn _] item.v) items
+  CrateFns {List.filter ~f:(fun item -> [%matches? Fn _] item.v) items}
 
 let is_process_read : attrs -> bool =
   Attr_payloads.payloads >> List.exists ~f:(fst >> [%matches? Types.ProcessRead])
@@ -374,8 +374,8 @@ module Letfuns = MkSubprinter (struct
     let process_letfuns, pure_letfuns =
       List.partition_tf ~f:is_process (filter_crate_functions items)
     in
-    let pure_letfuns_print, _ = Print.items NoAuxInfo pure_letfuns in
-    let process_letfuns_print, _ = Print.items NoAuxInfo process_letfuns in
+    let pure_letfuns_print, _ = Print.items (filter_crate_functions items) pure_letfuns in
+    let process_letfuns_print, _ = Print.items (filter_crate_functions items) process_letfuns in
     pure_letfuns_print ^ process_letfuns_print
 end)
 
