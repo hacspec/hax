@@ -67,7 +67,7 @@ let run (options : Types.engine_options) : Types.output =
     let include_clauses =
       options.backend.translation_options.include_namespaces
     in
-    let items = import_thir_items include_clauses options.input options in
+    let items = import_thir_items include_clauses options.input in
     Logs.info (fun m ->
         m "Applying phase for backend %s"
           ([%show: Diagnostics.Backend.t] M.backend));
