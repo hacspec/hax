@@ -116,6 +116,18 @@ module Print = struct
       (Concrete_ident_generated.name * (AST.expr list -> document)) list =
     [
       (* Core dependencies *)
+      (Alloc__vec__from_elem,         fun args -> string "PLACEHOLDER_library_function" );
+      (Alloc__slice__Impl__to_vec,         fun args -> string "PLACEHOLDER_library_function" );
+      (Core__slice__Impl__len,         fun args -> string "PLACEHOLDER_library_function" );
+      (Core__ops__deref__Deref__deref,        fun args -> string "PLACEHOLDER_library_function" );
+      (Core__ops__index__Index__index,        fun args -> string "PLACEHOLDER_library_function" );
+      (Rust_primitives__unsize,        fun args -> string "PLACEHOLDER_library_function" );
+      (Core__num__Impl_9__to_le_bytes,        fun args -> string "PLACEHOLDER_library_function" );
+      (Alloc__slice__Impl__into_vec,        fun args -> string "PLACEHOLDER_library_function" );
+      (Alloc__vec__Impl_1__truncate,        fun args -> string "PLACEHOLDER_library_function" );
+      (Alloc__vec__Impl_2__extend_from_slice,        fun args -> string "PLACEHOLDER_library_function" );
+      (Alloc__slice__Impl__concat,        fun args -> string "PLACEHOLDER_library_function" );
+      (Core__option__Impl__is_some,        fun args -> string "PLACEHOLDER_library_function" );
       (* core::clone::Clone_f_clone *)
       ( Core__clone__Clone__clone,
         fun args -> string "PLACEHOLDER_library_function" );
@@ -210,6 +222,7 @@ module Print = struct
       (* hax_lib_protocol::cal::(t_DHScalar *)
       (Hax_lib_protocol__cal__DHScalar,        string "PLACEHOLDER_library_type" );
       (Core__option__Option, string "PLACEHOLDER_library_type");
+      (Alloc__vec__Vec , string "PLACEHOLDER_library_type");
     ]
 
   let assoc_known_name name (known_name, _) =
