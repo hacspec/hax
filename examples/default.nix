@@ -37,6 +37,8 @@ in
         export HINT_DIR=$(mktemp -d)
         export SHELL=${stdenv.shell}
         make clean # Should be a no-op (see `filter` above)
+        # Need to inject `HAX_VANILLA_RUSTC=never` because of #472
+        sed -i "s/make -C limited-order-book/HAX_VANILLA_RUSTC=never make -C limited-order-book/g" Makefile
         make
       '';
       buildInputs = [hax fstar];

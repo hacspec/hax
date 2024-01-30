@@ -24,8 +24,23 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
 
       - name: Test
         run: cargo test --workspace --exclude hax-engine-names-extract --verbose
+
+  no-std-lib:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: thumbv7em-none-eabi
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build no-std
+        run: |
+          rustup target add thumbv7em-none-eabi
+          cargo build -p hax-lib --target thumbv7em-none-eabi
