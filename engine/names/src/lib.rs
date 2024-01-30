@@ -26,6 +26,13 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     let _ = hmac(HMACAlgorithm::Sha256, &bytes, &bytes);
 
     let _ = 1u64.to_le_bytes();
+    let slice = &bytes[0..1];
+    let _ = slice.len();
+    let _ = slice.to_vec();
+    let _ = [slice, slice].concat();
+    let mut v = vec![0];
+    v.extend_from_slice(slice);
+    v.truncate(1);
 
     let _ = hash(HashAlgorithm::Sha256, &bytes);
     let _ = cipher_text.clone();
@@ -46,6 +53,7 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     let _: Option<alloc::alloc::Global> = None;
     let _: Option<()> = Some(());
     let _: Option<()> = None;
+    let _ = Option::<()>::None.is_some();
     let _: Result<(), u32> = Result::Err(3u8).map_err(u32::from);
 
     let _ = [()].into_iter();
