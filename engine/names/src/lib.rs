@@ -2,7 +2,7 @@
 #![feature(try_trait_v2)]
 #![feature(allocator_api)]
 
-use hax_lib_protocol::cal::*;
+use hax_lib_protocol::crypto::*;
 extern crate alloc;
 /* This is a dummy Rust file. Every path used in this file will be
  * exported and made available automatically in OCaml. */
