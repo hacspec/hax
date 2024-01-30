@@ -260,20 +260,17 @@ module Print = struct
   let assoc_known_name name (known_name, _) =
     Global_ident.eq_name known_name name
 
-  let translate_known_function fname args =
-    (List.find_exn ~f:(assoc_known_name fname) library_functions |> snd) args
+  let translate_known_function fname =
+    List.find ~f:(assoc_known_name fname) library_functions
 
-  let translate_known_constructor cname fields =
-    (List.find_exn ~f:(assoc_known_name cname) library_constructors |> snd)
-      fields
+  let translate_known_constructor cname =
+    List.find ~f:(assoc_known_name cname) library_constructors
 
-  let translate_known_constructor_pat cname args =
-    (List.find_exn ~f:(assoc_known_name cname) library_constructors_patterns
-    |> snd)
-      args
+  let translate_known_constructor_pat cname =
+    List.find ~f:(assoc_known_name cname) library_constructors_patterns
 
   let translate_known_type tname =
-    List.find_exn ~f:(assoc_known_name tname) library_types |> snd
+    List.find ~f:(assoc_known_name tname) library_types
 
   let is_known_function fname =
     List.exists ~f:(assoc_known_name fname) library_functions
@@ -298,9 +295,11 @@ module Print = struct
           in
           fun pat ->
             match pat with
-            | PConstruct { name; args } when is_known_constructor name ->
-                translate_known_constructor_pat name args
-            | _ -> super#pat' ctx pat
+            | PConstruct { name; args } -> (
+                match translate_known_constructor_pat name with
+                | Some (_, translation) -> translation args
+                | None -> super#pat' ctx pat
+                | _ -> super#pat' ctx pat)
 
       method! expr' : Generic_printer_base.par_state -> expr' fn =
         fun ctx e ->
@@ -310,12 +309,15 @@ module Print = struct
           in
           match e with
           (* Translate known functions *)
-          | App { f = { e = GlobalVar n; _ }; args } when is_known_function n ->
-              translate_known_function n args
+          | App { f = { e = GlobalVar name; _ }; args } -> (
+              match translate_known_function name with
+              | Some (_, translation) -> translation args
+              | None -> super#expr' ctx e)
           (* Translate known constructors *)
-          | Construct { constructor; fields }
-            when is_known_constructor constructor ->
-              translate_known_constructor constructor fields
+          | Construct { constructor; fields } -> (
+              match translate_known_constructor constructor with
+              | Some (_, translation) -> translation fields
+              | None -> super#expr' ctx e)
           (* Desugared `?` operator *)
           | Match
               {
@@ -457,8 +459,10 @@ module Print = struct
           | TBool -> print#ty_bool
           | TParam i -> print#local_ident i
           (* Translate known types, no args at the moment *)
-          | TApp { ident } when is_known_type ident ->
-              translate_known_type ident
+          | TApp { ident } when is_known_type ident -> (
+              match translate_known_type ident with
+              | Some (_, translation) -> translation
+              | None -> super#ty ctx ty)
           | TApp _ -> super#ty ctx ty
           | _ -> string "bitstring"
 
