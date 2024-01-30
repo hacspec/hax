@@ -1823,7 +1823,8 @@ struct
           [
             SSP.AST.Class
               ( pconcrete_ident name,
-                pgeneric span generics,
+                [],
+                (* pgeneric span generics, *)
                 List.concat_map
                   ~f:(fun x ->
                     match x.ti_v with
