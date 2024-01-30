@@ -155,8 +155,8 @@ module Print = struct
       (* core::result::impl__map_err *)
       ( Core__result__Impl__map_err,
         fun args -> string "PLACEHOLDER_library_function" );
-      (* Crypto dependencies *)
 
+      (* Crypto dependencies *)
       (* hax_lib_protocol::cal::hash *)
       ( Hax_lib_protocol__cal__hash,
           fun args -> string "PLACEHOLDER_library_function" );
@@ -217,6 +217,30 @@ module Print = struct
 
     ]
 
+    let library_constructors_patterns :
+      (Concrete_ident_generated.name
+      * (field_pat list -> document))
+      list =
+    [
+      ( Core__option__Option__Some,
+        fun args -> string "PLACEHOLDER_library_constructor" );
+      ( Core__option__Option__None,
+        fun args -> string "PLACEHOLDER_library_constructor" );
+      (Core__ops__range__Range, fun args -> string "PLACEHOLDER_library_constructor" );
+      (* hax_lib_protocol::cal::(HashAlgorithm_HashAlgorithm_Sha256_c *)
+      (Hax_lib_protocol__cal__HashAlgorithm__Sha256,        fun args -> string "PLACEHOLDER_library_constructor" );
+
+      (* hax_lib_protocol::cal::DHGroup_DHGroup_X25519_c *)
+      (Hax_lib_protocol__cal__DHGroup__X25519,        fun args -> string "PLACEHOLDER_library_constructor" );
+
+        (* hax_lib_protocol::cal::AEADAlgorithm_AEADAlgorithm_Chacha20Poly1305_c *)
+       (Hax_lib_protocol__cal__AEADAlgorithm__Chacha20Poly1305,        fun args -> string "PLACEHOLDER_library_constructor" );
+
+      (* hax_lib_protocol::cal::HMACAlgorithm_HMACAlgorithm_Sha256_c *)
+       (Hax_lib_protocol__cal__HMACAlgorithm__Sha256,        fun args -> string "PLACEHOLDER_library_constructor" );
+
+    ]
+
   let library_types : (Concrete_ident_generated.name * document) list =
     [
       (* hax_lib_protocol::cal::(t_DHScalar *)
@@ -234,6 +258,10 @@ module Print = struct
   let translate_known_constructor cname fields =
     (List.find_exn ~f:(assoc_known_name cname) library_constructors |> snd)
       fields
+
+  let translate_known_constructor_pat cname args =
+    (List.find_exn ~f:(assoc_known_name cname) library_constructors_patterns |> snd)
+      args
 
   let translate_known_type tname =
     List.find_exn ~f:(assoc_known_name tname) library_types |> snd
@@ -262,7 +290,7 @@ module Print = struct
             in
             fun pat ->
               match pat with
-              | PConstruct {name; args} when is_known_constructor name -> string "PLACEHOLDER_library_constructor_pattern"
+              | PConstruct {name; args} when is_known_constructor name -> translate_known_constructor_pat name args
               | _ -> super#pat' ctx pat
 
       method! expr' : Generic_printer_base.par_state -> expr' fn =
