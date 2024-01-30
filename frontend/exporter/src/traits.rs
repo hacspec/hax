@@ -236,11 +236,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
         param_env: rustc_middle::ty::ParamEnv<'tcx>,
     ) -> ImplExpr {
         use rustc_trait_selection::traits::*;
-        let Some(impl_source) = select_trait_candidate(s, param_env, *self) else {
-            report!(warn, s, "Warning: the frontend could not resolve using `select_trait_candidate`.\nThis is a bug documented in `https://github.com/hacspec/hax/issues/416`.\nCurrently, this bug is non-fatal at the exporter level.");
-            return ImplExprAtom::Todo(format!("impl_expr failed on {:#?}", self)).into();
-        };
-        match impl_source {
+        match select_trait_candidate(s, param_env, *self) {
             ImplSource::UserDefined(ImplSourceUserDefinedData {
                 impl_def_id,
                 substs,
@@ -310,70 +306,111 @@ pub fn clause_id_of_predicate(predicate: rustc_middle::ty::Predicate) -> u64 {
     predicate.hash(&mut s);
     s.finish()
 }
-
-/// Adapted from [rustc_trait_selection::traits::SelectionContext::select]:
-/// we want to preserve the nested obligations to resolve them afterwards.
-///
-/// Example:
-/// ========
-/// ```text
-/// struct Wrapper<T> {
-///    x: T,
-/// }
-///
-/// impl<T: ToU64> ToU64 for Wrapper<T> {
-///     fn to_u64(self) -> u64 {
-///         self.x.to_u64()
-///     }
-/// }
-///
-/// fn h(x: Wrapper<u64>) -> u64 {
-///     x.to_u64()
-/// }
-/// ```
-///
-/// When resolving the trait for `x.to_u64()` in `h`, we get that it uses the
-/// implementation for `Wrapper`. But we also need to know the obligation generated
-/// for `Wrapper` (in this case: `u64 : ToU64`) and resolve it.
-///
-/// TODO: returns an Option for now, `None` means we hit the indexing
-/// bug (see <https://github.com/rust-lang/rust/issues/112242>).
 #[tracing::instrument(level = "trace", skip(s))]
 pub fn select_trait_candidate<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
-) -> Option<rustc_trait_selection::traits::Selection<'tcx>> {
-    use rustc_infer::infer::TyCtxtInferExt;
-    use rustc_trait_selection::traits::{Obligation, ObligationCause, SelectionContext};
+) -> rustc_trait_selection::traits::Selection<'tcx> {
     let tcx = s.base().tcx;
-    let trait_ref = tcx
-        .try_normalize_erasing_regions(param_env, trait_ref)
-        .unwrap_or(trait_ref);
-
-    // Do the initial selection for the obligation. This yields the
-    // shallow result we are looking for -- that is, what specific impl.
-    let infcx = tcx.infer_ctxt().ignoring_regions().build();
-    let mut selcx = SelectionContext::new(&infcx);
-
-    let obligation_cause = ObligationCause::dummy();
-    let obligation = Obligation::new(tcx, obligation_cause, param_env, trait_ref);
-
-    let selection = {
-        use std::panic;
-        panic::set_hook(Box::new(|_info| {}));
-        let result = panic::catch_unwind(panic::AssertUnwindSafe(|| selcx.select(&obligation)));
-        let _ = panic::take_hook();
-        result
-    };
-    match selection {
-        Ok(Ok(Some(selection))) => Some(infcx.resolve_vars_if_possible(selection)),
-        Ok(error) => fatal!(
+    match copy_paste_from_rustc::codegen_select_candidate(tcx, (param_env, trait_ref)) {
+        Ok(selection) => selection,
+        Err(error) => fatal!(
             s,
             "Cannot hanlde error `{:?}` selecting `{:?}`",
             error,
             trait_ref
         ),
-        Err(_) => None,
+    }
+}
+
+pub mod copy_paste_from_rustc {
+    use rustc_infer::infer::TyCtxtInferExt;
+    use rustc_infer::traits::{FulfillmentErrorCode, TraitEngineExt as _};
+    use rustc_middle::traits::{CodegenObligationError, DefiningAnchor};
+    use rustc_middle::ty::{self, TyCtxt};
+    use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
+    use rustc_trait_selection::traits::{
+        ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine, TraitEngineExt,
+        Unimplemented,
+    };
+
+    /// Attempts to resolve an obligation to an `ImplSource`. The result is
+    /// a shallow `ImplSource` resolution, meaning that we do not
+    /// (necessarily) resolve all nested obligations on the impl. Note
+    /// that type check should guarantee to us that all nested
+    /// obligations *could be* resolved if we wanted to.
+    ///
+    /// This also expects that `trait_ref` is fully normalized.
+    pub fn codegen_select_candidate<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
+    ) -> Result<rustc_trait_selection::traits::Selection<'tcx>, CodegenObligationError> {
+        // We expect the input to be fully normalized.
+        debug_assert_eq!(
+            trait_ref,
+            tcx.normalize_erasing_regions(param_env, trait_ref)
+        );
+
+        // Do the initial selection for the obligation. This yields the
+        // shallow result we are looking for -- that is, what specific impl.
+        let infcx = tcx
+            .infer_ctxt()
+            .ignoring_regions()
+            .with_opaque_type_inference(DefiningAnchor::Bubble)
+            .build();
+        //~^ HACK `Bubble` is required for
+        // this test to pass: type-alias-impl-trait/assoc-projection-ice.rs
+        let mut selcx = SelectionContext::new(&infcx);
+
+        let obligation_cause = ObligationCause::dummy();
+        let obligation = Obligation::new(tcx, obligation_cause, param_env, trait_ref);
+
+        let selection = match selcx.select(&obligation) {
+            Ok(Some(selection)) => selection,
+            Ok(None) => return Err(CodegenObligationError::Ambiguity),
+            Err(Unimplemented) => return Err(CodegenObligationError::Unimplemented),
+            Err(e) => {
+                panic!(
+                    "Encountered error `{:?}` selecting `{:?}` during codegen",
+                    e, trait_ref
+                )
+            }
+        };
+
+        // Currently, we use a fulfillment context to completely resolve
+        // all nested obligations. This is because they can inform the
+        // inference of the impl's type parameters.
+        let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(tcx);
+        let impl_source = selection.map(|predicate| {
+            fulfill_cx.register_predicate_obligation(&infcx, predicate.clone());
+            predicate
+        });
+
+        // In principle, we only need to do this so long as `impl_source`
+        // contains unbound type parameters. It could be a slight
+        // optimization to stop iterating early.
+        let errors = fulfill_cx.select_all_or_error(&infcx);
+        if !errors.is_empty() {
+            // `rustc_monomorphize::collector` assumes there are no type errors.
+            // Cycle errors are the only post-monomorphization errors possible; emit them now so
+            // `rustc_ty_utils::resolve_associated_item` doesn't return `None` post-monomorphization.
+            for err in errors {
+                if let FulfillmentErrorCode::CodeCycle(cycle) = err.code {
+                    infcx.err_ctxt().report_overflow_obligation_cycle(&cycle);
+                }
+            }
+            return Err(CodegenObligationError::FulfillmentError);
+        }
+
+        let impl_source = infcx.resolve_vars_if_possible(impl_source);
+        let impl_source = infcx.tcx.erase_regions(impl_source);
+
+        // Opaque types may have gotten their hidden types constrained, but we can ignore them safely
+        // as they will get constrained elsewhere, too.
+        // (ouz-a) This is required for `type-alias-impl-trait/assoc-projection-ice.rs` to pass
+        let _ = infcx.take_opaque_types();
+
+        Ok(impl_source)
     }
 }
