@@ -331,7 +331,10 @@ struct
     | GConst e -> pexpr e
     | GLifetime _ -> .
 
-  and ppat (p : pat) =
+  and ppat (p : pat) = ppat' true p
+
+  and ppat' (shallow : bool) (p : pat) =
+    let ppat = ppat' false in
     match p.p with
     | PWild -> F.wild
     | PAscription { typ; pat } ->
@@ -345,8 +348,11 @@ struct
           typ = _ (* we skip type annot here *);
         } ->
         F.pat @@ F.AST.PatVar (plocal_ident var, None, [])
-    | POr { subpats } ->
-        Error.unimplemented p.span ~details:"ppat:Disjuntive patterns"
+    | POr { subpats } when shallow ->
+        F.pat @@ F.AST.PatOr (List.map ~f:ppat subpats)
+    | POr _ ->
+        Error.unimplemented p.span ~issue_id:463
+          ~details:"The F* backend doesn't support nested disjuntive patterns"
     | PArray { args } -> F.pat @@ F.AST.PatList (List.map ~f:ppat args)
     | PConstruct { name = `TupleCons 0; args = [] } ->
         F.pat @@ F.AST.PatConst F.Const.Const_unit
