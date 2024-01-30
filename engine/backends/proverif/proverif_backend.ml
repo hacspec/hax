@@ -226,7 +226,7 @@ module Print = struct
         fun args -> string "PLACEHOLDER_library_constructor" );
     ]
 
-  let library_constructors_patterns :
+  let library_constructor_patterns :
       (Concrete_ident_generated.name * (field_pat list -> document)) list =
     [
       ( Core__option__Option__Some,
@@ -260,26 +260,8 @@ module Print = struct
   let assoc_known_name name (known_name, _) =
     Global_ident.eq_name known_name name
 
-  let translate_known_function fname =
-    List.find ~f:(assoc_known_name fname) library_functions
-
-  let translate_known_constructor cname =
-    List.find ~f:(assoc_known_name cname) library_constructors
-
-  let translate_known_constructor_pat cname =
-    List.find ~f:(assoc_known_name cname) library_constructors_patterns
-
-  let translate_known_type tname =
-    List.find ~f:(assoc_known_name tname) library_types
-
-  let is_known_function fname =
-    List.exists ~f:(assoc_known_name fname) library_functions
-
-  let is_known_constructor cname =
-    List.exists ~f:(assoc_known_name cname) library_constructors
-
-  let is_known_type tname =
-    List.exists ~f:(assoc_known_name tname) library_types
+  let translate_known_name name ~dict =
+    List.find ~f:(assoc_known_name name) dict
 
   class print aux =
     object (print)
@@ -296,7 +278,9 @@ module Print = struct
           fun pat ->
             match pat with
             | PConstruct { name; args } -> (
-                match translate_known_constructor_pat name with
+                match
+                  translate_known_name name ~dict:library_constructor_patterns
+                with
                 | Some (_, translation) -> translation args
                 | None -> super#pat' ctx pat
                 | _ -> super#pat' ctx pat)
@@ -310,12 +294,14 @@ module Print = struct
           match e with
           (* Translate known functions *)
           | App { f = { e = GlobalVar name; _ }; args } -> (
-              match translate_known_function name with
+              match translate_known_name name ~dict:library_functions with
               | Some (_, translation) -> translation args
               | None -> super#expr' ctx e)
           (* Translate known constructors *)
           | Construct { constructor; fields } -> (
-              match translate_known_constructor constructor with
+              match
+                translate_known_name constructor ~dict:library_constructors
+              with
               | Some (_, translation) -> translation fields
               | None -> super#expr' ctx e)
           (* Desugared `?` operator *)
@@ -459,8 +445,8 @@ module Print = struct
           | TBool -> print#ty_bool
           | TParam i -> print#local_ident i
           (* Translate known types, no args at the moment *)
-          | TApp { ident } when is_known_type ident -> (
-              match translate_known_type ident with
+          | TApp { ident } -> (
+              match translate_known_name ident ~dict:library_types with
               | Some (_, translation) -> translation
               | None -> super#ty ctx ty)
           | TApp _ -> super#ty ctx ty
