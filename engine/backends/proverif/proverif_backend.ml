@@ -282,8 +282,8 @@ module Print = struct
                   translate_known_name name ~dict:library_constructor_patterns
                 with
                 | Some (_, translation) -> translation args
-                | None -> super#pat' ctx pat
-                | _ -> super#pat' ctx pat)
+                | None -> super#pat' ctx pat)
+            | _ -> super#pat' ctx pat
 
       method! expr' : Generic_printer_base.par_state -> expr' fn =
         fun ctx e ->
@@ -295,14 +295,14 @@ module Print = struct
           (* Translate known functions *)
           | App { f = { e = GlobalVar name; _ }; args } -> (
               match translate_known_name name ~dict:library_functions with
-              | Some (_, translation) -> translation args
+              | Some (name, translation) -> translation args
               | None -> super#expr' ctx e)
           (* Translate known constructors *)
           | Construct { constructor; fields } -> (
               match
                 translate_known_name constructor ~dict:library_constructors
               with
-              | Some (_, translation) -> translation fields
+              | Some (name, translation) -> translation fields
               | None -> super#expr' ctx e)
           (* Desugared `?` operator *)
           | Match
