@@ -10,4 +10,4 @@ readme.workspace = true
 description = "Dummy crate containing all the Rust names the hax engine should be aware of"
 
 [dependencies]
-
+hax-lib-protocol = {path = "../../hax-lib-protocol"}

@@ -504,6 +504,9 @@ dependencies = [
 [[package]]
 name = "hax-engine-names"
 version = "0.1.0-pre.1"
+dependencies = [
+ "hax-lib-protocol",
+]
 
 [[package]]
 name = "hax-engine-names-extract"
