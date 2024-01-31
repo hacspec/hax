@@ -6,8 +6,15 @@ use crate::prelude::*;
     Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
 )]
 pub enum ImplExprPathChunk {
-    AssocItem(AssocItem, TraitPredicate),
-    Parent(TraitPredicate),
+    AssocItem {
+        item: AssocItem,
+        predicate: TraitPredicate,
+        index: usize,
+    },
+    Parent {
+        predicate: TraitPredicate,
+        index: usize,
+    },
 }
 
 #[derive(
@@ -20,6 +27,7 @@ pub enum ImplExprAtom {
     },
     LocalBound {
         clause_id: u64,
+        r#trait: Binder<TraitRef>,
         path: Vec<ImplExprPathChunk>,
     },
     SelfImpl,
@@ -33,6 +41,14 @@ pub enum ImplExprAtom {
     Builtin {
         r#trait: TraitRef,
     },
+    FnPointer {
+        fn_ty: Box<Ty>,
+    },
+    Closure {
+        closure_def_id: DefId,
+        parent_substs: Vec<GenericArg>,
+        signature: Box<PolyFnSig>,
+    },
     Todo(String),
 }
 
@@ -40,8 +56,9 @@ pub enum ImplExprAtom {
     Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
 )]
 pub struct ImplExpr {
-    r#impl: ImplExprAtom,
-    args: Box<Vec<ImplExpr>>,
+    pub r#impl: ImplExprAtom,
+    pub args: Box<Vec<ImplExpr>>,
+    pub r#trait: TraitRef,
 }
 
 mod search_clause {
@@ -65,8 +82,15 @@ mod search_clause {
 
     #[derive(Clone, Debug)]
     pub enum PathChunk<'tcx> {
-        AssocItem(AssocItem, TraitPredicate<'tcx>),
-        Parent(TraitPredicate<'tcx>),
+        AssocItem {
+            item: AssocItem,
+            predicate: TraitPredicate<'tcx>,
+            index: usize,
+        },
+        Parent {
+            predicate: TraitPredicate<'tcx>,
+            index: usize,
+        },
     }
     pub type Path<'tcx> = Vec<PathChunk<'tcx>>;
 
@@ -116,18 +140,23 @@ mod search_clause {
 
     #[extension_traits::extension(pub trait TraitPredicateExt)]
     impl<'tcx, S: UnderOwnerState<'tcx>> TraitPredicate<'tcx> {
-        fn parents_trait_predicates(self, s: &S) -> Vec<TraitPredicate<'tcx>> {
+        fn parents_trait_predicates(self, s: &S) -> Vec<(usize, TraitPredicate<'tcx>)> {
             let tcx = s.base().tcx;
             let predicates = tcx
                 .predicates_defined_on_or_above(self.def_id())
                 .into_iter()
                 .map(|apred| apred.predicate);
-            predicates_to_trait_predicates(tcx, predicates, self.trait_ref.substs).collect()
+            predicates_to_trait_predicates(tcx, predicates, self.trait_ref.substs)
+                .enumerate()
+                .collect()
         }
         fn associated_items_trait_predicates(
             self,
             s: &S,
-        ) -> Vec<(AssocItem, subst::EarlyBinder<Vec<TraitPredicate<'tcx>>>)> {
+        ) -> Vec<(
+            AssocItem,
+            subst::EarlyBinder<Vec<(usize, TraitPredicate<'tcx>)>>,
+        )> {
             let tcx = s.base().tcx;
             tcx.associated_items(self.def_id())
                 .in_definition_order()
@@ -140,6 +169,7 @@ mod search_clause {
                             predicates.into_iter(),
                             self.trait_ref.substs,
                         )
+                        .enumerate()
                         .collect()
                     });
                     (item, bounds)
@@ -174,14 +204,33 @@ mod search_clause {
             }
             self.parents_trait_predicates(s)
                 .into_iter()
-                .filter_map(|p| recurse(p).map(|path| cons(PathChunk::Parent(p), path)))
+                .filter_map(|(index, p)| {
+                    recurse(p).map(|path| {
+                        cons(
+                            PathChunk::Parent {
+                                predicate: p,
+                                index,
+                            },
+                            path,
+                        )
+                    })
+                })
                 .max_by_key(|path| path.len())
                 .or_else(|| {
                     self.associated_items_trait_predicates(s)
                         .into_iter()
                         .filter_map(|(item, binder)| {
-                            binder.skip_binder().into_iter().find_map(|p| {
-                                recurse(p).map(|path| cons(PathChunk::AssocItem(item, p), path))
+                            binder.skip_binder().into_iter().find_map(|(index, p)| {
+                                recurse(p).map(|path| {
+                                    cons(
+                                        PathChunk::AssocItem {
+                                            item,
+                                            predicate: p,
+                                            index,
+                                        },
+                                        path,
+                                    )
+                                })
                             })
                         })
                         .max_by_key(|path| path.len())
@@ -191,16 +240,12 @@ mod search_clause {
 }
 
 impl ImplExprAtom {
-    fn with_args(self, args: Vec<ImplExpr>) -> ImplExpr {
+    fn with_args(self, args: Vec<ImplExpr>, r#trait: TraitRef) -> ImplExpr {
         ImplExpr {
             r#impl: self,
             args: Box::new(args),
+            r#trait,
         }
-    }
-}
-impl From<ImplExprAtom> for ImplExpr {
-    fn from(implem: ImplExprAtom) -> ImplExpr {
-        implem.with_args(vec![])
     }
 }
 
@@ -236,6 +281,8 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
         param_env: rustc_middle::ty::ParamEnv<'tcx>,
     ) -> ImplExpr {
         use rustc_trait_selection::traits::*;
+        let trait_ref: Binder<TraitRef> = self.sinto(s);
+        let trait_ref = trait_ref.value;
         match select_trait_candidate(s, param_env, *self) {
             ImplSource::UserDefined(ImplSourceUserDefinedData {
                 impl_def_id,
@@ -245,7 +292,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                 id: impl_def_id.sinto(s),
                 generics: substs.sinto(s),
             }
-            .with_args(impl_exprs(s, &nested)),
+            .with_args(impl_exprs(s, &nested), trait_ref),
             ImplSource::Param(nested, _constness) => {
                 use search_clause::TraitPredicateExt;
                 let tcx = s.base().tcx;
@@ -262,38 +309,70 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                         .map(|path| (apred, path))
                 }) else {
                     supposely_unreachable_fatal!(s, "ImplExprPredNotFound"; {
-                        self, nested, predicates
+                        self, nested, predicates, trait_ref
                     })
                 };
+                use rustc_middle::ty::ToPolyTraitRef;
                 if apred.is_extra_self_predicate {
                     if !path.is_empty() {
                         supposely_unreachable_fatal!(s[apred.span], "SelfWithNonEmptyPath"; {
                             self, apred, path
                         });
                     }
-                    ImplExprAtom::SelfImpl.with_args(vec![])
+                    ImplExprAtom::SelfImpl.with_args(vec![], trait_ref)
                 } else {
                     let clause_id: u64 = clause_id_of_predicate(apred.predicate);
+                    let r#trait = apred
+                        .predicate
+                        .to_opt_poly_trait_pred()
+                        .s_unwrap(s)
+                        .to_poly_trait_ref()
+                        .sinto(s);
                     ImplExprAtom::LocalBound {
                         clause_id,
+                        r#trait,
                         path: path.sinto(s),
                     }
-                    .with_args(impl_exprs(s, &nested))
+                    .with_args(impl_exprs(s, &nested), trait_ref)
                 }
+            }
+            // Happens when we use a function pointer as an object implementing
+            // a trait like `FnMut`
+            ImplSource::FnPointer(rustc_trait_selection::traits::ImplSourceFnPointerData {
+                fn_ty,
+                nested,
+            }) => ImplExprAtom::FnPointer {
+                fn_ty: fn_ty.sinto(s),
+            }
+            .with_args(impl_exprs(s, &nested), trait_ref),
+            ImplSource::Closure(rustc_trait_selection::traits::ImplSourceClosureData {
+                closure_def_id,
+                substs,
+                nested,
+            }) => {
+                let substs = substs.as_closure();
+                let parent_substs = substs.parent_substs().sinto(s);
+                let signature = Box::new(substs.sig().sinto(s));
+                ImplExprAtom::Closure {
+                    closure_def_id: closure_def_id.sinto(s),
+                    parent_substs,
+                    signature,
+                }
+                .with_args(impl_exprs(s, &nested), trait_ref)
             }
             ImplSource::Object(data) => ImplExprAtom::Dyn {
                 r#trait: data.upcast_trait_ref.skip_binder().sinto(s),
             }
-            .with_args(impl_exprs(s, &data.nested)),
+            .with_args(impl_exprs(s, &data.nested), trait_ref),
             ImplSource::Builtin(x) => ImplExprAtom::Builtin {
                 r#trait: self.skip_binder().sinto(s),
             }
-            .with_args(impl_exprs(s, &x.nested)),
+            .with_args(impl_exprs(s, &x.nested), trait_ref),
             x => ImplExprAtom::Todo(format!(
                 "ImplExprAtom::Todo(see https://github.com/hacspec/hax/issues/381) {:#?}\n\n{:#?}",
                 x, self
             ))
-            .into(),
+            .with_args(vec![], trait_ref),
         }
     }
 }
@@ -331,8 +410,7 @@ pub mod copy_paste_from_rustc {
     use rustc_middle::ty::{self, TyCtxt};
     use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
     use rustc_trait_selection::traits::{
-        ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine, TraitEngineExt,
-        Unimplemented,
+        Obligation, ObligationCause, SelectionContext, TraitEngine, TraitEngineExt, Unimplemented,
     };
 
     /// Attempts to resolve an obligation to an `ImplSource`. The result is
