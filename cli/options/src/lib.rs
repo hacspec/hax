@@ -125,20 +125,20 @@ pub struct FStarOptions {
     #[arg(long, default_value = "1")]
     ifuel: u32,
     /// Modules for which Hax should extract interfaces (`*.fsti`
-    /// files). By default we extract no interface. This flag expects
-    /// a space-separated list of inclusion clauses. An inclusion
-    /// clause is a Rust path prefixed with `+` or `-`. `-` excludes
-    /// any matched item, `+` includes any matched item. By default,
-    /// every item is included. Rust path chunks can be either a
-    /// concrete string, or a glob (just like bash globs, but with
-    /// Rust paths).
+    /// files) in supplement to implementations (`*.fst` files). By
+    /// default we extract no interface, only implementations. This
+    /// flag expects a space-separated list of inclusion clauses. An
+    /// inclusion clause is a Rust path prefixed with `+`, `+!` or
+    /// `-`. `-` means implementation only, `+!` means interface only
+    /// and `+` means implementation and interface. Rust path chunks
+    /// can be either a concrete string, or a glob (just like bash
+    /// globs, but with Rust paths).
     #[arg(
         long,
         value_parser = parse_inclusion_clause,
         value_delimiter = ' ',
         allow_hyphen_values(true)
     )]
-    // TODO: InclusionKind is a bit too expressive here, see https://github.com/hacspec/hax/issues/397
     interfaces: Vec<InclusionClause>,
 }
 
@@ -167,7 +167,7 @@ impl fmt::Display for Backend {
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
 enum InclusionKind {
-    Included { with_deps: bool },
+    Included { strict: bool },
     Excluded,
 }
 
@@ -187,12 +187,12 @@ fn parse_inclusion_clause(
     let (prefix, mut namespace) = s.split_at(1);
     let kind = match prefix {
         "+" => InclusionKind::Included {
-            with_deps: match namespace.split_at(1) {
+            strict: match namespace.split_at(1) {
                 ("!", rest) => {
                     namespace = rest;
-                    false
+                    true
                 }
-                _ => true,
+                _ => false,
             },
         },
         "-" => InclusionKind::Excluded,
