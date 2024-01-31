@@ -255,11 +255,11 @@ module Make (F : Features.T) = struct
     let apply_clause selection' (clause : Types.inclusion_clause) =
       let matches = Concrete_ident.matches_namespace clause.Types.namespace in
       let matched = Set.filter ~f:matches selection in
-      let without_deps =
-        [%matches? (Included { strict = true } : Types.inclusion_kind)]
+      let with_deps =
+        [%matches? (Included { strict = false } : Types.inclusion_kind)]
           clause.kind
       in
-      let matched = matched |> if without_deps then Fn.id else deps_of in
+      let matched = matched |> if with_deps then deps_of else Fn.id in
       Logs.info (fun m ->
           m "The clause [%s] will %s the following Rust items:\n%s"
             (show_inclusion_clause clause)
