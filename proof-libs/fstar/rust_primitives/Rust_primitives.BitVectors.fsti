@@ -4,25 +4,26 @@ open FStar.Mul
 open Rust_primitives.Arrays
 open Rust_primitives.Integers
 
+// TODO: relate `num_bits` with a notion of bounded integer
 /// Number of bits carried by an integer of type `t`
-type bit_num t = d: nat {d > 0 /\ d <= bits t /\ (signed t ==> d <= bits t)}
+type num_bits t = d: nat {d > 0 /\ d <= bits t /\ (signed t ==> d <= bits t)}
 
 /// States that `x` is a positive integer that fits in `d` bits
-type bounded #t (x:int_t t) (d:bit_num t) =
+type bounded #t (x:int_t t) (d:num_bits t) =
   v x >= 0 /\ v x < pow2 d
 
 /// Integer of type `t` that carries at most `d` bits
-type int_t_d t (d: bit_num t) =
+type int_t_d t (d: num_bits t) =
   n: int_t t {bounded n d}
 
 /// If `x` fits in `d` bits, then upper bits are zero
-val lemma_get_bit_bounded #t (x:int_t t) (d:bit_num t) (i:usize):
+val lemma_get_bit_bounded #t (x:int_t t) (d:num_bits t) (i:usize):
   Lemma ((bounded x d /\ v i >= d /\ v i < bits t) ==>
          get_bit x i == 0)
         [SMTPat (get_bit #t x i); SMTPat (bounded x d)]
 
 /// If upper bits of `x` are zero, then `x` is bounded accordingly
-val lemma_get_bit_bounded' #t (x:int_t t) (d:bit_num t):
+val lemma_get_bit_bounded' #t (x:int_t t) (d:num_bits t):
   Lemma (requires forall i. v i > d ==> get_bit x i == 0)
         (ensures bounded x d)
 
@@ -31,20 +32,33 @@ type bit_vec (len: nat) = i:nat {i < len} -> bit
 
 /// Transform an array of integers to a bit vector
 #push-options "--fuel 0 --ifuel 1 --z3rlimit 50"
-let bit_vec_of_int_arr (#n: inttype) (#len: usize) 
+let bit_vec_of_int_t_array (#n: inttype) (#len: usize) 
                 (arr: t_Array (int_t n) len)
-                (d: bit_num n): bit_vec (v len * d)
+                (d: num_bits n): bit_vec (v len * d)
   = fun i -> get_bit (Seq.index arr (i / d)) (sz (i % d))
 #pop-options
 
 /// Transform an array of `nat`s to a bit vector
 #push-options "--fuel 0 --ifuel 1 --z3rlimit 50"
-let bit_vec_of_nat_arr (#len: usize)
+let bit_vec_of_nat_array (#len: usize)
                        (arr: t_Array nat len)
                        (d: nat)
                        : bit_vec (v len * d)
   = fun i -> get_bit_nat (Seq.index arr (i / d)) (i % d)
 #pop-options
+
+/// Transforms a bit vector into an array of integers
+val bit_vec_to_int_t_array #t (#len: usize) (d: num_bits t) (bv: bit_vec (v len * d))
+  : Pure (t_Array (int_t t) len)
+         (requires True)
+         (ensures fun r -> (forall i. bit_vec_of_int_t_array r d i == bv i))
+
+/// Transforms a bit vector into an array of integers
+val bit_vec_to_nat_array (#len: usize) (d: nat) (bv: bit_vec (v len * d))
+  : Pure (t_Array nat len)
+         (requires True)
+         (ensures fun r -> (forall i. bit_vec_of_nat_array r d i == bv i)
+                      /\ (forall i. Seq.index r i < pow2 d))
 
 /// Bit-wise semantics of `2^n-1`
 val get_bit_pow2_minus_one #t

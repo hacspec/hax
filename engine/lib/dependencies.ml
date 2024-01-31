@@ -245,7 +245,7 @@ module Make (F : Features.T) = struct
     let show_inclusion_clause Types.{ kind; namespace } =
       (match kind with
       | Excluded -> "-"
-      | Included { with_deps = true } -> "+"
+      | Included { strict = false } -> "+"
       | Included _ -> "+!")
       ^ (List.map
            ~f:(function Glob One -> "*" | Glob Many -> "**" | Exact s -> s)
@@ -256,7 +256,7 @@ module Make (F : Features.T) = struct
       let matches = Concrete_ident.matches_namespace clause.Types.namespace in
       let matched = Set.filter ~f:matches selection in
       let with_deps =
-        [%matches? (Included { with_deps = true } : Types.inclusion_kind)]
+        [%matches? (Included { strict = false } : Types.inclusion_kind)]
           clause.kind
       in
       let matched = matched |> if with_deps then deps_of else Fn.id in
