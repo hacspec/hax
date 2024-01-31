@@ -471,7 +471,6 @@ module Print = struct
               match translate_known_name ident ~dict:library_types with
               | Some (_, translation) -> translation
               | None -> super#ty ctx ty)
-          | TApp _ -> super#ty ctx ty
           | _ -> string "bitstring"
 
       method! literal : Generic_printer_base.literal_ctx -> literal fn =
