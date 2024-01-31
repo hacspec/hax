@@ -315,6 +315,12 @@ module Print = struct
               match translate_known_name name ~dict:library_functions with
               | Some (name, translation) -> translation args
               | None -> super#expr' ctx e)
+          | Construct { constructor; fields; _ }
+            when Global_ident.eq_name Core__result__Result__Ok constructor ->
+              super#expr' ctx (snd (Option.value_exn (List.hd fields))).e
+          | Construct { constructor; _ }
+            when Global_ident.eq_name Core__result__Result__Err constructor ->
+              string "fail"
           (* Translate known constructors *)
           | Construct { constructor; fields } -> (
               match
@@ -332,12 +338,6 @@ module Print = struct
           (*[@ocamlformat "disable"]*)
             when Global_ident.eq_name Core__ops__try_trait__Try__branch n ->
               super#expr' ctx expr.e
-          | Construct { constructor; fields; _ }
-            when Global_ident.eq_name Core__result__Result__Ok constructor ->
-              super#expr' ctx (snd (Option.value_exn (List.hd fields))).e
-          | Construct { constructor; _ }
-            when Global_ident.eq_name Core__result__Result__Err constructor ->
-              string "fail"
           | _ -> super#expr' ctx e
 
       method! item' item =
