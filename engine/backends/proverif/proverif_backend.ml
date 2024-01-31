@@ -297,7 +297,7 @@ module Print = struct
           | { e = GlobalVar name; _ } -> (
               match name with
               | `Projector (`Concrete i) | `Concrete i ->
-                  super#concrete_ident' ~under_current_ns:true i |> group
+                  print#concrete_ident' ~under_current_ns:false i |> group
               | _ -> super#expr_at Expr_App_f f |> group)
         in
 
@@ -339,6 +339,8 @@ module Print = struct
             when Global_ident.eq_name Core__ops__try_trait__Try__branch n ->
               super#expr' ctx expr.e
           | _ -> super#expr' ctx e
+
+      method concrete_ident = print#concrete_ident' ~under_current_ns:false
 
       method! item' item =
         let fun_and_reduc base_name constructor =
@@ -399,8 +401,8 @@ module Print = struct
             in
             string "letfun" ^^ space
             ^^ align
-                 (print#concrete_ident name ^^ params_string ^^ space ^^ equals
-                ^^ hardline
+                 (print#concrete_ident' ~under_current_ns:false name
+                 ^^ params_string ^^ space ^^ equals ^^ hardline
                  ^^ print#expr_at Item_Fn_body body
                  ^^ dot)
         (* `struct` definitions are transformed into simple constructors and `reduc`s for accessing fields. *)
@@ -437,6 +439,16 @@ module Print = struct
           ^^ space ^^ string "in" ^^ hardline
           ^^ (print#expr_at Expr_Let_body body |> group)
 
+      method concrete_ident' ~(under_current_ns : bool) : concrete_ident fn =
+        fun id ->
+          if under_current_ns then print#name_of_concrete_ident id
+          else
+            let crate, path = print#namespace_of_concrete_ident id in
+            let full_path = crate :: path in
+            separate_map (underscore ^^ underscore) utf8string full_path
+            ^^ underscore ^^ underscore
+            ^^ print#name_of_concrete_ident id
+
       method! doc_construct_inductive
           : is_record:bool ->
             is_struct:bool ->
@@ -445,19 +457,18 @@ module Print = struct
             (global_ident * document) list fn =
         fun ~is_record ~is_struct:_ ~constructor ~base:_ args ->
           if is_record then
-            string "t_"
-            ^^ print#concrete_ident' ~under_current_ns:true constructor
+            print#concrete_ident' ~under_current_ns:false constructor
             ^^ iblock parens
                  (separate_map
                     (break 0 ^^ comma)
                     (fun (field, body) -> iblock Fn.id body |> group)
                     args)
           else
-            print#concrete_ident' ~under_current_ns:true constructor
+            print#concrete_ident' ~under_current_ns:false constructor
             ^^ iblock parens (separate_map (comma ^^ break 1) snd args)
 
       method ty_app f args =
-        print#concrete_ident' ~under_current_ns:true f
+        print#concrete_ident' ~under_current_ns:false f
         ^^ print#generic_values args
 
       method ty : Generic_printer_base.par_state -> ty fn =
