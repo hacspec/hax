@@ -285,6 +285,24 @@ module Print = struct
                 | None -> super#pat' ctx pat)
             | _ -> super#pat' ctx pat
 
+      method! expr_app f args _generic_args =
+        let args =
+          separate_map
+            (comma ^^ break 1)
+            (print#expr_at Expr_App_arg >> group)
+            args
+        in
+        let f =
+          match f with
+          | { e = GlobalVar name; _ } -> (
+              match name with
+              | `Projector (`Concrete i) | `Concrete i ->
+                  super#concrete_ident' ~under_current_ns:true i |> group
+              | _ -> super#expr_at Expr_App_f f |> group)
+        in
+
+        f ^^ iblock parens args
+
       method! expr' : Generic_printer_base.par_state -> expr' fn =
         fun ctx e ->
           let wrap_parens =
