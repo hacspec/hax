@@ -18,8 +18,7 @@ struct
 
   module FB = struct
     include F
-
-    (* include Features.Off.Mutable_variable *)
+    include Features.Off.Mutable_variable
     include Features.On.State_passing_loop
   end
 
@@ -62,10 +61,10 @@ struct
     let rec dpat' (span : span) (p : A.pat') : B.pat' =
       match p with
       | [%inline_arms "dpat'.*" - PBinding - PDeref] -> auto
-      | PBinding { var : Local_ident.t; typ; mut; subpat; _ } ->
+      | PBinding { var : Local_ident.t; typ; subpat; _ } ->
           PBinding
             {
-              mut;
+              mut = Immutable;
               mode = ByValue;
               var;
               typ = dty span typ;

@@ -615,7 +615,7 @@ module TransformToInputLanguage (* : PHASE *) =
     |> Phases.Trivialize_assign_lhs
     |> Phases.Reconstruct_question_marks
     |> Side_effect_utils.Hoist
-    |> Phases.Local_mutation
+    (* |> Phases.Local_mutation *)
     (* |> Phases.State_passing_loop *)
     |> Phases.Reject.Continue
     |> Phases.Cf_into_monads

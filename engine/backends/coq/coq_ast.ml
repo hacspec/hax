@@ -264,7 +264,7 @@ functor
               (List.map ~f:(fun t -> pat_to_string t false (depth + 1)) vals)
           ^ ")"
       | AST.AscriptionPat (p, ty) ->
-          "(" ^ pat_to_string p true depth ^ ":" ^ ty_to_string ty
+          "(" ^ pat_to_string p true depth ^ " " ^ ":" ^ " " ^ ty_to_string ty
           ^ ")" (* TODO: Should this be true of false? *)
       | AST.DisjunctivePat pats ->
           let f pat = pat_to_string pat true depth in
@@ -448,7 +448,7 @@ functor
           in
           "Record" ^ " " ^ name
           ^ params_to_string_typed arguments
-          ^ " " ^ ":" ^ " " ^ "Type" ^ " " ^ ":=" ^ "{" ^ variants_str
+          ^ " " ^ ":" ^ " " ^ "Type" ^ " " ^ ":=" ^ " " ^ "{" ^ variants_str
           ^ newline_indent 0 ^ "}."
       | AST.Inductive (name, arguments, variants) ->
           let name_arguments = name ^ params_to_string_typed arguments in
@@ -474,8 +474,8 @@ functor
                 (List.fold_left ~init:"" ~f:(fun a b -> a ^ " {_}") arguments)
                 "."
           in
-          "Inductive" ^ " " ^ name_arguments ^ ":" ^ " " ^ "Type" ^ " " ^ ":="
-          ^ newline_indent 0 ^ variants_str ^ "." ^ args_str
+          "Inductive" ^ " " ^ name_arguments ^ " " ^ ":" ^ " " ^ "Type" ^ " "
+          ^ ":=" ^ newline_indent 0 ^ variants_str ^ "." ^ args_str
       | AST.Class (name, arguments, trait_items) ->
           let field_str =
             List.fold_left ~init:""
@@ -536,9 +536,7 @@ functor
           ^ " " ^ "End" ^ " " ^ name ^ "."
       | AST.Instance (name, arguments, self_ty, ty_list, impl_list) ->
           let ty_list_str =
-            List.fold_left ~init:""
-              ~f:(fun x y -> x ^ ty_to_string y ^ " ")
-              ty_list
+            String.concat ~sep:" " (List.map ~f:ty_to_string ty_list)
           in
           let impl_str =
             List.fold_left ~init:""
@@ -553,14 +551,12 @@ functor
           let ty_str = ty_to_string self_ty in
           "#[global] Instance" ^ " " ^ ty_str ^ "_" ^ name
           ^ params_to_string_typed arguments
-          ^ " " ^ ":" ^ " " ^ name ^ " " ^ ty_list_str ^ ":=" ^ " " ^ "{"
+          ^ " " ^ ":" ^ " " ^ name ^ " " ^ ty_list_str ^ " " ^ ":=" ^ " " ^ "{"
           ^ impl_str ^ newline_indent 0 ^ "}" ^ "."
       | AST.ProgramInstance
           (name, arguments, self_ty, ty_list, InstanceDecls impl_list) ->
           let ty_list_str =
-            List.fold_left ~init:""
-              ~f:(fun x y -> x ^ ty_to_string y ^ " ")
-              ty_list
+            String.concat ~sep:" " (List.map ~f:ty_to_string ty_list)
           in
           let impl_str, impl_str_empty =
             let fl =
@@ -602,8 +598,8 @@ functor
           let ty_str = ty_to_string self_ty in
           "#[global] Program Instance" ^ " " ^ ty_str ^ "_" ^ name
           ^ params_to_string_typed arguments
-          ^ " " ^ ":" ^ " " ^ name ^ " " ^ ty_list_str ^ ":=" ^ newline_indent 1
-          ^ impl_str
+          ^ " " ^ ":" ^ " " ^ name ^ " " ^ ty_list_str ^ " " ^ ":="
+          ^ newline_indent 1 ^ impl_str
           ^ (if impl_str_empty then "" else newline_indent 1)
           ^ (match impl_list with
             | [] -> "_"
@@ -611,14 +607,13 @@ functor
           ^ "." ^ fail_next_obligation
       | AST.ProgramInstance (name, arguments, self_ty, ty_list, TermDef term) ->
           let ty_list_str =
-            List.fold_left ~init:""
-              ~f:(fun x y -> x ^ ty_to_string y ^ " ")
-              ty_list
+            String.concat ~sep:" " (List.map ~f:ty_to_string ty_list)
           in
           let ty_str = ty_to_string self_ty in
           "#[global] Program Instance" ^ " " ^ ty_str ^ "_" ^ name
           ^ params_to_string_typed arguments
-          ^ " " ^ ":" ^ " " ^ name ^ " " ^ ty_list_str ^ ":=" ^ newline_indent 1
+          ^ " " ^ ":" ^ " " ^ name ^ " " ^ ty_list_str ^ " " ^ ":="
+          ^ newline_indent 1
           ^ term_to_string_without_paren term 1
           ^ "." ^ fail_next_obligation
       | AST.Require (_, [], rename) -> ""
