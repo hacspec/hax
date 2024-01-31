@@ -457,6 +457,10 @@ module Print = struct
             print#concrete_ident constructor
             ^^ iblock parens (separate_map (comma ^^ break 1) snd args)
 
+      method ty_app f args =
+        print#concrete_ident' ~under_current_ns:true f
+        ^^ print#generic_values args
+
       method ty : Generic_printer_base.par_state -> ty fn =
         fun ctx ty ->
           match ty with
