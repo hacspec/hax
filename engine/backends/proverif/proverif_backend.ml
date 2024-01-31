@@ -446,15 +446,14 @@ module Print = struct
         fun ~is_record ~is_struct:_ ~constructor ~base:_ args ->
           if is_record then
             string "t_"
-            (* FIXME: How do I get at the ident from the struct definition instead? *)
-            ^^ print#concrete_ident constructor
+            ^^ print#concrete_ident' ~under_current_ns:true constructor
             ^^ iblock parens
                  (separate_map
                     (break 0 ^^ comma)
                     (fun (field, body) -> iblock Fn.id body |> group)
                     args)
           else
-            print#concrete_ident constructor
+            print#concrete_ident' ~under_current_ns:true constructor
             ^^ iblock parens (separate_map (comma ^^ break 1) snd args)
 
       method ty_app f args =
