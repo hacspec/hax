@@ -297,7 +297,7 @@ module Print = struct
           | { e = GlobalVar name; _ } -> (
               match name with
               | `Projector (`Concrete i) | `Concrete i ->
-                  print#concrete_ident' ~under_current_ns:false i |> group
+                  print#concrete_ident i |> group
               | _ -> super#expr_at Expr_App_f f |> group)
         in
 
@@ -401,7 +401,7 @@ module Print = struct
             in
             string "letfun" ^^ space
             ^^ align
-                 (print#concrete_ident' ~under_current_ns:false name
+                 (print#concrete_ident name
                  ^^ params_string ^^ space ^^ equals ^^ hardline
                  ^^ print#expr_at Item_Fn_body body
                  ^^ dot)
@@ -457,18 +457,18 @@ module Print = struct
             (global_ident * document) list fn =
         fun ~is_record ~is_struct:_ ~constructor ~base:_ args ->
           if is_record then
-            print#concrete_ident' ~under_current_ns:false constructor
+            print#concrete_ident constructor
             ^^ iblock parens
                  (separate_map
                     (break 0 ^^ comma)
                     (fun (field, body) -> iblock Fn.id body |> group)
                     args)
           else
-            print#concrete_ident' ~under_current_ns:false constructor
+            print#concrete_ident constructor
             ^^ iblock parens (separate_map (comma ^^ break 1) snd args)
 
       method ty_app f args =
-        print#concrete_ident' ~under_current_ns:false f
+        print#concrete_ident f
         ^^ print#generic_values args
 
       method ty : Generic_printer_base.par_state -> ty fn =
