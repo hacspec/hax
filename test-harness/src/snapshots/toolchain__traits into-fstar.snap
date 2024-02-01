@@ -55,7 +55,8 @@ class t_Foo (v_Self: Type) = {
   f_AssocType:Core.Marker.t_Sized _;
   f_N:usize;
   f_assoc_f:Prims.unit -> Prims.unit;
-  f_method_f:v_Self -> Prims.unit
+  f_method_f:v_Self -> Prims.unit;
+  f_assoc_type:{| i3: Core.Marker.t_Copy _ |} -> _ -> Prims.unit
 }
 
 let closure_impl_expr
@@ -103,7 +104,8 @@ let impl_Foo_for_tuple_: t_Foo Prims.unit =
     f_AssocType = i32;
     f_N = sz 32;
     f_assoc_f = () <: Prims.unit;
-    f_method_f = fun (self: Prims.unit) -> f_assoc_f ()
+    f_method_f = (fun (self: Prims.unit) -> f_assoc_f ());
+    f_assoc_type = fun (_: i32) -> ()
   }
 
 type t_Struct = | Struct : t_Struct

@@ -30,7 +30,10 @@ pub enum ImplExprAtom {
         r#trait: Binder<TraitRef>,
         path: Vec<ImplExprPathChunk>,
     },
-    SelfImpl,
+    SelfImpl {
+        r#trait: Binder<TraitRef>,
+        path: Vec<ImplExprPathChunk>,
+    },
     /// `dyn TRAIT` is a wrapped value with a virtual table for trait
     /// `TRAIT`.  In other words, a value `dyn TRAIT` is a dependent
     /// triple that gathers a type τ, a value of type τ and an
@@ -313,25 +316,21 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                     })
                 };
                 use rustc_middle::ty::ToPolyTraitRef;
+                let r#trait = apred
+                    .predicate
+                    .to_opt_poly_trait_pred()
+                    .s_unwrap(s)
+                    .to_poly_trait_ref()
+                    .sinto(s);
+                let path = path.sinto(s);
                 if apred.is_extra_self_predicate {
-                    if !path.is_empty() {
-                        supposely_unreachable_fatal!(s[apred.span], "SelfWithNonEmptyPath"; {
-                            self, apred, path
-                        });
-                    }
-                    ImplExprAtom::SelfImpl.with_args(vec![], trait_ref)
+                    ImplExprAtom::SelfImpl { r#trait, path }
+                        .with_args(impl_exprs(s, &nested), trait_ref)
                 } else {
-                    let clause_id: u64 = clause_id_of_predicate(apred.predicate);
-                    let r#trait = apred
-                        .predicate
-                        .to_opt_poly_trait_pred()
-                        .s_unwrap(s)
-                        .to_poly_trait_ref()
-                        .sinto(s);
                     ImplExprAtom::LocalBound {
-                        clause_id,
+                        clause_id: clause_id_of_predicate(apred.predicate),
                         r#trait,
-                        path: path.sinto(s),
+                        path,
                     }
                     .with_args(impl_exprs(s, &nested), trait_ref)
                 }

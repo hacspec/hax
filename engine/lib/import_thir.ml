@@ -917,6 +917,19 @@ end) : EXPR = struct
 
   and c_impl_expr_atom (span : Thir.span) (ie : Thir.impl_expr_atom) : impl_expr
       =
+    let browse_path (impl : impl_expr) (chunk : Thir.impl_expr_path_chunk) =
+      match chunk with
+      | AssocItem { item; predicate = { trait_ref; _ }; _ } ->
+          let trait = c_trait_ref span trait_ref in
+          let kind : Concrete_ident.Kind.t =
+            match item.kind with Const | Fn -> Value | Type -> Type
+          in
+          let item = Concrete_ident.of_def_id kind item.def_id in
+          Projection { impl; trait; item }
+      | Parent { predicate = { trait_ref; _ }; _ } ->
+          let trait = c_trait_ref span trait_ref in
+          Parent { impl; trait }
+    in
     match ie with
     | Concrete { id; generics } ->
         let trait = Concrete_ident.of_def_id Impl id in
@@ -924,22 +937,9 @@ end) : EXPR = struct
         Concrete { trait; args }
     | LocalBound { clause_id; path; _ } ->
         let init = LocalBound { id = clause_id } in
-        let f (impl : impl_expr) (chunk : Thir.impl_expr_path_chunk) =
-          match chunk with
-          | AssocItem { item; predicate = { trait_ref; _ }; _ } ->
-              let trait = c_trait_ref span trait_ref in
-              let kind : Concrete_ident.Kind.t =
-                match item.kind with Const | Fn -> Value | Type -> Type
-              in
-              let item = Concrete_ident.of_def_id kind item.def_id in
-              Projection { impl; trait; item }
-          | Parent { predicate = { trait_ref; _ }; _ } ->
-              let trait = c_trait_ref span trait_ref in
-              Parent { impl; trait }
-        in
-        List.fold ~init ~f path
+        List.fold ~init ~f:browse_path path
     | Dyn { trait } -> Dyn (c_trait_ref span trait)
-    | SelfImpl -> Self
+    | SelfImpl { path; _ } -> List.fold ~init:Self ~f:browse_path path
     | Builtin { trait } -> Builtin (c_trait_ref span trait)
     | FnPointer { fn_ty } -> FnPointer (c_ty span fn_ty)
     | Closure _ as x -> ClosureIE ([%show: Thir.impl_expr_atom] x)
