@@ -285,6 +285,24 @@ module Print = struct
                 | None -> super#pat' ctx pat)
             | _ -> super#pat' ctx pat
 
+      method! expr_app f args _generic_args =
+        let args =
+          separate_map
+            (comma ^^ break 1)
+            (print#expr_at Expr_App_arg >> group)
+            args
+        in
+        let f =
+          match f with
+          | { e = GlobalVar name; _ } -> (
+              match name with
+              | `Projector (`Concrete i) | `Concrete i ->
+                  print#concrete_ident i |> group
+              | _ -> super#expr_at Expr_App_f f |> group)
+        in
+
+        f ^^ iblock parens args
+
       method! expr' : Generic_printer_base.par_state -> expr' fn =
         fun ctx e ->
           let wrap_parens =
@@ -321,6 +339,8 @@ module Print = struct
             when Global_ident.eq_name Core__ops__try_trait__Try__branch n ->
               super#expr' ctx expr.e
           | _ -> super#expr' ctx e
+
+      method concrete_ident = print#concrete_ident' ~under_current_ns:false
 
       method! item' item =
         let fun_and_reduc base_name constructor =
@@ -419,6 +439,16 @@ module Print = struct
           ^^ space ^^ string "in" ^^ hardline
           ^^ (print#expr_at Expr_Let_body body |> group)
 
+      method concrete_ident' ~(under_current_ns : bool) : concrete_ident fn =
+        fun id ->
+          if under_current_ns then print#name_of_concrete_ident id
+          else
+            let crate, path = print#namespace_of_concrete_ident id in
+            let full_path = crate :: path in
+            separate_map (underscore ^^ underscore) utf8string full_path
+            ^^ underscore ^^ underscore
+            ^^ print#name_of_concrete_ident id
+
       method! doc_construct_inductive
           : is_record:bool ->
             is_struct:bool ->
@@ -427,9 +457,7 @@ module Print = struct
             (global_ident * document) list fn =
         fun ~is_record ~is_struct:_ ~constructor ~base:_ args ->
           if is_record then
-            string "t_"
-            (* FIXME: How do I get at the ident from the struct definition instead? *)
-            ^^ print#concrete_ident constructor
+            print#concrete_ident constructor
             ^^ iblock parens
                  (separate_map
                     (break 0 ^^ comma)
@@ -438,6 +466,8 @@ module Print = struct
           else
             print#concrete_ident constructor
             ^^ iblock parens (separate_map (comma ^^ break 1) snd args)
+
+      method ty_app f args = print#concrete_ident f ^^ print#generic_values args
 
       method ty : Generic_printer_base.par_state -> ty fn =
         fun ctx ty ->
@@ -449,7 +479,6 @@ module Print = struct
               match translate_known_name ident ~dict:library_types with
               | Some (_, translation) -> translation
               | None -> super#ty ctx ty)
-          | TApp _ -> super#ty ctx ty
           | _ -> string "bitstring"
 
       method! literal : Generic_printer_base.literal_ctx -> literal fn =
@@ -469,7 +498,7 @@ module Print = struct
                 }
     end
 
-  type proverif_aux_info = AstItems of AST.item list | NoAuxInfo
+  type proverif_aux_info = CrateFns of AST.item list | NoAuxInfo
 
   include Api (struct
     type aux_info = proverif_aux_info
@@ -539,8 +568,12 @@ module Letfuns = MkSubprinter (struct
     let process_letfuns, pure_letfuns =
       List.partition_tf ~f:is_process (filter_crate_functions items)
     in
-    let pure_letfuns_print, _ = Print.items NoAuxInfo pure_letfuns in
-    let process_letfuns_print, _ = Print.items NoAuxInfo process_letfuns in
+    let pure_letfuns_print, _ =
+      Print.items (CrateFns (filter_crate_functions items)) pure_letfuns
+    in
+    let process_letfuns_print, _ =
+      Print.items (CrateFns (filter_crate_functions items)) process_letfuns
+    in
     pure_letfuns_print ^ process_letfuns_print
 end)
 
