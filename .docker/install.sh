@@ -19,7 +19,6 @@ curl -L https://github.com/FStarLang/FStar/releases/download/v2024.01.13/fstar_2
     --output Fstar.tar.gz
 tar --extract --file Fstar.tar.gz
 rm -f Fstar.tar.gz
-mv FStar-2024.01.13 fstar
 curl -L https://github.com/hacl-star/hacl-star/archive/refs/heads/main.zip \
     --output hacl-star.zip
 unzip hacl-star.zip
