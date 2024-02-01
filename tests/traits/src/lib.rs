@@ -48,3 +48,11 @@ impl<'a> Struct {
         x.bar()
     }
 }
+
+pub fn closure_impl_expr<I: Iterator<Item = ()>>(it: I) -> Vec<()> {
+    it.map(|x| x).collect()
+}
+
+pub fn closure_impl_expr_fngen<I: Iterator<Item = ()>, F: FnMut(()) -> ()>(it: I, f: F) -> Vec<()> {
+    it.map(f).collect()
+}

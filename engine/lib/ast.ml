@@ -268,6 +268,9 @@ functor
       | ImplApp of { impl : impl_expr; args : impl_expr list }
       | Dyn of trait_ref
       | Builtin of trait_ref
+      | FnPointer of ty
+      (* The `IE` suffix is there because visitors conflicts...... *)
+      | ClosureIE of todo
 
     and trait_ref = { trait : concrete_ident; args : generic_value list }
 
