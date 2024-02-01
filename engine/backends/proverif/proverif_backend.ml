@@ -401,8 +401,8 @@ module Print = struct
             in
             string "letfun" ^^ space
             ^^ align
-                 (print#concrete_ident name
-                 ^^ params_string ^^ space ^^ equals ^^ hardline
+                 (print#concrete_ident name ^^ params_string ^^ space ^^ equals
+                ^^ hardline
                  ^^ print#expr_at Item_Fn_body body
                  ^^ dot)
         (* `struct` definitions are transformed into simple constructors and `reduc`s for accessing fields. *)
@@ -467,9 +467,7 @@ module Print = struct
             print#concrete_ident constructor
             ^^ iblock parens (separate_map (comma ^^ break 1) snd args)
 
-      method ty_app f args =
-        print#concrete_ident f
-        ^^ print#generic_values args
+      method ty_app f args = print#concrete_ident f ^^ print#generic_values args
 
       method ty : Generic_printer_base.par_state -> ty fn =
         fun ctx ty ->
