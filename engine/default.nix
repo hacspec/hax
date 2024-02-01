@@ -9,6 +9,7 @@
   closurecompiler,
   gnused,
   lib,
+  removeReferencesTo,
 }: let
   non_empty_list = ocamlPackages.buildDunePackage rec {
     pname = "non_empty_list";
@@ -86,8 +87,15 @@
       nodejs
       ocamlPackages.js_of_ocaml-compiler
       jq
+      removeReferencesTo
     ];
     strictDeps = true;
+    installPhase = ''
+      dune install --prefix=$bin --libdir=$lib/lib/ocaml/${ocamlPackages.ocaml.version}/site-lib/
+      find "$bin" -type f -exec remove-references-to -t ${ocamlPackages.ocaml} '{}' +
+    '';
+
+    outputs = ["out" "bin" "lib"];
     passthru = {
       docs = hax-engine.overrideAttrs (old: {
         name = "hax-engine-docs";

@@ -40,7 +40,16 @@
     // {
       pname = pname;
     });
-  hax = craneLib.buildPackage (
+  hax = stdenv.mkDerivation {
+    name = hax_with_artifacts.name;
+    unpackPhase = "true";
+    buildPhase = "true";
+    installPhase = ''
+      mkdir -p $out
+      cp -r ${hax_with_artifacts}/bin $out/bin
+    '';
+  };
+  hax_with_artifacts = craneLib.buildPackage (
     commonArgs
     // {
       inherit cargoArtifacts pname;
@@ -73,7 +82,7 @@
       mv $INDEX index.html
     '';
   };
-  binaries = [hax hax-engine rustc gcc];
+  binaries = [hax hax-engine.bin rustc gcc];
   tests = craneLib.buildPackage (commonArgs
     // {
       inherit cargoArtifacts;
@@ -112,8 +121,8 @@ in
           pname = "hax_engine_names_extract";
           cargoLock = ../Cargo.lock;
           cargoToml = ../engine/names/extract/Cargo.toml;
-          cargoArtifacts = hax;
-          nativeBuildInputs = [hax];
+          cargoArtifacts = hax_with_artifacts;
+          nativeBuildInputs = [hax_with_artifacts];
           postUnpack = ''
             cd $sourceRoot/engine/names/extract
             sourceRoot="."
