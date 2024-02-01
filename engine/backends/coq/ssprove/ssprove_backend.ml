@@ -1492,6 +1492,35 @@ struct
     in
     (size, ret_ty)
 
+  let show_ctx_mut_var : string =
+    String.concat ~sep:"\n"
+      (List.map
+         ~f:(fun (k, (v_li, v_tli)) ->
+           k ^ ":" ^ "["
+           ^ String.concat ~sep:","
+               (List.map
+                  ~f:(fun (x, b) ->
+                    plocal_ident x ^ "<" ^ (if b then "T" else "F") ^ ">")
+                  v_li)
+           ^ "]" ^ "("
+           ^ String.concat ~sep:","
+               (List.map ~f:(fun ((li, _), _) -> plocal_ident li) v_tli)
+           ^ ")")
+         (Map.to_alist ctx.analysis_data.mut_var))
+
+  let show_ctx_func_dep : string =
+    String.concat ~sep:"\n"
+      (List.map
+         ~f:(fun (k, ids) ->
+           k ^ ":" ^ "["
+           ^ String.concat ~sep:","
+               (List.map
+                  ~f:(fun (x, b) ->
+                    pconcrete_ident x ^ "<" ^ (if b then "T" else "F") ^ ">")
+                  ids)
+           ^ "]")
+         (Map.to_alist ctx.analysis_data.func_dep))
+
   let rec pitem (e : item) : SSP.AST.decl list =
     try pitem_unwrapped e
     with Diagnostics.SpanFreeError.Exn _kind ->
@@ -1502,13 +1531,16 @@ struct
     let decls_from_item =
       match e.v with
       | Fn { name = f_name; generics; body; params } ->
-          loc_defs_from_name f_name
-            (List.map
-               ~f:(fun v ->
-                 match v with
-                 | SSP.AST.Explicit (a, b) -> SSP.AST.Implicit (a, b)
-                 | _ -> v)
-               (pgeneric span generics))
+          [
+            SSP.AST.Comment show_ctx_func_dep; SSP.AST.Comment show_ctx_mut_var;
+          ]
+          @ loc_defs_from_name f_name
+              (List.map
+                 ~f:(fun v ->
+                   match v with
+                   | SSP.AST.Explicit (a, b) -> SSP.AST.Implicit (a, b)
+                   | _ -> v)
+                 (pgeneric span generics))
           @ [
               (let args, ret_typ =
                  lift_definition_type_to_both f_name
@@ -1916,7 +1948,7 @@ struct
                                "fset" ^ " " ^ "["
                                ^ String.concat ~sep:";"
                                    (List.map
-                                      ~f:(fun x -> plocal_ident x ^ "_loc")
+                                      ~f:(fun (x, _) -> plocal_ident x ^ "_loc")
                                       (match
                                          Map.find ctx.analysis_data.mut_var
                                            (pconcrete_ident x.ii_ident)
@@ -2035,11 +2067,15 @@ struct
           [
             "fset" ^ " " ^ "["
             ^ String.concat ~sep:";"
-                (List.map ~f:(fun x -> plocal_ident x ^ "_loc") l)
+                (List.map ~f:(fun (x, _) -> plocal_ident x ^ "_loc") l)
             ^ "]";
           ]
       | _ -> []
     in
+    (* let func_dep_L = match Map.find ctx.analysis_data.func_dep (pconcrete_ident name) with *)
+    (*   | Some l -> (List.map ~f:(fun x -> pconcrete_ident x ^ "_loc") l) *)
+    (*   | _ -> [] *)
+    (* in *)
     let lis = lis @ mvars_ext_L @ extra_L in
     let iis = iis in
     SSPExtraDefinitions.wrap_type_in_both
