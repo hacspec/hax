@@ -40,8 +40,10 @@ jobs:
       uses: actions/checkout@v3
       with:
         repository: 'hacspec/specs'
+        path: specs
         
     - name: Extract specifications
+      working-directory: specs
       run: |
         paths=$(tomlq -r '.workspace.members | .[]' Cargo.toml)
         for cratePath in $paths; do
