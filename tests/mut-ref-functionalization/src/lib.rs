@@ -101,3 +101,49 @@ impl FooTrait for Foo {
 fn array(x: &mut [u8; 10]) {
     x[1] = x[2];
 }
+
+// XXX: (RefMut) At this position, Hax was expecting an expression of the shape
+//      `&mut _`. Hax forbids `f(x)` (where `f` expects a mutable reference as
+//      input) when `x` is not a place expression[1] or when it is a dereference
+//      expression.
+//
+// NOTE: This goes through when `a` is an array.
+fn xor(mut a: Vec<u8>, b: [u8; 4]) -> Vec<u8> {
+    for i in 0..4 {
+        a[i] ^= b[i]
+    }
+    a
+}
+
+enum Value {
+    A,
+    B(Vec<u8>),
+}
+
+// XXX: (RefMut) The mutation of this &mut is not allowed here.
+//
+// Not sure if this should be allowed or not.
+fn set(mut val: Value, b: Vec<u8>) -> Value {
+    match &mut val {
+        Value::A => (),
+        Value::B(v) => *v = b,
+    }
+    val
+}
+
+use std::collections::HashMap;
+// XXX: (reject_ArbitraryLhs) ExplicitRejection { reason: "a node of kind [Arbitrary_lhs] have been found in the AST" }
+fn update(mut val: Option<HashMap<u8, u8>>, new: (u8, u8)) -> Option<HashMap<u8, u8>> {
+    let _ = val.as_mut().unwrap().insert(new.0, new.1);
+    val
+}
+
+struct OMapValue(HashMap<u8, u8>);
+struct OMap {
+    val: Option<OMapValue>,
+}
+// XXX: (RefMut) At this position, Hax was expecting an expression of the shape `&mut _`.
+fn update2(mut val: OMap, new: (u8, u8)) -> OMap {
+    let _ = val.val.as_mut().unwrap().0.insert(new.0, new.1);
+    val
+}
