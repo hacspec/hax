@@ -106,6 +106,7 @@
           ];
         buildPhase = ''dune build @doc'';
         installPhase = "cp -rf _build/default/_doc/_html $out";
+        outputs = ["out"];
       });
       js = hax-engine.overrideAttrs (old: {
         name = "hax-engine.js";
