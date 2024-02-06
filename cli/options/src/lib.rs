@@ -193,7 +193,7 @@ fn parse_inclusion_clause(
         Err("Expected `-` or `+`, got an empty string")?
     }
     let (prefix, namespace) = {
-        let f = |&c: &char| matches!(c, '+' | '-' | ':' | '!');
+        let f = |&c: &char| matches!(c, '+' | '-' | '~' | '!');
         (
             s.chars().take_while(f).into_iter().collect::<String>(),
             s.chars().skip_while(f).into_iter().collect::<String>(),
