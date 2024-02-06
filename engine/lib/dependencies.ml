@@ -243,18 +243,19 @@ module Make (F : Features.T) = struct
       >> String.concat ~sep:"\n"
     in
     let show_inclusion_clause Types.{ kind; namespace } =
-      match kind with
+      (match kind with
       | Excluded -> "-"
-      | Included deps_kind ->
-          (match deps_kind with
+      | Included deps_kind -> (
+          match deps_kind with
           | Transitive -> "+"
           | Shallow -> "+~"
-          | None' -> "+!")
-          ^ (List.map
-               ~f:(function
-                 | Glob One -> "*" | Glob Many -> "**" | Exact s -> s)
-               namespace.chunks
-            |> String.concat ~sep:"::")
+          | None' -> "+!"))
+      ^ "["
+      ^ (List.map
+           ~f:(function Glob One -> "*" | Glob Many -> "**" | Exact s -> s)
+           namespace.chunks
+        |> String.concat ~sep:"::")
+      ^ "]"
     in
     let items_drop_body = Hash_set.create (module Concrete_ident) in
     let apply_clause selection' (clause : Types.inclusion_clause) =
@@ -265,7 +266,7 @@ module Make (F : Features.T) = struct
         | Included Transitive -> (true, false)
         | Included Shallow -> (true, true)
         | Included None' -> (false, false)
-        | _ -> (false, false)
+        | Excluded -> (false, false)
       in
       let matched = matched0 |> if with_deps then deps_of else Fn.id in
       if drop_bodies then (
@@ -291,18 +292,18 @@ module Make (F : Features.T) = struct
   let filter_by_inclusion_clauses (clauses : Types.inclusion_clause list)
       (items : item list) : item list =
     let f = filter_by_inclusion_clauses' clauses in
-    let items', items_drop_body = f items in
-    let items', _ =
-      (* when one includes only shallow dependencies, we just remove bodies *)
-      List.map
-        ~f:(fun item ->
-          if Hash_set.mem items_drop_body (ident_of item) then
-            U.Mappers.drop_bodies#visit_item () item
-          else item)
-        items'
-      |> f
-    in
     let selection =
+      let items', items_drop_body = f items in
+      let items', _ =
+        (* when one includes only shallow dependencies, we just remove bodies *)
+        List.map
+          ~f:(fun item ->
+            if Hash_set.mem items_drop_body (ident_of item) then
+              U.Mappers.drop_bodies#visit_item () item
+            else item)
+          items'
+        |> f
+      in
       List.map ~f:ident_of items' |> Set.of_list (module Concrete_ident)
     in
     List.filter ~f:(ident_of >> Set.mem selection) items
