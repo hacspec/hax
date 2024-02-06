@@ -166,8 +166,16 @@ impl fmt::Display for Backend {
 }
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+enum DepsKind {
+    Transitive,
+    Shallow,
+    None,
+}
+
+#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
 enum InclusionKind {
-    Included { strict: bool },
+    /// `+query` include the items selected by `query`
+    Included(DepsKind),
     Excluded,
 }
 
@@ -184,19 +192,21 @@ fn parse_inclusion_clause(
     if s.is_empty() {
         Err("Expected `-` or `+`, got an empty string")?
     }
-    let (prefix, mut namespace) = s.split_at(1);
-    let kind = match prefix {
-        "+" => InclusionKind::Included {
-            strict: match namespace.split_at(1) {
-                ("!", rest) => {
-                    namespace = rest;
-                    true
-                }
-                _ => false,
-            },
-        },
+    let (prefix, namespace) = {
+        let f = |&c: &char| matches!(c, '+' | '-' | ':' | '!');
+        (
+            s.chars().take_while(f).into_iter().collect::<String>(),
+            s.chars().skip_while(f).into_iter().collect::<String>(),
+        )
+    };
+    let kind = match &prefix[..] {
+        "+" => InclusionKind::Included(DepsKind::Transitive),
+        "+~" => InclusionKind::Included(DepsKind::Shallow),
+        "+!" => InclusionKind::Included(DepsKind::None),
         "-" => InclusionKind::Excluded,
-        prefix => Err(format!("Expected `-` or `+`, got an `{prefix}`"))?,
+        prefix => Err(format!(
+            "Expected `-`, `+~`, `+!` or `-`, got an `{prefix}`"
+        ))?,
     };
     Ok(InclusionClause {
         kind,
@@ -207,10 +217,11 @@ fn parse_inclusion_clause(
 #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
 pub struct TranslationOptions {
     /// Space-separated list of inclusion clauses. An inclusion clause
-    /// is a Rust path prefixed with `+`, `+!` or `-`. `-` excludes
-    /// any matched item, `+` includes any matched item and their
-    /// dependencies, `+!` includes any matched item strictly (without
-    /// including dependencies). By default, every item is
+    /// is a Rust path prefixed with `+`, `+~`, `+!` or `-`. `-`
+    /// excludes any matched item, `+` includes any matched item and
+    /// their dependencies, `+~` includes any matched item and their
+    /// direct dependencies, `+!` includes any matched item strictly
+    /// (without including dependencies). By default, every item is
     /// included. Rust path chunks can be either a concrete string, or
     /// a glob (just like bash globs, but with Rust paths).
     #[arg(
