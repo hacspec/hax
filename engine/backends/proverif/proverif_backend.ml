@@ -265,7 +265,9 @@ module Print = struct
 
   class print aux =
     object (print)
-      inherit GenericPrint.print as super
+    inherit GenericPrint.print as super
+
+      method field_accessor field_name = string "accessor" ^^ underscore ^^ print#concrete_ident field_name
       method ty_bool = string "bool"
       method ty_int _ = string "bitstring"
 
@@ -300,7 +302,6 @@ module Print = struct
                   print#concrete_ident i |> group
               | _ -> super#expr_at Expr_App_f f |> group)
         in
-
         f ^^ iblock parens args
 
       method! expr' : Generic_printer_base.par_state -> expr' fn =
