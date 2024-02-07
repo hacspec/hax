@@ -480,22 +480,6 @@ module Print = struct
               | Some (_, translation) -> translation
               | None -> super#ty ctx ty)
           | _ -> string "bitstring"
-
-      method! literal : Generic_printer_base.literal_ctx -> literal fn =
-        fun _ctx -> function
-          | Int { value; negative; _ } ->
-              string "int2bitstring"
-              ^^ iblock parens
-                   (string value |> precede (if negative then minus else empty))
-          | Bool b -> OCaml.bool b
-          | _ ->
-              Error.raise
-                {
-                  kind =
-                    ExplicitRejection
-                      { reason = "Literal unsupported by ProVerif backend." };
-                  span = current_span;
-                }
     end
 
   type proverif_aux_info = CrateFns of AST.item list | NoAuxInfo
