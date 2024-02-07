@@ -1,0 +1,87 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: fstar
+  info:
+    name: include-flag
+    manifest: cli/include-flag/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: false
+      stdout: true
+    include_flag: ~
+---
+exit = 0
+
+[stdout]
+diagnostics = []
+
+[stdout.files]
+"Include_flag.fst" = '''
+module Include_flag
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class t_Trait (v_Self: Type) = { __marker_trait_t_Trait:Prims.unit }
+
+let main_a_a (_: Prims.unit) : Prims.unit = ()
+
+let main_a_b (_: Prims.unit) : Prims.unit = ()
+
+let main_a_c (_: Prims.unit) : Prims.unit = ()
+
+let main_a
+      (#v_T: Type)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: Core.Marker.t_Sized v_T)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Trait v_T)
+      (x: v_T)
+    : Prims.unit =
+  let _:Prims.unit = main_a_a () in
+  let _:Prims.unit = main_a_b () in
+  let _:Prims.unit = main_a_c () in
+  ()
+
+let main_b_a (_: Prims.unit) : Prims.unit = ()
+
+let main_b_b (_: Prims.unit) : Prims.unit = ()
+
+let main_b_c (_: Prims.unit) : Prims.unit = ()
+
+let main_b (_: Prims.unit) : Prims.unit =
+  let _:Prims.unit = main_b_a () in
+  let _:Prims.unit = main_b_b () in
+  let _:Prims.unit = main_b_c () in
+  ()
+
+let main_c_a (_: Prims.unit) : Prims.unit = ()
+
+let main_c_b (_: Prims.unit) : Prims.unit = ()
+
+let main_c_c (_: Prims.unit) : Prims.unit = ()
+
+let main_c (_: Prims.unit) : Prims.unit =
+  let _:Prims.unit = main_c_a () in
+  let _:Prims.unit = main_c_b () in
+  let _:Prims.unit = main_c_c () in
+  ()
+
+type t_Foo = | Foo : t_Foo
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_Trait_for_Foo: t_Trait t_Foo = { __marker_trait = () }
+
+let main (_: Prims.unit) : Prims.unit =
+  let _:Prims.unit = main_a (Foo <: t_Foo) in
+  let _:Prims.unit = main_b () in
+  let _:Prims.unit = main_c () in
+  ()
+'''
