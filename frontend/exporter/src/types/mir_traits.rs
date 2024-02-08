@@ -32,10 +32,10 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     // contains the generics for the trait ref + the generics for the method
     let trait_def_id: rustc_hir::def_id::DefId = (&impl_expr.r#trait.def_id).into();
     let params_info = get_params_info(s, trait_def_id);
-    let _ = impl_expr
+    impl_expr
         .r#trait
         .generic_args
-        .split_off(params_info.num_generic_params);
+        .truncate(params_info.num_generic_params);
     impl_expr
 }
 
