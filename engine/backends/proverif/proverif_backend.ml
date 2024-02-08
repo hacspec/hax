@@ -345,13 +345,6 @@ module Print = struct
               | Some (name, translation) -> translation args
               | None -> (
                   match name with
-                  | `Concrete name ->
-                      print#field_accessor name
-                      ^^ iblock parens
-                           (separate_map
-                              (comma ^^ break 1)
-                              (fun arg -> print#expr AlreadyPar arg)
-                              args)
                   | `Projector (`Concrete name) ->
                       print#field_accessor name
                       ^^ iblock parens
