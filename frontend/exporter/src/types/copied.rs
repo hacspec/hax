@@ -1450,7 +1450,7 @@ pub fn translate_ty_alias<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             let assoc = tcx.associated_item(alias_ty.def_id);
             // Retrieve the trait information
             let name = assoc.name.to_string();
-            let (_, trait_info) = get_trait_info(s, alias_ty.def_id, alias_ty.substs, &assoc);
+            let trait_info = get_trait_info(s, alias_ty.def_id, alias_ty.substs, &assoc);
 
             AliasKind::Projection {
                 impl_expr: trait_info.impl_expr,

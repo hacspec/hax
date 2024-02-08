@@ -256,7 +256,7 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
         trace!("assoc: def_id: {:?}", assoc.def_id);
 
         // Retrieve the trait information
-        let (trait_def_id, trait_info) = get_trait_info(s, def_id, substs, &assoc);
+        let trait_info = get_trait_info(s, def_id, substs, &assoc);
 
         // Compute the list of generic arguments applied to the *method* itself.
         //
@@ -275,6 +275,8 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
         // We count how many generic parameters the trait declaration has,
         // and truncate the substitution to get the parameters which apply
         // to the method (here, `<U>`)
+        let trait_def_id : rustc_span::def_id::DefId =
+                (&trait_info.impl_expr.r#trait.def_id).into();
         let params_info = get_params_info(s, trait_def_id);
         let num_trait_generics = params_info.num_generic_params;
         let all_generics: Vec<GenericArg> = substs.sinto(s);

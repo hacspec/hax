@@ -12,7 +12,6 @@ pub struct TraitInfo {
 }
 
 /// Retrieve the trait information, typically for a function call.
-/// We also return the if of the trait.
 /// [ref_def_id]: id of the method being called, the global being used, etc.
 /// TODO: rename
 pub fn get_trait_info<'tcx, S: UnderOwnerState<'tcx>>(
@@ -20,7 +19,7 @@ pub fn get_trait_info<'tcx, S: UnderOwnerState<'tcx>>(
     ref_def_id: rustc_hir::def_id::DefId,
     substs: rustc_middle::ty::SubstsRef<'tcx>,
     assoc: &rustc_middle::ty::AssocItem,
-) -> (rustc_span::def_id::DefId, TraitInfo) {
+) -> TraitInfo {
     let tcx = s.base().tcx;
     let param_env = tcx.param_env(s.owner_id());
 
@@ -33,8 +32,7 @@ pub fn get_trait_info<'tcx, S: UnderOwnerState<'tcx>>(
     let tr_ref = rustc_middle::ty::Binder::dummy(tr_ref);
 
     // Solve
-    let info = get_trait_info_for_trait_ref(s, ref_def_id, param_env, substs, tr_ref);
-    (tr_def_id, info)
+    get_trait_info_for_trait_ref(s, ref_def_id, param_env, substs, tr_ref)
 }
 
 pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
