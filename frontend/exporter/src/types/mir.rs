@@ -256,26 +256,29 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
         trace!("assoc: def_id: {:?}", assoc.def_id);
 
         // Retrieve the trait information
-        let (truncated_substs, trait_info) = get_trait_info(s, def_id, substs, &assoc);
+        let (trait_def_id, trait_info) = get_trait_info(s, def_id, substs, &assoc);
 
-        // TODO: update the comment
-        // We need to compute the concatenation of the arguments arguments which
-        // are for the parent (i.e., the trait) and those which are specific to
-        // the method:
+        // Compute the list of generic arguments applied to the *method* itself.
         //
-        // For instance:
+        // For instance, if we have:
         // ```
-        // impl<T> Foo<T> for Bar {
+        // trait Foo<T> {
         //   fn baz<U>(...) { ... }
         // }
         //
-        // fn test(x: Bar) {
+        // fn test<T : Foo<u32>(x: T) {
         //   x.baz(...);
         //   ...
         // }
         // ```
-        // We need to compute the concatenation: `<Bar, T, U>`
-
+        // The substs will be the concatenation: `<T, u32, U>`
+        // We count how many generic parameters the trait declaration has,
+        // and truncate the substitution to get the parameters which apply
+        // to the method (here, `<U>`)
+        let params_info = get_params_info(s, trait_def_id);
+        let num_trait_generics = params_info.num_generic_params;
+        let all_generics: Vec<GenericArg> = substs.sinto(s);
+        let truncated_substs = all_generics[num_trait_generics..].into();
 
         // Return
         (truncated_substs, Option::Some(trait_info))

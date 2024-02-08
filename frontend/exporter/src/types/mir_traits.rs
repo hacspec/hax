@@ -7,10 +7,12 @@ pub struct TraitInfo {
     pub impl_expr: ImplExpr,
     /// All the generics (from before truncating them - see the documentation
     /// for [ParamsInfo]). We store this information mostly for debugging purposes.
+    /// TODO: remove
     pub all_generics: Vec<GenericArg>,
 }
 
 /// Retrieve the trait information, typically for a function call.
+/// We also return the if of the trait.
 /// [ref_def_id]: id of the method being called, the global being used, etc.
 /// TODO: rename
 pub fn get_trait_info<'tcx, S: UnderOwnerState<'tcx>>(
@@ -18,20 +20,21 @@ pub fn get_trait_info<'tcx, S: UnderOwnerState<'tcx>>(
     ref_def_id: rustc_hir::def_id::DefId,
     substs: rustc_middle::ty::SubstsRef<'tcx>,
     assoc: &rustc_middle::ty::AssocItem,
-) -> (Vec<GenericArg>, TraitInfo) {
+) -> (rustc_span::def_id::DefId, TraitInfo) {
     let tcx = s.base().tcx;
     let param_env = tcx.param_env(s.owner_id());
 
     // Retrieve the trait
-    let tr = tcx.trait_of_item(assoc.def_id).unwrap();
+    let tr_def_id = tcx.trait_of_item(assoc.def_id).unwrap();
 
     // Create the reference to the trait
     use rustc_middle::ty::TraitRef;
-    let tr_ref = TraitRef::new(tcx, tr, substs);
+    let tr_ref = TraitRef::new(tcx, tr_def_id, substs);
     let tr_ref = rustc_middle::ty::Binder::dummy(tr_ref);
 
     // Solve
-    get_trait_info_for_trait_ref(s, ref_def_id, param_env, tr_ref)
+    let info = get_trait_info_for_trait_ref(s, ref_def_id, param_env, substs, tr_ref);
+    (tr_def_id, info)
 }
 
 pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
@@ -48,104 +51,15 @@ pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     _ref_def_id: rustc_hir::def_id::DefId,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
+    substs: rustc_middle::ty::SubstsRef<'tcx>,
     trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
-) -> (Vec<GenericArg>, TraitInfo) {
-    let mut impl_expr = solve_trait(s, param_env, trait_ref);
+) -> TraitInfo {
+    let impl_expr = solve_trait(s, param_env, trait_ref);
 
-    // We need to remove the generic arguments which are for the method: we keep
-    // the generic arguments which are specific to the trait instance (see the
-    // comments in [ParamsInfo]).
-    //
-    // For instance:
-    // ```
-    // impl<T> Foo<T> for Bar {
-    //   fn baz<U>(...) { ... }
-    // }
-    //
-    // fn test(x: Bar) {
-    //   x.baz(...); // Gets desugared to: Foo::baz<Bar, T, U>(x, ...);
-    //   ...
-    // }
-    // ```
-    // Above, we want to drop the `Bar` and `T` arguments.
-
-    // Small helper.
-    // The source id must refer to:
-    // - a top-level impl (which implements the trait)
-    // - a trait decl (in the case we can't resolve to a top-level impl)
-    // The list of generics is the concatenation of the generics for the
-    // top-level impl/the trait ref and the generics for the trait item.
-    // We count the number of generics of the top-level impl/the trait decl
-    // and split there.
-    let update_generics = |src_id: &DefId, x: &mut Vec<GenericArg>| {
-        let src_id: rustc_hir::def_id::DefId = src_id.into();
-        let params_info = get_params_info(s, src_id);
-        let num_trait_generics = params_info.num_generic_params;
-        let all_generics = x.clone();
-        (all_generics, x.split_off(num_trait_generics))
-    };
-
-    let (all_generics, truncated_generics) = match &mut impl_expr.r#impl {
-        ImplExprAtom::Concrete {
-            ref id,
-            ref mut generics,
-        } => update_generics(id, generics),
-        ImplExprAtom::LocalBound {
-            r#trait: trait_ref, ..
-        } => update_generics(&trait_ref.value.def_id, &mut trait_ref.value.generic_args),
-        ImplExprAtom::SelfImpl {
-            r#trait: trait_ref, ..
-        } => {
-            // Doing the same as for the local bounds
-            update_generics(&trait_ref.value.def_id, &mut trait_ref.value.generic_args)
-        }
-        ImplExprAtom::Error(..) | ImplExprAtom::Todo(_) => {
-            // We do something similar to the local bound case
-            let mut trait_ref = trait_ref.sinto(s);
-            update_generics(&trait_ref.value.def_id, &mut trait_ref.value.generic_args)
-        }
-        ImplExprAtom::Builtin { .. } => {
-            // TODO: not sure
-            todo!(
-                "\n- trait_ref:\n{:?}\n\n- impl expr:\n{:?}",
-                trait_ref,
-                impl_expr
-            )
-            // update_generics(&mut trait_ref.value.generic_args)
-        }
-        ImplExprAtom::Dyn { .. } => {
-            // TODO: not sure
-            todo!(
-                "\n- trait_ref:\n{:?}\n\n- impl expr:\n{:?}",
-                trait_ref,
-                impl_expr
-            )
-            // update_generics(&mut trait_ref.value.generic_args)
-        }
-        ImplExprAtom::FnPointer { .. } => {
-            // TODO: not sure
-            todo!(
-                "\n- trait_ref:\n{:?}\n\n- impl expr:\n{:?}",
-                trait_ref,
-                impl_expr
-            )
-            // update_generics(&mut data.upcast_trait_ref.value.generic_args)
-        }
-        ImplExprAtom::Closure { .. } => {
-            // We don't need to truncate the generics (there shouldn't be any)
-            let trait_ref = trait_ref.sinto(s);
-            (
-                trait_ref.value.generic_args.clone(),
-                trait_ref.value.generic_args,
-            )
-        }
-    };
-
-    let info = TraitInfo {
+    TraitInfo {
         impl_expr,
-        all_generics,
-    };
-    (truncated_generics, info)
+        all_generics: substs.sinto(s),
+    }
 }
 
 /// Solve the trait obligations for a specific item use (for example, a method
