@@ -656,11 +656,11 @@ let translate m (bo : BackendOptions.t) (items : AST.item list) :
     Preamble.print items ^ DataTypes.print items ^ Letfuns.print items
     ^ Processes.print items
   in
-  let analysis_contents =
-    Toplevel.print items
-  in
+  let analysis_contents = Toplevel.print items in
   let lib_file = Types.{ path = "lib.pvl"; contents = lib_contents } in
-  let analysis_file = Types.{ path = "analysis.pv"; contents = analysis_contents } in
+  let analysis_file =
+    Types.{ path = "analysis.pv"; contents = analysis_contents }
+  in
   [ lib_file; analysis_file ]
 
 open Phase_utils
