@@ -293,6 +293,28 @@ module Print = struct
                 | None -> super#pat' ctx pat)
             | _ -> super#pat' ctx pat
 
+      method tuple_elem_pat' : Generic_printer_base.par_state -> pat' fn =
+        fun ctx ->
+          let wrap_parens =
+            group
+            >> match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock braces
+          in
+          function
+          | PBinding { mut; mode; var; typ; subpat } ->
+              let p = print#local_ident var in
+              p ^^ colon ^^ space ^^ print#ty ctx typ
+          | p -> print#pat' ctx p
+
+      method tuple_elem_pat : Generic_printer_base.par_state -> pat fn =
+        fun ctx { p; span; _ } ->
+          print#with_span ~span (fun _ -> print#tuple_elem_pat' ctx p)
+
+      method tuple_elem_pat_at = print#par_state >> print#tuple_elem_pat
+
+      method! pat_construct_tuple : pat list fn =
+        List.map ~f:(print#tuple_elem_pat_at Pat_ConstructTuple)
+        >> print#doc_construct_tuple
+
       method! expr_app f args _generic_args =
         let args =
           separate_map
@@ -415,8 +437,7 @@ module Print = struct
             ^^ iblock parens fun_args_types
             ^^ string ": "
             ^^ print#concrete_ident base_name
-            ^^ string "[data]"
-            ^^ dot
+            ^^ space ^^ string "[data]" ^^ dot
           in
           let reduc_line =
             string "reduc forall " ^^ iblock Fn.id fun_args_full ^^ semi
@@ -509,9 +530,11 @@ module Print = struct
             ^^ iblock parens (separate_map (comma ^^ break 1) snd args)
 
       method generic_values : generic_value list fn =
-          function
-          | [] -> empty
-          | values -> string "_of" ^^ underscore ^^ separate_map underscore print#generic_value values
+        function
+        | [] -> empty
+        | values ->
+            string "_of" ^^ underscore
+            ^^ separate_map underscore print#generic_value values
 
       method ty_app f args = print#concrete_ident f ^^ print#generic_values args
 
