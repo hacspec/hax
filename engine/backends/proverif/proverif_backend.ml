@@ -343,7 +343,7 @@ module Print = struct
               super#expr' ctx (snd (Option.value_exn (List.hd fields))).e
           | Construct { constructor; _ }
             when Global_ident.eq_name Core__result__Result__Err constructor ->
-              string "fail"
+              string "construct_fail()"
           (* Translate known constructors *)
           | Construct { constructor; fields } -> (
               match
@@ -568,7 +568,7 @@ end
 
 module Preamble = MkSubprinter (struct
   let banner = "Preamble"
-  let preamble items = "channel c.\nfun int2bitstring(nat): bitstring.\n"
+  let preamble items = "channel c.\nfun int2bitstring(nat): bitstring.\ntype err.\nfun construct_fail() : err\nreduc construct_fail() = fail.\n"
   let contents items = ""
 end)
 
