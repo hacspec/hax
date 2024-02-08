@@ -275,7 +275,7 @@ module Print = struct
             ^^ string " in " ^^ body
 
       method ty_bool = string "bool"
-      method ty_int _ = string "bitstring"
+      method ty_int _ = string "nat"
 
       method pat' : Generic_printer_base.par_state -> pat' fn =
         fun ctx ->
@@ -536,6 +536,7 @@ module Print = struct
           match ty with
           | TBool -> print#ty_bool
           | TParam i -> print#local_ident i
+          | TInt kind -> print#ty_int kind
           (* Translate known types, no args at the moment *)
           | TApp { ident; args } -> super#ty ctx ty
           (*(
