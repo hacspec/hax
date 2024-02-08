@@ -45,27 +45,36 @@ struct
         let e' = Borrow { kind; e; witness } in
         { e with e = e'; typ = mut_ref e.typ }
 
-      let expect_mut_ref_param (param : param) :
-          (local_ident * ty * span) option =
+      let expect_mut_ref_param (all_vars : local_ident list) (i : int)
+          (param : param) : (local_ident * ty * span) option =
         let* typ = Expect.mut_ref param.typ in
         match param.pat.p with
         | PBinding
             { mut = Immutable; mode = ByValue; var; typ = _; subpat = None } ->
             Some (var, typ, param.pat.span)
+        | PWild ->
+            let var =
+              fresh_local_ident_in all_vars ("arg_" ^ Int.to_string i ^ "_wild")
+            in
+            Some (var, typ, param.pat.span)
         | _ ->
+            (* TODO: nicer error! other pats are rejected, not unimplem! *)
             Error.unimplemented
               ~details:"Non-binding patterns for `&mut` inputs" param.pat.span
 
-      let rewrite_fn_sig (params : param list) (output : ty) :
+      let rewrite_fn_sig (all_vars : local_ident list) (params : param list)
+          (output : ty) :
           (param list * ty * (local_ident * ty * span) list) option =
-        let and_muts = List.filter_map ~f:expect_mut_ref_param params in
+        let and_muts =
+          List.filter_mapi ~f:(expect_mut_ref_param all_vars) params
+        in
         match and_muts with
         | [] -> None
         | _ ->
             let params =
-              List.map
-                ~f:(fun param ->
-                  match expect_mut_ref_param param with
+              List.mapi
+                ~f:(fun i param ->
+                  match expect_mut_ref_param all_vars i param with
                   | None -> param
                   | Some (var, typ, span) ->
                       let p : pat' =
@@ -201,7 +210,13 @@ struct
 
       let rewrite_function (params : param list) (body : expr) :
           (param list * expr) option =
-        let* params, _, vars = rewrite_fn_sig params body.typ in
+        let all_vars =
+          UB.Reducers.collect_local_idents#visit_expr () body
+          :: List.map ~f:(Reducers.collect_local_idents#visit_param ()) params
+          |> Set.union_list (module Local_ident)
+          |> Set.to_list
+        in
+        let* params, _, vars = rewrite_fn_sig all_vars params body.typ in
         let idents = List.map ~f:fst3 vars in
         let vars =
           List.map
