@@ -652,12 +652,16 @@ end)
 
 let translate m (bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =
-  let contents =
+  let lib_contents =
     Preamble.print items ^ DataTypes.print items ^ Letfuns.print items
-    ^ Processes.print items ^ Toplevel.print items
+    ^ Processes.print items
   in
-  let file = Types.{ path = "output.pv"; contents } in
-  [ file ]
+  let analysis_contents =
+    Toplevel.print items
+  in
+  let lib_file = Types.{ path = "lib.pvl"; contents = lib_contents } in
+  let analysis_file = Types.{ path = "analysis.pv"; contents = analysis_contents } in
+  [ lib_file; analysis_file ]
 
 open Phase_utils
 module DepGraph = Dependencies.Make (InputLanguage)
