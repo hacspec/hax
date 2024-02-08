@@ -290,11 +290,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
         let trait_ref: Binder<TraitRef> = self.sinto(s);
         let trait_ref = trait_ref.value;
 
-        let Some(impl_source) = select_trait_candidate(s, param_env, *self) else {
-            report!(warn, s, "Warning: the frontend could not resolve using `select_trait_candidate`.\nThis is a bug documented in `https://github.com/hacspec/hax/issues/416`.\nCurrently, this bug is non-fatal at the exporter level.");
-            return ImplExprAtom::Todo(format!("impl_expr failed on {:#?}", self))
-                .with_args(vec![], trait_ref);
-        };
+        let impl_source = select_trait_candidate(s, param_env, *self);
         match impl_source {
             ImplSource::UserDefined(ImplSourceUserDefinedData {
                 impl_def_id,
