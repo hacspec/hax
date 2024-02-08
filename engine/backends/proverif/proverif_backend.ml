@@ -415,6 +415,7 @@ module Print = struct
             ^^ iblock parens fun_args_types
             ^^ string ": "
             ^^ print#concrete_ident base_name
+            ^^ string "[data]"
             ^^ dot
           in
           let reduc_line =
