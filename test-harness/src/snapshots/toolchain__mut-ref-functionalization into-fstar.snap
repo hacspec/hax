@@ -50,6 +50,28 @@ let h (x: u8) : u8 =
   let x:u8 = x +! 10uy in
   x
 
+let k
+      (vec: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
+      (arg_1_wild3: u16)
+      (arg_1_wild: u8)
+      (arg_3_wild2: Prims.unit)
+    : (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global & u16 & Prims.unit & u64) =
+  let arg_1_wild2:u8 = vec.[ sz 1 ] in
+  let arg_3_wild:u8 = vec.[ sz 2 ] in
+  let arg_1_wild1:u8 = vec.[ sz 3 ] in
+  let arg_3_wild1:u8 = vec.[ sz 4 ] in
+  let vec:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize vec
+      (sz 0)
+      ((((arg_1_wild +! arg_3_wild <: u8) +! arg_1_wild1 <: u8) +! arg_3_wild1 <: u8) +! arg_1_wild
+        <:
+        u8)
+  in
+  let hax_temp_output:u64 = 12345uL in
+  vec, arg_1_wild3, arg_3_wild2, hax_temp_output
+  <:
+  (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global & u16 & Prims.unit & u64)
+
 let build_vec (_: Prims.unit) : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
   Alloc.Slice.impl__into_vec (Rust_primitives.unsize (Rust_primitives.Hax.box_new (let list =
                 [1uy; 2uy; 3uy]
