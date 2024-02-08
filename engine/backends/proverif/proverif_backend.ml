@@ -507,6 +507,11 @@ module Print = struct
             print#concrete_ident constructor
             ^^ iblock parens (separate_map (comma ^^ break 1) snd args)
 
+      method generic_values : generic_value list fn =
+          function
+          | [] -> empty
+          | values -> string "_of" ^^ underscore ^^ separate_map underscore print#generic_value values
+
       method ty_app f args = print#concrete_ident f ^^ print#generic_values args
 
       method ty : Generic_printer_base.par_state -> ty fn =
@@ -515,10 +520,11 @@ module Print = struct
           | TBool -> print#ty_bool
           | TParam i -> print#local_ident i
           (* Translate known types, no args at the moment *)
-          | TApp { ident } -> (
+          | TApp { ident; args } -> super#ty ctx ty
+          (*(
               match translate_known_name ident ~dict:library_types with
               | Some (_, translation) -> translation
-              | None -> super#ty ctx ty)
+              | None -> super#ty ctx ty)*)
           | _ -> string "bitstring"
     end
 
