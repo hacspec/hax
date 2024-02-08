@@ -261,6 +261,16 @@ module Print = struct
     object (print)
     inherit GenericPrint.print as super
 
+      method match_arm scrutinee { arm_pat; body } =
+        let body = print#expr_at Arm_body body in
+        match arm_pat with
+        | { p = PWild; _ } -> body
+        | _ ->
+            let scrutinee = print#expr_at Expr_Match_scrutinee scrutinee in
+            let pat = print#pat_at Arm_pat arm_pat |> group in
+            string "let" ^^ space ^^ pat ^^ string " = " ^^ scrutinee
+            ^^ string " in " ^^ body
+
       method field_accessor field_name = string "accessor" ^^ underscore ^^ print#concrete_ident field_name
       method ty_bool = string "bool"
       method ty_int _ = string "bitstring"
@@ -309,7 +319,23 @@ module Print = struct
           | App { f = { e = GlobalVar name; _ }; args } -> (
               match translate_known_name name ~dict:library_functions with
               | Some (name, translation) -> translation args
-              | None -> super#expr' ctx e)
+              | None -> (
+                  match name with
+                  | `Concrete name ->
+                      print#field_accessor name
+                      ^^ iblock parens
+                           (separate_map
+                              (comma ^^ break 1)
+                              (fun arg -> print#expr AlreadyPar arg)
+                              args)
+                  | `Projector (`Concrete name) ->
+                      print#field_accessor name
+                      ^^ iblock parens
+                           (separate_map
+                              (comma ^^ break 1)
+                              (fun arg -> print#expr AlreadyPar arg)
+                              args)
+                  | _ -> super#expr' ctx e))
           | Construct { constructor; fields; _ }
             when Global_ident.eq_name Core__result__Result__Ok constructor ->
               super#expr' ctx (snd (Option.value_exn (List.hd fields))).e
@@ -333,6 +359,11 @@ module Print = struct
           (*[@ocamlformat "disable"]*)
             when Global_ident.eq_name Core__ops__try_trait__Try__branch n ->
               super#expr' ctx expr.e
+          | Match { scrutinee; arms } ->
+              separate_map
+                (hardline ^^ string "else ")
+                (fun { arm; span } -> print#match_arm scrutinee arm)
+                arms
           | _ -> super#expr' ctx e
 
       method concrete_ident = print#concrete_ident' ~under_current_ns:false
