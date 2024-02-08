@@ -568,7 +568,14 @@ end
 
 module Preamble = MkSubprinter (struct
   let banner = "Preamble"
-  let preamble items = "channel c.\nfun int2bitstring(nat): bitstring.\ntype err.\nfun construct_fail() : err\nreduc construct_fail() = fail.\n"
+
+  let preamble items =
+    "channel c.\n\
+     fun int2bitstring(nat): bitstring.\n\
+     type err.\n\
+     fun construct_fail() : err\n\
+     reduc construct_fail() = fail.\n"
+
   let contents items = ""
 end)
 
