@@ -54,7 +54,7 @@ pub enum ConstantExprKind {
     ConstRef {
         id: ParamConst,
     },
-    FnPtr(DefId, Vec<GenericArg>, Vec<ImplExpr>, Option<TraitInfo>),
+    FnPtr(DefId, Vec<GenericArg>, Vec<ImplExpr>, Option<ImplExpr>),
     Todo(String),
 }
 
@@ -244,7 +244,7 @@ pub(crate) fn is_anon_const<'tcx>(
 
 pub(crate) fn trait_const_to_constant_expr_kind<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
-    const_def_id: rustc_hir::def_id::DefId,
+    _const_def_id: rustc_hir::def_id::DefId,
     substs: rustc_middle::ty::SubstsRef<'tcx>,
     assoc: &rustc_middle::ty::AssocItem,
 ) -> ConstantExprKind {
@@ -252,12 +252,9 @@ pub(crate) fn trait_const_to_constant_expr_kind<'tcx, S: BaseState<'tcx> + HasOw
     let name = assoc.name.to_string();
 
     // Retrieve the trait information
-    let trait_info = get_trait_info(s, const_def_id, substs, assoc);
+    let impl_expr = get_trait_info(s, substs, assoc);
 
-    ConstantExprKind::TraitConst {
-        impl_expr: trait_info.impl_expr,
-        name,
-    }
+    ConstantExprKind::TraitConst { impl_expr, name }
 }
 impl ConstantExprKind {
     pub fn decorate(self, ty: Ty, span: Span) -> Decorated<Self> {

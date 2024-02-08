@@ -1,25 +1,12 @@
 use crate::prelude::*;
 
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, PartialOrd, Ord, Hash,
-)]
-pub struct TraitInfo {
-    pub impl_expr: ImplExpr,
-    /// All the generics (from before truncating them - see the documentation
-    /// for [ParamsInfo]). We store this information mostly for debugging purposes.
-    /// TODO: remove
-    pub all_generics: Vec<GenericArg>,
-}
-
 /// Retrieve the trait information, typically for a function call.
-/// [ref_def_id]: id of the method being called, the global being used, etc.
 /// TODO: rename
 pub fn get_trait_info<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
-    ref_def_id: rustc_hir::def_id::DefId,
     substs: rustc_middle::ty::SubstsRef<'tcx>,
     assoc: &rustc_middle::ty::AssocItem,
-) -> TraitInfo {
+) -> ImplExpr {
     let tcx = s.base().tcx;
     let param_env = tcx.param_env(s.owner_id());
 
@@ -32,7 +19,7 @@ pub fn get_trait_info<'tcx, S: UnderOwnerState<'tcx>>(
     let tr_ref = rustc_middle::ty::Binder::dummy(tr_ref);
 
     // Solve
-    get_trait_info_for_trait_ref(s, ref_def_id, param_env, substs, tr_ref)
+    solve_trait(s, param_env, tr_ref)
 }
 
 pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
@@ -40,24 +27,16 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
 ) -> ImplExpr {
-    trait_ref.impl_expr(s, param_env)
-}
-
-/// Retrieve the trait information, typically for a function call.
-/// [ref_def_id]: id of the method being called, the global being used, etc.
-pub fn get_trait_info_for_trait_ref<'tcx, S: BaseState<'tcx> + HasOwnerId>(
-    s: &S,
-    _ref_def_id: rustc_hir::def_id::DefId,
-    param_env: rustc_middle::ty::ParamEnv<'tcx>,
-    substs: rustc_middle::ty::SubstsRef<'tcx>,
-    trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
-) -> TraitInfo {
-    let impl_expr = solve_trait(s, param_env, trait_ref);
-
-    TraitInfo {
-        impl_expr,
-        all_generics: substs.sinto(s),
-    }
+    let mut impl_expr = trait_ref.impl_expr(s, param_env);
+    // TODO: this is a bug in hax: in case of method calls, the trait ref
+    // contains the generics for the trait ref + the generics for the method
+    let trait_def_id: rustc_hir::def_id::DefId = (&impl_expr.r#trait.def_id).into();
+    let params_info = get_params_info(s, trait_def_id);
+    let _ = impl_expr
+        .r#trait
+        .generic_args
+        .split_off(params_info.num_generic_params);
+    impl_expr
 }
 
 /// Solve the trait obligations for a specific item use (for example, a method

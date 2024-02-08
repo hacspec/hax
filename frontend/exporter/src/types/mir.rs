@@ -211,7 +211,7 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
     s: &S,
     def_id: rustc_hir::def_id::DefId,
     substs: rustc_middle::ty::subst::SubstsRef<'tcx>,
-) -> (DefId, Vec<GenericArg>, Vec<ImplExpr>, Option<TraitInfo>) {
+) -> (DefId, Vec<GenericArg>, Vec<ImplExpr>, Option<ImplExpr>) {
     let tcx = s.base().tcx;
     let param_env = tcx.param_env(s.owner_id());
 
@@ -256,7 +256,7 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
         trace!("assoc: def_id: {:?}", assoc.def_id);
 
         // Retrieve the trait information
-        let trait_info = get_trait_info(s, def_id, substs, &assoc);
+        let impl_expr = get_trait_info(s, substs, &assoc);
 
         // Compute the list of generic arguments applied to the *method* itself.
         //
@@ -276,14 +276,14 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
         // and truncate the substitution to get the parameters which apply
         // to the method (here, `<U>`)
         let trait_def_id : rustc_span::def_id::DefId =
-                (&trait_info.impl_expr.r#trait.def_id).into();
+                (&impl_expr.r#trait.def_id).into();
         let params_info = get_params_info(s, trait_def_id);
         let num_trait_generics = params_info.num_generic_params;
         let all_generics: Vec<GenericArg> = substs.sinto(s);
         let truncated_substs = all_generics[num_trait_generics..].into();
 
         // Return
-        (truncated_substs, Option::Some(trait_info))
+        (truncated_substs, Option::Some(impl_expr))
     } else {
         // Regular function call
         (substs.sinto(s), Option::None)
@@ -300,12 +300,7 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
 fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
     s: &S,
     func: &rustc_middle::mir::Operand<'tcx>,
-) -> (
-    FunOperand,
-    Vec<GenericArg>,
-    Vec<ImplExpr>,
-    Option<TraitInfo>,
-) {
+) -> (FunOperand, Vec<GenericArg>, Vec<ImplExpr>, Option<ImplExpr>) {
     use std::ops::Deref;
     // Match on the func operand: it should be a constant as we don't support
     // closures for now.
@@ -537,7 +532,7 @@ pub enum TerminatorKind {
         from_hir_call: bool,
         fn_span: Span,
         trait_refs: Vec<ImplExpr>,
-        trait_info: Option<TraitInfo>,
+        trait_info: Option<ImplExpr>,
     },
     Assert {
         cond: Operand,
