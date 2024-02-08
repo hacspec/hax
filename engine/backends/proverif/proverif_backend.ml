@@ -259,7 +259,10 @@ module Print = struct
 
   class print aux =
     object (print)
-    inherit GenericPrint.print as super
+      inherit GenericPrint.print as super
+
+      method field_accessor field_name =
+        string "accessor" ^^ underscore ^^ print#concrete_ident field_name
 
       method match_arm scrutinee { arm_pat; body } =
         let body = print#expr_at Arm_body body in
@@ -271,7 +274,6 @@ module Print = struct
             string "let" ^^ space ^^ pat ^^ string " = " ^^ scrutinee
             ^^ string " in " ^^ body
 
-      method field_accessor field_name = string "accessor" ^^ underscore ^^ print#concrete_ident field_name
       method ty_bool = string "bool"
       method ty_int _ = string "bitstring"
 
@@ -407,7 +409,7 @@ module Print = struct
             string "reduc forall " ^^ iblock Fn.id fun_args_full ^^ semi
           in
           let build_accessor (ident, ty, attr) =
-            string "accessor" ^^ underscore ^^ print#concrete_ident ident
+            print#field_accessor ident
             ^^ iblock parens (constructor_name ^^ iblock parens fun_args_names)
             ^^ blank 1 ^^ equals ^^ blank 1 ^^ print#concrete_ident ident
           in
