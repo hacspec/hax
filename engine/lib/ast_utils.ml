@@ -140,14 +140,14 @@ module Make (F : Features.T) = struct
     end
   end
 
-  let functions_of_item (x : item) : (concrete_ident * expr * bool) list =
+  let functions_of_item (x : item) : (concrete_ident * expr) list =
     match x.v with
-    | Fn { name; generics = _; body; params = _ } -> [ (name, body, false) ]
+    | Fn { name; generics = _; body; params = _ } -> [ (name, body) ]
     | Impl { items; _ } ->
         List.filter_map
           ~f:(fun w ->
             match w.ii_v with
-            | IIFn { body; params = _ } -> Some (w.ii_ident, body, true)
+            | IIFn { body; params = _ } -> Some (w.ii_ident, body)
             | _ -> None)
           items
     | _ -> []

@@ -1124,8 +1124,58 @@ struct
                kind = UnsupportedMacro { id = [%show: global_ident] macro };
                span = e.span;
              }
-      | Assign { e } ->
-          SSP.AST.Const (SSP.AST.Const_string ("assign" ^ " todo(term)"))
+      | Assign { lhs = LhsLocalVar { var; typ }; e; witness } ->
+          let lhs =
+            {
+              p =
+                PBinding
+                  {
+                    mut = Mutable Features.On.mutable_variable;
+                    mode = ByValue;
+                    var;
+                    typ;
+                    subpat = None;
+                  };
+              span;
+              typ;
+            }
+          in
+          let rhs = e in
+          let monadic = None in
+          let extra_set, extra_env =
+            LocalIdentOrLisIis.analyse_expr ctx.analysis_data.mut_var env rhs
+          in
+          let new_env =
+            extend_env env
+              (Map.of_alist_exn
+                 (module Local_ident)
+                 (List.map
+                    ~f:(fun v -> (v, extra_set))
+                    (Set.to_list (U.Reducers.variables_of_pat lhs))))
+          in
+          let new_env =
+            match (monadic, is_mutable_pat lhs) with
+            | None, true ->
+                extend_env new_env
+                  (Map.of_alist_exn
+                     (module Local_ident)
+                     (List.map
+                        ~f:(fun v -> (v, [ LocalIdentOrLisIis.W.Identifier v ]))
+                        (Set.to_list (U.Reducers.variables_of_pat lhs))))
+            | _, _ -> new_env
+          in
+          SSPExtraDefinitions.letb
+            {
+              pattern = ppat lhs;
+              mut = is_mutable_pat lhs;
+              value = (pexpr env false) rhs;
+              body =
+                SSP.AST.App
+                  (SSP.AST.Var "ret_both", [ SSPExtraDefinitions.unit_term ]);
+              (* TODO: Convert into direct assignment? move "get" of variable, to where it is used, not where it is updated! *)
+              value_typ = SSP.AST.WildTy;
+              monad_typ = None;
+            }
       (* __TODO_term__ span "assign" *)
       | Loop { body; kind; state = None; label; witness } ->
           (pexpr env false)
@@ -1495,14 +1545,13 @@ struct
   let show_ctx_mut_var : string =
     String.concat ~sep:"\n"
       (List.map
-         ~f:(fun (k, (v_li, v_tli)) ->
+         ~f:(fun (k, (v_li, v_ci, v_tli)) ->
            k ^ ":" ^ "["
+           ^ String.concat ~sep:"," (List.map ~f:(fun x -> plocal_ident x) v_li)
+           ^ "]" ^ "<"
            ^ String.concat ~sep:","
-               (List.map
-                  ~f:(fun (x, b) ->
-                    plocal_ident x ^ "<" ^ (if b then "T" else "F") ^ ">")
-                  v_li)
-           ^ "]" ^ "("
+               (List.map ~f:U.Concrete_ident_view.show v_ci)
+           ^ ">" ^ "("
            ^ String.concat ~sep:","
                (List.map ~f:(fun ((li, _), _) -> plocal_ident li) v_tli)
            ^ ")")
@@ -1514,10 +1563,7 @@ struct
          ~f:(fun (k, ids) ->
            k ^ ":" ^ "["
            ^ String.concat ~sep:","
-               (List.map
-                  ~f:(fun (x, b) ->
-                    pconcrete_ident x ^ "<" ^ (if b then "T" else "F") ^ ">")
-                  ids)
+               (List.map ~f:(fun x -> pconcrete_ident x) ids)
            ^ "]")
          (Map.to_alist ctx.analysis_data.func_dep))
 
@@ -1531,16 +1577,13 @@ struct
     let decls_from_item =
       match e.v with
       | Fn { name = f_name; generics; body; params } ->
-          [
-            SSP.AST.Comment show_ctx_func_dep; SSP.AST.Comment show_ctx_mut_var;
-          ]
-          @ loc_defs_from_name f_name
-              (List.map
-                 ~f:(fun v ->
-                   match v with
-                   | SSP.AST.Explicit (a, b) -> SSP.AST.Implicit (a, b)
-                   | _ -> v)
-                 (pgeneric span generics))
+          loc_defs_from_name f_name
+            (List.map
+               ~f:(fun v ->
+                 match v with
+                 | SSP.AST.Explicit (a, b) -> SSP.AST.Implicit (a, b)
+                 | _ -> v)
+               (pgeneric span generics))
           @ [
               (let args, ret_typ =
                  lift_definition_type_to_both f_name
@@ -1945,17 +1988,27 @@ struct
                          match x.ii_v with
                          | IIFn { body; params } ->
                              let mvars_ext_fset_str =
-                               "fset" ^ " " ^ "["
-                               ^ String.concat ~sep:";"
-                                   (List.map
-                                      ~f:(fun (x, _) -> plocal_ident x ^ "_loc")
-                                      (match
-                                         Map.find ctx.analysis_data.mut_var
-                                           (pconcrete_ident x.ii_ident)
-                                       with
-                                      | Some (l, _) -> l
-                                      | _ -> []))
-                               ^ "]"
+                               let loc_strs, trait_f_str =
+                                 match
+                                   Map.find ctx.analysis_data.mut_var
+                                     (pconcrete_ident x.ii_ident)
+                                 with
+                                 | Some (l, l2, _) ->
+                                     ( String.concat ~sep:";"
+                                         (List.map
+                                            ~f:(fun x ->
+                                              plocal_ident x ^ "_loc")
+                                            l),
+                                       List.map
+                                         ~f:(fun x ->
+                                           pconcrete_ident x ^ "_loc")
+                                         l2 )
+                                     (* TODO: should trait fn locations be added somewhere here? *)
+                                 | _ -> ("", [])
+                               in
+                               String.concat ~sep:":|:"
+                                 (("fset" ^ " " ^ "[" ^ loc_strs ^ "]")
+                                 :: trait_f_str)
                              in
                              [
                                SSP.AST.InlineDef
@@ -1975,7 +2028,9 @@ struct
                                        Map.find ctx.analysis_data.mut_var
                                          (pconcrete_ident x.ii_ident)
                                      with
-                                    | Some (_ :: _, _) -> []
+                                    | Some (_ :: _, _, _) ->
+                                        []
+                                        (* TODO: should trait fn locations be added somewhere here? *)
                                     | _ -> [ "fset []" ])
                                 in
                                 SSP.AST.LetDef
@@ -2026,7 +2081,7 @@ struct
                 ] ),
             SSP.AST.NameTy "Location" ))
       (match Map.find ctx.analysis_data.mut_var (pconcrete_ident name) with
-      | Some l -> snd l
+      | Some (_, _, l) -> l
       | None -> [])
 
   and new_arguments lis iis (arguments : SSP.AST.argument list) =
@@ -2063,13 +2118,16 @@ struct
   and both_return_type_from_name lis iis name typ (extra_L : string list) =
     let mvars_ext_L =
       match Map.find ctx.analysis_data.mut_var (pconcrete_ident name) with
-      | Some (l, l2) when List.length l > 0 ->
-          [
-            "fset" ^ " " ^ "["
-            ^ String.concat ~sep:";"
-                (List.map ~f:(fun (x, _) -> plocal_ident x ^ "_loc") l)
-            ^ "]";
-          ]
+      | Some (l, l2, l3) ->
+          (if List.length l > 0 then
+           [
+             "fset" ^ " " ^ "["
+             ^ String.concat ~sep:";"
+                 (List.map ~f:(fun x -> plocal_ident x ^ "_loc") l)
+             ^ "]";
+           ]
+          else [])
+          @ List.map ~f:(fun x -> pconcrete_ident x ^ "_loc") l2
       | _ -> []
     in
     (* let func_dep_L = match Map.find ctx.analysis_data.func_dep (pconcrete_ident name) with *)

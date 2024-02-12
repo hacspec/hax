@@ -175,7 +175,7 @@ functor
           a_ty_str ^ " " ^ "->" ^ " " ^ b_ty_str
       | AST.ArrayTy (t, l) ->
           let ty_str = ty_to_string t in
-          "nseq" ^ " " ^ ty_str ^ " " ^ (* Int.to_string *) l
+          "nseq" ^ " (" ^ ty_str ^ ") " ^ (* Int.to_string *) l
       | AST.SliceTy t ->
           let ty_str = ty_to_string t in
           "seq" ^ " " ^ ty_str

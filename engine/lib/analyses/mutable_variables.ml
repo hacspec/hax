@@ -10,11 +10,13 @@ module%inlined_contents Make (F : Features.T) = struct
   type id_order = int
 
   (* TODO: Swap to Concrete_ident see: https://github.com/hacspec/hax/issues/375 *)
-  type pre_data = (concrete_ident * bool) list Map.M(String).t
+  type pre_data = concrete_ident list Map.M(String).t
 
   (* TODO: Swap to Concrete_ident see: https://github.com/hacspec/hax/issues/375 *)
   type analysis_data =
-    ((Local_ident.t * bool) list * (U.TypedLocalIdent.t * id_order) list)
+    (Local_ident.t list
+    * Concrete_ident.t list
+    * (U.TypedLocalIdent.t * id_order) list)
     (* external mut_vars and new variables (e.g. needs def / local) *)
     Map.M(String).t
 
@@ -135,10 +137,10 @@ module%inlined_contents Make (F : Features.T) = struct
            method! visit_concrete_ident (_env : W.t list Map.M(Local_ident).t)
                (cid : Concrete_ident.t) =
              Option.value_map ~default:m#zero
-               ~f:(fun (x, _) ->
+               ~f:(fun (x, _, _) ->
                  ( Set.of_list
                      (module W)
-                     (List.map ~f:(fun (x, _) -> W.Identifier x) x),
+                     (List.map ~f:(fun x -> W.Identifier x) x),
                    m#snd#zero ))
                (Map.find data
                   (Uprint.Concrete_ident_view.to_definition_name cid))
@@ -151,62 +153,54 @@ module%inlined_contents Make (F : Features.T) = struct
 
   let rec analyse (func_dep : pre_data) (items : A.item list) : analysis_data =
     let (mut_var_list, _)
-          : (concrete_ident * (U.TypedLocalIdent.t * id_order) list * bool) list
-            * _ =
+          : (concrete_ident * (U.TypedLocalIdent.t * id_order) list) list * _ =
       List.fold_left ~init:([], 0)
-        ~f:(fun (y, count) (name, body, is_impl) ->
+        ~f:(fun (y, count) (name, body) ->
           let items, count = analyse_function_body body count in
-          (y @ [ (name, items, is_impl) ], count))
+          (y @ [ (name, items) ], count))
         (List.concat_map ~f:U.functions_of_item items)
     in
     let mut_map : analysis_data =
       List.fold_left
         ~init:(Map.empty (module String (* Concrete_ident *)) : analysis_data)
-        ~f:(fun y (x_name, x_items, is_impl) ->
+        ~f:(fun y (x_name, x_items) ->
           Map.set y
             ~key:(Uprint.Concrete_ident_view.to_definition_name x_name)
             ~data:
-              (let local_items : (Local_ident.t * bool) list =
-                 List.map ~f:(fun ((x, _), _) -> (x, is_impl)) x_items
+              (let local_items : Local_ident.t list =
+                 List.map ~f:(fst >> fst) x_items
                in
-               let dependent_items : (Local_ident.t * bool) list =
+               let dependent_items : Local_ident.t list =
                  Option.value_map ~default:[]
                    ~f:
-                     (List.unzip >> fst
-                     >> (List.filter_map
-                           ~f:
-                             (Uprint.Concrete_ident_view.to_definition_name
-                            >> Map.find y)
-                        >> List.concat_map ~f:fst))
+                     (List.filter_map
+                        ~f:
+                          (Uprint.Concrete_ident_view.to_definition_name
+                         >> Map.find y)
+                     >> List.concat_map ~f:fst3)
                    (Map.find func_dep
                       (Uprint.Concrete_ident_view.to_definition_name x_name))
                in
-               let trait_items : (Local_ident.t * bool) list =
+               let trait_items : Concrete_ident.t list =
                  Option.value_map ~default:[]
                    ~f:
-                     (List.fold_left ~init:[] ~f:(fun y (x, b) ->
+                     (List.fold_left ~init:[] ~f:(fun y x ->
                           y
                           @
-                          if b then
-                            [
-                              ( Local_ident.
-                                  {
-                                    name =
-                                      Uprint.Concrete_ident_view
-                                      .to_definition_name x;
-                                    id = Local_ident.mk_id Expr 0;
-                                  },
-                                true );
-                            ]
+                          if
+                            match
+                              String.chop_prefix ~prefix:"f_"
+                                (Uprint.Concrete_ident_view.to_definition_name x)
+                            with
+                            | Some _ -> true
+                            | None -> false
+                            (* TODO: do better than string matching *)
+                          then [ x ]
                           else []))
                    (Map.find func_dep
                       (Uprint.Concrete_ident_view.to_definition_name x_name))
                in
-               ( (local_items @ dependent_items @ trait_items
-                   : (Local_ident.t * bool) list),
-                 (x_items : (U.TypedLocalIdent.t * id_order) list) )
-                : (Local_ident.t * bool) list
-                  * (U.TypedLocalIdent.t * id_order) list))
+               (local_items @ dependent_items, trait_items, x_items)))
         mut_var_list
     in
     mut_map
