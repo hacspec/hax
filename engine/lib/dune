@@ -22,7 +22,6 @@
    ppx_sexp_conv
    ppx_compare
    ppx_hash
-   visitors.ppx
    ppx_deriving.show
    ppx_deriving.eq
    ppx_string

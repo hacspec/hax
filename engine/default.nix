@@ -52,7 +52,6 @@
         yojson
         ppx_sexp_conv
         ppx_hash
-        visitors
         pprint
         non_empty_list
         bignum

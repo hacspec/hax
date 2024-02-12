@@ -142,6 +142,10 @@ end = struct
       l := !l @ mk_item ()
     else ()
 
+  open struct
+    module Visitors = Ast_visitors.Make (Features.Full)
+  end
+
   let export' () =
     Logs.info (fun m -> m "Exporting debug informations");
     let json =
@@ -150,7 +154,7 @@ end = struct
       |> List.map ~f:(fun (k, (nth, l)) ->
              let regenerate_span_ids =
                (object
-                  inherit [_] Ast.Full.item_map
+                  inherit [_] Visitors.map
                   method visit_t () x = x
                   method visit_mutability _ () m = m
                   method visit_span = Fn.const Span.refresh_id

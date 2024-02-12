@@ -48,6 +48,7 @@ module Make (F : Features.T) = struct
   module AST = Ast.Make (F)
   open AST
   module TypedLocalIdent = TypedLocalIdent (AST)
+  module Visitors = Ast_visitors.Make (F)
 
   module Expect = struct
     let mut_borrow (e : expr) : expr option =
@@ -97,7 +98,6 @@ module Make (F : Features.T) = struct
 
       class ['s] monoid =
         object
-          inherit ['s] VisitorsRuntime.monoid
           method private zero = Set.empty (module Global_ident)
           method private plus = Set.union
         end
@@ -108,7 +108,6 @@ module Make (F : Features.T) = struct
 
       class ['s] monoid =
         object
-          inherit ['s] VisitorsRuntime.monoid
           method private zero = Set.empty (module Concrete_ident)
           method private plus = Set.union
         end
@@ -119,7 +118,6 @@ module Make (F : Features.T) = struct
 
       class ['s] monoid =
         object
-          inherit ['s] VisitorsRuntime.monoid
           method private zero = Set.empty (module Local_ident)
           method private plus = Set.union
         end
@@ -136,7 +134,6 @@ module Make (F : Features.T) = struct
 
       class ['s] monoid =
         object
-          inherit ['s] VisitorsRuntime.monoid
           method private zero = Set.empty (module TypedLocalIdent)
           method private plus = Set.union
         end
@@ -158,19 +155,15 @@ module Make (F : Features.T) = struct
   module Mappers = struct
     let regenerate_span_ids =
       object
-        inherit [_] item_map
-        method visit_t () x = x
-        method visit_mutability _ () m = m
-        method visit_span = Fn.const Span.refresh_id
+        inherit [_] Visitors.map
+        method visit_span () = Span.refresh_id
       end
 
     let normalize_borrow_mut =
       object
-        inherit [_] expr_map as super
-        method visit_t () x = x
-        method visit_mutability _ () m = m
+        inherit [_] Visitors.map as super
 
-        method! visit_expr s e =
+        method! visit_expr () e =
           let rec expr e =
             match e.e with
             | App
@@ -182,50 +175,47 @@ module Make (F : Features.T) = struct
                 (* TODO: see issue #328 *)
                 } ->
                 expr sub
-            | _ -> super#visit_expr s e
+            | _ -> super#visit_expr () e
           in
           expr e
       end
 
     let rename_generic_constraints =
       object
-        inherit [_] item_map as _super
-        method visit_t _ x = x
-        method visit_mutability _ _ m = m
+        inherit [_] Visitors.map as super
 
-        method! visit_GCType (s : (string, string) Hashtbl.t) bound id =
-          let data = "i" ^ Int.to_string (Hashtbl.length s) in
-          let _ = Hashtbl.add s ~key:id ~data in
-          GCType { bound; id = data }
+        method! visit_generic_constraint (s : (string, string) Hashtbl.t) gc =
+          match gc with
+          | GCType { bound; id } ->
+              let data = "i" ^ Int.to_string (Hashtbl.length s) in
+              let _ = Hashtbl.add s ~key:id ~data in
+              GCType { bound; id = data }
+          | _ -> super#visit_generic_constraint s gc
 
-        method! visit_LocalBound s id =
-          LocalBound { id = Hashtbl.find s id |> Option.value ~default:id }
+        method! visit_impl_expr s ie =
+          match ie with
+          | LocalBound { id } ->
+              LocalBound { id = Hashtbl.find s id |> Option.value ~default:id }
+          | _ -> super#visit_impl_expr s ie
       end
 
     let rename_local_idents (f : local_ident -> local_ident) =
       object
-        inherit [_] item_map as _super
-        method visit_t () x = x
-        method visit_mutability _ () m = m
+        inherit [_] Visitors.map as _super
         method! visit_local_ident () ident = f ident
       end
 
     let rename_global_idents (f : visit_level -> global_ident -> global_ident) =
       object
-        inherit [_] item_map as super
-        method visit_t (_lvl : visit_level) x = x
-        method visit_mutability _ (_lvl : visit_level) m = m
+        inherit [_] Visitors.map as super
         method! visit_global_ident (lvl : visit_level) ident = f lvl ident
         method! visit_ty _ t = super#visit_ty TypeLevel t
-        (* method visit_GlobalVar (lvl : level) i = GlobalVar (f lvl i) *)
       end
 
     let rename_concrete_idents
         (f : visit_level -> Concrete_ident.t -> Concrete_ident.t) =
       object
-        inherit [_] item_map as super
-        method visit_t (_lvl : visit_level) x = x
-        method visit_mutability _ (_lvl : visit_level) m = m
+        inherit [_] Visitors.map as super
         method! visit_concrete_ident (lvl : visit_level) ident = f lvl ident
 
         method! visit_global_ident lvl (x : Global_ident.t) =
@@ -247,9 +237,7 @@ module Make (F : Features.T) = struct
       let is_app = Expect.concrete_app' >> Option.is_some in
       let o =
         object
-          inherit [_] item_map as super
-          method visit_t (_ascribe_app : bool) x = x
-          method visit_mutability _ (_ascribe_app : bool) m = m
+          inherit [_] Visitors.map as super
 
           method! visit_expr' (ascribe_app : bool) e =
             (* Enable type ascription of underlying function
@@ -295,11 +283,16 @@ module Make (F : Features.T) = struct
   module Reducers = struct
     let collect_local_idents =
       object
-        inherit [_] item_reduce as _super
-        inherit [_] Sets.Local_ident.monoid as m
-        method visit_t _ _ = m#zero
-        method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
-        method! visit_local_ident _ x = Set.singleton (module Local_ident) x
+        inherit [_] Visitors.reduce as _super
+        inherit [_] Sets.Local_ident.monoid as _m
+        method! visit_local_ident () x = Set.singleton (module Local_ident) x
+      end
+
+    let collect_local_idents =
+      object
+        inherit [_] Visitors.reduce as _super
+        inherit [_] Sets.Local_ident.monoid as _m
+        method! visit_local_ident () x = Set.singleton (module Local_ident) x
       end
 
     include struct
@@ -331,10 +324,8 @@ module Make (F : Features.T) = struct
 
       let collect_ambiguous_local_idents =
         object (self)
-          inherit [_] item_reduce as super
-          inherit [_] Sets.Local_ident.monoid as m
-          method visit_t (_ : env) _ = m#zero
-          method visit_mutability (_f : env -> _ -> _) _ _ = m#zero
+          inherit [_] Visitors.reduce as super
+          inherit [_] Sets.Local_ident.monoid as _m
 
           method visit_arm' env { arm_pat; body } =
             shadows ~env [ arm_pat ] body super#visit_expr
@@ -370,8 +361,15 @@ module Make (F : Features.T) = struct
                 shadows ~env params body super#visit_expr
             | _ -> super#visit_expr' env e
 
-          method visit_IIFn = self#visit_function_like
-          method visit_Fn env _ _ = self#visit_function_like env
+          method visit_impl_item' env ii =
+            match ii with
+            | IIFn { body; params } -> self#visit_function_like env body params
+            | _ -> super#visit_impl_item' env ii
+
+          method visit_item' env i =
+            match i with
+            | Fn { body; params; _ } -> self#visit_function_like env body params
+            | _ -> super#visit_item' env i
 
           method visit_function_like env body params =
             let f p = p.pat in
@@ -410,10 +408,8 @@ module Make (F : Features.T) = struct
 
     let collect_global_idents =
       object
-        inherit ['self] item_reduce as _super
-        inherit [_] Sets.Global_ident.monoid as m
-        method visit_t _ _ = m#zero
-        method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
+        inherit [_] Visitors.reduce as _super
+        inherit [_] Sets.Global_ident.monoid as _m
 
         method! visit_global_ident (_env : unit) (x : Global_ident.t) =
           Set.singleton (module Global_ident) x
@@ -421,10 +417,8 @@ module Make (F : Features.T) = struct
 
     let collect_concrete_idents =
       object
-        inherit ['self] item_reduce as super
-        inherit [_] Sets.Concrete_ident.monoid as m
-        method visit_t _ _ = m#zero
-        method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
+        inherit [_] Visitors.reduce as super
+        inherit [_] Sets.Concrete_ident.monoid as _m
 
         method! visit_global_ident (_env : unit) (x : Global_ident.t) =
           match x with
@@ -437,16 +431,17 @@ module Make (F : Features.T) = struct
 
     let variables_of_pat (p : pat) : Sets.Local_ident.t =
       (object
-         inherit [_] expr_reduce as super
+         inherit [_] Visitors.reduce as super
          inherit [_] Sets.Local_ident.monoid as m
-         method visit_t _ _ = m#zero
-         method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
 
-         method! visit_PBinding env _ _ var _ subpat =
-           m#plus
-             (Set.singleton (module Local_ident) var)
-             (Option.value_map subpat ~default:m#zero
-                ~f:(fst >> super#visit_pat env))
+         method! visit_pat' env pat' =
+           match pat' with
+           | PBinding { var; subpat; _ } ->
+               m#plus
+                 (Set.singleton (module Local_ident) var)
+                 (Option.value_map subpat ~default:m#zero
+                    ~f:(fst >> super#visit_pat env))
+           | _ -> super#visit_pat' env pat'
       end)
         #visit_pat
         () p
@@ -472,76 +467,75 @@ module Make (F : Features.T) = struct
     let free_assigned_variables
         (fv_of_arbitrary_lhs :
           F.arbitrary_lhs -> expr -> Sets.TypedLocalIdent.t) =
-      object
-        inherit [_] expr_reduce as super
+      object (self)
+        inherit [_] Visitors.reduce as super
         inherit [_] Sets.TypedLocalIdent.monoid as m
-        method visit_t _ _ = m#zero
-        method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
 
         (* TODO: loop state *)
 
-        method visit_Assign _env lhs e _wit =
-          let rec visit_lhs lhs =
-            match lhs with
-            | LhsLocalVar { var; _ } ->
-                Set.singleton (module TypedLocalIdent) (var, e.typ)
-            | LhsFieldAccessor { e; _ } -> visit_lhs e
-            | LhsArrayAccessor { e; index; _ } ->
-                Set.union (super#visit_expr () index) (visit_lhs e)
-            | LhsArbitraryExpr { witness; e } -> fv_of_arbitrary_lhs witness e
-          in
-          visit_lhs lhs
+        method visit_expr' () e =
+          match e with
+          | Assign { lhs; e; _ } ->
+              let rec visit_lhs lhs =
+                match lhs with
+                | LhsLocalVar { var; _ } ->
+                    Set.singleton (module TypedLocalIdent) (var, e.typ)
+                | LhsFieldAccessor { e; _ } -> visit_lhs e
+                | LhsArrayAccessor { e; index; _ } ->
+                    Set.union (self#visit_expr () index) (visit_lhs e)
+                | LhsArbitraryExpr { witness; e } ->
+                    fv_of_arbitrary_lhs witness e
+              in
+              visit_lhs lhs
+          | Match { scrutinee; arms } ->
+              List.fold_left ~init:(self#visit_expr () scrutinee) ~f:Set.union
+              @@ List.map ~f:(fun arm -> self#visit_arm () arm) arms
+          | Let { lhs = pat; rhs = expr; body; _ } ->
+              Set.union (self#visit_expr () expr)
+              @@ without_pat_vars (self#visit_expr () body) pat
+          | Closure { params; body; _ } ->
+              without_pats_vars (self#visit_expr () body) params
+          | Loop { body; kind; state; _ } ->
+              let vars =
+                (match kind with
+                | UnconditionalLoop -> []
+                | ForLoop { pat = _not_mutable; _ } -> []
+                | ForIndexLoop { var = _not_mutable; _ } -> [])
+                @ (state
+                  |> Option.map ~f:(fun { bpat; _ } -> variables_of_pat bpat)
+                  |> Option.to_list)
+                |> Set.union_list (module Local_ident)
+              in
+              m#plus
+                (self#visit_loop_kind () kind)
+                (m#plus
+                   (Option.map ~f:(self#visit_loop_state ()) state
+                   |> Option.value ~default:m#zero)
+                   (without_vars (self#visit_expr () body) vars))
+          | _ -> super#visit_expr' () e
 
-        method visit_Match env scrut arms =
-          List.fold_left ~init:(super#visit_expr env scrut) ~f:Set.union
-          @@ List.map ~f:(fun arm -> super#visit_arm env arm) arms
-
-        method visit_Let env _monadic pat expr body =
-          Set.union (super#visit_expr env expr)
-          @@ without_pat_vars (super#visit_expr env body) pat
-
-        method visit_Closure env params body _captures =
-          without_pats_vars (super#visit_expr env body) params
-
-        method visit_Loop env body kind state _label _witness =
-          let vars =
-            (match kind with
-            | UnconditionalLoop -> []
-            | ForLoop { pat = _not_mutable; _ } -> []
-            | ForIndexLoop { var = _not_mutable; _ } -> [])
-            @ (state
-              |> Option.map ~f:(fun { bpat; _ } -> variables_of_pat bpat)
-              |> Option.to_list)
-            |> Set.union_list (module Local_ident)
-          in
-          m#plus
-            (super#visit_loop_kind env kind)
-            (m#plus
-               (Option.map ~f:(super#visit_loop_state env) state
-               |> Option.value ~default:m#zero)
-               (without_vars (super#visit_expr env body) vars))
-
-        method visit_arm' env { arm_pat; body } =
-          without_pat_vars (super#visit_expr env body) arm_pat
+        method visit_arm' () { arm_pat; body } =
+          without_pat_vars (self#visit_expr () body) arm_pat
       end
 
     class ['s] expr_list_monoid =
       object
-        inherit ['s] VisitorsRuntime.monoid
         method private zero = []
         method private plus = List.append
       end
 
     let collect_break_payloads =
-      object
-        inherit [_] expr_reduce as super
-        inherit [_] expr_list_monoid as m
-        method visit_t _ _ = m#zero
-        method visit_mutability (_f : unit -> _ -> _) () _ = m#zero
-        method visit_Break _ e _ _ = m#plus (super#visit_expr () e) [ e ]
+      object (self)
+        inherit [_] Visitors.reduce as super
+        inherit [_] expr_list_monoid as _m
 
-        method visit_Loop _ _ _ _ _ _ = (* Do *NOT* visit sub nodes *)
-                                        m#zero
+        method! visit_expr' () e =
+          match e with
+          | Break { e; _ } -> self#plus (self#visit_expr () e) [ e ]
+          | Loop _ ->
+              (* Do *NOT* visit sub nodes *)
+              self#zero
+          | _ -> super#visit_expr' () e
       end
   end
 
@@ -642,9 +636,7 @@ module Make (F : Features.T) = struct
   let ty_equality (a : ty) (b : ty) : bool =
     let replace_spans =
       object
-        inherit [_] item_map
-        method visit_t () x = x
-        method visit_mutability _ () m = m
+        inherit [_] Visitors.map
         method! visit_span _ = function _ -> Span.default
       end
     in
