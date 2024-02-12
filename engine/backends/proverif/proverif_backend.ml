@@ -247,7 +247,7 @@ module Print = struct
     [
       (* (\* hax_lib_protocol::cal::(t_DHScalar *\) *)
       (* (Hax_lib_protocol__crypto__DHScalar, string "PLACEHOLDER_library_type"); *)
-      (Core__option__Option, string "PLACEHOLDER_library_type");
+      (* (Core__option__Option, string "PLACEHOLDER_library_type"); *)
       (* (Alloc__vec__Vec, string "PLACEHOLDER_library_type"); *)
     ]
 
