@@ -244,12 +244,10 @@ module Print = struct
       (*   fun args -> string "PLACEHOLDER_library_constructor" ); *) ]
 
   let library_types : (Concrete_ident_generated.name * document) list =
-    [
-      (* (\* hax_lib_protocol::cal::(t_DHScalar *\) *)
+    [ (* (\* hax_lib_protocol::cal::(t_DHScalar *\) *)
       (* (Hax_lib_protocol__crypto__DHScalar, string "PLACEHOLDER_library_type"); *)
       (* (Core__option__Option, string "PLACEHOLDER_library_type"); *)
-      (* (Alloc__vec__Vec, string "PLACEHOLDER_library_type"); *)
-    ]
+      (* (Alloc__vec__Vec, string "PLACEHOLDER_library_type"); *) ]
 
   let assoc_known_name name (known_name, _) =
     Global_ident.eq_name known_name name
