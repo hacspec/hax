@@ -347,18 +347,31 @@ module Print = struct
           match e with
           (* Translate known functions *)
           | App { f = { e = GlobalVar name; _ }; args } -> (
-              match translate_known_name name ~dict:library_functions with
-              | Some (name, translation) -> translation args
-              | None -> (
-                  match name with
-                  | `Projector (`Concrete name) ->
-                      print#field_accessor name
-                      ^^ iblock parens
-                           (separate_map
-                              (comma ^^ break 1)
-                              (fun arg -> print#expr AlreadyPar arg)
-                              args)
-                  | _ -> super#expr' ctx e))
+              match name with
+              | `Primitive p -> (
+                  match p with
+                  | LogicalOp And ->
+                      print#expr NeedsPar (List.hd_exn args)
+                      ^^ space ^^ string "&&" ^^ space
+                      ^^ print#expr NeedsPar (List.nth_exn args 1)
+                  | LogicalOp Or ->
+                      print#expr NeedsPar (List.hd_exn args)
+                      ^^ space ^^ string "||" ^^ space
+                      ^^ print#expr NeedsPar (List.nth_exn args 1)
+                  | _ -> empty)
+              | _ -> (
+                  match translate_known_name name ~dict:library_functions with
+                  | Some (name, translation) -> translation args
+                  | None -> (
+                      match name with
+                      | `Projector (`Concrete name) ->
+                          print#field_accessor name
+                          ^^ iblock parens
+                               (separate_map
+                                  (comma ^^ break 1)
+                                  (fun arg -> print#expr AlreadyPar arg)
+                                  args)
+                      | _ -> super#expr' ctx e)))
           | Construct { constructor; fields; _ }
             when Global_ident.eq_name Core__result__Result__Ok constructor ->
               super#expr' ctx (snd (Option.value_exn (List.hd fields))).e
