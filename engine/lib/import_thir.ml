@@ -1261,6 +1261,7 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
         List.map
           ~f:(fun (item : Thir.impl_item) ->
             let item_def_id = Concrete_ident.of_def_id Impl item.owner_id in
+
             let v =
               match (item.kind : Thir.impl_item_kind) with
               | Fn { body; params; _ } ->
@@ -1271,7 +1272,9 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
                   Fn
                     {
                       name = item_def_id;
-                      generics = c_generics generics;
+                      generics =
+                        U.concat_generics (c_generics generics)
+                          (c_generics item.generics);
                       body = c_expr body;
                       params;
                     }
