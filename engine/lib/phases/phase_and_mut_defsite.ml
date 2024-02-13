@@ -19,6 +19,7 @@ struct
 
   module A = Ast.Make (FA)
   module B = Ast.Make (FB)
+  module BVisitors = Ast_visitors.Make (FB)
 
   module Implem : ImplemT.T = struct
     let metadata = metadata
@@ -87,7 +88,7 @@ struct
       let map_returns ~(f : expr -> expr) : expr -> expr =
         let visitor =
           object
-            inherit [_] expr_map as _super
+            inherit [_] Visitors.map as _super
             method visit_t () x = x
             method visit_mutability _ () m = m
             method visit_Return () e witness = Return { e = f e; witness }
@@ -134,9 +135,7 @@ struct
         in
         let visitor =
           object
-            inherit [_] expr_map as super
-            method visit_t () x = x
-            method visit_mutability _ () m = m
+            inherit [_] Visitors.map as super
 
             method visit_expr () e =
               (let* e = Expect.deref e in
@@ -173,9 +172,7 @@ struct
 
         let visitor =
           object
-            inherit [_] expr_map as super
-            method visit_t () x = x
-            method visit_mutability _ () m = m
+            inherit [_] Visitors.map as super
 
             method visit_expr () e =
               try super#visit_expr () e
@@ -183,18 +180,21 @@ struct
                 UB.hax_failure_expr e.span e.typ (context, kind)
                   (UB.LiftToFullAst.expr e)
 
-            method visit_Assign () lhs e witness =
-              let span = e.span in
-              let lhs = UB.expr_of_lhs span lhs in
-              let lhs =
-                lhs |> Place.of_expr
-                |> Option.value_or_thunk ~default:(fun () ->
-                       Error.assertion_failure span
-                       @@ "Place.of_expr: got `None` for: "
-                       ^ Print_rust.pexpr_str (UB.LiftToFullAst.expr lhs))
-                |> place_to_lhs
-              in
-              Assign { lhs; e; witness }
+            method visit_expr' () e =
+              match e with
+              | Assign { lhs; e; witness } ->
+                  let span = e.span in
+                  let lhs = UB.expr_of_lhs span lhs in
+                  let lhs =
+                    lhs |> Place.of_expr
+                    |> Option.value_or_thunk ~default:(fun () ->
+                           Error.assertion_failure span
+                           @@ "Place.of_expr: got `None` for: "
+                           ^ Print_rust.pexpr_str (UB.LiftToFullAst.expr lhs))
+                    |> place_to_lhs
+                  in
+                  Assign { lhs; e; witness }
+              | _ -> super#visit_expr' () e
           end
         in
         visitor#visit_expr ()
@@ -226,9 +226,7 @@ struct
       let items : B.item list = Stdlib.Obj.magic items in
       let visitor =
         object
-          inherit [_] B.item_map as super
-          method visit_t () x = x
-          method visit_mutability _ () m = m
+          inherit [_] BVisitors.map as super
 
           method visit_impl_item' () item' =
             (match item' with

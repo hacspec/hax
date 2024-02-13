@@ -32,7 +32,6 @@
         ppx_sexp_conv
         ppx_compare
         ppx_hash
-        visitors
         ppx_deriving
         cmdliner
         angstrom
