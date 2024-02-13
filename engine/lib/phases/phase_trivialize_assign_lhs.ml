@@ -73,7 +73,7 @@ module%inlined_contents Make (F : Features.T) = struct
                 Rust_primitives__hax__monomorphized_update_at__update_at_range_full
             | _ -> Rust_primitives__hax__update_at
           in
-          let rhs = UB.call update_at [ lhs; dexpr index; rhs ] span lhs.typ in
+          let rhs = UB.Construct.Expr.app update_at [ lhs; dexpr index; rhs ] span lhs.typ in
           updater_of_lhs e rhs span
       | LhsArbitraryExpr _ -> Error.raise { kind = ArbitraryLHS; span }
 
@@ -86,7 +86,7 @@ module%inlined_contents Make (F : Features.T) = struct
           {
             e = Assign { lhs; e; witness };
             span = expr.span;
-            typ = UB.unit_typ;
+            typ = UB.Construct.Ty.unit;
           }
       | [%inline_arms "dexpr'.*" - Assign] ->
           map (fun e -> B.{ e; typ = dty expr.span expr.typ; span = expr.span })

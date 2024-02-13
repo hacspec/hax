@@ -46,7 +46,7 @@ struct
         (Place.t, A.expr) Either.t option =
       let e = UA.Mappers.normalize_borrow_mut#visit_expr () e in
       let e = UA.remove_unsize e in
-      let* e = UA.Expect.mut_borrow e in
+      let* e = UA.Destruct.Expr.mut_borrow e in
       Option.some
       @@
       match
@@ -103,7 +103,7 @@ struct
          type, but sometimes `_otype` is less precise (i.e. an associated
          type while a concrete type is available) *)
       let arg_types, _otype =
-        UA.Expect.arrow f.typ
+        UA.Destruct.Ty.arrow f.typ
         |> Option.value_or_thunk ~default:(fun _ ->
                Error.assertion_failure span "expected an arrow type here")
       in
@@ -116,7 +116,7 @@ struct
         | Ok inputs -> inputs
         | _ -> Error.assertion_failure span "application: bad arity")
         |> List.map ~f:(fun (typ, (arg : A.expr)) ->
-               if UA.Expect.mut_ref typ |> Option.is_some then
+               if UA.Destruct.Ty.mut_ref typ |> Option.is_some then
                  (* the argument of the function is mutable *)
                  let v =
                    expect_mut_borrow_of_place_or_pure_expr arg
@@ -181,16 +181,16 @@ struct
           let otype = dty f.span otype in
           let pat =
             let out =
-              if UB.is_unit_typ otype then []
-              else [ UB.make_var_pat out_var otype f.span ]
+              if UB.Destruct.Ty.unit otype then []
+              else [ UB.Construct.Pat.var out_var otype f.span ]
             in
             List.map
               ~f:(function
-                | Some (var, _), (ty, span) -> UB.make_var_pat var ty span
-                | None, (ty, span) -> UB.make_wild_pat ty span)
+                | Some (var, _), (ty, span) -> UB.Construct.Pat.var var ty span
+                | None, (ty, span) -> UB.Construct.Pat.wild ty span)
               mutargs
             @ out
-            |> UB.make_tuple_pat
+            |> UB.Construct.Pat.tuple
           in
           let f_call =
             let f : B.expr =
@@ -222,22 +222,22 @@ struct
             |> List.map ~f:(fun ((var, lhs), (typ, span)) ->
                    let e = B.{ e = LocalVar var; span; typ } in
                    let witness = Features.On.mutable_variable in
-                   B.{ e = Assign { lhs; e; witness }; span; typ = UB.unit_typ })
+                   B.{ e = Assign { lhs; e; witness }; span; typ = UB.Construct.Ty.unit })
           in
           (* TODO: this should be greatly simplified when `lhs` type will accept tuples (issue #222) *)
           match assigns with
           | [ { e = Assign { lhs; witness; _ }; span; typ } ]
-            when UB.is_unit_typ otype ->
+            when UB.Destruct.Ty.unit otype ->
               { e = Assign { lhs; e = f_call; witness }; span; typ }
           | _ ->
               let body =
                 let init =
-                  if UB.is_unit_typ otype then UB.unit_expr f.span
+                  if UB.Destruct.Ty.unit otype then UB.Construct.Expr.unit f.span
                   else B.{ typ = otype; span = f.span; e = LocalVar out_var }
                 in
-                List.fold_right ~init ~f:UB.make_seq assigns
+                List.fold_right ~init ~f:UB.Construct.Expr.seq assigns
               in
-              UB.make_let pat f_call body)
+              UB.Construct.Expr.let_ pat f_call body)
 
     and dexpr' (span : span) (e : A.expr') : B.expr' =
       match e with

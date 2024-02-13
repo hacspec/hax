@@ -164,7 +164,7 @@ module%inlined_contents Make (F : Features.T) = struct
         ~f:(fun (y, count) (name, body) ->
           let items, count = analyse_function_body body count in
           (y @ [ (name, items) ], count))
-        (List.concat_map ~f:U.functions_of_item items)
+        (List.concat_map ~f:U.Destruct.Item.functions items)
     in
     let mut_map (* Concrete_ident *) :
         (Local_ident.t list * (U.TypedLocalIdent.t * id_order) list)

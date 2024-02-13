@@ -234,7 +234,7 @@ module Make (F : Features.T) = struct
           print#with_span ~span (fun _ ->
               try print#expr_unwrapped ctx e
               with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
-                U.hax_failure_expr span e.typ (context, kind)
+                U.Construct.Expr.hax_failure span e.typ (context, kind)
                   (U.LiftToFullAst.expr e)
                 (* TODO: if the printer is extremely broken, this results in a stack overflow *)
                 |> print#expr ctx)

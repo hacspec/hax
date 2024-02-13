@@ -102,10 +102,10 @@ struct
                 {
                   monadic = None;
                   lhs =
-                    h UB.make_tuple_pat (dpat lhs)
-                      (UB.make_var_pat var (dty span typ) span);
+                    h UB.Construct.Pat.tuple (dpat lhs)
+                      (UB.Construct.Pat.var var (dty span typ) span);
                   rhs =
-                    h (UB.make_tuple_expr ~span) (UB.unit_expr span)
+                    h (UB.Construct.Expr.tuple ~span) (UB.Construct.Expr.unit span)
                       (dexpr_s
                          { s with expr_level = []; drop_expr = false }
                          value);
@@ -123,14 +123,14 @@ struct
             |> List.map ~f:(fun (i, t) -> (i, dty span t))
           in
           let vars_pat =
-            List.map ~f:(fun (i, t) -> UB.make_var_pat i t span) rhs_vars
-            |> UB.make_tuple_pat
+            List.map ~f:(fun (i, t) -> UB.Construct.Pat.var i t span) rhs_vars
+            |> UB.Construct.Pat.tuple
           in
           let lhs = dpat lhs in
           let lhs' =
             if List.is_empty rhs_vars then lhs
             else if drop_expr then vars_pat
-            else UB.make_tuple_pat [ vars_pat; lhs ]
+            else UB.Construct.Pat.tuple [ vars_pat; lhs ]
           in
           let body = dexpr_same body in
           {
@@ -155,10 +155,10 @@ struct
               s.expr_level
           in
           let vars =
-            match vars with [ v ] -> v | _ -> UB.make_tuple_expr ~span vars
+            match vars with [ v ] -> v | _ -> UB.Construct.Expr.tuple ~span vars
           in
           if s.drop_expr then vars
-          else UB.make_tuple_expr ~span [ vars; UB.unit_expr span ]
+          else UB.Construct.Expr.tuple ~span [ vars; UB.Construct.Expr.unit span ]
       | Assign _ -> .
       | Closure { params; body; captures } ->
           let observable_mutations =
@@ -208,7 +208,7 @@ struct
       | If { cond; then_; else_ } ->
           let then_ = dexpr_same then_ in
           let else_ =
-            Option.value ~default:(UA.unit_expr expr.span) else_
+            Option.value ~default:(UA.Construct.Expr.unit expr.span) else_
             |> dexpr_same |> Option.some
           in
           let cond =
@@ -223,7 +223,7 @@ struct
             List.map ~f:darm arms
           in
           let typ =
-            match arms with [] -> UB.never_typ | hd :: _ -> hd.arm.body.typ
+            match arms with [] -> UB.Construct.Ty.never | hd :: _ -> hd.arm.body.typ
           in
           let scrutinee =
             dexpr_s { s with expr_level = []; drop_expr = false } scrutinee
@@ -265,15 +265,15 @@ struct
               Some
                 (let bpat' =
                    List.map
-                     ~f:(fun (i, t) -> UB.make_var_pat i t span)
+                     ~f:(fun (i, t) -> UB.Construct.Pat.var i t span)
                      observable_mutations
-                   |> UB.make_tuple_pat
+                   |> UB.Construct.Pat.tuple
                  in
                  let init' =
                    List.map
                      ~f:(fun (i, typ) : B.expr -> { e = LocalVar i; typ; span })
                      observable_mutations
-                   |> UB.make_tuple_expr ~span
+                   |> UB.Construct.Expr.tuple ~span
                  in
                  let witness = Features.On.state_passing_loop in
                  match state with
@@ -281,9 +281,9 @@ struct
                  | Some { init; bpat; _ } ->
                      {
                        init =
-                         UB.make_tuple_expr ~span
+                         UB.Construct.Expr.tuple ~span
                            [ init'; dexpr_s empty_s init ];
-                       bpat = UB.make_tuple_pat [ bpat'; dpat bpat ];
+                       bpat = UB.Construct.Pat.tuple [ bpat'; dpat bpat ];
                        witness;
                      })
           in
@@ -293,22 +293,22 @@ struct
           in
           let body = dexpr_s s body in
           (* we deal with a for loop: this is always a unit expression (i.e. no [break foo] with [foo] non-unit allowed) *)
-          let typ = List.map ~f:snd observable_mutations |> UB.make_tuple_typ in
+          let typ = List.map ~f:snd observable_mutations |> UB.Construct.Ty.tuple in
           let loop : B.expr =
             { e = Loop { body; kind; state; label; witness }; typ; span }
           in
           if adapt && not (List.is_empty variables_to_output) then
             (* here, we need to introduce the shadowings as bindings *)
             let out =
-              UB.make_tuple_expr ~span
+              UB.Construct.Expr.tuple ~span
               @@ List.map
                    ~f:(fun (ident, typ) -> B.{ e = LocalVar ident; typ; span })
                    variables_to_output
             in
             let lhs =
-              UB.make_tuple_pat
+              UB.Construct.Pat.tuple
               @@ List.map
-                   ~f:(fun (ident, typ) -> UB.make_var_pat ident typ span)
+                   ~f:(fun (ident, typ) -> UB.Construct.Pat.var ident typ span)
                    observable_mutations
             in
             B.
@@ -333,7 +333,7 @@ struct
                       ~f:(fun (i, typ) : B.expr ->
                         { e = LocalVar i; typ; span })
                       s.expr_level
-                    |> UB.make_tuple_expr ~span
+                    |> UB.Construct.Expr.tuple ~span
                   in
                   if s.drop_expr then
                     let effect_e' =
@@ -347,12 +347,12 @@ struct
                           Let
                             {
                               monadic = None;
-                              lhs = UB.make_wild_pat e'.typ e'.span;
+                              lhs = UB.Construct.Pat.wild e'.typ e'.span;
                               rhs = e';
                               body = vars;
                             };
                       }
-                  else UB.make_tuple_expr ~span [ vars; e' ])
+                  else UB.Construct.Expr.tuple ~span [ vars; e' ])
 
     and dexpr_unwrapped e = dexpr_s Instructions.zero e
       [@@inline_ands bindings_of dexpr - dexpr']

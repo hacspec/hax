@@ -16,7 +16,7 @@ module type T = sig
   module U : sig
     module Mappers : sig
       val rename_global_idents_item :
-        (Ast_utils.visit_level -> global_ident -> global_ident) ->
+        (Ast_utils_browse.visit_level -> global_ident -> global_ident) ->
         AST.item ->
         AST.item
     end

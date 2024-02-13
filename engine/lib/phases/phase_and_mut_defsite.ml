@@ -47,7 +47,7 @@ struct
 
       let expect_mut_ref_param (param : param) :
           (local_ident * ty * span) option =
-        let* typ = Expect.mut_ref param.typ in
+        let* typ = Destruct.Ty.mut_ref param.typ in
         match param.pat.p with
         | PBinding
             { mut = Immutable; mode = ByValue; var; typ = _; subpat = None } ->
@@ -78,9 +78,9 @@ struct
             in
             let output_components =
               List.map ~f:snd3 and_muts
-              @ if UB.is_unit_typ output then [] else [ output ]
+              @ if UB.Destruct.Ty.unit output then [] else [ output ]
             in
-            let output = UB.make_tuple_typ output_components in
+            let output = UB.Construct.Ty.tuple output_components in
             Some (params, output, and_muts)
 
       (* visit an expression and replace all `Return e` nodes by `Return (f e)` *)
@@ -105,7 +105,7 @@ struct
           match e.e with
           | GlobalVar (`TupleCons 0) -> e
           | _ ->
-              let lhs = UB.make_var_pat var e.typ e.span in
+              let lhs = UB.Construct.Pat.var var e.typ e.span in
               let rhs = e in
               let body = { e with e = LocalVar var } in
               { body with e = Let { monadic = None; lhs; rhs; body } }
@@ -124,10 +124,10 @@ struct
           let* var = expect_in_vars_local_var e in
           (* var is supposed to be typed `&mut _` *)
           let typ =
-            Expect.mut_ref e.typ
+            Destruct.Ty.mut_ref e.typ
             |> Option.value_or_thunk ~default:(fun () ->
                    Error.assertion_failure e.span
-                   @@ "Expect.mut_ref: got `None`")
+                   @@ "Destruct.Ty.mut_ref: got `None`")
           in
           (* we reconstruct `e` to type it correctly *)
           Some { e = LocalVar var; typ; span = e.span }
@@ -139,7 +139,7 @@ struct
             method visit_mutability _ () m = m
 
             method visit_expr () e =
-              (let* e = Expect.deref e in
+              (let* e = Destruct.Expr.deref e in
                retyped_local_var_in_vars e)
               <|?> (fun _ -> retyped_local_var_in_vars e)
               |> Option.value_or_thunk ~default:(fun _ -> super#visit_expr () e)
@@ -180,7 +180,7 @@ struct
             method visit_expr () e =
               try super#visit_expr () e
               with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
-                UB.hax_failure_expr e.span e.typ (context, kind)
+                UB.Construct.Expr.hax_failure e.span e.typ (context, kind)
                   (UB.LiftToFullAst.expr e)
 
             method visit_Assign () lhs e witness =
@@ -209,8 +209,8 @@ struct
             vars
         in
         let f (e : B.expr) : B.expr =
-          UB.make_tuple_expr ~span:e.span
-            (vars @ if UB.is_unit_typ e.typ then [] else [ e ])
+          UB.Construct.Expr.tuple ~span:e.span
+            (vars @ if UB.Destruct.Ty.unit e.typ then [] else [ e ])
         in
         let body =
           body |> mutref_to_mut_expr idents |> convert_lhs |> map_returns ~f
@@ -250,7 +250,7 @@ struct
                   let params =
                     List.map
                       ~f:(fun typ ->
-                        let pat = UB.make_var_pat var typ span in
+                        let pat = UB.Construct.Pat.var var typ span in
                         (* let pat : B.pat = { typ; p; span } in *)
                         B.{ pat; typ; typ_span = None; attrs = [] })
                       inputs
@@ -261,7 +261,7 @@ struct
                         e =
                           (* this is wrongly typed, though it's fine,
                              we throw this away before returning *)
-                          (UB.unit_expr span).e;
+                          (UB.Construct.Expr.unit span).e;
                         typ = output;
                         span;
                       }
