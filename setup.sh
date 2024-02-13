@@ -47,7 +47,7 @@ install_rust_binaries() {
     for i in driver subcommands ../engine/names/extract; do
         (
             set -x
-            cargo install --force --path "cli/$i"
+            cargo install --locked --force --path "cli/$i"
         )
     done
 }
