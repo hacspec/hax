@@ -529,6 +529,22 @@ module Print = struct
 
       method ty_app f args = print#concrete_ident f ^^ print#generic_values args
 
+      method generic_arg_n_tuple n args =
+        string "tuple" ^^ OCaml.int n ^^ underscore
+        ^^ separate_map underscore print#generic_value args
+
+      method ty_at : Generic_printer_base.ast_position -> ty fn =
+        fun position ->
+          let otherwise = print#par_state position |> print#ty in
+          match position with
+          | GenericValue_GType -> (
+              fun ty ->
+                match ty with
+                | TApp { ident = `TupleType n; args } ->
+                    print#generic_arg_n_tuple n args
+                | _ -> otherwise ty)
+          | _ -> otherwise
+
       method ty : Generic_printer_base.par_state -> ty fn =
         fun ctx ty ->
           match ty with
