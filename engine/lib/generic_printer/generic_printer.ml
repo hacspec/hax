@@ -265,7 +265,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
             f ^^ iblock parens args
 
         method doc_construct_tuple : document list fn =
-          separate comma >> iblock parens
+          separate (comma ^^ break 1) >> iblock parens
 
         method expr_construct_tuple : expr list fn =
           List.map ~f:(print#expr_at Expr_ConstructTuple)
