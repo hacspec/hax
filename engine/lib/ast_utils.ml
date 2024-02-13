@@ -201,18 +201,19 @@ module Make (F : Features.T) = struct
 
     let drop_bodies =
       object
-        inherit [_] item_map as _super
-        method visit_t () x = x
-        method visit_mutability _ () m = m
+        inherit [_] Visitors.map as super
 
-        method! visit_Fn () name generics body params =
-          Fn
-            {
-              name;
-              generics;
-              body = { body with e = GlobalVar (`TupleCons 0) };
-              params;
-            }
+        method! visit_item' () item' =
+          match item' with
+          | Fn { name; generics; body; params } ->
+              Fn
+                {
+                  name;
+                  generics;
+                  body = { body with e = GlobalVar (`TupleCons 0) };
+                  params;
+                }
+          | _ -> super#visit_item' () item'
       end
 
     let rename_local_idents (f : local_ident -> local_ident) =
