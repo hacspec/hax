@@ -284,7 +284,7 @@ module Print = struct
         fun ctx ->
           let wrap_parens =
             group
-            >> match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock braces
+            >> match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock parens
           in
           fun pat ->
             match pat with
@@ -303,7 +303,7 @@ module Print = struct
         fun ctx ->
           let wrap_parens =
             group
-            >> match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock braces
+            >> match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock parens
           in
           function
           | PBinding { mut; mode; var; typ; subpat } ->
@@ -342,7 +342,7 @@ module Print = struct
         fun ctx e ->
           let wrap_parens =
             group
-            >> match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock braces
+            >> match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock parens
           in
           match e with
           (* Translate known functions *)
@@ -398,6 +398,13 @@ module Print = struct
               | Some else_ ->
                   if_then ^^ break 1 ^^ string "else" ^^ space
                   ^^ (print#expr_at Expr_If_else else_ |> iblock parens))
+              |> wrap_parens
+          | Let { monadic; lhs; rhs; body } ->
+              (Option.map
+                 ~f:(fun monad -> print#expr_monadic_let ~monad)
+                 monadic
+              |> Option.value ~default:print#expr_let)
+                ~lhs ~rhs body
               |> wrap_parens
           | _ -> super#expr' ctx e
 
