@@ -274,6 +274,11 @@ module Print = struct
 
       method ty_bool = string "bool"
       method ty_int _ = string "nat"
+      val mutable wildcard_index = 0
+
+      method wildcard =
+        wildcard_index <- wildcard_index + 1;
+        string "wildcard" ^^ OCaml.int wildcard_index
 
       method pat' : Generic_printer_base.par_state -> pat' fn =
         fun ctx ->
@@ -289,6 +294,9 @@ module Print = struct
                 with
                 | Some (_, translation) -> translation args
                 | None -> super#pat' ctx pat)
+            | PWild ->
+                print#wildcard
+                (* NOTE: Wildcard translation without collisions? *)
             | _ -> super#pat' ctx pat
 
       method tuple_elem_pat' : Generic_printer_base.par_state -> pat' fn =
