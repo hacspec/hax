@@ -3,10 +3,11 @@ open! Ast
 open PPrint
 
 (** Generic printer for the {!module:Ast} ASTs. It uses the [PPrint]
-library, and additionaly computes {!Annotation.t}.  *)
+library, and additionally computes {!Annotation.t}.  *)
 
-(** Identifies a position in the AST. This is useful for figuring out
-wether we should wrap a chunk of AST in parenthesis. or not *)
+(** Identifies a position in the AST. This is useful for figuring out wether we
+    should wrap a chunk of AST in parenthesis, or not, or for implementing
+    special treatment of some sub-trees if they occur in a certain context. *)
 type ast_position =
   | GenericValue_GType
   | GenericValue_GConst
@@ -68,6 +69,8 @@ type annot_str = string * Annotation.t list [@@deriving show, yojson, eq]
 ({!NeedsPar}) or not ({!AlreadyPar})? *)
 type par_state = NeedsPar | AlreadyPar
 
+(** The context of a literal in the AST, does it appear in a pattern ({!Pat}) or
+  in an expression ({!Expr})?*)
 type literal_ctx = Pat | Expr
 
 module Make (F : Features.T) = struct
@@ -108,6 +111,10 @@ module Make (F : Features.T) = struct
           method compact : output -> unit = fun o -> compact o doc
         end
 
+      (** Print a concrete identifier.
+
+      Differentiates between encounters of the identifier in its own namespace
+      or a foreign namespace.*)
       method concrete_ident : concrete_ident fn =
         fun id ->
           let current_ns = print#get_current_namespace () in
@@ -253,7 +260,10 @@ module Make (F : Features.T) = struct
             make_hax_error_item i.span i.ident msg |> print#item
 
       method items : item list fn = separate_map (twice hardline) print#item
+      (** Print given list of items, separating them by two newlines each.*)
+
       method attrs : attrs fn = separate_map hardline print#attr
+      (** Print given list of attributes, separating them by one newline each.*)
     end
 
   type print_object =
@@ -273,6 +283,7 @@ module Make (F : Features.T) = struct
       method printer_name : string
       method get_span_data : unit -> Annotation.t list
 
+      (** The namespace a concrete identifier was defined in. *)
       method namespace_of_concrete_ident :
         concrete_ident -> string * string list
 
