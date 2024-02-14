@@ -199,6 +199,23 @@ module Make (F : Features.T) = struct
           | _ -> super#visit_impl_expr s ie
       end
 
+    let drop_bodies =
+      object
+        inherit [_] Visitors.map as super
+
+        method! visit_item' () item' =
+          match item' with
+          | Fn { name; generics; body; params } ->
+              Fn
+                {
+                  name;
+                  generics;
+                  body = { body with e = GlobalVar (`TupleCons 0) };
+                  params;
+                }
+          | _ -> super#visit_item' () item'
+      end
+
     let rename_local_idents (f : local_ident -> local_ident) =
       object
         inherit [_] Visitors.map as _super
@@ -540,13 +557,11 @@ module Make (F : Features.T) = struct
   end
 
   (** Produces a local identifier which is locally fresh **with respect
-      to expressions {exprs}**. *)
-  let fresh_local_ident_in_expr (exprs : expr list) (prefix : string) :
+      to variables {vars}**. *)
+  let fresh_local_ident_in (vars : local_ident list) (prefix : string) :
       Local_ident.t =
     let free_suffix =
-      List.map ~f:(Reducers.collect_local_idents#visit_expr ()) exprs
-      |> Set.union_list (module Local_ident)
-      |> Set.to_list
+      vars
       |> List.filter_map ~f:(fun ({ name; _ } : local_ident) ->
              String.chop_prefix ~prefix name)
       |> List.map ~f:(function "" -> "0" | s -> s)
@@ -563,6 +578,16 @@ module Make (F : Features.T) = struct
         (* TODO: freshness is local and name-only here... *)
         Local_ident.mk_id Expr (-1);
     }
+
+  (** Produces a local identifier which is locally fresh **with respect
+      to expressions {exprs}**. *)
+  let fresh_local_ident_in_expr (exprs : expr list) (prefix : string) :
+      Local_ident.t =
+    fresh_local_ident_in
+      (List.map ~f:(Reducers.collect_local_idents#visit_expr ()) exprs
+      |> Set.union_list (module Local_ident)
+      |> Set.to_list)
+      prefix
 
   let never_typ : ty =
     let ident =

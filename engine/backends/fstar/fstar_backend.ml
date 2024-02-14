@@ -1187,7 +1187,7 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
   let mk_intf = if interface_mode then fun i -> `Intf i else fun i -> `Impl i in
   Print.pitem item
   |> (match interface_mode' with
-     | Types.Included { strict = true } ->
+     | Types.Included None' ->
          List.filter ~f:(function `Impl _ -> false | _ -> true)
      | _ -> Fn.id)
   |> List.concat_map ~f:(function
