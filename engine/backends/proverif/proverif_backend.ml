@@ -300,8 +300,13 @@ module Make (Options : OPTS) : MAKE = struct
           match arm_pat with
           | { p = PWild; _ } -> body
           | _ ->
+              let pat =
+                match arm_pat with
+                | { p = PConstant { lit } } ->
+                    iblock parens (string "=" ^^ print#literal Pat lit)
+                | _ -> print#pat_at Arm_pat arm_pat |> group
+              in
               let scrutinee = print#expr_at Expr_Match_scrutinee scrutinee in
-              let pat = print#pat_at Arm_pat arm_pat |> group in
               string "let" ^^ space ^^ pat ^^ string " = " ^^ scrutinee
               ^^ string " in " ^^ body
 
@@ -322,6 +327,7 @@ module Make (Options : OPTS) : MAKE = struct
             in
             fun pat ->
               match pat with
+              | PConstant { lit } -> string "=" ^^ print#literal Pat lit
               | PConstruct { name; args } -> (
                   match
                     translate_known_name name ~dict:library_constructor_patterns
@@ -438,7 +444,7 @@ module Make (Options : OPTS) : MAKE = struct
                 string "Ok"
                 ^^ iblock parens
                      (inner_expr_type_doc ^^ string "_to_bitstring"
-                    ^^ iblock parens inner_expr_doc)
+                     ^^ iblock parens inner_expr_doc)
             | Construct { constructor; _ }
               when Global_ident.eq_name Core__result__Result__Err constructor ->
                 string "Err()"
