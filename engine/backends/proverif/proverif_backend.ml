@@ -359,7 +359,7 @@ module Print = struct
                       print#expr NeedsPar (List.hd_exn args)
                       ^^ space ^^ string "||" ^^ space
                       ^^ print#expr NeedsPar (List.nth_exn args 1)
-                  | Cast -> string "todo_cast_as"
+                  | Cast -> print#expr NeedsPar (List.hd_exn args)
                   | _ -> empty)
               | _ -> (
                   match translate_known_name name ~dict:library_functions with
