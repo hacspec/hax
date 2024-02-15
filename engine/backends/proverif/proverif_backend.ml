@@ -115,6 +115,7 @@ module Print = struct
   let library_functions :
       (Concrete_ident_generated.name * (AST.expr list -> document)) list =
     [ (* (\* Core dependencies *\) *)
+      (Rust_primitives__hax__never_to_any, fun _ -> string "construct_fail()")
       (* (Alloc__vec__from_elem, fun args -> string "PLACEHOLDER_library_function"); *)
       (* ( Alloc__slice__Impl__to_vec, *)
       (*   fun args -> string "PLACEHOLDER_library_function" ); *)
