@@ -721,9 +721,11 @@ module Make (Options : OPTS) : MAKE = struct
     let preamble items =
       "channel c.\n\
        fun int2bitstring(nat): bitstring.\n\
-       type err.\n\
-       fun construct_fail() : err\n\
-       reduc construct_fail() = fail.\n"
+       fun construct_fail() : bitstring\n\
+       reduc construct_fail() = fail.\n\n\
+      \       const empty: bitstring.\n\n\
+      \       type unimplemented.\n\n\
+      \       const Unimplemented: unimplemented.\n"
 
     let contents items = ""
   end)
