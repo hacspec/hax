@@ -396,7 +396,7 @@ module Print = struct
               }
           (*[@ocamlformat "disable"]*)
             when Global_ident.eq_name Core__ops__try_trait__Try__branch n ->
-              super#expr' ctx expr.e
+              print#expr' ctx expr.e
           | Match { scrutinee; arms } ->
               separate_map
                 (hardline ^^ string "else ")
