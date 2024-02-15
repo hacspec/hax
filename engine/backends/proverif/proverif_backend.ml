@@ -732,7 +732,7 @@ module TransformToInputLanguage =
   |> Phases.Drop_blocks
   |> Phases.Drop_references
   |> Phases.Trivialize_assign_lhs
-  |> Side_effect_utils.Hoist
+  (* |> Side_effect_utils.Hoist *)
   |> Phases.Local_mutation
   |> Phases.Reject.Continue
   |> Phases.Reconstruct_question_marks
