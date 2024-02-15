@@ -661,6 +661,15 @@ module Make (Options : OPTS) : MAKE = struct
             | TParam i -> print#local_ident i
             | TInt kind -> print#ty_int kind
             (* Translate known types, no args at the moment *)
+            | TApp { ident; args }
+              when Global_ident.eq_name Alloc__vec__Vec ident ->
+                string "bitstring"
+            | TApp { ident; args }
+              when Global_ident.eq_name Core__option__Option ident ->
+                string "Option"
+            | TApp { ident; args }
+              when Global_ident.eq_name Core__result__Result ident ->
+                string "Result"
             | TApp { ident; args } -> super#ty ctx ty
             (*(
                 match translate_known_name ident ~dict:library_types with
