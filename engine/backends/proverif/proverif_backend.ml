@@ -535,6 +535,10 @@ module Make (Options : OPTS) : MAKE = struct
           in
           match item.v with
           (* `fn`s are transformed into `letfun` process macros. *)
+          | Fn { name; body; params = []; _ } ->
+              string "const" ^^ space ^^ print#concrete_ident name ^^ colon
+              ^^ print#ty_at Item_Fn_body body.typ
+              ^^ dot
           | Fn { name; generics; body; params } ->
               let params_string =
                 iblock parens
