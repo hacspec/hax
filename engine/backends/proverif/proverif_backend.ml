@@ -398,18 +398,25 @@ module Make (Options : OPTS) : MAKE = struct
                     | Cast -> print#expr NeedsPar (List.hd_exn args)
                     | _ -> empty)
                 | _ -> (
-                    match translate_known_name name ~dict:library_functions with
-                    | Some (name, translation) -> translation args
-                    | None -> (
-                        match name with
-                        | `Projector (`Concrete name) ->
-                            print#field_accessor name
-                            ^^ iblock parens
-                                 (separate_map
-                                    (comma ^^ break 1)
-                                    (fun arg -> print#expr AlreadyPar arg)
-                                    args)
-                        | _ -> super#expr' ctx e)))
+                    if
+                      Global_ident.eq_name Core__clone__Clone__clone name
+                      || Global_ident.eq_name Rust_primitives__unsize name
+                    then print#expr ctx (List.hd_exn args)
+                    else
+                      match
+                        translate_known_name name ~dict:library_functions
+                      with
+                      | Some (name, translation) -> translation args
+                      | None -> (
+                          match name with
+                          | `Projector (`Concrete name) ->
+                              print#field_accessor name
+                              ^^ iblock parens
+                                   (separate_map
+                                      (comma ^^ break 1)
+                                      (fun arg -> print#expr AlreadyPar arg)
+                                      args)
+                          | _ -> super#expr' ctx e)))
             | Construct { constructor; fields; _ }
               when Global_ident.eq_name Core__result__Result__Ok constructor ->
                 super#expr' ctx (snd (Option.value_exn (List.hd fields))).e
