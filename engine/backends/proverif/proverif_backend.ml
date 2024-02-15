@@ -546,7 +546,9 @@ module Make (Options : OPTS) : MAKE = struct
           | Fn { name; generics; body; params } ->
               let body =
                 if assume_item then
-                  string "unit (* fill_in_body of type: "
+                  print#ty_at Item_Fn_body body.typ
+                  ^^ string "_default()"
+                  ^^ string "(* fill_in_body of type: "
                   ^^ print#ty_at Item_Fn_body body.typ
                   ^^ string "*)"
                 else print#expr_at Item_Fn_body body
@@ -570,15 +572,23 @@ module Make (Options : OPTS) : MAKE = struct
                 ^^ iblock parens (print#concrete_ident name)
                 ^^ string ": bitstring [typeConverter]."
               in
+              let default_line =
+                string "const " ^^ print#concrete_ident name
+                ^^ string "_default_c" ^^ colon ^^ print#concrete_ident name
+                ^^ dot ^^ hardline ^^ string "letfun "
+                ^^ print#concrete_ident name ^^ string "_default() = "
+                ^^ print#concrete_ident name ^^ string "_default_c" ^^ dot
+              in
               if is_struct then
                 let struct_constructor = List.hd variants in
                 match struct_constructor with
                 | None -> empty
                 | Some constructor ->
-                    type_line ^^ hardline ^^ type_converter_line ^^ hardline
+                    type_line ^^ hardline ^^ type_converter_line ^^ hardline ^^ default_line ^^ hardline
                     ^^ fun_and_reduc name constructor
               else
                 type_line ^^ hardline ^^ type_converter_line ^^ hardline
+                ^^ default_line ^^ hardline
                 ^^ separate_map (hardline ^^ hardline)
                      (fun variant -> fun_and_reduc name variant)
                      variants
@@ -631,21 +641,7 @@ module Make (Options : OPTS) : MAKE = struct
         method ty_app f args =
           print#concrete_ident f ^^ print#generic_values args
 
-        method generic_arg_n_tuple n args =
-          string "tuple" ^^ OCaml.int n ^^ underscore
-          ^^ separate_map underscore print#generic_value args
-
-        method ty_at : Generic_printer_base.ast_position -> ty fn =
-          fun position ->
-            let otherwise = print#par_state position |> print#ty in
-            match position with
-            | GenericValue_GType | Param_typ -> (
-                fun ty ->
-                  match ty with
-                  | TApp { ident = `TupleType n; args } ->
-                      print#generic_arg_n_tuple n args
-                  | _ -> otherwise ty)
-            | _ -> otherwise
+        method ty_tuple _ _ = string "bitstring"
 
         method local_ident e =
           match String.chop_prefix ~prefix:"impl " e.name with
@@ -736,9 +732,12 @@ module Make (Options : OPTS) : MAKE = struct
        fun int2bitstring(nat): bitstring.\n\
        fun construct_fail() : bitstring\n\
        reduc construct_fail() = fail.\n\n\
-      \       const empty: bitstring.\n\n\
-      \       type unimplemented.\n\n\
-      \       const Unimplemented: unimplemented.\n"
+       const empty: bitstring.\n\n\
+       type unimplemented.\n\n\
+       const Unimplemented: unimplemented.\n\n\
+      \       letfun bitstring_default() = empty.\n\n\
+      \       letfun nat_default() = 0.\n\n\
+      \       letfun bool_default() = false.\n"
 
     let contents items = ""
   end)
