@@ -114,6 +114,17 @@ impl NormalizePaths for PathOrDash {
 }
 
 #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
+pub struct ProVerifOptions {
+    #[arg(
+        long,
+        value_parser = parse_inclusion_clause,
+        value_delimiter = ' ',
+        allow_hyphen_values(true)
+    )]
+    assume_items: Vec<InclusionClause>,
+}
+
+#[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
 pub struct FStarOptions {
     /// Set the Z3 per-query resource limit
     #[arg(long, default_value = "15")]
@@ -151,7 +162,7 @@ pub enum Backend {
     /// Use the EasyCrypt backend (warning: work in progress!)
     Easycrypt,
     /// Use the ProVerif backend (warning: work in progress!)
-    ProVerif,
+    ProVerif(ProVerifOptions),
 }
 
 impl fmt::Display for Backend {
@@ -160,7 +171,7 @@ impl fmt::Display for Backend {
             Backend::Fstar(..) => write!(f, "fstar"),
             Backend::Coq => write!(f, "coq"),
             Backend::Easycrypt => write!(f, "easycrypt"),
-            Backend::ProVerif => write!(f, "proverif"),
+            Backend::ProVerif(..) => write!(f, "proverif"),
         }
     }
 }

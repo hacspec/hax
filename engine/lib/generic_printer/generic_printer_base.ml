@@ -111,10 +111,6 @@ module Make (F : Features.T) = struct
           method compact : output -> unit = fun o -> compact o doc
         end
 
-      (** Print a concrete identifier.
-
-      Differentiates between encounters of the identifier in its own namespace
-      or a foreign namespace.*)
       method concrete_ident : concrete_ident fn =
         fun id ->
           let current_ns = print#get_current_namespace () in
@@ -123,6 +119,10 @@ module Make (F : Features.T) = struct
             ~under_current_ns:
               ([%equal: (string * string list) option] current_ns (Some id_ns))
             id
+      (** Print a concrete identifier.
+
+      Differentiates between encounters of the identifier in its own namespace
+      or a foreign namespace.*)
 
       method assertion_failure : 'any. string -> 'any =
         fun details ->
@@ -283,9 +283,9 @@ module Make (F : Features.T) = struct
       method printer_name : string
       method get_span_data : unit -> Annotation.t list
 
-      (** The namespace a concrete identifier was defined in. *)
       method namespace_of_concrete_ident :
         concrete_ident -> string * string list
+      (** The namespace a concrete identifier was defined in. *)
 
       method par_state : ast_position -> par_state
       method concrete_ident' : under_current_ns:bool -> concrete_ident fn
