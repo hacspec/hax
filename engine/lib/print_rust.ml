@@ -101,7 +101,16 @@ module Raw = struct
   let pglobal_ident = pglobal_ident' ""
 
   let plocal_ident span (e : Local_ident.t) : AnnotatedString.t =
-    pure span e.name
+    let name =
+      match String.chop_prefix ~prefix:"impl " e.name with
+      | Some name ->
+          "impl_"
+          ^ String.map
+              ~f:(function 'a' .. 'Z' as letter -> letter | _ -> '_')
+              name
+      | _ -> e.name
+    in
+    pure span name
 
   let dmutability span : _ -> AnnotatedString.t =
     pure span << function Mutable _ -> "mut " | _ -> ""
