@@ -567,7 +567,7 @@ module Print = struct
         fun position ->
           let otherwise = print#par_state position |> print#ty in
           match position with
-          | GenericValue_GType -> (
+          | GenericValue_GType | Param_typ -> (
               fun ty ->
                 match ty with
                 | TApp { ident = `TupleType n; args } ->
