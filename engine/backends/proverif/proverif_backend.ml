@@ -381,8 +381,20 @@ module Make (Options : OPTS) : MAKE = struct
               match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock parens
             in
             match e with
-            | QuestionMark { e; _ } ->
-                string "unwrap_result" ^^ iblock parens (print#expr ctx e)
+            | QuestionMark { e; return_typ; _ } ->
+                let inner_type =
+                  match return_typ with
+                  | TApp { args; _ } ->
+                      let g_type = List.hd_exn args in
+                      print#generic_value g_type
+                in
+                inner_type ^^ string "_from_bitstring"
+                ^^ iblock parens
+                     (string "unwrap_result"
+                     (*^^ iblock parens
+                       inner_type ^^ string "_to_bitstring"*)
+                     ^^ iblock parens (print#expr ctx e))
+            (*  ) *)
             (* Translate known functions *)
             | App { f = { e = GlobalVar name; _ }; args } -> (
                 match name with
@@ -420,10 +432,16 @@ module Make (Options : OPTS) : MAKE = struct
                           | _ -> super#expr' ctx e)))
             | Construct { constructor; fields; _ }
               when Global_ident.eq_name Core__result__Result__Ok constructor ->
-                super#expr' ctx (snd (Option.value_exn (List.hd fields))).e
+                let inner_expr = snd (Option.value_exn (List.hd fields)) in
+                let inner_expr_type_doc = print#ty AlreadyPar inner_expr.typ in
+                let inner_expr_doc = super#expr ctx inner_expr in
+                string "Ok"
+                ^^ iblock parens
+                     (inner_expr_type_doc ^^ string "_to_bitstring"
+                    ^^ iblock parens inner_expr_doc)
             | Construct { constructor; _ }
               when Global_ident.eq_name Core__result__Result__Err constructor ->
-                string "construct_fail()"
+                string "Err()"
             (* Translate known constructors *)
             | Construct { constructor; fields } -> (
                 match
@@ -566,11 +584,17 @@ module Make (Options : OPTS) : MAKE = struct
               let type_line =
                 string "type " ^^ print#concrete_ident name ^^ dot
               in
-              let type_converter_line =
+              let to_bitstring_converter_line =
                 string "fun " ^^ print#concrete_ident name
                 ^^ string "_to_bitstring"
                 ^^ iblock parens (print#concrete_ident name)
                 ^^ string ": bitstring [typeConverter]."
+              in
+              let from_bitstring_converter_line =
+                string "fun " ^^ print#concrete_ident name
+                ^^ string "_from_bitstring(bitstring)"
+                ^^ colon ^^ print#concrete_ident name
+                ^^ string " [typeConverter]" ^^ dot
               in
               let default_line =
                 string "const " ^^ print#concrete_ident name
@@ -584,11 +608,14 @@ module Make (Options : OPTS) : MAKE = struct
                 match struct_constructor with
                 | None -> empty
                 | Some constructor ->
-                    type_line ^^ hardline ^^ type_converter_line ^^ hardline ^^ default_line ^^ hardline
+                    type_line ^^ hardline ^^ to_bitstring_converter_line
+                    ^^ hardline ^^ from_bitstring_converter_line ^^ hardline
+                    ^^ default_line ^^ hardline
                     ^^ fun_and_reduc name constructor
               else
-                type_line ^^ hardline ^^ type_converter_line ^^ hardline
-                ^^ default_line ^^ hardline
+                type_line ^^ hardline ^^ to_bitstring_converter_line ^^ hardline
+                ^^ from_bitstring_converter_line ^^ hardline ^^ default_line
+                ^^ hardline
                 ^^ separate_map (hardline ^^ hardline)
                      (fun variant -> fun_and_reduc name variant)
                      variants
