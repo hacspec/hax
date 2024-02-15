@@ -345,6 +345,7 @@ module Print = struct
             >> match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock parens
           in
           match e with
+          | QuestionMark { e; _ } -> print#expr ctx e
           (* Translate known functions *)
           | App { f = { e = GlobalVar name; _ }; args } -> (
               match name with
