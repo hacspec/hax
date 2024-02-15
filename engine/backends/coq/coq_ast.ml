@@ -82,6 +82,12 @@ functor
         | Variable of pat * int
         | Value of term * bool * int
 
+      and assign_args = {
+        pattern : pat;
+        value : term;
+        value_typ : ty;
+      }
+
       and let_args = {
         pattern : pat;
         mut : bool;
