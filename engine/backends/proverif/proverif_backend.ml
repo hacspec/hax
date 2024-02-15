@@ -575,6 +575,17 @@ module Print = struct
                 | _ -> otherwise ty)
           | _ -> otherwise
 
+      method local_ident e =
+        match String.chop_prefix ~prefix:"impl " e.name with
+        | Some name ->
+            let name =
+              "impl_"
+              ^ String.tr ~target:'+' ~replacement:'_'
+                  (String.tr ~target:' ' ~replacement:'_' name)
+            in
+            string name
+        | _ -> super#local_ident e
+
       method ty : Generic_printer_base.par_state -> ty fn =
         fun ctx ty ->
           match ty with
