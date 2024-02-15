@@ -540,6 +540,13 @@ module Make (Options : OPTS) : MAKE = struct
               ^^ print#ty_at Item_Fn_body body.typ
               ^^ dot
           | Fn { name; generics; body; params } ->
+              let body =
+                if assume_item then
+                  string "unit (* fill_in_body of type: "
+                  ^^ print#ty_at Item_Fn_body body.typ
+                  ^^ string "*)"
+                else print#expr_at Item_Fn_body body
+              in
               let params_string =
                 iblock parens
                   (separate_map (comma ^^ break 1) print#param params)
@@ -547,9 +554,7 @@ module Make (Options : OPTS) : MAKE = struct
               string "letfun" ^^ space
               ^^ align
                    (print#concrete_ident name ^^ params_string ^^ space
-                  ^^ equals ^^ hardline
-                   ^^ print#expr_at Item_Fn_body body
-                   ^^ dot)
+                  ^^ equals ^^ hardline ^^ body ^^ dot)
           (* `struct` definitions are transformed into simple constructors and `reduc`s for accessing fields. *)
           | Type { name; generics; variants; is_struct } ->
               let type_line =
