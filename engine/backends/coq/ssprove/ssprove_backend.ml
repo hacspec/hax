@@ -818,10 +818,14 @@ struct
   end)
 
   type pexpr_arg = { env : LocalIdentOrLisIis.W.t list Map.M(Local_ident).t;
-                     (* local : Local_ident.t; *)
+                     local : string;
                      add_solve : bool; }
-  
-  let rec pty span (t : ty) (* (local : Local_ident.t) *) : SSP.AST.ty =
+
+  and pty_arg = { local: string }
+  and ppat_arg = { local: string }
+  and pgeneric_arg = { local: string }
+
+  let rec pty span (arg : pty_arg) (t : ty) : SSP.AST.ty =
     match t with
     | TBool -> SSP.AST.Bool
     | TChar -> __TODO_ty__ span "char"
@@ -831,41 +835,41 @@ struct
     (* __TODO_ty__ span "str" *)
     (* | TFalse -> __TODO_ty__ span "false" *)
     | TApp { ident = `TupleType 0 as ident; args = [] } -> SSP.AST.Unit
-    | TApp { ident = `TupleType 1; args = [ GType ty ] } -> pty span ty
+    | TApp { ident = `TupleType 1; args = [ GType ty ] } -> pty span arg ty
     | TApp { ident = `TupleType n; args } when n >= 2 ->
-        SSP.AST.Product (args_ty span args)
+        SSP.AST.Product (args_ty span arg args)
     | TApp { ident; args } ->
-        SSP.AST.AppTy (SSP.AST.NameTy (pglobal_ident ident), args_ty span args)
+        SSP.AST.AppTy (SSP.AST.NameTy (pglobal_ident ident), args_ty span arg args)
     | TArrow (inputs, output) ->
-        List.fold_right ~init:(pty span output)
+        List.fold_right ~init:(pty span arg output)
           ~f:(fun x y -> SSP.AST.Arrow (x, y))
-          (List.map ~f:(pty span) inputs)
+          (List.map ~f:(pty span arg) inputs)
     | TFloat _ -> __TODO_ty__ span "pty: Float"
     | TArray { typ; length = { e = Literal (Int { value; _ }) } } ->
-        SSP.AST.ArrayTy (pty span typ, value)
+        SSP.AST.ArrayTy (pty span arg typ, value)
     | TArray { typ; length } ->
         SSP.AST.ArrayTy
-          ( pty span typ,
+          ( pty span arg typ,
             "(" ^ "is_pure" ^ " " ^ "("
             ^ SSP.term_to_string_with_paren
-              (pexpr {env = (Map.empty (module Local_ident)); (* local; *) add_solve = false;} length)
+              (pexpr {env = (Map.empty (module Local_ident)); local = arg.local; add_solve = false;} length)
                 0
             ^ ")" ^ ")" )
         (* TODO: check int.to_string is correct! *)
-    | TSlice { ty; _ } -> SSP.AST.SliceTy (pty span ty)
+    | TSlice { ty; _ } -> SSP.AST.SliceTy (pty span arg ty)
     | TParam i -> SSP.AST.NameTy (plocal_ident i)
     | TAssociatedType { impl; item } -> SSP.AST.NameTy (pconcrete_ident item)
     | TOpaque _ -> __TODO_ty__ span "pty: TAssociatedType/TOpaque"
     | _ -> .
 
-  and args_ty span (args : generic_value list) : SSP.AST.ty list =
+  and args_ty span (arg : pty_arg) (args : generic_value list) : SSP.AST.ty list =
     List.map
       ~f:(function
         | GLifetime { lt; witness } -> __TODO_ty__ span "lifetime"
-        | GType typ -> pty span typ
+        | GType typ -> pty span arg typ
         | GConst { typ; _ } ->
             SSPExtraDefinitions.wrap_type_in_both "(fset [])" "(fset [])"
-              (pty span typ))
+              (pty span arg typ))
       args
   (* match args with *)
   (* | arg :: xs -> *)
@@ -877,11 +881,11 @@ struct
   (*     :: args_ty span xs *)
   (* | [] -> [] *)
 
-  and ppat (p : pat) : SSP.AST.pat =
+  and ppat (arg : ppat_arg) (p : pat) : SSP.AST.pat =
     match p.p with
     | PWild -> SSP.AST.WildPat
     | PAscription { typ; pat } ->
-        SSP.AST.AscriptionPat (ppat pat, pty p.span typ)
+        SSP.AST.AscriptionPat (ppat arg pat, pty p.span { local = arg.local } typ)
     | PBinding
         {
           mut = Immutable;
@@ -901,14 +905,14 @@ struct
           typ = _ (* we skip type annot here *);
         } ->
         SSP.AST.Ident (plocal_ident var) (* TODO Mutable binding ! *)
-    | POr { subpats } -> SSP.AST.DisjunctivePat (List.map ~f:ppat subpats)
+    | POr { subpats } -> SSP.AST.DisjunctivePat (List.map ~f:(ppat arg) subpats)
     | PArray { args } -> __TODO_pat__ p.span "Parray?"
     | PConstruct { name = `TupleCons 0; args = [] } ->
         SSP.AST.WildPat (* UnitPat *)
     | PConstruct { name = `TupleCons 1; args = [ { pat } ] } ->
         __TODO_pat__ p.span "tuple 1"
     | PConstruct { name = `TupleCons n; args } ->
-        SSP.AST.TuplePat (List.map ~f:(fun { pat } -> ppat pat) args)
+        SSP.AST.TuplePat (List.map ~f:(fun { pat } -> ppat arg pat) args)
     (* Record *)
     | PConstruct { name; args; is_record = true } ->
         __TODO_pat__ p.span "record pattern"
@@ -922,7 +926,7 @@ struct
           ( pglobal_ident name,
             match args with
             | [] -> []
-            | _ -> [ SSP.AST.TuplePat (List.map ~f:(fun p -> ppat p.pat) args) ]
+            | _ -> [ SSP.AST.TuplePat (List.map ~f:(fun p -> ppat arg p.pat) args) ]
           )
     | PConstant { lit } -> SSP.AST.Lit (pliteral lit)
     | _ -> .
@@ -975,16 +979,29 @@ struct
           SSP.AST.App
             ( SSP.AST.Var "ret_both",
               [
-                SSP.AST.TypedTerm (SSP.AST.Const (pliteral lit), pty span e.typ);
+                SSP.AST.TypedTerm (SSP.AST.Const (pliteral lit), pty span {local = arg.local} e.typ);
               ] )
       | LocalVar local_ident ->
-        (* SSPExtraDefinitions.getb (Ident (pglobal_ident global_ident)) *)
-        SSP.AST.NameTerm (plocal_ident local_ident)
+        if (match Map.find ctx.analysis_data.mut_var (arg.local) with
+            | Some (l, l2, l3) ->
+              Option.is_some (List.find l (fun x -> String.(plocal_ident x == (plocal_ident local_ident)))) ||
+              Option.is_some (List.find l2 (fun x -> String.(pconcrete_ident x == (plocal_ident local_ident)))) ||
+              Option.is_some (List.find l3 (fun ((x,_),_) -> String.(plocal_ident x == (plocal_ident local_ident))))
+            | _ -> false)
+        then SSPExtraDefinitions.getb (Ident (plocal_ident local_ident))
+        else SSP.AST.NameTerm (plocal_ident local_ident)
       | GlobalVar (`TupleCons 0)
       | Construct { constructor = `TupleCons 0; fields = [] } ->
           SSP.AST.App (SSP.AST.Var "ret_both", [ SSPExtraDefinitions.unit_term ])
       | GlobalVar global_ident ->
-        SSP.AST.Var (pglobal_ident global_ident)
+        if (match Map.find ctx.analysis_data.mut_var (arg.local) with
+            | Some (l, l2, l3) ->
+              Option.is_some (List.find l (fun x -> true (* String.(plocal_ident x == (pglobal_ident global_ident)) *))) ||
+              Option.is_some (List.find l2 (fun x -> String.(pconcrete_ident x == (pglobal_ident global_ident)))) ||
+              Option.is_some (List.find l3 (fun ((x,_),_) -> String.(plocal_ident x == (pglobal_ident global_ident))))
+            | _ -> false)
+        then SSPExtraDefinitions.getb (Ident (pglobal_ident global_ident))
+        else SSP.AST.Var (pglobal_ident global_ident)
       | App
           {
             f = { e = GlobalVar (`Projector (`TupleField (n, len))) };
@@ -1032,7 +1049,7 @@ struct
                ^ Int.to_string (List.length identifiers)
                ^ "*)" ^ "(" ^ lis_str ^ ")")
               ("(" ^ iis_str ^ ")")
-              (pty e.span e.typ) )
+              (pty e.span {local = arg.local} e.typ) )
       | Let { lhs; rhs; body; monadic } ->
           let extra_set, extra_env =
             LocalIdentOrLisIis.analyse_expr ctx.analysis_data.mut_var arg.env rhs
@@ -1058,14 +1075,14 @@ struct
           in
           SSPExtraDefinitions.letb
             {
-              pattern = ppat lhs;
+              pattern = ppat {local = arg.local} lhs;
               mut = is_mutable_pat lhs;
               value = (pexpr { arg with add_solve = false; }) rhs;
               body = (pexpr { arg with env = new_env }) body;
               value_typ =
                 (match monadic with
-                | Some (MException typ, _) -> pty span typ
-                | Some (MResult typ, _) -> pty span typ
+                | Some (MException typ, _) -> pty span {local = arg.local} typ
+                | Some (MResult typ, _) -> pty span {local = arg.local} typ
                 | _ ->
                     SSP.AST.WildTy
                     (* TODO : What should the correct type be here? `lhs.span lhs.typ` *));
@@ -1073,8 +1090,8 @@ struct
                 Option.map
                   ~f:(fun (m, _) ->
                     match m with
-                    | MException typ -> SSP.AST.Exception (pty span typ)
-                    | MResult typ -> SSP.AST.Result (pty span typ)
+                    | MException typ -> SSP.AST.Exception (pty span {local = arg.local} typ)
+                    | MResult typ -> SSP.AST.Result (pty span {local = arg.local} typ)
                     | MOption -> SSP.AST.Option)
                   monadic;
             }
@@ -1107,11 +1124,11 @@ struct
           (* (pexpr env true) body *)
           SSPExtraDefinitions.letb
             {
-              pattern = ppat pat;
+              pattern = ppat {local = arg.local} pat;
               mut = false;
               value = (pexpr { arg with add_solve = false;}) scrutinee;
               body = (pexpr { arg with add_solve = false;}) body;
-              value_typ = pty pat.span pat.typ;
+              value_typ = pty pat.span {local = arg.local} pat.typ;
               monad_typ = None;
             }
       | Match { scrutinee; arms } ->
@@ -1124,7 +1141,7 @@ struct
                       { name; args; is_record = false; is_struct = false } -> (
                       let arg_tuple =
                         SSP.AST.TuplePat
-                          (List.map ~f:(fun p -> ppat p.pat) args)
+                          (List.map ~f:(fun p -> ppat {local = arg.local} p.pat) args)
                       in
                       ( SSP.AST.ConstructorPat
                           ( pglobal_ident name ^ "_case",
@@ -1146,19 +1163,19 @@ struct
                                             SSP.AST.Product
                                               (List.map
                                                  ~f:(fun x ->
-                                                   pty arm_pat.span x.pat.typ)
+                                                   pty arm_pat.span {local = arg.local} x.pat.typ)
                                                  args) );
                                       ] );
                                 body = (pexpr { arg with add_solve = false;}) body;
                                 value_typ =
                                   SSP.AST.Product
                                     (List.map
-                                       ~f:(fun x -> pty arm_pat.span x.pat.typ)
+                                       ~f:(fun x -> pty arm_pat.span {local = arg.local} x.pat.typ)
                                        args);
                                 monad_typ = None;
                               }
                         | _, _ -> (pexpr { arg with add_solve = false;}) body ))
-                  | _ -> (ppat arm_pat, (pexpr { arg with add_solve = false;}) body))
+                  | _ -> (ppat {local = arg.local} arm_pat, (pexpr { arg with add_solve = false;}) body))
                 arms )
       | Ascription { e; typ } -> __TODO_term__ span "asciption"
       | Construct { constructor = `TupleCons 1; fields = [ (_, e) ]; base } ->
@@ -1193,7 +1210,7 @@ struct
               List.map ~f:(snd >>  pexpr arg) fields )
       | Closure { params; body } ->
           SSP.AST.Lambda
-            ( List.map ~f:ppat params,
+            ( List.map ~f:(ppat {local = arg.local}) params,
               (pexpr  { arg with env = (extend_env_with_params arg.env params) }) body )
       | MacroInvokation { macro; args; witness } ->
           Error.raise
@@ -1221,7 +1238,7 @@ struct
           let monadic = None in
           SSPExtraDefinitions.assignb
             {
-              pattern = ppat lhs;
+              pattern = ppat {local = arg.local} lhs;
               value = (pexpr { arg with add_solve = false;}) rhs;
               value_typ = SSP.AST.WildTy;
             }
@@ -1296,9 +1313,10 @@ struct
                       ( SSP.AST.Var "ssp",
                         [
                           SSP.AST.Lambda
-                            ( [ ppat bpat ],
+                            ( [ ppat {local = arg.local} bpat ],
                               both_type_expr
-                                (extend_env arg.env
+                                { arg with
+                                  env = (extend_env arg.env
                                    (Map.of_alist_exn
                                       (module Local_ident)
                                       ([
@@ -1317,8 +1335,10 @@ struct
                                                   ( [ plocal_ident v ^ "!" ],
                                                     [ plocal_ident v ^ "!" ] );
                                               ] ))
-                                          (vars_from_pat bpat))))
-                                true [] body );
+                                          (vars_from_pat bpat))));
+                                  add_solve = true;
+                                }
+                                  [] body );
                         ] ) );
                 (pexpr { arg with add_solve = false;}) init;
               ] )
@@ -1357,13 +1377,13 @@ struct
               [
                 (pexpr { arg with add_solve = false;}) it;
                 SSP.AST.Lambda
-                  ( [ (* SSP.AST.Ident "{L I _ _}";  *) ppat pat ],
+                  ( [ (* SSP.AST.Ident "{L I _ _}";  *) ppat {local = arg.local} pat ],
                     SSP.AST.App
                       ( SSP.AST.Var "ssp",
                         [
                           SSP.AST.Lambda
-                            ( [ ppat bpat ],
-                              both_type_expr new_env true
+                            ( [ ppat {local = arg.local} bpat ],
+                              both_type_expr {arg with env = new_env; add_solve = true}
                                 (extra_set_iter @ extra_set_init)
                                 body );
                         ] ) );
@@ -1428,9 +1448,8 @@ struct
     let lis, iis = (List.concat *** List.concat) (List.unzip data) in
     (identifiers, lis, iis, new_env)
 
-  and both_type_expr (env : LocalIdentOrLisIis.W.t list Map.M(Local_ident).t)
-      (add_solve : bool) (extra_set : LocalIdentOrLisIis.W.t list) (e : expr) =
-    let identifiers, lis, iis, new_env = analyse_env_of_expr env e extra_set in
+  and both_type_expr (arg : pexpr_arg) (extra_set : LocalIdentOrLisIis.W.t list) (e : expr) =
+    let identifiers, lis, iis, new_env = analyse_env_of_expr arg.env e extra_set in
     let mvars_ext_fset_str =
       "fset" ^ " " ^ "["
       ^ String.concat ~sep:";"
@@ -1442,13 +1461,13 @@ struct
       if List.length iis == 0 then "(fset [])" else String.concat ~sep:":|:" iis
     in
     SSP.AST.TypedTerm
-      ( (pexpr {env; add_solve}) e,
+      ( (pexpr arg) e,
         SSPExtraDefinitions.wrap_type_in_both
           ("(*"
           ^ Int.to_string (List.length identifiers)
           ^ "*)" ^ "(" ^ lis_str ^ ")")
           ("(" ^ iis_str ^ ")")
-          (pty e.span e.typ) )
+          (pty e.span {local = arg.local} e.typ) )
 
   and is_mutable_pat (pat : pat) =
     match pat.p with
@@ -1473,35 +1492,35 @@ struct
         (* TODO? *)
     | _ -> .
 
-  let pgeneric_param span : generic_param -> string * SSP.AST.ty = function
+  let pgeneric_param span (arg : pgeneric_arg) : generic_param -> string * SSP.AST.ty = function
     | { ident; kind; _ } -> (
         ( plocal_ident ident,
           match kind with
-          | GPType { default = Some t } -> pty span t
+          | GPType { default = Some t } -> pty span {local = arg.local} t
           | GPConst { typ = t } ->
               SSPExtraDefinitions.wrap_type_in_both "(fset [])" "(fset [])"
-                (pty span t)
+                (pty span {local = arg.local} t)
           | GPType { default = None } -> SSP.AST.WildTy
           | _ ->
               Error.unimplemented ~details:"SSProve: TODO: generic_params" span
         ))
 
-  let pgeneric_param_as_argument span : generic_param -> SSP.AST.argument =
+  let pgeneric_param_as_argument span (arg : pgeneric_arg) : generic_param -> SSP.AST.argument =
     function
     | { ident; kind; _ } ->
         SSP.AST.Implicit
           ( SSP.AST.Ident (plocal_ident ident),
             match kind with
-            | GPType { default = Some t } -> pty span t
+            | GPType { default = Some t } -> pty span {local = arg.local} t
             | GPConst { typ = t } ->
                 SSPExtraDefinitions.wrap_type_in_both "(fset [])" "(fset [])"
-                  (pty span t)
+                  (pty span {local = arg.local} t)
             | GPType { default = None } -> SSP.AST.WildTy
             | _ ->
                 Error.unimplemented
                   ~details:"SSProve: TODO: generic_params_argument" span )
 
-  let pgeneric_constraints_as_argument span :
+  let pgeneric_constraints_as_argument span (arg : pgeneric_arg) :
       generic_constraint -> SSP.AST.argument list = function
     | GCType { bound = { trait; args }; _ } ->
         [
@@ -1511,10 +1530,10 @@ struct
                 ( SSP.AST.NameTy (pconcrete_ident trait),
                   List.map
                     ~f:(function
-                      | GType typ -> pty span typ
+                      | GType typ -> pty span {local = arg.local} typ
                       | GConst { typ } ->
                           SSPExtraDefinitions.wrap_type_in_both "(fset [])"
-                            "(fset [])" (pty span typ)
+                            "(fset [])" (pty span {local = arg.local} typ)
                       | _ ->
                           Error.unimplemented
                             ~details:"SSProve: TODO: generic_params_constraint1"
@@ -1525,10 +1544,10 @@ struct
         Error.unimplemented ~details:"SSProve: TODO: generic_params_constraint2"
           span
 
-  let pgeneric (span : span) (generics : generics) : SSP.AST.argument list =
-    List.map ~f:(pgeneric_param_as_argument span) generics.params
+  let pgeneric (span : span) (arg : pgeneric_arg) (generics : generics) : SSP.AST.argument list =
+    List.map ~f:(pgeneric_param_as_argument span arg) generics.params
     @ List.concat_map
-        ~f:(pgeneric_constraints_as_argument span)
+        ~f:(pgeneric_constraints_as_argument span arg)
         generics.constraints
 
   let rec split_arrow_in_args (a : SSP.AST.ty) : SSP.AST.ty list * SSP.AST.ty =
@@ -1632,45 +1651,45 @@ struct
                  match v with
                  | SSP.AST.Explicit (a, b) -> SSP.AST.Implicit (a, b)
                  | _ -> v)
-               (pgeneric span generics))
+               (pgeneric span {local = pconcrete_ident f_name} generics))
           @ [
               (let args, ret_typ =
                  lift_definition_type_to_both f_name
-                   (pgeneric span generics
+                   (pgeneric span {local = pconcrete_ident f_name} generics
                    @ List.map
                        ~f:(fun { pat; typ; typ_span; attrs } ->
-                         SSP.AST.Explicit (ppat pat, pty span typ))
+                         SSP.AST.Explicit (ppat {local = pconcrete_ident f_name} pat, pty span {local = pconcrete_ident f_name} typ))
                        params)
-                   (pty span body.typ) []
+                   (pty span {local = pconcrete_ident f_name} body.typ) []
                in
                SSP.AST.Equations
                  ( pconcrete_ident f_name,
                    args,
                    (pexpr
-                      {
-                        env = (extend_env_with_params
+                      { env = (extend_env_with_params
                          (Map.empty (module Local_ident))
                          (List.map
                             ~f:(fun { pat; typ; typ_span; attrs } -> pat)
                             params));
+                        local = pconcrete_ident f_name;
                         add_solve = true
                       })
                      body,
                    ret_typ ));
             ]
       | TyAlias { name; generics; ty } ->
-          let g = pgeneric span generics in
+          let g = pgeneric span {local = pconcrete_ident name} generics in
           [
             (if List.is_empty g then
              SSP.AST.Notation
                ( "'" ^ pconcrete_ident name ^ "'",
-                 SSP.AST.Type (pty span ty),
+                 SSP.AST.Type (pty span {local = pconcrete_ident name} ty),
                  None )
             else
               SSP.AST.Definition
                 ( pconcrete_ident name,
                   g,
-                  SSP.AST.Type (pty span ty),
+                  SSP.AST.Type (pty span {local = pconcrete_ident name} ty),
                   SSP.AST.TypeTy ));
           ]
       (* record *)
@@ -1684,7 +1703,7 @@ struct
           [
             SSPExtraDefinitions.updatable_record
               ( pconcrete_ident name,
-                pgeneric span generics,
+                pgeneric span {local = pconcrete_ident name} generics,
                 List.map
                   ~f:(fun (x, y) -> SSP.AST.Named (x, y))
                   (p_record_record span arguments) );
@@ -1703,7 +1722,7 @@ struct
                         with
                        | Some name -> "t_" ^ name
                        | _ -> failwith "Incorrect prefix of record name in enum"),
-                       pgeneric span generics,
+                       pgeneric span {local = pconcrete_ident name} generics,
                        List.map
                          ~f:(fun (x, y) -> SSP.AST.Named (x, y))
                          (p_record_record span arguments) ))
@@ -1711,7 +1730,7 @@ struct
           @ [
               SSPExtraDefinitions.both_enum
                 ( pconcrete_ident name,
-                  pgeneric span generics,
+                  pgeneric span {local = pconcrete_ident name} generics,
                   List.map variants
                     ~f:(fun { name = v_name; arguments; is_record } ->
                       if is_record then
@@ -1733,17 +1752,17 @@ struct
                         | [ (arg_name, arg_ty, attr) ] ->
                             SSP.AST.InductiveCase
                               (* arg_name = ?? *)
-                              (pconcrete_ident v_name, pty span arg_ty)
+                              (pconcrete_ident v_name, pty span {local = pconcrete_ident name} arg_ty)
                         | _ ->
                             SSP.AST.InductiveCase
                               ( pconcrete_ident v_name,
                                 SSP.AST.Product
                                   (List.map
-                                     ~f:((fun (x, y, z) -> y) >> pty span)
+                                     ~f:((fun (x, y, z) -> y) >> pty span {local = pconcrete_ident name})
                                      arguments) )) );
             ]
       | Type { name; generics; variants } ->
-          let g = pgeneric span generics in
+          let g = pgeneric span {local = pconcrete_ident name} generics in
           [
             (if List.is_empty g then
              SSP.AST.Notation
@@ -1965,7 +1984,7 @@ struct
                           wrap_type_in_enumerator
                             (fun (i : int) -> "L" ^ Int.to_string (i + 1))
                             (fun (i : int) -> "I" ^ Int.to_string (i + 1))
-                            (pty x.ti_span fn_ty)
+                            (pty x.ti_span {local = pconcrete_ident name} fn_ty)
                             (if include_extra_loc then [ loc_name ] else [])
                         in
                         (if include_extra_loc then
@@ -2025,14 +2044,14 @@ struct
                      match v with
                      | SSP.AST.Explicit (a, b) -> SSP.AST.Implicit (a, b)
                      | _ -> v)
-                   (pgeneric span generics)))
+                   (pgeneric span {local = pglobal_ident name} generics)))
             items
           @ [
               SSP.AST.ProgramInstance
                 ( pglobal_ident name,
-                  pgeneric span generics,
-                  pty span self_ty,
-                  args_ty span gen_vals,
+                  pgeneric span {local = pglobal_ident name} generics,
+                  pty span {local = pglobal_ident name} self_ty,
+                  args_ty span {local = pglobal_ident name} gen_vals,
                   SSP.AST.InstanceDecls
                     (List.concat_map
                        ~f:(fun x ->
@@ -2072,9 +2091,9 @@ struct
                                     (List.map
                                        ~f:(fun { pat; typ; typ_span; attrs } ->
                                          SSP.AST.Explicit
-                                           (ppat pat, pty span typ))
+                                           (ppat {local = pglobal_ident name} pat, pty span {local = pglobal_ident name} typ))
                                        params)
-                                    (pty span body.typ)
+                                    (pty span {local = pglobal_ident name} body.typ)
                                     (match
                                        Map.find ctx.analysis_data.mut_var
                                          (pconcrete_ident x.ii_ident)
@@ -2088,18 +2107,20 @@ struct
                                   ( pconcrete_ident x.ii_ident,
                                     args,
                                     (pexpr
-                                       {env = (extend_env_with_params
-                                          (Map.empty (module Local_ident))
-                                          (List.map
-                                             ~f:
-                                               (fun {
-                                                      pat;
-                                                      typ;
-                                                      typ_span;
-                                                      attrs;
-                                                    } -> pat)
-                                             params));
-                                       add_solve = true})
+                                       {
+                                         env = (extend_env_with_params
+                                                  (Map.empty (module Local_ident))
+                                                  (List.map
+                                                     ~f:
+                                                       (fun {
+                                                          pat;
+                                                          typ;
+                                                          typ_span;
+                                                          attrs;
+                                                        } -> pat)
+                                                     params));
+                                         local = pglobal_ident name;
+                                         add_solve = true})
                                       body,
                                     ret_typ ));
                              ]
@@ -2108,12 +2129,12 @@ struct
                                SSP.AST.LetDef
                                  ( pconcrete_ident x.ii_ident,
                                    [],
-                                   SSP.AST.Type (pty span ty),
+                                   SSP.AST.Type (pty span {local = pglobal_ident name} ty),
                                    SSP.AST.TypeTy );
                              ])
                        items) );
             ]
-          @ [ SSP.AST.HintUnfold (pglobal_ident name, Some (pty span self_ty)) ]
+          @ [ SSP.AST.HintUnfold (pglobal_ident name, Some (pty span {local = pglobal_ident name} self_ty)) ]
     in
     decls_from_item
 
@@ -2127,7 +2148,7 @@ struct
             SSP.AST.AppFormat
               ( [ "("; ";"; "%nat)" ],
                 [
-                  SSP.AST.Typing (pty (Span.dummy ()) x_ty, 0);
+                  SSP.AST.Typing (pty (Span.dummy ()) {local = "TODO" (* TODO: correct local *)} x_ty, 0);
                   SSP.AST.Value (SSP.AST.Literal (Int.to_string x_n), false, 0);
                 ] ),
             SSP.AST.NameTy "Location" ))
@@ -2224,17 +2245,17 @@ struct
           match arguments with
           | [] -> SSP.AST.BaseCase name
           | [ (arg_name, arg_ty, _arg_attrs) ] ->
-              SSP.AST.InductiveCase (name, pty span arg_ty)
+              SSP.AST.InductiveCase (name, pty span {local = "TODO"} arg_ty)
           | _ ->
               SSP.AST.InductiveCase
                 ( name,
-                  SSP.AST.Product (List.map ~f:(snd3 >> pty span) arguments) ))
+                  SSP.AST.Product (List.map ~f:(snd3 >> pty span {local = "TODO"}) arguments) ))
 
   and p_record span variants parrent_name : (string * SSP.AST.ty) list =
     List.map
       ~f:(function
         | { name; arguments = [ (arg_name, arg_ty, _arg_attrs) ] } ->
-            (pconcrete_ident arg_name, pty span arg_ty)
+            (pconcrete_ident arg_name, pty span {local = "TODO"} arg_ty)
         | { name; arguments = [] } -> ("TODO FIELD?", __TODO_ty__ span "TODO")
         | { name; arguments } ->
             ( pconcrete_ident name,
@@ -2246,13 +2267,14 @@ struct
     List.map
       ~f:(function
         | arg_name, arg_ty, _arg_attrs ->
-            (pconcrete_ident arg_name, pty span arg_ty))
+            (pconcrete_ident arg_name, pty span {local = "TODO"} arg_ty))
       arguments
 end
 
 module type S = sig
+  type pgeneric_arg = { local : string }
   val pitem : item -> SSP.AST.decl list
-  val pgeneric : span -> generics -> SSP.AST.argument list
+  val pgeneric : span -> pgeneric_arg -> generics -> SSP.AST.argument list
 end
 
 let make ctx =
@@ -2401,7 +2423,7 @@ module ConCert = struct
                     @ [
                         SSP.AST.Definition
                           ( "receive_" ^ contract ^ "_" ^ name,
-                            Print.pgeneric span generics
+                            Print.pgeneric span {local = name} generics
                             @ List.map
                                 ~f:(fun x ->
                                   SSP.AST.Implicit
