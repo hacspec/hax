@@ -57,12 +57,8 @@ From Hacspec Require Import ConCertLib. Export ConCertLib.
 Definition Ok {a b : choice_type} : both a -> both (result b a) := lift1_both Ok.
 Definition Err {a b : choice_type} : both b -> both (result b a) := lift1_both Err.
 
-(* Arguments Ok {_ _}. *)
-(* Arguments Err {_ _}. *)
-
 Infix "&&" := andb : bool_scope.
 Infix "||" := orb : bool_scope.
 
 Definition u32_word_t := nseq_ uint8 4.
 Definition u128_word_t := nseq_ uint8 16.
-
