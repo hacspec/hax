@@ -51,15 +51,11 @@ Import choice.Choice.Exports.
 Obligation Tactic := (* try timeout 8 *) solve_ssprove_obligations.
 
 (** Should be moved to Hacspec_Lib.v **)
-Program Definition int_xI {WS : wsize} (a : (* both  *)(@int WS)) : (* both *) (@int WS) :=
-  Hacspec_Lib_Pre.int_add (Hacspec_Lib_Pre.int_mul a ((* lift_to_both *) (@repr WS 2))) ((* lift_to_both *) (@one WS)).
-(* Next Obligation. intros ; now do 2 rewrite fsetU0. Defined. *)
-(* Next Obligation. intros ; rewrite <- fset0E ; now do 2 rewrite fsetU0. Defined. *)
+Program Definition int_xI {WS : wsize} (a : (@int WS)) : (@int WS) :=
+  Hacspec_Lib_Pre.int_add (Hacspec_Lib_Pre.int_mul a (@repr WS 2)) (@one WS).
 
 Program Definition int_xO {WS : wsize} (a : int WS) : int WS :=
   Hacspec_Lib_Pre.int_mul a (@repr WS 2).
-(* Next Obligation. intros ; now rewrite fsetU0. Defined. *)
-(* Next Obligation. intros ; rewrite <- fset0E ; now rewrite fsetU0. Defined. *)
 
 Definition both_int_one {WS : wsize} : both (@int WS) := ret_both (one).
 
@@ -69,17 +65,6 @@ Number Notation int_num Pos.of_num_int Pos.to_num_int (via positive mapping [[in
 
 Notation "0" := (repr _ 0%Z) : hacspec_scope.
 
-(* Notation U8_t := int8. *)
-(* Notation U8 := id. *)
-(* Notation U16_t := int16. *)
-(* Notation U16 := id. *)
-(* Notation U32_t := int32. *)
-(* Notation U32 := id. *)
-(* Notation U64_t := int64. *)
-(* Notation U64 := id. *)
-(* Notation U128_t := int128. *)
-(* Notation U128 := id. *)
-
 Class Addition (A : choice_type) :=
   add : both A -> both A -> both A.
 Notation "a .+ b" := (add a b).
@@ -88,11 +73,10 @@ Instance int_add_inst {ws : wsize} : Addition (@int ws) := { add a b := int_add 
 Class Subtraction (A : choice_type):=
   sub : both A -> both A -> both A.
 Notation "a .- b" := (sub a b (Subtraction := _)).
-Instance int_sub_inst {ws : wsize}  (* `{H_loc_fsubset13 : is_true (fsubset L1 L3)} `{H_opsig_fsubset13 : is_true (fsubset I1 I3)} `{H_loc_fsubset23 : is_true (fsubset L2 L3)} `{H_opsig_fsubset23 : is_true (fsubset I2 I3)} *) : Subtraction (@int ws) (* H_loc_fsubset13 H_opsig_fsubset13 H_loc_fsubset23 H_opsig_fsubset23 *) := { sub a b := int_sub (* (H_loc_incl_x := H_loc_fsubset13) (H_opsig_incl_x := H_opsig_fsubset13) (H_loc_incl_y := H_loc_fsubset23) (H_opsig_incl_y := H_opsig_fsubset23) *) a b }.
+Instance int_sub_inst {ws : wsize} : Subtraction (@int ws) := { sub a b := int_sub a b }.
 
-Class Multiplication A (* `(H_loc_incl1 : is_true (fsubset L1 L3)) (H_opsig_incl1 : is_true (fsubset I1 I3)) (H_loc_incl2 : is_true (fsubset L2 L3)) (H_opsig_incl2 : is_true (fsubset I2 I3)) *) := mul : both A -> both A -> both A.
+Class Multiplication A := mul : both A -> both A -> both A.
 Notation "a .* b" := (mul a b).
-(* Instance array_mul_inst {ws : wsize} {len: uint_size} {} : Multiplication (nseq (@int ws) len) := { mul a b := a array_mul b }. *)
 Program Instance int_mul_inst {ws : wsize} : Multiplication (@int ws) := { mul a b := int_mul a b }.
 Fail Next Obligation.
 
@@ -126,7 +110,6 @@ Solve All Obligations with intros ; exact fset0.
 Fail Next Obligation.
 
 Arguments nseq_array_or_seq {A} {len}.
-(* Check nseq_array_or_seq. *)
 Coercion nseq_array_or_seq : both >-> array_or_seq.
 Canonical Structure nseq_array_or_seq.
 
@@ -199,33 +182,15 @@ Notation " x '.a[' i ']<-' a" := (array_upd x i a) (at level 40).
 Notation update_at := array_upd.
 Notation update_at_usize := array_upd.
 
-(* Definition update {A : Type}  `{Default A} {len slen} (s : nseq A len) {WS} (start : @int WS) (start_a : array_or_seq A slen) : nseq A len := *)
-(* array_update (a := A) (len := len) s (unsigned start) (as_seq start_a). *)
-
-(* Definition to_le_U32s {A l} := array_to_le_uint32s (A := A) (l := l). *)
-(* Axiom to_le_bytes : forall {ws : wsize} {len}, nseq (@int ws) len -> seq int8. *)
-(* Definition from_seq {A : Type}  `{Default A} {len slen} (s : array_or_seq A slen) : nseq A len := array_from_seq _ (as_seq s). *)
-
 Notation t_Seq := seq.
-(* Notation len := (fun s => seq_len s : int32). *)
-
-(* Definition array_slice {a: Type} `{Default a} {len : nat} (input: nseq a len) {WS} (start: @int WS) (slice_len: @int WS) : seq a := slice (array_to_seq input) (unsigned start) (unsigned (start .+ slice_len)). *)
-(* Notation slice := array_slice. *)
-(* Definition seq_new {A: Type} `{Default A} {WS} (len: @int WS) : seq A := seq_new (unsigned len). *)
-(* Notation new := seq_new. *)
 Notation num_exact_chunks := seq_num_exact_chunks.
 Notation get_exact_chunk := seq_get_exact_chunk.
-(* Definition set_chunk {a: Type} `{Default a} {len} (s: seq a) {WS} (chunk_len: @int WS) (chunk_num: @int WS) (chunk: array_or_seq a len) : seq a := seq_set_chunk s (unsigned chunk_len) (unsigned chunk_num) (as_seq chunk). *)
-(* Definition set_exact_chunk {a} `{H : Default a} {len} s {WS} := @set_chunk a H len s WS. *)
+
 Notation get_remainder_chunk := seq_get_remainder_chunk.
 Notation "a <> b" := (negb (eqb a b)).
 
 Notation from_secret_literal := nat_mod_from_secret_literal.
-(* Definition pow2 {m} (x : @int wsize32) := nat_mod_pow2 m (unsigned x). *)
-(* Instance nat_mod_addition {n} : Addition (nat_mod n) := { add a b := a +% b }. *)
-(* Instance nat_mod_subtraction {n} : Subtraction (nat_mod n) := { sub a b := a -% b }. *)
-(* Instance nat_mod_multiplication {n} : Multiplication (nat_mod n) := { mul a b := a *% b }. *)
-(* Definition from_slice {a: Type} `{Default a} {len slen} (x : array_or_seq a slen) {WS} (start: @int WS) (slice_len: @int WS) := array_from_slice default len (as_seq x) (unsigned start) (unsigned slice_len). *)
+
 Notation zero := nat_mod_zero.
 Notation to_byte_seq_le := nat_mod_to_byte_seq_le.
 Notation U128_to_le_bytes := u128_to_le_bytes.
@@ -237,9 +202,6 @@ Notation update_start := array_update_start.
 Notation pow := nat_mod_pow_self.
 Notation bit := nat_mod_bit.
 
-(* Definition int_to_int {ws1 ws2} (i : @int ws1) : @int ws2 := repr (unsigned i). *)
-(* Coercion int_to_int : int >-> int. *)
-(* Notation push := seq_push. *)
 Notation Build_secret := secret.
 Notation "a -× b" :=
 (prod a b) (at level 80, right associativity) : hacspec_scope.
@@ -247,10 +209,7 @@ Notation Result_t := result.
 Axiom TODO_name : Type.
 Notation ONE := nat_mod_one.
 Notation exp := nat_mod_exp.
-(* Notation nat_mod := GZnZ.znz. *)
-(* Instance nat_mod_znz_addition {n} : Addition (GZnZ.znz n) := { add a b := a +% b }. *)
-(* Instance nat_mod_znz_subtraction {n} : Subtraction (GZnZ.znz n) := { sub a b := a -% b }. *)
-(* Instance nat_mod_znz_multiplication {n} : Multiplication (GZnZ.znz n) := { mul a b := a *% b }. *)
+
 Notation TWO := nat_mod_two.
 Notation ne := (fun x y => negb (eqb x y)).
 Notation eq := (eqb).
@@ -267,11 +226,10 @@ Notation U128_from_be_bytes := uint128_from_be_bytes.
 Notation U128_to_be_bytes := uint128_to_be_bytes.
 Notation slice_range := array_slice_range.
 Notation truncate := seq_truncate.
-(* Axiom array_to_be_uint64s : forall {A l}, nseq A l -> seq uint64. *)
+
 Notation to_be_U64s := array_to_be_uint64s.
 Notation classify := id.
 Notation U64_from_U8 := uint64_from_uint8.
-(* Definition Build_Range_t (a b : nat) := (a,b). (* match (b - a)%nat with O => [] | S n => match b with | O => [] | S b' => Build_Range_t a b' ++ [b] end end. *) *)
 
 Definition Build_t_Range {WS} {f_start : both (int WS)} {f_end : both (int WS)} := prod_b (f_start,f_end).
 Notation Build_Range  := Build_t_Range.
@@ -285,7 +243,7 @@ Notation "'i32(' v ')'" := (ret_both (v : int32) : both _).
 Notation "'i64(' v ')'" := (ret_both (v : int64) : both _).
 Notation "'i128(' v ')'" := (ret_both (v : int128) : both _).
 
-Definition (* vec_ *)len {A ws} := lift1_both  (fun (x : chList A) => repr ws (List.length x)).
+Definition len {A ws} := lift1_both  (fun (x : chList A) => repr ws (List.length x)).
 
 Definition andb (x : both 'bool) (y : both 'bool) : both 'bool := lift2_both (fun (x y : 'bool) => Datatypes.andb x y : 'bool) x y.
 Definition negb (x : both 'bool) : both 'bool := lift1_both (fun (x : 'bool) => Datatypes.negb x : 'bool) x.
@@ -316,7 +274,6 @@ Inductive vec_typ :=
 Definition t_Vec : choice_type -> vec_typ -> choice_type := fun A _ => chList A.
 
 Notation t_Default := Default.
-(* Class t_Default A := { default : A }. *)
 
 #[global] Instance bool_copy : t_Copy 'bool := {Copy x := x}.
 #[global] Instance bool_clone : t_Clone 'bool := {Clone x := x}.
@@ -399,7 +356,6 @@ Fail Next Obligation.
 Definition t_Never : choice_type := 'unit.
 Definition abort : both t_Never := ret_both (tt : 'unit).
 
-(* Notation v_Break := id. *)
 Notation Result_Err := Err.
 Notation Result_Ok := Ok.
 
@@ -412,7 +368,6 @@ Class t_HasActions (Self : choice_type) := {f_accept : both Self}.
 Class HasReceiveContext (Self : choice_type).
 Definition t_ParamType := 'unit.
 Definition t_ParseError := 'unit.
-(* (t_RegisterParam) *)
 Class t_HasReceiveContext (Self : choice_type) (something : choice_type) := { f_get : forall {Ctx}, both (t_ParamType × t_Result Ctx (t_ParseError)) }.
 Arguments f_get {Self} {something} (t_HasReceiveContext) {Ctx}.
 
@@ -507,7 +462,6 @@ Definition Address_Account_case (addr : int64) : t_AccountAddress := inr addr.
 Definition f_sender : t_AccountAddress :=
   Address_Account_case 0.
 
-(* From ovn *)
 Notation f_into_iter_loc := fset0.
 Notation f_end_loc := fset0.
 Notation f_start_loc := fset0.

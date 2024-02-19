@@ -64,9 +64,6 @@ Global Instance nat_mod_eqdec {p} : EqDec (nat_mod p) := {
   eqb_leibniz := nat_mod_eqb_spec;
 }.
 
-(* Global Instance nat_mod_comparable `{p : Z} : Comparable (nat_mod p) := *)
-(*   eq_dec_lt_Comparable (@order.Order.lt order.Order.OrdinalOrder.ord_display (order.Order.OrdinalOrder.porderType _)). *)
-
 Definition nat_mod_rem {n : Z} (a:nat_mod n) (b:nat_mod n) : both (nat_mod n) :=
   ret_both (nat_mod_rem a b).
 
