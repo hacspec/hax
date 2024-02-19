@@ -172,7 +172,7 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
                 "getb ";
                 (*p*)
                 " loc(" (*p_loc*);
-                ")";
+                ") in ";
               ],
               [
                 SSP.AST.Variable (pattern, 0);
@@ -982,11 +982,20 @@ struct
                 SSP.AST.TypedTerm (SSP.AST.Const (pliteral lit), pty span {local = arg.local} e.typ);
               ] )
       | LocalVar local_ident ->
+        (* (match Map.find ctx.analysis_data.mut_var (arg.local) with *)
+        (*  | Some (l, l2, l3) -> *)
+        (*    SSPExtraDefinitions.getb (Ident ( *)
+        (*        (plocal_ident local_ident) ^ " vs \n" ^ *)
+        (*        String.concat ~sep:" " (List.map ~f:(fun x -> plocal_ident x) l) ^ "\n" ^ *)
+        (*        String.concat ~sep:" " (List.map ~f:(fun x -> pconcrete_ident x) l2) ^ "\n" ^ *)
+        (*        String.concat ~sep:" " (List.map ~f:(fun ((x,_),_) -> plocal_ident x) l3) ^ "\n")) *)
+        (*  | _ -> SSP.AST.NameTerm (plocal_ident local_ident)) *)
+        
         if (match Map.find ctx.analysis_data.mut_var (arg.local) with
             | Some (l, l2, l3) ->
-              Option.is_some (List.find l (fun x -> String.(plocal_ident x == (plocal_ident local_ident)))) ||
-              Option.is_some (List.find l2 (fun x -> String.(pconcrete_ident x == (plocal_ident local_ident)))) ||
-              Option.is_some (List.find l3 (fun ((x,_),_) -> String.(plocal_ident x == (plocal_ident local_ident))))
+              (* Option.is_some (List.find l (fun x -> String.equal (plocal_ident x) (plocal_ident local_ident))) || *)
+              (* Option.is_some (List.find l2 (fun x -> String.equal (pconcrete_ident x) (plocal_ident local_ident))) || *)
+              Option.is_some (List.find l3 (fun ((x,_),_) -> String.equal (plocal_ident x) (plocal_ident local_ident)))
             | _ -> false)
         then SSPExtraDefinitions.getb (Ident (plocal_ident local_ident))
         else SSP.AST.NameTerm (plocal_ident local_ident)
@@ -996,9 +1005,9 @@ struct
       | GlobalVar global_ident ->
         if (match Map.find ctx.analysis_data.mut_var (arg.local) with
             | Some (l, l2, l3) ->
-              Option.is_some (List.find l (fun x -> true (* String.(plocal_ident x == (pglobal_ident global_ident)) *))) ||
-              Option.is_some (List.find l2 (fun x -> String.(pconcrete_ident x == (pglobal_ident global_ident)))) ||
-              Option.is_some (List.find l3 (fun ((x,_),_) -> String.(plocal_ident x == (pglobal_ident global_ident))))
+              (* Option.is_some (List.find l (fun x -> String.equal(plocal_ident x) (pglobal_ident global_ident))) || *)
+              (* Option.is_some (List.find l2 (fun x -> String.equal(pconcrete_ident x) (pglobal_ident global_ident))) || *)
+              Option.is_some (List.find l3 (fun ((x,_),_) -> String.equal(plocal_ident x) (pglobal_ident global_ident)))
             | _ -> false)
         then SSPExtraDefinitions.getb (Ident (pglobal_ident global_ident))
         else SSP.AST.Var (pglobal_ident global_ident)
