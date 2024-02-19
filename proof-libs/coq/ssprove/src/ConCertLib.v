@@ -408,9 +408,9 @@ From Hacspec Require Import ChoiceEquality.
 (* From Hacspec Require Import Hacspec_Lib. *)
 
 Theorem both_ext_prog :
-  forall {L I A} (x y : both L I A), both_prog x = both_prog y <-> x = y.
+  forall {A} (x y : both A), both_prog x = both_prog y <-> x = y.
 Proof.
-  intros L I A [both_x valid_x eq_x] [both_y valid_y eq_y] ; simpl.
+  intros A [both_x valid_x eq_x] [both_y valid_y eq_y] ; simpl.
   split.
   - intros ; subst.
     f_equal ; easy.
@@ -423,7 +423,7 @@ Instance serializable_code {L I} {A : choice_type} `{Serializable A} : Serializa
 Proof.
 Admitted.
 
-Instance serializable_both {L I} {A : choice_type} `{Serializable A} : Serializable (both L I A).
+Instance serializable_both {A : choice_type} `{Serializable A} : Serializable (both A).
 Proof.
   (* refine {| serialize *)
   (*             '{| both_prog := *)
@@ -496,3 +496,4 @@ Proof.
   (* apply both *)
 
 Admitted.
+

@@ -47,13 +47,10 @@ Section Loops.
   Program Fixpoint foldi_
            {acc : choice_type}
            (fuel : nat)
-           {L L2 I I2}
-           (i : both L2 I2 uint_size)
-           (f: both L2 I2 uint_size -> both L I acc -> both L I (acc))
-           (cur : both L I acc)
-           `{fsubset_loc : is_true (fsubset L2 L)}
-           `{fsubset_opsig : is_true (fsubset I2 I)}
-           {struct fuel} : both L I (acc) :=
+           (i : both uint_size)
+           (f: both uint_size -> both acc -> both (acc))
+           (cur : both acc)
+           {struct fuel} : both (acc) :=
     match fuel with
     | 0 => lift_both cur
     | S n' => foldi_ n' (int_add i (ret_both one)) f (f i cur)
@@ -65,13 +62,9 @@ Section Loops.
   Equations foldi_both_
            {acc : choice_type}
            (fuel : nat)
-           {L1 L2 I1 I2}
-           (i : both L2 I2 uint_size)
-           {L I}
-           `{is_true (fsubset L1 L)} `{is_true (fsubset I1 I)}
-           `{is_true (fsubset L2 L)} `{is_true (fsubset I2 I)}
-           (f: both L2 I2 (uint_size) -> both L I acc -> both L I (acc))
-           (cur : both L1 I1 acc) : both L I (acc) :=
+           (i : both uint_size)
+           (f: both (uint_size) -> both acc -> both (acc))
+           (cur : both acc) : both (acc) :=
     foldi_both_ fuel i f cur :=
       match fuel with
       | 0 => lift_both cur
@@ -82,15 +75,10 @@ Section Loops.
 
   Equations foldi
              {acc: choice_type}
-             {L1 L2 L3 I1 I2 I3}
-             (lo: both L2 I2 uint_size)
-             (hi: both L3 I3 uint_size) (* {lo <= hi} *)
-             {L I}
-           `{is_true (fsubset L1 L)} `{is_true (fsubset I1 I)}
-           `{is_true (fsubset L2 L)} `{is_true (fsubset I2 I)}
-           `{is_true (fsubset L3 L)} `{is_true (fsubset I3 I)}
-           (f: both (L2 :|: L3) (I2 :|: I3) (uint_size) -> both L I acc -> both L I (acc)) (* {i < hi} *)
-             (init: both L1 I1 acc) : both L I (acc) :=
+             (lo: both uint_size)
+             (hi: both uint_size) (* {lo <= hi} *)
+           (f: both (uint_size) -> both acc -> both (acc)) (* {i < hi} *)
+             (init: both acc) : both (acc) :=
     foldi lo hi f init :=
       bind_both lo (fun lo =>
       bind_both hi (fun hi =>
@@ -132,7 +120,7 @@ Section Loops.
   (*     (fuel : nat) *)
   (*     (i : uint_size) *)
   (*     {L I} *)
-  (*     (f : uint_size -> acc -> both L I (acc)) *)
+  (*     (f : uint_size -> acc -> both (acc)) *)
   (*     (cur : acc), *)
   (*     (bind_both (f i cur) (fun cur' => (bind_both (both_ret (Hacspec_Lib_Pre.int_add i one)) (fun Si => foldi_both_ fuel Si f (cur')))) = foldi_both_ (S fuel) i f cur). *)
   (* Proof. reflexivity. Qed. *)
@@ -243,7 +231,7 @@ Section Loops.
   (* Qed. *)
 
   Lemma bind_raw_both_ret :
-    forall {A B : choice_type} {L I} (x : A) (f : A -> both L I B), bind_raw_both (both_ret x) f = f x.
+    forall {A B : choice_type} (x : A) (f : A -> both B), bind_raw_both (both_ret x) f = f x.
   Proof.
     intros.
     unfold bind_raw_both.
@@ -271,7 +259,7 @@ Section Loops.
   (*     (fuel : nat) *)
   (*     (i : uint_size) *)
   (*     {L I} *)
-  (*     (f : uint_size -> acc -> both L I (acc)) *)
+  (*     (f : uint_size -> acc -> both (acc)) *)
   (*     (cur : acc), *)
   (*     (0 <= Z.of_nat fuel <= @wmax_unsigned U32)%Z -> *)
   (*     (bind_both (foldi_both_ fuel i f cur) (fun cur' => *)
@@ -304,7 +292,7 @@ Section Loops.
   (*     unfold prog, lift_to_code. *)
   (*     (* do 2 setoid_rewrite bind_rewrite. *) *)
 
-  (*     specialize (IHfuel (Hacspec_Lib_Pre.int_add i one) L I f (x)). *)
+  (*     specialize (IHfuel (Hacspec_Lib_Pre.int_add i one) f (x)). *)
 
 
 
@@ -366,7 +354,7 @@ Section Loops.
   (*     (lo: uint_size) *)
   (*     (hi: uint_size) (* {lo <= hi} *) *)
   (*     {L I} *)
-  (*     (f: (uint_size) -> acc -> code L I (acc)) (* {i < hi} *) *)
+  (*     (f: (uint_size) -> acc -> code (acc)) (* {i < hi} *) *)
   (*     (init: acc), *)
   (*     (unsigned lo <= unsigned hi)%Z -> *)
   (*     foldi_pre lo hi f init = foldi_nat (Z.to_nat (unsigned lo)) (Z.to_nat (unsigned hi)) (fun x => f (repr _ (Z.of_nat x))) init. *)
@@ -435,7 +423,7 @@ Section Loops.
   (*     (lo: nat) *)
   (*     (hi: nat) (* {lo <= hi} *) *)
   (*     {L I} *)
-  (*     (f: nat -> acc -> code L I (acc)) (* {i < hi} *) *)
+  (*     (f: nat -> acc -> code (acc)) (* {i < hi} *) *)
   (*     (init: acc), *)
   (*     (lo <= hi) -> *)
   (*     (Z.of_nat hi < @modulus U32)%Z -> *)
@@ -572,7 +560,7 @@ Section Loops.
   (*     (lo: uint_size) *)
   (*     (hi: uint_size) (* {lo <= hi} *) *)
   (*     {L I} *)
-  (*     (f: uint_size -> acc -> code L I (acc)) (* {i < hi} *) *)
+  (*     (f: uint_size -> acc -> code (acc)) (* {i < hi} *) *)
   (*     (init: acc), *)
   (*   forall {guarantee: (unsigned lo <= unsigned mid <= unsigned hi)%Z}, *)
   (*     foldi_pre lo hi f init = (cur' ← foldi_pre lo mid f init ;; foldi_pre mid hi f (cur')). *)
@@ -598,9 +586,9 @@ Section Loops.
 
 
   (* Lemma valid_foldi_pre : *)
-  (*   forall {acc : choice_type} (lo hi : int _) {L : {fset Location}} {I : Interface} (f : int _ -> _ -> both L I (_)), *)
+  (*   forall {acc : choice_type} (lo hi : int _) {L : {fset Location}} {I : Interface} (f : int _ -> _ -> both (_)), *)
   (*     forall init : (_), *)
-  (*       ValidBoth L I (foldi_pre (acc := acc) lo hi f init). *)
+  (*       ValidBoth (foldi_pre (acc := acc) lo hi f init). *)
   (* Proof. *)
   (*   intros. *)
   (*   unfold foldi_pre. *)
@@ -616,10 +604,10 @@ Section Loops.
   (*            (hi: uint_size) (* {lo <= hi} *) *)
   (*            {L} *)
   (*            {I} *)
-  (*            (f: (uint_size) -> acc -> both L I (acc)) *)
+  (*            (f: (uint_size) -> acc -> both (acc)) *)
   (*            (init: acc) *)
   (*   : *)
-  (*   both L I (acc) := *)
+  (*   both (acc) := *)
   (*   {| both_prog := foldi_pre lo hi f init; both_prog_valid := valid_foldi_pre lo hi f init |}. *)
   (* Next Obligation. *)
   (*   intros. *)
@@ -644,10 +632,10 @@ Section Loops.
   (* (*            (hi: uint_size) (* {lo <= hi} *) *) *)
   (* (*            {L1 L2 : {fset Location}} {H_loc_incl : List.incl L1 L2} *) *)
   (* (*            {I1 I2 : Interface} {H_opsig_incl : List.incl I1 I2} *) *)
-  (* (*            (f: (uint_size) -> acc -> code L1 I1 (acc)) *) *)
+  (* (*            (f: (uint_size) -> acc -> code (acc)) *) *)
   (* (*            (init: acc) *) *)
   (* (*   : *) *)
-  (* (*   code L2 I2 (acc) *) *)
+  (* (*   code (acc) *) *)
   (* (* . *) *)
 
   (*   eapply lift_code_scope. *)

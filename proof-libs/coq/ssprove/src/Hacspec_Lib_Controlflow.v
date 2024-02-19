@@ -68,36 +68,30 @@ Notation "'ssp' ( 'fun' ' ( a , b , c , d ) => f )" :=
 
 Equations foldi_both
         {acc: choice_type}
-        {L1 L2 L3 I1 I2 I3}
-        (lo_hi: both L2 I2 uint_size * both L3 I3 uint_size)
-        {L I}
-        (f: both (L2 :|: L3) (I2 :|: I3) uint_size ->
-            both L I acc ->
-            both L I acc)
-        (init: both L1 I1 acc)
-        `{is_true (fsubset (L1 :|: L2 :|: L3) L)} `{is_true (fsubset (I1 :|: I2 :|: I3) I)}
-         : both L I (acc) :=
+        (lo_hi: both uint_size * both uint_size)
+        (f: both uint_size ->
+            both acc ->
+            both acc)
+        (init: both acc)
+         : both (acc) :=
   foldi_both lo_hi f init :=
     foldi (fst lo_hi) (snd lo_hi) (@f) (init).
 Solve All Obligations with intros ; solve_fsubset_trans.
 Fail Next Obligation.
 
 Notation "'fold'" :=
-  (fun lo_hi init f => foldi_both (L1 := _) (L2 := _) (L3 := _) (I1 := _) (I2 := _) (I3 := _) lo_hi f init).
+  (fun lo_hi init f => foldi_both lo_hi f init).
 
 Equations foldi_both_list
            {acc B: choice_type}
-        {L1 L2 I1 I2}
-        (l : both L2 I2 (chList B))
-        {L I}
-        (f: both (L2) (I2) B ->
-            both L I acc ->
-            both L I acc)
-        (init: both L1 I1 acc)
-        `{is_true (fsubset (L1 :|: L2) L)} `{is_true (fsubset (I1 :|: I2) I)}
-  : both L I (acc) :=
+        (l : both (chList B))
+        (f: both B ->
+            both acc ->
+            both acc)
+        (init: both acc)
+  : both (acc) :=
   foldi_both_list l f init :=
-  bind_both l (fun l' => List.fold_left (fun x y => solve_lift @f (solve_lift ret_both y) (x) : both L I _) l' (solve_lift init)).
+  bind_both l (fun l' => List.fold_left (fun x y => solve_lift @f (solve_lift ret_both y) (x) : both _) l' (solve_lift init)).
 Solve All Obligations with intros ; solve_fsubset_trans.
 Solve All Obligations with intros ; solve_ssprove_obligations.
 Fail Next Obligation.
@@ -106,24 +100,24 @@ Fail Next Obligation.
 (*            {acc B: choice_type} *)
 (*            `{H : Default B} *)
 (*         {L1 L2 I1 I2} *)
-(*         (l : both L2 I2 (chList B)) *)
-(*         (f: forall {L I} `{fsubset_loc : is_true (fsubset L1 L)} `{fsubset_opsig : is_true (fsubset I1 I)}, both (L2) (I2) B -> both L I acc -> both (L :|: (L2)) (I :|: (I2)) (acc)) (* {i < hi} *) *)
-(*         (init: both L1 I1 acc) *)
+(*         (l : both (chList B)) *)
+(*         (f: forall {L I} `{fsubset_loc : is_true (fsubset L1 L)} `{fsubset_opsig : is_true (fsubset I1 I)}, both (L2) (I2) B -> both acc -> both (L :|: (L2)) (I :|: (I2)) (acc)) (* {i < hi} *) *)
+(*         (init: both acc) *)
 (*   : both (L1 :|: (L2)) (I1 :|: (I2)) (acc) := *)
 (*   foldi_both_list l f init := *)
-(*     (solve_lift bind_both l (fun l' => (foldi (ret_both (repr _ 0)) (solve_lift ret_both (repr _ (length l')) : both L2 I2 _) (fun {L I H0 H1} => fun i v => solve_lift bind_both i (fun i' => @f _ _ _ _ (solve_lift ret_both (List.nth (Z.to_nat (unsigned i')) l' default)) v)) init))). *)
+(*     (solve_lift bind_both l (fun l' => (foldi (ret_both (repr _ 0)) (solve_lift ret_both (repr _ (length l')) : both _) (fun {L I H0 H1} => fun i v => solve_lift bind_both i (fun i' => @f _ _ _ _ (solve_lift ret_both (List.nth (Z.to_nat (unsigned i')) l' default)) v)) init))). *)
 (* Solve Obligations with intros ; (assumption || solve_in_fset). *)
 (* Fail Next Obligation. *)
 
-Program Definition if_both {L1 L2 L3 I1 I2 I3} {A} (c : both L1 I1 'bool) (e_then : both L2 I2 A) (e_else : both L3 I3 A) : both (L1 :|: L2 :|: L3) (I1 :|: I2 :|: I3) A :=
-  bind_both (fsubset_loc := _) (fsubset_opsig := _) c (fun b => if b then lift_both (fsubset_loc := _) (fsubset_opsig := _) e_then else lift_both  (fsubset_loc := _) (fsubset_opsig := _) e_else).
+Program Definition if_both {A} (c : both 'bool) (e_then : both A) (e_else : both A) : both A :=
+  bind_both c (fun b => if b then lift_both e_then else lift_both e_else).
 Solve All Obligations with solve_ssprove_obligations.
 Fail Next Obligation.
 
 Notation "'ifb' b 'then' et 'else' ee" :=
   (if_both b et ee) (at level 100).
 
-Equations match_both_option {L1 L2 L3 I1 I2 I3} {A B} (x : both L3 I3 (option A)) (fa : both L3 I3 A -> both L1 I1 B) (fb : both L2 I2 B) `{fsubset_loc1 : is_true (fsubset L3 L1)}  `{fsubset_loc2 : is_true (fsubset L3 L2)}  `{fsubset_opsig1 : is_true (fsubset I3 I1)}  `{fsubset_opsig2 : is_true (fsubset I3 I2)} : both (L1 :|: L2) (I1 :|: I2) B :=
+Equations match_both_option {A B} (x : both (option A)) (fa : both A -> both B) (fb : both B) : both B :=
   match_both_option x fa fb :=
   bind_both x (fun y => match y with
                      | Some a => solve_lift (fa (solve_lift (ret_both a)))
@@ -133,27 +127,27 @@ Solve All Obligations with solve_ssprove_obligations.
 Fail Next Obligation.
 
 Notation "'matchb' x 'with' '|' 'Option_Some' a '=>' va '|' 'Option_None' '=>' vb 'end'" :=
-  (match_both_option x (fun a => va) vb (fsubset_loc1 := _) (fsubset_loc2 := _) (fsubset_opsig1 := _) (fsubset_opsig2 := _)).
+  (match_both_option x (fun a => va) vb).
 
 Notation "'matchb' x 'with' '|' 'Option_Some' a '=>' va '|' '_' '=>' vb 'end'" :=
-  (match_both_option x (fun a => va) vb (fsubset_loc1 := _) (fsubset_loc2 := _) (fsubset_opsig1 := _) (fsubset_opsig2 := _)).
+  (match_both_option x (fun a => va) vb).
 
 Program Definition foldi_both0_
         {acc : choice_type}
         (fuel : nat)
-        (i : both (fset []) (fset []) uint_size)
-        (f: both (fset []) (fset []) (uint_size) -> both (fset []) (fset []) acc -> both (fset []) (fset []) (acc))
-        (cur : both (fset []) (fset []) acc) : both (fset []) (fset []) (acc) :=
-  foldi_ fuel i (@f) (lift_both cur (fsubset_loc := _) (fsubset_opsig := _)) (fsubset_loc := _) (fsubset_opsig := _).
+        (i : both uint_size)
+        (f: both (uint_size) -> both acc -> both (acc))
+        (cur : both acc) : both (acc) :=
+  foldi_ fuel i (@f) (lift_both cur).
 Solve All Obligations with (intros ; (fset_equality || solve_in_fset)).
 Fail Next Obligation.
 
 Equations foldi0
           {acc: choice_type}
-          (lo: both (fset []) (fset []) uint_size)
-          (hi: both (fset []) (fset []) uint_size) (* {lo <= hi} *)
-          (f: both (fset []) (fset []) (uint_size) -> both (fset []) (fset []) acc -> both (fset []) (fset []) (acc)) (* {i < hi} *)
-          (init: both (fset []) (fset []) acc) : both (fset []) (fset []) (acc) :=
+          (lo: both uint_size)
+          (hi: both uint_size) (* {lo <= hi} *)
+          (f: both (uint_size) -> both acc -> both (acc)) (* {i < hi} *)
+          (init: both acc) : both (acc) :=
   foldi0 lo hi f init :=
     bind_both lo (fun lo =>
                     bind_both hi (fun hi =>
@@ -168,26 +162,26 @@ Fail Next Obligation.
 
 Definition foldi_both0
         {acc: choice_type}
-        (lo_hi: both (fset []) (fset []) uint_size * both (fset []) (fset []) uint_size)
-        (f: both (fset []) (fset []) uint_size -> both (fset []) (fset []) acc -> both (fset []) (fset []) (acc)) (* {i < hi} *)
-        (init: both (fset []) (fset []) acc)
-  : both (fset []) (fset []) (acc) :=
+        (lo_hi: both uint_size * both uint_size)
+        (f: both uint_size -> both acc -> both (acc)) (* {i < hi} *)
+        (init: both acc)
+  : both (acc) :=
   foldi0 (fst lo_hi) (snd lo_hi) f init.
 
 Equations foldi_both0_list
            {acc B: choice_type}
-        (l : both (fset []) (fset []) (chList B))
-        (f: both ((fset [])) ((fset [])) B -> both(fset []) (fset []) acc -> both (fset []) (fset []) (acc)) (* {i < hi} *)
-        (init: both (fset []) (fset []) acc)
-  : both (fset []) (fset []) (acc) :=
+        (l : both (chList B))
+        (f: both B -> both acc -> both (acc)) (* {i < hi} *)
+        (init: both acc)
+  : both (acc) :=
   foldi_both0_list l f init :=
-    bind_both l (fun l' => List.fold_left (fun x y => solve_lift @f (solve_lift ret_both y) (x) : both (fset []) (fset []) _) l' (solve_lift init : both (fset []) (fset []) _)).
-Solve Obligations with intros ; (assumption || solve_in_fset).
+    bind_both l (fun l' => List.fold_left (fun x y => solve_lift @f (solve_lift ret_both y) (x) : both _) l' (solve_lift init : both _)).
+(* Solve Obligations with intros ; (assumption || solve_in_fset). *)
 Fail Next Obligation.
 
 
-Program Definition if_both0 {A} (c : both (fset []) (fset []) 'bool) (e_then : both (fset []) (fset []) A) (e_else : both (fset []) (fset []) A) : both (fset []) (fset []) A :=
-  bind_both (fsubset_loc := _) (fsubset_opsig := _) c (fun b => if b then lift_both (fsubset_loc := _) (fsubset_opsig := _) e_then else lift_both  (fsubset_loc := _) (fsubset_opsig := _) e_else).
+Program Definition if_both0 {A} (c : both 'bool) (e_then : both A) (e_else : both A) : both A :=
+  bind_both c (fun b => if b then lift_both e_then else lift_both  e_else).
 Solve All Obligations with solve_ssprove_obligations.
 Fail Next Obligation.
 

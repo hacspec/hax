@@ -54,8 +54,8 @@ From Hacspec Require Import ConCertLib. Export ConCertLib.
 
 (*** Result *)
 
-Definition Ok {L I} {a b : choice_type} : both L I a -> both L I (result b a) := lift1_both Ok.
-Definition Err  {L I} {a b : choice_type} : both L I b -> both L I (result b a) := lift1_both Err.
+Definition Ok {a b : choice_type} : both a -> both (result b a) := lift1_both Ok.
+Definition Err {a b : choice_type} : both b -> both (result b a) := lift1_both Err.
 
 (* Arguments Ok {_ _}. *)
 (* Arguments Err {_ _}. *)

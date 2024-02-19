@@ -51,7 +51,7 @@ Global Instance int_eqdec `{WS : wsize}: EqDec (@int WS) := {
 Global Instance int_comparable `{WS : wsize} : Comparable (@int WS) :=
     eq_dec_lt_Comparable (wlt Unsigned).
 
-Definition uint8_equal (x y : int8) : both (fset []) ([interface]) 'bool := ret_both (eqb x y : 'bool).
+Definition uint8_equal (x y : int8) : both 'bool := ret_both (eqb x y : 'bool).
 
 Theorem nat_mod_eqb_spec : forall {p} (a b : nat_mod p),
     is_pure (nat_mod_equal a b) = true <-> a = b.
@@ -67,7 +67,7 @@ Global Instance nat_mod_eqdec {p} : EqDec (nat_mod p) := {
 (* Global Instance nat_mod_comparable `{p : Z} : Comparable (nat_mod p) := *)
 (*   eq_dec_lt_Comparable (@order.Order.lt order.Order.OrdinalOrder.ord_display (order.Order.OrdinalOrder.porderType _)). *)
 
-Definition nat_mod_rem {n : Z} (a:nat_mod n) (b:nat_mod n) : both (fset []) ([interface]) (nat_mod n) :=
+Definition nat_mod_rem {n : Z} (a:nat_mod n) (b:nat_mod n) : both (nat_mod n) :=
   ret_both (nat_mod_rem a b).
 
 
