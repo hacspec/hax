@@ -84,7 +84,6 @@ functor
 
       and let_args = {
         pattern : pat;
-        mut : bool;
         value : term;
         body : term;
         value_typ : ty;

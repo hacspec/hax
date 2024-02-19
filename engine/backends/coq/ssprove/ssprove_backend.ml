@@ -98,7 +98,7 @@ module SSPExtraDefinitions = struct
     | WildPat | UnitPat | Lit _ -> []
 
   let letb
-      ({ pattern; mut; value; body; value_typ; monad_typ } : SSP.AST.let_args) :
+      ({ pattern; value; body; value_typ; monad_typ } : SSP.AST.let_args) :
       SSP.AST.term =
     match monad_typ with
     | Some (Exception _typ) ->
@@ -162,44 +162,14 @@ module SSPExtraDefinitions = struct
               SSP.AST.Value (body, false, 0);
             ] )
     | None ->
-        if mut then
-          SSP.AST.AppFormat
-            ( [
-                "letb ";
-                (*p*)
-                " loc(" (*p_loc*);
-                ") := ";
-                (*expr*)
-                " in";
-                "";
-                (*body*)
-                "";
-              ],
-              [
-                SSP.AST.Variable (pattern, 0);
-                SSP.AST.Variable
-                  ( (match
-                       List.map
-                         ~f:(fun x -> SSP.AST.Ident (x ^ "_loc"))
-                         (variables_of_ssp_pat pattern)
-                     with
-                    | [] -> SSP.AST.WildPat
-                    | [ x ] -> x
-                    | xs -> SSP.AST.TuplePat xs),
-                    0 );
-                SSP.AST.Value (value, false, 0);
-                SSP.AST.Newline 0;
-                SSP.AST.Value (body, false, 0);
-              ] )
-        else
-          SSP.AST.AppFormat
-            ( [ "letb "; (*p*) " := "; (*expr*) " in"; ""; (*body*) "" ],
-              [
-                SSP.AST.Variable (pattern, 0);
-                SSP.AST.Value (value, false, 0);
-                SSP.AST.Newline 0;
-                SSP.AST.Value (body, false, 0);
-              ] )
+      SSP.AST.AppFormat
+        ( [ "letb "; (*p*) " := "; (*expr*) " in"; ""; (*body*) "" ],
+          [
+            SSP.AST.Variable (pattern, 0);
+            SSP.AST.Value (value, false, 0);
+            SSP.AST.Newline 0;
+            SSP.AST.Value (body, false, 0);
+          ] )
 
   let rec pat_as_expr (p : SSP.AST.pat) : (SSP.AST.pat * SSP.AST.term) option =
     match p with
@@ -527,7 +497,7 @@ module TransformToInputLanguage =
   |> Phases.Reject.Continue
   |> Phases.Cf_into_monads
   |> Phases.Reject.EarlyExit
-  |> Phases.Functionalize_loops
+  (* |> Phases.Functionalize_loops *)
   |> Phases.Reject.As_pattern
   |> SubtypeToInputLanguage
   |> Identity
@@ -819,7 +789,6 @@ struct
           SSPExtraDefinitions.letb
             {
               pattern = ppat lhs;
-              mut = is_mutable_pat lhs;
               value = (pexpr false) rhs;
               body = (pexpr add_solve) body;
               value_typ =
@@ -870,7 +839,6 @@ struct
           SSPExtraDefinitions.letb
             {
               pattern = ppat pat;
-              mut = false;
               value = (pexpr false) scrutinee;
               body = (pexpr true) body;
               value_typ = pty pat.span pat.typ;
@@ -898,7 +866,6 @@ struct
                             SSPExtraDefinitions.letb
                               {
                                 pattern = redefine_pat (* TODO *);
-                                mut = false;
                                 value =
                                   SSP.AST.App
                                     ( SSP.AST.Var "ret_both",
