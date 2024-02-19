@@ -156,7 +156,7 @@ module Make (F : Features.T) = struct
     let regenerate_span_ids =
       object
         inherit [_] Visitors.map
-        method visit_span () = Span.refresh_id
+        method! visit_span () = Span.refresh_id
       end
 
     let normalize_borrow_mut =
@@ -344,10 +344,10 @@ module Make (F : Features.T) = struct
           inherit [_] Visitors.reduce as super
           inherit [_] Sets.Local_ident.monoid as _m
 
-          method visit_arm' env { arm_pat; body } =
+          method! visit_arm' env { arm_pat; body } =
             shadows ~env [ arm_pat ] body super#visit_expr
 
-          method visit_expr' env e =
+          method! visit_expr' env e =
             match e with
             | Let { monadic = _; lhs; rhs; body } ->
                 super#visit_expr env rhs
@@ -378,12 +378,12 @@ module Make (F : Features.T) = struct
                 shadows ~env params body super#visit_expr
             | _ -> super#visit_expr' env e
 
-          method visit_impl_item' env ii =
+          method! visit_impl_item' env ii =
             match ii with
             | IIFn { body; params } -> self#visit_function_like env body params
             | _ -> super#visit_impl_item' env ii
 
-          method visit_item' env i =
+          method! visit_item' env i =
             match i with
             | Fn { body; params; _ } -> self#visit_function_like env body params
             | _ -> super#visit_item' env i
@@ -392,7 +392,7 @@ module Make (F : Features.T) = struct
             let f p = p.pat in
             shadows ~env (List.map ~f params) body super#visit_expr
 
-          method visit_local_ident env id =
+          method! visit_local_ident env id =
             Set.(if id_shadows ~env id then Fn.flip singleton id else empty)
               (module Local_ident)
         end
@@ -490,7 +490,7 @@ module Make (F : Features.T) = struct
 
         (* TODO: loop state *)
 
-        method visit_expr' () e =
+        method! visit_expr' () e =
           match e with
           | Assign { lhs; e; _ } ->
               let rec visit_lhs lhs =
@@ -531,7 +531,7 @@ module Make (F : Features.T) = struct
                    (without_vars (self#visit_expr () body) vars))
           | _ -> super#visit_expr' () e
 
-        method visit_arm' () { arm_pat; body } =
+        method! visit_arm' () { arm_pat; body } =
           without_pat_vars (self#visit_expr () body) arm_pat
       end
 

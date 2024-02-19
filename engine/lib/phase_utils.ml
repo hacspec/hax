@@ -155,9 +155,7 @@ end = struct
              let regenerate_span_ids =
                (object
                   inherit [_] Visitors.map
-                  method visit_t () x = x
-                  method visit_mutability _ () m = m
-                  method visit_span = Fn.const Span.refresh_id
+                  method! visit_span = Fn.const Span.refresh_id
                end)
                  #visit_item
                  ()
