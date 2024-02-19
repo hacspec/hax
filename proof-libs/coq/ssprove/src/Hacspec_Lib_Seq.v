@@ -47,7 +47,7 @@ Open Scope list_scope.
 
 Notation seq_new_ := (lift2_both seq_new_).
 Notation seq_new := (lift1_both seq_new).
-Equations seq_len {L (* L2 *) : {fset Location}} {I (* I2 *) : Interface} {A : choice_type} (x : both L I (seq A)) (* `{H_loc_incl_x : is_true (fsubset L1 L2)} `{H_opsig_incl_x : is_true (fsubset I1 I2)} *) : both L I (uint_size) :=
+Equations seq_len {A : choice_type} (x : both (seq A)) : both (uint_size) :=
   seq_len := (lift1_both Hacspec_Lib_Pre.seq_len).
 Fail Next Obligation.
 Notation seq_index := (lift2_both seq_index).
@@ -65,7 +65,7 @@ Definition seq_update
   (s: ((seq a)))
   (start: uint_size)
   (input: ((seq a)))
-  : both (fset []) ([interface]) ((seq a)) :=
+  : both ((seq a)) :=
   ret_both (seq_update s start input).
 
 (* updating only a single value in a sequence*)
@@ -75,7 +75,7 @@ Definition seq_upd
   (s: ((seq a)))
   (start: uint_size)
   (v: ((a)))
-  : both (fset []) ([interface]) ((seq a)) :=
+  : both ((seq a)) :=
   ret_both (seq_upd s start v).
 
 Definition seq_update_start
@@ -83,7 +83,7 @@ Definition seq_update_start
 
   (s: ( (seq a)))
   (start_s: ( (seq a)))
-  : both (fset []) ([interface]) ((seq a)) :=
+  : both ((seq a)) :=
   ret_both (seq_update_start s start_s).
 
 Definition seq_update_slice
@@ -93,7 +93,7 @@ Definition seq_update_slice
   (input: ( (seq A)))
   (start_in: nat)
   (len: nat)
-  : both (fset []) ([interface]) ((seq A)) :=
+  : both ((seq A)) :=
   ret_both (seq_update_slice out start_out input start_in len).
 
 Definition seq_concat
@@ -101,7 +101,7 @@ Definition seq_concat
 
   (s1 :( (seq a)))
   (s2: ( (seq a)))
-  : both (fset []) ([interface]) ((seq a)) :=
+  : both ((seq a)) :=
   ret_both (seq_concat s1 s2).
 
 Notation seq_push := (lift2_both seq_push).
@@ -111,7 +111,7 @@ Definition seq_from_slice
 
   (input: ( (seq a)))
   (start_fin: uint_size × uint_size)
-  : both (fset []) ([interface]) ((seq a)) :=
+  : both ((seq a)) :=
   ret_both (seq_from_slice input start_fin).
 
 Definition seq_from_slice_range
@@ -119,15 +119,15 @@ Definition seq_from_slice_range
 
   (input: ( (seq a)))
   (start_fin: uint_size × uint_size)
-  : both (fset []) ([interface]) ((seq a)) :=
+  : both ((seq a)) :=
   ret_both (seq_from_slice_range input start_fin).
 
-Definition seq_from_seq {A} (l : (seq A)) : both (fset []) ([interface]) (seq A) :=
+Definition seq_from_seq {A} (l : (seq A)) : both (seq A) :=
   ret_both (seq_from_seq l).
 
 (**** Chunking *)
 
-Definition seq_num_chunks {a: choice_type} (s: ( (seq a))) (chunk_len: uint_size) : both (fset []) ([interface]) (uint_size) :=
+Definition seq_num_chunks {a: choice_type} (s: ( (seq a))) (chunk_len: uint_size) : both (uint_size) :=
   ret_both (seq_num_chunks s chunk_len).
 
 Definition seq_chunk_len
@@ -135,7 +135,7 @@ Definition seq_chunk_len
   (s: ( (seq a)))
   (chunk_len: nat)
   (chunk_num: nat)
-  : both (fset []) ([interface]) (('nat)) :=
+  : both (('nat)) :=
   ret_both (seq_chunk_len s chunk_len chunk_num).
 
 Definition seq_get_chunk
@@ -144,7 +144,7 @@ Definition seq_get_chunk
   (s: ( (seq a)))
   (chunk_len: uint_size)
   (chunk_num: uint_size)
-  : both (fset []) ([interface]) (((uint_size × seq a))) :=
+  : both (((uint_size × seq a))) :=
   ret_both (seq_get_chunk s chunk_len chunk_num).
 
 Definition seq_set_chunk
@@ -153,27 +153,27 @@ Definition seq_set_chunk
   (s: ( (seq a)))
   (chunk_len: uint_size)
   (chunk_num: uint_size)
-  (chunk: ( (seq a)) ) : both (fset []) ([interface]) ((seq a)) :=
+  (chunk: ( (seq a)) ) : both ((seq a)) :=
   ret_both (seq_set_chunk s chunk_len chunk_num chunk).
 
 
-Definition seq_num_exact_chunks {a} (l : ( (seq a))) (chunk_size : ( (uint_size))) : (both (fset []) ([interface]) uint_size) :=
+Definition seq_num_exact_chunks {a} (l : ( (seq a))) (chunk_size : ( (uint_size))) : (both uint_size) :=
   ret_both (seq_num_exact_chunks l chunk_size).
 
 Definition seq_get_exact_chunk {a : choice_type}  (l : ( (seq a))) (chunk_size chunk_num: ( (uint_size))) :
-  both (fset []) ([interface]) ((seq a)) :=
+  both ((seq a)) :=
   ret_both (seq_get_exact_chunk l chunk_size chunk_num).
 
 Definition seq_set_exact_chunk {a : choice_type} :=
   @seq_set_chunk a.
 
-Definition seq_get_remainder_chunk {a : choice_type}  (l : (seq a)) (chunk_size : (uint_size)) : both (fset []) ([interface]) ((seq a)) :=
+Definition seq_get_remainder_chunk {a : choice_type}  (l : (seq a)) (chunk_size : (uint_size)) : both ((seq a)) :=
   ret_both (seq_get_remainder_chunk l chunk_size).
 
-Definition seq_xor_ {WS} (x y : seq (@int WS)) : both (fset []) ([interface]) (seq (@int WS)) :=
+Definition seq_xor_ {WS} (x y : seq (@int WS)) : both (seq (@int WS)) :=
   ret_both (seq_xor_ x y).
 
-Definition seq_truncate {a : choice_type}  (x : seq a) (n : nat) : both (fset []) ([interface]) (seq a) :=
+Definition seq_truncate {a : choice_type}  (x : seq a) (n : nat) : both (seq a) :=
   ret_both (seq_truncate x n).
 
 (* End Seqs. *)
@@ -189,51 +189,49 @@ Definition uint32_word_t : choice_type := nseq_ uint8 4.
 Definition uint16_word_t : choice_type := nseq_ uint8 2.
 
 (**** Array manipulation *)
-Equations array_new_ {A: choice_type} {L I} (init: both L I A) `(len: uint_size) : both L I (nseq A len) :=
+Equations array_new_ {A: choice_type} (init: both A) `(len: uint_size) : both (nseq A len) :=
   array_new_ init len := lift1_both (fun x => Hacspec_Lib_Pre.array_new_ x (from_uint_size len)) init.
 
-Equations array_index {L1 L2 (* L3 *) : {fset Location}} {I1 I2 (* I3 *) : Interface}
-  {A: choice_type} {len : nat} (x : both L1 I1 (nseq_ A len)) {WS} (y : both L2 I2 (int WS))
-  (* `{H_loc_incl_x : is_true (fsubset L1 L3)} `{H_opsig_incl_x : is_true (fsubset I1 I3)} *)
-  (* `{H_loc_incl_y : is_true (fsubset L2 L3)} `{H_opsig_incl_y : is_true (fsubset I2 I3)} *) : both (L1 :|: L2) (* L3 *) (I1 :|: I2) (* I3 *) A :=
+Equations array_index
+  {A: choice_type} {len : nat} (x : both (nseq_ A len)) {WS} (y : both (int WS)) : both A :=
   array_index x (WS := WS) y := lift2_both (fun x y => Hacspec_Lib_Pre.array_index x y) x y.
 Fail Next Obligation.
 
-Equations array_upd {L1 L2 L3} {I1 I2 I3} {A : choice_type} {len} (s: both L1 I1 (nseq_ A len)) (i: both L2 I2 (@int U32)) (new_v: both L3 I3 A) : both (L1 :|: L2 :|: L3) (I1 :|: I2 :|: I3) (nseq_ A len) :=
+Equations array_upd {A : choice_type} {len} (s: both (nseq_ A len)) (i: both (@int U32)) (new_v: both A) : both (nseq_ A len) :=
   array_upd s i new_v :=
     (lift3_both (fun (s : nseq_ A len) i new_v => Hacspec_Lib_Pre.array_upd s i new_v) s i new_v).
 
 (* substitutes a sequence (seq) into an array (nseq), given index interval  *)
-Definition update_sub {A : choice_type} {len slen}  (v : (nseq_ A len)) (i : nat) (n : nat) (sub : (nseq_ A slen)) : both (fset []) ([interface]) ((nseq_ A len)) :=
+Definition update_sub {A : choice_type} {len slen}  (v : (nseq_ A len)) (i : nat) (n : nat) (sub : (nseq_ A slen)) : both ((nseq_ A len)) :=
   ret_both (update_sub v i n sub).
 
-Program Fixpoint array_from_list_helper {A: choice_type} {L I} (x : both L I A) (xs: list (both L I A)) (k : nat) {measure (length xs)} : both L I (nseq_ A (S k)) :=
+Program Fixpoint array_from_list_helper {A: choice_type} (x : both A) (xs: list (both A)) (k : nat) {measure (length xs)} : both (nseq_ A (S k)) :=
   match xs with
   | [] => lift1_both (* (H_loc_incl_x := fsubsetxx L) *) (* (H_opsig_incl_x := fsubsetxx I) *) (fun x => setm emptym (Ordinal (ssrbool.introT ssrnat.ltP (lt_succ_diag_r_sub k O))) x : nseq_ A (S k)) x
   | y :: ys =>
       bind_both x (fun temp_x =>
                      bind_both (array_from_list_helper y ys k) (fun temp_y =>
-                                                                  lift_both (fsubset_loc := _) (fsubset_opsig := _) (ret_both (setm (temp_y : nseq_ A (S k)) (Ordinal (ssrbool.introT ssrnat.ltP (lt_succ_diag_r_sub k (length (y :: ys))))) temp_x : nseq_ A (S k)))) (fsubset_loc := _)  (fsubset_opsig := _)) (fsubset_loc := _)  (fsubset_opsig := _)
+                                                                  lift_both (ret_both (setm (temp_y : nseq_ A (S k)) (Ordinal (ssrbool.introT ssrnat.ltP (lt_succ_diag_r_sub k (length (y :: ys))))) temp_x : nseq_ A (S k)))))
   end.
 Solve All Obligations with (intros ; (* time *) (fset_equality || solve_in_fset)).
 Fail Next Obligation.
 
-Equations array_from_list {A: choice_type} {L I} (l: list (both L I A))
-  : both L I (nseq_ A (length l)) :=
+Equations array_from_list {A: choice_type} (l: list (both A))
+  : both (nseq_ A (length l)) :=
   array_from_list l :=
-    match l as k return both L I (nseq_ A (length k)) with
+    match l as k return both (nseq_ A (length k)) with
       [] => solve_lift (ret_both (tt : nseq_ A 0))
     | (x :: xs) => array_from_list_helper x xs (length xs)
     end.
 Solve All Obligations with (intros ; (fset_equality || solve_in_fset)).
 Fail Next Obligation.
 
-Program Definition array_from_seq {A: choice_type} {L I} (out_len: nat) (input: both L I (seq A)) : both L I (nseq_ A out_len) :=
+Program Definition array_from_seq {A: choice_type} (out_len: nat) (input: both (seq A)) : both (nseq_ A out_len) :=
   lift1_both  (* (H_loc_incl_x := fsubsetxx _) (H_opsig_incl_x := fsubsetxx _) *) (array_from_seq out_len) input.
 
-Equations array_to_seq  {L (* L2 *) : {fset Location}} {I (* I2 *) : Interface}
-  {A : choice_type} {n} (f : both L I (nseq_ A n))
-  (* `{H_loc_incl_x : is_true (fsubset L1 L2)} `{H_opsig_incl_x : is_true (fsubset I1 I2)} *) : both L I (seq A) :=
+Equations array_to_seq
+  {A : choice_type} {n} (f : both (nseq_ A n))
+  (* `{H_loc_incl_x : is_true (fsubset L1 L2)} `{H_opsig_incl_x : is_true (fsubset I1 I2)} *) : both (seq A) :=
   array_to_seq := (lift1_both Hacspec_Lib_Pre.array_to_seq).
 Fail Next Obligation.
 
@@ -244,7 +242,7 @@ Definition array_from_slice
   (out_len: nat)
   (input: (seq a))
   (start: uint_size)
-  (slice_len: uint_size)  : both (fset []) ([interface]) ((nseq_ a out_len)) :=
+  (slice_len: uint_size)  : both ((nseq_ a out_len)) :=
   ret_both (array_from_slice default_value out_len input (from_uint_size start) (from_uint_size slice_len)).
 
 Definition array_slice
@@ -253,7 +251,7 @@ Definition array_slice
   (input: (seq a))
   (start: nat)
   (slice_len: nat)
-  : both (fset []) ([interface]) ((nseq_ a slice_len)) :=
+  : both ((nseq_ a slice_len)) :=
   ret_both (array_slice input start slice_len).
 
 Definition array_from_slice_range
@@ -263,7 +261,7 @@ Definition array_from_slice_range
   (out_len: nat)
   (input: (seq a))
   (start_fin: (uint_size × uint_size))
-  : both (fset []) ([interface]) ((nseq_ a out_len)) :=
+  : both ((nseq_ a out_len)) :=
   ret_both (array_from_slice_range default_value out_len input start_fin).
 
 Definition array_slice_range
@@ -272,7 +270,7 @@ Definition array_slice_range
   {len : nat}
   (input: (nseq_ a len))
   (start_fin:(uint_size × uint_size))
-  : both (fset []) ([interface]) ((seq a)) :=
+  : both ((seq a)) :=
   ret_both (array_slice_range input start_fin).
 
 Definition array_update
@@ -282,7 +280,7 @@ Definition array_update
   (s: (nseq_ a len))
              (start : uint_size)
              (start_s: (seq a))
-    : both (fset []) ([interface]) ((nseq_ a len)) :=
+    : both ((nseq_ a len)) :=
     ret_both (array_update s start start_s).
 
   Definition array_update_start
@@ -291,12 +289,12 @@ Definition array_update
              {len: nat}
              (s: (nseq_ a len))
              (start_s: (seq a))
-    : both (fset []) ([interface]) ((nseq_ a len)) :=
+    : both ((nseq_ a len)) :=
     ret_both (array_update_start s start_s).
 
-  Definition array_len  {a: choice_type} {len: nat} (s: (nseq_ a len)) : both (fset []) ([interface]) (uint_size) := ret_both (array_len s).
+  Definition array_len  {a: choice_type} {len: nat} (s: (nseq_ a len)) : both (uint_size) := ret_both (array_len s).
   (* May also come up as 'length' instead of 'len' *)
-  Definition array_length  {a: choice_type} {len: nat} (s: (nseq_ a len)) : both (fset []) ([interface]) (uint_size) := ret_both (array_length s).
+  Definition array_length  {a: choice_type} {len: nat} (s: (nseq_ a len)) : both (uint_size) := ret_both (array_length s).
 
   Definition array_update_slice
              {a : choice_type}
@@ -307,7 +305,7 @@ Definition array_update
              (input: ( (seq a)))
              (start_in: uint_size)
              (len: uint_size)
-    : both (fset []) ([interface]) ((nseq_ a _)) :=
+    : both ((nseq_ a _)) :=
     ret_both (array_update_slice (l := l) out start_out input start_in (from_uint_size len)).
 
   (**** Numeric operations *)

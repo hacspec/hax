@@ -416,24 +416,19 @@ Section Both.
   Inductive valid_both :
     forall (b : raw_both), Prop :=
   | both_valid_ret :
-    forall x, valid_both {| is_pure := x ; is_state := ret x |}
-  | both_valid_putr_getr :
-    forall l k v,
-      l \in L ->
-      (forall v, valid_both (k v)) ->
-      valid_both
-        ({| is_pure := @is_pure (k v) ;
-           is_state := putr l v (getr l (fun x => @is_state (k x))) |})
-  (* | both_valid_getr : *)
-  (*   forall (l : Location) (v : l) (k : l -> raw_both), *)
+    forall x, valid_both {| is_pure := x ; is_state := ret x |}.
+  (* | both_valid_putr_getr : *)
+  (*   forall l k v, *)
   (*     l \in L -> *)
-  (*     valid_both ({| is_pure := @is_pure (k v) ; is_state := @is_state (k v) |}) -> *)
-  (*     valid_both ({| is_pure := @is_pure (k v) ; is_state := getr l (fun v => @is_state (k v)) |}) *)
-  | both_valid_putr :
-    forall l v k,
-      l \in L ->
-      valid_both k ->
-      valid_both ({| is_pure := @is_pure k ; is_state := putr l v (@is_state k) |}).
+  (*     (forall v, valid_both (k v)) -> *)
+  (*     valid_both *)
+  (*       ({| is_pure := @is_pure (k v) ; *)
+  (*          is_state := putr l v (getr l (fun x => @is_state (k x))) |}) *)
+  (* | both_valid_putr : *)
+  (*   forall l v k, *)
+  (*     l \in L -> *)
+  (*     valid_both k -> *)
+  (*     valid_both ({| is_pure := @is_pure k ; is_state := putr l v (@is_state k) |}) *)
 
   (* | valid_opr : *)
   (*   forall o x k, *)
@@ -447,7 +442,7 @@ Section Both.
   (*     valid_code (sampler op k) *)
 
   Class ValidBoth (p : raw_both) :=
-    { is_valid_code : ValidCode L I (@is_state p) ;
+    { is_valid_code : ValidCode fset0 fset0 (@is_state p) ;
       is_valid_both : @valid_both p ;
     }.
   Arguments is_valid_code {_} ValidBoth.
@@ -468,96 +463,36 @@ End Both.
 Arguments is_pure {_} raw_both.
 Arguments is_state {_} raw_both.
 
-Arguments valid_both L {_}.
-Arguments both_valid_ret L {_}.
-Arguments both_valid_putr_getr L {_}.
-Arguments both_valid_putr L {_}.
+Arguments valid_both {_}.
+Arguments both_valid_ret {_}.
+(* Arguments both_valid_putr_getr L {_}. *)
+(* Arguments both_valid_putr L {_}. *)
 
-Arguments ValidBoth L I {_} p.
-Arguments is_valid_code {_} {_} {_} {_} ValidBoth.
-Arguments is_valid_both {_} {_} {_} {_} ValidBoth.
+Arguments ValidBoth {_} p.
+Arguments is_valid_code {_} {_} ValidBoth.
+Arguments is_valid_both {_} {_} ValidBoth.
 
-Arguments both_prog {_} {_} {_} b.
-Arguments both_prog_valid {_} {_} {_} b.
-Arguments p_eq {_} {_} {_} b.
+Arguments both_prog {_} b.
+Arguments both_prog_valid {_} b.
+Arguments p_eq {_} b.
 
 Section Both_helper.
 
   Lemma valid_both_eta :
-    forall {L (* I *)} {A : choice_type} {x : raw_both A},
-      valid_both L (* I *) x ->
-      valid_both L (* I *) {| is_pure := is_pure x ; is_state := is_state x |}.
+    forall {A : choice_type} {x : raw_both A},
+      valid_both x ->
+      valid_both {| is_pure := is_pure x ; is_state := is_state x |}.
   Proof.
-    now intros ? (* ? *) ? [] ?.
+    now intros ? [] ?.
   Defined.
 
   Lemma ValidBoth_eta :
-    forall {L I} {A : choice_type} {x : both L I A},
-      ValidBoth L I x ->
-      ValidBoth L I {| is_pure := is_pure x ; is_state := is_state x |}.
+    forall {A : choice_type} {x : both A},
+      ValidBoth x ->
+      ValidBoth {| is_pure := is_pure x ; is_state := is_state x |}.
   Proof.
-    now intros ? ? ? [[] ? ?] ?.
+    now intros ? [[] ? ?] ?.
   Defined.
-
-  Lemma both_valid_injectLocations :
-    forall A L1 L2 (* I *) (v : raw_both A),
-      fsubset L1 L2 ->
-      valid_both L1 (* I *) v ->
-      valid_both L2 (* I *) v.
-  Proof.
-    intros A L1 L2 (* I *) v h p.
-    induction p ; simpl in * ; intros.
-    + constructor.
-    + apply both_valid_putr_getr ; eauto.
-      eapply injectSubset.
-      apply h.
-      assumption.
-    (* - constructor ; eauto. *)
-    (*   eapply injectSubset. *)
-    (*   apply h. *)
-    (*   assumption. *)
-    - constructor ; eauto.
-      eapply injectSubset.
-      apply h.
-      assumption.
-  Qed.
-
-  Lemma valid_injectLocations_both :
-    forall A L1 L2 I (v : raw_both A),
-      fsubset L1 L2 ->
-      ValidBoth L1 I v ->
-      ValidBoth L2 I v.
-  Proof.
-    intros A L1 L2 I v h p.
-    destruct p as [is_valid_code valid_both].
-    constructor.
-    - eapply valid_injectLocations.
-      apply h.
-      apply is_valid_code.
-    - eapply both_valid_injectLocations.
-      apply h.
-      apply valid_both.
-  Qed.
-
-  Lemma valid_injectMap_both :
-    forall A L I1 I2 (v : raw_both A),
-      fsubset I1 I2 ->
-      ValidBoth L I1 v ->
-      ValidBoth L I2 v.
-  Proof.
-    intros A L I1 I2 v h p.
-    destruct p as [is_valid_code valid_both].
-    constructor.
-    - eapply valid_injectMap.
-      apply h.
-      apply is_valid_code.
-    - generalize dependent is_valid_code.
-      induction valid_both ; simpl in *.
-      + constructor.
-      + constructor ; eauto.
-      (* + constructor ; eauto. *)
-      + constructor ; eauto.
-  Qed.
 
   Definition bind_raw_both {A B} (c : raw_both A) (k : A -> raw_both B) : raw_both B :=
     {|
@@ -566,36 +501,25 @@ Section Both_helper.
     |}.
 
   Lemma valid_bind_both_ :
-    forall {L1 L2 (* I1 I2 *)} A B c k,
-      valid_both L1 (* I1 *) c ->
-      (forall x, valid_both L2 (* I2 *) {| is_pure := is_pure (k x) ; is_state := is_state (k x) |}) ->
-      `{is_true (fsubset L1 L2)} ->
-      valid_both L2 (@bind_raw_both A B c k).
+    forall A B c k,
+      valid_both c ->
+      (forall x, valid_both {| is_pure := is_pure (k x) ; is_state := is_state (k x) |}) ->
+      valid_both (@bind_raw_both A B c k).
   Proof.
-    intros L1 L2 (* I1 I2 *) A B c k Hc Hk Hfsubset.
+    intros A B c k Hc Hk.
     induction Hc ; intros.
-    - apply Hk.
-    - unfold bind_raw_both.
-      simpl.
-      apply (both_valid_putr_getr L2 l (fun l => bind_raw_both (k0 l) k) v (injectSubset Hfsubset H) H1).
-    (* - admit. *)
-    - apply (both_valid_putr L2 l v (bind_raw_both k0 k) (injectSubset Hfsubset H) IHHc).
-  (* Admitted. *)
+    apply Hk.
   Qed.
 
   Lemma valid_bind_both :
-    forall {L1 L2 I1 I2} A B c k,
-      ValidBoth L1 I1 c ->
-      (forall x, ValidBoth L2 I2 (k x)) ->
-      `{fsubset L1 L2} ->
-      `{fsubset I1 I2} ->
-      ValidBoth L2 I2 (@bind_raw_both A B c k).
+    forall A B c k,
+      ValidBoth c ->
+      (forall x, ValidBoth (k x)) ->
+      ValidBoth (@bind_raw_both A B c k).
   Proof.
-    intros L1 L2 I1 I2 A B c k Hc Hk Hloc Hopsig.
+    intros A B c k Hc Hk.
     constructor ; simpl.
     - apply valid_bind.
-      eapply valid_injectLocations. apply Hloc.
-      eapply valid_injectMap. apply Hopsig.
       apply (is_valid_code Hc).
       apply (fun x => is_valid_code (Hk x)).
     - eapply valid_bind_both_.
@@ -603,88 +527,28 @@ Section Both_helper.
       intros.
       apply valid_both_eta.
       apply (fun x => is_valid_both (Hk x)).
-      assumption.
   Qed.
 
-  Instance valid_putr_both :
-    forall {L I A} ℓ v (k : both L I A),
-      ℓ \in L ->
-      ValidBoth L I ({| is_pure := is_pure k ; is_state := #put ℓ := v ;; is_state k |}).
-  Proof.
-    intros.
-    constructor.
-    - simpl.
-      apply valid_putr. assumption.
-      apply k.
-    - apply both_valid_putr. assumption.
-      apply k.
-  Qed. 
-
-  (* Instance valid_getr_both : *)
-  (*   forall {L I A} (ℓ : Location) (v : ℓ) (k : ℓ -> both L I A), *)
-  (*     ℓ \in L -> *)
-  (*     ValidBoth L I ({| is_pure := is_pure (k v) ; is_state := v ← get ℓ ;; is_state (k v) |}). *)
-  (* Proof. *)
-  (*   intros. *)
-  (*   constructor. *)
-  (*   - simpl. *)
-  (*     apply valid_getr. assumption. *)
-  (*     apply k. *)
-  (*   - apply (both_valid_getr L A ℓ v k H). *)
-  (*     apply valid_both_eta. *)
-  (*     apply (both_prog_valid (k v)). *)
-  (* Qed. *)
-
-  Instance valid_putr_getr_both :
-    forall {L I A} ℓ v (k : _ -> both L I A),
-      ℓ \in L ->
-      (forall v, ValidBoth L I (k v)) ->
-      ValidBoth L I ({| is_pure := is_pure (k v) ;
-           is_state := putr ℓ v (getr ℓ (fun x => is_state (k x))) |}).
-  Proof.
-    intros.
-    constructor.
-    - simpl.
-      apply valid_putr. assumption.
-      apply valid_getr. assumption.
-      apply k.
-    - apply (both_valid_putr_getr L (* I *) ℓ k v H).
-      apply H0.
-  Qed.
-
-  
   Definition both_ret {A : choice_type} (x : A) : raw_both A :=
     {| is_pure := x ; is_state := ret x |} .
 
-  Program Definition both_ret_valid {L I} {A : choice_type} (x : A) : ValidBoth L I (both_ret x) :=
-    {| is_valid_code := valid_ret _ _ _ ; is_valid_both := both_valid_ret L (* I *) _ |} 
+  Program Definition both_ret_valid {A : choice_type} (x : A) : ValidBoth (both_ret x) :=
+    {| is_valid_code := valid_ret _ _ _ ; is_valid_both := both_valid_ret _ |} 
     .
   Fail Next Obligation.
 
-  
 End Both_helper.
 
-Program Definition ret_both (* {L I} *) {A : choice_type} (x : A) : both (fset []) ([interface]) A :=
+Program Definition ret_both {A : choice_type} (x : A) : both A :=
   {|
     both_prog := {| is_pure := x ; is_state := ret x |} ;
     both_prog_valid := {|
-                        is_valid_code := valid_ret (fset []) ([interface]) x ;
-                        is_valid_both := both_valid_ret (fset []) x ;
+                        is_valid_code := valid_ret fset0 fset0 x ;
+                        is_valid_both := both_valid_ret x ;
                       |} ;
     p_eq := r_ret _ _ _ _ _ ;
   |}.
 Fail Next Obligation.
-
-(* Program Definition ret_both {L I} {A : choice_type} (x : A) : both L I A := *)
-(*   {| *)
-(*     both_prog := {| is_pure := x ; is_state := ret x |} ; *)
-(*     both_prog_valid := {| *)
-(*                         is_valid_code := valid_ret L I x ; *)
-(*                         is_valid_both := both_valid_ret L x ; *)
-(*                       |} ; *)
-(*     p_eq := r_ret _ _ _ _ _ ; *)
-(*   |}. *)
-(* Fail Next Obligation. *)
 
 Ltac pattern_both Hx Hf Hg :=
   (match goal with
@@ -740,7 +604,7 @@ Proof.
     intros ? ? []. subst. apply H2.
 Qed.
 
-Theorem r_bind_trans_both : forall {B C : choice_type} {L I} {f : choice.Choice.sort B -> raw_code C} {g : choice.Choice.sort B -> raw_code C} (b : both L I B),
+Theorem r_bind_trans_both : forall {B C : choice_type} {f : choice.Choice.sort B -> raw_code C} {g : choice.Choice.sort B -> raw_code C} (b : both B),
   forall (P : precond) (Q : postcond _ _),
     (⊢ ⦃ true_precond ⦄ f ((is_pure b))  ≈ g (is_pure b) ⦃ Q ⦄) ->
     ⊢ ⦃ P ⦄ temp ← is_state b ;; f temp ≈ g (is_pure b) ⦃ Q ⦄.
@@ -779,10 +643,10 @@ Ltac r_subst_both a :=
   r_bind_both a ;
   subst x y z ; hnf.
 
-Program Definition bind_both {L1 L2 I1 I2} {A B} (c : both L1 I1 A) (k : A -> both L2 I2 B) `{fsubset_loc : fsubset L1 L2} `{fsubset_opsig : fsubset I1 I2} : both L2 I2 B :=
+Program Definition bind_both {A B} (c : both A) (k : A -> both B) : both B :=
   {|
     both_prog := bind_raw_both (both_prog c) (fun x => both_prog (k x)) ;
-    both_prog_valid := valid_bind_both A B c k (both_prog_valid c) (fun x => both_prog_valid (k x)) _ _ ;
+    both_prog_valid := valid_bind_both A B c k (both_prog_valid c) (fun x => both_prog_valid (k x)) ;
   |}.
 Next Obligation.
   intros.
@@ -790,7 +654,7 @@ Next Obligation.
   apply (k (is_pure c)).
 Qed.
 
-Lemma both_eq : forall {A : choice_type} {L I} (a b : both L I A),
+Lemma both_eq : forall {A : choice_type} (a b : both A),
     both_prog a = both_prog b ->
     a = b.
 Proof.
@@ -800,8 +664,8 @@ Proof.
   f_equal ; apply proof_irrelevance.
 Qed.
 
-Lemma bind_ret_both : forall {A B : choice_type} {L I} `{fsubset_loc : is_true (fsubset (fset []) L)} `{fsubset_opsig : is_true (fsubset (fset []) I)} (f : A -> both L I B) (x : A),
-    (bind_both (fsubset_loc := fsubset_loc) (fsubset_opsig := fsubset_opsig) (ret_both x) f) = f x.
+Lemma bind_ret_both : forall {A B : choice_type} (f : A -> both B) (x : A),
+    (bind_both (ret_both x) f) = f x.
 Proof.
   intros.
   apply both_eq.
@@ -813,25 +677,21 @@ Proof.
   reflexivity.
 Qed.
 
-Definition lift_both {L1 L2 I1 I2} {A} (x : both L1 I1 A) `{fsubset_loc : is_true (fsubset L1 L2)} `{fsubset_opsig : is_true (fsubset I1 I2)} : both L2 I2 A :=
+Definition lift_both {A} (x : both A) : both A :=
     {| both_prog := x ;
-      both_prog_valid := valid_injectLocations_both A L1 L2 I2 x fsubset_loc (valid_injectMap_both A L1 I1 I2 x fsubset_opsig (both_prog_valid x)) ;
+      both_prog_valid := (both_prog_valid x) ;
       p_eq := p_eq x |}.
 
 Notation "'solve_lift' x" := (lift_both (* (L1 := _) (L2 := _) (I1 := _) (I2 := _) (A := _) *) x (* (fsubset_loc := _) (fsubset_opsig := _) *)) (at level 100).
 
-Equations lift1_both {A B : choice_type} {L : {fset Location}} {I : Interface} (f : A -> B) (x : both L I A)
-        (* `{H_loc_incl_x : is_true (fsubset L1 L2)} `{H_opsig_incl_x : is_true (fsubset I1 I2)} *)
-  : both L I B
+Equations lift1_both {A B : choice_type} (f : A -> B) (x : both A) : both B
   :=
   lift1_both f x := bind_both x (fun x' => solve_lift (ret_both (f x'))).
 Solve All Obligations with intros ; solve_in_fset.
 Fail Next Obligation.
 
-Equations lift2_both {A B C : choice_type} {L1 L2 (* L3 *) : {fset Location}} {I1 I2 (* I3 *) : Interface} (f : A -> B -> C) (x : both L1 I1 A) (y : both L2 I2 B)
-        (* `{H_loc_incl_x : is_true (fsubset L1 L3)} `{H_opsig_incl_x : is_true (fsubset I1 I3)} *)
-        (* `{H_loc_incl_y : is_true (fsubset L2 L3)} `{H_opsig_incl_y : is_true (fsubset I2 I3)} *)
-  : both (L1 :|: L2) (* L3 *) (I1 :|: I2) (* I3 *) C
+Equations lift2_both {A B C : choice_type} (f : A -> B -> C) (x : both A) (y : both B)
+  : both C
   :=
   lift2_both f x y :=
     bind_both x (fun x' =>
@@ -840,11 +700,8 @@ Equations lift2_both {A B C : choice_type} {L1 L2 (* L3 *) : {fset Location}} {I
 Solve All Obligations with intros ; solve_in_fset.
 Fail Next Obligation.
 
-Equations lift3_both {A B C D : choice_type} {L1 L2 L3 (* L4 *) : {fset Location}} {I1 I2 I3 (* I4 *) : Interface} (f : A -> B -> C -> D) (x : both L1 I1 A) (y : both L2 I2 B) (z : both L3 I3 C)
-        (* `{H_loc_incl_x : is_true (fsubset L1 L4)} `{H_opsig_incl_x : is_true (fsubset I1 I4)} *)
-        (* `{H_loc_incl_y : is_true (fsubset L2 L4)} `{H_opsig_incl_y : is_true (fsubset I2 I4)} *)
-        (* `{H_loc_incl_z : is_true (fsubset L3 L4)} `{H_opsig_incl_z : is_true (fsubset I3 I4)} *)
-  : both (L1 :|: L2 :|: L3) (* L4 *) (I1 :|: I2 :|: I3) (* I4 *) D :=
+Equations lift3_both {A B C D : choice_type} (f : A -> B -> C -> D) (x : both A) (y : both B) (z : both C)
+  : both D :=
   lift3_both f x y z :=
   bind_both x (fun x' => lift_both (lift2_both (f x') y z)).
 Solve All Obligations with intros ; solve_in_fset.
@@ -1244,7 +1101,7 @@ Fixpoint chElement_ordType_ce_to_ce (ce : choice_type) (X : ce) : chElement_ordT
 (*   - unfold cfsetU. *)
 (*     cbn. *)
 
-Equations prod_both {ceA ceB : choice_type} {L1 L2 (* L3 *) : {fset Location}} {I1 I2 (* I3 *) : {fset _}} (a : both L1 I1 ceA) (b : both L2 I2 ceB) (* `{fsubset L1 L3} `{fsubset I1 I3} `{fsubset L2 L3} `{fsubset I2 I3} *) : both (L1 :|: L2) (I1 :|: I2) (ceA × ceB) :=
+Equations prod_both {ceA ceB : choice_type} (a : both ceA) (b : both ceB) (* `{fsubset L1 L3} `{fsubset I1 I3} `{fsubset L2 L3} `{fsubset I2 I3} *) : both (ceA × ceB) :=
   prod_both a b :=
     bind_both a (fun a' =>
     bind_both b (fun b' =>
@@ -1255,7 +1112,7 @@ Fail Next Obligation.
 Notation "'prod_b' ( a , b )" := (prod_both a b) : hacspec_scope.
 Notation "'prod_b' ( a , b , .. , c )" := (prod_both .. (prod_both a b) .. c) : hacspec_scope.
 
-(* Equations *) Program Definition prod_both0 {ceA ceB : choice_type} {L : {fset _}} {I : {fset _}} (a : both L I ceA) (b : both L I ceB) : both (L) (I) (ceA × ceB) :=
+(* Equations *) Program Definition prod_both0 {ceA ceB : choice_type} (a : both ceA) (b : both ceB) : both (ceA × ceB) :=
   (* prod_both0 a b := *)
   prod_both a b.
 Solve All Obligations with intros ; fset_equality.
@@ -1727,7 +1584,7 @@ Proof.
   apply H.
 Qed.
 
-Equations prod_to_prod {A B} {L I} (x : both L I (A × B)) : (both L I A * both L I B) :=
+Equations prod_to_prod {A B} (x : both (A × B)) : (both A * both B) :=
   prod_to_prod x :=
   (bind_both x (fun x' => solve_lift (ret_both (fst x'))) ,
    bind_both x (fun x' => solve_lift (ret_both (snd x')))).
@@ -1741,7 +1598,7 @@ Fail Next Obligation.
 (* Solve All Obligations with intros ; solve_in_fset. *)
 (* Fail Next Obligation. *)
 
-Equations let_both {L1 L2 I1 I2 A B} (x : both L1 I1 A) (f : both L1 I1 A -> both L2 I2 B) `{fsubset_loc : is_true (fsubset L1 L2)} `{fsubset_opsig : is_true (fsubset I1 I2)} : both L2 I2 B :=
+Equations let_both {A B} (x : both A) (f : both A -> both B) : both B :=
   let_both x f := f x.
 
 Notation "'letb' x ':=' y 'in' f" :=
@@ -1768,123 +1625,20 @@ Notation "'letb' ''' x ':=' y 'in' f" :=
 (* Qed. *)
 (* Fail Next Obligation. *)
 
-(* Equations get_both {L1 I1} (x_loc : Location) `{loc_in : x_loc \in L1} (x : both L1 I1 x_loc) : both L1 I1 x_loc := *)
-(*   get_both x_loc x := *)
-(*     bind_both x (fun x => *)
-(*     {| both_prog := *)
-(*         {| *)
-(*           is_pure := x ; *)
-(*           is_state := (getr x_loc (fun v => ret v)) *)
-(*         |}; *)
-(*       both_prog_valid := valid_getr_both x_loc x (fun x => solve_lift ret_both x) loc_in *)
-(*     |}). *)
-(* Solve All Obligations with now intros ; rewrite <- fset0E ; solve_single_fset_fsubset. *)
-(* Next Obligation. *)
-(*   intros. *)
-(*   eapply better_r_get_remind_lhs. *)
-(*   2: now apply r_ret. *)
-(*   unfold Remembers_lhs. *)
-(*   intros. *)
-(*   unfold rem_lhs. *)
-
-(*   apply r_get. *)
-(*   apply better_r. *)
-(*   apply forget_precond. *)
-(*   apply (p_eq y). *)
-(* Qed. *)
-(* Fail Next Obligation. *)
-
-(* Notation "'getb' x 'loc(' ℓ ')' 'in' y" := *)
-(*   (solve_lift get_both ℓ x (loc_in := _) y (* (fsubset_loc := _) (fsubset_opsig := _) (loc_in := _) *)) (at level 100, x pattern, right associativity, format "'getb'  x 'loc(' ℓ ')'  'in' y"). *)
-(* Notation "'getb' ''' x  'loc(' ℓ ')' 'in' y" := *)
-(*   (solve_lift get_both ℓ x (loc_in := _) y (* (fsubset_loc := _) (fsubset_opsig := _) (loc_in := _) *)) (at level 100, x pattern, right associativity, format "'getb' ''' x  'loc(' ℓ ')' 'in'  y"). *)
-
-Equations assign_mut_both {L1 I1} (x_loc : Location) (x : both L1 I1 x_loc) : both (fset [x_loc] :|: L1) I1 'unit :=
-  assign_mut_both x_loc x :=
-    bind_both x (fun x =>
-    {| both_prog :=
-        {|
-          is_pure := (tt : 'unit) ;
-          is_state := (putr x_loc x (ret (tt : 'unit)))
-        |};
-      both_prog_valid := @valid_putr_both (fset [x_loc] :|: L1) I1 'unit x_loc x (solve_lift ret_both (tt : 'unit)) _
-    |}).
-Next Obligation.
-  intros.
-  normalize_fset.
-  solve_single_fset_fsubset.
-Qed.
-Next Obligation.
-  intros.
-  normalize_fset.
-  solve_single_fset_fsubset.
-Qed.
-Next Obligation.
-  intros.
-  rewrite <- fset1E.
-  now apply (ssrbool.introT (fsetU1P _ _ _)) ; left.
-Qed.
-Next Obligation.
-  intros.
-  apply better_r_put_lhs.
-  now apply r_ret.
-Qed.
-Next Obligation.
-  intros.
-  normalize_fset.
-  solve_single_fset_fsubset.
-Qed.
-Next Obligation.
-  intros.
-  normalize_fset.
-  solve_single_fset_fsubset.
-Qed.
-Fail Next Obligation.
-
-Notation "'assignb' x 'loc(' ℓ ')' ':=' y ;" :=
-  (solve_lift assign_mut_both ℓ y (* (fsubset_loc := _) (fsubset_opsig := _) (loc_in := _) *)) (at level 100, x pattern, right associativity, format "'assignb'  x 'loc(' ℓ ')'  ':=' y ;").
-Notation "'assignb' ''' x  'loc(' ℓ ')' ':=' y ;" :=
-  (solve_lift assign_mut_both ℓ y (* (fsubset_loc := _) (fsubset_opsig := _) (loc_in := _) *)) (at level 100, x pattern, right associativity, format "'assignb' ''' x  'loc(' ℓ ')' ':='  y  ;").
-
-Equations let_mut_both {L1 L2 I1 I2 B} (x_loc : Location) `{loc_in : x_loc \in L2} (x : both L1 I1 x_loc) (f : both (fset [x_loc] :|: L1) I1 x_loc -> both L2 I2 B) `{fsubset_loc : is_true (fsubset L1 L2)} `{fsubset_opsig : is_true (fsubset I1 I2)} : both L2 I2 B :=
-  let_mut_both x_loc x f :=
-  bind_both x (fun y =>
-   {| both_prog :=
-     {|
-       is_pure := is_pure (f (solve_lift (ret_both y))) ;
-       is_state := putr x_loc y (getr x_loc (fun y => is_state (f (solve_lift (ret_both y)))))
-     |};
-       both_prog_valid := (@valid_putr_getr_both L2 I2 B x_loc y (fun x => f (solve_lift (ret_both x))) loc_in (fun x => both_prog_valid (f (solve_lift (ret_both x)))))
-   |}).
-Solve All Obligations with intros ; solve_in_fset.
-Next Obligation.
-  intros.
-  apply better_r_put_lhs.
-  apply getr_set_lhs.
-  apply forget_precond.
-  apply f.
-Qed.
-Fail Next Obligation.
-
-Notation "'letb' x 'loc(' ℓ ')' ':=' y 'in' f" :=
-  (let_mut_both ℓ y (fun x => f) (* (fsubset_loc := _) (fsubset_opsig := _) (loc_in := _) *)) (at level 100, x pattern, right associativity, format "'letb'  x 'loc(' ℓ ')'  ':=' y  'in' '//' f").
-Notation "'letb' ''' x  'loc(' ℓ ')' ':=' y 'in' f" :=
-  (let_mut_both ℓ y (fun x => f) (* (fsubset_loc := _) (fsubset_opsig := _) (loc_in := _) *)) (at level 100, x pattern, right associativity, format "'letb' ''' x  'loc(' ℓ ')' ':='  y  'in' '//' f").
-
 Fixpoint split_type (F : choice_type -> Type) (A : choice_type) : Type :=
   match A with
   | C × D => split_type F C * split_type F D
   | _ => F A
   end.
 
-Fixpoint split_both {L I A} (x : both L I A) : (split_type (both L I) A) :=
-   match A as c return (both L I c -> split_type (both L I) c) with
+Fixpoint split_both {A} (x : both A) : (split_type (both) A) :=
+   match A as c return (both c -> split_type (both) c) with
    | _ × _ => fun y => (split_both (fst (prod_to_prod y)) , split_both (snd (prod_to_prod y)))
-   | _ => fun y : both L I _ => y
+   | _ => fun y : both _ => y
    end x.
 
-Fixpoint unsplit_both {L I A} (s : split_type (both L I) A) : both L I A :=
-  match A as c return (split_type (both L I) c -> both L I c) with
+Fixpoint unsplit_both {A} (s : split_type (both) A) : both A :=
+  match A as c return (split_type (both) c -> both c) with
   | _ × _ =>
       fun y => prod_both0 ( unsplit_both (fst y)) ((unsplit_both (snd y)))
   | _ => fun y => y
@@ -1904,20 +1658,20 @@ Fixpoint prod_to_prod_n_ty (n : nat) (F : choice_type -> Type) (A : choice_type)
       | _ => F A
       end
   end.
-Eval simpl in prod_to_prod_n_ty 2 (both fset0 fset0) ('nat × 'bool).
+Eval simpl in prod_to_prod_n_ty 2 (both) ('nat × 'bool).
 
 (* TODO: Currently duplicates code, due to prod_to_prod, should only evaluate and project the result ! *)
-Fixpoint prod_to_prod_n {L I A} (n : nat) (x : both L I A) : prod_to_prod_n_ty n  (both L I) A :=
-  match n as m return prod_to_prod_n_ty m (both L I) A with
+Fixpoint prod_to_prod_n {A} (n : nat) (x : both A) : prod_to_prod_n_ty n  (both) A :=
+  match n as m return prod_to_prod_n_ty m (both) A with
   | O => x
   | S n' =>
-      match A as B return both L I B -> prod_to_prod_n_ty (S n') (both L I) B with
+      match A as B return both B -> prod_to_prod_n_ty (S n') (both) B with
       | B × C => fun y => (prod_to_prod_n n' (fst (prod_to_prod y)), snd (prod_to_prod y))
       | _ => fun y => y
       end x
   end.
 
-Equations lift_n {L1 L2 I1 I2 A B} (n : nat) {fsubset_loc : is_true (fsubset L1 L2)} {fsubset_opsig : is_true (fsubset I1 I2)} (z : both L1 I1 A) (f : prod_to_prod_n_ty n (both L1 I1) A -> both L2 I2 B) : both L2 I2 B :=
+Equations lift_n {A B} (n : nat) (z : both A) (f : prod_to_prod_n_ty n (both) A -> both B) : both B :=
   lift_n n z f :=
   (bind_both z (fun z' => f (prod_to_prod_n n (solve_lift (ret_both z'))))).
 Solve All Obligations with intros ; solve_in_fset.
@@ -1932,41 +1686,5 @@ Notation "'letb' ' '(' a ',' b ',' c ')' ':=' z 'in' f" :=
     (at level 100).
 
 Notation "'letb' ' '(' a ',' b ',' c ',' d ')' ':=' z 'in' f" :=
-  (lift_n 3 z (fun '(a, b, c, d) => f))
-    (at level 100).
-
-(* Notation "'letb' ' '(' a ',' b ')' ':=' z 'in' f" := *)
-(*   (let '(a,b) := prod_to_prod_n 1 z in *)
-(*    f) (at level 100). *)
-
-(* Notation "'letb' ' '(' a ',' b ',' c ')' ':=' z 'in' f" := *)
-(*   (let '(a, b, c) := prod_to_prod_n 2 z in *)
-(*    f) (at level 100). *)
-
-(* Notation "'letb' ' '(' a ',' b ',' c ',' d ')' ':=' z 'in' f" := *)
-(*   (  let '(a, b, c, d) := prod_to_prod_n 3 z in *)
-(*      f) (at level 100). *)
-
-(* Locate prod_b( _ , _ ). *)
-
-
-Equations let_both0 {A B} (x : both (fset []) (fset []) A) (f : both (fset []) (fset []) A -> both (fset []) (fset []) B) : both (fset []) (fset []) B :=
-  let_both0 x f := f x.
-
-Notation "'letb0' x ':=' y 'in' f" :=
-  (let_both0 (* (L1 := _) (L2 := _) (I1 := _) (I2 := _) (A := _) (B := _) *) y (fun x => f)) (* (let_both y (fun x => f)) *) (at level 100, x pattern, right associativity).
-Notation "'letb0' ''' x ':=' y 'in' f" :=
-  (let_both0 (* (L1 := _) (L2 := _) (I1 := _) (I2 := _) (A := _) (B := _) *)  y (fun x => f)) (* (let_both y (fun x => f)) *) (at level 100, x pattern, right associativity).
-(* (lift_scope (H_loc_incl := _) (H_opsig_incl := _) y) *)
-
-Notation "'letb0' ' '(' a ',' b ')' ':=' z 'in' f" :=
-  (lift_n 1 z (fun '(a, b) => f))
-    (at level 100).
-
-Notation "'letb0' ' '(' a ',' b ',' c ')' ':=' z 'in' f" :=
-  (lift_n 2 z (fun '(a, b, c) => f))
-    (at level 100).
-
-Notation "'letb0' ' '(' a ',' b ',' c ',' d ')' ':=' z 'in' f" :=
   (lift_n 3 z (fun '(a, b, c, d) => f))
     (at level 100).

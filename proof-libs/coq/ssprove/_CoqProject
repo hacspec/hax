@@ -19,6 +19,8 @@ src/Hacspec_Lib_Controlflow.v
 src/Hacspec_Lib_Notation.v
 src/Hacspec_Lib_TODO.v
 
+src/ConCertLib.v
+
 src/Hacspec_Lib.v
 
 # src/Hacspec_Aes_Jazz.v
