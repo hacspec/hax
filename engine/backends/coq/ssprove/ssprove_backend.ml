@@ -673,7 +673,7 @@ struct
           ( pty span typ,
             "(" ^ "is_pure" ^ " " ^ "("
             ^ SSP.term_to_string_with_paren
-                (pexpr (Map.empty (module Local_ident)) false length)
+                (pexpr false length)
                 0
             ^ ")" ^ ")" )
         (* TODO: check int.to_string is correct! *)
@@ -821,7 +821,7 @@ struct
               pattern = ppat lhs;
               mut = is_mutable_pat lhs;
               value = (pexpr false) rhs;
-              body = (pexpr new_env add_solve) body;
+              body = (pexpr add_solve) body;
               value_typ =
                 (match monadic with
                 | Some (MException typ, _) -> pty span typ
@@ -1033,8 +1033,8 @@ struct
                     SSP.AST.App
                       ( SSP.AST.Var "ssp",
                         [
-                          SSP.AST.Lambdafh
-                            ( [ ppat bpat ], both_type_expr true [] body );
+                          SSP.AST.Lambda
+                            ( [ ppat bpat ], both_type_expr true body );
                         ] ) );
                 (pexpr false) init;
               ] )
@@ -1078,8 +1078,7 @@ struct
                         [
                           SSP.AST.Lambda
                             ( [ ppat bpat ],
-                              both_type_expr new_env true
-                                (extra_set_iter @ extra_set_init)
+                              both_type_expr true
                                 body );
                         ] ) );
                 (pexpr false) init;
@@ -1293,7 +1292,7 @@ struct
                        ~f:(fun { pat; typ; _ } ->
                          SSP.AST.Explicit (ppat pat, pty span typ))
                        params)
-                   (pty span body.typ) []
+                   (pty span body.typ)
                in
                SSP.AST.Equations
                  ( pconcrete_ident f_name,
@@ -1673,9 +1672,8 @@ struct
            arguments)
 
   and lift_definition_type_to_both (name : concrete_ident)
-      (arguments : SSP.AST.argument list) (typ : SSP.AST.ty)
-      (extra_L : string list) : SSP.AST.argument list * SSP.AST.ty =
-    let new_args = new_arguments lis iis arguments in
+      (arguments : SSP.AST.argument list) (typ : SSP.AST.ty) : SSP.AST.argument list * SSP.AST.ty =
+    let new_args = new_arguments arguments in
     let return_typ = SSPExtraDefinitions.wrap_type_in_both typ in
     (new_args, return_typ)
 
@@ -1745,7 +1743,6 @@ let print_item (analysis_data : StaticAnalysis.analysis_data) (item : AST.item)
     make
       {
         current_namespace = U.Concrete_ident_view.to_namespace item.ident;
-        analysis_data;
       }
   in
   Print.pitem item
@@ -2137,7 +2134,7 @@ let process_annotation (x : 'a list) (f2 : ('b * ('a -> 'b)) list) : 'b list =
       if List.is_empty (List.concat temp) then [] else d :: temp)
     f2
 
-let string_of_items (x, y) =
+let string_of_items (x : AST.item list) =
   cleanup_item_strings
     (List.map ~f:decls_to_string
        (process_annotation x
@@ -2173,7 +2170,6 @@ let hardcoded_coq_headers =
 
 let translate _ (_bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =
-  let analysis_data = StaticAnalysis.analyse items in
   U.group_items_by_namespace items
   |> Map.to_alist
   |> List.map ~f:(fun (ns, items) ->
