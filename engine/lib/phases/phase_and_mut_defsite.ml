@@ -97,10 +97,12 @@ struct
       let map_returns ~(f : expr -> expr) : expr -> expr =
         let visitor =
           object
-            inherit [_] Visitors.map as _super
-            method visit_t () x = x
-            method visit_mutability _ () m = m
-            method visit_Return () e witness = Return { e = f e; witness }
+            inherit [_] Visitors.map as super
+
+            method! visit_expr' () e =
+              match e with
+              | Return { e; witness } -> Return { e = f e; witness }
+              | _ -> super#visit_expr' () e
           end
         in
         visitor#visit_expr ()
@@ -146,7 +148,7 @@ struct
           object
             inherit [_] Visitors.map as super
 
-            method visit_expr () e =
+            method! visit_expr () e =
               (let* e = Expect.deref e in
                retyped_local_var_in_vars e)
               <|?> (fun _ -> retyped_local_var_in_vars e)
@@ -183,13 +185,13 @@ struct
           object
             inherit [_] Visitors.map as super
 
-            method visit_expr () e =
+            method! visit_expr () e =
               try super#visit_expr () e
               with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
                 UB.hax_failure_expr e.span e.typ (context, kind)
                   (UB.LiftToFullAst.expr e)
 
-            method visit_expr' () e =
+            method! visit_expr' () e =
               match e with
               | Assign { lhs; e; witness } ->
                   let span = e.span in
@@ -243,7 +245,7 @@ struct
         object
           inherit [_] BVisitors.map as super
 
-          method visit_impl_item' () item' =
+          method! visit_impl_item' () item' =
             (match item' with
             | IIFn { params; body } ->
                 let* params, body = rewrite_function params body in
@@ -252,7 +254,7 @@ struct
             |> Option.value_or_thunk
                  ~default:(Fn.flip super#visit_impl_item' item')
 
-          method visit_trait_item () item =
+          method! visit_trait_item () item =
             let span = item.ti_span in
             let ti_v =
               (match item.ti_v with
@@ -290,7 +292,7 @@ struct
             in
             { item with ti_v }
 
-          method visit_item () i =
+          method! visit_item () i =
             try super#visit_item () i
             with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
               let error = Diagnostics.pretty_print_context_kind context kind in
@@ -301,7 +303,7 @@ struct
               in
               B.make_hax_error_item i.span i.ident msg
 
-          method visit_item' () item' =
+          method! visit_item' () item' =
             (match item' with
             | Fn { name; generics; body; params } ->
                 let* params, body = rewrite_function params body in
