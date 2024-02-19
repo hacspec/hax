@@ -51,14 +51,3 @@ From Hacspec Require Import Hacspec_Lib_Controlflow. Export Hacspec_Lib_Controlf
 From Hacspec Require Import Hacspec_Lib_Notation. Export Hacspec_Lib_Notation.
 From Hacspec Require Import Hacspec_Lib_TODO. Export Hacspec_Lib_TODO.
 From Hacspec Require Import ConCertLib. Export ConCertLib.
-
-(*** Result *)
-
-Definition Ok {a b : choice_type} : both a -> both (result b a) := lift1_both Ok.
-Definition Err {a b : choice_type} : both b -> both (result b a) := lift1_both Err.
-
-Infix "&&" := andb : bool_scope.
-Infix "||" := orb : bool_scope.
-
-Definition u32_word_t := nseq_ uint8 4.
-Definition u128_word_t := nseq_ uint8 16.

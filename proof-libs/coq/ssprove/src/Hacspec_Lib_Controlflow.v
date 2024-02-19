@@ -75,9 +75,6 @@ Equations foldi_both
 Solve All Obligations with intros ; solve_fsubset_trans.
 Fail Next Obligation.
 
-Notation "'fold'" :=
-  (fun lo_hi init f => foldi_both lo_hi f init).
-
 Equations foldi_both_list
            {acc B: choice_type}
         (l : both (chList B))
@@ -161,6 +158,8 @@ Equations foldi_both0_list
     bind_both l (fun l' => List.fold_left (fun x y => solve_lift @f (solve_lift ret_both y) (x) : both _) l' (solve_lift init : both _)).
 Fail Next Obligation.
 
+Notation "'f_fold'" :=
+  (fun lo_hi init f => foldi_both_list lo_hi f init).
 
 Program Definition if_both0 {A} (c : both 'bool) (e_then : both A) (e_else : both A) : both A :=
   bind_both c (fun b => if b then lift_both e_then else lift_both  e_else).

@@ -45,6 +45,17 @@ From Hacspec Require Import Hacspec_Lib_Natmod.
 From Hacspec Require Import Hacspec_Lib_Monad.
 From Hacspec Require Import Hacspec_Lib_Ltac.
 
+(*** Result *)
+
+Definition Ok {a b : choice_type} : both a -> both (result b a) := lift1_both Ok.
+Definition Err {a b : choice_type} : both b -> both (result b a) := lift1_both Err.
+
+Infix "&&" := andb : bool_scope.
+Infix "||" := orb : bool_scope.
+
+Definition u32_word_t := nseq_ uint8 4.
+Definition u128_word_t := nseq_ uint8 16.
+
 (*** Hacspec-v2 specific fixes *)
 
 Import choice.Choice.Exports.
