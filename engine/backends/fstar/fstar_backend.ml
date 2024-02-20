@@ -1076,7 +1076,7 @@ struct
         in
         let tcdef = F.AST.TyconRecord (name, bds, None, [], fields) in
         let d = F.AST.Tycon (false, true, [ tcdef ]) in
-        [ `Impl { d; drange = F.dummyRange; quals = []; attrs = [] } ]
+        [ `Intf { d; drange = F.dummyRange; quals = []; attrs = [] } ]
     | Impl { generics; self_ty = _; of_trait = trait, generic_args; items } ->
         let name = U.Concrete_ident_view.to_definition_name e.ident |> F.id in
         let pat = F.pat @@ F.AST.PatVar (name, None, []) in
@@ -1120,18 +1120,8 @@ struct
         in
         let body = F.term @@ F.AST.Record (None, fields) in
         let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
-        let impl =
-          F.decl ~fsti:false ~attrs:[ tcinst ]
-          @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
-        in
-        let intf =
-          let typ =
-            F.term
-            @@ F.AST.Product (List.map ~f:FStarBinder.to_binder generics, typ)
-          in
-          F.decl ~fsti:true ~attrs:[ tcinst ] @@ F.AST.Val (name, typ)
-        in
-        if ctx.interface_mode then [ impl; intf ] else [ impl ]
+        F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ]
+        @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
     | HaxError details ->
         [
           `Comment
