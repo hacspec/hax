@@ -30,7 +30,6 @@ jobs:
 
       - name: ⤵ Install hax
         run: |
-          tree /home/runner/work/
           nix profile install ./hax
 
       - name: ⤵ Install FStar
