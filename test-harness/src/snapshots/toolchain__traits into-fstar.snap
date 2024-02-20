@@ -17,6 +17,7 @@ info:
     snapshot:
       stderr: true
       stdout: true
+    include_flag: ~
 ---
 exit = 0
 stderr = '''
@@ -33,7 +34,7 @@ module Traits
 open Core
 open FStar.Mul
 
-let impl_2__method (x: v_T) : Prims.unit = f_bar x
+let impl_2__method (#v_T: Type) (x: v_T) : Prims.unit = f_bar x
 
 class t_Bar (v_Self: Type) = { f_bar:v_Self -> Prims.unit }
 

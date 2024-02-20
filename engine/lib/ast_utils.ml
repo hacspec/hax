@@ -963,6 +963,16 @@ module Make (F : Features.T) = struct
           };
     }
 
+  (** Concatenates the generics [g1] and [g2], making sure lifetimes appear first *)
+  let concat_generics (g1 : generics) (g2 : generics) : generics =
+    let params = g1.params @ g2.params in
+    let constraints = g1.constraints @ g2.constraints in
+    let lifetimes, others =
+      List.partition_tf ~f:(fun p -> [%matches? GPLifetime _] p.kind) params
+    in
+    let params = lifetimes @ others in
+    { params; constraints }
+
   module Place = struct
     type t = { place : place'; span : span; typ : ty }
 
