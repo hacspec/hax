@@ -598,6 +598,13 @@ struct
   let operators =
     let c = Ast.Global_ident.of_name Value in
     [
+      (c Rust_primitives__hax__control_flow_monad__mexception__run, (1, ["mexception__run "; ""]));
+      (c Rust_primitives__hax__control_flow_monad__mresult__run, (1, ["mresult__run "; ""]));
+      (c Rust_primitives__hax__control_flow_monad__moption__run, (1, ["moption__run "; ""]));
+
+      (c Core__ops__bit__Not__not, (1, ["not "; ""]));
+      (c Core__ops__arith__Neg__neg, (1, ["negb "; ""]));
+      
       (c Rust_primitives__hax__array_of_list, (3, [ ""; ".a["; "]<-"; "" ]));
       (c Core__ops__index__Index__index, (2, [ ""; ".a["; "]" ]));
       (c Core__ops__bit__BitXor__bitxor, (2, [ ""; " .^ "; "" ]));
