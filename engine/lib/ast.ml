@@ -256,6 +256,7 @@ functor
 
     and loop_kind =
       | UnconditionalLoop
+      | WhileLoop of { condition : expr; witness : F.while_loop }
       | ForLoop of { pat : pat; it : expr; witness : F.for_loop }
       | ForIndexLoop of {
           start : expr;

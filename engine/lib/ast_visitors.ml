@@ -449,6 +449,12 @@ functor
         method visit_loop_kind (env : 'env) (this : loop_kind) : loop_kind =
           match this with
           | UnconditionalLoop -> UnconditionalLoop
+          | WhileLoop record_payload ->
+              let condition = self#visit_expr env record_payload.condition in
+              let witness =
+                self#visit_feature_while_loop env record_payload.witness
+              in
+              WhileLoop { condition; witness }
           | ForLoop record_payload ->
               let pat = self#visit_pat env record_payload.pat in
               let it = self#visit_expr env record_payload.it in
@@ -822,6 +828,9 @@ functor
 
         method visit_feature_monadic_action
             : 'env -> F.monadic_action -> F.monadic_action =
+          fun _ x -> x
+
+        method visit_feature_while_loop : 'env -> F.while_loop -> F.while_loop =
           fun _ x -> x
 
         method visit_feature_for_loop : 'env -> F.for_loop -> F.for_loop =
@@ -1442,6 +1451,15 @@ functor
             : loop_kind * 'acc =
           match this with
           | UnconditionalLoop -> (UnconditionalLoop, self#zero)
+          | WhileLoop record_payload ->
+              let condition, reduce_acc =
+                self#visit_expr env record_payload.condition
+              in
+              let witness, reduce_acc' =
+                self#visit_feature_while_loop env record_payload.witness
+              in
+              let reduce_acc = self#plus reduce_acc reduce_acc' in
+              (WhileLoop { condition; witness }, reduce_acc)
           | ForLoop record_payload ->
               let pat, reduce_acc = self#visit_pat env record_payload.pat in
               let it, reduce_acc' = self#visit_expr env record_payload.it in
@@ -1997,6 +2015,10 @@ functor
             : 'env -> F.monadic_action -> F.monadic_action * 'acc =
           fun _ x -> (x, self#zero)
 
+        method visit_feature_while_loop
+            : 'env -> F.while_loop -> F.while_loop * 'acc =
+          fun _ x -> (x, self#zero)
+
         method visit_feature_for_loop : 'env -> F.for_loop -> F.for_loop * 'acc
             =
           fun _ x -> (x, self#zero)
@@ -2536,6 +2558,13 @@ functor
         method visit_loop_kind (env : 'env) (this : loop_kind) : 'acc =
           match this with
           | UnconditionalLoop -> self#zero
+          | WhileLoop record_payload ->
+              let reduce_acc = self#visit_expr env record_payload.condition in
+              let reduce_acc' =
+                self#visit_feature_while_loop env record_payload.witness
+              in
+              let reduce_acc = self#plus reduce_acc reduce_acc' in
+              reduce_acc
           | ForLoop record_payload ->
               let reduce_acc = self#visit_pat env record_payload.pat in
               let reduce_acc' = self#visit_expr env record_payload.it in
@@ -3003,6 +3032,9 @@ functor
           fun _ _ -> self#zero
 
         method visit_feature_monadic_action : 'env -> F.monadic_action -> 'acc =
+          fun _ _ -> self#zero
+
+        method visit_feature_while_loop : 'env -> F.while_loop -> 'acc =
           fun _ _ -> self#zero
 
         method visit_feature_for_loop : 'env -> F.for_loop -> 'acc =
