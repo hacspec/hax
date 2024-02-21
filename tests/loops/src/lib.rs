@@ -98,3 +98,13 @@ mod for_loops {
         }
     }
 }
+
+mod while_loops {
+    fn f() -> u8 {
+        let mut x = 0;
+        while x < 10 {
+            x = x + 3;
+        }
+        x + 12
+    }
+}
