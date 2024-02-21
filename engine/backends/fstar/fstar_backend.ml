@@ -1249,6 +1249,7 @@ module TransformToInputLanguage =
   Phases.Reject.RawOrMutPointer(Features.Rust)
   |> Phases.And_mut_defsite
   |> Phases.Reconstruct_for_loops
+  |> Phases.Reconstruct_while_loops
   |> Phases.Direct_and_mut
   |> Phases.Reject.Arbitrary_lhs
   |> Phases.Drop_blocks
