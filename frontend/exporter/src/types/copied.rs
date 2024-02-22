@@ -2852,7 +2852,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause> for rustc_middle::ty::Clau
     fn sinto(&self, s: &S) -> Clause {
         use rustc_middle::ty::ToPredicate;
         Clause {
-            id: clause_id_of_predicate(self.clone().to_predicate(s.base().tcx)),
+            id: clause_id_of_predicate(s.base().tcx, self.clone().to_predicate(s.base().tcx)),
             kind: self.sinto(s),
         }
     }

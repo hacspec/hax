@@ -328,7 +328,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                         .with_args(impl_exprs(s, &nested), trait_ref)
                 } else {
                     ImplExprAtom::LocalBound {
-                        clause_id: clause_id_of_predicate(apred.predicate),
+                        clause_id: clause_id_of_predicate(tcx, apred.predicate),
                         r#trait,
                         path,
                     }
@@ -376,14 +376,20 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
     }
 }
 
-pub fn clause_id_of_predicate(predicate: rustc_middle::ty::Predicate) -> u64 {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-    // TODO: use stable hash here?
-    let mut s = DefaultHasher::new();
-    predicate.hash(&mut s);
-    s.finish()
+pub fn clause_id_of_predicate<'tcx>(
+    tcx: rustc_middle::ty::TyCtxt<'tcx>,
+    predicate: rustc_middle::ty::Predicate,
+) -> u64 {
+    use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+
+    tcx.with_stable_hashing_context(|mut stable_hashing_ctx| {
+        let mut hasher = StableHasher::new();
+        rustc_middle::ty::Predicate::hash_stable(&predicate, &mut stable_hashing_ctx, &mut hasher);
+        hasher.finish::<rustc_data_structures::stable_hasher::Hash64>()
+    })
+    .as_u64()
 }
+
 #[tracing::instrument(level = "trace", skip(s))]
 pub fn select_trait_candidate<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
