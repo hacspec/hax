@@ -154,6 +154,8 @@ pub enum Backend {
     Easycrypt,
     /// Use the ProVerif backend (warning: work in progress!)
     ProVerif,
+    /// Use the Typed Scheme backend
+    Scheme
 }
 
 impl fmt::Display for Backend {
@@ -164,6 +166,7 @@ impl fmt::Display for Backend {
             Backend::Ssprove => write!(f, "ssprove"),
             Backend::Easycrypt => write!(f, "easycrypt"),
             Backend::ProVerif => write!(f, "proverif"),
+            Backend::Scheme => write!(f, "typed-scheme")
         }
     }
 }
