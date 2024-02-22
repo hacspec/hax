@@ -288,6 +288,7 @@ module Raw = struct
         let header =
           match kind with
           | UnconditionalLoop -> !"loop"
+          | WhileLoop { condition; _ } -> !"while " & pexpr condition
           | ForLoop { it; pat; _ } ->
               !"for " & ppat pat & !" in (" & pexpr it & !")"
           | ForIndexLoop { start; end_; var; _ } ->

@@ -357,6 +357,9 @@ module Make (F : Features.T) = struct
                 let ikind, ukind =
                   match kind with
                   | UnconditionalLoop -> empty
+                  | WhileLoop { condition; _ } ->
+                      ( collect_local_idents#visit_expr () condition,
+                        super#visit_expr env condition )
                   | ForLoop { pat; it; _ } ->
                       ( collect_local_idents#visit_pat () pat,
                         super#visit_expr env it )
@@ -516,6 +519,7 @@ module Make (F : Features.T) = struct
               let vars =
                 (match kind with
                 | UnconditionalLoop -> []
+                | WhileLoop _ -> []
                 | ForLoop { pat = _not_mutable; _ } -> []
                 | ForIndexLoop { var = _not_mutable; _ } -> [])
                 @ (state

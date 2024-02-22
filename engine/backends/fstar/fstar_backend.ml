@@ -36,6 +36,7 @@ module SubtypeToInputLanguage
              and type loop = Features.Off.loop
              and type block = Features.Off.block
              and type for_loop = Features.Off.for_loop
+             and type while_loop = Features.Off.while_loop
              and type for_index_loop = Features.Off.for_index_loop
              and type state_passing_loop = Features.Off.state_passing_loop) =
 struct
@@ -1248,6 +1249,7 @@ module TransformToInputLanguage =
   Phases.Reject.RawOrMutPointer(Features.Rust)
   |> Phases.And_mut_defsite
   |> Phases.Reconstruct_for_loops
+  |> Phases.Reconstruct_while_loops
   |> Phases.Direct_and_mut
   |> Phases.Reject.Arbitrary_lhs
   |> Phases.Drop_blocks

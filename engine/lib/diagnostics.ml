@@ -30,6 +30,7 @@ module Phase = struct
     | DropBlocks
     | RefMut
     | ResugarForLoops
+    | ResugarWhileLoops
     | ResugarForIndexLoops
     | ResugarQuestionMarks
     | HoistSideEffects
