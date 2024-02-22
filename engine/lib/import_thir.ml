@@ -1051,7 +1051,7 @@ end) : EXPR = struct
         in
         TIFn (TArrow (inputs, output))
     | Type (bounds, None) ->
-        let bounds = List.filter_map ~f:(c_predicate_kind span) bounds in
+        let bounds = List.filter_map ~f:(c_predicate_kind' span) bounds in
         TIType bounds
     | Type (_, Some _) ->
         unimplemented [ span ]

@@ -690,7 +690,11 @@ functor
             =
           match this with
           | TIType x0 ->
-              let x0 = self#visit_list self#visit_trait_ref env x0 in
+              let x0 =
+                self#visit_list
+                  (self#visit_tuple2 self#visit_trait_ref (fun _ x -> x))
+                  env x0
+              in
               TIType x0
           | TIFn x0 ->
               let x0 = self#visit_ty env x0 in
@@ -1804,7 +1808,10 @@ functor
           match this with
           | TIType x0 ->
               let x0, reduce_acc =
-                self#visit_list self#visit_trait_ref env x0
+                self#visit_list
+                  (self#visit_tuple2 self#visit_trait_ref (fun _ x ->
+                       (x, self#zero)))
+                  env x0
               in
               (TIType x0, reduce_acc)
           | TIFn x0 ->
@@ -2849,7 +2856,11 @@ functor
         method visit_trait_item' (env : 'env) (this : trait_item') : 'acc =
           match this with
           | TIType x0 ->
-              let reduce_acc = self#visit_list self#visit_trait_ref env x0 in
+              let reduce_acc =
+                self#visit_list
+                  (self#visit_tuple2 self#visit_trait_ref (fun _ _ -> self#zero))
+                  env x0
+              in
               reduce_acc
           | TIFn x0 ->
               let reduce_acc = self#visit_ty env x0 in
