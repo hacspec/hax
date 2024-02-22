@@ -328,7 +328,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                         .with_args(impl_exprs(s, &nested), trait_ref)
                 } else {
                     ImplExprAtom::LocalBound {
-                        clause_id: clause_id_of_predicate(tcx, apred.predicate),
+                        clause_id: clause_id_of_predicate(s, apred.predicate),
                         r#trait,
                         path,
                     }
@@ -376,18 +376,28 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
     }
 }
 
-pub fn clause_id_of_predicate<'tcx>(
-    tcx: rustc_middle::ty::TyCtxt<'tcx>,
-    predicate: rustc_middle::ty::Predicate,
+#[tracing::instrument(level = "trace", skip(s))]
+pub fn clause_id_of_predicate<'tcx, S: UnderOwnerState<'tcx>>(
+    s: &S,
+    predicate: rustc_middle::ty::Predicate<'tcx>,
 ) -> u64 {
-    use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+    use deterministic_hash::DeterministicHasher;
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut hasher = DeterministicHasher::new(DefaultHasher::new());
 
-    tcx.with_stable_hashing_context(|mut stable_hashing_ctx| {
-        let mut hasher = StableHasher::new();
-        rustc_middle::ty::Predicate::hash_stable(&predicate, &mut stable_hashing_ctx, &mut hasher);
-        hasher.finish::<rustc_data_structures::stable_hasher::Hash64>()
-    })
-    .as_u64()
+    let binder = predicate.kind();
+    if let rustc_middle::ty::PredicateKind::Clause(ck) = binder.skip_binder() {
+        let bvs: Vec<BoundVariableKind> = binder.bound_vars().sinto(s);
+        let ck: ClauseKind = ck.sinto(s);
+        hasher.write_u8(0);
+        bvs.hash(&mut hasher);
+        ck.hash(&mut hasher);
+    } else {
+        hasher.write_u8(1);
+        predicate.sinto(s).hash(&mut hasher);
+    }
+    hasher.finish()
 }
 
 #[tracing::instrument(level = "trace", skip(s))]
