@@ -4,7 +4,7 @@ struct S {
     b: [u8; 5],
 }
 
-pub fn foo(mut lhs: S, rhs: &S) -> S {
+fn foo(mut lhs: S, rhs: &S) -> S {
     for i in 0..1 {
         lhs.b[i] += rhs.b[i];
     }
@@ -89,6 +89,21 @@ fn i(bar: &mut Bar) -> u8 {
 
 fn j(x: &mut Bar) -> u8 {
     i(x)
+}
+
+fn k(
+    vec: &mut Vec<u8>,
+    _: &mut u16,
+    /*test var shadowing*/ arg_1_wild: u8,
+    _: &mut (),
+) -> u64 {
+    // test variable shadowing
+    let arg_1_wild2 = vec[1];
+    let arg_3_wild = vec[2];
+    let arg_1_wild1 = vec[3];
+    let arg_3_wild1 = vec[4];
+    vec[0] = arg_1_wild + arg_3_wild + arg_1_wild1 + arg_3_wild1 + arg_1_wild;
+    12345
 }
 
 trait FooTrait {

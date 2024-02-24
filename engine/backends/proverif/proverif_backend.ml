@@ -10,6 +10,7 @@ include
       include On.Macro
       include On.Question_mark
       include On.Early_exit
+      include On.Slice
     end)
     (struct
       let backend = Diagnostics.Backend.ProVerif
@@ -30,6 +31,7 @@ module SubtypeToInputLanguage
           (* and type slice = Features.Off.slice *)
           (* and type raw_pointer = Features.Off.raw_pointer *)
             with type early_exit = Features.On.early_exit
+             and type slice = Features.On.slice
              and type question_mark = Features.On.question_mark
              and type macro = Features.On.macro
     (* and type as_pattern = Features.Off.as_pattern *)
@@ -53,6 +55,7 @@ struct
         let continue = reject
         let loop = reject
         let for_loop = reject
+        let while_loop = reject
         let for_index_loop = reject
         let state_passing_loop = reject
         let continue = reject
@@ -61,7 +64,6 @@ struct
         let mutable_reference = reject
         let mutable_pointer = reject
         let reference = reject
-        let slice = reject
         let raw_pointer = reject
         let as_pattern = reject
         let nontrivial_lhs = reject
@@ -113,26 +115,221 @@ module Print = struct
   (* TODO: Give definitions for core / known library functions, cf issues #447, #448 *)
   let library_functions :
       (Concrete_ident_generated.name * (AST.expr list -> document)) list =
-    [
-      (Core__ops__try_trait__Try__branch, fun args -> empty);
-      (* just an example *)
-    ]
+    [ (* (\* Core dependencies *\) *)
+      (* (Alloc__vec__from_elem, fun args -> string "PLACEHOLDER_library_function"); *)
+      (* ( Alloc__slice__Impl__to_vec, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (Core__slice__Impl__len, fun args -> string "PLACEHOLDER_library_function"); *)
+      (* ( Core__ops__deref__Deref__deref, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* ( Core__ops__index__Index__index, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* ( Rust_primitives__unsize, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* ( Core__num__Impl_9__to_le_bytes, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* ( Alloc__slice__Impl__into_vec, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* ( Alloc__vec__Impl_1__truncate, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* ( Alloc__vec__Impl_2__extend_from_slice, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* ( Alloc__slice__Impl__concat, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* ( Core__option__Impl__is_some, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* core::clone::Clone_f_clone *\) *)
+      (* ( Core__clone__Clone__clone, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* core::cmp::PartialEq::eq *\) *)
+      (* ( Core__cmp__PartialEq__eq, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* core::cmp::PartialEq_f_ne *\) *)
+      (* ( Core__cmp__PartialEq__ne, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* core::cmp::PartialOrd::lt *\) *)
+      (* ( Core__cmp__PartialOrd__lt, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* core::ops::arith::Add::add *\) *)
+      (* ( Core__ops__arith__Add__add, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* core::ops::arith::Sub::sub *\) *)
+      (* ( Core__ops__arith__Sub__sub, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* core::option::Option_Option_None_c *\) *)
+      (* ( Core__option__Option__None, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* core::option::Option_Option_Some_c *\) *)
+      (* ( Core__option__Option__Some, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* core::result::impl__map_err *\) *)
+      (* ( Core__result__Impl__map_err, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* Crypto dependencies *\) *)
+      (* (\* hax_lib_protocol::cal::hash *\) *)
+      (* ( Hax_lib_protocol__crypto__hash, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* hax_lib_protocol::cal::hmac *\) *)
+      (* ( Hax_lib_protocol__crypto__hmac, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* hax_lib_protocol::cal::aead_decrypt *\) *)
+      (* ( Hax_lib_protocol__crypto__aead_decrypt, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* hax_lib_protocol::cal::aead_encrypt *\) *)
+      (* ( Hax_lib_protocol__crypto__aead_encrypt, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* hax_lib_protocol::cal::dh_scalar_multiply *\) *)
+      (* ( Hax_lib_protocol__crypto__dh_scalar_multiply, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* hax_lib_protocol::cal::dh_scalar_multiply_base *\) *)
+      (* ( Hax_lib_protocol__crypto__dh_scalar_multiply_base, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* hax_lib_protocol::cal::impl__DHScalar__from_bytes *\) *)
+      (* ( Hax_lib_protocol__crypto__Impl__from_bytes, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* hax_lib_protocol::cal::impl__DHElement__from_bytes *\) *)
+      (* ( Hax_lib_protocol__crypto__Impl_1__from_bytes, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* hax_lib_protocol::cal::impl__AEADKey__from_bytes *\) *)
+      (* ( Hax_lib_protocol__crypto__Impl_4__from_bytes, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* hax_lib_protocol::cal::impl__AEADIV__from_bytes *\) *)
+      (* ( Hax_lib_protocol__crypto__Impl_5__from_bytes, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *)
+      (* (\* hax_lib_protocol::cal::impl__AEADTag__from_bytes *\) *)
+      (* ( Hax_lib_protocol__crypto__Impl_6__from_bytes, *)
+      (*   fun args -> string "PLACEHOLDER_library_function" ); *) ]
 
-  let assoc_known_function fname (known_name, _) =
-    Global_ident.eq_name known_name fname
+  let library_constructors :
+      (Concrete_ident_generated.name
+      * ((global_ident * AST.expr) list -> document))
+      list =
+    [ (* ( Core__option__Option__Some, *)
+      (*   fun args -> string "PLACEHOLDER_library_constructor" ); *)
+      (* ( Core__option__Option__None, *)
+      (*   fun args -> string "PLACEHOLDER_library_constructor" ); *)
+      (* ( Core__ops__range__Range, *)
+      (*   fun args -> string "PLACEHOLDER_library_constructor" ); *)
+      (* (\* hax_lib_protocol::cal::(HashAlgorithm_HashAlgorithm_Sha256_c *\) *)
+      (* ( Hax_lib_protocol__crypto__HashAlgorithm__Sha256, *)
+      (*   fun args -> string "PLACEHOLDER_library_constructor" ); *)
+      (* (\* hax_lib_protocol::cal::DHGroup_DHGroup_X25519_c *\) *)
+      (* ( Hax_lib_protocol__crypto__DHGroup__X25519, *)
+      (*   fun args -> string "PLACEHOLDER_library_constructor" ); *)
+      (* (\* hax_lib_protocol::cal::AEADAlgorithm_AEADAlgorithm_Chacha20Poly1305_c *\) *)
+      (* ( Hax_lib_protocol__crypto__AEADAlgorithm__Chacha20Poly1305, *)
+      (*   fun args -> string "PLACEHOLDER_library_constructor" ); *)
+      (* (\* hax_lib_protocol::cal::HMACAlgorithm_HMACAlgorithm_Sha256_c *\) *)
+      (* ( Hax_lib_protocol__crypto__HMACAlgorithm__Sha256, *)
+      (*   fun args -> string "PLACEHOLDER_library_constructor" ); *) ]
 
-  let translate_known_function fname args =
-    (List.find_exn ~f:(assoc_known_function fname) library_functions |> snd)
-      args
+  let library_constructor_patterns :
+      (Concrete_ident_generated.name * (field_pat list -> document)) list =
+    [ (* ( Core__option__Option__Some, *)
+      (*   fun args -> string "PLACEHOLDER_library_constructor" ); *)
+      (* ( Core__option__Option__None, *)
+      (*   fun args -> string "PLACEHOLDER_library_constructor" ); *)
+      (* ( Core__ops__range__Range, *)
+      (*   fun args -> string "PLACEHOLDER_library_constructor" ); *)
+      (* (\* hax_lib_protocol::cal::(HashAlgorithm_HashAlgorithm_Sha256_c *\) *)
+      (* ( Hax_lib_protocol__crypto__HashAlgorithm__Sha256, *)
+      (*   fun args -> string "PLACEHOLDER_library_constructor" ); *)
+      (* (\* hax_lib_protocol::cal::DHGroup_DHGroup_X25519_c *\) *)
+      (* ( Hax_lib_protocol__crypto__DHGroup__X25519, *)
+      (*   fun args -> string "PLACEHOLDER_library_constructor" ); *)
+      (* (\* hax_lib_protocol::cal::AEADAlgorithm_AEADAlgorithm_Chacha20Poly1305_c *\) *)
+      (* ( Hax_lib_protocol__crypto__AEADAlgorithm__Chacha20Poly1305, *)
+      (*   fun args -> string "PLACEHOLDER_library_constructor" ); *)
+      (* (\* hax_lib_protocol::cal::HMACAlgorithm_HMACAlgorithm_Sha256_c *\) *)
+      (* ( Hax_lib_protocol__crypto__HMACAlgorithm__Sha256, *)
+      (*   fun args -> string "PLACEHOLDER_library_constructor" ); *) ]
 
-  let is_known_function fname =
-    List.exists ~f:(assoc_known_function fname) library_functions
+  let library_types : (Concrete_ident_generated.name * document) list =
+    [ (* (\* hax_lib_protocol::cal::(t_DHScalar *\) *)
+      (* (Hax_lib_protocol__crypto__DHScalar, string "PLACEHOLDER_library_type"); *)
+      (* (Core__option__Option, string "PLACEHOLDER_library_type"); *)
+      (* (Alloc__vec__Vec, string "PLACEHOLDER_library_type"); *) ]
+
+  let assoc_known_name name (known_name, _) =
+    Global_ident.eq_name known_name name
+
+  let translate_known_name name ~dict =
+    List.find ~f:(assoc_known_name name) dict
 
   class print aux =
     object (print)
       inherit GenericPrint.print as super
+
+      method field_accessor field_name =
+        string "accessor" ^^ underscore ^^ print#concrete_ident field_name
+
+      method match_arm scrutinee { arm_pat; body } =
+        let body = print#expr_at Arm_body body in
+        match arm_pat with
+        | { p = PWild; _ } -> body
+        | _ ->
+            let scrutinee = print#expr_at Expr_Match_scrutinee scrutinee in
+            let pat = print#pat_at Arm_pat arm_pat |> group in
+            string "let" ^^ space ^^ pat ^^ string " = " ^^ scrutinee
+            ^^ string " in " ^^ body
+
       method ty_bool = string "bool"
-      method ty_int _ = string "bitstring"
+      method ty_int _ = string "nat"
+
+      method pat' : Generic_printer_base.par_state -> pat' fn =
+        fun ctx ->
+          let wrap_parens =
+            group
+            >> match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock braces
+          in
+          fun pat ->
+            match pat with
+            | PConstruct { name; args } -> (
+                match
+                  translate_known_name name ~dict:library_constructor_patterns
+                with
+                | Some (_, translation) -> translation args
+                | None -> super#pat' ctx pat)
+            | _ -> super#pat' ctx pat
+
+      method tuple_elem_pat' : Generic_printer_base.par_state -> pat' fn =
+        fun ctx ->
+          let wrap_parens =
+            group
+            >> match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock braces
+          in
+          function
+          | PBinding { mut; mode; var; typ; subpat } ->
+              let p = print#local_ident var in
+              p ^^ colon ^^ space ^^ print#ty ctx typ
+          | p -> print#pat' ctx p
+
+      method tuple_elem_pat : Generic_printer_base.par_state -> pat fn =
+        fun ctx { p; span; _ } ->
+          print#with_span ~span (fun _ -> print#tuple_elem_pat' ctx p)
+
+      method tuple_elem_pat_at = print#par_state >> print#tuple_elem_pat
+
+      method! pat_construct_tuple : pat list fn =
+        List.map ~f:(print#tuple_elem_pat_at Pat_ConstructTuple)
+        >> print#doc_construct_tuple
+
+      method! expr_app f args _generic_args =
+        let args =
+          separate_map
+            (comma ^^ break 1)
+            (print#expr_at Expr_App_arg >> group)
+            args
+        in
+        let f =
+          match f with
+          | { e = GlobalVar name; _ } -> (
+              match name with
+              | `Projector (`Concrete i) | `Concrete i ->
+                  print#concrete_ident i |> group
+              | _ -> super#expr_at Expr_App_f f |> group)
+        in
+        f ^^ iblock parens args
 
       method! expr' : Generic_printer_base.par_state -> expr' fn =
         fun ctx e ->
@@ -141,8 +338,33 @@ module Print = struct
             >> match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock braces
           in
           match e with
-          | App { f = { e = GlobalVar n; _ }; args } when is_known_function n ->
-              translate_known_function n args
+          (* Translate known functions *)
+          | App { f = { e = GlobalVar name; _ }; args } -> (
+              match translate_known_name name ~dict:library_functions with
+              | Some (name, translation) -> translation args
+              | None -> (
+                  match name with
+                  | `Projector (`Concrete name) ->
+                      print#field_accessor name
+                      ^^ iblock parens
+                           (separate_map
+                              (comma ^^ break 1)
+                              (fun arg -> print#expr AlreadyPar arg)
+                              args)
+                  | _ -> super#expr' ctx e))
+          | Construct { constructor; fields; _ }
+            when Global_ident.eq_name Core__result__Result__Ok constructor ->
+              super#expr' ctx (snd (Option.value_exn (List.hd fields))).e
+          | Construct { constructor; _ }
+            when Global_ident.eq_name Core__result__Result__Err constructor ->
+              string "construct_fail()"
+          (* Translate known constructors *)
+          | Construct { constructor; fields } -> (
+              match
+                translate_known_name constructor ~dict:library_constructors
+              with
+              | Some (name, translation) -> translation fields
+              | None -> super#expr' ctx e)
           (* Desugared `?` operator *)
           | Match
               {
@@ -153,13 +375,26 @@ module Print = struct
           (*[@ocamlformat "disable"]*)
             when Global_ident.eq_name Core__ops__try_trait__Try__branch n ->
               super#expr' ctx expr.e
-          | Construct { constructor; fields; _ }
-            when Global_ident.eq_name Core__result__Result__Ok constructor ->
-              super#expr' ctx (snd (Option.value_exn (List.hd fields))).e
-          | Construct { constructor; _ }
-            when Global_ident.eq_name Core__result__Result__Err constructor ->
-              string "fail"
+          | Match { scrutinee; arms } ->
+              separate_map
+                (hardline ^^ string "else ")
+                (fun { arm; span } -> print#match_arm scrutinee arm)
+                arms
+          | If { cond; then_; else_ } ->
+              let if_then =
+                (string "if" ^//^ nest 2 (print#expr_at Expr_If_cond cond))
+                ^/^ string "then"
+                ^//^ (print#expr_at Expr_If_then then_ |> parens |> nest 1)
+              in
+              (match else_ with
+              | None -> if_then
+              | Some else_ ->
+                  if_then ^^ break 1 ^^ string "else" ^^ space
+                  ^^ (print#expr_at Expr_If_else else_ |> iblock parens))
+              |> wrap_parens
           | _ -> super#expr' ctx e
+
+      method concrete_ident = print#concrete_ident' ~under_current_ns:false
 
       method! item' item =
         let fun_and_reduc base_name constructor =
@@ -194,13 +429,13 @@ module Print = struct
             ^^ iblock parens fun_args_types
             ^^ string ": "
             ^^ print#concrete_ident base_name
-            ^^ dot
+            ^^ space ^^ string "[data]" ^^ dot
           in
           let reduc_line =
             string "reduc forall " ^^ iblock Fn.id fun_args_full ^^ semi
           in
           let build_accessor (ident, ty, attr) =
-            string "accessor" ^^ underscore ^^ print#concrete_ident ident
+            print#field_accessor ident
             ^^ iblock parens (constructor_name ^^ iblock parens fun_args_names)
             ^^ blank 1 ^^ equals ^^ blank 1 ^^ print#concrete_ident ident
           in
@@ -258,6 +493,16 @@ module Print = struct
           ^^ space ^^ string "in" ^^ hardline
           ^^ (print#expr_at Expr_Let_body body |> group)
 
+      method concrete_ident' ~(under_current_ns : bool) : concrete_ident fn =
+        fun id ->
+          if under_current_ns then print#name_of_concrete_ident id
+          else
+            let crate, path = print#namespace_of_concrete_ident id in
+            let full_path = crate :: path in
+            separate_map (underscore ^^ underscore) utf8string full_path
+            ^^ underscore ^^ underscore
+            ^^ print#name_of_concrete_ident id
+
       method! doc_construct_inductive
           : is_record:bool ->
             is_struct:bool ->
@@ -266,9 +511,7 @@ module Print = struct
             (global_ident * document) list fn =
         fun ~is_record ~is_struct:_ ~constructor ~base:_ args ->
           if is_record then
-            string "t_"
-            (* FIXME: How do I get at the ident from the struct definition instead? *)
-            ^^ print#concrete_ident constructor
+            print#concrete_ident constructor
             ^^ iblock parens
                  (separate_map
                     (break 0 ^^ comma)
@@ -278,43 +521,31 @@ module Print = struct
             print#concrete_ident constructor
             ^^ iblock parens (separate_map (comma ^^ break 1) snd args)
 
+      method generic_values : generic_value list fn =
+        function
+        | [] -> empty
+        | values ->
+            string "_of" ^^ underscore
+            ^^ separate_map underscore print#generic_value values
+
+      method ty_app f args = print#concrete_ident f ^^ print#generic_values args
+
       method ty : Generic_printer_base.par_state -> ty fn =
         fun ctx ty ->
           match ty with
           | TBool -> print#ty_bool
           | TParam i -> print#local_ident i
-          | TApp _ -> super#ty ctx ty
+          | TInt kind -> print#ty_int kind
+          (* Translate known types, no args at the moment *)
+          | TApp { ident; args } -> super#ty ctx ty
+          (*(
+              match translate_known_name ident ~dict:library_types with
+              | Some (_, translation) -> translation
+              | None -> super#ty ctx ty)*)
           | _ -> string "bitstring"
-
-      method! expr_app : expr -> expr list -> generic_value list fn =
-        fun f args _generic_args ->
-          let args =
-            separate_map
-              (comma ^^ break 1)
-              (print#expr_at Expr_App_arg >> group)
-              args
-          in
-          let f = print#expr_at Expr_App_f f |> group in
-          f ^^ iblock parens args
-
-      method! literal : Generic_printer_base.literal_ctx -> literal fn =
-        fun _ctx -> function
-          | Int { value; negative; _ } ->
-              string "int2bitstring"
-              ^^ iblock parens
-                   (string value |> precede (if negative then minus else empty))
-          | Bool b -> OCaml.bool b
-          | _ ->
-              Error.raise
-                {
-                  kind =
-                    ExplicitRejection
-                      { reason = "Literal unsupported by ProVerif backend." };
-                  span = current_span;
-                }
     end
 
-  type proverif_aux_info = AstItems of AST.item list | NoAuxInfo
+  type proverif_aux_info = CrateFns of AST.item list | NoAuxInfo
 
   include Api (struct
     type aux_info = proverif_aux_info
@@ -360,13 +591,20 @@ end
 
 module Preamble = MkSubprinter (struct
   let banner = "Preamble"
-  let preamble items = "channel c.\nfun int2bitstring(nat): bitstring.\n"
+
+  let preamble items =
+    "channel c.\n\
+     fun int2bitstring(nat): bitstring.\n\
+     type err.\n\
+     fun construct_fail() : err\n\
+     reduc construct_fail() = fail.\n"
+
   let contents items = ""
 end)
 
 module DataTypes = MkSubprinter (struct
   let banner = "Types and Constructors"
-  let preamble items = "channel c.\nfun int2bitstring(nat): bitstring.\n"
+  let preamble items = ""
 
   let filter_data_types items =
     List.filter ~f:(fun item -> [%matches? Type _] item.v) items
@@ -384,8 +622,12 @@ module Letfuns = MkSubprinter (struct
     let process_letfuns, pure_letfuns =
       List.partition_tf ~f:is_process (filter_crate_functions items)
     in
-    let pure_letfuns_print, _ = Print.items NoAuxInfo pure_letfuns in
-    let process_letfuns_print, _ = Print.items NoAuxInfo process_letfuns in
+    let pure_letfuns_print, _ =
+      Print.items (CrateFns (filter_crate_functions items)) pure_letfuns
+    in
+    let process_letfuns_print, _ =
+      Print.items (CrateFns (filter_crate_functions items)) process_letfuns
+    in
     pure_letfuns_print ^ process_letfuns_print
 end)
 
@@ -409,12 +651,16 @@ end)
 
 let translate m (bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =
-  let contents =
+  let lib_contents =
     Preamble.print items ^ DataTypes.print items ^ Letfuns.print items
-    ^ Processes.print items ^ Toplevel.print items
+    ^ Processes.print items
   in
-  let file = Types.{ path = "output.pv"; contents } in
-  [ file ]
+  let analysis_contents = Toplevel.print items in
+  let lib_file = Types.{ path = "lib.pvl"; contents = lib_contents } in
+  let analysis_file =
+    Types.{ path = "analysis.pv"; contents = analysis_contents }
+  in
+  [ lib_file; analysis_file ]
 
 open Phase_utils
 module DepGraph = Dependencies.Make (InputLanguage)

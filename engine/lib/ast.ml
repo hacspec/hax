@@ -1,39 +1,10 @@
 open! Prelude
 
-type todo = string
-[@@deriving
-  show,
-    yojson,
-    hash,
-    eq,
-    visitors { variety = "reduce"; name = "todo_reduce" },
-    visitors { variety = "mapreduce"; name = "todo_mapreduce" },
-    visitors { variety = "map"; name = "todo_map" }]
+type todo = string [@@deriving show, yojson, hash, eq]
+type span = Span.t [@@deriving show, yojson, hash, compare, sexp, eq]
 
-type span = (Span.t[@visitors.opaque])
-[@@deriving
-  show,
-    yojson,
-    hash,
-    compare,
-    sexp,
-    eq,
-    visitors { variety = "reduce"; name = "span_reduce" },
-    visitors { variety = "mapreduce"; name = "span_mapreduce" },
-    visitors { variety = "map"; name = "span_map" }]
-
-type concrete_ident = (Concrete_ident.t[@visitors.opaque])
-[@@deriving
-  show,
-    yojson,
-    hash,
-    compare,
-    sexp,
-    hash,
-    eq,
-    visitors { variety = "reduce"; name = "concrete_ident_reduce" },
-    visitors { variety = "mapreduce"; name = "concrete_ident_mapreduce" },
-    visitors { variety = "map"; name = "concrete_ident_map" }]
+type concrete_ident = Concrete_ident.t
+[@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
 type logical_op = And | Or
 
@@ -69,15 +40,7 @@ module Global_ident = struct
   let to_string : t -> string = [%show: t]
 end
 
-type global_ident = (Global_ident.t[@visitors.opaque])
-[@@deriving
-  show,
-    yojson,
-    hash,
-    eq,
-    visitors { variety = "reduce"; name = "global_ident_reduce" },
-    visitors { variety = "mapreduce"; name = "global_ident_mapreduce" },
-    visitors { variety = "map"; name = "global_ident_map" }]
+type global_ident = Global_ident.t [@@deriving show, yojson, hash, eq]
 
 type attr_kind =
   | Tool of { path : string; tokens : string }
@@ -85,28 +48,10 @@ type attr_kind =
 
 and attr = { kind : attr_kind; span : span }
 and doc_comment_kind = DCKLine | DCKBlock
+and attrs = attr list [@@deriving show, yojson, hash, eq]
 
-and attrs = attr list
-[@@deriving
-  show,
-    yojson,
-    hash,
-    eq,
-    visitors { variety = "reduce"; name = "attrs_reduce" },
-    visitors { variety = "mapreduce"; name = "attrs_mapreduce" },
-    visitors { variety = "map"; name = "attrs_map" }]
-
-type local_ident = (Local_ident.t[@visitors.opaque])
-[@@deriving
-  show,
-    yojson,
-    hash,
-    compare,
-    sexp,
-    eq,
-    visitors { variety = "reduce"; name = "local_ident_reduce" },
-    visitors { variety = "mapreduce"; name = "local_ident_mapreduce" },
-    visitors { variety = "map"; name = "local_ident_map" }]
+type local_ident = Local_ident.t
+[@@deriving show, yojson, hash, compare, sexp, eq]
 
 type size = S8 | S16 | S32 | S64 | S128 | SSize
 [@@deriving show, yojson, hash, compare, eq]
@@ -140,25 +85,10 @@ let show_float_kind = function F32 -> "f32" | F64 -> "f64"
 type literal =
   | String of string
   | Char of char
-  | Int of {
-      value : string;
-      negative : bool;
-      kind : (int_kind[@visitors.opaque]);
-    }
-  | Float of {
-      value : string;
-      negative : bool;
-      kind : float_kind; [@visitors.opaque]
-    }
+  | Int of { value : string; negative : bool; kind : int_kind }
+  | Float of { value : string; negative : bool; kind : float_kind }
   | Bool of bool
-[@@deriving
-  show,
-    yojson,
-    hash,
-    eq,
-    visitors { variety = "reduce"; name = "literal_reduce" },
-    visitors { variety = "mapreduce"; name = "literal_mapreduce" },
-    visitors { variety = "map"; name = "literal_map" }]
+[@@deriving show, yojson, hash, eq]
 
 (* type 't spanned = { v : 't; span : span } [@@deriving show, yojson, hash, eq] *)
 
@@ -171,69 +101,16 @@ functor
   ->
   struct
     type borrow_kind = Shared | Unique | Mut of F.mutable_reference
-    [@@deriving
-      show,
-        yojson,
-        hash,
-        eq,
-        visitors { variety = "reduce"; name = "borrow_kind_reduce" },
-        visitors { variety = "mapreduce"; name = "borrow_kind_mapreduce" },
-        visitors { variety = "map"; name = "borrow_kind_map" }]
+    [@@deriving show, yojson, hash, eq]
 
-    type binding_mode =
-      | ByValue
-      | ByRef of (borrow_kind * (F.reference[@visitors.opaque]))
-    [@@deriving
-      show,
-        yojson,
-        hash,
-        eq,
-        visitors
-          {
-            variety = "reduce";
-            name = "binding_mode_reduce";
-            ancestors = [ "borrow_kind_reduce" ];
-          },
-        visitors
-          {
-            variety = "mapreduce";
-            name = "binding_mode_mapreduce";
-            ancestors = [ "borrow_kind_mapreduce" ];
-          },
-        visitors
-          {
-            variety = "map";
-            name = "binding_mode_map";
-            ancestors = [ "borrow_kind_map" ];
-          }]
-
-    module DefaultClasses = Features.DefaultClasses (F)
-
-    (* TODO: generate those classes automatically *)
-    class virtual ['self] default_reduce_features =
-      object (self : 'self)
-        inherit [_] VisitorsRuntime.reduce
-        method visit_span _ (_ : span) = self#zero
-        method visit_literal _ (_ : literal) = self#zero
-      end
-
-    class virtual ['self] default_map_features =
-      object (_self : 'self)
-        inherit [_] VisitorsRuntime.map
-        method visit_literal : _ -> literal -> literal = Fn.const Fn.id
-      end
-
-    class virtual ['self] default_mapreduce_features =
-      object (self : 'self)
-        inherit [_] VisitorsRuntime.mapreduce
-        method visit_literal : _ -> literal -> _ = fun _ x -> (x, self#zero)
-      end
+    type binding_mode = ByValue | ByRef of (borrow_kind * F.reference)
+    [@@deriving show, yojson, hash, eq]
 
     type ty =
       | TBool
       | TChar
-      | TInt of (int_kind[@visitors.opaque])
-      | TFloat of (float_kind[@visitors.opaque])
+      | TInt of int_kind
+      | TFloat of float_kind
       | TStr
       | TApp of { ident : global_ident; args : generic_value list }
       | TArray of { typ : ty; length : expr }
@@ -243,7 +120,7 @@ functor
           witness : F.reference;
           region : todo;
           typ : ty;
-          mut : (F.mutable_reference mutability[@visitors.opaque]);
+          mut : F.mutable_reference mutability;
         }
       | TParam of local_ident
       | TArrow of ty list * ty
@@ -268,6 +145,9 @@ functor
       | ImplApp of { impl : impl_expr; args : impl_expr list }
       | Dyn of trait_ref
       | Builtin of trait_ref
+      | FnPointer of ty
+      (* The `IE` suffix is there because visitors conflicts...... *)
+      | ClosureIE of todo
 
     and trait_ref = { trait : concrete_ident; args : generic_value list }
 
@@ -287,7 +167,7 @@ functor
       | PDeref of { subpat : pat; witness : F.reference }
       | PConstant of { lit : literal }
       | PBinding of {
-          mut : (F.mutable_variable mutability[@visitors.opaque]);
+          mut : F.mutable_variable mutability;
           mode : binding_mode;
           var : local_ident;
           typ : ty;
@@ -376,6 +256,7 @@ functor
 
     and loop_kind =
       | UnconditionalLoop
+      | WhileLoop of { condition : expr; witness : F.while_loop }
       | ForLoop of { pat : pat; it : expr; witness : F.for_loop }
       | ForIndexLoop of {
           start : expr;
@@ -412,61 +293,7 @@ functor
 
     (* OCaml + visitors is not happy with `pat`... hence `arm_pat`... *)
     and arm' = { arm_pat : pat; body : expr }
-
-    and arm = { arm : arm'; span : span }
-    [@@deriving
-      show,
-        yojson,
-        hash,
-        eq,
-        visitors
-          {
-            variety = "reduce";
-            name = "expr_reduce";
-            ancestors =
-              [
-                "global_ident_reduce";
-                "todo_reduce";
-                "local_ident_reduce";
-                "default_reduce_features";
-                "DefaultClasses.default_reduce_features";
-                "binding_mode_reduce";
-                "span_reduce";
-                "concrete_ident_reduce";
-              ];
-          },
-        visitors
-          {
-            variety = "mapreduce";
-            name = "expr_mapreduce";
-            ancestors =
-              [
-                "global_ident_mapreduce";
-                "todo_mapreduce";
-                "local_ident_mapreduce";
-                "default_mapreduce_features";
-                "DefaultClasses.default_mapreduce_features";
-                "binding_mode_mapreduce";
-                "span_mapreduce";
-                "concrete_ident_mapreduce";
-              ];
-          },
-        visitors
-          {
-            variety = "map";
-            name = "expr_map";
-            ancestors =
-              [
-                "global_ident_map";
-                "todo_map";
-                "local_ident_map";
-                "default_map_features";
-                "DefaultClasses.default_map_features";
-                "binding_mode_map";
-                "span_map";
-                "concrete_ident_map";
-              ];
-          }]
+    and arm = { arm : arm'; span : span } [@@deriving show, yojson, hash, eq]
 
     type generic_param = {
       ident : local_ident;
@@ -476,41 +303,19 @@ functor
     }
 
     and generic_param_kind =
-      | GPLifetime of { witness : (F.lifetime[@visitors.opaque]) }
+      | GPLifetime of { witness : F.lifetime }
       | GPType of { default : ty option }
       | GPConst of { typ : ty }
 
     and generic_constraint =
-      | GCLifetime of todo * (F.lifetime[@visitors.opaque])
+      | GCLifetime of todo * F.lifetime
       | GCType of {
           bound : trait_ref;
               (* trait_ref is always applied with the type the trait implements.
                  For instance, `T: Clone` is actually `Clone<T> *)
           id : string;
         }
-    [@@deriving
-      show,
-        yojson,
-        hash,
-        eq,
-        visitors
-          {
-            variety = "reduce";
-            name = "generic_constraint_reduce";
-            ancestors = [ "expr_reduce" ];
-          },
-        visitors
-          {
-            variety = "mapreduce";
-            name = "generic_constraint_mapreduce";
-            ancestors = [ "expr_mapreduce" ];
-          },
-        visitors
-          {
-            variety = "map";
-            name = "generic_constraint_map";
-            ancestors = [ "expr_map" ];
-          }]
+    [@@deriving show, yojson, hash, eq]
 
     type param = { pat : pat; typ : ty; typ_span : span option; attrs : attrs }
 
@@ -593,35 +398,7 @@ functor
       ti_ident : concrete_ident;
       ti_attrs : attrs;
     }
-    [@@deriving
-      show,
-        yojson,
-        hash,
-        eq,
-        visitors
-          {
-            variety = "reduce";
-            name = "item_reduce";
-            ancestors =
-              [ "generic_constraint_reduce"; "expr_reduce"; "attrs_reduce" ];
-          },
-        visitors
-          {
-            variety = "mapreduce";
-            name = "item_mapreduce";
-            ancestors =
-              [
-                "generic_constraint_mapreduce";
-                "expr_mapreduce";
-                "attrs_mapreduce";
-              ];
-          },
-        visitors
-          {
-            variety = "map";
-            name = "item_map";
-            ancestors = [ "generic_constraint_map"; "expr_map"; "attrs_map" ];
-          }]
+    [@@deriving show, yojson, hash, eq]
 
     type modul = item list
 
@@ -629,7 +406,7 @@ functor
         (s : string) : item =
       { v = HaxError s; span; ident; attrs = [] }
 
-    module F = F
+    (* module F = F *)
   end
 
 module type T = sig

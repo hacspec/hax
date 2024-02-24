@@ -53,6 +53,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
+name = "basic-structs"
+version = "0.1.0"
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -71,8 +75,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
 
 [[package]]
-name = "basic-structs"
-version = "0.1.0"
+name = "cc"
+version = "1.0.83"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1174fb0b6ec23863f8b971027804a42614e347eafb0a95bf0b12cdae21fc4d0"
+dependencies = [
+ "jobserver",
+ "libc",
+]
 
 [[package]]
 name = "cfg-if"
@@ -238,45 +248,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be4136b2a15dd319360be1c07d9933517ccf0be8f16bf62a3bee4f0d618df427"
 dependencies = [
  "cfg-if",
+ "js-sys",
  "libc",
  "wasi",
-]
-
-[[package]]
-name = "hacspec-chacha20"
-version = "0.1.0"
-source = "git+https://github.com/hacspec/specs#3efdf5e1245783a68d2fb3d83e0f90bd15ad4982"
-dependencies = [
- "hacspec-lib",
-]
-
-[[package]]
-name = "hacspec-chacha20poly1305"
-version = "0.1.0"
-source = "git+https://github.com/hacspec/specs#3efdf5e1245783a68d2fb3d83e0f90bd15ad4982"
-dependencies = [
- "hacspec-chacha20",
- "hacspec-lib",
- "hacspec-poly1305",
-]
-
-[[package]]
-name = "hacspec-curve25519"
-version = "0.1.0"
-source = "git+https://github.com/hacspec/specs#3efdf5e1245783a68d2fb3d83e0f90bd15ad4982"
-dependencies = [
- "hacspec-lib",
-]
-
-[[package]]
-name = "hacspec-derive"
-version = "0.1.0"
-source = "git+https://github.com/hacspec/hacspec.git#bb5b411dced2dfe5c7601674153de4545c783c10"
-dependencies = [
- "hacspec-lib",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -292,50 +267,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "hacspec-hkdf"
-version = "0.1.0"
-source = "git+https://github.com/hacspec/specs#3efdf5e1245783a68d2fb3d83e0f90bd15ad4982"
-dependencies = [
- "hacspec-hmac",
- "hacspec-lib",
- "hacspec-sha256",
-]
-
-[[package]]
-name = "hacspec-hmac"
-version = "0.1.0"
-source = "git+https://github.com/hacspec/specs#3efdf5e1245783a68d2fb3d83e0f90bd15ad4982"
-dependencies = [
- "hacspec-lib",
- "hacspec-sha256",
-]
-
-[[package]]
 name = "hacspec-lib"
 version = "0.1.0-beta.1"
 source = "git+https://github.com/hacspec/hacspec.git#bb5b411dced2dfe5c7601674153de4545c783c10"
 dependencies = [
  "abstract_integers",
  "num",
- "secret_integers",
-]
-
-[[package]]
-name = "hacspec-poly1305"
-version = "0.1.0"
-source = "git+https://github.com/hacspec/specs#3efdf5e1245783a68d2fb3d83e0f90bd15ad4982"
-dependencies = [
- "hacspec-lib",
-]
-
-[[package]]
-name = "hacspec-sha256"
-version = "0.1.0"
-source = "git+https://github.com/hacspec/specs#3efdf5e1245783a68d2fb3d83e0f90bd15ad4982"
-dependencies = [
- "abstract_integers",
- "hacspec-derive",
- "hacspec-lib",
  "secret_integers",
 ]
 
@@ -381,6 +318,9 @@ dependencies = [
 [[package]]
 name = "hax-lib-protocol"
 version = "0.1.0-pre.1"
+dependencies = [
+ "libcrux",
+]
 
 [[package]]
 name = "hax-lib-protocol-macros"
@@ -403,6 +343,10 @@ dependencies = [
 
 [[package]]
 name = "if-let"
+version = "0.1.0"
+
+[[package]]
+name = "include-flag"
 version = "0.1.0"
 
 [[package]]
@@ -431,6 +375,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af150ab688ff2122fcef229be89cb50dd66af9e01a4ff320cc137eecc9bacc38"
 
 [[package]]
+name = "jobserver"
+version = "0.1.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c37f63953c4c63420ed5fd3d6d398c719489b9f872b9fa683262f8edd363c7d"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "js-sys"
 version = "0.3.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -450,6 +403,48 @@ name = "libc"
 version = "0.2.147"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4668fb0ea861c1df094127ac5f1da3409a82116a4ba74fca2e58ef927159bb3"
+
+[[package]]
+name = "libcrux"
+version = "0.0.2-pre.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31d9dcd435758db03438089760c55a45e6bcab7e4e299ee261f75225ab29d482"
+dependencies = [
+ "getrandom",
+ "libcrux-hacl",
+ "libcrux-platform",
+ "libjade-sys",
+ "rand",
+]
+
+[[package]]
+name = "libcrux-hacl"
+version = "0.0.2-pre.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52b2581ce493c5c22700077b5552b47be69b67b8176716572b02856218db0b68"
+dependencies = [
+ "cc",
+ "libcrux-platform",
+]
+
+[[package]]
+name = "libcrux-platform"
+version = "0.0.2-pre.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "647e39666194b11df17c19451d1154b9be79df98b9821532560c2ecad0cf3410"
+dependencies = [
+ "libc",
+]
+
+[[package]]
+name = "libjade-sys"
+version = "0.0.2-pre.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec4d22bba476bf8f5aebe36ccfd0e56dba8707e0c3b5c76996576028f48ffb8e"
+dependencies = [
+ "cc",
+ "libcrux-platform",
+]
 
 [[package]]
 name = "literals"
@@ -500,15 +495,10 @@ name = "noise-kkpsk0"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "hacspec-chacha20",
- "hacspec-chacha20poly1305",
- "hacspec-curve25519",
  "hacspec-dev",
- "hacspec-hkdf",
- "hacspec-hmac",
- "hacspec-lib",
- "hacspec-poly1305",
- "hacspec-sha256",
+ "hax-lib-macros",
+ "hax-lib-protocol",
+ "hax-lib-protocol-macros",
  "rand",
  "rayon",
  "serde",

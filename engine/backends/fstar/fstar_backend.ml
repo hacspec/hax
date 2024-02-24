@@ -36,6 +36,7 @@ module SubtypeToInputLanguage
              and type loop = Features.Off.loop
              and type block = Features.Off.block
              and type for_loop = Features.Off.for_loop
+             and type while_loop = Features.Off.while_loop
              and type for_index_loop = Features.Off.for_index_loop
              and type state_passing_loop = Features.Off.state_passing_loop) =
 struct
@@ -331,7 +332,10 @@ struct
     | GConst e -> pexpr e
     | GLifetime _ -> .
 
-  and ppat (p : pat) =
+  and ppat (p : pat) = ppat' true p
+
+  and ppat' (shallow : bool) (p : pat) =
+    let ppat = ppat' false in
     match p.p with
     | PWild -> F.wild
     | PAscription { typ; pat } ->
@@ -345,8 +349,11 @@ struct
           typ = _ (* we skip type annot here *);
         } ->
         F.pat @@ F.AST.PatVar (plocal_ident var, None, [])
-    | POr { subpats } ->
-        Error.unimplemented p.span ~details:"ppat:Disjuntive patterns"
+    | POr { subpats } when shallow ->
+        F.pat @@ F.AST.PatOr (List.map ~f:ppat subpats)
+    | POr _ ->
+        Error.unimplemented p.span ~issue_id:463
+          ~details:"The F* backend doesn't support nested disjuntive patterns"
     | PArray { args } -> F.pat @@ F.AST.PatList (List.map ~f:ppat args)
     | PConstruct { name = `TupleCons 0; args = [] } ->
         F.pat @@ F.AST.PatConst F.Const.Const_unit
@@ -1070,7 +1077,7 @@ struct
         in
         let tcdef = F.AST.TyconRecord (name, bds, None, [], fields) in
         let d = F.AST.Tycon (false, true, [ tcdef ]) in
-        [ `Impl { d; drange = F.dummyRange; quals = []; attrs = [] } ]
+        [ `Intf { d; drange = F.dummyRange; quals = []; attrs = [] } ]
     | Impl { generics; self_ty = _; of_trait = trait, generic_args; items } ->
         let name = U.Concrete_ident_view.to_definition_name e.ident |> F.id in
         let pat = F.pat @@ F.AST.PatVar (name, None, []) in
@@ -1114,18 +1121,8 @@ struct
         in
         let body = F.term @@ F.AST.Record (None, fields) in
         let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
-        let impl =
-          F.decl ~fsti:false ~attrs:[ tcinst ]
-          @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
-        in
-        let intf =
-          let typ =
-            F.term
-            @@ F.AST.Product (List.map ~f:FStarBinder.to_binder generics, typ)
-          in
-          F.decl ~fsti:true ~attrs:[ tcinst ] @@ F.AST.Val (name, typ)
-        in
-        if ctx.interface_mode then [ impl; intf ] else [ impl ]
+        F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ]
+        @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
     | HaxError details ->
         [
           `Comment
@@ -1151,7 +1148,7 @@ let make (module M : Attrs.WITH_ITEMS) ctx =
 
 let strings_of_item (bo : BackendOptions.t) m items (item : item) :
     [> `Impl of string | `Intf of string ] list =
-  let interface_mode =
+  let interface_mode' : Types.inclusion_kind =
     List.rev bo.interfaces
     |> List.find ~f:(fun (clause : Types.inclusion_clause) ->
            let namespace = clause.namespace in
@@ -1163,9 +1160,11 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
              }
            in
            Concrete_ident.matches_namespace namespace item.ident)
-    |> Option.map ~f:(fun (clause : Types.inclusion_clause) ->
-           match clause.kind with Types.Excluded -> false | _ -> true)
-    |> Option.value ~default:false
+    |> Option.map ~f:(fun (clause : Types.inclusion_clause) -> clause.kind)
+    |> Option.value ~default:(Types.Excluded : Types.inclusion_kind)
+  in
+  let interface_mode =
+    not ([%matches? (Types.Excluded : Types.inclusion_kind)] interface_mode')
   in
   let (module Print) =
     make m
@@ -1178,6 +1177,10 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
   let mk_impl = if interface_mode then fun i -> `Impl i else fun i -> `Impl i in
   let mk_intf = if interface_mode then fun i -> `Intf i else fun i -> `Impl i in
   Print.pitem item
+  |> (match interface_mode' with
+     | Types.Included None' ->
+         List.filter ~f:(function `Impl _ -> false | _ -> true)
+     | _ -> Fn.id)
   |> List.concat_map ~f:(function
        | `Impl i -> [ mk_impl (decl_to_string i) ]
        | `Intf i -> [ mk_intf (decl_to_string i) ]
@@ -1246,6 +1249,7 @@ module TransformToInputLanguage =
   Phases.Reject.RawOrMutPointer(Features.Rust)
   |> Phases.And_mut_defsite
   |> Phases.Reconstruct_for_loops
+  |> Phases.Reconstruct_while_loops
   |> Phases.Direct_and_mut
   |> Phases.Reject.Arbitrary_lhs
   |> Phases.Drop_blocks

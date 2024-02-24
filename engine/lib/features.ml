@@ -2,6 +2,7 @@
 loop,
   for_loop,
   for_index_loop,
+  while_loop,
   state_passing_loop,
   continue,
   break,
@@ -27,6 +28,7 @@ module Full = On
 
 module Rust = struct
   include On
+  include Off.While_loop
   include Off.For_loop
   include Off.For_index_loop
   include Off.Question_mark

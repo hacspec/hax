@@ -9,6 +9,9 @@ pub trait Foo {
     const N: usize;
     fn assoc_f() -> ();
     fn method_f(&self) -> ();
+    fn assoc_type(_: Self::AssocType) -> ()
+    where
+        Self::AssocType: Copy;
 }
 
 impl SuperTrait for i32 {
@@ -26,6 +29,7 @@ impl Foo for () {
     fn method_f(&self) {
         Self::assoc_f()
     }
+    fn assoc_type(_: Self::AssocType) -> () {}
 }
 
 fn f<T: Foo>(x: T) {
@@ -47,4 +51,12 @@ impl<'a> Struct {
     fn method<T: Bar<'a>>(x: T) {
         x.bar()
     }
+}
+
+pub fn closure_impl_expr<I: Iterator<Item = ()>>(it: I) -> Vec<()> {
+    it.map(|x| x).collect()
+}
+
+pub fn closure_impl_expr_fngen<I: Iterator<Item = ()>, F: FnMut(()) -> ()>(it: I, f: F) -> Vec<()> {
+    it.map(f).collect()
 }

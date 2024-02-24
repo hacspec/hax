@@ -22,7 +22,6 @@
    ppx_sexp_conv
    ppx_compare
    ppx_hash
-   visitors.ppx
    ppx_deriving.show
    ppx_deriving.eq
    ppx_string
@@ -72,4 +71,4 @@
 (env
  (_
   (flags
-   (:standard -g -warn-error "+A" -w "-17-7-30-56-32"))))
+   (:standard -g -warn-error "+A" -w "-17-30-56-32"))))

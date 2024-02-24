@@ -1,9 +1,12 @@
 #![allow(dead_code)]
 #![feature(try_trait_v2)]
 #![feature(allocator_api)]
+
 extern crate alloc;
 /* This is a dummy Rust file. Every path used in this file will be
  * exported and made available automatically in OCaml. */
+
+mod crypto_abstractions;
 
 fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mut y: I) {
     let _: core::result::Result<u8, u8> = core::result::Result::Ok(0);
@@ -21,6 +24,7 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     let _: Option<alloc::alloc::Global> = None;
     let _: Option<()> = Some(());
     let _: Option<()> = None;
+    let _ = Option::<()>::None.is_some();
     let _: Result<(), u32> = Result::Err(3u8).map_err(u32::from);
 
     let _ = [()].into_iter();
@@ -123,6 +127,7 @@ mod hax {
     // Only useful when HAX_CORE_EXTRACTION_MODE in `on`
     enum MutRef {}
 
+    fn while_loop() {}
     fn repeat() {}
     fn update_at() {}
     mod monomorphized_update_at {

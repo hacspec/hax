@@ -73,6 +73,8 @@ fn setup_logging() {
     tracing::subscriber::set_global_default(subscriber).unwrap();
 }
 
+const HAX_VANILLA_RUSTC: &str = "HAX_VANILLA_RUSTC";
+
 fn main() {
     setup_logging();
 
@@ -93,22 +95,32 @@ fn main() {
     };
 
     // When `HAX_FEATURES_DETECTION_MODE` is set, we just detect
-    // features for the current crate, output them in JSON on stdout
+    // features for the current crate, output them in JSON on stderr
     // and exit immediately
     if std::env::var("HAX_FEATURES_DETECTION_MODE").is_ok() {
         use std::io::BufWriter;
         return serde_json::to_writer(
-            BufWriter::new(std::io::stdout()),
+            BufWriter::new(std::io::stderr()),
             &Features::detect(&options, &rustc_args),
         )
         .unwrap();
     }
 
+    let (vanilla_rustc, vanilla_rustc_never) = {
+        let vanilla_rustc = std::env::var(HAX_VANILLA_RUSTC);
+        let vanilla_rustc_never = vanilla_rustc == Ok("never".into());
+        (
+            !vanilla_rustc_never && vanilla_rustc.is_ok(),
+            vanilla_rustc_never,
+        )
+    };
+
     // fetch the correct callback structure given the command, and
     // coerce options
     let is_primary_package = std::env::var("CARGO_PRIMARY_PACKAGE").is_ok();
     let is_build_script = std::env::var("CARGO_CRATE_NAME") == Ok("build_script_build".to_string()); // FIXME: is there a more robust way to do this?
-    let translate_package = !is_build_script && (options.deps || is_primary_package);
+    let translate_package =
+        !vanilla_rustc && !is_build_script && (options.deps || is_primary_package);
     let mut callbacks: Box<dyn Callbacks + Send> = if translate_package {
         match &options.command {
             Some(Command::ExporterCommand(command)) => Box::new(exporter::ExtractionCallbacks {
@@ -170,7 +182,43 @@ fn main() {
         },
     };
 
-    std::process::exit(rustc_driver::catch_with_exit_code(move || {
-        rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
-    }))
+    let exit_code = rustc_driver::catch_with_exit_code({
+        let rustc_args = rustc_args.clone();
+        move || rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
+    });
+
+    std::process::exit(
+        if !vanilla_rustc_never && translate_package && exit_code == 0 {
+            // When the hax translation is successful, we need to re-run
+            // rustc. Indeed, hax translation doesn't actually build a
+            // package: no `rlib` will be written on disk.
+            self::vanilla_rustc()
+        } else {
+            exit_code
+        },
+    )
+}
+
+/// Re-run rustc without doing any hax translation. This ensures a
+/// `rlib` is produced (when the crate compiles correctly).
+fn vanilla_rustc() -> i32 {
+    use std::process::{Command, Stdio};
+    let output = Command::new(std::env::args().next().unwrap())
+        .args(std::env::args().skip(1))
+        .env(HAX_VANILLA_RUSTC, "1")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap()
+        .wait_with_output()
+        .unwrap();
+    if output.status.success() {
+        0
+    } else {
+        let stdout = &std::str::from_utf8(&output.stdout).unwrap();
+        let stderr = &std::str::from_utf8(&output.stderr).unwrap();
+        println!("{stdout}");
+        eprintln!("{stderr}");
+        output.status.code().unwrap_or(1)
+    }
 }

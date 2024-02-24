@@ -40,8 +40,10 @@ jobs:
       uses: actions/checkout@v3
       with:
         repository: 'hacspec/specs'
+        path: specs
         
     - name: Extract specifications
+      working-directory: specs
       run: |
         paths=$(tomlq -r '.workspace.members | .[]' Cargo.toml)
         for cratePath in $paths; do
@@ -66,3 +68,14 @@ jobs:
           hacspec-halo2-fstar
           hacspec-weierstrass-coq
           hacspec-weierstrass-fstar
+
+    - name: Push to Cachix
+      if: ${{ github.event_name == 'workflow_dispatch'  || github.event_name == 'merge_group'  }}
+      env:
+        CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      run: |
+        nix profile install nixpkgs#cachix nixpkgs#jq
+        nix build --json \
+          | jq -r '.[].outputs | to_entries[].value' \
+          | cachix push hax
+

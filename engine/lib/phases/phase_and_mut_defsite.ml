@@ -19,6 +19,7 @@ struct
 
   module A = Ast.Make (FA)
   module B = Ast.Make (FB)
+  module BVisitors = Ast_visitors.Make (FB)
 
   module Implem : ImplemT.T = struct
     let metadata = metadata
@@ -45,27 +46,36 @@ struct
         let e' = Borrow { kind; e; witness } in
         { e with e = e'; typ = mut_ref e.typ }
 
-      let expect_mut_ref_param (param : param) :
-          (local_ident * ty * span) option =
+      let expect_mut_ref_param (all_vars : local_ident list) (i : int)
+          (param : param) : (local_ident * ty * span) option =
         let* typ = Expect.mut_ref param.typ in
         match param.pat.p with
         | PBinding
             { mut = Immutable; mode = ByValue; var; typ = _; subpat = None } ->
             Some (var, typ, param.pat.span)
+        | PWild ->
+            let var =
+              fresh_local_ident_in all_vars ("arg_" ^ Int.to_string i ^ "_wild")
+            in
+            Some (var, typ, param.pat.span)
         | _ ->
+            (* TODO: nicer error! other pats are rejected, not unimplem! *)
             Error.unimplemented
               ~details:"Non-binding patterns for `&mut` inputs" param.pat.span
 
-      let rewrite_fn_sig (params : param list) (output : ty) :
+      let rewrite_fn_sig (all_vars : local_ident list) (params : param list)
+          (output : ty) :
           (param list * ty * (local_ident * ty * span) list) option =
-        let and_muts = List.filter_map ~f:expect_mut_ref_param params in
+        let and_muts =
+          List.filter_mapi ~f:(expect_mut_ref_param all_vars) params
+        in
         match and_muts with
         | [] -> None
         | _ ->
             let params =
-              List.map
-                ~f:(fun param ->
-                  match expect_mut_ref_param param with
+              List.mapi
+                ~f:(fun i param ->
+                  match expect_mut_ref_param all_vars i param with
                   | None -> param
                   | Some (var, typ, span) ->
                       let p : pat' =
@@ -87,10 +97,12 @@ struct
       let map_returns ~(f : expr -> expr) : expr -> expr =
         let visitor =
           object
-            inherit [_] expr_map as _super
-            method visit_t () x = x
-            method visit_mutability _ () m = m
-            method visit_Return () e witness = Return { e = f e; witness }
+            inherit [_] Visitors.map as super
+
+            method! visit_expr' () e =
+              match e with
+              | Return { e; witness } -> Return { e = f e; witness }
+              | _ -> super#visit_expr' () e
           end
         in
         visitor#visit_expr ()
@@ -134,11 +146,9 @@ struct
         in
         let visitor =
           object
-            inherit [_] expr_map as super
-            method visit_t () x = x
-            method visit_mutability _ () m = m
+            inherit [_] Visitors.map as super
 
-            method visit_expr () e =
+            method! visit_expr () e =
               (let* e = Expect.deref e in
                retyped_local_var_in_vars e)
               <|?> (fun _ -> retyped_local_var_in_vars e)
@@ -173,35 +183,42 @@ struct
 
         let visitor =
           object
-            inherit [_] expr_map as super
-            method visit_t () x = x
-            method visit_mutability _ () m = m
+            inherit [_] Visitors.map as super
 
-            method visit_expr () e =
+            method! visit_expr () e =
               try super#visit_expr () e
               with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
                 UB.hax_failure_expr e.span e.typ (context, kind)
                   (UB.LiftToFullAst.expr e)
 
-            method visit_Assign () lhs e witness =
-              let span = e.span in
-              let lhs = UB.expr_of_lhs span lhs in
-              let lhs =
-                lhs |> Place.of_expr
-                |> Option.value_or_thunk ~default:(fun () ->
-                       Error.assertion_failure span
-                       @@ "Place.of_expr: got `None` for: "
-                       ^ Print_rust.pexpr_str (UB.LiftToFullAst.expr lhs))
-                |> place_to_lhs
-              in
-              Assign { lhs; e; witness }
+            method! visit_expr' () e =
+              match e with
+              | Assign { lhs; e; witness } ->
+                  let span = e.span in
+                  let lhs = UB.expr_of_lhs span lhs in
+                  let lhs =
+                    lhs |> Place.of_expr
+                    |> Option.value_or_thunk ~default:(fun () ->
+                           Error.assertion_failure span
+                           @@ "Place.of_expr: got `None` for: "
+                           ^ Print_rust.pexpr_str (UB.LiftToFullAst.expr lhs))
+                    |> place_to_lhs
+                  in
+                  Assign { lhs; e; witness }
+              | _ -> super#visit_expr' () e
           end
         in
         visitor#visit_expr ()
 
       let rewrite_function (params : param list) (body : expr) :
           (param list * expr) option =
-        let* params, _, vars = rewrite_fn_sig params body.typ in
+        let all_vars =
+          UB.Reducers.collect_local_idents#visit_expr () body
+          :: List.map ~f:(Reducers.collect_local_idents#visit_param ()) params
+          |> Set.union_list (module Local_ident)
+          |> Set.to_list
+        in
+        let* params, _, vars = rewrite_fn_sig all_vars params body.typ in
         let idents = List.map ~f:fst3 vars in
         let vars =
           List.map
@@ -226,11 +243,9 @@ struct
       let items : B.item list = Stdlib.Obj.magic items in
       let visitor =
         object
-          inherit [_] B.item_map as super
-          method visit_t () x = x
-          method visit_mutability _ () m = m
+          inherit [_] BVisitors.map as super
 
-          method visit_impl_item' () item' =
+          method! visit_impl_item' () item' =
             (match item' with
             | IIFn { params; body } ->
                 let* params, body = rewrite_function params body in
@@ -239,7 +254,7 @@ struct
             |> Option.value_or_thunk
                  ~default:(Fn.flip super#visit_impl_item' item')
 
-          method visit_trait_item () item =
+          method! visit_trait_item () item =
             let span = item.ti_span in
             let ti_v =
               (match item.ti_v with
@@ -277,7 +292,7 @@ struct
             in
             { item with ti_v }
 
-          method visit_item () i =
+          method! visit_item () i =
             try super#visit_item () i
             with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
               let error = Diagnostics.pretty_print_context_kind context kind in
@@ -288,7 +303,7 @@ struct
               in
               B.make_hax_error_item i.span i.ident msg
 
-          method visit_item' () item' =
+          method! visit_item' () item' =
             (match item' with
             | Fn { name; generics; body; params } ->
                 let* params, body = rewrite_function params body in

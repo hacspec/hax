@@ -69,6 +69,8 @@ struct
           }
     | Dyn tr -> Dyn (dtrait_ref span tr)
     | Builtin tr -> Builtin (dtrait_ref span tr)
+    | ClosureIE todo -> ClosureIE todo
+    | FnPointer ty -> FnPointer (dty span ty)
 
   and dgeneric_value (span : span) (generic_value : A.generic_value) :
       B.generic_value =
@@ -259,6 +261,9 @@ struct
   and dloop_kind (span : span) (k : A.loop_kind) : B.loop_kind =
     match k with
     | UnconditionalLoop -> UnconditionalLoop
+    | WhileLoop { condition; witness } ->
+        WhileLoop
+          { condition = dexpr condition; witness = S.while_loop span witness }
     | ForLoop { it; pat; witness } ->
         ForLoop
           { it = dexpr it; pat = dpat pat; witness = S.for_loop span witness }

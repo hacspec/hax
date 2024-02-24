@@ -917,30 +917,32 @@ end) : EXPR = struct
 
   and c_impl_expr_atom (span : Thir.span) (ie : Thir.impl_expr_atom) : impl_expr
       =
+    let browse_path (impl : impl_expr) (chunk : Thir.impl_expr_path_chunk) =
+      match chunk with
+      | AssocItem { item; predicate = { trait_ref; _ }; _ } ->
+          let trait = c_trait_ref span trait_ref in
+          let kind : Concrete_ident.Kind.t =
+            match item.kind with Const | Fn -> Value | Type -> Type
+          in
+          let item = Concrete_ident.of_def_id kind item.def_id in
+          Projection { impl; trait; item }
+      | Parent { predicate = { trait_ref; _ }; _ } ->
+          let trait = c_trait_ref span trait_ref in
+          Parent { impl; trait }
+    in
     match ie with
     | Concrete { id; generics } ->
         let trait = Concrete_ident.of_def_id Impl id in
         let args = List.map ~f:(c_generic_value span) generics in
         Concrete { trait; args }
-    | LocalBound { clause_id; path } ->
+    | LocalBound { clause_id; path; _ } ->
         let init = LocalBound { id = clause_id } in
-        let f (impl : impl_expr) (chunk : Thir.impl_expr_path_chunk) =
-          match chunk with
-          | AssocItem (item, { trait_ref; _ }) ->
-              let trait = c_trait_ref span trait_ref in
-              let kind : Concrete_ident.Kind.t =
-                match item.kind with Const | Fn -> Value | Type -> Type
-              in
-              let item = Concrete_ident.of_def_id kind item.def_id in
-              Projection { impl; trait; item }
-          | Parent { trait_ref; _ } ->
-              let trait = c_trait_ref span trait_ref in
-              Parent { impl; trait }
-        in
-        List.fold ~init ~f path
+        List.fold ~init ~f:browse_path path
     | Dyn { trait } -> Dyn (c_trait_ref span trait)
-    | SelfImpl -> Self
+    | SelfImpl { path; _ } -> List.fold ~init:Self ~f:browse_path path
     | Builtin { trait } -> Builtin (c_trait_ref span trait)
+    | FnPointer { fn_ty } -> FnPointer (c_ty span fn_ty)
+    | Closure _ as x -> ClosureIE ([%show: Thir.impl_expr_atom] x)
     | Todo str -> failwith @@ "impl_expr_atom: Todo " ^ str
 
   and c_generic_value (span : Thir.span) (ty : Thir.generic_arg) : generic_value
@@ -1259,6 +1261,7 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
         List.map
           ~f:(fun (item : Thir.impl_item) ->
             let item_def_id = Concrete_ident.of_def_id Impl item.owner_id in
+
             let v =
               match (item.kind : Thir.impl_item_kind) with
               | Fn { body; params; _ } ->
@@ -1269,7 +1272,9 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
                   Fn
                     {
                       name = item_def_id;
-                      generics = c_generics generics;
+                      generics =
+                        U.concat_generics (c_generics generics)
+                          (c_generics item.generics);
                       body = c_expr body;
                       params;
                     }

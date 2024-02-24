@@ -4,6 +4,7 @@ module%inlined_contents Make (F : Features.T) = struct
   module FA = F
   module A = Ast.Make (F)
   module U = Ast_utils.Make (F)
+  module Visitors = Ast_visitors.Make (F)
   open Ast
 
   type id_order = int
@@ -40,7 +41,6 @@ module%inlined_contents Make (F : Features.T) = struct
 
     class type ['s] monoid =
       object
-        inherit ['s] VisitorsRuntime.monoid
         method zero : 's
         method plus : 's -> 's -> 's
       end
@@ -50,23 +50,21 @@ module%inlined_contents Make (F : Features.T) = struct
       object
         method fst = fst
         method snd = snd
-        inherit ['s * 't] VisitorsRuntime.monoid
         method zero : 's * 't = (fst#zero, snd#zero)
 
         method plus : 's * 't -> 's * 't -> 's * 't =
           fst#plus *** snd#plus >> uncurry ( *** )
       end
 
-    class ['s] set_monoid : ['s] monoid =
+    class set_monoid : [(T.t, W.comparator_witness) Set.t] monoid =
       object
-        inherit ['s] VisitorsRuntime.monoid
         method zero = Set.empty (module W)
         method plus = Set.union
       end
 
-    class ['s] map_monoid : ['s] monoid =
+    class ['a] map_monoid :
+      [(Local_ident.t, 'a list, Local_ident.comparator_witness) Map.t] monoid =
       object
-        inherit ['s] VisitorsRuntime.monoid
         method zero = Map.empty (module Local_ident)
 
         method plus =
@@ -79,22 +77,16 @@ module%inlined_contents Make (F : Features.T) = struct
         W.t list * W.t list Map.M(Local_ident).t =
       let mut_var_set, new_env =
         (object
-           inherit [_] A.expr_reduce as super
+           inherit [_] Visitors.reduce as super
 
            inherit
              [_, _] prod_monoid
                (object
-                  inherit [_] set_monoid
+                  inherit set_monoid
                end)
                (object
                   inherit [_] map_monoid
                end) as m
-
-           method visit_t _ _ = m#zero
-
-           method visit_mutability (f : W.t list Map.M(Local_ident).t -> _ -> _)
-               (ctx : W.t list Map.M(Local_ident).t) mu =
-             match mu with Mutable wit -> f ctx wit | _ -> m#zero
 
            (* method! visit_PBinding env mut _ var _typ subpat = *)
            (*   m#plus *)
@@ -107,18 +99,21 @@ module%inlined_contents Make (F : Features.T) = struct
            (*           ~f:(fst >> super#visit_pat env))) *)
            (*     (Option.value_map (Map.find env var) ~default:m#zero ~f:(fun x -> (Set.of_list (module W) x, Map.empty (module LocalIdent)))) *)
 
-           method visit_Let env _monadic pat expr body =
-             let new_set, new_env = super#visit_expr env expr in
-             m#plus
-               (super#visit_expr
-                  (m#snd#plus (m#snd#plus env new_env)
-                     (Map.of_alist_exn
-                        (module Local_ident)
-                        (List.map
-                           ~f:(fun v -> (v, Set.to_list new_set))
-                           (Set.to_list (U.Reducers.variables_of_pat pat)))))
-                  body)
-               (new_set, m#snd#zero)
+           method! visit_expr' env e =
+             match e with
+             | Let { lhs = pat; rhs = expr; body; _ } ->
+                 let new_set, new_env = super#visit_expr env expr in
+                 m#plus
+                   (super#visit_expr
+                      (m#snd#plus (m#snd#plus env new_env)
+                         (Map.of_alist_exn
+                            (module Local_ident)
+                            (List.map
+                               ~f:(fun v -> (v, Set.to_list new_set))
+                               (Set.to_list (U.Reducers.variables_of_pat pat)))))
+                      body)
+                   (new_set, m#snd#zero)
+             | _ -> super#visit_expr' env e
 
            method! visit_local_ident (env : W.t list Map.M(Local_ident).t) ident
                =
@@ -194,22 +189,21 @@ module%inlined_contents Make (F : Features.T) = struct
       (U.TypedLocalIdent.t * id_order) list * id_order =
     let mut_var_list =
       Set.to_list
-        ((object
-            inherit [_] A.expr_reduce as super
+        ((object (self)
+            inherit [_] Visitors.reduce as super
             inherit [_] U.Sets.TypedLocalIdent.monoid as m
-            method visit_t _ _ = m#zero
 
-            method visit_mutability (f : unit -> _ -> _) () mu =
-              match mu with Mutable wit -> f () wit | _ -> m#zero
-
-            method! visit_PBinding env mut _ var typ subpat =
-              m#plus
-                (match mut with
-                | Mutable _ ->
-                    Set.singleton (module U.TypedLocalIdent) (var, typ)
-                | Immutable -> Set.empty (module U.TypedLocalIdent))
-                (Option.value_map subpat ~default:m#zero
-                   ~f:(fst >> super#visit_pat env))
+            method! visit_pat' () pat' =
+              match pat' with
+              | PBinding { mut; var; typ; subpat; _ } ->
+                  m#plus
+                    (match mut with
+                    | Mutable _ ->
+                        Set.singleton (module U.TypedLocalIdent) (var, typ)
+                    | Immutable -> Set.empty (module U.TypedLocalIdent))
+                    (Option.value_map subpat ~default:m#zero
+                       ~f:(fst >> self#visit_pat ()))
+              | _ -> super#visit_pat' () pat'
          end)
            #visit_expr
            () x)

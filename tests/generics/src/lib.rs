@@ -39,3 +39,9 @@ impl Foo for usize {
         self + N
     }
 }
+
+struct Bar;
+
+impl Bar {
+    fn inherent_impl_generics<T, const N: usize>(x: [T; N]) {}
+}

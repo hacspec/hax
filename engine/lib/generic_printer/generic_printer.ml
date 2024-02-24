@@ -117,7 +117,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
             separate_map (comma ^^ break 1) (print#ty_at Ty_Tuple)
             >> iblock parens
 
-        method ty : par_state -> ty fn =
+        method! ty : par_state -> ty fn =
           fun ctx ty ->
             match ty with
             | TBool -> string "bool"
@@ -144,7 +144,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
             | TOpaque _ -> string "opaque_type!()"
             | TApp _ -> super#ty ctx ty
 
-        method expr' : par_state -> expr' fn =
+        method! expr' : par_state -> expr' fn =
           fun ctx e ->
             let wrap_parens =
               group
@@ -265,7 +265,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
             f ^^ iblock parens args
 
         method doc_construct_tuple : document list fn =
-          separate comma >> iblock parens
+          separate (comma ^^ break 1) >> iblock parens
 
         method expr_construct_tuple : expr list fn =
           List.map ~f:(print#expr_at Expr_ConstructTuple)
@@ -321,7 +321,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
 
         method attr : attr fn = fun _ -> empty
 
-        method pat' : par_state -> pat' fn =
+        method! pat' : par_state -> pat' fn =
           fun ctx ->
             let wrap_parens =
               group

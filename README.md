@@ -60,14 +60,12 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 
 </details>
 
-+ Run hax on a crate to get F\*/Coq/...:
-   - `cd path/to/your/crate`
-   - `nix run github:hacspec/hax -- into fstar`
-      will create `fst` modules in the directory `hax/extraction/fstar`.
-      *Note: replace `fstar` by your backend of choice*
++ **Run hax on a crate directly** to get F\*/Coq/... (assuming you are in the crate's folder):
+   - `nix run github:hacspec/hax -- into fstar` extracts F*.
 
-+ Install the tool:  `nix profile install github:hacspec/hax`
-   - then run `cargo hax --help` anywhere
++ **Install hax**:  `nix profile install github:hacspec/hax`, then run `cargo hax --help` anywhere
++ **Note**: in any of the Nix commands above, replace `github:hacspec/hax` by `./dir` to compile a local checkout of hax that lives in `./some-dir`
++ **Setup binary cache**: [using Cachix](https://app.cachix.org/cache/hax), just `cachix use hax`
 
 </details>
 

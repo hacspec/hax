@@ -1,6 +1,7 @@
 module Rust_primitives.Arrays
 
 open Rust_primitives.Integers
+open FStar.Mul
 
 /// Rust slices and arrays are represented as sequences
 type t_Slice t = s:Seq.seq t{Seq.length s <= max_usize}
