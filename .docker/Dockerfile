@@ -23,3 +23,6 @@ COPY --chown=hax-user:hax-user . $HOME/hax
 # Setup & install.
 ADD .docker/install.sh /tmp/install.sh
 RUN bash /tmp/install.sh
+
+# Start SSH
+CMD ["/usr/sbin/sshd", "-D"]

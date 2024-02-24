@@ -12,7 +12,8 @@ apt-get install -y \
     jq \
     libgmp-dev \
     locales \
-    curl
+    curl \
+    openssh-server
 curl -fsSL https://deb.nodesource.com/setup_21.x | bash -
 apt-get update
 apt-get install -y nodejs
