@@ -24,5 +24,6 @@ COPY --chown=hax-user:hax-user . $HOME/hax
 ADD .docker/install.sh /tmp/install.sh
 RUN bash /tmp/install.sh
 
-# Start SSH
+# Start SSH (as root)
+USER root
 CMD ["/usr/sbin/sshd", "-D"]
