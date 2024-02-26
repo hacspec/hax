@@ -1742,7 +1742,7 @@ struct
                         SSP.AST.Named
                           (pconcrete_ident x.ti_ident, SSP.AST.TypeTy)
                         :: List.map
-                             ~f:(fun tr ->
+                             ~f:(fun (tr, _id) ->
                                SSP.AST.Coercion
                                  ( pconcrete_ident x.ti_ident ^ "_"
                                    ^ pconcrete_ident tr.trait,
