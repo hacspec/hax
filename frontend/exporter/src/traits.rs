@@ -376,6 +376,14 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
     }
 }
 
+/// Crafts a unique identifier for a predicate by hashing it. The hash
+/// is non-trivial because we need stable identifiers: two hax
+/// extraction of a same predicate should result in the same
+/// identifier. Rustc's stable hash is not doing what we want here: it
+/// is sensible to the environment. Instead, we convert the (rustc)
+/// predicate to `crate::Predicate` and hash from there, taking care
+/// of not translating directly the `Clause` case, which otherwise
+/// would call `clause_id_of_predicate` as well.
 #[tracing::instrument(level = "trace", skip(s))]
 pub fn clause_id_of_predicate<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
