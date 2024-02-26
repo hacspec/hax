@@ -877,9 +877,12 @@ let translate m (bo : BackendOptions.t) (items : AST.item list) :
     ^ M.Processes.print items
   in
   let analysis_contents = M.Toplevel.print items in
-  let lib_file = Types.{ path = "lib.pvl"; contents = lib_contents } in
+  let lib_file =
+    Types.{ path = "lib.pvl"; contents = lib_contents; sourcemap = None }
+  in
   let analysis_file =
-    Types.{ path = "analysis.pv"; contents = analysis_contents }
+    Types.
+      { path = "analysis.pv"; contents = analysis_contents; sourcemap = None }
   in
   [ lib_file; analysis_file ]
 

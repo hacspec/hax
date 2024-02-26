@@ -1641,7 +1641,49 @@ let fstar_headers (bo : BackendOptions.t) =
   in
   [ opts; "open Core"; "open FStar.Mul" ] |> String.concat ~sep:"\n"
 
-let translate m (bo : BackendOptions.t) (items : AST.item list) :
+module NewGenericPrinter = New_rust_printer.Make (InputLanguage)
+
+(** Use the generic printer instead of the F* printer. For now, there
+is no generic printer for F*, that's why we currently just use the
+Rust generic printer. Thus currently this exists only for debugging
+purposes. *)
+let translate_as_experimental_rust m (bo : BackendOptions.t)
+    (items : AST.item list) : Types.file list =
+  let show_view Concrete_ident.{ crate; path; definition } =
+    crate :: (path @ [ definition ]) |> String.concat ~sep:"::"
+  in
+  U.group_items_by_namespace items
+  |> Map.to_alist
+  |> List.concat_map ~f:(fun (ns, items) ->
+         let mod_name =
+           String.concat ~sep:"."
+             (List.map
+                ~f:(map_first_letter String.uppercase)
+                (fst ns :: snd ns))
+         in
+         let string_of_items _ _ items =
+           let r = NewGenericPrinter.items () items in
+           let str = New_generic_printer_api.AnnotatedString.to_string r in
+           let sm = New_generic_printer_api.AnnotatedString.to_sourcemap r in
+           let r = (str, sm) in
+           (r, r)
+         in
+         let impl, intf = string_of_items bo m items in
+         let make ~ext (body, sourcemap) =
+           if String.is_empty body then None
+           else
+             Some
+               Types.
+                 {
+                   path = mod_name ^ "." ^ ext;
+                   contents = body;
+                   sourcemap = Some sourcemap;
+                 }
+         in
+         List.filter_map ~f:Fn.id [ make ~ext:"rs" impl ])
+
+(** Translate as F* (the "legacy" printer) *)
+let translate_as_fstar m (bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =
   let show_view Concrete_ident.{ crate; path; definition } =
     crate :: (path @ [ definition ]) |> String.concat ~sep:"::"
@@ -1673,10 +1715,18 @@ let translate m (bo : BackendOptions.t) (items : AST.item list) :
                    contents =
                      "module " ^ mod_name ^ "\n" ^ fstar_headers bo ^ "\n\n"
                      ^ body ^ "\n";
+                   sourcemap = None;
                  }
          in
          List.filter_map ~f:Fn.id
            [ make ~ext:"fst" impl; make ~ext:"fsti" intf ])
+
+let translate =
+  if
+    Sys.getenv "HAX_ENGINE_EXPERIMENTAL_RUST_PRINTER_INSTEAD_OF_FSTAR"
+    |> Option.is_some
+  then translate_as_experimental_rust
+  else translate_as_fstar
 
 open Phase_utils
 module DepGraph = Dependencies.Make (InputLanguage)

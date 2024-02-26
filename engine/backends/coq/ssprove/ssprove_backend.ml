@@ -2423,7 +2423,8 @@ let translate _ (_bo : BackendOptions.t) (items : AST.item list) :
            ^ "\n"
          in
 
-         Types.{ path = mod_name ^ ".v"; contents = file_content })
+         Types.
+           { path = mod_name ^ ".v"; contents = file_content; sourcemap = None })
 
 let apply_phases (_bo : BackendOptions.t) (i : Ast.Rust.item list) :
     AST.item list =

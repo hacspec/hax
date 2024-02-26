@@ -14,11 +14,39 @@ pub struct EngineOptions {
     )>,
 }
 
+#[allow(non_snake_case)]
+#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+pub struct SourceMap {
+    pub mappings: String,
+    pub sourceRoot: String,
+    pub sources: Vec<String>,
+    pub sourcesContent: Vec<Option<String>>,
+    pub names: Vec<String>,
+    pub version: u8,
+    pub file: String,
+}
+
+impl SourceMap {
+    pub fn inline_sources_content(&mut self) {
+        self.sourcesContent = vec![];
+        for source in &self.sources {
+            let path = if self.sourceRoot.is_empty() {
+                source.clone()
+            } else {
+                format!("{}/{}", &self.sourceRoot, source)
+            };
+            let contents = Some(std::fs::read_to_string(path).unwrap());
+            self.sourcesContent.push(contents);
+        }
+    }
+}
+
 #[derive_group(Serializers)]
 #[derive(JsonSchema, Debug, Clone)]
 pub struct File {
     pub path: String,
     pub contents: String,
+    pub sourcemap: Option<SourceMap>,
 }
 
 #[derive_group(Serializers)]
