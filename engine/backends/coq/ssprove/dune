@@ -1,5 +1,5 @@
 (library
- (name coq_backend)
+ (name ssprove_backend)
  (package hax-engine)
  (libraries hax_engine base hacspeclib_macro_parser coq_ast)
  (preprocess

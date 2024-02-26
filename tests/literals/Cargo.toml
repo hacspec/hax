@@ -8,3 +8,4 @@ edition = "2021"
 [package.metadata.hax-tests]
 into."fstar" = { broken = false, snapshot = "none", issue_id = "85" }
 into."coq" = { broken = true, snapshot = "none", issue_id = "85" }
+into."ssprove" = { broken = true, snapshot = "none", issue_id = "85" }

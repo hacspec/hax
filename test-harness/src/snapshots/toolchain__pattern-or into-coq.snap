@@ -36,13 +36,14 @@ Open Scope Z_scope.
 Open Scope bool_scope.
 
 Inductive t_E : Type :=
-| E_At_E
-| E_Bt_E.
+| E_A : t_E
+| E_B : t_E.
 
 (*Not implemented yet? todo(item)*)
 
 Definition bar (x : t_E_t) : unit :=
   match x with
-  | E_A  | E_B  => tt
+  | E_A  | E_B  =>
+    tt
   end.
 '''
