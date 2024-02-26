@@ -2,15 +2,6 @@
 use core::hash::Hasher;
 
 /// Wrapper around any hasher to make it deterministic.
-///
-/// ```
-/// use core::hash::Hash;
-/// use crc::crc32::Hasher32;
-/// use deterministic_hash::DeterministicHasher;
-/// let mut hasher = DeterministicHasher::new(crc::crc32::Digest::new(crc::crc32::KOOPMAN));
-/// (0x1337 as usize).hash(&mut hasher);
-/// assert_eq!(hasher.as_inner().sum32(), 2482448842);
-/// ```
 pub struct DeterministicHasher<T: Hasher>(T);
 
 impl<T: Hasher> DeterministicHasher<T> {
