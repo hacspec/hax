@@ -1033,14 +1033,17 @@ struct
                     (* in *)
                     (F.id name, None, [], t)
                     :: List.map
-                         ~f:(fun { trait; args } ->
+                         ~f:(fun ({ trait; args }, id) ->
                            let base =
                              F.term @@ F.AST.Name (pconcrete_ident trait)
                            in
                            let args =
                              List.map ~f:(pgeneric_value e.span) args
                            in
-                           (F.id name, None, [], F.mk_e_app base args))
+                           ( F.id (name ^ "_" ^ id),
+                             None,
+                             [],
+                             F.mk_e_app base args ))
                          bounds
                 | TIFn ty ->
                     let ty = pty e.span ty in

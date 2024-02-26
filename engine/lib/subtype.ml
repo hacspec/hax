@@ -355,7 +355,7 @@ struct
 
     let rec dtrait_item' (span : span) (ti : A.trait_item') : B.trait_item' =
       match ti with
-      | TIType g -> TIType (List.map ~f:(dtrait_ref span) g)
+      | TIType g -> TIType (List.map ~f:(dtrait_ref span *** Fn.id) g)
       | TIFn t -> TIFn (dty span t)
 
     and dtrait_item (ti : A.trait_item) : B.trait_item =

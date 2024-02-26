@@ -328,7 +328,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                         .with_args(impl_exprs(s, &nested), trait_ref)
                 } else {
                     ImplExprAtom::LocalBound {
-                        clause_id: clause_id_of_predicate(apred.predicate),
+                        clause_id: clause_id_of_predicate(s, apred.predicate),
                         r#trait,
                         path,
                     }
@@ -376,14 +376,38 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
     }
 }
 
-pub fn clause_id_of_predicate(predicate: rustc_middle::ty::Predicate) -> u64 {
+/// Crafts a unique identifier for a predicate by hashing it. The hash
+/// is non-trivial because we need stable identifiers: two hax
+/// extraction of a same predicate should result in the same
+/// identifier. Rustc's stable hash is not doing what we want here: it
+/// is sensible to the environment. Instead, we convert the (rustc)
+/// predicate to `crate::Predicate` and hash from there, taking care
+/// of not translating directly the `Clause` case, which otherwise
+/// would call `clause_id_of_predicate` as well.
+#[tracing::instrument(level = "trace", skip(s))]
+pub fn clause_id_of_predicate<'tcx, S: UnderOwnerState<'tcx>>(
+    s: &S,
+    predicate: rustc_middle::ty::Predicate<'tcx>,
+) -> u64 {
+    use crate::deterministic_hash::DeterministicHasher;
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
-    // TODO: use stable hash here?
-    let mut s = DefaultHasher::new();
-    predicate.hash(&mut s);
-    s.finish()
+    let mut hasher = DeterministicHasher::new(DefaultHasher::new());
+
+    let binder = predicate.kind();
+    if let rustc_middle::ty::PredicateKind::Clause(ck) = binder.skip_binder() {
+        let bvs: Vec<BoundVariableKind> = binder.bound_vars().sinto(s);
+        let ck: ClauseKind = ck.sinto(s);
+        hasher.write_u8(0);
+        bvs.hash(&mut hasher);
+        ck.hash(&mut hasher);
+    } else {
+        hasher.write_u8(1);
+        predicate.sinto(s).hash(&mut hasher);
+    }
+    hasher.finish()
 }
+
 #[tracing::instrument(level = "trace", skip(s))]
 pub fn select_trait_candidate<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,

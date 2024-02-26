@@ -10,13 +10,18 @@ pub struct DisambiguatedDefPathItem {
     pub disambiguator: u32,
 }
 
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, PartialOrd, Ord)]
 pub struct DefId {
     pub krate: String,
     pub path: Vec<DisambiguatedDefPathItem>,
     pub index: (u32, u32),
+}
+
+impl std::hash::Hash for DefId {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.krate.hash(state);
+        self.path.hash(state);
+    }
 }
 
 impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
@@ -2852,7 +2857,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause> for rustc_middle::ty::Clau
     fn sinto(&self, s: &S) -> Clause {
         use rustc_middle::ty::ToPredicate;
         Clause {
-            id: clause_id_of_predicate(self.clone().to_predicate(s.base().tcx)),
+            id: clause_id_of_predicate(s, self.clone().to_predicate(s.base().tcx)),
             kind: self.sinto(s),
         }
     }
