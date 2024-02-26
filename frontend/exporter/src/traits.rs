@@ -389,7 +389,7 @@ pub fn clause_id_of_predicate<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     predicate: rustc_middle::ty::Predicate<'tcx>,
 ) -> u64 {
-    use deterministic_hash::DeterministicHasher;
+    use crate::deterministic_hash::DeterministicHasher;
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
     let mut hasher = DeterministicHasher::new(DefaultHasher::new());
