@@ -1,14 +1,15 @@
 use chacha20::chacha20;
-
+use secret_independence::*;
 pub type ChaChaIV = [u8; 12];
 pub type ChaChaKey = [u8; 32];
 
 fn kat_test(m: Vec<u8>, key: ChaChaKey, iv: ChaChaIV, exp_cipher: Vec<u8>) {
-    let out = chacha20(&m, &key, &iv, 1u32);
-    assert_eq!(exp_cipher, out);
-
-    let decrypted = chacha20(&out, &key, &iv, 1u32);
-    assert_eq!(m, decrypted);
+    let out = chacha20(&(<Vec<U8>>::from(m.clone().classify())),  
+                       &key.classify().into(),
+                       &iv.classify().into(), 1u32);
+    let decrypted = chacha20(&out, &key.classify().into(), &iv.classify().into(), 1u32);
+    assert_eq!(exp_cipher, (<Secret<Vec<u8>>>::from(out)).declassify()); 
+    assert_eq!(m, (<Secret<Vec<u8>>>::from(decrypted)).declassify()); 
 }
 
 #[test]

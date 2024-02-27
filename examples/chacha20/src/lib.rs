@@ -53,8 +53,8 @@ pub fn chacha20_core(ctr: u32, st0: State) -> State {
 }
 
 pub fn chacha20_init(key: &ChaChaKey, iv: &ChaChaIV, ctr: u32) -> State {
-    let key_u32: [U32; 8] = to_le_u32s_8(key); 
-    let iv_u32: [U32; 3] = to_le_u32s_3(iv);
+    let key_u32: [U32; 8] = <[U32;8]>::from_le_bytes(key).unwrap(); 
+    let iv_u32: [U32; 3] = <[U32;3]>::from_le_bytes(iv).unwrap();
     [
         0x6170_7865.into(),
         0x3320_646e.into(),
@@ -77,7 +77,7 @@ pub fn chacha20_init(key: &ChaChaKey, iv: &ChaChaIV, ctr: u32) -> State {
 
 pub fn chacha20_key_block(state: State) -> Block {
     let state = chacha20_core(0u32, state);
-    u32s_to_le_bytes(&state)
+    state.to_le_bytes().unwrap()
 }
 
 pub fn chacha20_key_block0(key: &ChaChaKey, iv: &ChaChaIV) -> Block {
@@ -87,20 +87,20 @@ pub fn chacha20_key_block0(key: &ChaChaKey, iv: &ChaChaIV) -> Block {
 
 pub fn chacha20_encrypt_block(st0: State, ctr: u32, plain: &Block) -> Block {
     let st = chacha20_core(ctr, st0);
-    let pl: State = to_le_u32s_16(plain);
+    let pl: State = State::from_le_bytes(plain).unwrap();
     let encrypted = xor_state(st, pl);
-    u32s_to_le_bytes(&encrypted)
+    encrypted.to_le_bytes().unwrap()
 }
 
 #[hax::requires(plain.len() <= 64)]
-pub fn chacha20_encrypt_last(st0: State, ctr: u32, plain: &[u8]) -> Vec<u8> {
-    let mut b: Block = [0; 64];
+pub fn chacha20_encrypt_last(st0: State, ctr: u32, plain: &[U8]) -> Vec<U8> {
+    let mut b: Block = [0.into(); 64];
     b = update_array(b, plain);
     b = chacha20_encrypt_block(st0, ctr, &b);
     b[0..plain.len()].to_vec()
 }
 
-pub fn chacha20_update(st0: State, m: &[U8]) -> Vec<u8> {
+pub fn chacha20_update(st0: State, m: &[U8]) -> Vec<U8> {
     let mut blocks_out = Vec::new();
     let num_blocks = m.len() / 64;
     let remainder_len = m.len() % 64;

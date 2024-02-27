@@ -1,15 +1,20 @@
 use core::ops::*;
-use core::num::Wrapping;
 
 pub struct Secret<T>(T);
 
-impl<T> Secret<T> {
-    fn declassify(self) -> T {self.0}
+pub trait Classify where Self: Sized {
+    fn classify(self) -> Secret<Self> {Secret(self)}
 }
 
 impl<T> From<T> for Secret<T> {
     fn from(x:T) -> Secret<T> {Secret(x)}
 }
+
+
+impl<T> Secret<T> {
+    pub fn declassify(self) -> T {self.0}
+} 
+
 
 impl<T:Clone> Clone for Secret<T> {
     fn clone(&self) -> Self {
@@ -19,12 +24,7 @@ impl<T:Clone> Clone for Secret<T> {
 
 impl<T:Clone+Copy> Copy for Secret<T> {}
 
-pub trait Classify where Self: Sized {
-    fn classify(self) -> Secret<Self> {Secret(self)}
-}
-
 impl<T:Sized> Classify for T {}
-
 
 impl<T: Add,V:Into<Secret<T>>> Add<V> for Secret<T> {
     type Output = Secret<T::Output>;
@@ -98,23 +98,48 @@ impl<U, T: Shr<U>> Shr<U> for Secret<T> {
     }
 }
 
+impl<T:Sized, const N:usize> From<Secret<[T;N]>> for [Secret<T>;N] {
+    fn from(x:Secret<[T;N]>) -> Self {x.0.map(|v| Secret(v))}
+}
 
-impl Secret<u32> {
-    pub fn wrapping_add<T:Into<Secret<u32>>>(self,rhs:T) -> Self {
-        self.declassify().wrapping_add(rhs.into().declassify()).classify()
-    }
-    pub fn wrapping_sub<T:Into<Secret<u32>>>(self,rhs:T) -> Self {
-        self.declassify().wrapping_sub(rhs.into().declassify()).classify()
-    }
-    pub fn wrapping_mul<T:Into<Secret<u32>>>(self,rhs:T) -> Self {
-        self.declassify().wrapping_mul(rhs.into().declassify()).classify()
-    }
-    pub fn rotate_left(self,rhs:u32) -> Self {
-        self.declassify().rotate_left(rhs).classify()
-    }
-    pub fn rotate_right(self,rhs:u32) -> Self {
-        self.declassify().rotate_right(rhs).classify()
-    }
+impl<T> From<Secret<Vec<T>>> for Vec<Secret<T>> {
+    fn from(x:Secret<Vec<T>>) -> Self {x.0.into_iter().map(|v| Secret(v)).collect()}
+}
+
+impl<T:Sized, const N:usize> From<[Secret<T>;N]> for Secret<[T;N]> {
+    fn from(x:[Secret<T>;N]) -> Self {x.map(|v| v.declassify()).classify()}
+}
+
+impl<T:Sized> From<Vec<Secret<T>>> for Secret<Vec<T>> {
+    fn from(x:Vec<Secret<T>>) -> Self {x.into_iter().map(|v| v.declassify()).collect::<Vec<T>>().classify()}
+}
+
+pub trait IntOps where Self:Sized {
+    fn wrapping_add<T:Into<Secret<u32>>>(self,rhs:T) -> Self;
+    fn wrapping_sub<T:Into<Secret<u32>>>(self,rhs:T) -> Self;
+    fn wrapping_mul<T:Into<Secret<u32>>>(self,rhs:T) -> Self;
+    fn rotate_left(self,rhs:u32) -> Self;
+    fn rotate_right(self,rhs:u32) -> Self;
+}
+
+pub trait ToBytes<const N:usize> : Copy {
+    fn to_le_bytes(self) -> [U8;N];
+    fn to_be_bytes(self) -> [U8;N];
+}
+
+pub trait FromBytes<T:Into<U8>,const N:usize> : Copy {
+    fn from_le_bytes(x:&[T;N]) -> Self;
+    fn from_be_bytes(x:&[T;N]) -> Self;
+}
+
+pub trait TryToBytes<const C:usize, const N:usize> : Copy {
+    fn to_le_bytes(self) -> Result<[U8;N],()>;
+    fn to_be_bytes(self) -> Result<[U8;N],()>;
+}
+
+pub trait TryFromBytes<T:Into<U8>,const N:usize> : Copy {
+    fn from_le_bytes(x:&[T]) -> Result<Self,()>;
+    fn from_be_bytes(x:&[T]) -> Result<Self,()>;
 }
 
 pub type I8 = Secret<i8>;
@@ -127,29 +152,77 @@ pub type I64 = Secret<i64>;
 pub type U64 = Secret<u64>;
 pub type I128 = Secret<i128>;
 pub type U128 = Secret<u128>;
+pub type Bytes<const N:usize> = [U8;N];
+pub type ByteSeq = Vec<U8>;
 
-impl<T:Sized, const N:usize> From<Secret<[T;N]>> for [Secret<T>;N] {
-    fn from(x:Secret<[T;N]>) -> Self {x.0.map(|v| Secret(v))}
+impl IntOps for Secret<u32> {
+    fn wrapping_add<T:Into<Secret<u32>>>(self,rhs:T) -> Self {
+        self.declassify().wrapping_add(rhs.into().declassify()).classify()
+    }
+    fn wrapping_sub<T:Into<Secret<u32>>>(self,rhs:T) -> Self {
+        self.declassify().wrapping_sub(rhs.into().declassify()).classify()
+    }
+    fn wrapping_mul<T:Into<Secret<u32>>>(self,rhs:T) -> Self {
+        self.declassify().wrapping_mul(rhs.into().declassify()).classify()
+    }
+    fn rotate_left(self,rhs:u32) -> Self {
+        self.declassify().rotate_left(rhs).classify()
+    }
+    fn rotate_right(self,rhs:u32) -> Self {
+        self.declassify().rotate_right(rhs).classify()
+    }
 }
 
-impl<V:Iterator> From<Secret<V>> for Vec<Secret<V::Item>> {
-    fn from(x:Secret<V>) -> Self {x.0.into_iter().map(|v| Secret(v)).collect()}
+impl ToBytes<4> for Secret<u32> {
+    fn to_le_bytes(self) -> [U8;4] {
+        self.declassify().to_le_bytes().classify().into()
+    }
+    fn to_be_bytes(self) -> [U8;4] {
+        self.declassify().to_be_bytes().classify().into()
+    }
 }
 
-pub fn add(left: u32, right: i8) -> U32 {
-    let a = [0,1,2];
-    let b: Secret<[u32;3]> = a.into();
-    let c: [U32;3] = b.into();
-    c[1] << right
+impl<T:Copy+Into<U8>> FromBytes<T,4> for Secret<u32> {
+    fn from_le_bytes(x:&[T;4]) -> Self {
+        u32::from_le_bytes(x.map(|i| i.into().declassify())).classify()
+    }
+    fn from_be_bytes(x:&[T;4]) -> Self {
+        u32::from_be_bytes(x.map(|i| i.into().declassify())).classify()
+    }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result.declassify(), 4);
+impl<const C:usize, T:ToBytes<C>, const M:usize, const N:usize> TryToBytes<C,M> for [T;N] {
+    fn to_le_bytes(self) -> Result<[U8;M],()> {
+        let mut v = Vec::new();
+        for i in 0..N {
+            v.extend_from_slice(&self[i].to_le_bytes())
+        }
+        v.try_into().map_err(|_|())
+    }
+    fn to_be_bytes(self) -> Result<[U8;M],()> {
+        let mut v = Vec::new();
+        for i in 0..N {
+            v.extend_from_slice(&self[i].to_be_bytes())
+        }
+        v.try_into().map_err(|_|())
+    }
+}
+
+
+impl<U:Into<U8>, const C:usize, T:FromBytes<U,C>, const N:usize> TryFromBytes<U,C> for [T;N] {
+    fn from_le_bytes(x:&[U]) -> Result<Self,()> {
+        let mut v = Vec::new();
+        for c in x.chunks_exact(C) {
+            v.push(T::from_le_bytes(c.try_into().unwrap()))
+        }
+        v.try_into().map_err(|_|())
+    }
+    fn from_be_bytes(x:&[U]) -> Result<Self,()> {
+        let mut v = Vec::new();
+        for c in x.chunks_exact(C) {
+            v.push(T::from_be_bytes(c.try_into().unwrap()))
+        }
+        v.try_into().map_err(|_|())
     }
 }

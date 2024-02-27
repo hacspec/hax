@@ -1,4 +1,5 @@
 use super::State;
+use secret_independence::*;
 
 // pub(super) fn to_le_u32s<const L: usize>(bytes: &[u8]) -> [u32; L] {
 //     assert_eq!(L, bytes.len() / 4);
@@ -52,9 +53,9 @@ pub(super) fn add_state(mut state: State, other: State) -> State {
     state
 }
 
-pub(super) fn update_array(mut array: [u8; 64], val: &[u8]) -> [u8; 64] {
+pub(super) fn update_array<T:Copy, const N:usize>(mut array: [T; N], val: &[T]) -> [T; N] {
     // <const L: usize>
-    assert!(64 >= val.len());
+    assert!(N >= val.len());
     for i in 0..val.len() {
         array[i] = val[i];
     }
