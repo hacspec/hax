@@ -118,6 +118,7 @@ version = "0.1.0"
 dependencies = [
  "hax-lib",
  "hax-lib-macros",
+ "secret_independence",
 ]
 
 [[package]]
@@ -520,6 +521,10 @@ dependencies = [
  "serde_derive_internals",
  "syn 1.0.109",
 ]
+
+[[package]]
+name = "secret_independence"
+version = "0.1.0-pre.1"
 
 [[package]]
 name = "serde"

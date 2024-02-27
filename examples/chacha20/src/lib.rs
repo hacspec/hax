@@ -1,12 +1,12 @@
 mod hacspec_helper;
 use hacspec_helper::*;
-
+use secret_independence::*;
 use hax_lib_macros as hax;
 
-type State = [u32; 16];
-type Block = [u8; 64];
-type ChaChaIV = [u8; 12];
-type ChaChaKey = [u8; 32];
+type State = [U32; 16]; 
+type Block = [U8; 64];
+type ChaChaIV = [U8; 12];
+type ChaChaKey = [U8; 32]; 
 
 #[hax::requires(a < 16 && b < 16 && d < 16)]
 fn chacha20_line(a: usize, b: usize, d: usize, s: u32, m: State) -> State {
@@ -53,13 +53,13 @@ pub fn chacha20_core(ctr: u32, st0: State) -> State {
 }
 
 pub fn chacha20_init(key: &ChaChaKey, iv: &ChaChaIV, ctr: u32) -> State {
-    let key_u32: [u32; 8] = to_le_u32s_8(key);
-    let iv_u32: [u32; 3] = to_le_u32s_3(iv);
+    let key_u32: [U32; 8] = to_le_u32s_8(key); 
+    let iv_u32: [U32; 3] = to_le_u32s_3(iv);
     [
-        0x6170_7865,
-        0x3320_646e,
-        0x7962_2d32,
-        0x6b20_6574,
+        0x6170_7865.into(),
+        0x3320_646e.into(),
+        0x7962_2d32.into(),
+        0x6b20_6574.into(),
         key_u32[0],
         key_u32[1],
         key_u32[2],
@@ -68,7 +68,7 @@ pub fn chacha20_init(key: &ChaChaKey, iv: &ChaChaIV, ctr: u32) -> State {
         key_u32[5],
         key_u32[6],
         key_u32[7],
-        ctr,
+        ctr.into(),
         iv_u32[0],
         iv_u32[1],
         iv_u32[2],
@@ -100,7 +100,7 @@ pub fn chacha20_encrypt_last(st0: State, ctr: u32, plain: &[u8]) -> Vec<u8> {
     b[0..plain.len()].to_vec()
 }
 
-pub fn chacha20_update(st0: State, m: &[u8]) -> Vec<u8> {
+pub fn chacha20_update(st0: State, m: &[U8]) -> Vec<u8> {
     let mut blocks_out = Vec::new();
     let num_blocks = m.len() / 64;
     let remainder_len = m.len() % 64;
@@ -120,7 +120,7 @@ pub fn chacha20_update(st0: State, m: &[u8]) -> Vec<u8> {
     blocks_out
 }
 
-pub fn chacha20(m: &[u8], key: &ChaChaKey, iv: &ChaChaIV, ctr: u32) -> Vec<u8> {
+pub fn chacha20(m: &[U8], key: &ChaChaKey, iv: &ChaChaIV, ctr: u32) -> Vec<U8> {
     let state = chacha20_init(key, iv, ctr);
-    chacha20_update(state, m)
+    chacha20_update(state, m) 
 }

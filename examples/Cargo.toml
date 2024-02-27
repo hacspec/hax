@@ -5,3 +5,4 @@ resolver = "2"
 [workspace.dependencies]
 hax-lib-macros = { path = "../hax-lib-macros" }
 hax-lib = { path = "../hax-lib" }
+secret_independence = { path = "../secret_independence" }

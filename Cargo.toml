@@ -17,6 +17,7 @@ members = [
      "hax-lib-protocol-macros",
      "engine/names",
      "engine/names/extract",
+     "secret_independence"
 ]
 exclude = ["tests"]
 default-members = [

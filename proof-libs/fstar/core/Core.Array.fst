@@ -8,3 +8,4 @@ let impl_23__map #a #b n (arr: t_Array a n) (f: a -> b): t_Array b n
 
 let impl_23__as_slice #a len (arr: t_Array a len): t_Slice a = arr
 
+let from_fn #a (n:usize) (f:usize -> a) : t_Array a n = admit()
