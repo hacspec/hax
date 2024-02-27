@@ -10,11 +10,9 @@ impl<T> From<T> for Secret<T> {
     fn from(x:T) -> Secret<T> {Secret(x)}
 }
 
-
 impl<T> Secret<T> {
     pub fn declassify(self) -> T {self.0}
 } 
-
 
 impl<T:Clone> Clone for Secret<T> {
     fn clone(&self) -> Self {
@@ -106,12 +104,44 @@ impl<T> From<Secret<Vec<T>>> for Vec<Secret<T>> {
     fn from(x:Secret<Vec<T>>) -> Self {x.0.into_iter().map(|v| Secret(v)).collect()}
 }
 
-impl<T:Sized, const N:usize> From<[Secret<T>;N]> for Secret<[T;N]> {
-    fn from(x:[Secret<T>;N]) -> Self {x.map(|v| v.declassify()).classify()}
+pub trait ClassifyArray<T,const N:usize> {
+    fn classify_all(self) -> [Secret<T>;N];
 }
 
-impl<T:Sized> From<Vec<Secret<T>>> for Secret<Vec<T>> {
-    fn from(x:Vec<Secret<T>>) -> Self {x.into_iter().map(|v| v.declassify()).collect::<Vec<T>>().classify()}
+impl<T,const N:usize> ClassifyArray<T,N> for [T;N] {
+    fn classify_all(self) -> [Secret<T>;N] {
+        self.map(|v| v.classify())
+    }
+}
+
+pub trait ClassifyVec<T> {
+    fn classify_all(self) -> Vec<Secret<T>>;
+}
+
+impl<T> ClassifyVec<T> for Vec<T> {
+    fn classify_all(self) -> Vec<Secret<T>> {
+        self.into_iter().map(|v| v.classify()).collect()
+    }
+}
+
+pub trait DeclassifyArray<T,const N:usize> {
+    fn declassify_all(self) -> [T;N];
+}
+
+impl<T,const N:usize> DeclassifyArray<T,N> for [Secret<T>;N] {
+    fn declassify_all(self) -> [T;N] {
+        self.map(|v| v.declassify())
+    }
+}
+
+pub trait DeclassifyVec<T> {
+    fn declassify_all(self) -> Vec<T>;
+}
+
+impl<T> DeclassifyVec<T> for Vec<Secret<T>> {
+    fn declassify_all(self) -> Vec<T> {
+        self.into_iter().map(|v| v.declassify()).collect()
+    }
 }
 
 pub trait IntOps where Self:Sized {

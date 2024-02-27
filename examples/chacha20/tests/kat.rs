@@ -4,15 +4,15 @@ pub type ChaChaIV = [u8; 12];
 pub type ChaChaKey = [u8; 32];
 
 fn kat_test(m: Vec<u8>, key: ChaChaKey, iv: ChaChaIV, exp_cipher: Vec<u8>) {
-    let out = chacha20(&(<Vec<U8>>::from(m.clone().classify())),  
-                       &key.classify().into(),
-                       &iv.classify().into(), 1u32);
-    let decrypted = chacha20(&out, &key.classify().into(), &iv.classify().into(), 1u32);
-    assert_eq!(exp_cipher, (<Secret<Vec<u8>>>::from(out)).declassify()); 
-    assert_eq!(m, (<Secret<Vec<u8>>>::from(decrypted)).declassify()); 
+    let out = chacha20(&m.clone().classify_all(),  
+                       &key.classify_all(),
+                       &iv.classify_all(), 1u32);
+    let decrypted = chacha20(&out, &key.classify_all(), &iv.classify_all(), 1u32);
+    assert_eq!(exp_cipher, out.declassify_all()); 
+    assert_eq!(m, decrypted.declassify_all()); 
 }
 
-#[test]
+#[test] 
 fn test_kat() {
     let key = [
         0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e,
