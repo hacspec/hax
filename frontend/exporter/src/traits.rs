@@ -13,6 +13,7 @@ pub enum ImplExprPathChunk {
     },
     Parent {
         predicate: TraitPredicate,
+        clause_id: u64,
         index: usize,
     },
 }
@@ -92,6 +93,7 @@ mod search_clause {
         },
         Parent {
             predicate: TraitPredicate<'tcx>,
+            clause_id: u64,
             index: usize,
         },
     }
@@ -212,6 +214,10 @@ mod search_clause {
                         cons(
                             PathChunk::Parent {
                                 predicate: p,
+                                clause_id: {
+                                    use rustc_middle::ty::ToPredicate;
+                                    crate::clause_id_of_predicate(s, p.to_predicate(s.base().tcx))
+                                },
                                 index,
                             },
                             path,
