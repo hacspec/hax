@@ -150,20 +150,20 @@ functor
           match this with
           | Self -> Self
           | Concrete x0 ->
-              let x0 = self#visit_trait_ref env x0 in
+              let x0 = self#visit_trait_goal env x0 in
               Concrete x0
           | LocalBound record_payload ->
               let id = self#visit_string env record_payload.id in
               LocalBound { id }
           | Parent record_payload ->
               let impl = self#visit_impl_expr env record_payload.impl in
-              let trait = self#visit_trait_ref env record_payload.trait in
-              Parent { impl; trait }
+              let ident = self#visit_impl_ident env record_payload.ident in
+              Parent { impl; ident }
           | Projection record_payload ->
               let impl = self#visit_impl_expr env record_payload.impl in
-              let trait = self#visit_trait_ref env record_payload.trait in
+              let ident = self#visit_impl_ident env record_payload.ident in
               let item = self#visit_concrete_ident env record_payload.item in
-              Projection { impl; trait; item }
+              Projection { impl; ident; item }
           | ImplApp record_payload ->
               let impl = self#visit_impl_expr env record_payload.impl in
               let args =
@@ -171,10 +171,10 @@ functor
               in
               ImplApp { impl; args }
           | Dyn x0 ->
-              let x0 = self#visit_trait_ref env x0 in
+              let x0 = self#visit_trait_goal env x0 in
               Dyn x0
           | Builtin x0 ->
-              let x0 = self#visit_trait_ref env x0 in
+              let x0 = self#visit_trait_goal env x0 in
               Builtin x0
           | FnPointer x0 ->
               let x0 = self#visit_ty env x0 in
@@ -183,10 +183,15 @@ functor
               let x0 = self#visit_todo env x0 in
               ClosureIE x0
 
-        method visit_trait_ref (env : 'env) (this : trait_ref) : trait_ref =
+        method visit_trait_goal (env : 'env) (this : trait_goal) : trait_goal =
           let trait = self#visit_concrete_ident env this.trait in
           let args = self#visit_list self#visit_generic_value env this.args in
-          let out : trait_ref = { trait; args } in
+          let out : trait_goal = { trait; args } in
+          out
+
+        method visit_impl_ident (env : 'env) (this : impl_ident) : impl_ident =
+          let goal = self#visit_trait_goal env this.goal in
+          let out : impl_ident = { goal; name = this.name } in
           out
 
         method visit_pat' (env : 'env) (this : pat') : pat' =
@@ -555,10 +560,9 @@ functor
               let x0 = self#visit_todo env x0 in
               let x1 = self#visit_feature_lifetime env x1 in
               GCLifetime (x0, x1)
-          | GCType record_payload ->
-              let bound = self#visit_trait_ref env record_payload.bound in
-              let id = self#visit_string env record_payload.id in
-              GCType { bound; id }
+          | GCType x0 ->
+              let x0 = self#visit_impl_ident env x0 in
+              GCType x0
 
         method visit_param (env : 'env) (this : param) : param =
           let pat = self#visit_pat env this.pat in
@@ -696,11 +700,7 @@ functor
             =
           match this with
           | TIType x0 ->
-              let x0 =
-                self#visit_list
-                  (self#visit_tuple2 self#visit_trait_ref (fun _ x -> x))
-                  env x0
-              in
+              let x0 = self#visit_list self#visit_impl_ident env x0 in
               TIType x0
           | TIFn x0 ->
               let x0 = self#visit_ty env x0 in
@@ -1047,7 +1047,7 @@ functor
           match this with
           | Self -> (Self, self#zero)
           | Concrete x0 ->
-              let x0, reduce_acc = self#visit_trait_ref env x0 in
+              let x0, reduce_acc = self#visit_trait_goal env x0 in
               (Concrete x0, reduce_acc)
           | LocalBound record_payload ->
               let id, reduce_acc = self#visit_string env record_payload.id in
@@ -1056,24 +1056,24 @@ functor
               let impl, reduce_acc =
                 self#visit_impl_expr env record_payload.impl
               in
-              let trait, reduce_acc' =
-                self#visit_trait_ref env record_payload.trait
+              let ident, reduce_acc' =
+                self#visit_impl_ident env record_payload.ident
               in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
-              (Parent { impl; trait }, reduce_acc)
+              (Parent { impl; ident }, reduce_acc)
           | Projection record_payload ->
               let impl, reduce_acc =
                 self#visit_impl_expr env record_payload.impl
               in
-              let trait, reduce_acc' =
-                self#visit_trait_ref env record_payload.trait
+              let ident, reduce_acc' =
+                self#visit_impl_ident env record_payload.ident
               in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
               let item, reduce_acc' =
                 self#visit_concrete_ident env record_payload.item
               in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
-              (Projection { impl; trait; item }, reduce_acc)
+              (Projection { impl; ident; item }, reduce_acc)
           | ImplApp record_payload ->
               let impl, reduce_acc =
                 self#visit_impl_expr env record_payload.impl
@@ -1084,10 +1084,10 @@ functor
               let reduce_acc = self#plus reduce_acc reduce_acc' in
               (ImplApp { impl; args }, reduce_acc)
           | Dyn x0 ->
-              let x0, reduce_acc = self#visit_trait_ref env x0 in
+              let x0, reduce_acc = self#visit_trait_goal env x0 in
               (Dyn x0, reduce_acc)
           | Builtin x0 ->
-              let x0, reduce_acc = self#visit_trait_ref env x0 in
+              let x0, reduce_acc = self#visit_trait_goal env x0 in
               (Builtin x0, reduce_acc)
           | FnPointer x0 ->
               let x0, reduce_acc = self#visit_ty env x0 in
@@ -1096,14 +1096,20 @@ functor
               let x0, reduce_acc = self#visit_todo env x0 in
               (ClosureIE x0, reduce_acc)
 
-        method visit_trait_ref (env : 'env) (this : trait_ref)
-            : trait_ref * 'acc =
+        method visit_trait_goal (env : 'env) (this : trait_goal)
+            : trait_goal * 'acc =
           let trait, reduce_acc = self#visit_concrete_ident env this.trait in
           let args, reduce_acc' =
             self#visit_list self#visit_generic_value env this.args
           in
           let reduce_acc = self#plus reduce_acc reduce_acc' in
-          let out : trait_ref = { trait; args } in
+          let out : trait_goal = { trait; args } in
+          (out, reduce_acc)
+
+        method visit_impl_ident (env : 'env) (this : impl_ident)
+            : impl_ident * 'acc =
+          let goal, reduce_acc = self#visit_trait_goal env this.goal in
+          let out : impl_ident = { goal; name = this.name } in
           (out, reduce_acc)
 
         method visit_pat' (env : 'env) (this : pat') : pat' * 'acc =
@@ -1601,13 +1607,9 @@ functor
               let x1, reduce_acc' = self#visit_feature_lifetime env x1 in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
               (GCLifetime (x0, x1), reduce_acc)
-          | GCType record_payload ->
-              let bound, reduce_acc =
-                self#visit_trait_ref env record_payload.bound
-              in
-              let id, reduce_acc' = self#visit_string env record_payload.id in
-              let reduce_acc = self#plus reduce_acc reduce_acc' in
-              (GCType { bound; id }, reduce_acc)
+          | GCType x0 ->
+              let x0, reduce_acc = self#visit_impl_ident env x0 in
+              (GCType x0, reduce_acc)
 
         method visit_param (env : 'env) (this : param) : param * 'acc =
           let pat, reduce_acc = self#visit_pat env this.pat in
@@ -1826,10 +1828,7 @@ functor
           match this with
           | TIType x0 ->
               let x0, reduce_acc =
-                self#visit_list
-                  (self#visit_tuple2 self#visit_trait_ref (fun _ x ->
-                       (x, self#zero)))
-                  env x0
+                self#visit_list self#visit_impl_ident env x0
               in
               (TIType x0, reduce_acc)
           | TIFn x0 ->
@@ -2203,19 +2202,23 @@ functor
           match this with
           | Self -> self#zero
           | Concrete x0 ->
-              let reduce_acc = self#visit_trait_ref env x0 in
+              let reduce_acc = self#visit_trait_goal env x0 in
               reduce_acc
           | LocalBound record_payload ->
               let reduce_acc = self#visit_string env record_payload.id in
               reduce_acc
           | Parent record_payload ->
               let reduce_acc = self#visit_impl_expr env record_payload.impl in
-              let reduce_acc' = self#visit_trait_ref env record_payload.trait in
+              let reduce_acc' =
+                self#visit_impl_ident env record_payload.ident
+              in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
               reduce_acc
           | Projection record_payload ->
               let reduce_acc = self#visit_impl_expr env record_payload.impl in
-              let reduce_acc' = self#visit_trait_ref env record_payload.trait in
+              let reduce_acc' =
+                self#visit_impl_ident env record_payload.ident
+              in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
               let reduce_acc' =
                 self#visit_concrete_ident env record_payload.item
@@ -2230,10 +2233,10 @@ functor
               let reduce_acc = self#plus reduce_acc reduce_acc' in
               reduce_acc
           | Dyn x0 ->
-              let reduce_acc = self#visit_trait_ref env x0 in
+              let reduce_acc = self#visit_trait_goal env x0 in
               reduce_acc
           | Builtin x0 ->
-              let reduce_acc = self#visit_trait_ref env x0 in
+              let reduce_acc = self#visit_trait_goal env x0 in
               reduce_acc
           | FnPointer x0 ->
               let reduce_acc = self#visit_ty env x0 in
@@ -2242,12 +2245,16 @@ functor
               let reduce_acc = self#visit_todo env x0 in
               reduce_acc
 
-        method visit_trait_ref (env : 'env) (this : trait_ref) : 'acc =
+        method visit_trait_goal (env : 'env) (this : trait_goal) : 'acc =
           let reduce_acc = self#visit_concrete_ident env this.trait in
           let reduce_acc' =
             self#visit_list self#visit_generic_value env this.args
           in
           let reduce_acc = self#plus reduce_acc reduce_acc' in
+          reduce_acc
+
+        method visit_impl_ident (env : 'env) (this : impl_ident) : 'acc =
+          let reduce_acc = self#visit_trait_goal env this.goal in
           reduce_acc
 
         method visit_pat' (env : 'env) (this : pat') : 'acc =
@@ -2691,10 +2698,8 @@ functor
               let reduce_acc' = self#visit_feature_lifetime env x1 in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
               reduce_acc
-          | GCType record_payload ->
-              let reduce_acc = self#visit_trait_ref env record_payload.bound in
-              let reduce_acc' = self#visit_string env record_payload.id in
-              let reduce_acc = self#plus reduce_acc reduce_acc' in
+          | GCType x0 ->
+              let reduce_acc = self#visit_impl_ident env x0 in
               reduce_acc
 
         method visit_param (env : 'env) (this : param) : 'acc =
@@ -2885,11 +2890,7 @@ functor
         method visit_trait_item' (env : 'env) (this : trait_item') : 'acc =
           match this with
           | TIType x0 ->
-              let reduce_acc =
-                self#visit_list
-                  (self#visit_tuple2 self#visit_trait_ref (fun _ _ -> self#zero))
-                  env x0
-              in
+              let reduce_acc = self#visit_list self#visit_impl_ident env x0 in
               reduce_acc
           | TIFn x0 ->
               let reduce_acc = self#visit_ty env x0 in

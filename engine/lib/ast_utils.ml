@@ -184,18 +184,25 @@ module Make (F : Features.T) = struct
       object
         inherit [_] Visitors.map as super
 
-        method! visit_generic_constraint (s : (string, string) Hashtbl.t) gc =
+        method! visit_generic_constraint
+            ((enabled, s) : bool * (string, string) Hashtbl.t) gc =
           match gc with
-          | GCType { bound; id } ->
+          | GCType { goal; name } when enabled ->
               let data = "i" ^ Int.to_string (Hashtbl.length s) in
-              let _ = Hashtbl.add s ~key:id ~data in
-              GCType { bound; id = data }
-          | _ -> super#visit_generic_constraint s gc
+              let _ = Hashtbl.add s ~key:name ~data in
+              GCType { goal; name = data }
+          | _ -> super#visit_generic_constraint (enabled, s) gc
+
+        method! visit_trait_item (_, s) = super#visit_trait_item (true, s)
+
+        method! visit_item' (_, s) item =
+          super#visit_item' ([%matches? Trait _] item |> not, s) item
 
         method! visit_impl_expr s ie =
           match ie with
           | LocalBound { id } ->
-              LocalBound { id = Hashtbl.find s id |> Option.value ~default:id }
+              LocalBound
+                { id = Hashtbl.find (snd s) id |> Option.value ~default:id }
           | _ -> super#visit_impl_expr s ie
       end
 

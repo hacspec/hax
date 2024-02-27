@@ -46,7 +46,7 @@ struct
       | [%inline_arms "dgeneric_value.*" - GLifetime] ->
           map (Option.some : B.generic_value -> _)
 
-    and dtrait_ref (span : span) (r : A.trait_ref) : B.trait_ref =
+    and dtrait_goal (span : span) (r : A.trait_goal) : B.trait_goal =
       {
         trait = r.trait;
         args = List.filter_map ~f:(dgeneric_value span) r.args;
@@ -138,8 +138,7 @@ struct
         B.generic_constraint option =
       match p with
       | GCLifetime _ -> None
-      | GCType { bound; id } ->
-          Some (B.GCType { bound = dtrait_ref span bound; id })
+      | GCType idents -> Some (B.GCType (dimpl_ident span idents))
 
     let dgenerics (span : span) (g : A.generics) : B.generics =
       {
