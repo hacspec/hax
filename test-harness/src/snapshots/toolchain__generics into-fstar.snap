@@ -34,8 +34,12 @@ module Generics
 open Core
 open FStar.Mul
 
-let impl__Bar__inherent_impl_generics (#v_T: Type) (v_N: usize) (x: t_Array v_T v_N) : Prims.unit =
-  ()
+let impl__Bar__inherent_impl_generics
+      (#v_T: Type)
+      (v_N: usize)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: Core.Marker.t_Sized v_T)
+      (x: t_Array v_T v_N)
+    : Prims.unit = ()
 
 class t_Foo (v_Self: Type) = { f_const_add:v_N: usize -> v_Self -> usize }
 
