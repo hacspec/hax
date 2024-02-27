@@ -283,6 +283,25 @@ pub trait IntoImplExpr<'tcx> {
     ) -> ImplExpr;
 }
 
+impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::TraitRef<'tcx> {
+    fn impl_expr<S: UnderOwnerState<'tcx>>(
+        &self,
+        s: &S,
+        param_env: rustc_middle::ty::ParamEnv<'tcx>,
+    ) -> ImplExpr {
+        rustc_middle::ty::Binder::dummy(self.clone()).impl_expr(s, param_env)
+    }
+}
+impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitPredicate<'tcx> {
+    fn impl_expr<S: UnderOwnerState<'tcx>>(
+        &self,
+        s: &S,
+        param_env: rustc_middle::ty::ParamEnv<'tcx>,
+    ) -> ImplExpr {
+        use rustc_middle::ty::ToPolyTraitRef;
+        self.to_poly_trait_ref().impl_expr(s, param_env)
+    }
+}
 impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
     fn impl_expr<S: UnderOwnerState<'tcx>>(
         &self,
