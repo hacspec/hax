@@ -2322,7 +2322,8 @@ impl<'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, ImplItem<Body>>
     fn sinto(&self, s: &S) -> ImplItem<Body> {
         let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
         let impl_item = tcx.hir().impl_item(self.id.clone());
-        impl_item.sinto(s)
+        let s = with_owner_id(s.base(), (), (), impl_item.owner_id.to_def_id());
+        impl_item.sinto(&s)
     }
 }
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
