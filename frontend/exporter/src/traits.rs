@@ -472,11 +472,7 @@ pub mod copy_paste_from_rustc {
         tcx: TyCtxt<'tcx>,
         (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
     ) -> Result<rustc_trait_selection::traits::Selection<'tcx>, CodegenObligationError> {
-        // We expect the input to be fully normalized.
-        debug_assert_eq!(
-            trait_ref,
-            tcx.normalize_erasing_regions(param_env, trait_ref)
-        );
+        let trait_ref = tcx.normalize_erasing_regions(param_env, trait_ref);
 
         // Do the initial selection for the obligation. This yields the
         // shallow result we are looking for -- that is, what specific impl.
