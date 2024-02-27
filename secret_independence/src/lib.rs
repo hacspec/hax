@@ -1,5 +1,6 @@
 use core::ops::*;
 
+#[repr(transparent)]
 pub struct Secret<T>(T);
 
 pub trait Classify where Self: Sized {
