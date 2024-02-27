@@ -401,6 +401,29 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
     }
 }
 
+/// Given a predicate `pred` in the context of some impl. block
+/// `impl_did`, susbts correctly `Self` from `pred` and (1) derive a
+/// `Clause` and (2) resolve an `ImplExpr`.
+pub fn super_predicate_to_clauses_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
+    s: &S,
+    impl_did: rustc_span::def_id::DefId,
+    (pred, span): &(rustc_middle::ty::Predicate<'tcx>, rustc_span::Span),
+) -> Option<(Clause, ImplExpr, Span)> {
+    let tcx = s.base().tcx;
+    let impl_trait_ref = tcx
+        .impl_trait_ref(impl_did)
+        .map(|binder| rustc_middle::ty::Binder::dummy(binder.subst_identity()))?;
+    let pred = pred.subst_supertrait(tcx, &impl_trait_ref);
+    // TODO: use `let clause = pred.as_clause()?;` when upgrading rustc
+    let rustc_middle::ty::PredicateKind::Clause(clause) = pred.kind().skip_binder() else {
+        None?
+    };
+    let impl_expr = pred
+        .to_opt_poly_trait_pred()?
+        .impl_expr(s, get_param_env(s));
+    Some((clause.sinto(s), impl_expr, span.sinto(s)))
+}
+
 /// Crafts a unique identifier for a predicate by hashing it. The hash
 /// is non-trivial because we need stable identifiers: two hax
 /// extraction of a same predicate should result in the same

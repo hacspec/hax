@@ -2408,15 +2408,34 @@ pub struct ImplItem<Body: IsBody> {
 }
 
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::ImplItemKind<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::ImplItemKind<'tcx>, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum ImplItemKind<Body: IsBody> {
     Const(Ty, Body),
     #[custom_arm(rustc_hir::ImplItemKind::Fn(sig, body) => {
-                ImplItemKind::Fn(make_fn_def::<Body, _>(sig, body, tcx))
+                ImplItemKind::Fn(make_fn_def::<Body, _>(sig, body, s))
         },)]
     Fn(FnDef<Body>),
-    Type(Ty),
+    #[custom_arm(rustc_hir::ImplItemKind::Type(t) => {
+        let parent_bounds = {
+            let (tcx, owner_id) = (s.base().tcx, s.owner_id());
+            let assoc_item = tcx.opt_associated_item(owner_id).unwrap();
+            let impl_did = assoc_item.impl_container(tcx).unwrap(); // TODO: can be a trait_id!
+            tcx.explicit_item_bounds(assoc_item.trait_item_def_id.unwrap())
+                .skip_binder()
+                    .into_iter()
+                    .flat_map(|x| super_predicate_to_clauses_and_impl_expr(s, impl_did, x))
+                    .collect::<Vec<_>>()
+        };
+        ImplItemKind::Type {
+            ty: t.sinto(s),
+            parent_bounds
+        }
+        },)]
+    Type {
+        ty: Ty,
+        parent_bounds: Vec<(Clause, ImplExpr, Span)>,
+    },
 }
 
 #[derive(AdtInto)]
@@ -2456,6 +2475,20 @@ pub struct Impl<Body: IsBody> {
     pub of_trait: Option<TraitRef>,
     pub self_ty: Ty,
     pub items: Vec<ImplItem<Body>>,
+    #[value({
+        let (tcx, owner_id) = (s.base().tcx, s.owner_id());
+        let trait_did = tcx.trait_id_of_impl(owner_id);
+        if let Some(trait_did) = trait_did {
+            tcx.super_predicates_of(trait_did)
+                .predicates
+                .into_iter()
+                .flat_map(|x| super_predicate_to_clauses_and_impl_expr(s, owner_id, x))
+                .collect::<Vec<_>>()
+        } else {
+            vec![]
+        }
+    })]
+    pub parent_bounds: Vec<(Clause, ImplExpr, Span)>,
 }
 
 #[derive(AdtInto)]
