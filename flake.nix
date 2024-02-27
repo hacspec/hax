@@ -8,7 +8,13 @@
         flake-utils.follows = "flake-utils";
       };
     };
-    rust-overlay.follows = "crane/rust-overlay";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        flake-utils.follows = "flake-utils";
+      };
+    };
     fstar = {
       url = "github:FStarLang/FStar/v2024.01.13";
       inputs = {
@@ -19,6 +25,14 @@
     hacl-star = {
       url = "github:hacl-star/hacl-star";
       flake = false;
+    };
+    ocaml-sourcemaps = {
+      url = "github:W95Psp/ocaml-sourcemaps";
+      flake = true;
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        flake-utils.follows = "flake-utils";
+      };
     };
   };
 
@@ -41,13 +55,15 @@
         ocamlformat = pkgs.ocamlformat_0_24_1;
         rustfmt = pkgs.rustfmt;
         fstar = inputs.fstar.packages.${system}.default;
+        ocaml-sourcemaps = inputs.ocaml-sourcemaps.packages.${system}.default;
+        ocamlPackages = pkgs.ocamlPackages;
       in rec {
         packages = {
           inherit rustc ocamlformat rustfmt fstar;
           hax-engine = pkgs.callPackage ./engine {
             hax-rust-frontend = packages.hax-rust-frontend.unwrapped;
             hax-engine-names-extract = packages.hax-rust-frontend.hax-engine-names-extract;
-            inherit rustc;
+            inherit rustc ocaml-sourcemaps ocamlPackages;
           };
           hax-rust-frontend = pkgs.callPackage ./cli {
             inherit rustc craneLib;
@@ -112,11 +128,11 @@
         in let
           packages = [
             ocamlformat
-            pkgs.ocamlPackages.ocaml-lsp
-            pkgs.ocamlPackages.ocamlformat-rpc-lib
-            pkgs.ocamlPackages.ocaml-print-intf
-            pkgs.ocamlPackages.odoc
-            pkgs.ocamlPackages.utop
+            ocamlPackages.ocaml-lsp
+            ocamlPackages.ocamlformat-rpc-lib
+            ocamlPackages.ocaml-print-intf
+            ocamlPackages.odoc
+            ocamlPackages.utop
 
             pkgs.cargo-expand
             pkgs.cargo-insta

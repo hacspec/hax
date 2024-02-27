@@ -47,9 +47,24 @@ fn write_files(
         std::fs::write(&path, file.contents).unwrap_or_else(|e| {
             session.fatal(format!(
                 "Unable to write to file {:#?}. Error: {:#?}",
-                path, e
+                &path, e
             ))
-        })
+        });
+        if let Some(mut sourcemap) = file.sourcemap {
+            sourcemap.inline_sources_content();
+            sourcemap.sourceRoot = manifest_dir.display().to_string();
+            let sourcemap = serde_json::to_string_pretty(&sourcemap).unwrap();
+            let path = path.with_extension(format!(
+                "{}.map",
+                path.extension().unwrap().to_str().unwrap()
+            ));
+            std::fs::write(&path, sourcemap).unwrap_or_else(|e| {
+                session.fatal(format!(
+                    "Unable to write to file {:#?}. Error: {:#?}",
+                    path, e
+                ))
+            });
+        }
     }
 }
 
@@ -403,6 +418,7 @@ impl Callbacks for ExtractionCallbacks {
                     let engine_options = hax_cli_options_engine::EngineOptions {
                         backend: backend.clone(),
                         input: converted_items,
+                        manifest_dir: std::env::var("CARGO_MANIFEST_DIR").unwrap().into(),
                         impl_infos,
                     };
                     let mut engine_subprocess = find_hax_engine()

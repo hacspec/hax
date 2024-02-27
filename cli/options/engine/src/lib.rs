@@ -8,16 +8,46 @@ type ThirBody = hax_frontend_exporter::ThirBody;
 pub struct EngineOptions {
     pub backend: BackendOptions,
     pub input: Vec<hax_frontend_exporter::Item<ThirBody>>,
+    pub manifest_dir: String,
     pub impl_infos: Vec<(
         hax_frontend_exporter::DefId,
         hax_frontend_exporter::ImplInfos,
     )>,
 }
 
+#[allow(non_snake_case)]
+#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+pub struct SourceMap {
+    pub mappings: String,
+    pub sourceRoot: String,
+    pub sources: Vec<String>,
+    pub sourcesContent: Vec<Option<String>>,
+    pub names: Vec<String>,
+    pub version: u8,
+    pub file: String,
+}
+
+impl SourceMap {
+    pub fn inline_sources_content(&mut self) {
+        self.sourcesContent = vec![];
+        for source in &self.sources {
+            let path = if self.sourceRoot.is_empty() {
+                source.clone()
+            } else {
+                format!("{}/{}", &self.sourceRoot, source)
+            };
+            eprintln!("path={path}");
+            let contents = Some(std::fs::read_to_string(path).unwrap());
+            self.sourcesContent.push(contents);
+        }
+    }
+}
+
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
 pub struct File {
     pub path: String,
     pub contents: String,
+    pub sourcemap: Option<SourceMap>,
 }
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]

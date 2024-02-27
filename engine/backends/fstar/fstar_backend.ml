@@ -1213,6 +1213,8 @@ let fstar_headers (bo : BackendOptions.t) =
   in
   [ opts; "open Core"; "open FStar.Mul" ] |> String.concat ~sep:"\n"
 
+module GG = Rust_printer.Make (InputLanguage)
+
 let translate m (bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =
   let show_view Concrete_ident.{ crate; path; definition } =
@@ -1227,17 +1229,25 @@ let translate m (bo : BackendOptions.t) (items : AST.item list) :
                 ~f:(map_first_letter String.uppercase)
                 (fst ns :: snd ns))
          in
+         let string_of_items _ _ items =
+           let r = GG.items () items in
+           let str = Generic_printer_api.AnnotatedString.to_string r in
+           let sm = Generic_printer_api.AnnotatedString.to_sourcemap r in
+           let r = (str, sm) in
+           (r, r)
+         in
          let impl, intf = string_of_items bo m items in
-         let make ~ext body =
+         let make ~ext (body, sourcemap) =
            if String.is_empty body then None
            else
              Some
                Types.
                  {
                    path = mod_name ^ "." ^ ext;
-                   contents =
-                     "module " ^ mod_name ^ "\n" ^ fstar_headers bo ^ "\n\n"
-                     ^ body ^ "\n";
+                   contents = body;
+                   (* "module " ^ mod_name ^ "\n" ^ fstar_headers bo ^ "\n\n" *)
+                   (* ^ body ^ "\n"; *)
+                   sourcemap = Some sourcemap;
                  }
          in
          List.filter_map ~f:Fn.id
