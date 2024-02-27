@@ -902,7 +902,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, AliasTy> for rustc_middle::ty::Ali
         .then(|| {
             let trait_ref = self.trait_ref(tcx);
             let poly_trait_ref = rustc_middle::ty::Binder::dummy(trait_ref);
-            let param_env = tcx.param_env(s.owner_id());
+            let param_env = get_param_env(s);
             (
                 self.trait_def_id(tcx).sinto(s),
                 poly_trait_ref.impl_expr(s, param_env),
@@ -1914,7 +1914,7 @@ pub enum ExprKind {
                         let tcx = gstate.base().tcx;
                         let r#impl = tcx.opt_associated_item(*def_id).as_ref().and_then(|assoc| {
                             poly_trait_ref(gstate, assoc, substs)
-                        }).map(|poly_trait_ref| poly_trait_ref.impl_expr(gstate, tcx.param_env(gstate.owner_id())));
+                        }).map(|poly_trait_ref| poly_trait_ref.impl_expr(gstate, get_param_env(gstate)));
                         (Expr {
                             contents,
                             span: e.span.sinto(gstate),
