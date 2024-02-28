@@ -21,6 +21,9 @@ struct
         let phase_id = Diagnostics.Phase.RefMut
       end)
 
+  (** Reference to a fresh local ident (item-wise) *)
+  let out_var = ref Local_ident.{ id = mk_id Expr 0; name = "out" }
+
   module Implem : ImplemT.T = struct
     let metadata = metadata
 
@@ -177,7 +180,7 @@ struct
             List.mapi ~f:(fun i -> to_ident_lhs i &&& to_ty_span) mutargs
           in
 
-          let out_var = Local_ident.{ id = mk_id Expr 0; name = "out" } in
+          let out_var = !out_var in
           let otype = dty f.span otype in
           let pat =
             let out =
@@ -269,9 +272,15 @@ struct
           B.{ e; typ = dty expr.span expr.typ; span = expr.span }
       [@@inline_ands bindings_of dexpr]
 
-    [%%inline_defs "Item.*"]
+    [%%inline_defs
+    dgeneric_param + dgeneric_constraint + dgenerics + dparam + dvariant
+    + dtrait_item' + dimpl_item']
 
-    (* [%%inline_defs "Item.*"] *)
+    let rec ditem' span (item : A.item') : B.item' =
+      let vars = UA.Reducers.collect_local_idents#visit_item' () item in
+      out_var := UA.fresh_local_ident_in (Set.to_list vars) "out";
+      [%inline_body ditem'] span item
+      [@@inline_ands "Item.*"]
   end
 
   include Implem
