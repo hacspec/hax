@@ -180,6 +180,9 @@ module Make (F : Features.T) = struct
           expr e
       end
 
+    (** Rename impl expressions variables. By default, they are big
+      and unique identifiers, after this function, they are renamed
+      into `iN` where `N` is a short local unique identifier. *)
     let rename_generic_constraints =
       object
         inherit [_] Visitors.map as super
@@ -196,7 +199,12 @@ module Make (F : Features.T) = struct
         method! visit_trait_item (_, s) = super#visit_trait_item (true, s)
 
         method! visit_item' (_, s) item =
-          super#visit_item' ([%matches? Trait _] item |> not, s) item
+          let enabled =
+            (* generic constraints on traits correspond to super
+               traits, those are not local and should NOT be renamed *)
+            [%matches? Trait _] item |> not
+          in
+          super#visit_item' (enabled, s) item
 
         method! visit_impl_expr s ie =
           match ie with

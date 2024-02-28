@@ -2407,6 +2407,7 @@ pub struct ImplItem<Body: IsBody> {
     pub attributes: ItemAttributes,
 }
 
+/// Reflects [`rustc_hir::ImplItemKind`], inlining the body of the items.
 #[derive(AdtInto)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::ImplItemKind<'tcx>, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -2420,18 +2421,19 @@ pub enum ImplItemKind<Body: IsBody> {
         let parent_bounds = {
             let (tcx, owner_id) = (s.base().tcx, s.owner_id());
             let assoc_item = tcx.opt_associated_item(owner_id).unwrap();
-            let impl_did = assoc_item.impl_container(tcx).unwrap(); // TODO: can be a trait_id!
+            let impl_did = assoc_item.impl_container(tcx).unwrap();
             tcx.explicit_item_bounds(assoc_item.trait_item_def_id.unwrap())
                 .skip_binder()
-                    .into_iter()
-                    .flat_map(|x| super_predicate_to_clauses_and_impl_expr(s, impl_did, x))
-                    .collect::<Vec<_>>()
+                .into_iter()
+                .flat_map(|x| super_predicate_to_clauses_and_impl_expr(s, impl_did, x))
+                .collect::<Vec<_>>()
         };
         ImplItemKind::Type {
             ty: t.sinto(s),
             parent_bounds
         }
         },)]
+    /// An associated type with its parent bounds inlined.
     Type {
         ty: Ty,
         parent_bounds: Vec<(Clause, ImplExpr, Span)>,
@@ -2459,6 +2461,7 @@ impl<
     }
 }
 
+/// Reflects [`rustc_hir::Impl`].
 #[derive(AdtInto)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::Impl<'tcx>, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -2488,6 +2491,8 @@ pub struct Impl<Body: IsBody> {
             vec![]
         }
     })]
+    /// The clauses and impl expressions corresponding to the impl's
+    /// trait (if not inherent) super bounds (if any).
     pub parent_bounds: Vec<(Clause, ImplExpr, Span)>,
 }
 

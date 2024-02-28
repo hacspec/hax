@@ -323,6 +323,8 @@ functor
     and generic_constraint =
       | GCLifetime of todo * F.lifetime
       | GCType of impl_ident
+          (** Trait or lifetime constraints. For instance, `A` and `B` in
+    `fn f<T: A + B>()`. *)
     [@@deriving show, yojson, hash, eq]
 
     type param = { pat : pat; typ : ty; typ_span : span option; attrs : attrs }

@@ -1,4 +1,4 @@
-//! Stolen from https://github.com/Wassasin/deterministic-hash/blob/main/src/lib.rs
+//! Stolen from <https://github.com/Wassasin/deterministic-hash/blob/main/src/lib.rs>
 use core::hash::Hasher;
 
 /// Wrapper around any hasher to make it deterministic.
