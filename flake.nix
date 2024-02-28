@@ -41,10 +41,17 @@
         ocamlformat = pkgs.ocamlformat_0_24_1;
         rustfmt = pkgs.rustfmt;
         fstar = inputs.fstar.packages.${system}.default;
+        hax-env-file = pkgs.writeText "hax-env-file" ''
+          HAX_PROOF_LIBS="${./proof-libs/fstar}"
+          HAX_LIB="${./hax-lib}"
+          HACL_HOME="${hacl-star}"
+        '';
         hax-env = pkgs.writeScriptBin "hax-env" ''
-          echo 'export HAX_PROOF_LIBS="${./proof-libs/fstar}"'
-          echo 'export HAX_LIB="${./hax-lib}"'
-          echo 'export HACL_HOME="${hacl-star}"'
+          if [[ "$1" == "no-export" ]]; then
+            cat "${hax-env-file}"
+          else
+            cat "${hax-env-file}" | xargs -I{} echo "export {}"
+          fi
         '';
       in rec {
         packages = {
