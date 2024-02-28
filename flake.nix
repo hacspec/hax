@@ -42,8 +42,8 @@
         rustfmt = pkgs.rustfmt;
         fstar = inputs.fstar.packages.${system}.default;
         hax-env-file = pkgs.writeText "hax-env-file" ''
-          HAX_PROOF_LIBS="${./proof-libs/fstar}"
-          HAX_LIB="${./hax-lib}"
+          HAX_PROOF_LIBS_HOME="${./proof-libs/fstar}"
+          HAX_LIBS_HOME="${./hax-lib}"
           HACL_HOME="${hacl-star}"
         '';
         hax-env = pkgs.writeScriptBin "hax-env" ''
