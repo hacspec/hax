@@ -846,6 +846,31 @@ struct
                             |> List.map ~f:to_pattern) ),
                    pty e.span ty );
                ] )
+    | Type { name; generics; _ }
+      when Attrs.find_unique_attr e.attrs
+             ~f:([%eq: Types.ha_payload] OpaqueType >> Fn.flip Option.some_if ())
+           |> Option.is_some ->
+        if not ctx.interface_mode then
+          Error.raise
+          @@ {
+               kind =
+                 AttributeRejected
+                   {
+                     reason =
+                       "a type cannot be opaque if it's module is not \
+                        extracted as an interface";
+                   };
+               span = e.span;
+             }
+        else
+          let generics = FStarBinder.of_generics e.span generics in
+          let ty = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
+          let arrow_typ =
+            F.term
+            @@ F.AST.Product (List.map ~f:FStarBinder.to_binder generics, ty)
+          in
+          let name = F.id @@ U.Concrete_ident_view.to_definition_name name in
+          [ F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) ]
     | Type
         {
           name;
