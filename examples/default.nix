@@ -5,6 +5,7 @@
   hax,
   fstar,
   hacl-star,
+  hax-env,
 }: let
   commonArgs = {
     version = "0.0.1";
@@ -33,6 +34,7 @@ in
       doCheck = false;
       buildPhaseCargoCommand = ''
         cd examples
+        eval $(hax-env)
         export CACHE_DIR=$(mktemp -d)
         export HINT_DIR=$(mktemp -d)
         export SHELL=${stdenv.shell}
@@ -41,8 +43,5 @@ in
         sed -i "s/make -C limited-order-book/HAX_VANILLA_RUSTC=never make -C limited-order-book/g" Makefile
         make
       '';
-      buildInputs = [hax fstar];
-      HAX_PROOF_LIBS = "${../proof-libs/fstar}";
-      HAX_LIB = "${../hax-lib}";
-      HACL_HOME = "${hacl-star}";
+      buildInputs = [hax hax-env fstar];
     })

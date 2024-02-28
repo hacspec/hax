@@ -41,9 +41,14 @@
         ocamlformat = pkgs.ocamlformat_0_24_1;
         rustfmt = pkgs.rustfmt;
         fstar = inputs.fstar.packages.${system}.default;
+        hax-env = pkgs.writeScriptBin "hax-env" ''
+          echo 'export HAX_PROOF_LIBS="${./proof-libs/fstar}"'
+          echo 'export HAX_LIB="${./hax-lib}"'
+          echo 'export HACL_HOME="${hacl-star}"'
+        '';
       in rec {
         packages = {
-          inherit rustc ocamlformat rustfmt fstar;
+          inherit rustc ocamlformat rustfmt fstar hax-env;
           hax-engine = pkgs.callPackage ./engine {
             hax-rust-frontend = packages.hax-rust-frontend.unwrapped;
             hax-engine-names-extract = packages.hax-rust-frontend.hax-engine-names-extract;
@@ -64,7 +69,7 @@
           toolchain = packages.hax.tests;
           examples = pkgs.callPackage ./examples {
             inherit (packages) hax;
-            inherit craneLib fstar hacl-star;
+            inherit craneLib fstar hacl-star hax-env;
           };
           readme-coherency = let
             src = pkgs.lib.sourceFilesBySuffices ./. [".md"];
@@ -139,8 +144,8 @@
         in {
           fstar = pkgs.mkShell {
             inherit inputsFrom LIBCLANG_PATH;
-            HACL_HOME = "${hacl-star}";
-            packages = packages ++ [fstar];
+            shellHook = "eval $(hax-env)";
+            packages = packages ++ [fstar hax-env];
           };
           default = pkgs.mkShell {
             inherit packages inputsFrom LIBCLANG_PATH;
