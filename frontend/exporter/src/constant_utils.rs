@@ -53,6 +53,10 @@ pub struct ConstantFieldExpr {
     pub value: ConstantExpr,
 }
 
+/// Rustc has different representation for constants: one for MIR
+/// ([`rustc_middle::mir::ConstantKind`]), one for the type system
+/// ([`rustc_middle::ty::ConstKind`]). For simplicity hax maps those
+/// two construct to one same `ConstantExpr` type.
 pub type ConstantExpr = Decorated<ConstantExprKind>;
 
 impl From<ConstantFieldExpr> for FieldExpr {
