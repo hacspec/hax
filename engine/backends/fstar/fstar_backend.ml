@@ -294,7 +294,7 @@ struct
     let some = Option.some in
     let hax_unstable_impl_exprs = false in
     match ie with
-    | Concrete tr -> c_trait_ref span tr |> some
+    | Concrete tr -> c_trait_goal span tr |> some
     | LocalBound { id } ->
         let local_ident =
           Local_ident.{ name = id; id = Local_ident.mk_id Expr 0 }
@@ -302,9 +302,9 @@ struct
         F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident local_ident) |> some
     | ImplApp { impl; _ } when not hax_unstable_impl_exprs ->
         pimpl_expr span impl
-    | Parent { impl; trait } when hax_unstable_impl_exprs ->
+    | Parent { impl; ident } when hax_unstable_impl_exprs ->
         let* impl = pimpl_expr span impl in
-        let trait = "_super_" ^ name_of_trait_ref span trait in
+        let trait = "_super_" ^ ident.name in
         F.term @@ F.AST.Project (impl, F.lid [ trait ]) |> some
     | ImplApp { impl; args = [] } when hax_unstable_impl_exprs ->
         pimpl_expr span impl
@@ -319,12 +319,9 @@ struct
         F.term_of_lid [ "_Builtin" ] |> some
     | _ -> None
 
-  and name_of_trait_ref _span : trait_ref -> string =
-    [%hash: trait_ref] >> Int.to_string
-
-  and c_trait_ref span trait_ref =
-    let trait = F.term @@ F.AST.Name (pconcrete_ident trait_ref.trait) in
-    List.map ~f:(pgeneric_value span) trait_ref.args |> F.mk_e_app trait
+  and c_trait_goal span trait_goal =
+    let trait = F.term @@ F.AST.Name (pconcrete_ident trait_goal.trait) in
+    List.map ~f:(pgeneric_value span) trait_goal.args |> F.mk_e_app trait
 
   and pgeneric_value span (g : generic_value) =
     match g with
@@ -570,9 +567,9 @@ struct
     let of_generic_constraint span (nth : int) (c : generic_constraint) =
       match c with
       | GCLifetime _ -> .
-      | GCType { bound; id; _ } ->
-          let typ = c_trait_ref span bound in
-          { kind = Tcresolve; ident = F.id id; typ }
+      | GCType { goal; name } ->
+          let typ = c_trait_goal span goal in
+          { kind = Tcresolve; ident = F.id name; typ }
 
     let of_generics ?(kind : kind = Implicit) span generics : t list =
       List.map ~f:(of_generic_param ~kind span) generics.params
@@ -618,7 +615,7 @@ struct
     match c with
     | GCLifetime _ ->
         Error.assertion_failure span "pgeneric_constraint_bd:LIFETIME"
-    | GCType { bound; _ } -> c_trait_ref span bound
+    | GCType { goal; name = _ } -> c_trait_goal span goal
 
   let get_attr (type a) (name : string) (map : string -> a) (attrs : attrs) :
       a option =
@@ -1033,14 +1030,18 @@ struct
                     (* in *)
                     (F.id name, None, [], t)
                     :: List.map
-                         ~f:(fun ({ trait; args }, id) ->
+                         ~f:
+                           (fun {
+                                  goal = { trait; args };
+                                  name = impl_ident_name;
+                                } ->
                            let base =
                              F.term @@ F.AST.Name (pconcrete_ident trait)
                            in
                            let args =
                              List.map ~f:(pgeneric_value e.span) args
                            in
-                           ( F.id (name ^ "_" ^ id),
+                           ( F.id (name ^ "_" ^ impl_ident_name),
                              None,
                              [],
                              F.mk_e_app base args ))
@@ -1062,10 +1063,10 @@ struct
         let constraints_fields : FStar_Parser_AST.tycon_record =
           generics.constraints
           |> List.map ~f:(fun c ->
-                 let bound =
-                   match c with GCType { bound; _ } -> bound | _ -> .
+                 let bound, id =
+                   match c with GCType { goal; name } -> (goal, name) | _ -> .
                  in
-                 let name = "_super_" ^ name_of_trait_ref e.span bound in
+                 let name = "_super_" ^ id in
                  let typ = pgeneric_constraint_type e.span c in
                  (F.id name, None, [ F.Attrs.no_method ], typ))
         in

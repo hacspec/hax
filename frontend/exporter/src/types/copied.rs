@@ -902,7 +902,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, AliasTy> for rustc_middle::ty::Ali
         .then(|| {
             let trait_ref = self.trait_ref(tcx);
             let poly_trait_ref = rustc_middle::ty::Binder::dummy(trait_ref);
-            let param_env = tcx.param_env(s.owner_id());
+            let param_env = get_param_env(s);
             (
                 self.trait_def_id(tcx).sinto(s),
                 poly_trait_ref.impl_expr(s, param_env),
@@ -1914,7 +1914,7 @@ pub enum ExprKind {
                         let tcx = gstate.base().tcx;
                         let r#impl = tcx.opt_associated_item(*def_id).as_ref().and_then(|assoc| {
                             poly_trait_ref(gstate, assoc, substs)
-                        }).map(|poly_trait_ref| poly_trait_ref.impl_expr(gstate, tcx.param_env(gstate.owner_id())));
+                        }).map(|poly_trait_ref| poly_trait_ref.impl_expr(gstate, get_param_env(gstate)));
                         (Expr {
                             contents,
                             span: e.span.sinto(gstate),
@@ -2322,7 +2322,8 @@ impl<'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, ImplItem<Body>>
     fn sinto(&self, s: &S) -> ImplItem<Body> {
         let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
         let impl_item = tcx.hir().impl_item(self.id.clone());
-        impl_item.sinto(s)
+        let s = with_owner_id(s.base(), (), (), impl_item.owner_id.to_def_id());
+        impl_item.sinto(&s)
     }
 }
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -2406,16 +2407,37 @@ pub struct ImplItem<Body: IsBody> {
     pub attributes: ItemAttributes,
 }
 
+/// Reflects [`rustc_hir::ImplItemKind`], inlining the body of the items.
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::ImplItemKind<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::ImplItemKind<'tcx>, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum ImplItemKind<Body: IsBody> {
     Const(Ty, Body),
     #[custom_arm(rustc_hir::ImplItemKind::Fn(sig, body) => {
-                ImplItemKind::Fn(make_fn_def::<Body, _>(sig, body, tcx))
+                ImplItemKind::Fn(make_fn_def::<Body, _>(sig, body, s))
         },)]
     Fn(FnDef<Body>),
-    Type(Ty),
+    #[custom_arm(rustc_hir::ImplItemKind::Type(t) => {
+        let parent_bounds = {
+            let (tcx, owner_id) = (s.base().tcx, s.owner_id());
+            let assoc_item = tcx.opt_associated_item(owner_id).unwrap();
+            let impl_did = assoc_item.impl_container(tcx).unwrap();
+            tcx.explicit_item_bounds(assoc_item.trait_item_def_id.unwrap())
+                .skip_binder()
+                .into_iter()
+                .flat_map(|x| super_predicate_to_clauses_and_impl_expr(s, impl_did, x))
+                .collect::<Vec<_>>()
+        };
+        ImplItemKind::Type {
+            ty: t.sinto(s),
+            parent_bounds
+        }
+        },)]
+    /// An associated type with its parent bounds inlined.
+    Type {
+        ty: Ty,
+        parent_bounds: Vec<(Clause, ImplExpr, Span)>,
+    },
 }
 
 #[derive(AdtInto)]
@@ -2439,6 +2461,7 @@ impl<
     }
 }
 
+/// Reflects [`rustc_hir::Impl`].
 #[derive(AdtInto)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::Impl<'tcx>, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -2455,6 +2478,22 @@ pub struct Impl<Body: IsBody> {
     pub of_trait: Option<TraitRef>,
     pub self_ty: Ty,
     pub items: Vec<ImplItem<Body>>,
+    #[value({
+        let (tcx, owner_id) = (s.base().tcx, s.owner_id());
+        let trait_did = tcx.trait_id_of_impl(owner_id);
+        if let Some(trait_did) = trait_did {
+            tcx.super_predicates_of(trait_did)
+                .predicates
+                .into_iter()
+                .flat_map(|x| super_predicate_to_clauses_and_impl_expr(s, owner_id, x))
+                .collect::<Vec<_>>()
+        } else {
+            vec![]
+        }
+    })]
+    /// The clauses and impl expressions corresponding to the impl's
+    /// trait (if not inherent) super bounds (if any).
+    pub parent_bounds: Vec<(Clause, ImplExpr, Span)>,
 }
 
 #[derive(AdtInto)]

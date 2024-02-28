@@ -180,22 +180,37 @@ module Make (F : Features.T) = struct
           expr e
       end
 
+    (** Rename impl expressions variables. By default, they are big
+      and unique identifiers, after this function, they are renamed
+      into `iN` where `N` is a short local unique identifier. *)
     let rename_generic_constraints =
       object
         inherit [_] Visitors.map as super
 
-        method! visit_generic_constraint (s : (string, string) Hashtbl.t) gc =
+        method! visit_generic_constraint
+            ((enabled, s) : bool * (string, string) Hashtbl.t) gc =
           match gc with
-          | GCType { bound; id } ->
+          | GCType { goal; name } when enabled ->
               let data = "i" ^ Int.to_string (Hashtbl.length s) in
-              let _ = Hashtbl.add s ~key:id ~data in
-              GCType { bound; id = data }
-          | _ -> super#visit_generic_constraint s gc
+              let _ = Hashtbl.add s ~key:name ~data in
+              GCType { goal; name = data }
+          | _ -> super#visit_generic_constraint (enabled, s) gc
+
+        method! visit_trait_item (_, s) = super#visit_trait_item (true, s)
+
+        method! visit_item' (_, s) item =
+          let enabled =
+            (* generic constraints on traits correspond to super
+               traits, those are not local and should NOT be renamed *)
+            [%matches? Trait _] item |> not
+          in
+          super#visit_item' (enabled, s) item
 
         method! visit_impl_expr s ie =
           match ie with
           | LocalBound { id } ->
-              LocalBound { id = Hashtbl.find s id |> Option.value ~default:id }
+              LocalBound
+                { id = Hashtbl.find (snd s) id |> Option.value ~default:id }
           | _ -> super#visit_impl_expr s ie
       end
 

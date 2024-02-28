@@ -56,7 +56,14 @@
       doInstallCargoArtifacts = true;
     }
   );
-  frontend-docs = craneLib.cargoDoc (commonArgs // {inherit cargoArtifacts pname;});
+  frontend-docs = craneLib.cargoDoc (commonArgs // {
+    preBuildPhases = ["addRustcDocs"];
+    addRustcDocs = ''
+      mkdir -p target/doc
+      cp --no-preserve=mode -rf ${rustc.passthru.availableComponents.rustc-docs}/share/doc/rust/html/rustc/* target/doc/
+    '';
+    inherit cargoArtifacts pname;
+  });
   docs = stdenv.mkDerivation {
     name = "hax-docs";
     unpackPhase = "true";

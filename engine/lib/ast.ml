@@ -134,22 +134,35 @@ functor
 
     and impl_expr =
       | Self
-      | Concrete of trait_ref
+      | Concrete of trait_goal
       | LocalBound of { id : string }
-      | Parent of { impl : impl_expr; trait : trait_ref }
+      | Parent of { impl : impl_expr; ident : impl_ident }
       | Projection of {
           impl : impl_expr;
-          trait : trait_ref;
           item : concrete_ident;
+          ident : impl_ident;
         }
       | ImplApp of { impl : impl_expr; args : impl_expr list }
-      | Dyn of trait_ref
-      | Builtin of trait_ref
+      | Dyn of trait_goal
+      | Builtin of trait_goal
       | FnPointer of ty
       (* The `IE` suffix is there because visitors conflicts...... *)
       | ClosureIE of todo
 
-    and trait_ref = { trait : concrete_ident; args : generic_value list }
+    and trait_goal = { trait : concrete_ident; args : generic_value list }
+    (** A fully applied trait: [Foo<SomeTy, T0, ..., Tn>] (or
+      `SomeTy: Foo<T0, ..., Tn>`). An `impl_expr` "inhabits" a
+      `trait_goal`. *)
+
+    and impl_ident = { goal : trait_goal; name : string }
+    (** An impl identifier [{goal; name}] can be:
+          {ul
+              {- An in-scope variable [name] that inhabits [goal].}
+              {- A field of some other impl expression [i]: [i.name] inhabits [goal]. This corresponds to parent bounds or associated type bounds.}
+              {- An argument that introduces a variable [name] that inhabits [goal].}
+          }
+      *)
+    (* TODO: ADD SPAN! *)
 
     and pat' =
       | PWild
@@ -309,12 +322,9 @@ functor
 
     and generic_constraint =
       | GCLifetime of todo * F.lifetime
-      | GCType of {
-          bound : trait_ref;
-              (* trait_ref is always applied with the type the trait implements.
-                 For instance, `T: Clone` is actually `Clone<T> *)
-          id : string;
-        }
+      | GCType of impl_ident
+          (** Trait or lifetime constraints. For instance, `A` and `B` in
+    `fn f<T: A + B>()`. *)
     [@@deriving show, yojson, hash, eq]
 
     type param = { pat : pat; typ : ty; typ_span : span option; attrs : attrs }
@@ -388,7 +398,7 @@ functor
       ii_attrs : attrs;
     }
 
-    and trait_item' = TIType of (trait_ref * string) list | TIFn of ty
+    and trait_item' = TIType of impl_ident list | TIFn of ty
 
     and trait_item = {
       (* TODO: why do I need to prefix by `ti_` here? I guess visitors fail or something *)

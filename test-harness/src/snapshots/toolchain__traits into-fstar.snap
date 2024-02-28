@@ -34,19 +34,24 @@ module Traits
 open Core
 open FStar.Mul
 
-let impl_2__method (#v_T: Type) (x: v_T) : Prims.unit = f_bar x
-
 class t_Bar (v_Self: Type) = { f_bar:v_Self -> Prims.unit }
 
+let impl_2__method
+      (#v_T: Type)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: Core.Marker.t_Sized v_T)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Bar v_T)
+      (x: v_T)
+    : Prims.unit = f_bar x
+
 class t_Lang (v_Self: Type) = {
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_529871881:Core.Marker.t_Sized v_Self;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_8328838127052049456:Core.Marker.t_Sized v_Self;
   f_Var:Type;
   f_Var_6601305896307871948:Core.Marker.t_Sized _;
   f_s:v_Self -> i32 -> (v_Self & _)
 }
 
 class t_SuperTrait (v_Self: Type) = {
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_590399929:Core.Clone.t_Clone v_Self;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_2101570567305961368:Core.Clone.t_Clone v_Self;
   f_function_of_super_trait:v_Self -> u32
 }
 

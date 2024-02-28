@@ -1321,7 +1321,7 @@ struct
 
   let pgeneric_constraints_as_argument span :
       generic_constraint -> SSP.AST.argument list = function
-    | GCType { bound = { trait; args }; _ } ->
+    | GCType { goal = { trait; args }; _ } ->
         [
           SSP.AST.Typeclass
             ( None,
@@ -1738,11 +1738,11 @@ struct
                                     [],
                                     value ) );
                           ]
-                    | TIType trait_refs ->
+                    | TIType impl_idents ->
                         SSP.AST.Named
                           (pconcrete_ident x.ti_ident, SSP.AST.TypeTy)
                         :: List.map
-                             ~f:(fun (tr, _id) ->
+                             ~f:(fun { goal = tr; _ } ->
                                SSP.AST.Coercion
                                  ( pconcrete_ident x.ti_ident ^ "_"
                                    ^ pconcrete_ident tr.trait,
@@ -1752,7 +1752,7 @@ struct
                                          SSP.AST.NameTy
                                            (pconcrete_ident x.ti_ident);
                                        ] ) ))
-                             trait_refs)
+                             impl_idents)
                   items );
           ]
           @ List.concat_map
