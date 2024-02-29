@@ -121,6 +121,8 @@ impl<S> std::fmt::Display for Diagnostics<S> {
                 bindings
             ),
             Kind::ArbitraryLHS => write!(f, "Assignation of an arbitrary left-hand side is not supported. `lhs = e` is fine only when `lhs` is a combination of local identifiers, field accessors and index accessors."),
+
+            Kind::AttributeRejected {reason} => write!(f, "Here, this attribute cannot be used: {reason}."),
             _ => write!(f, "{:?}", self.kind),
         }
     }
@@ -180,6 +182,11 @@ pub enum Kind {
     } = 9,
 
     ExpectedMutRef = 10,
+
+    /// An hax attribute (from `hax-lib-macros`) was rejected
+    AttributeRejected {
+        reason: String,
+    },
 }
 
 impl Kind {

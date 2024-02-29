@@ -10,6 +10,7 @@ module Make
     module FB = struct
       include F
       include Features.Off.Loop
+      include Features.Off.While_loop
       include Features.Off.For_loop
       include Features.Off.For_index_loop
       include Features.Off.State_passing_loop

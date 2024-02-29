@@ -99,18 +99,21 @@ module%inlined_contents Make (F : Features.T) = struct
            (*           ~f:(fst >> super#visit_pat env))) *)
            (*     (Option.value_map (Map.find env var) ~default:m#zero ~f:(fun x -> (Set.of_list (module W) x, Map.empty (module LocalIdent)))) *)
 
-           method visit_Let env _monadic pat expr body =
-             let new_set, new_env = super#visit_expr env expr in
-             m#plus
-               (super#visit_expr
-                  (m#snd#plus (m#snd#plus env new_env)
-                     (Map.of_alist_exn
-                        (module Local_ident)
-                        (List.map
-                           ~f:(fun v -> (v, Set.to_list new_set))
-                           (Set.to_list (U.Reducers.variables_of_pat pat)))))
-                  body)
-               (new_set, m#snd#zero)
+           method! visit_expr' env e =
+             match e with
+             | Let { lhs = pat; rhs = expr; body; _ } ->
+                 let new_set, new_env = super#visit_expr env expr in
+                 m#plus
+                   (super#visit_expr
+                      (m#snd#plus (m#snd#plus env new_env)
+                         (Map.of_alist_exn
+                            (module Local_ident)
+                            (List.map
+                               ~f:(fun v -> (v, Set.to_list new_set))
+                               (Set.to_list (U.Reducers.variables_of_pat pat)))))
+                      body)
+                   (new_set, m#snd#zero)
+             | _ -> super#visit_expr' env e
 
            method! visit_local_ident (env : W.t list Map.M(Local_ident).t) ident
                =

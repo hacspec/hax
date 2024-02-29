@@ -127,6 +127,7 @@ mod hax {
     // Only useful when HAX_CORE_EXTRACTION_MODE in `on`
     enum MutRef {}
 
+    fn while_loop() {}
     fn repeat() {}
     fn update_at() {}
     mod monomorphized_update_at {

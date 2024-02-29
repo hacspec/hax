@@ -37,4 +37,7 @@ instance array_to_slice_unsize t n: unsize_tc (t_Array t n) = {
             arr <: t_Slice t);
 }
 
-
+let rec f_while_loop #s (condition: s -> bool) (init: s) (f: (i:s -> o:s{o << i})): s
+  = if condition init
+    then f_while_loop #s  condition (f init) f
+    else init

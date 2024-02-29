@@ -60,3 +60,9 @@ pub fn closure_impl_expr<I: Iterator<Item = ()>>(it: I) -> Vec<()> {
 pub fn closure_impl_expr_fngen<I: Iterator<Item = ()>, F: FnMut(()) -> ()>(it: I, f: F) -> Vec<()> {
     it.map(f).collect()
 }
+
+// From issue #523
+pub trait Lang: Sized {
+    type Var;
+    fn s(self, _: i32) -> (Self, Self::Var);
+}
