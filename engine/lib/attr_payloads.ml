@@ -1,6 +1,7 @@
 open! Prelude
 open Ast
 
+(** Parse [_hax::json] attributes *)
 let payloads : attrs -> (Types.ha_payload * span) list =
   let parse =
     (* we have to parse ["JSON"]: first a string, then a ha_payload *)
@@ -18,6 +19,16 @@ let payloads : attrs -> (Types.ha_payload * span) list =
           Some (tokens, attr.span)
       | _ -> None)
   >> List.map ~f:(map_fst (Yojson.Safe.from_string >> parse))
+
+(** Create a attribute out of a [payload] *)
+let to_attr (payload : Types.ha_payload) (span : span) : attr =
+  let json =
+    `String (Yojson.Safe.to_string (Types.to_json_ha_payload payload))
+  in
+  let kind : attr_kind =
+    Tool { path = "_hax::json"; tokens = Yojson.Safe.to_string json }
+  in
+  { kind; span }
 
 module UId = struct
   module T = struct
