@@ -111,6 +111,11 @@ pub fn chacha20_update(st0: State, m: &[u8]) -> Vec<u8> {
         hax_lib::assume!(blocks_out.len() == i * 64);
         blocks_out.extend_from_slice(&b);
     }
+    // // Full blocks
+    // for (i, chunk) in m.chunks_exact(64).enumerate() {
+    //     let b = chacha20_encrypt_block(st0, i as u32, chunk.try_into().unwrap());
+    //     blocks_out.extend_from_slice(&b);
+    // }
     hax_lib::assume!(blocks_out.len() == num_blocks * 64);
     if remainder_len != 0 {
         // Last block

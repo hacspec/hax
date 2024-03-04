@@ -1,5 +1,5 @@
 [workspace]
-members = ["chacha20", "limited-order-book", "sha256"]
+members = ["chacha20", "limited-order-book", "sha256", "barrett"]
 resolver = "2"
 
 [workspace.dependencies]

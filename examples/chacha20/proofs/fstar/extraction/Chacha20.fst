@@ -18,7 +18,7 @@ let t_State = t_Array u32 (sz 16)
 let chacha20_line (a b d: usize) (s: u32) (m: t_Array u32 (sz 16))
     : Prims.Pure (t_Array u32 (sz 16))
       (requires a <. sz 16 && b <. sz 16 && d <. sz 16)
-      (fun (res:t_Array u32 (sz 16)) -> True ) =
+      (fun _ -> Prims.l_True) =
   let state:t_Array u32 (sz 16) = m in
   let state:t_Array u32 (sz 16) =
     Rust_primitives.Hax.Monomorphized_update_at.update_at_usize state
