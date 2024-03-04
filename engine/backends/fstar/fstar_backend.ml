@@ -578,6 +578,10 @@ struct
       List.map ~f:(of_generic_param ~kind span) generics.params
       @ List.mapi ~f:(of_generic_constraint span) generics.constraints
 
+    let of_typ span (nth : int) typ : t =
+      let ident = F.id ("x" ^ Int.to_string nth) in
+      { kind = Explicit; ident; typ = pty span typ }
+
     let to_pattern (x : t) : F.AST.pattern =
       let subpat =
         match x.kind with
@@ -598,6 +602,9 @@ struct
 
     let to_typ (x : t) : F.AST.term = x.typ
     let to_ident (x : t) : F.Ident.ident = x.ident
+
+    let to_term (x : t) : F.AST.term =
+      F.term @@ F.AST.Var (FStar_Ident.lid_of_ns_and_id [] (to_ident x))
 
     let to_binder (x : t) : F.AST.binder =
       F.AST.
