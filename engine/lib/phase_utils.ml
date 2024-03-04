@@ -37,7 +37,6 @@ module MakePhaseImplemT (A : Ast.T) (B : Ast.T) = struct
   module type T = sig
     val metadata : Metadata.t
     val ditems : A.item list -> B.item list
-    val dexpr : A.expr -> B.expr
   end
 end
 
