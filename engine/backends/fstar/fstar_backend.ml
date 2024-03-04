@@ -280,6 +280,9 @@ struct
     | TArray { typ; length } ->
         F.mk_e_app (F.term_of_lid [ "t_Array" ]) [ pty span typ; pexpr length ]
     | TParam i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident i)
+    | TAssociatedType { impl = Self; item } ->
+        F.term
+        @@ F.AST.Var (F.lid [ U.Concrete_ident_view.to_definition_name item ])
     | TAssociatedType { impl; item } -> (
         match pimpl_expr span impl with
         | Some impl ->
