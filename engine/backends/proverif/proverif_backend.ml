@@ -354,19 +354,6 @@ module Make (Options : OPTS) : MAKE = struct
                 with
                 | Some (name, translation) -> translation fields
                 | None -> super#expr' ctx e)
-            (* Desugared `?` operator *)
-            | Match
-                {
-                  scrutinee =
-                    {
-                      e = App { f = { e = GlobalVar n; _ }; args = [ expr ] };
-                      _;
-                    };
-                  arms = _;
-                }
-            (*[@ocamlformat "disable"]*)
-              when Global_ident.eq_name Core__ops__try_trait__Try__branch n ->
-                print#expr' ctx expr.e
             | Match { scrutinee; arms } ->
                 separate_map
                   (hardline ^^ string "else ")
