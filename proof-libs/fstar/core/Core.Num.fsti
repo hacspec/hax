@@ -1,10 +1,11 @@
 module Core.Num
 open Rust_primitives
 
+let impl__u8__wrapping_add: u8 -> u8 -> u8 = add_mod
 let impl__u8__wrapping_sub: u8 -> u8 -> u8 = sub_mod
 let impl__u16__wrapping_add: u16 -> u16 ->  u16 = add_mod
 let impl__i32__wrapping_add: i32 -> i32 -> i32 = add_mod
-val impl__i32__abs: i32 -> i32
+let impl__i32__abs (a:i32{minint i32_inttype < v a}) : i32 = abs_int a
 
 let impl__u32__wrapping_add: u32 -> u32 -> u32 = add_mod
 val impl__u32__rotate_left: u32 -> u32 -> u32
@@ -41,5 +42,5 @@ val impl__i32__pow (base: i32) (exponent: u32): result: i32 {v base == 2 /\ v ex
 val impl__u8__from_str_radix: string -> u32 -> Core.Result.t_Result u8 Core.Num.Error.t_ParseIntError
 
 val impl__usize__ilog2: i32 -> u32 
-
+val impl__usize__leading_zeros: usize -> u32
 

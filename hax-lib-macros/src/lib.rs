@@ -474,3 +474,49 @@ pub fn attributes(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStr
 
     quote! { #item }.into()
 }
+
+/// Mark a struct or an enum opaque: the extraction will assume the
+/// type without revealing its definition.
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn opaque_type(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let item: Item = parse_macro_input!(item);
+    let attr = AttrPayload::OpaqueType;
+    quote! {#attr #item}.into()
+}
+
+/// A marker indicating a `fn` as a ProVerif process read.
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn process_read(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let item: ItemFn = parse_macro_input!(item);
+    let attr = AttrPayload::ProcessRead;
+    quote! {#attr #item}.into()
+}
+
+/// A marker indicating a `fn` as a ProVerif process write.
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn process_write(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let item: ItemFn = parse_macro_input!(item);
+    let attr = AttrPayload::ProcessWrite;
+    quote! {#attr #item}.into()
+}
+
+/// A marker indicating a `fn` as a ProVerif process initialization.
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn process_init(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let item: ItemFn = parse_macro_input!(item);
+    let attr = AttrPayload::ProcessInit;
+    quote! {#attr #item}.into()
+}
+
+/// A marker indicating an `enum` as describing the protocol messages.
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn protocol_messages(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let item: ItemEnum = parse_macro_input!(item);
+    let attr = AttrPayload::ProtocolMessages;
+    quote! {#attr #item}.into()
+}

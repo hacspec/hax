@@ -227,8 +227,8 @@ module Make (F : Features.T) = struct
       Set.equal items items');
     items'
 
-  let filter_by_inclusion_clauses (clauses : Types.inclusion_clause list)
-      (items : item list) : item list =
+  let filter_by_inclusion_clauses' (clauses : Types.inclusion_clause list)
+      (items : item list) : item list * Concrete_ident.t Hash_set.t =
     let graph = ItemGraph.of_items items in
     let of_list = Set.of_list (module Concrete_ident) in
     let selection = List.map ~f:ident_of items |> of_list in
@@ -245,36 +245,67 @@ module Make (F : Features.T) = struct
     let show_inclusion_clause Types.{ kind; namespace } =
       (match kind with
       | Excluded -> "-"
-      | Included { with_deps = true } -> "+"
-      | Included _ -> "+!")
+      | Included deps_kind -> (
+          match deps_kind with
+          | Transitive -> "+"
+          | Shallow -> "+~"
+          | None' -> "+!"))
+      ^ "["
       ^ (List.map
            ~f:(function Glob One -> "*" | Glob Many -> "**" | Exact s -> s)
            namespace.chunks
         |> String.concat ~sep:"::")
+      ^ "]"
     in
+    let items_drop_body = Hash_set.create (module Concrete_ident) in
     let apply_clause selection' (clause : Types.inclusion_clause) =
       let matches = Concrete_ident.matches_namespace clause.Types.namespace in
-      let matched = Set.filter ~f:matches selection in
-      let with_deps =
-        [%matches? (Included { with_deps = true } : Types.inclusion_kind)]
-          clause.kind
+      let matched0 = Set.filter ~f:matches selection in
+      let with_deps, drop_bodies =
+        match clause.kind with
+        | Included Transitive -> (true, false)
+        | Included Shallow -> (true, true)
+        | Included None' -> (false, false)
+        | Excluded -> (false, false)
       in
-      let matched = matched |> if with_deps then deps_of else Fn.id in
+      let matched = matched0 |> if with_deps then deps_of else Fn.id in
+      if drop_bodies then (
+        Set.iter ~f:(Hash_set.add items_drop_body) matched;
+        Set.iter ~f:(Hash_set.remove items_drop_body) matched0);
       Logs.info (fun m ->
           m "The clause [%s] will %s the following Rust items:\n%s"
             (show_inclusion_clause clause)
             (match clause.kind with Excluded -> "remove" | _ -> "add")
           @@ show_ident_set matched);
-      let f =
+      let set_op =
         match clause.kind with Included _ -> Set.union | Excluded -> Set.diff
       in
-      let result = f selection' matched in
+      let result = set_op selection' matched in
       result
     in
     let selection = List.fold ~init:selection ~f:apply_clause clauses in
     Logs.info (fun m ->
         m "The following Rust items are going to be extracted:\n%s"
         @@ show_ident_set selection);
+    (List.filter ~f:(ident_of >> Set.mem selection) items, items_drop_body)
+
+  let filter_by_inclusion_clauses (clauses : Types.inclusion_clause list)
+      (items : item list) : item list =
+    let f = filter_by_inclusion_clauses' clauses in
+    let selection =
+      let items', items_drop_body = f items in
+      let items', _ =
+        (* when one includes only shallow dependencies, we just remove bodies *)
+        List.map
+          ~f:(fun item ->
+            if Hash_set.mem items_drop_body (ident_of item) then
+              U.Mappers.drop_bodies#visit_item () item
+            else item)
+          items'
+        |> f
+      in
+      List.map ~f:ident_of items' |> Set.of_list (module Concrete_ident)
+    in
     List.filter ~f:(ident_of >> Set.mem selection) items
 
   (* Construct the new item `f item` (say `item'`), and create a

@@ -1,0 +1,9 @@
+[package]
+name = "include-flag"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[package.metadata.hax-tests]
+into."fstar+coq" = { snapshot = "stdout" }

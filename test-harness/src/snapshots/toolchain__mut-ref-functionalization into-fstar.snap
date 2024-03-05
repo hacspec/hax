@@ -17,6 +17,7 @@ info:
     snapshot:
       stderr: false
       stdout: true
+    include_flag: ~
 ---
 exit = 0
 
@@ -24,14 +25,6 @@ exit = 0
 diagnostics = []
 
 [stdout.files]
-"Mut_ref_functionalization.F.fst" = '''
-module Mut_ref_functionalization.F
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
-open Core
-open FStar.Mul
-
-
-'''
 "Mut_ref_functionalization.fst" = '''
 module Mut_ref_functionalization
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
@@ -57,6 +50,28 @@ let f (_: Prims.unit) : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
 let h (x: u8) : u8 =
   let x:u8 = x +! 10uy in
   x
+
+let k
+      (vec: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
+      (arg_1_wild3: u16)
+      (arg_1_wild: u8)
+      (arg_3_wild2: Prims.unit)
+    : (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global & u16 & Prims.unit & u64) =
+  let arg_1_wild2:u8 = vec.[ sz 1 ] in
+  let arg_3_wild:u8 = vec.[ sz 2 ] in
+  let arg_1_wild1:u8 = vec.[ sz 3 ] in
+  let arg_3_wild1:u8 = vec.[ sz 4 ] in
+  let vec:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize vec
+      (sz 0)
+      ((((arg_1_wild +! arg_3_wild <: u8) +! arg_1_wild1 <: u8) +! arg_3_wild1 <: u8) +! arg_1_wild
+        <:
+        u8)
+  in
+  let hax_temp_output:u64 = 12345uL in
+  vec, arg_1_wild3, arg_3_wild2, hax_temp_output
+  <:
+  (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global & u16 & Prims.unit & u64)
 
 let build_vec (_: Prims.unit) : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
   Alloc.Slice.impl__into_vec (Rust_primitives.unsize (Rust_primitives.Hax.box_new (let list =
@@ -199,12 +214,14 @@ let i (bar: t_Bar) : (t_Bar & u8) =
   bar, hax_temp_output <: (t_Bar & u8)
 
 let j (x: t_Bar) : (t_Bar & u8) =
-  let tmp0, out:(t_Bar & u8) = i x in
+  let out:u8 = 123uy in
+  let tmp0, out1:(t_Bar & u8) = i x in
   let x:t_Bar = tmp0 in
-  let hax_temp_output:u8 = out in
+  let hoist1:u8 = out1 in
+  let hax_temp_output:u8 = hoist1 +! out in
   x, hax_temp_output <: (t_Bar & u8)
 
-type t_Pair (v_T: Type) {| _: Core.Marker.t_Sized v_T |} = {
+type t_Pair (v_T: Type) {| i0: Core.Marker.t_Sized v_T |} = {
   f_a:v_T;
   f_b:t_Foo
 }

@@ -6,7 +6,7 @@
 #
 # We expect FSTAR_HOME to be set to your FSTAR repo/install directory
 # We expect HACL_HOME to be set to your HACL* repo location
-# We expect HAX_LIBS_HOME to be set to the folder containing core, rust_primitives etc.
+# We expect HAX_PROOF_LIBS_HOME to be set to the folder containing core, rust_primitives etc.
 #
 # ROOTS contains all the top-level F* files you wish to verify
 # The default target `verify` verified ROOTS and its dependencies
@@ -29,13 +29,13 @@
 # (setq fstar-subp-prover-args #'my-fstar-compute-prover-args-using-make)
 #
 
-HAX_LIBS_HOME ?= $(shell git rev-parse --show-toplevel)/proof-libs/fstar
-FSTAR_HOME    ?= $(HAX_LIBS_HOME)/../../../FStar
-HACL_HOME     ?= $(HAX_LIBS_HOME)/../../../hacl-star
+HAX_PROOF_LIBS_HOME ?= $(shell git rev-parse --show-toplevel)/proof-libs/fstar
+FSTAR_HOME    ?= $(HAX_PROOF_LIBS_HOME)/../../../FStar
+HACL_HOME     ?= $(HAX_PROOF_LIBS_HOME)/../../../hacl-star
 FSTAR_BIN     ?= $(shell command -v fstar.exe 1>&2 2> /dev/null && echo "fstar.exe" || echo "$(FSTAR_HOME)/bin/fstar.exe")
 
-CACHE_DIR     ?= $(HAX_LIBS_HOME)/.cache
-HINT_DIR      ?= $(HAX_LIBS_HOME)/.hints
+CACHE_DIR     ?= $(HAX_PROOF_LIBS_HOME)/.cache
+HINT_DIR      ?= $(HAX_PROOF_LIBS_HOME)/.hints
 
 .PHONY: all verify clean
 
@@ -47,7 +47,7 @@ all:
 # *extend* the set of relevant files with the tests.
 ROOTS = $(wildcard *.fst)
 
-FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib $(HAX_LIBS_HOME)/rust_primitives $(HAX_LIBS_HOME)/core $(HAX_LIBS_HOME)/hax_lib
+FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib $(HAX_PROOF_LIBS_HOME)/rust_primitives $(HAX_PROOF_LIBS_HOME)/core $(HAX_PROOF_LIBS_HOME)/hax_lib
 
 FSTAR_FLAGS = --cmi \
   --warn_error -331 \

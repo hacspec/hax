@@ -40,11 +40,30 @@
     // {
       pname = pname;
     });
-  hax = craneLib.buildPackage (commonArgs
+  hax = stdenv.mkDerivation {
+    name = hax_with_artifacts.name;
+    unpackPhase = "true";
+    buildPhase = "true";
+    installPhase = ''
+      mkdir -p $out
+      cp -r ${hax_with_artifacts}/bin $out/bin
+    '';
+  };
+  hax_with_artifacts = craneLib.buildPackage (
+    commonArgs
     // {
       inherit cargoArtifacts pname;
-    });
-  frontend-docs = craneLib.cargoDoc (commonArgs // {inherit cargoArtifacts pname;});
+      doInstallCargoArtifacts = true;
+    }
+  );
+  frontend-docs = craneLib.cargoDoc (commonArgs // {
+    preBuildPhases = ["addRustcDocs"];
+    addRustcDocs = ''
+      mkdir -p target/doc
+      cp --no-preserve=mode -rf ${rustc.passthru.availableComponents.rustc-docs}/share/doc/rust/html/rustc/* target/doc/
+    '';
+    inherit cargoArtifacts pname;
+  });
   docs = stdenv.mkDerivation {
     name = "hax-docs";
     unpackPhase = "true";
@@ -70,7 +89,7 @@
       mv $INDEX index.html
     '';
   };
-  binaries = [hax hax-engine rustc gcc];
+  binaries = [hax hax-engine.bin rustc gcc];
   tests = craneLib.buildPackage (commonArgs
     // {
       inherit cargoArtifacts;
@@ -103,6 +122,20 @@ in
     meta.mainProgram = "cargo-hax";
     passthru = {
       unwrapped = hax;
+      hax-engine-names-extract = craneLib.buildPackage (
+        commonArgs
+        // {
+          pname = "hax_engine_names_extract";
+          cargoLock = ../Cargo.lock;
+          cargoToml = ../engine/names/extract/Cargo.toml;
+          cargoArtifacts = hax_with_artifacts;
+          nativeBuildInputs = [hax_with_artifacts];
+          postUnpack = ''
+            cd $sourceRoot/engine/names/extract
+            sourceRoot="."
+          '';
+        }
+      );
       engine-docs = hax-engine.docs;
       inherit tests docs frontend-docs;
     };

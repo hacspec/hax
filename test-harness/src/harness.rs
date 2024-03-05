@@ -10,14 +10,6 @@ pub enum TestKind {
 }
 
 impl TestKind {
-    fn as_subcommands(&self) -> Vec<String> {
-        match self {
-            TestKind::Lint { linter } => vec!["lint".to_string(), linter.clone()],
-            TestKind::Translate { backend } => {
-                vec!["into".to_string(), "--dry-run".to_string(), backend.clone()]
-            }
-        }
-    }
     fn as_name(&self) -> String {
         (match self {
             TestKind::Lint { linter } => ["lint".to_string(), linter.clone()],
@@ -52,7 +44,10 @@ pub struct TestSpec {
     /// Is that a positive or a negative test?
     pub positive: bool,
     pub snapshot: TestSnapshot,
+    pub include_flag: Option<String>,
+    pub backend_options: Option<Vec<String>>,
 }
+
 impl From<Value> for TestSpec {
     /// Parse a JSON value into a TestSpec
     fn from(o: Value) -> Self {
@@ -73,6 +68,8 @@ impl From<Value> for TestSpec {
             broken: as_bool(&o, "broken", false),
             positive: as_bool(&o, "positive", true),
             issue_id: o["positive"].as_u64(),
+            include_flag: o["include-flag"].as_str().map(|s| s.into()),
+            backend_options: serde_json::from_value(o["backend-options"].clone()).unwrap(),
             snapshot: as_opt_bool(snapshot, true)
                 .map(|b| TestSnapshot {
                     stderr: b,
@@ -111,6 +108,28 @@ pub struct Test {
     pub spec: TestSpec,
 }
 
+impl Test {
+    fn as_args(&self) -> Vec<String> {
+        match &self.kind {
+            TestKind::Lint { linter } => vec!["lint".to_string(), linter.clone()],
+            TestKind::Translate { backend } => {
+                let mut args = vec![];
+                args.push("into".to_string());
+                if let Some(i) = self.spec.include_flag.as_ref() {
+                    args.push("-i".to_string());
+                    args.push(i.to_string());
+                }
+                args.push("--dry-run".to_string());
+                args.push(backend.clone());
+                if let Some(backend_options) = &self.spec.backend_options {
+                    args.extend_from_slice(backend_options.clone().as_slice());
+                }
+                args
+            }
+        }
+    }
+}
+
 impl std::fmt::Display for Test {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{} - {:?}", self.info.name, self.kind)?;
@@ -128,7 +147,7 @@ impl Test {
         cmd.arg("--manifest-path").arg(self.info.manifest.clone());
         cmd.arg(";");
         cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
-        cmd.args(self.kind.as_subcommands());
+        cmd.args(self.as_args());
 
         // 2. execute it (twice, idea of @franziskuskiefer, so that
         // the messages related to building dependencies are not

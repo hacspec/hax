@@ -1,0 +1,41 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: fstar
+  info:
+    name: pattern-or
+    manifest: pattern-or/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: true
+      stdout: true
+---
+exit = 0
+stderr = '''
+Compiling pattern-or v0.1.0 (WORKSPACE_ROOT/pattern-or)
+    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+
+[stdout]
+diagnostics = []
+
+[stdout.files]
+"Pattern_or.fst" = '''
+module Pattern_or
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+type t_E =
+  | E_A : t_E
+  | E_B : t_E
+
+let bar (x: t_E) : Prims.unit = match x with | E_A  | E_B  -> () <: Prims.unit
+'''

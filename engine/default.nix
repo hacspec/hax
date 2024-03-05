@@ -2,12 +2,14 @@
   ocamlPackages,
   fetchzip,
   hax-rust-frontend,
+  hax-engine-names-extract,
   rustc,
   nodejs,
   jq,
   closurecompiler,
   gnused,
   lib,
+  removeReferencesTo,
 }: let
   non_empty_list = ocamlPackages.buildDunePackage rec {
     pname = "non_empty_list";
@@ -50,7 +52,6 @@
         yojson
         ppx_sexp_conv
         ppx_hash
-        visitors
         pprint
         non_empty_list
         bignum
@@ -81,19 +82,30 @@
     nativeBuildInputs = [
       rustc
       hax-rust-frontend
+      hax-engine-names-extract
       nodejs
       ocamlPackages.js_of_ocaml-compiler
       jq
+      removeReferencesTo
     ];
     strictDeps = true;
+    installPhase = ''
+      dune install --prefix=$bin --libdir=$lib/lib/ocaml/${ocamlPackages.ocaml.version}/site-lib/
+      find "$bin" -type f -exec remove-references-to -t ${ocamlPackages.ocaml} '{}' +
+    '';
+
+    outputs = ["out" "bin" "lib"];
     passthru = {
       docs = hax-engine.overrideAttrs (old: {
         name = "hax-engine-docs";
-        nativeBuildInputs = old.nativeBuildInputs ++ [
-          ocamlPackages.odoc
-        ];
+        nativeBuildInputs =
+          old.nativeBuildInputs
+          ++ [
+            ocamlPackages.odoc
+          ];
         buildPhase = ''dune build @doc'';
         installPhase = "cp -rf _build/default/_doc/_html $out";
+        outputs = ["out"];
       });
       js = hax-engine.overrideAttrs (old: {
         name = "hax-engine.js";

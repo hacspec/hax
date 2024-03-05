@@ -1,0 +1,348 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: fstar
+  info:
+    name: side-effects
+    manifest: side-effects/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: true
+      stdout: true
+---
+exit = 0
+stderr = '''
+Compiling side-effects v0.1.0 (WORKSPACE_ROOT/side-effects)
+    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+
+[stdout]
+diagnostics = []
+
+[stdout.files]
+"Side_effects.fst" = '''
+module Side_effects
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let add3 (x y z: u32) : u32 =
+  Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add x y <: u32) z
+
+let direct_result_question_mark (y: Core.Result.t_Result Prims.unit u32)
+    : Core.Result.t_Result i8 u32 =
+  Rust_primitives.Hax.Control_flow_monad.Mresult.run (let| _:Prims.unit =
+        Core.Result.impl__map_err y (Core.Convert.f_from <: u32 -> u32)
+      in
+      Core.Result.Result_Ok (Core.Result.Result_Ok 0y <: Core.Result.t_Result i8 u32)
+      <:
+      Core.Result.t_Result (Core.Result.t_Result i8 u32) u32)
+
+let direct_result_question_mark_coercion (y: Core.Result.t_Result i8 u16)
+    : Core.Result.t_Result i8 u32 =
+  Rust_primitives.Hax.Control_flow_monad.Mresult.run (let| hoist1:i8 =
+        Core.Result.impl__map_err y (Core.Convert.f_from <: u16 -> u32)
+      in
+      Core.Result.Result_Ok (Core.Result.Result_Ok hoist1 <: Core.Result.t_Result i8 u32)
+      <:
+      Core.Result.t_Result (Core.Result.t_Result i8 u32) u32)
+
+let early_returns (x: u32) : u32 =
+  Rust_primitives.Hax.Control_flow_monad.Mexception.run (let! _:Prims.unit =
+        if x >. 3ul
+        then
+          let! hoist2:Rust_primitives.Hax.t_Never = Core.Ops.Control_flow.ControlFlow.v_Break 0ul in
+          Core.Ops.Control_flow.ControlFlow_Continue (Rust_primitives.Hax.never_to_any hoist2)
+          <:
+          Core.Ops.Control_flow.t_ControlFlow u32 Prims.unit
+        else
+          Core.Ops.Control_flow.ControlFlow_Continue ()
+          <:
+          Core.Ops.Control_flow.t_ControlFlow u32 Prims.unit
+      in
+      let hoist3:bool = x >. 30ul in
+      let! x, hoist5:(u32 & u32) =
+        if hoist3
+        then
+          match true with
+          | true ->
+            let! hoist4:Rust_primitives.Hax.t_Never =
+              Core.Ops.Control_flow.ControlFlow.v_Break 34ul
+            in
+            Core.Ops.Control_flow.ControlFlow_Continue
+            (x, Rust_primitives.Hax.never_to_any hoist4 <: (u32 & u32))
+            <:
+            Core.Ops.Control_flow.t_ControlFlow u32 (u32 & u32)
+          | _ ->
+            Core.Ops.Control_flow.ControlFlow_Continue (x, 3ul <: (u32 & u32))
+            <:
+            Core.Ops.Control_flow.t_ControlFlow u32 (u32 & u32)
+        else
+          Core.Ops.Control_flow.ControlFlow_Continue
+          (let x:u32 = x +! 9ul in
+            x, x +! 1ul <: (u32 & u32))
+          <:
+          Core.Ops.Control_flow.t_ControlFlow u32 (u32 & u32)
+      in
+      let hoist6:u32 = Core.Num.impl__u32__wrapping_add 123ul hoist5 in
+      let hoist7:u32 = Core.Num.impl__u32__wrapping_add hoist6 x in
+      let! hoist8:Rust_primitives.Hax.t_Never = Core.Ops.Control_flow.ControlFlow.v_Break hoist7 in
+      Core.Ops.Control_flow.ControlFlow_Continue (Rust_primitives.Hax.never_to_any hoist8)
+      <:
+      Core.Ops.Control_flow.t_ControlFlow u32 u32)
+
+let local_mutation (x: u32) : u32 =
+  let y:u32 = 0ul in
+  let x:u32 = Core.Num.impl__u32__wrapping_add x 1ul in
+  let hoist9:bool = x >. 3ul in
+  if hoist9
+  then
+    let x:u32 = Core.Num.impl__u32__wrapping_sub x 3ul in
+    let y:u32 = x /! 2ul in
+    let y:u32 = Core.Num.impl__u32__wrapping_add y 2ul in
+    let hoist10:u32 = 0ul in
+    let hoist11:Core.Ops.Range.t_Range u32 =
+      { Core.Ops.Range.f_start = hoist10; Core.Ops.Range.f_end = 10ul }
+      <:
+      Core.Ops.Range.t_Range u32
+    in
+    let hoist12:Core.Ops.Range.t_Range u32 = Core.Iter.Traits.Collect.f_into_iter hoist11 in
+    let y:u32 =
+      Core.Iter.Traits.Iterator.f_fold hoist12
+        y
+        (fun y i ->
+            let y:u32 = y in
+            let i:u32 = i in
+            Core.Num.impl__u32__wrapping_add x i <: u32)
+    in
+    Core.Num.impl__u32__wrapping_add x y
+  else
+    let (x, y), hoist15:((u32 & u32) & u32) =
+      match x with
+      | 12ul ->
+        let y:u32 = Core.Num.impl__u32__wrapping_add x y in
+        (x, y <: (u32 & u32)), 3ul <: ((u32 & u32) & u32)
+      | 13ul ->
+        let hoist14:u32 = x in
+        let x:u32 = Core.Num.impl__u32__wrapping_add x 1ul in
+        let hoist13:u32 = Core.Num.impl__u32__wrapping_add 123ul x in
+        (x, y <: (u32 & u32)), add3 hoist14 hoist13 x <: ((u32 & u32) & u32)
+      | _ -> (x, y <: (u32 & u32)), 0ul <: ((u32 & u32) & u32)
+    in
+    let x:u32 = hoist15 in
+    Core.Num.impl__u32__wrapping_add x y
+
+let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.Option.t_Option u8 =
+  Rust_primitives.Hax.Control_flow_monad.Moption.run (let? hoist19:u8 = x in
+      let hoist20:bool = hoist19 >. 10uy in
+      let? hoist26:Core.Option.t_Option u8 =
+        if hoist20
+        then
+          let? hoist21:u8 = x in
+          Core.Option.Option_Some
+          (let hoist22:u8 = Core.Num.impl__u8__wrapping_add hoist21 3uy in
+            Core.Option.Option_Some hoist22 <: Core.Option.t_Option u8)
+          <:
+          Core.Option.t_Option (Core.Option.t_Option u8)
+        else
+          let? hoist24:u8 = x in
+          let? hoist23:u8 = y in
+          Core.Option.Option_Some
+          (let hoist25:u8 = Core.Num.impl__u8__wrapping_add hoist24 hoist23 in
+            Core.Option.Option_Some hoist25 <: Core.Option.t_Option u8)
+          <:
+          Core.Option.t_Option (Core.Option.t_Option u8)
+      in
+      let? hoist27:u8 = hoist26 in
+      let? v:u8 =
+        match hoist27 with
+        | 3uy -> Core.Option.Option_None <: Core.Option.t_Option u8
+        | 4uy ->
+          let? hoist16:u64 = z in
+          Core.Option.Option_Some
+          (let hoist17:bool = hoist16 >. 4uL in
+            let hoist18:u8 = if hoist17 then 0uy else 3uy in
+            4uy +! hoist18)
+          <:
+          Core.Option.t_Option u8
+        | _ -> Core.Option.Option_Some 12uy <: Core.Option.t_Option u8
+      in
+      let? hoist28:u8 = x in
+      let hoist30:u8 = Core.Num.impl__u8__wrapping_add v hoist28 in
+      let? hoist29:u8 = y in
+      Core.Option.Option_Some
+      (let hoist31:u8 = Core.Num.impl__u8__wrapping_add hoist30 hoist29 in
+        Core.Option.Option_Some hoist31 <: Core.Option.t_Option u8)
+      <:
+      Core.Option.t_Option (Core.Option.t_Option u8))
+
+let question_mark (x: u32) : Core.Result.t_Result u32 u32 =
+  Rust_primitives.Hax.Control_flow_monad.Mresult.run (let| x:u32 =
+        if x >. 40ul
+        then
+          let y:u32 = 0ul in
+          let x:u32 = Core.Num.impl__u32__wrapping_add x 3ul in
+          let y:u32 = Core.Num.impl__u32__wrapping_add x y in
+          let x:u32 = Core.Num.impl__u32__wrapping_add x y in
+          let hoist32:bool = x >. 90ul in
+          if hoist32
+          then
+            let| _:Prims.unit =
+              Core.Result.impl__map_err (Core.Result.Result_Err 12uy
+                  <:
+                  Core.Result.t_Result Prims.unit u8)
+                (Core.Convert.f_from <: u8 -> u32)
+            in
+            Core.Result.Result_Ok x <: Core.Result.t_Result u32 u32
+          else Core.Result.Result_Ok x <: Core.Result.t_Result u32 u32
+        else Core.Result.Result_Ok x <: Core.Result.t_Result u32 u32
+      in
+      Core.Result.Result_Ok
+      (Core.Result.Result_Ok (Core.Num.impl__u32__wrapping_add 3ul x)
+        <:
+        Core.Result.t_Result u32 u32)
+      <:
+      Core.Result.t_Result (Core.Result.t_Result u32 u32) u32)
+
+type t_A = | A : t_A
+
+type t_B = | B : t_B
+
+type t_Bar = {
+  f_a:bool;
+  f_b:(t_Array (bool & bool) (sz 6) & bool)
+}
+
+let monad_lifting (x: u8) : Core.Result.t_Result t_A t_B =
+  Rust_primitives.Hax.Control_flow_monad.Mexception.run (if x >. 123uy <: bool
+      then
+        let! hoist33:t_A =
+          Core.Ops.Control_flow.ControlFlow_Continue
+          (Core.Result.impl__map_err (Core.Result.Result_Err (B <: t_B)
+                <:
+                Core.Result.t_Result t_A t_B)
+              (Core.Convert.f_from <: t_B -> t_B))
+          <:
+          Core.Ops.Control_flow.t_ControlFlow (Core.Result.t_Result t_A t_B)
+            (Core.Result.t_Result t_A t_B)
+        in
+        let hoist34:Core.Result.t_Result t_A t_B =
+          Core.Result.Result_Ok hoist33 <: Core.Result.t_Result t_A t_B
+        in
+        let! hoist35:Rust_primitives.Hax.t_Never =
+          Core.Ops.Control_flow.ControlFlow.v_Break hoist34
+        in
+        Core.Ops.Control_flow.ControlFlow_Continue (Rust_primitives.Hax.never_to_any hoist35)
+        <:
+        Core.Ops.Control_flow.t_ControlFlow (Core.Result.t_Result t_A t_B)
+          (Core.Result.t_Result t_A t_B)
+      else
+        Core.Ops.Control_flow.ControlFlow_Continue
+        (Core.Result.Result_Ok (A <: t_A) <: Core.Result.t_Result t_A t_B)
+        <:
+        Core.Ops.Control_flow.t_ControlFlow (Core.Result.t_Result t_A t_B)
+          (Core.Result.t_Result t_A t_B))
+
+type t_Foo = {
+  f_x:bool;
+  f_y:(bool & Alloc.Vec.t_Vec t_Bar Alloc.Alloc.t_Global);
+  f_z:t_Array t_Bar (sz 6);
+  f_bar:t_Bar
+}
+
+let assign_non_trivial_lhs (foo: t_Foo) : t_Foo =
+  let foo:t_Foo = { foo with f_x = true } <: t_Foo in
+  let foo:t_Foo = { foo with f_bar = { foo.f_bar with f_a = true } <: t_Bar } <: t_Foo in
+  let foo:t_Foo =
+    {
+      foo with
+      f_bar
+      =
+      {
+        foo.f_bar with
+        f_b
+        =
+        {
+          foo.f_bar.f_b with
+          _1
+          =
+          Rust_primitives.Hax.Monomorphized_update_at.update_at_usize foo.f_bar.f_b._1
+            (sz 3)
+            ({ (foo.f_bar.f_b._1.[ sz 3 ] <: (bool & bool)) with _2 = true } <: (bool & bool))
+        }
+        <:
+        (t_Array (bool & bool) (sz 6) & bool)
+      }
+      <:
+      t_Bar
+    }
+    <:
+    t_Foo
+  in
+  let foo:t_Foo =
+    {
+      foo with
+      f_z
+      =
+      Rust_primitives.Hax.Monomorphized_update_at.update_at_usize foo.f_z
+        (sz 3)
+        ({ (foo.f_z.[ sz 3 ] <: t_Bar) with f_a = true } <: t_Bar)
+    }
+    <:
+    t_Foo
+  in
+  let foo:t_Foo =
+    {
+      foo with
+      f_y
+      =
+      {
+        foo.f_y with
+        _2
+        =
+        Rust_primitives.Hax.Monomorphized_update_at.update_at_usize foo.f_y._2
+          (sz 3)
+          ({
+              (foo.f_y._2.[ sz 3 ] <: t_Bar) with
+              f_b
+              =
+              {
+                (foo.f_y._2.[ sz 3 ] <: t_Bar).f_b with
+                _1
+                =
+                Rust_primitives.Hax.Monomorphized_update_at.update_at_usize (foo.f_y._2.[ sz 3 ]
+                    <:
+                    t_Bar)
+                    .f_b
+                    ._1
+                  (sz 5)
+                  ({
+                      ((foo.f_y._2.[ sz 3 ] <: t_Bar).f_b._1.[ sz 5 ] <: (bool & bool)) with
+                      _1 = true
+                    }
+                    <:
+                    (bool & bool))
+                <:
+                t_Array (bool & bool) (sz 6)
+              }
+              <:
+              (t_Array (bool & bool) (sz 6) & bool)
+            }
+            <:
+            t_Bar)
+      }
+      <:
+      (bool & Alloc.Vec.t_Vec t_Bar Alloc.Alloc.t_Global)
+    }
+    <:
+    t_Foo
+  in
+  foo
+'''

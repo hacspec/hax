@@ -25,12 +25,29 @@ ensure_binary_available() {
     }
 }
 
+NODE_VERSION_MIN_MAJOR=17
+ensure_node_is_recent_enough() {
+    function strip_first_char () {
+        cut -c2-
+    }
+    function get_major () {
+        cut -d'.' -f1
+    }
+    VERSION=$(node --version)
+    MAJOR=$(echo "$VERSION" | strip_first_char | get_major)
+    if [[ "$MAJOR" -lt "$NODE_VERSION_MIN_MAJOR" ]]; then
+        printf '\e[31mError: \e[1m%s\e[0m\e[31m appears to be too old.\e[0m\n' "NodeJS"
+        printf '\e[37m(the minimal version required is \e[1m%s\e[0m\e[37m, yours is \e[1m%s\e[0m\e[37m)\e[0m.\n' "v${NODE_VERSION_MIN_MAJOR}.*.*" "$VERSION"
+        exit 1
+    fi
+}
+
 # Installs the Rust CLI & frontend, providing `cargo-hax` and `driver-hax`
 install_rust_binaries() {
-    for i in driver subcommands; do
+    for i in driver subcommands ../engine/names/extract; do
         (
             set -x
-            cargo install --force --path "cli/$i"
+            cargo install --locked --force --path "cli/$i"
         )
     done
 }
@@ -59,5 +76,7 @@ install_ocaml_engine() {
 for binary in opam node rustup jq; do
     ensure_binary_available $binary
 done
+ensure_node_is_recent_enough
+
 install_rust_binaries
 install_ocaml_engine

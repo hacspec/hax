@@ -9,6 +9,7 @@ struct
   module U = Ast_utils.Make (F)
   include Ast
   include AST
+  module Visitors = Ast_visitors.Make (F)
 
   module SideEffects = struct
     (* TODO: consider non-terminaison and closed-mutation *)
@@ -108,7 +109,6 @@ struct
 
     class ['s] monoid =
       object
-        inherit ['s] VisitorsRuntime.monoid
         method private zero = zero
         method private plus = plus
       end
@@ -137,14 +137,12 @@ struct
 
     class ['s] monoid =
       object
-        inherit ['s] VisitorsRuntime.monoid
         method private zero = zero
         method private plus = plus
       end
 
     class ['s] bool_monoid =
       object
-        inherit ['s] VisitorsRuntime.monoid
         method private zero = false
         method private plus = ( && )
       end
@@ -215,53 +213,56 @@ struct
       List.fold_right ~init:body ~f:let_of_binding bindings
 
     let collect_and_hoist_effects_object =
-      object (super)
-        inherit [_] expr_mapreduce
+      object (self)
+        (* inherit [_] expr_mapreduce *)
+        inherit [_] Visitors.mapreduce as super
         inherit [_] monoid as m
-        method visit_t _ x = (x, m#zero)
-        method visit_mutability _ _ x = (x, m#zero)
+
+        (* method visit_t _ x = (x, m#zero) *)
+        (* method visit_mutability _ _ x = (x, m#zero) *)
 
         (* Collecting effects bottom up *)
-        method! visit_LhsLocalVar _ var typ =
-          (LhsLocalVar { var; typ }, no_lbs @@ SideEffects.writes var typ)
+        method! visit_lhs (env : CollectContext.t) lhs =
+          match lhs with
+          | LhsLocalVar { var; typ } ->
+              (LhsLocalVar { var; typ }, no_lbs @@ SideEffects.writes var typ)
+          | LhsArbitraryExpr { e; witness } ->
+              let deep_mutation =
+                (object
+                   inherit [_] Visitors.reduce as _super
+                   inherit [_] bool_monoid as _m
 
-        method! visit_LhsArbitraryExpr _ e witness =
-          let deep_mutation =
-            (object
-               inherit [_] expr_reduce
-               inherit [_] bool_monoid as m
-               method visit_t _ _ = m#zero
-               method visit_mutability _ _ _ = m#zero
-               method visit_Deref _ _ _ = true
-            end)
-              #visit_expr
-              () e
-          in
-          ( LhsArbitraryExpr { e; witness },
-            no_lbs { SideEffects.zero with deep_mutation } )
+                   (* method visit_t _ _ = m#zero *)
+                   (* method visit_mutability _ _ _ = m#zero *)
+                   (* method! visit_Deref _ _ _ = true *)
+                   method! visit_item () _ = false
+                end)
+                  #visit_expr
+                  () e
+              in
+              ( LhsArbitraryExpr { e; witness },
+                no_lbs { SideEffects.zero with deep_mutation } )
+          | _ -> super#visit_lhs env lhs
 
         method! visit_expr (env : CollectContext.t) e =
           match e.e with
           | LocalVar v -> (e, no_lbs (SideEffects.reads v e.typ))
-          | QuestionMark { e = e'; converted_typ; witness } ->
-              HoistSeq.one env (super#visit_expr env e') (fun e' effects ->
+          | QuestionMark { e = e'; return_typ; witness } ->
+              HoistSeq.one env (self#visit_expr env e') (fun e' effects ->
                   let effects =
                     m#plus effects
                       (no_lbs
-                         { SideEffects.zero with return = Some converted_typ })
+                         { SideEffects.zero with return = Some return_typ })
                   in
-                  ( {
-                      e with
-                      e = QuestionMark { e = e'; converted_typ; witness };
-                    },
+                  ( { e with e = QuestionMark { e = e'; return_typ; witness } },
                     effects ))
           | Return { e = e'; witness } ->
-              HoistSeq.one env (super#visit_expr env e') (fun e' effects ->
+              HoistSeq.one env (self#visit_expr env e') (fun e' effects ->
                   ( { e with e = Return { e = e'; witness } },
                     m#plus effects
                       (no_lbs { SideEffects.zero with return = Some e'.typ }) ))
           | Break { e = e'; label; witness } ->
-              HoistSeq.one env (super#visit_expr env e') (fun e' effects ->
+              HoistSeq.one env (self#visit_expr env e') (fun e' effects ->
                   ( { e with e = Break { e = e'; label; witness } },
                     m#plus effects
                       (no_lbs { SideEffects.zero with break = Some e'.typ }) ))
@@ -275,7 +276,7 @@ struct
               in
               match e' with
               | Some (witness', e') ->
-                  HoistSeq.one env (super#visit_expr env e') (fun e' effects ->
+                  HoistSeq.one env (self#visit_expr env e') (fun e' effects ->
                       ( {
                           e with
                           e =
@@ -287,12 +288,14 @@ struct
               let kind' =
                 match kind with
                 | UnconditionalLoop -> []
-                | ForLoop { it; _ } -> [ super#visit_expr env it ]
+                | ForLoop { it; _ } -> [ self#visit_expr env it ]
+                | WhileLoop { condition; _ } ->
+                    [ self#visit_expr env condition ]
                 | _ -> .
               in
               let state' =
                 Option.map
-                  ~f:(fun { init; _ } -> super#visit_expr env init)
+                  ~f:(fun { init; _ } -> self#visit_expr env init)
                   state
               in
               let kind_state = kind' @ Option.to_list state' in
@@ -301,6 +304,8 @@ struct
               HoistSeq.many env kind_state (fun l effects ->
                   let kind =
                     match (l, kind) with
+                    | condition :: ([ _ ] | []), WhileLoop { witness; _ } ->
+                        WhileLoop { condition; witness }
                     | it :: ([ _ ] | []), ForLoop { pat; witness; _ } ->
                         ForLoop { pat; witness; it }
                     | ([ _ ] | []), UnconditionalLoop -> UnconditionalLoop
@@ -316,7 +321,7 @@ struct
                   in
                   (* by now, the "inputs" of the loop are hoisted as let if needed *)
                   let body, { lbs; effects = body_effects } =
-                    super#visit_expr env body
+                    self#visit_expr env body
                   in
                   (* the loop construction **handles** the effect continue and break *)
                   let body_effects =
@@ -327,12 +332,12 @@ struct
                   ( { e with e = Loop { body; kind; state; label; witness } },
                     effects ))
           | If { cond; then_; else_ } ->
-              HoistSeq.one env (super#visit_expr env cond) (fun cond effects ->
+              HoistSeq.one env (self#visit_expr env cond) (fun cond effects ->
                   let then_, { lbs = lbs_then; effects = ethen } =
-                    super#visit_expr env then_
+                    self#visit_expr env then_
                   in
                   let else_, { lbs = lbs_else; effects = eelse } =
-                    match Option.map ~f:(super#visit_expr env) else_ with
+                    match Option.map ~f:(self#visit_expr env) else_ with
                     | Some (else_, eelse) -> (Some else_, eelse)
                     | None -> (None, m#zero)
                   in
@@ -344,7 +349,7 @@ struct
                   ({ e with e = If { cond; then_; else_ } }, effects))
           | App { f; args; generic_args; impl } ->
               HoistSeq.many env
-                (List.map ~f:(super#visit_expr env) (f :: args))
+                (List.map ~f:(self#visit_expr env) (f :: args))
                 (fun l effects ->
                   let f, args =
                     match l with
@@ -354,12 +359,11 @@ struct
                   ({ e with e = App { f; args; generic_args; impl } }, effects))
           | Literal _ -> (e, m#zero)
           | Block (inner, witness) ->
-              HoistSeq.one env (super#visit_expr env inner)
-                (fun inner effects ->
+              HoistSeq.one env (self#visit_expr env inner) (fun inner effects ->
                   ({ e with e = Block (inner, witness) }, effects))
           | Array l ->
               HoistSeq.many env
-                (List.map ~f:(super#visit_expr env) l)
+                (List.map ~f:(self#visit_expr env) l)
                 (fun l effects -> ({ e with e = Array l }, effects))
           | Construct
               { constructor; is_record; is_struct; fields = []; base = None } ->
@@ -378,7 +382,7 @@ struct
                 m#zero )
           | Construct { constructor; is_struct; is_record; fields; base } ->
               HoistSeq.many env
-                (List.map ~f:(super#visit_expr env)
+                (List.map ~f:(self#visit_expr env)
                    (Option.to_list (Option.map ~f:fst base)
                    @ List.map ~f:snd fields))
                 (fun l effects ->
@@ -404,7 +408,7 @@ struct
           | Match { scrutinee; arms } ->
               let arms, eff_arms =
                 let arms =
-                  List.map ~f:(super#visit_arm env) arms
+                  List.map ~f:(self#visit_arm env) arms
                   (* materialize letbindings in each arms *)
                   |> List.map ~f:(fun ({ arm; span }, ({ lbs; effects } : t)) ->
                          let arm =
@@ -424,45 +428,45 @@ struct
                 ( List.map ~f:fst arms,
                   List.fold ~init:m#zero ~f:m#plus (List.map ~f:snd arms) )
               in
-              HoistSeq.one env (super#visit_expr env scrutinee)
+              HoistSeq.one env (self#visit_expr env scrutinee)
                 (fun scrutinee effects ->
                   ( { e with e = Match { scrutinee; arms } },
                     m#plus eff_arms effects ))
           | Let { monadic = Some _; _ } -> .
           | Let { monadic = None; lhs; rhs; body } ->
               let rhs, { lbs = rhs_lbs; effects = rhs_effects } =
-                super#visit_expr env rhs
+                self#visit_expr env rhs
               in
               let body, { lbs = body_lbs; effects = body_effects } =
-                super#visit_expr env body
+                self#visit_expr env body
               in
               let lbs = rhs_lbs @ ((lhs, rhs) :: body_lbs) in
               let effects = SideEffects.plus rhs_effects body_effects in
               (body, { lbs; effects })
           | GlobalVar _ -> (e, m#zero)
           | Ascription { e = e'; typ } ->
-              HoistSeq.one env (super#visit_expr env e') (fun e' eff ->
+              HoistSeq.one env (self#visit_expr env e') (fun e' eff ->
                   ({ e with e = Ascription { e = e'; typ } }, eff))
           | MacroInvokation _ -> (e, m#zero)
           | Assign { lhs; e = e'; witness } ->
               (* TODO: here, LHS should really have no effect... This is not fine *)
-              let lhs, lhs_effects = super#visit_lhs env lhs in
-              HoistSeq.one env (super#visit_expr env e') (fun e' effects ->
+              let lhs, lhs_effects = self#visit_lhs env lhs in
+              HoistSeq.one env (self#visit_expr env e') (fun e' effects ->
                   let effects = m#plus effects lhs_effects in
                   ({ e with e = Assign { e = e'; lhs; witness } }, effects))
           | Borrow { kind; e = e'; witness } ->
-              let kind, kind_effects = super#visit_borrow_kind env kind in
-              HoistSeq.one env (super#visit_expr env e') (fun e' effects ->
+              let kind, kind_effects = self#visit_borrow_kind env kind in
+              HoistSeq.one env (self#visit_expr env e') (fun e' effects ->
                   let effects = m#plus kind_effects effects in
                   ({ e with e = Borrow { kind; e = e'; witness } }, effects))
           | AddressOf { mut; e = e'; witness } ->
               let mut, mut_effects = (mut, m#zero) in
-              HoistSeq.one env (super#visit_expr env e') (fun e' effects ->
+              HoistSeq.one env (self#visit_expr env e') (fun e' effects ->
                   let effects = m#plus mut_effects effects in
                   ({ e with e = AddressOf { mut; e = e'; witness } }, effects))
           | Closure { params; body; captures } ->
               let body, body_effects =
-                let body, { lbs; effects } = super#visit_expr env body in
+                let body, { lbs; effects } = self#visit_expr env body in
                 let vars =
                   Set.union_list (module Local_ident)
                   @@ List.map ~f:U.Reducers.variables_of_pat params

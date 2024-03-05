@@ -6,5 +6,6 @@ edition = "2021"
 [dependencies]
 
 [package.metadata.hax-tests]
-into.fstar = {snapshot = "none"}
+into.fstar = {}
 into.coq = {broken = true, snapshot = "none", issue_id = 134}
+into.ssprove = {}
