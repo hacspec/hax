@@ -80,13 +80,21 @@ module Make (F : Features.T) =
                           |> Set.to_list)
                           "out"
                       in
-                      let out =
-                        {
-                          pat = U.make_var_pat out_ident body.typ body.span;
-                          typ = body.typ;
-                          typ_span = None;
-                          attrs = [];
-                        }
+                      let pat = U.make_var_pat out_ident body.typ body.span in
+                      let typ = body.typ in
+                      let out = { pat; typ; typ_span = None; attrs = [] } in
+                      let post =
+                        let f =
+                          Attrs.associated_expr ~keep_last_args:1 Ensures
+                            item.ii_attrs
+                          |> Option.value ~default
+                        in
+                        let span = f.span in
+                        let args = [ { span; typ; e = LocalVar out_ident } ] in
+                        let e =
+                          App { f; args; generic_args = []; impl = None }
+                        in
+                        { f with e } |> U.beta_reduce1_closure
                       in
                       [
                         {
@@ -105,9 +113,7 @@ module Make (F : Features.T) =
                           ii_v =
                             IIFn
                               {
-                                body =
-                                  Attrs.associated_expr Ensures item.ii_attrs
-                                  |> Option.value ~default;
+                                body = post |> U.beta_reduce1_closure;
                                 params = params @ [ out ];
                               };
                         };
