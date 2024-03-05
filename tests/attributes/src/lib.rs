@@ -39,3 +39,47 @@ impl Foo {
     #[hax::exclude]
     fn h(&self) {}
 }
+
+mod refined_indexes {
+    use hax_lib_macros as hax;
+    const MAX: usize = 10;
+    struct MyArray(pub [u8; MAX]);
+
+    #[hax::attributes]
+    impl std::ops::Index<usize> for MyArray {
+        type Output = u8;
+        #[requires(index < MAX)]
+        fn index(&self, index: usize) -> &Self::Output {
+            &self[index]
+        }
+    }
+}
+mod newtype_pattern {
+    use hax_lib_macros as hax;
+
+    const MAX: usize = 10;
+    #[hax::attributes]
+    struct SafeIndex {
+        #[refine(i < MAX)]
+        i: usize,
+    }
+    impl SafeIndex {
+        fn new(i: usize) -> Option<Self> {
+            if i < MAX {
+                Some(Self { i })
+            } else {
+                None
+            }
+        }
+        fn as_usize(&self) -> usize {
+            self.i
+        }
+    }
+
+    impl<T> std::ops::Index<SafeIndex> for [T; MAX] {
+        type Output = T;
+        fn index(&self, index: SafeIndex) -> &Self::Output {
+            &self[index.i]
+        }
+    }
+}
