@@ -673,6 +673,19 @@ module Make (F : Features.T) = struct
         e
     | _ -> e
 
+  let beta_reduce1_closure_opt (e : expr) : expr option =
+    let* f, args, _, _ = Expect.app e in
+    let* pats, body = Expect.closure f in
+    match (pats, args) with
+    | [ pat ], [ arg ] ->
+        let* var, _ = Expect.pbinding_simple pat in
+        Some ((Mappers.replace_local_variable var arg)#visit_expr () body)
+    | _ -> None
+
+  (** reduce a `(|x| body)(e)` into `body[x/e]` *)
+  let beta_reduce1_closure (e : expr) : expr =
+    beta_reduce1_closure_opt e |> Option.value ~default:e
+
   (* let rec remove_empty_tap *)
 
   let is_unit_typ : ty -> bool =
