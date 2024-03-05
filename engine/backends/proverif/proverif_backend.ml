@@ -169,6 +169,7 @@ module Make (Options : OPTS) : MAKE = struct
       object (print)
         inherit GenericPrint.print as super
 
+        (* Backend-specific utilities *)
         method field_accessor field_name =
           string "accessor" ^^ underscore ^^ print#concrete_ident field_name
 
@@ -187,16 +188,35 @@ module Make (Options : OPTS) : MAKE = struct
               string "let" ^^ space ^^ pat ^^ string " = " ^^ scrutinee
               ^^ string " in " ^^ body
 
-        method ty_bool = string "bool"
-        method ty_int _ = string "nat"
         val mutable wildcard_index = 0
-        method typed_wildcard = print#wildcard ^^ string ": bitstring"
 
         method wildcard =
           wildcard_index <- wildcard_index + 1;
           string "wildcard" ^^ OCaml.int wildcard_index
 
-        method pat' : Generic_printer_base.par_state -> pat' fn =
+        method typed_wildcard = print#wildcard ^^ string ": bitstring"
+
+        method tuple_elem_pat' : Generic_printer_base.par_state -> pat' fn =
+          fun ctx ->
+            let wrap_parens =
+              group
+              >>
+              match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock parens
+            in
+            function
+            | PBinding { mut; mode; var; typ; subpat } ->
+                let p = print#local_ident var in
+                p ^^ colon ^^ space ^^ print#ty ctx typ
+            | p -> print#pat' ctx p
+
+        method tuple_elem_pat : Generic_printer_base.par_state -> pat fn =
+          fun ctx { p; span; _ } ->
+            print#with_span ~span (fun _ -> print#tuple_elem_pat' ctx p)
+
+        method tuple_elem_pat_at = print#par_state >> print#tuple_elem_pat
+
+        (* Overridden methods *)
+        method! pat' : Generic_printer_base.par_state -> pat' fn =
           fun ctx ->
             let wrap_parens =
               group
@@ -240,26 +260,10 @@ module Make (Options : OPTS) : MAKE = struct
                   (* NOTE: Wildcard translation without collisions? *)
               | _ -> super#pat' ctx pat
 
-        method tuple_elem_pat' : Generic_printer_base.par_state -> pat' fn =
-          fun ctx ->
-            let wrap_parens =
-              group
-              >>
-              match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock parens
-            in
-            function
-            | PBinding { mut; mode; var; typ; subpat } ->
-                let p = print#local_ident var in
-                p ^^ colon ^^ space ^^ print#ty ctx typ
-            | p -> print#pat' ctx p
+        method! ty_bool = string "bool"
+        method! ty_int _ = string "nat"
 
-        method tuple_elem_pat : Generic_printer_base.par_state -> pat fn =
-          fun ctx { p; span; _ } ->
-            print#with_span ~span (fun _ -> print#tuple_elem_pat' ctx p)
-
-        method tuple_elem_pat_at = print#par_state >> print#tuple_elem_pat
-
-        method pat_at : Generic_printer_base.ast_position -> pat fn =
+        method! pat_at : Generic_printer_base.ast_position -> pat fn =
           fun pos pat ->
             match pat with
             | { p = PWild } -> (
@@ -380,7 +384,7 @@ module Make (Options : OPTS) : MAKE = struct
                 |> wrap_parens
             | _ -> super#expr' ctx e
 
-        method concrete_ident = print#concrete_ident' ~under_current_ns:false
+        method! concrete_ident = print#concrete_ident' ~under_current_ns:false
 
         method! item_unwrapped item =
           let assume_item =
@@ -527,7 +531,7 @@ module Make (Options : OPTS) : MAKE = struct
             ^^ space ^^ string "in" ^^ hardline
             ^^ (print#expr_at Expr_Let_body body |> group)
 
-        method concrete_ident' ~(under_current_ns : bool) : concrete_ident fn =
+        method! concrete_ident' ~(under_current_ns : bool) : concrete_ident fn =
           fun id ->
             if under_current_ns then print#name_of_concrete_ident id
             else
@@ -555,19 +559,19 @@ module Make (Options : OPTS) : MAKE = struct
               print#concrete_ident constructor
               ^^ iblock parens (separate_map (comma ^^ break 1) snd args)
 
-        method generic_values : generic_value list fn =
+        method! generic_values : generic_value list fn =
           function
           | [] -> empty
           | values ->
               string "_of" ^^ underscore
               ^^ separate_map underscore print#generic_value values
 
-        method ty_app f args =
+        method! ty_app f args =
           print#concrete_ident f ^^ print#generic_values args
 
-        method ty_tuple _ _ = string "bitstring"
+        method! ty_tuple _ _ = string "bitstring"
 
-        method local_ident e =
+        method! local_ident e =
           match String.chop_prefix ~prefix:"impl " e.name with
           | Some name ->
               let name =
@@ -607,7 +611,7 @@ module Make (Options : OPTS) : MAKE = struct
                   | _ -> super#expr ctx e (*This cannot happen*))
               | _ -> super#expr ctx e)
 
-        method ty : Generic_printer_base.par_state -> ty fn =
+        method! ty : Generic_printer_base.par_state -> ty fn =
           fun ctx ty ->
             match ty with
             | TBool -> print#ty_bool
