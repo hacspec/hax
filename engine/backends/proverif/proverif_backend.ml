@@ -717,6 +717,10 @@ module Make (Options : OPTS) : MAKE = struct
 
         method! expr ctx e =
           match e.e with
+          | App { f = { e = GlobalVar name; _ }; args }
+            when Global_ident.eq_name Core__convert__Into__into name ->
+              print#ty ctx e.typ ^^ string "_from_bitstring"
+              ^^ iblock parens (print#expr ctx (List.hd_exn args))
           | _ -> (
               match e.typ with
               | TApp { ident }
