@@ -88,7 +88,8 @@ fn i(bar: &mut Bar) -> u8 {
 }
 
 fn j(x: &mut Bar) -> u8 {
-    i(x)
+    let out = 123;
+    i(x) + out
 }
 
 fn k(

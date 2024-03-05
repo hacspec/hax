@@ -57,6 +57,7 @@ struct
         let continue = reject
         let loop = reject
         let for_loop = reject
+        let while_loop = reject
         let for_index_loop = reject
         let state_passing_loop = reject
         let continue = reject

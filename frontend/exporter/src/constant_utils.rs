@@ -53,6 +53,10 @@ pub struct ConstantFieldExpr {
     pub value: ConstantExpr,
 }
 
+/// Rustc has different representation for constants: one for MIR
+/// ([`rustc_middle::mir::ConstantKind`]), one for the type system
+/// ([`rustc_middle::ty::ConstKind`]). For simplicity hax maps those
+/// two construct to one same `ConstantExpr` type.
 pub type ConstantExpr = Decorated<ConstantExprKind>;
 
 impl From<ConstantFieldExpr> for FieldExpr {
@@ -189,18 +193,29 @@ pub(crate) fn scalar_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
                     provenance
                 )
             };
-            ConstantExprKind::Borrow((ConstantExprKind::GlobalName { id: did.sinto(s) }).decorate(ty.sinto(s), cspan.clone()))
+            ConstantExprKind::Borrow(
+                (ConstantExprKind::GlobalName { id: did.sinto(s) })
+                    .decorate(ty.sinto(s), cspan.clone()),
+            )
         }
         // A [Scalar] might also be any zero-sized [Adt] or [Tuple] (i.e., unit)
         ty::Tuple(ty) if ty.is_empty() => ConstantExprKind::Tuple { fields: vec![] },
         // It seems we can have ADTs when there is only one variant, and this variant doesn't have any fields.
-        ty::Adt(def, _) if let [variant_def] = &def.variants().raw && variant_def.fields.is_empty() => {
-            ConstantExprKind::Adt{
+        ty::Adt(def, _)
+            if let [variant_def] = &def.variants().raw
+                && variant_def.fields.is_empty() =>
+        {
+            ConstantExprKind::Adt {
                 info: get_variant_information(def, rustc_abi::FIRST_VARIANT, s),
                 fields: vec![],
             }
-        },
-        _ => fatal!(s[span], "Unexpected type {:#?} for scalar {:#?}", ty, scalar),
+        }
+        _ => fatal!(
+            s[span],
+            "Unexpected type {:#?} for scalar {:#?}",
+            ty,
+            scalar
+        ),
     };
     kind.decorate(ty.sinto(s), cspan)
 }

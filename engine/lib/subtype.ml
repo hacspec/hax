@@ -48,27 +48,30 @@ struct
     | TRawPointer { witness } ->
         TRawPointer { witness = S.raw_pointer span witness }
 
-  and dtrait_ref (span : span) (r : A.trait_ref) : B.trait_ref =
+  and dtrait_goal (span : span) (r : A.trait_goal) : B.trait_goal =
     { trait = r.trait; args = List.map ~f:(dgeneric_value span) r.args }
+
+  and dimpl_ident (span : span) (r : A.impl_ident) : B.impl_ident =
+    { goal = dtrait_goal span r.goal; name = r.name }
 
   and dimpl_expr (span : span) (i : A.impl_expr) : B.impl_expr =
     match i with
     | Self -> Self
-    | Concrete tr -> Concrete (dtrait_ref span tr)
+    | Concrete tr -> Concrete (dtrait_goal span tr)
     | LocalBound { id } -> LocalBound { id }
-    | Parent { impl; trait } ->
-        Parent { impl = dimpl_expr span impl; trait = dtrait_ref span trait }
-    | Projection { impl; item; trait } ->
+    | Parent { impl; ident } ->
+        Parent { impl = dimpl_expr span impl; ident = dimpl_ident span ident }
+    | Projection { impl; item; ident } ->
         Projection
-          { impl = dimpl_expr span impl; item; trait = dtrait_ref span trait }
+          { impl = dimpl_expr span impl; item; ident = dimpl_ident span ident }
     | ImplApp { impl; args } ->
         ImplApp
           {
             impl = dimpl_expr span impl;
             args = List.map ~f:(dimpl_expr span) args;
           }
-    | Dyn tr -> Dyn (dtrait_ref span tr)
-    | Builtin tr -> Builtin (dtrait_ref span tr)
+    | Dyn tr -> Dyn (dtrait_goal span tr)
+    | Builtin tr -> Builtin (dtrait_goal span tr)
     | ClosureIE todo -> ClosureIE todo
     | FnPointer ty -> FnPointer (dty span ty)
 
@@ -261,6 +264,9 @@ struct
   and dloop_kind (span : span) (k : A.loop_kind) : B.loop_kind =
     match k with
     | UnconditionalLoop -> UnconditionalLoop
+    | WhileLoop { condition; witness } ->
+        WhileLoop
+          { condition = dexpr condition; witness = S.while_loop span witness }
     | ForLoop { it; pat; witness } ->
         ForLoop
           { it = dexpr it; pat = dpat pat; witness = S.for_loop span witness }
@@ -326,7 +332,7 @@ struct
         (generic_constraint : A.generic_constraint) : B.generic_constraint =
       match generic_constraint with
       | GCLifetime (lf, witness) -> B.GCLifetime (lf, S.lifetime span witness)
-      | GCType { bound; id } -> B.GCType { bound = dtrait_ref span bound; id }
+      | GCType impl_ident -> B.GCType (dimpl_ident span impl_ident)
 
     let dgenerics (span : span) (g : A.generics) : B.generics =
       {
@@ -352,7 +358,7 @@ struct
 
     let rec dtrait_item' (span : span) (ti : A.trait_item') : B.trait_item' =
       match ti with
-      | TIType g -> TIType (List.map ~f:(dtrait_ref span) g)
+      | TIType idents -> TIType (List.map ~f:(dimpl_ident span) idents)
       | TIFn t -> TIFn (dty span t)
 
     and dtrait_item (ti : A.trait_item) : B.trait_item =

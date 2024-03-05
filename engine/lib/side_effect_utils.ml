@@ -289,6 +289,8 @@ struct
                 match kind with
                 | UnconditionalLoop -> []
                 | ForLoop { it; _ } -> [ self#visit_expr env it ]
+                | WhileLoop { condition; _ } ->
+                    [ self#visit_expr env condition ]
                 | _ -> .
               in
               let state' =
@@ -302,6 +304,8 @@ struct
               HoistSeq.many env kind_state (fun l effects ->
                   let kind =
                     match (l, kind) with
+                    | condition :: ([ _ ] | []), WhileLoop { witness; _ } ->
+                        WhileLoop { condition; witness }
                     | it :: ([ _ ] | []), ForLoop { pat; witness; _ } ->
                         ForLoop { pat; witness; it }
                     | ([ _ ] | []), UnconditionalLoop -> UnconditionalLoop

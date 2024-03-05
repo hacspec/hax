@@ -89,7 +89,8 @@ let run (options : Types.engine_options) : Types.output =
         | ProVerif opts -> run (module Proverif_backend) opts
         | Fstar opts -> run (module Fstar_backend) opts
         | Coq -> run (module Coq_backend) ()
-        | Easycrypt -> run (module Easycrypt_backend) ())
+        | Ssprove -> run (module Ssprove_backend) ()
+        | Easycrypt -> run (module Easycrypt_backend) ()
   in
   {
     diagnostics = List.map ~f:Diagnostics.to_thir_diagnostic diagnostics;
