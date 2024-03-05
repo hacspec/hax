@@ -630,6 +630,11 @@ module Make (Options : OPTS) : MAKE = struct
                 ^^ print#concrete_ident name ^^ string "_default() = "
                 ^^ print#concrete_ident name ^^ string "_default_c" ^^ dot
               in
+              let err_line =
+                string "letfun " ^^ print#concrete_ident name
+                ^^ string "_err() = let x = construct_fail() in "
+                ^^ print#concrete_ident name ^^ string "_default()" ^^ dot
+              in
               if is_struct then
                 let struct_constructor = List.hd variants in
                 match struct_constructor with
@@ -637,13 +642,13 @@ module Make (Options : OPTS) : MAKE = struct
                 | Some constructor ->
                     type_line ^^ hardline ^^ to_bitstring_converter_line
                     ^^ hardline ^^ from_bitstring_converter_line ^^ hardline
-                    ^^ default_line ^^ hardline
+                    ^^ default_line ^^ hardline ^^ err_line ^^ hardline
                     ^^ fun_and_reduc name constructor
               else
                 type_line ^^ hardline ^^ to_bitstring_converter_line ^^ hardline
                 ^^ from_bitstring_converter_line ^^ hardline ^^ default_line
                 ^^ hardline
-                ^^ separate_map (hardline ^^ hardline)
+                ^^ separate_map hardline
                      (fun variant -> fun_and_reduc name variant)
                      variants
           | _ -> empty
