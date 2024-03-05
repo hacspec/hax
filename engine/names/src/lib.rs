@@ -28,6 +28,7 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     let _: Result<(), u32> = Result::Err(3u8).map_err(u32::from);
 
     let _ = [()].into_iter();
+    let _: u16 = 6u8.into();
     let _ = 1..2;
     let _ = 1..;
     let _ = ..;
