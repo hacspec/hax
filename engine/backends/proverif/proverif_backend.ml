@@ -314,6 +314,7 @@ module Make (Options : OPTS) : MAKE = struct
         method ty_bool = string "bool"
         method ty_int _ = string "nat"
         val mutable wildcard_index = 0
+        method typed_wildcard = print#wildcard ^^ string ": bitstring"
 
         method wildcard =
           wildcard_index <- wildcard_index + 1;
@@ -336,7 +337,7 @@ module Make (Options : OPTS) : MAKE = struct
                   | Some (_, translation) -> translation args
                   | None -> super#pat' ctx pat)
               | PWild ->
-                  print#wildcard
+                  print#typed_wildcard
                   (* NOTE: Wildcard translation without collisions? *)
               | _ -> super#pat' ctx pat
 
@@ -358,6 +359,15 @@ module Make (Options : OPTS) : MAKE = struct
             print#with_span ~span (fun _ -> print#tuple_elem_pat' ctx p)
 
         method tuple_elem_pat_at = print#par_state >> print#tuple_elem_pat
+
+        method pat_at : Generic_printer_base.ast_position -> pat fn =
+          fun pos pat ->
+            match pat with
+            | { p = PWild } -> (
+                match pos with
+                | Param_pat -> print#wildcard
+                | _ -> print#pat (print#par_state pos) pat)
+            | _ -> print#pat (print#par_state pos) pat
 
         method! pat_construct_tuple : pat list fn =
           List.map ~f:(print#tuple_elem_pat_at Pat_ConstructTuple)
