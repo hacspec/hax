@@ -11,6 +11,7 @@ include
       include On.Question_mark
       include On.Early_exit
       include On.Slice
+      include On.Construct_base
     end)
     (struct
       let backend = Diagnostics.Backend.ProVerif
@@ -34,6 +35,7 @@ module SubtypeToInputLanguage
              and type slice = Features.On.slice
              and type question_mark = Features.On.question_mark
              and type macro = Features.On.macro
+             and type construct_base = Features.On.construct_base
     (* and type as_pattern = Features.Off.as_pattern *)
     (* and type nontrivial_lhs = Features.Off.nontrivial_lhs *)
     (* and type arbitrary_lhs = Features.Off.arbitrary_lhs *)
@@ -68,7 +70,6 @@ struct
         let nontrivial_lhs = reject
         let arbitrary_lhs = reject
         let lifetime = reject
-        let construct_base = reject
         let monadic_action = reject
         let monadic_binding = reject
         let block = reject
