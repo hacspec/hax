@@ -721,6 +721,9 @@ module Make (Options : OPTS) : MAKE = struct
             when Global_ident.eq_name Core__convert__Into__into name ->
               print#ty ctx e.typ ^^ string "_from_bitstring"
               ^^ iblock parens (print#expr ctx (List.hd_exn args))
+          | App { f = { e = GlobalVar name; _ }; args }
+            when Global_ident.eq_name Rust_primitives__hax__never_to_any name ->
+              print#ty ctx e.typ ^^ string "_err()"
           | _ -> (
               match e.typ with
               | TApp { ident }
