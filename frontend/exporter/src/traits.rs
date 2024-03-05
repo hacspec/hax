@@ -9,10 +9,12 @@ pub enum ImplExprPathChunk {
     AssocItem {
         item: AssocItem,
         predicate: TraitPredicate,
+        clause_id: u64,
         index: usize,
     },
     Parent {
         predicate: TraitPredicate,
+        clause_id: u64,
         index: usize,
     },
 }
@@ -50,7 +52,7 @@ pub enum ImplExprAtom {
     Closure {
         closure_def_id: DefId,
         parent_substs: Vec<GenericArg>,
-        sig: Box<MirPolyFnSig>,
+        signature: Box<PolyFnSig>,
     },
     /// If failed to solve a trait ref
     Error(String),
@@ -90,10 +92,12 @@ mod search_clause {
         AssocItem {
             item: AssocItem,
             predicate: TraitPredicate<'tcx>,
+            clause_id: u64,
             index: usize,
         },
         Parent {
             predicate: TraitPredicate<'tcx>,
+            clause_id: u64,
             index: usize,
         },
     }
@@ -218,6 +222,10 @@ mod search_clause {
                         cons(
                             PathChunk::Parent {
                                 predicate: p,
+                                clause_id: {
+                                    use rustc_middle::ty::ToPredicate;
+                                    crate::clause_id_of_predicate(s, p.to_predicate(s.base().tcx))
+                                },
                                 index,
                             },
                             path,
@@ -234,6 +242,13 @@ mod search_clause {
                                     cons(
                                         PathChunk::AssocItem {
                                             item,
+                                            clause_id: {
+                                                use rustc_middle::ty::ToPredicate;
+                                                crate::clause_id_of_predicate(
+                                                    s,
+                                                    p.to_predicate(s.base().tcx),
+                                                )
+                                            },
                                             predicate: p,
                                             index,
                                         },
@@ -283,6 +298,25 @@ pub trait IntoImplExpr<'tcx> {
     ) -> ImplExpr;
 }
 
+impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::TraitRef<'tcx> {
+    fn impl_expr<S: UnderOwnerState<'tcx>>(
+        &self,
+        s: &S,
+        param_env: rustc_middle::ty::ParamEnv<'tcx>,
+    ) -> ImplExpr {
+        rustc_middle::ty::Binder::dummy(self.clone()).impl_expr(s, param_env)
+    }
+}
+impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitPredicate<'tcx> {
+    fn impl_expr<S: UnderOwnerState<'tcx>>(
+        &self,
+        s: &S,
+        param_env: rustc_middle::ty::ParamEnv<'tcx>,
+    ) -> ImplExpr {
+        use rustc_middle::ty::ToPolyTraitRef;
+        self.to_poly_trait_ref().impl_expr(s, param_env)
+    }
+}
 impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
     fn impl_expr<S: UnderOwnerState<'tcx>>(
         &self,
@@ -290,12 +324,9 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
         param_env: rustc_middle::ty::ParamEnv<'tcx>,
     ) -> ImplExpr {
         use rustc_trait_selection::traits::*;
-        assert!(self.bound_vars().is_empty());
         let trait_ref: Binder<TraitRef> = self.sinto(s);
         let trait_ref = trait_ref.value;
-
-        let impl_source = select_trait_candidate(s, param_env, *self);
-        match impl_source {
+        match select_trait_candidate(s, param_env, *self) {
             ImplSource::UserDefined(ImplSourceUserDefinedData {
                 impl_def_id,
                 substs,
@@ -337,7 +368,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                         .with_args(impl_exprs(s, &nested), trait_ref)
                 } else {
                     ImplExprAtom::LocalBound {
-                        clause_id: clause_id_of_predicate(apred.predicate),
+                        clause_id: clause_id_of_predicate(s, apred.predicate),
                         r#trait,
                         path,
                     }
@@ -360,11 +391,11 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
             }) => {
                 let substs = substs.as_closure();
                 let parent_substs = substs.parent_substs().sinto(s);
-                let sig = Box::new(substs.sig().sinto(s));
+                let signature = Box::new(substs.sig().sinto(s));
                 ImplExprAtom::Closure {
                     closure_def_id: closure_def_id.sinto(s),
                     parent_substs,
-                    sig,
+                    signature,
                 }
                 .with_args(impl_exprs(s, &nested), trait_ref)
             }
@@ -385,13 +416,59 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
     }
 }
 
-pub fn clause_id_of_predicate(predicate: rustc_middle::ty::Predicate) -> u64 {
+/// Given a predicate `pred` in the context of some impl. block
+/// `impl_did`, susbts correctly `Self` from `pred` and (1) derive a
+/// `Clause` and (2) resolve an `ImplExpr`.
+pub fn super_predicate_to_clauses_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
+    s: &S,
+    impl_did: rustc_span::def_id::DefId,
+    (pred, span): &(rustc_middle::ty::Predicate<'tcx>, rustc_span::Span),
+) -> Option<(Clause, ImplExpr, Span)> {
+    let tcx = s.base().tcx;
+    let impl_trait_ref = tcx
+        .impl_trait_ref(impl_did)
+        .map(|binder| rustc_middle::ty::Binder::dummy(binder.subst_identity()))?;
+    let pred = pred.subst_supertrait(tcx, &impl_trait_ref);
+    // TODO: use `let clause = pred.as_clause()?;` when upgrading rustc
+    let rustc_middle::ty::PredicateKind::Clause(clause) = pred.kind().skip_binder() else {
+        None?
+    };
+    let impl_expr = pred
+        .to_opt_poly_trait_pred()?
+        .impl_expr(s, get_param_env(s));
+    Some((clause.sinto(s), impl_expr, span.sinto(s)))
+}
+
+/// Crafts a unique identifier for a predicate by hashing it. The hash
+/// is non-trivial because we need stable identifiers: two hax
+/// extraction of a same predicate should result in the same
+/// identifier. Rustc's stable hash is not doing what we want here: it
+/// is sensible to the environment. Instead, we convert the (rustc)
+/// predicate to `crate::Predicate` and hash from there, taking care
+/// of not translating directly the `Clause` case, which otherwise
+/// would call `clause_id_of_predicate` as well.
+#[tracing::instrument(level = "trace", skip(s))]
+pub fn clause_id_of_predicate<'tcx, S: UnderOwnerState<'tcx>>(
+    s: &S,
+    predicate: rustc_middle::ty::Predicate<'tcx>,
+) -> u64 {
+    use crate::deterministic_hash::DeterministicHasher;
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
-    // TODO: use stable hash here?
-    let mut s = DefaultHasher::new();
-    predicate.hash(&mut s);
-    s.finish()
+    let mut hasher = DeterministicHasher::new(DefaultHasher::new());
+
+    let binder = predicate.kind();
+    if let rustc_middle::ty::PredicateKind::Clause(ck) = binder.skip_binder() {
+        let bvs: Vec<BoundVariableKind> = binder.bound_vars().sinto(s);
+        let ck: ClauseKind = ck.sinto(s);
+        hasher.write_u8(0);
+        bvs.hash(&mut hasher);
+        ck.hash(&mut hasher);
+    } else {
+        hasher.write_u8(1);
+        predicate.sinto(s).hash(&mut hasher);
+    }
+    hasher.finish()
 }
 
 #[tracing::instrument(level = "trace", skip(s))]
@@ -433,11 +510,7 @@ pub mod copy_paste_from_rustc {
         tcx: TyCtxt<'tcx>,
         (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
     ) -> Result<rustc_trait_selection::traits::Selection<'tcx>, CodegenObligationError> {
-        // We expect the input to be fully normalized.
-        debug_assert_eq!(
-            trait_ref,
-            tcx.normalize_erasing_regions(param_env, trait_ref)
-        );
+        let trait_ref = tcx.normalize_erasing_regions(param_env, trait_ref);
 
         // Do the initial selection for the obligation. This yields the
         // shallow result we are looking for -- that is, what specific impl.
