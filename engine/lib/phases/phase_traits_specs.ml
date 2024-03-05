@@ -87,7 +87,18 @@ module Make (F : Features.T) =
                         let f =
                           Attrs.associated_expr ~keep_last_args:1 Ensures
                             item.ii_attrs
-                          |> Option.value ~default
+                          |> Option.value
+                               ~default:
+                                 {
+                                   default with
+                                   e =
+                                     Closure
+                                       {
+                                         params = [ pat ];
+                                         body = default;
+                                         captures = [];
+                                       };
+                                 }
                         in
                         let span = f.span in
                         let args = [ { span; typ; e = LocalVar out_ident } ] in

@@ -72,7 +72,7 @@ class t_SuperTrait (v_Self: Type) = {
 let impl_SuperTrait_for_i32: t_SuperTrait i32 =
   {
     f_function_of_super_trait_pre = (fun (self: i32) -> true);
-    f_function_of_super_trait_post = (fun (self: i32) (out: u32) -> true out);
+    f_function_of_super_trait_post = (fun (self: i32) (out: u32) -> true);
     f_function_of_super_trait = fun (self: i32) -> cast (Core.Num.impl__i32__abs self <: i32) <: u32
   }
 
@@ -142,10 +142,10 @@ let impl_Foo_for_tuple_: t_Foo Prims.unit =
     f_N = sz 32;
     f_assoc_f = () <: Prims.unit;
     f_method_f_pre = (fun (self: Prims.unit) -> true);
-    f_method_f_post = (fun (self: Prims.unit) (out: Prims.unit) -> true out);
+    f_method_f_post = (fun (self: Prims.unit) (out: Prims.unit) -> true);
     f_method_f = (fun (self: Prims.unit) -> f_assoc_f ());
     f_assoc_type_pre = (fun (_: i32) -> true);
-    f_assoc_type_post = (fun (_: i32) (out: Prims.unit) -> true out);
+    f_assoc_type_post = (fun (_: i32) (out: Prims.unit) -> true);
     f_assoc_type = fun (_: i32) -> ()
   }
 

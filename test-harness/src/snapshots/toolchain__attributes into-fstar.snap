@@ -49,7 +49,7 @@ let impl_1 (#v_T: Type) (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: Core.Mark
   {
     f_Output = v_T;
     f_index_pre = (fun (self: t_Array v_T (sz 10)) (index: t_SafeIndex) -> true);
-    f_index_post = (fun (self: t_Array v_T (sz 10)) (index: t_SafeIndex) (out: v_T) -> true out);
+    f_index_post = (fun (self: t_Array v_T (sz 10)) (index: t_SafeIndex) (out: v_T) -> true);
     f_index = fun (self: t_Array v_T (sz 10)) (index: t_SafeIndex) -> self.[ index.f_i ]
   }
 '''
@@ -68,7 +68,7 @@ let impl: Core.Ops.Index.t_Index t_MyArray usize =
   {
     f_Output = u8;
     f_index_pre = (fun (self: t_MyArray) (index: usize) -> index <. v_MAX);
-    f_index_post = (fun (self: t_MyArray) (index: usize) (out: u8) -> true out);
+    f_index_post = (fun (self: t_MyArray) (index: usize) (out: u8) -> true);
     f_index = fun (self: t_MyArray) (index: usize) -> self.[ index ]
   }
 '''

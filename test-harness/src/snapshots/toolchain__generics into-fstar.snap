@@ -53,7 +53,7 @@ class t_Foo (v_Self: Type) = {
 let impl_Foo_for_usize: t_Foo usize =
   {
     f_const_add_pre = (fun (v_N: usize) (self: usize) -> true);
-    f_const_add_post = (fun (v_N: usize) (self: usize) (out: usize) -> true out);
+    f_const_add_post = (fun (v_N: usize) (self: usize) (out: usize) -> true);
     f_const_add = fun (v_N: usize) (self: usize) -> self +! v_N
   }
 
