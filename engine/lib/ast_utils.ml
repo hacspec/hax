@@ -248,6 +248,19 @@ module Make (F : Features.T) = struct
           | _ -> super#visit_item' () item'
       end
 
+    (** [replace_local_variable var replacement] returns a visitor
+      that maps any type of the AST replacing every occurence of the
+      expression [LocalVar var] by [replacement]. *)
+    let replace_local_variable (var : local_ident) (replacement : expr) =
+      object
+        inherit [_] Visitors.map as super
+
+        method! visit_expr () e =
+          match e.e with
+          | LocalVar var' when [%eq: local_ident] var var' -> replacement
+          | _ -> super#visit_expr () e
+      end
+
     let rename_local_idents (f : local_ident -> local_ident) =
       object
         inherit [_] Visitors.map as _super
