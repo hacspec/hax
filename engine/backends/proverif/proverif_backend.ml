@@ -823,16 +823,20 @@ module Make (Options : OPTS) : MAKE = struct
     let banner = "Preamble"
 
     let preamble items =
-      "channel c.\n\
-       fun int2bitstring(nat): bitstring.\n\
+      "channel c.\n\n\
        fun construct_fail() : bitstring\n\
        reduc construct_fail() = fail.\n\n\
-       const empty: bitstring.\n\n\
-       type unimplemented.\n\n\
-       const Unimplemented: unimplemented.\n\n\
-      \       letfun bitstring_default() = empty.\n\n\
-      \       letfun nat_default() = 0.\n\n\
-      \       letfun bool_default() = false.\n"
+       type Option.\n\
+       fun Some(bitstring): Option [data].\n\
+       fun None(): Option [data].\n\
+       letfun Option_err() = let x = construct_fail() in None().\n\n\
+       const empty: bitstring.\n\
+       letfun bitstring_default() = empty.\n\
+       letfun bitstring_err() = let x = construct_fail() in \
+       bitstring_default().\n\n\
+       letfun nat_default() = 0.\n\
+       fun nat_to_bitstring(nat): bitstring.\n\n\
+       letfun bool_default() = false.\n"
 
     let contents items = ""
   end)
