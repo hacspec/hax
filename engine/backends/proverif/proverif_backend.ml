@@ -421,20 +421,7 @@ module Make (Options : OPTS) : MAKE = struct
               match ctx with AlreadyPar -> Fn.id | NeedsPar -> iblock parens
             in
             match e with
-            | QuestionMark { e; return_typ; _ } ->
-                let inner_type =
-                  match return_typ with
-                  | TApp { args; _ } ->
-                      let g_type = List.hd_exn args in
-                      print#generic_value g_type
-                in
-                inner_type ^^ string "_from_bitstring"
-                ^^ iblock parens
-                     (string "unwrap_result"
-                     (*^^ iblock parens
-                       inner_type ^^ string "_to_bitstring"*)
-                     ^^ iblock parens (print#expr ctx e))
-            (*  ) *)
+            | QuestionMark { e; return_typ; _ } -> print#expr ctx e
             (* Translate known functions *)
             | App { f = { e = GlobalVar name; _ }; args } -> (
                 match name with
