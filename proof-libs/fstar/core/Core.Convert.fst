@@ -53,5 +53,7 @@ instance from_id a: t_From a a = {
 }
 
 class t_AsRef self t = {
+  f_as_ref_pre: self -> bool;
+  f_as_ref_post: self -> t -> bool;
   f_as_ref:  self -> t;
 }
