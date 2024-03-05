@@ -458,17 +458,19 @@ module Make (Options : OPTS) : MAKE = struct
                                       args)
                           | _ -> super#expr' ctx e)))
             | Construct { constructor; fields; _ }
-              when Global_ident.eq_name Core__result__Result__Ok constructor ->
+              when Global_ident.eq_name Core__option__Option__None constructor
+              ->
+                string "None()"
+            | Construct { constructor; fields; _ }
+              when Global_ident.eq_name Core__option__Option__Some constructor
+              ->
                 let inner_expr = snd (Option.value_exn (List.hd fields)) in
                 let inner_expr_type_doc = print#ty AlreadyPar inner_expr.typ in
                 let inner_expr_doc = super#expr ctx inner_expr in
-                string "Ok"
+                string "Some"
                 ^^ iblock parens
                      (inner_expr_type_doc ^^ string "_to_bitstring"
                      ^^ iblock parens inner_expr_doc)
-            | Construct { constructor; _ }
-              when Global_ident.eq_name Core__result__Result__Err constructor ->
-                string "Err()"
             (* Translate known constructors *)
             | Construct { constructor; fields } -> (
                 match
@@ -713,6 +715,28 @@ module Make (Options : OPTS) : MAKE = struct
               string name
           | _ -> super#local_ident e
 
+        method! expr ctx e =
+          match e.e with
+          | _ -> (
+              match e.typ with
+              | TApp { ident }
+                when Global_ident.eq_name Core__result__Result ident -> (
+                  match e.e with
+                  | Construct { constructor; fields }
+                    when Global_ident.eq_name Core__result__Result__Ok
+                           constructor ->
+                      let inner_expr =
+                        snd (Option.value_exn (List.hd fields))
+                      in
+                      let inner_expr_doc = super#expr ctx inner_expr in
+                      inner_expr_doc
+                  | Construct { constructor; _ }
+                    when Global_ident.eq_name Core__result__Result__Err
+                           constructor ->
+                      print#ty ctx e.typ ^^ string "_err()"
+                  | _ -> super#expr ctx e (*This cannot happen*))
+              | _ -> super#expr ctx e)
+
         method ty : Generic_printer_base.par_state -> ty fn =
           fun ctx ty ->
             match ty with
@@ -727,8 +751,13 @@ module Make (Options : OPTS) : MAKE = struct
               when Global_ident.eq_name Core__option__Option ident ->
                 string "Option"
             | TApp { ident; args }
-              when Global_ident.eq_name Core__result__Result ident ->
-                string "Result"
+              when Global_ident.eq_name Core__result__Result ident -> (
+                (* print first of args*)
+                let result_ok_type = List.hd_exn args in
+                match result_ok_type with
+                | GType typ -> print#ty ctx typ
+                | GConst e -> print#expr ctx e
+                | _ -> empty (* Do not tranlsate lifetimes *))
             | TApp { ident; args } -> super#ty ctx ty
             (*(
                 match translate_known_name ident ~dict:library_types with
