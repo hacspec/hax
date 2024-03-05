@@ -60,6 +60,23 @@ module Make (F : Features.T) = struct
           Some e
       | _ -> None
 
+    let closure (e : expr) : (pat list * expr) option =
+      match e.e with
+      | Closure { params; body; _ } -> Some (params, body)
+      | _ -> None
+
+    let app (e : expr) :
+        (expr * expr list * generic_value list * impl_expr option) option =
+      match e.e with
+      | App { f; args; generic_args; impl } -> Some (f, args, generic_args, impl)
+      | _ -> None
+
+    let pbinding_simple (p : pat) : (local_ident * ty) option =
+      match p.p with
+      | PBinding { mut = Immutable; mode = _; var; typ; subpat = None } ->
+          Some (var, typ)
+      | _ -> None
+
     let concrete_app1 (f : Concrete_ident.name) (e : expr) : expr option =
       match e.e with
       | App
