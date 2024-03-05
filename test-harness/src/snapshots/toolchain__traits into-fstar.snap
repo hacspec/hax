@@ -18,6 +18,7 @@ info:
       stderr: true
       stdout: true
     include_flag: ~
+    backend_options: ~
 ---
 exit = 0
 stderr = '''
@@ -46,8 +47,8 @@ let impl_2__method
 class t_Lang (v_Self: Type) = {
   [@@@ FStar.Tactics.Typeclasses.no_method]_super_8328838127052049456:Core.Marker.t_Sized v_Self;
   f_Var:Type;
-  f_Var_6601305896307871948:Core.Marker.t_Sized _;
-  f_s:v_Self -> i32 -> (v_Self & _)
+  f_Var_6601305896307871948:Core.Marker.t_Sized f_Var;
+  f_s:v_Self -> i32 -> (v_Self & f_Var)
 }
 
 class t_SuperTrait (v_Self: Type) = {
@@ -63,13 +64,13 @@ let impl_SuperTrait_for_i32: t_SuperTrait i32 =
 
 class t_Foo (v_Self: Type) = {
   f_AssocType:Type;
-  f_AssocType_6857934811705287863:t_SuperTrait _;
-  f_AssocType_1499648403794240798:Core.Clone.t_Clone _;
-  f_AssocType_3786252681321530780:Core.Marker.t_Sized _;
+  f_AssocType_6857934811705287863:t_SuperTrait f_AssocType;
+  f_AssocType_1499648403794240798:Core.Clone.t_Clone f_AssocType;
+  f_AssocType_3786252681321530780:Core.Marker.t_Sized f_AssocType;
   f_N:usize;
   f_assoc_f:Prims.unit -> Prims.unit;
   f_method_f:v_Self -> Prims.unit;
-  f_assoc_type:{| i3: Core.Marker.t_Copy _ |} -> _ -> Prims.unit
+  f_assoc_type:{| i3: Core.Marker.t_Copy f_AssocType |} -> f_AssocType -> Prims.unit
 }
 
 let closure_impl_expr
