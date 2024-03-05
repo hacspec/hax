@@ -330,6 +330,29 @@ module Make (Options : OPTS) : MAKE = struct
             fun pat ->
               match pat with
               | PConstant { lit } -> string "=" ^^ print#literal Pat lit
+              | PConstruct { name; args }
+                when Global_ident.eq_name Core__option__Option__None name ->
+                  string "None()"
+              | PConstruct { name; args }
+              (* Some(expr) -> Some(<expr_typ_to_bitstring>(expr))*)
+                when Global_ident.eq_name Core__option__Option__Some name ->
+                  let inner_field = List.hd_exn args in
+                  let inner_field_type_doc =
+                    print#ty AlreadyPar inner_field.pat.typ
+                  in
+                  let inner_field_doc = print#pat ctx inner_field.pat in
+                  let inner_block =
+                    match inner_field.pat.typ with
+                    | TApp { ident = `TupleType _ }
+                    (* Tuple types should be translated without conversion from bitstring *)
+                      ->
+                        iblock parens inner_field_doc
+                    | _ ->
+                        iblock parens
+                          (inner_field_type_doc ^^ string "_to_bitstring"
+                          ^^ iblock parens inner_field_doc)
+                  in
+                  string "Some" ^^ inner_block
               | PConstruct { name; args } -> (
                   match
                     translate_known_name name ~dict:library_constructor_patterns
