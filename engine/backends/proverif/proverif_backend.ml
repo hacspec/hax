@@ -494,18 +494,18 @@ module Make (Options : OPTS) : MAKE = struct
                   (hardline ^^ string "else ")
                   (fun { arm; span } -> print#match_arm scrutinee arm)
                   arms
-            | If { cond; then_; else_ } ->
+            | If { cond; then_; else_ } -> (
                 let if_then =
                   (string "if" ^//^ nest 2 (print#expr_at Expr_If_cond cond))
                   ^/^ string "then"
                   ^//^ (print#expr_at Expr_If_then then_ |> parens |> nest 1)
                 in
-                (match else_ with
+                match else_ with
                 | None -> if_then
                 | Some else_ ->
                     if_then ^^ break 1 ^^ string "else" ^^ space
-                    ^^ (print#expr_at Expr_If_else else_ |> iblock parens))
-                |> wrap_parens
+                    ^^ (print#expr_at Expr_If_else else_ |> iblock parens)
+                    |> wrap_parens)
             | Let { monadic; lhs; rhs; body } ->
                 (Option.map
                    ~f:(fun monad -> print#expr_monadic_let ~monad)
