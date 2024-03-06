@@ -176,6 +176,14 @@ module Make (Options : OPTS) : MAKE = struct
           ^^ dot
         (** Print a ProVerif constant declaration of the given typ (provided as a document).*)
 
+        method pv_constructor ?(is_data = false) ?(is_typeconverter = false) name arg_types typ =
+          let options = if is_data then [string "data";] else [] in
+          let options = if is_typeconverter then (string "typeConverter") :: options else options in
+          let options = space ^^ string "[" ^^ separate (comma ^^ space) options ^^ string "]" in
+          string "fun" ^^ space ^^ name ^^ iblock parens (separate (comma ^^ space) arg_types) ^^ colon ^^ space ^^ typ ^^ options ^^ dot
+        (** Print a ProVerif constructor. *)
+
+
         method field_accessor field_name =
           string "accessor" ^^ underscore ^^ print#concrete_ident field_name
 
