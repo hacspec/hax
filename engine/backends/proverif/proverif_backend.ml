@@ -170,6 +170,12 @@ module Make (Options : OPTS) : MAKE = struct
         inherit GenericPrint.print as super
 
         (* Backend-specific utilities *)
+
+        method pv_const name typ =
+          string "const" ^^ space ^^ print#concrete_ident name ^^ colon ^^ typ
+          ^^ dot
+        (** Print a ProVerif constant declaration of the given typ (provided as a document).*)
+
         method field_accessor field_name =
           string "accessor" ^^ underscore ^^ print#concrete_ident field_name
 
@@ -449,14 +455,15 @@ module Make (Options : OPTS) : MAKE = struct
             ^^ if reduc_lines == empty then empty else dot
           in
           match item.v with
-          (* `fn`s are transformed into `letfun` process macros. *)
-          | Fn { name; body = { typ = TInt _; _ }; params = []; _ } ->
-              string "const" ^^ space ^^ print#concrete_ident name ^^ colon
-              ^^ string "bitstring" ^^ dot
-          | Fn { name; body; params = []; _ } ->
-              string "const" ^^ space ^^ print#concrete_ident name ^^ colon
-              ^^ print#ty_at Item_Fn_body body.typ
-              ^^ dot
+          (* `fn`s with empty parameter lists are really Rust consts. *)
+          | Fn { name; body; params = [] } ->
+              let const_typ =
+                match body.typ with
+                (* ProVerif does not allow `nat` constants. *)
+                | TInt _ -> string "bitstring"
+                | _ -> print#ty_at Item_Fn_body body.typ
+              in
+              print#pv_const name const_typ
           | Fn { name; generics; body; params } ->
               let body =
                 if assume_item then
