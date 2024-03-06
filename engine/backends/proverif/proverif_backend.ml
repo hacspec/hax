@@ -327,6 +327,10 @@ module Make (Options : OPTS) : MAKE = struct
             | QuestionMark { e; return_typ; _ } -> print#expr ctx e
             (* Translate known functions *)
             | App { f = { e = GlobalVar name; _ }; args } -> (
+                let maps_to_identity fn_name = Global_ident.eq_name Core__clone__Clone__clone name
+                                               || Global_ident.eq_name Rust_primitives__unsize name
+                                             || Global_ident.eq_name Core__ops__deref__Deref__deref name
+                                                 in
                 match name with
                 | `Primitive p -> (
                     match p with
@@ -341,9 +345,7 @@ module Make (Options : OPTS) : MAKE = struct
                     | Cast -> print#expr NeedsPar (List.hd_exn args)
                     | _ -> empty)
                 | _ -> (
-                    if
-                      Global_ident.eq_name Core__clone__Clone__clone name
-                      || Global_ident.eq_name Rust_primitives__unsize name
+                    if maps_to_identity name
                     then print#expr ctx (List.hd_exn args)
                     else
                       match
