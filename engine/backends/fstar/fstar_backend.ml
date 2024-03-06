@@ -1337,6 +1337,7 @@ module DepGraphR = Dependencies.Make (Features.Rust)
 module TransformToInputLanguage =
   [%functor_application
   Phases.Reject.RawOrMutPointer(Features.Rust)
+  |> Phases.Drop_sized_trait
   |> Phases.And_mut_defsite
   |> Phases.Reconstruct_for_loops
   |> Phases.Reconstruct_while_loops

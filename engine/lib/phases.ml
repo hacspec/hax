@@ -11,3 +11,4 @@ module Functionalize_loops = Phase_functionalize_loops.Make
 module Reject = Phase_reject
 module Local_mutation = Phase_local_mutation.Make
 module Traits_specs = Phase_traits_specs.Make
+module Drop_sized_trait = Phase_drop_sized_trait.Make
