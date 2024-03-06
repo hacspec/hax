@@ -160,6 +160,7 @@ struct
             self_ty;
             of_trait = of_trait_id, of_trait_generics;
             items;
+            parent_bounds;
           } ->
           B.Impl
             {
@@ -169,6 +170,8 @@ struct
                 ( of_trait_id,
                   List.filter_map ~f:(dgeneric_value span) of_trait_generics );
               items = List.map ~f:dimpl_item items;
+              parent_bounds =
+                List.map ~f:(dimpl_expr span *** dimpl_ident span) parent_bounds;
             }
 
     [%%inline_defs ditems]

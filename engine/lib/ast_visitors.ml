@@ -644,7 +644,12 @@ functor
               let items =
                 self#visit_list self#visit_impl_item env record_payload.items
               in
-              Impl { generics; self_ty; of_trait; items }
+              let parent_bounds =
+                self#visit_list
+                  (self#visit_tuple2 self#visit_impl_expr self#visit_impl_ident)
+                  env record_payload.parent_bounds
+              in
+              Impl { generics; self_ty; of_trait; items; parent_bounds }
           | Alias record_payload ->
               let name = self#visit_concrete_ident env record_payload.name in
               let item = self#visit_concrete_ident env record_payload.item in
@@ -1746,7 +1751,14 @@ functor
                 self#visit_list self#visit_impl_item env record_payload.items
               in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
-              (Impl { generics; self_ty; of_trait; items }, reduce_acc)
+              let parent_bounds, reduce_acc' =
+                self#visit_list
+                  (self#visit_tuple2 self#visit_impl_expr self#visit_impl_ident)
+                  env record_payload.parent_bounds
+              in
+              let reduce_acc = self#plus reduce_acc reduce_acc' in
+              ( Impl { generics; self_ty; of_trait; items; parent_bounds },
+                reduce_acc )
           | Alias record_payload ->
               let name, reduce_acc =
                 self#visit_concrete_ident env record_payload.name
@@ -2822,6 +2834,12 @@ functor
               let reduce_acc = self#plus reduce_acc reduce_acc' in
               let reduce_acc' =
                 self#visit_list self#visit_impl_item env record_payload.items
+              in
+              let reduce_acc = self#plus reduce_acc reduce_acc' in
+              let reduce_acc' =
+                self#visit_list
+                  (self#visit_tuple2 self#visit_impl_expr self#visit_impl_ident)
+                  env record_payload.parent_bounds
               in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
               reduce_acc
