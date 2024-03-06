@@ -10,3 +10,4 @@ module Cf_into_monads = Phase_cf_into_monads.Make
 module Functionalize_loops = Phase_functionalize_loops.Make
 module Reject = Phase_reject
 module Local_mutation = Phase_local_mutation.Make
+module Traits_specs = Phase_traits_specs.Make

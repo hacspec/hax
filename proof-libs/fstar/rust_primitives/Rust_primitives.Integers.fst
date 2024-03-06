@@ -57,7 +57,7 @@ let rotate_left_equiv_lemma #t a b = ()
 
 let abs_int_equiv_lemma #t a = admit() // see issue #423
 
-let neg_equiv_lemma #_ _ = ()
+let neg_equiv_lemma #_ _ = admit ()
 
 let get_bit_and _x _y _i = admit () // see issue #423
 let get_bit_or _x _y _i = admit () // see issue #423

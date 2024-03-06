@@ -578,6 +578,10 @@ struct
       List.map ~f:(of_generic_param ~kind span) generics.params
       @ List.mapi ~f:(of_generic_constraint span) generics.constraints
 
+    let of_typ span (nth : int) typ : t =
+      let ident = F.id ("x" ^ Int.to_string nth) in
+      { kind = Explicit; ident; typ = pty span typ }
+
     let to_pattern (x : t) : F.AST.pattern =
       let subpat =
         match x.kind with
@@ -598,6 +602,9 @@ struct
 
     let to_typ (x : t) : F.AST.term = x.typ
     let to_ident (x : t) : F.Ident.ident = x.ident
+
+    let to_term (x : t) : F.AST.term =
+      F.term @@ F.AST.Var (FStar_Ident.lid_of_ns_and_id [] (to_ident x))
 
     let to_binder (x : t) : F.AST.binder =
       F.AST.
@@ -1074,6 +1081,39 @@ struct
                              [],
                              F.mk_e_app base args ))
                          bounds
+                | TIFn (TArrow (inputs, output))
+                  when Attrs.find_unique_attr i.ti_attrs ~f:(function
+                         | TraitMethodNoPrePost -> Some ()
+                         | _ -> None)
+                       |> Option.is_none ->
+                    let inputs =
+                      List.mapi ~f:(FStarBinder.of_typ e.span) inputs
+                    in
+                    let inputs = generics @ inputs in
+                    let output = pty e.span output in
+                    let ty_pre_post =
+                      let inputs = List.map ~f:FStarBinder.to_term inputs in
+                      let pre =
+                        F.mk_e_app (F.term_of_lid [ name ^ "_pre" ]) inputs
+                      in
+                      let result = F.term_of_lid [ "result" ] in
+                      let post =
+                        F.mk_e_app
+                          (F.term_of_lid [ name ^ "_post" ])
+                          (inputs @ [ result ])
+                      in
+                      let post =
+                        F.mk_e_abs
+                          [ F.pat @@ F.AST.PatVar (F.id "result", None, []) ]
+                          post
+                      in
+                      F.mk_e_app
+                        (F.term_of_lid [ "Prims"; "Pure" ])
+                        [ output; pre; post ]
+                    in
+                    let inputs = List.map ~f:FStarBinder.to_binder inputs in
+                    let ty = F.term @@ F.AST.Product (inputs, ty_pre_post) in
+                    [ (F.id name, None, [], ty) ]
                 | TIFn ty ->
                     let ty = pty e.span ty in
                     let ty =
@@ -1295,6 +1335,7 @@ module TransformToInputLanguage =
   |> Phases.Reject.EarlyExit
   |> Phases.Functionalize_loops
   |> Phases.Reject.As_pattern
+  |> Phases.Traits_specs
   |> SubtypeToInputLanguage
   |> Identity
   ]
