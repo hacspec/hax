@@ -171,6 +171,11 @@ module Make (Options : OPTS) : MAKE = struct
 
         (* Backend-specific utilities *)
 
+        (* ProVerif syntax *)
+        method pv_comment content =
+          string "(*" ^^ space ^^ content ^^ space ^^ string "*)" ^^ hardline
+        (** Print a ProVerif comment and end the line. *)
+
         method pv_const name typ =
           string "const" ^^ space ^^ print#concrete_ident name ^^ colon ^^ typ
           ^^ dot
