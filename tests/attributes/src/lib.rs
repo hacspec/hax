@@ -40,6 +40,30 @@ impl Foo {
     fn h(&self) {}
 }
 
+#[hax::attributes]
+mod refined_arithmetic {
+    use core::ops::{Add, Mul};
+    use hax_lib_macros as hax;
+
+    struct Foo(u8);
+
+    impl Add for Foo {
+        type Output = Foo;
+        #[requires(self.0 < 255 - rhs.0)]
+        fn add(self, rhs: Foo) -> Foo {
+            Foo(self.0 + rhs.0)
+        }
+    }
+
+    impl Mul for Foo {
+        type Output = Foo;
+        #[requires(rhs.0 == 0 || self.0 < 255 / rhs.0)]
+        fn mul(self, rhs: Foo) -> Foo {
+            Foo(self.0 * rhs.0)
+        }
+    }
+}
+
 mod refined_indexes {
     use hax_lib_macros as hax;
     const MAX: usize = 10;
