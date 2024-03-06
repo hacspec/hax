@@ -440,7 +440,6 @@ struct
         in
         let list_ident = F.id "list" in
         let list = F.term_of_lid [ "list" ] in
-        let array = F.mk_e_app array_of_list [ list ] in
         let assert_norm =
           F.term_of_lid [ "FStar"; "Pervasives"; "assert_norm" ]
         in
@@ -450,6 +449,7 @@ struct
         let len =
           F.term @@ F.AST.Const (F.Const.Const_int (Int.to_string len, None))
         in
+        let array = F.mk_e_app array_of_list [ len; list ] in
         let formula = F.mk_e_app equality [ length; len ] in
         let assertion = F.mk_e_app assert_norm [ formula ] in
         let pat = F.AST.PatVar (list_ident, None, []) |> F.pat in

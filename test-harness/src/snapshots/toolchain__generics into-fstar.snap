@@ -90,7 +90,7 @@ let call_g (_: Prims.unit) : usize =
   (g (sz 3)
       (let list = [sz 42; sz 3; sz 49] in
         FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 3);
-        Rust_primitives.Hax.array_of_list list)
+        Rust_primitives.Hax.array_of_list 3 list)
     <:
     usize) +!
   sz 3
