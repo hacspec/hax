@@ -3,8 +3,7 @@ open! Prelude
 module%inlined_contents Make
     (F : Features.T
            with type raw_pointer = Features.Off.raw_pointer
-            and type mutable_reference = Features.Off.mutable_reference
-            and type question_mark = Features.Off.question_mark) =
+            and type mutable_reference = Features.Off.mutable_reference) =
 struct
   open Ast
   module FA = F
@@ -69,7 +68,7 @@ struct
 
     and dexpr' (span : span) (e : A.expr') : B.expr' =
       match (UA.unbox_underef_expr { e; span; typ = UA.never_typ }).e with
-      | [%inline_arms If + Literal + Array + Block] -> auto
+      | [%inline_arms If + Literal + Array + Block + QuestionMark] -> auto
       | Construct { constructor; is_record; is_struct; fields; base } ->
           Construct
             {
