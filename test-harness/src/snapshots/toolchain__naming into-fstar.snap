@@ -17,6 +17,8 @@ info:
     snapshot:
       stderr: false
       stdout: true
+    include_flag: ~
+    backend_options: ~
 ---
 exit = 0
 
@@ -36,7 +38,7 @@ let debug (label value: u32) : Prims.unit =
                   ["["; "] a="; "\n"]
                 in
                 FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 3);
-                Rust_primitives.Hax.array_of_list list)
+                Rust_primitives.Hax.array_of_list 3 list)
             <:
             t_Slice string)
           (Rust_primitives.unsize (let list =
@@ -46,7 +48,7 @@ let debug (label value: u32) : Prims.unit =
                   ]
                 in
                 FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 2);
-                Rust_primitives.Hax.array_of_list list)
+                Rust_primitives.Hax.array_of_list 2 list)
             <:
             t_Slice Core.Fmt.Rt.t_Argument)
         <:
