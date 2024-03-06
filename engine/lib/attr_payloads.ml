@@ -47,6 +47,7 @@ module AssocRole = struct
       | ProcessInit
       | ProtocolMessages
       | PVConstructor
+      | PVHandwritten
     [@@deriving show, yojson, compare, sexp, eq]
   end
 
@@ -68,6 +69,7 @@ module AssocRole = struct
     | ProcessInit -> ProcessInit
     | ProtocolMessages -> ProtocolMessages
     | PVConstructor -> PVConstructor
+    | PVHandwritten -> PVHandwritten
 end
 
 module MakeBase (Error : Phase_utils.ERROR) = struct
