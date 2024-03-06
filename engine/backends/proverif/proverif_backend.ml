@@ -483,26 +483,37 @@ module Make (Options : OPTS) : MAKE = struct
               in
               print#pv_const name const_typ
           | Fn { name; generics; body; params } ->
-              let is_constructor : attrs -> bool =
+              let as_constructor : attrs -> bool =
                 Attr_payloads.payloads
                 >> List.exists ~f:(fst >> [%matches? Types.PVConstructor])
               in
-              if is_constructor item.attrs then
+              let as_handwritten : attrs -> bool =
+                Attr_payloads.payloads
+                >> List.exists ~f:(fst >> [%matches? Types.PVHandwritten])
+              in
+              if as_constructor item.attrs then
                 let arg_types =
                   List.map ~f:(fun p -> print#ty_at Param_typ p.typ) params
                 in
                 let return_typ = print#ty_at Item_Fn_body body.typ in
-                print#pv_constructor ~is_data:true
-                  (print#concrete_ident name)
-                  arg_types return_typ
+                print#pv_comment (string "marked as constructor")
+                ^^ print#pv_constructor ~is_data:true
+                     (print#concrete_ident name)
+                     arg_types return_typ
               else
-                let body =
+                let comment =
                   if assume_item then
-                    print#ty_at Item_Fn_body body.typ
-                    ^^ string "_default()"
-                    ^^ string "(* fill_in_body of type: "
-                    ^^ print#ty_at Item_Fn_body body.typ
-                    ^^ string "*)"
+                    print#pv_comment
+                      (string "REPLACE by body of type: "
+                      ^^ print#ty_at Item_Fn_body body.typ)
+                  else if as_handwritten item.attrs then
+                    print#pv_comment (string "REPLACE by destructor")
+                  else empty
+                in
+
+                let body =
+                  if assume_item || as_handwritten item.attrs then
+                    print#ty_at Item_Fn_body body.typ ^^ string "_default()"
                   else print#expr_at Item_Fn_body body
                 in
                 let params_string =
@@ -512,7 +523,7 @@ module Make (Options : OPTS) : MAKE = struct
                 string "letfun" ^^ space
                 ^^ align
                      (print#concrete_ident name ^^ params_string ^^ space
-                    ^^ equals ^^ hardline ^^ body ^^ dot)
+                    ^^ equals ^^ hardline ^^ body ^^ dot ^^ comment)
           (* `struct` definitions are transformed into simple constructors and `reduc`s for accessing fields. *)
           | Type { name; generics; variants; is_struct } ->
               let type_line =
