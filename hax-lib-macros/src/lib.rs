@@ -510,3 +510,12 @@ pub fn protocol_messages(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::T
     let attr = AttrPayload::ProtocolMessages;
     quote! {#attr #item}.into()
 }
+
+/// A marker indicating a `fn` as a ProVerif process initialization.
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn pv_constructor(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let item: ItemFn = parse_macro_input!(item);
+    let attr = AttrPayload::PVConstructor;
+    quote! {#attr #item}.into()
+}
