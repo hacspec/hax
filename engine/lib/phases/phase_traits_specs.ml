@@ -4,7 +4,7 @@ module Make (F : Features.T) =
   Phase_utils.MakeMonomorphicPhase
     (F)
     (struct
-      let phase_id = Diagnostics.Phase.DummyA
+      let phase_id = Diagnostics.Phase.TraitsSpecs
 
       module A = Ast.Make (F)
       module FB = F
