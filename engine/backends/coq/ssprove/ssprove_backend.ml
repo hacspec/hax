@@ -1834,7 +1834,7 @@ struct
                                       body,
                                     ret_typ ));
                              ]
-                         | IIType {typ; _} ->
+                         | IIType { typ; _ } ->
                              [
                                SSP.AST.LetDef
                                  ( pconcrete_ident x.ii_ident,
