@@ -176,13 +176,22 @@ module Make (Options : OPTS) : MAKE = struct
           ^^ dot
         (** Print a ProVerif constant declaration of the given typ (provided as a document).*)
 
-        method pv_constructor ?(is_data = false) ?(is_typeconverter = false) name arg_types typ =
-          let options = if is_data then [string "data";] else [] in
-          let options = if is_typeconverter then (string "typeConverter") :: options else options in
-          let options = space ^^ string "[" ^^ separate (comma ^^ space) options ^^ string "]" in
-          string "fun" ^^ space ^^ name ^^ iblock parens (separate (comma ^^ space) arg_types) ^^ colon ^^ space ^^ typ ^^ options ^^ dot
+        method pv_constructor ?(is_data = false) ?(is_typeconverter = false)
+            name arg_types typ =
+          let options = if is_data then [ string "data" ] else [] in
+          let options =
+            if is_typeconverter then string "typeConverter" :: options
+            else options
+          in
+          let options =
+            space ^^ string "["
+            ^^ separate (comma ^^ space) options
+            ^^ string "]"
+          in
+          string "fun" ^^ space ^^ name
+          ^^ iblock parens (separate (comma ^^ space) arg_types)
+          ^^ colon ^^ space ^^ typ ^^ options ^^ dot
         (** Print a ProVerif constructor. *)
-
 
         method field_accessor field_name =
           string "accessor" ^^ underscore ^^ print#concrete_ident field_name
@@ -431,19 +440,13 @@ module Make (Options : OPTS) : MAKE = struct
                 fun_args
             in
             let fun_args_types =
-              separate_map
-                (comma ^^ break 1)
-                (snd3 >> print#ty_at Param_typ)
-                fun_args
+              List.map ~f:(snd3 >> print#ty_at Param_typ) fun_args
             in
             let constructor_name = print#concrete_ident constructor.name in
 
             let fun_line =
-              string "fun" ^^ space ^^ constructor_name
-              ^^ iblock parens fun_args_types
-              ^^ string ": "
-              ^^ print#concrete_ident base_name
-              ^^ space ^^ string "[data]" ^^ dot
+              print#pv_constructor ~is_data:true constructor_name fun_args_types
+                (print#concrete_ident base_name)
             in
             let reduc_line =
               string "reduc forall " ^^ iblock Fn.id fun_args_full ^^ semi
@@ -473,39 +476,52 @@ module Make (Options : OPTS) : MAKE = struct
               in
               print#pv_const name const_typ
           | Fn { name; generics; body; params } ->
-              let body =
-                if assume_item then
-                  print#ty_at Item_Fn_body body.typ
-                  ^^ string "_default()"
-                  ^^ string "(* fill_in_body of type: "
-                  ^^ print#ty_at Item_Fn_body body.typ
-                  ^^ string "*)"
-                else print#expr_at Item_Fn_body body
+              let is_constructor : attrs -> bool =
+                Attr_payloads.payloads
+                >> List.exists ~f:(fst >> [%matches? Types.PVConstructor])
               in
-              let params_string =
-                iblock parens
-                  (separate_map (comma ^^ break 1) print#param params)
-              in
-              string "letfun" ^^ space
-              ^^ align
-                   (print#concrete_ident name ^^ params_string ^^ space
-                  ^^ equals ^^ hardline ^^ body ^^ dot)
+              if is_constructor item.attrs then
+                let arg_types =
+                  List.map ~f:(fun p -> print#ty_at Param_typ p.typ) params
+                in
+                let return_typ = print#ty_at Item_Fn_body body.typ in
+                print#pv_constructor ~is_data:true
+                  (print#concrete_ident name)
+                  arg_types return_typ
+              else
+                let body =
+                  if assume_item then
+                    print#ty_at Item_Fn_body body.typ
+                    ^^ string "_default()"
+                    ^^ string "(* fill_in_body of type: "
+                    ^^ print#ty_at Item_Fn_body body.typ
+                    ^^ string "*)"
+                  else print#expr_at Item_Fn_body body
+                in
+                let params_string =
+                  iblock parens
+                    (separate_map (comma ^^ break 1) print#param params)
+                in
+                string "letfun" ^^ space
+                ^^ align
+                     (print#concrete_ident name ^^ params_string ^^ space
+                    ^^ equals ^^ hardline ^^ body ^^ dot)
           (* `struct` definitions are transformed into simple constructors and `reduc`s for accessing fields. *)
           | Type { name; generics; variants; is_struct } ->
               let type_line =
                 string "type " ^^ print#concrete_ident name ^^ dot
               in
               let to_bitstring_converter_line =
-                string "fun " ^^ print#concrete_ident name
-                ^^ string "_to_bitstring"
-                ^^ iblock parens (print#concrete_ident name)
-                ^^ string ": bitstring [typeConverter]."
+                print#pv_constructor ~is_typeconverter:true
+                  (print#concrete_ident name ^^ string "_to_bitstring")
+                  [ print#concrete_ident name ]
+                  (string "bitstring")
               in
               let from_bitstring_converter_line =
-                string "fun " ^^ print#concrete_ident name
-                ^^ string "_from_bitstring(bitstring)"
-                ^^ colon ^^ print#concrete_ident name
-                ^^ string " [typeConverter]" ^^ dot
+                print#pv_constructor ~is_typeconverter:true
+                  (print#concrete_ident name ^^ string "_from_bitstring")
+                  [ string "bitstring" ]
+                  (print#concrete_ident name)
               in
               let default_line =
                 string "const " ^^ print#concrete_ident name
