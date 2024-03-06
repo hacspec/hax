@@ -677,20 +677,21 @@ module Make (F : Features.T) = struct
         e
     | _ -> e
 
-  let beta_reduce1_closure_opt (e : expr) : expr option =
+  (** See [beta_reduce_closure]'s documentation. *)
+  let beta_reduce_closure_opt (e : expr) : expr option =
     let* f, args, _, _ = Expect.app e in
     let* pats, body = Expect.closure f in
-    match (pats, args) with
-    | [ pat ], [ arg ] ->
-        let* var, _ = Expect.pbinding_simple pat in
-        Some ((Mappers.replace_local_variable var arg)#visit_expr () body)
-    | _ -> None
+    let* vars = List.map ~f:Expect.pbinding_simple pats |> sequence in
+    let vars = List.map ~f:fst vars in
+    let replacements =
+      List.zip_exn vars args |> Map.of_alist_exn (module Local_ident)
+    in
+    Some ((Mappers.replace_local_variables replacements)#visit_expr () body)
 
-  (** reduce a `(|x| body)(e)` into `body[x/e]` *)
-  let beta_reduce1_closure (e : expr) : expr =
-    beta_reduce1_closure_opt e |> Option.value ~default:e
-
-  (* let rec remove_empty_tap *)
+  (** Reduces a [(|x1, ..., xN| body)(e1, ..., eN)] to [body[x1/e1, ..., xN/eN]].
+        This assumes the arities are right: [(|x, y| ...)(e1)]. *)
+  let beta_reduce_closure (e : expr) : expr =
+    beta_reduce_closure_opt e |> Option.value ~default:e
 
   let is_unit_typ : ty -> bool =
     remove_tuple1 >> [%matches? TApp { ident = `TupleType 0; _ }]
