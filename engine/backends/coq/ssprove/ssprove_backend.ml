@@ -1834,12 +1834,12 @@ struct
                                       body,
                                     ret_typ ));
                              ]
-                         | IIType ty ->
+                         | IIType {typ; _} ->
                              [
                                SSP.AST.LetDef
                                  ( pconcrete_ident x.ii_ident,
                                    [],
-                                   SSP.AST.Type (pty span ty),
+                                   SSP.AST.Type (pty span typ),
                                    SSP.AST.TypeTy );
                              ])
                        items) );

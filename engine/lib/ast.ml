@@ -388,7 +388,7 @@ functor
     and item = { v : item'; span : span; ident : concrete_ident; attrs : attrs }
 
     and impl_item' =
-      | IIType of ty
+      | IIType of { typ : ty; parent_bounds : (impl_expr * impl_ident) list }
       | IIFn of { body : expr; params : param list }
 
     and impl_item = {

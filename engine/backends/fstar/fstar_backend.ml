@@ -1183,7 +1183,7 @@ struct
                           params
                     in
                     F.mk_e_abs pats (pexpr body)
-                | IIType ty -> pty ii_span ty ))
+                | IIType {typ; _} -> pty ii_span typ ))
             items
         in
         let fields =

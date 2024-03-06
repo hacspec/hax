@@ -372,7 +372,13 @@ struct
 
     let rec dimpl_item' (span : span) (ii : A.impl_item') : B.impl_item' =
       match ii with
-      | IIType g -> IIType (dty span g)
+      | IIType { typ; parent_bounds } ->
+          IIType
+            {
+              typ = dty span typ;
+              parent_bounds =
+                List.map ~f:(dimpl_expr span *** dimpl_ident span) parent_bounds;
+            }
       | IIFn { body; params } ->
           IIFn { body = dexpr body; params = List.map ~f:(dparam span) params }
 

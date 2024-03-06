@@ -1349,8 +1349,18 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
                                }
                          | Const (_ty, e) ->
                              IIFn { body = c_expr e; params = [] }
-                         | Type { ty; parent_bounds = _ } ->
-                             IIType (c_ty item.span ty));
+                         | Type { ty; parent_bounds } ->
+                             IIType
+                               {
+                                 typ = c_ty item.span ty;
+                                 parent_bounds =
+                                   List.filter_map
+                                     ~f:(fun (clause, impl_expr, span) ->
+                                       let* trait_goal = c_clause span clause in
+                                       Some
+                                         (c_impl_expr span impl_expr, trait_goal))
+                                     parent_bounds;
+                               });
                        ii_ident;
                        ii_attrs = c_item_attrs item.attributes;
                      })
