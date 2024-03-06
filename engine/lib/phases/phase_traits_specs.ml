@@ -80,33 +80,12 @@ module Make (F : Features.T) =
                           |> Set.to_list)
                           "out"
                       in
+                      let params_pat =
+                        List.map ~f:(fun param -> param.pat) params
+                      in
                       let pat = U.make_var_pat out_ident body.typ body.span in
                       let typ = body.typ in
                       let out = { pat; typ; typ_span = None; attrs = [] } in
-                      let post =
-                        let f =
-                          Attrs.associated_expr ~keep_last_args:1 Ensures
-                            item.ii_attrs
-                          |> Option.value
-                               ~default:
-                                 {
-                                   default with
-                                   e =
-                                     Closure
-                                       {
-                                         params = [ pat ];
-                                         body = default;
-                                         captures = [];
-                                       };
-                                 }
-                        in
-                        let span = f.span in
-                        let args = [ { span; typ; e = LocalVar out_ident } ] in
-                        let e =
-                          App { f; args; generic_args = []; impl = None }
-                        in
-                        { f with e } |> U.beta_reduce1_closure
-                      in
                       [
                         {
                           (mk "pre") with
@@ -114,7 +93,8 @@ module Make (F : Features.T) =
                             IIFn
                               {
                                 body =
-                                  Attrs.associated_expr Requires item.ii_attrs
+                                  Attrs.associated_expr_rebinding params_pat
+                                    Requires item.ii_attrs
                                   |> Option.value ~default;
                                 params;
                               };
@@ -124,7 +104,10 @@ module Make (F : Features.T) =
                           ii_v =
                             IIFn
                               {
-                                body = post |> U.beta_reduce1_closure;
+                                body =
+                                  Attrs.associated_expr_rebinding
+                                    (params_pat @ [ pat ]) Ensures item.ii_attrs
+                                  |> Option.value ~default;
                                 params = params @ [ out ];
                               };
                         };
