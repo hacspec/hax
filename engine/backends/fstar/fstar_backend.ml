@@ -1338,6 +1338,7 @@ module TransformToInputLanguage =
   [%functor_application
   Phases.Reject.RawOrMutPointer(Features.Rust)
   |> Phases.Drop_sized_trait
+  |> Phases.Simplify_question_marks
   |> Phases.And_mut_defsite
   |> Phases.Reconstruct_for_loops
   |> Phases.Reconstruct_while_loops
@@ -1346,8 +1347,9 @@ module TransformToInputLanguage =
   |> Phases.Drop_blocks
   |> Phases.Drop_references
   |> Phases.Trivialize_assign_lhs
-  |> Phases.Reconstruct_question_marks
   |> Side_effect_utils.Hoist
+  |> Phases.Simplify_match_return
+  |> Phases.Drop_needless_returns
   |> Phases.Local_mutation
   |> Phases.Reject.Continue
   |> Phases.Cf_into_monads
