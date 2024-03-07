@@ -1,21 +1,25 @@
 # This Dockerfile should be run from the root directory of this repo
-# e.g. `docker build -f .docker/Dockerfile .` from the parent directory
+# e.g. `docker build -f .docker/Dockerfile . -t hax` from the parent directory
 
-FROM nixpkgs/nix-flakes
+FROM ubuntu:24.04
+LABEL maintainer="Franziskus Kiefer <franziskuskiefer@gmail.com>"
 
-# See issue #71
-RUN if [ "$(uname)" = Darwin ]; then \
-    echo "filter-syscalls = false" >> /etc/nix/nix.conf; \
-    fi
+ENV SHELL /bin/bash
+ENV USER hax-user
+ENV LOGNAME $USER
+ENV HOME /home/$USER
+ENV LANG en_US.UTF-8
+ENV LC_ALL $LANG
+ENV PATH="$HOME/.cargo/bin:${PATH}"
 
-# Prepare the sources
-COPY . /hax-sources
-RUN cd /hax-sources && git init && git add .
+# Install dependencies.
+ADD .docker/setup.sh /tmp/setup.sh
+RUN bash /tmp/setup.sh
 
-# Use cache to speed up install
-ENV PATH="$PATH:/root/.nix-profile/bin"
-RUN nix-env -iA cachix -f https://cachix.org/api/v1/install
-RUN cachix use hacspec
+WORKDIR $HOME
+USER $USER
+COPY --chown=hax-user:hax-user . $HOME/hax
 
-# Install
-RUN nix profile install /hax-sources
+# Setup & install.
+ADD .docker/install.sh /tmp/install.sh
+RUN bash /tmp/install.sh
