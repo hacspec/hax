@@ -340,10 +340,11 @@ module Make (Options : OPTS) : MAKE = struct
             | QuestionMark { e; return_typ; _ } -> print#expr ctx e
             (* Translate known functions *)
             | App { f = { e = GlobalVar name; _ }; args } -> (
-                let maps_to_identity fn_name = Global_ident.eq_name Core__clone__Clone__clone name
-                                               || Global_ident.eq_name Rust_primitives__unsize name
-                                             || Global_ident.eq_name Core__ops__deref__Deref__deref name
-                                                 in
+                let maps_to_identity fn_name =
+                  Global_ident.eq_name Core__clone__Clone__clone name
+                  || Global_ident.eq_name Rust_primitives__unsize name
+                  || Global_ident.eq_name Core__ops__deref__Deref__deref name
+                in
                 match name with
                 | `Primitive p -> (
                     match p with
@@ -358,8 +359,8 @@ module Make (Options : OPTS) : MAKE = struct
                     | Cast -> print#expr NeedsPar (List.hd_exn args)
                     | _ -> empty)
                 | _ -> (
-                    if maps_to_identity name
-                    then print#expr ctx (List.hd_exn args)
+                    if maps_to_identity name then
+                      print#expr ctx (List.hd_exn args)
                     else
                       match
                         translate_known_name name ~dict:library_functions
@@ -458,7 +459,6 @@ module Make (Options : OPTS) : MAKE = struct
               List.map ~f:(snd3 >> print#ty_at Param_typ) fun_args
             in
             let constructor_name = print#concrete_ident constructor.name in
-
             let fun_line =
               print#pv_constructor ~is_data:true constructor_name fun_args_types
                 (print#concrete_ident base_name)
