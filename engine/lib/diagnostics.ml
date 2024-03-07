@@ -41,6 +41,7 @@ module Phase = struct
     | CfIntoMonads
     | FunctionalizeLoops
     | TraitsSpecs
+    | SimplifyMatchReturn
     | DummyA
     | DummyB
     | DummyC
