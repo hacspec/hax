@@ -13,7 +13,7 @@ apt-get install -y \
     libgmp-dev \
     locales \
     libgmp-dev \
-    z3 \
+    openssh-server \
     curl
 curl -fsSL https://deb.nodesource.com/setup_21.x | bash -
 apt-get update

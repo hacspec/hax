@@ -58,6 +58,7 @@ $(ROOTS): ../../../src/lib.rs
 FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib \
 	$(HAX_PROOF_LIBS)/rust_primitives $(HAX_PROOF_LIBS)/core \
 	$(HAX_PROOF_LIBS)/hax_lib \
+	$(FSTAR_HOME)/ulib \
 	$(HAX_LIB)/proofs/fstar/extraction
 
 FSTAR_FLAGS = --cmi \

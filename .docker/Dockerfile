@@ -23,3 +23,19 @@ COPY --chown=hax-user:hax-user . $HOME/hax
 # Setup & install.
 ADD .docker/install.sh /tmp/install.sh
 RUN bash /tmp/install.sh
+
+# Start SSH (as root)
+# USER root
+# CMD ["/usr/sbin/sshd", "-D"]
+
+# Setup vscode server
+ADD .docker/FStarLang.fstar-vscode-assistant-0.6.1.vsix /tmp/FStarLang.fstar-vscode-assistant-0.6.1.vsix
+ADD .docker/vscode.sh /tmp/vscode.sh
+RUN bash /tmp/vscode.sh
+
+ENV EDITOR=code \
+    VISUAL=code \
+    GIT_EDITOR="code --wait" \
+    OPENVSCODE_SERVER_ROOT=$HOME/openvscode-server-v1.87.0-linux-arm64
+EXPOSE 3000
+ENTRYPOINT [ "/bin/sh", "-c", "exec ${OPENVSCODE_SERVER_ROOT}/bin/openvscode-server --host 0.0.0.0 --connection-token \"${@}\"", "--" ]
