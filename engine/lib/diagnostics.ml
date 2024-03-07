@@ -34,6 +34,7 @@ module Phase = struct
     | ResugarWhileLoops
     | ResugarForIndexLoops
     | ResugarQuestionMarks
+    | SimplifyQuestionMarks
     | HoistSideEffects
     | LocalMutation
     | TrivializeAssignLhs
