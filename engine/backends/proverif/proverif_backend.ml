@@ -515,7 +515,7 @@ module Make (Options : OPTS) : MAKE = struct
                       (string "REPLACE by body of type: "
                       ^^ print#ty_at Item_Fn_body body.typ)
                   else if as_handwritten item.attrs then
-                    print#pv_comment (string "REPLACE by destructor")
+                    print#pv_comment (string "REPLACE by handwritten model")
                   else empty
                 in
                 let reached_event_name =
