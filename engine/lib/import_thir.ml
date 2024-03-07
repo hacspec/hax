@@ -201,8 +201,10 @@ module type EXPR = sig
   val c_generics : Thir.generics -> generics
   val c_param : Thir.span -> Thir.param -> param
   val c_trait_item' : Thir.trait_item -> Thir.trait_item_kind -> trait_item'
-  val c_trait_ref : Thir.span -> Thir.trait_ref -> trait_ref
-  val c_predicate_kind : Thir.span -> Thir.predicate_kind -> trait_ref option
+  val c_trait_ref : Thir.span -> Thir.trait_ref -> trait_goal
+  val c_predicate_kind : Thir.span -> Thir.predicate_kind -> trait_goal option
+  val c_impl_expr : Thir.span -> Thir.impl_expr -> impl_expr
+  val c_clause : Thir.span -> Thir.clause -> impl_ident option
 end
 
 (* BinOp to [core::ops::*] overloaded functions *)
@@ -724,6 +726,7 @@ end) : EXPR = struct
           | Some v -> (Int (v, Signed ty), true)
           | None -> (Int (v, Signed ty), false))
       | Int (Uint (v, ty)) -> (Int (v, Unsigned ty), false)
+      | Str (v, style) -> (Str (v, style), false)
       | ByteStr (v, style) -> (ByteStr (v, style), false)
     and constant_field_expr ({ field; value } : Thir.constant_field_expr) :
         Thir.field_expr =
@@ -910,7 +913,7 @@ end) : EXPR = struct
         let args = List.map ~f:(c_impl_expr span) args in
         ImplApp { impl; args }
 
-  and c_trait_ref span (tr : Thir.trait_ref) : trait_ref =
+  and c_trait_ref span (tr : Thir.trait_ref) : trait_goal =
     let trait = Concrete_ident.of_def_id Trait tr.def_id in
     let args = List.map ~f:(c_generic_value span) tr.generic_args in
     { trait; args }
@@ -919,16 +922,16 @@ end) : EXPR = struct
       =
     let browse_path (impl : impl_expr) (chunk : Thir.impl_expr_path_chunk) =
       match chunk with
-      | AssocItem { item; predicate = { trait_ref; _ }; _ } ->
-          let trait = c_trait_ref span trait_ref in
+      | AssocItem { item; predicate = { trait_ref; _ }; clause_id; _ } ->
+          let ident = { goal = c_trait_ref span trait_ref; name = clause_id } in
           let kind : Concrete_ident.Kind.t =
             match item.kind with Const | Fn -> Value | Type -> Type
           in
           let item = Concrete_ident.of_def_id kind item.def_id in
-          Projection { impl; trait; item }
-      | Parent { predicate = { trait_ref; _ }; _ } ->
-          let trait = c_trait_ref span trait_ref in
-          Parent { impl; trait }
+          Projection { impl; ident; item }
+      | Parent { predicate = { trait_ref; _ }; clause_id; _ } ->
+          let ident = { goal = c_trait_ref span trait_ref; name = clause_id } in
+          Parent { impl; ident }
     in
     match ie with
     | Concrete { id; generics } ->
@@ -996,18 +999,20 @@ end) : EXPR = struct
     let attrs = c_attrs param.attributes in
     { ident; span; attrs; kind }
 
-  let c_predicate_kind' span (p : Thir.predicate_kind) :
-      (trait_ref * string) option =
-    match p with
-    | Clause
-        { kind = Trait { is_positive = true; is_const = _; trait_ref }; id } ->
+  let c_clause span (p : Thir.clause) : impl_ident option =
+    let ({ kind; id } : Thir.clause) = p in
+    match kind with
+    | Trait { is_positive = true; is_const = _; trait_ref } ->
         let args = List.map ~f:(c_generic_value span) trait_ref.generic_args in
         let trait = Concrete_ident.of_def_id Trait trait_ref.def_id in
-        Some ({ trait; args }, id)
+        Some { goal = { trait; args }; name = id }
     | _ -> None
 
-  let c_predicate_kind span (p : Thir.predicate_kind) : trait_ref option =
-    c_predicate_kind' span p |> Option.map ~f:fst
+  let c_predicate_kind' span (p : Thir.predicate_kind) : impl_ident option =
+    match p with Clause clause -> c_clause span clause | _ -> None
+
+  let c_predicate_kind span (p : Thir.predicate_kind) : trait_goal option =
+    c_predicate_kind' span p |> Option.map ~f:(fun (x : impl_ident) -> x.goal)
 
   let list_dedup (equal : 'a -> 'a -> bool) : 'a list -> 'a list =
     let rec aux (seen : 'a list) (todo : 'a list) : 'a list =
@@ -1022,8 +1027,7 @@ end) : EXPR = struct
   let c_generics (generics : Thir.generics) : generics =
     let bounds =
       List.filter_map ~f:(c_predicate_kind' generics.span) generics.bounds
-      |> List.map ~f:(fun (trait, id) : generic_constraint ->
-             GCType { bound = trait; id })
+      |> List.map ~f:(fun impl_ident -> GCType impl_ident)
     in
     {
       params = List.map ~f:c_generic_param generics.params;
@@ -1065,11 +1069,11 @@ include struct
 
   let import_ty : Types.span -> Types.ty -> Ast.Rust.ty = c_ty
 
-  let import_trait_ref : Types.span -> Types.trait_ref -> Ast.Rust.trait_ref =
+  let import_trait_ref : Types.span -> Types.trait_ref -> Ast.Rust.trait_goal =
     c_trait_ref
 
   let import_predicate_kind :
-      Types.span -> Types.predicate_kind -> Ast.Rust.trait_ref option =
+      Types.span -> Types.predicate_kind -> Ast.Rust.trait_goal option =
     c_predicate_kind
 end
 
@@ -1305,6 +1309,7 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
           self_ty;
           items;
           unsafety = Normal;
+          parent_bounds;
           _;
         } ->
         let items =
@@ -1344,11 +1349,28 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
                                }
                          | Const (_ty, e) ->
                              IIFn { body = c_expr e; params = [] }
-                         | Type ty -> IIType (c_ty item.span ty));
+                         | Type { ty; parent_bounds } ->
+                             IIType
+                               {
+                                 typ = c_ty item.span ty;
+                                 parent_bounds =
+                                   List.filter_map
+                                     ~f:(fun (clause, impl_expr, span) ->
+                                       let* trait_goal = c_clause span clause in
+                                       Some
+                                         (c_impl_expr span impl_expr, trait_goal))
+                                     parent_bounds;
+                               });
                        ii_ident;
                        ii_attrs = c_item_attrs item.attributes;
                      })
                    items;
+               parent_bounds =
+                 List.filter_map
+                   ~f:(fun (clause, impl_expr, span) ->
+                     let* trait_goal = c_clause span clause in
+                     Some (c_impl_expr span impl_expr, trait_goal))
+                   parent_bounds;
              }
     | Use ({ span = _; res; segments; rename }, _) ->
         let v =
@@ -1387,7 +1409,7 @@ let import_item (item : Thir.item) :
   let r, reports =
     let f =
       U.Mappers.rename_generic_constraints#visit_item
-        (Hashtbl.create (module String))
+        (true, Hashtbl.create (module String))
       >> U.Reducers.disambiguate_local_idents
     in
     Diagnostics.Core.capture (fun _ -> c_item item ~ident |> List.map ~f)

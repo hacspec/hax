@@ -374,7 +374,7 @@ module Raw = struct
         !"<" & concat ~sep:!", " (List.map ~f:pgeneric_param pl) & !">"
     | _ -> empty
 
-  let ptrait_ref span { trait; args } =
+  let ptrait_goal span { trait; args } =
     let ( ! ) = pure span in
     let args = List.map ~f:(pgeneric_value span) args |> concat ~sep:!", " in
     !(Concrete_ident_view.show trait)
@@ -384,7 +384,7 @@ module Raw = struct
     let ( ! ) = pure span in
     match p with
     | GCLifetime _ -> !"'unk: 'unk"
-    | GCType { bound; _ } -> !"_:" & ptrait_ref span bound
+    | GCType { goal; _ } -> !"_:" & ptrait_goal span goal
 
   let pgeneric_constraints span (constraints : generic_constraint list) =
     if List.is_empty constraints then empty
@@ -506,7 +506,7 @@ module Raw = struct
             & !"{"
             & List.map ~f:ptrait_item items |> concat ~sep:!"\n"
             & !"}"
-        | Impl { generics; self_ty; of_trait; items } ->
+        | Impl { generics; self_ty; of_trait; items; parent_bounds = _ } ->
             let trait =
               pglobal_ident e.span (fst of_trait)
               & !"<"

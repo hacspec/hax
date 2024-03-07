@@ -475,6 +475,16 @@ pub fn attributes(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStr
     quote! { #item }.into()
 }
 
+/// Mark a struct or an enum opaque: the extraction will assume the
+/// type without revealing its definition.
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn opaque_type(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let item: Item = parse_macro_input!(item);
+    let attr = AttrPayload::OpaqueType;
+    quote! {#attr #item}.into()
+}
+
 /// A marker indicating a `fn` as a ProVerif process read.
 #[proc_macro_error]
 #[proc_macro_attribute]

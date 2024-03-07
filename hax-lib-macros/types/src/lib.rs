@@ -75,6 +75,9 @@ pub enum AttrPayload {
     ProcessWrite,
     ProcessInit,
     ProtocolMessages,
+    TraitMethodNoPrePost,
+    /// Make a type opaque
+    OpaqueType,
 }
 
 pub const HAX_TOOL: &str = "_hax";

@@ -18,6 +18,7 @@ info:
       stderr: false
       stdout: true
     include_flag: ~
+    backend_options: ~
 ---
 exit = 0
 
@@ -39,11 +40,7 @@ let main_a_b (_: Prims.unit) : Prims.unit = ()
 
 let main_a_c (_: Prims.unit) : Prims.unit = ()
 
-let main_a
-      (#v_T: Type)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: Core.Marker.t_Sized v_T)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Trait v_T)
-      (x: v_T)
+let main_a (#v_T: Type) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Trait v_T) (x: v_T)
     : Prims.unit =
   let _:Prims.unit = main_a_a () in
   let _:Prims.unit = main_a_b () in

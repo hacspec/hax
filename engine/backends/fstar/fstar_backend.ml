@@ -280,6 +280,9 @@ struct
     | TArray { typ; length } ->
         F.mk_e_app (F.term_of_lid [ "t_Array" ]) [ pty span typ; pexpr length ]
     | TParam i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident i)
+    | TAssociatedType { impl = Self; item } ->
+        F.term
+        @@ F.AST.Var (F.lid [ U.Concrete_ident_view.to_definition_name item ])
     | TAssociatedType { impl; item } -> (
         match pimpl_expr span impl with
         | Some impl ->
@@ -294,7 +297,7 @@ struct
     let some = Option.some in
     let hax_unstable_impl_exprs = false in
     match ie with
-    | Concrete tr -> c_trait_ref span tr |> some
+    | Concrete tr -> c_trait_goal span tr |> some
     | LocalBound { id } ->
         let local_ident =
           Local_ident.{ name = id; id = Local_ident.mk_id Expr 0 }
@@ -302,9 +305,9 @@ struct
         F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident local_ident) |> some
     | ImplApp { impl; _ } when not hax_unstable_impl_exprs ->
         pimpl_expr span impl
-    | Parent { impl; trait } when hax_unstable_impl_exprs ->
+    | Parent { impl; ident } when hax_unstable_impl_exprs ->
         let* impl = pimpl_expr span impl in
-        let trait = "_super_" ^ name_of_trait_ref span trait in
+        let trait = "_super_" ^ ident.name in
         F.term @@ F.AST.Project (impl, F.lid [ trait ]) |> some
     | ImplApp { impl; args = [] } when hax_unstable_impl_exprs ->
         pimpl_expr span impl
@@ -319,12 +322,9 @@ struct
         F.term_of_lid [ "_Builtin" ] |> some
     | _ -> None
 
-  and name_of_trait_ref _span : trait_ref -> string =
-    [%hash: trait_ref] >> Int.to_string
-
-  and c_trait_ref span trait_ref =
-    let trait = F.term @@ F.AST.Name (pconcrete_ident trait_ref.trait) in
-    List.map ~f:(pgeneric_value span) trait_ref.args |> F.mk_e_app trait
+  and c_trait_goal span trait_goal =
+    let trait = F.term @@ F.AST.Name (pconcrete_ident trait_goal.trait) in
+    List.map ~f:(pgeneric_value span) trait_goal.args |> F.mk_e_app trait
 
   and pgeneric_value span (g : generic_value) =
     match g with
@@ -440,7 +440,6 @@ struct
         in
         let list_ident = F.id "list" in
         let list = F.term_of_lid [ "list" ] in
-        let array = F.mk_e_app array_of_list [ list ] in
         let assert_norm =
           F.term_of_lid [ "FStar"; "Pervasives"; "assert_norm" ]
         in
@@ -450,6 +449,7 @@ struct
         let len =
           F.term @@ F.AST.Const (F.Const.Const_int (Int.to_string len, None))
         in
+        let array = F.mk_e_app array_of_list [ len; list ] in
         let formula = F.mk_e_app equality [ length; len ] in
         let assertion = F.mk_e_app assert_norm [ formula ] in
         let pat = F.AST.PatVar (list_ident, None, []) |> F.pat in
@@ -570,13 +570,17 @@ struct
     let of_generic_constraint span (nth : int) (c : generic_constraint) =
       match c with
       | GCLifetime _ -> .
-      | GCType { bound; id; _ } ->
-          let typ = c_trait_ref span bound in
-          { kind = Tcresolve; ident = F.id id; typ }
+      | GCType { goal; name } ->
+          let typ = c_trait_goal span goal in
+          { kind = Tcresolve; ident = F.id name; typ }
 
     let of_generics ?(kind : kind = Implicit) span generics : t list =
       List.map ~f:(of_generic_param ~kind span) generics.params
       @ List.mapi ~f:(of_generic_constraint span) generics.constraints
+
+    let of_typ span (nth : int) typ : t =
+      let ident = F.id ("x" ^ Int.to_string nth) in
+      { kind = Explicit; ident; typ = pty span typ }
 
     let to_pattern (x : t) : F.AST.pattern =
       let subpat =
@@ -599,6 +603,9 @@ struct
     let to_typ (x : t) : F.AST.term = x.typ
     let to_ident (x : t) : F.Ident.ident = x.ident
 
+    let to_term (x : t) : F.AST.term =
+      F.term @@ F.AST.Var (FStar_Ident.lid_of_ns_and_id [] (to_ident x))
+
     let to_binder (x : t) : F.AST.binder =
       F.AST.
         {
@@ -618,7 +625,7 @@ struct
     match c with
     | GCLifetime _ ->
         Error.assertion_failure span "pgeneric_constraint_bd:LIFETIME"
-    | GCType { bound; _ } -> c_trait_ref span bound
+    | GCType { goal; name = _ } -> c_trait_goal span goal
 
   let get_attr (type a) (name : string) (map : string -> a) (attrs : attrs) :
       a option =
@@ -849,6 +856,31 @@ struct
                             |> List.map ~f:to_pattern) ),
                    pty e.span ty );
                ] )
+    | Type { name; generics; _ }
+      when Attrs.find_unique_attr e.attrs
+             ~f:([%eq: Types.ha_payload] OpaqueType >> Fn.flip Option.some_if ())
+           |> Option.is_some ->
+        if not ctx.interface_mode then
+          Error.raise
+          @@ {
+               kind =
+                 AttributeRejected
+                   {
+                     reason =
+                       "a type cannot be opaque if it's module is not \
+                        extracted as an interface";
+                   };
+               span = e.span;
+             }
+        else
+          let generics = FStarBinder.of_generics e.span generics in
+          let ty = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
+          let arrow_typ =
+            F.term
+            @@ F.AST.Product (List.map ~f:FStarBinder.to_binder generics, ty)
+          in
+          let name = F.id @@ U.Concrete_ident_view.to_definition_name name in
+          [ F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) ]
     | Type
         {
           name;
@@ -1033,18 +1065,55 @@ struct
                     (* in *)
                     (F.id name, None, [], t)
                     :: List.map
-                         ~f:(fun ({ trait; args }, id) ->
+                         ~f:
+                           (fun {
+                                  goal = { trait; args };
+                                  name = impl_ident_name;
+                                } ->
                            let base =
                              F.term @@ F.AST.Name (pconcrete_ident trait)
                            in
                            let args =
                              List.map ~f:(pgeneric_value e.span) args
                            in
-                           ( F.id (name ^ "_" ^ id),
+                           ( F.id (name ^ "_" ^ impl_ident_name),
                              None,
                              [],
                              F.mk_e_app base args ))
                          bounds
+                | TIFn (TArrow (inputs, output))
+                  when Attrs.find_unique_attr i.ti_attrs ~f:(function
+                         | TraitMethodNoPrePost -> Some ()
+                         | _ -> None)
+                       |> Option.is_none ->
+                    let inputs =
+                      List.mapi ~f:(FStarBinder.of_typ e.span) inputs
+                    in
+                    let inputs = generics @ inputs in
+                    let output = pty e.span output in
+                    let ty_pre_post =
+                      let inputs = List.map ~f:FStarBinder.to_term inputs in
+                      let pre =
+                        F.mk_e_app (F.term_of_lid [ name ^ "_pre" ]) inputs
+                      in
+                      let result = F.term_of_lid [ "result" ] in
+                      let post =
+                        F.mk_e_app
+                          (F.term_of_lid [ name ^ "_post" ])
+                          (inputs @ [ result ])
+                      in
+                      let post =
+                        F.mk_e_abs
+                          [ F.pat @@ F.AST.PatVar (F.id "result", None, []) ]
+                          post
+                      in
+                      F.mk_e_app
+                        (F.term_of_lid [ "Prims"; "Pure" ])
+                        [ output; pre; post ]
+                    in
+                    let inputs = List.map ~f:FStarBinder.to_binder inputs in
+                    let ty = F.term @@ F.AST.Product (inputs, ty_pre_post) in
+                    [ (F.id name, None, [], ty) ]
                 | TIFn ty ->
                     let ty = pty e.span ty in
                     let ty =
@@ -1062,10 +1131,10 @@ struct
         let constraints_fields : FStar_Parser_AST.tycon_record =
           generics.constraints
           |> List.map ~f:(fun c ->
-                 let bound =
-                   match c with GCType { bound; _ } -> bound | _ -> .
+                 let bound, id =
+                   match c with GCType { goal; name } -> (goal, name) | _ -> .
                  in
-                 let name = "_super_" ^ name_of_trait_ref e.span bound in
+                 let name = "_super_" ^ id in
                  let typ = pgeneric_constraint_type e.span c in
                  (F.id name, None, [ F.Attrs.no_method ], typ))
         in
@@ -1081,7 +1150,14 @@ struct
         let tcdef = F.AST.TyconRecord (name, bds, None, [], fields) in
         let d = F.AST.Tycon (false, true, [ tcdef ]) in
         [ `Intf { d; drange = F.dummyRange; quals = []; attrs = [] } ]
-    | Impl { generics; self_ty = _; of_trait = trait, generic_args; items } ->
+    | Impl
+        {
+          generics;
+          self_ty = _;
+          of_trait = trait, generic_args;
+          items;
+          parent_bounds;
+        } ->
         let name = U.Concrete_ident_view.to_definition_name e.ident |> F.id in
         let pat = F.pat @@ F.AST.PatVar (name, None, []) in
         let generics = FStarBinder.of_generics e.span generics in
@@ -1096,25 +1172,29 @@ struct
         in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (typ, None)) in
         let fields =
-          List.map
+          List.concat_map
             ~f:(fun { ii_span; ii_generics; ii_v; ii_ident } ->
               let name = U.Concrete_ident_view.to_definition_name ii_ident in
-              ( F.lid [ name ],
-                match ii_v with
-                | IIFn { body; params } ->
-                    let pats =
-                      FStarBinder.(
-                        of_generics ii_span ii_generics
-                        |> List.map ~f:to_pattern)
-                      @ List.map
-                          ~f:(fun { pat; typ_span; typ } ->
-                            let span = Option.value ~default:ii_span typ_span in
-                            F.pat
-                            @@ F.AST.PatAscribed (ppat pat, (pty span typ, None)))
-                          params
-                    in
-                    F.mk_e_abs pats (pexpr body)
-                | IIType ty -> pty ii_span ty ))
+
+              match ii_v with
+              | IIFn { body; params } ->
+                  let pats =
+                    FStarBinder.(
+                      of_generics ii_span ii_generics |> List.map ~f:to_pattern)
+                    @ List.map
+                        ~f:(fun { pat; typ_span; typ } ->
+                          let span = Option.value ~default:ii_span typ_span in
+                          F.pat
+                          @@ F.AST.PatAscribed (ppat pat, (pty span typ, None)))
+                        params
+                  in
+                  [ (F.lid [ name ], F.mk_e_abs pats (pexpr body)) ]
+              | IIType { typ; parent_bounds } ->
+                  (F.lid [ name ], pty ii_span typ)
+                  :: List.map
+                       ~f:(fun (_impl_expr, impl_ident) ->
+                         (F.lid [ name ^ "_" ^ impl_ident.name ], F.tc_solve))
+                       parent_bounds)
             items
         in
         let fields =
@@ -1122,6 +1202,13 @@ struct
             [ (F.lid [ "__marker_trait" ], pexpr (U.unit_expr e.span)) ]
           else fields
         in
+        let parent_bounds_fields =
+          List.map
+            ~f:(fun (_impl_expr, impl_ident) ->
+              (F.lid [ "_super_" ^ impl_ident.name ], F.tc_solve))
+            parent_bounds
+        in
+        let fields = parent_bounds_fields @ fields in
         let body = F.term @@ F.AST.Record (None, fields) in
         let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
         F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ]
@@ -1250,6 +1337,7 @@ module DepGraphR = Dependencies.Make (Features.Rust)
 module TransformToInputLanguage =
   [%functor_application
   Phases.Reject.RawOrMutPointer(Features.Rust)
+  |> Phases.Drop_sized_trait
   |> Phases.And_mut_defsite
   |> Phases.Reconstruct_for_loops
   |> Phases.Reconstruct_while_loops
@@ -1266,6 +1354,7 @@ module TransformToInputLanguage =
   |> Phases.Reject.EarlyExit
   |> Phases.Functionalize_loops
   |> Phases.Reject.As_pattern
+  |> Phases.Traits_specs
   |> SubtypeToInputLanguage
   |> Identity
   ]
