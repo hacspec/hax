@@ -28,6 +28,7 @@ module Phase = struct
     | Identity
     | DropReferences
     | DropBlocks
+    | DropSizedTrait
     | RefMut
     | ResugarForLoops
     | ResugarWhileLoops
