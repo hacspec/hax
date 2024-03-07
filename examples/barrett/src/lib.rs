@@ -57,5 +57,7 @@ mod tests {
 
         test(1234, 1234);
         test(9876, -111);
+
+        test(4327, 4327 % FIELD_MODULUS)
     }
 }
