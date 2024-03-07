@@ -518,7 +518,16 @@ module Make (Options : OPTS) : MAKE = struct
                     print#pv_comment (string "REPLACE by destructor")
                   else empty
                 in
-
+                let reached_event_name =
+                  string "Reached" ^^ underscore ^^ print#concrete_ident name
+                in
+                let exit_event_name =
+                  string "Exit" ^^ underscore ^^ print#concrete_ident name
+                in
+                let reached_event_def = print#pv_event_def reached_event_name in
+                let reached_event_emission =
+                  print#pv_event_emission reached_event_name
+                in
                 let body =
                   if assume_item || as_handwritten item.attrs then
                     print#ty_at Item_Fn_body body.typ ^^ string "_default()"
@@ -528,10 +537,11 @@ module Make (Options : OPTS) : MAKE = struct
                   iblock parens
                     (separate_map (comma ^^ break 1) print#param params)
                 in
-                string "letfun" ^^ space
+                reached_event_def ^^ string "letfun" ^^ space
                 ^^ align
                      (print#concrete_ident name ^^ params_string ^^ space
-                    ^^ equals ^^ hardline ^^ body ^^ dot ^^ comment)
+                    ^^ equals ^^ hardline ^^ reached_event_emission ^^ body
+                    ^^ dot ^^ comment)
           (* `struct` definitions are transformed into simple constructors and `reduc`s for accessing fields. *)
           | Type { name; generics; variants; is_struct } ->
               let type_line =
