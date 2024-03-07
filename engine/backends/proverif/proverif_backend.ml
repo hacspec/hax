@@ -171,6 +171,14 @@ module Make (Options : OPTS) : MAKE = struct
 
         (* Backend-specific utilities *)
 
+        method pv_event_def name =
+          string "event" ^^ space ^^ name ^^ dot ^^ hardline
+        (** Print a ProVerif event definition. (without arguments)*)
+
+        method pv_event_emission name =
+          string "event" ^^ space ^^ name ^^ semi ^^ hardline
+        (** Print a ProVerif event emission process term. (no arguments)*)
+
         (* ProVerif syntax *)
         method pv_comment content =
           string "(*" ^^ space ^^ content ^^ space ^^ string "*)" ^^ hardline
