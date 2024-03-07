@@ -121,7 +121,6 @@ let v_INHERENT_CONSTANT: usize = sz 3
 
 let constants
       (#v_T: Type)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: Core.Marker.t_Sized v_T)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_FooTrait v_T)
       (_: Prims.unit)
     : usize = f_ASSOCIATED_CONSTANT +! v_INHERENT_CONSTANT
@@ -136,7 +135,7 @@ let ff__g__impl_1__g (self: t_Foo) : usize = sz 1
 
 let reserved_names (v_val v_noeq v_of: u8) : u8 = (v_val +! v_noeq <: u8) +! v_of
 
-type t_Arity1 (v_T: Type) {| i0: Core.Marker.t_Sized v_T |} = | Arity1 : v_T -> t_Arity1 v_T
+type t_Arity1 (v_T: Type) = | Arity1 : v_T -> t_Arity1 v_T
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_T2_e_for_a_for_Arity1_of_tuple_Foo_u8: t_T2_for_a (t_Arity1 (t_Foo & u8)) =

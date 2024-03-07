@@ -203,6 +203,8 @@ module type EXPR = sig
   val c_trait_item' : Thir.trait_item -> Thir.trait_item_kind -> trait_item'
   val c_trait_ref : Thir.span -> Thir.trait_ref -> trait_goal
   val c_predicate_kind : Thir.span -> Thir.predicate_kind -> trait_goal option
+  val c_impl_expr : Thir.span -> Thir.impl_expr -> impl_expr
+  val c_clause : Thir.span -> Thir.clause -> impl_ident option
 end
 
 (* BinOp to [core::ops::*] overloaded functions *)
@@ -997,14 +999,17 @@ end) : EXPR = struct
     let attrs = c_attrs param.attributes in
     { ident; span; attrs; kind }
 
-  let c_predicate_kind' span (p : Thir.predicate_kind) : impl_ident option =
-    match p with
-    | Clause
-        { kind = Trait { is_positive = true; is_const = _; trait_ref }; id } ->
+  let c_clause span (p : Thir.clause) : impl_ident option =
+    let ({ kind; id } : Thir.clause) = p in
+    match kind with
+    | Trait { is_positive = true; is_const = _; trait_ref } ->
         let args = List.map ~f:(c_generic_value span) trait_ref.generic_args in
         let trait = Concrete_ident.of_def_id Trait trait_ref.def_id in
         Some { goal = { trait; args }; name = id }
     | _ -> None
+
+  let c_predicate_kind' span (p : Thir.predicate_kind) : impl_ident option =
+    match p with Clause clause -> c_clause span clause | _ -> None
 
   let c_predicate_kind span (p : Thir.predicate_kind) : trait_goal option =
     c_predicate_kind' span p |> Option.map ~f:(fun (x : impl_ident) -> x.goal)
@@ -1304,6 +1309,7 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
           self_ty;
           items;
           unsafety = Normal;
+          parent_bounds;
           _;
         } ->
         let items =
@@ -1343,12 +1349,28 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
                                }
                          | Const (_ty, e) ->
                              IIFn { body = c_expr e; params = [] }
-                         | Type { ty; parent_bounds = _ } ->
-                             IIType (c_ty item.span ty));
+                         | Type { ty; parent_bounds } ->
+                             IIType
+                               {
+                                 typ = c_ty item.span ty;
+                                 parent_bounds =
+                                   List.filter_map
+                                     ~f:(fun (clause, impl_expr, span) ->
+                                       let* trait_goal = c_clause span clause in
+                                       Some
+                                         (c_impl_expr span impl_expr, trait_goal))
+                                     parent_bounds;
+                               });
                        ii_ident;
                        ii_attrs = c_item_attrs item.attributes;
                      })
                    items;
+               parent_bounds =
+                 List.filter_map
+                   ~f:(fun (clause, impl_expr, span) ->
+                     let* trait_goal = c_clause span clause in
+                     Some (c_impl_expr span impl_expr, trait_goal))
+                   parent_bounds;
              }
     | Use ({ span = _; res; segments; rename }, _) ->
         let v =

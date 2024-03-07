@@ -1150,7 +1150,14 @@ struct
         let tcdef = F.AST.TyconRecord (name, bds, None, [], fields) in
         let d = F.AST.Tycon (false, true, [ tcdef ]) in
         [ `Intf { d; drange = F.dummyRange; quals = []; attrs = [] } ]
-    | Impl { generics; self_ty = _; of_trait = trait, generic_args; items } ->
+    | Impl
+        {
+          generics;
+          self_ty = _;
+          of_trait = trait, generic_args;
+          items;
+          parent_bounds;
+        } ->
         let name = U.Concrete_ident_view.to_definition_name e.ident |> F.id in
         let pat = F.pat @@ F.AST.PatVar (name, None, []) in
         let generics = FStarBinder.of_generics e.span generics in
@@ -1165,25 +1172,29 @@ struct
         in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (typ, None)) in
         let fields =
-          List.map
+          List.concat_map
             ~f:(fun { ii_span; ii_generics; ii_v; ii_ident } ->
               let name = U.Concrete_ident_view.to_definition_name ii_ident in
-              ( F.lid [ name ],
-                match ii_v with
-                | IIFn { body; params } ->
-                    let pats =
-                      FStarBinder.(
-                        of_generics ii_span ii_generics
-                        |> List.map ~f:to_pattern)
-                      @ List.map
-                          ~f:(fun { pat; typ_span; typ } ->
-                            let span = Option.value ~default:ii_span typ_span in
-                            F.pat
-                            @@ F.AST.PatAscribed (ppat pat, (pty span typ, None)))
-                          params
-                    in
-                    F.mk_e_abs pats (pexpr body)
-                | IIType ty -> pty ii_span ty ))
+
+              match ii_v with
+              | IIFn { body; params } ->
+                  let pats =
+                    FStarBinder.(
+                      of_generics ii_span ii_generics |> List.map ~f:to_pattern)
+                    @ List.map
+                        ~f:(fun { pat; typ_span; typ } ->
+                          let span = Option.value ~default:ii_span typ_span in
+                          F.pat
+                          @@ F.AST.PatAscribed (ppat pat, (pty span typ, None)))
+                        params
+                  in
+                  [ (F.lid [ name ], F.mk_e_abs pats (pexpr body)) ]
+              | IIType { typ; parent_bounds } ->
+                  (F.lid [ name ], pty ii_span typ)
+                  :: List.map
+                       ~f:(fun (_impl_expr, impl_ident) ->
+                         (F.lid [ name ^ "_" ^ impl_ident.name ], F.tc_solve))
+                       parent_bounds)
             items
         in
         let fields =
@@ -1191,6 +1202,13 @@ struct
             [ (F.lid [ "__marker_trait" ], pexpr (U.unit_expr e.span)) ]
           else fields
         in
+        let parent_bounds_fields =
+          List.map
+            ~f:(fun (_impl_expr, impl_ident) ->
+              (F.lid [ "_super_" ^ impl_ident.name ], F.tc_solve))
+            parent_bounds
+        in
+        let fields = parent_bounds_fields @ fields in
         let body = F.term @@ F.AST.Record (None, fields) in
         let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
         F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ]
@@ -1319,6 +1337,7 @@ module DepGraphR = Dependencies.Make (Features.Rust)
 module TransformToInputLanguage =
   [%functor_application
   Phases.Reject.RawOrMutPointer(Features.Rust)
+  |> Phases.Drop_sized_trait
   |> Phases.And_mut_defsite
   |> Phases.Reconstruct_for_loops
   |> Phases.Reconstruct_while_loops

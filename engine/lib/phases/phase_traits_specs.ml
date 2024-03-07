@@ -4,7 +4,7 @@ module Make (F : Features.T) =
   Phase_utils.MakeMonomorphicPhase
     (F)
     (struct
-      let phase_id = Diagnostics.Phase.DummyA
+      let phase_id = Diagnostics.Phase.TraitsSpecs
 
       module A = Ast.Make (F)
       module FB = F
@@ -57,7 +57,7 @@ module Make (F : Features.T) =
                   List.concat_map ~f:(fun item -> f item @ [ item ]) items
                 in
                 Trait { name; generics; items }
-            | Impl { generics; self_ty; of_trait; items } ->
+            | Impl { generics; self_ty; of_trait; items; parent_bounds } ->
                 let f (item : impl_item) =
                   let mk kind =
                     let ii_ident = mk_name item.ii_ident kind in
@@ -117,7 +117,7 @@ module Make (F : Features.T) =
                 let items =
                   List.concat_map ~f:(fun item -> f item @ [ item ]) items
                 in
-                Impl { generics; self_ty; of_trait; items }
+                Impl { generics; self_ty; of_trait; items; parent_bounds }
             | v -> v
           in
           { item with v }
