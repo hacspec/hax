@@ -14,3 +14,4 @@ module Local_mutation = Phase_local_mutation.Make
 module Traits_specs = Phase_traits_specs.Make
 module Drop_needless_returns = Phase_drop_needless_returns.Make
 module Drop_sized_trait = Phase_drop_sized_trait.Make
+module Simplify_match_return = Phase_simplify_match_return.Make
