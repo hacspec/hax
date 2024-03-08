@@ -12,7 +12,7 @@ doc: "https://hacspec.org/hax/"
 bug-reports: "https://github.com/hacspec/hax/issues"
 depends: [
   "ocaml"
-  "dune" {>= "3.0"}
+  "dune" {>= "3.8"}
   "base" {>= "0.16.2"}
   "core"
   "yojson"
