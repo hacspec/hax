@@ -1,6 +1,8 @@
-(lang dune 3.8)
-(generate_opam_files true)
+(lang dune 3.0)
+
 (name hax-engine)
+
+(generate_opam_files true)
 
 (source
  (github hacspec/hax))
