@@ -20,7 +20,6 @@
    ppx_string)))
 
 (executable
- (package hax-engine)
  (public_name hax-engine)
  (name native_driver)
  (modules native_driver)

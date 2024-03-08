@@ -1,58 +1,60 @@
-(lang dune 3.8)
-(generate_opam_files true)
+(lang dune 3.0)
+
 (name hax-engine)
 
+(generate_opam_files true)
+
 (source
-  (github username/reponame))
- 
- (authors "Author Name")
- 
- (maintainers "Maintainer Name")
- 
- (license LICENSE)
- 
- (documentation https://url/to/documentation)
- 
- (package
-  (name hax-engine)
-  (synopsis "A short synopsis")
-  (description "A longer description")
-  (depends
-         ocaml
-         dune
-         (base (>= "0.16.2"))
-         core
-         yojson
-         non_empty_list
-         pprint
-         ppx_deriving_yojson
-         ppx_yojson_conv
-         ppx_sexp_conv
-         ppx_compare
-         ppx_hash
-         ppx_deriving
-         cmdliner
-         angstrom
-         re
-         ppx_matches
-         ppx_string
-         logs
-         ocamlgraph
- 
-         js_of_ocaml-compiler
-         js_of_ocaml
-         js_of_ocaml-ppx
-         zarith_stubs_js
-         
-         ; F*-specific dependencies
-         batteries
-         zarith
-         stdint
-         ppxlib
-         menhirLib
-         sedlex
-         )
-  (tags
-   (topics "to describe" your project)))
- 
- ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
+ (github username/reponame))
+
+(authors "Author Name")
+
+(maintainers "Maintainer Name")
+
+(license LICENSE)
+
+(documentation https://url/to/documentation)
+
+(package
+ (name hax-engine)
+ (synopsis "A short synopsis")
+ (description "A longer description")
+ (depends
+        ocaml
+        dune
+        (base (>= "0.16.2"))
+        core
+        yojson
+        non_empty_list
+        pprint
+        ppx_deriving_yojson
+        ppx_yojson_conv
+        ppx_sexp_conv
+        ppx_compare
+        ppx_hash
+        ppx_deriving
+        cmdliner
+        angstrom
+        re
+        ppx_matches
+        ppx_string
+        logs
+        ocamlgraph
+
+        js_of_ocaml-compiler
+        js_of_ocaml
+        js_of_ocaml-ppx
+        zarith_stubs_js
+        
+        ; F*-specific dependencies
+        batteries
+        zarith
+        stdint
+        ppxlib
+        menhirLib
+        sedlex
+        )
+ (tags
+  (topics "to describe" your project)))
+
+; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
