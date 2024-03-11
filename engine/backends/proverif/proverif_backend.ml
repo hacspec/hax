@@ -207,6 +207,8 @@ module Make (Options : OPTS) : MAKE = struct
                ^^ hardline ^^ colon ^^ space ^^ typ ^^ options ^^ dot)
         (** Print a ProVerif constructor. *)
 
+        method pv_type name = string "type" ^^ space ^^ name ^^ dot ^^ hardline
+        (** Print a ProVerif type definition. *)
         method field_accessor field_name =
           string "accessor" ^^ underscore ^^ print#concrete_ident field_name
 
