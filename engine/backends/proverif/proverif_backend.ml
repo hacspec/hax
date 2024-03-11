@@ -221,6 +221,12 @@ module Make (Options : OPTS) : MAKE = struct
         method pv_letfun_call name args =
           name ^^ iblock parens (separate (comma ^^ break 1) args)
         (** Print a ProVerif letfun call. *)
+
+        (* Helpers *)
+        method default_value type_name = type_name ^^ string "_default_value"
+        method default_letfun_name type_name = type_name ^^ string "_default"
+        method error_letfun_name type_name = type_name ^^ string "_err"
+
         method field_accessor field_name =
           string "accessor" ^^ underscore ^^ print#concrete_ident field_name
 
