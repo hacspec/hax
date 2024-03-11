@@ -82,9 +82,6 @@ $(HINT_DIR):
 $(CACHE_DIR):
 	mkdir -p $@
 
-$(CACHE_DIR)/Chacha20.Hacspec_helper.fst.checked: | .depend $(HINT_DIR) $(CACHE_DIR)
-	$(FSTAR) --lax $(OTHERFLAGS) $< $(ENABLE_HINTS) --hint_file $(HINT_DIR)/$(notdir $*).hints
-
 $(CACHE_DIR)/%.checked: | .depend $(HINT_DIR) $(CACHE_DIR)
 	$(FSTAR) $(OTHERFLAGS) $< $(ENABLE_HINTS) --hint_file $(HINT_DIR)/$(notdir $*).hints
 

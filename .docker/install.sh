@@ -48,3 +48,8 @@ echo "export HAX_HOME=$HOME/hax" >>$HOME/.bashrc
 echo "export PATH=\"${PATH}:$HOME/fstar/bin:$HOME/z3-z3-4.12.6/build\"" >>$HOME/.bashrc
 echo "alias fstar.exe='fstar.exe --z3version 4.12.6'" >>$HOME/.bashrc
 echo "[[ ! -r /home/$USER/.opam/opam-init/init.sh ]] || source /home/$USER/.opam/opam-init/init.sh  > /dev/null 2> /dev/null" >>$HOME/.bashrc
+
+export PATH="${PATH}:$HOME/z3-z3-4.12.6/build"
+cd $HOME/fstar
+sed -i 's/MY_FSTAR=\$(FSTAR) /MY_FSTAR=\$(FSTAR) --z3version 4.12.6 /g' ulib/gmake/Makefile.tmpl
+make -j
