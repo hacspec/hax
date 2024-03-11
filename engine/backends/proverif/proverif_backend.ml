@@ -510,7 +510,7 @@ module Make (Options : OPTS) : MAKE = struct
                 | TInt _ -> string "bitstring"
                 | _ -> print#ty_at Item_Fn_body body.typ
               in
-              print#pv_const name const_typ
+              print#pv_const (print#concrete_ident name) const_typ
           | Fn { name; generics; body; params } ->
               let as_constructor : attrs -> bool =
                 Attr_payloads.payloads
@@ -551,47 +551,47 @@ module Make (Options : OPTS) : MAKE = struct
                 in
                 let body =
                   if assume_item || as_handwritten item.attrs then
-                    print#ty_at Item_Fn_body body.typ ^^ string "_default()"
+                    let body_type = print#ty_at Item_Fn_body body.typ in
+                    print#pv_letfun_call
+                      (print#default_letfun_name body_type)
+                      []
                   else print#expr_at Item_Fn_body body
                 in
-                let params_string =
-                  iblock parens
-                    (separate_map (comma ^^ break 1) print#param params)
-                in
-                reached_event_def ^^ string "letfun" ^^ space
-                ^^ align
-                     (print#concrete_ident name ^^ params_string ^^ space
-                    ^^ equals ^^ hardline ^^ reached_event_emission ^^ body
-                    ^^ dot ^^ comment)
-          (* `struct` definitions are transformed into simple constructors and `reduc`s for accessing fields. *)
+                reached_event_def ^^ comment
+                ^^ print#pv_letfun
+                     (print#concrete_ident name)
+                     (List.map ~f:print#param params)
+                     (reached_event_emission ^^ body)
           | Type { name; generics; variants; is_struct } ->
-              let type_line =
-                string "type " ^^ print#concrete_ident name ^^ dot
-              in
+              let type_name_doc = print#concrete_ident name in
+              let type_line = print#pv_type type_name_doc in
               let to_bitstring_converter_line =
                 print#pv_constructor ~is_typeconverter:true
-                  (print#concrete_ident name ^^ string "_to_bitstring")
-                  [ print#concrete_ident name ]
-                  (string "bitstring")
+                  (type_name_doc ^^ string "_to_bitstring")
+                  [ type_name_doc ] (string "bitstring")
               in
               let from_bitstring_converter_line =
                 print#pv_constructor ~is_typeconverter:true
-                  (print#concrete_ident name ^^ string "_from_bitstring")
+                  (type_name_doc ^^ string "_from_bitstring")
                   [ string "bitstring" ]
-                  (print#concrete_ident name)
+                  type_name_doc
               in
               let default_line =
-                string "const " ^^ print#concrete_ident name
-                ^^ string "_default_c" ^^ colon ^^ print#concrete_ident name
-                ^^ dot ^^ hardline ^^ string "letfun "
-                ^^ print#concrete_ident name ^^ string "_default() = "
-                ^^ print#concrete_ident name ^^ string "_default_c" ^^ dot
+                let const_name = print#default_value type_name_doc in
+                print#pv_const const_name type_name_doc
+                ^^ hardline
+                ^^ print#pv_letfun
+                     (print#default_letfun_name type_name_doc)
+                     [] const_name
               in
               let err_line =
-                string "letfun " ^^ print#concrete_ident name
-                ^^ string "_err() = let x = construct_fail() in "
-                ^^ print#concrete_ident name ^^ string "_default()" ^^ dot
+                print#pv_letfun
+                  (print#error_letfun_name type_name_doc)
+                  []
+                  (string "let x = construct_fail() in "
+                  ^^ print#default_value type_name_doc)
               in
+
               if is_struct then
                 let struct_constructor = List.hd variants in
                 match struct_constructor with
