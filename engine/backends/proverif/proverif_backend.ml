@@ -209,6 +209,14 @@ module Make (Options : OPTS) : MAKE = struct
 
         method pv_type name = string "type" ^^ space ^^ name ^^ dot ^^ hardline
         (** Print a ProVerif type definition. *)
+
+        method pv_letfun name args body =
+          string "letfun" ^^ space
+          ^^ align
+               (name
+               ^^ iblock parens (separate (comma ^^ break 1) args)
+               ^^ space ^^ equals ^^ hardline ^^ body ^^ dot)
+        (** Print a ProVerif letfun definition. *)
         method field_accessor field_name =
           string "accessor" ^^ underscore ^^ print#concrete_ident field_name
 
