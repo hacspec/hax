@@ -185,8 +185,7 @@ module Make (Options : OPTS) : MAKE = struct
         (** Print a ProVerif comment and end the line. *)
 
         method pv_const name typ =
-          string "const" ^^ space ^^ print#concrete_ident name ^^ colon ^^ typ
-          ^^ dot
+          string "const" ^^ space ^^ name ^^ colon ^^ space ^^ typ ^^ dot
         (** Print a ProVerif constant declaration of the given typ (provided as a document).*)
 
         method pv_constructor ?(is_data = false) ?(is_typeconverter = false)
