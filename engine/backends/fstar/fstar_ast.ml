@@ -34,10 +34,10 @@ module Attrs = struct
   let no_method = term @@ AST.Var FStar_Parser_Const.no_method_lid
 end
 
+let tcresolve = term @@ AST.Var FStar_Parser_Const.tcresolve_lid
+
 let pat_var_tcresolve (var : string option) =
-  let tcresolve =
-    Some (AST.Meta (term @@ AST.Var FStar_Parser_Const.tcresolve_lid))
-  in
+  let tcresolve = Some (AST.Meta tcresolve) in
   pat
   @@
   match var with
@@ -53,6 +53,16 @@ let mk_e_abs args body =
 let mk_e_app base args =
   AST.mkApp base (List.map ~f:(fun arg -> (arg, AST.Nothing)) args) dummyRange
 
+let unit = term AST.(Const Const_unit)
+
+let tc_solve =
+  let solve =
+    term
+    @@ AST.Var
+         (FStar_Parser_Const.fstar_tactics_lid' [ "Typeclasses"; "solve" ])
+  in
+  mk_e_app solve [ unit ]
+
 let mk_binder ?(aqual : FStar_Parser_AST.arg_qualifier option = Some Implicit) b
     =
   AST.{ b; brange = dummyRange; blevel = Un; aqual; battributes = [] }
@@ -65,8 +75,6 @@ let binder_of_term ?name (t : AST.term) : AST.binder =
     match name with None -> AST.NoName t | Some n -> AST.Annotated (n, t)
   in
   mk_e_binder b
-
-let unit = term AST.(Const Const_unit)
 
 let mk_e_arrow inputs output =
   term @@ AST.Product (List.map ~f:binder_of_term inputs, output)

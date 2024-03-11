@@ -1,0 +1,158 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: fstar
+  info:
+    name: literals
+    manifest: literals/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: true
+      stdout: true
+    include_flag: ~
+    backend_options: ~
+---
+exit = 0
+stderr = '''
+Compiling literals v0.1.0 (WORKSPACE_ROOT/literals)
+    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+
+[stdout]
+diagnostics = []
+
+[stdout.files]
+"Literals.fst" = '''
+module Literals
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let casts (x8: u8) (x16: u16) (x32: u32) (x64: u64) (xs: usize) : Prims.unit =
+  let (_: u64):u64 =
+    ((((cast (x8 <: u8) <: u64) +! (cast (x16 <: u16) <: u64) <: u64) +! (cast (x32 <: u32) <: u64)
+        <:
+        u64) +!
+      x64
+      <:
+      u64) +!
+    (cast (xs <: usize) <: u64)
+  in
+  let (_: u32):u32 =
+    ((((cast (x8 <: u8) <: u32) +! (cast (x16 <: u16) <: u32) <: u32) +! x32 <: u32) +!
+      (cast (x64 <: u64) <: u32)
+      <:
+      u32) +!
+    (cast (xs <: usize) <: u32)
+  in
+  let (_: u16):u16 =
+    ((((cast (x8 <: u8) <: u16) +! x16 <: u16) +! (cast (x32 <: u32) <: u16) <: u16) +!
+      (cast (x64 <: u64) <: u16)
+      <:
+      u16) +!
+    (cast (xs <: usize) <: u16)
+  in
+  let (_: u8):u8 =
+    (((x8 +! (cast (x16 <: u16) <: u8) <: u8) +! (cast (x32 <: u32) <: u8) <: u8) +!
+      (cast (x64 <: u64) <: u8)
+      <:
+      u8) +!
+    (cast (xs <: usize) <: u8)
+  in
+  let (_: i64):i64 =
+    ((((cast (x8 <: u8) <: i64) +! (cast (x16 <: u16) <: i64) <: i64) +! (cast (x32 <: u32) <: i64)
+        <:
+        i64) +!
+      (cast (x64 <: u64) <: i64)
+      <:
+      i64) +!
+    (cast (xs <: usize) <: i64)
+  in
+  let (_: i32):i32 =
+    ((((cast (x8 <: u8) <: i32) +! (cast (x16 <: u16) <: i32) <: i32) +! (cast (x32 <: u32) <: i32)
+        <:
+        i32) +!
+      (cast (x64 <: u64) <: i32)
+      <:
+      i32) +!
+    (cast (xs <: usize) <: i32)
+  in
+  let (_: i16):i16 =
+    ((((cast (x8 <: u8) <: i16) +! (cast (x16 <: u16) <: i16) <: i16) +! (cast (x32 <: u32) <: i16)
+        <:
+        i16) +!
+      (cast (x64 <: u64) <: i16)
+      <:
+      i16) +!
+    (cast (xs <: usize) <: i16)
+  in
+  let (_: i8):i8 =
+    ((((cast (x8 <: u8) <: i8) +! (cast (x16 <: u16) <: i8) <: i8) +! (cast (x32 <: u32) <: i8)
+        <:
+        i8) +!
+      (cast (x64 <: u64) <: i8)
+      <:
+      i8) +!
+    (cast (xs <: usize) <: i8)
+  in
+  ()
+
+let numeric (_: Prims.unit) : Prims.unit =
+  let (_: usize):usize = sz 123 in
+  let (_: isize):isize = isz (-42) in
+  let (_: isize):isize = isz 42 in
+  let (_: i32):i32 = (-42l) in
+  let (_: u128):u128 = pub_u128 22222222222222222222 in
+  ()
+
+let panic_with_msg (_: Prims.unit) : Prims.unit =
+  Rust_primitives.Hax.never_to_any (Core.Panicking.panic_fmt (Core.Fmt.impl_2__new_const (Rust_primitives.unsize
+                (let list = ["with msg"] in
+                  FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 1);
+                  Rust_primitives.Hax.array_of_list 1 list)
+              <:
+              t_Slice string)
+          <:
+          Core.Fmt.t_Arguments)
+      <:
+      Rust_primitives.Hax.t_Never)
+
+type t_Foo = { f_field:u8 }
+
+let v_CONSTANT: t_Foo = { f_field = 3uy } <: t_Foo
+
+let patterns (_: Prims.unit) : Prims.unit =
+  let _:Prims.unit =
+    match 1uy with
+    | 2uy -> () <: Prims.unit
+    | _ -> () <: Prims.unit
+  in
+  let _:Prims.unit =
+    match
+      "hello",
+      (123l,
+        (let list = ["a"; "b"] in
+          FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 2);
+          Rust_primitives.Hax.array_of_list 2 list)
+        <:
+        (i32 & t_Array string (sz 2)))
+      <:
+      (string & (i32 & t_Array string (sz 2)))
+    with
+    | "hello", (123l, v__todo) -> () <: Prims.unit
+    | _ -> () <: Prims.unit
+  in
+  let _:Prims.unit =
+    match { f_field = 4uy } <: t_Foo with
+    | { f_field = 3uy } -> () <: Prims.unit
+    | _ -> () <: Prims.unit
+  in
+  ()
+'''

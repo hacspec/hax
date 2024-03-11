@@ -26,6 +26,8 @@ mod internal_helpers {
     }
     macro_rules! _span_verb_base {
         ($verb:ident, $s:ident, $span:expr, $message:expr) => {{
+            let backtrace = std::backtrace::Backtrace::capture();
+            eprintln!("{}", backtrace);
             let mut builder = $crate::utils::_verb!($verb, $s.base().tcx.sess, $message);
             if let Some(span) = $span {
                 builder.set_span(span.clone());

@@ -372,7 +372,13 @@ struct
 
     let rec dimpl_item' (span : span) (ii : A.impl_item') : B.impl_item' =
       match ii with
-      | IIType g -> IIType (dty span g)
+      | IIType { typ; parent_bounds } ->
+          IIType
+            {
+              typ = dty span typ;
+              parent_bounds =
+                List.map ~f:(dimpl_expr span *** dimpl_ident span) parent_bounds;
+            }
       | IIFn { body; params } ->
           IIFn { body = dexpr body; params = List.map ~f:(dparam span) params }
 
@@ -435,8 +441,14 @@ struct
               generics = dgenerics span generics;
               items = List.map ~f:dtrait_item items;
             }
-      | Impl { generics; self_ty; of_trait = trait_id, trait_generics; items }
-        ->
+      | Impl
+          {
+            generics;
+            self_ty;
+            of_trait = trait_id, trait_generics;
+            items;
+            parent_bounds;
+          } ->
           B.Impl
             {
               generics = dgenerics span generics;
@@ -444,6 +456,8 @@ struct
               of_trait =
                 (trait_id, List.map ~f:(dgeneric_value span) trait_generics);
               items = List.map ~f:dimpl_item items;
+              parent_bounds =
+                List.map ~f:(dimpl_expr span *** dimpl_ident span) parent_bounds;
             }
       | Alias { name; item } -> B.Alias { name; item }
       | Use { path; is_external; rename } -> B.Use { path; is_external; rename }

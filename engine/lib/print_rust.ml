@@ -506,7 +506,7 @@ module Raw = struct
             & !"{"
             & List.map ~f:ptrait_item items |> concat ~sep:!"\n"
             & !"}"
-        | Impl { generics; self_ty; of_trait; items } ->
+        | Impl { generics; self_ty; of_trait; items; parent_bounds = _ } ->
             let trait =
               pglobal_ident e.span (fst of_trait)
               & !"<"

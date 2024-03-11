@@ -12,10 +12,10 @@ pub enum ConstantInt {
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub enum ConstantLiteral {
-    // TODO: add Str, etc.
     Bool(bool),
     Char(char),
     Int(ConstantInt),
+    Str(String, StrStyle),
     ByteStr(Vec<u8>, StrStyle),
 }
 
@@ -68,6 +68,18 @@ impl From<ConstantFieldExpr> for FieldExpr {
     }
 }
 
+impl ConstantLiteral {
+    /// Rustc always represents string constants as `&[u8]`, but this
+    /// is not nice to consume. This associated function interpret
+    /// bytes as an unicode string, and as a byte string otherwise.
+    fn byte_str(bytes: Vec<u8>, style: StrStyle) -> Self {
+        match String::from_utf8(bytes.clone()) {
+            Ok(s) => Self::Str(s, style),
+            Err(_) => Self::ByteStr(bytes, style),
+        }
+    }
+}
+
 impl From<ConstantExpr> for Expr {
     fn from(c: ConstantExpr) -> Expr {
         use ConstantExprKind::*;
@@ -89,6 +101,7 @@ impl From<ConstantExpr> for Expr {
                         }
                     }
                     ByteStr(raw, str_style) => LitKind::ByteStr(raw, str_style),
+                    Str(raw, str_style) => LitKind::Str(raw, str_style),
                 };
                 let span = c.span.clone();
                 let lit = Spanned { span, node };
@@ -328,7 +341,7 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
             ConstantExprKind::Borrow(valtree_to_constant_expr(s, valtree, *inner_ty, span))
         }
         (ty::ValTree::Branch(valtrees), ty::Str) => ConstantExprKind::Literal(
-            ConstantLiteral::ByteStr(valtrees.iter().map(|x| match x {
+            ConstantLiteral::byte_str(valtrees.iter().map(|x| match x {
                 ty::ValTree::Leaf(leaf) => leaf.try_to_u8().unwrap_or_else(|e| fatal!(s[span], "Expected a u8 leaf while translating a str literal, got something else. Error: {:#?}", e)),
                 _ => fatal!(s[span], "Expected a flat list of leaves while translating a str literal, got a arbitrary valtree.")
             }).collect(), StrStyle::Cooked))

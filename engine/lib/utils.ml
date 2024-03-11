@@ -71,6 +71,12 @@ let inits (type a) (l : a list) : (a list * a) list =
     l
   |> snd
 
+let sequence (l : 'a option list) : 'a list option =
+  List.fold_right
+    ~f:(fun x acc ->
+      match (acc, x) with Some acc, Some x -> Some (x :: acc) | _ -> None)
+    ~init:(Some []) l
+
 let tabsize = 2
 let newline_indent depth : string = "\n" ^ String.make (tabsize * depth) ' '
 
