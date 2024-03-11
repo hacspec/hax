@@ -200,9 +200,11 @@ module Make (Options : OPTS) : MAKE = struct
             ^^ separate (comma ^^ space) options
             ^^ string "]"
           in
-          string "fun" ^^ space ^^ name
-          ^^ iblock parens (separate (comma ^^ space) arg_types)
-          ^^ colon ^^ space ^^ typ ^^ options ^^ dot
+          string "fun" ^^ space
+          ^^ align
+               (name
+               ^^ iblock parens (separate (comma ^^ break 1) arg_types)
+               ^^ hardline ^^ colon ^^ space ^^ typ ^^ options ^^ dot)
         (** Print a ProVerif constructor. *)
 
         method field_accessor field_name =
