@@ -324,6 +324,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af150ab688ff2122fcef229be89cb50dd66af9e01a4ff320cc137eecc9bacc38"
 
 [[package]]
+name = "kyber_compress"
+version = "0.1.0"
+dependencies = [
+ "hax-lib",
+ "hax-lib-macros",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -356,14 +364,6 @@ name = "memchr"
 version = "2.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f665ee40bc4a3c5590afb1e9677db74a508659dfd71e126420da8274909a0167"
-
-[[package]]
-name = "non_zero"
-version = "0.1.0"
-dependencies = [
- "hax-lib",
- "hax-lib-macros",
-]
 
 [[package]]
 name = "num-bigint"
