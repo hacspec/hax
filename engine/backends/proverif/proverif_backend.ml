@@ -231,9 +231,11 @@ module Make (Options : OPTS) : MAKE = struct
           string "accessor" ^^ underscore ^^ print#concrete_ident field_name
 
         method match_arm scrutinee { arm_pat; body } =
+          let body_typ = print#ty AlreadyPar (body.typ) in
           let body = print#expr_at Arm_body body in
           match arm_pat with
           | { p = PWild; _ } -> body
+          | { p = PConstruct {name; _}} when Global_ident.eq_name Core__result__Result__Err name -> print#pv_letfun_call (print#error_letfun_name body_typ) []
           | _ ->
               let pat =
                 match arm_pat with
@@ -306,6 +308,28 @@ module Make (Options : OPTS) : MAKE = struct
                           ^^ iblock parens inner_field_doc)
                   in
                   string "Some" ^^ inner_block
+            | PConstruct { name; args }
+              (* Some(expr) -> Some(<expr_typ_to_bitstring>(expr))*)
+                when Global_ident.eq_name Core__result__Result__Ok name ->
+                  let inner_field = List.hd_exn args in
+                  let inner_field_type_doc =
+                    print#ty AlreadyPar inner_field.pat.typ
+                  in
+                  let inner_field_doc = print#pat ctx inner_field.pat in
+                  inner_field_doc
+                  (* let inner_block = *)
+                  (*   match inner_field.pat.typ with *)
+                  (*   | TApp { ident = `TupleType _ } *)
+                  (*   (\* Tuple types should be translated without conversion from bitstring *\) *)
+                  (*     -> *)
+                  (*       iblock parens inner_field_doc *)
+                  (*   | _ -> *)
+                  (*       iblock parens *)
+                  (*         (inner_field_type_doc ^^ string "_to_bitstring" *)
+                  (*         ^^ iblock parens inner_field_doc) *)
+                  (* in *)
+                  (* string "Some" ^^ inner_block *)
+
               | PConstruct { name; args } -> (
                   match
                     translate_known_name name ~dict:library_constructor_patterns
@@ -868,16 +892,18 @@ module DepGraphR = Dependencies.Make (Features.Rust)
 
 module TransformToInputLanguage =
   [%functor_application
-  Phases.Reject.RawOrMutPointer(Features.Rust)
-  |> Phases.And_mut_defsite
-  |> Phases.Reconstruct_for_loops
+    Phases.Reject.RawOrMutPointer(Features.Rust)
+    |> Phases.Simplify_question_marks
+    |> Phases.And_mut_defsite
+    |> Phases.Reconstruct_for_loops
   |> Phases.Direct_and_mut
   |> Phases.Reject.Arbitrary_lhs
   |> Phases.Drop_blocks
   |> Phases.Drop_references
   |> Phases.Trivialize_assign_lhs
-  |> Phases.Reconstruct_question_marks
   |> Side_effect_utils.Hoist
+  |> Phases.Simplify_match_return
+  |> Phases.Drop_needless_returns
   |> Phases.Local_mutation
   |> Phases.Reject.Continue
   |> SubtypeToInputLanguage
