@@ -2,6 +2,7 @@
 (using coq 0.8)
 (generate_opam_files true)
 (name coq-hacspec-ssprove)
+(opam_file_location inside_opam_directory)
 
 (package
  (name coq-hacspec-ssprove)
