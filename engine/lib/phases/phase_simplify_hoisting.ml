@@ -15,7 +15,7 @@ module Make (F : Features.T) =
       end)
 
       let inline_matches =
-        object
+        object (self)
           inherit [_] Visitors.map as super
 
           method! visit_expr () e =
@@ -58,7 +58,8 @@ module Make (F : Features.T) =
                     #visit_expr
                     () body
                 in
-                if [%eq: int] count 1 then body else super#visit_expr () e
+                if [%eq: int] count 1 then self#visit_expr () body
+                else super#visit_expr () e
             | _ -> super#visit_expr () e
         end
 
