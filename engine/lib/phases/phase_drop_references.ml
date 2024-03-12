@@ -3,8 +3,7 @@ open! Prelude
 module%inlined_contents Make
     (F : Features.T
            with type raw_pointer = Features.Off.raw_pointer
-            and type mutable_reference = Features.Off.mutable_reference
-            and type question_mark = Features.Off.question_mark) =
+            and type mutable_reference = Features.Off.mutable_reference) =
 struct
   open Ast
   module FA = F
@@ -46,7 +45,7 @@ struct
       | [%inline_arms "dgeneric_value.*" - GLifetime] ->
           map (Option.some : B.generic_value -> _)
 
-    and dtrait_ref (span : span) (r : A.trait_ref) : B.trait_ref =
+    and dtrait_goal (span : span) (r : A.trait_goal) : B.trait_goal =
       {
         trait = r.trait;
         args = List.filter_map ~f:(dgeneric_value span) r.args;
@@ -69,7 +68,7 @@ struct
 
     and dexpr' (span : span) (e : A.expr') : B.expr' =
       match (UA.unbox_underef_expr { e; span; typ = UA.never_typ }).e with
-      | [%inline_arms If + Literal + Array + Block] -> auto
+      | [%inline_arms If + Literal + Array + Block + QuestionMark] -> auto
       | Construct { constructor; is_record; is_struct; fields; base } ->
           Construct
             {
@@ -138,8 +137,7 @@ struct
         B.generic_constraint option =
       match p with
       | GCLifetime _ -> None
-      | GCType { bound; id } ->
-          Some (B.GCType { bound = dtrait_ref span bound; id })
+      | GCType idents -> Some (B.GCType (dimpl_ident span idents))
 
     let dgenerics (span : span) (g : A.generics) : B.generics =
       {
@@ -162,6 +160,7 @@ struct
             self_ty;
             of_trait = of_trait_id, of_trait_generics;
             items;
+            parent_bounds;
           } ->
           B.Impl
             {
@@ -171,6 +170,8 @@ struct
                 ( of_trait_id,
                   List.filter_map ~f:(dgeneric_value span) of_trait_generics );
               items = List.map ~f:dimpl_item items;
+              parent_bounds =
+                List.map ~f:(dimpl_expr span *** dimpl_ident span) parent_bounds;
             }
 
     [%%inline_defs ditems]

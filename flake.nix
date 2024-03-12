@@ -41,9 +41,21 @@
         ocamlformat = pkgs.ocamlformat_0_24_1;
         rustfmt = pkgs.rustfmt;
         fstar = inputs.fstar.packages.${system}.default;
+        hax-env-file = pkgs.writeText "hax-env-file" ''
+          HAX_PROOF_LIBS_HOME="${./proof-libs/fstar}"
+          HAX_LIBS_HOME="${./hax-lib}"/proofs/fstar/extraction
+          HACL_HOME="${hacl-star}"
+        '';
+        hax-env = pkgs.writeScriptBin "hax-env" ''
+          if [[ "$1" == "no-export" ]]; then
+            cat "${hax-env-file}"
+          else
+            cat "${hax-env-file}" | xargs -I{} echo "export {}"
+          fi
+        '';
       in rec {
         packages = {
-          inherit rustc ocamlformat rustfmt fstar;
+          inherit rustc ocamlformat rustfmt fstar hax-env;
           hax-engine = pkgs.callPackage ./engine {
             hax-rust-frontend = packages.hax-rust-frontend.unwrapped;
             hax-engine-names-extract = packages.hax-rust-frontend.hax-engine-names-extract;
@@ -64,7 +76,7 @@
           toolchain = packages.hax.tests;
           examples = pkgs.callPackage ./examples {
             inherit (packages) hax;
-            inherit craneLib fstar hacl-star;
+            inherit craneLib fstar hacl-star hax-env;
           };
           readme-coherency = let
             src = pkgs.lib.sourceFilesBySuffices ./. [".md"];
@@ -140,6 +152,11 @@
           fstar = pkgs.mkShell {
             inherit inputsFrom LIBCLANG_PATH;
             HACL_HOME = "${hacl-star}";
+            shellHook = ''
+              HAX_ROOT=$(git rev-parse --show-toplevel)
+              export HAX_PROOF_LIBS_HOME="$HAX_ROOT/proof-libs/fstar"
+              export HAX_LIBS_HOME="$HAX_ROOT/hax-lib"
+            '';
             packages = packages ++ [fstar];
           };
           default = pkgs.mkShell {

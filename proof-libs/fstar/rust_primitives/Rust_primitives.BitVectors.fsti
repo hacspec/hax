@@ -27,15 +27,25 @@ val lemma_get_bit_bounded' #t (x:int_t t) (d:num_bits t):
   Lemma (requires forall i. v i > d ==> get_bit x i == 0)
         (ensures bounded x d)
 
+open FStar.FunctionalExtensionality
+
 /// A bit vector is a partial map from indexes to bits
-type bit_vec (len: nat) = i:nat {i < len} -> bit
+type bit_vec (len: nat) = i:nat {i < len} ^-> bit
 
 /// Transform an array of integers to a bit vector
 #push-options "--fuel 0 --ifuel 1 --z3rlimit 50"
 let bit_vec_of_int_t_array (#n: inttype) (#len: usize) 
                 (arr: t_Array (int_t n) len)
                 (d: num_bits n): bit_vec (v len * d)
-  = fun i -> get_bit (Seq.index arr (i / d)) (sz (i % d))
+  = on (i: nat {i < v len * d}) 
+       (fun i -> get_bit (Seq.index arr (i / d)) (sz (i % d)))
+
+let bit_vec_of_refined_int_t_array (#n: inttype) (#len: usize) 
+                #refinement
+                (arr: t_Array (x: int_t n {refinement x}) len)
+                (d: num_bits n): bit_vec (v len * d)
+  = on (i: nat {i < v len * d})
+       (fun i -> get_bit (Seq.index arr (i / d)) (sz (i % d)))
 #pop-options
 
 /// Transform an array of `nat`s to a bit vector
@@ -44,7 +54,8 @@ let bit_vec_of_nat_array (#len: usize)
                        (arr: t_Array nat len)
                        (d: nat)
                        : bit_vec (v len * d)
-  = fun i -> get_bit_nat (Seq.index arr (i / d)) (i % d)
+  = on (i: nat {i < v len * d})
+       (fun i -> get_bit_nat (Seq.index arr (i / d)) (i % d))
 #pop-options
 
 /// Transforms a bit vector into an array of integers

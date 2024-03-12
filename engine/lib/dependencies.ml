@@ -54,12 +54,16 @@ module Make (F : Features.T) = struct
         | Trait { name = _; generics; items } ->
             v#visit_generics () generics
             @ concat_map (v#visit_trait_item ()) items
-        | Impl { generics; self_ty; of_trait; items } ->
+        | Impl { generics; self_ty; of_trait; items; parent_bounds } ->
             v#visit_generics () generics
             @ v#visit_ty () self_ty
             @ v#visit_global_ident () (fst of_trait)
             @ concat_map (v#visit_generic_value ()) (snd of_trait)
             @ concat_map (v#visit_impl_item ()) items
+            @ concat_map
+                (fun (ie, ii) ->
+                  v#visit_impl_expr () ie @ v#visit_impl_ident () ii)
+                parent_bounds
         | Alias { name = _; item } -> v#visit_concrete_ident () item
         | Use _ | HaxError _ | NotImplementedYet ->
             Set.empty (module Concrete_ident)

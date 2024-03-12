@@ -79,6 +79,9 @@ pub enum AttrPayload {
     ProtocolMessages,
     PVConstructor,
     PVHandwritten
+    TraitMethodNoPrePost,
+    /// Make a type opaque
+    OpaqueType,
 }
 
 pub const HAX_TOOL: &str = "_hax";

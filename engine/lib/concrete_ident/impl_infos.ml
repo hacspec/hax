@@ -1,12 +1,12 @@
 open! Prelude
 
 type t = {
-  trait_ref : Ast.Rust.trait_ref option;
+  trait_goal : Ast.Rust.trait_goal option;
       (** The trait implemented by the [impl] block or [None] if the
          [impl] block is an {{: https://doc.rust-lang.org/reference/items/implementations.html#inherent-implementations } inherent [impl]}.
         *)
   typ : Ast.Rust.ty;  (** The type implemented by the [impl] block. *)
-  predicates : Ast.Rust.trait_ref list;
+  predicates : Ast.Rust.trait_goal list;
       (** The predicates that constraint this [impl] block. *)
 }
 (** metadata of an [impl] block *)
@@ -23,8 +23,8 @@ let lookup span (impl : Concrete_ident.t) : t option =
   let* Types.{ generics = _; predicates; typ; trait_ref } =
     Concrete_ident.lookup_raw_impl_info impl
   in
-  let trait_ref =
-    trait_ref |> Option.map ~f:(Import_thir.import_trait_ref span)
+  let trait_goal =
+    Option.map ~f:(Import_thir.import_trait_ref span) trait_ref
   in
   let typ = Import_thir.import_ty span typ in
   let predicates =
@@ -33,4 +33,4 @@ let lookup span (impl : Concrete_ident.t) : t option =
     in
     List.filter_map ~f predicates
   in
-  Some { trait_ref; typ; predicates }
+  Some { trait_goal; typ; predicates }

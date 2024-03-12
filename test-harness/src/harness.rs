@@ -45,6 +45,7 @@ pub struct TestSpec {
     pub positive: bool,
     pub snapshot: TestSnapshot,
     pub include_flag: Option<String>,
+    pub backend_options: Option<Vec<String>>,
 }
 
 impl From<Value> for TestSpec {
@@ -68,6 +69,7 @@ impl From<Value> for TestSpec {
             positive: as_bool(&o, "positive", true),
             issue_id: o["positive"].as_u64(),
             include_flag: o["include-flag"].as_str().map(|s| s.into()),
+            backend_options: serde_json::from_value(o["backend-options"].clone()).unwrap(),
             snapshot: as_opt_bool(snapshot, true)
                 .map(|b| TestSnapshot {
                     stderr: b,
@@ -119,6 +121,9 @@ impl Test {
                 }
                 args.push("--dry-run".to_string());
                 args.push(backend.clone());
+                if let Some(backend_options) = &self.spec.backend_options {
+                    args.extend_from_slice(backend_options.clone().as_slice());
+                }
                 args
             }
         }

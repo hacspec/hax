@@ -6,8 +6,8 @@
 #
 # We expect FSTAR_HOME to be set to your FSTAR repo/install directory
 # We expect HACL_HOME to be set to your HACL* repo location
-# We expect HAX_PROOF_LIBS to be set to the folder containing core, rust_primitives etc.
-# We expect HAX_LIB to be set to the folder containing the crate `hax-lib`.
+# We expect HAX_PROOF_LIBS_HOME to be set to the folder containing core, rust_primitives etc.
+# We expect HAX_LIBS_HOME to be set to the folder containing the crate `hax-lib`.
 #
 # ROOTS contains all the top-level F* files you wish to verify
 # The default target `verify` verified ROOTS and its dependencies
@@ -36,11 +36,11 @@ HACL_HOME      ?= $(HAX_HOME)/../../../hacl-star
 
 FSTAR_BIN      ?= $(shell command -v fstar.exe 1>&2 2> /dev/null && echo "fstar.exe" || echo "$(FSTAR_HOME)/bin/fstar.exe")
 
-HAX_PROOF_LIBS ?= $(HAX_HOME)/proof-libs/fstar
-HAX_LIB        ?= $(HAX_HOME)/hax-lib
+HAX_PROOF_LIBS_HOME ?= $(HAX_HOME)/proof-libs/fstar
+HAX_LIBS_HOME        ?= $(HAX_HOME)/hax-lib/proofs/fstar/extraction
 
-CACHE_DIR      ?= $(HAX_PROOF_LIBS)/.cache
-HINT_DIR       ?= $(HAX_PROOF_LIBS)/.hints
+CACHE_DIR      ?= $(HAX_PROOF_LIBS_HOME)/.cache
+HINT_DIR       ?= $(HAX_PROOF_LIBS_HOME)/.hints
 
 .PHONY: all verify clean
 
@@ -56,9 +56,9 @@ $(ROOTS): ../../../src/canister.rs ../../../src/lib.rs
 	cargo hax into -i '-** +**::process_order' fstar
 
 FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib \
-	$(HAX_PROOF_LIBS)/rust_primitives $(HAX_PROOF_LIBS)/core \
-	$(HAX_PROOF_LIBS)/hax_lib \
-	$(HAX_LIB)/proofs/fstar/extraction
+	$(HAX_PROOF_LIBS_HOME)/rust_primitives $(HAX_PROOF_LIBS_HOME)/core \
+	$(HAX_PROOF_LIBS_HOME)/hax_lib \
+	$(HAX_LIBS_HOME)
 
 FSTAR_FLAGS = --cmi \
   --warn_error -331 \

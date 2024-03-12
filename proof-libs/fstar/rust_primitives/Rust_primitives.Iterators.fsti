@@ -22,20 +22,32 @@ val foldi_range_step_by  (#n:inttype) (#acc_t:Type)
                        -> acc':acc_t{inv acc' (i +! mk_int #n (v step))}))
                  : res:acc_t{inv res r.f_end}
 
+/// Predicate that asserts a slice `s_chunk` is exactly the nth chunk
+/// of the sequence `s`
+let nth_chunk_of #t
+  (s: Seq.seq t)
+  (s_chunk: Seq.seq t {Seq.length s_chunk > 0})
+  (chunk_nth: nat {chunk_nth < Seq.length s / Seq.length s_chunk})
+  =  Seq.slice s (Seq.length s_chunk * chunk_nth) (Seq.length s_chunk * (chunk_nth + 1))
+  == s_chunk
 
 val foldi_chunks_exact
-                 (#t:Type) (#acc_t:Type)
-                 (#inv:(acc_t -> usize -> Type))
-                 (s:t_Slice t)
-                 (chunk_len:usize{v chunk_len > 0})
-                 (acc:acc_t{inv acc (sz 0)})
-                 (f: (acc:acc_t -> it:(usize & t_Array t chunk_len){
-                                  let (i,item) = it in
-                                  v i >= 0 /\
-                                  v i < Seq.length s / v chunk_len /\
-                                  inv acc i}
-                       -> acc':acc_t{inv acc' (fst it +! sz 1)}))
-                 : res:acc_t{inv res (length s /! chunk_len)}
+  (#t #acc_t:Type)
+  (#inv: acc_t -> usize -> Type)
+  (s: t_Slice t)
+  (chunk_len: usize {v chunk_len > 0})
+  (acc: acc_t {inv acc (sz 0)})
+  (f: ( acc:acc_t
+      -> it: (usize & t_Array t chunk_len) {
+              let (i, s_chunk) = it in
+                v i < Seq.length s / v chunk_len
+              /\ nth_chunk_of s s_chunk (v i)
+              /\ inv acc i
+        }
+      -> acc': acc_t {inv acc' (fst it +! sz 1)}
+      )
+  )
+  : res:acc_t{inv res (length s /! chunk_len)}
 
 val fold_chunks_exact
                  (#t:Type) (#acc_t:Type)
