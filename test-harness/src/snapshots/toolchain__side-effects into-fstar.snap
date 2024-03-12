@@ -55,7 +55,11 @@ let early_returns (x: u32) : u32 =
   Rust_primitives.Hax.Control_flow_monad.Mexception.run (let! _:Prims.unit =
         if x >. 3ul
         then
-          let! hoist2:Rust_primitives.Hax.t_Never = Core.Ops.Control_flow.ControlFlow.v_Break 0ul in
+          let! hoist2:Rust_primitives.Hax.t_Never =
+            Core.Ops.Control_flow.ControlFlow_Break 0ul
+            <:
+            Core.Ops.Control_flow.t_ControlFlow u32 Rust_primitives.Hax.t_Never
+          in
           Core.Ops.Control_flow.ControlFlow_Continue (Rust_primitives.Hax.never_to_any hoist2)
           <:
           Core.Ops.Control_flow.t_ControlFlow u32 Prims.unit
@@ -70,7 +74,9 @@ let early_returns (x: u32) : u32 =
           match true with
           | true ->
             let! hoist4:Rust_primitives.Hax.t_Never =
-              Core.Ops.Control_flow.ControlFlow.v_Break 34ul
+              Core.Ops.Control_flow.ControlFlow_Break 34ul
+              <:
+              Core.Ops.Control_flow.t_ControlFlow u32 Rust_primitives.Hax.t_Never
             in
             Core.Ops.Control_flow.ControlFlow_Continue
             (x, Rust_primitives.Hax.never_to_any hoist4 <: (u32 & u32))
@@ -88,14 +94,10 @@ let early_returns (x: u32) : u32 =
           Core.Ops.Control_flow.t_ControlFlow u32 (u32 & u32)
       in
       let! hoist8:Rust_primitives.Hax.t_Never =
-        Core.Ops.Control_flow.ControlFlow.v_Break (Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add
-                  123ul
-                  hoist5
-                <:
-                u32)
-              x
-            <:
-            u32)
+        Core.Ops.Control_flow.ControlFlow_Break
+        (Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add 123ul hoist5 <: u32) x)
+        <:
+        Core.Ops.Control_flow.t_ControlFlow u32 Rust_primitives.Hax.t_Never
       in
       Core.Ops.Control_flow.ControlFlow_Continue (Rust_primitives.Hax.never_to_any hoist8)
       <:
@@ -157,9 +159,11 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
               Core.Ops.Control_flow.t_ControlFlow (Core.Option.t_Option u8)
                 (Core.Option.t_Option u8)
             | Core.Option.Option_None  ->
-              Core.Ops.Control_flow.ControlFlow.v_Break (Core.Option.Option_None
-                  <:
-                  Core.Option.t_Option u8)
+              Core.Ops.Control_flow.ControlFlow_Break
+              (Core.Option.Option_None <: Core.Option.t_Option u8)
+              <:
+              Core.Ops.Control_flow.t_ControlFlow (Core.Option.t_Option u8)
+                (Core.Option.t_Option u8)
           else
             match x with
             | Core.Option.Option_Some hoist24 ->
@@ -173,13 +177,17 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
                   Core.Ops.Control_flow.t_ControlFlow (Core.Option.t_Option u8)
                     (Core.Option.t_Option u8)
                 | Core.Option.Option_None  ->
-                  Core.Ops.Control_flow.ControlFlow.v_Break (Core.Option.Option_None
-                      <:
-                      Core.Option.t_Option u8))
-            | Core.Option.Option_None  ->
-              Core.Ops.Control_flow.ControlFlow.v_Break (Core.Option.Option_None
+                  Core.Ops.Control_flow.ControlFlow_Break
+                  (Core.Option.Option_None <: Core.Option.t_Option u8)
                   <:
-                  Core.Option.t_Option u8)
+                  Core.Ops.Control_flow.t_ControlFlow (Core.Option.t_Option u8)
+                    (Core.Option.t_Option u8))
+            | Core.Option.Option_None  ->
+              Core.Ops.Control_flow.ControlFlow_Break
+              (Core.Option.Option_None <: Core.Option.t_Option u8)
+              <:
+              Core.Ops.Control_flow.t_ControlFlow (Core.Option.t_Option u8)
+                (Core.Option.t_Option u8)
         in
         (match hoist26 with
           | Core.Option.Option_Some hoist27 ->
@@ -192,9 +200,10 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
                     <:
                     Core.Ops.Control_flow.t_ControlFlow (Core.Option.t_Option u8) u8
                   | Core.Option.Option_None  ->
-                    Core.Ops.Control_flow.ControlFlow.v_Break (Core.Option.Option_None
-                        <:
-                        Core.Option.t_Option u8))
+                    Core.Ops.Control_flow.ControlFlow_Break
+                    (Core.Option.Option_None <: Core.Option.t_Option u8)
+                    <:
+                    Core.Ops.Control_flow.t_ControlFlow (Core.Option.t_Option u8) u8)
               | 4uy ->
                 (match z with
                   | Core.Option.Option_Some hoist16 ->
@@ -203,9 +212,10 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
                     <:
                     Core.Ops.Control_flow.t_ControlFlow (Core.Option.t_Option u8) u8
                   | Core.Option.Option_None  ->
-                    Core.Ops.Control_flow.ControlFlow.v_Break (Core.Option.Option_None
-                        <:
-                        Core.Option.t_Option u8))
+                    Core.Ops.Control_flow.ControlFlow_Break
+                    (Core.Option.Option_None <: Core.Option.t_Option u8)
+                    <:
+                    Core.Ops.Control_flow.t_ControlFlow (Core.Option.t_Option u8) u8)
               | _ ->
                 Core.Ops.Control_flow.ControlFlow_Continue 12uy
                 <:
@@ -255,10 +265,10 @@ let question_mark (x: u32) : Core.Result.t_Result u32 u32 =
               Core.Ops.Control_flow.t_ControlFlow (Core.Result.t_Result u32 u32) u32
             | Core.Result.Result_Err err ->
               let! _:Prims.unit =
-                Core.Ops.Control_flow.ControlFlow.v_Break (Core.Result.Result_Err
-                    (Core.Convert.f_from err <: u8 -> u32)
-                    <:
-                    Core.Result.t_Result u32 u32)
+                Core.Ops.Control_flow.ControlFlow_Break
+                (Core.Result.Result_Err (Core.Convert.f_from err) <: Core.Result.t_Result u32 u32)
+                <:
+                Core.Ops.Control_flow.t_ControlFlow (Core.Result.t_Result u32 u32) Prims.unit
               in
               Core.Ops.Control_flow.ControlFlow_Continue x
               <:
@@ -295,9 +305,11 @@ let monad_lifting (x: u8) : Core.Result.t_Result t_A t_B =
         match Core.Result.Result_Err (B <: t_B) <: Core.Result.t_Result t_A t_B with
         | Core.Result.Result_Ok hoist33 ->
           let! hoist35:Rust_primitives.Hax.t_Never =
-            Core.Ops.Control_flow.ControlFlow.v_Break (Core.Result.Result_Ok hoist33
-                <:
-                Core.Result.t_Result t_A t_B)
+            Core.Ops.Control_flow.ControlFlow_Break
+            (Core.Result.Result_Ok hoist33 <: Core.Result.t_Result t_A t_B)
+            <:
+            Core.Ops.Control_flow.t_ControlFlow (Core.Result.t_Result t_A t_B)
+              Rust_primitives.Hax.t_Never
           in
           Core.Ops.Control_flow.ControlFlow_Continue (Rust_primitives.Hax.never_to_any hoist35)
           <:
