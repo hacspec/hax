@@ -172,14 +172,21 @@ module Make (Options : OPTS) : MAKE = struct
 
         (* Backend-specific utilities *)
 
+        method pv_event_def name =
+          string "event" ^^ space ^^ name ^^ dot ^^ hardline
+        (** Print a ProVerif event definition. (without arguments)*)
+
+        method pv_event_emission name =
+          string "event" ^^ space ^^ name ^^ semi ^^ hardline
+        (** Print a ProVerif event emission process term. (no arguments)*)
+
         (* ProVerif syntax *)
         method pv_comment content =
           string "(*" ^^ space ^^ content ^^ space ^^ string "*)" ^^ hardline
         (** Print a ProVerif comment and end the line. *)
 
         method pv_const name typ =
-          string "const" ^^ space ^^ print#concrete_ident name ^^ colon ^^ typ
-          ^^ dot
+          string "const" ^^ space ^^ name ^^ colon ^^ space ^^ typ ^^ dot
         (** Print a ProVerif constant declaration of the given typ (provided as a document).*)
 
         method pv_constructor ?(is_data = false) ?(is_typeconverter = false)
@@ -194,18 +201,44 @@ module Make (Options : OPTS) : MAKE = struct
             ^^ separate (comma ^^ space) options
             ^^ string "]"
           in
-          string "fun" ^^ space ^^ name
-          ^^ iblock parens (separate (comma ^^ space) arg_types)
-          ^^ colon ^^ space ^^ typ ^^ options ^^ dot
+          string "fun" ^^ space
+          ^^ align
+               (name
+               ^^ iblock parens (separate (comma ^^ break 1) arg_types)
+               ^^ hardline ^^ colon ^^ space ^^ typ ^^ options ^^ dot)
         (** Print a ProVerif constructor. *)
+
+        method pv_type name = string "type" ^^ space ^^ name ^^ dot ^^ hardline
+        (** Print a ProVerif type definition. *)
+
+        method pv_letfun name args body =
+          string "letfun" ^^ space
+          ^^ align
+               (name
+               ^^ iblock parens (separate (comma ^^ break 1) args)
+               ^^ space ^^ equals ^^ hardline ^^ body ^^ dot)
+        (** Print a ProVerif letfun definition. *)
+
+        method pv_letfun_call name args =
+          name ^^ iblock parens (separate (comma ^^ break 1) args)
+        (** Print a ProVerif letfun call. *)
+
+        (* Helpers *)
+        method default_value type_name = type_name ^^ string "_default_value"
+        method default_letfun_name type_name = type_name ^^ string "_default"
+        method error_letfun_name type_name = type_name ^^ string "_err"
 
         method field_accessor field_name =
           string "accessor" ^^ underscore ^^ print#concrete_ident field_name
 
         method match_arm scrutinee { arm_pat; body } =
+          let body_typ = print#ty AlreadyPar body.typ in
           let body = print#expr_at Arm_body body in
           match arm_pat with
           | { p = PWild; _ } -> body
+          | { p = PConstruct { name; _ } }
+            when Global_ident.eq_name Core__result__Result__Err name ->
+              print#pv_letfun_call (print#error_letfun_name body_typ) []
           | _ ->
               let pat =
                 match arm_pat with
@@ -278,6 +311,27 @@ module Make (Options : OPTS) : MAKE = struct
                           ^^ iblock parens inner_field_doc)
                   in
                   string "Some" ^^ inner_block
+              | PConstruct { name; args }
+              (* Some(expr) -> Some(<expr_typ_to_bitstring>(expr))*)
+                when Global_ident.eq_name Core__result__Result__Ok name ->
+                  let inner_field = List.hd_exn args in
+                  let inner_field_type_doc =
+                    print#ty AlreadyPar inner_field.pat.typ
+                  in
+                  let inner_field_doc = print#pat ctx inner_field.pat in
+                  inner_field_doc
+                  (* let inner_block = *)
+                  (*   match inner_field.pat.typ with *)
+                  (*   | TApp { ident = `TupleType _ } *)
+                  (*   (\* Tuple types should be translated without conversion from bitstring *\) *)
+                  (*     -> *)
+                  (*       iblock parens inner_field_doc *)
+                  (*   | _ -> *)
+                  (*       iblock parens *)
+                  (*         (inner_field_type_doc ^^ string "_to_bitstring" *)
+                  (*         ^^ iblock parens inner_field_doc) *)
+                  (* in *)
+                  (* string "Some" ^^ inner_block *)
               | PConstruct { name; args } -> (
                   match
                     translate_known_name name ~dict:library_constructor_patterns
@@ -452,7 +506,6 @@ module Make (Options : OPTS) : MAKE = struct
               List.map ~f:(snd3 >> print#ty_at Param_typ) fun_args
             in
             let constructor_name = print#concrete_ident constructor.name in
-
             let fun_line =
               print#pv_constructor ~is_data:true constructor_name fun_args_types
                 (print#concrete_ident base_name)
@@ -483,7 +536,7 @@ module Make (Options : OPTS) : MAKE = struct
                 | TInt _ -> string "bitstring"
                 | _ -> print#ty_at Item_Fn_body body.typ
               in
-              print#pv_const name const_typ
+              print#pv_const (print#concrete_ident name) const_typ
           | Fn { name; generics; body; params } ->
               let as_constructor : attrs -> bool =
                 Attr_payloads.payloads
@@ -509,52 +562,62 @@ module Make (Options : OPTS) : MAKE = struct
                       (string "REPLACE by body of type: "
                       ^^ print#ty_at Item_Fn_body body.typ)
                   else if as_handwritten item.attrs then
-                    print#pv_comment (string "REPLACE by destructor")
+                    print#pv_comment (string "REPLACE by handwritten model")
                   else empty
                 in
-
+                let reached_event_name =
+                  string "Reached" ^^ underscore ^^ print#concrete_ident name
+                in
+                let exit_event_name =
+                  string "Exit" ^^ underscore ^^ print#concrete_ident name
+                in
+                let reached_event_def = print#pv_event_def reached_event_name in
+                let reached_event_emission =
+                  print#pv_event_emission reached_event_name
+                in
                 let body =
                   if assume_item || as_handwritten item.attrs then
-                    print#ty_at Item_Fn_body body.typ ^^ string "_default()"
+                    let body_type = print#ty_at Item_Fn_body body.typ in
+                    print#pv_letfun_call
+                      (print#default_letfun_name body_type)
+                      []
                   else print#expr_at Item_Fn_body body
                 in
-                let params_string =
-                  iblock parens
-                    (separate_map (comma ^^ break 1) print#param params)
-                in
-                string "letfun" ^^ space
-                ^^ align
-                     (print#concrete_ident name ^^ params_string ^^ space
-                    ^^ equals ^^ hardline ^^ body ^^ dot ^^ comment)
-          (* `struct` definitions are transformed into simple constructors and `reduc`s for accessing fields. *)
+                reached_event_def ^^ comment
+                ^^ print#pv_letfun
+                     (print#concrete_ident name)
+                     (List.map ~f:print#param params)
+                     (reached_event_emission ^^ body)
           | Type { name; generics; variants; is_struct } ->
-              let type_line =
-                string "type " ^^ print#concrete_ident name ^^ dot
-              in
+              let type_name_doc = print#concrete_ident name in
+              let type_line = print#pv_type type_name_doc in
               let to_bitstring_converter_line =
                 print#pv_constructor ~is_typeconverter:true
-                  (print#concrete_ident name ^^ string "_to_bitstring")
-                  [ print#concrete_ident name ]
-                  (string "bitstring")
+                  (type_name_doc ^^ string "_to_bitstring")
+                  [ type_name_doc ] (string "bitstring")
               in
               let from_bitstring_converter_line =
                 print#pv_constructor ~is_typeconverter:true
-                  (print#concrete_ident name ^^ string "_from_bitstring")
+                  (type_name_doc ^^ string "_from_bitstring")
                   [ string "bitstring" ]
-                  (print#concrete_ident name)
+                  type_name_doc
               in
               let default_line =
-                string "const " ^^ print#concrete_ident name
-                ^^ string "_default_c" ^^ colon ^^ print#concrete_ident name
-                ^^ dot ^^ hardline ^^ string "letfun "
-                ^^ print#concrete_ident name ^^ string "_default() = "
-                ^^ print#concrete_ident name ^^ string "_default_c" ^^ dot
+                let const_name = print#default_value type_name_doc in
+                print#pv_const const_name type_name_doc
+                ^^ hardline
+                ^^ print#pv_letfun
+                     (print#default_letfun_name type_name_doc)
+                     [] const_name
               in
               let err_line =
-                string "letfun " ^^ print#concrete_ident name
-                ^^ string "_err() = let x = construct_fail() in "
-                ^^ print#concrete_ident name ^^ string "_default()" ^^ dot
+                print#pv_letfun
+                  (print#error_letfun_name type_name_doc)
+                  []
+                  (string "let x = construct_fail() in "
+                  ^^ print#default_value type_name_doc)
               in
+
               if is_struct then
                 let struct_constructor = List.hd variants in
                 match struct_constructor with
@@ -831,16 +894,18 @@ module DepGraphR = Dependencies.Make (Features.Rust)
 
 module TransformToInputLanguage =
   [%functor_application
-  Phases.Reject.RawOrMutPointer(Features.Rust)
-  |> Phases.And_mut_defsite
-  |> Phases.Reconstruct_for_loops
+    Phases.Reject.RawOrMutPointer(Features.Rust)
+    |> Phases.Simplify_question_marks
+    |> Phases.And_mut_defsite
+    |> Phases.Reconstruct_for_loops
   |> Phases.Direct_and_mut
   |> Phases.Reject.Arbitrary_lhs
   |> Phases.Drop_blocks
   |> Phases.Drop_references
   |> Phases.Trivialize_assign_lhs
-  |> Phases.Reconstruct_question_marks
   |> Side_effect_utils.Hoist
+  |> Phases.Simplify_match_return
+  |> Phases.Drop_needless_returns
   |> Phases.Local_mutation
   |> Phases.Reject.Continue
   |> SubtypeToInputLanguage
