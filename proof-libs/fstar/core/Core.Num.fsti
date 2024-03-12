@@ -42,5 +42,5 @@ val impl__i32__pow (base: i32) (exponent: u32): result: i32 {v base == 2 /\ v ex
 val impl__u8__from_str_radix: string -> u32 -> Core.Result.t_Result u8 Core.Num.Error.t_ParseIntError
 
 val impl__usize__ilog2: i32 -> u32 
-
+val impl__usize__leading_zeros: usize -> u32
 

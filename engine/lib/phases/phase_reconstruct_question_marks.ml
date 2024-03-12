@@ -85,8 +85,7 @@ module%inlined_contents Make (FA : Features.T) = struct
       let map_err (e : expr) (error_dest : ty) impl : expr option =
         let* success, error_src = expect_result_type e.typ in
         let* impl = expect_residual_impl_result impl in
-        if [%equal: ty] error_src error_dest then
-          Some e
+        if [%equal: ty] error_src error_dest then Some e
         else
           let from_typ = TArrow ([ error_src ], error_dest) in
           let from =

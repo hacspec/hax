@@ -6,6 +6,7 @@
   hax_engine
   fstar_backend
   coq_backend
+  ssprove_backend
   easycrypt_backend
   proverif_backend
   logs

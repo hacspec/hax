@@ -37,8 +37,62 @@ module MakePhaseImplemT (A : Ast.T) (B : Ast.T) = struct
   module type T = sig
     val metadata : Metadata.t
     val ditems : A.item list -> B.item list
-    val dexpr : A.expr -> B.expr
   end
+end
+
+(** Functor that produces module types of monomorphic phases *)
+module MAKE_MONOMORPHIC_PHASE (F : Features.T) = struct
+  module type ARG = sig
+    val phase_id : Diagnostics.Phase.t
+    val ditems : Ast.Make(F).item list -> Ast.Make(F).item list
+  end
+
+  module type T = sig
+    include module type of struct
+      module FB = F
+      module A = Ast.Make (F)
+      module B = Ast.Make (FB)
+      module ImplemT = MakePhaseImplemT (A) (B)
+      module FA = F
+    end
+
+    include ImplemT.T
+  end
+end
+
+(** Make a monomorphic phase: a phase that transform an AST with
+feature set [F] into an AST with the same feature set [F] *)
+module MakeMonomorphicPhase (F : Features.T) (M : MAKE_MONOMORPHIC_PHASE(F).ARG) :
+  MAKE_MONOMORPHIC_PHASE(F).T = struct
+  module FA = F
+  module FB = F
+  module A = Ast.Make (F)
+  module B = Ast.Make (FB)
+  module ImplemT = MakePhaseImplemT (A) (B)
+
+  module Implem = struct
+    let metadata = Metadata.make M.phase_id
+
+    include M
+
+    let subtype (l : A.item list) : B.item list = Stdlib.Obj.magic l
+    let ditems (l : A.item list) : B.item list = ditems l |> subtype
+  end
+
+  include Implem
+end
+
+(** Type of an unconstrainted (forall feature sets) monomorphic phases *)
+module type UNCONSTRAINTED_MONOMORPHIC_PHASE = functor (F : Features.T) -> sig
+  include module type of struct
+    module FB = F
+    module A = Ast.Make (F)
+    module B = Ast.Make (FB)
+    module ImplemT = MakePhaseImplemT (A) (B)
+    module FA = F
+  end
+
+  include ImplemT.T
 end
 
 exception ReportError of Diagnostics.kind
@@ -155,9 +209,7 @@ end = struct
              let regenerate_span_ids =
                (object
                   inherit [_] Visitors.map
-                  method visit_t () x = x
-                  method visit_mutability _ () m = m
-                  method visit_span = Fn.const Span.refresh_id
+                  method! visit_span = Fn.const Span.refresh_id
                end)
                  #visit_item
                  ()

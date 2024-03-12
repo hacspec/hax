@@ -35,6 +35,7 @@ mod rustc_utils;
 pub mod state;
 mod types;
 
+mod deterministic_hash;
 mod index_vec;
 mod prelude;
 

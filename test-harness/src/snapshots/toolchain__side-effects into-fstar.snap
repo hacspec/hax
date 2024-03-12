@@ -1,5 +1,6 @@
 ---
 source: test-harness/src/harness.rs
+assertion_line: 214
 expression: snapshot
 info:
   kind:
@@ -17,6 +18,8 @@ info:
     snapshot:
       stderr: true
       stdout: true
+    include_flag: ~
+    backend_options: ~
 ---
 exit = 0
 stderr = '''
@@ -38,9 +41,7 @@ let add3 (x y z: u32) : u32 =
 
 let direct_result_question_mark (y: Core.Result.t_Result Prims.unit u32)
     : Core.Result.t_Result i8 u32 =
-  Rust_primitives.Hax.Control_flow_monad.Mresult.run (let| _:Prims.unit =
-        Core.Result.impl__map_err y (Core.Convert.f_from <: u32 -> u32)
-      in
+  Rust_primitives.Hax.Control_flow_monad.Mresult.run (let| _:Prims.unit = y in
       Core.Result.Result_Ok (Core.Result.Result_Ok 0y <: Core.Result.t_Result i8 u32)
       <:
       Core.Result.t_Result (Core.Result.t_Result i8 u32) u32)
@@ -225,10 +226,7 @@ let monad_lifting (x: u8) : Core.Result.t_Result t_A t_B =
       then
         let! hoist33:t_A =
           Core.Ops.Control_flow.ControlFlow_Continue
-          (Core.Result.impl__map_err (Core.Result.Result_Err (B <: t_B)
-                <:
-                Core.Result.t_Result t_A t_B)
-              (Core.Convert.f_from <: t_B -> t_B))
+          (Core.Result.Result_Err (B <: t_B) <: Core.Result.t_Result t_A t_B)
           <:
           Core.Ops.Control_flow.t_ControlFlow (Core.Result.t_Result t_A t_B)
             (Core.Result.t_Result t_A t_B)

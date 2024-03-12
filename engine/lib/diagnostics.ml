@@ -2,7 +2,7 @@ open! Prelude
 module T = Types
 
 module Backend = struct
-  type t = Coq | FStar | EasyCrypt | ProVerif
+  type t = Coq | SSProve | FStar | EasyCrypt | ProVerif
   [@@deriving show { with_path = false }, eq, yojson, compare, hash, sexp]
 end
 
@@ -30,6 +30,7 @@ module Phase = struct
     | DropBlocks
     | RefMut
     | ResugarForLoops
+    | ResugarWhileLoops
     | ResugarForIndexLoops
     | ResugarQuestionMarks
     | HoistSideEffects
@@ -37,6 +38,7 @@ module Phase = struct
     | TrivializeAssignLhs
     | CfIntoMonads
     | FunctionalizeLoops
+    | TraitsSpecs
     | DummyA
     | DummyB
     | DummyC

@@ -17,4 +17,4 @@
 (env
  (_
   (flags
-   (:standard -warn-error -A -warn-error +8))))
+   (:standard -w -A))))

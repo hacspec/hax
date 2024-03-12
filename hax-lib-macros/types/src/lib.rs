@@ -55,7 +55,7 @@ pub enum AssociationRole {
     ProcessInit,
     ProtocolMessages,
     PVConstructor,
-    PVHandwritten
+    PVHandwritten,
 }
 
 /// Hax only understands one attribute: `#[hax::json(PAYLOAD)]` where
@@ -78,7 +78,10 @@ pub enum AttrPayload {
     ProcessInit,
     ProtocolMessages,
     PVConstructor,
-    PVHandwritten
+    PVHandwritten,
+    TraitMethodNoPrePost,
+    /// Make a type opaque
+    OpaqueType,
 }
 
 pub const HAX_TOOL: &str = "_hax";

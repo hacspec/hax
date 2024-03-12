@@ -17,6 +17,8 @@ info:
     snapshot:
       stderr: false
       stdout: true
+    include_flag: ~
+    backend_options: ~
 ---
 exit = 0
 
@@ -24,6 +26,79 @@ exit = 0
 diagnostics = []
 
 [stdout.files]
+"Attributes.Newtype_pattern.fst" = '''
+module Attributes.Newtype_pattern
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let v_MAX: usize = sz 10
+
+type t_SafeIndex = { f_i:f_i: usize{f_i <. v_MAX} }
+
+let impl__SafeIndex__as_usize (self: t_SafeIndex) : usize = self.f_i
+
+let impl__SafeIndex__new (i: usize) : Core.Option.t_Option t_SafeIndex =
+  if i <. v_MAX
+  then Core.Option.Option_Some ({ f_i = i } <: t_SafeIndex) <: Core.Option.t_Option t_SafeIndex
+  else Core.Option.Option_None <: Core.Option.t_Option t_SafeIndex
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_1 (#v_T: Type) : Core.Ops.Index.t_Index (t_Array v_T (sz 10)) t_SafeIndex =
+  {
+    f_Output = v_T;
+    f_index_pre = (fun (self: t_Array v_T (sz 10)) (index: t_SafeIndex) -> true);
+    f_index_post = (fun (self: t_Array v_T (sz 10)) (index: t_SafeIndex) (out: v_T) -> true);
+    f_index = fun (self: t_Array v_T (sz 10)) (index: t_SafeIndex) -> self.[ index.f_i ]
+  }
+'''
+"Attributes.Refined_arithmetic.fst" = '''
+module Attributes.Refined_arithmetic
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+type t_Foo = | Foo : u8 -> t_Foo
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl: Core.Ops.Arith.t_Add t_Foo t_Foo =
+  {
+    f_Output = t_Foo;
+    f_add_pre = (fun (self: t_Foo) (rhs: t_Foo) -> self._0 <. (255uy -! rhs._0 <: u8));
+    f_add_post = (fun (self: t_Foo) (rhs: t_Foo) (out: t_Foo) -> true);
+    f_add = fun (self: t_Foo) (rhs: t_Foo) -> Foo (self._0 +! rhs._0) <: t_Foo
+  }
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_1: Core.Ops.Arith.t_Mul t_Foo t_Foo =
+  {
+    f_Output = t_Foo;
+    f_mul_pre
+    =
+    (fun (self: t_Foo) (rhs: t_Foo) -> rhs._0 =. 0uy || self._0 <. (255uy /! rhs._0 <: u8));
+    f_mul_post = (fun (self: t_Foo) (rhs: t_Foo) (out: t_Foo) -> true);
+    f_mul = fun (self: t_Foo) (rhs: t_Foo) -> Foo (self._0 *! rhs._0) <: t_Foo
+  }
+'''
+"Attributes.Refined_indexes.fst" = '''
+module Attributes.Refined_indexes
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let v_MAX: usize = sz 10
+
+type t_MyArray = | MyArray : t_Array u8 (sz 10) -> t_MyArray
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl: Core.Ops.Index.t_Index t_MyArray usize =
+  {
+    f_Output = u8;
+    f_index_pre = (fun (self: t_MyArray) (index: usize) -> index <. v_MAX);
+    f_index_post = (fun (self: t_MyArray) (index: usize) (out: u8) -> true);
+    f_index = fun (self: t_MyArray) (index: usize) -> self.[ index ]
+  }
+'''
 "Attributes.fst" = '''
 module Attributes
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"

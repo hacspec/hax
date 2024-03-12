@@ -12,6 +12,7 @@ struct
     include F
     include Features.Off.Loop
     include Features.Off.For_loop
+    include Features.Off.While_loop
     include Features.Off.For_index_loop
     include Features.Off.State_passing_loop
   end
@@ -62,6 +63,35 @@ struct
             Core__iter__traits__iterator__Iterator__fold
             [ it; dexpr init; fn ]
             span (dty span expr.typ)
+      | Loop
+          {
+            body;
+            kind = WhileLoop { condition; _ };
+            state = Some { init; bpat; _ };
+            _;
+          } ->
+          let body = dexpr body in
+          let condition = dexpr condition in
+          let bpat = dpat bpat in
+          let init = dexpr init in
+          let condition : B.expr =
+            let e : B.expr' =
+              Closure { params = [ bpat ]; body = condition; captures = [] }
+            in
+            let typ : B.ty = TArrow ([ bpat.typ ], condition.typ) in
+            let span = condition.span in
+            { e; typ; span }
+          in
+          let body : B.expr =
+            let e : B.expr' =
+              Closure { params = [ bpat ]; body; captures = [] }
+            in
+            let typ : B.ty = TArrow ([ bpat.typ ], body.typ) in
+            let span = body.span in
+            { e; typ; span }
+          in
+          UB.call ~kind:(AssociatedItem Value) Rust_primitives__hax__while_loop
+            [ condition; init; body ] span (dty span expr.typ)
       | Loop { state = None; _ } ->
           Error.unimplemented ~details:"Loop without mutation?" span
       | Loop _ ->

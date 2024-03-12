@@ -1,0 +1,51 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: fstar
+  info:
+    name: slices
+    manifest: slices/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: true
+      stdout: true
+    include_flag: ~
+    backend_options: ~
+---
+exit = 0
+stderr = '''
+Compiling slices v0.1.0 (WORKSPACE_ROOT/slices)
+    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+
+[stdout]
+diagnostics = []
+
+[stdout.files]
+"Slices.fst" = '''
+module Slices
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let v_VERSION: t_Slice u8 =
+  Rust_primitives.unsize (let list = [118uy; 49uy] in
+      FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 2);
+      Rust_primitives.Hax.array_of_list 2 list)
+
+let do_something (_: t_Slice u8) : Prims.unit = ()
+
+let r#unsized (_: t_Array (t_Slice u8) (sz 1)) : Prims.unit = ()
+
+let sized (x: t_Array (t_Array u8 (sz 4)) (sz 1)) : Prims.unit =
+  r#unsized (let list = [Rust_primitives.unsize (x.[ sz 0 ] <: t_Array u8 (sz 4)) <: t_Slice u8] in
+      FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 1);
+      Rust_primitives.Hax.array_of_list 1 list)
+'''

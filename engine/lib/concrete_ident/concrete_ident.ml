@@ -64,15 +64,20 @@ module Imported = struct
         | _ -> path);
     }
 
+  let map_def_path_item_string ~(f : string -> string) :
+      def_path_item -> def_path_item = function
+    | TypeNs s -> TypeNs (f s)
+    | ValueNs s -> ValueNs (f s)
+    | MacroNs s -> MacroNs (f s)
+    | LifetimeNs s -> LifetimeNs (f s)
+    | other -> other
+
+  let map_disambiguated_def_path_item_string ~(f : string -> string)
+      (x : disambiguated_def_path_item) : disambiguated_def_path_item =
+    { x with data = map_def_path_item_string ~f x.data }
+
   let map_path_strings ~(f : string -> string) (did : def_id) : def_id =
-    let f : def_path_item -> def_path_item = function
-      | TypeNs s -> TypeNs (f s)
-      | ValueNs s -> ValueNs (f s)
-      | MacroNs s -> MacroNs (f s)
-      | LifetimeNs s -> LifetimeNs (f s)
-      | other -> other
-    in
-    let f x = { x with data = f x.data } in
+    let f = map_disambiguated_def_path_item_string ~f in
     { did with path = List.map ~f did.path }
 
   module AssociatedItem : sig
@@ -595,6 +600,14 @@ module Create = struct
           path = new_parent.path @ [ List.last_exn old.def_id.path ];
         };
     }
+
+  let map_last ~f old =
+    let last =
+      List.last_exn old.def_id.path
+      |> Imported.map_disambiguated_def_path_item_string ~f
+    in
+    let path = List.drop_last_exn old.def_id.path @ [ last ] in
+    { old with def_id = { old.def_id with path } }
 end
 
 let lookup_raw_impl_info (impl : t) : Types.impl_infos option =
