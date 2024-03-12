@@ -232,11 +232,13 @@ module Make (Options : OPTS) : MAKE = struct
           string "accessor" ^^ underscore ^^ print#concrete_ident field_name
 
         method match_arm scrutinee { arm_pat; body } =
-          let body_typ = print#ty AlreadyPar (body.typ) in
+          let body_typ = print#ty AlreadyPar body.typ in
           let body = print#expr_at Arm_body body in
           match arm_pat with
           | { p = PWild; _ } -> body
-          | { p = PConstruct {name; _}} when Global_ident.eq_name Core__result__Result__Err name -> print#pv_letfun_call (print#error_letfun_name body_typ) []
+          | { p = PConstruct { name; _ } }
+            when Global_ident.eq_name Core__result__Result__Err name ->
+              print#pv_letfun_call (print#error_letfun_name body_typ) []
           | _ ->
               let pat =
                 match arm_pat with
@@ -309,7 +311,7 @@ module Make (Options : OPTS) : MAKE = struct
                           ^^ iblock parens inner_field_doc)
                   in
                   string "Some" ^^ inner_block
-            | PConstruct { name; args }
+              | PConstruct { name; args }
               (* Some(expr) -> Some(<expr_typ_to_bitstring>(expr))*)
                 when Global_ident.eq_name Core__result__Result__Ok name ->
                   let inner_field = List.hd_exn args in
@@ -330,7 +332,6 @@ module Make (Options : OPTS) : MAKE = struct
                   (*         ^^ iblock parens inner_field_doc) *)
                   (* in *)
                   (* string "Some" ^^ inner_block *)
-
               | PConstruct { name; args } -> (
                   match
                     translate_known_name name ~dict:library_constructor_patterns
