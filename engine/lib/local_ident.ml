@@ -13,7 +13,9 @@ module T = struct
 
   let make_final name = { name; id = mk_id Final 0 }
   let is_final { id; _ } = [%matches? Final] @@ fst id
-  let is_side_effect_hoist_var {id; _} = [%matches? SideEffectHoistVar] @@ fst id
+
+  let is_side_effect_hoist_var { id; _ } =
+    [%matches? SideEffectHoistVar] @@ fst id
 end
 
 include Base.Comparator.Make (T)
