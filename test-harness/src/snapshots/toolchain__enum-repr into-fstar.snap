@@ -1,0 +1,48 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: fstar
+  info:
+    name: enum-repr
+    manifest: enum-repr/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: true
+      stdout: true
+    include_flag: ~
+    backend_options: ~
+---
+exit = 0
+stderr = '''
+Compiling enum-repr v0.1.0 (WORKSPACE_ROOT/enum-repr)
+    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+
+[stdout]
+diagnostics = []
+
+[stdout.files]
+"Enum_repr.fst" = '''
+module Enum_repr
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+type t_Foo =
+  | Foo_A : t_Foo
+  | Foo_B : t_Foo
+  | Foo_C : t_Foo
+
+let f (_: Prims.unit) : u16 =
+  let v__x:u16 = cast (5us +! 0us <: u16) <: u16 in
+  cast (9us +! 0us <: u16) <: u16
+
+let ff__CONST: u16 = cast (1us +! 0us <: u16) <: u16
+'''
