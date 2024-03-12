@@ -646,8 +646,7 @@ end) : EXPR = struct
       | StaticRef { def_id = id; _ } -> GlobalVar (def_id Value id)
       | PlaceTypeAscription _ ->
           unimplemented [ e.span ] "expression PlaceTypeAscription"
-      | ValueTypeAscription _ ->
-          unimplemented [ e.span ] "expression ValueTypeAscription"
+      | ValueTypeAscription { source; _ } -> (c_expr source).e
       | ZstLiteral _ -> unimplemented [ e.span ] "expression ZstLiteral"
       | Yield _ -> unimplemented [ e.span ] "expression Yield"
       | Todo payload -> unimplemented [ e.span ] ("expression Todo\n" ^ payload)
