@@ -566,8 +566,8 @@ module Make (Options : OPTS) : MAKE = struct
                     ^^ fun_and_reduc name constructor
               else
                 type_line ^^ hardline ^^ to_bitstring_converter_line ^^ hardline
-                ^^ from_bitstring_converter_line ^^ hardline ^^ default_line ^^ hardline
-                ^^ err_line ^^ hardline
+                ^^ from_bitstring_converter_line ^^ hardline ^^ default_line
+                ^^ hardline ^^ err_line ^^ hardline
                 ^^ separate_map hardline
                      (fun variant -> fun_and_reduc name variant)
                      variants
