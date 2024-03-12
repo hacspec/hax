@@ -28,17 +28,21 @@ module Phase = struct
     | Identity
     | DropReferences
     | DropBlocks
+    | DropSizedTrait
     | RefMut
     | ResugarForLoops
     | ResugarWhileLoops
     | ResugarForIndexLoops
     | ResugarQuestionMarks
+    | SimplifyQuestionMarks
     | HoistSideEffects
     | LocalMutation
     | TrivializeAssignLhs
     | CfIntoMonads
     | FunctionalizeLoops
     | TraitsSpecs
+    | SimplifyMatchReturn
+    | DropNeedlessReturns
     | DummyA
     | DummyB
     | DummyC
