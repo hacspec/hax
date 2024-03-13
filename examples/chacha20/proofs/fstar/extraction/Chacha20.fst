@@ -126,7 +126,7 @@ let chacha20_init (key: t_Array u8 (sz 32)) (iv: t_Array u8 (sz 12)) (ctr: u32)
     ]
   in
   FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 16);
-  Rust_primitives.Hax.array_of_list list
+  Rust_primitives.Hax.array_of_list 16 list
 
 let chacha20_key_block (state: t_Array u32 (sz 16)) : t_Array u8 (sz 64) =
   let state:t_Array u32 (sz 16) = chacha20_core 0ul state in
