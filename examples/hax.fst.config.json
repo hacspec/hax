@@ -11,13 +11,16 @@
         "+Prims+FStar+LowStar+C+Spec.Loops+TestLib",
         "--query_stats",
         "--split_queries",
-        "always"
+        "always",
+        "--z3version",
+        "4.12.6"
     ],
     "include_dirs": [
-        ".",
+        "${PWD}",
         "${HACL_HOME}/lib",
         "${HAX_HOME}/proof-libs/fstar/rust_primitives",
         "${HAX_HOME}/proof-libs/fstar/core",
-        "${HAX_HOME}/proof-libs/fstar/hax_lib"
+        "${HAX_HOME}/proof-libs/fstar/hax_lib",
+        "${HAX_HOME}/hax-lib/proofs/fstar/extraction"
     ]
 }

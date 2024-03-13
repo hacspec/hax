@@ -46,6 +46,12 @@ This generates a fresh F\* extraction in `proofs/fstar/extraction/<crate-name>.f
 Run `make` in `proofs/fstar/extraction` to see that/if the extracted code type checks.
 When it typechecks, you proved panic freedom of the code! Congrats 🎉
 
+Use the vscode commands to trigger F\*.
+Note that you may have to restart F\* regularly.
+(The vscode extension is not very stable yet.)
+You can lax-typecheck (Lax to position) the F\* code to ensure that the code is syntactically correct, or "Verify to position" to fully typecheck.
+In each case it will fun F\* up to the curser in the file.
+
 #### ChaCha20
 
 Chacha20 typechecks out of the box.
@@ -66,6 +72,20 @@ Now, after extracting the F* code again, the typechecking will fail.
 #### Barrett Reduction
 
 #### ML-KEM (Kyber) Compression
+
+This is a function to compress ml-kem field elements.
+
+- `compress_unsafe` and `compress`
+
+```ocaml
+Rust_primitives.Integers.logand_mask_lemma compressed (v coefficient_bits);
+```
+
+- `get_n_least_significant_bits`
+
+```ocaml
+Rust_primitives.Integers.logand_mask_lemma value (v n);
+```
 
 ## How to generate the F\* code and typecheck it for the examples
 
