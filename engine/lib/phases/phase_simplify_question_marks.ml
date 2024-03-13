@@ -79,29 +79,52 @@ module%inlined_contents Make (FA : Features.T) = struct
             { e with typ = make_result_type success error }
         | _ -> e
 
+      let convert_from (e : expr) (error_dest : ty) impl : expr option =
+        let error_src = e.typ in
+        let* impl = expect_residual_impl_result impl in
+        let*? _ = [%eq: ty] error_src error_dest |> not in
+        let from_typ = TArrow ([ error_src ], error_dest) in
+        Some
+          (UA.call ~kind:(AssociatedItem Value) ~impl Core__convert__From__from
+             [ e ] e.span from_typ)
+
       (** [map_err e error_dest impl] creates the expression
       [e.map_err(from)] with the proper types and impl
       informations. *)
       let map_err (e : expr) (error_dest : ty) impl : expr option =
         let* success, error_src = expect_result_type e.typ in
         let* impl = expect_residual_impl_result impl in
-        if [%equal: ty] error_src error_dest then Some e
-        else
-          let from_typ = TArrow ([ error_src ], error_dest) in
-          let from =
-            UA.call ~kind:(AssociatedItem Value) ~impl Core__convert__From__from
-              [] e.span from_typ
-          in
-          let call =
-            UA.call Core__result__Impl__map_err [ e; from ] e.span
-              (make_result_type success error_dest)
-          in
-          Some call
+        let from_typ = TArrow ([ error_src ], error_dest) in
+        let from =
+          UA.call ~kind:(AssociatedItem Value) ~impl Core__convert__From__from
+            [] e.span from_typ
+        in
+        let call =
+          UA.call Core__result__Impl__map_err [ e; from ] e.span
+            (make_result_type success error_dest)
+        in
+        Some call
+
+      let mk_pconstruct ~is_struct ~is_record ~span ~typ
+          (constructor : Concrete_ident_generated.name)
+          (fields : (Concrete_ident_generated.name * pat) list) =
+        let name =
+          Global_ident.of_name (Constructor { is_struct }) constructor
+        in
+        let args =
+          List.map
+            ~f:(fun (field, pat) ->
+              let field = Global_ident.of_name Field field in
+              { field; pat })
+            fields
+        in
+        let p = PConstruct { name; args; is_record; is_struct } in
+        { p; span; typ }
 
       (** [extract e] returns [Some (x, ty)] if [e] was a `y?`
       desugared by rustc. `y` is `x` plus possibly a coercion. [ty] is
       the return type of the function. *)
-      let extract (e : expr) : (expr * ty) option =
+      let extract (e : expr) : expr option =
         let extract_return (e : expr) =
           match e.e with
           | Return
@@ -118,9 +141,9 @@ module%inlined_contents Make (FA : Features.T) = struct
                     typ = return_typ;
                     _;
                   };
-                _;
+                witness;
               } ->
-              Some (f, residual_var, return_typ, impl)
+              Some (f, residual_var, return_typ, impl, witness)
           | _ -> None
         in
         let extract_pat_app_bd (p : pat) : (global_ident * local_ident) option =
@@ -163,12 +186,12 @@ module%inlined_contents Make (FA : Features.T) = struct
                   };
                 ];
             }
-        (*[@ocamlformat "disable"]*)
           when Global_ident.eq_name Core__ops__try_trait__Try__branch n ->
             let* body =
               UA.Expect.concrete_app1 Rust_primitives__hax__never_to_any body
             in
-            let* f, residual_var, fun_return_typ, residual_impl =
+            let* f, residual_var, fun_return_typ, residual_impl, return_witness
+                =
               extract_return body
             in
             let* f_break, residual_var' = extract_pat_app_bd pat_break in
@@ -183,42 +206,91 @@ module%inlined_contents Make (FA : Features.T) = struct
               && Global_ident.eq_name
                    Core__ops__try_trait__FromResidual__from_residual f
             in
+            let kind = qm_kind_of_typ e.span in
+            let span = expr.span in
+            let mk_var name : local_ident =
+              { name; id = Local_ident.mk_id Expr (-1) }
+            in
+            let mk_cons =
+              mk_pconstruct ~is_struct:false ~is_record:false ~span
+                ~typ:expr.typ
+            in
             let expr =
-              let kind = qm_kind_of_typ e.span in
               match (kind expr.typ, kind fun_return_typ) with
-              | ( QMResult { error = local_err; _ },
+              | ( QMResult { error = local_err; success = local_success },
                   QMResult { error = return_err; _ } ) ->
-                  let expr = retype_err_literal expr e.typ local_err in
-                  map_err expr return_err residual_impl
-                  |> Option.value ~default:expr
-              | QMOption _, QMOption _ -> expr
+                  let var_ok, var_err = (mk_var "ok", mk_var "err") in
+                  let arm_ok : A.arm =
+                    let pat = UA.make_var_pat var_ok local_success span in
+                    let arm_pat =
+                      mk_cons Core__result__Result__Ok
+                        [ (Core__result__Result__Ok__0, pat) ]
+                    in
+                    let body =
+                      { typ = local_success; e = LocalVar var_ok; span }
+                    in
+                    { arm = { arm_pat; body }; span }
+                  in
+                  let arm_err =
+                    let pat = UA.make_var_pat var_err local_err span in
+                    let arm_pat =
+                      mk_cons Core__result__Result__Err
+                        [ (Core__result__Result__Err__0, pat) ]
+                    in
+                    let err = { typ = local_err; e = LocalVar var_err; span } in
+                    let err =
+                      convert_from err return_err residual_impl
+                      |> Option.value ~default:err
+                    in
+                    let err =
+                      UA.call_Constructor Core__result__Result__Err false
+                        [ err ] e.span fun_return_typ
+                    in
+                    let e = Return { e = err; witness = return_witness } in
+                    let return = { typ = local_success; e; span } in
+                    { arm = { arm_pat; body = return }; span }
+                  in
+                  let arms, typ = ([ arm_ok; arm_err ], local_success) in
+                  { e = Match { scrutinee = expr; arms }; typ; span }
+              | QMOption local_success, QMOption _ ->
+                  let var_some = mk_var "some" in
+                  let arm_some : A.arm =
+                    let pat = UA.make_var_pat var_some local_success span in
+                    let arm_pat =
+                      mk_cons Core__option__Option__Some
+                        [ (Core__option__Option__Some__0, pat) ]
+                    in
+                    let body =
+                      { typ = local_success; e = LocalVar var_some; span }
+                    in
+                    { arm = { arm_pat; body }; span }
+                  in
+                  let arm_none =
+                    let arm_pat = mk_cons Core__option__Option__None [] in
+                    let none =
+                      UA.call_Constructor Core__option__Option__None false []
+                        e.span fun_return_typ
+                    in
+                    let e = Return { e = none; witness = return_witness } in
+                    let return = { typ = local_success; e; span } in
+                    { arm = { arm_pat; body = return }; span }
+                  in
+                  let arms, typ = ([ arm_some; arm_none ], local_success) in
+                  { e = Match { scrutinee = expr; arms }; typ; span }
               | _ ->
                   Error.assertion_failure e.span
                     "expected expr.typ and fun_return_typ to be both Options \
                      or both Results"
             in
-            Some (expr, fun_return_typ)
+            Some expr
         | _ -> None
     end
 
     [%%inline_defs dmutability]
 
     let rec dexpr_unwrapped (expr : A.expr) : B.expr =
-      let h = [%inline_body dexpr_unwrapped] in
-      match QuestionMarks.extract expr with
-      | Some (e, return_typ) ->
-          {
-            e =
-              QuestionMark
-                {
-                  e = dexpr e;
-                  return_typ = dty e.span return_typ;
-                  witness = Features.On.question_mark;
-                };
-            span = expr.span;
-            typ = dty expr.span expr.typ;
-          }
-      | None -> h expr
+      QuestionMarks.extract expr |> Option.value ~default:expr
+      |> [%inline_body dexpr_unwrapped]
       [@@inline_ands bindings_of dexpr]
 
     [%%inline_defs "Item.*"]
@@ -228,5 +300,3 @@ module%inlined_contents Make (FA : Features.T) = struct
   module FA = FA
 end
 [@@add "subtype.ml"]
-
-(* module _ (F: Features.T): Phase_utils.PHASE = Make(F) *)

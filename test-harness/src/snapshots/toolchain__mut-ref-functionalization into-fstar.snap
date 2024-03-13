@@ -227,8 +227,7 @@ let j (x: t_Bar) : (t_Bar & u8) =
   let out:u8 = 123uy in
   let tmp0, out1:(t_Bar & u8) = i x in
   let x:t_Bar = tmp0 in
-  let hoist1:u8 = out1 in
-  let hax_temp_output:u8 = hoist1 +! out in
+  let hax_temp_output:u8 = out1 +! out in
   x, hax_temp_output <: (t_Bar & u8)
 
 type t_Pair (v_T: Type) = {

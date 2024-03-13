@@ -1,4 +1,6 @@
 open Ast
+open! Utils
+open Base
 
 module Make =
 functor
@@ -729,7 +731,7 @@ functor
 
         method visit_list : 'a. ('env -> 'a -> 'a) -> 'env -> 'a list -> 'a list
             =
-          fun v env this -> Base.List.map ~f:(fun x -> v env x) this
+          fun v env -> Base.List.map ~f:(v env)
 
         method visit_option
             : 'a. ('env -> 'a -> 'a) -> 'env -> 'a option -> 'a option =
@@ -1883,15 +1885,11 @@ functor
         method visit_list
             : 'a. ('env -> 'a -> 'a * 'acc) -> 'env -> 'a list -> 'a list * 'acc
             =
-          fun v env this ->
-            let acc = ref self#zero in
-            ( Base.List.map
-                ~f:(fun x ->
-                  let x, acc' = v env x in
-                  acc := self#plus !acc acc';
-                  x)
-                this,
-              !acc )
+          fun v env ->
+            Base.List.fold_map ~init:self#zero ~f:(fun acc x ->
+                let x, acc' = v env x in
+                (self#plus acc acc', x))
+            >> swap
 
         method visit_option
             : 'a.
@@ -2946,16 +2944,9 @@ functor
         method visit_list : 'a. ('env -> 'a -> 'acc) -> 'env -> 'a list -> 'acc
             =
           fun v env this ->
-            let acc = ref self#zero in
-            let _ =
-              Base.List.map
-                ~f:(fun x ->
-                  let acc' = v env x in
-                  acc := self#plus !acc acc';
-                  ())
-                this
-            in
-            !acc
+            Base.List.fold ~init:self#zero
+              ~f:(fun acc -> v env >> self#plus acc)
+              this
 
         method visit_option
             : 'a. ('env -> 'a -> 'acc) -> 'env -> 'a option -> 'acc =
