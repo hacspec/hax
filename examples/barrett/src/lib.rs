@@ -1,11 +1,12 @@
 use hax_lib_macros::{ensures, requires};
+use hax_lib::{assert};
 
 /// Values having this type hold a representative 'x' of the Kyber field.
 /// We use 'fe' as a shorthand for this type.
 pub(crate) type FieldElement = i32;
 
 const BARRETT_SHIFT: i64 = 26;
-const BARRETT_R: i64 = 1 << BARRETT_SHIFT; // 0x4000000
+const BARRETT_R: i64 = 0x4000000; // 2^26
 
 /// This is calculated as ⌊(BARRETT_R / FIELD_MODULUS) + 1/2⌋
 const BARRETT_MULTIPLIER: i64 = 20159;
@@ -23,21 +24,21 @@ pub(crate) const FIELD_MODULUS: i32 = 3329;
 /// `|result| ≤ FIELD_MODULUS / 2 · (|value|/BARRETT_R + 1)
 ///
 /// In particular, if `|value| < BARRETT_R`, then `|result| < FIELD_MODULUS`.
-#[requires((i64::from(value) > -BARRETT_R && i64::from(value) < BARRETT_R))]
-#[ensures(|result| result > -FIELD_MODULUS && result < FIELD_MODULUS && result % FIELD_MODULUS == value % FIELD_MODULUS)]
+#[requires((i64::from(value) >= -BARRETT_R && i64::from(value) <= BARRETT_R))]
+#[ensures(|result| result > -FIELD_MODULUS && result < FIELD_MODULUS &&
+                   result % FIELD_MODULUS == value % FIELD_MODULUS)]
 pub fn barrett_reduce(value: FieldElement) -> FieldElement {
     let t = i64::from(value) * BARRETT_MULTIPLIER;
-    debug_assert!(9223372036854775807 - (BARRETT_R >> 1) > t);
+    assert!(9223372036854775807 - (BARRETT_R >> 1) > t);
     let t = t + (BARRETT_R >> 1);
 
     let quotient = t >> BARRETT_SHIFT;
-    debug_assert!(quotient <= 2147483647_i64 || quotient >= -2147483648_i64);
+    assert!(quotient <= 2147483647_i64 || quotient >= -2147483648_i64);
     let quotient = quotient as i32;
 
-    debug_assert!(((quotient as i64) * (FIELD_MODULUS as i64)) < 9223372036854775807);
+    assert!(((quotient as i64) * (FIELD_MODULUS as i64)) < 9223372036854775807);
     let sub = quotient * FIELD_MODULUS;
 
-    debug_assert!(9223372036854775807 - (value as i64) > (sub as i64) + -9223372036854775808);
     value - sub
 }
 
