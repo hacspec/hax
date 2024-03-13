@@ -38,6 +38,9 @@ Open the example in `examples/<name>`.
 The code is in `examples/<name>/src/lib.rs`.
 
 To extract the Rust code to F\*, run `cargo hax into fstar` in the crate.
+Most examples require a higher than default z3 limit, which makes such that z3 tries
+longer to find an answer.
+To do this, add `--z3rlimit 150` to the `cargo hax into fstar` command.
 This generates a fresh F\* extraction in `proofs/fstar/extraction/<crate-name>.fst`.
 
 Run `make` in `proofs/fstar/extraction` to see that/if the extracted code type checks.
