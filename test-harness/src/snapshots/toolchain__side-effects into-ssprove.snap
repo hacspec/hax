@@ -1,5 +1,6 @@
 ---
 source: test-harness/src/harness.rs
+assertion_line: 214
 expression: snapshot
 info:
   kind:
@@ -65,7 +66,7 @@ Fail Next Obligation.
 
 Equations direct_result_question_mark {L1 : {fset Location}} {I1 : Interface} (y : both L1 I1 (t_Result 'unit int32)) : both L1 I1 (t_Result int8 int32) :=
   direct_result_question_mark y  :=
-    solve_lift (run (letm[choice_typeMonad.result_bind_code int32] _ := impl__map_err y f_from in
+    solve_lift (run (letm[choice_typeMonad.result_bind_code int32] _ := y in
     Result_Ok (Result_Ok (ret_both (0 : int8))))) : both L1 I1 (t_Result int8 int32).
 Fail Next Obligation.
 
@@ -222,7 +223,7 @@ Notation "'Build_t_Bar' '[' x ']' '(' 'f_b' ':=' y ')'" := (Build_t_Bar (f_a := 
 Equations monad_lifting {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 int8) : both L1 I1 (t_Result t_A t_B) :=
   monad_lifting x  :=
     solve_lift (run (ifb x >.? (ret_both (123 : int8))
-    then letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist33 := ControlFlow_Continue (impl__map_err (Result_Err B) f_from) in
+    then letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist33 := ControlFlow_Continue (Result_Err B) in
     letb hoist34 := Result_Ok hoist33 in
     letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist35 := ControlFlow_Break hoist34 in
     ControlFlow_Continue (never_to_any hoist35)

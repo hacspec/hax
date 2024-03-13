@@ -1,5 +1,6 @@
 ---
 source: test-harness/src/harness.rs
+assertion_line: 214
 expression: snapshot
 info:
   kind:
