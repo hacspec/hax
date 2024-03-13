@@ -1195,9 +1195,22 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
         let hir_id = hir_id.map(|hir_id| hir_id.index());
         let unrolled = self.unroll_scope(s);
         let rustc_middle::thir::Expr { span, kind, ty, .. } = unrolled;
+        let tcx = s.base().tcx;
         let contents = match macro_invocation_of_span(span, s).map(ExprKind::MacroInvokation) {
             Some(contents) => contents,
             None => match kind {
+                // Special treatment for `AnonConst`s, particularly for enum discriminants
+                rustc_middle::thir::ExprKind::NamedConst { def_id, substs, .. }
+                    if substs.is_empty()
+                        && tcx.def_kind(def_id) == rustc_hir::def::DefKind::AnonConst =>
+                {
+                    match tcx.const_eval_poly(def_id) {
+                        Ok(value) if let Decorated {contents: box e @ ExprKind::Literal {..}, ..} = const_value_to_constant_expr(s, ty, value, span).into() => {
+                            e
+                        },
+                        _ => kind.sinto(s),
+                    }
+                }
                 rustc_middle::thir::ExprKind::NonHirLiteral { lit, .. } => {
                     let cexpr: ConstantExpr =
                         (ConstantExprKind::Literal(scalar_int_to_constant_literal(s, lit, ty)))
