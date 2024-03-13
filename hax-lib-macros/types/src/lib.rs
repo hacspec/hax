@@ -54,8 +54,6 @@ pub enum AssociationRole {
     ProcessWrite,
     ProcessInit,
     ProtocolMessages,
-    PVConstructor,
-    PVHandwritten,
 }
 
 /// Hax only understands one attribute: `#[hax::json(PAYLOAD)]` where
