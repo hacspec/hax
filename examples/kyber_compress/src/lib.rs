@@ -10,10 +10,14 @@ const UNSIGNED_FIELD_MODULUS: u32 = FIELD_MODULUS as u32;
          coefficient_bits == 10 ||
          coefficient_bits == 11) &&
          fe < (FIELD_MODULUS as u16))]
+#[
+  ensures(|result| result < 1 << coefficient_bits)]
 pub fn compress_unsafe(coefficient_bits: u8, fe: u16) -> u32 {
     let mut compressed = (fe as u32) << (coefficient_bits + 1);
     compressed += UNSIGNED_FIELD_MODULUS;
-    compressed / (UNSIGNED_FIELD_MODULUS << 1)
+    compressed /= UNSIGNED_FIELD_MODULUS << 1;
+    compressed &= (1 << coefficient_bits) - 1;
+    compressed
 }
 
 #[
@@ -23,11 +27,14 @@ pub fn compress_unsafe(coefficient_bits: u8, fe: u16) -> u32 {
          coefficient_bits == 10 ||
          coefficient_bits == 11) &&
          fe < (FIELD_MODULUS as u16))]
+#[
+  ensures(|result| result < 1 << coefficient_bits)]
 pub fn compress(coefficient_bits: u8, fe: u16) -> u32 {
     let mut compressed = (fe as u64) << coefficient_bits;
     compressed += 1664 as u64;
     compressed *= 10_321_340;
     compressed >>= 35;
+    compressed &= (1 << coefficient_bits) - 1;
     compressed as u32
 }
 
