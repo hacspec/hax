@@ -37,17 +37,42 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 
+Definition discriminant_Foo_A : int16 :=
+  (@repr WORDSIZE16 1).
+
+Definition discriminant_Foo_B : int16 :=
+  (@repr WORDSIZE16 5).
+
 Inductive t_Foo : Type :=
 | Foo_A : t_Foo
 | Foo_B : t_Foo
-| Foo_C : t_Foo.
+| Foo_C : t_Foo
+| Foo_D : t_Foo.
+
+Definition t_Foo_cast_to_repr (x : t_Foo_t) : int16 :=
+  match x with
+  | Foo_A  =>
+    discriminant_Foo_A
+  | Foo_B  =>
+    discriminant_Foo_B
+  | Foo_C  =>
+    discriminant_Foo_B.+(@repr WORDSIZE16 1)
+  | Foo_D  =>
+    discriminant_Foo_B.+(@repr WORDSIZE16 2)
+  end.
 
 (*Not implemented yet? todo(item)*)
 
 Definition f (_ : unit) : int16 :=
-  let _x := cast ((@repr WORDSIZE16 5).+(@repr WORDSIZE16 0)) : int16 in
-  cast ((@repr WORDSIZE16 9).+(@repr WORDSIZE16 0)).
+  let _x := cast (discriminant_Foo_B.+(@repr WORDSIZE16 0)) : int16 in
+  cast v_C.
 
 Definition ff__CONST : int16 :=
-  cast ((@repr WORDSIZE16 1).+(@repr WORDSIZE16 0)).
+  cast (discriminant_Foo_A.+(@repr WORDSIZE16 0)).
+
+Definition get_casted_repr (x : t_Foo_t) : int64 :=
+  cast (t_Foo_cast_to_repr x).
+
+Definition get_repr (x : t_Foo_t) : int16 :=
+  t_Foo_cast_to_repr x.
 '''

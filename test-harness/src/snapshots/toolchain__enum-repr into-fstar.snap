@@ -35,14 +35,30 @@ module Enum_repr
 open Core
 open FStar.Mul
 
+let discriminant_Foo_A: u16 = 1us
+
+let discriminant_Foo_B: u16 = 5us
+
 type t_Foo =
   | Foo_A : t_Foo
   | Foo_B : t_Foo
   | Foo_C : t_Foo
+  | Foo_D : t_Foo
+
+let t_Foo_cast_to_repr (x: t_Foo) : u16 =
+  match x with
+  | Foo_A  -> discriminant_Foo_A
+  | Foo_B  -> discriminant_Foo_B
+  | Foo_C  -> discriminant_Foo_B +! 1us
+  | Foo_D  -> discriminant_Foo_B +! 2us
 
 let f (_: Prims.unit) : u16 =
-  let v__x:u16 = cast (5us +! 0us <: u16) <: u16 in
-  cast (9us +! 0us <: u16) <: u16
+  let v__x:u16 = cast (discriminant_Foo_B +! 0us <: u16) <: u16 in
+  cast (Enum_repr.Foo.v_C <: Prims.unit -> t_Foo) <: u16
 
-let ff__CONST: u16 = cast (1us +! 0us <: u16) <: u16
+let ff__CONST: u16 = cast (discriminant_Foo_A +! 0us <: u16) <: u16
+
+let get_casted_repr (x: t_Foo) : u64 = cast (t_Foo_cast_to_repr x <: u16) <: u64
+
+let get_repr (x: t_Foo) : u16 = t_Foo_cast_to_repr x
 '''
