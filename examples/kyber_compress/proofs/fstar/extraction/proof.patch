@@ -1,0 +1,25 @@
+diff --git a/examples/kyber_compress/proofs/fstar/extraction/Kyber_compress.fst b/examples/kyber_compress/proofs/fstar/extraction/Kyber_compress.fst
+index 4f621a30..c52c1cf0 100644
+--- a/examples/kyber_compress/proofs/fstar/extraction/Kyber_compress.fst
++++ b/examples/kyber_compress/proofs/fstar/extraction/Kyber_compress.fst
+@@ -1,5 +1,5 @@
+ module Kyber_compress
+-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
++#set-options "--fuel 0 --ifuel 1 --z3rlimit 150"
+ open Core
+ open FStar.Mul
+ 
+@@ -22,6 +22,7 @@ let compress (coefficient_bits: u8) (fe: u16)
+   let compressed:u64 = compressed *! 10321340uL in
+   let compressed:u64 = compressed >>! 35l in
+   let compressed:u64 = compressed &. ((1uL <<! coefficient_bits <: u64) -! 1uL <: u64) in
++  Rust_primitives.Integers.logand_mask_lemma compressed (v coefficient_bits);
+   cast (compressed <: u64) <: u32
+ 
+ let compress_unsafe (coefficient_bits: u8) (fe: u16)
+@@ -38,4 +39,5 @@ let compress_unsafe (coefficient_bits: u8) (fe: u16)
+   let compressed:u32 = compressed +! v_UNSIGNED_FIELD_MODULUS in
+   let compressed:u32 = compressed /! (v_UNSIGNED_FIELD_MODULUS <<! 1l <: u32) in
+   let compressed:u32 = compressed &. ((1ul <<! coefficient_bits <: u32) -! 1ul <: u32) in
++  Rust_primitives.Integers.logand_mask_lemma compressed (v coefficient_bits);
+   compressed
