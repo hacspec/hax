@@ -38,19 +38,19 @@ Open the example in `examples/<name>`.
 The code is in `examples/<name>/src/lib.rs`.
 
 To extract the Rust code to F\*, run `cargo hax into fstar` in the crate.
-Most examples require a higher than default z3 limit, which makes such that z3 tries
+Most examples require a higher than default z3 limit, which makes sure that z3 tries
 longer to find an answer.
 To do this, add `--z3rlimit 150` to the `cargo hax into fstar` command.
 This generates a fresh F\* extraction in `proofs/fstar/extraction/<crate-name>.fst`.
 
-Run `make` in `proofs/fstar/extraction` to see that/if the extracted code type checks.
+Run `make` in `proofs/fstar/extraction` to see that/if the extracted code typechecks.
 When it typechecks, you proved panic freedom of the code! Congrats 🎉
 
 Use the vscode commands to trigger F\*.
 Note that you may have to restart F\* regularly.
 (The vscode extension is not very stable yet.)
 You can lax-typecheck (Lax to position) the F\* code to ensure that the code is syntactically correct, or "Verify to position" to fully typecheck.
-In each case it will fun F\* up to the curser in the file.
+In each case it will run F\* up to the cursor in the file.
 
 #### ChaCha20
 
