@@ -33,7 +33,7 @@ build: [
   ]
 ]
 pin-depends: [
-  ["jasmin.dev" "git+https://github.com/proux01/jasmin.git#mathcomp2"]
+  # ["jasmin.dev" "git+https://github.com/proux01/jasmin.git#mathcomp2"]
   ["ssprove.dev" "git+https://github.com/ssprove/ssprove.git#jasmin-coq.8.18.0"]
   ["coq-concert.dev" "git+https://github.com/AU-COBRA/ConCert.git#master"]
   ["coq-rust-extraction.dev" "git+https://github.com/AU-COBRA/coq-rust-extraction.git#0053733e56008c917bf43d12e8bf0616d3b9a856"]
