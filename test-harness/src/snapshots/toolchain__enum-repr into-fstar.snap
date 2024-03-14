@@ -35,30 +35,38 @@ module Enum_repr
 open Core
 open FStar.Mul
 
-let discriminant_Foo_A: u16 = 1us
+let discriminant_EnumWithRepr_ExplicitDiscr1: u16 = 1us
 
-let discriminant_Foo_B: u16 = 5us
+let discriminant_EnumWithRepr_ExplicitDiscr2: u16 = 5us
 
-type t_Foo =
-  | Foo_A : t_Foo
-  | Foo_B : t_Foo
-  | Foo_C : t_Foo
-  | Foo_D : t_Foo
+type t_EnumWithRepr =
+  | EnumWithRepr_ExplicitDiscr1 : t_EnumWithRepr
+  | EnumWithRepr_ExplicitDiscr2 : t_EnumWithRepr
+  | EnumWithRepr_ImplicitDiscrEmptyTuple : t_EnumWithRepr
+  | EnumWithRepr_ImplicitDiscrEmptyStruct : t_EnumWithRepr
 
-let t_Foo_cast_to_repr (x: t_Foo) : u16 =
+let t_EnumWithRepr_cast_to_repr (x: t_EnumWithRepr) : u16 =
   match x with
-  | Foo_A  -> discriminant_Foo_A
-  | Foo_B  -> discriminant_Foo_B
-  | Foo_C  -> discriminant_Foo_B +! 1us
-  | Foo_D  -> discriminant_Foo_B +! 2us
+  | EnumWithRepr_ExplicitDiscr1  -> discriminant_EnumWithRepr_ExplicitDiscr1
+  | EnumWithRepr_ExplicitDiscr2  -> discriminant_EnumWithRepr_ExplicitDiscr2
+  | EnumWithRepr_ImplicitDiscrEmptyTuple  -> discriminant_EnumWithRepr_ExplicitDiscr2 +! 1us
+  | EnumWithRepr_ImplicitDiscrEmptyStruct  -> discriminant_EnumWithRepr_ExplicitDiscr2 +! 2us
 
-let f (_: Prims.unit) : u16 =
-  let v__x:u16 = cast (discriminant_Foo_B +! 0us <: u16) <: u16 in
-  cast (Enum_repr.Foo.v_C <: Prims.unit -> t_Foo) <: u16
+let f (_: Prims.unit) : u32 =
+  let v__x:u16 = cast (discriminant_EnumWithRepr_ExplicitDiscr2 +! 0us <: u16) <: u16 in
+  (cast (t_EnumWithRepr_cast_to_repr (EnumWithRepr_ImplicitDiscrEmptyTuple <: t_EnumWithRepr) <: u16
+      )
+    <:
+    u32) +!
+  (cast (t_EnumWithRepr_cast_to_repr (EnumWithRepr_ImplicitDiscrEmptyStruct <: t_EnumWithRepr)
+        <:
+        u16)
+    <:
+    u32)
 
-let ff__CONST: u16 = cast (discriminant_Foo_A +! 0us <: u16) <: u16
+let ff__CONST: u16 = cast (discriminant_EnumWithRepr_ExplicitDiscr1 +! 0us <: u16) <: u16
 
-let get_casted_repr (x: t_Foo) : u64 = cast (t_Foo_cast_to_repr x <: u16) <: u64
+let get_casted_repr (x: t_EnumWithRepr) : u64 = cast (t_EnumWithRepr_cast_to_repr x <: u16) <: u64
 
-let get_repr (x: t_Foo) : u16 = t_Foo_cast_to_repr x
+let get_repr (x: t_EnumWithRepr) : u16 = t_EnumWithRepr_cast_to_repr x
 '''

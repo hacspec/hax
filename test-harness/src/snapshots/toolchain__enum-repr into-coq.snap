@@ -37,42 +37,42 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 
-Definition discriminant_Foo_A : int16 :=
+Definition discriminant_EnumWithRepr_ExplicitDiscr1 : int16 :=
   (@repr WORDSIZE16 1).
 
-Definition discriminant_Foo_B : int16 :=
+Definition discriminant_EnumWithRepr_ExplicitDiscr2 : int16 :=
   (@repr WORDSIZE16 5).
 
-Inductive t_Foo : Type :=
-| Foo_A : t_Foo
-| Foo_B : t_Foo
-| Foo_C : t_Foo
-| Foo_D : t_Foo.
+Inductive t_EnumWithRepr : Type :=
+| EnumWithRepr_ExplicitDiscr1 : t_EnumWithRepr
+| EnumWithRepr_ExplicitDiscr2 : t_EnumWithRepr
+| EnumWithRepr_ImplicitDiscrEmptyTuple : t_EnumWithRepr
+| EnumWithRepr_ImplicitDiscrEmptyStruct : t_EnumWithRepr.
 
-Definition t_Foo_cast_to_repr (x : t_Foo_t) : int16 :=
+Definition t_EnumWithRepr_cast_to_repr (x : t_EnumWithRepr_t) : int16 :=
   match x with
-  | Foo_A  =>
-    discriminant_Foo_A
-  | Foo_B  =>
-    discriminant_Foo_B
-  | Foo_C  =>
-    discriminant_Foo_B.+(@repr WORDSIZE16 1)
-  | Foo_D  =>
-    discriminant_Foo_B.+(@repr WORDSIZE16 2)
+  | EnumWithRepr_ExplicitDiscr1  =>
+    discriminant_EnumWithRepr_ExplicitDiscr1
+  | EnumWithRepr_ExplicitDiscr2  =>
+    discriminant_EnumWithRepr_ExplicitDiscr2
+  | EnumWithRepr_ImplicitDiscrEmptyTuple  =>
+    discriminant_EnumWithRepr_ExplicitDiscr2.+(@repr WORDSIZE16 1)
+  | EnumWithRepr_ImplicitDiscrEmptyStruct  =>
+    discriminant_EnumWithRepr_ExplicitDiscr2.+(@repr WORDSIZE16 2)
   end.
 
 (*Not implemented yet? todo(item)*)
 
-Definition f (_ : unit) : int16 :=
-  let _x := cast (discriminant_Foo_B.+(@repr WORDSIZE16 0)) : int16 in
-  cast v_C.
+Definition f (_ : unit) : int32 :=
+  let _x := cast (discriminant_EnumWithRepr_ExplicitDiscr2.+(@repr WORDSIZE16 0)) : int16 in
+  (cast (t_EnumWithRepr_cast_to_repr EnumWithRepr_ImplicitDiscrEmptyTuplet_EnumWithRepr_t)).+(cast (t_EnumWithRepr_cast_to_repr EnumWithRepr_ImplicitDiscrEmptyStructt_EnumWithRepr_t)).
 
 Definition ff__CONST : int16 :=
-  cast (discriminant_Foo_A.+(@repr WORDSIZE16 0)).
+  cast (discriminant_EnumWithRepr_ExplicitDiscr1.+(@repr WORDSIZE16 0)).
 
-Definition get_casted_repr (x : t_Foo_t) : int64 :=
-  cast (t_Foo_cast_to_repr x).
+Definition get_casted_repr (x : t_EnumWithRepr_t) : int64 :=
+  cast (t_EnumWithRepr_cast_to_repr x).
 
-Definition get_repr (x : t_Foo_t) : int16 :=
-  t_Foo_cast_to_repr x.
+Definition get_repr (x : t_EnumWithRepr_t) : int16 :=
+  t_EnumWithRepr_cast_to_repr x.
 '''
