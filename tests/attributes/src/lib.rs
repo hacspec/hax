@@ -77,6 +77,23 @@ mod refined_indexes {
             &self[index]
         }
     }
+
+    #[hax::exclude]
+    impl std::ops::IndexMut<usize> for MyArray {
+        fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+            &mut self[index]
+        }
+    }
+
+    fn mutation_example(
+        use_generic_update_at: &mut MyArray,
+        use_specialized_update_at: &mut [u8],
+        specialized_as_well: &mut Vec<u8>,
+    ) {
+        use_generic_update_at[2] = 0;
+        use_specialized_update_at[2] = 0;
+        specialized_as_well[2] = 0;
+    }
 }
 mod newtype_pattern {
     use hax_lib_macros as hax;
