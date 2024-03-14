@@ -14,7 +14,7 @@
         ocaml
         dune
         (base (>= "0.16.2"))
-	(jasmin (= "dev"))
+	; (jasmin (= "dev"))
 	(ssprove (= "dev"))
 	coq-stdpp
 	(coq-mathcomp-word (>= "3.0"))
