@@ -18,6 +18,7 @@
     "include_dirs": [
         "${PWD}",
         "${HACL_HOME}/lib",
+        "${FSTAR_HOME}/ulib",
         "${HAX_HOME}/proof-libs/fstar/rust_primitives",
         "${HAX_HOME}/proof-libs/fstar/core",
         "${HAX_HOME}/proof-libs/fstar/hax_lib",
