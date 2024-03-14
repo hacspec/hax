@@ -18,6 +18,7 @@ info:
       stderr: false
       stdout: true
     include_flag: ~
+    backend_options: ~
 ---
 exit = 0
 
@@ -63,6 +64,16 @@ Notation "'Foo_B_case'" := (inr tt) (at level 100).
 Equations Foo_B {L : {fset Location}} {I : Interface} : both L I t_Foo :=
   Foo_B  :=
     solve_lift (ret_both (inr (tt : 'unit) : t_Foo)) : both L I t_Foo.
+Fail Next Obligation.
+
+Equations t_Foo_cast_to_repr {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 t_Foo) : both L1 I1 uint_size :=
+  t_Foo_cast_to_repr x  :=
+    matchb x with
+    | Foo_A_case  =>
+      solve_lift (ret_both (0 : uint_size))
+    | Foo_B_case  =>
+      solve_lift (ret_both (1 : uint_size))
+    end : both L1 I1 uint_size.
 Fail Next Obligation.
 
 (*Not implemented yet? todo(item)*)
