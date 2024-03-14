@@ -4,24 +4,6 @@ Global Set Warnings "-auto-template".
 Global Set Warnings "-disj-pattern-notation".
 Global Set Warnings "-notation-overridden,-ambiguous-paths".
 
-Require Import Lia.
-Require Import Coq.Logic.FunctionalExtensionality.
-Require Import Sumbool.
-
-From mathcomp Require Import fintype.
-
-From Crypt Require Import choice_type Package Prelude.
-Import PackageNotation.
-From extructures Require Import ord fset fmap.
-
-From mathcomp Require Import ssrZ word.
-From Jasmin Require Import word.
-
-From Coq Require Import ZArith List.
-Import List.ListNotations.
-
-Import choice.Choice.Exports.
-
 (********************************************************)
 (*   Implementation of all Hacspec library functions    *)
 (* for Both types.                                      *)
@@ -29,10 +11,10 @@ Import choice.Choice.Exports.
 
 Declare Scope hacspec_scope.
 
-From Hacspec Require Import ChoiceEquality.
-From Hacspec Require Import LocationUtility.
-From Hacspec Require Import Hacspec_Lib_Comparable.
-From Hacspec Require Import Hacspec_Lib_Pre.
+From Hacspec Require Import ChoiceEquality. Export ChoiceEquality.
+From Hacspec Require Import LocationUtility. Export LocationUtility.
+From Hacspec Require Import Hacspec_Lib_Comparable. Export Hacspec_Lib_Comparable.
+From Hacspec Require Import Hacspec_Lib_Pre. Export Hacspec_Lib_Pre.
 
 Open Scope bool_scope.
 Open Scope hacspec_scope.
