@@ -17,6 +17,8 @@ info:
     snapshot:
       stderr: false
       stdout: true
+    include_flag: ~
+    backend_options: ~
 ---
 exit = 0
 
@@ -33,6 +35,11 @@ open FStar.Mul
 type t_Foo =
   | Foo_A : t_Foo
   | Foo_B : t_Foo
+
+let t_Foo_cast_to_repr (x: t_Foo) : isize =
+  match x with
+  | Foo_A  -> isz 0
+  | Foo_B  -> isz 1
 
 let f (_: u32) : t_Foo = Foo_A <: t_Foo
 

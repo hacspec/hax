@@ -450,7 +450,7 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
     (*       (path, type_name ^ "_" ^ name) *)
     (*   | _ -> (path, name) *)
     (* in *)
-    let prefixes = [ "t"; "C"; "v"; "f"; "i" ] in
+    let prefixes = [ "t"; "C"; "v"; "f"; "i"; "discriminant" ] in
     let escape s =
       match String.lsplit2 ~on:'_' s with
       | Some (prefix, _) when List.mem ~equal:String.equal prefixes prefix ->
@@ -479,7 +479,7 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
           | _ -> "f_" ^ name)
     | Lifetime | Macro -> escape name
 
-  let rec to_view ({ def_id; kind } : t) : view =
+  let rec to_view' ({ def_id; kind } : t) : view =
     let def_id = Imported.drop_ctor def_id in
     let View.{ crate; path; definition } = View.to_view def_id in
     let type_name =
@@ -502,6 +502,20 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
     in
     let definition = rename_definition path definition kind type_name in
     View.{ crate; path; definition }
+
+  and to_view ({ def_id; kind } : t) : view =
+    match List.last def_id.path with
+    (* Here, we assume an `AnonConst` is a discriminant *)
+    | Some { data = Imported.AnonConst; _ } ->
+        let View.{ crate; path; definition } =
+          to_view'
+            {
+              def_id = Imported.parent def_id;
+              kind = Constructor { is_struct = false };
+            }
+        in
+        View.{ crate; path; definition = "discriminant_" ^ definition }
+    | _ -> to_view' { def_id; kind }
 
   and to_definition_name (x : t) : string = (to_view x).definition
 

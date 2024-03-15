@@ -6,8 +6,8 @@ info:
     Translate:
       backend: fstar
   info:
-    name: pattern-or
-    manifest: pattern-or/Cargo.toml
+    name: recursion
+    manifest: recursion/Cargo.toml
     description: ~
   spec:
     optional: false
@@ -22,27 +22,18 @@ info:
 ---
 exit = 0
 stderr = '''
-Compiling pattern-or v0.1.0 (WORKSPACE_ROOT/pattern-or)
+Compiling recursion v0.1.0 (WORKSPACE_ROOT/recursion)
     Finished dev [unoptimized + debuginfo] target(s) in XXs'''
 
 [stdout]
 diagnostics = []
 
 [stdout.files]
-"Pattern_or.fst" = '''
-module Pattern_or
+"Recursion.fst" = '''
+module Recursion
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
 
-type t_E =
-  | E_A : t_E
-  | E_B : t_E
-
-let t_E_cast_to_repr (x: t_E) : isize =
-  match x with
-  | E_A  -> isz 0
-  | E_B  -> isz 1
-
-let bar (x: t_E) : Prims.unit = match x with | E_A  | E_B  -> () <: Prims.unit
+let rec f (n: u8) : u8 = if n =. 0uy then 0uy else n +! (f (n -! 1uy <: u8) <: u8)
 '''
