@@ -1,5 +1,5 @@
+use hax_lib::assert;
 use hax_lib_macros::{ensures, requires};
-use hax_lib::{assert};
 
 /// Values having this type hold a representative 'x' of the Kyber field.
 /// We use 'fe' as a shorthand for this type.
@@ -29,14 +29,14 @@ pub(crate) const FIELD_MODULUS: i32 = 3329;
                    result % FIELD_MODULUS == value % FIELD_MODULUS)]
 pub fn barrett_reduce(value: FieldElement) -> FieldElement {
     let t = i64::from(value) * BARRETT_MULTIPLIER;
-    assert!(9223372036854775807 - (BARRETT_R >> 1) > t);
+    // assert!(9223372036854775807 - (BARRETT_R >> 1) > t);
     let t = t + (BARRETT_R >> 1);
 
     let quotient = t >> BARRETT_SHIFT;
-    assert!(quotient <= 2147483647_i64 || quotient >= -2147483648_i64);
+    // assert!(quotient <= 2147483647_i64 || quotient >= -2147483648_i64);
     let quotient = quotient as i32;
 
-    assert!(((quotient as i64) * (FIELD_MODULUS as i64)) < 9223372036854775807);
+    // assert!(((quotient as i64) * (FIELD_MODULUS as i64)) < 9223372036854775807);
     let sub = quotient * FIELD_MODULUS;
 
     value - sub

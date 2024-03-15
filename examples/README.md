@@ -1,12 +1,12 @@
 # Examples
 
-| Name               | Status of the F\* extraction |
-| ------------------ | ---------------------------- |
-| chacha20           | Typechecks                   |
-| limited-order-book | Typechecks                   |
-| barrett            | Typechecks w/ proofs         |
-| kyber_compress     | Typechecks w/ proofs         |
-| sha256             | Lax-typechecks               |
+| Name               | Status of the F\* extraction | Details                                   |
+| ------------------ | ---------------------------- | ----------------------------------------- |
+| chacha20           | Typechecks                   | [Instructions](#chacha20)                 |
+| limited-order-book | Typechecks                   |                                           |
+| barrett            | Typechecks w/ proofs         |                                           |
+| kyber_compress     | Typechecks w/ proofs         | [Instructions](#ml-kem-kyber-compression) |
+| sha256             | Lax-typechecks               |                                           |
 
 ## Open Source Crypto Workshop
 
@@ -33,6 +33,23 @@ Then point your browser to `http://localhost:3818/?tkn=password&folder=/home/hax
 ### Examples
 
 For all examples the following is the general workflow.
+Note that there is a more detailed description for each target below.
+
+<details>
+  <summary>VSCode how-to</summary>
+
+Command Palette
+
+- ⇧⌘P (Mac) or ⇧^P or View > Command Palette will bring you directly to the editor commands
+- [More docs](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette)
+
+Terminal
+
+- To toggle the terminal panel, use the ⌃` keyboard shortcut.
+- To create a new terminal, use the ⌃⇧` keyboard shortcut.
+- [More docs](https://code.visualstudio.com/docs/terminal/basics)
+
+</details>
 
 Open the example in `examples/<name>`.
 The code is in `examples/<name>/src/lib.rs`.
@@ -68,8 +85,6 @@ Otherwise array indexing in the function like `state[a]` may panic because `stat
 
 To see that F* can prove panic freedom statically, try to change one of the bounds to `17` or larger.
 Now, after extracting the F* code again, the typechecking will fail.
-
-#### Barrett Reduction
 
 #### ML-KEM (Kyber) Compression
 

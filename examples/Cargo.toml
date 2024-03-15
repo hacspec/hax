@@ -5,6 +5,7 @@ members = [
     "sha256",
     "barrett",
     "kyber_compress",
+    "serialize",
 ]
 resolver = "2"
 
