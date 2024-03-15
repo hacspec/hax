@@ -1,0 +1,42 @@
+# This file was generated from `meta.yml`, please do not edit manually.
+# Follow the instructions on https://github.com/coq-community/templates to regenerate.
+name: Docker CI
+
+on:
+  schedule:
+    - cron: '10 1 * * 0'
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  build:
+    # the OS must be GNU/Linux to be able to use the docker-coq-action
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image:
+          - 'mathcomp/mathcomp-dev:coq-dev'
+          - 'mathcomp/mathcomp:2.2.0-coq-8.19'
+          - 'mathcomp/mathcomp:2.2.0-coq-8.18'
+          - 'mathcomp/mathcomp:2.1.0-coq-8.18'
+          - 'mathcomp/mathcomp:2.1.0-coq-8.17'
+          - 'mathcomp/mathcomp:2.1.0-coq-8.16'
+          - 'mathcomp/mathcomp:2.0.0-coq-8.18'
+          - 'mathcomp/mathcomp:2.0.0-coq-8.17'
+          - 'mathcomp/mathcomp:2.0.0-coq-8.16'
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v3
+      - uses: coq-community/docker-coq-action@v1
+        with:
+          opam_file: 'opam/coq-hacspec-ssprove.opam'
+          custom_image: ${{ matrix.image }}
+
+
+# See also:
+# https://github.com/coq-community/docker-coq-action#readme
+# https://github.com/erikmd/docker-coq-github-action-demo
