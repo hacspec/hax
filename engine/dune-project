@@ -47,7 +47,7 @@
         zarith_stubs_js
         
         ; F*-specific dependencies
-        (batteries (<= "3.7.2"))
+        batteries
         zarith
         stdint
         ppxlib
