@@ -34,7 +34,7 @@ depends: [
   "js_of_ocaml"
   "js_of_ocaml-ppx"
   "zarith_stubs_js"
-  "batteries"
+  "batteries" {<= "3.7.2"}
   "zarith"
   "stdint"
   "ppxlib"
