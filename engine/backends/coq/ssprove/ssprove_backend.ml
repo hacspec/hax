@@ -2372,8 +2372,6 @@ let hardcoded_coq_headers =
    From Crypt Require Import choice_type Package Prelude.\n\
    Import PackageNotation.\n\
    From extructures Require Import ord fset.\n\
-   From mathcomp Require Import word_ssrZ word.\n\
-   From Jasmin Require Import word.\n\n\
    From Coq Require Import ZArith.\n\
    From Coq Require Import Strings.String.\n\
    Import List.ListNotations.\n\
