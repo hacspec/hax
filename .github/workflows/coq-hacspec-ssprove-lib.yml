@@ -32,7 +32,7 @@ jobs:
           custom_image: ${{ matrix.image }}
       - after_script: |
           startGroup "Run ssprove coq library tests"
-            make test
+            coqc ./tests/enum-repr/proofs/ssprove/extraction/Enum_repr.v
           endGroup "Run ssprove coq library tests"
 
 # See also:

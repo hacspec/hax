@@ -209,11 +209,11 @@ Ltac solve_match :=
    | |- context [ fsubset ?a (_ :|: ?a) ] => apply fsubsetUr
    | |- context [ fsubset fset0 _ ] => apply fsub0set
    | |- context [ fsubset ?a ?a ] => apply fsubsetxx
+   (* | |- context [ fsubset ?a (?b :|: _) ] => assert (a = b) by reflexivity ; apply fsubsetUl *)
+   (* | |- context [ fsubset ?a (_ :|: ?b) ] => assert (a = b) by reflexivity ; apply fsubsetUr *)
+   (* | |- context [ fsubset ?a _ ] => assert (a = fset0) by reflexivity ; apply fsub0set *)
+   (* | |- context [fsubset ?a ?b ] => assert (a = b) by reflexivity ; apply fsubsetxx *)
    end).
-(* || (progress (try apply fsubsetUl ; *)
-(*                    try apply fsubsetUr ; *)
-(*                    try apply fsub0set ; *)
-(*                    try apply fsubsetxx)) *)
 
 Ltac split_fsubset_lhs :=
   repeat (rewrite !is_true_split_and || rewrite !fsubUset) ;

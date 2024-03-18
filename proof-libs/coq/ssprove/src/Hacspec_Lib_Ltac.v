@@ -249,11 +249,14 @@ Ltac solve_in_mem :=
 Ltac solve_ssprove_obligations :=
   repeat (
       intros ; autounfold ; normalize_fset ;
-      (now solve_in_mem) (* TODO: add match goal *)
-      || (now fset_equality) (* TODO: add match goal *)
-      || (now solve_in_fset) (* TODO: add match goal *)
-      || (ssprove_valid'_2)
-      || ((now (* try *) (Tactics.program_simpl; fail)))).
+      now (solve_match || now (apply fsubsetxx || apply fsub0set)
+           || solve_in_mem (* TODO: add match goal *)
+           || fset_equality (* TODO: add match goal *)
+           || solve_in_fset (* TODO: add match goal *)
+           || ssprove_valid'_2
+           || now apply fsubsetUl
+           || now apply fsubsetUr
+           || (Tactics.program_simpl; fail))).
 
 Ltac solve_fsubset_trans :=
   now (solve_match || (refine (fsubset_trans _ _) ; [ | eassumption ] ; solve_ssprove_obligations)).
