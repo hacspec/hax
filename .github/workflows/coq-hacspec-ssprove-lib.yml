@@ -1,6 +1,4 @@
-# This file was generated from `meta.yml`, please do not edit manually.
-# Follow the instructions on https://github.com/coq-community/templates to regenerate.
-name: Docker CI
+name: Hacspec - Coq, SSProve Lib
 
 on:
   schedule:
@@ -23,11 +21,19 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
+      - name: Set up environment
+        run: |
+          echo "::group::Setting up problem matcher"
+          echo "::add-matcher::./.github/coq-errors.json"
+          echo "::endgroup::"
       - uses: coq-community/docker-coq-action@v1
         with:
           opam_file: 'opam/coq-hacspec-ssprove.opam'
           custom_image: ${{ matrix.image }}
-
+      - after_script: |
+          startGroup "Run ssprove coq library tests"
+            make test
+          endGroup "Run ssprove coq library tests"
 
 # See also:
 # https://github.com/coq-community/docker-coq-action#readme

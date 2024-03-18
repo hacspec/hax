@@ -6,7 +6,6 @@ Import PackageNotation.
 From Crypt Require Import pkg_interpreter.
 From extructures Require Import ord fset fmap.
 Require Import Hacspec_Lib_Comparable.
-From Jasmin Require Import xseq.
 Require Import Coq.Logic.FunctionalExtensionality.
 Import List.ListNotations.
 
