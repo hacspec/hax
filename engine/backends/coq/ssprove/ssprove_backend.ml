@@ -2378,6 +2378,7 @@ let hardcoded_coq_headers =
    Open Scope list_scope.\n\
    Open Scope Z_scope.\n\
    Open Scope bool_scope.\n\n\
+   From Crypt Require Import jasmin_word.\n\n\
    From Hacspec Require Import ChoiceEquality.\n\
    From Hacspec Require Import LocationUtility.\n\
    From Hacspec Require Import Hacspec_Lib_Comparable.\n\

@@ -254,8 +254,6 @@ Ltac solve_ssprove_obligations :=
            || fset_equality (* TODO: add match goal *)
            || solve_in_fset (* TODO: add match goal *)
            || ssprove_valid'_2
-           || now apply fsubsetUl
-           || now apply fsubsetUr
            || (Tactics.program_simpl; fail))).
 
 Ltac solve_fsubset_trans :=
