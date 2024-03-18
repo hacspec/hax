@@ -204,16 +204,18 @@ Ltac normalize_fset :=
 
 Ltac solve_match :=
   try set (fset _) ;
-  (lazymatch (* match *) goal with
-   | |- context [ fsubset ?a (?a :|: _) ] => apply fsubsetUl
-   | |- context [ fsubset ?a (_ :|: ?a) ] => apply fsubsetUr
-   | |- context [ fsubset fset0 _ ] => apply fsub0set
-   | |- context [ fsubset ?a ?a ] => apply fsubsetxx
-   (* | |- context [ fsubset ?a (?b :|: _) ] => assert (a = b) by reflexivity ; apply fsubsetUl *)
-   (* | |- context [ fsubset ?a (_ :|: ?b) ] => assert (a = b) by reflexivity ; apply fsubsetUr *)
-   (* | |- context [ fsubset ?a _ ] => assert (a = fset0) by reflexivity ; apply fsub0set *)
-   (* | |- context [fsubset ?a ?b ] => assert (a = b) by reflexivity ; apply fsubsetxx *)
-   end).
+  (apply fsub0set
+   || apply fsubsetxx
+   || (lazymatch (* match *) goal with
+      | |- context [ fsubset ?a (?a :|: _) ] => apply fsubsetUl
+      | |- context [ fsubset ?a (_ :|: ?a) ] => apply fsubsetUr
+      | |- context [ fsubset fset0 _ ] => apply fsub0set
+      | |- context [ fsubset ?a ?a ] => apply fsubsetxx
+                                            (* | |- context [ fsubset ?a (?b :|: _) ] => assert (a = b) by reflexivity ; apply fsubsetUl *)
+                                            (* | |- context [ fsubset ?a (_ :|: ?b) ] => assert (a = b) by reflexivity ; apply fsubsetUr *)
+                                            (* | |- context [ fsubset ?a _ ] => assert (a = fset0) by reflexivity ; apply fsub0set *)
+                                            (* | |- context [fsubset ?a ?b ] => assert (a = b) by reflexivity ; apply fsubsetxx *)
+      end)).
 
 Ltac split_fsubset_lhs :=
   repeat (rewrite !is_true_split_and || rewrite !fsubUset) ;

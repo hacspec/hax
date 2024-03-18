@@ -57,22 +57,8 @@ Equations EnumWithRepr_ImplicitDiscrEmptyStruct {L : {fset Location}} {I : Inter
     solve_lift (ret_both (inr (tt : 'unit) : t_EnumWithRepr)) : both L I t_EnumWithRepr.
 Fail Next Obligation.
 
-Ltac solve_ssprove_obligations :=
-  repeat (
-      intros ; autounfold ; normalize_fset ;
-      now (solve_match || now (apply fsubsetxx || apply fsub0set)
-           || solve_in_mem (* TODO: add match goal *)
-           || fset_equality (* TODO: add match goal *)
-           || solve_in_fset (* TODO: add match goal *)
-           || ssprove_valid'_2
-           || now apply fsubsetUl
-           || now apply fsubsetUr
-           || (Tactics.program_simpl; fail))).
-
-Obligation Tactic := (* try timeout 8 *) solve_ssprove_obligations.
-
 Equations t_EnumWithRepr_cast_to_repr {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 t_EnumWithRepr) : both L1 I1 int16 :=
-  t_EnumWithRepr_cast_to_repr x  := 
+  t_EnumWithRepr_cast_to_repr x  :=
     matchb x with
     | EnumWithRepr_ExplicitDiscr1_case  =>
       solve_lift discriminant_EnumWithRepr_ExplicitDiscr1
@@ -85,13 +71,10 @@ Equations t_EnumWithRepr_cast_to_repr {L1 : {fset Location}} {I1 : Interface} (x
     end : both L1 I1 int16.
 Fail Next Obligation.
 
-(*Not implemented yet? todo(item)*)
-
 Equations f {L1 : {fset Location}} {I1 : Interface} (_ : both L1 I1 'unit) : both L1 I1 int32 :=
   f _  :=
     letb v__x := cast_int (WS2 := U32) (discriminant_EnumWithRepr_ExplicitDiscr2 .+ (ret_both (0 : int16))) in
     solve_lift ((cast_int (WS2 := U32) (t_EnumWithRepr_cast_to_repr EnumWithRepr_ImplicitDiscrEmptyTuple)) .+ (cast_int (WS2 := U32) (t_EnumWithRepr_cast_to_repr EnumWithRepr_ImplicitDiscrEmptyStruct))) : both L1 I1 int32.
-Next Obligation.
 Fail Next Obligation.
 
 Equations ff__CONST {L : {fset Location}} {I : Interface} : both L I int16 :=
