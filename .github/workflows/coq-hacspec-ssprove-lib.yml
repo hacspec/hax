@@ -30,10 +30,10 @@ jobs:
         with:
           opam_file: 'opam/coq-hacspec-ssprove.opam'
           custom_image: ${{ matrix.image }}
-      - after_script: |
-          startGroup "Run ssprove coq library tests"
-            coqc ./tests/enum-repr/proofs/ssprove/extraction/Enum_repr.v
-          endGroup "Run ssprove coq library tests"
+          after_script: |
+            startGroup "Run ssprove coq library tests"
+              coqc ./tests/enum-repr/proofs/ssprove/extraction/Enum_repr.v
+            endGroup "Run ssprove coq library tests"
 
 # See also:
 # https://github.com/coq-community/docker-coq-action#readme
