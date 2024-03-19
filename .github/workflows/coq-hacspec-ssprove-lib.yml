@@ -32,17 +32,8 @@ jobs:
           nix profile install .#rustc
           nix profile install .
 
-      - name: Checkout specifications
-        uses: actions/checkout@v3
-        with:
-          repository: 'Techcable/tomlq'
-          path: ../tomlq
-
       - name: Install tomlq
-        working-directory: ../tomlq
-        run: |
-          cargo build
-          cargo install --path .
+        run: cargo install --git https://github.com/Techcable/tomlq
 
       - name: Set up environment
         run: |
