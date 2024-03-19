@@ -42,6 +42,7 @@ module Phase = struct
     | FunctionalizeLoops
     | TraitsSpecs
     | SimplifyMatchReturn
+    | SimplifyHoisting
     | DropNeedlessReturns
     | DummyA
     | DummyB

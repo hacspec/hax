@@ -787,6 +787,9 @@ struct
              ( NoLetQualifier,
                [ (pat, F.term @@ F.AST.Name (pconcrete_ident item)) ] )
     | Fn { name; generics; body; params } ->
+        let is_rec =
+          Set.mem (U.Reducers.collect_concrete_idents#visit_expr () body) name
+        in
         let name = F.id @@ U.Concrete_ident_view.to_definition_name name in
         let pat = F.pat @@ F.AST.PatVar (name, None, []) in
         let generics = FStarBinder.of_generics e.span generics in
@@ -833,7 +836,9 @@ struct
         in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (ty, None)) in
         let full =
-          F.decl @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, pexpr body) ])
+          F.decl
+          @@ F.AST.TopLevelLet
+               ((if is_rec then Rec else NoLetQualifier), [ (pat, pexpr body) ])
         in
 
         let intf = F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) in
@@ -1357,6 +1362,7 @@ module TransformToInputLanguage =
   |> Phases.Functionalize_loops
   |> Phases.Reject.As_pattern
   |> Phases.Traits_specs
+  |> Phases.Simplify_hoisting
   |> SubtypeToInputLanguage
   |> Identity
   ]
