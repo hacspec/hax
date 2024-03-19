@@ -33,7 +33,7 @@ jobs:
           nix profile install .
 
       - name: Ensure readme coherency
-          run: |
+        run: |
           nix build .#check-readme-coherency -L
 
       - name: Test the toolchain
