@@ -79,14 +79,14 @@ Fail Next Obligation.
 Equations early_returns {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 int32) : both L1 I1 int32 :=
   early_returns x  :=
     solve_lift (run (letm[choice_typeMonad.result_bind_code int32] _ := ifb x >.? (ret_both (3 : int32))
-    then letm[choice_typeMonad.result_bind_code int32] hoist2 := v_Break (ret_both (0 : int32)) in
+    then letm[choice_typeMonad.result_bind_code int32] hoist2 := ControlFlow_Break (ret_both (0 : int32)) in
     ControlFlow_Continue (never_to_any hoist2)
     else () in
     letb hoist3 := x >.? (ret_both (30 : int32)) in
     letm[choice_typeMonad.result_bind_code int32] hoist5 := ifb hoist3
     then matchb ret_both (true : 'bool) with
     | true =>
-      letm[choice_typeMonad.result_bind_code int32] hoist4 := v_Break (ret_both (34 : int32)) in
+      letm[choice_typeMonad.result_bind_code int32] hoist4 := ControlFlow_Break (ret_both (34 : int32)) in
       ControlFlow_Continue (solve_lift (never_to_any hoist4))
     | _ =>
       ControlFlow_Continue (solve_lift (ret_both (3 : int32)))
@@ -95,7 +95,7 @@ Equations early_returns {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 
     x .+ (ret_both (1 : int32))) in
     letb hoist6 := impl__u32__wrapping_add (ret_both (123 : int32)) hoist5 in
     letb hoist7 := impl__u32__wrapping_add hoist6 x in
-    letm[choice_typeMonad.result_bind_code int32] hoist8 := v_Break hoist7 in
+    letm[choice_typeMonad.result_bind_code int32] hoist8 := ControlFlow_Break hoist7 in
     ControlFlow_Continue (never_to_any hoist8))) : both L1 I1 int32.
 Fail Next Obligation.
 
@@ -225,7 +225,7 @@ Equations monad_lifting {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 
     solve_lift (run (ifb x >.? (ret_both (123 : int8))
     then letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist33 := ControlFlow_Continue (Result_Err B) in
     letb hoist34 := Result_Ok hoist33 in
-    letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist35 := v_Break hoist34 in
+    letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist35 := ControlFlow_Break hoist34 in
     ControlFlow_Continue (never_to_any hoist35)
     else ControlFlow_Continue (Result_Ok A))) : both L1 I1 (t_Result t_A t_B).
 Fail Next Obligation.

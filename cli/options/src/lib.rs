@@ -115,6 +115,14 @@ impl NormalizePaths for PathOrDash {
 
 #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
 pub struct ProVerifOptions {
+    /// Items for which hax should extract a default-valued process
+    /// macro with a corresponding type signature. This flag expects a
+    /// space-separated list of inclusion clauses. An inclusion clause
+    /// is a Rust path prefixed with `+`, `+!` or `-`. `-` means
+    /// implementation only, `+!` means interface only and `+` means
+    /// implementation and interface. Rust path chunks can be either a
+    /// concrete string, or a glob (just like bash globs, but with
+    /// Rust paths).
     #[arg(
         long,
         value_parser = parse_inclusion_clause,
