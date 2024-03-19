@@ -17,6 +17,7 @@ src/Hacspec_Lib_Monad.v
 src/Hacspec_Lib_Ltac.v
 src/Hacspec_Lib_Controlflow.v
 src/Hacspec_Lib_Notation.v
+src/Hacspec_Lib_Cast.v
 src/Hacspec_Lib_TODO.v
 
 src/Hacspec_Lib.v
