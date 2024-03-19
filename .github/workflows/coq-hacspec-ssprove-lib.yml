@@ -31,11 +31,25 @@ jobs:
           nix profile install nixpkgs#yq
           nix profile install .#rustc
           nix profile install .
+
+      - name: Ensure readme coherency
+          run: |
+          nix build .#check-readme-coherency -L
+
+      - name: Test the toolchain
+        run: |
+          nix build .#check-toolchain -L
+
+      - name: Test the examples
+        run: |
+          nix build .#check-examples -L
+
       - name: Set up environment
         run: |
           echo "::group::Setting up problem matcher"
           echo "::add-matcher::./.github/coq-errors.json"
           echo "::endgroup::"
+
       - name: Run Coq/SSprove on Tests
         uses: coq-community/docker-coq-action@v1
         with:
