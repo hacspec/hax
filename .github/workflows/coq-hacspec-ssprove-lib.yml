@@ -32,17 +32,19 @@ jobs:
           nix profile install .#rustc
           nix profile install .
 
-      - name: Ensure readme coherency
-        run: |
-          nix build .#check-readme-coherency -L
+      - name: Checkout specifications
+        uses: actions/checkout@v3
+        with:
+          repository: 'Techcable/tomlq'
+          path: tomlq
 
-      - name: Test the toolchain
+      - name: Install tomlq
+        working-directory: tomlq
         run: |
-          nix build .#check-toolchain -L
-
-      - name: Test the examples
-        run: |
-          nix build .#check-examples -L
+          startGroup "Build and install tomlq"
+            cargo build
+            cargo install --path .
+          endGroup
 
       - name: Set up environment
         run: |
@@ -50,31 +52,33 @@ jobs:
           echo "::add-matcher::./.github/coq-errors.json"
           echo "::endgroup::"
 
-      - name: Run Coq/SSprove on Tests
+      - name: Build Coq-Hacspec-SSProve lib
         uses: coq-community/docker-coq-action@v1
         with:
           opam_file: 'opam/coq-hacspec-ssprove.opam'
           custom_image: ${{ matrix.image }}
-          after_script: |
-            startGroup "Run ssprove coq library tests"
-              cd ./tests/
-              paths=$(tomlq -r '.workspace.members | .[]' Cargo.toml)
-              for cratePath in $paths; do
-                crate=$(tomlq -r '.package.name' "$cratePath/Cargo.toml")
-                for skip in $SKIPLIST; do
-                  if [[ "$skip" == "$crate" || "$skip" == "$crate-$backend" ]]; then
-                    echo "⛔ $crate [$backend] (skipping)"
-                    continue 2
-                  fi
-                done
-                for backend in coq; do
-                  echo "::group::$crate [$backend]"
-                  cargo hax -C -p "$crate" \; into "$backend"
-                  coqc "$cratePath/proofs/ssprove/extraction/*.v"
-                  echo "::endgroup::"
-                done
+
+      - name: Run Coq/SSprove on Tests
+        working-directory: tests
+        run: |
+          startGroup "Run ssprove coq library tests"
+            paths=$(tomlq -r '.workspace.members | .[]' Cargo.toml)
+            for cratePath in $paths; do
+              crate=$(tomlq -r '.package.name' "$cratePath/Cargo.toml")
+              for skip in $SKIPLIST; do
+                if [[ "$skip" == "$crate" || "$skip" == "$crate-$backend" ]]; then
+                  echo "⛔ $crate [$backend] (skipping)"
+                  continue 2
+                fi
               done
-            endGroup
+              for backend in ssprove; do
+                echo "::group::$crate [$backend]"
+                cargo hax -C -p "$crate" \; into "$backend"
+                coqc $cratePath/proofs/ssprove/extraction/*.v
+                echo "::endgroup::"
+              done
+            done
+          endGroup
         env:
           SKIPLIST: |
             attribute-opaque
