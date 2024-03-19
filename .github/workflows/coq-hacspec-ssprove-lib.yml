@@ -81,36 +81,36 @@ jobs:
           endGroup
         env:
           SKIPLIST: |
-            attribute-opaque
-            attributes
-            cli
-            # enum-repr
             enum-struct-variant
-            even
-            generics
-            if-let
-            lint
             literals
-            loops
-            mut-ref-functionalization
-            naming
-            # nested-derefs
-            never-type
-            odd
-            pattern-or
-            proverif-basic-structs
-            proverif-fn-to-letfun
-            proverif-minimal
-            proverif-noise
-            proverif-ping-pong
-            raw-attributes
-            recursion
-            reordering
-            side-effects
             slices
-            target
+            naming
+            if-let
+            # enum-repr
+            pattern-or
+            side-effects
+            v1-lib
+            mut_arg
+            fnmut
+            mut-ref-functionalization
+            generics
+            loops
+            even
+            odd
+            never-type
+            attributes
+            attribute-opaque
+            raw-attributes
             traits
-
+            reordering
+            # nested-derefs
+            minimal
+            basic-structs
+            ping-pong
+            noise-kkpsk0
+            fn-to-letfun
+            include-flag
+            recursion
 
 # See also:
 # https://github.com/coq-community/docker-coq-action#readme
