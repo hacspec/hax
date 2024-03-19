@@ -49,6 +49,7 @@ From Hacspec Require Import Hacspec_Lib_Monad. Export Hacspec_Lib_Monad.
 From Hacspec Require Import Hacspec_Lib_Ltac. Export Hacspec_Lib_Ltac.
 From Hacspec Require Import Hacspec_Lib_Controlflow. Export Hacspec_Lib_Controlflow.
 From Hacspec Require Import Hacspec_Lib_Notation. Export Hacspec_Lib_Notation.
+From Hacspec Require Import Hacspec_Lib_Cast. Export Hacspec_Lib_Cast.
 From Hacspec Require Import Hacspec_Lib_TODO. Export Hacspec_Lib_TODO.
 From Hacspec Require Import ConCertLib. Export ConCertLib.
 

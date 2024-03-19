@@ -20,20 +20,44 @@ jobs:
           - 'mathcomp/mathcomp:2.1.0-coq-8.18'
       fail-fast: false
     steps:
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - name: Build
+        run: nix build -L
+
+      - name: Install the toolchain
+        run: |
+          nix profile install nixpkgs#yq
+          nix profile install .#rustc
+          nix profile install .
       - uses: actions/checkout@v3
       - name: Set up environment
         run: |
           echo "::group::Setting up problem matcher"
           echo "::add-matcher::./.github/coq-errors.json"
           echo "::endgroup::"
-      - uses: coq-community/docker-coq-action@v1
+      - name: Run Coq/SSprove on Tests
+        uses: coq-community/docker-coq-action@v1
         with:
           opam_file: 'opam/coq-hacspec-ssprove.opam'
           custom_image: ${{ matrix.image }}
           after_script: |
             startGroup "Run ssprove coq library tests"
-              coqc ./tests/enum-repr/proofs/ssprove/extraction/Enum_repr.v
-            endGroup "Run ssprove coq library tests"
+              cd ./tests/
+              paths=$(tomlq -r '.workspace.members | .[]' Cargo.toml)
+              for cratePath in $paths; do
+                crate=$(tomlq -r '.package.name' "$cratePath/Cargo.toml")
+                if [[ "$crate" != enum-repr ]]; then
+                   continue 1
+                fi
+                for backend in coq; do
+                  echo "::group::$crate [$backend]"
+                  cargo hax -C -p "$crate" \; into "$backend"
+                  coqc "$cratePath/proofs/ssprove/extraction/*.v"
+                  echo "::endgroup::"
+                done
+              done
+            endGroup
 
 # See also:
 # https://github.com/coq-community/docker-coq-action#readme
