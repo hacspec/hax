@@ -61,9 +61,12 @@ jobs:
               paths=$(tomlq -r '.workspace.members | .[]' Cargo.toml)
               for cratePath in $paths; do
                 crate=$(tomlq -r '.package.name' "$cratePath/Cargo.toml")
-                if [[ "$crate" != enum-repr ]]; then
-                   continue 1
-                fi
+                for skip in $SKIPLIST; do
+                  if [[ "$skip" == "$crate" || "$skip" == "$crate-$backend" ]]; then
+                    echo "⛔ $crate [$backend] (skipping)"
+                    continue 2
+                  fi
+                done
                 for backend in coq; do
                   echo "::group::$crate [$backend]"
                   cargo hax -C -p "$crate" \; into "$backend"
@@ -72,6 +75,38 @@ jobs:
                 done
               done
             endGroup
+        env:
+          SKIPLIST: |
+            attribute-opaque
+            attributes
+            cli
+            # enum-repr
+            enum-struct-variant
+            even
+            generics
+            if-let
+            lint
+            literals
+            loops
+            mut-ref-functionalization
+            naming
+            # nested-derefs
+            never-type
+            odd
+            pattern-or
+            proverif-basic-structs
+            proverif-fn-to-letfun
+            proverif-minimal
+            proverif-noise
+            proverif-ping-pong
+            raw-attributes
+            recursion
+            reordering
+            side-effects
+            slices
+            target
+            traits
+
 
 # See also:
 # https://github.com/coq-community/docker-coq-action#readme
