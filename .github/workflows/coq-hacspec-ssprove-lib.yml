@@ -20,6 +20,7 @@ jobs:
           - 'mathcomp/mathcomp:2.1.0-coq-8.18'
       fail-fast: false
     steps:
+      - uses: actions/checkout@v3
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Build
@@ -30,7 +31,6 @@ jobs:
           nix profile install nixpkgs#yq
           nix profile install .#rustc
           nix profile install .
-      - uses: actions/checkout@v3
       - name: Set up environment
         run: |
           echo "::group::Setting up problem matcher"
