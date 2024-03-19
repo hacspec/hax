@@ -41,10 +41,8 @@ jobs:
       - name: Install tomlq
         working-directory: tomlq
         run: |
-          startGroup "Build and install tomlq"
-            cargo build
-            cargo install --path .
-          endGroup
+          cargo build
+          cargo install --path .
 
       - name: Set up environment
         run: |
@@ -61,24 +59,22 @@ jobs:
       - name: Run Coq/SSprove on Tests
         working-directory: tests
         run: |
-          startGroup "Run ssprove coq library tests"
-            paths=$(tomlq -r '.workspace.members | .[]' Cargo.toml)
-            for cratePath in $paths; do
-              crate=$(tomlq -r '.package.name' "$cratePath/Cargo.toml")
-              for skip in $SKIPLIST; do
-                if [[ "$skip" == "$crate" || "$skip" == "$crate-$backend" ]]; then
-                  echo "⛔ $crate [$backend] (skipping)"
-                  continue 2
-                fi
-              done
-              for backend in ssprove; do
-                echo "::group::$crate [$backend]"
-                cargo hax -C -p "$crate" \; into "$backend"
-                coqc $cratePath/proofs/ssprove/extraction/*.v
-                echo "::endgroup::"
-              done
+          paths=$(tomlq -r '.workspace.members | .[]' Cargo.toml)
+          for cratePath in $paths; do
+            crate=$(tomlq -r '.package.name' "$cratePath/Cargo.toml")
+            for skip in $SKIPLIST; do
+              if [[ "$skip" == "$crate" || "$skip" == "$crate-$backend" ]]; then
+                echo "⛔ $crate [$backend] (skipping)"
+                continue 2
+              fi
             done
-          endGroup
+            for backend in ssprove; do
+              echo "::group::$crate [$backend]"
+              cargo hax -C -p "$crate" \; into "$backend"
+              coqc $cratePath/proofs/ssprove/extraction/*.v
+              echo "::endgroup::"
+            done
+          done
         env:
           SKIPLIST: |
             enum-struct-variant
