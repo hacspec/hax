@@ -551,10 +551,12 @@ module Context = struct
   }
 end
 
-let primitive_to_string ?(typ=SSP.AST.WildTy) (id : Ast.primitive_ident) : string =
+let primitive_to_string ?(typ = SSP.AST.WildTy) (id : Ast.primitive_ident) :
+    string =
   match id with
   | Deref -> "(TODO: Deref)" (* failwith "Deref" *)
-  | Cast -> "cast (B := " ^ fst (SSP.ty_to_string typ) ^ ")" (* failwith "Cast" *)
+  | Cast ->
+      "cast (B := " ^ fst (SSP.ty_to_string typ) ^ ")" (* failwith "Cast" *)
   | LogicalOp op -> ( match op with And -> "andb" | Or -> "orb")
 
 open Phase_utils
@@ -860,10 +862,14 @@ struct
       | GlobalVar (`TupleCons 0)
       | Construct { constructor = `TupleCons 0; fields = []; _ } ->
           SSP.AST.App (SSP.AST.Var "ret_both", [ SSPExtraDefinitions.unit_term ])
-      | GlobalVar global_ident -> SSP.AST.Var (pglobal_ident ?typ:(match e.typ with
-          | TArrow (input, output) -> Some (pty e.span output)
-          | _ -> None
-        ) global_ident)
+      | GlobalVar global_ident ->
+          SSP.AST.Var
+            (pglobal_ident
+               ?typ:
+                 (match e.typ with
+                 | TArrow (input, output) -> Some (pty e.span output)
+                 | _ -> None)
+               global_ident)
       | App
           {
             f = { e = GlobalVar (`Projector (`TupleField _)); _ };
