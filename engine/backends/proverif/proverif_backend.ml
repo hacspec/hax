@@ -292,7 +292,10 @@ module Make (Options : OPTS) : MAKE = struct
                 when Global_ident.eq_name Core__option__Option__None name ->
                   string "None()"
               | PConstruct { name; args }
-              (* Some(expr) -> Some(<expr_typ_to_bitstring>(expr))*)
+              (* The `Some` constructor in ProVerif expects a
+                 bitstring argument, so we use the appropriate
+                 `_to_bitstring` type converter on the inner
+                 expression. *)
                 when Global_ident.eq_name Core__option__Option__Some name ->
                   let inner_field = List.hd_exn args in
                   let inner_field_type_doc =
@@ -312,7 +315,8 @@ module Make (Options : OPTS) : MAKE = struct
                   in
                   string "Some" ^^ inner_block
               | PConstruct { name; args }
-              (* Some(expr) -> Some(<expr_typ_to_bitstring>(expr))*)
+              (* We replace applications of the `Ok` constructor
+                 with their contents. *)
                 when Global_ident.eq_name Core__result__Result__Ok name ->
                   let inner_field = List.hd_exn args in
                   let inner_field_type_doc =
@@ -320,18 +324,6 @@ module Make (Options : OPTS) : MAKE = struct
                   in
                   let inner_field_doc = print#pat ctx inner_field.pat in
                   inner_field_doc
-                  (* let inner_block = *)
-                  (*   match inner_field.pat.typ with *)
-                  (*   | TApp { ident = `TupleType _ } *)
-                  (*   (\* Tuple types should be translated without conversion from bitstring *\) *)
-                  (*     -> *)
-                  (*       iblock parens inner_field_doc *)
-                  (*   | _ -> *)
-                  (*       iblock parens *)
-                  (*         (inner_field_type_doc ^^ string "_to_bitstring" *)
-                  (*         ^^ iblock parens inner_field_doc) *)
-                  (* in *)
-                  (* string "Some" ^^ inner_block *)
               | PConstruct { name; args } -> (
                   match
                     translate_known_name name ~dict:library_constructor_patterns
