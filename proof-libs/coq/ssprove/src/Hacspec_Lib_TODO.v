@@ -502,8 +502,6 @@ Definition pop {L I A} : both L I (chList A) -> both L I (chOption A × t_Vec A 
 
 Definition push {L1 L2 I1 I2 A} : both L1 I1 (t_Vec A t_Global) -> both L2 I2 A -> both (L1 :|: L2) (I1 :|: I2) (t_Vec A (t_Global)) :=
   lift2_both (fun  (x : chList A) y => y :: x : chList A).
-
-Notation Option_Some := Some.
 Definition append {L1 L2 I1 I2} {A : choice_type} (l : both L1 I1 (chList A)) (x : both L2 I2 (chList A)) : both (L2 :|: L1) (I2 :|: I1) (chList A × chList A) :=
   lift2_both (fun (x : chList A) (y : chList A) => (app y x, []) : chList A × chList A) x l.
 
@@ -600,6 +598,9 @@ Notation "'matchb' x 'with' '|' a '=>' b '|' c '=>' d '|' e '=>' f '|' g '=>' h 
                       | e => f
                       | g => h end)) (at level 100, a pattern, c pattern, e pattern, g pattern).
 
+Notation "'matchb' x 'with' '|' a '|' c '=>' d  'end'" :=
+  (bind_both x (fun y => match y with | _ => d end)) (at level 100, a pattern, c pattern).
+
 Notation f_branch := id.
 Notation ControlFlow_Break_case := inr.
 Notation ControlFlow_Continue_case := inl.
@@ -675,3 +676,13 @@ Notation f_parameter_cursor_loc := fset0.
 
 Notation Result_Ok_case := inl.
 Notation Result_Err_case := inr.
+
+Notation Option_Some_case := Some.
+Notation Option_None_case := None.
+
+Equations Option_Some {L I A} (y : both L I A) : both L I ('option A) :=
+  Option_Some y :=
+    bind_both y (fun x => solve_lift ret_both (Some x : 'option A)). 
+Fail Next Obligation.
+
+Definition impl__u32__wrapping_add {L1 L2 I1 I2} := int_add (WS := U32) (L1 := L1) (I1 := I1) (L2 := L2) (I2 := I2).

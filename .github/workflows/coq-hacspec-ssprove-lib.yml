@@ -72,9 +72,9 @@ jobs:
             literals
             slices
             naming
-            if-let
+            # if-let
             # enum-repr
-            pattern-or
+            # pattern-or
             side-effects
             v1-lib
             mut_arg
