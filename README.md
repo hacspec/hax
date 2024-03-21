@@ -131,3 +131,10 @@ Before starting any work please join the [Zulip chat][chat-link], start a [discu
 
 
 [chat-link]: https://hacspec.zulipchat.com
+
+## Acknowledgements
+
+[Zulip] graciously provides the hacspec & hax community with a "Zulip Cloud Standard" tier.
+
+
+[Zulip]: https://zulip.com/
