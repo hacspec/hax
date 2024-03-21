@@ -358,12 +358,14 @@ end) : EXPR = struct
             Option.value ~default:(U.unit_expr span)
             @@ Option.map ~f:c_expr else_opt
           in
+          let guard = None in (* TODO? *)
           let arm_then =
-            { arm = { arm_pat; body = then_ }; span = then_.span }
+            { arm = { arm_pat; body = then_; guard }; span = then_.span }
           in
           let arm_else =
             let arm_pat = { arm_pat with p = PWild } in
-            { arm = { arm_pat; body = else_ }; span = else_.span }
+            let guard = None in
+            { arm = { arm_pat; body = else_; guard }; span = else_.span }
           in
           Match { scrutinee; arms = [ arm_then; arm_else ] }
       | If { cond; else_opt; then'; _ } ->
@@ -967,12 +969,19 @@ end) : EXPR = struct
     | Const e -> GConst (c_constant_expr e)
     | _ -> GLifetime { lt = "todo generics"; witness = W.lifetime }
 
+  and c_guard (guard : Thir.guard) : guard =
+    { guard_val =
+        (match guard with
+         | If e ->  If { e = c_expr e }
+         | IfLet (p, e) -> IfLet { lhs = c_pat p; e = c_expr e } );
+      witness = W.match_guard }
+    
   and c_arm (arm : Thir.arm) : arm =
     let arm_pat = c_pat arm.pattern in
     let body = c_expr arm.body in
-    let _guard = arm.guard in
+    let guard = Option.map ~f:c_guard arm.guard in
     let span = Span.of_thir arm.span in
-    { arm = { arm_pat; body }; span }
+    { arm = { arm_pat; body; guard }; span }
 
   and c_param span (param : Thir.param) : param =
     {
@@ -1200,7 +1209,7 @@ let cast_of_enum typ_name generics typ thir_span
             in
             (Exp e, (pat, acc)))
     |> List.map ~f:(Fn.id *** function Exp e -> e | Lit n -> to_expr n)
-    |> List.map ~f:(fun (arm_pat, body) -> { arm = { arm_pat; body }; span })
+    |> List.map ~f:(fun (arm_pat, body) -> { arm = { arm_pat; body; guard = None (* TODO *) }; span })
   in
   let scrutinee_var =
     Local_ident.{ name = "x"; id = Local_ident.mk_id Expr (-1) }

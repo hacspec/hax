@@ -163,10 +163,10 @@ struct
       | Match { scrutinee; arms } ->
           let arms =
             List.map
-              ~f:(fun { arm = { arm_pat; body = a }; span } ->
+              ~f:(fun { arm = { arm_pat; body = a; guard }; span } ->
                 let b = dexpr a in
                 let m = KnownMonads.from_typ dty a.typ b.typ in
-                (m, (dpat arm_pat, span, b)))
+                (m, (dpat arm_pat, span, b, dguard span guard)))
               arms
           in
           let arms =
@@ -177,10 +177,11 @@ struct
                 |> List.reduce_exn ~f:(KnownMonads.lub span)
               in
               List.map
-                ~f:(fun (mself, (arm_pat, span, body)) ->
+                ~f:(fun (mself, (arm_pat, span, body, guard)) ->
                   let body = KnownMonads.lift "Match" body mself.monad m in
                   let arm_pat = { arm_pat with typ = body.typ } in
-                  ({ arm = { arm_pat; body }; span } : B.arm))
+                  let guard = None in (* TODO *)
+                  ({ arm = { arm_pat; body; guard }; span } : B.arm))
                 arms
           in
           let typ =

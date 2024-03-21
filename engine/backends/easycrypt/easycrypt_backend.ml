@@ -59,6 +59,7 @@ module RejectNotEC (FA : Features.T) = struct
         let while_loop = reject
         let construct_base _ _ = Features.On.construct_base
         let for_index_loop _ _ = Features.On.for_index_loop
+        let match_guard = reject
 
         let metadata =
           Phase_utils.Metadata.make (Reject (NotInBackendLang EasyCrypt))

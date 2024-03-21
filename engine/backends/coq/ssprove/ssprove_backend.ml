@@ -39,6 +39,7 @@ module SubtypeToInputLanguage
              and type monadic_action = Features.Off.monadic_action
              and type arbitrary_lhs = Features.Off.arbitrary_lhs
              and type nontrivial_lhs = Features.Off.nontrivial_lhs
+             and type match_guard = Features.Off.match_guard
              and type block = Features.Off.block) =
 struct
   module FB = InputLanguage
@@ -562,6 +563,7 @@ open Phase_utils
 module TransformToInputLanguage (* : PHASE *) =
   [%functor_application
     Phases.Reject.RawOrMutPointer(Features.Rust)
+    |> Phases.Reject.Match_guard
     |> Phases.And_mut_defsite
     |> Phases.Reconstruct_for_loops
     |> Phases.Direct_and_mut
