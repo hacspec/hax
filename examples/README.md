@@ -10,7 +10,7 @@
 
 ## Open Source Crypto Workshop
 
-## Before the Workshop
+### Before the Workshop
 
 Pull the docker image for your platform.
 The image is relatively big, so please do this on a reliable connection and don't
