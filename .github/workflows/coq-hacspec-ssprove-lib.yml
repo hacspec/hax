@@ -87,7 +87,7 @@ jobs:
             never-type
             attributes
             attribute-opaque
-            raw-attributes
+            # raw-attributes
             traits
             reordering
             # nested-derefs

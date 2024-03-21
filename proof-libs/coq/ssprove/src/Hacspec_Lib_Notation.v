@@ -141,3 +141,32 @@ Infix ">=.?" := geb (at level 42) : hacspec_scope.
 
 (* (*   apply (code_eq_proof_statement (foldi_both lo hi (ret_both v) (fun x y => b x (y)))). *) *)
 (* (* Qed. *) *)
+
+Notation "'matchb' x 'with' '|' a '=>' b 'end'" :=
+  (bind_both x (fun y => match y with
+                      | a => b end)) (at level 100, a pattern).
+
+Notation "'matchb' x 'with' '|' a '=>' b '|' c '=>' d  'end'" :=
+  (bind_both x (fun y => match y with
+                      | a => b
+                      | c => d end)) (at level 100, a pattern, c pattern).
+
+Notation "'matchb' x 'with' '|' a '=>' b '|' c '=>' d '|' e '=>' f  'end'" :=
+  (bind_both x (fun y => match y with
+                      | a => b
+                      | c => d
+                      | e => f end)) (at level 100, a pattern, c pattern, e pattern).
+
+Notation "'matchb' x 'with' '|' a '=>' b '|' c '=>' d '|' e '=>' f '|' g '=>' h 'end'" :=
+  (bind_both x (fun y => match y with
+                      | a => b
+                      | c => d
+                      | e => f
+                      | g => h end)) (at level 100, a pattern, c pattern, e pattern, g pattern).
+
+Notation "'matchb' x 'with' '|' a '|' c '=>' d  'end'" :=
+  (bind_both x (fun y => match y with | _ => d end)) (at level 100, a pattern, c pattern).
+
+(* Notation "x + y" := (int_add x y) : hacspec_scope. *)
+
+(* From RecordUpdate Require Import RecordSet. *)

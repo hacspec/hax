@@ -268,7 +268,7 @@ functor
       | AST.WildPat -> "_"
       | AST.UnitPat -> tick_if is_top_expr ^ "tt"
       | AST.Ident s -> s
-      | AST.Lit l -> literal_to_string l
+      | AST.Lit l -> "num_" ^ " " ^ literal_to_string l
       | AST.ConstructorPat (name, args) ->
           name ^ " " ^ String.concat ~sep:" "
           @@ List.map ~f:(fun pat -> pat_to_string pat false depth) args

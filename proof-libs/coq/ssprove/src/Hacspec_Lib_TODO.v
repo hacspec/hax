@@ -44,30 +44,33 @@ From Hacspec Require Import Hacspec_Lib_Seq.
 From Hacspec Require Import Hacspec_Lib_Natmod.
 From Hacspec Require Import Hacspec_Lib_Monad.
 From Hacspec Require Import Hacspec_Lib_Ltac.
+From Hacspec Require Import Hacspec_Lib_Notation.
 
 (*** Hacspec-v2 specific fixes *)
 
 Import choice.Choice.Exports.
 Obligation Tactic := (* try timeout 8 *) solve_ssprove_obligations.
 
-(** Should be moved to Hacspec_Lib.v **)
-Program Definition int_xI {WS : wsize} (a : (* both (fset []) ([interface])  *)(@int WS)) : (* both (fset []) ([interface]) *) (@int WS) :=
-  Hacspec_Lib_Pre.int_add (Hacspec_Lib_Pre.int_mul a ((* lift_to_both (fset []) ([interface]) *) (@repr WS 2))) ((* lift_to_both (fset []) ([interface]) *) (@one WS)).
-(* Next Obligation. intros ; now do 2 rewrite fsetU0. Defined. *)
-(* Next Obligation. intros ; rewrite <- fset0E ; now do 2 rewrite fsetU0. Defined. *)
+(** Should be moved **)
+Program Fixpoint int_pos {WS : wsize} (a : positive) : int WS :=
+  match a with
+  | xI b => Hacspec_Lib_Pre.int_add (Hacspec_Lib_Pre.int_mul (int_pos b) (repr WS 2)) one
+  | xO b => Hacspec_Lib_Pre.int_mul (int_pos b) (repr WS 2)
+  | 1%positive => one
+  end.
+Fail Next Obligation.
 
-Program Definition int_xO {WS : wsize} (a : int WS) : int WS :=
-  Hacspec_Lib_Pre.int_mul a (@repr WS 2).
-(* Next Obligation. intros ; now rewrite fsetU0. Defined. *)
-(* Next Obligation. intros ; rewrite <- fset0E ; now rewrite fsetU0. Defined. *)
-
-Definition both_int_one {WS : wsize} : both (fset []) ([interface]) (@int WS) := ret_both (one).
+Notation "'num_' x" := (@mkWord _ x _) (at level 100).
 
 Open Scope hacspec_scope.
-Definition int_num {WS : wsize} := int WS.
-Number Notation int_num Pos.of_num_int Pos.to_num_int (via positive mapping [[int_xI] => xI, [int_xO] => xO , [one] => xH]) : hacspec_scope.
+(* Arguments word.word. *)
+Number Notation word N.of_num_uint N.to_num_int (via N mapping [[int_pos] => Npos, [zero] => N0]) : hacspec_scope.
 
-Notation "0" := (repr _ 0%Z) : hacspec_scope.
+From RecordUpdate Require Import RecordSet.
+
+
+
+(* Register int_add as num.N.add. *)
 
 (* Notation U8_t := int8. *)
 (* Notation U8 := id. *)
@@ -575,32 +578,6 @@ Equations run {L I A} (x : both L I (choice_typeMonad.M (CEMonad := (@choice_typ
                              end).
 Fail Next Obligation.
 
-
-Notation "'matchb' x 'with' '|' a '=>' b 'end'" :=
-  (bind_both x (fun y => match y with
-                      | a => b end)) (at level 100, a pattern).
-
-Notation "'matchb' x 'with' '|' a '=>' b '|' c '=>' d  'end'" :=
-  (bind_both x (fun y => match y with
-                      | a => b
-                      | c => d end)) (at level 100, a pattern, c pattern).
-
-Notation "'matchb' x 'with' '|' a '=>' b '|' c '=>' d '|' e '=>' f  'end'" :=
-  (bind_both x (fun y => match y with
-                      | a => b
-                      | c => d
-                      | e => f end)) (at level 100, a pattern, c pattern, e pattern).
-
-Notation "'matchb' x 'with' '|' a '=>' b '|' c '=>' d '|' e '=>' f '|' g '=>' h 'end'" :=
-  (bind_both x (fun y => match y with
-                      | a => b
-                      | c => d
-                      | e => f
-                      | g => h end)) (at level 100, a pattern, c pattern, e pattern, g pattern).
-
-Notation "'matchb' x 'with' '|' a '|' c '=>' d  'end'" :=
-  (bind_both x (fun y => match y with | _ => d end)) (at level 100, a pattern, c pattern).
-
 Notation f_branch := id.
 Notation ControlFlow_Break_case := inr.
 Notation ControlFlow_Continue_case := inl.
@@ -685,4 +662,4 @@ Equations Option_Some {L I A} (y : both L I A) : both L I ('option A) :=
     bind_both y (fun x => solve_lift ret_both (Some x : 'option A)). 
 Fail Next Obligation.
 
-Definition impl__u32__wrapping_add {L1 L2 I1 I2} := int_add (WS := U32) (L1 := L1) (I1 := I1) (L2 := L2) (I2 := I2).
+Definition impl__u32__wrapping_add {L1 L2 I1 I2} := int_add (WS := U32) (L1 := L1) (I1 := I1) (L2 := L2) (I2 := I2). (* TODO *)
