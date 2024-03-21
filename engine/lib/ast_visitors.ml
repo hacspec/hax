@@ -517,9 +517,8 @@ functor
               in
               LhsArrayAccessor { e; typ; index; witness }
 
-        method visit_guard (env : 'env) (this : guard) : guard =
-          this
-        
+        method visit_guard (env : 'env) (this : guard) : guard = this
+
         method visit_arm' (env : 'env) (this : arm') : arm' =
           let arm_pat = self#visit_pat env this.arm_pat in
           let body = self#visit_expr env this.body in
@@ -1580,8 +1579,8 @@ functor
           let guard, reduce_acc =
             match this.guard with
             | Some guard ->
-              let guard, reduce_acc' = self#visit_guard env guard in
-              (Some guard, self#plus reduce_acc reduce_acc')
+                let guard, reduce_acc' = self#visit_guard env guard in
+                (Some guard, self#plus reduce_acc reduce_acc')
             | None -> (None, reduce_acc)
           in
           let out : arm' = { arm_pat; body; guard } in

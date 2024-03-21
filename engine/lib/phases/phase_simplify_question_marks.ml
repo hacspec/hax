@@ -175,13 +175,16 @@ module%inlined_contents Make (FA : Features.T) = struct
                 { e = App { f = { e = GlobalVar n; _ }; args = [ expr ] }; _ };
               arms =
                 [
-                  { arm = { arm_pat = pat_break; body; guard = guard_break }; _ };
+                  {
+                    arm = { arm_pat = pat_break; body; guard = guard_break };
+                    _;
+                  };
                   {
                     arm =
                       {
                         arm_pat = pat_continue;
                         body = { e = LocalVar continue_var; _ };
-                        guard = guard_continue
+                        guard = guard_continue;
                       };
                     _;
                   };
@@ -230,9 +233,7 @@ module%inlined_contents Make (FA : Features.T) = struct
                     let body =
                       { typ = local_success; e = LocalVar var_ok; span }
                     in
-                    let guard =
-                      None (* TODO *)
-                    in
+                    let guard = None (* TODO *) in
                     { arm = { arm_pat; body; guard }; span }
                   in
                   let arm_err =
@@ -252,7 +253,8 @@ module%inlined_contents Make (FA : Features.T) = struct
                     in
                     let e = Return { e = err; witness = return_witness } in
                     let return = { typ = local_success; e; span } in
-                    let guard = None in (* TODO *)
+                    let guard = None in
+                    (* TODO *)
                     { arm = { arm_pat; body = return; guard }; span }
                   in
                   let arms, typ = ([ arm_ok; arm_err ], local_success) in
@@ -268,7 +270,8 @@ module%inlined_contents Make (FA : Features.T) = struct
                     let body =
                       { typ = local_success; e = LocalVar var_some; span }
                     in
-                    let guard = None in (* TODO *)
+                    let guard = None in
+                    (* TODO *)
                     { arm = { arm_pat; body; guard }; span }
                   in
                   let arm_none =
