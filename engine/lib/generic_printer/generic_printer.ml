@@ -419,7 +419,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
           separate_map comma print#generic_param >> group >> angles
 
         method arm' : arm' fn =
-          fun { arm_pat; body } ->
+          fun { arm_pat; body; guard = _ (* TODO *) } ->
             let pat = print#pat_at Arm_pat arm_pat |> group in
             let body = print#expr_at Arm_body body in
             pat ^^ string " => " ^^ body ^^ comma
