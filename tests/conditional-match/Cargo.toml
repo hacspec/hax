@@ -1,0 +1,9 @@
+[package]
+name = "conditional-match"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[package.metadata.hax-tests]
+into."fstar+coq+ssprove" = { broken = false, issue_id = "168" }

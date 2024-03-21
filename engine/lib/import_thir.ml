@@ -970,6 +970,7 @@ end) : EXPR = struct
   and c_arm (arm : Thir.arm) : arm =
     let arm_pat = c_pat arm.pattern in
     let body = c_expr arm.body in
+    let _guard = arm.guard in
     let span = Span.of_thir arm.span in
     { arm = { arm_pat; body }; span }
 

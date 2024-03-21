@@ -22,6 +22,7 @@ loop,
   construct_base,
   monadic_action,
   monadic_binding,
+  match_guard,
   block]
 
 module Full = On

@@ -517,10 +517,14 @@ functor
               in
               LhsArrayAccessor { e; typ; index; witness }
 
+        method visit_guard (env : 'env) (this : guard) : guard =
+          this
+        
         method visit_arm' (env : 'env) (this : arm') : arm' =
           let arm_pat = self#visit_pat env this.arm_pat in
           let body = self#visit_expr env this.body in
-          let out : arm' = { arm_pat; body } in
+          let guard = Option.map ~f:(self#visit_guard env) this.guard in
+          let out : arm' = { arm_pat; body; guard } in
           out
 
         method visit_arm (env : 'env) (this : arm) : arm =
@@ -1566,11 +1570,21 @@ functor
               let reduce_acc = self#plus reduce_acc reduce_acc' in
               (LhsArrayAccessor { e; typ; index; witness }, reduce_acc)
 
+        method visit_guard (env : 'env) (this : guard) : guard * 'acc =
+          (this, self#zero)
+
         method visit_arm' (env : 'env) (this : arm') : arm' * 'acc =
           let arm_pat, reduce_acc = self#visit_pat env this.arm_pat in
           let body, reduce_acc' = self#visit_expr env this.body in
           let reduce_acc = self#plus reduce_acc reduce_acc' in
-          let out : arm' = { arm_pat; body } in
+          let guard, reduce_acc =
+            match this.guard with
+            | Some guard ->
+              let guard, reduce_acc' = self#visit_guard env guard in
+              (Some guard, self#plus reduce_acc reduce_acc')
+            | None -> (None, reduce_acc)
+          in
+          let out : arm' = { arm_pat; body; guard } in
           (out, reduce_acc)
 
         method visit_arm (env : 'env) (this : arm) : arm * 'acc =

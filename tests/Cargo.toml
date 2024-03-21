@@ -30,5 +30,6 @@ members = [
         "proverif-fn-to-letfun",
         "cli/include-flag",
         "recursion",
+	"conditional-match",
 ]
 resolver = "2"
