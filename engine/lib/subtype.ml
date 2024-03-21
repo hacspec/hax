@@ -297,8 +297,8 @@ struct
 
   and dguard_type (span : span) (gt : A.guard_type) : B.guard_type =
     match gt with
-    | If { e } -> If { e = dexpr e }
-    | IfLet { lhs; e } -> IfLet { lhs = dpat lhs; e = dexpr e }
+    | IfGuard { e } -> IfGuard { e = dexpr e }
+    | IfLetGuard { lhs; e } -> IfLetGuard { lhs = dpat lhs; e = dexpr e }
 
   and dlhs (span : span) (lhs : A.lhs) : B.lhs =
     match lhs with

@@ -166,7 +166,8 @@ struct
               ~f:(fun { arm = { arm_pat; body = a; guard }; span } ->
                 let b = dexpr a in
                 let m = KnownMonads.from_typ dty a.typ b.typ in
-                (m, (dpat arm_pat, span, b, dguard span guard)))
+                let g = Option.map ~f:(dguard span) guard in
+                (m, (dpat arm_pat, span, b, g)))
               arms
           in
           let arms =
@@ -180,7 +181,6 @@ struct
                 ~f:(fun (mself, (arm_pat, span, body, guard)) ->
                   let body = KnownMonads.lift "Match" body mself.monad m in
                   let arm_pat = { arm_pat with typ = body.typ } in
-                  let guard = None in (* TODO *)
                   ({ arm = { arm_pat; body; guard }; span } : B.arm))
                 arms
           in
