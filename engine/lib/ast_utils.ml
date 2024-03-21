@@ -393,7 +393,7 @@ module Make (F : Features.T) = struct
           inherit [_] Visitors.reduce as super
           inherit [_] Sets.Local_ident.monoid as _m
 
-          method! visit_arm' env { arm_pat; body } =
+          method! visit_arm' env { arm_pat; body; guard = _ (* TODO *) } =
             shadows ~env [ arm_pat ] body super#visit_expr
 
           method! visit_expr' env e =
@@ -584,7 +584,7 @@ module Make (F : Features.T) = struct
                    (without_vars (self#visit_expr () body) vars))
           | _ -> super#visit_expr' () e
 
-        method! visit_arm' () { arm_pat; body } =
+        method! visit_arm' () { arm_pat; body; guard = _ (* TODO *) } =
           without_pat_vars (self#visit_expr () body) arm_pat
       end
 

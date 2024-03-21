@@ -176,7 +176,7 @@ module%inlined_contents Make (FA : Features.T) = struct
               arms =
                 [
                   {
-                    arm = { arm_pat = pat_break; body; guard = guard_break };
+                    arm = { arm_pat = pat_break; body; guard = _guard_break };
                     _;
                   };
                   {
@@ -184,7 +184,7 @@ module%inlined_contents Make (FA : Features.T) = struct
                       {
                         arm_pat = pat_continue;
                         body = { e = LocalVar continue_var; _ };
-                        guard = guard_continue;
+                        guard = _guard_continue;
                       };
                     _;
                   };

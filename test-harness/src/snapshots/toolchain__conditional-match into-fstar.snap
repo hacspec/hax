@@ -1,0 +1,66 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: fstar
+  info:
+    name: conditional-match
+    manifest: conditional-match/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: true
+      stdout: true
+    include_flag: ~
+    backend_options: ~
+---
+exit = 101
+stderr = '''
+Compiling conditional-match v0.1.0 (WORKSPACE_ROOT/conditional-match)
+error[HAX0008]: (reject_MatchGuard) ExplicitRejection { reason: "a node of kind [Match_guard] have been found in the AST" }
+  --> conditional-match/src/lib.rs:31:9
+   |
+31 |         Foo { a, .. } if a > 10 => 1,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: could not compile `conditional-match` (lib) due to previous error'''
+[[stdout.diagnostics]]
+message = '(reject_MatchGuard) ExplicitRejection { reason: "a node of kind [Match_guard] have been found in the AST" }'
+spans = ['Span { lo: Loc { line: 31, col: 8 }, hi: Loc { line: 31, col: 36 }, filename: Real(LocalPath("conditional-match/src/lib.rs")) }']
+
+[stdout.files]
+"Conditional_match.fst" = '''
+module Conditional_match
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+type t_Foo = {
+  f_a:u8;
+  f_b:bool;
+  f_c:u16
+}
+
+let v_Bar (foo: t_Foo) : Prims.unit =
+  let _:i32 = match foo with | { f_c = c } -> 1l in
+  ()
+
+let v_Baz (foo: t_Foo) : Prims.unit =
+  let _:i32 =
+    Rust_primitives.Hax.failure "(reject_MatchGuard) ExplicitRejection { reason: \"a node of kind [Match_guard] have been found in the AST\" }\n"
+      "(match foo {\n        conditional_match::Foo { f_a: a } if core::cmp::PartialOrd::gt(a, 10) => 1,\n        conditional_match::Foo { f_b: b } if b => 2,\n        _ => 3,\n    })"
+
+  in
+  ()
+
+let v_Foo (_: Prims.unit) : Prims.unit =
+  let foo:t_Foo = { f_a = 16uy; f_b = false; f_c = 9us } <: t_Foo in
+  let bar:t_Foo = { foo with f_c = 14us } <: t_Foo in
+  ()
+'''

@@ -302,7 +302,7 @@ struct
       witness = S.match_guard span g.witness;
     }
 
-  and dguard_type (span : span) (gt : A.guard_type) : B.guard_type =
+  and dguard_type (_span : span) (gt : A.guard_type) : B.guard_type =
     match gt with
     | IfGuard { e } -> IfGuard { e = dexpr e }
     | IfLetGuard { lhs; e } -> IfLetGuard { lhs = dpat lhs; e = dexpr e }
