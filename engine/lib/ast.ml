@@ -305,7 +305,8 @@ functor
         }
 
     (* OCaml + visitors is not happy with `pat`... hence `arm_pat`... *)
-    and arm' = { arm_pat : pat; body : expr }
+    and guard = { witness : F.match_guard }
+    and arm' = { arm_pat : pat; body : expr; guard: guard option }
     and arm = { arm : arm'; span : span } [@@deriving show, yojson, hash, eq]
 
     type generic_param = {
