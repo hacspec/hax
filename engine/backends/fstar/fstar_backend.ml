@@ -38,6 +38,7 @@ module SubtypeToInputLanguage
              and type for_loop = Features.Off.for_loop
              and type while_loop = Features.Off.while_loop
              and type for_index_loop = Features.Off.for_index_loop
+             and type match_guard = Features.Off.match_guard
              and type state_passing_loop = Features.Off.state_passing_loop) =
 struct
   module FB = InputLanguage
@@ -1342,6 +1343,7 @@ module DepGraphR = Dependencies.Make (Features.Rust)
 module TransformToInputLanguage =
   [%functor_application
   Phases.Reject.RawOrMutPointer(Features.Rust)
+  |> Phases.Reject.Match_guard
   |> Phases.Drop_sized_trait
   |> Phases.Simplify_question_marks
   |> Phases.And_mut_defsite

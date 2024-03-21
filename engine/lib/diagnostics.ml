@@ -15,6 +15,7 @@ module Phase = struct
       | RawOrMutPointer
       | EarlyExit
       | AsPattern
+      | MatchGuard
     [@@deriving show { with_path = false }, eq, yojson, compare, hash, sexp]
 
     let display = function

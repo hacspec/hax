@@ -305,10 +305,13 @@ functor
         }
 
     (* OCaml + visitors is not happy with `pat`... hence `arm_pat`... *)
-    and guard = { witness : F.match_guard }
+    and guard_type =
+      | If of { e: expr }
+      | IfLet of { lhs: pat; e: expr }
+    and guard = { guard_val : guard_type; witness : F.match_guard }
     and arm' = { arm_pat : pat; body : expr; guard: guard option }
     and arm = { arm : arm'; span : span } [@@deriving show, yojson, hash, eq]
-
+    
     type generic_param = {
       ident : local_ident;
       span : span;

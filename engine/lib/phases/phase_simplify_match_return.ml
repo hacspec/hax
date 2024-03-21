@@ -89,7 +89,8 @@ module Make (F : Features.T) =
                                Let { monadic = None; lhs; rhs = arm_body; body };
                            } )
                 in
-                let arm = { arm with arm = { arm_pat; body = let_expr } } in
+                let guard = arm.arm.guard in
+                let arm = { arm with arm = { arm_pat; body = let_expr; guard = guard } } in
                 let diverging_arm =
                   {
                     diverging_arm with
