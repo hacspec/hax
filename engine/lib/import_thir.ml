@@ -972,8 +972,8 @@ end) : EXPR = struct
   and c_guard (guard : Thir.guard) : guard =
     { guard_val =
         (match guard with
-         | If e ->  If { e = c_expr e }
-         | IfLet (p, e) -> IfLet { lhs = c_pat p; e = c_expr e } );
+         | If e ->  IfGuard { e = c_expr e }
+         | IfLet (p, e) -> IfLetGuard { lhs = c_pat p; e = c_expr e } );
       witness = W.match_guard }
     
   and c_arm (arm : Thir.arm) : arm =
