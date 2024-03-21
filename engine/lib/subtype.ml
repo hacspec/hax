@@ -290,10 +290,17 @@ struct
   and darm (a : A.arm) : B.arm = { span = a.span; arm = darm' a.span a.arm }
 
   and darm' (span : span) (a : A.arm') : B.arm' =
-    { arm_pat = dpat a.arm_pat; body = dexpr a.body; guard = Option.map ~f:(dguard span) a.guard }
+    {
+      arm_pat = dpat a.arm_pat;
+      body = dexpr a.body;
+      guard = Option.map ~f:(dguard span) a.guard;
+    }
 
   and dguard (span : span) (g : A.guard) : B.guard =
-    { guard_val = dguard_type span g.guard_val; witness = S.match_guard span g.witness }
+    {
+      guard_val = dguard_type span g.guard_val;
+      witness = S.match_guard span g.witness;
+    }
 
   and dguard_type (span : span) (gt : A.guard_type) : B.guard_type =
     match gt with
