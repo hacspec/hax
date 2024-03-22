@@ -30,6 +30,8 @@ The docker image has hax pre-installed, as well as the F\* toolchain.
 As entry point, the docker image provides a vscode interface that you can open
 in the browser.
 
+There's a [Zulip]([https://hacspec.zulipchat.com/](https://hacspec.zulipchat.com/#narrow/stream/429856-oscw2024)) that you can join if you have any questions. Please use the linked oscw2024 channel for that.
+
 ### Running the docker image
 
 To use the docker image, run it with the correct tag for your platform
