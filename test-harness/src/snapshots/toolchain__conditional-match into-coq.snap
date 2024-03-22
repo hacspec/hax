@@ -11,7 +11,7 @@ info:
     description: ~
   spec:
     optional: false
-    broken: false
+    broken: true
     issue_id: ~
     positive: true
     snapshot:
