@@ -81,7 +81,7 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 
 ## Supported Subset of the Rust Language
 
-Hax indenteds to support full Rust, with the two following exceptions, promoting a functional style:
+Hax intends to support full Rust, with the two following exceptions, promoting a functional style:
  1. no `unsafe` code (see https://github.com/hacspec/hax/issues/417);
  2. mutable references (aka `&mut T`) on return types or when aliasing (see https://github.com/hacspec/hax/issues/420).
 
@@ -107,7 +107,7 @@ You can also just use [direnv](https://github.com/nix-community/nix-direnv), wit
 - `rust-frontend/`: Rust library that hooks in the rust compiler and
   extract its internal typed abstract syntax tree
   [**THIR**](https://rustc-dev-guide.rust-lang.org/thir.html) as JSON.
-- `engine/`: the simplication and elaboration engine that translate
+- `engine/`: the simplification and elaboration engine that translates
   programs from the Rust language to various backends (see `engine/backends/`).
 - `cli/`: the `hax` subcommand for Cargo.
 
