@@ -197,19 +197,23 @@ pub(crate) fn scalar_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
                     scalar
                 )
             });
-            let provenance = tcx.global_alloc(pointer.provenance.s_unwrap(s));
             use rustc_middle::mir::interpret::GlobalAlloc;
-            let GlobalAlloc::Static(did) = provenance else {
-                fatal!(
+            let contents = match tcx.global_alloc(pointer.provenance.s_unwrap(s)) {
+                GlobalAlloc::Static(did) => ConstantExprKind::GlobalName { id: did.sinto(s) },
+                GlobalAlloc::Memory(alloc) => {
+                    let values = alloc.inner().get_bytes_unchecked(rustc_middle::mir::interpret::AllocRange {
+                            start: rustc_abi::Size::from_bits(0),
+                            size: rustc_abi::Size::from_bits(alloc.inner().len() * 8)
+                        });
+                    ConstantExprKind::Literal (ConstantLiteral::ByteStr(values.iter().copied().collect(), StrStyle::Cooked))
+                },
+                provenance => fatal!(
                     s[span],
-                    "Expected provenance to be GlobalAlloc::Static, got {:#?} instead",
+                    "Expected provenance to be `GlobalAlloc::Static` or `GlobalAlloc::Memory`, got {:#?} instead",
                     provenance
                 )
             };
-            ConstantExprKind::Borrow(
-                (ConstantExprKind::GlobalName { id: did.sinto(s) })
-                    .decorate(ty.sinto(s), cspan.clone()),
-            )
+            ConstantExprKind::Borrow(contents.decorate(ty.sinto(s), cspan.clone()))
         }
         // A [Scalar] might also be any zero-sized [Adt] or [Tuple] (i.e., unit)
         ty::Tuple(ty) if ty.is_empty() => ConstantExprKind::Tuple { fields: vec![] },
