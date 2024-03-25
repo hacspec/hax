@@ -1,0 +1,104 @@
+name: Hacspec - Coq, SSProve Lib
+
+on:
+  schedule:
+    - cron: '10 1 * * 0'
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  build:
+    # the OS must be GNU/Linux to be able to use the docker-coq-action
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image:
+          - 'mathcomp/mathcomp:2.1.0-coq-8.18'
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v3
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - name: Build
+        run: nix build -L
+
+      - name: Install the toolchain
+        run: |
+          nix profile install nixpkgs#yq
+          nix profile install .#rustc
+          nix profile install .
+
+      - name: Install tomlq
+        run: cargo install --git https://github.com/Techcable/tomlq
+
+      - name: Set up environment
+        run: |
+          echo "::group::Setting up problem matcher"
+          echo "::add-matcher::./.github/coq-errors.json"
+          echo "::endgroup::"
+
+      - name: Build Coq-Hacspec-SSProve lib
+        uses: coq-community/docker-coq-action@v1
+        with:
+          opam_file: 'opam/coq-hacspec-ssprove.opam'
+          custom_image: ${{ matrix.image }}
+
+      - name: Run Coq/SSprove on Tests
+        working-directory: tests
+        run: |
+          paths=$(tomlq -r '.workspace.members | .[]' Cargo.toml)
+          for cratePath in $paths; do
+            crate=$(tomlq -r '.package.name' "$cratePath/Cargo.toml")
+            for skip in $SKIPLIST; do
+              if [[ "$skip" == "$crate" || "$skip" == "$crate-$backend" ]]; then
+                echo "⛔ $crate [$backend] (skipping)"
+                continue 2
+              fi
+            done
+            for backend in ssprove; do
+              echo "::group::$crate [$backend]"
+              cargo hax -C -p "$crate" \; into "$backend"
+              coqc $cratePath/proofs/ssprove/extraction/*.v
+              echo "::endgroup::"
+            done
+          done
+        env:
+          SKIPLIST: |
+            enum-struct-variant
+            literals
+            slices
+            naming
+            # if-let
+            # enum-repr
+            # pattern-or
+            side-effects
+            v1-lib
+            mut_arg
+            fnmut
+            mut-ref-functionalization
+            generics
+            loops
+            even
+            odd
+            never-type
+            attributes
+            attribute-opaque
+            raw-attributes
+            traits
+            reordering
+            # nested-derefs
+            minimal
+            basic-structs
+            ping-pong
+            noise-kkpsk0
+            fn-to-letfun
+            include-flag
+            recursion
+
+# See also:
+# https://github.com/coq-community/docker-coq-action#readme
+# https://github.com/erikmd/docker-coq-github-action-demo
