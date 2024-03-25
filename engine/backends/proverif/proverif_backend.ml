@@ -75,6 +75,7 @@ struct
         let monadic_binding = reject
         let block = reject
         let metadata = Phase_reject.make_metadata (NotInBackendLang ProVerif)
+        let match_guard = reject
       end)
 
   let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
