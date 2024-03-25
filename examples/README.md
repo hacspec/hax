@@ -48,6 +48,8 @@ For all examples the following is the general workflow.
 Note that there is a more detailed description for the chacha20 and kyber
 compression target below.
 
+There's also a [tutorial in the book](https://hacspec.org/book/tutorial/index.html) that can be run.
+
 <details>
   <summary>VSCode how-to</summary>
 
