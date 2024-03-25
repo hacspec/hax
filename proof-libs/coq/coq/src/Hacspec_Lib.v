@@ -7,369 +7,16 @@ From Coq Require Import ZArith List.
 Import ListNotations.
 (* Require Import IntTypes. *)
 
-Require Import MachineIntegers.
+(* Require Import MachineIntegers. *) From compcert Require Import Integers.
 From Coqprime Require GZnZ.
 
 Require Import Lia.
 
 Declare Scope hacspec_scope.
 
-Axiom secret : forall {WS : WORDSIZE},  (@int WS) -> (@int WS).
+Require Import Hacspec_Types.
+Require Import Hacspec_Integers.
 
-Axiom uint8_declassify : int8 -> int8.
-Axiom int8_declassify : int8 -> int8.
-Axiom uint16_declassify : int16 -> int16.
-Axiom int16_declassify : int16 -> int16.
-Axiom uint32_declassify : int32 -> int32.
-Axiom int32_declassify : int32 -> int32.
-Axiom uint64_declassify : int64 -> int64.
-Axiom int64_declassify : int64 -> int64.
-Axiom uint128_declassify : int128 -> int128.
-Axiom int128_declassify : int128 -> int128.
-
-Axiom uint8_classify : int8 -> int8.
-Axiom int8_classify : int8 -> int8.
-Axiom uint16_classify : int16 -> int16.
-Axiom int16_classify : int16 -> int16.
-Axiom uint32_classify : int32 -> int32.
-Axiom int32_classify : int32 -> int32.
-Axiom uint64_classify : int64 -> int64.
-Axiom int64_classify : int64 -> int64.
-Axiom uint128_classify : int128 -> int128.
-Axiom int128_classify : int128 -> int128.
-
-
-(* CompCert integers' signedness is only interpreted through 'signed' and 'unsigned',
-   and not in the representation. Therefore, uints are just names for their respective ints.
-*)
-Definition uint8 := int8.
-Definition uint16 := int16.
-Definition uint32 := int32.
-Definition uint64 := int64.
-Definition uint128 := int128.
-
-Definition uint_size := int32.
-Definition int_size := int32.
-
-Axiom declassify_usize_from_uint8 : uint8 -> uint_size.
-
-(* Represents any type that can be converted to uint_size and back *)
-Class UInt_sizable (A : Type) := {
-  usize : A -> uint_size;
-  from_uint_size : uint_size -> A;
-}.
-Arguments usize {_} {_}.
-Arguments from_uint_size {_} {_}.
-
-Global Instance nat_uint_sizable : UInt_sizable nat := {
-  usize n := repr (Z.of_nat n);
-  from_uint_size n := Z.to_nat (unsigned n);
-}.
-
-Global Instance N_uint_sizable : UInt_sizable N := {
-  usize n := repr (Z.of_N n);
-  from_uint_size n := Z.to_N (unsigned n);
-}.
-
-Global Instance Z_uint_sizable : UInt_sizable Z := {
-  usize n := repr n;
-  from_uint_size n := unsigned n;
-}.
-
-
-(* Same, but for int_size *)
-Class Int_sizable (A : Type) := {
-  isize : A -> int_size;
-  from_int_size : int_size -> A;
-}.
-
-Arguments isize {_} {_}.
-Arguments from_int_size {_} {_}.
-
-Global Instance nat_Int_sizable : Int_sizable nat := {
-  isize n := repr (Z.of_nat n);
-  from_int_size n := Z.to_nat (signed n);
-}.
-
-Global Instance N_Int_sizable : Int_sizable N := {
-  isize n := repr (Z.of_N n);
-  from_int_size n := Z.to_N (signed n);
-}.
-
-Global Instance Z_Int_sizable : Int_sizable Z := {
-  isize n := repr n;
-  from_int_size n := signed n;
-}.
-
-
-(**** Public integers *)
-
-Definition pub_u8 (n : Z) : int8 := repr n.
-Definition pub_i8 (n : Z) : int8 := repr n.
-Definition pub_u16 (n : Z) : int16 := repr n.
-Definition pub_i16 (n : Z) : int16 := repr n.
-Definition pub_u32 (n : Z) : int32 := repr n.
-Definition pub_i32 (n : Z) : int32 := repr n.
-Definition pub_u64 (n : Z) : int64 := repr n.
-Definition pub_i64 (n : Z) : int64 := repr n.
-Definition pub_u128 (n : Z) : int128 := repr n.
-Definition pub_i128 (n : Z) : int128 := repr n.
-
-(**** Operations *)
-
-(* Should maybe use size of s instead? *)
-Definition uint8_rotate_left (u: int8) (s: int8) : int8 := rol u s.
-Definition uint8_rotate_right (u: int8) (s: int8) : int8 := ror u s.
-
-Definition uint16_rotate_left (u: int16) (s: int16) : int16 := rol u s.
-Definition uint16_rotate_right (u: int16) (s: int16) : int16 := ror u s.
-
-Definition uint32_rotate_left (u: int32) (s: int32) : int32 := rol u s.
-Definition uint32_rotate_right (u: int32) (s: int32) : int32 := ror u s.
-
-Definition uint64_rotate_left (u: int64) (s: int64) : int64 := rol u s.
-Definition uint64_rotate_right (u: int64) (s: int64) : int64 := ror u s.
-
-Definition uint128_rotate_left (u: int128) (s: int128) : int128 := rol u s.
-Definition uint128_rotate_right (u: int128) (s: int128) : int128 := ror u s.
-
-(* should use size u instead of u? *)
-Definition usize_shift_right (u: uint_size) (s: int32) : uint_size := ror u s.
-Infix "usize_shift_right" := (usize_shift_right) (at level 77) : hacspec_scope.
-
-(* should use size u instead of u? *)
-Definition usize_shift_left (u: uint_size) (s: int32) : uint_size := rol u s.
-Infix "usize_shift_left" := (usize_shift_left) (at level 77) : hacspec_scope.
-
-Definition pub_uint128_wrapping_add (x y: int128) : int128 := add x y.
-
-Definition shift_left_ `{WS : WORDSIZE} (i : @int WS) (j : uint_size) :=
-  MachineIntegers.shl i (repr (from_uint_size j)).
-
-Definition shift_right_ `{WS : WORDSIZE} (i : @int WS) (j : uint_size) :=
-  MachineIntegers.shr i (repr (from_uint_size j)) .
-
-Infix "shift_left" := (shift_left_) (at level 77) : hacspec_scope.
-Infix "shift_right" := (shift_right_) (at level 77) : hacspec_scope.
-
-Infix "%%" := Z.rem (at level 40, left associativity) : Z_scope.
-Infix ".+" := (MachineIntegers.add) (at level 77) : hacspec_scope.
-Infix ".-" := (MachineIntegers.sub) (at level 77) : hacspec_scope.
-Notation "-" := (MachineIntegers.neg) (at level 77) : hacspec_scope.
-Infix ".*" := (MachineIntegers.mul) (at level 77) : hacspec_scope.
-Infix "./" := (MachineIntegers.divs) (at level 77) : hacspec_scope.
-Infix ".%" := (MachineIntegers.mods) (at level 77) : hacspec_scope.
-Infix ".^" := (MachineIntegers.xor) (at level 77) : hacspec_scope.
-Infix ".&" := (MachineIntegers.and) (at level 77) : hacspec_scope.
-Infix ".|" := (MachineIntegers.or) (at level 77) : hacspec_scope.
-Infix "==" := (MachineIntegers.eq) (at level 32) : hacspec_scope.
-(* Definition one := (@one WORDSIZE32). *)
-(* Definition zero := (@zero WORDSIZE32). *)
-Notation "A × B" := (prod A B) (at level 79, left associativity) : hacspec_scope.
-
-(*** Positive util *)
-
-Fixpoint binary_representation_pre (n : nat) {struct n}: positive :=
-  match n with
-  | O => 1
-  | S O => 1
-  | S n => Pos.succ (binary_representation_pre n)
-  end%positive.
-Definition binary_representation (n : nat) `(n <> O) := binary_representation_pre n.
-
-Theorem positive_is_succs : forall n, forall (H : n <> O) (K : S n <> O),
-    @binary_representation (S n) K = Pos.succ (@binary_representation n H).
-Proof. induction n ; [contradiction | reflexivity]. Qed.
-
-(* Conversion of positive to binary representation *)
-Theorem positive_to_positive_succs : forall p, binary_representation (Pos.to_nat p) (Nat.neq_sym _ _ (Nat.lt_neq _ _ (Pos2Nat.is_pos p))) = p.
-Proof.
-  intros p.
-  generalize dependent (Nat.neq_sym 0 (Pos.to_nat p) (Nat.lt_neq 0 (Pos.to_nat p) (Pos2Nat.is_pos p))).
-
-  destruct Pos.to_nat eqn:ptno.
-  - contradiction.
-  - generalize dependent p.
-    induction n ; intros.
-    + cbn.
-      apply Pos2Nat.inj.
-      symmetry.
-      apply ptno.
-    + rewrite positive_is_succs with (H := Nat.neq_succ_0 n).
-      rewrite IHn with (p := Pos.of_nat (S n)).
-      * rewrite <- Nat2Pos.inj_succ by apply Nat.neq_succ_0.
-        rewrite <- ptno.
-        apply Pos2Nat.id.
-      * apply Nat2Pos.id.
-        apply Nat.neq_succ_0.
-Qed.
-
-(*** Uint size util *)
-
-(* If a natural number is in bound then a smaller natural number is still in bound *)
-Lemma range_of_nat_succ :
-  forall {WS : WORDSIZE},
-  forall i, (Z.pred 0 < Z.of_nat (S i) < modulus)%Z -> (Z.pred 0 < Z.of_nat i < modulus)%Z.
-Proof. lia. Qed.
-
-(* Conversion to equivalent bound *)
-Lemma modulus_range_helper :
-  forall {WS : WORDSIZE},
-  forall i, (Z.pred 0 < i < modulus)%Z -> (0 <= i <= max_unsigned)%Z.
-Proof. unfold max_unsigned. lia. Qed.
-
-Definition unsigned_repr_alt {WS : WORDSIZE} (a : Z) `((Z.pred 0 < a < modulus)%Z) : unsigned (repr a) = a :=
-  unsigned_repr a (modulus_range_helper a H).
-
-Theorem zero_always_modulus {WS : WORDSIZE} : (Z.pred 0 < 0 < modulus)%Z.
-Proof. easy. Qed.
-
-(* any uint_size can be represented as a natural number and a bound *)
-(* this is easier for proofs, however less efficient for computation *)
-(* as Z uses a binary representation *)
-Theorem uint_size_as_nat :
-  forall (us: uint_size),
-    { n : nat |
-      us = repr (Z.of_nat n) /\ (Z.pred 0 < Z.of_nat n < @modulus WORDSIZE32)%Z}.
-Proof.
-  destruct us.
-  exists (Z.to_nat intval).
-  rewrite Z2Nat.id by (apply Z.lt_pred_le ; apply intrange).
-
-  split.
-  - apply mkint_eq.
-    rewrite Z_mod_modulus_eq.
-    rewrite Z.mod_small.
-    + reflexivity.
-    + lia.
-  - apply intrange.
-Qed.
-
-(* destruct uint_size as you would a natural number *)
-Definition destruct_uint_size_as_nat  (a : uint_size) : forall (P : uint_size -> Prop),
-    forall (zero_case : P (repr 0)),
-    forall (succ_case : forall (n : nat), (Z.pred 0 < Z.of_nat n < @modulus WORDSIZE32)%Z -> P (repr (Z.of_nat n))),
-    P a.
-Proof.
-  intros.
-  destruct (uint_size_as_nat a) as [ n y ] ; destruct y as [ya yb] ; subst.
-  destruct n.
-  - apply zero_case.
-  - apply succ_case.
-    apply yb.
-Qed.
-
-Ltac destruct_uint_size_as_nat a :=
-  generalize dependent a ;
-  intros a ;
-  apply (destruct_uint_size_as_nat a) ; [ pose proof (@unsigned_repr_alt WORDSIZE32 0 zero_always_modulus) | let n := fresh in let H := fresh in intros n H ; pose proof (@unsigned_repr_alt WORDSIZE32 _ H)] ; intros.
-
-(* induction for uint_size as you would do for a natural number *)
-Definition induction_uint_size_as_nat :
-  forall (P : uint_size -> Prop),
-    (P (repr 0)) ->
-    (forall n,
-        (Z.pred 0 < Z.succ (Z.of_nat n) < @modulus WORDSIZE32)%Z ->
-        P (repr (Z.of_nat n)) ->
-        P (repr (Z.succ (Z.of_nat n)))) ->
-    forall (a : uint_size), P a.
-Proof.
-  intros P H_zero H_ind a.
-  destruct (uint_size_as_nat a) as [ n y ] ; destruct y as [ya yb] ; subst.
-  induction n.
-  - apply H_zero.
-  - rewrite Nat2Z.inj_succ.
-    apply H_ind.
-    + rewrite <- Nat2Z.inj_succ.
-      apply yb.
-    + apply IHn.
-      lia.
-Qed.
-
-Ltac induction_uint_size_as_nat var :=
-  generalize dependent var ;
-  intros var ;
-  apply induction_uint_size_as_nat with (a := var) ; [ pose proof (@unsigned_repr_alt WORDSIZE32 0 zero_always_modulus) | let n := fresh in let IH := fresh in intros n IH ; pose proof (@unsigned_repr_alt WORDSIZE32 _ IH)] ; intros.
-
-(* conversion of usize to positive or zero and the respective bound *)
-Theorem uint_size_as_positive :
-  forall (us: uint_size),
-    { pu : unit + positive |
-      match pu with inl u => us = repr Z0 | inr p => us = repr (Z.pos p) /\ (Z.pred 0 < Z.pos p < @modulus WORDSIZE32)%Z end
-      }.
-Proof.
-  destruct us.
-  destruct intval.
-  - exists (inl tt). apply mkint_eq. reflexivity.
-  - exists (inr p).
-    split.
-    + apply mkint_eq.
-      rewrite Z_mod_modulus_eq.
-      symmetry.
-      apply Zmod_small.
-      lia.
-    + apply intrange.
-  - exfalso.
-    lia.
-Defined.
-
-(* destruction of uint_size as positive *)
-Definition destruct_uint_size_as_positive  (a : uint_size) : forall (P : uint_size -> Prop),
-    (P (repr 0)) ->
-    (forall b, (Z.pred 0 < Z.pos b < @modulus WORDSIZE32)%Z -> P (repr (Z.pos b))) ->
-    P a.
-Proof.
-  intros P H_zero H_succ.
-  destruct (uint_size_as_positive a) as [ [ _ | b ] y ] ; [ subst | destruct y as [ya yb] ; subst ].
-  - apply H_zero.
-  - apply H_succ.
-    apply yb.
-Qed.
-
-Ltac destruct_uint_size_as_positive a :=
-  generalize dependent a ;
-  intros a ;
-  apply (destruct_uint_size_as_positive a) ; intros.
-
-(* induction of uint_size as positive *)
-Definition induction_uint_size_as_positive :
-  forall (P : uint_size -> Prop),
-    (P (repr 0)) ->
-    (P (repr 1)) ->
-    (forall b,
-        (Z.pred 0 < Z.succ (Z.pos b) < @modulus WORDSIZE32)%Z ->
-        P (repr (Z.pos b)) ->
-        P (repr (Z.succ (Z.pos b)))) ->
-    forall (a : uint_size), P a.
-Proof.
-  intros P H_zero H_one H_ind a.
-
-  destruct (uint_size_as_positive a) as [ [ _ | b ] y ] ; [ subst | destruct y as [ya yb] ; subst ].
-  - apply H_zero.
-  - pose proof (pos_succ_b := positive_to_positive_succs b)
-    ; symmetry in pos_succ_b
-    ; rewrite pos_succ_b in *
-    ; clear pos_succ_b.
-
-    generalize dependent (Nat.neq_sym 0 (Pos.to_nat b) (Nat.lt_neq 0 (Pos.to_nat b) (Pos2Nat.is_pos b))).
-
-    induction (Pos.to_nat b).
-    + contradiction.
-    + intros n_neq yb.
-      destruct n.
-      * apply H_one.
-      * rewrite (positive_is_succs _  (Nat.neq_succ_0 n) n_neq) in *.
-        rewrite Pos2Z.inj_succ in *.
-        apply H_ind.
-        -- apply yb.
-        -- apply IHn.
-           lia.
-Qed.
-
-Ltac induction_uint_size_as_positive var :=
-  generalize dependent var ;
-  intros var ;
-  apply induction_uint_size_as_positive with (a := var) ; intros ; [ | | ].
 
 (*** Loops *)
 
@@ -382,7 +29,7 @@ Fixpoint foldi_
   (cur : acc) : acc :=
   match fuel with
   | 0 => cur
-  | S n' => foldi_ n' (add i one) f (f i cur)
+  | S n' => foldi_ n' (Int32.add i Int32.one) f (f i cur)
   end.
 Close Scope nat_scope.
 Definition foldi
@@ -391,7 +38,7 @@ Definition foldi
   (hi: uint_size) (* {lo <= hi} *)
   (f: (uint_size) -> acc -> acc) (* {i < hi} *)
   (init: acc) : acc :=
-  match Z.sub (unsigned hi) (unsigned lo) with
+  match Z.sub (Int32.unsigned hi) (Int32.unsigned lo) with
   | Z0 => init
   | Zneg p => init
   | Zpos p => foldi_ (Pos.to_nat p) lo f init
@@ -425,7 +72,7 @@ Lemma foldi__move_S :
   (i : uint_size)
   (f : uint_size -> acc -> acc)
   (cur : acc),
-    foldi_ fuel (add i one) f (f i cur) = foldi_ (S fuel) i f cur.
+    foldi_ fuel (Int32.add i Int32.one) f (f i cur) = foldi_ (S fuel) i f cur.
 Proof. reflexivity. Qed.
 
 Lemma foldi__nat_move_S :
@@ -444,29 +91,29 @@ Lemma foldi__move_S_fuel :
   (i : uint_size)
   (f : uint_size -> acc -> acc)
   (cur : acc),
-    (0 <= Z.of_nat fuel <= @max_unsigned WORDSIZE32)%Z ->
-    f (add (repr (Z.of_nat fuel)) i) (foldi_ (fuel) i f cur) = foldi_ (S (fuel)) i f cur.
+    (0 <= Z.of_nat fuel <= Int32.max_unsigned)%Z ->
+    f (Int32.add (Int32.repr (Z.of_nat fuel)) i) (foldi_ (fuel) i f cur) = foldi_ (S (fuel)) i f cur.
 Proof.
   intros acc fuel.
   induction fuel ; intros.
   - cbn.
-    replace (repr 0) with (@zero WORDSIZE32) by reflexivity.
-    rewrite add_zero_l.
+    replace (Int32.repr 0) with (Int32.zero) by reflexivity.
+    rewrite Int32.add_zero_l.
     reflexivity.
   - do 2 rewrite <- foldi__move_S.
-    replace (add (repr (Z.of_nat (S fuel))) i)
-      with (add (repr (Z.of_nat fuel)) (add i one)).
+    replace (Int32.add (Int32.repr (Z.of_nat (S fuel))) i)
+      with (Int32.add (Int32.repr (Z.of_nat fuel)) (Int32.add i Int32.one)).
     2 : {
-      rewrite <- (add_commut one).
-      rewrite <- add_assoc.
+      rewrite <- (Int32.add_commut Int32.one).
+      rewrite <- Int32.add_assoc.
       f_equal.
-      unfold add.
+      unfold Int32.add.
       f_equal.
-      rewrite unsigned_one.
+      rewrite Int32.unsigned_one.
       rewrite Z.add_1_r.
       rewrite Nat2Z.inj_succ.
       f_equal.
-      apply unsigned_repr.
+      apply Int32.unsigned_repr.
       lia.
     }
     rewrite IHfuel.
@@ -481,7 +128,7 @@ Lemma foldi__nat_move_S_fuel :
   (i : nat)
   (f : nat -> acc -> acc)
   (cur : acc),
-    (0 <= Z.of_nat fuel <= @max_unsigned WORDSIZE32)%Z ->
+    (0 <= Z.of_nat fuel <= @Int32.max_unsigned)%Z ->
     f (fuel + i)%nat (foldi_nat_ fuel i f cur) = foldi_nat_ (S fuel) i f cur.
 Proof.
   induction fuel ; intros.
@@ -500,20 +147,20 @@ Lemma foldi_to_foldi_nat :
     (hi: uint_size) (* {lo <= hi} *)
     (f: (uint_size) -> acc -> acc) (* {i < hi} *)
     (init: acc),
-    (unsigned lo <= unsigned hi)%Z ->
-    foldi lo hi f init = foldi_nat (Z.to_nat (unsigned lo)) (Z.to_nat (unsigned hi)) (fun x => f (repr (Z.of_nat x))) init.
+    (Int32.unsigned lo <= Int32.unsigned hi)%Z ->
+    foldi lo hi f init = foldi_nat (Z.to_nat (Int32.unsigned lo)) (Z.to_nat (Int32.unsigned hi)) (fun x => f (Int32.repr (Z.of_nat x))) init.
 Proof.
   intros.
 
   unfold foldi.
   unfold foldi_nat.
 
-  destruct (uint_size_as_nat hi) as [ hi_n [ hi_eq hi_H ] ] ; subst.
-  rewrite (@unsigned_repr_alt WORDSIZE32 _ hi_H) in *.
+  destruct (Int32.int_as_nat hi) as [ hi_n [ hi_eq hi_H ] ] ; subst.
+  rewrite (Int32.unsigned_repr_alt _ hi_H) in *.
   rewrite Nat2Z.id.
 
-  destruct (uint_size_as_nat lo) as [ lo_n [ lo_eq lo_H ] ] ; subst.
-  rewrite (@unsigned_repr_alt WORDSIZE32 _ lo_H) in *.
+  destruct (Int32.int_as_nat lo) as [ lo_n [ lo_eq lo_H ] ] ; subst.
+  rewrite (Int32.unsigned_repr_alt _ lo_H) in *.
   rewrite Nat2Z.id.
 
   remember (hi_n - lo_n)%nat as n.
@@ -521,12 +168,12 @@ Proof.
   rewrite (Nat2Z.inj_sub) in Heqn by (apply Nat2Z.inj_le ; apply H).
   rewrite <- Heqn.
 
-  assert (H_bound : (Z.pred 0 < Z.of_nat n < @modulus WORDSIZE32)%Z) by lia.
+  assert (H_bound : (Z.pred 0 < Z.of_nat n < Int32.modulus)%Z) by lia.
 
   clear Heqn.
   induction n.
   - reflexivity.
-  - pose proof (H_max_bound := modulus_range_helper _ (range_of_nat_succ _ H_bound)).
+  - pose proof (H_max_bound := Int32.modulus_range_helper _ (Int32.range_of_nat_succ _ H_bound)).
     rewrite <- foldi__nat_move_S_fuel by apply H_max_bound.
     cbn.
     rewrite SuccNat2Pos.id_succ.
@@ -534,17 +181,17 @@ Proof.
 
     destruct n.
     + cbn.
-      replace (repr 0) with (@zero WORDSIZE32) by reflexivity.
-      rewrite add_zero_l.
+      replace (Int32.repr 0) with (Int32.zero) by reflexivity.
+      rewrite Int32.add_zero_l.
       reflexivity.
     + cbn in *.
-      assert (H_bound_pred: (Z.pred 0 < Z.pos (Pos.of_succ_nat n) < @modulus WORDSIZE32)%Z) by lia.
+      assert (H_bound_pred: (Z.pred 0 < Z.pos (Pos.of_succ_nat n) < @Int32.modulus)%Z) by lia.
       rewrite <- (IHn H_bound_pred) ; clear IHn.
       f_equal.
-      * unfold add.
+      * unfold Int32.add.
         f_equal.
-        rewrite (@unsigned_repr_alt WORDSIZE32 _ lo_H) in *.
-        rewrite (unsigned_repr_alt _ H_bound_pred).
+        rewrite (Int32.unsigned_repr_alt _ lo_H) in *.
+        rewrite (Int32.unsigned_repr_alt _ H_bound_pred).
         do 2 rewrite Zpos_P_of_succ_nat.
         rewrite Z.add_succ_l.
         f_equal.
@@ -639,7 +286,7 @@ Lemma foldi_split :
     (hi: uint_size) (* {lo <= hi} *)
     (f: uint_size -> acc -> acc) (* {i < hi} *)
     (init: acc),
-  forall {guarantee: (unsigned lo <= unsigned mid <= unsigned hi)%Z},
+  forall {guarantee: (Int32.unsigned lo <= Int32.unsigned mid <= Int32.unsigned hi)%Z},
   foldi lo hi f init = foldi mid hi f (foldi lo mid f init).
 Proof.
   intros.
@@ -657,13 +304,6 @@ Class Default (A : Type) := {
 Global Arguments default {_} {_}.
 
 (*** Seq *)
-
-Definition nseq := VectorDef.t.
-
-Definition seq (A : Type) := list A.
-
-(* Automatic conversion from nseq/vector/array to seq/list *)
-(* Global Coercion VectorDef.to_list : VectorDef.t >-> list. *)
 
 Definition public_byte_seq := seq int8.
 Definition byte_seq := seq int8.
@@ -1005,12 +645,12 @@ Definition seq_set_chunk
 
 
 Definition seq_num_exact_chunks {a} (l : seq a) (chunk_size : uint_size) : uint_size :=
-  divs (repr (Z.of_nat (length l))) chunk_size.
+  Int32.divs (Int32.repr (Z.of_nat (length l))) chunk_size.
 
 (* Until #84 is fixed this returns an empty sequence if not enough *)
 Definition seq_get_exact_chunk {a} (l : seq a) (chunk_size chunk_num: uint_size) : seq a :=
   let '(len, chunk) := seq_get_chunk l (from_uint_size chunk_size) (from_uint_size chunk_num) in
-  if eq len chunk_size then [] else chunk.
+  if Int32.eq len chunk_size then [] else chunk.
 
 Definition seq_set_exact_chunk {a} `{H : Default a} := @seq_set_chunk a H.
 
@@ -1021,17 +661,9 @@ Definition seq_get_remainder_chunk : forall {a}, seq a -> uint_size -> seq a :=
       chunks - 1
     else 0 in
     let (len, chunk) := seq_get_chunk l (from_uint_size chunk_size) last_chunk in
-    if eq len chunk_size then
+    if Int32.eq len chunk_size then
       []
     else chunk.
-
-Fixpoint seq_xor_ {WS} (x : seq int) (y : seq int) : seq int :=
-  match x, y with
-  | (x :: xs), (y :: ys) => @MachineIntegers.xor WS x y :: (seq_xor_ xs ys)
-  | [], y => y
-  | x, [] => x
-  end.
-Infix "seq_xor" := seq_xor_ (at level 33) : hacspec_scope.
 
 Fixpoint seq_truncate {a} (x : seq a) (n : nat) : seq a := (* uint_size *)
   match x, n with
@@ -1056,13 +688,17 @@ Definition array_join_map
     array_upd out i (op (array_index s1 i) (array_index s2 i))
   ) out.
 
-Infix "array_xor" := (array_join_map xor) (at level 33) : hacspec_scope.
-Infix "array_add" := (array_join_map add) (at level 33) : hacspec_scope.
-Infix "array_minus" := (array_join_map sub) (at level 33) : hacspec_scope.
-Infix "array_mul" := (array_join_map mul) (at level 33) : hacspec_scope.
-Infix "array_div" := (array_join_map divs) (at level 33) : hacspec_scope.
-Infix "array_or" := (array_join_map or) (at level 33) : hacspec_scope.
-Infix "array_and" := (array_join_map and) (at level 33) : hacspec_scope.
+Module ArrayJoint (WS : WORDSIZE).
+  Include (HacspecIntegers WS).
+  Import Int.
+  Infix "array_xor" := (array_join_map xor) (at level 33) : hacspec_scope.
+  Infix "array_add" := (array_join_map add) (at level 33) : hacspec_scope.
+  Infix "array_minus" := (array_join_map sub) (at level 33) : hacspec_scope.
+  Infix "array_mul" := (array_join_map mul) (at level 33) : hacspec_scope.
+  Infix "array_div" := (array_join_map divs) (at level 33) : hacspec_scope.
+  Infix "array_or" := (array_join_map or) (at level 33) : hacspec_scope.
+  Infix "array_and" := (array_join_map and) (at level 33) : hacspec_scope.
+End ArrayJoint.
 
 Definition array_eq_
   {a: Type}
@@ -1144,9 +780,22 @@ Definition nat_mod_exp_def {p : Z} (a:nat_mod p) (n : nat) : nat_mod p :=
     end in
   exp_ a n.
 
-Definition nat_mod_exp {WS} {p} a n := @nat_mod_exp_def p a (Z.to_nat (@unsigned WS n)).
-Definition nat_mod_pow {WS} {p} a n := @nat_mod_exp_def p a (Z.to_nat (@unsigned WS n)).
-Definition nat_mod_pow_self {p} a n := @nat_mod_exp_def p a (Z.to_nat (from_uint_size n)).
+Module temp (WS : WORDSIZE).
+  Include HacspecIntegers WS.
+  Definition nat_mod_exp {p} a n := @nat_mod_exp_def p a (Z.to_nat (@unsigned n)).
+  Definition nat_mod_pow {p} a n := @nat_mod_exp_def p a (Z.to_nat (@unsigned n)).
+  Definition nat_mod_pow_self {p} a n := @nat_mod_exp_def p a (Z.to_nat (from_uint_size n)).
+End temp.
+Module temp8 := temp Wordsize_8.
+Module temp16 := temp Wordsize_16.
+Module temp32 := temp Wordsize_32.
+Module temp64 := temp Wordsize_64.
+Module temp128 := temp Wordsize_128.
+Import temp8.
+Import temp16.
+Import temp32.
+Import temp64.
+Import temp128.
 
 Close Scope nat_scope.
 Open Scope Z_scope.
@@ -1156,7 +805,7 @@ Definition nat_mod_from_secret_literal {m : Z} (x:int128) : nat_mod m.
 Proof.
   unfold nat_mod.
   (* since we assume x < m, it will be true that (unsigned x) = (unsigned x) mod m  *)
-  remember ((unsigned x) mod m) as zmodm.
+  remember ((Int128.unsigned x) mod m) as zmodm.
   apply (GZnZ.mkznz m zmodm).
   rewrite Heqzmodm.
   rewrite Zmod_mod.
@@ -1253,9 +902,9 @@ Section Casting.
     cast := Z.of_N
   }.
 
-  Global Instance cast_Z_to_int {WORDSIZE} : Cast Z (@int WORDSIZE) := {
-    cast n := repr n
-  }.
+  (* Global Instance cast_Z_to_int {WORDSIZE} : Cast Z (@int WORDSIZE) := { *)
+  (*   cast n := repr n *)
+  (* }. *)
 
   Global Instance cast_natmod_to_Z {p} : Cast (nat_mod p) Z := {
     cast n := GZnZ.val p n
@@ -1263,19 +912,19 @@ Section Casting.
 
   (* Note: should be aware of typeclass resolution with int/uint since they are just aliases of each other currently *)
   Global Instance cast_int8_to_uint32 : Cast int8 uint32 := {
-    cast n := repr (unsigned n)
+    cast n := Int32.repr (Int8.unsigned n)
   }.
   Global Instance cast_int8_to_int32 : Cast int8 int32 := {
-    cast n := repr (signed n)
+    cast n := Int32.repr (Int8.signed n)
   }.
 
   Global Instance cast_uint8_to_uint32 : Cast uint8 uint32 := {
-    cast n := repr (unsigned n)
+    cast n := Int32.repr (Int8.unsigned n)
   }.
 
-  Global Instance cast_int_to_nat `{WORDSIZE} : Cast int nat := {
-    cast n := Z.to_nat (signed n)
-  }.
+  (* Global Instance cast_int_to_nat `{WORDSIZE} : Cast int nat := { *)
+  (*   cast n := Z.to_nat (signed n) *)
+  (* }. *)
 
   Close Scope hacspec_scope.
 End Casting.
@@ -1296,21 +945,22 @@ Section Coercions.
 
   Global Coercion repr : Z >-> int.
 
-  Definition Z_to_int `{WORDSIZE} (n : Z) : int := repr n.
-  Global Coercion  Z_to_int : Z >-> int.
+  (* Definition Z_to_int `{WORDSIZE} (n : Z) : int := repr n. *)
+  (* Global Coercion  Z_to_int : Z >-> int. *)
 
-  Definition Z_to_uint_size (n : Z) : uint_size := repr n.
+  Definition Z_to_uint_size (n : Z) : uint_size := Int32.repr n.
   Global Coercion Z_to_uint_size : Z >-> uint_size.
-  Definition Z_to_int_size (n : Z) : int_size := repr n.
+  Definition Z_to_int_size (n : Z) : int_size := Int32.repr n.
   Global Coercion Z_to_int_size : Z >-> int_size.
 
-  Definition N_to_int `{WORDSIZE} (n : N) : int := repr (Z.of_N n).
-  Global Coercion N.of_nat : nat >-> N.
-  Global Coercion N_to_int : N >-> int.
-  Definition N_to_uint_size (n : Z) : uint_size := repr n.
+  (* Definition N_to_int `{WORDSIZE} (n : N) : int := repr (Z.of_N n). *)
+  (* Global Coercion N.of_nat : nat >-> N. *)
+  (* Global Coercion N_to_int : N >-> int. *)
+  Definition N_to_uint_size (n : Z) : uint_size := Int32.repr n.
   Global Coercion N_to_uint_size : Z >-> uint_size.
-  Definition nat_to_int `{WORDSIZE} (n : nat) := repr (Z.of_nat n).
-  Global Coercion nat_to_int : nat >-> int.
+
+  (* Definition nat_to_int `{WORDSIZE} (n : nat) := repr (Z.of_nat n). *)
+  (* Global Coercion nat_to_int : nat >-> int. *)
 
   Definition uint_size_to_nat (n : uint_size) : nat := from_uint_size n.
   Global Coercion uint_size_to_nat : uint_size >-> nat.
@@ -1318,44 +968,44 @@ Section Coercions.
   Definition uint_size_to_Z (n : uint_size) : Z := from_uint_size n.
   Global Coercion uint_size_to_Z : uint_size >-> Z.
 
-  Definition uint32_to_nat (n : uint32) : nat := unsigned n.
+  Definition uint32_to_nat (n : uint32) : nat := Int32.unsigned n.
   Global Coercion uint32_to_nat : uint32 >-> nat.
 
 
   Global Coercion GZnZ.val : GZnZ.znz >-> Z.
 
-  Definition int8_to_nat (n : int8) : nat := unsigned n.
+  Definition int8_to_nat (n : int8) : nat := Int8.unsigned n.
   Global Coercion int8_to_nat : int8 >-> nat.
-  Definition int16_to_nat (n : int16) : nat := unsigned n.
+  Definition int16_to_nat (n : int16) : nat := Int16.unsigned n.
   Global Coercion int16_to_nat : int16 >-> nat.
-  Definition int32_to_nat (n : int32) : nat := unsigned n.
+  Definition int32_to_nat (n : int32) : nat := Int32.unsigned n.
   Global Coercion int32_to_nat : int32 >-> nat.
-  Definition int64_to_nat (n : int64) : nat := unsigned n.
+  Definition int64_to_nat (n : int64) : nat := Int64.unsigned n.
   Global Coercion int64_to_nat : int64 >-> nat.
-  Definition int128_to_nat (n : int128) : nat := unsigned n.
+  Definition int128_to_nat (n : int128) : nat := Int128.unsigned n.
   Global Coercion int128_to_nat : int128 >-> nat.
 
   (* coercions int8 >-> int16 >-> ... int128 *)
 
-  Definition int8_to_int16 (n : int8) : int16 := repr n.
+  Definition int8_to_int16 (n : int8) : int16 := Int16.repr (Int8.unsigned n).
   Global Coercion int8_to_int16 : int8 >-> int16.
 
-  Definition int8_to_int32 (n : int8) : int32 := repr n.
+  Definition int8_to_int32 (n : int8) : int32 := Int32.repr (Int8.unsigned n).
   Global Coercion int8_to_int32 : int8 >-> int32.
 
-  Definition int16_to_int32 (n : int16) : int32 := repr n.
+  Definition int16_to_int32 (n : int16) : int32 := Int32.repr (Int16.unsigned n).
   Global Coercion int16_to_int32 : int16 >-> int32.
 
-  Definition int32_to_int64 (n : int32) : int64 := repr n.
+  Definition int32_to_int64 (n : int32) : int64 := Int64.repr (Int32.unsigned n).
   Global Coercion int32_to_int64 : int32 >-> int64.
 
-  Definition int64_to_int128 (n : int64) : int128 := repr n.
+  Definition int64_to_int128 (n : int64) : int128 := Int128.repr (Int64.unsigned n).
   Global Coercion int64_to_int128 : int64 >-> int128.
 
-  Definition int32_to_int128 (n : int32) : int128 := repr n.
+  Definition int32_to_int128 (n : int32) : int128 := Int128.repr (Int32.unsigned n).
   Global Coercion int32_to_int128 : int32 >-> int128.
 
-  Definition uint_size_to_int64 (n : uint_size) : int64 := repr n.
+  Definition uint_size_to_int64 (n : uint_size) : int64 := Int64.repr (Int32.unsigned n).
   Global Coercion uint_size_to_int64 : uint_size >-> int64.
 
 
@@ -1371,62 +1021,62 @@ Section Coercions.
   Defined.
   (* Global Coercion Z_in_nat_mod : Z >-> nat_mod.  *)
 
-  Definition int_in_nat_mod {m : Z} `{WORDSIZE} (x:int) : nat_mod m.
-  Proof.
-    unfold nat_mod.
-    (* since we assume x < m, it will be true that (unsigned x) = (unsigned x) mod m  *)
-    remember ((unsigned x) mod m) as zmodm.
-    apply (GZnZ.mkznz m zmodm).
-    rewrite Heqzmodm.
-    rewrite Zmod_mod.
-    reflexivity.
-    Show Proof.
-  Defined.
-  Global Coercion int_in_nat_mod : int >-> nat_mod.
+  (* Definition int_in_nat_mod {m : Z} `{WORDSIZE} (x:int) : nat_mod m. *)
+  (* Proof. *)
+  (*   unfold nat_mod. *)
+  (*   (* since we assume x < m, it will be true that (unsigned x) = (unsigned x) mod m  *) *)
+  (*   remember ((unsigned x) mod m) as zmodm. *)
+  (*   apply (GZnZ.mkznz m zmodm). *)
+  (*   rewrite Heqzmodm. *)
+  (*   rewrite Zmod_mod. *)
+  (*   reflexivity. *)
+  (*   Show Proof. *)
+  (* Defined. *)
+  (* Global Coercion int_in_nat_mod : int >-> nat_mod. *)
 
-  Definition uint_size_in_nat_mod (n : uint_size) : nat_mod 16 := int_in_nat_mod n.
-  Global Coercion uint_size_in_nat_mod : uint_size >-> nat_mod.
+  (* Definition uint_size_in_nat_mod (n : uint_size) : nat_mod 16 := int_in_nat_mod n. *)
+  (* Global Coercion uint_size_in_nat_mod : uint_size >-> nat_mod. *)
 
 End Coercions.
 
 
-(*** Casting *)
+(* (*** Casting *) *)
 
-Definition uint128_from_usize (n : uint_size) : int128 := repr n.
-Definition uint64_from_usize (n : uint_size) : int64 := repr n.
-Definition uint32_from_usize (n : uint_size) : int32 := repr n.
-Definition uint16_from_usize (n : uint_size) : int16 := repr n.
-Definition uint8_from_usize (n : uint_size) : int8 := repr n.
+(* Definition uint128_from_usize (n : uint_size) : int128 := repr n. *)
+(* Definition uint64_from_usize (n : uint_size) : int64 := repr n. *)
+(* Definition uint32_from_usize (n : uint_size) : int32 := repr n. *)
+(* Definition uint16_from_usize (n : uint_size) : int16 := repr n. *)
+(* Definition uint8_from_usize (n : uint_size) : int8 := repr n. *)
 
-Definition uint128_from_uint8 (n : int8) : int128 := repr n.
-Definition uint64_from_uint8 (n : int8) : int64 := repr n.
-Definition uint32_from_uint8 (n : int8) : int32 := repr n.
-Definition uint16_from_uint8 (n : int8) : int16 := repr n.
-Definition usize_from_uint8 (n : int8) : uint_size := repr n.
+(* Definition uint128_from_uint8 (n : int8) : int128 := repr n. *)
+(* Definition uint64_from_uint8 (n : int8) : int64 := repr n. *)
+(* Definition uint32_from_uint8 (n : int8) : int32 := repr n. *)
+(* Definition uint16_from_uint8 (n : int8) : int16 := repr n. *)
+(* Definition usize_from_uint8 (n : int8) : uint_size := repr n. *)
 
-Definition uint128_from_uint16 (n : int16) : int128 := repr n.
-Definition uint64_from_uint16 (n : int16) : int64 := repr n.
-Definition uint32_from_uint16 (n : int16) : int32 := repr n.
-Definition uint8_from_uint16 (n : int16) : int8 := repr n.
-Definition usize_from_uint16 (n : int16) : uint_size := repr n.
+(* Definition uint128_from_uint16 (n : int16) : int128 := repr n. *)
+(* Definition uint64_from_uint16 (n : int16) : int64 := repr n. *)
+(* Definition uint32_from_uint16 (n : int16) : int32 := repr n. *)
+(* Definition uint8_from_uint16 (n : int16) : int8 := repr n. *)
+(* Definition usize_from_uint16 (n : int16) : uint_size := repr n. *)
 
-Definition uint128_from_uint32 (n : int32) : int128 := repr n.
-Definition uint64_from_uint32 (n : int32) : int64 := repr n.
-Definition uint16_from_uint32 (n : int32) : int16 := repr n.
-Definition uint8_from_uint32 (n : int32) : int8 := repr n.
-Definition usize_from_uint32 (n : int32) : uint_size := repr n.
+(* Definition uint128_from_uint32 (n : int32) : int128 := repr n. *)
+(* Definition uint64_from_uint32 (n : int32) : int64 := repr n. *)
+(* Definition uint16_from_uint32 (n : int32) : int16 := repr n. *)
+(* Definition uint8_from_uint32 (n : int32) : int8 := repr n. *)
+(* Definition usize_from_uint32 (n : int32) : uint_size := repr n. *)
 
-Definition uint128_from_uint64 (n : int64) : int128 := repr n.
-Definition uint32_from_uint64 (n : int64) : int32 := repr n.
-Definition uint16_from_uint64 (n : int64) : int16 := repr n.
-Definition uint8_from_uint64 (n : int64) : int8 := repr n.
-Definition usize_from_uint64 (n : int64) : uint_size := repr n.
+(* Definition uint128_from_uint64 (n : int64) : int128 := repr n. *)
+(* Definition uint32_from_uint64 (n : int64) : int32 := repr n. *)
+(* Definition uint16_from_uint64 (n : int64) : int16 := repr n. *)
+(* Definition uint8_from_uint64 (n : int64) : int8 := repr n. *)
+(* Definition usize_from_uint64 (n : int64) : uint_size := repr n. *)
 
-Definition uint64_from_uint128 (n : int128) : int64 := repr n.
-Definition uint32_from_uint128 (n : int128) : int32 := repr n.
-Definition uint16_from_uint128 (n : int128) : int16 := repr n.
-Definition uint8_from_uint128 (n : int128) : int8 := repr n.
-Definition usize_from_uint128 (n : int128) : uint_size := repr n.
+(* Definition uint64_from_uint128 (n : int128) : int64 := repr n. *)
+(* Definition uint32_from_uint128 (n : int128) : int32 := repr n. *)
+(* Definition uint16_from_uint128 (n : int128) : int16 := repr n. *)
+(* Definition uint8_from_uint128 (n : int128) : int8 := repr n. *)
+(* Definition usize_from_uint128 (n : int128) : uint_size := repr n. *)
 
 
 (* Comparisons, boolean equality, and notation *)
@@ -1491,26 +1141,26 @@ Global Instance Z_comparable : Comparable Z := {
   geb a b := Z.leb b a;
 }.
 
-Lemma int_eqb_eq : forall {WS : WORDSIZE} (a b : int), eq a b = true <-> a = b.
-Proof.
-  intros. split.
-  - apply same_if_eq.
-  - intros. rewrite H. apply eq_true.
-Qed.
+(* Lemma int_eqb_eq : forall {WS : WORDSIZE} (a b : int), eq a b = true <-> a = b. *)
+(* Proof. *)
+(*   intros. split. *)
+(*   - apply same_if_eq. *)
+(*   - intros. rewrite H. apply eq_true. *)
+(* Qed. *)
 
-Global Instance int_eqdec `{WORDSIZE}: EqDec int := {
-  eqb := eq;
-  eqb_leibniz := int_eqb_eq ;
-}.
+(* Global Instance int_eqdec `{WORDSIZE}: EqDec int := { *)
+(*   eqb := eq; *)
+(*   eqb_leibniz := int_eqb_eq ; *)
+(* }. *)
 
-Global Instance int_comparable `{WORDSIZE} : Comparable int := {
-  ltb := lt;
-  leb a b := if eq a b then true else lt a b ;
-  gtb a b := lt b a;
-  geb a b := if eq a b then true else lt b a;
-}.
+(* Global Instance int_comparable `{WORDSIZE} : Comparable int := { *)
+(*   ltb := lt; *)
+(*   leb a b := if eq a b then true else lt a b ; *)
+(*   gtb a b := lt b a; *)
+(*   geb a b := if eq a b then true else lt b a; *)
+(* }. *)
 
-Definition uint8_equal : int8 -> int8 -> bool := eqb.
+(* Definition uint8_equal : int8 -> int8 -> bool := eqb. *)
 
 Definition nat_mod_val (p : Z) (a : nat_mod p) : Z := GZnZ.val p a.
 
@@ -1645,44 +1295,44 @@ Arguments Err {_ _}.
 Fixpoint nat_be_range_at_position (k : nat) (z : Z) (n : Z) : list bool :=
   match k with
   | O => []
-  | S k' => Z.testbit z (n + k') :: nat_be_range_at_position k' z n
+  | S k' => Z.testbit z (n + Z.of_nat k') :: nat_be_range_at_position k' z n
   end.
 
 Fixpoint nat_be_range_to_position_ (z : list bool) (val : Z) : Z :=
   match z with
   | [] => val
-  | x :: xs => nat_be_range_to_position_ xs ((if x then 2 ^ List.length xs else 0) + val)
+  | x :: xs => nat_be_range_to_position_ xs ((if x then 2 ^ Z.of_nat (List.length xs) else 0) + val)
   end.
 
 Definition nat_be_range_to_position (k : nat) (z : list bool) (n : Z) : Z :=
-  (nat_be_range_to_position_ z 0 * 2^(k * n)).
+  (nat_be_range_to_position_ z 0 * 2^(Z.of_nat k * n)).
 
 Definition nat_be_range (k : nat) (z : Z) (n : nat) : Z :=
-  nat_be_range_to_position_ (nat_be_range_at_position k z (n * k)) 0. (* * 2^(k * n) *)
+  nat_be_range_to_position_ (nat_be_range_at_position k z (Z.of_nat (n * k)%nat)) 0. (* * 2^(k * n) *)
 
 Compute nat_be_range 4 0 300.
 
-Definition u64_to_be_bytes' : int64 -> nseq int8 8 :=
-  fun k => array_from_list (int8) [@nat_to_int WORDSIZE8 (nat_be_range 4 k 7) ;
-                               @nat_to_int WORDSIZE8 (nat_be_range 4 k 6) ;
-                               @nat_to_int WORDSIZE8 (nat_be_range 4 k 5) ;
-                               @nat_to_int WORDSIZE8 (nat_be_range 4 k 4) ;
-                               @nat_to_int WORDSIZE8 (nat_be_range 4 k 3) ;
-                               @nat_to_int WORDSIZE8 (nat_be_range 4 k 2) ;
-                               @nat_to_int WORDSIZE8 (nat_be_range 4 k 1) ;
-                               @nat_to_int WORDSIZE8 (nat_be_range 4 k 0)].
+(* Definition u64_to_be_bytes' : int64 -> nseq int8 8 := *)
+(*   fun k => array_from_list (int8) [@nat_to_int WORDSIZE8 (nat_be_range 4 k 7) ; *)
+(*                                @nat_to_int WORDSIZE8 (nat_be_range 4 k 6) ; *)
+(*                                @nat_to_int WORDSIZE8 (nat_be_range 4 k 5) ; *)
+(*                                @nat_to_int WORDSIZE8 (nat_be_range 4 k 4) ; *)
+(*                                @nat_to_int WORDSIZE8 (nat_be_range 4 k 3) ; *)
+(*                                @nat_to_int WORDSIZE8 (nat_be_range 4 k 2) ; *)
+(*                                @nat_to_int WORDSIZE8 (nat_be_range 4 k 1) ; *)
+(*                                @nat_to_int WORDSIZE8 (nat_be_range 4 k 0)]. *)
 
 Open Scope hacspec_scope.
 
 Definition u64_from_be_bytes_fold_fun (i : int8) (s : nat × int64) : nat × int64 :=
   let (n,v) := s in
-  (S n, v .+ (@repr WORDSIZE64 ((int8_to_nat i) * 2 ^ (4 * n)))).
+  (S n, Int64.add v (Int64.repr (Z.of_nat (int8_to_nat i) * 2 ^ (4 * Z.of_nat n)))).
 
 Definition u64_from_be_bytes' : nseq int8 8 -> int64 :=
-  (fun v => snd (VectorDef.fold_right u64_from_be_bytes_fold_fun v (0, @repr WORDSIZE64 0))).
+  (fun v => snd (VectorDef.fold_right u64_from_be_bytes_fold_fun v (0, @Int64.repr 0))).
 
-Definition u64_to_be_bytes : int64 -> nseq int8 8 := u64_to_be_bytes'.
-Definition u64_from_be_bytes : nseq int8 8 -> int64 := u64_from_be_bytes'.
+(* Definition u64_to_be_bytes : int64 -> nseq int8 8 := u64_to_be_bytes'. *)
+(* Definition u64_from_be_bytes : nseq int8 8 -> int64 := u64_from_be_bytes'. *)
 
 (* Definition nat_mod_to_byte_seq_be : forall {n : Z}, nat_mod n -> seq int8 := *)
 (*   fun k => VectorDef.of_list . *)
@@ -1766,15 +1416,15 @@ Global Instance Z_default : Default Z := {
   default := 0%Z
 }.
 Global Instance uint_size_default : Default uint_size := {
-  default := zero
+  default := Int32.zero
 }.
 Global Instance int_size_default : Default int_size := {
-  default := zero
+  default := Int32.zero
 }.
-Global Instance int_default {WS : WORDSIZE} : Default int := {
-  default := repr 0
-}.
-Global Instance uint8_default : Default uint8 := _.
+(* Global Instance int_default {WS : WORDSIZE} : Default int := { *)
+(*   default := repr 0 *)
+(* }. *)
+(* Global Instance uint8_default : Default uint8 := _. *)
 Global Instance nat_mod_default {p : Z} : Default (nat_mod p) := {
   default := nat_mod_zero
 }.
