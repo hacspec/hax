@@ -42,6 +42,8 @@ docker run -p 3818:3000 --rm --name hax -td franziskus/hax:{arm64, x64} password
 
 Then point your browser to `http://localhost:3818/?tkn=password&folder=/home/hax-user/hax`
 
+**Note:** Ensure to run `git pull` in the `hax` directory to get up to date version of this repository.
+
 ### Examples
 
 For all examples the following is the general workflow.
