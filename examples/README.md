@@ -81,6 +81,20 @@ longer to find an answer.
 To do this, add `--z3rlimit 150` to the `cargo hax into fstar` command.
 This generates a fresh F\* extraction in `proofs/fstar/extraction/<crate-name>.fst`.
 
+##### Extracting specific parts of the Code
+
+When verifying large crates verification of the full crate is usually not desirable (or feasible).
+To extract only a specific function, or part of a crate, hax offers a command line
+API to include and exclude certain parts of the code.
+
+In the `limited-order-book` crate for example, only the `process_order` function
+,and all its dependencies, is of interest.
+This can be extracted with
+
+```bash
+cargo hax into -i ‘-** +**::process_order’ fstar
+```
+
 #### Typechecking the F\* Code
 
 Typechecking the F\* code tells us whether the properties put on the Rust code
