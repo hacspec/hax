@@ -6,6 +6,7 @@ members = [
     "barrett",
     "kyber_compress",
     "serialize",
+    "addition",
 ]
 resolver = "2"
 

@@ -11,9 +11,7 @@
         "+Prims+FStar+LowStar+C+Spec.Loops+TestLib",
         "--query_stats",
         "--split_queries",
-        "always",
-        "--z3version",
-        "4.12.6"
+        "always"
     ],
     "include_dirs": [
         "${PWD}",

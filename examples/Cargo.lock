@@ -3,6 +3,14 @@
 version = 3
 
 [[package]]
+name = "addition"
+version = "0.1.0"
+dependencies = [
+ "hax-lib",
+ "hax-lib-macros",
+]
+
+[[package]]
 name = "anyhow"
 version = "1.0.75"
 source = "registry+https://github.com/rust-lang/crates.io-index"
