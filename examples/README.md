@@ -174,6 +174,9 @@ Rust_primitives.Integers.logand_mask_lemma value (v n);
 Rust_primitives.Integers.logand_mask_lemma compressed (v coefficient_bits);
 ```
 
+This lemma tells F\* that `value & (2^n - 1)` is the same as `value % 2^n`, which
+allows it to infer that the post-conditions are correct.
+
 ---
 
 # Regular Readme
