@@ -563,10 +563,6 @@ module Make (Options : OPTS) : MAKE = struct
                 let exit_event_name =
                   string "Exit" ^^ underscore ^^ print#concrete_ident name
                 in
-                let reached_event_def = print#pv_event_def reached_event_name in
-                let reached_event_emission =
-                  print#pv_event_emission reached_event_name
-                in
                 let body =
                   if assume_item || as_handwritten item.attrs then
                     let body_type = print#ty_at Item_Fn_body body.typ in
@@ -575,11 +571,11 @@ module Make (Options : OPTS) : MAKE = struct
                       []
                   else print#expr_at Item_Fn_body body
                 in
-                reached_event_def ^^ comment
+                comment
                 ^^ print#pv_letfun
                      (print#concrete_ident name)
                      (List.map ~f:print#param params)
-                     (reached_event_emission ^^ body)
+                     body
           | Type { name; generics; variants; is_struct } ->
               let type_name_doc = print#concrete_ident name in
               let type_line = print#pv_type type_name_doc in
