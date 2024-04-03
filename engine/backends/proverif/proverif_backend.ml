@@ -224,6 +224,14 @@ module Make (Options : OPTS) : MAKE = struct
         (** Print a ProVerif letfun call. *)
 
         (* Helpers *)
+
+        method module_of_concrete_ident : concrete_ident fn =
+          fun id ->
+            let crate, path = print#namespace_of_concrete_ident id in
+            let full_path = crate :: path in
+            separate_map (underscore ^^ underscore) utf8string full_path
+        (** Print the Rust path to the module that contains the concrete ident. *)
+
         method default_value type_name = type_name ^^ string "_default_value"
         method default_letfun_name type_name = type_name ^^ string "_default"
         method error_letfun_name type_name = type_name ^^ string "_err"
@@ -554,7 +562,13 @@ module Make (Options : OPTS) : MAKE = struct
                       (string "REPLACE by body of type: "
                       ^^ print#ty_at Item_Fn_body body.typ)
                   else if as_handwritten item.attrs then
-                    print#pv_comment (string "REPLACE by handwritten model")
+                    print#pv_comment
+                      (print#concrete_ident name
+                      ^^ string " included in handwritten model.")
+                    ^^ print#pv_comment
+                         (string "{{ proofs/proverif/handwritten/"
+                         ^^ print#module_of_concrete_ident name
+                         ^^ string ".pvl }}")
                   else empty
                 in
                 let reached_event_name =
@@ -564,18 +578,20 @@ module Make (Options : OPTS) : MAKE = struct
                   string "Exit" ^^ underscore ^^ print#concrete_ident name
                 in
                 let body =
-                  if assume_item || as_handwritten item.attrs then
+                  if assume_item then
                     let body_type = print#ty_at Item_Fn_body body.typ in
                     print#pv_letfun_call
                       (print#default_letfun_name body_type)
                       []
                   else print#expr_at Item_Fn_body body
                 in
-                comment
-                ^^ print#pv_letfun
-                     (print#concrete_ident name)
-                     (List.map ~f:print#param params)
-                     body
+                if as_handwritten item.attrs then comment
+                else
+                  comment
+                  ^^ print#pv_letfun
+                       (print#concrete_ident name)
+                       (List.map ~f:print#param params)
+                       body
           | Type { name; generics; variants; is_struct } ->
               let type_name_doc = print#concrete_ident name in
               let type_line = print#pv_type type_name_doc in
