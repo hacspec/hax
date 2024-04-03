@@ -650,7 +650,13 @@ functor
           "From" ^ " " ^ x ^ " "
           ^ decl_to_string (AST.Require (None, imports, rename))
       | AST.HintUnfold (n, t, db) ->
-          "Hint Unfold" ^ " " ^ Option.value_map ~default:"" ~f:(fun typ -> let ty_str = ty_to_string_without_paren typ in ty_str ^ "_")  ^ n ^ Option.value_map ~default:"" ~f:(fun s -> " " ^ ":" ^ " " ^ s) db ^ "."
+          "Hint Unfold" ^ " "
+          ^ Option.value_map ~default:"" ~f:(fun typ ->
+                let ty_str = ty_to_string_without_paren typ in
+                ty_str ^ "_")
+          ^ n
+          ^ Option.value_map ~default:"" ~f:(fun s -> " " ^ ":" ^ " " ^ s) db
+          ^ "."
 
     and definition_value_to_equation_definition
         ((name, arguments, term, ty) : AST.definition_type) =

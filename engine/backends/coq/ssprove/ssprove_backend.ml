@@ -82,13 +82,15 @@ end
 module SSP = Coq (SSProveLibrary)
 
 module SSPExtraDefinitions (* : ANALYSIS *) = struct
-  let wrap_type_in_both (l : string) (i : string) (a : SSP.AST.ty) : SSP.AST.ty =
+  let wrap_type_in_both (l : string) (i : string) (a : SSP.AST.ty) : SSP.AST.ty
+      =
     SSP.AST.AppTy (SSP.AST.NameTy ("both" ^ " " ^ l ^ " " ^ i), [ a ])
 
-  let wrap_pat_in_both (l : string) (i : string) (a : SSP.AST.pat) : SSP.AST.pat =
+  let wrap_pat_in_both (l : string) (i : string) (a : SSP.AST.pat) : SSP.AST.pat
+      =
     match a with
     | SSP.AST.AscriptionPat (p, ty) ->
-      SSP.AST.AscriptionPat (p, wrap_type_in_both l i ty)
+        SSP.AST.AscriptionPat (p, wrap_type_in_both l i ty)
     | _ -> a
 
   let unit_term : SSP.AST.term =
@@ -764,7 +766,7 @@ struct
   (*         wrap_type_in_both "(fset [])" "(fset [])" (pty span typ)) *)
   (*     :: args_ty span xs *)
   (* | [] -> [] *)
-  
+
   and ppat (p : pat) : SSP.AST.pat =
     match p.p with
     | PWild -> SSP.AST.WildPat
@@ -798,8 +800,8 @@ struct
         SSP.AST.TuplePat (List.map ~f:(fun { pat; _ } -> ppat pat) args)
     (* Record *)
     | PConstruct { name; args; is_record = true; _ } ->
-      __TODO_pat__ p.span "record pattern"
-      (* SSP.AST.RecordPat (pglobal_ident name, List.map ~f:(fun {field; pat} -> (pglobal_ident field, ppat pat)) args) *)
+        __TODO_pat__ p.span "record pattern"
+    (* SSP.AST.RecordPat (pglobal_ident name, List.map ~f:(fun {field; pat} -> (pglobal_ident field, ppat pat)) args) *)
     (* (\* SSP.AST.Ident (pglobal_ident name) *\) *)
     (* SSP.AST.RecordPat (pglobal_ident name, List.map ~f:(fun {field; pat} -> (pglobal_ident field, ppat pat)) args) *)
     (*       (\* SSP.AST.ConstructorPat (pglobal_ident name ^ "_case", [SSP.AST.Ident "temp"]) *\) *)
@@ -1499,51 +1501,50 @@ struct
           (* Define all record types in enums (no anonymous records) *)
           List.filter_map variants
             ~f:(fun { name = v_name; arguments; is_record; _ } ->
-              Option.some_if is_record (
-                let vc_name = pconcrete_ident v_name in
-                let chopped_name =
-                  match String.chop_prefix ~prefix:"C_" vc_name with
-                  | Some name -> "t_" ^ name
-                  | _ -> "t_" ^ vc_name
-                in
-                  (SSPExtraDefinitions.updatable_record
-                     ( chopped_name,
-                       pgeneric span generics,
-                       List.map
-                         ~f:(fun (x, y) -> SSP.AST.Named (x, y))
-                         (p_record_record span arguments) ))
-              ))
+              Option.some_if is_record
+                (let vc_name = pconcrete_ident v_name in
+                 let chopped_name =
+                   match String.chop_prefix ~prefix:"C_" vc_name with
+                   | Some name -> "t_" ^ name
+                   | _ -> "t_" ^ vc_name
+                 in
+                 SSPExtraDefinitions.updatable_record
+                   ( chopped_name,
+                     pgeneric span generics,
+                     List.map
+                       ~f:(fun (x, y) -> SSP.AST.Named (x, y))
+                       (p_record_record span arguments) )))
           @ [
-              (SSPExtraDefinitions.both_enum
-                 ( pconcrete_ident name,
-                   pgeneric span generics,
-                   List.map variants
-                     ~f:(fun { name = v_name; arguments; is_record; _ } ->
-                         let vc_name = pconcrete_ident v_name in
-                         let chopped_name =
-                           match String.chop_prefix ~prefix:"C_" vc_name with
-                           | Some name -> "t_" ^ name
-                           | _ -> "t_" ^ vc_name
-                         in
-                         if is_record then
-                         SSP.AST.InductiveCase
-                           ( pconcrete_ident v_name,
-                             SSP.AST.RecordTy
-                               (chopped_name, p_record_record span arguments) )
-                       else
-                         match arguments with
-                         | [] -> SSP.AST.BaseCase (pconcrete_ident v_name)
-                         | [ (_arg_name, arg_ty, _attr) ] ->
-                             SSP.AST.InductiveCase
-                               (* arg_name = ?? *)
-                               (pconcrete_ident v_name, pty span arg_ty)
-                         | _ ->
-                             SSP.AST.InductiveCase
-                               ( pconcrete_ident v_name,
-                                 SSP.AST.Product
-                                   (List.map
-                                      ~f:((fun (_x, y, _z) -> y) >> pty span)
-                                      arguments) )) ));
+              SSPExtraDefinitions.both_enum
+                ( pconcrete_ident name,
+                  pgeneric span generics,
+                  List.map variants
+                    ~f:(fun { name = v_name; arguments; is_record; _ } ->
+                      let vc_name = pconcrete_ident v_name in
+                      let chopped_name =
+                        match String.chop_prefix ~prefix:"C_" vc_name with
+                        | Some name -> "t_" ^ name
+                        | _ -> "t_" ^ vc_name
+                      in
+                      if is_record then
+                        SSP.AST.InductiveCase
+                          ( pconcrete_ident v_name,
+                            SSP.AST.RecordTy
+                              (chopped_name, p_record_record span arguments) )
+                      else
+                        match arguments with
+                        | [] -> SSP.AST.BaseCase (pconcrete_ident v_name)
+                        | [ (_arg_name, arg_ty, _attr) ] ->
+                            SSP.AST.InductiveCase
+                              (* arg_name = ?? *)
+                              (pconcrete_ident v_name, pty span arg_ty)
+                        | _ ->
+                            SSP.AST.InductiveCase
+                              ( pconcrete_ident v_name,
+                                SSP.AST.Product
+                                  (List.map
+                                     ~f:((fun (_x, y, _z) -> y) >> pty span)
+                                     arguments) )) );
             ]
       | IMacroInvokation { macro; argument; _ } -> (
           let unsupported () =
@@ -1779,7 +1780,9 @@ struct
                 | TIFn (TArrow _) ->
                     [
                       SSP.AST.HintUnfold
-                        (pconcrete_ident x.ti_ident ^ "_loc", None, Some "hacspec_hints");
+                        ( pconcrete_ident x.ti_ident ^ "_loc",
+                          None,
+                          Some "hacspec_hints" );
                     ]
                 | _ -> [])
               items
@@ -1862,7 +1865,12 @@ struct
                              ])
                        items) );
             ]
-          @ [ SSP.AST.HintUnfold (pglobal_ident name, Some (pty span self_ty), Some "hacspec_hints") ]
+          @ [
+              SSP.AST.HintUnfold
+                ( pglobal_ident name,
+                  Some (pty span self_ty),
+                  Some "hacspec_hints" );
+            ]
     in
     decls_from_item
 
