@@ -798,8 +798,8 @@ struct
         SSP.AST.TuplePat (List.map ~f:(fun { pat; _ } -> ppat pat) args)
     (* Record *)
     | PConstruct { name; args; is_record = true; _ } ->
-      (* __TODO_pat__ p.span "record pattern" *)
-      SSP.AST.RecordPat (pglobal_ident name, List.map ~f:(fun {field; pat} -> (pglobal_ident field, ppat pat)) args)
+      __TODO_pat__ p.span "record pattern"
+      (* SSP.AST.RecordPat (pglobal_ident name, List.map ~f:(fun {field; pat} -> (pglobal_ident field, ppat pat)) args) *)
     (* (\* SSP.AST.Ident (pglobal_ident name) *\) *)
     (* SSP.AST.RecordPat (pglobal_ident name, List.map ~f:(fun {field; pat} -> (pglobal_ident field, ppat pat)) args) *)
     (*       (\* SSP.AST.ConstructorPat (pglobal_ident name ^ "_case", [SSP.AST.Ident "temp"]) *\) *)
@@ -1779,7 +1779,7 @@ struct
                 | TIFn (TArrow _) ->
                     [
                       SSP.AST.HintUnfold
-                        (pconcrete_ident x.ti_ident ^ "_loc", None);
+                        (pconcrete_ident x.ti_ident ^ "_loc", None, Some "hacspec_hints");
                     ]
                 | _ -> [])
               items
@@ -1862,7 +1862,7 @@ struct
                              ])
                        items) );
             ]
-          @ [ SSP.AST.HintUnfold (pglobal_ident name, Some (pty span self_ty)) ]
+          @ [ SSP.AST.HintUnfold (pglobal_ident name, Some (pty span self_ty), Some "hacspec_hints") ]
     in
     decls_from_item
 

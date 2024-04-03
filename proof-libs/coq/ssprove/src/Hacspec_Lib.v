@@ -39,6 +39,7 @@ Open Scope hacspec_scope.
 Open Scope nat_scope.
 Open Scope list_scope.
 
+From Hacspec Require Import Hacspec_Lib_StdLib. Export Hacspec_Lib_StdLib.
 From Hacspec Require Import Hacspec_Lib_Integers. Export Hacspec_Lib_Integers.
 From Hacspec Require Import Hacspec_Lib_Loops. Export Hacspec_Lib_Loops.
 From Hacspec Require Import Hacspec_Lib_Seq. Export Hacspec_Lib_Seq.
@@ -53,6 +54,9 @@ From Hacspec Require Import Hacspec_Lib_Cast. Export Hacspec_Lib_Cast.
 From Hacspec Require Import Hacspec_Lib_TODO. Export Hacspec_Lib_TODO.
 From Hacspec Require Import ConCertLib. Export ConCertLib.
 
+Set Bullet Behavior "Strict Subproofs".
+Set Default Goal Selector "!".
+
 (*** Result *)
 
 Definition Ok {L I} {a b : choice_type} : both L I a -> both L I (result b a) := lift1_both Ok.
@@ -66,4 +70,3 @@ Infix "||" := orb : bool_scope.
 
 Definition u32_word_t := nseq_ uint8 4.
 Definition u128_word_t := nseq_ uint8 16.
-

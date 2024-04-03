@@ -14,7 +14,7 @@ From Crypt Require Import choice_type Package Prelude.
 Import PackageNotation.
 From extructures Require Import ord fset fmap.
 
-Require Import ChoiceEquality.
+From Hacspec Require Import ChoiceEquality.
 
 From mathcomp Require Import ssrZ word.
 From Crypt Require Import jasmin_word.
@@ -34,7 +34,7 @@ Open Scope list_scope.
 Open Scope hacspec_scope.
 Open Scope nat_scope.
 
-Require Import Hacspec_Lib_Comparable.
+From Hacspec Require Import Hacspec_Lib_Comparable.
 
 Import choice.Choice.Exports.
 
@@ -102,18 +102,18 @@ Import choice.Choice.Exports.
 
 Axiom secret : forall {WS : wsize},  ((@int WS)) -> ((@int WS)).
 
-Infix ".%%" := int_modi (at level 40, left associativity) : Z_scope.
-Infix ".+" := int_add (at level 77) : hacspec_scope.
-Infix ".-" := int_sub (at level 77) : hacspec_scope.
-Notation "-" := int_opp (at level 77) : hacspec_scope.
-Infix ".*" := int_mul (at level 77) : hacspec_scope.
-Infix "./" := int_div (at level 77) : hacspec_scope.
-Infix ".%" := int_mod (at level 77) : hacspec_scope.
-Infix ".^" := int_xor (at level 77) : hacspec_scope.
-Infix ".&" := int_and (at level 77) : hacspec_scope.
-Infix ".|" := int_or (at level 77) : hacspec_scope.
+(* Infix ".%%" := int_modi (at level 40, left associativity) : Z_scope. *)
+(* Infix ".+" := int_add (at level 77) : hacspec_scope. *)
+(* Infix ".-" := int_sub (at level 77) : hacspec_scope. *)
+(* Notation "-" := int_opp (at level 77) : hacspec_scope. *)
+(* Infix ".*" := int_mul (at level 77) : hacspec_scope. *)
+(* Infix "./" := int_div (at level 77) : hacspec_scope. *)
+(* Infix ".%" := int_mod (at level 77) : hacspec_scope. *)
+(* Infix ".^" := int_xor (at level 77) : hacspec_scope. *)
+(* Infix ".&" := int_and (at level 77) : hacspec_scope. *)
+(* Infix ".|" := int_or (at level 77) : hacspec_scope. *)
 
-Notation "'not'" := int_not (at level 77) : hacspec_scope.
+(* Notation "'not'" := int_not (at level 77) : hacspec_scope. *)
 
 (* Comparisons, boolean equality, and notation *)
 
@@ -307,7 +307,7 @@ Definition usize_shift_left (u: uint_size) (s: int32) : uint_size :=
 Infix "usize_shift_left" := (usize_shift_left) (at level 77) : hacspec_scope.
 
 Definition pub_uint128_wrapping_add (x y: int128) : int128 :=
-  x .+ y.
+  int_add x y.
 
 Definition shift_left_ `{WS : wsize} (i : (@int WS)) (j : uint_size) : (@int WS) :=
   wshl i (unsigned (@repr WS (from_uint_size j))).
@@ -559,7 +559,7 @@ Fixpoint foldi_
          (cur : acc) : acc :=
   match fuel with
   | 0 => cur
-  | S n' => foldi_ n' (i .+ one) f (f i cur)
+  | S n' => foldi_ n' (int_add i one) f (f i cur)
   end.
 Close Scope nat_scope.
 Definition foldi
@@ -630,7 +630,7 @@ Lemma foldi__move_S :
          (i : uint_size)
          (f : uint_size -> acc -> acc)
          (cur : acc),
-    foldi_ fuel (i .+ one) f (f i cur) = foldi_ (S fuel) i f cur.
+    foldi_ fuel (int_add i one) f (f i cur) = foldi_ (S fuel) i f cur.
 Proof. reflexivity. Qed.
 
 Lemma foldi__nat_move_S :
@@ -756,7 +756,7 @@ Lemma foldi__move_S_fuel :
          (f : uint_size -> acc -> acc)
          (cur : acc),
     (0 <= Z.of_nat fuel <= wmax_unsigned U32)%Z ->
-    f ((repr _ (Z.of_nat fuel)) .+ i) (foldi_ (fuel) i f cur) = foldi_ (S (fuel)) i f cur.
+    f (int_add (repr _ (Z.of_nat fuel)) i) (foldi_ (fuel) i f cur) = foldi_ (S (fuel)) i f cur.
 Proof.
   intros acc fuel.
   induction fuel ; intros.
@@ -1567,7 +1567,7 @@ Definition seq_new {A: choice_type} (len: uint_size) : (seq A) :=
 Definition seq_create {A: choice_type} (len: uint_size) : (seq A) :=
   seq_new len.
 
-Definition repr_Z_succ : forall WS z, @repr WS (Z.succ z) = (repr _ z .+ one).
+Definition repr_Z_succ : forall WS z, @repr WS (Z.succ z) = (int_add (repr _ z) one).
 Proof.
   intros.
   replace one with (@repr WS 1%Z) by (unfold one ; now rewrite word1_zmodE).
@@ -2639,7 +2639,7 @@ Definition seq_from_seq {A} (l : (seq A)) : (seq A) := l.
 (**** Chunking *)
 
 Definition seq_num_chunks {a: choice_type} (s: ((seq a))) (chunk_len: uint_size) : uint_size :=
-  ((seq_len s .+ chunk_len .- one) ./ chunk_len)%nat.
+  (int_div (int_sub (int_add (seq_len s) (chunk_len)) one) chunk_len)%nat.
 
 Definition seq_chunk_len
            {a: choice_type}
@@ -2676,7 +2676,7 @@ Definition seq_set_chunk
 
 
 Definition seq_num_exact_chunks {a} (l : ((seq a))) (chunk_size : ((uint_size))) : ((uint_size)) :=
-  (repr _ (Z.of_nat (length l))) ./ chunk_size.
+  int_div (repr _ (Z.of_nat (length l))) chunk_size.
 
 Definition seq_get_exact_chunk {a : choice_type} (l : ((seq a))) (chunk_size chunk_num: ((uint_size))) : ((seq a)) :=
   let '(len, chunk) := seq_get_chunk l chunk_size chunk_num in
@@ -2688,7 +2688,7 @@ Definition seq_set_exact_chunk {A : choice_type} :=
 Definition seq_get_remainder_chunk {a : choice_type} (l : (seq a)) (chunk_size : uint_size) : (seq a) :=
   let chunks := seq_num_chunks l chunk_size in
   let last_chunk := if (zero <.? chunks)
-                    then (chunks .- one)%nat
+                    then (int_sub chunks one)%nat
                     else zero in
   let (len, chunk) := seq_get_chunk l chunk_size last_chunk in
   if eqtype.eq_op len chunk_size
@@ -3183,7 +3183,7 @@ Definition to_be_bytes {WS} : (@int WS) -> (nseq_ int8 (WS / 8)) :=
 
 Definition from_be_bytes_fold_fun {WS} (i : int8) (s : ('nat × @int WS)) : ('nat × @int WS) :=
   let (n,v) := s in
-  (S n, v .+ (repr WS (int8_to_nat i * (2 ^ (8 * Z.of_nat n)))%Z)).
+  (S n, int_add v (repr WS (int8_to_nat i * (2 ^ (8 * Z.of_nat n)))%Z)).
 
 Definition from_be_bytes {WS : wsize} : (nseq_ int8 (WS / 8)) -> (@int WS) :=
    (fun v => snd (List.fold_right from_be_bytes_fold_fun (0%nat, @repr WS 0%Z) (array_to_list v))).
@@ -3224,7 +3224,7 @@ Definition to_le_bytes {WS} : (@int WS) -> (nseq_ int8 (WS / 8)) :=
 
 Definition from_le_bytes_fold_fun {WS} (i : int8) (s : ('nat × @int WS)) : ('nat × @int WS) :=
   let (n,v) := s in
-  (Nat.pred n, v .+ (@repr WS ((int8_to_nat i) * 2 ^ (8 * Z.of_nat n))%Z)).
+  (Nat.pred n, int_add v (@repr WS ((int8_to_nat i) * 2 ^ (8 * Z.of_nat n))%Z)).
 
 Definition from_le_bytes {WS : wsize} : (nseq_ int8 (WS / 8)) -> (@int WS) :=
    (fun v => snd (List.fold_right from_be_bytes_fold_fun (((WS / 8) - 1)%nat, @repr WS 0%Z) (array_to_list v))).

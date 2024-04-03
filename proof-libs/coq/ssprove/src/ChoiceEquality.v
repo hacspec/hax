@@ -501,6 +501,27 @@ Section Both_helper.
     now intros ? ? ? [[] ? ?] ?.
   Defined.
 
+  Lemma valid_both_is_deterministic : forall {L A} (b : raw_both A),
+         valid_both L b -> deterministic (is_state b).
+  Proof.
+    intros.
+    destruct b as [is_pure is_state] ; simpl.
+    induction is_state.
+    - apply deterministic_ret.
+    - exfalso ; inversion H.
+    - apply deterministic_get.
+      intros.
+      apply X.
+      inversion H.
+    - apply deterministic_put.
+      apply IHis_state.
+      inversion H.
+      + admit.
+      + subst. now apply valid_both_eta.
+    - exfalso.
+      inversion H.
+  Admitted.
+
   Lemma both_valid_injectLocations :
     forall A L1 L2 (* I *) (v : raw_both A),
       fsubset L1 L2 ->

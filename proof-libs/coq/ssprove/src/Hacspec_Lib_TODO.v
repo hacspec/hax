@@ -66,10 +66,6 @@ Open Scope hacspec_scope.
 (* Arguments word.word. *)
 Number Notation word N.of_num_uint N.to_num_int (via N mapping [[int_pos] => Npos, [zero] => N0]) : hacspec_scope.
 
-From RecordUpdate Require Import RecordSet.
-
-
-
 (* Register int_add as num.N.add. *)
 
 (* Notation U8_t := int8. *)
@@ -82,31 +78,6 @@ From RecordUpdate Require Import RecordSet.
 (* Notation U64 := id. *)
 (* Notation U128_t := int128. *)
 (* Notation U128 := id. *)
-
-Class Addition L1 L2 (* L3 *) I1 I2 (* I3 *) (A : choice_type) (* `(H_loc_fsubset13 : is_true (fsubset L1 L3)) `(H_opsig_fsubset13 : is_true (fsubset I1 I3)) `(H_loc_fsubset23 : is_true (fsubset L2 L3)) `(H_opsig_fsubset23 : is_true (fsubset I2 I3)) *) :=
-  add : both L1 I1 A -> both L2 I2 A -> both (L1 :|: L2) (* L3 *) (I1 :|: I2) (* I3 *) A.
-Notation "a .+ b" := (add a b).
-(* Instance array_add_inst {ws : wsize} {len: uint_size} {L1 L2 I1 I2} : Addition L1 L2 I1 I2 (nseq (int ws) len) := { add a b := a array_add b }. *)
-Instance int_add_inst {ws : wsize} {L1 L2 (* L3 *) I1 I2 (* I3 *)}  (* `{H_loc_fsubset13 : is_true (fsubset L1 L3)} `{H_opsig_fsubset13 : is_true (fsubset I1 I3)} `{H_loc_fsubset23 : is_true (fsubset L2 L3)} `{H_opsig_fsubset23 : is_true (fsubset I2 I3)} *) : Addition L1 L2 (* L3 *) I1 I2 (* I3 *) (@int ws) (* H_loc_fsubset13 H_opsig_fsubset13 H_loc_fsubset23 H_opsig_fsubset23 *) := { add a b := int_add (* (H_loc_incl_x := H_loc_fsubset13) (H_opsig_incl_x := H_opsig_fsubset13) (H_loc_incl_y := H_loc_fsubset23) (H_opsig_incl_y := H_opsig_fsubset23) *) a b }.
-
-Class Subtraction  L1 L2 (* L3 *) I1 I2 (* I3 *) (A : choice_type) (* `(H_loc_fsubset13 : is_true (fsubset L1 L3)) `(H_opsig_fsubset13 : is_true (fsubset I1 I3)) `(H_loc_fsubset23 : is_true (fsubset L2 L3)) `(H_opsig_fsubset23 : is_true (fsubset I2 I3)) *) :=
-  sub : both L1 I1 A -> both L2 I2 A -> both (L1 :|: L2) (* L3 *) (I1 :|: I2) (* I3 *) A.
-Notation "a .- b" := (sub a b (Subtraction := _)).
-(* Instance array_sub_inst {ws : wsize} {len: uint_size} {L1 L2 I1 I2} : Subtraction L1 L2 I1 I2 (nseq (@int ws) len) := { sub a b := a array_minus b }. *)
-Instance int_sub_inst {ws : wsize} {L1 L2 (* L3 *) I1 I2 (* I3 *)}  (* `{H_loc_fsubset13 : is_true (fsubset L1 L3)} `{H_opsig_fsubset13 : is_true (fsubset I1 I3)} `{H_loc_fsubset23 : is_true (fsubset L2 L3)} `{H_opsig_fsubset23 : is_true (fsubset I2 I3)} *) : Subtraction L1 L2 (* L3 *) I1 I2 (* I3 *) (@int ws) (* H_loc_fsubset13 H_opsig_fsubset13 H_loc_fsubset23 H_opsig_fsubset23 *) := { sub a b := int_sub (* (H_loc_incl_x := H_loc_fsubset13) (H_opsig_incl_x := H_opsig_fsubset13) (H_loc_incl_y := H_loc_fsubset23) (H_opsig_incl_y := H_opsig_fsubset23) *) a b }.
-
-Class Multiplication (L1 L2 (* L3 *) : {fset Location}) (I1 I2 (* I3 *) : Interface) A (* `(H_loc_incl1 : is_true (fsubset L1 L3)) (H_opsig_incl1 : is_true (fsubset I1 I3)) (H_loc_incl2 : is_true (fsubset L2 L3)) (H_opsig_incl2 : is_true (fsubset I2 I3)) *) := mul : both L1 I1 A -> both L2 I2 A -> both (L1 :|: L2) (* L3 *) (I1 :|: I2) (* I3 *)  A.
-Notation "a .* b" := (mul a b).
-(* Instance array_mul_inst {ws : wsize} {len: uint_size} { L1 L2 I1 I2} : Multiplication L1 L2 I1 I2 (nseq (@int ws) len) := { mul a b := a array_mul b }. *)
-Program Instance int_mul_inst {ws : wsize} { L1 L2 (* L3 *) : {fset Location} } { I1 I2 (* I3 *) : Interface} (* `{H_loc_incl1 : is_true (fsubset L1 L3)} `{H_opsig_incl1 : is_true (fsubset I1 I3)} `{H_loc_incl2 : is_true (fsubset L2 L3)} `{H_opsig_incl2 : is_true (fsubset I2 I3)} *) : Multiplication L1 L2 (* L3 *) I1 I2 (* I3 *) (@int ws) (* H_loc_incl1 H_opsig_incl1 H_loc_incl2 H_opsig_incl2 *) := { mul a b := int_mul a b }.
-Fail Next Obligation.
-
-Class Xor (L1 L2 (* L3 *) : {fset Location}) (I1 I2 (* I3 *) : Interface) A (* `(H_loc_incl1 : is_true (fsubset L1 L3)) (H_opsig_incl1 : is_true (fsubset I1 I3)) (H_loc_incl2 : is_true (fsubset L2 L3)) (H_opsig_incl2 : is_true (fsubset I2 I3)) *) := xor : both L1 I1 A -> both L2 I2 A -> both (L1 :|: L2) (* L3 *) (I1 :|: I2) (* I3 *)  A.
-Notation "a .^ b" := (xor a b).
-
-(* Instance array_xor_inst {ws : wsize} {len: uint_size} {L1 L2 I1 I2} : Xor L1 L2 I1 I2 (nseq (@int ws) len) := { xor a b := a array_xor b }. *)
-Program Instance int_xor_inst {ws : wsize} {L1 L2 (* L3 *) I1 I2 (* I3 *)} (* `{H_loc_incl1 : is_true (fsubset L1 L3)} `{H_opsig_incl1 : is_true (fsubset I1 I3)} `{H_loc_incl2 : is_true (fsubset L2 L3)} `{H_opsig_incl2 : is_true (fsubset I2 I3)} *) : Xor L1 L2 (* L3 *) I1 I2 (* I3 *) (@int ws) (* H_loc_incl1 H_opsig_incl1 H_loc_incl2 H_opsig_incl2 *) := { xor a b := int_xor a b }.
-Fail Next Obligation.
 
 (* Definition new {A : choice_type} {len} : nseq A len := array_new_ default _. *)
 
@@ -663,3 +634,7 @@ Equations Option_Some {L I A} (y : both L I A) : both L I ('option A) :=
 Fail Next Obligation.
 
 Definition impl__u32__wrapping_add {L1 L2 I1 I2} := int_add (WS := U32) (L1 := L1) (I1 := I1) (L2 := L2) (I2 := I2). (* TODO *)
+(* Instance array_add_inst {ws : wsize} {len: uint_size} {L1 L2 I1 I2} : Addition L1 L2 I1 I2 (nseq (int ws) len) := { add a b := a array_add b }. *)
+(* Instance array_sub_inst {ws : wsize} {len: uint_size} {L1 L2 I1 I2} : Subtraction L1 L2 I1 I2 (nseq (@int ws) len) := { sub a b := a array_minus b }. *)
+(* Instance array_mul_inst {ws : wsize} {len: uint_size} { L1 L2 I1 I2} : Multiplication L1 L2 I1 I2 (nseq (@int ws) len) := { mul a b := a array_mul b }. *)
+(* Instance array_xor_inst {ws : wsize} {len: uint_size} {L1 L2 I1 I2} : Xor L1 L2 I1 I2 (nseq (@int ws) len) := { xor a b := a array_xor b }. *)

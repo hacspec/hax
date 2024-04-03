@@ -131,7 +131,7 @@ functor
         | ModuleType of string * argument list * record_field list
         | Module of string * string * argument list * record_field list
         | Parameter of string * ty (* definition_type minus 'term' *)
-        | HintUnfold of string * ty option
+        | HintUnfold of string * ty option * string option
     end
 
     let __TODO_pat__ s = AST.Ident (s ^ " todo(pat)")
@@ -649,10 +649,8 @@ functor
       | AST.Require (Some x, imports, rename) ->
           "From" ^ " " ^ x ^ " "
           ^ decl_to_string (AST.Require (None, imports, rename))
-      | AST.HintUnfold (n, Some typ) ->
-          let ty_str = ty_to_string_without_paren typ in
-          "Hint Unfold" ^ " " ^ ty_str ^ "_" ^ n ^ "."
-      | AST.HintUnfold (n, None) -> "Hint Unfold" ^ " " ^ n ^ "."
+      | AST.HintUnfold (n, t, db) ->
+          "Hint Unfold" ^ " " ^ Option.value_map ~default:"" ~f:(fun typ -> let ty_str = ty_to_string_without_paren typ in ty_str ^ "_")  ^ n ^ Option.value_map ~default:"" ~f:(fun s -> " " ^ ":" ^ " " ^ s) db ^ "."
 
     and definition_value_to_equation_definition
         ((name, arguments, term, ty) : AST.definition_type) =

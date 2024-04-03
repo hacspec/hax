@@ -34,6 +34,8 @@ From Hacspec Require Import LocationUtility.
 From Hacspec Require Import Hacspec_Lib_Comparable.
 From Hacspec Require Import Hacspec_Lib_Pre.
 
+From Hacspec Require Import Hacspec_Lib_StdLib.
+
 Open Scope bool_scope.
 Open Scope hacspec_scope.
 Open Scope nat_scope.
@@ -248,16 +250,15 @@ Ltac solve_in_mem :=
 
 Ltac solve_ssprove_obligations :=
   repeat (
-      intros ; autounfold ; normalize_fset ;
-      now (solve_match || now (apply fsubsetxx || apply fsub0set)
-           || solve_in_mem (* TODO: add match goal *)
-           || fset_equality (* TODO: add match goal *)
-           || solve_in_fset (* TODO: add match goal *)
-           || ssprove_valid'_2
-           || (Tactics.program_simpl; fail))).
+      intros ; autounfold with hacspec_hints ; autounfold ; normalize_fset ;
+      solve [solve_match || now (apply fsubsetxx || apply fsub0set)
+           | solve_in_mem (* TODO: add match goal *)
+           | fset_equality (* TODO: add match goal *)
+           | solve_in_fset (* TODO: add match goal *)
+           | ssprove_valid'_2 ; (Tactics.program_simpl; fail)]).
 
 Ltac solve_fsubset_trans :=
-  now (solve_match || (refine (fsubset_trans _ _) ; [ | eassumption ] ; solve_ssprove_obligations)).
+  solve [(refine (fsubset_trans _ _) ; [ | eassumption ]) ;  solve_in_fset | solve_ssprove_obligations ].
 
 Ltac solve_foldi_fsubset_trans :=
   normalize_fset ;
