@@ -90,6 +90,24 @@ let v_MAX: usize = sz 10
 
 type t_MyArray = | MyArray : t_Array u8 (sz 10) -> t_MyArray
 
+let mutation_example
+      (use_generic_update_at: t_MyArray)
+      (use_specialized_update_at: t_Slice u8)
+      (specialized_as_well: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
+    : (t_MyArray & t_Slice u8 & Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) =
+  let use_generic_update_at:t_MyArray =
+    Rust_primitives.Hax.update_at use_generic_update_at (sz 2) 0uy
+  in
+  let use_specialized_update_at:t_Slice u8 =
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize use_specialized_update_at (sz 2) 0uy
+  in
+  let specialized_as_well:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize specialized_as_well (sz 2) 0uy
+  in
+  use_generic_update_at, use_specialized_update_at, specialized_as_well
+  <:
+  (t_MyArray & t_Slice u8 & Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
+
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl: Core.Ops.Index.t_Index t_MyArray usize =
   {
