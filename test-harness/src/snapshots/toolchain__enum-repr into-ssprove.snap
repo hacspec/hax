@@ -35,15 +35,14 @@ Set Warnings "-notation-overridden,-ambiguous-paths".
 From Crypt Require Import choice_type Package Prelude.
 Import PackageNotation.
 From extructures Require Import ord fset.
-From mathcomp Require Import word_ssrZ word.
-From Jasmin Require Import word.
-
 From Coq Require Import ZArith.
 From Coq Require Import Strings.String.
 Import List.ListNotations.
 Open Scope list_scope.
 Open Scope Z_scope.
 Open Scope bool_scope.
+
+From Crypt Require Import jasmin_word.
 
 From Hacspec Require Import ChoiceEquality.
 From Hacspec Require Import LocationUtility.
@@ -107,18 +106,18 @@ Fail Next Obligation.
 
 Equations f {L1 : {fset Location}} {I1 : Interface} (_ : both L1 I1 'unit) : both L1 I1 int32 :=
   f _  :=
-    letb v__x := cast_int (WS2 := _) (discriminant_EnumWithRepr_ExplicitDiscr2 .+ (ret_both (0 : int16))) in
-    solve_lift ((cast_int (WS2 := _) (t_EnumWithRepr_cast_to_repr EnumWithRepr_ImplicitDiscrEmptyTuple)) .+ (cast_int (WS2 := _) (t_EnumWithRepr_cast_to_repr EnumWithRepr_ImplicitDiscrEmptyStruct))) : both L1 I1 int32.
+    letb v__x := cast (B := int16) (discriminant_EnumWithRepr_ExplicitDiscr2 .+ (ret_both (0 : int16))) in
+    solve_lift ((cast (B := int32) (t_EnumWithRepr_cast_to_repr EnumWithRepr_ImplicitDiscrEmptyTuple)) .+ (cast (B := int32) (t_EnumWithRepr_cast_to_repr EnumWithRepr_ImplicitDiscrEmptyStruct))) : both L1 I1 int32.
 Fail Next Obligation.
 
 Equations ff__CONST {L : {fset Location}} {I : Interface} : both L I int16 :=
   ff__CONST  :=
-    solve_lift (cast_int (WS2 := _) (discriminant_EnumWithRepr_ExplicitDiscr1 .+ (ret_both (0 : int16)))) : both L I int16.
+    solve_lift (cast (B := int16) (discriminant_EnumWithRepr_ExplicitDiscr1 .+ (ret_both (0 : int16)))) : both L I int16.
 Fail Next Obligation.
 
 Equations get_casted_repr {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 t_EnumWithRepr) : both L1 I1 int64 :=
   get_casted_repr x  :=
-    solve_lift (cast_int (WS2 := _) (t_EnumWithRepr_cast_to_repr x)) : both L1 I1 int64.
+    solve_lift (cast (B := int64) (t_EnumWithRepr_cast_to_repr x)) : both L1 I1 int64.
 Fail Next Obligation.
 
 Equations get_repr {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 t_EnumWithRepr) : both L1 I1 int16 :=

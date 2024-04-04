@@ -35,15 +35,14 @@ Set Warnings "-notation-overridden,-ambiguous-paths".
 From Crypt Require Import choice_type Package Prelude.
 Import PackageNotation.
 From extructures Require Import ord fset.
-From mathcomp Require Import word_ssrZ word.
-From Jasmin Require Import word.
-
 From Coq Require Import ZArith.
 From Coq Require Import Strings.String.
 Import List.ListNotations.
 Open Scope list_scope.
 Open Scope Z_scope.
 Open Scope bool_scope.
+
+From Crypt Require Import jasmin_word.
 
 From Hacspec Require Import ChoiceEquality.
 From Hacspec Require Import LocationUtility.
@@ -84,7 +83,7 @@ Equations early_returns {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 
     letb hoist3 := x >.? (ret_both (30 : int32)) in
     letm[choice_typeMonad.result_bind_code int32] hoist5 := ifb hoist3
     then matchb ret_both (true : 'bool) with
-    | true =>
+    | num_ true =>
       letm[choice_typeMonad.result_bind_code int32] hoist4 := ControlFlow_Break (ret_both (34 : int32)) in
       ControlFlow_Continue (solve_lift (never_to_any hoist4))
     | _ =>
@@ -119,10 +118,10 @@ Equations local_mutation {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1
         assign todo(term) : (both (*1*)(L1:|:fset [y_loc]) (I1) 'unit))) (ret_both (tt : 'unit)) in
     impl__u32__wrapping_add x y
     else letb hoist15 := matchb x with
-    | 12 =>
+    | num_ 12 =>
       letb _ := assign todo(term) in
       solve_lift (ret_both (3 : int32))
-    | 13 =>
+    | num_ 13 =>
       letb hoist14 := x in
       letb _ := assign todo(term) in
       letb hoist13 := impl__u32__wrapping_add (ret_both (123 : int32)) x in
@@ -148,9 +147,9 @@ Equations options {L1 : {fset Location}} {L2 : {fset Location}} {L3 : {fset Loca
     Option_Some hoist25) in
     letm[choice_typeMonad.option_bind_code] hoist27 := hoist26 in
     letm[choice_typeMonad.option_bind_code] v := matchb hoist27 with
-    | 3 =>
+    | num_ 3 =>
       Option_None
-    | 4 =>
+    | num_ 4 =>
       letm[choice_typeMonad.option_bind_code] hoist16 := z in
       Option_Some (letb hoist17 := hoist16 >.? (ret_both (4 : int64)) in
       letb hoist18 := ifb hoist17

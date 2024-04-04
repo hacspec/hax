@@ -70,21 +70,21 @@ Definition v_CONSTANT : t_Foo_t :=
 
 Definition patterns (_ : unit) : unit :=
   let _ := match (@repr WORDSIZE8 1) with
-    | (@repr WORDSIZE8 2) =>
+    | num_ (@repr WORDSIZE8 2) =>
       tt
     | _ =>
       tt
     end : unit in
   let _ := match (hello,((@repr WORDSIZE32 123),array_from_list [a;
             b])) with
-    | '(hello,((@repr WORDSIZE32 123),_todo)) =>
+    | '(num_ hello,(num_ (@repr WORDSIZE32 123),_todo)) =>
       tt
     | _ =>
       tt
     end : unit in
   let _ := match Build_Foo (f_field := (@repr WORDSIZE8 4)) with
     | {|
-      f_field := (@repr WORDSIZE8 3)
+      f_field := num_ (@repr WORDSIZE8 3)
     |} =>
       tt
     | _ =>
