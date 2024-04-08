@@ -1,0 +1,11 @@
+(coq.theory
+ (name Hacspec) ; -R flag
+ (package coq-hacspec)
+ (flags -w all)
+ (theories
+   compcert
+   Equations
+   )
+ ; (libraries <ocaml_libraries>)
+ )
+; (include_subdirs qualified)
