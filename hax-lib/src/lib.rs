@@ -129,3 +129,5 @@ pub fn exists<T>(_f: impl Fn(T) -> bool) -> bool {
 pub fn implies(lhs: bool, rhs: impl Fn() -> bool) -> bool {
     !lhs || rhs()
 }
+
+pub use hax_lib_macros::*;
