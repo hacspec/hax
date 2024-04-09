@@ -16,6 +16,9 @@
         (base (>= "0.16.2"))
 	(coq (>= "8.18.0"))
         coq-compcert
+        coq-coqprime
+        coq-quickchick
         )
  (tags
   (topics "to describe" your project)))
+

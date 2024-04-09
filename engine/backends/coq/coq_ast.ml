@@ -256,7 +256,7 @@ functor
 
     let literal_to_string (x : AST.literal) : string =
       match x with
-      | Const_string s -> s
+      | Const_string s -> "\"" ^ s ^ "\"%string"
       | Const_char c -> Int.to_string c (* TODO *)
       | Const_int (i, { size; _ }) ->
           Lib.Notation.int_repr (int_size_to_string size) i
@@ -304,7 +304,7 @@ functor
     let rec term_to_string (x : AST.term) depth : string * bool =
       match x with
       | AST.UnitTerm -> ("tt", false)
-      | AST.Let { pattern = pat; value = bind; value_typ = typ; body = term; _ }
+      | AST.Let { pattern = AST.AscriptionPat (pat, _) | pat; value = bind; value_typ = typ; body = term; _ }
         ->
           (* TODO: propegate type definition *)
           let var_str = pat_to_string pat true depth in

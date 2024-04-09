@@ -14,9 +14,13 @@ Require Import Lia.
 
 Declare Scope hacspec_scope.
 
-Require Import Hacspec_Types.
-Require Import Hacspec_Integers.
+From Hacspec Require Import Hacspec_Types. Export Hacspec_Types.
+From Hacspec Require Import Hacspec_Integers. Export Hacspec_Integers.
+From Hacspec Require Import Hacspec_TODO. Export Hacspec_TODO.
 
+(* Notation *)
+
+Infix "'×" := prod (at level 100) : hacspec_scope.
 
 (*** Loops *)
 
@@ -134,7 +138,9 @@ Proof.
   induction fuel ; intros.
   - reflexivity.
   - do 2 rewrite <- foldi__nat_move_S.
-    replace (S fuel + i)%nat with (fuel + (S i))%nat by (symmetry ; apply plus_Snm_nSm).
+
+    Require Import PeanoNat.
+    replace (S fuel + i)%nat with (fuel + (S i))%nat by (symmetry ; apply plus_n_Sm).
     rewrite IHfuel.
     + reflexivity.
     + lia.
@@ -320,10 +326,10 @@ Definition seq_new_ {A: Type} (init : A) (len: nat) : seq A :=
 Definition seq_new {A: Type} `{Default A} (len: nat) : seq A :=
   seq_new_ default len.
 
-Fixpoint array_from_list (A: Type) (l: list A) : nseq A (length l) :=
+Fixpoint array_from_list {A: Type} (l: list A) : nseq A (length l) :=
   match l return (nseq A (length l)) with
   | [] => VectorDef.nil A
-  | x :: xs => VectorDef.cons A x (length xs) (array_from_list A xs)
+  | x :: xs => VectorDef.cons A x (length xs) (array_from_list xs)
   end.
 
   (*   match l, length l with *)
@@ -910,21 +916,57 @@ Section Casting.
     cast n := GZnZ.val p n
   }.
 
-  (* Note: should be aware of typeclass resolution with int/uint since they are just aliases of each other currently *)
-  Global Instance cast_int8_to_uint32 : Cast int8 uint32 := {
-    cast n := Int32.repr (Int8.unsigned n)
-  }.
-  Global Instance cast_int8_to_int32 : Cast int8 int32 := {
-    cast n := Int32.repr (Int8.signed n)
-  }.
-
-  Global Instance cast_uint8_to_uint32 : Cast uint8 uint32 := {
-    cast n := Int32.repr (Int8.unsigned n)
-  }.
-
   (* Global Instance cast_int_to_nat `{WORDSIZE} : Cast int nat := { *)
   (*   cast n := Z.to_nat (signed n) *)
   (* }. *)
+
+  Global Instance cast_int16_to_int8 : Cast int16 int8 := {
+      cast n := Int8.repr (Int16.unsigned n)
+    }.
+
+  Global Instance cast_int32_to_int8 : Cast int32 int8 := {
+      cast n := Int8.repr (Int32.unsigned n)
+    }.
+
+  Global Instance cast_int64_to_int8 : Cast int64 int8 := {
+      cast n := Int8.repr (Int64.unsigned n)
+    }.
+
+   Global Instance cast_int8_to_int16 : Cast int8 int16 := {
+      cast n := Int16.repr (Int8.unsigned n)
+    }.
+
+   Global Instance cast_int32_to_int16 : Cast int32 int16 := {
+       cast n := Int16.repr (Int32.unsigned n)
+     }. 
+
+   Global Instance cast_int64_to_int16 : Cast int64 int16 := {
+       cast n := Int16.repr (Int64.unsigned n)
+     }.
+  
+  Global Instance cast_int8_to_int32 : Cast int8 int32 := {
+      cast n := Int32.repr (Int8.unsigned n)
+    }.
+
+  Global Instance cast_int16_to_int32 : Cast int16 int32 := {
+      cast n := Int32.repr (Int16.unsigned n)
+    }.
+
+  Global Instance cast_int64_to_int32 : Cast int64 int32 := {
+      cast n := Int32.repr (Int64.unsigned n)
+    }.
+ 
+  Global Instance cast_int8_to_int64 : Cast int8 int64 := {
+      cast n := Int64.repr (Int8.unsigned n)
+    }.
+
+  Global Instance cast_int16_to_int64 : Cast int16 int64 := {
+      cast n := Int64.repr (Int16.unsigned n)
+    }.
+
+  Global Instance cast_int32_to_int64 : Cast int32 int64 := {
+      cast n := Int64.repr (Int32.unsigned n)
+    }.
 
   Close Scope hacspec_scope.
 End Casting.

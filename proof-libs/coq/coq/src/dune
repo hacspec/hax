@@ -3,8 +3,10 @@
  (package coq-hacspec)
  (flags -w all)
  (theories
+   Flocq
    compcert
-   Equations
+   QuickChick mathcomp.ssreflect elpi HB ExtLib SimpleIO
+   Coqprime
    )
  ; (libraries <ocaml_libraries>)
  )

@@ -1,11 +1,12 @@
-Require Import Hacspec_Lib MachineIntegers.
+From compcert Require Import Integers.
 From Coq Require Import ZArith.
 Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
-Open Scope hacspec_scope.
 From QuickChick Require Import QuickChick.
 Require Import Coq.Lists.List.
+From Hacspec Require Import Hacspec_Lib.
+Open Scope hacspec_scope.
 
 #[global] Instance show_unit : Show (unit) := Build_Show (unit) (fun _ => "tt"%string).
 Definition g_unit : G (unit) := returnGen tt.
@@ -14,19 +15,19 @@ Definition g_unit : G (unit) := returnGen tt.
 #[global] Instance show_int8 : Show (int8) :=
   Build_Show (int8) (fun x => show (int8_to_nat x)).
 Definition g_int8 : G (int8) :=
-  bindGen (* arbitrary *) (choose (0,1000)) (fun x => returnGen (pub_u8 x)).
+  bindGen (* arbitrary *) (choose (0,1000)) (fun x => returnGen (Int8.repr x)).
 #[global] Instance gen_int8 : Gen (int8) := Build_Gen int8 g_int8.
 
 #[global] Instance show_int32 : Show (int32) :=
   Build_Show (int32) (fun x => show (int32_to_nat x)).
 Definition g_int32 : G (int32) := (* restricted *)
-  bindGen (choose (0,1000)) (fun x => returnGen (pub_u32 x)).
+  bindGen (choose (0,1000)) (fun x => returnGen (Int32.repr x)).
 #[global] Instance gen_int32 : Gen (int32) := Build_Gen int32 g_int32.
 
 #[global] Instance show_int64 : Show (int64) :=
   Build_Show (int64) (fun x => show (int64_to_nat x)).
 Definition g_int64 : G (int64) :=
-  bindGen (* arbitrary *) (choose (0,1000)) (fun x => returnGen (pub_u64 x)).
+  bindGen (* arbitrary *) (choose (0,1000)) (fun x => returnGen (Int64.repr x)).
 #[global] Instance gen_int64 : Gen (int64) := Build_Gen int64 g_int64.
 
 #[global] Instance show_uint_size : Show (uint_size) :=
@@ -72,8 +73,8 @@ Proof.
 Defined.
 Definition g_nseq {A} `{Gen A} n : G (nseq A n). (* (usize *)
    intros.
-   apply (bindGen' (g_listOf_aux (arbitrary : G A) n)).
-   intros l sem.
+   apply (bindGen (g_listOf_aux (arbitrary : G A) n)).
+   intros l.
    apply returnGen.
 
   destruct l.
