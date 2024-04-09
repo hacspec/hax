@@ -304,8 +304,14 @@ functor
     let rec term_to_string (x : AST.term) depth : string * bool =
       match x with
       | AST.UnitTerm -> ("tt", false)
-      | AST.Let { pattern = AST.AscriptionPat (pat, _) | pat; value = bind; value_typ = typ; body = term; _ }
-        ->
+      | AST.Let
+          {
+            pattern = AST.AscriptionPat (pat, _) | pat;
+            value = bind;
+            value_typ = typ;
+            body = term;
+            _;
+          } ->
           (* TODO: propegate type definition *)
           let var_str = pat_to_string pat true depth in
           let expr_str = term_to_string_without_paren bind (depth + 1) in
