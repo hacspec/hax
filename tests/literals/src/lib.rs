@@ -45,6 +45,6 @@ fn casts(x8: u8, x16: u16, x32: u32, x64: u64, xs: usize) {
     let _: i8 = x8 as i8 + x16 as i8 + x32 as i8 + x64 as i8 + xs as i8;
 }
 
-pub fn empty_arraw() {
+pub fn empty_array() {
     let _: &[u8] = &[];
 }

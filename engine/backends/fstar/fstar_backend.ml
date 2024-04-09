@@ -463,7 +463,7 @@ struct
                   | TArray { typ; _ } -> pty e.span typ
                   | _ ->
                       Error.assertion_failure e.span
-                        "Malformed type for arraw literal"
+                        "Malformed type for array literal"
                 in
                 F.mk_e_app prims_list [ inner_typ ]
               in

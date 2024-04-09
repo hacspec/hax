@@ -58,7 +58,7 @@ Definition numeric (_ : unit) : unit :=
   let (_ : int128) := (@repr WORDSIZE128 22222222222222222222) : int128 in
   tt.
 
-Definition empty_arraw (_ : unit) : unit :=
+Definition empty_array (_ : unit) : unit :=
   let (_ : seq int8) := unsize !TODO empty array! : seq int8 in
   tt.
 
