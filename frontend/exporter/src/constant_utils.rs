@@ -58,14 +58,14 @@ pub enum ConstantExprKind {
         def_id: DefId,
         generics: Vec<GenericArg>,
         /// The implementation expressions for every generic bounds
-        /// ```
+        /// ```text
         /// fn foo<T : Bar>(...)
         ///            ^^^
         /// ```
         generics_impls: Vec<ImplExpr>,
         /// If the function is a method of trait `Foo`, `method_impl`
         /// is an implementation of `Foo`
-        method_impl: Option<ImplExpr>
+        method_impl: Option<ImplExpr>,
     },
     Todo(String),
 }
@@ -531,8 +531,13 @@ pub fn const_value_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
                     rustc_middle::ty::TyKind::FnDef(def_id, substs) => {
                         let (def_id, generics, generics_impls, method_impl) =
                             get_function_from_def_id_and_substs(s, *def_id, substs);
-                        
-                        ConstantExprKind::FnPtr{def_id, generics, generics_impls, method_impl}
+
+                        ConstantExprKind::FnPtr {
+                            def_id,
+                            generics,
+                            generics_impls,
+                            method_impl,
+                        }
                     }
                     kind => {
                         fatal!(s[span], "Unexpected:"; {kind})
