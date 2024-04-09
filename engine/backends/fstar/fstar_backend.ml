@@ -802,9 +802,10 @@ struct
               params
         in
         let pat = F.pat @@ F.AST.PatApp (pat, pat_args) in
+        let qualifier = F.AST.(if is_rec then Rec else NoLetQualifier) in
         let impl =
           F.decl ~fsti:false
-          @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, pexpr body) ])
+          @@ F.AST.TopLevelLet (qualifier, [ (pat, pexpr body) ])
         in
         let interface_mode = ctx.interface_mode && not (List.is_empty params) in
         let ty =
@@ -836,9 +837,7 @@ struct
         in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (ty, None)) in
         let full =
-          F.decl
-          @@ F.AST.TopLevelLet
-               ((if is_rec then Rec else NoLetQualifier), [ (pat, pexpr body) ])
+          F.decl @@ F.AST.TopLevelLet (qualifier, [ (pat, pexpr body) ])
         in
 
         let intf = F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) in
