@@ -1220,6 +1220,26 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
         let contents = match macro_invocation_of_span(span, s).map(ExprKind::MacroInvokation) {
             Some(contents) => contents,
             None => match kind {
+                // Introduce intermediate `Cast` from `T` to `U` when casting from a `#[repr(T)]` enum to `U`
+                rustc_middle::thir::ExprKind::Cast { source } if let rustc_middle::ty::TyKind::Adt(def, _) = s.thir().exprs[source].ty.kind() => {
+                    let tcx = s.base().tcx;
+                    let contents = kind.sinto(s);
+                    use crate::rustc_middle::ty::util::IntTypeExt;
+                    let repr_type = tcx.repr_options_of_def(def.did()).discr_type().to_ty(s.base().tcx);
+                    if repr_type == ty {
+                        contents
+                    } else {
+                        ExprKind::Cast {
+                            source: Decorated {
+                                ty: repr_type.sinto(s),
+                                span: span.sinto(s),
+                                contents: Box::new(contents),
+                                hir_id,
+                                attributes: vec![],
+                            }
+                        }
+                    }
+                }
                 rustc_middle::thir::ExprKind::NonHirLiteral { lit, .. } => {
                     let cexpr: ConstantExpr =
                         (ConstantExprKind::Literal(scalar_int_to_constant_literal(s, lit, ty)))
@@ -1739,6 +1759,22 @@ pub struct AdtDef {
     pub variants: IndexVec<VariantIdx, VariantDef>,
     pub flags: AdtFlags,
     pub repr: ReprOptions,
+}
+
+/// Reflects [`rustc_middle::ty::ReprOptions`]
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::ReprOptions, state: S as s)]
+pub struct ReprOptions {
+    pub int: Option<IntegerType>,
+    #[value({
+        use crate::rustc_middle::ty::util::IntTypeExt;
+        self.discr_type().to_ty(s.base().tcx).sinto(s)
+    })]
+    pub typ: Ty,
+    pub align: Option<Align>,
+    pub pack: Option<Align>,
+    pub flags: ReprFlags,
+    pub field_shuffle_seed: u64,
 }
 
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, AdtDef> for rustc_middle::ty::AdtDef<'tcx> {
@@ -2769,8 +2805,19 @@ pub struct Variant<Body: IsBody> {
     pub ident: Ident,
     pub hir_id: HirId,
     pub def_id: GlobalIdent,
+    #[map(x.sinto(&with_owner_id(s.base(), (), (), self.def_id.to_def_id())))]
     pub data: VariantData,
     pub disr_expr: Option<AnonConst<Body>>,
+    #[value({
+        let tcx = s.base().tcx;
+        let variant = tcx
+            .adt_def(s.owner_id())
+            .variants()
+            .into_iter()
+            .find(|v| v.def_id == self.def_id.into()).unwrap();
+        variant.discr.sinto(s)
+    })]
+    pub discr: VariantDiscr,
     pub span: Span,
     #[value(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
     pub attributes: Vec<Attribute>,
@@ -2859,7 +2906,7 @@ pub struct PathSegment {
 
 /// Reflects [`rustc_hir::ItemKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::ItemKind<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::ItemKind<'tcx>, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum ItemKind<Body: IsBody> {
     #[disable_mapping]
@@ -2870,7 +2917,7 @@ pub enum ItemKind<Body: IsBody> {
     Const(Ty, Body),
     #[custom_arm(
             rustc_hir::ItemKind::Fn(sig, generics, body) => {
-                ItemKind::Fn(generics.sinto(tcx), make_fn_def::<Body, _>(sig, body, tcx))
+                ItemKind::Fn(generics.sinto(s), make_fn_def::<Body, _>(sig, body, s))
             }
         )]
     Fn(Generics<Body>, FnDef<Body>),
@@ -2883,7 +2930,15 @@ pub enum ItemKind<Body: IsBody> {
     GlobalAsm(InlineAsm),
     TyAlias(Ty, Generics<Body>),
     OpaqueTy(OpaqueTy<Body>),
-    Enum(EnumDef<Body>, Generics<Body>),
+    Enum(
+        EnumDef<Body>,
+        Generics<Body>,
+        #[value({
+            let tcx = s.base().tcx;
+            tcx.repr_options_of_def(s.owner_id()).sinto(s)
+        })]
+        ReprOptions,
+    ),
     Struct(VariantData, Generics<Body>),
     Union(VariantData, Generics<Body>),
     Trait(

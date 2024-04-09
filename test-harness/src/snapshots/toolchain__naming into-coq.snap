@@ -18,6 +18,7 @@ info:
       stderr: false
       stdout: true
     include_flag: ~
+    backend_options: ~
 ---
 exit = 0
 

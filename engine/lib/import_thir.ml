@@ -194,6 +194,10 @@ let resugar_index_mut (e : expr) : (expr * expr) option =
       Some (x, index)
   | _ -> None
 
+(** Name for the cast function from an ADT to its discriminant *)
+let cast_name_for_type typ_name =
+  Concrete_ident.Create.map_last ~f:(fun s -> s ^ "_cast_to_repr") typ_name
+
 module type EXPR = sig
   val c_expr : Thir.decorated_for__expr_kind -> expr
   val c_ty : Thir.span -> Thir.ty -> ty
@@ -203,6 +207,8 @@ module type EXPR = sig
   val c_trait_item' : Thir.trait_item -> Thir.trait_item_kind -> trait_item'
   val c_trait_ref : Thir.span -> Thir.trait_ref -> trait_goal
   val c_predicate_kind : Thir.span -> Thir.predicate_kind -> trait_goal option
+  val c_impl_expr : Thir.span -> Thir.impl_expr -> impl_expr
+  val c_clause : Thir.span -> Thir.clause -> impl_ident option
 end
 
 (* BinOp to [core::ops::*] overloaded functions *)
@@ -416,11 +422,20 @@ end) : EXPR = struct
              [ c_expr arg ]
              span typ)
             .e
-      | Cast { source } ->
+      | Cast { source } -> (
           let source_type = c_ty source.span source.ty in
-          call
-            (mk_global ([ source_type ] ->. typ) @@ `Primitive Cast)
-            [ source ]
+          match source_type with
+          (* Each inductive defines a cast function *)
+          | TApp { ident = `Concrete ident; _ } ->
+              (U.call'
+                 (`Concrete (cast_name_for_type ident))
+                 [ c_expr source ]
+                 span typ)
+                .e
+          | _ ->
+              call
+                (mk_global ([ source_type ] ->. typ) @@ `Primitive Cast)
+                [ source ])
       | Use { source } -> (c_expr source).e
       | NeverToAny { source } ->
           (U.call Rust_primitives__hax__never_to_any [ c_expr source ] span typ)
@@ -644,8 +659,7 @@ end) : EXPR = struct
       | StaticRef { def_id = id; _ } -> GlobalVar (def_id Value id)
       | PlaceTypeAscription _ ->
           unimplemented [ e.span ] "expression PlaceTypeAscription"
-      | ValueTypeAscription _ ->
-          unimplemented [ e.span ] "expression ValueTypeAscription"
+      | ValueTypeAscription { source; _ } -> (c_expr source).e
       | ZstLiteral _ -> unimplemented [ e.span ] "expression ZstLiteral"
       | Yield _ -> unimplemented [ e.span ] "expression Yield"
       | Todo payload -> unimplemented [ e.span ] ("expression Todo\n" ^ payload)
@@ -724,6 +738,7 @@ end) : EXPR = struct
           | Some v -> (Int (v, Signed ty), true)
           | None -> (Int (v, Signed ty), false))
       | Int (Uint (v, ty)) -> (Int (v, Unsigned ty), false)
+      | Str (v, style) -> (Str (v, style), false)
       | ByteStr (v, style) -> (ByteStr (v, style), false)
     and constant_field_expr ({ field; value } : Thir.constant_field_expr) :
         Thir.field_expr =
@@ -996,14 +1011,17 @@ end) : EXPR = struct
     let attrs = c_attrs param.attributes in
     { ident; span; attrs; kind }
 
-  let c_predicate_kind' span (p : Thir.predicate_kind) : impl_ident option =
-    match p with
-    | Clause
-        { kind = Trait { is_positive = true; is_const = _; trait_ref }; id } ->
+  let c_clause span (p : Thir.clause) : impl_ident option =
+    let ({ kind; id } : Thir.clause) = p in
+    match kind with
+    | Trait { is_positive = true; is_const = _; trait_ref } ->
         let args = List.map ~f:(c_generic_value span) trait_ref.generic_args in
         let trait = Concrete_ident.of_def_id Trait trait_ref.def_id in
         Some { goal = { trait; args }; name = id }
     | _ -> None
+
+  let c_predicate_kind' span (p : Thir.predicate_kind) : impl_ident option =
+    match p with Clause clause -> c_clause span clause | _ -> None
 
   let c_predicate_kind span (p : Thir.predicate_kind) : trait_goal option =
     c_predicate_kind' span p |> Option.map ~f:(fun (x : impl_ident) -> x.goal)
@@ -1111,6 +1129,102 @@ let should_skip (attrs : Thir.item_attributes) =
   let attrs = attrs.attributes @ attrs.parent_attributes in
   is_hax_skip attrs || is_automatically_derived attrs
 
+(** Converts a generic parameter to a generic value. This assumes the
+parameter is bound. *)
+let generic_param_to_value ({ ident; kind; span; _ } : generic_param) :
+    generic_value =
+  match kind with
+  | GPLifetime { witness } ->
+      GLifetime { lt = [%show: local_ident] ident; witness }
+  | GPType _ -> GType (TParam ident)
+  | GPConst { typ } -> GConst { e = LocalVar ident; typ; span }
+
+type discriminant_expr =
+  | Lit of Int64.t
+  | Exp of expr  (** Helper type for [cast_of_enum]. *)
+
+(** Generate a cast function from an inductive to its represantant type. *)
+let cast_of_enum typ_name generics typ thir_span
+    (variants : (variant * Types.variant_for__decorated_for__expr_kind) list) :
+    item =
+  let self =
+    TApp
+      {
+        ident = `Concrete typ_name;
+        args = List.map ~f:generic_param_to_value generics.params;
+      }
+  in
+  let span = Span.of_thir thir_span in
+  let init = Lit (Int64.of_int 0) in
+  let to_expr (n : Int64.t) : expr =
+    match typ with
+    | TInt kind ->
+        let value = Int64.to_string n in
+        {
+          e = Literal (Int { value; negative = Int64.is_negative n; kind });
+          span;
+          typ;
+        }
+    | typ ->
+        assertion_failure [ thir_span ]
+        @@ "disc_literal_to_expr: got repr type "
+        ^ [%show: ty] typ
+  in
+  let arms =
+    List.folding_map variants ~init ~f:(fun acc (variant, thir_variant) ->
+        let pat =
+          PConstruct
+            {
+              is_record = variant.is_record;
+              is_struct = false;
+              args =
+                List.map
+                  ~f:(fun (cid, typ, _) ->
+                    { field = `Concrete cid; pat = { p = PWild; typ; span } })
+                  variant.arguments;
+              name = `Concrete variant.name;
+            }
+        in
+        let pat = { p = pat; typ = self; span } in
+        match (acc, thir_variant.discr) with
+        | Lit n, Relative m ->
+            let acc = Lit Int64.(n + m) in
+            (acc, (pat, acc))
+        | _, Explicit did ->
+            let acc = Exp { e = GlobalVar (def_id Value did); span; typ } in
+            (acc, (pat, acc))
+        | Exp e, Relative n ->
+            let acc =
+              Exp (U.call Core__ops__arith__Add__add [ e; to_expr n ] span typ)
+            in
+            (Exp e, (pat, acc)))
+    |> List.map ~f:(Fn.id *** function Exp e -> e | Lit n -> to_expr n)
+    |> List.map ~f:(fun (arm_pat, body) -> { arm = { arm_pat; body }; span })
+  in
+  let scrutinee_var =
+    Local_ident.{ name = "x"; id = Local_ident.mk_id Expr (-1) }
+  in
+  let scrutinee = { e = LocalVar scrutinee_var; typ = self; span } in
+  let ident = cast_name_for_type typ_name in
+  let v =
+    Fn
+      {
+        name = ident;
+        generics;
+        body = { e = Match { scrutinee; arms }; typ; span };
+        params =
+          [
+            {
+              pat = U.make_var_pat scrutinee_var self span;
+              typ = self;
+              typ_span = None;
+              attrs = [];
+            };
+          ];
+      }
+  in
+  { v; span; ident; attrs = [] }
+
 let rec c_item ~ident (item : Thir.item) : item list =
   try c_item_unwrapped ~ident item
   with Diagnostics.SpanFreeError.Exn payload ->
@@ -1164,14 +1278,37 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
                body = c_expr body;
                params;
              }
-    | Enum (variants, generics) ->
+    | Enum (variants, generics, repr) ->
         let def_id = Option.value_exn item.def_id in
         let generics = c_generics generics in
         let is_struct = false in
+        let kind = Concrete_ident.Kind.Constructor { is_struct } in
+        let discs =
+          (* Each variant might introduce a anonymous constant defining its discriminant integer  *)
+          List.filter_map ~f:(fun v -> v.disr_expr) variants
+          |> List.map ~f:(fun Types.{ def_id; body; _ } ->
+                 let name = Concrete_ident.of_def_id kind def_id in
+                 let generics = { params = []; constraints = [] } in
+                 let body = c_expr body in
+                 {
+                   v = Fn { name; generics; body; params = [] };
+                   span;
+                   ident = name;
+                   attrs = [];
+                 })
+        in
+        let is_primitive =
+          List.for_all
+            ~f:(fun { data; _ } ->
+              match data with
+              | Unit _ | Tuple ([], _, _) | Struct ([], _) -> true
+              | _ -> false)
+            variants
+        in
         let variants =
-          let kind = Concrete_ident.Kind.Constructor { is_struct } in
           List.map
-            ~f:(fun { data; def_id = variant_id; attributes; _ } ->
+            ~f:
+              (fun ({ data; def_id = variant_id; attributes; _ } as original) ->
               let is_record = [%matches? Types.Struct (_ :: _, _)] data in
               let name = Concrete_ident.of_def_id kind variant_id in
               let arguments =
@@ -1186,11 +1323,19 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
                 | Unit _ -> []
               in
               let attrs = c_attrs attributes in
-              { name; arguments; is_record; attrs })
+              ({ name; arguments; is_record; attrs }, original))
             variants
         in
         let name = Concrete_ident.of_def_id Type def_id in
-        mk @@ Type { name; generics; variants; is_struct }
+        let cast_fun =
+          cast_of_enum name generics (c_ty item.span repr.typ) item.span
+            variants
+        in
+        let variants, _ = List.unzip variants in
+        let result =
+          mk_one (Type { name; generics; variants; is_struct }) :: discs
+        in
+        if is_primitive then cast_fun :: result else result
     | Struct (v, generics) ->
         let generics = c_generics generics in
         let def_id = Option.value_exn item.def_id in
@@ -1303,6 +1448,7 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
           self_ty;
           items;
           unsafety = Normal;
+          parent_bounds;
           _;
         } ->
         let items =
@@ -1342,12 +1488,28 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
                                }
                          | Const (_ty, e) ->
                              IIFn { body = c_expr e; params = [] }
-                         | Type { ty; parent_bounds = _ } ->
-                             IIType (c_ty item.span ty));
+                         | Type { ty; parent_bounds } ->
+                             IIType
+                               {
+                                 typ = c_ty item.span ty;
+                                 parent_bounds =
+                                   List.filter_map
+                                     ~f:(fun (clause, impl_expr, span) ->
+                                       let* trait_goal = c_clause span clause in
+                                       Some
+                                         (c_impl_expr span impl_expr, trait_goal))
+                                     parent_bounds;
+                               });
                        ii_ident;
                        ii_attrs = c_item_attrs item.attributes;
                      })
                    items;
+               parent_bounds =
+                 List.filter_map
+                   ~f:(fun (clause, impl_expr, span) ->
+                     let* trait_goal = c_clause span clause in
+                     Some (c_impl_expr span impl_expr, trait_goal))
+                   parent_bounds;
              }
     | Use ({ span = _; res; segments; rename }, _) ->
         let v =

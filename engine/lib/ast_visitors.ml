@@ -1,4 +1,6 @@
 open Ast
+open! Utils
+open Base
 
 module Make =
 functor
@@ -644,7 +646,12 @@ functor
               let items =
                 self#visit_list self#visit_impl_item env record_payload.items
               in
-              Impl { generics; self_ty; of_trait; items }
+              let parent_bounds =
+                self#visit_list
+                  (self#visit_tuple2 self#visit_impl_expr self#visit_impl_ident)
+                  env record_payload.parent_bounds
+              in
+              Impl { generics; self_ty; of_trait; items; parent_bounds }
           | Alias record_payload ->
               let name = self#visit_concrete_ident env record_payload.name in
               let item = self#visit_concrete_ident env record_payload.item in
@@ -675,9 +682,14 @@ functor
 
         method visit_impl_item' (env : 'env) (this : impl_item') : impl_item' =
           match this with
-          | IIType x0 ->
-              let x0 = self#visit_ty env x0 in
-              IIType x0
+          | IIType record_payload ->
+              let typ = self#visit_ty env record_payload.typ in
+              let parent_bounds =
+                self#visit_list
+                  (self#visit_tuple2 self#visit_impl_expr self#visit_impl_ident)
+                  env record_payload.parent_bounds
+              in
+              IIType { typ; parent_bounds }
           | IIFn record_payload ->
               let body = self#visit_expr env record_payload.body in
               let params =
@@ -719,7 +731,7 @@ functor
 
         method visit_list : 'a. ('env -> 'a -> 'a) -> 'env -> 'a list -> 'a list
             =
-          fun v env this -> Base.List.map ~f:(fun x -> v env x) this
+          fun v env -> Base.List.map ~f:(v env)
 
         method visit_option
             : 'a. ('env -> 'a -> 'a) -> 'env -> 'a option -> 'a option =
@@ -1746,7 +1758,14 @@ functor
                 self#visit_list self#visit_impl_item env record_payload.items
               in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
-              (Impl { generics; self_ty; of_trait; items }, reduce_acc)
+              let parent_bounds, reduce_acc' =
+                self#visit_list
+                  (self#visit_tuple2 self#visit_impl_expr self#visit_impl_ident)
+                  env record_payload.parent_bounds
+              in
+              let reduce_acc = self#plus reduce_acc reduce_acc' in
+              ( Impl { generics; self_ty; of_trait; items; parent_bounds },
+                reduce_acc )
           | Alias record_payload ->
               let name, reduce_acc =
                 self#visit_concrete_ident env record_payload.name
@@ -1790,9 +1809,15 @@ functor
         method visit_impl_item' (env : 'env) (this : impl_item')
             : impl_item' * 'acc =
           match this with
-          | IIType x0 ->
-              let x0, reduce_acc = self#visit_ty env x0 in
-              (IIType x0, reduce_acc)
+          | IIType record_payload ->
+              let typ, reduce_acc = self#visit_ty env record_payload.typ in
+              let parent_bounds, reduce_acc' =
+                self#visit_list
+                  (self#visit_tuple2 self#visit_impl_expr self#visit_impl_ident)
+                  env record_payload.parent_bounds
+              in
+              let reduce_acc = self#plus reduce_acc reduce_acc' in
+              (IIType { typ; parent_bounds }, reduce_acc)
           | IIFn record_payload ->
               let body, reduce_acc = self#visit_expr env record_payload.body in
               let params, reduce_acc' =
@@ -1860,15 +1885,11 @@ functor
         method visit_list
             : 'a. ('env -> 'a -> 'a * 'acc) -> 'env -> 'a list -> 'a list * 'acc
             =
-          fun v env this ->
-            let acc = ref self#zero in
-            ( Base.List.map
-                ~f:(fun x ->
-                  let x, acc' = v env x in
-                  acc := self#plus !acc acc';
-                  x)
-                this,
-              !acc )
+          fun v env ->
+            Base.List.fold_map ~init:self#zero ~f:(fun acc x ->
+                let x, acc' = v env x in
+                (self#plus acc acc', x))
+            >> swap
 
         method visit_option
             : 'a.
@@ -2824,6 +2845,12 @@ functor
                 self#visit_list self#visit_impl_item env record_payload.items
               in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
+              let reduce_acc' =
+                self#visit_list
+                  (self#visit_tuple2 self#visit_impl_expr self#visit_impl_ident)
+                  env record_payload.parent_bounds
+              in
+              let reduce_acc = self#plus reduce_acc reduce_acc' in
               reduce_acc
           | Alias record_payload ->
               let reduce_acc =
@@ -2864,8 +2891,14 @@ functor
 
         method visit_impl_item' (env : 'env) (this : impl_item') : 'acc =
           match this with
-          | IIType x0 ->
-              let reduce_acc = self#visit_ty env x0 in
+          | IIType record_payload ->
+              let reduce_acc = self#visit_ty env record_payload.typ in
+              let reduce_acc' =
+                self#visit_list
+                  (self#visit_tuple2 self#visit_impl_expr self#visit_impl_ident)
+                  env record_payload.parent_bounds
+              in
+              let reduce_acc = self#plus reduce_acc reduce_acc' in
               reduce_acc
           | IIFn record_payload ->
               let reduce_acc = self#visit_expr env record_payload.body in
@@ -2911,16 +2944,9 @@ functor
         method visit_list : 'a. ('env -> 'a -> 'acc) -> 'env -> 'a list -> 'acc
             =
           fun v env this ->
-            let acc = ref self#zero in
-            let _ =
-              Base.List.map
-                ~f:(fun x ->
-                  let acc' = v env x in
-                  acc := self#plus !acc acc';
-                  ())
-                this
-            in
-            !acc
+            Base.List.fold ~init:self#zero
+              ~f:(fun acc -> v env >> self#plus acc)
+              this
 
         method visit_option
             : 'a. ('env -> 'a -> 'acc) -> 'env -> 'a option -> 'acc =

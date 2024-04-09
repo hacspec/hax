@@ -390,7 +390,7 @@ impl Callbacks for ExtractionCallbacks {
                     }
                 }
                 ExporterCommand::Backend(backend) => {
-                    if matches!(backend.backend, Backend::Easycrypt | Backend::ProVerif) {
+                    if matches!(backend.backend, Backend::Easycrypt | Backend::ProVerif(..)) {
                         eprintln!(
                             "⚠️ Warning: Experimental backend \"{}\" is work in progress.",
                             backend.backend

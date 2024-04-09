@@ -60,6 +60,23 @@ module Make (F : Features.T) = struct
           Some e
       | _ -> None
 
+    let closure (e : expr) : (pat list * expr) option =
+      match e.e with
+      | Closure { params; body; _ } -> Some (params, body)
+      | _ -> None
+
+    let app (e : expr) :
+        (expr * expr list * generic_value list * impl_expr option) option =
+      match e.e with
+      | App { f; args; generic_args; impl } -> Some (f, args, generic_args, impl)
+      | _ -> None
+
+    let pbinding_simple (p : pat) : (local_ident * ty) option =
+      match p.p with
+      | PBinding { mut = Immutable; mode = _; var; typ; subpat = None } ->
+          Some (var, typ)
+      | _ -> None
+
     let concrete_app1 (f : Concrete_ident.name) (e : expr) : expr option =
       match e.e with
       | App
@@ -230,6 +247,23 @@ module Make (F : Features.T) = struct
                 }
           | _ -> super#visit_item' () item'
       end
+
+    let replace_local_variables (map : (local_ident, expr, _) Map.t) =
+      object
+        inherit [_] Visitors.map as super
+
+        method! visit_expr () e =
+          match e.e with
+          | LocalVar var -> Map.find map var |> Option.value ~default:e
+          | _ -> super#visit_expr () e
+      end
+
+    (** [replace_local_variable var replacement] returns a visitor
+      that maps any type of the AST replacing every occurence of the
+      expression [LocalVar var] by [replacement]. *)
+    let replace_local_variable (var : local_ident) (replacement : expr) =
+      replace_local_variables
+        (Map.of_alist_exn (module Local_ident) [ (var, replacement) ])
 
     let rename_local_idents (f : local_ident -> local_ident) =
       object
@@ -643,7 +677,21 @@ module Make (F : Features.T) = struct
         e
     | _ -> e
 
-  (* let rec remove_empty_tap *)
+  (** See [beta_reduce_closure]'s documentation. *)
+  let beta_reduce_closure_opt (e : expr) : expr option =
+    let* f, args, _, _ = Expect.app e in
+    let* pats, body = Expect.closure f in
+    let* vars = List.map ~f:Expect.pbinding_simple pats |> sequence in
+    let vars = List.map ~f:fst vars in
+    let replacements =
+      List.zip_exn vars args |> Map.of_alist_exn (module Local_ident)
+    in
+    Some ((Mappers.replace_local_variables replacements)#visit_expr () body)
+
+  (** Reduces a [(|x1, ..., xN| body)(e1, ..., eN)] to [body[x1/e1, ..., xN/eN]].
+        This assumes the arities are right: [(|x, y| ...)(e1)]. *)
+  let beta_reduce_closure (e : expr) : expr =
+    beta_reduce_closure_opt e |> Option.value ~default:e
 
   let is_unit_typ : ty -> bool =
     remove_tuple1 >> [%matches? TApp { ident = `TupleType 0; _ }]

@@ -426,6 +426,16 @@ pub fn super_predicate_to_clauses_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
     let impl_trait_ref = tcx
         .impl_trait_ref(impl_did)
         .map(|binder| rustc_middle::ty::Binder::dummy(binder.subst_identity()))?;
+    let original_clause_id = {
+        // We don't want the id of the substituted clause id, but the
+        // original clause id (with, i.e., `Self`)
+        let rustc_middle::ty::PredicateKind::Clause(clause) = pred.kind().skip_binder() else {
+            None?
+        };
+        let s = &with_owner_id(s.base(), (), (), impl_trait_ref.def_id());
+        use rustc_middle::ty::ToPredicate;
+        clause_id_of_predicate(s, clause.clone().to_predicate(s.base().tcx))
+    };
     let pred = pred.subst_supertrait(tcx, &impl_trait_ref);
     // TODO: use `let clause = pred.as_clause()?;` when upgrading rustc
     let rustc_middle::ty::PredicateKind::Clause(clause) = pred.kind().skip_binder() else {
@@ -434,7 +444,9 @@ pub fn super_predicate_to_clauses_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
     let impl_expr = pred
         .to_opt_poly_trait_pred()?
         .impl_expr(s, get_param_env(s));
-    Some((clause.sinto(s), impl_expr, span.sinto(s)))
+    let mut clause: Clause = clause.sinto(s);
+    clause.id = original_clause_id;
+    Some((clause, impl_expr, span.sinto(s)))
 }
 
 /// Crafts a unique identifier for a predicate by hashing it. The hash

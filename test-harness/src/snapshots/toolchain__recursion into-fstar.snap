@@ -1,0 +1,39 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: fstar
+  info:
+    name: recursion
+    manifest: recursion/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: true
+      stdout: true
+    include_flag: ~
+    backend_options: ~
+---
+exit = 0
+stderr = '''
+Compiling recursion v0.1.0 (WORKSPACE_ROOT/recursion)
+    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+
+[stdout]
+diagnostics = []
+
+[stdout.files]
+"Recursion.fst" = '''
+module Recursion
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let rec f (n: u8) : u8 = if n =. 0uy then 0uy else n +! (f (n -! 1uy <: u8) <: u8)
+'''

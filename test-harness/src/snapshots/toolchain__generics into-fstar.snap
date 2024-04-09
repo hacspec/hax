@@ -18,6 +18,7 @@ info:
       stderr: true
       stdout: true
     include_flag: ~
+    backend_options: ~
 ---
 exit = 0
 stderr = '''
@@ -34,24 +35,25 @@ module Generics
 open Core
 open FStar.Mul
 
-let impl__Bar__inherent_impl_generics
-      (#v_T: Type)
-      (v_N: usize)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: Core.Marker.t_Sized v_T)
-      (x: t_Array v_T v_N)
-    : Prims.unit = ()
+let impl__Bar__inherent_impl_generics (#v_T: Type) (v_N: usize) (x: t_Array v_T v_N) : Prims.unit =
+  ()
 
-class t_Foo (v_Self: Type) = { f_const_add:v_N: usize -> v_Self -> usize }
+class t_Foo (v_Self: Type) = {
+  f_const_add_pre:v_N: usize -> v_Self -> bool;
+  f_const_add_post:v_N: usize -> v_Self -> usize -> bool;
+  f_const_add:v_N: usize -> x0: v_Self
+    -> Prims.Pure usize (f_const_add_pre v_N x0) (fun result -> f_const_add_post v_N x0 result)
+}
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_Foo_for_usize: t_Foo usize =
-  { f_const_add = fun (v_N: usize) (self: usize) -> self +! v_N }
+  {
+    f_const_add_pre = (fun (v_N: usize) (self: usize) -> true);
+    f_const_add_post = (fun (v_N: usize) (self: usize) (out: usize) -> true);
+    f_const_add = fun (v_N: usize) (self: usize) -> self +! v_N
+  }
 
-let dup
-      (#v_T: Type)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: Core.Marker.t_Sized v_T)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Clone.t_Clone v_T)
-      (x: v_T)
+let dup (#v_T: Type) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Clone.t_Clone v_T) (x: v_T)
     : (v_T & v_T) = Core.Clone.f_clone x, Core.Clone.f_clone x <: (v_T & v_T)
 
 let f (v_N x: usize) : usize = (v_N +! v_N <: usize) +! x
@@ -61,7 +63,6 @@ let call_f (_: Prims.unit) : usize = (f (sz 10) (sz 3) <: usize) +! sz 3
 let g
       (v_N: usize)
       (#v_T: Type)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: Core.Marker.t_Sized v_T)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Convert.t_Into v_T (t_Array usize v_N))
       (arr: v_T)
     : usize =
@@ -80,7 +81,7 @@ let call_g (_: Prims.unit) : usize =
   (g (sz 3)
       (let list = [sz 42; sz 3; sz 49] in
         FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 3);
-        Rust_primitives.Hax.array_of_list list)
+        Rust_primitives.Hax.array_of_list 3 list)
     <:
     usize) +!
   sz 3
@@ -107,7 +108,6 @@ let foo (v_LEN: usize) (arr: t_Array usize v_LEN) : usize =
 let repeat
       (v_LEN: usize)
       (#v_T: Type)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: Core.Marker.t_Sized v_T)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Marker.t_Copy v_T)
       (x: v_T)
     : t_Array v_T v_LEN = Rust_primitives.Hax.repeat x v_LEN

@@ -39,3 +39,88 @@ impl Foo {
     #[hax::exclude]
     fn h(&self) {}
 }
+
+#[hax::attributes]
+mod refined_arithmetic {
+    use core::ops::{Add, Mul};
+    use hax_lib_macros as hax;
+
+    struct Foo(u8);
+
+    impl Add for Foo {
+        type Output = Foo;
+        #[requires(self.0 < 255 - rhs.0)]
+        fn add(self, rhs: Foo) -> Foo {
+            Foo(self.0 + rhs.0)
+        }
+    }
+
+    impl Mul for Foo {
+        type Output = Foo;
+        #[requires(rhs.0 == 0 || self.0 < 255 / rhs.0)]
+        fn mul(self, rhs: Foo) -> Foo {
+            Foo(self.0 * rhs.0)
+        }
+    }
+}
+
+mod refined_indexes {
+    use hax_lib_macros as hax;
+    const MAX: usize = 10;
+    struct MyArray(pub [u8; MAX]);
+
+    #[hax::attributes]
+    impl std::ops::Index<usize> for MyArray {
+        type Output = u8;
+        #[requires(index < MAX)]
+        fn index(&self, index: usize) -> &Self::Output {
+            &self[index]
+        }
+    }
+
+    #[hax::exclude]
+    impl std::ops::IndexMut<usize> for MyArray {
+        fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+            &mut self[index]
+        }
+    }
+
+    fn mutation_example(
+        use_generic_update_at: &mut MyArray,
+        use_specialized_update_at: &mut [u8],
+        specialized_as_well: &mut Vec<u8>,
+    ) {
+        use_generic_update_at[2] = 0;
+        use_specialized_update_at[2] = 0;
+        specialized_as_well[2] = 0;
+    }
+}
+mod newtype_pattern {
+    use hax_lib_macros as hax;
+
+    const MAX: usize = 10;
+    #[hax::attributes]
+    struct SafeIndex {
+        #[refine(i < MAX)]
+        i: usize,
+    }
+    impl SafeIndex {
+        fn new(i: usize) -> Option<Self> {
+            if i < MAX {
+                Some(Self { i })
+            } else {
+                None
+            }
+        }
+        fn as_usize(&self) -> usize {
+            self.i
+        }
+    }
+
+    impl<T> std::ops::Index<SafeIndex> for [T; MAX] {
+        type Output = T;
+        fn index(&self, index: SafeIndex) -> &Self::Output {
+            &self[index.i]
+        }
+    }
+}
