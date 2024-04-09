@@ -57,6 +57,7 @@ module RejectNotEC (FA : Features.T) = struct
         let block = reject
         let for_loop = reject
         let while_loop = reject
+        let quote = reject
         let construct_base _ _ = Features.On.construct_base
         let for_index_loop _ _ = Features.On.for_index_loop
 

@@ -11,6 +11,7 @@ include
       include On.Slice
       include On.Macro
       include On.Construct_base
+      include On.Quote
     end)
     (struct
       let backend = Diagnostics.Backend.FStar
@@ -52,6 +53,7 @@ struct
         include Features.SUBTYPE.On.Construct_base
         include Features.SUBTYPE.On.Slice
         include Features.SUBTYPE.On.Macro
+        include Features.SUBTYPE.On.Quote
       end)
 
   let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
@@ -84,6 +86,9 @@ let doc_to_string : PPrint.document -> string =
 
 let term_to_string : F.AST.term -> string =
   FStar_Parser_ToDocument.term_to_document >> doc_to_string
+
+let pat_to_string : F.AST.pattern -> string =
+  FStar_Parser_ToDocument.pat_to_document >> doc_to_string
 
 let decl_to_string : F.AST.decl -> string =
   FStar_Parser_ToDocument.decl_to_document >> doc_to_string
@@ -568,6 +573,14 @@ struct
              kind = UnsupportedMacro { id = [%show: global_ident] macro };
              span = e.span;
            }
+    | Quote { contents; _ } ->
+        List.map
+          ~f:(function
+            | `Verbatim code -> code
+            | `Expr e -> pexpr e |> term_to_string
+            | `Pat p -> ppat p |> pat_to_string)
+          contents
+        |> String.concat |> F.term_of_string
     | _ -> .
 
   and parm { arm = { arm_pat; body } } = (ppat arm_pat, None, pexpr body)
@@ -1359,6 +1372,7 @@ module DepGraphR = Dependencies.Make (Features.Rust)
 module TransformToInputLanguage =
   [%functor_application
   Phases.Reject.RawOrMutPointer(Features.Rust)
+  |> Phases.Transform_hax_lib_inline
   |> Phases.Drop_sized_trait
   |> Phases.Simplify_question_marks
   |> Phases.And_mut_defsite

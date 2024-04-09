@@ -39,6 +39,7 @@ module SubtypeToInputLanguage
              and type monadic_action = Features.Off.monadic_action
              and type arbitrary_lhs = Features.Off.arbitrary_lhs
              and type nontrivial_lhs = Features.Off.nontrivial_lhs
+             and type quote = Features.Off.quote
              and type block = Features.Off.block) =
 struct
   module FB = InputLanguage

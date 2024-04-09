@@ -434,6 +434,17 @@ functor
               in
               let argument = self#visit_expr env record_payload.argument in
               EffectAction { action; argument }
+          | Quote { contents; witness } ->
+              let contents =
+                self#visit_list
+                  (fun env -> function
+                    | `Verbatim code -> `Verbatim code
+                    | `Expr e -> `Expr (self#visit_expr env e)
+                    | `Pat p -> `Pat (self#visit_pat env p))
+                  env contents
+              in
+              let witness = self#visit_feature_quote env witness in
+              Quote { contents; witness }
 
         method visit_expr (env : 'env) (this : expr) : expr =
           let e = self#visit_expr' env this.e in
@@ -863,6 +874,8 @@ functor
         method visit_feature_nontrivial_lhs
             : 'env -> F.nontrivial_lhs -> F.nontrivial_lhs =
           fun _ x -> x
+
+        method visit_feature_quote : 'env -> F.quote -> F.quote = fun _ x -> x
       end
 
     class virtual ['self] mapreduce =
@@ -1448,6 +1461,22 @@ functor
               in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
               (EffectAction { action; argument }, reduce_acc)
+          | Quote { contents; witness } ->
+              let list, reduce_acc =
+                self#visit_list
+                  (fun env -> function
+                    | `Verbatim code -> (`Verbatim code, self#zero)
+                    | `Expr e ->
+                        let e, acc = self#visit_expr env e in
+                        (`Expr e, acc)
+                    | `Pat p ->
+                        let p, acc = self#visit_pat env p in
+                        (`Pat p, acc))
+                  env contents
+              in
+              let witness, reduce_acc' = self#visit_feature_quote env witness in
+              let reduce_acc = self#plus reduce_acc reduce_acc' in
+              (Quote { contents; witness }, reduce_acc)
 
         method visit_expr (env : 'env) (this : expr) : expr * 'acc =
           let e, reduce_acc = self#visit_expr' env this.e in
@@ -2061,6 +2090,9 @@ functor
         method visit_feature_nontrivial_lhs
             : 'env -> F.nontrivial_lhs -> F.nontrivial_lhs * 'acc =
           fun _ x -> (x, self#zero)
+
+        method visit_feature_quote : 'env -> F.quote -> F.quote * 'acc =
+          fun _ x -> (x, self#zero)
       end
 
     class virtual ['self] reduce =
@@ -2568,6 +2600,18 @@ functor
                 self#visit_feature_monadic_action env record_payload.action
               in
               let reduce_acc' = self#visit_expr env record_payload.argument in
+              let reduce_acc = self#plus reduce_acc reduce_acc' in
+              reduce_acc
+          | Quote { contents; witness } ->
+              let reduce_acc =
+                self#visit_list
+                  (fun env -> function
+                    | `Verbatim code -> self#zero
+                    | `Expr e -> self#visit_expr env e
+                    | `Pat p -> self#visit_pat env p)
+                  env contents
+              in
+              let reduce_acc' = self#visit_feature_quote env witness in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
               reduce_acc
 
@@ -3085,6 +3129,9 @@ functor
           fun _ _ -> self#zero
 
         method visit_feature_nontrivial_lhs : 'env -> F.nontrivial_lhs -> 'acc =
+          fun _ _ -> self#zero
+
+        method visit_feature_quote : 'env -> F.quote -> 'acc =
           fun _ _ -> self#zero
       end
   end
