@@ -12,10 +12,10 @@ pub enum ConstantInt {
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub enum ConstantLiteral {
-    // TODO: add Str, etc.
     Bool(bool),
     Char(char),
     Int(ConstantInt),
+    Str(String, StrStyle),
     ByteStr(Vec<u8>, StrStyle),
 }
 
@@ -54,7 +54,19 @@ pub enum ConstantExprKind {
     ConstRef {
         id: ParamConst,
     },
-    FnPtr(DefId, Vec<GenericArg>, Vec<ImplExpr>, Option<ImplExpr>),
+    FnPtr {
+        def_id: DefId,
+        generics: Vec<GenericArg>,
+        /// The implementation expressions for every generic bounds
+        /// ```
+        /// fn foo<T : Bar>(...)
+        ///            ^^^
+        /// ```
+        generics_impls: Vec<ImplExpr>,
+        /// If the function is a method of trait `Foo`, `method_impl`
+        /// is an implementation of `Foo`
+        method_impl: Option<ImplExpr>
+    },
     Todo(String),
 }
 
@@ -66,6 +78,10 @@ pub struct ConstantFieldExpr {
     pub value: ConstantExpr,
 }
 
+/// Rustc has different representation for constants: one for MIR
+/// ([`rustc_middle::mir::ConstantKind`]), one for the type system
+/// ([`rustc_middle::ty::ConstKind`]). For simplicity hax maps those
+/// two construct to one same `ConstantExpr` type.
 pub type ConstantExpr = Decorated<ConstantExprKind>;
 
 impl From<ConstantFieldExpr> for FieldExpr {
@@ -73,6 +89,18 @@ impl From<ConstantFieldExpr> for FieldExpr {
         FieldExpr {
             value: c.value.into(),
             field: c.field,
+        }
+    }
+}
+
+impl ConstantLiteral {
+    /// Rustc always represents string constants as `&[u8]`, but this
+    /// is not nice to consume. This associated function interpret
+    /// bytes as an unicode string, and as a byte string otherwise.
+    fn byte_str(bytes: Vec<u8>, style: StrStyle) -> Self {
+        match String::from_utf8(bytes.clone()) {
+            Ok(s) => Self::Str(s, style),
+            Err(_) => Self::ByteStr(bytes, style),
         }
     }
 }
@@ -98,6 +126,7 @@ impl From<ConstantExpr> for Expr {
                         }
                     }
                     ByteStr(raw, str_style) => LitKind::ByteStr(raw, str_style),
+                    Str(raw, str_style) => LitKind::Str(raw, str_style),
                 };
                 let span = c.span.clone();
                 let lit = Spanned { span, node };
@@ -201,27 +230,42 @@ pub(crate) fn scalar_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
                     scalar
                 )
             });
-            let provenance = tcx.global_alloc(pointer.provenance.s_unwrap(s));
             use rustc_middle::mir::interpret::GlobalAlloc;
-            let GlobalAlloc::Static(did) = provenance else {
-                fatal!(
+            let contents = match tcx.global_alloc(pointer.provenance.s_unwrap(s)) {
+                GlobalAlloc::Static(did) => ConstantExprKind::GlobalName { id: did.sinto(s) },
+                GlobalAlloc::Memory(alloc) => {
+                    let values = alloc.inner().get_bytes_unchecked(rustc_middle::mir::interpret::AllocRange {
+                            start: rustc_abi::Size::from_bits(0),
+                            size: rustc_abi::Size::from_bits(alloc.inner().len() * 8)
+                        });
+                    ConstantExprKind::Literal (ConstantLiteral::ByteStr(values.iter().copied().collect(), StrStyle::Cooked))
+                },
+                provenance => fatal!(
                     s[span],
-                    "Expected provenance to be GlobalAlloc::Static, got {:#?} instead",
+                    "Expected provenance to be `GlobalAlloc::Static` or `GlobalAlloc::Memory`, got {:#?} instead",
                     provenance
                 )
             };
-            ConstantExprKind::Borrow((ConstantExprKind::GlobalName { id: did.sinto(s) }).decorate(ty.sinto(s), cspan.clone()))
+            ConstantExprKind::Borrow(contents.decorate(ty.sinto(s), cspan.clone()))
         }
         // A [Scalar] might also be any zero-sized [Adt] or [Tuple] (i.e., unit)
         ty::Tuple(ty) if ty.is_empty() => ConstantExprKind::Tuple { fields: vec![] },
         // It seems we can have ADTs when there is only one variant, and this variant doesn't have any fields.
-        ty::Adt(def, _) if let [variant_def] = &def.variants().raw && variant_def.fields.is_empty() => {
-            ConstantExprKind::Adt{
+        ty::Adt(def, _)
+            if let [variant_def] = &def.variants().raw
+                && variant_def.fields.is_empty() =>
+        {
+            ConstantExprKind::Adt {
                 info: get_variant_information(def, rustc_abi::FIRST_VARIANT, s),
                 fields: vec![],
             }
-        },
-        _ => fatal!(s[span], "Unexpected type {:#?} for scalar {:#?}", ty, scalar),
+        }
+        _ => fatal!(
+            s[span],
+            "Unexpected type {:#?} for scalar {:#?}",
+            ty,
+            scalar
+        ),
     };
     kind.decorate(ty.sinto(s), cspan)
 }
@@ -358,7 +402,7 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
             ConstantExprKind::Borrow(valtree_to_constant_expr(s, valtree, *inner_ty, span))
         }
         (ty::ValTree::Branch(valtrees), ty::Str) => ConstantExprKind::Literal(
-            ConstantLiteral::ByteStr(valtrees.iter().map(|x| match x {
+            ConstantLiteral::byte_str(valtrees.iter().map(|x| match x {
                 ty::ValTree::Leaf(leaf) => leaf.try_to_u8().unwrap_or_else(|e| fatal!(s[span], "Expected a u8 leaf while translating a str literal, got something else. Error: {:#?}", e)),
                 _ => fatal!(s[span], "Expected a flat list of leaves while translating a str literal, got a arbitrary valtree.")
             }).collect(), StrStyle::Cooked))
@@ -393,7 +437,7 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
                                 field: field.did.sinto(s),
                                 value: value.sinto(s),
                             })
-                            .collect(),
+                        .collect(),
                     }
                 }
                 _ => unreachable!(),
@@ -485,9 +529,10 @@ pub fn const_value_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
                 Ty::Tuple(tys) if tys.is_empty() => ConstantExprKind::Tuple { fields: Vec::new() },
                 Ty::Arrow(_) => match ty.kind() {
                     rustc_middle::ty::TyKind::FnDef(def_id, substs) => {
-                        let (def_id, generics, trait_refs, trait_info) =
+                        let (def_id, generics, generics_impls, method_impl) =
                             get_function_from_def_id_and_substs(s, *def_id, substs);
-                        ConstantExprKind::FnPtr(def_id, generics, trait_refs, trait_info)
+                        
+                        ConstantExprKind::FnPtr{def_id, generics, generics_impls, method_impl}
                     }
                     kind => {
                         fatal!(s[span], "Unexpected:"; {kind})

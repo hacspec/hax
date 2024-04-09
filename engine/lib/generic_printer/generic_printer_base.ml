@@ -3,10 +3,11 @@ open! Ast
 open PPrint
 
 (** Generic printer for the {!module:Ast} ASTs. It uses the [PPrint]
-library, and additionaly computes {!Annotation.t}.  *)
+library, and additionally computes {!Annotation.t}.  *)
 
-(** Identifies a position in the AST. This is useful for figuring out
-wether we should wrap a chunk of AST in parenthesis. or not *)
+(** Identifies a position in the AST. This is useful for figuring out wether we
+    should wrap a chunk of AST in parenthesis, or not, or for implementing
+    special treatment of some sub-trees if they occur in a certain context. *)
 type ast_position =
   | GenericValue_GType
   | GenericValue_GConst
@@ -68,6 +69,8 @@ type annot_str = string * Annotation.t list [@@deriving show, yojson, eq]
 ({!NeedsPar}) or not ({!AlreadyPar})? *)
 type par_state = NeedsPar | AlreadyPar
 
+(** The context of a literal in the AST, does it appear in a pattern ({!Pat}) or
+  in an expression ({!Expr})?*)
 type literal_ctx = Pat | Expr
 
 module Make (F : Features.T) = struct
@@ -116,6 +119,10 @@ module Make (F : Features.T) = struct
             ~under_current_ns:
               ([%equal: (string * string list) option] current_ns (Some id_ns))
             id
+      (** Print a concrete identifier.
+
+      Differentiates between encounters of the identifier in its own namespace
+      or a foreign namespace.*)
 
       method assertion_failure : 'any. string -> 'any =
         fun details ->
@@ -253,7 +260,10 @@ module Make (F : Features.T) = struct
             make_hax_error_item i.span i.ident msg |> print#item
 
       method items : item list fn = separate_map (twice hardline) print#item
+      (** Print given list of items, separating them by two newlines each.*)
+
       method attrs : attrs fn = separate_map hardline print#attr
+      (** Print given list of attributes, separating them by one newline each.*)
     end
 
   type print_object =
@@ -275,6 +285,7 @@ module Make (F : Features.T) = struct
 
       method namespace_of_concrete_ident :
         concrete_ident -> string * string list
+      (** The namespace a concrete identifier was defined in. *)
 
       method par_state : ast_position -> par_state
       method concrete_ident' : under_current_ns:bool -> concrete_ident fn

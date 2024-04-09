@@ -217,7 +217,8 @@ struct
       | Return { e; _ } ->
           let open KnownMonads in
           let e = dexpr e in
-          UB.call Core__ops__control_flow__ControlFlow__Break [ e ] span
+          UB.call_Constructor Core__ops__control_flow__ControlFlow__Break false
+            [ e ] span
             (to_typ @@ { monad = Some (MException e.typ); typ })
       | [%inline_arms
           "dexpr'.*" - Let - Match - If - Continue - Break - QuestionMark

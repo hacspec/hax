@@ -43,7 +43,7 @@
         fstar = inputs.fstar.packages.${system}.default;
         hax-env-file = pkgs.writeText "hax-env-file" ''
           HAX_PROOF_LIBS_HOME="${./proof-libs/fstar}"
-          HAX_LIBS_HOME="${./hax-lib}"
+          HAX_LIBS_HOME="${./hax-lib}"/proofs/fstar/extraction
           HACL_HOME="${hacl-star}"
         '';
         hax-env = pkgs.writeScriptBin "hax-env" ''
@@ -151,8 +151,13 @@
         in {
           fstar = pkgs.mkShell {
             inherit inputsFrom LIBCLANG_PATH;
-            shellHook = "eval $(hax-env)";
-            packages = packages ++ [fstar hax-env];
+            HACL_HOME = "${hacl-star}";
+            shellHook = ''
+              HAX_ROOT=$(git rev-parse --show-toplevel)
+              export HAX_PROOF_LIBS_HOME="$HAX_ROOT/proof-libs/fstar"
+              export HAX_LIBS_HOME="$HAX_ROOT/hax-lib"
+            '';
+            packages = packages ++ [fstar];
           };
           default = pkgs.mkShell {
             inherit packages inputsFrom LIBCLANG_PATH;

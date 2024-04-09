@@ -154,7 +154,7 @@ struct
         self.fresh_id <- self.fresh_id + 1;
         {
           name = "hoist" ^ Int.to_string self.fresh_id;
-          id = Local_ident.mk_id Expr (-1) (* todo *);
+          id = Local_ident.mk_id SideEffectHoistVar (-1) (* todo *);
         }
 
       let empty = { fresh_id = 0 }

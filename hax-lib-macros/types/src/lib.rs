@@ -75,6 +75,9 @@ pub enum AttrPayload {
     ProcessWrite,
     ProcessInit,
     ProtocolMessages,
+    PVConstructor,
+    PVHandwritten,
+    TraitMethodNoPrePost,
     /// Make a type opaque
     OpaqueType,
 }

@@ -114,6 +114,25 @@ impl NormalizePaths for PathOrDash {
 }
 
 #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
+pub struct ProVerifOptions {
+    /// Items for which hax should extract a default-valued process
+    /// macro with a corresponding type signature. This flag expects a
+    /// space-separated list of inclusion clauses. An inclusion clause
+    /// is a Rust path prefixed with `+`, `+!` or `-`. `-` means
+    /// implementation only, `+!` means interface only and `+` means
+    /// implementation and interface. Rust path chunks can be either a
+    /// concrete string, or a glob (just like bash globs, but with
+    /// Rust paths).
+    #[arg(
+        long,
+        value_parser = parse_inclusion_clause,
+        value_delimiter = ' ',
+        allow_hyphen_values(true)
+    )]
+    assume_items: Vec<InclusionClause>,
+}
+
+#[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
 pub struct FStarOptions {
     /// Set the Z3 per-query resource limit
     #[arg(long, default_value = "15")]
@@ -153,7 +172,7 @@ pub enum Backend {
     /// Use the EasyCrypt backend (warning: work in progress!)
     Easycrypt,
     /// Use the ProVerif backend (warning: work in progress!)
-    ProVerif,
+    ProVerif(ProVerifOptions),
 }
 
 impl fmt::Display for Backend {
@@ -163,7 +182,7 @@ impl fmt::Display for Backend {
             Backend::Coq => write!(f, "coq"),
             Backend::Ssprove => write!(f, "ssprove"),
             Backend::Easycrypt => write!(f, "easycrypt"),
-            Backend::ProVerif => write!(f, "proverif"),
+            Backend::ProVerif(..) => write!(f, "proverif"),
         }
     }
 }

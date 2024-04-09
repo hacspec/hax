@@ -11,9 +11,8 @@ pub struct DisambiguatedDefPathItem {
     pub disambiguator: u32,
 }
 
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
+/// Reflects [`rustc_hir::def_id::DefId`]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, PartialOrd, Ord)]
 pub struct DefId {
     pub krate: String,
     pub path: Vec<DisambiguatedDefPathItem>,
@@ -608,21 +607,7 @@ pub struct FreeRegion {
     pub bound_region: BoundRegionKind,
 }
 
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
-pub struct RegionVid {
-    pub index: u32,
-}
-
-impl<S> SInto<S, RegionVid> for rustc_middle::ty::RegionVid {
-    fn sinto(&self, _: &S) -> RegionVid {
-        RegionVid {
-            index: self.as_u32(),
-        }
-    }
-}
-
+/// Reflects [`rustc_middle::ty::RegionKind`]
 #[derive(
     AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
@@ -828,8 +813,8 @@ pub struct Span {
     pub lo: Loc,
     pub hi: Loc,
     pub filename: FileName,
-    /// We need to keep the original Rust span if we want to use the rustc
-    /// functions for error reporting.
+    /// Original rustc span; can be useful for reporting rustc
+    /// diagnostics (this is used in Charon)
     #[serde(skip)]
     pub rust_span_data: Option<rustc_span::SpanData>,
     // expn_backtrace: Vec<ExpnData>,
@@ -981,41 +966,6 @@ pub struct Block {
     pub stmts: Vec<Stmt>,
     pub expr: Option<Expr>,
     pub safety_mode: BlockSafety,
-}
-
-/// Reflects [`rustc_middle::ty::AliasTy`]
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
-pub struct AliasTy {
-    pub substs: Vec<GenericArg>,
-    pub trait_def_id: Option<(DefId, ImplExpr)>,
-    /// If the alias is a projection (e.g. `<Ty as Trait<...>>::N<...>`),
-    /// `trait_def_id` contains the identifier for `Trait` and the
-    /// impl expressions that satisfies `Ty: Trait<...>`.
-    pub def_id: DefId,
-}
-
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, AliasTy> for rustc_middle::ty::AliasTy<'tcx> {
-    fn sinto(&self, s: &S) -> AliasTy {
-        let tcx = s.base().tcx;
-        use rustc_hir::def::DefKind::*;
-        let trait_def_id = matches!(
-            tcx.def_kind(self.def_id),
-            AssocTy | AssocConst | ImplTraitPlaceholder
-        )
-        .then(|| {
-            (
-                self.trait_def_id(tcx).sinto(s),
-                self.trait_ref(tcx).impl_expr(s, get_param_env(s)),
-            )
-        });
-        AliasTy {
-            substs: self.substs.sinto(s),
-            trait_def_id,
-            def_id: self.def_id.sinto(s),
-        }
-    }
 }
 
 /// Reflects [`rustc_middle::thir::BindingMode`]
@@ -1220,6 +1170,26 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
         let contents = match macro_invocation_of_span(span, s).map(ExprKind::MacroInvokation) {
             Some(contents) => contents,
             None => match kind {
+                // Introduce intermediate `Cast` from `T` to `U` when casting from a `#[repr(T)]` enum to `U`
+                rustc_middle::thir::ExprKind::Cast { source } if let rustc_middle::ty::TyKind::Adt(def, _) = s.thir().exprs[source].ty.kind() => {
+                    let tcx = s.base().tcx;
+                    let contents = kind.sinto(s);
+                    use crate::rustc_middle::ty::util::IntTypeExt;
+                    let repr_type = tcx.repr_options_of_def(def.did()).discr_type().to_ty(s.base().tcx);
+                    if repr_type == ty {
+                        contents
+                    } else {
+                        ExprKind::Cast {
+                            source: Decorated {
+                                ty: repr_type.sinto(s),
+                                span: span.sinto(s),
+                                contents: Box::new(contents),
+                                hir_id,
+                                attributes: vec![],
+                            }
+                        }
+                    }
+                }
                 rustc_middle::thir::ExprKind::NonHirLiteral { lit, .. } => {
                     let cexpr: ConstantExpr =
                         (ConstantExprKind::Literal(scalar_int_to_constant_literal(s, lit, ty)))
@@ -1502,12 +1472,7 @@ impl<S, U, T: SInto<S, U>> SInto<S, Vec<U>> for rustc_middle::ty::List<T> {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub enum ArrowKind {
-    Constructor { payload: Ty },
-    Function { params: Vec<Ty> },
-}
-
+/// Reflects [`rustc_middle::ty::GenericParamDef`]
 #[derive(AdtInto)]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::GenericParamDef, state: S as state)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -1542,41 +1507,53 @@ pub struct TyGenerics {
     pub has_late_bound_regions: Option<Span>,
 }
 
-/// This type merges the information from [rustc_type_ir::sty::AliasKind] and [rustc_middle::ty::AliasTy]
+/// This type merges the information from
+/// `rustc_type_ir::sty::AliasKind` and `rustc_middle::ty::AliasTy`
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct Alias {
+    pub kind: AliasKind,
+    pub substs: Vec<GenericArg>,
+    pub def_id: DefId,
+}
+
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub enum AliasKind {
     /// The projection of a trait type: `<Ty as Trait<...>>::N<...>`
     Projection {
+        assoc_item: AssocItem,
         impl_expr: ImplExpr,
-        name: String,
     },
-    // TODO
-    Inherent(AliasTy),
-    // TODO
-    Opaque(AliasTy),
+    Inherent,
+    Opaque,
 }
 
-pub fn translate_ty_alias<'tcx, S: BaseState<'tcx> + HasOwnerId>(
-    s: &S,
-    alias_kind: &rustc_type_ir::sty::AliasKind,
-    alias_ty: &rustc_middle::ty::AliasTy<'tcx>,
-) -> AliasKind {
-    use rustc_type_ir::sty::AliasKind as RustAliasKind;
-    let tcx = s.base().tcx;
-    match alias_kind {
-        RustAliasKind::Projection => {
-            // Projection of a trait type: `<Ty as Trait<...>>::N<...>`
-            let assoc = tcx.associated_item(alias_ty.def_id);
-            // Retrieve the trait information
-            let name = assoc.name.to_string();
-            let impl_expr = get_trait_info(s, alias_ty.substs, &assoc);
-
-            AliasKind::Projection { impl_expr, name }
+impl Alias {
+    fn from<'tcx, S: BaseState<'tcx> + HasOwnerId>(
+        s: &S,
+        alias_kind: &rustc_type_ir::sty::AliasKind,
+        alias_ty: &rustc_middle::ty::AliasTy<'tcx>,
+    ) -> Self {
+        use rustc_type_ir::sty::AliasKind as RustAliasKind;
+        let kind = match alias_kind {
+            RustAliasKind::Projection => {
+                let tcx = s.base().tcx;
+                AliasKind::Projection {
+                    assoc_item: tcx.associated_item(alias_ty.def_id).sinto(s),
+                    impl_expr: alias_ty.trait_ref(tcx).impl_expr(s, get_param_env(s)),
+                }
+            }
+            RustAliasKind::Inherent => AliasKind::Inherent,
+            RustAliasKind::Opaque => AliasKind::Opaque,
+        };
+        Alias {
+            kind,
+            substs: alias_ty.substs.sinto(s),
+            def_id: alias_ty.def_id.sinto(s),
         }
-        RustAliasKind::Inherent => AliasKind::Inherent(alias_ty.sinto(s)),
-        RustAliasKind::Opaque => AliasKind::Opaque(alias_ty.sinto(s)),
     }
 }
 
@@ -1635,10 +1612,10 @@ pub enum Ty {
     Tuple(Vec<Ty>),
     #[custom_arm(
         rustc_middle::ty::TyKind::Alias(alias_kind, alias_ty) => {
-            Ty::Alias(translate_ty_alias(state, alias_kind, alias_ty))
+            Ty::Alias(Alias::from(state, alias_kind, alias_ty))
         },
     )]
-    Alias(AliasKind),
+    Alias(Alias),
     Param(ParamTy),
     Bound(DebruijnIndex, BoundTy),
     Placeholder(PlaceholderType),
@@ -1741,6 +1718,22 @@ pub struct AdtDef {
     pub repr: ReprOptions,
 }
 
+/// Reflects [`rustc_middle::ty::ReprOptions`]
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::ReprOptions, state: S as s)]
+pub struct ReprOptions {
+    pub int: Option<IntegerType>,
+    #[value({
+        use crate::rustc_middle::ty::util::IntTypeExt;
+        self.discr_type().to_ty(s.base().tcx).sinto(s)
+    })]
+    pub typ: Ty,
+    pub align: Option<Align>,
+    pub pack: Option<Align>,
+    pub flags: ReprFlags,
+    pub field_shuffle_seed: u64,
+}
+
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, AdtDef> for rustc_middle::ty::AdtDef<'tcx> {
     fn sinto(&self, s: &S) -> AdtDef {
         AdtDef {
@@ -1764,24 +1757,18 @@ pub struct VariantInformations {
     pub variant: DefId,
     pub variant_index: VariantIdx,
 
-    // A record type is a type with only one variant which is a record variant.
+    /// A record type is a type with only one variant which is a
+    /// record variant.
     pub typ_is_record: bool,
-    // A record variant is a variant whose fields are named, a record
-    // variant always has at least one field.
+    /// A record variant is a variant whose fields are named, a record
+    /// variant always has at least one field.
     pub variant_is_record: bool,
-    // A struct is a type with exactly one variant. Note that one
-    // variant is named exactly as the type.
+    /// A struct is a type with exactly one variant. Note that one
+    /// variant is named exactly as the type.
     pub typ_is_struct: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct AdtExpr {
-    pub info: VariantInformations,
-    pub user_ty: Option<CanonicalUserType>,
-    pub fields: Vec<FieldExpr>,
-    pub base: Option<FruInfo>,
-}
-
+/// Reflects [`rustc_middle::thir::PatKind`]
 #[derive(AdtInto)]
 #[args(<'tcx, S: ExprState<'tcx>>, from: rustc_middle::thir::PatKind<'tcx>, state: S as gstate)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -1833,10 +1820,6 @@ pub enum PatKind {
     )]
     Variant {
         info: VariantInformations,
-        // constructs_record: bool,
-        // constructs_type: DefId,
-        // type_namespace: DefId,
-        // variant: DefId,
         substs: Vec<GenericArg>,
         subpatterns: Vec<FieldPat>,
     },
@@ -2769,8 +2752,19 @@ pub struct Variant<Body: IsBody> {
     pub ident: Ident,
     pub hir_id: HirId,
     pub def_id: GlobalIdent,
+    #[map(x.sinto(&with_owner_id(s.base(), (), (), self.def_id.to_def_id())))]
     pub data: VariantData,
     pub disr_expr: Option<AnonConst<Body>>,
+    #[value({
+        let tcx = s.base().tcx;
+        let variant = tcx
+            .adt_def(s.owner_id())
+            .variants()
+            .into_iter()
+            .find(|v| v.def_id == self.def_id.into()).unwrap();
+        variant.discr.sinto(s)
+    })]
+    pub discr: VariantDiscr,
     pub span: Span,
     #[value(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
     pub attributes: Vec<Attribute>,
@@ -2859,7 +2853,7 @@ pub struct PathSegment {
 
 /// Reflects [`rustc_hir::ItemKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::ItemKind<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::ItemKind<'tcx>, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum ItemKind<Body: IsBody> {
     #[disable_mapping]
@@ -2870,7 +2864,7 @@ pub enum ItemKind<Body: IsBody> {
     Const(Ty, Body),
     #[custom_arm(
             rustc_hir::ItemKind::Fn(sig, generics, body) => {
-                ItemKind::Fn(generics.sinto(tcx), make_fn_def::<Body, _>(sig, body, tcx))
+                ItemKind::Fn(generics.sinto(s), make_fn_def::<Body, _>(sig, body, s))
             }
         )]
     Fn(Generics<Body>, FnDef<Body>),
@@ -2883,7 +2877,15 @@ pub enum ItemKind<Body: IsBody> {
     GlobalAsm(InlineAsm),
     TyAlias(Ty, Generics<Body>),
     OpaqueTy(OpaqueTy<Body>),
-    Enum(EnumDef<Body>, Generics<Body>),
+    Enum(
+        EnumDef<Body>,
+        Generics<Body>,
+        #[value({
+            let tcx = s.base().tcx;
+            tcx.repr_options_of_def(s.owner_id()).sinto(s)
+        })]
+        ReprOptions,
+    ),
     Struct(VariantData, Generics<Body>),
     Union(VariantData, Generics<Body>),
     Trait(
@@ -3128,7 +3130,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Term> for rustc_middle::ty::Term<'
 )]
 pub struct ProjectionPredicate {
     pub impl_expr: ImplExpr,
-    pub type_name: String,
+    pub assoc_item: AssocItem,
     pub ty: Ty,
 }
 
@@ -3138,12 +3140,13 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ProjectionPredicate>
     fn sinto(&self, s: &S) -> ProjectionPredicate {
         let AliasKind::Projection {
             impl_expr,
-            name,
-        } = translate_ty_alias(
+            assoc_item,
+        } = Alias::from(
             s,
             &rustc_middle::ty::AliasKind::Projection,
             &self.projection_ty,
         )
+        .kind
         else {
             unreachable!()
         };
@@ -3152,7 +3155,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ProjectionPredicate>
         };
         ProjectionPredicate {
             impl_expr,
-            type_name: name,
+            assoc_item,
             ty,
         }
     }

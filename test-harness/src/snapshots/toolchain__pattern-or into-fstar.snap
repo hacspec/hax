@@ -17,6 +17,8 @@ info:
     snapshot:
       stderr: true
       stdout: true
+    include_flag: ~
+    backend_options: ~
 ---
 exit = 0
 stderr = '''
@@ -36,6 +38,11 @@ open FStar.Mul
 type t_E =
   | E_A : t_E
   | E_B : t_E
+
+let t_E_cast_to_repr (x: t_E) : isize =
+  match x with
+  | E_A  -> isz 0
+  | E_B  -> isz 1
 
 let bar (x: t_E) : Prims.unit = match x with | E_A  | E_B  -> () <: Prims.unit
 '''

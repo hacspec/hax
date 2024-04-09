@@ -18,6 +18,7 @@ info:
       stderr: false
       stdout: true
     include_flag: ~
+    backend_options: ~
 ---
 exit = 0
 
@@ -31,7 +32,11 @@ module Mut_ref_functionalization
 open Core
 open FStar.Mul
 
-class t_FooTrait (v_Self: Type) = { f_z:v_Self -> v_Self }
+class t_FooTrait (v_Self: Type) = {
+  f_z_pre:v_Self -> bool;
+  f_z_post:v_Self -> v_Self -> bool;
+  f_z:x0: v_Self -> Prims.Pure v_Self (f_z_pre x0) (fun result -> f_z_post x0 result)
+}
 
 let array (x: t_Array u8 (sz 10)) : t_Array u8 (sz 10) =
   let x:t_Array u8 (sz 10) =
@@ -78,7 +83,7 @@ let build_vec (_: Prims.unit) : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
                 [1uy; 2uy; 3uy]
               in
               FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 3);
-              Rust_primitives.Hax.array_of_list list)
+              Rust_primitives.Hax.array_of_list 3 list)
           <:
           Alloc.Boxed.t_Box (t_Array u8 (sz 3)) Alloc.Alloc.t_Global)
       <:
@@ -90,7 +95,7 @@ let index_mutation (x: Core.Ops.Range.t_Range usize) (a: t_Slice u8) : Prims.uni
                   [1uy]
                 in
                 FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 1);
-                Rust_primitives.Hax.array_of_list list)
+                Rust_primitives.Hax.array_of_list 1 list)
             <:
             Alloc.Boxed.t_Box (t_Array u8 (sz 1)) Alloc.Alloc.t_Global)
         <:
@@ -122,7 +127,7 @@ let index_mutation_unsize (x: t_Array u8 (sz 12)) : u8 =
             t_Slice u8)
           (Rust_primitives.unsize (let list = [1uy; 2uy] in
                 FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 2);
-                Rust_primitives.Hax.array_of_list list)
+                Rust_primitives.Hax.array_of_list 2 list)
             <:
             t_Slice u8)
         <:
@@ -137,7 +142,7 @@ let test_append (_: Prims.unit) : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
                   [1uy; 2uy; 3uy]
                 in
                 FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 3);
-                Rust_primitives.Hax.array_of_list list)
+                Rust_primitives.Hax.array_of_list 3 list)
             <:
             Alloc.Boxed.t_Box (t_Array u8 (sz 3)) Alloc.Alloc.t_Global)
         <:
@@ -163,7 +168,12 @@ type t_Bar = {
 type t_Foo = { f_field:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_FooTrait_for_Foo: t_FooTrait t_Foo = { f_z = fun (self: t_Foo) -> self }
+let impl_FooTrait_for_Foo: t_FooTrait t_Foo =
+  {
+    f_z_pre = (fun (self: t_Foo) -> true);
+    f_z_post = (fun (self: t_Foo) (out: t_Foo) -> true);
+    f_z = fun (self: t_Foo) -> self
+  }
 
 type t_S = { f_b:t_Array u8 (sz 5) }
 
@@ -217,11 +227,10 @@ let j (x: t_Bar) : (t_Bar & u8) =
   let out:u8 = 123uy in
   let tmp0, out1:(t_Bar & u8) = i x in
   let x:t_Bar = tmp0 in
-  let hoist1:u8 = out1 in
-  let hax_temp_output:u8 = hoist1 +! out in
+  let hax_temp_output:u8 = out1 +! out in
   x, hax_temp_output <: (t_Bar & u8)
 
-type t_Pair (v_T: Type) {| i0: Core.Marker.t_Sized v_T |} = {
+type t_Pair (v_T: Type) = {
   f_a:v_T;
   f_b:t_Foo
 }

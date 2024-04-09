@@ -18,11 +18,9 @@ While `e?` in Rust might implies an implicit coercion, in our AST, a
 question mark is expected to already be of the right type. This phase
 inlines a coercion (of the shape `x.map_err(from)`, in the case of a
 `Result`).
+
 *)
 
-open! Prelude
-
-(** This phase can be applied to any feature set. *)
 module Make (F : Features.T) : sig
   include module type of struct
     module FA = F

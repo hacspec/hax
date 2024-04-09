@@ -29,7 +29,7 @@ impl ItemAttributes {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct TypedConstantKind {
     pub typ: Ty,
-    pub constant_kind: ConstantKind,
+    pub constant_kind: ConstantExpr,
 }
 
 lazy_static::lazy_static! {

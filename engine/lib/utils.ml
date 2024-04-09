@@ -20,6 +20,7 @@ let uncurry f (x, y) = f x y
 let curry3 f x y z = f (x, y, z)
 let uncurry3 f (x, y, z) = f x y z
 let tup2 a b = (a, b)
+let swap (a, b) = (b, a)
 let ( let* ) x f = Option.bind ~f x
 let some_if_true = function true -> Some () | _ -> None
 
@@ -70,6 +71,12 @@ let inits (type a) (l : a list) : (a list * a) list =
       (trace, (trace, x)))
     l
   |> snd
+
+let sequence (l : 'a option list) : 'a list option =
+  List.fold_right
+    ~f:(fun x acc ->
+      match (acc, x) with Some acc, Some x -> Some (x :: acc) | _ -> None)
+    ~init:(Some []) l
 
 let tabsize = 2
 let newline_indent depth : string = "\n" ^ String.make (tabsize * depth) ' '
