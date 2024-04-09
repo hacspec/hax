@@ -453,6 +453,23 @@ struct
         let formula = F.mk_e_app equality [ length; len ] in
         let assertion = F.mk_e_app assert_norm [ formula ] in
         let pat = F.AST.PatVar (list_ident, None, []) |> F.pat in
+        let pat =
+          match l with
+          | [] ->
+              let list_ty =
+                let prims_list = F.term_of_lid [ "Prims"; "list" ] in
+                let inner_typ =
+                  match e.typ with
+                  | TArray { typ; _ } -> pty e.span typ
+                  | _ ->
+                      Error.assertion_failure e.span
+                        "Malformed type for array literal"
+                in
+                F.mk_e_app prims_list [ inner_typ ]
+              in
+              F.pat @@ F.AST.PatAscribed (pat, (list_ty, None))
+          | _ -> pat
+        in
         F.term
         @@ F.AST.Let
              ( NoLetQualifier,
