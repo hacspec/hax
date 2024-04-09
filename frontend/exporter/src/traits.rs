@@ -54,8 +54,6 @@ pub enum ImplExprAtom {
         parent_substs: Vec<GenericArg>,
         signature: Box<PolyFnSig>,
     },
-    /// If failed to solve a trait ref
-    Error(String),
     Todo(String),
 }
 

@@ -83,24 +83,9 @@ pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
             let trait_ref = trait_pred.trait_ref;
             use crate::rustc_middle::ty::TypeVisitableExt;
             let impl_expr = if trait_ref.has_escaping_bound_vars() {
-                // Error
-                // TODO: is this case still necessary? Look at how it is done
-                // in THIR.
-                let msg = format!("{:?} has escaping bound vars", trait_ref);
-                let trait_ref = {
-                    let tr = trait_ref.sinto(s);
-                    TraitRef {
-                        def_id: tr.def_id,
-                        generic_args: tr.generic_args,
-                    }
-                };
-                let kind = ImplExprAtom::Error(msg);
-                ImplExpr {
-                    r#impl: kind,
-                    // Empty args for now
-                    args: Box::new(Vec::new()),
-                    r#trait: trait_ref,
-                }
+                supposely_unreachable_fatal!(s, "mir_traits: has escaping bound vars"; {
+                    trait_ref, def_id
+                })
             } else {
                 // Ok
                 let trait_ref = rustc_middle::ty::Binder::dummy(trait_pred.trait_ref);
