@@ -550,6 +550,9 @@ dependencies = [
 [[package]]
 name = "hax-lib"
 version = "0.1.0-pre.1"
+dependencies = [
+ "hax-lib-macros",
+]
 
 [[package]]
 name = "hax-lib-macros"
