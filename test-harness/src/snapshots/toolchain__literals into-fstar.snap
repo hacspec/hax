@@ -112,6 +112,14 @@ let numeric (_: Prims.unit) : Prims.unit =
   let (_: u128):u128 = pub_u128 22222222222222222222 in
   ()
 
+let empty_array (_: Prims.unit) : Prims.unit =
+  let (_: t_Slice u8):t_Slice u8 =
+    Rust_primitives.unsize (let list:Prims.list u8 = [] in
+        FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 0);
+        Rust_primitives.Hax.array_of_list 0 list)
+  in
+  ()
+
 let panic_with_msg (_: Prims.unit) : Prims.unit =
   Rust_primitives.Hax.never_to_any (Core.Panicking.panic_fmt (Core.Fmt.impl_2__new_const (Rust_primitives.unsize
                 (let list = ["with msg"] in

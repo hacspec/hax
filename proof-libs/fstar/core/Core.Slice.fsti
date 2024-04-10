@@ -33,3 +33,6 @@ val impl__split_at #t (s: t_Slice t) (mid: usize): Pure (t_Slice t * t_Slice t)
     (ensures (fun (x,y) -> Seq.length x == v mid /\ Seq.length y == Seq.length s - v mid /\
                         x == Seq.slice s 0 (v mid) /\ y == Seq.slice s (v mid) (Seq.length s) /\
                         s == Seq.append x y))
+
+let impl__is_empty (s: t_Slice 'a): bool = Seq.length s = 0
+

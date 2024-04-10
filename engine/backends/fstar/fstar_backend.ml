@@ -453,6 +453,23 @@ struct
         let formula = F.mk_e_app equality [ length; len ] in
         let assertion = F.mk_e_app assert_norm [ formula ] in
         let pat = F.AST.PatVar (list_ident, None, []) |> F.pat in
+        let pat =
+          match l with
+          | [] ->
+              let list_ty =
+                let prims_list = F.term_of_lid [ "Prims"; "list" ] in
+                let inner_typ =
+                  match e.typ with
+                  | TArray { typ; _ } -> pty e.span typ
+                  | _ ->
+                      Error.assertion_failure e.span
+                        "Malformed type for array literal"
+                in
+                F.mk_e_app prims_list [ inner_typ ]
+              in
+              F.pat @@ F.AST.PatAscribed (pat, (list_ty, None))
+          | _ -> pat
+        in
         F.term
         @@ F.AST.Let
              ( NoLetQualifier,
@@ -802,9 +819,10 @@ struct
               params
         in
         let pat = F.pat @@ F.AST.PatApp (pat, pat_args) in
+        let qualifier = F.AST.(if is_rec then Rec else NoLetQualifier) in
         let impl =
           F.decl ~fsti:false
-          @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, pexpr body) ])
+          @@ F.AST.TopLevelLet (qualifier, [ (pat, pexpr body) ])
         in
         let interface_mode = ctx.interface_mode && not (List.is_empty params) in
         let ty =
@@ -836,9 +854,7 @@ struct
         in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (ty, None)) in
         let full =
-          F.decl
-          @@ F.AST.TopLevelLet
-               ((if is_rec then Rec else NoLetQualifier), [ (pat, pexpr body) ])
+          F.decl @@ F.AST.TopLevelLet (qualifier, [ (pat, pexpr body) ])
         in
 
         let intf = F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) in
