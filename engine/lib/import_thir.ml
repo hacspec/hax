@@ -1003,9 +1003,8 @@ end) : EXPR = struct
       | Type { default; _ } ->
           let default = Option.map ~f:(c_ty param.span) default in
           GPType { default }
-      | Const { default = Some _; _ } ->
-          unimplemented [ param.span ] "c_generic_param:Const with a default"
-      | Const { default = None; ty } -> GPConst { typ = c_ty param.span ty }
+      (* Rustc always fills in const generics on use. Thus we can drop this information. *)
+      | Const { default = _; ty } -> GPConst { typ = c_ty param.span ty }
     in
     let span = Span.of_thir param.span in
     let attrs = c_attrs param.attributes in

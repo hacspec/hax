@@ -29,6 +29,16 @@ Compiling generics v0.1.0 (WORKSPACE_ROOT/generics)
 diagnostics = []
 
 [stdout.files]
+"Generics.Defaults_generics.fst" = '''
+module Generics.Defaults_generics
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+type t_Defaults (v_T: Type) (v_N: usize) = | Defaults : t_Array v_T v_N -> t_Defaults v_T v_N
+
+let f (_: t_Defaults Prims.unit (sz 2)) : Prims.unit = ()
+'''
 "Generics.fst" = '''
 module Generics
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
