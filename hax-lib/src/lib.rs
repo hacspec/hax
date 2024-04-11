@@ -15,6 +15,8 @@
 
 #![no_std]
 
+mod bounded_integers;
+
 #[doc(hidden)]
 #[cfg(hax)]
 #[macro_export]
@@ -135,3 +137,9 @@ pub use hax_lib_macros::*;
 /// Dummy function that carries a string to be printed as such in the output language
 #[doc(hidden)]
 pub fn inline(_: &str) {}
+
+pub trait IsRefinement {
+    type InnerType;
+    fn refine(x: Self::InnerType) -> Self;
+    fn value(self) -> Self::InnerType;
+}

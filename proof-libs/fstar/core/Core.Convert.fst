@@ -34,7 +34,7 @@ class t_Into self t = {
 class t_From self t = {
   f_from_pre: t -> bool;
   f_from_post: t -> self -> bool;
-  f_from: t -> self;
+  f_from: x:t{f_from_pre x} -> r:self {f_from_post x r};
 }
 
 class t_TryFrom self t = {

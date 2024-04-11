@@ -553,6 +553,7 @@ name = "hax-lib"
 version = "0.1.0-pre.1"
 dependencies = [
  "hax-lib-macros",
+ "num-traits",
 ]
 
 [[package]]
@@ -879,6 +880,15 @@ checksum = "77a8165726e8236064dbb45459242600304b42a5ea24ee2948e18e023bf7ba84"
 dependencies = [
  "overload",
  "winapi",
+]
+
+[[package]]
+name = "num-traits"
+version = "0.2.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da0df0e5185db44f69b44f26786fe401b6c293d1907744beaa7fa62b2e5a517a"
+dependencies = [
+ "autocfg",
 ]
 
 [[package]]

@@ -13,3 +13,4 @@ description = "Hax-specific helpers for Rust programs"
 
 [dependencies]
 hax-lib-macros = {path = "../hax-lib-macros"}
+num-traits = "0.2.18"

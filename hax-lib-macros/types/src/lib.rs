@@ -71,6 +71,7 @@ pub enum AttrPayload {
         item: ItemUid,
     },
     Uid(ItemUid),
+    NewtypeAsRefinement,
     /// Mark an item as a lemma statement to prove in the backend
     Lemma,
     Language,

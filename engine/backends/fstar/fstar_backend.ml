@@ -197,15 +197,16 @@ struct
           ("pglobal_ident: expected to be handled somewhere else: "
          ^ show_global_ident id)
 
-  let plocal_ident (e : Local_ident.t) =
-    (* let name = U.Concrete_ident_view.local_ident e.name in *)
-    F.id
-    @@ U.Concrete_ident_view.local_ident
+  let plocal_ident_str (e : Local_ident.t) =
+    U.Concrete_ident_view.local_ident
          (match String.chop_prefix ~prefix:"impl " e.name with
          | Some name ->
              let name = "impl_" ^ Int.to_string ([%hash: string] name) in
              { e with name }
-         | _ -> e)
+           | _ -> e)
+
+  let plocal_ident =
+    plocal_ident_str >> F.id
 
   let pfield_ident span (f : global_ident) : F.Ident.lident =
     match f with
@@ -879,6 +880,13 @@ struct
           @@ F.AST.PatVar
                (F.id @@ U.Concrete_ident_view.to_definition_name name, None, [])
         in
+        let ty =
+          match Attrs.associated_expr ~keep_last_args:1 Ensures e.attrs with
+          | Some {e = Closure {params = [binder]; body; _}; _} ->
+              let (binder, _) = U.Expect.pbinding_simple binder |> Option.value_exn in
+              F.mk_refined (plocal_ident_str binder) (pty e.span ty) (fun ~x -> pexpr body)
+          | _ -> pty e.span ty
+        in
         F.decls ~quals:[ F.AST.Unfold_for_unification_and_vcgen ]
         @@ F.AST.TopLevelLet
              ( NoLetQualifier,
@@ -889,7 +897,7 @@ struct
                           FStarBinder.(
                             of_generics e.span generics
                             |> List.map ~f:to_pattern) ),
-                   pty e.span ty );
+                   ty );
                ] )
     | Type { name; generics; _ }
       when Attrs.find_unique_attr e.attrs
@@ -916,6 +924,18 @@ struct
           in
           let name = F.id @@ U.Concrete_ident_view.to_definition_name name in
           [ F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) ]
+    (* | Type { name; generics; variants; _ } *)
+    (*     when Attrs.find_unique_attr e.attrs *)
+    (*            ~f:([%eq: Types.ha_payload] NewtypeAsRefinement >> Fn.flip Option.some_if ()) *)
+    (*            |> Option.is_some -> *)
+    (*     let generics = FStarBinder.of_generics e.span generics in *)
+        (* let ty = F.term @@ F.AST.Name (F.lid [ "Type" ]) in *)
+        (* let arrow_typ = *)
+        (*   F.term *)
+        (*     @@ F.AST.Product (List.map ~f:FStarBinder.to_binder generics, ty) *)
+        (* in *)
+        (* let name = F.id @@ U.Concrete_ident_view.to_definition_name name in *)
+        (* [ F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) ] *)
     | Type
         {
           name;
@@ -1383,6 +1403,28 @@ open Phase_utils
 module DepGraph = Dependencies.Make (InputLanguage)
 module DepGraphR = Dependencies.Make (Features.Rust)
 
+module Visitors = Ast_visitors.Make (InputLanguage)
+let refinements_as_casts = object
+    inherit [_] Visitors.map as super
+
+    method! visit_expr () e =
+      match e.e with
+      | App {f = { e = GlobalVar f; _ }; args = [inner]}
+          when Global_ident.eq_name Hax_lib__IsRefinement__refine f
+            || Global_ident.eq_name Hax_lib__IsRefinement__value f
+          -> {e with e = Ascription {typ = e.typ; e = inner}}
+      | _ -> super#visit_expr () e
+
+  method! visit_item () i =
+    match i.v with
+    | Type { name; generics; variants = [{arguments = [(_, ty, _)]; _}]; _ }
+        when Attrs.find_unique_attr i.attrs
+               ~f:([%eq: Types.ha_payload] NewtypeAsRefinement >> Fn.flip Option.some_if ())
+               |> Option.is_some ->
+        {i with v = TyAlias {name; generics; ty}}
+    | _ -> super#visit_item () i
+end
+
 module TransformToInputLanguage =
   [%functor_application
   Phases.Reject.RawOrMutPointer(Features.Rust)
@@ -1431,6 +1473,7 @@ let apply_phases (bo : BackendOptions.t) (items : Ast.Rust.item list) :
   let items =
     TransformToInputLanguage.ditems items
     |> List.map ~f:U.Mappers.add_typ_ascription
+    |> List.map ~f:(fun item -> refinements_as_casts#visit_item () item)
     (* |> DepGraph.name_me *)
   in
   items
