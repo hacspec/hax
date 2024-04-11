@@ -578,10 +578,8 @@ struct
       let ident = plocal_ident p.ident in
       match p.kind with
       | GPLifetime _ -> Error.assertion_failure span "pgeneric_param:LIFETIME"
-      | GPType { default = None } ->
+      | GPType { default = _ } ->
           { kind; typ = F.term @@ F.AST.Name (F.lid [ "Type" ]); ident }
-      | GPType _ ->
-          Error.unimplemented span ~details:"pgeneric_param:Type with default"
       | GPConst { typ } -> { kind = Explicit; typ = pty span typ; ident }
 
     let of_generic_constraint span (nth : int) (c : generic_constraint) =
