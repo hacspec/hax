@@ -1404,7 +1404,7 @@ module DepGraph = Dependencies.Make (InputLanguage)
 module DepGraphR = Dependencies.Make (Features.Rust)
 
 module Visitors = Ast_visitors.Make (InputLanguage)
-let refinements_as_casts = object
+let newtype_as_refinement = object
     inherit [_] Visitors.map as super
 
     method! visit_expr () e =
@@ -1473,7 +1473,7 @@ let apply_phases (bo : BackendOptions.t) (items : Ast.Rust.item list) :
   let items =
     TransformToInputLanguage.ditems items
     |> List.map ~f:U.Mappers.add_typ_ascription
-    |> List.map ~f:(fun item -> refinements_as_casts#visit_item () item)
+    |> List.map ~f:(fun item -> newtype_as_refinement#visit_item () item)
     (* |> DepGraph.name_me *)
   in
   items
