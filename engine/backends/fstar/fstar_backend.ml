@@ -127,13 +127,16 @@ struct
           | S32 -> Int32
           | S64 -> Int64
           | S128 ->
-              Error.unimplemented
-                ~details:
-                  "128 literals (fail if pattern maching, otherwise TODO)" span
+              Error.unimplemented ~issue_id:464
+                ~details:"Matching on u128 or i128 literals is unsupported."
+                span
           | SSize ->
-              Error.unimplemented
+              Error.unimplemented ~issue_id:464
                 ~details:
-                  "usize literals (fail if pattern maching, otherwise TODO)"
+                  "Matching on usize or isize literals is unsupported. As a \
+                   work-around, instead of `match expr { 0 => ... }`, please \
+                   cast for instance to `u64` before: `match expr as u64 { 0 \
+                   => ... }`."
                 span
         in
         F.Const.Const_int
