@@ -133,7 +133,7 @@ struct
           | SSize ->
               Error.unimplemented ~issue_id:464
                 ~details:
-                  "Matching on usize or isize literals is unsupported. As a \
+                  "Matching on usize or isize literals is not yet supported. As a \
                    work-around, instead of `match expr { 0 => ... }`, please \
                    cast for instance to `u64` before: `match expr as u64 { 0 \
                    => ... }`."
