@@ -128,7 +128,7 @@ struct
           | S64 -> Int64
           | S128 ->
               Error.unimplemented ~issue_id:464
-                ~details:"Matching on u128 or i128 literals is unsupported."
+                ~details:"Matching on u128 or i128 literals is not yet supported."
                 span
           | SSize ->
               Error.unimplemented ~issue_id:464
