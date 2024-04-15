@@ -128,15 +128,15 @@ struct
           | S64 -> Int64
           | S128 ->
               Error.unimplemented ~issue_id:464
-                ~details:"Matching on u128 or i128 literals is not yet supported."
-                span
+                ~details:
+                  "Matching on u128 or i128 literals is not yet supported." span
           | SSize ->
               Error.unimplemented ~issue_id:464
                 ~details:
-                  "Matching on usize or isize literals is not yet supported. As a \
-                   work-around, instead of `match expr { 0 => ... }`, please \
-                   cast for instance to `u64` before: `match expr as u64 { 0 \
-                   => ... }`."
+                  "Matching on usize or isize literals is not yet supported. \
+                   As a work-around, instead of `match expr { 0 => ... }`, \
+                   please cast for instance to `u64` before: `match expr as \
+                   u64 { 0 => ... }`."
                 span
         in
         F.Const.Const_int
