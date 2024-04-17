@@ -206,15 +206,13 @@ Equations array_upd {A : choice_type} {len} (s: both (nseq_ A len)) (i: both (@i
 Definition update_sub {A : choice_type} {len slen}  (v : (nseq_ A len)) (i : nat) (n : nat) (sub : (nseq_ A slen)) : both ((nseq_ A len)) :=
   ret_both (update_sub v i n sub).
 
-Program Fixpoint array_from_list_helper {A: choice_type} (x : both A) (xs: list (both A)) (k : nat) {measure (length xs)} : both (nseq_ A (S k)) :=
-  match xs with
-  | [] => lift1_both (* (H_loc_incl_x := fsubsetxx L) *) (* (H_opsig_incl_x := fsubsetxx I) *) (fun x => setm emptym (Ordinal (ssrbool.introT ssrnat.ltP (lt_succ_diag_r_sub k O))) x : nseq_ A (S k)) x
-  | y :: ys =>
-      bind_both x (fun temp_x =>
-                     bind_both (array_from_list_helper y ys k) (fun temp_y =>
-                                                                  lift_both (ret_both (setm (temp_y : nseq_ A (S k)) (Ordinal (ssrbool.introT ssrnat.ltP (lt_succ_diag_r_sub k (length (y :: ys))))) temp_x : nseq_ A (S k)))))
-  end.
-Solve All Obligations with (intros ; (* time *) (fset_equality || solve_in_fset)).
+Equations array_from_list_helper {A: choice_type} (x : both A) (xs: list (both A)) (k : nat) : both (nseq_ A (S k)) :=
+  array_from_list_helper x [] k :=
+    lift1_both (fun x => setm emptym (Ordinal (ssrbool.introT ssrnat.ltP (lt_succ_diag_r_sub k O))) x : nseq_ A (S k)) x ;
+  array_from_list_helper x (y :: ys) k :=
+    bind_both x (fun temp_x =>
+    bind_both (array_from_list_helper y ys k) (fun temp_y =>
+    lift_both (ret_both (setm (temp_y : nseq_ A (S k)) (Ordinal (ssrbool.introT ssrnat.ltP (lt_succ_diag_r_sub k (length (y :: ys))))) temp_x : nseq_ A (S k))))).
 Fail Next Obligation.
 
 Equations array_from_list {A: choice_type} (l: list (both A))
