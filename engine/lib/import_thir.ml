@@ -901,14 +901,14 @@ end) : EXPR = struct
     | Tuple types ->
         let types = List.map ~f:(fun ty -> GType (c_ty span ty)) types in
         TApp { ident = `TupleType (List.length types); args = types }
-    (* | Alias (_kind, { trait_def_id = Some (_did, impl_expr); def_id; _ }) -> *)
     | Alias { kind = Projection { assoc_item = _; impl_expr }; def_id; _ } ->
         let impl = c_impl_expr span impl_expr in
         let item = Concrete_ident.of_def_id (AssociatedItem Type) def_id in
         TAssociatedType { impl; item }
-    | Alias _ -> unimplemented [ span ] "xx"
-    (* | Alias (_kind, { def_id; trait_def_id = None; _ }) -> *)
-    (*     TOpaque (Concrete_ident.of_def_id Type def_id) *)
+    | Alias { kind = Opaque; def_id; _ } ->
+        TOpaque (Concrete_ident.of_def_id Type def_id)
+    | Alias { kind = Inherent; _ } ->
+        unimplemented [ span ] "type Alias::Inherent"
     | Param { index; name } ->
         (* TODO: [id] might not unique *)
         TParam { name; id = Local_ident.mk_id Typ (MyInt64.to_int_exn index) }

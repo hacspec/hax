@@ -138,10 +138,6 @@ impl From<ConstantExpr> for Expr {
                 base: None,
                 user_ty: None,
             }),
-            TraitConst { .. } => {
-                // SH: I leave this for you Lucas
-                unimplemented!()
-            }
             GlobalName { id } => ExprKind::GlobalName { id },
             Borrow(e) => ExprKind::Borrow {
                 borrow_kind: BorrowKind::Shared,
@@ -154,9 +150,9 @@ impl From<ConstantExpr> for Expr {
             Tuple { fields } => ExprKind::Tuple {
                 fields: fields.into_iter().map(|field| field.into()).collect(),
             },
-            FnPtr { .. } => {
+            kind @ (FnPtr { .. } | TraitConst { .. }) => {
                 // SH: I see the `Closure` kind, but it's not the same as function pointer?
-                unimplemented!()
+                ExprKind::Todo(format!("FnPtr or TraitConst. kind={:#?}", kind))
             }
             Todo(msg) => ExprKind::Todo(msg),
         };
@@ -286,7 +282,7 @@ pub(crate) fn is_anon_const<'tcx>(
     )
 }
 
-pub(crate) fn trait_const_to_constant_expr_kind<'tcx, S: BaseState<'tcx> + HasOwnerId>(
+fn trait_const_to_constant_expr_kind<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     _const_def_id: rustc_hir::def_id::DefId,
     substs: rustc_middle::ty::SubstsRef<'tcx>,
@@ -300,6 +296,7 @@ pub(crate) fn trait_const_to_constant_expr_kind<'tcx, S: BaseState<'tcx> + HasOw
 
     ConstantExprKind::TraitConst { impl_expr, name }
 }
+
 impl ConstantExprKind {
     pub fn decorate(self, ty: Ty, span: Span) -> Decorated<Self> {
         Decorated {
