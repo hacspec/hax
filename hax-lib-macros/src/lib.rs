@@ -554,21 +554,18 @@ macro_rules! make_quoting_proc_macro {
         ///
 
         /// To facilitate this, you can write Rust names directly,
-        /// using the prefix `$`: `f $my_crate::my_module__CONSTANT +
-        /// 3` will be replaced with `f My_crate.My_module.v_CONSTANT
-        /// + 3` in the F* backend for instance.
-        ///
+        /// using the prefix `$`: `f $my_crate::my_module__CONSTANT + 3`
+        /// will be replaced with `f My_crate.My_module.v_CONSTANT + 3`
+        /// in the F* backend for instance.
 
         /// If you want to refer to the Rust constructor
         /// `Enum::Variant`, you should write `$$Enum::Variant` (note
         /// the double dollar).
-        ///
 
         /// If the name refers to something polymorphic, you need to
         /// signal it by adding _any_ type informations,
         /// e.g. `${my_module::function<()>}`. The curly braces are
         /// needed for such more complex expressions.
-        ///
 
         /// You can also write Rust patterns with the `$?{SYNTAX}`
         /// syntax, where `SYNTAX` is a Rust pattern. The syntax
