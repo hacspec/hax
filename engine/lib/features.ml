@@ -22,6 +22,7 @@ loop,
   construct_base,
   monadic_action,
   monadic_binding,
+  quote,
   block]
 
 module Full = On
@@ -35,6 +36,7 @@ module Rust = struct
   include Off.Monadic_action
   include Off.Monadic_binding
   include Off.State_passing_loop
+  include Off.Quote
 end
 
 let _ = Enumeration.all

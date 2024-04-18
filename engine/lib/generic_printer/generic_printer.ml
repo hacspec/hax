@@ -225,6 +225,14 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
                 |> wrap_parens
             | MacroInvokation _ -> print#assertion_failure "MacroInvokation"
             | EffectAction _ -> print#assertion_failure "EffectAction"
+            | Quote { contents; _ } ->
+                List.map
+                  ~f:(function
+                    | `Verbatim code -> string code
+                    | `Expr e -> print#expr_at Expr_Quote e
+                    | `Pat p -> print#pat_at Expr_Quote p)
+                  contents
+                |> concat
             | App _ | Construct _ -> super#expr' ctx e
 
         method expr_monadic_let

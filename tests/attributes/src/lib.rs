@@ -43,7 +43,6 @@ impl Foo {
 #[hax::attributes]
 mod refined_arithmetic {
     use core::ops::{Add, Mul};
-    use hax_lib_macros as hax;
 
     struct Foo(u8);
 
@@ -123,4 +122,15 @@ mod newtype_pattern {
             &self[index.i]
         }
     }
+}
+
+fn inlined_code(foo: Foo) {
+    const V: u8 = 12;
+    let v_a = 13;
+    hax::fstar!(
+        r"let x = ${foo.x} in
+          let $?{Foo {y, ..}} = $foo in
+          $add3 ((fun _ -> 3ul) $foo) $v_a $V y
+        "
+    );
 }

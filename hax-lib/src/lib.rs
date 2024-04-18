@@ -131,3 +131,7 @@ pub fn implies(lhs: bool, rhs: impl Fn() -> bool) -> bool {
 }
 
 pub use hax_lib_macros::*;
+
+/// Dummy function that carries a string to be printed as such in the output language
+#[doc(hidden)]
+pub fn inline(_: &str) {}

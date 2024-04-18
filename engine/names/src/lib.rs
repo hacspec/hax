@@ -39,6 +39,8 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
         Ok(())
     }
 
+    let _ = hax_lib::inline("");
+
     const _: () = {
         use core::{cmp::*, ops::*};
         fn arith<

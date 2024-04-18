@@ -54,6 +54,12 @@ module Make (F : Features.T) = struct
     let mut_borrow (e : expr) : expr option =
       match e.e with Borrow { kind = Mut _; e; _ } -> Some e | _ -> None
 
+    let borrow (e : expr) : expr option =
+      match e.e with Borrow { e; _ } -> Some e | _ -> None
+
+    let block (e : expr) : expr option =
+      match e.e with Block (e, _) -> Some e | _ -> None
+
     let deref (e : expr) : expr option =
       match e.e with
       | App { f = { e = GlobalVar (`Primitive Deref); _ }; args = [ e ]; _ } ->
