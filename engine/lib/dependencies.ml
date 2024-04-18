@@ -249,6 +249,7 @@ module Make (F : Features.T) = struct
     let show_inclusion_clause Types.{ kind; namespace } =
       (match kind with
       | Excluded -> "-"
+      | SignatureOnly -> "+:"
       | Included deps_kind -> (
           match deps_kind with
           | Transitive -> "+"
@@ -270,6 +271,7 @@ module Make (F : Features.T) = struct
         | Included Transitive -> (true, false)
         | Included Shallow -> (true, true)
         | Included None' -> (false, false)
+        | SignatureOnly -> (false, true)
         | Excluded -> (false, false)
       in
       let matched = matched0 |> if with_deps then deps_of else Fn.id in
@@ -282,7 +284,9 @@ module Make (F : Features.T) = struct
             (match clause.kind with Excluded -> "remove" | _ -> "add")
           @@ show_ident_set matched);
       let set_op =
-        match clause.kind with Included _ -> Set.union | Excluded -> Set.diff
+        match clause.kind with
+        | Included _ | SignatureOnly -> Set.union
+        | Excluded -> Set.diff
       in
       let result = set_op selection' matched in
       result

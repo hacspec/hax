@@ -1271,8 +1271,8 @@ let make (module M : Attrs.WITH_ITEMS) ctx =
               let ctx = ctx
             end) : S)
 
-let strings_of_item (bo : BackendOptions.t) m items (item : item) :
-    [> `Impl of string | `Intf of string ] list =
+let strings_of_item ~signature_only (bo : BackendOptions.t) m items
+    (item : item) : [> `Impl of string | `Intf of string ] list =
   let interface_mode' : Types.inclusion_kind =
     List.rev bo.interfaces
     |> List.find ~f:(fun (clause : Types.inclusion_clause) ->
@@ -1288,8 +1288,10 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
     |> Option.map ~f:(fun (clause : Types.inclusion_clause) -> clause.kind)
     |> Option.value ~default:(Types.Excluded : Types.inclusion_kind)
   in
+  Stdlib.prerr_endline ("signature_only=" ^ [%show: bool] signature_only);
   let interface_mode =
-    not ([%matches? (Types.Excluded : Types.inclusion_kind)] interface_mode')
+    signature_only
+    || not ([%matches? (Types.Excluded : Types.inclusion_kind)] interface_mode')
   in
   let (module Print) =
     make m
@@ -1301,11 +1303,12 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
   in
   let mk_impl = if interface_mode then fun i -> `Impl i else fun i -> `Impl i in
   let mk_intf = if interface_mode then fun i -> `Intf i else fun i -> `Impl i in
+  let no_impl =
+    signature_only
+    || [%matches? (Types.Included None' : Types.inclusion_kind)] interface_mode'
+  in
   Print.pitem item
-  |> (match interface_mode' with
-     | Types.Included None' ->
-         List.filter ~f:(function `Impl _ -> false | _ -> true)
-     | _ -> Fn.id)
+  |> List.filter ~f:(function `Impl _ when no_impl -> false | _ -> true)
   |> List.concat_map ~f:(function
        | `Impl i -> [ mk_impl (decl_to_string i) ]
        | `Intf i -> [ mk_intf (decl_to_string i) ]
@@ -1313,9 +1316,10 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
            let s = "(* " ^ s ^ " *)" in
            if interface_mode then [ `Impl s; `Intf s ] else [ `Impl s ])
 
-let string_of_items (bo : BackendOptions.t) m items : string * string =
+let string_of_items ~signature_only (bo : BackendOptions.t) m items :
+    string * string =
   let strings =
-    List.concat_map ~f:(strings_of_item bo m items) items
+    List.concat_map ~f:(strings_of_item ~signature_only bo m items) items
     |> List.map ~f:(function
          | `Impl s -> `Impl (String.strip s)
          | `Intf s -> `Intf (String.strip s))
@@ -1343,13 +1347,23 @@ let translate m (bo : BackendOptions.t) (items : AST.item list) :
   U.group_items_by_namespace items
   |> Map.to_alist
   |> List.concat_map ~f:(fun (ns, items) ->
+         let signature_only =
+           let is_dropped_body =
+             Concrete_ident.eq_name Rust_primitives__hax__dropped_body
+           in
+           let contains_dropped_body =
+             U.Reducers.collect_concrete_idents#visit_item ()
+             >> Set.exists ~f:is_dropped_body
+           in
+           List.exists ~f:contains_dropped_body items
+         in
          let mod_name =
            String.concat ~sep:"."
              (List.map
                 ~f:(map_first_letter String.uppercase)
                 (fst ns :: snd ns))
          in
-         let impl, intf = string_of_items bo m items in
+         let impl, intf = string_of_items ~signature_only bo m items in
          let make ~ext body =
            if String.is_empty body then None
            else

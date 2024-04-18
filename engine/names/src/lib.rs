@@ -144,6 +144,8 @@ mod hax {
     fn array_of_list() {}
     fn never_to_any() {}
 
+    fn dropped_body() {}
+
     mod control_flow_monad {
         trait ControlFlowMonad {
             fn lift() {}
