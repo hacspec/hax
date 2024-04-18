@@ -129,6 +129,8 @@ let add3_lemma (x: u32)
         x <=. 10ul || x >=. (u32_max /! 3ul <: u32) || (add3 x x x <: u32) =. (x *! 3ul <: u32)) =
   ()
 
+let inlined_code__V: u8 = 12uy
+
 let u32_max: u32 = 90000ul
 
 let add3 (x y z: u32)
@@ -147,4 +149,13 @@ type t_Foo = {
   f_y:f_y: u32{f_y >. 3ul};
   f_z:f_z: u32{((f_y +! f_x <: u32) +! f_z <: u32) >. 3ul}
 }
+
+let inlined_code (foo: t_Foo) : Prims.unit =
+  let vv_a:i32 = 13l in
+  let _:Prims.unit =
+    let x = foo.f_x in
+    let { f_y = y } = foo in
+    add3 ((fun _ -> 3ul) foo) vv_a inlined_code__V y
+  in
+  ()
 '''

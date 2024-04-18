@@ -5,6 +5,8 @@
 | chacha20           | Typechecks                   |
 | limited-order-book | Typechecks                   |
 | sha256             | Lax-typechecks               |
+| barrett            | Typechecks                   |
+| kyber_compress     | Typechecks                   |
 
 ## How to generate the F\* code and typecheck it for the examples
 
