@@ -36,8 +36,8 @@ HACL_HOME      ?= $(HAX_HOME)/../../../hacl-star
 
 FSTAR_BIN      ?= $(shell command -v fstar.exe 1>&2 2> /dev/null && echo "fstar.exe" || echo "$(FSTAR_HOME)/bin/fstar.exe")
 
-HAX_PROOF_LIBS ?= $(HAX_HOME)/proof-libs/fstar
-HAX_LIB        ?= $(HAX_HOME)/hax-lib
+HAX_PROOF_LIBS_HOME ?= $(HAX_HOME)/proof-libs/fstar
+HAX_LIBS_HOME       ?= $(HAX_HOME)/hax-lib/proofs/fstar/extraction
 
 CACHE_DIR      ?= $(HAX_PROOF_LIBS)/.cache
 HINT_DIR       ?= $(HAX_PROOF_LIBS)/.hints
@@ -56,9 +56,9 @@ $(ROOTS): ../../../src/lib.rs
 	cargo hax into fstar --z3rlimit 500
 
 FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib \
-	$(HAX_PROOF_LIBS)/rust_primitives $(HAX_PROOF_LIBS)/core \
-	$(HAX_PROOF_LIBS)/hax_lib \
-	$(HAX_LIB)/proofs/fstar/extraction
+	$(HAX_PROOF_LIBS_HOME)/rust_primitives $(HAX_PROOF_LIBS_HOME)/core \
+	$(HAX_PROOF_LIBS_HOME)/hax_lib \
+	$(HAX_LIBS_HOME)
 
 FSTAR_FLAGS = --cmi \
   --warn_error -331 \
