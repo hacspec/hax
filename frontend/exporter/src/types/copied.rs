@@ -806,9 +806,7 @@ pub struct ExpnData {
 }
 
 /// Reflects [`rustc_span::Span`]
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash, PartialOrd, Ord,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, Ord)]
 pub struct Span {
     pub lo: Loc,
     pub hi: Loc,
@@ -819,6 +817,36 @@ pub struct Span {
     pub rust_span_data: Option<rustc_span::SpanData>,
     // expn_backtrace: Vec<ExpnData>,
 }
+
+const _: () = {
+    // `rust_span_data` is a metadata that should *not* be taken into
+    // account while hashing or comparing
+
+    impl std::hash::Hash for Span {
+        fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+            self.lo.hash(state);
+            self.hi.hash(state);
+            self.filename.hash(state);
+        }
+    }
+    impl PartialEq for Span {
+        fn eq(&self, other: &Self) -> bool {
+            self.lo == other.lo && self.hi == other.hi && self.filename == other.filename
+        }
+    }
+
+    impl PartialOrd for Span {
+        fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+            Some(
+                self.lo.partial_cmp(&other.lo)?.then(
+                    self.hi
+                        .partial_cmp(&other.hi)?
+                        .then(self.filename.partial_cmp(&other.filename)?),
+                ),
+            )
+        }
+    }
+};
 
 impl Into<Loc> for rustc_span::Loc {
     fn into(self) -> Loc {
