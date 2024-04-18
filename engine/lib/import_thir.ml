@@ -215,6 +215,7 @@ end
 
 module Make (CTX : sig
   val is_core_item : bool
+  val drop_body : bool
 end) : EXPR = struct
   let c_binop (op : Thir.bin_op) (lhs : expr) (rhs : expr) (span : span)
       (typ : ty) =
@@ -316,7 +317,7 @@ end) : EXPR = struct
     U.call' (`Concrete name) [ lhs; rhs ] span typ
 
   let rec c_expr (e : Thir.decorated_for__expr_kind) : expr =
-    try c_expr_unwrapped e
+    try (if CTX.drop_body then c_expr_drop_body else c_expr_unwrapped) e
     with Diagnostics.SpanFreeError.Exn (Data (ctx, kind)) ->
       let typ : ty =
         try c_ty e.span e.ty
@@ -325,6 +326,15 @@ end) : EXPR = struct
       let span = Span.of_thir e.span in
       U.hax_failure_expr' span typ (ctx, kind)
         ([%show: Thir.decorated_for__expr_kind] e)
+
+  (** Extracts an expression as the global name `dropped_body`: this
+      drops the computational part of the expression, but keeps a
+      correct type and span. *)
+  and c_expr_drop_body (e : Thir.decorated_for__expr_kind) : expr =
+    let typ = c_ty e.span e.ty in
+    let span = Span.of_thir e.span in
+    let v = Global_ident.of_name Value Rust_primitives__hax__dropped_body in
+    { span; typ; e = GlobalVar v }
 
   and c_expr_unwrapped (e : Thir.decorated_for__expr_kind) : expr =
     (* TODO: eliminate that `call`, use the one from `ast_utils` *)
@@ -1076,6 +1086,7 @@ end
 include struct
   open Make (struct
     let is_core_item = false
+    let drop_body = false
   end)
 
   let import_ty : Types.span -> Types.ty -> Ast.Rust.ty = c_ty
@@ -1088,15 +1099,21 @@ include struct
     c_predicate_kind
 end
 
-let make ~krate : (module EXPR) =
+(** Instantiate the functor for translating expressions. Two options
+can configured: the crate name (there are special handling related to
+`core`) and `drop_body` (if enabled, original expressions are not
+translated, and the dummy global variable `dropped_body` is used
+instead) *)
+let make ~krate ~drop_body : (module EXPR) =
   let is_core_item = String.(krate = "core" || krate = "core_hax_model") in
   let module M : EXPR = Make (struct
     let is_core_item = is_core_item
+    let drop_body = drop_body
   end) in
   (module M)
 
-let c_trait_item (item : Thir.trait_item) : trait_item =
-  let open (val make ~krate:item.owner_id.krate : EXPR) in
+let c_trait_item (item : Thir.trait_item) ~drop_body : trait_item =
+  let open (val make ~krate:item.owner_id.krate ~drop_body : EXPR) in
   let { params; constraints } = c_generics item.generics in
   (* TODO: see TODO in impl items *)
   let ti_ident = Concrete_ident.of_def_id Field item.owner_id in
@@ -1224,16 +1241,16 @@ let cast_of_enum typ_name generics typ thir_span
   in
   { v; span; ident; attrs = [] }
 
-let rec c_item ~ident (item : Thir.item) : item list =
-  try c_item_unwrapped ~ident item
+let rec c_item ~ident ~drop_body (item : Thir.item) : item list =
+  try c_item_unwrapped ~ident ~drop_body item
   with Diagnostics.SpanFreeError.Exn payload ->
     let context, kind = Diagnostics.SpanFreeError.payload payload in
     let error = Diagnostics.pretty_print_context_kind context kind in
     let span = Span.of_thir item.span in
     [ make_hax_error_item span ident error ]
 
-and c_item_unwrapped ~ident (item : Thir.item) : item list =
-  let open (val make ~krate:item.owner_id.krate : EXPR) in
+and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
+  let open (val make ~krate:item.owner_id.krate ~drop_body : EXPR) in
   if should_skip item.attributes then []
   else
     let span = Span.of_thir item.span in
@@ -1390,7 +1407,7 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
         in
         let params = self :: params in
         let generics = { params; constraints } in
-        let items = List.map ~f:c_trait_item items in
+        let items = List.map ~f:(c_trait_item ~drop_body) items in
         mk @@ Trait { name; generics; items }
     | Trait (Yes, _, _, _, _) -> unimplemented [ item.span ] "Auto trait"
     | Trait (_, Unsafe, _, _, _) -> unimplemented [ item.span ] "Unsafe trait"
@@ -1541,7 +1558,7 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
     | OpaqueTy _ | Union _ | TraitAlias _ ->
         mk NotImplementedYet
 
-let import_item (item : Thir.item) :
+let import_item ~drop_body (item : Thir.item) :
     concrete_ident * (item list * Diagnostics.t list) =
   let ident = Concrete_ident.of_def_id Value item.owner_id in
   let r, reports =
@@ -1550,6 +1567,7 @@ let import_item (item : Thir.item) :
         (true, Hashtbl.create (module String))
       >> U.Reducers.disambiguate_local_idents
     in
-    Diagnostics.Core.capture (fun _ -> c_item item ~ident |> List.map ~f)
+    Diagnostics.Core.capture (fun _ ->
+        c_item item ~ident ~drop_body |> List.map ~f)
   in
   (ident, (r, reports))

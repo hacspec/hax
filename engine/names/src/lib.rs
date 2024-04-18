@@ -144,6 +144,10 @@ mod hax {
     fn array_of_list() {}
     fn never_to_any() {}
 
+    /// The engine uses this `dropped_body` symbol as a marker value
+    /// to signal that a item was extracted without body.
+    fn dropped_body() {}
+
     mod control_flow_monad {
         trait ControlFlowMonad {
             fn lift() {}
