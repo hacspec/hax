@@ -145,10 +145,10 @@ pub(super) fn item(
         #assoc_attr
         #item
         #attribute_to_inject
+        #status_attr
         const _: () = {
             #NeverDropBody
             #uid_attr
-            #status_attr
             #kind_attr
             fn quote_contents() {
                 #expr

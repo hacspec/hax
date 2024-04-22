@@ -137,7 +137,7 @@ fn inlined_code(foo: Foo) {
     );
 }
 
-#[hax::fstar_replace(r#"unfold let $some_function = "hello from F*""#)]
+#[hax::fstar_replace(r#"unfold let $some_function _ = "hello from F*""#)]
 fn some_function() -> String {
     String::from("hello from Rust")
 }

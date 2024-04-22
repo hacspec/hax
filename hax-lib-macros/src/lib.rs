@@ -647,7 +647,7 @@ macro_rules! make_quoting_proc_macro {
         #[proc_macro_attribute]
         pub fn $replace_name(payload: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
             let item: TokenStream = item.into();
-            let attr = AttrPayload::ItemStatus(ItemStatus::Included { late_skip: false });
+            let attr = AttrPayload::ItemStatus(ItemStatus::Included { late_skip: true });
             $before_name(payload, quote!{#attr #item}.into())
         }
     };

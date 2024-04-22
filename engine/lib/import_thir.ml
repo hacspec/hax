@@ -123,7 +123,18 @@ let c_attrs : Thir.attribute list -> attrs = List.map ~f:c_attr
 let c_item_attrs (attrs : Thir.item_attributes) : attrs =
   (* TODO: This is a quite coarse approximation, we need to reflect
      that parent/self structure in our AST. *)
-  c_attrs (attrs.attributes @ attrs.parent_attributes)
+  let self = c_attrs attrs.attributes in
+  let parent = c_attrs attrs.parent_attributes in
+  let parent =
+    (* Repeating associateditem or uid is harmful *)
+    List.filter
+      ~f:(fun payload ->
+        match Attr_payloads.payloads [ payload ] with
+        | [ ((Uid _ | AssociatedItem _), _) ] -> false
+        | _ -> true)
+      parent
+  in
+  self @ parent
 
 type extended_literal =
   | EL_Lit of literal
