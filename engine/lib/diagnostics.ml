@@ -44,6 +44,7 @@ module Phase = struct
     | SimplifyMatchReturn
     | SimplifyHoisting
     | DropNeedlessReturns
+    | TransformHaxLibInline
     | DummyA
     | DummyB
     | DummyC
