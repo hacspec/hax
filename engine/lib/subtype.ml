@@ -260,14 +260,15 @@ struct
             body = dexpr body;
             captures = List.map ~f:dexpr captures;
           }
-    | Quote { contents; witness } ->
-        let f = function
-          | `Verbatim code -> `Verbatim code
-          | `Expr e -> `Expr (dexpr e)
-          | `Pat p -> `Pat (dpat p)
-        in
-        Quote
-          { contents = List.map ~f contents; witness = S.quote span witness }
+    | Quote quote -> Quote (dquote span quote)
+
+  and dquote (span : span) ({ contents; witness } : A.quote) : B.quote =
+    let f = function
+      | `Verbatim code -> `Verbatim code
+      | `Expr e -> `Expr (dexpr e)
+      | `Pat p -> `Pat (dpat p)
+    in
+    { contents = List.map ~f contents; witness = S.quote span witness }
 
   and dloop_kind (span : span) (k : A.loop_kind) : B.loop_kind =
     match k with

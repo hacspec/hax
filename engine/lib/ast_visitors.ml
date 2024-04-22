@@ -434,17 +434,7 @@ functor
               in
               let argument = self#visit_expr env record_payload.argument in
               EffectAction { action; argument }
-          | Quote { contents; witness } ->
-              let contents =
-                self#visit_list
-                  (fun env -> function
-                    | `Verbatim code -> `Verbatim code
-                    | `Expr e -> `Expr (self#visit_expr env e)
-                    | `Pat p -> `Pat (self#visit_pat env p))
-                  env contents
-              in
-              let witness = self#visit_feature_quote env witness in
-              Quote { contents; witness }
+          | Quote quote -> Quote (self#visit_quote env quote)
 
         method visit_expr (env : 'env) (this : expr) : expr =
           let e = self#visit_expr' env this.e in
@@ -452,6 +442,19 @@ functor
           let typ = self#visit_ty env this.typ in
           let out : expr = { e; span; typ } in
           out
+
+        method visit_quote (env : 'env) ({ contents; witness } : quote) : quote
+            =
+          let contents =
+            self#visit_list
+              (fun env -> function
+                | `Verbatim code -> `Verbatim code
+                | `Expr e -> `Expr (self#visit_expr env e)
+                | `Pat p -> `Pat (self#visit_pat env p))
+              env contents
+          in
+          let witness = self#visit_feature_quote env witness in
+          { contents; witness }
 
         method visit_supported_monads (env : 'env) (this : supported_monads)
             : supported_monads =
@@ -1461,22 +1464,9 @@ functor
               in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
               (EffectAction { action; argument }, reduce_acc)
-          | Quote { contents; witness } ->
-              let list, reduce_acc =
-                self#visit_list
-                  (fun env -> function
-                    | `Verbatim code -> (`Verbatim code, self#zero)
-                    | `Expr e ->
-                        let e, acc = self#visit_expr env e in
-                        (`Expr e, acc)
-                    | `Pat p ->
-                        let p, acc = self#visit_pat env p in
-                        (`Pat p, acc))
-                  env contents
-              in
-              let witness, reduce_acc' = self#visit_feature_quote env witness in
-              let reduce_acc = self#plus reduce_acc reduce_acc' in
-              (Quote { contents; witness }, reduce_acc)
+          | Quote quote ->
+              let quote, acc = self#visit_quote env quote in
+              (Quote quote, acc)
 
         method visit_expr (env : 'env) (this : expr) : expr * 'acc =
           let e, reduce_acc = self#visit_expr' env this.e in
@@ -1486,6 +1476,24 @@ functor
           let reduce_acc = self#plus reduce_acc reduce_acc' in
           let out : expr = { e; span; typ } in
           (out, reduce_acc)
+
+        method visit_quote (env : 'env) ({ contents; witness } : quote)
+            : quote * 'acc =
+          let list, reduce_acc =
+            self#visit_list
+              (fun env -> function
+                | `Verbatim code -> (`Verbatim code, self#zero)
+                | `Expr e ->
+                    let e, acc = self#visit_expr env e in
+                    (`Expr e, acc)
+                | `Pat p ->
+                    let p, acc = self#visit_pat env p in
+                    (`Pat p, acc))
+              env contents
+          in
+          let witness, reduce_acc' = self#visit_feature_quote env witness in
+          let reduce_acc = self#plus reduce_acc reduce_acc' in
+          ({ contents; witness }, reduce_acc)
 
         method visit_supported_monads (env : 'env) (this : supported_monads)
             : supported_monads * 'acc =
@@ -2602,24 +2610,26 @@ functor
               let reduce_acc' = self#visit_expr env record_payload.argument in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
               reduce_acc
-          | Quote { contents; witness } ->
-              let reduce_acc =
-                self#visit_list
-                  (fun env -> function
-                    | `Verbatim code -> self#zero
-                    | `Expr e -> self#visit_expr env e
-                    | `Pat p -> self#visit_pat env p)
-                  env contents
-              in
-              let reduce_acc' = self#visit_feature_quote env witness in
-              let reduce_acc = self#plus reduce_acc reduce_acc' in
-              reduce_acc
+          | Quote quote -> self#visit_quote env quote
 
         method visit_expr (env : 'env) (this : expr) : 'acc =
           let reduce_acc = self#visit_expr' env this.e in
           let reduce_acc' = self#visit_span env this.span in
           let reduce_acc = self#plus reduce_acc reduce_acc' in
           let reduce_acc' = self#visit_ty env this.typ in
+          let reduce_acc = self#plus reduce_acc reduce_acc' in
+          reduce_acc
+
+        method visit_quote (env : 'env) ({ contents; witness } : quote) : 'acc =
+          let reduce_acc =
+            self#visit_list
+              (fun env -> function
+                | `Verbatim code -> self#zero
+                | `Expr e -> self#visit_expr env e
+                | `Pat p -> self#visit_pat env p)
+              env contents
+          in
+          let reduce_acc' = self#visit_feature_quote env witness in
           let reduce_acc = self#plus reduce_acc reduce_acc' in
           reduce_acc
 

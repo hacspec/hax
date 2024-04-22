@@ -573,15 +573,17 @@ struct
              kind = UnsupportedMacro { id = [%show: global_ident] macro };
              span = e.span;
            }
-    | Quote { contents; _ } ->
-        List.map
-          ~f:(function
-            | `Verbatim code -> code
-            | `Expr e -> pexpr e |> term_to_string
-            | `Pat p -> ppat p |> pat_to_string)
-          contents
-        |> String.concat |> F.term_of_string
+    | Quote quote -> pquote quote |> F.term_of_string
     | _ -> .
+
+  and pquote { contents; _ } =
+    List.map
+      ~f:(function
+        | `Verbatim code -> code
+        | `Expr e -> pexpr e |> term_to_string
+        | `Pat p -> ppat p |> pat_to_string)
+      contents
+    |> String.concat
 
   and parm { arm = { arm_pat; body } } = (ppat arm_pat, None, pexpr body)
 
