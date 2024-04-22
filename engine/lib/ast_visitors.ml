@@ -681,6 +681,7 @@ functor
                 self#visit_option self#visit_string env record_payload.rename
               in
               Use { path; is_external; rename }
+          | Quote quote -> Quote (self#visit_quote env quote)
           | HaxError x0 ->
               let x0 = self#visit_string env x0 in
               HaxError x0
@@ -1825,6 +1826,9 @@ functor
               in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
               (Use { path; is_external; rename }, reduce_acc)
+          | Quote quote ->
+              let quote, acc = self#visit_quote env quote in
+              (Quote quote, acc)
           | HaxError x0 ->
               let x0, reduce_acc = self#visit_string env x0 in
               (HaxError x0, reduce_acc)
@@ -2928,6 +2932,7 @@ functor
               in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
               reduce_acc
+          | Quote quote -> self#visit_quote env quote
           | HaxError x0 ->
               let reduce_acc = self#visit_string env x0 in
               reduce_acc

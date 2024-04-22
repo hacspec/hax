@@ -470,6 +470,7 @@ struct
             }
       | Alias { name; item } -> B.Alias { name; item }
       | Use { path; is_external; rename } -> B.Use { path; is_external; rename }
+      | Quote quote -> Quote (dquote span quote)
       | HaxError e -> B.HaxError e
       | NotImplementedYet -> B.NotImplementedYet
 

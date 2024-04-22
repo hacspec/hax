@@ -390,6 +390,7 @@ functor
           is_external : bool;
           rename : string option;
         }
+      | Quote of quote
       | HaxError of string
       | NotImplementedYet
 
