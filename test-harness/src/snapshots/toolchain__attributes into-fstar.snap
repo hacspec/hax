@@ -129,11 +129,7 @@ let add3_lemma (x: u32)
         x <=. 10ul || x >=. (u32_max /! 3ul <: u32) || (add3 x x x <: u32) =. (x *! 3ul <: u32)) =
   ()
 
-let before_inlined_code = "example before"
-
 let inlined_code__V: u8 = 12uy
-
-let inlined_code_after = "example after"
 
 let u32_max: u32 = 90000ul
 

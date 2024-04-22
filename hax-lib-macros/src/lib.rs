@@ -638,7 +638,6 @@ macro_rules! make_quoting_proc_macro {
             }.into()
         }
 
-
         make_quoting_item_proc_macro!($backend, $before_name, ItemQuotePosition::Before, $cfg_name);
         make_quoting_item_proc_macro!($backend, $after_name, ItemQuotePosition::After, $cfg_name);
 
