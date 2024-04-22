@@ -257,7 +257,7 @@ pub struct TranslationOptions {
 
     /// By default, hax includes all items. Then, the patterns
     /// prefixed by modifiers are processed from left to right,
-    /// exluding or including items. Ecah pattern selects a number of
+    /// excluding or including items. Each pattern selects a number of
     /// item. The modifiers are:
     ///
     ///  - `+`: includes the selected items with their dependencies,
