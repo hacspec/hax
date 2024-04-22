@@ -52,10 +52,41 @@ pub enum AssociationRole {
     Ensures,
     Decreases,
     Refine,
+    /// A quoted piece of backend code to place after or before the
+    /// extraction of the marked item
+    ItemQuote,
     ProcessRead,
     ProcessWrite,
     ProcessInit,
     ProtocolMessages,
+}
+
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[serde(rename = "HaItemQuotePosition")]
+pub enum ItemQuotePosition {
+    /// Should appear just before the item in the extraction
+    Before,
+    /// Should appear right after the item in the extraction
+    After,
+}
+
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[serde(rename = "HaItemQuoteFStarOpts")]
+pub struct ItemQuoteFStarOpts {
+    /// Shall we output this in F* interfaces (`*.fsti` files)?
+    pub intf: bool,
+    /// Shall we output this in F* implementations (`*.fst` files)?
+    pub r#impl: bool,
+}
+
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[serde(rename = "HaItemQuote")]
+pub struct ItemQuote {
+    pub position: ItemQuotePosition,
+    pub fstar_options: Option<ItemQuoteFStarOpts>,
 }
 
 /// Hax only understands one attribute: `#[hax::json(PAYLOAD)]` where
@@ -71,6 +102,8 @@ pub enum AttrPayload {
         item: ItemUid,
     },
     Uid(ItemUid),
+    /// Decides of the position of a item quote
+    ItemQuote(ItemQuote),
     /// Mark an item so that hax never drop its body (this is useful
     /// for pre- and post- conditions of a function we dropped the
     /// body of: pre and post are part of type signature)

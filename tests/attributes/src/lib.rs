@@ -124,13 +124,20 @@ mod newtype_pattern {
     }
 }
 
+#[hax::fstar_before(r#"let before_${inlined_code} = "example before""#)]
+#[hax::fstar_after(r#"let ${inlined_code}_after = "example after""#)]
 fn inlined_code(foo: Foo) {
     const V: u8 = 12;
     let v_a = 13;
-    hax::fstar!(
+    hax::fstar_expr!(
         r"let x = ${foo.x} in
           let $?{Foo {y, ..}} = $foo in
           $add3 ((fun _ -> 3ul) $foo) $v_a $V y
         "
     );
+}
+
+#[hax::fstar_replace(r#"unfold let $some_function = "hello from F*""#)]
+fn some_function() -> String {
+    String::from("hello from Rust")
 }
