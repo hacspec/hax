@@ -26,3 +26,24 @@ fn f(x: u8) -> [u8; 4] {
 struct Foo {
     unsupported_field: *const u8,
 }
+
+struct Bar;
+
+/// Non-inherent implementations are extracted, their bodies are not
+/// dropped. This might be a bit surprising: see
+/// https://github.com/hacspec/hax/issues/616.
+impl From<()> for Bar {
+    fn from((): ()) -> Self {
+        Bar
+    }
+}
+
+/// If you need to drop the body of a method, please hoist it:
+impl From<u8> for Bar {
+    fn from(x: u8) -> Self {
+        fn from(_: u8) -> Bar {
+            Bar
+        }
+        from(x)
+    }
+}
