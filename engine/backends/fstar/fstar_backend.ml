@@ -902,8 +902,8 @@ struct
                  AttributeRejected
                    {
                      reason =
-                       "a type cannot be opaque if it's module is not \
-                        extracted as an interface";
+                       "a type cannot be opaque if its module is not extracted \
+                        as an interface";
                    };
                span = e.span;
              }
