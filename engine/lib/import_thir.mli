@@ -5,5 +5,6 @@ val import_predicate_kind :
   Types.span -> Types.predicate_kind -> Ast.Rust.trait_goal option
 
 val import_item :
+  drop_body:bool ->
   Types.item_for__decorated_for__expr_kind ->
   Concrete_ident.t * (Ast.Rust.item list * Diagnostics.t list)

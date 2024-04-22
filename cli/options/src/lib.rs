@@ -145,8 +145,11 @@ pub struct FStarOptions {
     ifuel: u32,
     /// Modules for which Hax should extract interfaces (`*.fsti`
     /// files) in supplement to implementations (`*.fst` files). By
-    /// default we extract no interface, only implementations. This
-    /// flag expects a space-separated list of inclusion clauses. An
+    /// default we extract no interface, only implementations. If a
+    /// item is signature only (see the `+:` prefix of the
+    /// `--include_namespaces` flag of the `into` subcommand), then
+    /// its namespace is extracted with an interface. This flag
+    /// expects a space-separated list of inclusion clauses. An
     /// inclusion clause is a Rust path prefixed with `+`, `+!` or
     /// `-`. `-` means implementation only, `+!` means interface only
     /// and `+` means implementation and interface. Rust path chunks
@@ -198,6 +201,7 @@ enum DepsKind {
 enum InclusionKind {
     /// `+query` include the items selected by `query`
     Included(DepsKind),
+    SignatureOnly,
     Excluded,
 }
 
@@ -215,7 +219,7 @@ fn parse_inclusion_clause(
         Err("Expected `-` or `+`, got an empty string")?
     }
     let (prefix, namespace) = {
-        let f = |&c: &char| matches!(c, '+' | '-' | '~' | '!');
+        let f = |&c: &char| matches!(c, '+' | '-' | '~' | '!' | ':');
         (
             s.chars().take_while(f).into_iter().collect::<String>(),
             s.chars().skip_while(f).into_iter().collect::<String>(),
@@ -225,9 +229,10 @@ fn parse_inclusion_clause(
         "+" => InclusionKind::Included(DepsKind::Transitive),
         "+~" => InclusionKind::Included(DepsKind::Shallow),
         "+!" => InclusionKind::Included(DepsKind::None),
+        "+:" => InclusionKind::SignatureOnly,
         "-" => InclusionKind::Excluded,
         prefix => Err(format!(
-            "Expected `-`, `+~`, `+!` or `-`, got an `{prefix}`"
+            "Expected `+`, `+~`, `+!`, `+:` or `-`, got an `{prefix}`"
         ))?,
     };
     Ok(InclusionClause {
@@ -238,14 +243,37 @@ fn parse_inclusion_clause(
 
 #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
 pub struct TranslationOptions {
-    /// Space-separated list of inclusion clauses. An inclusion clause
-    /// is a Rust path prefixed with `+`, `+~`, `+!` or `-`. `-`
-    /// excludes any matched item, `+` includes any matched item and
-    /// their dependencies, `+~` includes any matched item and their
-    /// direct dependencies, `+!` includes any matched item strictly
-    /// (without including dependencies). By default, every item is
-    /// included. Rust path chunks can be either a concrete string, or
-    /// a glob (just like bash globs, but with Rust paths).
+    /// Controls which Rust item should be extracted or not.
+    ///
+    /// This is a space-separated list of patterns prefixed with a
+    /// modifier, read from the left to the right.
+    ///
+    /// A pattern is a Rust path (say `mycrate::mymod::myfn`) where
+    /// globs are allowed: `*` matches any name
+    /// (e.g. `mycrate::mymod::myfn` is matched by
+    /// `mycrate::*::myfn`), while `**` matches any subpath, empty
+    /// included (e.g. `mycrate::mymod::myfn` is matched by
+    /// `**::myfn`).
+
+    /// By default, hax includes all items. Then, the patterns
+    /// prefixed by modifiers are processed from left to right,
+    /// excluding or including items. Each pattern selects a number of
+    /// item. The modifiers are:
+    ///
+    ///  - `+`: includes the selected items with their dependencies,
+    /// transitively (e.g. if function `f` calls `g` which in turn
+    /// calls `h`, then `+k::f` includes `f`, `g` and `h`)
+
+    /// {n} - `+~`: includes the selected items with their direct
+    /// dependencies only (following the previous example, `+~k::f`
+    /// would select `f` and `g`, but not `h`)
+
+    /// {n} - `+!`: includes the selected items, without their
+    /// dependencies (`+!k::f` would only select `f`)
+
+    /// {n} - `+:`: only includes the type of the selected items (no
+    /// dependencies). This includes full struct and enums, but only
+    /// the type signature of functions, dropping their bodies.
     #[arg(
         value_parser = parse_inclusion_clause,
         value_delimiter = ' ',

@@ -27,13 +27,36 @@ module Attrs = Attr_payloads.MakeBase (Error)
 let import_thir_items (include_clauses : Types.inclusion_clause list)
     (items : Types.item_for__decorated_for__expr_kind list) : Ast.Rust.item list
     =
-  let result = List.map ~f:Import_thir.import_item items |> List.map ~f:snd in
-  let items = List.concat_map ~f:fst result in
+  let imported_items =
+    List.map
+      ~f:(fun item ->
+        let ident = Concrete_ident.(of_def_id Kind.Value item.owner_id) in
+        let most_precise_clause =
+          (* Computes the include clause that apply to `item`, if any *)
+          List.filter
+            ~f:(fun clause ->
+              Concrete_ident.matches_namespace clause.Types.namespace ident)
+            include_clauses
+          |> List.last
+        in
+        let drop_body =
+          (* Shall we drop the body? *)
+          Option.map
+            ~f:(fun clause -> [%matches? Types.SignatureOnly] clause.kind)
+            most_precise_clause
+          |> Option.value ~default:false
+        in
+        Import_thir.import_item ~drop_body item)
+      items
+    |> List.map ~f:snd
+  in
+  let items = List.concat_map ~f:fst imported_items in
+  (* Build a map from idents to error reports *)
   let ident_to_reports =
     List.concat_map
       ~f:(fun (items, reports) ->
         List.map ~f:(fun (item : Ast.Rust.item) -> (item.ident, reports)) items)
-      result
+      imported_items
     |> Map.of_alist_exn (module Concrete_ident)
   in
   let items = Deps.filter_by_inclusion_clauses include_clauses items in
@@ -44,6 +67,7 @@ let import_thir_items (include_clauses : Types.inclusion_clause list)
       items
   in
   let items = Deps.sort items in
+  (* Extract error reports for the items we actually extract *)
   let reports =
     List.concat_map
       ~f:(fun (item : Ast.Rust.item) ->
@@ -51,6 +75,7 @@ let import_thir_items (include_clauses : Types.inclusion_clause list)
       items
     |> List.dedup_and_sort ~compare:Diagnostics.compare
   in
+  (* Report every error *)
   List.iter ~f:Diagnostics.Core.report reports;
   items
 

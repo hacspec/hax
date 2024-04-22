@@ -145,7 +145,8 @@ pub fn lemma(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
             );
         }
     }
-    quote! { #attr #item }.into()
+    use AttrPayload::NeverDropBody;
+    quote! { #attr #NeverDropBody #item }.into()
 }
 
 /*

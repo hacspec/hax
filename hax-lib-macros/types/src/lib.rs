@@ -71,6 +71,10 @@ pub enum AttrPayload {
         item: ItemUid,
     },
     Uid(ItemUid),
+    /// Mark an item so that hax never drop its body (this is useful
+    /// for pre- and post- conditions of a function we dropped the
+    /// body of: pre and post are part of type signature)
+    NeverDropBody,
     /// Mark an item as a lemma statement to prove in the backend
     Lemma,
     Language,
