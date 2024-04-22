@@ -367,6 +367,10 @@ dependencies = [
 [[package]]
 name = "interface-only"
 version = "0.1.0"
+dependencies = [
+ "hax-lib",
+ "hax-lib-macros",
+]
 
 [[package]]
 name = "itertools"

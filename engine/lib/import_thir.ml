@@ -200,6 +200,7 @@ let cast_name_for_type typ_name =
 
 module type EXPR = sig
   val c_expr : Thir.decorated_for__expr_kind -> expr
+  val c_expr_drop_body : Thir.decorated_for__expr_kind -> expr
   val c_ty : Thir.span -> Thir.ty -> ty
   val c_generic_value : Thir.span -> Thir.generic_arg -> generic_value
   val c_generics : Thir.generics -> generics
@@ -215,7 +216,6 @@ end
 
 module Make (CTX : sig
   val is_core_item : bool
-  val drop_body : bool
 end) : EXPR = struct
   let c_binop (op : Thir.bin_op) (lhs : expr) (rhs : expr) (span : span)
       (typ : ty) =
@@ -317,7 +317,7 @@ end) : EXPR = struct
     U.call' (`Concrete name) [ lhs; rhs ] span typ
 
   let rec c_expr (e : Thir.decorated_for__expr_kind) : expr =
-    try (if CTX.drop_body then c_expr_drop_body else c_expr_unwrapped) e
+    try c_expr_unwrapped e
     with Diagnostics.SpanFreeError.Exn (Data (ctx, kind)) ->
       let typ : ty =
         try c_ty e.span e.ty
@@ -1086,7 +1086,6 @@ end
 include struct
   open Make (struct
     let is_core_item = false
-    let drop_body = false
   end)
 
   let import_ty : Types.span -> Types.ty -> Ast.Rust.ty = c_ty
@@ -1099,21 +1098,18 @@ include struct
     c_predicate_kind
 end
 
-(** Instantiate the functor for translating expressions. Two options
-can configured: the crate name (there are special handling related to
-`core`) and `drop_body` (if enabled, original expressions are not
-translated, and the dummy global variable `dropped_body` is used
-instead) *)
-let make ~krate ~drop_body : (module EXPR) =
+(** Instantiate the functor for translating expressions. The crate
+name can be configured (there are special handling related to `core`)
+*)
+let make ~krate : (module EXPR) =
   let is_core_item = String.(krate = "core" || krate = "core_hax_model") in
   let module M : EXPR = Make (struct
     let is_core_item = is_core_item
-    let drop_body = drop_body
   end) in
   (module M)
 
-let c_trait_item (item : Thir.trait_item) ~drop_body : trait_item =
-  let open (val make ~krate:item.owner_id.krate ~drop_body : EXPR) in
+let c_trait_item (item : Thir.trait_item) : trait_item =
+  let open (val make ~krate:item.owner_id.krate : EXPR) in
   let { params; constraints } = c_generics item.generics in
   (* TODO: see TODO in impl items *)
   let ti_ident = Concrete_ident.of_def_id Field item.owner_id in
@@ -1250,15 +1246,21 @@ let rec c_item ~ident ~drop_body (item : Thir.item) : item list =
     [ make_hax_error_item span ident error ]
 
 and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
-  let open (val make ~krate:item.owner_id.krate ~drop_body : EXPR) in
+  let open (val make ~krate:item.owner_id.krate : EXPR) in
   if should_skip item.attributes then []
   else
     let span = Span.of_thir item.span in
-    let mk_one v =
-      let attrs = c_item_attrs item.attributes in
-      { span; v; ident; attrs }
-    in
+    let attrs = c_item_attrs item.attributes in
+    let mk_one v = { span; v; ident; attrs } in
     let mk v = [ mk_one v ] in
+    let drop_body =
+      drop_body
+      && Attr_payloads.payloads attrs
+         |> List.exists
+              ~f:(fst >> [%matches? (NeverDropBody : Types.ha_payload)])
+         |> not
+    in
+    let c_body = if drop_body then c_expr_drop_body else c_expr in
     (* TODO: things might be unnamed (e.g. constants) *)
     match (item.kind : Thir.item_kind) with
     | Const (_, body) ->
@@ -1268,7 +1270,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                name =
                  Concrete_ident.of_def_id Value (Option.value_exn item.def_id);
                generics = { params = []; constraints = [] };
-               body = c_expr body;
+               body = c_body body;
                params = [];
              }
     | TyAlias (ty, generics) ->
@@ -1291,7 +1293,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                name =
                  Concrete_ident.of_def_id Value (Option.value_exn item.def_id);
                generics = c_generics generics;
-               body = c_expr body;
+               body = c_body body;
                params;
              }
     | Enum (variants, generics, repr) ->
@@ -1357,7 +1359,6 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
         let def_id = Option.value_exn item.def_id in
         let is_struct = true in
         (* repeating the attributes of the item in the variant: TODO is that ok? *)
-        let attrs = c_item_attrs item.attributes in
         let v =
           let kind = Concrete_ident.Kind.Constructor { is_struct } in
           let name = Concrete_ident.of_def_id kind def_id in
@@ -1407,7 +1408,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
         in
         let params = self :: params in
         let generics = { params; constraints } in
-        let items = List.map ~f:(c_trait_item ~drop_body) items in
+        let items = List.map ~f:c_trait_item items in
         mk @@ Trait { name; generics; items }
     | Trait (Yes, _, _, _, _) -> unimplemented [ item.span ] "Auto trait"
     | Trait (_, Unsafe, _, _, _) -> unimplemented [ item.span ] "Unsafe trait"
@@ -1552,7 +1553,6 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                 ];
           }
         in
-        let attrs = c_item_attrs item.attributes in
         [ { span; v; ident = Concrete_ident.of_def_id Value def_id; attrs } ]
     | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
     | OpaqueTy _ | Union _ | TraitAlias _ ->

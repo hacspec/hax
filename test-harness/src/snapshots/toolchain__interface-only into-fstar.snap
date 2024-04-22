@@ -35,5 +35,11 @@ module Interface_only
 open Core
 open FStar.Mul
 
-val f (x: u8) : Prims.Pure Prims.unit Prims.l_True (fun _ -> Prims.l_True)
+val f (x: u8)
+    : Prims.Pure (t_Array u8 (sz 4))
+      (requires x <. 254uy)
+      (ensures
+        fun r ->
+          let r:t_Array u8 (sz 4) = r in
+          (r.[ sz 0 ] <: u8) >. x)
 '''
