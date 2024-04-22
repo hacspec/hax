@@ -1,4 +1,4 @@
-use hax_lib::{ensures, fstar, requires};
+use hax_lib::{ensures, fstar_expr, requires};
 
 const FIELD_MODULUS: i32 = 3329;
 const UNSIGNED_FIELD_MODULUS: u32 = FIELD_MODULUS as u32;
@@ -8,7 +8,7 @@ const UNSIGNED_FIELD_MODULUS: u32 = FIELD_MODULUS as u32;
 fn get_n_least_significant_bits(n: u8, value: u32) -> u32 {
     let nth_bit = 1 << n;
     let mask = nth_bit - 1;
-    fstar!("Rust_primitives.Integers.logand_mask_lemma $value (v $n)");
+    fstar_expr!("Rust_primitives.Integers.logand_mask_lemma $value (v $n)");
     value & mask
 }
 
@@ -26,7 +26,7 @@ pub fn compress_unsafe(coefficient_bits: u8, fe: u16) -> i32 {
     compressed += UNSIGNED_FIELD_MODULUS;
     compressed /= UNSIGNED_FIELD_MODULUS << 1;
     compressed &= (1 << coefficient_bits) - 1;
-    fstar!("Rust_primitives.Integers.logand_mask_lemma $compressed (v $coefficient_bits)");
+    fstar_expr!("Rust_primitives.Integers.logand_mask_lemma $compressed (v $coefficient_bits)");
     get_n_least_significant_bits(coefficient_bits, compressed) as i32
 }
 
@@ -45,7 +45,7 @@ pub fn compress(coefficient_bits: u8, fe: u16) -> i32 {
     compressed *= 10_321_340;
     compressed >>= 35;
     compressed &= (1 << coefficient_bits) - 1;
-    fstar!("Rust_primitives.Integers.logand_mask_lemma $compressed (v $coefficient_bits)");
+    fstar_expr!("Rust_primitives.Integers.logand_mask_lemma $compressed (v $coefficient_bits)");
     let compressed = compressed as u32;
     get_n_least_significant_bits(coefficient_bits, compressed) as i32
 }
