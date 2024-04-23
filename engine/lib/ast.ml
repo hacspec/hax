@@ -265,7 +265,8 @@ functor
     and expr = { e : expr'; span : span; typ : ty }
 
     and quote = {
-      contents : [ `Verbatim of string | `Expr of expr | `Pat of pat | `Typ of ty ] list;
+      contents :
+        [ `Verbatim of string | `Expr of expr | `Pat of pat | `Typ of ty ] list;
       witness : F.quote;
     }
 

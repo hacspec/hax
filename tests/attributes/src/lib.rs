@@ -141,3 +141,36 @@ fn inlined_code(foo: Foo) {
 fn some_function() -> String {
     String::from("hello from Rust")
 }
+
+/// An minimal example of a model of math integers for F*
+mod int_model {
+    use super::hax;
+    #[hax::fstar_replace(r#"unfold type $:{Int} = int"#)]
+    #[derive(Copy, Clone)]
+    struct Int(u128);
+
+    #[hax::fstar_replace(r#"unfold let ${add} x y = x + y"#)]
+    fn add(x: Int, y: Int) -> Int {
+        Int(x.0 + y.0)
+    }
+
+    use std::ops::Sub;
+    #[hax::fstar_replace(
+        r#"
+unfold instance impl: Core.Ops.Arith.t_Sub $:Int $:Int =
+  {
+    f_Output = $:Int;
+    f_sub_pre = (fun (self: $:Int) (other: $:Int) -> true);
+    f_sub_post = (fun (self: $:Int) (other: $:Int) (out: $:Int) -> true);
+    f_sub = fun (self: $:Int) (other: $:Int) -> self + other
+  }
+"#
+    )]
+    impl Sub for Int {
+        type Output = Self;
+
+        fn sub(self, other: Self) -> Self::Output {
+            Self(self.0 + other.0)
+        }
+    }
+}

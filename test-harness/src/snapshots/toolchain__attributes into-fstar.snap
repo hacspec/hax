@@ -26,6 +26,24 @@ exit = 0
 diagnostics = []
 
 [stdout.files]
+"Attributes.Int_model.fst" = '''
+module Attributes.Int_model
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+unfold type t_Int = int
+
+unfold let add x y = x + y
+
+unfold instance impl: Core.Ops.Arith.t_Sub t_Int t_Int =
+  {
+    f_Output = t_Int;
+    f_sub_pre = (fun (self: t_Int) (other: t_Int) -> true);
+    f_sub_post = (fun (self: t_Int) (other: t_Int) (out: t_Int) -> true);
+    f_sub = fun (self: t_Int) (other: t_Int) -> self + other
+  }
+'''
 "Attributes.Newtype_pattern.fst" = '''
 module Attributes.Newtype_pattern
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
