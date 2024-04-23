@@ -1,0 +1,65 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: fstar
+  info:
+    name: interface-only
+    manifest: cli/interface-only/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: true
+      stdout: true
+    include_flag: "+:** -interface_only::Foo"
+    backend_options: ~
+---
+exit = 0
+stderr = '''
+Compiling interface-only v0.1.0 (WORKSPACE_ROOT/cli/interface-only)
+    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+
+[stdout]
+diagnostics = []
+
+[stdout.files]
+"Interface_only.fsti" = '''
+module Interface_only
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+val f (x: u8)
+    : Prims.Pure (t_Array u8 (sz 4))
+      (requires x <. 254uy)
+      (ensures
+        fun r ->
+          let r:t_Array u8 (sz 4) = r in
+          (r.[ sz 0 ] <: u8) >. x)
+
+type t_Bar = | Bar : t_Bar
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl: Core.Convert.t_From t_Bar Prims.unit =
+  {
+    f_from_pre = (fun ((): Prims.unit) -> true);
+    f_from_post = (fun ((): Prims.unit) (out: t_Bar) -> true);
+    f_from = fun ((): Prims.unit) -> Bar <: t_Bar
+  }
+
+val from__from: u8 -> Prims.Pure t_Bar Prims.l_True (fun _ -> Prims.l_True)
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_1: Core.Convert.t_From t_Bar u8 =
+  {
+    f_from_pre = (fun (x: u8) -> true);
+    f_from_post = (fun (x: u8) (out: t_Bar) -> true);
+    f_from = fun (x: u8) -> from__from x
+  }
+'''
