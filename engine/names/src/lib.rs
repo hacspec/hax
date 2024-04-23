@@ -39,6 +39,8 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
         Ok(())
     }
 
+    let _ = hax_lib::inline("");
+
     const _: () = {
         use core::{cmp::*, ops::*};
         fn arith<
@@ -141,6 +143,10 @@ mod hax {
     // TODO: Should that live here? (this is F* specific)
     fn array_of_list() {}
     fn never_to_any() {}
+
+    /// The engine uses this `dropped_body` symbol as a marker value
+    /// to signal that a item was extracted without body.
+    fn dropped_body() {}
 
     mod control_flow_monad {
         trait ControlFlowMonad {

@@ -258,6 +258,12 @@ functor
         }
       | Closure of { params : pat list; body : expr; captures : expr list }
       | EffectAction of { action : F.monadic_action; argument : expr }
+      | Quote of {
+          contents : [ `Verbatim of string | `Expr of expr | `Pat of pat ] list;
+          witness : F.quote;
+        }
+          (** A quotation is an inlined piece of backend code
+              interleaved with Rust code *)
 
     and expr = { e : expr'; span : span; typ : ty }
 

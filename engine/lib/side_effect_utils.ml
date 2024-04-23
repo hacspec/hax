@@ -486,6 +486,7 @@ struct
                 ~context:(Other "collect_and_hoist_effects_object") ~span:e.span
                 (Unimplemented
                    { issue_id = None; details = Some "EffectAction" })
+          | Quote _ -> (e, m#zero)
       end
 
     let collect_and_hoist_effects (e : expr) : expr * SideEffects.t =

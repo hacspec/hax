@@ -39,6 +39,7 @@ module SubtypeToInputLanguage
              and type for_loop = Features.Off.for_loop
              and type while_loop = Features.Off.while_loop
              and type for_index_loop = Features.Off.for_index_loop
+             and type quote = Features.Off.quote
              and type state_passing_loop = Features.Off.state_passing_loop) =
 struct
   module FB = InputLanguage

@@ -247,6 +247,9 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr>
     }
 }
 
+// For ConstantKind we merge all the cases (Ty, Val, Unevaluated) into one
+pub type ConstantKind = ConstantExpr;
+
 impl<S> SInto<S, u64> for rustc_middle::mir::interpret::AllocId {
     fn sinto(&self, _: &S) -> u64 {
         self.0.get()
@@ -803,15 +806,47 @@ pub struct ExpnData {
 }
 
 /// Reflects [`rustc_span::Span`]
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash, PartialOrd, Ord,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, Ord)]
 pub struct Span {
     pub lo: Loc,
     pub hi: Loc,
     pub filename: FileName,
+    /// Original rustc span; can be useful for reporting rustc
+    /// diagnostics (this is used in Charon)
+    #[serde(skip)]
+    pub rust_span_data: Option<rustc_span::SpanData>,
     // expn_backtrace: Vec<ExpnData>,
 }
+
+const _: () = {
+    // `rust_span_data` is a metadata that should *not* be taken into
+    // account while hashing or comparing
+
+    impl std::hash::Hash for Span {
+        fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+            self.lo.hash(state);
+            self.hi.hash(state);
+            self.filename.hash(state);
+        }
+    }
+    impl PartialEq for Span {
+        fn eq(&self, other: &Self) -> bool {
+            self.lo == other.lo && self.hi == other.hi && self.filename == other.filename
+        }
+    }
+
+    impl PartialOrd for Span {
+        fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+            Some(
+                self.lo.partial_cmp(&other.lo)?.then(
+                    self.hi
+                        .partial_cmp(&other.hi)?
+                        .then(self.filename.partial_cmp(&other.filename)?),
+                ),
+            )
+        }
+    }
+};
 
 impl Into<Loc> for rustc_span::Loc {
     fn into(self) -> Loc {
@@ -959,41 +994,6 @@ pub struct Block {
     pub stmts: Vec<Stmt>,
     pub expr: Option<Expr>,
     pub safety_mode: BlockSafety,
-}
-
-/// Reflects [`rustc_middle::ty::AliasTy`]
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
-pub struct AliasTy {
-    pub substs: Vec<GenericArg>,
-    pub trait_def_id: Option<(DefId, ImplExpr)>,
-    /// If the alias is a projection (e.g. `<Ty as Trait<...>>::N<...>`),
-    /// `trait_def_id` contains the identifier for `Trait` and the
-    /// impl expressions that satisfies `Ty: Trait<...>`.
-    pub def_id: DefId,
-}
-
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, AliasTy> for rustc_middle::ty::AliasTy<'tcx> {
-    fn sinto(&self, s: &S) -> AliasTy {
-        let tcx = s.base().tcx;
-        use rustc_hir::def::DefKind::*;
-        let trait_def_id = matches!(
-            tcx.def_kind(self.def_id),
-            AssocTy | AssocConst | ImplTraitPlaceholder
-        )
-        .then(|| {
-            (
-                self.trait_def_id(tcx).sinto(s),
-                self.trait_ref(tcx).impl_expr(s, get_param_env(s)),
-            )
-        });
-        AliasTy {
-            substs: self.substs.sinto(s),
-            trait_def_id,
-            def_id: self.def_id.sinto(s),
-        }
-    }
 }
 
 /// Reflects [`rustc_middle::thir::BindingMode`]
@@ -1535,16 +1535,54 @@ pub struct TyGenerics {
     pub has_late_bound_regions: Option<Span>,
 }
 
-/// Reflects [`rustc_type_ir::sty::AliasKind`]
-#[derive(AdtInto)]
-#[args(<S>, from: rustc_type_ir::sty::AliasKind, state: S as _s)]
+/// This type merges the information from
+/// `rustc_type_ir::sty::AliasKind` and `rustc_middle::ty::AliasTy`
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct Alias {
+    pub kind: AliasKind,
+    pub substs: Vec<GenericArg>,
+    pub def_id: DefId,
+}
+
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub enum AliasKind {
-    Projection,
+    /// The projection of a trait type: `<Ty as Trait<...>>::N<...>`
+    Projection {
+        assoc_item: AssocItem,
+        impl_expr: ImplExpr,
+    },
     Inherent,
     Opaque,
+}
+
+impl Alias {
+    fn from<'tcx, S: BaseState<'tcx> + HasOwnerId>(
+        s: &S,
+        alias_kind: &rustc_type_ir::sty::AliasKind,
+        alias_ty: &rustc_middle::ty::AliasTy<'tcx>,
+    ) -> Self {
+        use rustc_type_ir::sty::AliasKind as RustAliasKind;
+        let kind = match alias_kind {
+            RustAliasKind::Projection => {
+                let tcx = s.base().tcx;
+                AliasKind::Projection {
+                    assoc_item: tcx.associated_item(alias_ty.def_id).sinto(s),
+                    impl_expr: alias_ty.trait_ref(tcx).impl_expr(s, get_param_env(s)),
+                }
+            }
+            RustAliasKind::Inherent => AliasKind::Inherent,
+            RustAliasKind::Opaque => AliasKind::Opaque,
+        };
+        Alias {
+            kind,
+            substs: alias_ty.substs.sinto(s),
+            def_id: alias_ty.def_id.sinto(s),
+        }
+    }
 }
 
 /// Reflects [`rustc_middle::ty::TyKind`]
@@ -1597,7 +1635,12 @@ pub enum Ty {
     Generator(DefId, Vec<GenericArg>, Movability),
     Never,
     Tuple(Vec<Ty>),
-    Alias(AliasKind, AliasTy),
+    #[custom_arm(
+        rustc_middle::ty::TyKind::Alias(alias_kind, alias_ty) => {
+            Ty::Alias(Alias::from(state, alias_kind, alias_ty))
+        },
+    )]
+    Alias(Alias),
     Param(ParamTy),
     Bound(DebruijnIndex, BoundTy),
     Placeholder(PlaceholderType),
@@ -2412,6 +2455,11 @@ pub type ThirBody = Expr;
 
 impl<'x, 'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_hir::Ty<'x> {
     fn sinto(self: &rustc_hir::Ty<'x>, s: &S) -> Ty {
+        // **Important:**
+        // We need a local id here, and we get it from the owner id, which must
+        // be local. It is safe to do so, because if we have access to a HIR ty,
+        // it necessarily means we are exploring a local item (we don't have
+        // access to the HIR of external objects, only their MIR).
         let ctx =
             rustc_hir_analysis::collect::ItemCtxt::new(s.base().tcx, s.owner_id().expect_local());
         ctx.to_ty(self).sinto(s)
@@ -3094,15 +3142,48 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Term> for rustc_middle::ty::Term<'
     }
 }
 
-/// Reflects [`rustc_middle::ty::ProjectionPredicate`]
-#[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::ProjectionPredicate<'tcx>, state: S as tcx)]
+/// Expresses a constraints over an associated type.
+///
+/// For instance:
+/// ```text
+/// fn f<T : Foo<S = String>>(...)
+///              ^^^^^^^^^^
+/// ```
+/// (provided the trait `Foo` has an associated type `S`).
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub struct ProjectionPredicate {
-    pub projection_ty: AliasTy,
-    pub term: Term,
+    pub impl_expr: ImplExpr,
+    pub assoc_item: AssocItem,
+    pub ty: Ty,
+}
+
+impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ProjectionPredicate>
+    for rustc_middle::ty::ProjectionPredicate<'tcx>
+{
+    fn sinto(&self, s: &S) -> ProjectionPredicate {
+        let AliasKind::Projection {
+            impl_expr,
+            assoc_item,
+        } = Alias::from(
+            s,
+            &rustc_middle::ty::AliasKind::Projection,
+            &self.projection_ty,
+        )
+        .kind
+        else {
+            unreachable!()
+        };
+        let Term::Ty(ty) = self.term.sinto(s) else {
+            unreachable!()
+        };
+        ProjectionPredicate {
+            impl_expr,
+            assoc_item,
+            ty,
+        }
+    }
 }
 
 /// Reflects [`rustc_middle::ty::Clause`]

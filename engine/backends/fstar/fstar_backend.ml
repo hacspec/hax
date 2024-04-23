@@ -11,6 +11,7 @@ include
       include On.Slice
       include On.Macro
       include On.Construct_base
+      include On.Quote
     end)
     (struct
       let backend = Diagnostics.Backend.FStar
@@ -52,6 +53,7 @@ struct
         include Features.SUBTYPE.On.Construct_base
         include Features.SUBTYPE.On.Slice
         include Features.SUBTYPE.On.Macro
+        include Features.SUBTYPE.On.Quote
       end)
 
   let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
@@ -84,6 +86,9 @@ let doc_to_string : PPrint.document -> string =
 
 let term_to_string : F.AST.term -> string =
   FStar_Parser_ToDocument.term_to_document >> doc_to_string
+
+let pat_to_string : F.AST.pattern -> string =
+  FStar_Parser_ToDocument.pat_to_document >> doc_to_string
 
 let decl_to_string : F.AST.decl -> string =
   FStar_Parser_ToDocument.decl_to_document >> doc_to_string
@@ -127,13 +132,16 @@ struct
           | S32 -> Int32
           | S64 -> Int64
           | S128 ->
-              Error.unimplemented
+              Error.unimplemented ~issue_id:464
                 ~details:
-                  "128 literals (fail if pattern maching, otherwise TODO)" span
+                  "Matching on u128 or i128 literals is not yet supported." span
           | SSize ->
-              Error.unimplemented
+              Error.unimplemented ~issue_id:464
                 ~details:
-                  "usize literals (fail if pattern maching, otherwise TODO)"
+                  "Matching on usize or isize literals is not yet supported. \
+                   As a work-around, instead of `match expr { 0 => ... }`, \
+                   please cast for instance to `u64` before: `match expr as \
+                   u64 { 0 => ... }`."
                 span
         in
         F.Const.Const_int
@@ -453,6 +461,23 @@ struct
         let formula = F.mk_e_app equality [ length; len ] in
         let assertion = F.mk_e_app assert_norm [ formula ] in
         let pat = F.AST.PatVar (list_ident, None, []) |> F.pat in
+        let pat =
+          match l with
+          | [] ->
+              let list_ty =
+                let prims_list = F.term_of_lid [ "Prims"; "list" ] in
+                let inner_typ =
+                  match e.typ with
+                  | TArray { typ; _ } -> pty e.span typ
+                  | _ ->
+                      Error.assertion_failure e.span
+                        "Malformed type for array literal"
+                in
+                F.mk_e_app prims_list [ inner_typ ]
+              in
+              F.pat @@ F.AST.PatAscribed (pat, (list_ty, None))
+          | _ -> pat
+        in
         F.term
         @@ F.AST.Let
              ( NoLetQualifier,
@@ -548,6 +573,14 @@ struct
              kind = UnsupportedMacro { id = [%show: global_ident] macro };
              span = e.span;
            }
+    | Quote { contents; _ } ->
+        List.map
+          ~f:(function
+            | `Verbatim code -> code
+            | `Expr e -> pexpr e |> term_to_string
+            | `Pat p -> ppat p |> pat_to_string)
+          contents
+        |> String.concat |> F.term_of_string
     | _ -> .
 
   and parm { arm = { arm_pat; body } } = (ppat arm_pat, None, pexpr body)
@@ -561,10 +594,8 @@ struct
       let ident = plocal_ident p.ident in
       match p.kind with
       | GPLifetime _ -> Error.assertion_failure span "pgeneric_param:LIFETIME"
-      | GPType { default = None } ->
+      | GPType { default = _ } ->
           { kind; typ = F.term @@ F.AST.Name (F.lid [ "Type" ]); ident }
-      | GPType _ ->
-          Error.unimplemented span ~details:"pgeneric_param:Type with default"
       | GPConst { typ } -> { kind = Explicit; typ = pty span typ; ident }
 
     let of_generic_constraint span (nth : int) (c : generic_constraint) =
@@ -802,9 +833,10 @@ struct
               params
         in
         let pat = F.pat @@ F.AST.PatApp (pat, pat_args) in
+        let qualifier = F.AST.(if is_rec then Rec else NoLetQualifier) in
         let impl =
           F.decl ~fsti:false
-          @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, pexpr body) ])
+          @@ F.AST.TopLevelLet (qualifier, [ (pat, pexpr body) ])
         in
         let interface_mode = ctx.interface_mode && not (List.is_empty params) in
         let ty =
@@ -836,9 +868,7 @@ struct
         in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (ty, None)) in
         let full =
-          F.decl
-          @@ F.AST.TopLevelLet
-               ((if is_rec then Rec else NoLetQualifier), [ (pat, pexpr body) ])
+          F.decl @@ F.AST.TopLevelLet (qualifier, [ (pat, pexpr body) ])
         in
 
         let intf = F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) in
@@ -872,8 +902,8 @@ struct
                  AttributeRejected
                    {
                      reason =
-                       "a type cannot be opaque if it's module is not \
-                        extracted as an interface";
+                       "a type cannot be opaque if its module is not extracted \
+                        as an interface";
                    };
                span = e.span;
              }
@@ -1241,8 +1271,8 @@ let make (module M : Attrs.WITH_ITEMS) ctx =
               let ctx = ctx
             end) : S)
 
-let strings_of_item (bo : BackendOptions.t) m items (item : item) :
-    [> `Impl of string | `Intf of string ] list =
+let strings_of_item ~signature_only (bo : BackendOptions.t) m items
+    (item : item) : [> `Impl of string | `Intf of string ] list =
   let interface_mode' : Types.inclusion_kind =
     List.rev bo.interfaces
     |> List.find ~f:(fun (clause : Types.inclusion_clause) ->
@@ -1259,7 +1289,8 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
     |> Option.value ~default:(Types.Excluded : Types.inclusion_kind)
   in
   let interface_mode =
-    not ([%matches? (Types.Excluded : Types.inclusion_kind)] interface_mode')
+    signature_only
+    || not ([%matches? (Types.Excluded : Types.inclusion_kind)] interface_mode')
   in
   let (module Print) =
     make m
@@ -1271,11 +1302,12 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
   in
   let mk_impl = if interface_mode then fun i -> `Impl i else fun i -> `Impl i in
   let mk_intf = if interface_mode then fun i -> `Intf i else fun i -> `Impl i in
+  let no_impl =
+    signature_only
+    || [%matches? (Types.Included None' : Types.inclusion_kind)] interface_mode'
+  in
   Print.pitem item
-  |> (match interface_mode' with
-     | Types.Included None' ->
-         List.filter ~f:(function `Impl _ -> false | _ -> true)
-     | _ -> Fn.id)
+  |> List.filter ~f:(function `Impl _ when no_impl -> false | _ -> true)
   |> List.concat_map ~f:(function
        | `Impl i -> [ mk_impl (decl_to_string i) ]
        | `Intf i -> [ mk_intf (decl_to_string i) ]
@@ -1283,9 +1315,10 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
            let s = "(* " ^ s ^ " *)" in
            if interface_mode then [ `Impl s; `Intf s ] else [ `Impl s ])
 
-let string_of_items (bo : BackendOptions.t) m items : string * string =
+let string_of_items ~signature_only (bo : BackendOptions.t) m items :
+    string * string =
   let strings =
-    List.concat_map ~f:(strings_of_item bo m items) items
+    List.concat_map ~f:(strings_of_item ~signature_only bo m items) items
     |> List.map ~f:(function
          | `Impl s -> `Impl (String.strip s)
          | `Intf s -> `Intf (String.strip s))
@@ -1313,13 +1346,23 @@ let translate m (bo : BackendOptions.t) (items : AST.item list) :
   U.group_items_by_namespace items
   |> Map.to_alist
   |> List.concat_map ~f:(fun (ns, items) ->
+         let signature_only =
+           let is_dropped_body =
+             Concrete_ident.eq_name Rust_primitives__hax__dropped_body
+           in
+           let contains_dropped_body =
+             U.Reducers.collect_concrete_idents#visit_item ()
+             >> Set.exists ~f:is_dropped_body
+           in
+           List.exists ~f:contains_dropped_body items
+         in
          let mod_name =
            String.concat ~sep:"."
              (List.map
                 ~f:(map_first_letter String.uppercase)
                 (fst ns :: snd ns))
          in
-         let impl, intf = string_of_items bo m items in
+         let impl, intf = string_of_items ~signature_only bo m items in
          let make ~ext body =
            if String.is_empty body then None
            else
@@ -1342,6 +1385,7 @@ module DepGraphR = Dependencies.Make (Features.Rust)
 module TransformToInputLanguage =
   [%functor_application
   Phases.Reject.RawOrMutPointer(Features.Rust)
+  |> Phases.Transform_hax_lib_inline
   |> Phases.Drop_sized_trait
   |> Phases.Simplify_question_marks
   |> Phases.And_mut_defsite

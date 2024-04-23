@@ -200,6 +200,7 @@ let cast_name_for_type typ_name =
 
 module type EXPR = sig
   val c_expr : Thir.decorated_for__expr_kind -> expr
+  val c_expr_drop_body : Thir.decorated_for__expr_kind -> expr
   val c_ty : Thir.span -> Thir.ty -> ty
   val c_generic_value : Thir.span -> Thir.generic_arg -> generic_value
   val c_generics : Thir.generics -> generics
@@ -325,6 +326,15 @@ end) : EXPR = struct
       let span = Span.of_thir e.span in
       U.hax_failure_expr' span typ (ctx, kind)
         ([%show: Thir.decorated_for__expr_kind] e)
+
+  (** Extracts an expression as the global name `dropped_body`: this
+      drops the computational part of the expression, but keeps a
+      correct type and span. *)
+  and c_expr_drop_body (e : Thir.decorated_for__expr_kind) : expr =
+    let typ = c_ty e.span e.ty in
+    let span = Span.of_thir e.span in
+    let v = Global_ident.of_name Value Rust_primitives__hax__dropped_body in
+    { span; typ; e = GlobalVar v }
 
   and c_expr_unwrapped (e : Thir.decorated_for__expr_kind) : expr =
     (* TODO: eliminate that `call`, use the one from `ast_utils` *)
@@ -728,6 +738,8 @@ end) : EXPR = struct
       | Borrow arg ->
           Borrow { arg = constant_expr_to_expr arg; borrow_kind = Thir.Shared }
       | ConstRef { id } -> ConstRef { id }
+      | TraitConst _ | FnPtr _ ->
+          unimplemented [ span ] "constant_lit_to_lit: TraitConst | FnPtr"
       | Todo _ -> unimplemented [ span ] "ConstantExpr::Todo"
     and constant_lit_to_lit (l : Thir.constant_literal) : Thir.lit_kind * bool =
       match l with
@@ -879,7 +891,7 @@ end) : EXPR = struct
           else List.map ~f:(c_ty span) inputs
         in
         TArrow (inputs, c_ty span output)
-    | Adt { def_id = id; generic_args } ->
+    | Adt { def_id = id; generic_args; _ } ->
         let ident = def_id Type id in
         let args = List.map ~f:(c_generic_value span) generic_args in
         TApp { ident; args }
@@ -899,12 +911,14 @@ end) : EXPR = struct
     | Tuple types ->
         let types = List.map ~f:(fun ty -> GType (c_ty span ty)) types in
         TApp { ident = `TupleType (List.length types); args = types }
-    | Alias (_kind, { trait_def_id = Some (_did, impl_expr); def_id; _ }) ->
+    | Alias { kind = Projection { assoc_item = _; impl_expr }; def_id; _ } ->
         let impl = c_impl_expr span impl_expr in
         let item = Concrete_ident.of_def_id (AssociatedItem Type) def_id in
         TAssociatedType { impl; item }
-    | Alias (_kind, { def_id; trait_def_id = None; _ }) ->
+    | Alias { kind = Opaque; def_id; _ } ->
         TOpaque (Concrete_ident.of_def_id Type def_id)
+    | Alias { kind = Inherent; _ } ->
+        unimplemented [ span ] "type Alias::Inherent"
     | Param { index; name } ->
         (* TODO: [id] might not unique *)
         TParam { name; id = Local_ident.mk_id Typ (MyInt64.to_int_exn index) }
@@ -1003,9 +1017,8 @@ end) : EXPR = struct
       | Type { default; _ } ->
           let default = Option.map ~f:(c_ty param.span) default in
           GPType { default }
-      | Const { default = Some _; _ } ->
-          unimplemented [ param.span ] "c_generic_param:Const with a default"
-      | Const { default = None; ty } -> GPConst { typ = c_ty param.span ty }
+      (* Rustc always fills in const generics on use. Thus we can drop this information. *)
+      | Const { default = _; ty } -> GPConst { typ = c_ty param.span ty }
     in
     let span = Span.of_thir param.span in
     let attrs = c_attrs param.attributes in
@@ -1089,6 +1102,9 @@ include struct
     c_predicate_kind
 end
 
+(** Instantiate the functor for translating expressions. The crate
+name can be configured (there are special handling related to `core`)
+*)
 let make ~krate : (module EXPR) =
   let is_core_item = String.(krate = "core" || krate = "core_hax_model") in
   let module M : EXPR = Make (struct
@@ -1225,24 +1241,30 @@ let cast_of_enum typ_name generics typ thir_span
   in
   { v; span; ident; attrs = [] }
 
-let rec c_item ~ident (item : Thir.item) : item list =
-  try c_item_unwrapped ~ident item
+let rec c_item ~ident ~drop_body (item : Thir.item) : item list =
+  try c_item_unwrapped ~ident ~drop_body item
   with Diagnostics.SpanFreeError.Exn payload ->
     let context, kind = Diagnostics.SpanFreeError.payload payload in
     let error = Diagnostics.pretty_print_context_kind context kind in
     let span = Span.of_thir item.span in
     [ make_hax_error_item span ident error ]
 
-and c_item_unwrapped ~ident (item : Thir.item) : item list =
+and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
   let open (val make ~krate:item.owner_id.krate : EXPR) in
   if should_skip item.attributes then []
   else
     let span = Span.of_thir item.span in
-    let mk_one v =
-      let attrs = c_item_attrs item.attributes in
-      { span; v; ident; attrs }
-    in
+    let attrs = c_item_attrs item.attributes in
+    let mk_one v = { span; v; ident; attrs } in
     let mk v = [ mk_one v ] in
+    let drop_body =
+      drop_body
+      && Attr_payloads.payloads attrs
+         |> List.exists
+              ~f:(fst >> [%matches? (NeverDropBody : Types.ha_payload)])
+         |> not
+    in
+    let c_body = if drop_body then c_expr_drop_body else c_expr in
     (* TODO: things might be unnamed (e.g. constants) *)
     match (item.kind : Thir.item_kind) with
     | Const (_, body) ->
@@ -1252,7 +1274,7 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
                name =
                  Concrete_ident.of_def_id Value (Option.value_exn item.def_id);
                generics = { params = []; constraints = [] };
-               body = c_expr body;
+               body = c_body body;
                params = [];
              }
     | TyAlias (ty, generics) ->
@@ -1275,7 +1297,7 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
                name =
                  Concrete_ident.of_def_id Value (Option.value_exn item.def_id);
                generics = c_generics generics;
-               body = c_expr body;
+               body = c_body body;
                params;
              }
     | Enum (variants, generics, repr) ->
@@ -1341,7 +1363,6 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
         let def_id = Option.value_exn item.def_id in
         let is_struct = true in
         (* repeating the attributes of the item in the variant: TODO is that ok? *)
-        let attrs = c_item_attrs item.attributes in
         let v =
           let kind = Concrete_ident.Kind.Constructor { is_struct } in
           let name = Concrete_ident.of_def_id kind def_id in
@@ -1536,13 +1557,12 @@ and c_item_unwrapped ~ident (item : Thir.item) : item list =
                 ];
           }
         in
-        let attrs = c_item_attrs item.attributes in
         [ { span; v; ident = Concrete_ident.of_def_id Value def_id; attrs } ]
     | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
     | OpaqueTy _ | Union _ | TraitAlias _ ->
         mk NotImplementedYet
 
-let import_item (item : Thir.item) :
+let import_item ~drop_body (item : Thir.item) :
     concrete_ident * (item list * Diagnostics.t list) =
   let ident = Concrete_ident.of_def_id Value item.owner_id in
   let r, reports =
@@ -1551,6 +1571,7 @@ let import_item (item : Thir.item) :
         (true, Hashtbl.create (module String))
       >> U.Reducers.disambiguate_local_idents
     in
-    Diagnostics.Core.capture (fun _ -> c_item item ~ident |> List.map ~f)
+    Diagnostics.Core.capture (fun _ ->
+        c_item item ~ident ~drop_body |> List.map ~f)
   in
   (ident, (r, reports))

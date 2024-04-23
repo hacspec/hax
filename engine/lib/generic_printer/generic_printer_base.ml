@@ -31,6 +31,7 @@ type ast_position =
   | Expr_Let_lhs
   | Expr_Let_rhs
   | Expr_Let_body
+  | Expr_Quote
   | Expr_Match_scrutinee
   | Expr_QuestionMark
   | Expr_Borrow

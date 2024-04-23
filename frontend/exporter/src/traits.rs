@@ -127,7 +127,11 @@ mod search_clause {
         let tcx = s.base().tcx;
         let x = tcx.try_normalize_erasing_regions(param_env, x).unwrap_or(x);
         let y = tcx.try_normalize_erasing_regions(param_env, y).unwrap_or(y);
-        let result = format!("{:?}", x) == format!("{:?}", y);
+        // Below: "~const " may appear in the string, and comes from the way the
+        // trait ref is internalized by rustc. We remove such occurrences (yes, this is sad).
+        let sx = format!("{:?}", x).replace("~const ", "");
+        let sy = format!("{:?}", y).replace("~const ", "");
+        let result = sx == sy;
         const DEBUG: bool = false;
         if DEBUG && result {
             use crate::{Predicate, SInto};

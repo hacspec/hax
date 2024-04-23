@@ -68,7 +68,8 @@ struct
 
     and dexpr' (span : span) (e : A.expr') : B.expr' =
       match (UA.unbox_underef_expr { e; span; typ = UA.never_typ }).e with
-      | [%inline_arms If + Literal + Array + Block + QuestionMark] -> auto
+      | [%inline_arms If + Literal + Array + Block + QuestionMark + Quote] ->
+          auto
       | Construct { constructor; is_record; is_struct; fields; base } ->
           Construct
             {

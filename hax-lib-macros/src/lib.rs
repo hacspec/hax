@@ -1,3 +1,4 @@
+mod quote;
 mod rewrite_self;
 mod syn_ext;
 mod utils;
@@ -144,7 +145,8 @@ pub fn lemma(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
             );
         }
     }
-    quote! { #attr #item }.into()
+    use AttrPayload::NeverDropBody;
+    quote! { #attr #NeverDropBody #item }.into()
 }
 
 /*
@@ -538,3 +540,56 @@ pub fn pv_handwritten(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::Toke
     let attr = AttrPayload::PVHandwritten;
     quote! {#attr #item}.into()
 }
+
+macro_rules! make_quoting_proc_macro {
+    ($backend:ident($cfg_name:ident)) => {
+        #[doc = concat!("Embed ", stringify!($backend), " expression inside a Rust expression. This macro takes only one argument: some raw ", stringify!($backend), " code as a string literal.")]
+        ///
+
+        /// While it is possible to directly write raw backend code,
+        /// sometimes it can be inconvenient. For example, referencing
+        /// Rust names can be a bit cumbersome: for example, the name
+        /// `my_crate::my_module::CONSTANT` might be translated
+        /// differently in a backend (e.g. in the F* backend, it will
+        /// probably be `My_crate.My_module.v_CONSTANT`).
+        ///
+
+        /// To facilitate this, you can write Rust names directly,
+        /// using the prefix `$`: `f $my_crate::my_module__CONSTANT + 3`
+        /// will be replaced with `f My_crate.My_module.v_CONSTANT + 3`
+        /// in the F* backend for instance.
+
+        /// If you want to refer to the Rust constructor
+        /// `Enum::Variant`, you should write `$$Enum::Variant` (note
+        /// the double dollar).
+
+        /// If the name refers to something polymorphic, you need to
+        /// signal it by adding _any_ type informations,
+        /// e.g. `${my_module::function<()>}`. The curly braces are
+        /// needed for such more complex expressions.
+
+        /// You can also write Rust patterns with the `$?{SYNTAX}`
+        /// syntax, where `SYNTAX` is a Rust pattern. The syntax
+        /// `${EXPR}` also allows any Rust expressions
+        /// `EXPR` to be embedded.
+
+        #[proc_macro]
+        pub fn $backend(payload: pm::TokenStream) -> pm::TokenStream {
+            let ts: TokenStream = quote::quote(payload).into();
+            quote!{
+                #[cfg($cfg_name)]
+                {
+                    #ts
+                }
+            }.into()
+        }
+    };
+    ($backend:ident($cfg_name:ident) $($others:tt)+) => {
+        make_quoting_proc_macro!($backend($cfg_name));
+        make_quoting_proc_macro!($($others)+);
+    }
+}
+
+make_quoting_proc_macro!(fstar(hax_backend_fstar)
+                         coq(hax_backend_coq)
+                         proverif(hax_backend_proverif));

@@ -11,6 +11,7 @@ include
       include On.Question_mark
       include On.Early_exit
       include On.Slice
+      include On.Quote
       include On.Construct_base
     end)
     (struct
@@ -35,6 +36,7 @@ module SubtypeToInputLanguage
              and type slice = Features.On.slice
              and type question_mark = Features.On.question_mark
              and type macro = Features.On.macro
+             and type quote = Features.On.quote
              and type construct_base = Features.On.construct_base
     (* and type as_pattern = Features.Off.as_pattern *)
     (* and type nontrivial_lhs = Features.Off.nontrivial_lhs *)
@@ -883,6 +885,7 @@ module DepGraphR = Dependencies.Make (Features.Rust)
 module TransformToInputLanguage =
   [%functor_application
     Phases.Reject.RawOrMutPointer(Features.Rust)
+    |> Phases.Transform_hax_lib_inline
     |> Phases.Simplify_question_marks
     |> Phases.And_mut_defsite
     |> Phases.Reconstruct_for_loops

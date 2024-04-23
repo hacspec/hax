@@ -1,4 +1,3 @@
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Each item can be marked with a *u*nique *id*entifier. This is
@@ -15,7 +14,8 @@ use serde::{Deserialize, Serialize};
 /// Morally, we expand `struct Foo { #[refine(x > 3)] x: u32 }` to:
 ///  1. `#[uuid(A_UNIQUE_ID_123)] fn refinement(x: u32) -> bool {x > 3}`;
 ///  2. `struct Foo { #[refined_by(A_UNIQUE_ID_123)] x: u32 }`.
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[serde(rename = "HaUid")]
 pub struct ItemUid {
     /// Currently, this is a UUID.
@@ -31,7 +31,8 @@ impl ItemUid {
 }
 
 /// What shall Hax do with an item?
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[serde(rename = "HaItemStatus")]
 pub enum ItemStatus {
     /// Include this item in the translation
@@ -43,7 +44,8 @@ pub enum ItemStatus {
     Excluded { modeled_by: Option<String> },
 }
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[serde(rename = "HaAssocRole")]
 pub enum AssociationRole {
     Requires,
@@ -59,7 +61,8 @@ pub enum AssociationRole {
 /// Hax only understands one attribute: `#[hax::json(PAYLOAD)]` where
 /// `PAYLOAD` is a JSON serialization of an inhabitant of
 /// `AttrPayload`.
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[serde(rename = "HaPayload")]
 pub enum AttrPayload {
     ItemStatus(ItemStatus),
@@ -68,6 +71,10 @@ pub enum AttrPayload {
         item: ItemUid,
     },
     Uid(ItemUid),
+    /// Mark an item so that hax never drop its body (this is useful
+    /// for pre- and post- conditions of a function we dropped the
+    /// body of: pre and post are part of type signature)
+    NeverDropBody,
     /// Mark an item as a lemma statement to prove in the backend
     Lemma,
     Language,

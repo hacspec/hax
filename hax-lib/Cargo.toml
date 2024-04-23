@@ -12,3 +12,4 @@ description = "Hax-specific helpers for Rust programs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+hax-lib-macros = {path = "../hax-lib-macros"}

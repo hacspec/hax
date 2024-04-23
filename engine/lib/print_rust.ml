@@ -317,6 +317,7 @@ module Raw = struct
     | Closure { params; body; _ } ->
         let params = List.map ~f:ppat params |> concat ~sep:!"," in
         !"(|" & params & !"| {" & pexpr body & !"})"
+    | Quote _ -> !"quotation!(..)"
   (* | _ -> "todo!()" *)
 
   and plhs (e : lhs) span =
