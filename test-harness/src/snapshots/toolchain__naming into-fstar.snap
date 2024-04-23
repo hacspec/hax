@@ -32,6 +32,8 @@ module Naming.Ambiguous_names
 open Core
 open FStar.Mul
 
+/// This macro surround a given expression with a let binding for
+/// an identifier `a` and a print of that `a`.
 let debug (label value: u32) : Prims.unit =
   let _:Prims.unit =
     Std.Io.Stdio.v__print (Core.Fmt.impl_2__new_v1 (Rust_primitives.unsize (let list =
@@ -56,6 +58,7 @@ let debug (label value: u32) : Prims.unit =
   in
   ()
 
+/// `f` stacks mutliple let bindings declaring different `a`s.
 let f (_: Prims.unit) : Prims.unit =
   let a_1_:u32 = 104ul in
   let a_2_:u32 = 205ul in
@@ -66,6 +69,13 @@ let f (_: Prims.unit) : Prims.unit =
   let _:Prims.unit = debug 1ul a_1_ in
   debug 4ul a
 
+/// `f` is expanded into `f_expand` below, while the execution of `f` gives:
+/// ```plaintext
+///  [3] a=306
+///  [2] a=205
+///  [1] a=104
+///  [last] a=123
+/// ```
 let ff_expand (_: Prims.unit) : Prims.unit =
   let a:i32 = 104l in
   let a:i32 = 205l in
@@ -117,6 +127,10 @@ class t_T3_e_for_a (v_Self: Type) = { __marker_trait_t_T3_e_for_a:Prims.unit }
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_T3_e_e_for_a_for_Foo: t_T3_e_for_a t_Foo = { __marker_trait = () }
 
+/// Test for ambiguous local names renaming: when two local vars are
+/// ambiguous by name but not by their internal IDs.
+/// Such situation can occur playing with *hygenic* macros.
+/// Also, this happens with some internal Rustc rewrite. (e.g. assignment of tuples)
 let v_INHERENT_CONSTANT: usize = sz 3
 
 let constants

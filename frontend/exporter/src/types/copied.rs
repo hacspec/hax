@@ -2008,9 +2008,35 @@ pub enum AttrArgs {
     Empty,
     Delimited(DelimArgs),
 
+    Eq(Span, AttrArgsEq),
+    // #[todo]
+    // Todo(String),
+}
+
+/// Reflects [`rustc_ast::ast::AttrArgsEq`]
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::ast::AttrArgsEq, state: S as tcx)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub enum AttrArgsEq {
+    Hir(MetaItemLit),
     #[todo]
-    Todo(String),
-    // Eq(Span, AttrArgsEq),
+    Ast(String),
+    // Ast(P<Expr>),
+}
+
+/// Reflects [`rustc_ast::ast::MetaItemLit`]
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::ast::MetaItemLit, state: S as tcx)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct MetaItemLit {
+    pub symbol: Symbol,
+    pub suffix: Option<Symbol>,
+    pub kind: LitKind,
+    pub span: Span,
 }
 
 /// Reflects [`rustc_ast::ast::AttrItem`]

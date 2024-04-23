@@ -3,6 +3,8 @@ use hax_lib as hax;
 // dummy max value
 const u32_max: u32 = 90000;
 
+/// A doc comment on `add3`
+#[doc = "another doc comment on add3"]
 #[hax::requires(x > 10 && y > 10 && z > 10 && x + y + z < u32_max)]
 #[hax::ensures(|result| hax_lib::implies(true, || result > 32))]
 fn add3(x: u32, y: u32, z: u32) -> u32 {
@@ -84,6 +86,10 @@ mod refined_indexes {
         }
     }
 
+    /// Triple dash comment
+    /** Multiline double star comment Maecenas blandit accumsan feugiat.
+    Done vitae ullamcorper est.
+    Curabitur id dui eget sem viverra interdum. */
     fn mutation_example(
         use_generic_update_at: &mut MyArray,
         use_specialized_update_at: &mut [u8],

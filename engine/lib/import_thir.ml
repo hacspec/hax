@@ -101,6 +101,19 @@ let c_logical_op : Thir.logical_op -> logical_op = function
 let c_attr (attr : Thir.attribute) : attr =
   let kind =
     match attr.kind with
+    | DocComment (kind, body) ->
+        let kind =
+          match kind with Thir.Line -> DCKLine | Thir.Block -> DCKBlock
+        in
+        DocComment { kind; body }
+    | Normal
+        {
+          item =
+            { args = Eq (_, Hir { symbol; _ }); path = "doc"; tokens = None };
+          tokens = None;
+        } ->
+        DocComment { kind = DCKLine; body = symbol }
+        (* Looks for `#[doc = "something"]` *)
     | Normal { item = { args; path; tokens = subtokens }; tokens } ->
         let args_tokens =
           match args with Delimited { tokens; _ } -> Some tokens | _ -> None
@@ -110,11 +123,6 @@ let c_attr (attr : Thir.attribute) : attr =
           Option.value ~default:"" (args_tokens || tokens || subtokens)
         in
         Tool { path; tokens }
-    | DocComment (kind, body) ->
-        let kind =
-          match kind with Thir.Line -> DCKLine | Thir.Block -> DCKBlock
-        in
-        DocComment { kind; body }
   in
   { kind; span = Span.of_thir attr.span }
 
@@ -125,15 +133,14 @@ let c_item_attrs (attrs : Thir.item_attributes) : attrs =
      that parent/self structure in our AST. See
      https://github.com/hacspec/hax/issues/123. *)
   let self = c_attrs attrs.attributes in
-  let parent = c_attrs attrs.parent_attributes in
   let parent =
-    (* Repeating associateditem or uid is harmful *)
-    List.filter
-      ~f:(fun payload ->
+    c_attrs attrs.parent_attributes
+    |> List.filter ~f:([%matches? ({ kind = DocComment _; _ } : attr)] >> not)
+    |> (* Repeating associateditem or uid is harmful, same for comments *)
+    List.filter ~f:(fun payload ->
         match Attr_payloads.payloads [ payload ] with
         | [ ((Uid _ | AssociatedItem _), _) ] -> false
         | _ -> true)
-      parent
   in
   self @ parent
 

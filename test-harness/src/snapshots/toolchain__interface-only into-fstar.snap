@@ -35,6 +35,11 @@ module Interface_only
 open Core
 open FStar.Mul
 
+/// This item contains unsafe blocks and raw references, two features
+/// not supported by hax. Thanks to the `-i` flag and the `+:`
+/// modifier, `f` is still extractable as an interface.
+/// Expressions within type are still extracted, as well as pre- and
+/// post-conditions.
 val f (x: u8)
     : Prims.Pure (t_Array u8 (sz 4))
       (requires x <. 254uy)
@@ -45,6 +50,9 @@ val f (x: u8)
 
 type t_Bar = | Bar : t_Bar
 
+/// Non-inherent implementations are extracted, their bodies are not
+/// dropped. This might be a bit surprising: see
+/// https://github.com/hacspec/hax/issues/616.
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl: Core.Convert.t_From t_Bar Prims.unit =
   {
@@ -55,6 +63,7 @@ let impl: Core.Convert.t_From t_Bar Prims.unit =
 
 val from__from: u8 -> Prims.Pure t_Bar Prims.l_True (fun _ -> Prims.l_True)
 
+/// If you need to drop the body of a method, please hoist it:
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_1: Core.Convert.t_From t_Bar u8 =
   {

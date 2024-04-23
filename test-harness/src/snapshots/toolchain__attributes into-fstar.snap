@@ -108,6 +108,10 @@ let v_MAX: usize = sz 10
 
 type t_MyArray = | MyArray : t_Array u8 (sz 10) -> t_MyArray
 
+/// Triple dash comment
+(** Multiline double star comment Maecenas blandit accumsan feugiat.
+    Done vitae ullamcorper est.
+    Curabitur id dui eget sem viverra interdum. *)
 let mutation_example
       (use_generic_update_at: t_MyArray)
       (use_specialized_update_at: t_Slice u8)
@@ -153,6 +157,8 @@ let u32_max: u32 = 90000ul
 
 unfold let some_function _ = "hello from F*"
 
+/// A doc comment on `add3`
+///another doc comment on add3
 let add3 (x y z: u32)
     : Prims.Pure u32
       (requires x >. 10ul && y >. 10ul && z >. 10ul && ((x +! y <: u32) +! z <: u32) <. u32_max)
