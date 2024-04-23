@@ -44,6 +44,9 @@ pub enum ItemStatus {
     Excluded { modeled_by: Option<String> },
 }
 
+/// An item can be associated to another one for multiple reasons:
+/// `AssociationRole` capture the nature of the (directed) relation
+/// between two items
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[serde(rename = "HaAssocRole")]
@@ -61,6 +64,7 @@ pub enum AssociationRole {
     ProtocolMessages,
 }
 
+/// Where should a item quote appear?
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[serde(rename = "HaItemQuotePosition")]
@@ -71,6 +75,7 @@ pub enum ItemQuotePosition {
     After,
 }
 
+/// F*-specific options for item quotes
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[serde(rename = "HaItemQuoteFStarOpts")]
@@ -81,6 +86,9 @@ pub struct ItemQuoteFStarOpts {
     pub r#impl: bool,
 }
 
+/// An item quote is a verbatim piece of backend code included in
+/// Rust. [`ItemQuote`] encodes the various options a item quote can
+/// have.
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[serde(rename = "HaItemQuote")]
@@ -97,8 +105,11 @@ pub struct ItemQuote {
 #[serde(rename = "HaPayload")]
 pub enum AttrPayload {
     ItemStatus(ItemStatus),
+    /// Mark an item as associated with another one
     AssociatedItem {
+        /// What is the nature of the association?
         role: AssociationRole,
+        /// What is the identifier of the target item?
         item: ItemUid,
     },
     Uid(ItemUid),
