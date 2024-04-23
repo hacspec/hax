@@ -259,10 +259,11 @@ pub struct TranslationOptions {
     /// prefixed by modifiers are processed from left to right,
     /// excluding or including items. Each pattern selects a number of
     /// item. The modifiers are:
-    ///
-    ///  - `+`: includes the selected items with their dependencies,
-    /// transitively (e.g. if function `f` calls `g` which in turn
-    /// calls `h`, then `+k::f` includes `f`, `g` and `h`)
+
+    /// {n}{n} - `+`: includes the selected items with their
+    /// dependencies, transitively (e.g. if function `f` calls `g`
+    /// which in turn calls `h`, then `+k::f` includes `f`, `g` and
+    /// `h`)
 
     /// {n} - `+~`: includes the selected items with their direct
     /// dependencies only (following the previous example, `+~k::f`
@@ -299,15 +300,15 @@ pub struct BackendOptions {
     /// Enable engine debugging: dumps the AST at each phase.
     ///
     /// The value of `<DEBUG_ENGINE>` can be either:
-    ///
-    ///  - `interactive` (or `i`): enables debugging of the engine,
+
+    /// {n}{n} - `interactive` (or `i`): enables debugging of the engine,
     /// and visualize interactively in a webapp how a crate was
     /// transformed by each phase, both in Rust-like syntax and
     /// browsing directly the internal AST. By default, the webapp is
     /// hosted on `http://localhost:8000`, the port can be override by
     /// setting the `HAX_DEBUGGER_PORT` environment variable.
-    ///
-    /// - `<FILE>` or `file:<FILE>`: outputs the different AST as JSON
+
+    /// {n} - `<FILE>` or `file:<FILE>`: outputs the different AST as JSON
     /// to `<FILE>`. `<FILE>` can be either [-] or a path.
     #[arg(short, long = "debug-engine")]
     pub debug_engine: Option<DebugEngineMode>,
