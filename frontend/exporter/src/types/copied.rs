@@ -290,7 +290,7 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, DefId> for rustc_hir::hir_id::OwnerId {
 #[derive(
     AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
-#[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: rustc_ast::ast::LitFloatType, state: S as gstate)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::ast::LitFloatType, state: S as gstate)]
 pub enum LitFloatType {
     Suffixed(FloatTy),
     Unsuffixed,
@@ -660,7 +660,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Vec<GenericArg>>
 
 /// Reflects both [`rustc_middle::ty::subst::GenericArg`] and [`rustc_middle::ty::subst::GenericArgKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: rustc_ast::ast::LitIntType, state: S as gstate)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::ast::LitIntType, state: S as gstate)]
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
@@ -1948,7 +1948,7 @@ pub enum StrStyle {
 
 /// Reflects [`rustc_ast::ast::LitKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: rustc_ast::ast::LitKind, state: S as gstate)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::ast::LitKind, state: S as gstate)]
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
@@ -2000,7 +2000,7 @@ pub enum CommentKind {
 
 /// Reflects [`rustc_ast::ast::AttrArgs`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_ast::ast::AttrArgs, state: S as tcx)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::ast::AttrArgs, state: S as tcx)]
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
@@ -2015,7 +2015,7 @@ pub enum AttrArgs {
 
 /// Reflects [`rustc_ast::ast::AttrItem`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_ast::ast::AttrItem, state: S as tcx)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::ast::AttrItem, state: S as tcx)]
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
@@ -2034,7 +2034,7 @@ impl<S> SInto<S, String> for rustc_ast::tokenstream::LazyAttrTokenStream {
 
 /// Reflects [`rustc_ast::ast::NormalAttr`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_ast::ast::NormalAttr, state: S as tcx)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::ast::NormalAttr, state: S as tcx)]
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
@@ -2045,7 +2045,7 @@ pub struct NormalAttr {
 
 /// Reflects [`rustc_ast::AttrKind`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_ast::AttrKind, state: S as tcx)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::AttrKind, state: S as tcx)]
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
