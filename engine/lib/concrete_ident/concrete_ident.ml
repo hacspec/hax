@@ -305,14 +305,14 @@ module View = struct
       | Float F32 -> Some "f32"
       | Float F64 -> Some "f64"
       | Tuple [] -> Some "unit"
-      | Adt { def_id; generic_args = [] } -> adt def_id
+      | Adt { def_id; generic_args = []; _ } -> adt def_id
       | _ -> None
     in
     let apply left right = left ^ "_of_" ^ right in
     let rec arity1 = function
       | Types.Slice sub -> arity1 sub |> Option.map ~f:(apply "slice")
       | Ref (_, sub, _) -> arity1 sub |> Option.map ~f:(apply "ref")
-      | Adt { def_id; generic_args = [ Type arg ] } ->
+      | Adt { def_id; generic_args = [ Type arg ]; _ } ->
           let* adt = adt def_id in
           let* arg = arity1 arg in
           Some (apply adt arg)

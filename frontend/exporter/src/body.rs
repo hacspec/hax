@@ -44,6 +44,11 @@ pub fn body_from_id<'tcx, Body: IsBody, S: UnderOwnerState<'tcx>>(
     id: rustc_hir::BodyId,
     s: &S,
 ) -> Body {
+    // **Important:**
+    // We need a local id here, and we get it from the owner id, which must
+    // be local. It is safe to do so, because if we have access to HIR objects,
+    // it necessarily means we are exploring a local item (we don't have
+    // access to the HIR of external objects, only their MIR).
     Body::body(s.base().tcx.hir().body_owner_def_id(id), s)
 }
 

@@ -750,6 +750,8 @@ end) : EXPR = struct
       | Borrow arg ->
           Borrow { arg = constant_expr_to_expr arg; borrow_kind = Thir.Shared }
       | ConstRef { id } -> ConstRef { id }
+      | TraitConst _ | FnPtr _ ->
+          unimplemented [ span ] "constant_lit_to_lit: TraitConst | FnPtr"
       | Todo _ -> unimplemented [ span ] "ConstantExpr::Todo"
     and constant_lit_to_lit (l : Thir.constant_literal) : Thir.lit_kind * bool =
       match l with
@@ -901,7 +903,7 @@ end) : EXPR = struct
           else List.map ~f:(c_ty span) inputs
         in
         TArrow (inputs, c_ty span output)
-    | Adt { def_id = id; generic_args } ->
+    | Adt { def_id = id; generic_args; _ } ->
         let ident = def_id Type id in
         let args = List.map ~f:(c_generic_value span) generic_args in
         TApp { ident; args }
@@ -921,12 +923,14 @@ end) : EXPR = struct
     | Tuple types ->
         let types = List.map ~f:(fun ty -> GType (c_ty span ty)) types in
         TApp { ident = `TupleType (List.length types); args = types }
-    | Alias (_kind, { trait_def_id = Some (_did, impl_expr); def_id; _ }) ->
+    | Alias { kind = Projection { assoc_item = _; impl_expr }; def_id; _ } ->
         let impl = c_impl_expr span impl_expr in
         let item = Concrete_ident.of_def_id (AssociatedItem Type) def_id in
         TAssociatedType { impl; item }
-    | Alias (_kind, { def_id; trait_def_id = None; _ }) ->
+    | Alias { kind = Opaque; def_id; _ } ->
         TOpaque (Concrete_ident.of_def_id Type def_id)
+    | Alias { kind = Inherent; _ } ->
+        unimplemented [ span ] "type Alias::Inherent"
     | Param { index; name } ->
         (* TODO: [id] might not unique *)
         TParam { name; id = Local_ident.mk_id Typ (MyInt64.to_int_exn index) }

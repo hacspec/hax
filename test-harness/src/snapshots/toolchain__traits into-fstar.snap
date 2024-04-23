@@ -73,8 +73,8 @@ let impl_SuperTrait_for_i32: t_SuperTrait i32 =
 
 class t_Foo (v_Self: Type) = {
   f_AssocType:Type;
-  f_AssocType_6857934811705287863:t_SuperTrait f_AssocType;
-  f_AssocType_1499648403794240798:Core.Clone.t_Clone f_AssocType;
+  f_AssocType_886671949818196346:t_SuperTrait f_AssocType;
+  f_AssocType_8151908989361665585:Core.Clone.t_Clone f_AssocType;
   f_N:usize;
   f_assoc_f_pre:Prims.unit -> bool;
   f_assoc_f_post:Prims.unit -> Prims.unit -> bool;
@@ -121,7 +121,7 @@ let g (#v_T: Type) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_T) (x:
 let impl_Foo_for_tuple_: t_Foo Prims.unit =
   {
     f_AssocType = i32;
-    f_AssocType_6857934811705287863 = FStar.Tactics.Typeclasses.solve ();
+    f_AssocType_886671949818196346 = FStar.Tactics.Typeclasses.solve ();
     f_N = sz 32;
     f_assoc_f = () <: Prims.unit;
     f_method_f_pre = (fun (self: Prims.unit) -> true);
