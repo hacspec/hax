@@ -558,7 +558,6 @@ macro_rules! make_quoting_item_proc_macro {
         pub fn $macro_name(payload: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
             let mut fstar_options = None;
             let item: TokenStream = item.into();
-            // panic!("{itemp:?}");
             let payload = {
                 let mut tokens = payload.into_iter().peekable();
                 if let Some(pm::TokenTree::Ident(ident)) = tokens.peek() {
