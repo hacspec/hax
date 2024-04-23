@@ -267,6 +267,7 @@ struct
       | `Verbatim code -> `Verbatim code
       | `Expr e -> `Expr (dexpr e)
       | `Pat p -> `Pat (dpat p)
+      | `Typ p -> `Typ (dty span p)
     in
     { contents = List.map ~f contents; witness = S.quote span witness }
 

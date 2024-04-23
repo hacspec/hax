@@ -9,7 +9,8 @@
 //! The `<PREFIX>` describes the kind of the antiquotation:
 //!  - empty prefix, the antiquotation is an expression;
 //!  - `?`, the antiquotation is a pattern;
-//!  - `$`, the antiquotation is a constructor name.
+//!  - `$`, the antiquotation is a constructor name;
+//!  - `:`, the antiquotation is a type.
 
 use crate::prelude::*;
 use quote::ToTokens;
@@ -22,6 +23,7 @@ enum AntiquoteKind {
     Expr,
     Constructor,
     Pat,
+    Ty,
 }
 
 impl ToTokens for AntiquoteKind {
@@ -31,6 +33,7 @@ impl ToTokens for AntiquoteKind {
                 Self::Expr => quote! {_expr},
                 Self::Constructor => quote! {_constructor},
                 Self::Pat => quote! {_pat},
+                Self::Ty => quote! {_ty},
             }]
             .into_iter(),
         )
@@ -55,12 +58,13 @@ impl ToTokens for Antiquote {
             AntiquoteKind::Expr => ts,
             AntiquoteKind::Constructor => wrap_pattern(quote! {#ts {..}}),
             AntiquoteKind::Pat => wrap_pattern(ts),
+            AntiquoteKind::Ty => quote! {None::<#ts>},
         };
         tokens.extend([ts].into_iter())
     }
 }
 
-/// Extract antiquotations (`$[?][$]...`, `$[?][$]{...}`) and parses them.
+/// Extract antiquotations (`$[?][$][:]...`, `$[?][$][:]{...}`) and parses them.
 fn process_string(s: &str) -> std::result::Result<(String, Vec<Antiquote>), String> {
     let mut chars = s.chars().peekable();
     let mut antiquotations = vec![];
@@ -70,10 +74,11 @@ fn process_string(s: &str) -> std::result::Result<(String, Vec<Antiquote>), Stri
             '$' => {
                 let mut s = String::new();
                 let mut kind = AntiquoteKind::Expr;
-                if let Some(prefix) = chars.next_if(|ch| *ch == '?' || *ch == '$') {
+                if let Some(prefix) = chars.next_if(|ch| *ch == '?' || *ch == '$' || *ch == ':') {
                     kind = match prefix {
                         '?' => AntiquoteKind::Pat,
                         '$' => AntiquoteKind::Constructor,
+                        ':' => AntiquoteKind::Ty,
                         _ => unreachable!(),
                     };
                 }
@@ -93,9 +98,9 @@ fn process_string(s: &str) -> std::result::Result<(String, Vec<Antiquote>), Stri
                         s.push(ch);
                     }
                 } else {
-                    while let Some(ch) =
-                        chars.next_if(|ch| !matches!(ch, ' ' | '\t' | '\n' | '(' | '{' | ')'))
-                    {
+                    while let Some(ch) = chars.next_if(|ch| {
+                        !matches!(ch, ' ' | '\t' | '\n' | '(' | '{' | ')' | ';' | '!' | '?')
+                    }) {
                         s.push(ch)
                     }
                 }

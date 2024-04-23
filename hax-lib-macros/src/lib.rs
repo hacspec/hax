@@ -626,6 +626,8 @@ macro_rules! make_quoting_proc_macro {
         /// syntax, where `SYNTAX` is a Rust pattern. The syntax
         /// `${EXPR}` also allows any Rust expressions
         /// `EXPR` to be embedded.
+
+        /// Types can be refered to with the syntax `$:{TYPE}`.
         #[proc_macro]
         pub fn $expr_name(payload: pm::TokenStream) -> pm::TokenStream {
             let ts: TokenStream = quote::expression(payload).into();

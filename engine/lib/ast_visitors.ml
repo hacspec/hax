@@ -450,7 +450,8 @@ functor
               (fun env -> function
                 | `Verbatim code -> `Verbatim code
                 | `Expr e -> `Expr (self#visit_expr env e)
-                | `Pat p -> `Pat (self#visit_pat env p))
+                | `Pat p -> `Pat (self#visit_pat env p)
+                | `Typ t -> `Typ (self#visit_ty env t))
               env contents
           in
           let witness = self#visit_feature_quote env witness in
@@ -1489,7 +1490,10 @@ functor
                     (`Expr e, acc)
                 | `Pat p ->
                     let p, acc = self#visit_pat env p in
-                    (`Pat p, acc))
+                    (`Pat p, acc)
+                | `Typ t ->
+                    let t, acc = self#visit_ty env t in
+                    (`Typ t, acc))
               env contents
           in
           let witness, reduce_acc' = self#visit_feature_quote env witness in
@@ -2630,7 +2634,8 @@ functor
               (fun env -> function
                 | `Verbatim code -> self#zero
                 | `Expr e -> self#visit_expr env e
-                | `Pat p -> self#visit_pat env p)
+                | `Pat p -> self#visit_pat env p
+                | `Typ t -> self#visit_ty env t)
               env contents
           in
           let reduce_acc' = self#visit_feature_quote env witness in

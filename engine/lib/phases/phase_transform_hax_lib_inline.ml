@@ -108,14 +108,30 @@ module%inlined_contents Make (F : Features.T) = struct
                 | Some "_pat" ->
                     let pat = extract_pattern e |> Option.value_exn in
                     `Pat pat
+                | Some "_ty" ->
+                    let typ =
+                      match pat.typ with
+                      | TApp { args = [ GType typ ]; _ } -> typ
+                      | _ ->
+                          Stdio.prerr_endline @@ "-pat->" ^ [%show: B.pat] pat;
+                          Stdio.prerr_endline @@ "-expr->"
+                          ^ [%show: B.expr'] e.e;
+                          Error.assertion_failure span
+                            "Malformed call to 'inline': expected type \
+                             `Option<_>`."
+                    in
+                    `Typ typ
                 | _ -> `Expr e)
           in
           let verbatim = split_str ~on:"SPLIT_QUOTE" str in
           let contents =
             let rec f verbatim
                 (code :
-                  [ `Verbatim of string | `Expr of B.expr | `Pat of B.pat ] list)
-                =
+                  [ `Verbatim of string
+                  | `Expr of B.expr
+                  | `Pat of B.pat
+                  | `Typ of B.ty ]
+                  list) =
               match (verbatim, code) with
               | s :: s', code :: code' -> `Verbatim s :: code :: f s' code'
               | [ s ], [] -> [ `Verbatim s ]
@@ -126,7 +142,10 @@ module%inlined_contents Make (F : Features.T) = struct
                   ^ [%show: string list] verbatim
                   ^ "\ncode="
                   ^ [%show:
-                      [ `Verbatim of string | `Expr of B.expr | `Pat of B.pat ]
+                      [ `Verbatim of string
+                      | `Expr of B.expr
+                      | `Pat of B.pat
+                      | `Typ of B.ty ]
                       list] code
             in
             f verbatim code

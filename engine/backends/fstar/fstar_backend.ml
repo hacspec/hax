@@ -573,15 +573,16 @@ struct
              kind = UnsupportedMacro { id = [%show: global_ident] macro };
              span = e.span;
            }
-    | Quote quote -> pquote quote |> F.term_of_string
+    | Quote quote -> pquote e.span quote |> F.term_of_string
     | _ -> .
 
-  and pquote { contents; _ } =
+  and pquote span { contents; _ } =
     List.map
       ~f:(function
         | `Verbatim code -> code
         | `Expr e -> pexpr e |> term_to_string
-        | `Pat p -> ppat p |> pat_to_string)
+        | `Pat p -> ppat p |> pat_to_string
+        | `Typ p -> pty span p |> term_to_string)
       contents
     |> String.concat
 
@@ -1270,8 +1271,10 @@ struct
                    "Malformed `Quote` item: could not find a ItemQuote payload")
           |> Option.value ~default:Types.{ intf = true; impl = false }
         in
-        (if fstar_opts.intf then [ `VerbatimIntf (pquote quote) ] else [])
-        @ if fstar_opts.impl then [ `VerbatimImpl (pquote quote) ] else []
+        (if fstar_opts.intf then [ `VerbatimIntf (pquote e.span quote) ]
+        else [])
+        @
+        if fstar_opts.impl then [ `VerbatimImpl (pquote e.span quote) ] else []
     | HaxError details ->
         [
           `Comment

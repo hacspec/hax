@@ -230,7 +230,8 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
                   ~f:(function
                     | `Verbatim code -> string code
                     | `Expr e -> print#expr_at Expr_Quote e
-                    | `Pat p -> print#pat_at Expr_Quote p)
+                    | `Pat p -> print#pat_at Expr_Quote p
+                    | `Typ p -> print#ty_at Expr_Quote p)
                   contents
                 |> concat
             | App _ | Construct _ -> super#expr' ctx e
