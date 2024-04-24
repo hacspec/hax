@@ -1617,12 +1617,17 @@ pub enum Ty {
         rustc_middle::ty::TyKind::Adt(adt_def, substs) => {
             let def_id = adt_def.did().sinto(state);
             let generic_args: Vec<GenericArg> = substs.sinto(state);
-            Ty::Adt { def_id, generic_args }
+            let param_env = state.base().tcx.param_env(state.owner_id());
+            let trait_refs = solve_item_traits(state, param_env, adt_def.did(), substs, None);
+            Ty::Adt { def_id, generic_args, trait_refs }
         },
     )]
     Adt {
         /// Reflects [`rustc_middle::ty::TyKind::Adt`]'s substitutions
         generic_args: Vec<GenericArg>,
+        /// Predicates required by the type, e.g. `T: Sized` for `Option<T>` or `B: 'a + ToOwned`
+        /// for `Cow<'a, B>`.
+        trait_refs: Vec<ImplExpr>,
         def_id: DefId,
     },
     Foreign(DefId),
