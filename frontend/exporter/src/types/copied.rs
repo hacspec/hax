@@ -1550,10 +1550,12 @@ pub struct Alias {
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub enum AliasKind {
-    /// The projection of a trait type: `<Ty as Trait<...>>::N<...>`
+    /// The projection of a trait type: `<Ty as Trait<...>>::Type<...>`
     Projection {
-        assoc_item: AssocItem,
+        /// The `impl Trait for Ty` in `Ty: Trait<..., Type = U>`.
         impl_expr: ImplExpr,
+        /// The `Type` in `Ty: Trait<..., Type = U>`.
+        assoc_item: AssocItem,
     },
     Inherent,
     Opaque,
@@ -3185,8 +3187,11 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Term> for rustc_middle::ty::Term<'
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub struct ProjectionPredicate {
+    /// The `impl Trait for Ty` in `Ty: Trait<..., Type = U>`.
     pub impl_expr: ImplExpr,
+    /// The `Type` in `Ty: Trait<..., Type = U>`.
     pub assoc_item: AssocItem,
+    /// The type `U` in `Ty: Trait<..., Type = U>`.
     pub ty: Ty,
 }
 
