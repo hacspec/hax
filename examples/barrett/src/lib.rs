@@ -38,7 +38,7 @@ pub fn barrett_reduce(value: FieldElement) -> FieldElement {
     // assert!(((quotient as i64) * (FIELD_MODULUS as i64)) < 9223372036854775807);
     let sub = quotient * FIELD_MODULUS;
 
-    hax::fstar_expr!(r"Math.Lemmas.cancel_mul_mod (v $quotient) 3329");
+    hax::fstar!(r"Math.Lemmas.cancel_mul_mod (v $quotient) 3329");
 
     value - sub
 }

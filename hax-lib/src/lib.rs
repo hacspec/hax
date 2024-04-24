@@ -15,6 +15,9 @@
 
 #![no_std]
 
+mod proc_macros;
+pub use proc_macros::*;
+
 #[doc(hidden)]
 #[cfg(hax)]
 #[macro_export]
@@ -129,8 +132,6 @@ pub fn exists<T>(_f: impl Fn(T) -> bool) -> bool {
 pub fn implies(lhs: bool, rhs: impl Fn() -> bool) -> bool {
     !lhs || rhs()
 }
-
-pub use hax_lib_macros::*;
 
 /// Dummy function that carries a string to be printed as such in the output language
 #[doc(hidden)]

@@ -1,4 +1,4 @@
-use hax_lib_macros as hax;
+use hax_lib as hax;
 
 // dummy max value
 const u32_max: u32 = 90000;
@@ -64,7 +64,7 @@ mod refined_arithmetic {
 }
 
 mod refined_indexes {
-    use hax_lib_macros as hax;
+    use hax_lib as hax;
     const MAX: usize = 10;
     struct MyArray(pub [u8; MAX]);
 
@@ -95,7 +95,7 @@ mod refined_indexes {
     }
 }
 mod newtype_pattern {
-    use hax_lib_macros as hax;
+    use hax_lib as hax;
 
     const MAX: usize = 10;
     #[hax::attributes]
@@ -124,12 +124,12 @@ mod newtype_pattern {
     }
 }
 
-#[hax::fstar_before(r#"let before_${inlined_code} = "example before""#)]
-#[hax::fstar_after(r#"let ${inlined_code}_after = "example after""#)]
+#[hax::fstar::before(r#"let before_${inlined_code} = "example before""#)]
+#[hax::fstar::after(r#"let ${inlined_code}_after = "example after""#)]
 fn inlined_code(foo: Foo) {
     const V: u8 = 12;
     let v_a = 13;
-    hax::fstar_expr!(
+    hax::fstar!(
         r"let x = ${foo.x} in
           let $?{Foo {y, ..}} = $foo in
           $add3 ((fun _ -> 3ul) $foo) $v_a $V y
@@ -137,7 +137,7 @@ fn inlined_code(foo: Foo) {
     );
 }
 
-#[hax::fstar_replace(r#"unfold let $some_function _ = "hello from F*""#)]
+#[hax::fstar::replace(r#"unfold let $some_function _ = "hello from F*""#)]
 fn some_function() -> String {
     String::from("hello from Rust")
 }
@@ -145,17 +145,17 @@ fn some_function() -> String {
 /// An minimal example of a model of math integers for F*
 mod int_model {
     use super::hax;
-    #[hax::fstar_replace(r#"unfold type $:{Int} = int"#)]
+    #[hax::fstar::replace(r#"unfold type $:{Int} = int"#)]
     #[derive(Copy, Clone)]
     struct Int(u128);
 
-    #[hax::fstar_replace(r#"unfold let ${add} x y = x + y"#)]
+    #[hax::fstar::replace(r#"unfold let ${add} x y = x + y"#)]
     fn add(x: Int, y: Int) -> Int {
         Int(x.0 + y.0)
     }
 
     use std::ops::Sub;
-    #[hax::fstar_replace(
+    #[hax::fstar::replace(
         r#"
 unfold instance impl: Core.Ops.Arith.t_Sub $:Int $:Int =
   {

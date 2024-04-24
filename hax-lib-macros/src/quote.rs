@@ -188,5 +188,5 @@ pub(super) fn expression(payload: pm::TokenStream) -> pm::TokenStream {
         };
     }
 
-    quote! {hax_lib::inline(#[allow(unused_variables)]{#backend_code})}.into()
+    quote! {::hax_lib::inline(#[allow(unused_variables)]{#backend_code})}.into()
 }

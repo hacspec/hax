@@ -398,7 +398,7 @@ pub fn attributes(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStr
                                 let (generics, self_ty) = (&item.generics, &item.self_ty);
                                 let where_clause = &generics.where_clause;
                                 ml.tokens = quote! {#decoration, #generics, #where_clause, #self_ty, #tokens};
-                                ml.path = parse_quote! {::hax_lib_macros::impl_fn_decoration};
+                                ml.path = parse_quote! {::hax_lib::impl_fn_decoration};
                             }
                         }
                     }
