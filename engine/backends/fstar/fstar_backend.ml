@@ -576,6 +576,7 @@ struct
     | Quote quote -> pquote e.span quote |> F.term_of_string
     | _ -> .
 
+  (** Prints a `quote` to a string *)
   and pquote span { contents; _ } =
     List.map
       ~f:(function
