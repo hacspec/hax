@@ -56,12 +56,8 @@ let mk_e_app base args =
 let unit = term AST.(Const Const_unit)
 
 let tc_solve =
-  let solve =
-    term
-    @@ AST.Var
-         (FStar_Parser_Const.fstar_tactics_lid' [ "Typeclasses"; "solve" ])
-  in
-  mk_e_app solve [ unit ]
+  term
+  @@ AST.Var (FStar_Parser_Const.fstar_tactics_lid' [ "Typeclasses"; "solve" ])
 
 let mk_binder ?(aqual : FStar_Parser_AST.arg_qualifier option = Some Implicit) b
     =
