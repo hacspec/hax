@@ -65,7 +65,7 @@ pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
     for (pred, _) in predicates.predicates {
         let pred_kind = pred.kind();
         // Apply the substitution
-        let pred_kind = {
+        let bare_pred_kind = {
             // SH: Not sure this is the proper way, but it seems to work so far. My reasoning:
             // - I don't know how to get rid of the Binder, because there is no
             //   Binder::subst method.
@@ -73,37 +73,20 @@ pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
             //   contain any information) and comes with substitution methods.
             // So I skip the Binder, wrap the value in an EarlyBinder and apply
             // the substitution.
+            // Warning: this removes the binder; we need to add it back to avoid escaping bound
+            // variables.
             // Remark: there is also EarlyBinder::subst(...)
             let value = rustc_middle::ty::EarlyBinder::bind(pred_kind.skip_binder());
             tcx.subst_and_normalize_erasing_regions(substs, param_env, value)
         };
 
-        // Just explore the trait predicates
+        // Explore only the trait predicates
         use rustc_middle::ty::{Clause, PredicateKind};
-        if let PredicateKind::Clause(Clause::Trait(trait_pred)) = pred_kind {
-            // SH: We also need to introduce a binder here. I'm not sure what we
-            // whould bind this with: the variables to bind with are those
-            // given by the definition we are exploring, and they should already
-            // be in the param environment. So I just wrap in a dummy binder
-            // (this also seems to work so far).
-            //
-            // Also, we can't wrap in a dummy binder if there are escaping bound vars.
-            // For now, we fail if there are escaping bound vars.
-            // **SH:** I encountered this issue several times, but the "error"
-            // clause never made it to the final code. I think it is because it
-            // was introduced when computing the "full trait ref" information.
-            let trait_ref = trait_pred.trait_ref;
-            use crate::rustc_middle::ty::TypeVisitableExt;
-            let impl_expr = if trait_ref.has_escaping_bound_vars() {
-                supposely_unreachable_fatal!(s, "mir_traits: has escaping bound vars"; {
-                    trait_ref, def_id
-                })
-            } else {
-                // Ok
-                let trait_ref = rustc_middle::ty::Binder::dummy(trait_pred.trait_ref);
-                solve_trait(s, param_env, trait_ref)
-            };
-
+        if let PredicateKind::Clause(Clause::Trait(trait_pred)) = bare_pred_kind {
+            // Rewrap the now-substituted kind with the original binder. Substitution dealt with
+            // early bound variables; this binds late bound ones.
+            let trait_ref = pred_kind.rebind(trait_pred.trait_ref);
+            let impl_expr = solve_trait(s, param_env, trait_ref);
             impl_exprs.push(impl_expr);
         }
     }
