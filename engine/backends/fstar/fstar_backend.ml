@@ -1111,7 +1111,8 @@ struct
                            let args =
                              List.map ~f:(pgeneric_value e.span) args
                            in
-                           ( F.id (name ^ "_" ^ impl_ident_name), (* Dodgy concatenation *)
+                           ( F.id (name ^ "_" ^ impl_ident_name),
+                             (* Dodgy concatenation *)
                              None,
                              [],
                              F.mk_e_app base args ))
@@ -1128,16 +1129,23 @@ struct
                     let output = pty e.span output in
                     let ty_pre_post =
                       let inputs = List.map ~f:FStarBinder.to_term inputs in
-		      let add_pre n = n ^ "_pre" in
-		      let pre_name_str = U.Concrete_ident_view.to_definition_name (Concrete_ident.Create.map_last ~f:add_pre i.ti_ident) in
+                      let add_pre n = n ^ "_pre" in
+                      let pre_name_str =
+                        U.Concrete_ident_view.to_definition_name
+                          (Concrete_ident.Create.map_last ~f:add_pre i.ti_ident)
+                      in
                       let pre =
-                        F.mk_e_app (F.term_of_lid [pre_name_str]) inputs in
+                        F.mk_e_app (F.term_of_lid [ pre_name_str ]) inputs
+                      in
                       let result = F.term_of_lid [ "result" ] in
-		      let add_post n = n ^ "_post" in
-		      let post_name_str = U.Concrete_ident_view.to_definition_name (Concrete_ident.Create.map_last ~f:add_post i.ti_ident) in
+                      let add_post n = n ^ "_post" in
+                      let post_name_str =
+                        U.Concrete_ident_view.to_definition_name
+                          (Concrete_ident.Create.map_last ~f:add_post i.ti_ident)
+                      in
                       let post =
                         F.mk_e_app
-                          (F.term_of_lid [ post_name_str])
+                          (F.term_of_lid [ post_name_str ])
                           (inputs @ [ result ])
                       in
                       let post =

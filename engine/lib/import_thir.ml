@@ -1502,15 +1502,12 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                        ii_v =
                          (match (item.kind : Thir.impl_item_kind) with
                          | Fn { body; params; _ } ->
-		             let params =
-			          if List.is_empty params then [ U.make_unit_param span ]
-			          else List.map ~f:(c_param item.span) params
-		             in
-                             IIFn
-                               {
-                                 body = c_expr body;
-                                 params = params;
-                               }
+                             let params =
+                               if List.is_empty params then
+                                 [ U.make_unit_param span ]
+                               else List.map ~f:(c_param item.span) params
+                             in
+                             IIFn { body = c_expr body; params }
                          | Const (_ty, e) ->
                              IIFn { body = c_expr e; params = [] }
                          | Type { ty; parent_bounds } ->
