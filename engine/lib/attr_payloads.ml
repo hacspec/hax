@@ -57,6 +57,7 @@ module AssocRole = struct
       | ProcessWrite
       | ProcessInit
       | ProtocolMessages
+      | ItemQuote
     [@@deriving show, yojson, compare, sexp, eq]
   end
 
@@ -73,6 +74,7 @@ module AssocRole = struct
     | Ensures -> Ensures
     | Decreases -> Decreases
     | Refine -> Refine
+    | ItemQuote -> ItemQuote
     | ProcessRead -> ProcessRead
     | ProcessWrite -> ProcessWrite
     | ProcessInit -> ProcessInit
@@ -137,7 +139,7 @@ module Make (F : Features.T) (Error : Phase_utils.ERROR) = struct
   module type WITH_ITEMS = sig
     val item_uid_map : item UId.Map.t
     val item_of_uid : UId.t -> item
-    val associated_items : attrs -> item AssocRole.Map.t
+    val associated_items_per_roles : attrs -> item list AssocRole.Map.t
     val associated_item : AssocRole.t -> attrs -> item option
 
     val associated_fn :
@@ -145,6 +147,19 @@ module Make (F : Features.T) (Error : Phase_utils.ERROR) = struct
 
     val associated_expr :
       ?keep_last_args:int -> AssocRole.t -> attrs -> expr option
+
+    val associated_items : AssocRole.t -> attrs -> item list
+
+    val associated_fns :
+      AssocRole.t -> attrs -> (generics * param list * expr) list
+
+    val associated_exprs :
+      ?keep_last_args:int -> AssocRole.t -> attrs -> expr list
+
+    val expect_fn : item -> generics * param list * expr
+
+    val expect_expr :
+      ?keep_last_args:int -> generics * param list * expr -> expr
 
     val associated_expr_rebinding :
       pat list -> AssocRole.t -> attrs -> expr option
@@ -201,43 +216,65 @@ module Make (F : Features.T) (Error : Phase_utils.ERROR) = struct
              @@ "Could not find item with UID "
              ^ [%show: UId.t] uid)
 
-    let associated_items : attrs -> item AssocRole.Map.t =
-      let dup role items =
-        let span = List.map ~f:(fun i -> i.span) items |> Span.union_list in
-        Error.assertion_failure span
-        @@ "Cannot associate multiple "
-        ^ [%show: AssocRole.t] role
-      in
+    let associated_items_per_roles : attrs -> item list AssocRole.Map.t =
       raw_associated_item
       >> List.map ~f:(map_snd item_of_uid)
-      >> map_of_alist (module AssocRole) ~dup
+      >> Map.of_alist_multi (module AssocRole)
+
+    let expect_singleton failure = function
+      | [] -> None
+      | [ v ] -> Some v
+      | _ -> failure ()
+    (* Error.assertion_failure span message *)
+
+    let span_of_attrs =
+      List.map ~f:(fun (i : attr) -> i.span) >> Span.union_list
+
+    let find_or_empty role list = Map.find list role |> Option.value ~default:[]
+
+    let associated_items (role : AssocRole.t) (attrs : attrs) : item list =
+      associated_items_per_roles attrs |> find_or_empty role
 
     let associated_item (role : AssocRole.t) (attrs : attrs) : item option =
-      Map.find (associated_items attrs) role
+      associated_items role attrs
+      |> expect_singleton (fun _ ->
+             let span = span_of_attrs attrs in
+             Error.assertion_failure span
+             @@ "Found more than one "
+             ^ [%show: AssocRole.t] role
+             ^ " for this item. Only one is allowed.")
+
+    let expect_fn = function
+      | { v = Fn { generics; params; body; _ }; _ } -> (generics, params, body)
+      | { span; _ } ->
+          Error.assertion_failure span
+            "this associated item was expected to be a `fn` item"
+
+    let expect_expr ?(keep_last_args = 0) (_generics, params, body) =
+      let n =
+        if keep_last_args < 0 then 0 else List.length params - keep_last_args
+      in
+      let params = List.drop params n |> List.map ~f:(fun p -> p.pat) in
+      match params with
+      | [] -> body
+      | _ -> { body with e = Closure { params; body; captures = [] } }
 
     let associated_fn (role : AssocRole.t) :
         attrs -> (generics * param list * expr) option =
-      associated_item role
-      >> Option.map ~f:(function
-           | { v = Fn { generics; params; body; _ }; _ } ->
-               (generics, params, body)
-           | { span; _ } ->
-               Error.assertion_failure span
-                 "this associated item was expected to be a `fn` item")
+      associated_item role >> Option.map ~f:expect_fn
+
+    let associated_fns (role : AssocRole.t) :
+        attrs -> (generics * param list * expr) list =
+      associated_items role >> List.map ~f:expect_fn
 
     (** Looks up an associated expression, optionally keeping `keep_last_args` last arguments. If keep_last_args is negative, then all arguments are kept. *)
     let associated_expr ?(keep_last_args = 0) (role : AssocRole.t) :
         attrs -> expr option =
-      associated_fn role
-      >> Option.map ~f:(fun (_generics, params, body) ->
-             let n =
-               if keep_last_args < 0 then 0
-               else List.length params - keep_last_args
-             in
-             let params = List.drop params n |> List.map ~f:(fun p -> p.pat) in
-             match params with
-             | [] -> body
-             | _ -> { body with e = Closure { params; body; captures = [] } })
+      associated_fn role >> Option.map ~f:(expect_expr ~keep_last_args)
+
+    let associated_exprs ?(keep_last_args = 0) (role : AssocRole.t) :
+        attrs -> expr list =
+      associated_fns role >> List.map ~f:(expect_expr ~keep_last_args)
 
     let associated_expr_rebinding (params : pat list) (role : AssocRole.t)
         (attrs : attrs) : expr option =

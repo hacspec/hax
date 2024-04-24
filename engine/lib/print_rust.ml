@@ -215,6 +215,19 @@ module Raw = struct
     | MResult t -> !"MResult<" & pty span t & !">"
     | MOption -> !"MOption"
 
+  and pquote span quote =
+    let ( ! ) = pure span in
+    !"quote!("
+    & List.map
+        ~f:(function
+          | `Verbatim code -> !code
+          | `Expr e -> pexpr e
+          | `Pat p -> ppat p
+          | `Typ t -> pty span t)
+        quote.contents
+      |> concat ~sep:!""
+    & !")"
+
   and pexpr' (e : expr) =
     let ( ! ) = pure e.span in
     match e.e with
@@ -317,7 +330,7 @@ module Raw = struct
     | Closure { params; body; _ } ->
         let params = List.map ~f:ppat params |> concat ~sep:!"," in
         !"(|" & params & !"| {" & pexpr body & !"})"
-    | Quote _ -> !"quotation!(..)"
+    | Quote quote -> pquote e.span quote
   (* | _ -> "todo!()" *)
 
   and plhs (e : lhs) span =
@@ -522,6 +535,7 @@ module Raw = struct
             & !"{"
             & List.map ~f:pimpl_item items |> concat ~sep:!"\n"
             & !"}"
+        | Quote quote -> pquote e.span quote & !";"
         | _ -> raise NotImplemented
       in
       pattrs e.attrs & pi

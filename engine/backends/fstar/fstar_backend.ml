@@ -573,15 +573,19 @@ struct
              kind = UnsupportedMacro { id = [%show: global_ident] macro };
              span = e.span;
            }
-    | Quote { contents; _ } ->
-        List.map
-          ~f:(function
-            | `Verbatim code -> code
-            | `Expr e -> pexpr e |> term_to_string
-            | `Pat p -> ppat p |> pat_to_string)
-          contents
-        |> String.concat |> F.term_of_string
+    | Quote quote -> pquote e.span quote |> F.term_of_string
     | _ -> .
+
+  (** Prints a `quote` to a string *)
+  and pquote span { contents; _ } =
+    List.map
+      ~f:(function
+        | `Verbatim code -> code
+        | `Expr e -> pexpr e |> term_to_string
+        | `Pat p -> ppat p |> pat_to_string
+        | `Typ p -> pty span p |> term_to_string)
+      contents
+    |> String.concat
 
   and parm { arm = { arm_pat; body } } = (ppat arm_pat, None, pexpr body)
 
@@ -793,7 +797,12 @@ struct
         F.mk_e_app effect (if is_lemma then args else typ :: args)
 
   let rec pitem (e : item) :
-      [> `Impl of F.AST.decl | `Intf of F.AST.decl | `Comment of string ] list =
+      [> `Impl of F.AST.decl
+      | `Intf of F.AST.decl
+      | `VerbatimImpl of string
+      | `VerbatimIntf of string
+      | `Comment of string ]
+      list =
     try pitem_unwrapped e
     with Diagnostics.SpanFreeError.Exn error ->
       let error = Diagnostics.SpanFreeError.payload error in
@@ -805,7 +814,12 @@ struct
       ]
 
   and pitem_unwrapped (e : item) :
-      [> `Impl of F.AST.decl | `Intf of F.AST.decl | `Comment of string ] list =
+      [> `Impl of F.AST.decl
+      | `Intf of F.AST.decl
+      | `VerbatimImpl of string
+      | `VerbatimIntf of string
+      | `Comment of string ]
+      list =
     match e.v with
     | Alias { name; item } ->
         let pat =
@@ -1259,6 +1273,20 @@ struct
         let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
         F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ]
         @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
+    | Quote quote ->
+        let fstar_opts =
+          Attrs.find_unique_attr e.attrs ~f:(function
+            | ItemQuote q -> Some q.fstar_options
+            | _ -> None)
+          |> Option.value_or_thunk ~default:(fun _ ->
+                 Error.assertion_failure e.span
+                   "Malformed `Quote` item: could not find a ItemQuote payload")
+          |> Option.value ~default:Types.{ intf = true; impl = false }
+        in
+        (if fstar_opts.intf then [ `VerbatimIntf (pquote e.span quote) ]
+        else [])
+        @
+        if fstar_opts.impl then [ `VerbatimImpl (pquote e.span quote) ] else []
     | HaxError details ->
         [
           `Comment
@@ -1272,7 +1300,12 @@ end
 module type S = sig
   val pitem :
     item ->
-    [> `Impl of F.AST.decl | `Intf of F.AST.decl | `Comment of string ] list
+    [> `Impl of F.AST.decl
+    | `Intf of F.AST.decl
+    | `VerbatimImpl of string
+    | `VerbatimIntf of string
+    | `Comment of string ]
+    list
 end
 
 let make (module M : Attrs.WITH_ITEMS) ctx =
@@ -1322,6 +1355,8 @@ let strings_of_item ~signature_only (bo : BackendOptions.t) m items
   |> List.concat_map ~f:(function
        | `Impl i -> [ mk_impl (decl_to_string i) ]
        | `Intf i -> [ mk_intf (decl_to_string i) ]
+       | `VerbatimIntf s -> if interface_mode then [ `Intf s ] else [ `Impl s ]
+       | `VerbatimImpl s -> if interface_mode then [ `Impl s ] else [ `Impl s ]
        | `Comment s ->
            let s = "(* " ^ s ^ " *)" in
            if interface_mode then [ `Impl s; `Intf s ] else [ `Impl s ])

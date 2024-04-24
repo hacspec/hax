@@ -258,14 +258,17 @@ functor
         }
       | Closure of { params : pat list; body : expr; captures : expr list }
       | EffectAction of { action : F.monadic_action; argument : expr }
-      | Quote of {
-          contents : [ `Verbatim of string | `Expr of expr | `Pat of pat ] list;
-          witness : F.quote;
-        }
+      | Quote of quote
           (** A quotation is an inlined piece of backend code
               interleaved with Rust code *)
 
     and expr = { e : expr'; span : span; typ : ty }
+
+    and quote = {
+      contents :
+        [ `Verbatim of string | `Expr of expr | `Pat of pat | `Typ of ty ] list;
+      witness : F.quote;
+    }
 
     and supported_monads =
       | MException of ty
@@ -388,6 +391,7 @@ functor
           is_external : bool;
           rename : string option;
         }
+      | Quote of quote
       | HaxError of string
       | NotImplementedYet
 

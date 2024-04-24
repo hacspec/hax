@@ -13,7 +13,7 @@ module%inlined_contents Make (F : Features.T) = struct
   include
     Phase_utils.MakeBase (F) (FB)
       (struct
-        let phase_id = Diagnostics.Phase.CfIntoMonads
+        let phase_id = Diagnostics.Phase.TransformHaxLibInline
       end)
 
   module Implem : ImplemT.T = struct
@@ -22,6 +22,7 @@ module%inlined_contents Make (F : Features.T) = struct
     module UA = Ast_utils.Make (F)
     module UB = Ast_utils.Make (FB)
     module Visitors = Ast_visitors.Make (FB)
+    module Attrs = Attr_payloads.Make (F) (Error)
 
     module S = struct
       module A = FA
@@ -69,6 +70,14 @@ module%inlined_contents Make (F : Features.T) = struct
       UB.Reducers.collect_global_idents#visit_pat () pat |> Set.choose
 
     let rec dexpr' span (expr : A.expr') : B.expr' =
+      quote_of_expr' span expr
+      |> Option.map ~f:(fun quote : B.expr' -> B.Quote quote)
+      |> Option.value_or_thunk ~default:(fun _ ->
+             [%inline_body dexpr'] span expr)
+
+    and quote_of_expr (expr : A.expr) = quote_of_expr' expr.span expr.e
+
+    and quote_of_expr' span (expr : A.expr') =
       match expr with
       | App { f = { e = GlobalVar f; _ }; args = [ payload ]; _ }
         when Global_ident.eq_name Hax_lib__inline f ->
@@ -99,14 +108,30 @@ module%inlined_contents Make (F : Features.T) = struct
                 | Some "_pat" ->
                     let pat = extract_pattern e |> Option.value_exn in
                     `Pat pat
+                | Some "_ty" ->
+                    let typ =
+                      match pat.typ with
+                      | TApp { args = [ GType typ ]; _ } -> typ
+                      | _ ->
+                          Stdio.prerr_endline @@ "-pat->" ^ [%show: B.pat] pat;
+                          Stdio.prerr_endline @@ "-expr->"
+                          ^ [%show: B.expr'] e.e;
+                          Error.assertion_failure span
+                            "Malformed call to 'inline': expected type \
+                             `Option<_>`."
+                    in
+                    `Typ typ
                 | _ -> `Expr e)
           in
           let verbatim = split_str ~on:"SPLIT_QUOTE" str in
           let contents =
             let rec f verbatim
                 (code :
-                  [ `Verbatim of string | `Expr of B.expr | `Pat of B.pat ] list)
-                =
+                  [ `Verbatim of string
+                  | `Expr of B.expr
+                  | `Pat of B.pat
+                  | `Typ of B.ty ]
+                  list) =
               match (verbatim, code) with
               | s :: s', code :: code' -> `Verbatim s :: code :: f s' code'
               | [ s ], [] -> [ `Verbatim s ]
@@ -117,16 +142,64 @@ module%inlined_contents Make (F : Features.T) = struct
                   ^ [%show: string list] verbatim
                   ^ "\ncode="
                   ^ [%show:
-                      [ `Verbatim of string | `Expr of B.expr | `Pat of B.pat ]
+                      [ `Verbatim of string
+                      | `Expr of B.expr
+                      | `Pat of B.pat
+                      | `Typ of B.ty ]
                       list] code
             in
             f verbatim code
           in
-          Quote { contents; witness = Features.On.quote }
-      | [%inline_arms "dexpr'.*"] -> auto
+          Some { contents; witness = Features.On.quote }
+      | _ -> None
       [@@inline_ands bindings_of dexpr - dexpr']
 
-    [%%inline_defs "Item.*"]
+    [%%inline_defs "Item.*" - ditems]
+
+    let ditems items =
+      let (module Attrs) = Attrs.with_items items in
+      let f (item : A.item) =
+        let before, after =
+          let map_fst = List.map ~f:fst in
+          try
+            Attrs.associated_items Attr_payloads.AssocRole.ItemQuote item.attrs
+            |> List.map ~f:(fun assoc_item ->
+                   let e : A.expr =
+                     assoc_item |> Attrs.expect_fn |> Attrs.expect_expr
+                   in
+                   let quote =
+                     UA.Expect.block e |> Option.value ~default:e
+                     |> quote_of_expr
+                     |> Option.value_or_thunk ~default:(fun _ ->
+                            Error.assertion_failure assoc_item.span
+                            @@ "Malformed `Quote` item: `quote_of_expr` \
+                                failed. Expression was:\n"
+                            (* ^ (UA.LiftToFullAst.expr e |> Print_rust.pexpr_str) *)
+                            ^ [%show: A.expr] e)
+                   in
+                   let v : B.item' = Quote quote in
+                   let span = e.span in
+                   let position, attr =
+                     Attrs.find_unique_attr assoc_item.attrs ~f:(function
+                       | ItemQuote q as attr -> Some (q.position, attr)
+                       | _ -> None)
+                     |> Option.value_or_thunk ~default:(fun _ ->
+                            Error.assertion_failure assoc_item.span
+                              "Malformed `Quote` item: could not find a \
+                               ItemQuote payload")
+                   in
+                   let attrs = [ Attr_payloads.to_attr attr assoc_item.span ] in
+                   (B.{ v; span; ident = item.ident; attrs }, position))
+            |> List.partition_tf ~f:(snd >> [%matches? Types.Before])
+            |> map_fst *** map_fst
+          with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
+            let error = Diagnostics.pretty_print_context_kind context kind in
+            let msg = error in
+            ([ B.make_hax_error_item item.span item.ident msg ], [])
+        in
+        before @ ditem item @ after
+      in
+      List.concat_map ~f items
   end
 
   include Implem

@@ -398,7 +398,7 @@ pub fn attributes(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStr
                                 let (generics, self_ty) = (&item.generics, &item.self_ty);
                                 let where_clause = &generics.where_clause;
                                 ml.tokens = quote! {#decoration, #generics, #where_clause, #self_ty, #tokens};
-                                ml.path = parse_quote! {::hax_lib_macros::impl_fn_decoration};
+                                ml.path = parse_quote! {::hax_lib::impl_fn_decoration};
                             }
                         }
                     }
@@ -541,8 +541,62 @@ pub fn pv_handwritten(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::Toke
     quote! {#attr #item}.into()
 }
 
+macro_rules! make_quoting_item_proc_macro {
+    ($backend:ident, $macro_name:ident, $position:expr, $cfg_name:ident) => {
+        #[doc = concat!("This macro inlines verbatim ", stringify!($backend)," code before a Rust item.")]
+        ///
+        /// This macro takes a string literal containing backend
+        /// code. Just as backend expression macros, this literal can
+        /// contains dollar-prefixed Rust names.
+        ///
+        /// Note: when targetting F*, you can prepend a first
+        /// comma-separated argument: `interface`, `impl` or
+        /// `both`. This controls where the code will apprear: in the
+        /// `fst` or `fsti` files or both.
+        #[proc_macro_error]
+        #[proc_macro_attribute]
+        pub fn $macro_name(payload: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+            let mut fstar_options = None;
+            let item: TokenStream = item.into();
+            let payload = {
+                let mut tokens = payload.into_iter().peekable();
+                if let Some(pm::TokenTree::Ident(ident)) = tokens.peek() {
+                    let ident_str = format!("{}", ident);
+                    fstar_options = Some(ItemQuoteFStarOpts {
+                        intf: ident_str == "interface" || ident_str == "both",
+                        r#impl: ident_str == "impl" || ident_str == "both",
+                    });
+                    if !matches!(ident_str.as_str(), "impl" | "both" | "interface") {
+                        proc_macro_error::abort!(
+                            ident.span(),
+                            "Expected `impl`, `both` or `interface`"
+                        );
+                    }
+                    // Consume the ident
+                    let _ = tokens.next();
+                    // Expect a comma, fail otherwise
+                    let comma = pm::TokenStream::from_iter(tokens.next().into_iter());
+                    let _: syn::token::Comma = parse_macro_input!(comma);
+                }
+                pm::TokenStream::from_iter(tokens)
+            };
+
+            let ts: TokenStream = quote::item(
+                ItemQuote {
+                    position: $position,
+                    fstar_options,
+                },
+                quote! {#[cfg($cfg_name)]},
+                payload,
+                quote! {#item}.into(),
+            )
+            .into();
+            ts.into()
+        }
+    };
+}
 macro_rules! make_quoting_proc_macro {
-    ($backend:ident($cfg_name:ident)) => {
+    ($backend:ident($expr_name:ident, $before_name:ident, $after_name:ident, $replace_name:ident, $cfg_name:ident)) => {
         #[doc = concat!("Embed ", stringify!($backend), " expression inside a Rust expression. This macro takes only one argument: some raw ", stringify!($backend), " code as a string literal.")]
         ///
 
@@ -573,9 +627,10 @@ macro_rules! make_quoting_proc_macro {
         /// `${EXPR}` also allows any Rust expressions
         /// `EXPR` to be embedded.
 
+        /// Types can be refered to with the syntax `$:{TYPE}`.
         #[proc_macro]
-        pub fn $backend(payload: pm::TokenStream) -> pm::TokenStream {
-            let ts: TokenStream = quote::quote(payload).into();
+        pub fn $expr_name(payload: pm::TokenStream) -> pm::TokenStream {
+            let ts: TokenStream = quote::expression(payload).into();
             quote!{
                 #[cfg($cfg_name)]
                 {
@@ -583,13 +638,25 @@ macro_rules! make_quoting_proc_macro {
                 }
             }.into()
         }
+
+        make_quoting_item_proc_macro!($backend, $before_name, ItemQuotePosition::Before, $cfg_name);
+        make_quoting_item_proc_macro!($backend, $after_name, ItemQuotePosition::After, $cfg_name);
+
+        #[doc = concat!("Replaces a Rust expression with some verbatim ", stringify!($backend)," code.")]
+        #[proc_macro_error]
+        #[proc_macro_attribute]
+        pub fn $replace_name(payload: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+            let item: TokenStream = item.into();
+            let attr = AttrPayload::ItemStatus(ItemStatus::Included { late_skip: true });
+            $before_name(payload, quote!{#attr #item}.into())
+        }
     };
-    ($backend:ident($cfg_name:ident) $($others:tt)+) => {
-        make_quoting_proc_macro!($backend($cfg_name));
+    ($backend:ident $payload:tt $($others:tt)+) => {
+        make_quoting_proc_macro!($backend$payload);
         make_quoting_proc_macro!($($others)+);
     }
 }
 
-make_quoting_proc_macro!(fstar(hax_backend_fstar)
-                         coq(hax_backend_coq)
-                         proverif(hax_backend_proverif));
+make_quoting_proc_macro!(fstar(fstar_expr, fstar_before, fstar_after, fstar_replace, hax_backend_fstar)
+                         coq(coq_expr, coq_before, coq_after, coq_replace, hax_backend_coq)
+                         proverif(proverif_expr, proverif_before, proverif_after, proverif_replace, hax_backend_proverif));

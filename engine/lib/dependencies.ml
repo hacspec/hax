@@ -65,7 +65,7 @@ module Make (F : Features.T) = struct
                   v#visit_impl_expr () ie @ v#visit_impl_ident () ii)
                 parent_bounds
         | Alias { name = _; item } -> v#visit_concrete_ident () item
-        | Use _ | HaxError _ | NotImplementedYet ->
+        | Use _ | Quote _ | HaxError _ | NotImplementedYet ->
             Set.empty (module Concrete_ident)
       in
       set |> Set.to_list
