@@ -24,7 +24,7 @@ module Make (F : Features.T) =
 
       let ditems (l : A.item list) : B.item list =
         let (module Attrs) = Attrs.with_items l in
-        let f (item : item) : item =
+        let f' (item : item) : item =
           let v =
             match item.v with
             | Trait { name; generics; items } ->
@@ -121,6 +121,13 @@ module Make (F : Features.T) =
             | v -> v
           in
           { item with v }
+        in
+        let f item =
+          try f' item
+          with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
+            let error = Diagnostics.pretty_print_context_kind context kind in
+            let msg = error in
+            B.make_hax_error_item item.span item.ident msg
         in
         List.map ~f l
     end)

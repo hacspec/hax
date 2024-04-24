@@ -44,6 +44,7 @@ module Phase = struct
     | SimplifyMatchReturn
     | SimplifyHoisting
     | DropNeedlessReturns
+    | TransformHaxLibInline
     | DummyA
     | DummyB
     | DummyC
@@ -143,14 +144,14 @@ let failure ~context ~span kind =
   Core.raise_fatal_error { context; kind; span = Span.to_thir span }
 
 module SpanFreeError : sig
-  type t = private Data of Context.t * kind
+  type t = private Data of Context.t * kind [@@deriving show]
 
   exception Exn of t
 
   val payload : t -> Context.t * kind
   val raise : ?span:T.span list -> Context.t -> kind -> 'a
 end = struct
-  type t = Data of Context.t * kind
+  type t = Data of Context.t * kind [@@deriving show]
 
   exception Exn of t
 

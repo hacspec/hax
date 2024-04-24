@@ -354,6 +354,7 @@ module Make (F : Features.T) = struct
       method arm : arm fn
       method expr : par_state -> expr fn
       method item : item fn
+      method quote : quote fn
       method items : item list fn
     end
 

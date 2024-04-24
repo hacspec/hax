@@ -126,7 +126,15 @@ let run (options : Types.engine_options) : Types.output =
 let main (options : Types.engine_options) =
   Printexc.record_backtrace true;
   let result =
-    try Ok (run options) with e -> Error (e, Printexc.get_raw_backtrace ())
+    try Ok (run options) with
+    | Hax_engine.Diagnostics.SpanFreeError.Exn exn ->
+        Error
+          ( Failure
+              ("Uncatched hax exception (please report, this should not \
+                appear): "
+              ^ [%show: Hax_engine.Diagnostics.SpanFreeError.t] exn),
+            Printexc.get_raw_backtrace () )
+    | e -> Error (e, Printexc.get_raw_backtrace ())
   in
   match result with
   | Ok results ->

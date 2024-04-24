@@ -9,7 +9,8 @@
 //! The `<PREFIX>` describes the kind of the antiquotation:
 //!  - empty prefix, the antiquotation is an expression;
 //!  - `?`, the antiquotation is a pattern;
-//!  - `$`, the antiquotation is a constructor name.
+//!  - `$`, the antiquotation is a constructor name;
+//!  - `:`, the antiquotation is a type.
 
 use crate::prelude::*;
 use quote::ToTokens;
@@ -22,6 +23,7 @@ enum AntiquoteKind {
     Expr,
     Constructor,
     Pat,
+    Ty,
 }
 
 impl ToTokens for AntiquoteKind {
@@ -31,6 +33,7 @@ impl ToTokens for AntiquoteKind {
                 Self::Expr => quote! {_expr},
                 Self::Constructor => quote! {_constructor},
                 Self::Pat => quote! {_pat},
+                Self::Ty => quote! {_ty},
             }]
             .into_iter(),
         )
@@ -55,12 +58,13 @@ impl ToTokens for Antiquote {
             AntiquoteKind::Expr => ts,
             AntiquoteKind::Constructor => wrap_pattern(quote! {#ts {..}}),
             AntiquoteKind::Pat => wrap_pattern(ts),
+            AntiquoteKind::Ty => quote! {None::<#ts>},
         };
         tokens.extend([ts].into_iter())
     }
 }
 
-/// Extract antiquotations (`$[?][$]...`, `$[?][$]{...}`) and parses them.
+/// Extract antiquotations (`$[?][$][:]...`, `$[?][$][:]{...}`) and parses them.
 fn process_string(s: &str) -> std::result::Result<(String, Vec<Antiquote>), String> {
     let mut chars = s.chars().peekable();
     let mut antiquotations = vec![];
@@ -70,10 +74,11 @@ fn process_string(s: &str) -> std::result::Result<(String, Vec<Antiquote>), Stri
             '$' => {
                 let mut s = String::new();
                 let mut kind = AntiquoteKind::Expr;
-                if let Some(prefix) = chars.next_if(|ch| *ch == '?' || *ch == '$') {
+                if let Some(prefix) = chars.next_if(|ch| *ch == '?' || *ch == '$' || *ch == ':') {
                     kind = match prefix {
                         '?' => AntiquoteKind::Pat,
                         '$' => AntiquoteKind::Constructor,
+                        ':' => AntiquoteKind::Ty,
                         _ => unreachable!(),
                     };
                 }
@@ -93,9 +98,9 @@ fn process_string(s: &str) -> std::result::Result<(String, Vec<Antiquote>), Stri
                         s.push(ch);
                     }
                 } else {
-                    while let Some(ch) =
-                        chars.next_if(|ch| !matches!(ch, ' ' | '\t' | '\n' | '(' | '{' | ')'))
-                    {
+                    while let Some(ch) = chars.next_if(|ch| {
+                        !matches!(ch, ' ' | '\t' | '\n' | '(' | '{' | ')' | ';' | '!' | '?')
+                    }) {
                         s.push(ch)
                     }
                 }
@@ -124,29 +129,64 @@ fn process_string(s: &str) -> std::result::Result<(String, Vec<Antiquote>), Stri
     Ok((output, antiquotations))
 }
 
-pub(super) fn quote(payload: pm::TokenStream) -> pm::TokenStream {
-    let payload = parse_macro_input!(payload as LitStr).value();
-
-    if payload.find(SPLIT_MARK).is_some() {
-        return quote! {std::compile_error!(std::concat!($SPLIT_MARK, " is reserved"))}.into();
-    }
-
-    let (string, antiquotes) = match process_string(&payload) {
-        Ok(x) => x,
-        Err(message) => return quote! {std::compile_error!(#message)}.into(),
+pub(super) fn item(
+    kind: ItemQuote,
+    attribute_to_inject: TokenStream,
+    payload: pm::TokenStream,
+    item: pm::TokenStream,
+) -> pm::TokenStream {
+    let expr = TokenStream::from(expression(payload));
+    let item = TokenStream::from(item);
+    let uid = ItemUid::fresh();
+    let uid_attr = AttrPayload::Uid(uid.clone());
+    let assoc_attr = AttrPayload::AssociatedItem {
+        role: AssociationRole::ItemQuote,
+        item: uid,
     };
-    let string = proc_macro2::Literal::string(&string);
-    let string: TokenStream = [proc_macro2::TokenTree::Literal(string)]
-        .into_iter()
-        .collect();
-    let mut code = quote! {#string};
+    let kind_attr = AttrPayload::ItemQuote(kind);
+    let status_attr = AttrPayload::ItemStatus(ItemStatus::Included { late_skip: true });
+    use AttrPayload::NeverDropBody;
+    quote! {
+        #assoc_attr
+        #item
+        #attribute_to_inject
+        #status_attr
+        const _: () = {
+            #NeverDropBody
+            #uid_attr
+            #kind_attr
+            fn quote_contents() {
+                #expr
+            }
+        };
+    }
+    .into()
+}
+
+pub(super) fn expression(payload: pm::TokenStream) -> pm::TokenStream {
+    let (mut backend_code, antiquotes) = {
+        let payload = parse_macro_input!(payload as LitStr).value();
+        if payload.find(SPLIT_MARK).is_some() {
+            return quote! {std::compile_error!(std::concat!($SPLIT_MARK, " is reserved"))}.into();
+        }
+        let (string, antiquotes) = match process_string(&payload) {
+            Ok(x) => x,
+            Err(message) => return quote! {std::compile_error!(#message)}.into(),
+        };
+        let string = proc_macro2::Literal::string(&string);
+        let string: TokenStream = [proc_macro2::TokenTree::Literal(string)]
+            .into_iter()
+            .collect();
+        (quote! {#string}, antiquotes)
+    };
+
     for user in antiquotes.iter().rev() {
         let kind = &user.kind;
-        code = quote! {
+        backend_code = quote! {
             let #kind = #user;
-            #code
+            #backend_code
         };
     }
 
-    quote! {hax_lib::inline(#[allow(unused_variables)]{#code})}.into()
+    quote! {::hax_lib::inline(#[allow(unused_variables)]{#backend_code})}.into()
 }

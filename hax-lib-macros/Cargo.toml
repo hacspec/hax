@@ -17,3 +17,6 @@ proc-macro2.workspace = true
 quote.workspace = true
 hax-lib-macros-types.workspace = true
 syn = { version = "2.0", features = ["full", "visit-mut", "extra-traits", "parsing"] }
+
+[dev-dependencies]
+hax-lib = { path = "../hax-lib" }
