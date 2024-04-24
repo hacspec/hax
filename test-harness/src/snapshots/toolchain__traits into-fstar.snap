@@ -65,7 +65,7 @@ class t_SuperTrait (v_Self: Type) = {
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_SuperTrait_for_i32: t_SuperTrait i32 =
   {
-    _super_2101570567305961368 = FStar.Tactics.Typeclasses.solve ();
+    _super_2101570567305961368 = FStar.Tactics.Typeclasses.solve;
     f_function_of_super_trait_pre = (fun (self: i32) -> true);
     f_function_of_super_trait_post = (fun (self: i32) (out: u32) -> true);
     f_function_of_super_trait = fun (self: i32) -> cast (Core.Num.impl__i32__abs self <: i32) <: u32
@@ -121,7 +121,7 @@ let g (#v_T: Type) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_T) (x:
 let impl_Foo_for_tuple_: t_Foo Prims.unit =
   {
     f_AssocType = i32;
-    f_AssocType_886671949818196346 = FStar.Tactics.Typeclasses.solve ();
+    f_AssocType_886671949818196346 = FStar.Tactics.Typeclasses.solve;
     f_N = sz 32;
     f_assoc_f = () <: Prims.unit;
     f_method_f_pre = (fun (self: Prims.unit) -> true);
