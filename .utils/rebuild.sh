@@ -42,11 +42,12 @@ ocaml () {
     CURRENT="ocaml"
     dune build $([ -z $DUNEJOBS ] || echo "-j $DUNEJOBS")
     CURRENT="ocaml/install"
+
     # Small hack for those that are not using [opam] at all: by
     # default install OCaml binaries in `~/.cargo` (which is supposed
     # to be in PATH anyway).
-    DUNE_INSTALL_PREFIX="${DUNE_INSTALL_PREFIX:-$HOME/.cargo}"
-    dune install --profile dev --prefix $DUNE_INSTALL_PREFIX
+    INSTALL_PREFIX="${OPAM_SWITCH_PREFIX:-${DUNE_INSTALL_PREFIX:-$HOME/.cargo}}"
+    dune install --profile dev --prefix $INSTALL_PREFIX
 
     if ( command -v "which" && command -v "sort" && command -v "wc" ) >/dev/null; then
         case $(which -a hax-engine | sort -u | wc -l) in
