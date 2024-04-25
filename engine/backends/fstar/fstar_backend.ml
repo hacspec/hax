@@ -253,6 +253,17 @@ struct
       (c Core__cmp__PartialOrd__gt, (2, ">."));
       (`Primitive (LogicalOp And), (2, "&&"));
       (`Primitive (LogicalOp Or), (2, "||"));
+      (c Rust_primitives__hax__int__add, (2, "+"));
+      (c Rust_primitives__hax__int__sub, (2, "-"));
+      (c Rust_primitives__hax__int__mul, (2, "*"));
+      (c Rust_primitives__hax__int__div, (2, "/"));
+      (c Rust_primitives__hax__int__rem, (2, "%"));
+      (c Rust_primitives__hax__int__ge, (2, ">="));
+      (c Rust_primitives__hax__int__le, (2, "<="));
+      (c Rust_primitives__hax__int__gt, (2, ">"));
+      (c Rust_primitives__hax__int__lt, (2, "<"));
+      (c Rust_primitives__hax__int__ne, (2, "<>"));
+      (c Rust_primitives__hax__int__eq, (2, "="));
     ]
     |> Map.of_alist_exn (module Global_ident)
 
