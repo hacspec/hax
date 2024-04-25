@@ -492,7 +492,7 @@ pub fn select_trait_candidate<'tcx, S: UnderOwnerState<'tcx>>(
         Ok(selection) => selection,
         Err(error) => fatal!(
             s,
-            "Cannot hanlde error `{:?}` selecting `{:?}`",
+            "Cannot handle error `{:?}` selecting `{:?}`",
             error,
             trait_ref
         ),
