@@ -1504,6 +1504,7 @@ module TransformToInputLanguage =
   [%functor_application
   Phases.Reject.RawOrMutPointer(Features.Rust)
   |> Phases.Transform_hax_lib_inline
+  |> Phases.Specialize
   |> Phases.Drop_sized_trait
   |> Phases.Simplify_question_marks
   |> Phases.And_mut_defsite
