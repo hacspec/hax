@@ -421,6 +421,24 @@ struct
           Error.assertion_failure e.span
             "pexpr: bad arity for operator application";
         F.term @@ F.AST.Op (F.Ident.id_of_text op, List.map ~f:pexpr args)
+    | App
+        {
+          f = { e = GlobalVar f; _ };
+          args = [ { e = Literal (String s); _ } ];
+          generic_args;
+        }
+      when Global_ident.eq_name Hax_lib__int__Impl_4___unsafe_from_str f ->
+        (match
+           String.chop_prefix ~prefix:"-" s
+           |> Option.value ~default:s
+           |> String.filter ~f:([%matches? '0' .. '9'] >> not)
+         with
+        | "" -> ()
+        | s ->
+            Error.assertion_failure e.span
+            @@ "pexpr: expected a integer, found the following non-digit \
+                chars: '" ^ s ^ "'");
+        F.AST.Const (F.Const.Const_int (s, None)) |> F.term
     | App { f; args; generic_args } ->
         let const_generics =
           List.filter_map
