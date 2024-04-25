@@ -13,5 +13,5 @@ description = "Hax-specific helpers for Rust programs"
 
 [dependencies]
 hax-lib-macros = { path = "../hax-lib-macros" }
-num-bigint = { version = "0.4.4", default-features = false, features = [] }
-num-traits = { version = "0.2.18", default-features = false, features = [] }
+num-bigint = { version = "0.4.3", default-features = false, features = [] }
+num-traits = { version = "0.2.15", default-features = false, features = [] }
