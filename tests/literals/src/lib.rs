@@ -1,4 +1,32 @@
 #![allow(dead_code)]
+use hax_lib::int::*;
+
+#[hax_lib::requires(x > int!(0) && x < int!(16))]
+fn math_integers(x: Int) -> u8 {
+    let _: Int = 3usize.lift();
+    let _ = int!(-340282366920938463463374607431768211455000)
+        > int!(340282366920938463463374607431768211455000);
+    let _ = x < x;
+    let _ = x >= x;
+    let _ = x <= x;
+    let _ = x != x;
+    let _ = x == x;
+    let _ = x + x;
+    let _ = x - x;
+    let _ = x * x;
+    let _ = x / x;
+    let _: i16 = x.to_i16();
+    let _: i32 = x.to_i32();
+    let _: i64 = x.to_i64();
+    let _: i128 = x.to_i128();
+    let _: isize = x.to_isize();
+    let _: u16 = x.to_u16();
+    let _: u32 = x.to_u32();
+    let _: u64 = x.to_u64();
+    let _: u128 = x.to_u128();
+    let _: usize = x.to_usize();
+    (x + x * x).to_u8()
+}
 
 pub fn panic_with_msg() {
     panic!("with msg")
