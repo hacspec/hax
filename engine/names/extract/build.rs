@@ -123,7 +123,8 @@ fn target_dir(suffix: &str) -> camino::Utf8PathBuf {
 }
 
 fn get_json() -> String {
-    let mut cmd = Command::new("cargo-hax");
+    let mut cmd =
+        Command::new(std::env::var("HAX_CARGO_COMMAND_PATH").unwrap_or("cargo-hax".to_string()));
     cmd.args([
         "hax",
         "-C",
