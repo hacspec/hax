@@ -15,6 +15,8 @@
 
 #![no_std]
 
+pub mod int;
+
 mod proc_macros;
 pub use proc_macros::*;
 
