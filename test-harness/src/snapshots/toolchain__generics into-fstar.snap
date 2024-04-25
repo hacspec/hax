@@ -63,7 +63,6 @@ let impl_Foo_for_usize: t_Foo usize =
     f_const_add = fun (v_N: usize) (self: usize) -> self +! v_N
   }
 
-/// Test defaults types and constants
 let dup (#v_T: Type) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Clone.t_Clone v_T) (x: v_T)
     : (v_T & v_T) = Core.Clone.f_clone x, Core.Clone.f_clone x <: (v_T & v_T)
 

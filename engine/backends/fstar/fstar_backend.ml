@@ -796,6 +796,22 @@ struct
         in
         F.mk_e_app effect (if is_lemma then args else typ :: args)
 
+  (** Prints doc comments out of a list of attributes *)
+  let pdoc_comments attrs =
+    attrs
+    |> List.filter_map ~f:(fun (attr : attr) ->
+           match attr.kind with
+           | DocComment { kind; body } -> Some (kind, body)
+           | _ -> None)
+    |> List.map ~f:(fun (kind, string) ->
+           match kind with
+           | DCKLine ->
+               String.split_lines string
+               |> List.map ~f:(fun s -> "///" ^ s)
+               |> String.concat_lines
+           | DCKBlock -> "(**" ^ string ^ "*)")
+    |> List.map ~f:(fun s -> `VerbatimIntf (s, `NoNewline))
+
   let rec pitem (e : item) :
       [> `Impl of F.AST.decl
       | `Intf of F.AST.decl
@@ -803,7 +819,12 @@ struct
       | `VerbatimIntf of string * [ `NoNewline | `Newline ]
       | `Comment of string ]
       list =
-    try pitem_unwrapped e
+    try
+      match pitem_unwrapped e with
+      | [] -> []
+      | printed_items ->
+          (* Print comments only for items that are being printed *)
+          pdoc_comments e.attrs @ printed_items
     with Diagnostics.SpanFreeError.Exn error ->
       let error = Diagnostics.SpanFreeError.payload error in
       let error = [%show: Diagnostics.Context.t * Diagnostics.kind] error in
@@ -820,23 +841,6 @@ struct
       | `VerbatimIntf of string * [ `NoNewline | `Newline ]
       | `Comment of string ]
       list =
-    let doc_comments =
-      e.attrs
-      |> List.filter_map ~f:(fun (attr : attr) ->
-             match attr.kind with
-             | DocComment { kind; body } -> Some (kind, body)
-             | _ -> None)
-      |> List.map ~f:(fun (kind, string) ->
-             match kind with
-             | DCKLine ->
-                 String.split_lines string
-                 |> List.map ~f:(fun s -> "///" ^ s)
-                 |> String.concat_lines
-             | DCKBlock -> "(**" ^ string ^ "*)")
-      |> List.map ~f:(fun s -> `VerbatimIntf (s, `NoNewline))
-    in
-    doc_comments
-    @
     match e.v with
     | Alias { name; item } ->
         let pat =
