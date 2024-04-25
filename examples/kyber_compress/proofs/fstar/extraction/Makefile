@@ -40,8 +40,8 @@ FSTAR_BIN      ?= $(shell command -v fstar.exe 1>&2 2> /dev/null && echo "fstar.
 HAX_PROOF_LIBS_HOME ?= $(HAX_HOME)/proof-libs/fstar
 HAX_LIBS_HOME       ?= $(HAX_HOME)/hax-lib/proofs/fstar/extraction
 
-CACHE_DIR      ?= $(HAX_PROOF_LIBS)/.cache
-HINT_DIR       ?= $(HAX_PROOF_LIBS)/.hints
+CACHE_DIR      ?= $(HAX_PROOF_LIBS_HOME)/.cache
+HINT_DIR       ?= $(HAX_PROOF_LIBS_HOME)/.hints
 
 .PHONY: all verify clean
 
