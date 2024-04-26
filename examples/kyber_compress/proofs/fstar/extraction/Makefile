@@ -54,7 +54,7 @@ all:
 ROOTS = Kyber_compress.fst
 
 $(ROOTS): ../../../src/lib.rs
-	cargo hax into fstar --z3rlimit 150
+	cargo hax into fstar --z3rlimit 200
 
 FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib \
 	$(HAX_PROOF_LIBS_HOME)/rust_primitives $(HAX_PROOF_LIBS_HOME)/core \
