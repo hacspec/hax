@@ -34,12 +34,14 @@ open FStar.Mul
 
 class t_Trait (v_Self: Type) = { __marker_trait_t_Trait:Prims.unit }
 
+/// Indirect dependencies
 let main_a_a (_: Prims.unit) : Prims.unit = ()
 
 let main_a_b (_: Prims.unit) : Prims.unit = ()
 
 let main_a_c (_: Prims.unit) : Prims.unit = ()
 
+/// Direct dependencies
 let main_a (#v_T: Type) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Trait v_T) (x: v_T)
     : Prims.unit =
   let _:Prims.unit = main_a_a () in
@@ -76,6 +78,7 @@ type t_Foo = | Foo : t_Foo
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_Trait_for_Foo: t_Trait t_Foo = { __marker_trait = () }
 
+/// Entrypoint
 let main (_: Prims.unit) : Prims.unit =
   let _:Prims.unit = main_a (Foo <: t_Foo) in
   let _:Prims.unit = main_b () in

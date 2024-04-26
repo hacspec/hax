@@ -796,14 +796,35 @@ struct
         in
         F.mk_e_app effect (if is_lemma then args else typ :: args)
 
+  (** Prints doc comments out of a list of attributes *)
+  let pdoc_comments attrs =
+    attrs
+    |> List.filter_map ~f:(fun (attr : attr) ->
+           match attr.kind with
+           | DocComment { kind; body } -> Some (kind, body)
+           | _ -> None)
+    |> List.map ~f:(fun (kind, string) ->
+           match kind with
+           | DCKLine ->
+               String.split_lines string
+               |> List.map ~f:(fun s -> "///" ^ s)
+               |> String.concat_lines
+           | DCKBlock -> "(**" ^ string ^ "*)")
+    |> List.map ~f:(fun s -> `VerbatimIntf (s, `NoNewline))
+
   let rec pitem (e : item) :
       [> `Impl of F.AST.decl
       | `Intf of F.AST.decl
-      | `VerbatimImpl of string
-      | `VerbatimIntf of string
+      | `VerbatimImpl of string * [ `NoNewline | `Newline ]
+      | `VerbatimIntf of string * [ `NoNewline | `Newline ]
       | `Comment of string ]
       list =
-    try pitem_unwrapped e
+    try
+      match pitem_unwrapped e with
+      | [] -> []
+      | printed_items ->
+          (* Print comments only for items that are being printed *)
+          pdoc_comments e.attrs @ printed_items
     with Diagnostics.SpanFreeError.Exn error ->
       let error = Diagnostics.SpanFreeError.payload error in
       let error = [%show: Diagnostics.Context.t * Diagnostics.kind] error in
@@ -816,8 +837,8 @@ struct
   and pitem_unwrapped (e : item) :
       [> `Impl of F.AST.decl
       | `Intf of F.AST.decl
-      | `VerbatimImpl of string
-      | `VerbatimIntf of string
+      | `VerbatimImpl of string * [ `NoNewline | `Newline ]
+      | `VerbatimIntf of string * [ `NoNewline | `Newline ]
       | `Comment of string ]
       list =
     match e.v with
@@ -1283,10 +1304,13 @@ struct
                    "Malformed `Quote` item: could not find a ItemQuote payload")
           |> Option.value ~default:Types.{ intf = true; impl = false }
         in
-        (if fstar_opts.intf then [ `VerbatimIntf (pquote e.span quote) ]
+        (if fstar_opts.intf then
+         [ `VerbatimIntf (pquote e.span quote, `Newline) ]
         else [])
         @
-        if fstar_opts.impl then [ `VerbatimImpl (pquote e.span quote) ] else []
+        if fstar_opts.impl then
+          [ `VerbatimImpl (pquote e.span quote, `Newline) ]
+        else []
     | HaxError details ->
         [
           `Comment
@@ -1302,8 +1326,8 @@ module type S = sig
     item ->
     [> `Impl of F.AST.decl
     | `Intf of F.AST.decl
-    | `VerbatimImpl of string
-    | `VerbatimIntf of string
+    | `VerbatimImpl of string * [ `NoNewline | `Newline ]
+    | `VerbatimIntf of string * [ `NoNewline | `Newline ]
     | `Comment of string ]
     list
 end
@@ -1316,7 +1340,8 @@ let make (module M : Attrs.WITH_ITEMS) ctx =
             end) : S)
 
 let strings_of_item ~signature_only (bo : BackendOptions.t) m items
-    (item : item) : [> `Impl of string | `Intf of string ] list =
+    (item : item) :
+    ([> `Impl of string | `Intf of string ] * [ `NoNewline | `Newline ]) list =
   let interface_mode' : Types.inclusion_kind =
     List.rev bo.interfaces
     |> List.find ~f:(fun (clause : Types.inclusion_clause) ->
@@ -1353,26 +1378,44 @@ let strings_of_item ~signature_only (bo : BackendOptions.t) m items
   Print.pitem item
   |> List.filter ~f:(function `Impl _ when no_impl -> false | _ -> true)
   |> List.concat_map ~f:(function
-       | `Impl i -> [ mk_impl (decl_to_string i) ]
-       | `Intf i -> [ mk_intf (decl_to_string i) ]
-       | `VerbatimIntf s -> if interface_mode then [ `Intf s ] else [ `Impl s ]
-       | `VerbatimImpl s -> if interface_mode then [ `Impl s ] else [ `Impl s ]
+       | `Impl i -> [ (mk_impl (decl_to_string i), `Newline) ]
+       | `Intf i -> [ (mk_intf (decl_to_string i), `Newline) ]
+       | `VerbatimIntf (s, nl) ->
+           [ ((if interface_mode then `Intf s else `Impl s), nl) ]
+       | `VerbatimImpl (s, nl) ->
+           [ ((if interface_mode then `Impl s else `Impl s), nl) ]
        | `Comment s ->
            let s = "(* " ^ s ^ " *)" in
-           if interface_mode then [ `Impl s; `Intf s ] else [ `Impl s ])
+           if interface_mode then [ (`Impl s, `Newline); (`Intf s, `Newline) ]
+           else [ (`Impl s, `Newline) ])
 
 let string_of_items ~signature_only (bo : BackendOptions.t) m items :
     string * string =
   let strings =
     List.concat_map ~f:(strings_of_item ~signature_only bo m items) items
-    |> List.map ~f:(function
-         | `Impl s -> `Impl (String.strip s)
-         | `Intf s -> `Intf (String.strip s))
+    |> List.map
+         ~f:
+           ((function
+              | `Impl s -> `Impl (String.strip s)
+              | `Intf s -> `Intf (String.strip s))
+           *** Fn.id)
     |> List.filter
-         ~f:((function `Impl s | `Intf s -> String.is_empty s) >> not)
+         ~f:(fst >> (function `Impl s | `Intf s -> String.is_empty s) >> not)
   in
   let string_for filter =
-    List.filter_map ~f:filter strings |> String.concat ~sep:"\n\n"
+    let l =
+      List.filter_map
+        ~f:(fun (s, space) ->
+          let* s = filter s in
+          Some (s, space))
+        strings
+    in
+    let n = List.length l - 1 in
+    List.mapi
+      ~f:(fun i (s, space) ->
+        s ^ if [%matches? `NoNewline] space || [%eq: int] i n then "" else "\n")
+      l
+    |> String.concat ~sep:"\n"
   in
   ( string_for (function `Impl s -> Some s | _ -> None),
     string_for (function `Intf s -> Some s | _ -> None) )

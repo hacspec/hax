@@ -33,9 +33,23 @@ impl CommandHaxExt for Command {
                 let root = std::env::current_dir().unwrap();
                 let root = root.parent().unwrap();
                 let engine_dir = root.join("engine");
-                // Make sure binaries are built
+                // Make sure binaries are built. Note this doesn't
+                // include `hax-engine-names-extract`: its build
+                // script requires the driver and CLI of `hax` to be
+                // available.
                 assert!(Command::new("cargo")
-                        .args(&["build", "--workspace", "--bins"])
+                            .args(&["build", "--bins"])
+                            .status()
+                            .unwrap()
+                            .success());
+                let cargo_hax = cargo_bin(CARGO_HAX);
+                let driver = cargo_bin("driver-hax-frontend-exporter");
+                // Now the driver & CLI are installed, call `cargo
+                // build` injecting their paths
+                assert!(Command::new("cargo")
+                        .args(&["build", "--workspace", "--bin", "hax-engine-names-extract"])
+                        .env("HAX_CARGO_COMMAND_PATH", &cargo_hax)
+                        .env("HAX_RUSTC_DRIVER_BINARY", &driver)
                         .status()
                         .unwrap()
                         .success());
@@ -49,8 +63,8 @@ impl CommandHaxExt for Command {
                         .unwrap()
                         .success());
                 Some(Paths {
-                    driver: cargo_bin("driver-hax-frontend-exporter"),
-                    cargo_hax: cargo_bin(CARGO_HAX),
+                    driver,
+                    cargo_hax,
                     engine: engine_dir.join("_build/install/default/bin/hax-engine"),
                 })
             };

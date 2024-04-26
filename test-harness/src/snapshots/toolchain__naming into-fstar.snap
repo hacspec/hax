@@ -56,6 +56,7 @@ let debug (label value: u32) : Prims.unit =
   in
   ()
 
+/// `f` stacks mutliple let bindings declaring different `a`s.
 let f (_: Prims.unit) : Prims.unit =
   let a_1_:u32 = 104ul in
   let a_2_:u32 = 205ul in
@@ -66,6 +67,13 @@ let f (_: Prims.unit) : Prims.unit =
   let _:Prims.unit = debug 1ul a_1_ in
   debug 4ul a
 
+/// `f` is expanded into `f_expand` below, while the execution of `f` gives:
+/// ```plaintext
+///  [3] a=306
+///  [2] a=205
+///  [1] a=104
+///  [last] a=123
+/// ```
 let ff_expand (_: Prims.unit) : Prims.unit =
   let a:i32 = 104l in
   let a:i32 = 205l in
