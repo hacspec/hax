@@ -40,8 +40,8 @@ FSTAR_BIN      ?= $(shell command -v fstar.exe 1>&2 2> /dev/null && echo "fstar.
 HAX_PROOF_LIBS_HOME ?= $(HAX_HOME)/proof-libs/fstar
 HAX_LIBS_HOME       ?= $(HAX_HOME)/hax-lib/proofs/fstar/extraction
 
-CACHE_DIR      ?= $(HAX_PROOF_LIBS)/.cache
-HINT_DIR       ?= $(HAX_PROOF_LIBS)/.hints
+CACHE_DIR      ?= $(HAX_PROOF_LIBS_HOME)/.cache
+HINT_DIR       ?= $(HAX_PROOF_LIBS_HOME)/.hints
 
 .PHONY: all verify clean
 
@@ -54,7 +54,7 @@ all:
 ROOTS = Kyber_compress.fst
 
 $(ROOTS): ../../../src/lib.rs
-	cargo hax into fstar --z3rlimit 150
+	cargo hax into fstar --z3rlimit 200
 
 FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib \
 	$(HAX_PROOF_LIBS_HOME)/rust_primitives $(HAX_PROOF_LIBS_HOME)/core \
