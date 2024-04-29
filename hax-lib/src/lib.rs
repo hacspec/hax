@@ -17,7 +17,9 @@
 
 pub mod int;
 
+#[cfg(feature = "macros")]
 mod proc_macros;
+#[cfg(feature = "macros")]
 pub use proc_macros::*;
 
 #[doc(hidden)]
