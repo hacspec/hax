@@ -5,21 +5,26 @@
 
 #[crate::exclude]
 mod no_extraction {
+    /// Maximal number of bytes stored in our copiable `BigInt`s.
     const BYTES: usize = 1024;
     #[derive(Copy, Clone)]
-    pub struct BigInt {
+    pub(crate) struct BigInt {
         sign: num_bigint::Sign,
         data: [u8; BYTES],
     }
     impl BigInt {
-        pub fn new(i: &num_bigint::BigInt) -> Self {
+        /// Construct a [`BigInt`] from a [`num_bigint::BigInt`]. This
+        /// operation panics when the provided [`num_bigint::BigInt`]
+        /// has more than [`BYTES`] bytes.
+        pub(crate) fn new(i: &num_bigint::BigInt) -> Self {
             let (sign, data) = i.to_bytes_be();
             let data = data.try_into().expect(
                 "`copiable_bigint::BigInt::new`: too big, please consider increasing `BYTES`",
             );
             BigInt { sign, data }
         }
-        pub fn get(self) -> num_bigint::BigInt {
+        /// Constructs a [`num_bigint::BigInt`] out of a [`BigInt`].
+        pub(crate) fn get(self) -> num_bigint::BigInt {
             num_bigint::BigInt::from_bytes_be(self.sign, &self.data)
         }
     }
