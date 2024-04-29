@@ -23,6 +23,7 @@ mod no_extraction {
             );
             BigInt { sign, data }
         }
+
         /// Constructs a [`num_bigint::BigInt`] out of a [`BigInt`].
         pub(crate) fn get(self) -> num_bigint::BigInt {
             num_bigint::BigInt::from_bytes_be(self.sign, &self.data)
