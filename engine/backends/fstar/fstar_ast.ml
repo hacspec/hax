@@ -95,7 +95,8 @@ let parse_string f s =
     }
   in
   match parse (f (frag_of_text s)) with
-  | ParseError (_, err, _) -> failwith ("string_of_term: got error " ^ err)
+  | ParseError (_, err, _) ->
+      failwith ("string_of_term: got error [" ^ err ^ "] on input: [" ^ s ^ "]")
   | x -> x
 
 let term_of_string s =
