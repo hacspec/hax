@@ -197,15 +197,15 @@ struct
           ("pglobal_ident: expected to be handled somewhere else: "
          ^ show_global_ident id)
 
-  let plocal_ident (e : Local_ident.t) =
-    (* let name = U.Concrete_ident_view.local_ident e.name in *)
-    F.id
-    @@ U.Concrete_ident_view.local_ident
-         (match String.chop_prefix ~prefix:"impl " e.name with
-         | Some name ->
-             let name = "impl_" ^ Int.to_string ([%hash: string] name) in
-             { e with name }
-         | _ -> e)
+  let plocal_ident_str (e : Local_ident.t) =
+    U.Concrete_ident_view.local_ident
+      (match String.chop_prefix ~prefix:"impl " e.name with
+      | Some name ->
+          let name = "impl_" ^ Int.to_string ([%hash: string] name) in
+          { e with name }
+      | _ -> e)
+
+  let plocal_ident = plocal_ident_str >> F.id
 
   let pfield_ident span (f : global_ident) : F.Ident.lident =
     match f with
