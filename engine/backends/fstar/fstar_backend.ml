@@ -914,18 +914,21 @@ struct
           @@ F.AST.PatVar
                (F.id @@ U.Concrete_ident_view.to_definition_name name, None, [])
         in
-        let ty =
+        let ty, quals =
           (* Adds a refinement if a refinement attribute is detected *)
           match Attrs.associated_expr ~keep_last_args:1 Ensures e.attrs with
           | Some { e = Closure { params = [ binder ]; body; _ }; _ } ->
               let binder, _ =
                 U.Expect.pbinding_simple binder |> Option.value_exn
               in
-              F.mk_refined (plocal_ident_str binder) (pty e.span ty) (fun ~x ->
-                  pexpr body)
-          | _ -> pty e.span ty
+              let ty =
+                F.mk_refined (plocal_ident_str binder) (pty e.span ty)
+                  (fun ~x -> pexpr body)
+              in
+              (ty, [])
+          | _ -> (pty e.span ty, [ F.AST.Unfold_for_unification_and_vcgen ])
         in
-        F.decls ~quals:[ F.AST.Unfold_for_unification_and_vcgen ]
+        F.decls ~quals
         @@ F.AST.TopLevelLet
              ( NoLetQualifier,
                [
