@@ -63,109 +63,34 @@ pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
         Some(preds) => preds,
     };
     for (pred, _) in predicates.predicates {
+        let pred_kind = pred.kind();
         // Apply the substitution
-        let pred_kind = subst_binder(tcx, substs, param_env, pred.kind(), true);
+        let bare_pred_kind = {
+            // SH: Not sure this is the proper way, but it seems to work so far. My reasoning:
+            // - I don't know how to get rid of the Binder, because there is no
+            //   Binder::subst method.
+            // - However I notice that EarlyBinder is just a wrapper (it doesn't
+            //   contain any information) and comes with substitution methods.
+            // So I skip the Binder, wrap the value in an EarlyBinder and apply
+            // the substitution.
+            // Warning: this removes the binder; we need to add it back to avoid escaping bound
+            // variables.
+            // Remark: there is also EarlyBinder::subst(...)
+            let value = rustc_middle::ty::EarlyBinder::bind(pred_kind.skip_binder());
+            tcx.subst_and_normalize_erasing_regions(substs, param_env, value)
+        };
 
-        // Just explore the trait predicates
+        // Explore only the trait predicates
         use rustc_middle::ty::{Clause, PredicateKind};
-        if let PredicateKind::Clause(Clause::Trait(trait_pred)) = pred_kind {
-            // SH: We also need to introduce a binder here. I'm not sure what we
-            // whould bind this with: the variables to bind with are those
-            // given by the definition we are exploring, and they should already
-            // be in the param environment. So I just wrap in a dummy binder
-            // (this also seems to work so far).
-            //
-            // Also, we can't wrap in a dummy binder if there are escaping bound vars.
-            // For now, we fail if there are escaping bound vars.
-            // **SH:** I encountered this issue several times, but the "error"
-            // clause never made it to the final code. I think it is because it
-            // was introduced when computing the "full trait ref" information.
-            let trait_ref = trait_pred.trait_ref;
-            use crate::rustc_middle::ty::TypeVisitableExt;
-            let impl_expr = if trait_ref.has_escaping_bound_vars() {
-                supposely_unreachable_fatal!(s, "mir_traits: has escaping bound vars"; {
-                    trait_ref, def_id
-                })
-            } else {
-                // Ok
-                let trait_ref = rustc_middle::ty::Binder::dummy(trait_pred.trait_ref);
-                solve_trait(s, param_env, trait_ref)
-            };
-
+        if let PredicateKind::Clause(Clause::Trait(trait_pred)) = bare_pred_kind {
+            // Rewrap the now-substituted kind with the original binder. Substitution dealt with
+            // early bound variables; this binds late bound ones.
+            let trait_ref = pred_kind.rebind(trait_pred.trait_ref);
+            let impl_expr = solve_trait(s, param_env, trait_ref);
             impl_exprs.push(impl_expr);
         }
     }
     impl_exprs
-}
-
-/// Small helper
-///
-/// Introducing this to make sure all binders are handled in a consistent manner.
-pub(crate) fn subst_early_binder<'tcx, T>(
-    tcx: rustc_middle::ty::TyCtxt<'tcx>,
-    param_substs: rustc_middle::ty::SubstsRef<'tcx>,
-    param_env: rustc_middle::ty::ParamEnv<'tcx>,
-    value: rustc_middle::ty::EarlyBinder<T>,
-    normalize_erase: bool,
-) -> T
-where
-    T: rustc_middle::ty::TypeFoldable<rustc_middle::ty::TyCtxt<'tcx>>,
-{
-    // SH: Not sure this is the proper way, but it seems to work so far. My reasoning:
-    // - I don't know how to get rid of the Binder, because there is no
-    //   Binder::subst method.
-    // - However I notice that EarlyBinder is just a wrapper (it doesn't
-    //   contain any information) and comes with substitution methods.
-    // So I skip the Binder, wrap the value in an EarlyBinder and apply
-    // the substitution.
-    // Remark: there is also EarlyBinder::subst(...)
-
-    // Apply the substitution.
-    //
-    // **Remark:** we used to always call [TyCtxt::subst_and_normalize_erasing_regions],
-    // but this normalizes the types, leading to issues. For instance here:
-    // ```
-    // pub fn f<T: Foo<S = U::S>, U: Foo>() {}
-    // ```
-    // The issue is that T refers `U : Foo` before the clause is
-    // defined. If we normalize the types in the items of `T : Foo`,
-    // when exploring the items of `Foo<T>` we find the clause
-    // `Sized<U::S>` (instead of `Sized<T::S>`) because `T::S` has
-    // been normalized to `U::S`. This can be problematic when
-    // solving the parameters.
-    if normalize_erase {
-        tcx.subst_and_normalize_erasing_regions(param_substs, param_env, value)
-    } else {
-        // Remark: in more recent versions of the compiler: [instantiate]
-        value.subst(tcx, param_substs)
-    }
-}
-
-/// Small helper.
-///
-/// Introducing this to make sure all binders are handled in a consistent manner.
-///
-/// [normalize_erase]: should we normalize the types and erase the regions?
-pub(crate) fn subst_binder<'tcx, T>(
-    tcx: rustc_middle::ty::TyCtxt<'tcx>,
-    param_substs: rustc_middle::ty::SubstsRef<'tcx>,
-    param_env: rustc_middle::ty::ParamEnv<'tcx>,
-    value: rustc_middle::ty::Binder<'tcx, T>,
-    normalize_erase: bool,
-) -> T
-where
-    T: rustc_middle::ty::TypeFoldable<rustc_middle::ty::TyCtxt<'tcx>>,
-{
-    // SH: Not sure this is the proper way, but it seems to work so far. My reasoning:
-    // - I don't know how to get rid of the Binder, because there is no
-    //   Binder::subst method.
-    // - However I notice that EarlyBinder is just a wrapper (it doesn't
-    //   contain any information) and comes with substitution methods.
-    // So I skip the Binder, wrap the value in an EarlyBinder and apply
-    // the substitution.
-    // Remark: there is also EarlyBinder::subst(...)
-    let value = rustc_middle::ty::EarlyBinder::bind(value.skip_binder());
-    subst_early_binder(tcx, param_substs, param_env, value, normalize_erase)
 }
 
 /// We use this to store information about the parameters in parent blocks.
