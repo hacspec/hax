@@ -4,6 +4,9 @@ use num_traits::cast::ToPrimitive;
 mod bigint;
 use bigint::*;
 
+#[cfg(feature = "macros")]
+pub use hax_lib_macros::int;
+
 /// Mathematical integers for writting specifications. Mathematical
 /// integers are unbounded and arithmetic operation on them never over
 /// or underflow.
