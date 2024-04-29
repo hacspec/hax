@@ -221,7 +221,7 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
     // fn foo<T : Bar>(...)
     //            ^^^
     // ```
-    let trait_refs = solve_item_traits(s, param_env, def_id, substs, None);
+    let mut trait_refs = solve_item_traits(s, param_env, def_id, substs, None);
 
     // Check if this is a trait method call: retrieve the trait source if
     // it is the case (i.e., where does the method come from? Does it refer
@@ -248,42 +248,67 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
     //            ^^^
     //     method level trait obligation
     // ```
-    let (substs, source) = if let Some(assoc) = tcx.opt_associated_item(def_id) &&
-        assoc.container == rustc_middle::ty::AssocItemContainer::TraitContainer {
-        // There is an associated item, and it is a trait
+    let (substs, source) = if let Some(assoc) = tcx.opt_associated_item(def_id) {
+        // There is an associated item.
         use tracing::*;
         trace!("def_id: {:?}", def_id);
         trace!("assoc: def_id: {:?}", assoc.def_id);
-
-        // Retrieve the trait information
-        let impl_expr = get_trait_info(s, substs, &assoc);
-
-        // Compute the list of generic arguments applied to the *method* itself.
+        // Retrieve the `DefId` of the trait declaration or the impl block.
+        let container_def_id = match assoc.container {
+            rustc_middle::ty::AssocItemContainer::TraitContainer => {
+                tcx.trait_of_item(assoc.def_id).unwrap()
+            }
+            rustc_middle::ty::AssocItemContainer::ImplContainer => {
+                tcx.impl_of_method(assoc.def_id).unwrap()
+            }
+        };
+        // The generics are split in two: the arguments of the container (trait decl or impl block)
+        // and the arguments of the method.
         //
         // For instance, if we have:
         // ```
         // trait Foo<T> {
-        //   fn baz<U>(...) { ... }
+        //     fn baz<U>(...) { ... }
         // }
         //
         // fn test<T : Foo<u32>(x: T) {
-        //   x.baz(...);
-        //   ...
+        //     x.baz(...);
+        //     ...
         // }
         // ```
-        // The substs will be the concatenation: `<T, u32, U>`
-        // We count how many generic parameters the trait declaration has,
-        // and truncate the substitution to get the parameters which apply
-        // to the method (here, `<U>`)
-        let trait_def_id : rustc_span::def_id::DefId =
-                (&impl_expr.r#trait.def_id).into();
-        let params_info = get_params_info(s, trait_def_id);
-        let num_trait_generics = params_info.num_generic_params;
-        let all_generics: Vec<GenericArg> = substs.sinto(s);
-        let truncated_substs = all_generics[num_trait_generics..].into();
-
-        // Return
-        (truncated_substs, Option::Some(impl_expr))
+        // The substs for the call to `baz` will be the concatenation: `<T, u32, U>`, which we
+        // split into `<T, u32>` and `<U>`.
+        //
+        // If we have:
+        // ```
+        // impl<T: Ord> Map<T> {
+        //     pub fn insert<U: Clone>(&mut self, x: U) { ... }
+        // }
+        // pub fn test(mut tree: Map<u32>) {
+        //     tree.insert(false);
+        // }
+        // ```
+        // The substs for `insert` are `<u32>` for the impl and `<bool>` for the method.
+        let params_info = get_params_info(s, container_def_id);
+        let num_container_generics = params_info.num_generic_params;
+        match assoc.container {
+            rustc_middle::ty::AssocItemContainer::TraitContainer => {
+                // Retrieve the trait information
+                let impl_expr = get_trait_info(s, substs, &assoc);
+                // Return only the method generics; the trait generics are included in `impl_expr`.
+                let method_substs = &substs[num_container_generics..];
+                (method_substs.sinto(s), Option::Some(impl_expr))
+            }
+            rustc_middle::ty::AssocItemContainer::ImplContainer => {
+                // Solve the trait constraints of the impl block.
+                let container_generics = tcx.generics_of(container_def_id);
+                let container_substs = substs.truncate_to(tcx, container_generics);
+                let container_trait_refs =
+                    solve_item_traits(s, param_env, container_def_id, container_substs, None);
+                trait_refs.extend(container_trait_refs);
+                (substs.sinto(s), Option::None)
+            }
+        }
     } else {
         // Regular function call
         (substs.sinto(s), Option::None)

@@ -35,8 +35,23 @@ pub enum ConstantExprKind {
     Tuple {
         fields: Vec<ConstantExpr>,
     },
+    /// A top-level constant or a constant appearing in an impl block.
+    ///
+    /// Remark: constants *can* have generic parameters.
+    /// Example:
+    /// ```text
+    /// struct V<const N: usize, T> {
+    ///   x: [T; N],
+    /// }
+    ///
+    /// impl<const N: usize, T> V<N, T> {
+    ///   const LEN: usize = N; // This has generics <N, T>
+    /// }
+    /// ```
     GlobalName {
         id: GlobalIdent,
+        generics: Vec<GenericArg>,
+        trait_refs: Vec<ImplExpr>,
     },
     /// A trait constant
     ///
@@ -138,7 +153,12 @@ impl From<ConstantExpr> for Expr {
                 base: None,
                 user_ty: None,
             }),
-            GlobalName { id } => ExprKind::GlobalName { id },
+            // TODO: propagate the generics and trait refs (see #636)
+            GlobalName {
+                id,
+                generics: _,
+                trait_refs: _,
+            } => ExprKind::GlobalName { id },
             Borrow(e) => ExprKind::Borrow {
                 borrow_kind: BorrowKind::Shared,
                 arg: e.into(),
@@ -228,7 +248,7 @@ pub(crate) fn scalar_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
             });
             use rustc_middle::mir::interpret::GlobalAlloc;
             let contents = match tcx.global_alloc(pointer.provenance.s_unwrap(s)) {
-                GlobalAlloc::Static(did) => ConstantExprKind::GlobalName { id: did.sinto(s) },
+                GlobalAlloc::Static(did) => ConstantExprKind::GlobalName { id: did.sinto(s), generics: Vec::new(), trait_refs: Vec::new() },
                 GlobalAlloc::Memory(alloc) => {
                     let values = alloc.inner().get_bytes_unchecked(rustc_middle::mir::interpret::AllocRange {
                             start: rustc_abi::Size::from_bits(0),
@@ -340,8 +360,16 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
                 }
             else {
                 // Top-level constant or a constant appearing in an impl block
+
+                // Solve the trait obligations
+                let parent_def_id = tcx.parent(ucv.def);
+                let param_env = tcx.param_env(s.owner_id());
+                let trait_refs = solve_item_traits(s, param_env, parent_def_id, ucv.substs, None);
+
+                // Convert
                 let id = ucv.def.sinto(s);
-                ConstantExprKind::GlobalName { id }
+                let generics = ucv.substs.sinto(s);
+                ConstantExprKind::GlobalName { id, generics, trait_refs }
             };
             TranslateUnevalRes::GlobalName(cv)
         }
