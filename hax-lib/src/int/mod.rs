@@ -61,8 +61,8 @@ impl Int {
     }
 
     /// Constructs a `Int` out of a string literal. This function
-    /// assumes its argument consists only of digits, with optionally
-    /// a minus sign prefix.
+    /// assumes its argument consists only of decimal digits, with
+    /// optionally a minus sign prefix.
     pub fn _unsafe_from_str(s: &str) -> Self {
         use core::str::FromStr;
         Self::new(num_bigint::BigInt::from_str(s).unwrap())
