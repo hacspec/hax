@@ -914,6 +914,17 @@ struct
           @@ F.AST.PatVar
                (F.id @@ U.Concrete_ident_view.to_definition_name name, None, [])
         in
+        let ty =
+          (* Adds a refinement if a refinement attribute is detected *)
+          match Attrs.associated_expr ~keep_last_args:1 Ensures e.attrs with
+          | Some { e = Closure { params = [ binder ]; body; _ }; _ } ->
+              let binder, _ =
+                U.Expect.pbinding_simple binder |> Option.value_exn
+              in
+              F.mk_refined (plocal_ident_str binder) (pty e.span ty) (fun ~x ->
+                  pexpr body)
+          | _ -> pty e.span ty
+        in
         F.decls ~quals:[ F.AST.Unfold_for_unification_and_vcgen ]
         @@ F.AST.TopLevelLet
              ( NoLetQualifier,
@@ -924,7 +935,7 @@ struct
                           FStarBinder.(
                             of_generics e.span generics
                             |> List.map ~f:to_pattern) ),
-                   pty e.span ty );
+                   ty );
                ] )
     | Type { name; generics; _ }
       when Attrs.find_unique_attr e.attrs
