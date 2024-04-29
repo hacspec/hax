@@ -39,6 +39,7 @@ impl CommandHaxExt for Command {
                 // available.
                 assert!(Command::new("cargo")
                             .args(&["build", "--bins"])
+                            .current_dir(&root)
                             .status()
                             .unwrap()
                             .success());
@@ -50,6 +51,7 @@ impl CommandHaxExt for Command {
                         .args(&["build", "--workspace", "--bin", "hax-engine-names-extract"])
                         .env("HAX_CARGO_COMMAND_PATH", &cargo_hax)
                         .env("HAX_RUSTC_DRIVER_BINARY", &driver)
+                        .current_dir(&root)
                         .status()
                         .unwrap()
                         .success());
