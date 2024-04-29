@@ -9,9 +9,7 @@ use bigint::*;
 /// or underflow.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Int(BigInt);
-pub use hax_lib_macros::int;
 
-#[crate::exclude]
 impl Int {
     fn new(x: impl Into<num_bigint::BigInt>) -> Self {
         Int(BigInt::new(&x.into()))
