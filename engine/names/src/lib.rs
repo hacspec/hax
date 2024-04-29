@@ -40,6 +40,20 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     }
 
     let _ = hax_lib::inline("");
+    use hax_lib::IsRefinement;
+    struct DummyStruct;
+
+    impl IsRefinement for DummyStruct {
+        type InnerType = DummyStruct;
+        fn new(x: Self::InnerType) -> Self {
+            x
+        }
+        fn value(self) -> Self::InnerType {
+            self
+        }
+    }
+
+    DummyStruct::new(DummyStruct.value());
 
     const _: () = {
         use core::{cmp::*, ops::*};
