@@ -5,7 +5,7 @@
 
 #[crate::exclude]
 mod no_extraction {
-    const BYTES: usize = 128;
+    const BYTES: usize = 1024;
     #[derive(Copy, Clone)]
     pub struct BigInt {
         sign: num_bigint::Sign,
