@@ -1507,6 +1507,7 @@ module TransformToInputLanguage =
   |> Phases.Reject.As_pattern
   |> Phases.Traits_specs
   |> Phases.Simplify_hoisting
+  |> Phases.Newtype_as_refinement
   |> SubtypeToInputLanguage
   |> Identity
   ]
