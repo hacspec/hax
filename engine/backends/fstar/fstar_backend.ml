@@ -438,7 +438,7 @@ struct
           args = [ { e = Literal (String s); _ } ];
           generic_args;
         }
-      when Global_ident.eq_name Hax_lib__int__Impl_4___unsafe_from_str f ->
+      when Global_ident.eq_name Hax_lib__int__Impl_5___unsafe_from_str f ->
         (match
            String.chop_prefix ~prefix:"-" s
            |> Option.value ~default:s
