@@ -153,7 +153,7 @@ impl From<ConstantExpr> for Expr {
                 base: None,
                 user_ty: None,
             }),
-            // TODO: propagate the generics and trait refs
+            // TODO: propagate the generics and trait refs (see #636)
             GlobalName {
                 id,
                 generics: _,
