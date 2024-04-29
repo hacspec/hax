@@ -760,7 +760,6 @@ pub fn newtype_as_refinement(attr: pm::TokenStream, item: pm::TokenStream) -> pm
     quote! {
         #[allow(non_snake_case)]
         mod #module_ident {
-            use super::*;
             #refinement_item
 
             #newtype_as_ref_attr
