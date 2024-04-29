@@ -181,18 +181,18 @@ unfold instance impl: Core.Ops.Arith.t_Sub $:Int $:Int =
     }
 }
 
-/// Illustration of the `newtype_as_refinement` macro that helps creating refinement types via thin newtype wrappers.
+/// Illustration of the `refinement_type` macro that helps creating refinement types via thin newtype wrappers.
 mod refinement_types {
     use hax_lib::IsRefinement;
 
-    #[hax_lib::newtype_as_refinement(|x| x >= MIN && x <= MAX)]
+    #[hax_lib::refinement_type(|x| x >= MIN && x <= MAX)]
     struct BoundedU8<const MIN: u8, const MAX: u8>(u8);
 
     fn bounded_u8(x: BoundedU8<12, 15>, y: BoundedU8<10, 11>) -> BoundedU8<1, 23> {
         BoundedU8::new(x.value() + y.value())
     }
 
-    #[hax_lib::newtype_as_refinement(|x| x % 2 == 0)]
+    #[hax_lib::refinement_type(|x| x % 2 == 0)]
     struct Even(u8);
 
     #[hax_lib::requires(x < 127)]

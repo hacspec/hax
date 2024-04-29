@@ -143,7 +143,7 @@ pub fn inline(_: &str) {}
 /// type.
 ///
 /// Please never implement this trait yourself, use the
-/// `newtype_as_refinement` macro instead.
+/// `refinement_type` macro instead.
 pub trait IsRefinement {
     /// The base type
     type InnerType;

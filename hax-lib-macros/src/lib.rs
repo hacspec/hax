@@ -670,7 +670,7 @@ make_quoting_proc_macro!(fstar(fstar_expr, fstar_before, fstar_after, fstar_repl
 /// For example, the following type defines bounded `u64` integers.
 ///
 /// ```
-/// #[hax_lib::newtype_as_refinement(|x| x >= MIN && x <= MAX)]
+/// #[hax_lib::refinement_type(|x| x >= MIN && x <= MAX)]
 /// pub struct BoundedU64<const MIN: u64, const MAX: u64>(u64);
 /// ```
 ///
@@ -683,7 +683,7 @@ make_quoting_proc_macro!(fstar(fstar_expr, fstar_before, fstar_after, fstar_repl
 /// obligations.
 #[proc_macro_error]
 #[proc_macro_attribute]
-pub fn newtype_as_refinement(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+pub fn refinement_type(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
     let mut item = parse_macro_input!(item as syn::ItemStruct);
 
     let syn::Fields::Unnamed(fields) = &item.fields else {
