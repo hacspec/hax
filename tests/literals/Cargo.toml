@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+hax-lib = { path = "../../hax-lib" }
 
 [package.metadata.hax-tests]
 into."fstar" = { broken = false, issue_id = "85" }

@@ -295,6 +295,8 @@ name = "hax-lib"
 version = "0.1.0-pre.1"
 dependencies = [
  "hax-lib-macros",
+ "num-bigint",
+ "num-traits",
 ]
 
 [[package]]
@@ -461,6 +463,9 @@ dependencies = [
 [[package]]
 name = "literals"
 version = "0.1.0"
+dependencies = [
+ "hax-lib",
+]
 
 [[package]]
 name = "log"

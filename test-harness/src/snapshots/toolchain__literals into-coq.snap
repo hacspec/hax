@@ -37,6 +37,9 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 
+Require Import Hax_lib_Int.
+Export Hax_lib_Int.
+
 (*Not implemented yet? todo(item)*)
 
 Definition casts (x8 : int8) (x16 : int16) (x32 : int32) (x64 : int64) (xs : uint_size) : unit :=
@@ -57,6 +60,30 @@ Definition numeric (_ : unit) : unit :=
   let (_ : int32) := (@repr WORDSIZE32 42) : int32 in
   let (_ : int128) := (@repr WORDSIZE128 22222222222222222222) : int128 in
   tt.
+
+Definition math_integers (x : t_Int_t) : int8 :=
+  let (_ : t_Int_t) := f_lift (@repr WORDSIZE32 3) : t_Int_t in
+  let _ := (impl__Int___unsafe_from_str -340282366920938463463374607431768211455000)>.?(impl__Int___unsafe_from_str 340282366920938463463374607431768211455000) : bool in
+  let _ := x<.?x : bool in
+  let _ := x>=.?x : bool in
+  let _ := x<=.?x : bool in
+  let _ := x<>x : bool in
+  let _ := x=.?x : bool in
+  let _ := x.+x : t_Int_t in
+  let _ := x.-x : t_Int_t in
+  let _ := x.*x : t_Int_t in
+  let _ := x./x : t_Int_t in
+  let (_ : int16) := impl__Int__to_i16 x : int16 in
+  let (_ : int32) := impl__Int__to_i32 x : int32 in
+  let (_ : int64) := impl__Int__to_i64 x : int64 in
+  let (_ : int128) := impl__Int__to_i128 x : int128 in
+  let (_ : uint_size) := impl__Int__to_isize x : uint_size in
+  let (_ : int16) := impl__Int__to_u16 x : int16 in
+  let (_ : int32) := impl__Int__to_u32 x : int32 in
+  let (_ : int64) := impl__Int__to_u64 x : int64 in
+  let (_ : int128) := impl__Int__to_u128 x : int128 in
+  let (_ : uint_size) := impl__Int__to_usize x : uint_size in
+  impl__Int__to_u8 (x.+(x.*x)).
 
 Definition empty_array (_ : unit) : unit :=
   let (_ : seq int8) := unsize !TODO empty array! : seq int8 in
