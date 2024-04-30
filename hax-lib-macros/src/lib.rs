@@ -541,6 +541,35 @@ pub fn pv_handwritten(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::Toke
     quote! {#attr #item}.into()
 }
 
+/// Create a mathematical integer. This macro expects a integer
+/// literal that consists in an optional minus sign followed by one or
+/// more digits.
+#[proc_macro_error]
+#[proc_macro]
+pub fn int(payload: pm::TokenStream) -> pm::TokenStream {
+    let mut tokens = payload.into_iter().peekable();
+    let negative = matches!(tokens.peek(), Some(pm::TokenTree::Punct(p)) if p.as_char() == '-');
+    if negative {
+        tokens.next();
+    }
+    let [pm::TokenTree::Literal(lit)] = &tokens.collect::<Vec<_>>()[..] else {
+        abort_call_site!("Expected exactly one numeric literal");
+    };
+    let lit = format!("{lit}");
+    // Allow negative numbers
+    let mut lit = lit.strip_prefix("-").unwrap_or(lit.as_str()).to_string();
+    if let Some(faulty) = lit.chars().find(|ch| !matches!(ch, '0'..='9')) {
+        abort_call_site!(format!("Expected a digit, found {faulty}"));
+    }
+    if negative {
+        lit = format!("-{lit}");
+    }
+    quote! {
+        ::hax_lib::int::Int::_unsafe_from_str(#lit)
+    }
+    .into()
+}
+
 macro_rules! make_quoting_item_proc_macro {
     ($backend:ident, $macro_name:ident, $position:expr, $cfg_name:ident) => {
         #[doc = concat!("This macro inlines verbatim ", stringify!($backend)," code before a Rust item.")]
@@ -595,6 +624,7 @@ macro_rules! make_quoting_item_proc_macro {
         }
     };
 }
+
 macro_rules! make_quoting_proc_macro {
     ($backend:ident($expr_name:ident, $before_name:ident, $after_name:ident, $replace_name:ident, $cfg_name:ident)) => {
         #[doc = concat!("Embed ", stringify!($backend), " expression inside a Rust expression. This macro takes only one argument: some raw ", stringify!($backend), " code as a string literal.")]

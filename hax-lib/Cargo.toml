@@ -12,7 +12,9 @@ description = "Hax-specific helpers for Rust programs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-hax-lib-macros = { path = "../hax-lib-macros", optional = true }
+hax-lib-macros = { workspace = true, optional = true }
+num-bigint = { version = "0.4.3", default-features = false }
+num-traits = { version = "0.2.15", default-features = false }
 
 [features]
 default = ["macros"]

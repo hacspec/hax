@@ -21,6 +21,7 @@ let curry3 f x y z = f (x, y, z)
 let uncurry3 f (x, y, z) = f x y z
 let tup2 a b = (a, b)
 let swap (a, b) = (b, a)
+let apply f x = f x
 let ( let* ) x f = Option.bind ~f x
 let some_if_true = function true -> Some () | _ -> None
 

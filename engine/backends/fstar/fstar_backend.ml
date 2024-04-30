@@ -253,6 +253,17 @@ struct
       (c Core__cmp__PartialOrd__gt, (2, ">."));
       (`Primitive (LogicalOp And), (2, "&&"));
       (`Primitive (LogicalOp Or), (2, "||"));
+      (c Rust_primitives__hax__int__add, (2, "+"));
+      (c Rust_primitives__hax__int__sub, (2, "-"));
+      (c Rust_primitives__hax__int__mul, (2, "*"));
+      (c Rust_primitives__hax__int__div, (2, "/"));
+      (c Rust_primitives__hax__int__rem, (2, "%"));
+      (c Rust_primitives__hax__int__ge, (2, ">="));
+      (c Rust_primitives__hax__int__le, (2, "<="));
+      (c Rust_primitives__hax__int__gt, (2, ">"));
+      (c Rust_primitives__hax__int__lt, (2, "<"));
+      (c Rust_primitives__hax__int__ne, (2, "<>"));
+      (c Rust_primitives__hax__int__eq, (2, "="));
     ]
     |> Map.of_alist_exn (module Global_ident)
 
@@ -421,6 +432,24 @@ struct
           Error.assertion_failure e.span
             "pexpr: bad arity for operator application";
         F.term @@ F.AST.Op (F.Ident.id_of_text op, List.map ~f:pexpr args)
+    | App
+        {
+          f = { e = GlobalVar f; _ };
+          args = [ { e = Literal (String s); _ } ];
+          generic_args;
+        }
+      when Global_ident.eq_name Hax_lib__int__Impl_5___unsafe_from_str f ->
+        (match
+           String.chop_prefix ~prefix:"-" s
+           |> Option.value ~default:s
+           |> String.filter ~f:([%matches? '0' .. '9'] >> not)
+         with
+        | "" -> ()
+        | s ->
+            Error.assertion_failure e.span
+            @@ "pexpr: expected a integer, found the following non-digit \
+                chars: '" ^ s ^ "'");
+        F.AST.Const (F.Const.Const_int (s, None)) |> F.term
     | App { f; args; generic_args } ->
         let const_generics =
           List.filter_map
@@ -1489,6 +1518,7 @@ module TransformToInputLanguage =
   [%functor_application
   Phases.Reject.RawOrMutPointer(Features.Rust)
   |> Phases.Transform_hax_lib_inline
+  |> Phases.Specialize
   |> Phases.Drop_sized_trait
   |> Phases.Simplify_question_marks
   |> Phases.And_mut_defsite

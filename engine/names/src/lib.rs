@@ -34,6 +34,14 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     let _ = ..;
     let _ = ..1;
 
+    {
+        use hax_lib::int::*;
+        let a: Int = 3u8.lift();
+        let _ = a.clone().pow2();
+        let _ = Int::_unsafe_from_str("1");
+        let _: u32 = a.concretize();
+    }
+
     fn question_mark_result<A, B: From<A>>(x: A) -> Result<(), B> {
         Err(x)?;
         Ok(())
@@ -153,6 +161,25 @@ mod hax {
     /// The engine uses this `dropped_body` symbol as a marker value
     /// to signal that a item was extracted without body.
     fn dropped_body() {}
+
+    mod int {
+        fn add() {}
+        fn sub() {}
+        fn div() {}
+        fn mul() {}
+        fn rem() {}
+
+        fn le() {}
+        fn lt() {}
+        fn ge() {}
+        fn gt() {}
+
+        fn eq() {}
+        fn ne() {}
+
+        fn from_machine() {}
+        fn into_machine() {}
+    }
 
     mod control_flow_monad {
         trait ControlFlowMonad {
