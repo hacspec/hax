@@ -141,14 +141,14 @@ pub fn implies(lhs: bool, rhs: impl Fn() -> bool) -> bool {
 #[doc(hidden)]
 pub fn inline(_: &str) {}
 
-/// A type that implements `IsRefinement` should be a newtype for a
+/// A type that implements `Refinement` should be a newtype for a
 /// type `T`. The field holding the value of type `T` should be
-/// private, and `IsRefinement` should be the only interface to the
+/// private, and `Refinement` should be the only interface to the
 /// type.
 ///
 /// Please never implement this trait yourself, use the
 /// `refinement_type` macro instead.
-pub trait IsRefinement {
+pub trait Refinement {
     /// The base type
     type InnerType;
     /// Smart constructor capturing an invariant. Its extraction will

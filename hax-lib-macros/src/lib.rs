@@ -705,7 +705,7 @@ make_quoting_proc_macro!(fstar(fstar_expr, fstar_before, fstar_after, fstar_repl
 /// ```
 ///
 /// This macro will generate an implementation of the [`Deref`] trait
-/// and of the [`hax_lib::IsRefinement`] type. Those two traits are
+/// and of the [`hax_lib::Refinement`] type. Those two traits are
 /// the only interface to this newtype: one is allowed only to
 /// construct or destruct refined type via those smart constructors
 /// and destructors, ensuring the abstraction.
@@ -803,7 +803,7 @@ pub fn refinement_type(attr: pm::TokenStream, item: pm::TokenStream) -> pm::Toke
             #item
 
             #[::hax_lib::exclude]
-            impl #generics ::hax_lib::IsRefinement for #ident <#generics_args> {
+            impl #generics ::hax_lib::Refinement for #ident <#generics_args> {
                 type InnerType = #inner_ty;
                 fn new(x: Self::InnerType) -> Self {
                     Self(x)
@@ -824,7 +824,7 @@ pub fn refinement_type(attr: pm::TokenStream, item: pm::TokenStream) -> pm::Toke
             #[::hax_lib::exclude]
             impl #generics ::hax_lib::RefineAs<#ident <#generics_args>> for #inner_ty {
                 fn refine(self) -> #ident <#generics_args> {
-                    use ::hax_lib::IsRefinement;
+                    use ::hax_lib::Refinement;
                     #ident::new(self)
                 }
             }
