@@ -440,6 +440,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "hax-bounded-integers"
+version = "0.1.0-pre.1"
+dependencies = [
+ "hax-lib",
+]
+
+[[package]]
 name = "hax-cli-options"
 version = "0.1.0-pre.1"
 dependencies = [
