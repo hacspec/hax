@@ -112,6 +112,36 @@ let numeric (_: Prims.unit) : Prims.unit =
   let (_: u128):u128 = pub_u128 22222222222222222222 in
   ()
 
+let math_integers (x: Hax_lib.Int.t_Int)
+    : Prims.Pure u8
+      (requires x > (0 <: Hax_lib.Int.t_Int) && x < (16 <: Hax_lib.Int.t_Int))
+      (fun _ -> Prims.l_True) =
+  let (_: Hax_lib.Int.t_Int):Hax_lib.Int.t_Int = Rust_primitives.Hax.Int.from_machine (sz 3) in
+  let _:bool =
+    ((-340282366920938463463374607431768211455000) <: Hax_lib.Int.t_Int) >
+    (340282366920938463463374607431768211455000 <: Hax_lib.Int.t_Int)
+  in
+  let _:bool = x < x in
+  let _:bool = x >= x in
+  let _:bool = x <= x in
+  let _:bool = x <> x in
+  let _:bool = x = x in
+  let _:Hax_lib.Int.t_Int = x + x in
+  let _:Hax_lib.Int.t_Int = x - x in
+  let _:Hax_lib.Int.t_Int = x * x in
+  let _:Hax_lib.Int.t_Int = x / x in
+  let (_: i16):i16 = Hax_lib.Int.impl__Int__to_i16 x in
+  let (_: i32):i32 = Hax_lib.Int.impl__Int__to_i32 x in
+  let (_: i64):i64 = Hax_lib.Int.impl__Int__to_i64 x in
+  let (_: i128):i128 = Hax_lib.Int.impl__Int__to_i128 x in
+  let (_: isize):isize = Hax_lib.Int.impl__Int__to_isize x in
+  let (_: u16):u16 = Hax_lib.Int.impl__Int__to_u16 x in
+  let (_: u32):u32 = Hax_lib.Int.impl__Int__to_u32 x in
+  let (_: u64):u64 = Hax_lib.Int.impl__Int__to_u64 x in
+  let (_: u128):u128 = Hax_lib.Int.impl__Int__to_u128 x in
+  let (_: usize):usize = Hax_lib.Int.impl__Int__to_usize x in
+  Hax_lib.Int.impl__Int__to_u8 (x + (x * x <: Hax_lib.Int.t_Int) <: Hax_lib.Int.t_Int)
+
 let empty_array (_: Prims.unit) : Prims.unit =
   let (_: t_Slice u8):t_Slice u8 =
     Rust_primitives.unsize (let list:Prims.list u8 = [] in

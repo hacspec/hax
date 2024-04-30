@@ -87,4 +87,5 @@ hax-diagnostics = { path = "frontend/diagnostics", version = "=0.1.0-pre.1" }
 hax-lint = { path = "frontend/lint", version = "=0.1.0-pre.1" }
 hax-phase-debug-webapp = { path = "engine/utils/phase-debug-webapp", version = "=0.1.0-pre.1" }
 hax-lib-macros-types = { path = "hax-lib-macros/types", version = "=0.1.0-pre.1" }
+hax-lib-macros = { path = "hax-lib-macros", version = "=0.1.0-pre.1" }
 hax-engine-names = { path = "engine/names", version = "=0.1.0-pre.1" }
