@@ -691,8 +691,8 @@ make_quoting_proc_macro!(fstar(fstar_expr, fstar_before, fstar_after, fstar_repl
                          coq(coq_expr, coq_before, coq_after, coq_replace, hax_backend_coq)
                          proverif(proverif_expr, proverif_before, proverif_after, proverif_replace, hax_backend_proverif));
 
-/// Turns a newtype `struct Foo(SomeType);` into a refinement
-/// type. The struct should have exacty one unnamed private field.
+/// Marks a newtype `struct Foo(SomeType);` as a refinement type. The
+/// struct should have exacty one unnamed private field.
 ///
 /// This macro takes one argument: a boolean predicate that refines
 /// values of type `SomeType`.
@@ -706,7 +706,13 @@ make_quoting_proc_macro!(fstar(fstar_expr, fstar_before, fstar_after, fstar_repl
 ///
 /// This macro will generate an implementation of the [`Deref`] trait
 /// and of the [`hax_lib::IsRefinement`] type. Those two traits are
-/// the only interface to this newtype.
+/// the only interface to this newtype: one is allowed only to
+/// construct or destruct refined type via those smart constructors
+/// and destructors, ensuring the abstraction.
+///
+/// A refinement of a type `T` with a formula `f` can be seen as a box
+/// that contains a value of type `T` and a proof that this value
+/// satisfies the formula `f`.
 ///
 /// When extracted via hax, this is interpreted in the backend as a
 /// refinement type: the use of such a type yields static proof
