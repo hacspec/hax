@@ -772,7 +772,7 @@ pub fn refinement_type(attr: pm::TokenStream, item: pm::TokenStream) -> pm::Toke
                 fn new(x: Self::InnerType) -> Self {
                     Self(x)
                 }
-                fn value(self) -> Self::InnerType {
+                fn get(self) -> Self::InnerType {
                     self.0
                 }
             }
@@ -782,6 +782,14 @@ pub fn refinement_type(attr: pm::TokenStream, item: pm::TokenStream) -> pm::Toke
                 type Target = #inner_ty;
                 fn deref(&self) -> &Self::Target {
                     &self.0
+                }
+            }
+
+            #[::hax_lib::exclude]
+            impl #generics ::hax_lib::RefineAs<#ident <#generics_args>> for #inner_ty {
+                fn refine(self) -> #ident <#generics_args> {
+                    use ::hax_lib::IsRefinement;
+                    #ident::new(self)
                 }
             }
         }

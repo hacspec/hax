@@ -24,7 +24,8 @@ module Make (F : Features.T) =
             match e.e with
             | App { f = { e = GlobalVar f; _ }; args = [ inner ]; _ }
               when Ast.Global_ident.eq_name Hax_lib__IsRefinement__new f
-                   || Ast.Global_ident.eq_name Hax_lib__IsRefinement__value f ->
+                   || Ast.Global_ident.eq_name Hax_lib__RefineAs__refine f
+                   || Ast.Global_ident.eq_name Hax_lib__IsRefinement__get f ->
                 { e with e = Ascription { typ = e.typ; e = inner } }
             | _ -> super#visit_expr () e
 

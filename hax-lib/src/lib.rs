@@ -147,8 +147,21 @@ pub fn inline(_: &str) {}
 pub trait IsRefinement {
     /// The base type
     type InnerType;
-    /// Smart constructor capturing an invariant
+    /// Smart constructor capturing an invariant. Its extraction will
+    /// yield a proof obligation.
     fn new(x: Self::InnerType) -> Self;
     /// Destructor for the refined type
-    fn value(self) -> Self::InnerType;
+    fn get(self) -> Self::InnerType;
+}
+
+/// A utilitary trait that provides a `refine` methods on traits that
+/// have a refined counter part. This trait is parametrized by a type
+/// `Target`: a base type can be refined in multiple ways.
+///
+/// Please never implement this trait yourself, use the
+/// `refinement_type` macro instead.
+pub trait RefineAs<Target> {
+    /// Smart constructor for `Target`. Its extraction will yield a
+    /// proof obligation.
+    fn refine(self) -> Target;
 }
