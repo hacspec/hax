@@ -22,9 +22,13 @@ module Make (F : Features.T) =
           args : (expr -> bool) list;
           ret : ty -> bool;
         }
+        (** A pattern that helps matching against function applications *)
 
         type ('a, 'b) predicate = 'a -> 'b option
+        (** Instead of working directly with boolean predicate, we
+        work with `_ -> _ option` so that we can chain them *)
 
+        (** Constructs a predicate out of predicates and names *)
         let mk (args : ('a, 'b) predicate list) (ret : ('c, 'd) predicate)
             (fn : name) (fn_replace : name) : pattern =
           let args = List.map ~f:(fun p x -> p x |> Option.is_some) args in
@@ -65,35 +69,9 @@ module Make (F : Features.T) =
             mk [ etyp >> (tref >>& is_int); etyp >> (tref >>& is_int) ] any
 
           let any_rint = mk [ any ] (tref >>& is_int)
-
-          (* let is_type0 (ty_name : name) : (expr -> bool) option = *)
-          (*   Some *)
-          (*     (typ *)
-          (*     >> [%matches? *)
-          (*          TApp { ident; args = [] } when Ast.Global_ident.eq_name *)
-          (*                                           ty_name ident]) *)
-
-          (* let is_ref_type0 (ty_name : name) : (expr -> bool) option = *)
-          (*   Some *)
-          (*     (typ *)
-          (*     >> [%matches? *)
-          (*          TRef { typ = TApp { ident; args = [] }; _ } when Ast *)
-          (*                                                           .Global_ident *)
-          (*                                                           .eq_name *)
-          (*                                                             ty_name *)
-          (*                                                             ident]) *)
-
-          (* let is_int = is_type0 Hax_lib__int__Int *)
-          (* let is_ref_int = is_ref_type0 Hax_lib__int__Int *)
-
-          (* let mk_ref_int n f f' = *)
-          (*   { *)
-          (*     fn = f; *)
-          (*     fn_replace = f'; *)
-          (*     args = List.init n ~f:(fun _ -> is_ref_int); *)
-          (*   } *)
         end
 
+        (** The list of replacements *)
         let patterns =
           [
             int_int_any Core__ops__arith__Add__add
