@@ -708,7 +708,7 @@ make_quoting_proc_macro!(fstar(fstar_expr, fstar_before, fstar_after, fstar_repl
 /// and of the [`hax_lib::IsRefinement`] type. Those two traits are
 /// the only interface to this newtype.
 ///
-/// When extracted via hax, this is interpretend in the backend as a
+/// When extracted via hax, this is interpreted in the backend as a
 /// refinement type: the use of such a type yields static proof
 /// obligations.
 #[proc_macro_error]
