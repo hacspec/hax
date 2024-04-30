@@ -140,3 +140,32 @@ pub fn implies(lhs: bool, rhs: impl Fn() -> bool) -> bool {
 /// Dummy function that carries a string to be printed as such in the output language
 #[doc(hidden)]
 pub fn inline(_: &str) {}
+
+/// A type that implements `Refinement` should be a newtype for a
+/// type `T`. The field holding the value of type `T` should be
+/// private, and `Refinement` should be the only interface to the
+/// type.
+///
+/// Please never implement this trait yourself, use the
+/// `refinement_type` macro instead.
+pub trait Refinement {
+    /// The base type
+    type InnerType;
+    /// Smart constructor capturing an invariant. Its extraction will
+    /// yield a proof obligation.
+    fn new(x: Self::InnerType) -> Self;
+    /// Destructor for the refined type
+    fn get(self) -> Self::InnerType;
+}
+
+/// A utilitary trait that provides a `refine` methods on traits that
+/// have a refined counter part. This trait is parametrized by a type
+/// `Target`: a base type can be refined in multiple ways.
+///
+/// Please never implement this trait yourself, use the
+/// `refinement_type` macro instead.
+pub trait RefineAs<Target> {
+    /// Smart constructor for `Target`. Its extraction will yield a
+    /// proof obligation.
+    fn refine(self) -> Target;
+}

@@ -180,3 +180,46 @@ unfold instance impl: Core.Ops.Arith.t_Sub $:Int $:Int =
         }
     }
 }
+
+/// Illustration of the `refinement_type` macro that helps creating refinement types via thin newtype wrappers.
+mod refinement_types {
+    use hax_lib::*;
+
+    #[hax_lib::refinement_type(|x| x >= MIN && x <= MAX)]
+    pub struct BoundedU8<const MIN: u8, const MAX: u8>(u8);
+
+    pub fn bounded_u8(x: BoundedU8<12, 15>, y: BoundedU8<10, 11>) -> BoundedU8<1, 23> {
+        BoundedU8::new(x.get() + y.get())
+    }
+
+    /// Even `u8` numbers. Constructing pub Even values triggers static
+    /// proofs in the extraction.
+    #[hax_lib::refinement_type(|x| x % 2 == 0)]
+    pub struct Even(u8);
+
+    #[hax_lib::requires(x < 127)]
+    pub fn double(x: u8) -> Even {
+        Even::new(x + x)
+    }
+
+    #[hax_lib::requires(x < 127)]
+    pub fn double_refine(x: u8) -> Even {
+        (x + x).refine()
+    }
+
+    /// A string that contains no space.
+    #[hax_lib::refinement_type(|x| !x.chars().any(|ch| ch == ' '))]
+    pub struct NoE(String);
+
+    /// A modular mutliplicative inverse
+    #[hax_lib::refinement_type(|n| (n as u128 * MOD as u128) % MOD as u128 == 1)]
+    pub struct ModInverse<const MOD: u32>(u32);
+
+    /// A field element
+    #[hax_lib::refinement_type(|x| x <= 2347)]
+    pub struct FieldElement(u16);
+
+    /// Example of a specific constraint on a value
+    #[hax_lib::refinement_type(|x| x == 4 || x == 5 || x == 10 || x == 11)]
+    pub struct CompressionFactor(u8);
+}

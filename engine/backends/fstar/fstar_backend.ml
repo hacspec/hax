@@ -197,15 +197,15 @@ struct
           ("pglobal_ident: expected to be handled somewhere else: "
          ^ show_global_ident id)
 
-  let plocal_ident (e : Local_ident.t) =
-    (* let name = U.Concrete_ident_view.local_ident e.name in *)
-    F.id
-    @@ U.Concrete_ident_view.local_ident
-         (match String.chop_prefix ~prefix:"impl " e.name with
-         | Some name ->
-             let name = "impl_" ^ Int.to_string ([%hash: string] name) in
-             { e with name }
-         | _ -> e)
+  let plocal_ident_str (e : Local_ident.t) =
+    U.Concrete_ident_view.local_ident
+      (match String.chop_prefix ~prefix:"impl " e.name with
+      | Some name ->
+          let name = "impl_" ^ Int.to_string ([%hash: string] name) in
+          { e with name }
+      | _ -> e)
+
+  let plocal_ident = plocal_ident_str >> F.id
 
   let pfield_ident span (f : global_ident) : F.Ident.lident =
     match f with
@@ -943,7 +943,21 @@ struct
           @@ F.AST.PatVar
                (F.id @@ U.Concrete_ident_view.to_definition_name name, None, [])
         in
-        F.decls ~quals:[ F.AST.Unfold_for_unification_and_vcgen ]
+        let ty, quals =
+          (* Adds a refinement if a refinement attribute is detected *)
+          match Attrs.associated_expr ~keep_last_args:1 Ensures e.attrs with
+          | Some { e = Closure { params = [ binder ]; body; _ }; _ } ->
+              let binder, _ =
+                U.Expect.pbinding_simple binder |> Option.value_exn
+              in
+              let ty =
+                F.mk_refined (plocal_ident_str binder) (pty e.span ty)
+                  (fun ~x -> pexpr body)
+              in
+              (ty, [])
+          | _ -> (pty e.span ty, [ F.AST.Unfold_for_unification_and_vcgen ])
+        in
+        F.decls ~quals
         @@ F.AST.TopLevelLet
              ( NoLetQualifier,
                [
@@ -953,7 +967,7 @@ struct
                           FStarBinder.(
                             of_generics e.span generics
                             |> List.map ~f:to_pattern) ),
-                   pty e.span ty );
+                   ty );
                ] )
     | Type { name; generics; _ }
       when Attrs.find_unique_attr e.attrs
@@ -1526,6 +1540,7 @@ module TransformToInputLanguage =
   |> Phases.Reject.As_pattern
   |> Phases.Traits_specs
   |> Phases.Simplify_hoisting
+  |> Phases.Newtype_as_refinement
   |> SubtypeToInputLanguage
   |> Identity
   ]

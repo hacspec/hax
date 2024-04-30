@@ -119,6 +119,7 @@ pub enum AttrPayload {
     /// for pre- and post- conditions of a function we dropped the
     /// body of: pre and post are part of type signature)
     NeverDropBody,
+    NewtypeAsRefinement,
     /// Mark an item as a lemma statement to prove in the backend
     Lemma,
     Language,
