@@ -694,7 +694,7 @@ make_quoting_proc_macro!(fstar(fstar_expr, fstar_before, fstar_after, fstar_repl
 /// Turns a newtype `struct Foo(SomeType);` into a refinement
 /// type. The struct should have exacty one unnamed private field.
 ///
-/// This macro takes one argument: a boolean predicate on that refines
+/// This macro takes one argument: a boolean predicate that refines
 /// values of type `SomeType`.
 ///
 /// For example, the following type defines bounded `u64` integers.
