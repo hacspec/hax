@@ -186,17 +186,35 @@ mod refinement_types {
     use hax_lib::IsRefinement;
 
     #[hax_lib::refinement_type(|x| x >= MIN && x <= MAX)]
-    struct BoundedU8<const MIN: u8, const MAX: u8>(u8);
+    pub struct BoundedU8<const MIN: u8, const MAX: u8>(u8);
 
-    fn bounded_u8(x: BoundedU8<12, 15>, y: BoundedU8<10, 11>) -> BoundedU8<1, 23> {
+    pub fn bounded_u8(x: BoundedU8<12, 15>, y: BoundedU8<10, 11>) -> BoundedU8<1, 23> {
         BoundedU8::new(x.value() + y.value())
     }
 
+    /// Even `u8` numbers. Constructing pub Even values triggers static
+    /// proofs in the extraction.
     #[hax_lib::refinement_type(|x| x % 2 == 0)]
-    struct Even(u8);
+    pub struct Even(u8);
 
     #[hax_lib::requires(x < 127)]
-    fn double(x: u8) -> Even {
+    pub fn double(x: u8) -> Even {
         Even::new(x + x)
     }
+
+    /// A string that contains no space.
+    #[hax_lib::refinement_type(|x| !x.chars().any(|ch| ch == ' '))]
+    pub struct NoE(String);
+
+    /// A modular mutliplicative inverse
+    #[hax_lib::refinement_type(|n| (n as u128 * MOD as u128) % MOD as u128 == 1)]
+    pub struct ModInverse<const MOD: u32>(u32);
+
+    /// A field element
+    #[hax_lib::refinement_type(|x| x <= 2347)]
+    pub struct FieldElement(u16);
+
+    /// Example of a specific constraint on a value
+    #[hax_lib::refinement_type(|x| x == 4 || x == 5 || x == 10 || x == 11)]
+    pub struct CompressionFactor(u8);
 }
