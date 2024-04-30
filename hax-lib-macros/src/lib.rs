@@ -691,7 +691,7 @@ make_quoting_proc_macro!(fstar(fstar_expr, fstar_before, fstar_after, fstar_repl
                          coq(coq_expr, coq_before, coq_after, coq_replace, hax_backend_coq)
                          proverif(proverif_expr, proverif_before, proverif_after, proverif_replace, hax_backend_proverif));
 
-/// Marks a newtype `struct Foo(SomeType);` as a refinement type. The
+/// Marks a newtype `struct RefinedT(T);` as a refinement type. The
 /// struct should have exacty one unnamed private field.
 ///
 /// This macro takes one argument: a boolean predicate that refines
