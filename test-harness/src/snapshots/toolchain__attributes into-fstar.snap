@@ -147,12 +147,49 @@ open FStar.Mul
 
 let t_BoundedU8 (v_MIN v_MAX: u8) = x: u8{x >=. v_MIN && x <=. v_MAX}
 
+/// Example of a specific constraint on a value
+let t_CompressionFactor = x: u8{x =. 4uy || x =. 5uy || x =. 10uy || x =. 11uy}
+
+/// Even `u8` numbers. Constructing pub Even values triggers static
+/// proofs in the extraction.
 let t_Even = x: u8{(x %! 2uy <: u8) =. 0uy}
 
+/// A field element
+let t_FieldElement = x: u16{x <=. 2347us}
+
+/// A modular mutliplicative inverse
+let t_ModInverse (v_MOD: u32) =
+  n:
+  u32
+    { (((cast (n <: u32) <: u128) *! (cast (v_MOD <: u32) <: u128) <: u128) %!
+        (cast (v_MOD <: u32) <: u128)
+        <:
+        u128) =.
+      pub_u128 1 }
+
+/// A string that contains no space.
+let t_NoE =
+  x:
+  Alloc.String.t_String
+    { let _, out:(Core.Str.Iter.t_Chars & bool) =
+        Core.Iter.Traits.Iterator.f_any (Core.Str.impl__str__chars (Core.Ops.Deref.f_deref x
+                <:
+                string)
+            <:
+            Core.Str.Iter.t_Chars)
+          (fun ch ->
+              let ch:char = ch in
+              ch =. ' ' <: bool)
+      in
+      ~.out }
+
 let bounded_u8 (x: t_BoundedU8 12uy 15uy) (y: t_BoundedU8 10uy 11uy) : t_BoundedU8 1uy 23uy =
-  (Hax_lib.f_value x <: u8) +! (Hax_lib.f_value y <: u8) <: t_BoundedU8 1uy 23uy
+  (Hax_lib.f_get x <: u8) +! (Hax_lib.f_get y <: u8) <: t_BoundedU8 1uy 23uy
 
 let double (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_True) =
+  x +! x <: t_Even
+
+let double_refine (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_True) =
   x +! x <: t_Even
 '''
 "Attributes.fst" = '''
