@@ -8,18 +8,14 @@ impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
     }
 }
 
-#[extension_traits::extension(pub trait PredicateToPolyTraitRef)]
-impl<'tcx> ty::Predicate<'tcx> {
-    fn as_poly_trait_ref(self) -> Option<ty::PolyTraitRef<'tcx>> {
-        self.kind()
-            .try_map_bound(|kind| {
-                if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) = kind {
-                    Ok(trait_predicate.trait_ref)
-                } else {
-                    Err(())
-                }
-            })
-            .ok()
+#[extension_traits::extension(pub trait PredicateToPolyTraitPredicate)]
+impl<'tcx> ty::Binder<'tcx, ty::PredicateKind<'tcx>> {
+    fn as_poly_trait_predicate(self) -> Option<ty::PolyTraitPredicate<'tcx>> {
+        self.try_map_bound(|kind| match kind {
+            ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => Ok(trait_pred),
+            _ => Err(()),
+        })
+        .ok()
     }
 }
 

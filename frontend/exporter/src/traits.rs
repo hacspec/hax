@@ -282,8 +282,13 @@ fn impl_exprs<'tcx, S: UnderOwnerState<'tcx>>(
         .flat_map(|obligation| {
             obligation
                 .predicate
-                .as_poly_trait_ref()
-                .map(|trait_ref| trait_ref.impl_expr(s, obligation.param_env))
+                .kind()
+                .as_poly_trait_predicate()
+                .map(|trait_ref| {
+                    trait_ref
+                        .map_bound(|p| p.trait_ref)
+                        .impl_expr(s, obligation.param_env)
+                })
         })
         .collect()
 }
