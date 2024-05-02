@@ -811,6 +811,9 @@ pub fn refinement_type(attr: pm::TokenStream, item: pm::TokenStream) -> pm::Toke
                 fn get(self) -> Self::InnerType {
                     self.0
                 }
+                fn invariant(#ret_binder: Self::InnerType) -> bool {
+                    #phi
+                }
             }
 
             #[::hax_lib::exclude]
