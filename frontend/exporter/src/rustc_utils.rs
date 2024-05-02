@@ -3,8 +3,12 @@ use rustc_middle::ty;
 
 #[extension_traits::extension(pub trait SubstBinder)]
 impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
-    fn subst(self, tcx: ty::TyCtxt<'tcx>, substs: &[ty::subst::GenericArg<'tcx>]) -> T {
-        ty::EarlyBinder::bind(self.skip_binder()).subst(tcx, substs)
+    fn subst(
+        self,
+        tcx: ty::TyCtxt<'tcx>,
+        substs: &[ty::subst::GenericArg<'tcx>],
+    ) -> ty::Binder<'tcx, T> {
+        self.rebind(ty::EarlyBinder::bind(self.clone().skip_binder()).subst(tcx, substs))
     }
 }
 

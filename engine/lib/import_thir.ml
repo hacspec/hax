@@ -967,14 +967,15 @@ end) : EXPR = struct
       =
     let browse_path (impl : impl_expr) (chunk : Thir.impl_expr_path_chunk) =
       match chunk with
-      | AssocItem { item; predicate = { trait_ref; _ }; clause_id; _ } ->
+      | AssocItem
+          { item; predicate = { value = { trait_ref; _ }; _ }; clause_id; _ } ->
           let ident = { goal = c_trait_ref span trait_ref; name = clause_id } in
           let kind : Concrete_ident.Kind.t =
             match item.kind with Const | Fn -> Value | Type -> Type
           in
           let item = Concrete_ident.of_def_id kind item.def_id in
           Projection { impl; ident; item }
-      | Parent { predicate = { trait_ref; _ }; clause_id; _ } ->
+      | Parent { predicate = { value = { trait_ref; _ }; _ }; clause_id; _ } ->
           let ident = { goal = c_trait_ref span trait_ref; name = clause_id } in
           Parent { impl; ident }
     in
