@@ -1,15 +1,16 @@
 mod hacspec_helper;
 use hacspec_helper::*;
 
-use hax_lib_macros as hax;
+use hax_lib as hax;
 
 type State = [u32; 16];
 type Block = [u8; 64];
 type ChaChaIV = [u8; 12];
 type ChaChaKey = [u8; 32];
 
-#[hax::requires(a < 16 && b < 16 && d < 16)]
-fn chacha20_line(a: usize, b: usize, d: usize, s: u32, m: State) -> State {
+type StateIdx = hax_bounded_integers::BoundedUsize<0, 15>;
+
+fn chacha20_line(a: StateIdx, b: StateIdx, d: StateIdx, s: u32, m: State) -> State {
     let mut state = m;
     state[a] = state[a].wrapping_add(state[b]);
     state[d] = state[d] ^ state[a];
@@ -17,24 +18,31 @@ fn chacha20_line(a: usize, b: usize, d: usize, s: u32, m: State) -> State {
     state
 }
 
-#[hax::requires(a < 16 && b < 16 && c < 16 && d < 16)]
-pub fn chacha20_quarter_round(a: usize, b: usize, c: usize, d: usize, state: State) -> State {
+pub fn chacha20_quarter_round(
+    a: StateIdx,
+    b: StateIdx,
+    c: StateIdx,
+    d: StateIdx,
+    state: State,
+) -> State {
     let state = chacha20_line(a, b, d, 16, state);
     let state = chacha20_line(c, d, b, 12, state);
     let state = chacha20_line(a, b, d, 8, state);
     chacha20_line(c, d, b, 7, state)
 }
 
-fn chacha20_double_round(state: State) -> State {
-    let state = chacha20_quarter_round(0, 4, 8, 12, state);
-    let state = chacha20_quarter_round(1, 5, 9, 13, state);
-    let state = chacha20_quarter_round(2, 6, 10, 14, state);
-    let state = chacha20_quarter_round(3, 7, 11, 15, state);
+use hax_lib::*;
 
-    let state = chacha20_quarter_round(0, 5, 10, 15, state);
-    let state = chacha20_quarter_round(1, 6, 11, 12, state);
-    let state = chacha20_quarter_round(2, 7, 8, 13, state);
-    chacha20_quarter_round(3, 4, 9, 14, state)
+fn chacha20_double_round(state: State) -> State {
+    let state = chacha20_quarter_round(0.check(), 4.check(), 8.check(), 12.check(), state);
+    let state = chacha20_quarter_round(1.check(), 5.check(), 9.check(), 13.check(), state);
+    let state = chacha20_quarter_round(2.check(), 6.check(), 10.check(), 14.check(), state);
+    let state = chacha20_quarter_round(3.check(), 7.check(), 11.check(), 15.check(), state);
+
+    let state = chacha20_quarter_round(0.check(), 5.check(), 10.check(), 15.check(), state);
+    let state = chacha20_quarter_round(1.check(), 6.check(), 11.check(), 12.check(), state);
+    let state = chacha20_quarter_round(2.check(), 7.check(), 8.check(), 13.check(), state);
+    chacha20_quarter_round(3.check(), 4.check(), 9.check(), 14.check(), state)
 }
 
 pub fn chacha20_rounds(state: State) -> State {
