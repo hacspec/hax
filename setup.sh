@@ -2,7 +2,9 @@
 
 set -eu
 
-opam_jobs=2
+SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+
+opam_jobs=4
 
 # Parse command line arguments.
 all_args=("$@")
@@ -15,6 +17,17 @@ while [ $# -gt 0 ]; do
     esac
     shift
 done
+
+# Warns if we're building in a dirty checkout of hax: while hacking on
+# hax, we should really be using the `./.utils/rebuild.sh`
+warn_if_dirty() {
+    (
+        cd "$SCRIPTPATH"
+        if ! git diff-index --quiet HEAD -- >& /dev/null; then
+            printf '\e[33mWarning: This is a dirty checkout of hax!\n         If you are hacking on hax, please use the \e[1m`./.utils/rebuild.sh`\e[0m\e[33m script.\e[0m\n\n'
+        fi
+    )
+}
 
 # Ensures a given binary is available in PATH
 ensure_binary_available() {
@@ -72,6 +85,8 @@ install_ocaml_engine() {
         opam install --yes ./engine
     )
 }
+
+warn_if_dirty
 
 for binary in opam node rustup jq; do
     ensure_binary_available $binary
