@@ -175,6 +175,6 @@ pub trait RefineAs<RefinedType> {
     /// In addition, in debug mode, the invariant is checked at
     /// run-time, unless this behavior was disabled when defining the
     /// refinement type `RefinedType` with the `refinement_type` macro
-    /// and its `no_assert_debug` option.
+    /// and its `no_debug_runtime_check` option.
     fn check(self) -> RefinedType;
 }
