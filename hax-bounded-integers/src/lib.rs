@@ -219,6 +219,24 @@ mk_bounded!(
     BoundedUsize(usize),
 );
 
+#[hax_lib::exclude]
+const _: () = {
+    impl<const MIN: usize, const MAX: usize, T> core::ops::Index<BoundedUsize<MIN, MAX>> for [T] {
+        type Output = T;
+        #[inline(always)]
+        fn index(&self, index: BoundedUsize<MIN, MAX>) -> &Self::Output {
+            &self[index.get()]
+        }
+    }
+
+    impl<const MIN: usize, const MAX: usize, T> core::ops::IndexMut<BoundedUsize<MIN, MAX>> for [T] {
+        #[inline(always)]
+        fn index_mut(&mut self, index: BoundedUsize<MIN, MAX>) -> &mut Self::Output {
+            &mut self[index.get()]
+        }
+    }
+};
+
 #[test]
 fn tests() {
     use hax_lib::*;
