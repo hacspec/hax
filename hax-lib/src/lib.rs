@@ -158,14 +158,21 @@ pub trait Refinement {
     fn get(self) -> Self::InnerType;
 }
 
-/// A utilitary trait that provides a `refine` methods on traits that
+/// A utilitary trait that provides a `check` method on traits that
 /// have a refined counter part. This trait is parametrized by a type
 /// `Target`: a base type can be refined in multiple ways.
 ///
 /// Please never implement this trait yourself, use the
 /// `refinement_type` macro instead.
-pub trait RefineAs<Target> {
-    /// Smart constructor for `Target`. Its extraction will yield a
-    /// proof obligation.
-    fn refine(self) -> Target;
+pub trait RefineAs<RefinedType> {
+    /// Smart constructor for `RefinedType`, checking the invariant
+    /// `RefinedType::invariant`. The check is done statically via
+    /// extraction to hax: extracted code will yield static proof
+    /// obligations.
+    ///
+    /// In addition, in debug mode, the invariant is checked at
+    /// run-time, unless this behavior was disabled when defining the
+    /// refinement type `RefinedType` with the `refinement_type` macro
+    /// and its `no_assert_debug` option.
+    fn check(self) -> RefinedType;
 }

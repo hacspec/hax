@@ -52,7 +52,7 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
 
     fn refinements<T: Refinement, U: RefineAs<T>>(x: T, y: U) -> T {
         T::new(x.get());
-        y.refine()
+        y.check()
     }
 
     const _: () = {

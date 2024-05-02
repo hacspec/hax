@@ -823,7 +823,7 @@ pub fn refinement_type(attr: pm::TokenStream, item: pm::TokenStream) -> pm::Toke
 
             #[::hax_lib::exclude]
             impl #generics ::hax_lib::RefineAs<#ident <#generics_args>> for #inner_ty {
-                fn refine(self) -> #ident <#generics_args> {
+                fn check(self) -> #ident <#generics_args> {
                     use ::hax_lib::Refinement;
                     #ident::new(self)
                 }
