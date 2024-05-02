@@ -44,6 +44,15 @@ class t_Bar (v_Self: Type) = {
 let impl_2__method (#v_T: Type) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Bar v_T) (x: v_T)
     : Prims.unit = f_bar x
 
+type t_Error = | Error_Fail : t_Error
+
+let impl__Error__for_application_callback (_: Prims.unit) :  Prims.unit -> t_Error =
+  fun temp_0_ ->
+    let _:Prims.unit = temp_0_ in
+    Error_Fail <: t_Error
+
+let t_Error_cast_to_repr (x: t_Error) : isize = match x with | Error_Fail  -> isz 0
+
 class t_Lang (v_Self: Type) = {
   f_Var:Type;
   f_s_pre:v_Self -> i32 -> bool;

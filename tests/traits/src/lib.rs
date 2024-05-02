@@ -66,3 +66,14 @@ pub trait Lang: Sized {
     type Var;
     fn s(self, _: i32) -> (Self, Self::Var);
 }
+
+pub enum Error {
+    Fail,
+}
+
+// From issue #474
+impl Error {
+    pub fn for_application_callback() -> impl FnOnce() -> Self {
+        || Self::Fail
+    }
+}
