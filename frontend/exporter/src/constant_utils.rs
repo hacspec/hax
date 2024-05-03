@@ -543,8 +543,18 @@ pub fn const_value_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
     match val {
         ConstValue::Scalar(scalar) => scalar_to_constant_expr(s, ty, &scalar, span),
         ConstValue::ByRef { .. } => const_value_reference_to_constant_expr(s, ty, val, span),
-        ConstValue::Slice { .. } => {
-            (ConstantExprKind::Todo(format!("ConstValue::Slice: {:?}", val)))
+        ConstValue::Slice { data, start, end } => {
+            let start = start.try_into().unwrap();
+            let end = end.try_into().unwrap();
+            // This is outside of the interpreter, so we are okay to use
+            // `inspect_with_uninit_and_ptr_outside_interpreter`. Moreover this is a string/byte
+            // literal, so we don't have to care about initialization.
+            // This is copied from `ConstantValue::try_get_slice_bytes_for_diagnostics`, available
+            // only in a more recent rustc version.
+            let slice: &[u8] = data
+                .inner()
+                .inspect_with_uninit_and_ptr_outside_interpreter(start..end);
+            ConstantExprKind::Literal(ConstantLiteral::byte_str(slice.to_vec(), StrStyle::Cooked))
                 .decorate(ty.sinto(s), span.sinto(s))
         }
         ConstValue::ZeroSized { .. } => {
