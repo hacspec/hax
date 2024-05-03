@@ -172,9 +172,7 @@ functor
                 self#visit_list self#visit_impl_expr env record_payload.args
               in
               ImplApp { impl; args }
-          | Dyn x0 ->
-              let x0 = self#visit_trait_goal env x0 in
-              Dyn x0
+          | Dyn -> Dyn
           | Builtin x0 ->
               let x0 = self#visit_trait_goal env x0 in
               Builtin x0
@@ -1113,9 +1111,7 @@ functor
               in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
               (ImplApp { impl; args }, reduce_acc)
-          | Dyn x0 ->
-              let x0, reduce_acc = self#visit_trait_goal env x0 in
-              (Dyn x0, reduce_acc)
+          | Dyn -> (Dyn, self#zero)
           | Builtin x0 ->
               let x0, reduce_acc = self#visit_trait_goal env x0 in
               (Builtin x0, reduce_acc)
@@ -2301,9 +2297,7 @@ functor
               in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
               reduce_acc
-          | Dyn x0 ->
-              let reduce_acc = self#visit_trait_goal env x0 in
-              reduce_acc
+          | Dyn -> self#zero
           | Builtin x0 ->
               let reduce_acc = self#visit_trait_goal env x0 in
               reduce_acc

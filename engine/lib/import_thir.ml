@@ -938,6 +938,7 @@ end) : EXPR = struct
         TOpaque (Concrete_ident.of_def_id Type def_id)
     | Alias { kind = Inherent; _ } ->
         unimplemented [ span ] "type Alias::Inherent"
+    | Alias { kind = Weak; _ } -> unimplemented [ span ] "type Alias::Weak"
     | Param { index; name } ->
         (* TODO: [id] might not unique *)
         TParam { name; id = Local_ident.mk_id Typ (MyInt64.to_int_exn index) }
@@ -987,7 +988,7 @@ end) : EXPR = struct
     | LocalBound { clause_id; path; _ } ->
         let init = LocalBound { id = clause_id } in
         List.fold ~init ~f:browse_path path
-    | Dyn { trait } -> Dyn (c_trait_ref span trait)
+    | Dyn -> Dyn
     | SelfImpl { path; _ } -> List.fold ~init:Self ~f:browse_path path
     | Builtin { trait } -> Builtin (c_trait_ref span trait)
     | FnPointer { fn_ty } -> FnPointer (c_ty span fn_ty)

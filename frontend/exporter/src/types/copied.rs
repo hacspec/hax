@@ -1546,6 +1546,7 @@ pub struct Alias {
     pub def_id: DefId,
 }
 
+/// Reflects [`rustc_middle::ty::AliasKind`]
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
@@ -1557,8 +1558,12 @@ pub enum AliasKind {
         /// The `Type` in `Ty: Trait<..., Type = U>`.
         assoc_item: AssocItem,
     },
+    /// An associated type in an inherent impl.
     Inherent,
+    /// An `impl Trait` opaque type.
     Opaque,
+    /// A type alias that references opaque types. Likely to always be normalized away.
+    Weak,
 }
 
 impl Alias {
@@ -1578,6 +1583,7 @@ impl Alias {
             }
             RustAliasKind::Inherent => AliasKind::Inherent,
             RustAliasKind::Opaque => AliasKind::Opaque,
+            RustAliasKind::Weak => AliasKind::Weak,
         };
         Alias {
             kind,

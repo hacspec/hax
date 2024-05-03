@@ -70,7 +70,7 @@ struct
             impl = dimpl_expr span impl;
             args = List.map ~f:(dimpl_expr span) args;
           }
-    | Dyn tr -> Dyn (dtrait_goal span tr)
+    | Dyn -> Dyn
     | Builtin tr -> Builtin (dtrait_goal span tr)
     | ClosureIE todo -> ClosureIE todo
     | FnPointer ty -> FnPointer (dty span ty)
