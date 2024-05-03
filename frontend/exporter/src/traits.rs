@@ -555,7 +555,7 @@ pub mod copy_paste_from_rustc {
         // Currently, we use a fulfillment context to completely resolve
         // all nested obligations. This is because they can inform the
         // inference of the impl's type parameters.
-        let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(tcx);
+        let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(&infcx);
         let impl_source = selection.map(|predicate| {
             fulfill_cx.register_predicate_obligation(&infcx, predicate.clone());
             predicate
