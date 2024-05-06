@@ -176,12 +176,6 @@ functor
           | Builtin x0 ->
               let x0 = self#visit_trait_goal env x0 in
               Builtin x0
-          | FnPointer x0 ->
-              let x0 = self#visit_ty env x0 in
-              FnPointer x0
-          | ClosureIE x0 ->
-              let x0 = self#visit_todo env x0 in
-              ClosureIE x0
 
         method visit_trait_goal (env : 'env) (this : trait_goal) : trait_goal =
           let trait = self#visit_concrete_ident env this.trait in
@@ -1115,12 +1109,6 @@ functor
           | Builtin x0 ->
               let x0, reduce_acc = self#visit_trait_goal env x0 in
               (Builtin x0, reduce_acc)
-          | FnPointer x0 ->
-              let x0, reduce_acc = self#visit_ty env x0 in
-              (FnPointer x0, reduce_acc)
-          | ClosureIE x0 ->
-              let x0, reduce_acc = self#visit_todo env x0 in
-              (ClosureIE x0, reduce_acc)
 
         method visit_trait_goal (env : 'env) (this : trait_goal)
             : trait_goal * 'acc =
@@ -2300,12 +2288,6 @@ functor
           | Dyn -> self#zero
           | Builtin x0 ->
               let reduce_acc = self#visit_trait_goal env x0 in
-              reduce_acc
-          | FnPointer x0 ->
-              let reduce_acc = self#visit_ty env x0 in
-              reduce_acc
-          | ClosureIE x0 ->
-              let reduce_acc = self#visit_todo env x0 in
               reduce_acc
 
         method visit_trait_goal (env : 'env) (this : trait_goal) : 'acc =

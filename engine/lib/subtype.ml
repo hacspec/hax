@@ -72,8 +72,6 @@ struct
           }
     | Dyn -> Dyn
     | Builtin tr -> Builtin (dtrait_goal span tr)
-    | ClosureIE todo -> ClosureIE todo
-    | FnPointer ty -> FnPointer (dty span ty)
 
   and dgeneric_value (span : span) (generic_value : A.generic_value) :
       B.generic_value =

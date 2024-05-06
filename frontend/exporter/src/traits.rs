@@ -50,17 +50,6 @@ pub enum ImplExprAtom {
     Dyn,
     /// A built-in trait whose implementation is computed by the compiler, such as `Sync`.
     Builtin { r#trait: TraitRef },
-    /// Function pointer types (e.g. `fn(bool, u32) -> u32`) automaticlaly implement some traits
-    /// such as `Copy` and the appropriate `Fn` traits.
-    /// FIXME: currently unused because rustc no longer identifies those explicitly.
-    FnPointer { fn_ty: Box<Ty> },
-    /// Closures automatically implement the appropriate `Fn` traits.
-    /// FIXME: currently unused because rustc no longer identifies those explicitly.
-    Closure {
-        closure_def_id: DefId,
-        parent_substs: Vec<GenericArg>,
-        signature: Box<PolyFnSig>,
-    },
     /// Anything else. Currently used for trait upcasting and trait aliases.
     Todo(String),
 }
