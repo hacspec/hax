@@ -78,7 +78,7 @@ pub struct ImplExpr {
     /// The kind of implemention of the root of the tree.
     pub r#impl: ImplExprAtom,
     /// A list of `ImplExpr`s required to fully specify the trait references in `impl`.
-    pub args: Box<Vec<ImplExpr>>,
+    pub args: Vec<ImplExpr>,
 }
 
 mod search_clause {
@@ -280,7 +280,7 @@ impl ImplExprAtom {
     fn with_args(self, args: Vec<ImplExpr>, r#trait: TraitRef) -> ImplExpr {
         ImplExpr {
             r#impl: self,
-            args: Box::new(args),
+            args,
             r#trait,
         }
     }
