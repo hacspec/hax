@@ -714,16 +714,12 @@ make_quoting_proc_macro!(fstar(fstar_expr, fstar_before, fstar_after, fstar_repl
 /// that contains a value of type `T` and a proof that this value
 /// satisfies the formula `f`.
 ///
-/// In debug mode, the refinement will be checked at run-time. This
-/// requires the base type `T` to implement `Clone`. Pass a first
-/// parameter `no_debug_runtime_check` to disable this behavior.
-///
 /// When extracted via hax, this is interpreted in the backend as a
 /// refinement type: the use of such a type yields static proof
 /// obligations.
 #[proc_macro_error]
 #[proc_macro_attribute]
-pub fn refinement_type(mut attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+pub fn refinement_type(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
     let mut item = parse_macro_input!(item as syn::ItemStruct);
 
     let syn::Fields::Unnamed(fields) = &item.fields else {
@@ -744,24 +740,6 @@ pub fn refinement_type(mut attr: pm::TokenStream, item: pm::TokenStream) -> pm::
     if field.vis != syn::Visibility::Inherited {
         proc_macro_error::abort!(field.vis.span(), "This field was expected to be private");
     }
-
-    let no_debug_assert = {
-        let mut tokens = attr.clone().into_iter();
-        if let (Some(pm::TokenTree::Ident(ident)), Some(pm::TokenTree::Punct(comma))) =
-            (tokens.next(), tokens.next())
-        {
-            if ident.to_string() != "no_debug_runtime_check" {
-                proc_macro_error::abort!(ident.span(), "Expected 'no_debug_runtime_check'");
-            }
-            if comma.as_char() != ',' {
-                proc_macro_error::abort!(ident.span(), "Expected a comma");
-            }
-            attr = pm::TokenStream::from_iter(tokens);
-            true
-        } else {
-            false
-        }
-    };
 
     let ExprClosure1 {
         arg: ret_binder,
@@ -814,8 +792,6 @@ pub fn refinement_type(mut attr: pm::TokenStream, item: pm::TokenStream) -> pm::
     );
 
     item.vis = parse_quote! {pub};
-    let debug_assert =
-        no_debug_assert.then_some(quote! {::core::debug_assert!(Self::invariant(x.clone()));});
     let newtype_as_ref_attr = AttrPayload::NewtypeAsRefinement;
     quote! {
         #[allow(non_snake_case)]
@@ -830,14 +806,10 @@ pub fn refinement_type(mut attr: pm::TokenStream, item: pm::TokenStream) -> pm::
             impl #generics ::hax_lib::Refinement for #ident <#generics_args> {
                 type InnerType = #inner_ty;
                 fn new(x: Self::InnerType) -> Self {
-                    #debug_assert
                     Self(x)
                 }
                 fn get(self) -> Self::InnerType {
                     self.0
-                }
-                fn invariant(#ret_binder: Self::InnerType) -> bool {
-                    #phi
                 }
             }
 
@@ -851,7 +823,7 @@ pub fn refinement_type(mut attr: pm::TokenStream, item: pm::TokenStream) -> pm::
 
             #[::hax_lib::exclude]
             impl #generics ::hax_lib::RefineAs<#ident <#generics_args>> for #inner_ty {
-                fn into_checked(self) -> #ident <#generics_args> {
+                fn refine(self) -> #ident <#generics_args> {
                     use ::hax_lib::Refinement;
                     #ident::new(self)
                 }

@@ -30,23 +30,6 @@ instance update_at_tc_array t l n: update_at_tc (t_Array t l) (int_t n) = {
   update_at = (fun arr i x -> FStar.Seq.upd arr (v i) x);
 }
 
-/// We have an instance for `int_t n`, but we often work with refined
-/// `int_t n`, and F* typeclass inference doesn't support subtyping
-/// well, hence the instance below.
-instance impl__index_refined t l n r: t_Index (t_Array t l) (x: int_t n {r x})
-  = { f_Output = t;
-      f_index_pre = (fun (s: t_Array t l) (i: int_t n {r i}) -> v i >= 0 && v i < v l);
-      f_index_post = (fun _ _ _ -> true);
-      f_index = (fun s i -> Seq.index s (v i));
-    }
-
-/// Similarly to `impl__index_refined`, we need to define a instance
-/// for refined `int_t n`.
-instance update_at_tc_array_refined t l n r: update_at_tc (t_Array t l) (x: int_t n {r x}) = {
-  super_index = impl__index_refined t l n r;
-  update_at = (fun arr i x -> FStar.Seq.upd arr (v i) x);
-}
-
 let (.[]<-) #self #idx {| update_at_tc self idx |} (s: self) (i: idx {f_index_pre s i})
   = update_at s i
 
