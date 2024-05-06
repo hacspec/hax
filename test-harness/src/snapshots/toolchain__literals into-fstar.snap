@@ -104,6 +104,11 @@ let casts (x8: u8) (x16: u16) (x32: u32) (x64: u64) (xs: usize) : Prims.unit =
   in
   ()
 
+/// https://github.com/hacspec/hax/issues/500
+let fn_pointer_cast (_: Prims.unit) : Prims.unit =
+  let (f: (u32 -> u32)): u32 -> u32 = fun x -> x in
+  ()
+
 let numeric (_: Prims.unit) : Prims.unit =
   let (_: usize):usize = sz 123 in
   let (_: isize):isize = isz (-42) in

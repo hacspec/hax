@@ -53,6 +53,11 @@ Definition casts (x8 : int8) (x16 : int16) (x32 : int32) (x64 : int64) (xs : uin
   let (_ : int8) := ((((cast x8).+(cast x16)).+(cast x32)).+(cast x64)).+(cast xs) : int8 in
   tt.
 
+Definition fn_pointer_cast (_ : unit) : unit :=
+  let (f : int32 -> int32) := fun x =>
+      x : int32 -> int32 in
+  tt.
+
 Definition numeric (_ : unit) : unit :=
   let (_ : uint_size) := (@repr WORDSIZE32 123) : uint_size in
   let (_ : uint_size) := (@repr WORDSIZE32 42) : uint_size in
