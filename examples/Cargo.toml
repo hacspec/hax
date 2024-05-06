@@ -11,3 +11,5 @@ resolver = "2"
 [workspace.dependencies]
 hax-lib-macros = { path = "../hax-lib-macros" }
 hax-lib = { path = "../hax-lib" }
+hax-bounded-integers = { path = "../hax-bounded-integers", version = "=0.1.0-pre.1" }
+

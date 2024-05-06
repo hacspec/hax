@@ -5,5 +5,5 @@ authors = ["Franziskus Kiefer <franziskuskiefer@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-hax-lib-macros.workspace = true
 hax-lib.workspace = true
+hax-bounded-integers.workspace = true

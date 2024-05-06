@@ -15,46 +15,94 @@ let t_ChaChaKey = t_Array u8 (sz 32)
 unfold
 let t_State = t_Array u32 (sz 16)
 
-let chacha20_line (a b d: usize) (s: u32) (m: t_Array u32 (sz 16))
-    : Prims.Pure (t_Array u32 (sz 16))
-      (requires a <. sz 16 && b <. sz 16 && d <. sz 16)
-      (fun (res:t_Array u32 (sz 16)) -> True ) =
+unfold
+let t_StateIdx = Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15)
+
+let chacha20_line
+      (a b d: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (s: u32)
+      (m: t_Array u32 (sz 16))
+    : t_Array u32 (sz 16) =
   let state:t_Array u32 (sz 16) = m in
   let state:t_Array u32 (sz 16) =
-    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize state
+    Rust_primitives.Hax.update_at state
       a
       (Core.Num.impl__u32__wrapping_add (state.[ a ] <: u32) (state.[ b ] <: u32) <: u32)
   in
   let state:t_Array u32 (sz 16) =
-    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize state
-      d
-      ((state.[ d ] <: u32) ^. (state.[ a ] <: u32) <: u32)
+    Rust_primitives.Hax.update_at state d ((state.[ d ] <: u32) ^. (state.[ a ] <: u32) <: u32)
   in
   let state:t_Array u32 (sz 16) =
-    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize state
+    Rust_primitives.Hax.update_at state
       d
       (Core.Num.impl__u32__rotate_left (state.[ d ] <: u32) s <: u32)
   in
   state
 
-let chacha20_quarter_round (a b c d: usize) (state: t_Array u32 (sz 16))
-    : Prims.Pure (t_Array u32 (sz 16))
-      (requires a <. sz 16 && b <. sz 16 && c <. sz 16 && d <. sz 16)
-      (fun _ -> Prims.l_True) =
+let chacha20_quarter_round
+      (a b c d: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (state: t_Array u32 (sz 16))
+    : t_Array u32 (sz 16) =
   let state:t_Array u32 (sz 16) = chacha20_line a b d 16ul state in
   let state:t_Array u32 (sz 16) = chacha20_line c d b 12ul state in
   let state:t_Array u32 (sz 16) = chacha20_line a b d 8ul state in
   chacha20_line c d b 7ul state
 
 let chacha20_double_round (state: t_Array u32 (sz 16)) : t_Array u32 (sz 16) =
-  let state:t_Array u32 (sz 16) = chacha20_quarter_round (sz 0) (sz 4) (sz 8) (sz 12) state in
-  let state:t_Array u32 (sz 16) = chacha20_quarter_round (sz 1) (sz 5) (sz 9) (sz 13) state in
-  let state:t_Array u32 (sz 16) = chacha20_quarter_round (sz 2) (sz 6) (sz 10) (sz 14) state in
-  let state:t_Array u32 (sz 16) = chacha20_quarter_round (sz 3) (sz 7) (sz 11) (sz 15) state in
-  let state:t_Array u32 (sz 16) = chacha20_quarter_round (sz 0) (sz 5) (sz 10) (sz 15) state in
-  let state:t_Array u32 (sz 16) = chacha20_quarter_round (sz 1) (sz 6) (sz 11) (sz 12) state in
-  let state:t_Array u32 (sz 16) = chacha20_quarter_round (sz 2) (sz 7) (sz 8) (sz 13) state in
-  chacha20_quarter_round (sz 3) (sz 4) (sz 9) (sz 14) state
+  let state:t_Array u32 (sz 16) =
+    chacha20_quarter_round (sz 0 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 4 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 8 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 12 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      state
+  in
+  let state:t_Array u32 (sz 16) =
+    chacha20_quarter_round (sz 1 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 5 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 9 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 13 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      state
+  in
+  let state:t_Array u32 (sz 16) =
+    chacha20_quarter_round (sz 2 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 6 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 10 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 14 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      state
+  in
+  let state:t_Array u32 (sz 16) =
+    chacha20_quarter_round (sz 3 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 7 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 11 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 15 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      state
+  in
+  let state:t_Array u32 (sz 16) =
+    chacha20_quarter_round (sz 0 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 5 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 10 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 15 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      state
+  in
+  let state:t_Array u32 (sz 16) =
+    chacha20_quarter_round (sz 1 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 6 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 11 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 12 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      state
+  in
+  let state:t_Array u32 (sz 16) =
+    chacha20_quarter_round (sz 2 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 7 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 8 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      (sz 13 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+      state
+  in
+  chacha20_quarter_round (sz 3 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+    (sz 4 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+    (sz 9 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+    (sz 14 <: Hax_bounded_integers.t_BoundedUsize (sz 0) (sz 15))
+    state
 
 let chacha20_rounds (state: t_Array u32 (sz 16)) : t_Array u32 (sz 16) =
   let st:t_Array u32 (sz 16) = state in
@@ -126,7 +174,7 @@ let chacha20_init (key: t_Array u8 (sz 32)) (iv: t_Array u8 (sz 12)) (ctr: u32)
     ]
   in
   FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 16);
-  Rust_primitives.Hax.array_of_list list
+  Rust_primitives.Hax.array_of_list 16 list
 
 let chacha20_key_block (state: t_Array u32 (sz 16)) : t_Array u8 (sz 64) =
   let state:t_Array u32 (sz 16) = chacha20_core 0ul state in
