@@ -6,16 +6,19 @@
   fstar,
   hacl-star,
   hax-env,
+  jq,
 }: let
+  matches = re: path: !builtins.isNull (builtins.match re path);
   commonArgs = {
     version = "0.0.1";
     src = lib.cleanSourceWith {
       src = craneLib.path ./..;
       filter = path: type:
-        # We include only certain files, notably we exclude generated
-        # files (`.fst`, `.v`, etc.)
-        !builtins.isNull (builtins.match ".*(Makefile|.*[.](rs|toml|lock|diff))$" path)
-        || ("directory" == type);
+        # We include only certain files. FStar files under the example
+        # directory are listed out.
+        (   matches ".*(Makefile|.*[.](rs|toml|lock|diff|fsti?))$" path
+        && !matches ".*examples/.*[.]fsti?$" path
+        ) || ("directory" == type);
     };
     doCheck = false;
     cargoVendorDir = craneLib.vendorMultipleCargoDeps {
@@ -43,5 +46,5 @@ in
         sed -i "s/make -C limited-order-book/HAX_VANILLA_RUSTC=never make -C limited-order-book/g" Makefile
         make
       '';
-      buildInputs = [hax hax-env fstar];
+      buildInputs = [hax hax-env fstar jq];
     })
