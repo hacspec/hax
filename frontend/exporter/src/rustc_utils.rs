@@ -3,23 +3,23 @@ use rustc_middle::ty;
 
 #[extension_traits::extension(pub trait SubstBinder)]
 impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
-    fn subst(self, tcx: ty::TyCtxt<'tcx>, substs: &[ty::subst::GenericArg<'tcx>]) -> T {
-        ty::EarlyBinder::bind(self.skip_binder()).subst(tcx, substs)
+    fn subst(
+        self,
+        tcx: ty::TyCtxt<'tcx>,
+        substs: &[ty::subst::GenericArg<'tcx>],
+    ) -> ty::Binder<'tcx, T> {
+        self.rebind(ty::EarlyBinder::bind(self.clone().skip_binder()).subst(tcx, substs))
     }
 }
 
-#[extension_traits::extension(pub trait PredicateToPolyTraitRef)]
-impl<'tcx> ty::Predicate<'tcx> {
-    fn as_poly_trait_ref(self) -> Option<ty::PolyTraitRef<'tcx>> {
-        self.kind()
-            .try_map_bound(|kind| {
-                if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) = kind {
-                    Ok(trait_predicate.trait_ref)
-                } else {
-                    Err(())
-                }
-            })
-            .ok()
+#[extension_traits::extension(pub trait PredicateToPolyTraitPredicate)]
+impl<'tcx> ty::Binder<'tcx, ty::PredicateKind<'tcx>> {
+    fn as_poly_trait_predicate(self) -> Option<ty::PolyTraitPredicate<'tcx>> {
+        self.try_map_bound(|kind| match kind {
+            ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => Ok(trait_pred),
+            _ => Err(()),
+        })
+        .ok()
     }
 }
 
@@ -58,7 +58,21 @@ impl<'tcx> ty::TyCtxt<'tcx> {
     ) {
         let with_self = self.predicates_of(did);
         let parent = with_self.parent;
-        let with_self = with_self.predicates;
+        let with_self = {
+            let extra_predicates = if rustc_hir::def::DefKind::OpaqueTy == self.def_kind(did) {
+                // An opaque type (e.g. `impl Trait`) provides
+                // predicates by itself: we need to account for them.
+                self.explicit_item_bounds(did)
+                    .skip_binder()
+                    .iter()
+                    .collect()
+            } else {
+                vec![]
+            }
+            .into_iter()
+            .cloned();
+            with_self.predicates.iter().cloned().chain(extra_predicates)
+        };
         let without_self: Vec<ty::Predicate> = self
             .predicates_defined_on(did)
             .predicates
@@ -67,14 +81,11 @@ impl<'tcx> ty::TyCtxt<'tcx> {
             .map(|(pred, _)| pred)
             .collect();
         (
-            with_self
-                .into_iter()
-                .cloned()
-                .map(move |(predicate, span)| AnnotatedPredicate {
-                    is_extra_self_predicate: !without_self.contains(&predicate),
-                    predicate,
-                    span,
-                }),
+            with_self.map(move |(predicate, span)| AnnotatedPredicate {
+                is_extra_self_predicate: !without_self.contains(&predicate),
+                predicate,
+                span,
+            }),
             parent,
         )
     }

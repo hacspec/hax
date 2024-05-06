@@ -8,12 +8,12 @@ use crate::prelude::*;
 pub enum ImplExprPathChunk {
     AssocItem {
         item: AssocItem,
-        predicate: TraitPredicate,
+        predicate: Binder<TraitPredicate>,
         clause_id: u64,
         index: usize,
     },
     Parent {
-        predicate: TraitPredicate,
+        predicate: Binder<TraitPredicate>,
         clause_id: u64,
         index: usize,
     },
@@ -67,34 +67,30 @@ pub struct ImplExpr {
 }
 
 mod search_clause {
-    use super::SubstBinder;
     use crate::prelude::UnderOwnerState;
-    use crate::rustc_utils::TyCtxtExtPredOrAbove;
+    use crate::rustc_utils::*;
     use rustc_middle::ty::*;
 
-    fn predicates_to_trait_predicates<'tcx>(
+    fn predicates_to_poly_trait_predicates<'tcx>(
         tcx: TyCtxt<'tcx>,
         predicates: impl Iterator<Item = Predicate<'tcx>>,
         substs: subst::SubstsRef<'tcx>,
-    ) -> impl Iterator<Item = TraitPredicate<'tcx>> {
+    ) -> impl Iterator<Item = PolyTraitPredicate<'tcx>> {
         predicates
             .map(move |pred| pred.kind().subst(tcx, substs))
-            .filter_map(|x| match x {
-                PredicateKind::Clause(Clause::Trait(c)) => Some(c),
-                _ => None,
-            })
+            .filter_map(|pred| pred.as_poly_trait_predicate())
     }
 
     #[derive(Clone, Debug)]
     pub enum PathChunk<'tcx> {
         AssocItem {
             item: AssocItem,
-            predicate: TraitPredicate<'tcx>,
+            predicate: PolyTraitPredicate<'tcx>,
             clause_id: u64,
             index: usize,
         },
         Parent {
-            predicate: TraitPredicate<'tcx>,
+            predicate: PolyTraitPredicate<'tcx>,
             clause_id: u64,
             index: usize,
         },
@@ -150,23 +146,27 @@ mod search_clause {
     }
 
     #[extension_traits::extension(pub trait TraitPredicateExt)]
-    impl<'tcx, S: UnderOwnerState<'tcx>> TraitPredicate<'tcx> {
-        fn parents_trait_predicates(self, s: &S) -> Vec<(usize, TraitPredicate<'tcx>)> {
+    impl<'tcx, S: UnderOwnerState<'tcx>> PolyTraitPredicate<'tcx> {
+        fn parents_trait_predicates(self, s: &S) -> Vec<(usize, PolyTraitPredicate<'tcx>)> {
             let tcx = s.base().tcx;
             let predicates = tcx
                 .predicates_defined_on_or_above(self.def_id())
                 .into_iter()
                 .map(|apred| apred.predicate);
-            predicates_to_trait_predicates(tcx, predicates, self.trait_ref.substs)
-                .enumerate()
-                .collect()
+            predicates_to_poly_trait_predicates(
+                tcx,
+                predicates,
+                self.skip_binder().trait_ref.substs,
+            )
+            .enumerate()
+            .collect()
         }
         fn associated_items_trait_predicates(
             self,
             s: &S,
         ) -> Vec<(
             AssocItem,
-            subst::EarlyBinder<Vec<(usize, TraitPredicate<'tcx>)>>,
+            subst::EarlyBinder<Vec<(usize, PolyTraitPredicate<'tcx>)>>,
         )> {
             let tcx = s.base().tcx;
             tcx.associated_items(self.def_id())
@@ -175,10 +175,10 @@ mod search_clause {
                 .copied()
                 .map(|item| {
                     let bounds = tcx.item_bounds(item.def_id).map_bound(|predicates| {
-                        predicates_to_trait_predicates(
+                        predicates_to_poly_trait_predicates(
                             tcx,
                             predicates.into_iter(),
-                            self.trait_ref.substs,
+                            self.skip_binder().trait_ref.substs,
                         )
                         .enumerate()
                         .collect()
@@ -282,8 +282,13 @@ fn impl_exprs<'tcx, S: UnderOwnerState<'tcx>>(
         .flat_map(|obligation| {
             obligation
                 .predicate
-                .as_poly_trait_ref()
-                .map(|trait_ref| trait_ref.impl_expr(s, obligation.param_env))
+                .kind()
+                .as_poly_trait_predicate()
+                .map(|trait_ref| {
+                    trait_ref
+                        .map_bound(|p| p.trait_ref)
+                        .impl_expr(s, obligation.param_env)
+                })
         })
         .collect()
 }
@@ -343,9 +348,8 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                         .predicate
                         .to_opt_poly_trait_pred()
                         .map(|poly_trait_predicate| poly_trait_predicate)
-                        .and_then(|poly_trait_predicate| poly_trait_predicate.no_bound_vars())
-                        .and_then(|trait_predicate| {
-                            trait_predicate.path_to(s, self.clone(), param_env)
+                        .and_then(|poly_trait_predicate| {
+                            poly_trait_predicate.path_to(s, self.clone(), param_env)
                         })
                         .map(|path| (apred, path))
                 }) else {
