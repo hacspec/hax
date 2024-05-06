@@ -865,7 +865,7 @@ end) : EXPR = struct
 
   and c_pointer e typ span cast source =
     match cast with
-    | ReifyFnPointer ->
+    | ClosureFnPointer Normal | ReifyFnPointer ->
         (* we have arrow types, we do not distinguish between top-level functions and closures *)
         (c_expr source).e
     | Unsize ->

@@ -76,3 +76,8 @@ fn casts(x8: u8, x16: u16, x32: u32, x64: u64, xs: usize) {
 pub fn empty_array() {
     let _: &[u8] = &[];
 }
+
+/// https://github.com/hacspec/hax/issues/500
+fn fn_pointer_cast() {
+    let f: fn(&u32) -> &u32 = |x| x;
+}
