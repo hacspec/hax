@@ -19,51 +19,55 @@ pub enum ImplExprPathChunk {
     },
 }
 
+/// The source of a particular trait implementation. Most often this is either `Concrete` for a
+/// concrete `impl Trait for Type {}` item, or `LocalBound` for a context-bound `where T: Trait`.
 #[derive(
     Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
 )]
 pub enum ImplExprAtom {
+    /// A concrete `impl Trait for Type {}` item.
     Concrete {
         id: GlobalIdent,
         generics: Vec<GenericArg>,
     },
+    /// A context-bound clause like `where T: Trait`.
     LocalBound {
         clause_id: u64,
         r#trait: Binder<TraitRef>,
         path: Vec<ImplExprPathChunk>,
     },
+    /// The automatic clause `Self: Trait` present inside a `impl Trait for Type {}` item.
     SelfImpl {
         r#trait: Binder<TraitRef>,
         path: Vec<ImplExprPathChunk>,
     },
-    /// `dyn TRAIT` is a wrapped value with a virtual table for trait
-    /// `TRAIT`.  In other words, a value `dyn TRAIT` is a dependent
+    /// `dyn Trait` is a wrapped value with a virtual table for trait
+    /// `Trait`.  In other words, a value `dyn Trait` is a dependent
     /// triple that gathers a type τ, a value of type τ and an
-    /// instance of type `TRAIT`.
-    Dyn {
-        r#trait: TraitRef,
-    },
-    Builtin {
-        r#trait: TraitRef,
-    },
-    FnPointer {
-        fn_ty: Box<Ty>,
-    },
-    Closure {
-        closure_def_id: DefId,
-        parent_substs: Vec<GenericArg>,
-        signature: Box<PolyFnSig>,
-    },
+    /// instance of type `Trait`.
+    /// `dyn Trait` implements `Trait` using a built-in implementation; this refers to that
+    /// built-in implementation.
+    Dyn,
+    /// A built-in trait whose implementation is computed by the compiler, such as `Sync`.
+    Builtin { r#trait: TraitRef },
+    /// Anything else. Currently used for trait upcasting and trait aliases.
     Todo(String),
 }
 
+/// An `ImplExpr` describes the full data of a trait implementation. Because of generics, this may
+/// need to combine several concrete trait implementation items. For example, `((1u8, 2u8),
+/// "hello").clone()` combines the generic implementation of `Clone` for `(A, B)` with the
+/// concrete implementations for `u8` and `&str`, represented as a tree.
 #[derive(
     Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
 )]
 pub struct ImplExpr {
-    pub r#impl: ImplExprAtom,
-    pub args: Box<Vec<ImplExpr>>,
+    /// The trait this is an impl for.
     pub r#trait: TraitRef,
+    /// The kind of implemention of the root of the tree.
+    pub r#impl: ImplExprAtom,
+    /// A list of `ImplExpr`s required to fully specify the trait references in `impl`.
+    pub args: Vec<ImplExpr>,
 }
 
 mod search_clause {
@@ -265,7 +269,7 @@ impl ImplExprAtom {
     fn with_args(self, args: Vec<ImplExpr>, r#trait: TraitRef) -> ImplExpr {
         ImplExpr {
             r#impl: self,
-            args: Box::new(args),
+            args,
             r#trait,
         }
     }
@@ -377,38 +381,13 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                     .with_args(impl_exprs(s, &nested), trait_ref)
                 }
             }
-            // Happens when we use a function pointer as an object implementing
-            // a trait like `FnMut`
-            ImplSource::FnPointer(rustc_trait_selection::traits::ImplSourceFnPointerData {
-                fn_ty,
-                nested,
-            }) => ImplExprAtom::FnPointer {
-                fn_ty: fn_ty.sinto(s),
+            ImplSource::Object(data) => {
+                ImplExprAtom::Dyn.with_args(impl_exprs(s, &data.nested), trait_ref)
             }
-            .with_args(impl_exprs(s, &nested), trait_ref),
-            ImplSource::Closure(rustc_trait_selection::traits::ImplSourceClosureData {
-                closure_def_id,
-                substs,
-                nested,
-            }) => {
-                let substs = substs.as_closure();
-                let parent_substs = substs.parent_substs().sinto(s);
-                let signature = Box::new(substs.sig().sinto(s));
-                ImplExprAtom::Closure {
-                    closure_def_id: closure_def_id.sinto(s),
-                    parent_substs,
-                    signature,
-                }
-                .with_args(impl_exprs(s, &nested), trait_ref)
-            }
-            ImplSource::Object(data) => ImplExprAtom::Dyn {
-                r#trait: data.upcast_trait_ref.skip_binder().sinto(s),
-            }
-            .with_args(impl_exprs(s, &data.nested), trait_ref),
-            ImplSource::Builtin(x) => ImplExprAtom::Builtin {
+            ImplSource::Builtin(nested) => ImplExprAtom::Builtin {
                 r#trait: self.skip_binder().sinto(s),
             }
-            .with_args(impl_exprs(s, &x.nested), trait_ref),
+            .with_args(impl_exprs(s, &nested), trait_ref),
             x => ImplExprAtom::Todo(format!(
                 "ImplExprAtom::Todo(see https://github.com/hacspec/hax/issues/381) {:#?}\n\n{:#?}",
                 x, self
@@ -555,7 +534,7 @@ pub mod copy_paste_from_rustc {
         // Currently, we use a fulfillment context to completely resolve
         // all nested obligations. This is because they can inform the
         // inference of the impl's type parameters.
-        let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(tcx);
+        let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(&infcx);
         let impl_source = selection.map(|predicate| {
             fulfill_cx.register_predicate_obligation(&infcx, predicate.clone());
             predicate

@@ -143,11 +143,8 @@ functor
           ident : impl_ident;
         }
       | ImplApp of { impl : impl_expr; args : impl_expr list }
-      | Dyn of trait_goal
+      | Dyn
       | Builtin of trait_goal
-      | FnPointer of ty
-      (* The `IE` suffix is there because visitors conflicts...... *)
-      | ClosureIE of todo
 
     and trait_goal = { trait : concrete_ident; args : generic_value list }
     (** A fully applied trait: [Foo<SomeTy, T0, ..., Tn>] (or
