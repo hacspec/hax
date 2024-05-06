@@ -851,7 +851,7 @@ pub fn refinement_type(mut attr: pm::TokenStream, item: pm::TokenStream) -> pm::
 
             #[::hax_lib::exclude]
             impl #generics ::hax_lib::RefineAs<#ident <#generics_args>> for #inner_ty {
-                fn check(self) -> #ident <#generics_args> {
+                fn into_checked(self) -> #ident <#generics_args> {
                     use ::hax_lib::Refinement;
                     #ident::new(self)
                 }

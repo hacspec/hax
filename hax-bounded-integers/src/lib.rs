@@ -241,8 +241,8 @@ const _: () = {
 fn tests() {
     use hax_lib::*;
 
-    let x: BoundedU8<0, 5> = 2.check();
-    let y: BoundedU8<5, 10> = (x + x).check();
+    let x: BoundedU8<0, 5> = 2.into_checked();
+    let y: BoundedU8<5, 10> = (x + x).into_checked();
 
     let _ = x >> 3;
     let _ = x >> BoundedU8::<0, 5>::new(3);

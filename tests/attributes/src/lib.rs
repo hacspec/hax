@@ -204,7 +204,7 @@ mod refinement_types {
 
     #[hax_lib::requires(x < 127)]
     pub fn double_refine(x: u8) -> Even {
-        (x + x).check()
+        (x + x).into_checked()
     }
 
     /// A string that contains no space.

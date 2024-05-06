@@ -34,15 +34,63 @@ pub fn chacha20_quarter_round(
 use hax_lib::*;
 
 fn chacha20_double_round(state: State) -> State {
-    let state = chacha20_quarter_round(0.check(), 4.check(), 8.check(), 12.check(), state);
-    let state = chacha20_quarter_round(1.check(), 5.check(), 9.check(), 13.check(), state);
-    let state = chacha20_quarter_round(2.check(), 6.check(), 10.check(), 14.check(), state);
-    let state = chacha20_quarter_round(3.check(), 7.check(), 11.check(), 15.check(), state);
+    let state = chacha20_quarter_round(
+        0.into_checked(),
+        4.into_checked(),
+        8.into_checked(),
+        12.into_checked(),
+        state,
+    );
+    let state = chacha20_quarter_round(
+        1.into_checked(),
+        5.into_checked(),
+        9.into_checked(),
+        13.into_checked(),
+        state,
+    );
+    let state = chacha20_quarter_round(
+        2.into_checked(),
+        6.into_checked(),
+        10.into_checked(),
+        14.into_checked(),
+        state,
+    );
+    let state = chacha20_quarter_round(
+        3.into_checked(),
+        7.into_checked(),
+        11.into_checked(),
+        15.into_checked(),
+        state,
+    );
 
-    let state = chacha20_quarter_round(0.check(), 5.check(), 10.check(), 15.check(), state);
-    let state = chacha20_quarter_round(1.check(), 6.check(), 11.check(), 12.check(), state);
-    let state = chacha20_quarter_round(2.check(), 7.check(), 8.check(), 13.check(), state);
-    chacha20_quarter_round(3.check(), 4.check(), 9.check(), 14.check(), state)
+    let state = chacha20_quarter_round(
+        0.into_checked(),
+        5.into_checked(),
+        10.into_checked(),
+        15.into_checked(),
+        state,
+    );
+    let state = chacha20_quarter_round(
+        1.into_checked(),
+        6.into_checked(),
+        11.into_checked(),
+        12.into_checked(),
+        state,
+    );
+    let state = chacha20_quarter_round(
+        2.into_checked(),
+        7.into_checked(),
+        8.into_checked(),
+        13.into_checked(),
+        state,
+    );
+    chacha20_quarter_round(
+        3.into_checked(),
+        4.into_checked(),
+        9.into_checked(),
+        14.into_checked(),
+        state,
+    )
 }
 
 pub fn chacha20_rounds(state: State) -> State {

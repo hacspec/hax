@@ -160,9 +160,9 @@ pub trait Refinement {
     fn invariant(value: Self::InnerType) -> bool;
 }
 
-/// A utilitary trait that provides a `check` method on traits that
-/// have a refined counter part. This trait is parametrized by a type
-/// `Target`: a base type can be refined in multiple ways.
+/// A utilitary trait that provides a `into_checked` method on traits
+/// that have a refined counter part. This trait is parametrized by a
+/// type `Target`: a base type can be refined in multiple ways.
 ///
 /// Please never implement this trait yourself, use the
 /// `refinement_type` macro instead.
@@ -176,5 +176,5 @@ pub trait RefineAs<RefinedType> {
     /// run-time, unless this behavior was disabled when defining the
     /// refinement type `RefinedType` with the `refinement_type` macro
     /// and its `no_debug_runtime_check` option.
-    fn check(self) -> RefinedType;
+    fn into_checked(self) -> RefinedType;
 }
