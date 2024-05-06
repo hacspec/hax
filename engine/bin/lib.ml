@@ -1,5 +1,6 @@
 open Hax_engine
 open Base
+open Stdio
 
 let read_options_from_stdin (yojson_from_string : string -> Yojson.Safe.t) :
     Types.engine_options =
