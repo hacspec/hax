@@ -177,15 +177,31 @@ pub enum UnOp {
 #[derive(AdtInto, Copy, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'slt, S: UnderOwnerState<'slt>>, from: rustc_middle::mir::BinOp, state: S as _s)]
 pub enum BinOp {
+    // We merge the checked and unchecked variants because in either case overflow is failure.
+    #[custom_arm(
+        rustc_middle::mir::BinOp::Add | rustc_middle::mir::BinOp::AddUnchecked => BinOp::Add,
+    )]
     Add,
+    #[custom_arm(
+        rustc_middle::mir::BinOp::Sub | rustc_middle::mir::BinOp::SubUnchecked => BinOp::Sub,
+    )]
     Sub,
+    #[custom_arm(
+        rustc_middle::mir::BinOp::Mul | rustc_middle::mir::BinOp::MulUnchecked => BinOp::Mul,
+    )]
     Mul,
     Div,
     Rem,
     BitXor,
     BitAnd,
     BitOr,
+    #[custom_arm(
+        rustc_middle::mir::BinOp::Shl | rustc_middle::mir::BinOp::ShlUnchecked => BinOp::Shl,
+    )]
     Shl,
+    #[custom_arm(
+        rustc_middle::mir::BinOp::Shr | rustc_middle::mir::BinOp::ShrUnchecked => BinOp::Shr,
+    )]
     Shr,
     Eq,
     Lt,
@@ -3240,6 +3256,8 @@ pub enum ClauseKind {
     TypeOutlives(TypeOutlivesPredicate),
     Projection(ProjectionPredicate),
     ConstArgHasType(ConstantExpr, Ty),
+    WellFormed(GenericArg),
+    ConstEvaluatable(ConstantExpr),
 }
 
 /// Reflects [`rustc_middle::ty::Clause`]
@@ -3368,12 +3386,10 @@ pub enum ClosureKind {
 )]
 pub enum PredicateKind {
     Clause(Clause),
-    WellFormed(GenericArg),
     ObjectSafe(DefId),
     ClosureKind(DefId, Vec<GenericArg>, ClosureKind),
     Subtype(SubtypePredicate),
     Coerce(CoercePredicate),
-    ConstEvaluatable(ConstantExpr),
     ConstEquate(ConstantExpr, ConstantExpr),
     TypeWellFormedFromEnv(Ty),
     Ambiguous,
