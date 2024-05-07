@@ -457,8 +457,8 @@ pub fn clause_id_of_predicate<'tcx, S: UnderOwnerState<'tcx>>(
         let bvs: Vec<BoundVariableKind> = binder.bound_vars().sinto(s);
         let ck: ClauseKind = ck.sinto(s);
         hasher.write_u8(0);
-        bvs.hash(&mut hasher);
         ck.hash(&mut hasher);
+        bvs.hash(&mut hasher);
     } else {
         hasher.write_u8(1);
         predicate.sinto(s).hash(&mut hasher);
