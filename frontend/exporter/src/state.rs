@@ -250,7 +250,7 @@ impl ImplInfos {
             .predicates_defined_on(did)
             .predicates
             .iter()
-            .map(|(x, _)| x.sinto(s))
+            .map(|(clause, _)| clause.as_predicate().sinto(s))
             .collect();
         Self {
             generics: tcx.generics_of(did).sinto(s),

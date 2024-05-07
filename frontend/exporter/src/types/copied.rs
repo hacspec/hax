@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::rustc_middle::query::Key;
+use rustc_middle::ty;
 
 /// Reflects [`rustc_hir::definitions::DisambiguatedDefPathData`]
 #[derive(
@@ -2784,7 +2785,6 @@ pub struct Impl<Body: IsBody> {
                 .predicates
                 .iter()
                 .copied()
-                .filter_map(|(pred, span)| Some((pred.as_clause()?, span)))
                 .filter_map(|(clause, span)| super_clause_to_clause_and_impl_expr(s, owner_id, clause, span))
                 .collect::<Vec<_>>()
         } else {
@@ -3272,6 +3272,7 @@ pub enum ClauseKind {
     ConstArgHasType(ConstantExpr, Ty),
     WellFormed(GenericArg),
     ConstEvaluatable(ConstantExpr),
+    TypeWellFormedFromEnv(Ty),
 }
 
 /// Reflects [`rustc_middle::ty::ClauseKind`] and adds a hash-consed clause identifier.
@@ -3329,12 +3330,14 @@ pub struct Binder<T> {
 
 /// Reflects [`rustc_middle::ty::GenericPredicates`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::GenericPredicates<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::GenericPredicates<'tcx>, state: S as s)]
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub struct GenericPredicates {
     pub parent: Option<DefId>,
+    // FIXME: Switch from `Predicate` to `Clause` (will require correct handling of binders).
+    #[value(self.predicates.iter().map(|(clause, span)| (clause.as_predicate().sinto(s), span.sinto(s))).collect())]
     pub predicates: Vec<(Predicate, Span)>,
 }
 
@@ -3418,7 +3421,6 @@ pub enum PredicateKind {
     Subtype(SubtypePredicate),
     Coerce(CoercePredicate),
     ConstEquate(ConstantExpr, ConstantExpr),
-    TypeWellFormedFromEnv(Ty),
     Ambiguous,
     AliasRelate(Term, Term, AliasRelationDirection),
 }
@@ -3452,22 +3454,25 @@ fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> Gene
         }
     };
 
-    let predicates: Vec<_> = if use_item_bounds {
+    let clauses: Vec<ty::Clause<'tcx>> = if use_item_bounds {
         tcx.item_bounds(s.owner_id())
             .subst_identity()
             .iter()
-            .map(|x| (x.as_predicate(), rustc_span::DUMMY_SP))
             .collect()
     } else {
         tcx.predicates_defined_on(s.owner_id())
             .predicates
-            .into_iter()
-            .cloned()
+            .iter()
+            .map(|(x, _span)| x)
+            .copied()
             .collect()
     };
-    predicates
+    clauses
         .iter()
-        .map(|(pred, _span)| tcx.erase_late_bound_regions(pred.clone().kind()).sinto(s))
+        .map(|clause| {
+            tcx.erase_late_bound_regions(clause.as_predicate().kind())
+                .sinto(s)
+        })
         .collect()
 }
 

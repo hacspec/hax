@@ -418,14 +418,15 @@ pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
         let clause: Clause = clause.kind().skip_binder().sinto(s);
         clause.id
     };
-    let pred = clause.as_predicate().subst_supertrait(tcx, &impl_trait_ref);
-    let impl_expr = pred
+    let new_clause = clause.subst_supertrait(tcx, &impl_trait_ref);
+    let impl_expr = new_clause
+        .as_predicate()
         .to_opt_poly_trait_pred()?
         .impl_expr(s, get_param_env(s));
     // Build the new clause, again without binder.
-    let mut new_clause: Clause = pred.as_clause()?.kind().skip_binder().sinto(s);
-    new_clause.id = original_clause_id;
-    Some((new_clause, impl_expr, span.sinto(s)))
+    let mut new_clause_no_binder: Clause = new_clause.kind().skip_binder().sinto(s);
+    new_clause_no_binder.id = original_clause_id;
+    Some((new_clause_no_binder, impl_expr, span.sinto(s)))
 }
 
 fn deterministic_hash<T: std::hash::Hash>(x: &T) -> u64 {

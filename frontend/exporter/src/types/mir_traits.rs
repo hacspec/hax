@@ -81,8 +81,8 @@ pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
         };
 
         // Explore only the trait predicates
-        use rustc_middle::ty::{ClauseKind, PredicateKind};
-        if let PredicateKind::Clause(ClauseKind::Trait(trait_pred)) = bare_pred_kind {
+        use rustc_middle::ty::ClauseKind;
+        if let ClauseKind::Trait(trait_pred) = bare_pred_kind {
             // Rewrap the now-substituted kind with the original binder. Substitution dealt with
             // early bound variables; this binds late bound ones.
             let trait_ref = pred_kind.rebind(trait_pred.trait_ref);
@@ -192,12 +192,12 @@ pub fn get_params_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     // which is not what we want.
     let preds = tcx.predicates_defined_on(def_id);
     for (pred, _) in preds.predicates {
-        use rustc_middle::ty::{ClauseKind, PredicateKind};
+        use rustc_middle::ty::ClauseKind;
         match &pred.kind().skip_binder() {
-            PredicateKind::Clause(ClauseKind::Trait(_)) => num_trait_clauses += 1,
-            PredicateKind::Clause(ClauseKind::RegionOutlives(_)) => num_regions_outlive += 1,
-            PredicateKind::Clause(ClauseKind::TypeOutlives(_)) => num_types_outlive += 1,
-            PredicateKind::Clause(ClauseKind::Projection(_)) => num_trait_type_constraints += 1,
+            ClauseKind::Trait(_) => num_trait_clauses += 1,
+            ClauseKind::RegionOutlives(_) => num_regions_outlive += 1,
+            ClauseKind::TypeOutlives(_) => num_types_outlive += 1,
+            ClauseKind::Projection(_) => num_trait_type_constraints += 1,
             _ => (),
         }
     }
