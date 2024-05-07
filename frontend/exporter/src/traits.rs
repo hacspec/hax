@@ -178,10 +178,10 @@ mod search_clause {
                 .filter(|item| item.kind == AssocKind::Type)
                 .copied()
                 .map(|item| {
-                    let bounds = tcx.item_bounds(item.def_id).map_bound(|predicates| {
+                    let bounds = tcx.item_bounds(item.def_id).map_bound(|clauses| {
                         predicates_to_poly_trait_predicates(
                             tcx,
-                            predicates.into_iter(),
+                            clauses.into_iter().map(|clause| clause.as_predicate()),
                             self.skip_binder().trait_ref.substs,
                         )
                         .enumerate()
@@ -397,18 +397,20 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
     }
 }
 
-/// Given a predicate `pred` in the context of some impl. block
-/// `impl_did`, susbts correctly `Self` from `pred` and (1) derive a
+/// Given a clause `clause` in the context of some impl. block
+/// `impl_did`, susbts correctly `Self` from `clause` and (1) derive a
 /// `Clause` and (2) resolve an `ImplExpr`.
-pub fn super_predicate_to_clauses_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
+pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     impl_did: rustc_span::def_id::DefId,
-    (pred, span): &(rustc_middle::ty::Predicate<'tcx>, rustc_span::Span),
+    clause: rustc_middle::ty::Clause<'tcx>,
+    span: rustc_span::Span,
 ) -> Option<(Clause, ImplExpr, Span)> {
     let tcx = s.base().tcx;
     let impl_trait_ref = tcx
         .impl_trait_ref(impl_did)
         .map(|binder| rustc_middle::ty::Binder::dummy(binder.subst_identity()))?;
+    let pred = clause.as_predicate();
     let original_clause_id = {
         // We don't want the id of the substituted clause id, but the
         // original clause id (with, i.e., `Self`)

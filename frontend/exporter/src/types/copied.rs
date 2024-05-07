@@ -2720,8 +2720,9 @@ pub enum ImplItemKind<Body: IsBody> {
             let impl_did = assoc_item.impl_container(tcx).unwrap();
             tcx.explicit_item_bounds(assoc_item.trait_item_def_id.unwrap())
                 .skip_binder()
-                .into_iter()
-                .flat_map(|x| super_predicate_to_clauses_and_impl_expr(s, impl_did, x))
+                .iter()
+                .copied()
+                .filter_map(|(clause, span)| super_clause_to_clause_and_impl_expr(s, impl_did, clause, span))
                 .collect::<Vec<_>>()
         };
         ImplItemKind::Type {
@@ -2781,8 +2782,10 @@ pub struct Impl<Body: IsBody> {
         if let Some(trait_did) = trait_did {
             tcx.super_predicates_of(trait_did)
                 .predicates
-                .into_iter()
-                .flat_map(|x| super_predicate_to_clauses_and_impl_expr(s, owner_id, x))
+                .iter()
+                .copied()
+                .filter_map(|(pred, span)| Some((pred.as_clause()?, span)))
+                .filter_map(|(clause, span)| super_clause_to_clause_and_impl_expr(s, owner_id, clause, span))
                 .collect::<Vec<_>>()
         } else {
             vec![]
@@ -3437,9 +3440,11 @@ fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> Gene
     };
 
     let predicates: Vec<_> = if use_item_bounds {
-        let list = tcx.item_bounds(s.owner_id()).subst_identity();
-        let span = list.default_span(tcx);
-        list.into_iter().map(|x| (x, span)).collect()
+        tcx.item_bounds(s.owner_id())
+            .subst_identity()
+            .iter()
+            .map(|x| (x.as_predicate(), rustc_span::DUMMY_SP))
+            .collect()
     } else {
         tcx.predicates_defined_on(s.owner_id())
             .predicates

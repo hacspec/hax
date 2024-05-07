@@ -59,25 +59,25 @@ impl<'tcx> ty::TyCtxt<'tcx> {
         let with_self = self.predicates_of(did);
         let parent = with_self.parent;
         let with_self = {
-            let extra_predicates = if rustc_hir::def::DefKind::OpaqueTy == self.def_kind(did) {
-                // An opaque type (e.g. `impl Trait`) provides
-                // predicates by itself: we need to account for them.
-                self.explicit_item_bounds(did)
-                    .skip_binder()
-                    .iter()
-                    .collect()
-            } else {
-                vec![]
-            }
-            .into_iter()
-            .cloned();
-            with_self.predicates.iter().cloned().chain(extra_predicates)
+            let extra_predicates: Vec<(ty::Predicate<'_>, rustc_span::Span)> =
+                if rustc_hir::def::DefKind::OpaqueTy == self.def_kind(did) {
+                    // An opaque type (e.g. `impl Trait`) provides
+                    // predicates by itself: we need to account for them.
+                    self.explicit_item_bounds(did)
+                        .skip_binder()
+                        .iter()
+                        .map(|(clause, span)| (clause.as_predicate(), *span))
+                        .collect()
+                } else {
+                    vec![]
+                };
+            with_self.predicates.iter().copied().chain(extra_predicates)
         };
         let without_self: Vec<ty::Predicate> = self
             .predicates_defined_on(did)
             .predicates
-            .into_iter()
-            .cloned()
+            .iter()
+            .copied()
             .map(|(pred, _)| pred)
             .collect();
         (
