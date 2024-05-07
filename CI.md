@@ -17,7 +17,9 @@
    FStar, we do not run Coq or FStar on the extractions.
  - [`test_installs`](./.github/workflows/test_installs.yml): compiles
    the toolchain on two versions of Ubuntu and two versions of MacOS
-   using `apt` or `homebrew` and the `setup.sh` script.
+   using `apt` or `homebrew` and the `setup.sh` script;
+ - [`engine-js-build`](./.github/workflows/engine_js_build.yml): tests
+   the build the JS version of the engine.
  
 ## Merge queue
 Additional actions are triggered on pull requests in the merge queue. They are
