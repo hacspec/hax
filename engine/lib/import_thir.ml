@@ -80,7 +80,6 @@ let c_mutability (witness : 'a) : bool -> 'a Ast.mutability = function
 let c_borrow_kind span : Thir.borrow_kind -> borrow_kind = function
   | Shared -> Shared
   | Shallow -> unimplemented [ span ] "Shallow borrows"
-  | Unique -> Unique
   | Mut _ -> Mut W.mutable_reference
 
 let c_binding_mode span : Thir.binding_mode -> binding_mode = function

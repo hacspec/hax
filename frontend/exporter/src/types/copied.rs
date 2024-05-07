@@ -1960,8 +1960,19 @@ pub enum PointerCast {
 pub enum BorrowKind {
     Shared,
     Shallow,
-    Unique,
-    Mut { allow_two_phase_borrow: bool },
+    Mut { kind: MutBorrowKind },
+}
+
+/// Reflects [`rustc_middle::mir::MutBorrowKind`]
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_middle::mir::MutBorrowKind, state: S as _s)]
+#[derive(
+    Copy, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub enum MutBorrowKind {
+    Default,
+    TwoPhaseBorrow,
+    ClosureCapture,
 }
 
 /// Reflects [`rustc_ast::ast::StrStyle`]
@@ -3244,9 +3255,9 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ProjectionPredicate>
     }
 }
 
-/// Reflects [`rustc_middle::ty::Clause`]
+/// Reflects [`rustc_middle::ty::ClauseKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::Clause<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::ClauseKind<'tcx>, state: S as tcx)]
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
@@ -3260,7 +3271,7 @@ pub enum ClauseKind {
     ConstEvaluatable(ConstantExpr),
 }
 
-/// Reflects [`rustc_middle::ty::Clause`]
+/// Reflects [`rustc_middle::ty::ClauseKind`] and adds a hash-consed clause identifier.
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
@@ -3269,7 +3280,7 @@ pub struct Clause {
     pub id: u64,
 }
 
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause> for rustc_middle::ty::Clause<'tcx> {
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause> for rustc_middle::ty::ClauseKind<'tcx> {
     fn sinto(&self, s: &S) -> Clause {
         use rustc_middle::ty::ToPredicate;
         Clause {
