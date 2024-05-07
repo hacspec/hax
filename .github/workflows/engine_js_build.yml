@@ -1,0 +1,18 @@
+name: Test JS build
+
+on:
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    
+jobs:
+  engine-js-build:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group' }}
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: DeterminateSystems/nix-installer-action@main
+    - uses: DeterminateSystems/magic-nix-cache-action@main
+    - run: nix build .\#hax-engine.passthru.js -L  

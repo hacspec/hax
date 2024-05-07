@@ -111,6 +111,8 @@
         name = "hax-engine.js";
         nativeBuildInputs = old.nativeBuildInputs ++ [closurecompiler gnused];
         buildPhase = ''
+          # Enable JS build
+          sed -i "s/; (include dune-js)/(include dune-js)/g" bin/dune
           # Compile JS target
           dune build bin/js_driver.bc.js
           # Optimize the size of the JS file
