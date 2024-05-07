@@ -434,36 +434,38 @@ pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
     Some((clause, impl_expr, span.sinto(s)))
 }
 
+fn deterministic_hash<T: std::hash::Hash>(x: &T) -> u64 {
+    use crate::deterministic_hash::DeterministicHasher;
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::Hasher;
+    let mut hasher = DeterministicHasher::new(DefaultHasher::new());
+    x.hash(&mut hasher);
+    hasher.finish()
+}
+
 /// Crafts a unique identifier for a predicate by hashing it. The hash
 /// is non-trivial because we need stable identifiers: two hax
 /// extraction of a same predicate should result in the same
 /// identifier. Rustc's stable hash is not doing what we want here: it
 /// is sensible to the environment. Instead, we convert the (rustc)
-/// predicate to `crate::Predicate` and hash from there, taking care
-/// of not translating directly the `Clause` case, which otherwise
-/// would call `clause_id_of_predicate` as well.
+/// predicate to `crate::Predicate` and hash from there.
 #[tracing::instrument(level = "trace", skip(s))]
 pub fn clause_id_of_predicate<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     predicate: rustc_middle::ty::Predicate<'tcx>,
 ) -> u64 {
-    use crate::deterministic_hash::DeterministicHasher;
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-    let mut hasher = DeterministicHasher::new(DefaultHasher::new());
-
-    let binder = predicate.kind();
-    if let rustc_middle::ty::PredicateKind::Clause(ck) = binder.skip_binder() {
-        let bvs: Vec<BoundVariableKind> = binder.bound_vars().sinto(s);
-        let ck: ClauseKind = ck.sinto(s);
-        hasher.write_u8(0);
-        ck.hash(&mut hasher);
-        bvs.hash(&mut hasher);
-    } else {
-        hasher.write_u8(1);
-        predicate.sinto(s).hash(&mut hasher);
+    let predicate = predicate.sinto(s);
+    match &predicate.value {
+        // Instead of recursively hashing the clause, we reuse the already-computed id.
+        PredicateKind::Clause(clause) => clause.id,
+        _ => deterministic_hash(&(1u8, predicate)),
     }
-    hasher.finish()
+}
+
+/// Used when building a `crate::Clause`. See [`clause_id_of_predicate`] for what we're doing here.
+#[tracing::instrument(level = "trace")]
+pub fn clause_id_of_bound_clause_kind(binder: &Binder<ClauseKind>) -> u64 {
+    deterministic_hash(&(0u8, binder))
 }
 
 #[tracing::instrument(level = "trace", skip(s))]

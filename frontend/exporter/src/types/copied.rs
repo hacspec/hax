@@ -3283,13 +3283,26 @@ pub struct Clause {
     pub id: u64,
 }
 
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause>
+    for rustc_middle::ty::Binder<'tcx, rustc_middle::ty::ClauseKind<'tcx>>
+{
+    fn sinto(&self, s: &S) -> Clause {
+        // FIXME: `ClauseKind::sinto` uses a dummy binder. We need it because `Predicate::sinto()`
+        // doesn't propagate the binder to the `ClauseKind`. This might cause inconsistencies. It
+        // might be that we don't want to hash the binder at all.
+        let binder: Binder<ClauseKind> = self.sinto(s);
+        let id = clause_id_of_bound_clause_kind(&binder);
+        Clause {
+            kind: binder.value,
+            id,
+        }
+    }
+}
+
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause> for rustc_middle::ty::ClauseKind<'tcx> {
     fn sinto(&self, s: &S) -> Clause {
-        use rustc_middle::ty::ToPredicate;
-        Clause {
-            id: clause_id_of_predicate(s, self.clone().to_predicate(s.base().tcx)),
-            kind: self.sinto(s),
-        }
+        // FIXME: this is dangerous.
+        rustc_middle::ty::Binder::dummy(self.clone()).sinto(s)
     }
 }
 
