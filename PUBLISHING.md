@@ -8,6 +8,9 @@ Here is the list of the crates in this repository (excluding `tests`
 and `examples`):
 
 - `hax-test-harness` **(doesn't need to be published)**
+
+## cargo-hax
+
 1. `hax-frontend-exporter-options` (`frontend/exporter/options `)
 2. `hax-adt-into` (`frontend/exporter/adt-into`)
 3. `hax-frontend-exporter` (`frontend/exporter`)
@@ -15,13 +18,19 @@ and `examples`):
 5. `hax-diagnostics` (`frontend/diagnostics`)
 6. `hax-cli-options-engine` (`cli/options/engine`)
 7. `hax-subcommands` (binaries) (`cli/subcommands`)
-    - `cargo-hax`
-    - `hax-export-json-schemas`
-    - `hax-pretty-print-diagnostics`
-- `hax-lib-macros`
-- `hax-lint`
+   - `cargo-hax`
+   - `hax-export-json-schemas`
+   - `hax-pretty-print-diagnostics`
+
 - `hax-phase-debug-webapp`
 - `hax-driver`
 
+## hax-lib
 
+1. `hax-lib-macros-types`
+2. `hax-lib-macros`
+3. `hax-lib`
 
+---
+
+- `hax-lint`
