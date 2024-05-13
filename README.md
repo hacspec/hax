@@ -1,3 +1,11 @@
+<p align="center">
+  <a href="https://hacspec.org/">🌐 Website</a> |
+  <a href="https://hacspec.org/book">📖 Book</a> |
+  <a href="https://hacspec.org/blog">📝 Blog</a> |
+  <a href="https://hacspec.zulipchat.com/">💬 Zulip</a> |
+  <a href="https://hacspec.org/hax/">🛠️ Internal docs</a>
+</p>
+
 # Hax
 
 hax is a tool for high assurance translations that translates a large subset of
