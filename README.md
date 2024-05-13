@@ -20,6 +20,15 @@ standard library, to write succinct, executable, and verifiable specifications i
 Rust.
 These specifications can be translated into formal languages with hax.
 
+## Learn more
+
+Here are some resources for learning more about hax:
+ - [Book](https://hacspec.org/book) (work in progress)
+    + [Quick start](https://hacspec.org/book/quick_start/intro.html)
+    + [Tutorial](https://hacspec.org/book/tutorial/index.html)
+ - [Examples](examples/): the [examples directory](examples/) contains
+   a set of examples that show what hax can do for you.
+
 ## Usage
 Hax is a cargo subcommand. 
 The command `cargo hax` accepts the following subcommands:
@@ -98,11 +107,6 @@ Each unsupported Rust feature is documented as an issue labeled [`unsupported-ru
 Quicklinks:
  - [🔨 Rejected rust we want to support](https://github.com/hacspec/hax/issues?q=is%3Aissue+is%3Aopen+label%3Aunsupported-rust+-label%3Awontfix%2Cwontfix-v1);
  - [💭 Rejected rust we don't plan to support in v1](https://github.com/hacspec/hax/issues?q=is%3Aissue+is%3Aopen+label%3Aunsupported-rust+label%3Awontfix%2Cwontfix-v1).
-
-## Examples
-
-There's a set of examples that show what hax can do for you.
-Please check out the [examples directory](examples/).
 
 ## Hacking on Hax
 ### Edit the sources (Nix)
