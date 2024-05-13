@@ -1,3 +1,11 @@
+<p align="center">
+  <a href="https://hacspec.org/">🌐 Website</a> |
+  <a href="https://hacspec.org/book">📖 Book</a> |
+  <a href="https://hacspec.org/blog">📝 Blog</a> |
+  <a href="https://hacspec.zulipchat.com/">💬 Zulip</a> |
+  <a href="https://hacspec.org/hax/">🛠️ Internal docs</a>
+</p>
+
 # Hax
 
 hax is a tool for high assurance translations that translates a large subset of
@@ -12,6 +20,15 @@ standard library, to write succinct, executable, and verifiable specifications i
 Rust.
 These specifications can be translated into formal languages with hax.
 
+## Learn more
+
+Here are some resources for learning more about hax:
+ - [Book](https://hacspec.org/book) (work in progress)
+    + [Quick start](https://hacspec.org/book/quick_start/intro.html)
+    + [Tutorial](https://hacspec.org/book/tutorial/index.html)
+ - [Examples](examples/): the [examples directory](examples/) contains
+   a set of examples that show what hax can do for you.
+
 ## Usage
 Hax is a cargo subcommand. 
 The command `cargo hax` accepts the following subcommands:
@@ -19,8 +36,8 @@ The command `cargo hax` accepts the following subcommands:
  * **`json`** (`cargo hax json`): extract the typed AST of your crate as a JSON file.
  
 Note:
- * `BACKEND` can be `fstar`, `coq` or `easycrypt`. `cargo hax into
-   --help` gives the full list of supported backends.
+ * `BACKEND` can be `fstar`, `coq`, `easycrypt` or `pro-verif`. `cargo hax into --help`
+   gives the full list of supported backends.
  * The subcommands `cargo hax`, `cargo hax into` and `cargo hax into
    <BACKEND>` takes options. For instance, you can `cargo hax into
    fstar --z3rlimit 100`. Use `--help` on those subcommands to list
@@ -91,12 +108,10 @@ Quicklinks:
  - [🔨 Rejected rust we want to support](https://github.com/hacspec/hax/issues?q=is%3Aissue+is%3Aopen+label%3Aunsupported-rust+-label%3Awontfix%2Cwontfix-v1);
  - [💭 Rejected rust we don't plan to support in v1](https://github.com/hacspec/hax/issues?q=is%3Aissue+is%3Aopen+label%3Aunsupported-rust+label%3Awontfix%2Cwontfix-v1).
 
-## Examples
-
-There's a set of examples that show what hax can do for you.
-Please check out the [examples directory](examples/).
-
 ## Hacking on Hax
+The documentation of the internal crate of hax and its engine can be
+found [here](https://hacspec.org/hax/).
+
 ### Edit the sources (Nix)
 
 Just clone & `cd` into the repo, then run `nix develop .`.
