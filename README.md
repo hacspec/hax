@@ -109,6 +109,9 @@ Quicklinks:
  - [💭 Rejected rust we don't plan to support in v1](https://github.com/hacspec/hax/issues?q=is%3Aissue+is%3Aopen+label%3Aunsupported-rust+label%3Awontfix%2Cwontfix-v1).
 
 ## Hacking on Hax
+The documentation of the internal crate of hax and its engine can be
+found [here](https://hacspec.org/hax/).
+
 ### Edit the sources (Nix)
 
 Just clone & `cd` into the repo, then run `nix develop .`.
