@@ -6,7 +6,8 @@ license.workspace = true
 homepage.workspace = true
 edition.workspace = true
 repository.workspace = true
-readme.workspace = true
+readme = "README.md"
+description = "Hax-internal types"
 
 [dependencies]
 serde.workspace = true
@@ -16,5 +17,3 @@ quote.workspace = true
 proc-macro2.workspace = true
 uuid = { version = "1.5", features = ["v4"] }
 
-[features]
-schemars = ["dep:schemars"]
