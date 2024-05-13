@@ -43,7 +43,7 @@
     pname = "hax-engine";
     version = "0.0.1";
     duneVersion = "3";
-    src = lib.sourceFilesBySuffices ./. [".ml" ".mli" ".js" "dune" "dune-project" "sh" "rs" "mld"];
+    src = lib.sourceFilesBySuffices ./. [".ml" ".mli" ".js" "dune" "dune-js" "dune-project" "sh" "rs" "mld"];
     buildInputs = with ocamlPackages;
       [
         zarith_stubs_js
@@ -110,6 +110,7 @@
       js = hax-engine.overrideAttrs (old: {
         name = "hax-engine.js";
         nativeBuildInputs = old.nativeBuildInputs ++ [closurecompiler gnused];
+        outputs = ["out"];
         buildPhase = ''
           # Enable JS build
           sed -i "s/; (include dune-js)/(include dune-js)/g" bin/dune
