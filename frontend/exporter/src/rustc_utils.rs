@@ -16,7 +16,7 @@ impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
 impl<'tcx> ty::Binder<'tcx, ty::PredicateKind<'tcx>> {
     fn as_poly_trait_predicate(self) -> Option<ty::PolyTraitPredicate<'tcx>> {
         self.try_map_bound(|kind| match kind {
-            ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => Ok(trait_pred),
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => Ok(trait_pred),
             _ => Err(()),
         })
         .ok()
@@ -26,6 +26,7 @@ impl<'tcx> ty::Binder<'tcx, ty::PredicateKind<'tcx>> {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct AnnotatedPredicate<'tcx> {
     pub is_extra_self_predicate: bool,
+    /// Note: they are all actually `Clause`s.
     pub predicate: ty::Predicate<'tcx>,
     pub span: rustc_span::Span,
 }
@@ -59,31 +60,31 @@ impl<'tcx> ty::TyCtxt<'tcx> {
         let with_self = self.predicates_of(did);
         let parent = with_self.parent;
         let with_self = {
-            let extra_predicates = if rustc_hir::def::DefKind::OpaqueTy == self.def_kind(did) {
-                // An opaque type (e.g. `impl Trait`) provides
-                // predicates by itself: we need to account for them.
-                self.explicit_item_bounds(did)
-                    .skip_binder()
-                    .iter()
-                    .collect()
-            } else {
-                vec![]
-            }
-            .into_iter()
-            .cloned();
-            with_self.predicates.iter().cloned().chain(extra_predicates)
+            let extra_predicates: Vec<(ty::Clause<'_>, rustc_span::Span)> =
+                if rustc_hir::def::DefKind::OpaqueTy == self.def_kind(did) {
+                    // An opaque type (e.g. `impl Trait`) provides
+                    // predicates by itself: we need to account for them.
+                    self.explicit_item_bounds(did)
+                        .skip_binder()
+                        .iter()
+                        .copied()
+                        .collect()
+                } else {
+                    vec![]
+                };
+            with_self.predicates.iter().copied().chain(extra_predicates)
         };
-        let without_self: Vec<ty::Predicate> = self
+        let without_self: Vec<ty::Clause<'_>> = self
             .predicates_defined_on(did)
             .predicates
-            .into_iter()
-            .cloned()
-            .map(|(pred, _)| pred)
+            .iter()
+            .copied()
+            .map(|(clause, _)| clause)
             .collect();
         (
-            with_self.map(move |(predicate, span)| AnnotatedPredicate {
-                is_extra_self_predicate: !without_self.contains(&predicate),
-                predicate,
+            with_self.map(move |(clause, span)| AnnotatedPredicate {
+                is_extra_self_predicate: !without_self.contains(&clause),
+                predicate: clause.as_predicate(),
                 span,
             }),
             parent,

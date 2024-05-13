@@ -178,10 +178,10 @@ mod search_clause {
                 .filter(|item| item.kind == AssocKind::Type)
                 .copied()
                 .map(|item| {
-                    let bounds = tcx.item_bounds(item.def_id).map_bound(|predicates| {
+                    let bounds = tcx.item_bounds(item.def_id).map_bound(|clauses| {
                         predicates_to_poly_trait_predicates(
                             tcx,
-                            predicates.into_iter(),
+                            clauses.into_iter().map(|clause| clause.as_predicate()),
                             self.skip_binder().trait_ref.substs,
                         )
                         .enumerate()
@@ -397,13 +397,14 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
     }
 }
 
-/// Given a predicate `pred` in the context of some impl. block
-/// `impl_did`, susbts correctly `Self` from `pred` and (1) derive a
+/// Given a clause `clause` in the context of some impl. block
+/// `impl_did`, susbts correctly `Self` from `clause` and (1) derive a
 /// `Clause` and (2) resolve an `ImplExpr`.
-pub fn super_predicate_to_clauses_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
+pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     impl_did: rustc_span::def_id::DefId,
-    (pred, span): &(rustc_middle::ty::Predicate<'tcx>, rustc_span::Span),
+    clause: rustc_middle::ty::Clause<'tcx>,
+    span: rustc_span::Span,
 ) -> Option<(Clause, ImplExpr, Span)> {
     let tcx = s.base().tcx;
     let impl_trait_ref = tcx
@@ -412,24 +413,29 @@ pub fn super_predicate_to_clauses_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
     let original_clause_id = {
         // We don't want the id of the substituted clause id, but the
         // original clause id (with, i.e., `Self`)
-        let rustc_middle::ty::PredicateKind::Clause(clause) = pred.kind().skip_binder() else {
-            None?
-        };
         let s = &with_owner_id(s.base(), (), (), impl_trait_ref.def_id());
-        use rustc_middle::ty::ToPredicate;
-        clause_id_of_predicate(s, clause.clone().to_predicate(s.base().tcx))
+        // We compute the id of the clause without binder.
+        let clause: Clause = clause.kind().skip_binder().sinto(s);
+        clause.id
     };
-    let pred = pred.subst_supertrait(tcx, &impl_trait_ref);
-    // TODO: use `let clause = pred.as_clause()?;` when upgrading rustc
-    let rustc_middle::ty::PredicateKind::Clause(clause) = pred.kind().skip_binder() else {
-        None?
-    };
-    let impl_expr = pred
+    let new_clause = clause.subst_supertrait(tcx, &impl_trait_ref);
+    let impl_expr = new_clause
+        .as_predicate()
         .to_opt_poly_trait_pred()?
         .impl_expr(s, get_param_env(s));
-    let mut clause: Clause = clause.sinto(s);
-    clause.id = original_clause_id;
-    Some((clause, impl_expr, span.sinto(s)))
+    // Build the new clause, again without binder.
+    let mut new_clause_no_binder: Clause = new_clause.kind().skip_binder().sinto(s);
+    new_clause_no_binder.id = original_clause_id;
+    Some((new_clause_no_binder, impl_expr, span.sinto(s)))
+}
+
+fn deterministic_hash<T: std::hash::Hash>(x: &T) -> u64 {
+    use crate::deterministic_hash::DeterministicHasher;
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::Hasher;
+    let mut hasher = DeterministicHasher::new(DefaultHasher::new());
+    x.hash(&mut hasher);
+    hasher.finish()
 }
 
 /// Crafts a unique identifier for a predicate by hashing it. The hash
@@ -437,31 +443,24 @@ pub fn super_predicate_to_clauses_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
 /// extraction of a same predicate should result in the same
 /// identifier. Rustc's stable hash is not doing what we want here: it
 /// is sensible to the environment. Instead, we convert the (rustc)
-/// predicate to `crate::Predicate` and hash from there, taking care
-/// of not translating directly the `Clause` case, which otherwise
-/// would call `clause_id_of_predicate` as well.
+/// predicate to `crate::Predicate` and hash from there.
 #[tracing::instrument(level = "trace", skip(s))]
 pub fn clause_id_of_predicate<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     predicate: rustc_middle::ty::Predicate<'tcx>,
 ) -> u64 {
-    use crate::deterministic_hash::DeterministicHasher;
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-    let mut hasher = DeterministicHasher::new(DefaultHasher::new());
-
-    let binder = predicate.kind();
-    if let rustc_middle::ty::PredicateKind::Clause(ck) = binder.skip_binder() {
-        let bvs: Vec<BoundVariableKind> = binder.bound_vars().sinto(s);
-        let ck: ClauseKind = ck.sinto(s);
-        hasher.write_u8(0);
-        bvs.hash(&mut hasher);
-        ck.hash(&mut hasher);
-    } else {
-        hasher.write_u8(1);
-        predicate.sinto(s).hash(&mut hasher);
+    let predicate = predicate.sinto(s);
+    match &predicate.value {
+        // Instead of recursively hashing the clause, we reuse the already-computed id.
+        PredicateKind::Clause(clause) => clause.id,
+        _ => deterministic_hash(&(1u8, predicate)),
     }
-    hasher.finish()
+}
+
+/// Used when building a `crate::Clause`. See [`clause_id_of_predicate`] for what we're doing here.
+#[tracing::instrument(level = "trace")]
+pub fn clause_id_of_bound_clause_kind(binder: &Binder<ClauseKind>) -> u64 {
+    deterministic_hash(&(0u8, binder))
 }
 
 #[tracing::instrument(level = "trace", skip(s))]

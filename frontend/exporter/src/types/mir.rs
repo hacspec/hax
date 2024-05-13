@@ -400,7 +400,7 @@ fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasO
         destination,
         target,
         unwind,
-        from_hir_call,
+        call_source,
         fn_span,
     } = terminator
     {
@@ -413,7 +413,7 @@ fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasO
             destination: destination.sinto(s),
             target: target.sinto(s),
             unwind: unwind.sinto(s),
-            from_hir_call: from_hir_call.sinto(s),
+            call_source: call_source.sinto(s),
             fn_span: fn_span.sinto(s),
             trait_refs,
             trait_info,
@@ -554,7 +554,7 @@ pub enum TerminatorKind {
         destination: Place,
         target: Option<BasicBlock>,
         unwind: UnwindAction,
-        from_hir_call: bool,
+        call_source: CallSource,
         fn_span: Span,
         trait_refs: Vec<ImplExpr>,
         trait_info: Option<ImplExpr>,
@@ -981,4 +981,5 @@ sinto_todo!(rustc_middle::mir, UserTypeProjection);
 sinto_todo!(rustc_middle::mir, MirSource<'tcx>);
 sinto_todo!(rustc_middle::mir, GeneratorInfo<'tcx>);
 sinto_todo!(rustc_middle::mir, VarDebugInfo<'tcx>);
+sinto_todo!(rustc_middle::mir, CallSource);
 sinto_todo!(rustc_span, ErrorGuaranteed);

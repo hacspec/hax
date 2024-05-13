@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::rustc_middle::query::Key;
+use rustc_middle::ty;
 
 /// Reflects [`rustc_hir::definitions::DisambiguatedDefPathData`]
 #[derive(
@@ -1960,8 +1961,19 @@ pub enum PointerCast {
 pub enum BorrowKind {
     Shared,
     Shallow,
-    Unique,
-    Mut { allow_two_phase_borrow: bool },
+    Mut { kind: MutBorrowKind },
+}
+
+/// Reflects [`rustc_middle::mir::MutBorrowKind`]
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_middle::mir::MutBorrowKind, state: S as _s)]
+#[derive(
+    Copy, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub enum MutBorrowKind {
+    Default,
+    TwoPhaseBorrow,
+    ClosureCapture,
 }
 
 /// Reflects [`rustc_ast::ast::StrStyle`]
@@ -2709,8 +2721,9 @@ pub enum ImplItemKind<Body: IsBody> {
             let impl_did = assoc_item.impl_container(tcx).unwrap();
             tcx.explicit_item_bounds(assoc_item.trait_item_def_id.unwrap())
                 .skip_binder()
-                .into_iter()
-                .flat_map(|x| super_predicate_to_clauses_and_impl_expr(s, impl_did, x))
+                .iter()
+                .copied()
+                .filter_map(|(clause, span)| super_clause_to_clause_and_impl_expr(s, impl_did, clause, span))
                 .collect::<Vec<_>>()
         };
         ImplItemKind::Type {
@@ -2770,8 +2783,9 @@ pub struct Impl<Body: IsBody> {
         if let Some(trait_did) = trait_did {
             tcx.super_predicates_of(trait_did)
                 .predicates
-                .into_iter()
-                .flat_map(|x| super_predicate_to_clauses_and_impl_expr(s, owner_id, x))
+                .iter()
+                .copied()
+                .filter_map(|(clause, span)| super_clause_to_clause_and_impl_expr(s, owner_id, clause, span))
                 .collect::<Vec<_>>()
         } else {
             vec![]
@@ -3244,9 +3258,9 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ProjectionPredicate>
     }
 }
 
-/// Reflects [`rustc_middle::ty::Clause`]
+/// Reflects [`rustc_middle::ty::ClauseKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::Clause<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::ClauseKind<'tcx>, state: S as tcx)]
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
@@ -3258,9 +3272,10 @@ pub enum ClauseKind {
     ConstArgHasType(ConstantExpr, Ty),
     WellFormed(GenericArg),
     ConstEvaluatable(ConstantExpr),
+    TypeWellFormedFromEnv(Ty),
 }
 
-/// Reflects [`rustc_middle::ty::Clause`]
+/// Reflects [`rustc_middle::ty::ClauseKind`] and adds a hash-consed clause identifier.
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
@@ -3269,13 +3284,26 @@ pub struct Clause {
     pub id: u64,
 }
 
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause> for rustc_middle::ty::Clause<'tcx> {
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause>
+    for rustc_middle::ty::Binder<'tcx, rustc_middle::ty::ClauseKind<'tcx>>
+{
     fn sinto(&self, s: &S) -> Clause {
-        use rustc_middle::ty::ToPredicate;
+        // FIXME: `ClauseKind::sinto` uses a dummy binder. We need it because `Predicate::sinto()`
+        // doesn't propagate the binder to the `ClauseKind`. This might cause inconsistencies. It
+        // might be that we don't want to hash the binder at all.
+        let binder: Binder<ClauseKind> = self.sinto(s);
+        let id = clause_id_of_bound_clause_kind(&binder);
         Clause {
-            id: clause_id_of_predicate(s, self.clone().to_predicate(s.base().tcx)),
-            kind: self.sinto(s),
+            kind: binder.value,
+            id,
         }
+    }
+}
+
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause> for rustc_middle::ty::ClauseKind<'tcx> {
+    fn sinto(&self, s: &S) -> Clause {
+        // FIXME: this is dangerous.
+        rustc_middle::ty::Binder::dummy(self.clone()).sinto(s)
     }
 }
 
@@ -3302,12 +3330,14 @@ pub struct Binder<T> {
 
 /// Reflects [`rustc_middle::ty::GenericPredicates`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::GenericPredicates<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::GenericPredicates<'tcx>, state: S as s)]
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub struct GenericPredicates {
     pub parent: Option<DefId>,
+    // FIXME: Switch from `Predicate` to `Clause` (will require correct handling of binders).
+    #[value(self.predicates.iter().map(|(clause, span)| (clause.as_predicate().sinto(s), span.sinto(s))).collect())]
     pub predicates: Vec<(Predicate, Span)>,
 }
 
@@ -3391,7 +3421,6 @@ pub enum PredicateKind {
     Subtype(SubtypePredicate),
     Coerce(CoercePredicate),
     ConstEquate(ConstantExpr, ConstantExpr),
-    TypeWellFormedFromEnv(Ty),
     Ambiguous,
     AliasRelate(Term, Term, AliasRelationDirection),
 }
@@ -3425,20 +3454,25 @@ fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> Gene
         }
     };
 
-    let predicates: Vec<_> = if use_item_bounds {
-        let list = tcx.item_bounds(s.owner_id()).subst_identity();
-        let span = list.default_span(tcx);
-        list.into_iter().map(|x| (x, span)).collect()
+    let clauses: Vec<ty::Clause<'tcx>> = if use_item_bounds {
+        tcx.item_bounds(s.owner_id())
+            .subst_identity()
+            .iter()
+            .collect()
     } else {
         tcx.predicates_defined_on(s.owner_id())
             .predicates
-            .into_iter()
-            .cloned()
+            .iter()
+            .map(|(x, _span)| x)
+            .copied()
             .collect()
     };
-    predicates
+    clauses
         .iter()
-        .map(|(pred, _span)| tcx.erase_late_bound_regions(pred.clone().kind()).sinto(s))
+        .map(|clause| {
+            tcx.erase_late_bound_regions(clause.as_predicate().kind())
+                .sinto(s)
+        })
         .collect()
 }
 
