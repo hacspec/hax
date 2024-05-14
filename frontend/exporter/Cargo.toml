@@ -7,7 +7,7 @@ homepage.workspace = true
 edition.workspace = true
 repository.workspace = true
 readme.workspace = true
-description = "hax frontend exporter helper crate"
+description = "Provides mirrors of the algebraic data types used in the Rust compilers, removing indirections and inlining various pieces of information."
 
 [package.metadata.rust-analyzer]
 rustc_private=true

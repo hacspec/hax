@@ -7,7 +7,7 @@ homepage.workspace = true
 edition.workspace = true
 repository.workspace = true
 readme.workspace = true
-description = "hax diagnostics helper crate"
+description = "This crate defines types that represent the various errors that can occur in hax."
 
 [package.metadata.rust-analyzer]
 rustc_private=true

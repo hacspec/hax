@@ -7,7 +7,7 @@ homepage.workspace = true
 edition.workspace = true
 repository.workspace = true
 readme.workspace = true
-description = "hax frontend options"
+description = "The options the `hax-frontend-exporter` crate is sensible to."
 
 [dependencies]
 serde.workspace = true
