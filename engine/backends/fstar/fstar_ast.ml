@@ -84,6 +84,8 @@ let mk_refined (x : string) (typ : AST.term) (phi : x:AST.term -> AST.term) =
   let x_bd = mk_e_binder @@ AST.Annotated (x, typ) in
   term @@ AST.Refine (x_bd, phi (term @@ AST.Var (lid_of_id x)))
 
+let type0_term = AST.Name (lid [ "Type0" ]) |> term
+
 let parse_string f s =
   let open FStar_Parser_ParseIt in
   let frag_of_text s =

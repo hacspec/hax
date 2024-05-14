@@ -62,7 +62,7 @@ let impl__SafeIndex__new (i: usize) : Core.Option.t_Option t_SafeIndex =
   else Core.Option.Option_None <: Core.Option.t_Option t_SafeIndex
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_1 (#v_T: Type) : Core.Ops.Index.t_Index (t_Array v_T (sz 10)) t_SafeIndex =
+let impl_1 (#v_T: Type0) : Core.Ops.Index.t_Index (t_Array v_T (sz 10)) t_SafeIndex =
   {
     f_Output = v_T;
     f_index_pre = (fun (self: t_Array v_T (sz 10)) (index: t_SafeIndex) -> true);

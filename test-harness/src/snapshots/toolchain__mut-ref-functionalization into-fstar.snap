@@ -32,7 +32,7 @@ module Mut_ref_functionalization
 open Core
 open FStar.Mul
 
-class t_FooTrait (v_Self: Type) = {
+class t_FooTrait (v_Self: Type0) = {
   f_z_pre:v_Self -> bool;
   f_z_post:v_Self -> v_Self -> bool;
   f_z:x0: v_Self -> Prims.Pure v_Self (f_z_pre x0) (fun result -> f_z_post x0 result)
@@ -230,7 +230,7 @@ let j (x: t_Bar) : (t_Bar & u8) =
   let hax_temp_output:u8 = out1 +! out in
   x, hax_temp_output <: (t_Bar & u8)
 
-type t_Pair (v_T: Type) = {
+type t_Pair (v_T: Type0) = {
   f_a:v_T;
   f_b:t_Foo
 }
