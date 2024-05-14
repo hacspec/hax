@@ -7,7 +7,7 @@ homepage.workspace = true
 edition.workspace = true
 repository.workspace = true
 readme.workspace = true
-description = "hax cli options engine helper crate"
+description = "Defines the data type of the input of the engine. The (OCaml) engine reads JSON on stdin and deserializes the payload according to the JSON Schemas defined by this crate."
 
 [dependencies]
 serde.workspace = true
