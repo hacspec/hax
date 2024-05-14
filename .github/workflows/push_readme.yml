@@ -1,0 +1,37 @@
+name: Push `README.md`
+
+on:
+  push:
+    branches: [main]
+    
+jobs:
+  push_readme:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        path: hax
+    - uses: actions/checkout@v4
+      with:
+        repository: "hacspec/hacspec.github.io"
+        path: website
+        token: ${{secrets.PUSH_HACSPEC_GITHUB_TOKEN}}
+    - name: Publish documentation
+      run: |
+        (
+          README_ORIGINAL="https://github.com/hacspec/hax/blob/main/README.md"
+          echo "<!-- WARNING: a GitHub action periodically replaces this file with ${README_ORIGINAL}. Do not make any modification to this file, instead make a PR to ${README_ORIGINAL} -->"
+          echo ""
+          cat hax/README.md
+        ) > website/README.md
+        cd website
+        # Replace the `🌐 Website` link to a GitHub link
+        sed -i 's#.*🌐 Website.*#  <a href="https://github.com/hacspec/hax">🔗 GitHub</a> |#' README.md
+        git config --local user.name "github-actions[bot]"
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add -A
+        git commit -m "Readme update" \
+          && git push https://$USERNAME:$PUSH_HACSPEC_GITHUB_TOKEN@github.com/hacspec/hacspec.github.io
+      env:
+        PUSH_HACSPEC_GITHUB_TOKEN: ${{secrets.PUSH_HACSPEC_GITHUB_TOKEN}}
+        USERNAME: github-actions[bot]
