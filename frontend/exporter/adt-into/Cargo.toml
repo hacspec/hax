@@ -7,7 +7,7 @@ homepage.workspace = true
 edition.workspace = true
 repository.workspace = true
 readme.workspace = true
-description = "hax adt into helper crate"
+description = "Provides the `adt_into` procedural macro, allowing for mirroring data types with small variations."
 
 [lib]
 proc-macro = true
@@ -18,3 +18,5 @@ syn.workspace = true
 proc-macro2 = "1.0"
 quote = "1.0"
 
+[dev-dependencies]
+tracing.workspace = true
