@@ -627,8 +627,7 @@ struct
       let ident = plocal_ident p.ident in
       match p.kind with
       | GPLifetime _ -> Error.assertion_failure span "pgeneric_param:LIFETIME"
-      | GPType { default = _ } ->
-          { kind; typ = F.term @@ F.AST.Name (F.lid [ "Type" ]); ident }
+      | GPType { default = _ } -> { kind; typ = F.type0_term; ident }
       | GPConst { typ } -> { kind = Explicit; typ = pty span typ; ident }
 
     let of_generic_constraint span (nth : int) (c : generic_constraint) =
@@ -987,7 +986,7 @@ struct
              }
         else
           let generics = FStarBinder.of_generics e.span generics in
-          let ty = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
+          let ty = F.type0_term in
           let arrow_typ =
             F.term
             @@ F.AST.Product (List.map ~f:FStarBinder.to_binder generics, ty)
@@ -1169,7 +1168,7 @@ struct
               let fields =
                 match i.ti_v with
                 | TIType bounds ->
-                    let t = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
+                    let t = F.type0_term in
                     (* let constraints = *)
                     (*   List.map *)
                     (*     ~f:(fun implements -> *)

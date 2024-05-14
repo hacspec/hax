@@ -37,7 +37,7 @@ module Attribute_opaque
 open Core
 open FStar.Mul
 
-val t_OpaqueEnum (v_X: usize) (#v_T #v_U: Type) : Type
+val t_OpaqueEnum (v_X: usize) (#v_T #v_U: Type0) : Type0
 
-val t_OpaqueStruct (v_X: usize) (#v_T #v_U: Type) : Type
+val t_OpaqueStruct (v_X: usize) (#v_T #v_U: Type0) : Type0
 '''
