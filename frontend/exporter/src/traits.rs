@@ -9,12 +9,12 @@ pub enum ImplExprPathChunk {
     AssocItem {
         item: AssocItem,
         predicate: Binder<TraitPredicate>,
-        clause_id: u64,
+        predicate_id: PredicateId,
         index: usize,
     },
     Parent {
         predicate: Binder<TraitPredicate>,
-        clause_id: u64,
+        predicate_id: PredicateId,
         index: usize,
     },
 }
@@ -32,7 +32,7 @@ pub enum ImplExprAtom {
     },
     /// A context-bound clause like `where T: Trait`.
     LocalBound {
-        clause_id: u64,
+        predicate_id: PredicateId,
         r#trait: Binder<TraitRef>,
         path: Vec<ImplExprPathChunk>,
     },
@@ -70,9 +70,11 @@ pub struct ImplExpr {
     pub args: Vec<ImplExpr>,
 }
 
-mod search_clause {
+// FIXME: this has visibility `pub(crate)` only because of https://github.com/rust-lang/rust/issues/83049
+pub(crate) mod search_clause {
     use crate::prelude::UnderOwnerState;
     use crate::rustc_utils::*;
+    use crate::{IntoPredicateId, PredicateId};
     use rustc_middle::ty::*;
 
     fn predicates_to_poly_trait_predicates<'tcx>(
@@ -90,12 +92,12 @@ mod search_clause {
         AssocItem {
             item: AssocItem,
             predicate: PolyTraitPredicate<'tcx>,
-            clause_id: u64,
+            predicate_id: PredicateId,
             index: usize,
         },
         Parent {
             predicate: PolyTraitPredicate<'tcx>,
-            clause_id: u64,
+            predicate_id: PredicateId,
             index: usize,
         },
     }
@@ -224,10 +226,7 @@ mod search_clause {
                         cons(
                             PathChunk::Parent {
                                 predicate: p,
-                                clause_id: {
-                                    use rustc_middle::ty::ToPredicate;
-                                    crate::clause_id_of_predicate(s, p.to_predicate(s.base().tcx))
-                                },
+                                predicate_id: p.predicate_id(s),
                                 index,
                             },
                             path,
@@ -244,13 +243,7 @@ mod search_clause {
                                     cons(
                                         PathChunk::AssocItem {
                                             item,
-                                            clause_id: {
-                                                use rustc_middle::ty::ToPredicate;
-                                                crate::clause_id_of_predicate(
-                                                    s,
-                                                    p.to_predicate(s.base().tcx),
-                                                )
-                                            },
+                                            predicate_id: p.predicate_id(s),
                                             predicate: p,
                                             index,
                                         },
@@ -374,7 +367,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                         .with_args(impl_exprs(s, &nested), trait_ref)
                 } else {
                     ImplExprAtom::LocalBound {
-                        clause_id: clause_id_of_predicate(s, apred.predicate),
+                        predicate_id: apred.predicate.predicate_id(s),
                         r#trait,
                         path,
                     }
@@ -410,57 +403,20 @@ pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
     let impl_trait_ref = tcx
         .impl_trait_ref(impl_did)
         .map(|binder| rustc_middle::ty::Binder::dummy(binder.subst_identity()))?;
-    let original_clause_id = {
+    let original_predicate_id = {
         // We don't want the id of the substituted clause id, but the
         // original clause id (with, i.e., `Self`)
         let s = &with_owner_id(s.base(), (), (), impl_trait_ref.def_id());
-        // We compute the id of the clause without binder.
-        let clause: Clause = clause.kind().skip_binder().sinto(s);
-        clause.id
+        clause.predicate_id(s)
     };
     let new_clause = clause.subst_supertrait(tcx, &impl_trait_ref);
     let impl_expr = new_clause
         .as_predicate()
         .to_opt_poly_trait_pred()?
         .impl_expr(s, get_param_env(s));
-    // Build the new clause, again without binder.
-    let mut new_clause_no_binder: Clause = new_clause.kind().skip_binder().sinto(s);
-    new_clause_no_binder.id = original_clause_id;
+    let mut new_clause_no_binder = new_clause.sinto(s);
+    new_clause_no_binder.id = original_predicate_id;
     Some((new_clause_no_binder, impl_expr, span.sinto(s)))
-}
-
-fn deterministic_hash<T: std::hash::Hash>(x: &T) -> u64 {
-    use crate::deterministic_hash::DeterministicHasher;
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::Hasher;
-    let mut hasher = DeterministicHasher::new(DefaultHasher::new());
-    x.hash(&mut hasher);
-    hasher.finish()
-}
-
-/// Crafts a unique identifier for a predicate by hashing it. The hash
-/// is non-trivial because we need stable identifiers: two hax
-/// extraction of a same predicate should result in the same
-/// identifier. Rustc's stable hash is not doing what we want here: it
-/// is sensible to the environment. Instead, we convert the (rustc)
-/// predicate to `crate::Predicate` and hash from there.
-#[tracing::instrument(level = "trace", skip(s))]
-pub fn clause_id_of_predicate<'tcx, S: UnderOwnerState<'tcx>>(
-    s: &S,
-    predicate: rustc_middle::ty::Predicate<'tcx>,
-) -> u64 {
-    let predicate = predicate.sinto(s);
-    match &predicate.value {
-        // Instead of recursively hashing the clause, we reuse the already-computed id.
-        PredicateKind::Clause(clause) => clause.id,
-        _ => deterministic_hash(&(1u8, predicate)),
-    }
-}
-
-/// Used when building a `crate::Clause`. See [`clause_id_of_predicate`] for what we're doing here.
-#[tracing::instrument(level = "trace")]
-pub fn clause_id_of_bound_clause_kind(binder: &Binder<ClauseKind>) -> u64 {
-    deterministic_hash(&(0u8, binder))
 }
 
 #[tracing::instrument(level = "trace", skip(s))]

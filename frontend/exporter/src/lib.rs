@@ -9,6 +9,7 @@
 #![allow(incomplete_features)]
 #![feature(specialization)]
 #![feature(return_position_impl_trait_in_trait)]
+#![allow(rustdoc::private_intra_doc_links)]
 
 extern crate rustc_abi;
 extern crate rustc_ast;
