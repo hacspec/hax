@@ -111,14 +111,15 @@ struct
               body = dexpr body;
               captures = List.map ~f:dexpr captures;
             }
-      | App { f; args; generic_args; impl } ->
+      | App { f; args; generic_args; impl; bounds_impls } ->
           let f = dexpr f in
           let args = List.map ~f:dexpr args in
           let impl = Option.map ~f:(dimpl_expr span) impl in
           let generic_args =
             List.filter_map ~f:(dgeneric_value span) generic_args
           in
-          App { f; args; generic_args; impl }
+          let bounds_impls = List.map ~f:(dimpl_expr span) bounds_impls in
+          App { f; args; generic_args; impl; bounds_impls }
       | _ -> .
       [@@inline_ands bindings_of dexpr - dbinding_mode]
 

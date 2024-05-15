@@ -194,6 +194,7 @@ functor
           f : expr;
           args : expr list (* ; f_span: span *);
           generic_args : generic_value list;
+          bounds_impls : impl_expr list;
           impl : impl_expr option;
         }
       | Literal of literal

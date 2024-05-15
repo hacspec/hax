@@ -270,10 +270,14 @@ functor
                 self#visit_list self#visit_generic_value env
                   record_payload.generic_args
               in
+              let bounds_impls =
+                self#visit_list self#visit_impl_expr env
+                  record_payload.bounds_impls
+              in
               let impl =
                 self#visit_option self#visit_impl_expr env record_payload.impl
               in
-              App { f; args; generic_args; impl }
+              App { f; args; generic_args; impl; bounds_impls }
           | Literal x0 ->
               let x0 = self#visit_literal env x0 in
               Literal x0
@@ -1242,11 +1246,16 @@ functor
                   record_payload.generic_args
               in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
+              let bounds_impls, reduce_acc' =
+                self#visit_list self#visit_impl_expr env
+                  record_payload.bounds_impls
+              in
+              let reduce_acc = self#plus reduce_acc reduce_acc' in
               let impl, reduce_acc' =
                 self#visit_option self#visit_impl_expr env record_payload.impl
               in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
-              (App { f; args; generic_args; impl }, reduce_acc)
+              (App { f; args; generic_args; impl; bounds_impls }, reduce_acc)
           | Literal x0 ->
               let x0, reduce_acc = self#visit_literal env x0 in
               (Literal x0, reduce_acc)
@@ -2401,6 +2410,11 @@ functor
               let reduce_acc' =
                 self#visit_list self#visit_generic_value env
                   record_payload.generic_args
+              in
+              let reduce_acc = self#plus reduce_acc reduce_acc' in
+              let reduce_acc' =
+                self#visit_list self#visit_impl_expr env
+                  record_payload.bounds_impls
               in
               let reduce_acc = self#plus reduce_acc reduce_acc' in
               let reduce_acc' =
