@@ -86,4 +86,25 @@ mod for_clauses {
     fn _f<X: for<'a> Foo<&'a u8>>(x: X) {
         x.to_t();
     }
+
+    // From issue #495
+    mod issue_495 {
+        use core::iter::Filter;
+        use core::ops::Range;
+
+        fn original_function_from_495(list: Vec<u8>) {
+            let _indices: Vec<_> = (0..5).filter(|i| list.iter().any(|n| n == i)).collect();
+        }
+
+        fn minimized_1(list: Vec<u8>) -> Vec<u8> {
+            (0..5).filter(|_| true).collect()
+        }
+        fn minimized_2(it: Filter<Range<u8>, for<'a> fn(&'a u8) -> bool>) {
+            let _indices: Vec<_> = it.collect();
+        }
+        mod minimized_3 {
+            pub trait Trait {}
+            impl<P: FnMut(&u8) -> bool> Trait for P {}
+        }
+    }
 }

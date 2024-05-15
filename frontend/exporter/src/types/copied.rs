@@ -1592,10 +1592,51 @@ impl Alias {
         use rustc_type_ir::sty::AliasKind as RustAliasKind;
         let kind = match alias_kind {
             RustAliasKind::Projection => {
+                use rustc_middle::ty::{Binder, EarlyBinder, TypeVisitableExt};
                 let tcx = s.base().tcx;
+                let trait_ref = alias_ty.trait_ref(tcx);
+                // Sometimes (see
+                // https://github.com/hacspec/hax/issues/495), we get
+                // trait refs with escaping bound vars. Empirically,
+                // this seems fine. If we detect such a situation, we
+                // emit a warning with a lot of debugging information.
+                let poly_trait_ref = if trait_ref.has_escaping_bound_vars() {
+                    let trait_ref_and_substs = alias_ty.trait_ref_and_own_substs(tcx);
+                    let rebased_substs = alias_ty.rebase_substs_onto_impl(alias_ty.substs, tcx);
+                    let norm_rebased_substs = tcx.try_subst_and_normalize_erasing_regions(
+                        rebased_substs,
+                        get_param_env(s),
+                        EarlyBinder::bind(trait_ref),
+                    );
+                    let norm_substs = tcx.try_subst_and_normalize_erasing_regions(
+                        alias_ty.substs,
+                        get_param_env(s),
+                        EarlyBinder::bind(trait_ref),
+                    );
+                    let early_binder_substs =
+                        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                            EarlyBinder::bind(trait_ref).subst(tcx, alias_ty.substs)
+                        }));
+                    let early_binder_rebased_substs =
+                        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                            EarlyBinder::bind(trait_ref).subst(tcx, alias_ty.substs)
+                        }));
+                    warning!(
+                        s,
+                        "Hax frontend found a projected type with escaping bound vars. Please report https://github.com/hacspec/hax/issues/495";
+                        {alias_ty, alias_kind, trait_ref, trait_ref_and_substs, rebased_substs,
+                         norm_rebased_substs, norm_substs,
+                         early_binder_substs, early_binder_rebased_substs}
+                    );
+                    // we cannot use `Binder::dummy`: it asserts that
+                    // there is no any escaping bound vars
+                    Binder::bind_with_vars(trait_ref, rustc_middle::ty::List::empty())
+                } else {
+                    Binder::dummy(trait_ref)
+                };
                 AliasKind::Projection {
                     assoc_item: tcx.associated_item(alias_ty.def_id).sinto(s),
-                    impl_expr: alias_ty.trait_ref(tcx).impl_expr(s, get_param_env(s)),
+                    impl_expr: poly_trait_ref.impl_expr(s, get_param_env(s)),
                 }
             }
             RustAliasKind::Inherent => AliasKind::Inherent,

@@ -23,12 +23,180 @@ info:
 exit = 0
 stderr = '''
 Compiling traits v0.1.0 (WORKSPACE_ROOT/traits)
+disabled backtrace
+warning[HaxFront]: Hax frontend found a projected type with escaping bound vars. Please report https://github.com/hacspec/hax/issues/495
+                   
+                   Context:
+                    - alias_ty: AliasTy {
+                       substs: [
+                           P,
+                           (&u8,),
+                       ],
+                       def_id: DefId(2:2933 ~ core[7e13]::ops::function::FnOnce::Output),
+                   }
+                    - alias_kind: Projection
+                    - trait_ref: <P as std::ops::FnOnce<(&u8,)>>
+                    - trait_ref_and_substs: (
+                       <P as std::ops::FnOnce<(&u8,)>>,
+                       [],
+                   )
+                    - rebased_substs: [
+                       P,
+                       (&u8,),
+                       (&u8,),
+                   ]
+                    - norm_rebased_substs: Ok(
+                       <P as std::ops::FnOnce<(&u8,)>>,
+                   )
+                    - norm_substs: Ok(
+                       <P as std::ops::FnOnce<(&u8,)>>,
+                   )
+                    - early_binder_substs: Ok(
+                       <P as std::ops::FnOnce<(&u8,)>>,
+                   )
+                    - early_binder_rebased_substs: Ok(
+                       <P as std::ops::FnOnce<(&u8,)>>,
+                   )
+   --> traits/src/lib.rs:107:13
+    |
+107 |             impl<P: FnMut(&u8) -> bool> Trait for P {}
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: ⚠️ This is a bug in Hax's frontend.
+            Please report this error to https://github.com/hacspec/hax/issues with some context (e.g. the current crate)!
+
+disabled backtrace
+disabled backtrace
+disabled backtrace
+disabled backtrace
+disabled backtrace
+disabled backtrace
+disabled backtrace
+disabled backtrace
+warning[HaxFront]: Hax frontend found a projected type with escaping bound vars. Please report https://github.com/hacspec/hax/issues/495
+                   
+                   Context:
+                    - alias_ty: AliasTy {
+                       substs: [
+                           P,
+                           (&<I as std::iter::Iterator>::Item,),
+                       ],
+                       def_id: DefId(2:2933 ~ core[7e13]::ops::function::FnOnce::Output),
+                   }
+                    - alias_kind: Projection
+                    - trait_ref: <P as std::ops::FnOnce<(&<I as std::iter::Iterator>::Item,)>>
+                    - trait_ref_and_substs: (
+                       <P as std::ops::FnOnce<(&<I as std::iter::Iterator>::Item,)>>,
+                       [],
+                   )
+                    - rebased_substs: [
+                       P,
+                       (&<I as std::iter::Iterator>::Item,),
+                       (&<I as std::iter::Iterator>::Item,),
+                   ]
+                    - norm_rebased_substs: Err(
+                       Type(
+                           (&<P as std::iter::Iterator>::Item,),
+                       ),
+                   )
+                    - norm_substs: Err(
+                       Type(
+                           (&<P as std::iter::Iterator>::Item,),
+                       ),
+                   )
+                    - early_binder_substs: Ok(
+                       <(&<I as std::iter::Iterator>::Item,) as std::ops::FnOnce<(&<P as std::iter::Iterator>::Item,)>>,
+                   )
+                    - early_binder_rebased_substs: Ok(
+                       <(&<I as std::iter::Iterator>::Item,) as std::ops::FnOnce<(&<P as std::iter::Iterator>::Item,)>>,
+                   )
+  --> /nix/store/bbq0z3kg0b7hb3n7agk20r7hg3alf4kb-rust-default-1.72.0-nightly-2023-06-28/lib/rustlib/src/rust/library/core/src/iter/adapters/filter.rs:51:1
+   |
+51 | impl<I: Iterator, P> Iterator for Filter<I, P>
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ⚠️ This is a bug in Hax's frontend.
+           Please report this error to https://github.com/hacspec/hax/issues with some context (e.g. the current crate)!
+
+disabled backtrace
+disabled backtrace
+disabled backtrace
+warning: `traits` (lib) generated 2 warnings
     Finished dev [unoptimized + debuginfo] target(s) in XXs'''
 
 [stdout]
 diagnostics = []
 
 [stdout.files]
+"Traits.For_clauses.Issue_495_.Minimized_3_.fst" = '''
+module Traits.For_clauses.Issue_495_.Minimized_3_
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class t_Trait (v_Self: Type0) = { __marker_trait_t_Trait:Prims.unit }
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl
+      (#v_P: Type0)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: Core.Ops.Function.t_FnMut v_P u8)
+    : t_Trait v_P = { __marker_trait = () }
+'''
+"Traits.For_clauses.Issue_495_.fst" = '''
+module Traits.For_clauses.Issue_495_
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let minimized_1_ (list: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
+    : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
+  Core.Iter.Traits.Iterator.f_collect (Core.Iter.Traits.Iterator.f_filter ({
+            Core.Ops.Range.f_start = 0uy;
+            Core.Ops.Range.f_end = 5uy
+          }
+          <:
+          Core.Ops.Range.t_Range u8)
+        (fun temp_0_ ->
+            let _:u8 = temp_0_ in
+            true)
+      <:
+      Core.Iter.Adapters.Filter.t_Filter (Core.Ops.Range.t_Range u8) (u8 -> bool))
+
+let minimized_2_ (it: Core.Iter.Adapters.Filter.t_Filter (Core.Ops.Range.t_Range u8) (u8 -> bool))
+    : Prims.unit =
+  let (v__indices: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global):Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global
+  =
+    Core.Iter.Traits.Iterator.f_collect it
+  in
+  ()
+
+let original_function_from_495_ (list: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) : Prims.unit =
+  let (v__indices: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global):Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global
+  =
+    Core.Iter.Traits.Iterator.f_collect (Core.Iter.Traits.Iterator.f_filter ({
+              Core.Ops.Range.f_start = 0uy;
+              Core.Ops.Range.f_end = 5uy
+            }
+            <:
+            Core.Ops.Range.t_Range u8)
+          (fun i ->
+              let i:u8 = i in
+              let _, out:(Core.Slice.Iter.t_Iter u8 & bool) =
+                Core.Iter.Traits.Iterator.f_any (Core.Slice.impl__iter (Core.Ops.Deref.f_deref list
+                        <:
+                        t_Slice u8)
+                    <:
+                    Core.Slice.Iter.t_Iter u8)
+                  (fun n ->
+                      let n:u8 = n in
+                      n =. i <: bool)
+              in
+              out)
+        <:
+        Core.Iter.Adapters.Filter.t_Filter (Core.Ops.Range.t_Range u8) (u8 -> bool))
+  in
+  ()
+'''
 "Traits.For_clauses.fst" = '''
 module Traits.For_clauses
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
