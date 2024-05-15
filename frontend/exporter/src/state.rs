@@ -236,7 +236,7 @@ pub trait UnderOwnerState<'tcx> = BaseState<'tcx> + HasOwnerId;
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ImplInfos {
     pub generics: TyGenerics,
-    pub predicates: Vec<Predicate>,
+    pub clauses: Vec<(Clause, Span)>,
     pub typ: Ty,
     pub trait_ref: Option<TraitRef>,
 }
@@ -246,17 +246,11 @@ impl ImplInfos {
         let tcx = base.tcx;
         let s = &with_owner_id(base, (), (), did);
 
-        let predicates = tcx
-            .predicates_defined_on(did)
-            .predicates
-            .iter()
-            .map(|(clause, _)| clause.as_predicate().sinto(s))
-            .collect();
         Self {
             generics: tcx.generics_of(did).sinto(s),
             typ: tcx.type_of(did).subst_identity().sinto(s),
             trait_ref: tcx.impl_trait_ref(did).sinto(s),
-            predicates,
+            clauses: tcx.predicates_defined_on(did).predicates.sinto(s),
         }
     }
 }

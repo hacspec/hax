@@ -3275,35 +3275,39 @@ pub enum ClauseKind {
     TypeWellFormedFromEnv(Ty),
 }
 
-/// Reflects [`rustc_middle::ty::ClauseKind`] and adds a hash-consed clause identifier.
+/// Reflects [`rustc_middle::ty::Clause`] and adds a hash-consed predicate identifier.
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub struct Clause {
-    pub kind: ClauseKind,
-    pub id: u64,
+    pub kind: Binder<ClauseKind>,
+    pub id: PredicateId,
 }
 
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause>
-    for rustc_middle::ty::Binder<'tcx, rustc_middle::ty::ClauseKind<'tcx>>
-{
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause> for rustc_middle::ty::Clause<'tcx> {
     fn sinto(&self, s: &S) -> Clause {
-        // FIXME: `ClauseKind::sinto` uses a dummy binder. We need it because `Predicate::sinto()`
-        // doesn't propagate the binder to the `ClauseKind`. This might cause inconsistencies. It
-        // might be that we don't want to hash the binder at all.
-        let binder: Binder<ClauseKind> = self.sinto(s);
-        let id = clause_id_of_bound_clause_kind(&binder);
         Clause {
-            kind: binder.value,
-            id,
+            kind: self.kind().sinto(s),
+            id: self.predicate_id(s),
         }
     }
 }
 
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause> for rustc_middle::ty::ClauseKind<'tcx> {
-    fn sinto(&self, s: &S) -> Clause {
-        // FIXME: this is dangerous.
-        rustc_middle::ty::Binder::dummy(self.clone()).sinto(s)
+/// Reflects [`rustc_middle::ty::Predicate`] and adds a hash-consed predicate identifier.
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct Predicate {
+    pub kind: Binder<PredicateKind>,
+    pub id: PredicateId,
+}
+
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Predicate> for rustc_middle::ty::Predicate<'tcx> {
+    fn sinto(&self, s: &S) -> Predicate {
+        Predicate {
+            kind: self.kind().sinto(s),
+            id: self.predicate_id(s),
+        }
     }
 }
 
@@ -3341,9 +3345,6 @@ pub struct GenericPredicates {
     pub predicates: Vec<(Predicate, Span)>,
 }
 
-/// Reflects [`rustc_middle::ty::Predicate`]
-pub type Predicate = Binder<PredicateKind>;
-
 impl<'tcx, S: UnderOwnerState<'tcx>, T1, T2> SInto<S, Binder<T2>>
     for rustc_middle::ty::Binder<'tcx, T1>
 where
@@ -3353,12 +3354,6 @@ where
         let bound_vars = self.bound_vars().sinto(s);
         let value = self.as_ref().skip_binder().sinto(s);
         Binder { value, bound_vars }
-    }
-}
-
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Predicate> for rustc_middle::ty::Predicate<'tcx> {
-    fn sinto(&self, s: &S) -> Predicate {
-        self.kind().sinto(s)
     }
 }
 
@@ -3415,7 +3410,7 @@ pub enum ClosureKind {
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub enum PredicateKind {
-    Clause(Clause),
+    Clause(ClauseKind),
     ObjectSafe(DefId),
     ClosureKind(DefId, Vec<GenericArg>, ClosureKind),
     Subtype(SubtypePredicate),
@@ -3426,7 +3421,7 @@ pub enum PredicateKind {
 }
 
 /// Reflects [`rustc_hir::GenericBounds`]
-type GenericBounds = Vec<PredicateKind>;
+type GenericBounds = Vec<Clause>;
 
 /// Compute the bounds for the owner registed in the state `s`
 fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> GenericBounds {
@@ -3467,13 +3462,7 @@ fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> Gene
             .copied()
             .collect()
     };
-    clauses
-        .iter()
-        .map(|clause| {
-            tcx.erase_late_bound_regions(clause.as_predicate().kind())
-                .sinto(s)
-        })
-        .collect()
+    clauses.sinto(s)
 }
 
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, GenericBounds> for rustc_hir::GenericBounds<'tcx> {
