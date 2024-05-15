@@ -29,6 +29,23 @@ Compiling traits v0.1.0 (WORKSPACE_ROOT/traits)
 diagnostics = []
 
 [stdout.files]
+"Traits.For_clauses.fst" = '''
+module Traits.For_clauses
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class t_Foo (v_Self: Type0) (v_T: Type0) = {
+  f_to_t_pre:v_Self -> bool;
+  f_to_t_post:v_Self -> v_T -> bool;
+  f_to_t:x0: v_Self -> Prims.Pure v_T (f_to_t_pre x0) (fun result -> f_to_t_post x0 result)
+}
+
+let v__f (#v_X: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_X u8) (x: v_X)
+    : Prims.unit =
+  let _:u8 = f_to_t x in
+  ()
+'''
 "Traits.fst" = '''
 module Traits
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"

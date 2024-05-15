@@ -77,3 +77,13 @@ impl Error {
         || Self::Fail
     }
 }
+
+mod for_clauses {
+    trait Foo<T> {
+        fn to_t(&self) -> T;
+    }
+
+    fn _f<X: for<'a> Foo<&'a u8>>(x: X) {
+        x.to_t();
+    }
+}

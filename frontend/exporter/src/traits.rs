@@ -127,12 +127,13 @@ pub(crate) mod search_clause {
         s: &S,
     ) -> bool {
         let tcx = s.base().tcx;
-        let x = tcx.try_normalize_erasing_regions(param_env, x).unwrap_or(x);
-        let y = tcx.try_normalize_erasing_regions(param_env, y).unwrap_or(y);
-        // Below: "~const " may appear in the string, and comes from the way the
-        // trait ref is internalized by rustc. We remove such occurrences (yes, this is sad).
-        let sx = format!("{:?}", x).replace("~const ", "");
-        let sy = format!("{:?}", y).replace("~const ", "");
+        let erase_and_norm =
+            |x| tcx.erase_regions(tcx.try_normalize_erasing_regions(param_env, x).unwrap_or(x));
+        // Lifetime and constantness are irrelevant when resolving instances
+        let x = erase_and_norm(x).without_const(tcx);
+        let y = erase_and_norm(y).without_const(tcx);
+        let sx = format!("{:?}", x.kind().skip_binder());
+        let sy = format!("{:?}", y.kind().skip_binder());
         let result = sx == sy;
         const DEBUG: bool = false;
         if DEBUG && result {
