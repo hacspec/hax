@@ -353,23 +353,37 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
                 supposely_unreachable_fatal!(s, "TranslateUneval"; {self, ucv});
             }))
         } else {
-            let cv = if let Some(assoc) = s.base().tcx.opt_associated_item(ucv.def) &&
-                assoc.trait_item_def_id.is_some() {
+            let cv = if let Some(assoc) = s.base().tcx.opt_associated_item(ucv.def) {
+                if assoc.trait_item_def_id.is_some() {
                     // This must be a trait declaration constant
                     trait_const_to_constant_expr_kind(s, ucv.def, ucv.substs, &assoc)
+                } else {
+                    // Constant appearing in an inherent impl block.
+
+                    // Solve the trait obligations
+                    let parent_def_id = tcx.parent(ucv.def);
+                    let param_env = tcx.param_env(s.owner_id());
+                    let trait_refs =
+                        solve_item_traits(s, param_env, parent_def_id, ucv.substs, None);
+
+                    // Convert
+                    let id = ucv.def.sinto(s);
+                    let generics = ucv.substs.sinto(s);
+                    ConstantExprKind::GlobalName {
+                        id,
+                        generics,
+                        trait_refs,
+                    }
                 }
-            else {
-                // Top-level constant or a constant appearing in an impl block
-
-                // Solve the trait obligations
-                let parent_def_id = tcx.parent(ucv.def);
-                let param_env = tcx.param_env(s.owner_id());
-                let trait_refs = solve_item_traits(s, param_env, parent_def_id, ucv.substs, None);
-
-                // Convert
+            } else {
+                // Top-level constant.
+                assert!(ucv.substs.is_empty(), "top-level constant has generics?");
                 let id = ucv.def.sinto(s);
-                let generics = ucv.substs.sinto(s);
-                ConstantExprKind::GlobalName { id, generics, trait_refs }
+                ConstantExprKind::GlobalName {
+                    id,
+                    generics: vec![],
+                    trait_refs: vec![],
+                }
             };
             TranslateUnevalRes::GlobalName(cv)
         }
