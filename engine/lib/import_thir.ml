@@ -198,6 +198,7 @@ let resugar_index_mut (e : expr) : (expr * expr) option =
         args = [ { e = Borrow { e = x; _ }; _ }; index ];
         generic_args = _ (* TODO: see issue #328 *);
         impl = _ (* TODO: see issue #328 *);
+        bounds_impls = _;
       }
     when Concrete_ident.eq_name Core__ops__index__IndexMut__index_mut meth ->
       Some (x, index)
@@ -207,6 +208,7 @@ let resugar_index_mut (e : expr) : (expr * expr) option =
         args = [ x; index ];
         generic_args = _ (* TODO: see issue #328 *);
         impl = _ (* TODO: see issue #328 *);
+        bounds_impls = _;
       }
     when Concrete_ident.eq_name Core__ops__index__Index__index meth ->
       Some (x, index)
@@ -357,7 +359,14 @@ end) : EXPR = struct
   and c_expr_unwrapped (e : Thir.decorated_for__expr_kind) : expr =
     (* TODO: eliminate that `call`, use the one from `ast_utils` *)
     let call f args =
-      App { f; args = List.map ~f:c_expr args; generic_args = []; impl = None }
+      App
+        {
+          f;
+          args = List.map ~f:c_expr args;
+          generic_args = [];
+          impl = None;
+          bounds_impls = [];
+        }
     in
     let typ = c_ty e.span e.ty in
     let span = Span.of_thir e.span in
@@ -408,8 +417,10 @@ end) : EXPR = struct
             fun';
             ty = _;
             generic_args;
+            bounds_impls;
           } ->
           let args = List.map ~f:c_expr args in
+          let bounds_impls = List.map ~f:(c_impl_expr e.span) bounds_impls in
           let generic_args =
             List.map ~f:(c_generic_value e.span) generic_args
           in
@@ -426,6 +437,7 @@ end) : EXPR = struct
               f;
               args;
               generic_args;
+              bounds_impls;
               impl = Option.map ~f:(c_impl_expr e.span) impl;
             }
       | Box { value } ->
@@ -564,6 +576,7 @@ end) : EXPR = struct
               args = [ lhs ];
               generic_args = [] (* TODO: see issue #328 *);
               impl = None (* TODO: see issue #328 *);
+              bounds_impls = [];
             }
       | TupleField { lhs; field } ->
           (* TODO: refactor *)
@@ -580,6 +593,7 @@ end) : EXPR = struct
               args = [ lhs ];
               generic_args = [] (* TODO: see issue #328 *);
               impl = None (* TODO: see issue #328 *);
+              bounds_impls = [];
             }
       | GlobalName { id } -> GlobalVar (def_id Value id)
       | UpvarRef { var_hir_id = id; _ } -> LocalVar (local_ident Expr id)
@@ -715,6 +729,7 @@ end) : EXPR = struct
                   args = [ e ];
                   generic_args = _;
                   impl = _;
+                  bounds_impls = _;
                 (* TODO: see issue #328 *)
                 } ->
                 LhsFieldAccessor

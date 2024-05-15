@@ -129,7 +129,15 @@ module Make (F : Features.T) =
                     let f = { f' with e = GlobalVar f } in
                     {
                       e with
-                      e = App { f; args = l; impl = None; generic_args = [] };
+                      e =
+                        App
+                          {
+                            f;
+                            args = l;
+                            impl = None;
+                            generic_args = [];
+                            bounds_impls = [];
+                          };
                     }
                 | [] -> super#visit_expr () e
                 | _ ->

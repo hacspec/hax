@@ -181,9 +181,7 @@ module Make (F : Features.T) = struct
       method expr' : par_state -> expr' fn =
         fun _ctx e ->
           match e with
-          | App
-              { f = { e = GlobalVar i; _ } as f; args; generic_args; impl = _ }
-            -> (
+          | App { f = { e = GlobalVar i; _ } as f; args; generic_args; _ } -> (
               let expect_one_arg where =
                 match args with
                 | [ arg ] -> arg

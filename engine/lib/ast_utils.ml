@@ -72,9 +72,15 @@ module Make (F : Features.T) = struct
       | _ -> None
 
     let app (e : expr) :
-        (expr * expr list * generic_value list * impl_expr option) option =
+        (expr
+        * expr list
+        * generic_value list
+        * impl_expr option
+        * impl_expr list)
+        option =
       match e.e with
-      | App { f; args; generic_args; impl } -> Some (f, args, generic_args, impl)
+      | App { f; args; generic_args; impl; bounds_impls } ->
+          Some (f, args, generic_args, impl, bounds_impls)
       | _ -> None
 
     let pbinding_simple (p : pat) : (local_ident * ty) option =
@@ -91,7 +97,8 @@ module Make (F : Features.T) = struct
             args = [ e ];
             generic_args = _;
             impl = _;
-          (* TODO: see issue #328 *)
+            _;
+            (* TODO: see issue #328 *)
           }
         when Concrete_ident.eq_name f f' ->
           Some e
@@ -195,7 +202,8 @@ module Make (F : Features.T) = struct
                   args = [ { e = Borrow { e = sub; _ }; _ } ];
                   generic_args = _;
                   impl = _;
-                (* TODO: see issue #328 *)
+                  _;
+                  (* TODO: see issue #328 *)
                 } ->
                 expr sub
             | _ -> super#visit_expr () e
@@ -336,11 +344,20 @@ module Make (F : Features.T) = struct
                   args = [ arg ];
                   generic_args;
                   impl;
+                  bounds_impls;
                 } ->
                 ascribe
                   {
                     e with
-                    e = App { f; args = [ ascribe arg ]; generic_args; impl };
+                    e =
+                      App
+                        {
+                          f;
+                          args = [ ascribe arg ];
+                          generic_args;
+                          impl;
+                          bounds_impls;
+                        };
                   }
             | _ ->
                 (* Ascribe the return type of a function application & constructors *)
@@ -685,7 +702,7 @@ module Make (F : Features.T) = struct
 
   (** See [beta_reduce_closure]'s documentation. *)
   let beta_reduce_closure_opt (e : expr) : expr option =
-    let* f, args, _, _ = Expect.app e in
+    let* f, args, _, _, _ = Expect.app e in
     let* pats, body = Expect.closure f in
     let* vars = List.map ~f:Expect.pbinding_simple pats |> sequence in
     let vars = List.map ~f:fst vars in
@@ -851,7 +868,15 @@ module Make (F : Features.T) = struct
     let typ = TArrow (List.map ~f:(fun arg -> arg.typ) args, ret_typ) in
     let e = GlobalVar f in
     {
-      e = App { f = { e; typ; span }; args; generic_args = []; impl };
+      e =
+        App
+          {
+            f = { e; typ; span };
+            args;
+            generic_args = [];
+            bounds_impls = [];
+            impl;
+          };
       typ = ret_typ;
       span;
     }
@@ -898,6 +923,7 @@ module Make (F : Features.T) = struct
           f = { e = GlobalVar (`Primitive Ast.Deref); _ };
           args = [ e ];
           generic_args = _;
+          bounds_impls = _;
           impl = _;
         } ->
         next e
@@ -933,6 +959,7 @@ module Make (F : Features.T) = struct
                 f;
                 args = [ e ];
                 generic_args = [];
+                bounds_impls = [];
                 impl = None (* TODO: see issue #328 *);
               };
           typ;
@@ -1032,6 +1059,7 @@ module Make (F : Features.T) = struct
             f = tuple_projector tuple.span tuple.typ len nth type_at_nth;
             args = [ tuple ];
             generic_args = [] (* TODO: see issue #328 *);
+            bounds_impls = [];
             impl = None (* TODO: see issue #328 *);
           };
     }
@@ -1075,6 +1103,7 @@ module Make (F : Features.T) = struct
             f = { e = GlobalVar (`Projector _ as projector); _ };
             args = [ place ];
             generic_args = _;
+            bounds_impls = _;
             impl = _;
           (* TODO: see issue #328 *)
           } ->
@@ -1085,6 +1114,7 @@ module Make (F : Features.T) = struct
             f = { e = GlobalVar f; _ };
             args = [ place; index ];
             generic_args = _;
+            bounds_impls = _;
             impl = _;
           (* TODO: see issue #328 *)
           }
@@ -1097,6 +1127,7 @@ module Make (F : Features.T) = struct
             f = { e = GlobalVar f; _ };
             args = [ place; index ];
             generic_args = _;
+            bounds_impls = _;
             impl = _;
           (* TODO: see issue #328 *)
           }

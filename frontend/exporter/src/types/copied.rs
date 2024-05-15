@@ -2169,11 +2169,11 @@ pub enum ExprKind {
     },
     #[map({
         let e = gstate.thir().exprs[*fun].unroll_scope(gstate);
-        let (fun, r#impl, generic_args) = match &e.kind {
+        let (generic_args, r#impl, bounds_impls);
+        let fun = match &e.kind {
             /* TODO: see whether [user_ty] below is relevant or not */
             rustc_middle::thir::ExprKind::ZstLiteral {user_ty: _ } => {
                 match ty.kind() {
-                    /* should we extract substitutions? */
                     rustc_middle::ty::TyKind::FnDef(def_id, substs) => {
                         let (hir_id, attributes) = e.hir_id_and_attributes(gstate);
                         let hir_id = hir_id.map(|hir_id| hir_id.index());
@@ -2181,16 +2181,18 @@ pub enum ExprKind {
                             id: def_id.sinto(gstate)
                         });
                         let tcx = gstate.base().tcx;
-                        let r#impl = tcx.opt_associated_item(*def_id).as_ref().and_then(|assoc| {
+                        r#impl = tcx.opt_associated_item(*def_id).as_ref().and_then(|assoc| {
                             poly_trait_ref(gstate, assoc, substs)
                         }).map(|poly_trait_ref| poly_trait_ref.impl_expr(gstate, get_param_env(gstate)));
-                        (Expr {
+                        generic_args = substs.sinto(gstate);
+                        bounds_impls = solve_item_traits(gstate, get_param_env(gstate), *def_id, substs, None);
+                        Expr {
                             contents,
                             span: e.span.sinto(gstate),
                             ty: e.ty.sinto(gstate),
                             hir_id,
                             attributes,
-                        }, r#impl, substs.sinto(gstate))
+                        }
                     },
                     ty_kind => supposely_unreachable_fatal!(
                         gstate[e.span],
@@ -2202,7 +2204,10 @@ pub enum ExprKind {
             kind => {
                 match ty.kind() {
                     rustc_middle::ty::TyKind::FnPtr(..) => {
-                        (e.sinto(gstate), None, vec![])
+                        generic_args = vec![]; // A function pointer has no generics
+                        bounds_impls = vec![]; // A function pointer has no bounds
+                        r#impl = None; // A function pointer is not a method
+                        e.sinto(gstate)
                     },
                     ty_kind => {
                         supposely_unreachable!(
@@ -2221,18 +2226,49 @@ pub enum ExprKind {
             generic_args,
             from_hir_call: from_hir_call.sinto(gstate),
             fn_span: fn_span.sinto(gstate),
+            bounds_impls,
             r#impl,
             fun,
         }
     })]
+    /// A call to a function or a method.
+    ///
+    /// Example: `f(0i8)`, where `f` has signature `fn f<T: Clone>(t: T) -> ()`.
     Call {
+        /// The type of the function, substitution applied.
+        ///
+        /// Example: for the call `f(0i8)`, this is `i8 -> ()`.
         ty: Ty,
+        /// The function itself. This can be something else than a
+        /// name, e.g. a closure.
+        ///
+        /// Example: for the call `f(0i8)`, this is `f`.
         fun: Expr, // TODO: can [ty] and [fun.ty] be different?
+        /// The arguments given to the function.
+        ///
+        /// Example: for the call `f(0i8)`, this is `[0i8]`.
         args: Vec<Expr>,
         from_hir_call: bool,
         fn_span: Span,
+        /// The generic arguments given to the function.
+        ///
+        /// Example: for the call `f(0i8)`, this is the type `i8`.
         #[not_in_source]
         generic_args: Vec<GenericArg>,
+        /// The implementations for the bounds of the function.
+        ///
+        /// Example: for the call `f(0i8)`, this is two implementation
+        /// expressions, one for the explicit bound `i8: Clone` and
+        /// one for the implicit `i8: Sized`.
+        #[not_in_source]
+        bounds_impls: Vec<ImplExpr>,
+        /// `impl` is `None` if this is a function call or a method to
+        /// an inherent trait. If this is a method call from a trait
+        /// `Trait`, then it contains the concrete implementation of
+        /// `Trait` it is called on.
+        ///
+        /// Example: `f(0i8)` is a function call, hence the field
+        /// `impl` is `None`.
         #[not_in_source]
         r#impl: Option<ImplExpr>,
     },

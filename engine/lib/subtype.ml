@@ -157,12 +157,13 @@ struct
             then_ = dexpr then_;
             else_ = Option.map ~f:dexpr else_;
           }
-    | App { f; args; generic_args; impl } ->
+    | App { f; args; generic_args; bounds_impls; impl } ->
         App
           {
             f = dexpr f;
             args = List.map ~f:dexpr args;
             generic_args = List.map ~f:(dgeneric_value span) generic_args;
+            bounds_impls = List.map ~f:(dimpl_expr span) bounds_impls;
             impl = Option.map ~f:(dimpl_expr span) impl;
           }
     | Literal lit -> Literal lit
