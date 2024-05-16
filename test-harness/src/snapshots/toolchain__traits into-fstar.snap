@@ -15,20 +15,103 @@ info:
     issue_id: ~
     positive: true
     snapshot:
-      stderr: true
+      stderr: false
       stdout: true
     include_flag: ~
     backend_options: ~
 ---
 exit = 0
-stderr = '''
-Compiling traits v0.1.0 (WORKSPACE_ROOT/traits)
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
 
 [stdout]
 diagnostics = []
 
 [stdout.files]
+"Traits.For_clauses.Issue_495_.Minimized_3_.fst" = '''
+module Traits.For_clauses.Issue_495_.Minimized_3_
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class t_Trait (v_Self: Type0) = { __marker_trait_t_Trait:Prims.unit }
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl
+      (#v_P: Type0)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: Core.Ops.Function.t_FnMut v_P u8)
+    : t_Trait v_P = { __marker_trait = () }
+'''
+"Traits.For_clauses.Issue_495_.fst" = '''
+module Traits.For_clauses.Issue_495_
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let minimized_1_ (list: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
+    : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
+  Core.Iter.Traits.Iterator.f_collect (Core.Iter.Traits.Iterator.f_filter ({
+            Core.Ops.Range.f_start = 0uy;
+            Core.Ops.Range.f_end = 5uy
+          }
+          <:
+          Core.Ops.Range.t_Range u8)
+        (fun temp_0_ ->
+            let _:u8 = temp_0_ in
+            true)
+      <:
+      Core.Iter.Adapters.Filter.t_Filter (Core.Ops.Range.t_Range u8) (u8 -> bool))
+
+let minimized_2_ (it: Core.Iter.Adapters.Filter.t_Filter (Core.Ops.Range.t_Range u8) (u8 -> bool))
+    : Prims.unit =
+  let (v__indices: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global):Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global
+  =
+    Core.Iter.Traits.Iterator.f_collect it
+  in
+  ()
+
+let original_function_from_495_ (list: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) : Prims.unit =
+  let (v__indices: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global):Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global
+  =
+    Core.Iter.Traits.Iterator.f_collect (Core.Iter.Traits.Iterator.f_filter ({
+              Core.Ops.Range.f_start = 0uy;
+              Core.Ops.Range.f_end = 5uy
+            }
+            <:
+            Core.Ops.Range.t_Range u8)
+          (fun i ->
+              let i:u8 = i in
+              let _, out:(Core.Slice.Iter.t_Iter u8 & bool) =
+                Core.Iter.Traits.Iterator.f_any (Core.Slice.impl__iter (Core.Ops.Deref.f_deref list
+                        <:
+                        t_Slice u8)
+                    <:
+                    Core.Slice.Iter.t_Iter u8)
+                  (fun n ->
+                      let n:u8 = n in
+                      n =. i <: bool)
+              in
+              out)
+        <:
+        Core.Iter.Adapters.Filter.t_Filter (Core.Ops.Range.t_Range u8) (u8 -> bool))
+  in
+  ()
+'''
+"Traits.For_clauses.fst" = '''
+module Traits.For_clauses
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class t_Foo (v_Self: Type0) (v_T: Type0) = {
+  f_to_t_pre:v_Self -> bool;
+  f_to_t_post:v_Self -> v_T -> bool;
+  f_to_t:x0: v_Self -> Prims.Pure v_T (f_to_t_pre x0) (fun result -> f_to_t_post x0 result)
+}
+
+let v__f (#v_X: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_X u8) (x: v_X)
+    : Prims.unit =
+  let _:u8 = f_to_t x in
+  ()
+'''
 "Traits.fst" = '''
 module Traits
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"

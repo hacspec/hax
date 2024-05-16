@@ -127,12 +127,13 @@ pub(crate) mod search_clause {
         s: &S,
     ) -> bool {
         let tcx = s.base().tcx;
-        let x = tcx.try_normalize_erasing_regions(param_env, x).unwrap_or(x);
-        let y = tcx.try_normalize_erasing_regions(param_env, y).unwrap_or(y);
-        // Below: "~const " may appear in the string, and comes from the way the
-        // trait ref is internalized by rustc. We remove such occurrences (yes, this is sad).
-        let sx = format!("{:?}", x).replace("~const ", "");
-        let sy = format!("{:?}", y).replace("~const ", "");
+        let erase_and_norm =
+            |x| tcx.erase_regions(tcx.try_normalize_erasing_regions(param_env, x).unwrap_or(x));
+        // Lifetime and constantness are irrelevant when resolving instances
+        let x = erase_and_norm(x).without_const(tcx);
+        let y = erase_and_norm(y).without_const(tcx);
+        let sx = format!("{:?}", x.kind().skip_binder());
+        let sy = format!("{:?}", y.kind().skip_binder());
         let result = sx == sy;
         const DEBUG: bool = false;
         if DEBUG && result {
@@ -298,15 +299,6 @@ pub trait IntoImplExpr<'tcx> {
     ) -> ImplExpr;
 }
 
-impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::TraitRef<'tcx> {
-    fn impl_expr<S: UnderOwnerState<'tcx>>(
-        &self,
-        s: &S,
-        param_env: rustc_middle::ty::ParamEnv<'tcx>,
-    ) -> ImplExpr {
-        rustc_middle::ty::Binder::dummy(self.clone()).impl_expr(s, param_env)
-    }
-}
 impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitPredicate<'tcx> {
     fn impl_expr<S: UnderOwnerState<'tcx>>(
         &self,
