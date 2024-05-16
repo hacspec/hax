@@ -108,3 +108,36 @@ mod for_clauses {
         }
     }
 }
+
+// From issue #677
+mod unconstrainted_types_issue_677 {
+    trait PolyOp {
+        fn op(x: u32, y: u32) -> u32;
+    }
+    struct Plus;
+    impl PolyOp for Plus {
+        fn op(x: u32, y: u32) -> u32 {
+            x + y
+        }
+    }
+
+    struct Times;
+    impl PolyOp for Times {
+        fn op(x: u32, y: u32) -> u32 {
+            x * y
+        }
+    }
+
+    fn twice<OP: PolyOp>(x: u32) -> u32 {
+        OP::op(x, x)
+    }
+
+    fn both(x: u32) -> (u32, u32) {
+        (twice::<Plus>(x), twice::<Times>(x))
+    }
+
+    #[test]
+    fn test() {
+        assert!(both(10) == (20, 100));
+    }
+}
