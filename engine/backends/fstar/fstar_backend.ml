@@ -450,14 +450,17 @@ struct
             @@ "pexpr: expected a integer, found the following non-digit \
                 chars: '" ^ s ^ "'");
         F.AST.Const (F.Const.Const_int (s, None)) |> F.term
-    | App { f; args; generic_args } ->
-        let const_generics =
-          List.filter_map
-            ~f:(function GConst e -> Some e | _ -> None)
-            generic_args
+    | App { f; args; generic_args; bounds_impls = _; impl = _ } ->
+        let generic_args =
+          generic_args
+          |> List.filter ~f:(function GType (TArrow _) -> false | _ -> true)
+          |> List.map ~f:(function
+               | GConst const -> (pexpr const, F.AST.Nothing)
+               | GLifetime _ -> .
+               | GType ty -> (pty e.span ty, F.AST.Hash))
         in
-        let args = const_generics @ args in
-        F.mk_e_app (pexpr f) @@ List.map ~f:pexpr args
+        let args = List.map ~f:(pexpr &&& Fn.const F.AST.Nothing) args in
+        F.mk_app (pexpr f) (generic_args @ args)
     | If { cond; then_; else_ } ->
         F.term
         @@ F.AST.If
