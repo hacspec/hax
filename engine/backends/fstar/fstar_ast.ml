@@ -53,6 +53,7 @@ let mk_e_abs args body =
 let mk_e_app base args =
   AST.mkApp base (List.map ~f:(fun arg -> (arg, AST.Nothing)) args) dummyRange
 
+let mk_app base args = AST.mkApp base args dummyRange
 let unit = term AST.(Const Const_unit)
 
 let tc_solve =
