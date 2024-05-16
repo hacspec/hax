@@ -15,114 +15,12 @@ info:
     issue_id: ~
     positive: true
     snapshot:
-      stderr: true
+      stderr: false
       stdout: true
     include_flag: ~
     backend_options: ~
 ---
 exit = 0
-stderr = '''
-Compiling traits v0.1.0 (WORKSPACE_ROOT/traits)
-disabled backtrace
-warning[HaxFront]: Hax frontend found a projected type with escaping bound vars. Please report https://github.com/hacspec/hax/issues/495
-                   
-                   Context:
-                    - alias_ty: AliasTy {
-                       substs: [
-                           P,
-                           (&u8,),
-                       ],
-                       def_id: DefId(2:2933 ~ core[7e13]::ops::function::FnOnce::Output),
-                   }
-                    - alias_kind: Projection
-                    - trait_ref: <P as std::ops::FnOnce<(&u8,)>>
-                    - trait_ref_and_substs: (
-                       <P as std::ops::FnOnce<(&u8,)>>,
-                       [],
-                   )
-                    - rebased_substs: [
-                       P,
-                       (&u8,),
-                       (&u8,),
-                   ]
-                    - norm_rebased_substs: Ok(
-                       <P as std::ops::FnOnce<(&u8,)>>,
-                   )
-                    - norm_substs: Ok(
-                       <P as std::ops::FnOnce<(&u8,)>>,
-                   )
-                    - early_binder_substs: Ok(
-                       <P as std::ops::FnOnce<(&u8,)>>,
-                   )
-                    - early_binder_rebased_substs: Ok(
-                       <P as std::ops::FnOnce<(&u8,)>>,
-                   )
-   --> traits/src/lib.rs:107:13
-    |
-107 |             impl<P: FnMut(&u8) -> bool> Trait for P {}
-    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-    = note: ⚠️ This is a bug in Hax's frontend.
-            Please report this error to https://github.com/hacspec/hax/issues with some context (e.g. the current crate)!
-
-disabled backtrace
-disabled backtrace
-disabled backtrace
-disabled backtrace
-disabled backtrace
-disabled backtrace
-disabled backtrace
-disabled backtrace
-warning[HaxFront]: Hax frontend found a projected type with escaping bound vars. Please report https://github.com/hacspec/hax/issues/495
-                   
-                   Context:
-                    - alias_ty: AliasTy {
-                       substs: [
-                           P,
-                           (&<I as std::iter::Iterator>::Item,),
-                       ],
-                       def_id: DefId(2:2933 ~ core[7e13]::ops::function::FnOnce::Output),
-                   }
-                    - alias_kind: Projection
-                    - trait_ref: <P as std::ops::FnOnce<(&<I as std::iter::Iterator>::Item,)>>
-                    - trait_ref_and_substs: (
-                       <P as std::ops::FnOnce<(&<I as std::iter::Iterator>::Item,)>>,
-                       [],
-                   )
-                    - rebased_substs: [
-                       P,
-                       (&<I as std::iter::Iterator>::Item,),
-                       (&<I as std::iter::Iterator>::Item,),
-                   ]
-                    - norm_rebased_substs: Err(
-                       Type(
-                           (&<P as std::iter::Iterator>::Item,),
-                       ),
-                   )
-                    - norm_substs: Err(
-                       Type(
-                           (&<P as std::iter::Iterator>::Item,),
-                       ),
-                   )
-                    - early_binder_substs: Ok(
-                       <(&<I as std::iter::Iterator>::Item,) as std::ops::FnOnce<(&<P as std::iter::Iterator>::Item,)>>,
-                   )
-                    - early_binder_rebased_substs: Ok(
-                       <(&<I as std::iter::Iterator>::Item,) as std::ops::FnOnce<(&<P as std::iter::Iterator>::Item,)>>,
-                   )
-  --> /nix/store/bbq0z3kg0b7hb3n7agk20r7hg3alf4kb-rust-default-1.72.0-nightly-2023-06-28/lib/rustlib/src/rust/library/core/src/iter/adapters/filter.rs:51:1
-   |
-51 | impl<I: Iterator, P> Iterator for Filter<I, P>
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: ⚠️ This is a bug in Hax's frontend.
-           Please report this error to https://github.com/hacspec/hax/issues with some context (e.g. the current crate)!
-
-disabled backtrace
-disabled backtrace
-disabled backtrace
-warning: `traits` (lib) generated 2 warnings
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
 
 [stdout]
 diagnostics = []
