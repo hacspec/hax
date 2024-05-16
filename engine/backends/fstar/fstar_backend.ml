@@ -78,6 +78,7 @@ module FStarNamePolicy = struct
 end
 
 module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (FStarNamePolicy)
+module Visitors = Ast_visitors.Make (InputLanguage)
 open AST
 module F = Fstar_ast
 
@@ -1434,8 +1435,52 @@ let strings_of_item ~signature_only (bo : BackendOptions.t) m items
            if interface_mode then [ (`Impl s, `Newline); (`Intf s, `Newline) ]
            else [ (`Impl s, `Newline) ])
 
-let string_of_items ~signature_only (bo : BackendOptions.t) m items :
+(** Convers a namespace to a module name *)
+let module_name (ns : string * string list) : string =
+  String.concat ~sep:"."
+    (List.map ~f:(map_first_letter String.uppercase) (fst ns :: snd ns))
+
+let string_of_items ~signature_only ~mod_name (bo : BackendOptions.t) m items :
     string * string =
+  let collect_trait_goal_idents =
+    object
+      inherit [_] Visitors.reduce as super
+      inherit [_] U.Sets.Concrete_ident.monoid as _m
+
+      method! visit_trait_goal (_env : unit) x =
+        Set.singleton (module Concrete_ident) x.trait
+    end
+  in
+  let header =
+    let lines =
+      List.map ~f:(collect_trait_goal_idents#visit_item ()) items
+      |> Set.union_list (module Concrete_ident)
+      |> Set.map
+           (module String)
+           ~f:(fun i -> U.Concrete_ident_view.to_namespace i |> module_name)
+      |> Fn.flip Set.remove mod_name
+      |> Set.to_list
+      |> List.filter ~f:(fun m ->
+             (* Special treatment for modules handled specifically in our F* libraries *)
+             String.is_prefix ~prefix:"Core." m |> not
+             && String.is_prefix ~prefix:"Alloc." m |> not
+             && String.equal "Hax_lib.Int" m |> not)
+      |> List.map ~f:(fun mod_path -> "let open " ^ mod_path ^ " in")
+    in
+    match lines with
+    | [] -> ""
+    | _ ->
+        "let _ ="
+        ^ ([
+             "(* This module has implicit dependencies, here we make them \
+              explicit. *)";
+             "(* The implicit dependencies arise from typeclasses instances. *)";
+           ]
+           @ lines @ [ "()" ]
+          |> List.map ~f:(( ^ ) "\n  ")
+          |> String.concat ~sep:"")
+        ^ "\n\n"
+  in
   let strings =
     List.concat_map ~f:(strings_of_item ~signature_only bo m items) items
     |> List.map
@@ -1456,11 +1501,14 @@ let string_of_items ~signature_only (bo : BackendOptions.t) m items :
         strings
     in
     let n = List.length l - 1 in
-    List.mapi
-      ~f:(fun i (s, space) ->
-        s ^ if [%matches? `NoNewline] space || [%eq: int] i n then "" else "\n")
-      l
-    |> String.concat ~sep:"\n"
+    let lines =
+      List.mapi
+        ~f:(fun i (s, space) ->
+          s
+          ^ if [%matches? `NoNewline] space || [%eq: int] i n then "" else "\n")
+        l
+    in
+    match lines with [] -> "" | _ -> header ^ String.concat ~sep:"\n" lines
   in
   ( string_for (function `Impl s -> Some s | _ -> None),
     string_for (function `Intf s -> Some s | _ -> None) )
@@ -1490,13 +1538,10 @@ let translate m (bo : BackendOptions.t) (items : AST.item list) :
            in
            List.exists ~f:contains_dropped_body items
          in
-         let mod_name =
-           String.concat ~sep:"."
-             (List.map
-                ~f:(map_first_letter String.uppercase)
-                (fst ns :: snd ns))
+         let mod_name = module_name ns in
+         let impl, intf =
+           string_of_items ~signature_only ~mod_name bo m items
          in
-         let impl, intf = string_of_items ~signature_only bo m items in
          let make ~ext body =
            if String.is_empty body then None
            else

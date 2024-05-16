@@ -35,6 +35,12 @@ module Literals
 open Core
 open FStar.Mul
 
+let _ =
+  (* This module has implicit dependencies, here we make them explicit. *)
+  (* The implicit dependencies arise from typeclasses instances. *)
+  let open Num_bigint.Bigint.Convert in
+  ()
+
 let casts (x8: u8) (x16: u16) (x32: u32) (x64: u64) (xs: usize) : Prims.unit =
   let (_: u64):u64 =
     ((((cast (x8 <: u8) <: u64) +! (cast (x16 <: u16) <: u64) <: u64) +! (cast (x32 <: u32) <: u64)

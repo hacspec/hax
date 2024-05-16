@@ -109,7 +109,6 @@ mod for_clauses {
     }
 }
 
-// From issue #677
 mod unconstrainted_types_issue_677 {
     trait PolyOp {
         fn op(x: u32, y: u32) -> u32;
@@ -139,5 +138,28 @@ mod unconstrainted_types_issue_677 {
     #[test]
     fn test() {
         assert!(both(10) == (20, 100));
+    }
+}
+
+// From issue_667
+mod implicit_dependencies_issue_667 {
+    mod trait_definition {
+        pub trait MyTrait {
+            fn my_method(self);
+        }
+    }
+    mod define_type {
+        pub struct MyType;
+    }
+    mod impl_type {
+        impl super::trait_definition::MyTrait for super::define_type::MyType {
+            fn my_method(self) {}
+        }
+    }
+    mod use_type {
+        fn some_function(x: super::define_type::MyType) {
+            use super::trait_definition::MyTrait;
+            x.my_method()
+        }
     }
 }
