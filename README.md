@@ -1,4 +1,8 @@
 <p align="center">
+  <img src="logo.svg"/>
+</p>
+
+<p align="center">
   <a href="https://hacspec.org/">🌐 Website</a> |
   <a href="https://hacspec.org/book">📖 Book</a> |
   <a href="https://hacspec.org/blog">📝 Blog</a> |
