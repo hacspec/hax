@@ -762,7 +762,8 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                             min_length,
                             from_end,
                         } => {
-                            let TyKind::Slice(ty) = current_ty.kind() else {
+                            let (TyKind::Slice(ty) | TyKind::Array(ty, _)) = current_ty.kind()
+                            else {
                                 supposely_unreachable_fatal!(
                                     s, "PlaceConstantIndexNotSlice";
                                     {current_ty, current_kind, elem}
