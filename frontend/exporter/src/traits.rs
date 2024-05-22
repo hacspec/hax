@@ -470,7 +470,7 @@ pub mod copy_paste_from_rustc {
         let obligation_cause = ObligationCause::dummy();
         let obligation = Obligation::new(tcx, obligation_cause, param_env, trait_ref);
 
-        let selection = match selcx.select(&obligation) {
+        let selection = match selcx.poly_select(&obligation) {
             Ok(Some(selection)) => selection,
             Ok(None) => return Err(CodegenObligationError::Ambiguity),
             Err(Unimplemented) => return Err(CodegenObligationError::Unimplemented),
