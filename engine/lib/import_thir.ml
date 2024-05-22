@@ -480,7 +480,7 @@ end) : EXPR = struct
           (U.call Rust_primitives__hax__never_to_any [ c_expr source ] span typ)
             .e
       (* TODO: this is incorrect (NeverToAny) *)
-      | Pointer { cast; source } -> c_pointer e typ span cast source
+      | PointerCoercion { cast; source } -> c_pointer e typ span cast source
       | Loop { body } ->
           let body = c_expr body in
           Loop
@@ -907,7 +907,7 @@ end) : EXPR = struct
         (*       ^ [%show: expr] source)) *)
     | _ ->
         unimplemented [ e.span ]
-          ("Pointer, with [cast] being " ^ [%show: Thir.pointer_cast] cast)
+          ("Pointer, with [cast] being " ^ [%show: Thir.pointer_coercion] cast)
 
   and c_ty (span : Thir.span) (ty : Thir.ty) : ty =
     match ty with

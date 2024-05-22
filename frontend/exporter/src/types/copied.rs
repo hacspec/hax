@@ -1979,11 +1979,11 @@ pub enum Unsafety {
     Normal,
 }
 
-/// Reflects [`rustc_middle::ty::adjustment::PointerCast`]
+/// Reflects [`rustc_middle::ty::adjustment::PointerCoercion`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_middle::ty::adjustment::PointerCast, state: S as gstate)]
+#[args(<S>, from: rustc_middle::ty::adjustment::PointerCoercion, state: S as gstate)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub enum PointerCast {
+pub enum PointerCoercion {
     ReifyFnPointer,
     UnsafeFnPointer,
     ClosureFnPointer(Unsafety),
@@ -2338,8 +2338,8 @@ pub enum ExprKind {
     NeverToAny {
         source: Expr,
     },
-    Pointer {
-        cast: PointerCast,
+    PointerCoercion {
+        cast: PointerCoercion,
         source: Expr,
     },
     Loop {

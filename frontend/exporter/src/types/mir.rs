@@ -903,7 +903,7 @@ pub enum AggregateKind {
 pub enum CastKind {
     PointerExposeAddress,
     PointerFromExposedAddress,
-    Pointer(PointerCast),
+    PointerCoercion(PointerCoercion),
     DynStar,
     IntToInt,
     FloatToInt,
