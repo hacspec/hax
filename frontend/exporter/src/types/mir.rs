@@ -164,7 +164,7 @@ pub struct SourceScopeData {
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::Instance<'tcx>, state: S as s)]
 pub struct Instance {
     pub def: InstanceDef,
-    pub substs: Vec<GenericArg>,
+    pub args: Vec<GenericArg>,
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -207,10 +207,10 @@ pub struct Terminator {
     pub kind: TerminatorKind,
 }
 
-pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + HasOwnerId>(
+pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     def_id: rustc_hir::def_id::DefId,
-    substs: rustc_middle::ty::subst::SubstsRef<'tcx>,
+    generics: rustc_middle::ty::GenericArgsRef<'tcx>,
 ) -> (DefId, Vec<GenericArg>, Vec<ImplExpr>, Option<ImplExpr>) {
     let tcx = s.base().tcx;
     let param_env = s.param_env();
@@ -221,7 +221,7 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
     // fn foo<T : Bar>(...)
     //            ^^^
     // ```
-    let mut trait_refs = solve_item_traits(s, param_env, def_id, substs, None);
+    let mut trait_refs = solve_item_traits(s, param_env, def_id, generics, None);
 
     // Check if this is a trait method call: retrieve the trait source if
     // it is the case (i.e., where does the method come from? Does it refer
@@ -248,7 +248,7 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
     //            ^^^
     //     method level trait obligation
     // ```
-    let (substs, source) = if let Some(assoc) = tcx.opt_associated_item(def_id) {
+    let (generics, source) = if let Some(assoc) = tcx.opt_associated_item(def_id) {
         // There is an associated item.
         use tracing::*;
         trace!("def_id: {:?}", def_id);
@@ -276,7 +276,7 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
         //     ...
         // }
         // ```
-        // The substs for the call to `baz` will be the concatenation: `<T, u32, U>`, which we
+        // The generics for the call to `baz` will be the concatenation: `<T, u32, U>`, which we
         // split into `<T, u32>` and `<U>`.
         //
         // If we have:
@@ -288,33 +288,33 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
         //     tree.insert(false);
         // }
         // ```
-        // The substs for `insert` are `<u32>` for the impl and `<bool>` for the method.
+        // The generics for `insert` are `<u32>` for the impl and `<bool>` for the method.
         let params_info = get_params_info(s, container_def_id);
         let num_container_generics = params_info.num_generic_params;
         match assoc.container {
             rustc_middle::ty::AssocItemContainer::TraitContainer => {
                 // Retrieve the trait information
-                let impl_expr = get_trait_info(s, substs, &assoc);
+                let impl_expr = get_trait_info(s, generics, &assoc);
                 // Return only the method generics; the trait generics are included in `impl_expr`.
-                let method_substs = &substs[num_container_generics..];
-                (method_substs.sinto(s), Option::Some(impl_expr))
+                let method_generics = &generics[num_container_generics..];
+                (method_generics.sinto(s), Option::Some(impl_expr))
             }
             rustc_middle::ty::AssocItemContainer::ImplContainer => {
                 // Solve the trait constraints of the impl block.
                 let container_generics = tcx.generics_of(container_def_id);
-                let container_substs = substs.truncate_to(tcx, container_generics);
+                let container_generics = generics.truncate_to(tcx, container_generics);
                 let container_trait_refs =
-                    solve_item_traits(s, param_env, container_def_id, container_substs, None);
+                    solve_item_traits(s, param_env, container_def_id, container_generics, None);
                 trait_refs.extend(container_trait_refs);
-                (substs.sinto(s), Option::None)
+                (generics.sinto(s), Option::None)
             }
         }
     } else {
         // Regular function call
-        (substs.sinto(s), Option::None)
+        (generics.sinto(s), Option::None)
     };
 
-    (def_id.sinto(s), substs, trait_refs, source)
+    (def_id.sinto(s), generics, trait_refs, source)
 }
 
 /// Return the [DefId] of the function referenced by an operand, with the
@@ -335,14 +335,14 @@ fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
         Operand::Constant(c) => {
             // Regular function case
             let c = c.deref();
-            let (def_id, substs) = match &c.literal {
+            let (def_id, generics) = match &c.literal {
                 ConstantKind::Ty(c) => {
                     // The type of the constant should be a FnDef, allowing
                     // us to retrieve the function's identifier and instantiation.
                     let c_ty = c.ty();
                     assert!(c_ty.is_fn());
                     match c_ty.kind() {
-                        TyKind::FnDef(def_id, substs) => (*def_id, *substs),
+                        TyKind::FnDef(def_id, generics) => (*def_id, *generics),
                         _ => {
                             unreachable!();
                         }
@@ -352,7 +352,7 @@ fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
                     // Same as for the `Ty` case above
                     assert!(c_ty.is_fn());
                     match c_ty.kind() {
-                        TyKind::FnDef(def_id, substs) => (*def_id, *substs),
+                        TyKind::FnDef(def_id, generics) => (*def_id, *generics),
                         _ => {
                             unreachable!();
                         }
@@ -363,9 +363,9 @@ fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
                 }
             };
 
-            let (fun_id, substs, trait_refs, trait_info) =
-                get_function_from_def_id_and_substs(s, def_id, substs);
-            (FunOperand::Id(fun_id), substs, trait_refs, trait_info)
+            let (fun_id, generics, trait_refs, trait_info) =
+                get_function_from_def_id_and_generics(s, def_id, generics);
+            (FunOperand::Id(fun_id), generics, trait_refs, trait_info)
         }
         Operand::Move(place) => {
             // Closure case.
@@ -404,11 +404,11 @@ fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasO
         fn_span,
     } = terminator
     {
-        let (fun, substs, trait_refs, trait_info) = get_function_from_operand(s, func);
+        let (fun, generics, trait_refs, trait_info) = get_function_from_operand(s, func);
 
         TerminatorKind::Call {
             fun,
-            substs,
+            generics,
             args: args.sinto(s),
             destination: destination.sinto(s),
             target: target.sinto(s),
@@ -549,7 +549,7 @@ pub enum TerminatorKind {
         /// We truncate the substitution so as to only include the arguments
         /// relevant to the method (and not the trait) if it is a trait method
         /// call. See [ParamsInfo] for the full details.
-        substs: Vec<GenericArg>,
+        generics: Vec<GenericArg>,
         args: Vec<Operand>,
         destination: Place,
         target: Option<BasicBlock>,
@@ -720,7 +720,7 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                         Deref => {
                             current_ty = match current_ty.kind() {
                                 TyKind::Ref(_, ty, _) => ty.clone(),
-                                TyKind::Adt(def, substs) if def.is_box() => substs.type_at(0),
+                                TyKind::Adt(def, generics) if def.is_box() => generics.type_at(0),
                                 _ => supposely_unreachable_fatal!(
                                     s, "PlaceDerefNotRefNorBox";
                                     {current_ty, current_kind, elem}
@@ -729,12 +729,12 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                             ProjectionElem::Deref
                         }
                         Field(index, ty) => {
-                            if let TyKind::Closure(_, substs) = cur_ty.kind() {
+                            if let TyKind::Closure(_, generics) = cur_ty.kind() {
                                 // We get there when we access one of the fields
                                 // of the the state captured by a closure.
                                 use crate::rustc_index::Idx;
-                                let substs = substs.as_closure();
-                                let upvar_tys: Vec<_> = substs.upvar_tys().collect();
+                                let generics = generics.as_closure();
+                                let upvar_tys: Vec<_> = generics.upvar_tys().collect();
                                 current_ty = upvar_tys[index.sinto(s).index()].clone();
                                 ProjectionElem::Field(ProjectionElemFieldKind::ClosureState(
                                     index.sinto(s),
@@ -850,15 +850,15 @@ pub(crate) fn poly_fn_sig_to_mir_poly_fn_sig<'tcx, S: BaseState<'tcx> + HasOwner
 pub enum AggregateKind {
     Array(Ty),
     Tuple,
-    #[custom_arm(rustc_middle::mir::AggregateKind::Adt(def_id, vid, substs, annot, fid) => {
+    #[custom_arm(rustc_middle::mir::AggregateKind::Adt(def_id, vid, generics, annot, fid) => {
         let adt_kind = s.base().tcx.adt_def(def_id).adt_kind().sinto(s);
         let param_env = s.param_env();
-        let trait_refs = solve_item_traits(s, param_env, *def_id, substs, None);
+        let trait_refs = solve_item_traits(s, param_env, *def_id, generics, None);
         AggregateKind::Adt(
             def_id.sinto(s),
             vid.sinto(s),
             adt_kind,
-            substs.sinto(s),
+            generics.sinto(s),
             trait_refs,
             annot.sinto(s),
             fid.sinto(s))
@@ -872,27 +872,27 @@ pub enum AggregateKind {
         Option<UserTypeAnnotationIndex>,
         Option<FieldIdx>,
     ),
-    #[custom_arm(rustc_middle::mir::AggregateKind::Closure(rust_id, substs) => {
+    #[custom_arm(rustc_middle::mir::AggregateKind::Closure(rust_id, generics) => {
         let def_id : DefId = rust_id.sinto(s);
-        // The substs is meant to be converted to a function signature. Note
+        // The generics is meant to be converted to a function signature. Note
         // that Rustc does its job: the PolyFnSig binds the captured local
         // type, regions, etc. variables, which means we can treat the local
         // closure like any top-level function.
-        let closure = substs.as_closure();
+        let closure = generics.as_closure();
         let sig = closure.sig();
         let sig = poly_fn_sig_to_mir_poly_fn_sig(&sig, s);
 
         // Solve the trait obligations. Note that we solve the parent
         let tcx = s.base().tcx;
         let param_env = s.param_env();
-        let parent_substs = closure.parent_substs();
-        let substs = tcx.mk_substs(parent_substs);
+        let parent_generics = closure.parent_args();
+        let generics = tcx.mk_args(parent_generics);
         // Retrieve the predicates from the parent (i.e., the function which calls
         // the closure).
         let predicates = tcx.predicates_defined_on(tcx.generics_of(rust_id).parent.unwrap());
 
-        let trait_refs = solve_item_traits(s, param_env, *rust_id, substs, Some(predicates));
-        AggregateKind::Closure(def_id, parent_substs.sinto(s), trait_refs, sig)
+        let trait_refs = solve_item_traits(s, param_env, *rust_id, generics, Some(predicates));
+        AggregateKind::Closure(def_id, parent_generics.sinto(s), trait_refs, sig)
     })]
     Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, MirPolyFnSig),
     Generator(DefId, Vec<GenericArg>, Movability),

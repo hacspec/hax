@@ -6,9 +6,9 @@ impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
     fn subst(
         self,
         tcx: ty::TyCtxt<'tcx>,
-        substs: &[ty::subst::GenericArg<'tcx>],
+        generics: &[ty::GenericArg<'tcx>],
     ) -> ty::Binder<'tcx, T> {
-        self.rebind(ty::EarlyBinder::bind(self.clone().skip_binder()).subst(tcx, substs))
+        self.rebind(ty::EarlyBinder::bind(self.clone().skip_binder()).instantiate(tcx, generics))
     }
 }
 
@@ -95,11 +95,11 @@ impl<'tcx> ty::TyCtxt<'tcx> {
 pub fn poly_trait_ref<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     assoc: &ty::AssocItem,
-    substs: ty::SubstsRef<'tcx>,
+    generics: ty::GenericArgsRef<'tcx>,
 ) -> Option<ty::PolyTraitRef<'tcx>> {
     let tcx = s.base().tcx;
     let r#trait = tcx.trait_of_item(assoc.def_id)?;
-    Some(ty::Binder::dummy(ty::TraitRef::new(tcx, r#trait, substs)))
+    Some(ty::Binder::dummy(ty::TraitRef::new(tcx, r#trait, generics)))
 }
 
 #[tracing::instrument(skip(s))]

@@ -305,14 +305,14 @@ pub(crate) fn is_anon_const<'tcx>(
 fn trait_const_to_constant_expr_kind<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     _const_def_id: rustc_hir::def_id::DefId,
-    substs: rustc_middle::ty::SubstsRef<'tcx>,
+    generics: rustc_middle::ty::GenericArgsRef<'tcx>,
     assoc: &rustc_middle::ty::AssocItem,
 ) -> ConstantExprKind {
     assert!(assoc.trait_item_def_id.is_some());
     let name = assoc.name.to_string();
 
     // Retrieve the trait information
-    let impl_expr = get_trait_info(s, substs, assoc);
+    let impl_expr = get_trait_info(s, generics, assoc);
 
     ConstantExprKind::TraitConst { impl_expr, name }
 }
@@ -356,19 +356,18 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
             let cv = if let Some(assoc) = s.base().tcx.opt_associated_item(ucv.def) {
                 if assoc.trait_item_def_id.is_some() {
                     // This must be a trait declaration constant
-                    trait_const_to_constant_expr_kind(s, ucv.def, ucv.substs, &assoc)
+                    trait_const_to_constant_expr_kind(s, ucv.def, ucv.args, &assoc)
                 } else {
                     // Constant appearing in an inherent impl block.
 
                     // Solve the trait obligations
                     let parent_def_id = tcx.parent(ucv.def);
                     let param_env = s.param_env();
-                    let trait_refs =
-                        solve_item_traits(s, param_env, parent_def_id, ucv.substs, None);
+                    let trait_refs = solve_item_traits(s, param_env, parent_def_id, ucv.args, None);
 
                     // Convert
                     let id = ucv.def.sinto(s);
-                    let generics = ucv.substs.sinto(s);
+                    let generics = ucv.args.sinto(s);
                     ConstantExprKind::GlobalName {
                         id,
                         generics,
@@ -377,7 +376,7 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
                 }
             } else {
                 // Top-level constant.
-                assert!(ucv.substs.is_empty(), "top-level constant has generics?");
+                assert!(ucv.args.is_empty(), "top-level constant has generics?");
                 let id = ucv.def.sinto(s);
                 ConstantExprKind::GlobalName {
                     id,
@@ -559,9 +558,9 @@ pub fn const_value_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
             let cv = match &hty {
                 Ty::Tuple(tys) if tys.is_empty() => ConstantExprKind::Tuple { fields: Vec::new() },
                 Ty::Arrow(_) => match ty.kind() {
-                    rustc_middle::ty::TyKind::FnDef(def_id, substs) => {
+                    rustc_middle::ty::TyKind::FnDef(def_id, args) => {
                         let (def_id, generics, generics_impls, method_impl) =
-                            get_function_from_def_id_and_substs(s, *def_id, substs);
+                            get_function_from_def_id_and_generics(s, *def_id, args);
 
                         ConstantExprKind::FnPtr {
                             def_id,

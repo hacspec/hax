@@ -80,10 +80,10 @@ pub(crate) mod search_clause {
     fn predicates_to_poly_trait_predicates<'tcx>(
         tcx: TyCtxt<'tcx>,
         predicates: impl Iterator<Item = Predicate<'tcx>>,
-        substs: subst::SubstsRef<'tcx>,
+        generics: GenericArgsRef<'tcx>,
     ) -> impl Iterator<Item = PolyTraitPredicate<'tcx>> {
         predicates
-            .map(move |pred| pred.kind().subst(tcx, substs))
+            .map(move |pred| pred.kind().subst(tcx, generics))
             .filter_map(|pred| pred.as_poly_trait_predicate())
     }
 
@@ -160,20 +160,16 @@ pub(crate) mod search_clause {
                 .predicates_defined_on_or_above(self.def_id())
                 .into_iter()
                 .map(|apred| apred.predicate);
-            predicates_to_poly_trait_predicates(
-                tcx,
-                predicates,
-                self.skip_binder().trait_ref.substs,
-            )
-            .enumerate()
-            .collect()
+            predicates_to_poly_trait_predicates(tcx, predicates, self.skip_binder().trait_ref.args)
+                .enumerate()
+                .collect()
         }
         fn associated_items_trait_predicates(
             self,
             s: &S,
         ) -> Vec<(
             AssocItem,
-            subst::EarlyBinder<Vec<(usize, PolyTraitPredicate<'tcx>)>>,
+            EarlyBinder<Vec<(usize, PolyTraitPredicate<'tcx>)>>,
         )> {
             let tcx = s.base().tcx;
             tcx.associated_items(self.def_id())
@@ -185,7 +181,7 @@ pub(crate) mod search_clause {
                         predicates_to_poly_trait_predicates(
                             tcx,
                             clauses.into_iter().map(|clause| clause.as_predicate()),
-                            self.skip_binder().trait_ref.substs,
+                            self.skip_binder().trait_ref.args,
                         )
                         .enumerate()
                         .collect()
@@ -321,11 +317,11 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
         match select_trait_candidate(s, param_env, *self) {
             ImplSource::UserDefined(ImplSourceUserDefinedData {
                 impl_def_id,
-                substs,
+                args: generics,
                 nested,
             }) => ImplExprAtom::Concrete {
                 id: impl_def_id.sinto(s),
-                generics: substs.sinto(s),
+                generics: generics.sinto(s),
             }
             .with_args(impl_exprs(s, &nested), trait_ref),
             ImplSource::Param(nested, _constness) => {
@@ -398,7 +394,7 @@ pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
     let tcx = s.base().tcx;
     let impl_trait_ref = tcx
         .impl_trait_ref(impl_did)
-        .map(|binder| rustc_middle::ty::Binder::dummy(binder.subst_identity()))?;
+        .map(|binder| rustc_middle::ty::Binder::dummy(binder.instantiate_identity()))?;
     let original_predicate_id = {
         // We don't want the id of the substituted clause id, but the
         // original clause id (with, i.e., `Self`)
