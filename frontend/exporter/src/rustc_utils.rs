@@ -212,9 +212,14 @@ pub fn translate_span(span: rustc_span::Span, sess: &rustc_session::Session) -> 
     }
 }
 
-#[tracing::instrument(skip(s))]
-pub(crate) fn get_param_env<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> ty::ParamEnv<'tcx> {
-    s.base().tcx.param_env(s.owner_id())
+pub trait ParamEnv<'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx>;
+}
+
+impl<'tcx, S: UnderOwnerState<'tcx>> ParamEnv<'tcx> for S {
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.base().tcx.param_env(self.owner_id())
+    }
 }
 
 #[tracing::instrument]

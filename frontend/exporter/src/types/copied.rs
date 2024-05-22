@@ -1605,12 +1605,12 @@ impl Alias {
                     let rebased_substs = alias_ty.rebase_substs_onto_impl(alias_ty.substs, tcx);
                     let norm_rebased_substs = tcx.try_subst_and_normalize_erasing_regions(
                         rebased_substs,
-                        get_param_env(s),
+                        s.param_env(),
                         EarlyBinder::bind(trait_ref),
                     );
                     let norm_substs = tcx.try_subst_and_normalize_erasing_regions(
                         alias_ty.substs,
-                        get_param_env(s),
+                        s.param_env(),
                         EarlyBinder::bind(trait_ref),
                     );
                     let early_binder_substs =
@@ -1636,7 +1636,7 @@ impl Alias {
                 };
                 AliasKind::Projection {
                     assoc_item: tcx.associated_item(alias_ty.def_id).sinto(s),
-                    impl_expr: poly_trait_ref.impl_expr(s, get_param_env(s)),
+                    impl_expr: poly_trait_ref.impl_expr(s, s.param_env()),
                 }
             }
             RustAliasKind::Inherent => AliasKind::Inherent,
@@ -1683,8 +1683,7 @@ pub enum Ty {
         rustc_middle::ty::TyKind::Adt(adt_def, substs) => {
             let def_id = adt_def.did().sinto(state);
             let generic_args: Vec<GenericArg> = substs.sinto(state);
-            let param_env = state.base().tcx.param_env(state.owner_id());
-            let trait_refs = solve_item_traits(state, param_env, adt_def.did(), substs, None);
+            let trait_refs = solve_item_traits(state, state.param_env(), adt_def.did(), substs, None);
             Ty::Adt { def_id, generic_args, trait_refs }
         },
     )]
@@ -2224,9 +2223,9 @@ pub enum ExprKind {
                         let tcx = gstate.base().tcx;
                         r#impl = tcx.opt_associated_item(*def_id).as_ref().and_then(|assoc| {
                             poly_trait_ref(gstate, assoc, substs)
-                        }).map(|poly_trait_ref| poly_trait_ref.impl_expr(gstate, get_param_env(gstate)));
+                        }).map(|poly_trait_ref| poly_trait_ref.impl_expr(gstate, gstate.param_env()));
                         generic_args = substs.sinto(gstate);
-                        bounds_impls = solve_item_traits(gstate, get_param_env(gstate), *def_id, substs, None);
+                        bounds_impls = solve_item_traits(gstate, gstate.param_env(), *def_id, substs, None);
                         Expr {
                             contents,
                             span: e.span.sinto(gstate),
@@ -2478,7 +2477,7 @@ pub enum ExprKind {
             let tcx = gstate.base().tcx;
             tcx.opt_associated_item(*def_id).as_ref().and_then(|assoc| {
                 poly_trait_ref(gstate, assoc, substs)
-            }).map(|poly_trait_ref| poly_trait_ref.impl_expr(gstate, tcx.param_env(gstate.owner_id())))
+            }).map(|poly_trait_ref| poly_trait_ref.impl_expr(gstate, gstate.param_env()))
         })]
         r#impl: Option<ImplExpr>,
     },
