@@ -248,7 +248,7 @@ impl ImplInfos {
 
         Self {
             generics: tcx.generics_of(did).sinto(s),
-            typ: tcx.type_of(did).subst_identity().sinto(s),
+            typ: tcx.type_of(did).instantiate_identity().sinto(s),
             trait_ref: tcx.impl_trait_ref(did).sinto(s),
             clauses: tcx.predicates_defined_on(did).predicates.sinto(s),
         }

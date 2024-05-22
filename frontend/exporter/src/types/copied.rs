@@ -463,19 +463,19 @@ pub enum CanonicalVarInfo {
     PlaceholderConst(PlaceholderConst, Ty),
 }
 
-/// Reflects [`rustc_middle::ty::subst::UserSelfTy`]
+/// Reflects [`rustc_middle::ty::UserSelfTy`]
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::subst::UserSelfTy<'tcx>, state: S as gstate)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::UserSelfTy<'tcx>, state: S as gstate)]
 pub struct UserSelfTy {
     pub impl_def_id: DefId,
     pub self_ty: Ty,
 }
 
-/// Reflects [`rustc_middle::ty::subst::UserSubsts`]
+/// Reflects [`rustc_middle::ty::UserArgs`]
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::subst::UserSubsts<'tcx>, state: S as gstate)]
-pub struct UserSubsts {
-    pub substs: Vec<GenericArg>,
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::UserArgs<'tcx>, state: S as gstate)]
+pub struct UserArgs {
+    pub args: Vec<GenericArg>,
     pub user_self_ty: Option<UserSelfTy>,
 }
 
@@ -506,7 +506,7 @@ pub enum UserType {
     // See: https://github.com/hacspec/hax/pull/209
 
     // Ty(Ty),
-    // TypeOf(DefId, UserSubsts),
+    // TypeOf(DefId, UserArgs),
     #[todo]
     Todo(String),
 }
@@ -560,8 +560,8 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, FieldDef> for rustc_middle::ty::Fi
     fn sinto(&self, s: &S) -> FieldDef {
         let tcx = s.base().tcx;
         let ty = {
-            let substs = rustc_middle::ty::subst::InternalSubsts::identity_for_item(tcx, self.did);
-            self.ty(tcx, substs).sinto(s)
+            let generics = rustc_middle::ty::GenericArgs::identity_for_item(tcx, self.did);
+            self.ty(tcx, generics).sinto(s)
         };
         let name = {
             let name = self.name.sinto(s);
@@ -650,11 +650,11 @@ pub struct Region {
     pub kind: RegionKind,
 }
 
-/// Reflects both [`rustc_middle::ty::subst::GenericArg`] and [`rustc_middle::ty::subst::GenericArgKind`]
+/// Reflects both [`rustc_middle::ty::GenericArg`] and [`rustc_middle::ty::GenericArgKind`]
 #[derive(
     AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::subst::GenericArgKind<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::GenericArgKind<'tcx>, state: S as s)]
 pub enum GenericArg {
     Lifetime(Region),
     Type(Ty),
@@ -668,14 +668,14 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, GenericArg> for rustc_middle::ty::
 }
 
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Vec<GenericArg>>
-    for rustc_middle::ty::subst::SubstsRef<'tcx>
+    for rustc_middle::ty::GenericArgsRef<'tcx>
 {
     fn sinto(&self, s: &S) -> Vec<GenericArg> {
         self.iter().map(|v| v.unpack().sinto(s)).collect()
     }
 }
 
-/// Reflects both [`rustc_middle::ty::subst::GenericArg`] and [`rustc_middle::ty::subst::GenericArgKind`]
+/// Reflects both [`rustc_middle::ty::GenericArg`] and [`rustc_middle::ty::GenericArgKind`]
 #[derive(AdtInto)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::ast::LitIntType, state: S as gstate)]
 #[derive(
@@ -1242,10 +1242,10 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                     return cexpr.into();
                 }
                 rustc_middle::thir::ExprKind::ZstLiteral { .. } => match ty.kind() {
-                    rustc_middle::ty::TyKind::FnDef(def, _substs) => {
-                        /* TODO: translate substs
+                    rustc_middle::ty::TyKind::FnDef(def, _generics) => {
+                        /* TODO: translate generics
                         let tcx = s.base().tcx;
-                        let sig = &tcx.fn_sig(*def).subst(tcx, substs);
+                        let sig = &tcx.fn_sig(*def).instantiate(tcx, generics);
                         let ret: rustc_middle::ty::Ty = tcx.erase_late_bound_regions(sig.output());
                         let inputs = sig.inputs();
                         let indexes = inputs.skip_binder().iter().enumerate().map(|(i, _)| i);
@@ -1308,7 +1308,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                         );
                     };
                     match lhs_ty {
-                        rustc_middle::ty::TyKind::Adt(adt_def, _substs) => {
+                        rustc_middle::ty::TyKind::Adt(adt_def, _generics) => {
                             let variant = adt_def.variant(variant_index);
                             ExprKind::Field {
                                 field: variant.fields[name].did.sinto(s),
@@ -1354,10 +1354,10 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Pat> for rustc_middle::thir::Pat<'tcx> {
         let rustc_middle::thir::Pat { span, kind, ty } = self;
         let contents = match kind {
             rustc_middle::thir::PatKind::Leaf { subpatterns } => match ty.kind() {
-                rustc_middle::ty::TyKind::Adt(adt_def, substs) => {
+                rustc_middle::ty::TyKind::Adt(adt_def, args) => {
                     (rustc_middle::thir::PatKind::Variant {
                         adt_def: adt_def.clone(),
-                        substs,
+                        args,
                         variant_index: rustc_target::abi::VariantIdx::from_usize(0),
                         subpatterns: subpatterns.clone(),
                     })
@@ -1559,7 +1559,7 @@ pub struct TyGenerics {
 )]
 pub struct Alias {
     pub kind: AliasKind,
-    pub substs: Vec<GenericArg>,
+    pub args: Vec<GenericArg>,
     pub def_id: DefId,
 }
 
@@ -1601,32 +1601,32 @@ impl Alias {
                 // this seems fine. If we detect such a situation, we
                 // emit a warning with a lot of debugging information.
                 let poly_trait_ref = if trait_ref.has_escaping_bound_vars() {
-                    let trait_ref_and_substs = alias_ty.trait_ref_and_own_substs(tcx);
-                    let rebased_substs = alias_ty.rebase_substs_onto_impl(alias_ty.substs, tcx);
-                    let norm_rebased_substs = tcx.try_subst_and_normalize_erasing_regions(
-                        rebased_substs,
+                    let trait_ref_and_generics = alias_ty.trait_ref_and_own_args(tcx);
+                    let rebased_generics = alias_ty.rebase_args_onto_impl(alias_ty.args, tcx);
+                    let norm_rebased_generics = tcx.try_subst_and_normalize_erasing_regions(
+                        rebased_generics,
                         s.param_env(),
                         EarlyBinder::bind(trait_ref),
                     );
-                    let norm_substs = tcx.try_subst_and_normalize_erasing_regions(
-                        alias_ty.substs,
+                    let norm_generics = tcx.try_subst_and_normalize_erasing_regions(
+                        alias_ty.args,
                         s.param_env(),
                         EarlyBinder::bind(trait_ref),
                     );
-                    let early_binder_substs =
+                    let early_binder_generics =
                         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                            EarlyBinder::bind(trait_ref).subst(tcx, alias_ty.substs)
+                            EarlyBinder::bind(trait_ref).instantiate(tcx, alias_ty.args)
                         }));
-                    let early_binder_rebased_substs =
+                    let early_binder_rebased_generics =
                         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                            EarlyBinder::bind(trait_ref).subst(tcx, alias_ty.substs)
+                            EarlyBinder::bind(trait_ref).instantiate(tcx, alias_ty.args)
                         }));
                     warning!(
                         s,
                         "Hax frontend found a projected type with escaping bound vars. Please report https://github.com/hacspec/hax/issues/495";
-                        {alias_ty, alias_kind, trait_ref, trait_ref_and_substs, rebased_substs,
-                         norm_rebased_substs, norm_substs,
-                         early_binder_substs, early_binder_rebased_substs}
+                        {alias_ty, alias_kind, trait_ref, trait_ref_and_generics, rebased_generics,
+                         norm_rebased_generics, norm_generics,
+                         early_binder_generics, early_binder_rebased_generics}
                     );
                     // we cannot use `Binder::dummy`: it asserts that
                     // there is no any escaping bound vars
@@ -1645,7 +1645,7 @@ impl Alias {
         };
         Alias {
             kind,
-            substs: alias_ty.substs.sinto(s),
+            args: alias_ty.args.sinto(s),
             def_id: alias_ty.def_id.sinto(s),
         }
     }
@@ -1666,12 +1666,12 @@ pub enum Ty {
 
     #[custom_arm(
         rustc_middle::ty::TyKind::FnPtr(sig) => arrow_of_sig(sig, state),
-        rustc_middle::ty::TyKind::FnDef(def, substs) => {
+        rustc_middle::ty::TyKind::FnDef(def, generics) => {
             let tcx = state.base().tcx;
-            arrow_of_sig(&tcx.fn_sig(*def).subst(tcx, substs), state)
+            arrow_of_sig(&tcx.fn_sig(*def).instantiate(tcx, generics), state)
         },
-        FROM_TYPE::Closure (_defid, substs) => {
-            let sig = substs.as_closure().sig();
+        FROM_TYPE::Closure (_defid, generics) => {
+            let sig = generics.as_closure().sig();
             let sig = state.base().tcx.signature_unclosure(sig, rustc_hir::Unsafety::Normal);
             arrow_of_sig(&sig, state)
         },
@@ -1680,10 +1680,10 @@ pub enum Ty {
     Arrow(Box<PolyFnSig>),
 
     #[custom_arm(
-        rustc_middle::ty::TyKind::Adt(adt_def, substs) => {
+        rustc_middle::ty::TyKind::Adt(adt_def, generics) => {
             let def_id = adt_def.did().sinto(state);
-            let generic_args: Vec<GenericArg> = substs.sinto(state);
-            let trait_refs = solve_item_traits(state, state.param_env(), adt_def.did(), substs, None);
+            let generic_args: Vec<GenericArg> = generics.sinto(state);
+            let trait_refs = solve_item_traits(state, state.param_env(), adt_def.did(), generics, None);
             Ty::Adt { def_id, generic_args, trait_refs }
         },
     )]
@@ -1897,7 +1897,7 @@ pub enum PatKind {
         is_primary: bool,
     },
     #[custom_arm(
-        FROM_TYPE::Variant {adt_def, variant_index, substs, subpatterns} => {
+        FROM_TYPE::Variant {adt_def, variant_index, args, subpatterns} => {
             let variants = adt_def.variants();
             let variant: &rustc_middle::ty::VariantDef = &variants[*variant_index];
             TO_TYPE::Variant {
@@ -1909,13 +1909,13 @@ pub enum PatKind {
                         pattern: f.pattern.sinto(gstate),
                     })
                     .collect(),
-                substs: substs.sinto(gstate),
+                args: args.sinto(gstate),
             }
         }
     )]
     Variant {
         info: VariantInformations,
-        substs: Vec<GenericArg>,
+        args: Vec<GenericArg>,
         subpatterns: Vec<FieldPat>,
     },
     #[disable_mapping]
@@ -1979,11 +1979,11 @@ pub enum Unsafety {
     Normal,
 }
 
-/// Reflects [`rustc_middle::ty::adjustment::PointerCast`]
+/// Reflects [`rustc_middle::ty::adjustment::PointerCoercion`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_middle::ty::adjustment::PointerCast, state: S as gstate)]
+#[args(<S>, from: rustc_middle::ty::adjustment::PointerCoercion, state: S as gstate)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub enum PointerCast {
+pub enum PointerCoercion {
     ReifyFnPointer,
     UnsafeFnPointer,
     ClosureFnPointer(Unsafety),
@@ -2214,7 +2214,7 @@ pub enum ExprKind {
             /* TODO: see whether [user_ty] below is relevant or not */
             rustc_middle::thir::ExprKind::ZstLiteral {user_ty: _ } => {
                 match ty.kind() {
-                    rustc_middle::ty::TyKind::FnDef(def_id, substs) => {
+                    rustc_middle::ty::TyKind::FnDef(def_id, generics) => {
                         let (hir_id, attributes) = e.hir_id_and_attributes(gstate);
                         let hir_id = hir_id.map(|hir_id| hir_id.index());
                         let contents = Box::new(ExprKind::GlobalName {
@@ -2222,10 +2222,10 @@ pub enum ExprKind {
                         });
                         let tcx = gstate.base().tcx;
                         r#impl = tcx.opt_associated_item(*def_id).as_ref().and_then(|assoc| {
-                            poly_trait_ref(gstate, assoc, substs)
+                            poly_trait_ref(gstate, assoc, generics)
                         }).map(|poly_trait_ref| poly_trait_ref.impl_expr(gstate, gstate.param_env()));
-                        generic_args = substs.sinto(gstate);
-                        bounds_impls = solve_item_traits(gstate, gstate.param_env(), *def_id, substs, None);
+                        generic_args = generics.sinto(gstate);
+                        bounds_impls = solve_item_traits(gstate, gstate.param_env(), *def_id, generics, None);
                         Expr {
                             contents,
                             span: e.span.sinto(gstate),
@@ -2338,8 +2338,8 @@ pub enum ExprKind {
     NeverToAny {
         source: Expr,
     },
-    Pointer {
-        cast: PointerCast,
+    PointerCoercion {
+        cast: PointerCoercion,
         source: Expr,
     },
     Loop {
@@ -2416,7 +2416,7 @@ pub enum ExprKind {
     },
     ConstBlock {
         did: DefId,
-        substs: Vec<GenericArg>,
+        args: Vec<GenericArg>,
     },
     Repeat {
         value: Expr,
@@ -2470,13 +2470,13 @@ pub enum ExprKind {
     },
     NamedConst {
         def_id: GlobalIdent,
-        substs: Vec<GenericArg>,
+        args: Vec<GenericArg>,
         user_ty: Option<CanonicalUserType>,
         #[not_in_source]
         #[value({
             let tcx = gstate.base().tcx;
             tcx.opt_associated_item(*def_id).as_ref().and_then(|assoc| {
-                poly_trait_ref(gstate, assoc, substs)
+                poly_trait_ref(gstate, assoc, args)
             }).map(|poly_trait_ref| poly_trait_ref.impl_expr(gstate, gstate.param_env()))
         })]
         r#impl: Option<ImplExpr>,
@@ -2829,10 +2829,10 @@ impl<
         S,
         D: Clone,
         T: SInto<S, D> + rustc_middle::ty::TypeFoldable<rustc_middle::ty::TyCtxt<'tcx>>,
-    > SInto<S, D> for rustc_middle::ty::subst::EarlyBinder<T>
+    > SInto<S, D> for rustc_middle::ty::EarlyBinder<T>
 {
     fn sinto(&self, s: &S) -> D {
-        self.clone().subst_identity().sinto(s)
+        self.clone().instantiate_identity().sinto(s)
     }
 }
 
@@ -3216,8 +3216,8 @@ pub struct Lifetime {
 )]
 pub struct TraitRef {
     pub def_id: DefId,
-    #[from(substs)]
-    /// reflects the `substs` field
+    #[from(args)]
+    /// reflects the `args` field
     pub generic_args: Vec<GenericArg>,
 }
 
@@ -3348,7 +3348,6 @@ pub enum ClauseKind {
     ConstArgHasType(ConstantExpr, Ty),
     WellFormed(GenericArg),
     ConstEvaluatable(ConstantExpr),
-    TypeWellFormedFromEnv(Ty),
 }
 
 /// Reflects [`rustc_middle::ty::Clause`] and adds a hash-consed predicate identifier.
@@ -3527,7 +3526,7 @@ fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> Gene
 
     let clauses: Vec<ty::Clause<'tcx>> = if use_item_bounds {
         tcx.item_bounds(s.owner_id())
-            .subst_identity()
+            .instantiate_identity()
             .iter()
             .collect()
     } else {

@@ -4,7 +4,7 @@ use crate::prelude::*;
 /// TODO: rename
 pub fn get_trait_info<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
-    substs: rustc_middle::ty::SubstsRef<'tcx>,
+    generics: rustc_middle::ty::GenericArgsRef<'tcx>,
     assoc: &rustc_middle::ty::AssocItem,
 ) -> ImplExpr {
     let tcx = s.base().tcx;
@@ -15,7 +15,7 @@ pub fn get_trait_info<'tcx, S: UnderOwnerState<'tcx>>(
 
     // Create the reference to the trait
     use rustc_middle::ty::TraitRef;
-    let tr_ref = TraitRef::new(tcx, tr_def_id, substs);
+    let tr_ref = TraitRef::new(tcx, tr_def_id, generics);
     let tr_ref = rustc_middle::ty::Binder::dummy(tr_ref);
 
     // Solve
@@ -48,7 +48,7 @@ pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     def_id: rustc_hir::def_id::DefId,
-    substs: rustc_middle::ty::subst::SubstsRef<'tcx>,
+    generics: rustc_middle::ty::GenericArgsRef<'tcx>,
     predicates: Option<rustc_middle::ty::GenericPredicates<'tcx>>,
 ) -> Vec<ImplExpr> {
     let tcx = s.base().tcx;
@@ -77,7 +77,7 @@ pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
             // variables.
             // Remark: there is also EarlyBinder::subst(...)
             let value = rustc_middle::ty::EarlyBinder::bind(pred_kind.skip_binder());
-            tcx.subst_and_normalize_erasing_regions(substs, param_env, value)
+            tcx.subst_and_normalize_erasing_regions(generics, param_env, value)
         };
 
         // Explore only the trait predicates

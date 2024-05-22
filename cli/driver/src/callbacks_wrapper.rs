@@ -38,9 +38,10 @@ impl<'a> Callbacks for CallbacksWrapper<'a> {
     }
     fn after_analysis<'tcx>(
         &mut self,
+        early_handler: &rustc_session::EarlyErrorHandler,
         compiler: &interface::Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
-        self.sub.after_analysis(compiler, queries)
+        self.sub.after_analysis(early_handler, compiler, queries)
     }
 }
