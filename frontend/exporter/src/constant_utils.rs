@@ -449,7 +449,7 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
         (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
             let contents: rustc_middle::ty::DestructuredConst = s
                 .base().tcx
-                .destructure_const(s.base().tcx.mk_const(valtree, ty));
+                .destructure_const(ty::Const::new_value(s.base().tcx, valtree, ty));
             let fields = contents.fields.iter().copied();
             match ty.kind() {
                 ty::Array(_, _) => ConstantExprKind::Array {

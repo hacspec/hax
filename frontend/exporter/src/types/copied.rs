@@ -3348,7 +3348,6 @@ pub enum ClauseKind {
     ConstArgHasType(ConstantExpr, Ty),
     WellFormed(GenericArg),
     ConstEvaluatable(ConstantExpr),
-    TypeWellFormedFromEnv(Ty),
 }
 
 /// Reflects [`rustc_middle::ty::Clause`] and adds a hash-consed predicate identifier.
