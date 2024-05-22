@@ -58,7 +58,16 @@
           inherit rustc ocamlformat rustfmt fstar hax-env;
           hax-engine = pkgs.callPackage ./engine {
             hax-rust-frontend = packages.hax-rust-frontend.unwrapped;
-            hax-engine-names-extract = packages.hax-rust-frontend.hax-engine-names-extract;
+            hax-engine-names-extract =
+              # `hax-engine-names-extract` extract Rust names. That includes
+              # span informations. For `core` names, that means a absolute
+              # path reference to some rustc-nightly. We don't want to
+              # include rustc in there.
+              pkgs.writeScriptBin "hax-engine-names-extract" ''
+                #!${pkgs.stdenv.shell}
+                ${packages.hax-rust-frontend.hax-engine-names-extract}/bin/hax-engine-names-extract "$@" \
+                  | ${pkgs.sd}/bin/sd '/nix/store/(.{10})' '/nix-store/$1-'
+              '';
             inherit rustc;
           };
           hax-rust-frontend = pkgs.callPackage ./cli {
