@@ -8,7 +8,7 @@ pub fn get_trait_info<'tcx, S: UnderOwnerState<'tcx>>(
     assoc: &rustc_middle::ty::AssocItem,
 ) -> ImplExpr {
     let tcx = s.base().tcx;
-    let param_env = tcx.param_env(s.owner_id());
+    let param_env = s.param_env();
 
     // Retrieve the trait
     let tr_def_id = tcx.trait_of_item(assoc.def_id).unwrap();

@@ -362,7 +362,7 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
 
                     // Solve the trait obligations
                     let parent_def_id = tcx.parent(ucv.def);
-                    let param_env = tcx.param_env(s.owner_id());
+                    let param_env = s.param_env();
                     let trait_refs =
                         solve_item_traits(s, param_env, parent_def_id, ucv.substs, None);
 
@@ -391,13 +391,13 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
 }
 impl<'tcx> ConstantExt<'tcx> for rustc_middle::ty::Const<'tcx> {
     fn eval_constant<S: UnderOwnerState<'tcx>>(&self, s: &S) -> Option<Self> {
-        let evaluated = self.eval(s.base().tcx, get_param_env(s));
+        let evaluated = self.eval(s.base().tcx, s.param_env());
         (&evaluated != self).then_some(evaluated)
     }
 }
 impl<'tcx> ConstantExt<'tcx> for rustc_middle::mir::ConstantKind<'tcx> {
     fn eval_constant<S: UnderOwnerState<'tcx>>(&self, s: &S) -> Option<Self> {
-        let evaluated = self.eval(s.base().tcx, get_param_env(s));
+        let evaluated = self.eval(s.base().tcx, s.param_env());
         (&evaluated != self).then_some(evaluated)
     }
 }
@@ -505,7 +505,7 @@ pub(crate) fn const_value_reference_to_constant_expr<'tcx, S: UnderOwnerState<'t
     let tcx = s.base().tcx;
 
     // We use [try_destructure_mir_constant] to destructure the constant
-    let param_env = get_param_env(s);
+    let param_env = s.param_env();
     // We have to clone some values: it is a bit annoying, but I don't
     // manage to get the lifetimes working otherwise...
     let cvalue = rustc_middle::mir::ConstantKind::Val(val, ty);

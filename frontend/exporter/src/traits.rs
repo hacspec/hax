@@ -409,7 +409,7 @@ pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
     let impl_expr = new_clause
         .as_predicate()
         .to_opt_poly_trait_pred()?
-        .impl_expr(s, get_param_env(s));
+        .impl_expr(s, s.param_env());
     let mut new_clause_no_binder = new_clause.sinto(s);
     new_clause_no_binder.id = original_predicate_id;
     Some((new_clause_no_binder, impl_expr, span.sinto(s)))

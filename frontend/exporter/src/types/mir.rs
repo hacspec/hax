@@ -213,7 +213,7 @@ pub(crate) fn get_function_from_def_id_and_substs<'tcx, S: BaseState<'tcx> + Has
     substs: rustc_middle::ty::subst::SubstsRef<'tcx>,
 ) -> (DefId, Vec<GenericArg>, Vec<ImplExpr>, Option<ImplExpr>) {
     let tcx = s.base().tcx;
-    let param_env = tcx.param_env(s.owner_id());
+    let param_env = s.param_env();
 
     // Retrieve the trait requirements for the **method**.
     // For instance, if we write:
@@ -852,7 +852,7 @@ pub enum AggregateKind {
     Tuple,
     #[custom_arm(rustc_middle::mir::AggregateKind::Adt(def_id, vid, substs, annot, fid) => {
         let adt_kind = s.base().tcx.adt_def(def_id).adt_kind().sinto(s);
-        let param_env = s.base().tcx.param_env(s.owner_id());
+        let param_env = s.param_env();
         let trait_refs = solve_item_traits(s, param_env, *def_id, substs, None);
         AggregateKind::Adt(
             def_id.sinto(s),
@@ -884,7 +884,7 @@ pub enum AggregateKind {
 
         // Solve the trait obligations. Note that we solve the parent
         let tcx = s.base().tcx;
-        let param_env = tcx.param_env(s.owner_id());
+        let param_env = s.param_env();
         let parent_substs = closure.parent_substs();
         let substs = tcx.mk_substs(parent_substs);
         // Retrieve the predicates from the parent (i.e., the function which calls
