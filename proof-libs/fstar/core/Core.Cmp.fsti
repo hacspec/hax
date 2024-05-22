@@ -1,8 +1,13 @@
 module Core.Cmp
 open Rust_primitives
 
-let min (#t:inttype) (a:int_t t) (b:int_t t) =
-  if a <. b then a else b
+class min_tc t = {
+  min: t -> t -> t
+}
+
+instance min_inttype (#t:inttype): min_tc (int_t t) = {
+  min = fun a b -> if a <. b then a else b
+}
 
 type t_Ordering =
   | Ordering_Less : t_Ordering

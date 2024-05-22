@@ -80,7 +80,7 @@ let impl_Trait_for_Foo: t_Trait t_Foo = { __marker_trait = () }
 
 /// Entrypoint
 let main (_: Prims.unit) : Prims.unit =
-  let _:Prims.unit = main_a (Foo <: t_Foo) in
+  let _:Prims.unit = main_a #t_Foo (Foo <: t_Foo) in
   let _:Prims.unit = main_b () in
   let _:Prims.unit = main_c () in
   ()

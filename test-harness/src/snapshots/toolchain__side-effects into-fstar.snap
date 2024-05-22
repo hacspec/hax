@@ -117,10 +117,9 @@ let local_mutation (x: u32) : u32 =
     let y:u32 = x /! 2ul in
     let y:u32 = Core.Num.impl__u32__wrapping_add y 2ul in
     let y:u32 =
-      Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter ({
-                Core.Ops.Range.f_start = 0ul;
-                Core.Ops.Range.f_end = 10ul
-              }
+      Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Ops.Range.t_Range
+              u32)
+            ({ Core.Ops.Range.f_start = 0ul; Core.Ops.Range.f_end = 10ul }
               <:
               Core.Ops.Range.t_Range u32)
           <:

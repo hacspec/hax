@@ -107,12 +107,10 @@ let chacha20_double_round (state: t_Array u32 (sz 16)) : t_Array u32 (sz 16) =
 let chacha20_rounds (state: t_Array u32 (sz 16)) : t_Array u32 (sz 16) =
   let st:t_Array u32 (sz 16) = state in
   let st:t_Array u32 (sz 16) =
-    Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter ({
-              Core.Ops.Range.f_start = 0l;
-              Core.Ops.Range.f_end = 10l
-            }
-            <:
-            Core.Ops.Range.t_Range i32)
+    Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Ops.Range.t_Range
+            i32)
+          ({ Core.Ops.Range.f_start = 0l; Core.Ops.Range.f_end = 10l } <: Core.Ops.Range.t_Range i32
+          )
         <:
         Core.Ops.Range.t_Range i32)
       st
@@ -144,14 +142,15 @@ let chacha20_encrypt_block (st0: t_Array u32 (sz 16)) (ctr: u32) (plain: t_Array
 
 let chacha20_encrypt_last (st0: t_Array u32 (sz 16)) (ctr: u32) (plain: t_Slice u8)
     : Prims.Pure (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
-      (requires (Core.Slice.impl__len plain <: usize) <=. sz 64)
+      (requires (Core.Slice.impl__len #u8 plain <: usize) <=. sz 64)
       (fun _ -> Prims.l_True) =
   let (b: t_Array u8 (sz 64)):t_Array u8 (sz 64) = Rust_primitives.Hax.repeat 0uy (sz 64) in
   let b:t_Array u8 (sz 64) = Chacha20.Hacspec_helper.update_array b plain in
   let b:t_Array u8 (sz 64) = chacha20_encrypt_block st0 ctr b in
-  Alloc.Slice.impl__to_vec (b.[ {
+  Alloc.Slice.impl__to_vec #u8
+    (b.[ {
           Core.Ops.Range.f_start = sz 0;
-          Core.Ops.Range.f_end = Core.Slice.impl__len plain <: usize
+          Core.Ops.Range.f_end = Core.Slice.impl__len #u8 plain <: usize
         }
         <:
         Core.Ops.Range.t_Range usize ]
@@ -186,14 +185,13 @@ let chacha20_key_block0 (key: t_Array u8 (sz 32)) (iv: t_Array u8 (sz 12)) : t_A
 
 let chacha20_update (st0: t_Array u32 (sz 16)) (m: t_Slice u8)
     : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
-  let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Alloc.Vec.impl__new () in
-  let num_blocks:usize = (Core.Slice.impl__len m <: usize) /! sz 64 in
-  let remainder_len:usize = (Core.Slice.impl__len m <: usize) %! sz 64 in
+  let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global = Alloc.Vec.impl__new #u8 () in
+  let num_blocks:usize = (Core.Slice.impl__len #u8 m <: usize) /! sz 64 in
+  let remainder_len:usize = (Core.Slice.impl__len #u8 m <: usize) %! sz 64 in
   let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
-    Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter ({
-              Core.Ops.Range.f_start = sz 0;
-              Core.Ops.Range.f_end = num_blocks
-            }
+    Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Ops.Range.t_Range
+            usize)
+          ({ Core.Ops.Range.f_start = sz 0; Core.Ops.Range.f_end = num_blocks }
             <:
             Core.Ops.Range.t_Range usize)
         <:
@@ -205,7 +203,11 @@ let chacha20_update (st0: t_Array u32 (sz 16)) (m: t_Slice u8)
           let b:t_Array u8 (sz 64) =
             chacha20_encrypt_block st0
               (cast (i <: usize) <: u32)
-              (Core.Result.impl__unwrap (Core.Convert.f_try_into (m.[ {
+              (Core.Result.impl__unwrap #(t_Array u8 (sz 64))
+                  #Core.Array.t_TryFromSliceError
+                  (Core.Convert.f_try_into #(t_Slice u8)
+                      #(t_Array u8 (sz 64))
+                      (m.[ {
                             Core.Ops.Range.f_start = sz 64 *! i <: usize;
                             Core.Ops.Range.f_end = (sz 64 *! i <: usize) +! sz 64 <: usize
                           }
@@ -219,17 +221,22 @@ let chacha20_update (st0: t_Array u32 (sz 16)) (m: t_Slice u8)
                 t_Array u8 (sz 64))
           in
           let _:Prims.unit =
-            Hax_lib.v_assume ((Alloc.Vec.impl_1__len blocks_out <: usize) =. (i *! sz 64 <: usize)
+            Hax_lib.v_assume ((Alloc.Vec.impl_1__len #u8 #Alloc.Alloc.t_Global blocks_out <: usize) =.
+                (i *! sz 64 <: usize)
                 <:
                 bool)
           in
           let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
-            Alloc.Vec.impl_2__extend_from_slice blocks_out (Rust_primitives.unsize b <: t_Slice u8)
+            Alloc.Vec.impl_2__extend_from_slice #u8
+              #Alloc.Alloc.t_Global
+              blocks_out
+              (Rust_primitives.unsize b <: t_Slice u8)
           in
           blocks_out)
   in
   let _:Prims.unit =
-    Hax_lib.v_assume ((Alloc.Vec.impl_1__len blocks_out <: usize) =. (num_blocks *! sz 64 <: usize)
+    Hax_lib.v_assume ((Alloc.Vec.impl_1__len #u8 #Alloc.Alloc.t_Global blocks_out <: usize) =.
+        (num_blocks *! sz 64 <: usize)
         <:
         bool)
   in
@@ -241,7 +248,7 @@ let chacha20_update (st0: t_Array u32 (sz 16)) (m: t_Slice u8)
           (cast (num_blocks <: usize) <: u32)
           (m.[ {
                 Core.Ops.Range.f_start = sz 64 *! num_blocks <: usize;
-                Core.Ops.Range.f_end = Core.Slice.impl__len m <: usize
+                Core.Ops.Range.f_end = Core.Slice.impl__len #u8 m <: usize
               }
               <:
               Core.Ops.Range.t_Range usize ]
@@ -249,7 +256,10 @@ let chacha20_update (st0: t_Array u32 (sz 16)) (m: t_Slice u8)
             t_Slice u8)
       in
       let blocks_out:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
-        Alloc.Vec.impl_2__extend_from_slice blocks_out (Core.Ops.Deref.f_deref b <: t_Slice u8)
+        Alloc.Vec.impl_2__extend_from_slice #u8
+          #Alloc.Alloc.t_Global
+          blocks_out
+          (Core.Ops.Deref.f_deref #(Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) b <: t_Slice u8)
       in
       blocks_out
     else blocks_out

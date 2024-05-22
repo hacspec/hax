@@ -358,6 +358,7 @@ name = "lob_backend"
 version = "0.1.0"
 dependencies = [
  "candid",
+ "hax-lib",
  "ic-cdk",
  "ic-cdk-macros 0.8.1",
  "serde",

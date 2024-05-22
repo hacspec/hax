@@ -43,8 +43,8 @@ let debug (label value: u32) : Prims.unit =
             t_Slice string)
           (Rust_primitives.unsize (let list =
                   [
-                    Core.Fmt.Rt.impl_1__new_display label <: Core.Fmt.Rt.t_Argument;
-                    Core.Fmt.Rt.impl_1__new_display value <: Core.Fmt.Rt.t_Argument
+                    Core.Fmt.Rt.impl_1__new_display #u32 label <: Core.Fmt.Rt.t_Argument;
+                    Core.Fmt.Rt.impl_1__new_display #u32 value <: Core.Fmt.Rt.t_Argument
                   ]
                 in
                 FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 2);
