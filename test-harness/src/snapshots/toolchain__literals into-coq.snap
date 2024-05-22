@@ -58,14 +58,6 @@ Definition fn_pointer_cast (_ : unit) : unit :=
       x : int32 -> int32 in
   tt.
 
-Definition numeric (_ : unit) : unit :=
-  let (_ : uint_size) := (@repr WORDSIZE32 123) : uint_size in
-  let (_ : uint_size) := (@repr WORDSIZE32 42) : uint_size in
-  let (_ : uint_size) := (@repr WORDSIZE32 42) : uint_size in
-  let (_ : int32) := (@repr WORDSIZE32 42) : int32 in
-  let (_ : int128) := (@repr WORDSIZE128 22222222222222222222) : int128 in
-  tt.
-
 Definition math_integers (x : t_Int_t) : int8 :=
   let (_ : t_Int_t) := f_lift (@repr WORDSIZE32 3) : t_Int_t in
   let _ := (impl__Int___unsafe_from_str -340282366920938463463374607431768211455000)>.?(impl__Int___unsafe_from_str 340282366920938463463374607431768211455000) : bool in
@@ -89,6 +81,14 @@ Definition math_integers (x : t_Int_t) : int8 :=
   let (_ : int128) := impl__Int__to_u128 x : int128 in
   let (_ : uint_size) := impl__Int__to_usize x : uint_size in
   impl__Int__to_u8 (x.+(x.*x)).
+
+Definition numeric (_ : unit) : unit :=
+  let (_ : uint_size) := (@repr WORDSIZE32 123) : uint_size in
+  let (_ : uint_size) := (@repr WORDSIZE32 42) : uint_size in
+  let (_ : uint_size) := (@repr WORDSIZE32 42) : uint_size in
+  let (_ : int32) := (@repr WORDSIZE32 42) : int32 in
+  let (_ : int128) := (@repr WORDSIZE128 22222222222222222222) : int128 in
+  tt.
 
 Definition empty_array (_ : unit) : unit :=
   let (_ : seq int8) := unsize !TODO empty array! : seq int8 in

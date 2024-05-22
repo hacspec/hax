@@ -89,12 +89,37 @@ pub trait Concretization<T> {
     fn concretize(self) -> T;
 }
 
-impl<T: Into<num_bigint::BigInt>> Abstraction for T {
-    type AbstractType = Int;
-    fn lift(self) -> Self::AbstractType {
-        Int::new(self.into())
-    }
+/// Instead of defining one overloaded instance, which relies
+/// explicitely on `num_bigint`:
+///
+/// ```ignore
+/// impl<T: Into<num_bigint::BigInt>> Abstraction for T {
+///     type AbstractType = Int;
+///     fn lift(self) -> Self::AbstractType {
+///         Int::new(self.into())
+///     }
+/// }
+/// ```
+///
+/// We define an instance per machine type: we don't want the
+/// interface of this module to rely specifically on
+/// `num_bigint`. This module should be a very thin layer.
+macro_rules! implement_abstraction {
+    ($ty:ident) => {
+        impl Abstraction for $ty {
+            type AbstractType = Int;
+            fn lift(self) -> Self::AbstractType {
+                Int::new(num_bigint::BigInt::from(self))
+            }
+        }
+    };
+    ($($ty:ident)*) => {
+        $(implement_abstraction!($ty);)*
+    };
 }
+
+implement_abstraction!(u8 u16 u32 u64 u128 usize);
+implement_abstraction!(i8 i16 i32 i64 i128 isize);
 
 macro_rules! implement_concretize {
     ($ty:ident $method:ident) => {

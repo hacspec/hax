@@ -116,6 +116,63 @@ let v__f (#v_X: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_X 
   let _:u8 = f_to_t #v_X #u8 x in
   ()
 '''
+"Traits.Implicit_dependencies_issue_667_.Define_type.fst" = '''
+module Traits.Implicit_dependencies_issue_667_.Define_type
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+type t_MyType = | MyType : t_MyType
+'''
+"Traits.Implicit_dependencies_issue_667_.Impl_type.fst" = '''
+module Traits.Implicit_dependencies_issue_667_.Impl_type
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl: Traits.Implicit_dependencies_issue_667_.Trait_definition.t_MyTrait
+Traits.Implicit_dependencies_issue_667_.Define_type.t_MyType =
+  {
+    f_my_method_pre
+    =
+    (fun (self: Traits.Implicit_dependencies_issue_667_.Define_type.t_MyType) -> true);
+    f_my_method_post
+    =
+    (fun (self: Traits.Implicit_dependencies_issue_667_.Define_type.t_MyType) (out: Prims.unit) ->
+        true);
+    f_my_method = fun (self: Traits.Implicit_dependencies_issue_667_.Define_type.t_MyType) -> ()
+  }
+'''
+"Traits.Implicit_dependencies_issue_667_.Trait_definition.fst" = '''
+module Traits.Implicit_dependencies_issue_667_.Trait_definition
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class t_MyTrait (v_Self: Type0) = {
+  f_my_method_pre:v_Self -> bool;
+  f_my_method_post:v_Self -> Prims.unit -> bool;
+  f_my_method:x0: v_Self
+    -> Prims.Pure Prims.unit (f_my_method_pre x0) (fun result -> f_my_method_post x0 result)
+}
+'''
+"Traits.Implicit_dependencies_issue_667_.Use_type.fst" = '''
+module Traits.Implicit_dependencies_issue_667_.Use_type
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let _ =
+  (* This module has implicit dependencies, here we make them explicit. *)
+  (* The implicit dependencies arise from typeclasses instances. *)
+  let open Traits.Implicit_dependencies_issue_667_.Impl_type in
+  ()
+
+let some_function (x: Traits.Implicit_dependencies_issue_667_.Define_type.t_MyType) : Prims.unit =
+  Traits.Implicit_dependencies_issue_667_.Trait_definition.f_my_method #Traits.Implicit_dependencies_issue_667_.Define_type.t_MyType
+    x
+'''
 "Traits.Unconstrainted_types_issue_677_.fst" = '''
 module Traits.Unconstrainted_types_issue_677_
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
