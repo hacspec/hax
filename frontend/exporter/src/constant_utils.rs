@@ -499,23 +499,10 @@ pub(crate) fn const_value_reference_to_constant_expr<'tcx, S: UnderOwnerState<'t
     val: rustc_middle::mir::interpret::ConstValue<'tcx>,
     span: rustc_span::Span,
 ) -> ConstantExpr {
-    use rustc_middle::mir::interpret;
-    use rustc_middle::ty;
-
     let tcx = s.base().tcx;
 
-    // We use [try_destructure_mir_constant] to destructure the constant
-    let param_env = s.param_env();
-    // We have to clone some values: it is a bit annoying, but I don't
-    // manage to get the lifetimes working otherwise...
-    let cvalue = rustc_middle::mir::ConstantKind::Val(val, ty);
-    let param_env_and_const = rustc_middle::ty::ParamEnvAnd {
-        param_env,
-        value: cvalue,
-    };
-
     let dc = tcx
-        .try_destructure_mir_constant(param_env_and_const)
+        .try_destructure_mir_constant_for_diagnostics((val, ty))
         .s_unwrap(s);
 
     // Iterate over the fields, which should be values
@@ -530,19 +517,14 @@ pub(crate) fn const_value_reference_to_constant_expr<'tcx, S: UnderOwnerState<'t
         }
     };
 
-    // The fields should be of the variant: [ConstantKind::Value]
-    let fields: Vec<(ty::Ty, interpret::ConstValue)> = dc
+    // Below: we are mutually recursive with [const_value_to_constant_expr],
+    // which takes a [ConstantKind] as input, but it should be
+    // ok because we call it on a strictly smaller value.
+    let fields: Vec<ConstantExpr> = dc
         .fields
         .iter()
-        .map(|f| (f.ty(), f.try_to_value(tcx).s_unwrap(s)))
-        .collect();
-
-    // Below: we are mutually recursive with [const_value_to_constant_expr],
-    // which takes a [ConstantKind] as input (see `cvalue` above), but it should be
-    // ok because we call it on a strictly smaller value.
-    let fields: Vec<ConstantExpr> = fields
-        .into_iter()
-        .map(|(ty, f)| const_value_to_constant_expr(s, ty, f, span))
+        .copied()
+        .map(|(val, ty)| const_value_to_constant_expr(s, ty, val, span))
         .collect();
     (ConstantExprKind::Tuple { fields }).decorate(hax_ty, span.sinto(s))
 }
