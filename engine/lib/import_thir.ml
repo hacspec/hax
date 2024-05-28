@@ -1064,7 +1064,7 @@ end) : EXPR = struct
 
   let c_clause_kind span id (kind : Thir.clause_kind) : impl_ident option =
     match kind with
-    | Trait { is_positive = true; is_const = _; trait_ref } ->
+    | Trait { is_positive = true; trait_ref } ->
         let args = List.map ~f:(c_generic_value span) trait_ref.generic_args in
         let trait = Concrete_ident.of_def_id Trait trait_ref.def_id in
         Some { goal = { trait; args }; name = id }

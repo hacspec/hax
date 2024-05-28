@@ -130,8 +130,8 @@ pub(crate) mod search_clause {
         let erase_and_norm =
             |x| tcx.erase_regions(tcx.try_normalize_erasing_regions(param_env, x).unwrap_or(x));
         // Lifetime and constantness are irrelevant when resolving instances
-        let x = erase_and_norm(x).without_const(tcx);
-        let y = erase_and_norm(y).without_const(tcx);
+        let x = erase_and_norm(x);
+        let y = erase_and_norm(y);
         let sx = format!("{:?}", x.kind().skip_binder());
         let sy = format!("{:?}", y.kind().skip_binder());
         let result = sx == sy;
@@ -324,7 +324,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                 generics: generics.sinto(s),
             }
             .with_args(impl_exprs(s, &nested), trait_ref),
-            ImplSource::Param(_constness, nested) => {
+            ImplSource::Param(nested) => {
                 use search_clause::TraitPredicateExt;
                 let tcx = s.base().tcx;
                 let predicates = &tcx.predicates_defined_on_or_above(s.owner_id());

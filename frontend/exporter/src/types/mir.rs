@@ -734,7 +734,7 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                                 // of the the state captured by a closure.
                                 use crate::rustc_index::Idx;
                                 let generics = generics.as_closure();
-                                let upvar_tys: Vec<_> = generics.upvar_tys().collect();
+                                let upvar_tys = generics.upvar_tys();
                                 current_ty = upvar_tys[index.sinto(s).index()].clone();
                                 ProjectionElem::Field(ProjectionElemFieldKind::ClosureState(
                                     index.sinto(s),

@@ -1031,18 +1031,6 @@ pub struct Stmt {
     pub opt_destruction_scope: Option<Scope>,
 }
 
-/// Reflects [`rustc_ast::ast::MacDelimiter`]
-#[derive(AdtInto)]
-#[args(<S>, from: rustc_ast::ast::MacDelimiter, state: S as _s)]
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
-pub enum MacDelimiter {
-    Parenthesis,
-    Bracket,
-    Brace,
-}
-
 /// Reflects [`rustc_ast::token::Delimiter`]
 #[derive(AdtInto)]
 #[args(<S>, from: rustc_ast::token::Delimiter, state: S as _s)]
@@ -1164,7 +1152,7 @@ pub struct Token {
 )]
 pub struct DelimArgs {
     pub dspan: DelimSpan,
-    pub delim: MacDelimiter,
+    pub delim: Delimiter,
     pub tokens: TokenStream,
 }
 
@@ -2846,7 +2834,6 @@ pub struct Impl<Body: IsBody> {
     pub polarity: ImplPolarity,
     pub defaultness: Defaultness,
     pub defaultness_span: Option<Span>,
-    pub constness: Constness,
     pub generics: Generics<Body>,
     #[map({
         s.base().tcx.impl_trait_ref(s.owner_id()).sinto(s)
@@ -3230,9 +3217,6 @@ pub struct TraitRef {
 )]
 pub struct TraitPredicate {
     pub trait_ref: TraitRef,
-    #[from(constness)]
-    #[map(x.clone() == rustc_middle::ty::BoundConstness::ConstIfConst)]
-    pub is_const: bool,
     #[map(x.clone() == rustc_middle::ty::ImplPolarity::Positive)]
     #[from(polarity)]
     pub is_positive: bool,
