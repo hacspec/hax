@@ -7,6 +7,7 @@ sinto_todo!(rustc_abi, IntegerType);
 sinto_todo!(rustc_abi, ReprFlags);
 sinto_todo!(rustc_abi, Align);
 sinto_todo!(rustc_middle::mir::interpret, ConstAllocation<'a>);
+sinto_todo!(rustc_middle::mir, UnwindTerminateReason);
 sinto_todo!(rustc_ast::tokenstream, DelimSpan);
 sinto_todo!(rustc_hir::def, DefKind);
 sinto_todo!(rustc_hir, GenericArgs<'a> as HirGenericArgs);

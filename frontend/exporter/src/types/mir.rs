@@ -529,8 +529,6 @@ pub enum TerminatorKind {
         discr: Operand,
         targets: SwitchTargets,
     },
-    Resume,
-    Terminate,
     Return,
     Unreachable,
     Drop {
@@ -581,6 +579,8 @@ pub enum TerminatorKind {
         real_target: BasicBlock,
         unwind: UnwindAction,
     },
+    UnwindResume,
+    UnwindTerminate(UnwindTerminateReason),
     InlineAsm {
         template: Vec<InlineAsmTemplatePiece>,
         operands: Vec<InlineAsmOperand>,
