@@ -8,7 +8,11 @@
         flake-utils.follows = "flake-utils";
       };
     };
-    rust-overlay.follows = "crane/rust-overlay";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.flake-utils.follows = "flake-utils";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     fstar = {
       url = "github:FStarLang/FStar/v2024.01.13";
       inputs = {
