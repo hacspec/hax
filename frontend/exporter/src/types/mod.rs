@@ -1,3 +1,6 @@
+// There's a conflict between `mir::ScalarInt`and `todo::ScalarInt` but it doesn't matter.
+#![allow(ambiguous_glob_reexports)]
+
 mod copied;
 mod index;
 mod mir;

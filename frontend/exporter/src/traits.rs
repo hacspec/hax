@@ -324,7 +324,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                 generics: generics.sinto(s),
             }
             .with_args(impl_exprs(s, &nested), trait_ref),
-            ImplSource::Param(nested, _constness) => {
+            ImplSource::Param(_constness, nested) => {
                 use search_clause::TraitPredicateExt;
                 let tcx = s.base().tcx;
                 let predicates = &tcx.predicates_defined_on_or_above(s.owner_id());
@@ -362,22 +362,19 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                     .with_args(impl_exprs(s, &nested), trait_ref)
                 }
             }
-            ImplSource::Object(data) => {
-                ImplExprAtom::Dyn.with_args(impl_exprs(s, &data.nested), trait_ref)
-            }
             // We ignore the contained obligations here. For example for `(): Send`, the
             // obligations contained would be `[(): Send]`, which leads to an infinite loop. There
             // might be important obligation shere inother cases; we'll have to see if that comes
             // up.
-            ImplSource::Builtin(_ignored) => ImplExprAtom::Builtin {
-                r#trait: self.skip_binder().sinto(s),
+            ImplSource::Builtin(source, _ignored) => {
+                let atom = match source {
+                    BuiltinImplSource::Object { .. } => ImplExprAtom::Dyn,
+                    _ => ImplExprAtom::Builtin {
+                        r#trait: self.skip_binder().sinto(s),
+                    },
+                };
+                atom.with_args(vec![], trait_ref)
             }
-            .with_args(vec![], trait_ref),
-            x => ImplExprAtom::Todo(format!(
-                "ImplExprAtom::Todo(see https://github.com/hacspec/hax/issues/381) {:#?}\n\n{:#?}",
-                x, self
-            ))
-            .with_args(vec![], trait_ref),
         }
     }
 }
