@@ -287,7 +287,7 @@ impl From<ExtractionCallbacks> for hax_frontend_exporter_options::Options {
 }
 
 impl Callbacks for ExtractionCallbacks {
-    fn after_parsing<'tcx>(
+    fn after_crate_root_parsing<'tcx>(
         &mut self,
         compiler: &Compiler,
         queries: &'tcx Queries<'tcx>,

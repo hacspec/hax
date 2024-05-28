@@ -22,12 +22,12 @@ impl<'a> Callbacks for CallbacksWrapper<'a> {
         }));
         self.sub.config(config)
     }
-    fn after_parsing<'tcx>(
+    fn after_crate_root_parsing<'tcx>(
         &mut self,
         compiler: &interface::Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
-        self.sub.after_parsing(compiler, queries)
+        self.sub.after_crate_root_parsing(compiler, queries)
     }
     fn after_expansion<'tcx>(
         &mut self,
@@ -38,10 +38,9 @@ impl<'a> Callbacks for CallbacksWrapper<'a> {
     }
     fn after_analysis<'tcx>(
         &mut self,
-        early_handler: &rustc_session::EarlyErrorHandler,
         compiler: &interface::Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
-        self.sub.after_analysis(early_handler, compiler, queries)
+        self.sub.after_analysis(compiler, queries)
     }
 }

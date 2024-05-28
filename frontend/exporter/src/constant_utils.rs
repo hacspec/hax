@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use rustc_middle::{mir, ty};
 
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
@@ -188,7 +189,6 @@ pub(crate) fn scalar_int_to_constant_literal<'tcx, S: UnderOwnerState<'tcx>>(
     x: rustc_middle::ty::ScalarInt,
     ty: rustc_middle::ty::Ty,
 ) -> ConstantLiteral {
-    use rustc_middle::ty;
     match ty.kind() {
         ty::Char => ConstantLiteral::Char(
             char::try_from(x)
@@ -222,7 +222,6 @@ pub(crate) fn scalar_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
     span: rustc_span::Span,
 ) -> ConstantExpr {
     use rustc_middle::mir::Mutability;
-    use rustc_middle::ty;
     let cspan = span.sinto(s);
     // The documentation explicitly says not to match on a scalar.
     // We match on the type and use it to convert the value.
@@ -388,21 +387,23 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
         }
     }
 }
-impl<'tcx> ConstantExt<'tcx> for rustc_middle::ty::Const<'tcx> {
+impl<'tcx> ConstantExt<'tcx> for ty::Const<'tcx> {
     fn eval_constant<S: UnderOwnerState<'tcx>>(&self, s: &S) -> Option<Self> {
-        let evaluated = self.eval(s.base().tcx, s.param_env());
+        let evaluated = self.eval(s.base().tcx, s.param_env(), None).ok()?;
+        let evaluated = ty::Const::new(s.base().tcx, ty::ConstKind::Value(evaluated), self.ty());
         (&evaluated != self).then_some(evaluated)
     }
 }
-impl<'tcx> ConstantExt<'tcx> for rustc_middle::mir::ConstantKind<'tcx> {
+impl<'tcx> ConstantExt<'tcx> for mir::ConstantKind<'tcx> {
     fn eval_constant<S: UnderOwnerState<'tcx>>(&self, s: &S) -> Option<Self> {
-        let evaluated = self.eval(s.base().tcx, s.param_env());
+        let evaluated = self.eval(s.base().tcx, s.param_env(), None).ok()?;
+        let evaluated = mir::ConstantKind::Val(evaluated, self.ty());
         (&evaluated != self).then_some(evaluated)
     }
 }
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::ty::Const<'tcx> {
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for ty::Const<'tcx> {
     fn sinto(&self, s: &S) -> ConstantExpr {
-        use rustc_middle::{query::Key, ty};
+        use rustc_middle::query::Key;
         let span = self.default_span(s.base().tcx);
         let kind = match self.kind() {
             ty::ConstKind::Param(p) => ConstantExprKind::ConstRef { id: p.sinto(s) },
@@ -434,7 +435,6 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
     ty: rustc_middle::ty::Ty<'tcx>,
     span: rustc_span::Span,
 ) -> ConstantExpr {
-    use rustc_middle::ty;
     let kind = match (valtree, ty.kind()) {
         (_, ty::Ref(_, inner_ty, _)) => {
             ConstantExprKind::Borrow(valtree_to_constant_expr(s, valtree, *inner_ty, span))
@@ -537,7 +537,7 @@ pub fn const_value_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
     use rustc_middle::mir::interpret::ConstValue;
     match val {
         ConstValue::Scalar(scalar) => scalar_to_constant_expr(s, ty, &scalar, span),
-        ConstValue::ByRef { .. } => const_value_reference_to_constant_expr(s, ty, val, span),
+        ConstValue::Indirect { .. } => const_value_reference_to_constant_expr(s, ty, val, span),
         ConstValue::Slice { data, start, end } => {
             let start = start.try_into().unwrap();
             let end = end.try_into().unwrap();

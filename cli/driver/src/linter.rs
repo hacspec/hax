@@ -16,7 +16,7 @@ impl LinterCallbacks {
 }
 
 impl Callbacks for LinterCallbacks {
-    fn after_parsing<'tcx>(
+    fn after_crate_root_parsing<'tcx>(
         &mut self,
         _compiler: &Compiler,
         queries: &'tcx Queries<'tcx>,

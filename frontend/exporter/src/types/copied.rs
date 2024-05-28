@@ -461,6 +461,7 @@ pub enum CanonicalVarInfo {
     PlaceholderRegion(PlaceholderRegion),
     Const(UniverseIndex, Ty),
     PlaceholderConst(PlaceholderConst, Ty),
+    Effect,
 }
 
 /// Reflects [`rustc_middle::ty::UserSelfTy`]
