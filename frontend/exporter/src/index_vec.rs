@@ -30,6 +30,14 @@ impl<I: rustc_index::Idx, T: Sized> std::ops::DerefMut for IndexVec<I, T> {
     }
 }
 
+impl<I: rustc_index::Idx, T: Sized> IndexVec<I, T> {
+    pub fn into_iter_enumerated(
+        self,
+    ) -> impl DoubleEndedIterator<Item = (I, T)> + ExactSizeIterator {
+        rustc_index::IndexVec::from_raw(self.raw).into_iter_enumerated()
+    }
+}
+
 impl<
         S,
         J: rustc_index::Idx,

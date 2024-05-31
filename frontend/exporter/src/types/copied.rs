@@ -478,6 +478,14 @@ pub enum VariantDiscr {
     Relative(u32),
 }
 
+/// Reflects [`rustc_middle::ty::util::Discr`]
+#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::util::Discr<'tcx>, state: S as gstate)]
+pub struct DiscriminantValue {
+    pub val: u128,
+    pub ty: Ty,
+}
+
 /// Reflects [`rustc_middle::ty::Visibility`]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum Visibility<Id = rustc_span::def_id::LocalDefId> {
@@ -1763,6 +1771,7 @@ pub struct AdtDef {
     pub did: DefId,
     pub adt_kind: AdtKind,
     pub variants: IndexVec<VariantIdx, VariantDef>,
+    pub discriminants: IndexVec<VariantIdx, DiscriminantValue>,
     pub flags: AdtFlags,
     pub repr: ReprOptions,
 }
@@ -1785,10 +1794,28 @@ pub struct ReprOptions {
 
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, AdtDef> for rustc_middle::ty::AdtDef<'tcx> {
     fn sinto(&self, s: &S) -> AdtDef {
+        let discriminants: Vec<_> = if self.is_enum() {
+            self.variants()
+                .iter_enumerated()
+                .map(|(variant_idx, _variant)| {
+                    self.discriminant_for_variant(s.base().tcx, variant_idx)
+                })
+                .collect()
+        } else {
+            // Structs and unions have a single variant.
+            assert_eq!(self.variants().len(), 1);
+            vec![rustc_middle::ty::util::Discr {
+                val: 0,
+                ty: s.base().tcx.types.isize,
+            }]
+        };
+        let discriminants: rustc_index::IndexVec<VariantIdx, _> =
+            rustc_index::IndexVec::from_raw(discriminants);
         AdtDef {
             did: self.did().sinto(s),
             adt_kind: self.adt_kind().sinto(s),
             variants: self.variants().sinto(s),
+            discriminants: discriminants.sinto(s),
             flags: self.flags().sinto(s),
             repr: self.repr().sinto(s),
         }
