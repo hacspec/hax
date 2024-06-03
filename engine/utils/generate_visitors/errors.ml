@@ -44,7 +44,6 @@ open struct
 end
 
 let yojson_of_t (e : t) = into_string e |> [%yojson_of: t_string]
-
 let _ = pp_t_string (* just to silence OCaml warning *)
 
 exception Error of t
