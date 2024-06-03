@@ -54,8 +54,8 @@
   (with-stdout-to
    ast_visitors.ml
    (with-stdin-from
-        %{ast}
-        (run generate_visitors)))))
+    %{ast}
+    (run generate_visitors)))))
 
 (rule
  (target concrete_ident_generated.ml)
