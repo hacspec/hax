@@ -243,7 +243,7 @@ class t_Lang (v_Self: Type0) = {
 }
 
 class t_SuperTrait (v_Self: Type0) = {
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_10391689928755043351:Core.Clone.t_Clone v_Self;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_9442900250278684536:Core.Clone.t_Clone v_Self;
   f_function_of_super_trait_pre:v_Self -> bool;
   f_function_of_super_trait_post:v_Self -> u32 -> bool;
   f_function_of_super_trait:x0: v_Self
@@ -255,7 +255,7 @@ class t_SuperTrait (v_Self: Type0) = {
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_SuperTrait_for_i32: t_SuperTrait i32 =
   {
-    _super_10391689928755043351 = FStar.Tactics.Typeclasses.solve;
+    _super_9442900250278684536 = FStar.Tactics.Typeclasses.solve;
     f_function_of_super_trait_pre = (fun (self: i32) -> true);
     f_function_of_super_trait_post = (fun (self: i32) (out: u32) -> true);
     f_function_of_super_trait = fun (self: i32) -> cast (Core.Num.impl__i32__abs self <: i32) <: u32
@@ -263,8 +263,8 @@ let impl_SuperTrait_for_i32: t_SuperTrait i32 =
 
 class t_Foo (v_Self: Type0) = {
   f_AssocType:Type0;
-  f_AssocType_1566547207180513319:t_SuperTrait f_AssocType;
-  f_AssocType_18427724250319916167:Core.Clone.t_Clone f_AssocType;
+  f_AssocType_17663802186765685673:t_SuperTrait f_AssocType;
+  f_AssocType_10139459042277121690:Core.Clone.t_Clone f_AssocType;
   f_N:usize;
   f_assoc_f_pre:Prims.unit -> bool;
   f_assoc_f_post:Prims.unit -> Prims.unit -> bool;
@@ -315,7 +315,7 @@ let g (#v_T: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_T) (x
 let impl_Foo_for_tuple_: t_Foo Prims.unit =
   {
     f_AssocType = i32;
-    f_AssocType_1566547207180513319 = FStar.Tactics.Typeclasses.solve;
+    f_AssocType_17663802186765685673 = FStar.Tactics.Typeclasses.solve;
     f_N = sz 32;
     f_assoc_f_pre = (fun (_: Prims.unit) -> true);
     f_assoc_f_post = (fun (_: Prims.unit) (out: Prims.unit) -> true);

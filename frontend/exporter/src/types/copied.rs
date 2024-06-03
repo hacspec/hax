@@ -461,6 +461,7 @@ pub enum CanonicalVarInfo {
     PlaceholderRegion(PlaceholderRegion),
     Const(UniverseIndex, Ty),
     PlaceholderConst(PlaceholderConst, Ty),
+    Effect,
 }
 
 /// Reflects [`rustc_middle::ty::UserSelfTy`]
@@ -1031,18 +1032,6 @@ pub struct Stmt {
     pub opt_destruction_scope: Option<Scope>,
 }
 
-/// Reflects [`rustc_ast::ast::MacDelimiter`]
-#[derive(AdtInto)]
-#[args(<S>, from: rustc_ast::ast::MacDelimiter, state: S as _s)]
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
-pub enum MacDelimiter {
-    Parenthesis,
-    Bracket,
-    Brace,
-}
-
 /// Reflects [`rustc_ast::token::Delimiter`]
 #[derive(AdtInto)]
 #[args(<S>, from: rustc_ast::token::Delimiter, state: S as _s)]
@@ -1164,7 +1153,7 @@ pub struct Token {
 )]
 pub struct DelimArgs {
     pub dspan: DelimSpan,
-    pub delim: MacDelimiter,
+    pub delim: Delimiter,
     pub tokens: TokenStream,
 }
 
@@ -1602,7 +1591,8 @@ impl Alias {
                 // emit a warning with a lot of debugging information.
                 let poly_trait_ref = if trait_ref.has_escaping_bound_vars() {
                     let trait_ref_and_generics = alias_ty.trait_ref_and_own_args(tcx);
-                    let rebased_generics = alias_ty.rebase_args_onto_impl(alias_ty.args, tcx);
+                    let rebased_generics =
+                        alias_ty.rebase_inherent_args_onto_impl(alias_ty.args, tcx);
                     let norm_rebased_generics = tcx.try_subst_and_normalize_erasing_regions(
                         rebased_generics,
                         s.param_env(),
@@ -2845,7 +2835,6 @@ pub struct Impl<Body: IsBody> {
     pub polarity: ImplPolarity,
     pub defaultness: Defaultness,
     pub defaultness_span: Option<Span>,
-    pub constness: Constness,
     pub generics: Generics<Body>,
     #[map({
         s.base().tcx.impl_trait_ref(s.owner_id()).sinto(s)
@@ -3031,7 +3020,7 @@ pub enum ItemKind<Body: IsBody> {
     ExternCrate(Option<Symbol>),
     Use(UsePath, UseKind),
     Static(Ty, Mutability, Body),
-    Const(Ty, Body),
+    Const(Ty, Generics<Body>, Body),
     #[custom_arm(
             rustc_hir::ItemKind::Fn(sig, generics, body) => {
                 ItemKind::Fn(generics.sinto(s), make_fn_def::<Body, _>(sig, body, s))
@@ -3229,9 +3218,6 @@ pub struct TraitRef {
 )]
 pub struct TraitPredicate {
     pub trait_ref: TraitRef,
-    #[from(constness)]
-    #[map(x.clone() == rustc_middle::ty::BoundConstness::ConstIfConst)]
-    pub is_const: bool,
     #[map(x.clone() == rustc_middle::ty::ImplPolarity::Positive)]
     #[from(polarity)]
     pub is_positive: bool,

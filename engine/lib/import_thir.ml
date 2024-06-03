@@ -1064,7 +1064,7 @@ end) : EXPR = struct
 
   let c_clause_kind span id (kind : Thir.clause_kind) : impl_ident option =
     match kind with
-    | Trait { is_positive = true; is_const = _; trait_ref } ->
+    | Trait { is_positive = true; trait_ref } ->
         let args = List.map ~f:(c_generic_value span) trait_ref.generic_args in
         let trait = Concrete_ident.of_def_id Trait trait_ref.def_id in
         Some { goal = { trait; args }; name = id }
@@ -1301,13 +1301,13 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
     let c_body = if drop_body then c_expr_drop_body else c_expr in
     (* TODO: things might be unnamed (e.g. constants) *)
     match (item.kind : Thir.item_kind) with
-    | Const (_, body) ->
+    | Const (_, generics, body) ->
         mk
         @@ Fn
              {
                name =
                  Concrete_ident.of_def_id Value (Option.value_exn item.def_id);
-               generics = { params = []; constraints = [] };
+               generics = c_generics generics;
                body = c_body body;
                params = [];
              }

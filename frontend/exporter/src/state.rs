@@ -143,8 +143,8 @@ mod types {
                 macro_infos: Rc::new(HashMap::new()),
                 cached_thirs: Rc::new(HashMap::new()),
                 options: Rc::new(options),
-                /// Always prefer `s.owner_id()` to `s.base().opt_def_id`.
-                /// `opt_def_id` is used in `utils` for error reporting
+                // Always prefer `s.owner_id()` to `s.base().opt_def_id`.
+                // `opt_def_id` is used in `utils` for error reporting
                 opt_def_id: None,
                 local_ctx: Rc::new(RefCell::new(LocalContextS::new())),
                 exported_spans: Rc::new(RefCell::new(HashSet::new())),
