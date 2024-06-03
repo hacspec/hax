@@ -47,6 +47,17 @@
    (run bash %{universe_hash}))))
 
 (rule
+ (target ast_visitors.ml)
+ (deps
+  (:ast ast.ml))
+ (action
+  (with-stdout-to
+   ast_visitors.ml
+   (with-stdin-from
+        %{ast}
+        (run generate_visitors)))))
+
+(rule
  (target concrete_ident_generated.ml)
  (deps
   (alias universe-hash)
