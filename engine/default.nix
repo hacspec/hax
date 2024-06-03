@@ -64,6 +64,7 @@
         ppx_string
         logs
         core
+        stdio
         re
         js_of_ocaml
         ocamlgraph
