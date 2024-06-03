@@ -49,7 +49,7 @@ Note:
 
 1. Make sure to have the following installed on your system:
 
-- [`opam`](https://opam.ocaml.org/) (`opam switch create 4.14.1`)
+- [`opam`](https://opam.ocaml.org/) (`opam switch create 5.1.1`)
 - [`rustup`](https://rustup.rs/)
 - [`nodejs`](https://nodejs.org/)
 - [`jq`](https://jqlang.github.io/jq/)
