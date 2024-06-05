@@ -26,7 +26,7 @@ Here are some resources for learning more about hax:
  - [Book](https://hacspec.org/book) (work in progress)
     + [Quick start](https://hacspec.org/book/quick_start/intro.html)
     + [Tutorial](https://hacspec.org/book/tutorial/index.html)
- - [Examples](examples/): the [examples directory](examples/) contains
+ - [Examples](./examples/): the [examples directory](./examples/) contains
    a set of examples that show what hax can do for you.
 
 ## Usage
