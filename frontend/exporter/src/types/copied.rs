@@ -2,32 +2,6 @@ use crate::prelude::*;
 use crate::rustc_middle::query::Key;
 use rustc_middle::ty;
 
-/// Reflects [`rustc_hir::definitions::DisambiguatedDefPathData`]
-#[derive(
-    AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
-#[args(<'a, S: BaseState<'a>>, from: rustc_hir::definitions::DisambiguatedDefPathData, state: S as s)]
-pub struct DisambiguatedDefPathItem {
-    pub data: DefPathItem,
-    pub disambiguator: u32,
-}
-
-/// Reflects [`rustc_hir::def_id::DefId`]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq, PartialOrd, Ord)]
-pub struct DefId {
-    pub krate: String,
-    pub path: Vec<DisambiguatedDefPathItem>,
-    /// Rustc's `CrateNum` and `DefIndex` raw indexes. This can be
-    /// useful if one needs to convert a [`DefId`] into a
-    /// [`rustc_hir::def_id::DefId`]; there is a `From` instance for
-    /// that purpose.
-    ///
-    /// **Warning: this `index` field might not be safe to use**. They are
-    /// valid only for one Rustc sesssion. Please do not rely on those
-    /// indexes unless you cannot do otherwise.
-    pub index: (u32, u32),
-}
-
 impl std::hash::Hash for DefId {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         let DefId {
@@ -96,28 +70,6 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, GlobalIdent> for rustc_hir::def_id
 pub enum LogicalOp {
     And,
     Or,
-}
-
-/// Reflects [`rustc_hir::definitions::DefPathData`]
-#[derive(
-    AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
-#[args(<'ctx, S: BaseState<'ctx>>, from: rustc_hir::definitions::DefPathData, state: S as state)]
-pub enum DefPathItem {
-    CrateRoot,
-    Impl,
-    ForeignMod,
-    Use,
-    GlobalAsm,
-    TypeNs(Symbol),
-    ValueNs(Symbol),
-    MacroNs(Symbol),
-    LifetimeNs(Symbol),
-    ClosureExpr,
-    Ctor,
-    AnonConst,
-    ImplTrait,
-    ImplTraitAssocTy,
 }
 
 /// Reflects [`rustc_middle::thir::LintLevel`]
