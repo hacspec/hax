@@ -63,8 +63,7 @@ fn rust_log_style() -> String {
 const RUSTFLAGS: &str = "RUSTFLAGS";
 fn rustflags() -> String {
     let rustflags = std::env::var(RUSTFLAGS).unwrap_or("".into());
-    let space = rustflags.is_empty().then_some(" ").unwrap_or("");
-    format!("{rustflags}{space}--cfg hax")
+    [rustflags, "--cfg hax".into()].join(" ")
 }
 
 fn main() {

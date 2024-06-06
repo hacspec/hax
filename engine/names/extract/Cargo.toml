@@ -12,10 +12,13 @@ description = "Helper binary generating an OCaml module"
 
 [build-dependencies]
 hax-cli-options-engine.workspace = true
-hax-frontend-exporter.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 cargo_metadata.workspace = true
 hax-engine-names.workspace = true
 tempfile.version = "3.9"
 camino = "1.1"
+
+[features]
+default = ["extract_names_mode"]
+extract_names_mode = []

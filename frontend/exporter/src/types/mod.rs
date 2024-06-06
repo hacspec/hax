@@ -2,6 +2,7 @@
 #![allow(ambiguous_glob_reexports)]
 
 mod copied;
+mod def_id;
 mod index;
 mod mir;
 mod mir_traits;
@@ -10,6 +11,7 @@ mod replaced;
 mod todo;
 
 pub use copied::*;
+pub use def_id::*;
 pub use index::*;
 pub use mir::*;
 pub use mir_traits::*;

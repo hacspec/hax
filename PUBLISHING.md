@@ -25,6 +25,7 @@ and `examples`):
 - `hax-phase-debug-webapp`
 - `hax-driver`
 
+
 ## hax-lib
 
 1. `hax-lib-macros-types`
@@ -34,3 +35,10 @@ and `examples`):
 ---
 
 - `hax-lint`
+
+## Supporting crates for the engine
+The crate listed below are used only by the OCaml build of the
+engine. Those should not be published on `crate.io`.
+
+1. `cargo-hax-engine-names`
+2. `cargo-hax-engine-names-extract`
