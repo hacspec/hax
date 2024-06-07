@@ -516,10 +516,7 @@ functor
                 ^ " " ^ ";")
               trait_items
           in
-          "Class" ^ " " ^ name ^ " " ^ "(Self : "
-          ^ ty_to_string_with_paren AST.TypeTy
-          ^ ")"
-          ^ params_to_string_typed arguments
+          "Class" ^ " " ^ name ^ params_to_string_typed arguments
           ^ " " ^ ":=" ^ " " ^ "{" ^ field_str ^ newline_indent 0 ^ "}" ^ "."
       | AST.ModuleType (name, arguments, trait_items) ->
           let field_str =

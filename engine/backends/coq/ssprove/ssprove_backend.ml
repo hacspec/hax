@@ -12,7 +12,6 @@ include
       include On.Monadic_binding
       include On.Macro
       include On.Construct_base
-      include On.Mutable_variable
       include On.Loop
       include On.For_loop
       include On.While_loop
@@ -29,7 +28,7 @@ module SubtypeToInputLanguage
              and type continue = Features.Off.continue
              and type break = Features.Off.break
              and type mutable_pointer = Features.Off.mutable_pointer
-             and type mutable_variable = Features.On.mutable_variable
+             and type mutable_variable = Features.Off.mutable_variable
              and type reference = Features.Off.reference
              and type raw_pointer = Features.Off.raw_pointer
              and type early_exit = Features.Off.early_exit
@@ -512,7 +511,7 @@ let primitive_to_string (id : Ast.primitive_ident) : string =
 
 open Phase_utils
 
-module TransformToInputLanguage (* : PHASE *) =
+module TransformToInputLanguage =
   [%functor_application
     Phases.Reject.Unsafe(Features.Rust)
     |> Phases.Reject.RawOrMutPointer
@@ -674,6 +673,8 @@ struct
         SSP.AST.Product (args_ty span args)
     | TApp { ident; args; _ } ->
         SSP.AST.AppTy (SSP.AST.NameTy (pglobal_ident ident), args_ty span args)
+    | TArrow ([TApp { ident = `TupleType 0; args = []; _ }], output) ->
+        pty span output
     | TArrow (inputs, output) ->
         List.fold_right ~init:(pty span output)
           ~f:(fun x y -> SSP.AST.Arrow (x, y))
@@ -826,7 +827,9 @@ struct
             _;
           } ->
           __TODO_term__ span "app global vcar projector tuple"
-      | App { f = { e = GlobalVar x; _ }; args; _ } when Map.mem operators x ->
+      | App { f; args = [{ e = GlobalVar (`TupleCons 0) | Construct { constructor = `TupleCons 0; fields = []; _ } }]; _ } ->
+          (pexpr env false) f
+     | App { f = { e = GlobalVar x; _ }; args; _ } when Map.mem operators x ->
           let arity, op = Map.find_exn operators x in
           if List.length args <> arity then failwith "Bad arity";
           let args =
@@ -837,7 +840,7 @@ struct
           SSP.AST.AppFormat (op, args)
       (* | App { f = { e = GlobalVar x }; args } -> *)
       (*    __TODO_term__ span "GLOBAL APP?" *)
-      | App { f; args; _ } ->
+       | App { f; args; _ } ->
           let base = (pexpr env false) f in
           let args = List.map ~f:(pexpr env false) args in
           SSP.AST.App (base, args)
@@ -1608,12 +1611,13 @@ struct
       | HaxError s -> [ __TODO_item__ span s ]
       | NotImplementedYet -> [ __TODO_item__ span "Not implemented yet?" ]
       | Alias _ -> [ __TODO_item__ span "Not implemented yet? alias" ]
-      | Trait { name; items; _ } ->
+      | Trait { name; items; generics } ->
           [
             SSP.AST.Class
               ( pconcrete_ident name,
-                [],
-                (* pgeneric span generics, *)
+                (match pgeneric span generics with
+| SSP.AST.Implicit (x,y) :: xs -> SSP.AST.Explicit (x,y) :: xs
+| x -> x),
                 List.concat_map
                   ~f:(fun x ->
                     match x.ti_v with
@@ -1621,7 +1625,6 @@ struct
                         let size, value =
                           wrap_type_in_enumerator
                             (pty x.ti_span fn_ty)
-                            
                         in
                         [
                             SSP.AST.Named
@@ -1670,7 +1673,6 @@ struct
                                            (ppat pat, pty span typ))
                                        params)
                                     (pty span body.typ)
-                                    
                                 in
                                 SSP.AST.LetDef
                                   ( pconcrete_ident x.ii_ident,
