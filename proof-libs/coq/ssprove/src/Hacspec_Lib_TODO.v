@@ -257,6 +257,7 @@ Notation "'i128(' v ')'" := (ret_both (v : int128) : both _).
 
 Definition len {A ws} := lift1_both  (fun (x : chList A) => repr ws (List.length x)).
 
+Definition orb (x : both 'bool) (y : both 'bool) : both 'bool := lift2_both (fun (x y : 'bool) => Datatypes.orb x y : 'bool) x y.
 Definition andb (x : both 'bool) (y : both 'bool) : both 'bool := lift2_both (fun (x y : 'bool) => Datatypes.andb x y : 'bool) x y.
 Definition negb (x : both 'bool) : both 'bool := lift1_both (fun (x : 'bool) => Datatypes.negb x : 'bool) x.
 Notation "a <> b" := (negb (eqb a b)).
@@ -277,7 +278,7 @@ Definition t_Result A B := result B A.
 Class t_Sized (A : choice_type) := Sized : A -> A.
 Class t_TryFrom (A : choice_type) := TryFrom : A -> A.
 Class t_Into (A : choice_type) := Into : A -> A.
-Class t_PartialEq (A : choice_type) := PartialEq : A -> A.
+Class t_PartialEq (A : choice_type) (B : choice_type) := PartialEq : A -> B -> bool.
 Class t_Copy (A : choice_type) := Copy : A -> A.
 Class t_Clone (A : choice_type) := Clone : A -> A.
 Definition t_Option : choice_type -> choice_type := chOption.
@@ -446,7 +447,7 @@ Equations repeat {A} (e : both A) (n : both uint_size) : both (nseq A (is_pure n
 Fail Next Obligation.
 
 Class iterable (A B : choice_type) := {f_into_iter : both A -> both (chList B)}.
-Instance nseq_iterable : iterable (nseq int32 20) int32 := {| f_into_iter := array_to_list |}.
+Instance nseq_iterable_seq {A n} : iterable (nseq A n) A := {| f_into_iter := array_to_list |}.
 Program Instance range_iterable {WS} : iterable ((int WS) × (int WS)) (int WS) :=
   {| f_into_iter :=
     fun x =>
@@ -454,6 +455,7 @@ Program Instance range_iterable {WS} : iterable ((int WS) × (int WS)) (int WS) 
   |}.
 Fail Next Obligation.
 Notation t_IntoIter := (chList _).
+Instance nseq_iterable_vec {A n} : iterable (t_Vec A n) A := {| f_into_iter := fun x => x |}.
 
 Definition t_Amount := int64.
 
@@ -492,3 +494,10 @@ Notation f_parameter_cursor_loc := fset0.
 
 Notation Result_Ok_case := inl.
 Notation Result_Err_case := inr.
+
+Definition impl__map_err {A B C : choice_type} (r : both (t_Result A B)) (f : B -> C) : both (t_Result A C) :=
+  matchb r with
+  | inl a => ret_both (inl a : t_Result A C)
+  | inr b => ret_both (inr (f b) : t_Result A C)
+end.
+Axiom f_from : forall {A B}, A -> B. (* TODO *)
