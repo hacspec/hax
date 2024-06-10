@@ -1338,8 +1338,10 @@ struct
         in
         let body = F.term @@ F.AST.Record (None, fields) in
         let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
-        F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ]
-        @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
+        [
+          F.decl ~fsti:false ~attrs:[ tcinst ] @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ]);
+          F.decl ~fsti:true ~attrs:[ tcinst ] @@ F.AST.Val (name, typ);
+        ]
     | Quote quote ->
         let fstar_opts =
           Attrs.find_unique_attr e.attrs ~f:(function
