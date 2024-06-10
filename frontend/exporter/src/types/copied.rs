@@ -1525,6 +1525,7 @@ pub enum AliasKind {
 }
 
 impl Alias {
+    #[tracing::instrument(level = "trace", skip(s))]
     fn from<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         s: &S,
         alias_kind: &rustc_type_ir::sty::AliasKind,
