@@ -176,3 +176,9 @@ mod interlaced_consts_types {
         fn fun<const FunConst: usize, FunType>(x: [FooType; FooConst], y: [FunType; FunConst]) {}
     }
 }
+
+mod type_alias_bounds_issue_707 {
+    struct StructWithGenericBounds<T: Clone>(T);
+    type SynonymA<T> = StructWithGenericBounds<T>;
+    type SynonymB<T> = StructWithGenericBounds<(T, T)>;
+}
