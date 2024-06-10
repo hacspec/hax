@@ -44,8 +44,6 @@ let self_plus =
     ~init:None
   >> Option.value ~default:"self#zero"
 
-let mk_let ~lhs ~rhs = "let " ^ lhs ^ " = " ^ rhs ^ " in "
-
 let of_typed_binding ~kind (value, typ, value_binding, acc_binding) =
   let lhs =
     [

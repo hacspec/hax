@@ -1,30 +1,7 @@
 open! Prelude
 
 module Imported = struct
-  type def_id = { krate : string; path : path }
-  and path = disambiguated_def_path_item list
-
-  and disambiguated_def_path_item = {
-    data : def_path_item;
-    disambiguator : int;
-  }
-
-  and def_path_item =
-    | CrateRoot
-    | Impl
-    | ForeignMod
-    | Use
-    | GlobalAsm
-    | ClosureExpr
-    | Ctor
-    | AnonConst
-    | ImplTrait
-    | ImplTraitAssocTy
-    | TypeNs of string
-    | ValueNs of string
-    | MacroNs of string
-    | LifetimeNs of string
-  [@@deriving show, yojson, compare, sexp, eq, hash]
+  include Concrete_ident_inner_types.Imported
 
   let of_def_path_item : Types.def_path_item -> def_path_item = function
     | CrateRoot -> CrateRoot
@@ -213,17 +190,7 @@ end = struct
 end
 
 module Kind = struct
-  type t =
-    | Type
-    | Value
-    | Lifetime
-    | Constructor of { is_struct : bool }
-    | Field
-    | Macro
-    | Trait
-    | Impl
-    | AssociatedItem of t
-  [@@deriving show, yojson, compare, sexp, eq, hash]
+  include Concrete_ident_inner_types.Kind
 
   let of_def_path_item : Imported.def_path_item -> t option = function
     | TypeNs _ -> Some Type
@@ -286,10 +253,10 @@ module View = struct
     in
     let arity0 =
       Option.map ~f:escape << function
-      | Types.Bool -> Some "bool"
+      | Types.Never -> Some "never"
+      | Bool -> Some "bool"
       | Char -> Some "char"
       | Str -> Some "str"
-      | Never -> Some "never"
       | Int Isize -> Some "isize"
       | Int I8 -> Some "i8"
       | Int I16 -> Some "i16"
@@ -309,7 +276,8 @@ module View = struct
       | _ -> None
     in
     let apply left right = left ^ "_of_" ^ right in
-    let rec arity1 = function
+    let rec arity1 (t : Types.ty) =
+      match t with
       | Types.Slice sub -> arity1 sub |> Option.map ~f:(apply "slice")
       | Ref (_, sub, _) -> arity1 sub |> Option.map ~f:(apply "ref")
       | Adt { def_id; generic_args = [ Type arg ]; _ } ->

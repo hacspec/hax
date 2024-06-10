@@ -24,6 +24,7 @@ module Error : Phase_utils.ERROR = Phase_utils.MakeError (struct
 end)
 
 module Attrs = Attr_payloads.MakeBase (Error)
+module ToPats = To_patterns
 
 let import_thir_items (include_clauses : Types.inclusion_clause list)
     (items : Types.item_for__decorated_for__expr_kind list) : Ast.Rust.item list
@@ -80,6 +81,22 @@ let import_thir_items (include_clauses : Types.inclusion_clause list)
   List.iter ~f:Diagnostics.Core.report reports;
   items
 
+let export_patterns (items : Ast.Rust.item list) =
+  match Sys.getenv "HAX_ENGINE_PATTERN_MODE" with
+  | None -> ()
+  | Some destination ->
+      let of_item =
+        (object
+           inherit [_] ToPats.pattern_printer as _pp
+        end)
+          #of_item
+      in
+      let data =
+        List.map ~f:of_item items |> [%yojson_of: string list]
+        |> Yojson.Safe.pretty_to_string
+      in
+      Stdio.Out_channel.write_all ~data destination
+
 let run (options : Types.engine_options) : Types.output =
   setup_logs options;
   if options.backend.debug_engine |> Option.is_some then
@@ -94,6 +111,7 @@ let run (options : Types.engine_options) : Types.output =
       options.backend.translation_options.include_namespaces
     in
     let items = import_thir_items include_clauses options.input in
+    export_patterns items;
     Logs.info (fun m ->
         m "Applying phase for backend %s"
           ([%show: Diagnostics.Backend.t] M.backend));

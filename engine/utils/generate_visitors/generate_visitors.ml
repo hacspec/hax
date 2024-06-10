@@ -1,6 +1,7 @@
 open Base
 open Utils
 open Types
+open Codegen_patterns
 
 let _main =
   let ocaml_file =
@@ -12,7 +13,19 @@ let _main =
            (* We only look at certain types in the AST.ml module *)
            String.is_prefix ~prefix:"Make." path
            || List.mem ~equal:String.equal
-                [ "mutability"; "literal"; "attrs"; "quote" ]
+                [
+                  "mutability";
+                  "literal";
+                  "attrs";
+                  "quote";
+                  "int_kind";
+                  "float_kind";
+                  "signedness";
+                  "size";
+                  "attr";
+                  "attr_kind";
+                  "doc_comment_kind";
+                ]
                 path)
     |> List.map ~f:(fun (path, td) ->
            ( String.chop_prefix ~prefix:"Make." path
@@ -26,4 +39,9 @@ let _main =
            | Result.Ok v -> Some Datatype.{ v with name = path }
            | _ -> None)
   in
-  datatypes |> Codegen_visitor.mk |> Stdio.print_endline
+  let mk =
+    match Stdlib.Sys.getenv_opt "PATS" with
+    | Some _ -> Codegen_patterns.mk
+    | _ -> Codegen_visitor.mk
+  in
+  datatypes |> mk |> Stdio.print_endline

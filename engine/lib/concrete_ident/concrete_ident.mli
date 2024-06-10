@@ -1,4 +1,4 @@
-type t [@@deriving show, yojson, compare, sexp, eq, hash]
+type t = private { def_id : Concrete_ident_inner_types.Imported.def_id; kind : Concrete_ident_inner_types.Kind.t } [@@deriving show, yojson, compare, sexp, eq, hash]
 type name = Concrete_ident_generated.name
 
 module ImplInfoStore : sig

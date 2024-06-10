@@ -501,6 +501,57 @@ let export_definition = (name, def) => {
     // return `type ${name} = ${type}\nlet parse_${name} (o: Yojson.Safe.t): ${name} = ${parse}\n`;
 };
 
+function make_bundles(items) {
+    let [direct_deps, transitive_deps, bundles] = [{}, {}, []];
+
+    for(let a of items)
+        a.derive_items = new Set(({
+            def_id: ['show', 'compare', 'sexp', 'eq', 'hash']
+        })[a.name] || ['show', 'eq']);
+    
+    for(let a of items) {
+        direct_deps[a.name] = new Set();
+        for(let b of items)
+            a.type.includes(b.name) && direct_deps[a.name].add(b);
+    }
+    let transitive_deps_for = (a, seen) => {
+        if(seen.has(a)) return [];
+        seen.add(a);
+        return [a, ...([...direct_deps[a.name]].map(b => transitive_deps_for(b, seen)).flat())];
+    };
+    for(let a of items) {
+        transitive_deps[a.name] = new Set(transitive_deps_for(a, new Set()));
+        for(let b of transitive_deps[a.name])
+            b.derive_items = new Set([...b.derive_items, ...a.derive_items]);
+    }
+    for(let a of items) {
+        if(bundles.some(bundle => bundle.has(a)))
+            continue;
+        let bundle = new Set([a]);
+        for(let b of transitive_deps[a.name]) {
+            if(transitive_deps[b.name].has(a))
+                bundle.add(b);
+        }
+        bundles.push(bundle);
+    }
+
+    let deps_of_bundle = a => new Set([...a].map(a => [...transitive_deps[a.name]]).flat());
+    
+    let sorted_bundles = [];
+    while(bundles.length){
+        let i = bundles.findIndex(bundle => {
+            return [...deps_of_bundle(bundle)].every(x =>
+                bundle.has(x) || !bundles.some(y => y.has(x))
+            );
+        });
+        let items = [...bundles[i]];
+        sorted_bundles.push({items, derive_items: [...items[0].derive_items]});
+        bundles.splice(i, 1);
+    }
+    
+    return sorted_bundles;
+}
+
 function run(str){
     let contents = JSON.parse(str);
     const definitions = clean(contents.definitions);
@@ -514,7 +565,6 @@ function run(str){
         ([name, def]) => export_definition(name, def)
     ).filter(x => x instanceof Object);
 
-    let derive_items = ['show', 'eq'];
     
     impl += `
 module ParseError = struct
@@ -530,17 +580,29 @@ module ParseError = struct
 end
 
 open ParseError
+
+open (struct
+  type string = Base.String.t
+    [@@deriving compare, sexp, eq, hash]
+  type 'a list = 'a Base.List.t
+    [@@deriving compare, sexp, eq, hash]
+end)
 `;
 
-    let derive_clause = derive_items.length ? `[@@deriving ${derive_items.join(', ')}]` : '';
-
-    impl += (
-        'type '
-            + items.map(({name, type}) =>
-                `${name} = ${type}\n`
-            ).join('\nand ')
-            + derive_clause
-    );
+    let bundles = make_bundles(items);
+    
+    for(let bundle of bundles) {
+        let derive_clause = bundle.derive_items.length ? `[@@deriving ${bundle.derive_items.join(', ')}]` : '';
+    
+        impl += (
+            'type '
+                + bundle.items.map(({name, type}) =>
+                    `${name} = ${type}\n`
+                ).join('\nand ')
+                + derive_clause
+        );
+    }
+    
     impl += ('');
     impl += ('let rec ' + items.map(({name, type, parse}) =>
         `parse_${name} (o: Yojson.Safe.t): ${name} = ${parse}`

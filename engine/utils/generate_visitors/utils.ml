@@ -32,3 +32,6 @@ let type_declaration_of_structure (str : Ppxlib.structure) :
   in
   visitor#structure str;
   visitor#get_result ()
+
+let mk_let ~lhs ~rhs = "let " ^ lhs ^ " = " ^ rhs ^ " in "
+let uncurry f (x, y) = f x y

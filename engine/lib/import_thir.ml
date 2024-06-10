@@ -1365,7 +1365,9 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
           List.map
             ~f:
               (fun ({ data; def_id = variant_id; attributes; _ } as original) ->
-              let is_record = [%matches? Types.Struct (_ :: _, _)] data in
+              let is_record =
+                [%matches? (Types.Struct (_ :: _, _) : Types.variant_data)] data
+              in
               let name = Concrete_ident.of_def_id kind variant_id in
               let arguments =
                 match data with
