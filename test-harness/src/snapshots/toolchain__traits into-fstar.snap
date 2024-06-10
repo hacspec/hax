@@ -181,12 +181,6 @@ open FStar.Mul
 
 type t_StructWithGenericBounds (v_T: Type0) {| i1: Core.Clone.t_Clone v_T |} =
   | StructWithGenericBounds : v_T -> t_StructWithGenericBounds v_T
-
-unfold
-let t_SynonymA (#v_T: Type0) = t_StructWithGenericBounds v_T
-
-unfold
-let t_SynonymB (#v_T: Type0) = t_StructWithGenericBounds (v_T & v_T)
 '''
 "Traits.Unconstrainted_types_issue_677_.fst" = '''
 module Traits.Unconstrainted_types_issue_677_
