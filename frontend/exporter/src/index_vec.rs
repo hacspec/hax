@@ -3,11 +3,12 @@ use crate::prelude::*;
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
-pub struct IndexVec<I: rustc_index::Idx, T> {
+pub struct IndexVec<I, T> {
     pub raw: Vec<T>,
     _marker: std::marker::PhantomData<fn(_: &I)>,
 }
 
+#[cfg(feature = "full")]
 impl<I: rustc_index::Idx, T> Into<IndexVec<I, T>> for rustc_index::IndexVec<I, T> {
     fn into(self) -> IndexVec<I, T> {
         IndexVec {
@@ -17,6 +18,7 @@ impl<I: rustc_index::Idx, T> Into<IndexVec<I, T>> for rustc_index::IndexVec<I, T
     }
 }
 
+#[cfg(feature = "full")]
 impl<I: rustc_index::Idx, T: Sized> std::ops::Deref for IndexVec<I, T> {
     type Target = rustc_index::IndexSlice<I, T>;
     fn deref(&self) -> &Self::Target {
@@ -24,12 +26,14 @@ impl<I: rustc_index::Idx, T: Sized> std::ops::Deref for IndexVec<I, T> {
     }
 }
 
+#[cfg(feature = "full")]
 impl<I: rustc_index::Idx, T: Sized> std::ops::DerefMut for IndexVec<I, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         Self::Target::from_raw_mut(&mut self.raw)
     }
 }
 
+#[cfg(feature = "full")]
 impl<
         S,
         J: rustc_index::Idx,
@@ -53,9 +57,10 @@ macro_rules! make_idx_wrapper {
         pub enum $type {
             $type(usize),
         }
+        #[cfg(feature = "full")]
         const _: () = {
-            use rustc_index::Idx;
             type OriginalType = $($mod::)+$type;
+            use rustc_index::Idx;
             impl Idx for $type {
                 fn new(idx: usize) -> Self {
                     $type::$type(idx)

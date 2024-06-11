@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use crate::sinto_as_usize;
 
 sinto_as_usize!(rustc_middle::ty, DebruijnIndex);
 sinto_as_usize!(rustc_middle::ty, UniverseIndex);

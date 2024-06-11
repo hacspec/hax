@@ -1,4 +1,6 @@
 use crate::prelude::*;
+
+#[cfg(feature = "full")]
 use tracing::trace;
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -35,6 +37,7 @@ pub enum ClearCrossCrate<T> {
     Set(T),
 }
 
+#[cfg(feature = "full")]
 impl<S, TT, T: SInto<S, TT>> SInto<S, ClearCrossCrate<TT>>
     for rustc_middle::mir::ClearCrossCrate<T>
 {
@@ -63,6 +66,7 @@ pub enum AnalysisPhase {
 
 pub type BasicBlocks = IndexVec<BasicBlock, BasicBlockData>;
 
+#[cfg(feature = "full")]
 fn name_of_local(
     local: rustc_middle::mir::Local,
     var_debug_info: &Vec<rustc_middle::mir::VarDebugInfo>,
@@ -81,6 +85,7 @@ fn name_of_local(
 
 /// Enumerates the kinds of Mir bodies. TODO: use const generics
 /// instead of an open list of types.
+#[cfg(feature = "full")]
 pub mod mir_kinds {
     use crate::prelude::{Deserialize, JsonSchema, Serialize};
     use rustc_data_structures::steal::Steal;
@@ -106,6 +111,7 @@ pub mod mir_kinds {
     }
     // TODO: Add [Promoted] MIR
 }
+#[cfg(feature = "full")]
 pub use mir_kinds::IsMirKind;
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -191,6 +197,7 @@ pub enum Operand {
     Constant(Constant),
 }
 
+#[cfg(feature = "full")]
 impl Operand {
     pub(crate) fn ty(&self) -> &Ty {
         match self {
@@ -207,6 +214,7 @@ pub struct Terminator {
     pub kind: TerminatorKind,
 }
 
+#[cfg(feature = "full")]
 pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     def_id: rustc_hir::def_id::DefId,
@@ -322,6 +330,7 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
 /// The [Operand] comes from a [TerminatorKind::Call].
 /// Only supports calls to top-level functions (which are considered as constants
 /// by rustc); doesn't support closures for now.
+#[cfg(feature = "full")]
 fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
     s: &S,
     func: &rustc_middle::mir::Operand<'tcx>,
@@ -390,6 +399,7 @@ fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
     }
 }
 
+#[cfg(feature = "full")]
 fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>(
     s: &S,
     terminator: &rustc_middle::mir::TerminatorKind<'tcx>,
@@ -441,6 +451,7 @@ pub struct ScalarInt {
 
 // TODO: naming conventions: is "translate" ok?
 /// Translate switch targets
+#[cfg(feature = "full")]
 fn translate_switch_targets<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     switch_ty: &Ty,
@@ -668,6 +679,7 @@ pub enum ProjectionElem {
 }
 
 // refactor
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
     for rustc_middle::mir::Place<'tcx>
 {
@@ -823,6 +835,7 @@ pub struct MirFnSig {
 
 pub type MirPolyFnSig = Binder<MirFnSig>;
 
+#[cfg(feature = "full")]
 impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, MirFnSig> for rustc_middle::ty::FnSig<'tcx> {
     fn sinto(&self, s: &S) -> MirFnSig {
         let inputs = self.inputs().sinto(s);
@@ -839,6 +852,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, MirFnSig> for rustc_middle:
 
 // TODO: we need this function because sometimes, Rust doesn't infer the proper
 // typeclass instance.
+#[cfg(feature = "full")]
 pub(crate) fn poly_fn_sig_to_mir_poly_fn_sig<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     sig: &rustc_middle::ty::PolyFnSig<'tcx>,
     s: &S,

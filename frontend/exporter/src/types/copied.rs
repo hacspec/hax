@@ -1,5 +1,8 @@
 use crate::prelude::*;
+
+#[cfg(feature = "full")]
 use crate::rustc_middle::query::Key;
+#[cfg(feature = "full")]
 use rustc_middle::ty;
 
 impl std::hash::Hash for DefId {
@@ -14,6 +17,7 @@ impl std::hash::Hash for DefId {
     }
 }
 
+#[cfg(feature = "full")]
 impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
     fn sinto(&self, s: &S) -> DefId {
         s.base().exported_def_ids.borrow_mut().insert(self.clone());
@@ -31,6 +35,7 @@ impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
     }
 }
 
+#[cfg(feature = "full")]
 impl From<&DefId> for rustc_span::def_id::DefId {
     fn from<'tcx>(def_id: &DefId) -> Self {
         let (krate, index) = def_id.index;
@@ -41,6 +46,7 @@ impl From<&DefId> for rustc_span::def_id::DefId {
     }
 }
 
+#[cfg(feature = "full")]
 impl std::convert::From<DefId> for Path {
     fn from(v: DefId) -> Vec<String> {
         std::iter::once(v.krate)
@@ -56,6 +62,7 @@ impl std::convert::From<DefId> for Path {
 }
 
 pub type GlobalIdent = DefId;
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, GlobalIdent> for rustc_hir::def_id::LocalDefId {
     fn sinto(&self, st: &S) -> DefId {
         self.to_def_id().sinto(st)
@@ -188,6 +195,7 @@ pub struct Scope {
     pub data: ScopeData,
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr>
     for rustc_middle::mir::ConstantKind<'tcx>
 {
@@ -219,18 +227,21 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr>
 // For ConstantKind we merge all the cases (Ty, Val, Unevaluated) into one
 pub type ConstantKind = ConstantExpr;
 
+#[cfg(feature = "full")]
 impl<S> SInto<S, u64> for rustc_middle::mir::interpret::AllocId {
     fn sinto(&self, _: &S) -> u64 {
         self.0.get()
     }
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Box<Ty>> for rustc_middle::ty::Ty<'tcx> {
     fn sinto(&self, s: &S) -> Box<Ty> {
         Box::new(self.sinto(s))
     }
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_middle::ty::Ty<'tcx> {
     fn sinto(&self, s: &S) -> Ty {
         self.kind().sinto(s)
@@ -249,6 +260,7 @@ pub struct HirId {
 }
 // TODO: If not working: See original
 
+#[cfg(feature = "full")]
 impl<'tcx, S: BaseState<'tcx>> SInto<S, DefId> for rustc_hir::hir_id::OwnerId {
     fn sinto(&self, s: &S) -> DefId {
         self.to_def_id().sinto(s)
@@ -370,6 +382,7 @@ pub struct Placeholder<T> {
     pub bound: T,
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>, T: SInto<S, U>, U> SInto<S, Placeholder<U>>
     for rustc_middle::ty::Placeholder<T>
 {
@@ -391,6 +404,7 @@ pub struct Canonical<T> {
 /// Reflects [`rustc_middle::ty::CanonicalUserType`]
 pub type CanonicalUserType = Canonical<UserType>;
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>, T: SInto<S, U>, U> SInto<S, Canonical<U>>
     for rustc_middle::infer::canonical::Canonical<'tcx, T>
 {
@@ -482,10 +496,11 @@ pub enum VariantDiscr {
 
 /// Reflects [`rustc_middle::ty::Visibility`]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub enum Visibility<Id = rustc_span::def_id::LocalDefId> {
+pub enum Visibility<Id> {
     Public,
     Restricted(Id),
 }
+#[cfg(feature = "full")]
 impl<S, T: SInto<S, U>, U> SInto<S, Visibility<U>> for rustc_middle::ty::Visibility<T> {
     fn sinto(&self, s: &S) -> Visibility<U> {
         use rustc_middle::ty::Visibility as T;
@@ -509,6 +524,7 @@ pub struct FieldDef {
     pub span: Span,
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, FieldDef> for rustc_middle::ty::FieldDef {
     fn sinto(&self, s: &S) -> FieldDef {
         let tcx = s.base().tcx;
@@ -614,12 +630,14 @@ pub enum GenericArg {
     Const(ConstantExpr),
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, GenericArg> for rustc_middle::ty::GenericArg<'tcx> {
     fn sinto(&self, s: &S) -> GenericArg {
         self.unpack().sinto(s)
     }
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Vec<GenericArg>>
     for rustc_middle::ty::GenericArgsRef<'tcx>
 {
@@ -672,6 +690,7 @@ pub struct AdtExpr {
     pub base: Option<FruInfo>,
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: ExprState<'tcx>> SInto<S, AdtExpr> for rustc_middle::thir::AdtExpr<'tcx> {
     fn sinto(&self, s: &S) -> AdtExpr {
         let variants = self.adt_def.variants();
@@ -783,6 +802,7 @@ pub struct Span {
     pub filename: FileName,
     /// Original rustc span; can be useful for reporting rustc
     /// diagnostics (this is used in Charon)
+    #[cfg(feature = "full")]
     #[serde(skip)]
     pub rust_span_data: Option<rustc_span::SpanData>,
     // expn_backtrace: Vec<ExpnData>,
@@ -818,6 +838,7 @@ const _: () = {
     }
 };
 
+#[cfg(feature = "full")]
 impl Into<Loc> for rustc_span::Loc {
     fn into(self) -> Loc {
         Loc {
@@ -827,6 +848,7 @@ impl Into<Loc> for rustc_span::Loc {
     }
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Span> for rustc_span::Span {
     fn sinto(&self, s: &S) -> Span {
         let set: crate::state::ExportedSpans = s.base().exported_spans;
@@ -842,6 +864,7 @@ pub struct LocalIdent {
     pub id: HirId,
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, LocalIdent> for rustc_middle::thir::LocalVarId {
     fn sinto(&self, s: &S) -> LocalIdent {
         LocalIdent {
@@ -865,6 +888,7 @@ pub struct Spanned<T> {
     pub node: T,
     pub span: Span,
 }
+#[cfg(feature = "full")]
 impl<'s, S: UnderOwnerState<'s>, T: SInto<S, U>, U> SInto<S, Spanned<U>>
     for rustc_span::source_map::Spanned<T>
 {
@@ -876,6 +900,7 @@ impl<'s, S: UnderOwnerState<'s>, T: SInto<S, U>, U> SInto<S, Spanned<U>>
     }
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, String> for PathBuf {
     fn sinto(&self, _: &S) -> String {
         self.as_path().display().to_string()
@@ -899,6 +924,7 @@ pub enum RealFileName {
     },
 }
 
+#[cfg(feature = "full")]
 impl<S> SInto<S, u64> for rustc_data_structures::stable_hasher::Hash64 {
     fn sinto(&self, _: &S) -> u64 {
         self.as_u64()
@@ -1125,18 +1151,21 @@ pub struct MacCall {
 /// string. If you need to reshape that into Rust tokens or construct,
 /// please use, e.g., `syn`.
 pub type TokenStream = String;
+#[cfg(feature = "full")]
 impl<'t, S> SInto<S, TokenStream> for rustc_ast::tokenstream::TokenStream {
     fn sinto(&self, _: &S) -> String {
         rustc_ast_pretty::pprust::tts_to_string(self)
     }
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: ExprState<'tcx>> SInto<S, Block> for rustc_middle::thir::BlockId {
     fn sinto(&self, s: &S) -> Block {
         s.thir().blocks[*self].sinto(s)
     }
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: ExprState<'tcx>> SInto<S, Stmt> for rustc_middle::thir::StmtId {
     fn sinto(&self, s: &S) -> Stmt {
         s.thir().stmts[*self].sinto(s)
@@ -1145,8 +1174,10 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Stmt> for rustc_middle::thir::StmtId {
 
 /// While translating expressions, we expect to always have a THIR
 /// body and an `owner_id` in the state
+#[cfg(feature = "full")]
 pub trait ExprState<'tcx> = UnderOwnerState<'tcx> + HasThir<'tcx>;
 
+#[cfg(feature = "full")]
 impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx> {
     fn sinto(&self, s: &S) -> Expr {
         let (hir_id, attributes) = self.hir_id_and_attributes(s);
@@ -1290,12 +1321,14 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
     }
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::ExprId {
     fn sinto(&self, s: &S) -> Expr {
         s.thir().exprs[*self].sinto(s)
     }
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: ExprState<'tcx>> SInto<S, Pat> for rustc_middle::thir::Pat<'tcx> {
     fn sinto(&self, s: &S) -> Pat {
         let rustc_middle::thir::Pat { span, kind, ty } = self;
@@ -1335,6 +1368,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Pat> for rustc_middle::thir::Pat<'tcx> {
     }
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: ExprState<'tcx>> SInto<S, Arm> for rustc_middle::thir::ArmId {
     fn sinto(&self, s: &S) -> Arm {
         s.thir().arms[*self].sinto(s)
@@ -1367,6 +1401,7 @@ pub enum FloatTy {
     F64,
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S> SInto<S, FloatTy> for rustc_ast::ast::FloatTy {
     fn sinto(&self, _: &S) -> FloatTy {
         use rustc_ast::ast::FloatTy as T;
@@ -1377,6 +1412,7 @@ impl<'tcx, S> SInto<S, FloatTy> for rustc_ast::ast::FloatTy {
     }
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S> SInto<S, IntTy> for rustc_ast::ast::IntTy {
     fn sinto(&self, _: &S) -> IntTy {
         use rustc_ast::ast::IntTy as T;
@@ -1390,6 +1426,7 @@ impl<'tcx, S> SInto<S, IntTy> for rustc_ast::ast::IntTy {
         }
     }
 }
+#[cfg(feature = "full")]
 impl<'tcx, S> SInto<S, UintTy> for rustc_ast::ast::UintTy {
     fn sinto(&self, _: &S) -> UintTy {
         use rustc_ast::ast::UintTy as T;
@@ -1458,6 +1495,7 @@ pub struct TypeAndMut {
     pub mutbl: Mutability,
 }
 
+#[cfg(feature = "full")]
 impl<S, U, T: SInto<S, U>> SInto<S, Vec<U>> for rustc_middle::ty::List<T> {
     fn sinto(&self, s: &S) -> Vec<U> {
         self.iter().map(|x| x.sinto(s)).collect()
@@ -1530,6 +1568,7 @@ pub enum AliasKind {
     Weak,
 }
 
+#[cfg(feature = "full")]
 impl Alias {
     #[tracing::instrument(level = "trace", skip(s))]
     fn from<'tcx, S: BaseState<'tcx> + HasOwnerId>(
@@ -1778,6 +1817,7 @@ pub struct ReprOptions {
     pub field_shuffle_seed: u64,
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, AdtDef> for rustc_middle::ty::AdtDef<'tcx> {
     fn sinto(&self, s: &S) -> AdtDef {
         AdtDef {
@@ -2082,6 +2122,7 @@ pub struct AttrItem {
     pub tokens: Option<TokenStream>,
 }
 
+#[cfg(feature = "full")]
 impl<S> SInto<S, String> for rustc_ast::tokenstream::LazyAttrTokenStream {
     fn sinto(&self, st: &S) -> String {
         self.to_attr_token_stream().to_tokenstream().sinto(st)
@@ -2446,6 +2487,7 @@ pub enum ExprKind {
     Todo(String),
 }
 
+#[cfg(feature = "full")]
 pub trait ExprKindExt<'tcx> {
     fn hir_id_and_attributes<S: ExprState<'tcx>>(
         &self,
@@ -2457,6 +2499,7 @@ pub trait ExprKindExt<'tcx> {
     ) -> rustc_middle::thir::Expr<'tcx>;
 }
 
+#[cfg(feature = "full")]
 impl<'tcx> ExprKindExt<'tcx> for rustc_middle::thir::Expr<'tcx> {
     fn hir_id_and_attributes<S: ExprState<'tcx>>(
         &self,
@@ -2545,6 +2588,7 @@ pub struct FnHeader {
 
 pub type ThirBody = Expr;
 
+#[cfg(feature = "full")]
 impl<'x, 'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_hir::Ty<'x> {
     fn sinto(self: &rustc_hir::Ty<'x>, s: &S) -> Ty {
         // **Important:**
@@ -2628,6 +2672,7 @@ pub enum WherePredicate<Body: IsBody> {
     EqPredicate(WhereEqPredicate),
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, ImplItem<Body>>
     for rustc_hir::ImplItemRef
 {
@@ -2773,6 +2818,7 @@ pub enum AssocItemKind {
     Type,
 }
 
+#[cfg(feature = "full")]
 impl<
         'tcx,
         S,
@@ -3063,6 +3109,7 @@ pub struct TraitItem<Body: IsBody> {
     pub attributes: ItemAttributes,
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, EnumDef<Body>>
     for rustc_hir::EnumDef<'tcx>
 {
@@ -3071,6 +3118,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, EnumDef<Body>>
     }
 }
 
+#[cfg(feature = "full")]
 impl<'a, S: UnderOwnerState<'a>, Body: IsBody> SInto<S, TraitItem<Body>>
     for rustc_hir::TraitItemRef
 {
@@ -3081,6 +3129,7 @@ impl<'a, S: UnderOwnerState<'a>, Body: IsBody> SInto<S, TraitItem<Body>>
     }
 }
 
+#[cfg(feature = "full")]
 impl<'a, 'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, Vec<Item<Body>>>
     for rustc_hir::Mod<'a>
 {
@@ -3114,6 +3163,7 @@ pub struct ForeignItem<Body: IsBody> {
     pub vis_span: Span,
 }
 
+#[cfg(feature = "full")]
 impl<'a, S: UnderOwnerState<'a>, Body: IsBody> SInto<S, ForeignItem<Body>>
     for rustc_hir::ForeignItemRef
 {
@@ -3194,6 +3244,7 @@ pub struct OutlivesPredicate<A, B> {
     pub rhs: B,
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>, A1, A2, B1, B2> SInto<S, OutlivesPredicate<A2, B2>>
     for rustc_middle::ty::OutlivesPredicate<A1, B1>
 where
@@ -3222,6 +3273,7 @@ pub enum Term {
     Const(ConstantExpr),
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Term> for rustc_middle::ty::Term<'tcx> {
     fn sinto(&self, s: &S) -> Term {
         use rustc_middle::ty::TermKind;
@@ -3252,6 +3304,7 @@ pub struct ProjectionPredicate {
     pub ty: Ty,
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ProjectionPredicate>
     for rustc_middle::ty::ProjectionPredicate<'tcx>
 {
@@ -3304,6 +3357,7 @@ pub struct Clause {
     pub id: PredicateId,
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause> for rustc_middle::ty::Clause<'tcx> {
     fn sinto(&self, s: &S) -> Clause {
         Clause {
@@ -3322,6 +3376,7 @@ pub struct Predicate {
     pub id: PredicateId,
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Predicate> for rustc_middle::ty::Predicate<'tcx> {
     fn sinto(&self, s: &S) -> Predicate {
         Predicate {
@@ -3365,6 +3420,7 @@ pub struct GenericPredicates {
     pub predicates: Vec<(Predicate, Span)>,
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>, T1, T2> SInto<S, Binder<T2>>
     for rustc_middle::ty::Binder<'tcx, T1>
 where
@@ -3444,6 +3500,7 @@ pub enum PredicateKind {
 type GenericBounds = Vec<Clause>;
 
 /// Compute the bounds for the owner registed in the state `s`
+#[cfg(feature = "full")]
 fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> GenericBounds {
     let tcx = s.base().tcx;
 
@@ -3485,6 +3542,7 @@ fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> Gene
     clauses.sinto(s)
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, GenericBounds> for rustc_hir::GenericBounds<'tcx> {
     fn sinto(&self, s: &S) -> GenericBounds {
         region_bounds_at_current_owner(s)
@@ -3522,6 +3580,7 @@ pub struct Item<Body: IsBody> {
     pub expn_backtrace: Vec<ExpnData>,
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: BaseState<'tcx>, Body: IsBody> SInto<S, Item<Body>> for rustc_hir::Item<'tcx> {
     fn sinto(&self, s: &S) -> Item<Body> {
         let name: String = self.ident.name.to_ident_string();
@@ -3542,6 +3601,7 @@ impl<'tcx, S: BaseState<'tcx>, Body: IsBody> SInto<S, Item<Body>> for rustc_hir:
     }
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: BaseState<'tcx>, Body: IsBody> SInto<S, Item<Body>> for rustc_hir::ItemId {
     fn sinto(&self, s: &S) -> Item<Body> {
         let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
@@ -3552,6 +3612,7 @@ impl<'tcx, S: BaseState<'tcx>, Body: IsBody> SInto<S, Item<Body>> for rustc_hir:
 /// Reflects [`rustc_span::symbol::Ident`]
 pub type Ident = (Symbol, Span);
 
+#[cfg(feature = "full")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ident> for rustc_span::symbol::Ident {
     fn sinto(&self, s: &S) -> Ident {
         (self.name.sinto(s), self.span.sinto(s))

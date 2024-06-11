@@ -169,7 +169,7 @@ mk!(
     }
 );
 
-pub use types::*;
+pub use self::types::*;
 
 impl<'tcx> State<Base<'tcx>, (), (), ()> {
     pub fn new(

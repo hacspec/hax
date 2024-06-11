@@ -6,6 +6,7 @@ pub struct TypedConstantKind {
     pub constant_kind: ConstantExpr,
 }
 
+#[cfg(feature = "full")]
 impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, TypedConstantKind>
     for rustc_middle::mir::ConstantKind<'tcx>
 {

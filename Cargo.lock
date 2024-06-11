@@ -534,6 +534,7 @@ dependencies = [
 name = "hax-frontend-exporter"
 version = "0.1.0-pre.1"
 dependencies = [
+ "cfg-if",
  "extension-traits",
  "hax-adt-into",
  "hax-frontend-exporter-options",

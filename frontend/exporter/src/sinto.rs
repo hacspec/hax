@@ -1,6 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "full")]
 pub trait SInto<S, To> {
     fn sinto(&self, s: &S) -> To;
 }
@@ -14,6 +15,7 @@ macro_rules! sinto_todo {
                 todo: String
             },
         }
+        #[cfg(feature = "full")]
         impl<$($($lts,)*)? S> SInto<S, $renamed> for $($mod)::+::$type$(<$($lts,)*>)? {
             fn sinto(&self, _: &S) -> $renamed {
                 $renamed::$type{todo: format!("{:?}", self)}
@@ -29,6 +31,7 @@ macro_rules! sinto_todo {
 macro_rules! sinto_as_usize {
     ($($mod:ident)::+, $type:ident$(<$($lts:lifetime),*$(,)?>)?) => {
         pub type $type = usize;
+        #[cfg(feature = "full")]
         impl<$($($lts,)*)? S> SInto<S, $type> for $($mod)::+::$type$(<$($lts,)*>)? {
             fn sinto(&self, _: &S) -> $type {
                 self.as_usize()
@@ -51,28 +54,33 @@ mod test {
 sinto_todo!(test, Foo);
 // sinto_as_usize!(test, Foo);
 
+#[cfg(feature = "full")]
 impl<S, LL, RR, L: SInto<S, LL>, R: SInto<S, RR>> SInto<S, (LL, RR)> for (L, R) {
     fn sinto(&self, s: &S) -> (LL, RR) {
         (self.0.sinto(s), self.1.sinto(s))
     }
 }
 
+#[cfg(feature = "full")]
 impl<S, D, T: SInto<S, D>> SInto<S, Option<D>> for Option<T> {
     fn sinto(&self, s: &S) -> Option<D> {
         self.as_ref().map(|x| x.sinto(s))
     }
 }
+#[cfg(feature = "full")]
 impl<S, D, T: SInto<S, D>> SInto<S, D> for Box<T> {
     fn sinto(&self, s: &S) -> D {
         let box x = self;
         x.sinto(s)
     }
 }
+#[cfg(feature = "full")]
 impl<S, D: Clone, T: SInto<S, D>> SInto<S, Vec<D>> for [T] {
     fn sinto(&self, s: &S) -> Vec<D> {
         self.into_iter().map(|x| x.sinto(s)).collect()
     }
 }
+#[cfg(feature = "full")]
 impl<S, D: Clone, T: SInto<S, D>> SInto<S, Vec<D>> for Box<[T]> {
     fn sinto(&self, s: &S) -> Vec<D> {
         let box x = self;
@@ -80,11 +88,13 @@ impl<S, D: Clone, T: SInto<S, D>> SInto<S, Vec<D>> for Box<[T]> {
     }
 }
 
+#[cfg(feature = "full")]
 impl<S, D: Clone, T: SInto<S, D>> SInto<S, Vec<D>> for Vec<T> {
     fn sinto(&self, s: &S) -> Vec<D> {
         self.into_iter().map(|x| x.sinto(s)).collect()
     }
 }
+#[cfg(feature = "full")]
 impl<S> SInto<S, Vec<u8>> for rustc_data_structures::sync::Lrc<[u8]> {
     fn sinto(&self, _s: &S) -> Vec<u8> {
         (**self).iter().cloned().collect()
@@ -93,6 +103,7 @@ impl<S> SInto<S, Vec<u8>> for rustc_data_structures::sync::Lrc<[u8]> {
 
 macro_rules! sinto_clone {
     ($t:ty) => {
+        #[cfg(feature = "full")]
         impl<S> SInto<S, $t> for $t {
             fn sinto(&self, _: &S) -> $t {
                 self.clone()

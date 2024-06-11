@@ -5,6 +5,7 @@ mod copied;
 mod def_id;
 mod index;
 mod mir;
+#[cfg(feature = "full")]
 mod mir_traits;
 mod new;
 mod replaced;
@@ -14,6 +15,7 @@ pub use copied::*;
 pub use def_id::*;
 pub use index::*;
 pub use mir::*;
+#[cfg(feature = "full")]
 pub use mir_traits::*;
 pub use new::*;
 pub use replaced::*;

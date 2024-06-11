@@ -13,7 +13,10 @@
 pub use serde::{Deserialize, Serialize};
 
 #[cfg(not(feature = "extract_names_mode"))]
-use crate::{AdtInto, BaseState, JsonSchema, SInto};
+use crate::{AdtInto, JsonSchema};
+
+#[cfg(feature = "full")]
+use crate::{BaseState, SInto};
 
 pub type Symbol = String;
 
