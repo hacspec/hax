@@ -154,6 +154,7 @@ pub(crate) mod search_clause {
 
     #[extension_traits::extension(pub trait TraitPredicateExt)]
     impl<'tcx, S: UnderOwnerState<'tcx>> PolyTraitPredicate<'tcx> {
+        #[tracing::instrument(level = "trace", skip(s))]
         fn parents_trait_predicates(self, s: &S) -> Vec<(usize, PolyTraitPredicate<'tcx>)> {
             let tcx = s.base().tcx;
             let predicates = tcx
@@ -164,6 +165,7 @@ pub(crate) mod search_clause {
                 .enumerate()
                 .collect()
         }
+        #[tracing::instrument(level = "trace", skip(s))]
         fn associated_items_trait_predicates(
             self,
             s: &S,
@@ -191,6 +193,7 @@ pub(crate) mod search_clause {
                 .collect()
         }
 
+        #[tracing::instrument(level = "trace", skip(s))]
         fn path_to(
             self,
             s: &S,
@@ -265,6 +268,7 @@ impl ImplExprAtom {
     }
 }
 
+#[tracing::instrument(level = "trace", skip(s))]
 fn impl_exprs<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     obligations: &Vec<
@@ -306,6 +310,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitPredicate<'tcx> {
     }
 }
 impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
+    #[tracing::instrument(level = "trace", skip(s))]
     fn impl_expr<S: UnderOwnerState<'tcx>>(
         &self,
         s: &S,
