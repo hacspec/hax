@@ -337,7 +337,7 @@ pub struct BoundTy {
 )]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::BoundRegionKind, state: S as gstate)]
 pub enum BoundRegionKind {
-    BrAnon(Option<Span>),
+    BrAnon,
     BrNamed(DefId, Symbol),
     BrEnv,
 }
@@ -1543,12 +1543,12 @@ impl Alias {
                     let trait_ref_and_generics = alias_ty.trait_ref_and_own_args(tcx);
                     let rebased_generics =
                         alias_ty.rebase_inherent_args_onto_impl(alias_ty.args, tcx);
-                    let norm_rebased_generics = tcx.try_subst_and_normalize_erasing_regions(
+                    let norm_rebased_generics = tcx.try_instantiate_and_normalize_erasing_regions(
                         rebased_generics,
                         s.param_env(),
                         EarlyBinder::bind(trait_ref),
                     );
-                    let norm_generics = tcx.try_subst_and_normalize_erasing_regions(
+                    let norm_generics = tcx.try_instantiate_and_normalize_erasing_regions(
                         alias_ty.args,
                         s.param_env(),
                         EarlyBinder::bind(trait_ref),
