@@ -30,7 +30,7 @@ pub struct Namespace {
 
 impl std::convert::From<String> for Namespace {
     fn from(s: String) -> Self {
-        Namespace {
+        Self {
             chunks: s
                 .split("::")
                 .into_iter()

@@ -322,8 +322,8 @@ mod full {
         }
     }
 
-    #[tracing::instrument(level = "trace", skip(s))]
     impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
+        #[tracing::instrument(level = "trace", skip(s))]
         fn impl_expr<S: UnderOwnerState<'tcx>>(
             &self,
             s: &S,

@@ -157,7 +157,7 @@ fn precompute_local_thir_bodies<'tcx>(
 /// (I call "THIR'" the AST described in this crate)
 #[tracing::instrument(skip_all)]
 fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
-    options: &hax_frontend_exporter_options::Options,
+    options: &hax_frontend_exporter::options::Options,
     macro_calls: HashMap<hax_frontend_exporter::Span, hax_frontend_exporter::Span>,
     tcx: TyCtxt<'tcx>,
 ) -> (
@@ -278,9 +278,9 @@ pub(crate) struct ExtractionCallbacks {
     pub macro_calls: HashMap<hax_frontend_exporter::Span, hax_frontend_exporter::Span>,
 }
 
-impl From<ExtractionCallbacks> for hax_frontend_exporter_options::Options {
-    fn from(opts: ExtractionCallbacks) -> hax_frontend_exporter_options::Options {
-        hax_frontend_exporter_options::Options {
+impl From<ExtractionCallbacks> for hax_frontend_exporter::options::Options {
+    fn from(opts: ExtractionCallbacks) -> hax_frontend_exporter::options::Options {
+        hax_frontend_exporter::options::Options {
             inline_macro_calls: opts.inline_macro_calls,
         }
     }
@@ -323,7 +323,7 @@ impl Callbacks for ExtractionCallbacks {
                     include_extra,
                 } => {
                     struct Driver<'tcx> {
-                        options: hax_frontend_exporter_options::Options,
+                        options: hax_frontend_exporter::options::Options,
                         macro_calls:
                             HashMap<hax_frontend_exporter::Span, hax_frontend_exporter::Span>,
                         tcx: TyCtxt<'tcx>,
@@ -452,7 +452,7 @@ impl Callbacks for ExtractionCallbacks {
                             )
                         });
                     let options_frontend =
-                        hax_frontend_exporter_options::Options::from(self.clone());
+                        hax_frontend_exporter::options::Options::from(self.clone());
                     let state =
                         hax_frontend_exporter::state::State::new(tcx, options_frontend.clone());
                     report_diagnostics(

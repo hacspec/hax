@@ -16,7 +16,6 @@ rustc_private=true
 serde.workspace = true
 serde_json.workspace = true
 schemars.workspace = true
-hax-frontend-exporter-options.workspace = true
 hax-adt-into.workspace = true
 paste = "1.0.11"
 

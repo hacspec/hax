@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::path::{Path, PathBuf};
 
-pub use hax_frontend_exporter_options::*;
+pub use hax_frontend_exporter::options::{self, Namespace};
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
 pub enum DebugEngineMode {
@@ -449,9 +449,9 @@ impl NormalizePaths for Options {
     }
 }
 
-impl From<Options> for hax_frontend_exporter_options::Options {
-    fn from(opts: Options) -> hax_frontend_exporter_options::Options {
-        hax_frontend_exporter_options::Options {
+impl From<Options> for options::Options {
+    fn from(opts: Options) -> options::Options {
+        options::Options {
             inline_macro_calls: opts.inline_macro_calls,
         }
     }

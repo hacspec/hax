@@ -17,7 +17,6 @@ itertools.workspace = true
 clap.workspace = true
 hax-diagnostics.workspace = true
 hax-cli-options.workspace = true
-hax-frontend-exporter.workspace = true
-hax-frontend-exporter-options.workspace = true
+hax-frontend-exporter = { workspace = true, features = [] }
 path-clean = "1.0.1"
 

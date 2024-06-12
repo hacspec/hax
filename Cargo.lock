@@ -134,7 +134,6 @@ dependencies = [
  "hax-cli-options-engine",
  "hax-diagnostics",
  "hax-frontend-exporter",
- "hax-frontend-exporter-options",
  "hax-lib-macros-types",
  "is-terminal",
  "itertools",
@@ -452,7 +451,7 @@ name = "hax-cli-options"
 version = "0.1.0-pre.1"
 dependencies = [
  "clap",
- "hax-frontend-exporter-options",
+ "hax-frontend-exporter",
  "path-clean",
  "schemars",
  "serde",
@@ -467,7 +466,6 @@ dependencies = [
  "hax-cli-options",
  "hax-diagnostics",
  "hax-frontend-exporter",
- "hax-frontend-exporter-options",
  "itertools",
  "path-clean",
  "schemars",
@@ -495,7 +493,6 @@ dependencies = [
  "hax-cli-options-engine",
  "hax-diagnostics",
  "hax-frontend-exporter",
- "hax-frontend-exporter-options",
  "hax-lib-macros-types",
  "hax-lint",
  "hax-phase-debug-webapp",
@@ -538,7 +535,6 @@ dependencies = [
  "cfg-if",
  "extension-traits",
  "hax-adt-into",
- "hax-frontend-exporter-options",
  "itertools",
  "lazy_static",
  "paste",
@@ -546,15 +542,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tracing",
-]
-
-[[package]]
-name = "hax-frontend-exporter-options"
-version = "0.1.0-pre.1"
-dependencies = [
- "schemars",
- "serde",
- "serde_json",
 ]
 
 [[package]]

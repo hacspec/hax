@@ -30,7 +30,7 @@ itertools.workspace = true
 clap.workspace = true
 paste = "1.0.11"
 hax-cli-options.workspace = true
-hax-frontend-exporter-options.workspace = true
+hax-frontend-exporter = { workspace = true, features = [] }
 hax-diagnostics.workspace = true
 path-clean = "1.0.1"
 tempfile = "3.8"

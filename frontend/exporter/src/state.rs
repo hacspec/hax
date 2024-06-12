@@ -115,7 +115,7 @@ mod types {
 
     #[derive(Clone)]
     pub struct Base<'tcx> {
-        pub options: Rc<hax_frontend_exporter_options::Options>,
+        pub options: Rc<crate::options::Options>,
         pub macro_infos: MacroCalls,
         pub local_ctx: Rc<RefCell<LocalContextS>>,
         pub opt_def_id: Option<rustc_hir::def_id::DefId>,
@@ -134,10 +134,7 @@ mod types {
     }
 
     impl<'tcx> Base<'tcx> {
-        pub fn new(
-            tcx: rustc_middle::ty::TyCtxt<'tcx>,
-            options: hax_frontend_exporter_options::Options,
-        ) -> Self {
+        pub fn new(tcx: rustc_middle::ty::TyCtxt<'tcx>, options: crate::options::Options) -> Self {
             Self {
                 tcx,
                 macro_infos: Rc::new(HashMap::new()),
@@ -172,10 +169,7 @@ mk!(
 pub use self::types::*;
 
 impl<'tcx> State<Base<'tcx>, (), (), ()> {
-    pub fn new(
-        tcx: rustc_middle::ty::TyCtxt<'tcx>,
-        options: hax_frontend_exporter_options::Options,
-    ) -> Self {
+    pub fn new(tcx: rustc_middle::ty::TyCtxt<'tcx>, options: crate::options::Options) -> Self {
         Self {
             thir: (),
             mir: (),
@@ -198,7 +192,7 @@ impl<'tcx> State<Base<'tcx>, (), (), rustc_hir::def_id::DefId> {
 impl<'tcx> State<Base<'tcx>, (), Rc<rustc_middle::mir::Body<'tcx>>, rustc_hir::def_id::DefId> {
     pub fn new_from_mir(
         tcx: rustc_middle::ty::TyCtxt<'tcx>,
-        options: hax_frontend_exporter_options::Options,
+        options: crate::options::Options,
         mir: rustc_middle::mir::Body<'tcx>,
         owner_id: rustc_hir::def_id::DefId,
     ) -> Self {

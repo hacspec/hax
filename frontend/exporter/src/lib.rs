@@ -48,11 +48,11 @@ cfg_if::cfg_if! {
 mod body;
 mod constant_utils;
 mod index_vec;
+pub mod options;
 mod prelude;
 mod sinto;
 mod traits;
 mod types;
 
 pub use hax_adt_into::AdtInto;
-pub use hax_frontend_exporter_options as options;
 pub use prelude::*;

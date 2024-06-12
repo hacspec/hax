@@ -231,7 +231,7 @@ pub(crate) fn raw_macro_invocation_of_span<'t, S: BaseState<'t>>(
     span: rustc_span::Span,
     state: &S,
 ) -> Option<(DefId, rustc_span::hygiene::ExpnData)> {
-    let opts: Rc<hax_frontend_exporter_options::Options> = state.base().options;
+    let opts: Rc<crate::options::Options> = state.base().options;
     let macro_calls: crate::state::MacroCalls = state.base().macro_infos;
 
     let sess = state.base().tcx.sess;
