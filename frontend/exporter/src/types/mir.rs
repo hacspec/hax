@@ -109,11 +109,11 @@ pub mod mir_kinds {
 pub use mir_kinds::IsMirKind;
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::Constant<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::ConstOperand<'tcx>, state: S as s)]
 pub struct Constant {
     pub span: Span,
     pub user_ty: Option<UserTypeAnnotationIndex>,
-    pub literal: TypedConstantKind,
+    pub const_: TypedConstantKind,
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -195,7 +195,7 @@ impl Operand {
     pub(crate) fn ty(&self) -> &Ty {
         match self {
             Operand::Copy(p) | Operand::Move(p) => &p.ty,
-            Operand::Constant(c) => &c.literal.typ,
+            Operand::Constant(c) => &c.const_.typ,
         }
     }
 }
@@ -329,14 +329,14 @@ fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
     use std::ops::Deref;
     // Match on the func operand: it should be a constant as we don't support
     // closures for now.
-    use rustc_middle::mir::{ConstantKind, Operand};
+    use rustc_middle::mir::{Const, Operand};
     use rustc_middle::ty::TyKind;
     match func {
         Operand::Constant(c) => {
             // Regular function case
             let c = c.deref();
-            let (def_id, generics) = match &c.literal {
-                ConstantKind::Ty(c) => {
+            let (def_id, generics) = match &c.const_ {
+                Const::Ty(c) => {
                     // The type of the constant should be a FnDef, allowing
                     // us to retrieve the function's identifier and instantiation.
                     let c_ty = c.ty();
@@ -348,7 +348,7 @@ fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
                         }
                     }
                 }
-                ConstantKind::Val(_, c_ty) => {
+                Const::Val(_, c_ty) => {
                     // Same as for the `Ty` case above
                     assert!(c_ty.is_fn());
                     match c_ty.kind() {
@@ -358,7 +358,7 @@ fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
                         }
                     }
                 }
-                ConstantKind::Unevaluated(_, _) => {
+                Const::Unevaluated(_, _) => {
                     unimplemented!();
                 }
             };

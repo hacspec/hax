@@ -7,7 +7,7 @@ pub struct TypedConstantKind {
 }
 
 impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, TypedConstantKind>
-    for rustc_middle::mir::ConstantKind<'tcx>
+    for rustc_middle::mir::Const<'tcx>
 {
     fn sinto(&self, s: &S) -> TypedConstantKind {
         TypedConstantKind {

@@ -156,8 +156,9 @@ let empty_array (_: Prims.unit) : Prims.unit =
   ()
 
 let panic_with_msg (_: Prims.unit) : Prims.unit =
-  Rust_primitives.Hax.never_to_any (Core.Panicking.panic_fmt (Core.Fmt.impl_2__new_const (Rust_primitives.unsize
-                (let list = ["with msg"] in
+  Rust_primitives.Hax.never_to_any (Core.Panicking.panic_fmt true
+        (Core.Fmt.impl_2__new_const true
+            (Rust_primitives.unsize (let list = ["with msg"] in
                   FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 1);
                   Rust_primitives.Hax.array_of_list 1 list)
               <:

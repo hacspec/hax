@@ -188,21 +188,19 @@ pub struct Scope {
     pub data: ScopeData,
 }
 
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr>
-    for rustc_middle::mir::ConstantKind<'tcx>
-{
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::mir::Const<'tcx> {
     fn sinto(&self, s: &S) -> ConstantExpr {
-        use rustc_middle::mir::ConstantKind;
+        use rustc_middle::mir::Const;
         let tcx = s.base().tcx;
         match self {
-            ConstantKind::Val(const_value, ty) => const_value_to_constant_expr(
+            Const::Val(const_value, ty) => const_value_to_constant_expr(
                 s,
                 ty.clone(),
                 const_value.clone(),
                 self.default_span(tcx),
             ),
-            ConstantKind::Ty(c) => c.sinto(s),
-            ConstantKind::Unevaluated(ucv, ty) => match self.translate_uneval(s, ucv.shrink()) {
+            Const::Ty(c) => c.sinto(s),
+            Const::Unevaluated(ucv, ty) => match self.translate_uneval(s, ucv.shrink()) {
                 TranslateUnevalRes::EvaluatedConstant(c) => c.sinto(s),
                 TranslateUnevalRes::GlobalName(c) => {
                     let span = tcx
@@ -2528,7 +2526,7 @@ pub struct FnSig {
 
 /// Reflects [`rustc_hir::FnHeader`]
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<S>, from: rustc_hir::FnHeader, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::FnHeader, state: S as tcx)]
 pub struct FnHeader {
     pub unsafety: Unsafety,
     pub constness: Constness,
@@ -2815,10 +2813,10 @@ pub struct Impl<Body: IsBody> {
 
 /// Reflects [`rustc_hir::IsAsync`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::IsAsync, state: S as _s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::IsAsync, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum IsAsync {
-    Async,
+    Async(Span),
     NotAsync,
 }
 
