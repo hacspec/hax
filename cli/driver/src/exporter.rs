@@ -57,7 +57,7 @@ type ThirBundle<'tcx> = (Rc<rustc_middle::thir::Thir<'tcx>>, ExprId);
 /// Generates a dummy THIR body with an error literal as first expression
 fn dummy_thir_body<'tcx>(tcx: TyCtxt<'tcx>, span: rustc_span::Span) -> ThirBundle<'tcx> {
     use rustc_middle::thir::*;
-    let ty = tcx.mk_ty_from_kind(rustc_type_ir::sty::TyKind::Never);
+    let ty = tcx.mk_ty_from_kind(rustc_type_ir::TyKind::Never);
     let mut thir = Thir::new(BodyTy::Const(ty));
     const ERR_LITERAL: &'static rustc_hir::Lit = &rustc_span::source_map::Spanned {
         node: rustc_ast::ast::LitKind::Err,

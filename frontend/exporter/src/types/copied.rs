@@ -1491,7 +1491,7 @@ pub struct TyGenerics {
 }
 
 /// This type merges the information from
-/// `rustc_type_ir::sty::AliasKind` and `rustc_middle::ty::AliasTy`
+/// `rustc_type_ir::AliasKind` and `rustc_middle::ty::AliasTy`
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
@@ -1524,10 +1524,10 @@ pub enum AliasKind {
 impl Alias {
     fn from<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         s: &S,
-        alias_kind: &rustc_type_ir::sty::AliasKind,
+        alias_kind: &rustc_type_ir::AliasKind,
         alias_ty: &rustc_middle::ty::AliasTy<'tcx>,
     ) -> Self {
-        use rustc_type_ir::sty::AliasKind as RustAliasKind;
+        use rustc_type_ir::AliasKind as RustAliasKind;
         let kind = match alias_kind {
             RustAliasKind::Projection => {
                 use rustc_middle::ty::{Binder, EarlyBinder, TypeVisitableExt};
@@ -1641,7 +1641,7 @@ pub enum Ty {
     RawPtr(TypeAndMut),
     Ref(Region, Box<Ty>, Mutability),
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
-    Generator(DefId, Vec<GenericArg>, Movability),
+    Coroutine(DefId, Vec<GenericArg>, Movability),
     Never,
     Tuple(Vec<Ty>),
     #[custom_arm(
@@ -1866,6 +1866,10 @@ pub enum PatKind {
     },
     Constant {
         value: ConstantExpr,
+    },
+    InlineConstant {
+        def: DefId,
+        subpattern: Pat,
     },
     Range(PatRange),
     Slice {

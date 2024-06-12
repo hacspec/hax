@@ -124,7 +124,7 @@ pub struct MirBody<KIND> {
     pub pass_count: usize,
     pub source: MirSource,
     pub source_scopes: IndexVec<SourceScope, SourceScopeData>,
-    pub generator: Option<GeneratorInfo>,
+    pub coroutine: Option<CoroutineInfo>,
     #[map({
         let mut local_decls: rustc_index::IndexVec<rustc_middle::mir::Local, LocalDecl> = x.iter().map(|local_decl| {
             local_decl.sinto(s)
@@ -569,7 +569,7 @@ pub enum TerminatorKind {
         resume_arg: Place,
         drop: Option<BasicBlock>,
     },
-    GeneratorDrop,
+    CoroutineDrop,
     FalseEdge {
         real_target: BasicBlock,
         imaginary_target: BasicBlock,
@@ -899,7 +899,7 @@ pub enum AggregateKind {
         AggregateKind::Closure(def_id, parent_generics.sinto(s), trait_refs, sig)
     })]
     Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, MirPolyFnSig),
-    Generator(DefId, Vec<GenericArg>, Movability),
+    Coroutine(DefId, Vec<GenericArg>, Movability),
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -983,7 +983,7 @@ sinto_todo!(rustc_middle::mir, Coverage);
 sinto_todo!(rustc_middle::mir, NonDivergingIntrinsic<'tcx>);
 sinto_todo!(rustc_middle::mir, UserTypeProjection);
 sinto_todo!(rustc_middle::mir, MirSource<'tcx>);
-sinto_todo!(rustc_middle::mir, GeneratorInfo<'tcx>);
+sinto_todo!(rustc_middle::mir, CoroutineInfo<'tcx>);
 sinto_todo!(rustc_middle::mir, VarDebugInfo<'tcx>);
 sinto_todo!(rustc_middle::mir, CallSource);
 sinto_todo!(rustc_span, ErrorGuaranteed);

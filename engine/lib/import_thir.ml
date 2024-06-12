@@ -839,6 +839,7 @@ end) : EXPR = struct
                   ("expected a pattern, got " ^ [%show: expr'] e)
           in
           (c_constant_expr value |> pat_of_expr).p
+      | InlineConstant { subpattern; _ } -> (c_pat subpattern).p
       | Array _ -> unimplemented [ pat.span ] "Pat:Array"
       | Or { pats } -> POr { subpats = List.map ~f:c_pat pats }
       | Slice _ -> unimplemented [ pat.span ] "pat Slice"
@@ -958,7 +959,7 @@ end) : EXPR = struct
         TParam { name; id = Local_ident.mk_id Typ (MyInt64.to_int_exn index) }
     | Error -> unimplemented [ span ] "type Error"
     | Dynamic _ -> unimplemented [ span ] "type Dynamic"
-    | Generator _ -> unimplemented [ span ] "type Generator"
+    | Coroutine _ -> unimplemented [ span ] "type Coroutine"
     | Placeholder _ -> unimplemented [ span ] "type Placeholder"
     | Bound _ -> unimplemented [ span ] "type Bound"
     | Infer _ -> unimplemented [ span ] "type Infer"
