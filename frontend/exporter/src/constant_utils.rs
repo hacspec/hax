@@ -271,7 +271,7 @@ pub(crate) fn scalar_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
                 && variant_def.fields.is_empty() =>
         {
             ConstantExprKind::Adt {
-                info: get_variant_information(def, rustc_abi::FIRST_VARIANT, s),
+                info: get_variant_information(def, rustc_target::abi::FIRST_VARIANT, s),
                 fields: vec![],
             }
         }

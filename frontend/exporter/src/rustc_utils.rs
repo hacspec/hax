@@ -110,7 +110,7 @@ pub(crate) fn arrow_of_sig<'tcx, S: UnderOwnerState<'tcx>>(sig: &ty::PolyFnSig<'
 #[tracing::instrument(skip(s))]
 pub(crate) fn get_variant_information<'s, S: UnderOwnerState<'s>>(
     adt_def: &ty::AdtDef<'s>,
-    variant_index: rustc_abi::VariantIdx,
+    variant_index: rustc_target::abi::VariantIdx,
     s: &S,
 ) -> VariantInformations {
     s_assert!(s, !adt_def.is_union() || *CORE_EXTRACTION_MODE);

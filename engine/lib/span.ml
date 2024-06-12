@@ -19,7 +19,6 @@ module Imported = struct
     | Anon of string
     | MacroExpansion of string
     | ProcMacroSourceCode of string
-    | CfgSpec of string
     | CliCrateAttr of string
     | Custom of string
     | DocTest of string
@@ -41,7 +40,6 @@ module Imported = struct
     | Anon x -> Anon x
     | MacroExpansion x -> MacroExpansion x
     | ProcMacroSourceCode x -> ProcMacroSourceCode x
-    | CfgSpec x -> CfgSpec x
     | CliCrateAttr x -> CliCrateAttr x
     | Custom x -> Custom x
     | DocTest x -> DocTest x
@@ -68,7 +66,6 @@ module Imported = struct
     | Anon x -> Anon x
     | MacroExpansion x -> MacroExpansion x
     | ProcMacroSourceCode x -> ProcMacroSourceCode x
-    | CfgSpec x -> CfgSpec x
     | CliCrateAttr x -> CliCrateAttr x
     | Custom x -> Custom x
     | DocTest x -> DocTest x

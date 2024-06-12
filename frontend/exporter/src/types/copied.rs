@@ -197,7 +197,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::mi
                 s,
                 ty.clone(),
                 const_value.clone(),
-                self.default_span(tcx),
+                rustc_span::DUMMY_SP,
             ),
             Const::Ty(c) => c.sinto(s),
             Const::Unevaluated(ucv, ty) => match self.translate_uneval(s, ucv.shrink()) {
@@ -915,7 +915,6 @@ pub enum FileName {
     Anon(u64),
     MacroExpansion(u64),
     ProcMacroSourceCode(u64),
-    CfgSpec(u64),
     CliCrateAttr(u64),
     Custom(String),
     // #[map(FileName::DocTest(x.0.to_str().unwrap().into()))]
@@ -1206,7 +1205,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                                 supposely_unreachable_fatal!(s[span], "PhantomDataNotAdt"; {kind, ty})
                             };
                             let adt_def = AdtExpr {
-                                info: get_variant_information(def, rustc_abi::FIRST_VARIANT, s),
+                                info: get_variant_information(def, rustc_target::abi::FIRST_VARIANT, s),
                                 user_ty: None,
                                 base: None,
                                 fields: vec![],
@@ -1882,6 +1881,7 @@ pub enum PatKind {
     Or {
         pats: Vec<Pat>,
     },
+    Error(ErrorGuaranteed),
 }
 
 /// Reflects [`rustc_middle::thir::Guard`]
