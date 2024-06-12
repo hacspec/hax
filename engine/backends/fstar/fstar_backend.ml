@@ -1394,10 +1394,14 @@ let strings_of_item ~signature_only (bo : BackendOptions.t) m items
            let namespace = clause.namespace in
            (* match anything under that **module** namespace *)
            let namespace =
-             {
-               namespace with
-               chunks = namespace.chunks @ [ Glob One; Glob Many ];
-             }
+             match namespace with
+             | Pattern namespace ->
+                 Types.Pattern
+                   {
+                     namespace with
+                     chunks = namespace.chunks @ [ Glob One; Glob Many ];
+                   }
+             | _ -> namespace
            in
            Concrete_ident.matches_namespace namespace item.ident)
     |> Option.map ~f:(fun (clause : Types.inclusion_clause) -> clause.kind)

@@ -563,7 +563,7 @@ module DefaultNamePolicy = struct
   let struct_constructor_name_transform = Fn.id
 end
 
-let matches_namespace (ns : Types.namespace) (did : t) : bool =
+let matches_namespace_pattern (ns : Types.namespace_pattern) (did : t) : bool =
   let did = did.def_id in
   let path : string option list =
     Some did.krate
@@ -584,6 +584,14 @@ let matches_namespace (ns : Types.namespace) (did : t) : bool =
     | _ -> false
   in
   aux ns.chunks path
+
+let matches_namespace (ns : Types.namespace) (did : t) : bool =
+  match ns with
+  | Pattern pattern -> matches_namespace_pattern pattern did
+  | Exact did' ->
+      let did' = Imported.of_def_id did' in
+      let did = did.def_id in
+      [%eq: Imported.def_id] did did'
 
 module Create = struct
   let parent (id : t) : t = { id with def_id = Imported.parent id.def_id }

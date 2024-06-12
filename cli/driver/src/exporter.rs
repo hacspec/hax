@@ -2,6 +2,7 @@ use hax_cli_options::{Backend, PathOrDash, ENV_VAR_OPTIONS_FRONTEND};
 use hax_frontend_exporter;
 use hax_frontend_exporter::state::{ExportedSpans, LocalContextS};
 use hax_frontend_exporter::SInto;
+use itertools::Itertools;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::interface;
 use rustc_interface::{interface::Compiler, Queries};
@@ -106,7 +107,6 @@ fn precompute_local_thir_bodies<'tcx>(
         }
     }
 
-    use itertools::Itertools;
     hir.body_owners()
         .filter(|ldid| {
             match tcx.def_kind(ldid.to_def_id()) {
@@ -317,6 +317,40 @@ impl Callbacks for ExtractionCallbacks {
         queries.global_ctxt().unwrap().enter(|tcx| {
             use hax_cli_options::ExporterCommand;
             match self.command.clone() {
+                ExporterCommand::ListNames {
+                    include_current_crate_names,
+                    as_include_ns_flag,
+                } => {
+                    let (_, mut def_ids, _, _) = convert_thir::<hax_frontend_exporter::ThirBody>(
+                        &self.clone().into(),
+                        self.macro_calls.clone(),
+                        tcx,
+                    );
+                    use std::io::{BufWriter, Write};
+                    if !include_current_crate_names {
+                        let current_crate = tcx.crate_name(rustc_span::def_id::LOCAL_CRATE);
+                        let current_crate = current_crate.as_str();
+                        def_ids.retain(|def_id| def_id.krate != current_crate);
+                    }
+                    let mut dest = BufWriter::new(std::io::stdout());
+                    let mut first = true;
+                    for def_id in def_ids
+                        .iter()
+                        .map(|def_id| def_id.serialize_compact())
+                        .sorted()
+                    {
+                        let _ = if as_include_ns_flag {
+                            if !first {
+                                let _ = write!(dest, " ");
+                            }
+                            write!(dest, "+{}", def_id)
+                        } else {
+                            writeln!(dest, "{}", def_id)
+                        };
+                        first = false;
+                    }
+                }
+
                 ExporterCommand::JSON {
                     output_file,
                     mut kind,

@@ -256,10 +256,15 @@ module Make (F : Features.T) = struct
           | Shallow -> "+~"
           | None' -> "+!"))
       ^ "["
-      ^ (List.map
-           ~f:(function Glob One -> "*" | Glob Many -> "**" | Exact s -> s)
-           namespace.chunks
-        |> String.concat ~sep:"::")
+      ^ (match namespace with
+        | Pattern pattern ->
+            List.map
+              ~f:(function Glob One -> "*" | Glob Many -> "**" | Exact s -> s)
+              pattern.chunks
+            |> String.concat ~sep:"::"
+        | Exact did ->
+            Concrete_ident.DefaultViewAPI.show
+              (Concrete_ident.of_def_id Value did))
       ^ "]"
     in
     let items_drop_body = Hash_set.create (module Concrete_ident) in
