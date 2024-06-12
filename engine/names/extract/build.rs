@@ -2,14 +2,7 @@ use serde_json;
 use serde_json::Value;
 use std::process::{Command, Stdio};
 
-/// Instead of depending on `hax_frontend_exporter` (that links to
-/// rustc and exposes a huge number of type definitions and their
-/// impls), we just inline a small module here that contains the three
-/// type definition we need. See the module for complementary
-/// informations.
-#[path = "../../../frontend/exporter/src/types/def_id.rs"]
-mod hax_frontend_exporter_def_id;
-use hax_frontend_exporter_def_id::*;
+use hax_frontend_exporter::{DefId, DefPathItem, DisambiguatedDefPathItem};
 
 /// Name of the current crate
 const HAX_ENGINE_NAMES_CRATE: &str = "hax_engine_names";

@@ -1,28 +1,15 @@
-//! This module contains the type definition for `DefId` and the types
-//! `DefId` depends on.
-//!
-//! This is purposely a very small isolated module:
-//! `hax-engine-names-extract` uses those types, but we don't want
-//! `hax-engine-names-extract` to have a build dependency on the whole
-//! frontend, that double the build times for the Rust part of hax.
-//!
-//! The feature `extract_names_mode` exists only in the crate
-//! `hax-engine-names-extract`, and is used to turn off the derive
-//! attributes `AdtInto` and `JsonSchema`.
-
-pub use serde::{Deserialize, Serialize};
-
-#[cfg(not(feature = "extract_names_mode"))]
 use crate::{AdtInto, JsonSchema};
+pub use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "full")]
 use crate::{BaseState, SInto};
 
 pub type Symbol = String;
 
-#[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(not(feature = "extract_names_mode"), derive(AdtInto, JsonSchema))]
-#[cfg_attr(not(feature = "extract_names_mode"), args(<'a, S: BaseState<'a>>, from: rustc_hir::definitions::DisambiguatedDefPathData, state: S as s))]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, AdtInto, JsonSchema,
+)]
+#[args(<'a, S: BaseState<'a>>, from: rustc_hir::definitions::DisambiguatedDefPathData, state: S as s)]
 /// Reflects [`rustc_hir::definitions::DisambiguatedDefPathData`]
 pub struct DisambiguatedDefPathItem {
     pub data: DefPathItem,
@@ -30,8 +17,7 @@ pub struct DisambiguatedDefPathItem {
 }
 
 /// Reflects [`rustc_hir::def_id::DefId`]
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(not(feature = "extract_names_mode"), derive(JsonSchema))]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
 pub struct DefId {
     pub krate: String,
     pub path: Vec<DisambiguatedDefPathItem>,
@@ -47,9 +33,10 @@ pub struct DefId {
 }
 
 /// Reflects [`rustc_hir::definitions::DefPathData`]
-#[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(not(feature = "extract_names_mode"), derive(AdtInto, JsonSchema))]
-#[cfg_attr(not(feature = "extract_names_mode"), args(<'ctx, S: BaseState<'ctx>>, from: rustc_hir::definitions::DefPathData, state: S as state))]
+#[derive(
+    Clone, Debug, AdtInto, JsonSchema, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+#[args(<'ctx, S: BaseState<'ctx>>, from: rustc_hir::definitions::DefPathData, state: S as state)]
 pub enum DefPathItem {
     CrateRoot,
     Impl,
