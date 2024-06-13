@@ -12,5 +12,4 @@ jobs:
       - run: |
           cd charon
           cargo update -p hax-frontend-exporter --precise ${{ github.sha }}
-          cargo update -p hax-frontend-exporter-options --precise ${{ github.sha }}
       - run: nix build -L
