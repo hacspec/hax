@@ -1,10 +1,6 @@
 // rustc errors
 extern crate rustc_errors;
-use rustc_errors::DiagnosticId;
-
-// rustc session
-extern crate rustc_session;
-use rustc_session::Session;
+use rustc_errors::{DiagCtxt, DiagnosticId};
 
 // rustc data_structures
 extern crate rustc_data_structures;
@@ -13,8 +9,8 @@ extern crate rustc_data_structures;
 extern crate rustc_span;
 use rustc_span::Span;
 
-pub fn explicit_lifetime(session: &Session, span: Span) {
-    session.span_warn_with_code(
+pub fn explicit_lifetime(dcx: &DiagCtxt, span: Span) {
+    dcx.span_warn_with_code(
         span,
         "[Hax] Explicit lifetimes are not supported",
         DiagnosticId::Lint {
@@ -25,8 +21,8 @@ pub fn explicit_lifetime(session: &Session, span: Span) {
     );
 }
 
-pub fn mut_borrow_let(session: &Session, span: Span) {
-    session.span_warn_with_code(
+pub fn mut_borrow_let(dcx: &DiagCtxt, span: Span) {
+    dcx.span_warn_with_code(
         span,
         "[Hax] Mutable borrows are not supported",
         DiagnosticId::Lint {
@@ -37,8 +33,8 @@ pub fn mut_borrow_let(session: &Session, span: Span) {
     );
 }
 
-pub fn extern_crate(session: &Session, span: Span) {
-    session.span_warn_with_code(
+pub fn extern_crate(dcx: &DiagCtxt, span: Span) {
+    dcx.span_warn_with_code(
         span,
         "[Hax] External items need a model",
         DiagnosticId::Lint {
@@ -49,8 +45,8 @@ pub fn extern_crate(session: &Session, span: Span) {
     );
 }
 
-pub fn no_trait_objects(session: &Session, span: Span) {
-    session.span_warn_with_code(
+pub fn no_trait_objects(dcx: &DiagCtxt, span: Span) {
+    dcx.span_warn_with_code(
         span,
         "[Hax] Trait objects are not supported",
         DiagnosticId::Lint {
@@ -61,8 +57,8 @@ pub fn no_trait_objects(session: &Session, span: Span) {
     );
 }
 
-pub fn no_mut_self(session: &Session, span: Span) {
-    session.span_warn_with_code(
+pub fn no_mut_self(dcx: &DiagCtxt, span: Span) {
+    dcx.span_warn_with_code(
         span,
         "[Hax] Mutable self is not supported",
         DiagnosticId::Lint {
@@ -73,8 +69,8 @@ pub fn no_mut_self(session: &Session, span: Span) {
     );
 }
 
-pub fn no_mut(session: &Session, span: Span) {
-    session.span_warn_with_code(
+pub fn no_mut(dcx: &DiagCtxt, span: Span) {
+    dcx.span_warn_with_code(
         span,
         "[Hax] Mutable arguments are not supported",
         DiagnosticId::Lint {
@@ -85,8 +81,8 @@ pub fn no_mut(session: &Session, span: Span) {
     );
 }
 
-pub fn no_assoc_items(session: &Session, span: Span) {
-    session.span_warn_with_code(
+pub fn no_assoc_items(dcx: &DiagCtxt, span: Span) {
+    dcx.span_warn_with_code(
         span,
         "[Hax] Associated items are not supported",
         DiagnosticId::Lint {
@@ -97,8 +93,8 @@ pub fn no_assoc_items(session: &Session, span: Span) {
     );
 }
 
-pub fn unsupported_item(session: &Session, span: Span, ident: String) {
-    session.span_warn_with_code(
+pub fn unsupported_item(dcx: &DiagCtxt, span: Span, ident: String) {
+    dcx.span_warn_with_code(
         span,
         format!("[Hax] {ident:?} is not supported"),
         DiagnosticId::Lint {
@@ -109,8 +105,8 @@ pub fn unsupported_item(session: &Session, span: Span, ident: String) {
     );
 }
 
-pub fn no_fn_mut(session: &Session, span: Span) {
-    session.span_warn_with_code(
+pub fn no_fn_mut(dcx: &DiagCtxt, span: Span) {
+    dcx.span_warn_with_code(
         span,
         "[Hax] FnMut is not supported",
         DiagnosticId::Lint {
@@ -121,8 +117,8 @@ pub fn no_fn_mut(session: &Session, span: Span) {
     );
 }
 
-pub fn no_where_predicate(session: &Session, span: Span) {
-    session.span_warn_with_code(
+pub fn no_where_predicate(dcx: &DiagCtxt, span: Span) {
+    dcx.span_warn_with_code(
         span,
         "[Hax] Where predicates are not supported",
         DiagnosticId::Lint {
@@ -133,8 +129,8 @@ pub fn no_where_predicate(session: &Session, span: Span) {
     );
 }
 
-pub fn no_async_await(session: &Session, span: Span) {
-    session.span_warn_with_code(
+pub fn no_async_await(dcx: &DiagCtxt, span: Span) {
+    dcx.span_warn_with_code(
         span,
         "[Hax] Async and await are not supported",
         DiagnosticId::Lint {
@@ -145,8 +141,8 @@ pub fn no_async_await(session: &Session, span: Span) {
     );
 }
 
-pub fn no_unsafe(session: &Session, span: Span) {
-    session.span_warn_with_code(
+pub fn no_unsafe(dcx: &DiagCtxt, span: Span) {
+    dcx.span_warn_with_code(
         span,
         "[Hax] Unsafe code is not supported",
         DiagnosticId::Lint {
@@ -157,8 +153,8 @@ pub fn no_unsafe(session: &Session, span: Span) {
     );
 }
 
-pub fn unsupported_loop(session: &Session, span: Span) {
-    session.span_warn_with_code(
+pub fn unsupported_loop(dcx: &DiagCtxt, span: Span) {
+    dcx.span_warn_with_code(
         span,
         "[Hax] loop and while are not supported",
         DiagnosticId::Lint {
@@ -169,8 +165,8 @@ pub fn unsupported_loop(session: &Session, span: Span) {
     );
 }
 
-pub fn no_union(session: &Session, span: Span) {
-    session.span_warn_with_code(
+pub fn no_union(dcx: &DiagCtxt, span: Span) {
+    dcx.span_warn_with_code(
         span,
         "[Hax] Unions are not supported",
         DiagnosticId::Lint {
@@ -181,8 +177,8 @@ pub fn no_union(session: &Session, span: Span) {
     );
 }
 
-pub fn derive_external_trait(session: &Session, span: Span, trait_name: String) {
-    session.span_warn_with_code(
+pub fn derive_external_trait(dcx: &DiagCtxt, span: Span, trait_name: String) {
+    dcx.span_warn_with_code(
         span,
         format!("[Hax] Implementation of external trait {trait_name} will require a model"),
         DiagnosticId::Lint {

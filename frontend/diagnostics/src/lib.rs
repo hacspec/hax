@@ -14,7 +14,8 @@ use serde::{Deserialize, Serialize};
 pub trait SessionExtTrait {
     fn span_hax_err<S: Into<MultiSpan> + Clone>(&self, diag: Diagnostics<S>);
 }
-impl SessionExtTrait for rustc_session::Session {
+
+impl SessionExtTrait for rustc_errors::DiagCtxt {
     fn span_hax_err<S: Into<MultiSpan> + Clone>(&self, diag: Diagnostics<S>) {
         let span: MultiSpan = diag.span.clone().into();
         let diag = diag.set_span(span.clone());

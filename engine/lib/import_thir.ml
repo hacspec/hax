@@ -1360,7 +1360,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
           List.for_all
             ~f:(fun { data; _ } ->
               match data with
-              | Unit _ | Tuple ([], _, _) | Struct ([], _) -> true
+              | Unit _ | Tuple ([], _, _) | Struct { fields = []; _ } -> true
               | _ -> false)
             variants
         in
@@ -1368,11 +1368,13 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
           List.map
             ~f:
               (fun ({ data; def_id = variant_id; attributes; _ } as original) ->
-              let is_record = [%matches? Types.Struct (_ :: _, _)] data in
+              let is_record =
+                [%matches? Types.Struct { fields = _ :: _; _ }] data
+              in
               let name = Concrete_ident.of_def_id kind variant_id in
               let arguments =
                 match data with
-                | Tuple (fields, _, _) | Struct (fields, _) ->
+                | Tuple (fields, _, _) | Struct { fields; _ } ->
                     List.map
                       ~f:(fun { def_id = id; ty; span; attributes; _ } ->
                         ( Concrete_ident.of_def_id Field id,
@@ -1416,7 +1418,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
           in
           match v with
           | Tuple (fields, _, _) -> mk fields false
-          | Struct ((_ :: _ as fields), _) -> mk fields true
+          | Struct { fields = _ :: _ as fields; _ } -> mk fields true
           | _ -> { name; arguments = []; is_record = false; attrs }
         in
         let variants = [ v ] in

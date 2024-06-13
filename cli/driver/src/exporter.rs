@@ -11,7 +11,6 @@ use rustc_middle::{
     thir,
     thir::{Block, BlockId, Expr, ExprId, ExprKind, Pat, PatKind, Stmt, StmtId, StmtKind, Thir},
 };
-use rustc_session::parse::ParseSess;
 use rustc_span::symbol::Symbol;
 use serde::Serialize;
 use std::cell::RefCell;
@@ -19,19 +18,19 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 fn report_diagnostics(
+    tcx: TyCtxt<'_>,
     output: &hax_cli_options_engine::Output,
-    session: &rustc_session::Session,
     mapping: &Vec<(hax_frontend_exporter::Span, rustc_span::Span)>,
 ) {
     for d in &output.diagnostics {
         use hax_diagnostics::*;
-        session.span_hax_err(d.convert(mapping).into());
+        tcx.dcx().span_hax_err(d.convert(mapping).into());
     }
 }
 
 fn write_files(
+    tcx: TyCtxt<'_>,
     output: &hax_cli_options_engine::Output,
-    session: &rustc_session::Session,
     backend: hax_cli_options::Backend,
 ) {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
@@ -43,9 +42,9 @@ fn write_files(
     for file in output.files.clone() {
         let path = out_dir.join(&file.path);
         std::fs::create_dir_all(&path.parent().unwrap()).unwrap();
-        session.note(format!("Writing file {:#?}", path));
+        tcx.dcx().note(format!("Writing file {:#?}", path));
         std::fs::write(&path, file.contents).unwrap_or_else(|e| {
-            session.fatal(format!(
+            tcx.dcx().fatal(format!(
                 "Unable to write to file {:#?}. Error: {:#?}",
                 path, e
             ))
@@ -131,7 +130,7 @@ fn precompute_local_thir_bodies<'tcx>(
             let (thir, expr) = match tcx.thir_body(ldid) {
                 Ok(x) => x,
                 Err(e) => {
-                    tcx.sess.span_err(
+                    tcx.dcx().span_err(
                         span,
                         "While trying to reach a body's THIR defintion, got a typechecking error.",
                     );
@@ -143,7 +142,7 @@ fn precompute_local_thir_bodies<'tcx>(
             })) {
                 Ok(x) => x,
                 Err(e) => {
-                    tcx.sess.span_err(span, format!("The THIR body of item {:?} was stolen.\nThis is not supposed to happen.\nThis is a bug in Hax's frontend.\nThis is discussed in issue https://github.com/hacspec/hax/issues/27.\nPlease comment this issue if you see this error message!", ldid));
+                    tcx.dcx().span_err(span, format!("The THIR body of item {:?} was stolen.\nThis is not supposed to happen.\nThis is a bug in Hax's frontend.\nThis is discussed in issue https://github.com/hacspec/hax/issues/27.\nPlease comment this issue if you see this error message!", ldid));
                     return (ldid, dummy_thir_body(tcx, span));
                 }
             };
@@ -432,9 +431,8 @@ impl Callbacks for ExtractionCallbacks {
                     .unwrap();
 
                     let out = engine_subprocess.wait_with_output().unwrap();
-                    let session = &compiler.sess;
                     if !out.status.success() {
-                        session.fatal(format!(
+                        tcx.dcx().fatal(format!(
                             "{} exited with non-zero code {}\nstdout: {}\n stderr: {}",
                             ENGINE_BINARY_NAME,
                             out.status.code().unwrap_or(-1),
@@ -456,8 +454,8 @@ impl Callbacks for ExtractionCallbacks {
                     let state =
                         hax_frontend_exporter::state::State::new(tcx, options_frontend.clone());
                     report_diagnostics(
+                        tcx,
                         &output,
-                        &session,
                         &spans
                             .into_iter()
                             .map(|span| (span.sinto(&state), span.clone()))
@@ -467,7 +465,7 @@ impl Callbacks for ExtractionCallbacks {
                         serde_json::to_writer(std::io::BufWriter::new(std::io::stdout()), &output)
                             .unwrap()
                     } else {
-                        write_files(&output, &session, backend.backend);
+                        write_files(tcx, &output, backend.backend);
                     }
                     if let Some(debug_json) = &output.debug_json {
                         use hax_cli_options::DebugEngineMode;

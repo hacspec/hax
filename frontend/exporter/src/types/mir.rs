@@ -899,7 +899,7 @@ pub enum AggregateKind {
         AggregateKind::Closure(def_id, parent_generics.sinto(s), trait_refs, sig)
     })]
     Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, MirPolyFnSig),
-    Coroutine(DefId, Vec<GenericArg>, Movability),
+    Coroutine(DefId, Vec<GenericArg>),
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]

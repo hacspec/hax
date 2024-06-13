@@ -1669,7 +1669,7 @@ pub enum Ty {
     RawPtr(TypeAndMut),
     Ref(Region, Box<Ty>, Mutability),
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
-    Coroutine(DefId, Vec<GenericArg>, Movability),
+    Coroutine(DefId, Vec<GenericArg>),
     Never,
     Tuple(Vec<Ty>),
     #[custom_arm(
@@ -2893,7 +2893,10 @@ pub enum FnRetTy {
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::VariantData<'tcx>, state: S as tcx)]
 pub enum VariantData {
-    Struct(Vec<HirFieldDef>, bool),
+    Struct {
+        fields: Vec<HirFieldDef>,
+        recovered: bool,
+    },
     Tuple(Vec<HirFieldDef>, HirId, GlobalIdent),
     Unit(HirId, GlobalIdent),
 }

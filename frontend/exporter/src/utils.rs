@@ -28,7 +28,7 @@ mod internal_helpers {
         ($verb:ident, $s:ident, $span:expr, $message:expr) => {{
             let backtrace = std::backtrace::Backtrace::capture();
             eprintln!("{}", backtrace);
-            let mut builder = $crate::utils::_verb!($verb, $s.base().tcx.sess, $message);
+            let mut builder = $crate::utils::_verb!($verb, $s.base().tcx.dcx(), $message);
             if let Some(span) = $span {
                 builder.set_span(span.clone());
             }
