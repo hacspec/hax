@@ -20,7 +20,7 @@
  (synopsis "The engine of hax, a Rust verification tool")
  (description "Hax is divided in two: a frontend (written in Rust) and an engine (written in OCaml). This is the engine.")
  (depends
-        ocaml
+        (ocaml (>= "4.14.1"))
         dune
         (base                (= "0.16"))
         (core                (= "0.16"))
