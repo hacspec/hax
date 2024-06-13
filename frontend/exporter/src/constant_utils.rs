@@ -230,27 +230,27 @@ mod full {
         // The documentation explicitly says not to match on a scalar.
         // We match on the type and use it to convert the value.
         let kind = match ty.kind() {
-        ty::Char | ty::Bool | ty::Int(_) | ty::Uint(_) => {
-            let scalar_int = scalar.try_to_int().unwrap_or_else(|_| {
-                fatal!(
-                    s[span],
-                    "Type is primitive, but the scalar {:#?} is not a [Int]",
-                    scalar
-                )
-            });
-            ConstantExprKind::Literal(scalar_int_to_constant_literal(s, scalar_int, ty))
-        }
-        ty::Ref(region, ty, Mutability::Not) if region.is_erased() => {
-            let tcx = s.base().tcx;
-            let pointer = scalar.to_pointer(&tcx).unwrap_or_else(|_| {
-                fatal!(
-                    s[span],
-                    "Type is [Ref], but the scalar {:#?} is not a [Pointer]",
-                    scalar
-                )
-            });
-            use rustc_middle::mir::interpret::GlobalAlloc;
-            let contents = match tcx.global_alloc(pointer.provenance.s_unwrap(s)) {
+            ty::Char | ty::Bool | ty::Int(_) | ty::Uint(_) => {
+                let scalar_int = scalar.try_to_int().unwrap_or_else(|_| {
+                    fatal!(
+                        s[span],
+                        "Type is primitive, but the scalar {:#?} is not a [Int]",
+                        scalar
+                    )
+                });
+                ConstantExprKind::Literal(scalar_int_to_constant_literal(s, scalar_int, ty))
+            }
+            ty::Ref(region, ty, Mutability::Not) if region.is_erased() => {
+                let tcx = s.base().tcx;
+                let pointer = scalar.to_pointer(&tcx).unwrap_or_else(|_| {
+                    fatal!(
+                        s[span],
+                        "Type is [Ref], but the scalar {:#?} is not a [Pointer]",
+                        scalar
+                    )
+                });
+                use rustc_middle::mir::interpret::GlobalAlloc;
+                let contents = match tcx.global_alloc(pointer.provenance.s_unwrap(s)) {
                 GlobalAlloc::Static(did) => ConstantExprKind::GlobalName { id: did.sinto(s), generics: Vec::new(), trait_refs: Vec::new() },
                 GlobalAlloc::Memory(alloc) => {
                     let values = alloc.inner().get_bytes_unchecked(rustc_middle::mir::interpret::AllocRange {
@@ -265,27 +265,27 @@ mod full {
                     provenance
                 )
             };
-            ConstantExprKind::Borrow(contents.decorate(ty.sinto(s), cspan.clone()))
-        }
-        // A [Scalar] might also be any zero-sized [Adt] or [Tuple] (i.e., unit)
-        ty::Tuple(ty) if ty.is_empty() => ConstantExprKind::Tuple { fields: vec![] },
-        // It seems we can have ADTs when there is only one variant, and this variant doesn't have any fields.
-        ty::Adt(def, _)
-            if let [variant_def] = &def.variants().raw
-                && variant_def.fields.is_empty() =>
-        {
-            ConstantExprKind::Adt {
-                info: get_variant_information(def, rustc_abi::FIRST_VARIANT, s),
-                fields: vec![],
+                ConstantExprKind::Borrow(contents.decorate(ty.sinto(s), cspan.clone()))
             }
-        }
-        _ => fatal!(
-            s[span],
-            "Unexpected type {:#?} for scalar {:#?}",
-            ty,
-            scalar
-        ),
-    };
+            // A [Scalar] might also be any zero-sized [Adt] or [Tuple] (i.e., unit)
+            ty::Tuple(ty) if ty.is_empty() => ConstantExprKind::Tuple { fields: vec![] },
+            // It seems we can have ADTs when there is only one variant, and this variant doesn't have any fields.
+            ty::Adt(def, _)
+                if let [variant_def] = &def.variants().raw
+                    && variant_def.fields.is_empty() =>
+            {
+                ConstantExprKind::Adt {
+                    info: get_variant_information(def, rustc_abi::FIRST_VARIANT, s),
+                    fields: vec![],
+                }
+            }
+            _ => fatal!(
+                s[span],
+                "Unexpected type {:#?} for scalar {:#?}",
+                ty,
+                scalar
+            ),
+        };
         kind.decorate(ty.sinto(s), cspan)
     }
 
