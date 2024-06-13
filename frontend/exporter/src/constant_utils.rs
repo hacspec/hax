@@ -246,7 +246,7 @@ pub(crate) fn scalar_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
                 )
             });
             use rustc_middle::mir::interpret::GlobalAlloc;
-            let contents = match tcx.global_alloc(pointer.provenance.s_unwrap(s)) {
+            let contents = match tcx.global_alloc(pointer.provenance.s_unwrap(s).alloc_id()) {
                 GlobalAlloc::Static(did) => ConstantExprKind::GlobalName { id: did.sinto(s), generics: Vec::new(), trait_refs: Vec::new() },
                 GlobalAlloc::Memory(alloc) => {
                     let values = alloc.inner().get_bytes_unchecked(rustc_middle::mir::interpret::AllocRange {

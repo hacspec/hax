@@ -43,7 +43,7 @@ fn write_files(
     for file in output.files.clone() {
         let path = out_dir.join(&file.path);
         std::fs::create_dir_all(&path.parent().unwrap()).unwrap();
-        session.note_without_error(format!("Writing file {:#?}", path));
+        session.note(format!("Writing file {:#?}", path));
         std::fs::write(&path, file.contents).unwrap_or_else(|e| {
             session.fatal(format!(
                 "Unable to write to file {:#?}. Error: {:#?}",

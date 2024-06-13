@@ -974,7 +974,6 @@ pub enum BlockSafety {
 pub struct Block {
     pub targeted_by_break: bool,
     pub region_scope: Scope,
-    pub opt_destruction_scope: Option<Scope>,
     pub span: Span,
     pub stmts: Vec<Stmt>,
     pub expr: Option<Expr>,
@@ -996,7 +995,6 @@ pub enum BindingMode {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Stmt {
     pub kind: StmtKind,
-    pub opt_destruction_scope: Option<Scope>,
 }
 
 /// Reflects [`rustc_ast::token::Delimiter`]
@@ -1020,7 +1018,7 @@ pub enum Delimiter {
 )]
 pub enum TokenTree {
     Token(Token, Spacing),
-    Delimited(DelimSpan, Delimiter, TokenStream),
+    Delimited(DelimSpan, DelimSpacing, Delimiter, TokenStream),
 }
 
 /// Reflects [`rustc_ast::tokenstream::Spacing`]
@@ -1032,6 +1030,7 @@ pub enum TokenTree {
 pub enum Spacing {
     Alone,
     Joint,
+    JointHidden,
 }
 
 /// Reflects [`rustc_ast::token::BinOpToken`]
@@ -2950,7 +2949,7 @@ pub struct UsePath {
     pub res: Vec<Res>,
     pub segments: Vec<PathSegment>,
     #[value(self.segments.iter().last().map_or(None, |segment| {
-            match s.base().tcx.hir().find_by_def_id(segment.hir_id.owner.def_id) {
+            match s.base().tcx.opt_hir_node_by_def_id(segment.hir_id.owner.def_id) {
                 Some(rustc_hir::Node::Item(rustc_hir::Item {
                     ident,
                     kind: rustc_hir::ItemKind::Use(_, _),
@@ -3489,6 +3488,7 @@ pub enum PredicateKind {
     ConstEquate(ConstantExpr, ConstantExpr),
     Ambiguous,
     AliasRelate(Term, Term, AliasRelationDirection),
+    NormalizesTo(NormalizesTo),
 }
 
 /// Reflects [`rustc_hir::GenericBounds`]
@@ -3503,7 +3503,7 @@ fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> Gene
     let use_item_bounds = {
         if let Some(oid) = s.owner_id().as_local() {
             let hir_id = tcx.local_def_id_to_hir_id(oid);
-            let node = tcx.hir().get(hir_id);
+            let node = tcx.hir_node(hir_id);
             use rustc_hir as hir;
             matches!(
                 node,

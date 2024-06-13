@@ -15,11 +15,10 @@ module Imported = struct
     | ForeignMod
     | Use
     | GlobalAsm
-    | ClosureExpr
+    | Closure
     | Ctor
     | AnonConst
-    | ImplTrait
-    | ImplTraitAssocTy
+    | OpaqueTy
     | TypeNs of string
     | ValueNs of string
     | MacroNs of string
@@ -32,11 +31,10 @@ module Imported = struct
     | ForeignMod -> ForeignMod
     | Use -> Use
     | GlobalAsm -> GlobalAsm
-    | ClosureExpr -> ClosureExpr
+    | Closure -> Closure
     | Ctor -> Ctor
     | AnonConst -> AnonConst
-    | ImplTrait -> ImplTrait
-    | ImplTraitAssocTy -> ImplTraitAssocTy
+    | OpaqueTy -> OpaqueTy
     | TypeNs s -> TypeNs s
     | ValueNs s -> ValueNs s
     | MacroNs s -> MacroNs s

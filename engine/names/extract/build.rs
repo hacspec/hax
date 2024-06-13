@@ -46,11 +46,10 @@ fn def_path_item_to_str(path_item: DefPathItem) -> String {
         DefPathItem::ForeignMod => "ForeignMod".into(),
         DefPathItem::Use => "Use".into(),
         DefPathItem::GlobalAsm => "GlobalAsm".into(),
-        DefPathItem::ClosureExpr => "ClosureExpr".into(),
+        DefPathItem::Closure => "Closure".into(),
         DefPathItem::Ctor => "Ctor".into(),
         DefPathItem::AnonConst => "AnonConst".into(),
-        DefPathItem::ImplTrait => "ImplTrait".into(),
-        DefPathItem::ImplTraitAssocTy => "ImplTraitAssocTy".into(),
+        DefPathItem::OpaqueTy => "OpaqueTy".into(),
     }
 }
 

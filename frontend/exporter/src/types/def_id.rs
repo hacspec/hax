@@ -57,9 +57,8 @@ pub enum DefPathItem {
     ValueNs(Symbol),
     MacroNs(Symbol),
     LifetimeNs(Symbol),
-    ClosureExpr,
+    Closure,
     Ctor,
     AnonConst,
-    ImplTrait,
-    ImplTraitAssocTy,
+    OpaqueTy,
 }
