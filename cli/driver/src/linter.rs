@@ -28,7 +28,7 @@ impl Callbacks for LinterCallbacks {
         compiler: &Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
-        let session = compiler.session();
+        let session = &compiler.sess;
         queries
             .global_ctxt()
             .unwrap()

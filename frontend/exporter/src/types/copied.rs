@@ -403,7 +403,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>, T: SInto<S, U>, U> SInto<S, Canonical<U>>
 
 /// Reflects [`rustc_middle::infer::canonical::CanonicalVarKind`]
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::infer::canonical::CanonicalVarKind<'tcx>, state: S as gstate)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::infer::canonical::CanonicalVarKind<ty::TyCtxt<'tcx>>, state: S as gstate)]
 pub enum CanonicalVarInfo {
     Ty(CanonicalTyVarKind),
     PlaceholderTy(PlaceholderType),
@@ -1941,6 +1941,7 @@ pub enum PatKind {
     Or {
         pats: Vec<Pat>,
     },
+    Never,
     Error(ErrorGuaranteed),
 }
 
@@ -3483,7 +3484,6 @@ pub enum ClosureKind {
 pub enum PredicateKind {
     Clause(ClauseKind),
     ObjectSafe(DefId),
-    ClosureKind(DefId, Vec<GenericArg>, ClosureKind),
     Subtype(SubtypePredicate),
     Coerce(CoercePredicate),
     ConstEquate(ConstantExpr, ConstantExpr),
@@ -3502,7 +3502,7 @@ fn region_bounds_at_current_owner<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> Gene
     // either call `predicates_defined_on` or `item_bounds`
     let use_item_bounds = {
         if let Some(oid) = s.owner_id().as_local() {
-            let hir_id = tcx.hir().local_def_id_to_hir_id(oid);
+            let hir_id = tcx.local_def_id_to_hir_id(oid);
             let node = tcx.hir().get(hir_id);
             use rustc_hir as hir;
             matches!(

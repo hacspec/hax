@@ -127,7 +127,7 @@ fn precompute_local_thir_bodies<'tcx>(
         .filter(|ldid| hir.maybe_body_owned_by(*ldid).is_some())
         .map(|ldid| {
             tracing::debug!("⏳ Type-checking THIR body for {:#?}", ldid);
-            let span = hir.span(hir.local_def_id_to_hir_id(ldid));
+            let span = hir.span(tcx.local_def_id_to_hir_id(ldid));
             let (thir, expr) = match tcx.thir_body(ldid) {
                 Ok(x) => x,
                 Err(e) => {
@@ -298,7 +298,7 @@ impl Callbacks for ExtractionCallbacks {
             .into_iter()
             .map(|(k, v)| {
                 use hax_frontend_exporter::*;
-                let sess = compiler.session();
+                let sess = &compiler.sess;
                 (
                     translate_span(k, sess),
                     translate_span(argument_span_of_mac_call(&v), sess),
@@ -432,7 +432,7 @@ impl Callbacks for ExtractionCallbacks {
                     .unwrap();
 
                     let out = engine_subprocess.wait_with_output().unwrap();
-                    let session = compiler.session();
+                    let session = &compiler.sess;
                     if !out.status.success() {
                         session.fatal(format!(
                             "{} exited with non-zero code {}\nstdout: {}\n stderr: {}",

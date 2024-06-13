@@ -21,7 +21,6 @@ use rustc_session::Session;
 
 // rustc data_structures
 extern crate rustc_data_structures;
-use rustc_data_structures::sync::Lrc;
 
 // rustc ast
 extern crate rustc_ast;
@@ -34,7 +33,7 @@ pub enum Type {
 }
 
 pub struct Linter<'a, 'tcx> {
-    session: &'a Lrc<Session>,
+    session: &'a Session,
     tcx: TyCtxt<'tcx>,
     extern_allow_list: Vec<&'static str>,
     trait_block_list: Vec<String>,
@@ -43,7 +42,7 @@ pub struct Linter<'a, 'tcx> {
 
 impl<'a, 'tcx> Linter<'a, 'tcx> {
     /// Register the linter.
-    pub fn register(tcx: TyCtxt<'tcx>, session: &'a Lrc<Session>, ltype: Type) {
+    pub fn register(tcx: TyCtxt<'tcx>, session: &'a Session, ltype: Type) {
         let hir = tcx.hir();
 
         let trait_block_list = vec!["FnMut"];
@@ -481,7 +480,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
     ) {
         tracing::trace!("visiting fn at {:?}", span);
 
-        let hir_id = self.tcx.hir().local_def_id_to_hir_id(id);
+        let hir_id = self.tcx.local_def_id_to_hir_id(id);
 
         skip_derived_non_local!(self, hir_id);
         skip_v1_lib_macros!(self, hir_id);
@@ -538,7 +537,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
                         }
                     }
                     QPath::TypeRelative(ty, _p) => check_ty_kind(visitor, &ty.kind, span),
-                    QPath::LangItem(_lang_item, _span, _hir_id) => (),
+                    QPath::LangItem(_lang_item, _span) => (),
                 },
                 _ => (),
             }
@@ -794,7 +793,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
                 _ => (),
             },
             QPath::TypeRelative(_ty, _path) => (),
-            QPath::LangItem(item, _span, _hir_id) => {
+            QPath::LangItem(item, _span) => {
                 tracing::trace!("   language item {:?}", item);
             }
         }

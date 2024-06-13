@@ -844,6 +844,7 @@ end) : EXPR = struct
       | Or { pats } -> POr { subpats = List.map ~f:c_pat pats }
       | Slice _ -> unimplemented [ pat.span ] "pat Slice"
       | Range _ -> unimplemented [ pat.span ] "pat Range"
+      | Never -> unimplemented [ pat.span ] "pat Never"
       | Error _ -> unimplemented [ pat.span ] "pat Error"
     in
     { p = v; span; typ }
