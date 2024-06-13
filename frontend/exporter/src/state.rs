@@ -131,6 +131,12 @@ mod types {
             >,
         >,
         pub tcx: rustc_middle::ty::TyCtxt<'tcx>,
+        /// Rust doesn't enforce bounds on generic parameters in type
+        /// aliases. Thus, when translating type aliases, we need to
+        /// disable the resolution of implementation expressions. For
+        /// more details, please see
+        /// https://github.com/hacspec/hax/issues/707.
+        pub ty_alias_mode: bool,
     }
 
     impl<'tcx> Base<'tcx> {
@@ -146,6 +152,7 @@ mod types {
                 local_ctx: Rc::new(RefCell::new(LocalContextS::new())),
                 exported_spans: Rc::new(RefCell::new(HashSet::new())),
                 exported_def_ids: Rc::new(RefCell::new(HashSet::new())),
+                ty_alias_mode: false,
             }
         }
     }
