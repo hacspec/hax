@@ -923,7 +923,7 @@ pub enum CastKind {
 pub enum NullOp {
     SizeOf,
     AlignOf,
-    OffsetOf(Vec<FieldIdx>),
+    OffsetOf(Vec<(usize, FieldIdx)>),
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]

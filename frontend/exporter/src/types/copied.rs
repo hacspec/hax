@@ -554,23 +554,23 @@ pub struct VariantDef {
     pub span: Span,
 }
 
-/// Reflects [`rustc_middle::ty::EarlyBoundRegion`]
+/// Reflects [`rustc_middle::ty::EarlyParamRegion`]
 #[derive(
     AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::EarlyBoundRegion, state: S as gstate)]
-pub struct EarlyBoundRegion {
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::EarlyParamRegion, state: S as gstate)]
+pub struct EarlyParamRegion {
     pub def_id: DefId,
     pub index: u32,
     pub name: Symbol,
 }
 
-/// Reflects [`rustc_middle::ty::FreeRegion`]
+/// Reflects [`rustc_middle::ty::LateParamRegion`]
 #[derive(
     AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::FreeRegion, state: S as gstate)]
-pub struct FreeRegion {
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::LateParamRegion, state: S as gstate)]
+pub struct LateParamRegion {
     pub scope: DefId,
     pub bound_region: BoundRegionKind,
 }
@@ -581,9 +581,9 @@ pub struct FreeRegion {
 )]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::RegionKind<'tcx>, state: S as gstate)]
 pub enum RegionKind {
-    ReEarlyBound(EarlyBoundRegion),
-    ReLateBound(DebruijnIndex, BoundRegion),
-    ReFree(FreeRegion),
+    ReEarlyParam(EarlyParamRegion),
+    ReBound(DebruijnIndex, BoundRegion),
+    ReLateParam(LateParamRegion),
     ReStatic,
     ReVar(RegionVid),
     RePlaceholder(PlaceholderRegion),
@@ -768,9 +768,7 @@ pub struct ExpnData {
     pub edition: Edition,
     pub macro_def_id: Option<DefId>,
     pub parent_module: Option<DefId>,
-    pub allow_internal_unsafe: bool,
     pub local_inner_macros: bool,
-    pub collapse_debuginfo: bool,
 }
 
 /// Reflects [`rustc_span::Span`]
@@ -1726,9 +1724,19 @@ pub enum RangeEnd {
 #[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::PatRange<'tcx>, state: S as state)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct PatRange {
-    pub lo: ConstantExpr,
-    pub hi: ConstantExpr,
+    pub lo: PatRangeBoundary,
+    pub hi: PatRangeBoundary,
     pub end: RangeEnd,
+}
+
+/// Reflects [`rustc_middle::thir::PatRangeBoundary`]
+#[derive(AdtInto)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::PatRangeBoundary<'tcx>, state: S as state)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub enum PatRangeBoundary {
+    Finite(ConstantExpr),
+    NegInfinity,
+    PosInfinity,
 }
 
 /// Reflects [`rustc_middle::ty::AdtKind`]
@@ -1944,7 +1952,7 @@ pub enum PointerCoercion {
 )]
 pub enum BorrowKind {
     Shared,
-    Shallow,
+    Fake,
     Mut { kind: MutBorrowKind },
 }
 

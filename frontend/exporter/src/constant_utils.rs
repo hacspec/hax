@@ -501,7 +501,7 @@ pub(crate) fn const_value_reference_to_constant_expr<'tcx, S: UnderOwnerState<'t
     let tcx = s.base().tcx;
 
     let dc = tcx
-        .try_destructure_mir_constant_for_diagnostics(val, ty)
+        .try_destructure_mir_constant_for_user_output(val, ty)
         .s_unwrap(s);
 
     // Iterate over the fields, which should be values
