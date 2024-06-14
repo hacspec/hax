@@ -473,7 +473,7 @@ pub enum CtorKind {
 /// Reflects [`rustc_middle::ty::VariantDiscr`]
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::VariantDiscr, state: S as gstate)]
-pub enum VariantDiscr {
+pub enum DiscriminantDefinition {
     Explicit(DefId),
     Relative(u32),
 }
@@ -544,22 +544,38 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, FieldDef> for rustc_middle::ty::Fi
 }
 
 /// Reflects [`rustc_middle::ty::VariantDef`]
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::VariantDef, state: S as s)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct VariantDef {
     pub def_id: DefId,
     pub ctor: Option<(CtorKind, DefId)>,
     pub name: Symbol,
-    pub discr: VariantDiscr,
+    pub discr_def: DiscriminantDefinition,
+    pub discr_val: DiscriminantValue,
     /// The definitions of the fields on this variant. In case of
     /// [tuple
     /// structs](https://doc.rust-lang.org/book/ch05-01-defining-structs.html#using-tuple-structs-without-named-fields-to-create-different-types),
     /// the fields are anonymous, otherwise fields are named.
-    #[value(self.fields.raw.sinto(s))]
     pub fields: Vec<FieldDef>,
     /// Span of the definition of the variant
-    #[value(s.base().tcx.def_span(self.def_id).sinto(s))]
     pub span: Span,
+}
+
+impl VariantDef {
+    fn sfrom<'tcx, S: UnderOwnerState<'tcx>>(
+        s: &S,
+        def: &ty::VariantDef,
+        discr_val: ty::util::Discr<'tcx>,
+    ) -> Self {
+        VariantDef {
+            def_id: def.def_id.sinto(s),
+            ctor: def.ctor.sinto(s),
+            name: def.name.sinto(s),
+            discr_def: def.discr.sinto(s),
+            discr_val: discr_val.sinto(s),
+            fields: def.fields.raw.sinto(s),
+            span: s.base().tcx.def_span(def.def_id).sinto(s),
+        }
+    }
 }
 
 /// Reflects [`rustc_middle::ty::EarlyParamRegion`]
@@ -1771,7 +1787,6 @@ pub struct AdtDef {
     pub did: DefId,
     pub adt_kind: AdtKind,
     pub variants: IndexVec<VariantIdx, VariantDef>,
-    pub discriminants: IndexVec<VariantIdx, DiscriminantValue>,
     pub flags: AdtFlags,
     pub repr: ReprOptions,
 }
@@ -1794,28 +1809,27 @@ pub struct ReprOptions {
 
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, AdtDef> for rustc_middle::ty::AdtDef<'tcx> {
     fn sinto(&self, s: &S) -> AdtDef {
-        let discriminants: Vec<_> = if self.is_enum() {
-            self.variants()
-                .iter_enumerated()
-                .map(|(variant_idx, _variant)| {
+        let variants = self
+            .variants()
+            .iter_enumerated()
+            .map(|(variant_idx, variant)| {
+                let discr = if self.is_enum() {
                     self.discriminant_for_variant(s.base().tcx, variant_idx)
-                })
-                .collect()
-        } else {
-            // Structs and unions have a single variant.
-            assert_eq!(self.variants().len(), 1);
-            vec![rustc_middle::ty::util::Discr {
-                val: 0,
-                ty: s.base().tcx.types.isize,
-            }]
-        };
-        let discriminants: rustc_index::IndexVec<VariantIdx, _> =
-            rustc_index::IndexVec::from_raw(discriminants);
+                } else {
+                    // Structs and unions have a single variant.
+                    assert_eq!(variant_idx.index(), 0);
+                    rustc_middle::ty::util::Discr {
+                        val: 0,
+                        ty: s.base().tcx.types.isize,
+                    }
+                };
+                VariantDef::sfrom(s, variant, discr)
+            })
+            .collect();
         AdtDef {
             did: self.did().sinto(s),
             adt_kind: self.adt_kind().sinto(s),
-            variants: self.variants().sinto(s),
-            discriminants: discriminants.sinto(s),
+            variants,
             flags: self.flags().sinto(s),
             repr: self.repr().sinto(s),
         }
@@ -2919,7 +2933,7 @@ pub struct Variant<Body: IsBody> {
             .find(|v| v.def_id == self.def_id.into()).unwrap();
         variant.discr.sinto(s)
     })]
-    pub discr: VariantDiscr,
+    pub discr: DiscriminantDefinition,
     pub span: Span,
     #[value(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
     pub attributes: Vec<Attribute>,

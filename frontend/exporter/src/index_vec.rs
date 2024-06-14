@@ -15,6 +15,9 @@ impl<I: Idx, T: Sized> IndexVec<I, T> {
     ) -> impl DoubleEndedIterator<Item = (I, T)> + ExactSizeIterator {
         rustc_index::IndexVec::from_raw(self.raw).into_iter_enumerated()
     }
+    pub fn into_iter(self) -> impl DoubleEndedIterator<Item = T> + ExactSizeIterator {
+        self.raw.into_iter()
+    }
 }
 
 impl<I: Idx, T: Sized> std::ops::Deref for IndexVec<I, T> {
@@ -45,6 +48,19 @@ impl<S, J: Idx, I: Idx + SInto<S, J>, U: Clone /*TODO: remove me?*/, T: SInto<S,
     fn sinto(&self, s: &S) -> IndexVec<J, U> {
         IndexVec {
             raw: self.raw.sinto(s),
+            _marker: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<I, T> FromIterator<T> for IndexVec<I, T>
+where
+    I: Idx,
+{
+    #[inline]
+    fn from_iter<It: IntoIterator<Item = T>>(iter: It) -> Self {
+        Self {
+            raw: Vec::from_iter(iter),
             _marker: std::marker::PhantomData,
         }
     }
