@@ -28,11 +28,10 @@ impl Callbacks for LinterCallbacks {
         compiler: &Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
-        let session = &compiler.sess;
         queries
             .global_ctxt()
             .unwrap()
-            .enter(|tcx| hax_lint::Linter::register(tcx, session, self.ltype));
+            .enter(|tcx| hax_lint::Linter::register(tcx, self.ltype));
 
         Compilation::Continue
     }

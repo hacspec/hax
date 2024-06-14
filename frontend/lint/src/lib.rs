@@ -19,10 +19,6 @@ use rustc_hir::{intravisit::*, *};
 extern crate rustc_span;
 use rustc_span::{def_id::LocalDefId, symbol::Ident, Span, Symbol};
 
-// rustc session
-extern crate rustc_session;
-use rustc_session::Session;
-
 // rustc data_structures
 extern crate rustc_data_structures;
 
@@ -36,17 +32,16 @@ pub enum Type {
     Hacspec,
 }
 
-pub struct Linter<'a, 'tcx> {
-    session: &'a Session,
+pub struct Linter<'tcx> {
     tcx: TyCtxt<'tcx>,
     extern_allow_list: Vec<&'static str>,
     trait_block_list: Vec<String>,
     ltype: Type,
 }
 
-impl<'a, 'tcx> Linter<'a, 'tcx> {
+impl<'tcx> Linter<'tcx> {
     /// Register the linter.
-    pub fn register(tcx: TyCtxt<'tcx>, session: &'a Session, ltype: Type) {
+    pub fn register(tcx: TyCtxt<'tcx>, ltype: Type) {
         let hir = tcx.hir();
 
         let trait_block_list = vec!["FnMut"];
@@ -65,7 +60,6 @@ impl<'a, 'tcx> Linter<'a, 'tcx> {
         }
 
         let mut linter = Self {
-            session,
             tcx,
             extern_allow_list,
             trait_block_list,
@@ -118,7 +112,7 @@ macro_rules! skip_v1_lib_macros {
     };
 }
 
-impl<'a, 'v> Linter<'a, 'v> {
+impl<'v> Linter<'v> {
     fn any_parent_has_attr(&self, hir_id: HirId, symbol: Symbol) -> bool {
         let map = &self.tcx.hir();
         let mut prev_enclosing_node = None;
@@ -183,7 +177,7 @@ impl<'a, 'v> Linter<'a, 'v> {
     }
 }
 
-impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
+impl<'v> Visitor<'v> for Linter<'v> {
     type NestedFilter = OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {
