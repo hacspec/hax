@@ -1203,7 +1203,11 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                                 supposely_unreachable_fatal!(s[span], "PhantomDataNotAdt"; {kind, ty})
                             };
                             let adt_def = AdtExpr {
-                                info: get_variant_information(def, rustc_target::abi::FIRST_VARIANT, s),
+                                info: get_variant_information(
+                                    def,
+                                    rustc_target::abi::FIRST_VARIANT,
+                                    s,
+                                ),
                                 user_ty: None,
                                 base: None,
                                 fields: vec![],
