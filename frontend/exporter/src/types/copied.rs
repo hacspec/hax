@@ -876,9 +876,9 @@ impl<'s, S: UnderOwnerState<'s>, T: SInto<S, U>, U> SInto<S, Spanned<U>>
     }
 }
 
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, String> for PathBuf {
-    fn sinto(&self, _: &S) -> String {
-        self.as_path().display().to_string()
+impl<'tcx, S> SInto<S, PathBuf> for PathBuf {
+    fn sinto(&self, _: &S) -> PathBuf {
+        self.clone()
     }
 }
 
@@ -888,14 +888,10 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, String> for PathBuf {
 )]
 #[args(<S>, from: rustc_span::RealFileName, state: S as _s)]
 pub enum RealFileName {
-    LocalPath(#[map(x.to_str().unwrap().into())] String),
-    #[map(RealFileName::Remapped {
-            local_path: local_path.as_ref().map(|path| path.to_str().unwrap().into()),
-            virtual_name: virtual_name.to_str().unwrap().into()
-        })]
+    LocalPath(PathBuf),
     Remapped {
-        local_path: Option<String>,
-        virtual_name: String,
+        local_path: Option<PathBuf>,
+        virtual_name: PathBuf,
     },
 }
 
