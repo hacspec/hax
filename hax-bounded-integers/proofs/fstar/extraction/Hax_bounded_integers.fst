@@ -37,4 +37,31 @@ let t_BoundedU64 (v_MIN v_MAX: u64) = x: u64{x >=. v_MIN && x <=. v_MAX}
 let t_BoundedU8 (v_MIN v_MAX: u8) = x: u8{x >=. v_MIN && x <=. v_MAX}
 
 ///Bounded usize integers. This struct enforces the invariant that values are greater or equal to `MIN` and less or equal to `MAX`.
-unfold let t_BoundedUsize (v_MIN v_MAX: usize) = x: usize{x >=. v_MIN && x <=. v_MAX}
+let t_BoundedUsize (v_MIN v_MAX: usize) = x: usize{x >=. v_MIN && x <=. v_MAX}
+
+let t_Test (v_B: usize) =
+  x:
+  i16
+    { x >=. (Core.Ops.Arith.Neg.neg (cast (v_B <: usize) <: i16) <: i16) &&
+      x <=. (cast (v_B <: usize) <: i16) }
+
+let tests (_: Prims.unit) : Prims.unit =
+  let (zzz: t_Test (sz 123)):t_Test (sz 123) = (-122s) <: t_Test (sz 123) in
+  let zzz:t_Test (sz 123) = Core.Ops.Arith.f_add_assign #(t_Test (sz 123)) #i16 zzz 32s in
+  let (x: t_BoundedU8 0uy 5uy):t_BoundedU8 0uy 5uy = 2uy <: t_BoundedU8 0uy 5uy in
+  let (y: t_BoundedU8 5uy 10uy):t_BoundedU8 5uy 10uy = x +! x <: t_BoundedU8 5uy 10uy in
+  let _:u8 = x >>! 3uy in
+  let _:u8 = x >>! (3uy <: t_BoundedU8 0uy 5uy) in
+  let _:u8 = x /! y in
+  let _:u8 = x *! y in
+  let _:u8 = x +! y in
+  let _:u8 = y -! x in
+  let _:u8 = x /! 1uy in
+  let _:u8 = x *! 1uy in
+  let _:u8 = x +! 1uy in
+  let _:u8 = x -! 1uy in
+  let _:u8 = 4uy /! y in
+  let _:u8 = 4uy *! y in
+  let _:u8 = 4uy +! y in
+  let _:u8 = 4uy -! y in
+  ()
