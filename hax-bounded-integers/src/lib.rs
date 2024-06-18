@@ -1,60 +1,147 @@
 use hax_lib::Refinement;
 pub mod num_traits;
 
+#[doc(hidden)]
+#[macro_export]
 macro_rules! derivate_binop_for_bounded {
-    ({$t:ident, $bounded_t:ident}; $($tt:tt)*) => {
-        derivate_binop_for_bounded!({$t, $bounded_t, get, Self::Output}; $($tt)*) ;
+    ($(<$(const $cst_name:ident : $cst_ty:ty),*>)?{$t:ident, $bounded_t:ident}; $($tt:tt)*) => {
+        $crate::derivate_binop_for_bounded!($(<$(const $cst_name:$cst_ty),*>)?{$t, $bounded_t, get, Self::Output}; $($tt)*) ;
     };
-    ({$t:ident, $bounded_t:ident, $get:ident, $out:ty};) => {};
-    ({$t:ident, $bounded_t:ident, $get:ident, $out:ty}; ($trait:ident, $meth:ident), $($tt:tt)*) => {
-        derivate_binop_for_bounded!(@$t, $bounded_t, $trait, $meth, $get, $out);
-        derivate_binop_for_bounded!({$t, $bounded_t, $get, $out}; $($tt)*);
+    ($(<$(const $cst_name:ident : $cst_ty:ty),*>)?{$t:ident, $bounded_t:ident, $get:ident, $out:ty};) => {};
+    ($(<$(const $cst_name:ident : $cst_ty:ty),*>)?{$t:ident, $bounded_t:ident, $get:ident, $out:ty}; ($trait:ident, $meth:ident), $($tt:tt)*) => {
+        $crate::derivate_binop_for_bounded!(@$t, $bounded_t, $trait, $meth, $get, $out, $(<$(const $cst_name:$cst_ty),*>)?);
+        $crate::derivate_binop_for_bounded!($(<$(const $cst_name:$cst_ty),*>)?{$t, $bounded_t, $get, $out}; $($tt)*);
     };
-    (@$t:ident, $bounded_t:ident, $trait:ident, $meth:ident, $get:ident, $out:ty) => {
-        // BoundedT<A, B> <OP> BoundedT<C, D>
-        impl<const MIN_LHS: $t, const MAX_LHS: $t, const MIN_RHS: $t, const MAX_RHS: $t>
-            $trait<$bounded_t<MIN_RHS, MAX_RHS>> for $bounded_t<MIN_LHS, MAX_LHS>
-        {
-            type Output = $t;
-            #[inline(always)]
-            fn $meth(self, other: $bounded_t<MIN_RHS, MAX_RHS>) -> $out {
-                (self.$get()).$meth(other.$get())
+    (@$t:ident, $bounded_t:ident, $trait:ident, $meth:ident, $get:ident, $out:ty$(,)?) => {
+        $crate::derivate_binop_for_bounded!(
+            @$t, $bounded_t, $trait, $meth, $get, $out,
+            <const MIN: $t, const MAX: $t>
+        );
+    };
+    (@$t:ident, $bounded_t:ident, $trait:ident, $meth:ident, $get:ident, $out:ty,
+     <$(const $cst_name:ident : $cst_ty:ty),*>
+    ) => {
+        paste::paste!{
+            // BoundedT<A, B> <OP> BoundedT<C, D>
+            impl<$(const [< $cst_name _LHS >]: $cst_ty,)* $(const [< $cst_name _RHS >]: $cst_ty,)*>
+                $trait<$bounded_t<$([< $cst_name _RHS >],)*>> for $bounded_t<$([< $cst_name _LHS >],)*>
+            {
+                type Output = $t;
+                #[inline(always)]
+                fn $meth(self, other: $bounded_t<$([< $cst_name _RHS >],)*>) -> $out {
+                    (self.$get()).$meth(other.$get())
+                }
             }
-        }
 
-        // BoundedT<A, B> <OP> T
-        impl<const MIN: $t, const MAX: $t> $trait<$t> for $bounded_t<MIN, MAX> {
-            type Output = $t;
-            #[inline(always)]
-            fn $meth(self, other: $t) -> $out {
-                (self.$get()).$meth(other)
+            // BoundedT<A, B> <OP> T
+            impl<$(const $cst_name: $cst_ty,)*> $trait<$t> for $bounded_t<$($cst_name,)*> {
+                type Output = $t;
+                #[inline(always)]
+                fn $meth(self, other: $t) -> $out {
+                    (self.$get()).$meth(other)
+                }
             }
-        }
 
-        // T <OP> BoundedT<A, B>
-        impl<const MIN: $t, const MAX: $t> $trait<$bounded_t<MIN, MAX>> for $t {
-            type Output = $t;
-            #[inline(always)]
-            fn $meth(self, other: $bounded_t<MIN, MAX>) -> $out {
-                (self).$meth(other.$get())
+
+            // T <OP> BoundedT<A, B>
+            impl<$(const $cst_name: $cst_ty,)*> $trait<$bounded_t<$($cst_name,)*>> for $t {
+                type Output = $t;
+                #[inline(always)]
+                fn $meth(self, other: $bounded_t<$($cst_name,)*>) -> $out {
+                    (self).$meth(other.$get())
+                }
             }
         }
     };
 }
 
-macro_rules! mk_bounded {
-    ($bounded_t:ident($t: ident $($bytes:expr)?)$(,)?) => {
-        #[doc = concat!("Bounded ", stringify!($t)," integers. This struct enforces the invariant that values are greater or equal to `MIN` and less or equal to `MAX`.")]
-        #[hax_lib::refinement_type(|x| x >= MIN && x <= MAX)]
-        #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
-        pub struct $bounded_t<const MIN: $t, const MAX: $t>($t);
+#[doc(hidden)]
+#[macro_export]
+macro_rules! derivate_assign_binop_for_bounded {
+    ($(<$(const $cst_name:ident : $cst_ty:ty),*>)?{$t:ident, $bounded_t:ident}; $($tt:tt)*) => {
+        $crate::derivate_assign_binop_for_bounded!($(<$(const $cst_name:$cst_ty),*>)?{$t, $bounded_t, get, Self::Output}; $($tt)*) ;
+    };
+    ($(<$(const $cst_name:ident : $cst_ty:ty),*>)?{$t:ident, $bounded_t:ident, $get:ident, $out:ty};) => {};
+    ($(<$(const $cst_name:ident : $cst_ty:ty),*>)?{$t:ident, $bounded_t:ident, $get:ident, $out:ty}; ($trait:ident, $meth:ident), $($tt:tt)*) => {
+        $crate::derivate_assign_binop_for_bounded!(@$t, $bounded_t, $trait, $meth, $get, $out, $(<$(const $cst_name:$cst_ty),*>)?);
+        $crate::derivate_assign_binop_for_bounded!($(<$(const $cst_name:$cst_ty),*>)?{$t, $bounded_t, $get, $out}; $($tt)*);
+    };
+    (@$t:ident, $bounded_t:ident, $trait:ident, $meth:ident, $get:ident, $out:ty$(,)?) => {
+        $crate::derivate_assign_binop_for_bounded!(
+            @$t, $bounded_t, $trait, $meth, $get, $out,
+            <const MIN: $t, const MAX: $t>
+        );
+    };
+    (@$t:ident, $bounded_t:ident, $trait:ident, $meth:ident, $get:ident, $out:ty,
+     <$(const $cst_name:ident : $cst_ty:ty),*>
+    ) => {
+        paste::paste!{
+            // BoundedT<A, B> <OP> BoundedT<C, D>
+            impl<$(const [< $cst_name _LHS >]: $cst_ty,)* $(const [< $cst_name _RHS >]: $cst_ty,)*>
+                $trait<$bounded_t<$([< $cst_name _RHS >],)*>> for $bounded_t<$([< $cst_name _LHS >],)*>
+            {
+                #[inline(always)]
+                fn $meth(&mut self, other: $bounded_t<$([< $cst_name _RHS >],)*>) {
+                    self.get_mut().$meth(other.$get())
+                }
+            }
 
-        #[hax_lib::exclude]
+            // BoundedT<A, B> <OP> $t
+            impl<$(const [< $cst_name _LHS >]: $cst_ty,)*>
+                $trait<$t> for $bounded_t<$([< $cst_name _LHS >],)*>
+            {
+                #[inline(always)]
+                fn $meth(&mut self, other: $t) {
+                    self.get_mut().$meth(other)
+                }
+            }
+
+            // $t <OP> BoundedT<A, B>
+            impl<$(const [< $cst_name _RHS >]: $cst_ty,)*>
+                $trait<$bounded_t<$([< $cst_name _RHS >],)*>> for $t
+            {
+                #[inline(always)]
+                fn $meth(&mut self, other: $bounded_t<$([< $cst_name _RHS >],)*>) {
+                    self.$meth(other.get())
+                }
+            }
+        }
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! derivate_operations_for_bounded {
+    ($bounded_t:ident($t: ident $($bytes:expr)?)$(,)?
+     <$(const $cst_name:ident : $cst_ty:ty),*>
+    ) => {
+          #[duplicate::duplicate_item(
+              INTRO_CONSTANTS USE_CONSTANTS;
+              [ $(const $cst_name:$cst_ty),* ] [ $($cst_name),* ];
+          )]
+          #[hax_lib::exclude]
         const _: () = {
-            use core::ops::*;
-            use num_traits::*;
+            use ::core::ops::*;
+            use $crate::num_traits::*;
+            use ::hax_lib::Refinement;
 
-            derivate_binop_for_bounded!(
+            $crate::derivate_assign_binop_for_bounded!(
+                <INTRO_CONSTANTS>
+                {$t, $bounded_t};
+                (AddAssign, add_assign),
+                (SubAssign, sub_assign),
+                (MulAssign, mul_assign),
+                (DivAssign, div_assign),
+                (RemAssign, rem_assign),
+                (ShlAssign, shl_assign),
+                (ShrAssign, shr_assign),
+                (BitAndAssign, bitand_assign),
+                (BitOrAssign, bitor_assign),
+                (BitXorAssign, bitxor_assign),
+            );
+
+            $crate::derivate_binop_for_bounded!(
+                <INTRO_CONSTANTS>
                 {$t, $bounded_t};
                 (Add, add), (Sub, sub), (Mul, mul), (Div, div), (Rem, rem),
                 (BitOr, bitor), (BitAnd, bitand), (BitXor, bitxor),
@@ -63,13 +150,14 @@ macro_rules! mk_bounded {
                 (WrappingMul, wrapping_mul), (WrappingDiv, wrapping_div),
             );
 
-            derivate_binop_for_bounded!(
+            $crate::derivate_binop_for_bounded!(
+                <INTRO_CONSTANTS>
                 {$t, $bounded_t, get, Option<Self::Output>};
                 (CheckedAdd, checked_add), (CheckedSub, checked_sub),
                 (CheckedMul, checked_mul), (CheckedDiv, checked_div),
             );
 
-            impl<const MIN: $t, const MAX: $t> CheckedNeg for $bounded_t<MIN, MAX> {
+            impl<INTRO_CONSTANTS> CheckedNeg for $bounded_t<USE_CONSTANTS> {
                 type Output = $t;
                 #[inline(always)]
                 fn checked_neg(&self) -> Option<$t> {
@@ -77,7 +165,7 @@ macro_rules! mk_bounded {
                 }
             }
 
-            impl<const MIN: $t, const MAX: $t> Not for $bounded_t<MIN, MAX> {
+            impl<INTRO_CONSTANTS> Not for $bounded_t<USE_CONSTANTS> {
                 type Output = $t;
                 #[inline(always)]
                 fn not(self) -> Self::Output {
@@ -85,21 +173,21 @@ macro_rules! mk_bounded {
                 }
             }
 
-            impl<const MIN: $t, const MAX: $t> NumOps<Self, $t> for $bounded_t<MIN, MAX> {}
+            impl<INTRO_CONSTANTS> NumOps<Self, $t> for $bounded_t<USE_CONSTANTS> {}
 
-            impl<const MIN: $t, const MAX: $t> Bounded for $bounded_t<MIN, MAX> {
-                #[inline(always)]
-                fn min_value() -> Self {
-                    Self::new(MIN)
-                }
-                #[inline(always)]
-                fn max_value() -> Self {
-                    Self::new(MAX)
-                }
-            }
+            // impl<INTRO_CONSTANTS> Bounded for $bounded_t<USE_CONSTANTS> {
+            //     #[inline(always)]
+            //     fn min_value() -> Self {
+            //         Self::new(MIN)
+            //     }
+            //     #[inline(always)]
+            //     fn max_value() -> Self {
+            //         Self::new(MAX)
+            //     }
+            // }
 
             $(
-                impl<const MIN: $t, const MAX: $t> FromBytes for $bounded_t<MIN, MAX> {
+                impl<INTRO_CONSTANTS> FromBytes for $bounded_t<USE_CONSTANTS> {
                     type BYTES = [u8; $bytes];
 
                     #[inline(always)]
@@ -112,7 +200,7 @@ macro_rules! mk_bounded {
                     }
                 }
 
-                impl<const MIN: $t, const MAX: $t> ToBytes for $bounded_t<MIN, MAX> {
+                impl<INTRO_CONSTANTS> ToBytes for $bounded_t<USE_CONSTANTS> {
                     #[inline(always)]
                     fn to_le_bytes(self) -> Self::BYTES {
                         self.get().to_le_bytes()
@@ -124,23 +212,23 @@ macro_rules! mk_bounded {
                 }
             )?
 
-            impl<const MIN: $t, const MAX: $t> Zero for $bounded_t<MIN, MAX> {
+            impl<INTRO_CONSTANTS> Zero for $bounded_t<USE_CONSTANTS> {
                 #[inline(always)]
                 fn zero() -> Self {
                     Self::new(1)
                 }
             }
 
-            impl<const MIN: $t, const MAX: $t> One for $bounded_t<MIN, MAX> {
+            impl<INTRO_CONSTANTS> One for $bounded_t<USE_CONSTANTS> {
                 #[inline(always)]
                 fn one() -> Self {
                     Self::new(0)
                 }
             }
 
-            impl<const MIN: $t, const MAX: $t> MachineInt<$t> for $bounded_t<MIN, MAX> { }
+            impl<INTRO_CONSTANTS> MachineInt<$t> for $bounded_t<USE_CONSTANTS> { }
 
-            impl<const MIN: $t, const MAX: $t> BitOps for $bounded_t<MIN, MAX> {
+            impl<INTRO_CONSTANTS> BitOps for $bounded_t<USE_CONSTANTS> {
                 type Output = $t;
 
                 #[inline(always)]
@@ -197,10 +285,28 @@ macro_rules! mk_bounded {
                 }
             }
         };
+    }
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! mk_bounded {
+    ($(#$attr:tt)* $bounded_t:ident<$(const $cst_name:ident : $cst_ty:ty),*>($t: ident $($bytes:expr)?, |$x:ident| $body:expr)$(,)?) => {
+        #[hax_lib::refinement_type(|$x| $body)]
+        #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
+        $(#$attr)*
+        pub struct $bounded_t<$(const $cst_name : $cst_ty),*>($t);
+        $crate::derivate_operations_for_bounded!($bounded_t($t$($bytes)?)<$(const $cst_name : $cst_ty),*>);
+    };
+    ($bounded_t:ident($t: ident $($bytes:expr)?)$(,)?) => {
+        $crate::mk_bounded!(
+            #[doc = concat!("Bounded ", stringify!($t)," integers. This struct enforces the invariant that values are greater or equal to `MIN` and less or equal to `MAX`.")]
+            $bounded_t<const MIN: $t, const MAX: $t>($t $($bytes)?, |x| x >= MIN && x <= MAX)
+        );
     };
     ($bounded_t:ident($t: ident $($bytes:expr)?), $($tt:tt)+) => {
-        mk_bounded!($bounded_t($t $($bytes)?));
-        mk_bounded!($($tt)+);
+        $crate::mk_bounded!($bounded_t($t $($bytes)?));
+        $crate::mk_bounded!($($tt)+);
     };
 }
 
@@ -218,6 +324,23 @@ mk_bounded!(
     BoundedU128(u128 16),
     BoundedUsize(usize),
 );
+
+/// Makes a refined new type in a very similar way to
+/// `hax_lib::refinement_tyoe`, but derives the various traits an
+/// integer type is expected to implement.
+///
+/// Examples:
+/// ```rust
+/// # use hax_bounded_integers::refinement_int;
+/// refinement_int!(BoundedAbsI16<const B: usize>(i16, 2, |x| x >= -(B as i16) && x <= (B as i16)));
+/// refinement_int!(BoundedAbsIsize<const B: usize>(isize, |x| x >= -(B as isize) && x <= (B as isize)));
+/// ```
+#[macro_export]
+macro_rules! refinement_int {
+    ($(#$attr:tt)* $bounded_t:ident$(<$(const $cst_name:ident : $cst_ty:ty),*$(,)?>)?($t: ident, $($bytes:literal,)? |$x:ident| $body:expr)$(,)?) => {
+        $crate::mk_bounded!($(#$attr)* $bounded_t<$($(const $cst_name:$cst_ty),*)?>($t $($bytes)?, |$x| $body));
+    };
+}
 
 #[hax_lib::exclude]
 const _: () = {
@@ -239,7 +362,14 @@ const _: () = {
 
 #[test]
 fn tests() {
+    refinement_int!(
+        Test<const B: usize>(i16, 2, |x| x >= -(B as i16) && x <= (B as i16))
+    );
+
     use hax_lib::*;
+
+    let mut zzz: Test<123> = (-122).into_checked();
+    zzz += 32;
 
     let x: BoundedU8<0, 5> = 2.into_checked();
     let y: BoundedU8<5, 10> = (x + x).into_checked();
