@@ -363,7 +363,7 @@ const _: () = {
 #[test]
 fn tests() {
     refinement_int!(
-        Test<const B: usize>(i16, 2, |x| x >= -(B as i16) && x <= (B as i16))
+        Test<const B: usize>(i16, 2, |x| B < 32768 && x >= -(B as i16) && x <= (B as i16))
     );
 
     use hax_lib::*;
