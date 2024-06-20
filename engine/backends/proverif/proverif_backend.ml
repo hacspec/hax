@@ -18,6 +18,13 @@ include
       let backend = Diagnostics.Backend.ProVerif
     end)
 
+module ConcreteIdentMap = Map.M (Concrete_ident_generated)
+
+let rename_map =
+  Map.of_alist_exn
+    (module Concrete_ident_generated)
+    Concrete_ident_generated.[ (Core__option__Option, "Option") ]
+
 module SubtypeToInputLanguage
     (FA : Features.T
           (*  type loop = Features.Off.loop *)
@@ -638,13 +645,19 @@ module Make (Options : OPTS) : MAKE = struct
 
         method! concrete_ident' ~(under_current_ns : bool) : concrete_ident fn =
           fun id ->
-            if under_current_ns then print#name_of_concrete_ident id
-            else
-              let crate, path = print#namespace_of_concrete_ident id in
-              let full_path = crate :: path in
-              separate_map (underscore ^^ underscore) utf8string full_path
-              ^^ underscore ^^ underscore
-              ^^ print#name_of_concrete_ident id
+            match
+              List.find (Map.to_alist rename_map) ~f:(fun (name, _) ->
+                  Concrete_ident.eq_name name id)
+            with
+            | Some (_, plain_name) -> string plain_name
+            | _ ->
+                if under_current_ns then print#name_of_concrete_ident id
+                else
+                  let crate, path = print#namespace_of_concrete_ident id in
+                  let full_path = crate :: path in
+                  separate_map (underscore ^^ underscore) utf8string full_path
+                  ^^ underscore ^^ underscore
+                  ^^ print#name_of_concrete_ident id
 
         method! doc_construct_inductive
             : is_record:bool ->
@@ -726,17 +739,6 @@ module Make (Options : OPTS) : MAKE = struct
             | TApp { ident; args }
               when Global_ident.eq_name Alloc__vec__Vec ident ->
                 string "bitstring"
-            | TApp { ident; args }
-              when Global_ident.eq_name Core__option__Option ident ->
-                string "Option"
-            | TApp { ident; args }
-              when Global_ident.eq_name Core__result__Result ident -> (
-                (* print first of args*)
-                let result_ok_type = List.hd_exn args in
-                match result_ok_type with
-                | GType typ -> print#ty ctx typ
-                | GConst e -> print#expr ctx e
-                | _ -> empty (* Do not tranlsate lifetimes *))
             | TApp { ident; args } -> super#ty ctx ty
             (*(
                 match translate_known_name ident ~dict:library_types with
@@ -861,6 +863,33 @@ module Make (Options : OPTS) : MAKE = struct
   end)
 end
 
+module ProVerifRename (F : Features.T) =
+  Phase_utils.MakeMonomorphicPhase
+    (F)
+    (struct
+      module Visitors = Ast_visitors.Make (F)
+      open Ast.Make (F)
+
+      let visitor =
+        object (self)
+          inherit [_] Visitors.map as super
+
+          method! visit_ty () (ty : ty) =
+            match super#visit_ty () ty with
+            | TApp { ident; args = [ GType typ; _ ] }
+              when Global_ident.eq_name Core__result__Result ident ->
+                typ
+            | TApp { ident; args }
+              when Map.existsi rename_map ~f:(fun ~key ~data:_ ->
+                       Global_ident.eq_name key ident) ->
+                TApp { ident; args = [] }
+            | x -> x
+        end
+
+      let phase_id = Diagnostics.Phase.ProVerifRename
+      let ditems = List.map ~f:(visitor#visit_item ())
+    end)
+
 let translate m (bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =
   let (module M : MAKE) =
@@ -899,8 +928,9 @@ module TransformToInputLanguage =
   |> Phases.Simplify_match_return
   |> Phases.Drop_needless_returns
   |> Phases.Local_mutation
-  |> Phases.Reject.Continue
-  |> SubtypeToInputLanguage
+   |> Phases.Reject.Continue
+     |> ProVerifRename
+   |> SubtypeToInputLanguage
   |> Identity
   ]
   [@ocamlformat "disable"]
