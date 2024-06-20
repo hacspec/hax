@@ -168,27 +168,65 @@ fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
         hax_frontend_exporter::ImplInfos,
     )>,
     Vec<hax_frontend_exporter::Item<Body>>,
+    Vec<hax_frontend_exporter::Item<()>>,
 ) {
     let mut state = hax_frontend_exporter::state::State::new(tcx, options.clone());
     state.base.macro_infos = Rc::new(macro_calls);
     state.base.cached_thirs = Rc::new(precompute_local_thir_bodies(tcx));
 
-    let result = hax_frontend_exporter::inline_macro_invocations(tcx.hir().items(), &state);
-    let impl_infos = hax_frontend_exporter::impl_def_ids_to_impled_types_and_bounds(&state)
-        .into_iter()
-        .collect();
+    let mut exported_def_ids: HashSet<rustc_hir::def_id::DefId> = HashSet::new();
+
+    // /// What should we do with the dependencies of a selected item?
+    // enum DependentInclusion {
+    //     Nothing,
+    //     Signatures,
+    //     Bodies,
+    // }
+
+    let mut with_bodies_queue: Vec<rustc_hir::ItemId> =
+        tcx.hir().items().filter(|_| true).collect();
+    // let mut without_bodies_queue: Vec<_> = vec![];
+    for item_id in &with_bodies_queue {
+        exported_def_ids.insert(item_id.owner_id.to_def_id());
+    }
+
+    let mut results = vec![];
+    let mut signatures = vec![];
+
+    while let Some(item_id) = with_bodies_queue.pop() {
+        let item: hax_frontend_exporter::Item<Body> = item_id.sinto(&state);
+        results.push(item);
+        let mut state_exported_def_ids: HashSet<_> =
+            state.base.exported_def_ids.borrow_mut().drain().collect();
+        for def_id in state_exported_def_ids.drain() {
+            if exported_def_ids.contains(&def_id) {
+                continue;
+            }
+            exported_def_ids.insert(def_id);
+            let item: hax_frontend_exporter::Item<()> = def_id.sinto(&state);
+            signatures.push(item);
+        }
+    }
+
     let exported_spans = state.base.exported_spans.borrow().clone();
+    *state.base.exported_def_ids.borrow_mut() = exported_def_ids;
 
     let exported_def_ids = {
         let def_ids = state.base.exported_def_ids.borrow();
         let state = hax_frontend_exporter::state::State::new(tcx, options.clone());
         def_ids.iter().map(|did| did.sinto(&state)).collect()
     };
+
+    let impl_infos = hax_frontend_exporter::impl_def_ids_to_impled_types_and_bounds(&state)
+        .into_iter()
+        .collect();
+
     (
         exported_spans.into_iter().collect(),
         exported_def_ids,
         impl_infos,
-        result,
+        results,
+        signatures,
     )
 }
 
@@ -332,11 +370,12 @@ impl Callbacks for ExtractionCallbacks {
                     }
                     impl<'tcx> Driver<'tcx> {
                         fn to_json<Body: hax_frontend_exporter::IsBody + Serialize>(self) {
-                            let (_, def_ids, impl_infos, converted_items) = convert_thir::<Body>(
-                                &self.options,
-                                self.macro_calls.clone(),
-                                self.tcx,
-                            );
+                            let (_, def_ids, impl_infos, converted_items, signatures) =
+                                convert_thir::<Body>(
+                                    &self.options,
+                                    self.macro_calls.clone(),
+                                    self.tcx,
+                                );
 
                             let dest = self.output_file.open_or_stdout();
                             (if self.include_extra {
@@ -349,7 +388,7 @@ impl Callbacks for ExtractionCallbacks {
                                     },
                                 )
                             } else {
-                                serde_json::to_writer(dest, &converted_items)
+                                serde_json::to_writer(dest, &(converted_items, signatures))
                             })
                             .unwrap()
                         }
@@ -397,7 +436,7 @@ impl Callbacks for ExtractionCallbacks {
                         )
                     }
 
-                    let (spans, _def_ids, impl_infos, converted_items) =
+                    let (spans, _def_ids, impl_infos, converted_items, _) =
                         convert_thir(&self.clone().into(), self.macro_calls.clone(), tcx);
 
                     let engine_options = hax_cli_options_engine::EngineOptions {
