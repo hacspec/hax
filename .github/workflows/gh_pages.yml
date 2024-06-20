@@ -1,4 +1,4 @@
-name: Deploy documentation to GH Pages
+name: Deploy to GH Pages
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  build-documentation:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -21,7 +21,7 @@ jobs:
   # this job is a copy paste from <https://github.com/actions/deploy-pages>
   deploy:
     # Add a dependency to the build job
-    needs: build
+    needs: build-documentation
 
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
     permissions:
@@ -39,3 +39,65 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v2 # or the latest "vX.X.X" version tag for this action
+
+  push_readme:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        path: hax
+    - uses: actions/checkout@v4
+      with:
+        repository: "hacspec/hacspec.github.io"
+        path: hacspec.github.io
+        token: ${{secrets.PUSH_HACSPEC_GITHUB_TOKEN}}
+    - uses: actions/checkout@v4
+      with:
+        repository: "hacspec/book"
+        path: book
+        token: ${{secrets.PUSH_HACSPEC_GITHUB_TOKEN}}
+
+    - uses: actions/checkout@v3
+    - uses: DeterminateSystems/nix-installer-action@main
+
+    - name: Configure git
+      run: |
+        git config --local user.name "github-actions[bot]"
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+    - name: Patch and push `README.md` in `hacspec.github.io`
+      run: |
+        (
+          README_ORIGINAL="https://github.com/hacspec/hax/blob/main/README.md"
+          echo "<!-- WARNING: a GitHub action periodically replaces this file with ${README_ORIGINAL}. Do not make any modification to this file, instead make a PR to ${README_ORIGINAL} -->"
+          echo ""
+          cat hax/README.md
+        ) > hacspec.github.io/README.md
+        cd hacspec.github.io
+
+        # Replace the `🌐 Website` link to a GitHub link
+        sed -i 's#.*🌐 Website.*#  <a href="https://github.com/hacspec/hax">🔗 GitHub</a> |#' README.md
+
+        # Replace relative links to absolute links
+        sed -i 's|(\./|(https://github.com/hacspec/hax/tree/main/|g' README.md
+
+        git add -A
+        if git commit -m "Readme update"; then
+          git push https://$USERNAME:$PUSH_HACSPEC_GITHUB_TOKEN@github.com/hacspec/hacspec.github.io
+        fi
+
+    - name: Regenerate and push the book
+      run: |
+        nix build hax#hax-book -o result-hax-book
+        cp --no-preserve=mode -r result-hax-book hax-book
+        mv book/.git hax-book/.git
+
+        cd hax-book
+
+        git add -A
+        if git commit -m "Book update"; then
+          git push https://$USERNAME:$PUSH_HACSPEC_GITHUB_TOKEN@github.com/hacspec/book
+        fi
+      env:
+        PUSH_HACSPEC_GITHUB_TOKEN: ${{secrets.PUSH_HACSPEC_GITHUB_TOKEN}}
+        USERNAME: github-actions[bot]
