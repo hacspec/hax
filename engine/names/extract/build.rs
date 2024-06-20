@@ -92,7 +92,7 @@ fn reader_to_str(s: String) -> String {
     const TAB: &str = "    ";
     let mut result = String::new();
     result += &format!(
-        "type name = \n{TAB}  {}\n",
+        "type t = \n{TAB}  {}[@@deriving show, yojson, compare, sexp, eq, hash]\n",
         def_ids
             .iter()
             .map(|(_, def_name)| format!("{def_name}"))
@@ -101,6 +101,8 @@ fn reader_to_str(s: String) -> String {
     );
 
     result += "\n";
+    result += "include (val Base.Comparator.make ~compare ~sexp_of_t)";
+    result += "\n";
     result += "module Values = struct\n";
     for (json, name) in &def_ids {
         result += &format!("{TAB}let parsed_{name} = Types.parse_def_id (Yojson.Safe.from_string {}{ESCAPE_KEY}|{}|{ESCAPE_KEY}{})\n", "{", json, "}");
@@ -108,7 +110,7 @@ fn reader_to_str(s: String) -> String {
     result += "end\n\n";
 
     result += &format!(
-        "let def_id_of: name -> Types.def_id = function\n{TAB}  {}\n\n",
+        "let def_id_of: t -> Types.def_id = function\n{TAB}  {}\n\n",
         def_ids
             .iter()
             .map(|(_, n)| format!("{n} -> Values.parsed_{n}"))
