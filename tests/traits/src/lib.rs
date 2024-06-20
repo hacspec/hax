@@ -163,3 +163,16 @@ mod implicit_dependencies_issue_667 {
         }
     }
 }
+
+// Related to issue 719
+mod interlaced_consts_types {
+    struct Bar<const FooConst: usize, FooType>([FooType; FooConst]);
+
+    trait Foo<const FooConst: usize, FooType> {
+        fn fun<const FunConst: usize, FunType>(x: [FooType; FooConst], y: [FunType; FunConst]);
+    }
+
+    impl<const FooConst: usize, FooType, SelfType> Foo<FooConst, FooType> for SelfType {
+        fn fun<const FunConst: usize, FunType>(x: [FooType; FooConst], y: [FunType; FunConst]) {}
+    }
+}

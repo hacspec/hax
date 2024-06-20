@@ -62,7 +62,7 @@ let impl__SafeIndex__new (i: usize) : Core.Option.t_Option t_SafeIndex =
   else Core.Option.Option_None <: Core.Option.t_Option t_SafeIndex
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_1 (#v_T: Type0) : Core.Ops.Index.t_Index (t_Array v_T (sz 10)) t_SafeIndex =
+let impl_1 (#v_T: Type0) : Core.Ops.Index.t_Index #(t_Array v_T (sz 10)) #t_SafeIndex =
   {
     f_Output = v_T;
     f_index_pre = (fun (self: t_Array v_T (sz 10)) (index: t_SafeIndex) -> true);
@@ -79,7 +79,7 @@ open FStar.Mul
 type t_Foo = | Foo : u8 -> t_Foo
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl: Core.Ops.Arith.t_Add t_Foo t_Foo =
+let impl: Core.Ops.Arith.t_Add #t_Foo #t_Foo =
   {
     f_Output = t_Foo;
     f_add_pre = (fun (self: t_Foo) (rhs: t_Foo) -> self._0 <. (255uy -! rhs._0 <: u8));
@@ -88,7 +88,7 @@ let impl: Core.Ops.Arith.t_Add t_Foo t_Foo =
   }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_1: Core.Ops.Arith.t_Mul t_Foo t_Foo =
+let impl_1: Core.Ops.Arith.t_Mul #t_Foo #t_Foo =
   {
     f_Output = t_Foo;
     f_mul_pre
@@ -131,7 +131,7 @@ let mutation_example
   (t_MyArray & t_Slice u8 & Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl: Core.Ops.Index.t_Index t_MyArray usize =
+let impl: Core.Ops.Index.t_Index #t_MyArray #usize =
   {
     f_Output = u8;
     f_index_pre = (fun (self: t_MyArray) (index: usize) -> index <. v_MAX);
