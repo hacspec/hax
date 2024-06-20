@@ -280,6 +280,7 @@ pub struct TranslationOptions {
         value_delimiter = ' ',
     )]
     #[arg(short, allow_hyphen_values(true))]
+    #[arg(env = "HAX_INCLUDE_NAMESPACES")]
     include_namespaces: Vec<InclusionClause>,
 }
 
@@ -351,6 +352,19 @@ pub enum ExporterCommand {
         /// Whether to include extra informations about `DefId`s.
         #[arg(short = 'E', long = "include-extra", default_value = "false")]
         include_extra: bool,
+    },
+
+    /// List the names of all items the selected crate(s) uses
+    ListNames {
+        /// Print as a string that can be passed to the `-i` flag of
+        /// `cargo hax into`.
+        #[arg(short = 'i', long = "as-include-ns-flag", default_value = "false")]
+        as_include_ns_flag: bool,
+
+        /// Include the names of the crate being extracted (by default
+        /// only external names are included)
+        #[arg(long = "include-self", default_value = "false")]
+        include_current_crate_names: bool,
     },
 }
 

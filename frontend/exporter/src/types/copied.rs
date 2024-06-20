@@ -5,18 +5,6 @@ use crate::rustc_middle::query::Key;
 #[cfg(feature = "full")]
 use rustc_middle::ty;
 
-impl std::hash::Hash for DefId {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let DefId {
-            krate,
-            path,
-            index: _, // intentionally discarding index
-        } = self;
-        krate.hash(state);
-        path.hash(state);
-    }
-}
-
 #[cfg(feature = "full")]
 impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
     fn sinto(&self, s: &S) -> DefId {

@@ -24,11 +24,28 @@ impl std::convert::From<&str> for NamespaceChunk {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct Namespace {
-    pub chunks: Vec<NamespaceChunk>,
+pub struct NamespacePattern {
+    chunks: Vec<NamespaceChunk>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub enum Namespace {
+    /// A pattern that matches `DefId`s
+    Pattern(NamespacePattern),
+    /// An exact `DefId`
+    Exact(crate::DefId),
 }
 
 impl std::convert::From<String> for Namespace {
+    fn from(s: String) -> Self {
+        if let Some(def_id) = crate::DefId::deserialize_compact(&s) {
+            Self::Exact(def_id)
+        } else {
+            Self::Pattern(s.into())
+        }
+    }
+}
+
+impl std::convert::From<String> for NamespacePattern {
     fn from(s: String) -> Self {
         Self {
             chunks: s
@@ -41,7 +58,7 @@ impl std::convert::From<String> for Namespace {
     }
 }
 
-impl Namespace {
+impl NamespacePattern {
     pub fn matches(&self, path: &Vec<String>) -> bool {
         fn aux(pattern: &[NamespaceChunk], path: &[String]) -> bool {
             match (pattern, path) {

@@ -245,11 +245,10 @@ pub(crate) fn raw_macro_invocation_of_span<'t, S: BaseState<'t>>(
             {
                 let macro_ident: DefId = mac_def_id.sinto(state);
                 let path = Path::from(macro_ident.clone());
-                if opts
-                    .inline_macro_calls
-                    .iter()
-                    .any(|pattern| pattern.matches(&path))
-                {
+                if opts.inline_macro_calls.iter().any(|pattern| match pattern {
+                    crate::options::Namespace::Pattern(pattern) => pattern.matches(&path),
+                    crate::options::Namespace::Exact(def_id) => def_id == &macro_ident,
+                }) {
                     Some((macro_ident, expn_data_ret))
                 } else {
                     None
