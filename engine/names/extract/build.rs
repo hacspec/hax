@@ -101,6 +101,8 @@ fn reader_to_str(s: String) -> String {
     );
 
     result += "\n";
+    result += "include (val Base.Comparator.make ~compare ~sexp_of_t)";
+    result += "\n";
     result += "module Values = struct\n";
     for (json, name) in &def_ids {
         result += &format!("{TAB}let parsed_{name} = Types.parse_def_id (Yojson.Safe.from_string {}{ESCAPE_KEY}|{}|{ESCAPE_KEY}{})\n", "{", json, "}");
