@@ -36,7 +36,7 @@ class t_Trait (v_Self: Type0) = { __marker_trait_t_Trait:Prims.unit }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl
-      (#v_P: Type0)
+      (v_P: Type0)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i0: Core.Ops.Function.t_FnMut v_P u8)
     : t_Trait v_P = { __marker_trait = () }
 '''
@@ -48,10 +48,10 @@ open FStar.Mul
 
 let minimized_1_ (list: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
     : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
-  Core.Iter.Traits.Iterator.f_collect #(Core.Iter.Adapters.Filter.t_Filter
+  Core.Iter.Traits.Iterator.f_collect (Core.Iter.Adapters.Filter.t_Filter
         (Core.Ops.Range.t_Range u8) (u8 -> bool))
-    #(Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
-    (Core.Iter.Traits.Iterator.f_filter #(Core.Ops.Range.t_Range u8)
+    (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
+    (Core.Iter.Traits.Iterator.f_filter (Core.Ops.Range.t_Range u8)
         ({ Core.Ops.Range.f_start = 0uy; Core.Ops.Range.f_end = 5uy } <: Core.Ops.Range.t_Range u8)
         (fun temp_0_ ->
             let _:u8 = temp_0_ in
@@ -63,9 +63,9 @@ let minimized_2_ (it: Core.Iter.Adapters.Filter.t_Filter (Core.Ops.Range.t_Range
     : Prims.unit =
   let (v__indices: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global):Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global
   =
-    Core.Iter.Traits.Iterator.f_collect #(Core.Iter.Adapters.Filter.t_Filter
+    Core.Iter.Traits.Iterator.f_collect (Core.Iter.Adapters.Filter.t_Filter
           (Core.Ops.Range.t_Range u8) (u8 -> bool))
-      #(Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
+      (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
       it
   in
   ()
@@ -73,18 +73,18 @@ let minimized_2_ (it: Core.Iter.Adapters.Filter.t_Filter (Core.Ops.Range.t_Range
 let original_function_from_495_ (list: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) : Prims.unit =
   let (v__indices: Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global):Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global
   =
-    Core.Iter.Traits.Iterator.f_collect #(Core.Iter.Adapters.Filter.t_Filter
+    Core.Iter.Traits.Iterator.f_collect (Core.Iter.Adapters.Filter.t_Filter
           (Core.Ops.Range.t_Range u8) (u8 -> bool))
-      #(Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
-      (Core.Iter.Traits.Iterator.f_filter #(Core.Ops.Range.t_Range u8)
+      (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global)
+      (Core.Iter.Traits.Iterator.f_filter (Core.Ops.Range.t_Range u8)
           ({ Core.Ops.Range.f_start = 0uy; Core.Ops.Range.f_end = 5uy } <: Core.Ops.Range.t_Range u8
           )
           (fun i ->
               let i:u8 = i in
               let _, out:(Core.Slice.Iter.t_Iter u8 & bool) =
-                Core.Iter.Traits.Iterator.f_any #(Core.Slice.Iter.t_Iter u8)
-                  (Core.Slice.impl__iter #u8
-                      (Core.Ops.Deref.f_deref #(Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) list
+                Core.Iter.Traits.Iterator.f_any (Core.Slice.Iter.t_Iter u8)
+                  (Core.Slice.impl__iter u8
+                      (Core.Ops.Deref.f_deref (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) list
                         <:
                         t_Slice u8)
                     <:
@@ -111,9 +111,9 @@ class t_Foo (v_Self: Type0) (v_T: Type0) = {
   f_to_t:x0: v_Self -> Prims.Pure v_T (f_to_t_pre x0) (fun result -> f_to_t_post x0 result)
 }
 
-let v__f (#v_X: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_X u8) (x: v_X)
+let v__f (v_X: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_X u8) (x: v_X)
     : Prims.unit =
-  let _:u8 = f_to_t #v_X #u8 x in
+  let _:u8 = f_to_t v_X u8 x in
   ()
 '''
 "Traits.Implicit_dependencies_issue_667_.Define_type.fst" = '''
@@ -170,7 +170,7 @@ let _ =
   ()
 
 let some_function (x: Traits.Implicit_dependencies_issue_667_.Define_type.t_MyType) : Prims.unit =
-  Traits.Implicit_dependencies_issue_667_.Trait_definition.f_my_method #Traits.Implicit_dependencies_issue_667_.Define_type.t_MyType
+  Traits.Implicit_dependencies_issue_667_.Trait_definition.f_my_method Traits.Implicit_dependencies_issue_667_.Define_type.t_MyType
     x
 '''
 "Traits.Unconstrainted_types_issue_677_.fst" = '''
@@ -185,8 +185,8 @@ class t_PolyOp (v_Self: Type0) = {
   f_op:x0: u32 -> x1: u32 -> Prims.Pure u32 (f_op_pre x0 x1) (fun result -> f_op_post x0 x1 result)
 }
 
-let twice (#v_OP: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_PolyOp v_OP) (x: u32)
-    : u32 = f_op #v_OP x x
+let twice (v_OP: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_PolyOp v_OP) (x: u32) : u32 =
+  f_op v_OP x x
 
 type t_Plus = | Plus : t_Plus
 
@@ -208,7 +208,7 @@ let impl_1: t_PolyOp t_Times =
     f_op = fun (x: u32) (y: u32) -> x *! y
   }
 
-let both (x: u32) : (u32 & u32) = twice #t_Plus x, twice #t_Times x <: (u32 & u32)
+let both (x: u32) : (u32 & u32) = twice t_Plus x, twice t_Times x <: (u32 & u32)
 '''
 "Traits.fst" = '''
 module Traits
@@ -222,8 +222,8 @@ class t_Bar (v_Self: Type0) = {
   f_bar:x0: v_Self -> Prims.Pure Prims.unit (f_bar_pre x0) (fun result -> f_bar_post x0 result)
 }
 
-let impl_2__method (#v_T: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Bar v_T) (x: v_T)
-    : Prims.unit = f_bar #v_T x
+let impl_2__method (v_T: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Bar v_T) (x: v_T)
+    : Prims.unit = f_bar v_T x
 
 type t_Error = | Error_Fail : t_Error
 
@@ -281,35 +281,34 @@ class t_Foo (v_Self: Type0) = {
 }
 
 let closure_impl_expr
-      (#v_I: Type0)
+      (v_I: Type0)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Iter.Traits.Iterator.t_Iterator v_I)
       (it: v_I)
     : Alloc.Vec.t_Vec Prims.unit Alloc.Alloc.t_Global =
-  Core.Iter.Traits.Iterator.f_collect #(Core.Iter.Adapters.Map.t_Map v_I (Prims.unit -> Prims.unit))
-    #(Alloc.Vec.t_Vec Prims.unit Alloc.Alloc.t_Global)
-    (Core.Iter.Traits.Iterator.f_map #v_I #Prims.unit it (fun x -> x)
+  Core.Iter.Traits.Iterator.f_collect (Core.Iter.Adapters.Map.t_Map v_I (Prims.unit -> Prims.unit))
+    (Alloc.Vec.t_Vec Prims.unit Alloc.Alloc.t_Global)
+    (Core.Iter.Traits.Iterator.f_map v_I Prims.unit it (fun x -> x)
       <:
       Core.Iter.Adapters.Map.t_Map v_I (Prims.unit -> Prims.unit))
 
 let closure_impl_expr_fngen
-      (#v_I #v_F: Type0)
+      (v_I v_F: Type0)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i2: Core.Iter.Traits.Iterator.t_Iterator v_I)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i3: Core.Ops.Function.t_FnMut v_F Prims.unit)
       (it: v_I)
       (f: v_F)
     : Alloc.Vec.t_Vec Prims.unit Alloc.Alloc.t_Global =
-  Core.Iter.Traits.Iterator.f_collect #(Core.Iter.Adapters.Map.t_Map v_I v_F)
-    #(Alloc.Vec.t_Vec Prims.unit Alloc.Alloc.t_Global)
-    (Core.Iter.Traits.Iterator.f_map #v_I #Prims.unit #v_F it f
-      <:
-      Core.Iter.Adapters.Map.t_Map v_I v_F)
+  Core.Iter.Traits.Iterator.f_collect (Core.Iter.Adapters.Map.t_Map v_I v_F)
+    (Alloc.Vec.t_Vec Prims.unit Alloc.Alloc.t_Global)
+    (Core.Iter.Traits.Iterator.f_map v_I Prims.unit v_F it f <: Core.Iter.Adapters.Map.t_Map v_I v_F
+    )
 
-let f (#v_T: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_T) (x: v_T) : Prims.unit =
-  let _:Prims.unit = f_assoc_f #v_T () in
-  f_method_f #v_T x
+let f (v_T: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_T) (x: v_T) : Prims.unit =
+  let _:Prims.unit = f_assoc_f v_T () in
+  f_method_f v_T x
 
-let g (#v_T: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_T) (x: i1.f_AssocType)
-    : u32 = f_function_of_super_trait #i1.f_AssocType x
+let g (v_T: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_T) (x: i1.f_AssocType)
+    : u32 = f_function_of_super_trait i1.f_AssocType x
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_Foo_for_tuple_: t_Foo Prims.unit =
@@ -322,7 +321,7 @@ let impl_Foo_for_tuple_: t_Foo Prims.unit =
     f_assoc_f = (fun (_: Prims.unit) -> () <: Prims.unit);
     f_method_f_pre = (fun (self: Prims.unit) -> true);
     f_method_f_post = (fun (self: Prims.unit) (out: Prims.unit) -> true);
-    f_method_f = (fun (self: Prims.unit) -> f_assoc_f #Prims.unit ());
+    f_method_f = (fun (self: Prims.unit) -> f_assoc_f Prims.unit ());
     f_assoc_type_pre = (fun (_: i32) -> true);
     f_assoc_type_post = (fun (_: i32) (out: Prims.unit) -> true);
     f_assoc_type = fun (_: i32) -> ()

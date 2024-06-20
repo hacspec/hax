@@ -458,7 +458,7 @@ struct
           |> List.map ~f:(function
                | GConst const -> (pexpr const, F.AST.Nothing)
                | GLifetime _ -> .
-               | GType ty -> (pty e.span ty, F.AST.Hash))
+               | GType ty -> (pty e.span ty, F.AST.Nothing))
         in
         let args = List.map ~f:(pexpr &&& Fn.const F.AST.Nothing) args in
         F.mk_app (pexpr f) (generic_args @ args)
@@ -626,7 +626,7 @@ struct
     type kind = Implicit | Tcresolve | Explicit
     type t = { kind : kind; ident : F.Ident.ident; typ : F.AST.term }
 
-    let of_generic_param ?(kind : kind = Implicit) span (p : generic_param) : t
+    let of_generic_param ?(kind : kind = Explicit) span (p : generic_param) : t
         =
       let ident = plocal_ident p.ident in
       match p.kind with
@@ -641,8 +641,8 @@ struct
           let typ = c_trait_goal span goal in
           { kind = Tcresolve; ident = F.id name; typ }
 
-    let of_generics ?(kind : kind = Implicit) span generics : t list =
-      List.map ~f:(of_generic_param ~kind span) generics.params
+    let of_generics ?(kind : kind = Explicit) span generics : t list =
+      List.map ~f:(of_generic_param ~kind:Explicit span) generics.params
       @ List.mapi ~f:(of_generic_constraint span) generics.constraints
 
     let of_typ span (nth : int) typ : t =
@@ -1166,7 +1166,7 @@ struct
             ~f:(fun i ->
               let name = U.Concrete_ident_view.to_definition_name i.ti_ident in
               let generics =
-                FStarBinder.of_generics ~kind:Implicit i.ti_span i.ti_generics
+                FStarBinder.of_generics ~kind:Explicit i.ti_span i.ti_generics
               in
               let bds = generics |> List.map ~f:FStarBinder.to_binder in
               let fields =

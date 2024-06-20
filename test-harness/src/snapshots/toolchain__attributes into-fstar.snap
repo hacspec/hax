@@ -62,7 +62,7 @@ let impl__SafeIndex__new (i: usize) : Core.Option.t_Option t_SafeIndex =
   else Core.Option.Option_None <: Core.Option.t_Option t_SafeIndex
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_1 (#v_T: Type0) : Core.Ops.Index.t_Index (t_Array v_T (sz 10)) t_SafeIndex =
+let impl_1 (v_T: Type0) : Core.Ops.Index.t_Index (t_Array v_T (sz 10)) t_SafeIndex =
   {
     f_Output = v_T;
     f_index_pre = (fun (self: t_Array v_T (sz 10)) (index: t_SafeIndex) -> true);
@@ -172,8 +172,8 @@ let t_NoE =
   x:
   Alloc.String.t_String
     { let _, out:(Core.Str.Iter.t_Chars & bool) =
-        Core.Iter.Traits.Iterator.f_any #Core.Str.Iter.t_Chars
-          (Core.Str.impl__str__chars (Core.Ops.Deref.f_deref #Alloc.String.t_String x <: string)
+        Core.Iter.Traits.Iterator.f_any Core.Str.Iter.t_Chars
+          (Core.Str.impl__str__chars (Core.Ops.Deref.f_deref Alloc.String.t_String x <: string)
             <:
             Core.Str.Iter.t_Chars)
           (fun ch ->
@@ -183,8 +183,7 @@ let t_NoE =
       ~.out }
 
 let bounded_u8 (x: t_BoundedU8 12uy 15uy) (y: t_BoundedU8 10uy 11uy) : t_BoundedU8 1uy 23uy =
-  (Hax_lib.f_get #(t_BoundedU8 12uy 15uy) x <: u8) +!
-  (Hax_lib.f_get #(t_BoundedU8 10uy 11uy) y <: u8)
+  (Hax_lib.f_get (t_BoundedU8 12uy 15uy) x <: u8) +! (Hax_lib.f_get (t_BoundedU8 10uy 11uy) y <: u8)
   <:
   t_BoundedU8 1uy 23uy
 

@@ -43,8 +43,8 @@ let debug (label value: u32) : Prims.unit =
             t_Slice string)
           (Rust_primitives.unsize (let list =
                   [
-                    Core.Fmt.Rt.impl_1__new_display #u32 label <: Core.Fmt.Rt.t_Argument;
-                    Core.Fmt.Rt.impl_1__new_display #u32 value <: Core.Fmt.Rt.t_Argument
+                    Core.Fmt.Rt.impl_1__new_display u32 label <: Core.Fmt.Rt.t_Argument;
+                    Core.Fmt.Rt.impl_1__new_display u32 value <: Core.Fmt.Rt.t_Argument
                   ]
                 in
                 FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 2);
@@ -128,7 +128,7 @@ let impl_T3_e_e_for_a_for_Foo: t_T3_e_for_a t_Foo = { __marker_trait = () }
 let v_INHERENT_CONSTANT: usize = sz 3
 
 let constants
-      (#v_T: Type0)
+      (v_T: Type0)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_FooTrait v_T)
       (_: Prims.unit)
     : usize = f_ASSOCIATED_CONSTANT +! v_INHERENT_CONSTANT
