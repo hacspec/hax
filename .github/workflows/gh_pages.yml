@@ -19,7 +19,7 @@ jobs:
 
   # deploys the result of `build`
   # this job is a copy paste from <https://github.com/actions/deploy-pages>
-  deploy:
+  deploy-documentation:
     # Add a dependency to the build job
     needs: build-documentation
 
@@ -40,7 +40,9 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v2 # or the latest "vX.X.X" version tag for this action
 
-  push_readme:
+  # Builds and deploy "external" GH pages: pushes to the repos
+  # `hacspec/hacspec.github.io` and `hacspec/book`
+  build-and-deploy-external-gh-pages:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
