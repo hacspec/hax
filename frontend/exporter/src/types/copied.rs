@@ -188,21 +188,19 @@ pub struct Scope {
     pub data: ScopeData,
 }
 
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr>
-    for rustc_middle::mir::ConstantKind<'tcx>
-{
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::mir::Const<'tcx> {
     fn sinto(&self, s: &S) -> ConstantExpr {
-        use rustc_middle::mir::ConstantKind;
+        use rustc_middle::mir::Const;
         let tcx = s.base().tcx;
         match self {
-            ConstantKind::Val(const_value, ty) => const_value_to_constant_expr(
+            Const::Val(const_value, ty) => const_value_to_constant_expr(
                 s,
                 ty.clone(),
                 const_value.clone(),
-                self.default_span(tcx),
+                rustc_span::DUMMY_SP,
             ),
-            ConstantKind::Ty(c) => c.sinto(s),
-            ConstantKind::Unevaluated(ucv, ty) => match self.translate_uneval(s, ucv.shrink()) {
+            Const::Ty(c) => c.sinto(s),
+            Const::Unevaluated(ucv, ty) => match self.translate_uneval(s, ucv.shrink()) {
                 TranslateUnevalRes::EvaluatedConstant(c) => c.sinto(s),
                 TranslateUnevalRes::GlobalName(c) => {
                     let span = tcx
@@ -339,7 +337,7 @@ pub struct BoundTy {
 )]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::BoundRegionKind, state: S as gstate)]
 pub enum BoundRegionKind {
-    BrAnon(Option<Span>),
+    BrAnon,
     BrNamed(DefId, Symbol),
     BrEnv,
 }
@@ -556,23 +554,23 @@ pub struct VariantDef {
     pub span: Span,
 }
 
-/// Reflects [`rustc_middle::ty::EarlyBoundRegion`]
+/// Reflects [`rustc_middle::ty::EarlyParamRegion`]
 #[derive(
     AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::EarlyBoundRegion, state: S as gstate)]
-pub struct EarlyBoundRegion {
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::EarlyParamRegion, state: S as gstate)]
+pub struct EarlyParamRegion {
     pub def_id: DefId,
     pub index: u32,
     pub name: Symbol,
 }
 
-/// Reflects [`rustc_middle::ty::FreeRegion`]
+/// Reflects [`rustc_middle::ty::LateParamRegion`]
 #[derive(
     AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::FreeRegion, state: S as gstate)]
-pub struct FreeRegion {
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::LateParamRegion, state: S as gstate)]
+pub struct LateParamRegion {
     pub scope: DefId,
     pub bound_region: BoundRegionKind,
 }
@@ -583,9 +581,9 @@ pub struct FreeRegion {
 )]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::RegionKind<'tcx>, state: S as gstate)]
 pub enum RegionKind {
-    ReEarlyBound(EarlyBoundRegion),
-    ReLateBound(DebruijnIndex, BoundRegion),
-    ReFree(FreeRegion),
+    ReEarlyParam(EarlyParamRegion),
+    ReBound(DebruijnIndex, BoundRegion),
+    ReLateParam(LateParamRegion),
     ReStatic,
     ReVar(RegionVid),
     RePlaceholder(PlaceholderRegion),
@@ -770,9 +768,7 @@ pub struct ExpnData {
     pub edition: Edition,
     pub macro_def_id: Option<DefId>,
     pub parent_module: Option<DefId>,
-    pub allow_internal_unsafe: bool,
     pub local_inner_macros: bool,
-    pub collapse_debuginfo: bool,
 }
 
 /// Reflects [`rustc_span::Span`]
@@ -913,7 +909,6 @@ pub enum FileName {
     Anon(u64),
     MacroExpansion(u64),
     ProcMacroSourceCode(u64),
-    CfgSpec(u64),
     CliCrateAttr(u64),
     Custom(String),
     // #[map(FileName::DocTest(x.0.to_str().unwrap().into()))]
@@ -1210,7 +1205,11 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                                 supposely_unreachable_fatal!(s[span], "PhantomDataNotAdt"; {kind, ty})
                             };
                             let adt_def = AdtExpr {
-                                info: get_variant_information(def, rustc_abi::FIRST_VARIANT, s),
+                                info: get_variant_information(
+                                    def,
+                                    rustc_target::abi::FIRST_VARIANT,
+                                    s,
+                                ),
                                 user_ty: None,
                                 base: None,
                                 fields: vec![],
@@ -1496,7 +1495,7 @@ pub struct TyGenerics {
 }
 
 /// This type merges the information from
-/// `rustc_type_ir::sty::AliasKind` and `rustc_middle::ty::AliasTy`
+/// `rustc_type_ir::AliasKind` and `rustc_middle::ty::AliasTy`
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
@@ -1530,10 +1529,10 @@ impl Alias {
     #[tracing::instrument(level = "trace", skip(s))]
     fn from<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         s: &S,
-        alias_kind: &rustc_type_ir::sty::AliasKind,
+        alias_kind: &rustc_type_ir::AliasKind,
         alias_ty: &rustc_middle::ty::AliasTy<'tcx>,
     ) -> Self {
-        use rustc_type_ir::sty::AliasKind as RustAliasKind;
+        use rustc_type_ir::AliasKind as RustAliasKind;
         let kind = match alias_kind {
             RustAliasKind::Projection => {
                 use rustc_middle::ty::{Binder, EarlyBinder, TypeVisitableExt};
@@ -1548,12 +1547,12 @@ impl Alias {
                     let trait_ref_and_generics = alias_ty.trait_ref_and_own_args(tcx);
                     let rebased_generics =
                         alias_ty.rebase_inherent_args_onto_impl(alias_ty.args, tcx);
-                    let norm_rebased_generics = tcx.try_subst_and_normalize_erasing_regions(
+                    let norm_rebased_generics = tcx.try_instantiate_and_normalize_erasing_regions(
                         rebased_generics,
                         s.param_env(),
                         EarlyBinder::bind(trait_ref),
                     );
-                    let norm_generics = tcx.try_subst_and_normalize_erasing_regions(
+                    let norm_generics = tcx.try_instantiate_and_normalize_erasing_regions(
                         alias_ty.args,
                         s.param_env(),
                         EarlyBinder::bind(trait_ref),
@@ -1647,7 +1646,7 @@ pub enum Ty {
     RawPtr(TypeAndMut),
     Ref(Region, Box<Ty>, Mutability),
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
-    Generator(DefId, Vec<GenericArg>, Movability),
+    Coroutine(DefId, Vec<GenericArg>, Movability),
     Never,
     Tuple(Vec<Ty>),
     #[custom_arm(
@@ -1732,9 +1731,19 @@ pub enum RangeEnd {
 #[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::PatRange<'tcx>, state: S as state)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct PatRange {
-    pub lo: ConstantExpr,
-    pub hi: ConstantExpr,
+    pub lo: PatRangeBoundary,
+    pub hi: PatRangeBoundary,
     pub end: RangeEnd,
+}
+
+/// Reflects [`rustc_middle::thir::PatRangeBoundary`]
+#[derive(AdtInto)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> + HasThir<'tcx>>, from: rustc_middle::thir::PatRangeBoundary<'tcx>, state: S as state)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub enum PatRangeBoundary {
+    Finite(ConstantExpr),
+    NegInfinity,
+    PosInfinity,
 }
 
 /// Reflects [`rustc_middle::ty::AdtKind`]
@@ -1873,6 +1882,10 @@ pub enum PatKind {
     Constant {
         value: ConstantExpr,
     },
+    InlineConstant {
+        def: DefId,
+        subpattern: Pat,
+    },
     Range(PatRange),
     Slice {
         prefix: Vec<Pat>,
@@ -1887,6 +1900,7 @@ pub enum PatKind {
     Or {
         pats: Vec<Pat>,
     },
+    Error(ErrorGuaranteed),
 }
 
 /// Reflects [`rustc_middle::thir::Guard`]
@@ -1945,7 +1959,7 @@ pub enum PointerCoercion {
 )]
 pub enum BorrowKind {
     Shared,
-    Shallow,
+    Fake,
     Mut { kind: MutBorrowKind },
 }
 
@@ -2531,7 +2545,7 @@ pub struct FnSig {
 
 /// Reflects [`rustc_hir::FnHeader`]
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<S>, from: rustc_hir::FnHeader, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::FnHeader, state: S as tcx)]
 pub struct FnHeader {
     pub unsafety: Unsafety,
     pub constness: Constness,
@@ -2818,10 +2832,10 @@ pub struct Impl<Body: IsBody> {
 
 /// Reflects [`rustc_hir::IsAsync`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::IsAsync, state: S as _s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::IsAsync, state: S as _s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum IsAsync {
-    Async,
+    Async(Span),
     NotAsync,
 }
 

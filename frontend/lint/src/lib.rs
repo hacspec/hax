@@ -554,7 +554,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
                 }
 
                 // async functions
-                if header.asyncness == IsAsync::Async {
+                if let IsAsync::Async(_) = header.asyncness {
                     error::no_async_await(self.session, span);
                 }
 
@@ -617,7 +617,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
                 }
 
                 // async functions
-                if sig.header.asyncness == IsAsync::Async {
+                if let IsAsync::Async(_) = sig.header.asyncness {
                     error::no_async_await(self.session, span);
                 }
 

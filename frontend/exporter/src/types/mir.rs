@@ -21,7 +21,6 @@ pub struct SourceInfo {
 pub struct LocalDecl {
     pub mutability: Mutability,
     pub local_info: ClearCrossCrate<LocalInfo>,
-    pub internal: bool,
     pub ty: Ty,
     pub user_ty: Option<UserTypeProjections>,
     pub source_info: SourceInfo,
@@ -109,11 +108,11 @@ pub mod mir_kinds {
 pub use mir_kinds::IsMirKind;
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::Constant<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::ConstOperand<'tcx>, state: S as s)]
 pub struct Constant {
     pub span: Span,
     pub user_ty: Option<UserTypeAnnotationIndex>,
-    pub literal: TypedConstantKind,
+    pub const_: TypedConstantKind,
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -125,7 +124,7 @@ pub struct MirBody<KIND> {
     pub pass_count: usize,
     pub source: MirSource,
     pub source_scopes: IndexVec<SourceScope, SourceScopeData>,
-    pub generator: Option<GeneratorInfo>,
+    pub coroutine: Option<CoroutineInfo>,
     #[map({
         let mut local_decls: rustc_index::IndexVec<rustc_middle::mir::Local, LocalDecl> = x.iter().map(|local_decl| {
             local_decl.sinto(s)
@@ -195,7 +194,7 @@ impl Operand {
     pub(crate) fn ty(&self) -> &Ty {
         match self {
             Operand::Copy(p) | Operand::Move(p) => &p.ty,
-            Operand::Constant(c) => &c.literal.typ,
+            Operand::Constant(c) => &c.const_.typ,
         }
     }
 }
@@ -329,14 +328,14 @@ fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
     use std::ops::Deref;
     // Match on the func operand: it should be a constant as we don't support
     // closures for now.
-    use rustc_middle::mir::{ConstantKind, Operand};
+    use rustc_middle::mir::{Const, Operand};
     use rustc_middle::ty::TyKind;
     match func {
         Operand::Constant(c) => {
             // Regular function case
             let c = c.deref();
-            let (def_id, generics) = match &c.literal {
-                ConstantKind::Ty(c) => {
+            let (def_id, generics) = match &c.const_ {
+                Const::Ty(c) => {
                     // The type of the constant should be a FnDef, allowing
                     // us to retrieve the function's identifier and instantiation.
                     let c_ty = c.ty();
@@ -348,7 +347,7 @@ fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
                         }
                     }
                 }
-                ConstantKind::Val(_, c_ty) => {
+                Const::Val(_, c_ty) => {
                     // Same as for the `Ty` case above
                     assert!(c_ty.is_fn());
                     match c_ty.kind() {
@@ -358,7 +357,7 @@ fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
                         }
                     }
                 }
-                ConstantKind::Unevaluated(_, _) => {
+                Const::Unevaluated(_, _) => {
                     unimplemented!();
                 }
             };
@@ -570,7 +569,7 @@ pub enum TerminatorKind {
         resume_arg: Place,
         drop: Option<BasicBlock>,
     },
-    GeneratorDrop,
+    CoroutineDrop,
     FalseEdge {
         real_target: BasicBlock,
         imaginary_target: BasicBlock,
@@ -683,29 +682,30 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
             let cur_ty = current_ty.clone();
             let cur_kind = current_kind.clone();
             use rustc_middle::ty::TyKind;
-            let mk_field = |index: &rustc_abi::FieldIdx,
-                            variant_idx: Option<rustc_abi::VariantIdx>| {
-                ProjectionElem::Field(match cur_ty.kind() {
-                    TyKind::Adt(adt_def, _) => {
-                        assert!(
-                            (adt_def.is_struct() && variant_idx.is_none())
-                                || (adt_def.is_enum() && variant_idx.is_some())
-                        );
-                        ProjectionElemFieldKind::Adt {
-                            typ: adt_def.did().sinto(s),
-                            variant: variant_idx.map(|id| id.sinto(s)),
-                            index: index.sinto(s),
+            let mk_field =
+                |index: &rustc_target::abi::FieldIdx,
+                 variant_idx: Option<rustc_target::abi::VariantIdx>| {
+                    ProjectionElem::Field(match cur_ty.kind() {
+                        TyKind::Adt(adt_def, _) => {
+                            assert!(
+                                (adt_def.is_struct() && variant_idx.is_none())
+                                    || (adt_def.is_enum() && variant_idx.is_some())
+                            );
+                            ProjectionElemFieldKind::Adt {
+                                typ: adt_def.did().sinto(s),
+                                variant: variant_idx.map(|id| id.sinto(s)),
+                                index: index.sinto(s),
+                            }
                         }
-                    }
-                    TyKind::Tuple(_types) => ProjectionElemFieldKind::Tuple(index.sinto(s)),
-                    ty_kind => {
-                        supposely_unreachable_fatal!(
-                            s, "ProjectionElemFieldBadType";
-                            {index, ty_kind, variant_idx, &cur_ty, &cur_kind}
-                        );
-                    }
-                })
-            };
+                        TyKind::Tuple(_types) => ProjectionElemFieldKind::Tuple(index.sinto(s)),
+                        ty_kind => {
+                            supposely_unreachable_fatal!(
+                                s, "ProjectionElemFieldBadType";
+                                {index, ty_kind, variant_idx, &cur_ty, &cur_kind}
+                            );
+                        }
+                    })
+                };
             let elem_kind: ProjectionElem = match elems {
                 [Downcast(_, variant_idx), Field(index, ty), rest @ ..] => {
                     elems = rest;
@@ -789,6 +789,9 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                             current_ty = ty.clone();
                             ProjectionElem::OpaqueCast
                         }
+                        // This is used for casts to a subtype, e.g. between `for<‘a> fn(&’a ())`
+                        // and `fn(‘static ())` (according to @compiler-errors on Zulip).
+                        Subtype { .. } => panic!("unexpected Subtype"),
                         Downcast { .. } => panic!("unexpected Downcast"),
                     }
                 }
@@ -896,7 +899,7 @@ pub enum AggregateKind {
         AggregateKind::Closure(def_id, parent_generics.sinto(s), trait_refs, sig)
     })]
     Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, MirPolyFnSig),
-    Generator(DefId, Vec<GenericArg>, Movability),
+    Coroutine(DefId, Vec<GenericArg>, Movability),
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -920,7 +923,7 @@ pub enum CastKind {
 pub enum NullOp {
     SizeOf,
     AlignOf,
-    OffsetOf(Vec<FieldIdx>),
+    OffsetOf(Vec<(usize, FieldIdx)>),
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -964,7 +967,7 @@ make_idx_wrapper!(rustc_middle::mir, BasicBlock);
 make_idx_wrapper!(rustc_middle::mir, SourceScope);
 make_idx_wrapper!(rustc_middle::mir, Local);
 make_idx_wrapper!(rustc_middle::ty, UserTypeAnnotationIndex);
-make_idx_wrapper!(rustc_abi, FieldIdx);
+make_idx_wrapper!(rustc_target::abi, FieldIdx);
 
 sinto_todo!(rustc_middle::ty, InstanceDef<'tcx>);
 sinto_todo!(rustc_middle::mir, UserTypeProjections);
@@ -980,7 +983,7 @@ sinto_todo!(rustc_middle::mir, Coverage);
 sinto_todo!(rustc_middle::mir, NonDivergingIntrinsic<'tcx>);
 sinto_todo!(rustc_middle::mir, UserTypeProjection);
 sinto_todo!(rustc_middle::mir, MirSource<'tcx>);
-sinto_todo!(rustc_middle::mir, GeneratorInfo<'tcx>);
+sinto_todo!(rustc_middle::mir, CoroutineInfo<'tcx>);
 sinto_todo!(rustc_middle::mir, VarDebugInfo<'tcx>);
 sinto_todo!(rustc_middle::mir, CallSource);
 sinto_todo!(rustc_span, ErrorGuaranteed);

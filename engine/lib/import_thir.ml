@@ -79,7 +79,7 @@ let c_mutability (witness : 'a) : bool -> 'a Ast.mutability = function
 
 let c_borrow_kind span : Thir.borrow_kind -> borrow_kind = function
   | Shared -> Shared
-  | Shallow -> unimplemented [ span ] "Shallow borrows"
+  | Fake -> unimplemented [ span ] "Shallow borrows"
   | Mut _ -> Mut W.mutable_reference
 
 let c_binding_mode span : Thir.binding_mode -> binding_mode = function
@@ -839,10 +839,12 @@ end) : EXPR = struct
                   ("expected a pattern, got " ^ [%show: expr'] e)
           in
           (c_constant_expr value |> pat_of_expr).p
+      | InlineConstant { subpattern; _ } -> (c_pat subpattern).p
       | Array _ -> unimplemented [ pat.span ] "Pat:Array"
       | Or { pats } -> POr { subpats = List.map ~f:c_pat pats }
       | Slice _ -> unimplemented [ pat.span ] "pat Slice"
       | Range _ -> unimplemented [ pat.span ] "pat Range"
+      | Error _ -> unimplemented [ pat.span ] "pat Error"
     in
     { p = v; span; typ }
 
@@ -957,7 +959,7 @@ end) : EXPR = struct
         TParam { name; id = Local_ident.mk_id Typ (MyInt64.to_int_exn index) }
     | Error -> unimplemented [ span ] "type Error"
     | Dynamic _ -> unimplemented [ span ] "type Dynamic"
-    | Generator _ -> unimplemented [ span ] "type Generator"
+    | Coroutine _ -> unimplemented [ span ] "type Coroutine"
     | Placeholder _ -> unimplemented [ span ] "type Placeholder"
     | Bound _ -> unimplemented [ span ] "type Bound"
     | Infer _ -> unimplemented [ span ] "type Infer"

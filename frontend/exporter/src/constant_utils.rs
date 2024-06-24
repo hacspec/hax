@@ -95,7 +95,7 @@ pub struct ConstantFieldExpr {
 }
 
 /// Rustc has different representation for constants: one for MIR
-/// ([`rustc_middle::mir::ConstantKind`]), one for the type system
+/// ([`rustc_middle::mir::Const`]), one for the type system
 /// ([`rustc_middle::ty::ConstKind`]). For simplicity hax maps those
 /// two construct to one same `ConstantExpr` type.
 pub type ConstantExpr = Decorated<ConstantExprKind>;
@@ -271,7 +271,7 @@ pub(crate) fn scalar_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
                 && variant_def.fields.is_empty() =>
         {
             ConstantExprKind::Adt {
-                info: get_variant_information(def, rustc_abi::FIRST_VARIANT, s),
+                info: get_variant_information(def, rustc_target::abi::FIRST_VARIANT, s),
                 fields: vec![],
             }
         }
@@ -394,10 +394,10 @@ impl<'tcx> ConstantExt<'tcx> for ty::Const<'tcx> {
         (&evaluated != self).then_some(evaluated)
     }
 }
-impl<'tcx> ConstantExt<'tcx> for mir::ConstantKind<'tcx> {
+impl<'tcx> ConstantExt<'tcx> for mir::Const<'tcx> {
     fn eval_constant<S: UnderOwnerState<'tcx>>(&self, s: &S) -> Option<Self> {
         let evaluated = self.eval(s.base().tcx, s.param_env(), None).ok()?;
-        let evaluated = mir::ConstantKind::Val(evaluated, self.ty());
+        let evaluated = mir::Const::Val(evaluated, self.ty());
         (&evaluated != self).then_some(evaluated)
     }
 }
@@ -495,13 +495,13 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
 pub(crate) fn const_value_reference_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     ty: rustc_middle::ty::Ty<'tcx>,
-    val: rustc_middle::mir::interpret::ConstValue<'tcx>,
+    val: rustc_middle::mir::ConstValue<'tcx>,
     span: rustc_span::Span,
 ) -> ConstantExpr {
     let tcx = s.base().tcx;
 
     let dc = tcx
-        .try_destructure_mir_constant_for_diagnostics((val, ty))
+        .try_destructure_mir_constant_for_user_output(val, ty)
         .s_unwrap(s);
 
     // Iterate over the fields, which should be values
@@ -517,7 +517,7 @@ pub(crate) fn const_value_reference_to_constant_expr<'tcx, S: UnderOwnerState<'t
     };
 
     // Below: we are mutually recursive with [const_value_to_constant_expr],
-    // which takes a [ConstantKind] as input, but it should be
+    // which takes a [Const] as input, but it should be
     // ok because we call it on a strictly smaller value.
     let fields: Vec<ConstantExpr> = dc
         .fields
@@ -531,16 +531,15 @@ pub(crate) fn const_value_reference_to_constant_expr<'tcx, S: UnderOwnerState<'t
 pub fn const_value_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     ty: rustc_middle::ty::Ty<'tcx>,
-    val: rustc_middle::mir::interpret::ConstValue<'tcx>,
+    val: rustc_middle::mir::ConstValue<'tcx>,
     span: rustc_span::Span,
 ) -> ConstantExpr {
-    use rustc_middle::mir::interpret::ConstValue;
+    use rustc_middle::mir::ConstValue;
     match val {
         ConstValue::Scalar(scalar) => scalar_to_constant_expr(s, ty, &scalar, span),
         ConstValue::Indirect { .. } => const_value_reference_to_constant_expr(s, ty, val, span),
-        ConstValue::Slice { data, start, end } => {
-            let start = start.try_into().unwrap();
-            let end = end.try_into().unwrap();
+        ConstValue::Slice { data, meta } => {
+            let end = meta.try_into().unwrap();
             // This is outside of the interpreter, so we are okay to use
             // `inspect_with_uninit_and_ptr_outside_interpreter`. Moreover this is a string/byte
             // literal, so we don't have to care about initialization.
@@ -548,7 +547,7 @@ pub fn const_value_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
             // only in a more recent rustc version.
             let slice: &[u8] = data
                 .inner()
-                .inspect_with_uninit_and_ptr_outside_interpreter(start..end);
+                .inspect_with_uninit_and_ptr_outside_interpreter(0..end);
             ConstantExprKind::Literal(ConstantLiteral::byte_str(slice.to_vec(), StrStyle::Cooked))
                 .decorate(ty.sinto(s), span.sinto(s))
         }

@@ -77,7 +77,7 @@ pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
             // variables.
             // Remark: there is also EarlyBinder::subst(...)
             let value = rustc_middle::ty::EarlyBinder::bind(pred_kind.skip_binder());
-            tcx.subst_and_normalize_erasing_regions(generics, param_env, value)
+            tcx.instantiate_and_normalize_erasing_regions(generics, param_env, value)
         };
 
         // Explore only the trait predicates
