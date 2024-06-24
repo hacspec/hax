@@ -65,7 +65,7 @@ syn = { version = "1.0.107", features = [
 ] }
 tracing = { version = "0.1", features = [
      "max_level_trace",
-     "release_max_level_warn",
+     "release_max_level_trace",
 ] }
 tracing-subscriber = { version = "0.3", features = [
      "env-filter",

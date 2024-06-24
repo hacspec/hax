@@ -872,9 +872,9 @@ impl<'s, S: UnderOwnerState<'s>, T: SInto<S, U>, U> SInto<S, Spanned<U>>
     }
 }
 
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, String> for PathBuf {
-    fn sinto(&self, _: &S) -> String {
-        self.as_path().display().to_string()
+impl<'tcx, S> SInto<S, PathBuf> for PathBuf {
+    fn sinto(&self, _: &S) -> PathBuf {
+        self.clone()
     }
 }
 
@@ -884,14 +884,10 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, String> for PathBuf {
 )]
 #[args(<S>, from: rustc_span::RealFileName, state: S as _s)]
 pub enum RealFileName {
-    LocalPath(#[map(x.to_str().unwrap().into())] String),
-    #[map(RealFileName::Remapped {
-            local_path: local_path.as_ref().map(|path| path.to_str().unwrap().into()),
-            virtual_name: virtual_name.to_str().unwrap().into()
-        })]
+    LocalPath(PathBuf),
     Remapped {
-        local_path: Option<String>,
-        virtual_name: String,
+        local_path: Option<PathBuf>,
+        virtual_name: PathBuf,
     },
 }
 
@@ -1152,11 +1148,17 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
             Some(contents) => contents,
             None => match kind {
                 // Introduce intermediate `Cast` from `T` to `U` when casting from a `#[repr(T)]` enum to `U`
-                rustc_middle::thir::ExprKind::Cast { source } if let rustc_middle::ty::TyKind::Adt(def, _) = s.thir().exprs[source].ty.kind() => {
+                rustc_middle::thir::ExprKind::Cast { source }
+                    if let rustc_middle::ty::TyKind::Adt(def, _) =
+                        s.thir().exprs[source].ty.kind() =>
+                {
                     let tcx = s.base().tcx;
                     let contents = kind.sinto(s);
                     use crate::rustc_middle::ty::util::IntTypeExt;
-                    let repr_type = tcx.repr_options_of_def(def.did()).discr_type().to_ty(s.base().tcx);
+                    let repr_type = tcx
+                        .repr_options_of_def(def.did())
+                        .discr_type()
+                        .to_ty(s.base().tcx);
                     if repr_type == ty {
                         contents
                     } else {
@@ -1167,7 +1169,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                                 contents: Box::new(contents),
                                 hir_id,
                                 attributes: vec![],
-                            }
+                            },
                         }
                     }
                 }
@@ -1524,6 +1526,7 @@ pub enum AliasKind {
 }
 
 impl Alias {
+    #[tracing::instrument(level = "trace", skip(s))]
     fn from<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         s: &S,
         alias_kind: &rustc_type_ir::AliasKind,

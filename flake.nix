@@ -1,11 +1,11 @@
 {
   inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs";
     flake-utils.url = "github:numtide/flake-utils";
     crane = {
       url = "github:ipetkov/crane";
       inputs = {
         nixpkgs.follows = "nixpkgs";
-        flake-utils.follows = "flake-utils";
       };
     };
     rust-overlay = {
@@ -62,7 +62,17 @@
           inherit rustc ocamlformat rustfmt fstar hax-env;
           hax-engine = pkgs.callPackage ./engine {
             hax-rust-frontend = packages.hax-rust-frontend.unwrapped;
-            hax-engine-names-extract = packages.hax-rust-frontend.hax-engine-names-extract;
+            # `hax-engine-names-extract` extracts Rust names but also
+            # some informations about `impl`s when names are `impl`
+            # blocks. That includes some span information, which
+            # includes full paths to Rust sources. Sometimes those
+            # Rust sources happens to be in the Nix store. That
+            # creates useless dependencies, this wrapper below takes
+            # care of removing those extra depenedencies.
+            hax-engine-names-extract = pkgs.writeScriptBin "hax-engine-names-extract" ''
+              #!${pkgs.stdenv.shell}
+              ${packages.hax-rust-frontend.hax-engine-names-extract}/bin/hax-engine-names-extract | sed 's|/nix/store/\(.\{6\}\)|/nix_store/\1-|g'
+            '';
             inherit rustc;
           };
           hax-rust-frontend = pkgs.callPackage ./cli {

@@ -128,4 +128,4 @@
     };
   };
 in
-  hax-engine
+  hax-engine.overrideAttrs (_: {name = "hax-engine";})

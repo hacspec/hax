@@ -1324,11 +1324,6 @@ struct
                        parent_bounds)
             items
         in
-        let fields =
-          if List.is_empty fields then
-            [ (F.lid [ "__marker_trait" ], pexpr (U.unit_expr e.span)) ]
-          else fields
-        in
         let parent_bounds_fields =
           List.map
             ~f:(fun (_impl_expr, impl_ident) ->
@@ -1336,6 +1331,11 @@ struct
             parent_bounds
         in
         let fields = parent_bounds_fields @ fields in
+        let fields =
+          if List.is_empty fields then
+            [ (F.lid [ "__marker_trait" ], pexpr (U.unit_expr e.span)) ]
+          else fields
+        in
         let body = F.term @@ F.AST.Record (None, fields) in
         let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
         F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ]
