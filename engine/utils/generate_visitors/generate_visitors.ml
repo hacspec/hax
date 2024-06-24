@@ -4,7 +4,8 @@ open Types
 
 let _main =
   let ocaml_file =
-    Stdio.In_channel.stdin |> Lexing.from_channel |> Parse.implementation
+    Stdio.In_channel.stdin |> Lexing.from_channel
+    |> Ppxlib_ast.Parse.implementation
   in
   let datatypes =
     type_declaration_of_structure ocaml_file
