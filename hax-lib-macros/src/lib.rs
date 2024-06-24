@@ -836,6 +836,9 @@ pub fn refinement_type(mut attr: pm::TokenStream, item: pm::TokenStream) -> pm::
                 fn get(self) -> Self::InnerType {
                     self.0
                 }
+                fn get_mut(&mut self) -> &mut Self::InnerType {
+                    &mut self.0
+                }
                 fn invariant(#ret_binder: Self::InnerType) -> bool {
                     #phi
                 }

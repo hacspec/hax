@@ -50,7 +50,8 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     let _ = hax_lib::inline("");
     use hax_lib::{RefineAs, Refinement};
 
-    fn refinements<T: Refinement, U: RefineAs<T>>(x: T, y: U) -> T {
+    fn refinements<T: Refinement + Clone, U: RefineAs<T>>(x: T, y: U) -> T {
+        let _ = x.clone().get_mut();
         T::new(x.get());
         y.into_checked()
     }

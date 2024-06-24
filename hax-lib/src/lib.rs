@@ -156,6 +156,8 @@ pub trait Refinement {
     fn new(x: Self::InnerType) -> Self;
     /// Destructor for the refined type
     fn get(self) -> Self::InnerType;
+    /// Gets a mutable reference to a refinement
+    fn get_mut(&mut self) -> &mut Self::InnerType;
     /// Tests wether a value satisfies the refinement
     fn invariant(value: Self::InnerType) -> bool;
 }
