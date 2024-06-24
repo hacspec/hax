@@ -381,10 +381,10 @@ Class t_HasActions (Self : choice_type) := {f_accept : both Self}.
 Class HasReceiveContext (Self : choice_type).
 Definition t_ParamType := 'unit.
 Definition t_ParseError := 'unit.
-Class t_HasReceiveContext (Self : choice_type) (something : choice_type) := { f_get : forall {Ctx}, both (t_ParamType × t_Result Ctx (t_ParseError)) }.
-Arguments f_get {Self} {something} (t_HasReceiveContext) {Ctx}.
+Class t_HasReceiveContext (Self : choice_type) (something : choice_type) := { f_get : forall (Ctx : Self), both (t_ParamType × t_Result Self something) }.
+(* Arguments f_get {Self} {something} (t_HasReceiveContext) {Ctx}. *)
 
-Definition f_parameter_cursor {T : _} `{ t_Sized (T)} `{ t_HasReceiveContext (T) ('unit)} `{ t_Sized (T)} `{ t_HasReceiveContext (T) ('unit)} (ctx : both (T)) : t_HasReceiveContext (T) ('unit) := _.
+Definition f_parameter_cursor {T : _} (ctx : both (T)) : T := is_pure ctx.
 
 Notation ControlFlow_Continue := Result_Ok.
 Notation v_Break := Result_Err.
@@ -500,4 +500,5 @@ Definition impl__map_err {A B C : choice_type} (r : both (t_Result A B)) (f : B 
   | inl a => ret_both (inl a : t_Result A C)
   | inr b => ret_both (inr (f b) : t_Result A C)
 end.
-Axiom f_from : forall {A B}, A -> B. (* TODO *)
+Definition f_from {A B : choice_type} : A -> (Result_t A B) :=
+  inr.
