@@ -313,6 +313,16 @@ pub struct BackendOptions {
     #[arg(short, long = "debug-engine")]
     pub debug_engine: Option<DebugEngineMode>,
 
+    /// Extract type aliases. This is disabled by default, since
+    /// extracted terms depends on expanded types rather than on type
+    /// aliases. Turning this option on is discouraged: Rust type
+    /// synonyms can ommit generic bounds, which are ususally
+    /// necessary in the hax backends, leading to typechecking
+    /// errors. For more details see
+    /// https://github.com/hacspec/hax/issues/708.
+    #[arg(long)]
+    pub extract_type_aliases: bool,
+
     #[command(flatten)]
     pub translation_options: TranslationOptions,
 }
