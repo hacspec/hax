@@ -360,7 +360,6 @@ pub enum ExporterCommand {
 pub enum ExportBodyKind {
     Thir,
     MirBuilt,
-    MirConst,
 }
 
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]

@@ -82,9 +82,10 @@ let c_borrow_kind span : Thir.borrow_kind -> borrow_kind = function
   | Fake -> unimplemented [ span ] "Shallow borrows"
   | Mut _ -> Mut W.mutable_reference
 
-let c_binding_mode span : Thir.binding_mode -> binding_mode = function
-  | ByValue -> ByValue
-  | ByRef k -> ByRef (c_borrow_kind span k, W.reference)
+let c_binding_mode : Thir.by_ref -> binding_mode = function
+  | No -> ByValue
+  | Yes true -> ByRef (Mut W.mutable_reference, W.reference)
+  | Yes false -> ByRef (Shared, W.reference)
 
 let unit_typ : ty = TApp { ident = `TupleType 0; args = [] }
 
@@ -800,13 +801,13 @@ end) : EXPR = struct
           let typ, typ_span = c_canonical_user_type_annotation annotation in
           let pat = c_pat subpattern in
           PAscription { typ; typ_span; pat }
-      | Binding { mode; mutability; subpattern; ty; var; _ } ->
-          let mut = c_mutability W.mutable_variable mutability in
+      | Binding { mode; subpattern; ty; var; _ } ->
+          let mut = c_mutability W.mutable_variable mode.mutability in
           let subpat =
             Option.map ~f:(c_pat &&& Fn.const W.as_pattern) subpattern
           in
           let typ = c_ty pat.span ty in
-          let mode = c_binding_mode pat.span mode in
+          let mode = c_binding_mode mode.by_ref in
           let var = local_ident Expr var in
           PBinding { mut; mode; var; typ; subpat }
       | Variant { info; subpatterns; _ } ->
@@ -844,6 +845,7 @@ end) : EXPR = struct
       | Or { pats } -> POr { subpats = List.map ~f:c_pat pats }
       | Slice _ -> unimplemented [ pat.span ] "pat Slice"
       | Range _ -> unimplemented [ pat.span ] "pat Range"
+      | DerefPattern _ -> unimplemented [ pat.span ] "pat DerefPattern"
       | Never -> unimplemented [ pat.span ] "pat Never"
       | Error _ -> unimplemented [ pat.span ] "pat Error"
     in
@@ -918,7 +920,9 @@ end) : EXPR = struct
     | Char -> TChar
     | Int k -> TInt (c_int_ty k)
     | Uint k -> TInt (c_uint_ty k)
-    | Float k -> TFloat (match k with F32 -> F32 | F64 -> F64)
+    | Float k ->
+        TFloat
+          (match k with F16 -> F16 | F32 -> F32 | F64 -> F64 | F128 -> F128)
     | Arrow value ->
         let ({ inputs; output; _ } : Thir.ty_fn_sig) = value.value in
         let inputs =

@@ -291,7 +291,7 @@ impl<'v> Visitor<'v> for Linter<'v> {
         tracing::trace!("visiting foreign item {:?} at {:?}", i.ident, i.span);
         walk_foreign_item(self, i)
     }
-    fn visit_local(&mut self, l: &'v Local<'v>) {
+    fn visit_local(&mut self, l: &'v LetStmt<'v>) {
         tracing::trace!("visiting local {:?}", l.span);
         walk_local(self, l)
     }
@@ -311,7 +311,7 @@ impl<'v> Visitor<'v> for Linter<'v> {
         skip_derived_non_local!(self, s.hir_id);
 
         match &s.kind {
-            StmtKind::Local(b) => {
+            StmtKind::Let(b) => {
                 // tracing::trace!("       local stmt");
                 if let Some(init) = b.init {
                     match init.kind {

@@ -389,14 +389,18 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
 }
 impl<'tcx> ConstantExt<'tcx> for ty::Const<'tcx> {
     fn eval_constant<S: UnderOwnerState<'tcx>>(&self, s: &S) -> Option<Self> {
-        let evaluated = self.eval(s.base().tcx, s.param_env(), None).ok()?;
+        let evaluated = self
+            .eval(s.base().tcx, s.param_env(), rustc_span::DUMMY_SP)
+            .ok()?;
         let evaluated = ty::Const::new(s.base().tcx, ty::ConstKind::Value(evaluated), self.ty());
         (&evaluated != self).then_some(evaluated)
     }
 }
 impl<'tcx> ConstantExt<'tcx> for mir::Const<'tcx> {
     fn eval_constant<S: UnderOwnerState<'tcx>>(&self, s: &S) -> Option<Self> {
-        let evaluated = self.eval(s.base().tcx, s.param_env(), None).ok()?;
+        let evaluated = self
+            .eval(s.base().tcx, s.param_env(), rustc_span::DUMMY_SP)
+            .ok()?;
         let evaluated = mir::Const::Val(evaluated, self.ty());
         (&evaluated != self).then_some(evaluated)
     }

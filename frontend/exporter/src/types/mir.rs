@@ -90,20 +90,12 @@ pub mod mir_kinds {
         fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>>;
     }
     #[derive(Clone, Copy, Debug, JsonSchema, Serialize, Deserialize)]
-    pub struct Const;
-    impl IsMirKind for Const {
-        fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>> {
-            tcx.mir_const(id)
-        }
-    }
-    #[derive(Clone, Copy, Debug, JsonSchema, Serialize, Deserialize)]
     pub struct Built;
     impl IsMirKind for Built {
         fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>> {
             tcx.mir_built(id)
         }
     }
-    // TODO: Add [Promoted] MIR
 }
 pub use mir_kinds::IsMirKind;
 
@@ -585,7 +577,7 @@ pub enum TerminatorKind {
         operands: Vec<InlineAsmOperand>,
         options: InlineAsmOptions,
         line_spans: Vec<Span>,
-        destination: Option<BasicBlock>,
+        targets: Vec<BasicBlock>,
         unwind: UnwindAction,
     },
 }
@@ -613,7 +605,7 @@ pub enum StatementKind {
     Retag(RetagKind, Place),
     PlaceMention(Place),
     AscribeUserType((Place, UserTypeProjection), Variance),
-    Coverage(Coverage),
+    Coverage(CoverageKind),
     Intrinsic(NonDivergingIntrinsic),
     ConstEvalCounter,
     Nop,
@@ -925,7 +917,7 @@ pub enum NullOp {
     SizeOf,
     AlignOf,
     OffsetOf(Vec<(usize, FieldIdx)>),
-    DebugAssertions,
+    UbChecks,
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -981,11 +973,11 @@ sinto_todo!(rustc_middle::mir, AssertMessage<'tcx>);
 sinto_todo!(rustc_middle::mir, UnwindAction);
 sinto_todo!(rustc_middle::mir, FakeReadCause);
 sinto_todo!(rustc_middle::mir, RetagKind);
-sinto_todo!(rustc_middle::mir, Coverage);
 sinto_todo!(rustc_middle::mir, NonDivergingIntrinsic<'tcx>);
 sinto_todo!(rustc_middle::mir, UserTypeProjection);
 sinto_todo!(rustc_middle::mir, MirSource<'tcx>);
 sinto_todo!(rustc_middle::mir, CoroutineInfo<'tcx>);
 sinto_todo!(rustc_middle::mir, VarDebugInfo<'tcx>);
 sinto_todo!(rustc_middle::mir, CallSource);
+sinto_todo!(rustc_middle::mir::coverage, CoverageKind);
 sinto_todo!(rustc_span, ErrorGuaranteed);

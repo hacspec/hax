@@ -981,13 +981,24 @@ pub struct Block {
     pub safety_mode: BlockSafety,
 }
 
-/// Reflects [`rustc_middle::thir::BindingMode`]
+/// Reflects [`rustc_ast::ast::BindingAnnotation`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_middle::thir::BindingMode, state: S as s)]
+#[args(<S>, from: rustc_ast::ast::BindingAnnotation, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub enum BindingMode {
-    ByValue,
-    ByRef(BorrowKind),
+pub struct BindingAnnotation {
+    #[value(self.0.sinto(s))]
+    pub by_ref: ByRef,
+    #[value(self.1.sinto(s))]
+    pub mutability: Mutability,
+}
+
+/// Reflects [`rustc_ast::ast::ByRef`]
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_ast::ast::ByRef, state: S as s)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub enum ByRef {
+    Yes(Mutability),
+    No,
 }
 
 /// Reflects [`rustc_middle::thir::Stmt`]
@@ -1391,16 +1402,20 @@ pub enum IntTy {
     Copy, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub enum FloatTy {
+    F16,
     F32,
     F64,
+    F128,
 }
 
 impl<'tcx, S> SInto<S, FloatTy> for rustc_ast::ast::FloatTy {
     fn sinto(&self, _: &S) -> FloatTy {
         use rustc_ast::ast::FloatTy as T;
         match self {
+            T::F16 => FloatTy::F16,
             T::F32 => FloatTy::F32,
             T::F64 => FloatTy::F64,
+            T::F128 => FloatTy::F128,
         }
     }
 }
@@ -1676,7 +1691,7 @@ pub enum Ty {
     Str,
     Array(Box<Ty>, #[map(Box::new(x.sinto(state)))] Box<ConstantExpr>),
     Slice(Box<Ty>),
-    RawPtr(TypeAndMut),
+    RawPtr(Box<Ty>, Mutability),
     Ref(Region, Box<Ty>, Mutability),
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
     Coroutine(DefId, Vec<GenericArg>),
@@ -1879,11 +1894,10 @@ pub enum PatKind {
         subpattern: Pat,
     },
     #[custom_arm(
-        rustc_middle::thir::PatKind::Binding {mutability, name, mode, var, ty, subpattern, is_primary} => {
+        rustc_middle::thir::PatKind::Binding {name, mode, var, ty, subpattern, is_primary} => {
             let local_ctx = gstate.base().local_ctx;
             local_ctx.borrow_mut().vars.insert(var.clone(), name.to_string());
             PatKind::Binding {
-                mutability: mutability.sinto(gstate),
                 mode: mode.sinto(gstate),
                 var: var.sinto(gstate),
                 ty: ty.sinto(gstate),
@@ -1893,8 +1907,7 @@ pub enum PatKind {
         }
     )]
     Binding {
-        mutability: Mutability,
-        mode: BindingMode,
+        mode: BindingAnnotation,
         var: LocalIdent, // name VS var? TODO
         ty: Ty,
         subpattern: Option<Pat>,
@@ -1927,6 +1940,9 @@ pub enum PatKind {
         subpatterns: Vec<Pat>,
     },
     Deref {
+        subpattern: Pat,
+    },
+    DerefPattern {
         subpattern: Pat,
     },
     Constant {
@@ -2070,8 +2086,8 @@ pub struct MacroInvokation {
 pub enum ImplicitSelfKind {
     Imm,
     Mut,
-    ImmRef,
-    MutRef,
+    RefImm,
+    RefMut,
     None,
 }
 
@@ -2612,7 +2628,7 @@ impl<'x: 'tcx, 'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_hir::Ty<'x
         // access to the HIR of external objects, only their MIR).
         let ctx =
             rustc_hir_analysis::collect::ItemCtxt::new(s.base().tcx, s.owner_id().expect_local());
-        ctx.to_ty(self).sinto(s)
+        ctx.lower_ty(self).sinto(s)
     }
 }
 
@@ -2711,7 +2727,7 @@ pub enum ParamName {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum LifetimeParamKind {
     Explicit,
-    Elided,
+    Elided(MissingLifetimeKind),
     Error,
 }
 
@@ -2959,12 +2975,12 @@ pub struct UsePath {
     pub res: Vec<Res>,
     pub segments: Vec<PathSegment>,
     #[value(self.segments.iter().last().map_or(None, |segment| {
-            match s.base().tcx.opt_hir_node_by_def_id(segment.hir_id.owner.def_id) {
-                Some(rustc_hir::Node::Item(rustc_hir::Item {
+            match s.base().tcx.hir_node_by_def_id(segment.hir_id.owner.def_id) {
+                rustc_hir::Node::Item(rustc_hir::Item {
                     ident,
                     kind: rustc_hir::ItemKind::Use(_, _),
                     ..
-                })) if ident.name.to_ident_string() != "" => Some(ident.name.to_ident_string()),
+                }) if ident.name.to_ident_string() != "" => Some(ident.name.to_ident_string()),
                 _ => None,
             }
         }))]
@@ -3238,7 +3254,7 @@ pub struct TraitRef {
 )]
 pub struct TraitPredicate {
     pub trait_ref: TraitRef,
-    #[map(x.clone() == rustc_middle::ty::ImplPolarity::Positive)]
+    #[map(x.clone() == rustc_middle::ty::PredicatePolarity::Positive)]
     #[from(polarity)]
     pub is_positive: bool,
 }

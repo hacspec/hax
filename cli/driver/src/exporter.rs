@@ -365,29 +365,19 @@ impl Callbacks for ExtractionCallbacks {
                         include_extra,
                     };
                     mod from {
-                        pub use hax_cli_options::ExportBodyKind::{
-                            MirBuilt as MB, MirConst as MC, Thir as T,
-                        };
+                        pub use hax_cli_options::ExportBodyKind::{MirBuilt as MB, Thir as T};
                     }
                     mod to {
                         pub type T = hax_frontend_exporter::ThirBody;
                         pub type MB =
                             hax_frontend_exporter::MirBody<hax_frontend_exporter::mir_kinds::Built>;
-                        pub type MC =
-                            hax_frontend_exporter::MirBody<hax_frontend_exporter::mir_kinds::Const>;
                     }
                     kind.sort();
                     kind.dedup();
                     match kind.as_slice() {
                         [from::MB] => driver.to_json::<to::MB>(),
-                        [from::MC] => driver.to_json::<to::MC>(),
                         [from::T] => driver.to_json::<to::T>(),
-                        [from::MB, from::MC] => driver.to_json::<(to::MB, to::MC)>(),
                         [from::T, from::MB] => driver.to_json::<(to::MB, to::T)>(),
-                        [from::T, from::MC] => driver.to_json::<(to::MC, to::T)>(),
-                        [from::T, from::MB, from::MC] => {
-                            driver.to_json::<(to::MB, (to::MC, to::T))>()
-                        }
                         [] => driver.to_json::<()>(),
                         _ => panic!("Unsupported kind {:#?}", kind),
                     }
