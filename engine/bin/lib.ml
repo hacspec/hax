@@ -21,7 +21,8 @@ end)
 
 module Attrs = Attr_payloads.MakeBase (Error)
 
-let import_thir_items (include_clauses : Types.inclusion_clause list)
+let import_thir_items ~drop_impl_bodies
+    (include_clauses : Types.inclusion_clause list)
     (items : Types.item_for__decorated_for__expr_kind list) : Ast.Rust.item list
     =
   let imported_items =
@@ -43,7 +44,7 @@ let import_thir_items (include_clauses : Types.inclusion_clause list)
             most_precise_clause
           |> Option.value ~default:false
         in
-        Import_thir.import_item ~drop_body item)
+        Import_thir.import_item ~drop_body ~drop_impl_bodies item)
       items
     |> List.map ~f:snd
   in
@@ -61,7 +62,9 @@ let import_thir_items (include_clauses : Types.inclusion_clause list)
       imported_items
     |> Map.of_alist_exn (module Concrete_ident)
   in
-  let items = Deps.filter_by_inclusion_clauses include_clauses items in
+  let items =
+    Deps.filter_by_inclusion_clauses ~drop_impl_bodies include_clauses items
+  in
   let items =
     items
     @ (List.concat_map ~f:associated_items items
@@ -99,7 +102,11 @@ let run (options : Types.engine_options) : Types.output =
     let include_clauses =
       options.backend.translation_options.include_namespaces
     in
-    let items = import_thir_items include_clauses options.input in
+    let items =
+      import_thir_items
+        ~drop_impl_bodies:options.backend.make_impl_interfaces_opaque
+        include_clauses options.input
+    in
     let items =
       if options.backend.extract_type_aliases then items
       else
@@ -122,7 +129,7 @@ let run (options : Types.engine_options) : Types.output =
     Logs.info (fun m ->
         m "Translating items with backend %s"
           ([%show: Diagnostics.Backend.t] M.backend));
-    let items = translate with_items backend_options items ~bundles in
+    let items = translate with_items options backend_options items ~bundles in
     items
   in
   let diagnostics, files =

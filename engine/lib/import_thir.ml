@@ -1429,15 +1429,17 @@ let cast_of_enum typ_name generics typ thir_span
   in
   { v; span; ident; attrs = [] }
 
-let rec c_item ~ident ~drop_body (item : Thir.item) : item list =
-  try c_item_unwrapped ~ident ~drop_body item
+let rec c_item ~ident ~drop_body ~drop_impl_bodies (item : Thir.item) :
+    item list =
+  try c_item_unwrapped ~ident ~drop_body ~drop_impl_bodies item
   with Diagnostics.SpanFreeError.Exn payload ->
     let context, kind = Diagnostics.SpanFreeError.payload payload in
     let error = Diagnostics.pretty_print_context_kind context kind in
     let span = Span.of_thir item.span in
     [ make_hax_error_item span ident error ]
 
-and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
+and c_item_unwrapped ~ident ~drop_body ~drop_impl_bodies (item : Thir.item) :
+    item list =
   let open (val make ~krate:item.owner_id.krate : EXPR) in
   if should_skip item.attributes then []
   else
@@ -1453,6 +1455,9 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
          |> not
     in
     let c_body = if drop_body then c_expr_drop_body else c_expr in
+    let c_impl_body =
+      if drop_body && drop_impl_bodies then c_expr_drop_body else c_expr
+    in
     (* TODO: things might be unnamed (e.g. constants) *)
     match (item.kind : Thir.item_kind) with
     | Const (_, generics, body) ->
@@ -1629,7 +1634,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                       generics =
                         U.concat_generics (c_generics generics)
                           (c_generics item.generics);
-                      body = c_expr body;
+                      body = c_body body;
                       params;
                       safety = csafety safety;
                     }
@@ -1639,7 +1644,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                       name = item_def_id;
                       generics = c_generics generics;
                       (* does that make sense? can we have `const<T>`? *)
-                      body = c_expr e;
+                      body = c_body e;
                       params = [];
                       safety = Safe;
                     }
@@ -1698,9 +1703,9 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                                  [ U.make_unit_param span ]
                                else List.map ~f:(c_param item.span) params
                              in
-                             IIFn { body = c_expr body; params }
+                             IIFn { body = c_impl_body body; params }
                          | Const (_ty, e) ->
-                             IIFn { body = c_expr e; params = [] }
+                             IIFn { body = c_impl_body e; params = [] }
                          | Type { ty; parent_bounds } ->
                              IIType
                                {
@@ -1764,7 +1769,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
     | OpaqueTy _ | TraitAlias _ ->
         mk NotImplementedYet
 
-let import_item ~drop_body (item : Thir.item) :
+let import_item ~drop_body ~drop_impl_bodies (item : Thir.item) :
     concrete_ident * (item list * Diagnostics.t list) =
   let ident = Concrete_ident.of_def_id Value item.owner_id in
   let r, reports =
@@ -1774,6 +1779,6 @@ let import_item ~drop_body (item : Thir.item) :
       >> U.Reducers.disambiguate_local_idents
     in
     Diagnostics.Core.capture (fun _ ->
-        c_item item ~ident ~drop_body |> List.map ~f)
+        c_item item ~ident ~drop_body ~drop_impl_bodies |> List.map ~f)
   in
   (ident, (r, reports))

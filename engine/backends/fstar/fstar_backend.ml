@@ -94,6 +94,7 @@ module Context = struct
     items : item list;
     interface_mode : bool;
     line_width : int;
+    opaque_impls_in_interfaces : bool;
   }
 end
 
@@ -1460,8 +1461,19 @@ struct
         in
         let body = F.term @@ F.AST.Record (None, fields) in
         let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
-        F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ]
-        @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
+        if ctx.interface_mode && ctx.opaque_impls_in_interfaces then
+          let typ =
+            F.term
+            @@ F.AST.Product (List.map ~f:FStarBinder.to_binder generics, typ)
+          in
+          [
+            F.decl ~fsti:false ~attrs:[ tcinst ]
+            @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ]);
+            F.decl ~fsti:true ~attrs:[ tcinst ] @@ F.AST.Val (name, typ);
+          ]
+        else
+          F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ]
+          @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
     | Quote quote ->
         let fstar_opts =
           Attrs.find_unique_attr e.attrs ~f:(function
@@ -1507,8 +1519,8 @@ let make (module M : Attrs.WITH_ITEMS) ctx =
               let ctx = ctx
             end) : S)
 
-let strings_of_item ~signature_only (bo : BackendOptions.t) m items
-    (item : item) :
+let strings_of_item ~signature_only ~opaque_impls_in_interfaces
+    (bo : BackendOptions.t) m items (item : item) :
     ([> `Impl of string | `Intf of string ] * [ `NoNewline | `Newline ]) list =
   let interface_mode' : Types.inclusion_kind =
     List.rev bo.interfaces
@@ -1536,6 +1548,7 @@ let strings_of_item ~signature_only (bo : BackendOptions.t) m items
         interface_mode;
         items;
         line_width = bo.line_width;
+        opaque_impls_in_interfaces;
       }
   in
   let mk_impl = if interface_mode then fun i -> `Impl i else fun i -> `Impl i in
@@ -1560,7 +1573,7 @@ let strings_of_item ~signature_only (bo : BackendOptions.t) m items
 
 type rec_prefix = NonRec | FirstMutRec | MutRec
 
-let string_of_items ~signature_only ~mod_name ~bundles (bo : BackendOptions.t) m
+let string_of_items ~signature_only ~opaque_impls_in_interfaces ~mod_name ~bundles (bo : BackendOptions.t) m
     items : string * string =
   let collect_trait_goal_idents =
     object
@@ -1634,7 +1647,7 @@ let string_of_items ~signature_only ~mod_name ~bundles (bo : BackendOptions.t) m
     List.concat_map
       ~f:(fun item ->
         let recursivity_prefix = get_recursivity_prefix item in
-        let strs = strings_of_item ~signature_only bo m items item in
+        let strs = strings_of_item ~opaque_impls_in_interfaces ~signature_only bo m items item in
         match (recursivity_prefix, item.v) with
         | FirstMutRec, Fn _ ->
             replace_in_strs ~pattern:"let" ~with_:"let rec" strs
@@ -1678,7 +1691,7 @@ let fstar_headers (bo : BackendOptions.t) =
   in
   [ opts; "open Core"; "open FStar.Mul" ] |> String.concat ~sep:"\n"
 
-let translate m (bo : BackendOptions.t) ~(bundles : AST.item list list)
+let translate m (opts : Types.engine_options) (bo : BackendOptions.t) ~(bundles : AST.item list list)
     (items : AST.item list) : Types.file list =
   let show_view Concrete_ident.{ crate; path; definition } =
     crate :: (path @ [ definition ]) |> String.concat ~sep:"::"
@@ -1698,7 +1711,9 @@ let translate m (bo : BackendOptions.t) ~(bundles : AST.item list list)
          in
          let mod_name = module_name ns in
          let impl, intf =
-           string_of_items ~signature_only ~mod_name ~bundles bo m items
+           string_of_items ~signature_only
+             ~opaque_impls_in_interfaces:
+               opts.backend.make_impl_interfaces_opaque ~mod_name ~bundles bo m items
          in
          let make ~ext body =
            if String.is_empty body then None

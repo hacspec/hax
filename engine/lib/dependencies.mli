@@ -6,6 +6,7 @@ module Make (F : Features.T) : sig
   val sort : AST.item list -> AST.item list
   val recursive_bundles : AST.item list -> AST.item list list * AST.item list
 
-  val filter_by_inclusion_clauses :
-    Types.inclusion_clause list -> AST.item list -> AST.item list
+      val filter_by_inclusion_clauses :
+        drop_impl_bodies:bool ->
+        Types.inclusion_clause list -> AST.item list -> AST.item list
 end

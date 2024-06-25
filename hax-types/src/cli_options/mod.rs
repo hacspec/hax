@@ -334,6 +334,9 @@ pub struct BackendOptions<E: Extension> {
     #[arg(long)]
     pub extract_type_aliases: bool,
 
+    #[arg(long)]
+    pub make_impl_interfaces_opaque: bool,
+
     #[command(flatten)]
     pub translation_options: TranslationOptions,
 
