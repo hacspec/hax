@@ -240,6 +240,15 @@ let impl (v_FooConst: usize) (#v_FooType #v_SelfType: Type0)
 type t_Bar (v_FooConst: usize) (v_FooType: Type0) =
   | Bar : t_Array v_FooType v_FooConst -> t_Bar v_FooConst v_FooType
 '''
+"Traits.Type_alias_bounds_issue_707_.fst" = '''
+module Traits.Type_alias_bounds_issue_707_
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+type t_StructWithGenericBounds (v_T: Type0) {| i1: Core.Clone.t_Clone v_T |} =
+  | StructWithGenericBounds : v_T -> t_StructWithGenericBounds v_T
+'''
 "Traits.Unconstrainted_types_issue_677_.fst" = '''
 module Traits.Unconstrainted_types_issue_677_
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
