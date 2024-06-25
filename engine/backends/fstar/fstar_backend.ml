@@ -99,6 +99,7 @@ module Context = struct
     current_namespace : string * string list;
     items : item list;
     interface_mode : bool;
+    opaque_impls_in_interfaces : bool;
   }
 end
 
@@ -1341,8 +1342,19 @@ struct
         in
         let body = F.term @@ F.AST.Record (None, fields) in
         let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
-        F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ]
-        @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
+        if ctx.interface_mode && ctx.opaque_impls_in_interfaces then
+          let typ =
+            F.term
+            @@ F.AST.Product (List.map ~f:FStarBinder.to_binder generics, typ)
+          in
+          [
+            F.decl ~fsti:false ~attrs:[ tcinst ]
+            @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ]);
+            F.decl ~fsti:true ~attrs:[ tcinst ] @@ F.AST.Val (name, typ);
+          ]
+        else
+          F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ]
+          @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
     | Quote quote ->
         let fstar_opts =
           Attrs.find_unique_attr e.attrs ~f:(function
@@ -1388,8 +1400,8 @@ let make (module M : Attrs.WITH_ITEMS) ctx =
               let ctx = ctx
             end) : S)
 
-let strings_of_item ~signature_only (bo : BackendOptions.t) m items
-    (item : item) :
+let strings_of_item ~signature_only ~opaque_impls_in_interfaces
+    (bo : BackendOptions.t) m items (item : item) :
     ([> `Impl of string | `Intf of string ] * [ `NoNewline | `Newline ]) list =
   let interface_mode' : Types.inclusion_kind =
     List.rev bo.interfaces
@@ -1416,6 +1428,7 @@ let strings_of_item ~signature_only (bo : BackendOptions.t) m items
         current_namespace = U.Concrete_ident_view.to_namespace item.ident;
         interface_mode;
         items;
+        opaque_impls_in_interfaces;
       }
   in
   let mk_impl = if interface_mode then fun i -> `Impl i else fun i -> `Impl i in
@@ -1443,8 +1456,8 @@ let module_name (ns : string * string list) : string =
   String.concat ~sep:"."
     (List.map ~f:(map_first_letter String.uppercase) (fst ns :: snd ns))
 
-let string_of_items ~signature_only ~mod_name (bo : BackendOptions.t) m items :
-    string * string =
+let string_of_items ~signature_only ~opaque_impls_in_interfaces ~mod_name
+    (bo : BackendOptions.t) m items : string * string =
   let collect_trait_goal_idents =
     object
       inherit [_] Visitors.reduce as super
@@ -1485,7 +1498,10 @@ let string_of_items ~signature_only ~mod_name (bo : BackendOptions.t) m items :
         ^ "\n\n"
   in
   let strings =
-    List.concat_map ~f:(strings_of_item ~signature_only bo m items) items
+    List.concat_map
+      ~f:
+        (strings_of_item ~opaque_impls_in_interfaces ~signature_only bo m items)
+      items
     |> List.map
          ~f:
            ((function
@@ -1523,8 +1539,8 @@ let fstar_headers (bo : BackendOptions.t) =
   in
   [ opts; "open Core"; "open FStar.Mul" ] |> String.concat ~sep:"\n"
 
-let translate m (bo : BackendOptions.t) (items : AST.item list) :
-    Types.file list =
+let translate m (opts : Types.engine_options) (bo : BackendOptions.t)
+    (items : AST.item list) : Types.file list =
   let show_view Concrete_ident.{ crate; path; definition } =
     crate :: (path @ [ definition ]) |> String.concat ~sep:"::"
   in
@@ -1543,7 +1559,9 @@ let translate m (bo : BackendOptions.t) (items : AST.item list) :
          in
          let mod_name = module_name ns in
          let impl, intf =
-           string_of_items ~signature_only ~mod_name bo m items
+           string_of_items ~signature_only
+             ~opaque_impls_in_interfaces:
+               opts.backend.make_impl_interfaces_opaque ~mod_name bo m items
          in
          let make ~ext body =
            if String.is_empty body then None

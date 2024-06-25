@@ -297,8 +297,8 @@ module Make (F : Features.T) = struct
         @@ show_ident_set selection);
     (List.filter ~f:(ident_of >> Set.mem selection) items, items_drop_body)
 
-  let filter_by_inclusion_clauses (clauses : Types.inclusion_clause list)
-      (items : item list) : item list =
+  let filter_by_inclusion_clauses ~drop_impl_bodies
+      (clauses : Types.inclusion_clause list) (items : item list) : item list =
     let f = filter_by_inclusion_clauses' clauses in
     let selection =
       let items', items_drop_body = f items in
@@ -307,7 +307,7 @@ module Make (F : Features.T) = struct
         List.map
           ~f:(fun item ->
             if Hash_set.mem items_drop_body (ident_of item) then
-              U.Mappers.drop_bodies#visit_item () item
+              (U.Mappers.drop_bodies drop_impl_bodies)#visit_item () item
             else item)
           items'
         |> f

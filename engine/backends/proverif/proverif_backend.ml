@@ -861,7 +861,7 @@ module Make (Options : OPTS) : MAKE = struct
   end)
 end
 
-let translate m (bo : BackendOptions.t) (items : AST.item list) :
+let translate m _ (bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =
   let (module M : MAKE) =
     (module Make (struct

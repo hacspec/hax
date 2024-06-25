@@ -245,7 +245,7 @@ module Make (F : Features.T) = struct
           | _ -> super#visit_impl_expr s ie
       end
 
-    let drop_bodies =
+    let drop_bodies drop_impl_bodies =
       object
         inherit [_] Visitors.map as super
 
@@ -260,6 +260,12 @@ module Make (F : Features.T) = struct
                   params;
                 }
           | _ -> super#visit_item' () item'
+
+        method! visit_impl_item' () ii' =
+          match ii' with
+          | IIFn { body; params } when drop_impl_bodies ->
+              IIFn { body = { body with e = GlobalVar (`TupleCons 0) }; params }
+          | _ -> super#visit_impl_item' () ii'
       end
 
     let replace_local_variables (map : (local_ident, expr, _) Map.t) =

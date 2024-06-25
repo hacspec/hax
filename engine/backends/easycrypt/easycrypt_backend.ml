@@ -328,7 +328,7 @@ let translate' (_bo : BackendOptions.t) (items : AST.item list) :
   doit Stdlib.Format.err_formatter items;
   []
 
-let translate _ (bo : BackendOptions.t) (items : AST.item list) :
+let translate _ _ (bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =
   try translate' bo items
   with Assert_failure (file, line, col) ->

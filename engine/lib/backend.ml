@@ -30,6 +30,7 @@ module type T = sig
 
   val translate :
     (module Attrs.WITH_ITEMS) ->
+    Types.engine_options ->
     BackendOptions.t ->
     AST.item list ->
     Types.file list
