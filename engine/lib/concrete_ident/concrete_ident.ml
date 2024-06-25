@@ -18,6 +18,7 @@ module Imported = struct
     | Closure
     | Ctor
     | AnonConst
+    | AnonAdt
     | OpaqueTy
     | TypeNs of string
     | ValueNs of string
@@ -39,6 +40,7 @@ module Imported = struct
     | ValueNs s -> ValueNs s
     | MacroNs s -> MacroNs s
     | LifetimeNs s -> LifetimeNs s
+    | AnonAdt -> AnonAdt
 
   let of_disambiguated_def_path_item :
       Types.disambiguated_def_path_item -> disambiguated_def_path_item =

@@ -79,7 +79,7 @@ open FStar.Mul
 type t_Foo = | Foo : u8 -> t_Foo
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl: Core.Ops.Arith.t_Add #t_Foo #t_Foo =
+let impl: Core.Ops.Arith.t_Add #t_Foo #t_Foo true =
   {
     f_Output = t_Foo;
     f_add_pre = (fun (self: t_Foo) (rhs: t_Foo) -> self._0 <. (255uy -! rhs._0 <: u8));

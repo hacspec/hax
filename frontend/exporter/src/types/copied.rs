@@ -736,6 +736,7 @@ pub enum DesugaringKind {
     Await,
     ForLoop,
     WhileLoop,
+    BoundModifier,
 }
 
 /// Reflects [`rustc_span::hygiene::AstPass`]
@@ -1100,6 +1101,15 @@ pub enum TokenKind {
     Todo(String),
 }
 
+impl<S> SInto<S, bool> for rustc_ast::token::IdentIsRaw {
+    fn sinto(&self, _s: &S) -> bool {
+        match self {
+            Self::Yes => true,
+            Self::No => false,
+        }
+    }
+}
+
 /// Reflects [`rustc_ast::token::Token`]
 #[derive(AdtInto)]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_ast::token::Token, state: S as gstate)]
@@ -1179,7 +1189,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                     let contents = kind.sinto(s);
                     use crate::rustc_middle::ty::util::IntTypeExt;
                     let repr_type = tcx
-                        .repr_options_of_def(def.did())
+                        .repr_options_of_def(def.did().as_local().unwrap())
                         .discr_type()
                         .to_ty(s.base().tcx);
                     if repr_type == ty {
@@ -2033,7 +2043,7 @@ pub enum LitKind {
     Int(u128, LitIntType),
     Float(Symbol, LitFloatType),
     Bool(bool),
-    Err,
+    Err(ErrorGuaranteed),
 }
 
 impl<S> SInto<S, u128> for rustc_data_structures::packed::Pu128 {
@@ -3051,7 +3061,7 @@ pub enum ItemKind<Body: IsBody> {
         Generics<Body>,
         #[value({
             let tcx = s.base().tcx;
-            tcx.repr_options_of_def(s.owner_id()).sinto(s)
+            tcx.repr_options_of_def(s.owner_id().as_local().unwrap()).sinto(s)
         })]
         ReprOptions,
     ),

@@ -900,6 +900,7 @@ pub enum AggregateKind {
     })]
     Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, MirPolyFnSig),
     Coroutine(DefId, Vec<GenericArg>),
+    CoroutineClosure(DefId, Vec<GenericArg>),
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -924,6 +925,7 @@ pub enum NullOp {
     SizeOf,
     AlignOf,
     OffsetOf(Vec<(usize, FieldIdx)>),
+    DebugAssertions,
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]

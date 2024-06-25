@@ -403,7 +403,7 @@ pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
         let s = &with_owner_id(s.base(), (), (), impl_trait_ref.def_id());
         clause.predicate_id(s)
     };
-    let new_clause = clause.subst_supertrait(tcx, &impl_trait_ref);
+    let new_clause = clause.instantiate_supertrait(tcx, &impl_trait_ref);
     let impl_expr = new_clause
         .as_predicate()
         .to_opt_poly_trait_pred()?

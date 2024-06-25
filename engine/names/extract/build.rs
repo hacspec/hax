@@ -1,4 +1,3 @@
-use serde_json;
 use serde_json::Value;
 use std::process::{Command, Stdio};
 
@@ -50,6 +49,7 @@ fn def_path_item_to_str(path_item: DefPathItem) -> String {
         DefPathItem::Ctor => "Ctor".into(),
         DefPathItem::AnonConst => "AnonConst".into(),
         DefPathItem::OpaqueTy => "OpaqueTy".into(),
+        DefPathItem::AnonAdt => "AnonAdt".into(),
     }
 }
 

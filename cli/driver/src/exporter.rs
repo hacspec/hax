@@ -54,17 +54,21 @@ fn write_files(
 
 type ThirBundle<'tcx> = (Rc<rustc_middle::thir::Thir<'tcx>>, ExprId);
 /// Generates a dummy THIR body with an error literal as first expression
-fn dummy_thir_body<'tcx>(tcx: TyCtxt<'tcx>, span: rustc_span::Span) -> ThirBundle<'tcx> {
+fn dummy_thir_body<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    span: rustc_span::Span,
+    guar: rustc_errors::ErrorGuaranteed,
+) -> ThirBundle<'tcx> {
     use rustc_middle::thir::*;
     let ty = tcx.mk_ty_from_kind(rustc_type_ir::TyKind::Never);
     let mut thir = Thir::new(BodyTy::Const(ty));
-    const ERR_LITERAL: &'static rustc_hir::Lit = &rustc_span::source_map::Spanned {
-        node: rustc_ast::ast::LitKind::Err,
+    let lit_err = tcx.hir_arena.alloc(rustc_span::source_map::Spanned {
+        node: rustc_ast::ast::LitKind::Err(guar),
         span: rustc_span::DUMMY_SP,
-    };
+    });
     let expr = thir.exprs.push(Expr {
         kind: ExprKind::Literal {
-            lit: ERR_LITERAL,
+            lit: lit_err,
             neg: false,
         },
         ty,
@@ -130,11 +134,11 @@ fn precompute_local_thir_bodies<'tcx>(
             let (thir, expr) = match tcx.thir_body(ldid) {
                 Ok(x) => x,
                 Err(e) => {
-                    tcx.dcx().span_err(
+                    let guar = tcx.dcx().span_err(
                         span,
                         "While trying to reach a body's THIR defintion, got a typechecking error.",
                     );
-                    return (ldid, dummy_thir_body(tcx, span));
+                    return (ldid, dummy_thir_body(tcx, span, guar));
                 }
             };
             let thir = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -142,8 +146,8 @@ fn precompute_local_thir_bodies<'tcx>(
             })) {
                 Ok(x) => x,
                 Err(e) => {
-                    tcx.dcx().span_err(span, format!("The THIR body of item {:?} was stolen.\nThis is not supposed to happen.\nThis is a bug in Hax's frontend.\nThis is discussed in issue https://github.com/hacspec/hax/issues/27.\nPlease comment this issue if you see this error message!", ldid));
-                    return (ldid, dummy_thir_body(tcx, span));
+                    let guar = tcx.dcx().span_err(span, format!("The THIR body of item {:?} was stolen.\nThis is not supposed to happen.\nThis is a bug in Hax's frontend.\nThis is discussed in issue https://github.com/hacspec/hax/issues/27.\nPlease comment this issue if you see this error message!", ldid));
+                    return (ldid, dummy_thir_body(tcx, span, guar));
                 }
             };
             tracing::debug!("✅ Type-checked THIR body for {:#?}", ldid);

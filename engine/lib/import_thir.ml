@@ -161,7 +161,7 @@ let c_lit' span negative (lit : Thir.lit_kind) (ty : ty) : extended_literal =
       ^ "] instead.")
   in
   match lit with
-  | Err ->
+  | Err _ ->
       assertion_failure [ span ]
         "[import_thir:literal] got an error literal: this means the Rust \
          compiler or Hax's frontend probably reported errors above."

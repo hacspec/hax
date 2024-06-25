@@ -99,7 +99,7 @@ macro_rules! mk {
 mod types {
     use crate::prelude::*;
     use std::cell::RefCell;
-    use std::collections::{HashMap, HashSet};
+    use std::collections::HashSet;
 
     pub struct LocalContextS {
         pub vars: HashMap<rustc_middle::thir::LocalVarId, String>,

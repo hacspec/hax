@@ -61,4 +61,5 @@ pub enum DefPathItem {
     Ctor,
     AnonConst,
     OpaqueTy,
+    AnonAdt,
 }

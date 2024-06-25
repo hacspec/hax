@@ -1,6 +1,5 @@
 ---
 source: test-harness/src/harness.rs
-assertion_line: 214
 expression: snapshot
 info:
   kind:
@@ -24,7 +23,7 @@ info:
 exit = 0
 stderr = '''
 Compiling side-effects v0.1.0 (WORKSPACE_ROOT/side-effects)
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'''
 
 [stdout]
 diagnostics = []
