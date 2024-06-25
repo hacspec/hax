@@ -321,10 +321,10 @@ end) : EXPR = struct
         let expected, f =
           match op with
           | Add | Sub | Mul | Div -> both int <|> both float
-          | Rem -> both int
+          | Rem | Cmp -> both int
           | BitXor | BitAnd | BitOr -> both int <|> both bool
           | Shl | Shr -> int <*> int
-          | Lt | Le | Ne | Ge | Gt | Cmp -> both int <|> both float
+          | Lt | Le | Ne | Ge | Gt -> both int <|> both float
           | Eq -> both int <|> both float <|> both bool
           | Offset -> ("", fun _ -> Some "")
         in
