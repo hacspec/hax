@@ -1944,22 +1944,13 @@ pub enum PatKind {
     Error(ErrorGuaranteed),
 }
 
-/// Reflects [`rustc_middle::thir::Guard`]
-#[derive(AdtInto)]
-#[args(<'tcx, S: ExprState<'tcx>>, from: rustc_middle::thir::Guard<'tcx>, state: S as gstate)]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub enum Guard {
-    If(Expr),
-    IfLet(Pat, Expr),
-}
-
 /// Reflects [`rustc_middle::thir::Arm`]
 #[derive(AdtInto)]
 #[args(<'tcx, S: ExprState<'tcx>>, from: rustc_middle::thir::Arm<'tcx>, state: S as gstate)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Arm {
     pub pattern: Pat,
-    pub guard: Option<Guard>,
+    pub guard: Option<Expr>,
     pub body: Expr,
     pub lint_level: LintLevel,
     pub scope: Scope,
@@ -2043,6 +2034,12 @@ pub enum LitKind {
     Float(Symbol, LitFloatType),
     Bool(bool),
     Err,
+}
+
+impl<S> SInto<S, u128> for rustc_data_structures::packed::Pu128 {
+    fn sinto(&self, _s: &S) -> u128 {
+        self.0
+    }
 }
 
 // FIXME: typo: invo**C**ation
@@ -2596,7 +2593,7 @@ pub struct FnHeader {
 
 pub type ThirBody = Expr;
 
-impl<'x, 'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_hir::Ty<'x> {
+impl<'x: 'tcx, 'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_hir::Ty<'x> {
     fn sinto(self: &rustc_hir::Ty<'x>, s: &S) -> Ty {
         // **Important:**
         // We need a local id here, and we get it from the owner id, which must

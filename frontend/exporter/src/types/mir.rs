@@ -547,7 +547,7 @@ pub enum TerminatorKind {
         /// relevant to the method (and not the trait) if it is a trait method
         /// call. See [ParamsInfo] for the full details.
         generics: Vec<GenericArg>,
-        args: Vec<Operand>,
+        args: Vec<Spanned<Operand>>,
         destination: Place,
         target: Option<BasicBlock>,
         unwind: UnwindAction,

@@ -401,10 +401,6 @@ impl<'v> Visitor<'v> for Linter<'v> {
         // keep going
         walk_expr(self, ex);
     }
-    fn visit_let_expr(&mut self, lex: &'v Let<'v>) {
-        tracing::trace!("visiting let expr {:?}", lex.span);
-        walk_let_expr(self, lex)
-    }
     fn visit_expr_field(&mut self, field: &'v ExprField<'v>) {
         tracing::trace!("visiting expr field {:?}", field.ident);
         walk_expr_field(self, field)

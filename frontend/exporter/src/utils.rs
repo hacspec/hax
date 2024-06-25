@@ -30,9 +30,9 @@ mod internal_helpers {
             eprintln!("{}", backtrace);
             let mut builder = $crate::utils::_verb!($verb, $s.base().tcx.dcx(), $message);
             if let Some(span) = $span {
-                builder.set_span(span.clone());
+                builder.span(span.clone());
             }
-            builder.code(rustc_errors::DiagnosticId::Error(format!("HaxFront")));
+            builder.code(rustc_errors::codes::ErrCode::MAX);
             builder.note(
                 "⚠️ This is a bug in Hax's frontend.
 Please report this error to https://github.com/hacspec/hax/issues with some context (e.g. the current crate)!",

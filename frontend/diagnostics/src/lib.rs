@@ -19,11 +19,7 @@ impl SessionExtTrait for rustc_errors::DiagCtxt {
     fn span_hax_err<S: Into<MultiSpan> + Clone>(&self, diag: Diagnostics<S>) {
         let span: MultiSpan = diag.span.clone().into();
         let diag = diag.set_span(span.clone());
-        self.span_err_with_code(
-            span,
-            format!("{}", diag),
-            rustc_errors::DiagnosticId::Error(diag.kind.code().into()),
-        );
+        self.span_err(span, diag.to_string());
     }
 }
 
