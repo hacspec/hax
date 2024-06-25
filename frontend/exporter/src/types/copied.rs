@@ -1189,7 +1189,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
                     let contents = kind.sinto(s);
                     use crate::rustc_middle::ty::util::IntTypeExt;
                     let repr_type = tcx
-                        .repr_options_of_def(def.did().as_local().unwrap())
+                        .repr_options_of_def(def.did().expect_local())
                         .discr_type()
                         .to_ty(s.base().tcx);
                     if repr_type == ty {
@@ -3061,7 +3061,7 @@ pub enum ItemKind<Body: IsBody> {
         Generics<Body>,
         #[value({
             let tcx = s.base().tcx;
-            tcx.repr_options_of_def(s.owner_id().as_local().unwrap()).sinto(s)
+            tcx.repr_options_of_def(s.owner_id().expect_local()).sinto(s)
         })]
         ReprOptions,
     ),

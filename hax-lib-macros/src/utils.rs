@@ -1,20 +1,6 @@
 use crate::prelude::*;
 use crate::rewrite_self::*;
 
-// pub trait BlockExt {
-//     /// Bring in the scope of the block quantifiers helpers (the `forall` and `exists` functions)
-//     fn make_quantifiers_available(&mut self);
-// }
-
-// impl BlockExt for Block {
-//     fn make_quantifiers_available(&mut self) {
-//         self.stmts.insert(
-//             0,
-//             Stmt::Item(Item::Verbatim(HaxQuantifiers.to_token_stream())),
-//         );
-//     }
-// }
-
 /// `HaxQuantifiers` expands to the definition of the `forall` and `exists` functions
 pub struct HaxQuantifiers;
 impl ToTokens for HaxQuantifiers {
