@@ -79,7 +79,7 @@ let c_mutability (witness : 'a) : bool -> 'a Ast.mutability = function
 
 let c_borrow_kind span : Thir.borrow_kind -> borrow_kind = function
   | Shared -> Shared
-  | Fake -> unimplemented [ span ] "Shallow borrows"
+  | Fake _ -> unimplemented [ span ] "Shallow borrows"
   | Mut _ -> Mut W.mutable_reference
 
 let c_binding_mode : Thir.by_ref -> binding_mode = function
@@ -257,6 +257,9 @@ end) : EXPR = struct
       | Ge -> Core__cmp__PartialOrd__ge
       | Gt -> Core__cmp__PartialOrd__gt
       | Eq -> Core__cmp__PartialEq__eq
+      | Cmp ->
+          assertion_failure (Span.to_thir span)
+            "`Cmp` binary operator is not suppored"
       | Offset -> Core__ptr__const_ptr__Impl__offset
     in
     let primitive_names_of_binop : Thir.bin_op -> Concrete_ident.name = function
@@ -276,6 +279,9 @@ end) : EXPR = struct
       | Ge -> Rust_primitives__u128__ge
       | Gt -> Rust_primitives__u128__gt
       | Eq -> Rust_primitives__u128__eq
+      | Cmp ->
+          assertion_failure (Span.to_thir span)
+            "`Cmp` binary operator is not suppored"
       | Offset -> Rust_primitives__offset
     in
     let name =
@@ -318,7 +324,7 @@ end) : EXPR = struct
           | Rem -> both int
           | BitXor | BitAnd | BitOr -> both int <|> both bool
           | Shl | Shr -> int <*> int
-          | Lt | Le | Ne | Ge | Gt -> both int <|> both float
+          | Lt | Le | Ne | Ge | Gt | Cmp -> both int <|> both float
           | Eq -> both int <|> both float <|> both bool
           | Offset -> ("", fun _ -> Some "")
         in

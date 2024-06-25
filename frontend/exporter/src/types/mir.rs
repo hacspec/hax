@@ -162,16 +162,6 @@ pub struct Instance {
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::SourceScopeLocalData, state: S as s)]
 pub struct SourceScopeLocalData {
     pub lint_root: HirId,
-    pub safety: Safety,
-}
-
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::Safety, state: S as s)]
-pub enum Safety {
-    Safe,
-    BuiltinUnsafe,
-    FnUnsafe,
-    ExplicitUnsafe(HirId),
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -893,13 +883,14 @@ pub enum AggregateKind {
     Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, MirPolyFnSig),
     Coroutine(DefId, Vec<GenericArg>),
     CoroutineClosure(DefId, Vec<GenericArg>),
+    RawPtr(Ty, Mutability),
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::CastKind, state: S as s)]
 pub enum CastKind {
-    PointerExposeAddress,
-    PointerFromExposedAddress,
+    PointerExposeProvenance,
+    PointerWithExposedProvenance,
     PointerCoercion(PointerCoercion),
     DynStar,
     IntToInt,

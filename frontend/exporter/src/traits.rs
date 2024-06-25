@@ -434,7 +434,7 @@ pub fn select_trait_candidate<'tcx, S: UnderOwnerState<'tcx>>(
 pub mod copy_paste_from_rustc {
     use rustc_infer::infer::TyCtxtInferExt;
     use rustc_infer::traits::{FulfillmentErrorCode, TraitEngineExt as _};
-    use rustc_middle::traits::{CodegenObligationError, DefiningAnchor};
+    use rustc_middle::traits::CodegenObligationError;
     use rustc_middle::ty::{self, TyCtxt};
     use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
     use rustc_trait_selection::traits::{
@@ -456,13 +456,7 @@ pub mod copy_paste_from_rustc {
 
         // Do the initial selection for the obligation. This yields the
         // shallow result we are looking for -- that is, what specific impl.
-        let infcx = tcx
-            .infer_ctxt()
-            .ignoring_regions()
-            .with_opaque_type_inference(DefiningAnchor::Bubble)
-            .build();
-        //~^ HACK `Bubble` is required for
-        // this test to pass: type-alias-impl-trait/assoc-projection-ice.rs
+        let infcx = tcx.infer_ctxt().ignoring_regions().build();
         let mut selcx = SelectionContext::new(&infcx);
 
         let obligation_cause = ObligationCause::dummy();

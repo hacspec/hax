@@ -162,6 +162,7 @@ pub enum BinOp {
     Ne,
     Ge,
     Gt,
+    Cmp,
     Offset,
 }
 
@@ -981,11 +982,11 @@ pub struct Block {
     pub safety_mode: BlockSafety,
 }
 
-/// Reflects [`rustc_ast::ast::BindingAnnotation`]
+/// Reflects [`rustc_ast::ast::BindingMode`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_ast::ast::BindingAnnotation, state: S as s)]
+#[args(<S>, from: rustc_ast::ast::BindingMode, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct BindingAnnotation {
+pub struct BindingMode {
     #[value(self.0.sinto(s))]
     pub by_ref: ByRef,
     #[value(self.1.sinto(s))]
@@ -1092,7 +1093,6 @@ pub enum TokenKind {
     Comma,
     Semi,
     Colon,
-    ModSep,
     RArrow,
     LArrow,
     FatArrow,
@@ -1907,7 +1907,7 @@ pub enum PatKind {
         }
     )]
     Binding {
-        mode: BindingAnnotation,
+        mode: BindingMode,
         var: LocalIdent, // name VS var? TODO
         ty: Ty,
         subpattern: Option<Pat>,
@@ -2017,7 +2017,7 @@ pub enum PointerCoercion {
 )]
 pub enum BorrowKind {
     Shared,
-    Fake,
+    Fake(FakeBorrowKind),
     Mut { kind: MutBorrowKind },
 }
 
@@ -2031,6 +2031,22 @@ pub enum MutBorrowKind {
     Default,
     TwoPhaseBorrow,
     ClosureCapture,
+}
+
+/// Reflects [`rustc_middle::mir::FakeBorrowKind`]
+#[derive(AdtInto)]
+#[args(<S>, from: rustc_middle::mir::FakeBorrowKind, state: S as _s)]
+#[derive(
+    Copy, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub enum FakeBorrowKind {
+    /// A shared (deep) borrow. Data must be immutable and is aliasable.
+    Deep,
+    /// The immediately borrowed place must be immutable, but projections from
+    /// it don't need to be. This is used to prevent match guards from replacing
+    /// the scrutinee. For example, a fake borrow of `a.b` doesn't
+    /// conflict with a mutable borrow of `a.b.c`.
+    Shallow,
 }
 
 /// Reflects [`rustc_ast::ast::StrStyle`]
