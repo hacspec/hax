@@ -16,7 +16,9 @@ module Kind : sig
     | Trait
     | Impl
     | AssociatedItem of t
-  [@@deriving show, yojson, compare, sexp, eq, hash]
+    [@@deriving show, yojson, compare, sexp, eq, hash]
+
+    val to_string: t -> string
 end
 
 val of_def_id : Kind.t -> Types.def_id -> t
@@ -36,6 +38,7 @@ end
 type view = { crate : string; path : string list; definition : string }
 
 val map_path_strings : f:(string -> string) -> t -> t
+val to_pattern : t -> string
 val matches_namespace : Types.namespace -> t -> bool
 
 include module type of struct
@@ -68,3 +71,6 @@ identifier points to an [Impl] block. *)
 val parent_impl : t -> t option
 (** Returns the identifier pointing to the parent `impl` block, if it
 exists. *)
+
+
+val kind: t -> Kind.t

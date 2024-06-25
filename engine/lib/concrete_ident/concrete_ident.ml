@@ -223,7 +223,19 @@ module Kind = struct
     | Trait
     | Impl
     | AssociatedItem of t
-  [@@deriving show, yojson, compare, sexp, eq, hash]
+    [@@deriving show, yojson, compare, sexp, eq, hash]
+
+  let to_string = function
+    | Type -> "Type"
+    | Value -> "Value"
+    | Lifetime -> "Lifetime"
+    | Field -> "Field"
+    | Macro -> "Macro"
+    | Trait -> "Trait"
+    | Impl -> "Impl"
+    | Constructor { is_struct = false } -> "Constructor"
+    | Constructor { is_struct = true } -> "ConstructorRecord"
+    | AssociatedItem _ -> "AssociatedItem"
 
   let of_def_path_item : Imported.def_path_item -> t option = function
     | TypeNs _ -> Some Type
@@ -245,6 +257,7 @@ module View = struct
       | TypeNs s | ValueNs s | MacroNs s | LifetimeNs s -> Some s
       | Impl -> Some "impl"
       | AnonConst -> Some "anon_const"
+      | ForeignMod -> Some "foreign_mod"
       | _ -> None
 
     let string_of_disambiguated_def_path_item
@@ -263,7 +276,7 @@ module View = struct
              | _ -> base ^ "_" ^ Int.to_string n)
   end
 
-  open Utils
+    open Utils
 
   let simple_ty_to_string ~(namespace : Imported.def_id) :
       Types.ty -> string option =
@@ -336,7 +349,7 @@ module View = struct
     in
     let path, definition =
       List.filter_map ~f:string_of_disambiguated_def_path_item def_id.path
-      |> last_init |> Option.value_exn
+      |> last_init |> Option.value_exn ~message:([%show: Imported.def_id] def_id)
     in
     let path =
       List.filter
@@ -429,6 +442,8 @@ module T = struct
       Concrete_ident_generated.def_id_of name |> Imported.of_def_id
     in
     [%equal: Imported.def_id] of_name id.def_id
+
+    let kind: t -> Kind.t = fun x -> x.kind
 end
 
 include T
@@ -562,6 +577,18 @@ module DefaultNamePolicy = struct
   let enum_constructor_name_transform ~enum_name:_ = Fn.id
   let struct_constructor_name_transform = Fn.id
 end
+
+let to_pattern (did : t) : string =
+  let did = did.def_id in
+  let path : string option list =
+    Some did.krate
+      :: (did.path
+            |> List.map ~f:(fun (x : Imported.disambiguated_def_path_item) ->
+                       View.Utils.string_of_def_path_item x.data))
+  in
+  path
+    |> List.map ~f:(function None -> "*" | Some s -> s)
+    |> String.concat ~sep:"::"
 
 let matches_namespace (ns : Types.namespace) (did : t) : bool =
   let did = did.def_id in

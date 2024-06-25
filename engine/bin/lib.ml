@@ -18,6 +18,25 @@ let setup_logs (options : Types.engine_options) =
   Logs.set_reporter @@ Logs.format_reporter ()
 
 module Deps = Dependencies.Make (Features.Rust)
+module RU = Ast_utils.Make (Features.Rust)
+
+module FStarNamePolicy = struct
+  include Concrete_ident.DefaultNamePolicy
+
+  [@@@ocamlformat "disable"]
+
+  let index_field_transform index = "_" ^ index
+
+  let reserved_words = Hash_set.of_list (module String) ["attributes";"noeq";"unopteq";"and";"assert";"assume";"begin";"by";"calc";"class";"default";"decreases";"effect";"eliminate";"else";"end";"ensures";"exception";"exists";"false";"friend";"forall";"fun";"λ";"function";"if";"in";"include";"inline";"inline_for_extraction";"instance";"introduce";"irreducible";"let";"logic";"match";"returns";"as";"module";"new";"new_effect";"layered_effect";"polymonadic_bind";"polymonadic_subcomp";"noextract";"of";"open";"opaque";"private";"quote";"range_of";"rec";"reifiable";"reify";"reflectable";"requires";"set_range_of";"sub_effect";"synth";"then";"total";"true";"try";"type";"unfold";"unfoldable";"val";"when";"with";"_";"__SOURCE_FILE__";"__LINE__";"match";"if";"let";"and"]
+end
+
+module U = Ast_utils.MakeWithNamePolicy (Features.Rust) (FStarNamePolicy)
+
+let print_concrete_ident (id: Concrete_ident.t): string =
+  let idv = U.Concrete_ident_view.to_view id in
+  let ident = idv.crate :: (idv.path @ [ idv.definition ]) |> String.concat ~sep:"." in
+  ident ^ "\t" ^ Concrete_ident.to_pattern id ^ "\t" ^ Concrete_ident.Kind.to_string (Concrete_ident.kind id)
+
 
 module Error : Phase_utils.ERROR = Phase_utils.MakeError (struct
   let ctx = Diagnostics.Context.ThirImport
@@ -108,6 +127,10 @@ let run (options : Types.engine_options) : Types.output =
           ~f:(function { v = TyAlias _; _ } -> false | _ -> true)
           items
     in
+    let concr_idents = List.map ~f:(RU.Reducers.collect_concrete_idents#visit_item ()) items |> Set.union_list (module Concrete_ident) |> Set.to_list in
+    let data = concr_idents |> List.filter ~f:(fun ident -> List.exists items ~f:(fun item -> [%eq: Concrete_ident.t] item.ident ident) |> not) |> List.map ~f:print_concrete_ident |> String.concat ~sep:"\n" in
+    (* let data = List.map ~f:[%yojson_of: Concrete_ident.t] concr_idents |> List.map ~f:Yojson.Safe.pretty_to_string |> String.concat ~sep:"\n" in *)
+    Stdio.Out_channel.write_all "/tmp/idents.json" ~data;
     Logs.info (fun m ->
         m "Applying phase for backend %s"
           ([%show: Diagnostics.Backend.t] M.backend));
