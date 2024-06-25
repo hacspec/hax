@@ -171,7 +171,7 @@ pub(crate) mod search_clause {
             s: &S,
         ) -> Vec<(
             AssocItem,
-            EarlyBinder<Vec<(usize, PolyTraitPredicate<'tcx>)>>,
+            EarlyBinder<'tcx, Vec<(usize, PolyTraitPredicate<'tcx>)>>,
         )> {
             let tcx = s.base().tcx;
             tcx.associated_items(self.def_id())
@@ -201,12 +201,7 @@ pub(crate) mod search_clause {
             param_env: rustc_middle::ty::ParamEnv<'tcx>,
         ) -> Option<Path<'tcx>> {
             let tcx = s.base().tcx;
-            if predicate_equality(
-                self.to_predicate(tcx),
-                target.to_predicate(tcx),
-                param_env,
-                s,
-            ) {
+            if predicate_equality(self.upcast(tcx), target.upcast(tcx), param_env, s) {
                 return Some(vec![]);
             }
 
@@ -336,7 +331,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                 let Some((apred, path)) = predicates.into_iter().find_map(|apred| {
                     apred
                         .predicate
-                        .to_opt_poly_trait_pred()
+                        .as_trait_clause()
                         .map(|poly_trait_predicate| poly_trait_predicate)
                         .and_then(|poly_trait_predicate| {
                             poly_trait_predicate.path_to(s, self.clone(), param_env)
@@ -350,7 +345,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                 use rustc_middle::ty::ToPolyTraitRef;
                 let r#trait = apred
                     .predicate
-                    .to_opt_poly_trait_pred()
+                    .as_trait_clause()
                     .s_unwrap(s)
                     .to_poly_trait_ref()
                     .sinto(s);
@@ -406,7 +401,7 @@ pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
     let new_clause = clause.instantiate_supertrait(tcx, &impl_trait_ref);
     let impl_expr = new_clause
         .as_predicate()
-        .to_opt_poly_trait_pred()?
+        .as_trait_clause()?
         .impl_expr(s, s.param_env());
     let mut new_clause_no_binder = new_clause.sinto(s);
     new_clause_no_binder.id = original_predicate_id;

@@ -257,6 +257,9 @@ end) : EXPR = struct
       | Ge -> Core__cmp__PartialOrd__ge
       | Gt -> Core__cmp__PartialOrd__gt
       | Eq -> Core__cmp__PartialEq__eq
+      | AddWithOverflow | SubWithOverflow | MulWithOverflow ->
+          assertion_failure (Span.to_thir span)
+            "Overflowing binary operators are not suppored"
       | Cmp ->
           assertion_failure (Span.to_thir span)
             "`Cmp` binary operator is not suppored"
@@ -279,6 +282,9 @@ end) : EXPR = struct
       | Ge -> Rust_primitives__u128__ge
       | Gt -> Rust_primitives__u128__gt
       | Eq -> Rust_primitives__u128__eq
+      | AddWithOverflow | SubWithOverflow | MulWithOverflow ->
+          assertion_failure (Span.to_thir span)
+            "Overflowing binary operators are not suppored"
       | Cmp ->
           assertion_failure (Span.to_thir span)
             "`Cmp` binary operator is not suppored"
@@ -320,7 +326,9 @@ end) : EXPR = struct
         let name = primitive_names_of_binop op in
         let expected, f =
           match op with
-          | Add | Sub | Mul | Div -> both int <|> both float
+          | Add | Sub | Mul | AddWithOverflow | SubWithOverflow
+          | MulWithOverflow | Div ->
+              both int <|> both float
           | Rem | Cmp -> both int
           | BitXor | BitAnd | BitOr -> both int <|> both bool
           | Shl | Shr -> int <*> int
@@ -464,7 +472,10 @@ end) : EXPR = struct
           (U.call
              (match op with
              | Not -> Core__ops__bit__Not__not
-             | Neg -> Core__ops__arith__Neg__neg)
+             | Neg -> Core__ops__arith__Neg__neg
+             | PtrMetadata ->
+                 assertion_failure (Span.to_thir span)
+                   "Unsupported unary operator: `PtrMetadata`")
              [ c_expr arg ]
              span typ)
             .e
@@ -889,7 +900,7 @@ end) : EXPR = struct
 
   and c_pointer e typ span cast source =
     match cast with
-    | ClosureFnPointer Normal | ReifyFnPointer ->
+    | ClosureFnPointer Safe | ReifyFnPointer ->
         (* we have arrow types, we do not distinguish between top-level functions and closures *)
         (c_expr source).e
     | Unsize ->
@@ -1443,7 +1454,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                span = Span.of_thir span;
                witness = W.macro;
              }
-    | Trait (No, Normal, generics, _bounds, items) ->
+    | Trait (No, Safe, generics, _bounds, items) ->
         let items =
           List.filter
             ~f:(fun { attributes; _ } -> not (should_skip attributes))
@@ -1510,14 +1521,14 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
             let attrs = c_item_attrs item.attributes in
             { span = Span.of_thir item.span; v; ident; attrs })
           items
-    | Impl { unsafety = Unsafe; _ } -> unsafe_block [ item.span ]
+    | Impl { safety = Unsafe; _ } -> unsafe_block [ item.span ]
     | Impl
         {
           of_trait = Some of_trait;
           generics;
           self_ty;
           items;
-          unsafety = Normal;
+          safety = Safe;
           parent_bounds;
           _;
         } ->

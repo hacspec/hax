@@ -64,8 +64,12 @@ impl<S, D, T: SInto<S, D>> SInto<S, Option<D>> for Option<T> {
 }
 impl<S, D, T: SInto<S, D>> SInto<S, D> for Box<T> {
     fn sinto(&self, s: &S) -> D {
-        let box x = self;
-        x.sinto(s)
+        (**self).sinto(s)
+    }
+}
+impl<S, D, T: SInto<S, D>> SInto<S, D> for &T {
+    fn sinto(&self, s: &S) -> D {
+        (**self).sinto(s)
     }
 }
 impl<S, D: Clone, T: SInto<S, D>> SInto<S, Vec<D>> for [T] {

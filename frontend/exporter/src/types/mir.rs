@@ -802,7 +802,7 @@ pub struct MirFnSig {
     pub inputs: Vec<Ty>,
     pub output: Ty,
     pub c_variadic: bool,
-    pub unsafety: Unsafety,
+    pub safety: Safety,
     pub abi: Abi,
 }
 
@@ -816,7 +816,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, MirFnSig> for rustc_middle:
             inputs,
             output,
             c_variadic: self.c_variadic,
-            unsafety: self.unsafety.sinto(s),
+            safety: self.safety.sinto(s),
             abi: self.abi.sinto(s),
         }
     }
@@ -928,7 +928,6 @@ pub enum Rvalue {
     Len(Place),
     Cast(CastKind, Operand, Ty),
     BinaryOp(BinOp, (Operand, Operand)),
-    CheckedBinaryOp(BinOp, (Operand, Operand)),
     NullaryOp(NullOp, Ty),
     UnaryOp(UnOp, Operand),
     Discriminant(Place),

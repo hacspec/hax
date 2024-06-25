@@ -219,7 +219,7 @@ impl<'v> Visitor<'v> for Linter<'v> {
             ItemKind::GlobalAsm(_) => error::no_unsafe(self.dcx(), i.span),
             ItemKind::Impl(imp) => {
                 // tracing::trace!("     impl {:?}", imp.self_ty.kind);
-                if imp.unsafety == Unsafety::Unsafe {
+                if imp.safety == Safety::Unsafe {
                     error::no_unsafe(self.dcx(), i.span);
                 }
                 if let Some(of_trait) = &imp.of_trait {
@@ -245,7 +245,7 @@ impl<'v> Visitor<'v> for Linter<'v> {
         // keep going
         walk_item(self, i);
     }
-    fn visit_body(&mut self, b: &'v Body<'v>) {
+    fn visit_body(&mut self, b: &Body<'v>) {
         tracing::trace!("visiting body");
         skip_derived_non_local!(self, b.value.hir_id);
 
@@ -537,7 +537,7 @@ impl<'v> Visitor<'v> for Linter<'v> {
                 tracing::trace!("   ItemFn: {:?}", ident);
                 // TODO: All this should be an error (span_err_with_code)
                 // Unsafe functions
-                if header.unsafety == Unsafety::Unsafe {
+                if header.safety == Safety::Unsafe {
                     error::no_unsafe(self.dcx(), span);
                 }
 
@@ -600,7 +600,7 @@ impl<'v> Visitor<'v> for Linter<'v> {
                 tracing::trace!("   Method: {:?}", ident);
                 // TODO: All this should be an error (span_err_with_code)
                 // Unsafe functions
-                if sig.header.unsafety == Unsafety::Unsafe {
+                if sig.header.safety == Safety::Unsafe {
                     error::no_unsafe(self.dcx(), span);
                 }
 
@@ -823,12 +823,12 @@ impl<'v> Visitor<'v> for Linter<'v> {
         tracing::trace!("visiting generic args {:?}", generic_args.span_ext);
         walk_generic_args(self, generic_args)
     }
-    fn visit_assoc_type_binding(&mut self, type_binding: &'v TypeBinding<'v>) {
-        tracing::trace!("visiting assoc type binding {:?}", type_binding.span);
+    fn visit_assoc_item_constraint(&mut self, constraint: &'v AssocItemConstraint<'v>) {
+        tracing::trace!("visiting assoc item constraint {:?}", constraint.span);
         // self.no_assoc_items(type_binding.span);
 
         // keep going
-        walk_assoc_type_binding(self, type_binding);
+        walk_assoc_item_constraint(self, constraint);
     }
     fn visit_attribute(&mut self, attr: &'v rustc_ast::ast::Attribute) {
         tracing::trace!("visiting attribute: {:?}", attr.span);

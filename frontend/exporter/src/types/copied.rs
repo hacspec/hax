@@ -124,6 +124,7 @@ pub struct Decorated<T> {
 pub enum UnOp {
     Not,
     Neg,
+    PtrMetadata,
 }
 
 /// Reflects [`rustc_middle::mir::BinOp`]
@@ -143,6 +144,9 @@ pub enum BinOp {
         rustc_middle::mir::BinOp::Mul | rustc_middle::mir::BinOp::MulUnchecked => BinOp::Mul,
     )]
     Mul,
+    AddWithOverflow,
+    SubWithOverflow,
+    MulWithOverflow,
     Div,
     Rem,
     BitXor,
@@ -585,7 +589,6 @@ impl VariantDef {
 )]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::EarlyParamRegion, state: S as gstate)]
 pub struct EarlyParamRegion {
-    pub def_id: DefId,
     pub index: u32,
     pub name: Symbol,
 }
@@ -1536,6 +1539,7 @@ pub enum GenericParamDefKind {
 pub struct TyGenerics {
     pub parent: Option<DefId>,
     pub parent_count: usize,
+    #[from(own_params)]
     pub params: Vec<GenericParamDef>,
     // pub param_def_id_to_index: FxHashMap<DefId, u32>,
     pub has_self: bool,
@@ -1577,10 +1581,10 @@ impl Alias {
     #[tracing::instrument(level = "trace", skip(s))]
     fn from<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         s: &S,
-        alias_kind: &rustc_type_ir::AliasKind,
+        alias_kind: &rustc_type_ir::AliasTyKind,
         alias_ty: &rustc_middle::ty::AliasTy<'tcx>,
     ) -> Self {
-        use rustc_type_ir::AliasKind as RustAliasKind;
+        use rustc_type_ir::AliasTyKind as RustAliasKind;
         let kind = match alias_kind {
             RustAliasKind::Projection => {
                 use rustc_middle::ty::{Binder, EarlyBinder, TypeVisitableExt};
@@ -1664,7 +1668,7 @@ pub enum Ty {
         },
         FROM_TYPE::Closure (_defid, generics) => {
             let sig = generics.as_closure().sig();
-            let sig = state.base().tcx.signature_unclosure(sig, rustc_hir::Unsafety::Normal);
+            let sig = state.base().tcx.signature_unclosure(sig, rustc_hir::Safety::Safe);
             arrow_of_sig(&sig, state)
         },
     )]
@@ -1985,15 +1989,15 @@ pub struct Arm {
     attributes: Vec<Attribute>,
 }
 
-/// Reflects [`rustc_hir::Unsafety`]
+/// Reflects [`rustc_hir::Safety`]
 #[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::Unsafety, state: S as _s)]
+#[args(<S>, from: rustc_hir::Safety, state: S as _s)]
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
-pub enum Unsafety {
+pub enum Safety {
     Unsafe,
-    Normal,
+    Safe,
 }
 
 /// Reflects [`rustc_middle::ty::adjustment::PointerCoercion`]
@@ -2003,7 +2007,7 @@ pub enum Unsafety {
 pub enum PointerCoercion {
     ReifyFnPointer,
     UnsafeFnPointer,
-    ClosureFnPointer(Unsafety),
+    ClosureFnPointer(Safety),
     MutToConstPointer,
     ArrayToPointer,
     Unsize,
@@ -2586,7 +2590,7 @@ pub struct TyFnSig {
     #[value(self.output().sinto(s))]
     pub output: Ty,
     pub c_variadic: bool,
-    pub unsafety: Unsafety,
+    pub safety: Safety,
     pub abi: Abi,
 }
 
@@ -2627,7 +2631,7 @@ pub struct FnSig {
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::FnHeader, state: S as tcx)]
 pub struct FnHeader {
-    pub unsafety: Unsafety,
+    pub safety: Safety,
     pub constness: Constness,
     pub asyncness: IsAsync,
     pub abi: Abi,
@@ -2868,7 +2872,7 @@ impl<
         S,
         D: Clone,
         T: SInto<S, D> + rustc_middle::ty::TypeFoldable<rustc_middle::ty::TyCtxt<'tcx>>,
-    > SInto<S, D> for rustc_middle::ty::EarlyBinder<T>
+    > SInto<S, D> for rustc_middle::ty::EarlyBinder<'tcx, T>
 {
     fn sinto(&self, s: &S) -> D {
         self.clone().instantiate_identity().sinto(s)
@@ -2880,7 +2884,7 @@ impl<
 #[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::Impl<'tcx>, state: S as s)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Impl<Body: IsBody> {
-    pub unsafety: Unsafety,
+    pub safety: Safety,
     pub polarity: ImplPolarity,
     pub defaultness: Defaultness,
     pub defaultness_span: Option<Span>,
@@ -2938,6 +2942,15 @@ pub enum VariantData {
     },
     Tuple(Vec<HirFieldDef>, HirId, GlobalIdent),
     Unit(HirId, GlobalIdent),
+}
+
+impl<S> SInto<S, bool> for rustc_ast::ast::Recovered {
+    fn sinto(&self, _s: &S) -> bool {
+        match self {
+            Self::Yes(_) => true,
+            Self::No => false,
+        }
+    }
 }
 
 /// Reflects [`rustc_hir::FieldDef`]
@@ -3101,7 +3114,7 @@ pub enum ItemKind<Body: IsBody> {
     Union(VariantData, Generics<Body>),
     Trait(
         IsAuto,
-        Unsafety,
+        Safety,
         Generics<Body>,
         GenericBounds,
         Vec<TraitItem<Body>>,
@@ -3282,18 +3295,17 @@ pub struct TraitPredicate {
 #[derive(
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
-pub struct OutlivesPredicate<A, B> {
-    pub lhs: A,
-    pub rhs: B,
+pub struct OutlivesPredicate<T> {
+    pub lhs: T,
+    pub rhs: Region,
 }
 
-impl<'tcx, S: UnderOwnerState<'tcx>, A1, A2, B1, B2> SInto<S, OutlivesPredicate<A2, B2>>
-    for rustc_middle::ty::OutlivesPredicate<A1, B1>
+impl<'tcx, S: UnderOwnerState<'tcx>, T, U> SInto<S, OutlivesPredicate<U>>
+    for rustc_middle::ty::OutlivesPredicate<'tcx, T>
 where
-    A1: SInto<S, A2>,
-    B1: SInto<S, B2>,
+    T: SInto<S, U>,
 {
-    fn sinto(&self, s: &S) -> OutlivesPredicate<A2, B2> where {
+    fn sinto(&self, s: &S) -> OutlivesPredicate<U> where {
         OutlivesPredicate {
             lhs: self.0.sinto(s),
             rhs: self.1.sinto(s),
@@ -3302,9 +3314,9 @@ where
 }
 
 /// Reflects [`rustc_middle::ty::RegionOutlivesPredicate`]
-pub type RegionOutlivesPredicate = OutlivesPredicate<Region, Region>;
+pub type RegionOutlivesPredicate = OutlivesPredicate<Region>;
 /// Reflects [`rustc_middle::ty::TypeOutlivesPredicate`]
-pub type TypeOutlivesPredicate = OutlivesPredicate<Ty, Region>;
+pub type TypeOutlivesPredicate = OutlivesPredicate<Ty>;
 
 /// Reflects [`rustc_middle::ty::Term`]
 #[derive(
@@ -3349,13 +3361,14 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ProjectionPredicate>
     for rustc_middle::ty::ProjectionPredicate<'tcx>
 {
     fn sinto(&self, s: &S) -> ProjectionPredicate {
+        let tcx = s.base().tcx;
         let AliasKind::Projection {
             impl_expr,
             assoc_item,
         } = Alias::from(
             s,
-            &rustc_middle::ty::AliasKind::Projection,
-            &self.projection_ty,
+            &rustc_middle::ty::AliasTyKind::Projection,
+            &self.projection_term.expect_ty(tcx),
         )
         .kind
         else {
