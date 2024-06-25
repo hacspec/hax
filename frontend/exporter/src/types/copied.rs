@@ -204,17 +204,16 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::mi
                 const_value.clone(),
                 rustc_span::DUMMY_SP,
             ),
-            Const::Ty(c) => c.sinto(s),
-            Const::Unevaluated(ucv, ty) => match self.translate_uneval(s, ucv.shrink()) {
-                TranslateUnevalRes::EvaluatedConstant(c) => c.sinto(s),
-                TranslateUnevalRes::GlobalName(c) => {
-                    let span = tcx
-                        .def_ident_span(ucv.def)
-                        .unwrap_or_else(|| ucv.def.default_span(tcx))
-                        .sinto(s);
-                    c.decorate(ty.sinto(s), span)
+            Const::Ty(_ty, c) => c.sinto(s),
+            Const::Unevaluated(ucv, _ty) => {
+                let span = tcx
+                    .def_ident_span(ucv.def)
+                    .unwrap_or_else(|| ucv.def.default_span(tcx));
+                match self.translate_uneval(s, ucv.shrink(), span) {
+                    TranslateUnevalRes::EvaluatedConstant(c) => c.sinto(s),
+                    TranslateUnevalRes::GlobalName(c) => c,
                 }
-            },
+            }
         }
     }
 }
@@ -414,8 +413,8 @@ pub enum CanonicalVarInfo {
     PlaceholderTy(PlaceholderType),
     Region(UniverseIndex),
     PlaceholderRegion(PlaceholderRegion),
-    Const(UniverseIndex, Ty),
-    PlaceholderConst(PlaceholderConst, Ty),
+    Const(UniverseIndex),
+    PlaceholderConst(PlaceholderConst),
     Effect,
 }
 
@@ -3203,8 +3202,8 @@ impl<'a, 'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, Vec<Item<Body>>>
 #[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::ForeignItemKind<'tcx>, state: S as tcx)]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub enum ForeignItemKind<Body: IsBody> {
-    Fn(FnDecl, Vec<Ident>, Generics<Body>),
-    Static(Ty, Mutability),
+    Fn(FnDecl, Vec<Ident>, Generics<Body>, Safety),
+    Static(Ty, Mutability, Safety),
     Type,
 }
 

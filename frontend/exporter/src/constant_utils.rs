@@ -200,11 +200,11 @@ pub(crate) fn scalar_int_to_constant_literal<'tcx, S: UnderOwnerState<'tcx>>(
                 .s_expect(s, "scalar_int_to_constant_literal: expected a bool"),
         ),
         ty::Int(kind) => {
-            let v = x.try_to_int(x.size()).s_unwrap(s);
+            let v = x.to_int(x.size());
             ConstantLiteral::Int(ConstantInt::Int(v, kind.sinto(s)))
         }
         ty::Uint(kind) => {
-            let v = x.try_to_uint(x.size()).s_unwrap(s);
+            let v = x.to_uint(x.size());
             ConstantLiteral::Int(ConstantInt::Uint(v, kind.sinto(s)))
         }
         _ => fatal!(
@@ -227,7 +227,7 @@ pub(crate) fn scalar_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
     // We match on the type and use it to convert the value.
     let kind = match ty.kind() {
         ty::Char | ty::Bool | ty::Int(_) | ty::Uint(_) => {
-            let scalar_int = scalar.try_to_int().unwrap_or_else(|_| {
+            let scalar_int = scalar.try_to_scalar_int().unwrap_or_else(|_| {
                 fatal!(
                     s[span],
                     "Type is primitive, but the scalar {:#?} is not a [Int]",
@@ -330,7 +330,7 @@ impl ConstantExprKind {
 
 pub enum TranslateUnevalRes<T> {
     // TODO: rename
-    GlobalName(ConstantExprKind),
+    GlobalName(ConstantExpr),
     EvaluatedConstant(T),
 }
 
@@ -344,6 +344,7 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
         &self,
         s: &impl UnderOwnerState<'tcx>,
         ucv: rustc_middle::ty::UnevaluatedConst<'tcx>,
+        span: rustc_span::Span,
     ) -> TranslateUnevalRes<Self> {
         let tcx = s.base().tcx;
         if is_anon_const(ucv.def, tcx) {
@@ -352,7 +353,7 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
                 supposely_unreachable_fatal!(s, "TranslateUneval"; {self, ucv});
             }))
         } else {
-            let cv = if let Some(assoc) = s.base().tcx.opt_associated_item(ucv.def) {
+            let kind = if let Some(assoc) = s.base().tcx.opt_associated_item(ucv.def) {
                 if assoc.trait_item_def_id.is_some() {
                     // This must be a trait declaration constant
                     trait_const_to_constant_expr_kind(s, ucv.def, ucv.args, &assoc)
@@ -383,16 +384,18 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
                     trait_refs: vec![],
                 }
             };
+            let ty = s.base().tcx.type_of(s.owner_id());
+            let cv = kind.decorate(ty.sinto(s), span.sinto(s));
             TranslateUnevalRes::GlobalName(cv)
         }
     }
 }
 impl<'tcx> ConstantExt<'tcx> for ty::Const<'tcx> {
     fn eval_constant<S: UnderOwnerState<'tcx>>(&self, s: &S) -> Option<Self> {
-        let evaluated = self
+        let (ty, evaluated) = self
             .eval(s.base().tcx, s.param_env(), rustc_span::DUMMY_SP)
             .ok()?;
-        let evaluated = ty::Const::new(s.base().tcx, ty::ConstKind::Value(evaluated), self.ty());
+        let evaluated = ty::Const::new(s.base().tcx, ty::ConstKind::Value(ty, evaluated));
         (&evaluated != self).then_some(evaluated)
     }
 }
@@ -409,26 +412,29 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for ty::Const<'tcx> 
     fn sinto(&self, s: &S) -> ConstantExpr {
         use rustc_middle::query::Key;
         let span = self.default_span(s.base().tcx);
-        let kind = match self.kind() {
-            ty::ConstKind::Param(p) => ConstantExprKind::ConstRef { id: p.sinto(s) },
+        match self.kind() {
+            ty::ConstKind::Param(p) => {
+                let kind = ConstantExprKind::ConstRef { id: p.sinto(s) };
+                let tcx = s.base().tcx;
+                let param_env = tcx.param_env(s.owner_id());
+                let ty = p.find_ty_from_env(param_env);
+                kind.decorate(ty.sinto(s), span.sinto(s))
+            }
             ty::ConstKind::Infer(..) => fatal!(s[span], "ty::ConstKind::Infer node? {:#?}", self),
 
-            ty::ConstKind::Unevaluated(ucv) => match self.translate_uneval(s, ucv) {
+            ty::ConstKind::Unevaluated(ucv) => match self.translate_uneval(s, ucv, span) {
                 TranslateUnevalRes::EvaluatedConstant(c) => return c.sinto(s),
                 TranslateUnevalRes::GlobalName(c) => c,
             },
-            ty::ConstKind::Value(valtree) => {
-                return valtree_to_constant_expr(s, valtree, self.ty(), span)
-            }
+            ty::ConstKind::Value(ty, valtree) => valtree_to_constant_expr(s, valtree, ty, span),
             ty::ConstKind::Error(_) => fatal!(s[span], "ty::ConstKind::Error"),
             ty::ConstKind::Expr(e) => fatal!(s[span], "ty::ConstKind::Expr {:#?}", e),
 
             ty::ConstKind::Bound(i, bound) => {
-                supposely_unreachable_fatal!(s[span], "ty::ConstKind::Bound"; {i, bound, self.ty()});
+                supposely_unreachable_fatal!(s[span], "ty::ConstKind::Bound"; {i, bound});
             }
             _ => fatal!(s[span], "unexpected case"),
-        };
-        kind.decorate(self.ty().sinto(s), span.sinto(s))
+        }
     }
 }
 
@@ -445,7 +451,7 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
         }
         (ty::ValTree::Branch(valtrees), ty::Str) => ConstantExprKind::Literal(
             ConstantLiteral::byte_str(valtrees.iter().map(|x| match x {
-                ty::ValTree::Leaf(leaf) => leaf.try_to_u8().unwrap_or_else(|e| fatal!(s[span], "Expected a u8 leaf while translating a str literal, got something else. Error: {:#?}", e)),
+                ty::ValTree::Leaf(leaf) => leaf.to_u8(),
                 _ => fatal!(s[span], "Expected a flat list of leaves while translating a str literal, got a arbitrary valtree.")
             }).collect(), StrStyle::Cooked))
         ,

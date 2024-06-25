@@ -325,9 +325,7 @@ let impl_SuperTrait_for_i32: t_SuperTrait #i32 =
     _super_9442900250278684536 = FStar.Tactics.Typeclasses.solve;
     f_function_of_super_trait_pre = (fun (self: i32) -> true);
     f_function_of_super_trait_post = (fun (self: i32) (out: u32) -> true);
-    f_function_of_super_trait
-    =
-    fun (self: i32) -> cast (Core.Num.impl__i32__abs true self <: i32) <: u32
+    f_function_of_super_trait = fun (self: i32) -> cast (Core.Num.impl__i32__abs self <: i32) <: u32
   }
 
 class t_Foo (#v_Self: Type0) = {

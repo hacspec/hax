@@ -1,6 +1,6 @@
 // rustc errors
 extern crate rustc_errors;
-use rustc_errors::DiagCtxt;
+use rustc_errors::DiagCtxtHandle;
 
 // rustc data_structures
 extern crate rustc_data_structures;
@@ -9,13 +9,13 @@ extern crate rustc_data_structures;
 extern crate rustc_span;
 use rustc_span::Span;
 
-fn warn_span_lint(dcx: &DiagCtxt, span: Span, msg: impl AsRef<str>, lint_name: &str) {
+fn warn_span_lint(dcx: DiagCtxtHandle<'_>, span: Span, msg: impl AsRef<str>, lint_name: &str) {
     let mut err = dcx.struct_warn(msg.as_ref().to_string()).with_span(span);
     err.is_lint(lint_name.to_string(), /* has_future_breakage */ false);
     err.emit();
 }
 
-pub fn explicit_lifetime(dcx: &DiagCtxt, span: Span) {
+pub fn explicit_lifetime(dcx: DiagCtxtHandle<'_>, span: Span) {
     warn_span_lint(
         dcx,
         span,
@@ -24,7 +24,7 @@ pub fn explicit_lifetime(dcx: &DiagCtxt, span: Span) {
     );
 }
 
-pub fn mut_borrow_let(dcx: &DiagCtxt, span: Span) {
+pub fn mut_borrow_let(dcx: DiagCtxtHandle<'_>, span: Span) {
     warn_span_lint(
         dcx,
         span,
@@ -33,11 +33,11 @@ pub fn mut_borrow_let(dcx: &DiagCtxt, span: Span) {
     );
 }
 
-pub fn extern_crate(dcx: &DiagCtxt, span: Span) {
+pub fn extern_crate(dcx: DiagCtxtHandle<'_>, span: Span) {
     warn_span_lint(dcx, span, "[Hax] External items need a model", "External");
 }
 
-pub fn no_trait_objects(dcx: &DiagCtxt, span: Span) {
+pub fn no_trait_objects(dcx: DiagCtxtHandle<'_>, span: Span) {
     warn_span_lint(
         dcx,
         span,
@@ -46,7 +46,7 @@ pub fn no_trait_objects(dcx: &DiagCtxt, span: Span) {
     );
 }
 
-pub fn no_mut_self(dcx: &DiagCtxt, span: Span) {
+pub fn no_mut_self(dcx: DiagCtxtHandle<'_>, span: Span) {
     warn_span_lint(
         dcx,
         span,
@@ -55,7 +55,7 @@ pub fn no_mut_self(dcx: &DiagCtxt, span: Span) {
     );
 }
 
-pub fn no_mut(dcx: &DiagCtxt, span: Span) {
+pub fn no_mut(dcx: DiagCtxtHandle<'_>, span: Span) {
     warn_span_lint(
         dcx,
         span,
@@ -64,7 +64,7 @@ pub fn no_mut(dcx: &DiagCtxt, span: Span) {
     );
 }
 
-pub fn no_assoc_items(dcx: &DiagCtxt, span: Span) {
+pub fn no_assoc_items(dcx: DiagCtxtHandle<'_>, span: Span) {
     warn_span_lint(
         dcx,
         span,
@@ -73,7 +73,7 @@ pub fn no_assoc_items(dcx: &DiagCtxt, span: Span) {
     );
 }
 
-pub fn unsupported_item(dcx: &DiagCtxt, span: Span, ident: String) {
+pub fn unsupported_item(dcx: DiagCtxtHandle<'_>, span: Span, ident: String) {
     warn_span_lint(
         dcx,
         span,
@@ -82,11 +82,11 @@ pub fn unsupported_item(dcx: &DiagCtxt, span: Span, ident: String) {
     );
 }
 
-pub fn no_fn_mut(dcx: &DiagCtxt, span: Span) {
+pub fn no_fn_mut(dcx: DiagCtxtHandle<'_>, span: Span) {
     warn_span_lint(dcx, span, "[Hax] FnMut is not supported", "Where");
 }
 
-pub fn no_where_predicate(dcx: &DiagCtxt, span: Span) {
+pub fn no_where_predicate(dcx: DiagCtxtHandle<'_>, span: Span) {
     warn_span_lint(
         dcx,
         span,
@@ -95,7 +95,7 @@ pub fn no_where_predicate(dcx: &DiagCtxt, span: Span) {
     );
 }
 
-pub fn no_async_await(dcx: &DiagCtxt, span: Span) {
+pub fn no_async_await(dcx: DiagCtxtHandle<'_>, span: Span) {
     warn_span_lint(
         dcx,
         span,
@@ -104,15 +104,15 @@ pub fn no_async_await(dcx: &DiagCtxt, span: Span) {
     );
 }
 
-pub fn no_unsafe(dcx: &DiagCtxt, span: Span) {
+pub fn no_unsafe(dcx: DiagCtxtHandle<'_>, span: Span) {
     warn_span_lint(dcx, span, "[Hax] Unsafe code is not supported", "Unsafe");
 }
 
-pub fn unsupported_loop(dcx: &DiagCtxt, span: Span) {
+pub fn unsupported_loop(dcx: DiagCtxtHandle<'_>, span: Span) {
     warn_span_lint(dcx, span, "[Hax] loop and while are not supported", "Loops");
 }
 
-pub fn no_union(dcx: &DiagCtxt, span: Span) {
+pub fn no_union(dcx: DiagCtxtHandle<'_>, span: Span) {
     warn_span_lint(
         dcx,
         span,
@@ -121,7 +121,7 @@ pub fn no_union(dcx: &DiagCtxt, span: Span) {
     );
 }
 
-pub fn derive_external_trait(dcx: &DiagCtxt, span: Span, trait_name: String) {
+pub fn derive_external_trait(dcx: DiagCtxtHandle<'_>, span: Span, trait_name: String) {
     warn_span_lint(
         dcx,
         span,

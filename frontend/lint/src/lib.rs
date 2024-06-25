@@ -8,7 +8,7 @@ use rustc_middle::ty::TyCtxt;
 
 // rustc errors
 extern crate rustc_errors;
-use rustc_errors::DiagCtxt;
+use rustc_errors::DiagCtxtHandle;
 
 // rustc hir
 extern crate rustc_hir;
@@ -68,7 +68,7 @@ impl<'tcx> Linter<'tcx> {
         hir.visit_all_item_likes_in_crate(&mut linter);
     }
 
-    fn dcx(&self) -> &'tcx DiagCtxt {
+    fn dcx(&self) -> DiagCtxtHandle<'tcx> {
         self.tcx.dcx()
     }
 }

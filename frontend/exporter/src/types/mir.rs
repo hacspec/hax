@@ -154,7 +154,7 @@ pub struct SourceScopeData {
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::Instance<'tcx>, state: S as s)]
 pub struct Instance {
-    pub def: InstanceDef,
+    pub def: InstanceKind,
     pub args: Vec<GenericArg>,
 }
 
@@ -317,10 +317,9 @@ fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
             // Regular function case
             let c = c.deref();
             let (def_id, generics) = match &c.const_ {
-                Const::Ty(c) => {
+                Const::Ty(c_ty, _c) => {
                     // The type of the constant should be a FnDef, allowing
                     // us to retrieve the function's identifier and instantiation.
-                    let c_ty = c.ty();
                     assert!(c_ty.is_fn());
                     match c_ty.kind() {
                         TyKind::FnDef(def_id, generics) => (*def_id, *generics),
@@ -953,7 +952,7 @@ make_idx_wrapper!(rustc_middle::mir, Local);
 make_idx_wrapper!(rustc_middle::ty, UserTypeAnnotationIndex);
 make_idx_wrapper!(rustc_target::abi, FieldIdx);
 
-sinto_todo!(rustc_middle::ty, InstanceDef<'tcx>);
+sinto_todo!(rustc_middle::ty, InstanceKind<'tcx>);
 sinto_todo!(rustc_middle::mir, UserTypeProjections);
 sinto_todo!(rustc_middle::mir, LocalInfo<'tcx>);
 sinto_todo!(rustc_ast::ast, InlineAsmTemplatePiece);
