@@ -83,8 +83,16 @@ end
 module SSP = Coq (SSProveLibrary)
 
 module SSPExtraDefinitions (* : ANALYSIS *) = struct
-  let wrap_type_in_both (l : string) (i : string) (a : SSP.AST.ty) =
+  let wrap_type_in_both (l : string) (i : string) (a : SSP.AST.ty) : SSP.AST.ty
+      =
     SSP.AST.AppTy (SSP.AST.NameTy ("both" ^ " " ^ l ^ " " ^ i), [ a ])
+
+  let wrap_pat_in_both (l : string) (i : string) (a : SSP.AST.pat) : SSP.AST.pat
+      =
+    match a with
+    | SSP.AST.AscriptionPat (p, ty) ->
+        SSP.AST.AscriptionPat (p, wrap_type_in_both l i ty)
+    | _ -> a
 
   let unit_term : SSP.AST.term =
     SSP.AST.TypedTerm (SSP.AST.UnitTerm, SSP.AST.Unit)
@@ -552,10 +560,12 @@ module Context = struct
   }
 end
 
-let primitive_to_string (id : Ast.primitive_ident) : string =
+let primitive_to_string ?(typ = SSP.AST.WildTy) (id : Ast.primitive_ident) :
+    string =
   match id with
   | Deref -> "(TODO: Deref)" (* failwith "Deref" *)
-  | Cast -> "cast_int (WS2 := _)" (* failwith "Cast" *)
+  | Cast ->
+      "cast (B := " ^ fst (SSP.ty_to_string typ) ^ ")" (* failwith "Cast" *)
   | LogicalOp op -> ( match op with And -> "andb" | Or -> "orb")
 
 open Phase_utils
@@ -621,10 +631,10 @@ end) =
 struct
   open Ctx
 
-  let pglobal_ident (id : Ast.global_ident) : string =
+  let pglobal_ident ?typ (id : Ast.global_ident) : string =
     match id with
     | `Projector (`Concrete cid) | `Concrete cid -> pconcrete_ident cid
-    | `Primitive p_id -> primitive_to_string p_id
+    | `Primitive p_id -> primitive_to_string ?typ p_id
     | `TupleType _i -> "TODO (global ident) tuple type"
     | `TupleCons _i -> "TODO (global ident) tuple cons"
     | `Projector (`TupleField (_i, _j)) | `TupleField (_i, _j) ->
@@ -790,7 +800,9 @@ struct
     | PConstruct { name = `TupleCons _n; args; _ } ->
         SSP.AST.TuplePat (List.map ~f:(fun { pat; _ } -> ppat pat) args)
     (* Record *)
-    | PConstruct { is_record = true; _ } -> __TODO_pat__ p.span "record pattern"
+    | PConstruct { name; args; is_record = true; _ } ->
+        __TODO_pat__ p.span "record pattern"
+    (* SSP.AST.RecordPat (pglobal_ident name, List.map ~f:(fun {field; pat} -> (pglobal_ident field, ppat pat)) args) *)
     (* (\* SSP.AST.Ident (pglobal_ident name) *\) *)
     (* SSP.AST.RecordPat (pglobal_ident name, List.map ~f:(fun {field; pat} -> (pglobal_ident field, ppat pat)) args) *)
     (*       (\* SSP.AST.ConstructorPat (pglobal_ident name ^ "_case", [SSP.AST.Ident "temp"]) *\) *)
@@ -861,7 +873,14 @@ struct
       | GlobalVar (`TupleCons 0)
       | Construct { constructor = `TupleCons 0; fields = []; _ } ->
           SSP.AST.App (SSP.AST.Var "ret_both", [ SSPExtraDefinitions.unit_term ])
-      | GlobalVar global_ident -> SSP.AST.Var (pglobal_ident global_ident)
+      | GlobalVar global_ident ->
+          SSP.AST.Var
+            (pglobal_ident
+               ?typ:
+                 (match e.typ with
+                 | TArrow (input, output) -> Some (pty e.span output)
+                 | _ -> None)
+               global_ident)
       | App
           {
             f = { e = GlobalVar (`Projector (`TupleField _)); _ };
@@ -871,7 +890,10 @@ struct
           __TODO_term__ span "app global vcar projector tuple"
       | App { f = { e = GlobalVar x; _ }; args; _ } when Map.mem operators x ->
           let arity, op = Map.find_exn operators x in
-          if List.length args <> arity then failwith "Bad arity";
+          if List.length args <> arity then
+            Diagnostics.failure ~context:(Backend SSProve) ~span:e.span
+              (AssertionFailure { details = "Bad arity" })
+            (* failwith "Bad arity" *);
           let args =
             List.map
               ~f:(fun x -> SSP.AST.Value ((pexpr env false) x, true, 0))
@@ -916,7 +938,7 @@ struct
           in
           SSPExtraDefinitions.letb
             {
-              pattern = ppat lhs;
+              pattern = SSPExtraDefinitions.wrap_pat_in_both "_" "_" (ppat lhs);
               mut = is_mutable_pat lhs;
               value = (pexpr env false) rhs;
               body = (pexpr new_env add_solve) body;
@@ -1480,39 +1502,36 @@ struct
           (* Define all record types in enums (no anonymous records) *)
           List.filter_map variants
             ~f:(fun { name = v_name; arguments; is_record; _ } ->
-              if is_record then
-                Some
-                  (SSPExtraDefinitions.updatable_record
-                     ( (match
-                          String.chop_prefix ~prefix:"C_"
-                            (pconcrete_ident v_name)
-                        with
-                       | Some name -> "t_" ^ name
-                       | _ -> failwith "Incorrect prefix of record name in enum"),
-                       pgeneric span generics,
-                       List.map
-                         ~f:(fun (x, y) -> SSP.AST.Named (x, y))
-                         (p_record_record span arguments) ))
-              else None)
+              Option.some_if is_record
+                (let vc_name = pconcrete_ident v_name in
+                 let chopped_name =
+                   match String.chop_prefix ~prefix:"C_" vc_name with
+                   | Some name -> "t_" ^ name
+                   | _ -> "t_" ^ vc_name
+                 in
+                 SSPExtraDefinitions.updatable_record
+                   ( chopped_name,
+                     pgeneric span generics,
+                     List.map
+                       ~f:(fun (x, y) -> SSP.AST.Named (x, y))
+                       (p_record_record span arguments) )))
           @ [
               SSPExtraDefinitions.both_enum
                 ( pconcrete_ident name,
                   pgeneric span generics,
                   List.map variants
                     ~f:(fun { name = v_name; arguments; is_record; _ } ->
+                      let vc_name = pconcrete_ident v_name in
+                      let chopped_name =
+                        match String.chop_prefix ~prefix:"C_" vc_name with
+                        | Some name -> "t_" ^ name
+                        | _ -> "t_" ^ vc_name
+                      in
                       if is_record then
                         SSP.AST.InductiveCase
                           ( pconcrete_ident v_name,
                             SSP.AST.RecordTy
-                              ( (match
-                                   String.chop_prefix ~prefix:"C_"
-                                     (pconcrete_ident v_name)
-                                 with
-                                | Some name -> "t_" ^ name
-                                | _ ->
-                                    failwith
-                                      "Incorrect prefix of record name in enum"),
-                                p_record_record span arguments ) )
+                              (chopped_name, p_record_record span arguments) )
                       else
                         match arguments with
                         | [] -> SSP.AST.BaseCase (pconcrete_ident v_name)
@@ -1762,7 +1781,9 @@ struct
                 | TIFn (TArrow _) ->
                     [
                       SSP.AST.HintUnfold
-                        (pconcrete_ident x.ti_ident ^ "_loc", None);
+                        ( pconcrete_ident x.ti_ident ^ "_loc",
+                          None,
+                          Some "hacspec_hints" );
                     ]
                 | _ -> [])
               items
@@ -1845,7 +1866,12 @@ struct
                              ])
                        items) );
             ]
-          @ [ SSP.AST.HintUnfold (pglobal_ident name, Some (pty span self_ty)) ]
+          @ [
+              SSP.AST.HintUnfold
+                ( pglobal_ident name,
+                  Some (pty span self_ty),
+                  Some "hacspec_hints" );
+            ]
     in
     decls_from_item
 
@@ -2373,14 +2399,13 @@ let hardcoded_coq_headers =
    From Crypt Require Import choice_type Package Prelude.\n\
    Import PackageNotation.\n\
    From extructures Require Import ord fset.\n\
-   From mathcomp Require Import word_ssrZ word.\n\
-   From Jasmin Require Import word.\n\n\
    From Coq Require Import ZArith.\n\
    From Coq Require Import Strings.String.\n\
    Import List.ListNotations.\n\
    Open Scope list_scope.\n\
    Open Scope Z_scope.\n\
    Open Scope bool_scope.\n\n\
+   From Crypt Require Import jasmin_word.\n\n\
    From Hacspec Require Import ChoiceEquality.\n\
    From Hacspec Require Import LocationUtility.\n\
    From Hacspec Require Import Hacspec_Lib_Comparable.\n\

@@ -9,4 +9,4 @@ edition = "2021"
 
 [package.metadata.hax-tests]
 into."fstar+coq" = {broken = false, snapshot = "none"}
-into."ssprove" = {broken = true, snapshot = "none"}
+# into."ssprove" = {broken = true, snapshot = "none"}
