@@ -66,6 +66,11 @@ fn setup_logging() {
     let subscriber = tracing_subscriber::Registry::default()
         .with(tracing_subscriber::EnvFilter::from_default_env())
         .with(
+            tracing_subscriber::fmt::layer()
+                .with_file(true)
+                .with_line_number(true),
+        )
+        .with(
             tracing_tree::HierarchicalLayer::new(2)
                 .with_ansi(enable_colors)
                 .with_indent_lines(true),

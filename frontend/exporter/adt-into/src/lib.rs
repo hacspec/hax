@@ -390,7 +390,7 @@ pub fn adt_into(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             impl #generics SInto<#state_type, #to #to_generics> for #from_with_generics {
                 #[tracing::instrument(level = "trace", skip(#state))]
                 fn sinto(&self, #state: &#state_type) -> #to #to_generics {
-                    tracing::trace!("Enters sinto");
+                    tracing::trace!("Enters sinto ({})", stringify!(#from_with_generics));
                     #body
                 }
             }
