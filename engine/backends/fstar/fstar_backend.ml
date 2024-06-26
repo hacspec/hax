@@ -344,7 +344,16 @@ struct
 
   and c_trait_goal span trait_goal =
     let trait = F.term @@ F.AST.Name (pconcrete_ident trait_goal.trait) in
-    List.map ~f:(pgeneric_value span) trait_goal.args |> F.mk_e_app trait
+    List.map
+      ~f:(fun g ->
+        let term = pgeneric_value span g in
+        ( term,
+          match g with
+          | GType _ -> F.AST.Hash
+          | GConst _ -> F.AST.Nothing
+          | GLifetime _ -> . ))
+      trait_goal.args
+    |> F.mk_app trait
 
   and pgeneric_value span (g : generic_value) =
     match g with
@@ -1184,22 +1193,12 @@ struct
                     (* in *)
                     (F.id name, None, [], t)
                     :: List.map
-                         ~f:
-                           (fun {
-                                  goal = { trait; args };
-                                  name = impl_ident_name;
-                                } ->
-                           let base =
-                             F.term @@ F.AST.Name (pconcrete_ident trait)
-                           in
-                           let args =
-                             List.map ~f:(pgeneric_value e.span) args
-                           in
+                         ~f:(fun { goal; name = impl_ident_name } ->
                            ( F.id (name ^ "_" ^ impl_ident_name),
                              (* Dodgy concatenation *)
                              None,
                              [],
-                             F.mk_e_app base args ))
+                             c_trait_goal e.span goal ))
                          bounds
                 | TIFn (TArrow (inputs, output))
                   when Attrs.find_unique_attr i.ti_attrs ~f:(function

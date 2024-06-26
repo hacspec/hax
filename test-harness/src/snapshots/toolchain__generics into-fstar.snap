@@ -65,7 +65,7 @@ let impl_Foo_for_usize: t_Foo #usize =
 
 let dup
       (#v_T: Type0)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Clone.t_Clone v_T)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Clone.t_Clone #v_T)
       (x: v_T)
     : (v_T & v_T) = Core.Clone.f_clone #v_T x, Core.Clone.f_clone #v_T x <: (v_T & v_T)
 
@@ -76,7 +76,7 @@ let call_f (_: Prims.unit) : usize = (f (sz 10) (sz 3) <: usize) +! sz 3
 let g
       (v_N: usize)
       (#v_T: Type0)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Convert.t_Into v_T (t_Array usize v_N))
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Convert.t_Into #v_T #(t_Array usize v_N))
       (arr: v_T)
     : usize =
   (Core.Option.impl__unwrap_or #usize
@@ -123,7 +123,7 @@ let foo (v_LEN: usize) (arr: t_Array usize v_LEN) : usize =
 let repeat
       (v_LEN: usize)
       (#v_T: Type0)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Marker.t_Copy v_T)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Marker.t_Copy #v_T)
       (x: v_T)
     : t_Array v_T v_LEN = Rust_primitives.Hax.repeat x v_LEN
 

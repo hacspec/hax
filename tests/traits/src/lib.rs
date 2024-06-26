@@ -177,6 +177,19 @@ mod interlaced_consts_types {
     }
 }
 
+// Related to issue 719 (after reopen)
+mod calling_convention_trait_args {
+    trait Trait {}
+
+    fn caller<T: Trait>() {}
+
+    trait Foo {
+        type X: Trait;
+        fn associated_function<T: Trait>();
+        fn method<T: Trait>();
+    }
+}
+
 mod type_alias_bounds_issue_707 {
     struct StructWithGenericBounds<T: Clone>(T);
     type SynonymA<T> = StructWithGenericBounds<T>;
