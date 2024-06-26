@@ -1,6 +1,6 @@
 module Core.Ops.Index
 
-class t_Index #t_Self #t_Idx = {
+class t_Index t_Self t_Idx = {
   f_Output: Type0;
   f_index_pre: s:t_Self -> i:t_Idx -> Type0;
   f_index_post: s:t_Self -> i:t_Idx -> f_Output -> Type0;

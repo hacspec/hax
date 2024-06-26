@@ -26,21 +26,21 @@ let (let!)
     | Core.Ops.Control_flow.ControlFlow_Continue v -> f v
     | Core.Ops.Control_flow.ControlFlow_Break b -> Core.Ops.Control_flow.ControlFlow_Break b
 
-class cast_tc #a #b = {
+class cast_tc a b = {
   cast: a -> b; 
 }
 
 /// Rust's casts operations on integers are non-panicking
 instance cast_tc_integers (t:inttype) (t':inttype)
-  : cast_tc #(int_t t) #(int_t t')
+  : cast_tc (int_t t) (int_t t')
   = { cast = (fun x -> Rust_primitives.Integers.cast_mod #t #t' x) }
 
-class unsize_tc #source = {
+class unsize_tc source = {
   output: Type;
   unsize: source -> output;
 }
 
-instance array_to_slice_unsize t n: unsize_tc #(t_Array t n) = {
+instance array_to_slice_unsize t n: unsize_tc (t_Array t n) = {
   output = (x:t_Slice t{Seq.length x == v n});
   unsize = (fun (arr: t_Array t n) -> 
             arr <: t_Slice t);

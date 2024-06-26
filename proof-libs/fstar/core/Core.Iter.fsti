@@ -9,18 +9,18 @@ open Core.Iter.Traits.Iterator
 (**** Enumerate *)
 (** This lives in this file for cyclic dependencies reasons. *)
 
-val iterator_enumerate_contains it (i: iterator #it)
+val iterator_enumerate_contains it (i: iterator it)
   : t_contains (Core.Iter.Adapters.Enumerate.t_Enumerate it) (usize * i.f_Item)
-val iterator_enumerate_fold it (i: iterator #it)
+val iterator_enumerate_fold it (i: iterator it)
   : t_fold (Core.Iter.Adapters.Enumerate.t_Enumerate it) (usize * i.f_Item) (iterator_enumerate_contains it i)
 val iterator_enumerate_enumerate it
   : t_enumerate (Core.Iter.Adapters.Enumerate.t_Enumerate it)
-val iterator_enumerate_all it (i: iterator #it)
+val iterator_enumerate_all it (i: iterator it)
   : t_all (Core.Iter.Adapters.Enumerate.t_Enumerate it) (usize * i.f_Item)
 val iterator_enumerate_step_by it
   : t_step_by (Core.Iter.Adapters.Enumerate.t_Enumerate it)
 
-instance iterator_enumerate it {| i: iterator #it |}: iterator #(Core.Iter.Adapters.Enumerate.t_Enumerate it) = 
+instance iterator_enumerate it {| i: iterator it |}: iterator (Core.Iter.Adapters.Enumerate.t_Enumerate it) = 
   let open Core.Iter.Adapters.Enumerate in
   {
     f_Item = (usize * i.f_Item);
@@ -43,20 +43,20 @@ instance iterator_enumerate it {| i: iterator #it |}: iterator #(Core.Iter.Adapt
 (**** Step_by *)
 (** This lives in this file for cyclic dependencies reasons. *)
 
-val iterator_step_by_contains it (i: iterator #it)
+val iterator_step_by_contains it (i: iterator it)
   : t_contains (Core.Iter.Adapters.Step_by.t_StepBy it) i.f_Item
-val iterator_step_by_fold it (i: iterator #it)
+val iterator_step_by_fold it (i: iterator it)
   : t_fold (Core.Iter.Adapters.Step_by.t_StepBy it) i.f_Item (iterator_step_by_contains it i)
-val iterator_step_by_next it (i: iterator #it)
+val iterator_step_by_next it (i: iterator it)
   : t_next (Core.Iter.Adapters.Step_by.t_StepBy it) i.f_Item
 val iterator_step_by_enumerate it
   : t_enumerate (Core.Iter.Adapters.Step_by.t_StepBy it)
-val iterator_step_by_all it (i: iterator #it)
+val iterator_step_by_all it (i: iterator it)
   : t_all (Core.Iter.Adapters.Step_by.t_StepBy it) i.f_Item
 val iterator_step_by_step_by it
   : t_step_by (Core.Iter.Adapters.Step_by.t_StepBy it)
 
-unfold instance iterator_step_by it {| i: iterator #it |}: iterator #(Core.Iter.Adapters.Step_by.t_StepBy it) = 
+unfold instance iterator_step_by it {| i: iterator it |}: iterator (Core.Iter.Adapters.Step_by.t_StepBy it) = 
   let open Core.Iter.Adapters.Enumerate in
   {
     f_Item = i.f_Item;
@@ -81,7 +81,7 @@ val iterator_slice_enumerate (t: eqtype): t_enumerate (t_Slice t)
 val iterator_slice_step_by (t: eqtype): t_step_by (t_Slice t)
 val iterator_slice_all (t: eqtype): t_all (t_Slice t) t
 
-instance iterator_slice (t: eqtype): iterator #(t_Slice t) = {
+instance iterator_slice (t: eqtype): iterator (t_Slice t) = {
   f_Item = t;
   f_next = iterator_slice_next t;
   // size_hint = (fun s -> Some (Rust_primitives.Arrays.length s));
@@ -103,7 +103,7 @@ val iterator_array_enumerate (t: eqtype) len: t_enumerate (t_Array t len)
 val iterator_array_step_by (t: eqtype) len: t_step_by (t_Array t len)
 val iterator_array_all (t: eqtype) len: t_all (t_Array t len) t
 
-instance iterator_array (t: eqtype) len: iterator #(t_Array t len) = {
+instance iterator_array (t: eqtype) len: iterator (t_Array t len) = {
   f_Item = t;
   f_next = iterator_array_next t len;
   // size_hint = (fun (_s: t_Array t len) -> Some len);

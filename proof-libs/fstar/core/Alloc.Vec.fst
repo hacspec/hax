@@ -30,8 +30,8 @@ let from_elem #a (item: a) (len: usize) = Seq.create (v len) item
 
 open Rust_primitives.Hax
 open Core.Ops.Index
-instance update_at_tc_array t n: update_at_tc #(t_Vec t ()) #(int_t n) = {
-  super_index = FStar.Tactics.Typeclasses.solve <: t_Index #(t_Vec t ()) #(int_t n);
+instance update_at_tc_array t n: update_at_tc (t_Vec t ()) (int_t n) = {
+  super_index = FStar.Tactics.Typeclasses.solve <: t_Index (t_Vec t ()) (int_t n);
   update_at = (fun arr i x -> FStar.Seq.upd arr (v i) x);
 }
 

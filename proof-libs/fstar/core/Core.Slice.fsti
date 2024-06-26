@@ -19,7 +19,7 @@ val impl__chunks_exact #a (x: t_Slice a) (cs: usize):
 
 open Core.Ops.Index
 
-instance impl__index t n: t_Index #(t_Slice t) #(int_t n)
+instance impl__index t n: t_Index (t_Slice t) (int_t n)
   = { f_Output = t;
       f_index_pre = (fun (s: t_Slice t) (i: int_t n) -> v i >= 0 && v i < v (length s));
       f_index_post = (fun _ _ _ -> true);
