@@ -7,21 +7,21 @@ open Rust_primitives
 //   ( +! ): x:self -> y:rhs {in_bounds x y} -> output;
 // }
 
-class negation_tc self = {
+class negation_tc #self = {
   ( ~. ): self -> self;
 }
 
-instance negation_for_integers #t: negation_tc (int_t t) = {
+instance negation_for_integers #t: negation_tc #(int_t t) = {
   ( ~. ) = fun x -> lognot x
 }
 
-instance negation_for_bool: negation_tc bool = {
+instance negation_for_bool: negation_tc #bool = {
   ( ~. ) = not
 }
 
 open Core.Ops.Index
 
-let ( .[] ) #self #idx {| inst: t_Index self idx |}
+let ( .[] ) #self #idx {| inst: t_Index #self #idx |}
   (s:self) (i:idx{f_index_pre s i}): inst.f_Output
   = f_index s i
 

@@ -47,50 +47,50 @@ val impl__usize__leading_zeros: usize -> u32
 
 open Core.Ops.Arith
 unfold instance add_assign_num_refined_refined t ($phi1 $phi2: int_t t -> bool)
-  : t_AddAssign (x: int_t t {phi1 x}) (y: int_t t {phi2 y}) = {
+  : t_AddAssign #(x: int_t t {phi1 x}) #(y: int_t t {phi2 y}) = {
     f_add_assign_pre = (fun (x: int_t t {phi1 x}) (y: int_t t {phi2 y}) -> phi1 (x +. y));
     f_add_assign_post = (fun x y r -> x +. y = r);
     f_add_assign = (fun x y -> x +. y);
   }
 unfold instance add_assign_num_lhs_refined t ($phi1: int_t t -> bool)
-  : t_AddAssign (x: int_t t {phi1 x}) (y: int_t t) = {
+  : t_AddAssign #(x: int_t t {phi1 x}) #(y: int_t t) = {
     f_add_assign_pre = (fun (x: int_t t {phi1 x}) (y: int_t t) -> phi1 (x +. y));
     f_add_assign_post = (fun x y r -> x +. y = r);
     f_add_assign = (fun x y -> x +. y);
   }
 unfold instance add_assign_num_rhs_refined t ($phi1: int_t t -> bool)
-  : t_AddAssign (x: int_t t) (y: int_t t {phi1 y}) = {
+  : t_AddAssign #(x: int_t t) #(y: int_t t {phi1 y}) = {
     f_add_assign_pre = (fun (x: int_t t) (y: int_t t {phi1 y}) -> true);
     f_add_assign_post = (fun x y r -> x +. y = r);
     f_add_assign = (fun x y -> x +. y);
   }
 unfold instance add_assign_num t
-  : t_AddAssign (x: int_t t) (y: int_t t) = {
+  : t_AddAssign #(x: int_t t) #(y: int_t t) = {
     f_add_assign_pre = (fun (x: int_t t) (y: int_t t) -> true);
     f_add_assign_post = (fun x y r -> x +. y = r);
     f_add_assign = (fun x y -> x +. y);
   }
 
 unfold instance sub_assign_num_refined_refined t ($phi1 $phi2: int_t t -> bool)
-  : t_SubAssign (x: int_t t {phi1 x}) (y: int_t t {phi2 y}) = {
+  : t_SubAssign #(x: int_t t {phi1 x}) #(y: int_t t {phi2 y}) = {
     f_sub_assign_pre = (fun (x: int_t t {phi1 x}) (y: int_t t {phi2 y}) -> phi1 (x -. y));
     f_sub_assign_post = (fun x y r -> x -. y = r);
     f_sub_assign = (fun x y -> x -. y);
   }
 unfold instance sub_assign_num_lhs_refined t ($phi1: int_t t -> bool)
-  : t_SubAssign (x: int_t t {phi1 x}) (y: int_t t) = {
+  : t_SubAssign #(x: int_t t {phi1 x}) #(y: int_t t) = {
     f_sub_assign_pre = (fun (x: int_t t {phi1 x}) (y: int_t t) -> phi1 (x -. y));
     f_sub_assign_post = (fun x y r -> x -. y = r);
     f_sub_assign = (fun x y -> x -. y);
   }
 unfold instance sub_assign_num_rhs_refined t ($phi1: int_t t -> bool)
-  : t_SubAssign (x: int_t t) (y: int_t t {phi1 y}) = {
+  : t_SubAssign #(x: int_t t) #(y: int_t t {phi1 y}) = {
     f_sub_assign_pre = (fun (x: int_t t) (y: int_t t {phi1 y}) -> true);
     f_sub_assign_post = (fun x y r -> x -. y = r);
     f_sub_assign = (fun x y -> x -. y);
   }
 unfold instance sub_assign_num t
-  : t_SubAssign (x: int_t t) (y: int_t t) = {
+  : t_SubAssign #(x: int_t t) #(y: int_t t) = {
     f_sub_assign_pre = (fun (x: int_t t) (y: int_t t) -> true);
     f_sub_assign_post = (fun x y r -> x -. y = r);
     f_sub_assign = (fun x y -> x -. y);

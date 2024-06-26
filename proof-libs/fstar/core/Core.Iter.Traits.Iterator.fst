@@ -28,7 +28,7 @@ unfold type t_all self item
 //   f_enumerate: t_enumerate self;
 // }
 
-class iterator (self: Type u#0): Type u#1 = {
+class iterator (#self: Type u#0): Type u#1 = {
   [@@@FStar.Tactics.Typeclasses.no_method]
   f_Item: Type0;
   f_next:      self -> self * option f_Item;

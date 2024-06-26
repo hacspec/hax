@@ -6,7 +6,7 @@ val t_Error: Type0
 type t_Result = Core.Result.t_Result unit t_Error
 
 val t_Formatter: Type0
-class t_Display t_Self = {
+class t_Display #t_Self = {
   f_fmt_pre: t_Self -> Core.Fmt.t_Formatter -> bool;
   f_fmt_post: t_Self -> Core.Fmt.t_Formatter -> (Core.Fmt.t_Formatter & Core.Result.t_Result Prims.unit Core.Fmt.t_Error) -> bool;
   f_fmt: t_Self -> Core.Fmt.t_Formatter -> (Core.Fmt.t_Formatter & Core.Result.t_Result Prims.unit Core.Fmt.t_Error)

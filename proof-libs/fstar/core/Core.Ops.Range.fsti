@@ -20,7 +20,7 @@ val iterator_range_enumerate t: t_enumerate (t_Range (Rust_primitives.int_t t))
 val iterator_range_step_by t: t_step_by (t_Range (Rust_primitives.int_t t))
 val iterator_range_all t: t_all (t_Range (Rust_primitives.int_t t)) (Rust_primitives.int_t t)
 
-instance iterator_range t: iterator (t_Range (Rust_primitives.int_t t)) = 
+instance iterator_range t: iterator #(t_Range (Rust_primitives.int_t t)) = 
   { f_Item = Rust_primitives.int_t t;
     f_next = (fun {f_start; f_end} -> 
        if f_start >=. f_end then ({f_start; f_end}, None)
@@ -36,7 +36,7 @@ instance iterator_range t: iterator (t_Range (Rust_primitives.int_t t)) =
 
 open Core.Ops.Index
 
-instance impl_index_range_slice t n : t_Index (t_Slice t) (t_Range (int_t n)) 
+instance impl_index_range_slice t n : t_Index #(t_Slice t) #(t_Range (int_t n)) 
   = { f_Output = t_Slice t
     ; f_index_post = (fun _ _ _ -> true)
     ; f_index_pre = (fun (s: t_Slice t) {f_start; f_end} -> 
@@ -46,14 +46,14 @@ instance impl_index_range_slice t n : t_Index (t_Slice t) (t_Range (int_t n))
           if f_start <. f_end then Seq.slice s (v f_start) (v f_end)
                               else Seq.empty)}
 
-instance impl_index_range_to_slice t n : t_Index (t_Slice t) (t_RangeTo (int_t n)) 
+instance impl_index_range_to_slice t n : t_Index #(t_Slice t) #(t_RangeTo (int_t n)) 
   = { f_Output = t_Slice t
     ; f_index_post = (fun _ _ _ -> true)
     ; f_index_pre = (fun (s: t_Slice t) ({f_end}: t_RangeTo (int_t n)) -> 
          let len = Rust_primitives.length s in v f_end <= v len)
     ; f_index = (fun s {f_end} -> if 0 < v f_end then Seq.slice s 0 (v f_end) else Seq.empty)}
 
-instance impl_index_range_from_slice t n : t_Index (t_Slice t) (t_RangeFrom (int_t n)) 
+instance impl_index_range_from_slice t n : t_Index #(t_Slice t) #(t_RangeFrom (int_t n)) 
   = { f_Output = t_Slice t
     ; f_index_post = (fun _ _ _ -> true)
     ; f_index_pre = (fun (s: t_Slice t) ({f_start}: t_RangeFrom (int_t n)) -> 
@@ -62,34 +62,34 @@ instance impl_index_range_from_slice t n : t_Index (t_Slice t) (t_RangeFrom (int
          let len = Rust_primitives.length s in
          if v f_start = v len then Seq.empty else Seq.slice s (v f_start) (v len))}
          
-instance impl_index_range_full_slice t : t_Index (t_Slice t) t_RangeFull
+instance impl_index_range_full_slice t : t_Index #(t_Slice t) #t_RangeFull
   = { f_Output = t_Slice t
     ; f_index_post = (fun _ _ _ -> true)
     ; f_index_pre = (fun (s: t_Slice t) _ -> True)
     ; f_index = (fun s _ -> s)}
 
-instance impl_range_index_array t len n : t_Index (t_Array t len) (t_Range (int_t n)) = 
+instance impl_range_index_array t len n : t_Index #(t_Array t len) #(t_Range (int_t n)) = 
   let i = impl_index_range_slice t n in
   { f_Output = i.f_Output
   ; f_index_post = (fun _ _ _ -> true)
   ; f_index_pre = (fun (s: t_Array t len) r -> i.f_index_pre s r)
   ; f_index = (fun s r -> i.f_index s r) }
   
-instance impl_range_to_index_array t len n : t_Index (t_Array t len) (t_RangeTo (int_t n)) = 
+instance impl_range_to_index_array t len n : t_Index #(t_Array t len) #(t_RangeTo (int_t n)) = 
   let i = impl_index_range_to_slice t n in
   { f_Output = i.f_Output
   ; f_index_post = (fun _ _ _ -> true)
   ; f_index_pre = (fun (s: t_Array t len) r -> i.f_index_pre s r)
   ; f_index = (fun s r -> i.f_index s r) }
 
-instance impl_range_from_index_array t len n : t_Index (t_Array t len) (t_RangeFrom (int_t n)) = 
+instance impl_range_from_index_array t len n : t_Index #(t_Array t len) #(t_RangeFrom (int_t n)) = 
   let i = impl_index_range_from_slice t n in
   { f_Output = i.f_Output
   ; f_index_post = (fun _ _ _ -> true)
   ; f_index_pre = (fun (s: t_Array t len) r -> i.f_index_pre s r)
   ; f_index = (fun s r -> i.f_index s r) }
 
-instance impl_range_full_index_array t len : t_Index (t_Array t len) t_RangeFull = 
+instance impl_range_full_index_array t len : t_Index #(t_Array t len) #t_RangeFull = 
   let i = impl_index_range_full_slice t in
   { f_Output = i.f_Output
   ; f_index_post = (fun _ _ _ -> true)
@@ -98,13 +98,13 @@ instance impl_range_full_index_array t len : t_Index (t_Array t len) t_RangeFull
 
 open Rust_primitives.Hax
 
-let update_at_tc_array_range_super t l n: t_Index (t_Array t l) (t_Range (int_t n))
+let update_at_tc_array_range_super t l n: t_Index #(t_Array t l) #(t_Range (int_t n))
   = FStar.Tactics.Typeclasses.solve
-let update_at_tc_array_range_to_super t l n: t_Index (t_Array t l) (t_RangeTo (int_t n))
+let update_at_tc_array_range_to_super t l n: t_Index #(t_Array t l) #(t_RangeTo (int_t n))
   = FStar.Tactics.Typeclasses.solve
-let update_at_tc_array_range_from_super t l n: t_Index (t_Array t l) (t_RangeFrom (int_t n))
+let update_at_tc_array_range_from_super t l n: t_Index #(t_Array t l) #(t_RangeFrom (int_t n))
   = FStar.Tactics.Typeclasses.solve
-let update_at_tc_array_range_full_super t l: t_Index (t_Array t l) t_RangeFull
+let update_at_tc_array_range_full_super t l: t_Index #(t_Array t l) #t_RangeFull
   = FStar.Tactics.Typeclasses.solve
 
 val update_at_array_range t l n
@@ -120,19 +120,19 @@ val update_at_array_range_full t l
   (s: t_Array t l) (i: t_RangeFull)
   : (update_at_tc_array_range_full_super t l).f_Output -> t_Array t l
 
-instance update_at_tc_array_range t l n: update_at_tc (t_Array t l) (t_Range (int_t n)) = {
+instance update_at_tc_array_range t l n: update_at_tc #(t_Array t l) #(t_Range (int_t n)) = {
   super_index = update_at_tc_array_range_super t l n;
   update_at = update_at_array_range t l n
 }
-instance update_at_tc_array_range_to t l n: update_at_tc (t_Array t l) (t_RangeTo (int_t n)) = {
+instance update_at_tc_array_range_to t l n: update_at_tc #(t_Array t l) #(t_RangeTo (int_t n)) = {
   super_index = update_at_tc_array_range_to_super t l n;
   update_at = update_at_array_range_to t l n
 }
-instance update_at_tc_array_range_from t l n: update_at_tc (t_Array t l) (t_RangeFrom (int_t n)) = {
+instance update_at_tc_array_range_from t l n: update_at_tc #(t_Array t l) #(t_RangeFrom (int_t n)) = {
   super_index = update_at_tc_array_range_from_super t l n;
   update_at = update_at_array_range_from t l n
 }
-instance update_at_tc_array_range_full t l: update_at_tc (t_Array t l) t_RangeFull = {
+instance update_at_tc_array_range_full t l: update_at_tc #(t_Array t l) #t_RangeFull = {
   super_index = update_at_tc_array_range_full_super t l;
   update_at = update_at_array_range_full t l
 }
