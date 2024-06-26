@@ -178,15 +178,73 @@ mod interlaced_consts_types {
 }
 
 // Related to issue 719 (after reopen)
-mod calling_convention_trait_args {
-    trait Trait {}
+mod implicit_explicit_calling_conventions {
+    struct Type<TypeArg, const ConstArg: usize> {
+        field: [TypeArg; ConstArg],
+    }
 
-    fn caller<T: Trait>() {}
+    trait Trait<TypeArg, const ConstArg: usize> {
+        fn method<MethodTypeArg, const MethodConstArg: usize>(
+            self,
+            value_TypeArg: TypeArg,
+            value_Type: Type<TypeArg, ConstArg>,
+        );
+        fn associated_function<MethodTypeArg, const MethodConstArg: usize>(
+            _self: Self,
+            value_TypeArg: TypeArg,
+            value_Type: Type<TypeArg, ConstArg>,
+        );
+    }
 
-    trait Foo {
-        type X: Trait;
-        fn associated_function<T: Trait>();
-        fn method<T: Trait>();
+    impl<TypeArg, const ConstArg: usize> Trait<TypeArg, ConstArg> for () {
+        fn method<MethodTypeArg, const MethodConstArg: usize>(
+            self,
+            value_TypeArg: TypeArg,
+            value_Type: Type<TypeArg, ConstArg>,
+        ) {
+        }
+        fn associated_function<MethodTypeArg, const MethodConstArg: usize>(
+            _self: Self,
+            value_TypeArg: TypeArg,
+            value_Type: Type<TypeArg, ConstArg>,
+        ) {
+        }
+    }
+
+    trait SubTrait<TypeArg, const ConstArg: usize>: Trait<TypeArg, ConstArg> {
+        type AssocType: Trait<TypeArg, ConstArg>;
+    }
+
+    fn method_caller<
+        MethodTypeArg,
+        TypeArg,
+        const ConstArg: usize,
+        const MethodConstArg: usize,
+        ImplTrait: Trait<TypeArg, ConstArg>,
+    >(
+        x: ImplTrait,
+        value_TypeArg: TypeArg,
+        value_Type: Type<TypeArg, ConstArg>,
+    ) {
+        x.method::<MethodTypeArg, MethodConstArg>(value_TypeArg, value_Type);
+    }
+
+    fn associated_function_caller<
+        MethodTypeArg,
+        TypeArg,
+        const ConstArg: usize,
+        const MethodConstArg: usize,
+        ImplTrait: Trait<TypeArg, ConstArg>,
+    >(
+        x: ImplTrait,
+        value_TypeArg: TypeArg,
+        value_Type: Type<TypeArg, ConstArg>,
+    ) {
+        ImplTrait::associated_function::<MethodTypeArg, MethodConstArg>(
+            x,
+            value_TypeArg,
+            value_Type,
+        );
     }
 }
 

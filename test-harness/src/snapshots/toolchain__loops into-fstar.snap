@@ -37,7 +37,7 @@ open FStar.Mul
 
 let bool_returning (x: u8) : bool = x <. 10uy
 
-let chunks (v_CHUNK_LEN: usize) (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) : usize =
+let chunks (#v_CHUNK_LEN: usize) (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) : usize =
   let acc:usize = sz 0 in
   let chunks:Core.Slice.Iter.t_ChunksExact usize =
     Core.Slice.impl__chunks_exact #usize
