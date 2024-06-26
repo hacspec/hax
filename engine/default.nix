@@ -46,7 +46,6 @@
     src = lib.sourceFilesBySuffices ./. [".ml" ".mli" ".js" "dune" "dune-js" "dune-project" "sh" "rs" "mld"];
     buildInputs = with ocamlPackages;
       [
-        zarith_stubs_js
         base
         ppx_yojson_conv
         yojson
@@ -54,7 +53,6 @@
         ppx_hash
         pprint
         non_empty_list
-        bignum
         ppx_deriving_yojson
         ppx_matches
         ppx_let
@@ -77,7 +75,6 @@
         ppxlib
         sedlex
         stdint
-        zarith
       ];
     nativeBuildInputs = [
       rustc
