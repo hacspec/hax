@@ -353,6 +353,9 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
                 supposely_unreachable_fatal!(s, "TranslateUneval"; {self, ucv});
             }))
         } else {
+            let param_env = s.param_env();
+            let ty = s.base().tcx.type_of(ucv.def);
+            let ty = tcx.instantiate_and_normalize_erasing_regions(ucv.args, param_env, ty);
             let kind = if let Some(assoc) = s.base().tcx.opt_associated_item(ucv.def) {
                 if assoc.trait_item_def_id.is_some() {
                     // This must be a trait declaration constant
@@ -362,7 +365,6 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
 
                     // Solve the trait obligations
                     let parent_def_id = tcx.parent(ucv.def);
-                    let param_env = s.param_env();
                     let trait_refs = solve_item_traits(s, param_env, parent_def_id, ucv.args, None);
 
                     // Convert
@@ -384,7 +386,6 @@ pub trait ConstantExt<'tcx>: Sized + std::fmt::Debug {
                     trait_refs: vec![],
                 }
             };
-            let ty = s.base().tcx.type_of(s.owner_id());
             let cv = kind.decorate(ty.sinto(s), span.sinto(s));
             TranslateUnevalRes::GlobalName(cv)
         }
@@ -414,10 +415,8 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for ty::Const<'tcx> 
         let span = self.default_span(s.base().tcx);
         match self.kind() {
             ty::ConstKind::Param(p) => {
+                let ty = p.find_ty_from_env(s.param_env());
                 let kind = ConstantExprKind::ConstRef { id: p.sinto(s) };
-                let tcx = s.base().tcx;
-                let param_env = tcx.param_env(s.owner_id());
-                let ty = p.find_ty_from_env(param_env);
                 kind.decorate(ty.sinto(s), span.sinto(s))
             }
             ty::ConstKind::Infer(..) => fatal!(s[span], "ty::ConstKind::Infer node? {:#?}", self),
