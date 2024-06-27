@@ -174,9 +174,9 @@ pub fn get_params_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     let mut num_trait_type_constraints = 0;
 
     let generics = tcx.generics_of(def_id);
-    let num_generic_params = generics.params.len();
+    let num_generic_params = generics.own_params.len();
     use rustc_middle::ty::GenericParamDefKind;
-    for param in &generics.params {
+    for param in &generics.own_params {
         match param.kind {
             GenericParamDefKind::Lifetime => num_region_params += 1,
             GenericParamDefKind::Type { .. } => num_type_params += 1,

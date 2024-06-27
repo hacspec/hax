@@ -34,23 +34,19 @@ open FStar.Mul
 
 let debug (label value: u32) : Prims.unit =
   let _:Prims.unit =
-    Std.Io.Stdio.v__print (Core.Fmt.impl_2__new_v1 (Rust_primitives.unsize (let list =
-                  ["["; "] a="; "\n"]
-                in
-                FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 3);
-                Rust_primitives.Hax.array_of_list 3 list)
-            <:
-            t_Slice string)
-          (Rust_primitives.unsize (let list =
-                  [
-                    Core.Fmt.Rt.impl_1__new_display #u32 label <: Core.Fmt.Rt.t_Argument;
-                    Core.Fmt.Rt.impl_1__new_display #u32 value <: Core.Fmt.Rt.t_Argument
-                  ]
-                in
-                FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 2);
-                Rust_primitives.Hax.array_of_list 2 list)
-            <:
-            t_Slice Core.Fmt.Rt.t_Argument)
+    Std.Io.Stdio.v__print (Core.Fmt.impl_2__new_v1 (sz 3)
+          (sz 2)
+          (let list = ["["; "] a="; "\n"] in
+            FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 3);
+            Rust_primitives.Hax.array_of_list 3 list)
+          (let list =
+              [
+                Core.Fmt.Rt.impl_1__new_display #u32 label <: Core.Fmt.Rt.t_Argument;
+                Core.Fmt.Rt.impl_1__new_display #u32 value <: Core.Fmt.Rt.t_Argument
+              ]
+            in
+            FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 2);
+            Rust_primitives.Hax.array_of_list 2 list)
         <:
         Core.Fmt.t_Arguments)
   in

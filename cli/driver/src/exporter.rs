@@ -11,7 +11,6 @@ use rustc_middle::{
     thir,
     thir::{Block, BlockId, Expr, ExprId, ExprKind, Pat, PatKind, Stmt, StmtId, StmtKind, Thir},
 };
-use rustc_session::parse::ParseSess;
 use rustc_span::symbol::Symbol;
 use serde::Serialize;
 use std::cell::RefCell;
@@ -19,19 +18,19 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 fn report_diagnostics(
+    tcx: TyCtxt<'_>,
     output: &hax_cli_options_engine::Output,
-    session: &rustc_session::Session,
     mapping: &Vec<(hax_frontend_exporter::Span, rustc_span::Span)>,
 ) {
     for d in &output.diagnostics {
         use hax_diagnostics::*;
-        session.span_hax_err(d.convert(mapping).into());
+        tcx.dcx().span_hax_err(d.convert(mapping).into());
     }
 }
 
 fn write_files(
+    tcx: TyCtxt<'_>,
     output: &hax_cli_options_engine::Output,
-    session: &rustc_session::Session,
     backend: hax_cli_options::Backend,
 ) {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
@@ -43,9 +42,9 @@ fn write_files(
     for file in output.files.clone() {
         let path = out_dir.join(&file.path);
         std::fs::create_dir_all(&path.parent().unwrap()).unwrap();
-        session.note_without_error(format!("Writing file {:#?}", path));
+        tcx.dcx().note(format!("Writing file {:#?}", path));
         std::fs::write(&path, file.contents).unwrap_or_else(|e| {
-            session.fatal(format!(
+            tcx.dcx().fatal(format!(
                 "Unable to write to file {:#?}. Error: {:#?}",
                 path, e
             ))
@@ -55,17 +54,21 @@ fn write_files(
 
 type ThirBundle<'tcx> = (Rc<rustc_middle::thir::Thir<'tcx>>, ExprId);
 /// Generates a dummy THIR body with an error literal as first expression
-fn dummy_thir_body<'tcx>(tcx: TyCtxt<'tcx>, span: rustc_span::Span) -> ThirBundle<'tcx> {
+fn dummy_thir_body<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    span: rustc_span::Span,
+    guar: rustc_errors::ErrorGuaranteed,
+) -> ThirBundle<'tcx> {
     use rustc_middle::thir::*;
     let ty = tcx.mk_ty_from_kind(rustc_type_ir::TyKind::Never);
     let mut thir = Thir::new(BodyTy::Const(ty));
-    const ERR_LITERAL: &'static rustc_hir::Lit = &rustc_span::source_map::Spanned {
-        node: rustc_ast::ast::LitKind::Err,
+    let lit_err = tcx.hir_arena.alloc(rustc_span::source_map::Spanned {
+        node: rustc_ast::ast::LitKind::Err(guar),
         span: rustc_span::DUMMY_SP,
-    };
+    });
     let expr = thir.exprs.push(Expr {
         kind: ExprKind::Literal {
-            lit: ERR_LITERAL,
+            lit: lit_err,
             neg: false,
         },
         ty,
@@ -127,15 +130,15 @@ fn precompute_local_thir_bodies<'tcx>(
         .filter(|ldid| hir.maybe_body_owned_by(*ldid).is_some())
         .map(|ldid| {
             tracing::debug!("⏳ Type-checking THIR body for {:#?}", ldid);
-            let span = hir.span(hir.local_def_id_to_hir_id(ldid));
+            let span = hir.span(tcx.local_def_id_to_hir_id(ldid));
             let (thir, expr) = match tcx.thir_body(ldid) {
                 Ok(x) => x,
                 Err(e) => {
-                    tcx.sess.span_err(
+                    let guar = tcx.dcx().span_err(
                         span,
                         "While trying to reach a body's THIR defintion, got a typechecking error.",
                     );
-                    return (ldid, dummy_thir_body(tcx, span));
+                    return (ldid, dummy_thir_body(tcx, span, guar));
                 }
             };
             let thir = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -143,8 +146,8 @@ fn precompute_local_thir_bodies<'tcx>(
             })) {
                 Ok(x) => x,
                 Err(e) => {
-                    tcx.sess.span_err(span, format!("The THIR body of item {:?} was stolen.\nThis is not supposed to happen.\nThis is a bug in Hax's frontend.\nThis is discussed in issue https://github.com/hacspec/hax/issues/27.\nPlease comment this issue if you see this error message!", ldid));
-                    return (ldid, dummy_thir_body(tcx, span));
+                    let guar = tcx.dcx().span_err(span, format!("The THIR body of item {:?} was stolen.\nThis is not supposed to happen.\nThis is a bug in Hax's frontend.\nThis is discussed in issue https://github.com/hacspec/hax/issues/27.\nPlease comment this issue if you see this error message!", ldid));
+                    return (ldid, dummy_thir_body(tcx, span, guar));
                 }
             };
             tracing::debug!("✅ Type-checked THIR body for {:#?}", ldid);
@@ -298,7 +301,7 @@ impl Callbacks for ExtractionCallbacks {
             .into_iter()
             .map(|(k, v)| {
                 use hax_frontend_exporter::*;
-                let sess = compiler.session();
+                let sess = &compiler.sess;
                 (
                     translate_span(k, sess),
                     translate_span(argument_span_of_mac_call(&v), sess),
@@ -362,29 +365,19 @@ impl Callbacks for ExtractionCallbacks {
                         include_extra,
                     };
                     mod from {
-                        pub use hax_cli_options::ExportBodyKind::{
-                            MirBuilt as MB, MirConst as MC, Thir as T,
-                        };
+                        pub use hax_cli_options::ExportBodyKind::{MirBuilt as MB, Thir as T};
                     }
                     mod to {
                         pub type T = hax_frontend_exporter::ThirBody;
                         pub type MB =
                             hax_frontend_exporter::MirBody<hax_frontend_exporter::mir_kinds::Built>;
-                        pub type MC =
-                            hax_frontend_exporter::MirBody<hax_frontend_exporter::mir_kinds::Const>;
                     }
                     kind.sort();
                     kind.dedup();
                     match kind.as_slice() {
                         [from::MB] => driver.to_json::<to::MB>(),
-                        [from::MC] => driver.to_json::<to::MC>(),
                         [from::T] => driver.to_json::<to::T>(),
-                        [from::MB, from::MC] => driver.to_json::<(to::MB, to::MC)>(),
                         [from::T, from::MB] => driver.to_json::<(to::MB, to::T)>(),
-                        [from::T, from::MC] => driver.to_json::<(to::MC, to::T)>(),
-                        [from::T, from::MB, from::MC] => {
-                            driver.to_json::<(to::MB, (to::MC, to::T))>()
-                        }
                         [] => driver.to_json::<()>(),
                         _ => panic!("Unsupported kind {:#?}", kind),
                     }
@@ -432,9 +425,8 @@ impl Callbacks for ExtractionCallbacks {
                     .unwrap();
 
                     let out = engine_subprocess.wait_with_output().unwrap();
-                    let session = compiler.session();
                     if !out.status.success() {
-                        session.fatal(format!(
+                        tcx.dcx().fatal(format!(
                             "{} exited with non-zero code {}\nstdout: {}\n stderr: {}",
                             ENGINE_BINARY_NAME,
                             out.status.code().unwrap_or(-1),
@@ -456,8 +448,8 @@ impl Callbacks for ExtractionCallbacks {
                     let state =
                         hax_frontend_exporter::state::State::new(tcx, options_frontend.clone());
                     report_diagnostics(
+                        tcx,
                         &output,
-                        &session,
                         &spans
                             .into_iter()
                             .map(|span| (span.sinto(&state), span.clone()))
@@ -467,7 +459,7 @@ impl Callbacks for ExtractionCallbacks {
                         serde_json::to_writer(std::io::BufWriter::new(std::io::stdout()), &output)
                             .unwrap()
                     } else {
-                        write_files(&output, &session, backend.backend);
+                        write_files(tcx, &output, backend.backend);
                     }
                     if let Some(debug_json) = &output.debug_json {
                         use hax_cli_options::DebugEngineMode;

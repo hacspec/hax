@@ -25,7 +25,7 @@ info:
 exit = 0
 stderr = '''
 Compiling attribute-opaque v0.1.0 (WORKSPACE_ROOT/attribute-opaque)
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'''
 
 [stdout]
 diagnostics = []

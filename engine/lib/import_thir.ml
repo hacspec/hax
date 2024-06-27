@@ -79,12 +79,13 @@ let c_mutability (witness : 'a) : bool -> 'a Ast.mutability = function
 
 let c_borrow_kind span : Thir.borrow_kind -> borrow_kind = function
   | Shared -> Shared
-  | Fake -> unimplemented [ span ] "Shallow borrows"
+  | Fake _ -> unimplemented [ span ] "Shallow borrows"
   | Mut _ -> Mut W.mutable_reference
 
-let c_binding_mode span : Thir.binding_mode -> binding_mode = function
-  | ByValue -> ByValue
-  | ByRef k -> ByRef (c_borrow_kind span k, W.reference)
+let c_binding_mode : Thir.by_ref -> binding_mode = function
+  | No -> ByValue
+  | Yes true -> ByRef (Mut W.mutable_reference, W.reference)
+  | Yes false -> ByRef (Shared, W.reference)
 
 let unit_typ : ty = TApp { ident = `TupleType 0; args = [] }
 
@@ -161,7 +162,7 @@ let c_lit' span negative (lit : Thir.lit_kind) (ty : ty) : extended_literal =
       ^ "] instead.")
   in
   match lit with
-  | Err ->
+  | Err _ ->
       assertion_failure [ span ]
         "[import_thir:literal] got an error literal: this means the Rust \
          compiler or Hax's frontend probably reported errors above."
@@ -256,6 +257,12 @@ end) : EXPR = struct
       | Ge -> Core__cmp__PartialOrd__ge
       | Gt -> Core__cmp__PartialOrd__gt
       | Eq -> Core__cmp__PartialEq__eq
+      | AddWithOverflow | SubWithOverflow | MulWithOverflow ->
+          assertion_failure (Span.to_thir span)
+            "Overflowing binary operators are not suppored"
+      | Cmp ->
+          assertion_failure (Span.to_thir span)
+            "`Cmp` binary operator is not suppored"
       | Offset -> Core__ptr__const_ptr__Impl__offset
     in
     let primitive_names_of_binop : Thir.bin_op -> Concrete_ident.name = function
@@ -275,6 +282,12 @@ end) : EXPR = struct
       | Ge -> Rust_primitives__u128__ge
       | Gt -> Rust_primitives__u128__gt
       | Eq -> Rust_primitives__u128__eq
+      | AddWithOverflow | SubWithOverflow | MulWithOverflow ->
+          assertion_failure (Span.to_thir span)
+            "Overflowing binary operators are not suppored"
+      | Cmp ->
+          assertion_failure (Span.to_thir span)
+            "`Cmp` binary operator is not suppored"
       | Offset -> Rust_primitives__offset
     in
     let name =
@@ -313,8 +326,10 @@ end) : EXPR = struct
         let name = primitive_names_of_binop op in
         let expected, f =
           match op with
-          | Add | Sub | Mul | Div -> both int <|> both float
-          | Rem -> both int
+          | Add | Sub | Mul | AddWithOverflow | SubWithOverflow
+          | MulWithOverflow | Div ->
+              both int <|> both float
+          | Rem | Cmp -> both int
           | BitXor | BitAnd | BitOr -> both int <|> both bool
           | Shl | Shr -> int <*> int
           | Lt | Le | Ne | Ge | Gt -> both int <|> both float
@@ -457,7 +472,10 @@ end) : EXPR = struct
           (U.call
              (match op with
              | Not -> Core__ops__bit__Not__not
-             | Neg -> Core__ops__arith__Neg__neg)
+             | Neg -> Core__ops__arith__Neg__neg
+             | PtrMetadata ->
+                 assertion_failure (Span.to_thir span)
+                   "Unsupported unary operator: `PtrMetadata`")
              [ c_expr arg ]
              span typ)
             .e
@@ -800,13 +818,13 @@ end) : EXPR = struct
           let typ, typ_span = c_canonical_user_type_annotation annotation in
           let pat = c_pat subpattern in
           PAscription { typ; typ_span; pat }
-      | Binding { mode; mutability; subpattern; ty; var; _ } ->
-          let mut = c_mutability W.mutable_variable mutability in
+      | Binding { mode; subpattern; ty; var; _ } ->
+          let mut = c_mutability W.mutable_variable mode.mutability in
           let subpat =
             Option.map ~f:(c_pat &&& Fn.const W.as_pattern) subpattern
           in
           let typ = c_ty pat.span ty in
-          let mode = c_binding_mode pat.span mode in
+          let mode = c_binding_mode mode.by_ref in
           let var = local_ident Expr var in
           PBinding { mut; mode; var; typ; subpat }
       | Variant { info; subpatterns; _ } ->
@@ -844,6 +862,8 @@ end) : EXPR = struct
       | Or { pats } -> POr { subpats = List.map ~f:c_pat pats }
       | Slice _ -> unimplemented [ pat.span ] "pat Slice"
       | Range _ -> unimplemented [ pat.span ] "pat Range"
+      | DerefPattern _ -> unimplemented [ pat.span ] "pat DerefPattern"
+      | Never -> unimplemented [ pat.span ] "pat Never"
       | Error _ -> unimplemented [ pat.span ] "pat Error"
     in
     { p = v; span; typ }
@@ -880,7 +900,7 @@ end) : EXPR = struct
 
   and c_pointer e typ span cast source =
     match cast with
-    | ClosureFnPointer Normal | ReifyFnPointer ->
+    | ClosureFnPointer Safe | ReifyFnPointer ->
         (* we have arrow types, we do not distinguish between top-level functions and closures *)
         (c_expr source).e
     | Unsize ->
@@ -917,7 +937,9 @@ end) : EXPR = struct
     | Char -> TChar
     | Int k -> TInt (c_int_ty k)
     | Uint k -> TInt (c_uint_ty k)
-    | Float k -> TFloat (match k with F32 -> F32 | F64 -> F64)
+    | Float k ->
+        TFloat
+          (match k with F16 -> F16 | F32 -> F32 | F64 -> F64 | F128 -> F128)
     | Arrow value ->
         let ({ inputs; output; _ } : Thir.ty_fn_sig) = value.value in
         let inputs =
@@ -1359,7 +1381,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
           List.for_all
             ~f:(fun { data; _ } ->
               match data with
-              | Unit _ | Tuple ([], _, _) | Struct ([], _) -> true
+              | Unit _ | Tuple ([], _, _) | Struct { fields = []; _ } -> true
               | _ -> false)
             variants
         in
@@ -1367,11 +1389,13 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
           List.map
             ~f:
               (fun ({ data; def_id = variant_id; attributes; _ } as original) ->
-              let is_record = [%matches? Types.Struct (_ :: _, _)] data in
+              let is_record =
+                [%matches? Types.Struct { fields = _ :: _; _ }] data
+              in
               let name = Concrete_ident.of_def_id kind variant_id in
               let arguments =
                 match data with
-                | Tuple (fields, _, _) | Struct (fields, _) ->
+                | Tuple (fields, _, _) | Struct { fields; _ } ->
                     List.map
                       ~f:(fun { def_id = id; ty; span; attributes; _ } ->
                         ( Concrete_ident.of_def_id Field id,
@@ -1415,7 +1439,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
           in
           match v with
           | Tuple (fields, _, _) -> mk fields false
-          | Struct ((_ :: _ as fields), _) -> mk fields true
+          | Struct { fields = _ :: _ as fields; _ } -> mk fields true
           | _ -> { name; arguments = []; is_record = false; attrs }
         in
         let variants = [ v ] in
@@ -1430,7 +1454,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                span = Span.of_thir span;
                witness = W.macro;
              }
-    | Trait (No, Normal, generics, _bounds, items) ->
+    | Trait (No, Safe, generics, _bounds, items) ->
         let items =
           List.filter
             ~f:(fun { attributes; _ } -> not (should_skip attributes))
@@ -1497,14 +1521,14 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
             let attrs = c_item_attrs item.attributes in
             { span = Span.of_thir item.span; v; ident; attrs })
           items
-    | Impl { unsafety = Unsafe; _ } -> unsafe_block [ item.span ]
+    | Impl { safety = Unsafe; _ } -> unsafe_block [ item.span ]
     | Impl
         {
           of_trait = Some of_trait;
           generics;
           self_ty;
           items;
-          unsafety = Normal;
+          safety = Safe;
           parent_bounds;
           _;
         } ->

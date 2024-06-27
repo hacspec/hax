@@ -90,20 +90,12 @@ pub mod mir_kinds {
         fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>>;
     }
     #[derive(Clone, Copy, Debug, JsonSchema, Serialize, Deserialize)]
-    pub struct Const;
-    impl IsMirKind for Const {
-        fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>> {
-            tcx.mir_const(id)
-        }
-    }
-    #[derive(Clone, Copy, Debug, JsonSchema, Serialize, Deserialize)]
     pub struct Built;
     impl IsMirKind for Built {
         fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>> {
             tcx.mir_built(id)
         }
     }
-    // TODO: Add [Promoted] MIR
 }
 pub use mir_kinds::IsMirKind;
 
@@ -162,7 +154,7 @@ pub struct SourceScopeData {
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::Instance<'tcx>, state: S as s)]
 pub struct Instance {
-    pub def: InstanceDef,
+    pub def: InstanceKind,
     pub args: Vec<GenericArg>,
 }
 
@@ -170,16 +162,6 @@ pub struct Instance {
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::SourceScopeLocalData, state: S as s)]
 pub struct SourceScopeLocalData {
     pub lint_root: HirId,
-    pub safety: Safety,
-}
-
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::Safety, state: S as s)]
-pub enum Safety {
-    Safe,
-    BuiltinUnsafe,
-    FnUnsafe,
-    ExplicitUnsafe(HirId),
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -335,10 +317,9 @@ fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
             // Regular function case
             let c = c.deref();
             let (def_id, generics) = match &c.const_ {
-                Const::Ty(c) => {
+                Const::Ty(c_ty, _c) => {
                     // The type of the constant should be a FnDef, allowing
                     // us to retrieve the function's identifier and instantiation.
-                    let c_ty = c.ty();
                     assert!(c_ty.is_fn());
                     match c_ty.kind() {
                         TyKind::FnDef(def_id, generics) => (*def_id, *generics),
@@ -547,7 +528,7 @@ pub enum TerminatorKind {
         /// relevant to the method (and not the trait) if it is a trait method
         /// call. See [ParamsInfo] for the full details.
         generics: Vec<GenericArg>,
-        args: Vec<Operand>,
+        args: Vec<Spanned<Operand>>,
         destination: Place,
         target: Option<BasicBlock>,
         unwind: UnwindAction,
@@ -585,7 +566,7 @@ pub enum TerminatorKind {
         operands: Vec<InlineAsmOperand>,
         options: InlineAsmOptions,
         line_spans: Vec<Span>,
-        destination: Option<BasicBlock>,
+        targets: Vec<BasicBlock>,
         unwind: UnwindAction,
     },
 }
@@ -613,7 +594,7 @@ pub enum StatementKind {
     Retag(RetagKind, Place),
     PlaceMention(Place),
     AscribeUserType((Place, UserTypeProjection), Variance),
-    Coverage(Coverage),
+    Coverage(CoverageKind),
     Intrinsic(NonDivergingIntrinsic),
     ConstEvalCounter,
     Nop,
@@ -820,7 +801,7 @@ pub struct MirFnSig {
     pub inputs: Vec<Ty>,
     pub output: Ty,
     pub c_variadic: bool,
-    pub unsafety: Unsafety,
+    pub safety: Safety,
     pub abi: Abi,
 }
 
@@ -834,7 +815,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, MirFnSig> for rustc_middle:
             inputs,
             output,
             c_variadic: self.c_variadic,
-            unsafety: self.unsafety.sinto(s),
+            safety: self.safety.sinto(s),
             abi: self.abi.sinto(s),
         }
     }
@@ -899,14 +880,16 @@ pub enum AggregateKind {
         AggregateKind::Closure(def_id, parent_generics.sinto(s), trait_refs, sig)
     })]
     Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, MirPolyFnSig),
-    Coroutine(DefId, Vec<GenericArg>, Movability),
+    Coroutine(DefId, Vec<GenericArg>),
+    CoroutineClosure(DefId, Vec<GenericArg>),
+    RawPtr(Ty, Mutability),
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::CastKind, state: S as s)]
 pub enum CastKind {
-    PointerExposeAddress,
-    PointerFromExposedAddress,
+    PointerExposeProvenance,
+    PointerWithExposedProvenance,
     PointerCoercion(PointerCoercion),
     DynStar,
     IntToInt,
@@ -924,6 +907,7 @@ pub enum NullOp {
     SizeOf,
     AlignOf,
     OffsetOf(Vec<(usize, FieldIdx)>),
+    UbChecks,
 }
 
 #[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -943,7 +927,6 @@ pub enum Rvalue {
     Len(Place),
     Cast(CastKind, Operand, Ty),
     BinaryOp(BinOp, (Operand, Operand)),
-    CheckedBinaryOp(BinOp, (Operand, Operand)),
     NullaryOp(NullOp, Ty),
     UnaryOp(UnOp, Operand),
     Discriminant(Place),
@@ -969,7 +952,7 @@ make_idx_wrapper!(rustc_middle::mir, Local);
 make_idx_wrapper!(rustc_middle::ty, UserTypeAnnotationIndex);
 make_idx_wrapper!(rustc_target::abi, FieldIdx);
 
-sinto_todo!(rustc_middle::ty, InstanceDef<'tcx>);
+sinto_todo!(rustc_middle::ty, InstanceKind<'tcx>);
 sinto_todo!(rustc_middle::mir, UserTypeProjections);
 sinto_todo!(rustc_middle::mir, LocalInfo<'tcx>);
 sinto_todo!(rustc_ast::ast, InlineAsmTemplatePiece);
@@ -979,11 +962,11 @@ sinto_todo!(rustc_middle::mir, AssertMessage<'tcx>);
 sinto_todo!(rustc_middle::mir, UnwindAction);
 sinto_todo!(rustc_middle::mir, FakeReadCause);
 sinto_todo!(rustc_middle::mir, RetagKind);
-sinto_todo!(rustc_middle::mir, Coverage);
 sinto_todo!(rustc_middle::mir, NonDivergingIntrinsic<'tcx>);
 sinto_todo!(rustc_middle::mir, UserTypeProjection);
 sinto_todo!(rustc_middle::mir, MirSource<'tcx>);
 sinto_todo!(rustc_middle::mir, CoroutineInfo<'tcx>);
 sinto_todo!(rustc_middle::mir, VarDebugInfo<'tcx>);
 sinto_todo!(rustc_middle::mir, CallSource);
+sinto_todo!(rustc_middle::mir::coverage, CoverageKind);
 sinto_todo!(rustc_span, ErrorGuaranteed);

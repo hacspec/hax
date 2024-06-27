@@ -17,6 +17,8 @@ info:
     snapshot:
       stderr: true
       stdout: true
+    include_flag: ~
+    backend_options: ~
 ---
 exit = 0
 stderr = '''
@@ -28,5 +30,5 @@ warning: [Hax] Mutable arguments are not supported
   |                       ^^^^^
 
 warning: `mut_arg` (lib) generated 1 warning
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'''
 stdout = ''

@@ -10,7 +10,6 @@
     };
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
-      inputs.flake-utils.follows = "flake-utils";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     fstar = {
@@ -85,6 +84,15 @@
           check-toolchain = checks.toolchain;
           check-examples = checks.examples;
           check-readme-coherency = checks.readme-coherency;
+
+          # The commit that corresponds to our nightly pin, helpful when updating rusrc.
+          toolchain_commit = pkgs.runCommand "hax-toolchain-commit" { } ''
+            # This is sad but I don't know a better way.
+            cat ${rustc}/share/doc/rust/html/version_info.html \
+              | grep 'github.com' \
+              | sed 's#.*"https://github.com/rust-lang/rust/commit/\([^"]*\)".*#\1#' \
+              > $out
+          '';
         };
         checks = {
           toolchain = packages.hax.tests;
