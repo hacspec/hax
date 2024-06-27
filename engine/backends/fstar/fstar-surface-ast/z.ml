@@ -5,7 +5,7 @@ let of_t = Base.Int.to_string
 
 let compare = String.compare
 let pp_print = pp
-let hash = String.hash
+let hash = Base.String.hash
 
 
 let to_int: String.t -> Base.Int.t = Base.Int.of_string
