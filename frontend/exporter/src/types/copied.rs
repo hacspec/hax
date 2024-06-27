@@ -1678,7 +1678,11 @@ pub enum Ty {
         rustc_middle::ty::TyKind::Adt(adt_def, generics) => {
             let def_id = adt_def.did().sinto(state);
             let generic_args: Vec<GenericArg> = generics.sinto(state);
-            let trait_refs = solve_item_traits(state, state.param_env(), adt_def.did(), generics, None);
+            let trait_refs = if state.base().ty_alias_mode {
+                vec![]
+            } else {
+                solve_item_traits(state, state.param_env(), adt_def.did(), generics, None)
+            };
             Ty::Adt { def_id, generic_args, trait_refs }
         },
     )]
@@ -3098,7 +3102,19 @@ pub enum ItemKind<Body: IsBody> {
         items: Vec<ForeignItem<Body>>,
     },
     GlobalAsm(InlineAsm),
-    TyAlias(Ty, Generics<Body>),
+    TyAlias(
+        #[map({
+            let s = &State {
+                thir: s.clone(),
+                owner_id: s.owner_id(),
+                base: Base {ty_alias_mode: true, ..s.base()},
+                mir: (),
+            };
+            x.sinto(s)
+        })]
+        Ty,
+        Generics<Body>,
+    ),
     OpaqueTy(OpaqueTy<Body>),
     Enum(
         EnumDef<Body>,
