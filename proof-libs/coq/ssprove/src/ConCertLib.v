@@ -420,81 +420,66 @@ Qed.
 
 Print pkg_core_definition.typed_raw_function.
 
-Instance serializable_code {L I} {A : choice_type} `{Serializable A} : Serializable (pkg_core_definition.code L I A).
+(* Instance serializable_code {L I} {A : choice_type} `{Serializable A} : Serializable (pkg_core_definition.code L I A). *)
+(* Proof. *)
+(* Admitted. *)
+
+(* Instance serializable_both {A : choice_type} `{Serializable A} : Serializable (both A). *)
+(* Proof. *)
+(* Admitted. *)
+
+Lemma fmap_ext : forall {T : ordType} {S : Type} (m : {fmap T -> S}), mkfmap (FMap.fmval m) = m.
 Proof.
-Admitted.
+  intros.
+  apply fmap.eq_fmap.
+  intros ?.
+  rewrite (@mkfmapE T S _ x).
+  reflexivity.
+Qed.
 
-Instance serializable_both {A : choice_type} `{Serializable A} : Serializable (both A).
+Instance serializable_choice_ordType {C : choice_type} : Serializable (chElement_ordType C).
 Proof.
-  (* refine {| serialize *)
-  (*             '{| both_prog := *)
-  (*                {| *)
-  (*                  is_state := is_state; *)
-  (*                  is_pure := is_pure *)
-  (*                |} ; *)
-  (*                both_prog_valid := *)
-  (*                {| *)
-  (*                  is_valid_code := is_valid_code ; *)
-  (*                  is_valid_both := is_valid_both *)
-  (*                |} ; *)
-  (*                p_eq := p_eq |} := *)
-  (*          serialize *)
-  (*            (is_pure, *)
-  (*              {| *)
-  (*                pkg_core_definition.prog := is_state; *)
-  (*                pkg_core_definition.prog_valid := is_valid_code |}, *)
-  (*              is_valid_both, *)
-  (*              p_eq) ; *)
-  (*          deserialize x := *)
-  (*            option_map (fun y => solve_lift ret_both y) (deserialize x) *)
-  (*        |}. *)
-  (* Unshelve. *)
-  (* 2:{ *)
-  (*   eapply product_serializable. *)
-  (*   Unshelve. *)
-  (*   eapply product_serializable. *)
-  (*   Unshelve. *)
-  (*   simpl. *)
-  (*   eapply product_serializable. *)
-  (*   Unshelve. *)
-  (* } *)
+  induction C.
+  - exact unit_serializable.
+  - exact nat_serializable.
+  - exact int_serializable.
+  - exact bool_serializable.
+  - now apply product_serializable.
+  - refine (@serialize_by_other _ _ (fun x => FMap.fmval x) (mkfmap) _ list_serializable).
+    apply fmap_ext.
+  - now apply option_serializable.
+  - destruct n as [[] ?] ; [discriminate | ].
+    eapply (serialize_by_other (fun x => nat_of_ord x) (fun x => Ordinal (n := S n) (m := x mod S n) (ssrbool.introT ssrnat.ltP (Nat.mod_upper_bound x (S n) (Nat.neq_succ_0 n))))).
+    intros.
+    destruct m.
+    apply ord_ext.
+    rewrite Nat.mod_small ; [ reflexivity | simpl ; easy ].
+    exact nat_serializable.
+  - apply hacspec_int_serializable.
+  - now apply list_serializable.
+  - now apply sum_serializable.
+Defined.
 
-  (* eapply (@serialize_by_other *)
-  (*           (A * pkg_core_definition.code L I A * valid_both) *)
-  (*           (both L I A) *)
-  (*           (fun x => (is_pure x, {| pkg_core_definition.prog := is_state x; pkg_core_definition.prog_valid := is_valid_code (both_prog_valid x) |})) *)
-  (*           (fun '(z , {| pkg_core_definition.prog := y ; pkg_core_definition.prog_valid := x |}) => *)
-  (*              _ *)
-  (*        )). *)
-  (* Unshelve. *)
-  (* 3:{ *)
-  (*   epose {| is_pure := z ; is_state := y |}. *)
-  (*   assert (y = is_state r) by reflexivity. *)
-  (*   rewrite H0 in *. *)
-  (*   eapply {| *)
-  (*     both_prog := r ; *)
-  (*     both_prog_valid := {| is_valid_code := x |} *)
-  (*   |}. *)
-  (* } *)
-
-  (* intros. *)
-  (* destruct m. *)
-  (* apply both_ext_prog. *)
-  (* simpl. *)
-  (* destruct both_prog. *)
-  (* simpl. *)
-  (* reflexivity. *)
-  (* apply product_serializable. *)
-  (* Unshelve. *)
-
-  (* - apply y. *)
-  (* - destruct y. *)
-  (*   simpl. *)
-  (*   destruct prog. *)
-  (*   simpl. *)
-  (*   eapply both_valid_ret. *)
-
-  (* apply both *)
-
-Admitted.
+Instance serializable_choice {C : choice_type} : Serializable.Serializable C.
+Proof.
+  induction C.
+  - exact unit_serializable.
+  - exact nat_serializable.
+  - exact int_serializable.
+  - exact bool_serializable.
+  - now apply product_serializable.
+  - refine (@serialize_by_other (list (chElement_ordType C1 * C2)) (chMap C1 C2) (fun x => FMap.fmval x) (mkfmap) _ list_serializable).
+    apply fmap_ext.
+  - now apply option_serializable.
+  - destruct n as [[] ?] ; [discriminate | ].
+    eapply (serialize_by_other (fun x => nat_of_ord x) (fun x => Ordinal (n := S n) (m := x mod S n) (ssrbool.introT ssrnat.ltP (Nat.mod_upper_bound x (S n) (Nat.neq_succ_0 n))))).
+    intros.
+    destruct m.
+    apply ord_ext.
+    rewrite Nat.mod_small ; [ reflexivity | simpl ; easy ].
+    exact nat_serializable.
+  - apply hacspec_int_serializable.
+  - now apply list_serializable.
+  - now apply sum_serializable.
+Defined.
 
