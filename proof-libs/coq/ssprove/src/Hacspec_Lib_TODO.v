@@ -502,3 +502,16 @@ Definition impl__map_err {A B C : choice_type} (r : both (t_Result A B)) (f : B 
 end.
 Definition f_from {A B : choice_type} : A -> (Result_t A B) :=
   inr.
+
+From mathcomp Require Import eqtype.
+From mathcomp Require Import ssrbool.
+
+Instance copy {C : _} : t_Copy C := fun x => x.
+Instance partial_eq {C : _} : t_PartialEq C C := fun x y => x == y.
+Instance serialize {C : _} : t_Serialize C. Defined.
+Instance clone {C : _} : t_Clone C := fun x => x.
+Instance is_eq {C : choice_type} : t_Eq C :=
+  {|
+    Hacspec_Lib_Comparable.eqb := _ ;
+    eqb_leibniz := fun x y : C => RelationClasses.symmetry (rwP eqP)
+  |}.
