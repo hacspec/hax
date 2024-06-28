@@ -305,6 +305,47 @@ pub struct ParamConst {
     pub name: Symbol,
 }
 
+/// A predicate without `Self`, for use in `dyn Trait`.
+///
+/// Reflects [`rustc_middle::ty::ExistentialPredicate`]
+#[derive(AdtInto)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::ExistentialPredicate<'tcx>, state: S as state)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub enum ExistentialPredicate {
+    /// E.g. `From<u64>`. Note that this isn't `T: From<u64>` with a given `T`, this is just
+    /// `From<u64>`. Could be written `?: From<u64>`.
+    Trait(ExistentialTraitRef),
+    /// E.g. `Iterator::Item = u64`. Could be written `<? as Iterator>::Item = u64`.
+    Projection(ExistentialProjection),
+    /// E.g. `Send`.
+    AutoTrait(DefId),
+}
+
+/// Reflects [`rustc_type_ir::ExistentialTraitRef`]
+#[derive(AdtInto)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_type_ir::ExistentialTraitRef<ty::TyCtxt<'tcx>>, state: S as state)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct ExistentialTraitRef {
+    pub def_id: DefId,
+    pub args: Vec<GenericArg>,
+}
+
+/// Reflects [`rustc_type_ir::ExistentialProjection`]
+#[derive(AdtInto)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_type_ir::ExistentialProjection<ty::TyCtxt<'tcx>>, state: S as state)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct ExistentialProjection {
+    pub def_id: DefId,
+    pub args: Vec<GenericArg>,
+    pub term: Term,
+}
+
 /// Reflects [`rustc_middle::ty::DynKind`]
 #[derive(
     AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
