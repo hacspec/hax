@@ -22,7 +22,7 @@ pub struct File {
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
 pub struct Output {
-    pub diagnostics: Vec<hax_diagnostics::Diagnostics<Vec<hax_frontend_exporter::Span>>>,
+    pub diagnostics: Vec<hax_diagnostics::Diagnostics>,
     pub files: Vec<File>,
     pub debug_json: Option<String>,
 }
