@@ -30,10 +30,6 @@ mod exporter;
 use std::collections::HashSet;
 
 use exporter::ExtractionCallbacks;
-use hax_lint::Type;
-
-mod linter;
-use linter::LinterCallbacks;
 
 mod callbacks_wrapper;
 mod features;
@@ -133,13 +129,6 @@ fn main() {
                 command: command.clone(),
                 macro_calls: std::collections::HashMap::new(),
             }),
-            Some(Command::LintCommand(command)) => {
-                let ltype = match command {
-                    hax_cli_options::LinterCommand::Hacspec => Type::Hacspec,
-                    hax_cli_options::LinterCommand::Rust => Type::Rust,
-                };
-                Box::new(LinterCallbacks::new(ltype))
-            }
             None => {
                 // hacspec lint
                 Box::new(LinterCallbacks::new(Type::Rust))

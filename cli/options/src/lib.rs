@@ -446,7 +446,6 @@ impl NormalizePaths for Command {
     fn normalize_paths(&mut self) {
         match self {
             Command::ExporterCommand(cmd) => cmd.normalize_paths(),
-            _ => (),
         }
     }
 }

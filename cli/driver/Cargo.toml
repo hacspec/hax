@@ -25,7 +25,6 @@ hax-frontend-exporter.workspace = true
 hax-cli-options.workspace = true
 hax-cli-options-engine.workspace = true
 hax-frontend-exporter-options.workspace = true
-hax-lint.workspace = true
 hax-diagnostics.workspace = true
 hax-lib-macros-types.workspace = true
 itertools.workspace = true
