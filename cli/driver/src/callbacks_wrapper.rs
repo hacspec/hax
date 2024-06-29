@@ -1,4 +1,3 @@
-use const_format::formatcp;
 use hax_cli_options::{Command, ENV_VAR_OPTIONS_FRONTEND};
 
 use rustc_driver::{Callbacks, Compilation};

@@ -75,6 +75,8 @@ quote = "1.0.32"
 proc-macro2 = "1.0.66"
 cargo_metadata = "0.15"
 colored = "2"
+ciborium = "0.2"
+annotate-snippets = "0.11"
 
 # Crates in this repository
 hax-frontend-exporter = { path = "frontend/exporter", version = "=0.1.0-pre.1" }

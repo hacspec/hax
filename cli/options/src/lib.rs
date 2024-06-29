@@ -364,6 +364,15 @@ pub enum Command {
     },
 }
 
+impl Command {
+    pub fn body_kinds(&self) -> Vec<ExportBodyKind> {
+        match self {
+            Command::JSON { kind, .. } => kind.clone(),
+            _ => vec![ExportBodyKind::Thir],
+        }
+    }
+}
+
 #[derive(
     JsonSchema, ValueEnum, Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord,
 )]

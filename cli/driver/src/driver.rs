@@ -123,17 +123,11 @@ fn main() {
     let translate_package =
         !vanilla_rustc && !is_build_script && (options.deps || is_primary_package);
     let mut callbacks: Box<dyn Callbacks + Send> = if translate_package {
-        match &options.command {
-            Some(Command::ExporterCommand(command)) => Box::new(exporter::ExtractionCallbacks {
-                inline_macro_calls: options.inline_macro_calls.clone(),
-                command: command.clone(),
-                macro_calls: std::collections::HashMap::new(),
-            }),
-            None => {
-                // hacspec lint
-                Box::new(LinterCallbacks::new(Type::Rust))
-            }
-        }
+        Box::new(exporter::ExtractionCallbacks {
+            inline_macro_calls: options.inline_macro_calls.clone(),
+            body_types: options.command.body_kinds(),
+            macro_calls: std::collections::HashMap::new(),
+        })
     } else {
         struct CallbacksNoop;
         impl Callbacks for CallbacksNoop {}
@@ -172,13 +166,14 @@ fn main() {
 
     let mut callbacks = CallbacksWrapper {
         sub: &mut *callbacks,
-        options: hax_cli_options::Options {
-            force_cargo_build: if translate_package {
+        options: {
+            let mut options = options.clone();
+            options.force_cargo_build = if translate_package {
                 options.force_cargo_build
             } else {
                 hax_cli_options::ForceCargoBuild::default()
-            },
-            ..options
+            };
+            options
         },
     };
 

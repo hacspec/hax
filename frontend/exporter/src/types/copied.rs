@@ -986,6 +986,35 @@ pub enum FileName {
     InlineAsm(u64),
 }
 
+impl FileName {
+    pub fn to_string(&self) -> String {
+        match self {
+            Self::Real(RealFileName::LocalPath(path))
+            | Self::Real(RealFileName::Remapped {
+                local_path: Some(path),
+                ..
+            })
+            | Self::Real(RealFileName::Remapped {
+                virtual_name: path, ..
+            }) => format!("{}", path.display()),
+            _ => format!("{:?}", self),
+        }
+    }
+    pub fn to_path(&self) -> Option<&std::path::Path> {
+        match self {
+            Self::Real(RealFileName::LocalPath(path))
+            | Self::Real(RealFileName::Remapped {
+                local_path: Some(path),
+                ..
+            })
+            | Self::Real(RealFileName::Remapped {
+                virtual_name: path, ..
+            }) => Some(path),
+            _ => None,
+        }
+    }
+}
+
 /// Reflects partially [`rustc_middle::ty::InferTy`]
 #[derive(
     AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,

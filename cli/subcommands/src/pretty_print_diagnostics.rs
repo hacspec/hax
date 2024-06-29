@@ -9,8 +9,8 @@
 extern crate rustc_driver;
 
 use hax_diagnostics::Diagnostics as D;
-use serde_json::{from_reader, Value};
+use serde_json::from_reader;
 
 fn main() {
-    println!("{}", from_reader::<_, D<Value>>(std::io::stdin()).unwrap())
+    println!("{}", from_reader::<_, D>(std::io::stdin()).unwrap())
 }

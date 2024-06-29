@@ -10,7 +10,6 @@ use colored::Colorize;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-pub mod error;
 pub mod report;
 
 #[derive(Debug, Clone, JsonSchema, Serialize, Deserialize)]

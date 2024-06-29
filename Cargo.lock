@@ -12,6 +12,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "annotate-snippets"
+version = "0.11.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24e35ed54e5ea7997c14ed4c70ba043478db1112e98263b3b035907aa197d991"
+dependencies = [
+ "anstyle",
+ "unicode-width",
+]
+
+[[package]]
 name = "anstream"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -128,14 +138,19 @@ dependencies = [
 name = "cargo-hax"
 version = "0.1.0-pre.1"
 dependencies = [
+ "annotate-snippets",
+ "ciborium",
  "clap",
  "colored",
+ "const_format",
  "hax-cli-options",
  "hax-cli-options-engine",
  "hax-diagnostics",
  "hax-frontend-exporter",
  "hax-frontend-exporter-options",
  "hax-lib-macros-types",
+ "hax-phase-debug-webapp",
+ "inquire",
  "is-terminal",
  "itertools",
  "paste",
@@ -175,12 +190,13 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.0.83"
+version = "1.0.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1174fb0b6ec23863f8b971027804a42614e347eafb0a95bf0b12cdae21fc4d0"
+checksum = "779e6b7d17797c0b42023d417228c02889300190e700cb074c3438d9c541d332"
 dependencies = [
  "jobserver",
  "libc",
+ "once_cell",
 ]
 
 [[package]]
@@ -194,6 +210,33 @@ name = "chunked_transfer"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cca491388666e04d7248af3f60f0c40cfb0991c72205595d7c396e3510207d1a"
+
+[[package]]
+name = "ciborium"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42e69ffd6f0917f5c029256a24d0161db17cea3997d185db0d35926308770f0e"
+dependencies = [
+ "ciborium-io",
+ "ciborium-ll",
+ "serde",
+]
+
+[[package]]
+name = "ciborium-io"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05afea1e0a06c9be33d539b876f1ce3692f4afea2cb41f740e7743225ed1c757"
+
+[[package]]
+name = "ciborium-ll"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57663b653d948a338bfb3eeba9bb2fd5fcfaecb9e199e87e1eda4d9e8b240fd9"
+dependencies = [
+ "ciborium-io",
+ "half",
+]
 
 [[package]]
 name = "clap"
@@ -226,7 +269,7 @@ dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.68",
 ]
 
 [[package]]
@@ -310,6 +353,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "crunchy"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
+
+[[package]]
 name = "difflib"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -366,7 +415,7 @@ checksum = "eecf8589574ce9b895052fa12d69af7a233f99e6107f5cb8dd1044f2a17bfdcb"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.68",
 ]
 
 [[package]]
@@ -434,6 +483,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "half"
+version = "2.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6dd08c532ae367adf81c312a4580bc67f1d0fe8bc9c460520283f4c0ff277888"
+dependencies = [
+ "cfg-if",
+ "crunchy",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -491,7 +550,9 @@ dependencies = [
 name = "hax-diagnostics"
 version = "0.1.0-pre.1"
 dependencies = [
+ "annotate-snippets",
  "colored",
+ "hax-frontend-exporter",
  "schemars",
  "serde",
 ]
@@ -500,6 +561,7 @@ dependencies = [
 name = "hax-driver"
 version = "0.1.0-pre.1"
 dependencies = [
+ "ciborium",
  "clap",
  "colored",
  "const_format",
@@ -509,9 +571,6 @@ dependencies = [
  "hax-frontend-exporter",
  "hax-frontend-exporter-options",
  "hax-lib-macros-types",
- "hax-lint",
- "hax-phase-debug-webapp",
- "inquire",
  "itertools",
  "serde",
  "serde_json",
@@ -585,7 +644,7 @@ dependencies = [
  "proc-macro-error",
  "proc-macro2",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.68",
 ]
 
 [[package]]
@@ -614,18 +673,7 @@ dependencies = [
  "proc-macro-error",
  "proc-macro2",
  "quote",
- "syn 2.0.38",
-]
-
-[[package]]
-name = "hax-lint"
-version = "0.1.0-pre.1"
-dependencies = [
- "assert_cmd",
- "hax-diagnostics",
- "lazy_static",
- "regex",
- "tracing",
+ "syn 2.0.68",
 ]
 
 [[package]]
@@ -748,9 +796,9 @@ checksum = "af150ab688ff2122fcef229be89cb50dd66af9e01a4ff320cc137eecc9bacc38"
 
 [[package]]
 name = "jobserver"
-version = "0.1.27"
+version = "0.1.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c37f63953c4c63420ed5fd3d6d398c719489b9f872b9fa683262f8edd363c7d"
+checksum = "d2b099aaa34a9751c5bf0878add70444e1ed2dd73f347be99003d4577277de6e"
 dependencies = [
  "libc",
 ]
@@ -943,9 +991,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.18.0"
+version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd8b5dd2ae5ed71462c540258bedcb51965123ad7e7ccf4b9a8cafaa4a63576d"
+checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
 
 [[package]]
 name = "overload"
@@ -1054,18 +1102,18 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.69"
+version = "1.0.86"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "134c189feb4956b20f6f547d2cf727d4c0fe06722b20a0eec87ed445a97f92da"
+checksum = "5e719e8df665df0d1c8fbfd238015744736151d4445ec0836b8e628aae103b77"
 dependencies = [
  "unicode-ident",
 ]
 
 [[package]]
 name = "quote"
-version = "1.0.33"
+version = "1.0.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5267fca4496028628a95160fc423a33e8b2e6af8a5302579e322e4b520293cae"
+checksum = "0fa76aaf39101c457836aec0ce2316dbdc3ab723cdda1c6bd4e6ad4208acaca7"
 dependencies = [
  "proc-macro2",
 ]
@@ -1237,7 +1285,7 @@ checksum = "1e48d1f918009ce3145511378cf68d613e3b3d9137d67272562080d68a2b32d5"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.68",
 ]
 
 [[package]]
@@ -1341,9 +1389,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.38"
+version = "2.0.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e96b79aaa137db8f61e26363a0c9b47d8b4ec75da28b7d1d614c2303e232408b"
+checksum = "901fa70d88b9d6c98022e23b4136f9f3e54e4662c3bc1bd1d84a42a9a0f0c1e9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1380,22 +1428,22 @@ checksum = "3369f5ac52d5eb6ab48c6b4ffdc8efbcad6b89c765749064ba298f2c68a16a76"
 
 [[package]]
 name = "thiserror"
-version = "1.0.50"
+version = "1.0.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9a7210f5c9a7156bb50aa36aed4c95afb51df0df00713949448cf9e97d382d2"
+checksum = "c546c80d6be4bc6a00c0f01730c08df82eaa7a7a61f11d656526506112cc1709"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.50"
+version = "1.0.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "266b2e40bc00e5a6c09c3584011e08b06f123c00362c92b975ba9843aaaa14b8"
+checksum = "46c3384250002a6d5af4d114f2845d37b57521033f30d5c3f46c4d70e1197533"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.68",
 ]
 
 [[package]]
@@ -1491,7 +1539,7 @@ checksum = "34704c8d6ebcbc939824180af020566b01a7c01f80641264eba0999f6c2b6be7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.68",
 ]
 
 [[package]]
@@ -1632,7 +1680,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.68",
  "wasm-bindgen-shared",
 ]
 
@@ -1654,7 +1702,7 @@ checksum = "bae1abb6806dc1ad9e560ed242107c0f6c84335f1749dd4e8ddb012ebd5e25a7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.68",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]

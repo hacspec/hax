@@ -30,8 +30,10 @@ itertools.workspace = true
 clap.workspace = true
 paste = "1.0.11"
 hax-cli-options.workspace = true
+hax-frontend-exporter.workspace = true
 hax-frontend-exporter-options.workspace = true
 hax-diagnostics.workspace = true
+hax-cli-options-engine.workspace = true
 path-clean = "1.0.1"
 tempfile = "3.8"
 which.workspace = true
@@ -39,6 +41,11 @@ version_check = "0.9"
 rustup-toolchain = "0.1"
 colored.workspace = true
 is-terminal = "0.4.9"
+hax-phase-debug-webapp.workspace = true
+inquire = "0.6"
+const_format = "0.2"
+ciborium.workspace = true
+annotate-snippets.workspace = true
 
 [build-dependencies]
 serde.workspace = true
