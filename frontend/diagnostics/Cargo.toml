@@ -16,4 +16,5 @@ rustc_private=true
 serde.workspace = true
 schemars.workspace = true
 colored.workspace = true
-
+annotate-snippets.workspace = true
+hax-frontend-exporter.workspace = true

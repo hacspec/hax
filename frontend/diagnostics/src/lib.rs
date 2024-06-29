@@ -24,6 +24,7 @@ impl SessionExtTrait for rustc_errors::DiagCtxt {
 }
 
 pub mod error;
+pub mod report;
 
 #[derive(Debug, Clone, JsonSchema, Serialize, Deserialize)]
 pub struct Diagnostics<S> {
