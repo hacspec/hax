@@ -2120,7 +2120,12 @@ pub enum LitKind {
     CStr(Vec<u8>, StrStyle),
     Byte(u8),
     Char(char),
-    Int(u128, LitIntType),
+    Int(
+        #[serde(with = "serialize_int::unsigned")]
+        #[schemars(with = "String")]
+        u128,
+        LitIntType,
+    ),
     Float(Symbol, LitFloatType),
     Bool(bool),
     Err(ErrorGuaranteed),

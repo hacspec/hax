@@ -5,8 +5,18 @@ use rustc_middle::{mir, ty};
     Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub enum ConstantInt {
-    Int(i128, IntTy),
-    Uint(u128, UintTy),
+    Int(
+        #[serde(with = "serialize_int::signed")]
+        #[schemars(with = "String")]
+        i128,
+        IntTy,
+    ),
+    Uint(
+        #[serde(with = "serialize_int::unsigned")]
+        #[schemars(with = "String")]
+        u128,
+        UintTy,
+    ),
 }
 
 #[derive(

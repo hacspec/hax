@@ -8,6 +8,7 @@ mod mir;
 mod mir_traits;
 mod new;
 mod replaced;
+pub(crate) mod serialize_int;
 mod todo;
 
 pub use copied::*;
