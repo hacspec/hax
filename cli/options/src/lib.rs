@@ -328,7 +328,7 @@ pub struct BackendOptions {
 }
 
 #[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
-pub enum ExporterCommand {
+pub enum Command {
     /// Translate to a backend. The translated modules will be written
     /// under the directory `<PKG>/proofs/<BACKEND>/extraction`, where
     /// `<PKG>` is the translated cargo package name and `<BACKEND>`
@@ -372,22 +372,6 @@ pub enum ExportBodyKind {
     MirBuilt,
 }
 
-#[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
-pub enum LinterCommand {
-    /// Lint for the hacspec subset
-    Hacspec,
-    /// Lint for the supported Rust subset
-    Rust,
-}
-
-#[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
-pub enum Command {
-    #[command(flatten)]
-    ExporterCommand(ExporterCommand),
-    #[clap(subcommand, name = "lint", about = "Lint the code")]
-    LintCommand(LinterCommand),
-}
-
 #[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
 #[command(author, version = concat!("commit=", env!("HAX_GIT_COMMIT_HASH"), " ", "describe=", env!("HAX_GIT_DESCRIBE")), name = "hax", about, long_about = None)]
 pub struct Options {
@@ -418,7 +402,7 @@ pub struct Options {
     pub cargo_flags: Vec<String>,
 
     #[command(subcommand)]
-    pub command: Option<Command>,
+    pub command: Command,
 
     /// `cargo` caching is disabled by default, this flag enables it back.
     #[arg(long="enable-cargo-cache", action=clap::builder::ArgAction::SetTrue)]
@@ -432,9 +416,9 @@ pub struct Options {
     pub deps: bool,
 }
 
-impl NormalizePaths for ExporterCommand {
+impl NormalizePaths for Command {
     fn normalize_paths(&mut self) {
-        use ExporterCommand::*;
+        use Command::*;
         match self {
             JSON { output_file, .. } => output_file.normalize_paths(),
             _ => (),
@@ -442,18 +426,9 @@ impl NormalizePaths for ExporterCommand {
     }
 }
 
-impl NormalizePaths for Command {
-    fn normalize_paths(&mut self) {
-        match self {
-            Command::ExporterCommand(cmd) => cmd.normalize_paths(),
-        }
-    }
-}
 impl NormalizePaths for Options {
     fn normalize_paths(&mut self) {
-        if let Some(c) = &mut self.command {
-            c.normalize_paths()
-        }
+        self.command.normalize_paths()
     }
 }
 

@@ -37,7 +37,7 @@ use callbacks_wrapper::*;
 use features::*;
 
 use const_format::formatcp;
-use hax_cli_options::{BackendOptions, Command, ExporterCommand, ENV_VAR_OPTIONS_FRONTEND};
+use hax_cli_options::{BackendOptions, Command, ENV_VAR_OPTIONS_FRONTEND};
 
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::{interface, Queries};
@@ -160,10 +160,9 @@ fn main() {
                 hax_lib_macros_types::HAX_CFG_OPTION_NAME.into(),
             ])
             .chain(match &options.command {
-                Some(Command::ExporterCommand(ExporterCommand::Backend(BackendOptions {
-                    backend,
-                    ..
-                }))) => vec!["--cfg".into(), format!("hax_backend_{backend}")],
+                Command::Backend(BackendOptions { backend, .. }) => {
+                    vec!["--cfg".into(), format!("hax_backend_{backend}")]
+                }
                 _ => vec![],
             })
             .chain(features.into_iter().map(|s| format!("-Zcrate-attr={}", s)))
