@@ -143,13 +143,11 @@ dependencies = [
  "clap",
  "colored",
  "const_format",
- "hax-cli-options",
- "hax-cli-options-engine",
- "hax-diagnostics",
  "hax-frontend-exporter",
  "hax-frontend-exporter-options",
  "hax-lib-macros-types",
  "hax-phase-debug-webapp",
+ "hax-types",
  "inquire",
  "is-terminal",
  "itertools",
@@ -519,45 +517,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hax-cli-options"
-version = "0.1.0-pre.1"
-dependencies = [
- "clap",
- "hax-frontend-exporter-options",
- "path-clean",
- "schemars",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "hax-cli-options-engine"
-version = "0.1.0-pre.1"
-dependencies = [
- "clap",
- "hax-cli-options",
- "hax-diagnostics",
- "hax-frontend-exporter",
- "hax-frontend-exporter-options",
- "itertools",
- "path-clean",
- "schemars",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "hax-diagnostics"
-version = "0.1.0-pre.1"
-dependencies = [
- "annotate-snippets",
- "colored",
- "hax-frontend-exporter",
- "schemars",
- "serde",
-]
-
-[[package]]
 name = "hax-driver"
 version = "0.1.0-pre.1"
 dependencies = [
@@ -565,12 +524,10 @@ dependencies = [
  "clap",
  "colored",
  "const_format",
- "hax-cli-options",
- "hax-cli-options-engine",
- "hax-diagnostics",
  "hax-frontend-exporter",
  "hax-frontend-exporter-options",
  "hax-lib-macros-types",
+ "hax-types",
  "itertools",
  "serde",
  "serde_json",
@@ -594,7 +551,6 @@ version = "0.1.0-pre.1"
 dependencies = [
  "camino",
  "cargo_metadata",
- "hax-cli-options-engine",
  "hax-engine-names",
  "serde",
  "serde_json",
@@ -690,11 +646,27 @@ dependencies = [
  "assert_cmd",
  "cargo_metadata",
  "enum-iterator",
- "hax-cli-options-engine",
+ "hax-types",
  "insta",
  "lazy_static",
  "libtest-mimic",
  "regex",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "hax-types"
+version = "0.1.0-pre.1"
+dependencies = [
+ "annotate-snippets",
+ "clap",
+ "colored",
+ "hax-frontend-exporter",
+ "hax-frontend-exporter-options",
+ "itertools",
+ "path-clean",
+ "schemars",
  "serde",
  "serde_json",
 ]

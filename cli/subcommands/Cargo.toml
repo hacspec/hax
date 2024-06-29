@@ -29,11 +29,9 @@ schemars.workspace = true
 itertools.workspace = true
 clap.workspace = true
 paste = "1.0.11"
-hax-cli-options.workspace = true
 hax-frontend-exporter.workspace = true
 hax-frontend-exporter-options.workspace = true
-hax-diagnostics.workspace = true
-hax-cli-options-engine.workspace = true
+hax-types.workspace = true
 path-clean = "1.0.1"
 tempfile = "3.8"
 which.workspace = true
@@ -50,11 +48,9 @@ annotate-snippets.workspace = true
 [build-dependencies]
 serde.workspace = true
 serde_json.workspace = true
+hax-types.workspace = true
 schemars.workspace = true
 hax-frontend-exporter.workspace = true
-hax-diagnostics.workspace = true
-hax-cli-options.workspace = true
-hax-cli-options-engine.workspace = true
 hax-lib-macros-types = {workspace = true, features = ["schemars"]}
 version_check = "0.9"
 toml = "0.8"

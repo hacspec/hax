@@ -37,7 +37,7 @@ use callbacks_wrapper::*;
 use features::*;
 
 use const_format::formatcp;
-use hax_cli_options::{BackendOptions, Command, ENV_VAR_OPTIONS_FRONTEND};
+use hax_types::cli_options::{BackendOptions, Command, ENV_VAR_OPTIONS_FRONTEND};
 
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::{interface, Queries};
@@ -79,7 +79,7 @@ const HAX_VANILLA_RUSTC: &str = "HAX_VANILLA_RUSTC";
 fn main() {
     setup_logging();
 
-    let options: hax_cli_options::Options =
+    let options: hax_types::cli_options::Options =
         serde_json::from_str(&std::env::var(ENV_VAR_OPTIONS_FRONTEND).expect(&formatcp!(
             "Cannot find environnement variable {}",
             ENV_VAR_OPTIONS_FRONTEND
@@ -171,7 +171,7 @@ fn main() {
             options.force_cargo_build = if translate_package {
                 options.force_cargo_build
             } else {
-                hax_cli_options::ForceCargoBuild::default()
+                hax_types::cli_options::ForceCargoBuild::default()
             };
             options
         },

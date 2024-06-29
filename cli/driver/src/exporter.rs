@@ -1,7 +1,7 @@
-use hax_cli_options::{Backend, PathOrDash, ENV_VAR_OPTIONS_FRONTEND};
 use hax_frontend_exporter;
 use hax_frontend_exporter::state::{ExportedSpans, LocalContextS};
 use hax_frontend_exporter::SInto;
+use hax_types::cli_options::{Backend, PathOrDash, ENV_VAR_OPTIONS_FRONTEND};
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::interface;
 use rustc_interface::{interface::Compiler, Queries};
@@ -184,9 +184,9 @@ fn collect_macros(
 /// Callback for extraction
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct ExtractionCallbacks {
-    pub inline_macro_calls: Vec<hax_cli_options::Namespace>,
+    pub inline_macro_calls: Vec<hax_types::cli_options::Namespace>,
     pub macro_calls: HashMap<hax_frontend_exporter::Span, hax_frontend_exporter::Span>,
-    pub body_types: Vec<hax_cli_options::ExportBodyKind>,
+    pub body_types: Vec<hax_types::cli_options::ExportBodyKind>,
 }
 
 impl From<ExtractionCallbacks> for hax_frontend_exporter_options::Options {
@@ -226,8 +226,8 @@ impl Callbacks for ExtractionCallbacks {
         use std::ops::{Deref, DerefMut};
 
         queries.global_ctxt().unwrap().enter(|tcx| {
-            use hax_cli_options::Command;
             use hax_frontend_exporter::ThirBody;
+            use hax_types::cli_options::Command;
             use rustc_session::config::CrateType;
             use serde::{Deserialize, Serialize};
             use std::fs::File;
@@ -263,7 +263,7 @@ impl Callbacks for ExtractionCallbacks {
 
             let file = File::create(&haxmeta_path).unwrap();
 
-            use hax_cli_options_engine::{with_kind_type, HaxMeta};
+            use hax_types::driver_api::{with_kind_type, HaxMeta};
             with_kind_type!(
                 self.body_types.clone(),
                 <Body>|| {
@@ -285,7 +285,7 @@ impl Callbacks for ExtractionCallbacks {
             let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
             let manifest_dir = std::path::Path::new(&manifest_dir);
 
-            let data = hax_cli_options_engine::EmitHaxMetaMessage {
+            let data = hax_types::driver_api::EmitHaxMetaMessage {
                 manifest_dir: manifest_dir.to_path_buf(),
                 working_dir: opts
                     .working_dir
@@ -295,11 +295,9 @@ impl Callbacks for ExtractionCallbacks {
             };
             eprintln!(
                 "{}{}",
-                hax_cli_options_engine::HAX_DRIVER_STDERR_PREFIX,
-                &serde_json::to_string(&hax_cli_options_engine::HaxDriverMessage::EmitHaxMeta(
-                    data
-                ))
-                .unwrap()
+                hax_types::driver_api::HAX_DRIVER_STDERR_PREFIX,
+                &serde_json::to_string(&hax_types::driver_api::HaxDriverMessage::EmitHaxMeta(data))
+                    .unwrap()
             );
 
             Compilation::Stop

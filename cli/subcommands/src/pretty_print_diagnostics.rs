@@ -8,7 +8,7 @@
 #![feature(rustc_private)]
 extern crate rustc_driver;
 
-use hax_diagnostics::Diagnostics as D;
+use hax_types::diagnostics::Diagnostics as D;
 use serde_json::from_reader;
 
 fn main() {

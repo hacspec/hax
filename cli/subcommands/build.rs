@@ -16,11 +16,11 @@ fn rustc_version_env_var() {
 fn json_schema_static_asset() {
     let schema = schemars::schema_for!((
         hax_frontend_exporter::Item<hax_frontend_exporter::ThirBody>,
-        hax_cli_options::Options,
-        hax_diagnostics::Diagnostics,
-        hax_cli_options_engine::EngineOptions,
-        hax_cli_options_engine::Output,
-        hax_cli_options_engine::WithDefIds<hax_frontend_exporter::ThirBody>,
+        hax_types::cli_options::Options,
+        hax_types::diagnostics::Diagnostics,
+        hax_types::engine_api::EngineOptions,
+        hax_types::engine_api::Output,
+        hax_types::engine_api::WithDefIds<hax_frontend_exporter::ThirBody>,
         hax_lib_macros_types::AttrPayload,
     ));
     serde_json::to_writer(

@@ -1,8 +1,9 @@
 use annotate_snippets::{Level, Message, Renderer};
 use clap::Parser;
 use colored::Colorize;
-use hax_cli_options::*;
-use hax_cli_options_engine::*;
+use hax_types::cli_options::*;
+use hax_types::driver_api::*;
+use hax_types::engine_api::*;
 use is_terminal::IsTerminal;
 use std::fs;
 use std::io::BufRead;
@@ -193,7 +194,7 @@ fn run_engine(
     let options_frontend = Options::from(options.clone());
 
     {
-        let mut rctx = hax_diagnostics::report::ReportCtx::default();
+        let mut rctx = hax_types::diagnostics::report::ReportCtx::default();
         for diag in &output.diagnostics {
             diag.with_message(&mut rctx, &working_dir, Level::Error, report);
         }
@@ -313,7 +314,6 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) {
             include_extra,
             ..
         } => {
-            use {with_kind_type, HaxMeta};
             with_kind_type!(kind, <Body>|| {
                 for EmitHaxMetaMessage { path, .. } in haxmeta_files {
                     let file = std::io::BufReader::new(fs::File::open(&path).unwrap());
