@@ -21,27 +21,20 @@ impl std::convert::From<&str> for DebugEngineMode {
     }
 }
 
-#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ForceCargoBuild {
-    pub data: u128,
-}
-
-impl std::default::Default for ForceCargoBuild {
-    fn default() -> Self {
-        ForceCargoBuild { data: 0 }
-    }
+    pub data: u64,
 }
 
 impl std::convert::From<&str> for ForceCargoBuild {
     fn from(s: &str) -> Self {
         use std::time::{SystemTime, UNIX_EPOCH};
         if s == "false" {
-            ForceCargoBuild {
-                data: SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .map(|r| r.as_millis())
-                    .unwrap_or(0),
-            }
+            let data = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|r| r.as_millis())
+                .unwrap_or(0);
+            ForceCargoBuild { data: data as u64 }
         } else {
             ForceCargoBuild::default()
         }
@@ -413,8 +406,8 @@ pub struct Options {
     #[command(subcommand)]
     pub command: Command,
 
-    /// `cargo` caching is disabled by default, this flag enables it back.
-    #[arg(long="enable-cargo-cache", action=clap::builder::ArgAction::SetTrue)]
+    /// `cargo` caching is enable by default, this flag disables it.
+    #[arg(long="disable-cargo-cache", action=clap::builder::ArgAction::SetFalse)]
     pub force_cargo_build: ForceCargoBuild,
 
     /// Apply the command to every local package of the dependency closure. By
