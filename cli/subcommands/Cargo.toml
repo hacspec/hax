@@ -18,10 +18,6 @@ name = "cargo-hax"
 path = "src/json_schema.rs"
 name = "hax-export-json-schemas"
 
-[[bin]]
-path = "src/pretty_print_diagnostics.rs"
-name = "hax-pretty-print-diagnostics"
-
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true

@@ -202,15 +202,16 @@ fn run_engine(
         let stdout = std::io::BufReader::new(engine_subprocess.stdout.take().unwrap());
         for msg in stdout.json_lines() {
             let msg = msg.unwrap();
+            use protocol::*;
             match msg {
-                protocol::FromEngine::Exit => break,
-                protocol::FromEngine::Diagnostic(diag) => {
+                FromEngine::Exit => break,
+                FromEngine::Diagnostic(diag) => {
                     if backend.dry_run {
                         output.diagnostics.push(diag.clone())
                     }
                     diag.with_message(&mut rctx, &working_dir, Level::Error, report);
                 }
-                protocol::FromEngine::File(file) => {
+                FromEngine::File(file) => {
                     if backend.dry_run {
                         output.files.push(file)
                     } else {
@@ -221,8 +222,11 @@ fn run_engine(
                         report(Level::Info.title(&title))
                     }
                 }
-                protocol::FromEngine::Ping => {
-                    send!(&protocol::ToEngine::Pong);
+                FromEngine::PrettyPrintDiagnostic(diag) => {
+                    send!(&ToEngine::PrettyPrintedDiagnostic(format!("{}", diag)));
+                }
+                FromEngine::Ping => {
+                    send!(&ToEngine::Pong);
                 }
             }
         }

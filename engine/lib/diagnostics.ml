@@ -93,16 +93,15 @@ type t = { context : Context.t; kind : kind; span : thir_span list }
 let to_thir_diagnostic (d : t) : Types.diagnostics =
   { kind = d.kind; context = Context.display d.context; span = d.span }
 
-let run_hax_pretty_print_diagnostics (s : string) : string =
-  try (Utils.Command.run "hax-pretty-print-diagnostics" s).stdout
-  with e ->
-    "[run_hax_pretty_print_diagnostics] failed. Exn: "
-    ^ "[run_hax_pretty_print_diagnostics] failed. Exn: " ^ Exn.to_string e
-    ^ ". Here is the JSON representation of the error that occurred:\n" ^ s
+(** Ask `cargo-hax` to pretty print a diagnostic *)
+let ask_diagnostic_pretty_print diag : string =
+  Hax_io.request (PrettyPrintDiagnostic diag)
+    ~expected:"PrettyPrintedDiagnostic" (function
+    | Types.PrettyPrintedDiagnostic s -> Some s
+    | _ -> None)
 
 let pretty_print : t -> string =
-  to_thir_diagnostic >> Types.to_json_diagnostics
-  >> Yojson.Safe.pretty_to_string >> run_hax_pretty_print_diagnostics
+  to_thir_diagnostic >> ask_diagnostic_pretty_print
 
 let pretty_print_context_kind : Context.t -> kind -> string =
  fun context kind ->
