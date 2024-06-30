@@ -222,6 +222,9 @@ fn run_engine(
                         report(Level::Info.title(&title))
                     }
                 }
+                FromEngine::DebugString(debug) => {
+                    output.debug_json = Some(debug);
+                }
                 FromEngine::PrettyPrintDiagnostic(diag) => {
                     send!(&ToEngine::PrettyPrintedDiagnostic(format!("{}", diag)));
                 }

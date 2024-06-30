@@ -34,6 +34,7 @@ pub mod protocol {
         File(File),
         PrettyPrintDiagnostic(crate::diagnostics::Diagnostics),
         PrettyPrintRust(String),
+        DebugString(String),
         Exit,
         Ping,
     }

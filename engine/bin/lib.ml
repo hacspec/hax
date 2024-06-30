@@ -154,6 +154,7 @@ let main () =
         results.diagnostics;
       List.iter ~f:(fun file -> File file |> Hax_io.write) results.files;
 
+      Option.iter ~f:(fun json -> DebugString json |> Hax_io.write) debug_json;
       Hax_io.close ();
 
       Logs.info (fun m -> m "Exiting Hax engine (success)")

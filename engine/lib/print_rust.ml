@@ -270,7 +270,7 @@ module Raw = struct
             arms
           |> concat ~sep:!","
         in
-        !"(match " & pexpr scrutinee & !" {" & arms & !"})"
+        !"(match (" & pexpr scrutinee & !") {" & arms & !"})"
     (* | Let { monadic = Some _; _ } -> !"monadic_let!()" *)
     | Let { monadic; lhs; rhs; body } ->
         (* TODO: here, [rhs.typ]! *)
@@ -278,7 +278,7 @@ module Raw = struct
         let rhs_typ = pty rhs.span rhs.typ in
         let note =
           if String.equal (to_string lhs_typ) (to_string rhs_typ) then !""
-          else !"// Note: rhs.typ=" & rhs_typ & !"\n"
+          else !"#[note(\"rhs.typ=" & rhs_typ & !"\")]\n"
         in
         let monadic =
           match monadic with
@@ -538,9 +538,9 @@ module Raw = struct
       in
       pattrs e.attrs & pi
     with NotImplemented ->
-      !("\n/* print_rust: pitem: not implemented  (item: "
+      !("\n/** print_rust: pitem: not implemented  (item: "
        ^ [%show: concrete_ident] e.ident
-       ^ ") */\n")
+       ^ ") */\nconst _: () = ();\n")
 end
 
 let rustfmt (s : string) : string =
@@ -557,10 +557,12 @@ let rustfmt (s : string) : string =
            #######################################################\n\
            ########### WARNING: Failed formatting ###########\n\
            %{error}\n\
+           STRING:\n\
+           %{s}\n\
            #######################################################\n"]
       in
       Stdio.prerr_endline err;
-      [%string "/*\n%{err}\n*/\n\n%{s}"]
+      s
 
 exception RetokenizationFailure
 

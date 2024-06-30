@@ -159,7 +159,7 @@ dependencies = [
  "serde",
  "serde-jsonlines",
  "serde_json",
- "syn 1.0.109",
+ "syn 2.0.68",
  "tempfile",
  "toml 0.8.3",
  "version_check",
