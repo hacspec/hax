@@ -26,6 +26,21 @@ pub struct Output {
     pub debug_json: Option<String>,
 }
 
+pub mod protocol {
+    use super::*;
+    #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+    pub enum FromEngine {
+        Diagnostic(crate::diagnostics::Diagnostics),
+        File(File),
+        Exit,
+        Ping,
+    }
+    #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+    pub enum ToEngine {
+        Pong,
+    }
+}
+
 // This is located here for dependency reason, but this is not related
 // to the engine (yet?).
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]

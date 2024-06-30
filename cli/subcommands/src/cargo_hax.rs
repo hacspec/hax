@@ -5,8 +5,10 @@ use hax_types::cli_options::*;
 use hax_types::driver_api::*;
 use hax_types::engine_api::*;
 use is_terminal::IsTerminal;
+use serde_jsonlines::BufReadExt;
 use std::fs;
 use std::io::BufRead;
+use std::io::Write;
 use std::path::PathBuf;
 use std::process;
 
@@ -162,61 +164,85 @@ fn run_engine(
         })
         .unwrap();
 
-    serde_json::to_writer::<_, EngineOptions>(
-        std::io::BufWriter::new(
+    let mut output = Output {
+        diagnostics: vec![],
+        files: vec![],
+        debug_json: None,
+    };
+    {
+        let mut rctx = hax_types::diagnostics::report::ReportCtx::default();
+        let mut stdin = std::io::BufWriter::new(
             engine_subprocess
                 .stdin
                 .as_mut()
                 .expect("Could not write on stdin"),
-        ),
-        &engine_options,
-    )
-    .unwrap();
-    let out = engine_subprocess.wait_with_output().unwrap();
-    if !out.status.success() {
+        );
+
+        macro_rules! send {
+            ($value:expr) => {
+                serde_json::to_writer(&mut stdin, $value).unwrap();
+                stdin.write_all(b"\n").unwrap();
+                stdin.flush().unwrap();
+            };
+        };
+
+        send!(&engine_options);
+
+        let out_dir = {
+            let relative_path: PathBuf = [
+                "proofs",
+                format!("{}", backend.backend).as_str(),
+                "extraction",
+            ]
+            .iter()
+            .collect();
+            manifest_dir.join(&relative_path)
+        };
+
+        let stdout = std::io::BufReader::new(engine_subprocess.stdout.take().unwrap());
+        for msg in stdout.json_lines() {
+            let msg = msg.unwrap();
+            match msg {
+                protocol::FromEngine::Exit => break,
+                protocol::FromEngine::Diagnostic(diag) => {
+                    if backend.dry_run {
+                        output.diagnostics.push(diag.clone())
+                    }
+                    diag.with_message(&mut rctx, &working_dir, Level::Error, report);
+                }
+                protocol::FromEngine::File(file) => {
+                    if backend.dry_run {
+                        output.files.push(file)
+                    } else {
+                        let path = out_dir.join(&file.path);
+                        std::fs::create_dir_all(&path.parent().unwrap()).unwrap();
+                        std::fs::write(&path, file.contents).unwrap();
+                        let title = format!("hax: wrote file {}", path.display());
+                        report(Level::Info.title(&title))
+                    }
+                }
+                protocol::FromEngine::Ping => {
+                    send!(&protocol::ToEngine::Pong);
+                }
+            }
+        }
+        drop(stdin);
+    }
+
+    let exit_status = engine_subprocess.wait().unwrap();
+    if !exit_status.success() {
         let title = format!(
-            "hax: {} exited with non-zero code {}\nstdout: {}\n stderr: {}",
+            "hax: {} exited with non-zero code {}",
             ENGINE_BINARY_NAME,
-            out.status.code().unwrap_or(-1),
-            String::from_utf8(out.stdout).unwrap(),
-            String::from_utf8(out.stderr).unwrap(),
+            exit_status.code().unwrap_or(-1),
         );
         report(Level::Error.title(&title));
         std::process::exit(1);
     }
-    let output: Output = serde_json::from_slice(out.stdout.as_slice()).unwrap_or_else(|_| {
-        panic!(
-            "{} outputed incorrect JSON {}",
-            ENGINE_BINARY_NAME,
-            String::from_utf8(out.stdout).unwrap()
-        )
-    });
     let options_frontend = Options::from(options.clone());
 
-    {
-        let mut rctx = hax_types::diagnostics::report::ReportCtx::default();
-        for diag in &output.diagnostics {
-            diag.with_message(&mut rctx, &working_dir, Level::Error, report);
-        }
-    }
     if backend.dry_run {
         serde_json::to_writer(std::io::BufWriter::new(std::io::stdout()), &output).unwrap()
-    } else {
-        let relative_path: PathBuf = [
-            "proofs",
-            format!("{}", backend.backend).as_str(),
-            "extraction",
-        ]
-        .iter()
-        .collect();
-        let out_dir = manifest_dir.join(&relative_path);
-        for file in output.files.clone() {
-            let path = out_dir.join(&file.path);
-            std::fs::create_dir_all(&path.parent().unwrap()).unwrap();
-            std::fs::write(&path, file.contents).unwrap();
-            let title = format!("hax: wrote file {}", path.display());
-            report(Level::Info.title(&title))
-        }
     }
     if let Some(debug_json) = &output.debug_json {
         use DebugEngineMode;

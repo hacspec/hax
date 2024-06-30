@@ -44,6 +44,7 @@ inquire = "0.6"
 const_format = "0.2"
 ciborium.workspace = true
 annotate-snippets.workspace = true
+serde-jsonlines = "0.5.0"
 
 [build-dependencies]
 serde.workspace = true
