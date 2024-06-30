@@ -153,11 +153,13 @@ dependencies = [
  "itertools",
  "paste",
  "path-clean",
+ "prettyplease",
  "rustup-toolchain",
  "schemars",
  "serde",
  "serde-jsonlines",
  "serde_json",
+ "syn 1.0.109",
  "tempfile",
  "toml 0.8.3",
  "version_check",
@@ -1047,6 +1049,16 @@ checksum = "368ba315fb8c5052ab692e68a0eefec6ec57b23a36959c14496f0b0df2c0cecf"
 dependencies = [
  "predicates-core",
  "termtree",
+]
+
+[[package]]
+name = "prettyplease"
+version = "0.2.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f12335488a2f3b0a83b14edad48dca9879ce89b2edd10e80237e4e852dd645e"
+dependencies = [
+ "proc-macro2",
+ "syn 2.0.68",
 ]
 
 [[package]]

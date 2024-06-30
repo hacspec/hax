@@ -33,12 +33,14 @@ pub mod protocol {
         Diagnostic(crate::diagnostics::Diagnostics),
         File(File),
         PrettyPrintDiagnostic(crate::diagnostics::Diagnostics),
+        PrettyPrintRust(String),
         Exit,
         Ping,
     }
     #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
     pub enum ToEngine {
         PrettyPrintedDiagnostic(String),
+        PrettyPrintedRust(Result<String, String>),
         Pong,
     }
 }

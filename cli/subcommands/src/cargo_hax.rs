@@ -225,6 +225,13 @@ fn run_engine(
                 FromEngine::PrettyPrintDiagnostic(diag) => {
                     send!(&ToEngine::PrettyPrintedDiagnostic(format!("{}", diag)));
                 }
+                FromEngine::PrettyPrintRust(code) => {
+                    let code = match syn::parse_file(&code) {
+                        Ok(file) => Ok(prettyplease::unparse(&file)),
+                        Err(err) => Err(format!("{}", err)),
+                    };
+                    send!(&ToEngine::PrettyPrintedRust(code));
+                }
                 FromEngine::Ping => {
                     send!(&ToEngine::Pong);
                 }

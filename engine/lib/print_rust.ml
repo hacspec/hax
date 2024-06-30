@@ -544,23 +544,23 @@ module Raw = struct
 end
 
 let rustfmt (s : string) : string =
-  let open Utils.Command in
-  let { stderr; stdout } = run "rustfmt" s in
-  if String.is_empty stderr then stdout
-  else
-    let err =
-      [%string
-        "\n\n\
-         #######################################################\n\
-         ########### WARNING: Failed running rustfmt ###########\n\
-         #### STDOUT:\n\
-         %{stdout}\n\
-         #### STDERR:\n\
-         %{stderr}\n\
-         #######################################################\n"]
-    in
-    Stdio.prerr_endline err;
-    [%string "/*\n%{err}\n*/\n\n%{s}"]
+  match
+    Hax_io.request (PrettyPrintRust s) ~expected:"PrettyPrintedRust" (function
+      | Types.PrettyPrintedRust s -> Some s
+      | _ -> None)
+  with
+  | Ok formatted -> formatted
+  | Err error ->
+      let err =
+        [%string
+          "\n\n\
+           #######################################################\n\
+           ########### WARNING: Failed formatting ###########\n\
+           %{error}\n\
+           #######################################################\n"]
+      in
+      Stdio.prerr_endline err;
+      [%string "/*\n%{err}\n*/\n\n%{s}"]
 
 exception RetokenizationFailure
 
