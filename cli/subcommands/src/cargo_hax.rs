@@ -142,7 +142,6 @@ fn run_engine(
     haxmeta: HaxMeta<hax_frontend_exporter::ThirBody>,
     working_dir: PathBuf,
     manifest_dir: PathBuf,
-    options: &Options,
     backend: &BackendOptions,
 ) -> bool {
     let engine_options = EngineOptions {
@@ -256,7 +255,6 @@ fn run_engine(
         report(Level::Error.title(&title));
         std::process::exit(1);
     }
-    let options_frontend = Options::from(options.clone());
 
     if backend.dry_run {
         serde_json::to_writer(std::io::BufWriter::new(std::io::stdout()), &output).unwrap()
