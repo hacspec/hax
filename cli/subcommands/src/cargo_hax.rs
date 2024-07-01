@@ -84,6 +84,7 @@ const ENGINE_BINARY_NOT_FOUND: &str = const_format::formatcp!(
 /// is. Then, we try to find [ENGINE_BINARY_NAME] in PATH. If not
 /// found, detect whether nodejs is available, download the JS-compiled
 /// engine and use it.
+#[allow(unused_variables, unreachable_code)]
 fn find_hax_engine() -> process::Command {
     use which::which;
 
