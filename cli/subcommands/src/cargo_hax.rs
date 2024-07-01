@@ -144,7 +144,7 @@ fn run_engine(
     manifest_dir: PathBuf,
     options: &Options,
     backend: &BackendOptions,
-) {
+) -> bool {
     let engine_options = EngineOptions {
         backend: backend.clone(),
         input: haxmeta.items,
@@ -165,6 +165,7 @@ fn run_engine(
         })
         .unwrap();
 
+    let mut error = false;
     let mut output = Output {
         diagnostics: vec![],
         files: vec![],
@@ -185,7 +186,7 @@ fn run_engine(
                 stdin.write_all(b"\n").unwrap();
                 stdin.flush().unwrap();
             };
-        };
+        }
 
         send!(&engine_options);
 
@@ -207,6 +208,7 @@ fn run_engine(
             match msg {
                 FromEngine::Exit => break,
                 FromEngine::Diagnostic(diag) => {
+                    error = true;
                     if backend.dry_run {
                         output.diagnostics.push(diag.clone())
                     }
@@ -272,12 +274,14 @@ fn run_engine(
                 eprintln!("----------------------------------------------");
                 hax_phase_debug_webapp::run(|| debug_json.clone())
             }
-            Some(DebugEngineMode::File(file)) if !backend.dry_run => {
+            Some(DebugEngineMode::File(_file)) if !backend.dry_run => {
                 println!("{}", debug_json)
             }
             _ => (),
         }
     }
+
+    error
 }
 
 /// Calls `cargo` with a custom driver which computes `haxmeta` files
@@ -347,7 +351,7 @@ fn compute_haxmeta_files(options: &Options) -> (Vec<EmitHaxMetaMessage>, i32) {
 }
 
 /// Run the command given by the user
-fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) {
+fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) -> bool {
     match options.command.clone() {
         Command::JSON {
             output_file,
@@ -375,6 +379,7 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) {
                         .unwrap()
                 }
             });
+            false
         }
         Command::Backend(backend) => {
             use hax_frontend_exporter::ThirBody as Body;
@@ -388,6 +393,7 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) {
                 report(Level::Warning.title(&title))
             }
 
+            let mut error = false;
             for EmitHaxMetaMessage {
                 working_dir,
                 manifest_dir,
@@ -397,8 +403,9 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) {
                 let file = std::io::BufReader::new(fs::File::open(&path).unwrap());
                 let haxmeta: HaxMeta<Body> = ciborium::from_reader(file).unwrap();
 
-                run_engine(haxmeta, working_dir, manifest_dir, &options, &backend);
+                error = error || run_engine(haxmeta, working_dir, manifest_dir, &backend);
             }
+            error
         }
     }
 }
@@ -409,7 +416,11 @@ fn main() {
     options.normalize_paths();
 
     let (haxmeta_files, exit_code) = compute_haxmeta_files(&options);
-    run_command(&options, haxmeta_files);
+    let error = run_command(&options, haxmeta_files);
 
-    std::process::exit(exit_code)
+    std::process::exit(if exit_code == 0 && error {
+        1
+    } else {
+        exit_code
+    })
 }
