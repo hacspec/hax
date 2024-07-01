@@ -305,9 +305,8 @@ pub struct ParamConst {
 /// Reflects [`rustc_middle::ty::ExistentialPredicate`]
 #[derive(AdtInto)]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::ExistentialPredicate<'tcx>, state: S as state)]
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ExistentialPredicate {
     /// E.g. `From<u64>`. Note that this isn't `T: From<u64>` with a given `T`, this is just
     /// `From<u64>`. Could be written `?: From<u64>`.
@@ -321,9 +320,8 @@ pub enum ExistentialPredicate {
 /// Reflects [`rustc_type_ir::ExistentialTraitRef`]
 #[derive(AdtInto)]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_type_ir::ExistentialTraitRef<ty::TyCtxt<'tcx>>, state: S as state)]
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ExistentialTraitRef {
     pub def_id: DefId,
     pub args: Vec<GenericArg>,
@@ -332,9 +330,8 @@ pub struct ExistentialTraitRef {
 /// Reflects [`rustc_type_ir::ExistentialProjection`]
 #[derive(AdtInto)]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_type_ir::ExistentialProjection<ty::TyCtxt<'tcx>>, state: S as state)]
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ExistentialProjection {
     pub def_id: DefId,
     pub args: Vec<GenericArg>,
