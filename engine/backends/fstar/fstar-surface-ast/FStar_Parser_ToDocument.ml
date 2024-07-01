@@ -2261,7 +2261,7 @@ and (string_of_id_or_underscore : FStar_Ident.ident -> FStar_Pprint.document)
     let uu___ =
       (let uu___1 = FStar_Ident.string_of_id lid in
        FStar_Compiler_Util.starts_with uu___1 FStar_Ident.reserved_prefix) &&
-        (let uu___1 = FStar_Options.print_real_names () in
+        (let uu___1 = false in
          Prims.op_Negation uu___1) in
     if uu___
     then FStar_Pprint.underscore
@@ -2274,7 +2274,7 @@ and (text_of_lid_or_underscore : FStar_Ident.lident -> FStar_Pprint.document)
          let uu___2 = FStar_Ident.ident_of_lid lid in
          FStar_Ident.string_of_id uu___2 in
        FStar_Compiler_Util.starts_with uu___1 FStar_Ident.reserved_prefix) &&
-        (let uu___1 = FStar_Options.print_real_names () in
+        (let uu___1 = false in
          Prims.op_Negation uu___1) in
     if uu___
     then FStar_Pprint.underscore

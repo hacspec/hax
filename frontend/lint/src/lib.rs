@@ -6,7 +6,11 @@ use hax_diagnostics::error;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::ty::TyCtxt;
 
-// rustc hier
+// rustc errors
+extern crate rustc_errors;
+use rustc_errors::DiagCtxtHandle;
+
+// rustc hir
 extern crate rustc_hir;
 
 use rustc_hir::{intravisit::*, *};
@@ -15,13 +19,8 @@ use rustc_hir::{intravisit::*, *};
 extern crate rustc_span;
 use rustc_span::{def_id::LocalDefId, symbol::Ident, Span, Symbol};
 
-// rustc session
-extern crate rustc_session;
-use rustc_session::Session;
-
 // rustc data_structures
 extern crate rustc_data_structures;
-use rustc_data_structures::sync::Lrc;
 
 // rustc ast
 extern crate rustc_ast;
@@ -33,17 +32,16 @@ pub enum Type {
     Hacspec,
 }
 
-pub struct Linter<'a, 'tcx> {
-    session: &'a Lrc<Session>,
+pub struct Linter<'tcx> {
     tcx: TyCtxt<'tcx>,
     extern_allow_list: Vec<&'static str>,
     trait_block_list: Vec<String>,
     ltype: Type,
 }
 
-impl<'a, 'tcx> Linter<'a, 'tcx> {
+impl<'tcx> Linter<'tcx> {
     /// Register the linter.
-    pub fn register(tcx: TyCtxt<'tcx>, session: &'a Lrc<Session>, ltype: Type) {
+    pub fn register(tcx: TyCtxt<'tcx>, ltype: Type) {
         let hir = tcx.hir();
 
         let trait_block_list = vec!["FnMut"];
@@ -62,13 +60,16 @@ impl<'a, 'tcx> Linter<'a, 'tcx> {
         }
 
         let mut linter = Self {
-            session,
             tcx,
             extern_allow_list,
             trait_block_list,
             ltype,
         };
         hir.visit_all_item_likes_in_crate(&mut linter);
+    }
+
+    fn dcx(&self) -> DiagCtxtHandle<'tcx> {
+        self.tcx.dcx()
     }
 }
 
@@ -83,7 +84,7 @@ macro_rules! skip_derived_non_local {
             return;
         }
         if $self.non_local_hir_id($hir_id) {
-            error::extern_crate($self.session, $self.tcx.def_span($hir_id.owner));
+            error::extern_crate($self.dcx(), $self.tcx.def_span($hir_id.owner));
             // Don't keep going
             return;
         }
@@ -111,7 +112,7 @@ macro_rules! skip_v1_lib_macros {
     };
 }
 
-impl<'a, 'v> Linter<'a, 'v> {
+impl<'v> Linter<'v> {
     fn any_parent_has_attr(&self, hir_id: HirId, symbol: Symbol) -> bool {
         let map = &self.tcx.hir();
         let mut prev_enclosing_node = None;
@@ -145,7 +146,7 @@ impl<'a, 'v> Linter<'a, 'v> {
                 return true;
             }
             // On everything else we warn.
-            error::extern_crate(self.session, span);
+            error::extern_crate(self.dcx(), span);
             // }
             return true;
         }
@@ -176,7 +177,7 @@ impl<'a, 'v> Linter<'a, 'v> {
     }
 }
 
-impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
+impl<'v> Visitor<'v> for Linter<'v> {
     type NestedFilter = OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {
@@ -212,14 +213,14 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         match i.kind {
             ItemKind::Union(_, _) => {
                 // TODO: This should be an error (span_err_with_code)
-                error::no_union(self.session, i.span);
+                error::no_union(self.dcx(), i.span);
                 // self.no_union(i.span)
             }
-            ItemKind::GlobalAsm(_) => error::no_unsafe(self.session, i.span),
+            ItemKind::GlobalAsm(_) => error::no_unsafe(self.dcx(), i.span),
             ItemKind::Impl(imp) => {
                 // tracing::trace!("     impl {:?}", imp.self_ty.kind);
-                if imp.unsafety == Unsafety::Unsafe {
-                    error::no_unsafe(self.session, i.span);
+                if imp.safety == Safety::Unsafe {
+                    error::no_unsafe(self.dcx(), i.span);
                 }
                 if let Some(of_trait) = &imp.of_trait {
                     let def_id = of_trait.hir_ref_id.owner.def_id.to_def_id();
@@ -244,7 +245,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         // keep going
         walk_item(self, i);
     }
-    fn visit_body(&mut self, b: &'v Body<'v>) {
+    fn visit_body(&mut self, b: &Body<'v>) {
         tracing::trace!("visiting body");
         skip_derived_non_local!(self, b.value.hir_id);
 
@@ -274,7 +275,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
 
         // XXX: This really shouldn't be done here but earlier.
         if ident.name.as_str() == "FnMut" {
-            error::no_fn_mut(self.session, ident.span);
+            error::no_fn_mut(self.dcx(), ident.span);
             return;
         }
 
@@ -290,7 +291,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         tracing::trace!("visiting foreign item {:?} at {:?}", i.ident, i.span);
         walk_foreign_item(self, i)
     }
-    fn visit_local(&mut self, l: &'v Local<'v>) {
+    fn visit_local(&mut self, l: &'v LetStmt<'v>) {
         tracing::trace!("visiting local {:?}", l.span);
         walk_local(self, l)
     }
@@ -310,14 +311,14 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         skip_derived_non_local!(self, s.hir_id);
 
         match &s.kind {
-            StmtKind::Local(b) => {
+            StmtKind::Let(b) => {
                 // tracing::trace!("       local stmt");
                 if let Some(init) = b.init {
                     match init.kind {
                         ExprKind::AddrOf(x, f, _s) => {
                             // Don't allow raw borrows (pointer) and mutable borrows.
                             if matches!(x, BorrowKind::Raw) || matches!(f, Mutability::Mut) {
-                                error::mut_borrow_let(self.session, b.span)
+                                error::mut_borrow_let(self.dcx(), b.span)
                             }
                         }
                         _ => (),
@@ -364,20 +365,18 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         match &ex.kind {
             ExprKind::Block(block, _) => match block.rules {
                 BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) => {
-                    error::no_unsafe(self.session, block.span)
+                    error::no_unsafe(self.dcx(), block.span)
                 }
                 _ => (),
             },
             ExprKind::Loop(_block, _label, source, span) => match source {
-                LoopSource::Loop | LoopSource::While => {
-                    error::unsupported_loop(self.session, *span)
-                }
+                LoopSource::Loop | LoopSource::While => error::unsupported_loop(self.dcx(), *span),
                 LoopSource::ForLoop => tracing::trace!("hir for loop"),
             },
             // FIXME: where to get this from?
             // ExprKind::Async(e, c, b) => self.no_async_await(b.span),
             // ExprKind::Await(a) => self.no_async_await(a.span),
-            ExprKind::InlineAsm(p) => error::no_unsafe(self.session, p.line_spans[0]),
+            ExprKind::InlineAsm(p) => error::no_unsafe(self.dcx(), p.line_spans[0]),
             ExprKind::Call(expr, _exprs) => {
                 // tracing::trace!("call: {:#?}", expr);
                 if self.tcx.is_foreign_item(expr.hir_id.owner.def_id) {
@@ -401,10 +400,6 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
 
         // keep going
         walk_expr(self, ex);
-    }
-    fn visit_let_expr(&mut self, lex: &'v Let<'v>) {
-        tracing::trace!("visiting let expr {:?}", lex.span);
-        walk_let_expr(self, lex)
     }
     fn visit_expr_field(&mut self, field: &'v ExprField<'v>) {
         tracing::trace!("visiting expr field {:?}", field.ident);
@@ -436,13 +431,6 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
                 // tracing::trace!("   bound predicate {:#?}", p.bounds);
                 for bound in p.bounds {
                     match bound {
-                        GenericBound::LangItemTrait(lang_item, span, _hir_id, _generic_args) => {
-                            // XXX: for some reason FnMut is not a lang item
-                            tracing::trace!("  lang trait bound {:?}", span);
-                            if matches!(lang_item, LangItem::FnMut) {
-                                error::no_fn_mut(self.session, *span);
-                            }
-                        }
                         GenericBound::Trait(trait_ref, _bound_modifier) => {
                             tracing::trace!("  trait bound {:?}", trait_ref);
                             // tracing::trace!(
@@ -454,7 +442,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
                     }
                 }
             }
-            WherePredicate::RegionPredicate(p) => error::explicit_lifetime(self.session, p.span),
+            WherePredicate::RegionPredicate(p) => error::explicit_lifetime(self.dcx(), p.span),
             WherePredicate::EqPredicate(p) => {
                 tracing::trace!("   eq predicate {:?}/{:?}", p.lhs_ty, p.rhs_ty);
             }
@@ -481,16 +469,16 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
     ) {
         tracing::trace!("visiting fn at {:?}", span);
 
-        let hir_id = self.tcx.hir().local_def_id_to_hir_id(id);
+        let hir_id = self.tcx.local_def_id_to_hir_id(id);
 
         skip_derived_non_local!(self, hir_id);
         skip_v1_lib_macros!(self, hir_id);
 
         fn check_ty_kind(visitor: &Linter, k: &TyKind, span: Span) {
             match k {
-                TyKind::Ptr(_) => error::no_unsafe(visitor.session, span),
+                TyKind::Ptr(_) => error::no_unsafe(visitor.dcx(), span),
                 TyKind::TraitObject(_, _, _) => {
-                    error::no_trait_objects(visitor.session, span);
+                    error::no_trait_objects(visitor.dcx(), span);
                 }
                 TyKind::Ref(lifetime, ty) => {
                     // TODO: check lifetime. only allow anonymous
@@ -502,14 +490,14 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
                     if matches!(ty.mutbl, Mutability::Mut) {
                         if matches!(visitor.ltype, Type::Hacspec) {
                             // No mutability is allowed here for hacspec
-                            error::no_mut(visitor.session, ty.ty.span);
+                            error::no_mut(visitor.dcx(), ty.ty.span);
                             return;
                         }
                         match &ty.ty.kind {
                             TyKind::Path(path) => match path {
                                 QPath::Resolved(_ty, p) => {
                                     if p.segments[0].ident.as_str() == "Self" {
-                                        error::no_mut_self(visitor.session, p.span)
+                                        error::no_mut_self(visitor.dcx(), p.span)
                                     }
                                 }
                                 _ => (),
@@ -521,7 +509,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
                     check_ty_kind(visitor, &ty.ty.kind, span)
                 }
                 TyKind::OpaqueDef(_, _, _) => {
-                    error::no_trait_objects(visitor.session, span);
+                    error::no_trait_objects(visitor.dcx(), span);
                 }
                 TyKind::Path(path) => match path {
                     QPath::Resolved(ty, p) => {
@@ -534,11 +522,11 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
                             .iter()
                             .any(|s| s.ident.to_string().contains("impl"))
                         {
-                            error::no_trait_objects(visitor.session, span);
+                            error::no_trait_objects(visitor.dcx(), span);
                         }
                     }
                     QPath::TypeRelative(ty, _p) => check_ty_kind(visitor, &ty.kind, span),
-                    QPath::LangItem(_lang_item, _span, _hir_id) => (),
+                    QPath::LangItem(_lang_item, _span) => (),
                 },
                 _ => (),
             }
@@ -549,20 +537,20 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
                 tracing::trace!("   ItemFn: {:?}", ident);
                 // TODO: All this should be an error (span_err_with_code)
                 // Unsafe functions
-                if header.unsafety == Unsafety::Unsafe {
-                    error::no_unsafe(self.session, span);
+                if header.safety == Safety::Unsafe {
+                    error::no_unsafe(self.dcx(), span);
                 }
 
                 // async functions
-                if header.asyncness == IsAsync::Async {
-                    error::no_async_await(self.session, span);
+                if let IsAsync::Async(_) = header.asyncness {
+                    error::no_async_await(self.dcx(), span);
                 }
 
                 // Check generics for lifetimes
                 for predicate in generics.predicates {
                     match &predicate {
                         WherePredicate::RegionPredicate(region) => {
-                            error::explicit_lifetime(self.session, region.span)
+                            error::explicit_lifetime(self.dcx(), region.span)
                         }
                         WherePredicate::BoundPredicate(bound) => {
                             for bound in bound.bounds {
@@ -583,7 +571,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
 
                                         if self.trait_block_list.contains(&path_string) {
                                             error::unsupported_item(
-                                                self.session,
+                                                self.dcx(),
                                                 poly_ref.span,
                                                 path_string,
                                             );
@@ -600,7 +588,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
                     match param.kind {
                         GenericParamKind::Lifetime { kind } => match kind {
                             LifetimeParamKind::Explicit => {
-                                error::explicit_lifetime(self.session, param.span)
+                                error::explicit_lifetime(self.dcx(), param.span)
                             }
                             _ => (),
                         },
@@ -612,13 +600,13 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
                 tracing::trace!("   Method: {:?}", ident);
                 // TODO: All this should be an error (span_err_with_code)
                 // Unsafe functions
-                if sig.header.unsafety == Unsafety::Unsafe {
-                    error::no_unsafe(self.session, span);
+                if sig.header.safety == Safety::Unsafe {
+                    error::no_unsafe(self.dcx(), span);
                 }
 
                 // async functions
-                if sig.header.asyncness == IsAsync::Async {
-                    error::no_async_await(self.session, span);
+                if let IsAsync::Async(_) = sig.header.asyncness {
+                    error::no_async_await(self.dcx(), span);
                 }
 
                 // Check method input arguments
@@ -794,7 +782,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
                 _ => (),
             },
             QPath::TypeRelative(_ty, _path) => (),
-            QPath::LangItem(item, _span, _hir_id) => {
+            QPath::LangItem(item, _span) => {
                 tracing::trace!("   language item {:?}", item);
             }
         }
@@ -835,12 +823,12 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
         tracing::trace!("visiting generic args {:?}", generic_args.span_ext);
         walk_generic_args(self, generic_args)
     }
-    fn visit_assoc_type_binding(&mut self, type_binding: &'v TypeBinding<'v>) {
-        tracing::trace!("visiting assoc type binding {:?}", type_binding.span);
+    fn visit_assoc_item_constraint(&mut self, constraint: &'v AssocItemConstraint<'v>) {
+        tracing::trace!("visiting assoc item constraint {:?}", constraint.span);
         // self.no_assoc_items(type_binding.span);
 
         // keep going
-        walk_assoc_type_binding(self, type_binding);
+        walk_assoc_item_constraint(self, constraint);
     }
     fn visit_attribute(&mut self, attr: &'v rustc_ast::ast::Attribute) {
         tracing::trace!("visiting attribute: {:?}", attr.span);
@@ -864,7 +852,7 @@ impl<'v, 'a> Visitor<'v> for Linter<'a, 'v> {
     }
     fn visit_inline_asm(&mut self, asm: &'v InlineAsm<'v>, _id: HirId) {
         tracing::trace!("visiting inline asm");
-        error::no_unsafe(self.session, asm.line_spans[0]); // XXX: what's the right span here?
+        error::no_unsafe(self.dcx(), asm.line_spans[0]); // XXX: what's the right span here?
 
         // don't keep going
         // walk_inline_asm(self, asm, id);

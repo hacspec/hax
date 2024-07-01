@@ -76,10 +76,8 @@ module Raw = struct
     | String s -> "\"" ^ String.escaped s ^ "\""
     | Char c -> "'" ^ Char.to_string c ^ "'"
     | Int { value; _ } -> value
-    | Float { value; kind = F32; negative } ->
-        pnegative negative ^ value ^ "f32"
-    | Float { value; kind = F64; negative } ->
-        pnegative negative ^ value ^ "f64"
+    | Float { value; kind; negative } ->
+        pnegative negative ^ value ^ show_float_kind kind
     | Bool b -> Bool.to_string b
 
   let pprimitive_ident span : _ -> AnnotatedString.t =

@@ -32,24 +32,20 @@ let setLexbufPos filename lexbuf line col =
 module Path = BatPathGen.OfString
 
 let find_file filename =
-  match FStar_Options.find_file filename with
-    | Some s ->
-      s
-    | None ->
       raise_err (Fatal_ModuleOrFileNotFound, U.format1 "Unable to find file: %s\n" filename)
 
-let vfs_entries : (U.time * string) U.smap = U.smap_create (Z.of_int 1)
+(* let vfs_entries : (U.time * string) U.smap = U.smap_create (Z.of_int 1) *)
 
-let read_vfs_entry fname =
-  U.smap_try_find vfs_entries (U.normalize_file_path fname)
+(* let read_vfs_entry fname = *)
+(*   U.smap_try_find vfs_entries (U.normalize_file_path fname) *)
 
-let add_vfs_entry fname contents =
-  U.smap_add vfs_entries (U.normalize_file_path fname) (U.now (), contents)
+(* let add_vfs_entry fname contents = *)
+(*   U.smap_add vfs_entries (U.normalize_file_path fname) (U.now (), contents) *)
 
-let get_file_last_modification_time filename =
-  match read_vfs_entry filename with
-  | Some (mtime, _contents) -> mtime
-  | None -> U.get_file_last_modification_time filename
+(* let get_file_last_modification_time filename = *)
+(*   match read_vfs_entry filename with *)
+(*   | Some (mtime, _contents) -> mtime *)
+(*   | None -> U.get_file_last_modification_time filename *)
 
 let read_physical_file (filename: string) =
   (* BatFile.with_file_in uses Unix.openfile (which isn't available in
@@ -64,22 +60,17 @@ let read_physical_file (filename: string) =
     raise_err (Fatal_UnableToReadFile, U.format1 "Unable to read file %s\n" filename)
 
 let read_file (filename:string) =
-  let debug = FStar_Options.debug_any () in
-  match read_vfs_entry filename with
-  | Some (_mtime, contents) ->
-    if debug then U.print1 "Reading in-memory file %s\n" filename;
-    filename, contents
-  | None ->
-    let filename = find_file filename in
-    if debug then U.print1 "Opening file %s\n" filename;
-    filename, read_physical_file filename
+  let debug = false in
+  let filename = find_file filename in
+  if debug then U.print1 "Opening file %s\n" filename;
+  filename, read_physical_file filename
 
 let fs_extensions = [".fs"; ".fsi"]
 let fst_extensions = [".fst"; ".fsti"]
 let interface_extensions = [".fsti"; ".fsi"]
 
 let valid_extensions () =
-  fst_extensions @ if FStar_Options.ml_ish () then fs_extensions else []
+  fst_extensions @ if false then fs_extensions else []
 
 let has_extension file extensions =
   FStar_List.existsb (U.ends_with file) extensions

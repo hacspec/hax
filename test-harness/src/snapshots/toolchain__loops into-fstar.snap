@@ -23,7 +23,7 @@ info:
 exit = 0
 stderr = '''
 Compiling loops v0.1.0 (WORKSPACE_ROOT/loops)
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'''
 
 [stdout]
 diagnostics = []
@@ -73,7 +73,7 @@ let chunks (v_CHUNK_LEN: usize) (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global
   in
   let acc:usize =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(t_Slice usize)
-          (Core.Slice.Iter.impl_87__remainder #usize chunks <: t_Slice usize)
+          (Core.Slice.Iter.impl_88__remainder #usize chunks <: t_Slice usize)
         <:
         Core.Slice.Iter.t_Iter usize)
       acc

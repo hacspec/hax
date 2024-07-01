@@ -23,7 +23,7 @@ info:
 exit = 0
 stderr = '''
 Compiling generics v0.1.0 (WORKSPACE_ROOT/generics)
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'''
 
 [stdout]
 diagnostics = []
@@ -48,7 +48,7 @@ open FStar.Mul
 let impl__Bar__inherent_impl_generics (#v_T: Type0) (v_N: usize) (x: t_Array v_T v_N) : Prims.unit =
   ()
 
-class t_Foo (v_Self: Type0) = {
+class t_Foo (#v_Self: Type0) = {
   f_const_add_pre:v_N: usize -> v_Self -> bool;
   f_const_add_post:v_N: usize -> v_Self -> usize -> bool;
   f_const_add:v_N: usize -> x0: v_Self
@@ -56,7 +56,7 @@ class t_Foo (v_Self: Type0) = {
 }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_Foo_for_usize: t_Foo usize =
+let impl_Foo_for_usize: t_Foo #usize =
   {
     f_const_add_pre = (fun (v_N: usize) (self: usize) -> true);
     f_const_add_post = (fun (v_N: usize) (self: usize) (out: usize) -> true);

@@ -407,6 +407,18 @@ struct
       (* in *)
       F.term @@ F.AST.Const (F.Const.Const_string ("failure", F.dummyRange))
 
+  and fun_application ~span f args generic_args =
+    let generic_args =
+      generic_args
+      |> List.filter ~f:(function GType (TArrow _) -> false | _ -> true)
+      |> List.map ~f:(function
+           | GConst const -> (pexpr const, F.AST.Nothing)
+           | GLifetime _ -> .
+           | GType ty -> (pty span ty, F.AST.Hash))
+    in
+    let args = List.map ~f:(pexpr &&& Fn.const F.AST.Nothing) args in
+    F.mk_app f (generic_args @ args)
+
   and pexpr_unwrapped (e : expr) =
     match e.e with
     | Literal l -> pliteral_as_expr e.span l
@@ -452,16 +464,7 @@ struct
                 chars: '" ^ s ^ "'");
         F.AST.Const (F.Const.Const_int (s, None)) |> F.term
     | App { f; args; generic_args; bounds_impls = _; impl = _ } ->
-        let generic_args =
-          generic_args
-          |> List.filter ~f:(function GType (TArrow _) -> false | _ -> true)
-          |> List.map ~f:(function
-               | GConst const -> (pexpr const, F.AST.Nothing)
-               | GLifetime _ -> .
-               | GType ty -> (pty e.span ty, F.AST.Hash))
-        in
-        let args = List.map ~f:(pexpr &&& Fn.const F.AST.Nothing) args in
-        F.mk_app (pexpr f) (generic_args @ args)
+        fun_application ~span:e.span (pexpr f) args generic_args
     | If { cond; then_; else_ } ->
         F.term
         @@ F.AST.If
@@ -1156,7 +1159,7 @@ struct
     | Trait { name; generics; items } ->
         let bds =
           List.map
-            ~f:FStarBinder.(of_generic_param ~kind:Explicit e.span >> to_binder)
+            ~f:FStarBinder.(of_generic_param e.span >> to_binder)
             generics.params
         in
         let name_str = U.Concrete_ident_view.to_definition_name name in
@@ -1293,9 +1296,9 @@ struct
           @@ F.AST.PatApp (pat, List.map ~f:FStarBinder.to_pattern generics)
         in
         let typ =
-          F.mk_e_app
+          fun_application ~span:e.span
             (F.term @@ F.AST.Name (pglobal_ident e.span trait))
-            (List.map ~f:(pgeneric_value e.span) generic_args)
+            [] generic_args
         in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (typ, None)) in
         let fields =

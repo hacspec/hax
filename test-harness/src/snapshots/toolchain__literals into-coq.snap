@@ -23,7 +23,7 @@ info:
 exit = 0
 stderr = '''
 Compiling literals v0.1.0 (WORKSPACE_ROOT/literals)
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'''
 
 [stdout]
 diagnostics = []
@@ -90,12 +90,12 @@ Definition numeric (_ : unit) : unit :=
   let (_ : int128) := (@repr WORDSIZE128 22222222222222222222) : int128 in
   tt.
 
+Definition panic_with_msg (_ : unit) : unit :=
+  never_to_any (panic_fmt (impl_2__new_const (array_from_list [with msg]))).
+
 Definition empty_array (_ : unit) : unit :=
   let (_ : seq int8) := unsize !TODO empty array! : seq int8 in
   tt.
-
-Definition panic_with_msg (_ : unit) : unit :=
-  never_to_any (panic_fmt (impl_2__new_const (unsize (array_from_list [with msg])))).
 
 Record t_Foo : Type := {
   f_field : int8;

@@ -7,16 +7,6 @@ pub struct ExprClosure1 {
     pub body: syn::Expr,
 }
 
-pub trait PatExt {
-    // Make sure to remove type ascriptions
-    fn untype(mut pat: syn::Pat) -> syn::Pat {
-        if let syn::Pat::Type(sub) = pat {
-            pat = *sub.pat.clone();
-        }
-        pat
-    }
-}
-
 impl Parse for ExprClosure1 {
     fn parse(ps: ParseStream) -> Result<Self> {
         let closure: syn::ExprClosure = Parse::parse(ps as ParseStream)?;

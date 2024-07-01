@@ -15,11 +15,11 @@ module Imported = struct
     | ForeignMod
     | Use
     | GlobalAsm
-    | ClosureExpr
+    | Closure
     | Ctor
     | AnonConst
-    | ImplTrait
-    | ImplTraitAssocTy
+    | AnonAdt
+    | OpaqueTy
     | TypeNs of string
     | ValueNs of string
     | MacroNs of string
@@ -32,15 +32,15 @@ module Imported = struct
     | ForeignMod -> ForeignMod
     | Use -> Use
     | GlobalAsm -> GlobalAsm
-    | ClosureExpr -> ClosureExpr
+    | Closure -> Closure
     | Ctor -> Ctor
     | AnonConst -> AnonConst
-    | ImplTrait -> ImplTrait
-    | ImplTraitAssocTy -> ImplTraitAssocTy
+    | OpaqueTy -> OpaqueTy
     | TypeNs s -> TypeNs s
     | ValueNs s -> ValueNs s
     | MacroNs s -> MacroNs s
     | LifetimeNs s -> LifetimeNs s
+    | AnonAdt -> AnonAdt
 
   let of_disambiguated_def_path_item :
       Types.disambiguated_def_path_item -> disambiguated_def_path_item =

@@ -17,9 +17,11 @@ info:
     snapshot:
       stderr: true
       stdout: true
+    include_flag: ~
+    backend_options: ~
 ---
 exit = 0
 stderr = '''
 Compiling v1-lib v0.1.0 (WORKSPACE_ROOT/lint/hacspec/v1-lib)
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'''
 stdout = ''

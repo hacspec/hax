@@ -23,7 +23,7 @@ info:
 exit = 0
 stderr = '''
 Compiling interface-only v0.1.0 (WORKSPACE_ROOT/cli/interface-only)
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'''
 
 [stdout]
 diagnostics = []
@@ -54,7 +54,7 @@ type t_Bar = | Bar : t_Bar
 /// dropped. This might be a bit surprising: see
 /// https://github.com/hacspec/hax/issues/616.
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl: Core.Convert.t_From t_Bar Prims.unit =
+let impl: Core.Convert.t_From #t_Bar #Prims.unit =
   {
     f_from_pre = (fun ((): Prims.unit) -> true);
     f_from_post = (fun ((): Prims.unit) (out: t_Bar) -> true);
@@ -65,7 +65,7 @@ val from__from: u8 -> Prims.Pure t_Bar Prims.l_True (fun _ -> Prims.l_True)
 
 /// If you need to drop the body of a method, please hoist it:
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_1: Core.Convert.t_From t_Bar u8 =
+let impl_1: Core.Convert.t_From #t_Bar #u8 =
   {
     f_from_pre = (fun (x: u8) -> true);
     f_from_post = (fun (x: u8) (out: t_Bar) -> true);

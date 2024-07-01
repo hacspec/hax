@@ -171,7 +171,7 @@ pub(crate) mod search_clause {
             s: &S,
         ) -> Vec<(
             AssocItem,
-            EarlyBinder<Vec<(usize, PolyTraitPredicate<'tcx>)>>,
+            EarlyBinder<'tcx, Vec<(usize, PolyTraitPredicate<'tcx>)>>,
         )> {
             let tcx = s.base().tcx;
             tcx.associated_items(self.def_id())
@@ -201,12 +201,7 @@ pub(crate) mod search_clause {
             param_env: rustc_middle::ty::ParamEnv<'tcx>,
         ) -> Option<Path<'tcx>> {
             let tcx = s.base().tcx;
-            if predicate_equality(
-                self.to_predicate(tcx),
-                target.to_predicate(tcx),
-                param_env,
-                s,
-            ) {
+            if predicate_equality(self.upcast(tcx), target.upcast(tcx), param_env, s) {
                 return Some(vec![]);
             }
 
@@ -336,7 +331,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                 let Some((apred, path)) = predicates.into_iter().find_map(|apred| {
                     apred
                         .predicate
-                        .to_opt_poly_trait_pred()
+                        .as_trait_clause()
                         .map(|poly_trait_predicate| poly_trait_predicate)
                         .and_then(|poly_trait_predicate| {
                             poly_trait_predicate.path_to(s, self.clone(), param_env)
@@ -350,7 +345,7 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
                 use rustc_middle::ty::ToPolyTraitRef;
                 let r#trait = apred
                     .predicate
-                    .to_opt_poly_trait_pred()
+                    .as_trait_clause()
                     .s_unwrap(s)
                     .to_poly_trait_ref()
                     .sinto(s);
@@ -403,10 +398,10 @@ pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
         let s = &with_owner_id(s.base(), (), (), impl_trait_ref.def_id());
         clause.predicate_id(s)
     };
-    let new_clause = clause.subst_supertrait(tcx, &impl_trait_ref);
+    let new_clause = clause.instantiate_supertrait(tcx, impl_trait_ref);
     let impl_expr = new_clause
         .as_predicate()
-        .to_opt_poly_trait_pred()?
+        .as_trait_clause()?
         .impl_expr(s, s.param_env());
     let mut new_clause_no_binder = new_clause.sinto(s);
     new_clause_no_binder.id = original_predicate_id;
@@ -433,12 +428,12 @@ pub fn select_trait_candidate<'tcx, S: UnderOwnerState<'tcx>>(
 
 pub mod copy_paste_from_rustc {
     use rustc_infer::infer::TyCtxtInferExt;
-    use rustc_infer::traits::{FulfillmentErrorCode, TraitEngineExt as _};
-    use rustc_middle::traits::{CodegenObligationError, DefiningAnchor};
-    use rustc_middle::ty::{self, TyCtxt};
+    use rustc_middle::traits::CodegenObligationError;
+    use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
     use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
     use rustc_trait_selection::traits::{
-        Obligation, ObligationCause, SelectionContext, TraitEngine, TraitEngineExt, Unimplemented,
+        Obligation, ObligationCause, ObligationCtxt, ScrubbedTraitError, SelectionContext,
+        Unimplemented,
     };
 
     /// Attempts to resolve an obligation to an `ImplSource`. The result is
@@ -456,13 +451,7 @@ pub mod copy_paste_from_rustc {
 
         // Do the initial selection for the obligation. This yields the
         // shallow result we are looking for -- that is, what specific impl.
-        let infcx = tcx
-            .infer_ctxt()
-            .ignoring_regions()
-            .with_opaque_type_inference(DefiningAnchor::Bubble)
-            .build();
-        //~^ HACK `Bubble` is required for
-        // this test to pass: type-alias-impl-trait/assoc-projection-ice.rs
+        let infcx = tcx.infer_ctxt().ignoring_regions().build();
         let mut selcx = SelectionContext::new(&infcx);
 
         let obligation_cause = ObligationCause::dummy();
@@ -483,22 +472,23 @@ pub mod copy_paste_from_rustc {
         // Currently, we use a fulfillment context to completely resolve
         // all nested obligations. This is because they can inform the
         // inference of the impl's type parameters.
-        let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(&infcx);
-        let impl_source = selection.map(|predicate| {
-            fulfill_cx.register_predicate_obligation(&infcx, predicate.clone());
-            predicate
+        // FIXME(-Znext-solver): Doesn't need diagnostics if new solver.
+        let ocx = ObligationCtxt::new(&infcx);
+        let impl_source = selection.map(|obligation| {
+            ocx.register_obligation(obligation.clone());
+            obligation
         });
 
         // In principle, we only need to do this so long as `impl_source`
         // contains unbound type parameters. It could be a slight
         // optimization to stop iterating early.
-        let errors = fulfill_cx.select_all_or_error(&infcx);
+        let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
             // `rustc_monomorphize::collector` assumes there are no type errors.
             // Cycle errors are the only post-monomorphization errors possible; emit them now so
             // `rustc_ty_utils::resolve_associated_item` doesn't return `None` post-monomorphization.
             for err in errors {
-                if let FulfillmentErrorCode::CodeCycle(cycle) = err.code {
+                if let ScrubbedTraitError::Cycle(cycle) = err {
                     infcx.err_ctxt().report_overflow_obligation_cycle(&cycle);
                 }
             }
@@ -508,10 +498,13 @@ pub mod copy_paste_from_rustc {
         let impl_source = infcx.resolve_vars_if_possible(impl_source);
         let impl_source = infcx.tcx.erase_regions(impl_source);
 
-        // Opaque types may have gotten their hidden types constrained, but we can ignore them safely
-        // as they will get constrained elsewhere, too.
-        // (ouz-a) This is required for `type-alias-impl-trait/assoc-projection-ice.rs` to pass
-        let _ = infcx.take_opaque_types();
+        if impl_source.has_infer() {
+            // Unused lifetimes on an impl get replaced with inference vars, but never resolved,
+            // causing the return value of a query to contain inference vars. We do not have a concept
+            // for this and will in fact ICE in stable hashing of the return value. So bail out instead.
+            infcx.tcx.dcx().has_errors().unwrap();
+            return Err(CodegenObligationError::FulfillmentError);
+        }
 
         Ok(impl_source)
     }

@@ -1,4 +1,4 @@
-name: Extract and TC Kyber
+name: Extract and TC ML-Kem
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  hax:
+  extract-mlkem:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group' }}
     runs-on: "ubuntu-latest"
 

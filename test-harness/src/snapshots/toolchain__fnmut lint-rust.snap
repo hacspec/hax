@@ -17,6 +17,8 @@ info:
     snapshot:
       stderr: true
       stdout: true
+    include_flag: ~
+    backend_options: ~
 ---
 exit = 0
 stderr = '''
@@ -33,6 +35,20 @@ warning: [Hax] FnMut is not supported
 16 |         F: FnMut(u32) -> u8,
    |            ^^^^^
 
-warning: `fnmut` (lib) generated 2 warnings
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+warning: trait `SomeTrait` is never used
+ --> lint/rust/fnmut/src/lib.rs:5:7
+  |
+5 | trait SomeTrait {
+  |       ^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` on by default
+
+warning: struct `UpdatableStruct` is never constructed
+  --> lint/rust/fnmut/src/lib.rs:11:8
+   |
+11 | struct UpdatableStruct {}
+   |        ^^^^^^^^^^^^^^^
+
+warning: `fnmut` (lib) generated 4 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'''
 stdout = ''

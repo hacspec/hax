@@ -34,8 +34,8 @@ impl<'tcx, S: UnderOwnerState<'tcx>> IntoPredicateId<'tcx, S> for ty::Predicate<
 
 impl<'tcx, S: UnderOwnerState<'tcx>> IntoPredicateId<'tcx, S> for ty::PolyTraitPredicate<'tcx> {
     fn predicate_id(&self, s: &S) -> PredicateId {
-        use ty::ToPredicate;
-        let predicate: ty::Predicate<'tcx> = (*self).to_predicate(s.base().tcx);
+        use ty::Upcast;
+        let predicate: ty::Predicate<'tcx> = (*self).upcast(s.base().tcx);
         predicate.predicate_id(s)
     }
 }

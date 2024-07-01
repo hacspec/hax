@@ -23,7 +23,7 @@ info:
 exit = 0
 stderr = '''
 Compiling enum-repr v0.1.0 (WORKSPACE_ROOT/enum-repr)
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'''
 
 [stdout]
 diagnostics = []

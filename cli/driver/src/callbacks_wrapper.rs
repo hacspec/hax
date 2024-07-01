@@ -14,7 +14,7 @@ pub struct CallbacksWrapper<'a> {
 impl<'a> Callbacks for CallbacksWrapper<'a> {
     fn config(&mut self, config: &mut interface::Config) {
         let options = self.options.clone();
-        config.parse_sess_created = Some(Box::new(move |parse_sess| {
+        config.psess_created = Some(Box::new(move |parse_sess| {
             parse_sess.env_depinfo.get_mut().insert((
                 Symbol::intern(hax_cli_options::ENV_VAR_OPTIONS_FRONTEND),
                 Some(Symbol::intern(&serde_json::to_string(&options).unwrap())),
