@@ -96,6 +96,12 @@ jobs:
         mv book/.git hax-book/.git
         cd hax-book
 
+        {
+          echo "# Warning: this repository only contains generated files"
+          echo "The sources of the book are in https://github.com/hacspec/hax/tree/main/book"
+          echo "Please file issues, and push PRs to https://github.com/hacspec/hax."
+        } > README.md
+
         git add -A
         if git commit -m "Book update"; then
           git push https://$USERNAME:$PUSH_HACSPEC_GITHUB_TOKEN@github.com/hacspec/book
