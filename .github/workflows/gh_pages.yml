@@ -59,13 +59,12 @@ jobs:
         path: book
         token: ${{secrets.PUSH_HACSPEC_GITHUB_TOKEN}}
 
-    - uses: actions/checkout@v3
     - uses: DeterminateSystems/nix-installer-action@main
 
     - name: Configure git
       run: |
-        git config --local user.name "github-actions[bot]"
-        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
     - name: Patch and push `README.md` in `hacspec.github.io`
       run: |
@@ -90,10 +89,11 @@ jobs:
 
     - name: Regenerate and push the book
       run: |
-        nix build hax#hax-book -o result-hax-book
-        cp --no-preserve=mode -r result-hax-book hax-book
-        mv book/.git hax-book/.git
+        nix build ./hax#hax-book -o result-hax-book
 
+        mkdir hax-book
+        rsync -rq --no-perms --chown=$(id -un):$(id -gn) "$(realpath result-hax-book)/" hax-book
+        mv book/.git hax-book/.git
         cd hax-book
 
         git add -A
