@@ -1719,11 +1719,7 @@ pub enum Ty {
         rustc_middle::ty::TyKind::Adt(adt_def, generics) => {
             let def_id = adt_def.did().sinto(state);
             let generic_args: Vec<GenericArg> = generics.sinto(state);
-            let trait_refs = if state.base().ty_alias_mode {
-                vec![]
-            } else {
-                solve_item_traits(state, state.param_env(), adt_def.did(), generics, None)
-            };
+            let trait_refs = solve_item_traits(state, state.param_env(), adt_def.did(), generics, None);
             Ty::Adt { def_id, generic_args, trait_refs }
         },
     )]

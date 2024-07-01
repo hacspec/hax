@@ -50,6 +50,10 @@ pub enum ImplExprAtom {
     Dyn,
     /// A built-in trait whose implementation is computed by the compiler, such as `Sync`.
     Builtin { r#trait: TraitRef },
+    /// While translating a type synonym, Rust enforces no local
+    /// context for bounds, and doesn't check for bounds to be
+    /// satisfied.
+    NotFoundBecauseTypeSynonym,
     /// Anything else. Currently used for trait upcasting and trait aliases.
     Todo(String),
 }
@@ -77,14 +81,27 @@ pub(crate) mod search_clause {
     use crate::{IntoPredicateId, PredicateId};
     use rustc_middle::ty::*;
 
+    #[tracing::instrument(skip(tcx, predicates))]
     fn predicates_to_poly_trait_predicates<'tcx>(
         tcx: TyCtxt<'tcx>,
         predicates: impl Iterator<Item = Predicate<'tcx>>,
         generics: GenericArgsRef<'tcx>,
     ) -> impl Iterator<Item = PolyTraitPredicate<'tcx>> {
         predicates
-            .map(move |pred| pred.kind().subst(tcx, generics))
-            .filter_map(|pred| pred.as_poly_trait_predicate())
+            .map(move |pred| {
+                tracing::trace!("A");
+                tracing::trace!("A pred={pred:#?}");
+                tracing::trace!("A generics={generics:#?}");
+                let r = pred.kind().subst(tcx, generics);
+                tracing::trace!("B");
+                r
+            })
+            .filter_map(|pred| {
+                tracing::trace!("C");
+                let r = pred.as_poly_trait_predicate();
+                tracing::trace!("D");
+                r
+            })
     }
 
     #[derive(Clone, Debug)]
@@ -179,15 +196,20 @@ pub(crate) mod search_clause {
                 .filter(|item| item.kind == AssocKind::Type)
                 .copied()
                 .map(|item| {
+                    tracing::trace!("AAAA");
                     let bounds = tcx.item_bounds(item.def_id).map_bound(|clauses| {
-                        predicates_to_poly_trait_predicates(
-                            tcx,
-                            clauses.into_iter().map(|clause| clause.as_predicate()),
-                            self.skip_binder().trait_ref.args,
-                        )
-                        .enumerate()
-                        .collect()
+                        tracing::trace!(">> AAA");
+                        let x = clauses.into_iter().map(|clause| clause.as_predicate());
+                        tracing::trace!(">> AAA2");
+                        let y = self.skip_binder().trait_ref.args;
+                        tracing::trace!(">> AAA3");
+                        let r = predicates_to_poly_trait_predicates(tcx, x, y)
+                            .enumerate()
+                            .collect();
+                        tracing::trace!(">> BBB");
+                        r
                     });
+                    tracing::trace!("BBBB");
                     (item, bounds)
                 })
                 .collect()
@@ -314,7 +336,10 @@ impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
         use rustc_trait_selection::traits::*;
         let trait_ref: Binder<TraitRef> = self.sinto(s);
         let trait_ref = trait_ref.value;
-        match select_trait_candidate(s, param_env, *self) {
+        let Some(selection) = select_trait_candidate(s, param_env, *self) else {
+            return ImplExprAtom::NotFoundBecauseTypeSynonym.with_args(vec![], trait_ref);
+        };
+        match selection {
             ImplSource::UserDefined(ImplSourceUserDefinedData {
                 impl_def_id,
                 args: generics,
@@ -409,14 +434,19 @@ pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
 }
 
 #[tracing::instrument(level = "trace", skip(s))]
+/// Selects a trait candidate. Panics or returns a `Some`, unless we
+/// are in `ty_alias_mode`. In that mode, we return `None` instead of
+/// panicking.
 pub fn select_trait_candidate<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
-) -> rustc_trait_selection::traits::Selection<'tcx> {
-    let tcx = s.base().tcx;
+) -> Option<rustc_trait_selection::traits::Selection<'tcx>> {
+    let base = s.base();
+    let tcx = base.tcx;
     match copy_paste_from_rustc::codegen_select_candidate(tcx, (param_env, trait_ref)) {
-        Ok(selection) => selection,
+        Ok(selection) => Some(selection),
+        Err(_) if base.ty_alias_mode => None,
         Err(error) => fatal!(
             s,
             "Cannot handle error `{:?}` selecting `{:?}`",
@@ -447,7 +477,9 @@ pub mod copy_paste_from_rustc {
         tcx: TyCtxt<'tcx>,
         (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
     ) -> Result<rustc_trait_selection::traits::Selection<'tcx>, CodegenObligationError> {
-        let trait_ref = tcx.normalize_erasing_regions(param_env, trait_ref);
+        let trait_ref = tcx
+            .try_normalize_erasing_regions(param_env, trait_ref)
+            .unwrap_or(trait_ref);
 
         // Do the initial selection for the obligation. This yields the
         // shallow result we are looking for -- that is, what specific impl.

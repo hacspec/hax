@@ -14,6 +14,7 @@ impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
 
 #[extension_traits::extension(pub trait PredicateToPolyTraitPredicate)]
 impl<'tcx> ty::Binder<'tcx, ty::PredicateKind<'tcx>> {
+    #[tracing::instrument]
     fn as_poly_trait_predicate(self) -> Option<ty::PolyTraitPredicate<'tcx>> {
         self.try_map_bound(|kind| match kind {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => Ok(trait_pred),
