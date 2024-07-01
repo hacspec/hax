@@ -110,8 +110,7 @@ module Make (F : Features.T) = struct
         | Float { value; kind; negative } ->
             string value
             |> precede (if negative then minus else empty)
-            |> terminate
-                 (string (match kind with F32 -> "f32" | F64 -> "f64"))
+            |> terminate (string (Ast.show_float_kind kind))
         | Bool b -> OCaml.bool b
 
       method ty_ _ _ctx _typ = unimplemented "ty_"
