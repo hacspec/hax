@@ -420,7 +420,8 @@ module T = struct
   let hash x = [%hash: Imported.def_id] x.def_id
   let hash_fold_t s x = Imported.hash_fold_def_id s x.def_id
 
-  type name = Concrete_ident_generated.name
+  type name = Concrete_ident_generated.t
+  [@@deriving show, yojson, compare, sexp, eq, hash]
 
   let of_name k = Concrete_ident_generated.def_id_of >> of_def_id k
 
