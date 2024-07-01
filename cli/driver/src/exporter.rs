@@ -58,7 +58,7 @@ fn write_files(
                 path.extension().unwrap().to_str().unwrap()
             ));
             std::fs::write(&path, sourcemap).unwrap_or_else(|e| {
-                session.fatal(format!(
+                tcx.dcx().fatal(format!(
                     "Unable to write to file {:#?}. Error: {:#?}",
                     path, e
                 ))
