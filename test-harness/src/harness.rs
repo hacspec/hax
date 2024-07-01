@@ -298,8 +298,11 @@ fn main() {
         .unwrap();
     let workspace_root: String = metadata.workspace_root.into();
 
+    let mut args = libtest_mimic::Arguments::from_args();
+    args.test_threads = Some(1);
+
     libtest_mimic::run(
-        &libtest_mimic::Arguments::from_args(),
+        &args,
         metadata
             .packages
             .into_iter()
