@@ -22,7 +22,7 @@ jobs:
           - ubuntu-latest
           - ubuntu-20.04
           - macos-latest
-          - macos-11
+          - macos-12
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
