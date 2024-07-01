@@ -90,6 +90,7 @@ jobs:
     - name: Regenerate and push the book
       run: |
         nix build ./hax#hax-book -o result-hax-book
+        HAX_COMMIT=$(git -C ./hax rev-parse --short HEAD)
 
         mkdir hax-book
         rsync -rq --no-perms --chown=$(id -un):$(id -gn) "$(realpath result-hax-book)/" hax-book
@@ -103,7 +104,7 @@ jobs:
         } > README.md
 
         git add -A
-        if git commit -m "Book update"; then
+        if git commit -m "Book update (generated from hacspec/hax@$HAX_COMMIT)"; then
           git push https://$USERNAME:$PUSH_HACSPEC_GITHUB_TOKEN@github.com/hacspec/book
         fi
       env:
