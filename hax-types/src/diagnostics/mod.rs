@@ -9,7 +9,8 @@ use colored::Colorize;
 
 pub mod report;
 
-#[derive(Debug, Clone, JsonSchema, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(Debug, Clone, JsonSchema)]
 pub struct Diagnostics {
     pub kind: Kind,
     pub span: Vec<hax_frontend_exporter::Span>,
@@ -73,7 +74,8 @@ impl std::fmt::Display for Diagnostics {
     }
 }
 
-#[derive(Debug, Clone, JsonSchema, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(Debug, Clone, JsonSchema)]
 #[repr(u16)]
 pub enum Kind {
     /// Unsafe code is not supported

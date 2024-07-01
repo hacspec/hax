@@ -13,3 +13,5 @@ pub use crate::rustc_utils::*;
 pub use crate::state::*;
 pub use crate::traits::*;
 pub use crate::types::*;
+
+pub(crate) use hax_adt_into::derive_group;

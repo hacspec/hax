@@ -31,4 +31,3 @@ const_format = "0.2"
 tracing.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
-ciborium.workspace = true

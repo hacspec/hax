@@ -1,10 +1,10 @@
 use crate::prelude::*;
+
 use rustc_index::{Idx, IndexSlice};
 
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
-pub struct IndexVec<I: Idx, T> {
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct IndexVec<I: Idx + 'static, T: 'static> {
     pub raw: Vec<T>,
     _marker: std::marker::PhantomData<fn(_: &I)>,
 }
@@ -68,7 +68,7 @@ where
 
 macro_rules! make_idx_wrapper {
     ($($mod:ident)::+, $type:ident) => {
-        #[derive(Copy, Clone, Eq, Debug, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
+        #[derive_group(Serializers)]#[derive(Copy, Clone, Eq, Debug, Hash, PartialEq, PartialOrd, Ord, JsonSchema)]
         #[serde(untagged)]
         pub enum $type {
             $type(usize),

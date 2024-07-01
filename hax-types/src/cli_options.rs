@@ -5,7 +5,8 @@ use std::fmt;
 
 pub use hax_frontend_exporter_options::*;
 
-#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Debug, Clone)]
 pub enum DebugEngineMode {
     File(PathOrDash),
     Interactive,
@@ -20,7 +21,8 @@ impl std::convert::From<&str> for DebugEngineMode {
     }
 }
 
-#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize, Default)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Debug, Clone, Default)]
 pub struct ForceCargoBuild {
     pub data: u64,
 }
@@ -40,7 +42,8 @@ impl std::convert::From<&str> for ForceCargoBuild {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(Debug, Clone, JsonSchema)]
 pub enum PathOrDash {
     Dash,
     Path(PathBuf),
@@ -105,7 +108,8 @@ impl NormalizePaths for PathOrDash {
     }
 }
 
-#[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Parser, Debug, Clone)]
 pub struct ProVerifOptions {
     /// Items for which hax should extract a default-valued process
     /// macro with a corresponding type signature. This flag expects a
@@ -124,7 +128,8 @@ pub struct ProVerifOptions {
     assume_items: Vec<InclusionClause>,
 }
 
-#[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Parser, Debug, Clone)]
 pub struct FStarOptions {
     /// Set the Z3 per-query resource limit
     #[arg(long, default_value = "15")]
@@ -156,7 +161,8 @@ pub struct FStarOptions {
     interfaces: Vec<InclusionClause>,
 }
 
-#[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Subcommand, Debug, Clone)]
 pub enum Backend {
     /// Use the F* backend
     Fstar(FStarOptions),
@@ -182,14 +188,16 @@ impl fmt::Display for Backend {
     }
 }
 
-#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Debug, Clone)]
 enum DepsKind {
     Transitive,
     Shallow,
     None,
 }
 
-#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Debug, Clone)]
 enum InclusionKind {
     /// `+query` include the items selected by `query`
     Included(DepsKind),
@@ -197,7 +205,8 @@ enum InclusionKind {
     Excluded,
 }
 
-#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Debug, Clone)]
 struct InclusionClause {
     kind: InclusionKind,
     namespace: Namespace,
@@ -233,7 +242,8 @@ fn parse_inclusion_clause(
     })
 }
 
-#[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Parser, Debug, Clone)]
 pub struct TranslationOptions {
     /// Controls which Rust item should be extracted or not.
     ///
@@ -275,7 +285,8 @@ pub struct TranslationOptions {
     include_namespaces: Vec<InclusionClause>,
 }
 
-#[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Parser, Debug, Clone)]
 pub struct BackendOptions {
     #[command(subcommand)]
     pub backend: Backend,
@@ -319,7 +330,8 @@ pub struct BackendOptions {
     pub translation_options: TranslationOptions,
 }
 
-#[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Subcommand, Debug, Clone)]
 pub enum Command {
     /// Translate to a backend. The translated modules will be written
     /// under the directory `<PKG>/proofs/<BACKEND>/extraction`, where
@@ -365,15 +377,15 @@ impl Command {
     }
 }
 
-#[derive(
-    JsonSchema, ValueEnum, Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord,
-)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, ValueEnum, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ExportBodyKind {
     Thir,
     MirBuilt,
 }
 
-#[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Parser, Debug, Clone)]
 #[command(author, version = concat!("commit=", env!("HAX_GIT_COMMIT_HASH"), " ", "describe=", env!("HAX_GIT_DESCRIBE")), name = "hax", about, long_about = None)]
 pub struct Options {
     /// Replace the expansion of each macro matching PATTERN by their

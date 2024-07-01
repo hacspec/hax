@@ -69,7 +69,7 @@ quote = "1.0.32"
 proc-macro2 = "1.0.66"
 cargo_metadata = "0.15"
 colored = "2"
-ciborium = "0.2"
+bincode = "2.0.0-rc.3"
 annotate-snippets = "0.11"
 
 # Crates in this repository

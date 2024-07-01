@@ -1,5 +1,4 @@
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use crate::prelude::{derive_group, JsonSchema};
 
 pub trait SInto<S, To> {
     fn sinto(&self, s: &S) -> To;
@@ -8,7 +7,8 @@ pub trait SInto<S, To> {
 #[macro_export]
 macro_rules! sinto_todo {
     ($($mod:ident)::+, $type:ident$(<$($lts:lifetime),*$(,)?>)? as $renamed:ident) => {
-        #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+        #[derive_group(Serializers)]
+        #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
         pub enum $renamed {
             $type {
                 todo: String

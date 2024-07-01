@@ -359,8 +359,7 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) -> boo
         } => {
             with_kind_type!(kind, <Body>|| {
                 for EmitHaxMetaMessage { path, .. } in haxmeta_files {
-                    let file = std::io::BufReader::new(fs::File::open(&path).unwrap());
-                    let haxmeta: HaxMeta<Body> = ciborium::from_reader(file).unwrap();
+                    let haxmeta: HaxMeta<Body> = HaxMeta::read(fs::File::open(&path).unwrap());
                     let dest = output_file.open_or_stdout();
                     (if include_extra {
                         serde_json::to_writer(
@@ -398,8 +397,7 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) -> boo
                 path,
             } in haxmeta_files
             {
-                let file = std::io::BufReader::new(fs::File::open(&path).unwrap());
-                let haxmeta: HaxMeta<Body> = ciborium::from_reader(file).unwrap();
+                let haxmeta: HaxMeta<Body> = HaxMeta::read(fs::File::open(&path).unwrap());
 
                 error = error || run_engine(haxmeta, working_dir, manifest_dir, &backend);
             }

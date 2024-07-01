@@ -3,7 +3,8 @@ use crate::prelude::*;
 
 type ThirBody = hax_frontend_exporter::ThirBody;
 
-#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Debug, Clone)]
 pub struct EngineOptions {
     pub backend: BackendOptions,
     pub input: Vec<hax_frontend_exporter::Item<ThirBody>>,
@@ -13,13 +14,15 @@ pub struct EngineOptions {
     )>,
 }
 
-#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Debug, Clone)]
 pub struct File {
     pub path: String,
     pub contents: String,
 }
 
-#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Debug, Clone)]
 pub struct Output {
     pub diagnostics: Vec<crate::diagnostics::Diagnostics>,
     pub files: Vec<File>,
@@ -28,7 +31,8 @@ pub struct Output {
 
 pub mod protocol {
     use super::*;
-    #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+    #[derive_group(Serializers)]
+    #[derive(JsonSchema, Debug, Clone)]
     pub enum FromEngine {
         Diagnostic(crate::diagnostics::Diagnostics),
         File(File),
@@ -38,7 +42,8 @@ pub mod protocol {
         Exit,
         Ping,
     }
-    #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+    #[derive_group(Serializers)]
+    #[derive(JsonSchema, Debug, Clone)]
     pub enum ToEngine {
         PrettyPrintedDiagnostic(String),
         PrettyPrintedRust(Result<String, String>),
@@ -48,7 +53,8 @@ pub mod protocol {
 
 // This is located here for dependency reason, but this is not related
 // to the engine (yet?).
-#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Debug, Clone)]
 pub struct WithDefIds<Body: hax_frontend_exporter::IsBody> {
     pub def_ids: Vec<hax_frontend_exporter::DefId>,
     pub impl_infos: Vec<(

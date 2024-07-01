@@ -2,18 +2,21 @@ use crate::prelude::*;
 
 pub const HAX_DRIVER_STDERR_PREFIX: &str = "::hax-driver::";
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(Debug, Clone)]
 pub struct EmitHaxMetaMessage {
     pub working_dir: PathBuf,
     pub manifest_dir: PathBuf,
     pub path: PathBuf,
 }
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(Debug, Clone)]
 pub enum HaxDriverMessage {
     EmitHaxMeta(EmitHaxMetaMessage),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(Debug, Clone)]
 pub struct HaxMeta<Body: hax_frontend_exporter::IsBody> {
     pub crate_name: String,
     pub crate_type: String,
@@ -25,6 +28,22 @@ pub struct HaxMeta<Body: hax_frontend_exporter::IsBody> {
         hax_frontend_exporter::ImplInfos,
     )>,
     pub def_ids: Vec<hax_frontend_exporter::DefId>,
+}
+
+impl<Body: hax_frontend_exporter::IsBody> HaxMeta<Body>
+where
+    Body: bincode::Encode + bincode::Decode,
+{
+    pub fn write(self, write: &mut impl std::io::Write) {
+        let mut write = zstd::stream::write::Encoder::new(write, 0).unwrap();
+        bincode::encode_into_std_write(self, &mut write, bincode::config::standard()).unwrap();
+        write.finish().unwrap();
+    }
+    pub fn read(reader: impl std::io::Read) -> Self {
+        let reader = zstd::stream::read::Decoder::new(reader).unwrap();
+        let reader = std::io::BufReader::new(reader);
+        bincode::decode_from_reader(reader, bincode::config::standard()).unwrap()
+    }
 }
 
 #[macro_export]

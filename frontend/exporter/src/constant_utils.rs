@@ -1,9 +1,9 @@
 use crate::prelude::*;
+
 use rustc_middle::{mir, ty};
 
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ConstantInt {
     Int(
         #[serde(with = "serialize_int::signed")]
@@ -19,9 +19,8 @@ pub enum ConstantInt {
     ),
 }
 
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ConstantLiteral {
     Bool(bool),
     Char(char),
@@ -31,9 +30,8 @@ pub enum ConstantLiteral {
 }
 
 /// The subset of [Expr] that corresponds to constants.
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ConstantExprKind {
     Literal(ConstantLiteral),
     Adt {
@@ -96,9 +94,8 @@ pub enum ConstantExprKind {
     Todo(String),
 }
 
-#[derive(
-    Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ConstantFieldExpr {
     pub field: DefId,
     pub value: ConstantExpr,

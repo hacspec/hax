@@ -261,7 +261,7 @@ impl Callbacks for ExtractionCallbacks {
             let haxmeta_path =
                 output_dir.join(format!("{crate_type}{crate_name}-{cg_metadata}.haxmeta",));
 
-            let file = File::create(&haxmeta_path).unwrap();
+            let mut file = BufWriter::new(File::create(&haxmeta_path).unwrap());
 
             use hax_types::driver_api::{with_kind_type, HaxMeta};
             with_kind_type!(
@@ -278,7 +278,7 @@ impl Callbacks for ExtractionCallbacks {
                         items,
                         def_ids,
                     };
-                    ciborium::into_writer(&haxmeta, BufWriter::new(file)).unwrap();
+                    haxmeta.write(&mut file);
                 }
             );
 

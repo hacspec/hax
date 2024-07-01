@@ -17,7 +17,7 @@ pub fn get_thir<'tcx, S: UnderOwnerState<'tcx>>(
     base.cached_thirs.get(&did).unwrap_or_else(msg).clone()
 }
 
-pub trait IsBody: Sized + Clone {
+pub trait IsBody: Sized + Clone + 'static {
     fn body<'tcx, S: UnderOwnerState<'tcx>>(did: RLocalDefId, s: &S) -> Self;
 }
 
@@ -83,7 +83,7 @@ mod implementations {
         }
     }
 
-    impl<MirKind: IsMirKind + Clone> IsBody for MirBody<MirKind> {
+    impl<MirKind: IsMirKind + Clone + 'static> IsBody for MirBody<MirKind> {
         fn body<'tcx, S: UnderOwnerState<'tcx>>(did: RLocalDefId, s: &S) -> Self {
             let (thir, _) = get_thir(did, s);
             let mir = Rc::new(s.base().tcx.mir_built(did).borrow().clone());

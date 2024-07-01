@@ -1,9 +1,8 @@
 use crate::prelude::*;
 use rustc_middle::ty;
 
-#[derive(
-    Copy, Clone, Debug, Serialize, Deserialize, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord,
-)]
+#[derive_group(Serializers)]
+#[derive(Copy, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(transparent)]
 /// A `PredicateId` is a unique identifier for a clause or a
 /// predicate. It is computed by hashing predicates and clause in a

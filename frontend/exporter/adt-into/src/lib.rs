@@ -437,3 +437,34 @@ fn drop_generics(type_path: syn::TypePath) -> syn::TypePath {
         ..type_path
     }
 }
+
+/// A proc macro unrelated to `adt-into`. This is useful in hax and we don't want a whole crate only for that helper. This proc macro defines some groups of derive clauses that we reuse all the time. This is particularly interesting for serializers and deserializers: today we use `bincode` and `serde`, but maybe we will want to move to something else in the future.
+#[proc_macro_attribute]
+pub fn derive_group(
+    attr: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    let item: proc_macro2::TokenStream = item.into();
+    let groups = format!("{attr}");
+    let groups = groups.split(",").map(|s| s.trim());
+    let mut errors = vec![];
+    let result: proc_macro2::TokenStream = groups
+        .map(|group| match group {
+            "Serializers" => quote! {
+                #[derive(::serde::Serialize, ::serde::Deserialize)]
+                #[derive(::bincode::Encode, ::bincode::Decode)]
+            },
+            _ => {
+                errors.push(quote! {
+                    const _: () = compile_error!(concat!(
+                        "derive_group: `",
+                        stringify!(#group),
+                        "` is not a recognized group name"
+                    ));
+                });
+                quote! {}
+            }
+        })
+        .collect();
+    quote! {#(#errors)* #result #item}.into()
+}

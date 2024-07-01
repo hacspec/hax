@@ -1,10 +1,10 @@
 use crate::prelude::*;
 
+
 #[derive(AdtInto)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> >, from: search_clause::PathChunk<'tcx>, state: S as tcx)]
-#[derive(
-    Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
-)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
 pub enum ImplExprPathChunk {
     AssocItem {
         item: AssocItem,
@@ -21,9 +21,8 @@ pub enum ImplExprPathChunk {
 
 /// The source of a particular trait implementation. Most often this is either `Concrete` for a
 /// concrete `impl Trait for Type {}` item, or `LocalBound` for a context-bound `where T: Trait`.
-#[derive(
-    Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
-)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
 pub enum ImplExprAtom {
     /// A concrete `impl Trait for Type {}` item.
     Concrete {
@@ -58,9 +57,8 @@ pub enum ImplExprAtom {
 /// need to combine several concrete trait implementation items. For example, `((1u8, 2u8),
 /// "hello").clone()` combines the generic implementation of `Clone` for `(A, B)` with the
 /// concrete implementations for `u8` and `&str`, represented as a tree.
-#[derive(
-    Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
-)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
 pub struct ImplExpr {
     /// The trait this is an impl for.
     pub r#trait: TraitRef,
