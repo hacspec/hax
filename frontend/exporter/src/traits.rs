@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-
 #[derive(AdtInto)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> >, from: search_clause::PathChunk<'tcx>, state: S as tcx)]
 #[derive_group(Serializers)]
