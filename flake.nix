@@ -59,6 +59,7 @@
       in rec {
         packages = {
           inherit rustc ocamlformat rustfmt fstar hax-env;
+          hax-book = pkgs.callPackage ./book {};
           hax-engine = pkgs.callPackage ./engine {
             hax-rust-frontend = packages.hax-rust-frontend.unwrapped;
             # `hax-engine-names-extract` extracts Rust names but also
@@ -127,7 +128,14 @@
             type = "app";
             program = "${pkgs.writeScript "serve-rustc-docs" ''
               cd ${packages.rustc.passthru.availableComponents.rustc-docs}/share/doc/rust/html/rustc
-              ${pkgs.python3}/bin/python -m http.server
+              ${pkgs.python3}/bin/python -m http.server "$@"
+            ''}";
+          };
+          serve-book = {
+            type = "app";
+            program = "${pkgs.writeScript "serve-book" ''
+              cd ${packages.hax-book}
+              ${pkgs.python3}/bin/python -m http.server "$@"
             ''}";
           };
         };

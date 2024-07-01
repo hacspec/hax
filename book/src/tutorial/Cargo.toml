@@ -1,0 +1,12 @@
+[package]
+name = "tutorial-src"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "sources.rs"
+
+[dependencies]
+hax-lib = { git = "https://github.com/hacspec/hax", version = "0.1.0-pre.1" }
+hax-lib-macros = { version = "0.1.0-pre.1", git = "https://github.com/hacspec/hax" }
+# hax-lib = { version = "0.1.0-pre.1", git = "https://github.com/hacspec/hax"}
