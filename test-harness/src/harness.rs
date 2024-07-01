@@ -6,13 +6,11 @@ use std::process::{Command, Stdio};
 #[derive(Clone, Debug, serde::Serialize)]
 pub enum TestKind {
     Translate { backend: String },
-    Lint { linter: String },
 }
 
 impl TestKind {
     fn as_name(&self) -> String {
         (match self {
-            TestKind::Lint { linter } => ["lint".to_string(), linter.clone()],
             TestKind::Translate { backend } => ["into".to_string(), backend.clone()],
         })
         .join("-")
@@ -111,7 +109,6 @@ pub struct Test {
 impl Test {
     fn as_args(&self) -> Vec<String> {
         match &self.kind {
-            TestKind::Lint { linter } => vec!["lint".to_string(), linter.clone()],
             TestKind::Translate { backend } => {
                 let mut args = vec![];
                 args.push("into".to_string());
@@ -187,7 +184,7 @@ impl Test {
             snapshot.insert(
                 "stdout".to_string(),
                 serde_json::from_str(&sout)
-                    .map(|out: hax_cli_options_engine::Output| {
+                    .map(|out: hax_types::engine_api::Output| {
                         use serde_json::json;
                         json!({
                             "diagnostics": Value::Array(out.diagnostics.into_iter().map(|diag| json!({
@@ -285,7 +282,6 @@ fn parse_hax_tests_metadata(info: TestInfo, metadata: &Value) -> Vec<Test> {
             info: info.clone(),
             kind: match a.as_str() {
                 "into" => TestKind::Translate { backend: b },
-                "lint" => TestKind::Lint { linter: b },
                 _ => panic!(
                     "unexpected metadata [hax-tests.{}.{}] for package {:#?}",
                     a, b, info
