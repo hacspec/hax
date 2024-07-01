@@ -47,6 +47,7 @@ module Phase = struct
     | DropNeedlessReturns
     | TransformHaxLibInline
     | NewtypeAsRefinement
+    | ProVerifRename
     | DummyA
     | DummyB
     | DummyC
