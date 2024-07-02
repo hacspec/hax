@@ -176,7 +176,7 @@ mk!(
     }
 );
 
-pub use types::*;
+pub use self::types::*;
 
 impl<'tcx> State<Base<'tcx>, (), (), ()> {
     pub fn new(
@@ -237,17 +237,6 @@ pub fn with_owner_id<'tcx, THIR, MIR>(
 pub trait BaseState<'tcx> = HasBase<'tcx> + Clone + IsState<'tcx>;
 /// State of anything below a `owner_id`
 pub trait UnderOwnerState<'tcx> = BaseState<'tcx> + HasOwnerId;
-
-/// Meta-informations about an `impl<GENERICS[: PREDICATES]> TRAIT for
-/// TYPE where PREDICATES {}`
-#[derive_group(Serializers)]
-#[derive(Clone, Debug, JsonSchema)]
-pub struct ImplInfos {
-    pub generics: TyGenerics,
-    pub clauses: Vec<(Clause, Span)>,
-    pub typ: Ty,
-    pub trait_ref: Option<TraitRef>,
-}
 
 impl ImplInfos {
     fn from<'tcx>(base: Base<'tcx>, did: rustc_hir::def_id::DefId) -> Self {

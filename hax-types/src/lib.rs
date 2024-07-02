@@ -6,8 +6,6 @@
 //! Those three component send and receive messages in JSON or CBOR on
 //! stdin and stdout.
 
-#![feature(rustc_private)]
-
 pub(crate) mod prelude;
 
 /// The CLI options for `cargo-hax`. The types defines in this module

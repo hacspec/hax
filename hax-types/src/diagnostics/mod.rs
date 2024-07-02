@@ -1,9 +1,3 @@
-extern crate rustc_driver;
-extern crate rustc_error_messages;
-extern crate rustc_errors;
-extern crate rustc_session;
-extern crate rustc_span;
-
 use crate::prelude::*;
 use colored::Colorize;
 

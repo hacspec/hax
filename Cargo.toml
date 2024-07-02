@@ -73,7 +73,7 @@ bincode = "2.0.0-rc.3"
 annotate-snippets = "0.11"
 
 # Crates in this repository
-hax-frontend-exporter = { path = "frontend/exporter", version = "=0.1.0-pre.1" }
+hax-frontend-exporter = { path = "frontend/exporter", version = "=0.1.0-pre.1", default-features = false }
 hax-adt-into = { path = "frontend/exporter/adt-into", version = "=0.1.0-pre.1" }
 hax-frontend-exporter-options = { path = "frontend/exporter/options", version = "=0.1.0-pre.1" }
 hax-phase-debug-webapp = { path = "engine/utils/phase-debug-webapp", version = "=0.1.0-pre.1" }

@@ -1,4 +1,5 @@
 use crate::prelude::*;
+#[cfg(feature = "rustc")]
 use tracing::trace;
 
 #[derive_group(Serializers)]
@@ -38,6 +39,7 @@ pub enum ClearCrossCrate<T> {
     Set(T),
 }
 
+#[cfg(feature = "rustc")]
 impl<S, TT, T: SInto<S, TT>> SInto<S, ClearCrossCrate<TT>>
     for rustc_middle::mir::ClearCrossCrate<T>
 {
@@ -68,6 +70,7 @@ pub enum AnalysisPhase {
 
 pub type BasicBlocks = IndexVec<BasicBlock, BasicBlockData>;
 
+#[cfg(feature = "rustc")]
 fn name_of_local(
     local: rustc_middle::mir::Local,
     var_debug_info: &Vec<rustc_middle::mir::VarDebugInfo>,
@@ -88,22 +91,30 @@ fn name_of_local(
 /// instead of an open list of types.
 pub mod mir_kinds {
     use crate::prelude::{derive_group, JsonSchema};
-    use rustc_data_structures::steal::Steal;
-    use rustc_middle::mir::Body;
-    use rustc_middle::ty::TyCtxt;
-    use rustc_span::def_id::LocalDefId;
-    pub trait IsMirKind: Clone {
-        fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>>;
-    }
     #[derive_group(Serializers)]
     #[derive(Clone, Copy, Debug, JsonSchema)]
     pub struct Built;
-    impl IsMirKind for Built {
-        fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>> {
-            tcx.mir_built(id)
+    #[cfg(feature = "rustc")]
+    pub use rustc::*;
+    #[cfg(feature = "rustc")]
+    mod rustc {
+        use super::*;
+        use rustc_data_structures::steal::Steal;
+        use rustc_middle::mir::Body;
+        use rustc_middle::ty::TyCtxt;
+        use rustc_span::def_id::LocalDefId;
+        pub trait IsMirKind: Clone {
+            fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>>;
+        }
+        impl IsMirKind for Built {
+            fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>> {
+                tcx.mir_built(id)
+            }
         }
     }
 }
+
+#[cfg(feature = "rustc")]
 pub use mir_kinds::IsMirKind;
 
 #[derive_group(Serializers)]
@@ -185,6 +196,7 @@ pub enum Operand {
     Constant(Constant),
 }
 
+#[cfg(feature = "rustc")]
 impl Operand {
     pub(crate) fn ty(&self) -> &Ty {
         match self {
@@ -202,6 +214,7 @@ pub struct Terminator {
     pub kind: TerminatorKind,
 }
 
+#[cfg(feature = "rustc")]
 pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     def_id: rustc_hir::def_id::DefId,
@@ -317,6 +330,7 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
 /// The [Operand] comes from a [TerminatorKind::Call].
 /// Only supports calls to top-level functions (which are considered as constants
 /// by rustc); doesn't support closures for now.
+#[cfg(feature = "rustc")]
 fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
     s: &S,
     func: &rustc_middle::mir::Operand<'tcx>,
@@ -384,6 +398,7 @@ fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
     }
 }
 
+#[cfg(feature = "rustc")]
 fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>(
     s: &S,
     terminator: &rustc_middle::mir::TerminatorKind<'tcx>,
@@ -435,6 +450,7 @@ pub struct ScalarInt {
 
 // TODO: naming conventions: is "translate" ok?
 /// Translate switch targets
+#[cfg(feature = "rustc")]
 fn translate_switch_targets<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     switch_ty: &Ty,
@@ -671,6 +687,7 @@ pub enum ProjectionElem {
 }
 
 // refactor
+#[cfg(feature = "rustc")]
 impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
     for rustc_middle::mir::Place<'tcx>
 {
@@ -829,6 +846,7 @@ pub struct MirFnSig {
 
 pub type MirPolyFnSig = Binder<MirFnSig>;
 
+#[cfg(feature = "rustc")]
 impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, MirFnSig> for rustc_middle::ty::FnSig<'tcx> {
     fn sinto(&self, s: &S) -> MirFnSig {
         let inputs = self.inputs().sinto(s);
@@ -845,6 +863,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, MirFnSig> for rustc_middle:
 
 // TODO: we need this function because sometimes, Rust doesn't infer the proper
 // typeclass instance.
+#[cfg(feature = "rustc")]
 pub(crate) fn poly_fn_sig_to_mir_poly_fn_sig<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     sig: &rustc_middle::ty::PolyFnSig<'tcx>,
     s: &S,

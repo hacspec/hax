@@ -1,15 +1,14 @@
 use crate::prelude::*;
 
-use rustc_index::{Idx, IndexSlice};
-
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct IndexVec<I: Idx + 'static, T: 'static> {
+pub struct IndexVec<I: 'static, T: 'static> {
     pub raw: Vec<T>,
     _marker: std::marker::PhantomData<fn(_: &I)>,
 }
 
-impl<I: Idx, T: Sized> IndexVec<I, T> {
+#[cfg(feature = "rustc")]
+impl<I: rustc_index::Idx, T: Sized> IndexVec<I, T> {
     pub fn into_iter_enumerated(
         self,
     ) -> impl DoubleEndedIterator<Item = (I, T)> + ExactSizeIterator {
@@ -20,20 +19,23 @@ impl<I: Idx, T: Sized> IndexVec<I, T> {
     }
 }
 
-impl<I: Idx, T: Sized> std::ops::Deref for IndexVec<I, T> {
-    type Target = IndexSlice<I, T>;
+#[cfg(feature = "rustc")]
+impl<I: rustc_index::Idx, T: Sized> std::ops::Deref for IndexVec<I, T> {
+    type Target = rustc_index::IndexSlice<I, T>;
     fn deref(&self) -> &Self::Target {
         Self::Target::from_raw(&self.raw)
     }
 }
 
-impl<I: Idx, T: Sized> std::ops::DerefMut for IndexVec<I, T> {
+#[cfg(feature = "rustc")]
+impl<I: rustc_index::Idx, T: Sized> std::ops::DerefMut for IndexVec<I, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         Self::Target::from_raw_mut(&mut self.raw)
     }
 }
 
-impl<I: Idx, T> Into<IndexVec<I, T>> for rustc_index::IndexVec<I, T> {
+#[cfg(feature = "rustc")]
+impl<I: rustc_index::Idx, T> Into<IndexVec<I, T>> for rustc_index::IndexVec<I, T> {
     fn into(self) -> IndexVec<I, T> {
         IndexVec {
             raw: self.raw,
@@ -42,8 +44,14 @@ impl<I: Idx, T> Into<IndexVec<I, T>> for rustc_index::IndexVec<I, T> {
     }
 }
 
-impl<S, J: Idx, I: Idx + SInto<S, J>, U: Clone /*TODO: remove me?*/, T: SInto<S, U>>
-    SInto<S, IndexVec<J, U>> for IndexSlice<I, T>
+#[cfg(feature = "rustc")]
+impl<
+        S,
+        J: rustc_index::Idx,
+        I: rustc_index::Idx + SInto<S, J>,
+        U: Clone, /*TODO: remove me?*/
+        T: SInto<S, U>,
+    > SInto<S, IndexVec<J, U>> for rustc_index::IndexSlice<I, T>
 {
     fn sinto(&self, s: &S) -> IndexVec<J, U> {
         IndexVec {
@@ -53,9 +61,10 @@ impl<S, J: Idx, I: Idx + SInto<S, J>, U: Clone /*TODO: remove me?*/, T: SInto<S,
     }
 }
 
+#[cfg(feature = "rustc")]
 impl<I, T> FromIterator<T> for IndexVec<I, T>
 where
-    I: Idx,
+    I: rustc_index::Idx,
 {
     #[inline]
     fn from_iter<It: IntoIterator<Item = T>>(iter: It) -> Self {
@@ -73,6 +82,7 @@ macro_rules! make_idx_wrapper {
         pub enum $type {
             $type(usize),
         }
+        #[cfg(feature = "rustc")]
         const _: () = {
             use rustc_index::Idx;
             type OriginalType = $($mod::)+$type;

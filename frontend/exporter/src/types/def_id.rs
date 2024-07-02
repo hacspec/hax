@@ -13,7 +13,10 @@
 use hax_adt_into::derive_group;
 
 #[cfg(not(feature = "extract_names_mode"))]
-use crate::{AdtInto, BaseState, JsonSchema, SInto};
+use crate::{AdtInto, JsonSchema};
+
+#[cfg(all(not(feature = "extract_names_mode"), feature = "rustc"))]
+use crate::{BaseState, SInto};
 
 pub type Symbol = String;
 

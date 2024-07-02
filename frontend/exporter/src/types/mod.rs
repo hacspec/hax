@@ -5,6 +5,7 @@ mod copied;
 mod def_id;
 mod index;
 mod mir;
+#[cfg(feature = "rustc")]
 mod mir_traits;
 mod new;
 mod replaced;
@@ -15,6 +16,7 @@ pub use copied::*;
 pub use def_id::*;
 pub use index::*;
 pub use mir::*;
+#[cfg(feature = "rustc")]
 pub use mir_traits::*;
 pub use new::*;
 pub use replaced::*;

@@ -22,3 +22,6 @@ annotate-snippets.workspace = true
 hax-adt-into.workspace = true
 bincode.workspace = true
 zstd = "0.13.1"
+
+[features]
+rustc = ["hax-frontend-exporter/rustc"]

@@ -16,11 +16,13 @@ impl ItemAttributes {
     }
 }
 
+#[cfg(feature = "rustc")]
 lazy_static::lazy_static! {
     pub static ref CORE_EXTRACTION_MODE: bool =
         std::env::var_os("HAX_CORE_EXTRACTION_MODE") == Some("on".into());
 }
 
+#[cfg(feature = "rustc")]
 impl ItemAttributes {
     pub fn from_owner_id<'tcx, S: BaseState<'tcx>>(
         s: &S,

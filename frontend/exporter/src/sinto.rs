@@ -14,6 +14,7 @@ macro_rules! sinto_todo {
                 todo: String
             },
         }
+        #[cfg(feature = "rustc")]
         impl<$($($lts,)*)? S> SInto<S, $renamed> for $($mod)::+::$type$(<$($lts,)*>)? {
             fn sinto(&self, _: &S) -> $renamed {
                 $renamed::$type{todo: format!("{:?}", self)}
@@ -29,6 +30,7 @@ macro_rules! sinto_todo {
 macro_rules! sinto_as_usize {
     ($($mod:ident)::+, $type:ident$(<$($lts:lifetime),*$(,)?>)?) => {
         pub type $type = usize;
+        #[cfg(feature = "rustc")]
         impl<$($($lts,)*)? S> SInto<S, $type> for $($mod)::+::$type$(<$($lts,)*>)? {
             fn sinto(&self, _: &S) -> $type {
                 self.as_usize()
@@ -79,8 +81,7 @@ impl<S, D: Clone, T: SInto<S, D>> SInto<S, Vec<D>> for [T] {
 }
 impl<S, D: Clone, T: SInto<S, D>> SInto<S, Vec<D>> for Box<[T]> {
     fn sinto(&self, s: &S) -> Vec<D> {
-        let box x = self;
-        x.into_iter().map(|x| x.sinto(s)).collect()
+        (&*self).into_iter().map(|x| x.sinto(s)).collect()
     }
 }
 
@@ -89,6 +90,7 @@ impl<S, D: Clone, T: SInto<S, D>> SInto<S, Vec<D>> for Vec<T> {
         self.into_iter().map(|x| x.sinto(s)).collect()
     }
 }
+#[cfg(feature = "rustc")]
 impl<S> SInto<S, Vec<u8>> for rustc_data_structures::sync::Lrc<[u8]> {
     fn sinto(&self, _s: &S) -> Vec<u8> {
         (**self).iter().cloned().collect()
