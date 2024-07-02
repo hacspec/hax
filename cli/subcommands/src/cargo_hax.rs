@@ -282,6 +282,14 @@ fn run_engine(
     error
 }
 
+/// Uses `cargo metadata` to compute a derived target directory.
+fn target_dir(suffix: &str) -> camino::Utf8PathBuf {
+    let metadata = cargo_metadata::MetadataCommand::new().exec().unwrap();
+    let mut dir = metadata.target_directory;
+    dir.push(suffix);
+    dir
+}
+
 /// Calls `cargo` with a custom driver which computes `haxmeta` files
 /// in `TARGET`. One `haxmeta` file is produced by crate. Each
 /// `haxmeta` file contains the full AST of one crate.
@@ -298,6 +306,9 @@ fn compute_haxmeta_files(options: &Options) -> (Vec<EmitHaxMetaMessage>, i32) {
             cmd.args([COLOR_FLAG, "always"]);
         }
         cmd.stderr(std::process::Stdio::piped());
+        if !options.no_custom_target_directory {
+            cmd.env("CARGO_TARGET_DIR", target_dir("hax"));
+        };
         cmd.env(
             "RUSTC_WORKSPACE_WRAPPER",
             std::env::var("HAX_RUSTC_DRIVER_BINARY")

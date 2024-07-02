@@ -427,6 +427,13 @@ pub struct Options {
     /// options like `-C -p <PKG> ;`).
     #[arg(long = "deps")]
     pub deps: bool,
+
+    /// By default, hax use `$CARGO_TARGET_DIR/hax` as target folder,
+    /// to avoid recompilation when working both with `cargo hax` and
+    /// `cargo build` (or, e.g. `rust-analyzer`). This option disables
+    /// this behavior.
+    #[arg(long)]
+    pub no_custom_target_directory: bool,
 }
 
 impl NormalizePaths for Command {

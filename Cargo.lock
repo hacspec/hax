@@ -158,6 +158,8 @@ name = "cargo-hax"
 version = "0.1.0-pre.1"
 dependencies = [
  "annotate-snippets",
+ "camino",
+ "cargo_metadata",
  "clap",
  "colored",
  "const_format",
