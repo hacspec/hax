@@ -150,9 +150,6 @@ fn get_json() -> String {
     .stderr(Stdio::piped());
 
     cmd.env("CARGO_TARGET_DIR", target_dir("hax"));
-    for env in ["DYLD_FALLBACK_LIBRARY_PATH", "LD_LIBRARY_PATH"] {
-        cmd.env_remove(env);
-    }
     let out = cmd.output().unwrap();
     let stdout = String::from_utf8(out.stdout).unwrap();
     let stderr = String::from_utf8(out.stderr).unwrap();
