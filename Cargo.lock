@@ -531,7 +531,6 @@ version = "0.1.0-pre.1"
 dependencies = [
  "bincode",
  "camino",
- "cargo_metadata",
  "hax-adt-into",
  "hax-engine-names",
  "serde",
