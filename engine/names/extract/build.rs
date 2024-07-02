@@ -124,13 +124,6 @@ fn reader_to_str(s: String) -> String {
     result
 }
 
-fn target_dir(suffix: &str) -> camino::Utf8PathBuf {
-    let metadata = cargo_metadata::MetadataCommand::new().exec().unwrap();
-    let mut dir = metadata.target_directory;
-    dir.push(suffix);
-    dir
-}
-
 fn get_json() -> String {
     let mut cmd =
         Command::new(std::env::var("HAX_CARGO_COMMAND_PATH").unwrap_or("cargo-hax".to_string()));
@@ -149,7 +142,6 @@ fn get_json() -> String {
     .stdout(Stdio::piped())
     .stderr(Stdio::piped());
 
-    cmd.env("CARGO_TARGET_DIR", target_dir("hax"));
     let out = cmd.output().unwrap();
     let stdout = String::from_utf8(out.stdout).unwrap();
     let stderr = String::from_utf8(out.stderr).unwrap();
