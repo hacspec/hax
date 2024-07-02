@@ -1,74 +1,17 @@
-#![feature(rustc_private)]
-
-extern crate rustc_driver;
-extern crate rustc_error_messages;
-extern crate rustc_errors;
-extern crate rustc_session;
-extern crate rustc_span;
-
+use crate::prelude::*;
 use colored::Colorize;
-use rustc_error_messages::MultiSpan;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-pub trait SessionExtTrait {
-    fn span_hax_err<S: Into<MultiSpan> + Clone>(&self, diag: Diagnostics<S>);
-}
+pub mod report;
 
-impl SessionExtTrait for rustc_errors::DiagCtxt {
-    fn span_hax_err<S: Into<MultiSpan> + Clone>(&self, diag: Diagnostics<S>) {
-        let span: MultiSpan = diag.span.clone().into();
-        let diag = diag.set_span(span.clone());
-        self.handle().span_err(span, diag.to_string());
-    }
-}
-
-pub mod error;
-
-#[derive(Debug, Clone, JsonSchema, Serialize, Deserialize)]
-pub struct Diagnostics<S> {
+#[derive_group(Serializers)]
+#[derive(Debug, Clone, JsonSchema)]
+pub struct Diagnostics {
     pub kind: Kind,
-    pub span: S,
+    pub span: Vec<hax_frontend_exporter::Span>,
     pub context: String,
 }
 
-impl<S> Diagnostics<S> {
-    pub fn set_span<T>(&self, span: T) -> Diagnostics<T> {
-        Diagnostics {
-            kind: self.kind.clone(),
-            context: self.context.clone(),
-            span,
-        }
-    }
-}
-impl<S: PartialEq + Clone, I: IntoIterator<Item = S> + Clone> Diagnostics<I> {
-    pub fn convert<T: Clone + Ord>(
-        &self,
-        // exhaustive list of mapping from spans of type S to spans of type T
-        mapping: &Vec<(S, T)>,
-    ) -> Diagnostics<Vec<T>>
-    where
-        for<'b> &'b S: PartialEq,
-    {
-        self.set_span(
-            self.span
-                .clone()
-                .into_iter()
-                .map(|span| {
-                    mapping
-                        .iter()
-                        .filter(|(candidate, _)| candidate == &span)
-                        .map(|(_, span)| span)
-                        .max()
-                })
-                .flatten()
-                .cloned()
-                .collect(),
-        )
-    }
-}
-
-impl<S> std::fmt::Display for Diagnostics<S> {
+impl std::fmt::Display for Diagnostics {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "({}) ", self.context)?;
         match &self.kind {
@@ -125,7 +68,8 @@ impl<S> std::fmt::Display for Diagnostics<S> {
     }
 }
 
-#[derive(Debug, Clone, JsonSchema, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(Debug, Clone, JsonSchema)]
 #[repr(u16)]
 pub enum Kind {
     /// Unsafe code is not supported

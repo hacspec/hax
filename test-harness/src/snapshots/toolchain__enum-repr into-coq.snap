@@ -21,9 +21,7 @@ info:
     backend_options: ~
 ---
 exit = 0
-stderr = '''
-Compiling enum-repr v0.1.0 (WORKSPACE_ROOT/enum-repr)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'''
+stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
 
 [stdout]
 diagnostics = []

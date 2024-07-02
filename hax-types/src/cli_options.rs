@@ -1,12 +1,12 @@
+use crate::prelude::*;
+
 use clap::{Parser, Subcommand, ValueEnum};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::path::{Path, PathBuf};
 
 pub use hax_frontend_exporter_options::*;
 
-#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Debug, Clone)]
 pub enum DebugEngineMode {
     File(PathOrDash),
     Interactive,
@@ -21,34 +21,29 @@ impl std::convert::From<&str> for DebugEngineMode {
     }
 }
 
-#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Debug, Clone, Default)]
 pub struct ForceCargoBuild {
-    pub data: u128,
-}
-
-impl std::default::Default for ForceCargoBuild {
-    fn default() -> Self {
-        ForceCargoBuild { data: 0 }
-    }
+    pub data: u64,
 }
 
 impl std::convert::From<&str> for ForceCargoBuild {
     fn from(s: &str) -> Self {
         use std::time::{SystemTime, UNIX_EPOCH};
         if s == "false" {
-            ForceCargoBuild {
-                data: SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .map(|r| r.as_millis())
-                    .unwrap_or(0),
-            }
+            let data = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|r| r.as_millis())
+                .unwrap_or(0);
+            ForceCargoBuild { data: data as u64 }
         } else {
             ForceCargoBuild::default()
         }
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(Debug, Clone, JsonSchema)]
 pub enum PathOrDash {
     Dash,
     Path(PathBuf),
@@ -113,7 +108,8 @@ impl NormalizePaths for PathOrDash {
     }
 }
 
-#[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Parser, Debug, Clone)]
 pub struct ProVerifOptions {
     /// Items for which hax should extract a default-valued process
     /// macro with a corresponding type signature. This flag expects a
@@ -132,7 +128,8 @@ pub struct ProVerifOptions {
     assume_items: Vec<InclusionClause>,
 }
 
-#[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Parser, Debug, Clone)]
 pub struct FStarOptions {
     /// Set the Z3 per-query resource limit
     #[arg(long, default_value = "15")]
@@ -164,7 +161,8 @@ pub struct FStarOptions {
     interfaces: Vec<InclusionClause>,
 }
 
-#[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Subcommand, Debug, Clone)]
 pub enum Backend {
     /// Use the F* backend
     Fstar(FStarOptions),
@@ -190,14 +188,16 @@ impl fmt::Display for Backend {
     }
 }
 
-#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Debug, Clone)]
 enum DepsKind {
     Transitive,
     Shallow,
     None,
 }
 
-#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Debug, Clone)]
 enum InclusionKind {
     /// `+query` include the items selected by `query`
     Included(DepsKind),
@@ -205,7 +205,8 @@ enum InclusionKind {
     Excluded,
 }
 
-#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Debug, Clone)]
 struct InclusionClause {
     kind: InclusionKind,
     namespace: Namespace,
@@ -241,7 +242,8 @@ fn parse_inclusion_clause(
     })
 }
 
-#[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Parser, Debug, Clone)]
 pub struct TranslationOptions {
     /// Controls which Rust item should be extracted or not.
     ///
@@ -283,7 +285,8 @@ pub struct TranslationOptions {
     include_namespaces: Vec<InclusionClause>,
 }
 
-#[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Parser, Debug, Clone)]
 pub struct BackendOptions {
     #[command(subcommand)]
     pub backend: Backend,
@@ -327,8 +330,9 @@ pub struct BackendOptions {
     pub translation_options: TranslationOptions,
 }
 
-#[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
-pub enum ExporterCommand {
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Subcommand, Debug, Clone)]
+pub enum Command {
     /// Translate to a backend. The translated modules will be written
     /// under the directory `<PKG>/proofs/<BACKEND>/extraction`, where
     /// `<PKG>` is the translated cargo package name and `<BACKEND>`
@@ -364,31 +368,24 @@ pub enum ExporterCommand {
     },
 }
 
-#[derive(
-    JsonSchema, ValueEnum, Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord,
-)]
+impl Command {
+    pub fn body_kinds(&self) -> Vec<ExportBodyKind> {
+        match self {
+            Command::JSON { kind, .. } => kind.clone(),
+            _ => vec![ExportBodyKind::Thir],
+        }
+    }
+}
+
+#[derive_group(Serializers)]
+#[derive(JsonSchema, ValueEnum, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ExportBodyKind {
     Thir,
     MirBuilt,
 }
 
-#[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
-pub enum LinterCommand {
-    /// Lint for the hacspec subset
-    Hacspec,
-    /// Lint for the supported Rust subset
-    Rust,
-}
-
-#[derive(JsonSchema, Subcommand, Debug, Clone, Serialize, Deserialize)]
-pub enum Command {
-    #[command(flatten)]
-    ExporterCommand(ExporterCommand),
-    #[clap(subcommand, name = "lint", about = "Lint the code")]
-    LintCommand(LinterCommand),
-}
-
-#[derive(JsonSchema, Parser, Debug, Clone, Serialize, Deserialize)]
+#[derive_group(Serializers)]
+#[derive(JsonSchema, Parser, Debug, Clone)]
 #[command(author, version = concat!("commit=", env!("HAX_GIT_COMMIT_HASH"), " ", "describe=", env!("HAX_GIT_DESCRIBE")), name = "hax", about, long_about = None)]
 pub struct Options {
     /// Replace the expansion of each macro matching PATTERN by their
@@ -418,10 +415,10 @@ pub struct Options {
     pub cargo_flags: Vec<String>,
 
     #[command(subcommand)]
-    pub command: Option<Command>,
+    pub command: Command,
 
-    /// `cargo` caching is disabled by default, this flag enables it back.
-    #[arg(long="enable-cargo-cache", action=clap::builder::ArgAction::SetTrue)]
+    /// `cargo` caching is enable by default, this flag disables it.
+    #[arg(long="disable-cargo-cache", action=clap::builder::ArgAction::SetFalse)]
     pub force_cargo_build: ForceCargoBuild,
 
     /// Apply the command to every local package of the dependency closure. By
@@ -430,11 +427,18 @@ pub struct Options {
     /// options like `-C -p <PKG> ;`).
     #[arg(long = "deps")]
     pub deps: bool,
+
+    /// By default, hax use `$CARGO_TARGET_DIR/hax` as target folder,
+    /// to avoid recompilation when working both with `cargo hax` and
+    /// `cargo build` (or, e.g. `rust-analyzer`). This option disables
+    /// this behavior.
+    #[arg(long)]
+    pub no_custom_target_directory: bool,
 }
 
-impl NormalizePaths for ExporterCommand {
+impl NormalizePaths for Command {
     fn normalize_paths(&mut self) {
-        use ExporterCommand::*;
+        use Command::*;
         match self {
             JSON { output_file, .. } => output_file.normalize_paths(),
             _ => (),
@@ -442,19 +446,9 @@ impl NormalizePaths for ExporterCommand {
     }
 }
 
-impl NormalizePaths for Command {
-    fn normalize_paths(&mut self) {
-        match self {
-            Command::ExporterCommand(cmd) => cmd.normalize_paths(),
-            _ => (),
-        }
-    }
-}
 impl NormalizePaths for Options {
     fn normalize_paths(&mut self) {
-        if let Some(c) = &mut self.command {
-            c.normalize_paths()
-        }
+        self.command.normalize_paths()
     }
 }
 

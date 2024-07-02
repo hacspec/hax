@@ -1,13 +1,15 @@
+use hax_adt_into::derive_group;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(Debug, Clone, JsonSchema)]
 pub enum Glob {
     One,  // *
     Many, // **
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(Debug, Clone, JsonSchema)]
 pub enum NamespaceChunk {
     Glob(Glob),
     Exact(String),
@@ -23,7 +25,8 @@ impl std::convert::From<&str> for NamespaceChunk {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(Debug, Clone, JsonSchema)]
 pub struct Namespace {
     pub chunks: Vec<NamespaceChunk>,
 }

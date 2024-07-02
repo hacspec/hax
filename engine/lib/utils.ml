@@ -82,26 +82,6 @@ let sequence (l : 'a option list) : 'a list option =
 let tabsize = 2
 let newline_indent depth : string = "\n" ^ String.make (tabsize * depth) ' '
 
-module Command = struct
-  type output = { stderr : string; stdout : string }
-
-  let run (command : string) (stdin_string : string) : output =
-    let stdout, stdin, stderr =
-      Unix.open_process_full command (Unix.environment ())
-    in
-    Unix.set_close_on_exec @@ Unix.descr_of_in_channel stdout;
-    Unix.set_close_on_exec @@ Unix.descr_of_in_channel stderr;
-    Out_channel.(
-      output_string stdin stdin_string;
-      flush stdin;
-      close stdin);
-    let strout = In_channel.input_all stdout in
-    let strerr = In_channel.input_all stderr |> Stdlib.String.trim in
-    Unix.close @@ Unix.descr_of_in_channel stdout;
-    Unix.close @@ Unix.descr_of_in_channel stderr;
-    { stdout = strout; stderr = strerr }
-end
-
 module MyInt64 = struct
   include Base.Int64
 

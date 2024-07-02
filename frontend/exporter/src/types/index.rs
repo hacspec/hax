@@ -1,3 +1,4 @@
+#[cfg(feature = "rustc")]
 use crate::prelude::*;
 use crate::sinto_as_usize;
 
