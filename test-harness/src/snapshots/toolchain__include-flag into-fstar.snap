@@ -32,7 +32,7 @@ module Include_flag
 open Core
 open FStar.Mul
 
-class t_Trait (#v_Self: Type0) = { __marker_trait_t_Trait:Prims.unit }
+class t_Trait (v_Self: Type0) = { __marker_trait_t_Trait:Prims.unit }
 
 /// Indirect dependencies
 let main_a_a (_: Prims.unit) : Prims.unit = ()
@@ -76,7 +76,7 @@ let main_c (_: Prims.unit) : Prims.unit =
 type t_Foo = | Foo : t_Foo
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_Trait_for_Foo: t_Trait #t_Foo = { __marker_trait = () }
+let impl_Trait_for_Foo: t_Trait t_Foo = { __marker_trait = () }
 
 /// Entrypoint
 let main (_: Prims.unit) : Prims.unit =

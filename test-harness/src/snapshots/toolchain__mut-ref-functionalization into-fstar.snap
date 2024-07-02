@@ -32,7 +32,7 @@ module Mut_ref_functionalization
 open Core
 open FStar.Mul
 
-class t_FooTrait (#v_Self: Type0) = {
+class t_FooTrait (v_Self: Type0) = {
   f_z_pre:v_Self -> bool;
   f_z_post:v_Self -> v_Self -> bool;
   f_z:x0: v_Self -> Prims.Pure v_Self (f_z_pre x0) (fun result -> f_z_post x0 result)
@@ -173,7 +173,7 @@ type t_Bar = {
 type t_Foo = { f_field:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_FooTrait_for_Foo: t_FooTrait #t_Foo =
+let impl_FooTrait_for_Foo: t_FooTrait t_Foo =
   {
     f_z_pre = (fun (self: t_Foo) -> true);
     f_z_post = (fun (self: t_Foo) (out: t_Foo) -> true);

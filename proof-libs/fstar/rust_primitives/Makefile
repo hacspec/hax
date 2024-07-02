@@ -49,7 +49,7 @@ all:
 
 # By default, we process all the files in the current directory. Here, we
 # *extend* the set of relevant files with the tests.
-ROOTS = $(wildcard *.fst)
+ROOTS = $(wildcard *.fst) $(wildcard *.fsti)
 
 FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib $(HAX_PROOF_LIBS_HOME)/rust_primitives $(HAX_PROOF_LIBS_HOME)/core $(HAX_LIBS_HOME)/proofs/fstar/extraction/
 

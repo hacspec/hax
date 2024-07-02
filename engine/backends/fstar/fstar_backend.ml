@@ -407,14 +407,16 @@ struct
       (* in *)
       F.term @@ F.AST.Const (F.Const.Const_string ("failure", F.dummyRange))
 
-  and fun_application ~span f args generic_args =
+  and make_application ~span ~generic_qualifier f args generic_args =
+    let is_arrow =
+      (* TODO: why? add documentation *)
+      [%matches? GType (TArrow _)]
+    in
     let generic_args =
       generic_args
-      |> List.filter ~f:(function GType (TArrow _) -> false | _ -> true)
-      |> List.map ~f:(function
-           | GConst const -> (pexpr const, F.AST.Nothing)
-           | GLifetime _ -> .
-           | GType ty -> (pty span ty, F.AST.Hash))
+      |> List.filter ~f:(is_arrow >> not)
+      |> List.map ~f:(pgeneric_value span)
+      |> List.map ~f:(fun g -> (g, generic_qualifier))
     in
     let args = List.map ~f:(pexpr &&& Fn.const F.AST.Nothing) args in
     F.mk_app f (generic_args @ args)
@@ -464,7 +466,8 @@ struct
                 chars: '" ^ s ^ "'");
         F.AST.Const (F.Const.Const_int (s, None)) |> F.term
     | App { f; args; generic_args; bounds_impls = _; impl = _ } ->
-        fun_application ~span:e.span (pexpr f) args generic_args
+        make_application ~span:e.span ~generic_qualifier:F.AST.Hash (pexpr f)
+          args generic_args
     | If { cond; then_; else_ } ->
         F.term
         @@ F.AST.If
@@ -635,7 +638,7 @@ struct
       match p.kind with
       | GPLifetime _ -> Error.assertion_failure span "pgeneric_param:LIFETIME"
       | GPType { default = _ } -> { kind; typ = F.type0_term; ident }
-      | GPConst { typ } -> { kind = Explicit; typ = pty span typ; ident }
+      | GPConst { typ } -> { kind; typ = pty span typ; ident }
 
     let of_generic_constraint span (nth : int) (c : generic_constraint) =
       match c with
@@ -675,6 +678,10 @@ struct
 
     let to_term (x : t) : F.AST.term =
       F.term @@ F.AST.Var (FStar_Ident.lid_of_ns_and_id [] (to_ident x))
+
+    let to_qualified_term (x : t) : F.AST.term * F.AST.imp =
+      ( to_term x,
+        match x.kind with Explicit -> F.AST.Nothing | _ -> F.AST.Hash )
 
     let to_binder (x : t) : F.AST.binder =
       F.AST.
@@ -1159,7 +1166,7 @@ struct
     | Trait { name; generics; items } ->
         let bds =
           List.map
-            ~f:FStarBinder.(of_generic_param e.span >> to_binder)
+            ~f:FStarBinder.(of_generic_param ~kind:Explicit e.span >> to_binder)
             generics.params
         in
         let name_str = U.Concrete_ident_view.to_definition_name name in
@@ -1184,22 +1191,12 @@ struct
                     (* in *)
                     (F.id name, None, [], t)
                     :: List.map
-                         ~f:
-                           (fun {
-                                  goal = { trait; args };
-                                  name = impl_ident_name;
-                                } ->
-                           let base =
-                             F.term @@ F.AST.Name (pconcrete_ident trait)
-                           in
-                           let args =
-                             List.map ~f:(pgeneric_value e.span) args
-                           in
+                         ~f:(fun { goal; name = impl_ident_name } ->
                            ( F.id (name ^ "_" ^ impl_ident_name),
                              (* Dodgy concatenation *)
                              None,
                              [],
-                             F.mk_e_app base args ))
+                             c_trait_goal e.span goal ))
                          bounds
                 | TIFn (TArrow (inputs, output))
                   when Attrs.find_unique_attr i.ti_attrs ~f:(function
@@ -1212,14 +1209,16 @@ struct
                     let inputs = generics @ inputs in
                     let output = pty e.span output in
                     let ty_pre_post =
-                      let inputs = List.map ~f:FStarBinder.to_term inputs in
+                      let inputs =
+                        List.map ~f:FStarBinder.to_qualified_term inputs
+                      in
                       let add_pre n = n ^ "_pre" in
                       let pre_name_str =
                         U.Concrete_ident_view.to_definition_name
                           (Concrete_ident.Create.map_last ~f:add_pre i.ti_ident)
                       in
                       let pre =
-                        F.mk_e_app (F.term_of_lid [ pre_name_str ]) inputs
+                        F.mk_app (F.term_of_lid [ pre_name_str ]) inputs
                       in
                       let result = F.term_of_lid [ "result" ] in
                       let add_post n = n ^ "_post" in
@@ -1228,9 +1227,9 @@ struct
                           (Concrete_ident.Create.map_last ~f:add_post i.ti_ident)
                       in
                       let post =
-                        F.mk_e_app
+                        F.mk_app
                           (F.term_of_lid [ post_name_str ])
-                          (inputs @ [ result ])
+                          (inputs @ [ (result, F.AST.Nothing) ])
                       in
                       let post =
                         F.mk_e_abs
@@ -1296,7 +1295,7 @@ struct
           @@ F.AST.PatApp (pat, List.map ~f:FStarBinder.to_pattern generics)
         in
         let typ =
-          fun_application ~span:e.span
+          make_application ~generic_qualifier:F.AST.Nothing ~span:e.span
             (F.term @@ F.AST.Name (pglobal_ident e.span trait))
             [] generic_args
         in
