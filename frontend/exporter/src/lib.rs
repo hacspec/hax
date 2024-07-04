@@ -11,6 +11,10 @@
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "rustc")] {
+        // When the feature `rustc` is enabled, we enable the bridges
+        // between rustc ASTs, which are defined in the crates
+        // `rustc_*`. We thus need to import them with `extern crate
+        // rustc_*`
         extern crate rustc_abi;
         extern crate rustc_ast;
         extern crate rustc_ast_pretty;
