@@ -45,13 +45,8 @@ impl<I: rustc_index::Idx, T> Into<IndexVec<I, T>> for rustc_index::IndexVec<I, T
 }
 
 #[cfg(feature = "rustc")]
-impl<
-        S,
-        J: rustc_index::Idx,
-        I: rustc_index::Idx + SInto<S, J>,
-        U: Clone, /*TODO: remove me?*/
-        T: SInto<S, U>,
-    > SInto<S, IndexVec<J, U>> for rustc_index::IndexSlice<I, T>
+impl<S, J: rustc_index::Idx, I: rustc_index::Idx + SInto<S, J>, U: Clone, T: SInto<S, U>>
+    SInto<S, IndexVec<J, U>> for rustc_index::IndexSlice<I, T>
 {
     fn sinto(&self, s: &S) -> IndexVec<J, U> {
         IndexVec {
