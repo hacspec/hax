@@ -74,10 +74,7 @@ fn rustflags() -> String {
 }
 
 const ENGINE_BINARY_NAME: &str = "hax-engine";
-const ENGINE_BINARY_NOT_FOUND: &str = const_format::formatcp!(
-    "The binary [{}] was not found in your [PATH].",
-    ENGINE_BINARY_NAME,
-);
+const ENGINE_BINARY_NOT_FOUND: &str = "The binary [hax-engine] was not found in your [PATH].";
 
 /// Dynamically looks for binary [ENGINE_BINARY_NAME].  First, we
 /// check whether [HAX_ENGINE_BINARY] is set, and use that if it

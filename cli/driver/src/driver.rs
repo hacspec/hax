@@ -36,7 +36,6 @@ mod features;
 use callbacks_wrapper::*;
 use features::*;
 
-use const_format::formatcp;
 use hax_types::cli_options::{BackendOptions, Command, ENV_VAR_OPTIONS_FRONTEND};
 
 use rustc_driver::{Callbacks, Compilation};
@@ -80,11 +79,11 @@ fn main() {
     setup_logging();
 
     let options: hax_types::cli_options::Options =
-        serde_json::from_str(&std::env::var(ENV_VAR_OPTIONS_FRONTEND).expect(&formatcp!(
+        serde_json::from_str(&std::env::var(ENV_VAR_OPTIONS_FRONTEND).expect(&format!(
             "Cannot find environnement variable {}",
             ENV_VAR_OPTIONS_FRONTEND
         )))
-        .expect(&formatcp!(
+        .expect(&format!(
             "Invalid value for the environnement variable {}",
             ENV_VAR_OPTIONS_FRONTEND
         ));
