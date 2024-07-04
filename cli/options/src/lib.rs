@@ -462,6 +462,7 @@ impl From<Options> for hax_frontend_exporter_options::Options {
     fn from(opts: Options) -> hax_frontend_exporter_options::Options {
         hax_frontend_exporter_options::Options {
             inline_macro_calls: opts.inline_macro_calls,
+            downgrade_errors: false,
         }
     }
 }

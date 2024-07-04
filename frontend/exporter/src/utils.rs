@@ -59,10 +59,27 @@ macro_rules! report {
     };
 }
 
-macro_rules! error { ($($tt:tt)*) => {$crate::utils::report!(error, $($tt)*)} }
-#[allow(unused_macros)]
+macro_rules! fatal {
+    ($s:ident $($tt:tt)*) => {
+        if $s.base().options.downgrade_errors {
+            // Report the error but don't tell rustc.
+            $crate::utils::report!(warn, $s $($tt)*);
+            panic!("Fatal error");
+        } else {
+            $crate::utils::report!(fatal, $s $($tt)*);
+        }
+    }
+}
+macro_rules! error {
+    ($s:ident $($tt:tt)*) => {
+        if $s.base().options.downgrade_errors {
+            $crate::utils::report!(warn, $s $($tt)*);
+        } else {
+            $crate::utils::report!(error, $s $($tt)*);
+        }
+    }
+}
 macro_rules! warning { ($($tt:tt)*) => {$crate::utils::report!(warn, $($tt)*)} }
-macro_rules! fatal { ($($tt:tt)*) => {$crate::utils::report!(fatal, $($tt)*)} }
 
 pub(crate) use format_with_context;
 pub(crate) use internal_helpers::_span_verb_base;

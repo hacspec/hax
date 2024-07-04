@@ -63,7 +63,9 @@ impl Namespace {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Options {
     pub inline_macro_calls: Vec<Namespace>,
+    /// Whether to emit errors or downgrade them as warnings.
+    pub downgrade_errors: bool,
 }
