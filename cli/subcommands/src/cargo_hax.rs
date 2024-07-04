@@ -280,11 +280,11 @@ fn run_engine(
 }
 
 /// Uses `cargo metadata` to compute a derived target directory.
-fn target_dir(suffix: &str) -> camino::Utf8PathBuf {
+fn target_dir(suffix: &str) -> PathBuf {
     let metadata = cargo_metadata::MetadataCommand::new().exec().unwrap();
     let mut dir = metadata.target_directory;
     dir.push(suffix);
-    dir
+    dir.into()
 }
 
 /// Calls `cargo` with a custom driver which computes `haxmeta` files

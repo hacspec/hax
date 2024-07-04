@@ -158,7 +158,6 @@ name = "cargo-hax"
 version = "0.1.0-pre.1"
 dependencies = [
  "annotate-snippets",
- "camino",
  "cargo_metadata",
  "clap",
  "colored",
@@ -508,7 +507,6 @@ name = "hax-engine-names-extract"
 version = "0.1.0-pre.1"
 dependencies = [
  "bincode",
- "camino",
  "hax-adt-into",
  "hax-engine-names",
  "serde",
