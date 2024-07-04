@@ -12,6 +12,8 @@ class t_Display t_Self = {
   f_fmt: t_Self -> t_Formatter -> (t_Formatter & Core.Result.t_Result Prims.unit t_Error)
 }
 
+val t_Debug: Type0 -> Type0
+
 val t_Arguments: Type0
 val impl_2__new_v1 (pieces: t_Slice string) (args: t_Slice Core.Fmt.Rt.t_Argument): t_Arguments
 val impl_7__write_fmt (fmt: t_Formatter) (args: t_Arguments): t_Formatter & t_Result
