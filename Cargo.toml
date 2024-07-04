@@ -13,7 +13,8 @@ members = [
      "hax-lib-protocol-macros",
      "hax-bounded-integers",
      "engine/names",
-     "engine/names/extract", "hax-types",
+     "engine/names/extract",
+     "hax-types",
 ]
 exclude = ["tests"]
 default-members = [
