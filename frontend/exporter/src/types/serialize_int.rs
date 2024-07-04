@@ -1,3 +1,7 @@
+//! This module provides serde manual serializes/deserializers as
+//! strings for u128 and i128: those types are not well supported in
+//! serde (see https://github.com/serde-rs/json/issues/625).
+
 use serde::{de::Visitor, ser::Serialize, Deserializer, Serializer};
 
 pub mod unsigned {
