@@ -490,14 +490,12 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tracing-tree",
- "which",
 ]
 
 [[package]]
 name = "hax-engine-names"
 version = "0.1.0-pre.1"
 dependencies = [
- "bincode",
  "hax-lib",
  "hax-lib-protocol",
 ]
@@ -519,7 +517,6 @@ name = "hax-frontend-exporter"
 version = "0.1.0-pre.1"
 dependencies = [
  "bincode",
- "cfg-if",
  "extension-traits",
  "hax-adt-into",
  "hax-frontend-exporter-options",

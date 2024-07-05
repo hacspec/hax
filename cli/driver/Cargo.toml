@@ -26,7 +26,6 @@ hax-types = {workspace = true, features = ["rustc"]}
 hax-frontend-exporter-options.workspace = true
 hax-lib-macros-types.workspace = true
 itertools.workspace = true
-which.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
