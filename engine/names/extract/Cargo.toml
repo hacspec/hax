@@ -21,3 +21,6 @@ bincode.workspace = true
 [features]
 default = ["extract_names_mode"]
 extract_names_mode = []
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("rustc"))'] }

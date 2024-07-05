@@ -6,7 +6,6 @@ use std::process::{Command, Stdio};
 /// impls), we just inline a small module here that contains the three
 /// type definition we need. See the module for complementary
 /// informations.
-#[allow(unexpected_cfgs)]
 #[path = "../../../frontend/exporter/src/types/def_id.rs"]
 mod hax_frontend_exporter_def_id;
 use hax_frontend_exporter_def_id::*;
