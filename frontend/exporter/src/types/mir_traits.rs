@@ -144,7 +144,8 @@ pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
 /// or a trait definition inside an impl/trait block. However it is possible
 /// to define an impl/trait inside a function, which can itself be inside a
 /// block, leading to nested impl blocks.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema)]
 pub struct ParamsInfo {
     /// The total number of generic parameters (regions + types + consts).
     /// We do not consider the trait clauses as generic parameters.

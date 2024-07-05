@@ -78,7 +78,7 @@ impl Features {
     }
     /// Runs Rustc with a driver that only collects which unstable
     /// Rustc features are enabled
-    pub fn detect(options: &hax_cli_options::Options, rustc_args: &Vec<String>) -> Self {
+    pub fn detect(options: &hax_types::cli_options::Options, rustc_args: &Vec<String>) -> Self {
         struct CollectFeatures {
             features: Features,
         }

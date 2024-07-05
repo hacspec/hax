@@ -1,11 +1,13 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema)]
 pub struct TypedConstantKind {
     pub typ: Ty,
     pub constant_kind: ConstantExpr,
 }
 
+#[cfg(feature = "rustc")]
 impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, TypedConstantKind>
     for rustc_middle::mir::Const<'tcx>
 {
