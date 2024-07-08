@@ -2414,7 +2414,7 @@ pub enum ExprKind {
     },
     #[map({
         let e = gstate.thir().exprs[*fun].unroll_scope(gstate);
-        let (generic_args, r#impl, bounds_impls);
+        let (generic_args, r#trait, bounds_impls);
         let fun = match &e.kind {
             /* TODO: see whether [user_ty] below is relevant or not */
             rustc_middle::thir::ExprKind::ZstLiteral {user_ty: _ } => {
@@ -2425,11 +2425,22 @@ pub enum ExprKind {
                         let contents = Box::new(ExprKind::GlobalName {
                             id: def_id.sinto(gstate)
                         });
+                        let mut translated_generics = generics.sinto(gstate);
                         let tcx = gstate.base().tcx;
-                        r#impl = tcx.opt_associated_item(*def_id).as_ref().and_then(|assoc| {
-                            poly_trait_ref(gstate, assoc, generics)
-                        }).map(|poly_trait_ref| poly_trait_ref.impl_expr(gstate, gstate.param_env()));
-                        generic_args = generics.sinto(gstate);
+                        r#trait = (|| {
+                            let assoc_item = tcx.opt_associated_item(*def_id)?;
+                            let assoc_trait = tcx.trait_of_item(assoc_item.def_id)?;
+                            let trait_ref = ty::TraitRef::new(tcx, assoc_trait, generics.iter());
+                            let impl_expr = {
+                                // TODO: we should not wrap into a dummy binder
+                                let poly_trait_ref = ty::Binder::dummy(trait_ref);
+                                poly_trait_ref.impl_expr(gstate, gstate.param_env())
+                            };
+                            let assoc_generics = tcx.generics_of(assoc_item.def_id);
+                            let assoc_generics = translated_generics.drain(0..assoc_generics.parent_count);
+                            Some((impl_expr, assoc_generics.collect()))
+                        })();
+                        generic_args = translated_generics;
                         bounds_impls = solve_item_traits(gstate, gstate.param_env(), *def_id, generics, None);
                         Expr {
                             contents,
@@ -2451,7 +2462,7 @@ pub enum ExprKind {
                     rustc_middle::ty::TyKind::FnPtr(..) => {
                         generic_args = vec![]; // A function pointer has no generics
                         bounds_impls = vec![]; // A function pointer has no bounds
-                        r#impl = None; // A function pointer is not a method
+                        r#trait = None; // A function pointer is not a method
                         e.sinto(gstate)
                     },
                     ty_kind => {
@@ -2472,7 +2483,7 @@ pub enum ExprKind {
             from_hir_call: from_hir_call.sinto(gstate),
             fn_span: fn_span.sinto(gstate),
             bounds_impls,
-            r#impl,
+            r#trait,
             fun,
         }
     })]
@@ -2507,15 +2518,29 @@ pub enum ExprKind {
         /// one for the implicit `i8: Sized`.
         #[not_in_source]
         bounds_impls: Vec<ImplExpr>,
-        /// `impl` is `None` if this is a function call or a method to
-        /// an inherent trait. If this is a method call from a trait
-        /// `Trait`, then it contains the concrete implementation of
-        /// `Trait` it is called on.
+        /// `trait` is `None` if this is a function call or a method
+        /// to an inherent trait. If this is a method call from a
+        /// trait `Trait`, then it contains the concrete
+        /// implementation of `Trait` it is called on, and the generic
+        /// arguments that comes from the trait declaration.
         ///
         /// Example: `f(0i8)` is a function call, hence the field
         /// `impl` is `None`.
+        ///
+        /// Example:
+        /// ```ignore
+        /// trait MyTrait<TraitType, const TraitConst: usize> {
+        ///   fn meth<MethType>(...) {...}
+        /// }
+        /// fn example_call<TraitType, SelfType: MyTrait<TraitType, 12>>(x: SelfType) {
+        ///   x.meth::<String>(...)
+        /// }
+        /// ```
+        /// Here, in the call `x.meth::<String>(...)`, `r#trait` will
+        /// be `Some((..., [SelfType, TraitType, 12]))`, and `generic_args`
+        /// will be `[String]`.
         #[not_in_source]
-        r#impl: Option<ImplExpr>,
+        r#trait: Option<(ImplExpr, Vec<GenericArg>)>,
     },
     Deref {
         arg: Expr,

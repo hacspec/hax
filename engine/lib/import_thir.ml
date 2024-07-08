@@ -426,7 +426,7 @@ end) : EXPR = struct
           {
             args;
             fn_span = _;
-            impl;
+            trait;
             from_hir_call = _;
             fun';
             ty = _;
@@ -435,12 +435,16 @@ end) : EXPR = struct
           } ->
           let args = List.map ~f:c_expr args in
           let bounds_impls = List.map ~f:(c_impl_expr e.span) bounds_impls in
+          let trait_generic_args =
+            Option.map ~f:snd trait |> Option.value ~default:[]
+          in
           let generic_args =
-            List.map ~f:(c_generic_value e.span) generic_args
+            List.map ~f:(c_generic_value e.span)
+              (trait_generic_args @ generic_args)
           in
           let f =
             let f = c_expr fun' in
-            match (impl, fun'.contents) with
+            match (trait, fun'.contents) with
             | Some _, GlobalName { id } ->
                 { f with e = GlobalVar (def_id (AssociatedItem Value) id) }
             | _ -> f
@@ -452,7 +456,7 @@ end) : EXPR = struct
               args;
               generic_args;
               bounds_impls;
-              impl = Option.map ~f:(c_impl_expr e.span) impl;
+              impl = Option.map ~f:(fst >> c_impl_expr e.span) trait;
             }
       | Box { value } ->
           (U.call Rust_primitives__hax__box_new [ c_expr value ] span typ).e
