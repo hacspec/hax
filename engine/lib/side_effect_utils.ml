@@ -347,7 +347,7 @@ struct
                     m#plus (m#plus (no_lbs ethen) (no_lbs eelse)) effects
                   in
                   ({ e with e = If { cond; then_; else_ } }, effects))
-          | App { f; args; generic_args; impl; bounds_impls } ->
+          | App { f; args; generic_args; trait; bounds_impls } ->
               HoistSeq.many env
                 (List.map ~f:(self#visit_expr env) (f :: args))
                 (fun l effects ->
@@ -358,7 +358,7 @@ struct
                   in
                   ( {
                       e with
-                      e = App { f; args; generic_args; impl; bounds_impls };
+                      e = App { f; args; generic_args; trait; bounds_impls };
                     },
                     effects ))
           | Literal _ -> (e, m#zero)

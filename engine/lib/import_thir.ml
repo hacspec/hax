@@ -198,7 +198,7 @@ let resugar_index_mut (e : expr) : (expr * expr) option =
         f = { e = GlobalVar (`Concrete meth); _ };
         args = [ { e = Borrow { e = x; _ }; _ }; index ];
         generic_args = _ (* TODO: see issue #328 *);
-        impl = _ (* TODO: see issue #328 *);
+        trait = _ (* TODO: see issue #328 *);
         bounds_impls = _;
       }
     when Concrete_ident.eq_name Core__ops__index__IndexMut__index_mut meth ->
@@ -208,7 +208,7 @@ let resugar_index_mut (e : expr) : (expr * expr) option =
         f = { e = GlobalVar (`Concrete meth); _ };
         args = [ x; index ];
         generic_args = _ (* TODO: see issue #328 *);
-        impl = _ (* TODO: see issue #328 *);
+        trait = _ (* TODO: see issue #328 *);
         bounds_impls = _;
       }
     when Concrete_ident.eq_name Core__ops__index__Index__index meth ->
@@ -378,7 +378,7 @@ end) : EXPR = struct
           f;
           args = List.map ~f:c_expr args;
           generic_args = [];
-          impl = None;
+          trait = None;
           bounds_impls = [];
         }
     in
@@ -435,13 +435,8 @@ end) : EXPR = struct
           } ->
           let args = List.map ~f:c_expr args in
           let bounds_impls = List.map ~f:(c_impl_expr e.span) bounds_impls in
-          let trait_generic_args =
-            Option.map ~f:snd trait |> Option.value ~default:[]
-          in
-          let generic_args =
-            List.map ~f:(c_generic_value e.span)
-              (trait_generic_args @ generic_args)
-          in
+          let c_generic_values = List.map ~f:(c_generic_value e.span) in
+          let generic_args = c_generic_values generic_args in
           let f =
             let f = c_expr fun' in
             match (trait, fun'.contents) with
@@ -456,7 +451,8 @@ end) : EXPR = struct
               args;
               generic_args;
               bounds_impls;
-              impl = Option.map ~f:(fst >> c_impl_expr e.span) trait;
+              trait =
+                Option.map ~f:(c_impl_expr e.span *** c_generic_values) trait;
             }
       | Box { value } ->
           (U.call Rust_primitives__hax__box_new [ c_expr value ] span typ).e
@@ -596,7 +592,7 @@ end) : EXPR = struct
               f = { e = projector; typ = TArrow ([ lhs.typ ], typ); span };
               args = [ lhs ];
               generic_args = [] (* TODO: see issue #328 *);
-              impl = None (* TODO: see issue #328 *);
+              trait = None (* TODO: see issue #328 *);
               bounds_impls = [];
             }
       | TupleField { lhs; field } ->
@@ -613,7 +609,7 @@ end) : EXPR = struct
               f = { e = projector; typ = TArrow ([ lhs.typ ], typ); span };
               args = [ lhs ];
               generic_args = [] (* TODO: see issue #328 *);
-              impl = None (* TODO: see issue #328 *);
+              trait = None (* TODO: see issue #328 *);
               bounds_impls = [];
             }
       | GlobalName { id } -> GlobalVar (def_id Value id)
@@ -749,7 +745,7 @@ end) : EXPR = struct
                     };
                   args = [ e ];
                   generic_args = _;
-                  impl = _;
+                  trait = _;
                   bounds_impls = _;
                 (* TODO: see issue #328 *)
                 } ->

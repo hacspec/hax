@@ -134,7 +134,7 @@ module Make (F : Features.T) =
                           {
                             f;
                             args = l;
-                            impl = None;
+                            trait = None;
                             generic_args = [];
                             bounds_impls = [];
                           };
