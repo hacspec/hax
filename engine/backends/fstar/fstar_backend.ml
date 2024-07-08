@@ -407,7 +407,7 @@ struct
       (* in *)
       F.term @@ F.AST.Const (F.Const.Const_string ("failure", F.dummyRange))
 
-  and fun_application ~span f args generic_args =
+  and fun_application ~span f args trait_generic_args generic_args =
     let generic_args =
       generic_args
       |> List.filter ~f:(function GType (TArrow _) -> false | _ -> true)
@@ -449,7 +449,7 @@ struct
         {
           f = { e = GlobalVar f; _ };
           args = [ { e = Literal (String s); _ } ];
-          generic_args;
+          generic_args = _;
         }
       when Global_ident.eq_name Hax_lib__int__Impl_5___unsafe_from_str f ->
         (match
@@ -463,8 +463,10 @@ struct
             @@ "pexpr: expected a integer, found the following non-digit \
                 chars: '" ^ s ^ "'");
         F.AST.Const (F.Const.Const_int (s, None)) |> F.term
-    | App { f; args; generic_args; bounds_impls = _; impl = _ } ->
-        fun_application ~span:e.span (pexpr f) args generic_args
+    | App { f; args; generic_args; bounds_impls = _; trait } ->
+        fun_application ~span:e.span (pexpr f) args
+          (Option.map ~f:snd trait |> Option.value ~default:[])
+          generic_args
     | If { cond; then_; else_ } ->
         F.term
         @@ F.AST.If
@@ -1298,7 +1300,7 @@ struct
         let typ =
           fun_application ~span:e.span
             (F.term @@ F.AST.Name (pglobal_ident e.span trait))
-            [] generic_args
+            [] [] generic_args
         in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (typ, None)) in
         let fields =
