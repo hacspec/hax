@@ -1322,11 +1322,6 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Stmt> for rustc_middle::thir::StmtId {
     }
 }
 
-/// While translating expressions, we expect to always have a THIR
-/// body and an `owner_id` in the state
-#[cfg(feature = "rustc")]
-pub trait ExprState<'tcx> = UnderOwnerState<'tcx> + HasThir<'tcx>;
-
 #[cfg(feature = "rustc")]
 impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx> {
     fn sinto(&self, s: &S) -> Expr {
