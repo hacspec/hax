@@ -235,8 +235,13 @@ pub fn with_owner_id<'tcx, THIR, MIR>(
 }
 
 pub trait BaseState<'tcx> = HasBase<'tcx> + Clone + IsState<'tcx>;
+
 /// State of anything below a `owner_id`
 pub trait UnderOwnerState<'tcx> = BaseState<'tcx> + HasOwnerId;
+
+/// While translating expressions, we expect to always have a THIR
+/// body and an `owner_id` in the state
+pub trait ExprState<'tcx> = UnderOwnerState<'tcx> + HasThir<'tcx>;
 
 impl ImplInfos {
     fn from<'tcx>(base: Base<'tcx>, did: rustc_hir::def_id::DefId) -> Self {

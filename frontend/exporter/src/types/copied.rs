@@ -1322,11 +1322,6 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Stmt> for rustc_middle::thir::StmtId {
     }
 }
 
-/// While translating expressions, we expect to always have a THIR
-/// body and an `owner_id` in the state
-#[cfg(feature = "rustc")]
-pub trait ExprState<'tcx> = UnderOwnerState<'tcx> + HasThir<'tcx>;
-
 #[cfg(feature = "rustc")]
 impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx> {
     fn sinto(&self, s: &S) -> Expr {
@@ -1338,29 +1333,31 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
             Some(contents) => contents,
             None => match kind {
                 // Introduce intermediate `Cast` from `T` to `U` when casting from a `#[repr(T)]` enum to `U`
-                rustc_middle::thir::ExprKind::Cast { source }
-                    if let rustc_middle::ty::TyKind::Adt(def, _) =
-                        s.thir().exprs[source].ty.kind() =>
-                {
-                    let tcx = s.base().tcx;
-                    let contents = kind.sinto(s);
-                    use crate::rustc_middle::ty::util::IntTypeExt;
-                    let repr_type = tcx
-                        .repr_options_of_def(def.did().expect_local())
-                        .discr_type()
-                        .to_ty(s.base().tcx);
-                    if repr_type == ty {
-                        contents
-                    } else {
-                        ExprKind::Cast {
-                            source: Decorated {
-                                ty: repr_type.sinto(s),
-                                span: span.sinto(s),
-                                contents: Box::new(contents),
-                                hir_id,
-                                attributes: vec![],
-                            },
+                rustc_middle::thir::ExprKind::Cast { source } => {
+                    if let rustc_middle::ty::TyKind::Adt(def, _) = s.thir().exprs[source].ty.kind()
+                    {
+                        let tcx = s.base().tcx;
+                        let contents = kind.sinto(s);
+                        use crate::rustc_middle::ty::util::IntTypeExt;
+                        let repr_type = tcx
+                            .repr_options_of_def(def.did().expect_local())
+                            .discr_type()
+                            .to_ty(s.base().tcx);
+                        if repr_type == ty {
+                            contents
+                        } else {
+                            ExprKind::Cast {
+                                source: Decorated {
+                                    ty: repr_type.sinto(s),
+                                    span: span.sinto(s),
+                                    contents: Box::new(contents),
+                                    hir_id,
+                                    attributes: vec![],
+                                },
+                            }
                         }
+                    } else {
+                        kind.sinto(s)
                     }
                 }
                 rustc_middle::thir::ExprKind::NonHirLiteral { lit, .. } => {
