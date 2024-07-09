@@ -252,14 +252,9 @@ impl Callbacks for ExtractionCallbacks {
 
             let cg_metadata = opts.cg.metadata[0].clone();
             let crate_name = opts.crate_name.clone().unwrap();
-            let crate_type = match &opts.crate_types[..] {
-                [crate_type] => format!("{}", crate_type),
-                _ => panic!(),
-            };
 
             let output_dir = compiler.sess.io.output_dir.clone().unwrap();
-            let haxmeta_path =
-                output_dir.join(format!("{crate_type}{crate_name}-{cg_metadata}.haxmeta",));
+            let haxmeta_path = output_dir.join(format!("{crate_name}-{cg_metadata}.haxmeta",));
 
             let mut file = BufWriter::new(File::create(&haxmeta_path).unwrap());
 
@@ -271,7 +266,6 @@ impl Callbacks for ExtractionCallbacks {
                         convert_thir(&self.clone().into(), self.macro_calls.clone(), tcx);
                     let haxmeta: HaxMeta<Body> = HaxMeta {
                         crate_name,
-                        crate_type,
                         cg_metadata,
                         externs,
                         impl_infos,

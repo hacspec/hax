@@ -19,7 +19,6 @@ pub enum HaxDriverMessage {
 #[derive(Debug, Clone)]
 pub struct HaxMeta<Body: hax_frontend_exporter::IsBody> {
     pub crate_name: String,
-    pub crate_type: String,
     pub cg_metadata: String,
     pub externs: Vec<PathBuf>,
     pub items: Vec<hax_frontend_exporter::Item<Body>>,
