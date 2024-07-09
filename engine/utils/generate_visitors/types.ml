@@ -5,6 +5,7 @@ open Base
 open! Utils
 open Errors
 
+(** Describe what is a type expression, reflects OCaml's `core_type`. *)
 module Type = struct
   let tuple_prefix = "prim___tuple_"
   let is_tuple_name = String.is_prefix ~prefix:tuple_prefix
@@ -35,6 +36,7 @@ module Type = struct
     | _ -> unsupported t
 end
 
+(** Describe what is a record, reflects OCaml's `label_declaration`. *)
 module Record = struct
   type field = string * Type.t [@@deriving show, yojson]
   type t = field list [@@deriving show, yojson]
@@ -52,6 +54,7 @@ module Record = struct
   let of_ocaml : label_declaration list -> t = List.map ~f:field_of_ocaml
 end
 
+(** Describe what is a variant payload, reflects OCaml's `construtor_arguments`. *)
 module VariantPayload = struct
   type t = Record of Record.t | Tuple of Type.t list | None
   [@@deriving show, yojson]
@@ -69,6 +72,7 @@ module VariantPayload = struct
     | Pcstr_record label_decls -> Record (Record.of_ocaml label_decls)
 end
 
+(** Describe what is a variant, reflects OCaml's `constructor_declaration`. *)
 module Variant = struct
   type t = { name : string; payload : VariantPayload.t }
   [@@deriving show, yojson]
@@ -83,10 +87,12 @@ module Variant = struct
     { name = cons_decl.pcd_name.txt; payload }
 end
 
+(** A result type. *)
 module Result = struct
   type ('r, 'e) t = Ok of 'r | Error of 'e [@@deriving show, yojson]
 end
 
+(** Describe what is a datatype, reflects ppx' `type_declaration`. *)
 module Datatype = struct
   type kind =
     | Record of Record.t

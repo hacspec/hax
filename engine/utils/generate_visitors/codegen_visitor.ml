@@ -5,23 +5,32 @@ open Base
 open Utils
 open Types
 
+(** What kind of visitor are we generating? *)
 type kind = Map | MapReduce | Reduce
 
-let is_reduce = function MapReduce | Reduce -> true | _ -> false
-let is_map = function Map | MapReduce -> true | _ -> false
-let method_prefix = "visit_"
+(** Helpers around kinds *)
+include struct
+  let is_reduce = function MapReduce | Reduce -> true | _ -> false
+  let is_map = function Map | MapReduce -> true | _ -> false
+end
 
+(** Various helpers and constants *)
+include struct
+  let method_prefix = "visit_"
+  let acc_var_prefix = "acc___"
+  let acc_var_param = acc_var_prefix ^ "param___var"
+  let payload_var = "v___payload"
+  let env_var = "env___var"
+  let app = List.filter ~f:(String.is_empty >> not) >> String.concat ~sep:" "
+  let parens s = if String.contains s ' ' then "(" ^ s ^ ")" else s
+end
+
+(** Produces a method name given a dot-separated path *)
 let method_name path =
   let path = String.split ~on:'.' path in
   method_prefix ^ String.concat ~sep:"__" path
 
-let acc_var_prefix = "acc___"
-let acc_var_param = acc_var_prefix ^ "param___var"
-let payload_var = "v___payload"
-let env_var = "env___var"
-let app = List.filter ~f:(String.is_empty >> not) >> String.concat ~sep:" "
-let parens s = if String.contains s ' ' then "(" ^ s ^ ")" else s
-
+(** Produces a visitor call for a type expression, without applying it. *)
 let rec of_type' need_parens (t : Type.t) =
   let f =
     if String.is_prefix ~prefix:"'" t.typ then "visit_" ^ t.typ
@@ -32,9 +41,12 @@ let rec of_type' need_parens (t : Type.t) =
     app (f :: List.map ~f:(of_type' true) t.args)
     |> if need_parens then parens else Fn.id
 
+(** Produces a complete visitor call for a type expression. *)
 let of_type typ payload = app [ of_type' false typ; env_var; payload ]
+
 let acc_var_for_field ((field, _) : Record.field) = acc_var_prefix ^ field
 
+(** Given a list [x1; ...; xN], produces `self#plus x1 (self#plus ... (self#plus xN))` *)
 let self_plus =
   List.fold_left
     ~f:(fun acc var ->
@@ -44,6 +56,7 @@ let self_plus =
     ~init:None
   >> Option.value ~default:"self#zero"
 
+(** Creates a let expression *)
 let mk_let ~lhs ~rhs = "let " ^ lhs ^ " = " ^ rhs ^ " in "
 
 let of_typed_binding ~kind (value, typ, value_binding, acc_binding) =
@@ -143,6 +156,7 @@ let of_datatype ~kind (dt : Datatype.t) =
   "method " ^ meth ^ " : " ^ meth_typ ^ " = fun " ^ visitors ^ " " ^ env_var
   ^ " " ^ payload_var ^ " -> " ^ body
 
+(** Hard coded visitors *)
 let extra_visitors_for = function
   | Map ->
       "        method visit_list : 'a. ('env -> 'a -> 'a) -> 'env -> 'a list \
@@ -168,6 +182,7 @@ let extra_visitors_for = function
       \                ~f:(fun acc -> v env >> self#plus acc)\n\
       \                this"
 
+(** Make one kind of visitor *)
 let mk_one ~kind (l : Datatype.t list) : string =
   let contents =
     List.map ~f:(of_datatype ~kind) l |> String.concat ~sep:"\n\n"
@@ -223,6 +238,7 @@ let is_allowed_opaque name =
   List.mem ~equal:String.equal allowlist name
   || String.is_prefix ~prefix:"F." name
 
+(** Make all three kinds of visitors for a list of datatypes *)
 let mk (l : Datatype.t list) : string =
   let l = Primitive_types.(tuples @ [ option ]) @ l in
   let opaques =

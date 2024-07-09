@@ -1,3 +1,6 @@
+(** This module is mostly generated, but hand-edited, it defines
+visitors for the types defined in module `Types`. *)
+
 open Base
 open Types
 open Utils
