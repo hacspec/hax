@@ -278,20 +278,32 @@ mod rustc {
             // A [Scalar] might also be any zero-sized [Adt] or [Tuple] (i.e., unit)
             ty::Tuple(ty) if ty.is_empty() => ConstantExprKind::Tuple { fields: vec![] },
             // It seems we can have ADTs when there is only one variant, and this variant doesn't have any fields.
-            ty::Adt(def, _)
-                if let [variant_def] = &def.variants().raw
-                    && variant_def.fields.is_empty() =>
-            {
-                ConstantExprKind::Adt {
-                    info: get_variant_information(def, rustc_target::abi::FIRST_VARIANT, s),
-                    fields: vec![],
+            ty::Adt(def, _) => {
+                if let [variant_def] = &def.variants().raw {
+                    if variant_def.fields.is_empty() {
+                        ConstantExprKind::Adt {
+                            info: get_variant_information(def, rustc_target::abi::FIRST_VARIANT, s),
+                            fields: vec![],
+                        }
+                    } else {
+                        fatal!(
+                            s[span],
+                            "Unexpected type `ty` for scalar `scalar`. Case `ty::Adt(def, _)`: `variant_def.fields` was not empty";
+                            {ty, scalar, def, variant_def}
+                        )
+                    }
+                } else {
+                    fatal!(
+                        s[span],
+                        "Unexpected type `ty` for scalar `scalar`. Case `ty::Adt(def, _)`: `def.variants().raw` was supposed to contain exactly one variant.";
+                        {ty, scalar, def, &def.variants().raw}
+                    )
                 }
             }
             _ => fatal!(
                 s[span],
-                "Unexpected type {:#?} for scalar {:#?}",
-                ty,
-                scalar
+                "Unexpected type `ty` for scalar `scalar`";
+                {ty, scalar}
             ),
         };
         kind.decorate(ty.sinto(s), cspan)
