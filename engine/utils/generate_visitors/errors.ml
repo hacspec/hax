@@ -1,4 +1,5 @@
 open Ppxlib
+open! Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
 let pp_core_type = Pprintast.core_type
 

@@ -1,4 +1,5 @@
 open Base
+include Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
 let ( >> ) f g x = g (f x)
 
