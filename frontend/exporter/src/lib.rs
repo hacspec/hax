@@ -4,8 +4,6 @@
 #![feature(macro_metavar_expr)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![allow(incomplete_features)]
-#![feature(specialization)]
 #![allow(rustdoc::private_intra_doc_links)]
 #![cfg_attr(feature = "rustc", feature(rustc_private))]
 
