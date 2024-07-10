@@ -46,7 +46,7 @@ open FStar.Mul
 let impl__Bar__inherent_impl_generics (#v_T: Type0) (v_N: usize) (x: t_Array v_T v_N) : Prims.unit =
   ()
 
-class t_Foo (#v_Self: Type0) = {
+class t_Foo (v_Self: Type0) = {
   f_const_add_pre:v_N: usize -> v_Self -> bool;
   f_const_add_post:v_N: usize -> v_Self -> usize -> bool;
   f_const_add:v_N: usize -> x0: v_Self
@@ -54,7 +54,7 @@ class t_Foo (#v_Self: Type0) = {
 }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_Foo_for_usize: t_Foo #usize =
+let impl_Foo_for_usize: t_Foo usize =
   {
     f_const_add_pre = (fun (v_N: usize) (self: usize) -> true);
     f_const_add_post = (fun (v_N: usize) (self: usize) (out: usize) -> true);
@@ -65,7 +65,11 @@ let dup
       (#v_T: Type0)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Clone.t_Clone v_T)
       (x: v_T)
-    : (v_T & v_T) = Core.Clone.f_clone #v_T x, Core.Clone.f_clone #v_T x <: (v_T & v_T)
+    : (v_T & v_T) =
+  Core.Clone.f_clone #v_T #FStar.Tactics.Typeclasses.solve x,
+  Core.Clone.f_clone #v_T #FStar.Tactics.Typeclasses.solve x
+  <:
+  (v_T & v_T)
 
 let f (v_N x: usize) : usize = (v_N +! v_N <: usize) +! x
 
@@ -79,8 +83,12 @@ let g
     : usize =
   (Core.Option.impl__unwrap_or #usize
       (Core.Iter.Traits.Iterator.f_max #(Core.Array.Iter.t_IntoIter usize v_N)
+          #FStar.Tactics.Typeclasses.solve
           (Core.Iter.Traits.Collect.f_into_iter #(t_Array usize v_N)
-              (Core.Convert.f_into #v_T #(t_Array usize v_N) arr <: t_Array usize v_N)
+              #FStar.Tactics.Typeclasses.solve
+              (Core.Convert.f_into #v_T #(t_Array usize v_N) #FStar.Tactics.Typeclasses.solve arr
+                <:
+                t_Array usize v_N)
             <:
             Core.Array.Iter.t_IntoIter usize v_N)
         <:
@@ -105,6 +113,7 @@ let foo (v_LEN: usize) (arr: t_Array usize v_LEN) : usize =
   let acc:usize =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Ops.Range.t_Range
             usize)
+          #FStar.Tactics.Typeclasses.solve
           ({ Core.Ops.Range.f_start = sz 0; Core.Ops.Range.f_end = v_LEN }
             <:
             Core.Ops.Range.t_Range usize)

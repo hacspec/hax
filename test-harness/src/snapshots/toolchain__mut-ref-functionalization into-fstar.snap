@@ -32,7 +32,7 @@ module Mut_ref_functionalization
 open Core
 open FStar.Mul
 
-class t_FooTrait (#v_Self: Type0) = {
+class t_FooTrait (v_Self: Type0) = {
   f_z_pre:v_Self -> bool;
   f_z_post:v_Self -> v_Self -> bool;
   f_z:x0: v_Self -> Prims.Pure v_Self (f_z_pre x0) (fun result -> f_z_post x0 result)
@@ -173,7 +173,7 @@ type t_Bar = {
 type t_Foo = { f_field:Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global }
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
-let impl_FooTrait_for_Foo: t_FooTrait #t_Foo =
+let impl_FooTrait_for_Foo: t_FooTrait t_Foo =
   {
     f_z_pre = (fun (self: t_Foo) -> true);
     f_z_post = (fun (self: t_Foo) (out: t_Foo) -> true);
@@ -197,6 +197,7 @@ let foo (lhs rhs: t_S) : t_S =
   let lhs:t_S =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Ops.Range.t_Range
             usize)
+          #FStar.Tactics.Typeclasses.solve
           ({ Core.Ops.Range.f_start = sz 0; Core.Ops.Range.f_end = sz 1 }
             <:
             Core.Ops.Range.t_Range usize)
@@ -245,6 +246,7 @@ let g (x: t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
   let x:t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Ops.Range.t_Range
             u8)
+          #FStar.Tactics.Typeclasses.solve
           ({ Core.Ops.Range.f_start = 1uy; Core.Ops.Range.f_end = 10uy }
             <:
             Core.Ops.Range.t_Range u8)

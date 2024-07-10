@@ -35,6 +35,7 @@ module Attrs = struct
 end
 
 let tcresolve = term @@ AST.Var FStar_Parser_Const.tcresolve_lid
+let solve = term @@ AST.Var FStar_Parser_Const.solve_lid
 
 let pat_var_tcresolve (var : string option) =
   let tcresolve = Some (AST.Meta tcresolve) in

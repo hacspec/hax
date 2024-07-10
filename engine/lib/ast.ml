@@ -200,7 +200,7 @@ functor
           args : expr list (* ; f_span: span *);
           generic_args : generic_value list;
           bounds_impls : impl_expr list;
-          impl : impl_expr option;
+          trait : (impl_expr * generic_value list) option;
         }
       | Literal of literal
       | Array of expr list

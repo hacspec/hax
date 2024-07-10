@@ -79,8 +79,9 @@ module Make (F : Features.T) = struct
         * impl_expr list)
         option =
       match e.e with
-      | App { f; args; generic_args; impl; bounds_impls } ->
-          Some (f, args, generic_args, impl, bounds_impls)
+      | App { f; args; generic_args; trait; bounds_impls } ->
+          (* TODO: propagate full trait *)
+          Some (f, args, generic_args, Option.map ~f:fst trait, bounds_impls)
       | _ -> None
 
     let pbinding_simple (p : pat) : (local_ident * ty) option =
@@ -96,7 +97,7 @@ module Make (F : Features.T) = struct
             f = { e = GlobalVar (`Concrete f'); _ };
             args = [ e ];
             generic_args = _;
-            impl = _;
+            trait = _;
             _;
             (* TODO: see issue #328 *)
           }
@@ -201,7 +202,7 @@ module Make (F : Features.T) = struct
                   f = { e = GlobalVar (`Primitive Deref); _ };
                   args = [ { e = Borrow { e = sub; _ }; _ } ];
                   generic_args = _;
-                  impl = _;
+                  trait = _;
                   _;
                   (* TODO: see issue #328 *)
                 } ->
@@ -343,7 +344,7 @@ module Make (F : Features.T) = struct
                   f = { e = GlobalVar (`Primitive Cast); _ } as f;
                   args = [ arg ];
                   generic_args;
-                  impl;
+                  trait;
                   bounds_impls;
                 } ->
                 ascribe
@@ -355,7 +356,7 @@ module Make (F : Features.T) = struct
                           f;
                           args = [ ascribe arg ];
                           generic_args;
-                          impl;
+                          trait;
                           bounds_impls;
                         };
                   }
@@ -875,7 +876,7 @@ module Make (F : Features.T) = struct
             args;
             generic_args = [];
             bounds_impls = [];
-            impl;
+            trait = Option.map ~f:(fun impl -> (impl, [])) impl;
           };
       typ = ret_typ;
       span;
@@ -924,7 +925,7 @@ module Make (F : Features.T) = struct
           args = [ e ];
           generic_args = _;
           bounds_impls = _;
-          impl = _;
+          trait = _;
         } ->
         next e
     | _ -> e
@@ -960,7 +961,7 @@ module Make (F : Features.T) = struct
                 args = [ e ];
                 generic_args = [];
                 bounds_impls = [];
-                impl = None (* TODO: see issue #328 *);
+                trait = None (* TODO: see issue #328 *);
               };
           typ;
           span;
@@ -1060,7 +1061,7 @@ module Make (F : Features.T) = struct
             args = [ tuple ];
             generic_args = [] (* TODO: see issue #328 *);
             bounds_impls = [];
-            impl = None (* TODO: see issue #328 *);
+            trait = None (* TODO: see issue #328 *);
           };
     }
 
@@ -1104,7 +1105,7 @@ module Make (F : Features.T) = struct
             args = [ place ];
             generic_args = _;
             bounds_impls = _;
-            impl = _;
+            trait = _;
           (* TODO: see issue #328 *)
           } ->
           let* place = of_expr place in
@@ -1115,7 +1116,7 @@ module Make (F : Features.T) = struct
             args = [ place; index ];
             generic_args = _;
             bounds_impls = _;
-            impl = _;
+            trait = _;
           (* TODO: see issue #328 *)
           }
         when Global_ident.eq_name Core__ops__index__Index__index f ->
@@ -1128,7 +1129,7 @@ module Make (F : Features.T) = struct
             args = [ place; index ];
             generic_args = _;
             bounds_impls = _;
-            impl = _;
+            trait = _;
           (* TODO: see issue #328 *)
           }
         when Global_ident.eq_name Core__ops__index__IndexMut__index_mut f ->
