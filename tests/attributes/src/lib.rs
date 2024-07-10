@@ -11,6 +11,15 @@ fn add3(x: u32, y: u32, z: u32) -> u32 {
     x + y + z
 }
 
+#[hax::requires(*x < 40 && *y < 300)]
+#[hax::ensures(|result| *future(x) == *y && *future(y) == *x && result == *x + *y)]
+fn swap_and_mut_req_ens(x: &mut u32, y: &mut u32) -> u32 {
+    let x0 = *x;
+    *x = *y;
+    *y = x0;
+    *x + *y
+}
+
 #[hax::lemma]
 fn add3_lemma(x: u32) -> Proof<{ x <= 10 || x >= u32_max / 3 || add3(x, x, x) == x * 3 }> {}
 
