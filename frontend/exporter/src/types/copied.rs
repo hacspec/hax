@@ -2412,66 +2412,50 @@ pub enum ExprKind {
     #[map({
         let e = gstate.thir().exprs[*fun].unroll_scope(gstate);
         let (generic_args, r#trait, bounds_impls);
-        let fun = match &e.kind {
-            /* TODO: see whether [user_ty] below is relevant or not */
-            rustc_middle::thir::ExprKind::ZstLiteral {user_ty: _ } => {
-                match ty.kind() {
-                    rustc_middle::ty::TyKind::FnDef(def_id, generics) => {
-                        let (hir_id, attributes) = e.hir_id_and_attributes(gstate);
-                        let hir_id = hir_id.map(|hir_id| hir_id.index());
-                        let contents = Box::new(ExprKind::GlobalName {
-                            id: def_id.sinto(gstate)
-                        });
-                        let mut translated_generics = generics.sinto(gstate);
-                        let tcx = gstate.base().tcx;
-                        r#trait = (|| {
-                            let assoc_item = tcx.opt_associated_item(*def_id)?;
-                            let assoc_trait = tcx.trait_of_item(assoc_item.def_id)?;
-                            let trait_ref = ty::TraitRef::new(tcx, assoc_trait, generics.iter());
-                            let impl_expr = {
-                                // TODO: we should not wrap into a dummy binder
-                                let poly_trait_ref = ty::Binder::dummy(trait_ref);
-                                poly_trait_ref.impl_expr(gstate, gstate.param_env())
-                            };
-                            let assoc_generics = tcx.generics_of(assoc_item.def_id);
-                            let assoc_generics = translated_generics.drain(0..assoc_generics.parent_count);
-                            Some((impl_expr, assoc_generics.collect()))
-                        })();
-                        generic_args = translated_generics;
-                        bounds_impls = solve_item_traits(gstate, gstate.param_env(), *def_id, generics, None);
-                        Expr {
-                            contents,
-                            span: e.span.sinto(gstate),
-                            ty: e.ty.sinto(gstate),
-                            hir_id,
-                            attributes,
-                        }
-                    },
-                    ty_kind => supposely_unreachable_fatal!(
-                        gstate[e.span],
-                        "CallNotTyFnDef";
-                        {e, ty_kind}
-                    )
+        // A function is any expression whose type is something callable
+        let fun = match ty.kind() {
+            rustc_middle::ty::TyKind::FnDef(def_id, generics) => {
+                let (hir_id, attributes) = e.hir_id_and_attributes(gstate);
+                let hir_id = hir_id.map(|hir_id| hir_id.index());
+                let contents = Box::new(ExprKind::GlobalName {
+                    id: def_id.sinto(gstate)
+                });
+                let mut translated_generics = generics.sinto(gstate);
+                let tcx = gstate.base().tcx;
+                r#trait = (|| {
+                    let assoc_item = tcx.opt_associated_item(*def_id)?;
+                    let assoc_trait = tcx.trait_of_item(assoc_item.def_id)?;
+                    let trait_ref = ty::TraitRef::new(tcx, assoc_trait, generics.iter());
+                    let impl_expr = {
+                        // TODO: we should not wrap into a dummy binder
+                        let poly_trait_ref = ty::Binder::dummy(trait_ref);
+                        poly_trait_ref.impl_expr(gstate, gstate.param_env())
+                    };
+                    let assoc_generics = tcx.generics_of(assoc_item.def_id);
+                    let assoc_generics = translated_generics.drain(0..assoc_generics.parent_count);
+                    Some((impl_expr, assoc_generics.collect()))
+                })();
+                generic_args = translated_generics;
+                bounds_impls = solve_item_traits(gstate, gstate.param_env(), *def_id, generics, None);
+                Expr {
+                    contents,
+                    span: e.span.sinto(gstate),
+                    ty: e.ty.sinto(gstate),
+                    hir_id,
+                    attributes,
                 }
             },
-            kind => {
-                match ty.kind() {
-                    rustc_middle::ty::TyKind::FnPtr(..) => {
-                        generic_args = vec![]; // A function pointer has no generics
-                        bounds_impls = vec![]; // A function pointer has no bounds
-                        r#trait = None; // A function pointer is not a method
-                        e.sinto(gstate)
-                    },
-                    ty_kind => {
-                        supposely_unreachable!(
-                            gstate[e.span],
-                            "CallNotTyFnDef";
-                            {e, kind, ty_kind}
-                        );
-                        fatal!(gstate, "RefCallNotTyFnPtr")
-                    }
-                }
-            }
+            rustc_middle::ty::TyKind::FnPtr(..) => {
+                generic_args = vec![]; // A function pointer has no generics
+                bounds_impls = vec![]; // A function pointer has no bounds
+                r#trait = None; // A function pointer is not a method
+                e.sinto(gstate)
+            },
+            ty_kind => supposely_unreachable_fatal!(
+                gstate[e.span],
+                "CallNotTyFnDef";
+                {e, ty_kind}
+            )
         };
         TO_TYPE::Call {
             ty: ty.sinto(gstate),
