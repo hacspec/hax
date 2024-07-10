@@ -44,6 +44,16 @@ unfold instance impl: Core.Ops.Arith.t_Sub t_Int t_Int =
     f_sub = fun (self: t_Int) (other: t_Int) -> self + other
   }
 '''
+"Attributes.Nested_refinement_elim.fst" = '''
+module Attributes.Nested_refinement_elim
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let t_DummyRefinement = x: u16{true}
+
+let elim_twice (x: t_DummyRefinement) : u16 = ((x <: u16) <: t_DummyRefinement) <: u16
+'''
 "Attributes.Newtype_pattern.fst" = '''
 module Attributes.Newtype_pattern
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
@@ -183,10 +193,7 @@ let t_NoE =
       ~.out }
 
 let bounded_u8 (x: t_BoundedU8 12uy 15uy) (y: t_BoundedU8 10uy 11uy) : t_BoundedU8 1uy 23uy =
-  (Hax_lib.f_get #(t_BoundedU8 12uy 15uy) x <: u8) +!
-  (Hax_lib.f_get #(t_BoundedU8 10uy 11uy) y <: u8)
-  <:
-  t_BoundedU8 1uy 23uy
+  (x <: u8) +! (y <: u8) <: t_BoundedU8 1uy 23uy
 
 let double (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_True) =
   x +! x <: t_Even

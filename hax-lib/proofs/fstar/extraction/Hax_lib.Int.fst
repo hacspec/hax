@@ -3,7 +3,6 @@ module Hax_lib.Int
 open Core
 
 unfold type t_Int = int
-unfold type impl__Int__to_u16
 
 unfold let impl__Int__to_u8 (#t:inttype) (n:range_t t) : int_t t = mk_int #t n
 unfold let impl__Int__to_u16 (#t:inttype) (n:range_t t) : int_t t = mk_int #t n

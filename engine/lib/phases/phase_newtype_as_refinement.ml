@@ -21,6 +21,7 @@ module Make (F : Features.T) =
           inherit [_] Visitors.map as super
 
           method! visit_expr () e =
+            let e = super#visit_expr () e in
             match e.e with
             | App { f = { e = GlobalVar f; _ }; args = [ inner ]; _ }
               when Ast.Global_ident.eq_name Hax_lib__Refinement__new f
@@ -28,7 +29,7 @@ module Make (F : Features.T) =
                    || Ast.Global_ident.eq_name Hax_lib__Refinement__get_mut f
                    || Ast.Global_ident.eq_name Hax_lib__Refinement__get f ->
                 { e with e = Ascription { typ = e.typ; e = inner } }
-            | _ -> super#visit_expr () e
+            | _ -> e
 
           method! visit_item () i =
             match i.v with
