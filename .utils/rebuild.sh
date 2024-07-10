@@ -23,7 +23,7 @@ YELLOW=43
 GREEN=42
 RED=41
 BLACK=40
-status () { echo -e "\e[1m[rebuild script] \e[30m\e[$1m$2\e[0m"; }
+status () { echo -e "\033[1m[rebuild script] \033[30m\033[$1m$2\033[0m"; }
 
 cd_rootwise () {
     cd $(git rev-parse --show-toplevel)/$1
