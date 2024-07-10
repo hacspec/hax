@@ -28,5 +28,6 @@ members = [
         "cli/include-flag",
         "cli/interface-only",
         "recursion",
+        "functions",
 ]
 resolver = "2"
