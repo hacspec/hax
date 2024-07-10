@@ -640,7 +640,9 @@ struct
     type t = { kind : kind; ident : F.Ident.ident; typ : F.AST.term }
 
     let make_explicit x = { x with kind = Explicit }
-    let make_implicit x = { x with kind = Implicit }
+
+    let implicit_to_explicit x =
+      if [%matches? Tcresolve] x.kind then x else make_explicit x
 
     let of_generic_param span (p : generic_param) : t =
       let ident = plocal_ident p.ident in
@@ -1034,7 +1036,7 @@ struct
                  F.AST.TyconRecord
                    ( F.id @@ U.Concrete_ident_view.to_definition_name name,
                      FStarBinder.of_generics e.span generics
-                     |> List.map ~f:FStarBinder.make_explicit
+                     |> List.map ~f:FStarBinder.implicit_to_explicit
                      |> List.map ~f:FStarBinder.to_binder,
                      None,
                      [],
@@ -1101,7 +1103,7 @@ struct
                  F.AST.TyconVariant
                    ( F.id @@ U.Concrete_ident_view.to_definition_name name,
                      FStarBinder.of_generics e.span generics
-                     |> List.map ~f:FStarBinder.make_explicit
+                     |> List.map ~f:FStarBinder.implicit_to_explicit
                      |> List.map ~f:FStarBinder.to_binder,
                      None,
                      constructors );
@@ -1299,7 +1301,7 @@ struct
             List.map
               ~f:
                 FStarBinder.(
-                  of_generic_param e.span >> make_explicit >> to_binder)
+                  of_generic_param e.span >> implicit_to_explicit >> to_binder)
               generics.params
           in
           F.AST.TyconRecord (name_id, bds, None, [], fields)
