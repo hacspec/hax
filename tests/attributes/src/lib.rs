@@ -225,7 +225,7 @@ mod refinement_types {
 }
 mod nested_refinement_elim {
     use hax_lib::*;
-    #[hax_lib::refinement_type(|x| true)]
+    #[refinement_type(|x| true)]
     pub struct DummyRefinement(u16);
 
     fn elim_twice(x: DummyRefinement) -> u16 {
