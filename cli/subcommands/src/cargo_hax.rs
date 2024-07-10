@@ -229,7 +229,11 @@ fn run_engine(
                 }
                 FromEngine::PrettyPrintRust(code) => {
                     let code = match syn::parse_file(&code) {
-                        Ok(file) => Ok(prettyplease::unparse(&file)),
+                        Ok(file) => match std::panic::catch_unwind(|| prettyplease::unparse(&file))
+                        {
+                            Ok(pp) => Ok(pp),
+                            Err(err) => Err(format!("prettyplease panicked with: {:#?}", err)),
+                        },
                         Err(err) => Err(format!("{}", err)),
                     };
                     send!(&ToEngine::PrettyPrintedRust(code));
