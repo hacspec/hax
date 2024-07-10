@@ -223,3 +223,12 @@ mod refinement_types {
     #[hax_lib::refinement_type(|x| x == 4 || x == 5 || x == 10 || x == 11)]
     pub struct CompressionFactor(u8);
 }
+mod nested_refinement_elim {
+    use hax_lib::*;
+    #[refinement_type(|x| true)]
+    pub struct DummyRefinement(u16);
+
+    fn elim_twice(x: DummyRefinement) -> u16 {
+        (DummyRefinement::new(x.get())).get()
+    }
+}
