@@ -177,7 +177,7 @@ mod interlaced_consts_types {
     }
 }
 
-// Related to issue 719 (after reopen)
+// Related to issue #719 (after reopen)
 mod implicit_explicit_calling_conventions {
     struct Type<TypeArg, const ConstArg: usize> {
         field: [TypeArg; ConstArg],
