@@ -820,6 +820,9 @@ pub fn refinement_type(mut attr: pm::TokenStream, item: pm::TokenStream) -> pm::
     quote! {
         #[allow(non_snake_case)]
         mod #module_ident {
+            #[allow(unused_imports)]
+            use super::*;
+
             #refinement_item
 
             #newtype_as_ref_attr
@@ -828,7 +831,9 @@ pub fn refinement_type(mut attr: pm::TokenStream, item: pm::TokenStream) -> pm::
 
             #[::hax_lib::exclude]
             impl #generics ::hax_lib::Refinement for #ident <#generics_args> {
+
                 type InnerType = #inner_ty;
+
                 fn new(x: Self::InnerType) -> Self {
                     #debug_assert
                     Self(x)
