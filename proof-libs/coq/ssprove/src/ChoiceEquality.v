@@ -143,7 +143,7 @@ Section Both.
     forall (b : raw_both), Prop :=
   | both_valid_ret :
     forall x, valid_both {| is_pure := x ; is_state := ret x |}.
-  
+
   Class ValidBoth (p : raw_both) :=
     { is_valid_code : ValidCode fset0 fset0 (@is_state p) ;
       is_valid_both : @valid_both p ;
@@ -155,7 +155,7 @@ Section Both.
     mk2prog {
         both_prog :> raw_both ;
         both_prog_valid : @ValidBoth both_prog ;
-        p_eq : ⊢ ⦃ true_precond ⦄ (@is_state both_prog) ≈ ret (@is_pure both_prog) ⦃ pre_to_post_ret true_precond (@is_pure both_prog) ⦄ ;
+        p_eq : forall P, ⊢ ⦃ P ⦄ (@is_state both_prog) ≈ ret (@is_pure both_prog) ⦃ pre_to_post_ret P (@is_pure both_prog) ⦄ ;
       }.
   Arguments both_prog b.
   Arguments both_prog_valid b.
@@ -247,7 +247,7 @@ Program Definition ret_both {A : choice_type} (x : A) : both A :=
                         is_valid_code := valid_ret fset0 fset0 x ;
                         is_valid_both := both_valid_ret x ;
                       |} ;
-    p_eq := r_ret _ _ _ _ _ ;
+    p_eq := fun P => r_ret _ _ _ _ _ ;
   |}.
 Fail Next Obligation.
 
@@ -351,7 +351,23 @@ Program Definition bind_both {A B} (c : both A) (k : A -> both B) : both B :=
   |}.
 Next Obligation.
   intros.
-  r_subst_both c.
+  let x := fresh in
+  let y := fresh in
+  let z := fresh in
+  pattern_both x y z ;
+  change (z _) with (temp ← ret (is_pure x) ;; z temp).
+
+  eapply r_bind ; [ apply (p_eq _) | ].
+  intros ;
+  apply rpre_hypothesis_rule.
+  intros ? ? [[]].
+  eapply rpre_weaken_rule.
+  2:{
+    simpl ; intros ? ? [].
+    subst.
+    apply H4.
+  }
+  subst a₀ a₁ ; hnf.
   apply (k (is_pure c)).
 Qed.
 
