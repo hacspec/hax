@@ -229,7 +229,7 @@ module type EXPR = sig
   val c_trait_item' : Thir.trait_item -> Thir.trait_item_kind -> trait_item'
   val c_trait_ref : Thir.span -> Thir.trait_ref -> trait_goal
   val c_impl_expr : Thir.span -> Thir.impl_expr -> impl_expr
-  val c_clause : Thir.span -> Thir.clause -> impl_ident option
+  val c_clause : Thir.span -> Thir.clause -> generic_constraint option
 end
 
 (* BinOp to [core::ops::*] overloaded functions *)
@@ -1086,15 +1086,23 @@ end) : EXPR = struct
     let attrs = c_attrs param.attributes in
     { ident; span; attrs; kind }
 
-  let c_clause_kind span id (kind : Thir.clause_kind) : impl_ident option =
+  let c_clause_kind span id (kind : Thir.clause_kind) :
+      generic_constraint option =
     match kind with
     | Trait { is_positive = true; trait_ref } ->
         let args = List.map ~f:(c_generic_value span) trait_ref.generic_args in
         let trait = Concrete_ident.of_def_id Trait trait_ref.def_id in
-        Some { goal = { trait; args }; name = id }
+        Some (GCType { goal = { trait; args }; name = id })
+    | Projection { impl_expr; assoc_item; ty } ->
+        let impl = c_impl_expr span impl_expr in
+        let assoc_item =
+          Concrete_ident.of_def_id (AssociatedItem Type) assoc_item.def_id
+        in
+        let typ = c_ty span ty in
+        Some (GCProjection { impl; assoc_item; typ })
     | _ -> None
 
-  let c_clause span (p : Thir.clause) : impl_ident option =
+  let c_clause span (p : Thir.clause) : generic_constraint option =
     let ({ kind; id } : Thir.clause) = p in
     c_clause_kind span id kind.value
 
@@ -1109,10 +1117,7 @@ end) : EXPR = struct
     aux []
 
   let c_generics (generics : Thir.generics) : generics =
-    let bounds =
-      List.filter_map ~f:(c_clause generics.span) generics.bounds
-      |> List.map ~f:(fun impl_ident -> GCType impl_ident)
-    in
+    let bounds = List.filter_map ~f:(c_clause generics.span) generics.bounds in
     {
       params = List.map ~f:c_generic_param generics.params;
       constraints = bounds |> list_dedup equal_generic_constraint;
@@ -1139,7 +1144,11 @@ end) : EXPR = struct
         in
         TIFn (TArrow (inputs, output))
     | Type (bounds, None) ->
-        let bounds = List.filter_map ~f:(c_clause span) bounds in
+        let bounds =
+          List.filter_map ~f:(c_clause span) bounds
+          |> List.filter_map ~f:(fun bound ->
+                 match bound with GCType impl -> Some impl | _ -> None)
+        in
         TIType bounds
     | Type (_, Some _) ->
         unimplemented [ span ]
@@ -1156,7 +1165,8 @@ include struct
   let import_trait_ref : Types.span -> Types.trait_ref -> Ast.Rust.trait_goal =
     c_trait_ref
 
-  let import_clause : Types.span -> Types.clause -> Ast.Rust.impl_ident option =
+  let import_clause :
+      Types.span -> Types.clause -> Ast.Rust.generic_constraint option =
     c_clause
 end
 
@@ -1577,9 +1587,13 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                                  parent_bounds =
                                    List.filter_map
                                      ~f:(fun (clause, impl_expr, span) ->
-                                       let* trait_goal = c_clause span clause in
-                                       Some
-                                         (c_impl_expr span impl_expr, trait_goal))
+                                       let* bound = c_clause span clause in
+                                       match bound with
+                                       | GCType trait_goal ->
+                                           Some
+                                             ( c_impl_expr span impl_expr,
+                                               trait_goal )
+                                       | _ -> None)
                                      parent_bounds;
                                });
                        ii_ident;
@@ -1589,8 +1603,11 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                parent_bounds =
                  List.filter_map
                    ~f:(fun (clause, impl_expr, span) ->
-                     let* trait_goal = c_clause span clause in
-                     Some (c_impl_expr span impl_expr, trait_goal))
+                     let* bound = c_clause span clause in
+                     match bound with
+                     | GCType trait_goal ->
+                         Some (c_impl_expr span impl_expr, trait_goal)
+                     | _ -> None)
                    parent_bounds;
              }
     | Use ({ span = _; res; segments; rename }, _) ->

@@ -657,6 +657,10 @@ struct
       | GCType { goal; name } ->
           let typ = c_trait_goal span goal in
           { kind = Tcresolve; ident = F.id name; typ }
+      | GCProjection _ ->
+          Error.unimplemented ~issue_id:549
+            ~details:"Projections of an associated type is not yet supported."
+            span
 
     let of_generics span generics : t list =
       List.map ~f:(of_generic_param span) generics.params
@@ -1280,7 +1284,15 @@ struct
           generics.constraints
           |> List.map ~f:(fun c ->
                  let bound, id =
-                   match c with GCType { goal; name } -> (goal, name) | _ -> .
+                   match c with
+                   | GCType { goal; name } -> (goal, name)
+                   | GCProjection _ ->
+                       Error.unimplemented ~issue_id:549
+                         ~details:
+                           "Projections of an associated type is not yet \
+                            supported."
+                         e.span
+                   | _ -> .
                  in
                  let name = "_super_" ^ id in
                  let typ = pgeneric_constraint_type e.span c in
