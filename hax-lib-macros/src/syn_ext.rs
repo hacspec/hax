@@ -37,3 +37,43 @@ impl PathExt for Path {
         }) if i == ident.to_string().as_str())
     }
 }
+
+/// Utility trait to extract an `Ident` from various syn types
+pub trait ExpectIdent {
+    /// Is `self` an `Ident`?
+    fn expect_ident(&self) -> Option<Ident>;
+    /// Is `self` a specific ident named `name`?
+    fn is_ident(&self, name: &str) -> bool {
+        self.expect_ident()
+            .filter(|ident| &ident.to_string() == name)
+            .is_some()
+    }
+}
+
+impl<T: ExpectIdent> ExpectIdent for Box<T> {
+    fn expect_ident(&self) -> Option<Ident> {
+        let this: &T = &*self;
+        this.expect_ident()
+    }
+}
+
+fn expect_punctuated_1<T: Clone, S>(x: &syn::punctuated::Punctuated<T, S>) -> Option<T> {
+    (x.len() == 1).then(|| x.first().unwrap().clone())
+}
+
+impl ExpectIdent for Path {
+    fn expect_ident(&self) -> Option<Ident> {
+        expect_punctuated_1(&self.segments).map(|s| s.ident)
+    }
+}
+
+impl ExpectIdent for Expr {
+    fn expect_ident(&self) -> Option<Ident> {
+        match self {
+            syn::Expr::Path(syn::ExprPath {
+                qself: None, path, ..
+            }) => path.expect_ident(),
+            _ => None,
+        }
+    }
+}

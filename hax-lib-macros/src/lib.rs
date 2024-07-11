@@ -4,10 +4,12 @@ mod syn_ext;
 mod utils;
 
 mod prelude {
+    pub use crate::syn_ext::*;
     pub use proc_macro as pm;
     pub use proc_macro2::*;
     pub use proc_macro_error::*;
     pub use quote::*;
+    pub use std::collections::HashSet;
     pub use syn::spanned::Spanned;
     pub use syn::{visit_mut::VisitMut, *};
 
@@ -17,7 +19,6 @@ mod prelude {
 }
 
 use prelude::*;
-use syn_ext::*;
 use utils::*;
 
 /// Include this item in the Hax translation.
@@ -188,6 +189,9 @@ pub fn decreases(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStrea
 
 /// Add a logical precondition to a function.
 // Note you can use the `forall` and `exists` operators. (TODO: commented out for now, see #297)
+/// In the case of a function that has one or more `&mut` inputs, in
+/// the `ensures` clause, you can refer to such an `&mut` input `x` as
+/// `x` for its "past" value and `future(x)` for its "future" value.
 ///
 /// # Example
 ///
