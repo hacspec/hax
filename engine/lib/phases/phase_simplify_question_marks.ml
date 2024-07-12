@@ -106,8 +106,8 @@ module%inlined_contents Make (FA : Features.T) = struct
         Some call
 
       let mk_pconstruct ~is_struct ~is_record ~span ~typ
-          (constructor : Concrete_ident_generated.name)
-          (fields : (Concrete_ident_generated.name * pat) list) =
+          (constructor : Concrete_ident_generated.t)
+          (fields : (Concrete_ident_generated.t * pat) list) =
         let name =
           Global_ident.of_name (Constructor { is_struct }) constructor
         in
@@ -136,7 +136,7 @@ module%inlined_contents Make (FA : Features.T) = struct
                         {
                           f = { e = GlobalVar f };
                           args = [ { e = LocalVar residual_var; _ } ];
-                          impl = Some impl;
+                          trait = Some (impl, _);
                         };
                     typ = return_typ;
                     _;

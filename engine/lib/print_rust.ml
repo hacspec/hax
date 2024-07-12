@@ -76,10 +76,8 @@ module Raw = struct
     | String s -> "\"" ^ String.escaped s ^ "\""
     | Char c -> "'" ^ Char.to_string c ^ "'"
     | Int { value; _ } -> value
-    | Float { value; kind = F32; negative } ->
-        pnegative negative ^ value ^ "f32"
-    | Float { value; kind = F64; negative } ->
-        pnegative negative ^ value ^ "f64"
+    | Float { value; kind; negative } ->
+        pnegative negative ^ value ^ show_float_kind kind
     | Bool b -> Bool.to_string b
 
   let pprimitive_ident span : _ -> AnnotatedString.t =
@@ -272,7 +270,7 @@ module Raw = struct
             arms
           |> concat ~sep:!","
         in
-        !"(match " & pexpr scrutinee & !" {" & arms & !"})"
+        !"(match (" & pexpr scrutinee & !") {" & arms & !"})"
     (* | Let { monadic = Some _; _ } -> !"monadic_let!()" *)
     | Let { monadic; lhs; rhs; body } ->
         (* TODO: here, [rhs.typ]! *)
@@ -280,7 +278,7 @@ module Raw = struct
         let rhs_typ = pty rhs.span rhs.typ in
         let note =
           if String.equal (to_string lhs_typ) (to_string rhs_typ) then !""
-          else !"// Note: rhs.typ=" & rhs_typ & !"\n"
+          else !"#[note(\"rhs.typ=" & rhs_typ & !"\")]\n"
         in
         let monadic =
           match monadic with
@@ -540,29 +538,31 @@ module Raw = struct
       in
       pattrs e.attrs & pi
     with NotImplemented ->
-      !("\n/* print_rust: pitem: not implemented  (item: "
+      !("\n/** print_rust: pitem: not implemented  (item: "
        ^ [%show: concrete_ident] e.ident
-       ^ ") */\n")
+       ^ ") */\nconst _: () = ();\n")
 end
 
 let rustfmt (s : string) : string =
-  let open Utils.Command in
-  let { stderr; stdout } = run "rustfmt" s in
-  if String.is_empty stderr then stdout
-  else
-    let err =
-      [%string
-        "\n\n\
-         #######################################################\n\
-         ########### WARNING: Failed running rustfmt ###########\n\
-         #### STDOUT:\n\
-         %{stdout}\n\
-         #### STDERR:\n\
-         %{stderr}\n\
-         #######################################################\n"]
-    in
-    Stdio.prerr_endline err;
-    [%string "/*\n%{err}\n*/\n\n%{s}"]
+  match
+    Hax_io.request (PrettyPrintRust s) ~expected:"PrettyPrintedRust" (function
+      | Types.PrettyPrintedRust s -> Some s
+      | _ -> None)
+  with
+  | Ok formatted -> formatted
+  | Err error ->
+      let err =
+        [%string
+          "\n\n\
+           #######################################################\n\
+           ########### WARNING: Failed formatting ###########\n\
+           %{error}\n\
+           STRING:\n\
+           %{s}\n\
+           #######################################################\n"]
+      in
+      Stdio.prerr_endline err;
+      s
 
 exception RetokenizationFailure
 

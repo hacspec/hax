@@ -407,6 +407,26 @@ struct
       (* in *)
       F.term @@ F.AST.Const (F.Const.Const_string ("failure", F.dummyRange))
 
+  and fun_application ~span f args ~trait_generic_args ~generic_args =
+    let pgeneric_args ?qualifier =
+      let qualifier_or default = Option.value ~default qualifier in
+      List.filter ~f:(function GType (TArrow _) -> false | _ -> true)
+      >> List.map ~f:(function
+           | GConst const -> (pexpr const, qualifier_or F.AST.Nothing)
+           | GLifetime _ -> .
+           | GType ty -> (pty span ty, qualifier_or F.AST.Hash))
+    in
+    let args = List.map ~f:(pexpr &&& Fn.const F.AST.Nothing) args in
+    let trait_generic_args =
+      Option.map
+        ~f:
+          (pgeneric_args ~qualifier:F.AST.Hash
+          >> Fn.flip ( @ ) [ (F.solve, F.AST.Hash) ])
+        trait_generic_args
+      |> Option.value ~default:[]
+    in
+    F.mk_app f (trait_generic_args @ pgeneric_args generic_args @ args)
+
   and pexpr_unwrapped (e : expr) =
     match e.e with
     | Literal l -> pliteral_as_expr e.span l
@@ -437,7 +457,7 @@ struct
         {
           f = { e = GlobalVar f; _ };
           args = [ { e = Literal (String s); _ } ];
-          generic_args;
+          generic_args = _;
         }
       when Global_ident.eq_name Hax_lib__int__Impl_5___unsafe_from_str f ->
         (match
@@ -451,17 +471,10 @@ struct
             @@ "pexpr: expected a integer, found the following non-digit \
                 chars: '" ^ s ^ "'");
         F.AST.Const (F.Const.Const_int (s, None)) |> F.term
-    | App { f; args; generic_args; bounds_impls = _; impl = _ } ->
-        let generic_args =
-          generic_args
-          |> List.filter ~f:(function GType (TArrow _) -> false | _ -> true)
-          |> List.map ~f:(function
-               | GConst const -> (pexpr const, F.AST.Nothing)
-               | GLifetime _ -> .
-               | GType ty -> (pty e.span ty, F.AST.Hash))
-        in
-        let args = List.map ~f:(pexpr &&& Fn.const F.AST.Nothing) args in
-        F.mk_app (pexpr f) (generic_args @ args)
+    | App { f; args; generic_args; bounds_impls = _; trait } ->
+        let trait_generic_args = Option.map ~f:snd trait in
+        fun_application (pexpr f) args ~span:e.span ~trait_generic_args
+          ~generic_args
     | If { cond; then_; else_ } ->
         F.term
         @@ F.AST.If
@@ -626,12 +639,16 @@ struct
     type kind = Implicit | Tcresolve | Explicit
     type t = { kind : kind; ident : F.Ident.ident; typ : F.AST.term }
 
-    let of_generic_param ?(kind : kind = Implicit) span (p : generic_param) : t
-        =
+    let make_explicit x = { x with kind = Explicit }
+
+    let implicit_to_explicit x =
+      if [%matches? Tcresolve] x.kind then x else make_explicit x
+
+    let of_generic_param span (p : generic_param) : t =
       let ident = plocal_ident p.ident in
       match p.kind with
       | GPLifetime _ -> Error.assertion_failure span "pgeneric_param:LIFETIME"
-      | GPType { default = _ } -> { kind; typ = F.type0_term; ident }
+      | GPType { default = _ } -> { kind = Implicit; typ = F.type0_term; ident }
       | GPConst { typ } -> { kind = Explicit; typ = pty span typ; ident }
 
     let of_generic_constraint span (nth : int) (c : generic_constraint) =
@@ -641,8 +658,8 @@ struct
           let typ = c_trait_goal span goal in
           { kind = Tcresolve; ident = F.id name; typ }
 
-    let of_generics ?(kind : kind = Implicit) span generics : t list =
-      List.map ~f:(of_generic_param ~kind span) generics.params
+    let of_generics span generics : t list =
+      List.map ~f:(of_generic_param span) generics.params
       @ List.mapi ~f:(of_generic_constraint span) generics.constraints
 
     let of_typ span (nth : int) typ : t =
@@ -673,17 +690,24 @@ struct
     let to_term (x : t) : F.AST.term =
       F.term @@ F.AST.Var (FStar_Ident.lid_of_ns_and_id [] (to_ident x))
 
+    let to_imp (x : t) : F.AST.imp =
+      match x.kind with Tcresolve | Implicit -> Hash | Explicit -> Nothing
+
+    let to_qualified_term : t -> F.AST.term * F.AST.imp = to_term &&& to_imp
+
+    let to_qualifier (x : t) : F.AST.arg_qualifier option =
+      match x.kind with
+      | Tcresolve -> Some TypeClassArg
+      | Implicit -> Some Implicit
+      | Explicit -> None
+
     let to_binder (x : t) : F.AST.binder =
       F.AST.
         {
           b = F.AST.Annotated (x.ident, x.typ);
           brange = F.dummyRange;
           blevel = Un;
-          aqual =
-            (match x.kind with
-            | Tcresolve -> Some TypeClassArg
-            | Implicit -> Some Implicit
-            | Explicit -> None);
+          aqual = to_qualifier x;
           battributes = [];
         }
   end
@@ -1011,7 +1035,8 @@ struct
                [
                  F.AST.TyconRecord
                    ( F.id @@ U.Concrete_ident_view.to_definition_name name,
-                     FStarBinder.of_generics ~kind:Explicit e.span generics
+                     FStarBinder.of_generics e.span generics
+                     |> List.map ~f:FStarBinder.implicit_to_explicit
                      |> List.map ~f:FStarBinder.to_binder,
                      None,
                      [],
@@ -1077,7 +1102,8 @@ struct
                [
                  F.AST.TyconVariant
                    ( F.id @@ U.Concrete_ident_view.to_definition_name name,
-                     FStarBinder.of_generics ~kind:Explicit e.span generics
+                     FStarBinder.of_generics e.span generics
+                     |> List.map ~f:FStarBinder.implicit_to_explicit
                      |> List.map ~f:FStarBinder.to_binder,
                      None,
                      constructors );
@@ -1154,20 +1180,13 @@ struct
             | _ -> unsupported_macro ())
         | _ -> unsupported_macro ())
     | Trait { name; generics; items } ->
-        let bds =
-          List.map
-            ~f:FStarBinder.(of_generic_param ~kind:Explicit e.span >> to_binder)
-            generics.params
-        in
         let name_str = U.Concrete_ident_view.to_definition_name name in
         let name_id = F.id @@ name_str in
         let fields =
           List.concat_map
             ~f:(fun i ->
               let name = U.Concrete_ident_view.to_definition_name i.ti_ident in
-              let generics =
-                FStarBinder.of_generics ~kind:Implicit i.ti_span i.ti_generics
-              in
+              let generics = FStarBinder.of_generics i.ti_span i.ti_generics in
               let bds = generics |> List.map ~f:FStarBinder.to_binder in
               let fields =
                 match i.ti_v with
@@ -1209,14 +1228,16 @@ struct
                     let inputs = generics @ inputs in
                     let output = pty e.span output in
                     let ty_pre_post =
-                      let inputs = List.map ~f:FStarBinder.to_term inputs in
+                      let inputs =
+                        List.map ~f:FStarBinder.to_qualified_term inputs
+                      in
                       let add_pre n = n ^ "_pre" in
                       let pre_name_str =
                         U.Concrete_ident_view.to_definition_name
                           (Concrete_ident.Create.map_last ~f:add_pre i.ti_ident)
                       in
                       let pre =
-                        F.mk_e_app (F.term_of_lid [ pre_name_str ]) inputs
+                        F.mk_app (F.term_of_lid [ pre_name_str ]) inputs
                       in
                       let result = F.term_of_lid [ "result" ] in
                       let add_post n = n ^ "_post" in
@@ -1225,9 +1246,9 @@ struct
                           (Concrete_ident.Create.map_last ~f:add_post i.ti_ident)
                       in
                       let post =
-                        F.mk_e_app
+                        F.mk_app
                           (F.term_of_lid [ post_name_str ])
-                          (inputs @ [ result ])
+                          (inputs @ [ (result, Nothing) ])
                       in
                       let post =
                         F.mk_e_abs
@@ -1274,7 +1295,17 @@ struct
             [ (F.id marker_field, None, [], pty e.span U.unit_typ) ]
           else fields
         in
-        let tcdef = F.AST.TyconRecord (name_id, bds, None, [], fields) in
+        let tcdef =
+          (* Binders are explicit on class definitions *)
+          let bds =
+            List.map
+              ~f:
+                FStarBinder.(
+                  of_generic_param e.span >> implicit_to_explicit >> to_binder)
+              generics.params
+          in
+          F.AST.TyconRecord (name_id, bds, None, [], fields)
+        in
         let d = F.AST.Tycon (false, true, [ tcdef ]) in
         [ `Intf { d; drange = F.dummyRange; quals = []; attrs = [] } ]
     | Impl

@@ -44,6 +44,16 @@ unfold instance impl: Core.Ops.Arith.t_Sub t_Int t_Int =
     f_sub = fun (self: t_Int) (other: t_Int) -> self + other
   }
 '''
+"Attributes.Nested_refinement_elim.fst" = '''
+module Attributes.Nested_refinement_elim
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let t_DummyRefinement = x: u16{true}
+
+let elim_twice (x: t_DummyRefinement) : u16 = ((x <: u16) <: t_DummyRefinement) <: u16
+'''
 "Attributes.Newtype_pattern.fst" = '''
 module Attributes.Newtype_pattern
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
@@ -173,7 +183,12 @@ let t_NoE =
   Alloc.String.t_String
     { let _, out:(Core.Str.Iter.t_Chars & bool) =
         Core.Iter.Traits.Iterator.f_any #Core.Str.Iter.t_Chars
-          (Core.Str.impl__str__chars (Core.Ops.Deref.f_deref #Alloc.String.t_String x <: string)
+          #FStar.Tactics.Typeclasses.solve
+          (Core.Str.impl__str__chars (Core.Ops.Deref.f_deref #Alloc.String.t_String
+                  #FStar.Tactics.Typeclasses.solve
+                  x
+                <:
+                string)
             <:
             Core.Str.Iter.t_Chars)
           (fun ch ->
@@ -183,10 +198,7 @@ let t_NoE =
       ~.out }
 
 let bounded_u8 (x: t_BoundedU8 12uy 15uy) (y: t_BoundedU8 10uy 11uy) : t_BoundedU8 1uy 23uy =
-  (Hax_lib.f_get #(t_BoundedU8 12uy 15uy) x <: u8) +!
-  (Hax_lib.f_get #(t_BoundedU8 10uy 11uy) y <: u8)
-  <:
-  t_BoundedU8 1uy 23uy
+  (x <: u8) +! (y <: u8) <: t_BoundedU8 1uy 23uy
 
 let double (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_True) =
   x +! x <: t_Even
@@ -224,6 +236,19 @@ let add3 (x y z: u32)
             (fun temp_0_ ->
                 let _:Prims.unit = temp_0_ in
                 result >. 32ul <: bool)) = (x +! y <: u32) +! z
+
+let swap_and_mut_req_ens (x y: u32)
+    : Prims.Pure (u32 & u32 & u32)
+      (requires x <. 40ul && y <. 300ul)
+      (ensures
+        fun temp_0_ ->
+          let x_future, y_future, result:(u32 & u32 & u32) = temp_0_ in
+          x_future =. y && y_future =. x && result =. (x +! y <: u32)) =
+  let x0:u32 = x in
+  let x:u32 = y in
+  let y:u32 = x0 in
+  let hax_temp_output:u32 = x +! y in
+  x, y, hax_temp_output <: (u32 & u32 & u32)
 
 type t_Foo = {
   f_x:u32;

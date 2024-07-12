@@ -10,7 +10,6 @@
     };
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
-      inputs.flake-utils.follows = "flake-utils";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     fstar = {
@@ -60,9 +59,20 @@
       in rec {
         packages = {
           inherit rustc ocamlformat rustfmt fstar hax-env;
+          hax-book = pkgs.callPackage ./book {};
           hax-engine = pkgs.callPackage ./engine {
             hax-rust-frontend = packages.hax-rust-frontend.unwrapped;
-            hax-engine-names-extract = packages.hax-rust-frontend.hax-engine-names-extract;
+            # `hax-engine-names-extract` extracts Rust names but also
+            # some informations about `impl`s when names are `impl`
+            # blocks. That includes some span information, which
+            # includes full paths to Rust sources. Sometimes those
+            # Rust sources happens to be in the Nix store. That
+            # creates useless dependencies, this wrapper below takes
+            # care of removing those extra depenedencies.
+            hax-engine-names-extract = pkgs.writeScriptBin "hax-engine-names-extract" ''
+              #!${pkgs.stdenv.shell}
+              ${packages.hax-rust-frontend.hax-engine-names-extract}/bin/hax-engine-names-extract | sed 's|/nix/store/\(.\{6\}\)|/nix_store/\1-|g'
+            '';
             inherit rustc;
           };
           hax-rust-frontend = pkgs.callPackage ./cli {
@@ -75,6 +85,15 @@
           check-toolchain = checks.toolchain;
           check-examples = checks.examples;
           check-readme-coherency = checks.readme-coherency;
+
+          # The commit that corresponds to our nightly pin, helpful when updating rusrc.
+          toolchain_commit = pkgs.runCommand "hax-toolchain-commit" { } ''
+            # This is sad but I don't know a better way.
+            cat ${rustc}/share/doc/rust/html/version_info.html \
+              | grep 'github.com' \
+              | sed 's#.*"https://github.com/rust-lang/rust/commit/\([^"]*\)".*#\1#' \
+              > $out
+          '';
         };
         checks = {
           toolchain = packages.hax.tests;
@@ -109,7 +128,14 @@
             type = "app";
             program = "${pkgs.writeScript "serve-rustc-docs" ''
               cd ${packages.rustc.passthru.availableComponents.rustc-docs}/share/doc/rust/html/rustc
-              ${pkgs.python3}/bin/python -m http.server
+              ${pkgs.python3}/bin/python -m http.server "$@"
+            ''}";
+          };
+          serve-book = {
+            type = "app";
+            program = "${pkgs.writeScript "serve-book" ''
+              cd ${packages.hax-book}
+              ${pkgs.python3}/bin/python -m http.server "$@"
             ''}";
           };
         };

@@ -11,6 +11,15 @@ fn add3(x: u32, y: u32, z: u32) -> u32 {
     x + y + z
 }
 
+#[hax::requires(*x < 40 && *y < 300)]
+#[hax::ensures(|result| *future(x) == *y && *future(y) == *x && result == *x + *y)]
+fn swap_and_mut_req_ens(x: &mut u32, y: &mut u32) -> u32 {
+    let x0 = *x;
+    *x = *y;
+    *y = x0;
+    *x + *y
+}
+
 #[hax::lemma]
 fn add3_lemma(x: u32) -> Proof<{ x <= 10 || x >= u32_max / 3 || add3(x, x, x) == x * 3 }> {}
 
@@ -222,4 +231,13 @@ mod refinement_types {
     /// Example of a specific constraint on a value
     #[hax_lib::refinement_type(|x| x == 4 || x == 5 || x == 10 || x == 11)]
     pub struct CompressionFactor(u8);
+}
+mod nested_refinement_elim {
+    use hax_lib::*;
+    #[refinement_type(|x| true)]
+    pub struct DummyRefinement(u16);
+
+    fn elim_twice(x: DummyRefinement) -> u16 {
+        (DummyRefinement::new(x.get())).get()
+    }
 }

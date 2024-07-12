@@ -78,9 +78,14 @@ let show_int_kind { size; signedness } =
     |> Option.map ~f:Int.to_string
     |> Option.value ~default:"size")
 
-type float_kind = F32 | F64 [@@deriving show, yojson, hash, compare, eq]
+type float_kind = F16 | F32 | F64 | F128
+[@@deriving show, yojson, hash, compare, eq]
 
-let show_float_kind = function F32 -> "f32" | F64 -> "f64"
+let show_float_kind = function
+  | F16 -> "f16"
+  | F32 -> "f32"
+  | F64 -> "f64"
+  | F128 -> "f128"
 
 type literal =
   | String of string
@@ -195,7 +200,7 @@ functor
           args : expr list (* ; f_span: span *);
           generic_args : generic_value list;
           bounds_impls : impl_expr list;
-          impl : impl_expr option;
+          trait : (impl_expr * generic_value list) option;
         }
       | Literal of literal
       | Array of expr list

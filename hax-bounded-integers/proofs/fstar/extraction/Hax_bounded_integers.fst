@@ -37,4 +37,4 @@ let t_BoundedU64 (v_MIN v_MAX: u64) = x: u64{x >=. v_MIN && x <=. v_MAX}
 let t_BoundedU8 (v_MIN v_MAX: u8) = x: u8{x >=. v_MIN && x <=. v_MAX}
 
 ///Bounded usize integers. This struct enforces the invariant that values are greater or equal to `MIN` and less or equal to `MAX`.
-unfold let t_BoundedUsize (v_MIN v_MAX: usize) = x: usize{x >=. v_MIN && x <=. v_MAX}
+let t_BoundedUsize (v_MIN v_MAX: usize) = x: usize{x >=. v_MIN && x <=. v_MAX}

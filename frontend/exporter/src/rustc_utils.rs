@@ -110,7 +110,7 @@ pub(crate) fn arrow_of_sig<'tcx, S: UnderOwnerState<'tcx>>(sig: &ty::PolyFnSig<'
 #[tracing::instrument(skip(s))]
 pub(crate) fn get_variant_information<'s, S: UnderOwnerState<'s>>(
     adt_def: &ty::AdtDef<'s>,
-    variant_index: rustc_abi::VariantIdx,
+    variant_index: rustc_target::abi::VariantIdx,
     s: &S,
 ) -> VariantInformations {
     s_assert!(s, !adt_def.is_union() || *CORE_EXTRACTION_MODE);
@@ -198,7 +198,7 @@ pub(crate) fn read_span_from_file(span: &Span) -> Result<String, ReadSpanErr> {
 
 #[tracing::instrument(skip(sess))]
 pub fn translate_span(span: rustc_span::Span, sess: &rustc_session::Session) -> Span {
-    let smap: &rustc_span::source_map::SourceMap = sess.parse_sess.source_map();
+    let smap: &rustc_span::source_map::SourceMap = sess.psess.source_map();
     let filename = smap.span_to_filename(span);
 
     let lo = smap.lookup_char_pos(span.lo());

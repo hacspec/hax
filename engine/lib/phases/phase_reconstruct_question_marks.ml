@@ -113,7 +113,7 @@ module%inlined_contents Make (FA : Features.T) = struct
                         {
                           f = { e = GlobalVar f };
                           args = [ { e = LocalVar residual_var; _ } ];
-                          impl = Some impl;
+                          trait = Some (impl, _);
                         };
                     typ = return_typ;
                     _;

@@ -1,0 +1,10 @@
+[book]
+authors = ["Franziskus Kiefer"]
+language = "en"
+multilingual = false
+src = "src"
+title = "hax"
+
+[output.html]
+mathjax-support = true
+

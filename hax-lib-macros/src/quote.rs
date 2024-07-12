@@ -13,7 +13,6 @@
 //!  - `:`, the antiquotation is a type.
 
 use crate::prelude::*;
-use quote::ToTokens;
 
 /// Marker that indicates a place where a antiquotation will be inserted
 const SPLIT_MARK: &str = "SPLIT_QUOTE";

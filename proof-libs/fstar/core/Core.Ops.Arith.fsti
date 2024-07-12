@@ -33,3 +33,16 @@ class t_Div self rhs = {
    f_div_post: self -> rhs -> f_Output -> bool;
    f_div: x:self -> y:rhs -> Pure f_Output (f_div_pre x y) (fun r -> f_div_post x y r);
 }
+
+class t_AddAssign self rhs = {
+  f_add_assign_pre: self -> rhs -> bool;
+  f_add_assign_post: self -> rhs -> self -> bool;
+  f_add_assign: x:self -> y:rhs -> Pure self (f_add_assign_pre x y) (fun r -> f_add_assign_post x y r);
+}
+
+class t_SubAssign self rhs = {
+  f_sub_assign_pre: self -> rhs -> bool;
+  f_sub_assign_post: self -> rhs -> self -> bool;
+  f_sub_assign: x:self -> y:rhs -> Pure self (f_sub_assign_pre x y) (fun r -> f_sub_assign_post x y r);
+}
+

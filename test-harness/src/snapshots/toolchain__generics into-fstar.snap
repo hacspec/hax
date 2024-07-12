@@ -21,9 +21,7 @@ info:
     backend_options: ~
 ---
 exit = 0
-stderr = '''
-Compiling generics v0.1.0 (WORKSPACE_ROOT/generics)
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
 
 [stdout]
 diagnostics = []
@@ -67,7 +65,11 @@ let dup
       (#v_T: Type0)
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Clone.t_Clone v_T)
       (x: v_T)
-    : (v_T & v_T) = Core.Clone.f_clone #v_T x, Core.Clone.f_clone #v_T x <: (v_T & v_T)
+    : (v_T & v_T) =
+  Core.Clone.f_clone #v_T #FStar.Tactics.Typeclasses.solve x,
+  Core.Clone.f_clone #v_T #FStar.Tactics.Typeclasses.solve x
+  <:
+  (v_T & v_T)
 
 let f (v_N x: usize) : usize = (v_N +! v_N <: usize) +! x
 
@@ -81,8 +83,12 @@ let g
     : usize =
   (Core.Option.impl__unwrap_or #usize
       (Core.Iter.Traits.Iterator.f_max #(Core.Array.Iter.t_IntoIter usize v_N)
+          #FStar.Tactics.Typeclasses.solve
           (Core.Iter.Traits.Collect.f_into_iter #(t_Array usize v_N)
-              (Core.Convert.f_into #v_T #(t_Array usize v_N) arr <: t_Array usize v_N)
+              #FStar.Tactics.Typeclasses.solve
+              (Core.Convert.f_into #v_T #(t_Array usize v_N) #FStar.Tactics.Typeclasses.solve arr
+                <:
+                t_Array usize v_N)
             <:
             Core.Array.Iter.t_IntoIter usize v_N)
         <:
@@ -107,6 +113,7 @@ let foo (v_LEN: usize) (arr: t_Array usize v_LEN) : usize =
   let acc:usize =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Ops.Range.t_Range
             usize)
+          #FStar.Tactics.Typeclasses.solve
           ({ Core.Ops.Range.f_start = sz 0; Core.Ops.Range.f_end = v_LEN }
             <:
             Core.Ops.Range.t_Range usize)

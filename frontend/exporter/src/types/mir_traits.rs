@@ -77,7 +77,7 @@ pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
             // variables.
             // Remark: there is also EarlyBinder::subst(...)
             let value = rustc_middle::ty::EarlyBinder::bind(pred_kind.skip_binder());
-            tcx.subst_and_normalize_erasing_regions(generics, param_env, value)
+            tcx.instantiate_and_normalize_erasing_regions(generics, param_env, value)
         };
 
         // Explore only the trait predicates
@@ -144,7 +144,8 @@ pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
 /// or a trait definition inside an impl/trait block. However it is possible
 /// to define an impl/trait inside a function, which can itself be inside a
 /// block, leading to nested impl blocks.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema)]
 pub struct ParamsInfo {
     /// The total number of generic parameters (regions + types + consts).
     /// We do not consider the trait clauses as generic parameters.
@@ -174,9 +175,9 @@ pub fn get_params_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     let mut num_trait_type_constraints = 0;
 
     let generics = tcx.generics_of(def_id);
-    let num_generic_params = generics.params.len();
+    let num_generic_params = generics.own_params.len();
     use rustc_middle::ty::GenericParamDefKind;
-    for param in &generics.params {
+    for param in &generics.own_params {
         match param.kind {
             GenericParamDefKind::Lifetime => num_region_params += 1,
             GenericParamDefKind::Type { .. } => num_type_params += 1,
