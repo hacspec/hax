@@ -1,0 +1,13 @@
+(coq.theory
+ (name Hacspec) ; -R flag
+ (package coq-hacspec)
+ (flags -w all)
+ (theories
+   Flocq
+   compcert
+   QuickChick mathcomp.ssreflect elpi HB ExtLib SimpleIO
+   Coqprime
+   )
+ ; (libraries <ocaml_libraries>)
+ )
+; (include_subdirs qualified)
