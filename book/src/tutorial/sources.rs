@@ -95,7 +95,7 @@ pub const Q: u16 = 2347;
 
 #[hax_lib::attributes]
 pub struct F {
-    #[refine(v < Q)]
+    #[hax_lib::refine(v < Q)]
     pub v: u16,
 }
 // ANCHOR_END: F
