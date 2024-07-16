@@ -23,7 +23,7 @@ multiplication `x * x` might indeed be overflowing!
 
 For instance, running `square(16)` panics: `16 * 16` is `256`, which
 is just over `255`, the largest integer that fits `u8`. Rust does not
-ensure that functions are not *total*: a function might panic at any
+ensure that functions are *total*: a function might panic at any
 point, or might never terminate.
 
 ## Rust and panicking code
@@ -73,7 +73,7 @@ we do better?
 
 ### Solution B: add a precondition
 The type system of Rust doesn't allow the programmer to formalize the
-assumption that `multiply_by_two` expects a small `u8`. This becomes
+assumption that `square` expects a small `u8`. This becomes
 possible using hax: one can annotate a function with a pre-condition
 on its inputs.
 

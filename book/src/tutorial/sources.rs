@@ -17,7 +17,7 @@ fn square_option(x: u8) -> Option<u8> {
 // ANCHOR_END: square_option
 
 // ANCHOR: square_requires
-#[hax_lib_macros::requires(x < 16)]
+#[hax::requires(x < 16)]
 fn square_requires(x: u8) -> u8 {
     x * x
 }
