@@ -45,3 +45,9 @@ struct Bar;
 impl Bar {
     fn inherent_impl_generics<T, const N: usize>(x: [T; N]) {}
 }
+
+/// Test defaults types and constants
+mod defaults_generics {
+    struct Defaults<T = (), const N: usize = 2>([T; N]);
+    fn f(_: Defaults) {}
+}

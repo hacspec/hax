@@ -22,8 +22,8 @@ let pow2_minus_one_mod_lemma2 (n: nat) (m: nat {n <= m})
   = Math.Lemmas.pow2_le_compat m n;
     Math.Lemmas.small_div (pow2 n - 1) (pow2 m)
 
-let bit_vec_to_int_arr d bv = admit () // see issue #423
-let bit_vec_to_nat_arr d bv = admit () // see issue #423
+let bit_vec_to_int_t_array d bv = admit () // see issue #423
+let bit_vec_to_nat_array d bv = admit () // see issue #423
 
 let get_bit_pow2_minus_one #t n nth
   = reveal_opaque (`%get_bit) (get_bit (mk_int #t (pow2 n - 1)) nth);

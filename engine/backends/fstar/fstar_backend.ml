@@ -11,6 +11,7 @@ include
       include On.Slice
       include On.Macro
       include On.Construct_base
+      include On.Quote
     end)
     (struct
       let backend = Diagnostics.Backend.FStar
@@ -52,6 +53,7 @@ struct
         include Features.SUBTYPE.On.Construct_base
         include Features.SUBTYPE.On.Slice
         include Features.SUBTYPE.On.Macro
+        include Features.SUBTYPE.On.Quote
       end)
 
   let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
@@ -76,6 +78,7 @@ module FStarNamePolicy = struct
 end
 
 module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (FStarNamePolicy)
+module Visitors = Ast_visitors.Make (InputLanguage)
 open AST
 module F = Fstar_ast
 
@@ -84,6 +87,9 @@ let doc_to_string : PPrint.document -> string =
 
 let term_to_string : F.AST.term -> string =
   FStar_Parser_ToDocument.term_to_document >> doc_to_string
+
+let pat_to_string : F.AST.pattern -> string =
+  FStar_Parser_ToDocument.pat_to_document >> doc_to_string
 
 let decl_to_string : F.AST.decl -> string =
   FStar_Parser_ToDocument.decl_to_document >> doc_to_string
@@ -127,13 +133,16 @@ struct
           | S32 -> Int32
           | S64 -> Int64
           | S128 ->
-              Error.unimplemented
+              Error.unimplemented ~issue_id:464
                 ~details:
-                  "128 literals (fail if pattern maching, otherwise TODO)" span
+                  "Matching on u128 or i128 literals is not yet supported." span
           | SSize ->
-              Error.unimplemented
+              Error.unimplemented ~issue_id:464
                 ~details:
-                  "usize literals (fail if pattern maching, otherwise TODO)"
+                  "Matching on usize or isize literals is not yet supported. \
+                   As a work-around, instead of `match expr { 0 => ... }`, \
+                   please cast for instance to `u64` before: `match expr as \
+                   u64 { 0 => ... }`."
                 span
         in
         F.Const.Const_int
@@ -189,15 +198,15 @@ struct
           ("pglobal_ident: expected to be handled somewhere else: "
          ^ show_global_ident id)
 
-  let plocal_ident (e : Local_ident.t) =
-    (* let name = U.Concrete_ident_view.local_ident e.name in *)
-    F.id
-    @@ U.Concrete_ident_view.local_ident
-         (match String.chop_prefix ~prefix:"impl " e.name with
-         | Some name ->
-             let name = "impl_" ^ Int.to_string ([%hash: string] name) in
-             { e with name }
-         | _ -> e)
+  let plocal_ident_str (e : Local_ident.t) =
+    U.Concrete_ident_view.local_ident
+      (match String.chop_prefix ~prefix:"impl " e.name with
+      | Some name ->
+          let name = "impl_" ^ Int.to_string ([%hash: string] name) in
+          { e with name }
+      | _ -> e)
+
+  let plocal_ident = plocal_ident_str >> F.id
 
   let pfield_ident span (f : global_ident) : F.Ident.lident =
     match f with
@@ -245,6 +254,17 @@ struct
       (c Core__cmp__PartialOrd__gt, (2, ">."));
       (`Primitive (LogicalOp And), (2, "&&"));
       (`Primitive (LogicalOp Or), (2, "||"));
+      (c Rust_primitives__hax__int__add, (2, "+"));
+      (c Rust_primitives__hax__int__sub, (2, "-"));
+      (c Rust_primitives__hax__int__mul, (2, "*"));
+      (c Rust_primitives__hax__int__div, (2, "/"));
+      (c Rust_primitives__hax__int__rem, (2, "%"));
+      (c Rust_primitives__hax__int__ge, (2, ">="));
+      (c Rust_primitives__hax__int__le, (2, "<="));
+      (c Rust_primitives__hax__int__gt, (2, ">"));
+      (c Rust_primitives__hax__int__lt, (2, "<"));
+      (c Rust_primitives__hax__int__ne, (2, "<>"));
+      (c Rust_primitives__hax__int__eq, (2, "="));
     ]
     |> Map.of_alist_exn (module Global_ident)
 
@@ -280,6 +300,9 @@ struct
     | TArray { typ; length } ->
         F.mk_e_app (F.term_of_lid [ "t_Array" ]) [ pty span typ; pexpr length ]
     | TParam i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident i)
+    | TAssociatedType { impl = Self; item } ->
+        F.term
+        @@ F.AST.Var (F.lid [ U.Concrete_ident_view.to_definition_name item ])
     | TAssociatedType { impl; item } -> (
         match pimpl_expr span impl with
         | Some impl ->
@@ -294,7 +317,7 @@ struct
     let some = Option.some in
     let hax_unstable_impl_exprs = false in
     match ie with
-    | Concrete tr -> c_trait_ref span tr |> some
+    | Concrete tr -> c_trait_goal span tr |> some
     | LocalBound { id } ->
         let local_ident =
           Local_ident.{ name = id; id = Local_ident.mk_id Expr 0 }
@@ -302,9 +325,9 @@ struct
         F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident local_ident) |> some
     | ImplApp { impl; _ } when not hax_unstable_impl_exprs ->
         pimpl_expr span impl
-    | Parent { impl; trait } when hax_unstable_impl_exprs ->
+    | Parent { impl; ident } when hax_unstable_impl_exprs ->
         let* impl = pimpl_expr span impl in
-        let trait = "_super_" ^ name_of_trait_ref span trait in
+        let trait = "_super_" ^ ident.name in
         F.term @@ F.AST.Project (impl, F.lid [ trait ]) |> some
     | ImplApp { impl; args = [] } when hax_unstable_impl_exprs ->
         pimpl_expr span impl
@@ -319,12 +342,9 @@ struct
         F.term_of_lid [ "_Builtin" ] |> some
     | _ -> None
 
-  and name_of_trait_ref _span : trait_ref -> string =
-    [%hash: trait_ref] >> Int.to_string
-
-  and c_trait_ref span trait_ref =
-    let trait = F.term @@ F.AST.Name (pconcrete_ident trait_ref.trait) in
-    List.map ~f:(pgeneric_value span) trait_ref.args |> F.mk_e_app trait
+  and c_trait_goal span trait_goal =
+    let trait = F.term @@ F.AST.Name (pconcrete_ident trait_goal.trait) in
+    List.map ~f:(pgeneric_value span) trait_goal.args |> F.mk_e_app trait
 
   and pgeneric_value span (g : generic_value) =
     match g with
@@ -387,6 +407,26 @@ struct
       (* in *)
       F.term @@ F.AST.Const (F.Const.Const_string ("failure", F.dummyRange))
 
+  and fun_application ~span f args ~trait_generic_args ~generic_args =
+    let pgeneric_args ?qualifier =
+      let qualifier_or default = Option.value ~default qualifier in
+      List.filter ~f:(function GType (TArrow _) -> false | _ -> true)
+      >> List.map ~f:(function
+           | GConst const -> (pexpr const, qualifier_or F.AST.Nothing)
+           | GLifetime _ -> .
+           | GType ty -> (pty span ty, qualifier_or F.AST.Hash))
+    in
+    let args = List.map ~f:(pexpr &&& Fn.const F.AST.Nothing) args in
+    let trait_generic_args =
+      Option.map
+        ~f:
+          (pgeneric_args ~qualifier:F.AST.Hash
+          >> Fn.flip ( @ ) [ (F.solve, F.AST.Hash) ])
+        trait_generic_args
+      |> Option.value ~default:[]
+    in
+    F.mk_app f (trait_generic_args @ pgeneric_args generic_args @ args)
+
   and pexpr_unwrapped (e : expr) =
     match e.e with
     | Literal l -> pliteral_as_expr e.span l
@@ -413,14 +453,28 @@ struct
           Error.assertion_failure e.span
             "pexpr: bad arity for operator application";
         F.term @@ F.AST.Op (F.Ident.id_of_text op, List.map ~f:pexpr args)
-    | App { f; args; generic_args } ->
-        let const_generics =
-          List.filter_map
-            ~f:(function GConst e -> Some e | _ -> None)
-            generic_args
-        in
-        let args = const_generics @ args in
-        F.mk_e_app (pexpr f) @@ List.map ~f:pexpr args
+    | App
+        {
+          f = { e = GlobalVar f; _ };
+          args = [ { e = Literal (String s); _ } ];
+          generic_args = _;
+        }
+      when Global_ident.eq_name Hax_lib__int__Impl_5___unsafe_from_str f ->
+        (match
+           String.chop_prefix ~prefix:"-" s
+           |> Option.value ~default:s
+           |> String.filter ~f:([%matches? '0' .. '9'] >> not)
+         with
+        | "" -> ()
+        | s ->
+            Error.assertion_failure e.span
+            @@ "pexpr: expected a integer, found the following non-digit \
+                chars: '" ^ s ^ "'");
+        F.AST.Const (F.Const.Const_int (s, None)) |> F.term
+    | App { f; args; generic_args; bounds_impls = _; trait } ->
+        let trait_generic_args = Option.map ~f:snd trait in
+        fun_application (pexpr f) args ~span:e.span ~trait_generic_args
+          ~generic_args
     | If { cond; then_; else_ } ->
         F.term
         @@ F.AST.If
@@ -440,7 +494,6 @@ struct
         in
         let list_ident = F.id "list" in
         let list = F.term_of_lid [ "list" ] in
-        let array = F.mk_e_app array_of_list [ list ] in
         let assert_norm =
           F.term_of_lid [ "FStar"; "Pervasives"; "assert_norm" ]
         in
@@ -450,9 +503,27 @@ struct
         let len =
           F.term @@ F.AST.Const (F.Const.Const_int (Int.to_string len, None))
         in
+        let array = F.mk_e_app array_of_list [ len; list ] in
         let formula = F.mk_e_app equality [ length; len ] in
         let assertion = F.mk_e_app assert_norm [ formula ] in
         let pat = F.AST.PatVar (list_ident, None, []) |> F.pat in
+        let pat =
+          match l with
+          | [] ->
+              let list_ty =
+                let prims_list = F.term_of_lid [ "Prims"; "list" ] in
+                let inner_typ =
+                  match e.typ with
+                  | TArray { typ; _ } -> pty e.span typ
+                  | _ ->
+                      Error.assertion_failure e.span
+                        "Malformed type for array literal"
+                in
+                F.mk_e_app prims_list [ inner_typ ]
+              in
+              F.pat @@ F.AST.PatAscribed (pat, (list_ty, None))
+          | _ -> pat
+        in
         F.term
         @@ F.AST.Let
              ( NoLetQualifier,
@@ -548,7 +619,19 @@ struct
              kind = UnsupportedMacro { id = [%show: global_ident] macro };
              span = e.span;
            }
+    | Quote quote -> pquote e.span quote |> F.term_of_string
     | _ -> .
+
+  (** Prints a `quote` to a string *)
+  and pquote span { contents; _ } =
+    List.map
+      ~f:(function
+        | `Verbatim code -> code
+        | `Expr e -> pexpr e |> term_to_string
+        | `Pat p -> ppat p |> pat_to_string
+        | `Typ p -> pty span p |> term_to_string)
+      contents
+    |> String.concat
 
   and parm { arm = { arm_pat; body } } = (ppat arm_pat, None, pexpr body)
 
@@ -556,27 +639,32 @@ struct
     type kind = Implicit | Tcresolve | Explicit
     type t = { kind : kind; ident : F.Ident.ident; typ : F.AST.term }
 
-    let of_generic_param ?(kind : kind = Implicit) span (p : generic_param) : t
-        =
+    let make_explicit x = { x with kind = Explicit }
+
+    let implicit_to_explicit x =
+      if [%matches? Tcresolve] x.kind then x else make_explicit x
+
+    let of_generic_param span (p : generic_param) : t =
       let ident = plocal_ident p.ident in
       match p.kind with
       | GPLifetime _ -> Error.assertion_failure span "pgeneric_param:LIFETIME"
-      | GPType { default = None } ->
-          { kind; typ = F.term @@ F.AST.Name (F.lid [ "Type" ]); ident }
-      | GPType _ ->
-          Error.unimplemented span ~details:"pgeneric_param:Type with default"
+      | GPType { default = _ } -> { kind = Implicit; typ = F.type0_term; ident }
       | GPConst { typ } -> { kind = Explicit; typ = pty span typ; ident }
 
     let of_generic_constraint span (nth : int) (c : generic_constraint) =
       match c with
       | GCLifetime _ -> .
-      | GCType { bound; id; _ } ->
-          let typ = c_trait_ref span bound in
-          { kind = Tcresolve; ident = F.id id; typ }
+      | GCType { goal; name } ->
+          let typ = c_trait_goal span goal in
+          { kind = Tcresolve; ident = F.id name; typ }
 
-    let of_generics ?(kind : kind = Implicit) span generics : t list =
-      List.map ~f:(of_generic_param ~kind span) generics.params
+    let of_generics span generics : t list =
+      List.map ~f:(of_generic_param span) generics.params
       @ List.mapi ~f:(of_generic_constraint span) generics.constraints
+
+    let of_typ span (nth : int) typ : t =
+      let ident = F.id ("x" ^ Int.to_string nth) in
+      { kind = Explicit; ident; typ = pty span typ }
 
     let to_pattern (x : t) : F.AST.pattern =
       let subpat =
@@ -599,17 +687,27 @@ struct
     let to_typ (x : t) : F.AST.term = x.typ
     let to_ident (x : t) : F.Ident.ident = x.ident
 
+    let to_term (x : t) : F.AST.term =
+      F.term @@ F.AST.Var (FStar_Ident.lid_of_ns_and_id [] (to_ident x))
+
+    let to_imp (x : t) : F.AST.imp =
+      match x.kind with Tcresolve | Implicit -> Hash | Explicit -> Nothing
+
+    let to_qualified_term : t -> F.AST.term * F.AST.imp = to_term &&& to_imp
+
+    let to_qualifier (x : t) : F.AST.arg_qualifier option =
+      match x.kind with
+      | Tcresolve -> Some TypeClassArg
+      | Implicit -> Some Implicit
+      | Explicit -> None
+
     let to_binder (x : t) : F.AST.binder =
       F.AST.
         {
           b = F.AST.Annotated (x.ident, x.typ);
           brange = F.dummyRange;
           blevel = Un;
-          aqual =
-            (match x.kind with
-            | Tcresolve -> Some TypeClassArg
-            | Implicit -> Some Implicit
-            | Explicit -> None);
+          aqual = to_qualifier x;
           battributes = [];
         }
   end
@@ -618,7 +716,7 @@ struct
     match c with
     | GCLifetime _ ->
         Error.assertion_failure span "pgeneric_constraint_bd:LIFETIME"
-    | GCType { bound; _ } -> c_trait_ref span bound
+    | GCType { goal; name = _ } -> c_trait_goal span goal
 
   let get_attr (type a) (name : string) (map : string -> a) (attrs : attrs) :
       a option =
@@ -754,9 +852,35 @@ struct
         in
         F.mk_e_app effect (if is_lemma then args else typ :: args)
 
+  (** Prints doc comments out of a list of attributes *)
+  let pdoc_comments attrs =
+    attrs
+    |> List.filter_map ~f:(fun (attr : attr) ->
+           match attr.kind with
+           | DocComment { kind; body } -> Some (kind, body)
+           | _ -> None)
+    |> List.map ~f:(fun (kind, string) ->
+           match kind with
+           | DCKLine ->
+               String.split_lines string
+               |> List.map ~f:(fun s -> "///" ^ s)
+               |> String.concat_lines
+           | DCKBlock -> "(**" ^ string ^ "*)")
+    |> List.map ~f:(fun s -> `VerbatimIntf (s, `NoNewline))
+
   let rec pitem (e : item) :
-      [> `Impl of F.AST.decl | `Intf of F.AST.decl | `Comment of string ] list =
-    try pitem_unwrapped e
+      [> `Impl of F.AST.decl
+      | `Intf of F.AST.decl
+      | `VerbatimImpl of string * [ `NoNewline | `Newline ]
+      | `VerbatimIntf of string * [ `NoNewline | `Newline ]
+      | `Comment of string ]
+      list =
+    try
+      match pitem_unwrapped e with
+      | [] -> []
+      | printed_items ->
+          (* Print comments only for items that are being printed *)
+          pdoc_comments e.attrs @ printed_items
     with Diagnostics.SpanFreeError.Exn error ->
       let error = Diagnostics.SpanFreeError.payload error in
       let error = [%show: Diagnostics.Context.t * Diagnostics.kind] error in
@@ -767,7 +891,12 @@ struct
       ]
 
   and pitem_unwrapped (e : item) :
-      [> `Impl of F.AST.decl | `Intf of F.AST.decl | `Comment of string ] list =
+      [> `Impl of F.AST.decl
+      | `Intf of F.AST.decl
+      | `VerbatimImpl of string * [ `NoNewline | `Newline ]
+      | `VerbatimIntf of string * [ `NoNewline | `Newline ]
+      | `Comment of string ]
+      list =
     match e.v with
     | Alias { name; item } ->
         let pat =
@@ -780,6 +909,9 @@ struct
              ( NoLetQualifier,
                [ (pat, F.term @@ F.AST.Name (pconcrete_ident item)) ] )
     | Fn { name; generics; body; params } ->
+        let is_rec =
+          Set.mem (U.Reducers.collect_concrete_idents#visit_expr () body) name
+        in
         let name = F.id @@ U.Concrete_ident_view.to_definition_name name in
         let pat = F.pat @@ F.AST.PatVar (name, None, []) in
         let generics = FStarBinder.of_generics e.span generics in
@@ -792,9 +924,10 @@ struct
               params
         in
         let pat = F.pat @@ F.AST.PatApp (pat, pat_args) in
+        let qualifier = F.AST.(if is_rec then Rec else NoLetQualifier) in
         let impl =
           F.decl ~fsti:false
-          @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, pexpr body) ])
+          @@ F.AST.TopLevelLet (qualifier, [ (pat, pexpr body) ])
         in
         let interface_mode = ctx.interface_mode && not (List.is_empty params) in
         let ty =
@@ -826,7 +959,7 @@ struct
         in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (ty, None)) in
         let full =
-          F.decl @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, pexpr body) ])
+          F.decl @@ F.AST.TopLevelLet (qualifier, [ (pat, pexpr body) ])
         in
 
         let intf = F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) in
@@ -837,7 +970,21 @@ struct
           @@ F.AST.PatVar
                (F.id @@ U.Concrete_ident_view.to_definition_name name, None, [])
         in
-        F.decls ~quals:[ F.AST.Unfold_for_unification_and_vcgen ]
+        let ty, quals =
+          (* Adds a refinement if a refinement attribute is detected *)
+          match Attrs.associated_expr ~keep_last_args:1 Ensures e.attrs with
+          | Some { e = Closure { params = [ binder ]; body; _ }; _ } ->
+              let binder, _ =
+                U.Expect.pbinding_simple binder |> Option.value_exn
+              in
+              let ty =
+                F.mk_refined (plocal_ident_str binder) (pty e.span ty)
+                  (fun ~x -> pexpr body)
+              in
+              (ty, [])
+          | _ -> (pty e.span ty, [ F.AST.Unfold_for_unification_and_vcgen ])
+        in
+        F.decls ~quals
         @@ F.AST.TopLevelLet
              ( NoLetQualifier,
                [
@@ -847,8 +994,33 @@ struct
                           FStarBinder.(
                             of_generics e.span generics
                             |> List.map ~f:to_pattern) ),
-                   pty e.span ty );
+                   ty );
                ] )
+    | Type { name; generics; _ }
+      when Attrs.find_unique_attr e.attrs
+             ~f:([%eq: Types.ha_payload] OpaqueType >> Fn.flip Option.some_if ())
+           |> Option.is_some ->
+        if not ctx.interface_mode then
+          Error.raise
+          @@ {
+               kind =
+                 AttributeRejected
+                   {
+                     reason =
+                       "a type cannot be opaque if its module is not extracted \
+                        as an interface";
+                   };
+               span = e.span;
+             }
+        else
+          let generics = FStarBinder.of_generics e.span generics in
+          let ty = F.type0_term in
+          let arrow_typ =
+            F.term
+            @@ F.AST.Product (List.map ~f:FStarBinder.to_binder generics, ty)
+          in
+          let name = F.id @@ U.Concrete_ident_view.to_definition_name name in
+          [ F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) ]
     | Type
         {
           name;
@@ -863,7 +1035,8 @@ struct
                [
                  F.AST.TyconRecord
                    ( F.id @@ U.Concrete_ident_view.to_definition_name name,
-                     FStarBinder.of_generics ~kind:Explicit e.span generics
+                     FStarBinder.of_generics e.span generics
+                     |> List.map ~f:FStarBinder.implicit_to_explicit
                      |> List.map ~f:FStarBinder.to_binder,
                      None,
                      [],
@@ -929,7 +1102,8 @@ struct
                [
                  F.AST.TyconVariant
                    ( F.id @@ U.Concrete_ident_view.to_definition_name name,
-                     FStarBinder.of_generics ~kind:Explicit e.span generics
+                     FStarBinder.of_generics e.span generics
+                     |> List.map ~f:FStarBinder.implicit_to_explicit
                      |> List.map ~f:FStarBinder.to_binder,
                      None,
                      constructors );
@@ -1006,25 +1180,18 @@ struct
             | _ -> unsupported_macro ())
         | _ -> unsupported_macro ())
     | Trait { name; generics; items } ->
-        let bds =
-          List.map
-            ~f:FStarBinder.(of_generic_param ~kind:Explicit e.span >> to_binder)
-            generics.params
-        in
         let name_str = U.Concrete_ident_view.to_definition_name name in
-        let name = F.id @@ name_str in
+        let name_id = F.id @@ name_str in
         let fields =
           List.concat_map
             ~f:(fun i ->
               let name = U.Concrete_ident_view.to_definition_name i.ti_ident in
-              let generics =
-                FStarBinder.of_generics ~kind:Implicit i.ti_span i.ti_generics
-              in
+              let generics = FStarBinder.of_generics i.ti_span i.ti_generics in
               let bds = generics |> List.map ~f:FStarBinder.to_binder in
               let fields =
                 match i.ti_v with
                 | TIType bounds ->
-                    let t = F.term @@ F.AST.Name (F.lid [ "Type" ]) in
+                    let t = F.type0_term in
                     (* let constraints = *)
                     (*   List.map *)
                     (*     ~f:(fun implements -> *)
@@ -1033,15 +1200,68 @@ struct
                     (* in *)
                     (F.id name, None, [], t)
                     :: List.map
-                         ~f:(fun { trait; args } ->
+                         ~f:
+                           (fun {
+                                  goal = { trait; args };
+                                  name = impl_ident_name;
+                                } ->
                            let base =
                              F.term @@ F.AST.Name (pconcrete_ident trait)
                            in
                            let args =
                              List.map ~f:(pgeneric_value e.span) args
                            in
-                           (F.id name, None, [], F.mk_e_app base args))
+                           ( F.id (name ^ "_" ^ impl_ident_name),
+                             (* Dodgy concatenation *)
+                             None,
+                             [],
+                             F.mk_e_app base args ))
                          bounds
+                | TIFn (TArrow (inputs, output))
+                  when Attrs.find_unique_attr i.ti_attrs ~f:(function
+                         | TraitMethodNoPrePost -> Some ()
+                         | _ -> None)
+                       |> Option.is_none ->
+                    let inputs =
+                      List.mapi ~f:(FStarBinder.of_typ e.span) inputs
+                    in
+                    let inputs = generics @ inputs in
+                    let output = pty e.span output in
+                    let ty_pre_post =
+                      let inputs =
+                        List.map ~f:FStarBinder.to_qualified_term inputs
+                      in
+                      let add_pre n = n ^ "_pre" in
+                      let pre_name_str =
+                        U.Concrete_ident_view.to_definition_name
+                          (Concrete_ident.Create.map_last ~f:add_pre i.ti_ident)
+                      in
+                      let pre =
+                        F.mk_app (F.term_of_lid [ pre_name_str ]) inputs
+                      in
+                      let result = F.term_of_lid [ "result" ] in
+                      let add_post n = n ^ "_post" in
+                      let post_name_str =
+                        U.Concrete_ident_view.to_definition_name
+                          (Concrete_ident.Create.map_last ~f:add_post i.ti_ident)
+                      in
+                      let post =
+                        F.mk_app
+                          (F.term_of_lid [ post_name_str ])
+                          (inputs @ [ (result, Nothing) ])
+                      in
+                      let post =
+                        F.mk_e_abs
+                          [ F.pat @@ F.AST.PatVar (F.id "result", None, []) ]
+                          post
+                      in
+                      F.mk_e_app
+                        (F.term_of_lid [ "Prims"; "Pure" ])
+                        [ output; pre; post ]
+                    in
+                    let inputs = List.map ~f:FStarBinder.to_binder inputs in
+                    let ty = F.term @@ F.AST.Product (inputs, ty_pre_post) in
+                    [ (F.id name, None, [], ty) ]
                 | TIFn ty ->
                     let ty = pty e.span ty in
                     let ty =
@@ -1059,10 +1279,10 @@ struct
         let constraints_fields : FStar_Parser_AST.tycon_record =
           generics.constraints
           |> List.map ~f:(fun c ->
-                 let bound =
-                   match c with GCType { bound; _ } -> bound | _ -> .
+                 let bound, id =
+                   match c with GCType { goal; name } -> (goal, name) | _ -> .
                  in
-                 let name = "_super_" ^ name_of_trait_ref e.span bound in
+                 let name = "_super_" ^ id in
                  let typ = pgeneric_constraint_type e.span c in
                  (F.id name, None, [ F.Attrs.no_method ], typ))
         in
@@ -1075,10 +1295,27 @@ struct
             [ (F.id marker_field, None, [], pty e.span U.unit_typ) ]
           else fields
         in
-        let tcdef = F.AST.TyconRecord (name, bds, None, [], fields) in
+        let tcdef =
+          (* Binders are explicit on class definitions *)
+          let bds =
+            List.map
+              ~f:
+                FStarBinder.(
+                  of_generic_param e.span >> implicit_to_explicit >> to_binder)
+              generics.params
+          in
+          F.AST.TyconRecord (name_id, bds, None, [], fields)
+        in
         let d = F.AST.Tycon (false, true, [ tcdef ]) in
         [ `Intf { d; drange = F.dummyRange; quals = []; attrs = [] } ]
-    | Impl { generics; self_ty = _; of_trait = trait, generic_args; items } ->
+    | Impl
+        {
+          generics;
+          self_ty = _;
+          of_trait = trait, generic_args;
+          items;
+          parent_bounds;
+        } ->
         let name = U.Concrete_ident_view.to_definition_name e.ident |> F.id in
         let pat = F.pat @@ F.AST.PatVar (name, None, []) in
         let generics = FStarBinder.of_generics e.span generics in
@@ -1093,27 +1330,38 @@ struct
         in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (typ, None)) in
         let fields =
-          List.map
+          List.concat_map
             ~f:(fun { ii_span; ii_generics; ii_v; ii_ident } ->
               let name = U.Concrete_ident_view.to_definition_name ii_ident in
-              ( F.lid [ name ],
-                match ii_v with
-                | IIFn { body; params } ->
-                    let pats =
-                      FStarBinder.(
-                        of_generics ii_span ii_generics
-                        |> List.map ~f:to_pattern)
-                      @ List.map
-                          ~f:(fun { pat; typ_span; typ } ->
-                            let span = Option.value ~default:ii_span typ_span in
-                            F.pat
-                            @@ F.AST.PatAscribed (ppat pat, (pty span typ, None)))
-                          params
-                    in
-                    F.mk_e_abs pats (pexpr body)
-                | IIType ty -> pty ii_span ty ))
+
+              match ii_v with
+              | IIFn { body; params } ->
+                  let pats =
+                    FStarBinder.(
+                      of_generics ii_span ii_generics |> List.map ~f:to_pattern)
+                    @ List.map
+                        ~f:(fun { pat; typ_span; typ } ->
+                          let span = Option.value ~default:ii_span typ_span in
+                          F.pat
+                          @@ F.AST.PatAscribed (ppat pat, (pty span typ, None)))
+                        params
+                  in
+                  [ (F.lid [ name ], F.mk_e_abs pats (pexpr body)) ]
+              | IIType { typ; parent_bounds } ->
+                  (F.lid [ name ], pty ii_span typ)
+                  :: List.map
+                       ~f:(fun (_impl_expr, impl_ident) ->
+                         (F.lid [ name ^ "_" ^ impl_ident.name ], F.tc_solve))
+                       parent_bounds)
             items
         in
+        let parent_bounds_fields =
+          List.map
+            ~f:(fun (_impl_expr, impl_ident) ->
+              (F.lid [ "_super_" ^ impl_ident.name ], F.tc_solve))
+            parent_bounds
+        in
+        let fields = parent_bounds_fields @ fields in
         let fields =
           if List.is_empty fields then
             [ (F.lid [ "__marker_trait" ], pexpr (U.unit_expr e.span)) ]
@@ -1123,6 +1371,23 @@ struct
         let tcinst = F.term @@ F.AST.Var FStar_Parser_Const.tcinstance_lid in
         F.decls ~fsti:ctx.interface_mode ~attrs:[ tcinst ]
         @@ F.AST.TopLevelLet (NoLetQualifier, [ (pat, body) ])
+    | Quote quote ->
+        let fstar_opts =
+          Attrs.find_unique_attr e.attrs ~f:(function
+            | ItemQuote q -> Some q.fstar_options
+            | _ -> None)
+          |> Option.value_or_thunk ~default:(fun _ ->
+                 Error.assertion_failure e.span
+                   "Malformed `Quote` item: could not find a ItemQuote payload")
+          |> Option.value ~default:Types.{ intf = true; impl = false }
+        in
+        (if fstar_opts.intf then
+         [ `VerbatimIntf (pquote e.span quote, `Newline) ]
+        else [])
+        @
+        if fstar_opts.impl then
+          [ `VerbatimImpl (pquote e.span quote, `Newline) ]
+        else []
     | HaxError details ->
         [
           `Comment
@@ -1136,7 +1401,12 @@ end
 module type S = sig
   val pitem :
     item ->
-    [> `Impl of F.AST.decl | `Intf of F.AST.decl | `Comment of string ] list
+    [> `Impl of F.AST.decl
+    | `Intf of F.AST.decl
+    | `VerbatimImpl of string * [ `NoNewline | `Newline ]
+    | `VerbatimIntf of string * [ `NoNewline | `Newline ]
+    | `Comment of string ]
+    list
 end
 
 let make (module M : Attrs.WITH_ITEMS) ctx =
@@ -1146,8 +1416,9 @@ let make (module M : Attrs.WITH_ITEMS) ctx =
               let ctx = ctx
             end) : S)
 
-let strings_of_item (bo : BackendOptions.t) m items (item : item) :
-    [> `Impl of string | `Intf of string ] list =
+let strings_of_item ~signature_only (bo : BackendOptions.t) m items
+    (item : item) :
+    ([> `Impl of string | `Intf of string ] * [ `NoNewline | `Newline ]) list =
   let interface_mode' : Types.inclusion_kind =
     List.rev bo.interfaces
     |> List.find ~f:(fun (clause : Types.inclusion_clause) ->
@@ -1164,7 +1435,8 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
     |> Option.value ~default:(Types.Excluded : Types.inclusion_kind)
   in
   let interface_mode =
-    not ([%matches? (Types.Excluded : Types.inclusion_kind)] interface_mode')
+    signature_only
+    || not ([%matches? (Types.Excluded : Types.inclusion_kind)] interface_mode')
   in
   let (module Print) =
     make m
@@ -1176,29 +1448,98 @@ let strings_of_item (bo : BackendOptions.t) m items (item : item) :
   in
   let mk_impl = if interface_mode then fun i -> `Impl i else fun i -> `Impl i in
   let mk_intf = if interface_mode then fun i -> `Intf i else fun i -> `Impl i in
+  let no_impl =
+    signature_only
+    || [%matches? (Types.Included None' : Types.inclusion_kind)] interface_mode'
+  in
   Print.pitem item
-  |> (match interface_mode' with
-     | Types.Included None' ->
-         List.filter ~f:(function `Impl _ -> false | _ -> true)
-     | _ -> Fn.id)
+  |> List.filter ~f:(function `Impl _ when no_impl -> false | _ -> true)
   |> List.concat_map ~f:(function
-       | `Impl i -> [ mk_impl (decl_to_string i) ]
-       | `Intf i -> [ mk_intf (decl_to_string i) ]
+       | `Impl i -> [ (mk_impl (decl_to_string i), `Newline) ]
+       | `Intf i -> [ (mk_intf (decl_to_string i), `Newline) ]
+       | `VerbatimIntf (s, nl) ->
+           [ ((if interface_mode then `Intf s else `Impl s), nl) ]
+       | `VerbatimImpl (s, nl) ->
+           [ ((if interface_mode then `Impl s else `Impl s), nl) ]
        | `Comment s ->
            let s = "(* " ^ s ^ " *)" in
-           if interface_mode then [ `Impl s; `Intf s ] else [ `Impl s ])
+           if interface_mode then [ (`Impl s, `Newline); (`Intf s, `Newline) ]
+           else [ (`Impl s, `Newline) ])
 
-let string_of_items (bo : BackendOptions.t) m items : string * string =
+(** Convers a namespace to a module name *)
+let module_name (ns : string * string list) : string =
+  String.concat ~sep:"."
+    (List.map ~f:(map_first_letter String.uppercase) (fst ns :: snd ns))
+
+let string_of_items ~signature_only ~mod_name (bo : BackendOptions.t) m items :
+    string * string =
+  let collect_trait_goal_idents =
+    object
+      inherit [_] Visitors.reduce as super
+      inherit [_] U.Sets.Concrete_ident.monoid as _m
+
+      method! visit_trait_goal (_env : unit) x =
+        Set.singleton (module Concrete_ident) x.trait
+    end
+  in
+  let header =
+    let lines =
+      List.map ~f:(collect_trait_goal_idents#visit_item ()) items
+      |> Set.union_list (module Concrete_ident)
+      |> Set.map
+           (module String)
+           ~f:(fun i -> U.Concrete_ident_view.to_namespace i |> module_name)
+      |> Fn.flip Set.remove mod_name
+      |> Set.to_list
+      |> List.filter ~f:(fun m ->
+             (* Special treatment for modules handled specifically in our F* libraries *)
+             String.is_prefix ~prefix:"Core." m |> not
+             && String.is_prefix ~prefix:"Alloc." m |> not
+             && String.equal "Hax_lib.Int" m |> not)
+      |> List.map ~f:(fun mod_path -> "let open " ^ mod_path ^ " in")
+    in
+    match lines with
+    | [] -> ""
+    | _ ->
+        "let _ ="
+        ^ ([
+             "(* This module has implicit dependencies, here we make them \
+              explicit. *)";
+             "(* The implicit dependencies arise from typeclasses instances. *)";
+           ]
+           @ lines @ [ "()" ]
+          |> List.map ~f:(( ^ ) "\n  ")
+          |> String.concat ~sep:"")
+        ^ "\n\n"
+  in
   let strings =
-    List.concat_map ~f:(strings_of_item bo m items) items
-    |> List.map ~f:(function
-         | `Impl s -> `Impl (String.strip s)
-         | `Intf s -> `Intf (String.strip s))
+    List.concat_map ~f:(strings_of_item ~signature_only bo m items) items
+    |> List.map
+         ~f:
+           ((function
+              | `Impl s -> `Impl (String.strip s)
+              | `Intf s -> `Intf (String.strip s))
+           *** Fn.id)
     |> List.filter
-         ~f:((function `Impl s | `Intf s -> String.is_empty s) >> not)
+         ~f:(fst >> (function `Impl s | `Intf s -> String.is_empty s) >> not)
   in
   let string_for filter =
-    List.filter_map ~f:filter strings |> String.concat ~sep:"\n\n"
+    let l =
+      List.filter_map
+        ~f:(fun (s, space) ->
+          let* s = filter s in
+          Some (s, space))
+        strings
+    in
+    let n = List.length l - 1 in
+    let lines =
+      List.mapi
+        ~f:(fun i (s, space) ->
+          s
+          ^ if [%matches? `NoNewline] space || [%eq: int] i n then "" else "\n")
+        l
+    in
+    match lines with [] -> "" | _ -> header ^ String.concat ~sep:"\n" lines
   in
   ( string_for (function `Impl s -> Some s | _ -> None),
     string_for (function `Intf s -> Some s | _ -> None) )
@@ -1218,13 +1559,20 @@ let translate m (bo : BackendOptions.t) (items : AST.item list) :
   U.group_items_by_namespace items
   |> Map.to_alist
   |> List.concat_map ~f:(fun (ns, items) ->
-         let mod_name =
-           String.concat ~sep:"."
-             (List.map
-                ~f:(map_first_letter String.uppercase)
-                (fst ns :: snd ns))
+         let signature_only =
+           let is_dropped_body =
+             Concrete_ident.eq_name Rust_primitives__hax__dropped_body
+           in
+           let contains_dropped_body =
+             U.Reducers.collect_concrete_idents#visit_item ()
+             >> Set.exists ~f:is_dropped_body
+           in
+           List.exists ~f:contains_dropped_body items
          in
-         let impl, intf = string_of_items bo m items in
+         let mod_name = module_name ns in
+         let impl, intf =
+           string_of_items ~signature_only ~mod_name bo m items
+         in
          let make ~ext body =
            if String.is_empty body then None
            else
@@ -1247,6 +1595,10 @@ module DepGraphR = Dependencies.Make (Features.Rust)
 module TransformToInputLanguage =
   [%functor_application
   Phases.Reject.RawOrMutPointer(Features.Rust)
+  |> Phases.Transform_hax_lib_inline
+  |> Phases.Specialize
+  |> Phases.Drop_sized_trait
+  |> Phases.Simplify_question_marks
   |> Phases.And_mut_defsite
   |> Phases.Reconstruct_for_loops
   |> Phases.Reconstruct_while_loops
@@ -1255,14 +1607,18 @@ module TransformToInputLanguage =
   |> Phases.Drop_blocks
   |> Phases.Drop_references
   |> Phases.Trivialize_assign_lhs
-  |> Phases.Reconstruct_question_marks
   |> Side_effect_utils.Hoist
+  |> Phases.Simplify_match_return
+  |> Phases.Drop_needless_returns
   |> Phases.Local_mutation
   |> Phases.Reject.Continue
   |> Phases.Cf_into_monads
   |> Phases.Reject.EarlyExit
   |> Phases.Functionalize_loops
   |> Phases.Reject.As_pattern
+  |> Phases.Traits_specs
+  |> Phases.Simplify_hoisting
+  |> Phases.Newtype_as_refinement
   |> SubtypeToInputLanguage
   |> Identity
   ]

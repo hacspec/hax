@@ -15,6 +15,13 @@
 
 #![no_std]
 
+pub mod int;
+
+#[cfg(feature = "macros")]
+mod proc_macros;
+#[cfg(feature = "macros")]
+pub use proc_macros::*;
+
 #[doc(hidden)]
 #[cfg(hax)]
 #[macro_export]
@@ -128,4 +135,48 @@ pub fn exists<T>(_f: impl Fn(T) -> bool) -> bool {
 /// The logical implication `a ==> b`.
 pub fn implies(lhs: bool, rhs: impl Fn() -> bool) -> bool {
     !lhs || rhs()
+}
+
+/// Dummy function that carries a string to be printed as such in the output language
+#[doc(hidden)]
+pub fn inline(_: &str) {}
+
+/// A type that implements `Refinement` should be a newtype for a
+/// type `T`. The field holding the value of type `T` should be
+/// private, and `Refinement` should be the only interface to the
+/// type.
+///
+/// Please never implement this trait yourself, use the
+/// `refinement_type` macro instead.
+pub trait Refinement {
+    /// The base type
+    type InnerType;
+    /// Smart constructor capturing an invariant. Its extraction will
+    /// yield a proof obligation.
+    fn new(x: Self::InnerType) -> Self;
+    /// Destructor for the refined type
+    fn get(self) -> Self::InnerType;
+    /// Gets a mutable reference to a refinement
+    fn get_mut(&mut self) -> &mut Self::InnerType;
+    /// Tests wether a value satisfies the refinement
+    fn invariant(value: Self::InnerType) -> bool;
+}
+
+/// A utilitary trait that provides a `into_checked` method on traits
+/// that have a refined counter part. This trait is parametrized by a
+/// type `Target`: a base type can be refined in multiple ways.
+///
+/// Please never implement this trait yourself, use the
+/// `refinement_type` macro instead.
+pub trait RefineAs<RefinedType> {
+    /// Smart constructor for `RefinedType`, checking the invariant
+    /// `RefinedType::invariant`. The check is done statically via
+    /// extraction to hax: extracted code will yield static proof
+    /// obligations.
+    ///
+    /// In addition, in debug mode, the invariant is checked at
+    /// run-time, unless this behavior was disabled when defining the
+    /// refinement type `RefinedType` with the `refinement_type` macro
+    /// and its `no_debug_runtime_check` option.
+    fn into_checked(self) -> RefinedType;
 }

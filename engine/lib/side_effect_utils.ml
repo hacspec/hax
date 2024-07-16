@@ -154,7 +154,7 @@ struct
         self.fresh_id <- self.fresh_id + 1;
         {
           name = "hoist" ^ Int.to_string self.fresh_id;
-          id = Local_ident.mk_id Expr (-1) (* todo *);
+          id = Local_ident.mk_id SideEffectHoistVar (-1) (* todo *);
         }
 
       let empty = { fresh_id = 0 }
@@ -347,7 +347,7 @@ struct
                     m#plus (m#plus (no_lbs ethen) (no_lbs eelse)) effects
                   in
                   ({ e with e = If { cond; then_; else_ } }, effects))
-          | App { f; args; generic_args; impl } ->
+          | App { f; args; generic_args; trait; bounds_impls } ->
               HoistSeq.many env
                 (List.map ~f:(self#visit_expr env) (f :: args))
                 (fun l effects ->
@@ -356,7 +356,11 @@ struct
                     | f :: args -> (f, args)
                     | _ -> HoistSeq.err_hoist_invariant e.span Stdlib.__LOC__
                   in
-                  ({ e with e = App { f; args; generic_args; impl } }, effects))
+                  ( {
+                      e with
+                      e = App { f; args; generic_args; trait; bounds_impls };
+                    },
+                    effects ))
           | Literal _ -> (e, m#zero)
           | Block (inner, witness) ->
               HoistSeq.one env (self#visit_expr env inner) (fun inner effects ->
@@ -486,6 +490,7 @@ struct
                 ~context:(Other "collect_and_hoist_effects_object") ~span:e.span
                 (Unimplemented
                    { issue_id = None; details = Some "EffectAction" })
+          | Quote _ -> (e, m#zero)
       end
 
     let collect_and_hoist_effects (e : expr) : expr * SideEffects.t =

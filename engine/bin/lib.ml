@@ -1,10 +1,6 @@
 open Hax_engine
 open Base
-
-let read_options_from_stdin (yojson_from_string : string -> Yojson.Safe.t) :
-    Types.engine_options =
-  In_channel.input_all In_channel.stdin
-  |> yojson_from_string |> Types.parse_engine_options
+open Stdio
 
 let setup_logs (options : Types.engine_options) =
   let level : Logs.level option =
@@ -27,13 +23,36 @@ module Attrs = Attr_payloads.MakeBase (Error)
 let import_thir_items (include_clauses : Types.inclusion_clause list)
     (items : Types.item_for__decorated_for__expr_kind list) : Ast.Rust.item list
     =
-  let result = List.map ~f:Import_thir.import_item items |> List.map ~f:snd in
-  let items = List.concat_map ~f:fst result in
+  let imported_items =
+    List.map
+      ~f:(fun item ->
+        let ident = Concrete_ident.(of_def_id Kind.Value item.owner_id) in
+        let most_precise_clause =
+          (* Computes the include clause that apply to `item`, if any *)
+          List.filter
+            ~f:(fun clause ->
+              Concrete_ident.matches_namespace clause.Types.namespace ident)
+            include_clauses
+          |> List.last
+        in
+        let drop_body =
+          (* Shall we drop the body? *)
+          Option.map
+            ~f:(fun clause -> [%matches? Types.SignatureOnly] clause.kind)
+            most_precise_clause
+          |> Option.value ~default:false
+        in
+        Import_thir.import_item ~drop_body item)
+      items
+    |> List.map ~f:snd
+  in
+  let items = List.concat_map ~f:fst imported_items in
+  (* Build a map from idents to error reports *)
   let ident_to_reports =
     List.concat_map
       ~f:(fun (items, reports) ->
         List.map ~f:(fun (item : Ast.Rust.item) -> (item.ident, reports)) items)
-      result
+      imported_items
     |> Map.of_alist_exn (module Concrete_ident)
   in
   let items = Deps.filter_by_inclusion_clauses include_clauses items in
@@ -44,6 +63,7 @@ let import_thir_items (include_clauses : Types.inclusion_clause list)
       items
   in
   let items = Deps.sort items in
+  (* Extract error reports for the items we actually extract *)
   let reports =
     List.concat_map
       ~f:(fun (item : Ast.Rust.item) ->
@@ -51,6 +71,7 @@ let import_thir_items (include_clauses : Types.inclusion_clause list)
       items
     |> List.dedup_and_sort ~compare:Diagnostics.compare
   in
+  (* Report every error *)
   List.iter ~f:Diagnostics.Core.report reports;
   items
 
@@ -68,6 +89,13 @@ let run (options : Types.engine_options) : Types.output =
       options.backend.translation_options.include_namespaces
     in
     let items = import_thir_items include_clauses options.input in
+    let items =
+      if options.backend.extract_type_aliases then items
+      else
+        List.filter
+          ~f:(function { v = TyAlias _; _ } -> false | _ -> true)
+          items
+    in
     Logs.info (fun m ->
         m "Applying phase for backend %s"
           ([%show: Diagnostics.Backend.t] M.backend));
@@ -86,11 +114,11 @@ let run (options : Types.engine_options) : Types.output =
   let diagnostics, files =
     Diagnostics.try_ (fun () ->
         match options.backend.backend with
+        | ProVerif opts -> run (module Proverif_backend) opts
         | Fstar opts -> run (module Fstar_backend) opts
         | Coq -> run (module Coq_backend) ()
         | Ssprove -> run (module Ssprove_backend) ()
-        | Easycrypt -> run (module Easycrypt_backend) ()
-        | ProVerif -> run (module Proverif_backend) ())
+        | Easycrypt -> run (module Easycrypt_backend) ())
   in
   {
     diagnostics = List.map ~f:Diagnostics.to_thir_diagnostic diagnostics;
@@ -98,18 +126,37 @@ let run (options : Types.engine_options) : Types.output =
     debug_json = None;
   }
 
-let main (options : Types.engine_options) =
+(** Entrypoint of the engine. Assumes `Hax_io.init` was called. *)
+let main () =
+  let options =
+    Hax_io.read_json () |> Option.value_exn |> Types.parse_engine_options
+  in
   Printexc.record_backtrace true;
   let result =
-    try Ok (run options) with e -> Error (e, Printexc.get_raw_backtrace ())
+    try Ok (run options) with
+    | Hax_engine.Diagnostics.SpanFreeError.Exn exn ->
+        Error
+          ( Failure
+              ("Uncatched hax exception (please report, this should not \
+                appear): "
+              ^ [%show: Hax_engine.Diagnostics.SpanFreeError.t] exn),
+            Printexc.get_raw_backtrace () )
+    | e -> Error (e, Printexc.get_raw_backtrace ())
   in
   match result with
   | Ok results ->
       let debug_json = Phase_utils.DebugBindPhase.export () in
       let results = { results with debug_json } in
       Logs.info (fun m -> m "Outputting JSON");
-      Types.to_json_output results
-      |> Yojson.Safe.pretty_to_string |> print_endline;
+
+      List.iter
+        ~f:(fun diag -> Diagnostic diag |> Hax_io.write)
+        results.diagnostics;
+      List.iter ~f:(fun file -> File file |> Hax_io.write) results.files;
+
+      Option.iter ~f:(fun json -> DebugString json |> Hax_io.write) debug_json;
+      Hax_io.close ();
+
       Logs.info (fun m -> m "Exiting Hax engine (success)")
   | Error (exn, bt) ->
       Logs.info (fun m -> m "Exiting Hax engine (with an unexpected failure)");

@@ -23,7 +23,7 @@ YELLOW=43
 GREEN=42
 RED=41
 BLACK=40
-status () { echo -e "\e[1m[rebuild script] \e[30m\e[$1m$2\e[0m"; }
+status () { echo -e "\033[1m[rebuild script] \033[30m\033[$1m$2\033[0m"; }
 
 cd_rootwise () {
     cd $(git rev-parse --show-toplevel)/$1
@@ -42,11 +42,12 @@ ocaml () {
     CURRENT="ocaml"
     dune build $([ -z $DUNEJOBS ] || echo "-j $DUNEJOBS")
     CURRENT="ocaml/install"
+
     # Small hack for those that are not using [opam] at all: by
     # default install OCaml binaries in `~/.cargo` (which is supposed
     # to be in PATH anyway).
-    DUNE_INSTALL_PREFIX="${DUNE_INSTALL_PREFIX:-$HOME/.cargo}"
-    dune install --profile dev --prefix $DUNE_INSTALL_PREFIX
+    INSTALL_PREFIX="${OPAM_SWITCH_PREFIX:-${DUNE_INSTALL_PREFIX:-$HOME/.cargo}}"
+    dune install --profile dev --prefix $INSTALL_PREFIX
 
     if ( command -v "which" && command -v "sort" && command -v "wc" ) >/dev/null; then
         case $(which -a hax-engine | sort -u | wc -l) in

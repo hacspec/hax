@@ -8,9 +8,6 @@ members = [
         "enum-repr",
         "pattern-or",
         "side-effects",
-        "lint/hacspec/v1-lib",
-        "lint/hacspec/mut_args",
-        "lint/rust/fnmut",
         "mut-ref-functionalization",
         "generics",
         "loops",
@@ -18,6 +15,7 @@ members = [
         "odd",
         "never-type",
         "attributes",
+        "attribute-opaque",
         "raw-attributes",
         "traits",
         "reordering",
@@ -28,5 +26,8 @@ members = [
         "proverif-noise",
         "proverif-fn-to-letfun",
         "cli/include-flag",
+        "cli/interface-only",
+        "recursion",
+        "functions",
 ]
 resolver = "2"

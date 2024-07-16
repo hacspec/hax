@@ -28,16 +28,25 @@ module Phase = struct
     | Identity
     | DropReferences
     | DropBlocks
+    | DropSizedTrait
     | RefMut
     | ResugarForLoops
     | ResugarWhileLoops
     | ResugarForIndexLoops
     | ResugarQuestionMarks
+    | SimplifyQuestionMarks
+    | Specialize
     | HoistSideEffects
     | LocalMutation
     | TrivializeAssignLhs
     | CfIntoMonads
     | FunctionalizeLoops
+    | TraitsSpecs
+    | SimplifyMatchReturn
+    | SimplifyHoisting
+    | DropNeedlessReturns
+    | TransformHaxLibInline
+    | NewtypeAsRefinement
     | DummyA
     | DummyB
     | DummyC
@@ -81,19 +90,18 @@ let compare_thir_span (a : thir_span) (b : thir_span) =
 type t = { context : Context.t; kind : kind; span : thir_span list }
 [@@deriving show, eq, compare]
 
-let to_thir_diagnostic (d : t) : Types.diagnostics_for__array_of__span =
+let to_thir_diagnostic (d : t) : Types.diagnostics =
   { kind = d.kind; context = Context.display d.context; span = d.span }
 
-let run_hax_pretty_print_diagnostics (s : string) : string =
-  try (Utils.Command.run "hax-pretty-print-diagnostics" s).stdout
-  with e ->
-    "[run_hax_pretty_print_diagnostics] failed. Exn: "
-    ^ "[run_hax_pretty_print_diagnostics] failed. Exn: " ^ Exn.to_string e
-    ^ ". Here is the JSON representation of the error that occurred:\n" ^ s
+(** Ask `cargo-hax` to pretty print a diagnostic *)
+let ask_diagnostic_pretty_print diag : string =
+  Hax_io.request (PrettyPrintDiagnostic diag)
+    ~expected:"PrettyPrintedDiagnostic" (function
+    | Types.PrettyPrintedDiagnostic s -> Some s
+    | _ -> None)
 
 let pretty_print : t -> string =
-  to_thir_diagnostic >> Types.to_json_diagnostics_for__array_of__span
-  >> Yojson.Safe.pretty_to_string >> run_hax_pretty_print_diagnostics
+  to_thir_diagnostic >> ask_diagnostic_pretty_print
 
 let pretty_print_context_kind : Context.t -> kind -> string =
  fun context kind ->
@@ -137,14 +145,14 @@ let failure ~context ~span kind =
   Core.raise_fatal_error { context; kind; span = Span.to_thir span }
 
 module SpanFreeError : sig
-  type t = private Data of Context.t * kind
+  type t = private Data of Context.t * kind [@@deriving show]
 
   exception Exn of t
 
   val payload : t -> Context.t * kind
   val raise : ?span:T.span list -> Context.t -> kind -> 'a
 end = struct
-  type t = Data of Context.t * kind
+  type t = Data of Context.t * kind [@@deriving show]
 
   exception Exn of t
 

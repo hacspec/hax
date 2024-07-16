@@ -17,6 +17,8 @@ info:
     snapshot:
       stderr: false
       stdout: true
+    include_flag: ~
+    backend_options: ~
 ---
 exit = 0
 
@@ -35,6 +37,14 @@ Open Scope bool_scope.
 Inductive t_Foo : Type :=
 | Foo_A : t_Foo
 | Foo_B : t_Foo.
+
+Definition t_Foo_cast_to_repr (x : t_Foo_t) : uint_size :=
+  match x with
+  | Foo_A  =>
+    (@repr WORDSIZE32 0)
+  | Foo_B  =>
+    (@repr WORDSIZE32 1)
+  end.
 
 (*Not implemented yet? todo(item)*)
 

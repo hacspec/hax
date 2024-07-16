@@ -1,0 +1,41 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: fstar
+  info:
+    name: attribute-opaque
+    manifest: attribute-opaque/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: true
+      stdout: true
+    include_flag: ~
+    backend_options:
+      - "--interfaces"
+      - +**
+---
+exit = 0
+stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
+
+[stdout]
+diagnostics = []
+
+[stdout.files]
+"Attribute_opaque.fsti" = '''
+module Attribute_opaque
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+val t_OpaqueEnum (v_X: usize) (#v_T #v_U: Type0) : Type0
+
+val t_OpaqueStruct (v_X: usize) (#v_T #v_U: Type0) : Type0
+'''

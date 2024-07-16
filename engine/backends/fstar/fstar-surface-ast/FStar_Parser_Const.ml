@@ -222,19 +222,19 @@ let (all_try_with_lid : FStar_Ident.lident) =
   p2l ["FStar"; "All"; "try_with"]
 let (effect_ALL_lid : unit -> FStar_Ident.lident) =
   fun uu___ ->
-    let uu___1 = FStar_Options.ml_ish () in
+    let uu___1 = false in
     if uu___1 then compiler_effect_ALL_lid else all_lid
 let (effect_ML_lid : unit -> FStar_Ident.lident) =
   fun uu___ ->
-    let uu___1 = FStar_Options.ml_ish () in
+    let uu___1 = false in
     if uu___1 then compiler_effect_ML_lid else all_ML_lid
 let (failwith_lid : unit -> FStar_Ident.lident) =
   fun uu___ ->
-    let uu___1 = FStar_Options.ml_ish () in
+    let uu___1 = false in
     if uu___1 then compiler_effect_failwith_lid else all_failwith_lid
 let (try_with_lid : unit -> FStar_Ident.lident) =
   fun uu___ ->
-    let uu___1 = FStar_Options.ml_ish () in
+    let uu___1 = false in
     if uu___1 then compiler_effect_try_with_lid else all_try_with_lid
 let (as_requires : FStar_Ident.lident) = pconst "as_requires"
 let (as_ensures : FStar_Ident.lident) = pconst "as_ensures"
@@ -349,15 +349,10 @@ let (attr_substitute_lid : FStar_Ident.lident) =
   p2l ["FStar"; "Pervasives"; "Substitute"]
 let (well_founded_relation_lid : FStar_Ident.lident) =
   p2l ["FStar"; "WellFounded"; "well_founded_relation"]
-let (gen_reset : ((unit -> Prims.int) * (unit -> unit))) =
-  let x = ref Prims.int_zero in
-  let gen uu___ = FStar_Compiler_Util.incr x; FStar_Compiler_Util.read x in
-  let reset uu___ = FStar_Compiler_Util.write x Prims.int_zero in
-  (gen, reset)
-let (next_id : unit -> Prims.int) = FStar_Pervasives_Native.fst gen_reset
+
 let (sli : FStar_Ident.lident -> Prims.string) =
   fun l ->
-    let uu___ = FStar_Options.print_real_names () in
+    let uu___ = false in
     if uu___
     then FStar_Ident.string_of_lid l
     else
@@ -504,6 +499,8 @@ let (mk_class_lid : FStar_Ident.lid) =
   fstar_tactics_lid' ["Typeclasses"; "mk_class"]
 let (tcresolve_lid : FStar_Ident.lid) =
   fstar_tactics_lid' ["Typeclasses"; "tcresolve"]
+let (solve_lid : FStar_Ident.lid) =
+  fstar_tactics_lid' ["Typeclasses"; "solve"]
 let (tcclass_lid : FStar_Ident.lid) =
   fstar_tactics_lid' ["Typeclasses"; "tcclass"]
 let (tcinstance_lid : FStar_Ident.lid) =

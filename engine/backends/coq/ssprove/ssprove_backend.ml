@@ -39,6 +39,7 @@ module SubtypeToInputLanguage
              and type monadic_action = Features.Off.monadic_action
              and type arbitrary_lhs = Features.Off.arbitrary_lhs
              and type nontrivial_lhs = Features.Off.nontrivial_lhs
+             and type quote = Features.Off.quote
              and type block = Features.Off.block) =
 struct
   module FB = InputLanguage
@@ -1321,7 +1322,7 @@ struct
 
   let pgeneric_constraints_as_argument span :
       generic_constraint -> SSP.AST.argument list = function
-    | GCType { bound = { trait; args }; _ } ->
+    | GCType { goal = { trait; args }; _ } ->
         [
           SSP.AST.Typeclass
             ( None,
@@ -1738,11 +1739,11 @@ struct
                                     [],
                                     value ) );
                           ]
-                    | TIType trait_refs ->
+                    | TIType impl_idents ->
                         SSP.AST.Named
                           (pconcrete_ident x.ti_ident, SSP.AST.TypeTy)
                         :: List.map
-                             ~f:(fun tr ->
+                             ~f:(fun { goal = tr; _ } ->
                                SSP.AST.Coercion
                                  ( pconcrete_ident x.ti_ident ^ "_"
                                    ^ pconcrete_ident tr.trait,
@@ -1752,7 +1753,7 @@ struct
                                          SSP.AST.NameTy
                                            (pconcrete_ident x.ti_ident);
                                        ] ) ))
-                             trait_refs)
+                             impl_idents)
                   items );
           ]
           @ List.concat_map
@@ -1834,12 +1835,12 @@ struct
                                       body,
                                     ret_typ ));
                              ]
-                         | IIType ty ->
+                         | IIType { typ; _ } ->
                              [
                                SSP.AST.LetDef
                                  ( pconcrete_ident x.ii_ident,
                                    [],
-                                   SSP.AST.Type (pty span ty),
+                                   SSP.AST.Type (pty span typ),
                                    SSP.AST.TypeTy );
                              ])
                        items) );

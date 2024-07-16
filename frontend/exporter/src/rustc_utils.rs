@@ -3,29 +3,30 @@ use rustc_middle::ty;
 
 #[extension_traits::extension(pub trait SubstBinder)]
 impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
-    fn subst(self, tcx: ty::TyCtxt<'tcx>, substs: &[ty::subst::GenericArg<'tcx>]) -> T {
-        ty::EarlyBinder::bind(self.skip_binder()).subst(tcx, substs)
+    fn subst(
+        self,
+        tcx: ty::TyCtxt<'tcx>,
+        generics: &[ty::GenericArg<'tcx>],
+    ) -> ty::Binder<'tcx, T> {
+        self.rebind(ty::EarlyBinder::bind(self.clone().skip_binder()).instantiate(tcx, generics))
     }
 }
 
-#[extension_traits::extension(pub trait PredicateToPolyTraitRef)]
-impl<'tcx> ty::Predicate<'tcx> {
-    fn as_poly_trait_ref(self) -> Option<ty::PolyTraitRef<'tcx>> {
-        self.kind()
-            .try_map_bound(|kind| {
-                if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) = kind {
-                    Ok(trait_predicate.trait_ref)
-                } else {
-                    Err(())
-                }
-            })
-            .ok()
+#[extension_traits::extension(pub trait PredicateToPolyTraitPredicate)]
+impl<'tcx> ty::Binder<'tcx, ty::PredicateKind<'tcx>> {
+    fn as_poly_trait_predicate(self) -> Option<ty::PolyTraitPredicate<'tcx>> {
+        self.try_map_bound(|kind| match kind {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => Ok(trait_pred),
+            _ => Err(()),
+        })
+        .ok()
     }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct AnnotatedPredicate<'tcx> {
     pub is_extra_self_predicate: bool,
+    /// Note: they are all actually `Clause`s.
     pub predicate: ty::Predicate<'tcx>,
     pub span: rustc_span::Span,
 }
@@ -58,23 +59,34 @@ impl<'tcx> ty::TyCtxt<'tcx> {
     ) {
         let with_self = self.predicates_of(did);
         let parent = with_self.parent;
-        let with_self = with_self.predicates;
-        let without_self: Vec<ty::Predicate> = self
+        let with_self = {
+            let extra_predicates: Vec<(ty::Clause<'_>, rustc_span::Span)> =
+                if rustc_hir::def::DefKind::OpaqueTy == self.def_kind(did) {
+                    // An opaque type (e.g. `impl Trait`) provides
+                    // predicates by itself: we need to account for them.
+                    self.explicit_item_bounds(did)
+                        .skip_binder()
+                        .iter()
+                        .copied()
+                        .collect()
+                } else {
+                    vec![]
+                };
+            with_self.predicates.iter().copied().chain(extra_predicates)
+        };
+        let without_self: Vec<ty::Clause<'_>> = self
             .predicates_defined_on(did)
             .predicates
-            .into_iter()
-            .cloned()
-            .map(|(pred, _)| pred)
+            .iter()
+            .copied()
+            .map(|(clause, _)| clause)
             .collect();
         (
-            with_self
-                .into_iter()
-                .cloned()
-                .map(move |(predicate, span)| AnnotatedPredicate {
-                    is_extra_self_predicate: !without_self.contains(&predicate),
-                    predicate,
-                    span,
-                }),
+            with_self.map(move |(clause, span)| AnnotatedPredicate {
+                is_extra_self_predicate: !without_self.contains(&clause),
+                predicate: clause.as_predicate(),
+                span,
+            }),
             parent,
         )
     }
@@ -83,11 +95,11 @@ impl<'tcx> ty::TyCtxt<'tcx> {
 pub fn poly_trait_ref<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     assoc: &ty::AssocItem,
-    substs: ty::SubstsRef<'tcx>,
+    generics: ty::GenericArgsRef<'tcx>,
 ) -> Option<ty::PolyTraitRef<'tcx>> {
     let tcx = s.base().tcx;
     let r#trait = tcx.trait_of_item(assoc.def_id)?;
-    Some(ty::Binder::dummy(ty::TraitRef::new(tcx, r#trait, substs)))
+    Some(ty::Binder::dummy(ty::TraitRef::new(tcx, r#trait, generics)))
 }
 
 #[tracing::instrument(skip(s))]
@@ -98,7 +110,7 @@ pub(crate) fn arrow_of_sig<'tcx, S: UnderOwnerState<'tcx>>(sig: &ty::PolyFnSig<'
 #[tracing::instrument(skip(s))]
 pub(crate) fn get_variant_information<'s, S: UnderOwnerState<'s>>(
     adt_def: &ty::AdtDef<'s>,
-    variant_index: rustc_abi::VariantIdx,
+    variant_index: rustc_target::abi::VariantIdx,
     s: &S,
 ) -> VariantInformations {
     s_assert!(s, !adt_def.is_union() || *CORE_EXTRACTION_MODE);
@@ -186,7 +198,7 @@ pub(crate) fn read_span_from_file(span: &Span) -> Result<String, ReadSpanErr> {
 
 #[tracing::instrument(skip(sess))]
 pub fn translate_span(span: rustc_span::Span, sess: &rustc_session::Session) -> Span {
-    let smap: &rustc_span::source_map::SourceMap = sess.parse_sess.source_map();
+    let smap: &rustc_span::source_map::SourceMap = sess.psess.source_map();
     let filename = smap.span_to_filename(span);
 
     let lo = smap.lookup_char_pos(span.lo());
@@ -196,12 +208,18 @@ pub fn translate_span(span: rustc_span::Span, sess: &rustc_session::Session) -> 
         lo: lo.into(),
         hi: hi.into(),
         filename: filename.sinto(&()),
+        rust_span_data: Some(span.data()),
     }
 }
 
-#[tracing::instrument(skip(s))]
-pub(crate) fn get_param_env<'tcx, S: UnderOwnerState<'tcx>>(s: &S) -> ty::ParamEnv<'tcx> {
-    s.base().tcx.param_env(s.owner_id())
+pub trait ParamEnv<'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx>;
+}
+
+impl<'tcx, S: UnderOwnerState<'tcx>> ParamEnv<'tcx> for S {
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.base().tcx.param_env(self.owner_id())
+    }
 }
 
 #[tracing::instrument]

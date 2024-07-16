@@ -4,15 +4,20 @@
 # makes it less portable, so resist temptation, or move to a more
 # sophisticated build system.
 #
-# We expect FSTAR_HOME to be set to your FSTAR repo/install directory
-# We expect HACL_HOME to be set to your HACL* repo location
-# We expect HAX_PROOF_LIBS to be set to the folder containing core, rust_primitives etc.
-# We expect HAX_LIB to be set to the folder containing the crate `hax-lib`.
+# We expect:
+#  1. `fstar.exe` to be in PATH (alternatively, you can also set
+#     $FSTAR_HOME to be set to your F* repo/install directory)
+#
+#  2. `cargo`, `rustup`, `hax` and `jq` to be installed and in PATH.
+#
+#  3. the extracted Cargo crate to have "hax-lib" as a dependency:
+#     `hax-lib = { version = "0.1.0-pre.1", git = "https://github.com/hacspec/hax"}`
+#
+# Optionally, you can set `HACL_HOME`.
 #
 # ROOTS contains all the top-level F* files you wish to verify
 # The default target `verify` verified ROOTS and its dependencies
 # To lax-check instead, set `OTHERFLAGS="--lax"` on the command-line
-#
 #
 # To make F* emacs mode use the settings in this file, you need to
 # add the following lines to your .emacs
@@ -30,17 +35,17 @@
 # (setq fstar-subp-prover-args #'my-fstar-compute-prover-args-using-make)
 #
 
-HAX_HOME       ?= $(shell git rev-parse --show-toplevel)
-FSTAR_HOME     ?= $(HAX_HOME)/../../../FStar
-HACL_HOME      ?= $(HAX_HOME)/../../../hacl-star
+HACL_HOME     ?= $(HOME)/.hax/hacl_home
+FSTAR_BIN     ?= $(shell command -v fstar.exe 1>&2 2> /dev/null && echo "fstar.exe" || echo "$(FSTAR_HOME)/bin/fstar.exe")
 
-FSTAR_BIN      ?= $(shell command -v fstar.exe 1>&2 2> /dev/null && echo "fstar.exe" || echo "$(FSTAR_HOME)/bin/fstar.exe")
+CACHE_DIR     ?= .cache
+HINT_DIR      ?= .hints
 
-HAX_PROOF_LIBS ?= $(HAX_HOME)/proof-libs/fstar
-HAX_LIB        ?= $(HAX_HOME)/hax-lib
+SHELL ?= /usr/bin/env bash
 
-CACHE_DIR      ?= $(HAX_PROOF_LIBS)/.cache
-HINT_DIR       ?= $(HAX_PROOF_LIBS)/.hints
+EXECUTABLES = cargo cargo-hax jq
+K := $(foreach bin,$(EXECUTABLES),\
+        $(if $(shell command -v $(bin) 2> /dev/null),,$(error "No $(bin) in PATH")))
 
 .PHONY: all verify clean
 
@@ -48,17 +53,62 @@ all:
 	rm -f .depend && $(MAKE) .depend
 	$(MAKE) verify
 
-# By default, we process all the files in the current directory. Here, we
-# *extend* the set of relevant files with the tests.
-ROOTS = Lob_backend.fst
+HAX_CLI = "cargo hax into -i '-** +**::process_order' fstar"
 
-$(ROOTS): ../../../src/canister.rs ../../../src/lib.rs
-	cargo hax into -i '-** +**::process_order' fstar
+# If $HACL_HOME doesn't exist, clone it
+${HACL_HOME}:
+	mkdir -p "${HACL_HOME}"
+	git clone --depth 1 https://github.com/hacl-star/hacl-star.git "${HACL_HOME}"
 
-FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib \
-	$(HAX_PROOF_LIBS)/rust_primitives $(HAX_PROOF_LIBS)/core \
-	$(HAX_PROOF_LIBS)/hax_lib \
-	$(HAX_LIB)/proofs/fstar/extraction
+# If no any F* file is detected, we run hax
+ifeq "$(wildcard *.fst *fsti)" ""
+$(shell $(SHELL) -c $(HAX_CLI))
+endif
+
+# By default, we process all the files in the current directory
+ROOTS = $(wildcard *.fst *fsti)
+
+# Regenerate F* files via hax when Rust sources change
+$(ROOTS): $(shell find ../../../src -type f -name '*.rs')
+	$(shell $(SHELL) -c $(HAX_CLI))
+
+# The following is a bash script that discovers F* libraries
+define FINDLIBS
+    # Prints a path if and only if it exists. Takes one argument: the
+    # path.
+    function print_if_exists() {
+        if [ -d "$$1" ]; then
+            echo "$$1"
+        fi
+    }
+    # Asks Cargo all the dependencies for the current crate or workspace,
+    # and extract all "root" directories for each. Takes zero argument.
+    function dependencies() {
+        cargo metadata --format-version 1 |
+            jq -r '.packages | .[] | .manifest_path | split("/") | .[:-1] | join("/")'
+    }
+    # Find hax libraries *around* a given path. Takes one argument: the
+    # path.
+    function find_hax_libraries_at_path() {
+        path="$$1"
+        # if there is a `proofs/fstar/extraction` subfolder, then that's a
+        # F* library
+        print_if_exists "$$path/proofs/fstar/extraction"
+        # Maybe the `proof-libs` folder of hax is around?
+        MAYBE_PROOF_LIBS=$$(realpath -q "$$path/../proof-libs/fstar")
+        if [ $$? -eq 0 ]; then
+            print_if_exists "$$MAYBE_PROOF_LIBS/core"
+            print_if_exists "$$MAYBE_PROOF_LIBS/rust_primitives"
+        fi
+    }
+    { while IFS= read path; do
+          find_hax_libraries_at_path "$$path"
+      done < <(dependencies)
+    } | sort -u
+endef
+export FINDLIBS
+
+FSTAR_INCLUDE_DIRS = $(HACL_HOME)/lib $(shell bash -c "$$FINDLIBS")
 
 FSTAR_FLAGS = --cmi \
   --warn_error -331 \
@@ -67,7 +117,6 @@ FSTAR_FLAGS = --cmi \
   $(addprefix --include ,$(FSTAR_INCLUDE_DIRS))
 
 FSTAR = $(FSTAR_BIN) $(FSTAR_FLAGS)
-
 
 .depend: $(HINT_DIR) $(CACHE_DIR) $(ROOTS)
 	$(info $(ROOTS))
@@ -98,8 +147,6 @@ verify: $(addsuffix .checked, $(addprefix $(CACHE_DIR)/,$(ROOTS)))
 
 
 # Clean targets
-
-SHELL ?= /usr/bin/env bash
 
 clean:
 	rm -rf $(CACHE_DIR)/*

@@ -18,11 +18,10 @@ info:
       stderr: true
       stdout: true
     include_flag: ~
+    backend_options: ~
 ---
 exit = 0
-stderr = '''
-Compiling side-effects v0.1.0 (WORKSPACE_ROOT/side-effects)
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
 
 [stdout]
 diagnostics = []
@@ -64,7 +63,7 @@ Fail Next Obligation.
 
 Equations direct_result_question_mark {L1 : {fset Location}} {I1 : Interface} (y : both L1 I1 (t_Result 'unit int32)) : both L1 I1 (t_Result int8 int32) :=
   direct_result_question_mark y  :=
-    solve_lift (run (letm[choice_typeMonad.result_bind_code int32] _ := impl__map_err y f_from in
+    solve_lift (run (letm[choice_typeMonad.result_bind_code int32] _ := y in
     Result_Ok (Result_Ok (ret_both (0 : int8))))) : both L1 I1 (t_Result int8 int32).
 Fail Next Obligation.
 
@@ -77,14 +76,14 @@ Fail Next Obligation.
 Equations early_returns {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 int32) : both L1 I1 int32 :=
   early_returns x  :=
     solve_lift (run (letm[choice_typeMonad.result_bind_code int32] _ := ifb x >.? (ret_both (3 : int32))
-    then letm[choice_typeMonad.result_bind_code int32] hoist2 := v_Break (ret_both (0 : int32)) in
+    then letm[choice_typeMonad.result_bind_code int32] hoist2 := ControlFlow_Break (ret_both (0 : int32)) in
     ControlFlow_Continue (never_to_any hoist2)
     else () in
     letb hoist3 := x >.? (ret_both (30 : int32)) in
     letm[choice_typeMonad.result_bind_code int32] hoist5 := ifb hoist3
     then matchb ret_both (true : 'bool) with
     | true =>
-      letm[choice_typeMonad.result_bind_code int32] hoist4 := v_Break (ret_both (34 : int32)) in
+      letm[choice_typeMonad.result_bind_code int32] hoist4 := ControlFlow_Break (ret_both (34 : int32)) in
       ControlFlow_Continue (solve_lift (never_to_any hoist4))
     | _ =>
       ControlFlow_Continue (solve_lift (ret_both (3 : int32)))
@@ -93,7 +92,7 @@ Equations early_returns {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 
     x .+ (ret_both (1 : int32))) in
     letb hoist6 := impl__u32__wrapping_add (ret_both (123 : int32)) hoist5 in
     letb hoist7 := impl__u32__wrapping_add hoist6 x in
-    letm[choice_typeMonad.result_bind_code int32] hoist8 := v_Break hoist7 in
+    letm[choice_typeMonad.result_bind_code int32] hoist8 := ControlFlow_Break hoist7 in
     ControlFlow_Continue (never_to_any hoist8))) : both L1 I1 int32.
 Fail Next Obligation.
 
@@ -115,7 +114,7 @@ Equations local_mutation {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1
     letb hoist12 := f_into_iter hoist11 in
     letb _ := foldi_both_list hoist12 (fun i =>
       ssp (fun _ =>
-        assign todo(term) : (both (*1*)(L1:|:fset [y_loc]) (I1) 'unit))) (ret_both (tt : 'unit)) in
+        assign todo(term) : (both (*0*)(L1:|:fset []) (I1) 'unit))) (ret_both (tt : 'unit)) in
     impl__u32__wrapping_add x y
     else letb hoist15 := matchb x with
     | 12 =>
@@ -221,9 +220,9 @@ Notation "'Build_t_Bar' '[' x ']' '(' 'f_b' ':=' y ')'" := (Build_t_Bar (f_a := 
 Equations monad_lifting {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 int8) : both L1 I1 (t_Result t_A t_B) :=
   monad_lifting x  :=
     solve_lift (run (ifb x >.? (ret_both (123 : int8))
-    then letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist33 := ControlFlow_Continue (impl__map_err (Result_Err B) f_from) in
+    then letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist33 := ControlFlow_Continue (Result_Err B) in
     letb hoist34 := Result_Ok hoist33 in
-    letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist35 := v_Break hoist34 in
+    letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist35 := ControlFlow_Break hoist34 in
     ControlFlow_Continue (never_to_any hoist35)
     else ControlFlow_Continue (Result_Ok A))) : both L1 I1 (t_Result t_A t_B).
 Fail Next Obligation.

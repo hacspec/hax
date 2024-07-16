@@ -15,7 +15,8 @@
   ocamlgraph)
  (preprocessor_deps
   ; `ppx_inline` is used on the `Subtype` module, thus we need it at PPX time
-  (file subtype.ml))
+  (file subtype.ml)
+  (source_tree phases))
  (preprocess
   (pps
    ppx_yojson_conv
@@ -26,6 +27,7 @@
    ppx_deriving.eq
    ppx_string
    ppx_inline
+   ppx_phases_index
    ppx_generate_features
    ppx_functor_application
    ppx_enumerate
@@ -43,6 +45,17 @@
   (with-stdout-to
    universe-hash
    (run bash %{universe_hash}))))
+
+(rule
+ (target ast_visitors.ml)
+ (deps
+  (:ast ast.ml))
+ (action
+  (with-stdout-to
+   ast_visitors.ml
+   (with-stdin-from
+    %{ast}
+    (run generate_visitors)))))
 
 (rule
  (target concrete_ident_generated.ml)

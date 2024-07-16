@@ -1,7 +1,14 @@
-use hax_frontend_exporter::{DefId, DefPathItem, DisambiguatedDefPathItem};
-use serde_json;
 use serde_json::Value;
 use std::process::{Command, Stdio};
+
+/// Instead of depending on `hax_frontend_exporter` (that links to
+/// rustc and exposes a huge number of type definitions and their
+/// impls), we just inline a small module here that contains the three
+/// type definition we need. See the module for complementary
+/// informations.
+#[path = "../../../frontend/exporter/src/types/def_id.rs"]
+mod hax_frontend_exporter_def_id;
+use hax_frontend_exporter_def_id::*;
 
 /// Name of the current crate
 const HAX_ENGINE_NAMES_CRATE: &str = "hax_engine_names";
@@ -38,11 +45,11 @@ fn def_path_item_to_str(path_item: DefPathItem) -> String {
         DefPathItem::ForeignMod => "ForeignMod".into(),
         DefPathItem::Use => "Use".into(),
         DefPathItem::GlobalAsm => "GlobalAsm".into(),
-        DefPathItem::ClosureExpr => "ClosureExpr".into(),
+        DefPathItem::Closure => "Closure".into(),
         DefPathItem::Ctor => "Ctor".into(),
         DefPathItem::AnonConst => "AnonConst".into(),
-        DefPathItem::ImplTrait => "ImplTrait".into(),
-        DefPathItem::ImplTraitAssocTy => "ImplTraitAssocTy".into(),
+        DefPathItem::OpaqueTy => "OpaqueTy".into(),
+        DefPathItem::AnonAdt => "AnonAdt".into(),
     }
 }
 
@@ -84,7 +91,7 @@ fn reader_to_str(s: String) -> String {
     const TAB: &str = "    ";
     let mut result = String::new();
     result += &format!(
-        "type name = \n{TAB}  {}\n",
+        "type t = \n{TAB}  {}[@@deriving show, yojson, compare, sexp, eq, hash]\n",
         def_ids
             .iter()
             .map(|(_, def_name)| format!("{def_name}"))
@@ -93,6 +100,8 @@ fn reader_to_str(s: String) -> String {
     );
 
     result += "\n";
+    result += "include (val Base.Comparator.make ~compare ~sexp_of_t)";
+    result += "\n";
     result += "module Values = struct\n";
     for (json, name) in &def_ids {
         result += &format!("{TAB}let parsed_{name} = Types.parse_def_id (Yojson.Safe.from_string {}{ESCAPE_KEY}|{}|{ESCAPE_KEY}{})\n", "{", json, "}");
@@ -100,7 +109,7 @@ fn reader_to_str(s: String) -> String {
     result += "end\n\n";
 
     result += &format!(
-        "let def_id_of: name -> Types.def_id = function\n{TAB}  {}\n\n",
+        "let def_id_of: t -> Types.def_id = function\n{TAB}  {}\n\n",
         def_ids
             .iter()
             .map(|(_, n)| format!("{n} -> Values.parsed_{n}"))
@@ -115,15 +124,9 @@ fn reader_to_str(s: String) -> String {
     result
 }
 
-fn target_dir(suffix: &str) -> camino::Utf8PathBuf {
-    let metadata = cargo_metadata::MetadataCommand::new().exec().unwrap();
-    let mut dir = metadata.target_directory;
-    dir.push(suffix);
-    dir
-}
-
 fn get_json() -> String {
-    let mut cmd = Command::new("cargo-hax");
+    let mut cmd =
+        Command::new(std::env::var("HAX_CARGO_COMMAND_PATH").unwrap_or("cargo-hax".to_string()));
     cmd.args([
         "hax",
         "-C",
@@ -139,10 +142,6 @@ fn get_json() -> String {
     .stdout(Stdio::piped())
     .stderr(Stdio::piped());
 
-    cmd.env("CARGO_TARGET_DIR", target_dir("hax"));
-    for env in ["DYLD_FALLBACK_LIBRARY_PATH", "LD_LIBRARY_PATH"] {
-        cmd.env_remove(env);
-    }
     let out = cmd.output().unwrap();
     let stdout = String::from_utf8(out.stdout).unwrap();
     let stderr = String::from_utf8(out.stderr).unwrap();

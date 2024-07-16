@@ -48,29 +48,30 @@ struct
     | TRawPointer { witness } ->
         TRawPointer { witness = S.raw_pointer span witness }
 
-  and dtrait_ref (span : span) (r : A.trait_ref) : B.trait_ref =
+  and dtrait_goal (span : span) (r : A.trait_goal) : B.trait_goal =
     { trait = r.trait; args = List.map ~f:(dgeneric_value span) r.args }
+
+  and dimpl_ident (span : span) (r : A.impl_ident) : B.impl_ident =
+    { goal = dtrait_goal span r.goal; name = r.name }
 
   and dimpl_expr (span : span) (i : A.impl_expr) : B.impl_expr =
     match i with
     | Self -> Self
-    | Concrete tr -> Concrete (dtrait_ref span tr)
+    | Concrete tr -> Concrete (dtrait_goal span tr)
     | LocalBound { id } -> LocalBound { id }
-    | Parent { impl; trait } ->
-        Parent { impl = dimpl_expr span impl; trait = dtrait_ref span trait }
-    | Projection { impl; item; trait } ->
+    | Parent { impl; ident } ->
+        Parent { impl = dimpl_expr span impl; ident = dimpl_ident span ident }
+    | Projection { impl; item; ident } ->
         Projection
-          { impl = dimpl_expr span impl; item; trait = dtrait_ref span trait }
+          { impl = dimpl_expr span impl; item; ident = dimpl_ident span ident }
     | ImplApp { impl; args } ->
         ImplApp
           {
             impl = dimpl_expr span impl;
             args = List.map ~f:(dimpl_expr span) args;
           }
-    | Dyn tr -> Dyn (dtrait_ref span tr)
-    | Builtin tr -> Builtin (dtrait_ref span tr)
-    | ClosureIE todo -> ClosureIE todo
-    | FnPointer ty -> FnPointer (dty span ty)
+    | Dyn -> Dyn
+    | Builtin tr -> Builtin (dtrait_goal span tr)
 
   and dgeneric_value (span : span) (generic_value : A.generic_value) :
       B.generic_value =
@@ -156,13 +157,15 @@ struct
             then_ = dexpr then_;
             else_ = Option.map ~f:dexpr else_;
           }
-    | App { f; args; generic_args; impl } ->
+    | App { f; args; generic_args; bounds_impls; trait } ->
+        let dgeneric_values = List.map ~f:(dgeneric_value span) in
         App
           {
             f = dexpr f;
             args = List.map ~f:dexpr args;
-            generic_args = List.map ~f:(dgeneric_value span) generic_args;
-            impl = Option.map ~f:(dimpl_expr span) impl;
+            generic_args = dgeneric_values generic_args;
+            bounds_impls = List.map ~f:(dimpl_expr span) bounds_impls;
+            trait = Option.map ~f:(dimpl_expr span *** dgeneric_values) trait;
           }
     | Literal lit -> Literal lit
     | Array l -> Array (List.map ~f:dexpr l)
@@ -257,6 +260,16 @@ struct
             body = dexpr body;
             captures = List.map ~f:dexpr captures;
           }
+    | Quote quote -> Quote (dquote span quote)
+
+  and dquote (span : span) ({ contents; witness } : A.quote) : B.quote =
+    let f = function
+      | `Verbatim code -> `Verbatim code
+      | `Expr e -> `Expr (dexpr e)
+      | `Pat p -> `Pat (dpat p)
+      | `Typ p -> `Typ (dty span p)
+    in
+    { contents = List.map ~f contents; witness = S.quote span witness }
 
   and dloop_kind (span : span) (k : A.loop_kind) : B.loop_kind =
     match k with
@@ -329,7 +342,7 @@ struct
         (generic_constraint : A.generic_constraint) : B.generic_constraint =
       match generic_constraint with
       | GCLifetime (lf, witness) -> B.GCLifetime (lf, S.lifetime span witness)
-      | GCType { bound; id } -> B.GCType { bound = dtrait_ref span bound; id }
+      | GCType impl_ident -> B.GCType (dimpl_ident span impl_ident)
 
     let dgenerics (span : span) (g : A.generics) : B.generics =
       {
@@ -355,7 +368,7 @@ struct
 
     let rec dtrait_item' (span : span) (ti : A.trait_item') : B.trait_item' =
       match ti with
-      | TIType g -> TIType (List.map ~f:(dtrait_ref span) g)
+      | TIType idents -> TIType (List.map ~f:(dimpl_ident span) idents)
       | TIFn t -> TIFn (dty span t)
 
     and dtrait_item (ti : A.trait_item) : B.trait_item =
@@ -369,7 +382,13 @@ struct
 
     let rec dimpl_item' (span : span) (ii : A.impl_item') : B.impl_item' =
       match ii with
-      | IIType g -> IIType (dty span g)
+      | IIType { typ; parent_bounds } ->
+          IIType
+            {
+              typ = dty span typ;
+              parent_bounds =
+                List.map ~f:(dimpl_expr span *** dimpl_ident span) parent_bounds;
+            }
       | IIFn { body; params } ->
           IIFn { body = dexpr body; params = List.map ~f:(dparam span) params }
 
@@ -432,8 +451,14 @@ struct
               generics = dgenerics span generics;
               items = List.map ~f:dtrait_item items;
             }
-      | Impl { generics; self_ty; of_trait = trait_id, trait_generics; items }
-        ->
+      | Impl
+          {
+            generics;
+            self_ty;
+            of_trait = trait_id, trait_generics;
+            items;
+            parent_bounds;
+          } ->
           B.Impl
             {
               generics = dgenerics span generics;
@@ -441,9 +466,12 @@ struct
               of_trait =
                 (trait_id, List.map ~f:(dgeneric_value span) trait_generics);
               items = List.map ~f:dimpl_item items;
+              parent_bounds =
+                List.map ~f:(dimpl_expr span *** dimpl_ident span) parent_bounds;
             }
       | Alias { name; item } -> B.Alias { name; item }
       | Use { path; is_external; rename } -> B.Use { path; is_external; rename }
+      | Quote quote -> Quote (dquote span quote)
       | HaxError e -> B.HaxError e
       | NotImplementedYet -> B.NotImplementedYet
 

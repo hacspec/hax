@@ -532,8 +532,14 @@ end
 open ParseError
 `;
 
-    impl += ('type ' + items.map(({name, type}) =>
-        `${name} = ${type}\n${derive_items.length ? `[@@deriving ${derive_items.join(', ')}]` : ''}`).join('\nand ')
+    let derive_clause = derive_items.length ? `[@@deriving ${derive_items.join(', ')}]` : '';
+
+    impl += (
+        'type '
+            + items.map(({name, type}) =>
+                `${name} = ${type}\n`
+            ).join('\nand ')
+            + derive_clause
     );
     impl += ('');
     impl += ('let rec ' + items.map(({name, type, parse}) =>

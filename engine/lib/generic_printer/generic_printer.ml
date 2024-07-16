@@ -66,8 +66,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
             | Float { value; kind; negative } ->
                 string value
                 |> precede (if negative then minus else empty)
-                |> terminate
-                     (string (match kind with F32 -> "f32" | F64 -> "f64"))
+                |> terminate (string (show_float_kind kind))
             | Bool b -> OCaml.bool b
 
         method generic_value : generic_value fn =
@@ -101,8 +100,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
             in
             string signedness ^^ size
 
-        method ty_float : float_kind fn =
-          (function F32 -> "f32" | F64 -> "f64") >> string
+        method ty_float : float_kind fn = show_float_kind >> string
 
         method generic_values : generic_value list fn =
           function
@@ -225,7 +223,18 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
                 |> wrap_parens
             | MacroInvokation _ -> print#assertion_failure "MacroInvokation"
             | EffectAction _ -> print#assertion_failure "EffectAction"
+            | Quote quote -> print#quote quote
             | App _ | Construct _ -> super#expr' ctx e
+
+        method quote { contents; _ } =
+          List.map
+            ~f:(function
+              | `Verbatim code -> string code
+              | `Expr e -> print#expr_at Expr_Quote e
+              | `Pat p -> print#pat_at Expr_Quote p
+              | `Typ p -> print#ty_at Expr_Quote p)
+            contents
+          |> concat
 
         method expr_monadic_let
             : monad:supported_monads * F.monadic_binding ->
@@ -387,6 +396,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
               string "fn" ^^ space ^^ print#concrete_ident name ^^ generics
               ^^ params
               ^^ iblock braces (print#expr_at Item_Fn_body body)
+          | Quote quote -> print#quote quote
           | _ -> string "item not implemented"
 
         method generic_param' : generic_param fn =

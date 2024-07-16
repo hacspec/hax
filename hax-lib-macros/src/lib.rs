@@ -1,12 +1,15 @@
+mod quote;
 mod rewrite_self;
 mod syn_ext;
 mod utils;
 
 mod prelude {
+    pub use crate::syn_ext::*;
     pub use proc_macro as pm;
     pub use proc_macro2::*;
     pub use proc_macro_error::*;
     pub use quote::*;
+    pub use std::collections::HashSet;
     pub use syn::spanned::Spanned;
     pub use syn::{visit_mut::VisitMut, *};
 
@@ -16,7 +19,6 @@ mod prelude {
 }
 
 use prelude::*;
-use syn_ext::*;
 use utils::*;
 
 /// Include this item in the Hax translation.
@@ -144,7 +146,8 @@ pub fn lemma(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
             );
         }
     }
-    quote! { #attr #item }.into()
+    use AttrPayload::NeverDropBody;
+    quote! { #attr #NeverDropBody #item }.into()
 }
 
 /*
@@ -186,6 +189,9 @@ pub fn decreases(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStrea
 
 /// Add a logical precondition to a function.
 // Note you can use the `forall` and `exists` operators. (TODO: commented out for now, see #297)
+/// In the case of a function that has one or more `&mut` inputs, in
+/// the `ensures` clause, you can refer to such an `&mut` input `x` as
+/// `x` for its "past" value and `future(x)` for its "future" value.
 ///
 /// # Example
 ///
@@ -396,7 +402,7 @@ pub fn attributes(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStr
                                 let (generics, self_ty) = (&item.generics, &item.self_ty);
                                 let where_clause = &generics.where_clause;
                                 ml.tokens = quote! {#decoration, #generics, #where_clause, #self_ty, #tokens};
-                                ml.path = parse_quote! {::hax_lib_macros::impl_fn_decoration};
+                                ml.path = parse_quote! {::hax_lib::impl_fn_decoration};
                             }
                         }
                     }
@@ -475,6 +481,16 @@ pub fn attributes(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStr
     quote! { #item }.into()
 }
 
+/// Mark a struct or an enum opaque: the extraction will assume the
+/// type without revealing its definition.
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn opaque_type(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let item: Item = parse_macro_input!(item);
+    let attr = AttrPayload::OpaqueType;
+    quote! {#attr #item}.into()
+}
+
 /// A marker indicating a `fn` as a ProVerif process read.
 #[proc_macro_error]
 #[proc_macro_attribute]
@@ -509,4 +525,352 @@ pub fn protocol_messages(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::T
     let item: ItemEnum = parse_macro_input!(item);
     let attr = AttrPayload::ProtocolMessages;
     quote! {#attr #item}.into()
+}
+
+/// A marker indicating a `fn` should be automatically translated to a ProVerif constructor.
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn pv_constructor(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let item: ItemFn = parse_macro_input!(item);
+    let attr = AttrPayload::PVConstructor;
+    quote! {#attr #item}.into()
+}
+
+/// A marker indicating a `fn` requires manual modelling in ProVerif.
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn pv_handwritten(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let item: ItemFn = parse_macro_input!(item);
+    let attr = AttrPayload::PVHandwritten;
+    quote! {#attr #item}.into()
+}
+
+/// Create a mathematical integer. This macro expects a integer
+/// literal that consists in an optional minus sign followed by one or
+/// more digits.
+#[proc_macro_error]
+#[proc_macro]
+pub fn int(payload: pm::TokenStream) -> pm::TokenStream {
+    let mut tokens = payload.into_iter().peekable();
+    let negative = matches!(tokens.peek(), Some(pm::TokenTree::Punct(p)) if p.as_char() == '-');
+    if negative {
+        tokens.next();
+    }
+    let [pm::TokenTree::Literal(lit)] = &tokens.collect::<Vec<_>>()[..] else {
+        abort_call_site!("Expected exactly one numeric literal");
+    };
+    let lit = format!("{lit}");
+    // Allow negative numbers
+    let mut lit = lit.strip_prefix("-").unwrap_or(lit.as_str()).to_string();
+    if let Some(faulty) = lit.chars().find(|ch| !matches!(ch, '0'..='9')) {
+        abort_call_site!(format!("Expected a digit, found {faulty}"));
+    }
+    if negative {
+        lit = format!("-{lit}");
+    }
+    quote! {
+        ::hax_lib::int::Int::_unsafe_from_str(#lit)
+    }
+    .into()
+}
+
+macro_rules! make_quoting_item_proc_macro {
+    ($backend:ident, $macro_name:ident, $position:expr, $cfg_name:ident) => {
+        #[doc = concat!("This macro inlines verbatim ", stringify!($backend)," code before a Rust item.")]
+        ///
+        /// This macro takes a string literal containing backend
+        /// code. Just as backend expression macros, this literal can
+        /// contains dollar-prefixed Rust names.
+        ///
+        /// Note: when targetting F*, you can prepend a first
+        /// comma-separated argument: `interface`, `impl` or
+        /// `both`. This controls where the code will apprear: in the
+        /// `fst` or `fsti` files or both.
+        #[proc_macro_error]
+        #[proc_macro_attribute]
+        pub fn $macro_name(payload: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+            let mut fstar_options = None;
+            let item: TokenStream = item.into();
+            let payload = {
+                let mut tokens = payload.into_iter().peekable();
+                if let Some(pm::TokenTree::Ident(ident)) = tokens.peek() {
+                    let ident_str = format!("{}", ident);
+                    fstar_options = Some(ItemQuoteFStarOpts {
+                        intf: ident_str == "interface" || ident_str == "both",
+                        r#impl: ident_str == "impl" || ident_str == "both",
+                    });
+                    if !matches!(ident_str.as_str(), "impl" | "both" | "interface") {
+                        proc_macro_error::abort!(
+                            ident.span(),
+                            "Expected `impl`, `both` or `interface`"
+                        );
+                    }
+                    // Consume the ident
+                    let _ = tokens.next();
+                    // Expect a comma, fail otherwise
+                    let comma = pm::TokenStream::from_iter(tokens.next().into_iter());
+                    let _: syn::token::Comma = parse_macro_input!(comma);
+                }
+                pm::TokenStream::from_iter(tokens)
+            };
+
+            let ts: TokenStream = quote::item(
+                ItemQuote {
+                    position: $position,
+                    fstar_options,
+                },
+                quote! {#[cfg($cfg_name)]},
+                payload,
+                quote! {#item}.into(),
+            )
+            .into();
+            ts.into()
+        }
+    };
+}
+
+macro_rules! make_quoting_proc_macro {
+    ($backend:ident($expr_name:ident, $before_name:ident, $after_name:ident, $replace_name:ident, $cfg_name:ident)) => {
+        #[doc = concat!("Embed ", stringify!($backend), " expression inside a Rust expression. This macro takes only one argument: some raw ", stringify!($backend), " code as a string literal.")]
+        ///
+
+        /// While it is possible to directly write raw backend code,
+        /// sometimes it can be inconvenient. For example, referencing
+        /// Rust names can be a bit cumbersome: for example, the name
+        /// `my_crate::my_module::CONSTANT` might be translated
+        /// differently in a backend (e.g. in the F* backend, it will
+        /// probably be `My_crate.My_module.v_CONSTANT`).
+        ///
+
+        /// To facilitate this, you can write Rust names directly,
+        /// using the prefix `$`: `f $my_crate::my_module__CONSTANT + 3`
+        /// will be replaced with `f My_crate.My_module.v_CONSTANT + 3`
+        /// in the F* backend for instance.
+
+        /// If you want to refer to the Rust constructor
+        /// `Enum::Variant`, you should write `$$Enum::Variant` (note
+        /// the double dollar).
+
+        /// If the name refers to something polymorphic, you need to
+        /// signal it by adding _any_ type informations,
+        /// e.g. `${my_module::function<()>}`. The curly braces are
+        /// needed for such more complex expressions.
+
+        /// You can also write Rust patterns with the `$?{SYNTAX}`
+        /// syntax, where `SYNTAX` is a Rust pattern. The syntax
+        /// `${EXPR}` also allows any Rust expressions
+        /// `EXPR` to be embedded.
+
+        /// Types can be refered to with the syntax `$:{TYPE}`.
+        #[proc_macro]
+        pub fn $expr_name(payload: pm::TokenStream) -> pm::TokenStream {
+            let ts: TokenStream = quote::expression(payload).into();
+            quote!{
+                #[cfg($cfg_name)]
+                {
+                    #ts
+                }
+            }.into()
+        }
+
+        make_quoting_item_proc_macro!($backend, $before_name, ItemQuotePosition::Before, $cfg_name);
+        make_quoting_item_proc_macro!($backend, $after_name, ItemQuotePosition::After, $cfg_name);
+
+        #[doc = concat!("Replaces a Rust expression with some verbatim ", stringify!($backend)," code.")]
+        #[proc_macro_error]
+        #[proc_macro_attribute]
+        pub fn $replace_name(payload: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+            let item: TokenStream = item.into();
+            let attr = AttrPayload::ItemStatus(ItemStatus::Included { late_skip: true });
+            $before_name(payload, quote!{#attr #item}.into())
+        }
+    };
+    ($backend:ident $payload:tt $($others:tt)+) => {
+        make_quoting_proc_macro!($backend$payload);
+        make_quoting_proc_macro!($($others)+);
+    }
+}
+
+make_quoting_proc_macro!(fstar(fstar_expr, fstar_before, fstar_after, fstar_replace, hax_backend_fstar)
+                         coq(coq_expr, coq_before, coq_after, coq_replace, hax_backend_coq)
+                         proverif(proverif_expr, proverif_before, proverif_after, proverif_replace, hax_backend_proverif));
+
+/// Marks a newtype `struct RefinedT(T);` as a refinement type. The
+/// struct should have exactly one unnamed private field.
+///
+/// This macro takes one argument: a boolean predicate that refines
+/// values of type `SomeType`.
+///
+/// For example, the following type defines bounded `u64` integers.
+///
+/// ```
+/// #[hax_lib::refinement_type(|x| x >= MIN && x <= MAX)]
+/// pub struct BoundedU64<const MIN: u64, const MAX: u64>(u64);
+/// ```
+///
+/// This macro will generate an implementation of the [`Deref`] trait
+/// and of the [`hax_lib::Refinement`] type. Those two traits are
+/// the only interface to this newtype: one is allowed only to
+/// construct or destruct refined type via those smart constructors
+/// and destructors, ensuring the abstraction.
+///
+/// A refinement of a type `T` with a formula `f` can be seen as a box
+/// that contains a value of type `T` and a proof that this value
+/// satisfies the formula `f`.
+///
+/// In debug mode, the refinement will be checked at run-time. This
+/// requires the base type `T` to implement `Clone`. Pass a first
+/// parameter `no_debug_runtime_check` to disable this behavior.
+///
+/// When extracted via hax, this is interpreted in the backend as a
+/// refinement type: the use of such a type yields static proof
+/// obligations.
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn refinement_type(mut attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let mut item = parse_macro_input!(item as syn::ItemStruct);
+
+    let syn::Fields::Unnamed(fields) = &item.fields else {
+        proc_macro_error::abort!(
+            item.generics.span(),
+            "Expected a newtype (a struct with one unnamed field), got one or more named field"
+        );
+    };
+    let paren_token = fields.paren_token;
+    let fields = fields.unnamed.iter().collect::<Vec<_>>();
+    let [field] = &fields[..] else {
+        proc_macro_error::abort!(
+            item.generics.span(),
+            "Expected a newtype (a struct with one unnamed field), got {} fields",
+            fields.len()
+        );
+    };
+    if field.vis != syn::Visibility::Inherited {
+        proc_macro_error::abort!(field.vis.span(), "This field was expected to be private");
+    }
+
+    let no_debug_assert = {
+        let mut tokens = attr.clone().into_iter();
+        if let (Some(pm::TokenTree::Ident(ident)), Some(pm::TokenTree::Punct(comma))) =
+            (tokens.next(), tokens.next())
+        {
+            if ident.to_string() != "no_debug_runtime_check" {
+                proc_macro_error::abort!(ident.span(), "Expected 'no_debug_runtime_check'");
+            }
+            if comma.as_char() != ',' {
+                proc_macro_error::abort!(ident.span(), "Expected a comma");
+            }
+            attr = pm::TokenStream::from_iter(tokens);
+            true
+        } else {
+            false
+        }
+    };
+
+    let ExprClosure1 {
+        arg: ret_binder,
+        body: phi,
+    } = parse_macro_input!(attr);
+
+    let kind = FnDecorationKind::Ensures {
+        ret_binder: ret_binder.clone(),
+    };
+    let sig = syn::Signature {
+        constness: None,
+        asyncness: None,
+        unsafety: None,
+        abi: None,
+        variadic: None,
+        fn_token: syn::Token![fn](item.span()),
+        ident: parse_quote! {dummy},
+        generics: item.generics.clone(),
+        paren_token,
+        inputs: syn::punctuated::Punctuated::new(),
+        output: syn::ReturnType::Type(parse_quote! {->}, Box::new(field.ty.clone())),
+    };
+    let ident = &item.ident;
+    let generics = &item.generics;
+    let vis = item.vis.clone();
+    let generics_args: syn::punctuated::Punctuated<_, syn::token::Comma> = item
+        .generics
+        .params
+        .iter()
+        .map(|g| match g {
+            syn::GenericParam::Lifetime(p) => {
+                let i = &p.lifetime;
+                quote! { #i }
+            }
+            syn::GenericParam::Type(p) => {
+                let i = &p.ident;
+                quote! { #i }
+            }
+            syn::GenericParam::Const(p) => {
+                let i = &p.ident;
+                quote! { #i }
+            }
+        })
+        .collect();
+    let inner_ty = &field.ty;
+    let (refinement_item, refinement_attr) = make_fn_decoration(phi.clone(), sig, kind, None, None);
+    let module_ident = syn::Ident::new(
+        &format!("hax__autogenerated_refinement__{}", ident),
+        ident.span(),
+    );
+
+    item.vis = parse_quote! {pub};
+    let debug_assert =
+        no_debug_assert.then_some(quote! {::core::debug_assert!(Self::invariant(x.clone()));});
+    let newtype_as_ref_attr = AttrPayload::NewtypeAsRefinement;
+    quote! {
+        #[allow(non_snake_case)]
+        mod #module_ident {
+            #[allow(unused_imports)]
+            use super::*;
+
+            #refinement_item
+
+            #newtype_as_ref_attr
+            #refinement_attr
+            #item
+
+            #[::hax_lib::exclude]
+            impl #generics ::hax_lib::Refinement for #ident <#generics_args> {
+
+                type InnerType = #inner_ty;
+
+                fn new(x: Self::InnerType) -> Self {
+                    #debug_assert
+                    Self(x)
+                }
+                fn get(self) -> Self::InnerType {
+                    self.0
+                }
+                fn get_mut(&mut self) -> &mut Self::InnerType {
+                    &mut self.0
+                }
+                fn invariant(#ret_binder: Self::InnerType) -> bool {
+                    #phi
+                }
+            }
+
+            #[::hax_lib::exclude]
+            impl #generics ::std::ops::Deref for #ident <#generics_args> {
+                type Target = #inner_ty;
+                fn deref(&self) -> &Self::Target {
+                    &self.0
+                }
+            }
+
+            #[::hax_lib::exclude]
+            impl #generics ::hax_lib::RefineAs<#ident <#generics_args>> for #inner_ty {
+                fn into_checked(self) -> #ident <#generics_args> {
+                    use ::hax_lib::Refinement;
+                    #ident::new(self)
+                }
+            }
+        }
+        #vis use #module_ident::#ident;
+
+    }
+    .into()
 }

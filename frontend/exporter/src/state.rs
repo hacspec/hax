@@ -99,7 +99,7 @@ macro_rules! mk {
 mod types {
     use crate::prelude::*;
     use std::cell::RefCell;
-    use std::collections::{HashMap, HashSet};
+    use std::collections::HashSet;
 
     pub struct LocalContextS {
         pub vars: HashMap<rustc_middle::thir::LocalVarId, String>,
@@ -131,6 +131,12 @@ mod types {
             >,
         >,
         pub tcx: rustc_middle::ty::TyCtxt<'tcx>,
+        /// Rust doesn't enforce bounds on generic parameters in type
+        /// aliases. Thus, when translating type aliases, we need to
+        /// disable the resolution of implementation expressions. For
+        /// more details, please see
+        /// https://github.com/hacspec/hax/issues/707.
+        pub ty_alias_mode: bool,
     }
 
     impl<'tcx> Base<'tcx> {
@@ -139,16 +145,17 @@ mod types {
             options: hax_frontend_exporter_options::Options,
         ) -> Self {
             Self {
-                tcx: tcx.clone(),
+                tcx,
                 macro_infos: Rc::new(HashMap::new()),
                 cached_thirs: Rc::new(HashMap::new()),
                 options: Rc::new(options),
-                /// Always prefer `s.owner_id()` to `s.base().opt_def_id`.
-                /// `opt_def_id` is used in `utils` for error reporting
+                // Always prefer `s.owner_id()` to `s.base().opt_def_id`.
+                // `opt_def_id` is used in `utils` for error reporting
                 opt_def_id: None,
                 local_ctx: Rc::new(RefCell::new(LocalContextS::new())),
                 exported_spans: Rc::new(RefCell::new(HashSet::new())),
                 exported_def_ids: Rc::new(RefCell::new(HashSet::new())),
+                ty_alias_mode: false,
             }
         }
     }
@@ -169,7 +176,7 @@ mk!(
     }
 );
 
-pub use types::*;
+pub use self::types::*;
 
 impl<'tcx> State<Base<'tcx>, (), (), ()> {
     pub fn new(
@@ -185,16 +192,27 @@ impl<'tcx> State<Base<'tcx>, (), (), ()> {
     }
 }
 
-impl<'tcx> State<Base<'tcx>, (), Rc<rustc_middle::mir::Body<'tcx>>, ()> {
+impl<'tcx> State<Base<'tcx>, (), (), rustc_hir::def_id::DefId> {
+    pub fn new_from_state_and_id<S: BaseState<'tcx>>(s: &S, id: rustc_hir::def_id::DefId) -> Self {
+        State {
+            thir: (),
+            mir: (),
+            owner_id: id,
+            base: s.base().clone(),
+        }
+    }
+}
+impl<'tcx> State<Base<'tcx>, (), Rc<rustc_middle::mir::Body<'tcx>>, rustc_hir::def_id::DefId> {
     pub fn new_from_mir(
         tcx: rustc_middle::ty::TyCtxt<'tcx>,
         options: hax_frontend_exporter_options::Options,
         mir: rustc_middle::mir::Body<'tcx>,
+        owner_id: rustc_hir::def_id::DefId,
     ) -> Self {
         Self {
             thir: (),
             mir: Rc::new(mir),
-            owner_id: (),
+            owner_id,
             base: Base::new(tcx, options),
         }
     }
@@ -217,35 +235,24 @@ pub fn with_owner_id<'tcx, THIR, MIR>(
 }
 
 pub trait BaseState<'tcx> = HasBase<'tcx> + Clone + IsState<'tcx>;
+
 /// State of anything below a `owner_id`
 pub trait UnderOwnerState<'tcx> = BaseState<'tcx> + HasOwnerId;
 
-/// Meta-informations about an `impl<GENERICS[: PREDICATES]> TRAIT for
-/// TYPE where PREDICATES {}`
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct ImplInfos {
-    pub generics: TyGenerics,
-    pub predicates: Vec<Predicate>,
-    pub typ: Ty,
-    pub trait_ref: Option<TraitRef>,
-}
+/// While translating expressions, we expect to always have a THIR
+/// body and an `owner_id` in the state
+pub trait ExprState<'tcx> = UnderOwnerState<'tcx> + HasThir<'tcx>;
 
 impl ImplInfos {
     fn from<'tcx>(base: Base<'tcx>, did: rustc_hir::def_id::DefId) -> Self {
         let tcx = base.tcx;
         let s = &with_owner_id(base, (), (), did);
 
-        let predicates = tcx
-            .predicates_defined_on(did)
-            .predicates
-            .iter()
-            .map(|(x, _)| x.sinto(s))
-            .collect();
         Self {
             generics: tcx.generics_of(did).sinto(s),
-            typ: tcx.type_of(did).subst_identity().sinto(s),
+            typ: tcx.type_of(did).instantiate_identity().sinto(s),
             trait_ref: tcx.impl_trait_ref(did).sinto(s),
-            predicates,
+            clauses: tcx.predicates_defined_on(did).predicates.sinto(s),
         }
     }
 }

@@ -1,8 +1,16 @@
 [workspace]
-members = ["chacha20", "limited-order-book", "sha256"]
+members = [
+    "chacha20",
+    "limited-order-book",
+    "sha256",
+    "barrett",
+    "kyber_compress",
+]
 resolver = "2"
 
 [workspace.dependencies]
 hax-lib-macros = { path = "../hax-lib-macros" }
 hax-lib = { path = "../hax-lib" }
 secret_independence = { path = "../secret_independence" }
+hax-bounded-integers = { path = "../hax-bounded-integers", version = "=0.1.0-pre.1" }
+

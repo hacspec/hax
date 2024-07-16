@@ -54,10 +54,40 @@ module Make (F : Features.T) = struct
     let mut_borrow (e : expr) : expr option =
       match e.e with Borrow { kind = Mut _; e; _ } -> Some e | _ -> None
 
+    let borrow (e : expr) : expr option =
+      match e.e with Borrow { e; _ } -> Some e | _ -> None
+
+    let block (e : expr) : expr option =
+      match e.e with Block (e, _) -> Some e | _ -> None
+
     let deref (e : expr) : expr option =
       match e.e with
       | App { f = { e = GlobalVar (`Primitive Deref); _ }; args = [ e ]; _ } ->
           Some e
+      | _ -> None
+
+    let closure (e : expr) : (pat list * expr) option =
+      match e.e with
+      | Closure { params; body; _ } -> Some (params, body)
+      | _ -> None
+
+    let app (e : expr) :
+        (expr
+        * expr list
+        * generic_value list
+        * impl_expr option
+        * impl_expr list)
+        option =
+      match e.e with
+      | App { f; args; generic_args; trait; bounds_impls } ->
+          (* TODO: propagate full trait *)
+          Some (f, args, generic_args, Option.map ~f:fst trait, bounds_impls)
+      | _ -> None
+
+    let pbinding_simple (p : pat) : (local_ident * ty) option =
+      match p.p with
+      | PBinding { mut = Immutable; mode = _; var; typ; subpat = None } ->
+          Some (var, typ)
       | _ -> None
 
     let concrete_app1 (f : Concrete_ident.name) (e : expr) : expr option =
@@ -67,8 +97,9 @@ module Make (F : Features.T) = struct
             f = { e = GlobalVar (`Concrete f'); _ };
             args = [ e ];
             generic_args = _;
-            impl = _;
-          (* TODO: see issue #328 *)
+            trait = _;
+            _;
+            (* TODO: see issue #328 *)
           }
         when Concrete_ident.eq_name f f' ->
           Some e
@@ -171,8 +202,9 @@ module Make (F : Features.T) = struct
                   f = { e = GlobalVar (`Primitive Deref); _ };
                   args = [ { e = Borrow { e = sub; _ }; _ } ];
                   generic_args = _;
-                  impl = _;
-                (* TODO: see issue #328 *)
+                  trait = _;
+                  _;
+                  (* TODO: see issue #328 *)
                 } ->
                 expr sub
             | _ -> super#visit_expr () e
@@ -180,22 +212,37 @@ module Make (F : Features.T) = struct
           expr e
       end
 
+    (** Rename impl expressions variables. By default, they are big
+      and unique identifiers, after this function, they are renamed
+      into `iN` where `N` is a short local unique identifier. *)
     let rename_generic_constraints =
       object
         inherit [_] Visitors.map as super
 
-        method! visit_generic_constraint (s : (string, string) Hashtbl.t) gc =
+        method! visit_generic_constraint
+            ((enabled, s) : bool * (string, string) Hashtbl.t) gc =
           match gc with
-          | GCType { bound; id } ->
+          | GCType { goal; name } when enabled ->
               let data = "i" ^ Int.to_string (Hashtbl.length s) in
-              let _ = Hashtbl.add s ~key:id ~data in
-              GCType { bound; id = data }
-          | _ -> super#visit_generic_constraint s gc
+              let _ = Hashtbl.add s ~key:name ~data in
+              GCType { goal; name = data }
+          | _ -> super#visit_generic_constraint (enabled, s) gc
+
+        method! visit_trait_item (_, s) = super#visit_trait_item (true, s)
+
+        method! visit_item' (_, s) item =
+          let enabled =
+            (* generic constraints on traits correspond to super
+               traits, those are not local and should NOT be renamed *)
+            [%matches? Trait _] item |> not
+          in
+          super#visit_item' (enabled, s) item
 
         method! visit_impl_expr s ie =
           match ie with
           | LocalBound { id } ->
-              LocalBound { id = Hashtbl.find s id |> Option.value ~default:id }
+              LocalBound
+                { id = Hashtbl.find (snd s) id |> Option.value ~default:id }
           | _ -> super#visit_impl_expr s ie
       end
 
@@ -215,6 +262,23 @@ module Make (F : Features.T) = struct
                 }
           | _ -> super#visit_item' () item'
       end
+
+    let replace_local_variables (map : (local_ident, expr, _) Map.t) =
+      object
+        inherit [_] Visitors.map as super
+
+        method! visit_expr () e =
+          match e.e with
+          | LocalVar var -> Map.find map var |> Option.value ~default:e
+          | _ -> super#visit_expr () e
+      end
+
+    (** [replace_local_variable var replacement] returns a visitor
+      that maps any type of the AST replacing every occurence of the
+      expression [LocalVar var] by [replacement]. *)
+    let replace_local_variable (var : local_ident) (replacement : expr) =
+      replace_local_variables
+        (Map.of_alist_exn (module Local_ident) [ (var, replacement) ])
 
     let rename_local_idents (f : local_ident -> local_ident) =
       object
@@ -280,12 +344,21 @@ module Make (F : Features.T) = struct
                   f = { e = GlobalVar (`Primitive Cast); _ } as f;
                   args = [ arg ];
                   generic_args;
-                  impl;
+                  trait;
+                  bounds_impls;
                 } ->
                 ascribe
                   {
                     e with
-                    e = App { f; args = [ ascribe arg ]; generic_args; impl };
+                    e =
+                      App
+                        {
+                          f;
+                          args = [ ascribe arg ];
+                          generic_args;
+                          trait;
+                          bounds_impls;
+                        };
                   }
             | _ ->
                 (* Ascribe the return type of a function application & constructors *)
@@ -628,7 +701,21 @@ module Make (F : Features.T) = struct
         e
     | _ -> e
 
-  (* let rec remove_empty_tap *)
+  (** See [beta_reduce_closure]'s documentation. *)
+  let beta_reduce_closure_opt (e : expr) : expr option =
+    let* f, args, _, _, _ = Expect.app e in
+    let* pats, body = Expect.closure f in
+    let* vars = List.map ~f:Expect.pbinding_simple pats |> sequence in
+    let vars = List.map ~f:fst vars in
+    let replacements =
+      List.zip_exn vars args |> Map.of_alist_exn (module Local_ident)
+    in
+    Some ((Mappers.replace_local_variables replacements)#visit_expr () body)
+
+  (** Reduces a [(|x1, ..., xN| body)(e1, ..., eN)] to [body[x1/e1, ..., xN/eN]].
+        This assumes the arities are right: [(|x, y| ...)(e1)]. *)
+  let beta_reduce_closure (e : expr) : expr =
+    beta_reduce_closure_opt e |> Option.value ~default:e
 
   let is_unit_typ : ty -> bool =
     remove_tuple1 >> [%matches? TApp { ident = `TupleType 0; _ }]
@@ -782,7 +869,15 @@ module Make (F : Features.T) = struct
     let typ = TArrow (List.map ~f:(fun arg -> arg.typ) args, ret_typ) in
     let e = GlobalVar f in
     {
-      e = App { f = { e; typ; span }; args; generic_args = []; impl };
+      e =
+        App
+          {
+            f = { e; typ; span };
+            args;
+            generic_args = [];
+            bounds_impls = [];
+            trait = Option.map ~f:(fun impl -> (impl, [])) impl;
+          };
       typ = ret_typ;
       span;
     }
@@ -829,7 +924,8 @@ module Make (F : Features.T) = struct
           f = { e = GlobalVar (`Primitive Ast.Deref); _ };
           args = [ e ];
           generic_args = _;
-          impl = _;
+          bounds_impls = _;
+          trait = _;
         } ->
         next e
     | _ -> e
@@ -864,7 +960,8 @@ module Make (F : Features.T) = struct
                 f;
                 args = [ e ];
                 generic_args = [];
-                impl = None (* TODO: see issue #328 *);
+                bounds_impls = [];
+                trait = None (* TODO: see issue #328 *);
               };
           typ;
           span;
@@ -963,7 +1060,8 @@ module Make (F : Features.T) = struct
             f = tuple_projector tuple.span tuple.typ len nth type_at_nth;
             args = [ tuple ];
             generic_args = [] (* TODO: see issue #328 *);
-            impl = None (* TODO: see issue #328 *);
+            bounds_impls = [];
+            trait = None (* TODO: see issue #328 *);
           };
     }
 
@@ -1006,7 +1104,8 @@ module Make (F : Features.T) = struct
             f = { e = GlobalVar (`Projector _ as projector); _ };
             args = [ place ];
             generic_args = _;
-            impl = _;
+            bounds_impls = _;
+            trait = _;
           (* TODO: see issue #328 *)
           } ->
           let* place = of_expr place in
@@ -1016,7 +1115,8 @@ module Make (F : Features.T) = struct
             f = { e = GlobalVar f; _ };
             args = [ place; index ];
             generic_args = _;
-            impl = _;
+            bounds_impls = _;
+            trait = _;
           (* TODO: see issue #328 *)
           }
         when Global_ident.eq_name Core__ops__index__Index__index f ->
@@ -1028,7 +1128,8 @@ module Make (F : Features.T) = struct
             f = { e = GlobalVar f; _ };
             args = [ place; index ];
             generic_args = _;
-            impl = _;
+            bounds_impls = _;
+            trait = _;
           (* TODO: see issue #328 *)
           }
         when Global_ident.eq_name Core__ops__index__IndexMut__index_mut f ->

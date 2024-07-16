@@ -18,6 +18,7 @@ info:
       stderr: false
       stdout: true
     include_flag: ~
+    backend_options: ~
 ---
 exit = 0
 
@@ -162,11 +163,11 @@ Open Scope bool_scope.
 (*Not implemented yet? todo(item)*)
 
 Definition debug (label : int32) (value : int32) : unit :=
-  let _ := v__print (impl_2__new_v1 (unsize (array_from_list [[;
+  let _ := v__print (impl_2__new_v1 (array_from_list [[;
       ] a=;
       
-])) (unsize (array_from_list [impl_1__new_display label;
-      impl_1__new_display value]))) : unit in
+]) (array_from_list [impl_1__new_display label;
+      impl_1__new_display value])) : unit in
   tt.
 
 Definition f (_ : unit) : unit :=

@@ -28,14 +28,32 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     let _: Result<(), u32> = Result::Err(3u8).map_err(u32::from);
 
     let _ = [()].into_iter();
+    let _: u16 = 6u8.into();
     let _ = 1..2;
     let _ = 1..;
     let _ = ..;
     let _ = ..1;
 
+    {
+        use hax_lib::int::*;
+        let a: Int = 3u8.lift();
+        let _ = a.clone().pow2();
+        let _ = Int::_unsafe_from_str("1");
+        let _: u32 = a.concretize();
+    }
+
     fn question_mark_result<A, B: From<A>>(x: A) -> Result<(), B> {
         Err(x)?;
         Ok(())
+    }
+
+    let _ = hax_lib::inline("");
+    use hax_lib::{RefineAs, Refinement};
+
+    fn refinements<T: Refinement + Clone, U: RefineAs<T>>(x: T, y: U) -> T {
+        let _ = x.clone().get_mut();
+        T::new(x.get());
+        y.into_checked()
     }
 
     const _: () = {
@@ -140,6 +158,29 @@ mod hax {
     // TODO: Should that live here? (this is F* specific)
     fn array_of_list() {}
     fn never_to_any() {}
+
+    /// The engine uses this `dropped_body` symbol as a marker value
+    /// to signal that a item was extracted without body.
+    fn dropped_body() {}
+
+    mod int {
+        fn add() {}
+        fn sub() {}
+        fn div() {}
+        fn mul() {}
+        fn rem() {}
+
+        fn le() {}
+        fn lt() {}
+        fn ge() {}
+        fn gt() {}
+
+        fn eq() {}
+        fn ne() {}
+
+        fn from_machine() {}
+        fn into_machine() {}
+    }
 
     mod control_flow_monad {
         trait ControlFlowMonad {

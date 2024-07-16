@@ -82,4 +82,17 @@ let yojson_of_string_via_js (s : string) : Yojson.Safe.t =
   in
   fun_call fn [| string s |> coerce |] |> Obj.magic
 
-let _ = Lib.main (Lib.read_options_from_stdin yojson_of_string_via_js)
+let _ =
+  Hax_engine.Hax_io.init
+    (module struct
+      let read_json () =
+        let line = Stdio.In_channel.input_line Stdio.In_channel.stdin in
+        Option.map ~f:yojson_of_string_via_js line
+
+      let write_json msg =
+        let open Stdio.Out_channel in
+        Yojson.Safe.to_channel stdout msg;
+        output_char stdout '\n';
+        flush stdout
+    end);
+  Lib.main ()

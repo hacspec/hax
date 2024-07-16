@@ -6,13 +6,11 @@ use std::process::{Command, Stdio};
 #[derive(Clone, Debug, serde::Serialize)]
 pub enum TestKind {
     Translate { backend: String },
-    Lint { linter: String },
 }
 
 impl TestKind {
     fn as_name(&self) -> String {
         (match self {
-            TestKind::Lint { linter } => ["lint".to_string(), linter.clone()],
             TestKind::Translate { backend } => ["into".to_string(), backend.clone()],
         })
         .join("-")
@@ -45,6 +43,7 @@ pub struct TestSpec {
     pub positive: bool,
     pub snapshot: TestSnapshot,
     pub include_flag: Option<String>,
+    pub backend_options: Option<Vec<String>>,
 }
 
 impl From<Value> for TestSpec {
@@ -68,6 +67,7 @@ impl From<Value> for TestSpec {
             positive: as_bool(&o, "positive", true),
             issue_id: o["positive"].as_u64(),
             include_flag: o["include-flag"].as_str().map(|s| s.into()),
+            backend_options: serde_json::from_value(o["backend-options"].clone()).unwrap(),
             snapshot: as_opt_bool(snapshot, true)
                 .map(|b| TestSnapshot {
                     stderr: b,
@@ -109,7 +109,6 @@ pub struct Test {
 impl Test {
     fn as_args(&self) -> Vec<String> {
         match &self.kind {
-            TestKind::Lint { linter } => vec!["lint".to_string(), linter.clone()],
             TestKind::Translate { backend } => {
                 let mut args = vec![];
                 args.push("into".to_string());
@@ -119,6 +118,9 @@ impl Test {
                 }
                 args.push("--dry-run".to_string());
                 args.push(backend.clone());
+                if let Some(backend_options) = &self.spec.backend_options {
+                    args.extend_from_slice(backend_options.clone().as_slice());
+                }
                 args
             }
         }
@@ -182,7 +184,7 @@ impl Test {
             snapshot.insert(
                 "stdout".to_string(),
                 serde_json::from_str(&sout)
-                    .map(|out: hax_cli_options_engine::Output| {
+                    .map(|out: hax_types::engine_api::Output| {
                         use serde_json::json;
                         json!({
                             "diagnostics": Value::Array(out.diagnostics.into_iter().map(|diag| json!({
@@ -280,7 +282,6 @@ fn parse_hax_tests_metadata(info: TestInfo, metadata: &Value) -> Vec<Test> {
             info: info.clone(),
             kind: match a.as_str() {
                 "into" => TestKind::Translate { backend: b },
-                "lint" => TestKind::Lint { linter: b },
                 _ => panic!(
                     "unexpected metadata [hax-tests.{}.{}] for package {:#?}",
                     a, b, info
@@ -297,8 +298,11 @@ fn main() {
         .unwrap();
     let workspace_root: String = metadata.workspace_root.into();
 
+    let mut args = libtest_mimic::Arguments::from_args();
+    args.test_threads = Some(1);
+
     libtest_mimic::run(
-        &libtest_mimic::Arguments::from_args(),
+        &args,
         metadata
             .packages
             .into_iter()

@@ -6,7 +6,8 @@ license.workspace = true
 homepage.workspace = true
 edition.workspace = true
 repository.workspace = true
-readme.workspace = true
+readme = "README.md"
+description = "Hax-specific proc-macros for Rust programs"
 
 [lib]
 proc-macro = true
@@ -15,5 +16,13 @@ proc-macro = true
 proc-macro-error = "1.0.4"
 proc-macro2.workspace = true
 quote.workspace = true
+syn = { version = "2.0", features = [
+    "full",
+    "visit-mut",
+    "extra-traits",
+    "parsing",
+] }
 hax-lib-macros-types.workspace = true
-syn = { version = "2.0", features = ["full", "visit-mut", "extra-traits", "parsing"] }
+
+[dev-dependencies]
+hax-lib = { path = "../hax-lib" }

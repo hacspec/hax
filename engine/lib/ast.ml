@@ -78,9 +78,14 @@ let show_int_kind { size; signedness } =
     |> Option.map ~f:Int.to_string
     |> Option.value ~default:"size")
 
-type float_kind = F32 | F64 [@@deriving show, yojson, hash, compare, eq]
+type float_kind = F16 | F32 | F64 | F128
+[@@deriving show, yojson, hash, compare, eq]
 
-let show_float_kind = function F32 -> "f32" | F64 -> "f64"
+let show_float_kind = function
+  | F16 -> "f16"
+  | F32 -> "f32"
+  | F64 -> "f64"
+  | F128 -> "f128"
 
 type literal =
   | String of string
@@ -134,22 +139,32 @@ functor
 
     and impl_expr =
       | Self
-      | Concrete of trait_ref
+      | Concrete of trait_goal
       | LocalBound of { id : string }
-      | Parent of { impl : impl_expr; trait : trait_ref }
+      | Parent of { impl : impl_expr; ident : impl_ident }
       | Projection of {
           impl : impl_expr;
-          trait : trait_ref;
           item : concrete_ident;
+          ident : impl_ident;
         }
       | ImplApp of { impl : impl_expr; args : impl_expr list }
-      | Dyn of trait_ref
-      | Builtin of trait_ref
-      | FnPointer of ty
-      (* The `IE` suffix is there because visitors conflicts...... *)
-      | ClosureIE of todo
+      | Dyn
+      | Builtin of trait_goal
 
-    and trait_ref = { trait : concrete_ident; args : generic_value list }
+    and trait_goal = { trait : concrete_ident; args : generic_value list }
+    (** A fully applied trait: [Foo<SomeTy, T0, ..., Tn>] (or
+      `SomeTy: Foo<T0, ..., Tn>`). An `impl_expr` "inhabits" a
+      `trait_goal`. *)
+
+    and impl_ident = { goal : trait_goal; name : string }
+    (** An impl identifier [{goal; name}] can be:
+          {ul
+              {- An in-scope variable [name] that inhabits [goal].}
+              {- A field of some other impl expression [i]: [i.name] inhabits [goal]. This corresponds to parent bounds or associated type bounds.}
+              {- An argument that introduces a variable [name] that inhabits [goal].}
+          }
+      *)
+    (* TODO: ADD SPAN! *)
 
     and pat' =
       | PWild
@@ -184,7 +199,8 @@ functor
           f : expr;
           args : expr list (* ; f_span: span *);
           generic_args : generic_value list;
-          impl : impl_expr option;
+          bounds_impls : impl_expr list;
+          trait : (impl_expr * generic_value list) option;
         }
       | Literal of literal
       | Array of expr list
@@ -245,8 +261,17 @@ functor
         }
       | Closure of { params : pat list; body : expr; captures : expr list }
       | EffectAction of { action : F.monadic_action; argument : expr }
+      | Quote of quote
+          (** A quotation is an inlined piece of backend code
+              interleaved with Rust code *)
 
     and expr = { e : expr'; span : span; typ : ty }
+
+    and quote = {
+      contents :
+        [ `Verbatim of string | `Expr of expr | `Pat of pat | `Typ of ty ] list;
+      witness : F.quote;
+    }
 
     and supported_monads =
       | MException of ty
@@ -309,12 +334,9 @@ functor
 
     and generic_constraint =
       | GCLifetime of todo * F.lifetime
-      | GCType of {
-          bound : trait_ref;
-              (* trait_ref is always applied with the type the trait implements.
-                 For instance, `T: Clone` is actually `Clone<T> *)
-          id : string;
-        }
+      | GCType of impl_ident
+          (** Trait or lifetime constraints. For instance, `A` and `B` in
+    `fn f<T: A + B>()`. *)
     [@@deriving show, yojson, hash, eq]
 
     type param = { pat : pat; typ : ty; typ_span : span option; attrs : attrs }
@@ -362,6 +384,7 @@ functor
           self_ty : ty;
           of_trait : global_ident * generic_value list;
           items : impl_item list;
+          parent_bounds : (impl_expr * impl_ident) list;
         }
       | Alias of { name : concrete_ident; item : concrete_ident }
           (** `Alias {name; item}` is basically a `use
@@ -371,13 +394,14 @@ functor
           is_external : bool;
           rename : string option;
         }
+      | Quote of quote
       | HaxError of string
       | NotImplementedYet
 
     and item = { v : item'; span : span; ident : concrete_ident; attrs : attrs }
 
     and impl_item' =
-      | IIType of ty
+      | IIType of { typ : ty; parent_bounds : (impl_expr * impl_ident) list }
       | IIFn of { body : expr; params : param list }
 
     and impl_item = {
@@ -388,7 +412,7 @@ functor
       ii_attrs : attrs;
     }
 
-    and trait_item' = TIType of trait_ref list | TIFn of ty
+    and trait_item' = TIType of impl_ident list | TIFn of ty
 
     and trait_item = {
       (* TODO: why do I need to prefix by `ti_` here? I guess visitors fail or something *)

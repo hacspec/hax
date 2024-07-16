@@ -1,5 +1,7 @@
 type t [@@deriving show, yojson, compare, sexp, eq, hash]
-type name = Concrete_ident_generated.name
+
+type name = Concrete_ident_generated.t
+[@@deriving show, yojson, compare, sexp, eq, hash]
 
 module ImplInfoStore : sig
   val init : (Types.def_id * Types.impl_infos) list -> unit
@@ -27,6 +29,10 @@ val to_debug_string : t -> string
 module Create : sig
   val fresh_module : from:t list -> t
   val move_under : new_parent:t -> t -> t
+
+  val map_last : f:(string -> string) -> t -> t
+  (** [map_last f ident] applies [f] on the last chunk of [ident]'s
+      path if it holds a string *)
 end
 
 type view = { crate : string; path : string list; definition : string }

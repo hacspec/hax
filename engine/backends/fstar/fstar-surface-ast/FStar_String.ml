@@ -16,28 +16,15 @@ let split seps s =
        repeat_split l seps in
   repeat_split [s] seps
 let compare x y = Z.of_int (BatString.compare x y)
-type char = FStar_Char.char
 let concat = BatString.concat
 let length s = Z.of_int (BatUTF8.length s)
-let strlen s = length s
 
 let substring s i j =
   BatUTF8.init (Z.to_int j) (fun k -> BatUTF8.get s (k + Z.to_int i))
-let sub = substring
 
 let get s i = BatUChar.code (BatUTF8.get s (Z.to_int i))
-let collect f s =
-  let r = ref "" in
-  BatUTF8.iter (fun c -> r := !r ^ f (BatUChar.code c)) s; !r
-let lowercase = BatString.lowercase
-let uppercase = BatString.uppercase
+let lowercase = BatString.lowercase_ascii
+let uppercase = BatString.uppercase_ascii
 let escaped = BatString.escaped
-let index = get
-exception Found of int
-let index_of s c =
-    let c = BatUChar.chr c in
-    try let _ = BatUTF8.iteri (fun c' i -> if c = c' then raise (Found i) else ()) s in Z.of_int (-1)
-    with Found i -> Z.of_int i
 let list_of_string s = BatList.init (BatUTF8.length s) (fun i -> BatUChar.code (BatUTF8.get s i))
 let string_of_list l = BatUTF8.init (BatList.length l) (fun i -> BatUChar.chr (BatList.at l i))
-let string_of_char (c:char) = BatString.of_char (Char.chr c)

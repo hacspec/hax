@@ -5,20 +5,20 @@
 (generate_opam_files true)
 
 (source
- (github username/reponame))
+ (github hacspec/hax))
 
-(authors "Author Name")
+(authors "Hax Authors")
 
-(maintainers "Maintainer Name")
+(maintainers "Hax Authors")
 
-(license LICENSE)
+(license "Apache-2.0")
 
-(documentation https://url/to/documentation)
+(documentation https://hacspec.org/hax/)
 
 (package
  (name hax-engine)
- (synopsis "A short synopsis")
- (description "A longer description")
+ (synopsis "The engine of hax, a Rust verification tool")
+ (description "Hax is divided in two: a frontend (written in Rust) and an engine (written in OCaml). This is the engine.")
  (depends
         ocaml
         dune
@@ -44,17 +44,14 @@
         js_of_ocaml-compiler
         js_of_ocaml
         js_of_ocaml-ppx
-        zarith_stubs_js
         
         ; F*-specific dependencies
         batteries
-        zarith
         stdint
         ppxlib
         menhirLib
         sedlex
         )
  (tags
-  (topics "to describe" your project)))
+  (topics rust verification)))
 
-; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project

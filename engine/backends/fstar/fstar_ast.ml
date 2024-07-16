@@ -34,10 +34,11 @@ module Attrs = struct
   let no_method = term @@ AST.Var FStar_Parser_Const.no_method_lid
 end
 
+let tcresolve = term @@ AST.Var FStar_Parser_Const.tcresolve_lid
+let solve = term @@ AST.Var FStar_Parser_Const.solve_lid
+
 let pat_var_tcresolve (var : string option) =
-  let tcresolve =
-    Some (AST.Meta (term @@ AST.Var FStar_Parser_Const.tcresolve_lid))
-  in
+  let tcresolve = Some (AST.Meta tcresolve) in
   pat
   @@
   match var with
@@ -53,6 +54,13 @@ let mk_e_abs args body =
 let mk_e_app base args =
   AST.mkApp base (List.map ~f:(fun arg -> (arg, AST.Nothing)) args) dummyRange
 
+let mk_app base args = AST.mkApp base args dummyRange
+let unit = term AST.(Const Const_unit)
+
+let tc_solve =
+  term
+  @@ AST.Var (FStar_Parser_Const.fstar_tactics_lid' [ "Typeclasses"; "solve" ])
+
 let mk_binder ?(aqual : FStar_Parser_AST.arg_qualifier option = Some Implicit) b
     =
   AST.{ b; brange = dummyRange; blevel = Un; aqual; battributes = [] }
@@ -66,8 +74,6 @@ let binder_of_term ?name (t : AST.term) : AST.binder =
   in
   mk_e_binder b
 
-let unit = term AST.(Const Const_unit)
-
 let mk_e_arrow inputs output =
   term @@ AST.Product (List.map ~f:binder_of_term inputs, output)
 
@@ -80,6 +86,8 @@ let mk_refined (x : string) (typ : AST.term) (phi : x:AST.term -> AST.term) =
   let x_bd = mk_e_binder @@ AST.Annotated (x, typ) in
   term @@ AST.Refine (x_bd, phi (term @@ AST.Var (lid_of_id x)))
 
+let type0_term = AST.Name (lid [ "Type0" ]) |> term
+
 let parse_string f s =
   let open FStar_Parser_ParseIt in
   let frag_of_text s =
@@ -91,7 +99,8 @@ let parse_string f s =
     }
   in
   match parse (f (frag_of_text s)) with
-  | ParseError (_, err, _) -> failwith ("string_of_term: got error " ^ err)
+  | ParseError (_, err, _) ->
+      failwith ("string_of_term: got error [" ^ err ^ "] on input: [" ^ s ^ "]")
   | x -> x
 
 let term_of_string s =

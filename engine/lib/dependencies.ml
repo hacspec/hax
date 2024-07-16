@@ -54,14 +54,18 @@ module Make (F : Features.T) = struct
         | Trait { name = _; generics; items } ->
             v#visit_generics () generics
             @ concat_map (v#visit_trait_item ()) items
-        | Impl { generics; self_ty; of_trait; items } ->
+        | Impl { generics; self_ty; of_trait; items; parent_bounds } ->
             v#visit_generics () generics
             @ v#visit_ty () self_ty
             @ v#visit_global_ident () (fst of_trait)
             @ concat_map (v#visit_generic_value ()) (snd of_trait)
             @ concat_map (v#visit_impl_item ()) items
+            @ concat_map
+                (fun (ie, ii) ->
+                  v#visit_impl_expr () ie @ v#visit_impl_ident () ii)
+                parent_bounds
         | Alias { name = _; item } -> v#visit_concrete_ident () item
-        | Use _ | HaxError _ | NotImplementedYet ->
+        | Use _ | Quote _ | HaxError _ | NotImplementedYet ->
             Set.empty (module Concrete_ident)
       in
       set |> Set.to_list
@@ -245,6 +249,7 @@ module Make (F : Features.T) = struct
     let show_inclusion_clause Types.{ kind; namespace } =
       (match kind with
       | Excluded -> "-"
+      | SignatureOnly -> "+:"
       | Included deps_kind -> (
           match deps_kind with
           | Transitive -> "+"
@@ -266,6 +271,7 @@ module Make (F : Features.T) = struct
         | Included Transitive -> (true, false)
         | Included Shallow -> (true, true)
         | Included None' -> (false, false)
+        | SignatureOnly -> (false, true)
         | Excluded -> (false, false)
       in
       let matched = matched0 |> if with_deps then deps_of else Fn.id in
@@ -278,7 +284,9 @@ module Make (F : Features.T) = struct
             (match clause.kind with Excluded -> "remove" | _ -> "add")
           @@ show_ident_set matched);
       let set_op =
-        match clause.kind with Included _ -> Set.union | Excluded -> Set.diff
+        match clause.kind with
+        | Included _ | SignatureOnly -> Set.union
+        | Excluded -> Set.diff
       in
       let result = set_op selection' matched in
       result

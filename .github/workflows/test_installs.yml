@@ -22,7 +22,7 @@ jobs:
           - ubuntu-latest
           - ubuntu-20.04
           - macos-latest
-          - macos-11
+          - macos-12
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
@@ -40,12 +40,10 @@ jobs:
         ./setup.sh
     - run: cargo hax --version
     - name: Test an extraction
-      uses: actions/checkout@v3
-      with:
-        repository: 'hacspec/specs'
-    - run: |
+      run: |
+        cd examples/chacha20
         eval $(opam env)
-        cargo hax -C -p hacspec-chacha20 \; -i '**' into fstar
+        cargo hax into fstar
   setup_sh_status:
     if: |
       always() &&

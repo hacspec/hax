@@ -85,16 +85,18 @@ module%inlined_contents Make (FA : Features.T) = struct
       let map_err (e : expr) (error_dest : ty) impl : expr option =
         let* success, error_src = expect_result_type e.typ in
         let* impl = expect_residual_impl_result impl in
-        let from_typ = TArrow ([ error_src ], error_dest) in
-        let from =
-          UA.call ~kind:(AssociatedItem Value) ~impl Core__convert__From__from
-            [] e.span from_typ
-        in
-        let call =
-          UA.call Core__result__Impl__map_err [ e; from ] e.span
-            (make_result_type success error_dest)
-        in
-        Some call
+        if [%equal: ty] error_src error_dest then Some e
+        else
+          let from_typ = TArrow ([ error_src ], error_dest) in
+          let from =
+            UA.call ~kind:(AssociatedItem Value) ~impl Core__convert__From__from
+              [] e.span from_typ
+          in
+          let call =
+            UA.call Core__result__Impl__map_err [ e; from ] e.span
+              (make_result_type success error_dest)
+          in
+          Some call
 
       (** [extract e] returns [Some (x, ty)] if [e] was a `y?`
       desugared by rustc. `y` is `x` plus possibly a coercion. [ty] is
@@ -111,7 +113,7 @@ module%inlined_contents Make (FA : Features.T) = struct
                         {
                           f = { e = GlobalVar f };
                           args = [ { e = LocalVar residual_var; _ } ];
-                          impl = Some impl;
+                          trait = Some (impl, _);
                         };
                     typ = return_typ;
                     _;

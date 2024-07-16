@@ -21,7 +21,8 @@ open Core.Ops.Index
 
 instance impl__index t n: t_Index (t_Slice t) (int_t n)
   = { f_Output = t;
-      in_range = (fun (s: t_Slice t) (i: int_t n) -> v i >= 0 && v i < v (length s));
+      f_index_pre = (fun (s: t_Slice t) (i: int_t n) -> v i >= 0 && v i < v (length s));
+      f_index_post = (fun _ _ _ -> true);
       f_index = (fun s i -> Seq.index s (v i));
     }
 
@@ -32,3 +33,6 @@ val impl__split_at #t (s: t_Slice t) (mid: usize): Pure (t_Slice t * t_Slice t)
     (ensures (fun (x,y) -> Seq.length x == v mid /\ Seq.length y == Seq.length s - v mid /\
                         x == Seq.slice s 0 (v mid) /\ y == Seq.slice s (v mid) (Seq.length s) /\
                         s == Seq.append x y))
+
+let impl__is_empty (s: t_Slice 'a): bool = Seq.length s = 0
+

@@ -17,6 +17,15 @@ let (let|) (#e #a #b: Type) (x: Core.Result.t_Result a e) (f: a -> Core.Result.t
     | Core.Result.Result_Ok x -> f x
     | Core.Result.Result_Err e -> Core.Result.Result_Err e
 
+let (let!)
+    #break #continue #continue'
+    (v: Core.Ops.Control_flow.t_ControlFlow break continue)
+    (f: continue -> Core.Ops.Control_flow.t_ControlFlow break continue')
+    : Core.Ops.Control_flow.t_ControlFlow break continue'
+    = match v with
+    | Core.Ops.Control_flow.ControlFlow_Continue v -> f v
+    | Core.Ops.Control_flow.ControlFlow_Break b -> Core.Ops.Control_flow.ControlFlow_Break b
+
 class cast_tc a b = {
   cast: a -> b; 
 }
@@ -32,7 +41,7 @@ class unsize_tc source = {
 }
 
 instance array_to_slice_unsize t n: unsize_tc (t_Array t n) = {
-  output = t_Slice t;
+  output = (x:t_Slice t{Seq.length x == v n});
   unsize = (fun (arr: t_Array t n) -> 
             arr <: t_Slice t);
 }

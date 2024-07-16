@@ -2,7 +2,7 @@ module Core.Option
 
 type t_Option t = | Option_Some of t | Option_None
 
-let impl__and_then #t #t_Self (self: t_Option t_Self) (f: t_Self -> t_Option t): t_Option t = 
+let impl__and_then #t_Self #t (self: t_Option t_Self) (f: t_Self -> t_Option t): t_Option t = 
   match self with
   | Option_Some x -> f x
   | Option_None -> Option_None

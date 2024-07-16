@@ -17,11 +17,11 @@ info:
     snapshot:
       stderr: true
       stdout: true
+    include_flag: ~
+    backend_options: ~
 ---
 exit = 0
-stderr = '''
-Compiling pattern-or v0.1.0 (WORKSPACE_ROOT/pattern-or)
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
 
 [stdout]
 diagnostics = []
@@ -38,6 +38,14 @@ Open Scope bool_scope.
 Inductive t_E : Type :=
 | E_A : t_E
 | E_B : t_E.
+
+Definition t_E_cast_to_repr (x : t_E_t) : uint_size :=
+  match x with
+  | E_A  =>
+    (@repr WORDSIZE32 0)
+  | E_B  =>
+    (@repr WORDSIZE32 1)
+  end.
 
 (*Not implemented yet? todo(item)*)
 

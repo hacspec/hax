@@ -14,6 +14,10 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - uses: DeterminateSystems/nix-installer-action@main
+    - uses: cachix/cachix-action@v15
+      with:
+        name: hax
+        skipPush: true
     - uses: DeterminateSystems/magic-nix-cache-action@main
     - name: Build
       run: nix build -L
@@ -41,41 +45,13 @@ jobs:
       with:
         repository: 'hacspec/specs'
         path: specs
-        
-    - name: Extract specifications
-      working-directory: specs
-      run: |
-        paths=$(tomlq -r '.workspace.members | .[]' Cargo.toml)
-        for cratePath in $paths; do
-          crate=$(tomlq -r '.package.name' "$cratePath/Cargo.toml")
-          for backend in fstar coq; do
-            for skip in $SKIPLIST; do
-              if [[ "$skip" == "$crate" || "$skip" == "$crate-$backend" ]]; then
-                echo "⛔ $crate [$backend] (skipping)"
-                continue 2
-              fi
-            done
-            echo "::group::$crate [$backend]"
-            cargo hax -C -p "$crate" \; into "$backend"
-            echo "::endgroup::"
-          done
-        done
-      env:
-        SKIPLIST: |
-          tls_cryptolib
-          hacspec-merlin
-          hacspec-halo2-coq
-          hacspec-halo2-fstar
-          hacspec-weierstrass-coq
-          hacspec-weierstrass-fstar
 
     - name: Push to Cachix
       if: ${{ github.event_name == 'workflow_dispatch'  || github.event_name == 'merge_group'  }}
       env:
         CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
       run: |
-        nix profile install nixpkgs#cachix nixpkgs#jq
-        nix build --json \
+        nix build .# .#fstar --json \
           | jq -r '.[].outputs | to_entries[].value' \
           | cachix push hax
 

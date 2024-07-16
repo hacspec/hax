@@ -27,11 +27,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b46cbb362ab8752921c97e041f5e366ee6297bd428a31275b9fcf1e380f7299"
 
 [[package]]
-name = "attributes"
+name = "attribute-opaque"
 version = "0.1.0"
 dependencies = [
  "hax-lib",
  "hax-lib-macros",
+ "serde",
+]
+
+[[package]]
+name = "attributes"
+version = "0.1.0"
+dependencies = [
+ "hax-lib",
  "serde",
 ]
 
@@ -206,12 +214,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dyn-clone"
-version = "1.0.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23d2f3407d9a573d666de4b5bdf10569d73ca9478087346697dcbae6244bfbcd"
-
-[[package]]
 name = "either"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -234,8 +236,11 @@ name = "fn-to-letfun"
 version = "0.1.0"
 
 [[package]]
-name = "fnmut"
+name = "functions"
 version = "0.1.0"
+dependencies = [
+ "hax-lib",
+]
 
 [[package]]
 name = "generics"
@@ -291,6 +296,11 @@ checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 [[package]]
 name = "hax-lib"
 version = "0.1.0-pre.1"
+dependencies = [
+ "hax-lib-macros",
+ "num-bigint",
+ "num-traits",
+]
 
 [[package]]
 name = "hax-lib-macros"
@@ -309,7 +319,6 @@ version = "0.1.0-pre.1"
 dependencies = [
  "proc-macro2",
  "quote",
- "schemars",
  "serde",
  "serde_json",
  "uuid",
@@ -357,6 +366,14 @@ checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
 dependencies = [
  "autocfg",
  "hashbrown",
+]
+
+[[package]]
+name = "interface-only"
+version = "0.1.0"
+dependencies = [
+ "hax-lib",
+ "hax-lib-macros",
 ]
 
 [[package]]
@@ -449,6 +466,9 @@ dependencies = [
 [[package]]
 name = "literals"
 version = "0.1.0"
+dependencies = [
+ "hax-lib",
+]
 
 [[package]]
 name = "log"
@@ -472,10 +492,6 @@ version = "0.1.0"
 
 [[package]]
 name = "mut-ref-functionalization"
-version = "0.1.0"
-
-[[package]]
-name = "mut_arg"
 version = "0.1.0"
 
 [[package]]
@@ -753,6 +769,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "recursion"
+version = "0.1.0"
+
+[[package]]
 name = "regex"
 version = "1.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -801,30 +821,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "schemars"
-version = "0.8.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f7b0ce13155372a76ee2e1c5ffba1fe61ede73fbea5630d61eee6fac4929c0c"
-dependencies = [
- "dyn-clone",
- "schemars_derive",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "schemars_derive"
-version = "0.8.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e85e2a16b12bdb763244c69ab79363d71db2b4b918a2def53f80b02e0574b13c"
-dependencies = [
- "proc-macro2",
- "quote",
- "serde_derive_internals",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "secret_integers"
 version = "0.1.7"
 source = "git+https://github.com/hacspec/hacspec.git#bb5b411dced2dfe5c7601674153de4545c783c10"
@@ -843,17 +839,6 @@ name = "serde_derive"
 version = "1.0.156"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7e29c4601e36bcec74a223228dce795f4cd3616341a4af93520ca1a837c087d"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "serde_derive_internals"
-version = "0.26.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85bf8229e7920a9f636479437026331ce11aa132b4dde37d121944a44d6e5f3c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -934,13 +919,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "88ad59a7560b41a70d191093a945f0b87bc1deeda46fb237479708a1d6b6cdfc"
 dependencies = [
  "getrandom",
-]
-
-[[package]]
-name = "v1-lib"
-version = "0.1.0"
-dependencies = [
- "hacspec-lib",
 ]
 
 [[package]]

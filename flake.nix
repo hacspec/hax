@@ -1,14 +1,17 @@
 {
   inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs";
     flake-utils.url = "github:numtide/flake-utils";
     crane = {
       url = "github:ipetkov/crane";
       inputs = {
         nixpkgs.follows = "nixpkgs";
-        flake-utils.follows = "flake-utils";
       };
     };
-    rust-overlay.follows = "crane/rust-overlay";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     fstar = {
       url = "github:FStarLang/FStar/v2024.01.13";
       inputs = {
@@ -41,12 +44,35 @@
         ocamlformat = pkgs.ocamlformat_0_24_1;
         rustfmt = pkgs.rustfmt;
         fstar = inputs.fstar.packages.${system}.default;
+        hax-env-file = pkgs.writeText "hax-env-file" ''
+          HAX_PROOF_LIBS_HOME="${./proof-libs/fstar}"
+          HAX_LIBS_HOME="${./hax-lib}"/proofs/fstar/extraction
+          HACL_HOME="${hacl-star}"
+        '';
+        hax-env = pkgs.writeScriptBin "hax-env" ''
+          if [[ "$1" == "no-export" ]]; then
+            cat "${hax-env-file}"
+          else
+            cat "${hax-env-file}" | xargs -I{} echo "export {}"
+          fi
+        '';
       in rec {
         packages = {
-          inherit rustc ocamlformat rustfmt fstar;
+          inherit rustc ocamlformat rustfmt fstar hax-env;
+          hax-book = pkgs.callPackage ./book {};
           hax-engine = pkgs.callPackage ./engine {
             hax-rust-frontend = packages.hax-rust-frontend.unwrapped;
-            hax-engine-names-extract = packages.hax-rust-frontend.hax-engine-names-extract;
+            # `hax-engine-names-extract` extracts Rust names but also
+            # some informations about `impl`s when names are `impl`
+            # blocks. That includes some span information, which
+            # includes full paths to Rust sources. Sometimes those
+            # Rust sources happens to be in the Nix store. That
+            # creates useless dependencies, this wrapper below takes
+            # care of removing those extra depenedencies.
+            hax-engine-names-extract = pkgs.writeScriptBin "hax-engine-names-extract" ''
+              #!${pkgs.stdenv.shell}
+              ${packages.hax-rust-frontend.hax-engine-names-extract}/bin/hax-engine-names-extract | sed 's|/nix/store/\(.\{6\}\)|/nix_store/\1-|g'
+            '';
             inherit rustc;
           };
           hax-rust-frontend = pkgs.callPackage ./cli {
@@ -59,12 +85,21 @@
           check-toolchain = checks.toolchain;
           check-examples = checks.examples;
           check-readme-coherency = checks.readme-coherency;
+
+          # The commit that corresponds to our nightly pin, helpful when updating rusrc.
+          toolchain_commit = pkgs.runCommand "hax-toolchain-commit" { } ''
+            # This is sad but I don't know a better way.
+            cat ${rustc}/share/doc/rust/html/version_info.html \
+              | grep 'github.com' \
+              | sed 's#.*"https://github.com/rust-lang/rust/commit/\([^"]*\)".*#\1#' \
+              > $out
+          '';
         };
         checks = {
           toolchain = packages.hax.tests;
           examples = pkgs.callPackage ./examples {
             inherit (packages) hax;
-            inherit craneLib fstar hacl-star;
+            inherit craneLib fstar hacl-star hax-env;
           };
           readme-coherency = let
             src = pkgs.lib.sourceFilesBySuffices ./. [".md"];
@@ -93,7 +128,14 @@
             type = "app";
             program = "${pkgs.writeScript "serve-rustc-docs" ''
               cd ${packages.rustc.passthru.availableComponents.rustc-docs}/share/doc/rust/html/rustc
-              ${pkgs.python3}/bin/python -m http.server
+              ${pkgs.python3}/bin/python -m http.server "$@"
+            ''}";
+          };
+          serve-book = {
+            type = "app";
+            program = "${pkgs.writeScript "serve-book" ''
+              cd ${packages.hax-book}
+              ${pkgs.python3}/bin/python -m http.server "$@"
             ''}";
           };
         };
@@ -140,6 +182,11 @@
           fstar = pkgs.mkShell {
             inherit inputsFrom LIBCLANG_PATH;
             HACL_HOME = "${hacl-star}";
+            shellHook = ''
+              HAX_ROOT=$(git rev-parse --show-toplevel)
+              export HAX_PROOF_LIBS_HOME="$HAX_ROOT/proof-libs/fstar"
+              export HAX_LIBS_HOME="$HAX_ROOT/hax-lib"
+            '';
             packages = packages ++ [fstar];
           };
           default = pkgs.mkShell {

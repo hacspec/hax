@@ -22,4 +22,4 @@
 (env
  (_
   (flags
-   (:standard -w +A))))
+   (:standard -w +A-4-40-42-44))))

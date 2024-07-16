@@ -43,10 +43,9 @@
     pname = "hax-engine";
     version = "0.0.1";
     duneVersion = "3";
-    src = lib.sourceFilesBySuffices ./. [".ml" ".mli" ".js" "dune" "dune-project" "sh" "rs" "mld"];
+    src = lib.sourceFilesBySuffices ./. [".ml" ".mli" ".js" "dune" "dune-js" "dune-project" "sh" "rs" "mld"];
     buildInputs = with ocamlPackages;
       [
-        zarith_stubs_js
         base
         ppx_yojson_conv
         yojson
@@ -54,7 +53,6 @@
         ppx_hash
         pprint
         non_empty_list
-        bignum
         ppx_deriving_yojson
         ppx_matches
         ppx_let
@@ -64,6 +62,7 @@
         ppx_string
         logs
         core
+        stdio
         re
         js_of_ocaml
         ocamlgraph
@@ -77,7 +76,6 @@
         ppxlib
         sedlex
         stdint
-        zarith
       ];
     nativeBuildInputs = [
       rustc
@@ -110,7 +108,10 @@
       js = hax-engine.overrideAttrs (old: {
         name = "hax-engine.js";
         nativeBuildInputs = old.nativeBuildInputs ++ [closurecompiler gnused];
+        outputs = ["out"];
         buildPhase = ''
+          # Enable JS build
+          sed -i "s/; (include dune-js)/(include dune-js)/g" bin/dune
           # Compile JS target
           dune build bin/js_driver.bc.js
           # Optimize the size of the JS file
@@ -125,4 +126,4 @@
     };
   };
 in
-  hax-engine
+  hax-engine.overrideAttrs (_: {name = "hax-engine";})

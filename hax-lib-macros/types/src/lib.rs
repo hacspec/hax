@@ -1,4 +1,3 @@
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Each item can be marked with a *u*nique *id*entifier. This is
@@ -15,7 +14,8 @@ use serde::{Deserialize, Serialize};
 /// Morally, we expand `struct Foo { #[refine(x > 3)] x: u32 }` to:
 ///  1. `#[uuid(A_UNIQUE_ID_123)] fn refinement(x: u32) -> bool {x > 3}`;
 ///  2. `struct Foo { #[refined_by(A_UNIQUE_ID_123)] x: u32 }`.
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[serde(rename = "HaUid")]
 pub struct ItemUid {
     /// Currently, this is a UUID.
@@ -31,7 +31,8 @@ impl ItemUid {
 }
 
 /// What shall Hax do with an item?
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[serde(rename = "HaItemStatus")]
 pub enum ItemStatus {
     /// Include this item in the translation
@@ -43,31 +44,82 @@ pub enum ItemStatus {
     Excluded { modeled_by: Option<String> },
 }
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize, JsonSchema)]
+/// An item can be associated to another one for multiple reasons:
+/// `AssociationRole` capture the nature of the (directed) relation
+/// between two items
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[serde(rename = "HaAssocRole")]
 pub enum AssociationRole {
     Requires,
     Ensures,
     Decreases,
     Refine,
+    /// A quoted piece of backend code to place after or before the
+    /// extraction of the marked item
+    ItemQuote,
     ProcessRead,
     ProcessWrite,
     ProcessInit,
     ProtocolMessages,
 }
 
+/// Where should a item quote appear?
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[serde(rename = "HaItemQuotePosition")]
+pub enum ItemQuotePosition {
+    /// Should appear just before the item in the extraction
+    Before,
+    /// Should appear right after the item in the extraction
+    After,
+}
+
+/// F*-specific options for item quotes
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[serde(rename = "HaItemQuoteFStarOpts")]
+pub struct ItemQuoteFStarOpts {
+    /// Shall we output this in F* interfaces (`*.fsti` files)?
+    pub intf: bool,
+    /// Shall we output this in F* implementations (`*.fst` files)?
+    pub r#impl: bool,
+}
+
+/// An item quote is a verbatim piece of backend code included in
+/// Rust. [`ItemQuote`] encodes the various options a item quote can
+/// have.
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[serde(rename = "HaItemQuote")]
+pub struct ItemQuote {
+    pub position: ItemQuotePosition,
+    pub fstar_options: Option<ItemQuoteFStarOpts>,
+}
+
 /// Hax only understands one attribute: `#[hax::json(PAYLOAD)]` where
 /// `PAYLOAD` is a JSON serialization of an inhabitant of
 /// `AttrPayload`.
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[serde(rename = "HaPayload")]
 pub enum AttrPayload {
     ItemStatus(ItemStatus),
+    /// Mark an item as associated with another one
     AssociatedItem {
+        /// What is the nature of the association?
         role: AssociationRole,
+        /// What is the identifier of the target item?
         item: ItemUid,
     },
     Uid(ItemUid),
+    /// Decides of the position of a item quote
+    ItemQuote(ItemQuote),
+    /// Mark an item so that hax never drop its body (this is useful
+    /// for pre- and post- conditions of a function we dropped the
+    /// body of: pre and post are part of type signature)
+    NeverDropBody,
+    NewtypeAsRefinement,
     /// Mark an item as a lemma statement to prove in the backend
     Lemma,
     Language,
@@ -75,6 +127,11 @@ pub enum AttrPayload {
     ProcessWrite,
     ProcessInit,
     ProtocolMessages,
+    PVConstructor,
+    PVHandwritten,
+    TraitMethodNoPrePost,
+    /// Make a type opaque
+    OpaqueType,
 }
 
 pub const HAX_TOOL: &str = "_hax";

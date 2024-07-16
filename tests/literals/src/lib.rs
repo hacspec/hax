@@ -1,4 +1,32 @@
 #![allow(dead_code)]
+use hax_lib::int::*;
+
+#[hax_lib::requires(x > int!(0) && x < int!(16))]
+fn math_integers(x: Int) -> u8 {
+    let _: Int = 3usize.lift();
+    let _ = int!(-340282366920938463463374607431768211455000)
+        > int!(340282366920938463463374607431768211455000);
+    let _ = x < x;
+    let _ = x >= x;
+    let _ = x <= x;
+    let _ = x != x;
+    let _ = x == x;
+    let _ = x + x;
+    let _ = x - x;
+    let _ = x * x;
+    let _ = x / x;
+    let _: i16 = x.to_i16();
+    let _: i32 = x.to_i32();
+    let _: i64 = x.to_i64();
+    let _: i128 = x.to_i128();
+    let _: isize = x.to_isize();
+    let _: u16 = x.to_u16();
+    let _: u32 = x.to_u32();
+    let _: u64 = x.to_u64();
+    let _: u128 = x.to_u128();
+    let _: usize = x.to_usize();
+    (x + x * x).to_u8()
+}
 
 pub fn panic_with_msg() {
     panic!("with msg")
@@ -43,4 +71,13 @@ fn casts(x8: u8, x16: u16, x32: u32, x64: u64, xs: usize) {
     let _: i32 = x8 as i32 + x16 as i32 + x32 as i32 + x64 as i32 + xs as i32;
     let _: i16 = x8 as i16 + x16 as i16 + x32 as i16 + x64 as i16 + xs as i16;
     let _: i8 = x8 as i8 + x16 as i8 + x32 as i8 + x64 as i8 + xs as i8;
+}
+
+pub fn empty_array() {
+    let _: &[u8] = &[];
+}
+
+/// https://github.com/hacspec/hax/issues/500
+fn fn_pointer_cast() {
+    let f: fn(&u32) -> &u32 = |x| x;
 }

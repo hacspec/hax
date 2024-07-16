@@ -1,0 +1,16 @@
+on:
+  pull_request:
+
+jobs:
+  charon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: actions/checkout@v4
+        with:
+          repository: AeneasVerif/charon
+      - run: |
+          cd charon
+          cargo update -p hax-frontend-exporter --precise ${{ github.sha }}
+          cargo update -p hax-frontend-exporter-options --precise ${{ github.sha }}
+      - run: nix build -L

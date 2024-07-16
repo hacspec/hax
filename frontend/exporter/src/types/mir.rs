@@ -1,6 +1,9 @@
 use crate::prelude::*;
+#[cfg(feature = "rustc")]
+use tracing::trace;
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<S>, from: rustc_middle::mir::MirPhase, state: S as s)]
 pub enum MirPhase {
     Built,
@@ -8,19 +11,20 @@ pub enum MirPhase {
     Runtime(RuntimePhase),
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::SourceInfo, state: S as s)]
 pub struct SourceInfo {
     pub span: Span,
     pub scope: SourceScope,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::LocalDecl<'tcx>, state: S as s)]
 pub struct LocalDecl {
     pub mutability: Mutability,
     pub local_info: ClearCrossCrate<LocalInfo>,
-    pub internal: bool,
     pub ty: Ty,
     pub user_ty: Option<UserTypeProjections>,
     pub source_info: SourceInfo,
@@ -28,12 +32,14 @@ pub struct LocalDecl {
     pub name: Option<String>, // This information is contextual, thus the SInto instance initializes it to None, and then we fill it while `SInto`ing MirBody
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema)]
 pub enum ClearCrossCrate<T> {
     Clear,
     Set(T),
 }
 
+#[cfg(feature = "rustc")]
 impl<S, TT, T: SInto<S, TT>> SInto<S, ClearCrossCrate<TT>>
     for rustc_middle::mir::ClearCrossCrate<T>
 {
@@ -45,7 +51,8 @@ impl<S, TT, T: SInto<S, TT>> SInto<S, ClearCrossCrate<TT>>
     }
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<S>, from: rustc_middle::mir::RuntimePhase, state: S as _s)]
 pub enum RuntimePhase {
     Initial,
@@ -53,7 +60,8 @@ pub enum RuntimePhase {
     Optimized,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<S>, from: rustc_middle::mir::AnalysisPhase, state: S as _s)]
 pub enum AnalysisPhase {
     Initial,
@@ -62,6 +70,7 @@ pub enum AnalysisPhase {
 
 pub type BasicBlocks = IndexVec<BasicBlock, BasicBlockData>;
 
+#[cfg(feature = "rustc")]
 fn name_of_local(
     local: rustc_middle::mir::Local,
     var_debug_info: &Vec<rustc_middle::mir::VarDebugInfo>,
@@ -81,41 +90,44 @@ fn name_of_local(
 /// Enumerates the kinds of Mir bodies. TODO: use const generics
 /// instead of an open list of types.
 pub mod mir_kinds {
-    use crate::prelude::{Deserialize, JsonSchema, Serialize};
-    use rustc_data_structures::steal::Steal;
-    use rustc_middle::mir::Body;
-    use rustc_middle::ty::TyCtxt;
-    use rustc_span::def_id::LocalDefId;
-    pub trait IsMirKind: Clone {
-        fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>>;
-    }
-    #[derive(Clone, Copy, Debug, JsonSchema, Serialize, Deserialize)]
-    pub struct Const;
-    impl IsMirKind for Const {
-        fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>> {
-            tcx.mir_const(id)
-        }
-    }
-    #[derive(Clone, Copy, Debug, JsonSchema, Serialize, Deserialize)]
+    use crate::prelude::{derive_group, JsonSchema};
+    #[derive_group(Serializers)]
+    #[derive(Clone, Copy, Debug, JsonSchema)]
     pub struct Built;
-    impl IsMirKind for Built {
-        fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>> {
-            tcx.mir_built(id)
+    #[cfg(feature = "rustc")]
+    pub use rustc::*;
+    #[cfg(feature = "rustc")]
+    mod rustc {
+        use super::*;
+        use rustc_data_structures::steal::Steal;
+        use rustc_middle::mir::Body;
+        use rustc_middle::ty::TyCtxt;
+        use rustc_span::def_id::LocalDefId;
+        pub trait IsMirKind: Clone {
+            fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>>;
+        }
+        impl IsMirKind for Built {
+            fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>> {
+                tcx.mir_built(id)
+            }
         }
     }
-    // TODO: Add [Promoted] MIR
 }
+
+#[cfg(feature = "rustc")]
 pub use mir_kinds::IsMirKind;
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::Constant<'tcx>, state: S as s)]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::ConstOperand<'tcx>, state: S as s)]
 pub struct Constant {
     pub span: Span,
     pub user_ty: Option<UserTypeAnnotationIndex>,
-    pub literal: ConstantExpr,
+    pub const_: TypedConstantKind,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::Body<'tcx>, state: S as s)]
 pub struct MirBody<KIND> {
     #[map(x.clone().as_mut().sinto(s))]
@@ -124,7 +136,7 @@ pub struct MirBody<KIND> {
     pub pass_count: usize,
     pub source: MirSource,
     pub source_scopes: IndexVec<SourceScope, SourceScopeData>,
-    pub generator: Option<GeneratorInfo>,
+    pub coroutine: Option<CoroutineInfo>,
     #[map({
         let mut local_decls: rustc_index::IndexVec<rustc_middle::mir::Local, LocalDecl> = x.iter().map(|local_decl| {
             local_decl.sinto(s)
@@ -149,7 +161,8 @@ pub struct MirBody<KIND> {
     pub _kind: std::marker::PhantomData<KIND>,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::SourceScopeData<'tcx>, state: S as s)]
 pub struct SourceScopeData {
     pub span: Span,
@@ -159,30 +172,23 @@ pub struct SourceScopeData {
     pub local_data: ClearCrossCrate<SourceScopeLocalData>,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::Instance<'tcx>, state: S as s)]
 pub struct Instance {
-    pub def: InstanceDef,
-    pub substs: Vec<GenericArg>,
+    pub def: InstanceKind,
+    pub args: Vec<GenericArg>,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::SourceScopeLocalData, state: S as s)]
 pub struct SourceScopeLocalData {
     pub lint_root: HirId,
-    pub safety: Safety,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::mir::Safety, state: S as s)]
-pub enum Safety {
-    Safe,
-    BuiltinUnsafe,
-    FnUnsafe,
-    ExplicitUnsafe(HirId),
-}
-
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::Operand<'tcx>, state: S as s)]
 pub enum Operand {
     Copy(Place),
@@ -190,20 +196,133 @@ pub enum Operand {
     Constant(Constant),
 }
 
+#[cfg(feature = "rustc")]
 impl Operand {
     pub(crate) fn ty(&self) -> &Ty {
         match self {
             Operand::Copy(p) | Operand::Move(p) => &p.ty,
-            Operand::Constant(c) => &c.literal.ty,
+            Operand::Constant(c) => &c.const_.typ,
         }
     }
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::Terminator<'tcx>, state: S as s)]
 pub struct Terminator {
     pub source_info: SourceInfo,
     pub kind: TerminatorKind,
+}
+
+#[cfg(feature = "rustc")]
+pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + HasOwnerId>(
+    s: &S,
+    def_id: rustc_hir::def_id::DefId,
+    generics: rustc_middle::ty::GenericArgsRef<'tcx>,
+) -> (DefId, Vec<GenericArg>, Vec<ImplExpr>, Option<ImplExpr>) {
+    let tcx = s.base().tcx;
+    let param_env = s.param_env();
+
+    // Retrieve the trait requirements for the **method**.
+    // For instance, if we write:
+    // ```
+    // fn foo<T : Bar>(...)
+    //            ^^^
+    // ```
+    let mut trait_refs = solve_item_traits(s, param_env, def_id, generics, None);
+
+    // Check if this is a trait method call: retrieve the trait source if
+    // it is the case (i.e., where does the method come from? Does it refer
+    // to a top-level implementation? Or the method of a parameter? etc.).
+    // At the same time, retrieve the trait obligations for this **trait**.
+    // Remark: the trait obligations for the method are not the same as
+    // the trait obligations for the trait. More precisely:
+    //
+    // ```
+    // trait Foo<T : Bar> {
+    //              ^^^^^
+    //      trait level trait obligation
+    //   fn baz(...) where T : ... {
+    //      ...                ^^^
+    //             method level trait obligation
+    //   }
+    // }
+    // ```
+    //
+    // Also, a function doesn't need to belong to a trait to have trait
+    // obligations:
+    // ```
+    // fn foo<T : Bar>(...)
+    //            ^^^
+    //     method level trait obligation
+    // ```
+    let (generics, source) = if let Some(assoc) = tcx.opt_associated_item(def_id) {
+        // There is an associated item.
+        use tracing::*;
+        trace!("def_id: {:?}", def_id);
+        trace!("assoc: def_id: {:?}", assoc.def_id);
+        // Retrieve the `DefId` of the trait declaration or the impl block.
+        let container_def_id = match assoc.container {
+            rustc_middle::ty::AssocItemContainer::TraitContainer => {
+                tcx.trait_of_item(assoc.def_id).unwrap()
+            }
+            rustc_middle::ty::AssocItemContainer::ImplContainer => {
+                tcx.impl_of_method(assoc.def_id).unwrap()
+            }
+        };
+        // The generics are split in two: the arguments of the container (trait decl or impl block)
+        // and the arguments of the method.
+        //
+        // For instance, if we have:
+        // ```
+        // trait Foo<T> {
+        //     fn baz<U>(...) { ... }
+        // }
+        //
+        // fn test<T : Foo<u32>(x: T) {
+        //     x.baz(...);
+        //     ...
+        // }
+        // ```
+        // The generics for the call to `baz` will be the concatenation: `<T, u32, U>`, which we
+        // split into `<T, u32>` and `<U>`.
+        //
+        // If we have:
+        // ```
+        // impl<T: Ord> Map<T> {
+        //     pub fn insert<U: Clone>(&mut self, x: U) { ... }
+        // }
+        // pub fn test(mut tree: Map<u32>) {
+        //     tree.insert(false);
+        // }
+        // ```
+        // The generics for `insert` are `<u32>` for the impl and `<bool>` for the method.
+        let params_info = get_params_info(s, container_def_id);
+        let num_container_generics = params_info.num_generic_params;
+        match assoc.container {
+            rustc_middle::ty::AssocItemContainer::TraitContainer => {
+                // Retrieve the trait information
+                let impl_expr = get_trait_info(s, generics, &assoc);
+                // Return only the method generics; the trait generics are included in `impl_expr`.
+                let method_generics = &generics[num_container_generics..];
+                (method_generics.sinto(s), Option::Some(impl_expr))
+            }
+            rustc_middle::ty::AssocItemContainer::ImplContainer => {
+                // Solve the trait constraints of the impl block.
+                let container_generics = tcx.generics_of(container_def_id);
+                let container_generics = generics.truncate_to(tcx, container_generics);
+                let container_trait_refs =
+                    solve_item_traits(s, param_env, container_def_id, container_generics, None);
+                trait_refs.extend(container_trait_refs);
+                (generics.sinto(s), Option::None)
+            }
+        }
+    } else {
+        // Regular function call
+        (generics.sinto(s), Option::None)
+    };
+
+    (def_id.sinto(s), generics, trait_refs, source)
 }
 
 /// Return the [DefId] of the function referenced by an operand, with the
@@ -211,61 +330,127 @@ pub struct Terminator {
 /// The [Operand] comes from a [TerminatorKind::Call].
 /// Only supports calls to top-level functions (which are considered as constants
 /// by rustc); doesn't support closures for now.
-fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx>>(
+#[cfg(feature = "rustc")]
+fn get_function_from_operand<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>(
     s: &S,
     func: &rustc_middle::mir::Operand<'tcx>,
-) -> (DefId, Vec<GenericArg>) {
+) -> (FunOperand, Vec<GenericArg>, Vec<ImplExpr>, Option<ImplExpr>) {
     use std::ops::Deref;
     // Match on the func operand: it should be a constant as we don't support
     // closures for now.
-    use rustc_middle::mir::{ConstantKind, Operand};
+    use rustc_middle::mir::{Const, Operand};
     use rustc_middle::ty::TyKind;
     match func {
         Operand::Constant(c) => {
+            // Regular function case
             let c = c.deref();
-            match &c.literal {
-                ConstantKind::Ty(c) => {
+            let (def_id, generics) = match &c.const_ {
+                Const::Ty(c_ty, _c) => {
                     // The type of the constant should be a FnDef, allowing
                     // us to retrieve the function's identifier and instantiation.
-                    let c_ty = c.ty();
                     assert!(c_ty.is_fn());
                     match c_ty.kind() {
-                        TyKind::FnDef(def_id, subst) => (def_id.sinto(s), subst.sinto(s)),
+                        TyKind::FnDef(def_id, generics) => (*def_id, *generics),
                         _ => {
                             unreachable!();
                         }
                     }
                 }
-                ConstantKind::Val(_, c_ty) => {
+                Const::Val(_, c_ty) => {
                     // Same as for the `Ty` case above
                     assert!(c_ty.is_fn());
                     match c_ty.kind() {
-                        TyKind::FnDef(def_id, subst) => (def_id.sinto(s), subst.sinto(s)),
+                        TyKind::FnDef(def_id, generics) => (*def_id, *generics),
                         _ => {
                             unreachable!();
                         }
                     }
                 }
-                ConstantKind::Unevaluated(_, _) => {
+                Const::Unevaluated(_, _) => {
                     unimplemented!();
                 }
-            }
+            };
+
+            let (fun_id, generics, trait_refs, trait_info) =
+                get_function_from_def_id_and_generics(s, def_id, generics);
+            (FunOperand::Id(fun_id), generics, trait_refs, trait_info)
         }
-        Operand::Move(_place) | Operand::Copy(_place) => {
-            unimplemented!();
+        Operand::Move(place) => {
+            // Closure case.
+            // The closure can not have bound variables nor trait references,
+            // so we don't need to extract generics, trait refs, etc.
+            let body = s.mir();
+            let ty = func.ty(&body.local_decls, s.base().tcx);
+            trace!("type: {:?}", ty);
+            trace!("type kind: {:?}", ty.kind());
+            let sig = match ty.kind() {
+                rustc_middle::ty::TyKind::FnPtr(sig) => sig,
+                _ => unreachable!(),
+            };
+            trace!("FnPtr: {:?}", sig);
+            let place = place.sinto(s);
+
+            (FunOperand::Move(place), Vec::new(), Vec::new(), None)
+        }
+        Operand::Copy(_place) => {
+            unimplemented!("{:?}", func);
         }
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[cfg(feature = "rustc")]
+fn translate_terminator_kind_call<'tcx, S: BaseState<'tcx> + HasMir<'tcx> + HasOwnerId>(
+    s: &S,
+    terminator: &rustc_middle::mir::TerminatorKind<'tcx>,
+) -> TerminatorKind {
+    if let rustc_middle::mir::TerminatorKind::Call {
+        func,
+        args,
+        destination,
+        target,
+        unwind,
+        call_source,
+        fn_span,
+    } = terminator
+    {
+        let (fun, generics, trait_refs, trait_info) = get_function_from_operand(s, func);
+
+        TerminatorKind::Call {
+            fun,
+            generics,
+            args: args.sinto(s),
+            destination: destination.sinto(s),
+            target: target.sinto(s),
+            unwind: unwind.sinto(s),
+            call_source: call_source.sinto(s),
+            fn_span: fn_span.sinto(s),
+            trait_refs,
+            trait_info,
+        }
+    } else {
+        unreachable!()
+    }
+}
+
+// We don't use the LitIntType on purpose (we don't want the "unsuffixed" case)
+#[derive_group(Serializers)]
+#[derive(Clone, Copy, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum IntUintTy {
+    Int(IntTy),
+    Uint(UintTy),
+}
+
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema)]
 pub struct ScalarInt {
     /// Little-endian representation of the integer
     pub data_le_bytes: [u8; 16],
-    pub int_ty: IntTy,
+    pub int_ty: IntUintTy,
 }
 
 // TODO: naming conventions: is "translate" ok?
 /// Translate switch targets
+#[cfg(feature = "rustc")]
 fn translate_switch_targets<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     switch_ty: &Ty,
@@ -276,39 +461,39 @@ fn translate_switch_targets<'tcx, S: UnderOwnerState<'tcx>>(
 
     match switch_ty {
         Ty::Bool => {
-            // This is an: `if ... then ... else ...`. We are matching
-            // on a boolean casted to an integer: `false` is `0`,
-            // `true` is `1`. Thus the `otherwise` branch correspond
-            // to the `then` branch.
-            const FALSE: u128 = false as u128;
-            let [(FALSE, else_branch)] = targets_vec.as_slice() else {
-                supposely_unreachable_fatal!(s, "MirSwitchBool"; {targets_vec, switch_ty});
+            // This is an: `if ... then ... else ...`
+            assert!(targets_vec.len() == 1);
+            // It seems the block targets are inverted
+            let (test_val, otherwise_block) = targets_vec[0];
+
+            assert!(test_val == 0);
+
+            // It seems the block targets are inverted
+            let if_block = targets.otherwise().sinto(s);
+
+            SwitchTargets::If(if_block, otherwise_block)
+        }
+        Ty::Int(_) | Ty::Uint(_) => {
+            let int_ty = match switch_ty {
+                Ty::Int(ty) => IntUintTy::Int(*ty),
+                Ty::Uint(ty) => IntUintTy::Uint(*ty),
+                _ => unreachable!(),
             };
 
-            SwitchTargets::If {
-                then_branch: targets.otherwise().sinto(s),
-                else_branch: *else_branch,
-            }
-        }
-        Ty::Int(int_ty) => {
             // This is a: switch(int).
             // Convert all the test values to the proper values.
-            SwitchTargets::SwitchInt {
-                scrutinee_type: *int_ty,
-                branches: targets_vec
-                    .into_iter()
-                    .map(|(v, tgt)| {
-                        (
-                            ScalarInt {
-                                data_le_bytes: v.to_le_bytes(),
-                                int_ty: *int_ty,
-                            },
-                            tgt,
-                        )
-                    })
-                    .collect(),
-                otherwise_branch: targets.otherwise().sinto(s),
+            let mut targets_map: Vec<(ScalarInt, BasicBlock)> = Vec::new();
+            for (v, tgt) in targets_vec {
+                // We need to reinterpret the bytes (`v as i128` is not correct)
+                let v = ScalarInt {
+                    data_le_bytes: v.to_le_bytes(),
+                    int_ty,
+                };
+                targets_map.push((v, tgt));
             }
+            let otherwise_block = targets.otherwise().sinto(s);
+
+            SwitchTargets::SwitchInt(int_ty, targets_map, otherwise_block)
         }
         _ => {
             fatal!(s, "Unexpected switch_ty: {:?}", switch_ty)
@@ -316,23 +501,28 @@ fn translate_switch_targets<'tcx, S: UnderOwnerState<'tcx>>(
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema)]
 pub enum SwitchTargets {
-    If {
-        then_branch: BasicBlock,
-        else_branch: BasicBlock,
-    },
+    /// Gives the `if` block and the `else` block
+    If(BasicBlock, BasicBlock),
     /// Gives the integer type, a map linking values to switch branches, and the
     /// otherwise block. Note that matches over enumerations are performed by
     /// switching over the discriminant, which is an integer.
-    SwitchInt {
-        scrutinee_type: IntTy,
-        branches: Vec<(ScalarInt, BasicBlock)>,
-        otherwise_branch: BasicBlock,
-    },
+    SwitchInt(IntUintTy, Vec<(ScalarInt, BasicBlock)>, BasicBlock),
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema)]
+pub enum FunOperand {
+    /// Call to a top-level function designated by its id
+    Id(DefId),
+    /// Use of a closure
+    Move(Place),
+}
+
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::TerminatorKind<'tcx>, state: S as s)]
 pub enum TerminatorKind {
     Goto {
@@ -352,8 +542,6 @@ pub enum TerminatorKind {
         discr: Operand,
         targets: SwitchTargets,
     },
-    Resume,
-    Terminate,
     Return,
     Unreachable,
     Drop {
@@ -362,19 +550,25 @@ pub enum TerminatorKind {
         unwind: UnwindAction,
         replace: bool,
     },
-    #[use_field(func)]
-    #[prepend(let (fun_id, substs) = get_function_from_operand(s, func);)]
+    #[custom_arm(
+        x @ rustc_middle::mir::TerminatorKind::Call { .. } => {
+          translate_terminator_kind_call(s, x)
+        }
+    )]
     Call {
-        #[value(fun_id)]
-        fun_id: DefId,
-        #[value(substs)]
-        substs: Vec<GenericArg>,
-        args: Vec<Operand>,
+        fun: FunOperand,
+        /// We truncate the substitution so as to only include the arguments
+        /// relevant to the method (and not the trait) if it is a trait method
+        /// call. See [ParamsInfo] for the full details.
+        generics: Vec<GenericArg>,
+        args: Vec<Spanned<Operand>>,
         destination: Place,
         target: Option<BasicBlock>,
         unwind: UnwindAction,
-        from_hir_call: bool,
+        call_source: CallSource,
         fn_span: Span,
+        trait_refs: Vec<ImplExpr>,
+        trait_info: Option<ImplExpr>,
     },
     Assert {
         cond: Operand,
@@ -389,7 +583,7 @@ pub enum TerminatorKind {
         resume_arg: Place,
         drop: Option<BasicBlock>,
     },
-    GeneratorDrop,
+    CoroutineDrop,
     FalseEdge {
         real_target: BasicBlock,
         imaginary_target: BasicBlock,
@@ -398,17 +592,20 @@ pub enum TerminatorKind {
         real_target: BasicBlock,
         unwind: UnwindAction,
     },
+    UnwindResume,
+    UnwindTerminate(UnwindTerminateReason),
     InlineAsm {
         template: Vec<InlineAsmTemplatePiece>,
         operands: Vec<InlineAsmOperand>,
         options: InlineAsmOptions,
         line_spans: Vec<Span>,
-        destination: Option<BasicBlock>,
+        targets: Vec<BasicBlock>,
         unwind: UnwindAction,
     },
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::Statement<'tcx>, state: S as s)]
 pub struct Statement {
     pub source_info: SourceInfo,
@@ -416,7 +613,8 @@ pub struct Statement {
     pub kind: Box<StatementKind>,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::StatementKind<'tcx>, state: S as s)]
 pub enum StatementKind {
     Assign((Place, Rvalue)),
@@ -431,20 +629,22 @@ pub enum StatementKind {
     Retag(RetagKind, Place),
     PlaceMention(Place),
     AscribeUserType((Place, UserTypeProjection), Variance),
-    Coverage(Coverage),
+    Coverage(CoverageKind),
     Intrinsic(NonDivergingIntrinsic),
     ConstEvalCounter,
     Nop,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema)]
 pub struct Place {
     /// The type of the element on which we apply the projection given by `kind`
     pub ty: Ty,
     pub kind: PlaceKind,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema)]
 pub enum PlaceKind {
     Local(Local),
     Projection {
@@ -453,17 +653,21 @@ pub enum PlaceKind {
     },
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema)]
 pub enum ProjectionElemFieldKind {
     Tuple(FieldIdx),
     Adt {
         typ: DefId,
-        variant_info: VariantInformations,
+        variant: Option<VariantIdx>,
         index: FieldIdx,
     },
+    /// Get access to one of the fields of the state of a closure
+    ClosureState(FieldIdx),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema)]
 pub enum ProjectionElem {
     Deref,
     Field(ProjectionElemFieldKind),
@@ -483,6 +687,7 @@ pub enum ProjectionElem {
 }
 
 // refactor
+#[cfg(feature = "rustc")]
 impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
     for rustc_middle::mir::Place<'tcx>
 {
@@ -497,29 +702,31 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
             use rustc_middle::mir::ProjectionElem::*;
             let cur_ty = current_ty.clone();
             let cur_kind = current_kind.clone();
-            let mk_field = |index: &rustc_abi::FieldIdx,
-                            variant_idx: Option<rustc_abi::VariantIdx>| {
-                ProjectionElem::Field(match cur_ty.kind() {
-                    rustc_middle::ty::TyKind::Adt(adt_def, _) => {
-                        let variant_info =
-                            get_variant_information(adt_def, rustc_abi::FIRST_VARIANT, s);
-                        ProjectionElemFieldKind::Adt {
-                            typ: adt_def.did().sinto(s),
-                            index: index.sinto(s),
-                            variant_info,
+            use rustc_middle::ty::TyKind;
+            let mk_field =
+                |index: &rustc_target::abi::FieldIdx,
+                 variant_idx: Option<rustc_target::abi::VariantIdx>| {
+                    ProjectionElem::Field(match cur_ty.kind() {
+                        TyKind::Adt(adt_def, _) => {
+                            assert!(
+                                (adt_def.is_struct() && variant_idx.is_none())
+                                    || (adt_def.is_enum() && variant_idx.is_some())
+                            );
+                            ProjectionElemFieldKind::Adt {
+                                typ: adt_def.did().sinto(s),
+                                variant: variant_idx.map(|id| id.sinto(s)),
+                                index: index.sinto(s),
+                            }
                         }
-                    }
-                    rustc_middle::ty::TyKind::Tuple(_types) => {
-                        ProjectionElemFieldKind::Tuple(index.sinto(s))
-                    }
-                    ty_kind => {
-                        supposely_unreachable_fatal!(
-                            s, "ProjectionElemFieldBadType";
-                            {index, variant_idx, ty_kind, &cur_ty, &cur_kind}
-                        )
-                    }
-                })
-            };
+                        TyKind::Tuple(_types) => ProjectionElemFieldKind::Tuple(index.sinto(s)),
+                        ty_kind => {
+                            supposely_unreachable_fatal!(
+                                s, "ProjectionElemFieldBadType";
+                                {index, ty_kind, variant_idx, &cur_ty, &cur_kind}
+                            );
+                        }
+                    })
+                };
             let elem_kind: ProjectionElem = match elems {
                 [Downcast(_, variant_idx), Field(index, ty), rest @ ..] => {
                     elems = rest;
@@ -534,7 +741,7 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                         Deref => {
                             current_ty = match current_ty.kind() {
                                 TyKind::Ref(_, ty, _) => ty.clone(),
-                                TyKind::Adt(def, substs) if def.is_box() => substs.type_at(0),
+                                TyKind::Adt(def, generics) if def.is_box() => generics.type_at(0),
                                 _ => supposely_unreachable_fatal!(
                                     s, "PlaceDerefNotRefNorBox";
                                     {current_ty, current_kind, elem}
@@ -543,17 +750,30 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                             ProjectionElem::Deref
                         }
                         Field(index, ty) => {
-                            let r = mk_field(index, None);
-                            current_ty = ty.clone();
-                            r
+                            if let TyKind::Closure(_, generics) = cur_ty.kind() {
+                                // We get there when we access one of the fields
+                                // of the the state captured by a closure.
+                                use crate::rustc_index::Idx;
+                                let generics = generics.as_closure();
+                                let upvar_tys = generics.upvar_tys();
+                                current_ty = upvar_tys[index.sinto(s).index()].clone();
+                                ProjectionElem::Field(ProjectionElemFieldKind::ClosureState(
+                                    index.sinto(s),
+                                ))
+                            } else {
+                                let r = mk_field(index, None);
+                                current_ty = ty.clone();
+                                r
+                            }
                         }
                         Index(local) => {
                             let (TyKind::Slice(ty) | TyKind::Array(ty, _)) = current_ty.kind()
                             else {
                                 supposely_unreachable_fatal!(
-                                    s, "PlaceIndexNotSlice";
+                                    s,
+                                    "PlaceIndexNotSlice";
                                     {current_ty, current_kind, elem}
-                                )
+                                );
                             };
                             current_ty = ty.clone();
                             ProjectionElem::Index(local.sinto(s))
@@ -563,7 +783,8 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                             min_length,
                             from_end,
                         } => {
-                            let TyKind::Slice(ty) = current_ty.kind() else {
+                            let (TyKind::Slice(ty) | TyKind::Array(ty, _)) = current_ty.kind()
+                            else {
                                 supposely_unreachable_fatal!(
                                     s, "PlaceConstantIndexNotSlice";
                                     {current_ty, current_kind, elem}
@@ -589,6 +810,9 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                             current_ty = ty.clone();
                             ProjectionElem::OpaqueCast
                         }
+                        // This is used for casts to a subtype, e.g. between `for<‘a> fn(&’a ())`
+                        // and `fn(‘static ())` (according to @compiler-errors on Zulip).
+                        Subtype { .. } => panic!("unexpected Subtype"),
                         Downcast { .. } => panic!("unexpected Downcast"),
                     }
                 }
@@ -610,18 +834,59 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
     }
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct MirFnSig {
+    pub inputs: Vec<Ty>,
+    pub output: Ty,
+    pub c_variadic: bool,
+    pub safety: Safety,
+    pub abi: Abi,
+}
+
+pub type MirPolyFnSig = Binder<MirFnSig>;
+
+#[cfg(feature = "rustc")]
+impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, MirFnSig> for rustc_middle::ty::FnSig<'tcx> {
+    fn sinto(&self, s: &S) -> MirFnSig {
+        let inputs = self.inputs().sinto(s);
+        let output = self.output().sinto(s);
+        MirFnSig {
+            inputs,
+            output,
+            c_variadic: self.c_variadic,
+            safety: self.safety.sinto(s),
+            abi: self.abi.sinto(s),
+        }
+    }
+}
+
+// TODO: we need this function because sometimes, Rust doesn't infer the proper
+// typeclass instance.
+#[cfg(feature = "rustc")]
+pub(crate) fn poly_fn_sig_to_mir_poly_fn_sig<'tcx, S: BaseState<'tcx> + HasOwnerId>(
+    sig: &rustc_middle::ty::PolyFnSig<'tcx>,
+    s: &S,
+) -> MirPolyFnSig {
+    sig.sinto(s)
+}
+
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::AggregateKind<'tcx>, state: S as s)]
 pub enum AggregateKind {
     Array(Ty),
     Tuple,
-    #[custom_arm(rustc_middle::mir::AggregateKind::Adt(def_id, vid, args, annot, fid) => {
+    #[custom_arm(rustc_middle::mir::AggregateKind::Adt(def_id, vid, generics, annot, fid) => {
         let adt_kind = s.base().tcx.adt_def(def_id).adt_kind().sinto(s);
+        let param_env = s.param_env();
+        let trait_refs = solve_item_traits(s, param_env, *def_id, generics, None);
         AggregateKind::Adt(
             def_id.sinto(s),
             vid.sinto(s),
             adt_kind,
-            args.sinto(s),
+            generics.sinto(s),
+            trait_refs,
             annot.sinto(s),
             fid.sinto(s))
     })]
@@ -630,19 +895,45 @@ pub enum AggregateKind {
         VariantIdx,
         AdtKind,
         Vec<GenericArg>,
+        Vec<ImplExpr>,
         Option<UserTypeAnnotationIndex>,
         Option<FieldIdx>,
     ),
-    Closure(DefId, Vec<GenericArg>),
-    Generator(DefId, Vec<GenericArg>, Movability),
+    #[custom_arm(rustc_middle::mir::AggregateKind::Closure(rust_id, generics) => {
+        let def_id : DefId = rust_id.sinto(s);
+        // The generics is meant to be converted to a function signature. Note
+        // that Rustc does its job: the PolyFnSig binds the captured local
+        // type, regions, etc. variables, which means we can treat the local
+        // closure like any top-level function.
+        let closure = generics.as_closure();
+        let sig = closure.sig();
+        let sig = poly_fn_sig_to_mir_poly_fn_sig(&sig, s);
+
+        // Solve the trait obligations. Note that we solve the parent
+        let tcx = s.base().tcx;
+        let param_env = s.param_env();
+        let parent_generics = closure.parent_args();
+        let generics = tcx.mk_args(parent_generics);
+        // Retrieve the predicates from the parent (i.e., the function which calls
+        // the closure).
+        let predicates = tcx.predicates_defined_on(tcx.generics_of(rust_id).parent.unwrap());
+
+        let trait_refs = solve_item_traits(s, param_env, *rust_id, generics, Some(predicates));
+        AggregateKind::Closure(def_id, parent_generics.sinto(s), trait_refs, sig)
+    })]
+    Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, MirPolyFnSig),
+    Coroutine(DefId, Vec<GenericArg>),
+    CoroutineClosure(DefId, Vec<GenericArg>),
+    RawPtr(Ty, Mutability),
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::CastKind, state: S as s)]
 pub enum CastKind {
-    PointerExposeAddress,
-    PointerFromExposedAddress,
-    Pointer(PointerCast),
+    PointerExposeProvenance,
+    PointerWithExposedProvenance,
+    PointerCoercion(PointerCoercion),
     DynStar,
     IntToInt,
     FloatToInt,
@@ -653,18 +944,27 @@ pub enum CastKind {
     Transmute,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::NullOp<'tcx>, state: S as s)]
 pub enum NullOp {
     SizeOf,
     AlignOf,
-    OffsetOf(Vec<FieldIdx>),
+    OffsetOf(Vec<(usize, FieldIdx)>),
+    UbChecks,
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::Rvalue<'tcx>, state: S as s)]
 pub enum Rvalue {
     Use(Operand),
+    #[custom_arm(
+        rustc_middle::mir::Rvalue::Repeat(op, ce) => {
+            let op = op.sinto(s);
+            Rvalue::Repeat(op, ce.sinto(s))
+        },
+    )]
     Repeat(Operand, ConstantExpr),
     Ref(Region, BorrowKind, Place),
     ThreadLocalRef(DefId),
@@ -672,7 +972,6 @@ pub enum Rvalue {
     Len(Place),
     Cast(CastKind, Operand, Ty),
     BinaryOp(BinOp, (Operand, Operand)),
-    CheckedBinaryOp(BinOp, (Operand, Operand)),
     NullaryOp(NullOp, Ty),
     UnaryOp(UnOp, Operand),
     Discriminant(Place),
@@ -681,7 +980,8 @@ pub enum Rvalue {
     CopyForDeref(Place),
 }
 
-#[derive(AdtInto, Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::BasicBlockData<'tcx>, state: S as s)]
 pub struct BasicBlockData {
     pub statements: Vec<Statement>,
@@ -696,9 +996,9 @@ make_idx_wrapper!(rustc_middle::mir, BasicBlock);
 make_idx_wrapper!(rustc_middle::mir, SourceScope);
 make_idx_wrapper!(rustc_middle::mir, Local);
 make_idx_wrapper!(rustc_middle::ty, UserTypeAnnotationIndex);
-make_idx_wrapper!(rustc_abi, FieldIdx);
+make_idx_wrapper!(rustc_target::abi, FieldIdx);
 
-sinto_todo!(rustc_middle::ty, InstanceDef<'tcx>);
+sinto_todo!(rustc_middle::ty, InstanceKind<'tcx>);
 sinto_todo!(rustc_middle::mir, UserTypeProjections);
 sinto_todo!(rustc_middle::mir, LocalInfo<'tcx>);
 sinto_todo!(rustc_ast::ast, InlineAsmTemplatePiece);
@@ -708,10 +1008,11 @@ sinto_todo!(rustc_middle::mir, AssertMessage<'tcx>);
 sinto_todo!(rustc_middle::mir, UnwindAction);
 sinto_todo!(rustc_middle::mir, FakeReadCause);
 sinto_todo!(rustc_middle::mir, RetagKind);
-sinto_todo!(rustc_middle::mir, Coverage);
 sinto_todo!(rustc_middle::mir, NonDivergingIntrinsic<'tcx>);
 sinto_todo!(rustc_middle::mir, UserTypeProjection);
 sinto_todo!(rustc_middle::mir, MirSource<'tcx>);
-sinto_todo!(rustc_middle::mir, GeneratorInfo<'tcx>);
+sinto_todo!(rustc_middle::mir, CoroutineInfo<'tcx>);
 sinto_todo!(rustc_middle::mir, VarDebugInfo<'tcx>);
+sinto_todo!(rustc_middle::mir, CallSource);
+sinto_todo!(rustc_middle::mir::coverage, CoverageKind);
 sinto_todo!(rustc_span, ErrorGuaranteed);

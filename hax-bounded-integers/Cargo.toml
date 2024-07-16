@@ -1,0 +1,14 @@
+[package]
+name = "hax-bounded-integers"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+edition.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+[dependencies]
+duplicate = "1.0.0"
+hax-lib.workspace = true
+paste = "1.0.15"
