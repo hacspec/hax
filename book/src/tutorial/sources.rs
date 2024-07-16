@@ -1,5 +1,3 @@
-use hax_lib_macros as hax;
-
 // ANCHOR: square
 fn square(x: u8) -> u8 {
     x * x
@@ -17,15 +15,15 @@ fn square_option(x: u8) -> Option<u8> {
 // ANCHOR_END: square_option
 
 // ANCHOR: square_requires
-#[hax::requires(x < 16)]
+#[hax_lib::requires(x < 16)]
 fn square_requires(x: u8) -> u8 {
     x * x
 }
 // ANCHOR_END: square_requires
 
 // ANCHOR: square_ensures
-#[hax::requires(x < 16)]
-#[hax::ensures(|result| result >= x)]
+#[hax_lib::requires(x < 16)]
+#[hax_lib::ensures(|result| result >= x)]
 fn square_ensures(x: u8) -> u8 {
     x * x
 }
@@ -38,8 +36,8 @@ const BARRETT_SHIFT: i64 = 26;
 const BARRETT_R: i64 = 0x4000000; // 2^26
 const BARRETT_MULTIPLIER: i64 = 20159; // ⌊(BARRETT_R / FIELD_MODULUS) + 1/2⌋
 
-#[hax::requires((i64::from(value) >= -BARRETT_R && i64::from(value) <= BARRETT_R))]
-#[hax::ensures(|result| result > -FIELD_MODULUS && result < FIELD_MODULUS
+#[hax_lib::requires((i64::from(value) >= -BARRETT_R && i64::from(value) <= BARRETT_R))]
+#[hax_lib::ensures(|result| result > -FIELD_MODULUS && result < FIELD_MODULUS
                      && result %  FIELD_MODULUS ==  value % FIELD_MODULUS)]
 fn barrett_reduce(value: i32) -> i32 {
     let t = i64::from(value) * BARRETT_MULTIPLIER;
@@ -57,7 +55,7 @@ fn barrett_reduce(value: i32) -> i32 {
 }
 // ANCHOR_END: barrett
 
-#[hax::exclude]
+#[hax_lib::exclude]
 pub(crate) mod math {
     pub(crate) mod lemmas {
         pub(crate) fn cancel_mul_mod(a: i32, n: i32) {}
@@ -75,8 +73,8 @@ fn decrypt(ciphertext: u32, key: u32) -> u32 {
 // ANCHOR_END: encrypt_decrypt
 
 // ANCHOR: encrypt_decrypt_identity
-#[hax::lemma]
-#[hax::requires(true)]
+#[hax_lib::lemma]
+#[hax_lib::requires(true)]
 fn encrypt_decrypt_identity(
     key: u32,
     plaintext: u32,
@@ -95,7 +93,7 @@ enum F3 {
 // ANCHOR: F
 pub const Q: u16 = 2347;
 
-#[hax::attributes]
+#[hax_lib::attributes]
 pub struct F {
     #[refine(v < Q)]
     pub v: u16,
@@ -131,8 +129,8 @@ impl Add for F {
 //     ciphertext ^ key
 // }
 
-// #[hax::lemma]
-// #[hax::requires(true)]
+// #[hax_lib::lemma]
+// #[hax_lib::requires(true)]
 // fn encrypt_decrypt_identity(
 //     plaintext: u32,
 //     key: u32,
