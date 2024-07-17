@@ -378,13 +378,6 @@ module Make (F : Features.T) = struct
         method! visit_local_ident () x = Set.singleton (module Local_ident) x
       end
 
-    let collect_local_idents =
-      object
-        inherit [_] Visitors.reduce as _super
-        inherit [_] Sets.Local_ident.monoid as _m
-        method! visit_local_ident () x = Set.singleton (module Local_ident) x
-      end
-
     include struct
       open struct
         type env = Local_ident.t list
