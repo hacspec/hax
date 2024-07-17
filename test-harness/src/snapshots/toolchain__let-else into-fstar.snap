@@ -1,0 +1,45 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: fstar
+  info:
+    name: let-else
+    manifest: let-else/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: false
+      stdout: true
+    include_flag: ~
+    backend_options: ~
+---
+exit = 0
+
+[stdout]
+diagnostics = []
+
+[stdout.files]
+"Let_else.fst" = '''
+module Let_else
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let let_else (opt: Core.Option.t_Option u32) : bool =
+  match opt with
+  | Core.Option.Option_Some x -> true
+  | _ -> false
+
+let let_else_different_type (opt: Core.Option.t_Option u32) : bool =
+  match opt with
+  | Core.Option.Option_Some x ->
+    let_else (Core.Option.Option_Some (x +! 1ul <: u32) <: Core.Option.t_Option u32)
+  | _ -> false
+'''

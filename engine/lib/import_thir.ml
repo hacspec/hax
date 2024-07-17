@@ -370,6 +370,84 @@ end) : EXPR = struct
     let v = Global_ident.of_name Value Rust_primitives__hax__dropped_body in
     { span; typ; e = GlobalVar v }
 
+  and c_block ~expr ~span ~stmts ~ty : expr =
+    let full_span = Span.of_thir span in
+    let typ = c_ty span ty in
+    (* if there is no expression & the last expression is ⊥, just use that *)
+    let lift_last_statement_as_expr_if_possible expr stmts (ty : Thir.ty) =
+      match (ty, expr, List.drop_last stmts, List.last stmts) with
+      | ( Thir.Never,
+          None,
+          Some stmts,
+          Some ({ kind = Thir.Expr { expr; _ }; _ } : Thir.stmt) ) ->
+          (stmts, Some expr)
+      | _ -> (stmts, expr)
+    in
+    let o_stmts, o_expr =
+      lift_last_statement_as_expr_if_possible expr stmts ty
+    in
+    let init =
+      Option.map
+        ~f:(fun e ->
+          let e = c_expr e in
+          { e with e = Block (e, W.block) })
+        o_expr
+      |> Option.value ~default:(unit_expr full_span)
+    in
+    List.fold_right o_stmts ~init ~f:(fun { kind; _ } body ->
+        match kind with
+        | Expr { expr = rhs; _ } ->
+            let rhs = c_expr rhs in
+            let e =
+              Let { monadic = None; lhs = wild_pat rhs.span rhs.typ; rhs; body }
+            in
+            { e; typ; span = Span.union rhs.span body.span }
+        | Let
+            {
+              else_block = Some { expr; span; stmts; _ };
+              pattern = lhs;
+              initializer' = Some rhs;
+              _;
+            } ->
+            let lhs = c_pat lhs in
+            let rhs = c_expr rhs in
+            let else_block = c_block ~expr ~span ~stmts ~ty in
+            let lhs_body_span = Span.union lhs.span body.span in
+            let e =
+              Match
+                {
+                  arms =
+                    [
+                      { arm = { arm_pat = lhs; body }; span = lhs_body_span };
+                      {
+                        arm =
+                          {
+                            arm_pat =
+                              {
+                                p = PWild;
+                                span = else_block.span;
+                                typ = lhs.typ;
+                              };
+                            body = { else_block with typ = body.typ };
+                          };
+                        span = else_block.span;
+                      };
+                    ];
+                  scrutinee = rhs;
+                }
+            in
+            { e; typ; span = full_span }
+        | Let { initializer' = None; _ } ->
+            unimplemented ~issue_id:156 [ span ]
+              "Sorry, Hax does not support declare-first let bindings (see \
+               https://doc.rust-lang.org/rust-by-example/variable_bindings/declare.html) \
+               for now."
+        | Let { pattern = lhs; initializer' = Some rhs; _ } ->
+            let lhs = c_pat lhs in
+            let rhs = c_expr rhs in
+            let e = Let { monadic = None; lhs; rhs; body } in
+            { e; typ; span = Span.union rhs.span body.span })
+
   and c_expr_unwrapped (e : Thir.decorated_for__expr_kind) : expr =
     (* TODO: eliminate that `call`, use the one from `ast_utils` *)
     let call f args =
@@ -516,61 +594,8 @@ end) : EXPR = struct
       | Let _ -> unimplemented [ e.span ] "Let"
       | Block { safety_mode = BuiltinUnsafe | ExplicitUnsafe; _ } ->
           unsafe_block [ e.span ]
-      | Block o ->
-          (* if there is no expression & the last expression is ⊥, just use that *)
-          let lift_last_statement_as_expr_if_possible expr stmts (ty : Thir.ty)
-              =
-            match (ty, expr, List.drop_last stmts, List.last stmts) with
-            | ( Thir.Never,
-                None,
-                Some stmts,
-                Some ({ kind = Thir.Expr { expr; _ }; _ } : Thir.stmt) ) ->
-                (stmts, Some expr)
-            | _ -> (stmts, expr)
-          in
-          let o_stmts, o_expr =
-            lift_last_statement_as_expr_if_possible o.expr o.stmts e.ty
-          in
-          let init =
-            Option.map
-              ~f:(fun e ->
-                let e = c_expr e in
-                { e with e = Block (e, W.block) })
-              o_expr
-            |> Option.value ~default:(unit_expr span)
-          in
-          let { e; _ } =
-            List.fold_right o_stmts ~init ~f:(fun { kind; _ } body ->
-                match kind with
-                | Expr { expr = rhs; _ } ->
-                    let rhs = c_expr rhs in
-                    let e =
-                      Let
-                        {
-                          monadic = None;
-                          lhs = wild_pat rhs.span rhs.typ;
-                          rhs;
-                          body;
-                        }
-                    in
-                    { e; typ; span = Span.union rhs.span body.span }
-                | Let { else_block = Some _; _ } ->
-                    unimplemented ~issue_id:155 [ e.span ]
-                      "Sorry, Hax does not support [let-else] (see \
-                       https://doc.rust-lang.org/rust-by-example/flow_control/let_else.html) \
-                       for now."
-                | Let { initializer' = None; _ } ->
-                    unimplemented ~issue_id:156 [ e.span ]
-                      "Sorry, Hax does not support declare-first let bindings \
-                       (see \
-                       https://doc.rust-lang.org/rust-by-example/variable_bindings/declare.html) \
-                       for now."
-                | Let { pattern = lhs; initializer' = Some rhs; _ } ->
-                    let lhs = c_pat lhs in
-                    let rhs = c_expr rhs in
-                    let e = Let { monadic = None; lhs; rhs; body } in
-                    { e; typ; span = Span.union rhs.span body.span })
-          in
+      | Block { expr; span; stmts; _ } ->
+          let { e; _ } = c_block ~expr ~span ~stmts ~ty:e.ty in
           e
       | Assign { lhs; rhs } ->
           let lhs = c_expr lhs in
