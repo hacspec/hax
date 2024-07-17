@@ -1,15 +1,15 @@
 use chacha20::chacha20;
-use secret_independence::*;
+use hax_secret_integers::*;
 pub type ChaChaIV = [u8; 12];
 pub type ChaChaKey = [u8; 32];
 
 fn kat_test(m: Vec<u8>, key: ChaChaKey, iv: ChaChaIV, exp_cipher: Vec<u8>) {
-    let out = chacha20(&m.clone().classify_all(),  
-                       &key.classify_all(),
-                       &iv.classify_all(), 1u32);
-    let decrypted = chacha20(&out, &key.classify_all(), &iv.classify_all(), 1u32);
-    assert_eq!(exp_cipher, out.declassify_all()); 
-    assert_eq!(m, decrypted.declassify_all()); 
+    let out = chacha20(&m.clone().classify_each(),  
+                       &key.classify_each(),
+                       &iv.classify_each(), 1u32);
+    let decrypted = chacha20(&out, &key.classify_each(), &iv.classify_each(), 1u32);
+    assert_eq!(exp_cipher, out.declassify_each()); 
+    assert_eq!(m, decrypted.declassify_each()); 
 }
 
 #[test] 

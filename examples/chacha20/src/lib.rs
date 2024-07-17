@@ -1,11 +1,10 @@
 use core::array::from_fn;
-use secret_independence::*;
-use hax_lib as hax;
+use hax_secret_integers::*;
 
-type State = [U32; 16]; 
+type State = [U32; 16];  
 type Block = [U8; 64];
 type ChaChaIV = [U8; 12];
-type ChaChaKey = [U8; 32]; 
+type ChaChaKey = [U8; 32];
 
 #[hax_lib::requires(a < 16 && b < 16 && d < 16)]
 fn chacha20_line(a: usize, b: usize, d: usize, s: u32, m: State) -> State {
@@ -13,7 +12,7 @@ fn chacha20_line(a: usize, b: usize, d: usize, s: u32, m: State) -> State {
     state[a] = state[a].wrapping_add(state[b]);
     state[d] = state[d] ^ state[a];
     state[d] = state[d].rotate_left(s);
-    state 
+    state
 }
 
 #[hax_lib::requires(a < 16 && b < 16 && c < 16 && d < 16)]
@@ -23,8 +22,6 @@ pub fn chacha20_quarter_round(a: usize, b: usize, c: usize, d: usize, state: Sta
     let state = chacha20_line(a, b, d, 8, state);
     chacha20_line(c, d, b, 7, state)
 }
-
-use hax_lib::*;
 
 fn chacha20_double_round(state: State) -> State {
     let state = chacha20_quarter_round(
@@ -102,13 +99,13 @@ pub fn chacha20_core(ctr: u32, st0: State) -> State {
 }
 
 pub fn chacha20_init(key: &ChaChaKey, iv: &ChaChaIV, ctr: u32) -> State {
-    let key_u32: [U32; 8] = <[U32;8]>::from_le_bytes(key).unwrap(); 
-    let iv_u32: [U32; 3] = <[U32;3]>::from_le_bytes(iv).unwrap();
+    let key_u32: [U32; 8] = <[U32;8]>::try_from_le_bytes(key).unwrap(); 
+    let iv_u32: [U32; 3] = <[U32;3]>::try_from_le_bytes(iv).unwrap(); 
     [
-        0x6170_7865.into(),
-        0x3320_646e.into(),
-        0x7962_2d32.into(),
-        0x6b20_6574.into(),
+        0x6170_7865.classify(),
+        0x3320_646e.classify(),
+        0x7962_2d32.classify(),
+        0x6b20_6574.classify(),
         key_u32[0],
         key_u32[1],
         key_u32[2],
@@ -117,7 +114,7 @@ pub fn chacha20_init(key: &ChaChaKey, iv: &ChaChaIV, ctr: u32) -> State {
         key_u32[5],
         key_u32[6],
         key_u32[7],
-        ctr.into(),
+        ctr.classify(),
         iv_u32[0],
         iv_u32[1],
         iv_u32[2],
@@ -126,7 +123,7 @@ pub fn chacha20_init(key: &ChaChaKey, iv: &ChaChaIV, ctr: u32) -> State {
 
 pub fn chacha20_key_block(state: State) -> Block {
     let state = chacha20_core(0u32, state);
-    state.to_le_bytes().unwrap()
+    state.try_to_le_bytes().unwrap()
 }
 
 pub fn chacha20_key_block0(key: &ChaChaKey, iv: &ChaChaIV) -> Block {
@@ -136,9 +133,9 @@ pub fn chacha20_key_block0(key: &ChaChaKey, iv: &ChaChaIV) -> Block {
 
 pub fn chacha20_encrypt_block(st0: State, ctr: u32, plain: &Block) -> Block {
     let st = chacha20_core(ctr, st0);
-    let pl: State = State::from_le_bytes(plain).unwrap();
-    let encrypted = from_fn(|i| st[i] ^ pl[i]);
-    encrypted.to_le_bytes().unwrap()
+    let pl: State = State::try_from_le_bytes(plain).unwrap();
+    let encrypted : State = from_fn(|i| st[i] ^ pl[i]);
+    encrypted.try_to_le_bytes().unwrap() 
 }
 
 #[hax_lib::requires(plain.len() <= 64)]
@@ -166,7 +163,7 @@ pub fn chacha20_update(st0: State, m: &[U8]) -> Vec<U8> {
         let b = chacha20_encrypt_last(st0, num_blocks as u32, &m[64 * num_blocks..m.len()]);
         blocks_out.extend_from_slice(&b);
     }
-    blocks_out
+    blocks_out 
 }
 
 pub fn chacha20(m: &[U8], key: &ChaChaKey, iv: &ChaChaIV, ctr: u32) -> Vec<U8> {

@@ -1,5 +1,5 @@
 [package]
-name = "secret_independence"
+name = "hax-secret-integers"
 version.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -12,3 +12,5 @@ readme.workspace = true
 
 [dependencies]
 
+[features]
+secret_independence = []

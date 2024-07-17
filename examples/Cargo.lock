@@ -125,7 +125,7 @@ version = "0.1.0"
 dependencies = [
  "hax-bounded-integers",
  "hax-lib",
- "secret_independence",
+ "hax-secret-integers",
 ]
 
 [[package]]
@@ -270,6 +270,10 @@ dependencies = [
  "serde_json",
  "uuid",
 ]
+
+[[package]]
+name = "hax-secret-integers"
+version = "0.1.0-pre.1"
 
 [[package]]
 name = "heck"
@@ -538,10 +542,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ad4cc8da4ef723ed60bced201181d83791ad433213d8c24efffda1eec85d741"
 
 [[package]]
-name = "secret_independence"
-version = "0.1.0-pre.1"
-
-[[package]]
 name = "serde"
 version = "1.0.192"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -608,7 +608,7 @@ name = "sha256"
 version = "0.1.0"
 dependencies = [
  "hax-lib-macros",
- "secret_independence",
+ "hax-secret-integers",
 ]
 
 [[package]]

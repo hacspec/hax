@@ -1,6 +1,6 @@
 use hax_lib_macros as hax;
 use std::convert::TryInto;
-use secret_independence::*;
+use hax_secret_integers::*;
 
 const BLOCK_SIZE: usize = 64;
 const LEN_SIZE: usize = 8;
@@ -63,8 +63,8 @@ pub fn sigma(x: U32, i: usize, op: usize) -> U32 {
 }
 
 pub fn schedule(block: Block) -> RoundConstantsTable {
-    let b = <[U32;16]>::from_be_bytes(&block).unwrap();
-    let mut s = [0.into(); K_SIZE];
+    let b = <[U32;16]>::try_from_be_bytes(&block).unwrap();
+    let mut s = [0u32.into(); K_SIZE];
     for i in 0..K_SIZE {
         if i < 16 {
             s[i] = b[i];
@@ -121,20 +121,9 @@ pub fn compress(block: Block, h_in: Hash) -> Hash {
     h
 }
 
-fn u32s_to_be_bytes(state: Hash) -> Sha256Digest {
-    let mut out: Sha256Digest = [0u8.into(); HASH_SIZE];
-    for i in 0..LEN_SIZE {
-        let tmp = state[i];
-        let tmp = tmp.to_be_bytes();
-        for j in 0..4 {
-            out[i * 4 + j] = tmp[j];
-        }
-    }
-    out
-}
 
 pub fn hash(msg: &[U8]) -> Sha256Digest {
-    let mut h = HASH_INIT.classify_all();
+    let mut h = HASH_INIT.classify_each();
     let mut last_block: Block = [0.into(); BLOCK_SIZE];
     let mut last_block_len = 0;
     for block in msg.chunks(BLOCK_SIZE) {
@@ -165,7 +154,7 @@ pub fn hash(msg: &[U8]) -> Sha256Digest {
         h = compress(pad_block, h);
     }
 
-    u32s_to_be_bytes(h)
+    h.try_to_be_bytes().unwrap()
 }
 
 pub fn sha256(msg: &[U8]) -> Sha256Digest {

@@ -14,7 +14,7 @@ members = [
      "hax-bounded-integers",
      "engine/names",
      "engine/names/extract",
-     "secret_independence",
+     "hax-secret-integers",
      "hax-types",
 ]
 exclude = ["tests"]

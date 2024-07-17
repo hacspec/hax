@@ -6,5 +6,8 @@ edition = "2021"
 
 [dependencies]
 hax-lib.workspace = true
-secret_independence.workspace = true
+hax-secret-integers.workspace = true
 hax-bounded-integers.workspace = true
+
+[features]
+secret_independence = ["hax-secret-integers/secret_independence"]

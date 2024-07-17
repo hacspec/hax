@@ -9,4 +9,7 @@ path = "src/sha256.rs"
 
 [dependencies]
 hax-lib-macros.workspace = true
-secret_independence.workspace = true
+hax-secret-integers.workspace = true
+
+[features]
+secret_independence = ["hax-secret-integers/secret_independence"]
