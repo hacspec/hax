@@ -735,6 +735,11 @@ module Make (F : Features.T) = struct
     if pat_is_expr lhs body then rhs
     else { body with e = Let { monadic = None; lhs; rhs; body } }
 
+  let make_lets (lbs : (pat * expr) list) (body : expr) =
+    List.fold_right ~init:body
+      ~f:(fun (pat, expr) body -> make_let pat expr body)
+      lbs
+
   let make_var_pat (var : local_ident) (typ : ty) (span : span) : pat =
     {
       p = PBinding { mut = Immutable; mode = ByValue; var; typ; subpat = None };
