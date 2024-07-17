@@ -5,6 +5,7 @@ members = [
         "slices",
         "naming",
         "if-let",
+        "let-else",
         "enum-repr",
         "pattern-or",
         "side-effects",
