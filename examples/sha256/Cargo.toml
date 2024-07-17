@@ -8,8 +8,10 @@ edition = "2021"
 path = "src/sha256.rs"
 
 [dependencies]
-hax-lib-macros.workspace = true
+hax-lib.workspace = true
 hax-secret-integers.workspace = true
+hax-bounded-integers.workspace = true
 
 [features]
+default = ["secret_independence"]
 secret_independence = ["hax-secret-integers/secret_independence"]

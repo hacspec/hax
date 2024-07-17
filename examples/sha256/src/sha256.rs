@@ -1,5 +1,3 @@
-use hax_lib_macros as hax;
-use std::convert::TryInto;
 use hax_secret_integers::*;
 
 const BLOCK_SIZE: usize = 64;
@@ -8,7 +6,7 @@ pub const K_SIZE: usize = 64;
 pub const HASH_SIZE: usize = 256 / 8;
 
 pub type Block = [U8; BLOCK_SIZE];
-pub type OpTableType = [u8; 12];
+pub type OpTableType = [u32; 12];
 pub type Sha256Digest = [U8; HASH_SIZE];
 pub type RoundConstantsTable = [U32; K_SIZE];
 pub type Hash = [U32; LEN_SIZE];
@@ -51,14 +49,14 @@ const HASH_INIT: [u32; LEN_SIZE] = [
     0x5be0cd19u32,
 ];
 
-#[hax::requires(i < 4)]
+#[hax_lib::requires(i < 4)]
 pub fn sigma(x: U32, i: usize, op: usize) -> U32 {
     let mut tmp: U32 = x.rotate_right(OP_TABLE[3 * i + 2].into());
     if op == 0 {
         tmp = x >> OP_TABLE[3 * i + 2]
     }
-    let rot_val_1 = OP_TABLE[3 * i].into();
-    let rot_val_2 = OP_TABLE[3 * i + 1].into();
+    let rot_val_1 = OP_TABLE[3 * i];
+    let rot_val_2 = OP_TABLE[3 * i + 1];
     x.rotate_right(rot_val_1) ^ x.rotate_right(rot_val_2) ^ tmp
 }
 
