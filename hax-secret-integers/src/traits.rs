@@ -1,42 +1,23 @@
 use core::ops::*;
 pub trait Classify {
-    type Output;
-    fn classify(self) -> Self::Output;
+    type ClassifiedOutput;
+    fn classify(self) -> Self::ClassifiedOutput;
 }
 
 pub trait Declassify {
-    type Output;
-    fn declassify(self) -> Self::Output;
+    type DeclassifiedOutput;
+    fn declassify(self) -> Self::DeclassifiedOutput;
 }
 
 pub trait ClassifyEach {
-    type Output;
-    fn classify_each(self) -> Self::Output;
+    type ClassifiedEachOutput;
+    fn classify_each(self) -> Self::ClassifiedEachOutput;
 }
 
 pub trait DeclassifyEach {
-    type Output;
-    fn declassify_each(self) -> Self::Output;
+    type DeclassifiedEachOutput;
+    fn declassify_each(self) -> Self::DeclassifiedEachOutput;
 }
-
-pub trait MachineInt : 
-    Sized + Clone + Copy +
-    Add + Sub + Mul +
-    BitAnd + BitOr + BitXor +
-    Not + Shl + Shr
-    {}
-impl MachineInt for u8 {}
-impl MachineInt for i8 {}
-impl MachineInt for u16 {}
-impl MachineInt for i16 {}
-impl MachineInt for u32 {}
-impl MachineInt for i32 {}
-impl MachineInt for u64 {}
-impl MachineInt for i64 {}
-impl MachineInt for u128 {}
-impl MachineInt for i128 {}
-impl MachineInt for usize {}
-impl MachineInt for isize {}
 
 pub trait IntOps where Self:Sized {
     fn wrapping_add<T:Into<Self>>(self,rhs:T) -> Self;

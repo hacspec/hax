@@ -14,3 +14,6 @@ readme.workspace = true
 
 [features]
 secret_independence = []
+
+[lints.rust]
+ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(hax)'] }

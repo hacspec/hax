@@ -13,12 +13,12 @@ fn unwrap<T>(x:Secret<T>) -> T {x.0}
 // fn unwrap<T>(x:Secret<T>) -> T {x}
 
 impl<T> Classify for T {
-    type Output = Secret<T>;
+    type ClassifiedOutput = Secret<T>;
     fn classify(self) -> Secret<Self> {secret(self)}
 }
 
 impl<T> Declassify for Secret<T> {
-    type Output = T;
+    type DeclassifiedOutput = T;
     fn declassify(self) -> T {
         unwrap(self)
     }
@@ -44,7 +44,7 @@ impl<T, const N: usize> ClassifyEach for [T; N] {
 }
 
 impl<T> ClassifyEach for Vec<T> {
-    type Output = Vec<Secret<T>>;
+    type ClassifiedEachOutput = Vec<Secret<T>>;
     fn classify_each(self) -> Vec<Secret<T>> {
         self.into_iter().map(|x| x.classify()).collect()
     }
@@ -52,7 +52,7 @@ impl<T> ClassifyEach for Vec<T> {
 
 
 impl<T, const N: usize> DeclassifyEach for [Secret<T>; N] {
-    type Output = [T; N];
+    type DeclassifiedEachOutput = [T; N];
     fn declassify_each(self) -> [T; N] {
         self.map(|x| x.declassify())
     }

@@ -73,15 +73,15 @@ unfold instance iterator_step_by it {| i: iterator it |}: iterator (Core.Iter.Ad
 open Core.Ops.Range
 
 val iterator_slice_next t: t_next (t_Slice t) t
-unfold
-let iterator_slice_contains (t: eqtype): t_contains (t_Slice t) t
-  = fun s x -> Rust_primitives.Arrays.contains s x
-val iterator_slice_fold (t: eqtype): t_fold (t_Slice t) t (iterator_slice_contains t)
-val iterator_slice_enumerate (t: eqtype): t_enumerate (t_Slice t)
-val iterator_slice_step_by (t: eqtype): t_step_by (t_Slice t)
-val iterator_slice_all (t: eqtype): t_all (t_Slice t) t
+unfold 
+let iterator_slice_contains (t: Type0): t_contains (t_Slice t) t
+  = fun s x -> exists i. (Seq.index s i) == x
+val iterator_slice_fold (t: Type0): t_fold (t_Slice t) t (iterator_slice_contains t)
+val iterator_slice_enumerate (t: Type0): t_enumerate (t_Slice t)
+val iterator_slice_step_by (t: Type0): t_step_by (t_Slice t)
+val iterator_slice_all (t: Type0): t_all (t_Slice t) t
 
-instance iterator_slice (t: eqtype): iterator (t_Slice t) = {
+instance iterator_slice (t: Type0): iterator (t_Slice t) = {
   f_Item = t;
   f_next = iterator_slice_next t;
   // size_hint = (fun s -> Some (Rust_primitives.Arrays.length s));
@@ -96,14 +96,14 @@ instance iterator_slice (t: eqtype): iterator (t_Slice t) = {
 (** Arrays are not iterable as such in Rust. We ignore this indirection here. *)
 val iterator_array_next t len: t_next (t_Array t len) t
 unfold
-let iterator_array_contains (t: eqtype) len: t_contains (t_Array t len) t
-  = fun s x -> Rust_primitives.Arrays.contains s x
-val iterator_array_fold (t: eqtype) len: t_fold (t_Array t len) t (iterator_array_contains t len)
-val iterator_array_enumerate (t: eqtype) len: t_enumerate (t_Array t len)
-val iterator_array_step_by (t: eqtype) len: t_step_by (t_Array t len)
-val iterator_array_all (t: eqtype) len: t_all (t_Array t len) t
+let iterator_array_contains (t: Type0) len: t_contains (t_Array t len) t
+  = fun s x ->  exists i. (Seq.index s i) == x
+val iterator_array_fold (t: Type0) len: t_fold (t_Array t len) t (iterator_array_contains t len)
+val iterator_array_enumerate (t: Type0) len: t_enumerate (t_Array t len)
+val iterator_array_step_by (t: Type0) len: t_step_by (t_Array t len)
+val iterator_array_all (t: Type0) len: t_all (t_Array t len) t
 
-instance iterator_array (t: eqtype) len: iterator (t_Array t len) = {
+instance iterator_array (t: Type0) len: iterator (t_Array t len) = {
   f_Item = t;
   f_next = iterator_array_next t len;
   // size_hint = (fun (_s: t_Array t len) -> Some len);

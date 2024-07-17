@@ -1,4 +1,3 @@
-use core::ops::*;
 use crate::traits::*;
 
 pub type I8 = i8;
@@ -13,26 +12,26 @@ pub type I128 = i128;
 pub type U128 = u128;
 
 impl<T> Classify for T {
-    type Output = T;
+    type ClassifiedOutput = T;
     fn classify(self) -> Self {self}
 }
 
 impl<T> Declassify for T{
-    type Output = T;
+    type DeclassifiedOutput = T;
     fn declassify(self) -> T {
         self
     }
 }
 
 impl<T> ClassifyEach for T {
-    type Output = T;
+    type ClassifiedEachOutput = T;
     fn classify_each(self) -> T {
         self
     }
 }
 
 impl<T> DeclassifyEach for T {
-    type Output = T;
+    type DeclassifiedEachOutput = T;
     fn declassify_each(self) -> T {
         self
     }
