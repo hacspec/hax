@@ -688,6 +688,10 @@ struct
       let ident = F.id ("x" ^ Int.to_string nth) in
       { kind = Explicit; ident; typ = pty span typ }
 
+    let of_named_typ span name typ : t =
+      let ident = plocal_ident name in
+      { kind = Explicit; ident; typ = pty span typ }
+
     let to_pattern (x : t) : F.AST.pattern =
       let subpat =
         match x.kind with
