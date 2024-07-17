@@ -79,7 +79,8 @@ let chacha20_core (ctr: u32) (st0: t_Array u32 (sz 16)) : t_Array u32 (sz 16) =
   Core.Array.from_fn #u32
     (sz 16)
     (fun i ->
-        (state.[ i ] <: u32) +. (k.[ i ] <: u32) <: u32)
+        let i:usize = i in
+        Core.Num.impl__u32__wrapping_add (state.[ i ] <: u32) (k.[ i ] <: u32) <: u32)
 
 let chacha20_key_block (state: t_Array u32 (sz 16)) : t_Array u8 (sz 64) =
   let state:t_Array u32 (sz 16) = chacha20_core 0ul state in
@@ -135,7 +136,27 @@ let chacha20_encrypt_last (st0: t_Array u32 (sz 16)) (ctr: u32) (plain: t_Slice 
         u8)
       (sz 64)
   in
-  let b:t_Array u8 (sz 64) = Core.Slice.impl__copy_from_slice #u8 b plain in
+  let b:t_Array u8 (sz 64) =
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_range b
+      ({
+          Core.Ops.Range.f_start = sz 0;
+          Core.Ops.Range.f_end = Core.Slice.impl__len #u8 plain <: usize
+        }
+        <:
+        Core.Ops.Range.t_Range usize)
+      (Core.Slice.impl__copy_from_slice #u8
+          (b.[ {
+                Core.Ops.Range.f_start = sz 0;
+                Core.Ops.Range.f_end = Core.Slice.impl__len #u8 plain <: usize
+              }
+              <:
+              Core.Ops.Range.t_Range usize ]
+            <:
+            t_Slice u8)
+          plain
+        <:
+        t_Slice u8)
+  in
   let b:t_Array u8 (sz 64) = chacha20_encrypt_block st0 ctr b in
   Alloc.Slice.impl__to_vec #u8
     (b.[ {

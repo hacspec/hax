@@ -23,17 +23,25 @@ let impl_4: Hax_secret_integers.Traits.t_EncodeOps u32 u8 (sz 4) =
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_6 (v_N: usize) : Hax_secret_integers.Traits.t_TryDecodeOps (t_Array u32 v_N) u8 =
   {
-    f_try_from_le_bytes_pre = (fun (x: t_Slice u8) -> true);
+    f_try_from_le_bytes_pre = (fun (x: t_Slice u8) -> v_N <. (sz 65536 /! sz 4 <: usize));
     f_try_from_le_bytes_post
     =
-    (fun (x: t_Slice u8) (out: Core.Result.t_Result (t_Array u32 v_N) Prims.unit) -> true);
+    (fun (x: t_Slice u8) (out: Core.Result.t_Result (t_Array u32 v_N) Prims.unit) ->
+        v_N <. (sz 65536 /! sz 4 <: usize) &&
+        (if (Core.Slice.impl__len #u8 x <: usize) =. (v_N *! sz 4 <: usize)
+          then Core.Result.impl__is_ok #(t_Array u32 v_N) #Prims.unit out
+          else Core.Result.impl__is_err #(t_Array u32 v_N) #Prims.unit out));
     f_try_from_le_bytes
     =
     (fun (x: t_Slice u8) -> Hax_secret_integers.Traits.try_from_le_bytes #u8 (sz 4) #u32 v_N x);
-    f_try_from_be_bytes_pre = (fun (x: t_Slice u8) -> true);
+    f_try_from_be_bytes_pre = (fun (x: t_Slice u8) -> v_N <. (sz 65536 /! sz 4 <: usize));
     f_try_from_be_bytes_post
     =
-    (fun (x: t_Slice u8) (out: Core.Result.t_Result (t_Array u32 v_N) Prims.unit) -> true);
+    (fun (x: t_Slice u8) (out: Core.Result.t_Result (t_Array u32 v_N) Prims.unit) ->
+        v_N <. (sz 65536 /! sz 4 <: usize) &&
+        (if (Core.Slice.impl__len #u8 x <: usize) =. (v_N *! sz 4 <: usize)
+          then Core.Result.impl__is_ok #(t_Array u32 v_N) #Prims.unit out
+          else Core.Result.impl__is_err #(t_Array u32 v_N) #Prims.unit out));
     f_try_from_be_bytes
     =
     fun (x: t_Slice u8) -> Hax_secret_integers.Traits.try_from_be_bytes #u8 (sz 4) #u32 v_N x
@@ -42,18 +50,26 @@ let impl_6 (v_N: usize) : Hax_secret_integers.Traits.t_TryDecodeOps (t_Array u32
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_5 (v_N v_B: usize) : Hax_secret_integers.Traits.t_TryEncodeOps (t_Array u32 v_N) u8 v_B =
   {
-    f_try_to_le_bytes_pre = (fun (self: t_Array u32 v_N) -> true);
+    f_try_to_le_bytes_pre = (fun (self: t_Array u32 v_N) -> v_N <. (sz 65536 /! sz 4 <: usize));
     f_try_to_le_bytes_post
     =
-    (fun (self: t_Array u32 v_N) (out: Core.Result.t_Result (t_Array u8 v_B) Prims.unit) -> true);
+    (fun (self: t_Array u32 v_N) (out: Core.Result.t_Result (t_Array u8 v_B) Prims.unit) ->
+        v_N <. (sz 65536 /! sz 4 <: usize) &&
+        (if v_B =. (v_N *! sz 4 <: usize)
+          then Core.Result.impl__is_ok #(t_Array u8 v_B) #Prims.unit out
+          else Core.Result.impl__is_err #(t_Array u8 v_B) #Prims.unit out));
     f_try_to_le_bytes
     =
     (fun (self: t_Array u32 v_N) ->
         Hax_secret_integers.Traits.try_to_le_bytes #u8 (sz 4) #u32 v_N v_B self);
-    f_try_to_be_bytes_pre = (fun (self: t_Array u32 v_N) -> true);
+    f_try_to_be_bytes_pre = (fun (self: t_Array u32 v_N) -> v_N <. (sz 65536 /! sz 4 <: usize));
     f_try_to_be_bytes_post
     =
-    (fun (self: t_Array u32 v_N) (out: Core.Result.t_Result (t_Array u8 v_B) Prims.unit) -> true);
+    (fun (self: t_Array u32 v_N) (out: Core.Result.t_Result (t_Array u8 v_B) Prims.unit) ->
+        v_N <. (sz 65536 /! sz 4 <: usize) &&
+        (if v_B =. (v_N *! sz 4 <: usize)
+          then Core.Result.impl__is_ok #(t_Array u8 v_B) #Prims.unit out
+          else Core.Result.impl__is_err #(t_Array u8 v_B) #Prims.unit out));
     f_try_to_be_bytes
     =
     fun (self: t_Array u32 v_N) ->

@@ -1,5 +1,4 @@
 use crate::traits::*;
-use hax_lib::*;
 
 pub type I8 = i8;
 pub type U8 = u8;
@@ -53,28 +52,30 @@ impl EncodeOps<U8,4> for U32 {
     }
 }
 
+#[hax_lib::attributes]
 impl<const N: usize, const B:usize> TryEncodeOps<U8, B> for [U32; N] {
-    // #[hax_lib::requires(N <= 65536 / 4)]
-    // #[hax_lib::ensures(|result| if x.len() == N * 4 {result.is_ok()} else {result.is_err()} )] 
+    #[requires(N < 65536 / 4)]
+    #[ensures(|result| N < 65536 / 4 && (if B == N * 4 {result.is_ok()} else {result.is_err()}))] 
     fn try_to_le_bytes(&self) -> Result<[U8;B],()> {
         try_to_le_bytes(self)
     }
-    // #[hax_lib::requires(N <= 65536 / 4)]
-    // #[hax_lib::ensures(|result| if x.len() == N * 4 {result.is_ok()} else {result.is_err()} )] 
+    #[requires(N < 65536 / 4)]
+    #[ensures(|result| N < 65536 / 4 && (if B == N * 4 {result.is_ok()} else {result.is_err()}))] 
     fn try_to_be_bytes(&self) -> Result<[U8;B],()> {
         try_to_be_bytes(self)
     }
 }
 
+#[hax_lib::attributes]
 impl<const N: usize> TryDecodeOps<U8> for [U32; N] {
-    // #[hax_lib::requires(N <= 65536 / 4)]
-    // #[hax_lib::ensures(|result| if x.len() == N * 4 {result.is_ok()} else {result.is_err()} )] 
-    fn try_from_le_bytes(x:&[U8]) -> Result<Self,()> {
+    #[requires(N < 65536 / 4)]
+    #[ensures(|result| N < 65536 / 4 && (if x.len() == N * 4 {result.is_ok()} else {result.is_err()}))] 
+    fn try_from_le_bytes(x:&[U8]) -> Result<[U32; N],()> {
         try_from_le_bytes(x)
     }
-    // #[hax_lib::requires(N <= 65536 / 4)]
-    // #[hax_lib::ensures(|result| if x.len() == N * 4 {result.is_ok()} else {result.is_err()} )] 
-    fn try_from_be_bytes(x:&[U8]) -> Result<Self,()> {
+    #[requires(N < 65536 / 4)]
+    #[ensures(|result| N < 65536 / 4 && (if x.len() == N * 4 {result.is_ok()} else {result.is_err()}))] 
+    fn try_from_be_bytes(x:&[U8]) -> Result<[U32; N],()> {
         try_from_be_bytes(x)
     }
 }
