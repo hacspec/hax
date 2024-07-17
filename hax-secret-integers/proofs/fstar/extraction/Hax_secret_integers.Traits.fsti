@@ -152,8 +152,13 @@ val try_from_be_bytes
       {| i2: t_EncodeOps v_T v_U v_C |}
       (x: t_Slice v_U)
     : Prims.Pure (Core.Result.t_Result (t_Array v_T v_N) Prims.unit)
-      Prims.l_True
-      (fun _ -> Prims.l_True)
+      (requires v_C >. sz 0 && v_C <=. sz 16 && v_N <=. (sz 65536 /! v_C <: usize))
+      (ensures
+        fun result ->
+          let result:Core.Result.t_Result (t_Array v_T v_N) Prims.unit = result in
+          if (Core.Slice.impl__len #v_U x <: usize) =. (v_N *! v_C <: usize)
+          then Core.Result.impl__is_ok #(t_Array v_T v_N) #Prims.unit result
+          else Core.Result.impl__is_err #(t_Array v_T v_N) #Prims.unit result)
 
 val try_from_le_bytes
       (#v_U: Type0)
@@ -163,8 +168,13 @@ val try_from_le_bytes
       {| i2: t_EncodeOps v_T v_U v_C |}
       (x: t_Slice v_U)
     : Prims.Pure (Core.Result.t_Result (t_Array v_T v_N) Prims.unit)
-      Prims.l_True
-      (fun _ -> Prims.l_True)
+      (requires v_C >. sz 0 && v_C <=. sz 16 && v_N <=. (sz 65536 /! v_C <: usize))
+      (ensures
+        fun result ->
+          let result:Core.Result.t_Result (t_Array v_T v_N) Prims.unit = result in
+          if (Core.Slice.impl__len #v_U x <: usize) =. (v_N *! v_C <: usize)
+          then Core.Result.impl__is_ok #(t_Array v_T v_N) #Prims.unit result
+          else Core.Result.impl__is_err #(t_Array v_T v_N) #Prims.unit result)
 
 val try_to_be_bytes
       (#v_U: Type0)
@@ -175,8 +185,13 @@ val try_to_be_bytes
       {| i3: t_EncodeOps v_T v_U v_C |}
       (x: t_Array v_T v_N)
     : Prims.Pure (Core.Result.t_Result (t_Array v_U v_B) Prims.unit)
-      Prims.l_True
-      (fun _ -> Prims.l_True)
+      (requires v_C >. sz 0 && v_C <=. sz 16 && v_N <=. (sz 65536 /! v_C <: usize))
+      (ensures
+        fun result ->
+          let result:Core.Result.t_Result (t_Array v_U v_B) Prims.unit = result in
+          if v_B =. (v_N *! v_C <: usize)
+          then Core.Result.impl__is_ok #(t_Array v_U v_B) #Prims.unit result
+          else Core.Result.impl__is_err #(t_Array v_U v_B) #Prims.unit result)
 
 val try_to_le_bytes
       (#v_U: Type0)
@@ -187,5 +202,10 @@ val try_to_le_bytes
       {| i3: t_EncodeOps v_T v_U v_C |}
       (x: t_Array v_T v_N)
     : Prims.Pure (Core.Result.t_Result (t_Array v_U v_B) Prims.unit)
-      Prims.l_True
-      (fun _ -> Prims.l_True)
+      (requires v_C >. sz 0 && v_C <=. sz 16 && v_N <=. (sz 65536 /! v_C <: usize))
+      (ensures
+        fun result ->
+          let result:Core.Result.t_Result (t_Array v_U v_B) Prims.unit = result in
+          if v_B =. (v_N *! v_C <: usize)
+          then Core.Result.impl__is_ok #(t_Array v_U v_B) #Prims.unit result
+          else Core.Result.impl__is_err #(t_Array v_U v_B) #Prims.unit result)

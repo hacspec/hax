@@ -1,4 +1,3 @@
-use core::ops::*;
 pub trait Classify {
     type ClassifiedOutput;
     fn classify(self) -> Self::ClassifiedOutput;
@@ -36,6 +35,8 @@ pub trait EncodeOps<T, const N:usize> {
 }
 
 #[inline(always)]
+#[hax_lib::requires(C > 0 && C <= 16 && N <= 65536 / C)]
+#[hax_lib::ensures(|result| if B == N * C {result.is_ok()} else {result.is_err()} )] 
 pub(crate) fn try_to_le_bytes<U:Clone, const C: usize, T: EncodeOps<U, C>, const N: usize, const B:usize>(x:&[T;N]) -> Result<[U;B],()> {
     let mut v = Vec::new();
     for i in 0..N {
@@ -45,6 +46,8 @@ pub(crate) fn try_to_le_bytes<U:Clone, const C: usize, T: EncodeOps<U, C>, const
 }
 
 #[inline(always)]
+#[hax_lib::requires(C > 0 && C <= 16 && N <= 65536 / C)]
+#[hax_lib::ensures(|result| if B == N * C {result.is_ok()} else {result.is_err()} )] 
 pub(crate) fn try_to_be_bytes<U:Clone, const C: usize, T: EncodeOps<U, C>, const N: usize, const B:usize>(x:&[T;N]) -> Result<[U;B],()> {
     let mut v = Vec::new();
     for i in 0..N {
@@ -54,6 +57,8 @@ pub(crate) fn try_to_be_bytes<U:Clone, const C: usize, T: EncodeOps<U, C>, const
 }
 
 #[inline(always)]
+#[hax_lib::requires(C > 0 && C <= 16 && N <= 65536 / C)]
+#[hax_lib::ensures(|result| if x.len() == N * C {result.is_ok()} else {result.is_err()} )] 
 pub(crate) fn try_from_le_bytes<U, const C: usize, T: EncodeOps<U, C>, const N: usize>(x:&[U]) -> Result<[T; N],()> {
     let mut v = Vec::new();
     for c in x.chunks_exact(C) {
@@ -63,6 +68,8 @@ pub(crate) fn try_from_le_bytes<U, const C: usize, T: EncodeOps<U, C>, const N: 
 }
 
 #[inline(always)]
+#[hax_lib::requires(C > 0 && C <= 16 && N <= 65536 / C)]
+#[hax_lib::ensures(|result| if x.len() == N * C {result.is_ok()} else {result.is_err()} )] 
 pub(crate) fn try_from_be_bytes<U, const C: usize, T: EncodeOps<U, C>, const N: usize>(x:&[U]) -> Result<[T; N],()> {
     let mut v = Vec::new();
     for c in x.chunks_exact(C) {

@@ -9,3 +9,13 @@ let impl__map_err #e1 #e2 (x: t_Result 't e1) (f: e1 -> e2): t_Result 't e2
   | Result_Ok v -> Result_Ok v
   | Result_Err e -> Result_Err (f e)
 
+let impl__is_ok #t #e (x: t_Result t e): bool
+  = match x with
+  | Result_Ok v -> true
+  | Result_Err e -> false
+
+let impl__is_err #t #e (x: t_Result t e): bool
+  = match x with
+  | Result_Ok v -> false
+  | Result_Err e -> true
+

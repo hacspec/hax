@@ -11,9 +11,10 @@ readme.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+hax-lib = { path = "../hax-lib" }
 
 [features]
 secret_independence = []
 
 [lints.rust]
- unexpected_cfgs = { level = "warn", check-cfg = ['cfg(hax)'] }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(hax)'] }

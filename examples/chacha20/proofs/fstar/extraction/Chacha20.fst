@@ -79,8 +79,7 @@ let chacha20_core (ctr: u32) (st0: t_Array u32 (sz 16)) : t_Array u32 (sz 16) =
   Core.Array.from_fn #u32
     (sz 16)
     (fun i ->
-        let i:usize = i in
-        (state.[ i ] <: u32) +! (k.[ i ] <: u32) <: u32)
+        (state.[ i ] <: u32) +. (k.[ i ] <: u32) <: u32)
 
 let chacha20_key_block (state: t_Array u32 (sz 16)) : t_Array u8 (sz 64) =
   let state:t_Array u32 (sz 16) = chacha20_core 0ul state in

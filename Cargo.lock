@@ -600,6 +600,9 @@ dependencies = [
 [[package]]
 name = "hax-secret-integers"
 version = "0.1.0-pre.1"
+dependencies = [
+ "hax-lib",
+]
 
 [[package]]
 name = "hax-test-harness"
