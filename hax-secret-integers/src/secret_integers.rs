@@ -7,11 +7,6 @@ pub struct Secret<T>(T);
 fn secret<T>(x:T) -> Secret<T> {Secret(x)}
 fn unwrap<T>(x:Secret<T>) -> T {x.0}
 
-// #[cfg(not(secret_independence))]
-// type Secret<T> = T;
-// fn secret<T>(x:T) -> Secret<T> {x}
-// fn unwrap<T>(x:Secret<T>) -> T {x}
-
 impl<T> Classify for T {
     type ClassifiedOutput = Secret<T>;
     fn classify(self) -> Secret<Self> {secret(self)}
@@ -37,7 +32,7 @@ impl<T: Clone> Clone for Secret<T> {
 impl<T: Clone+Copy> Copy for Secret<T> {}
 
 impl<T, const N: usize> ClassifyEach for [T; N] {
-    type Output = [Secret<T>; N];
+    type ClassifiedEachOutput = [Secret<T>; N];
     fn classify_each(self) -> [Secret<T>; N] {
         self.map(|x| x.into())
     }
@@ -59,7 +54,7 @@ impl<T, const N: usize> DeclassifyEach for [Secret<T>; N] {
 }
 
 impl<T> DeclassifyEach for Vec<Secret<T>> {
-    type Output = Vec<T>;
+    type DeclassifiedEachOutput = Vec<T>;
     fn declassify_each(self) -> Vec<T> {
         self.into_iter().map(|x| x.declassify()).collect()
     }

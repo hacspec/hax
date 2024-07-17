@@ -14,6 +14,7 @@ readme.workspace = true
 hax-lib = { path = "../hax-lib" }
 
 [features]
+default = ["secret_independence"]
 secret_independence = []
 
 [lints.rust]

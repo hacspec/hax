@@ -1,12 +1,12 @@
 mod traits;
 pub use traits::*;
 
-#[cfg(all(hax,feature = "secret_independence"))]
+#[cfg(all(not(hax),feature = "secret_independence"))]
 mod secret_integers;
-#[cfg(all(hax,feature = "secret_independence"))]
+#[cfg(all(not(hax),feature = "secret_independence"))]
 pub use secret_integers::*;
 
-#[cfg(not(all(hax,feature = "secret_independence")))]
+#[cfg(any(hax,not(feature = "secret_independence")))]
 mod public_integers;
-#[cfg(not(all(hax,feature = "secret_independence")))]
+#[cfg(any(hax,not(feature = "secret_independence")))]
 pub use public_integers::*;
