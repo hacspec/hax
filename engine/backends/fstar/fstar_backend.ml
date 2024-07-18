@@ -1208,7 +1208,114 @@ struct
                     let ty = F.term @@ F.AST.Product (inputs, ty_pre_post) in
                     [ (F.id name, None, [], ty) ]
                 | TIFn ty ->
+                    let weakest =
+                      let h kind =
+                        Attrs.associated_fns kind i.ti_attrs |> List.hd
+                      in
+                      Option.first_some (h Ensures) (h Requires)
+                      |> Option.map ~f:(fun (generics, params, expr) ->
+                             let dummy_self =
+                               List.find generics.params
+                                 ~f:[%matches? { kind = GPType _; _ }]
+                               |> Option.value_or_thunk ~default:(fun () ->
+                                      Error.assertion_failure i.ti_span
+                                        ("Expected a first generic of type \
+                                          `Self`. Instead generics params \
+                                          are: "
+                                        ^ [%show: generic_param list]
+                                            generics.params))
+                               |> fun x -> x.ident
+                             in
+                             let self =
+                               Local_ident.{ name = "Self"; id = mk_id Typ 0 }
+                             in
+                             let renamer =
+                               let f (id : local_ident) =
+                                 if [%eq: string] dummy_self.name id.name then
+                                   self
+                                 else id
+                               in
+                               U.Mappers.rename_local_idents f
+                             in
+                             let generics =
+                               renamer#visit_generics () generics
+                             in
+                             let params =
+                               List.map ~f:(renamer#visit_param ()) params
+                             in
+                             let expr = renamer#visit_expr () expr in
+                             (generics, params, expr))
+                    in
                     let ty = pty e.span ty in
+                    let ty =
+                      let variables =
+                        let idents_visitor = U.Reducers.collect_local_idents in
+                        idents_visitor#visit_trait_item () i
+                        :: (Option.map
+                              ~f:(fun (generics, params, expr) ->
+                                [
+                                  idents_visitor#visit_generics () generics;
+                                  idents_visitor#visit_expr () expr;
+                                ]
+                                @ List.map
+                                    ~f:(idents_visitor#visit_param ())
+                                    params)
+                              weakest
+                           |> Option.value ~default:[])
+                        |> Set.union_list (module Local_ident)
+                        |> Set.to_list |> ref
+                      in
+                      Stdlib.prerr_endline @@ "Variables: "
+                      ^ [%show: local_ident list] !variables;
+                      let mk_fresh prefix =
+                        let v = U.fresh_local_ident_in !variables prefix in
+                        variables := v :: !variables;
+                        v
+                      in
+                      let bindings = ref [] in
+                      let f (p : param) =
+                        let name =
+                          match p.pat.p with
+                          | PBinding { var; _ } -> var
+                          | _ ->
+                              let name = mk_fresh "x" in
+                              let ({ span; typ; _ } : pat) = p.pat in
+                              let expr = { e = LocalVar name; span; typ } in
+                              bindings := (p.pat, expr) :: !bindings;
+                              name
+                        in
+                        FStarBinder.of_named_typ p.pat.span name p.typ
+                      in
+                      weakest
+                      |> Option.map ~f:(List.map ~f |> map_snd3)
+                      |> Option.map
+                           ~f:(fun (generics, binders, (expr : expr)) ->
+                             let result_ident = mk_fresh "pred" in
+                             let result_bd =
+                               FStarBinder.of_named_typ expr.span result_ident
+                                 expr.typ
+                             in
+                             let typ = pty expr.span expr.typ in
+                             let expr = U.make_lets !bindings expr in
+                             let expr = pexpr expr in
+                             let result =
+                               F.term
+                               @@ F.AST.Var
+                                    (plocal_ident result_ident |> F.lid_of_id)
+                             in
+                             let result =
+                               F.AST.Refine
+                                 ( FStarBinder.to_binder result_bd,
+                                   F.implies result expr )
+                               |> F.term
+                             in
+                             F.AST.Product
+                               ( List.map ~f:FStarBinder.to_binder binders,
+                                 result )
+                             |> F.term)
+                      |> Option.value ~default:ty
+                    in
+
                     let ty =
                       F.term
                       @@ F.AST.Product
