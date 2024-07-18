@@ -51,6 +51,13 @@ struct
         args = List.filter_map ~f:(dgeneric_value span) r.args;
       }
 
+    and ddyn_trait_goal (span : span) (r : A.dyn_trait_goal) : B.dyn_trait_goal
+        =
+      {
+        trait = r.trait;
+        non_self_args = List.filter_map ~f:(dgeneric_value span) r.non_self_args;
+      }
+
     and dpat' (span : span) (p : A.pat') : B.pat' =
       match p with
       | [%inline_arms "dpat'.*" - PBinding - PDeref] -> auto

@@ -131,6 +131,7 @@ functor
       | TArrow of ty list * ty
       | TAssociatedType of { impl : impl_expr; item : concrete_ident }
       | TOpaque of concrete_ident
+      | TDyn of { witness : F.dyn; goals : dyn_trait_goal list }
 
     and generic_value =
       | GLifetime of { lt : todo; witness : F.lifetime }
@@ -155,6 +156,13 @@ functor
     (** A fully applied trait: [Foo<SomeTy, T0, ..., Tn>] (or
       `SomeTy: Foo<T0, ..., Tn>`). An `impl_expr` "inhabits" a
       `trait_goal`. *)
+
+    and dyn_trait_goal = {
+      trait : concrete_ident;
+      non_self_args : generic_value list;
+    }
+    (** A dyn trait: [Foo<_, T0, ..., Tn>]. The generic arguments are known 
+      but the actual type implementing the trait is known only dynamically. *)
 
     and impl_ident = { goal : trait_goal; name : string }
     (** An impl identifier [{goal; name}] can be:

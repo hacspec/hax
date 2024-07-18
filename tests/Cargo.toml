@@ -19,6 +19,7 @@ members = [
         "attribute-opaque",
         "raw-attributes",
         "traits",
+        "dyn",
         "reordering",
         "nested-derefs",
         "proverif-minimal",

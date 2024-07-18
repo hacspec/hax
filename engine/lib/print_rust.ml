@@ -166,6 +166,19 @@ module Raw = struct
         !"arrow!(" & arrow & !")"
     | TAssociatedType _ -> !"proj_asso_type!()"
     | TOpaque ident -> !(Concrete_ident_view.show ident)
+    | TDyn { goals; _ } ->
+        let goals =
+          concat ~sep:!" + " (List.map ~f:(pdyn_trait_goal span) goals)
+        in
+        !"dyn(" & goals & !")"
+
+  and pdyn_trait_goal span { trait; non_self_args } =
+    let ( ! ) = pure span in
+    let args =
+      List.map ~f:(pgeneric_value span) non_self_args |> concat ~sep:!", "
+    in
+    !(Concrete_ident_view.show trait)
+    & if List.is_empty args then empty else !"<" & args & !">"
 
   and pgeneric_value span (e : generic_value) : AnnotatedString.t =
     match e with

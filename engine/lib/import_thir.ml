@@ -1005,7 +1005,26 @@ end) : EXPR = struct
         (* TODO: [id] might not unique *)
         TParam { name; id = Local_ident.mk_id Typ (MyInt64.to_int_exn index) }
     | Error -> unimplemented [ span ] "type Error"
-    | Dynamic _ -> unimplemented [ span ] "type Dynamic"
+    | Dynamic (predicates, _region, Dyn) -> (
+        let goals, non_traits =
+          List.partition_map
+            ~f:(fun pred ->
+              match pred.value with
+              | Trait { args; def_id } ->
+                  let goal : dyn_trait_goal =
+                    {
+                      trait = Concrete_ident.of_def_id Trait def_id;
+                      non_self_args = List.map ~f:(c_generic_value span) args;
+                    }
+                  in
+                  First goal
+              | _ -> Second ())
+            predicates
+        in
+        match non_traits with
+        | [] -> TDyn { witness = W.dyn; goals }
+        | _ -> unimplemented [ span ] "type Dyn with non trait predicate")
+    | Dynamic (_, _, DynStar) -> unimplemented [ span ] "type DynStar"
     | Coroutine _ -> unimplemented [ span ] "type Coroutine"
     | Placeholder _ -> unimplemented [ span ] "type Placeholder"
     | Bound _ -> unimplemented [ span ] "type Bound"
