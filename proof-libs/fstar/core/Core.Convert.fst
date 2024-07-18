@@ -5,12 +5,17 @@ open Rust_primitives
 class try_into_tc self t = {
   [@@@FStar.Tactics.Typeclasses.no_method]
   f_Error: Type0;
-  f_try_into: self -> Core.Result.t_Result t f_Error
+  f_try_into_pre: self -> bool;
+  f_try_into_post: self -> (Core.Result.t_Result t f_Error) -> bool;
+  f_try_into: x:self -> Pure (Core.Result.t_Result t f_Error)
+      (f_try_into_pre x) (fun result -> f_try_into_post x result)
 }
 
 instance impl_6 (t: Type0) (len: usize): try_into_tc (t_Slice t) (t_Array t len) = {
   f_Error = Core.Array.t_TryFromSliceError;
-  f_try_into = (fun (s: t_Slice t) -> 
+  f_try_into_pre = (fun _ -> true);
+  f_try_into_post = (fun x r -> (Core.Slice.impl__len x <>. len) || Core.Result.Result_Ok? r);
+  f_try_into = (fun s ->
     if Core.Slice.impl__len s = len
     then Core.Result.Result_Ok (s <: t_Array t len)
     else Core.Result.Result_Err Core.Array.TryFromSliceError
@@ -20,6 +25,8 @@ instance impl_6 (t: Type0) (len: usize): try_into_tc (t_Slice t) (t_Array t len)
 
 instance impl_6_refined (t: Type0) (len: usize): try_into_tc (s: t_Slice t {Core.Slice.impl__len s == len}) (t_Array t len) = {
   f_Error = Core.Array.t_TryFromSliceError;
+  f_try_into_pre = (fun _ -> true);
+  f_try_into_post = (fun x r -> Core.Result.Result_Ok? r);
   f_try_into = (fun (s: t_Slice t {Core.Slice.impl__len s == len}) -> 
     Core.Result.Result_Ok (s <: t_Array t len)
   )
