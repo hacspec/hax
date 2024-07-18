@@ -141,6 +141,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
             | TAssociatedType _ -> string "assoc_type!()"
             | TOpaque _ -> string "opaque_type!()"
             | TApp _ -> super#ty ctx ty
+            | TDyn _ -> string "" (* TODO *)
 
         method! expr' : par_state -> expr' fn =
           fun ctx e ->

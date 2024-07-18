@@ -47,6 +47,18 @@ struct
     | TOpaque ident -> TOpaque ident
     | TRawPointer { witness } ->
         TRawPointer { witness = S.raw_pointer span witness }
+    | TDyn { witness; goals } ->
+        TDyn
+          {
+            witness = S.dyn span witness;
+            goals = List.map ~f:(ddyn_trait_goal span) goals;
+          }
+
+  and ddyn_trait_goal (span : span) (r : A.dyn_trait_goal) : B.dyn_trait_goal =
+    {
+      trait = r.trait;
+      non_self_args = List.map ~f:(dgeneric_value span) r.non_self_args;
+    }
 
   and dtrait_goal (span : span) (r : A.trait_goal) : B.trait_goal =
     { trait = r.trait; args = List.map ~f:(dgeneric_value span) r.args }

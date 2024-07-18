@@ -23,7 +23,8 @@ loop,
   monadic_action,
   monadic_binding,
   quote,
-  block]
+  block,
+  dyn]
 
 module Full = On
 

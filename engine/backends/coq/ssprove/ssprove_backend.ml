@@ -40,7 +40,8 @@ module SubtypeToInputLanguage
              and type arbitrary_lhs = Features.Off.arbitrary_lhs
              and type nontrivial_lhs = Features.Off.nontrivial_lhs
              and type quote = Features.Off.quote
-             and type block = Features.Off.block) =
+             and type block = Features.Off.block
+             and type dyn = Features.Off.dyn) =
 struct
   module FB = InputLanguage
 
@@ -580,6 +581,7 @@ module TransformToInputLanguage (* : PHASE *) =
     |> Phases.Reject.EarlyExit
     (* |> Phases.Functionalize_loops *)
     |> Phases.Reject.As_pattern
+    |> Phases.Reject.Dyn
     |> SubtypeToInputLanguage
     |> Identity
   ]

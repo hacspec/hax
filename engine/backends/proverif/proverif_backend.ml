@@ -76,6 +76,7 @@ struct
         let monadic_action = reject
         let monadic_binding = reject
         let block = reject
+        let dyn = reject
         let metadata = Phase_reject.make_metadata (NotInBackendLang ProVerif)
       end)
 
@@ -900,6 +901,7 @@ module TransformToInputLanguage =
   |> Phases.Drop_needless_returns
   |> Phases.Local_mutation
   |> Phases.Reject.Continue
+  |> Phases.Reject.Dyn
   |> SubtypeToInputLanguage
   |> Identity
   ]
