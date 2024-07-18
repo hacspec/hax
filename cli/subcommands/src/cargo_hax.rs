@@ -186,7 +186,7 @@ fn run_engine(
 
         send!(&engine_options);
 
-        let out_dir = {
+        let out_dir = backend.output_dir.clone().unwrap_or({
             let relative_path: PathBuf = [
                 "proofs",
                 format!("{}", backend.backend).as_str(),
@@ -195,7 +195,7 @@ fn run_engine(
             .iter()
             .collect();
             manifest_dir.join(&relative_path)
-        };
+        });
 
         let stdout = std::io::BufReader::new(engine_subprocess.stdout.take().unwrap());
         for msg in stdout.json_lines() {
