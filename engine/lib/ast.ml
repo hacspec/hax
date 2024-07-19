@@ -78,9 +78,14 @@ let show_int_kind { size; signedness } =
     |> Option.map ~f:Int.to_string
     |> Option.value ~default:"size")
 
-type float_kind = F32 | F64 [@@deriving show, yojson, hash, compare, eq]
+type float_kind = F16 | F32 | F64 | F128
+[@@deriving show, yojson, hash, compare, eq]
 
-let show_float_kind = function F32 -> "f32" | F64 -> "f64"
+let show_float_kind = function
+  | F16 -> "f16"
+  | F32 -> "f32"
+  | F64 -> "f64"
+  | F128 -> "f128"
 
 type literal =
   | String of string
@@ -126,6 +131,7 @@ functor
       | TArrow of ty list * ty
       | TAssociatedType of { impl : impl_expr; item : concrete_ident }
       | TOpaque of concrete_ident
+      | TDyn of { witness : F.dyn; goals : dyn_trait_goal list }
 
     and generic_value =
       | GLifetime of { lt : todo; witness : F.lifetime }
@@ -150,6 +156,13 @@ functor
     (** A fully applied trait: [Foo<SomeTy, T0, ..., Tn>] (or
       `SomeTy: Foo<T0, ..., Tn>`). An `impl_expr` "inhabits" a
       `trait_goal`. *)
+
+    and dyn_trait_goal = {
+      trait : concrete_ident;
+      non_self_args : generic_value list;
+    }
+    (** A dyn trait: [Foo<_, T0, ..., Tn>]. The generic arguments are known 
+      but the actual type implementing the trait is known only dynamically. *)
 
     and impl_ident = { goal : trait_goal; name : string }
     (** An impl identifier [{goal; name}] can be:
@@ -195,7 +208,7 @@ functor
           args : expr list (* ; f_span: span *);
           generic_args : generic_value list;
           bounds_impls : impl_expr list;
-          impl : impl_expr option;
+          trait : (impl_expr * generic_value list) option;
         }
       | Literal of literal
       | Array of expr list

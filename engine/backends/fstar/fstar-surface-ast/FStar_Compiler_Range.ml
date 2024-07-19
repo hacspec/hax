@@ -101,22 +101,7 @@ let (string_of_pos : pos -> Prims.string) =
     FStar_Compiler_Util.format2 "%s,%s" uu___ uu___1
 let (string_of_file_name : Prims.string -> Prims.string) =
   fun f ->
-    let uu___ = FStar_Options.ide () in
-    if uu___
-    then
-      try
-        (fun uu___1 ->
-           match () with
-           | () ->
-               let uu___2 =
-                 let uu___3 = FStar_Compiler_Util.basename f in
-                 FStar_Options.find_file uu___3 in
-               (match uu___2 with
-                | FStar_Pervasives_Native.None -> f
-                | FStar_Pervasives_Native.Some absolute_path -> absolute_path))
-          ()
-      with | uu___1 -> f
-    else f
+    f
 let (file_of_range : range -> Prims.string) =
   fun r -> let f = (r.def_range).file_name in string_of_file_name f
 let (set_file_of_range : range -> Prims.string -> range) =
@@ -181,69 +166,3 @@ let (extend_to_end_of_line : range -> range) =
     let uu___1 = start_of_range r in
     let uu___2 = let uu___3 = end_of_range r in end_of_line uu___3 in
     mk_range uu___ uu___1 uu___2
-let (prims_to_fstar_range :
-  ((Prims.string * (Prims.int * Prims.int) * (Prims.int * Prims.int)) *
-    (Prims.string * (Prims.int * Prims.int) * (Prims.int * Prims.int))) ->
-    range)
-  =
-  fun r ->
-    let uu___ = r in
-    match uu___ with
-    | (r1, r2) ->
-        let uu___1 = r1 in
-        (match uu___1 with
-         | (f1, s1, e1) ->
-             let uu___2 = r2 in
-             (match uu___2 with
-              | (f2, s2, e2) ->
-                  let s11 =
-                    mk_pos (FStar_Pervasives_Native.fst s1)
-                      (FStar_Pervasives_Native.snd s1) in
-                  let e11 =
-                    mk_pos (FStar_Pervasives_Native.fst e1)
-                      (FStar_Pervasives_Native.snd e1) in
-                  let s21 =
-                    mk_pos (FStar_Pervasives_Native.fst s2)
-                      (FStar_Pervasives_Native.snd s2) in
-                  let e21 =
-                    mk_pos (FStar_Pervasives_Native.fst e2)
-                      (FStar_Pervasives_Native.snd e2) in
-                  let r11 = mk_rng f1 s11 e11 in
-                  let r21 = mk_rng f2 s21 e21 in
-                  { def_range = r11; use_range = r21 }))
-let (json_of_pos : pos -> FStar_Compiler_Util.json) =
-  fun pos1 ->
-    let uu___ =
-      let uu___1 =
-        let uu___2 = line_of_pos pos1 in FStar_Compiler_Util.JsonInt uu___2 in
-      let uu___2 =
-        let uu___3 =
-          let uu___4 = col_of_pos pos1 in FStar_Compiler_Util.JsonInt uu___4 in
-        [uu___3] in
-      uu___1 :: uu___2 in
-    FStar_Compiler_Util.JsonList uu___
-let (json_of_range_fields :
-  Prims.string -> pos -> pos -> FStar_Compiler_Util.json) =
-  fun file ->
-    fun b ->
-      fun e ->
-        let uu___ =
-          let uu___1 =
-            let uu___2 = let uu___3 = json_of_pos b in ("beg", uu___3) in
-            let uu___3 =
-              let uu___4 = let uu___5 = json_of_pos e in ("end", uu___5) in
-              [uu___4] in
-            uu___2 :: uu___3 in
-          ("fname", (FStar_Compiler_Util.JsonStr file)) :: uu___1 in
-        FStar_Compiler_Util.JsonAssoc uu___
-let (json_of_use_range : range -> FStar_Compiler_Util.json) =
-  fun r ->
-    let uu___ = file_of_use_range r in
-    let uu___1 = start_of_use_range r in
-    let uu___2 = end_of_use_range r in
-    json_of_range_fields uu___ uu___1 uu___2
-let (json_of_def_range : range -> FStar_Compiler_Util.json) =
-  fun r ->
-    let uu___ = file_of_range r in
-    let uu___1 = start_of_range r in
-    let uu___2 = end_of_range r in json_of_range_fields uu___ uu___1 uu___2

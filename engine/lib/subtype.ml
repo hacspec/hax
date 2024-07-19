@@ -47,6 +47,18 @@ struct
     | TOpaque ident -> TOpaque ident
     | TRawPointer { witness } ->
         TRawPointer { witness = S.raw_pointer span witness }
+    | TDyn { witness; goals } ->
+        TDyn
+          {
+            witness = S.dyn span witness;
+            goals = List.map ~f:(ddyn_trait_goal span) goals;
+          }
+
+  and ddyn_trait_goal (span : span) (r : A.dyn_trait_goal) : B.dyn_trait_goal =
+    {
+      trait = r.trait;
+      non_self_args = List.map ~f:(dgeneric_value span) r.non_self_args;
+    }
 
   and dtrait_goal (span : span) (r : A.trait_goal) : B.trait_goal =
     { trait = r.trait; args = List.map ~f:(dgeneric_value span) r.args }
@@ -157,14 +169,15 @@ struct
             then_ = dexpr then_;
             else_ = Option.map ~f:dexpr else_;
           }
-    | App { f; args; generic_args; bounds_impls; impl } ->
+    | App { f; args; generic_args; bounds_impls; trait } ->
+        let dgeneric_values = List.map ~f:(dgeneric_value span) in
         App
           {
             f = dexpr f;
             args = List.map ~f:dexpr args;
-            generic_args = List.map ~f:(dgeneric_value span) generic_args;
+            generic_args = dgeneric_values generic_args;
             bounds_impls = List.map ~f:(dimpl_expr span) bounds_impls;
-            impl = Option.map ~f:(dimpl_expr span) impl;
+            trait = Option.map ~f:(dimpl_expr span *** dgeneric_values) trait;
           }
     | Literal lit -> Literal lit
     | Array l -> Array (List.map ~f:dexpr l)

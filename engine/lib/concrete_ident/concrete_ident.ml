@@ -15,11 +15,11 @@ module Imported = struct
     | ForeignMod
     | Use
     | GlobalAsm
-    | ClosureExpr
+    | Closure
     | Ctor
     | AnonConst
-    | ImplTrait
-    | ImplTraitAssocTy
+    | AnonAdt
+    | OpaqueTy
     | TypeNs of string
     | ValueNs of string
     | MacroNs of string
@@ -32,15 +32,15 @@ module Imported = struct
     | ForeignMod -> ForeignMod
     | Use -> Use
     | GlobalAsm -> GlobalAsm
-    | ClosureExpr -> ClosureExpr
+    | Closure -> Closure
     | Ctor -> Ctor
     | AnonConst -> AnonConst
-    | ImplTrait -> ImplTrait
-    | ImplTraitAssocTy -> ImplTraitAssocTy
+    | OpaqueTy -> OpaqueTy
     | TypeNs s -> TypeNs s
     | ValueNs s -> ValueNs s
     | MacroNs s -> MacroNs s
     | LifetimeNs s -> LifetimeNs s
+    | AnonAdt -> AnonAdt
 
   let of_disambiguated_def_path_item :
       Types.disambiguated_def_path_item -> disambiguated_def_path_item =
@@ -433,7 +433,8 @@ module T = struct
   let hash x = [%hash: Imported.def_id] x.def_id
   let hash_fold_t s x = Imported.hash_fold_def_id s x.def_id
 
-  type name = Concrete_ident_generated.name
+  type name = Concrete_ident_generated.t
+  [@@deriving show, yojson, compare, sexp, eq, hash]
 
   let of_name k = Concrete_ident_generated.def_id_of >> of_def_id k
 

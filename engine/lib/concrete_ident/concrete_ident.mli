@@ -1,5 +1,7 @@
 type t [@@deriving show, yojson, compare, sexp, eq, hash]
-type name = Concrete_ident_generated.name
+
+type name = Concrete_ident_generated.t
+[@@deriving show, yojson, compare, sexp, eq, hash]
 
 module ImplInfoStore : sig
   val init : (Types.def_id * Types.impl_infos) list -> unit

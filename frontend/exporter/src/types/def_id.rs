@@ -10,14 +10,18 @@
 //! `hax-engine-names-extract`, and is used to turn off the derive
 //! attributes `AdtInto` and `JsonSchema`.
 
-pub use serde::{Deserialize, Serialize};
+use hax_adt_into::derive_group;
 
 #[cfg(not(feature = "extract_names_mode"))]
-use crate::{AdtInto, BaseState, JsonSchema, SInto};
+use crate::{AdtInto, JsonSchema};
+
+#[cfg(all(not(feature = "extract_names_mode"), feature = "rustc"))]
+use crate::{BaseState, SInto};
 
 pub type Symbol = String;
 
-#[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(not(feature = "extract_names_mode"), derive(AdtInto, JsonSchema))]
 #[cfg_attr(not(feature = "extract_names_mode"), args(<'a, S: BaseState<'a>>, from: rustc_hir::definitions::DisambiguatedDefPathData, state: S as s))]
 /// Reflects [`rustc_hir::definitions::DisambiguatedDefPathData`]
@@ -27,7 +31,8 @@ pub struct DisambiguatedDefPathItem {
 }
 
 /// Reflects [`rustc_hir::def_id::DefId`]
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(not(feature = "extract_names_mode"), derive(JsonSchema))]
 pub struct DefId {
     pub krate: String,
@@ -44,7 +49,8 @@ pub struct DefId {
 }
 
 /// Reflects [`rustc_hir::definitions::DefPathData`]
-#[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(not(feature = "extract_names_mode"), derive(AdtInto, JsonSchema))]
 #[cfg_attr(not(feature = "extract_names_mode"), args(<'ctx, S: BaseState<'ctx>>, from: rustc_hir::definitions::DefPathData, state: S as state))]
 pub enum DefPathItem {
@@ -57,9 +63,9 @@ pub enum DefPathItem {
     ValueNs(Symbol),
     MacroNs(Symbol),
     LifetimeNs(Symbol),
-    ClosureExpr,
+    Closure,
     Ctor,
     AnonConst,
-    ImplTrait,
-    ImplTraitAssocTy,
+    OpaqueTy,
+    AnonAdt,
 }

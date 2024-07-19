@@ -40,7 +40,8 @@ module SubtypeToInputLanguage
              and type while_loop = Features.Off.while_loop
              and type for_index_loop = Features.Off.for_index_loop
              and type quote = Features.Off.quote
-             and type state_passing_loop = Features.Off.state_passing_loop) =
+             and type state_passing_loop = Features.Off.state_passing_loop
+             and type dyn = Features.Off.dyn) =
 struct
   module FB = InputLanguage
 
@@ -714,6 +715,7 @@ module TransformToInputLanguage =
   |> Phases.Reject.EarlyExit
   |> Phases.Functionalize_loops
   |> Phases.Reject.As_pattern
+  |> Phases.Reject.Dyn
   |> SubtypeToInputLanguage
   |> Identity
   ]

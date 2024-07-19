@@ -1,6 +1,5 @@
 ---
 source: test-harness/src/harness.rs
-assertion_line: 214
 expression: snapshot
 info:
   kind:
@@ -22,9 +21,7 @@ info:
     backend_options: ~
 ---
 exit = 0
-stderr = '''
-Compiling side-effects v0.1.0 (WORKSPACE_ROOT/side-effects)
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
 
 [stdout]
 diagnostics = []
@@ -117,7 +114,7 @@ Equations local_mutation {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1
     letb hoist12 := f_into_iter hoist11 in
     letb _ := foldi_both_list hoist12 (fun i =>
       ssp (fun _ =>
-        assign todo(term) : (both (*1*)(L1:|:fset [y_loc]) (I1) 'unit))) (ret_both (tt : 'unit)) in
+        assign todo(term) : (both (*0*)(L1:|:fset []) (I1) 'unit))) (ret_both (tt : 'unit)) in
     impl__u32__wrapping_add x y
     else letb hoist15 := matchb x with
     | 12 =>

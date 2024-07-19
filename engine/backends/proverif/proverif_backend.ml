@@ -76,6 +76,7 @@ struct
         let monadic_action = reject
         let monadic_binding = reject
         let block = reject
+        let dyn = reject
         let metadata = Phase_reject.make_metadata (NotInBackendLang ProVerif)
       end)
 
@@ -147,20 +148,20 @@ module Make (Options : OPTS) : MAKE = struct
 
     (* TODO: Give definitions for core / known library functions, cf issues #447, #448 *)
     let library_functions :
-        (Concrete_ident_generated.name * (AST.expr list -> document)) list =
+        (Concrete_ident_generated.t * (AST.expr list -> document)) list =
       []
 
     let library_constructors :
-        (Concrete_ident_generated.name
+        (Concrete_ident_generated.t
         * ((global_ident * AST.expr) list -> document))
         list =
       []
 
     let library_constructor_patterns :
-        (Concrete_ident_generated.name * (field_pat list -> document)) list =
+        (Concrete_ident_generated.t * (field_pat list -> document)) list =
       []
 
-    let library_types : (Concrete_ident_generated.name * document) list = []
+    let library_types : (Concrete_ident_generated.t * document) list = []
 
     let assoc_known_name name (known_name, _) =
       Global_ident.eq_name known_name name
@@ -900,6 +901,7 @@ module TransformToInputLanguage =
   |> Phases.Drop_needless_returns
   |> Phases.Local_mutation
   |> Phases.Reject.Continue
+  |> Phases.Reject.Dyn
   |> SubtypeToInputLanguage
   |> Identity
   ]

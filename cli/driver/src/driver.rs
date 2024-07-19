@@ -30,18 +30,13 @@ mod exporter;
 use std::collections::HashSet;
 
 use exporter::ExtractionCallbacks;
-use hax_lint::Type;
-
-mod linter;
-use linter::LinterCallbacks;
 
 mod callbacks_wrapper;
 mod features;
 use callbacks_wrapper::*;
 use features::*;
 
-use const_format::formatcp;
-use hax_cli_options::{BackendOptions, Command, ExporterCommand, ENV_VAR_OPTIONS_FRONTEND};
+use hax_types::cli_options::{BackendOptions, Command, ENV_VAR_OPTIONS_FRONTEND};
 
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::{interface, Queries};
@@ -66,6 +61,11 @@ fn setup_logging() {
     let subscriber = tracing_subscriber::Registry::default()
         .with(tracing_subscriber::EnvFilter::from_default_env())
         .with(
+            tracing_subscriber::fmt::layer()
+                .with_file(true)
+                .with_line_number(true),
+        )
+        .with(
             tracing_tree::HierarchicalLayer::new(2)
                 .with_ansi(enable_colors)
                 .with_indent_lines(true),
@@ -78,12 +78,12 @@ const HAX_VANILLA_RUSTC: &str = "HAX_VANILLA_RUSTC";
 fn main() {
     setup_logging();
 
-    let options: hax_cli_options::Options =
-        serde_json::from_str(&std::env::var(ENV_VAR_OPTIONS_FRONTEND).expect(&formatcp!(
+    let options: hax_types::cli_options::Options =
+        serde_json::from_str(&std::env::var(ENV_VAR_OPTIONS_FRONTEND).expect(&format!(
             "Cannot find environnement variable {}",
             ENV_VAR_OPTIONS_FRONTEND
         )))
-        .expect(&formatcp!(
+        .expect(&format!(
             "Invalid value for the environnement variable {}",
             ENV_VAR_OPTIONS_FRONTEND
         ));
@@ -122,24 +122,11 @@ fn main() {
     let translate_package =
         !vanilla_rustc && !is_build_script && (options.deps || is_primary_package);
     let mut callbacks: Box<dyn Callbacks + Send> = if translate_package {
-        match &options.command {
-            Some(Command::ExporterCommand(command)) => Box::new(exporter::ExtractionCallbacks {
-                inline_macro_calls: options.inline_macro_calls.clone(),
-                command: command.clone(),
-                macro_calls: std::collections::HashMap::new(),
-            }),
-            Some(Command::LintCommand(command)) => {
-                let ltype = match command {
-                    hax_cli_options::LinterCommand::Hacspec => Type::Hacspec,
-                    hax_cli_options::LinterCommand::Rust => Type::Rust,
-                };
-                Box::new(LinterCallbacks::new(ltype))
-            }
-            None => {
-                // hacspec lint
-                Box::new(LinterCallbacks::new(Type::Rust))
-            }
-        }
+        Box::new(exporter::ExtractionCallbacks {
+            inline_macro_calls: options.inline_macro_calls.clone(),
+            body_types: options.command.body_kinds(),
+            macro_calls: std::collections::HashMap::new(),
+        })
     } else {
         struct CallbacksNoop;
         impl Callbacks for CallbacksNoop {}
@@ -166,10 +153,9 @@ fn main() {
                 hax_lib_macros_types::HAX_CFG_OPTION_NAME.into(),
             ])
             .chain(match &options.command {
-                Some(Command::ExporterCommand(ExporterCommand::Backend(BackendOptions {
-                    backend,
-                    ..
-                }))) => vec!["--cfg".into(), format!("hax_backend_{backend}")],
+                Command::Backend(BackendOptions { backend, .. }) => {
+                    vec!["--cfg".into(), format!("hax_backend_{backend}")]
+                }
                 _ => vec![],
             })
             .chain(features.into_iter().map(|s| format!("-Zcrate-attr={}", s)))
@@ -179,13 +165,14 @@ fn main() {
 
     let mut callbacks = CallbacksWrapper {
         sub: &mut *callbacks,
-        options: hax_cli_options::Options {
-            force_cargo_build: if translate_package {
+        options: {
+            let mut options = options.clone();
+            options.force_cargo_build = if translate_package {
                 options.force_cargo_build
             } else {
-                hax_cli_options::ForceCargoBuild::default()
-            },
-            ..options
+                hax_types::cli_options::ForceCargoBuild::default()
+            };
+            options
         },
     };
 

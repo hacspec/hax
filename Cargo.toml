@@ -2,10 +2,6 @@
 members = [
      "frontend/exporter",
      "frontend/exporter/options",
-     "frontend/diagnostics",
-     "frontend/lint",
-     "cli/options",
-     "cli/options/engine",
      "cli/subcommands",
      "cli/driver",
      "test-harness",
@@ -18,15 +14,12 @@ members = [
      "hax-bounded-integers",
      "engine/names",
      "engine/names/extract",
+     "hax-types",
 ]
 exclude = ["tests"]
 default-members = [
      "frontend/exporter",
      "frontend/exporter/options",
-     "frontend/diagnostics",
-     "frontend/lint",
-     "cli/options",
-     "cli/options/engine",
      "cli/subcommands",
      "cli/driver",
      "test-harness",
@@ -77,17 +70,16 @@ quote = "1.0.32"
 proc-macro2 = "1.0.66"
 cargo_metadata = "0.15"
 colored = "2"
+bincode = "2.0.0-rc.3"
+annotate-snippets = "0.11"
 
 # Crates in this repository
-hax-frontend-exporter = { path = "frontend/exporter", version = "=0.1.0-pre.1" }
+hax-frontend-exporter = { path = "frontend/exporter", version = "=0.1.0-pre.1", default-features = false }
 hax-adt-into = { path = "frontend/exporter/adt-into", version = "=0.1.0-pre.1" }
-hax-cli-options = { path = "cli/options", version = "=0.1.0-pre.1" }
-hax-cli-options-engine = { path = "cli/options/engine", version = "=0.1.0-pre.1" }
 hax-frontend-exporter-options = { path = "frontend/exporter/options", version = "=0.1.0-pre.1" }
-hax-diagnostics = { path = "frontend/diagnostics", version = "=0.1.0-pre.1" }
-hax-lint = { path = "frontend/lint", version = "=0.1.0-pre.1" }
 hax-phase-debug-webapp = { path = "engine/utils/phase-debug-webapp", version = "=0.1.0-pre.1" }
 hax-lib-macros-types = { path = "hax-lib-macros/types", version = "=0.1.0-pre.1" }
 hax-lib-macros = { path = "hax-lib-macros", version = "=0.1.0-pre.1" }
 hax-lib = { path = "hax-lib", version = "=0.1.0-pre.1" }
 hax-engine-names = { path = "engine/names", version = "=0.1.0-pre.1" }
+hax-types = { path = "hax-types", version = "=0.1.0-pre.1" }

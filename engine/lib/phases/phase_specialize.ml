@@ -17,8 +17,8 @@ module Make (F : Features.T) =
         open Concrete_ident_generated
 
         type pattern = {
-          fn : name;
-          fn_replace : name;
+          fn : t;
+          fn_replace : t;
           args : (expr -> bool) list;
           ret : ty -> bool;
         }
@@ -30,7 +30,7 @@ module Make (F : Features.T) =
 
         (** Constructs a predicate out of predicates and names *)
         let mk (args : ('a, 'b) predicate list) (ret : ('c, 'd) predicate)
-            (fn : name) (fn_replace : name) : pattern =
+            (fn : t) (fn_replace : t) : pattern =
           let args = List.map ~f:(fun p x -> p x |> Option.is_some) args in
           let ret t = ret t |> Option.is_some in
           { fn; fn_replace; args; ret }
@@ -51,7 +51,7 @@ module Make (F : Features.T) =
            fun ~eq x x' -> if eq x x' then Some x' else None
 
           let eq_global_ident :
-              name -> (Ast.Global_ident.t, Ast.Global_ident.t) predicate =
+              t -> (Ast.Global_ident.t, Ast.Global_ident.t) predicate =
             eq ~eq:Ast.Global_ident.eq_name
 
           let erase : 'a. ('a, unit) predicate = fun _ -> Some ()
@@ -134,7 +134,7 @@ module Make (F : Features.T) =
                           {
                             f;
                             args = l;
-                            impl = None;
+                            trait = None;
                             generic_args = [];
                             bounds_impls = [];
                           };

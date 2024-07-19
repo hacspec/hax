@@ -66,8 +66,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
             | Float { value; kind; negative } ->
                 string value
                 |> precede (if negative then minus else empty)
-                |> terminate
-                     (string (match kind with F32 -> "f32" | F64 -> "f64"))
+                |> terminate (string (show_float_kind kind))
             | Bool b -> OCaml.bool b
 
         method generic_value : generic_value fn =
@@ -101,8 +100,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
             in
             string signedness ^^ size
 
-        method ty_float : float_kind fn =
-          (function F32 -> "f32" | F64 -> "f64") >> string
+        method ty_float : float_kind fn = show_float_kind >> string
 
         method generic_values : generic_value list fn =
           function
@@ -143,6 +141,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
             | TAssociatedType _ -> string "assoc_type!()"
             | TOpaque _ -> string "opaque_type!()"
             | TApp _ -> super#ty ctx ty
+            | TDyn _ -> string "" (* TODO *)
 
         method! expr' : par_state -> expr' fn =
           fun ctx e ->

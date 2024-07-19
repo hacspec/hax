@@ -198,7 +198,7 @@ pub(crate) fn read_span_from_file(span: &Span) -> Result<String, ReadSpanErr> {
 
 #[tracing::instrument(skip(sess))]
 pub fn translate_span(span: rustc_span::Span, sess: &rustc_session::Session) -> Span {
-    let smap: &rustc_span::source_map::SourceMap = sess.parse_sess.source_map();
+    let smap: &rustc_span::source_map::SourceMap = sess.psess.source_map();
     let filename = smap.span_to_filename(span);
 
     let lo = smap.lookup_char_pos(span.lo());

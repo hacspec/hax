@@ -38,7 +38,10 @@ val impl__u16__pow (base: u16) (exponent: u32): result : u16 {v base == 2 /\ v e
 val impl__u32__pow (base: u32) (exponent: u32): result : u32 {v base == 2 /\ v exponent <= 16 ==> result == mk_int #Lib.IntTypes.U32 (pow2 (v exponent))}
 val impl__u64__pow: u64 -> u32 -> u64
 val impl__u128__pow: u128 -> u32 -> u128
+val impl__i16__pow (base: i16) (exponent: u32): result: i16 {v base == 2 /\ v exponent < 15 ==> result == mk_int #Lib.IntTypes.S16 (pow2 (v exponent))}
 val impl__i32__pow (base: i32) (exponent: u32): result: i32 {v base == 2 /\ v exponent <= 16 ==> result == mk_int #Lib.IntTypes.S32 (pow2 (v exponent))}
+
+val impl__u8__count_ones: u8 -> u32
 
 val impl__u8__from_str_radix: string -> u32 -> Core.Result.t_Result u8 Core.Num.Error.t_ParseIntError
 

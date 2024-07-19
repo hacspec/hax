@@ -21,9 +21,7 @@ info:
     backend_options: ~
 ---
 exit = 0
-stderr = '''
-Compiling side-effects v0.1.0 (WORKSPACE_ROOT/side-effects)
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
 
 [stdout]
 diagnostics = []
@@ -52,7 +50,9 @@ let direct_result_question_mark_coercion (y: Core.Result.t_Result i8 u16)
   match y with
   | Core.Result.Result_Ok hoist1 -> Core.Result.Result_Ok hoist1 <: Core.Result.t_Result i8 u32
   | Core.Result.Result_Err err ->
-    Core.Result.Result_Err (Core.Convert.f_from err) <: Core.Result.t_Result i8 u32
+    Core.Result.Result_Err (Core.Convert.f_from #FStar.Tactics.Typeclasses.solve err)
+    <:
+    Core.Result.t_Result i8 u32
 
 /// Exercise early returns with control flow and loops
 let early_returns (x: u32) : u32 =
@@ -119,6 +119,7 @@ let local_mutation (x: u32) : u32 =
     let y:u32 =
       Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Ops.Range.t_Range
               u32)
+            #FStar.Tactics.Typeclasses.solve
             ({ Core.Ops.Range.f_start = 0ul; Core.Ops.Range.f_end = 10ul }
               <:
               Core.Ops.Range.t_Range u32)
@@ -272,7 +273,9 @@ let question_mark (x: u32) : Core.Result.t_Result u32 u32 =
             | Core.Result.Result_Err err ->
               let! _:Prims.unit =
                 Core.Ops.Control_flow.ControlFlow_Break
-                (Core.Result.Result_Err (Core.Convert.f_from err) <: Core.Result.t_Result u32 u32)
+                (Core.Result.Result_Err (Core.Convert.f_from #FStar.Tactics.Typeclasses.solve err)
+                  <:
+                  Core.Result.t_Result u32 u32)
                 <:
                 Core.Ops.Control_flow.t_ControlFlow (Core.Result.t_Result u32 u32) Prims.unit
               in

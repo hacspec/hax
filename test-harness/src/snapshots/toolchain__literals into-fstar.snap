@@ -21,9 +21,7 @@ info:
     backend_options: ~
 ---
 exit = 0
-stderr = '''
-Compiling literals v0.1.0 (WORKSPACE_ROOT/literals)
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
 
 [stdout]
 diagnostics = []
@@ -147,6 +145,16 @@ let numeric (_: Prims.unit) : Prims.unit =
   let (_: u128):u128 = pub_u128 22222222222222222222 in
   ()
 
+let panic_with_msg (_: Prims.unit) : Prims.unit =
+  Rust_primitives.Hax.never_to_any (Core.Panicking.panic_fmt (Core.Fmt.impl_2__new_const (sz 1)
+            (let list = ["with msg"] in
+              FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 1);
+              Rust_primitives.Hax.array_of_list 1 list)
+          <:
+          Core.Fmt.t_Arguments)
+      <:
+      Rust_primitives.Hax.t_Never)
+
 let empty_array (_: Prims.unit) : Prims.unit =
   let (_: t_Slice u8):t_Slice u8 =
     Rust_primitives.unsize (let list:Prims.list u8 = [] in
@@ -154,18 +162,6 @@ let empty_array (_: Prims.unit) : Prims.unit =
         Rust_primitives.Hax.array_of_list 0 list)
   in
   ()
-
-let panic_with_msg (_: Prims.unit) : Prims.unit =
-  Rust_primitives.Hax.never_to_any (Core.Panicking.panic_fmt (Core.Fmt.impl_2__new_const (Rust_primitives.unsize
-                (let list = ["with msg"] in
-                  FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 1);
-                  Rust_primitives.Hax.array_of_list 1 list)
-              <:
-              t_Slice string)
-          <:
-          Core.Fmt.t_Arguments)
-      <:
-      Rust_primitives.Hax.t_Never)
 
 type t_Foo = { f_field:u8 }
 

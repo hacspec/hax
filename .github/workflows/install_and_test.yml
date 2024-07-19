@@ -14,6 +14,10 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - uses: DeterminateSystems/nix-installer-action@main
+    - uses: cachix/cachix-action@v15
+      with:
+        name: hax
+        skipPush: true
     - uses: DeterminateSystems/magic-nix-cache-action@main
     - name: Build
       run: nix build -L
@@ -47,7 +51,6 @@ jobs:
       env:
         CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
       run: |
-        nix profile install nixpkgs#cachix nixpkgs#jq
         nix build .# .#fstar --json \
           | jq -r '.[].outputs | to_entries[].value' \
           | cachix push hax

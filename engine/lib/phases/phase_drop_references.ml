@@ -51,6 +51,13 @@ struct
         args = List.filter_map ~f:(dgeneric_value span) r.args;
       }
 
+    and ddyn_trait_goal (span : span) (r : A.dyn_trait_goal) : B.dyn_trait_goal
+        =
+      {
+        trait = r.trait;
+        non_self_args = List.filter_map ~f:(dgeneric_value span) r.non_self_args;
+      }
+
     and dpat' (span : span) (p : A.pat') : B.pat' =
       match p with
       | [%inline_arms "dpat'.*" - PBinding - PDeref] -> auto
@@ -111,15 +118,14 @@ struct
               body = dexpr body;
               captures = List.map ~f:dexpr captures;
             }
-      | App { f; args; generic_args; impl; bounds_impls } ->
+      | App { f; args; generic_args; trait; bounds_impls } ->
           let f = dexpr f in
           let args = List.map ~f:dexpr args in
-          let impl = Option.map ~f:(dimpl_expr span) impl in
-          let generic_args =
-            List.filter_map ~f:(dgeneric_value span) generic_args
-          in
+          let dgeneric_args = List.filter_map ~f:(dgeneric_value span) in
+          let trait = Option.map ~f:(dimpl_expr span *** dgeneric_args) trait in
+          let generic_args = dgeneric_args generic_args in
           let bounds_impls = List.map ~f:(dimpl_expr span) bounds_impls in
-          App { f; args; generic_args; impl; bounds_impls }
+          App { f; args; generic_args; trait; bounds_impls }
       | _ -> .
       [@@inline_ands bindings_of dexpr - dbinding_mode]
 
