@@ -199,7 +199,7 @@ fn run_engine(
 
         let stdout = std::io::BufReader::new(engine_subprocess.stdout.take().unwrap());
         for msg in stdout.json_lines() {
-            let msg = msg.unwrap();
+            let msg = msg.expect("hax engine sent an invalid json value");
             use protocol::*;
             match msg {
                 FromEngine::Exit => break,
