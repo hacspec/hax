@@ -50,7 +50,7 @@ impl From<FnDecorationKind> for AssociationRole {
 }
 
 /// Merge two `syn::Generics`, respecting lifetime orders
-fn merge_generics(x: Generics, y: Generics) -> Generics {
+pub(crate) fn merge_generics(x: Generics, y: Generics) -> Generics {
     Generics {
         lt_token: x.lt_token.or(y.lt_token),
         gt_token: x.gt_token.or(y.gt_token),
@@ -184,18 +184,24 @@ pub fn make_fn_decoration(
     mut phi: Expr,
     mut signature: Signature,
     kind: FnDecorationKind,
-    generics: Option<Generics>,
+    mut generics: Option<Generics>,
     self_type: Option<Type>,
 ) -> (TokenStream, AttrPayload) {
     let uid = ItemUid::fresh();
     let mut_ref_inputs = unmut_references_in_inputs(&mut signature);
     let self_ident: Ident = syn::parse_quote! {self_};
-    let mut rewriter = RewriteSelf::new(self_ident, self_type);
-    rewriter.visit_expr_mut(&mut phi);
+    let error = {
+        let mut rewriter = RewriteSelf::new(self_ident, self_type);
+        rewriter.visit_expr_mut(&mut phi);
+        rewriter.visit_signature_mut(&mut signature);
+        if let Some(generics) = generics.as_mut() {
+            rewriter.visit_generics_mut(generics);
+        }
+        rewriter.get_error()
+    };
     let decoration = {
         let decoration_sig = {
             let mut sig = signature;
-            rewriter.visit_signature_mut(&mut sig);
             sig.ident = format_ident!("{}", kind.to_string());
             if let FnDecorationKind::Ensures { ret_binder } = &kind {
                 let output = match sig.output {
@@ -276,5 +282,5 @@ pub fn make_fn_decoration(
         role: kind.into(),
         item: uid,
     };
-    (decoration, assoc_attr)
+    (quote! {#error #decoration}, assoc_attr)
 }

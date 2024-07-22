@@ -23,7 +23,7 @@ multiplication `x * x` might indeed be overflowing!
 
 For instance, running `square(16)` panics: `16 * 16` is `256`, which
 is just over `255`, the largest integer that fits `u8`. Rust does not
-ensure that functions are not *total*: a function might panic at any
+ensure that functions are *total*: a function might panic at any
 point, or might never terminate.
 
 ## Rust and panicking code
@@ -73,7 +73,7 @@ we do better?
 
 ### Solution B: add a precondition
 The type system of Rust doesn't allow the programmer to formalize the
-assumption that `multiply_by_two` expects a small `u8`. This becomes
+assumption that `square` expects a small `u8`. This becomes
 possible using hax: one can annotate a function with a pre-condition
 on its inputs.
 
@@ -117,5 +117,5 @@ that makes use of pre-conditions to prove panic freedom.
 Another solution for safe indexing is to use the [newtype index
 pattern](https://matklad.github.io/2018/06/04/newtype-index-pattern.html),
 which is [also supported by
-hax](https://github.com/hacspec/hax/blob/d668de4d17e5ddee3a613068dc30b71353a9db4f/tests/attributes/src/lib.rs#L98-L126). The chapter [The newtype idiom](newtype.md) gives some.
+hax](https://github.com/hacspec/hax/blob/d668de4d17e5ddee3a613068dc30b71353a9db4f/tests/attributes/src/lib.rs#L98-L126). The [data invariants](data-invariants.md#newtype-and-refinements) chapter gives more details about this.
 

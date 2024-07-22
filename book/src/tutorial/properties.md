@@ -32,7 +32,7 @@ Given `value` a field element (a `i32` whose absolute value is at most
 
 - `result ≡ value (mod FIELD_MODULUS)`;
 - the absolute value of `result` is bound as follows:
-  `|result| ≤ FIELD_MODULUS / 2 · (|value|/BARRETT_R + 1)`.
+  `|result| < FIELD_MODULUS`.
 
 It is easy to write this contract directly as `hax::requires` and
 `hax::ensures` annotations, as shown in the snippet below.

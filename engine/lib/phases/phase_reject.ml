@@ -98,3 +98,21 @@ module As_pattern (FA : Features.T) = struct
         let metadata = make_metadata AsPattern
       end)
 end
+
+module Dyn (FA : Features.T) = struct
+  module FB = struct
+    include FA
+    include Features.Off.Dyn
+  end
+
+  include
+    Feature_gate.Make (FA) (FB)
+      (struct
+        module A = FA
+        module B = FB
+        include Feature_gate.DefaultSubtype
+
+        let dyn = reject
+        let metadata = make_metadata Dyn
+      end)
+end
