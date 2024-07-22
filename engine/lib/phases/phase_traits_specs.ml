@@ -43,7 +43,7 @@ module Make (F : Features.T) =
                              ~f:
                                [%matches?
                                  Types.AssociatedItem { role = role'; _ }, _ when 
-                                 [%eq: Types.ha_assoc_role] role role' ]
+                                 [%eq: Types.ha_assoc_role] role role']
                              attrs
                           |> List.map ~f:(uncurry Attr_payloads.to_attr));
                     }
@@ -66,19 +66,17 @@ module Make (F : Features.T) =
                 let items =
                   List.concat_map
                     ~f:(fun item ->
-                      let attrs =
-                        Attr_payloads.payloads item.ti_attrs
-                      in
+                      let attrs = Attr_payloads.payloads item.ti_attrs in
                       let ti_attrs =
-attrs
+                        attrs
                         |> List.filter
                              ~f:
                                (fst
                                >> [%matches?
                                     Types.AssociatedItem
-                                      { role = Ensures | Requires; _ }] >> not)
-|>
-                        List.map ~f:(uncurry Attr_payloads.to_attr)
+                                      { role = Ensures | Requires; _ }]
+                               >> not)
+                        |> List.map ~f:(uncurry Attr_payloads.to_attr)
                       in
                       f attrs item @ [ { item with ti_attrs } ])
                     items

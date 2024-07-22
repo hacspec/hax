@@ -117,5 +117,4 @@ let decl_of_string s =
   match decls_of_string s with [ d ] -> d | _ -> failwith "decl_of_string"
 
 let ascribe t e = term @@ AST.Ascribed (e, t, None, false)
-
-let implies p q = AST.Op (id "==>", [p;q]) |> term
+let implies p q = AST.Op (id "==>", [ p; q ]) |> term
