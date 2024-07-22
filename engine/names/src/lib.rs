@@ -26,6 +26,9 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     let _: Option<()> = None;
     let _ = Option::<()>::None.is_some();
     let _: Result<(), u32> = Result::Err(3u8).map_err(u32::from);
+    assert!(true);
+    assert_eq!(1, 1);
+    hax_lib::assert!(true);
 
     let _ = [()].into_iter();
     let _: u16 = 6u8.into();
