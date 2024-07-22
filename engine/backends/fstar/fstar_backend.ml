@@ -1265,8 +1265,6 @@ struct
                         |> Set.union_list (module Local_ident)
                         |> Set.to_list |> ref
                       in
-                      Stdlib.prerr_endline @@ "Variables: "
-                      ^ [%show: local_ident list] !variables;
                       let mk_fresh prefix =
                         let v = U.fresh_local_ident_in !variables prefix in
                         variables := v :: !variables;
