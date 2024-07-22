@@ -1210,10 +1210,16 @@ struct
                 | TIFn ty ->
                     let weakest =
                       let h kind =
-                        Attrs.associated_fns kind i.ti_attrs |> List.hd
+                        Attrs.associated_fns kind i.ti_attrs
+                        |> List.hd
+                        |> Option.map ~f:(fun attr ->
+                               ( attr,
+                                 [%eq: Attr_payloads.AssocRole.t] kind Requires
+                               ))
                       in
                       Option.first_some (h Ensures) (h Requires)
-                      |> Option.map ~f:(fun (generics, params, expr) ->
+                      |> Option.map
+                           ~f:(fun ((generics, params, expr), is_req) ->
                              let dummy_self =
                                List.find generics.params
                                  ~f:[%matches? { kind = GPType _; _ }]
@@ -1244,7 +1250,7 @@ struct
                                List.map ~f:(renamer#visit_param ()) params
                              in
                              let expr = renamer#visit_expr () expr in
-                             (generics, params, expr))
+                             (generics, params, expr, is_req))
                     in
                     let ty = pty e.span ty in
                     let ty =
@@ -1252,7 +1258,7 @@ struct
                         let idents_visitor = U.Reducers.collect_local_idents in
                         idents_visitor#visit_trait_item () i
                         :: (Option.map
-                              ~f:(fun (generics, params, expr) ->
+                              ~f:(fun (generics, params, expr, _) ->
                                 [
                                   idents_visitor#visit_generics () generics;
                                   idents_visitor#visit_expr () expr;
@@ -1285,9 +1291,10 @@ struct
                         FStarBinder.of_named_typ p.pat.span name p.typ
                       in
                       weakest
-                      |> Option.map ~f:(List.map ~f |> map_snd3)
+                      |> Option.map ~f:(fun (generics, binders, expr, is_req) ->
+                             (generics, List.map ~f binders, expr, is_req))
                       |> Option.map
-                           ~f:(fun (generics, binders, (expr : expr)) ->
+                           ~f:(fun (generics, binders, (expr : expr), is_req) ->
                              let result_ident = mk_fresh "pred" in
                              let result_bd =
                                FStarBinder.of_named_typ expr.span result_ident
@@ -1304,7 +1311,8 @@ struct
                              let result =
                                F.AST.Refine
                                  ( FStarBinder.to_binder result_bd,
-                                   F.implies result expr )
+                                   (if is_req then Fn.flip else Fn.id)
+                                     F.implies result expr )
                                |> F.term
                              in
                              F.AST.Product

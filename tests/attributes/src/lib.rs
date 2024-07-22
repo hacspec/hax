@@ -190,10 +190,14 @@ mod pre_post_on_traits_and_impls {
     }
 
     #[hax_lib::attributes]
-    trait Identity: Eq + PartialEq {
-        #[ensures(|result| result == self)]
-        #[requires(true)]
-        fn identity(&self) -> Self;
+    trait TraitWithRequiresAndEnsures {
+        #[requires(x < 100)]
+        #[ensures(|r| r > 88)]
+        fn method(&self, x: u8) -> u8;
+    }
+
+    fn test<T: TraitWithRequiresAndEnsures>(x: T) -> u8 {
+        x.method(99) - 88
     }
 }
 
