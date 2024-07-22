@@ -80,6 +80,78 @@ let impl_1 (#v_T: Type0) : Core.Ops.Index.t_Index (t_Array v_T (sz 10)) t_SafeIn
     f_index = fun (self: t_Array v_T (sz 10)) (index: t_SafeIndex) -> self.[ index.f_i ]
   }
 '''
+"Attributes.Pre_post_on_traits_and_impls.fst" = '''
+module Attributes.Pre_post_on_traits_and_impls
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class t_Operation (v_Self: Type0) = {
+  f_double_pre:x: u8
+    -> pred:
+      bool
+        { pred ==>
+          (Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) <=
+          (127 <: Hax_lib.Int.t_Int) };
+  f_double_post:x: u8 -> result: u8
+    -> pred:
+      bool
+        { pred ==>
+          ((Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) * (2 <: Hax_lib.Int.t_Int)
+            <:
+            Hax_lib.Int.t_Int) =
+          (Rust_primitives.Hax.Int.from_machine result <: Hax_lib.Int.t_Int) };
+  f_double:x0: u8 -> Prims.Pure u8 (f_double_pre x0) (fun result -> f_double_post x0 result)
+}
+
+class t_Identity (v_Self: Type0) = {
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_8099741844003281729:Core.Cmp.t_Eq v_Self;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_12632649257025169145:Core.Cmp.t_PartialEq v_Self
+    v_Self;
+  f_identity_pre:self___: v_Self -> pred: bool{pred ==> true};
+  f_identity_post:self___: v_Self -> result: v_Self -> pred: bool{pred ==> result =. self___};
+  f_identity:x0: v_Self
+    -> Prims.Pure v_Self (f_identity_pre x0) (fun result -> f_identity_post x0 result)
+}
+
+type t_ViaAdd = | ViaAdd : t_ViaAdd
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl: t_Operation t_ViaAdd =
+  {
+    f_double_pre
+    =
+    (fun (x: u8) ->
+        (Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) <= (127 <: Hax_lib.Int.t_Int));
+    f_double_post
+    =
+    (fun (x: u8) (out: u8) ->
+        ((Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) * (2 <: Hax_lib.Int.t_Int)
+          <:
+          Hax_lib.Int.t_Int) =
+        (Rust_primitives.Hax.Int.from_machine out <: Hax_lib.Int.t_Int));
+    f_double = fun (x: u8) -> x +! x
+  }
+
+type t_ViaMul = | ViaMul : t_ViaMul
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_1: t_Operation t_ViaMul =
+  {
+    f_double_pre
+    =
+    (fun (x: u8) ->
+        (Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) <= (127 <: Hax_lib.Int.t_Int));
+    f_double_post
+    =
+    (fun (x: u8) (out: u8) ->
+        ((Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) * (2 <: Hax_lib.Int.t_Int)
+          <:
+          Hax_lib.Int.t_Int) =
+        (Rust_primitives.Hax.Int.from_machine out <: Hax_lib.Int.t_Int));
+    f_double = fun (x: u8) -> x *! 2uy
+  }
+'''
 "Attributes.Refined_arithmetic.fst" = '''
 module Attributes.Refined_arithmetic
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"

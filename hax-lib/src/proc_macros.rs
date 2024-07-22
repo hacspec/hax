@@ -3,7 +3,7 @@
 
 pub use hax_lib_macros::{
     attributes, ensures, exclude, impl_fn_decoration, include, lemma, opaque_type, refinement_type,
-    requires,
+    requires, trait_fn_decoration,
 };
 
 pub use hax_lib_macros::{
