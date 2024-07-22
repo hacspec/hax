@@ -48,6 +48,9 @@ val impl__u8__from_str_radix: string -> u32 -> Core.Result.t_Result u8 Core.Num.
 val impl__usize__ilog2: i32 -> u32 
 val impl__usize__leading_zeros: usize -> u32
 
+let impl__i16__MAX: u8 = maxint i16_inttype
+let impl__i16__MIN: u8 = minint i16_inttype
+
 open Core.Ops.Arith
 unfold instance add_assign_num_refined_refined t ($phi1 $phi2: int_t t -> bool)
   : t_AddAssign (x: int_t t {phi1 x}) (y: int_t t {phi2 y}) = {
