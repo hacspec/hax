@@ -328,6 +328,11 @@ pub struct BackendOptions {
 
     #[command(flatten)]
     pub translation_options: TranslationOptions,
+
+    /// Where to put the output files resulting from the translation.
+    /// Defaults to "<crate folder>/proofs/<backend>/extraction".
+    #[arg(long)]
+    pub output_dir: Option<PathBuf>,
 }
 
 #[derive_group(Serializers)]
