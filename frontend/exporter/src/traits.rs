@@ -76,7 +76,6 @@ pub mod rustc {
     pub(crate) mod search_clause {
         use crate::prelude::UnderOwnerState;
         use crate::rustc_utils::*;
-        use crate::{IntoPredicateId, PredicateId};
         use rustc_middle::ty::*;
 
         fn predicates_to_poly_trait_predicates<'tcx>(
@@ -201,67 +200,53 @@ pub mod rustc {
                     .collect()
             }
 
-        #[tracing::instrument(level = "trace", skip(s))]
-        fn path_to(
-            self,
-            s: &S,
-            target: PolyTraitRef<'tcx>,
-            param_env: rustc_middle::ty::ParamEnv<'tcx>,
-        ) -> Option<Path<'tcx>> {
-            let tcx = s.base().tcx;
+            #[tracing::instrument(level = "trace", skip(s, param_env))]
+            fn path_to(
+                self,
+                s: &S,
+                target: PolyTraitRef<'tcx>,
+                param_env: rustc_middle::ty::ParamEnv<'tcx>,
+            ) -> Option<Path<'tcx>> {
+                let tcx = s.base().tcx;
 
-            /// A candidate projects `self` along a path reaching some
-            /// predicate. A candidate is selected when its predicate
-            /// is the one expected, aka `target`.
-            #[derive(Debug)]
-            struct Candidate<'tcx> {
-                path: Path<'tcx>,
-                pred: PolyTraitPredicate<'tcx>,
-            }
+                /// A candidate projects `self` along a path reaching some
+                /// predicate. A candidate is selected when its predicate
+                /// is the one expected, aka `target`.
+                #[derive(Debug)]
+                struct Candidate<'tcx> {
+                    path: Path<'tcx>,
+                    pred: PolyTraitPredicate<'tcx>,
+                }
 
-            use std::collections::VecDeque;
-            let mut candidates: VecDeque<Candidate<'tcx>> = vec![Candidate {
-                path: vec![],
-                pred: self,
-            }]
-            .into();
+                use std::collections::VecDeque;
+                let mut candidates: VecDeque<Candidate<'tcx>> = vec![Candidate {
+                    path: vec![],
+                    pred: self,
+                }]
+                .into();
 
-            let target_pred = target.to_predicate(tcx);
-            let mut seen = std::collections::HashSet::new();
+                let target_pred = target.upcast(tcx);
+                let mut seen = std::collections::HashSet::new();
 
-            while let Some(candidate) = candidates.pop_front() {
-                {
-                    // If a predicate was already seen, we know it is
-                    // not the one we are looking for: we skip it.
-                    if seen.contains(&candidate.pred) {
-                        continue;
+                while let Some(candidate) = candidates.pop_front() {
+                    {
+                        // If a predicate was already seen, we know it is
+                        // not the one we are looking for: we skip it.
+                        if seen.contains(&candidate.pred) {
+                            continue;
+                        }
+                        seen.insert(candidate.pred.clone());
                     }
-                    seen.insert(candidate.pred.clone());
-                }
-                tracing::trace!("candidate={:#?}", candidate);
 
-                // if the candidate equals the target, let's return its path
-                if predicate_equality(candidate.pred.to_predicate(tcx), target_pred, param_env, s) {
-                    return Some(candidate.path);
-                }
+                    // if the candidate equals the target, let's return its path
+                    if predicate_equality(candidate.pred.upcast(tcx), target_pred, param_env, s) {
+                        return Some(candidate.path);
+                    }
 
-                // otherwise, we add to the queue all paths reachable from the candidate
-                for (index, parent_pred) in self.parents_trait_predicates(s) {
-                    let mut path = candidate.path.clone();
-                    path.push(PathChunk::Parent {
-                        predicate: parent_pred.clone(),
-                        index,
-                    });
-                    candidates.push_back(Candidate {
-                        pred: parent_pred.clone(),
-                        path,
-                    });
-                }
-                for (item, binder) in self.associated_items_trait_predicates(s) {
-                    for (index, parent_pred) in binder.skip_binder().into_iter() {
+                    // otherwise, we add to the queue all paths reachable from the candidate
+                    for (index, parent_pred) in candidate.pred.parents_trait_predicates(s) {
                         let mut path = candidate.path.clone();
-                        path.push(PathChunk::AssocItem {
-                            item,
+                        path.push(PathChunk::Parent {
                             predicate: parent_pred.clone(),
                             index,
                         });
@@ -270,12 +255,25 @@ pub mod rustc {
                             path,
                         });
                     }
+                    for (item, binder) in candidate.pred.associated_items_trait_predicates(s) {
+                        for (index, parent_pred) in binder.skip_binder().into_iter() {
+                            let mut path = candidate.path.clone();
+                            path.push(PathChunk::AssocItem {
+                                item,
+                                predicate: parent_pred.clone(),
+                                index,
+                            });
+                            candidates.push_back(Candidate {
+                                pred: parent_pred.clone(),
+                                path,
+                            });
+                        }
+                    }
                 }
+                None
             }
-            None
         }
     }
-}
 
     impl ImplExprAtom {
         fn with_args(self, args: Vec<ImplExpr>, r#trait: TraitRef) -> ImplExpr {
@@ -329,7 +327,7 @@ pub mod rustc {
         }
     }
     impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
-        #[tracing::instrument(level = "trace", skip(s))]
+        #[tracing::instrument(level = "trace", skip(s, param_env))]
         fn impl_expr<S: UnderOwnerState<'tcx>>(
             &self,
             s: &S,
@@ -432,7 +430,7 @@ pub mod rustc {
         Some((new_clause_no_binder, impl_expr, span.sinto(s)))
     }
 
-    #[tracing::instrument(level = "trace", skip(s))]
+    #[tracing::instrument(level = "trace", skip(s, param_env))]
     pub fn select_trait_candidate<'tcx, S: UnderOwnerState<'tcx>>(
         s: &S,
         param_env: rustc_middle::ty::ParamEnv<'tcx>,

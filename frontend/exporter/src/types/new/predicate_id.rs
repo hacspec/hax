@@ -27,6 +27,7 @@ mod rustc {
     }
 
     impl<'tcx, S: UnderOwnerState<'tcx>> IntoPredicateId<'tcx, S> for ty::Predicate<'tcx> {
+        #[tracing::instrument(level = "trace", skip(s))]
         fn predicate_id(&self, s: &S) -> PredicateId {
             // Here, we need to be careful about not hashing a `crate::Predicate`,
             // but `crate::Binder<crate::PredicateKind>` instead,
@@ -37,6 +38,7 @@ mod rustc {
     }
 
     impl<'tcx, S: UnderOwnerState<'tcx>> IntoPredicateId<'tcx, S> for ty::PolyTraitPredicate<'tcx> {
+        #[tracing::instrument(level = "trace", skip(s))]
         fn predicate_id(&self, s: &S) -> PredicateId {
             use ty::Upcast;
             let predicate: ty::Predicate<'tcx> = (*self).upcast(s.base().tcx);
