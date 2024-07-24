@@ -8,11 +8,13 @@ pub enum ImplExprPathChunk {
     AssocItem {
         item: AssocItem,
         predicate: Binder<TraitPredicate>,
+        #[value(predicate.predicate_id(tcx))]
         predicate_id: PredicateId,
         index: usize,
     },
     Parent {
         predicate: Binder<TraitPredicate>,
+        #[value(predicate.predicate_id(tcx))]
         predicate_id: PredicateId,
         index: usize,
     },
@@ -92,12 +94,10 @@ pub mod rustc {
             AssocItem {
                 item: AssocItem,
                 predicate: PolyTraitPredicate<'tcx>,
-                predicate_id: PredicateId,
                 index: usize,
             },
             Parent {
                 predicate: PolyTraitPredicate<'tcx>,
-                predicate_id: PredicateId,
                 index: usize,
             },
         }
@@ -229,7 +229,6 @@ pub mod rustc {
                             cons(
                                 PathChunk::Parent {
                                     predicate: p,
-                                    predicate_id: p.predicate_id(s),
                                     index,
                                 },
                                 path,
@@ -246,7 +245,6 @@ pub mod rustc {
                                         cons(
                                             PathChunk::AssocItem {
                                                 item,
-                                                predicate_id: p.predicate_id(s),
                                                 predicate: p,
                                                 index,
                                             },
