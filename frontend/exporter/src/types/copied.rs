@@ -3932,22 +3932,26 @@ pub enum PredicateOrigin {
 
 /// Reflects [`rustc_middle::ty::AssocItem`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::AssocItem, state: S as tcx)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::AssocItem, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AssocItem {
     pub def_id: DefId,
     pub name: Symbol,
     pub kind: AssocKind,
+    #[value(get_container_for_assoc_item(s, self))]
     pub container: AssocItemContainer,
-    pub trait_item_def_id: Option<DefId>,
+    /// Whether this item has a value (e.g. this is `false` for trait methods without default
+    /// implementations).
+    #[value(self.defaultness(s.base().tcx).has_value())]
+    pub has_value: bool,
     pub fn_has_self_parameter: bool,
     pub opt_rpitit_info: Option<ImplTraitInTraitData>,
 }
 
 /// Reflects [`rustc_middle::ty::ImplTraitInTraitData`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::ImplTraitInTraitData, state: S as _tcx)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::ImplTraitInTraitData, state: S as _s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ImplTraitInTraitData {
@@ -3960,14 +3964,55 @@ pub enum ImplTraitInTraitData {
     },
 }
 
-/// Reflects [`rustc_middle::ty::AssocItemContainer`]
-#[derive(AdtInto)]
-#[args(<S>, from: rustc_middle::ty::AssocItemContainer, state: S as _tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AssocItemContainer {
-    TraitContainer,
-    ImplContainer,
+    TraitContainer {
+        trait_id: DefId,
+    },
+    TraitImplContainer {
+        impl_id: DefId,
+        implemented_trait: DefId,
+        implemented_trait_item: DefId,
+        /// Whether the corresponding trait item had a default (and therefore this one overrides
+        /// it).
+        overrides_default: bool,
+    },
+    InherentImplContainer {
+        impl_id: DefId,
+    },
+}
+
+#[cfg(feature = "rustc")]
+fn get_container_for_assoc_item<'tcx, S: BaseState<'tcx>>(
+    s: &S,
+    item: &ty::AssocItem,
+) -> AssocItemContainer {
+    let container_id = item.container_id(s.base().tcx);
+    match item.container {
+        ty::AssocItemContainer::TraitContainer => AssocItemContainer::TraitContainer {
+            trait_id: container_id.sinto(s),
+        },
+        ty::AssocItemContainer::ImplContainer => {
+            if let Some(implemented_trait_item) = item.trait_item_def_id {
+                AssocItemContainer::TraitImplContainer {
+                    impl_id: container_id.sinto(s),
+                    implemented_trait: s
+                        .base()
+                        .tcx
+                        .trait_of_item(implemented_trait_item)
+                        .unwrap()
+                        .sinto(s),
+                    implemented_trait_item: implemented_trait_item.sinto(s),
+                    overrides_default: s.base().tcx.defaultness(implemented_trait_item).has_value(),
+                }
+            } else {
+                AssocItemContainer::InherentImplContainer {
+                    impl_id: container_id.sinto(s),
+                }
+            }
+        }
+    }
 }
 
 /// Reflects [`rustc_middle::ty::AssocKind`]
