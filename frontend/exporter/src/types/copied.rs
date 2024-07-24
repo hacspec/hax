@@ -2,6 +2,8 @@ use crate::prelude::*;
 
 #[cfg(feature = "rustc")]
 use rustc_middle::ty;
+#[cfg(feature = "rustc")]
+use rustc_span::def_id::DefId as RDefId;
 
 impl std::hash::Hash for DefId {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
@@ -64,6 +66,352 @@ pub type GlobalIdent = DefId;
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, GlobalIdent> for rustc_hir::def_id::LocalDefId {
     fn sinto(&self, st: &S) -> DefId {
         self.to_def_id().sinto(st)
+    }
+}
+
+#[cfg(feature = "rustc")]
+fn process_generic_predicates<'tcx, S: UnderOwnerState<'tcx>>(
+    s: &S,
+    predicates: &[(ty::Clause<'tcx>, rustc_span::Span)],
+) -> Vec<(Predicate, Span)> {
+    // Normalize trait predicates because charon needs it.
+    // TODO: stop doing that.
+    let mut predicates: Vec<_> = predicates
+        .iter()
+        .map(|(clause, span)| {
+            let mut clause = clause.clone();
+            if matches!(&clause.kind().skip_binder(), ty::ClauseKind::Trait(_)) {
+                clause = s
+                    .base()
+                    .tcx
+                    .normalize_erasing_regions(s.param_env(), clause);
+            }
+            (clause.as_predicate(), *span)
+        })
+        .collect();
+    // Sort trait predicates first because charon needs it.
+    // TODO: stop doing that.
+    predicates.sort_by_key(|(pred, _)| {
+        !matches!(
+            &pred.kind().skip_binder(),
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(_))
+        )
+    });
+    predicates.sinto(s)
+}
+
+#[cfg(feature = "rustc")]
+fn get_generic_predicates<'tcx, S: UnderOwnerState<'tcx>>(
+    s: &S,
+    def_id: RDefId,
+) -> GenericPredicates {
+    // We use `predicates_defined_on` to skip the implied `Self` clause.
+    let predicates = s.base().tcx.predicates_defined_on(def_id);
+    let pred_list = process_generic_predicates(s, predicates.predicates);
+    GenericPredicates {
+        parent: predicates.parent.sinto(s),
+        predicates: pred_list,
+    }
+}
+
+#[cfg(feature = "rustc")]
+fn get_item_predicates<'tcx, S: UnderOwnerState<'tcx>>(s: &S, def_id: RDefId) -> GenericPredicates {
+    let tcx = s.base().tcx;
+    // TODO: we probably want to use `explicit_item_bounds` instead, but should do so
+    // consistently.
+    let clauses = tcx.item_bounds(def_id).instantiate_identity();
+    use crate::rustc_middle::query::Key;
+    let span = clauses.default_span(tcx);
+    let predicates = clauses.iter().map(|c| (c, span)).collect::<Vec<_>>();
+    let predicates = process_generic_predicates(s, predicates.as_slice());
+    GenericPredicates {
+        parent: tcx.opt_parent(def_id).sinto(s),
+        predicates,
+    }
+}
+
+/// Imbues [`rustc_hir::def::DefKind`] with a lot of extra information.
+/// Important: the `owner_id()` must be the id of this definition.
+#[derive(AdtInto)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::def::DefKind, state: S as s)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema)]
+pub enum Def {
+    // Type namespace
+    Mod,
+    /// Refers to the struct definition, [`DefKind::Ctor`] refers to its constructor if it exists.
+    Struct {
+        #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
+        generics: TyGenerics,
+        #[value(get_generic_predicates(s, s.owner_id()))]
+        predicates: GenericPredicates,
+        #[value(s.base().tcx.adt_def(s.owner_id()).sinto(s))]
+        def: AdtDef,
+    },
+    Union {
+        #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
+        generics: TyGenerics,
+        #[value(get_generic_predicates(s, s.owner_id()))]
+        predicates: GenericPredicates,
+        #[value(s.base().tcx.adt_def(s.owner_id()).sinto(s))]
+        def: AdtDef,
+    },
+    Enum {
+        #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
+        generics: TyGenerics,
+        #[value(get_generic_predicates(s, s.owner_id()))]
+        predicates: GenericPredicates,
+        #[value(s.base().tcx.adt_def(s.owner_id()).sinto(s))]
+        def: AdtDef,
+    },
+    /// Refers to the variant definition, [`DefKind::Ctor`] refers to its constructor if it exists.
+    Variant,
+    Trait {
+        #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
+        generics: TyGenerics,
+        #[value(get_generic_predicates(s, s.owner_id()))]
+        predicates: GenericPredicates,
+        /// Associated items, in definition order.
+        #[value(s.base().tcx.associated_items(s.owner_id()).in_definition_order().collect::<Vec<_>>().sinto(s))]
+        items: Vec<AssocItem>,
+    },
+    /// Type alias: `type Foo = Bar;`
+    TyAlias {
+        #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
+        generics: TyGenerics,
+        #[value(get_generic_predicates(s, s.owner_id()))]
+        predicates: GenericPredicates,
+        /// `Some` if the item is in the local crate.
+        #[value(s.base().tcx.hir().get_if_local(s.owner_id()).map(|node| {
+            let rustc_hir::Node::Item(item) = node else { unreachable!() };
+            let rustc_hir::ItemKind::TyAlias(ty, _generics) = &item.kind else { unreachable!() };
+            ty.sinto(s)
+        }))]
+        ty: Option<Ty>,
+    },
+    /// Type from an `extern` block.
+    ForeignTy,
+    /// Trait alias: `trait IntIterator = Iterator<Item = i32>;`
+    TraitAlias,
+    /// Associated type: `trait MyTrait { type Assoc; }`
+    AssocTy {
+        #[value(s.base().tcx.parent(s.owner_id()).sinto(s))]
+        parent: DefId,
+        #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
+        generics: TyGenerics,
+        #[value(get_item_predicates(s, s.owner_id()))]
+        predicates: GenericPredicates,
+        #[value(s.base().tcx.associated_item(s.owner_id()).sinto(s))]
+        associated_item: AssocItem,
+        #[value({
+            let tcx = s.base().tcx;
+            if tcx.defaultness(s.owner_id()).has_value() {
+                Some(tcx.type_of(s.owner_id()).instantiate_identity().sinto(s))
+            } else {
+                None
+            }
+        })]
+        value: Option<Ty>,
+    },
+    /// Type parameter: the `T` in `struct Vec<T> { ... }`
+    TyParam,
+
+    // Value namespace
+    Fn {
+        #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
+        generics: TyGenerics,
+        #[value(get_generic_predicates(s, s.owner_id()))]
+        predicates: GenericPredicates,
+        #[value(s.base().tcx.fn_sig(s.owner_id()).instantiate_identity().sinto(s))]
+        sig: PolyFnSig,
+    },
+    /// Associated function: `impl MyStruct { fn associated() {} }` or `trait Foo { fn associated()
+    /// {} }`
+    AssocFn {
+        #[value(s.base().tcx.parent(s.owner_id()).sinto(s))]
+        parent: DefId,
+        #[value(s.base().tcx.associated_item(s.owner_id()).sinto(s))]
+        associated_item: AssocItem,
+        #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
+        generics: TyGenerics,
+        #[value(get_generic_predicates(s, s.owner_id()))]
+        predicates: GenericPredicates,
+        #[value(s.base().tcx.fn_sig(s.owner_id()).instantiate_identity().sinto(s))]
+        sig: PolyFnSig,
+    },
+    /// A closure, coroutine, or coroutine-closure.
+    ///
+    /// Note: the (early-bound) generics of a closure are the same as those of the item in which it
+    /// is defined.
+    Closure {
+        /// The enclosing item. Note: this item could itself be a closure; to get the generics, you
+        /// might have to recurse through several layers or parents.
+        #[value(s.base().tcx.parent(s.owner_id()).sinto(s))]
+        parent: DefId,
+        #[value({
+            let fun_type = s.base().tcx.type_of(s.owner_id()).instantiate_identity();
+            match fun_type.kind() {
+                ty::TyKind::Closure(_, args) => args.as_closure().sinto(s),
+                _ => unreachable!(),
+            }
+        })]
+        args: ClosureArgs,
+    },
+    Const {
+        #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
+        generics: TyGenerics,
+        #[value(get_generic_predicates(s, s.owner_id()))]
+        predicates: GenericPredicates,
+    },
+    /// Associated constant: `trait MyTrait { const ASSOC: usize; }`
+    AssocConst {
+        #[value(s.base().tcx.parent(s.owner_id()).sinto(s))]
+        parent: DefId,
+        #[value(s.base().tcx.associated_item(s.owner_id()).sinto(s))]
+        associated_item: AssocItem,
+        #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
+        generics: TyGenerics,
+        #[value(get_generic_predicates(s, s.owner_id()))]
+        predicates: GenericPredicates,
+        #[value(s.base().tcx.type_of(s.owner_id()).instantiate_identity().sinto(s))]
+        ty: Ty,
+    },
+    Static {
+        /// Whether it's a `unsafe static`, `safe static` (inside extern only) or just a `static`.
+        safety: Safety,
+        /// Whether it's a `static mut` or just a `static`.
+        mutability: Mutability,
+        /// Whether it's an anonymous static generated for nested allocations.
+        nested: bool,
+        #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
+        generics: TyGenerics,
+        #[value(get_generic_predicates(s, s.owner_id()))]
+        predicates: GenericPredicates,
+    },
+    /// Constant generic parameter: `struct Foo<const N: usize> { ... }`
+    ConstParam,
+    /// Refers to the struct or enum variant's constructor.
+    Ctor(CtorOf, CtorKind),
+
+    // Macro namespace
+    Macro(MacroKind),
+
+    // Not namespaced (or they are, but we don't treat them so)
+    ExternCrate,
+    Use,
+    /// An `extern` block.
+    ForeignMod,
+    /// Anonymous constant, e.g. the `1 + 2` in `[u8; 1 + 2]`
+    AnonConst,
+    /// An inline constant, e.g. `const { 1 + 2 }`
+    InlineConst,
+    /// Opaque type, aka `impl Trait`.
+    OpaqueTy,
+    Impl {
+        #[value(s.base().tcx.generics_of(s.owner_id()).sinto(s))]
+        generics: TyGenerics,
+        #[value(get_generic_predicates(s, s.owner_id()))]
+        predicates: GenericPredicates,
+        of_trait: bool,
+    },
+    /// A field in a struct, enum or union. e.g.
+    /// - `bar` in `struct Foo { bar: u8 }`
+    /// - `Foo::Bar::0` in `enum Foo { Bar(u8) }`
+    Field,
+    /// Lifetime parameter: the `'a` in `struct Foo<'a> { ... }`
+    LifetimeParam,
+    /// A use of `global_asm!`.
+    GlobalAsm,
+}
+
+impl Def {
+    pub fn generics(&self) -> Option<(&TyGenerics, &GenericPredicates)> {
+        match self {
+            Def::Struct {
+                generics,
+                predicates,
+                ..
+            }
+            | Def::Union {
+                generics,
+                predicates,
+                ..
+            }
+            | Def::Enum {
+                generics,
+                predicates,
+                ..
+            }
+            | Def::Trait {
+                generics,
+                predicates,
+                ..
+            }
+            | Def::TyAlias {
+                generics,
+                predicates,
+                ..
+            }
+            | Def::AssocTy {
+                generics,
+                predicates,
+                ..
+            }
+            | Def::Fn {
+                generics,
+                predicates,
+                ..
+            }
+            | Def::AssocFn {
+                generics,
+                predicates,
+                ..
+            }
+            | Def::Const {
+                generics,
+                predicates,
+                ..
+            }
+            | Def::AssocConst {
+                generics,
+                predicates,
+                ..
+            }
+            | Def::Static {
+                generics,
+                predicates,
+                ..
+            }
+            | Def::Impl {
+                generics,
+                predicates,
+                ..
+            } => Some((generics, predicates)),
+            _ => None,
+        }
+    }
+    pub fn associated_item(&self) -> Option<&AssocItem> {
+        match self {
+            Def::AssocTy {
+                associated_item, ..
+            }
+            | Def::AssocFn {
+                associated_item, ..
+            }
+            | Def::AssocConst {
+                associated_item, ..
+            } => Some(associated_item),
+            _ => None,
+        }
+    }
+    pub fn parent(&self) -> Option<&DefId> {
+        match self {
+            Def::AssocTy { parent, .. }
+            | Def::AssocFn { parent, .. }
+            | Def::AssocConst { parent, .. }
+            | Def::Closure { parent, .. } => Some(parent),
+            _ => None,
+        }
     }
 }
 
@@ -518,6 +866,15 @@ pub enum UserType {
 pub enum CtorKind {
     Fn,
     Const,
+}
+
+/// Reflects [`rustc_hir::def::CtorOf`]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[args(<S>, from: rustc_hir::def::CtorOf, state: S as _s)]
+pub enum CtorOf {
+    Struct,
+    Variant,
 }
 
 /// Reflects [`rustc_middle::ty::VariantDiscr`]
@@ -3749,6 +4106,22 @@ pub struct CoercePredicate {
 pub enum AliasRelationDirection {
     Equate,
     Subtype,
+}
+
+/// Reflects [`rustc_middle::ty::ClosureArgs`]
+#[derive(AdtInto)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: ty::ClosureArgs<ty::TyCtxt<'tcx>>, state: S as s)]
+#[derive(Clone, Debug, JsonSchema)]
+#[derive_group(Serializers)]
+pub struct ClosureArgs {
+    #[value(self.kind().sinto(s))]
+    pub kind: ClosureKind,
+    #[value(self.parent_args().sinto(s))]
+    pub parent_args: Vec<GenericArg>,
+    #[value(self.sig().sinto(s))]
+    pub sig: PolyFnSig,
+    #[value(self.upvar_tys().sinto(s))]
+    pub upvar_tys: Vec<Ty>,
 }
 
 /// Reflects [`rustc_middle::ty::ClosureKind`]
