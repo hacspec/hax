@@ -26,6 +26,26 @@ exit = 0
 diagnostics = []
 
 [stdout.files]
+"Traits.Block_size.fst" = '''
+module Traits.Block_size
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class t_BlockSizeUser (v_Self: Type0) = { f_BlockSize:Type0 }
+
+class t_ParBlocksSizeUser (v_Self: Type0) = {
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_10960599340086055385:t_BlockSizeUser v_Self
+}
+
+class t_BlockBackend (v_Self: Type0) = {
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_15949286759387124191:t_ParBlocksSizeUser v_Self;
+  f_proc_block_pre:Alloc.Vec.t_Vec _ Alloc.Alloc.t_Global -> bool;
+  f_proc_block_post:Alloc.Vec.t_Vec _ Alloc.Alloc.t_Global -> Prims.unit -> bool;
+  f_proc_block:x0: Alloc.Vec.t_Vec _ Alloc.Alloc.t_Global
+    -> Prims.Pure Prims.unit (f_proc_block_pre x0) (fun result -> f_proc_block_post x0 result)
+}
+'''
 "Traits.For_clauses.Issue_495_.Minimized_3_.fst" = '''
 module Traits.For_clauses.Issue_495_.Minimized_3_
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
