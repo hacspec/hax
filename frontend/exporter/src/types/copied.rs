@@ -1655,7 +1655,7 @@ impl<S, U, T: SInto<S, U>> SInto<S, Vec<U>> for rustc_middle::ty::List<T> {
 
 /// Reflects [`rustc_middle::ty::GenericParamDef`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::GenericParamDef, state: S as state)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::GenericParamDef, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct GenericParamDef {
@@ -1663,18 +1663,33 @@ pub struct GenericParamDef {
     pub def_id: DefId,
     pub index: u32,
     pub pure_wrt_drop: bool,
+    #[value(
+        match self.kind {
+            ty::GenericParamDefKind::Lifetime => GenericParamDefKind::Lifetime,
+            ty::GenericParamDefKind::Type { has_default, synthetic } => GenericParamDefKind::Type { has_default, synthetic },
+            ty::GenericParamDefKind::Const { has_default, is_host_effect } => {
+                let ty = s.base().tcx.type_of(self.def_id).instantiate_identity().sinto(s);
+                GenericParamDefKind::Const { has_default, is_host_effect, ty }
+            },
+        }
+    )]
     pub kind: GenericParamDefKind,
 }
 
 /// Reflects [`rustc_middle::ty::GenericParamDefKind`]
-#[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::GenericParamDefKind, state: S as state)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum GenericParamDefKind {
     Lifetime,
-    Type { has_default: bool, synthetic: bool },
-    Const { has_default: bool },
+    Type {
+        has_default: bool,
+        synthetic: bool,
+    },
+    Const {
+        has_default: bool,
+        is_host_effect: bool,
+        ty: Ty,
+    },
 }
 
 /// Reflects [`rustc_middle::ty::Generics`]
