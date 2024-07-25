@@ -883,8 +883,9 @@ end) : EXPR = struct
           in
           (c_constant_expr value |> pat_of_expr).p
       | InlineConstant { subpattern; _ } -> (c_pat subpattern).p
-      | Array _ -> unimplemented [ pat.span ] "Pat:Array"
+      | Array { prefix = pats; slice = None; suffix = [] } -> PArray { args = List.map ~f:c_pat pats } 
       | Or { pats } -> POr { subpats = List.map ~f:c_pat pats }
+      | Array _ -> unimplemented [ pat.span ] "pat Array with slice/suffix"
       | Slice _ -> unimplemented [ pat.span ] "pat Slice"
       | Range _ -> unimplemented [ pat.span ] "pat Range"
       | DerefPattern _ -> unimplemented [ pat.span ] "pat DerefPattern"
