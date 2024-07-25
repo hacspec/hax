@@ -433,12 +433,24 @@ pub struct Options {
     #[arg(long = "deps")]
     pub deps: bool,
 
-    /// By default, hax use `$CARGO_TARGET_DIR/hax` as target folder,
+    /// By default, hax uses `$CARGO_TARGET_DIR/hax` as target folder,
     /// to avoid recompilation when working both with `cargo hax` and
     /// `cargo build` (or, e.g. `rust-analyzer`). This option disables
     /// this behavior.
     #[arg(long)]
     pub no_custom_target_directory: bool,
+
+    /// Diagnostic format. Sets `cargo`'s `--message-format` as well,
+    /// if not present.
+    #[arg(long, default_value = "human")]
+    pub message_format: MessageFormat,
+}
+
+#[derive_group(Serializers)]
+#[derive(JsonSchema, ValueEnum, Debug, Clone, Copy, Eq, PartialEq)]
+pub enum MessageFormat {
+    Human,
+    Json,
 }
 
 impl NormalizePaths for Command {

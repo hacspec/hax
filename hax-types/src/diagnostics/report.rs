@@ -10,7 +10,7 @@ pub struct ReportCtx {
     files: HashMap<PathBuf, Rc<String>>,
 }
 
-/// Translates ae line and column position into an absolute offset
+/// Translates a line and column position into an absolute offset
 fn compute_offset(src: &str, mut line: usize, col: usize) -> usize {
     let mut chars = src.chars().enumerate();
     while line > 1 {
