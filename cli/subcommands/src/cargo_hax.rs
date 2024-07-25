@@ -131,7 +131,7 @@ use hax_types::diagnostics::report::ReportCtx;
 impl HaxMessage {
     fn report(self, message_format: MessageFormat, rctx: Option<&mut ReportCtx>) {
         match message_format {
-            MessageFormat::Json => eprintln!("{}", serde_json::to_string(&self).unwrap()),
+            MessageFormat::Json => println!("{}", serde_json::to_string(&self).unwrap()),
             MessageFormat::Human => self.report_styled(rctx),
         }
     }
