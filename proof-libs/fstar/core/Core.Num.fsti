@@ -5,6 +5,9 @@ let impl__u8__wrapping_add: u8 -> u8 -> u8 = add_mod
 let impl__u8__wrapping_sub: u8 -> u8 -> u8 = sub_mod
 let impl__u16__wrapping_add: u16 -> u16 ->  u16 = add_mod
 val impl__u16__to_be_bytes: u16 -> t_Array u8 (sz 2)
+let impl__i16__wrapping_add: i16 -> i16 -> i16 = add_mod
+let impl__i16__wrapping_sub: i16 -> i16 -> i16 = sub_mod
+let impl__i16__wrapping_mul: i16 -> i16 -> i16 = mul_mod
 let impl__i32__wrapping_add: i32 -> i32 -> i32 = add_mod
 let impl__i32__abs (a:i32{minint i32_inttype < v a}) : i32 = abs_int a
 
@@ -48,8 +51,10 @@ val impl__u8__from_str_radix: string -> u32 -> Core.Result.t_Result u8 Core.Num.
 val impl__usize__ilog2: i32 -> u32 
 val impl__usize__leading_zeros: usize -> u32
 
-let impl__i16__MAX: u8 = maxint i16_inttype
-let impl__i16__MIN: u8 = minint i16_inttype
+let impl__i16__MAX: i16 = maxint i16_inttype
+let impl__i16__MIN: i16 = minint i16_inttype
+let impl__i32__MAX: i32 = maxint i32_inttype
+let impl__i32__MIN: i32 = minint i32_inttype
 
 open Core.Ops.Arith
 unfold instance add_assign_num_refined_refined t ($phi1 $phi2: int_t t -> bool)
