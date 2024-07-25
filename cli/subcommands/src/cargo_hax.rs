@@ -365,6 +365,11 @@ fn compute_haxmeta_files(options: &Options) -> (Vec<EmitHaxMetaMessage>, i32) {
         if !explicit_color_flag && std::io::stderr().is_terminal() {
             cmd.args([COLOR_FLAG, "always"]);
         }
+        const MSG_FMT_FLAG: &str = "--message-format";
+        let explicit_msg_fmt_flag = options.cargo_flags.iter().any(|flag| flag == MSG_FMT_FLAG);
+        if !explicit_msg_fmt_flag && options.message_format == MessageFormat::Json {
+            cmd.args([MSG_FMT_FLAG, "json"]);
+        }
         cmd.stderr(std::process::Stdio::piped());
         if !options.no_custom_target_directory {
             cmd.env("CARGO_TARGET_DIR", target_dir("hax"));
