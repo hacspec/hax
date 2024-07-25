@@ -410,6 +410,10 @@ module Raw = struct
     match p with
     | GCLifetime _ -> !"'unk: 'unk"
     | GCType { goal; _ } -> !"_:" & ptrait_goal span goal
+    | GCProjection { assoc_item; typ; _ } ->
+        !"_:_<_>::"
+        & !(Concrete_ident_view.show assoc_item)
+        & !"==" & pty span typ
 
   let pgeneric_constraints span (constraints : generic_constraint list) =
     if List.is_empty constraints then empty

@@ -172,8 +172,22 @@ functor
               {- An argument that introduces a variable [name] that inhabits [goal].}
           }
       *)
-    (* TODO: ADD SPAN! *)
 
+    and projection_predicate = {
+      impl : impl_expr;
+      assoc_item : concrete_ident;
+      typ : ty;
+    }
+    (** Expresses a constraints over an associated type.
+        For instance:
+        [
+        fn f<T : Foo<S = String>>(...)
+                    ^^^^^^^^^^
+        ]
+        (provided the trait `Foo` has an associated type `S`).
+      *)
+
+    (* TODO: ADD SPAN! *)
     and pat' =
       | PWild
       | PAscription of { typ : ty; typ_span : span; pat : pat }
@@ -343,6 +357,7 @@ functor
     and generic_constraint =
       | GCLifetime of todo * F.lifetime
       | GCType of impl_ident
+      | GCProjection of projection_predicate
           (** Trait or lifetime constraints. For instance, `A` and `B` in
     `fn f<T: A + B>()`. *)
     [@@deriving show, yojson, hash, eq]

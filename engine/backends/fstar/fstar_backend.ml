@@ -678,11 +678,14 @@ struct
       | GCLifetime _ -> .
       | GCType { goal; name } ->
           let typ = c_trait_goal span goal in
-          { kind = Tcresolve; ident = F.id name; typ }
+          Some { kind = Tcresolve; ident = F.id name; typ }
+      | GCProjection _ ->
+          (* TODO: Not yet implemented, see https://github.com/hacspec/hax/issues/785 *)
+          None
 
     let of_generics span generics : t list =
       List.map ~f:(of_generic_param span) generics.params
-      @ List.mapi ~f:(of_generic_constraint span) generics.constraints
+      @ List.filter_mapi ~f:(of_generic_constraint span) generics.constraints
 
     let of_typ span (nth : int) typ : t =
       let ident = F.id ("x" ^ Int.to_string nth) in
@@ -1336,13 +1339,16 @@ struct
         in
         let constraints_fields : FStar_Parser_AST.tycon_record =
           generics.constraints
-          |> List.map ~f:(fun c ->
-                 let bound, id =
-                   match c with GCType { goal; name } -> (goal, name) | _ -> .
-                 in
-                 let name = "_super_" ^ id in
-                 let typ = pgeneric_constraint_type e.span c in
-                 (F.id name, None, [ F.Attrs.no_method ], typ))
+          |> List.filter_map ~f:(fun c ->
+                 match c with
+                 | GCType { goal = bound; name = id } ->
+                     let name = "_super_" ^ id in
+                     let typ = pgeneric_constraint_type e.span c in
+                     Some (F.id name, None, [ F.Attrs.no_method ], typ)
+                 | GCProjection _ ->
+                     (* TODO: Not yet implemented, see https://github.com/hacspec/hax/issues/785 *)
+                     None
+                 | _ -> .)
         in
         let fields : FStar_Parser_AST.tycon_record =
           constraints_fields @ fields
