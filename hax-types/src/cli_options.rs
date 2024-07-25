@@ -433,7 +433,7 @@ pub struct Options {
     #[arg(long = "deps")]
     pub deps: bool,
 
-    /// By default, hax use `$CARGO_TARGET_DIR/hax` as target folder,
+    /// By default, hax uses `$CARGO_TARGET_DIR/hax` as target folder,
     /// to avoid recompilation when working both with `cargo hax` and
     /// `cargo build` (or, e.g. `rust-analyzer`). This option disables
     /// this behavior.
