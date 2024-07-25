@@ -199,79 +199,90 @@ pub mod rustc {
                     })
                     .collect()
             }
+        }
 
-            #[tracing::instrument(level = "trace", skip(s, param_env))]
-            fn path_to(
-                self,
-                s: &S,
-                target: PolyTraitRef<'tcx>,
-                param_env: rustc_middle::ty::ParamEnv<'tcx>,
-            ) -> Option<Path<'tcx>> {
-                let tcx = s.base().tcx;
+        #[tracing::instrument(level = "trace", skip(s, param_env))]
+        pub fn path_to<'tcx, S: UnderOwnerState<'tcx>>(
+            starting_points: Vec<AnnotatedPredicate<'tcx>>,
+            s: &S,
+            target: PolyTraitRef<'tcx>,
+            param_env: rustc_middle::ty::ParamEnv<'tcx>,
+        ) -> Option<(Path<'tcx>, AnnotatedPredicate<'tcx>)> {
+            let tcx = s.base().tcx;
 
-                /// A candidate projects `self` along a path reaching some
-                /// predicate. A candidate is selected when its predicate
-                /// is the one expected, aka `target`.
-                #[derive(Debug)]
-                struct Candidate<'tcx> {
-                    path: Path<'tcx>,
-                    pred: PolyTraitPredicate<'tcx>,
+            /// A candidate projects `self` along a path reaching some
+            /// predicate. A candidate is selected when its predicate
+            /// is the one expected, aka `target`.
+            #[derive(Debug)]
+            struct Candidate<'tcx> {
+                path: Path<'tcx>,
+                pred: PolyTraitPredicate<'tcx>,
+                origin: AnnotatedPredicate<'tcx>,
+            }
+
+            use std::collections::VecDeque;
+            let mut candidates: VecDeque<Candidate<'tcx>> = starting_points
+                .into_iter()
+                .map(|pred| {
+                    let clause = pred.predicate.as_trait_clause();
+                    clause.map(|clause| Candidate {
+                        path: vec![],
+                        pred: clause,
+                        origin: pred.clone(),
+                    })
+                })
+                .filter(|candidate| candidate.is_some())
+                .map(|candidate| candidate.unwrap())
+                .collect();
+
+            let target_pred = target.upcast(tcx);
+            let mut seen = std::collections::HashSet::new();
+
+            while let Some(candidate) = candidates.pop_front() {
+                {
+                    // If a predicate was already seen, we know it is
+                    // not the one we are looking for: we skip it.
+                    if seen.contains(&candidate.pred) {
+                        continue;
+                    }
+                    seen.insert(candidate.pred.clone());
                 }
 
-                use std::collections::VecDeque;
-                let mut candidates: VecDeque<Candidate<'tcx>> = vec![Candidate {
-                    path: vec![],
-                    pred: self,
-                }]
-                .into();
+                // if the candidate equals the target, let's return its path
+                if predicate_equality(candidate.pred.upcast(tcx), target_pred, param_env, s) {
+                    return Some((candidate.path, candidate.origin));
+                }
 
-                let target_pred = target.upcast(tcx);
-                let mut seen = std::collections::HashSet::new();
-
-                while let Some(candidate) = candidates.pop_front() {
-                    {
-                        // If a predicate was already seen, we know it is
-                        // not the one we are looking for: we skip it.
-                        if seen.contains(&candidate.pred) {
-                            continue;
-                        }
-                        seen.insert(candidate.pred.clone());
-                    }
-
-                    // if the candidate equals the target, let's return its path
-                    if predicate_equality(candidate.pred.upcast(tcx), target_pred, param_env, s) {
-                        return Some(candidate.path);
-                    }
-
-                    // otherwise, we add to the queue all paths reachable from the candidate
-                    for (index, parent_pred) in candidate.pred.parents_trait_predicates(s) {
+                // otherwise, we add to the queue all paths reachable from the candidate
+                for (index, parent_pred) in candidate.pred.parents_trait_predicates(s) {
+                    let mut path = candidate.path.clone();
+                    path.push(PathChunk::Parent {
+                        predicate: parent_pred.clone(),
+                        index,
+                    });
+                    candidates.push_back(Candidate {
+                        pred: parent_pred.clone(),
+                        path,
+                        origin: candidate.origin.clone(),
+                    });
+                }
+                for (item, binder) in candidate.pred.associated_items_trait_predicates(s) {
+                    for (index, parent_pred) in binder.skip_binder().into_iter() {
                         let mut path = candidate.path.clone();
-                        path.push(PathChunk::Parent {
+                        path.push(PathChunk::AssocItem {
+                            item,
                             predicate: parent_pred.clone(),
                             index,
                         });
                         candidates.push_back(Candidate {
                             pred: parent_pred.clone(),
                             path,
+                            origin: candidate.origin.clone(),
                         });
                     }
-                    for (item, binder) in candidate.pred.associated_items_trait_predicates(s) {
-                        for (index, parent_pred) in binder.skip_binder().into_iter() {
-                            let mut path = candidate.path.clone();
-                            path.push(PathChunk::AssocItem {
-                                item,
-                                predicate: parent_pred.clone(),
-                                index,
-                            });
-                            candidates.push_back(Candidate {
-                                pred: parent_pred.clone(),
-                                path,
-                            });
-                        }
-                    }
                 }
-                None
             }
+            None
         }
     }
 
@@ -347,23 +358,16 @@ pub mod rustc {
                 }
                 .with_args(impl_exprs(s, &nested), trait_ref),
                 ImplSource::Param(nested) => {
-                    use search_clause::TraitPredicateExt;
                     let tcx = s.base().tcx;
-                    let predicates = &tcx.predicates_defined_on_or_above(s.owner_id());
-                    let Some((apred, path)) = predicates.into_iter().find_map(|apred| {
-                        apred
-                            .predicate
-                            .as_trait_clause()
-                            .map(|poly_trait_predicate| poly_trait_predicate)
-                            .and_then(|poly_trait_predicate| {
-                                poly_trait_predicate.path_to(s, self.clone(), param_env)
-                            })
-                            .map(|path| (apred, path))
-                    }) else {
+                    let predicates = tcx.predicates_defined_on_or_above(s.owner_id());
+                    let Some((path, apred)) =
+                        search_clause::path_to(predicates.clone(), s, self.clone(), param_env)
+                    else {
                         supposely_unreachable_fatal!(s, "ImplExprPredNotFound"; {
                             self, nested, predicates, trait_ref
                         })
                     };
+
                     use rustc_middle::ty::ToPolyTraitRef;
                     let r#trait = apred
                         .predicate
