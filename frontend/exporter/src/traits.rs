@@ -82,9 +82,10 @@ pub mod rustc {
             tcx: TyCtxt<'tcx>,
             predicates: impl Iterator<Item = Predicate<'tcx>>,
             generics: GenericArgsRef<'tcx>,
+            span: rustc_span::Span,
         ) -> impl Iterator<Item = PolyTraitPredicate<'tcx>> {
             predicates
-                .map(move |pred| pred.kind().subst(tcx, generics))
+                .map(move |pred| pred.kind().subst(tcx, span, generics))
                 .filter_map(|pred| pred.as_poly_trait_predicate())
         }
 
@@ -168,6 +169,7 @@ pub mod rustc {
                     tcx,
                     predicates,
                     self.skip_binder().trait_ref.args,
+                    tcx.def_span(s.owner_id()),
                 )
                 .enumerate()
                 .collect()
@@ -191,6 +193,7 @@ pub mod rustc {
                                 tcx,
                                 clauses.into_iter().map(|clause| clause.as_predicate()),
                                 self.skip_binder().trait_ref.args,
+                                tcx.def_span(s.owner_id()),
                             )
                             .enumerate()
                             .collect()

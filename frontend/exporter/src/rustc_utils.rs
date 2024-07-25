@@ -6,9 +6,21 @@ impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
     fn subst(
         self,
         tcx: ty::TyCtxt<'tcx>,
+        span: rustc_span::Span,
         generics: &[ty::GenericArg<'tcx>],
     ) -> ty::Binder<'tcx, T> {
-        self.rebind(ty::EarlyBinder::bind(self.clone().skip_binder()).instantiate(tcx, generics))
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            self.rebind(
+                ty::EarlyBinder::bind(self.clone().skip_binder()).instantiate(tcx, generics),
+            )
+        }))
+            .unwrap_or_else(|_| {
+                let fake_state = State::new(tcx, hax_frontend_exporter_options::Options {
+                    inline_macro_calls: vec![]
+                });
+                warning!(fake_state[span], "The hax frontend is instantiates incorrectly a binder. This is related to https://github.com/hacspec/hax/issues/683.");
+                self
+            })
     }
 }
 
