@@ -82,7 +82,7 @@ const ENGINE_BINARY_NOT_FOUND: &str = "The binary [hax-engine] was not found in 
 /// found, detect whether nodejs is available, download the JS-compiled
 /// engine and use it.
 #[allow(unused_variables, unreachable_code)]
-fn find_hax_engine() -> process::Command {
+fn find_hax_engine(message_format: MessageFormat) -> process::Command {
     use which::which;
 
     std::env::var("HAX_ENGINE_BINARY")
@@ -119,7 +119,7 @@ fn find_hax_engine() -> process::Command {
             HaxMessage::EngineNotFound {
                 is_opam_setup_correctly: is_opam_setup_correctly(),
             }
-            .report_styled(None);
+            .report(message_format, None);
             std::process::exit(2);
         })
 }
@@ -129,6 +129,12 @@ use hax_types::diagnostics::report::ReportCtx;
 
 #[extension_traits::extension(trait ExtHaxMessage)]
 impl HaxMessage {
+    fn report(self, message_format: MessageFormat, rctx: Option<&mut ReportCtx>) {
+        match message_format {
+            MessageFormat::Json => eprintln!("{}", serde_json::to_string(&self).unwrap()),
+            MessageFormat::Human => self.report_styled(rctx),
+        }
+    }
     fn report_styled(self, rctx: Option<&mut ReportCtx>) {
         let renderer = Renderer::styled();
         match self {
@@ -188,13 +194,14 @@ fn run_engine(
     working_dir: PathBuf,
     manifest_dir: PathBuf,
     backend: &BackendOptions,
+    message_format: MessageFormat,
 ) -> bool {
     let engine_options = EngineOptions {
         backend: backend.clone(),
         input: haxmeta.items,
         impl_infos: haxmeta.impl_infos,
     };
-    let mut engine_subprocess = find_hax_engine()
+    let mut engine_subprocess = find_hax_engine(message_format)
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -264,7 +271,7 @@ fn run_engine(
                         diagnostic,
                         working_dir: working_dir.clone(),
                     }
-                    .report_styled(Some(&mut rctx));
+                    .report(message_format, Some(&mut rctx));
                 }
                 FromEngine::File(file) => {
                     if backend.dry_run {
@@ -273,7 +280,7 @@ fn run_engine(
                         let path = out_dir.join(&file.path);
                         std::fs::create_dir_all(&path.parent().unwrap()).unwrap();
                         std::fs::write(&path, file.contents).unwrap();
-                        HaxMessage::WroteFile { path }.report_styled(None)
+                        HaxMessage::WroteFile { path }.report(message_format, None)
                     }
                 }
                 FromEngine::DebugString(debug) => {
@@ -403,7 +410,7 @@ fn compute_haxmeta_files(options: &Options) -> (Vec<EmitHaxMetaMessage>, i32) {
         .expect("`driver-hax-frontend-exporter`: could not start?");
 
     let exit_code = if !status.success() {
-        HaxMessage::CargoBuildFailure.report_styled(None);
+        HaxMessage::CargoBuildFailure.report(options.message_format, None);
         status.code().unwrap_or(254)
     } else {
         0
@@ -449,7 +456,7 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) -> boo
                 HaxMessage::WarnExperimentalBackend {
                     backend: backend.backend.clone(),
                 }
-                .report_styled(None);
+                .report(options.message_format, None);
             }
 
             let mut error = false;
@@ -461,7 +468,14 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) -> boo
             {
                 let haxmeta: HaxMeta<Body> = HaxMeta::read(fs::File::open(&path).unwrap());
 
-                error = error || run_engine(haxmeta, working_dir, manifest_dir, &backend);
+                error = error
+                    || run_engine(
+                        haxmeta,
+                        working_dir,
+                        manifest_dir,
+                        &backend,
+                        options.message_format,
+                    );
             }
             error
         }

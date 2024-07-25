@@ -439,6 +439,17 @@ pub struct Options {
     /// this behavior.
     #[arg(long)]
     pub no_custom_target_directory: bool,
+
+    /// Diagnostic format.
+    #[arg(long, default_value = "human")]
+    pub message_format: MessageFormat,
+}
+
+#[derive_group(Serializers)]
+#[derive(JsonSchema, ValueEnum, Debug, Clone, Copy)]
+pub enum MessageFormat {
+    Human,
+    Json,
 }
 
 impl NormalizePaths for Command {
