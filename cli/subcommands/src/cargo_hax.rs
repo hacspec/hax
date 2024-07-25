@@ -1,4 +1,4 @@
-use annotate_snippets::{Level, Message, Renderer};
+use annotate_snippets::{Level, Renderer};
 use clap::Parser;
 use colored::Colorize;
 use hax_types::cli_options::*;
@@ -116,22 +116,70 @@ fn find_hax_engine() -> process::Command {
             fn is_opam_setup_correctly() -> bool {
                 std::env::var("OPAM_SWITCH_PREFIX").is_ok()
             }
-            use colored::Colorize;
-            let message = format!("hax: {}\n{}\n\n{} {}\n",
-                      &ENGINE_BINARY_NOT_FOUND,
-                      "Please make sure the engine is installed and is in PATH!",
-                      "Hint: With OPAM, `eval $(opam env)` is necessary for OPAM binaries to be in PATH: make sure to run `eval $(opam env)` before running `cargo hax`.".bright_black(),
-                      format!("(diagnostics: {})", if is_opam_setup_correctly() { "opam seems okay ✓" } else {"opam seems not okay ❌"}).bright_black()
-            );
-            report(Level::Error.title(&message));
+            HaxMessage::EngineNotFound {
+                is_opam_setup_correctly: is_opam_setup_correctly(),
+            }
+            .report_styled(None);
             std::process::exit(2);
         })
 }
 
-/// Report an `annotate_snippets::Message` now
-fn report(message: Message) {
-    let renderer = Renderer::styled();
-    eprintln!("{}", renderer.render(message))
+use hax_types::diagnostics::message::HaxMessage;
+use hax_types::diagnostics::report::ReportCtx;
+
+#[extension_traits::extension(trait ExtHaxMessage)]
+impl HaxMessage {
+    fn report_styled(self, rctx: Option<&mut ReportCtx>) {
+        let renderer = Renderer::styled();
+        match self {
+            Self::Diagnostic {
+                diagnostic,
+                working_dir,
+            } => {
+                let mut _rctx = None;
+                let rctx = rctx.unwrap_or_else(|| _rctx.get_or_insert(ReportCtx::default()));
+                diagnostic.with_message(rctx, &working_dir, Level::Error, |msg| {
+                    eprintln!("{}", renderer.render(msg))
+                });
+            }
+            Self::EngineNotFound {
+                is_opam_setup_correctly,
+            } => {
+                use colored::Colorize;
+                let message = format!("hax: {}\n{}\n\n{} {}\n",
+                      &ENGINE_BINARY_NOT_FOUND,
+                      "Please make sure the engine is installed and is in PATH!",
+                      "Hint: With OPAM, `eval $(opam env)` is necessary for OPAM binaries to be in PATH: make sure to run `eval $(opam env)` before running `cargo hax`.".bright_black(),
+                      format!("(diagnostics: {})", if is_opam_setup_correctly { "opam seems okay ✓" } else {"opam seems not okay ❌"}).bright_black()
+            );
+                let message = Level::Error.title(&message);
+                eprintln!("{}", renderer.render(message))
+            }
+            Self::WroteFile { path } => {
+                let title = format!("hax: wrote file {}", path.display());
+                eprintln!("{}", renderer.render(Level::Info.title(&title)))
+            }
+            Self::HaxEngineFailure { exit_code } => {
+                let title = format!(
+                    "hax: {} exited with non-zero code {}",
+                    ENGINE_BINARY_NAME, exit_code,
+                );
+                eprintln!("{}", renderer.render(Level::Error.title(&title)));
+            }
+            Self::CargoBuildFailure => {
+                let title =
+                    format!("hax: running `cargo build` was not successful, continuing anyway.");
+                eprintln!("{}", renderer.render(Level::Warning.title(&title)));
+            }
+            Self::WarnExperimentalBackend { backend } => {
+                let title = format!(
+                    "hax: Experimental backend \"{}\" is work in progress.",
+                    backend
+                );
+                eprintln!("{}", renderer.render(Level::Warning.title(&title)));
+            }
+        }
+    }
 }
 
 /// Runs `hax-engine`
@@ -207,12 +255,16 @@ fn run_engine(
             use protocol::*;
             match msg {
                 FromEngine::Exit => break,
-                FromEngine::Diagnostic(diag) => {
+                FromEngine::Diagnostic(diagnostic) => {
                     error = true;
                     if backend.dry_run {
-                        output.diagnostics.push(diag.clone())
+                        output.diagnostics.push(diagnostic.clone())
                     }
-                    diag.with_message(&mut rctx, &working_dir, Level::Error, report);
+                    HaxMessage::Diagnostic {
+                        diagnostic,
+                        working_dir: working_dir.clone(),
+                    }
+                    .report_styled(Some(&mut rctx));
                 }
                 FromEngine::File(file) => {
                     if backend.dry_run {
@@ -221,8 +273,7 @@ fn run_engine(
                         let path = out_dir.join(&file.path);
                         std::fs::create_dir_all(&path.parent().unwrap()).unwrap();
                         std::fs::write(&path, file.contents).unwrap();
-                        let title = format!("hax: wrote file {}", path.display());
-                        report(Level::Info.title(&title))
+                        HaxMessage::WroteFile { path }.report_styled(None)
                     }
                 }
                 FromEngine::DebugString(debug) => {
@@ -252,12 +303,9 @@ fn run_engine(
 
     let exit_status = engine_subprocess.wait().unwrap();
     if !exit_status.success() {
-        let title = format!(
-            "hax: {} exited with non-zero code {}",
-            ENGINE_BINARY_NAME,
-            exit_status.code().unwrap_or(-1),
-        );
-        report(Level::Error.title(&title));
+        HaxMessage::HaxEngineFailure {
+            exit_code: exit_status.code().unwrap_or(-1),
+        };
         std::process::exit(1);
     }
 
@@ -355,8 +403,7 @@ fn compute_haxmeta_files(options: &Options) -> (Vec<EmitHaxMetaMessage>, i32) {
         .expect("`driver-hax-frontend-exporter`: could not start?");
 
     let exit_code = if !status.success() {
-        let title = format!("hax: running `cargo build` was not successful, continuing anyway.");
-        report(Level::Warning.title(&title));
+        HaxMessage::CargoBuildFailure.report_styled(None);
         status.code().unwrap_or(254)
     } else {
         0
@@ -399,11 +446,10 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) -> boo
             use Backend;
 
             if matches!(backend.backend, Backend::Easycrypt | Backend::ProVerif(..)) {
-                let title = format!(
-                    "hax: Experimental backend \"{}\" is work in progress.",
-                    backend.backend
-                );
-                report(Level::Warning.title(&title))
+                HaxMessage::WarnExperimentalBackend {
+                    backend: backend.backend.clone(),
+                }
+                .report_styled(None);
             }
 
             let mut error = false;

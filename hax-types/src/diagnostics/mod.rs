@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use colored::Colorize;
 
+pub mod message;
 pub mod report;
 
 #[derive_group(Serializers)]
