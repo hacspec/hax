@@ -138,6 +138,27 @@ fn get_item_predicates<'tcx, S: UnderOwnerState<'tcx>>(s: &S, def_id: RDefId) ->
     }
 }
 
+/// Gathers a lot of definition information about a [`rustc_hir::def_id::DefId`].
+#[derive(AdtInto)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_hir::def_id::DefId, state: S as s)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema)]
+pub struct FullDef {
+    #[value(self.sinto(s))]
+    pub def_id: DefId,
+    #[value(s.base().tcx.opt_parent(*self).sinto(s))]
+    pub parent: Option<DefId>,
+    #[value(s.base().tcx.def_span(*self).sinto(s))]
+    pub span: Span,
+    #[value(s.base().tcx.def_key(*self).disambiguated_data.sinto(s))]
+    pub path_item: DisambiguatedDefPathItem,
+    #[value({
+        let state_with_id = State { thir: (), mir: (), owner_id: *self, base: s.base() };
+        s.base().tcx.def_kind(*self).sinto(&state_with_id)
+    })]
+    pub kind: FullDefKind,
+}
+
 /// Imbues [`rustc_hir::def::DefKind`] with a lot of extra information.
 /// Important: the `owner_id()` must be the id of this definition.
 #[derive(AdtInto)]
@@ -349,10 +370,10 @@ pub enum FullDefKind {
     GlobalAsm,
 }
 
-impl FullDefKind {
+impl FullDef {
     pub fn generics(&self) -> Option<(&TyGenerics, &GenericPredicates)> {
         use FullDefKind::*;
-        match self {
+        match &self.kind {
             Struct {
                 generics,
                 predicates,
@@ -413,31 +434,6 @@ impl FullDefKind {
                 predicates,
                 ..
             } => Some((generics, predicates)),
-            _ => None,
-        }
-    }
-    pub fn associated_item(&self) -> Option<&AssocItem> {
-        use FullDefKind::*;
-        match self {
-            AssocTy {
-                associated_item, ..
-            }
-            | AssocFn {
-                associated_item, ..
-            }
-            | AssocConst {
-                associated_item, ..
-            } => Some(associated_item),
-            _ => None,
-        }
-    }
-    pub fn parent(&self) -> Option<&DefId> {
-        use FullDefKind::*;
-        match self {
-            AssocTy { parent, .. }
-            | AssocFn { parent, .. }
-            | AssocConst { parent, .. }
-            | Closure { parent, .. } => Some(parent),
             _ => None,
         }
     }
