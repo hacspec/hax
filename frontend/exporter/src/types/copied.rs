@@ -46,6 +46,14 @@ impl From<&DefId> for rustc_span::def_id::DefId {
     }
 }
 
+// Impl to be able to use hax's `DefId` for many rustc queries.
+#[cfg(feature = "rustc")]
+impl rustc_middle::query::IntoQueryParam<RDefId> for &DefId {
+    fn into_query_param(self) -> RDefId {
+        self.into()
+    }
+}
+
 #[cfg(feature = "rustc")]
 impl std::convert::From<DefId> for Path {
     fn from(v: DefId) -> Vec<String> {
@@ -283,7 +291,8 @@ pub enum FullDefKind {
     /// is defined.
     Closure {
         /// The enclosing item. Note: this item could itself be a closure; to get the generics, you
-        /// might have to recurse through several layers or parents.
+        /// might have to recurse through several layers of parents until you find a function or
+        /// constant.
         #[value(s.base().tcx.parent(s.owner_id()).sinto(s))]
         parent: DefId,
         #[value({
@@ -371,6 +380,9 @@ pub enum FullDefKind {
 }
 
 impl FullDef {
+    pub fn kind(&self) -> &FullDefKind {
+        &self.kind
+    }
     pub fn generics(&self) -> Option<(&TyGenerics, &GenericPredicates)> {
         use FullDefKind::*;
         match &self.kind {
