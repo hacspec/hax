@@ -144,7 +144,7 @@ fn get_item_predicates<'tcx, S: UnderOwnerState<'tcx>>(s: &S, def_id: RDefId) ->
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::def::DefKind, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
-pub enum Def {
+pub enum FullDefKind {
     // Type namespace
     Mod,
     /// Refers to the struct definition, [`DefKind::Ctor`] refers to its constructor if it exists.
@@ -349,65 +349,66 @@ pub enum Def {
     GlobalAsm,
 }
 
-impl Def {
+impl FullDefKind {
     pub fn generics(&self) -> Option<(&TyGenerics, &GenericPredicates)> {
+        use FullDefKind::*;
         match self {
-            Def::Struct {
+            Struct {
                 generics,
                 predicates,
                 ..
             }
-            | Def::Union {
+            | Union {
                 generics,
                 predicates,
                 ..
             }
-            | Def::Enum {
+            | Enum {
                 generics,
                 predicates,
                 ..
             }
-            | Def::Trait {
+            | Trait {
                 generics,
                 predicates,
                 ..
             }
-            | Def::TyAlias {
+            | TyAlias {
                 generics,
                 predicates,
                 ..
             }
-            | Def::AssocTy {
+            | AssocTy {
                 generics,
                 predicates,
                 ..
             }
-            | Def::Fn {
+            | Fn {
                 generics,
                 predicates,
                 ..
             }
-            | Def::AssocFn {
+            | AssocFn {
                 generics,
                 predicates,
                 ..
             }
-            | Def::Const {
+            | Const {
                 generics,
                 predicates,
                 ..
             }
-            | Def::AssocConst {
+            | AssocConst {
                 generics,
                 predicates,
                 ..
             }
-            | Def::Static {
+            | Static {
                 generics,
                 predicates,
                 ..
             }
-            | Def::Impl {
+            | Impl {
                 generics,
                 predicates,
                 ..
@@ -416,25 +417,27 @@ impl Def {
         }
     }
     pub fn associated_item(&self) -> Option<&AssocItem> {
+        use FullDefKind::*;
         match self {
-            Def::AssocTy {
+            AssocTy {
                 associated_item, ..
             }
-            | Def::AssocFn {
+            | AssocFn {
                 associated_item, ..
             }
-            | Def::AssocConst {
+            | AssocConst {
                 associated_item, ..
             } => Some(associated_item),
             _ => None,
         }
     }
     pub fn parent(&self) -> Option<&DefId> {
+        use FullDefKind::*;
         match self {
-            Def::AssocTy { parent, .. }
-            | Def::AssocFn { parent, .. }
-            | Def::AssocConst { parent, .. }
-            | Def::Closure { parent, .. } => Some(parent),
+            AssocTy { parent, .. }
+            | AssocFn { parent, .. }
+            | AssocConst { parent, .. }
+            | Closure { parent, .. } => Some(parent),
             _ => None,
         }
     }
