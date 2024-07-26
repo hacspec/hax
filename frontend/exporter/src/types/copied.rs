@@ -117,15 +117,23 @@ fn get_generic_predicates<'tcx, S: UnderOwnerState<'tcx>>(
 #[cfg(feature = "rustc")]
 fn get_item_predicates<'tcx, S: UnderOwnerState<'tcx>>(s: &S, def_id: RDefId) -> GenericPredicates {
     let tcx = s.base().tcx;
-    // TODO: we probably want to use `explicit_item_bounds` instead, but should do so
-    // consistently.
-    let clauses = tcx.item_bounds(def_id).instantiate_identity();
-    use crate::rustc_middle::query::Key;
-    let span = clauses.default_span(tcx);
-    let predicates = clauses.iter().map(|c| (c, span)).collect::<Vec<_>>();
+    let parent_id = tcx.parent(def_id);
+    // `item_bounds` cannot be called on a trait impl item, and returns empty on an inherent impl
+    // item. So we only call it for trait decl items.
+    let predicates = match tcx.def_kind(parent_id) {
+        rustc_hir::def::DefKind::Trait => {
+            // TODO: we probably want to use `explicit_item_bounds` instead, but should do so
+            // consistently.
+            let clauses = tcx.item_bounds(def_id).instantiate_identity();
+            use crate::rustc_middle::query::Key;
+            let span = clauses.default_span(tcx);
+            clauses.iter().map(|c| (c, span)).collect::<Vec<_>>()
+        }
+        _ => Vec::new(),
+    };
     let predicates = process_generic_predicates(s, predicates.as_slice());
     GenericPredicates {
-        parent: tcx.opt_parent(def_id).sinto(s),
+        parent: Some(parent_id.sinto(s)),
         predicates,
     }
 }
@@ -171,6 +179,15 @@ pub enum Def {
         generics: TyGenerics,
         #[value(get_generic_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
+        // `predicates_of` has the special `Self: Trait` clause as its last element.
+        #[value({
+            let (clause, _) = s.base().tcx.predicates_of(s.owner_id()).predicates.last().unwrap();
+            let Some(ty::ClauseKind::Trait(trait_ref)) = clause.kind().no_bound_vars() else {
+                panic!()
+            };
+            trait_ref.sinto(s)
+        })]
+        self_predicate: TraitPredicate,
         /// Associated items, in definition order.
         #[value(s.base().tcx.associated_items(s.owner_id()).in_definition_order().collect::<Vec<_>>().sinto(s))]
         items: Vec<AssocItem>,
@@ -262,6 +279,8 @@ pub enum Def {
         generics: TyGenerics,
         #[value(get_generic_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
+        #[value(s.base().tcx.type_of(s.owner_id()).instantiate_identity().sinto(s))]
+        ty: Ty,
     },
     /// Associated constant: `trait MyTrait { const ASSOC: usize; }`
     AssocConst {
@@ -287,6 +306,8 @@ pub enum Def {
         generics: TyGenerics,
         #[value(get_generic_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
+        #[value(s.base().tcx.type_of(s.owner_id()).instantiate_identity().sinto(s))]
+        ty: Ty,
     },
     /// Constant generic parameter: `struct Foo<const N: usize> { ... }`
     ConstParam,
@@ -312,7 +333,11 @@ pub enum Def {
         generics: TyGenerics,
         #[value(get_generic_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
-        of_trait: bool,
+        #[value(s.base().tcx.impl_subject(s.owner_id()).instantiate_identity().sinto(s))]
+        impl_subject: ImplSubject,
+        /// Associated items, in definition order.
+        #[value(s.base().tcx.associated_items(s.owner_id()).in_definition_order().collect::<Vec<_>>().sinto(s))]
+        items: Vec<AssocItem>,
     },
     /// A field in a struct, enum or union. e.g.
     /// - `bar` in `struct Foo { bar: u8 }`
@@ -4149,6 +4174,26 @@ pub enum PredicateKind {
     Ambiguous,
     AliasRelate(Term, Term, AliasRelationDirection),
     NormalizesTo(NormalizesTo),
+}
+
+/// Reflects [`rustc_middle::ty::ImplSubject`]
+#[derive(AdtInto)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::ImplSubject<'tcx>, state: S as s)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ImplSubject {
+    Trait(
+        // Also record the polarity.
+        #[map({
+            let polarity = s.base().tcx.impl_polarity(s.owner_id());
+            TraitPredicate {
+                trait_ref: x.sinto(s),
+                is_positive: matches!(polarity, rustc_middle::ty::ImplPolarity::Positive),
+            }
+        })]
+        TraitPredicate,
+    ),
+    Inherent(Ty),
 }
 
 /// Reflects [`rustc_hir::GenericBounds`]
