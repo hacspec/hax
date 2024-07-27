@@ -86,23 +86,12 @@ module Visitors = Ast_visitors.Make (InputLanguage)
 open AST
 module F = Fstar_ast
 
-let doc_to_string : PPrint.document -> string =
-  FStar_Pprint.pretty_string 1.0 (Z.of_int 100)
-
-let term_to_string : F.AST.term -> string =
-  FStar_Parser_ToDocument.term_to_document >> doc_to_string
-
-let pat_to_string : F.AST.pattern -> string =
-  FStar_Parser_ToDocument.pat_to_document >> doc_to_string
-
-let decl_to_string : F.AST.decl -> string =
-  FStar_Parser_ToDocument.decl_to_document >> doc_to_string
-
 module Context = struct
   type t = {
     current_namespace : string * string list;
     items : item list;
     interface_mode : bool;
+    line_width : int;
   }
 end
 
@@ -112,6 +101,18 @@ module Make
     end) =
 struct
   open Ctx
+
+  let doc_to_string : PPrint.document -> string =
+    FStar_Pprint.pretty_string 1.0 (Z.of_int ctx.line_width)
+
+  let term_to_string : F.AST.term -> string =
+    FStar_Parser_ToDocument.term_to_document >> doc_to_string
+
+  let pat_to_string : F.AST.pattern -> string =
+    FStar_Parser_ToDocument.pat_to_document >> doc_to_string
+
+  let decl_to_string : F.AST.decl -> string =
+    FStar_Parser_ToDocument.decl_to_document >> doc_to_string
 
   let pprim_ident (span : span) (id : primitive_ident) =
     match id with
@@ -1482,6 +1483,8 @@ struct
 end
 
 module type S = sig
+  val decl_to_string : F.AST.decl -> string
+
   val pitem :
     item ->
     [> `Impl of F.AST.decl
@@ -1527,6 +1530,7 @@ let strings_of_item ~signature_only (bo : BackendOptions.t) m items
         current_namespace = U.Concrete_ident_view.to_namespace item.ident;
         interface_mode;
         items;
+        line_width = bo.line_width;
       }
   in
   let mk_impl = if interface_mode then fun i -> `Impl i else fun i -> `Impl i in
@@ -1538,8 +1542,8 @@ let strings_of_item ~signature_only (bo : BackendOptions.t) m items
   Print.pitem item
   |> List.filter ~f:(function `Impl _ when no_impl -> false | _ -> true)
   |> List.concat_map ~f:(function
-       | `Impl i -> [ (mk_impl (decl_to_string i), `Newline) ]
-       | `Intf i -> [ (mk_intf (decl_to_string i), `Newline) ]
+       | `Impl i -> [ (mk_impl (Print.decl_to_string i), `Newline) ]
+       | `Intf i -> [ (mk_intf (Print.decl_to_string i), `Newline) ]
        | `VerbatimIntf (s, nl) ->
            [ ((if interface_mode then `Intf s else `Impl s), nl) ]
        | `VerbatimImpl (s, nl) ->
