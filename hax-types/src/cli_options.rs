@@ -159,6 +159,9 @@ pub struct FStarOptions {
         allow_hyphen_values(true)
     )]
     interfaces: Vec<InclusionClause>,
+
+    #[arg(long, default_value = "100", env = "HAX_FSTAR_LINE_WIDTH")]
+    line_width: u16,
 }
 
 #[derive_group(Serializers)]
