@@ -446,6 +446,22 @@ let impl (v_FooConst: usize) (#v_FooType #v_SelfType: Type0) : t_Foo v_SelfType 
 type t_Bar (v_FooConst: usize) (v_FooType: Type0) =
   | Bar : t_Array v_FooType v_FooConst -> t_Bar v_FooConst v_FooType
 '''
+"Traits.Recursive_trait_with_assoc_type.fst" = '''
+module Traits.Recursive_trait_with_assoc_type
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class t_Trait1 (v_Self: Type0) = {
+  f_T:Type0;
+  f_T_10748091164337312478:t_Trait1 f_T
+}
+
+class t_Trait2 (v_Self: Type0) = {
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_4567617955834163411:t_Trait1 v_Self;
+  f_U:Type0
+}
+'''
 "Traits.Type_alias_bounds_issue_707_.fst" = '''
 module Traits.Type_alias_bounds_issue_707_
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"

@@ -265,3 +265,14 @@ mod block_size {
         fn proc_block(block: Vec<<Self as BlockSizeUser>::BlockSize>);
     }
 }
+
+// issue 692
+mod recursive_trait_with_assoc_type {
+    pub trait Trait1 {
+        type T: Trait1;
+    }
+
+    pub trait Trait2: Trait1 {
+        type U;
+    }
+}
