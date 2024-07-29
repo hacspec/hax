@@ -23,6 +23,71 @@ use impl_fn_decoration::*;
 use prelude::*;
 use utils::*;
 
+/// When extracting to F*, wrap this item in `#push-options "..."` and
+/// `#pop-options`.
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn fstar_options(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let item: TokenStream = item.into();
+    let lit_str = parse_macro_input!(attr as LitStr);
+    let payload = format!(r#"#push-options "{}""#, lit_str.value());
+    let payload = LitStr::new(&payload, lit_str.span());
+    quote! {
+        #[::hax_lib::fstar::before(#payload)]
+        #[::hax_lib::fstar::after(r#"#pop-options"#)]
+        #item
+    }
+    .into()
+}
+
+/// When extracting to F*, inform about what is the current
+/// verification status for an item. It can either be `lax` or
+/// `panic_free`.
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn fstar_verif_status(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let action = format!("{}", parse_macro_input!(attr as Ident));
+    match action.as_str() {
+        "lax" => {
+            let item: TokenStream = item.into();
+            quote! {
+                #[::hax_lib::fstar::options("--admit_smt_queries true")]
+                #item
+            }
+        }
+        "panic_free" => {
+            let mut item = parse_macro_input!(item as FnLike);
+            if let Some(last) = item
+                .block
+                .stmts
+                .iter_mut()
+                .rev()
+                .find(|stmt| matches!(stmt, syn::Stmt::Expr(_, None)))
+                .as_mut()
+            {
+                **last = syn::Stmt::Expr(
+                    parse_quote! {
+                        {let result = #last;
+                        ::hax_lib::fstar!("admit()");
+                         result}
+                    },
+                    None,
+                );
+            } else {
+                item.block.stmts.push(syn::Stmt::Expr(
+                    parse_quote! {::hax_lib::fstar!("admit()")},
+                    None,
+                ));
+            }
+            quote! {
+                #item
+            }
+        }
+        _ => abort_call_site!(format!("Expected `lax` or `panic_free`")),
+    }
+    .into()
+}
+
 /// Include this item in the Hax translation.
 #[proc_macro_error]
 #[proc_macro_attribute]
