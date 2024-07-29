@@ -203,7 +203,7 @@ pub mod rustc {
 
         #[tracing::instrument(level = "trace", skip(s, param_env))]
         pub fn path_to<'tcx, S: UnderOwnerState<'tcx>>(
-            starting_points: Vec<AnnotatedPredicate<'tcx>>,
+            starting_points: &[AnnotatedPredicate<'tcx>],
             s: &S,
             target: PolyTraitRef<'tcx>,
             param_env: rustc_middle::ty::ParamEnv<'tcx>,
@@ -223,16 +223,14 @@ pub mod rustc {
             use std::collections::VecDeque;
             let mut candidates: VecDeque<Candidate<'tcx>> = starting_points
                 .into_iter()
-                .map(|pred| {
+                .filter_map(|pred| {
                     let clause = pred.predicate.as_trait_clause();
                     clause.map(|clause| Candidate {
                         path: vec![],
                         pred: clause,
-                        origin: pred.clone(),
+                        origin: *pred,
                     })
                 })
-                .filter(|candidate| candidate.is_some())
-                .map(|candidate| candidate.unwrap())
                 .collect();
 
             let target_pred = target.upcast(tcx);
@@ -245,7 +243,7 @@ pub mod rustc {
                     if seen.contains(&candidate.pred) {
                         continue;
                     }
-                    seen.insert(candidate.pred.clone());
+                    seen.insert(candidate.pred);
                 }
 
                 // if the candidate equals the target, let's return its path
@@ -257,13 +255,13 @@ pub mod rustc {
                 for (index, parent_pred) in candidate.pred.parents_trait_predicates(s) {
                     let mut path = candidate.path.clone();
                     path.push(PathChunk::Parent {
-                        predicate: parent_pred.clone(),
+                        predicate: parent_pred,
                         index,
                     });
                     candidates.push_back(Candidate {
-                        pred: parent_pred.clone(),
+                        pred: parent_pred,
                         path,
-                        origin: candidate.origin.clone(),
+                        origin: candidate.origin,
                     });
                 }
                 for (item, binder) in candidate.pred.associated_items_trait_predicates(s) {
@@ -271,13 +269,13 @@ pub mod rustc {
                         let mut path = candidate.path.clone();
                         path.push(PathChunk::AssocItem {
                             item,
-                            predicate: parent_pred.clone(),
+                            predicate: parent_pred,
                             index,
                         });
                         candidates.push_back(Candidate {
-                            pred: parent_pred.clone(),
+                            pred: parent_pred,
                             path,
-                            origin: candidate.origin.clone(),
+                            origin: candidate.origin,
                         });
                     }
                 }
@@ -361,7 +359,7 @@ pub mod rustc {
                     let tcx = s.base().tcx;
                     let predicates = tcx.predicates_defined_on_or_above(s.owner_id());
                     let Some((path, apred)) =
-                        search_clause::path_to(predicates.clone(), s, self.clone(), param_env)
+                        search_clause::path_to(&predicates, s, self.clone(), param_env)
                     else {
                         supposely_unreachable_fatal!(s, "ImplExprPredNotFound"; {
                             self, nested, predicates, trait_ref
