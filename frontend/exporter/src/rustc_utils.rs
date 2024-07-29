@@ -23,7 +23,7 @@ impl<'tcx> ty::Binder<'tcx, ty::PredicateKind<'tcx>> {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct AnnotatedPredicate<'tcx> {
     pub is_extra_self_predicate: bool,
     /// Note: they are all actually `Clause`s.

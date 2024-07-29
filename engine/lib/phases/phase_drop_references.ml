@@ -142,11 +142,21 @@ struct
       in
       Some B.{ ident; kind; attrs; span }
 
+    and dprojection_predicate (span : span) (r : A.projection_predicate) :
+        B.projection_predicate =
+      {
+        impl = dimpl_expr span r.impl;
+        assoc_item = r.assoc_item;
+        typ = dty span r.typ;
+      }
+
     let dgeneric_constraint (span : span) (p : A.generic_constraint) :
         B.generic_constraint option =
       match p with
       | GCLifetime _ -> None
       | GCType idents -> Some (B.GCType (dimpl_ident span idents))
+      | GCProjection projection ->
+          Some (B.GCProjection (dprojection_predicate span projection))
 
     let dgenerics (span : span) (g : A.generics) : B.generics =
       {

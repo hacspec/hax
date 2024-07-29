@@ -66,6 +66,14 @@ struct
   and dimpl_ident (span : span) (r : A.impl_ident) : B.impl_ident =
     { goal = dtrait_goal span r.goal; name = r.name }
 
+  and dprojection_predicate (span : span) (r : A.projection_predicate) :
+      B.projection_predicate =
+    {
+      impl = dimpl_expr span r.impl;
+      assoc_item = r.assoc_item;
+      typ = dty span r.typ;
+    }
+
   and dimpl_expr (span : span) (i : A.impl_expr) : B.impl_expr =
     match i with
     | Self -> Self
@@ -355,6 +363,8 @@ struct
       match generic_constraint with
       | GCLifetime (lf, witness) -> B.GCLifetime (lf, S.lifetime span witness)
       | GCType impl_ident -> B.GCType (dimpl_ident span impl_ident)
+      | GCProjection projection ->
+          B.GCProjection (dprojection_predicate span projection)
 
     let dgenerics (span : span) (g : A.generics) : B.generics =
       {

@@ -384,13 +384,6 @@ module Make (F : Features.T) = struct
         method! visit_local_ident () x = Set.singleton (module Local_ident) x
       end
 
-    let collect_local_idents =
-      object
-        inherit [_] Visitors.reduce as _super
-        inherit [_] Sets.Local_ident.monoid as _m
-        method! visit_local_ident () x = Set.singleton (module Local_ident) x
-      end
-
     include struct
       open struct
         type env = Local_ident.t list
@@ -747,6 +740,11 @@ module Make (F : Features.T) = struct
   let make_let (lhs : pat) (rhs : expr) (body : expr) =
     if pat_is_expr lhs body then rhs
     else { body with e = Let { monadic = None; lhs; rhs; body } }
+
+  let make_lets (lbs : (pat * expr) list) (body : expr) =
+    List.fold_right ~init:body
+      ~f:(fun (pat, expr) body -> make_let pat expr body)
+      lbs
 
   let make_var_pat (var : local_ident) (typ : ty) (span : span) : pat =
     {

@@ -700,6 +700,7 @@ module TransformToInputLanguage =
   [%functor_application
   Phases.Reject.RawOrMutPointer(Features.Rust)
   |> Phases.And_mut_defsite
+  |> Phases.Reconstruct_asserts
   |> Phases.Reconstruct_for_loops
   |> Phases.Direct_and_mut
   |> Phases.Reject.Arbitrary_lhs

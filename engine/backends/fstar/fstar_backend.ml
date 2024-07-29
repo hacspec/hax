@@ -679,14 +679,21 @@ struct
       | GCLifetime _ -> .
       | GCType { goal; name } ->
           let typ = c_trait_goal span goal in
-          { kind = Tcresolve; ident = F.id name; typ }
+          Some { kind = Tcresolve; ident = F.id name; typ }
+      | GCProjection _ ->
+          (* TODO: Not yet implemented, see https://github.com/hacspec/hax/issues/785 *)
+          None
 
     let of_generics span generics : t list =
       List.map ~f:(of_generic_param span) generics.params
-      @ List.mapi ~f:(of_generic_constraint span) generics.constraints
+      @ List.filter_mapi ~f:(of_generic_constraint span) generics.constraints
 
     let of_typ span (nth : int) typ : t =
       let ident = F.id ("x" ^ Int.to_string nth) in
+      { kind = Explicit; ident; typ = pty span typ }
+
+    let of_named_typ span name typ : t =
+      let ident = plocal_ident name in
       { kind = Explicit; ident; typ = pty span typ }
 
     let to_pattern (x : t) : F.AST.pattern =
@@ -740,87 +747,6 @@ struct
     | GCLifetime _ ->
         Error.assertion_failure span "pgeneric_constraint_bd:LIFETIME"
     | GCType { goal; name = _ } -> c_trait_goal span goal
-
-  let get_attr (type a) (name : string) (map : string -> a) (attrs : attrs) :
-      a option =
-    List.find_map
-      ~f:(fun attr ->
-        match attr.kind with
-        | Tool { path; tokens } when [%eq: string] path name ->
-            Some (map tokens)
-        | _ -> None)
-      attrs
-
-  module UUID : sig
-    type t
-
-    val of_attrs : attrs -> t option
-    val associated_items : ?kind:string -> t option -> item list
-    val associated_item : ?kind:string -> t option -> item option
-  end = struct
-    (* TODO: parse_quoted_string is incorrect *)
-    let parse_quoted_string = String.strip ~drop:([%eq: char] '"')
-
-    let parse_associated_with s =
-      let uuid, kind = String.lsplit2 ~on:',' s |> Option.value_exn in
-      let uuid = parse_quoted_string uuid in
-      let kind = String.strip ~drop:([%eq: char] ' ') kind in
-      (uuid, kind)
-
-    type t = string
-
-    let of_attrs : attrs -> t option = get_attr "_hax::uuid" parse_quoted_string
-
-    let associated_items ?kind (uuid : t option) : item list =
-      let ( let* ) x f = Option.bind ~f x in
-      Option.value ~default:[]
-        (let* uuid = uuid in
-         List.filter
-           ~f:(fun item ->
-             Option.value ~default:false
-               (let* uuid', kind' =
-                  get_attr "_hax::associated_with" parse_associated_with
-                    item.attrs
-                in
-                let kind_eq =
-                  match kind with
-                  | Some kind -> String.equal kind' kind
-                  | None -> true
-                in
-                Some (kind_eq && String.equal uuid' uuid)))
-           ctx.items
-         |> Option.some)
-
-    let associated_item ?kind (uuid : t option) : item option =
-      match associated_items ?kind uuid with
-      | [ i ] -> Some i
-      | [] -> None
-      | _ -> failwith "expected 0-1 items"
-  end
-
-  (* TODO: incorrect *)
-  let fvar_of_params = function
-    | { pat = { p = PBinding { var; _ }; _ }; _ } -> var
-    | _ -> failwith "?? todo"
-
-  let associated_refinement (free_variables : string list) (attrs : attrs) :
-      expr option =
-    UUID.associated_item ~kind:"refinement" (UUID.of_attrs attrs)
-    |> Option.map ~f:(function
-         | { v = Fn { params; body; _ }; _ } ->
-             let substs =
-               List.zip_exn
-                 (List.map ~f:fvar_of_params params)
-                 (List.map ~f:Local_ident.make_final free_variables)
-             in
-             let v =
-               U.Mappers.rename_local_idents (fun i ->
-                   match List.find ~f:(fst >> [%eq: local_ident] i) substs with
-                   | None -> i
-                   | Some (_, i) -> i)
-             in
-             v#visit_expr () body
-         | _ -> failwith "expected associated_refinement")
 
   let pmaybe_refined_ty span (free_variables : string list) (attrs : attrs)
       (binder_name : string) (ty : ty) : F.AST.term =
@@ -1286,7 +1212,120 @@ struct
                     let ty = F.term @@ F.AST.Product (inputs, ty_pre_post) in
                     [ (F.id name, None, [], ty) ]
                 | TIFn ty ->
+                    let weakest =
+                      let h kind =
+                        Attrs.associated_fns kind i.ti_attrs
+                        |> List.hd
+                        |> Option.map ~f:(fun attr ->
+                               ( attr,
+                                 [%eq: Attr_payloads.AssocRole.t] kind Requires
+                               ))
+                      in
+                      Option.first_some (h Ensures) (h Requires)
+                      |> Option.map
+                           ~f:(fun ((generics, params, expr), is_req) ->
+                             let dummy_self =
+                               List.find generics.params
+                                 ~f:[%matches? { kind = GPType _; _ }]
+                               |> Option.value_or_thunk ~default:(fun () ->
+                                      Error.assertion_failure i.ti_span
+                                        ("Expected a first generic of type \
+                                          `Self`. Instead generics params \
+                                          are: "
+                                        ^ [%show: generic_param list]
+                                            generics.params))
+                               |> fun x -> x.ident
+                             in
+                             let self =
+                               Local_ident.{ name = "Self"; id = mk_id Typ 0 }
+                             in
+                             let renamer =
+                               let f (id : local_ident) =
+                                 if [%eq: string] dummy_self.name id.name then
+                                   self
+                                 else id
+                               in
+                               U.Mappers.rename_local_idents f
+                             in
+                             let generics =
+                               renamer#visit_generics () generics
+                             in
+                             let params =
+                               List.map ~f:(renamer#visit_param ()) params
+                             in
+                             let expr = renamer#visit_expr () expr in
+                             (generics, params, expr, is_req))
+                    in
                     let ty = pty e.span ty in
+                    let ty =
+                      let variables =
+                        let idents_visitor = U.Reducers.collect_local_idents in
+                        idents_visitor#visit_trait_item () i
+                        :: (Option.map
+                              ~f:(fun (generics, params, expr, _) ->
+                                [
+                                  idents_visitor#visit_generics () generics;
+                                  idents_visitor#visit_expr () expr;
+                                ]
+                                @ List.map
+                                    ~f:(idents_visitor#visit_param ())
+                                    params)
+                              weakest
+                           |> Option.value ~default:[])
+                        |> Set.union_list (module Local_ident)
+                        |> Set.to_list |> ref
+                      in
+                      let mk_fresh prefix =
+                        let v = U.fresh_local_ident_in !variables prefix in
+                        variables := v :: !variables;
+                        v
+                      in
+                      let bindings = ref [] in
+                      let f (p : param) =
+                        let name =
+                          match p.pat.p with
+                          | PBinding { var; _ } -> var
+                          | _ ->
+                              let name = mk_fresh "x" in
+                              let ({ span; typ; _ } : pat) = p.pat in
+                              let expr = { e = LocalVar name; span; typ } in
+                              bindings := (p.pat, expr) :: !bindings;
+                              name
+                        in
+                        FStarBinder.of_named_typ p.pat.span name p.typ
+                      in
+                      weakest
+                      |> Option.map ~f:(fun (generics, binders, expr, is_req) ->
+                             (generics, List.map ~f binders, expr, is_req))
+                      |> Option.map
+                           ~f:(fun (generics, binders, (expr : expr), is_req) ->
+                             let result_ident = mk_fresh "pred" in
+                             let result_bd =
+                               FStarBinder.of_named_typ expr.span result_ident
+                                 expr.typ
+                             in
+                             let typ = pty expr.span expr.typ in
+                             let expr = U.make_lets !bindings expr in
+                             let expr = pexpr expr in
+                             let result =
+                               F.term
+                               @@ F.AST.Var
+                                    (plocal_ident result_ident |> F.lid_of_id)
+                             in
+                             let result =
+                               F.AST.Refine
+                                 ( FStarBinder.to_binder result_bd,
+                                   (if is_req then Fn.flip else Fn.id)
+                                     F.implies result expr )
+                               |> F.term
+                             in
+                             F.AST.Product
+                               ( List.map ~f:FStarBinder.to_binder binders,
+                                 result )
+                             |> F.term)
+                      |> Option.value ~default:ty
+                    in
+
                     let ty =
                       F.term
                       @@ F.AST.Product
@@ -1301,13 +1340,16 @@ struct
         in
         let constraints_fields : FStar_Parser_AST.tycon_record =
           generics.constraints
-          |> List.map ~f:(fun c ->
-                 let bound, id =
-                   match c with GCType { goal; name } -> (goal, name) | _ -> .
-                 in
-                 let name = "_super_" ^ id in
-                 let typ = pgeneric_constraint_type e.span c in
-                 (F.id name, None, [ F.Attrs.no_method ], typ))
+          |> List.filter_map ~f:(fun c ->
+                 match c with
+                 | GCType { goal = bound; name = id } ->
+                     let name = "_super_" ^ id in
+                     let typ = pgeneric_constraint_type e.span c in
+                     Some (F.id name, None, [ F.Attrs.no_method ], typ)
+                 | GCProjection _ ->
+                     (* TODO: Not yet implemented, see https://github.com/hacspec/hax/issues/785 *)
+                     None
+                 | _ -> .)
         in
         let fields : FStar_Parser_AST.tycon_record =
           constraints_fields @ fields
@@ -1640,6 +1682,7 @@ module TransformToInputLanguage =
   |> Phases.Drop_sized_trait
   |> Phases.Simplify_question_marks
   |> Phases.And_mut_defsite
+  |> Phases.Reconstruct_asserts
   |> Phases.Reconstruct_for_loops
   |> Phases.Reconstruct_while_loops
   |> Phases.Direct_and_mut

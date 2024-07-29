@@ -8,11 +8,13 @@ pub enum ImplExprPathChunk {
     AssocItem {
         item: AssocItem,
         predicate: Binder<TraitPredicate>,
+        #[value(predicate.predicate_id(tcx))]
         predicate_id: PredicateId,
         index: usize,
     },
     Parent {
         predicate: Binder<TraitPredicate>,
+        #[value(predicate.predicate_id(tcx))]
         predicate_id: PredicateId,
         index: usize,
     },
@@ -74,7 +76,6 @@ pub mod rustc {
     pub(crate) mod search_clause {
         use crate::prelude::UnderOwnerState;
         use crate::rustc_utils::*;
-        use crate::{IntoPredicateId, PredicateId};
         use rustc_middle::ty::*;
 
         fn predicates_to_poly_trait_predicates<'tcx>(
@@ -92,12 +93,10 @@ pub mod rustc {
             AssocItem {
                 item: AssocItem,
                 predicate: PolyTraitPredicate<'tcx>,
-                predicate_id: PredicateId,
                 index: usize,
             },
             Parent {
                 predicate: PolyTraitPredicate<'tcx>,
-                predicate_id: PredicateId,
                 index: usize,
             },
         }
@@ -200,64 +199,88 @@ pub mod rustc {
                     })
                     .collect()
             }
+        }
 
-            #[tracing::instrument(level = "trace", skip(s))]
-            fn path_to(
-                self,
-                s: &S,
-                target: PolyTraitRef<'tcx>,
-                param_env: rustc_middle::ty::ParamEnv<'tcx>,
-            ) -> Option<Path<'tcx>> {
-                let tcx = s.base().tcx;
-                if predicate_equality(self.upcast(tcx), target.upcast(tcx), param_env, s) {
-                    return Some(vec![]);
-                }
+        #[tracing::instrument(level = "trace", skip(s, param_env))]
+        pub fn path_to<'tcx, S: UnderOwnerState<'tcx>>(
+            starting_points: &[AnnotatedPredicate<'tcx>],
+            s: &S,
+            target: PolyTraitRef<'tcx>,
+            param_env: rustc_middle::ty::ParamEnv<'tcx>,
+        ) -> Option<(Path<'tcx>, AnnotatedPredicate<'tcx>)> {
+            let tcx = s.base().tcx;
 
-                let recurse = |p: Self| {
-                    if p == self {
-                        return None;
-                    }
-                    p.path_to(s, target, param_env)
-                };
-                fn cons<T>(hd: T, tail: Vec<T>) -> Vec<T> {
-                    vec![hd].into_iter().chain(tail.into_iter()).collect()
-                }
-                self.parents_trait_predicates(s)
-                    .into_iter()
-                    .filter_map(|(index, p)| {
-                        recurse(p).map(|path| {
-                            cons(
-                                PathChunk::Parent {
-                                    predicate: p,
-                                    predicate_id: p.predicate_id(s),
-                                    index,
-                                },
-                                path,
-                            )
-                        })
-                    })
-                    .max_by_key(|path| path.len())
-                    .or_else(|| {
-                        self.associated_items_trait_predicates(s)
-                            .into_iter()
-                            .filter_map(|(item, binder)| {
-                                binder.skip_binder().into_iter().find_map(|(index, p)| {
-                                    recurse(p).map(|path| {
-                                        cons(
-                                            PathChunk::AssocItem {
-                                                item,
-                                                predicate_id: p.predicate_id(s),
-                                                predicate: p,
-                                                index,
-                                            },
-                                            path,
-                                        )
-                                    })
-                                })
-                            })
-                            .max_by_key(|path| path.len())
-                    })
+            /// A candidate projects `self` along a path reaching some
+            /// predicate. A candidate is selected when its predicate
+            /// is the one expected, aka `target`.
+            #[derive(Debug)]
+            struct Candidate<'tcx> {
+                path: Path<'tcx>,
+                pred: PolyTraitPredicate<'tcx>,
+                origin: AnnotatedPredicate<'tcx>,
             }
+
+            use std::collections::VecDeque;
+            let mut candidates: VecDeque<Candidate<'tcx>> = starting_points
+                .into_iter()
+                .filter_map(|pred| {
+                    let clause = pred.predicate.as_trait_clause();
+                    clause.map(|clause| Candidate {
+                        path: vec![],
+                        pred: clause,
+                        origin: *pred,
+                    })
+                })
+                .collect();
+
+            let target_pred = target.upcast(tcx);
+            let mut seen = std::collections::HashSet::new();
+
+            while let Some(candidate) = candidates.pop_front() {
+                {
+                    // If a predicate was already seen, we know it is
+                    // not the one we are looking for: we skip it.
+                    if seen.contains(&candidate.pred) {
+                        continue;
+                    }
+                    seen.insert(candidate.pred);
+                }
+
+                // if the candidate equals the target, let's return its path
+                if predicate_equality(candidate.pred.upcast(tcx), target_pred, param_env, s) {
+                    return Some((candidate.path, candidate.origin));
+                }
+
+                // otherwise, we add to the queue all paths reachable from the candidate
+                for (index, parent_pred) in candidate.pred.parents_trait_predicates(s) {
+                    let mut path = candidate.path.clone();
+                    path.push(PathChunk::Parent {
+                        predicate: parent_pred,
+                        index,
+                    });
+                    candidates.push_back(Candidate {
+                        pred: parent_pred,
+                        path,
+                        origin: candidate.origin,
+                    });
+                }
+                for (item, binder) in candidate.pred.associated_items_trait_predicates(s) {
+                    for (index, parent_pred) in binder.skip_binder().into_iter() {
+                        let mut path = candidate.path.clone();
+                        path.push(PathChunk::AssocItem {
+                            item,
+                            predicate: parent_pred,
+                            index,
+                        });
+                        candidates.push_back(Candidate {
+                            pred: parent_pred,
+                            path,
+                            origin: candidate.origin,
+                        });
+                    }
+                }
+            }
+            None
         }
     }
 
@@ -313,7 +336,7 @@ pub mod rustc {
         }
     }
     impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
-        #[tracing::instrument(level = "trace", skip(s))]
+        #[tracing::instrument(level = "trace", skip(s, param_env))]
         fn impl_expr<S: UnderOwnerState<'tcx>>(
             &self,
             s: &S,
@@ -333,23 +356,16 @@ pub mod rustc {
                 }
                 .with_args(impl_exprs(s, &nested), trait_ref),
                 ImplSource::Param(nested) => {
-                    use search_clause::TraitPredicateExt;
                     let tcx = s.base().tcx;
-                    let predicates = &tcx.predicates_defined_on_or_above(s.owner_id());
-                    let Some((apred, path)) = predicates.into_iter().find_map(|apred| {
-                        apred
-                            .predicate
-                            .as_trait_clause()
-                            .map(|poly_trait_predicate| poly_trait_predicate)
-                            .and_then(|poly_trait_predicate| {
-                                poly_trait_predicate.path_to(s, self.clone(), param_env)
-                            })
-                            .map(|path| (apred, path))
-                    }) else {
+                    let predicates = tcx.predicates_defined_on_or_above(s.owner_id());
+                    let Some((path, apred)) =
+                        search_clause::path_to(&predicates, s, self.clone(), param_env)
+                    else {
                         supposely_unreachable_fatal!(s, "ImplExprPredNotFound"; {
                             self, nested, predicates, trait_ref
                         })
                     };
+
                     use rustc_middle::ty::ToPolyTraitRef;
                     let r#trait = apred
                         .predicate
@@ -416,7 +432,7 @@ pub mod rustc {
         Some((new_clause_no_binder, impl_expr, span.sinto(s)))
     }
 
-    #[tracing::instrument(level = "trace", skip(s))]
+    #[tracing::instrument(level = "trace", skip(s, param_env))]
     pub fn select_trait_candidate<'tcx, S: UnderOwnerState<'tcx>>(
         s: &S,
         param_env: rustc_middle::ty::ParamEnv<'tcx>,

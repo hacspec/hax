@@ -565,6 +565,7 @@ module TransformToInputLanguage (* : PHASE *) =
   [%functor_application
     Phases.Reject.RawOrMutPointer(Features.Rust)
     |> Phases.And_mut_defsite
+    |> Phases.Reconstruct_asserts
     |> Phases.Reconstruct_for_loops
     |> Phases.Direct_and_mut
     |> Phases.Reject.Arbitrary_lhs
@@ -1339,6 +1340,10 @@ struct
                       | _ -> .)
                     args ) );
         ]
+    | GCProjection _ ->
+        Error.unimplemented ~issue_id:549
+          ~details:"Projections of an associated type is not yet supported."
+          span
     | _ -> .
 
   let pgeneric (span : Ast.span) (generics : AST.generics) :

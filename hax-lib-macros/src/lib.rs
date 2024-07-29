@@ -1,3 +1,4 @@
+mod impl_fn_decoration;
 mod quote;
 mod rewrite_self;
 mod syn_ext;
@@ -18,6 +19,7 @@ mod prelude {
     pub type FnLike = syn::ImplItemFn;
 }
 
+use impl_fn_decoration::*;
 use prelude::*;
 use utils::*;
 
@@ -272,59 +274,12 @@ pub fn ensures(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream 
     .into()
 }
 
-struct ImplFnDecoration {
-    pub kind: FnDecorationKind,
-    pub phi: Expr,
-    pub generics: Generics,
-    pub self_ty: Type,
-}
-
 mod kw {
+    syn::custom_keyword!(hax_lib);
     syn::custom_keyword!(decreases);
     syn::custom_keyword!(ensures);
     syn::custom_keyword!(requires);
     syn::custom_keyword!(refine);
-}
-
-impl parse::Parse for ImplFnDecoration {
-    fn parse(input: parse::ParseStream) -> Result<Self> {
-        let parse_next = || -> Result<_> {
-            input.parse::<Token![,]>()?;
-            let mut generics = input.parse::<Generics>()?;
-            input.parse::<Token![,]>()?;
-            generics.where_clause = input.parse::<Option<WhereClause>>()?;
-            input.parse::<Token![,]>()?;
-            let self_ty = input.parse::<Type>()?;
-            input.parse::<Token![,]>()?;
-            Ok((generics, self_ty))
-        };
-        let kind = if let Ok(_) = input.parse::<kw::decreases>() {
-            FnDecorationKind::Decreases
-        } else if let Ok(_) = input.parse::<kw::requires>() {
-            FnDecorationKind::Requires
-        } else if let Ok(_) = input.parse::<kw::ensures>() {
-            let (generics, self_ty) = parse_next()?;
-            let ExprClosure1 { arg, body } = input.parse::<ExprClosure1>()?;
-            input.parse::<syn::parse::Nothing>()?;
-            return Ok(ImplFnDecoration {
-                kind: FnDecorationKind::Ensures { ret_binder: arg },
-                phi: body,
-                generics,
-                self_ty,
-            });
-        } else {
-            return Err(input.lookahead1().error());
-        };
-        let (generics, self_ty) = parse_next()?;
-        let phi = input.parse::<Expr>()?;
-        input.parse::<syn::parse::Nothing>()?;
-        Ok(ImplFnDecoration {
-            kind,
-            phi,
-            generics,
-            self_ty,
-        })
-    }
 }
 
 /// Internal macro for dealing with function decorations
@@ -347,6 +302,28 @@ pub fn impl_fn_decoration(attr: pm::TokenStream, item: pm::TokenStream) -> pm::T
         make_fn_decoration(phi, item.sig.clone(), kind, Some(generics), Some(self_ty));
     let decoration = Stmt::Item(Item::Verbatim(decoration));
     item.block.stmts.insert(0, decoration);
+    quote! {#attr #item}.into()
+}
+
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn trait_fn_decoration(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let ImplFnDecoration {
+        kind,
+        phi,
+        generics,
+        self_ty,
+    } = parse_macro_input!(attr);
+    let mut item: syn::TraitItemFn = parse_macro_input!(item);
+    let (decoration, attr) =
+        make_fn_decoration(phi, item.sig.clone(), kind, Some(generics), Some(self_ty));
+    let decoration = Stmt::Item(Item::Verbatim(decoration));
+    item.sig
+        .generics
+        .where_clause
+        .get_or_insert(parse_quote! {where})
+        .predicates
+        .push(parse_quote! {[(); {#decoration 0}]:});
     quote! {#attr #item}.into()
 }
 
@@ -384,26 +361,75 @@ pub fn impl_fn_decoration(attr: pm::TokenStream, item: pm::TokenStream) -> pm::T
 pub fn attributes(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
     let item: Item = parse_macro_input!(item);
 
-    struct AttrVisitor {}
+    #[derive(Default)]
+    struct AttrVisitor {
+        extra_items: Vec<TokenStream>,
+    }
 
     use syn::visit_mut;
     impl VisitMut for AttrVisitor {
+        fn visit_item_trait_mut(&mut self, item: &mut ItemTrait) {
+            let span = item.span();
+            for ti in item.items.iter_mut() {
+                if let TraitItem::Fn(fun) = ti {
+                    for attr in &mut fun.attrs {
+                        let Meta::List(ml) = attr.meta.clone() else {
+                            continue;
+                        };
+                        let Ok(Some(decoration)) = expects_path_decoration(&ml.path) else {
+                            continue;
+                        };
+                        let decoration = syn::Ident::new(&decoration, ml.path.span());
+
+                        let mut generics = item.generics.clone();
+                        let predicate = WherePredicate::Type(PredicateType {
+                            lifetimes: None,
+                            bounded_ty: parse_quote! {Self_},
+                            colon_token: Token![:](span),
+                            bounds: item.supertraits.clone(),
+                        });
+                        let mut where_clause = generics
+                            .where_clause
+                            .clone()
+                            .unwrap_or(parse_quote! {where});
+                        where_clause.predicates.push(predicate.clone());
+                        generics.where_clause = Some(where_clause.clone());
+                        let self_ty: Type = parse_quote! {Self_};
+                        let tokens = ml.tokens.clone();
+                        let generics = merge_generics(parse_quote! {<Self_>}, generics);
+                        let ImplFnDecoration {
+                            kind, phi, self_ty, ..
+                        } = parse_quote! {#decoration, #generics, where, #self_ty, #tokens};
+                        let (decoration, relation_attr) = make_fn_decoration(
+                            phi,
+                            fun.sig.clone(),
+                            kind,
+                            Some(generics),
+                            Some(self_ty),
+                        );
+                        *attr = parse_quote! {#relation_attr};
+                        self.extra_items.push(decoration);
+                    }
+                }
+            }
+            visit_mut::visit_item_trait_mut(self, item);
+        }
+        fn visit_type_mut(&mut self, _type: &mut Type) {}
         fn visit_item_impl_mut(&mut self, item: &mut ItemImpl) {
             for ii in item.items.iter_mut() {
                 if let ImplItem::Fn(fun) = ii {
                     for attr in fun.attrs.iter_mut() {
                         if let Meta::List(ml) = &mut attr.meta {
-                            let decoration = &ml.path;
-                            if decoration.ends_with("requires")
-                                || decoration.ends_with("ensures")
-                                || decoration.ends_with("decreases")
-                            {
-                                let tokens = ml.tokens.clone();
-                                let (generics, self_ty) = (&item.generics, &item.self_ty);
-                                let where_clause = &generics.where_clause;
-                                ml.tokens = quote! {#decoration, #generics, #where_clause, #self_ty, #tokens};
-                                ml.path = parse_quote! {::hax_lib::impl_fn_decoration};
-                            }
+                            let Ok(Some(decoration)) = expects_path_decoration(&ml.path) else {
+                                continue;
+                            };
+                            let decoration = syn::Ident::new(&decoration, ml.path.span());
+                            let tokens = ml.tokens.clone();
+                            let (generics, self_ty) = (&item.generics, &item.self_ty);
+                            let where_clause = &generics.where_clause;
+                            ml.tokens =
+                                quote! {#decoration, #generics, #where_clause, #self_ty, #tokens};
+                            ml.path = parse_quote! {::hax_lib::impl_fn_decoration};
                         }
                     }
                 }
@@ -474,11 +500,12 @@ pub fn attributes(_attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStr
         }
     }
 
-    let mut v = AttrVisitor {};
+    let mut v = AttrVisitor::default();
     let mut item = item;
     v.visit_item_mut(&mut item);
+    let extra_items = v.extra_items;
 
-    quote! { #item }.into()
+    quote! { #item #(#extra_items)* }.into()
 }
 
 /// Mark a struct or an enum opaque: the extraction will assume the

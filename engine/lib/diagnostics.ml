@@ -31,6 +31,7 @@ module Phase = struct
     | DropBlocks
     | DropSizedTrait
     | RefMut
+    | ResugarAsserts
     | ResugarForLoops
     | ResugarWhileLoops
     | ResugarForIndexLoops

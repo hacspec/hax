@@ -157,6 +157,50 @@ fn some_function() -> String {
     String::from("hello from Rust")
 }
 
+mod pre_post_on_traits_and_impls {
+    use hax_lib::int::*;
+
+    #[hax_lib::attributes]
+    trait Operation {
+        // we allow `hax_lib`, `::hax_lib` or no path at all
+        #[hax_lib::requires(x.lift() <= int!(127))]
+        #[ensures(|result| x.lift() * int!(2) == result.lift())]
+        fn double(x: u8) -> u8;
+    }
+
+    struct ViaAdd;
+    struct ViaMul;
+
+    #[hax_lib::attributes]
+    impl Operation for ViaAdd {
+        #[::hax_lib::requires(x.lift() <= int!(127))]
+        #[ensures(|result| x.lift() * int!(2) == result.lift())]
+        fn double(x: u8) -> u8 {
+            x + x
+        }
+    }
+
+    #[hax_lib::attributes]
+    impl Operation for ViaMul {
+        #[requires(x.lift() <= int!(127))]
+        #[::hax_lib::ensures(|result| x.lift() * int!(2) == result.lift())]
+        fn double(x: u8) -> u8 {
+            x * 2
+        }
+    }
+
+    #[hax_lib::attributes]
+    trait TraitWithRequiresAndEnsures {
+        #[requires(x < 100)]
+        #[ensures(|r| r > 88)]
+        fn method(&self, x: u8) -> u8;
+    }
+
+    fn test<T: TraitWithRequiresAndEnsures>(x: T) -> u8 {
+        x.method(99) - 88
+    }
+}
+
 /// An minimal example of a model of math integers for F*
 mod int_model {
     use super::hax;

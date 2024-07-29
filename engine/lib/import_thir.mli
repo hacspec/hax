@@ -1,6 +1,8 @@
 val import_ty : Types.span -> Types.ty -> Ast.Rust.ty
 val import_trait_ref : Types.span -> Types.trait_ref -> Ast.Rust.trait_goal
-val import_clause : Types.span -> Types.clause -> Ast.Rust.impl_ident option
+
+val import_clause :
+  Types.span -> Types.clause -> Ast.Rust.generic_constraint option
 
 val import_item :
   drop_body:bool ->

@@ -410,6 +410,10 @@ module Raw = struct
     match p with
     | GCLifetime _ -> !"'unk: 'unk"
     | GCType { goal; _ } -> !"_:" & ptrait_goal span goal
+    | GCProjection { assoc_item; typ; _ } ->
+        !"_:_<_>::"
+        & !(Concrete_ident_view.show assoc_item)
+        & !"==" & pty span typ
 
   let pgeneric_constraints span (constraints : generic_constraint list) =
     if List.is_empty constraints then empty
@@ -450,6 +454,8 @@ module Raw = struct
     let generics = pgeneric_params ti.ti_generics.params in
     let bounds = pgeneric_constraints ti.ti_span ti.ti_generics.constraints in
     let ident = !(Concrete_ident_view.to_definition_name ti.ti_ident) in
+    pattrs ti.ti_attrs
+    &
     match ti.ti_v with
     | TIType _ -> !"type " & ident & !": TodoPrintRustBoundsTyp;"
     | TIFn ty ->
@@ -481,6 +487,8 @@ module Raw = struct
     let generics = pgeneric_params ii.ii_generics.params in
     let bounds = pgeneric_constraints span ii.ii_generics.constraints in
     let ident = !(Concrete_ident_view.to_definition_name ii.ii_ident) in
+    pattrs ii.ii_attrs
+    &
     match ii.ii_v with
     | IIType _ -> !"type " & ident & !": TodoPrintRustBoundsTyp;"
     | IIFn { body; params } ->

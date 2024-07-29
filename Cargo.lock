@@ -161,6 +161,7 @@ dependencies = [
  "cargo_metadata",
  "clap",
  "colored",
+ "extension-traits",
  "hax-frontend-exporter",
  "hax-frontend-exporter-options",
  "hax-lib-macros-types",

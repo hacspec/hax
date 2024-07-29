@@ -76,7 +76,16 @@ let variantNameOf = s => {
 };
 let typeNameOf = s => s.replace(/[A-Z]/g, (l, i) => `${i?'_':''}${l.toLowerCase()}`);
 let fieldNameOf = s => {
-    if (['then', 'if', 'end', 'open', 'include', 'begin', 'fun', 'initializer'].includes(s))
+    let ocaml_keywords = [ "and", "as", "assert", "asr", "begin", "class", "constraint",
+                           "do", "done", "downto", "else", "end", "exception", "external",
+                           "false", "for", "fun", "function", "functor", "if", "in",
+                           "include", "inherit", "initializer", "land", "lazy", "let",
+                           "lor", "lsl", "lsr", "lxor", "match", "method", "mod", "module",
+                           "mutable", "new", "nonrec", "object", "of", "open", "or",
+                           "private", "rec", "sig", "struct", "then", "to", "true", "try",
+                           "type", "val", "virtual", "when", "while", "with"
+                         ];
+    if (ocaml_keywords.includes(s))
         return s + "'";
     return s;
 };

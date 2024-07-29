@@ -102,7 +102,7 @@ impl Features {
         let mut callbacks = CollectFeatures {
             features: Features::default(),
         };
-        let success = rustc_driver::catch_with_exit_code(|| {
+        let exit_code = rustc_driver::catch_with_exit_code(|| {
             rustc_driver::RunCompiler::new(
                 &rustc_args,
                 &mut CallbacksWrapper {
@@ -111,7 +111,10 @@ impl Features {
                 },
             )
             .run()
-        }) == 0;
+        });
+        if exit_code != 0 {
+            std::process::exit(exit_code);
+        }
         callbacks.features.clone()
     }
 
@@ -132,11 +135,9 @@ impl Features {
             .unwrap();
         let stderr = &std::str::from_utf8(&output.stderr).unwrap();
         serde_json::from_str(stderr).unwrap_or_else(|e| {
-            let stdout = &std::str::from_utf8(&output.stdout).unwrap();
-            panic!(
-                "[detect_forking] could not parse `stdout`, got error `{e}`\n\n### STDERR{}\n\n### STDOUT{}",
-                stderr, stdout
-            );
+            eprintln!("{}", stderr);
+            tracing::error!("rustc emitted an error, aborting hax custom driver.");
+            std::process::exit(1);
         })
     }
 }
