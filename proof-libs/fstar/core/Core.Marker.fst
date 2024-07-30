@@ -8,6 +8,13 @@ instance t_Send_all t: t_Send t = {
   dummy_field = ()
 }
 
+class t_Sync (h: Type) = {
+  dummy_field: unit
+}
+
+instance t_Sync_all (h: Type): t_Sync t = {
+  dummy_field: unit
+}
 
 class t_Sized (h: Type) = {
   dummy_field: unit
