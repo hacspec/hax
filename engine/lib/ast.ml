@@ -138,7 +138,9 @@ functor
       | GType of ty
       | GConst of expr
 
-    and impl_expr =
+    and impl_expr = { kind : impl_expr_kind; goal : trait_goal }
+
+    and impl_expr_kind =
       | Self
       | Concrete of trait_goal
       | LocalBound of { id : string }

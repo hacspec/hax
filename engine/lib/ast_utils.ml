@@ -238,12 +238,12 @@ module Make (F : Features.T) = struct
           in
           super#visit_item' (enabled, s) item
 
-        method! visit_impl_expr s ie =
+        method! visit_impl_expr_kind s ie =
           match ie with
           | LocalBound { id } ->
               LocalBound
                 { id = Hashtbl.find (snd s) id |> Option.value ~default:id }
-          | _ -> super#visit_impl_expr s ie
+          | _ -> super#visit_impl_expr_kind s ie
       end
 
     let drop_bodies =
