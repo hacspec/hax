@@ -275,6 +275,17 @@ mod refinement_types {
     /// Example of a specific constraint on a value
     #[hax_lib::refinement_type(|x| x == 4 || x == 5 || x == 10 || x == 11)]
     pub struct CompressionFactor(u8);
+
+    use hax_lib::int::*;
+    /// Example of a refined int, that derives all common arithmetic operations
+    hax_bounded_integers::refinement_int!(
+        BoundedAbsI16<const B: usize>(i16, 2, |x| B.lift() < int!(32768) && x.lift() >= -B.lift() && x.lift() <= B.lift())
+    );
+
+    #[hax_lib::requires(M.lift() < int!(32768) && M.lift() == N.lift() * int!(2))]
+    fn double_abs_i16<const N: usize, const M: usize>(x: BoundedAbsI16<N>) -> BoundedAbsI16<M> {
+        (x * 2).into_checked()
+    }
 }
 mod nested_refinement_elim {
     use hax_lib::*;

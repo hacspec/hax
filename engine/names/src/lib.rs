@@ -112,6 +112,7 @@ macro_rules! impl_arith {
             fn mul() {}
             fn div() {}
             fn rem() {}
+            fn neg() {}
             fn bit_xor() {}
             fn bit_and() {}
             fn bit_or() {}
@@ -172,6 +173,7 @@ mod hax {
         fn div() {}
         fn mul() {}
         fn rem() {}
+        fn neg() {}
 
         fn le() {}
         fn lt() {}
