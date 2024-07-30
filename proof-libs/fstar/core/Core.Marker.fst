@@ -1,5 +1,14 @@
 module Core.Marker
 
+class t_Send (h: Type) = {
+  dummy_field: unit
+}
+
+instance t_Send_all t: t_Send t = {
+  dummy_field = ()
+}
+
+
 class t_Sized (h: Type) = {
   dummy_field: unit
 }
