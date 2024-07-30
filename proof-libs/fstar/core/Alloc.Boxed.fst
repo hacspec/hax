@@ -1,3 +1,3 @@
 module Alloc.Boxed
 
-type t_Box t Alloc.Alloc.t_Global =  t
+type t_Box t t_Global = t
