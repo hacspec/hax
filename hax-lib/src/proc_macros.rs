@@ -32,7 +32,7 @@ macro_rules! export_quoting_proc_macros {
 export_quoting_proc_macros!(
     fstar(fstar_expr, fstar_before, fstar_after, fstar_replace, hax_backend_fstar, {
         pub use hax_lib_macros::fstar_options as options;
-        pub use hax_lib_macros::fstar_verif_status as verif_status;
+        pub use hax_lib_macros::fstar_verification_status as verification_status;
     })
 
     coq(coq_expr, coq_before, coq_after, coq_replace, hax_backend_coq)

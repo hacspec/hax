@@ -45,7 +45,7 @@ pub fn fstar_options(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenS
 /// `panic_free`.
 #[proc_macro_error]
 #[proc_macro_attribute]
-pub fn fstar_verif_status(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+pub fn fstar_verification_status(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
     let action = format!("{}", parse_macro_input!(attr as Ident));
     match action.as_str() {
         "lax" => {
