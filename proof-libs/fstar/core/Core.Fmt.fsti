@@ -12,7 +12,11 @@ class t_Display t_Self = {
   f_fmt: t_Self -> t_Formatter -> (t_Formatter & Core.Result.t_Result Prims.unit t_Error)
 }
 
-val t_Debug: Type0 -> Type0
+class t_Debug t_Self = {
+  f_dbg_fmt_pre: t_Self -> Core.Fmt.t_Formatter -> bool;
+  f_dbg_fmt_post: t_Self -> Core.Fmt.t_Formatter -> (Core.Fmt.t_Formatter & Core.Result.t_Result Prims.unit Core.Fmt.t_Error) -> bool;
+  f_dbg_fmt: t_Self -> Core.Fmt.t_Formatter -> (Core.Fmt.t_Formatter & Core.Result.t_Result Prims.unit Core.Fmt.t_Error)
+}
 
 val t_Arguments: Type0
 val impl_2__new_v1 (pieces: t_Slice string) (args: t_Slice Core.Fmt.Rt.t_Argument): t_Arguments
