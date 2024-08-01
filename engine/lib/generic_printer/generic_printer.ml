@@ -435,7 +435,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
             let body = print#expr_at Arm_body body in
             let g =
               match guard with
-              | Some (IfLet { lhs; rhs; _ }) ->
+              | Some { guard = IfLet { lhs; rhs; _ }; _ } ->
                   string " if let " ^^ print#pat_at Arm_pat lhs ^^ string " = "
                   ^^ print#expr_at Arm_body rhs
               | None -> string ""

@@ -338,7 +338,8 @@ functor
           witness : F.nontrivial_lhs;
         }
 
-    and guard = IfLet of { lhs : pat; rhs : expr; witness : F.match_guard }
+    and guard = { guard : guard'; span : span }
+    and guard' = IfLet of { lhs : pat; rhs : expr; witness : F.match_guard }
 
     (* OCaml + visitors is not happy with `pat`... hence `arm_pat`... *)
     and arm' = { arm_pat : pat; body : expr; guard : guard option }

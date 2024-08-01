@@ -1097,12 +1097,31 @@ end) : EXPR = struct
     let span = Span.of_thir arm.span in
     let guard =
       Option.map
-        ~f:(fun e ->
-          IfLet
-            {
-              lhs = { p = PConstant { lit = Bool true }; span; typ = TBool };
-              rhs = c_expr e;
-            })
+        ~f:(fun (e : Thir.decorated_for__expr_kind) ->
+          match e.contents with
+          | Let { expr; pat } ->
+              {
+                guard =
+                  IfLet
+                    {
+                      lhs = c_pat pat;
+                      rhs = c_expr expr;
+                      witness = W.match_guard;
+                    };
+                span = Span.of_thir e.span;
+              }
+          | _ ->
+              {
+                guard =
+                  IfLet
+                    {
+                      lhs =
+                        { p = PConstant { lit = Bool true }; span; typ = TBool };
+                      rhs = c_expr e;
+                      witness = W.match_guard;
+                    };
+                span = Span.of_thir e.span;
+              })
         arm.guard
     in
     { arm = { arm_pat; body; guard }; span }

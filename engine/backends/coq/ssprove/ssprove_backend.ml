@@ -41,7 +41,8 @@ module SubtypeToInputLanguage
              and type nontrivial_lhs = Features.Off.nontrivial_lhs
              and type quote = Features.Off.quote
              and type block = Features.Off.block
-             and type dyn = Features.Off.dyn) =
+             and type dyn = Features.Off.dyn
+             and type match_guard = Features.Off.match_guard) =
 struct
   module FB = InputLanguage
 
@@ -570,6 +571,7 @@ module TransformToInputLanguage (* : PHASE *) =
     |> Phases.Direct_and_mut
     |> Phases.Reject.Arbitrary_lhs
     |> Phases.Drop_blocks
+    |> Phases.Drop_match_guards
     (* |> Phases.Reject.Continue *)
     |> Phases.Drop_references
     |> Phases.Trivialize_assign_lhs

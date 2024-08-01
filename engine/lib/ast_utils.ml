@@ -413,7 +413,7 @@ module Make (F : Features.T) = struct
           method! visit_arm' env { arm_pat; body; guard } =
             match guard with
             | None -> shadows ~env [ arm_pat ] body super#visit_expr
-            | Some (IfLet { lhs; rhs; _ }) ->
+            | Some { guard = IfLet { lhs; rhs; _ }; _ } ->
                 shadows ~env [ arm_pat ] rhs super#visit_expr
                 ++ shadows ~env [ arm_pat; lhs ] body super#visit_expr
 
@@ -609,7 +609,7 @@ module Make (F : Features.T) = struct
 
         method! visit_arm' () { arm_pat; body; guard } =
           match guard with
-          | Some (IfLet { lhs; rhs; _ }) ->
+          | Some { guard = IfLet { lhs; rhs; _ }; _ } ->
               let rhs_vars =
                 without_pat_vars (self#visit_expr () rhs) arm_pat
               in
@@ -791,6 +791,9 @@ module Make (F : Features.T) = struct
     match tuple with [ ty ] -> ty | _ -> make_tuple_typ' tuple
 
   let make_wild_pat (typ : ty) (span : span) : pat = { p = PWild; span; typ }
+
+  let make_unguarded_arm (arm_pat : pat) (body : expr) (span : span) : arm =
+    { arm = { arm_pat; body; guard = None }; span }
 
   let make_unit_param (span : span) : param =
     let typ = unit_typ in

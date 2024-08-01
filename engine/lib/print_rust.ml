@@ -281,7 +281,7 @@ module Raw = struct
             ~f:(fun { arm = { arm_pat; body; guard }; _ } ->
               let g =
                 match guard with
-                | Some (IfLet { lhs; rhs; _ }) ->
+                | Some { guard = IfLet { lhs; rhs; _ }; _ } ->
                     !" if let " & ppat lhs & !" = " & pexpr rhs
                 | None -> !""
               in
