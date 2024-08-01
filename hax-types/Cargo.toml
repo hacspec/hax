@@ -9,7 +9,7 @@ repository.workspace = true
 readme.workspace = true
 
 [dependencies]
-clap.workspace = true
+clap = { workspace = true, features = ["env"] }
 hax-frontend-exporter.workspace = true
 hax-frontend-exporter-options.workspace = true
 itertools.workspace = true
