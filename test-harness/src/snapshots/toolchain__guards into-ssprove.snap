@@ -89,8 +89,36 @@ Equations equivalent {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 (t_
     end : both L1 I1 int32.
 Fail Next Obligation.
 
-Equations if_guard {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 (t_Option (t_Result int32 int32))) : both L1 I1 int32 :=
+Equations if_guard {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 (t_Option int32)) : both L1 I1 int32 :=
   if_guard x  :=
+    matchb x with
+    | _ =>
+      matchb matchb x with
+      | Option_Some_case v =>
+        letb v := ret_both ((v) : (int32)) in
+        matchb v >.? (ret_both (0 : int32)) with
+        | true =>
+          Option_Some (solve_lift v)
+        | _ =>
+          Option_None
+        end
+      | _ =>
+        Option_None
+      end with
+      | Option_Some_case x =>
+        letb x := ret_both ((x) : (int32)) in
+        solve_lift x
+      | Option_None_case  =>
+        matchb x with
+        | _ =>
+          solve_lift (ret_both (0 : int32))
+        end
+      end
+    end : both L1 I1 int32.
+Fail Next Obligation.
+
+Equations if_let_guard {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 (t_Option (t_Result int32 int32))) : both L1 I1 int32 :=
+  if_let_guard x  :=
     matchb x with
     | Option_None_case  =>
       solve_lift (ret_both (0 : int32))
@@ -118,6 +146,61 @@ Equations if_guard {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 (t_Op
           solve_lift y
         | _ =>
           solve_lift (ret_both (1 : int32))
+        end
+      end
+    end : both L1 I1 int32.
+Fail Next Obligation.
+
+Equations multiple_guards {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 (t_Option (t_Result int32 int32))) : both L1 I1 int32 :=
+  multiple_guards x  :=
+    matchb x with
+    | Option_None_case  =>
+      solve_lift (ret_both (0 : int32))
+    | _ =>
+      matchb matchb x with
+      | Option_Some_case Result_Ok v =>
+        letb v := ret_both ((((v))) : (t_Result int32 int32)) in
+        matchb Option_Some (v .+ (ret_both (1 : int32))) with
+        | Option_Some_case 1 =>
+          letb 1 := ret_both ((1) : (int32)) in
+          Option_Some (solve_lift (ret_both (0 : int32)))
+        | _ =>
+          Option_None
+        end
+      | _ =>
+        Option_None
+      end with
+      | Option_Some_case x =>
+        letb x := ret_both ((x) : (int32)) in
+        solve_lift x
+      | Option_None_case  =>
+        matchb x with
+        | _ =>
+          matchb matchb x with
+          | Option_Some_case v =>
+            letb v := ret_both ((v) : (t_Result int32 int32)) in
+            matchb v with
+            | Result_Ok_case y =>
+              letb y := ret_both ((y) : (int32)) in
+              Option_Some (solve_lift y)
+            | _ =>
+              Option_None
+            end
+          | _ =>
+            Option_None
+          end with
+          | Option_Some_case x =>
+            letb x := ret_both ((x) : (int32)) in
+            solve_lift x
+          | Option_None_case  =>
+            matchb x with
+            | Option_Some_case Result_Err y =>
+              letb y := ret_both ((((y))) : (t_Result int32 int32)) in
+              solve_lift y
+            | _ =>
+              solve_lift (ret_both (1 : int32))
+            end
+          end
         end
       end
     end : both L1 I1 int32.

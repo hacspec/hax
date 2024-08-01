@@ -418,24 +418,11 @@ end) : EXPR = struct
                 {
                   arms =
                     [
-                      {
-                        arm = { arm_pat = lhs; body; guard = None };
-                        span = lhs_body_span;
-                      };
-                      {
-                        arm =
-                          {
-                            arm_pat =
-                              {
-                                p = PWild;
-                                span = else_block.span;
-                                typ = lhs.typ;
-                              };
-                            body = { else_block with typ = body.typ };
-                            guard = None;
-                          };
-                        span = else_block.span;
-                      };
+                      U.make_arm lhs body lhs_body_span;
+                      U.make_arm
+                        { p = PWild; span = else_block.span; typ = lhs.typ }
+                        { else_block with typ = body.typ }
+                        else_block.span;
                     ];
                   scrutinee = rhs;
                 }
@@ -491,12 +478,10 @@ end) : EXPR = struct
             Option.value ~default:(U.unit_expr span)
             @@ Option.map ~f:c_expr else_opt
           in
-          let arm_then =
-            { arm = { arm_pat; body = then_; guard = None }; span = then_.span }
-          in
+          let arm_then = U.make_arm arm_pat then_ then_.span in
           let arm_else =
             let arm_pat = { arm_pat with p = PWild } in
-            { arm = { arm_pat; body = else_; guard = None }; span = else_.span }
+            U.make_arm arm_pat else_ else_.span
           in
           Match { scrutinee; arms = [ arm_then; arm_else ] }
       | If { cond; else_opt; then'; _ } ->
@@ -1098,30 +1083,25 @@ end) : EXPR = struct
     let guard =
       Option.map
         ~f:(fun (e : Thir.decorated_for__expr_kind) ->
-          match e.contents with
-          | Let { expr; pat } ->
-              {
-                guard =
-                  IfLet
-                    {
-                      lhs = c_pat pat;
-                      rhs = c_expr expr;
-                      witness = W.match_guard;
-                    };
-                span = Span.of_thir e.span;
-              }
-          | _ ->
-              {
-                guard =
-                  IfLet
-                    {
-                      lhs =
-                        { p = PConstant { lit = Bool true }; span; typ = TBool };
-                      rhs = c_expr e;
-                      witness = W.match_guard;
-                    };
-                span = Span.of_thir e.span;
-              })
+          let guard =
+            match e.contents with
+            | Let { expr; pat } ->
+                IfLet
+                  {
+                    lhs = c_pat pat;
+                    rhs = c_expr expr;
+                    witness = W.match_guard;
+                  }
+            | _ ->
+                IfLet
+                  {
+                    lhs =
+                      { p = PConstant { lit = Bool true }; span; typ = TBool };
+                    rhs = c_expr e;
+                    witness = W.match_guard;
+                  }
+          in
+          { guard; span = Span.of_thir e.span })
         arm.guard
     in
     { arm = { arm_pat; body; guard }; span }

@@ -2,6 +2,35 @@
    them using only pattern matchings without guards.
    See #806 and the example in tests/guards. *)
 
+(* Rewrite example: *)
+(*
+    match x {
+        None => 0,
+        Some(v) if let Ok(y) = v => y,
+        Some(Err(y)) => y,
+        _ => 1,
+    }
+*)
+(* Becomes *)
+(*
+    match x {
+        None => 0,
+        _ => match match x {
+            Some(v) => match v {
+                Ok(y) => Some(y),
+                _ => None,
+            },
+            _ => None,
+        } {
+            Some(y) => y,
+            None => match x {
+                Some(Err(y)) => y,
+                _ => 1,
+            },
+        },
+    }
+*)
+
 open! Prelude
 
 module%inlined_contents Make (F : Features.T) = struct
@@ -43,13 +72,13 @@ module%inlined_contents Make (F : Features.T) = struct
       match remaining with
       | [] -> treated
       | { arm = { arm_pat; body; guard = None }; span } :: remaining ->
-          let new_arm : B.arm =
-            {
-              arm = { arm_pat = dpat arm_pat; body = dexpr body; guard = None };
-              span;
-            }
-          in
+          let new_arm : B.arm = UB.make_arm (dpat arm_pat) (dexpr body) span in
           transform_arms scrutinee remaining (new_arm :: treated)
+      (* Matches an arm `arm_pat if let lhs = rhs => body` *)
+      (* And rewrites to `_ => match <option_match> {Some(x) => x, None => match scrutinee {<treated>} }` *)
+      (* where `option_match` is `match scrutinee {arm_pat => <match_guard>, _ => None }` *)
+      (* and `match_guard` is `match rhs {lhs  => Some(body), _ => None}` *)
+      (* and `treated` is the other arms coming after this one (that have already been treated as the arms are reversed ) *)
       | {
           arm =
             {
@@ -103,6 +132,27 @@ module%inlined_contents Make (F : Features.T) = struct
           in
 
           let expr_none = mk_opt_expr None in
+
+          (* This is the nested pattern matching equivalent to the guard *)
+          (* Example: .. if let pat = rhs => body *)
+          (* Rewrites with match rhs { pat => Some(body), _ => None }*)
+          let guard_match : B.expr' =
+            Match
+              {
+                scrutinee = dexpr rhs;
+                arms =
+                  [
+                    UB.make_arm (dpat lhs)
+                      (mk_opt_expr (Some (dexpr body)))
+                      span;
+                    UB.make_arm
+                      (UB.make_wild_pat (dty guard_span lhs.typ) guard_span)
+                      expr_none guard_span;
+                  ];
+              }
+          in
+
+          (* `r` corresponds to `option_match` in the example above *)
           let r : B.expr =
             {
               e =
@@ -111,28 +161,14 @@ module%inlined_contents Make (F : Features.T) = struct
                     scrutinee;
                     arms =
                       [
-                        UB.make_unguarded_arm (dpat arm_pat)
+                        UB.make_arm (dpat arm_pat)
                           {
-                            e =
-                              Match
-                                {
-                                  scrutinee = dexpr rhs;
-                                  arms =
-                                    [
-                                      UB.make_unguarded_arm (dpat lhs)
-                                        (mk_opt_expr (Some (dexpr body)))
-                                        span;
-                                      UB.make_unguarded_arm
-                                        (UB.make_wild_pat
-                                           (dty guard_span lhs.typ) guard_span)
-                                        expr_none guard_span;
-                                    ];
-                                };
+                            e = guard_match;
                             span = guard_span;
                             typ = opt_result_typ;
                           }
                           guard_span;
-                        UB.make_unguarded_arm
+                        UB.make_arm
                           (UB.make_wild_pat
                              (dty guard_span arm_pat.typ)
                              guard_span)
@@ -152,7 +188,7 @@ module%inlined_contents Make (F : Features.T) = struct
                     scrutinee = r;
                     arms =
                       [
-                        UB.make_unguarded_arm
+                        UB.make_arm
                           (mk_opt_pattern
                              (Some
                                 {
@@ -170,7 +206,7 @@ module%inlined_contents Make (F : Features.T) = struct
                                 }))
                           { e = LocalVar id; span; typ = result_typ }
                           guard_span;
-                        UB.make_unguarded_arm (mk_opt_pattern None)
+                        UB.make_arm (mk_opt_pattern None)
                           {
                             e = Match { scrutinee; arms = treated };
                             span = guard_span;
@@ -184,7 +220,7 @@ module%inlined_contents Make (F : Features.T) = struct
             }
           in
           let new_arm : B.arm =
-            UB.make_unguarded_arm
+            UB.make_arm
               (UB.make_wild_pat (dty span arm_pat.typ) span)
               new_body span
           in

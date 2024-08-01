@@ -792,8 +792,9 @@ module Make (F : Features.T) = struct
 
   let make_wild_pat (typ : ty) (span : span) : pat = { p = PWild; span; typ }
 
-  let make_unguarded_arm (arm_pat : pat) (body : expr) (span : span) : arm =
-    { arm = { arm_pat; body; guard = None }; span }
+  let make_arm (arm_pat : pat) (body : expr) ?(guard : guard option = None)
+      (span : span) : arm =
+    { arm = { arm_pat; body; guard }; span }
 
   let make_unit_param (span : span) : param =
     let typ = unit_typ in

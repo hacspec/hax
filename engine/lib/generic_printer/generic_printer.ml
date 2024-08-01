@@ -141,7 +141,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
             | TAssociatedType _ -> string "assoc_type!()"
             | TOpaque _ -> string "opaque_type!()"
             | TApp _ -> super#ty ctx ty
-            | TDyn _ -> string "" (* TODO *)
+            | TDyn _ -> empty (* TODO *)
 
         method! expr' : par_state -> expr' fn =
           fun ctx e ->
@@ -429,18 +429,20 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
         method generic_params : generic_param list fn =
           separate_map comma print#generic_param >> group >> angles
 
+        (*Option.map ~f:(...) guard |> Option.value ~default:empty*)
         method arm' : arm' fn =
           fun { arm_pat; body; guard } ->
             let pat = print#pat_at Arm_pat arm_pat |> group in
             let body = print#expr_at Arm_body body in
-            let g =
-              match guard with
-              | Some { guard = IfLet { lhs; rhs; _ }; _ } ->
+            let guard =
+              Option.map
+                ~f:(fun { guard = IfLet { lhs; rhs; _ }; _ } ->
                   string " if let " ^^ print#pat_at Arm_pat lhs ^^ string " = "
-                  ^^ print#expr_at Arm_body rhs
-              | None -> string ""
+                  ^^ print#expr_at Arm_body rhs)
+                guard
+              |> Option.value ~default:empty
             in
-            pat ^^ g ^^ string " => " ^^ body ^^ comma
+            pat ^^ guard ^^ string " => " ^^ body ^^ comma
       end
   end
 

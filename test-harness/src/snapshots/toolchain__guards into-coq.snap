@@ -64,7 +64,31 @@ Definition equivalent (x : t_Option_t (t_Result_t int32 int32)) : int32 :=
     end
   end.
 
-Definition if_guard (x : t_Option_t (t_Result_t int32 int32)) : int32 :=
+Definition if_guard (x : t_Option_t int32) : int32 :=
+  match x with
+  | _ =>
+    match match x with
+      | Option_Some v =>
+        match v>.?(@repr WORDSIZE32 0) with
+        | true =>
+          Option_Some v
+        | _ =>
+          Option_Nonet_Option_t int32
+        end
+      | _ =>
+        Option_Nonet_Option_t int32
+      end with
+    | Option_Some x =>
+      x
+    | Option_None  =>
+      match x with
+      | _ =>
+        (@repr WORDSIZE32 0)
+      end
+    end
+  end.
+
+Definition if_let_guard (x : t_Option_t (t_Result_t int32 int32)) : int32 :=
   match x with
   | Option_None  =>
     (@repr WORDSIZE32 0)
@@ -88,6 +112,52 @@ Definition if_guard (x : t_Option_t (t_Result_t int32 int32)) : int32 :=
         y
       | _ =>
         (@repr WORDSIZE32 1)
+      end
+    end
+  end.
+
+Definition multiple_guards (x : t_Option_t (t_Result_t int32 int32)) : int32 :=
+  match x with
+  | Option_None  =>
+    (@repr WORDSIZE32 0)
+  | _ =>
+    match match x with
+      | Option_Some Result_Ok v =>
+        match Option_Some (v.+(@repr WORDSIZE32 1)) with
+        | Option_Some (@repr WORDSIZE32 1) =>
+          Option_Some (@repr WORDSIZE32 0)
+        | _ =>
+          Option_Nonet_Option_t int32
+        end
+      | _ =>
+        Option_Nonet_Option_t int32
+      end with
+    | Option_Some x =>
+      x
+    | Option_None  =>
+      match x with
+      | _ =>
+        match match x with
+          | Option_Some v =>
+            match v with
+            | Result_Ok y =>
+              Option_Some y
+            | _ =>
+              Option_Nonet_Option_t int32
+            end
+          | _ =>
+            Option_Nonet_Option_t int32
+          end with
+        | Option_Some x =>
+          x
+        | Option_None  =>
+          match x with
+          | Option_Some Result_Err y =>
+            y
+          | _ =>
+            (@repr WORDSIZE32 1)
+          end
+        end
       end
     end
   end.

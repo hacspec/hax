@@ -279,13 +279,16 @@ module Raw = struct
         let arms =
           List.map
             ~f:(fun { arm = { arm_pat; body; guard }; _ } ->
-              let g =
-                match guard with
-                | Some { guard = IfLet { lhs; rhs; _ }; _ } ->
-                    !" if let " & ppat lhs & !" = " & pexpr rhs
-                | None -> !""
+              let guard : t =
+                guard
+                |> Option.map
+                     ~f:
+                       (fun { guard = IfLet { lhs; rhs; _ }; _ } ->
+                          !" if let " & ppat lhs & !" = " & pexpr rhs
+                         : guard -> t)
+                |> Option.value ~default:!""
               in
-              ppat arm_pat & g & !" => {" & pexpr body & !"}")
+              ppat arm_pat & guard & !" => {" & pexpr body & !"}")
             arms
           |> concat ~sep:!","
         in

@@ -338,7 +338,12 @@ functor
           witness : F.nontrivial_lhs;
         }
 
+    (* A guard is a condition on a pattern like: *)
+    (* match x {.. if guard => .., ..}*)
     and guard = { guard : guard'; span : span }
+
+    (* Only if-let guards are supported for now but other variants like regular if *)
+    (* could be added later (regular if guards are for now desugared as IfLet) *)
     and guard' = IfLet of { lhs : pat; rhs : expr; witness : F.match_guard }
 
     (* OCaml + visitors is not happy with `pat`... hence `arm_pat`... *)
