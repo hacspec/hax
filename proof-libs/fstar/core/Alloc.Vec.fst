@@ -36,4 +36,4 @@ instance update_at_tc_array t n: update_at_tc (t_Vec t ()) (int_t n) = {
 }
 
 let impl_1__is_empty #t (#[(Tactics.exact (`()))]alloc:unit) (v: t_Vec t alloc) =
-  Seq.length v == 0
+  Seq.length v = 0
