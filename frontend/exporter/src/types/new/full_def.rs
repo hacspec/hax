@@ -17,8 +17,6 @@ pub struct FullDef {
     pub parent: Option<DefId>,
     #[value(s.base().tcx.def_span(*self).sinto(s))]
     pub span: Span,
-    #[value(s.base().tcx.def_key(*self).disambiguated_data.sinto(s))]
-    pub path_item: DisambiguatedDefPathItem,
     #[value({
         let state_with_id = State { thir: (), mir: (), owner_id: *self, base: s.base() };
         s.base().tcx.def_kind(*self).sinto(&state_with_id)
