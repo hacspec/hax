@@ -60,10 +60,15 @@ module%inlined_contents Make (F : Features.T) = struct
 
     [%%inline_defs dmutability]
 
-    let maybe_simplified_match scrutinee (arms : B.arm list) =
-      match arms with
+    let maybe_simplified_match scrutinee ?(original_arms : A.arm list = [])
+        (arms : B.arm list) : B.expr' =
+      match (original_arms, arms) with
+      (* If the one wildcard branch was not produced by this phase, keep it *)
+      | ( [ { arm = { arm_pat = { p = PWild; _ }; _ }; _ } ],
+          [ { arm = { arm_pat = { p = PWild; _ }; _ }; _ } ] ) ->
+          Match { scrutinee; arms }
       (* If there is only one wildcard branch we can simplify *)
-      | [ { arm = { body; arm_pat = { p = PWild; _ }; _ }; _ } ] -> body.e
+      | _, [ { arm = { body; arm_pat = { p = PWild; _ }; _ }; _ } ] -> body.e
       (* General case *)
       | _ -> Match { scrutinee; arms }
 
@@ -71,8 +76,8 @@ module%inlined_contents Make (F : Features.T) = struct
       match expr with
       | [%inline_arms "dexpr'.*" - Match] -> auto
       | Match { scrutinee; arms } ->
-          let arms = transform_arms (dexpr scrutinee) (List.rev arms) [] in
-          maybe_simplified_match (dexpr scrutinee) arms
+          let new_arms = transform_arms (dexpr scrutinee) (List.rev arms) [] in
+          maybe_simplified_match ~original_arms:arms (dexpr scrutinee) new_arms
 
     and transform_arms (scrutinee : B.expr) (remaining : A.arm list)
         (treated : B.arm list) : B.arm list =
