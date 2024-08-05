@@ -54,4 +54,30 @@ Definition bar (x : t_E_t) : unit :=
   | E_A  | E_B  =>
     tt
   end.
+
+Definition deep (x : int32 × t_Option_t int32) : int32 :=
+  match x with
+  | '((@repr WORDSIZE32 1) | (@repr WORDSIZE32 2),Option_Some (@repr WORDSIZE32 3) | (@repr WORDSIZE32 4)) =>
+    (@repr WORDSIZE32 0)
+  | '(x,_) =>
+    x
+  end.
+
+Definition equivalent (x : int32 × t_Option_t int32) : int32 :=
+  match x with
+  | '((@repr WORDSIZE32 1),Option_Some (@repr WORDSIZE32 3)) | '((@repr WORDSIZE32 1),Option_Some (@repr WORDSIZE32 4)) | '((@repr WORDSIZE32 2),Option_Some (@repr WORDSIZE32 3)) | '((@repr WORDSIZE32 2),Option_Some (@repr WORDSIZE32 4)) =>
+    (@repr WORDSIZE32 0)
+  | '(x,_) =>
+    x
+  end.
+
+Definition nested (x : t_Option_t int32) : int32 :=
+  match x with
+  | Option_Some (@repr WORDSIZE32 1) | (@repr WORDSIZE32 2) =>
+    (@repr WORDSIZE32 1)
+  | Option_Some x =>
+    x
+  | Option_None  =>
+    (@repr WORDSIZE32 0)
+  end.
 '''

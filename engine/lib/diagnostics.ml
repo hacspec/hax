@@ -41,6 +41,7 @@ module Phase = struct
     | SimplifyQuestionMarks
     | Specialize
     | HoistSideEffects
+    | HoistDisjunctions
     | LocalMutation
     | TrivializeAssignLhs
     | CfIntoMonads

@@ -10,3 +10,24 @@ pub fn bar(x: E) {
         E::A | E::B => (),
     }
 }
+pub fn nested(x: Option<i32>) -> i32 {
+    match x {
+        Some(1 | 2) => 1,
+        Some(x) => x,
+        None => 0,
+    }
+}
+
+pub fn deep(x: (i32, Option<i32>)) -> i32 {
+    match x {
+        (1 | 2, Some(3 | 4)) => 0,
+        (x, _) => x,
+    }
+}
+
+pub fn equivalent(x: (i32, Option<i32>)) -> i32 {
+    match x {
+        (1, Some(3)) | (1, Some(4)) | (2, Some(3)) | (2, Some(4)) => 0,
+        (x, _) => x,
+    }
+}

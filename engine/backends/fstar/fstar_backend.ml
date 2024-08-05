@@ -1677,6 +1677,7 @@ module TransformToInputLanguage =
   |> Phases.Drop_references
   |> Phases.Trivialize_assign_lhs
   |> Side_effect_utils.Hoist
+  |> Phases.Hoist_disjunctive_patterns
   |> Phases.Simplify_match_return
   |> Phases.Drop_needless_returns
   |> Phases.Local_mutation
