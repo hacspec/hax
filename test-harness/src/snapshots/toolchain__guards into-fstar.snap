@@ -62,7 +62,7 @@ let if_guard (x: Core.Option.t_Option i32) : i32 =
       | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
     with
     | Core.Option.Option_Some x -> x
-    | Core.Option.Option_None  -> match x with | _ -> 0l
+    | Core.Option.Option_None  -> 0l
 
 let if_let_guard (x: Core.Option.t_Option (Core.Result.t_Result i32 i32)) : i32 =
   match x with
@@ -96,19 +96,17 @@ let multiple_guards (x: Core.Option.t_Option (Core.Result.t_Result i32 i32)) : i
     with
     | Core.Option.Option_Some x -> x
     | Core.Option.Option_None  ->
-      match x with
-      | _ ->
-        match
-          match x with
-          | Core.Option.Option_Some v ->
-            (match v with
-              | Core.Result.Result_Ok y -> Core.Option.Option_Some y <: Core.Option.t_Option i32
-              | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
-          | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
-        with
-        | Core.Option.Option_Some x -> x
-        | Core.Option.Option_None  ->
-          match x with
-          | Core.Option.Option_Some (Core.Result.Result_Err y) -> y
-          | _ -> 1l
+      match
+        match x with
+        | Core.Option.Option_Some v ->
+          (match v with
+            | Core.Result.Result_Ok y -> Core.Option.Option_Some y <: Core.Option.t_Option i32
+            | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+        | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
+      with
+      | Core.Option.Option_Some x -> x
+      | Core.Option.Option_None  ->
+        match x with
+        | Core.Option.Option_Some (Core.Result.Result_Err y) -> y
+        | _ -> 1l
 '''

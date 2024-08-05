@@ -208,7 +208,18 @@ module%inlined_contents Make (F : Features.T) = struct
                           guard_span;
                         UB.make_arm (mk_opt_pattern None)
                           {
-                            e = Match { scrutinee; arms = treated };
+                            e =
+                              (match treated with
+                              (* If there is only one wildcard branch we can simplify *)
+                              | [
+                               {
+                                 arm = { body; arm_pat = { p = PWild; _ }; _ };
+                                 _;
+                               };
+                              ] ->
+                                  body.e
+                              (* General case *)
+                              | _ -> Match { scrutinee; arms = treated });
                             span = guard_span;
                             typ = result_typ;
                           }

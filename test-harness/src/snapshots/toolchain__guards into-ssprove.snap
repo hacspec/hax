@@ -109,10 +109,7 @@ Equations if_guard {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 (t_Op
         letb x := ret_both ((x) : (int32)) in
         solve_lift x
       | Option_None_case  =>
-        matchb x with
-        | _ =>
-          solve_lift (ret_both (0 : int32))
-        end
+        solve_lift (ret_both (0 : int32))
       end
     end : both L1 I1 int32.
 Fail Next Obligation.
@@ -174,32 +171,29 @@ Equations multiple_guards {L1 : {fset Location}} {I1 : Interface} (x : both L1 I
         letb x := ret_both ((x) : (int32)) in
         solve_lift x
       | Option_None_case  =>
-        matchb x with
-        | _ =>
-          matchb matchb x with
-          | Option_Some_case v =>
-            letb v := ret_both ((v) : (t_Result int32 int32)) in
-            matchb v with
-            | Result_Ok_case y =>
-              letb y := ret_both ((y) : (int32)) in
-              Option_Some (solve_lift y)
-            | _ =>
-              Option_None
-            end
+        matchb matchb x with
+        | Option_Some_case v =>
+          letb v := ret_both ((v) : (t_Result int32 int32)) in
+          matchb v with
+          | Result_Ok_case y =>
+            letb y := ret_both ((y) : (int32)) in
+            Option_Some (solve_lift y)
           | _ =>
             Option_None
-          end with
-          | Option_Some_case x =>
-            letb x := ret_both ((x) : (int32)) in
-            solve_lift x
-          | Option_None_case  =>
-            matchb x with
-            | Option_Some_case Result_Err y =>
-              letb y := ret_both ((((y))) : (t_Result int32 int32)) in
-              solve_lift y
-            | _ =>
-              solve_lift (ret_both (1 : int32))
-            end
+          end
+        | _ =>
+          Option_None
+        end with
+        | Option_Some_case x =>
+          letb x := ret_both ((x) : (int32)) in
+          solve_lift x
+        | Option_None_case  =>
+          matchb x with
+          | Option_Some_case Result_Err y =>
+            letb y := ret_both ((((y))) : (t_Result int32 int32)) in
+            solve_lift y
+          | _ =>
+            solve_lift (ret_both (1 : int32))
           end
         end
       end

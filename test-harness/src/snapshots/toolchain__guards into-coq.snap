@@ -81,10 +81,7 @@ Definition if_guard (x : t_Option_t int32) : int32 :=
     | Option_Some x =>
       x
     | Option_None  =>
-      match x with
-      | _ =>
-        (@repr WORDSIZE32 0)
-      end
+      (@repr WORDSIZE32 0)
     end
   end.
 
@@ -135,28 +132,25 @@ Definition multiple_guards (x : t_Option_t (t_Result_t int32 int32)) : int32 :=
     | Option_Some x =>
       x
     | Option_None  =>
-      match x with
-      | _ =>
-        match match x with
-          | Option_Some v =>
-            match v with
-            | Result_Ok y =>
-              Option_Some y
-            | _ =>
-              Option_Nonet_Option_t int32
-            end
+      match match x with
+        | Option_Some v =>
+          match v with
+          | Result_Ok y =>
+            Option_Some y
           | _ =>
             Option_Nonet_Option_t int32
-          end with
-        | Option_Some x =>
-          x
-        | Option_None  =>
-          match x with
-          | Option_Some Result_Err y =>
-            y
-          | _ =>
-            (@repr WORDSIZE32 1)
           end
+        | _ =>
+          Option_Nonet_Option_t int32
+        end with
+      | Option_Some x =>
+        x
+      | Option_None  =>
+        match x with
+        | Option_Some Result_Err y =>
+          y
+        | _ =>
+          (@repr WORDSIZE32 1)
         end
       end
     end
