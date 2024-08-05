@@ -65,24 +65,21 @@ Definition equivalent (x : t_Option_t (t_Result_t int32 int32)) : int32 :=
   end.
 
 Definition if_guard (x : t_Option_t int32) : int32 :=
-  match x with
-  | _ =>
-    match match x with
-      | Option_Some v =>
-        match v>.?(@repr WORDSIZE32 0) with
-        | true =>
-          Option_Some v
-        | _ =>
-          Option_Nonet_Option_t int32
-        end
+  match match x with
+    | Option_Some v =>
+      match v>.?(@repr WORDSIZE32 0) with
+      | true =>
+        Option_Some v
       | _ =>
         Option_Nonet_Option_t int32
-      end with
-    | Option_Some x =>
-      x
-    | Option_None  =>
-      (@repr WORDSIZE32 0)
-    end
+      end
+    | _ =>
+      Option_Nonet_Option_t int32
+    end with
+  | Option_Some x =>
+    x
+  | Option_None  =>
+    (@repr WORDSIZE32 0)
   end.
 
 Definition if_let_guard (x : t_Option_t (t_Result_t int32 int32)) : int32 :=
