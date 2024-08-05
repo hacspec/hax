@@ -268,6 +268,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "guards"
+version = "0.1.0"
+dependencies = [
+ "hax-lib",
+]
+
+[[package]]
 name = "hacspec-dev"
 version = "0.1.0-beta.1"
 source = "git+https://github.com/hacspec/hacspec.git#bb5b411dced2dfe5c7601674153de4545c783c10"

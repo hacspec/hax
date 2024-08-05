@@ -317,10 +317,27 @@ struct
       witness = S.state_passing_loop span s.witness;
     }
 
-  and darm (a : A.arm) : B.arm = { span = a.span; arm = darm' a.span a.arm }
+  and darm (a : A.arm) : B.arm = { span = a.span; arm = darm' a.arm }
 
-  and darm' (_span : span) (a : A.arm') : B.arm' =
-    { arm_pat = dpat a.arm_pat; body = dexpr a.body }
+  and darm' (a : A.arm') : B.arm' =
+    {
+      arm_pat = dpat a.arm_pat;
+      body = dexpr a.body;
+      guard = Option.map ~f:dguard a.guard;
+    }
+
+  and dguard (a : A.guard) : B.guard =
+    { span = a.span; guard = dguard' a.span a.guard }
+
+  and dguard' (span : span) (guard : A.guard') : B.guard' =
+    match guard with
+    | IfLet { lhs; rhs; witness } ->
+        IfLet
+          {
+            lhs = dpat lhs;
+            rhs = dexpr rhs;
+            witness = S.match_guard span witness;
+          }
 
   and dlhs (span : span) (lhs : A.lhs) : B.lhs =
     match lhs with

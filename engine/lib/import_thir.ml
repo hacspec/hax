@@ -418,20 +418,11 @@ end) : EXPR = struct
                 {
                   arms =
                     [
-                      { arm = { arm_pat = lhs; body }; span = lhs_body_span };
-                      {
-                        arm =
-                          {
-                            arm_pat =
-                              {
-                                p = PWild;
-                                span = else_block.span;
-                                typ = lhs.typ;
-                              };
-                            body = { else_block with typ = body.typ };
-                          };
-                        span = else_block.span;
-                      };
+                      U.make_arm lhs body lhs_body_span;
+                      U.make_arm
+                        { p = PWild; span = else_block.span; typ = lhs.typ }
+                        { else_block with typ = body.typ }
+                        else_block.span;
                     ];
                   scrutinee = rhs;
                 }
@@ -487,12 +478,10 @@ end) : EXPR = struct
             Option.value ~default:(U.unit_expr span)
             @@ Option.map ~f:c_expr else_opt
           in
-          let arm_then =
-            { arm = { arm_pat; body = then_ }; span = then_.span }
-          in
+          let arm_then = U.make_arm arm_pat then_ then_.span in
           let arm_else =
             let arm_pat = { arm_pat with p = PWild } in
-            { arm = { arm_pat; body = else_ }; span = else_.span }
+            U.make_arm arm_pat else_ else_.span
           in
           Match { scrutinee; arms = [ arm_then; arm_else ] }
       | If { cond; else_opt; then'; _ } ->
@@ -1091,7 +1080,31 @@ end) : EXPR = struct
     let arm_pat = c_pat arm.pattern in
     let body = c_expr arm.body in
     let span = Span.of_thir arm.span in
-    { arm = { arm_pat; body }; span }
+    let guard =
+      Option.map
+        ~f:(fun (e : Thir.decorated_for__expr_kind) ->
+          let guard =
+            match e.contents with
+            | Let { expr; pat } ->
+                IfLet
+                  {
+                    lhs = c_pat pat;
+                    rhs = c_expr expr;
+                    witness = W.match_guard;
+                  }
+            | _ ->
+                IfLet
+                  {
+                    lhs =
+                      { p = PConstant { lit = Bool true }; span; typ = TBool };
+                    rhs = c_expr e;
+                    witness = W.match_guard;
+                  }
+          in
+          { guard; span = Span.of_thir e.span })
+        arm.guard
+    in
+    { arm = { arm_pat; body; guard }; span }
 
   and c_param span (param : Thir.param) : param =
     {
@@ -1327,7 +1340,8 @@ let cast_of_enum typ_name generics typ thir_span
             in
             (Exp e, (pat, acc)))
     |> List.map ~f:(Fn.id *** function Exp e -> e | Lit n -> to_expr n)
-    |> List.map ~f:(fun (arm_pat, body) -> { arm = { arm_pat; body }; span })
+    |> List.map ~f:(fun (arm_pat, body) ->
+           { arm = { arm_pat; body; guard = None }; span })
   in
   let scrutinee_var =
     Local_ident.{ name = "x"; id = Local_ident.mk_id Expr (-1) }

@@ -40,7 +40,8 @@ module SubtypeToInputLanguage
              and type for_loop = Features.Off.for_loop
              and type while_loop = Features.Off.while_loop
              and type for_index_loop = Features.Off.for_index_loop
-             and type state_passing_loop = Features.Off.state_passing_loop) =
+             and type state_passing_loop = Features.Off.state_passing_loop
+             and type match_guard = Features.Off.match_guard) =
 struct
   module FB = InputLanguage
 
@@ -1670,6 +1671,7 @@ module TransformToInputLanguage =
   |> Phases.Direct_and_mut
   |> Phases.Reject.Arbitrary_lhs
   |> Phases.Drop_blocks
+  |> Phases.Drop_match_guards
   |> Phases.Drop_references
   |> Phases.Trivialize_assign_lhs
   |> Side_effect_utils.Hoist

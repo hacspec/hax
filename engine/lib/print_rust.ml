@@ -278,8 +278,17 @@ module Raw = struct
     | Match { scrutinee; arms } ->
         let arms =
           List.map
-            ~f:(fun { arm = { arm_pat; body }; _ } ->
-              ppat arm_pat & !" => {" & pexpr body & !"}")
+            ~f:(fun { arm = { arm_pat; body; guard }; _ } ->
+              let guard : t =
+                guard
+                |> Option.map
+                     ~f:
+                       (fun { guard = IfLet { lhs; rhs; _ }; _ } ->
+                          !" if let " & ppat lhs & !" = " & pexpr rhs
+                         : guard -> t)
+                |> Option.value ~default:!""
+              in
+              ppat arm_pat & guard & !" => {" & pexpr body & !"}")
             arms
           |> concat ~sep:!","
         in

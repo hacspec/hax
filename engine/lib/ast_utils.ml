@@ -410,8 +410,12 @@ module Make (F : Features.T) = struct
           inherit [_] Visitors.reduce as super
           inherit [_] Sets.Local_ident.monoid as _m
 
-          method! visit_arm' env { arm_pat; body } =
-            shadows ~env [ arm_pat ] body super#visit_expr
+          method! visit_arm' env { arm_pat; body; guard } =
+            match guard with
+            | None -> shadows ~env [ arm_pat ] body super#visit_expr
+            | Some { guard = IfLet { lhs; rhs; _ }; _ } ->
+                shadows ~env [ arm_pat ] rhs super#visit_expr
+                ++ shadows ~env [ arm_pat; lhs ] body super#visit_expr
 
           method! visit_expr' env e =
             match e with
@@ -466,6 +470,8 @@ module Make (F : Features.T) = struct
               (module Local_ident)
         end
 
+      (* This removes "fake" shadowing introduced by macros.
+         See PR #368 *)
       let disambiguate_local_idents (item : item) =
         let ambiguous = collect_ambiguous_local_idents#visit_item [] item in
         let local_vars = collect_local_idents#visit_item () item |> ref in
@@ -601,8 +607,17 @@ module Make (F : Features.T) = struct
                    (without_vars (self#visit_expr () body) vars))
           | _ -> super#visit_expr' () e
 
-        method! visit_arm' () { arm_pat; body } =
-          without_pat_vars (self#visit_expr () body) arm_pat
+        method! visit_arm' () { arm_pat; body; guard } =
+          match guard with
+          | Some { guard = IfLet { lhs; rhs; _ }; _ } ->
+              let rhs_vars =
+                without_pat_vars (self#visit_expr () rhs) arm_pat
+              in
+              let body_vars =
+                without_pats_vars (self#visit_expr () body) [ arm_pat; lhs ]
+              in
+              Set.union rhs_vars body_vars
+          | None -> without_pat_vars (self#visit_expr () body) arm_pat
       end
 
     class ['s] expr_list_monoid =
@@ -776,6 +791,10 @@ module Make (F : Features.T) = struct
     match tuple with [ ty ] -> ty | _ -> make_tuple_typ' tuple
 
   let make_wild_pat (typ : ty) (span : span) : pat = { p = PWild; span; typ }
+
+  let make_arm (arm_pat : pat) (body : expr) ?(guard : guard option = None)
+      (span : span) : arm =
+    { arm = { arm_pat; body; guard }; span }
 
   let make_unit_param (span : span) : param =
     let typ = unit_typ in
