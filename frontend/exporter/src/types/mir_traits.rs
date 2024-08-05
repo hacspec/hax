@@ -214,15 +214,3 @@ pub fn get_params_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
         num_trait_type_constraints,
     }
 }
-
-/// Compute the parameters information for a definition's parent. See [ParamsInfo].
-pub fn get_parent_params_info<'tcx, S: BaseState<'tcx> + HasOwnerId>(
-    s: &S,
-    def_id: rustc_hir::def_id::DefId,
-) -> Option<ParamsInfo> {
-    s.base()
-        .tcx
-        .generics_of(def_id)
-        .parent
-        .map(|parent_id| get_params_info(s, parent_id))
-}

@@ -834,40 +834,13 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
     }
 }
 
-#[derive_group(Serializers)]
-#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct MirFnSig {
-    pub inputs: Vec<Ty>,
-    pub output: Ty,
-    pub c_variadic: bool,
-    pub safety: Safety,
-    pub abi: Abi,
-}
-
-pub type MirPolyFnSig = Binder<MirFnSig>;
-
-#[cfg(feature = "rustc")]
-impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, MirFnSig> for rustc_middle::ty::FnSig<'tcx> {
-    fn sinto(&self, s: &S) -> MirFnSig {
-        let inputs = self.inputs().sinto(s);
-        let output = self.output().sinto(s);
-        MirFnSig {
-            inputs,
-            output,
-            c_variadic: self.c_variadic,
-            safety: self.safety.sinto(s),
-            abi: self.abi.sinto(s),
-        }
-    }
-}
-
 // TODO: we need this function because sometimes, Rust doesn't infer the proper
 // typeclass instance.
 #[cfg(feature = "rustc")]
 pub(crate) fn poly_fn_sig_to_mir_poly_fn_sig<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     sig: &rustc_middle::ty::PolyFnSig<'tcx>,
     s: &S,
-) -> MirPolyFnSig {
+) -> PolyFnSig {
     sig.sinto(s)
 }
 
@@ -921,7 +894,7 @@ pub enum AggregateKind {
         let trait_refs = solve_item_traits(s, param_env, *rust_id, generics, Some(predicates));
         AggregateKind::Closure(def_id, parent_generics.sinto(s), trait_refs, sig)
     })]
-    Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, MirPolyFnSig),
+    Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, PolyFnSig),
     Coroutine(DefId, Vec<GenericArg>),
     CoroutineClosure(DefId, Vec<GenericArg>),
     RawPtr(Ty, Mutability),
