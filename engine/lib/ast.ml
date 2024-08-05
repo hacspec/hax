@@ -443,7 +443,14 @@ functor
       ii_attrs : attrs;
     }
 
-    and trait_item' = TIType of impl_ident list | TIFn of ty
+    and trait_item' =
+      | TIType of impl_ident list
+      | TIFn of ty
+      | TIDefault of {
+          params : param list;
+          body : expr;
+          witness : F.trait_item_default;
+        }
 
     and trait_item = {
       (* TODO: why do I need to prefix by `ti_` here? I guess visitors fail or something *)

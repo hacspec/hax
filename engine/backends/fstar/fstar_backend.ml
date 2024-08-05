@@ -41,7 +41,8 @@ module SubtypeToInputLanguage
              and type while_loop = Features.Off.while_loop
              and type for_index_loop = Features.Off.for_index_loop
              and type state_passing_loop = Features.Off.state_passing_loop
-             and type match_guard = Features.Off.match_guard) =
+             and type match_guard = Features.Off.match_guard
+             and type trait_item_default = Features.Off.trait_item_default) =
 struct
   module FB = InputLanguage
 
@@ -1332,6 +1333,7 @@ struct
                            (generics |> List.map ~f:FStarBinder.to_binder, ty)
                     in
                     [ (F.id name, None, [], ty) ]
+                | _ -> .
               in
               List.map ~f:Fn.id
                 (* ~f:(fun (n, q, a, ty) -> (n, q, a, F.mk_e_app bds ty)) *)
@@ -1686,6 +1688,7 @@ module TransformToInputLanguage =
   |> Phases.Traits_specs
   |> Phases.Simplify_hoisting
   |> Phases.Newtype_as_refinement
+  |> Phases.Reject.Trait_item_default
   |> SubtypeToInputLanguage
   |> Identity
   ]

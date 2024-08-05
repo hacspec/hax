@@ -62,6 +62,7 @@ module Make (F : Features.T) =
                       ]
                   | TIFn _ -> [ (* REFINEMENTS FOR CONSTANTS? *) ]
                   | TIType _ -> [ (* TODO REFINEMENTS FOR TYPES *) ]
+                  | TIDefault _ -> [ (* TODO REFINEMENTS FOR DEFAULT ITEMS *) ]
                 in
                 let items =
                   List.concat_map

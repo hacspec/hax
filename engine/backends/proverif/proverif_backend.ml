@@ -78,6 +78,7 @@ struct
         let block = reject
         let dyn = reject
         let match_guard = reject
+        let trait_item_default = reject
         let metadata = Phase_reject.make_metadata (NotInBackendLang ProVerif)
       end)
 
