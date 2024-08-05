@@ -240,6 +240,8 @@ impl FullDef {
     pub fn kind(&self) -> &FullDefKind {
         &self.kind
     }
+
+    /// Returns the generics and predicates for definitions that have those.
     pub fn generics(&self) -> Option<(&TyGenerics, &GenericPredicates)> {
         use FullDefKind::*;
         match &self.kind {
@@ -308,13 +310,15 @@ impl FullDef {
     }
 }
 
+/// This processes `Clause`s a little bit before calling `sinto` on them: we normalize trait
+/// clauses, and we sort them first. Both of these are hacks required by charon for now.
 #[cfg(feature = "rustc")]
 fn process_generic_predicates<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     predicates: &[(ty::Clause<'tcx>, rustc_span::Span)],
 ) -> Vec<(Predicate, Span)> {
     // Normalize trait predicates because charon needs it.
-    // TODO: stop doing that.
+    // TODO: clarify normalization in charon (https://github.com/AeneasVerif/charon/issues/300).
     let mut predicates: Vec<_> = predicates
         .iter()
         .map(|(clause, span)| {
@@ -329,7 +333,7 @@ fn process_generic_predicates<'tcx, S: UnderOwnerState<'tcx>>(
         })
         .collect();
     // Sort trait predicates first because charon needs it.
-    // TODO: stop doing that.
+    // TODO: cleanup trait solving in charon (https://github.com/AeneasVerif/charon/issues/301).
     predicates.sort_by_key(|(pred, _)| {
         !matches!(
             &pred.kind().skip_binder(),
@@ -339,6 +343,8 @@ fn process_generic_predicates<'tcx, S: UnderOwnerState<'tcx>>(
     predicates.sinto(s)
 }
 
+/// Gets the `predicates_defined_on` the given `DefId` and processes them with
+/// `process_generic_predicates`.
 #[cfg(feature = "rustc")]
 fn get_generic_predicates<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
@@ -353,6 +359,8 @@ fn get_generic_predicates<'tcx, S: UnderOwnerState<'tcx>>(
     }
 }
 
+/// Gets the predicates defined on the given associated type and processes them with
+/// `process_generic_predicates`.
 #[cfg(feature = "rustc")]
 fn get_item_predicates<'tcx, S: UnderOwnerState<'tcx>>(s: &S, def_id: RDefId) -> GenericPredicates {
     let tcx = s.base().tcx;
