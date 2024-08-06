@@ -60,6 +60,7 @@ module RejectNotEC (FA : Features.T) = struct
         let quote = reject
         let dyn = reject
         let match_guard = reject
+        let trait_item_default = reject
         let construct_base _ _ = Features.On.construct_base
         let for_index_loop _ _ = Features.On.for_index_loop
 

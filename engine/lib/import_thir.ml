@@ -226,6 +226,7 @@ module type EXPR = sig
   val c_generic_value : Thir.span -> Thir.generic_arg -> generic_value
   val c_generics : Thir.generics -> generics
   val c_param : Thir.span -> Thir.param -> param
+  val c_fn_params : Thir.span -> Thir.param list -> param list
   val c_trait_item' : Thir.trait_item -> Thir.trait_item_kind -> trait_item'
   val c_trait_ref : Thir.span -> Thir.trait_ref -> trait_goal
   val c_impl_expr : Thir.span -> Thir.impl_expr -> impl_expr
@@ -1114,6 +1115,10 @@ end) : EXPR = struct
       attrs = c_attrs param.attributes;
     }
 
+  let c_fn_params span (params : Thir.param list) : param list =
+    if List.is_empty params then [ U.make_unit_param (Span.of_thir span) ]
+    else List.map ~f:(c_param span) params
+
   let c_generic_param (param : Thir.generic_param) : generic_param =
     let ident =
       let kind =
@@ -1184,11 +1189,11 @@ end) : EXPR = struct
       trait_item' =
     let span = super.span in
     match item with
-    | Const (_, Some _) ->
-        unimplemented [ span ]
-          "TODO: traits: no support for defaults in traits for now"
+    | Const (_, Some default) ->
+        TIDefault
+          { params = []; body = c_expr default; witness = W.trait_item_default }
     | Const (ty, None) -> TIFn (c_ty span ty)
-    | ProvidedFn (sg, _) | RequiredFn (sg, _) ->
+    | RequiredFn (sg, _) ->
         let (Thir.{ inputs; output; _ } : Thir.fn_decl) = sg.decl in
         let output =
           match output with
@@ -1200,6 +1205,13 @@ end) : EXPR = struct
           else List.map ~f:(c_ty span) inputs
         in
         TIFn (TArrow (inputs, output))
+    | ProvidedFn (_, { params; body; _ }) ->
+        TIDefault
+          {
+            params = c_fn_params span params;
+            body = c_expr body;
+            witness = W.trait_item_default;
+          }
     | Type (bounds, None) ->
         let bounds =
           List.filter_map ~f:(c_clause span) bounds
@@ -1413,10 +1425,6 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                ty = c_ty item.span ty;
              }
     | Fn (generics, { body; params; _ }) ->
-        let params =
-          if List.is_empty params then [ U.make_unit_param span ]
-          else List.map ~f:(c_param item.span) params
-        in
         mk
         @@ Fn
              {
@@ -1424,7 +1432,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                  Concrete_ident.of_def_id Value (Option.value_exn item.def_id);
                generics = c_generics generics;
                body = c_body body;
-               params;
+               params = c_fn_params item.span params;
              }
     | Enum (variants, generics, repr) ->
         let def_id = Option.value_exn item.def_id in

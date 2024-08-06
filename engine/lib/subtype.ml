@@ -409,6 +409,13 @@ struct
       match ti with
       | TIType idents -> TIType (List.map ~f:(dimpl_ident span) idents)
       | TIFn t -> TIFn (dty span t)
+      | TIDefault { params; body; witness } ->
+          TIDefault
+            {
+              params = List.map ~f:(dparam span) params;
+              body = dexpr body;
+              witness = S.trait_item_default span witness;
+            }
 
     and dtrait_item (ti : A.trait_item) : B.trait_item =
       {
