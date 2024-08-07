@@ -133,44 +133,62 @@ fn expect_fn_arg_var_pat(arg: &FnArg) -> Option<(String, syn::Type)> {
     }
 }
 
+pub(crate) enum NotFutureExpr {
+    BadNumberOfArgs,
+    ArgNotIdent,
+}
+
+/// `expect_future_expr(e)` tries to match the pattern
+/// `future(<syn::Ident>)` in expression `e`
+pub(crate) fn expect_future_expr(e: &Expr) -> Option<std::result::Result<Ident, NotFutureExpr>> {
+    if let Expr::Call(call) = e {
+        if call.func.is_ident("future") {
+            return Some(match call.args.iter().collect::<Vec<_>>().as_slice() {
+                [arg] => arg.expect_ident().ok_or(NotFutureExpr::ArgNotIdent),
+                _ => Err(NotFutureExpr::BadNumberOfArgs),
+            });
+        }
+    }
+    None
+}
+
 /// Rewrites `future(x)` nodes in an expression when (1) `x` is an
 /// ident and (2) the ident `x` is contained in the HashSet.
 struct RewriteFuture(HashSet<String>);
 impl VisitMut for RewriteFuture {
     fn visit_expr_mut(&mut self, e: &mut Expr) {
         syn::visit_mut::visit_expr_mut(self, e);
-        if let Expr::Call(call) = e {
-            if call.func.is_ident("future") {
-                let help_message = || match self.0.iter().next() {
+        let error = match expect_future_expr(e) {
+            Some(Ok(arg)) => {
+                let arg = format!("{}", arg);
+                if self.0.contains(&arg) {
+                    let arg = create_future_ident(&arg);
+                    *e = parse_quote! {#arg};
+                    return;
+                }
+                Some(format!("Cannot find an input `{arg}` of type `&mut _`. In the context, `future` can be called on the following inputs: {:?}.", self.0))
+            }
+            Some(Err(error_kind)) => {
+                let message = match error_kind {
+                    NotFutureExpr::BadNumberOfArgs => {
+                        "`future` can only be called with one argument: a `&mut` input name"
+                    }
+                    NotFutureExpr::ArgNotIdent => {
+                        "`future` can only be called with an `&mut` input name"
+                    }
+                };
+                let help_message = match self.0.iter().next() {
                     None => format!(" In the context, there is no `&mut` input."),
                     Some(var) => {
                         format!(" For example, in the context you can write `future({var})`.")
                     }
                 };
-                let error = match call.args.iter().collect::<Vec<_>>().as_slice() {
-                    [arg] => {
-                        if let Some(arg) = arg.expect_ident() {
-                            let arg = format!("{}", arg);
-                            if self.0.contains(&arg) {
-                                let arg = create_future_ident(&arg);
-                                *e = parse_quote! {#arg};
-                                return;
-                            }
-                            format!("Cannot find an input `{arg}` of type `&mut _`. In the context, `future` can be called on the following inputs: {:?}.", self.0)
-                        } else {
-                            format!(
-                                "`future` can only be called with an `&mut` input name.{}",
-                                help_message()
-                            )
-                        }
-                    }
-                    _ => format!(
-                        "`future` can only be called with one argument: a `&mut` input name.{}",
-                        help_message()
-                    ),
-                };
-                *e = parse_quote! {::std::compile_error!(#error)};
+                Some(format!("{message}.{}", help_message))
             }
+            None => None,
+        };
+        if let Some(error) = error {
+            *e = parse_quote! {::std::compile_error!(#error)};
         }
     }
 }
