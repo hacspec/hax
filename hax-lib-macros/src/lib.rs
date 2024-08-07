@@ -657,70 +657,69 @@ macro_rules! make_quoting_item_proc_macro {
 }
 
 macro_rules! make_quoting_proc_macro {
-    ($backend:ident($expr_name:ident, $before_name:ident, $after_name:ident, $replace_name:ident, $cfg_name:ident)) => {
-        #[doc = concat!("Embed ", stringify!($backend), " expression inside a Rust expression. This macro takes only one argument: some raw ", stringify!($backend), " code as a string literal.")]
-        ///
+    ($backend:ident) => {
+        paste::paste! {
+            #[doc = concat!("Embed ", stringify!($backend), " expression inside a Rust expression. This macro takes only one argument: some raw ", stringify!($backend), " code as a string literal.")]
+            ///
 
-        /// While it is possible to directly write raw backend code,
-        /// sometimes it can be inconvenient. For example, referencing
-        /// Rust names can be a bit cumbersome: for example, the name
-        /// `my_crate::my_module::CONSTANT` might be translated
-        /// differently in a backend (e.g. in the F* backend, it will
-        /// probably be `My_crate.My_module.v_CONSTANT`).
-        ///
+            /// While it is possible to directly write raw backend code,
+            /// sometimes it can be inconvenient. For example, referencing
+            /// Rust names can be a bit cumbersome: for example, the name
+            /// `my_crate::my_module::CONSTANT` might be translated
+            /// differently in a backend (e.g. in the F* backend, it will
+            /// probably be `My_crate.My_module.v_CONSTANT`).
+            ///
 
-        /// To facilitate this, you can write Rust names directly,
-        /// using the prefix `$`: `f $my_crate::my_module__CONSTANT + 3`
-        /// will be replaced with `f My_crate.My_module.v_CONSTANT + 3`
-        /// in the F* backend for instance.
+            /// To facilitate this, you can write Rust names directly,
+            /// using the prefix `$`: `f $my_crate::my_module__CONSTANT + 3`
+            /// will be replaced with `f My_crate.My_module.v_CONSTANT + 3`
+            /// in the F* backend for instance.
 
-        /// If you want to refer to the Rust constructor
-        /// `Enum::Variant`, you should write `$$Enum::Variant` (note
-        /// the double dollar).
+            /// If you want to refer to the Rust constructor
+            /// `Enum::Variant`, you should write `$$Enum::Variant` (note
+            /// the double dollar).
 
-        /// If the name refers to something polymorphic, you need to
-        /// signal it by adding _any_ type informations,
-        /// e.g. `${my_module::function<()>}`. The curly braces are
-        /// needed for such more complex expressions.
+            /// If the name refers to something polymorphic, you need to
+            /// signal it by adding _any_ type informations,
+            /// e.g. `${my_module::function<()>}`. The curly braces are
+            /// needed for such more complex expressions.
 
-        /// You can also write Rust patterns with the `$?{SYNTAX}`
-        /// syntax, where `SYNTAX` is a Rust pattern. The syntax
-        /// `${EXPR}` also allows any Rust expressions
-        /// `EXPR` to be embedded.
+            /// You can also write Rust patterns with the `$?{SYNTAX}`
+            /// syntax, where `SYNTAX` is a Rust pattern. The syntax
+            /// `${EXPR}` also allows any Rust expressions
+            /// `EXPR` to be embedded.
 
-        /// Types can be refered to with the syntax `$:{TYPE}`.
-        #[proc_macro]
-        pub fn $expr_name(payload: pm::TokenStream) -> pm::TokenStream {
-            let ts: TokenStream = quote::expression(true, payload).into();
-            quote!{
-                #[cfg($cfg_name)]
-                {
-                    #ts
-                }
-            }.into()
-        }
+            /// Types can be refered to with the syntax `$:{TYPE}`.
+            #[proc_macro]
+            pub fn [<$backend _expr>](payload: pm::TokenStream) -> pm::TokenStream {
+                let ts: TokenStream = quote::expression(true, payload).into();
+                quote!{
+                    #[cfg([< hax_backend_ $backend >])]
+                    {
+                        #ts
+                    }
+                }.into()
+            }
 
-        make_quoting_item_proc_macro!($backend, $before_name, ItemQuotePosition::Before, $cfg_name);
-        make_quoting_item_proc_macro!($backend, $after_name, ItemQuotePosition::After, $cfg_name);
+            make_quoting_item_proc_macro!($backend, [< $backend _before >], ItemQuotePosition::Before, [< hax_backend_ $backend >]);
+            make_quoting_item_proc_macro!($backend, [< $backend _after >], ItemQuotePosition::After, [< hax_backend_ $backend >]);
 
-        #[doc = concat!("Replaces a Rust expression with some verbatim ", stringify!($backend)," code.")]
-        #[proc_macro_error]
-        #[proc_macro_attribute]
-        pub fn $replace_name(payload: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
-            let item: TokenStream = item.into();
-            let attr = AttrPayload::ItemStatus(ItemStatus::Included { late_skip: true });
-            $before_name(payload, quote!{#attr #item}.into())
+            #[doc = concat!("Replaces a Rust expression with some verbatim ", stringify!($backend)," code.")]
+            #[proc_macro_error]
+            #[proc_macro_attribute]
+            pub fn [< $backend _replace >](payload: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+                let item: TokenStream = item.into();
+                let attr = AttrPayload::ItemStatus(ItemStatus::Included { late_skip: true });
+                [< $backend _before >](payload, quote!{#attr #item}.into())
+            }
         }
     };
-    ($backend:ident $payload:tt $($others:tt)+) => {
-        make_quoting_proc_macro!($backend$payload);
-        make_quoting_proc_macro!($($others)+);
+    ($($backend:ident)*) => {
+        $(make_quoting_proc_macro!($backend);)*
     }
 }
 
-make_quoting_proc_macro!(fstar(fstar_expr, fstar_before, fstar_after, fstar_replace, hax_backend_fstar)
-                         coq(coq_expr, coq_before, coq_after, coq_replace, hax_backend_coq)
-                         proverif(proverif_expr, proverif_before, proverif_after, proverif_replace, hax_backend_proverif));
+make_quoting_proc_macro!(fstar coq proverif);
 
 /// Marks a newtype `struct RefinedT(T);` as a refinement type. The
 /// struct should have exactly one unnamed private field.

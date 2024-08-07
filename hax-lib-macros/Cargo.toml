@@ -23,6 +23,7 @@ syn = { version = "2.0", features = [
     "parsing",
 ] }
 hax-lib-macros-types.workspace = true
+paste = "1.0.15"
 
 [dev-dependencies]
 hax-lib = { path = "../hax-lib" }
