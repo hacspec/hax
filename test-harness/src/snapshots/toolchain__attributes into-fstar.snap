@@ -125,13 +125,13 @@ open FStar.Mul
 class t_Operation (v_Self: Type0) = {
   f_double_pre:x: u8
     -> pred:
-      bool
+      Type0
         { (Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) <=
           (127 <: Hax_lib.Int.t_Int) ==>
           pred };
   f_double_post:x: u8 -> result: u8
     -> pred:
-      bool
+      Type0
         { pred ==>
           ((Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) * (2 <: Hax_lib.Int.t_Int)
             <:
@@ -141,8 +141,8 @@ class t_Operation (v_Self: Type0) = {
 }
 
 class t_TraitWithRequiresAndEnsures (v_Self: Type0) = {
-  f_method_pre:self___: v_Self -> x: u8 -> pred: bool{x <. 100uy ==> pred};
-  f_method_post:self___: v_Self -> x: u8 -> r: u8 -> pred: bool{pred ==> r >. 88uy};
+  f_method_pre:self___: v_Self -> x: u8 -> pred: Type0{x <. 100uy ==> pred};
+  f_method_post:self___: v_Self -> x: u8 -> r: u8 -> pred: Type0{pred ==> r >. 88uy};
   f_method:x0: v_Self -> x1: u8
     -> Prims.Pure u8 (f_method_pre x0 x1) (fun result -> f_method_post x0 x1 result)
 }

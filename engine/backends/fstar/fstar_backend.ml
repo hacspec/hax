@@ -693,9 +693,13 @@ struct
       let ident = F.id ("x" ^ Int.to_string nth) in
       { kind = Explicit; ident; typ = pty span typ }
 
-    let of_named_typ span name typ : t =
+    (** Makes an F* binder from a name and an F* type *)
+    let of_named_fstar_typ span name typ : t =
       let ident = plocal_ident name in
-      { kind = Explicit; ident; typ = pty span typ }
+      { kind = Explicit; ident; typ }
+
+    (** Makes an F* binder from a name and an hax type *)
+    let of_named_typ span name = pty span >> of_named_fstar_typ span name
 
     let to_pattern (x : t) : F.AST.pattern =
       let subpat =
@@ -1167,52 +1171,11 @@ struct
                              [],
                              F.mk_e_app base args ))
                          bounds
-                | TIFn (TArrow (inputs, output))
+                | TIFn ty
                   when Attrs.find_unique_attr i.ti_attrs ~f:(function
                          | TraitMethodNoPrePost -> Some ()
                          | _ -> None)
-                       |> Option.is_none ->
-                    let inputs =
-                      List.mapi ~f:(FStarBinder.of_typ e.span) inputs
-                    in
-                    let inputs = generics @ inputs in
-                    let output = pty e.span output in
-                    let ty_pre_post =
-                      let inputs =
-                        List.map ~f:FStarBinder.to_qualified_term inputs
-                      in
-                      let add_pre n = n ^ "_pre" in
-                      let pre_name_str =
-                        U.Concrete_ident_view.to_definition_name
-                          (Concrete_ident.Create.map_last ~f:add_pre i.ti_ident)
-                      in
-                      let pre =
-                        F.mk_app (F.term_of_lid [ pre_name_str ]) inputs
-                      in
-                      let result = F.term_of_lid [ "result" ] in
-                      let add_post n = n ^ "_post" in
-                      let post_name_str =
-                        U.Concrete_ident_view.to_definition_name
-                          (Concrete_ident.Create.map_last ~f:add_post i.ti_ident)
-                      in
-                      let post =
-                        F.mk_app
-                          (F.term_of_lid [ post_name_str ])
-                          (inputs @ [ (result, Nothing) ])
-                      in
-                      let post =
-                        F.mk_e_abs
-                          [ F.pat @@ F.AST.PatVar (F.id "result", None, []) ]
-                          post
-                      in
-                      F.mk_e_app
-                        (F.term_of_lid [ "Prims"; "Pure" ])
-                        [ output; pre; post ]
-                    in
-                    let inputs = List.map ~f:FStarBinder.to_binder inputs in
-                    let ty = F.term @@ F.AST.Product (inputs, ty_pre_post) in
-                    [ (F.id name, None, [], ty) ]
-                | TIFn ty ->
+                       |> Option.is_some ->
                     let weakest =
                       let h kind =
                         Attrs.associated_fns kind i.ti_attrs
@@ -1257,7 +1220,6 @@ struct
                              let expr = renamer#visit_expr () expr in
                              (generics, params, expr, is_req))
                     in
-                    let ty = pty e.span ty in
                     let ty =
                       let variables =
                         let idents_visitor = U.Reducers.collect_local_idents in
@@ -1302,10 +1264,9 @@ struct
                            ~f:(fun (generics, binders, (expr : expr), is_req) ->
                              let result_ident = mk_fresh "pred" in
                              let result_bd =
-                               FStarBinder.of_named_typ expr.span result_ident
-                                 expr.typ
+                               FStarBinder.of_named_fstar_typ expr.span
+                                 result_ident F.type0_term
                              in
-                             let typ = pty expr.span expr.typ in
                              let expr = U.make_lets !bindings expr in
                              let expr = pexpr expr in
                              let result =
@@ -1324,7 +1285,15 @@ struct
                                ( List.map ~f:FStarBinder.to_binder binders,
                                  result )
                              |> F.term)
-                      |> Option.value ~default:ty
+                      |> Option.value_or_thunk ~default:(fun _ ->
+                             let ty = pty e.span ty in
+                             match ty.tm with
+                             | F.AST.Product (inputs, _) ->
+                                 {
+                                   ty with
+                                   tm = F.AST.Product (inputs, F.type0_term);
+                                 }
+                             | _ -> F.type0_term)
                     in
 
                     let ty =
@@ -1332,6 +1301,53 @@ struct
                       @@ F.AST.Product
                            (generics |> List.map ~f:FStarBinder.to_binder, ty)
                     in
+                    [ (F.id name, None, [], ty) ]
+                | TIFn (TArrow (inputs, output)) ->
+                    let inputs =
+                      List.mapi ~f:(FStarBinder.of_typ e.span) inputs
+                    in
+                    let inputs = generics @ inputs in
+                    let output = pty e.span output in
+                    let ty_pre_post =
+                      let inputs =
+                        List.map ~f:FStarBinder.to_qualified_term inputs
+                      in
+                      let add_pre n = n ^ "_pre" in
+                      let pre_name_str =
+                        U.Concrete_ident_view.to_definition_name
+                          (Concrete_ident.Create.map_last ~f:add_pre i.ti_ident)
+                      in
+                      let pre =
+                        F.mk_app (F.term_of_lid [ pre_name_str ]) inputs
+                      in
+                      let result = F.term_of_lid [ "result" ] in
+                      let add_post n = n ^ "_post" in
+                      let post_name_str =
+                        U.Concrete_ident_view.to_definition_name
+                          (Concrete_ident.Create.map_last ~f:add_post i.ti_ident)
+                      in
+                      let post =
+                        F.mk_app
+                          (F.term_of_lid [ post_name_str ])
+                          (inputs @ [ (result, Nothing) ])
+                      in
+                      let post =
+                        F.mk_e_abs
+                          [ F.pat @@ F.AST.PatVar (F.id "result", None, []) ]
+                          post
+                      in
+                      F.mk_e_app
+                        (F.term_of_lid [ "Prims"; "Pure" ])
+                        [ output; pre; post ]
+                    in
+                    let inputs = List.map ~f:FStarBinder.to_binder inputs in
+                    let ty = F.term @@ F.AST.Product (inputs, ty_pre_post) in
+                    [ (F.id name, None, [], ty) ]
+                | TIFn non_arrow_ty ->
+                    let inputs = generics in
+                    let output = pty e.span non_arrow_ty in
+                    let inputs = List.map ~f:FStarBinder.to_binder inputs in
+                    let ty = F.term @@ F.AST.Product (inputs, output) in
                     [ (F.id name, None, [], ty) ]
                 | _ -> .
               in
