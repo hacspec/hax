@@ -691,7 +691,7 @@ macro_rules! make_quoting_proc_macro {
         /// Types can be refered to with the syntax `$:{TYPE}`.
         #[proc_macro]
         pub fn $expr_name(payload: pm::TokenStream) -> pm::TokenStream {
-            let ts: TokenStream = quote::expression(payload).into();
+            let ts: TokenStream = quote::expression(true, payload).into();
             quote!{
                 #[cfg($cfg_name)]
                 {

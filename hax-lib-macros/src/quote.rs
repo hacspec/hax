@@ -134,7 +134,7 @@ pub(super) fn item(
     payload: pm::TokenStream,
     item: pm::TokenStream,
 ) -> pm::TokenStream {
-    let expr = TokenStream::from(expression(payload));
+    let expr = TokenStream::from(expression(true, payload));
     let item = TokenStream::from(item);
     let uid = ItemUid::fresh();
     let uid_attr = AttrPayload::Uid(uid.clone());
@@ -162,7 +162,7 @@ pub(super) fn item(
     .into()
 }
 
-pub(super) fn expression(payload: pm::TokenStream) -> pm::TokenStream {
+pub(super) fn expression(force_unit: bool, payload: pm::TokenStream) -> pm::TokenStream {
     let (mut backend_code, antiquotes) = {
         let payload = parse_macro_input!(payload as LitStr).value();
         if payload.find(SPLIT_MARK).is_some() {
@@ -187,5 +187,11 @@ pub(super) fn expression(payload: pm::TokenStream) -> pm::TokenStream {
         };
     }
 
-    quote! {::hax_lib::inline(#[allow(unused_variables)]{#backend_code})}.into()
+    let function = if force_unit {
+        quote! {inline}
+    } else {
+        quote! {inline_unsafe}
+    };
+
+    quote! {::hax_lib::#function(#[allow(unused_variables)]{#backend_code})}.into()
 }
