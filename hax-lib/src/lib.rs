@@ -143,7 +143,6 @@ pub fn inline(_: &str) {}
 
 /// Similar to `inline`, but allows for any type. Do not use directly.
 #[doc(hidden)]
-#[cfg(hax)]
 pub fn inline_unsafe<T>(_: &str) -> T {
     unreachable!()
 }
