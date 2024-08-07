@@ -47,8 +47,8 @@ let impl__Bar__inherent_impl_generics (#v_T: Type0) (v_N: usize) (x: t_Array v_T
   ()
 
 class t_Foo (v_Self: Type0) = {
-  f_const_add_pre:v_N: usize -> v_Self -> bool;
-  f_const_add_post:v_N: usize -> v_Self -> usize -> bool;
+  f_const_add_pre:v_N: usize -> v_Self -> Type0;
+  f_const_add_post:v_N: usize -> v_Self -> usize -> Type0;
   f_const_add:v_N: usize -> x0: v_Self
     -> Prims.Pure usize (f_const_add_pre v_N x0) (fun result -> f_const_add_post v_N x0 result)
 }
