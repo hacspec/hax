@@ -33,7 +33,7 @@ class t_Copy (h: Type) = {
   dummy_copy_field: unit
 }
 
-(** we consider everything to be copyable *)
+(** we consider everything to be clonable *)
 instance t_Copy_all t: t_Copy t = {
   dummy_copy_field = ()
 }
