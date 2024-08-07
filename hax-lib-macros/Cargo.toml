@@ -19,6 +19,7 @@ quote.workspace = true
 syn = { version = "2.0", features = [
     "full",
     "visit-mut",
+    "visit",
     "extra-traits",
     "parsing",
 ] }

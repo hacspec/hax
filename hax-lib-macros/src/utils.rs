@@ -17,6 +17,10 @@ impl ToTokens for HaxQuantifiers {
             fn exists<T, F: Fn(T) -> bool>(f: F) -> bool {
                 true
             }
+
+            use ::hax_lib::fstar_unsafe_expr as fstar;
+            use ::hax_lib::coq_unsafe_expr as coq;
+            use ::hax_lib::proverif_unsafe_expr as proverif;
         }
         .to_tokens(tokens)
     }

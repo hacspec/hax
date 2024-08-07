@@ -162,6 +162,21 @@ pub(super) fn item(
     .into()
 }
 
+pub(super) fn detect_future_node_in_expression(e: &syn::Expr) -> bool {
+    struct Visitor(bool);
+    use syn::visit::*;
+    impl<'a> Visit<'a> for Visitor {
+        fn visit_expr(&mut self, e: &'a Expr) {
+            if let Some(Ok(_)) = crate::utils::expect_future_expr(e) {
+                self.0 = true;
+            }
+        }
+    }
+    let mut visitor = Visitor(false);
+    visitor.visit_expr(e);
+    visitor.0
+}
+
 pub(super) fn expression(force_unit: bool, payload: pm::TokenStream) -> pm::TokenStream {
     let (mut backend_code, antiquotes) = {
         let payload = parse_macro_input!(payload as LitStr).value();
@@ -178,8 +193,18 @@ pub(super) fn expression(force_unit: bool, payload: pm::TokenStream) -> pm::Toke
             .collect();
         (quote! {#string}, antiquotes)
     };
-
     for user in antiquotes.iter().rev() {
+        if !force_unit
+            && syn::parse(user.ts.clone())
+                .as_ref()
+                .map(detect_future_node_in_expression)
+                .unwrap_or(false)
+        {
+            let ts: proc_macro2::TokenStream = user.ts.clone().into();
+            return quote! {
+                ::std::compile_error!(concat!("The `future` operator cannot be used within a quote. Hint: move `", stringify!(#ts), "` to a let binding and use the binding name instead."))
+            }.into();
+        }
         let kind = &user.kind;
         backend_code = quote! {
             let #kind = #user;
@@ -193,5 +218,8 @@ pub(super) fn expression(force_unit: bool, payload: pm::TokenStream) -> pm::Toke
         quote! {inline_unsafe}
     };
 
-    quote! {::hax_lib::#function(#[allow(unused_variables)]{#backend_code})}.into()
+    quote! {
+        ::hax_lib::#function(#[allow(unused_variables)]{#backend_code})
+    }
+    .into()
 }

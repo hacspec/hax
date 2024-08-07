@@ -285,3 +285,18 @@ mod nested_refinement_elim {
         (DummyRefinement::new(x.get())).get()
     }
 }
+
+/// `ensures` and `requires` with inlined code (issue #825)
+mod inlined_code_ensures_requires {
+    #[hax_lib::requires(fstar!("forall i. FStar.Seq.index $v i <. ${254u8}"))]
+    #[hax_lib::ensures(|()| {
+        let future_v = future(v);
+        fstar!("forall i. FStar.Seq.index ${future_v} i >. ${0u8}")
+    })]
+    fn increment_array(v: &mut [u8; 4]) {
+        v[0] += 1;
+        v[1] += 1;
+        v[2] += 1;
+        v[3] += 1;
+    }
+}
