@@ -556,6 +556,7 @@ version = "0.1.0-pre.1"
 dependencies = [
  "hax-lib",
  "hax-lib-macros-types",
+ "paste",
  "proc-macro-error",
  "proc-macro2",
  "quote",

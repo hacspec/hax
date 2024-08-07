@@ -80,7 +80,8 @@ module%inlined_contents Make (F : Features.T) = struct
     and quote_of_expr' span (expr : A.expr') =
       match expr with
       | App { f = { e = GlobalVar f; _ }; args = [ payload ]; _ }
-        when Global_ident.eq_name Hax_lib__inline f ->
+        when Global_ident.eq_name Hax_lib__inline f
+             || Global_ident.eq_name Hax_lib__inline_unsafe f ->
           let bindings, str = dexpr payload |> UB.collect_let_bindings in
           let str =
             match

@@ -26,6 +26,42 @@ exit = 0
 diagnostics = []
 
 [stdout.files]
+"Attributes.Inlined_code_ensures_requires.fst" = '''
+module Attributes.Inlined_code_ensures_requires
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let increment_array (v: t_Array u8 (sz 4))
+    : Prims.Pure (t_Array u8 (sz 4))
+      (requires forall i. FStar.Seq.index v i <. 254uy)
+      (ensures
+        fun temp_0_ ->
+          let vv_future, ():(t_Array u8 (sz 4) & Prims.unit) = temp_0_ in
+          let future_v:t_Array u8 (sz 4) = vv_future in
+          forall i. FStar.Seq.index future_v i >. 0uy) =
+  let v:t_Array u8 (sz 4) =
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize v
+      (sz 0)
+      ((v.[ sz 0 ] <: u8) +! 1uy <: u8)
+  in
+  let v:t_Array u8 (sz 4) =
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize v
+      (sz 1)
+      ((v.[ sz 1 ] <: u8) +! 1uy <: u8)
+  in
+  let v:t_Array u8 (sz 4) =
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize v
+      (sz 2)
+      ((v.[ sz 2 ] <: u8) +! 1uy <: u8)
+  in
+  let v:t_Array u8 (sz 4) =
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize v
+      (sz 3)
+      ((v.[ sz 3 ] <: u8) +! 1uy <: u8)
+  in
+  v
+'''
 "Attributes.Int_model.fst" = '''
 module Attributes.Int_model
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"

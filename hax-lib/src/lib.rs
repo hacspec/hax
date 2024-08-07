@@ -141,6 +141,12 @@ pub fn implies(lhs: bool, rhs: impl Fn() -> bool) -> bool {
 #[doc(hidden)]
 pub fn inline(_: &str) {}
 
+/// Similar to `inline`, but allows for any type. Do not use directly.
+#[doc(hidden)]
+pub fn inline_unsafe<T>(_: &str) -> T {
+    unreachable!()
+}
+
 /// A type that implements `Refinement` should be a newtype for a
 /// type `T`. The field holding the value of type `T` should be
 /// private, and `Refinement` should be the only interface to the
