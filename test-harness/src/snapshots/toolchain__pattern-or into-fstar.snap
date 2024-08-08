@@ -43,4 +43,34 @@ let t_E_cast_to_repr (x: t_E) : isize =
   | E_B  -> isz 1
 
 let bar (x: t_E) : Prims.unit = match x with | E_A  | E_B  -> () <: Prims.unit
+
+let deep (x: (i32 & Core.Option.t_Option i32)) : i32 =
+  match x with
+  | 1l, Core.Option.Option_Some 3l
+  | 1l, Core.Option.Option_Some 4l
+  | 2l, Core.Option.Option_Some 3l
+  | 2l, Core.Option.Option_Some 4l -> 0l
+  | x, _ -> x
+
+let deep_capture (x: Core.Result.t_Result (i32 & i32) (i32 & i32)) : i32 =
+  match x with
+  | Core.Result.Result_Ok (1l, x)
+  | Core.Result.Result_Ok (2l, x)
+  | Core.Result.Result_Err (3l, x)
+  | Core.Result.Result_Err (4l, x) -> x
+  | Core.Result.Result_Ok (x, _) | Core.Result.Result_Err (x, _) -> x
+
+let equivalent (x: (i32 & Core.Option.t_Option i32)) : i32 =
+  match x with
+  | 1l, Core.Option.Option_Some 3l
+  | 1l, Core.Option.Option_Some 4l
+  | 2l, Core.Option.Option_Some 3l
+  | 2l, Core.Option.Option_Some 4l -> 0l
+  | x, _ -> x
+
+let nested (x: Core.Option.t_Option i32) : i32 =
+  match x with
+  | Core.Option.Option_Some 1l | Core.Option.Option_Some 2l -> 1l
+  | Core.Option.Option_Some x -> x
+  | Core.Option.Option_None  -> 0l
 '''
