@@ -95,7 +95,10 @@ mod module {
         impl<MirKind: IsMirKind + Clone + 'static> IsBody for MirBody<MirKind> {
             fn body<'tcx, S: UnderOwnerState<'tcx>>(did: RLocalDefId, s: &S) -> Self {
                 let (thir, _) = get_thir(did, s);
-                let mir = Rc::new(s.base().tcx.mir_built(did).borrow().clone());
+                let mir = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    Rc::new(s.base().tcx.mir_built(did).borrow().clone())
+                }))
+                .s_unwrap(s);
                 mir.sinto(&with_owner_id(s.base(), thir, mir.clone(), did.to_def_id()))
             }
         }
