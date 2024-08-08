@@ -19,7 +19,7 @@ module Make (F : Features.T) =
 
       let hoist_disjunctions =
         object (self)
-          inherit [_] Visitors.map as super
+          inherit [_] Visitors.map
 
           method! visit_pat () p =
             let return_pat p' = { p = p'; span = p.span; typ = p.typ } in
@@ -107,8 +107,7 @@ module Make (F : Features.T) =
                       { subpat = Some (pat, as_pat); mut; mode; typ; var })
             | PDeref { subpat; witness } ->
                 treat_subpat subpat (fun subpat -> PDeref { subpat; witness })
-            | PWild | PConstant _ | PBinding { subpat = None; _ } ->
-                super#visit_pat () p
+            | PWild | PConstant _ | PBinding { subpat = None; _ } -> p
         end
 
       let ditems = List.map ~f:(hoist_disjunctions#visit_item ())
