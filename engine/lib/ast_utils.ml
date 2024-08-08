@@ -798,6 +798,18 @@ module Make (F : Features.T) = struct
       (span : span) : arm =
     { arm = { arm_pat; body; guard }; span }
 
+  let make_if_guard (cond : expr) (span : span) (witness : F.match_guard) =
+    {
+      guard =
+        IfLet
+          {
+            lhs = { p = PConstant { lit = Bool true }; span; typ = TBool };
+            rhs = cond;
+            witness;
+          };
+      span;
+    }
+
   let make_unit_param (span : span) : param =
     let typ = unit_typ in
     let pat = make_wild_pat typ span in
@@ -906,6 +918,45 @@ module Make (F : Features.T) = struct
     call' ?impl
       (`Concrete (Concrete_ident.of_name kind f_name))
       args span ret_typ
+
+  let make_opt_type (result_type : ty) : ty =
+    TApp
+      {
+        ident = Global_ident.of_name Type Core__option__Option;
+        args = [ GType result_type ];
+      }
+
+  let make_opt_expr (value : expr option) (guard_span : span) (result_type : ty)
+      : expr =
+    let (name : Concrete_ident.name), args =
+      match value with
+      | Some v -> (Core__option__Option__Some, [ v ])
+      | None -> (Core__option__Option__None, [])
+    in
+    call_Constructor name false args guard_span (make_opt_type result_type)
+
+  let make_opt_pattern (binding : pat option) (guard_span : span)
+      (result_type : ty) : pat =
+    let (name : Concrete_ident.name), (args : field_pat list) =
+      match binding with
+      | Some b ->
+          ( Core__option__Option__Some,
+            [ { field = `TupleField (0, 1); pat = b } ] )
+      | None -> (Core__option__Option__None, [])
+    in
+
+    {
+      p =
+        PConstruct
+          {
+            name = Global_ident.of_name (Constructor { is_struct = false }) name;
+            args;
+            is_record = false;
+            is_struct = false;
+          };
+      span = guard_span;
+      typ = make_opt_type result_type;
+    }
 
   let make_closure (params : pat list) (body : expr) (span : span) : expr =
     let params =

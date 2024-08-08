@@ -209,7 +209,14 @@ module Raw = struct
           & concat ~sep:!", " (List.map ~f:(fun { pat; _ } -> ppat pat) args)
           & !")"
     | POr { subpats } -> concat ~sep:!" | " (List.map ~f:ppat subpats)
-    | PArray { args } -> !"[" & concat ~sep:!"," (List.map ~f:ppat args) & !"]"
+    | PArray { args; slice = true; suffix } ->
+        !"["
+        & concat ~sep:!"," (List.map ~f:ppat args)
+        & !",..,"
+        & concat ~sep:!"," (List.map ~f:ppat suffix)
+        & !"]"
+    | PArray { args; _ } ->
+        !"[" & concat ~sep:!"," (List.map ~f:ppat args) & !"]"
     | PDeref { subpat; _ } -> !"&" & ppat subpat
     | PConstant { lit } -> pliteral e.span lit
     | PBinding { mut; mode; var; typ = _; subpat } ->

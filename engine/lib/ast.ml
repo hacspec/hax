@@ -203,7 +203,7 @@ functor
       (* An or-pattern, e.g. `p | q`.
          Invariant: `List.length subpats >= 2`. *)
       | POr of { subpats : pat list }
-      | PArray of { args : pat list }
+      | PArray of { args : pat list; slice : bool; suffix : pat list }
       | PDeref of { subpat : pat; witness : F.reference }
       | PConstant of { lit : literal }
       | PBinding of {

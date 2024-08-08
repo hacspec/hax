@@ -101,49 +101,10 @@ module%inlined_contents Make (F : Features.T) = struct
           span;
         }
         :: remaining ->
-          let result_typ = dty span body.typ in
-          let opt_result_typ : B.ty =
-            TApp
-              {
-                ident = Global_ident.of_name Type Core__option__Option;
-                args = [ GType result_typ ];
-              }
-          in
-          let mk_opt_expr (value : B.expr option) : B.expr =
-            let (name : Concrete_ident.name), args =
-              match value with
-              | Some v -> (Core__option__Option__Some, [ v ])
-              | None -> (Core__option__Option__None, [])
-            in
-            UB.call_Constructor name false args guard_span opt_result_typ
-          in
+          let result_type = dty span body.typ in
+          let opt_result_type = UB.make_opt_type result_type in
 
-          let mk_opt_pattern (binding : B.pat option) : B.pat =
-            let (name : Concrete_ident.name), (args : B.field_pat list) =
-              match binding with
-              | Some b ->
-                  ( Core__option__Option__Some,
-                    [ { field = `TupleField (0, 1); pat = b } ] )
-              | None -> (Core__option__Option__None, [])
-            in
-            {
-              p =
-                PConstruct
-                  {
-                    name =
-                      Global_ident.of_name
-                        (Constructor { is_struct = false })
-                        name;
-                    args;
-                    is_record = false;
-                    is_struct = false;
-                  };
-              span = guard_span;
-              typ = opt_result_typ;
-            }
-          in
-
-          let expr_none = mk_opt_expr None in
+          let expr_none = UB.make_opt_expr None guard_span result_type in
 
           (* This is the nested pattern matching equivalent to the guard *)
           (* Example: .. if let pat = rhs => body *)
@@ -155,7 +116,9 @@ module%inlined_contents Make (F : Features.T) = struct
                 arms =
                   [
                     UB.make_arm (dpat lhs)
-                      (mk_opt_expr (Some (dexpr body)))
+                      (UB.make_opt_expr
+                         (Some (dexpr body))
+                         guard_span result_type)
                       span;
                     UB.make_arm
                       (UB.make_wild_pat (dty guard_span lhs.typ) guard_span)
@@ -177,7 +140,7 @@ module%inlined_contents Make (F : Features.T) = struct
                           {
                             e = guard_match;
                             span = guard_span;
-                            typ = opt_result_typ;
+                            typ = opt_result_type;
                           }
                           guard_span;
                         UB.make_arm
@@ -188,7 +151,7 @@ module%inlined_contents Make (F : Features.T) = struct
                       ];
                   };
               span = guard_span;
-              typ = opt_result_typ;
+              typ = opt_result_type;
             }
           in
           let id = UB.fresh_local_ident_in [] "x" in
@@ -201,7 +164,7 @@ module%inlined_contents Make (F : Features.T) = struct
                     arms =
                       [
                         UB.make_arm
-                          (mk_opt_pattern
+                          (UB.make_opt_pattern
                              (Some
                                 {
                                   p =
@@ -210,25 +173,27 @@ module%inlined_contents Make (F : Features.T) = struct
                                         mut = Immutable;
                                         mode = ByValue;
                                         var = id;
-                                        typ = result_typ;
+                                        typ = result_type;
                                         subpat = None;
                                       };
                                   span;
-                                  typ = result_typ;
-                                }))
-                          { e = LocalVar id; span; typ = result_typ }
+                                  typ = result_type;
+                                })
+                             guard_span result_type)
+                          { e = LocalVar id; span; typ = result_type }
                           guard_span;
-                        UB.make_arm (mk_opt_pattern None)
+                        UB.make_arm
+                          (UB.make_opt_pattern None guard_span result_type)
                           {
                             e = maybe_simplified_match scrutinee treated;
                             span = guard_span;
-                            typ = result_typ;
+                            typ = result_type;
                           }
                           guard_span;
                       ];
                   };
               span = guard_span;
-              typ = result_typ;
+              typ = result_type;
             }
           in
           let new_arm : B.arm =

@@ -358,10 +358,14 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
                     ^^ print#pat_at Pat_PBinding_subpat subpat
                     |> wrap_parens
                 | None -> p)
-            | PArray { args } ->
-                separate_map (break 0)
-                  (print#pat_at Pat_PArray >> terminate comma >> group)
-                  args
+            | PArray { args; slice; suffix } ->
+                let args = List.map ~f:(print#pat_at Pat_PArray) args in
+                let pats =
+                  if slice then
+                    args @ List.map ~f:(print#pat_at Pat_PArray) suffix
+                  else args
+                in
+                separate_map (break 0) (terminate comma >> group) pats
                 |> iblock brackets
             | PDeref { subpat; _ } ->
                 ampersand ^^ print#pat_at Pat_PDeref subpat
