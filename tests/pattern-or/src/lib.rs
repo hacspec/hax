@@ -31,3 +31,10 @@ pub fn equivalent(x: (i32, Option<i32>)) -> i32 {
         (x, _) => x,
     }
 }
+
+pub fn deep_capture(x: Result<(i32, i32), (i32, i32)>) -> i32 {
+    match x {
+        Ok((1 | 2, x)) | Err((3 | 4, x)) => x,
+        Ok((x, _)) | Err((x, _)) => x,
+    }
+}

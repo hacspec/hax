@@ -63,6 +63,14 @@ Definition deep (x : int32 × t_Option_t int32) : int32 :=
     x
   end.
 
+Definition deep_capture (x : t_Result_t (int32 × int32) (int32 × int32)) : int32 :=
+  match x with
+  | Result_Ok ((@repr WORDSIZE32 1) | (@repr WORDSIZE32 2),x) | Result_Err ((@repr WORDSIZE32 3) | (@repr WORDSIZE32 4),x) =>
+    x
+  | Result_Ok (x,_) | Result_Err (x,_) =>
+    x
+  end.
+
 Definition equivalent (x : int32 × t_Option_t int32) : int32 :=
   match x with
   | '((@repr WORDSIZE32 1),Option_Some (@repr WORDSIZE32 3)) | '((@repr WORDSIZE32 1),Option_Some (@repr WORDSIZE32 4)) | '((@repr WORDSIZE32 2),Option_Some (@repr WORDSIZE32 3)) | '((@repr WORDSIZE32 2),Option_Some (@repr WORDSIZE32 4)) =>
