@@ -12,7 +12,7 @@ class into_iterator (v_Self: Type0) = {
 
 let t_IntoIterator = into_iterator
 
-unfold instance impl t {| iterator_t: Core.Iter.Traits.Iterator.iterator t |} {| Core.Iter.Traits.Iterator.iterator t |}: into_iterator t = {
+unfold instance impl t {| iterator_t: Core.Iter.Traits.Iterator.iterator t |}: into_iterator t = {
   f_IntoIter = t;
   f_into_iter = id;
   f_IntoIter_Iterator = iterator_t;
