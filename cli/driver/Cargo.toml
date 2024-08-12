@@ -29,3 +29,4 @@ itertools.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
+guerrilla = "0.1.4"

@@ -450,6 +450,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "guerrilla"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a7ac0c539e590efeeed11427232e6523f9fbcc4130d911ec4e6135c45cca802"
+dependencies = [
+ "libc",
+ "winapi",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -481,6 +491,7 @@ version = "0.1.0-pre.1"
 dependencies = [
  "clap",
  "colored",
+ "guerrilla",
  "hax-frontend-exporter",
  "hax-frontend-exporter-options",
  "hax-lib-macros-types",

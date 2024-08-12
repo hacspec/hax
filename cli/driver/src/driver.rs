@@ -76,6 +76,15 @@ fn setup_logging() {
 const HAX_VANILLA_RUSTC: &str = "HAX_VANILLA_RUSTC";
 
 fn main() {
+    guerrilla::patch1(
+        rustc_data_structures::steal::Steal::steal,
+        |this: &rustc_data_structures::steal::Steal<rustc_middle::mir::Body>| {
+            eprintln!("######## STEALING #########");
+            println!("######## STEALING #########");
+            this.borrow().clone()
+        }
+    );
+    
     setup_logging();
 
     let options: hax_types::cli_options::Options =
