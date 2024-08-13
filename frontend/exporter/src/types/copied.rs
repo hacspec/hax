@@ -10,7 +10,8 @@ impl std::hash::Hash for DefId {
         let DefId {
             krate,
             path,
-            index: _, // intentionally discarding index
+            index: _,    // intentionally discarding index
+            is_local: _, // intentionally discarding is_local
         } = self;
         krate.hash(state);
         path.hash(state);
@@ -31,6 +32,7 @@ impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
                 rustc_hir::def_id::CrateNum::as_u32(self.krate),
                 rustc_hir::def_id::DefIndex::as_u32(self.index),
             ),
+            is_local: self.is_local(),
         }
     }
 }

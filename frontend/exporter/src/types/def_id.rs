@@ -46,6 +46,7 @@ pub struct DefId {
     /// valid only for one Rustc sesssion. Please do not rely on those
     /// indexes unless you cannot do otherwise.
     pub index: (u32, u32),
+    pub is_local: bool,
 }
 
 /// Reflects [`rustc_hir::definitions::DefPathData`]
