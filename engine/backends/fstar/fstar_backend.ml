@@ -1463,15 +1463,13 @@ struct
           |> Option.value_or_thunk ~default:(fun _ ->
                  Error.assertion_failure e.span
                    "Malformed `Quote` item: could not find a ItemQuote payload")
-          |> Option.value ~default:Types.{ intf = true; impl = false }
+          |> Option.value ~default:Types.{ intf = false; impl = true }
         in
-        (if fstar_opts.intf then
-         [ `VerbatimIntf (pquote e.span quote, `Newline) ]
-        else [])
-        @
-        if fstar_opts.impl then
-          [ `VerbatimImpl (pquote e.span quote, `Newline) ]
-        else []
+        let payload = (pquote e.span quote, `Newline) in
+        if ctx.interface_mode then
+          (if fstar_opts.intf then [ `VerbatimIntf payload ] else [])
+          @ if fstar_opts.impl then [ `VerbatimImpl payload ] else []
+        else [ `VerbatimImpl payload ]
     | HaxError details ->
         [
           `Comment
@@ -1628,8 +1626,12 @@ let string_of_items ~signature_only ~mod_name (bo : BackendOptions.t) m items :
     in
     match lines with [] -> "" | _ -> header ^ String.concat ~sep:"\n" lines
   in
-  ( string_for (function `Impl s -> Some s | _ -> None),
-    string_for (function `Intf s -> Some s | _ -> None) )
+  let replace =
+    String.substr_replace_all ~pattern:"_hax_panic_freedom_admit_"
+      ~with_:"admit () (* Panic freedom *)"
+  in
+  ( string_for (function `Impl s -> Some (replace s) | _ -> None),
+    string_for (function `Intf s -> Some (replace s) | _ -> None) )
 
 let fstar_headers (bo : BackendOptions.t) =
   let opts =

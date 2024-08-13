@@ -68,14 +68,14 @@ pub fn fstar_verification_status(attr: pm::TokenStream, item: pm::TokenStream) -
                 **last = syn::Stmt::Expr(
                     parse_quote! {
                         {let result = #last;
-                        ::hax_lib::fstar!("admit()");
+                        ::hax_lib::fstar!("_hax_panic_freedom_admit_");
                          result}
                     },
                     None,
                 );
             } else {
                 item.block.stmts.push(syn::Stmt::Expr(
-                    parse_quote! {::hax_lib::fstar!("admit()")},
+                    parse_quote! {::hax_lib::fstar!("_hax_panic_freedom_admit_")},
                     None,
                 ));
             }
