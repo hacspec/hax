@@ -20,6 +20,9 @@ pub struct FullDef {
     #[value(s.base().tcx.get_attrs_unchecked(*self).sinto(s))]
     /// Attributes on this definition, if applicable.
     pub attributes: Vec<Attribute>,
+    #[value(get_def_visibility(s, *self))]
+    /// Visibility of the definition, for definitions where this makes sense.
+    pub visibility: Option<bool>,
     #[value({
         let state_with_id = State { thir: (), mir: (), owner_id: *self, base: s.base() };
         s.base().tcx.def_kind(*self).sinto(&state_with_id)
@@ -314,6 +317,47 @@ impl FullDef {
             } => Some((generics, predicates)),
             _ => None,
         }
+    }
+}
+
+/// Gets the visibility (`pub` or not) of the definition. Returns `None` for defs that don't have a
+/// meaningful visibility.
+#[cfg(feature = "rustc")]
+fn get_def_visibility<'tcx, S: BaseState<'tcx>>(s: &S, def_id: RDefId) -> Option<bool> {
+    use rustc_hir::def::DefKind::*;
+    let tcx = s.base().tcx;
+    match tcx.def_kind(def_id) {
+        AssocConst
+        | AssocFn
+        | Const
+        | Enum
+        | Field
+        | Fn
+        | ForeignTy
+        | Macro { .. }
+        | Mod
+        | Static { .. }
+        | Struct
+        | Trait
+        | TraitAlias
+        | TyAlias { .. }
+        | Union
+        | Use
+        | Variant => Some(tcx.visibility(def_id).is_public()),
+        // These kinds don't have visibility modifiers (which would cause `visibility` to panic).
+        AnonConst
+        | AssocTy
+        | Closure
+        | ConstParam
+        | Ctor { .. }
+        | ExternCrate
+        | ForeignMod
+        | GlobalAsm
+        | Impl { .. }
+        | InlineConst
+        | LifetimeParam
+        | OpaqueTy
+        | TyParam => None,
     }
 }
 
