@@ -20,6 +20,9 @@ fn swap_and_mut_req_ens(x: &mut u32, y: &mut u32) -> u32 {
     *x + *y
 }
 
+#[hax_lib::ensures(|_| true)]
+fn issue_844(_x: &mut u8) {}
+
 #[hax::lemma]
 fn add3_lemma(x: u32) -> Proof<{ x <= 10 || x >= u32_max / 3 || add3(x, x, x) == x * 3 }> {}
 

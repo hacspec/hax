@@ -226,9 +226,9 @@ pub fn make_fn_decoration(
             let mut sig = signature;
             sig.ident = format_ident!("{}", kind.to_string());
             if let FnDecorationKind::Ensures { ret_binder } = &kind {
-                let output = match sig.output {
-                    syn::ReturnType::Default => quote! {()},
-                    syn::ReturnType::Type(_, t) => quote! {#t},
+                let output_typ = match sig.output {
+                    syn::ReturnType::Default => parse_quote! {()},
+                    syn::ReturnType::Type(_, t) => t,
                 };
                 let mut_ref_inputs = mut_ref_inputs
                     .iter()
@@ -240,15 +240,25 @@ pub fn make_fn_decoration(
                 let mut rewrite_future =
                     RewriteFuture(mut_ref_inputs.clone().map(|x| x.0).collect());
                 rewrite_future.visit_expr_mut(&mut phi);
-                let (pats, tys): (Vec<_>, Vec<_>) = mut_ref_inputs
+                let (mut pats, mut tys): (Vec<_>, Vec<_>) = mut_ref_inputs
                     .map(|(name, ty)| {
                         (
                             create_future_ident(&name).to_token_stream(),
                             ty.to_token_stream(),
                         )
                     })
-                    .chain([(ret_binder.to_token_stream(), output)].into_iter())
                     .unzip();
+
+                let is_output_typ_unit = if let syn::Type::Tuple(tuple) = &*output_typ {
+                    tuple.elems.is_empty()
+                } else {
+                    false
+                };
+
+                if !is_output_typ_unit || pats.is_empty() {
+                    pats.push(ret_binder.to_token_stream());
+                    tys.push(quote! {#output_typ});
+                }
 
                 sig.inputs
                     .push(syn::parse_quote! {(#(#pats),*): (#(#tys),*)});
