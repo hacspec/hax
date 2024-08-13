@@ -17,6 +17,9 @@ pub struct FullDef {
     pub parent: Option<DefId>,
     #[value(s.base().tcx.def_span(*self).sinto(s))]
     pub span: Span,
+    #[value(s.base().tcx.get_attrs_unchecked(*self).sinto(s))]
+    /// Attributes on this definition, if applicable.
+    pub attributes: Vec<Attribute>,
     #[value({
         let state_with_id = State { thir: (), mir: (), owner_id: *self, base: s.base() };
         s.base().tcx.def_kind(*self).sinto(&state_with_id)
