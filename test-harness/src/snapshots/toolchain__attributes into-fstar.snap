@@ -26,6 +26,28 @@ exit = 0
 diagnostics = []
 
 [stdout.files]
+"Attributes.Ensures_on_arity_zero_fns.fst" = '''
+module Attributes.Ensures_on_arity_zero_fns
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let basically_a_constant (_: Prims.unit)
+    : Prims.Pure u8
+      (requires true)
+      (ensures
+        fun x ->
+          let x:u8 = x in
+          x >. 100uy) = 127uy
+
+let doing_nothing (_: Prims.unit)
+    : Prims.Pure Prims.unit
+      (requires true)
+      (ensures
+        fun v__x ->
+          let v__x:Prims.unit = v__x in
+          true) = ()
+'''
 "Attributes.Inlined_code_ensures_requires.fst" = '''
 module Attributes.Inlined_code_ensures_requires
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
@@ -36,8 +58,8 @@ let increment_array (v: t_Array u8 (sz 4))
     : Prims.Pure (t_Array u8 (sz 4))
       (requires forall i. FStar.Seq.index v i <. 254uy)
       (ensures
-        fun temp_0_ ->
-          let vv_future, ():(t_Array u8 (sz 4) & Prims.unit) = temp_0_ in
+        fun vv_future ->
+          let vv_future:t_Array u8 (sz 4) = vv_future in
           let future_v:t_Array u8 (sz 4) = vv_future in
           forall i. FStar.Seq.index future_v i >. 0uy) =
   let v:t_Array u8 (sz 4) =
@@ -367,6 +389,14 @@ let add3_lemma (x: u32)
   ()
 
 let inlined_code__V: u8 = 12uy
+
+let issue_844_ (v__x: u8)
+    : Prims.Pure u8
+      Prims.l_True
+      (ensures
+        fun v__x_future ->
+          let v__x_future:u8 = v__x_future in
+          true) = v__x
 
 let u32_max: u32 = 90000ul
 
