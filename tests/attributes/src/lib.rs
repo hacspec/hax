@@ -300,3 +300,26 @@ mod inlined_code_ensures_requires {
         v[3] += 1;
     }
 }
+
+mod verifcation_status {
+    #[hax_lib::fstar::verification_status(lax)]
+    fn a_function_which_only_laxes() {
+        assert!(/*very complicated stuff*/ false)
+    }
+
+    #[hax_lib::fstar::verification_status(panic_free)]
+    #[hax_lib::ensures(|x|/*very complicated stuff*/false)]
+    fn a_panicfree_function() -> u8 {
+        let a = 3;
+        let b = 6;
+        a + b
+    }
+
+    #[hax_lib::fstar::verification_status(panic_free)]
+    #[hax_lib::ensures(|x|/*very complicated stuff*/false)]
+    fn another_panicfree_function() {
+        let not_much = 0;
+        let nothing = 0;
+        let still_not_much = not_much + nothing;
+    }
+}

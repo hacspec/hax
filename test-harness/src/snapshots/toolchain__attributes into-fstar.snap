@@ -317,6 +317,43 @@ let double (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_T
 let double_refine (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_True) =
   x +! x <: t_Even
 '''
+"Attributes.Verifcation_status.fst" = '''
+module Attributes.Verifcation_status
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let a_panicfree_function (_: Prims.unit)
+    : Prims.Pure u8
+      Prims.l_True
+      (ensures
+        fun x ->
+          let x:u8 = x in
+          false) =
+  let a:u8 = 3uy in
+  let b:u8 = 6uy in
+  let result:u8 = a +! b in
+  let _:Prims.unit = admit () (* Panic freedom *) in
+  result
+
+let another_panicfree_function (_: Prims.unit)
+    : Prims.Pure Prims.unit
+      Prims.l_True
+      (ensures
+        fun x ->
+          let x:Prims.unit = x in
+          false) =
+  let not_much:i32 = 0l in
+  let nothing:i32 = 0l in
+  let still_not_much:i32 = not_much +! nothing in
+  admit () (* Panic freedom *)
+
+#push-options "--admit_smt_queries true"
+
+let a_function_which_only_laxes (_: Prims.unit) : Prims.unit = Hax_lib.v_assert false
+
+#pop-options
+'''
 "Attributes.fst" = '''
 module Attributes
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
