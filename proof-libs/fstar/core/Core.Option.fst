@@ -20,3 +20,8 @@ let impl__unwrap_or_default
   match self with
   | Option_Some inner -> inner
   | Core.Option.Option_None  -> Core.Default.f_default #t ()
+
+let impl__ok_or_else #t_Self #e (self: t_Option t_Self) (err: unit -> e): Core.Result.t_Result t_Self e =
+  match self with 
+  | Option_Some inner -> Core.Result.Result_Ok inner
+  | Option_None -> Core.Result.Result_Err (err ())
