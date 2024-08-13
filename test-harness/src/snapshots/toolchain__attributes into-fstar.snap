@@ -26,6 +26,28 @@ exit = 0
 diagnostics = []
 
 [stdout.files]
+"Attributes.Ensures_on_arity_zero_fns.fst" = '''
+module Attributes.Ensures_on_arity_zero_fns
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let basically_a_constant (_: Prims.unit)
+    : Prims.Pure u8
+      (requires true)
+      (ensures
+        fun x ->
+          let x:u8 = x in
+          x >. 100uy) = 127uy
+
+let doing_nothing (_: Prims.unit)
+    : Prims.Pure Prims.unit
+      (requires true)
+      (ensures
+        fun v__x ->
+          let v__x:Prims.unit = v__x in
+          true) = ()
+'''
 "Attributes.Inlined_code_ensures_requires.fst" = '''
 module Attributes.Inlined_code_ensures_requires
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"

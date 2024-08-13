@@ -201,6 +201,19 @@ fn create_future_ident(name: &str) -> syn::Ident {
     proc_macro2::Ident::new(&format!("{name}_future"), proc_macro2::Span::call_site())
 }
 
+/// The engine translates functions of arity zero to functions that
+/// takes exactly one unit argument. The zero-arity functions we
+/// generate are translated correctly as well. But in the case of a
+/// `ensures` clause, that's an issue: we produce a function of arity
+/// one, whose first argument is the result of the function. Instead,
+/// we need a function of arity two.
+/// `fix_signature_arity` adds a `unit` if needed.
+fn add_unit_to_sig_if_needed(signature: &mut Signature) {
+    if signature.inputs.is_empty() {
+        signature.inputs.push(parse_quote! {_: ()})
+    }
+}
+
 /// Common logic when generating a function decoration
 pub fn make_fn_decoration(
     mut phi: Expr,
@@ -223,9 +236,10 @@ pub fn make_fn_decoration(
     };
     let decoration = {
         let decoration_sig = {
-            let mut sig = signature;
+            let mut sig = signature.clone();
             sig.ident = format_ident!("{}", kind.to_string());
             if let FnDecorationKind::Ensures { ret_binder } = &kind {
+                add_unit_to_sig_if_needed(&mut sig);
                 let output_typ = match sig.output {
                     syn::ReturnType::Default => parse_quote! {()},
                     syn::ReturnType::Type(_, t) => t,
