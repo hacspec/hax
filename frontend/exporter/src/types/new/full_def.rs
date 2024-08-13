@@ -23,6 +23,12 @@ pub struct FullDef {
     #[value(get_def_visibility(s, *self))]
     /// Visibility of the definition, for definitions where this makes sense.
     pub visibility: Option<bool>,
+    #[value(s.base().tcx.as_lang_item(*self).map(|litem| litem.name()).sinto(s))]
+    /// If this definition is a lang item, we store the identifier, e.g. `sized`.
+    pub lang_item: Option<String>,
+    #[value(s.base().tcx.get_diagnostic_name(*self).sinto(s))]
+    /// If this definition is a diagnostic item, we store the identifier, e.g. `box_new`.
+    pub diagnostic_item: Option<String>,
     #[value({
         let state_with_id = State { thir: (), mir: (), owner_id: *self, base: s.base() };
         s.base().tcx.def_kind(*self).sinto(&state_with_id)
