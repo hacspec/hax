@@ -32,7 +32,7 @@ pub struct DisambiguatedDefPathItem {
 
 /// Reflects [`rustc_hir::def_id::DefId`]
 #[derive_group(Serializers)]
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(not(feature = "extract_names_mode"), derive(JsonSchema))]
 pub struct DefId {
     pub krate: String,
@@ -47,6 +47,24 @@ pub struct DefId {
     /// indexes unless you cannot do otherwise.
     pub index: (u32, u32),
     pub is_local: bool,
+}
+
+#[cfg(not(feature = "rustc"))]
+impl std::fmt::Debug for DefId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DefId")
+            .field("krate", &self.krate)
+            .field("path", &self.path)
+            .finish()
+    }
+}
+
+#[cfg(feature = "rustc")]
+impl std::fmt::Debug for DefId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Use the more legible rustc debug implementation.
+        write!(f, "{:?}", rustc_span::def_id::DefId::from(self))
+    }
 }
 
 /// Reflects [`rustc_hir::definitions::DefPathData`]
