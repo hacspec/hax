@@ -1463,15 +1463,13 @@ struct
           |> Option.value_or_thunk ~default:(fun _ ->
                  Error.assertion_failure e.span
                    "Malformed `Quote` item: could not find a ItemQuote payload")
-          |> Option.value ~default:Types.{ intf = true; impl = false }
+          |> Option.value ~default:Types.{ intf = false; impl = true }
         in
-        (if fstar_opts.intf then
-         [ `VerbatimIntf (pquote e.span quote, `Newline) ]
-        else [])
-        @
-        if fstar_opts.impl then
-          [ `VerbatimImpl (pquote e.span quote, `Newline) ]
-        else []
+        let payload = (pquote e.span quote, `Newline) in
+        if ctx.interface_mode then
+          (if fstar_opts.intf then [ `VerbatimIntf payload ] else [])
+          @ if fstar_opts.impl then [ `VerbatimImpl payload ] else []
+        else [ `VerbatimImpl payload ]
     | HaxError details ->
         [
           `Comment
