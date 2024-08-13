@@ -155,3 +155,6 @@ mod ambiguous_names {
         debug(0, a)
     }
 }
+
+/// From issue https://github.com/hacspec/hax/issues/839
+fn string_shadows(string: &str, n: &str) {}
