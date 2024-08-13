@@ -161,8 +161,18 @@ impl HaxMessage {
                 let message = Level::Error.title(&message);
                 eprintln!("{}", renderer.render(message))
             }
-            Self::WroteFile { path } => {
-                let title = format!("hax: wrote file {}", path.display());
+            Self::ProducedFile { mut path, wrote } => {
+                // Make path relative if possible
+                if let Ok(current_dir) = std::env::current_dir() {
+                    if let Ok(relative) = path.strip_prefix(current_dir) {
+                        path = PathBuf::from(".").join(relative).to_path_buf();
+                    }
+                }
+                let title = if wrote {
+                    format!("hax: wrote file {}", path.display())
+                } else {
+                    format!("hax: unchanged file {}", path.display())
+                };
                 eprintln!("{}", renderer.render(Level::Info.title(&title)))
             }
             Self::HaxEngineFailure { exit_code } => {
@@ -279,8 +289,12 @@ fn run_engine(
                     } else {
                         let path = out_dir.join(&file.path);
                         std::fs::create_dir_all(&path.parent().unwrap()).unwrap();
-                        std::fs::write(&path, file.contents).unwrap();
-                        HaxMessage::WroteFile { path }.report(message_format, None)
+                        let mut wrote = false;
+                        if fs::read_to_string(&path).as_ref().ok() != Some(&file.contents) {
+                            std::fs::write(&path, file.contents).unwrap();
+                            wrote = true;
+                        }
+                        HaxMessage::ProducedFile { path, wrote }.report(message_format, None)
                     }
                 }
                 FromEngine::DebugString(debug) => {
