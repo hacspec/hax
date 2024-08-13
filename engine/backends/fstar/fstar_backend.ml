@@ -1626,8 +1626,12 @@ let string_of_items ~signature_only ~mod_name (bo : BackendOptions.t) m items :
     in
     match lines with [] -> "" | _ -> header ^ String.concat ~sep:"\n" lines
   in
-  ( string_for (function `Impl s -> Some s | _ -> None),
-    string_for (function `Intf s -> Some s | _ -> None) )
+  let replace =
+    String.substr_replace_all ~pattern:"_hax_panic_freedom_admit_"
+      ~with_:"admit () (* Panic freedom *)"
+  in
+  ( string_for (function `Impl s -> Some (replace s) | _ -> None),
+    string_for (function `Intf s -> Some (replace s) | _ -> None) )
 
 let fstar_headers (bo : BackendOptions.t) =
   let opts =
