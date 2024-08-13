@@ -109,7 +109,7 @@ pub enum AttrStyle {
 /// Reflects [`rustc_ast::ast::Attribute`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'slt, S: BaseState<'slt>>, from: rustc_ast::ast::Attribute, state: S as gstate)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::ast::Attribute, state: S as gstate)]
 pub struct Attribute {
     pub kind: AttrKind,
     #[map(x.as_usize())]
@@ -2368,6 +2368,15 @@ pub struct AttrItem {
     pub path: String,
     pub args: AttrArgs,
     pub tokens: Option<TokenStream>,
+    /// String representation of the item. This may not exactly match what the user wrote because
+    /// the whitespace is parsed and pretty-printed.
+    #[value({
+        use rustc_ast_pretty::pprust::PrintState;
+        rustc_ast_pretty::pprust::State::to_string(|s| {
+            s.print_attr_item(self, rustc_span::DUMMY_SP)
+        })
+    })]
+    pub as_str: String,
 }
 
 #[cfg(feature = "rustc")]

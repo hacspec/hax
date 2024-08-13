@@ -109,12 +109,12 @@ let c_attr (attr : Thir.attribute) : attr =
     | Normal
         {
           item =
-            { args = Eq (_, Hir { symbol; _ }); path = "doc"; tokens = None };
+            { args = Eq (_, Hir { symbol; _ }); path = "doc"; tokens = None; _ };
           tokens = None;
         } ->
         DocComment { kind = DCKLine; body = symbol }
         (* Looks for `#[doc = "something"]` *)
-    | Normal { item = { args; path; tokens = subtokens }; tokens } ->
+    | Normal { item = { args; path; tokens = subtokens; _ }; tokens } ->
         let args_tokens =
           match args with Delimited { tokens; _ } -> Some tokens | _ -> None
         in
