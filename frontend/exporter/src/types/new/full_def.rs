@@ -128,6 +128,8 @@ pub enum FullDefKind {
         generics: TyGenerics,
         #[value(get_generic_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
+        #[value(s.base().tcx.codegen_fn_attrs(s.owner_id()).inline.sinto(s))]
+        inline: InlineAttr,
         #[value(s.base().tcx.fn_sig(s.owner_id()).instantiate_identity().sinto(s))]
         sig: PolyFnSig,
     },
@@ -142,6 +144,8 @@ pub enum FullDefKind {
         generics: TyGenerics,
         #[value(get_generic_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
+        #[value(s.base().tcx.codegen_fn_attrs(s.owner_id()).inline.sinto(s))]
+        inline: InlineAttr,
         #[value(s.base().tcx.fn_sig(s.owner_id()).instantiate_identity().sinto(s))]
         sig: PolyFnSig,
     },

@@ -118,6 +118,17 @@ pub struct Attribute {
     pub span: Span,
 }
 
+/// Reflects [`rustc_attr::InlineAttr`]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_attr::InlineAttr, state: S as _s)]
+pub enum InlineAttr {
+    None,
+    Hint,
+    Always,
+    Never,
+}
+
 /// Generic container for decorating items with a type, a span,
 /// attributes and other meta-data.
 #[derive_group(Serializers)]
