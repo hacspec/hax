@@ -454,7 +454,7 @@ pub mod rustc {
         use rustc_infer::infer::TyCtxtInferExt;
         use rustc_middle::traits::CodegenObligationError;
         use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
-        use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
+        use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
         use rustc_trait_selection::traits::{
             Obligation, ObligationCause, ObligationCtxt, ScrubbedTraitError, SelectionContext,
             Unimplemented,

@@ -1686,7 +1686,7 @@ pub struct GenericParamDef {
         match self.kind {
             ty::GenericParamDefKind::Lifetime => GenericParamDefKind::Lifetime,
             ty::GenericParamDefKind::Type { has_default, synthetic } => GenericParamDefKind::Type { has_default, synthetic },
-            ty::GenericParamDefKind::Const { has_default, is_host_effect } => {
+            ty::GenericParamDefKind::Const { has_default, is_host_effect, .. } => {
                 let ty = s.base().tcx.type_of(self.def_id).instantiate_identity().sinto(s);
                 GenericParamDefKind::Const { has_default, is_host_effect, ty }
             },
@@ -2371,7 +2371,8 @@ pub struct AttrItem {
 #[cfg(feature = "rustc")]
 impl<S> SInto<S, String> for rustc_ast::tokenstream::LazyAttrTokenStream {
     fn sinto(&self, st: &S) -> String {
-        self.to_attr_token_stream().to_tokenstream().sinto(st)
+        rustc_ast::tokenstream::TokenStream::new(self.to_attr_token_stream().to_token_trees())
+            .sinto(st)
     }
 }
 
@@ -2982,6 +2983,25 @@ pub struct AnonConst<Body: IsBody> {
     pub body: Body,
 }
 
+/// Reflects [`rustc_hir::ConstArg`]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::ConstArg<'tcx>, state: S as s)]
+pub struct ConstArg<Body: IsBody> {
+    pub hir_id: HirId,
+    pub kind: ConstArgKind<Body>,
+    pub is_desugared_from_effects: bool,
+}
+
+/// Reflects [`rustc_hir::ConstArgKind`]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::ConstArgKind<'tcx>, state: S as s)]
+pub enum ConstArgKind<Body: IsBody> {
+    Path(QPath),
+    Anon(AnonConst<Body>),
+}
+
 /// Reflects [`rustc_hir::GenericParamKind`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
@@ -2997,7 +3017,7 @@ pub enum GenericParamKind<Body: IsBody> {
     },
     Const {
         ty: Ty,
-        default: Option<AnonConst<Body>>,
+        default: Option<ConstArg<Body>>,
     },
 }
 
@@ -3125,7 +3145,7 @@ pub struct Impl<Body: IsBody> {
         let (tcx, owner_id) = (s.base().tcx, s.owner_id());
         let trait_did = tcx.trait_id_of_impl(owner_id);
         if let Some(trait_did) = trait_did {
-            tcx.super_predicates_of(trait_did)
+            tcx.explicit_super_predicates_of(trait_did)
                 .predicates
                 .iter()
                 .copied()

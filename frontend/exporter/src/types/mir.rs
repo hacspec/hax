@@ -153,7 +153,6 @@ pub struct MirBody<KIND> {
     pub spread_arg: Option<Local>,
     pub var_debug_info: Vec<VarDebugInfo>,
     pub span: Span,
-    pub required_consts: Vec<Constant>,
     pub is_polymorphic: bool,
     pub injection_phase: Option<MirPhase>,
     pub tainted_by_errors: Option<ErrorGuaranteed>,
@@ -569,6 +568,11 @@ pub enum TerminatorKind {
         fn_span: Span,
         trait_refs: Vec<ImplExpr>,
         trait_info: Option<ImplExpr>,
+    },
+    TailCall {
+        func: Operand,
+        args: Vec<Spanned<Operand>>,
+        fn_span: Span,
     },
     Assert {
         cond: Operand,
