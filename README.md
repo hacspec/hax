@@ -7,7 +7,8 @@
   <a href="https://hacspec.org/book">📖 Book</a> |
   <a href="https://hacspec.org/blog">📝 Blog</a> |
   <a href="https://hacspec.zulipchat.com/">💬 Zulip</a> |
-  <a href="https://hacspec.org/hax/">🛠️ Internal docs</a>
+  <a href="https://hacspec.org/hax/">🛠️ Internal docs</a> |
+  <a href="https://hax-playground.cryspen.com/">🛝 Playground</a>
 </p>
 
 # Hax
@@ -23,6 +24,12 @@ hacspec is the functional subset of Rust that can be used, together with a hacsp
 standard library, to write succinct, executable, and verifiable specifications in
 Rust.
 These specifications can be translated into formal languages with hax.
+
+<p align="center">
+    <a href="https://hax-playground.cryspen.com/#fstar+tc/latest-main/gist=5252f86237adbca7fdeb7a8fea0b1648">
+    Try out hax online now!
+    </a>
+</p>
 
 ## Learn more
 
