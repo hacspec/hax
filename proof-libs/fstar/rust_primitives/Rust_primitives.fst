@@ -35,6 +35,9 @@ instance cast_tc_integers (t:inttype) (t':inttype)
   : cast_tc (int_t t) (int_t t')
   = { cast = (fun x -> Rust_primitives.Integers.cast_mod #t #t' x) }
 
+(* Original definition of unsize, causes blowups.
+   Leaving it here in case it is needed for some other use case
+
 class unsize_tc source = {
   output: Type;
   unsize: source -> output;
@@ -44,6 +47,16 @@ instance array_to_slice_unsize t n: unsize_tc (t_Array t n) = {
   output = (x:t_Slice t{Seq.length x == v n});
   unsize = (fun (arr: t_Array t n) -> 
             arr <: t_Slice t);
+}
+*)
+
+(* We treat unsize as an identity function *)
+class unsize_tc t = {
+  unsize: x:t -> y:t{x == y};
+}
+
+instance unsize_all t : unsize_tc t = {
+  unsize = (fun arr -> arr);
 }
 
 let rec f_while_loop #s (condition: s -> bool) (init: s) (f: (i:s -> o:s{o << i})): s
