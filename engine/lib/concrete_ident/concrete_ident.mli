@@ -1,10 +1,28 @@
-type t [@@deriving show, yojson, compare, sexp, eq, hash]
+module Imported : sig
+  type def_id = { krate : string; path : path }
+  and path = disambiguated_def_path_item list
 
-type name = Concrete_ident_generated.t
-[@@deriving show, yojson, compare, sexp, eq, hash]
+  and disambiguated_def_path_item = {
+    data : def_path_item;
+    disambiguator : int;
+  }
 
-module ImplInfoStore : sig
-  val init : (Types.def_id * Types.impl_infos) list -> unit
+  and def_path_item =
+    | CrateRoot
+    | Impl
+    | ForeignMod
+    | Use
+    | GlobalAsm
+    | Closure
+    | Ctor
+    | AnonConst
+    | AnonAdt
+    | OpaqueTy
+    | TypeNs of string
+    | ValueNs of string
+    | MacroNs of string
+    | LifetimeNs of string
+  [@@deriving show, yojson, compare, sexp, eq, hash]
 end
 
 module Kind : sig
@@ -19,6 +37,16 @@ module Kind : sig
     | Impl
     | AssociatedItem of t
   [@@deriving show, yojson, compare, sexp, eq, hash]
+end
+
+type t = { def_id : Imported.def_id; kind : Kind.t }
+[@@deriving show, yojson, compare, sexp, eq, hash]
+
+type name = Concrete_ident_generated.t
+[@@deriving show, yojson, compare, sexp, eq, hash]
+
+module ImplInfoStore : sig
+  val init : (Types.def_id * Types.impl_infos) list -> unit
 end
 
 val of_def_id : Kind.t -> Types.def_id -> t
