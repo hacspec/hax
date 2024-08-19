@@ -152,6 +152,15 @@
             })
           ];
         in let
+          utils = pkgs.stdenv.mkDerivation {
+            name = "hax-dev-scripts";
+            phases = ["installPhase"];
+            installPhase = ''
+                mkdir -p $out/bin
+                cp ${./.utils/rebuild.sh} $out/bin/rebuild
+                cp ${./.utils/list-names.sh} $out/bin/list-names
+              '';
+          };
           packages = [
             ocamlformat
             pkgs.ocamlPackages.ocaml-lsp
@@ -168,14 +177,7 @@
             rustfmt
             rustc
 
-            (pkgs.stdenv.mkDerivation {
-              name = "rebuild-script";
-              phases = ["installPhase"];
-              installPhase = ''
-                mkdir -p $out/bin
-                cp ${./.utils/rebuild.sh} $out/bin/rebuild
-              '';
-            })
+            utils
           ];
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
         in {
@@ -191,6 +193,7 @@
           };
           default = pkgs.mkShell {
             inherit packages inputsFrom LIBCLANG_PATH;
+            shellHook = ''echo "Commands available: $(ls ${utils}/bin | tr '\n' ' ')"'';
           };
         };
       }
