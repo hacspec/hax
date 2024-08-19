@@ -154,13 +154,13 @@ struct
             Option.value ~default invariant |> as_lhs_closure
           in
           let init = dexpr init in
-          let f, args =
+          let f, kind, args =
             match as_iterator it |> Option.bind ~f:fn_args_of_iterator with
-            | Some (f, args) -> (f, args @ [ init; invariant; fn ])
+            | Some (f, args) -> (f, Concrete_ident.Kind.Value, args @ [ init; invariant; fn ])
             | None ->
-                (Core__iter__traits__iterator__Iterator__fold, [ it; init; fn ])
+                (Core__iter__traits__iterator__Iterator__fold, AssociatedItem Value, [ it; init; fn ])
           in
-          UB.call ~kind:(AssociatedItem Value) f args span (dty span expr.typ)
+          UB.call ~kind f args span (dty span expr.typ)
       | Loop
           {
             body;

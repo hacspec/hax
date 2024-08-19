@@ -148,7 +148,7 @@ let enumerate_chunks (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) : usize =
       (fun acc temp_1_ ->
           let acc:usize = acc in
           let i, chunk:(usize & t_Slice usize) = temp_1_ in
-          Rust_primitives.Hax.f_fold_enumerated_slice chunk
+          Rust_primitives.Hax.Folds.fold_enumerated_slice chunk
             acc
             (fun acc temp_1_ ->
                 let acc:usize = acc in
@@ -359,21 +359,22 @@ open FStar.Mul
 
 let enumerated_chunked_slice (#v_T: Type0) (slice: t_Slice v_T) : u64 =
   let count:u64 = 0uL in
-  Rust_primitives.Hax.f_fold_enumerated_chunked_slice (sz 3)
+  Rust_primitives.Hax.Folds.fold_enumerated_chunked_slice (sz 3)
     slice
     count
     (fun count i ->
         let count:u64 = count in
         let i:(usize & t_Slice v_T) = i in
-        true)
+        forall (x: nat). x >= 0)
     (fun count i ->
         let count:u64 = count in
         let i:(usize & t_Slice v_T) = i in
-        count +! 3uL <: u64)
+        let count:u64 = count +! 3uL in
+        count)
 
 let enumerated_slice (#v_T: Type0) (slice: t_Slice v_T) : u64 =
   let count:u64 = 0uL in
-  Rust_primitives.Hax.f_fold_enumerated_slice slice
+  Rust_primitives.Hax.Folds.fold_enumerated_slice slice
     count
     (fun count i ->
         let count:u64 = count in
@@ -387,7 +388,7 @@ let enumerated_slice (#v_T: Type0) (slice: t_Slice v_T) : u64 =
 
 let range_step_by (_: Prims.unit) : u64 =
   let count:u64 = 0uL in
-  Rust_primitives.Hax.f_fold_range_step_by 0l
+  Rust_primitives.Hax.Folds.fold_range_step_by 0l
     10l
     (sz 2)
     count
