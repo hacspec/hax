@@ -127,9 +127,9 @@ let index_mutation_unsize (x: t_Array u8 (sz 12)) : u8 =
               Core.Ops.Range.t_Range usize ]
             <:
             t_Slice u8)
-          (Rust_primitives.unsize (let list = [1uy; 2uy] in
-                FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 2);
-                Rust_primitives.Hax.array_of_list 2 list)
+          ((let list = [1uy; 2uy] in
+              FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 2);
+              Rust_primitives.Hax.array_of_list 2 list)
             <:
             t_Slice u8)
         <:
