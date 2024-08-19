@@ -927,6 +927,23 @@ module Make (F : Features.T) = struct
     let item : AST.item -> Ast.Full.item = Stdlib.Obj.magic
   end
 
+  module Debug : sig
+    val expr : ?label:string -> AST.expr -> unit
+    (** Prints an expression pretty-printed as Rust, with its full
+        AST encoded as JSON, available as a file, so that one can
+        `jless` or `jq` into it. *)
+  end = struct
+    let expr ?(label = "") (e : AST.expr) : unit =
+      let path = tempfile_path ~suffix:".json" in
+      Core.Out_channel.write_all path
+        ~data:([%yojson_of: AST.expr] e |> Yojson.Safe.pretty_to_string);
+      let e = LiftToFullAst.expr e in
+      "```rust " ^ label ^ "\n" ^ Print_rust.pexpr_str e
+      ^ "\n```\x1b[34m JSON-encoded AST available at \x1b[1m" ^ path
+      ^ "\x1b[0m (hint: use `jless " ^ path ^ "`)"
+      |> Stdio.prerr_endline
+  end
+
   let unbox_expr' (next : expr -> expr) (e : expr) : expr =
     match e.e with
     | App { f = { e = GlobalVar f; _ }; args = [ e ]; _ }
