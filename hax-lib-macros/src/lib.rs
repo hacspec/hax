@@ -40,6 +40,25 @@ pub fn fstar_options(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenS
     .into()
 }
 
+/// Add an invariant to a loop. This function must be called on the
+/// first line of a loop body to be effective. Note that in the
+/// invariant expression, `forall`, `exists`, and `BACKEND!`
+/// (`BACKEND` can be `fstar`, `proverif`, `coq`...) are in scope.
+#[proc_macro]
+pub fn loop_invariant(predicate: pm::TokenStream) -> pm::TokenStream {
+    let predicate: TokenStream = predicate.into();
+    quote! {
+        #[cfg(#HaxCfgOptionName)]
+        {
+            hax_lib::_internal_loop_invariant({
+                #HaxQuantifiers
+                #predicate
+            })
+        }
+    }
+    .into()
+}
+
 /// When extracting to F*, inform about what is the current
 /// verification status for an item. It can either be `lax` or
 /// `panic_free`.

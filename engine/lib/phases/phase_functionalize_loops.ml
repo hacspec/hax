@@ -48,7 +48,7 @@ struct
               };
             body;
           }
-        when Global_ident.eq_name Hax_lib__loop_invariant f ->
+        when Global_ident.eq_name Hax_lib___internal_loop_invariant f ->
           { body; invariant = Some invariant }
       | _ -> { body; invariant = None }
 

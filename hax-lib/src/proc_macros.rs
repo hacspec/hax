@@ -2,8 +2,8 @@
 //! proc-macro crate cannot export anything but procedural macros.
 
 pub use hax_lib_macros::{
-    attributes, ensures, exclude, impl_fn_decoration, include, lemma, opaque_type, refinement_type,
-    requires, trait_fn_decoration,
+    attributes, ensures, exclude, impl_fn_decoration, include, lemma, loop_invariant, opaque_type,
+    refinement_type, requires, trait_fn_decoration,
 };
 
 pub use hax_lib_macros::{

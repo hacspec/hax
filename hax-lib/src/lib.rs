@@ -147,8 +147,9 @@ pub fn inline_unsafe<T>(_: &str) -> T {
     unreachable!()
 }
 
+/// A dummy function that holds a loop invariant.
 #[doc(hidden)]
-pub fn loop_invariant(_: bool) {}
+pub fn _internal_loop_invariant(_: bool) {}
 
 /// A type that implements `Refinement` should be a newtype for a
 /// type `T`. The field holding the value of type `T` should be

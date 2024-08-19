@@ -29,7 +29,7 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     assert!(true);
     assert_eq!(1, 1);
     hax_lib::assert!(true);
-    hax_lib::loop_invariant(true);
+    hax_lib::_internal_loop_invariant(true);
 
     let _ = [()].into_iter();
     let _: u16 = 6u8.into();
