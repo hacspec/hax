@@ -40,14 +40,29 @@ pub fn fstar_options(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenS
     .into()
 }
 
-/// Add an invariant to a loop. This function must be called on the
-/// first line of a loop body to be effective. Note that in the
-/// invariant expression, `forall`, `exists`, and `BACKEND!`
-/// (`BACKEND` can be `fstar`, `proverif`, `coq`...) are in scope.
+/// Add an invariant to a loop which deals with an index. The
+/// invariant cannot refer to any variable introduced within the
+/// loop. An invariant is a closure that takes one argument, the
+/// index, and returns a boolean.
+///
+/// Note that loop invariants are unstable (this will be handled in a
+/// better way in the future, see
+/// https://github.com/hacspec/hax/issues/858) and only supported on
+/// specific `for` loops with specific iterators:
+///
+///  - `for i in start..end {...}`
+///  - `for i in (start..end).step_by(n) {...}`
+///  - `for i in slice.enumerate() {...}`
+///  - `for i in slice.chunks_exact(n).enumerate() {...}`
+///
+/// This function must be called on the first line of a loop body to
+/// be effective. Note that in the invariant expression, `forall`,
+/// `exists`, and `BACKEND!` (`BACKEND` can be `fstar`, `proverif`,
+/// `coq`...) are in scope.
 #[proc_macro]
 pub fn loop_invariant(predicate: pm::TokenStream) -> pm::TokenStream {
     let predicate: TokenStream = predicate.into();
-    quote! {
+    let ts: pm::TokenStream = quote! {
         #[cfg(#HaxCfgOptionName)]
         {
             hax_lib::_internal_loop_invariant({
@@ -56,7 +71,8 @@ pub fn loop_invariant(predicate: pm::TokenStream) -> pm::TokenStream {
             })
         }
     }
-    .into()
+    .into();
+    ts
 }
 
 /// When extracting to F*, inform about what is the current

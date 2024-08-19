@@ -149,7 +149,7 @@ pub fn inline_unsafe<T>(_: &str) -> T {
 
 /// A dummy function that holds a loop invariant.
 #[doc(hidden)]
-pub fn _internal_loop_invariant(_: bool) {}
+pub fn _internal_loop_invariant<T, P: FnOnce(T) -> bool>(_: P) {}
 
 /// A type that implements `Refinement` should be a newtype for a
 /// type `T`. The field holding the value of type `T` should be

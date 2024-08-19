@@ -905,6 +905,13 @@ module Make (F : Features.T) = struct
       (`Concrete (Concrete_ident.of_name kind f_name))
       args span ret_typ
 
+  let make_closure (params : pat list) (body : expr) (span : span) : expr =
+    let params =
+      match params with [] -> [ make_wild_pat unit_typ span ] | _ -> params
+    in
+    let e = Closure { params; body; captures = [] } in
+    { e; typ = TArrow (List.map ~f:(fun p -> p.typ) params, body.typ); span }
+
   let string_lit span (s : string) : expr =
     { span; typ = TStr; e = Literal (String s) }
 

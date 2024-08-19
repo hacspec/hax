@@ -33,7 +33,10 @@ struct
       include Features.SUBTYPE.Id
     end
 
-    type body_and_invariant = { body : B.expr; invariant : B.expr option }
+    type body_and_invariant = {
+      body : B.expr;
+      invariant : (B.pat * B.expr) option;
+    }
 
     let extract_loop_invariant (body : B.expr) : body_and_invariant =
       match body.e with
@@ -43,13 +46,26 @@ struct
             lhs = { p = PWild; _ };
             rhs =
               {
-                e = App { f = { e = GlobalVar f; _ }; args = [ invariant ]; _ };
+                e =
+                  App
+                    {
+                      f = { e = GlobalVar f; _ };
+                      args =
+                        [
+                          {
+                            e =
+                              Closure { params = [ pat ]; body = invariant; _ };
+                            _;
+                          };
+                        ];
+                      _;
+                    };
                 _;
               };
             body;
           }
         when Global_ident.eq_name Hax_lib___internal_loop_invariant f ->
-          { body; invariant = Some invariant }
+          { body; invariant = Some (pat, invariant) }
       | _ -> { body; invariant = None }
 
     type iterator =
@@ -108,18 +124,28 @@ struct
       else None
 
     let fn_args_of_iterator (it : iterator) :
-        (Concrete_ident.name * B.expr list) option =
+        (Concrete_ident.name * B.expr list * B.ty) option =
       let open Concrete_ident_generated in
+      let usize = B.TInt { size = SSize; signedness = Unsigned } in
       match it with
       | Enumerate (ChunksExact { size; slice }) ->
           Some
             ( Rust_primitives__hax__folds__fold_enumerated_chunked_slice,
-              [ size; slice ] )
+              [ size; slice ],
+              usize )
       | Enumerate (Slice slice) ->
-          Some (Rust_primitives__hax__folds__fold_enumerated_slice, [ slice ])
+          Some
+            ( Rust_primitives__hax__folds__fold_enumerated_slice,
+              [ slice ],
+              usize )
       | StepBy { n; it = Range { start; end_ } } ->
           Some
-            (Rust_primitives__hax__folds__fold_range_step_by, [ start; end_; n ])
+            ( Rust_primitives__hax__folds__fold_range_step_by,
+              [ start; end_; n ],
+              start.typ )
+      | Range { start; end_ } ->
+          Some
+            (Rust_primitives__hax__folds__fold_range, [ start; end_ ], start.typ)
       | _ -> None
 
     [%%inline_defs dmutability]
@@ -139,26 +165,25 @@ struct
           let it = dexpr it in
           let pat = dpat pat in
           let bpat = dpat bpat in
-          let as_lhs_closure e : B.expr =
-            {
-              e = Closure { params = [ bpat; pat ]; body = e; captures = [] };
-              typ = TArrow ([ bpat.typ; pat.typ ], e.typ);
-              span = e.span;
-            }
-          in
-          let fn : B.expr = as_lhs_closure body in
-          let invariant : B.expr =
-            let default : B.expr =
-              { e = Literal (Bool true); typ = TBool; span = expr.span }
-            in
-            Option.value ~default invariant |> as_lhs_closure
-          in
+          let fn : B.expr = UB.make_closure [ bpat; pat ] body body.span in
           let init = dexpr init in
           let f, kind, args =
             match as_iterator it |> Option.bind ~f:fn_args_of_iterator with
-            | Some (f, args) -> (f, Concrete_ident.Kind.Value, args @ [ init; invariant; fn ])
+            | Some (f, args, typ) ->
+                let invariant : B.expr =
+                  let default =
+                    let span = expr.span in
+                    let pat = UB.make_wild_pat typ span in
+                    (pat, B.{ e = Literal (Bool true); typ = TBool; span })
+                  in
+                  let pat, invariant = Option.value ~default invariant in
+                  UB.make_closure [ bpat; pat ] invariant invariant.span
+                in
+                (f, Concrete_ident.Kind.Value, args @ [ invariant; init; fn ])
             | None ->
-                (Core__iter__traits__iterator__Iterator__fold, AssociatedItem Value, [ it; init; fn ])
+                ( Core__iter__traits__iterator__Iterator__fold,
+                  AssociatedItem Value,
+                  [ it; init; fn ] )
           in
           UB.call ~kind f args span (dty span expr.typ)
       | Loop

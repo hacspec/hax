@@ -111,14 +111,12 @@ let call_g (_: Prims.unit) : usize =
 let foo (v_LEN: usize) (arr: t_Array usize v_LEN) : usize =
   let acc:usize = v_LEN +! sz 9 in
   let acc:usize =
-    Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Ops.Range.t_Range
-            usize)
-          #FStar.Tactics.Typeclasses.solve
-          ({ Core.Ops.Range.f_start = sz 0; Core.Ops.Range.f_end = v_LEN }
-            <:
-            Core.Ops.Range.t_Range usize)
-        <:
-        Core.Ops.Range.t_Range usize)
+    Rust_primitives.Hax.Folds.fold_range (sz 0)
+      v_LEN
+      (fun acc temp_1_ ->
+          let acc:usize = acc in
+          let _:usize = temp_1_ in
+          true)
       acc
       (fun acc i ->
           let acc:usize = acc in
