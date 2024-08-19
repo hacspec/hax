@@ -148,17 +148,12 @@ let enumerate_chunks (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) : usize =
       (fun acc temp_1_ ->
           let acc:usize = acc in
           let i, chunk:(usize & t_Slice usize) = temp_1_ in
-          Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Iter.Adapters.Enumerate.t_Enumerate
-                  (Core.Slice.Iter.t_Iter usize))
-                #FStar.Tactics.Typeclasses.solve
-                (Core.Iter.Traits.Iterator.f_enumerate #(Core.Slice.Iter.t_Iter usize)
-                    #FStar.Tactics.Typeclasses.solve
-                    (Core.Slice.impl__iter #usize chunk <: Core.Slice.Iter.t_Iter usize)
-                  <:
-                  Core.Iter.Adapters.Enumerate.t_Enumerate (Core.Slice.Iter.t_Iter usize))
-              <:
-              Core.Iter.Adapters.Enumerate.t_Enumerate (Core.Slice.Iter.t_Iter usize))
+          Rust_primitives.Hax.f_fold_enumerated_slice chunk
             acc
+            (fun acc temp_1_ ->
+                let acc:usize = acc in
+                let j, x:(usize & usize) = temp_1_ in
+                true)
             (fun acc temp_1_ ->
                 let acc:usize = acc in
                 let j, x:(usize & usize) = temp_1_ in
@@ -355,6 +350,56 @@ let rev_range (n: usize) : usize =
           (acc +! i <: usize) +! sz 1 <: usize)
   in
   acc
+'''
+"Loops.Recognized_loops.fst" = '''
+module Loops.Recognized_loops
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let enumerated_chunked_slice (#v_T: Type0) (slice: t_Slice v_T) : u64 =
+  let count:u64 = 0uL in
+  Rust_primitives.Hax.f_fold_enumerated_chunked_slice (sz 3)
+    slice
+    count
+    (fun count i ->
+        let count:u64 = count in
+        let i:(usize & t_Slice v_T) = i in
+        true)
+    (fun count i ->
+        let count:u64 = count in
+        let i:(usize & t_Slice v_T) = i in
+        count +! 3uL <: u64)
+
+let enumerated_slice (#v_T: Type0) (slice: t_Slice v_T) : u64 =
+  let count:u64 = 0uL in
+  Rust_primitives.Hax.f_fold_enumerated_slice slice
+    count
+    (fun count i ->
+        let count:u64 = count in
+        let i:(usize & v_T) = i in
+        false)
+    (fun count i ->
+        let count:u64 = count in
+        let i:(usize & v_T) = i in
+        let count:u64 = count +! 2uL in
+        count)
+
+let range_step_by (_: Prims.unit) : u64 =
+  let count:u64 = 0uL in
+  Rust_primitives.Hax.f_fold_range_step_by 0l
+    10l
+    (sz 2)
+    count
+    (fun count i ->
+        let count:u64 = count in
+        let i:i32 = i in
+        i <. 20l <: bool)
+    (fun count i ->
+        let count:u64 = count in
+        let i:i32 = i in
+        let count:u64 = count +! 1uL in
+        count)
 '''
 "Loops.While_loops.fst" = '''
 module Loops.While_loops

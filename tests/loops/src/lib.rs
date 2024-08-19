@@ -1,3 +1,26 @@
+mod recognized_loops {
+    fn range_step_by() {
+        let mut count = 0u64;
+        for i in (0..10).step_by(2) {
+            hax_lib::loop_invariant(i < 20);
+            count += 1;
+        }
+    }
+    fn enumerated_slice<T>(slice: &[T]) {
+        let mut count = 0u64;
+        for i in slice.into_iter().enumerate() {
+            hax_lib::loop_invariant(false);
+            count += 2;
+        }
+    }
+    fn enumerated_chunked_slice<T>(slice: &[T]) {
+        let mut count = 0u64;
+        for i in slice.chunks_exact(3).enumerate() {
+            count += 3;
+        }
+    }
+}
+
 mod for_loops {
     fn range1() -> usize {
         let mut acc = 0;
