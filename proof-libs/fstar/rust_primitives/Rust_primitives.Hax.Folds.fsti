@@ -17,7 +17,7 @@ let nth_chunk_of #t
 /// Fold function that is generated for `for` loops iterating on
 /// `s.chunks_exact(chunk_size).enumerate()`-like iterators
 val fold_enumerated_chunked_slice
-  (#t: eqtype) (#acc_t: eqtype)
+  (#t: Type0) (#acc_t: Type0)
   (chunk_size: usize {v chunk_size > 0})
   (s: t_Slice t)
   (inv: acc_t -> (i:usize{v i <= v (length s)}) -> Type0)
@@ -41,7 +41,7 @@ val fold_enumerated_chunked_slice
 /// Fold function that is generated for `for` loops iterating on
 /// `s.enumerate()`-like iterators
 val fold_enumerated_slice
-  (#t: eqtype) (#acc_t: eqtype)
+  (#t: Type0) (#acc_t: Type0)
   (s: t_Slice t)
   (inv: acc_t -> (i:usize{v i <= v (length s)}) -> Type0)
   (init: acc_t {inv init (sz 0)})
@@ -75,14 +75,14 @@ unfold let fold_range_step_by_upper_bound (#u: Lib.IntTypes.inttype)
 /// Fold function that is generated for `for` loops iterating on
 /// `s.enumerate()`-like iterators
 val fold_range_step_by
-  (#acc_t: eqtype) (#u: Lib.IntTypes.inttype)
+  (#acc_t: Type0) (#u: Lib.IntTypes.inttype)
   (start: int_t u)
   (end_: int_t u)
   (step: usize {v step > 0 /\ range (v end_ + v step) u})
   (inv: acc_t -> (i:int_t u{fold_range_step_by_wf_index start end_ step false (v i)}) -> Type0)
   (init: acc_t {inv init start})
   (f: (acc:acc_t -> i:int_t u  {v i < v end_ /\ fold_range_step_by_wf_index start end_ step true (v i) /\ inv acc i}
-                 -> acc':acc_t {(inv acc (mk_int (v i + v step)))}))
+                 -> acc':acc_t {(inv acc' (mk_int (v i + v step)))}))
   : result: acc_t {inv result (mk_int (fold_range_step_by_upper_bound start end_ step))}
 
 (**** `start..end_` *)
@@ -94,11 +94,11 @@ unfold let fold_range_wf_index (#u: Lib.IntTypes.inttype)
      /\ (if strict then i < v end_ else i <= v end_))
 
 val fold_range
-  (#acc_t: eqtype) (#u: Lib.IntTypes.inttype)
+  (#acc_t: Type0) (#u: Lib.IntTypes.inttype)
   (start: int_t u)
   (end_: int_t u)
   (inv: acc_t -> (i:int_t u{fold_range_wf_index start end_ false (v i)}) -> Type0)
   (init: acc_t {inv init start})
   (f: (acc:acc_t -> i:int_t u  {v i <= v end_ /\ fold_range_wf_index start end_ true (v i) /\ inv acc i}
-                 -> acc':acc_t {(inv acc (mk_int (v i + 1)))}))
+                 -> acc':acc_t {(inv acc' (mk_int (v i + 1)))}))
   : result: acc_t {inv result end_}
