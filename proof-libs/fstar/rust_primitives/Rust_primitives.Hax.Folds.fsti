@@ -51,18 +51,18 @@ val fold_enumerated_slice
 
 (**** `(start..end_).step_by(step)` *)
 unfold let fold_range_step_by_wf_index (#u: Lib.IntTypes.inttype)
-  (start: int_t u) (end_: int_t u {v start <= v end_})
+  (start: int_t u) (end_: int_t u)
   (step: usize {v step > 0}) (strict: bool) (i: int)
-  = i >= v start 
-  /\ (if strict then i < v end_ else i <= v end_ + v step)
+  = v start <= v end_ ==> ( i >= v start 
+                        /\ (if strict then i < v end_ else i <= v end_ + v step))
   // /\ i % v step == v start % v step
 
 #push-options "--z3rlimit 80"
 unfold let fold_range_step_by_upper_bound (#u: Lib.IntTypes.inttype)
-  (start: int_t u) (end_: int_t u {v start <= v end_})
+  (start: int_t u) (end_: int_t u)
   (step: usize {v step > 0})
   : end':int {fold_range_step_by_wf_index start end_ step false end'}
-  = if end_ = start 
+  = if v end_ <= v start 
     then v end_
     else
       let range: nat = v end_ - v start in
@@ -77,27 +77,28 @@ unfold let fold_range_step_by_upper_bound (#u: Lib.IntTypes.inttype)
 val fold_range_step_by
   (#acc_t: eqtype) (#u: Lib.IntTypes.inttype)
   (start: int_t u)
-  (end_: int_t u {v start <= v end_})
+  (end_: int_t u)
   (step: usize {v step > 0 /\ range (v end_ + v step) u})
   (inv: acc_t -> (i:int_t u{fold_range_step_by_wf_index start end_ step false (v i)}) -> Type0)
   (init: acc_t {inv init start})
-  (f: (acc:acc_t -> i:int_t u  {fold_range_step_by_wf_index start end_ step true (v i) /\ inv acc i}
+  (f: (acc:acc_t -> i:int_t u  {v i < v end_ /\ fold_range_step_by_wf_index start end_ step true (v i) /\ inv acc i}
                  -> acc':acc_t {(inv acc (mk_int (v i + v step)))}))
   : result: acc_t {inv result (mk_int (fold_range_step_by_upper_bound start end_ step))}
 
 (**** `start..end_` *)
 unfold let fold_range_wf_index (#u: Lib.IntTypes.inttype)
-  (start: int_t u) (end_: int_t u {v start <= v end_})
+  (start: int_t u) (end_: int_t u)
   (strict: bool) (i: int)
-  = i >= v start 
-  /\ (if strict then i < v end_ else i <= v end_)
+  = v start <= v end_
+  ==> ( i >= v start 
+     /\ (if strict then i < v end_ else i <= v end_))
 
 val fold_range
   (#acc_t: eqtype) (#u: Lib.IntTypes.inttype)
   (start: int_t u)
-  (end_: int_t u {v start <= v end_})
+  (end_: int_t u)
   (inv: acc_t -> (i:int_t u{fold_range_wf_index start end_ false (v i)}) -> Type0)
   (init: acc_t {inv init start})
-  (f: (acc:acc_t -> i:int_t u  {fold_range_wf_index start end_ true (v i) /\ inv acc i}
+  (f: (acc:acc_t -> i:int_t u  {v i <= v end_ /\ fold_range_wf_index start end_ true (v i) /\ inv acc i}
                  -> acc':acc_t {(inv acc (mk_int (v i + 1)))}))
   : result: acc_t {inv result end_}
