@@ -21,22 +21,7 @@ info:
     backend_options: ~
 ---
 exit = 0
-stderr = '''
-warning: unnecessary parentheses around `for` iterator expression
- --> loops/src/lib.rs:4:18
-  |
-4 |         for i in (0u8..10u8) {
-  |                  ^         ^
-  |
-  = note: `#[warn(unused_parens)]` on by default
-help: remove these parentheses
-  |
-4 -         for i in (0u8..10u8) {
-4 +         for i in 0u8..10u8 {
-  |
-
-warning: `loops` (lib) generated 1 warning (run `cargo fix --lib -p loops` to apply 1 suggestion)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'''
+stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
 
 [stdout]
 diagnostics = []
