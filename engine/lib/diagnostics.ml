@@ -69,6 +69,7 @@ module Context = struct
     | Phase of Phase.t
     | Backend of Backend.t
     | ThirImport
+    | Dependencies
     | DebugPrintRust
     | GenericPrinter of string
     | Other of string
@@ -79,6 +80,7 @@ module Context = struct
     | Backend backend -> [%show: Backend.t] backend ^ " backend"
     | ThirImport -> "AST import"
     | DebugPrintRust -> "Rust debug printer"
+    | Dependencies -> "Dependenciy analysis"
     | GenericPrinter kind -> kind ^ " generic printer"
     | Other s -> "Other (" ^ s ^ ")"
 end
