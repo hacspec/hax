@@ -76,7 +76,7 @@ struct
       | StepBy of { n : B.expr; it : iterator }
     [@@deriving show]
 
-    let rec as_iterator (e : B.expr) : iterator option =
+    let rec as_iterator' (e : B.expr) : iterator option =
       match e.e with
       | Construct
           {
@@ -92,6 +92,12 @@ struct
              && Concrete_ident.eq_name Core__ops__range__Range__end end_field ->
           Some (Range { start; end_ })
       | _ -> meth_as_iterator e
+
+    and as_iterator (e : B.expr) : iterator option =
+      let result = as_iterator' e in
+      (* UB.Debug.expr ~label:"as_iterator" e; *)
+      (* " = " ^ [%show: iterator option] result |> Stdio.prerr_endline; *)
+      result
 
     and meth_as_iterator (e : B.expr) : iterator option =
       let* f, args =
@@ -112,7 +118,7 @@ struct
       then
         let* iterable = one_arg () in
         match iterable.typ with
-        | TSlice _ -> Some (Slice iterable)
+        | TSlice _ | TArray _ -> Some (Slice iterable)
         | _ -> as_iterator iterable
       else if f_eq Core__iter__traits__iterator__Iterator__enumerate then
         let* iterable = one_arg () in
