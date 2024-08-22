@@ -20,22 +20,22 @@ val fold_enumerated_chunked_slice
   (#t: Type0) (#acc_t: Type0)
   (chunk_size: usize {v chunk_size > 0})
   (s: t_Slice t)
-  (inv: acc_t -> (i:usize{v i <= v (length s)}) -> Type0)
+  (inv: acc_t -> (i:usize{v i <= Seq.length s / v chunk_size}) -> Type0)
   (init: acc_t {inv init (sz 0)})
   (f: ( acc:acc_t
-      -> item:(usize & t_Array t chunk_size) {
+      -> item:(usize & t_Slice t) {
         let (i, s_chunk) = item in
           v i < Seq.length s / v chunk_size
+        /\ length s_chunk == chunk_size
         /\ nth_chunk_of s s_chunk (v i)
-        /\ v i < v (length s) 
         /\ inv acc i
       }
       -> acc':acc_t {
-        v (fst item) < v (length s) /\ inv acc' (fst item)
+        inv acc' (fst item +! sz 1)
       }
       )
   )
-  : result: acc_t {inv result (length s)}
+  : result: acc_t {inv result (mk_int (Seq.length s / v chunk_size))}
 
 (**** `s.enumerate()` *)
 /// Fold function that is generated for `for` loops iterating on
