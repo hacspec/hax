@@ -905,6 +905,13 @@ module Make (F : Features.T) = struct
       (`Concrete (Concrete_ident.of_name kind f_name))
       args span ret_typ
 
+  let make_closure (params : pat list) (body : expr) (span : span) : expr =
+    let params =
+      match params with [] -> [ make_wild_pat unit_typ span ] | _ -> params
+    in
+    let e = Closure { params; body; captures = [] } in
+    { e; typ = TArrow (List.map ~f:(fun p -> p.typ) params, body.typ); span }
+
   let string_lit span (s : string) : expr =
     { span; typ = TStr; e = Literal (String s) }
 
@@ -925,6 +932,23 @@ module Make (F : Features.T) = struct
   module LiftToFullAst = struct
     let expr : AST.expr -> Ast.Full.expr = Stdlib.Obj.magic
     let item : AST.item -> Ast.Full.item = Stdlib.Obj.magic
+  end
+
+  module Debug : sig
+    val expr : ?label:string -> AST.expr -> unit
+    (** Prints an expression pretty-printed as Rust, with its full
+        AST encoded as JSON, available as a file, so that one can
+        `jless` or `jq` into it. *)
+  end = struct
+    let expr ?(label = "") (e : AST.expr) : unit =
+      let path = tempfile_path ~suffix:".json" in
+      Core.Out_channel.write_all path
+        ~data:([%yojson_of: AST.expr] e |> Yojson.Safe.pretty_to_string);
+      let e = LiftToFullAst.expr e in
+      "```rust " ^ label ^ "\n" ^ Print_rust.pexpr_str e
+      ^ "\n```\x1b[34m JSON-encoded AST available at \x1b[1m" ^ path
+      ^ "\x1b[0m (hint: use `jless " ^ path ^ "`)"
+      |> Stdio.prerr_endline
   end
 
   let unbox_expr' (next : expr -> expr) (e : expr) : expr =

@@ -29,6 +29,7 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     assert!(true);
     assert_eq!(1, 1);
     hax_lib::assert!(true);
+    hax_lib::_internal_loop_invariant(|_: usize| true);
 
     let _ = [()].into_iter();
     let _: u16 = 6u8.into();
@@ -36,6 +37,14 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     let _ = 1..;
     let _ = ..;
     let _ = ..1;
+
+    fn iterator_functions<It: Iterator + Clone>(it: It) {
+        let _ = it.clone().step_by(2);
+        let _ = it.clone().enumerate();
+        let _ = [()].chunks_exact(2);
+        let _ = [()].iter();
+        let _ = (&[()] as &[()]).iter();
+    }
 
     {
         use hax_lib::int::*;
@@ -162,6 +171,13 @@ mod hax {
     // TODO: Should that live here? (this is F* specific)
     fn array_of_list() {}
     fn never_to_any() {}
+
+    mod folds {
+        fn fold_range() {}
+        fn fold_range_step_by() {}
+        fn fold_enumerated_slice() {}
+        fn fold_enumerated_chunked_slice() {}
+    }
 
     /// The engine uses this `dropped_body` symbol as a marker value
     /// to signal that a item was extracted without body.
