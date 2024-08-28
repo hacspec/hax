@@ -6,7 +6,7 @@ open Rust_primitives.Integers
 
 // TODO: relate `num_bits` with a notion of bounded integer
 /// Number of bits carried by an integer of type `t`
-type num_bits t = d: nat {d > 0 /\ d <= bits t /\ (signed t ==> d <= bits t)}
+type num_bits t = d: nat {d > 0 /\ d <= bits t /\ (signed t ==> d < bits t)}
 
 /// States that `x` is a positive integer that fits in `d` bits
 type bounded #t (x:int_t t) (d:num_bits t) =
@@ -102,6 +102,14 @@ val get_bit_pow2_minus_one_i32
   : Lemma ( get_bit (FStar.Int32.int_to_t x) nth 
         == (if v nth < Some?.v (mask_inv_opt x) then 1 else 0))
   [SMTPat (get_bit (FStar.Int32.int_to_t x) nth)]
+
+/// Specialized `get_bit_pow2_minus_one` lemmas with SMT patterns
+/// targetting machine integer literals of type `i16`
+val get_bit_pow2_minus_one_i16
+  (x: int {x < pow2 15 /\ Some? (mask_inv_opt x)}) (nth: usize {v nth < 16})
+  : Lemma ( get_bit (FStar.Int16.int_to_t x) nth 
+        == (if v nth < Some?.v (mask_inv_opt x) then 1 else 0))
+  [SMTPat (get_bit (FStar.Int16.int_to_t x) nth)]
 
 /// Specialized `get_bit_pow2_minus_one` lemmas with SMT patterns
 /// targetting machine integer literals of type `u32`
