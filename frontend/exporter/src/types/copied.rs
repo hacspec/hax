@@ -10,7 +10,8 @@ impl std::hash::Hash for DefId {
         let DefId {
             krate,
             path,
-            index: _, // intentionally discarding index
+            index: _,    // intentionally discarding index
+            is_local: _, // intentionally discarding is_local
         } = self;
         krate.hash(state);
         path.hash(state);
@@ -31,6 +32,7 @@ impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
                 rustc_hir::def_id::CrateNum::as_u32(self.krate),
                 rustc_hir::def_id::DefIndex::as_u32(self.index),
             ),
+            is_local: self.is_local(),
         }
     }
 }
@@ -107,13 +109,24 @@ pub enum AttrStyle {
 /// Reflects [`rustc_ast::ast::Attribute`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'slt, S: BaseState<'slt>>, from: rustc_ast::ast::Attribute, state: S as gstate)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::ast::Attribute, state: S as gstate)]
 pub struct Attribute {
     pub kind: AttrKind,
     #[map(x.as_usize())]
     pub id: usize,
     pub style: AttrStyle,
     pub span: Span,
+}
+
+/// Reflects [`rustc_attr::InlineAttr`]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_attr::InlineAttr, state: S as _s)]
+pub enum InlineAttr {
+    None,
+    Hint,
+    Always,
+    Never,
 }
 
 /// Generic container for decorating items with a type, a span,

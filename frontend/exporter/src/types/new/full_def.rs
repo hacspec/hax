@@ -17,6 +17,18 @@ pub struct FullDef {
     pub parent: Option<DefId>,
     #[value(s.base().tcx.def_span(*self).sinto(s))]
     pub span: Span,
+    #[value(s.base().tcx.get_attrs_unchecked(*self).sinto(s))]
+    /// Attributes on this definition, if applicable.
+    pub attributes: Vec<Attribute>,
+    #[value(get_def_visibility(s, *self))]
+    /// Visibility of the definition, for definitions where this makes sense.
+    pub visibility: Option<bool>,
+    #[value(s.base().tcx.as_lang_item(*self).map(|litem| litem.name()).sinto(s))]
+    /// If this definition is a lang item, we store the identifier, e.g. `sized`.
+    pub lang_item: Option<String>,
+    #[value(s.base().tcx.get_diagnostic_name(*self).sinto(s))]
+    /// If this definition is a diagnostic item, we store the identifier, e.g. `box_new`.
+    pub diagnostic_item: Option<String>,
     #[value({
         let state_with_id = State { thir: (), mir: (), owner_id: *self, base: s.base() };
         s.base().tcx.def_kind(*self).sinto(&state_with_id)
@@ -125,6 +137,8 @@ pub enum FullDefKind {
         generics: TyGenerics,
         #[value(get_generic_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
+        #[value(s.base().tcx.codegen_fn_attrs(s.owner_id()).inline.sinto(s))]
+        inline: InlineAttr,
         #[value(s.base().tcx.fn_sig(s.owner_id()).instantiate_identity().sinto(s))]
         sig: PolyFnSig,
     },
@@ -139,6 +153,8 @@ pub enum FullDefKind {
         generics: TyGenerics,
         #[value(get_generic_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
+        #[value(s.base().tcx.codegen_fn_attrs(s.owner_id()).inline.sinto(s))]
+        inline: InlineAttr,
         #[value(s.base().tcx.fn_sig(s.owner_id()).instantiate_identity().sinto(s))]
         sig: PolyFnSig,
     },
@@ -307,6 +323,47 @@ impl FullDef {
             } => Some((generics, predicates)),
             _ => None,
         }
+    }
+}
+
+/// Gets the visibility (`pub` or not) of the definition. Returns `None` for defs that don't have a
+/// meaningful visibility.
+#[cfg(feature = "rustc")]
+fn get_def_visibility<'tcx, S: BaseState<'tcx>>(s: &S, def_id: RDefId) -> Option<bool> {
+    use rustc_hir::def::DefKind::*;
+    let tcx = s.base().tcx;
+    match tcx.def_kind(def_id) {
+        AssocConst
+        | AssocFn
+        | Const
+        | Enum
+        | Field
+        | Fn
+        | ForeignTy
+        | Macro { .. }
+        | Mod
+        | Static { .. }
+        | Struct
+        | Trait
+        | TraitAlias
+        | TyAlias { .. }
+        | Union
+        | Use
+        | Variant => Some(tcx.visibility(def_id).is_public()),
+        // These kinds don't have visibility modifiers (which would cause `visibility` to panic).
+        AnonConst
+        | AssocTy
+        | Closure
+        | ConstParam
+        | Ctor { .. }
+        | ExternCrate
+        | ForeignMod
+        | GlobalAsm
+        | Impl { .. }
+        | InlineConst
+        | LifetimeParam
+        | OpaqueTy
+        | TyParam => None,
     }
 }
 
