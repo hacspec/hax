@@ -2379,15 +2379,6 @@ pub struct AttrItem {
     pub path: String,
     pub args: AttrArgs,
     pub tokens: Option<TokenStream>,
-    /// String representation of the item. This may not exactly match what the user wrote because
-    /// the whitespace is parsed and pretty-printed.
-    #[value({
-        use rustc_ast_pretty::pprust::PrintState;
-        rustc_ast_pretty::pprust::State::to_string(|s| {
-            s.print_attr_item(self, rustc_span::DUMMY_SP)
-        })
-    })]
-    pub as_str: String,
 }
 
 #[cfg(feature = "rustc")]
