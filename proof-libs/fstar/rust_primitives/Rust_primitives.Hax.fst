@@ -50,7 +50,8 @@ instance update_at_tc_array t l n: update_at_tc (t_Array t l) (int_t n) = {
 let (.[]<-) #self #idx {| update_at_tc self idx |} (s: self) (i: idx {f_index_pre s i})
   = update_at s i
 
-let array_of_list (#t:Type)
+unfold let array_of_list (#t:Type)
   (n: nat {n < maxint Lib.IntTypes.U16})
   (l: list t {FStar.List.Tot.length l == n})
-  : t_Array t (sz n) = Rust_primitives.Arrays.of_list #t l
+  : t_Array t (sz n)
+  = Seq.seq_of_list l
