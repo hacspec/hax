@@ -6,7 +6,7 @@ open Rust_primitives.Integers
 
 // TODO: relate `num_bits` with a notion of bounded integer
 /// Number of bits carried by an integer of type `t`
-type num_bits t = d: nat {d > 0 /\ d <= bits t /\ (signed t ==> d < bits t)}
+type num_bits t = d: nat {d > 0 /\ d <= bits t /\ (signed t ==> d <= bits t)}
 
 /// States that `x` is a positive integer that fits in `d` bits
 type bounded #t (x:int_t t) (d:num_bits t) =
@@ -57,6 +57,15 @@ let bit_vec_of_nat_array (#len: usize)
   = on (i: nat {i < v len * d})
        (fun i -> get_bit_nat (Seq.index arr (i / d)) (i % d))
 #pop-options
+
+/// Transforms a bit vector to an integer
+val bit_vec_to_int_t #t (d: num_bits t) (bv: bit_vec d): int_t t
+
+/// `bit_vec_to_int_t` and `get_bit` are (modulo usize) inverse
+val bit_vec_to_int_t_lemma
+    #t (d: num_bits t) (bv: bit_vec d)
+    i
+  : Lemma (get_bit (bit_vec_to_int_t d bv) (sz i) == bv i)
 
 /// Transforms a bit vector into an array of integers
 val bit_vec_to_int_t_array #t (#len: usize) (d: num_bits t) (bv: bit_vec (v len * d))
