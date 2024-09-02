@@ -163,3 +163,116 @@ mod implicit_dependencies_issue_667 {
         }
     }
 }
+
+// Related to issue 719
+mod interlaced_consts_types {
+    struct Bar<const FooConst: usize, FooType>([FooType; FooConst]);
+
+    trait Foo<const FooConst: usize, FooType> {
+        fn fun<const FunConst: usize, FunType>(x: [FooType; FooConst], y: [FunType; FunConst]);
+    }
+
+    impl<const FooConst: usize, FooType, SelfType> Foo<FooConst, FooType> for SelfType {
+        fn fun<const FunConst: usize, FunType>(x: [FooType; FooConst], y: [FunType; FunConst]) {}
+    }
+}
+
+// Related to issue #719 (after reopen)
+mod implicit_explicit_calling_conventions {
+    struct Type<TypeArg, const ConstArg: usize> {
+        field: [TypeArg; ConstArg],
+    }
+
+    trait Trait<TypeArg, const ConstArg: usize> {
+        fn method<MethodTypeArg, const MethodConstArg: usize>(
+            self,
+            value_TypeArg: TypeArg,
+            value_Type: Type<TypeArg, ConstArg>,
+        );
+        fn associated_function<MethodTypeArg, const MethodConstArg: usize>(
+            _self: Self,
+            value_TypeArg: TypeArg,
+            value_Type: Type<TypeArg, ConstArg>,
+        );
+    }
+
+    impl<TypeArg, const ConstArg: usize> Trait<TypeArg, ConstArg> for () {
+        fn method<MethodTypeArg, const MethodConstArg: usize>(
+            self,
+            value_TypeArg: TypeArg,
+            value_Type: Type<TypeArg, ConstArg>,
+        ) {
+        }
+        fn associated_function<MethodTypeArg, const MethodConstArg: usize>(
+            _self: Self,
+            value_TypeArg: TypeArg,
+            value_Type: Type<TypeArg, ConstArg>,
+        ) {
+        }
+    }
+
+    trait SubTrait<TypeArg, const ConstArg: usize>: Trait<TypeArg, ConstArg> {
+        type AssocType: Trait<TypeArg, ConstArg>;
+    }
+
+    fn method_caller<
+        MethodTypeArg,
+        TypeArg,
+        const ConstArg: usize,
+        const MethodConstArg: usize,
+        ImplTrait: Trait<TypeArg, ConstArg>,
+    >(
+        x: ImplTrait,
+        value_TypeArg: TypeArg,
+        value_Type: Type<TypeArg, ConstArg>,
+    ) {
+        x.method::<MethodTypeArg, MethodConstArg>(value_TypeArg, value_Type);
+    }
+
+    fn associated_function_caller<
+        MethodTypeArg,
+        TypeArg,
+        const ConstArg: usize,
+        const MethodConstArg: usize,
+        ImplTrait: Trait<TypeArg, ConstArg>,
+    >(
+        x: ImplTrait,
+        value_TypeArg: TypeArg,
+        value_Type: Type<TypeArg, ConstArg>,
+    ) {
+        ImplTrait::associated_function::<MethodTypeArg, MethodConstArg>(
+            x,
+            value_TypeArg,
+            value_Type,
+        );
+    }
+}
+
+mod type_alias_bounds_issue_707 {
+    struct StructWithGenericBounds<T: Clone>(T);
+    type SynonymA<T> = StructWithGenericBounds<T>;
+    type SynonymB<T> = StructWithGenericBounds<(T, T)>;
+}
+
+// Related to PR 730
+mod block_size {
+    pub trait BlockSizeUser {
+        type BlockSize;
+    }
+    pub trait ParBlocksSizeUser: BlockSizeUser {}
+
+    pub trait BlockBackend: ParBlocksSizeUser {
+        fn proc_block(block: Vec<<Self as BlockSizeUser>::BlockSize>);
+    }
+}
+
+// issue 692
+mod recursive_trait_with_assoc_type {
+    pub trait Trait1 {
+        type T: Trait1;
+    }
+
+    pub trait Trait2: Trait1 {
+        type U;
+    }
+}

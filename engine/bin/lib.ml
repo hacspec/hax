@@ -2,11 +2,6 @@ open Hax_engine
 open Base
 open Stdio
 
-let read_options_from_stdin (yojson_from_string : string -> Yojson.Safe.t) :
-    Types.engine_options =
-  In_channel.input_all In_channel.stdin
-  |> yojson_from_string |> Types.parse_engine_options
-
 let setup_logs (options : Types.engine_options) =
   let level : Logs.level option =
     match options.backend.verbose with
@@ -94,6 +89,13 @@ let run (options : Types.engine_options) : Types.output =
       options.backend.translation_options.include_namespaces
     in
     let items = import_thir_items include_clauses options.input in
+    let items =
+      if options.backend.extract_type_aliases then items
+      else
+        List.filter
+          ~f:(function { v = TyAlias _; _ } -> false | _ -> true)
+          items
+    in
     Logs.info (fun m ->
         m "Applying phase for backend %s"
           ([%show: Diagnostics.Backend.t] M.backend));
@@ -124,7 +126,11 @@ let run (options : Types.engine_options) : Types.output =
     debug_json = None;
   }
 
-let main (options : Types.engine_options) =
+(** Entrypoint of the engine. Assumes `Hax_io.init` was called. *)
+let main () =
+  let options =
+    Hax_io.read_json () |> Option.value_exn |> Types.parse_engine_options
+  in
   Printexc.record_backtrace true;
   let result =
     try Ok (run options) with
@@ -142,8 +148,15 @@ let main (options : Types.engine_options) =
       let debug_json = Phase_utils.DebugBindPhase.export () in
       let results = { results with debug_json } in
       Logs.info (fun m -> m "Outputting JSON");
-      Types.to_json_output results
-      |> Yojson.Safe.pretty_to_string |> print_endline;
+
+      List.iter
+        ~f:(fun diag -> Diagnostic diag |> Hax_io.write)
+        results.diagnostics;
+      List.iter ~f:(fun file -> File file |> Hax_io.write) results.files;
+
+      Option.iter ~f:(fun json -> DebugString json |> Hax_io.write) debug_json;
+      Hax_io.close ();
+
       Logs.info (fun m -> m "Exiting Hax engine (success)")
   | Error (exn, bt) ->
       Logs.info (fun m -> m "Exiting Hax engine (with an unexpected failure)");

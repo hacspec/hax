@@ -1,16 +1,15 @@
 [workspace]
 members = [
+        "assert",
         "enum-struct-variant",
         "literals",
         "slices",
         "naming",
         "if-let",
+        "let-else",
         "enum-repr",
         "pattern-or",
         "side-effects",
-        "lint/hacspec/v1-lib",
-        "lint/hacspec/mut_args",
-        "lint/rust/fnmut",
         "mut-ref-functionalization",
         "generics",
         "loops",
@@ -21,6 +20,7 @@ members = [
         "attribute-opaque",
         "raw-attributes",
         "traits",
+        "dyn",
         "reordering",
         "nested-derefs",
         "proverif-minimal",
@@ -31,5 +31,7 @@ members = [
         "cli/include-flag",
         "cli/interface-only",
         "recursion",
+        "functions",
+        "guards",
 ]
 resolver = "2"

@@ -3,8 +3,8 @@ module Hax_bounded_integers.Num_traits
 open Core
 open FStar.Mul
 
-class t_BitOps (v_Self: Type) = {
-  f_Output:Type;
+class t_BitOps (v_Self: Type0) = {
+  f_Output:Type0;
   f_count_ones_pre:v_Self -> bool;
   f_count_ones_post:v_Self -> u32 -> bool;
   f_count_ones:x0: v_Self
@@ -59,19 +59,8 @@ class t_BitOps (v_Self: Type) = {
     -> Prims.Pure f_Output (f_pow_pre x0 x1) (fun result -> f_pow_post x0 x1 result)
 }
 
-class t_Bounded (v_Self: Type) = {
-  f_min_value_pre:Prims.unit -> bool;
-  f_min_value_post:Prims.unit -> v_Self -> bool;
-  f_min_value:x0: Prims.unit
-    -> Prims.Pure v_Self (f_min_value_pre x0) (fun result -> f_min_value_post x0 result);
-  f_max_value_pre:Prims.unit -> bool;
-  f_max_value_post:Prims.unit -> v_Self -> bool;
-  f_max_value:x0: Prims.unit
-    -> Prims.Pure v_Self (f_max_value_pre x0) (fun result -> f_max_value_post x0 result)
-}
-
-class t_CheckedAdd (v_Self: Type) (v_Rhs: Type) = {
-  f_Output:Type;
+class t_CheckedAdd (v_Self: Type0) (v_Rhs: Type0) = {
+  f_Output:Type0;
   f_checked_add_pre:v_Self -> v_Rhs -> bool;
   f_checked_add_post:v_Self -> v_Rhs -> Core.Option.t_Option f_Output -> bool;
   f_checked_add:x0: v_Self -> x1: v_Rhs
@@ -80,8 +69,8 @@ class t_CheckedAdd (v_Self: Type) (v_Rhs: Type) = {
         (fun result -> f_checked_add_post x0 x1 result)
 }
 
-class t_CheckedDiv (v_Self: Type) (v_Rhs: Type) = {
-  f_Output:Type;
+class t_CheckedDiv (v_Self: Type0) (v_Rhs: Type0) = {
+  f_Output:Type0;
   f_checked_div_pre:v_Self -> v_Rhs -> bool;
   f_checked_div_post:v_Self -> v_Rhs -> Core.Option.t_Option f_Output -> bool;
   f_checked_div:x0: v_Self -> x1: v_Rhs
@@ -90,8 +79,8 @@ class t_CheckedDiv (v_Self: Type) (v_Rhs: Type) = {
         (fun result -> f_checked_div_post x0 x1 result)
 }
 
-class t_CheckedMul (v_Self: Type) (v_Rhs: Type) = {
-  f_Output:Type;
+class t_CheckedMul (v_Self: Type0) (v_Rhs: Type0) = {
+  f_Output:Type0;
   f_checked_mul_pre:v_Self -> v_Rhs -> bool;
   f_checked_mul_post:v_Self -> v_Rhs -> Core.Option.t_Option f_Output -> bool;
   f_checked_mul:x0: v_Self -> x1: v_Rhs
@@ -100,8 +89,8 @@ class t_CheckedMul (v_Self: Type) (v_Rhs: Type) = {
         (fun result -> f_checked_mul_post x0 x1 result)
 }
 
-class t_CheckedNeg (v_Self: Type) = {
-  f_Output:Type;
+class t_CheckedNeg (v_Self: Type0) = {
+  f_Output:Type0;
   f_checked_neg_pre:v_Self -> bool;
   f_checked_neg_post:v_Self -> Core.Option.t_Option f_Output -> bool;
   f_checked_neg:x0: v_Self
@@ -110,8 +99,8 @@ class t_CheckedNeg (v_Self: Type) = {
         (fun result -> f_checked_neg_post x0 result)
 }
 
-class t_CheckedSub (v_Self: Type) (v_Rhs: Type) = {
-  f_Output:Type;
+class t_CheckedSub (v_Self: Type0) (v_Rhs: Type0) = {
+  f_Output:Type0;
   f_checked_sub_pre:v_Self -> v_Rhs -> bool;
   f_checked_sub_post:v_Self -> v_Rhs -> Core.Option.t_Option f_Output -> bool;
   f_checked_sub:x0: v_Self -> x1: v_Rhs
@@ -120,8 +109,8 @@ class t_CheckedSub (v_Self: Type) (v_Rhs: Type) = {
         (fun result -> f_checked_sub_post x0 x1 result)
 }
 
-class t_FromBytes (v_Self: Type) = {
-  f_BYTES:Type;
+class t_FromBytes (v_Self: Type0) = {
+  f_BYTES:Type0;
   f_from_le_bytes_pre:f_BYTES -> bool;
   f_from_le_bytes_post:f_BYTES -> v_Self -> bool;
   f_from_le_bytes:x0: f_BYTES
@@ -132,43 +121,43 @@ class t_FromBytes (v_Self: Type) = {
     -> Prims.Pure v_Self (f_from_be_bytes_pre x0) (fun result -> f_from_be_bytes_post x0 result)
 }
 
-class t_NumOps (v_Self: Type) (v_Rhs: Type) (v_Output: Type) = {
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_3420555054487092457:Core.Ops.Arith.t_Add v_Self
+class t_NumOps (v_Self: Type0) (v_Rhs: Type0) (v_Output: Type0) = {
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_9126539072073536218:Core.Ops.Arith.t_Add v_Self
     v_Rhs;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_16858356355397389837:Core.Ops.Arith.t_Sub v_Self
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_9784678892199232396:Core.Ops.Arith.t_Sub v_Self
     v_Rhs;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_3009625865770964073:Core.Ops.Arith.t_Mul v_Self
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_7005199110250618039:Core.Ops.Arith.t_Mul v_Self
     v_Rhs;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_9111207129981210576:Core.Ops.Arith.t_Div v_Self
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_12366019628759357413:Core.Ops.Arith.t_Div v_Self
     v_Rhs;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_16804214316696687705:Core.Ops.Arith.t_Rem v_Self
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_11859756759858186302:Core.Ops.Arith.t_Rem v_Self
     v_Rhs
 }
 
-class t_One (v_Self: Type) = {
+class t_One (v_Self: Type0) = {
   f_one_pre:Prims.unit -> bool;
   f_one_post:Prims.unit -> v_Self -> bool;
   f_one:x0: Prims.unit -> Prims.Pure v_Self (f_one_pre x0) (fun result -> f_one_post x0 result)
 }
 
-class t_ToBytes (v_Self: Type) = {
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_4530633244223603628:t_FromBytes v_Self;
+class t_ToBytes (v_Self: Type0) = {
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_3732703090464998751:t_FromBytes v_Self;
   f_to_le_bytes_pre:v_Self -> bool;
-  f_to_le_bytes_post:v_Self -> v_4530633244223603628.f_BYTES -> bool;
+  f_to_le_bytes_post:v_Self -> v_3732703090464998751.f_BYTES -> bool;
   f_to_le_bytes:x0: v_Self
-    -> Prims.Pure v_4530633244223603628.f_BYTES
+    -> Prims.Pure v_3732703090464998751.f_BYTES
         (f_to_le_bytes_pre x0)
         (fun result -> f_to_le_bytes_post x0 result);
   f_to_be_bytes_pre:v_Self -> bool;
-  f_to_be_bytes_post:v_Self -> v_4530633244223603628.f_BYTES -> bool;
+  f_to_be_bytes_post:v_Self -> v_3732703090464998751.f_BYTES -> bool;
   f_to_be_bytes:x0: v_Self
-    -> Prims.Pure v_4530633244223603628.f_BYTES
+    -> Prims.Pure v_3732703090464998751.f_BYTES
         (f_to_be_bytes_pre x0)
         (fun result -> f_to_be_bytes_post x0 result)
 }
 
-class t_WrappingAdd (v_Self: Type) (v_Rhs: Type) = {
-  f_Output:Type;
+class t_WrappingAdd (v_Self: Type0) (v_Rhs: Type0) = {
+  f_Output:Type0;
   f_wrapping_add_pre:v_Self -> v_Rhs -> bool;
   f_wrapping_add_post:v_Self -> v_Rhs -> f_Output -> bool;
   f_wrapping_add:x0: v_Self -> x1: v_Rhs
@@ -177,8 +166,8 @@ class t_WrappingAdd (v_Self: Type) (v_Rhs: Type) = {
         (fun result -> f_wrapping_add_post x0 x1 result)
 }
 
-class t_WrappingDiv (v_Self: Type) (v_Rhs: Type) = {
-  f_Output:Type;
+class t_WrappingDiv (v_Self: Type0) (v_Rhs: Type0) = {
+  f_Output:Type0;
   f_wrapping_div_pre:v_Self -> v_Rhs -> bool;
   f_wrapping_div_post:v_Self -> v_Rhs -> f_Output -> bool;
   f_wrapping_div:x0: v_Self -> x1: v_Rhs
@@ -187,8 +176,8 @@ class t_WrappingDiv (v_Self: Type) (v_Rhs: Type) = {
         (fun result -> f_wrapping_div_post x0 x1 result)
 }
 
-class t_WrappingMul (v_Self: Type) (v_Rhs: Type) = {
-  f_Output:Type;
+class t_WrappingMul (v_Self: Type0) (v_Rhs: Type0) = {
+  f_Output:Type0;
   f_wrapping_mul_pre:v_Self -> v_Rhs -> bool;
   f_wrapping_mul_post:v_Self -> v_Rhs -> f_Output -> bool;
   f_wrapping_mul:x0: v_Self -> x1: v_Rhs
@@ -197,8 +186,8 @@ class t_WrappingMul (v_Self: Type) (v_Rhs: Type) = {
         (fun result -> f_wrapping_mul_post x0 x1 result)
 }
 
-class t_WrappingSub (v_Self: Type) (v_Rhs: Type) = {
-  f_Output:Type;
+class t_WrappingSub (v_Self: Type0) (v_Rhs: Type0) = {
+  f_Output:Type0;
   f_wrapping_sub_pre:v_Self -> v_Rhs -> bool;
   f_wrapping_sub_post:v_Self -> v_Rhs -> f_Output -> bool;
   f_wrapping_sub:x0: v_Self -> x1: v_Rhs
@@ -207,44 +196,43 @@ class t_WrappingSub (v_Self: Type) (v_Rhs: Type) = {
         (fun result -> f_wrapping_sub_post x0 x1 result)
 }
 
-class t_Zero (v_Self: Type) = {
+class t_Zero (v_Self: Type0) = {
   f_zero_pre:Prims.unit -> bool;
   f_zero_post:Prims.unit -> v_Self -> bool;
   f_zero:x0: Prims.unit -> Prims.Pure v_Self (f_zero_pre x0) (fun result -> f_zero_post x0 result)
 }
 
-class t_MachineInt (v_Self: Type) (v_Output: Type) = {
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_957087622381469234:Core.Marker.t_Copy v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_7243498280507755391:t_Bounded v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_9802961870013064174:Core.Cmp.t_PartialOrd v_Self
+class t_MachineInt (v_Self: Type0) (v_Output: Type0) = {
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_11581440318597584651:Core.Marker.t_Copy v_Self;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_12866954522599331834:Core.Cmp.t_PartialOrd v_Self
     v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_15372362079243870652:Core.Cmp.t_Ord v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_1959006841676202949:Core.Cmp.t_PartialEq v_Self
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_13035911912416111195:Core.Cmp.t_Ord v_Self;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_12632649257025169145:Core.Cmp.t_PartialEq v_Self
     v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_8995075768394296398:Core.Cmp.t_Eq v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_2630392019625310516:t_Zero v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_6913784476497246329:t_One v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_9936546819275964215:Core.Ops.Bit.t_Not v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_1531387235085686842:t_NumOps v_Self
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_8099741844003281729:Core.Cmp.t_Eq v_Self;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_9841570312332416173:t_Zero v_Self;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_12668241202577409386:t_One v_Self;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_9487321769118300762:Core.Ops.Bit.t_Not v_Self;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_1980884762883925305:t_NumOps v_Self
     v_Self
     v_Output;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_3786882699227749486:Core.Ops.Bit.t_BitAnd v_Self
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_13929479875548649875:Core.Ops.Bit.t_BitAnd v_Self
     v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_8095144530696857283:Core.Ops.Bit.t_BitOr v_Self
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_1708325062211865233:Core.Ops.Bit.t_BitOr v_Self
     v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_15313863003467220491:Core.Ops.Bit.t_BitXor v_Self
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_1501688608269502122:Core.Ops.Bit.t_BitXor v_Self
     v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_13306778606414288955:Core.Ops.Bit.t_Shl v_Self
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_15083490293093561556:Core.Ops.Bit.t_Shl v_Self
     v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_2333720355461387358:Core.Ops.Bit.t_Shr v_Self
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_9065931548762825726:Core.Ops.Bit.t_Shr v_Self
     v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_10133521522977299931:t_CheckedAdd v_Self v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_16509367665728242671:t_CheckedSub v_Self v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_261087305577220356:t_CheckedMul v_Self v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_4808020806666262858:t_CheckedDiv v_Self v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_18005178388944789845:t_WrappingAdd v_Self v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_11471591230230619611:t_WrappingSub v_Self v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_5940229659009370734:t_WrappingMul v_Self v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_1640938766960073185:t_WrappingDiv v_Self v_Self;
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_12477248635475532096:t_BitOps v_Self
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_5052970308637232515:t_CheckedAdd v_Self v_Self;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_739902999637339236:t_CheckedSub v_Self v_Self;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_15323401662629887609:t_CheckedMul v_Self v_Self;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_8119502507145032897:t_CheckedDiv v_Self v_Self;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_12846047806852469117:t_WrappingAdd v_Self v_Self;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_12408554086330550784:t_WrappingSub v_Self v_Self;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_8633193508996485932:t_WrappingMul v_Self v_Self;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_16339457892016115661:t_WrappingDiv v_Self v_Self;
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_12348120774285878195:t_BitOps v_Self
 }

@@ -78,9 +78,14 @@ let show_int_kind { size; signedness } =
     |> Option.map ~f:Int.to_string
     |> Option.value ~default:"size")
 
-type float_kind = F32 | F64 [@@deriving show, yojson, hash, compare, eq]
+type float_kind = F16 | F32 | F64 | F128
+[@@deriving show, yojson, hash, compare, eq]
 
-let show_float_kind = function F32 -> "f32" | F64 -> "f64"
+let show_float_kind = function
+  | F16 -> "f16"
+  | F32 -> "f32"
+  | F64 -> "f64"
+  | F128 -> "f128"
 
 type literal =
   | String of string
@@ -126,6 +131,7 @@ functor
       | TArrow of ty list * ty
       | TAssociatedType of { impl : impl_expr; item : concrete_ident }
       | TOpaque of concrete_ident
+      | TDyn of { witness : F.dyn; goals : dyn_trait_goal list }
 
     and generic_value =
       | GLifetime of { lt : todo; witness : F.lifetime }
@@ -151,6 +157,13 @@ functor
       `SomeTy: Foo<T0, ..., Tn>`). An `impl_expr` "inhabits" a
       `trait_goal`. *)
 
+    and dyn_trait_goal = {
+      trait : concrete_ident;
+      non_self_args : generic_value list;
+    }
+    (** A dyn trait: [Foo<_, T0, ..., Tn>]. The generic arguments are known 
+      but the actual type implementing the trait is known only dynamically. *)
+
     and impl_ident = { goal : trait_goal; name : string }
     (** An impl identifier [{goal; name}] can be:
           {ul
@@ -159,8 +172,22 @@ functor
               {- An argument that introduces a variable [name] that inhabits [goal].}
           }
       *)
-    (* TODO: ADD SPAN! *)
 
+    and projection_predicate = {
+      impl : impl_expr;
+      assoc_item : concrete_ident;
+      typ : ty;
+    }
+    (** Expresses a constraints over an associated type.
+        For instance:
+        [
+        fn f<T : Foo<S = String>>(...)
+                    ^^^^^^^^^^
+        ]
+        (provided the trait `Foo` has an associated type `S`).
+      *)
+
+    (* TODO: ADD SPAN! *)
     and pat' =
       | PWild
       | PAscription of { typ : ty; typ_span : span; pat : pat }
@@ -195,7 +222,7 @@ functor
           args : expr list (* ; f_span: span *);
           generic_args : generic_value list;
           bounds_impls : impl_expr list;
-          impl : impl_expr option;
+          trait : (impl_expr * generic_value list) option;
         }
       | Literal of literal
       | Array of expr list
@@ -311,8 +338,16 @@ functor
           witness : F.nontrivial_lhs;
         }
 
+    (* A guard is a condition on a pattern like: *)
+    (* match x {.. if guard => .., ..}*)
+    and guard = { guard : guard'; span : span }
+
+    (* Only if-let guards are supported for now but other variants like regular if *)
+    (* could be added later (regular if guards are for now desugared as IfLet) *)
+    and guard' = IfLet of { lhs : pat; rhs : expr; witness : F.match_guard }
+
     (* OCaml + visitors is not happy with `pat`... hence `arm_pat`... *)
-    and arm' = { arm_pat : pat; body : expr }
+    and arm' = { arm_pat : pat; body : expr; guard : guard option }
     and arm = { arm : arm'; span : span } [@@deriving show, yojson, hash, eq]
 
     type generic_param = {
@@ -330,6 +365,7 @@ functor
     and generic_constraint =
       | GCLifetime of todo * F.lifetime
       | GCType of impl_ident
+      | GCProjection of projection_predicate
           (** Trait or lifetime constraints. For instance, `A` and `B` in
     `fn f<T: A + B>()`. *)
     [@@deriving show, yojson, hash, eq]
@@ -407,7 +443,14 @@ functor
       ii_attrs : attrs;
     }
 
-    and trait_item' = TIType of impl_ident list | TIFn of ty
+    and trait_item' =
+      | TIType of impl_ident list
+      | TIFn of ty
+      | TIDefault of {
+          params : param list;
+          body : expr;
+          witness : F.trait_item_default;
+        }
 
     and trait_item = {
       (* TODO: why do I need to prefix by `ti_` here? I guess visitors fail or something *)

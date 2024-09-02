@@ -83,6 +83,9 @@ struct
         let monadic_action = reject
         let monadic_binding = reject
         let block = reject
+        let dyn = reject
+        let match_guard = reject
+        let trait_item_default = reject
         let metadata = Phase_reject.make_metadata (NotInBackendLang ProVerif)
       end)
 
@@ -928,9 +931,10 @@ module TransformToInputLanguage =
   |> Phases.Simplify_match_return
   |> Phases.Drop_needless_returns
   |> Phases.Local_mutation
-   |> Phases.Reject.Continue
-     |> ProVerifRename
-   |> SubtypeToInputLanguage
+  |> Phases.Reject.Continue
+  |> Phases.Reject.Dyn
+  |> ProVerifRename
+  |> SubtypeToInputLanguage
   |> Identity
   ]
   [@ocamlformat "disable"]

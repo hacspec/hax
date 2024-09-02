@@ -99,7 +99,7 @@ macro_rules! mk {
 mod types {
     use crate::prelude::*;
     use std::cell::RefCell;
-    use std::collections::{HashMap, HashSet};
+    use std::collections::HashSet;
 
     pub struct LocalContextS {
         pub vars: HashMap<rustc_middle::thir::LocalVarId, String>,
@@ -131,6 +131,12 @@ mod types {
             >,
         >,
         pub tcx: rustc_middle::ty::TyCtxt<'tcx>,
+        /// Rust doesn't enforce bounds on generic parameters in type
+        /// aliases. Thus, when translating type aliases, we need to
+        /// disable the resolution of implementation expressions. For
+        /// more details, please see
+        /// https://github.com/hacspec/hax/issues/707.
+        pub ty_alias_mode: bool,
     }
 
     impl<'tcx> Base<'tcx> {
@@ -149,6 +155,7 @@ mod types {
                 local_ctx: Rc::new(RefCell::new(LocalContextS::new())),
                 exported_spans: Rc::new(RefCell::new(HashSet::new())),
                 exported_def_ids: Rc::new(RefCell::new(HashSet::new())),
+                ty_alias_mode: false,
             }
         }
     }
@@ -169,7 +176,7 @@ mk!(
     }
 );
 
-pub use types::*;
+pub use self::types::*;
 
 impl<'tcx> State<Base<'tcx>, (), (), ()> {
     pub fn new(
@@ -228,18 +235,13 @@ pub fn with_owner_id<'tcx, THIR, MIR>(
 }
 
 pub trait BaseState<'tcx> = HasBase<'tcx> + Clone + IsState<'tcx>;
+
 /// State of anything below a `owner_id`
 pub trait UnderOwnerState<'tcx> = BaseState<'tcx> + HasOwnerId;
 
-/// Meta-informations about an `impl<GENERICS[: PREDICATES]> TRAIT for
-/// TYPE where PREDICATES {}`
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct ImplInfos {
-    pub generics: TyGenerics,
-    pub clauses: Vec<(Clause, Span)>,
-    pub typ: Ty,
-    pub trait_ref: Option<TraitRef>,
-}
+/// While translating expressions, we expect to always have a THIR
+/// body and an `owner_id` in the state
+pub trait ExprState<'tcx> = UnderOwnerState<'tcx> + HasThir<'tcx>;
 
 impl ImplInfos {
     fn from<'tcx>(base: Base<'tcx>, did: rustc_hir::def_id::DefId) -> Self {

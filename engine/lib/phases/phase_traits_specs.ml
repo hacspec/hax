@@ -28,8 +28,8 @@ module Make (F : Features.T) =
           let v =
             match item.v with
             | Trait { name; generics; items } ->
-                let f (item : trait_item) =
-                  let mk kind =
+                let f attrs (item : trait_item) =
+                  let mk role kind =
                     let ti_ident = mk_name item.ti_ident kind in
                     {
                       item with
@@ -38,23 +38,49 @@ module Make (F : Features.T) =
                         [
                           Attr_payloads.to_attr TraitMethodNoPrePost
                             item.ti_span;
-                        ];
+                        ]
+                        @ (List.filter
+                             ~f:
+                               [%matches?
+                                 Types.AssociatedItem { role = role'; _ }, _ when 
+                                 [%eq: Types.ha_assoc_role] role role']
+                             attrs
+                          |> List.map ~f:(uncurry Attr_payloads.to_attr));
                     }
                   in
                   match item.ti_v with
                   | TIFn (TArrow (inputs, output)) ->
                       [
-                        { (mk "pre") with ti_v = TIFn (TArrow (inputs, TBool)) };
                         {
-                          (mk "post") with
+                          (mk Types.Requires "pre") with
+                          ti_v = TIFn (TArrow (inputs, TBool));
+                        };
+                        {
+                          (mk Types.Ensures "post") with
                           ti_v = TIFn (TArrow (inputs @ [ output ], TBool));
                         };
                       ]
                   | TIFn _ -> [ (* REFINEMENTS FOR CONSTANTS? *) ]
                   | TIType _ -> [ (* TODO REFINEMENTS FOR TYPES *) ]
+                  | TIDefault _ -> [ (* TODO REFINEMENTS FOR DEFAULT ITEMS *) ]
                 in
                 let items =
-                  List.concat_map ~f:(fun item -> f item @ [ item ]) items
+                  List.concat_map
+                    ~f:(fun item ->
+                      let attrs = Attr_payloads.payloads item.ti_attrs in
+                      let ti_attrs =
+                        attrs
+                        |> List.filter
+                             ~f:
+                               (fst
+                               >> [%matches?
+                                    Types.AssociatedItem
+                                      { role = Ensures | Requires; _ }]
+                               >> not)
+                        |> List.map ~f:(uncurry Attr_payloads.to_attr)
+                      in
+                      f attrs item @ [ { item with ti_attrs } ])
+                    items
                 in
                 Trait { name; generics; items }
             | Impl { generics; self_ty; of_trait; items; parent_bounds } ->
@@ -93,8 +119,8 @@ module Make (F : Features.T) =
                             IIFn
                               {
                                 body =
-                                  Attrs.associated_expr_rebinding params_pat
-                                    Requires item.ii_attrs
+                                  Attrs.associated_expr_rebinding item.ii_span
+                                    params_pat Requires item.ii_attrs
                                   |> Option.value ~default;
                                 params;
                               };
@@ -105,7 +131,7 @@ module Make (F : Features.T) =
                             IIFn
                               {
                                 body =
-                                  Attrs.associated_expr_rebinding
+                                  Attrs.associated_expr_rebinding item.ii_span
                                     (params_pat @ [ pat ]) Ensures item.ii_attrs
                                   |> Option.value ~default;
                                 params = params @ [ out ];

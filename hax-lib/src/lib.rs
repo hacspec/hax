@@ -141,6 +141,16 @@ pub fn implies(lhs: bool, rhs: impl Fn() -> bool) -> bool {
 #[doc(hidden)]
 pub fn inline(_: &str) {}
 
+/// Similar to `inline`, but allows for any type. Do not use directly.
+#[doc(hidden)]
+pub fn inline_unsafe<T>(_: &str) -> T {
+    unreachable!()
+}
+
+/// A dummy function that holds a loop invariant.
+#[doc(hidden)]
+pub fn _internal_loop_invariant<T, P: FnOnce(T) -> bool>(_: P) {}
+
 /// A type that implements `Refinement` should be a newtype for a
 /// type `T`. The field holding the value of type `T` should be
 /// private, and `Refinement` should be the only interface to the
@@ -156,6 +166,8 @@ pub trait Refinement {
     fn new(x: Self::InnerType) -> Self;
     /// Destructor for the refined type
     fn get(self) -> Self::InnerType;
+    /// Gets a mutable reference to a refinement
+    fn get_mut(&mut self) -> &mut Self::InnerType;
     /// Tests wether a value satisfies the refinement
     fn invariant(value: Self::InnerType) -> bool;
 }

@@ -35,6 +35,7 @@ module Attrs = struct
 end
 
 let tcresolve = term @@ AST.Var FStar_Parser_Const.tcresolve_lid
+let solve = term @@ AST.Var FStar_Parser_Const.solve_lid
 
 let pat_var_tcresolve (var : string option) =
   let tcresolve = Some (AST.Meta tcresolve) in
@@ -116,3 +117,4 @@ let decl_of_string s =
   match decls_of_string s with [ d ] -> d | _ -> failwith "decl_of_string"
 
 let ascribe t e = term @@ AST.Ascribed (e, t, None, false)
+let implies p q = AST.Op (id "==>", [ p; q ]) |> term

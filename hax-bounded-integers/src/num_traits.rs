@@ -31,10 +31,10 @@ pub trait NumOps<Rhs = Self, Output = Self>:
 {
 }
 
-pub trait Bounded {
-    fn min_value() -> Self;
-    fn max_value() -> Self;
-}
+// pub trait Bounded {
+//     fn min_value() -> Self;
+//     fn max_value() -> Self;
+// }
 
 pub trait WrappingAdd<Rhs = Self> {
     type Output;
@@ -95,7 +95,7 @@ pub trait ToBytes: FromBytes {
 
 pub trait MachineInt<Output>:
     Copy
-    + Bounded
+    // + Bounded
     + PartialOrd
     + Ord
     + PartialEq

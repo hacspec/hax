@@ -23,7 +23,10 @@ loop,
   monadic_action,
   monadic_binding,
   quote,
-  block]
+  block,
+  dyn,
+  match_guard,
+  trait_item_default]
 
 module Full = On
 

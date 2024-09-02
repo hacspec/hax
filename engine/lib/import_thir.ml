@@ -79,12 +79,13 @@ let c_mutability (witness : 'a) : bool -> 'a Ast.mutability = function
 
 let c_borrow_kind span : Thir.borrow_kind -> borrow_kind = function
   | Shared -> Shared
-  | Shallow -> unimplemented [ span ] "Shallow borrows"
+  | Fake _ -> unimplemented [ span ] "Shallow borrows"
   | Mut _ -> Mut W.mutable_reference
 
-let c_binding_mode span : Thir.binding_mode -> binding_mode = function
-  | ByValue -> ByValue
-  | ByRef k -> ByRef (c_borrow_kind span k, W.reference)
+let c_binding_mode : Thir.by_ref -> binding_mode = function
+  | No -> ByValue
+  | Yes true -> ByRef (Mut W.mutable_reference, W.reference)
+  | Yes false -> ByRef (Shared, W.reference)
 
 let unit_typ : ty = TApp { ident = `TupleType 0; args = [] }
 
@@ -108,12 +109,12 @@ let c_attr (attr : Thir.attribute) : attr =
     | Normal
         {
           item =
-            { args = Eq (_, Hir { symbol; _ }); path = "doc"; tokens = None };
+            { args = Eq (_, Hir { symbol; _ }); path = "doc"; tokens = None; _ };
           tokens = None;
         } ->
         DocComment { kind = DCKLine; body = symbol }
         (* Looks for `#[doc = "something"]` *)
-    | Normal { item = { args; path; tokens = subtokens }; tokens } ->
+    | Normal { item = { args; path; tokens = subtokens; _ }; tokens } ->
         let args_tokens =
           match args with Delimited { tokens; _ } -> Some tokens | _ -> None
         in
@@ -161,7 +162,7 @@ let c_lit' span negative (lit : Thir.lit_kind) (ty : ty) : extended_literal =
       ^ "] instead.")
   in
   match lit with
-  | Err ->
+  | Err _ ->
       assertion_failure [ span ]
         "[import_thir:literal] got an error literal: this means the Rust \
          compiler or Hax's frontend probably reported errors above."
@@ -197,7 +198,7 @@ let resugar_index_mut (e : expr) : (expr * expr) option =
         f = { e = GlobalVar (`Concrete meth); _ };
         args = [ { e = Borrow { e = x; _ }; _ }; index ];
         generic_args = _ (* TODO: see issue #328 *);
-        impl = _ (* TODO: see issue #328 *);
+        trait = _ (* TODO: see issue #328 *);
         bounds_impls = _;
       }
     when Concrete_ident.eq_name Core__ops__index__IndexMut__index_mut meth ->
@@ -207,7 +208,7 @@ let resugar_index_mut (e : expr) : (expr * expr) option =
         f = { e = GlobalVar (`Concrete meth); _ };
         args = [ x; index ];
         generic_args = _ (* TODO: see issue #328 *);
-        impl = _ (* TODO: see issue #328 *);
+        trait = _ (* TODO: see issue #328 *);
         bounds_impls = _;
       }
     when Concrete_ident.eq_name Core__ops__index__Index__index meth ->
@@ -225,10 +226,11 @@ module type EXPR = sig
   val c_generic_value : Thir.span -> Thir.generic_arg -> generic_value
   val c_generics : Thir.generics -> generics
   val c_param : Thir.span -> Thir.param -> param
+  val c_fn_params : Thir.span -> Thir.param list -> param list
   val c_trait_item' : Thir.trait_item -> Thir.trait_item_kind -> trait_item'
   val c_trait_ref : Thir.span -> Thir.trait_ref -> trait_goal
   val c_impl_expr : Thir.span -> Thir.impl_expr -> impl_expr
-  val c_clause : Thir.span -> Thir.clause -> impl_ident option
+  val c_clause : Thir.span -> Thir.clause -> generic_constraint option
 end
 
 (* BinOp to [core::ops::*] overloaded functions *)
@@ -256,6 +258,12 @@ end) : EXPR = struct
       | Ge -> Core__cmp__PartialOrd__ge
       | Gt -> Core__cmp__PartialOrd__gt
       | Eq -> Core__cmp__PartialEq__eq
+      | AddWithOverflow | SubWithOverflow | MulWithOverflow ->
+          assertion_failure (Span.to_thir span)
+            "Overflowing binary operators are not suppored"
+      | Cmp ->
+          assertion_failure (Span.to_thir span)
+            "`Cmp` binary operator is not suppored"
       | Offset -> Core__ptr__const_ptr__Impl__offset
     in
     let primitive_names_of_binop : Thir.bin_op -> Concrete_ident.name = function
@@ -275,6 +283,12 @@ end) : EXPR = struct
       | Ge -> Rust_primitives__u128__ge
       | Gt -> Rust_primitives__u128__gt
       | Eq -> Rust_primitives__u128__eq
+      | AddWithOverflow | SubWithOverflow | MulWithOverflow ->
+          assertion_failure (Span.to_thir span)
+            "Overflowing binary operators are not suppored"
+      | Cmp ->
+          assertion_failure (Span.to_thir span)
+            "`Cmp` binary operator is not suppored"
       | Offset -> Rust_primitives__offset
     in
     let name =
@@ -313,8 +327,10 @@ end) : EXPR = struct
         let name = primitive_names_of_binop op in
         let expected, f =
           match op with
-          | Add | Sub | Mul | Div -> both int <|> both float
-          | Rem -> both int
+          | Add | Sub | Mul | AddWithOverflow | SubWithOverflow
+          | MulWithOverflow | Div ->
+              both int <|> both float
+          | Rem | Cmp -> both int
           | BitXor | BitAnd | BitOr -> both int <|> both bool
           | Shl | Shr -> int <*> int
           | Lt | Le | Ne | Ge | Gt -> both int <|> both float
@@ -355,6 +371,75 @@ end) : EXPR = struct
     let v = Global_ident.of_name Value Rust_primitives__hax__dropped_body in
     { span; typ; e = GlobalVar v }
 
+  and c_block ~expr ~span ~stmts ~ty : expr =
+    let full_span = Span.of_thir span in
+    let typ = c_ty span ty in
+    (* if there is no expression & the last expression is ⊥, just use that *)
+    let lift_last_statement_as_expr_if_possible expr stmts (ty : Thir.ty) =
+      match (ty, expr, List.drop_last stmts, List.last stmts) with
+      | ( Thir.Never,
+          None,
+          Some stmts,
+          Some ({ kind = Thir.Expr { expr; _ }; _ } : Thir.stmt) ) ->
+          (stmts, Some expr)
+      | _ -> (stmts, expr)
+    in
+    let o_stmts, o_expr =
+      lift_last_statement_as_expr_if_possible expr stmts ty
+    in
+    let init =
+      Option.map
+        ~f:(fun e ->
+          let e = c_expr e in
+          { e with e = Block (e, W.block) })
+        o_expr
+      |> Option.value ~default:(unit_expr full_span)
+    in
+    List.fold_right o_stmts ~init ~f:(fun { kind; _ } body ->
+        match kind with
+        | Expr { expr = rhs; _ } ->
+            let rhs = c_expr rhs in
+            let e =
+              Let { monadic = None; lhs = wild_pat rhs.span rhs.typ; rhs; body }
+            in
+            { e; typ; span = Span.union rhs.span body.span }
+        | Let
+            {
+              else_block = Some { expr; span; stmts; _ };
+              pattern = lhs;
+              initializer' = Some rhs;
+              _;
+            } ->
+            let lhs = c_pat lhs in
+            let rhs = c_expr rhs in
+            let else_block = c_block ~expr ~span ~stmts ~ty in
+            let lhs_body_span = Span.union lhs.span body.span in
+            let e =
+              Match
+                {
+                  arms =
+                    [
+                      U.make_arm lhs body lhs_body_span;
+                      U.make_arm
+                        { p = PWild; span = else_block.span; typ = lhs.typ }
+                        { else_block with typ = body.typ }
+                        else_block.span;
+                    ];
+                  scrutinee = rhs;
+                }
+            in
+            { e; typ; span = full_span }
+        | Let { initializer' = None; _ } ->
+            unimplemented ~issue_id:156 [ span ]
+              "Sorry, Hax does not support declare-first let bindings (see \
+               https://doc.rust-lang.org/rust-by-example/variable_bindings/declare.html) \
+               for now."
+        | Let { pattern = lhs; initializer' = Some rhs; _ } ->
+            let lhs = c_pat lhs in
+            let rhs = c_expr rhs in
+            let e = Let { monadic = None; lhs; rhs; body } in
+            { e; typ; span = Span.union rhs.span body.span })
+
   and c_expr_unwrapped (e : Thir.decorated_for__expr_kind) : expr =
     (* TODO: eliminate that `call`, use the one from `ast_utils` *)
     let call f args =
@@ -363,7 +448,7 @@ end) : EXPR = struct
           f;
           args = List.map ~f:c_expr args;
           generic_args = [];
-          impl = None;
+          trait = None;
           bounds_impls = [];
         }
     in
@@ -394,12 +479,10 @@ end) : EXPR = struct
             Option.value ~default:(U.unit_expr span)
             @@ Option.map ~f:c_expr else_opt
           in
-          let arm_then =
-            { arm = { arm_pat; body = then_ }; span = then_.span }
-          in
+          let arm_then = U.make_arm arm_pat then_ then_.span in
           let arm_else =
             let arm_pat = { arm_pat with p = PWild } in
-            { arm = { arm_pat; body = else_ }; span = else_.span }
+            U.make_arm arm_pat else_ else_.span
           in
           Match { scrutinee; arms = [ arm_then; arm_else ] }
       | If { cond; else_opt; then'; _ } ->
@@ -411,7 +494,7 @@ end) : EXPR = struct
           {
             args;
             fn_span = _;
-            impl;
+            trait;
             from_hir_call = _;
             fun';
             ty = _;
@@ -420,12 +503,11 @@ end) : EXPR = struct
           } ->
           let args = List.map ~f:c_expr args in
           let bounds_impls = List.map ~f:(c_impl_expr e.span) bounds_impls in
-          let generic_args =
-            List.map ~f:(c_generic_value e.span) generic_args
-          in
+          let c_generic_values = List.map ~f:(c_generic_value e.span) in
+          let generic_args = c_generic_values generic_args in
           let f =
             let f = c_expr fun' in
-            match (impl, fun'.contents) with
+            match (trait, fun'.contents) with
             | Some _, GlobalName { id } ->
                 { f with e = GlobalVar (def_id (AssociatedItem Value) id) }
             | _ -> f
@@ -437,7 +519,8 @@ end) : EXPR = struct
               args;
               generic_args;
               bounds_impls;
-              impl = Option.map ~f:(c_impl_expr e.span) impl;
+              trait =
+                Option.map ~f:(c_impl_expr e.span *** c_generic_values) trait;
             }
       | Box { value } ->
           (U.call Rust_primitives__hax__box_new [ c_expr value ] span typ).e
@@ -457,7 +540,10 @@ end) : EXPR = struct
           (U.call
              (match op with
              | Not -> Core__ops__bit__Not__not
-             | Neg -> Core__ops__arith__Neg__neg)
+             | Neg -> Core__ops__arith__Neg__neg
+             | PtrMetadata ->
+                 assertion_failure (Span.to_thir span)
+                   "Unsupported unary operator: `PtrMetadata`")
              [ c_expr arg ]
              span typ)
             .e
@@ -498,61 +584,8 @@ end) : EXPR = struct
       | Let _ -> unimplemented [ e.span ] "Let"
       | Block { safety_mode = BuiltinUnsafe | ExplicitUnsafe; _ } ->
           unsafe_block [ e.span ]
-      | Block o ->
-          (* if there is no expression & the last expression is ⊥, just use that *)
-          let lift_last_statement_as_expr_if_possible expr stmts (ty : Thir.ty)
-              =
-            match (ty, expr, List.drop_last stmts, List.last stmts) with
-            | ( Thir.Never,
-                None,
-                Some stmts,
-                Some ({ kind = Thir.Expr { expr; _ }; _ } : Thir.stmt) ) ->
-                (stmts, Some expr)
-            | _ -> (stmts, expr)
-          in
-          let o_stmts, o_expr =
-            lift_last_statement_as_expr_if_possible o.expr o.stmts e.ty
-          in
-          let init =
-            Option.map
-              ~f:(fun e ->
-                let e = c_expr e in
-                { e with e = Block (e, W.block) })
-              o_expr
-            |> Option.value ~default:(unit_expr span)
-          in
-          let { e; _ } =
-            List.fold_right o_stmts ~init ~f:(fun { kind; _ } body ->
-                match kind with
-                | Expr { expr = rhs; _ } ->
-                    let rhs = c_expr rhs in
-                    let e =
-                      Let
-                        {
-                          monadic = None;
-                          lhs = wild_pat rhs.span rhs.typ;
-                          rhs;
-                          body;
-                        }
-                    in
-                    { e; typ; span = Span.union rhs.span body.span }
-                | Let { else_block = Some _; _ } ->
-                    unimplemented ~issue_id:155 [ e.span ]
-                      "Sorry, Hax does not support [let-else] (see \
-                       https://doc.rust-lang.org/rust-by-example/flow_control/let_else.html) \
-                       for now."
-                | Let { initializer' = None; _ } ->
-                    unimplemented ~issue_id:156 [ e.span ]
-                      "Sorry, Hax does not support declare-first let bindings \
-                       (see \
-                       https://doc.rust-lang.org/rust-by-example/variable_bindings/declare.html) \
-                       for now."
-                | Let { pattern = lhs; initializer' = Some rhs; _ } ->
-                    let lhs = c_pat lhs in
-                    let rhs = c_expr rhs in
-                    let e = Let { monadic = None; lhs; rhs; body } in
-                    { e; typ; span = Span.union rhs.span body.span })
-          in
+      | Block { expr; span; stmts; _ } ->
+          let { e; _ } = c_block ~expr ~span ~stmts ~ty:e.ty in
           e
       | Assign { lhs; rhs } ->
           let lhs = c_expr lhs in
@@ -574,7 +607,7 @@ end) : EXPR = struct
               f = { e = projector; typ = TArrow ([ lhs.typ ], typ); span };
               args = [ lhs ];
               generic_args = [] (* TODO: see issue #328 *);
-              impl = None (* TODO: see issue #328 *);
+              trait = None (* TODO: see issue #328 *);
               bounds_impls = [];
             }
       | TupleField { lhs; field } ->
@@ -591,7 +624,7 @@ end) : EXPR = struct
               f = { e = projector; typ = TArrow ([ lhs.typ ], typ); span };
               args = [ lhs ];
               generic_args = [] (* TODO: see issue #328 *);
-              impl = None (* TODO: see issue #328 *);
+              trait = None (* TODO: see issue #328 *);
               bounds_impls = [];
             }
       | GlobalName { id } -> GlobalVar (def_id Value id)
@@ -727,7 +760,7 @@ end) : EXPR = struct
                     };
                   args = [ e ];
                   generic_args = _;
-                  impl = _;
+                  trait = _;
                   bounds_impls = _;
                 (* TODO: see issue #328 *)
                 } ->
@@ -800,13 +833,13 @@ end) : EXPR = struct
           let typ, typ_span = c_canonical_user_type_annotation annotation in
           let pat = c_pat subpattern in
           PAscription { typ; typ_span; pat }
-      | Binding { mode; mutability; subpattern; ty; var; _ } ->
-          let mut = c_mutability W.mutable_variable mutability in
+      | Binding { mode; subpattern; ty; var; _ } ->
+          let mut = c_mutability W.mutable_variable mode.mutability in
           let subpat =
             Option.map ~f:(c_pat &&& Fn.const W.as_pattern) subpattern
           in
           let typ = c_ty pat.span ty in
-          let mode = c_binding_mode pat.span mode in
+          let mode = c_binding_mode mode.by_ref in
           let var = local_ident Expr var in
           PBinding { mut; mode; var; typ; subpat }
       | Variant { info; subpatterns; _ } ->
@@ -839,10 +872,14 @@ end) : EXPR = struct
                   ("expected a pattern, got " ^ [%show: expr'] e)
           in
           (c_constant_expr value |> pat_of_expr).p
+      | InlineConstant { subpattern; _ } -> (c_pat subpattern).p
       | Array _ -> unimplemented [ pat.span ] "Pat:Array"
       | Or { pats } -> POr { subpats = List.map ~f:c_pat pats }
       | Slice _ -> unimplemented [ pat.span ] "pat Slice"
       | Range _ -> unimplemented [ pat.span ] "pat Range"
+      | DerefPattern _ -> unimplemented [ pat.span ] "pat DerefPattern"
+      | Never -> unimplemented [ pat.span ] "pat Never"
+      | Error _ -> unimplemented [ pat.span ] "pat Error"
     in
     { p = v; span; typ }
 
@@ -878,7 +915,7 @@ end) : EXPR = struct
 
   and c_pointer e typ span cast source =
     match cast with
-    | ClosureFnPointer Normal | ReifyFnPointer ->
+    | ClosureFnPointer Safe | ReifyFnPointer ->
         (* we have arrow types, we do not distinguish between top-level functions and closures *)
         (c_expr source).e
     | Unsize ->
@@ -915,7 +952,9 @@ end) : EXPR = struct
     | Char -> TChar
     | Int k -> TInt (c_int_ty k)
     | Uint k -> TInt (c_uint_ty k)
-    | Float k -> TFloat (match k with F32 -> F32 | F64 -> F64)
+    | Float k ->
+        TFloat
+          (match k with F16 -> F16 | F32 -> F32 | F64 -> F64 | F128 -> F128)
     | Arrow value ->
         let ({ inputs; output; _ } : Thir.ty_fn_sig) = value.value in
         let inputs =
@@ -956,8 +995,27 @@ end) : EXPR = struct
         (* TODO: [id] might not unique *)
         TParam { name; id = Local_ident.mk_id Typ (MyInt64.to_int_exn index) }
     | Error -> unimplemented [ span ] "type Error"
-    | Dynamic _ -> unimplemented [ span ] "type Dynamic"
-    | Generator _ -> unimplemented [ span ] "type Generator"
+    | Dynamic (predicates, _region, Dyn) -> (
+        let goals, non_traits =
+          List.partition_map
+            ~f:(fun pred ->
+              match pred.value with
+              | Trait { args; def_id } ->
+                  let goal : dyn_trait_goal =
+                    {
+                      trait = Concrete_ident.of_def_id Trait def_id;
+                      non_self_args = List.map ~f:(c_generic_value span) args;
+                    }
+                  in
+                  First goal
+              | _ -> Second ())
+            predicates
+        in
+        match non_traits with
+        | [] -> TDyn { witness = W.dyn; goals }
+        | _ -> unimplemented [ span ] "type Dyn with non trait predicate")
+    | Dynamic (_, _, DynStar) -> unimplemented [ span ] "type DynStar"
+    | Coroutine _ -> unimplemented [ span ] "type Coroutine"
     | Placeholder _ -> unimplemented [ span ] "type Placeholder"
     | Bound _ -> unimplemented [ span ] "type Bound"
     | Infer _ -> unimplemented [ span ] "type Infer"
@@ -1023,7 +1081,31 @@ end) : EXPR = struct
     let arm_pat = c_pat arm.pattern in
     let body = c_expr arm.body in
     let span = Span.of_thir arm.span in
-    { arm = { arm_pat; body }; span }
+    let guard =
+      Option.map
+        ~f:(fun (e : Thir.decorated_for__expr_kind) ->
+          let guard =
+            match e.contents with
+            | Let { expr; pat } ->
+                IfLet
+                  {
+                    lhs = c_pat pat;
+                    rhs = c_expr expr;
+                    witness = W.match_guard;
+                  }
+            | _ ->
+                IfLet
+                  {
+                    lhs =
+                      { p = PConstant { lit = Bool true }; span; typ = TBool };
+                    rhs = c_expr e;
+                    witness = W.match_guard;
+                  }
+          in
+          { guard; span = Span.of_thir e.span })
+        arm.guard
+    in
+    { arm = { arm_pat; body; guard }; span }
 
   and c_param span (param : Thir.param) : param =
     {
@@ -1032,6 +1114,10 @@ end) : EXPR = struct
       pat = c_pat (Option.value_exn param.pat);
       attrs = c_attrs param.attributes;
     }
+
+  let c_fn_params span (params : Thir.param list) : param list =
+    if List.is_empty params then [ U.make_unit_param (Span.of_thir span) ]
+    else List.map ~f:(c_param span) params
 
   let c_generic_param (param : Thir.generic_param) : generic_param =
     let ident =
@@ -1062,15 +1148,23 @@ end) : EXPR = struct
     let attrs = c_attrs param.attributes in
     { ident; span; attrs; kind }
 
-  let c_clause_kind span id (kind : Thir.clause_kind) : impl_ident option =
+  let c_clause_kind span id (kind : Thir.clause_kind) :
+      generic_constraint option =
     match kind with
     | Trait { is_positive = true; trait_ref } ->
         let args = List.map ~f:(c_generic_value span) trait_ref.generic_args in
         let trait = Concrete_ident.of_def_id Trait trait_ref.def_id in
-        Some { goal = { trait; args }; name = id }
+        Some (GCType { goal = { trait; args }; name = id })
+    | Projection { impl_expr; assoc_item; ty } ->
+        let impl = c_impl_expr span impl_expr in
+        let assoc_item =
+          Concrete_ident.of_def_id (AssociatedItem Type) assoc_item.def_id
+        in
+        let typ = c_ty span ty in
+        Some (GCProjection { impl; assoc_item; typ })
     | _ -> None
 
-  let c_clause span (p : Thir.clause) : impl_ident option =
+  let c_clause span (p : Thir.clause) : generic_constraint option =
     let ({ kind; id } : Thir.clause) = p in
     c_clause_kind span id kind.value
 
@@ -1085,10 +1179,7 @@ end) : EXPR = struct
     aux []
 
   let c_generics (generics : Thir.generics) : generics =
-    let bounds =
-      List.filter_map ~f:(c_clause generics.span) generics.bounds
-      |> List.map ~f:(fun impl_ident -> GCType impl_ident)
-    in
+    let bounds = List.filter_map ~f:(c_clause generics.span) generics.bounds in
     {
       params = List.map ~f:c_generic_param generics.params;
       constraints = bounds |> list_dedup equal_generic_constraint;
@@ -1098,11 +1189,11 @@ end) : EXPR = struct
       trait_item' =
     let span = super.span in
     match item with
-    | Const (_, Some _) ->
-        unimplemented [ span ]
-          "TODO: traits: no support for defaults in traits for now"
+    | Const (_, Some default) ->
+        TIDefault
+          { params = []; body = c_expr default; witness = W.trait_item_default }
     | Const (ty, None) -> TIFn (c_ty span ty)
-    | ProvidedFn (sg, _) | RequiredFn (sg, _) ->
+    | RequiredFn (sg, _) ->
         let (Thir.{ inputs; output; _ } : Thir.fn_decl) = sg.decl in
         let output =
           match output with
@@ -1114,8 +1205,19 @@ end) : EXPR = struct
           else List.map ~f:(c_ty span) inputs
         in
         TIFn (TArrow (inputs, output))
+    | ProvidedFn (_, { params; body; _ }) ->
+        TIDefault
+          {
+            params = c_fn_params span params;
+            body = c_expr body;
+            witness = W.trait_item_default;
+          }
     | Type (bounds, None) ->
-        let bounds = List.filter_map ~f:(c_clause span) bounds in
+        let bounds =
+          List.filter_map ~f:(c_clause span) bounds
+          |> List.filter_map ~f:(fun bound ->
+                 match bound with GCType impl -> Some impl | _ -> None)
+        in
         TIType bounds
     | Type (_, Some _) ->
         unimplemented [ span ]
@@ -1132,7 +1234,8 @@ include struct
   let import_trait_ref : Types.span -> Types.trait_ref -> Ast.Rust.trait_goal =
     c_trait_ref
 
-  let import_clause : Types.span -> Types.clause -> Ast.Rust.impl_ident option =
+  let import_clause :
+      Types.span -> Types.clause -> Ast.Rust.generic_constraint option =
     c_clause
 end
 
@@ -1249,7 +1352,8 @@ let cast_of_enum typ_name generics typ thir_span
             in
             (Exp e, (pat, acc)))
     |> List.map ~f:(Fn.id *** function Exp e -> e | Lit n -> to_expr n)
-    |> List.map ~f:(fun (arm_pat, body) -> { arm = { arm_pat; body }; span })
+    |> List.map ~f:(fun (arm_pat, body) ->
+           { arm = { arm_pat; body; guard = None }; span })
   in
   let scrutinee_var =
     Local_ident.{ name = "x"; id = Local_ident.mk_id Expr (-1) }
@@ -1321,10 +1425,6 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                ty = c_ty item.span ty;
              }
     | Fn (generics, { body; params; _ }) ->
-        let params =
-          if List.is_empty params then [ U.make_unit_param span ]
-          else List.map ~f:(c_param item.span) params
-        in
         mk
         @@ Fn
              {
@@ -1332,7 +1432,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                  Concrete_ident.of_def_id Value (Option.value_exn item.def_id);
                generics = c_generics generics;
                body = c_body body;
-               params;
+               params = c_fn_params item.span params;
              }
     | Enum (variants, generics, repr) ->
         let def_id = Option.value_exn item.def_id in
@@ -1357,7 +1457,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
           List.for_all
             ~f:(fun { data; _ } ->
               match data with
-              | Unit _ | Tuple ([], _, _) | Struct ([], _) -> true
+              | Unit _ | Tuple ([], _, _) | Struct { fields = []; _ } -> true
               | _ -> false)
             variants
         in
@@ -1365,11 +1465,13 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
           List.map
             ~f:
               (fun ({ data; def_id = variant_id; attributes; _ } as original) ->
-              let is_record = [%matches? Types.Struct (_ :: _, _)] data in
+              let is_record =
+                [%matches? Types.Struct { fields = _ :: _; _ }] data
+              in
               let name = Concrete_ident.of_def_id kind variant_id in
               let arguments =
                 match data with
-                | Tuple (fields, _, _) | Struct (fields, _) ->
+                | Tuple (fields, _, _) | Struct { fields; _ } ->
                     List.map
                       ~f:(fun { def_id = id; ty; span; attributes; _ } ->
                         ( Concrete_ident.of_def_id Field id,
@@ -1413,7 +1515,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
           in
           match v with
           | Tuple (fields, _, _) -> mk fields false
-          | Struct ((_ :: _ as fields), _) -> mk fields true
+          | Struct { fields = _ :: _ as fields; _ } -> mk fields true
           | _ -> { name; arguments = []; is_record = false; attrs }
         in
         let variants = [ v ] in
@@ -1428,7 +1530,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                span = Span.of_thir span;
                witness = W.macro;
              }
-    | Trait (No, Normal, generics, _bounds, items) ->
+    | Trait (No, Safe, generics, _bounds, items) ->
         let items =
           List.filter
             ~f:(fun { attributes; _ } -> not (should_skip attributes))
@@ -1495,14 +1597,14 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
             let attrs = c_item_attrs item.attributes in
             { span = Span.of_thir item.span; v; ident; attrs })
           items
-    | Impl { unsafety = Unsafe; _ } -> unsafe_block [ item.span ]
+    | Impl { safety = Unsafe; _ } -> unsafe_block [ item.span ]
     | Impl
         {
           of_trait = Some of_trait;
           generics;
           self_ty;
           items;
-          unsafety = Normal;
+          safety = Safe;
           parent_bounds;
           _;
         } ->
@@ -1551,9 +1653,13 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                                  parent_bounds =
                                    List.filter_map
                                      ~f:(fun (clause, impl_expr, span) ->
-                                       let* trait_goal = c_clause span clause in
-                                       Some
-                                         (c_impl_expr span impl_expr, trait_goal))
+                                       let* bound = c_clause span clause in
+                                       match bound with
+                                       | GCType trait_goal ->
+                                           Some
+                                             ( c_impl_expr span impl_expr,
+                                               trait_goal )
+                                       | _ -> None)
                                      parent_bounds;
                                });
                        ii_ident;
@@ -1563,8 +1669,11 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                parent_bounds =
                  List.filter_map
                    ~f:(fun (clause, impl_expr, span) ->
-                     let* trait_goal = c_clause span clause in
-                     Some (c_impl_expr span impl_expr, trait_goal))
+                     let* bound = c_clause span clause in
+                     match bound with
+                     | GCType trait_goal ->
+                         Some (c_impl_expr span impl_expr, trait_goal)
+                     | _ -> None)
                    parent_bounds;
              }
     | Use ({ span = _; res; segments; rename }, _) ->

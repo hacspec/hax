@@ -21,9 +21,7 @@ info:
     backend_options: ~
 ---
 exit = 0
-stderr = '''
-Compiling loops v0.1.0 (WORKSPACE_ROOT/loops)
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
 
 [stdout]
 diagnostics = []
@@ -41,13 +39,20 @@ let chunks (v_CHUNK_LEN: usize) (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global
   let acc:usize = sz 0 in
   let chunks:Core.Slice.Iter.t_ChunksExact usize =
     Core.Slice.impl__chunks_exact #usize
-      (Core.Ops.Deref.f_deref #(Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) arr <: t_Slice usize)
+      (Core.Ops.Deref.f_deref #(Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global)
+          #FStar.Tactics.Typeclasses.solve
+          arr
+        <:
+        t_Slice usize)
       v_CHUNK_LEN
   in
   let acc:usize =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Slice.Iter.t_ChunksExact
             usize)
-          (Core.Clone.f_clone #(Core.Slice.Iter.t_ChunksExact usize) chunks
+          #FStar.Tactics.Typeclasses.solve
+          (Core.Clone.f_clone #(Core.Slice.Iter.t_ChunksExact usize)
+              #FStar.Tactics.Typeclasses.solve
+              chunks
             <:
             Core.Slice.Iter.t_ChunksExact usize)
         <:
@@ -59,6 +64,7 @@ let chunks (v_CHUNK_LEN: usize) (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global
           let mean:usize = sz 0 in
           let mean:usize =
             Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(t_Slice usize)
+                  #FStar.Tactics.Typeclasses.solve
                   chunk
                 <:
                 Core.Slice.Iter.t_Iter usize)
@@ -73,7 +79,8 @@ let chunks (v_CHUNK_LEN: usize) (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global
   in
   let acc:usize =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(t_Slice usize)
-          (Core.Slice.Iter.impl_87__remainder #usize chunks <: t_Slice usize)
+          #FStar.Tactics.Typeclasses.solve
+          (Core.Slice.Iter.impl_88__remainder #usize chunks <: t_Slice usize)
         <:
         Core.Slice.Iter.t_Iter usize)
       acc
@@ -89,7 +96,9 @@ let composed_range (n: usize) : usize =
   let acc:usize =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Iter.Adapters.Chain.t_Chain
               (Core.Ops.Range.t_Range usize) (Core.Ops.Range.t_Range usize))
+          #FStar.Tactics.Typeclasses.solve
           (Core.Iter.Traits.Iterator.f_chain #(Core.Ops.Range.t_Range usize)
+              #FStar.Tactics.Typeclasses.solve
               #(Core.Ops.Range.t_Range usize)
               ({ Core.Ops.Range.f_start = sz 0; Core.Ops.Range.f_end = n }
                 <:
@@ -119,9 +128,13 @@ let enumerate_chunks (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) : usize =
   let acc:usize =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Iter.Adapters.Enumerate.t_Enumerate
             (Core.Slice.Iter.t_Chunks usize))
+          #FStar.Tactics.Typeclasses.solve
           (Core.Iter.Traits.Iterator.f_enumerate #(Core.Slice.Iter.t_Chunks usize)
+              #FStar.Tactics.Typeclasses.solve
               (Core.Slice.impl__chunks #usize
-                  (Core.Ops.Deref.f_deref #(Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) arr
+                  (Core.Ops.Deref.f_deref #(Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global)
+                      #FStar.Tactics.Typeclasses.solve
+                      arr
                     <:
                     t_Slice usize)
                   (sz 4)
@@ -135,14 +148,11 @@ let enumerate_chunks (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) : usize =
       (fun acc temp_1_ ->
           let acc:usize = acc in
           let i, chunk:(usize & t_Slice usize) = temp_1_ in
-          Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Iter.Adapters.Enumerate.t_Enumerate
-                  (Core.Slice.Iter.t_Iter usize))
-                (Core.Iter.Traits.Iterator.f_enumerate #(Core.Slice.Iter.t_Iter usize)
-                    (Core.Slice.impl__iter #usize chunk <: Core.Slice.Iter.t_Iter usize)
-                  <:
-                  Core.Iter.Adapters.Enumerate.t_Enumerate (Core.Slice.Iter.t_Iter usize))
-              <:
-              Core.Iter.Adapters.Enumerate.t_Enumerate (Core.Slice.Iter.t_Iter usize))
+          Rust_primitives.Hax.Folds.fold_enumerated_slice chunk
+            (fun acc temp_1_ ->
+                let acc:usize = acc in
+                let _:usize = temp_1_ in
+                true)
             acc
             (fun acc temp_1_ ->
                 let acc:usize = acc in
@@ -155,11 +165,12 @@ let enumerate_chunks (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) : usize =
 
 let f (_: Prims.unit) : u8 =
   let acc:u8 = 0uy in
-  Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Ops.Range.t_Range u8
-        )
-        ({ Core.Ops.Range.f_start = 1uy; Core.Ops.Range.f_end = 10uy } <: Core.Ops.Range.t_Range u8)
-      <:
-      Core.Ops.Range.t_Range u8)
+  Rust_primitives.Hax.Folds.fold_range 1uy
+    10uy
+    (fun acc temp_1_ ->
+        let acc:u8 = acc in
+        let _:u8 = temp_1_ in
+        true)
     acc
     (fun acc i ->
         let acc:u8 = acc in
@@ -173,8 +184,11 @@ let iterator (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) : usize =
   let acc:usize =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Slice.Iter.t_Iter
             usize)
+          #FStar.Tactics.Typeclasses.solve
           (Core.Slice.impl__iter #usize
-              (Core.Ops.Deref.f_deref #(Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) arr
+              (Core.Ops.Deref.f_deref #(Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global)
+                  #FStar.Tactics.Typeclasses.solve
+                  arr
                 <:
                 t_Slice usize)
             <:
@@ -194,8 +208,11 @@ let nested (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) : usize =
   let acc:usize =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Slice.Iter.t_Iter
             usize)
+          #FStar.Tactics.Typeclasses.solve
           (Core.Slice.impl__iter #usize
-              (Core.Ops.Deref.f_deref #(Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) arr
+              (Core.Ops.Deref.f_deref #(Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global)
+                  #FStar.Tactics.Typeclasses.solve
+                  arr
                 <:
                 t_Slice usize)
             <:
@@ -208,7 +225,9 @@ let nested (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) : usize =
           let item:usize = item in
           Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Iter.Adapters.Rev.t_Rev
                   (Core.Ops.Range.t_Range usize))
+                #FStar.Tactics.Typeclasses.solve
                 (Core.Iter.Traits.Iterator.f_rev #(Core.Ops.Range.t_Range usize)
+                    #FStar.Tactics.Typeclasses.solve
                     ({ Core.Ops.Range.f_start = sz 0; Core.Ops.Range.f_end = item }
                       <:
                       Core.Ops.Range.t_Range usize)
@@ -223,10 +242,13 @@ let nested (arr: Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global) : usize =
                 let acc:usize = acc +! sz 1 in
                 Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Iter.Adapters.Zip.t_Zip
                           (Core.Slice.Iter.t_Iter usize) (Core.Ops.Range.t_Range usize))
+                      #FStar.Tactics.Typeclasses.solve
                       (Core.Iter.Traits.Iterator.f_zip #(Core.Slice.Iter.t_Iter usize)
+                          #FStar.Tactics.Typeclasses.solve
                           #(Core.Ops.Range.t_Range usize)
                           (Core.Slice.impl__iter #usize
                               (Core.Ops.Deref.f_deref #(Alloc.Vec.t_Vec usize Alloc.Alloc.t_Global)
+                                  #FStar.Tactics.Typeclasses.solve
                                   arr
                                 <:
                                 t_Slice usize)
@@ -256,6 +278,7 @@ let pattern (arr: Alloc.Vec.t_Vec (usize & usize) Alloc.Alloc.t_Global) : usize 
   let acc:usize =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Alloc.Vec.t_Vec
               (usize & usize) Alloc.Alloc.t_Global)
+          #FStar.Tactics.Typeclasses.solve
           arr
         <:
         Alloc.Vec.Into_iter.t_IntoIter (usize & usize) Alloc.Alloc.t_Global)
@@ -270,13 +293,12 @@ let pattern (arr: Alloc.Vec.t_Vec (usize & usize) Alloc.Alloc.t_Global) : usize 
 let range1 (_: Prims.unit) : usize =
   let acc:usize = sz 0 in
   let acc:usize =
-    Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Ops.Range.t_Range
-            usize)
-          ({ Core.Ops.Range.f_start = sz 0; Core.Ops.Range.f_end = sz 15 }
-            <:
-            Core.Ops.Range.t_Range usize)
-        <:
-        Core.Ops.Range.t_Range usize)
+    Rust_primitives.Hax.Folds.fold_range (sz 0)
+      (sz 15)
+      (fun acc temp_1_ ->
+          let acc:usize = acc in
+          let _:usize = temp_1_ in
+          true)
       acc
       (fun acc i ->
           let acc:usize = acc in
@@ -288,13 +310,12 @@ let range1 (_: Prims.unit) : usize =
 let range2 (n: usize) : usize =
   let acc:usize = sz 0 in
   let acc:usize =
-    Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Ops.Range.t_Range
-            usize)
-          ({ Core.Ops.Range.f_start = sz 0; Core.Ops.Range.f_end = n +! sz 10 <: usize }
-            <:
-            Core.Ops.Range.t_Range usize)
-        <:
-        Core.Ops.Range.t_Range usize)
+    Rust_primitives.Hax.Folds.fold_range (sz 0)
+      (n +! sz 10 <: usize)
+      (fun acc temp_1_ ->
+          let acc:usize = acc in
+          let _:usize = temp_1_ in
+          true)
       acc
       (fun acc i ->
           let acc:usize = acc in
@@ -308,7 +329,9 @@ let rev_range (n: usize) : usize =
   let acc:usize =
     Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Iter.Adapters.Rev.t_Rev
             (Core.Ops.Range.t_Range usize))
+          #FStar.Tactics.Typeclasses.solve
           (Core.Iter.Traits.Iterator.f_rev #(Core.Ops.Range.t_Range usize)
+              #FStar.Tactics.Typeclasses.solve
               ({ Core.Ops.Range.f_start = sz 0; Core.Ops.Range.f_end = n }
                 <:
                 Core.Ops.Range.t_Range usize)
@@ -323,6 +346,72 @@ let rev_range (n: usize) : usize =
           (acc +! i <: usize) +! sz 1 <: usize)
   in
   acc
+'''
+"Loops.Recognized_loops.fst" = '''
+module Loops.Recognized_loops
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let enumerated_chunked_slice (#v_T: Type0) (slice: t_Slice v_T) : u64 =
+  let count:u64 = 0uL in
+  Rust_primitives.Hax.Folds.fold_enumerated_chunked_slice (sz 3)
+    slice
+    (fun count i ->
+        let count:u64 = count in
+        let i:usize = i in
+        i <= Core.Slice.impl__len #v_T slice)
+    count
+    (fun count i ->
+        let count:u64 = count in
+        let i:(usize & t_Slice v_T) = i in
+        let count:u64 = count +! 3uL in
+        count)
+
+let enumerated_slice (#v_T: Type0) (slice: t_Slice v_T) : u64 =
+  let count:u64 = 0uL in
+  Rust_primitives.Hax.Folds.fold_enumerated_slice slice
+    (fun count i ->
+        let count:u64 = count in
+        let i:usize = i in
+        i <=. sz 10 <: bool)
+    count
+    (fun count i ->
+        let count:u64 = count in
+        let i:(usize & v_T) = i in
+        let count:u64 = count +! 2uL in
+        count)
+
+let range (_: Prims.unit) : u64 =
+  let count:u64 = 0uL in
+  Rust_primitives.Hax.Folds.fold_range 0uy
+    10uy
+    (fun count i ->
+        let count:u64 = count in
+        let i:u8 = i in
+        i <=. 10uy <: bool)
+    count
+    (fun count i ->
+        let count:u64 = count in
+        let i:u8 = i in
+        let count:u64 = count +! 1uL in
+        count)
+
+let range_step_by (_: Prims.unit) : u64 =
+  let count:u64 = 0uL in
+  Rust_primitives.Hax.Folds.fold_range_step_by 0uy
+    10uy
+    (sz 2)
+    (fun count i ->
+        let count:u64 = count in
+        let i:u8 = i in
+        i <=. 10uy <: bool)
+    count
+    (fun count i ->
+        let count:u64 = count in
+        let i:u8 = i in
+        let count:u64 = count +! 1uL in
+        count)
 '''
 "Loops.While_loops.fst" = '''
 module Loops.While_loops

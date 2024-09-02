@@ -26,6 +26,10 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     let _: Option<()> = None;
     let _ = Option::<()>::None.is_some();
     let _: Result<(), u32> = Result::Err(3u8).map_err(u32::from);
+    assert!(true);
+    assert_eq!(1, 1);
+    hax_lib::assert!(true);
+    hax_lib::_internal_loop_invariant(|_: usize| true);
 
     let _ = [()].into_iter();
     let _: u16 = 6u8.into();
@@ -33,6 +37,14 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     let _ = 1..;
     let _ = ..;
     let _ = ..1;
+
+    fn iterator_functions<It: Iterator + Clone>(it: It) {
+        let _ = it.clone().step_by(2);
+        let _ = it.clone().enumerate();
+        let _ = [()].chunks_exact(2);
+        let _ = [()].iter();
+        let _ = (&[()] as &[()]).iter();
+    }
 
     {
         use hax_lib::int::*;
@@ -48,9 +60,11 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     }
 
     let _ = hax_lib::inline("");
+    let _: () = hax_lib::inline_unsafe("");
     use hax_lib::{RefineAs, Refinement};
 
-    fn refinements<T: Refinement, U: RefineAs<T>>(x: T, y: U) -> T {
+    fn refinements<T: Refinement + Clone, U: RefineAs<T>>(x: T, y: U) -> T {
+        let _ = x.clone().get_mut();
         T::new(x.get());
         y.into_checked()
     }
@@ -157,6 +171,13 @@ mod hax {
     // TODO: Should that live here? (this is F* specific)
     fn array_of_list() {}
     fn never_to_any() {}
+
+    mod folds {
+        fn fold_range() {}
+        fn fold_range_step_by() {}
+        fn fold_enumerated_slice() {}
+        fn fold_enumerated_chunked_slice() {}
+    }
 
     /// The engine uses this `dropped_body` symbol as a marker value
     /// to signal that a item was extracted without body.

@@ -10,7 +10,6 @@
     };
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
-      inputs.flake-utils.follows = "flake-utils";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     fstar = {
@@ -60,6 +59,7 @@
       in rec {
         packages = {
           inherit rustc ocamlformat rustfmt fstar hax-env;
+          hax-book = pkgs.callPackage ./book {};
           hax-engine = pkgs.callPackage ./engine {
             hax-rust-frontend = packages.hax-rust-frontend.unwrapped;
             # `hax-engine-names-extract` extracts Rust names but also
@@ -85,6 +85,15 @@
           check-toolchain = checks.toolchain;
           check-examples = checks.examples;
           check-readme-coherency = checks.readme-coherency;
+
+          # The commit that corresponds to our nightly pin, helpful when updating rusrc.
+          toolchain_commit = pkgs.runCommand "hax-toolchain-commit" { } ''
+            # This is sad but I don't know a better way.
+            cat ${rustc}/share/doc/rust/html/version_info.html \
+              | grep 'github.com' \
+              | sed 's#.*"https://github.com/rust-lang/rust/commit/\([^"]*\)".*#\1#' \
+              > $out
+          '';
         };
         checks = {
           toolchain = packages.hax.tests;
@@ -119,7 +128,14 @@
             type = "app";
             program = "${pkgs.writeScript "serve-rustc-docs" ''
               cd ${packages.rustc.passthru.availableComponents.rustc-docs}/share/doc/rust/html/rustc
-              ${pkgs.python3}/bin/python -m http.server
+              ${pkgs.python3}/bin/python -m http.server "$@"
+            ''}";
+          };
+          serve-book = {
+            type = "app";
+            program = "${pkgs.writeScript "serve-book" ''
+              cd ${packages.hax-book}
+              ${pkgs.python3}/bin/python -m http.server "$@"
             ''}";
           };
         };
@@ -136,6 +152,15 @@
             })
           ];
         in let
+          utils = pkgs.stdenv.mkDerivation {
+            name = "hax-dev-scripts";
+            phases = ["installPhase"];
+            installPhase = ''
+                mkdir -p $out/bin
+                cp ${./.utils/rebuild.sh} $out/bin/rebuild
+                cp ${./.utils/list-names.sh} $out/bin/list-names
+              '';
+          };
           packages = [
             ocamlformat
             pkgs.ocamlPackages.ocaml-lsp
@@ -152,14 +177,7 @@
             rustfmt
             rustc
 
-            (pkgs.stdenv.mkDerivation {
-              name = "rebuild-script";
-              phases = ["installPhase"];
-              installPhase = ''
-                mkdir -p $out/bin
-                cp ${./.utils/rebuild.sh} $out/bin/rebuild
-              '';
-            })
+            utils
           ];
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
         in {
@@ -175,6 +193,7 @@
           };
           default = pkgs.mkShell {
             inherit packages inputsFrom LIBCLANG_PATH;
+            shellHook = ''echo "Commands available: $(ls ${utils}/bin | tr '\n' ' ')"'';
           };
         };
       }

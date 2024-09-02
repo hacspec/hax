@@ -162,10 +162,11 @@ module Make (F : Features.T) (Error : Phase_utils.ERROR) = struct
       ?keep_last_args:int -> generics * param list * expr -> expr
 
     val associated_expr_rebinding :
-      pat list -> AssocRole.t -> attrs -> expr option
+      span -> pat list -> AssocRole.t -> attrs -> expr option
     (** Looks up an expression but takes care of rebinding free variables. *)
 
-    val associated_refinement_in_type : string list -> attrs -> expr option
+    val associated_refinement_in_type :
+      span -> string list -> attrs -> expr option
     (** For type, there is a special treatment. The name of fields are
         global identifiers, and thus are subject to rewriting by
         [Concrete_ident] at the moment of printing. In contrast, in the
@@ -276,7 +277,7 @@ module Make (F : Features.T) (Error : Phase_utils.ERROR) = struct
         attrs -> expr list =
       associated_fns role >> List.map ~f:(expect_expr ~keep_last_args)
 
-    let associated_expr_rebinding (params : pat list) (role : AssocRole.t)
+    let associated_expr_rebinding span (params : pat list) (role : AssocRole.t)
         (attrs : attrs) : expr option =
       let* _, original_params, body = associated_fn role attrs in
       let original_params =
@@ -287,9 +288,37 @@ module Make (F : Features.T) (Error : Phase_utils.ERROR) = struct
       in
       let original_vars = List.concat_map ~f:vars_of_pat original_params in
       let target_vars = List.concat_map ~f:vars_of_pat params in
+      let mk_error_message prefix =
+        prefix ^ "\n" ^ "\n - original_vars: "
+        ^ [%show: local_ident list] original_vars
+        ^ "\n - target_vars: "
+        ^ [%show: local_ident list] target_vars
+        ^ "\n\n - original_params: "
+        ^ [%show: pat list] original_params
+        ^ "\n - params: "
+        ^ [%show: pat list] params
+      in
       let replacements =
-        List.zip_exn original_vars target_vars
-        |> Map.of_alist_exn (module Local_ident)
+        List.zip_opt original_vars target_vars
+        |> Option.value_or_thunk ~default:(fun _ ->
+               let details =
+                 mk_error_message
+                   "associated_expr_rebinding: zip two lists of different \
+                    lengths (original_vars and target_vars)"
+               in
+               Error.unimplemented ~details span)
+      in
+      let replacements =
+        match Map.of_alist (module Local_ident) replacements with
+        | `Ok replacements -> replacements
+        | `Duplicate_key key ->
+            let details =
+              mk_error_message
+                "associated_expr_rebinding: of_alist failed because `"
+              ^ [%show: local_ident] key
+              ^ "` is a duplicate key. Context: "
+            in
+            Error.unimplemented ~details span
       in
       Some
         ((U.Mappers.rename_local_idents (fun v ->
@@ -297,14 +326,25 @@ module Make (F : Features.T) (Error : Phase_utils.ERROR) = struct
            #visit_expr
            () body)
 
-    let associated_refinement_in_type (free_variables : string list) :
+    let associated_refinement_in_type span (free_variables : string list) :
         attrs -> expr option =
       associated_fn Refine
       >> Option.map ~f:(fun (_, params, body) ->
              let substs =
-               List.zip_exn
-                 (List.concat_map ~f:U.Reducers.variables_of_param params)
-                 (List.map ~f:Local_ident.make_final free_variables)
+               let x =
+                 List.concat_map ~f:U.Reducers.variables_of_param params
+               in
+               let y = List.map ~f:Local_ident.make_final free_variables in
+               List.zip_opt x y
+               |> Option.value_or_thunk ~default:(fun _ ->
+                      let details =
+                        "associated_refinement_in_type: zip two lists of \
+                         different lenghts\n" ^ "\n - params: "
+                        ^ [%show: param list] params
+                        ^ "\n - free_variables: "
+                        ^ [%show: string list] free_variables
+                      in
+                      Error.unimplemented ~details span)
              in
              let v =
                U.Mappers.rename_local_idents (fun i ->

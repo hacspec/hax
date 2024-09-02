@@ -76,10 +76,8 @@ module Raw = struct
     | String s -> "\"" ^ String.escaped s ^ "\""
     | Char c -> "'" ^ Char.to_string c ^ "'"
     | Int { value; _ } -> value
-    | Float { value; kind = F32; negative } ->
-        pnegative negative ^ value ^ "f32"
-    | Float { value; kind = F64; negative } ->
-        pnegative negative ^ value ^ "f64"
+    | Float { value; kind; negative } ->
+        pnegative negative ^ value ^ show_float_kind kind
     | Bool b -> Bool.to_string b
 
   let pprimitive_ident span : _ -> AnnotatedString.t =
@@ -168,6 +166,19 @@ module Raw = struct
         !"arrow!(" & arrow & !")"
     | TAssociatedType _ -> !"proj_asso_type!()"
     | TOpaque ident -> !(Concrete_ident_view.show ident)
+    | TDyn { goals; _ } ->
+        let goals =
+          concat ~sep:!" + " (List.map ~f:(pdyn_trait_goal span) goals)
+        in
+        !"dyn(" & goals & !")"
+
+  and pdyn_trait_goal span { trait; non_self_args } =
+    let ( ! ) = pure span in
+    let args =
+      List.map ~f:(pgeneric_value span) non_self_args |> concat ~sep:!", "
+    in
+    !(Concrete_ident_view.show trait)
+    & if List.is_empty args then empty else !"<" & args & !">"
 
   and pgeneric_value span (e : generic_value) : AnnotatedString.t =
     match e with
@@ -267,12 +278,21 @@ module Raw = struct
     | Match { scrutinee; arms } ->
         let arms =
           List.map
-            ~f:(fun { arm = { arm_pat; body }; _ } ->
-              ppat arm_pat & !" => {" & pexpr body & !"}")
+            ~f:(fun { arm = { arm_pat; body; guard }; _ } ->
+              let guard : t =
+                guard
+                |> Option.map
+                     ~f:
+                       (fun { guard = IfLet { lhs; rhs; _ }; _ } ->
+                          !" if let " & ppat lhs & !" = " & pexpr rhs
+                         : guard -> t)
+                |> Option.value ~default:!""
+              in
+              ppat arm_pat & guard & !" => {" & pexpr body & !"}")
             arms
           |> concat ~sep:!","
         in
-        !"(match " & pexpr scrutinee & !" {" & arms & !"})"
+        !"(match (" & pexpr scrutinee & !") {" & arms & !"})"
     (* | Let { monadic = Some _; _ } -> !"monadic_let!()" *)
     | Let { monadic; lhs; rhs; body } ->
         (* TODO: here, [rhs.typ]! *)
@@ -280,7 +300,7 @@ module Raw = struct
         let rhs_typ = pty rhs.span rhs.typ in
         let note =
           if String.equal (to_string lhs_typ) (to_string rhs_typ) then !""
-          else !"// Note: rhs.typ=" & rhs_typ & !"\n"
+          else !"#[note(\"rhs.typ=" & rhs_typ & !"\")]\n"
         in
         let monadic =
           match monadic with
@@ -399,6 +419,10 @@ module Raw = struct
     match p with
     | GCLifetime _ -> !"'unk: 'unk"
     | GCType { goal; _ } -> !"_:" & ptrait_goal span goal
+    | GCProjection { assoc_item; typ; _ } ->
+        !"_:_<_>::"
+        & !(Concrete_ident_view.show assoc_item)
+        & !"==" & pty span typ
 
   let pgeneric_constraints span (constraints : generic_constraint list) =
     if List.is_empty constraints then empty
@@ -434,11 +458,22 @@ module Raw = struct
     let ( ! ) = pure span in
     concat ~sep:!", " (List.map ~f:(pvariant span) variants)
 
+  let pparam span ({ pat; typ; typ_span; attrs } : param) =
+    let ( ! ) = pure span in
+    pattrs attrs & ppat pat & !": "
+    & pty (Option.value ~default:pat.span typ_span) typ
+
+  let pparams span (l : param list) =
+    let ( ! ) = pure span in
+    !"(" & List.map ~f:(pparam span) l |> concat ~sep:!"," & !")"
+
   let ptrait_item (ti : trait_item) =
     let ( ! ) = pure ti.ti_span in
     let generics = pgeneric_params ti.ti_generics.params in
     let bounds = pgeneric_constraints ti.ti_span ti.ti_generics.constraints in
     let ident = !(Concrete_ident_view.to_definition_name ti.ti_ident) in
+    pattrs ti.ti_attrs
+    &
     match ti.ti_v with
     | TIType _ -> !"type " & ident & !": TodoPrintRustBoundsTyp;"
     | TIFn ty ->
@@ -454,15 +489,15 @@ module Raw = struct
         in
         !"fn " & ident & generics & !"(" & params & !") -> " & return_type
         & bounds & !";"
-
-  let pparam span ({ pat; typ; typ_span; attrs } : param) =
-    let ( ! ) = pure span in
-    pattrs attrs & ppat pat & !": "
-    & pty (Option.value ~default:pat.span typ_span) typ
-
-  let pparams span (l : param list) =
-    let ( ! ) = pure span in
-    !"(" & List.map ~f:(pparam span) l |> concat ~sep:!"," & !")"
+    | TIDefault { params; body; _ } ->
+        let params = pparams ti.ti_span params in
+        let generics_constraints =
+          pgeneric_constraints ti.ti_span ti.ti_generics.constraints
+        in
+        let return_type = pty ti.ti_span body.typ in
+        let body = pexpr body in
+        !"fn " & ident & generics & !"(" & params & !") -> " & return_type
+        & generics_constraints & !"{" & body & !"}"
 
   let pimpl_item (ii : impl_item) =
     let span = ii.ii_span in
@@ -470,6 +505,8 @@ module Raw = struct
     let generics = pgeneric_params ii.ii_generics.params in
     let bounds = pgeneric_constraints span ii.ii_generics.constraints in
     let ident = !(Concrete_ident_view.to_definition_name ii.ii_ident) in
+    pattrs ii.ii_attrs
+    &
     match ii.ii_v with
     | IIType _ -> !"type " & ident & !": TodoPrintRustBoundsTyp;"
     | IIFn { body; params } ->
@@ -540,29 +577,31 @@ module Raw = struct
       in
       pattrs e.attrs & pi
     with NotImplemented ->
-      !("\n/* print_rust: pitem: not implemented  (item: "
+      !("\n/** print_rust: pitem: not implemented  (item: "
        ^ [%show: concrete_ident] e.ident
-       ^ ") */\n")
+       ^ ") */\nconst _: () = ();\n")
 end
 
 let rustfmt (s : string) : string =
-  let open Utils.Command in
-  let { stderr; stdout } = run "rustfmt" s in
-  if String.is_empty stderr then stdout
-  else
-    let err =
-      [%string
-        "\n\n\
-         #######################################################\n\
-         ########### WARNING: Failed running rustfmt ###########\n\
-         #### STDOUT:\n\
-         %{stdout}\n\
-         #### STDERR:\n\
-         %{stderr}\n\
-         #######################################################\n"]
-    in
-    Stdio.prerr_endline err;
-    [%string "/*\n%{err}\n*/\n\n%{s}"]
+  match
+    Hax_io.request (PrettyPrintRust s) ~expected:"PrettyPrintedRust" (function
+      | Types.PrettyPrintedRust s -> Some s
+      | _ -> None)
+  with
+  | Ok formatted -> formatted
+  | Err error ->
+      let err =
+        [%string
+          "\n\n\
+           #######################################################\n\
+           ########### WARNING: Failed formatting ###########\n\
+           %{error}\n\
+           STRING:\n\
+           %{s}\n\
+           #######################################################\n"]
+      in
+      Stdio.prerr_endline err;
+      s
 
 exception RetokenizationFailure
 

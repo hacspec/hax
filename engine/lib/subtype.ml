@@ -47,12 +47,32 @@ struct
     | TOpaque ident -> TOpaque ident
     | TRawPointer { witness } ->
         TRawPointer { witness = S.raw_pointer span witness }
+    | TDyn { witness; goals } ->
+        TDyn
+          {
+            witness = S.dyn span witness;
+            goals = List.map ~f:(ddyn_trait_goal span) goals;
+          }
+
+  and ddyn_trait_goal (span : span) (r : A.dyn_trait_goal) : B.dyn_trait_goal =
+    {
+      trait = r.trait;
+      non_self_args = List.map ~f:(dgeneric_value span) r.non_self_args;
+    }
 
   and dtrait_goal (span : span) (r : A.trait_goal) : B.trait_goal =
     { trait = r.trait; args = List.map ~f:(dgeneric_value span) r.args }
 
   and dimpl_ident (span : span) (r : A.impl_ident) : B.impl_ident =
     { goal = dtrait_goal span r.goal; name = r.name }
+
+  and dprojection_predicate (span : span) (r : A.projection_predicate) :
+      B.projection_predicate =
+    {
+      impl = dimpl_expr span r.impl;
+      assoc_item = r.assoc_item;
+      typ = dty span r.typ;
+    }
 
   and dimpl_expr (span : span) (i : A.impl_expr) : B.impl_expr =
     match i with
@@ -157,14 +177,15 @@ struct
             then_ = dexpr then_;
             else_ = Option.map ~f:dexpr else_;
           }
-    | App { f; args; generic_args; bounds_impls; impl } ->
+    | App { f; args; generic_args; bounds_impls; trait } ->
+        let dgeneric_values = List.map ~f:(dgeneric_value span) in
         App
           {
             f = dexpr f;
             args = List.map ~f:dexpr args;
-            generic_args = List.map ~f:(dgeneric_value span) generic_args;
+            generic_args = dgeneric_values generic_args;
             bounds_impls = List.map ~f:(dimpl_expr span) bounds_impls;
-            impl = Option.map ~f:(dimpl_expr span) impl;
+            trait = Option.map ~f:(dimpl_expr span *** dgeneric_values) trait;
           }
     | Literal lit -> Literal lit
     | Array l -> Array (List.map ~f:dexpr l)
@@ -296,10 +317,27 @@ struct
       witness = S.state_passing_loop span s.witness;
     }
 
-  and darm (a : A.arm) : B.arm = { span = a.span; arm = darm' a.span a.arm }
+  and darm (a : A.arm) : B.arm = { span = a.span; arm = darm' a.arm }
 
-  and darm' (_span : span) (a : A.arm') : B.arm' =
-    { arm_pat = dpat a.arm_pat; body = dexpr a.body }
+  and darm' (a : A.arm') : B.arm' =
+    {
+      arm_pat = dpat a.arm_pat;
+      body = dexpr a.body;
+      guard = Option.map ~f:dguard a.guard;
+    }
+
+  and dguard (a : A.guard) : B.guard =
+    { span = a.span; guard = dguard' a.span a.guard }
+
+  and dguard' (span : span) (guard : A.guard') : B.guard' =
+    match guard with
+    | IfLet { lhs; rhs; witness } ->
+        IfLet
+          {
+            lhs = dpat lhs;
+            rhs = dexpr rhs;
+            witness = S.match_guard span witness;
+          }
 
   and dlhs (span : span) (lhs : A.lhs) : B.lhs =
     match lhs with
@@ -342,6 +380,8 @@ struct
       match generic_constraint with
       | GCLifetime (lf, witness) -> B.GCLifetime (lf, S.lifetime span witness)
       | GCType impl_ident -> B.GCType (dimpl_ident span impl_ident)
+      | GCProjection projection ->
+          B.GCProjection (dprojection_predicate span projection)
 
     let dgenerics (span : span) (g : A.generics) : B.generics =
       {
@@ -369,6 +409,13 @@ struct
       match ti with
       | TIType idents -> TIType (List.map ~f:(dimpl_ident span) idents)
       | TIFn t -> TIFn (dty span t)
+      | TIDefault { params; body; witness } ->
+          TIDefault
+            {
+              params = List.map ~f:(dparam span) params;
+              body = dexpr body;
+              witness = S.trait_item_default span witness;
+            }
 
     and dtrait_item (ti : A.trait_item) : B.trait_item =
       {

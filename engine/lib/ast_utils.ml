@@ -79,8 +79,9 @@ module Make (F : Features.T) = struct
         * impl_expr list)
         option =
       match e.e with
-      | App { f; args; generic_args; impl; bounds_impls } ->
-          Some (f, args, generic_args, impl, bounds_impls)
+      | App { f; args; generic_args; trait; bounds_impls } ->
+          (* TODO: propagate full trait *)
+          Some (f, args, generic_args, Option.map ~f:fst trait, bounds_impls)
       | _ -> None
 
     let pbinding_simple (p : pat) : (local_ident * ty) option =
@@ -96,7 +97,7 @@ module Make (F : Features.T) = struct
             f = { e = GlobalVar (`Concrete f'); _ };
             args = [ e ];
             generic_args = _;
-            impl = _;
+            trait = _;
             _;
             (* TODO: see issue #328 *)
           }
@@ -201,7 +202,7 @@ module Make (F : Features.T) = struct
                   f = { e = GlobalVar (`Primitive Deref); _ };
                   args = [ { e = Borrow { e = sub; _ }; _ } ];
                   generic_args = _;
-                  impl = _;
+                  trait = _;
                   _;
                   (* TODO: see issue #328 *)
                 } ->
@@ -343,7 +344,7 @@ module Make (F : Features.T) = struct
                   f = { e = GlobalVar (`Primitive Cast); _ } as f;
                   args = [ arg ];
                   generic_args;
-                  impl;
+                  trait;
                   bounds_impls;
                 } ->
                 ascribe
@@ -355,7 +356,7 @@ module Make (F : Features.T) = struct
                           f;
                           args = [ ascribe arg ];
                           generic_args;
-                          impl;
+                          trait;
                           bounds_impls;
                         };
                   }
@@ -370,13 +371,6 @@ module Make (F : Features.T) = struct
   end
 
   module Reducers = struct
-    let collect_local_idents =
-      object
-        inherit [_] Visitors.reduce as _super
-        inherit [_] Sets.Local_ident.monoid as _m
-        method! visit_local_ident () x = Set.singleton (module Local_ident) x
-      end
-
     let collect_local_idents =
       object
         inherit [_] Visitors.reduce as _super
@@ -416,8 +410,12 @@ module Make (F : Features.T) = struct
           inherit [_] Visitors.reduce as super
           inherit [_] Sets.Local_ident.monoid as _m
 
-          method! visit_arm' env { arm_pat; body } =
-            shadows ~env [ arm_pat ] body super#visit_expr
+          method! visit_arm' env { arm_pat; body; guard } =
+            match guard with
+            | None -> shadows ~env [ arm_pat ] body super#visit_expr
+            | Some { guard = IfLet { lhs; rhs; _ }; _ } ->
+                shadows ~env [ arm_pat ] rhs super#visit_expr
+                ++ shadows ~env [ arm_pat; lhs ] body super#visit_expr
 
           method! visit_expr' env e =
             match e with
@@ -472,6 +470,8 @@ module Make (F : Features.T) = struct
               (module Local_ident)
         end
 
+      (* This removes "fake" shadowing introduced by macros.
+         See PR #368 *)
       let disambiguate_local_idents (item : item) =
         let ambiguous = collect_ambiguous_local_idents#visit_item [] item in
         let local_vars = collect_local_idents#visit_item () item |> ref in
@@ -607,8 +607,17 @@ module Make (F : Features.T) = struct
                    (without_vars (self#visit_expr () body) vars))
           | _ -> super#visit_expr' () e
 
-        method! visit_arm' () { arm_pat; body } =
-          without_pat_vars (self#visit_expr () body) arm_pat
+        method! visit_arm' () { arm_pat; body; guard } =
+          match guard with
+          | Some { guard = IfLet { lhs; rhs; _ }; _ } ->
+              let rhs_vars =
+                without_pat_vars (self#visit_expr () rhs) arm_pat
+              in
+              let body_vars =
+                without_pats_vars (self#visit_expr () body) [ arm_pat; lhs ]
+              in
+              Set.union rhs_vars body_vars
+          | None -> without_pat_vars (self#visit_expr () body) arm_pat
       end
 
     class ['s] expr_list_monoid =
@@ -741,6 +750,11 @@ module Make (F : Features.T) = struct
     if pat_is_expr lhs body then rhs
     else { body with e = Let { monadic = None; lhs; rhs; body } }
 
+  let make_lets (lbs : (pat * expr) list) (body : expr) =
+    List.fold_right ~init:body
+      ~f:(fun (pat, expr) body -> make_let pat expr body)
+      lbs
+
   let make_var_pat (var : local_ident) (typ : ty) (span : span) : pat =
     {
       p = PBinding { mut = Immutable; mode = ByValue; var; typ; subpat = None };
@@ -777,6 +791,10 @@ module Make (F : Features.T) = struct
     match tuple with [ ty ] -> ty | _ -> make_tuple_typ' tuple
 
   let make_wild_pat (typ : ty) (span : span) : pat = { p = PWild; span; typ }
+
+  let make_arm (arm_pat : pat) (body : expr) ?(guard : guard option = None)
+      (span : span) : arm =
+    { arm = { arm_pat; body; guard }; span }
 
   let make_unit_param (span : span) : param =
     let typ = unit_typ in
@@ -875,7 +893,7 @@ module Make (F : Features.T) = struct
             args;
             generic_args = [];
             bounds_impls = [];
-            impl;
+            trait = Option.map ~f:(fun impl -> (impl, [])) impl;
           };
       typ = ret_typ;
       span;
@@ -886,6 +904,13 @@ module Make (F : Features.T) = struct
     call' ?impl
       (`Concrete (Concrete_ident.of_name kind f_name))
       args span ret_typ
+
+  let make_closure (params : pat list) (body : expr) (span : span) : expr =
+    let params =
+      match params with [] -> [ make_wild_pat unit_typ span ] | _ -> params
+    in
+    let e = Closure { params; body; captures = [] } in
+    { e; typ = TArrow (List.map ~f:(fun p -> p.typ) params, body.typ); span }
 
   let string_lit span (s : string) : expr =
     { span; typ = TStr; e = Literal (String s) }
@@ -909,6 +934,23 @@ module Make (F : Features.T) = struct
     let item : AST.item -> Ast.Full.item = Stdlib.Obj.magic
   end
 
+  module Debug : sig
+    val expr : ?label:string -> AST.expr -> unit
+    (** Prints an expression pretty-printed as Rust, with its full
+        AST encoded as JSON, available as a file, so that one can
+        `jless` or `jq` into it. *)
+  end = struct
+    let expr ?(label = "") (e : AST.expr) : unit =
+      let path = tempfile_path ~suffix:".json" in
+      Core.Out_channel.write_all path
+        ~data:([%yojson_of: AST.expr] e |> Yojson.Safe.pretty_to_string);
+      let e = LiftToFullAst.expr e in
+      "```rust " ^ label ^ "\n" ^ Print_rust.pexpr_str e
+      ^ "\n```\x1b[34m JSON-encoded AST available at \x1b[1m" ^ path
+      ^ "\x1b[0m (hint: use `jless " ^ path ^ "`)"
+      |> Stdio.prerr_endline
+  end
+
   let unbox_expr' (next : expr -> expr) (e : expr) : expr =
     match e.e with
     | App { f = { e = GlobalVar f; _ }; args = [ e ]; _ }
@@ -924,7 +966,7 @@ module Make (F : Features.T) = struct
           args = [ e ];
           generic_args = _;
           bounds_impls = _;
-          impl = _;
+          trait = _;
         } ->
         next e
     | _ -> e
@@ -960,7 +1002,7 @@ module Make (F : Features.T) = struct
                 args = [ e ];
                 generic_args = [];
                 bounds_impls = [];
-                impl = None (* TODO: see issue #328 *);
+                trait = None (* TODO: see issue #328 *);
               };
           typ;
           span;
@@ -1060,7 +1102,7 @@ module Make (F : Features.T) = struct
             args = [ tuple ];
             generic_args = [] (* TODO: see issue #328 *);
             bounds_impls = [];
-            impl = None (* TODO: see issue #328 *);
+            trait = None (* TODO: see issue #328 *);
           };
     }
 
@@ -1104,7 +1146,7 @@ module Make (F : Features.T) = struct
             args = [ place ];
             generic_args = _;
             bounds_impls = _;
-            impl = _;
+            trait = _;
           (* TODO: see issue #328 *)
           } ->
           let* place = of_expr place in
@@ -1115,7 +1157,7 @@ module Make (F : Features.T) = struct
             args = [ place; index ];
             generic_args = _;
             bounds_impls = _;
-            impl = _;
+            trait = _;
           (* TODO: see issue #328 *)
           }
         when Global_ident.eq_name Core__ops__index__Index__index f ->
@@ -1128,7 +1170,7 @@ module Make (F : Features.T) = struct
             args = [ place; index ];
             generic_args = _;
             bounds_impls = _;
-            impl = _;
+            trait = _;
           (* TODO: see issue #328 *)
           }
         when Global_ident.eq_name Core__ops__index__IndexMut__index_mut f ->

@@ -21,9 +21,7 @@ info:
     backend_options: ~
 ---
 exit = 0
-stderr = '''
-Compiling pattern-or v0.1.0 (WORKSPACE_ROOT/pattern-or)
-    Finished dev [unoptimized + debuginfo] target(s) in XXs'''
+stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
 
 [stdout]
 diagnostics = []
@@ -55,5 +53,39 @@ Definition bar (x : t_E_t) : unit :=
   match x with
   | E_A  | E_B  =>
     tt
+  end.
+
+Definition deep (x : int32 × t_Option_t int32) : int32 :=
+  match x with
+  | '((@repr WORDSIZE32 1) | (@repr WORDSIZE32 2),Option_Some (@repr WORDSIZE32 3) | (@repr WORDSIZE32 4)) =>
+    (@repr WORDSIZE32 0)
+  | '(x,_) =>
+    x
+  end.
+
+Definition deep_capture (x : t_Result_t (int32 × int32) (int32 × int32)) : int32 :=
+  match x with
+  | Result_Ok ((@repr WORDSIZE32 1) | (@repr WORDSIZE32 2),x) | Result_Err ((@repr WORDSIZE32 3) | (@repr WORDSIZE32 4),x) =>
+    x
+  | Result_Ok (x,_) | Result_Err (x,_) =>
+    x
+  end.
+
+Definition equivalent (x : int32 × t_Option_t int32) : int32 :=
+  match x with
+  | '((@repr WORDSIZE32 1),Option_Some (@repr WORDSIZE32 3)) | '((@repr WORDSIZE32 1),Option_Some (@repr WORDSIZE32 4)) | '((@repr WORDSIZE32 2),Option_Some (@repr WORDSIZE32 3)) | '((@repr WORDSIZE32 2),Option_Some (@repr WORDSIZE32 4)) =>
+    (@repr WORDSIZE32 0)
+  | '(x,_) =>
+    x
+  end.
+
+Definition nested (x : t_Option_t int32) : int32 :=
+  match x with
+  | Option_Some (@repr WORDSIZE32 1) | (@repr WORDSIZE32 2) =>
+    (@repr WORDSIZE32 1)
+  | Option_Some x =>
+    x
+  | Option_None  =>
+    (@repr WORDSIZE32 0)
   end.
 '''

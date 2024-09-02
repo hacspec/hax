@@ -26,6 +26,64 @@ exit = 0
 diagnostics = []
 
 [stdout.files]
+"Attributes.Ensures_on_arity_zero_fns.fst" = '''
+module Attributes.Ensures_on_arity_zero_fns
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let basically_a_constant (_: Prims.unit)
+    : Prims.Pure u8
+      (requires true)
+      (ensures
+        fun x ->
+          let x:u8 = x in
+          x >. 100uy) = 127uy
+
+let doing_nothing (_: Prims.unit)
+    : Prims.Pure Prims.unit
+      (requires true)
+      (ensures
+        fun v__x ->
+          let v__x:Prims.unit = v__x in
+          true) = ()
+'''
+"Attributes.Inlined_code_ensures_requires.fst" = '''
+module Attributes.Inlined_code_ensures_requires
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let increment_array (v: t_Array u8 (sz 4))
+    : Prims.Pure (t_Array u8 (sz 4))
+      (requires forall i. FStar.Seq.index v i <. 254uy)
+      (ensures
+        fun vv_future ->
+          let vv_future:t_Array u8 (sz 4) = vv_future in
+          let future_v:t_Array u8 (sz 4) = vv_future in
+          forall i. FStar.Seq.index future_v i >. 0uy) =
+  let v:t_Array u8 (sz 4) =
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize v
+      (sz 0)
+      ((v.[ sz 0 ] <: u8) +! 1uy <: u8)
+  in
+  let v:t_Array u8 (sz 4) =
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize v
+      (sz 1)
+      ((v.[ sz 1 ] <: u8) +! 1uy <: u8)
+  in
+  let v:t_Array u8 (sz 4) =
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize v
+      (sz 2)
+      ((v.[ sz 2 ] <: u8) +! 1uy <: u8)
+  in
+  let v:t_Array u8 (sz 4) =
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize v
+      (sz 3)
+      ((v.[ sz 3 ] <: u8) +! 1uy <: u8)
+  in
+  v
+'''
 "Attributes.Int_model.fst" = '''
 module Attributes.Int_model
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
@@ -43,6 +101,16 @@ unfold instance impl: Core.Ops.Arith.t_Sub t_Int t_Int =
     f_sub_post = (fun (self: t_Int) (other: t_Int) (out: t_Int) -> true);
     f_sub = fun (self: t_Int) (other: t_Int) -> self + other
   }
+'''
+"Attributes.Nested_refinement_elim.fst" = '''
+module Attributes.Nested_refinement_elim
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let t_DummyRefinement = x: u16{true}
+
+let elim_twice (x: t_DummyRefinement) : u16 = ((x <: u16) <: t_DummyRefinement) <: u16
 '''
 "Attributes.Newtype_pattern.fst" = '''
 module Attributes.Newtype_pattern
@@ -68,6 +136,81 @@ let impl_1 (#v_T: Type0) : Core.Ops.Index.t_Index (t_Array v_T (sz 10)) t_SafeIn
     f_index_pre = (fun (self: t_Array v_T (sz 10)) (index: t_SafeIndex) -> true);
     f_index_post = (fun (self: t_Array v_T (sz 10)) (index: t_SafeIndex) (out: v_T) -> true);
     f_index = fun (self: t_Array v_T (sz 10)) (index: t_SafeIndex) -> self.[ index.f_i ]
+  }
+'''
+"Attributes.Pre_post_on_traits_and_impls.fst" = '''
+module Attributes.Pre_post_on_traits_and_impls
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class t_Operation (v_Self: Type0) = {
+  f_double_pre:x: u8
+    -> pred:
+      Type0
+        { (Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) <=
+          (127 <: Hax_lib.Int.t_Int) ==>
+          pred };
+  f_double_post:x: u8 -> result: u8
+    -> pred:
+      Type0
+        { pred ==>
+          ((Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) * (2 <: Hax_lib.Int.t_Int)
+            <:
+            Hax_lib.Int.t_Int) =
+          (Rust_primitives.Hax.Int.from_machine result <: Hax_lib.Int.t_Int) };
+  f_double:x0: u8 -> Prims.Pure u8 (f_double_pre x0) (fun result -> f_double_post x0 result)
+}
+
+class t_TraitWithRequiresAndEnsures (v_Self: Type0) = {
+  f_method_pre:self___: v_Self -> x: u8 -> pred: Type0{x <. 100uy ==> pred};
+  f_method_post:self___: v_Self -> x: u8 -> r: u8 -> pred: Type0{pred ==> r >. 88uy};
+  f_method:x0: v_Self -> x1: u8
+    -> Prims.Pure u8 (f_method_pre x0 x1) (fun result -> f_method_post x0 x1 result)
+}
+
+let test
+      (#v_T: Type0)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_TraitWithRequiresAndEnsures v_T)
+      (x: v_T)
+    : u8 = (f_method #v_T #FStar.Tactics.Typeclasses.solve x 99uy <: u8) -! 88uy
+
+type t_ViaAdd = | ViaAdd : t_ViaAdd
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl: t_Operation t_ViaAdd =
+  {
+    f_double_pre
+    =
+    (fun (x: u8) ->
+        (Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) <= (127 <: Hax_lib.Int.t_Int));
+    f_double_post
+    =
+    (fun (x: u8) (out: u8) ->
+        ((Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) * (2 <: Hax_lib.Int.t_Int)
+          <:
+          Hax_lib.Int.t_Int) =
+        (Rust_primitives.Hax.Int.from_machine out <: Hax_lib.Int.t_Int));
+    f_double = fun (x: u8) -> x +! x
+  }
+
+type t_ViaMul = | ViaMul : t_ViaMul
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl_1: t_Operation t_ViaMul =
+  {
+    f_double_pre
+    =
+    (fun (x: u8) ->
+        (Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) <= (127 <: Hax_lib.Int.t_Int));
+    f_double_post
+    =
+    (fun (x: u8) (out: u8) ->
+        ((Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) * (2 <: Hax_lib.Int.t_Int)
+          <:
+          Hax_lib.Int.t_Int) =
+        (Rust_primitives.Hax.Int.from_machine out <: Hax_lib.Int.t_Int));
+    f_double = fun (x: u8) -> x *! 2uy
   }
 '''
 "Attributes.Refined_arithmetic.fst" = '''
@@ -173,7 +316,12 @@ let t_NoE =
   Alloc.String.t_String
     { let _, out:(Core.Str.Iter.t_Chars & bool) =
         Core.Iter.Traits.Iterator.f_any #Core.Str.Iter.t_Chars
-          (Core.Str.impl__str__chars (Core.Ops.Deref.f_deref #Alloc.String.t_String x <: string)
+          #FStar.Tactics.Typeclasses.solve
+          (Core.Str.impl__str__chars (Core.Ops.Deref.f_deref #Alloc.String.t_String
+                  #FStar.Tactics.Typeclasses.solve
+                  x
+                <:
+                string)
             <:
             Core.Str.Iter.t_Chars)
           (fun ch ->
@@ -183,16 +331,50 @@ let t_NoE =
       ~.out }
 
 let bounded_u8 (x: t_BoundedU8 12uy 15uy) (y: t_BoundedU8 10uy 11uy) : t_BoundedU8 1uy 23uy =
-  (Hax_lib.f_get #(t_BoundedU8 12uy 15uy) x <: u8) +!
-  (Hax_lib.f_get #(t_BoundedU8 10uy 11uy) y <: u8)
-  <:
-  t_BoundedU8 1uy 23uy
+  (x <: u8) +! (y <: u8) <: t_BoundedU8 1uy 23uy
 
 let double (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_True) =
   x +! x <: t_Even
 
 let double_refine (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_True) =
   x +! x <: t_Even
+'''
+"Attributes.Verifcation_status.fst" = '''
+module Attributes.Verifcation_status
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let a_panicfree_function (_: Prims.unit)
+    : Prims.Pure u8
+      Prims.l_True
+      (ensures
+        fun x ->
+          let x:u8 = x in
+          false) =
+  let a:u8 = 3uy in
+  let b:u8 = 6uy in
+  let result:u8 = a +! b in
+  let _:Prims.unit = admit () (* Panic freedom *) in
+  result
+
+let another_panicfree_function (_: Prims.unit)
+    : Prims.Pure Prims.unit
+      Prims.l_True
+      (ensures
+        fun x ->
+          let x:Prims.unit = x in
+          false) =
+  let not_much:i32 = 0l in
+  let nothing:i32 = 0l in
+  let still_not_much:i32 = not_much +! nothing in
+  admit () (* Panic freedom *)
+
+#push-options "--admit_smt_queries true"
+
+let a_function_which_only_laxes (_: Prims.unit) : Prims.unit = Hax_lib.v_assert false
+
+#pop-options
 '''
 "Attributes.fst" = '''
 module Attributes
@@ -207,6 +389,14 @@ let add3_lemma (x: u32)
   ()
 
 let inlined_code__V: u8 = 12uy
+
+let issue_844_ (v__x: u8)
+    : Prims.Pure u8
+      Prims.l_True
+      (ensures
+        fun v__x_future ->
+          let v__x_future:u8 = v__x_future in
+          true) = v__x
 
 let u32_max: u32 = 90000ul
 
@@ -224,6 +414,19 @@ let add3 (x y z: u32)
             (fun temp_0_ ->
                 let _:Prims.unit = temp_0_ in
                 result >. 32ul <: bool)) = (x +! y <: u32) +! z
+
+let swap_and_mut_req_ens (x y: u32)
+    : Prims.Pure (u32 & u32 & u32)
+      (requires x <. 40ul && y <. 300ul)
+      (ensures
+        fun temp_0_ ->
+          let x_future, y_future, result:(u32 & u32 & u32) = temp_0_ in
+          x_future =. y && y_future =. x && result =. (x +! y <: u32)) =
+  let x0:u32 = x in
+  let x:u32 = y in
+  let y:u32 = x0 in
+  let hax_temp_output:u32 = x +! y in
+  x, y, hax_temp_output <: (u32 & u32 & u32)
 
 type t_Foo = {
   f_x:u32;

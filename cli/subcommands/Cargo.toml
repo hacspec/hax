@@ -18,10 +18,6 @@ name = "cargo-hax"
 path = "src/json_schema.rs"
 name = "hax-export-json-schemas"
 
-[[bin]]
-path = "src/pretty_print_diagnostics.rs"
-name = "hax-pretty-print-diagnostics"
-
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
@@ -29,9 +25,9 @@ schemars.workspace = true
 itertools.workspace = true
 clap.workspace = true
 paste = "1.0.11"
-hax-cli-options.workspace = true
+hax-frontend-exporter.workspace = true
 hax-frontend-exporter-options.workspace = true
-hax-diagnostics.workspace = true
+hax-types.workspace = true
 path-clean = "1.0.1"
 tempfile = "3.8"
 which.workspace = true
@@ -39,15 +35,21 @@ version_check = "0.9"
 rustup-toolchain = "0.1"
 colored.workspace = true
 is-terminal = "0.4.9"
+hax-phase-debug-webapp.workspace = true
+inquire = "0.6"
+annotate-snippets.workspace = true
+serde-jsonlines = "0.5.0"
+prettyplease = "0.2.20"
+syn = { version = "2.*", features = ["full"] }
+cargo_metadata.workspace = true
+extension-traits = "1.0.1"
 
 [build-dependencies]
 serde.workspace = true
 serde_json.workspace = true
+hax-types.workspace = true
 schemars.workspace = true
 hax-frontend-exporter.workspace = true
-hax-diagnostics.workspace = true
-hax-cli-options.workspace = true
-hax-cli-options-engine.workspace = true
 hax-lib-macros-types = {workspace = true, features = ["schemars"]}
 version_check = "0.9"
 toml = "0.8"
