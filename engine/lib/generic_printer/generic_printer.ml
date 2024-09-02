@@ -399,7 +399,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
               in
               let generics = print#generic_params generics.params in
               let safety =
-                optional Stdlib.Fun.id
+                optional Base.Fn.id
                   (match safety with
                   | Safe -> None
                   | Unsafe _ -> Some !^"unsafe ")
