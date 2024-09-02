@@ -17,6 +17,7 @@ module Phase = struct
       | AsPattern
       | Dyn
       | TraitItemDefault
+      | Unsafe
     [@@deriving show { with_path = false }, eq, yojson, compare, hash, sexp]
 
     let display = function

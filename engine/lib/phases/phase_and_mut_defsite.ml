@@ -309,9 +309,9 @@ struct
 
           method! visit_item' () item' =
             (match item' with
-            | Fn { name; generics; body; params } ->
+            | Fn { name; generics; body; params; safety } ->
                 let* params, body = rewrite_function params body in
-                Some (B.Fn { name; generics; body; params })
+                Some (B.Fn { name; generics; body; params; safety })
             | _ -> None)
             |> Option.value_or_thunk ~default:(Fn.flip super#visit_item' item')
         end

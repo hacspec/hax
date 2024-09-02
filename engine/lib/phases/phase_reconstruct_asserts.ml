@@ -41,22 +41,25 @@ module Make (F : Features.T) =
                                              {
                                                e =
                                                  Block
-                                                   ( {
-                                                       e =
-                                                         App
-                                                           {
-                                                             f =
-                                                               {
-                                                                 e =
-                                                                   GlobalVar
-                                                                     panic;
-                                                                 _;
-                                                               };
-                                                             _;
-                                                           };
-                                                       _;
-                                                     },
-                                                     _ );
+                                                   {
+                                                     e =
+                                                       {
+                                                         e =
+                                                           App
+                                                             {
+                                                               f =
+                                                                 {
+                                                                   e =
+                                                                     GlobalVar
+                                                                       panic;
+                                                                   _;
+                                                                 };
+                                                               _;
+                                                             };
+                                                         _;
+                                                       };
+                                                     _;
+                                                   };
                                                _;
                                              };
                                            _;
@@ -67,29 +70,35 @@ module Make (F : Features.T) =
                                _;
                              }
                          | Block
-                             ( {
-                                 e =
-                                   App
-                                     {
-                                       f = { e = GlobalVar nta; _ };
-                                       args =
-                                         [
-                                           {
-                                             e =
-                                               App
-                                                 {
-                                                   f =
-                                                     { e = GlobalVar panic; _ };
-                                                   _;
-                                                 };
-                                             _;
-                                           };
-                                         ];
-                                       _;
-                                     };
-                                 _;
-                               },
-                               _ ) );
+                             {
+                               e =
+                                 {
+                                   e =
+                                     App
+                                       {
+                                         f = { e = GlobalVar nta; _ };
+                                         args =
+                                           [
+                                             {
+                                               e =
+                                                 App
+                                                   {
+                                                     f =
+                                                       {
+                                                         e = GlobalVar panic;
+                                                         _;
+                                                       };
+                                                     _;
+                                                   };
+                                               _;
+                                             };
+                                           ];
+                                         _;
+                                       };
+                                   _;
+                                 };
+                               _;
+                             } );
                        _;
                      };
                    _;

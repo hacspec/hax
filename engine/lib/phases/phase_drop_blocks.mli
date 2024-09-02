@@ -1,5 +1,6 @@
 open! Prelude
 
+(** Only use this phase if you are also rejecting [unsafe] *)
 module Make (F : Features.T) : sig
   include module type of struct
     module FA = F

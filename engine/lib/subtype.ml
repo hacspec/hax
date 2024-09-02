@@ -12,6 +12,9 @@ struct
   module UB = Ast_utils.Make (FB)
   module FA = FA
 
+  let dsafety_kind (span : Span.t) (safety : A.safety_kind) : B.safety_kind =
+    match safety with Safe -> Safe | Unsafe w -> Unsafe (S.unsafe span w)
+
   let dmutability (span : Span.t) (type a b) (s : Span.t -> a -> b)
       (mutability : a mutability) : b mutability =
     match mutability with
@@ -211,7 +214,13 @@ struct
             rhs = dexpr rhs;
             body = dexpr body;
           }
-    | Block (e, witness) -> Block (dexpr e, S.block span witness)
+    | Block { e; safety_mode; witness } ->
+        Block
+          {
+            e = dexpr e;
+            safety_mode = dsafety_kind span safety_mode;
+            witness = S.block span witness;
+          }
     | LocalVar local_ident -> LocalVar local_ident
     | GlobalVar global_ident -> GlobalVar global_ident
     | Ascription { e; typ } -> Ascription { e = dexpr e; typ = dty span typ }
@@ -468,13 +477,14 @@ struct
 
     and ditem' (span : span) (item : A.item') : B.item' =
       match item with
-      | Fn { name; generics; body; params } ->
+      | Fn { name; generics; body; params; safety } ->
           B.Fn
             {
               name;
               generics = dgenerics span generics;
               body = dexpr body;
               params = List.map ~f:(dparam span) params;
+              safety = dsafety_kind span safety;
             }
       | Type { name; generics; variants; is_struct } ->
           B.Type
@@ -490,12 +500,13 @@ struct
       | IMacroInvokation { macro; argument; span; witness } ->
           B.IMacroInvokation
             { macro; argument; span; witness = S.macro span witness }
-      | Trait { name; generics; items } ->
+      | Trait { name; generics; items; safety } ->
           B.Trait
             {
               name;
               generics = dgenerics span generics;
               items = List.map ~f:dtrait_item items;
+              safety = dsafety_kind span safety;
             }
       | Impl
           {
@@ -504,6 +515,7 @@ struct
             of_trait = trait_id, trait_generics;
             items;
             parent_bounds;
+            safety;
           } ->
           B.Impl
             {
@@ -514,6 +526,7 @@ struct
               items = List.map ~f:dimpl_item items;
               parent_bounds =
                 List.map ~f:(dimpl_expr span *** dimpl_ident span) parent_bounds;
+              safety = dsafety_kind span safety;
             }
       | Alias { name; item } -> B.Alias { name; item }
       | Use { path; is_external; rename } -> B.Use { path; is_external; rename }
