@@ -40,7 +40,9 @@ module SubtypeToInputLanguage
              and type for_loop = Features.Off.for_loop
              and type while_loop = Features.Off.while_loop
              and type for_index_loop = Features.Off.for_index_loop
-             and type state_passing_loop = Features.Off.state_passing_loop) =
+             and type state_passing_loop = Features.Off.state_passing_loop
+             and type match_guard = Features.Off.match_guard
+             and type trait_item_default = Features.Off.trait_item_default) =
 struct
   module FB = InputLanguage
 
@@ -76,7 +78,7 @@ module FStarNamePolicy = struct
 
   let index_field_transform index = "_" ^ index
 
-  let reserved_words = Hash_set.of_list (module String) ["attributes";"noeq";"unopteq";"and";"assert";"assume";"begin";"by";"calc";"class";"default";"decreases";"effect";"eliminate";"else";"end";"ensures";"exception";"exists";"false";"friend";"forall";"fun";"λ";"function";"if";"in";"include";"inline";"inline_for_extraction";"instance";"introduce";"irreducible";"let";"logic";"match";"returns";"as";"module";"new";"new_effect";"layered_effect";"polymonadic_bind";"polymonadic_subcomp";"noextract";"of";"open";"opaque";"private";"quote";"range_of";"rec";"reifiable";"reify";"reflectable";"requires";"set_range_of";"sub_effect";"synth";"then";"total";"true";"try";"type";"unfold";"unfoldable";"val";"when";"with";"_";"__SOURCE_FILE__";"__LINE__";"match";"if";"let";"and"]
+  let reserved_words = Hash_set.of_list (module String) ["attributes";"noeq";"unopteq";"and";"assert";"assume";"begin";"by";"calc";"class";"default";"decreases";"effect";"eliminate";"else";"end";"ensures";"exception";"exists";"false";"friend";"forall";"fun";"λ";"function";"if";"in";"include";"inline";"inline_for_extraction";"instance";"introduce";"irreducible";"let";"logic";"match";"returns";"as";"module";"new";"new_effect";"layered_effect";"polymonadic_bind";"polymonadic_subcomp";"noextract";"of";"open";"opaque";"private";"quote";"range_of";"rec";"reifiable";"reify";"reflectable";"requires";"set_range_of";"sub_effect";"synth";"then";"total";"true";"try";"type";"unfold";"unfoldable";"val";"when";"with";"_";"__SOURCE_FILE__";"__LINE__";"match";"if";"let";"and";"string"]
 end
 
 module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (FStarNamePolicy)
@@ -84,24 +86,13 @@ module Visitors = Ast_visitors.Make (InputLanguage)
 open AST
 module F = Fstar_ast
 
-let doc_to_string : PPrint.document -> string =
-  FStar_Pprint.pretty_string 1.0 (Z.of_int 100)
-
-let term_to_string : F.AST.term -> string =
-  FStar_Parser_ToDocument.term_to_document >> doc_to_string
-
-let pat_to_string : F.AST.pattern -> string =
-  FStar_Parser_ToDocument.pat_to_document >> doc_to_string
-
-let decl_to_string : F.AST.decl -> string =
-  FStar_Parser_ToDocument.decl_to_document >> doc_to_string
-
 module Context = struct
   type t = {
     current_namespace : string * string list;
     items : item list;
     interface_mode : bool;
     opaque_impls_in_interfaces : bool;
+    line_width : int;
   }
 end
 
@@ -111,6 +102,18 @@ module Make
     end) =
 struct
   open Ctx
+
+  let doc_to_string : PPrint.document -> string =
+    FStar_Pprint.pretty_string 1.0 (Z.of_int ctx.line_width)
+
+  let term_to_string : F.AST.term -> string =
+    FStar_Parser_ToDocument.term_to_document >> doc_to_string
+
+  let pat_to_string : F.AST.pattern -> string =
+    FStar_Parser_ToDocument.pat_to_document >> doc_to_string
+
+  let decl_to_string : F.AST.decl -> string =
+    FStar_Parser_ToDocument.decl_to_document >> doc_to_string
 
   let pprim_ident (span : span) (id : primitive_ident) =
     match id with
@@ -692,9 +695,13 @@ struct
       let ident = F.id ("x" ^ Int.to_string nth) in
       { kind = Explicit; ident; typ = pty span typ }
 
-    let of_named_typ span name typ : t =
+    (** Makes an F* binder from a name and an F* type *)
+    let of_named_fstar_typ span name typ : t =
       let ident = plocal_ident name in
-      { kind = Explicit; ident; typ = pty span typ }
+      { kind = Explicit; ident; typ }
+
+    (** Makes an F* binder from a name and an hax type *)
+    let of_named_typ span name = pty span >> of_named_fstar_typ span name
 
     let to_pattern (x : t) : F.AST.pattern =
       let subpat =
@@ -1166,52 +1173,11 @@ struct
                              [],
                              F.mk_e_app base args ))
                          bounds
-                | TIFn (TArrow (inputs, output))
+                | TIFn ty
                   when Attrs.find_unique_attr i.ti_attrs ~f:(function
                          | TraitMethodNoPrePost -> Some ()
                          | _ -> None)
-                       |> Option.is_none ->
-                    let inputs =
-                      List.mapi ~f:(FStarBinder.of_typ e.span) inputs
-                    in
-                    let inputs = generics @ inputs in
-                    let output = pty e.span output in
-                    let ty_pre_post =
-                      let inputs =
-                        List.map ~f:FStarBinder.to_qualified_term inputs
-                      in
-                      let add_pre n = n ^ "_pre" in
-                      let pre_name_str =
-                        U.Concrete_ident_view.to_definition_name
-                          (Concrete_ident.Create.map_last ~f:add_pre i.ti_ident)
-                      in
-                      let pre =
-                        F.mk_app (F.term_of_lid [ pre_name_str ]) inputs
-                      in
-                      let result = F.term_of_lid [ "result" ] in
-                      let add_post n = n ^ "_post" in
-                      let post_name_str =
-                        U.Concrete_ident_view.to_definition_name
-                          (Concrete_ident.Create.map_last ~f:add_post i.ti_ident)
-                      in
-                      let post =
-                        F.mk_app
-                          (F.term_of_lid [ post_name_str ])
-                          (inputs @ [ (result, Nothing) ])
-                      in
-                      let post =
-                        F.mk_e_abs
-                          [ F.pat @@ F.AST.PatVar (F.id "result", None, []) ]
-                          post
-                      in
-                      F.mk_e_app
-                        (F.term_of_lid [ "Prims"; "Pure" ])
-                        [ output; pre; post ]
-                    in
-                    let inputs = List.map ~f:FStarBinder.to_binder inputs in
-                    let ty = F.term @@ F.AST.Product (inputs, ty_pre_post) in
-                    [ (F.id name, None, [], ty) ]
-                | TIFn ty ->
+                       |> Option.is_some ->
                     let weakest =
                       let h kind =
                         Attrs.associated_fns kind i.ti_attrs
@@ -1256,7 +1222,6 @@ struct
                              let expr = renamer#visit_expr () expr in
                              (generics, params, expr, is_req))
                     in
-                    let ty = pty e.span ty in
                     let ty =
                       let variables =
                         let idents_visitor = U.Reducers.collect_local_idents in
@@ -1301,10 +1266,9 @@ struct
                            ~f:(fun (generics, binders, (expr : expr), is_req) ->
                              let result_ident = mk_fresh "pred" in
                              let result_bd =
-                               FStarBinder.of_named_typ expr.span result_ident
-                                 expr.typ
+                               FStarBinder.of_named_fstar_typ expr.span
+                                 result_ident F.type0_term
                              in
-                             let typ = pty expr.span expr.typ in
                              let expr = U.make_lets !bindings expr in
                              let expr = pexpr expr in
                              let result =
@@ -1323,7 +1287,15 @@ struct
                                ( List.map ~f:FStarBinder.to_binder binders,
                                  result )
                              |> F.term)
-                      |> Option.value ~default:ty
+                      |> Option.value_or_thunk ~default:(fun _ ->
+                             let ty = pty e.span ty in
+                             match ty.tm with
+                             | F.AST.Product (inputs, _) ->
+                                 {
+                                   ty with
+                                   tm = F.AST.Product (inputs, F.type0_term);
+                                 }
+                             | _ -> F.type0_term)
                     in
 
                     let ty =
@@ -1332,6 +1304,54 @@ struct
                            (generics |> List.map ~f:FStarBinder.to_binder, ty)
                     in
                     [ (F.id name, None, [], ty) ]
+                | TIFn (TArrow (inputs, output)) ->
+                    let inputs =
+                      List.mapi ~f:(FStarBinder.of_typ e.span) inputs
+                    in
+                    let inputs = generics @ inputs in
+                    let output = pty e.span output in
+                    let ty_pre_post =
+                      let inputs =
+                        List.map ~f:FStarBinder.to_qualified_term inputs
+                      in
+                      let add_pre n = n ^ "_pre" in
+                      let pre_name_str =
+                        U.Concrete_ident_view.to_definition_name
+                          (Concrete_ident.Create.map_last ~f:add_pre i.ti_ident)
+                      in
+                      let pre =
+                        F.mk_app (F.term_of_lid [ pre_name_str ]) inputs
+                      in
+                      let result = F.term_of_lid [ "result" ] in
+                      let add_post n = n ^ "_post" in
+                      let post_name_str =
+                        U.Concrete_ident_view.to_definition_name
+                          (Concrete_ident.Create.map_last ~f:add_post i.ti_ident)
+                      in
+                      let post =
+                        F.mk_app
+                          (F.term_of_lid [ post_name_str ])
+                          (inputs @ [ (result, Nothing) ])
+                      in
+                      let post =
+                        F.mk_e_abs
+                          [ F.pat @@ F.AST.PatVar (F.id "result", None, []) ]
+                          post
+                      in
+                      F.mk_e_app
+                        (F.term_of_lid [ "Prims"; "Pure" ])
+                        [ output; pre; post ]
+                    in
+                    let inputs = List.map ~f:FStarBinder.to_binder inputs in
+                    let ty = F.term @@ F.AST.Product (inputs, ty_pre_post) in
+                    [ (F.id name, None, [], ty) ]
+                | TIFn non_arrow_ty ->
+                    let inputs = generics in
+                    let output = pty e.span non_arrow_ty in
+                    let inputs = List.map ~f:FStarBinder.to_binder inputs in
+                    let ty = F.term @@ F.AST.Product (inputs, output) in
+                    [ (F.id name, None, [], ty) ]
+                | _ -> .
               in
               List.map ~f:Fn.id
                 (* ~f:(fun (n, q, a, ty) -> (n, q, a, F.mk_e_app bds ty)) *)
@@ -1455,15 +1475,13 @@ struct
           |> Option.value_or_thunk ~default:(fun _ ->
                  Error.assertion_failure e.span
                    "Malformed `Quote` item: could not find a ItemQuote payload")
-          |> Option.value ~default:Types.{ intf = true; impl = false }
+          |> Option.value ~default:Types.{ intf = false; impl = true }
         in
-        (if fstar_opts.intf then
-         [ `VerbatimIntf (pquote e.span quote, `Newline) ]
-        else [])
-        @
-        if fstar_opts.impl then
-          [ `VerbatimImpl (pquote e.span quote, `Newline) ]
-        else []
+        let payload = (pquote e.span quote, `Newline) in
+        if ctx.interface_mode then
+          (if fstar_opts.intf then [ `VerbatimIntf payload ] else [])
+          @ if fstar_opts.impl then [ `VerbatimImpl payload ] else []
+        else [ `VerbatimImpl payload ]
     | HaxError details ->
         [
           `Comment
@@ -1475,6 +1493,8 @@ struct
 end
 
 module type S = sig
+  val decl_to_string : F.AST.decl -> string
+
   val pitem :
     item ->
     [> `Impl of F.AST.decl
@@ -1521,6 +1541,7 @@ let strings_of_item ~signature_only ~opaque_impls_in_interfaces
         interface_mode;
         items;
         opaque_impls_in_interfaces;
+        line_width = bo.line_width;
       }
   in
   let mk_impl = if interface_mode then fun i -> `Impl i else fun i -> `Impl i in
@@ -1532,8 +1553,8 @@ let strings_of_item ~signature_only ~opaque_impls_in_interfaces
   Print.pitem item
   |> List.filter ~f:(function `Impl _ when no_impl -> false | _ -> true)
   |> List.concat_map ~f:(function
-       | `Impl i -> [ (mk_impl (decl_to_string i), `Newline) ]
-       | `Intf i -> [ (mk_intf (decl_to_string i), `Newline) ]
+       | `Impl i -> [ (mk_impl (Print.decl_to_string i), `Newline) ]
+       | `Intf i -> [ (mk_intf (Print.decl_to_string i), `Newline) ]
        | `VerbatimIntf (s, nl) ->
            [ ((if interface_mode then `Intf s else `Impl s), nl) ]
        | `VerbatimImpl (s, nl) ->
@@ -1621,8 +1642,12 @@ let string_of_items ~signature_only ~opaque_impls_in_interfaces ~mod_name
     in
     match lines with [] -> "" | _ -> header ^ String.concat ~sep:"\n" lines
   in
-  ( string_for (function `Impl s -> Some s | _ -> None),
-    string_for (function `Intf s -> Some s | _ -> None) )
+  let replace =
+    String.substr_replace_all ~pattern:"_hax_panic_freedom_admit_"
+      ~with_:"admit () (* Panic freedom *)"
+  in
+  ( string_for (function `Impl s -> Some (replace s) | _ -> None),
+    string_for (function `Intf s -> Some (replace s) | _ -> None) )
 
 let fstar_headers (bo : BackendOptions.t) =
   let opts =
@@ -1688,9 +1713,11 @@ module TransformToInputLanguage =
   |> Phases.Direct_and_mut
   |> Phases.Reject.Arbitrary_lhs
   |> Phases.Drop_blocks
+  |> Phases.Drop_match_guards
   |> Phases.Drop_references
   |> Phases.Trivialize_assign_lhs
   |> Side_effect_utils.Hoist
+  |> Phases.Hoist_disjunctive_patterns
   |> Phases.Simplify_match_return
   |> Phases.Drop_needless_returns
   |> Phases.Local_mutation
@@ -1702,10 +1729,35 @@ module TransformToInputLanguage =
   |> Phases.Traits_specs
   |> Phases.Simplify_hoisting
   |> Phases.Newtype_as_refinement
+  |> Phases.Reject.Trait_item_default
   |> SubtypeToInputLanguage
   |> Identity
   ]
   [@ocamlformat "disable"]
+
+(** Rewrites `unsize x` to `x <: τ` when `τ` is in the allowlist described by `unsize_identity_typ` *)
+let unsize_as_identity =
+  (* Tells if a unsize should be treated as identity by type *)
+  let rec unsize_identity_typ = function
+    | TArray _ -> true
+    | TRef { typ; _ } -> unsize_identity_typ typ
+    | _ -> false
+  in
+  let visitor =
+    object
+      inherit [_] U.Visitors.map as super
+
+      method! visit_expr () e =
+        match e.e with
+        | App { f = { e = GlobalVar f; _ }; args = [ x ]; _ }
+          when Global_ident.eq_name Rust_primitives__unsize f
+               && unsize_identity_typ x.typ ->
+            let x = super#visit_expr () x in
+            { e with e = Ascription { e = x; typ = e.typ } }
+        | _ -> super#visit_expr () e
+    end
+  in
+  visitor#visit_item ()
 
 let apply_phases (bo : BackendOptions.t) (items : Ast.Rust.item list) :
     AST.item list =
@@ -1724,6 +1776,8 @@ let apply_phases (bo : BackendOptions.t) (items : Ast.Rust.item list) :
   in
   let items =
     TransformToInputLanguage.ditems items
+    |> List.map ~f:unsize_as_identity
+    |> List.map ~f:unsize_as_identity
     |> List.map ~f:U.Mappers.add_typ_ascription
     (* |> DepGraph.name_me *)
   in

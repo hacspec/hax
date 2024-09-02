@@ -24,7 +24,9 @@ loop,
   monadic_binding,
   quote,
   block,
-  dyn]
+  dyn,
+  match_guard,
+  trait_item_default]
 
 module Full = On
 

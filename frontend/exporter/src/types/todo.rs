@@ -15,6 +15,7 @@ sinto_todo!(rustc_hir, GenericArgs<'a> as HirGenericArgs);
 sinto_todo!(rustc_hir, InlineAsm<'a>);
 sinto_todo!(rustc_target::spec::abi, Abi);
 sinto_todo!(rustc_hir, MissingLifetimeKind);
+sinto_todo!(rustc_hir, QPath<'tcx>);
 sinto_todo!(rustc_hir, WhereRegionPredicate<'tcx>);
 sinto_todo!(rustc_hir, WhereEqPredicate<'tcx>);
 sinto_todo!(rustc_hir, OwnerId);

@@ -278,8 +278,17 @@ module Raw = struct
     | Match { scrutinee; arms } ->
         let arms =
           List.map
-            ~f:(fun { arm = { arm_pat; body }; _ } ->
-              ppat arm_pat & !" => {" & pexpr body & !"}")
+            ~f:(fun { arm = { arm_pat; body; guard }; _ } ->
+              let guard : t =
+                guard
+                |> Option.map
+                     ~f:
+                       (fun { guard = IfLet { lhs; rhs; _ }; _ } ->
+                          !" if let " & ppat lhs & !" = " & pexpr rhs
+                         : guard -> t)
+                |> Option.value ~default:!""
+              in
+              ppat arm_pat & guard & !" => {" & pexpr body & !"}")
             arms
           |> concat ~sep:!","
         in
@@ -449,6 +458,15 @@ module Raw = struct
     let ( ! ) = pure span in
     concat ~sep:!", " (List.map ~f:(pvariant span) variants)
 
+  let pparam span ({ pat; typ; typ_span; attrs } : param) =
+    let ( ! ) = pure span in
+    pattrs attrs & ppat pat & !": "
+    & pty (Option.value ~default:pat.span typ_span) typ
+
+  let pparams span (l : param list) =
+    let ( ! ) = pure span in
+    !"(" & List.map ~f:(pparam span) l |> concat ~sep:!"," & !")"
+
   let ptrait_item (ti : trait_item) =
     let ( ! ) = pure ti.ti_span in
     let generics = pgeneric_params ti.ti_generics.params in
@@ -471,15 +489,15 @@ module Raw = struct
         in
         !"fn " & ident & generics & !"(" & params & !") -> " & return_type
         & bounds & !";"
-
-  let pparam span ({ pat; typ; typ_span; attrs } : param) =
-    let ( ! ) = pure span in
-    pattrs attrs & ppat pat & !": "
-    & pty (Option.value ~default:pat.span typ_span) typ
-
-  let pparams span (l : param list) =
-    let ( ! ) = pure span in
-    !"(" & List.map ~f:(pparam span) l |> concat ~sep:!"," & !")"
+    | TIDefault { params; body; _ } ->
+        let params = pparams ti.ti_span params in
+        let generics_constraints =
+          pgeneric_constraints ti.ti_span ti.ti_generics.constraints
+        in
+        let return_type = pty ti.ti_span body.typ in
+        let body = pexpr body in
+        !"fn " & ident & generics & !"(" & params & !") -> " & return_type
+        & generics_constraints & !"{" & body & !"}"
 
   let pimpl_item (ii : impl_item) =
     let span = ii.ii_span in

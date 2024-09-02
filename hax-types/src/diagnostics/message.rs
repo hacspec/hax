@@ -12,8 +12,9 @@ pub enum HaxMessage {
     EngineNotFound {
         is_opam_setup_correctly: bool,
     } = 0,
-    WroteFile {
+    ProducedFile {
         path: PathBuf,
+        wrote: bool,
     } = 1,
     HaxEngineFailure {
         exit_code: i32,

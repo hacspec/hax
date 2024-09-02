@@ -109,12 +109,12 @@ let c_attr (attr : Thir.attribute) : attr =
     | Normal
         {
           item =
-            { args = Eq (_, Hir { symbol; _ }); path = "doc"; tokens = None };
+            { args = Eq (_, Hir { symbol; _ }); path = "doc"; tokens = None; _ };
           tokens = None;
         } ->
         DocComment { kind = DCKLine; body = symbol }
         (* Looks for `#[doc = "something"]` *)
-    | Normal { item = { args; path; tokens = subtokens }; tokens } ->
+    | Normal { item = { args; path; tokens = subtokens; _ }; tokens } ->
         let args_tokens =
           match args with Delimited { tokens; _ } -> Some tokens | _ -> None
         in
@@ -226,6 +226,7 @@ module type EXPR = sig
   val c_generic_value : Thir.span -> Thir.generic_arg -> generic_value
   val c_generics : Thir.generics -> generics
   val c_param : Thir.span -> Thir.param -> param
+  val c_fn_params : Thir.span -> Thir.param list -> param list
   val c_trait_item' : Thir.trait_item -> Thir.trait_item_kind -> trait_item'
   val c_trait_ref : Thir.span -> Thir.trait_ref -> trait_goal
   val c_impl_expr : Thir.span -> Thir.impl_expr -> impl_expr
@@ -418,20 +419,11 @@ end) : EXPR = struct
                 {
                   arms =
                     [
-                      { arm = { arm_pat = lhs; body }; span = lhs_body_span };
-                      {
-                        arm =
-                          {
-                            arm_pat =
-                              {
-                                p = PWild;
-                                span = else_block.span;
-                                typ = lhs.typ;
-                              };
-                            body = { else_block with typ = body.typ };
-                          };
-                        span = else_block.span;
-                      };
+                      U.make_arm lhs body lhs_body_span;
+                      U.make_arm
+                        { p = PWild; span = else_block.span; typ = lhs.typ }
+                        { else_block with typ = body.typ }
+                        else_block.span;
                     ];
                   scrutinee = rhs;
                 }
@@ -487,12 +479,10 @@ end) : EXPR = struct
             Option.value ~default:(U.unit_expr span)
             @@ Option.map ~f:c_expr else_opt
           in
-          let arm_then =
-            { arm = { arm_pat; body = then_ }; span = then_.span }
-          in
+          let arm_then = U.make_arm arm_pat then_ then_.span in
           let arm_else =
             let arm_pat = { arm_pat with p = PWild } in
-            { arm = { arm_pat; body = else_ }; span = else_.span }
+            U.make_arm arm_pat else_ else_.span
           in
           Match { scrutinee; arms = [ arm_then; arm_else ] }
       | If { cond; else_opt; then'; _ } ->
@@ -1091,7 +1081,31 @@ end) : EXPR = struct
     let arm_pat = c_pat arm.pattern in
     let body = c_expr arm.body in
     let span = Span.of_thir arm.span in
-    { arm = { arm_pat; body }; span }
+    let guard =
+      Option.map
+        ~f:(fun (e : Thir.decorated_for__expr_kind) ->
+          let guard =
+            match e.contents with
+            | Let { expr; pat } ->
+                IfLet
+                  {
+                    lhs = c_pat pat;
+                    rhs = c_expr expr;
+                    witness = W.match_guard;
+                  }
+            | _ ->
+                IfLet
+                  {
+                    lhs =
+                      { p = PConstant { lit = Bool true }; span; typ = TBool };
+                    rhs = c_expr e;
+                    witness = W.match_guard;
+                  }
+          in
+          { guard; span = Span.of_thir e.span })
+        arm.guard
+    in
+    { arm = { arm_pat; body; guard }; span }
 
   and c_param span (param : Thir.param) : param =
     {
@@ -1100,6 +1114,10 @@ end) : EXPR = struct
       pat = c_pat (Option.value_exn param.pat);
       attrs = c_attrs param.attributes;
     }
+
+  let c_fn_params span (params : Thir.param list) : param list =
+    if List.is_empty params then [ U.make_unit_param (Span.of_thir span) ]
+    else List.map ~f:(c_param span) params
 
   let c_generic_param (param : Thir.generic_param) : generic_param =
     let ident =
@@ -1171,11 +1189,11 @@ end) : EXPR = struct
       trait_item' =
     let span = super.span in
     match item with
-    | Const (_, Some _) ->
-        unimplemented [ span ]
-          "TODO: traits: no support for defaults in traits for now"
+    | Const (_, Some default) ->
+        TIDefault
+          { params = []; body = c_expr default; witness = W.trait_item_default }
     | Const (ty, None) -> TIFn (c_ty span ty)
-    | ProvidedFn (sg, _) | RequiredFn (sg, _) ->
+    | RequiredFn (sg, _) ->
         let (Thir.{ inputs; output; _ } : Thir.fn_decl) = sg.decl in
         let output =
           match output with
@@ -1187,6 +1205,13 @@ end) : EXPR = struct
           else List.map ~f:(c_ty span) inputs
         in
         TIFn (TArrow (inputs, output))
+    | ProvidedFn (_, { params; body; _ }) ->
+        TIDefault
+          {
+            params = c_fn_params span params;
+            body = c_expr body;
+            witness = W.trait_item_default;
+          }
     | Type (bounds, None) ->
         let bounds =
           List.filter_map ~f:(c_clause span) bounds
@@ -1327,7 +1352,8 @@ let cast_of_enum typ_name generics typ thir_span
             in
             (Exp e, (pat, acc)))
     |> List.map ~f:(Fn.id *** function Exp e -> e | Lit n -> to_expr n)
-    |> List.map ~f:(fun (arm_pat, body) -> { arm = { arm_pat; body }; span })
+    |> List.map ~f:(fun (arm_pat, body) ->
+           { arm = { arm_pat; body; guard = None }; span })
   in
   let scrutinee_var =
     Local_ident.{ name = "x"; id = Local_ident.mk_id Expr (-1) }
@@ -1404,10 +1430,6 @@ and c_item_unwrapped ~ident ~drop_body ~drop_impl_bodies (item : Thir.item) :
                ty = c_ty item.span ty;
              }
     | Fn (generics, { body; params; _ }) ->
-        let params =
-          if List.is_empty params then [ U.make_unit_param span ]
-          else List.map ~f:(c_param item.span) params
-        in
         mk
         @@ Fn
              {
@@ -1415,7 +1437,7 @@ and c_item_unwrapped ~ident ~drop_body ~drop_impl_bodies (item : Thir.item) :
                  Concrete_ident.of_def_id Value (Option.value_exn item.def_id);
                generics = c_generics generics;
                body = c_body body;
-               params;
+               params = c_fn_params item.span params;
              }
     | Enum (variants, generics, repr) ->
         let def_id = Option.value_exn item.def_id in

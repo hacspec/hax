@@ -16,6 +16,7 @@ module Phase = struct
       | EarlyExit
       | AsPattern
       | Dyn
+      | TraitItemDefault
     [@@deriving show { with_path = false }, eq, yojson, compare, hash, sexp]
 
     let display = function
@@ -30,6 +31,7 @@ module Phase = struct
     | DropReferences
     | DropBlocks
     | DropSizedTrait
+    | DropMatchGuards
     | RefMut
     | ResugarAsserts
     | ResugarForLoops
@@ -39,6 +41,7 @@ module Phase = struct
     | SimplifyQuestionMarks
     | Specialize
     | HoistSideEffects
+    | HoistDisjunctions
     | LocalMutation
     | TrivializeAssignLhs
     | CfIntoMonads

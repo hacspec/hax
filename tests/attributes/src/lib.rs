@@ -20,6 +20,21 @@ fn swap_and_mut_req_ens(x: &mut u32, y: &mut u32) -> u32 {
     *x + *y
 }
 
+#[hax_lib::ensures(|_| true)]
+fn issue_844(_x: &mut u8) {}
+
+// From issue #845
+mod ensures_on_arity_zero_fns {
+    #[hax_lib::requires(true)]
+    #[hax_lib::ensures(|_x| true)]
+    fn doing_nothing() {}
+    #[hax_lib::requires(true)]
+    #[hax_lib::ensures(|x| x > 100)]
+    fn basically_a_constant() -> u8 {
+        127
+    }
+}
+
 #[hax::lemma]
 fn add3_lemma(x: u32) -> Proof<{ x <= 10 || x >= u32_max / 3 || add3(x, x, x) == x * 3 }> {}
 
@@ -283,5 +298,43 @@ mod nested_refinement_elim {
 
     fn elim_twice(x: DummyRefinement) -> u16 {
         (DummyRefinement::new(x.get())).get()
+    }
+}
+
+/// `ensures` and `requires` with inlined code (issue #825)
+mod inlined_code_ensures_requires {
+    #[hax_lib::requires(fstar!("forall i. FStar.Seq.index $v i <. ${254u8}"))]
+    #[hax_lib::ensures(|()| {
+        let future_v = future(v);
+        fstar!("forall i. FStar.Seq.index ${future_v} i >. ${0u8}")
+    })]
+    fn increment_array(v: &mut [u8; 4]) {
+        v[0] += 1;
+        v[1] += 1;
+        v[2] += 1;
+        v[3] += 1;
+    }
+}
+
+mod verifcation_status {
+    #[hax_lib::fstar::verification_status(lax)]
+    fn a_function_which_only_laxes() {
+        assert!(/*very complicated stuff*/ false)
+    }
+
+    #[hax_lib::fstar::verification_status(panic_free)]
+    #[hax_lib::ensures(|x|/*very complicated stuff*/false)]
+    fn a_panicfree_function() -> u8 {
+        let a = 3;
+        let b = 6;
+        a + b
+    }
+
+    #[hax_lib::fstar::verification_status(panic_free)]
+    #[hax_lib::ensures(|x|/*very complicated stuff*/false)]
+    fn another_panicfree_function() {
+        let not_much = 0;
+        let nothing = 0;
+        let still_not_much = not_much + nothing;
     }
 }

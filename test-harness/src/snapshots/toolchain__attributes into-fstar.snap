@@ -26,6 +26,64 @@ exit = 0
 diagnostics = []
 
 [stdout.files]
+"Attributes.Ensures_on_arity_zero_fns.fst" = '''
+module Attributes.Ensures_on_arity_zero_fns
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let basically_a_constant (_: Prims.unit)
+    : Prims.Pure u8
+      (requires true)
+      (ensures
+        fun x ->
+          let x:u8 = x in
+          x >. 100uy) = 127uy
+
+let doing_nothing (_: Prims.unit)
+    : Prims.Pure Prims.unit
+      (requires true)
+      (ensures
+        fun v__x ->
+          let v__x:Prims.unit = v__x in
+          true) = ()
+'''
+"Attributes.Inlined_code_ensures_requires.fst" = '''
+module Attributes.Inlined_code_ensures_requires
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let increment_array (v: t_Array u8 (sz 4))
+    : Prims.Pure (t_Array u8 (sz 4))
+      (requires forall i. FStar.Seq.index v i <. 254uy)
+      (ensures
+        fun vv_future ->
+          let vv_future:t_Array u8 (sz 4) = vv_future in
+          let future_v:t_Array u8 (sz 4) = vv_future in
+          forall i. FStar.Seq.index future_v i >. 0uy) =
+  let v:t_Array u8 (sz 4) =
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize v
+      (sz 0)
+      ((v.[ sz 0 ] <: u8) +! 1uy <: u8)
+  in
+  let v:t_Array u8 (sz 4) =
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize v
+      (sz 1)
+      ((v.[ sz 1 ] <: u8) +! 1uy <: u8)
+  in
+  let v:t_Array u8 (sz 4) =
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize v
+      (sz 2)
+      ((v.[ sz 2 ] <: u8) +! 1uy <: u8)
+  in
+  let v:t_Array u8 (sz 4) =
+    Rust_primitives.Hax.Monomorphized_update_at.update_at_usize v
+      (sz 3)
+      ((v.[ sz 3 ] <: u8) +! 1uy <: u8)
+  in
+  v
+'''
 "Attributes.Int_model.fst" = '''
 module Attributes.Int_model
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
@@ -89,13 +147,13 @@ open FStar.Mul
 class t_Operation (v_Self: Type0) = {
   f_double_pre:x: u8
     -> pred:
-      bool
+      Type0
         { (Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) <=
           (127 <: Hax_lib.Int.t_Int) ==>
           pred };
   f_double_post:x: u8 -> result: u8
     -> pred:
-      bool
+      Type0
         { pred ==>
           ((Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) * (2 <: Hax_lib.Int.t_Int)
             <:
@@ -105,8 +163,8 @@ class t_Operation (v_Self: Type0) = {
 }
 
 class t_TraitWithRequiresAndEnsures (v_Self: Type0) = {
-  f_method_pre:self___: v_Self -> x: u8 -> pred: bool{x <. 100uy ==> pred};
-  f_method_post:self___: v_Self -> x: u8 -> r: u8 -> pred: bool{pred ==> r >. 88uy};
+  f_method_pre:self___: v_Self -> x: u8 -> pred: Type0{x <. 100uy ==> pred};
+  f_method_post:self___: v_Self -> x: u8 -> r: u8 -> pred: Type0{pred ==> r >. 88uy};
   f_method:x0: v_Self -> x1: u8
     -> Prims.Pure u8 (f_method_pre x0 x1) (fun result -> f_method_post x0 x1 result)
 }
@@ -281,6 +339,43 @@ let double (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_T
 let double_refine (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_True) =
   x +! x <: t_Even
 '''
+"Attributes.Verifcation_status.fst" = '''
+module Attributes.Verifcation_status
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let a_panicfree_function (_: Prims.unit)
+    : Prims.Pure u8
+      Prims.l_True
+      (ensures
+        fun x ->
+          let x:u8 = x in
+          false) =
+  let a:u8 = 3uy in
+  let b:u8 = 6uy in
+  let result:u8 = a +! b in
+  let _:Prims.unit = admit () (* Panic freedom *) in
+  result
+
+let another_panicfree_function (_: Prims.unit)
+    : Prims.Pure Prims.unit
+      Prims.l_True
+      (ensures
+        fun x ->
+          let x:Prims.unit = x in
+          false) =
+  let not_much:i32 = 0l in
+  let nothing:i32 = 0l in
+  let still_not_much:i32 = not_much +! nothing in
+  admit () (* Panic freedom *)
+
+#push-options "--admit_smt_queries true"
+
+let a_function_which_only_laxes (_: Prims.unit) : Prims.unit = Hax_lib.v_assert false
+
+#pop-options
+'''
 "Attributes.fst" = '''
 module Attributes
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
@@ -294,6 +389,14 @@ let add3_lemma (x: u32)
   ()
 
 let inlined_code__V: u8 = 12uy
+
+let issue_844_ (v__x: u8)
+    : Prims.Pure u8
+      Prims.l_True
+      (ensures
+        fun v__x_future ->
+          let v__x_future:u8 = v__x_future in
+          true) = v__x
 
 let u32_max: u32 = 90000ul
 

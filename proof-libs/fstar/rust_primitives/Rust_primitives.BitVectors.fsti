@@ -58,6 +58,15 @@ let bit_vec_of_nat_array (#len: usize)
        (fun i -> get_bit_nat (Seq.index arr (i / d)) (i % d))
 #pop-options
 
+/// Transforms a bit vector to an integer
+val bit_vec_to_int_t #t (d: num_bits t) (bv: bit_vec d): int_t t
+
+/// `bit_vec_to_int_t` and `get_bit` are (modulo usize) inverse
+val bit_vec_to_int_t_lemma
+    #t (d: num_bits t) (bv: bit_vec d)
+    i
+  : Lemma (get_bit (bit_vec_to_int_t d bv) (sz i) == bv i)
+
 /// Transforms a bit vector into an array of integers
 val bit_vec_to_int_t_array #t (#len: usize) (d: num_bits t) (bv: bit_vec (v len * d))
   : Pure (t_Array (int_t t) len)
@@ -102,6 +111,14 @@ val get_bit_pow2_minus_one_i32
   : Lemma ( get_bit (FStar.Int32.int_to_t x) nth 
         == (if v nth < Some?.v (mask_inv_opt x) then 1 else 0))
   [SMTPat (get_bit (FStar.Int32.int_to_t x) nth)]
+
+/// Specialized `get_bit_pow2_minus_one` lemmas with SMT patterns
+/// targetting machine integer literals of type `i16`
+val get_bit_pow2_minus_one_i16
+  (x: int {x < pow2 15 /\ Some? (mask_inv_opt x)}) (nth: usize {v nth < 16})
+  : Lemma ( get_bit (FStar.Int16.int_to_t x) nth 
+        == (if v nth < Some?.v (mask_inv_opt x) then 1 else 0))
+  [SMTPat (get_bit (FStar.Int16.int_to_t x) nth)]
 
 /// Specialized `get_bit_pow2_minus_one` lemmas with SMT patterns
 /// targetting machine integer literals of type `u32`

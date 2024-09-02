@@ -338,8 +338,16 @@ functor
           witness : F.nontrivial_lhs;
         }
 
+    (* A guard is a condition on a pattern like: *)
+    (* match x {.. if guard => .., ..}*)
+    and guard = { guard : guard'; span : span }
+
+    (* Only if-let guards are supported for now but other variants like regular if *)
+    (* could be added later (regular if guards are for now desugared as IfLet) *)
+    and guard' = IfLet of { lhs : pat; rhs : expr; witness : F.match_guard }
+
     (* OCaml + visitors is not happy with `pat`... hence `arm_pat`... *)
-    and arm' = { arm_pat : pat; body : expr }
+    and arm' = { arm_pat : pat; body : expr; guard : guard option }
     and arm = { arm : arm'; span : span } [@@deriving show, yojson, hash, eq]
 
     type generic_param = {
@@ -435,7 +443,14 @@ functor
       ii_attrs : attrs;
     }
 
-    and trait_item' = TIType of impl_ident list | TIFn of ty
+    and trait_item' =
+      | TIType of impl_ident list
+      | TIFn of ty
+      | TIDefault of {
+          params : param list;
+          body : expr;
+          witness : F.trait_item_default;
+        }
 
     and trait_item = {
       (* TODO: why do I need to prefix by `ti_` here? I guess visitors fail or something *)

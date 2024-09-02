@@ -41,7 +41,9 @@ module SubtypeToInputLanguage
              and type for_index_loop = Features.Off.for_index_loop
              and type quote = Features.Off.quote
              and type state_passing_loop = Features.Off.state_passing_loop
-             and type dyn = Features.Off.dyn) =
+             and type dyn = Features.Off.dyn
+             and type match_guard = Features.Off.match_guard
+             and type trait_item_default = Features.Off.trait_item_default) =
 struct
   module FB = InputLanguage
 
@@ -574,6 +576,7 @@ struct
                     ( U.Concrete_ident_view.to_definition_name x.ti_ident,
                       match x.ti_v with
                       | TIFn fn_ty -> pty span fn_ty
+                      | TIDefault _ -> .
                       | _ -> __TODO_ty__ span "field_ty" ))
                 items );
         ]
@@ -705,6 +708,7 @@ module TransformToInputLanguage =
   |> Phases.Direct_and_mut
   |> Phases.Reject.Arbitrary_lhs
   |> Phases.Drop_blocks
+  |> Phases.Drop_match_guards
   |> Phases.Reject.Continue
   |> Phases.Drop_references
   |> Phases.Trivialize_assign_lhs
@@ -717,6 +721,7 @@ module TransformToInputLanguage =
   |> Phases.Functionalize_loops
   |> Phases.Reject.As_pattern
   |> Phases.Reject.Dyn
+  |> Phases.Reject.Trait_item_default
   |> SubtypeToInputLanguage
   |> Identity
   ]

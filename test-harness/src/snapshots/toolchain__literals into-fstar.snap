@@ -157,9 +157,11 @@ let panic_with_msg (_: Prims.unit) : Prims.unit =
 
 let empty_array (_: Prims.unit) : Prims.unit =
   let (_: t_Slice u8):t_Slice u8 =
-    Rust_primitives.unsize (let list:Prims.list u8 = [] in
-        FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 0);
-        Rust_primitives.Hax.array_of_list 0 list)
+    (let list:Prims.list u8 = [] in
+      FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 0);
+      Rust_primitives.Hax.array_of_list 0 list)
+    <:
+    t_Slice u8
   in
   ()
 

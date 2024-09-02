@@ -416,8 +416,12 @@ module Make (F : Features.T) = struct
           inherit [_] Visitors.reduce as super
           inherit [_] Sets.Local_ident.monoid as _m
 
-          method! visit_arm' env { arm_pat; body } =
-            shadows ~env [ arm_pat ] body super#visit_expr
+          method! visit_arm' env { arm_pat; body; guard } =
+            match guard with
+            | None -> shadows ~env [ arm_pat ] body super#visit_expr
+            | Some { guard = IfLet { lhs; rhs; _ }; _ } ->
+                shadows ~env [ arm_pat ] rhs super#visit_expr
+                ++ shadows ~env [ arm_pat; lhs ] body super#visit_expr
 
           method! visit_expr' env e =
             match e with
@@ -472,6 +476,8 @@ module Make (F : Features.T) = struct
               (module Local_ident)
         end
 
+      (* This removes "fake" shadowing introduced by macros.
+         See PR #368 *)
       let disambiguate_local_idents (item : item) =
         let ambiguous = collect_ambiguous_local_idents#visit_item [] item in
         let local_vars = collect_local_idents#visit_item () item |> ref in
@@ -607,8 +613,17 @@ module Make (F : Features.T) = struct
                    (without_vars (self#visit_expr () body) vars))
           | _ -> super#visit_expr' () e
 
-        method! visit_arm' () { arm_pat; body } =
-          without_pat_vars (self#visit_expr () body) arm_pat
+        method! visit_arm' () { arm_pat; body; guard } =
+          match guard with
+          | Some { guard = IfLet { lhs; rhs; _ }; _ } ->
+              let rhs_vars =
+                without_pat_vars (self#visit_expr () rhs) arm_pat
+              in
+              let body_vars =
+                without_pats_vars (self#visit_expr () body) [ arm_pat; lhs ]
+              in
+              Set.union rhs_vars body_vars
+          | None -> without_pat_vars (self#visit_expr () body) arm_pat
       end
 
     class ['s] expr_list_monoid =
@@ -783,6 +798,10 @@ module Make (F : Features.T) = struct
 
   let make_wild_pat (typ : ty) (span : span) : pat = { p = PWild; span; typ }
 
+  let make_arm (arm_pat : pat) (body : expr) ?(guard : guard option = None)
+      (span : span) : arm =
+    { arm = { arm_pat; body; guard }; span }
+
   let make_unit_param (span : span) : param =
     let typ = unit_typ in
     let pat = make_wild_pat typ span in
@@ -892,6 +911,13 @@ module Make (F : Features.T) = struct
       (`Concrete (Concrete_ident.of_name kind f_name))
       args span ret_typ
 
+  let make_closure (params : pat list) (body : expr) (span : span) : expr =
+    let params =
+      match params with [] -> [ make_wild_pat unit_typ span ] | _ -> params
+    in
+    let e = Closure { params; body; captures = [] } in
+    { e; typ = TArrow (List.map ~f:(fun p -> p.typ) params, body.typ); span }
+
   let string_lit span (s : string) : expr =
     { span; typ = TStr; e = Literal (String s) }
 
@@ -912,6 +938,23 @@ module Make (F : Features.T) = struct
   module LiftToFullAst = struct
     let expr : AST.expr -> Ast.Full.expr = Stdlib.Obj.magic
     let item : AST.item -> Ast.Full.item = Stdlib.Obj.magic
+  end
+
+  module Debug : sig
+    val expr : ?label:string -> AST.expr -> unit
+    (** Prints an expression pretty-printed as Rust, with its full
+        AST encoded as JSON, available as a file, so that one can
+        `jless` or `jq` into it. *)
+  end = struct
+    let expr ?(label = "") (e : AST.expr) : unit =
+      let path = tempfile_path ~suffix:".json" in
+      Core.Out_channel.write_all path
+        ~data:([%yojson_of: AST.expr] e |> Yojson.Safe.pretty_to_string);
+      let e = LiftToFullAst.expr e in
+      "```rust " ^ label ^ "\n" ^ Print_rust.pexpr_str e
+      ^ "\n```\x1b[34m JSON-encoded AST available at \x1b[1m" ^ path
+      ^ "\x1b[0m (hint: use `jless " ^ path ^ "`)"
+      |> Stdio.prerr_endline
   end
 
   let unbox_expr' (next : expr -> expr) (e : expr) : expr =

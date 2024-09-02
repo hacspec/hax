@@ -23,6 +23,106 @@ use impl_fn_decoration::*;
 use prelude::*;
 use utils::*;
 
+/// When extracting to F*, wrap this item in `#push-options "..."` and
+/// `#pop-options`.
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn fstar_options(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let item: TokenStream = item.into();
+    let lit_str = parse_macro_input!(attr as LitStr);
+    let payload = format!(r#"#push-options "{}""#, lit_str.value());
+    let payload = LitStr::new(&payload, lit_str.span());
+    quote! {
+        #[::hax_lib::fstar::before(#payload)]
+        #[::hax_lib::fstar::after(r#"#pop-options"#)]
+        #item
+    }
+    .into()
+}
+
+/// Add an invariant to a loop which deals with an index. The
+/// invariant cannot refer to any variable introduced within the
+/// loop. An invariant is a closure that takes one argument, the
+/// index, and returns a boolean.
+///
+/// Note that loop invariants are unstable (this will be handled in a
+/// better way in the future, see
+/// https://github.com/hacspec/hax/issues/858) and only supported on
+/// specific `for` loops with specific iterators:
+///
+///  - `for i in start..end {...}`
+///  - `for i in (start..end).step_by(n) {...}`
+///  - `for i in slice.enumerate() {...}`
+///  - `for i in slice.chunks_exact(n).enumerate() {...}`
+///
+/// This function must be called on the first line of a loop body to
+/// be effective. Note that in the invariant expression, `forall`,
+/// `exists`, and `BACKEND!` (`BACKEND` can be `fstar`, `proverif`,
+/// `coq`...) are in scope.
+#[proc_macro]
+pub fn loop_invariant(predicate: pm::TokenStream) -> pm::TokenStream {
+    let predicate: TokenStream = predicate.into();
+    let ts: pm::TokenStream = quote! {
+        #[cfg(#HaxCfgOptionName)]
+        {
+            hax_lib::_internal_loop_invariant({
+                #HaxQuantifiers
+                #predicate
+            })
+        }
+    }
+    .into();
+    ts
+}
+
+/// When extracting to F*, inform about what is the current
+/// verification status for an item. It can either be `lax` or
+/// `panic_free`.
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn fstar_verification_status(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let action = format!("{}", parse_macro_input!(attr as Ident));
+    match action.as_str() {
+        "lax" => {
+            let item: TokenStream = item.into();
+            quote! {
+                #[::hax_lib::fstar::options("--admit_smt_queries true")]
+                #item
+            }
+        }
+        "panic_free" => {
+            let mut item = parse_macro_input!(item as FnLike);
+            if let Some(last) = item
+                .block
+                .stmts
+                .iter_mut()
+                .rev()
+                .find(|stmt| matches!(stmt, syn::Stmt::Expr(_, None)))
+                .as_mut()
+            {
+                **last = syn::Stmt::Expr(
+                    parse_quote! {
+                        {let result = #last;
+                        ::hax_lib::fstar!("_hax_panic_freedom_admit_");
+                         result}
+                    },
+                    None,
+                );
+            } else {
+                item.block.stmts.push(syn::Stmt::Expr(
+                    parse_quote! {::hax_lib::fstar!("_hax_panic_freedom_admit_")},
+                    None,
+                ));
+            }
+            quote! {
+                #item
+            }
+        }
+        _ => abort_call_site!(format!("Expected `lax` or `panic_free`")),
+    }
+    .into()
+}
+
 /// Include this item in the Hax translation.
 #[proc_macro_error]
 #[proc_macro_attribute]
@@ -195,6 +295,10 @@ pub fn decreases(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStrea
 /// the `ensures` clause, you can refer to such an `&mut` input `x` as
 /// `x` for its "past" value and `future(x)` for its "future" value.
 ///
+/// You can use the (unqualified) macro `fstar!` (`BACKEND!` for any
+/// backend `BACKEND`) to inline F* (or Coq, ProVerif, etc.) code in
+/// the precondition, e.g. `fstar!("true")`.
+///
 /// # Example
 ///
 /// ```
@@ -238,6 +342,10 @@ pub fn requires(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream
 
 /// Add a logical postcondition to a function. Note you can use the
 /// `forall` and `exists` operators.
+///
+/// You can use the (unqualified) macro `fstar!` (`BACKEND!` for any
+/// backend `BACKEND`) to inline F* (or Coq, ProVerif, etc.) code in
+/// the postcondition, e.g. `fstar!("true")`.
 ///
 /// # Example
 ///
@@ -657,70 +765,82 @@ macro_rules! make_quoting_item_proc_macro {
 }
 
 macro_rules! make_quoting_proc_macro {
-    ($backend:ident($expr_name:ident, $before_name:ident, $after_name:ident, $replace_name:ident, $cfg_name:ident)) => {
-        #[doc = concat!("Embed ", stringify!($backend), " expression inside a Rust expression. This macro takes only one argument: some raw ", stringify!($backend), " code as a string literal.")]
-        ///
+    ($backend:ident) => {
+        paste::paste! {
+            #[doc = concat!("Embed ", stringify!($backend), " expression inside a Rust expression. This macro takes only one argument: some raw ", stringify!($backend), " code as a string literal.")]
+            ///
 
-        /// While it is possible to directly write raw backend code,
-        /// sometimes it can be inconvenient. For example, referencing
-        /// Rust names can be a bit cumbersome: for example, the name
-        /// `my_crate::my_module::CONSTANT` might be translated
-        /// differently in a backend (e.g. in the F* backend, it will
-        /// probably be `My_crate.My_module.v_CONSTANT`).
-        ///
+            /// While it is possible to directly write raw backend code,
+            /// sometimes it can be inconvenient. For example, referencing
+            /// Rust names can be a bit cumbersome: for example, the name
+            /// `my_crate::my_module::CONSTANT` might be translated
+            /// differently in a backend (e.g. in the F* backend, it will
+            /// probably be `My_crate.My_module.v_CONSTANT`).
+            ///
 
-        /// To facilitate this, you can write Rust names directly,
-        /// using the prefix `$`: `f $my_crate::my_module__CONSTANT + 3`
-        /// will be replaced with `f My_crate.My_module.v_CONSTANT + 3`
-        /// in the F* backend for instance.
+            /// To facilitate this, you can write Rust names directly,
+            /// using the prefix `$`: `f $my_crate::my_module__CONSTANT + 3`
+            /// will be replaced with `f My_crate.My_module.v_CONSTANT + 3`
+            /// in the F* backend for instance.
 
-        /// If you want to refer to the Rust constructor
-        /// `Enum::Variant`, you should write `$$Enum::Variant` (note
-        /// the double dollar).
+            /// If you want to refer to the Rust constructor
+            /// `Enum::Variant`, you should write `$$Enum::Variant` (note
+            /// the double dollar).
 
-        /// If the name refers to something polymorphic, you need to
-        /// signal it by adding _any_ type informations,
-        /// e.g. `${my_module::function<()>}`. The curly braces are
-        /// needed for such more complex expressions.
+            /// If the name refers to something polymorphic, you need to
+            /// signal it by adding _any_ type informations,
+            /// e.g. `${my_module::function<()>}`. The curly braces are
+            /// needed for such more complex expressions.
 
-        /// You can also write Rust patterns with the `$?{SYNTAX}`
-        /// syntax, where `SYNTAX` is a Rust pattern. The syntax
-        /// `${EXPR}` also allows any Rust expressions
-        /// `EXPR` to be embedded.
+            /// You can also write Rust patterns with the `$?{SYNTAX}`
+            /// syntax, where `SYNTAX` is a Rust pattern. The syntax
+            /// `${EXPR}` also allows any Rust expressions
+            /// `EXPR` to be embedded.
 
-        /// Types can be refered to with the syntax `$:{TYPE}`.
-        #[proc_macro]
-        pub fn $expr_name(payload: pm::TokenStream) -> pm::TokenStream {
-            let ts: TokenStream = quote::expression(payload).into();
-            quote!{
-                #[cfg($cfg_name)]
-                {
-                    #ts
-                }
-            }.into()
-        }
+            /// Types can be refered to with the syntax `$:{TYPE}`.
+            #[proc_macro]
+            pub fn [<$backend _expr>](payload: pm::TokenStream) -> pm::TokenStream {
+                let ts: TokenStream = quote::expression(true, payload).into();
+                quote!{
+                    #[cfg([< hax_backend_ $backend >])]
+                    {
+                        #ts
+                    }
+                }.into()
+            }
 
-        make_quoting_item_proc_macro!($backend, $before_name, ItemQuotePosition::Before, $cfg_name);
-        make_quoting_item_proc_macro!($backend, $after_name, ItemQuotePosition::After, $cfg_name);
+            #[doc = concat!("The unsafe (because polymorphic: even computationally relevant code can be inlined!) version of `", stringify!($backend), "_expr`.")]
+            #[proc_macro]
+            #[doc(hidden)]
+            pub fn [<$backend _unsafe_expr>](payload: pm::TokenStream) -> pm::TokenStream {
+                let ts: TokenStream = quote::expression(false, payload).into();
+                quote!{
+                    #[cfg([< hax_backend_ $backend >])]
+                    {
+                        #ts
+                    }
+                }.into()
+            }
 
-        #[doc = concat!("Replaces a Rust expression with some verbatim ", stringify!($backend)," code.")]
-        #[proc_macro_error]
-        #[proc_macro_attribute]
-        pub fn $replace_name(payload: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
-            let item: TokenStream = item.into();
-            let attr = AttrPayload::ItemStatus(ItemStatus::Included { late_skip: true });
-            $before_name(payload, quote!{#attr #item}.into())
+            make_quoting_item_proc_macro!($backend, [< $backend _before >], ItemQuotePosition::Before, [< hax_backend_ $backend >]);
+            make_quoting_item_proc_macro!($backend, [< $backend _after >], ItemQuotePosition::After, [< hax_backend_ $backend >]);
+
+            #[doc = concat!("Replaces a Rust expression with some verbatim ", stringify!($backend)," code.")]
+            #[proc_macro_error]
+            #[proc_macro_attribute]
+            pub fn [< $backend _replace >](payload: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+                let item: TokenStream = item.into();
+                let attr = AttrPayload::ItemStatus(ItemStatus::Included { late_skip: true });
+                [< $backend _before >](payload, quote!{#attr #item}.into())
+            }
         }
     };
-    ($backend:ident $payload:tt $($others:tt)+) => {
-        make_quoting_proc_macro!($backend$payload);
-        make_quoting_proc_macro!($($others)+);
+    ($($backend:ident)*) => {
+        $(make_quoting_proc_macro!($backend);)*
     }
 }
 
-make_quoting_proc_macro!(fstar(fstar_expr, fstar_before, fstar_after, fstar_replace, hax_backend_fstar)
-                         coq(coq_expr, coq_before, coq_after, coq_replace, hax_backend_coq)
-                         proverif(proverif_expr, proverif_before, proverif_after, proverif_replace, hax_backend_proverif));
+make_quoting_proc_macro!(fstar coq proverif);
 
 /// Marks a newtype `struct RefinedT(T);` as a refinement type. The
 /// struct should have exactly one unnamed private field.

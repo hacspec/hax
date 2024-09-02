@@ -17,6 +17,10 @@ impl ToTokens for HaxQuantifiers {
             fn exists<T, F: Fn(T) -> bool>(f: F) -> bool {
                 true
             }
+
+            use ::hax_lib::fstar_unsafe_expr as fstar;
+            use ::hax_lib::coq_unsafe_expr as coq;
+            use ::hax_lib::proverif_unsafe_expr as proverif;
         }
         .to_tokens(tokens)
     }
@@ -133,50 +137,81 @@ fn expect_fn_arg_var_pat(arg: &FnArg) -> Option<(String, syn::Type)> {
     }
 }
 
+pub(crate) enum NotFutureExpr {
+    BadNumberOfArgs,
+    ArgNotIdent,
+}
+
+/// `expect_future_expr(e)` tries to match the pattern
+/// `future(<syn::Ident>)` in expression `e`
+pub(crate) fn expect_future_expr(e: &Expr) -> Option<std::result::Result<Ident, NotFutureExpr>> {
+    if let Expr::Call(call) = e {
+        if call.func.is_ident("future") {
+            return Some(match call.args.iter().collect::<Vec<_>>().as_slice() {
+                [arg] => arg.expect_ident().ok_or(NotFutureExpr::ArgNotIdent),
+                _ => Err(NotFutureExpr::BadNumberOfArgs),
+            });
+        }
+    }
+    None
+}
+
 /// Rewrites `future(x)` nodes in an expression when (1) `x` is an
 /// ident and (2) the ident `x` is contained in the HashSet.
 struct RewriteFuture(HashSet<String>);
 impl VisitMut for RewriteFuture {
     fn visit_expr_mut(&mut self, e: &mut Expr) {
         syn::visit_mut::visit_expr_mut(self, e);
-        if let Expr::Call(call) = e {
-            if call.func.is_ident("future") {
-                let help_message = || match self.0.iter().next() {
+        let error = match expect_future_expr(e) {
+            Some(Ok(arg)) => {
+                let arg = format!("{}", arg);
+                if self.0.contains(&arg) {
+                    let arg = create_future_ident(&arg);
+                    *e = parse_quote! {#arg};
+                    return;
+                }
+                Some(format!("Cannot find an input `{arg}` of type `&mut _`. In the context, `future` can be called on the following inputs: {:?}.", self.0))
+            }
+            Some(Err(error_kind)) => {
+                let message = match error_kind {
+                    NotFutureExpr::BadNumberOfArgs => {
+                        "`future` can only be called with one argument: a `&mut` input name"
+                    }
+                    NotFutureExpr::ArgNotIdent => {
+                        "`future` can only be called with an `&mut` input name"
+                    }
+                };
+                let help_message = match self.0.iter().next() {
                     None => format!(" In the context, there is no `&mut` input."),
                     Some(var) => {
                         format!(" For example, in the context you can write `future({var})`.")
                     }
                 };
-                let error = match call.args.iter().collect::<Vec<_>>().as_slice() {
-                    [arg] => {
-                        if let Some(arg) = arg.expect_ident() {
-                            let arg = format!("{}", arg);
-                            if self.0.contains(&arg) {
-                                let arg = create_future_ident(&arg);
-                                *e = parse_quote! {#arg};
-                                return;
-                            }
-                            format!("Cannot find an input `{arg}` of type `&mut _`. In the context, `future` can be called on the following inputs: {:?}.", self.0)
-                        } else {
-                            format!(
-                                "`future` can only be called with an `&mut` input name.{}",
-                                help_message()
-                            )
-                        }
-                    }
-                    _ => format!(
-                        "`future` can only be called with one argument: a `&mut` input name.{}",
-                        help_message()
-                    ),
-                };
-                *e = parse_quote! {::std::compile_error!(#error)};
+                Some(format!("{message}.{}", help_message))
             }
+            None => None,
+        };
+        if let Some(error) = error {
+            *e = parse_quote! {::std::compile_error!(#error)};
         }
     }
 }
 
 fn create_future_ident(name: &str) -> syn::Ident {
     proc_macro2::Ident::new(&format!("{name}_future"), proc_macro2::Span::call_site())
+}
+
+/// The engine translates functions of arity zero to functions that
+/// takes exactly one unit argument. The zero-arity functions we
+/// generate are translated correctly as well. But in the case of a
+/// `ensures` clause, that's an issue: we produce a function of arity
+/// one, whose first argument is the result of the function. Instead,
+/// we need a function of arity two.
+/// `fix_signature_arity` adds a `unit` if needed.
+fn add_unit_to_sig_if_needed(signature: &mut Signature) {
+    if signature.inputs.is_empty() {
+        signature.inputs.push(parse_quote! {_: ()})
+    }
 }
 
 /// Common logic when generating a function decoration
@@ -201,12 +236,13 @@ pub fn make_fn_decoration(
     };
     let decoration = {
         let decoration_sig = {
-            let mut sig = signature;
+            let mut sig = signature.clone();
             sig.ident = format_ident!("{}", kind.to_string());
             if let FnDecorationKind::Ensures { ret_binder } = &kind {
-                let output = match sig.output {
-                    syn::ReturnType::Default => quote! {()},
-                    syn::ReturnType::Type(_, t) => quote! {#t},
+                add_unit_to_sig_if_needed(&mut sig);
+                let output_typ = match sig.output {
+                    syn::ReturnType::Default => parse_quote! {()},
+                    syn::ReturnType::Type(_, t) => t,
                 };
                 let mut_ref_inputs = mut_ref_inputs
                     .iter()
@@ -218,15 +254,25 @@ pub fn make_fn_decoration(
                 let mut rewrite_future =
                     RewriteFuture(mut_ref_inputs.clone().map(|x| x.0).collect());
                 rewrite_future.visit_expr_mut(&mut phi);
-                let (pats, tys): (Vec<_>, Vec<_>) = mut_ref_inputs
+                let (mut pats, mut tys): (Vec<_>, Vec<_>) = mut_ref_inputs
                     .map(|(name, ty)| {
                         (
                             create_future_ident(&name).to_token_stream(),
                             ty.to_token_stream(),
                         )
                     })
-                    .chain([(ret_binder.to_token_stream(), output)].into_iter())
                     .unzip();
+
+                let is_output_typ_unit = if let syn::Type::Tuple(tuple) = &*output_typ {
+                    tuple.elems.is_empty()
+                } else {
+                    false
+                };
+
+                if !is_output_typ_unit || pats.is_empty() {
+                    pats.push(ret_binder.to_token_stream());
+                    tys.push(quote! {#output_typ});
+                }
 
                 sig.inputs
                     .push(syn::parse_quote! {(#(#pats),*): (#(#tys),*)});

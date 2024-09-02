@@ -40,8 +40,8 @@ class t_ParBlocksSizeUser (v_Self: Type0) = {
 
 class t_BlockBackend (v_Self: Type0) = {
   [@@@ FStar.Tactics.Typeclasses.no_method]_super_15949286759387124191:t_ParBlocksSizeUser v_Self;
-  f_proc_block_pre:Alloc.Vec.t_Vec _ Alloc.Alloc.t_Global -> bool;
-  f_proc_block_post:Alloc.Vec.t_Vec _ Alloc.Alloc.t_Global -> Prims.unit -> bool;
+  f_proc_block_pre:Alloc.Vec.t_Vec _ Alloc.Alloc.t_Global -> Type0;
+  f_proc_block_post:Alloc.Vec.t_Vec _ Alloc.Alloc.t_Global -> Prims.unit -> Type0;
   f_proc_block:x0: Alloc.Vec.t_Vec _ Alloc.Alloc.t_Global
     -> Prims.Pure Prims.unit (f_proc_block_pre x0) (fun result -> f_proc_block_post x0 result)
 }
@@ -134,8 +134,8 @@ open Core
 open FStar.Mul
 
 class t_Foo (v_Self: Type0) (v_T: Type0) = {
-  f_to_t_pre:v_Self -> bool;
-  f_to_t_post:v_Self -> v_T -> bool;
+  f_to_t_pre:v_Self -> Type0;
+  f_to_t_post:v_Self -> v_T -> Type0;
   f_to_t:x0: v_Self -> Prims.Pure v_T (f_to_t_pre x0) (fun result -> f_to_t_post x0 result)
 }
 
@@ -179,8 +179,8 @@ open Core
 open FStar.Mul
 
 class t_MyTrait (v_Self: Type0) = {
-  f_my_method_pre:v_Self -> bool;
-  f_my_method_post:v_Self -> Prims.unit -> bool;
+  f_my_method_pre:v_Self -> Type0;
+  f_my_method_post:v_Self -> Prims.unit -> Type0;
   f_my_method:x0: v_Self
     -> Prims.Pure Prims.unit (f_my_method_pre x0) (fun result -> f_my_method_post x0 result)
 }
@@ -217,7 +217,7 @@ class t_Trait (v_Self: Type0) (v_TypeArg: Type0) (v_ConstArg: usize) = {
       v_Self ->
       v_TypeArg ->
       t_Type v_TypeArg v_ConstArg
-    -> bool;
+    -> Type0;
   f_method_post:
       #v_MethodTypeArg: Type0 ->
       v_MethodConstArg: usize ->
@@ -225,7 +225,7 @@ class t_Trait (v_Self: Type0) (v_TypeArg: Type0) (v_ConstArg: usize) = {
       v_TypeArg ->
       t_Type v_TypeArg v_ConstArg ->
       Prims.unit
-    -> bool;
+    -> Type0;
   f_method:
       #v_MethodTypeArg: Type0 ->
       v_MethodConstArg: usize ->
@@ -241,7 +241,7 @@ class t_Trait (v_Self: Type0) (v_TypeArg: Type0) (v_ConstArg: usize) = {
       v_Self ->
       v_TypeArg ->
       t_Type v_TypeArg v_ConstArg
-    -> bool;
+    -> Type0;
   f_associated_function_post:
       #v_MethodTypeArg: Type0 ->
       v_MethodConstArg: usize ->
@@ -249,7 +249,7 @@ class t_Trait (v_Self: Type0) (v_TypeArg: Type0) (v_ConstArg: usize) = {
       v_TypeArg ->
       t_Type v_TypeArg v_ConstArg ->
       Prims.unit
-    -> bool;
+    -> Type0;
   f_associated_function:
       #v_MethodTypeArg: Type0 ->
       v_MethodConstArg: usize ->
@@ -329,11 +329,11 @@ let impl (#v_TypeArg: Type0) (v_ConstArg: usize) : t_Trait Prims.unit v_TypeArg 
   }
 
 class t_SubTrait (v_Self: Type0) (v_TypeArg: Type0) (v_ConstArg: usize) = {
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_9139092951006237722:t_Trait v_Self
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_2645671271498264788:t_Trait v_Self
     v_TypeArg
     v_ConstArg;
   f_AssocType:Type0;
-  f_AssocType_11967135072657554621:t_Trait f_AssocType v_TypeArg v_ConstArg
+  f_AssocType_1171953828677564027:t_Trait f_AssocType v_TypeArg v_ConstArg
 }
 
 let associated_function_caller
@@ -392,14 +392,14 @@ class t_Foo (v_Self: Type0) (v_FooConst: usize) (v_FooType: Type0) = {
       #v_FunType: Type0 ->
       t_Array v_FooType v_FooConst ->
       t_Array v_FunType v_FunConst
-    -> bool;
+    -> Type0;
   f_fun_post:
       v_FunConst: usize ->
       #v_FunType: Type0 ->
       t_Array v_FooType v_FooConst ->
       t_Array v_FunType v_FunConst ->
       Prims.unit
-    -> bool;
+    -> Type0;
   f_fun:
       v_FunConst: usize ->
       #v_FunType: Type0 ->
@@ -454,7 +454,7 @@ open FStar.Mul
 
 class t_Trait1 (v_Self: Type0) = {
   f_T:Type0;
-  f_T_10748091164337312478:t_Trait1 f_T
+  f_T_14152278567792570575:t_Trait1 f_T
 }
 
 class t_Trait2 (v_Self: Type0) = {
@@ -478,8 +478,8 @@ open Core
 open FStar.Mul
 
 class t_PolyOp (v_Self: Type0) = {
-  f_op_pre:u32 -> u32 -> bool;
-  f_op_post:u32 -> u32 -> u32 -> bool;
+  f_op_pre:u32 -> u32 -> Type0;
+  f_op_post:u32 -> u32 -> u32 -> Type0;
   f_op:x0: u32 -> x1: u32 -> Prims.Pure u32 (f_op_pre x0 x1) (fun result -> f_op_post x0 x1 result)
 }
 
@@ -515,8 +515,8 @@ open Core
 open FStar.Mul
 
 class t_Bar (v_Self: Type0) = {
-  f_bar_pre:v_Self -> bool;
-  f_bar_post:v_Self -> Prims.unit -> bool;
+  f_bar_pre:v_Self -> Type0;
+  f_bar_post:v_Self -> Prims.unit -> Type0;
   f_bar:x0: v_Self -> Prims.Pure Prims.unit (f_bar_pre x0) (fun result -> f_bar_post x0 result)
 }
 
@@ -534,16 +534,16 @@ let t_Error_cast_to_repr (x: t_Error) : isize = match x with | Error_Fail  -> is
 
 class t_Lang (v_Self: Type0) = {
   f_Var:Type0;
-  f_s_pre:v_Self -> i32 -> bool;
-  f_s_post:v_Self -> i32 -> (v_Self & f_Var) -> bool;
+  f_s_pre:v_Self -> i32 -> Type0;
+  f_s_post:v_Self -> i32 -> (v_Self & f_Var) -> Type0;
   f_s:x0: v_Self -> x1: i32
     -> Prims.Pure (v_Self & f_Var) (f_s_pre x0 x1) (fun result -> f_s_post x0 x1 result)
 }
 
 class t_SuperTrait (v_Self: Type0) = {
   [@@@ FStar.Tactics.Typeclasses.no_method]_super_9442900250278684536:Core.Clone.t_Clone v_Self;
-  f_function_of_super_trait_pre:v_Self -> bool;
-  f_function_of_super_trait_post:v_Self -> u32 -> bool;
+  f_function_of_super_trait_pre:v_Self -> Type0;
+  f_function_of_super_trait_post:v_Self -> u32 -> Type0;
   f_function_of_super_trait:x0: v_Self
     -> Prims.Pure u32
         (f_function_of_super_trait_pre x0)
@@ -561,19 +561,19 @@ let impl_SuperTrait_for_i32: t_SuperTrait i32 =
 
 class t_Foo (v_Self: Type0) = {
   f_AssocType:Type0;
-  f_AssocType_17663802186765685673:t_SuperTrait f_AssocType;
-  f_AssocType_10139459042277121690:Core.Clone.t_Clone f_AssocType;
+  f_AssocType_9316156492785325993:t_SuperTrait f_AssocType;
+  f_AssocType_11693383309247349160:Core.Clone.t_Clone f_AssocType;
   f_N:usize;
-  f_assoc_f_pre:Prims.unit -> bool;
-  f_assoc_f_post:Prims.unit -> Prims.unit -> bool;
+  f_assoc_f_pre:Prims.unit -> Type0;
+  f_assoc_f_post:Prims.unit -> Prims.unit -> Type0;
   f_assoc_f:x0: Prims.unit
     -> Prims.Pure Prims.unit (f_assoc_f_pre x0) (fun result -> f_assoc_f_post x0 result);
-  f_method_f_pre:v_Self -> bool;
-  f_method_f_post:v_Self -> Prims.unit -> bool;
+  f_method_f_pre:v_Self -> Type0;
+  f_method_f_post:v_Self -> Prims.unit -> Type0;
   f_method_f:x0: v_Self
     -> Prims.Pure Prims.unit (f_method_f_pre x0) (fun result -> f_method_f_post x0 result);
-  f_assoc_type_pre:{| i3: Core.Marker.t_Copy f_AssocType |} -> f_AssocType -> bool;
-  f_assoc_type_post:{| i3: Core.Marker.t_Copy f_AssocType |} -> f_AssocType -> Prims.unit -> bool;
+  f_assoc_type_pre:{| i3: Core.Marker.t_Copy f_AssocType |} -> f_AssocType -> Type0;
+  f_assoc_type_post:{| i3: Core.Marker.t_Copy f_AssocType |} -> f_AssocType -> Prims.unit -> Type0;
   f_assoc_type:{| i3: Core.Marker.t_Copy f_AssocType |} -> x0: f_AssocType
     -> Prims.Pure Prims.unit
         (f_assoc_type_pre #i3 x0)
@@ -621,7 +621,7 @@ let g (#v_T: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_T) (x
 let impl_Foo_for_tuple_: t_Foo Prims.unit =
   {
     f_AssocType = i32;
-    f_AssocType_17663802186765685673 = FStar.Tactics.Typeclasses.solve;
+    f_AssocType_9316156492785325993 = FStar.Tactics.Typeclasses.solve;
     f_N = sz 32;
     f_assoc_f_pre = (fun (_: Prims.unit) -> true);
     f_assoc_f_post = (fun (_: Prims.unit) (out: Prims.unit) -> true);
