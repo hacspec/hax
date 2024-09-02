@@ -756,7 +756,7 @@ struct
 
   let pmaybe_refined_ty span (free_variables : string list) (attrs : attrs)
       (binder_name : string) (ty : ty) : F.AST.term =
-    match Attrs.associated_refinement_in_type free_variables attrs with
+    match Attrs.associated_refinement_in_type span free_variables attrs with
     | Some refinement ->
         F.mk_refined binder_name (pty span ty) (fun ~x -> pexpr refinement)
     | None -> pty span ty
