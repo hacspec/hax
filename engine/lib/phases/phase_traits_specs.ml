@@ -119,8 +119,8 @@ module Make (F : Features.T) =
                             IIFn
                               {
                                 body =
-                                  Attrs.associated_expr_rebinding params_pat
-                                    Requires item.ii_attrs
+                                  Attrs.associated_expr_rebinding item.ii_span
+                                    params_pat Requires item.ii_attrs
                                   |> Option.value ~default;
                                 params;
                               };
@@ -131,7 +131,7 @@ module Make (F : Features.T) =
                             IIFn
                               {
                                 body =
-                                  Attrs.associated_expr_rebinding
+                                  Attrs.associated_expr_rebinding item.ii_span
                                     (params_pat @ [ pat ]) Ensures item.ii_attrs
                                   |> Option.value ~default;
                                 params = params @ [ out ];
