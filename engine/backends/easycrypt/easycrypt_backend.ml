@@ -61,6 +61,7 @@ module RejectNotEC (FA : Features.T) = struct
         let dyn = reject
         let match_guard = reject
         let trait_item_default = reject
+        let unsafe = reject
         let construct_base _ _ = Features.On.construct_base
         let for_index_loop _ _ = Features.On.for_index_loop
 
@@ -347,10 +348,10 @@ open Phase_utils
 
 module TransformToInputLanguage =
 [%functor_application
-Phases.Reject.RawOrMutPointer Features.Rust |> Phases.And_mut_defsite
-|> Phases.Reconstruct_asserts |> Phases.Reconstruct_for_loops
-|> Phases.Direct_and_mut |> Phases.Drop_blocks |> Phases.Reject.Continue
-|> Phases.Drop_references |> RejectNotEC]
+Phases.Reject.RawOrMutPointer Features.Rust |> Phases.Reject.Unsafe
+|> Phases.And_mut_defsite |> Phases.Reconstruct_asserts
+|> Phases.Reconstruct_for_loops |> Phases.Direct_and_mut |> Phases.Drop_blocks
+|> Phases.Reject.Continue |> Phases.Drop_references |> RejectNotEC]
 
 let apply_phases (_bo : BackendOptions.t) (items : Ast.Rust.item list) :
     AST.item list =

@@ -154,7 +154,7 @@ struct
             (Rust_primitives__hax__folds__fold_range, [ start; end_ ], start.typ)
       | _ -> None
 
-    [%%inline_defs dmutability]
+    [%%inline_defs dmutability + dsafety_kind]
 
     let rec dexpr_unwrapped (expr : A.expr) : B.expr =
       let span = expr.span in

@@ -58,7 +58,7 @@ module%inlined_contents Make (F : Features.T) = struct
       include Features.SUBTYPE.Id
     end
 
-    [%%inline_defs dmutability]
+    [%%inline_defs dmutability + dsafety_kind]
 
     let maybe_simplified_match scrutinee ?(original_arms : A.arm list = [])
         (arms : B.arm list) : B.expr' =

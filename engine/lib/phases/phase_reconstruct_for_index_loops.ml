@@ -25,7 +25,7 @@ module%inlined_contents Make (FA : Features.T) = struct
       include Features.SUBTYPE.On.For_index_loop
     end
 
-    [%%inline_defs dmutability]
+    [%%inline_defs dmutability + dsafety_kind]
 
     let rec dloop_kind (span : span) (k : A.loop_kind) : B.loop_kind =
       match k with

@@ -256,7 +256,9 @@ module Raw = struct
         in
         pexpr f & generic_args & !"(" & args & !")"
     | Literal l -> pliteral e.span l
-    | Block (e, _) -> !"{" & pexpr e & !"}"
+    | Block { e; safety_mode; _ } -> (
+        let e = !"{" & pexpr e & !"}" in
+        match safety_mode with Safe -> e | Unsafe _ -> !"unsafe " & e)
     | Array l -> !"[" & concat ~sep:!"," (List.map ~f:pexpr l) & !"]"
     | Construct { is_record = false; constructor; fields; _ } ->
         let fields = List.map ~f:(snd >> pexpr) fields |> concat ~sep:!"," in
@@ -520,9 +522,9 @@ module Raw = struct
     try
       let pi =
         match e.v with
-        | Fn { name; body; generics; params } ->
+        | Fn { name; body; generics; params; safety } ->
             let return_type = pty e.span body.typ in
-            !"fn "
+            (match safety with Safe -> !"fn " | Unsafe _ -> !"unsafe fn ")
             & !(Concrete_ident_view.to_definition_name name)
             & pgeneric_params generics.params
             & pparams e.span params & !" -> " & return_type
@@ -549,15 +551,19 @@ module Raw = struct
             &
             if List.is_empty variants then empty
             else !"{" & pvariants e.span variants & !"}"
-        | Trait { name; generics; items } ->
-            !"trait "
+        | Trait { name; generics; items; safety } ->
+            let safety =
+              match safety with Safe -> !"" | Unsafe _ -> !"unsafe "
+            in
+            safety & !"trait "
             & !(Concrete_ident_view.to_definition_name name)
             & pgeneric_params generics.params
             & pgeneric_constraints e.span generics.constraints
             & !"{"
             & List.map ~f:ptrait_item items |> concat ~sep:!"\n"
             & !"}"
-        | Impl { generics; self_ty; of_trait; items; parent_bounds = _ } ->
+        | Impl { generics; self_ty; of_trait; items; parent_bounds = _; safety }
+          ->
             let trait =
               pglobal_ident e.span (fst of_trait)
               & !"<"
@@ -565,7 +571,10 @@ module Raw = struct
                   (List.map ~f:(pgeneric_value e.span) (snd of_trait))
               & !">"
             in
-            !"impl "
+            let safety =
+              match safety with Safe -> !"" | Unsafe _ -> !"unsafe "
+            in
+            safety & !"impl "
             & pgeneric_params generics.params
             & trait & !" for " & pty e.span self_ty
             & pgeneric_constraints e.span generics.constraints

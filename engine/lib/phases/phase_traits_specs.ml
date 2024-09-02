@@ -27,7 +27,7 @@ module Make (F : Features.T) =
         let f' (item : item) : item =
           let v =
             match item.v with
-            | Trait { name; generics; items } ->
+            | Trait { name; generics; items; safety } ->
                 let f attrs (item : trait_item) =
                   let mk role kind =
                     let ti_ident = mk_name item.ti_ident kind in
@@ -82,8 +82,9 @@ module Make (F : Features.T) =
                       f attrs item @ [ { item with ti_attrs } ])
                     items
                 in
-                Trait { name; generics; items }
-            | Impl { generics; self_ty; of_trait; items; parent_bounds } ->
+                Trait { name; generics; items; safety }
+            | Impl { generics; self_ty; of_trait; items; parent_bounds; safety }
+              ->
                 let f (item : impl_item) =
                   let mk kind =
                     let ii_ident = mk_name item.ii_ident kind in
@@ -143,7 +144,8 @@ module Make (F : Features.T) =
                 let items =
                   List.concat_map ~f:(fun item -> f item @ [ item ]) items
                 in
-                Impl { generics; self_ty; of_trait; items; parent_bounds }
+                Impl
+                  { generics; self_ty; of_trait; items; parent_bounds; safety }
             | v -> v
           in
           { item with v }
