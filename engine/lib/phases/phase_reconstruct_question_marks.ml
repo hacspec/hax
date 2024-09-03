@@ -53,7 +53,10 @@ module%inlined_contents Make (FA : Features.T) = struct
       let expect_residual_impl_result (impl : impl_expr) : impl_expr option =
         match impl with
         | ImplApp
-            { impl = Concrete { trait; _ }; args = [ _; _; _; from_impl ] }
+            {
+              impl = Concrete { impl = { trait; _ }; _ };
+              args = [ _; _; _; from_impl ];
+            }
           when Concrete_ident.eq_name Core__result__Impl_27 trait ->
             Some from_impl
         | _ -> None

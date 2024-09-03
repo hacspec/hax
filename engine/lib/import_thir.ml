@@ -1026,7 +1026,7 @@ end) : EXPR = struct
   (* fun _ -> Ok Bool *)
 
   and c_impl_expr (span : Thir.span) (ie : Thir.impl_expr) : impl_expr =
-    let impl = c_impl_expr_atom span ie.impl in
+    let impl = c_impl_expr_atom span ie.trait ie.impl in
     match ie.args with
     | [] -> impl
     | args ->
@@ -1038,8 +1038,8 @@ end) : EXPR = struct
     let args = List.map ~f:(c_generic_value span) tr.generic_args in
     { trait; args }
 
-  and c_impl_expr_atom (span : Thir.span) (ie : Thir.impl_expr_atom) : impl_expr
-      =
+  and c_impl_expr_atom (span : Thir.span) (trait : Types.trait_ref)
+      (ie : Thir.impl_expr_atom) : impl_expr =
     let browse_path (impl : impl_expr) (chunk : Thir.impl_expr_path_chunk) =
       match chunk with
       | AssocItem
@@ -1062,9 +1062,13 @@ end) : EXPR = struct
     in
     match ie with
     | Concrete { id; generics } ->
-        let trait = Concrete_ident.of_def_id Impl id in
-        let args = List.map ~f:(c_generic_value span) generics in
-        Concrete { trait; args }
+        let trait = c_trait_ref span trait in
+        let impl =
+          let trait = Concrete_ident.of_def_id Impl id in
+          let args = List.map ~f:(c_generic_value span) generics in
+          { trait; args }
+        in
+        Concrete { trait; impl }
     | LocalBound { predicate_id; path; _ } ->
         let init = LocalBound { id = predicate_id } in
         List.fold ~init ~f:browse_path path

@@ -143,7 +143,7 @@ functor
 
     and impl_expr =
       | Self
-      | Concrete of trait_goal
+      | Concrete of { trait : trait_goal; impl : trait_goal }
       | LocalBound of { id : string }
       | Parent of { impl : impl_expr; ident : impl_ident }
       | Projection of {

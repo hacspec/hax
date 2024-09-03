@@ -343,7 +343,7 @@ struct
     let some = Option.some in
     let hax_unstable_impl_exprs = false in
     match ie with
-    | Concrete tr -> c_trait_goal span tr |> some
+    | Concrete { impl = tr; _ } -> c_trait_goal span tr |> some
     | LocalBound { id } ->
         let local_ident =
           Local_ident.{ name = id; id = Local_ident.mk_id Expr 0 }

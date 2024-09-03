@@ -80,7 +80,9 @@ struct
   and dimpl_expr (span : span) (i : A.impl_expr) : B.impl_expr =
     match i with
     | Self -> Self
-    | Concrete tr -> Concrete (dtrait_goal span tr)
+    | Concrete { trait; impl } ->
+        Concrete
+          { trait = dtrait_goal span trait; impl = dtrait_goal span impl }
     | LocalBound { id } -> LocalBound { id }
     | Parent { impl; ident } ->
         Parent { impl = dimpl_expr span impl; ident = dimpl_ident span ident }

@@ -195,6 +195,7 @@ let _ =
   (* This module has implicit dependencies, here we make them explicit. *)
   (* The implicit dependencies arise from typeclasses instances. *)
   let open Traits.Implicit_dependencies_issue_667_.Impl_type in
+  let open Traits.Implicit_dependencies_issue_667_.Trait_definition in
   ()
 
 let some_function (x: Traits.Implicit_dependencies_issue_667_.Define_type.t_MyType) : Prims.unit =
