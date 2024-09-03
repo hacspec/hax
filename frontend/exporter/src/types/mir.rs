@@ -713,7 +713,8 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                     ProjectionElem::Field(match cur_ty.kind() {
                         TyKind::Adt(adt_def, _) => {
                             assert!(
-                                (adt_def.is_struct() && variant_idx.is_none())
+                                ((adt_def.is_struct() || adt_def.is_union())
+                                    && variant_idx.is_none())
                                     || (adt_def.is_enum() && variant_idx.is_some())
                             );
                             ProjectionElemFieldKind::Adt {
