@@ -744,10 +744,10 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                     match elem {
                         Deref => {
                             current_ty = match current_ty.kind() {
-                                TyKind::Ref(_, ty, _) => ty.clone(),
+                                TyKind::Ref(_, ty, _) | TyKind::RawPtr(ty, _) => ty.clone(),
                                 TyKind::Adt(def, generics) if def.is_box() => generics.type_at(0),
                                 _ => supposely_unreachable_fatal!(
-                                    s, "PlaceDerefNotRefNorBox";
+                                    s, "PlaceDerefNotRefNorPtrNorBox";
                                     {current_ty, current_kind, elem}
                                 ),
                             };
