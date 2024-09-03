@@ -105,6 +105,9 @@ functor
   (F : Features.T)
   ->
   struct
+    type safety_kind = Safe | Unsafe of F.unsafe
+    [@@deriving show, yojson, hash, eq]
+
     type borrow_kind = Shared | Unique | Mut of F.mutable_reference
     [@@deriving show, yojson, hash, eq]
 
@@ -240,7 +243,7 @@ functor
           rhs : expr;
           body : expr;
         }
-      | Block of (expr * F.block)
+      | Block of { e : expr; safety_mode : safety_kind; witness : F.block }
         (* Corresponds to `{e}`: this is important for places *)
       | LocalVar of local_ident
       | GlobalVar of global_ident
@@ -391,6 +394,7 @@ functor
           generics : generics;
           body : expr;
           params : param list;
+          safety : safety_kind;
         }
       | TyAlias of { name : concrete_ident; generics : generics; ty : ty }
       | Type of {
@@ -409,6 +413,7 @@ functor
           name : concrete_ident;
           generics : generics;
           items : trait_item list;
+          safety : safety_kind;
         }
       | Impl of {
           generics : generics;
@@ -416,6 +421,7 @@ functor
           of_trait : global_ident * generic_value list;
           items : impl_item list;
           parent_bounds : (impl_expr * impl_ident) list;
+          safety : safety_kind;
         }
       | Alias of { name : concrete_ident; item : concrete_ident }
           (** `Alias {name; item}` is basically a `use

@@ -134,3 +134,21 @@ module Trait_item_default (FA : Features.T) = struct
         let metadata = make_metadata TraitItemDefault
       end)
 end
+
+module Unsafe (FA : Features.T) = struct
+  module FB = struct
+    include FA
+    include Features.Off.Unsafe
+  end
+
+  include
+    Feature_gate.Make (FA) (FB)
+      (struct
+        module A = FA
+        module B = FB
+        include Feature_gate.DefaultSubtype
+
+        let unsafe = reject
+        let metadata = make_metadata Unsafe
+      end)
+end

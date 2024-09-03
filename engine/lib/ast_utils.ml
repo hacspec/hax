@@ -58,7 +58,7 @@ module Make (F : Features.T) = struct
       match e.e with Borrow { e; _ } -> Some e | _ -> None
 
     let block (e : expr) : expr option =
-      match e.e with Block (e, _) -> Some e | _ -> None
+      match e.e with Block { e; _ } -> Some e | _ -> None
 
     let deref (e : expr) : expr option =
       match e.e with
@@ -173,7 +173,8 @@ module Make (F : Features.T) = struct
 
   let functions_of_item (x : item) : (concrete_ident * expr) list =
     match x.v with
-    | Fn { name; generics = _; body; params = _ } -> [ (name, body) ]
+    | Fn { name; generics = _; body; params = _; safety = _ } ->
+        [ (name, body) ]
     | Impl { items; _ } ->
         List.filter_map
           ~f:(fun w ->
@@ -252,13 +253,14 @@ module Make (F : Features.T) = struct
 
         method! visit_item' () item' =
           match item' with
-          | Fn { name; generics; body; params } ->
+          | Fn { name; generics; body; params; safety } ->
               Fn
                 {
                   name;
                   generics;
                   body = { body with e = GlobalVar (`TupleCons 0) };
                   params;
+                  safety;
                 }
           | _ -> super#visit_item' () item'
       end

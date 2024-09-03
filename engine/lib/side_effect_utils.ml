@@ -362,9 +362,9 @@ struct
                     },
                     effects ))
           | Literal _ -> (e, m#zero)
-          | Block (inner, witness) ->
-              HoistSeq.one env (self#visit_expr env inner) (fun inner effects ->
-                  ({ e with e = Block (inner, witness) }, effects))
+          | Block { e; safety_mode; witness } ->
+              HoistSeq.one env (self#visit_expr env e) (fun e effects ->
+                  ({ e with e = Block { e; safety_mode; witness } }, effects))
           | Array l ->
               HoistSeq.many env
                 (List.map ~f:(self#visit_expr env) l)
@@ -523,7 +523,7 @@ struct
 
   open MakeSI (F)
 
-  [%%inline_defs dmutability]
+  [%%inline_defs dmutability + dsafety_kind]
 
   module ID = struct
     (* OCaml is not able to understand A.expr is the same as B.expr........... *)

@@ -37,7 +37,7 @@ struct
       let monadic_binding _ = Features.On.monadic_binding
     end
 
-    [%%inline_defs dmutability]
+    [%%inline_defs dmutability + dsafety_kind]
 
     module KnownMonads = struct
       type t = { monad : B.supported_monads option; typ : B.ty }

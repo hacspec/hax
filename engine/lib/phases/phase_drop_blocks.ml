@@ -24,12 +24,12 @@ module%inlined_contents Make (F : Features.T) = struct
       include Features.SUBTYPE.Id
     end
 
-    [%%inline_defs dmutability]
+    [%%inline_defs dmutability + dsafety_kind]
 
     let rec dexpr' (span : span) (e : A.expr') : B.expr' =
       match (UA.unbox_underef_expr { e; span; typ = UA.never_typ }).e with
       | [%inline_arms "dexpr'.*" - Block] -> auto
-      | Block (inner, _) -> (dexpr inner).e
+      | Block { e; _ } -> (dexpr e).e
       [@@inline_ands bindings_of dexpr - dexpr']
 
     [%%inline_defs "Item.*"]
