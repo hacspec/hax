@@ -640,6 +640,23 @@ pub enum StatementKind {
 }
 
 #[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::NonDivergingIntrinsic<'tcx>, state: S as s)]
+pub enum NonDivergingIntrinsic {
+    Assume(Operand),
+    CopyNonOverlapping(CopyNonOverlapping),
+}
+
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::CopyNonOverlapping<'tcx>, state: S as s)]
+pub struct CopyNonOverlapping {
+    pub src: Operand,
+    pub dst: Operand,
+    pub count: Operand,
+}
+
+#[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct Place {
     /// The type of the element on which we apply the projection given by `kind`
@@ -986,7 +1003,6 @@ sinto_todo!(rustc_middle::mir, AssertMessage<'tcx>);
 sinto_todo!(rustc_middle::mir, UnwindAction);
 sinto_todo!(rustc_middle::mir, FakeReadCause);
 sinto_todo!(rustc_middle::mir, RetagKind);
-sinto_todo!(rustc_middle::mir, NonDivergingIntrinsic<'tcx>);
 sinto_todo!(rustc_middle::mir, UserTypeProjection);
 sinto_todo!(rustc_middle::mir, MirSource<'tcx>);
 sinto_todo!(rustc_middle::mir, CoroutineInfo<'tcx>);
