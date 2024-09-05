@@ -265,7 +265,36 @@ mod rustc {
                     });
                     rustc_apfloat::ieee::Half::to_bits(f)
                 }
-                _ => todo!()
+                ty::FloatTy::F32 => {
+                  let f = scalar.to_f32().unwrap_or_else(|_| {
+                    fatal!(
+                        s[span],
+                        "Type is primitive, but the scalar {:#?} is not a [Float]",
+                        scalar
+                      )
+                    });
+                    rustc_apfloat::ieee::Single::to_bits(f)
+                }
+                ty::FloatTy::F64 => {
+                  let f = scalar.to_f64().unwrap_or_else(|_| {
+                    fatal!(
+                        s[span],
+                        "Type is primitive, but the scalar {:#?} is not a [Float]",
+                        scalar
+                      )
+                    });
+                    rustc_apfloat::ieee::Double::to_bits(f)
+                }
+                ty::FloatTy::F128 => {
+                  let f = scalar.to_f128().unwrap_or_else(|_| {
+                    fatal!(
+                        s[span],
+                        "Type is primitive, but the scalar {:#?} is not a [Float]",
+                        scalar
+                      )
+                    });
+                    rustc_apfloat::ieee::Quad::to_bits(f)
+                }
               };
               ConstantExprKind::Literal(ConstantLiteral::Float(value, float_type.sinto(s)))
             }
