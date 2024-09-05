@@ -329,11 +329,11 @@ let impl (#v_TypeArg: Type0) (v_ConstArg: usize) : t_Trait Prims.unit v_TypeArg 
   }
 
 class t_SubTrait (v_Self: Type0) (v_TypeArg: Type0) (v_ConstArg: usize) = {
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_2645671271498264788:t_Trait v_Self
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_8779313392680198588:t_Trait v_Self
     v_TypeArg
     v_ConstArg;
   f_AssocType:Type0;
-  f_AssocType_1171953828677564027:t_Trait f_AssocType v_TypeArg v_ConstArg
+  f_AssocType_17640019108099318278:t_Trait f_AssocType v_TypeArg v_ConstArg
 }
 
 let associated_function_caller
