@@ -7,14 +7,16 @@ open Rust_primitives
 open Rust_primitives.Hax
 open Core.Ops.Range
 
-val update_at_usize
+let update_at_usize
   (#t: Type0)
   (s: t_Slice t)
-  (i: usize)
+  (i: usize {v i < Seq.length s})
   (x: t)
-  : Pure (t_Array t (length s))
-    (requires (v i < Seq.length s))
-    (ensures (fun res -> res == Seq.upd s (v i) x))
+  : t_Array t (length s)
+  = Seq.upd #t s (v i) x
+  // : Pure (t_Array t (length s))
+  //   (requires (v i < Seq.length s))
+  //   (ensures (fun res -> res == Seq.upd s (v i) x))
 
 val update_at_range #n
   (#t: Type0)

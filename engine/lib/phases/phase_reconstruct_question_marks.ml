@@ -201,7 +201,7 @@ module%inlined_contents Make (FA : Features.T) = struct
         | _ -> None
     end
 
-    [%%inline_defs dmutability]
+    [%%inline_defs dmutability + dsafety_kind]
 
     let rec dexpr_unwrapped (expr : A.expr) : B.expr =
       let h = [%inline_body dexpr_unwrapped] in

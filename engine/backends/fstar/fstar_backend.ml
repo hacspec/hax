@@ -42,7 +42,8 @@ module SubtypeToInputLanguage
              and type for_index_loop = Features.Off.for_index_loop
              and type state_passing_loop = Features.Off.state_passing_loop
              and type match_guard = Features.Off.match_guard
-             and type trait_item_default = Features.Off.trait_item_default) =
+             and type trait_item_default = Features.Off.trait_item_default
+             and type unsafe = Features.Off.unsafe) =
 struct
   module FB = InputLanguage
 
@@ -756,7 +757,7 @@ struct
 
   let pmaybe_refined_ty span (free_variables : string list) (attrs : attrs)
       (binder_name : string) (ty : ty) : F.AST.term =
-    match Attrs.associated_refinement_in_type free_variables attrs with
+    match Attrs.associated_refinement_in_type span free_variables attrs with
     | Some refinement ->
         F.mk_refined binder_name (pty span ty) (fun ~x -> pexpr refinement)
     | None -> pty span ty
@@ -1683,7 +1684,8 @@ module DepGraphR = Dependencies.Make (Features.Rust)
 
 module TransformToInputLanguage =
   [%functor_application
-  Phases.Reject.RawOrMutPointer(Features.Rust)
+  Phases.Reject.Unsafe(Features.Rust)
+  |> Phases.Reject.RawOrMutPointer
   |> Phases.Transform_hax_lib_inline
   |> Phases.Specialize
   |> Phases.Drop_sized_trait

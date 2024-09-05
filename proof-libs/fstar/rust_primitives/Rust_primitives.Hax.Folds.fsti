@@ -93,7 +93,7 @@ unfold let fold_range_wf_index (#u: Lib.IntTypes.inttype)
   ==> ( i >= v start 
      /\ (if strict then i < v end_ else i <= v end_))
 
-val fold_range
+let rec fold_range
   (#acc_t: Type0) (#u: Lib.IntTypes.inttype)
   (start: int_t u)
   (end_: int_t u)
@@ -101,4 +101,9 @@ val fold_range
   (init: acc_t {inv init start})
   (f: (acc:acc_t -> i:int_t u  {v i <= v end_ /\ fold_range_wf_index start end_ true (v i) /\ inv acc i}
                  -> acc':acc_t {(inv acc' (mk_int (v i + 1)))}))
-  : result: acc_t {inv result end_}
+  : Tot (result: acc_t {inv result (if v start > v end_ then start else end_)}) 
+        (decreases v end_ - v start)
+  = if v start < v end_
+    then fold_range (start +! mk_int 1) end_ inv (f init start) f
+    else init
+

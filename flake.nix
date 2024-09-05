@@ -159,6 +159,7 @@
                 mkdir -p $out/bin
                 cp ${./.utils/rebuild.sh} $out/bin/rebuild
                 cp ${./.utils/list-names.sh} $out/bin/list-names
+                cp ${./.utils/expand.sh} $out/bin/expand-hax-macros
               '';
           };
           packages = [

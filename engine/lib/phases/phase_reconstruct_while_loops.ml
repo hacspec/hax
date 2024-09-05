@@ -52,7 +52,7 @@ module%inlined_contents Make (FA : Features.T) = struct
         | _ -> None
 
       let strip_block (e : expr) : expr =
-        match e.e with Block (e, _) -> e | _ -> e
+        match e.e with Block { e; safety_mode = Safe; _ } -> e | _ -> e
 
       let expect_ite (e : expr) : (expr * expr * expr option) option =
         match e.e with
@@ -75,7 +75,7 @@ module%inlined_contents Make (FA : Features.T) = struct
         | _ -> None
     end
 
-    [%%inline_defs dmutability]
+    [%%inline_defs dmutability + dsafety_kind]
 
     let rec dexpr_unwrapped (expr : A.expr) : B.expr =
       let h = [%inline_body dexpr_unwrapped] in

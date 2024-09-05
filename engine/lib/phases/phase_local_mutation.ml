@@ -56,7 +56,7 @@ struct
     let free_assigned_variables =
       UA.Reducers.free_assigned_variables (function _ -> .)
 
-    [%%inline_defs dmutability]
+    [%%inline_defs dmutability + dsafety_kind]
 
     let rec dpat' (span : span) (p : A.pat') : B.pat' =
       match p with
