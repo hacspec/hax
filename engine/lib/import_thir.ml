@@ -806,8 +806,9 @@ end) : EXPR = struct
       | Borrow arg ->
           Borrow { arg = constant_expr_to_expr arg; borrow_kind = Thir.Shared }
       | ConstRef { id } -> ConstRef { id }
-      | TraitConst _ | FnPtr _ ->
-          unimplemented [ span ] "constant_lit_to_lit: TraitConst | FnPtr"
+      | MutPtr _ | TraitConst _ | FnPtr _ ->
+          unimplemented [ span ]
+            "constant_lit_to_lit: TraitConst | FnPtr | MutPtr"
       | Todo _ -> unimplemented [ span ] "ConstantExpr::Todo"
     and constant_lit_to_lit (l : Thir.constant_literal) : Thir.lit_kind * bool =
       match l with

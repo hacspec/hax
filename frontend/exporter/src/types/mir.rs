@@ -640,6 +640,23 @@ pub enum StatementKind {
 }
 
 #[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::NonDivergingIntrinsic<'tcx>, state: S as s)]
+pub enum NonDivergingIntrinsic {
+    Assume(Operand),
+    CopyNonOverlapping(CopyNonOverlapping),
+}
+
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::CopyNonOverlapping<'tcx>, state: S as s)]
+pub struct CopyNonOverlapping {
+    pub src: Operand,
+    pub dst: Operand,
+    pub count: Operand,
+}
+
+#[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct Place {
     /// The type of the element on which we apply the projection given by `kind`
@@ -713,7 +730,8 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                     ProjectionElem::Field(match cur_ty.kind() {
                         TyKind::Adt(adt_def, _) => {
                             assert!(
-                                (adt_def.is_struct() && variant_idx.is_none())
+                                ((adt_def.is_struct() || adt_def.is_union())
+                                    && variant_idx.is_none())
                                     || (adt_def.is_enum() && variant_idx.is_some())
                             );
                             ProjectionElemFieldKind::Adt {
@@ -744,10 +762,10 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                     match elem {
                         Deref => {
                             current_ty = match current_ty.kind() {
-                                TyKind::Ref(_, ty, _) => ty.clone(),
+                                TyKind::Ref(_, ty, _) | TyKind::RawPtr(ty, _) => ty.clone(),
                                 TyKind::Adt(def, generics) if def.is_box() => generics.type_at(0),
                                 _ => supposely_unreachable_fatal!(
-                                    s, "PlaceDerefNotRefNorBox";
+                                    s, "PlaceDerefNotRefNorPtrNorBox";
                                     {current_ty, current_kind, elem}
                                 ),
                             };
@@ -985,7 +1003,6 @@ sinto_todo!(rustc_middle::mir, AssertMessage<'tcx>);
 sinto_todo!(rustc_middle::mir, UnwindAction);
 sinto_todo!(rustc_middle::mir, FakeReadCause);
 sinto_todo!(rustc_middle::mir, RetagKind);
-sinto_todo!(rustc_middle::mir, NonDivergingIntrinsic<'tcx>);
 sinto_todo!(rustc_middle::mir, UserTypeProjection);
 sinto_todo!(rustc_middle::mir, MirSource<'tcx>);
 sinto_todo!(rustc_middle::mir, CoroutineInfo<'tcx>);
