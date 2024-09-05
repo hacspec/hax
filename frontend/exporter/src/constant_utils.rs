@@ -260,50 +260,50 @@ mod rustc {
                 ConstantExprKind::Literal(scalar_int_to_constant_literal(s, scalar_int, ty))
             }
             ty::Float(float_type) => {
-              use rustc_apfloat::Float;
-              let value: u128 = match float_type {
-                ty::FloatTy::F16 => {
-                  let f = scalar.to_f16().unwrap_or_else(|_| {
-                    fatal!(
-                        s[span],
-                        "Type is primitive, but the scalar {:#?} is not a [Float]",
-                        scalar
-                      )
-                    });
-                    rustc_apfloat::ieee::Half::to_bits(f)
-                }
-                ty::FloatTy::F32 => {
-                  let f = scalar.to_f32().unwrap_or_else(|_| {
-                    fatal!(
-                        s[span],
-                        "Type is primitive, but the scalar {:#?} is not a [Float]",
-                        scalar
-                      )
-                    });
-                    rustc_apfloat::ieee::Single::to_bits(f)
-                }
-                ty::FloatTy::F64 => {
-                  let f = scalar.to_f64().unwrap_or_else(|_| {
-                    fatal!(
-                        s[span],
-                        "Type is primitive, but the scalar {:#?} is not a [Float]",
-                        scalar
-                      )
-                    });
-                    rustc_apfloat::ieee::Double::to_bits(f)
-                }
-                ty::FloatTy::F128 => {
-                  let f = scalar.to_f128().unwrap_or_else(|_| {
-                    fatal!(
-                        s[span],
-                        "Type is primitive, but the scalar {:#?} is not a [Float]",
-                        scalar
-                      )
-                    });
-                    rustc_apfloat::ieee::Quad::to_bits(f)
-                }
-              };
-              ConstantExprKind::Literal(ConstantLiteral::Float(value, float_type.sinto(s)))
+                use rustc_apfloat::Float;
+                let value: u128 = match float_type {
+                    ty::FloatTy::F16 => {
+                        let f = scalar.to_f16().unwrap_or_else(|_| {
+                            fatal!(
+                                s[span],
+                                "Type is primitive, but the scalar {:#?} is not a [Float]",
+                                scalar
+                            )
+                        });
+                        rustc_apfloat::ieee::Half::to_bits(f)
+                    }
+                    ty::FloatTy::F32 => {
+                        let f = scalar.to_f32().unwrap_or_else(|_| {
+                            fatal!(
+                                s[span],
+                                "Type is primitive, but the scalar {:#?} is not a [Float]",
+                                scalar
+                            )
+                        });
+                        rustc_apfloat::ieee::Single::to_bits(f)
+                    }
+                    ty::FloatTy::F64 => {
+                        let f = scalar.to_f64().unwrap_or_else(|_| {
+                            fatal!(
+                                s[span],
+                                "Type is primitive, but the scalar {:#?} is not a [Float]",
+                                scalar
+                            )
+                        });
+                        rustc_apfloat::ieee::Double::to_bits(f)
+                    }
+                    ty::FloatTy::F128 => {
+                        let f = scalar.to_f128().unwrap_or_else(|_| {
+                            fatal!(
+                                s[span],
+                                "Type is primitive, but the scalar {:#?} is not a [Float]",
+                                scalar
+                            )
+                        });
+                        rustc_apfloat::ieee::Quad::to_bits(f)
+                    }
+                };
+                ConstantExprKind::Literal(ConstantLiteral::Float(value, float_type.sinto(s)))
             }
             ty::Ref(_, inner_ty, Mutability::Not) | ty::RawPtr(inner_ty, Mutability::Mut) => {
                 let tcx = s.base().tcx;
