@@ -259,20 +259,30 @@ mod rustc {
                 });
                 use rustc_middle::mir::interpret::GlobalAlloc;
                 let contents = match tcx.global_alloc(pointer.provenance.s_unwrap(s).alloc_id()) {
-                GlobalAlloc::Static(did) => ConstantExprKind::GlobalName { id: did.sinto(s), generics: Vec::new(), trait_refs: Vec::new() },
-                GlobalAlloc::Memory(alloc) => {
-                    let values = alloc.inner().get_bytes_unchecked(rustc_middle::mir::interpret::AllocRange {
-                            start: rustc_abi::Size::from_bits(0),
-                            size: rustc_abi::Size::from_bits(alloc.inner().len() * 8)
-                        });
-                    ConstantExprKind::Literal (ConstantLiteral::ByteStr(values.iter().copied().collect(), StrStyle::Cooked))
-                },
-                provenance => fatal!(
-                    s[span],
-                    "Expected provenance to be `GlobalAlloc::Static` or `GlobalAlloc::Memory`, got {:#?} instead",
-                    provenance
-                )
-            };
+                    GlobalAlloc::Static(did) => ConstantExprKind::GlobalName {
+                        id: did.sinto(s),
+                        generics: Vec::new(),
+                        trait_refs: Vec::new(),
+                    },
+                    GlobalAlloc::Memory(alloc) => {
+                        let values = alloc.inner().get_bytes_unchecked(
+                            rustc_middle::mir::interpret::AllocRange {
+                                start: rustc_abi::Size::from_bits(0),
+                                size: rustc_abi::Size::from_bits(alloc.inner().len() * 8),
+                            },
+                        );
+                        ConstantExprKind::Literal(ConstantLiteral::ByteStr(
+                            values.iter().copied().collect(),
+                            StrStyle::Cooked,
+                        ))
+                    }
+                    provenance => fatal!(
+                        s[span],
+                        "Expected provenance to be `GlobalAlloc::Static` or \
+                        `GlobalAlloc::Memory`, got {:#?} instead",
+                        provenance
+                    ),
+                };
                 ConstantExprKind::Borrow(contents.decorate(ty.sinto(s), cspan.clone()))
             }
             // A [Scalar] might also be any zero-sized [Adt] or [Tuple] (i.e., unit)
@@ -288,14 +298,16 @@ mod rustc {
                     } else {
                         fatal!(
                             s[span],
-                            "Unexpected type `ty` for scalar `scalar`. Case `ty::Adt(def, _)`: `variant_def.fields` was not empty";
+                            "Unexpected type `ty` for scalar `scalar`. Case `ty::Adt(def, _)`: \
+                            `variant_def.fields` was not empty";
                             {ty, scalar, def, variant_def}
                         )
                     }
                 } else {
                     fatal!(
                         s[span],
-                        "Unexpected type `ty` for scalar `scalar`. Case `ty::Adt(def, _)`: `def.variants().raw` was supposed to contain exactly one variant.";
+                        "Unexpected type `ty` for scalar `scalar`. Case `ty::Adt(def, _)`: \
+                        `def.variants().raw` was supposed to contain exactly one variant.";
                         {ty, scalar, def, &def.variants().raw}
                     )
                 }
