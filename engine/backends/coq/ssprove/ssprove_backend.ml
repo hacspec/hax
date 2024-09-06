@@ -522,12 +522,12 @@ module TransformToInputLanguage =
     |> Phases.Reject.Arbitrary_lhs
     |> Phases.Drop_blocks
     |> Phases.Drop_match_guards
-    (* |> Phases.Reject.Continue *)
+    |> Phases.Reject.Continue
     |> Phases.Drop_references
     |> Phases.Trivialize_assign_lhs
     |> Phases.Reconstruct_question_marks
     |> Side_effect_utils.Hoist
-    (* |> Phases.Local_mutation *)
+    |> Phases.Local_mutation
     (* |> Phases.State_passing_loop *)
     |> Phases.Reject.Continue
     |> Phases.Cf_into_monads
