@@ -11,6 +11,7 @@ depends: [
   "base" {>= "0.16.2"}
   "ssprove" {= "dev"}
   "coq-stdpp"
+  "coq-mathcomp-algebra" {= "2.1.0"}
   "coq-mathcomp-word" {>= "3.0"}
   "coq-mathcomp-zify" {>= "1.5.0+2.0+8.16"}
   "coq-concert" {= "dev"}
