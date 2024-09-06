@@ -810,7 +810,8 @@ end) : EXPR = struct
           unimplemented [ span ]
             "constant_lit_to_lit: TraitConst | FnPtr | MutPtr"
       | Todo _ -> unimplemented [ span ] "ConstantExpr::Todo"
-    and constant_lit_to_lit (l : Thir.constant_literal) span : Thir.lit_kind * bool =
+    and constant_lit_to_lit (l : Thir.constant_literal) span :
+        Thir.lit_kind * bool =
       match l with
       | Bool v -> (Bool v, false)
       | Char v -> (Char v, false)
