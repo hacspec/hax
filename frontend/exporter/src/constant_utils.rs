@@ -263,7 +263,7 @@ mod rustc {
                 let scalar_int = scalar.try_to_scalar_int().unwrap_or_else(|_| {
                     fatal!(
                         s[span],
-                        "Type is primitive, but the scalar {:#?} is not a [Float]",
+                        "Type is [Float], but the scalar {:#?} is not a number",
                         scalar
                     )
                 });
