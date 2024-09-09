@@ -186,7 +186,11 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
                   ~lhs ~rhs body
                 |> wrap_parens
             | Literal l -> print#literal Expr l
-            | Block (e, _) -> print#expr ctx e
+            | Block { e; safety_mode; _ } -> (
+                let e = lbrace ^/^ nest 2 (print#expr ctx e) ^/^ rbrace in
+                match safety_mode with
+                | Safe -> e
+                | Unsafe _ -> !^"unsafe " ^^ e)
             | Array l ->
                 separate_map comma (print#expr_at Expr_Array) l
                 |> group |> brackets
@@ -388,13 +392,19 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
 
         method item' : item' fn =
           function
-          | Fn { name; generics; body; params } ->
+          | Fn { name; generics; body; params; safety } ->
               let params =
                 iblock parens
                   (separate_map (comma ^^ break 1) print#param params)
               in
               let generics = print#generic_params generics.params in
-              string "fn" ^^ space ^^ print#concrete_ident name ^^ generics
+              let safety =
+                optional Base.Fn.id
+                  (match safety with
+                  | Safe -> None
+                  | Unsafe _ -> Some !^"unsafe ")
+              in
+              safety ^^ !^"fn" ^^ space ^^ print#concrete_ident name ^^ generics
               ^^ params
               ^^ iblock braces (print#expr_at Item_Fn_body body)
           | Quote quote -> print#quote quote

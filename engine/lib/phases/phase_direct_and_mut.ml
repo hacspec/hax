@@ -59,7 +59,7 @@ struct
       | Some place -> Either.First place
       | None -> Second e
 
-    [%%inline_defs dmutability]
+    [%%inline_defs dmutability + dsafety_kind]
 
     let rec dty (span : span) (ty : A.ty) : B.ty =
       match ty with

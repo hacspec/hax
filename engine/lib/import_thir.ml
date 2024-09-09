@@ -29,10 +29,6 @@ let unimplemented ?issue_id (span : Thir.span list) (details : string) =
   in
   Diagnostics.SpanFreeError.raise ~span ThirImport kind
 
-let unsafe_block (span : Thir.span list) =
-  let kind = T.UnsafeBlock in
-  Diagnostics.SpanFreeError.raise ~span ThirImport kind
-
 module Ast = struct
   include Ast
   include Rust
@@ -72,6 +68,9 @@ let c_int_ty (ty : Thir.int_ty) : int_kind =
 
 let c_uint_ty (ty : Thir.uint_ty) : int_kind =
   { size = uint_ty_to_size ty; signedness = Unsigned }
+
+let csafety (safety : Types.safety) : safety_kind =
+  match safety with Safe -> Safe | Unsafe -> Unsafe W.unsafe
 
 let c_mutability (witness : 'a) : bool -> 'a Ast.mutability = function
   | true -> Mutable witness
@@ -371,9 +370,15 @@ end) : EXPR = struct
     let v = Global_ident.of_name Value Rust_primitives__hax__dropped_body in
     { span; typ; e = GlobalVar v }
 
-  and c_block ~expr ~span ~stmts ~ty : expr =
+  and c_block ~expr ~span ~stmts ~ty ~(safety_mode : Types.block_safety) : expr
+      =
     let full_span = Span.of_thir span in
     let typ = c_ty span ty in
+    let safety_mode =
+      match safety_mode with
+      | Safe -> Safe
+      | BuiltinUnsafe | ExplicitUnsafe -> Unsafe W.unsafe
+    in
     (* if there is no expression & the last expression is ⊥, just use that *)
     let lift_last_statement_as_expr_if_possible expr stmts (ty : Thir.ty) =
       match (ty, expr, List.drop_last stmts, List.last stmts) with
@@ -391,7 +396,7 @@ end) : EXPR = struct
       Option.map
         ~f:(fun e ->
           let e = c_expr e in
-          { e with e = Block (e, W.block) })
+          { e with e = Block { e; safety_mode; witness = W.block } })
         o_expr
       |> Option.value ~default:(unit_expr full_span)
     in
@@ -405,14 +410,14 @@ end) : EXPR = struct
             { e; typ; span = Span.union rhs.span body.span }
         | Let
             {
-              else_block = Some { expr; span; stmts; _ };
+              else_block = Some { expr; span; stmts; safety_mode; _ };
               pattern = lhs;
               initializer' = Some rhs;
               _;
             } ->
             let lhs = c_pat lhs in
             let rhs = c_expr rhs in
-            let else_block = c_block ~expr ~span ~stmts ~ty in
+            let else_block = c_block ~expr ~span ~stmts ~ty ~safety_mode in
             let lhs_body_span = Span.union lhs.span body.span in
             let e =
               Match
@@ -582,10 +587,8 @@ end) : EXPR = struct
           let arms = List.map ~f:c_arm arms in
           Match { scrutinee; arms }
       | Let _ -> unimplemented [ e.span ] "Let"
-      | Block { safety_mode = BuiltinUnsafe | ExplicitUnsafe; _ } ->
-          unsafe_block [ e.span ]
-      | Block { expr; span; stmts; _ } ->
-          let { e; _ } = c_block ~expr ~span ~stmts ~ty:e.ty in
+      | Block { expr; span; stmts; safety_mode; _ } ->
+          let { e; _ } = c_block ~expr ~span ~stmts ~ty:e.ty ~safety_mode in
           e
       | Assign { lhs; rhs } ->
           let lhs = c_expr lhs in
@@ -803,8 +806,9 @@ end) : EXPR = struct
       | Borrow arg ->
           Borrow { arg = constant_expr_to_expr arg; borrow_kind = Thir.Shared }
       | ConstRef { id } -> ConstRef { id }
-      | TraitConst _ | FnPtr _ ->
-          unimplemented [ span ] "constant_lit_to_lit: TraitConst | FnPtr"
+      | MutPtr _ | TraitConst _ | FnPtr _ ->
+          unimplemented [ span ]
+            "constant_lit_to_lit: TraitConst | FnPtr | MutPtr"
       | Todo _ -> unimplemented [ span ] "ConstantExpr::Todo"
     and constant_lit_to_lit (l : Thir.constant_literal) : Thir.lit_kind * bool =
       match l with
@@ -1375,6 +1379,7 @@ let cast_of_enum typ_name generics typ thir_span
               attrs = [];
             };
           ];
+        safety = Safe;
       }
   in
   { v; span; ident; attrs = [] }
@@ -1419,6 +1424,7 @@ and c_item_unwrapped ~ident ~drop_body ~drop_impl_bodies (item : Thir.item) :
                generics = c_generics generics;
                body = c_body body;
                params = [];
+               safety = Safe;
              }
     | TyAlias (ty, generics) ->
         mk
@@ -1429,7 +1435,7 @@ and c_item_unwrapped ~ident ~drop_body ~drop_impl_bodies (item : Thir.item) :
                generics = c_generics generics;
                ty = c_ty item.span ty;
              }
-    | Fn (generics, { body; params; _ }) ->
+    | Fn (generics, { body; params; header = { safety; _ }; _ }) ->
         mk
         @@ Fn
              {
@@ -1438,6 +1444,7 @@ and c_item_unwrapped ~ident ~drop_body ~drop_impl_bodies (item : Thir.item) :
                generics = c_generics generics;
                body = c_body body;
                params = c_fn_params item.span params;
+               safety = csafety safety;
              }
     | Enum (variants, generics, repr) ->
         let def_id = Option.value_exn item.def_id in
@@ -1452,7 +1459,7 @@ and c_item_unwrapped ~ident ~drop_body ~drop_impl_bodies (item : Thir.item) :
                  let generics = { params = []; constraints = [] } in
                  let body = c_expr body in
                  {
-                   v = Fn { name; generics; body; params = [] };
+                   v = Fn { name; generics; body; params = []; safety = Safe };
                    span;
                    ident = name;
                    attrs = [];
@@ -1535,7 +1542,7 @@ and c_item_unwrapped ~ident ~drop_body ~drop_impl_bodies (item : Thir.item) :
                span = Span.of_thir span;
                witness = W.macro;
              }
-    | Trait (No, Safe, generics, _bounds, items) ->
+    | Trait (No, safety, generics, _bounds, items) ->
         let items =
           List.filter
             ~f:(fun { attributes; _ } -> not (should_skip attributes))
@@ -1554,9 +1561,9 @@ and c_item_unwrapped ~ident ~drop_body ~drop_impl_bodies (item : Thir.item) :
         let params = self :: params in
         let generics = { params; constraints } in
         let items = List.map ~f:c_trait_item items in
-        mk @@ Trait { name; generics; items }
+        let safety = csafety safety in
+        mk @@ Trait { name; generics; items; safety }
     | Trait (Yes, _, _, _, _) -> unimplemented [ item.span ] "Auto trait"
-    | Trait (_, Unsafe, _, _, _) -> unimplemented [ item.span ] "Unsafe trait"
     | Impl { of_trait = None; generics; items; _ } ->
         let items =
           List.filter
@@ -1569,7 +1576,7 @@ and c_item_unwrapped ~ident ~drop_body ~drop_impl_bodies (item : Thir.item) :
 
             let v =
               match (item.kind : Thir.impl_item_kind) with
-              | Fn { body; params; _ } ->
+              | Fn { body; params; header = { safety; _ }; _ } ->
                   let params =
                     if List.is_empty params then [ U.make_unit_param span ]
                     else List.map ~f:(c_param item.span) params
@@ -1582,6 +1589,7 @@ and c_item_unwrapped ~ident ~drop_body ~drop_impl_bodies (item : Thir.item) :
                           (c_generics item.generics);
                       body = c_body body;
                       params;
+                      safety = csafety safety;
                     }
               | Const (_ty, e) ->
                   Fn
@@ -1591,6 +1599,7 @@ and c_item_unwrapped ~ident ~drop_body ~drop_impl_bodies (item : Thir.item) :
                       (* does that make sense? can we have `const<T>`? *)
                       body = c_body e;
                       params = [];
+                      safety = Safe;
                     }
               | Type _ty ->
                   assertion_failure [ item.span ]
@@ -1602,14 +1611,13 @@ and c_item_unwrapped ~ident ~drop_body ~drop_impl_bodies (item : Thir.item) :
             let attrs = c_item_attrs item.attributes in
             { span = Span.of_thir item.span; v; ident; attrs })
           items
-    | Impl { safety = Unsafe; _ } -> unsafe_block [ item.span ]
     | Impl
         {
           of_trait = Some of_trait;
           generics;
           self_ty;
           items;
-          safety = Safe;
+          safety;
           parent_bounds;
           _;
         } ->
@@ -1680,6 +1688,7 @@ and c_item_unwrapped ~ident ~drop_body ~drop_impl_bodies (item : Thir.item) :
                          Some (c_impl_expr span impl_expr, trait_goal)
                      | _ -> None)
                    parent_bounds;
+               safety = csafety safety;
              }
     | Use ({ span = _; res; segments; rename }, _) ->
         let v =

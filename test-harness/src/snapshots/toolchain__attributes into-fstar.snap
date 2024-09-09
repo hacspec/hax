@@ -186,11 +186,11 @@ let impl: t_Operation t_ViaAdd =
         (Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) <= (127 <: Hax_lib.Int.t_Int));
     f_double_post
     =
-    (fun (x: u8) (out: u8) ->
+    (fun (x: u8) (result: u8) ->
         ((Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) * (2 <: Hax_lib.Int.t_Int)
           <:
           Hax_lib.Int.t_Int) =
-        (Rust_primitives.Hax.Int.from_machine out <: Hax_lib.Int.t_Int));
+        (Rust_primitives.Hax.Int.from_machine result <: Hax_lib.Int.t_Int));
     f_double = fun (x: u8) -> x +! x
   }
 
@@ -205,11 +205,11 @@ let impl_1: t_Operation t_ViaMul =
         (Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) <= (127 <: Hax_lib.Int.t_Int));
     f_double_post
     =
-    (fun (x: u8) (out: u8) ->
+    (fun (x: u8) (result: u8) ->
         ((Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) * (2 <: Hax_lib.Int.t_Int)
           <:
           Hax_lib.Int.t_Int) =
-        (Rust_primitives.Hax.Int.from_machine out <: Hax_lib.Int.t_Int));
+        (Rust_primitives.Hax.Int.from_machine result <: Hax_lib.Int.t_Int));
     f_double = fun (x: u8) -> x *! 2uy
   }
 '''
@@ -225,7 +225,7 @@ type t_Foo = | Foo : u8 -> t_Foo
 let impl: Core.Ops.Arith.t_Add t_Foo t_Foo =
   {
     f_Output = t_Foo;
-    f_add_pre = (fun (self: t_Foo) (rhs: t_Foo) -> self._0 <. (255uy -! rhs._0 <: u8));
+    f_add_pre = (fun (self___: t_Foo) (rhs: t_Foo) -> self___._0 <. (255uy -! rhs._0 <: u8));
     f_add_post = (fun (self: t_Foo) (rhs: t_Foo) (out: t_Foo) -> true);
     f_add = fun (self: t_Foo) (rhs: t_Foo) -> Foo (self._0 +! rhs._0) <: t_Foo
   }
@@ -236,7 +236,7 @@ let impl_1: Core.Ops.Arith.t_Mul t_Foo t_Foo =
     f_Output = t_Foo;
     f_mul_pre
     =
-    (fun (self: t_Foo) (rhs: t_Foo) -> rhs._0 =. 0uy || self._0 <. (255uy /! rhs._0 <: u8));
+    (fun (self___: t_Foo) (rhs: t_Foo) -> rhs._0 =. 0uy || self___._0 <. (255uy /! rhs._0 <: u8));
     f_mul_post = (fun (self: t_Foo) (rhs: t_Foo) (out: t_Foo) -> true);
     f_mul = fun (self: t_Foo) (rhs: t_Foo) -> Foo (self._0 *! rhs._0) <: t_Foo
   }
@@ -277,7 +277,7 @@ let mutation_example
 let impl: Core.Ops.Index.t_Index t_MyArray usize =
   {
     f_Output = u8;
-    f_index_pre = (fun (self: t_MyArray) (index: usize) -> index <. v_MAX);
+    f_index_pre = (fun (self___: t_MyArray) (index: usize) -> index <. v_MAX);
     f_index_post = (fun (self: t_MyArray) (index: usize) (out: u8) -> true);
     f_index = fun (self: t_MyArray) (index: usize) -> self.[ index ]
   }
@@ -338,6 +338,78 @@ let double (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_T
 
 let double_refine (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_True) =
   x +! x <: t_Even
+'''
+"Attributes.Requires_mut.fst" = '''
+module Attributes.Requires_mut
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class t_Foo (v_Self: Type0) = {
+  f_f_pre:x: u8 -> y: u8
+    -> pred:
+      Type0
+        { ((Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) +
+            (Rust_primitives.Hax.Int.from_machine y <: Hax_lib.Int.t_Int)
+            <:
+            Hax_lib.Int.t_Int) <
+          (254 <: Hax_lib.Int.t_Int) ==>
+          pred };
+  f_f_post:x: u8 -> y: u8 -> x1: (u8 & u8)
+    -> pred:
+      Type0
+        { pred ==>
+          (let y_future, output_variable:(u8 & u8) = x1 in
+            output_variable =. y_future) };
+  f_f:x0: u8 -> x1: u8 -> Prims.Pure (u8 & u8) (f_f_pre x0 x1) (fun result -> f_f_post x0 x1 result);
+  f_g_pre:u8 -> u8 -> Type0;
+  f_g_post:u8 -> u8 -> u8 -> Type0;
+  f_g:x0: u8 -> x1: u8 -> Prims.Pure u8 (f_g_pre x0 x1) (fun result -> f_g_post x0 x1 result);
+  f_h_pre:u8 -> u8 -> Type0;
+  f_h_post:u8 -> u8 -> Prims.unit -> Type0;
+  f_h:x0: u8 -> x1: u8
+    -> Prims.Pure Prims.unit (f_h_pre x0 x1) (fun result -> f_h_post x0 x1 result);
+  f_i_pre:u8 -> u8 -> Type0;
+  f_i_post:u8 -> u8 -> u8 -> Type0;
+  f_i:x0: u8 -> x1: u8 -> Prims.Pure u8 (f_i_pre x0 x1) (fun result -> f_i_post x0 x1 result)
+}
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl: t_Foo Prims.unit =
+  {
+    f_f_pre
+    =
+    (fun (x: u8) (y: u8) ->
+        ((Rust_primitives.Hax.Int.from_machine x <: Hax_lib.Int.t_Int) +
+          (Rust_primitives.Hax.Int.from_machine y <: Hax_lib.Int.t_Int)
+          <:
+          Hax_lib.Int.t_Int) <
+        (254 <: Hax_lib.Int.t_Int));
+    f_f_post
+    =
+    (fun (x: u8) (y: u8) (y_future, output_variable: (u8 & u8)) -> output_variable =. y_future);
+    f_f
+    =
+    (fun (x: u8) (y: u8) ->
+        let y:u8 = y +! x in
+        let hax_temp_output:u8 = y in
+        y, hax_temp_output <: (u8 & u8));
+    f_g_pre = (fun (x: u8) (y: u8) -> true);
+    f_g_post = (fun (x: u8) (y: u8) (output_variable: u8) -> output_variable =. y);
+    f_g = (fun (x: u8) (y: u8) -> y);
+    f_h_pre = (fun (x: u8) (y: u8) -> true);
+    f_h_post
+    =
+    (fun (x: u8) (y: u8) (output_variable: Prims.unit) -> output_variable =. (() <: Prims.unit));
+    f_h = (fun (x: u8) (y: u8) -> () <: Prims.unit);
+    f_i_pre = (fun (x: u8) (y: u8) -> true);
+    f_i_post = (fun (x: u8) (y: u8) (y_future: u8) -> y_future =. y);
+    f_i
+    =
+    fun (x: u8) (y: u8) ->
+      let hax_temp_output:Prims.unit = () <: Prims.unit in
+      y
+  }
 '''
 "Attributes.Verifcation_status.fst" = '''
 module Attributes.Verifcation_status

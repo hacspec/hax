@@ -43,7 +43,8 @@ module SubtypeToInputLanguage
              and type block = Features.Off.block
              and type dyn = Features.Off.dyn
              and type match_guard = Features.Off.match_guard
-             and type trait_item_default = Features.Off.trait_item_default) =
+             and type trait_item_default = Features.Off.trait_item_default
+             and type unsafe = Features.Off.unsafe) =
 struct
   module FB = InputLanguage
 
@@ -565,7 +566,8 @@ open Phase_utils
 
 module TransformToInputLanguage (* : PHASE *) =
   [%functor_application
-    Phases.Reject.RawOrMutPointer(Features.Rust)
+    Phases.Reject.Unsafe(Features.Rust)
+    |> Phases.Reject.RawOrMutPointer
     |> Phases.And_mut_defsite
     |> Phases.Reconstruct_asserts
     |> Phases.Reconstruct_for_loops

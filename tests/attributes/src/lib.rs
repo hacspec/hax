@@ -338,3 +338,46 @@ mod verifcation_status {
         let still_not_much = not_much + nothing;
     }
 }
+
+mod requires_mut {
+    use hax_lib::int::*;
+
+    #[hax_lib::attributes]
+    trait Foo {
+        #[hax_lib::requires(x.lift() + y.lift() < int!(254))]
+        #[hax_lib::ensures(|output_variable| output_variable == *future(y))]
+        fn f(x: u8, y: &mut u8) -> u8;
+
+        fn g(x: u8, y: u8) -> u8;
+        fn h(x: u8, y: u8);
+        fn i(x: u8, y: &mut u8);
+    }
+
+    #[hax_lib::attributes]
+    impl Foo for () {
+        #[hax_lib::requires(x.lift() + y.lift() < int!(254))]
+        #[hax_lib::ensures(|output_variable| output_variable == *future(y))]
+        fn f(x: u8, y: &mut u8) -> u8 {
+            *y += x;
+            *y
+        }
+
+        #[hax_lib::requires(true)]
+        #[hax_lib::ensures(|output_variable| output_variable == y)]
+        fn g(x: u8, y: u8) -> u8 {
+            y
+        }
+
+        #[hax_lib::requires(true)]
+        #[hax_lib::ensures(|output_variable| output_variable == ())]
+        fn h(x: u8, y: u8) {
+            ()
+        }
+
+        #[hax_lib::requires(true)]
+        #[hax_lib::ensures(|out| *future(y) == *y)]
+        fn i(x: u8, y: &mut u8) {
+            ()
+        }
+    }
+}

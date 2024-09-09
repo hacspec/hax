@@ -26,7 +26,8 @@ loop,
   block,
   dyn,
   match_guard,
-  trait_item_default]
+  trait_item_default,
+  unsafe]
 
 module Full = On
 

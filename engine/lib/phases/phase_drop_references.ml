@@ -30,6 +30,8 @@ struct
       include Features.SUBTYPE.Id
     end
 
+    [%%inline_defs dsafety_kind]
+
     let rec dty (span : span) (t : A.ty) : B.ty =
       match t with
       | [%inline_arms "dty.*" - TApp - TRef] -> auto
@@ -180,6 +182,7 @@ struct
             of_trait = of_trait_id, of_trait_generics;
             items;
             parent_bounds;
+            safety;
           } ->
           B.Impl
             {
@@ -191,6 +194,7 @@ struct
               items = List.map ~f:dimpl_item items;
               parent_bounds =
                 List.map ~f:(dimpl_expr span *** dimpl_ident span) parent_bounds;
+              safety = dsafety_kind span safety;
             }
 
     [%%inline_defs ditems]

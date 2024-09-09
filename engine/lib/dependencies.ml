@@ -39,7 +39,7 @@ module Make (F : Features.T) = struct
       in
       let set =
         match i.v with
-        | Fn { name = _; generics; body; params } ->
+        | Fn { name = _; generics; body; params; _ } ->
             v#visit_generics () generics
             @ v#visit_expr () body
             @ concat_map (v#visit_param ()) params
@@ -51,10 +51,11 @@ module Make (F : Features.T) = struct
         | IMacroInvokation { macro; argument = (_ : string); span; witness = _ }
           ->
             v#visit_concrete_ident () macro @ v#visit_span () span
-        | Trait { name = _; generics; items } ->
+        | Trait { name = _; generics; items; safety = _ } ->
             v#visit_generics () generics
             @ concat_map (v#visit_trait_item ()) items
-        | Impl { generics; self_ty; of_trait; items; parent_bounds } ->
+        | Impl { generics; self_ty; of_trait; items; parent_bounds; safety = _ }
+          ->
             v#visit_generics () generics
             @ v#visit_ty () self_ty
             @ v#visit_global_ident () (fst of_trait)
