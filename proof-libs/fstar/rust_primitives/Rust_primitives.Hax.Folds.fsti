@@ -53,8 +53,9 @@ val fold_enumerated_slice
 unfold let fold_range_step_by_wf_index (#u: Lib.IntTypes.inttype)
   (start: int_t u) (end_: int_t u)
   (step: usize {v step > 0}) (strict: bool) (i: int)
-  = v start <= v end_ ==> ( i >= v start 
-                        /\ (if strict then i < v end_ else i <= v end_ + v step))
+  = v start < v end_ ==> (let end_step = v end_ - 1 - ((v end_ - 1 - v start) % v step) in
+                          i >= v start 
+                        /\ (if strict then i <= end_step else i <= end_step + v step))
   // /\ i % v step == v start % v step
 
 #push-options "--z3rlimit 80"
@@ -81,7 +82,7 @@ val fold_range_step_by
   (step: usize {v step > 0 /\ range (v end_ + v step) u})
   (inv: acc_t -> (i:int_t u{fold_range_step_by_wf_index start end_ step false (v i)}) -> Type0)
   (init: acc_t {inv init start})
-  (f: (acc:acc_t -> i:int_t u  {v i < v end_ /\ fold_range_step_by_wf_index start end_ step true (v i) /\ inv acc i}
+  (f: (acc:acc_t -> i:int_t u  {v i < v end_ - ((v end_ - 1 - v start) % v step) /\ fold_range_step_by_wf_index start end_ step true (v i) /\ inv acc i}
                  -> acc':acc_t {(inv acc' (mk_int (v i + v step)))}))
   : result: acc_t {inv result (mk_int (fold_range_step_by_upper_bound start end_ step))}
 
