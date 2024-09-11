@@ -793,7 +793,7 @@ end) : EXPR = struct
         Thir.expr_kind =
       match ce with
       | Literal lit ->
-          let lit, neg = constant_lit_to_lit lit in
+          let lit, neg = constant_lit_to_lit lit span in
           Literal { lit = { node = lit; span }; neg }
       | Adt { fields; info } ->
           let fields = List.map ~f:constant_field_expr fields in
@@ -810,7 +810,8 @@ end) : EXPR = struct
           unimplemented [ span ]
             "constant_lit_to_lit: TraitConst | FnPtr | MutPtr"
       | Todo _ -> unimplemented [ span ] "ConstantExpr::Todo"
-    and constant_lit_to_lit (l : Thir.constant_literal) : Thir.lit_kind * bool =
+    and constant_lit_to_lit (l : Thir.constant_literal) span :
+        Thir.lit_kind * bool =
       match l with
       | Bool v -> (Bool v, false)
       | Char v -> (Char v, false)
@@ -819,6 +820,7 @@ end) : EXPR = struct
           | Some v -> (Int (v, Signed ty), true)
           | None -> (Int (v, Signed ty), false))
       | Int (Uint (v, ty)) -> (Int (v, Unsigned ty), false)
+      | Float _ -> unimplemented [ span ] "constant_lit_to_lit: Float"
       | Str (v, style) -> (Str (v, style), false)
       | ByteStr (v, style) -> (ByteStr (v, style), false)
     and constant_field_expr ({ field; value } : Thir.constant_field_expr) :

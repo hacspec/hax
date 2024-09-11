@@ -22,6 +22,9 @@ pub enum ConstantInt {
 pub enum ConstantLiteral {
     Bool(bool),
     Char(char),
+    // Rust floats do not have the Eq or Ord traits due to the presence of NaN
+    // We instead store their bit representation, which always fits in a u128
+    Float(u128, FloatTy),
     Int(ConstantInt),
     Str(String, StrStyle),
     ByteStr(Vec<u8>, StrStyle),
@@ -156,6 +159,7 @@ mod rustc {
                                 }
                             }
                         }
+                        Float(_bits, _ty) => todo!("Converting float literals back to AST"),
                         ByteStr(raw, str_style) => LitKind::ByteStr(raw, str_style),
                         Str(raw, str_style) => LitKind::Str(raw, str_style),
                     };
@@ -254,6 +258,19 @@ mod rustc {
                     )
                 });
                 ConstantExprKind::Literal(scalar_int_to_constant_literal(s, scalar_int, ty))
+            }
+            ty::Float(float_type) => {
+                let scalar_int = scalar.try_to_scalar_int().unwrap_or_else(|_| {
+                    fatal!(
+                        s[span],
+                        "Type is [Float], but the scalar {:#?} is not a number",
+                        scalar
+                    )
+                });
+                ConstantExprKind::Literal(ConstantLiteral::Float(
+                    scalar_int.to_bits_unchecked(),
+                    float_type.sinto(s),
+                ))
             }
             ty::Ref(_, inner_ty, Mutability::Not) | ty::RawPtr(inner_ty, Mutability::Mut) => {
                 let tcx = s.base().tcx;
