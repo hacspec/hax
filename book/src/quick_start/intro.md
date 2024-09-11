@@ -20,8 +20,8 @@ what you are looking for!
    <span style="margin-right:30px;"></span>🪄 `mkdir -p proofs/fstar/extraction`
  - **user-checkable** Copy [this makefile](https://gist.github.com/W95Psp/4c304132a1f85c5af4e4959dd6b356c3) to `proofs/fstar/extraction/Makefile`.  
    <span style="margin-right:30px;"></span>🪄 `curl -o proofs/fstar/extraction/Makefile https://gist.githubusercontent.com/W95Psp/4c304132a1f85c5af4e4959dd6b356c3/raw/Makefile`
- - **user-checkable** Add `hax-lib` as a dependency to your crate.  
-   <span style="margin-right:30px;"></span>🪄 `cargo add --git https://github.com/hacspec/hax hax-lib`  
+ - **user-checkable** Add `hax-lib` as a dependency to your crate, enabled only when using hax.  
+   <span style="margin-right:30px;"></span>🪄 `cargo add --target 'cfg(hax)' --git https://github.com/hacspec/hax hax-lib`  
    <span style="margin-right:30px;"></span><span style="opacity: 0;">🪄</span> *(`hax-lib` is not mandatory, but this guide assumes it is present)*
 
 ## Partial extraction
