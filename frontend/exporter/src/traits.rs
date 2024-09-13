@@ -49,7 +49,7 @@ pub enum ImplExprAtom {
     /// built-in implementation.
     Dyn,
     /// A built-in trait whose implementation is computed by the compiler, such as `Sync`.
-    Builtin { r#trait: TraitRef },
+    Builtin { r#trait: Binder<TraitRef> },
     /// Anything else. Currently used for trait upcasting and trait aliases.
     Todo(String),
 }
@@ -62,7 +62,7 @@ pub enum ImplExprAtom {
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
 pub struct ImplExpr {
     /// The trait this is an impl for.
-    pub r#trait: TraitRef,
+    pub r#trait: Binder<TraitRef>,
     /// The kind of implemention of the root of the tree.
     pub r#impl: ImplExprAtom,
     /// A list of `ImplExpr`s required to fully specify the trait references in `impl`.
@@ -285,7 +285,7 @@ pub mod rustc {
     }
 
     impl ImplExprAtom {
-        fn with_args(self, args: Vec<ImplExpr>, r#trait: TraitRef) -> ImplExpr {
+        fn with_args(self, args: Vec<ImplExpr>, r#trait: Binder<TraitRef>) -> ImplExpr {
             ImplExpr {
                 r#impl: self,
                 args,
@@ -340,7 +340,6 @@ pub mod rustc {
         ) -> ImplExpr {
             use rustc_trait_selection::traits::*;
             let trait_ref: Binder<TraitRef> = self.sinto(s);
-            let trait_ref = trait_ref.value;
             match select_trait_candidate(s, param_env, *self) {
                 ImplSource::UserDefined(ImplSourceUserDefinedData {
                     impl_def_id,

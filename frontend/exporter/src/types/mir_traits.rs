@@ -30,10 +30,12 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     let mut impl_expr = trait_ref.impl_expr(s, param_env);
     // TODO: this is a bug in hax: in case of method calls, the trait ref
     // contains the generics for the trait ref + the generics for the method
-    let trait_def_id: rustc_hir::def_id::DefId = (&impl_expr.r#trait.def_id).into();
+    let trait_def_id: rustc_hir::def_id::DefId =
+        (&impl_expr.r#trait.as_ref().hax_skip_binder().def_id).into();
     let params_info = get_params_info(s, trait_def_id);
     impl_expr
         .r#trait
+        .inner_mut()
         .generic_args
         .truncate(params_info.num_generic_params);
     impl_expr
