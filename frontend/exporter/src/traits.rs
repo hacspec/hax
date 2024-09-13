@@ -78,16 +78,6 @@ pub mod rustc {
         use crate::rustc_utils::*;
         use rustc_middle::ty::*;
 
-        fn predicates_to_poly_trait_predicates<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            predicates: impl Iterator<Item = Predicate<'tcx>>,
-            generics: GenericArgsRef<'tcx>,
-        ) -> impl Iterator<Item = PolyTraitPredicate<'tcx>> {
-            predicates
-                .filter_map(|pred| pred.as_trait_clause())
-                .map(move |clause| clause.subst(tcx, generics))
-        }
-
         #[derive(Clone, Debug)]
         pub enum PathChunk<'tcx> {
             AssocItem {
@@ -157,6 +147,18 @@ pub mod rustc {
 
         #[extension_traits::extension(pub trait TraitPredicateExt)]
         impl<'tcx, S: UnderOwnerState<'tcx>> PolyTraitPredicate<'tcx> {
+            fn predicates_to_poly_trait_predicates(
+                self,
+                s: &S,
+                predicates: impl Iterator<Item = Predicate<'tcx>>,
+            ) -> impl Iterator<Item = PolyTraitPredicate<'tcx>> {
+                let tcx = s.base().tcx;
+                let generics = self.skip_binder().trait_ref.args;
+                predicates
+                    .filter_map(|pred| pred.as_trait_clause())
+                    .map(move |clause| clause.subst(tcx, generics))
+            }
+
             #[tracing::instrument(level = "trace", skip(s))]
             fn parents_trait_predicates(self, s: &S) -> Vec<(usize, PolyTraitPredicate<'tcx>)> {
                 let tcx = s.base().tcx;
@@ -164,13 +166,9 @@ pub mod rustc {
                     .predicates_defined_on_or_above(self.def_id())
                     .into_iter()
                     .map(|apred| apred.predicate);
-                predicates_to_poly_trait_predicates(
-                    tcx,
-                    predicates,
-                    self.skip_binder().trait_ref.args,
-                )
-                .enumerate()
-                .collect()
+                self.predicates_to_poly_trait_predicates(s, predicates)
+                    .enumerate()
+                    .collect()
             }
             #[tracing::instrument(level = "trace", skip(s))]
             fn associated_items_trait_predicates(
@@ -187,10 +185,9 @@ pub mod rustc {
                     .copied()
                     .map(|item| {
                         let bounds = tcx.item_bounds(item.def_id).map_bound(|clauses| {
-                            predicates_to_poly_trait_predicates(
-                                tcx,
+                            self.predicates_to_poly_trait_predicates(
+                                s,
                                 clauses.into_iter().map(|clause| clause.as_predicate()),
-                                self.skip_binder().trait_ref.args,
                             )
                             .enumerate()
                             .collect()
