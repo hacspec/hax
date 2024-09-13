@@ -3083,7 +3083,7 @@ pub enum ImplItemKind<Body: IsBody> {
             let assoc_item = tcx.opt_associated_item(owner_id).unwrap();
             let impl_did = assoc_item.impl_container(tcx).unwrap();
             tcx.explicit_item_bounds(assoc_item.trait_item_def_id.unwrap())
-                .skip_binder()
+                .skip_binder() // Skips an `EarlyBinder`, likely for GATs
                 .iter()
                 .copied()
                 .filter_map(|(clause, span)| super_clause_to_clause_and_impl_expr(s, impl_did, clause, span))

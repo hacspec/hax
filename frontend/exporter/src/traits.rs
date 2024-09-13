@@ -394,7 +394,7 @@ pub mod rustc {
                     let atom = match source {
                         BuiltinImplSource::Object { .. } => ImplExprAtom::Dyn,
                         _ => ImplExprAtom::Builtin {
-                            r#trait: self.skip_binder().sinto(s),
+                            r#trait: trait_ref.clone(),
                         },
                     };
                     atom.with_args(vec![], trait_ref)
