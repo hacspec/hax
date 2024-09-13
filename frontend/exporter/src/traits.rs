@@ -1,20 +1,20 @@
 use crate::prelude::*;
 
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: search_clause::PathChunk<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: search_clause::PathChunk<'tcx>, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
 pub enum ImplExprPathChunk {
     AssocItem {
         item: AssocItem,
         predicate: Binder<TraitPredicate>,
-        #[value(predicate.predicate_id(tcx))]
+        #[value(<_ as SInto<_, Clause>>::sinto(predicate, s).id)]
         predicate_id: PredicateId,
         index: usize,
     },
     Parent {
         predicate: Binder<TraitPredicate>,
-        #[value(predicate.predicate_id(tcx))]
+        #[value(<_ as SInto<_, Clause>>::sinto(predicate, s).id)]
         predicate_id: PredicateId,
         index: usize,
     },
@@ -379,7 +379,7 @@ pub mod rustc {
                             .with_args(impl_exprs(s, &nested), trait_ref)
                     } else {
                         ImplExprAtom::LocalBound {
-                            predicate_id: apred.predicate.predicate_id(s),
+                            predicate_id: apred.predicate.sinto(s).id,
                             r#trait,
                             path,
                         }
@@ -420,7 +420,7 @@ pub mod rustc {
             // We don't want the id of the substituted clause id, but the
             // original clause id (with, i.e., `Self`)
             let s = &with_owner_id(s.base(), (), (), impl_trait_ref.def_id());
-            clause.predicate_id(s)
+            clause.sinto(s).id
         };
         let new_clause = clause.instantiate_supertrait(tcx, impl_trait_ref);
         let impl_expr = new_clause

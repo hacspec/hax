@@ -3703,10 +3703,27 @@ pub struct Clause {
 #[cfg(feature = "rustc")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause> for rustc_middle::ty::Clause<'tcx> {
     fn sinto(&self, s: &S) -> Clause {
-        Clause {
-            kind: self.kind().sinto(s),
-            id: self.predicate_id(s),
-        }
+        let kind = self.kind().sinto(s);
+        let id = kind
+            .clone()
+            .map(|clause_kind| PredicateKind::Clause(clause_kind))
+            .predicate_id();
+        Clause { kind, id }
+    }
+}
+
+#[cfg(feature = "rustc")]
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause>
+    for rustc_middle::ty::PolyTraitPredicate<'tcx>
+{
+    fn sinto(&self, s: &S) -> Clause {
+        let kind: Binder<_> = self.sinto(s);
+        let kind: Binder<ClauseKind> = kind.map(|x| ClauseKind::Trait(x));
+        let id = kind
+            .clone()
+            .map(|clause_kind| PredicateKind::Clause(clause_kind))
+            .predicate_id();
+        Clause { kind, id }
     }
 }
 
@@ -3721,10 +3738,9 @@ pub struct Predicate {
 #[cfg(feature = "rustc")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Predicate> for rustc_middle::ty::Predicate<'tcx> {
     fn sinto(&self, s: &S) -> Predicate {
-        Predicate {
-            kind: self.kind().sinto(s),
-            id: self.predicate_id(s),
-        }
+        let kind = self.kind().sinto(s);
+        let id = kind.predicate_id();
+        Predicate { kind, id }
     }
 }
 
@@ -3745,6 +3761,30 @@ pub enum BoundVariableKind {
 pub struct Binder<T> {
     pub value: T,
     pub bound_vars: Vec<BoundVariableKind>,
+}
+
+impl<T> Binder<T> {
+    pub fn as_ref(&self) -> Binder<&T> {
+        Binder {
+            value: &self.value,
+            bound_vars: self.bound_vars.clone(),
+        }
+    }
+
+    pub fn hax_skip_binder(self) -> T {
+        self.value
+    }
+
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Binder<U> {
+        Binder {
+            value: f(self.value),
+            bound_vars: self.bound_vars,
+        }
+    }
+
+    pub fn inner_mut(&mut self) -> &mut T {
+        &mut self.value
+    }
 }
 
 /// Reflects [`rustc_middle::ty::GenericPredicates`]
