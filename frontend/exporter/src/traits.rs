@@ -84,8 +84,8 @@ pub mod rustc {
             generics: GenericArgsRef<'tcx>,
         ) -> impl Iterator<Item = PolyTraitPredicate<'tcx>> {
             predicates
-                .map(move |pred| pred.kind().subst(tcx, generics))
-                .filter_map(|pred| pred.as_poly_trait_predicate())
+                .filter_map(|pred| pred.as_trait_clause())
+                .map(move |clause| clause.subst(tcx, generics))
         }
 
         #[derive(Clone, Debug)]
@@ -304,15 +304,11 @@ pub mod rustc {
         obligations
             .into_iter()
             .flat_map(|obligation| {
-                obligation
-                    .predicate
-                    .kind()
-                    .as_poly_trait_predicate()
-                    .map(|trait_ref| {
-                        trait_ref
-                            .map_bound(|p| p.trait_ref)
-                            .impl_expr(s, obligation.param_env)
-                    })
+                obligation.predicate.as_trait_clause().map(|trait_ref| {
+                    trait_ref
+                        .map_bound(|p| p.trait_ref)
+                        .impl_expr(s, obligation.param_env)
+                })
             })
             .collect()
     }

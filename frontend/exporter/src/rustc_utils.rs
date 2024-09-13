@@ -12,18 +12,6 @@ impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
     }
 }
 
-#[extension_traits::extension(pub trait PredicateToPolyTraitPredicate)]
-impl<'tcx> ty::Binder<'tcx, ty::PredicateKind<'tcx>> {
-    fn as_poly_trait_predicate(self) -> Option<ty::PolyTraitPredicate<'tcx>> {
-        // TODO: use `as_trait_clause` from upstream
-        self.try_map_bound(|kind| match kind {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => Ok(trait_pred),
-            _ => Err(()),
-        })
-        .ok()
-    }
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct AnnotatedPredicate<'tcx> {
     pub is_extra_self_predicate: bool,
