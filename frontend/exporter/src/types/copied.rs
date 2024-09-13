@@ -2932,23 +2932,11 @@ pub enum Constness {
 #[derive(Clone, Debug, JsonSchema)]
 pub struct Generics<Body: IsBody> {
     pub params: Vec<GenericParam<Body>>,
-    pub predicates: Vec<WherePredicate<Body>>,
     #[value(region_bounds_at_current_owner(tcx))]
     pub bounds: GenericBounds,
     pub has_where_clause_predicates: bool,
     pub where_clause_span: Span,
     pub span: Span,
-}
-
-/// Reflects [`rustc_hir::WherePredicate`]
-#[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::WherePredicate<'tcx>, state: S as tcx)]
-#[derive_group(Serializers)]
-#[derive(Clone, Debug, JsonSchema)]
-pub enum WherePredicate<Body: IsBody> {
-    BoundPredicate(WhereBoundPredicate<Body>),
-    RegionPredicate(WhereRegionPredicate),
-    EqPredicate(WhereEqPredicate),
 }
 
 #[cfg(feature = "rustc")]
@@ -4030,21 +4018,6 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ident> for rustc_span::symbol::Ide
     fn sinto(&self, s: &S) -> Ident {
         (self.name.sinto(s), self.span.sinto(s))
     }
-}
-
-/// Reflects [`rustc_hir::WhereBoundPredicate`]
-#[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::WhereBoundPredicate<'tcx>, state: S as tcx)]
-#[derive_group(Serializers)]
-#[derive(Clone, Debug, JsonSchema)]
-pub struct WhereBoundPredicate<Body: IsBody> {
-    pub hir_id: HirId,
-    pub span: Span,
-    pub origin: PredicateOrigin,
-    pub bound_generic_params: Vec<GenericParam<Body>>,
-    pub bounded_ty: Ty,
-    // TODO: What to do with WhereBoundPredicate?
-    // pub bounds: GenericBounds,
 }
 
 /// Reflects [`rustc_hir::PredicateOrigin`]
