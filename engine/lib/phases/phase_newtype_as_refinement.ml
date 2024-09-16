@@ -14,7 +14,7 @@ module Make (F : Features.T) =
         let ctx = Diagnostics.Context.Phase phase_id
       end)
 
-      module Attrs = Attr_payloads.MakeBase (Error)
+      module Attrs = Attr_payloads.Make (F) (Error)
 
       let visitor =
         object
