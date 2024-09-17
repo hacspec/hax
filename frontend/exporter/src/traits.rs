@@ -87,8 +87,10 @@ pub mod rustc {
     {
         fn sinto(&self, s: &S) -> crate::ImplExpr {
             use crate::ParamEnv;
-            self.impl_expr(s.base().tcx, s.owner_id(), s.param_env())
-                .sinto(s)
+            match self.impl_expr(s.base().tcx, s.owner_id(), s.param_env()) {
+                Ok(x) => x.sinto(s),
+                Err(e) => crate::fatal!(s, "{}", e),
+            }
         }
     }
 
@@ -358,7 +360,7 @@ pub mod rustc {
         obligations: &Vec<
             rustc_trait_selection::traits::Obligation<'tcx, rustc_middle::ty::Predicate<'tcx>>,
         >,
-    ) -> Vec<ImplExpr<'tcx>> {
+    ) -> Result<Vec<ImplExpr<'tcx>>, String> {
         obligations
             .into_iter()
             .flat_map(|obligation| {
@@ -380,7 +382,7 @@ pub mod rustc {
             // The id of the enclosing item
             owner_id: DefId,
             param_env: rustc_middle::ty::ParamEnv<'tcx>,
-        ) -> ImplExpr<'tcx>;
+        ) -> Result<ImplExpr<'tcx>, String>;
     }
 
     impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
@@ -390,35 +392,30 @@ pub mod rustc {
             tcx: TyCtxt<'tcx>,
             owner_id: DefId,
             param_env: rustc_middle::ty::ParamEnv<'tcx>,
-        ) -> ImplExpr<'tcx> {
+        ) -> Result<ImplExpr<'tcx>, String> {
             use rustc_trait_selection::traits::*;
-            match copy_paste_from_rustc::codegen_select_candidate(tcx, (param_env, *self)) {
-                // Err(error) => fatal!(
-                //     s,
-                //     "Cannot handle error `{:?}` selecting `{:?}`",
-                //     error,
-                //     trait_ref
-                // ),
-                Err(_) => todo!(),
-                Ok(ImplSource::UserDefined(ImplSourceUserDefinedData {
+            let impl_source =
+                copy_paste_from_rustc::codegen_select_candidate(tcx, (param_env, *self))
+                    .map_err(|e| format!("Cannot handle error `{e:?}` selecting `{self:?}`"))?;
+            Ok(match impl_source {
+                ImplSource::UserDefined(ImplSourceUserDefinedData {
                     impl_def_id,
                     args: generics,
                     nested,
-                })) => ImplExprAtom::Concrete {
+                }) => ImplExprAtom::Concrete {
                     def_id: impl_def_id,
                     generics,
                 }
-                .with_args(impl_exprs(tcx, owner_id, &nested), *self),
-                Ok(ImplSource::Param(nested)) => {
+                .with_args(impl_exprs(tcx, owner_id, &nested)?, *self),
+                ImplSource::Param(nested) => {
                     use crate::TyCtxtExtPredOrAbove;
                     let predicates = tcx.predicates_defined_on_or_above(owner_id);
                     let Some((path, apred)) =
                         search_clause::path_to(tcx, &predicates, self.clone(), param_env)
                     else {
-                        todo!()
-                        // supposely_unreachable_fatal!(s, "ImplExprPredNotFound"; {
-                        //     self, nested, predicates, trait_ref
-                        // })
+                        return Err(format!(
+                            "Could not find a clause for `{self:?}` in the item parameters"
+                        ));
                     };
 
                     use rustc_middle::ty::ToPolyTraitRef;
@@ -430,21 +427,21 @@ pub mod rustc {
                         .to_poly_trait_ref();
                     if apred.is_extra_self_predicate {
                         ImplExprAtom::SelfImpl { r#trait, path }
-                            .with_args(impl_exprs(tcx, owner_id, &nested), *self)
+                            .with_args(impl_exprs(tcx, owner_id, &nested)?, *self)
                     } else {
                         ImplExprAtom::LocalBound {
                             predicate: apred.predicate,
                             r#trait,
                             path,
                         }
-                        .with_args(impl_exprs(tcx, owner_id, &nested), *self)
+                        .with_args(impl_exprs(tcx, owner_id, &nested)?, *self)
                     }
                 }
                 // We ignore the contained obligations here. For example for `(): Send`, the
                 // obligations contained would be `[(): Send]`, which leads to an infinite loop. There
                 // might be important obligation shere inother cases; we'll have to see if that comes
                 // up.
-                Ok(ImplSource::Builtin(source, _ignored)) => {
+                ImplSource::Builtin(source, _ignored) => {
                     let atom = match source {
                         BuiltinImplSource::Object { .. } => ImplExprAtom::Dyn,
                         _ => ImplExprAtom::Builtin {
@@ -453,7 +450,7 @@ pub mod rustc {
                     };
                     atom.with_args(vec![], *self)
                 }
-            }
+            })
         }
     }
 
