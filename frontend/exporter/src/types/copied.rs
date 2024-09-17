@@ -1832,7 +1832,9 @@ impl Alias {
                 };
                 AliasKind::Projection {
                     assoc_item: tcx.associated_item(alias_ty.def_id).sinto(s),
-                    impl_expr: poly_trait_ref.impl_expr(s, s.param_env()),
+                    impl_expr: poly_trait_ref
+                        .impl_expr(s.base().tcx, s.owner_id(), s.param_env())
+                        .sinto(s),
                 }
             }
             RustAliasKind::Inherent => AliasKind::Inherent,
@@ -2485,7 +2487,9 @@ pub enum ExprKind {
                     let impl_expr = {
                         // TODO: we should not wrap into a dummy binder
                         let poly_trait_ref = ty::Binder::dummy(trait_ref);
-                        poly_trait_ref.impl_expr(gstate, gstate.param_env())
+                        poly_trait_ref
+                            .impl_expr(gstate.base().tcx, gstate.owner_id(), gstate.param_env())
+                            .sinto(gstate)
                     };
                     let assoc_generics = tcx.generics_of(assoc_item.def_id);
                     let assoc_generics = translated_generics.drain(0..assoc_generics.parent_count);
@@ -2744,7 +2748,11 @@ pub enum ExprKind {
             let tcx = gstate.base().tcx;
             tcx.opt_associated_item(*def_id).as_ref().and_then(|assoc| {
                 poly_trait_ref(gstate, assoc, args)
-            }).map(|poly_trait_ref| poly_trait_ref.impl_expr(gstate, gstate.param_env()))
+            }).map(|poly_trait_ref|
+                poly_trait_ref
+                    .impl_expr(gstate.base().tcx, gstate.owner_id(), gstate.param_env())
+                    .sinto(gstate)
+            )
         })]
         r#impl: Option<ImplExpr>,
     },

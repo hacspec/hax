@@ -27,7 +27,9 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
 ) -> ImplExpr {
-    let mut impl_expr = trait_ref.impl_expr(s, param_env);
+    let mut impl_expr = trait_ref
+        .impl_expr(s.base().tcx, s.owner_id(), param_env)
+        .sinto(s);
     // TODO: this is a bug in hax: in case of method calls, the trait ref
     // contains the generics for the trait ref + the generics for the method
     let trait_def_id: rustc_hir::def_id::DefId =
