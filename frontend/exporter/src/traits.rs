@@ -83,6 +83,17 @@ pub mod rustc {
     use rustc_hir::def_id::DefId;
     use rustc_middle::ty::*;
 
+    /// This is the entrypoint of the solving.
+    impl<'tcx, S: crate::UnderOwnerState<'tcx>> crate::SInto<S, crate::ImplExpr>
+        for rustc_middle::ty::PolyTraitRef<'tcx>
+    {
+        fn sinto(&self, s: &S) -> crate::ImplExpr {
+            use crate::ParamEnv;
+            self.impl_expr(s.base().tcx, s.owner_id(), s.param_env())
+                .sinto(s)
+        }
+    }
+
     // FIXME: this has visibility `pub(crate)` only because of https://github.com/rust-lang/rust/issues/83049
     pub(crate) mod search_clause {
         use super::{Path, PathChunk};
@@ -195,7 +206,7 @@ pub mod rustc {
         }
 
         #[tracing::instrument(level = "trace", skip(tcx, param_env))]
-        pub fn path_to<'tcx>(
+        pub(super) fn path_to<'tcx>(
             tcx: TyCtxt<'tcx>,
             starting_points: &[AnnotatedPredicate<'tcx>],
             target: PolyTraitRef<'tcx>,
@@ -366,7 +377,7 @@ pub mod rustc {
             .collect()
     }
 
-    pub trait IntoImplExpr<'tcx> {
+    trait IntoImplExpr<'tcx> {
         fn impl_expr(
             &self,
             tcx: TyCtxt<'tcx>,
@@ -376,17 +387,6 @@ pub mod rustc {
         ) -> ImplExpr<'tcx>;
     }
 
-    impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitPredicate<'tcx> {
-        fn impl_expr(
-            &self,
-            tcx: TyCtxt<'tcx>,
-            owner_id: DefId,
-            param_env: rustc_middle::ty::ParamEnv<'tcx>,
-        ) -> ImplExpr<'tcx> {
-            use rustc_middle::ty::ToPolyTraitRef;
-            self.to_poly_trait_ref().impl_expr(tcx, owner_id, param_env)
-        }
-    }
     impl<'tcx> IntoImplExpr<'tcx> for rustc_middle::ty::PolyTraitRef<'tcx> {
         #[tracing::instrument(level = "trace", skip(tcx, param_env))]
         fn impl_expr(
@@ -461,7 +461,7 @@ pub mod rustc {
         }
     }
 
-    pub mod copy_paste_from_rustc {
+    mod copy_paste_from_rustc {
         use rustc_infer::infer::TyCtxtInferExt;
         use rustc_middle::traits::CodegenObligationError;
         use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
@@ -548,9 +548,15 @@ pub mod rustc {
 }
 
 #[cfg(feature = "rustc")]
-pub use self::rustc::IntoImplExpr;
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ImplExpr>
+    for rustc_middle::ty::PolyTraitPredicate<'tcx>
+{
+    fn sinto(&self, s: &S) -> ImplExpr {
+        use rustc_middle::ty::ToPolyTraitRef;
+        self.to_poly_trait_ref().sinto(s)
+    }
+}
 
-/// Given a clause `clause` in the context of some impl. block
 /// `impl_did`, susbts correctly `Self` from `clause` and (1) derive a
 /// `Clause` and (2) resolve an `ImplExpr`.
 #[cfg(feature = "rustc")]
@@ -571,11 +577,7 @@ pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
         clause.sinto(s).id
     };
     let new_clause = clause.instantiate_supertrait(tcx, impl_trait_ref);
-    let impl_expr = new_clause
-        .as_predicate()
-        .as_trait_clause()?
-        .impl_expr(tcx, s.owner_id(), s.param_env())
-        .sinto(s);
+    let impl_expr = new_clause.as_predicate().as_trait_clause()?.sinto(s);
     let mut new_clause_no_binder = new_clause.sinto(s);
     new_clause_no_binder.id = original_predicate_id;
     Some((new_clause_no_binder, impl_expr, span.sinto(s)))
