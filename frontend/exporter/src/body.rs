@@ -104,7 +104,7 @@ mod module {
                         did.to_def_id(),
                     ))
                 });
-                mir.unwrap()
+                mir.s_unwrap(s)
             }
         }
     }

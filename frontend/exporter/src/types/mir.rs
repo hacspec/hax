@@ -121,7 +121,7 @@ pub mod mir_kinds {
         use rustc_middle::ty::TyCtxt;
         use rustc_span::def_id::LocalDefId;
 
-        pub trait IsMirKind: Clone {
+        pub trait IsMirKind: Clone + std::fmt::Debug {
             // CPS to deal with stealable bodies cleanly.
             fn get_mir<'tcx, T>(
                 tcx: TyCtxt<'tcx>,
