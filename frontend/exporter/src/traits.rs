@@ -58,8 +58,6 @@ pub enum ImplExprAtom {
     Dyn,
     /// A built-in trait whose implementation is computed by the compiler, such as `Sync`.
     Builtin { r#trait: Binder<TraitRef> },
-    /// Anything else. Currently used for trait upcasting and trait aliases.
-    Todo(String),
 }
 
 /// An `ImplExpr` describes the full data of a trait implementation. Because of generics, this may
@@ -327,8 +325,6 @@ pub mod rustc {
         Dyn,
         /// A built-in trait whose implementation is computed by the compiler, such as `Sync`.
         Builtin { r#trait: PolyTraitRef<'tcx> },
-        /// Anything else. Currently used for trait upcasting and trait aliases.
-        Todo(String),
     }
 
     #[derive(Clone, Debug)]
