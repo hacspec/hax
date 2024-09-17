@@ -225,7 +225,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::mi
     fn sinto(&self, s: &S) -> ConstantExpr {
         use rustc_middle::mir::Const;
         let tcx = s.base().tcx;
-        match self {
+        match self.eval_constant(s).as_ref().unwrap_or(self) {
             Const::Val(const_value, ty) => const_value_to_constant_expr(
                 s,
                 ty.clone(),
@@ -238,9 +238,13 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::mi
                 let span = tcx
                     .def_ident_span(ucv.def)
                     .unwrap_or_else(|| ucv.def.default_span(tcx));
-                match self.translate_uneval(s, ucv.shrink(), span) {
-                    TranslateUnevalRes::EvaluatedConstant(c) => c.sinto(s),
-                    TranslateUnevalRes::GlobalName(c) => c,
+                if let Some(_) = ucv.promoted {
+                    supposely_unreachable_fatal!(s[span], "PromotedConstant"; {ucv.def})
+                } else {
+                    match self.translate_uneval(s, ucv.shrink(), span) {
+                        TranslateUnevalRes::EvaluatedConstant(c) => c.sinto(s),
+                        TranslateUnevalRes::GlobalName(c) => c,
+                    }
                 }
             }
         }
