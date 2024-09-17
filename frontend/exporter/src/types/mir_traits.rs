@@ -30,10 +30,12 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     let mut impl_expr = trait_ref.impl_expr(s, param_env);
     // TODO: this is a bug in hax: in case of method calls, the trait ref
     // contains the generics for the trait ref + the generics for the method
-    let trait_def_id: rustc_hir::def_id::DefId = (&impl_expr.r#trait.def_id).into();
+    let trait_def_id: rustc_hir::def_id::DefId =
+        (&impl_expr.r#trait.as_ref().hax_skip_binder().def_id).into();
     let params_info = get_params_info(s, trait_def_id);
     impl_expr
         .r#trait
+        .inner_mut()
         .generic_args
         .truncate(params_info.num_generic_params);
     impl_expr
@@ -63,29 +65,17 @@ pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
         Some(preds) => preds,
     };
     for (pred, _) in predicates.predicates {
-        let pred_kind = pred.kind();
-        // Apply the substitution
-        let bare_pred_kind = {
-            // SH: Not sure this is the proper way, but it seems to work so far. My reasoning:
-            // - I don't know how to get rid of the Binder, because there is no
-            //   Binder::subst method.
-            // - However I notice that EarlyBinder is just a wrapper (it doesn't
-            //   contain any information) and comes with substitution methods.
-            // So I skip the Binder, wrap the value in an EarlyBinder and apply
-            // the substitution.
-            // Warning: this removes the binder; we need to add it back to avoid escaping bound
-            // variables.
-            // Remark: there is also EarlyBinder::subst(...)
-            let value = rustc_middle::ty::EarlyBinder::bind(pred_kind.skip_binder());
-            tcx.instantiate_and_normalize_erasing_regions(generics, param_env, value)
-        };
-
         // Explore only the trait predicates
-        use rustc_middle::ty::ClauseKind;
-        if let ClauseKind::Trait(trait_pred) = bare_pred_kind {
-            // Rewrap the now-substituted kind with the original binder. Substitution dealt with
-            // early bound variables; this binds late bound ones.
-            let trait_ref = pred_kind.rebind(trait_pred.trait_ref);
+        if let Some(trait_clause) = pred.as_trait_clause() {
+            // Apply the substitution
+            let trait_ref = trait_clause.map_bound(|clause| {
+                let value = rustc_middle::ty::EarlyBinder::bind(clause.trait_ref);
+                // Warning: this erases regions. We don't really have a way to substitute without
+                // erasing regions, but this may cause problems in trait solving if there are trait
+                // impls that include `'static` lifetimes.
+                // TODO: try `EarlyBinder::subst(...)`?
+                tcx.instantiate_and_normalize_erasing_regions(generics, param_env, value)
+            });
             let impl_expr = solve_trait(s, param_env, trait_ref);
             impl_exprs.push(impl_expr);
         }

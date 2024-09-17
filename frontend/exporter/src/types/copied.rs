@@ -2932,23 +2932,11 @@ pub enum Constness {
 #[derive(Clone, Debug, JsonSchema)]
 pub struct Generics<Body: IsBody> {
     pub params: Vec<GenericParam<Body>>,
-    pub predicates: Vec<WherePredicate<Body>>,
     #[value(region_bounds_at_current_owner(tcx))]
     pub bounds: GenericBounds,
     pub has_where_clause_predicates: bool,
     pub where_clause_span: Span,
     pub span: Span,
-}
-
-/// Reflects [`rustc_hir::WherePredicate`]
-#[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::WherePredicate<'tcx>, state: S as tcx)]
-#[derive_group(Serializers)]
-#[derive(Clone, Debug, JsonSchema)]
-pub enum WherePredicate<Body: IsBody> {
-    BoundPredicate(WhereBoundPredicate<Body>),
-    RegionPredicate(WhereRegionPredicate),
-    EqPredicate(WhereEqPredicate),
 }
 
 #[cfg(feature = "rustc")]
@@ -3095,7 +3083,7 @@ pub enum ImplItemKind<Body: IsBody> {
             let assoc_item = tcx.opt_associated_item(owner_id).unwrap();
             let impl_did = assoc_item.impl_container(tcx).unwrap();
             tcx.explicit_item_bounds(assoc_item.trait_item_def_id.unwrap())
-                .skip_binder()
+                .skip_binder() // Skips an `EarlyBinder`, likely for GATs
                 .iter()
                 .copied()
                 .filter_map(|(clause, span)| super_clause_to_clause_and_impl_expr(s, impl_did, clause, span))
@@ -3703,10 +3691,27 @@ pub struct Clause {
 #[cfg(feature = "rustc")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause> for rustc_middle::ty::Clause<'tcx> {
     fn sinto(&self, s: &S) -> Clause {
-        Clause {
-            kind: self.kind().sinto(s),
-            id: self.predicate_id(s),
-        }
+        let kind = self.kind().sinto(s);
+        let id = kind
+            .clone()
+            .map(|clause_kind| PredicateKind::Clause(clause_kind))
+            .predicate_id();
+        Clause { kind, id }
+    }
+}
+
+#[cfg(feature = "rustc")]
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause>
+    for rustc_middle::ty::PolyTraitPredicate<'tcx>
+{
+    fn sinto(&self, s: &S) -> Clause {
+        let kind: Binder<_> = self.sinto(s);
+        let kind: Binder<ClauseKind> = kind.map(|x| ClauseKind::Trait(x));
+        let id = kind
+            .clone()
+            .map(|clause_kind| PredicateKind::Clause(clause_kind))
+            .predicate_id();
+        Clause { kind, id }
     }
 }
 
@@ -3721,10 +3726,9 @@ pub struct Predicate {
 #[cfg(feature = "rustc")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Predicate> for rustc_middle::ty::Predicate<'tcx> {
     fn sinto(&self, s: &S) -> Predicate {
-        Predicate {
-            kind: self.kind().sinto(s),
-            id: self.predicate_id(s),
-        }
+        let kind = self.kind().sinto(s);
+        let id = kind.predicate_id();
+        Predicate { kind, id }
     }
 }
 
@@ -3745,6 +3749,30 @@ pub enum BoundVariableKind {
 pub struct Binder<T> {
     pub value: T,
     pub bound_vars: Vec<BoundVariableKind>,
+}
+
+impl<T> Binder<T> {
+    pub fn as_ref(&self) -> Binder<&T> {
+        Binder {
+            value: &self.value,
+            bound_vars: self.bound_vars.clone(),
+        }
+    }
+
+    pub fn hax_skip_binder(self) -> T {
+        self.value
+    }
+
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Binder<U> {
+        Binder {
+            value: f(self.value),
+            bound_vars: self.bound_vars,
+        }
+    }
+
+    pub fn inner_mut(&mut self) -> &mut T {
+        &mut self.value
+    }
 }
 
 /// Reflects [`rustc_middle::ty::GenericPredicates`]
@@ -3990,21 +4018,6 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ident> for rustc_span::symbol::Ide
     fn sinto(&self, s: &S) -> Ident {
         (self.name.sinto(s), self.span.sinto(s))
     }
-}
-
-/// Reflects [`rustc_hir::WhereBoundPredicate`]
-#[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::WhereBoundPredicate<'tcx>, state: S as tcx)]
-#[derive_group(Serializers)]
-#[derive(Clone, Debug, JsonSchema)]
-pub struct WhereBoundPredicate<Body: IsBody> {
-    pub hir_id: HirId,
-    pub span: Span,
-    pub origin: PredicateOrigin,
-    pub bound_generic_params: Vec<GenericParam<Body>>,
-    pub bounded_ty: Ty,
-    // TODO: What to do with WhereBoundPredicate?
-    // pub bounds: GenericBounds,
 }
 
 /// Reflects [`rustc_hir::PredicateOrigin`]

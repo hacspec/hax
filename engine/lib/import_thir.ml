@@ -1073,7 +1073,7 @@ end) : EXPR = struct
         List.fold ~init ~f:browse_path path
     | Dyn -> Dyn
     | SelfImpl { path; _ } -> List.fold ~init:Self ~f:browse_path path
-    | Builtin { trait } -> Builtin (c_trait_ref span trait)
+    | Builtin { trait } -> Builtin (c_trait_ref span trait.value)
     | Todo str -> failwith @@ "impl_expr_atom: Todo " ^ str
 
   and c_generic_value (span : Thir.span) (ty : Thir.generic_arg) : generic_value

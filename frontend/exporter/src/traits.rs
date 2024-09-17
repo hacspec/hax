@@ -1,20 +1,20 @@
 use crate::prelude::*;
 
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: search_clause::PathChunk<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: search_clause::PathChunk<'tcx>, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
 pub enum ImplExprPathChunk {
     AssocItem {
         item: AssocItem,
         predicate: Binder<TraitPredicate>,
-        #[value(predicate.predicate_id(tcx))]
+        #[value(<_ as SInto<_, Clause>>::sinto(predicate, s).id)]
         predicate_id: PredicateId,
         index: usize,
     },
     Parent {
         predicate: Binder<TraitPredicate>,
-        #[value(predicate.predicate_id(tcx))]
+        #[value(<_ as SInto<_, Clause>>::sinto(predicate, s).id)]
         predicate_id: PredicateId,
         index: usize,
     },
@@ -49,7 +49,7 @@ pub enum ImplExprAtom {
     /// built-in implementation.
     Dyn,
     /// A built-in trait whose implementation is computed by the compiler, such as `Sync`.
-    Builtin { r#trait: TraitRef },
+    Builtin { r#trait: Binder<TraitRef> },
     /// Anything else. Currently used for trait upcasting and trait aliases.
     Todo(String),
 }
@@ -62,7 +62,7 @@ pub enum ImplExprAtom {
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
 pub struct ImplExpr {
     /// The trait this is an impl for.
-    pub r#trait: TraitRef,
+    pub r#trait: Binder<TraitRef>,
     /// The kind of implemention of the root of the tree.
     pub r#impl: ImplExprAtom,
     /// A list of `ImplExpr`s required to fully specify the trait references in `impl`.
@@ -77,16 +77,6 @@ pub mod rustc {
         use crate::prelude::UnderOwnerState;
         use crate::rustc_utils::*;
         use rustc_middle::ty::*;
-
-        fn predicates_to_poly_trait_predicates<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            predicates: impl Iterator<Item = Predicate<'tcx>>,
-            generics: GenericArgsRef<'tcx>,
-        ) -> impl Iterator<Item = PolyTraitPredicate<'tcx>> {
-            predicates
-                .map(move |pred| pred.kind().subst(tcx, generics))
-                .filter_map(|pred| pred.as_poly_trait_predicate())
-        }
 
         #[derive(Clone, Debug)]
         pub enum PathChunk<'tcx> {
@@ -157,6 +147,18 @@ pub mod rustc {
 
         #[extension_traits::extension(pub trait TraitPredicateExt)]
         impl<'tcx, S: UnderOwnerState<'tcx>> PolyTraitPredicate<'tcx> {
+            fn predicates_to_poly_trait_predicates(
+                self,
+                s: &S,
+                predicates: impl Iterator<Item = Predicate<'tcx>>,
+            ) -> impl Iterator<Item = PolyTraitPredicate<'tcx>> {
+                let tcx = s.base().tcx;
+                let generics = self.skip_binder().trait_ref.args;
+                predicates
+                    .filter_map(|pred| pred.as_trait_clause())
+                    .map(move |clause| clause.subst(tcx, generics))
+            }
+
             #[tracing::instrument(level = "trace", skip(s))]
             fn parents_trait_predicates(self, s: &S) -> Vec<(usize, PolyTraitPredicate<'tcx>)> {
                 let tcx = s.base().tcx;
@@ -164,13 +166,9 @@ pub mod rustc {
                     .predicates_defined_on_or_above(self.def_id())
                     .into_iter()
                     .map(|apred| apred.predicate);
-                predicates_to_poly_trait_predicates(
-                    tcx,
-                    predicates,
-                    self.skip_binder().trait_ref.args,
-                )
-                .enumerate()
-                .collect()
+                self.predicates_to_poly_trait_predicates(s, predicates)
+                    .enumerate()
+                    .collect()
             }
             #[tracing::instrument(level = "trace", skip(s))]
             fn associated_items_trait_predicates(
@@ -187,10 +185,9 @@ pub mod rustc {
                     .copied()
                     .map(|item| {
                         let bounds = tcx.item_bounds(item.def_id).map_bound(|clauses| {
-                            predicates_to_poly_trait_predicates(
-                                tcx,
+                            self.predicates_to_poly_trait_predicates(
+                                s,
                                 clauses.into_iter().map(|clause| clause.as_predicate()),
-                                self.skip_binder().trait_ref.args,
                             )
                             .enumerate()
                             .collect()
@@ -285,7 +282,7 @@ pub mod rustc {
     }
 
     impl ImplExprAtom {
-        fn with_args(self, args: Vec<ImplExpr>, r#trait: TraitRef) -> ImplExpr {
+        fn with_args(self, args: Vec<ImplExpr>, r#trait: Binder<TraitRef>) -> ImplExpr {
             ImplExpr {
                 r#impl: self,
                 args,
@@ -304,15 +301,11 @@ pub mod rustc {
         obligations
             .into_iter()
             .flat_map(|obligation| {
-                obligation
-                    .predicate
-                    .kind()
-                    .as_poly_trait_predicate()
-                    .map(|trait_ref| {
-                        trait_ref
-                            .map_bound(|p| p.trait_ref)
-                            .impl_expr(s, obligation.param_env)
-                    })
+                obligation.predicate.as_trait_clause().map(|trait_ref| {
+                    trait_ref
+                        .map_bound(|p| p.trait_ref)
+                        .impl_expr(s, obligation.param_env)
+                })
             })
             .collect()
     }
@@ -344,7 +337,6 @@ pub mod rustc {
         ) -> ImplExpr {
             use rustc_trait_selection::traits::*;
             let trait_ref: Binder<TraitRef> = self.sinto(s);
-            let trait_ref = trait_ref.value;
             match select_trait_candidate(s, param_env, *self) {
                 ImplSource::UserDefined(ImplSourceUserDefinedData {
                     impl_def_id,
@@ -379,7 +371,7 @@ pub mod rustc {
                             .with_args(impl_exprs(s, &nested), trait_ref)
                     } else {
                         ImplExprAtom::LocalBound {
-                            predicate_id: apred.predicate.predicate_id(s),
+                            predicate_id: apred.predicate.sinto(s).id,
                             r#trait,
                             path,
                         }
@@ -394,7 +386,7 @@ pub mod rustc {
                     let atom = match source {
                         BuiltinImplSource::Object { .. } => ImplExprAtom::Dyn,
                         _ => ImplExprAtom::Builtin {
-                            r#trait: self.skip_binder().sinto(s),
+                            r#trait: trait_ref.clone(),
                         },
                     };
                     atom.with_args(vec![], trait_ref)
@@ -420,7 +412,7 @@ pub mod rustc {
             // We don't want the id of the substituted clause id, but the
             // original clause id (with, i.e., `Self`)
             let s = &with_owner_id(s.base(), (), (), impl_trait_ref.def_id());
-            clause.predicate_id(s)
+            clause.sinto(s).id
         };
         let new_clause = clause.instantiate_supertrait(tcx, impl_trait_ref);
         let impl_expr = new_clause
