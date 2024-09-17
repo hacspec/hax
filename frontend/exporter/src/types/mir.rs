@@ -91,24 +91,107 @@ fn name_of_local(
 /// instead of an open list of types.
 pub mod mir_kinds {
     use crate::prelude::{derive_group, JsonSchema};
+
     #[derive_group(Serializers)]
     #[derive(Clone, Copy, Debug, JsonSchema)]
     pub struct Built;
+
+    #[derive_group(Serializers)]
+    #[derive(Clone, Copy, Debug, JsonSchema)]
+    pub struct Promoted;
+
+    #[derive_group(Serializers)]
+    #[derive(Clone, Copy, Debug, JsonSchema)]
+    pub struct Elaborated;
+
+    #[derive_group(Serializers)]
+    #[derive(Clone, Copy, Debug, JsonSchema)]
+    pub struct Optimized;
+
+    #[derive_group(Serializers)]
+    #[derive(Clone, Copy, Debug, JsonSchema)]
+    pub struct CTFE;
+
     #[cfg(feature = "rustc")]
     pub use rustc::*;
     #[cfg(feature = "rustc")]
     mod rustc {
         use super::*;
-        use rustc_data_structures::steal::Steal;
         use rustc_middle::mir::Body;
         use rustc_middle::ty::TyCtxt;
         use rustc_span::def_id::LocalDefId;
+
         pub trait IsMirKind: Clone {
-            fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>>;
+            // CPS to deal with stealable bodies cleanly.
+            fn get_mir<'tcx, T>(
+                tcx: TyCtxt<'tcx>,
+                id: LocalDefId,
+                f: impl FnOnce(&Body<'tcx>) -> T,
+            ) -> Option<T>;
         }
+
         impl IsMirKind for Built {
-            fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>> {
-                tcx.mir_built(id)
+            fn get_mir<'tcx, T>(
+                tcx: TyCtxt<'tcx>,
+                id: LocalDefId,
+                f: impl FnOnce(&Body<'tcx>) -> T,
+            ) -> Option<T> {
+                let steal = tcx.mir_built(id);
+                if steal.is_stolen() {
+                    None
+                } else {
+                    Some(f(&steal.borrow()))
+                }
+            }
+        }
+
+        impl IsMirKind for Promoted {
+            fn get_mir<'tcx, T>(
+                tcx: TyCtxt<'tcx>,
+                id: LocalDefId,
+                f: impl FnOnce(&Body<'tcx>) -> T,
+            ) -> Option<T> {
+                let (steal, _) = tcx.mir_promoted(id);
+                if steal.is_stolen() {
+                    None
+                } else {
+                    Some(f(&steal.borrow()))
+                }
+            }
+        }
+
+        impl IsMirKind for Elaborated {
+            fn get_mir<'tcx, T>(
+                tcx: TyCtxt<'tcx>,
+                id: LocalDefId,
+                f: impl FnOnce(&Body<'tcx>) -> T,
+            ) -> Option<T> {
+                let steal = tcx.mir_drops_elaborated_and_const_checked(id);
+                if steal.is_stolen() {
+                    None
+                } else {
+                    Some(f(&steal.borrow()))
+                }
+            }
+        }
+
+        impl IsMirKind for Optimized {
+            fn get_mir<'tcx, T>(
+                tcx: TyCtxt<'tcx>,
+                id: LocalDefId,
+                f: impl FnOnce(&Body<'tcx>) -> T,
+            ) -> Option<T> {
+                Some(f(tcx.optimized_mir(id)))
+            }
+        }
+
+        impl IsMirKind for CTFE {
+            fn get_mir<'tcx, T>(
+                tcx: TyCtxt<'tcx>,
+                id: LocalDefId,
+                f: impl FnOnce(&Body<'tcx>) -> T,
+            ) -> Option<T> {
+                Some(f(tcx.mir_for_ctfe(id)))
             }
         }
     }
