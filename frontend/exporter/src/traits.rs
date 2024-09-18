@@ -475,9 +475,15 @@ pub mod rustc {
                     ));
                 };
 
+                let Some(trait_clause) = apred.clause.as_trait_clause() else {
+                    return Err(format!(
+                        "Candidate origin for `{tref:?}` is a clause but not a \
+                        trait clause: `{:?}`",
+                        apred.clause
+                    ));
+                };
                 use rustc_middle::ty::ToPolyTraitRef;
-                // TODO: unwrap
-                let r#trait = apred.clause.as_trait_clause().unwrap().to_poly_trait_ref();
+                let r#trait = trait_clause.to_poly_trait_ref();
                 if apred.is_extra_self_predicate {
                     ImplExprAtom::SelfImpl { r#trait, path }
                         .with_args(impl_exprs(tcx, owner_id, &nested)?, *tref)
