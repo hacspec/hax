@@ -8,7 +8,6 @@ pub fn get_trait_info<'tcx, S: UnderOwnerState<'tcx>>(
     assoc: &rustc_middle::ty::AssocItem,
 ) -> ImplExpr {
     let tcx = s.base().tcx;
-    let param_env = s.param_env();
 
     // Retrieve the trait
     let tr_def_id = tcx.trait_of_item(assoc.def_id).unwrap();
@@ -19,15 +18,14 @@ pub fn get_trait_info<'tcx, S: UnderOwnerState<'tcx>>(
     let tr_ref = rustc_middle::ty::Binder::dummy(tr_ref);
 
     // Solve
-    solve_trait(s, param_env, tr_ref)
+    solve_trait(s, tr_ref)
 }
 
 pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
-    param_env: rustc_middle::ty::ParamEnv<'tcx>,
     trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
 ) -> ImplExpr {
-    let mut impl_expr = trait_ref.impl_expr(s, param_env);
+    let mut impl_expr: ImplExpr = trait_ref.sinto(s);
     // TODO: this is a bug in hax: in case of method calls, the trait ref
     // contains the generics for the trait ref + the generics for the method
     let trait_def_id: rustc_hir::def_id::DefId =
@@ -48,12 +46,12 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
 /// (instead of the ones returned by [TyCtxt::predicates_defined_on].
 pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
-    param_env: rustc_middle::ty::ParamEnv<'tcx>,
     def_id: rustc_hir::def_id::DefId,
     generics: rustc_middle::ty::GenericArgsRef<'tcx>,
     predicates: Option<rustc_middle::ty::GenericPredicates<'tcx>>,
 ) -> Vec<ImplExpr> {
     let tcx = s.base().tcx;
+    let param_env = s.param_env();
 
     let mut impl_exprs = Vec::new();
 
@@ -76,7 +74,7 @@ pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
                 // TODO: try `EarlyBinder::subst(...)`?
                 tcx.instantiate_and_normalize_erasing_regions(generics, param_env, value)
             });
-            let impl_expr = solve_trait(s, param_env, trait_ref);
+            let impl_expr = solve_trait(s, trait_ref);
             impl_exprs.push(impl_expr);
         }
     }
