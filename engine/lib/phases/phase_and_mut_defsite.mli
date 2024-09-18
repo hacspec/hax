@@ -14,4 +14,6 @@ module Make
   end
 
   include ImplemT.T
+
+  val x : < visit_F__block : unit -> _ -> _ ; .. > Ast_visitors.Make(F).map
 end

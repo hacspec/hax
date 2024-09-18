@@ -323,6 +323,13 @@ struct
   end
 
   include Implem
+  module V = Ast_visitors.Make (FA)
+
+  let x =
+    object
+      inherit [ < visit_F__block : unit -> _ -> _ ; .. > ] V.map
+    end
+
   module FA = FA
 end
 [@@add "subtype.ml"]
