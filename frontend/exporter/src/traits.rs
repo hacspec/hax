@@ -230,6 +230,7 @@ pub mod rustc {
                 tcx: TyCtxt<'tcx>,
                 predicates: impl Iterator<Item = Predicate<'tcx>>,
             ) -> impl Iterator<Item = PolyTraitPredicate<'tcx>> {
+                // Warning: this skip_binder seems dangerous
                 let generics = self.skip_binder().trait_ref.args;
                 predicates
                     .filter_map(|pred| pred.as_trait_clause())
@@ -345,6 +346,7 @@ pub mod rustc {
                     });
                 }
                 for (item, binder) in candidate.pred.associated_items_trait_predicates(tcx) {
+                    // Warning: this skip_binder seems dangerous
                     for (index, parent_pred) in binder.skip_binder().into_iter() {
                         let mut path = candidate.path.clone();
                         path.push(PathChunk::AssocItem {
@@ -620,8 +622,8 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ImplExpr>
     }
 }
 
-/// `impl_did`, susbts correctly `Self` from `clause` and (1) derive a
-/// `Clause` and (2) resolve an `ImplExpr`.
+/// Given a clause `clause` in the context of some impl block `impl_did`, susbts correctly `Self`
+/// from `clause` and (1) derive a `Clause` and (2) resolve an `ImplExpr`.
 #[cfg(feature = "rustc")]
 pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
