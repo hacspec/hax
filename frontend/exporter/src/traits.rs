@@ -89,7 +89,8 @@ pub mod rustc {
     {
         fn sinto(&self, s: &S) -> crate::ImplExpr {
             use crate::ParamEnv;
-            match impl_expr(s.base().tcx, s.owner_id(), s.param_env(), self) {
+            let warn = |msg: &str| crate::warning!(s, "{}", msg);
+            match impl_expr(s.base().tcx, s.owner_id(), s.param_env(), self, &warn) {
                 Ok(x) => x.sinto(s),
                 Err(e) => crate::fatal!(s, "{}", e),
             }
@@ -435,13 +436,14 @@ pub mod rustc {
         }
     }
 
-    #[tracing::instrument(level = "trace", skip(tcx))]
+    #[tracing::instrument(level = "trace", skip(tcx, warn))]
     fn impl_exprs<'tcx>(
         tcx: TyCtxt<'tcx>,
         owner_id: DefId,
         obligations: &Vec<
             rustc_trait_selection::traits::Obligation<'tcx, rustc_middle::ty::Predicate<'tcx>>,
         >,
+        warn: &impl Fn(&str),
     ) -> Result<Vec<ImplExpr<'tcx>>, String> {
         obligations
             .into_iter()
@@ -452,18 +454,21 @@ pub mod rustc {
                         owner_id,
                         obligation.param_env,
                         &trait_ref.map_bound(|p| p.trait_ref),
+                        warn,
                     )
                 })
             })
             .collect()
     }
 
-    #[tracing::instrument(level = "trace", skip(tcx, param_env))]
+    #[tracing::instrument(level = "trace", skip(tcx, param_env, warn))]
     fn impl_expr<'tcx>(
         tcx: TyCtxt<'tcx>,
         owner_id: DefId,
         param_env: rustc_middle::ty::ParamEnv<'tcx>,
         tref: &rustc_middle::ty::PolyTraitRef<'tcx>,
+        // Call back into hax-related code to display a nice warning.
+        warn: &impl Fn(&str),
     ) -> Result<ImplExpr<'tcx>, String> {
         use rustc_trait_selection::traits::*;
         let impl_source = copy_paste_from_rustc::codegen_select_candidate(tcx, (param_env, *tref))
@@ -477,17 +482,17 @@ pub mod rustc {
                 def_id: impl_def_id,
                 generics,
             }
-            .with_args(impl_exprs(tcx, owner_id, &nested)?, *tref),
+            .with_args(impl_exprs(tcx, owner_id, &nested, warn)?, *tref),
             ImplSource::Param(nested) => {
-                let nested = impl_exprs(tcx, owner_id, &nested)?;
+                let nested = impl_exprs(tcx, owner_id, &nested, warn)?;
                 let predicates = tcx.predicates_defined_on_or_above(owner_id);
                 let Some((path, apred)) =
                     search_clause::path_to(tcx, &predicates, tref.clone(), param_env)
                 else {
-                    return Ok(ImplExprAtom::Error(format!(
-                        "Could not find a clause for `{tref:?}` in the item parameters"
-                    ))
-                    .with_args(nested, *tref));
+                    let msg =
+                        format!("Could not find a clause for `{tref:?}` in the item parameters");
+                    warn(&msg);
+                    return Ok(ImplExprAtom::Error(msg).with_args(nested, *tref));
                 };
 
                 let Some(trait_clause) = apred.clause.as_trait_clause() else {
