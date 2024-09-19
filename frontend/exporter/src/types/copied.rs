@@ -3646,24 +3646,14 @@ impl<'tcx, S: UnderBinderState<'tcx>> SInto<S, ProjectionPredicate>
 {
     fn sinto(&self, s: &S) -> ProjectionPredicate {
         let tcx = s.base().tcx;
-        let AliasKind::Projection {
-            impl_expr,
-            assoc_item,
-        } = Alias::from(
-            s,
-            &rustc_middle::ty::AliasTyKind::Projection,
-            &self.projection_term.expect_ty(tcx),
-        )
-        .kind
-        else {
-            unreachable!()
-        };
+        let alias_ty = &self.projection_term.expect_ty(tcx);
+        let poly_trait_ref = s.binder().rebind(alias_ty.trait_ref(tcx));
         let Term::Ty(ty) = self.term.sinto(s) else {
             unreachable!()
         };
         ProjectionPredicate {
-            impl_expr,
-            assoc_item,
+            impl_expr: poly_trait_ref.sinto(s),
+            assoc_item: tcx.associated_item(alias_ty.def_id).sinto(s),
             ty,
         }
     }
