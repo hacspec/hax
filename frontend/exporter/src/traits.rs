@@ -58,6 +58,8 @@ pub enum ImplExprAtom {
     Dyn,
     /// A built-in trait whose implementation is computed by the compiler, such as `Sync`.
     Builtin { r#trait: Binder<TraitRef> },
+    /// An error happened while resolving traits.
+    Error(String),
 }
 
 /// An `ImplExpr` describes the full data of a trait implementation. Because of generics, this may
@@ -403,6 +405,8 @@ pub mod rustc {
         Dyn,
         /// A built-in trait whose implementation is computed by the compiler, such as `Sync`.
         Builtin { r#trait: PolyTraitRef<'tcx> },
+        /// An error happened while resolving traits.
+        Error(String),
     }
 
     #[derive(Clone, Debug)]
@@ -473,13 +477,15 @@ pub mod rustc {
             }
             .with_args(impl_exprs(tcx, owner_id, &nested)?, *tref),
             ImplSource::Param(nested) => {
+                let nested = impl_exprs(tcx, owner_id, &nested)?;
                 let predicates = tcx.predicates_defined_on_or_above(owner_id);
                 let Some((path, apred)) =
                     search_clause::path_to(tcx, &predicates, tref.clone(), param_env)
                 else {
-                    return Err(format!(
+                    return Ok(ImplExprAtom::Error(format!(
                         "Could not find a clause for `{tref:?}` in the item parameters"
-                    ));
+                    ))
+                    .with_args(nested, *tref));
                 };
 
                 let Some(trait_clause) = apred.clause.as_trait_clause() else {
@@ -493,15 +499,14 @@ pub mod rustc {
                 let r#trait = trait_clause.to_poly_trait_ref();
                 if apred.is_extra_self_predicate {
                     ImplExprAtom::SelfImpl { r#trait, path }
-                        .with_args(impl_exprs(tcx, owner_id, &nested)?, *tref)
                 } else {
                     ImplExprAtom::LocalBound {
                         predicate: apred.clause.as_predicate(),
                         r#trait,
                         path,
                     }
-                    .with_args(impl_exprs(tcx, owner_id, &nested)?, *tref)
                 }
+                .with_args(nested, *tref)
             }
             // We ignore the contained obligations here. For example for `(): Send`, the
             // obligations contained would be `[(): Send]`, which leads to an infinite loop. There
