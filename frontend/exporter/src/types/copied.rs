@@ -2706,12 +2706,7 @@ pub enum ExprKind {
     },
     #[custom_arm(FROM_TYPE::Closure(e) => {
         let (thir, expr_entrypoint) = get_thir(e.closure_id, gstate);
-        let s = &State {
-            thir: thir.clone(),
-            owner_id: gstate.owner_id(),
-            base: gstate.base(),
-            mir: (),
-        };
+        let s = &State::from_thir(gstate.base(), gstate.owner_id(), thir.clone());
         TO_TYPE::Closure {
             params: thir.params.raw.sinto(s),
             body: expr_entrypoint.sinto(s),
@@ -3369,10 +3364,11 @@ pub enum ItemKind<Body: IsBody> {
     TyAlias(
         #[map({
             let s = &State {
-                thir: s.clone(),
-                owner_id: s.owner_id(),
                 base: Base {ty_alias_mode: true, ..s.base()},
+                owner_id: s.owner_id(),
+                thir: (),
                 mir: (),
+                binder: (),
             };
             x.sinto(s)
         })]
@@ -3645,7 +3641,7 @@ pub struct ProjectionPredicate {
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ProjectionPredicate>
+impl<'tcx, S: UnderBinderState<'tcx>> SInto<S, ProjectionPredicate>
     for rustc_middle::ty::ProjectionPredicate<'tcx>
 {
     fn sinto(&self, s: &S) -> ProjectionPredicate {
@@ -3675,7 +3671,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ProjectionPredicate>
 
 /// Reflects [`rustc_middle::ty::ClauseKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::ClauseKind<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderBinderState<'tcx>>, from: rustc_middle::ty::ClauseKind<'tcx>, state: S as tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ClauseKind {
@@ -3799,11 +3795,20 @@ pub struct GenericPredicates {
 impl<'tcx, S: UnderOwnerState<'tcx>, T1, T2> SInto<S, Binder<T2>>
     for rustc_middle::ty::Binder<'tcx, T1>
 where
-    T1: SInto<S, T2> + Clone + rustc_middle::ty::TypeFoldable<rustc_middle::ty::TyCtxt<'tcx>>,
+    T1: SInto<StateWithBinder<'tcx>, T2>,
 {
     fn sinto(&self, s: &S) -> Binder<T2> {
         let bound_vars = self.bound_vars().sinto(s);
-        let value = self.as_ref().skip_binder().sinto(s);
+        let value = {
+            let under_binder_s = &State {
+                base: s.base(),
+                owner_id: s.owner_id(),
+                binder: self.as_ref().map_bound(|_| ()),
+                thir: (),
+                mir: (),
+            };
+            self.as_ref().skip_binder().sinto(under_binder_s)
+        };
         Binder { value, bound_vars }
     }
 }
@@ -3868,7 +3873,7 @@ pub enum ClosureKind {
 
 /// Reflects [`rustc_middle::ty::PredicateKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::PredicateKind<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderBinderState<'tcx>>, from: rustc_middle::ty::PredicateKind<'tcx>, state: S as tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PredicateKind {

@@ -30,7 +30,7 @@ pub struct FullDef {
     /// If this definition is a diagnostic item, we store the identifier, e.g. `box_new`.
     pub diagnostic_item: Option<String>,
     #[value({
-        let state_with_id = State { thir: (), mir: (), owner_id: *self, base: s.base() };
+        let state_with_id = State { thir: (), mir: (), owner_id: *self, binder: (), base: s.base() };
         s.base().tcx.def_kind(*self).sinto(&state_with_id)
     })]
     pub kind: FullDefKind,
