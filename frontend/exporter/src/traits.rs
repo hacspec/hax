@@ -311,7 +311,14 @@ pub mod rustc {
                 {
                     // If a predicate was already seen, we know it is
                     // not the one we are looking for: we skip it.
-                    if seen.contains(&candidate.pred) {
+                    if seen.iter().any(|seen_pred: &PolyTraitPredicate<'tcx>| {
+                        predicate_equality(
+                            tcx,
+                            candidate.pred.upcast(tcx),
+                            (*seen_pred).upcast(tcx),
+                            param_env,
+                        )
+                    }) {
                         continue;
                     }
                     seen.insert(candidate.pred);
