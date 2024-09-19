@@ -1787,52 +1787,24 @@ impl Alias {
         use rustc_type_ir::AliasTyKind as RustAliasKind;
         let kind = match alias_kind {
             RustAliasKind::Projection => {
-                use rustc_middle::ty::{Binder, EarlyBinder, TypeVisitableExt};
+                use rustc_middle::ty::{Binder, TypeVisitableExt};
                 let tcx = s.base().tcx;
                 let trait_ref = alias_ty.trait_ref(tcx);
-                // Sometimes (see
-                // https://github.com/hacspec/hax/issues/495), we get
-                // trait refs with escaping bound vars. Empirically,
-                // this seems fine. If we detect such a situation, we
-                // emit a warning with a lot of debugging information.
-                let poly_trait_ref = if trait_ref.has_escaping_bound_vars() {
-                    let trait_ref_and_generics = alias_ty.trait_ref_and_own_args(tcx);
-                    let rebased_generics =
-                        alias_ty.rebase_inherent_args_onto_impl(alias_ty.args, tcx);
-                    let norm_rebased_generics = tcx.try_instantiate_and_normalize_erasing_regions(
-                        rebased_generics,
-                        s.param_env(),
-                        EarlyBinder::bind(trait_ref),
-                    );
-                    let norm_generics = tcx.try_instantiate_and_normalize_erasing_regions(
-                        alias_ty.args,
-                        s.param_env(),
-                        EarlyBinder::bind(trait_ref),
-                    );
-                    let early_binder_generics =
-                        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                            EarlyBinder::bind(trait_ref).instantiate(tcx, alias_ty.args)
-                        }));
-                    let early_binder_rebased_generics =
-                        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                            EarlyBinder::bind(trait_ref).instantiate(tcx, alias_ty.args)
-                        }));
+                // We don't have a clear handling of binders here; this is causing a number of
+                // problems in Charon. In the meantime we return something well-formed when we
+                // can't trait-solve. See also https://github.com/hacspec/hax/issues/495.
+                if trait_ref.has_escaping_bound_vars() {
                     warning!(
                         s,
-                        "Hax frontend found a projected type with escaping bound vars. Please report https://github.com/hacspec/hax/issues/495";
-                        {alias_ty, alias_kind, trait_ref, trait_ref_and_generics, rebased_generics,
-                         norm_rebased_generics, norm_generics,
-                         early_binder_generics, early_binder_rebased_generics}
+                        "Hax frontend found a projected type with escaping bound vars. Please report https://github.com/hacspec/hax/issues/495"
                     );
-                    // we cannot use `Binder::dummy`: it asserts that
-                    // there is no any escaping bound vars
-                    Binder::bind_with_vars(trait_ref, rustc_middle::ty::List::empty())
+                    AliasKind::Opaque
                 } else {
-                    Binder::dummy(trait_ref)
-                };
-                AliasKind::Projection {
-                    assoc_item: tcx.associated_item(alias_ty.def_id).sinto(s),
-                    impl_expr: poly_trait_ref.sinto(s),
+                    let impl_expr = Binder::dummy(trait_ref).sinto(s);
+                    AliasKind::Projection {
+                        assoc_item: tcx.associated_item(alias_ty.def_id).sinto(s),
+                        impl_expr,
+                    }
                 }
             }
             RustAliasKind::Inherent => AliasKind::Inherent,
