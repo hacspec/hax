@@ -3729,6 +3729,10 @@ impl<T> Binder<T> {
         self.value
     }
 
+    pub fn hax_skip_binder_ref(&self) -> &T {
+        &self.value
+    }
+
     pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Binder<U> {
         Binder {
             value: f(self.value),
@@ -3738,6 +3742,10 @@ impl<T> Binder<T> {
 
     pub fn inner_mut(&mut self) -> &mut T {
         &mut self.value
+    }
+
+    pub fn rebind<U>(&self, value: U) -> Binder<U> {
+        self.as_ref().map(|_| value)
     }
 }
 
