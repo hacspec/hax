@@ -44,6 +44,7 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
 ///
 /// [predicates]: optional predicates, in case we want to solve custom predicates
 /// (instead of the ones returned by [TyCtxt::predicates_defined_on].
+#[tracing::instrument(level = "trace", skip(s))]
 pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     def_id: rustc_hir::def_id::DefId,

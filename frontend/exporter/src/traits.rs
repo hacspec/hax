@@ -87,7 +87,12 @@ pub mod rustc {
     impl<'tcx, S: crate::UnderOwnerState<'tcx>> crate::SInto<S, crate::ImplExpr>
         for rustc_middle::ty::PolyTraitRef<'tcx>
     {
+        #[tracing::instrument(level = "trace", skip(s))]
         fn sinto(&self, s: &S) -> crate::ImplExpr {
+            tracing::trace!(
+                "Enters sinto ({})",
+                stringify!(rustc_middle::ty::PolyTraitRef<'tcx>)
+            );
             use crate::ParamEnv;
             let warn = |msg: &str| crate::warning!(s, "{}", msg);
             match impl_expr(s.base().tcx, s.owner_id(), s.param_env(), self, &warn) {
