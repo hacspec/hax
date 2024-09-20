@@ -136,38 +136,45 @@ pub mod rustc {
             impl Iterator<Item = AnnotatedClause<'tcx>>,
             Option<rustc_span::def_id::DefId>,
         ) {
-            let with_self = self.predicates_of(did);
-            let parent = with_self.parent;
-            let with_self = {
-                let extra_predicates: Vec<(Clause<'_>, rustc_span::Span)> =
-                    if rustc_hir::def::DefKind::OpaqueTy == self.def_kind(did) {
-                        // An opaque type (e.g. `impl Trait`) provides
-                        // predicates by itself: we need to account for them.
-                        self.explicit_item_bounds(did)
-                            .skip_binder() // Skips an `EarlyBinder`, likely for GATs
-                            .iter()
-                            .copied()
-                            .collect()
-                    } else {
-                        vec![]
-                    };
-                with_self.predicates.iter().copied().chain(extra_predicates)
+            let tcx = self;
+            let predicates = tcx.predicates_defined_on(did);
+            let parent = predicates.parent;
+
+            let predicates_defined_on = predicates.predicates;
+            let extra_predicates: Vec<(Clause<'_>, rustc_span::Span)> =
+                if rustc_hir::def::DefKind::OpaqueTy == self.def_kind(did) {
+                    // An opaque type (e.g. `impl Trait`) provides
+                    // predicates by itself: we need to account for them.
+                    self.explicit_item_bounds(did)
+                        .skip_binder() // Skips an `EarlyBinder`, likely for GATs
+                        .iter()
+                        .copied()
+                        .collect()
+                } else {
+                    vec![]
+                };
+            let self_predicate = if tcx.is_trait(did) {
+                Some(AnnotatedClause {
+                    is_extra_self_predicate: true,
+                    // Copied from the code of `tcx.predicates_of()`.
+                    clause: TraitRef::identity(tcx, did).upcast(tcx),
+                    span: rustc_span::DUMMY_SP,
+                })
+            } else {
+                None
             };
-            let without_self: Vec<Clause<'_>> = self
-                .predicates_defined_on(did)
-                .predicates
+
+            let predicates = predicates_defined_on
                 .iter()
                 .copied()
-                .map(|(clause, _)| clause)
-                .collect();
-            (
-                with_self.map(move |(clause, span)| AnnotatedClause {
-                    is_extra_self_predicate: !without_self.contains(&clause),
+                .chain(extra_predicates)
+                .map(|(clause, span)| AnnotatedClause {
+                    is_extra_self_predicate: false,
                     clause,
                     span,
-                }),
-                parent,
-            )
+                })
+                .chain(self_predicate);
+            (predicates, parent)
         }
     }
 

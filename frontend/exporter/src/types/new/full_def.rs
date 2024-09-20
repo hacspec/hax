@@ -79,11 +79,10 @@ pub enum FullDefKind {
         predicates: GenericPredicates,
         // `predicates_of` has the special `Self: Trait` clause as its last element.
         #[value({
-            let (clause, _) = s.base().tcx.predicates_of(s.owner_id()).predicates.last().unwrap();
-            let Some(ty::ClauseKind::Trait(trait_ref)) = clause.kind().no_bound_vars() else {
-                panic!()
-            };
-            trait_ref.sinto(s)
+            use ty::Upcast;
+            let tcx = s.base().tcx;
+            let pred: ty::TraitPredicate = ty::TraitRef::identity(tcx, s.owner_id()).upcast(tcx);
+            pred.sinto(s)
         })]
         self_predicate: TraitPredicate,
         /// Associated items, in definition order.
