@@ -182,6 +182,7 @@ pub mod rustc {
     pub(crate) mod search_clause {
         use super::{AnnotatedClause, Path, PathChunk, TyCtxtExtPredOrAbove};
         use crate::rustc_utils::*;
+        use rustc_hir::def_id::DefId;
         use rustc_middle::ty::*;
 
         /// Custom equality on `Predicate`s.
@@ -256,8 +257,8 @@ pub mod rustc {
                 tcx: TyCtxt<'tcx>,
             ) -> Vec<(usize, PolyTraitPredicate<'tcx>)> {
                 let predicates = tcx
-                    .predicates_defined_on_or_above(self.def_id())
-                    .into_iter()
+                    .annotated_predicates_of(self.def_id())
+                    .0
                     .map(|apred| apred.clause.as_predicate());
                 self.predicates_to_poly_trait_predicates(tcx, predicates)
                     .enumerate()
@@ -293,9 +294,9 @@ pub mod rustc {
         #[tracing::instrument(level = "trace", skip(tcx, param_env))]
         pub(super) fn path_to<'tcx>(
             tcx: TyCtxt<'tcx>,
-            starting_points: &[AnnotatedClause<'tcx>],
-            target: PolyTraitRef<'tcx>,
+            owner_id: DefId,
             param_env: rustc_middle::ty::ParamEnv<'tcx>,
+            target: PolyTraitRef<'tcx>,
         ) -> Option<(Path<'tcx>, AnnotatedClause<'tcx>)> {
             /// A candidate projects `self` along a path reaching some
             /// predicate. A candidate is selected when its predicate
@@ -308,14 +309,15 @@ pub mod rustc {
             }
 
             use std::collections::VecDeque;
-            let mut candidates: VecDeque<Candidate<'tcx>> = starting_points
+            let mut candidates: VecDeque<Candidate<'tcx>> = tcx
+                .predicates_defined_on_or_above(owner_id)
                 .into_iter()
                 .filter_map(|pred| {
-                    let clause = pred.clause.as_trait_clause();
-                    clause.map(|clause| Candidate {
+                    let clause = pred.clause.as_trait_clause()?;
+                    Some(Candidate {
                         path: vec![],
                         pred: clause,
-                        origin: *pred,
+                        origin: pred,
                     })
                 })
                 .collect();
@@ -497,9 +499,8 @@ pub mod rustc {
             .with_args(impl_exprs(tcx, owner_id, &nested, warn)?, *tref),
             ImplSource::Param(nested) => {
                 let nested = impl_exprs(tcx, owner_id, &nested, warn)?;
-                let predicates = tcx.predicates_defined_on_or_above(owner_id);
                 let Some((path, apred)) =
-                    search_clause::path_to(tcx, &predicates, tref.clone(), param_env)
+                    search_clause::path_to(tcx, owner_id, param_env, tref.clone())
                 else {
                     let msg =
                         format!("Could not find a clause for `{tref:?}` in the item parameters");
