@@ -103,10 +103,9 @@ pub mod rustc {
     }
 
     #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-    pub struct AnnotatedClause<'tcx> {
+    pub struct AnnotatedTraitPred<'tcx> {
         pub is_extra_self_predicate: bool,
-        /// Note: they are all actually `Clause`s.
-        pub clause: Clause<'tcx>,
+        pub clause: PolyTraitPredicate<'tcx>,
         pub span: rustc_span::Span,
     }
 
@@ -118,7 +117,7 @@ pub mod rustc {
         fn predicates_defined_on_or_above(
             self,
             did: rustc_span::def_id::DefId,
-        ) -> Vec<AnnotatedClause<'tcx>> {
+        ) -> Vec<AnnotatedTraitPred<'tcx>> {
             let mut next_did = Some(did);
             let mut predicates = vec![];
             while let Some(did) = next_did {
@@ -133,7 +132,7 @@ pub mod rustc {
             self,
             did: rustc_span::def_id::DefId,
         ) -> (
-            Vec<AnnotatedClause<'tcx>>,
+            Vec<AnnotatedTraitPred<'tcx>>,
             Option<rustc_span::def_id::DefId>,
         ) {
             use rustc_hir::def::DefKind;
@@ -145,10 +144,13 @@ pub mod rustc {
                 .predicates
                 .iter()
                 .copied()
-                .map(|(clause, span)| AnnotatedClause {
-                    is_extra_self_predicate: false,
-                    clause,
-                    span,
+                .filter_map(|(clause, span)| {
+                    let clause = clause.as_trait_clause()?;
+                    Some(AnnotatedTraitPred {
+                        is_extra_self_predicate: false,
+                        clause,
+                        span,
+                    })
                 })
                 .collect();
 
@@ -161,19 +163,23 @@ pub mod rustc {
                             .skip_binder() // Skips an `EarlyBinder`, likely for GATs
                             .iter()
                             .copied()
-                            .map(|(clause, span)| AnnotatedClause {
-                                is_extra_self_predicate: false,
-                                clause,
-                                span,
+                            .filter_map(|(clause, span)| {
+                                let clause = clause.as_trait_clause()?;
+                                Some(AnnotatedTraitPred {
+                                    is_extra_self_predicate: false,
+                                    clause,
+                                    span,
+                                })
                             }),
                     )
                 }
                 DefKind::Trait => {
                     // Add the special `Self: Trait` clause.
-                    predicates.push(AnnotatedClause {
+                    // Copied from the code of `tcx.predicates_of()`.
+                    let self_clause: Clause<'_> = TraitRef::identity(tcx, did).upcast(tcx);
+                    predicates.push(AnnotatedTraitPred {
                         is_extra_self_predicate: true,
-                        // Copied from the code of `tcx.predicates_of()`.
-                        clause: TraitRef::identity(tcx, did).upcast(tcx),
+                        clause: self_clause.as_trait_clause().unwrap(),
                         span: rustc_span::DUMMY_SP,
                     })
                 }
@@ -186,7 +192,7 @@ pub mod rustc {
 
     // FIXME: this has visibility `pub(crate)` only because of https://github.com/rust-lang/rust/issues/83049
     pub(crate) mod search_clause {
-        use super::{AnnotatedClause, Path, PathChunk, TyCtxtExtPredOrAbove};
+        use super::{AnnotatedTraitPred, Path, PathChunk, TyCtxtExtPredOrAbove};
         use rustc_hir::def_id::DefId;
         use rustc_middle::ty::*;
 
@@ -245,31 +251,24 @@ pub mod rustc {
         #[extension_traits::extension(pub trait TraitPredicateExt)]
         impl<'tcx> PolyTraitPredicate<'tcx> {
             #[tracing::instrument(level = "trace", skip(tcx))]
-            fn parents_trait_predicates(
-                self,
-                tcx: TyCtxt<'tcx>,
-            ) -> Vec<(usize, PolyTraitPredicate<'tcx>)> {
-                let self_trait_ref = self.map_bound(|pred| pred.trait_ref);
+            fn parents_trait_predicates(self, tcx: TyCtxt<'tcx>) -> Vec<PolyTraitPredicate<'tcx>> {
+                let self_trait_ref = self.to_poly_trait_ref();
                 tcx.annotated_predicates_of(self.def_id())
                     .0
                     .into_iter()
-                    .map(|apred| apred.clause)
+                    .map(|apred| apred.clause.upcast(tcx))
                     // Substitute with the `self` args so that the clause makes sense in the
                     // outside context.
-                    .map(|clause| clause.instantiate_supertrait(tcx, self_trait_ref))
+                    .map(|clause: Clause<'_>| clause.instantiate_supertrait(tcx, self_trait_ref))
                     .filter_map(|pred| pred.as_trait_clause())
-                    .enumerate()
                     .collect()
             }
             #[tracing::instrument(level = "trace", skip(tcx))]
             fn associated_items_trait_predicates(
                 self,
                 tcx: TyCtxt<'tcx>,
-            ) -> Vec<(
-                AssocItem,
-                EarlyBinder<'tcx, Vec<(usize, PolyTraitPredicate<'tcx>)>>,
-            )> {
-                let self_trait_ref = self.map_bound(|pred| pred.trait_ref);
+            ) -> Vec<(AssocItem, EarlyBinder<'tcx, Vec<PolyTraitPredicate<'tcx>>>)> {
+                let self_trait_ref = self.to_poly_trait_ref();
                 tcx.associated_items(self.def_id())
                     .in_definition_order()
                     .filter(|item| item.kind == AssocKind::Type)
@@ -282,7 +281,6 @@ pub mod rustc {
                                 // in the outside context.
                                 .map(|clause| clause.instantiate_supertrait(tcx, self_trait_ref))
                                 .filter_map(|pred| pred.as_trait_clause())
-                                .enumerate()
                                 .collect()
                         });
                         (item, bounds)
@@ -297,7 +295,7 @@ pub mod rustc {
             owner_id: DefId,
             param_env: rustc_middle::ty::ParamEnv<'tcx>,
             target: PolyTraitRef<'tcx>,
-        ) -> Option<(Path<'tcx>, AnnotatedClause<'tcx>)> {
+        ) -> Option<(Path<'tcx>, AnnotatedTraitPred<'tcx>)> {
             /// A candidate projects `self` along a path reaching some
             /// predicate. A candidate is selected when its predicate
             /// is the one expected, aka `target`.
@@ -305,20 +303,17 @@ pub mod rustc {
             struct Candidate<'tcx> {
                 path: Path<'tcx>,
                 pred: PolyTraitPredicate<'tcx>,
-                origin: AnnotatedClause<'tcx>,
+                origin: AnnotatedTraitPred<'tcx>,
             }
 
             use std::collections::VecDeque;
             let mut candidates: VecDeque<Candidate<'tcx>> = tcx
                 .predicates_defined_on_or_above(owner_id)
                 .into_iter()
-                .filter_map(|pred| {
-                    let clause = pred.clause.as_trait_clause()?;
-                    Some(Candidate {
-                        path: vec![],
-                        pred: clause,
-                        origin: pred,
-                    })
+                .map(|initial_clause| Candidate {
+                    path: vec![],
+                    pred: initial_clause.clause,
+                    origin: initial_clause,
                 })
                 .collect();
 
@@ -348,7 +343,12 @@ pub mod rustc {
                 }
 
                 // otherwise, we add to the queue all paths reachable from the candidate
-                for (index, parent_pred) in candidate.pred.parents_trait_predicates(tcx) {
+                for (index, parent_pred) in candidate
+                    .pred
+                    .parents_trait_predicates(tcx)
+                    .into_iter()
+                    .enumerate()
+                {
                     let mut path = candidate.path.clone();
                     path.push(PathChunk::Parent {
                         predicate: parent_pred,
@@ -362,7 +362,7 @@ pub mod rustc {
                 }
                 for (item, binder) in candidate.pred.associated_items_trait_predicates(tcx) {
                     // This `skip_binder` is for an early binder and skips GAT parameters.
-                    for (index, parent_pred) in binder.skip_binder().into_iter() {
+                    for (index, parent_pred) in binder.skip_binder().into_iter().enumerate() {
                         let mut path = candidate.path.clone();
                         path.push(PathChunk::AssocItem {
                             item,
@@ -489,20 +489,12 @@ pub mod rustc {
             ImplSource::Param(_) => {
                 match search_clause::path_to(tcx, owner_id, param_env, tref.clone()) {
                     Some((path, apred)) => {
-                        let Some(trait_clause) = apred.clause.as_trait_clause() else {
-                            return Err(format!(
-                                "Candidate origin for `{tref:?}` is a clause but not a \
-                                trait clause: `{:?}`",
-                                apred.clause
-                            ));
-                        };
-                        use rustc_middle::ty::ToPolyTraitRef;
-                        let r#trait = trait_clause.to_poly_trait_ref();
+                        let r#trait = apred.clause.to_poly_trait_ref();
                         if apred.is_extra_self_predicate {
                             ImplExprAtom::SelfImpl { r#trait, path }
                         } else {
                             ImplExprAtom::LocalBound {
-                                predicate: apred.clause.as_predicate(),
+                                predicate: apred.clause.upcast(tcx),
                                 r#trait,
                                 path,
                             }
