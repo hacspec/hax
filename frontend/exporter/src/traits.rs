@@ -133,47 +133,53 @@ pub mod rustc {
             self,
             did: rustc_span::def_id::DefId,
         ) -> (
-            impl Iterator<Item = AnnotatedClause<'tcx>>,
+            Vec<AnnotatedClause<'tcx>>,
             Option<rustc_span::def_id::DefId>,
         ) {
+            use rustc_hir::def::DefKind;
             let tcx = self;
             let predicates = tcx.predicates_defined_on(did);
             let parent = predicates.parent;
 
-            let predicates_defined_on = predicates.predicates;
-            let extra_predicates: Vec<(Clause<'_>, rustc_span::Span)> =
-                if rustc_hir::def::DefKind::OpaqueTy == self.def_kind(did) {
-                    // An opaque type (e.g. `impl Trait`) provides
-                    // predicates by itself: we need to account for them.
-                    self.explicit_item_bounds(did)
-                        .skip_binder() // Skips an `EarlyBinder`, likely for GATs
-                        .iter()
-                        .copied()
-                        .collect()
-                } else {
-                    vec![]
-                };
-            let self_predicate = if tcx.is_trait(did) {
-                Some(AnnotatedClause {
-                    is_extra_self_predicate: true,
-                    // Copied from the code of `tcx.predicates_of()`.
-                    clause: TraitRef::identity(tcx, did).upcast(tcx),
-                    span: rustc_span::DUMMY_SP,
-                })
-            } else {
-                None
-            };
-
-            let predicates = predicates_defined_on
+            let mut predicates: Vec<_> = predicates
+                .predicates
                 .iter()
                 .copied()
-                .chain(extra_predicates)
                 .map(|(clause, span)| AnnotatedClause {
                     is_extra_self_predicate: false,
                     clause,
                     span,
                 })
-                .chain(self_predicate);
+                .collect();
+
+            match tcx.def_kind(did) {
+                DefKind::OpaqueTy => {
+                    // An opaque type (e.g. `impl Trait`) provides predicates by itself: we need to
+                    // account for them.
+                    predicates.extend(
+                        self.explicit_item_bounds(did)
+                            .skip_binder() // Skips an `EarlyBinder`, likely for GATs
+                            .iter()
+                            .copied()
+                            .map(|(clause, span)| AnnotatedClause {
+                                is_extra_self_predicate: false,
+                                clause,
+                                span,
+                            }),
+                    )
+                }
+                DefKind::Trait => {
+                    // Add the special `Self: Trait` clause.
+                    predicates.push(AnnotatedClause {
+                        is_extra_self_predicate: true,
+                        // Copied from the code of `tcx.predicates_of()`.
+                        clause: TraitRef::identity(tcx, did).upcast(tcx),
+                        span: rustc_span::DUMMY_SP,
+                    })
+                }
+                _ => {}
+            }
+
             (predicates, parent)
         }
     }
@@ -246,6 +252,7 @@ pub mod rustc {
                 let self_trait_ref = self.map_bound(|pred| pred.trait_ref);
                 tcx.annotated_predicates_of(self.def_id())
                     .0
+                    .into_iter()
                     .map(|apred| apred.clause)
                     // Substitute with the `self` args so that the clause makes sense in the
                     // outside context.
