@@ -181,7 +181,6 @@ pub mod rustc {
     // FIXME: this has visibility `pub(crate)` only because of https://github.com/rust-lang/rust/issues/83049
     pub(crate) mod search_clause {
         use super::{AnnotatedClause, Path, PathChunk, TyCtxtExtPredOrAbove};
-        use crate::rustc_utils::*;
         use rustc_hir::def_id::DefId;
         use rustc_middle::ty::*;
 
@@ -239,28 +238,19 @@ pub mod rustc {
 
         #[extension_traits::extension(pub trait TraitPredicateExt)]
         impl<'tcx> PolyTraitPredicate<'tcx> {
-            fn predicates_to_poly_trait_predicates(
-                self,
-                tcx: TyCtxt<'tcx>,
-                predicates: impl Iterator<Item = Predicate<'tcx>>,
-            ) -> impl Iterator<Item = PolyTraitPredicate<'tcx>> {
-                // Warning: this skip_binder seems dangerous
-                let generics = self.skip_binder().trait_ref.args;
-                predicates
-                    .filter_map(|pred| pred.as_trait_clause())
-                    .map(move |clause| clause.subst(tcx, generics))
-            }
-
             #[tracing::instrument(level = "trace", skip(tcx))]
             fn parents_trait_predicates(
                 self,
                 tcx: TyCtxt<'tcx>,
             ) -> Vec<(usize, PolyTraitPredicate<'tcx>)> {
-                let predicates = tcx
-                    .annotated_predicates_of(self.def_id())
+                let self_trait_ref = self.map_bound(|pred| pred.trait_ref);
+                tcx.annotated_predicates_of(self.def_id())
                     .0
-                    .map(|apred| apred.clause.as_predicate());
-                self.predicates_to_poly_trait_predicates(tcx, predicates)
+                    .map(|apred| apred.clause)
+                    // Substitute with the `self` args so that the clause makes sense in the
+                    // outside context.
+                    .map(|clause| clause.instantiate_supertrait(tcx, self_trait_ref))
+                    .filter_map(|pred| pred.as_trait_clause())
                     .enumerate()
                     .collect()
             }
@@ -272,18 +262,21 @@ pub mod rustc {
                 AssocItem,
                 EarlyBinder<'tcx, Vec<(usize, PolyTraitPredicate<'tcx>)>>,
             )> {
+                let self_trait_ref = self.map_bound(|pred| pred.trait_ref);
                 tcx.associated_items(self.def_id())
                     .in_definition_order()
                     .filter(|item| item.kind == AssocKind::Type)
                     .copied()
                     .map(|item| {
                         let bounds = tcx.item_bounds(item.def_id).map_bound(|clauses| {
-                            self.predicates_to_poly_trait_predicates(
-                                tcx,
-                                clauses.into_iter().map(|clause| clause.as_predicate()),
-                            )
-                            .enumerate()
-                            .collect()
+                            clauses
+                                .iter()
+                                // Substitute with the `self` args so that the clause makes sense
+                                // in the outside context.
+                                .map(|clause| clause.instantiate_supertrait(tcx, self_trait_ref))
+                                .filter_map(|pred| pred.as_trait_clause())
+                                .enumerate()
+                                .collect()
                         });
                         (item, bounds)
                     })
@@ -361,7 +354,7 @@ pub mod rustc {
                     });
                 }
                 for (item, binder) in candidate.pred.associated_items_trait_predicates(tcx) {
-                    // Warning: this skip_binder seems dangerous
+                    // This `skip_binder` is for an early binder and skips GAT parameters.
                     for (index, parent_pred) in binder.skip_binder().into_iter() {
                         let mut path = candidate.path.clone();
                         path.push(PathChunk::AssocItem {
