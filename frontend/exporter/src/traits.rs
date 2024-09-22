@@ -436,27 +436,14 @@ pub mod rustc {
         pub args: Vec<Self>,
     }
 
-    impl<'tcx> ImplExprAtom<'tcx> {
-        fn with_args(
-            self,
-            args: Vec<ImplExpr<'tcx>>,
-            r#trait: PolyTraitRef<'tcx>,
-        ) -> ImplExpr<'tcx> {
-            ImplExpr {
-                r#impl: self,
-                args,
-                r#trait,
-            }
-        }
-    }
-
     #[tracing::instrument(level = "trace", skip(tcx, warn))]
     fn impl_exprs<'tcx>(
         tcx: TyCtxt<'tcx>,
         owner_id: DefId,
-        obligations: &Vec<
-            rustc_trait_selection::traits::Obligation<'tcx, rustc_middle::ty::Predicate<'tcx>>,
-        >,
+        obligations: &[rustc_trait_selection::traits::Obligation<
+            'tcx,
+            rustc_middle::ty::Predicate<'tcx>,
+        >],
         warn: &impl Fn(&str),
     ) -> Result<Vec<ImplExpr<'tcx>>, String> {
         obligations
@@ -484,63 +471,73 @@ pub mod rustc {
         // Call back into hax-related code to display a nice warning.
         warn: &impl Fn(&str),
     ) -> Result<ImplExpr<'tcx>, String> {
-        use rustc_trait_selection::traits::*;
+        use rustc_trait_selection::traits::{
+            BuiltinImplSource, ImplSource, ImplSourceUserDefinedData,
+        };
+
         let impl_source = copy_paste_from_rustc::codegen_select_candidate(tcx, (param_env, *tref))
             .map_err(|e| format!("Cannot handle error `{e:?}` selecting `{tref:?}`"))?;
-        Ok(match impl_source {
+        let atom = match impl_source {
             ImplSource::UserDefined(ImplSourceUserDefinedData {
                 impl_def_id,
                 args: generics,
-                nested,
+                ..
             }) => ImplExprAtom::Concrete {
                 def_id: impl_def_id,
                 generics,
-            }
-            .with_args(impl_exprs(tcx, owner_id, &nested, warn)?, *tref),
-            ImplSource::Param(nested) => {
-                let nested = impl_exprs(tcx, owner_id, &nested, warn)?;
-                let Some((path, apred)) =
-                    search_clause::path_to(tcx, owner_id, param_env, tref.clone())
-                else {
-                    let msg =
-                        format!("Could not find a clause for `{tref:?}` in the item parameters");
-                    warn(&msg);
-                    return Ok(ImplExprAtom::Error(msg).with_args(nested, *tref));
-                };
-
-                let Some(trait_clause) = apred.clause.as_trait_clause() else {
-                    return Err(format!(
-                        "Candidate origin for `{tref:?}` is a clause but not a \
-                        trait clause: `{:?}`",
-                        apred.clause
-                    ));
-                };
-                use rustc_middle::ty::ToPolyTraitRef;
-                let r#trait = trait_clause.to_poly_trait_ref();
-                if apred.is_extra_self_predicate {
-                    ImplExprAtom::SelfImpl { r#trait, path }
-                } else {
-                    ImplExprAtom::LocalBound {
-                        predicate: apred.clause.as_predicate(),
-                        r#trait,
-                        path,
+            },
+            ImplSource::Param(_) => {
+                match search_clause::path_to(tcx, owner_id, param_env, tref.clone()) {
+                    Some((path, apred)) => {
+                        let Some(trait_clause) = apred.clause.as_trait_clause() else {
+                            return Err(format!(
+                                "Candidate origin for `{tref:?}` is a clause but not a \
+                                trait clause: `{:?}`",
+                                apred.clause
+                            ));
+                        };
+                        use rustc_middle::ty::ToPolyTraitRef;
+                        let r#trait = trait_clause.to_poly_trait_ref();
+                        if apred.is_extra_self_predicate {
+                            ImplExprAtom::SelfImpl { r#trait, path }
+                        } else {
+                            ImplExprAtom::LocalBound {
+                                predicate: apred.clause.as_predicate(),
+                                r#trait,
+                                path,
+                            }
+                        }
+                    }
+                    None => {
+                        let msg = format!(
+                            "Could not find a clause for `{tref:?}` in the item parameters"
+                        );
+                        warn(&msg);
+                        ImplExprAtom::Error(msg)
                     }
                 }
-                .with_args(nested, *tref)
             }
+            ImplSource::Builtin(BuiltinImplSource::Object { .. }, _) => ImplExprAtom::Dyn,
+            ImplSource::Builtin(_, _) => ImplExprAtom::Builtin {
+                r#trait: tref.clone(),
+            },
+        };
+
+        let nested = match &impl_source {
+            ImplSource::UserDefined(ImplSourceUserDefinedData { nested, .. }) => nested.as_slice(),
+            ImplSource::Param(nested) => nested.as_slice(),
             // We ignore the contained obligations here. For example for `(): Send`, the
             // obligations contained would be `[(): Send]`, which leads to an infinite loop. There
-            // might be important obligation shere inother cases; we'll have to see if that comes
+            // might be important obligations here in other cases; we'll have to see if that comes
             // up.
-            ImplSource::Builtin(source, _ignored) => {
-                let atom = match source {
-                    BuiltinImplSource::Object { .. } => ImplExprAtom::Dyn,
-                    _ => ImplExprAtom::Builtin {
-                        r#trait: tref.clone(),
-                    },
-                };
-                atom.with_args(vec![], *tref)
-            }
+            ImplSource::Builtin(_, _ignored) => &[],
+        };
+        let nested = impl_exprs(tcx, owner_id, nested, warn)?;
+
+        Ok(ImplExpr {
+            r#impl: atom,
+            args: nested,
+            r#trait: *tref,
         })
     }
 
