@@ -45,7 +45,7 @@ val fold_enumerated_slice
   (s: t_Slice t)
   (inv: acc_t -> (i:usize{v i <= v (length s)}) -> Type0)
   (init: acc_t {inv init (sz 0)})
-  (f: (acc:acc_t -> i:(usize & t) {v (fst i) < v (length s) /\ inv acc  (fst i)}
+  (f: (acc:acc_t -> i:(usize & t) {v (fst i) < v (length s) /\ snd i == Seq.index s (v (fst i)) /\ inv acc  (fst i)}
                  -> acc':acc_t    {v (fst i) < v (length s) /\ inv acc' (fst i)}))
   : result: acc_t {inv result (length s)}
 
