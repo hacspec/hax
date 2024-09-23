@@ -35,11 +35,11 @@ open FStar.Mul
 class t_BlockSizeUser (v_Self: Type0) = { f_BlockSize:Type0 }
 
 class t_ParBlocksSizeUser (v_Self: Type0) = {
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_10960599340086055385:t_BlockSizeUser v_Self
+  [@@@ FStar.Tactics.Typeclasses.tcinstance]_super_10960599340086055385:t_BlockSizeUser v_Self
 }
 
 class t_BlockBackend (v_Self: Type0) = {
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_15949286759387124191:t_ParBlocksSizeUser v_Self;
+  [@@@ FStar.Tactics.Typeclasses.tcinstance]_super_15949286759387124191:t_ParBlocksSizeUser v_Self;
   f_proc_block_pre:Alloc.Vec.t_Vec _ Alloc.Alloc.t_Global -> Type0;
   f_proc_block_post:Alloc.Vec.t_Vec _ Alloc.Alloc.t_Global -> Prims.unit -> Type0;
   f_proc_block:x0: Alloc.Vec.t_Vec _ Alloc.Alloc.t_Global
@@ -329,7 +329,7 @@ let impl (#v_TypeArg: Type0) (v_ConstArg: usize) : t_Trait Prims.unit v_TypeArg 
   }
 
 class t_SubTrait (v_Self: Type0) (v_TypeArg: Type0) (v_ConstArg: usize) = {
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_8779313392680198588:t_Trait v_Self
+  [@@@ FStar.Tactics.Typeclasses.tcinstance]_super_8779313392680198588:t_Trait v_Self
     v_TypeArg
     v_ConstArg;
   f_AssocType:Type0;
@@ -458,7 +458,7 @@ class t_Trait1 (v_Self: Type0) = {
 }
 
 class t_Trait2 (v_Self: Type0) = {
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_4567617955834163411:t_Trait1 v_Self;
+  [@@@ FStar.Tactics.Typeclasses.tcinstance]_super_4567617955834163411:t_Trait1 v_Self;
   f_U:Type0
 }
 '''
@@ -541,7 +541,7 @@ class t_Lang (v_Self: Type0) = {
 }
 
 class t_SuperTrait (v_Self: Type0) = {
-  [@@@ FStar.Tactics.Typeclasses.no_method]_super_9442900250278684536:Core.Clone.t_Clone v_Self;
+  [@@@ FStar.Tactics.Typeclasses.tcinstance]_super_9442900250278684536:Core.Clone.t_Clone v_Self;
   f_function_of_super_trait_pre:v_Self -> Type0;
   f_function_of_super_trait_post:v_Self -> u32 -> Type0;
   f_function_of_super_trait:x0: v_Self
