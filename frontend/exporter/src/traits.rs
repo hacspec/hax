@@ -155,6 +155,9 @@ pub mod rustc {
             };
 
             match def_kind {
+                // Don't list the predicates of traits, we already list the `Self` clause from
+                // which we can resolve anything needed.
+                Trait => {}
                 AssocConst
                 | AssocFn
                 | AssocTy
@@ -166,7 +169,6 @@ pub mod rustc {
                 | OpaqueTy
                 | Static { .. }
                 | Struct
-                | Trait
                 | TraitAlias
                 | TyAlias
                 | Union => {
