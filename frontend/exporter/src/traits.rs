@@ -80,6 +80,7 @@ pub struct ImplExpr {
 
 #[cfg(feature = "rustc")]
 pub mod rustc {
+    use rustc_hir::def::DefKind;
     use rustc_hir::def_id::DefId;
     use rustc_middle::ty::*;
 
@@ -118,12 +119,33 @@ pub mod rustc {
             self,
             did: rustc_span::def_id::DefId,
         ) -> Vec<AnnotatedTraitPred<'tcx>> {
+            let tcx = self;
             let mut next_did = Some(did);
             let mut predicates = vec![];
             while let Some(did) = next_did {
-                let (preds, parent) = self.annotated_predicates_of(did);
-                next_did = parent;
-                predicates.extend(preds)
+                match tcx.def_kind(did) {
+                    // Only these kinds may reasonably have predicates; we have to filter otherwise
+                    // calling `predicates_defined_on` may ICE.
+                    DefKind::AssocConst
+                    | DefKind::AssocFn
+                    | DefKind::AssocTy
+                    | DefKind::Const
+                    | DefKind::Enum
+                    | DefKind::Fn
+                    | DefKind::ForeignTy
+                    | DefKind::Impl { .. }
+                    | DefKind::OpaqueTy
+                    | DefKind::Static { .. }
+                    | DefKind::Struct
+                    | DefKind::Trait
+                    | DefKind::TraitAlias
+                    | DefKind::TyAlias
+                    | DefKind::Union => {
+                        predicates.extend(self.annotated_predicates_of(did));
+                    }
+                    _ => {}
+                }
+                next_did = tcx.opt_parent(did);
             }
             predicates
         }
@@ -131,16 +153,11 @@ pub mod rustc {
         fn annotated_predicates_of(
             self,
             did: rustc_span::def_id::DefId,
-        ) -> (
-            Vec<AnnotatedTraitPred<'tcx>>,
-            Option<rustc_span::def_id::DefId>,
-        ) {
-            use rustc_hir::def::DefKind;
+        ) -> Vec<AnnotatedTraitPred<'tcx>> {
             let tcx = self;
-            let predicates = tcx.predicates_defined_on(did);
-            let parent = predicates.parent;
 
-            let mut predicates: Vec<_> = predicates
+            let mut predicates: Vec<_> = tcx
+                .predicates_defined_on(did)
                 .predicates
                 .iter()
                 .copied()
@@ -186,7 +203,7 @@ pub mod rustc {
                 _ => {}
             }
 
-            (predicates, parent)
+            predicates
         }
     }
 
@@ -254,7 +271,6 @@ pub mod rustc {
             fn parents_trait_predicates(self, tcx: TyCtxt<'tcx>) -> Vec<PolyTraitPredicate<'tcx>> {
                 let self_trait_ref = self.to_poly_trait_ref();
                 tcx.annotated_predicates_of(self.def_id())
-                    .0
                     .into_iter()
                     .map(|apred| apred.clause.upcast(tcx))
                     // Substitute with the `self` args so that the clause makes sense in the
