@@ -39,6 +39,7 @@ module Phase = struct
     | ResugarWhileLoops
     | ResugarForIndexLoops
     | ResugarQuestionMarks
+    | RewriteControlFlow
     | SimplifyQuestionMarks
     | Specialize
     | HoistSideEffects

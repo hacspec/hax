@@ -1703,6 +1703,7 @@ module TransformToInputLanguage =
   |> Side_effect_utils.Hoist
   |> Phases.Hoist_disjunctive_patterns
   |> Phases.Simplify_match_return
+  |> Phases.Rewrite_control_flow
   |> Phases.Drop_needless_returns
   |> Phases.Local_mutation
   |> Phases.Reject.Continue
