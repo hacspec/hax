@@ -99,7 +99,9 @@ pub enum FullDefKind {
         #[value(s.base().tcx.hir().get_if_local(s.owner_id()).map(|node| {
             let rustc_hir::Node::Item(item) = node else { unreachable!() };
             let rustc_hir::ItemKind::TyAlias(ty, _generics) = &item.kind else { unreachable!() };
-            ty.sinto(s)
+            let mut s = State::from_under_owner(s);
+            s.base.ty_alias_mode = true;
+            ty.sinto(&s)
         }))]
         ty: Option<Ty>,
     },

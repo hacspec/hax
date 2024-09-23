@@ -102,7 +102,11 @@ pub mod rustc {
                 stringify!(rustc_middle::ty::PolyTraitRef<'tcx>)
             );
             use crate::ParamEnv;
-            let warn = |msg: &str| crate::warning!(s, "{}", msg);
+            let warn = |msg: &str| {
+                if !s.base().ty_alias_mode {
+                    crate::warning!(s, "{}", msg)
+                }
+            };
             match impl_expr(s.base().tcx, s.owner_id(), s.param_env(), self, &warn) {
                 Ok(x) => x.sinto(s),
                 Err(e) => crate::fatal!(s, "{}", e),
@@ -528,18 +532,17 @@ pub mod rustc {
             BuiltinImplSource, ImplSource, ImplSourceUserDefinedData,
         };
 
-        let impl_source = copy_paste_from_rustc::codegen_select_candidate(tcx, (param_env, *tref))
-            .map_err(|e| format!("Cannot handle error `{e:?}` selecting `{tref:?}`"))?;
+        let impl_source = copy_paste_from_rustc::codegen_select_candidate(tcx, (param_env, *tref));
         let atom = match impl_source {
-            ImplSource::UserDefined(ImplSourceUserDefinedData {
+            Ok(ImplSource::UserDefined(ImplSourceUserDefinedData {
                 impl_def_id,
                 args: generics,
                 ..
-            }) => ImplExprAtom::Concrete {
+            })) => ImplExprAtom::Concrete {
                 def_id: impl_def_id,
                 generics,
             },
-            ImplSource::Param(_) => {
+            Ok(ImplSource::Param(_)) => {
                 match search_clause::path_to(tcx, owner_id, param_env, tref.clone()) {
                     Some((path, apred)) => {
                         let r#trait = apred.clause.to_poly_trait_ref();
@@ -564,20 +567,30 @@ pub mod rustc {
                     }
                 }
             }
-            ImplSource::Builtin(BuiltinImplSource::Object { .. }, _) => ImplExprAtom::Dyn,
-            ImplSource::Builtin(_, _) => ImplExprAtom::Builtin {
+            Ok(ImplSource::Builtin(BuiltinImplSource::Object { .. }, _)) => ImplExprAtom::Dyn,
+            Ok(ImplSource::Builtin(_, _)) => ImplExprAtom::Builtin {
                 r#trait: tref.clone(),
             },
+            Err(e) => {
+                let msg = format!(
+                    "Could not find a clause for `{tref:?}` in the current context: `{e:?}`"
+                );
+                warn(&msg);
+                ImplExprAtom::Error(msg)
+            }
         };
 
         let nested = match &impl_source {
-            ImplSource::UserDefined(ImplSourceUserDefinedData { nested, .. }) => nested.as_slice(),
-            ImplSource::Param(nested) => nested.as_slice(),
+            Ok(ImplSource::UserDefined(ImplSourceUserDefinedData { nested, .. })) => {
+                nested.as_slice()
+            }
+            Ok(ImplSource::Param(nested)) => nested.as_slice(),
             // We ignore the contained obligations here. For example for `(): Send`, the
             // obligations contained would be `[(): Send]`, which leads to an infinite loop. There
             // might be important obligations here in other cases; we'll have to see if that comes
             // up.
-            ImplSource::Builtin(_, _ignored) => &[],
+            Ok(ImplSource::Builtin(_, _ignored)) => &[],
+            Err(_) => &[],
         };
         let nested = impl_exprs(tcx, owner_id, nested, warn)?;
 
