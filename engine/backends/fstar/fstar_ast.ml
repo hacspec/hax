@@ -32,7 +32,6 @@ let pat (pat : AST.pattern') = AST.{ pat; prange = dummyRange }
 
 module Attrs = struct
   let no_method = term @@ AST.Var FStar_Parser_Const.no_method_lid
-  let tcinstance = term @@ AST.Var FStar_Parser_Const.tcinstance_lid
 end
 
 let tcresolve = term @@ AST.Var FStar_Parser_Const.tcresolve_lid
