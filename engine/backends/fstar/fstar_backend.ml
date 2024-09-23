@@ -339,6 +339,12 @@ struct
     in
     F.mk_e_abs [ pat ] (F.mk_e_app trait args)
 
+  and name_of_super_clause (trait_goal : trait_goal) (base_name : string) =
+    String.hash
+      (U.Concrete_ident_view.to_definition_name trait_goal.trait
+      ^ "*" ^ base_name)
+    |> base62_of_int 5 |> ( ^ ) "_super_"
+
   and pimpl_expr span (ie : impl_expr) =
     let some = Option.some in
     let hax_unstable_impl_exprs = false in
@@ -353,7 +359,7 @@ struct
         pimpl_expr span impl
     | Parent { impl; ident } when hax_unstable_impl_exprs ->
         let* impl = pimpl_expr span impl in
-        let trait = "_super_" ^ ident.name in
+        let trait = name_of_super_clause ident.goal ident.name in
         F.term @@ F.AST.Project (impl, F.lid [ trait ]) |> some
     | ImplApp { impl; args = [] } when hax_unstable_impl_exprs ->
         pimpl_expr span impl
@@ -1158,7 +1164,7 @@ struct
                     :: List.map
                          ~f:
                            (fun {
-                                  goal = { trait; args };
+                                  goal = { trait; args } as goal;
                                   name = impl_ident_name;
                                 } ->
                            let base =
@@ -1167,10 +1173,11 @@ struct
                            let args =
                              List.map ~f:(pgeneric_value e.span) args
                            in
-                           ( F.id (name ^ "_" ^ impl_ident_name),
+                           ( F.id
+                               (name ^ name_of_super_clause goal impl_ident_name),
                              (* Dodgy concatenation *)
                              None,
-                             [],
+                             [ F.Attrs.tcinstance ],
                              F.mk_e_app base args ))
                          bounds
                 | TIFn ty
@@ -1363,9 +1370,9 @@ struct
           |> List.filter_map ~f:(fun c ->
                  match c with
                  | GCType { goal = bound; name = id } ->
-                     let name = "_super_" ^ id in
+                     let name = name_of_super_clause bound id in
                      let typ = pgeneric_constraint_type e.span c in
-                     Some (F.id name, None, [ F.Attrs.no_method ], typ)
+                     Some (F.id name, None, [ F.Attrs.tcinstance ], typ)
                  | GCProjection _ ->
                      (* TODO: Not yet implemented, see https://github.com/hacspec/hax/issues/785 *)
                      None
@@ -1436,14 +1443,21 @@ struct
                   (F.lid [ name ], pty ii_span typ)
                   :: List.map
                        ~f:(fun (_impl_expr, impl_ident) ->
-                         (F.lid [ name ^ "_" ^ impl_ident.name ], F.tc_solve))
+                         ( F.lid
+                             [
+                               name
+                               ^ name_of_super_clause impl_ident.goal
+                                   impl_ident.name;
+                             ],
+                           F.tc_solve ))
                        parent_bounds)
             items
         in
         let parent_bounds_fields =
           List.map
             ~f:(fun (_impl_expr, impl_ident) ->
-              (F.lid [ "_super_" ^ impl_ident.name ], F.tc_solve))
+              ( F.lid [ name_of_super_clause impl_ident.goal impl_ident.name ],
+                F.tc_solve ))
             parent_bounds
         in
         let fields = parent_bounds_fields @ fields in

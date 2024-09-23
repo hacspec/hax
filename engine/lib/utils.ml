@@ -108,6 +108,23 @@ include (
       (** Generates a temporary file path that ends with `suffix` *)
     end)
 
+(** Formats an integer as base 62 *)
+let base62_of_int len : int -> string =
+  let alphabet =
+    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+  in
+  let max = String.length alphabet in
+  fun n ->
+    let n = ref n in
+    let f _i =
+      let i = !n % max in
+      n := !n / max;
+      String.get alphabet i
+    in
+    let arr = Array.init len ~f in
+    Array.rev_inplace arr;
+    String.of_array arr
+
 module List = struct
   include Base.List
 

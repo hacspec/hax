@@ -276,3 +276,12 @@ mod recursive_trait_with_assoc_type {
         type U;
     }
 }
+
+mod super_clauses_names {
+    trait A {}
+    trait B {}
+    trait C {}
+    trait ChildTrait1: A + B + C {}
+    trait ChildTrait2: A + B + C {}
+    trait ChildTrait3: A + B + C {}
+}
