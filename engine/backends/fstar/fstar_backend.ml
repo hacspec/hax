@@ -1365,7 +1365,7 @@ struct
                  | GCType { goal = bound; name = id } ->
                      let name = "_super_" ^ id in
                      let typ = pgeneric_constraint_type e.span c in
-                     Some (F.id name, None, [ F.Attrs.no_method ], typ)
+                     Some (F.id name, None, [ F.Attrs.tcinstance ], typ)
                  | GCProjection _ ->
                      (* TODO: Not yet implemented, see https://github.com/hacspec/hax/issues/785 *)
                      None
