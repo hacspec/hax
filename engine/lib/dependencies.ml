@@ -83,8 +83,8 @@ module Make (F : Features.T) = struct
       in
       set |> Set.to_list
 
-    let vertices_of_items ~original_items (items : item list) : G.E.t list =
-      let uid_associated_items = uid_associated_items original_items in
+    let vertices_of_items ~uid_associated_items (items : item list) : G.E.t list
+        =
       List.concat_map
         ~f:(fun i ->
           let assoc =
@@ -97,7 +97,8 @@ module Make (F : Features.T) = struct
       let init =
         List.fold ~init:G.empty ~f:(fun g -> ident_of >> G.add_vertex g) items
       in
-      vertices_of_items ~original_items items
+      let uid_associated_items = uid_associated_items original_items in
+      vertices_of_items ~uid_associated_items items
       |> List.fold ~init ~f:(G.add_edge >> uncurry)
 
     let transitive_dependencies_of (g : G.t) (selection : Concrete_ident.t list)

@@ -47,9 +47,11 @@ let import_thir_items (include_clauses : Types.inclusion_clause list)
       items
     |> List.map ~f:snd
   in
+  Logs.info (fun m -> m "Items translated");
   let items = List.concat_map ~f:fst imported_items in
-  let associated_items (item : Deps.AST.item) =
-    Deps.uid_associated_items items item.attrs
+  let associated_items =
+    let assoc_items = Deps.uid_associated_items items in
+    fun (item : Deps.AST.item) -> assoc_items item.attrs
   in
   (* Build a map from idents to error reports *)
   let ident_to_reports =
