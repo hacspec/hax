@@ -70,7 +70,8 @@ module Make
             in
 
             let rec pats_and_guards ?(forced_span : span option = None)
-                (l : pat list) : pat list * guard option list =
+                ?(unfresh_exprs : expr list = []) (l : pat list) :
+                pat list * guard option list =
               let pats, guards =
                 List.fold_left
                   ~f:(fun (pats_left, guards_left) p ->
@@ -80,15 +81,19 @@ module Make
                           (List.filter_map guards_left
                              ~f:
                                (Option.map ~f:(fun (g : guard) ->
-                                    match g.guard with IfLet { rhs; _ } -> rhs)))
+                                    match g.guard with IfLet { rhs; _ } -> rhs))
+                          @ unfresh_exprs)
                     in
                     (new_p :: pats_left, g :: guards_left))
                   ~init:([], []) l
               in
               (List.rev pats, List.rev guards)
             and pats_and_guard ?(forced_span : span option = None)
-                (l : pat list) : pat list * guard option =
-              let pats, guards = pats_and_guards ~forced_span l in
+                ?(unfresh_exprs : expr list = []) (l : pat list) :
+                pat list * guard option =
+              let pats, guards =
+                pats_and_guards ~forced_span ~unfresh_exprs l
+              in
               let guard = combine_option_guards guards in
               (pats, guard)
             and pat_and_guard ?(unfresh_exprs : expr list = [])
@@ -111,7 +116,7 @@ module Make
                   let suffix_len = List.length suffix in
                   let total_len = args_len + suffix_len in
                   let args_suffix, args_suffix_guards =
-                    pats_and_guards ~forced_span (args @ suffix)
+                    pats_and_guards ~forced_span ~unfresh_exprs (args @ suffix)
                   in
                   let args, suffix = List.split_n args_suffix args_len in
                   let combined_guard =
@@ -320,7 +325,7 @@ module Make
                   let pats, g =
                     args
                     |> List.map ~f:(fun (fp : field_pat) -> fp.pat)
-                    |> pats_and_guard ~forced_span
+                    |> pats_and_guard ~forced_span ~unfresh_exprs
                   in
                   ( {
                       p =
@@ -396,7 +401,8 @@ module Make
                      does not fail because of spans. *)
                   let subpats, guards =
                     List.map
-                      ~f:(pat_and_guard ~forced_span:(Some p_span))
+                      ~f:
+                        (pat_and_guard ~unfresh_exprs ~forced_span:(Some p_span))
                       subpats
                     |> List.unzip
                   in
@@ -477,7 +483,9 @@ module Make
                         (first_pat, guard)
                     | _ -> raise IncompatibleDisjunction)
               | PDeref { subpat; witness } ->
-                  let subpat, g = pat_and_guard ~forced_span subpat in
+                  let subpat, g =
+                    pat_and_guard ~forced_span ~unfresh_exprs subpat
+                  in
                   ( {
                       p = PDeref { subpat; witness };
                       span = p_span;
@@ -485,7 +493,7 @@ module Make
                     },
                     g )
               | PBinding { mut; mode; var; typ; subpat = Some (p, as_p) } ->
-                  let subpat, g = pat_and_guard ~forced_span p in
+                  let subpat, g = pat_and_guard ~forced_span ~unfresh_exprs p in
                   ( {
                       p =
                         PBinding
@@ -495,7 +503,7 @@ module Make
                     },
                     g )
               | PAscription { typ; typ_span; pat } ->
-                  let pat, g = pat_and_guard ~forced_span pat in
+                  let pat, g = pat_and_guard ~forced_span ~unfresh_exprs pat in
                   ( {
                       p = PAscription { typ; typ_span; pat };
                       span = p.span;
