@@ -42,11 +42,6 @@ module Make (F : Features.T) =
                    control flow containing a return. Rewrite it.
                 *)
                 let stmts, final = U.collect_let_bindings e in
-                let before_after i =
-                  let stmts_before, stmts_after = List.split_n stmts i in
-                  let stmts_after = List.tl_exn stmts_after in
-                  (stmts_before, stmts_after)
-                in
                 let inline_in_branch branch p stmts_after final =
                   let branch_stmts, branch_final =
                     U.collect_let_bindings branch
@@ -56,17 +51,18 @@ module Make (F : Features.T) =
                     final
                 in
                 match
-                  List.findi stmts ~f:(fun _ (_, e) ->
+                  List.split_while stmts ~f:(fun (_, e) ->
                       match e.e with
-                      | (If _ | Match _) when has_return#visit_expr () e -> true
-                      | Return _ -> true
-                      | _ -> false)
+                      | (If _ | Match _) when has_return#visit_expr () e ->
+                          false
+                      | Return _ -> false
+                      | _ -> true)
                 with
-                | Some (i, (p, ({ e = If { cond; then_; else_ }; _ } as rhs)))
-                  ->
+                | ( stmts_before,
+                    (p, ({ e = If { cond; then_; else_ }; _ } as rhs))
+                    :: stmts_after ) ->
                     (* We know there is no "return" in the condition
                        so we must rewrite the if *)
-                    let stmts_before, stmts_after = before_after i in
                     let then_ = inline_in_branch then_ p stmts_after final in
                     let else_ =
                       Some
@@ -78,9 +74,9 @@ module Make (F : Features.T) =
                     U.make_lets stmts_before
                       { rhs with e = If { cond; then_; else_ } }
                     |> self#visit_expr ()
-                | Some (i, (p, ({ e = Match { scrutinee; arms }; _ } as rhs)))
-                  ->
-                    let stmts_before, stmts_after = before_after i in
+                | ( stmts_before,
+                    (p, ({ e = Match { scrutinee; arms }; _ } as rhs))
+                    :: stmts_after ) ->
                     let arms =
                       List.map arms ~f:(fun arm ->
                           let body =
@@ -92,8 +88,7 @@ module Make (F : Features.T) =
                       { rhs with e = Match { scrutinee; arms } }
                     |> self#visit_expr ()
                 (* The statements coming after a "return" are useless. *)
-                | Some (i, (_, ({ e = Return _; _ } as rhs))) ->
-                    let stmts_before, _ = before_after i in
+                | stmts_before, (_, ({ e = Return _; _ } as rhs)) :: _ ->
                     U.make_lets stmts_before rhs |> self#visit_expr ()
                 | _ ->
                     let stmts =
