@@ -59,23 +59,17 @@ let early_returns (x: u32) : u32 =
   if x >. 3ul
   then 0ul
   else
-    let x, hoist5:(u32 & Rust_primitives.Hax.t_Never) =
-      if x >. 30ul
-      then
-        match true with
-        | true ->
-          x,
-          (Core.Ops.Control_flow.ControlFlow_Break 34ul
-            <:
-            Core.Ops.Control_flow.t_ControlFlow u32 Rust_primitives.Hax.t_Never)
+    if x >. 30ul
+    then
+      match true with
+      | true -> 34ul
+      | _ -> Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add 123ul 3ul <: u32) x
+    else
+      let x:u32 = x +! 9ul in
+      Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add 123ul (x +! 1ul <: u32)
           <:
-          (u32 & Rust_primitives.Hax.t_Never)
-        | _ -> x, 3ul <: (u32 & u32)
-      else
-        let x:u32 = x +! 9ul in
-        x, x +! 1ul <: (u32 & u32)
-    in
-    Core.Num.impl__u32__wrapping_add (Core.Num.impl__u32__wrapping_add 123ul hoist5 <: u32) x
+          u32)
+        x
 
 /// Exercise local mutation with control flow and loops
 let local_mutation (x: u32) : u32 =
@@ -274,52 +268,28 @@ let options (x y: Core.Option.t_Option u8) (z: Core.Option.t_Option u64) : Core.
 
 /// Test question mark on `Result`s with local mutation
 let question_mark (x: u32) : Core.Result.t_Result u32 u32 =
-  Rust_primitives.Hax.Control_flow_monad.Mexception.run (if x >. 40ul <: bool
-      then
-        let! x:u32 =
-          let y:u32 = 0ul in
-          let x:u32 = Core.Num.impl__u32__wrapping_add x 3ul in
-          let y:u32 = Core.Num.impl__u32__wrapping_add x y in
-          let x:u32 = Core.Num.impl__u32__wrapping_add x y in
-          if x >. 90ul
-          then
-            match Core.Result.Result_Err 12uy <: Core.Result.t_Result Prims.unit u8 with
-            | Core.Result.Result_Ok ok ->
-              Core.Ops.Control_flow.ControlFlow_Continue x
-              <:
-              Core.Ops.Control_flow.t_ControlFlow (Core.Result.t_Result u32 u32) u32
-            | Core.Result.Result_Err err ->
-              let! _:Prims.unit =
-                Core.Ops.Control_flow.ControlFlow_Break
-                (Core.Result.Result_Err (Core.Convert.f_from #FStar.Tactics.Typeclasses.solve err)
-                  <:
-                  Core.Result.t_Result u32 u32)
-                <:
-                Core.Ops.Control_flow.t_ControlFlow (Core.Result.t_Result u32 u32) Prims.unit
-              in
-              Core.Ops.Control_flow.ControlFlow_Continue x
-              <:
-              Core.Ops.Control_flow.t_ControlFlow (Core.Result.t_Result u32 u32) u32
-          else
-            Core.Ops.Control_flow.ControlFlow_Continue x
-            <:
-            Core.Ops.Control_flow.t_ControlFlow (Core.Result.t_Result u32 u32) u32
-        in
-        Core.Ops.Control_flow.ControlFlow_Continue
-        (Core.Result.Result_Ok (Core.Num.impl__u32__wrapping_add 3ul x)
-          <:
-          Core.Result.t_Result u32 u32)
+  if x >. 40ul
+  then
+    let y:u32 = 0ul in
+    let x:u32 = Core.Num.impl__u32__wrapping_add x 3ul in
+    let y:u32 = Core.Num.impl__u32__wrapping_add x y in
+    let x:u32 = Core.Num.impl__u32__wrapping_add x y in
+    if x >. 90ul
+    then
+      match Core.Result.Result_Err 12uy <: Core.Result.t_Result Prims.unit u8 with
+      | Core.Result.Result_Ok ok ->
+        let _:Prims.unit = ok in
+        Core.Result.Result_Ok (Core.Num.impl__u32__wrapping_add 3ul x)
         <:
-        Core.Ops.Control_flow.t_ControlFlow (Core.Result.t_Result u32 u32)
-          (Core.Result.t_Result u32 u32)
-      else
-        Core.Ops.Control_flow.ControlFlow_Continue
-        (Core.Result.Result_Ok (Core.Num.impl__u32__wrapping_add 3ul x <: u32)
-          <:
-          Core.Result.t_Result u32 u32)
+        Core.Result.t_Result u32 u32
+      | Core.Result.Result_Err err ->
+        Core.Result.Result_Err (Core.Convert.f_from #FStar.Tactics.Typeclasses.solve err)
         <:
-        Core.Ops.Control_flow.t_ControlFlow (Core.Result.t_Result u32 u32)
-          (Core.Result.t_Result u32 u32))
+        Core.Result.t_Result u32 u32
+    else
+      Core.Result.Result_Ok (Core.Num.impl__u32__wrapping_add 3ul x) <: Core.Result.t_Result u32 u32
+  else
+    Core.Result.Result_Ok (Core.Num.impl__u32__wrapping_add 3ul x) <: Core.Result.t_Result u32 u32
 
 let simplifiable_question_mark (c: bool) (x: Core.Option.t_Option i32) : Core.Option.t_Option i32 =
   if c
@@ -335,17 +305,22 @@ let simplifiable_question_mark (c: bool) (x: Core.Option.t_Option i32) : Core.Op
     let b:i32 = 20l in
     Core.Option.Option_Some (a +! b) <: Core.Option.t_Option i32
 
-let simplifiable_return (c1 c2: bool) : i32 =
+let simplifiable_return (c1 c2 c3: bool) : i32 =
   let x:i32 = 0l in
   if c1
   then
     if c2
-    then 1l
-    else
-      let x:i32 =
-        let x:i32 = 1l in
+    then
+      let x:i32 = x +! 10l in
+      if c3
+      then 1l
+      else
+        let x:i32 = x +! 1l in
+        let _:Prims.unit = () in
         x
-      in
+    else
+      let x:i32 = x +! 1l in
+      let _:Prims.unit = () in
       x
   else x
 

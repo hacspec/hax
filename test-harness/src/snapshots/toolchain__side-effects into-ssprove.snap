@@ -194,18 +194,21 @@ Fail Next Obligation.
 
 Definition x_loc : Location :=
   (int32;3%nat).
-Equations simplifiable_return {L1 : {fset Location}} {L2 : {fset Location}} {I1 : Interface} {I2 : Interface} (c1 : both L1 I1 'bool) (c2 : both L2 I2 'bool) : both (L1 :|: L2 :|: fset [x_loc]) (I1 :|: I2) int32 :=
-  simplifiable_return c1 c2  :=
+Equations simplifiable_return {L1 : {fset Location}} {L2 : {fset Location}} {L3 : {fset Location}} {I1 : Interface} {I2 : Interface} {I3 : Interface} (c1 : both L1 I1 'bool) (c2 : both L2 I2 'bool) (c3 : both L3 I3 'bool) : both (L1 :|: L2 :|: L3 :|: fset [x_loc]) (I1 :|: I2 :|: I3) int32 :=
+  simplifiable_return c1 c2 c3  :=
     solve_lift (run (letb x loc(x_loc) := ret_both (0 : int32) in
     letm[choice_typeMonad.result_bind_code int32] _ := ifb c1
     then letm[choice_typeMonad.result_bind_code int32] _ := ifb c2
+    then letb _ := assign todo(term) in
+    ifb c3
     then letm[choice_typeMonad.result_bind_code int32] hoist34 := ControlFlow_Break (ret_both (1 : int32)) in
     ControlFlow_Continue (never_to_any hoist34)
+    else ()
     else () in
     ControlFlow_Continue (letb _ := assign todo(term) in
     ret_both (tt : 'unit))
     else () in
-    ControlFlow_Continue x)) : both (L1 :|: L2 :|: fset [x_loc]) (I1 :|: I2) int32.
+    ControlFlow_Continue x)) : both (L1 :|: L2 :|: L3 :|: fset [x_loc]) (I1 :|: I2 :|: I3) int32.
 Fail Next Obligation.
 
 Definition t_A : choice_type :=

@@ -63,13 +63,16 @@ fn early_returns(mut x: u32) -> u32 {
     .wrapping_add(x);
 }
 
-fn simplifiable_return(c1: bool, c2: bool) -> i32 {
+fn simplifiable_return(c1: bool, c2: bool, c3: bool) -> i32 {
     let mut x = 0;
     if c1 {
         if c2 {
-            return 1;
+            x += 10;
+            if c3 {
+                return 1;
+            }
         }
-        x = 1;
+        x += 1;
     }
     x
 }

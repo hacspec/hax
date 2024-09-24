@@ -34,143 +34,75 @@ module Make (F : Features.T) =
           method! visit_expr () e =
             match e.e with
             | _ when not (has_return#visit_expr () e) -> e
-            | Let
-                {
-                  monadic = None;
-                  lhs;
-                  rhs = { e = If { cond; then_; else_ }; _ } as rhs;
-                  body;
-                } ->
-                let cond = self#visit_expr () cond in
-                let then_has_return = has_return#visit_expr () then_ in
-                let else_has_return =
-                  Option.map else_ ~f:(has_return#visit_expr ())
-                  |> Option.value ~default:false
+            (* Returns in loops will be handled by issue #196 *)
+            | Loop _ -> e
+            | Let _ -> (
+                (* Collect let bindings to get the sequence
+                   of "statements", find the first "statement" that is a
+                   control flow containing a return. Rewrite it.
+                *)
+                let stmts, final = U.collect_let_bindings e in
+                let before_after i =
+                  let stmts_before, stmts_after = List.split_n stmts i in
+                  let stmts_after = List.tl_exn stmts_after in
+                  (stmts_before, stmts_after)
                 in
-                let rewrite = then_has_return || else_has_return in
-                if rewrite then
-                  let then_ =
-                    {
-                      e with
-                      e = Let { monadic = None; lhs; rhs = then_; body };
-                    }
+                let inline_in_branch branch p stmts_after final =
+                  let branch_stmts, branch_final =
+                    U.collect_let_bindings branch
                   in
-                  let then_ = self#visit_expr () then_ in
-                  let else_ =
-                    Some
-                      (match else_ with
-                      | Some else_ ->
-                          self#visit_expr ()
-                            {
-                              e with
-                              e = Let { monadic = None; lhs; rhs = else_; body };
-                            }
-                      | None -> body)
-                  in
-
-                  { rhs with e = If { cond; then_; else_ } }
-                else
-                  let body = self#visit_expr () body in
-                  {
-                    e with
-                    e =
-                      Let
-                        {
-                          monadic = None;
-                          lhs;
-                          rhs = { rhs with e = If { cond; then_; else_ } };
-                          body;
-                        };
-                  }
-            (* We need this case to make sure we take the `if` all the way up a sequence of nested `let`
-               and not just one level. *)
-            | Let { monadic = None; lhs; rhs = { e = Let _; _ } as rhs; body }
-              -> (
-                let body = self#visit_expr () body in
-                match self#visit_expr () rhs with
-                | { e = If { cond; then_; else_ = Some else_ }; _ } ->
-                    (* In this case we know we already rewrote the rhs so we should take the `if` one level higher. *)
-                    let rewrite_branch branch =
-                      {
-                        branch with
-                        e = Let { monadic = None; lhs; rhs = branch; body };
-                      }
+                  U.make_lets
+                    (branch_stmts @ ((p, branch_final) :: stmts_after))
+                    final
+                in
+                match
+                  List.findi stmts ~f:(fun _ (_, e) ->
+                      match e.e with
+                      | (If _ | Match _) when has_return#visit_expr () e -> true
+                      | Return _ -> true
+                      | _ -> false)
+                with
+                | Some (i, (p, ({ e = If { cond; then_; else_ }; _ } as rhs)))
+                  ->
+                    (* We know there is no "return" in the condition
+                       so we must rewrite the if *)
+                    let stmts_before, stmts_after = before_after i in
+                    let then_ = inline_in_branch then_ p stmts_after final in
+                    let else_ =
+                      Some
+                        (match else_ with
+                        | Some else_ ->
+                            inline_in_branch else_ p stmts_after final
+                        | None -> U.make_lets stmts_after final)
                     in
-                    {
-                      rhs with
-                      e =
-                        If
-                          {
-                            cond;
-                            then_ = rewrite_branch then_;
-                            else_ = Some (rewrite_branch else_);
-                          };
-                    }
-                | rhs -> { e with e = Let { monadic = None; lhs; rhs; body } })
-            | Let
-                {
-                  monadic = None;
-                  lhs;
-                  rhs = { e = Match { scrutinee; arms }; _ };
-                  body;
-                } ->
-                let rewrite =
-                  List.fold arms ~init:false ~f:(fun acc (arm : arm) ->
-                      acc || has_return#visit_arm () arm)
-                in
-                if rewrite then
-                  {
-                    e with
-                    e =
-                      Match
-                        {
-                          scrutinee = self#visit_expr () scrutinee;
-                          arms =
-                            List.map arms ~f:(fun arm ->
-                                let arm_body = arm.arm.body in
-                                let arm_body =
-                                  {
-                                    arm_body with
-                                    e =
-                                      Let
-                                        {
-                                          monadic = None;
-                                          lhs;
-                                          rhs = arm_body;
-                                          body;
-                                        };
-                                  }
-                                in
-                                self#visit_arm ()
-                                  {
-                                    arm with
-                                    arm = { arm.arm with body = arm_body };
-                                  });
-                        };
-                  }
-                else e
+                    U.make_lets stmts_before
+                      { rhs with e = If { cond; then_; else_ } }
+                    |> self#visit_expr ()
+                | Some (i, (p, ({ e = Match { scrutinee; arms }; _ } as rhs)))
+                  ->
+                    let stmts_before, stmts_after = before_after i in
+                    let arms =
+                      List.map arms ~f:(fun arm ->
+                          let body =
+                            inline_in_branch arm.arm.body p stmts_after final
+                          in
+                          { arm with arm = { arm.arm with body } })
+                    in
+                    U.make_lets stmts_before
+                      { rhs with e = Match { scrutinee; arms } }
+                    |> self#visit_expr ()
+                (* The statements coming after a "return" are useless. *)
+                | Some (i, (_, ({ e = Return _; _ } as rhs))) ->
+                    let stmts_before, _ = before_after i in
+                    U.make_lets stmts_before rhs |> self#visit_expr ()
+                | _ ->
+                    let stmts =
+                      List.map stmts ~f:(fun (p, e) ->
+                          (p, self#visit_expr () e))
+                    in
+                    U.make_lets stmts (self#visit_expr () final))
             | _ -> super#visit_expr () e
         end
 
-      (* This visitor allows to remove instructions after a `return` so that `drop_needless_return` can simplify them. *)
-      let remove_after_return =
-        object (self)
-          inherit [_] Visitors.map as super
-
-          method! visit_expr () e =
-            match e.e with
-            | Let { monadic = None; lhs; rhs; body } -> (
-                let rhs = self#visit_expr () rhs in
-                let body = self#visit_expr () body in
-                match rhs.e with
-                | Return _ -> rhs
-                | _ -> { e with e = Let { monadic = None; lhs; rhs; body } })
-            | _ -> super#visit_expr () e
-        end
-
-      let ditems =
-        List.map
-          ~f:
-            (rewrite_control_flow#visit_item ()
-            >> remove_after_return#visit_item ())
+      let ditems = List.map ~f:(rewrite_control_flow#visit_item ())
     end)
