@@ -421,10 +421,10 @@ module Raw = struct
 
   let pprojection_predicate span (pp : projection_predicate) =
     let ( ! ) = pure span in
-    (pp.impl.goal.args
-     |> List.find_map ~f:(function GType ty -> Some ty | _ -> None)
-     |> Option.map ~f:(pty span)
-     |> Option.value ~default:!"unknown_self")
+    pp.impl.goal.args
+    |> List.find_map ~f:(function GType ty -> Some ty | _ -> None)
+    |> Option.map ~f:(pty span)
+    |> Option.value ~default:!"unknown_self"
     & !" :"
     & !(Concrete_ident_view.show pp.impl.goal.trait)
     & !"<"

@@ -105,7 +105,7 @@ functor
   ->
   struct
     type safety_kind = Safe | Unsafe of F.unsafe
-    [@@deriving show, yojson, hash, eq]
+    [@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
     type borrow_kind = Shared | Unique | Mut of F.mutable_reference
     [@@deriving show, yojson, hash, compare, sexp, hash, eq]
@@ -352,6 +352,7 @@ functor
 
     (* OCaml + visitors is not happy with `pat`... hence `arm_pat`... *)
     and arm' = { arm_pat : pat; body : expr; guard : guard option }
+
     and arm = { arm : arm'; span : span }
     [@@deriving show, yojson, hash, compare, sexp, hash, eq]
 

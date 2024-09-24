@@ -1029,7 +1029,7 @@ end) : EXPR = struct
   (* fun _ -> Ok Bool *)
 
   and c_impl_expr (span : Thir.span) (ie : Thir.impl_expr) : impl_expr =
-    let goal = c_trait_ref span ie.trait in
+    let goal = c_trait_ref span ie.trait.value in
     let impl = { kind = c_impl_expr_atom span ie.impl; goal } in
     match ie.args with
     | [] -> impl

@@ -39,7 +39,9 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
         List.map
           ~f:(fun txt ->
             (rename [ ("placeholder", txt) ])#signature_item
-              [%sigi: type placeholder [@@deriving show, yojson, hash, compare, sexp, hash, eq]])
+              [%sigi:
+                type placeholder
+                [@@deriving show, yojson, hash, compare, sexp, hash, eq]])
           features
         |> B.pmty_signature]
       end
@@ -71,7 +73,12 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
                       (PStr
                          [%str
                            show { with_path = false },
-                             yojson, hash, compare, sexp, hash, eq]);
+                             yojson,
+                             hash,
+                             compare,
+                             sexp,
+                             hash,
+                             eq]);
                 ];
             };
           ]]
@@ -122,7 +129,8 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
             #structure
             [%str
               module Placeholder : sig
-                type placeholder [@@deriving show, yojson, hash, compare, sexp, hash, eq]
+                type placeholder
+                [@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
                 val placeholder : placeholder
               end = struct
@@ -156,7 +164,8 @@ let expand ~(ctxt : Expansion_context.Extension.t) (features : string list) :
             #structure
             [%str
               module Placeholder = struct
-                type placeholder = | [@@deriving show, yojson, hash, compare, sexp, hash, eq]
+                type placeholder = |
+                [@@deriving show, yojson, hash, compare, sexp, hash, eq]
               end
 
               include Placeholder])
