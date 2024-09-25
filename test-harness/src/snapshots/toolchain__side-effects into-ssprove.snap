@@ -182,6 +182,35 @@ Equations question_mark {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 
     Result_Ok (Result_Ok (impl__u32__wrapping_add (ret_both (3 : int32)) x)))) : both (L1 :|: fset [y_loc]) I1 (t_Result int32 int32).
 Fail Next Obligation.
 
+Equations simplifiable_question_mark {L1 : {fset Location}} {L2 : {fset Location}} {I1 : Interface} {I2 : Interface} (c : both L1 I1 'bool) (x : both L2 I2 (t_Option int32)) : both (L1 :|: L2) (I1 :|: I2) (t_Option int32) :=
+  simplifiable_question_mark c x  :=
+    solve_lift (run (letm[choice_typeMonad.option_bind_code] a := ifb c
+    then letm[choice_typeMonad.option_bind_code] hoist33 := x in
+    Option_Some (hoist33 .+ (ret_both (10 : int32)))
+    else Option_Some (ret_both (0 : int32)) in
+    Option_Some (letb b := ret_both (20 : int32) in
+    Option_Some (a .+ b)))) : both (L1 :|: L2) (I1 :|: I2) (t_Option int32).
+Fail Next Obligation.
+
+Definition x_loc : Location :=
+  (int32;3%nat).
+Equations simplifiable_return {L1 : {fset Location}} {L2 : {fset Location}} {L3 : {fset Location}} {I1 : Interface} {I2 : Interface} {I3 : Interface} (c1 : both L1 I1 'bool) (c2 : both L2 I2 'bool) (c3 : both L3 I3 'bool) : both (L1 :|: L2 :|: L3 :|: fset [x_loc]) (I1 :|: I2 :|: I3) int32 :=
+  simplifiable_return c1 c2 c3  :=
+    solve_lift (run (letb x loc(x_loc) := ret_both (0 : int32) in
+    letm[choice_typeMonad.result_bind_code int32] _ := ifb c1
+    then letm[choice_typeMonad.result_bind_code int32] _ := ifb c2
+    then letb _ := assign todo(term) in
+    ifb c3
+    then letm[choice_typeMonad.result_bind_code int32] hoist34 := ControlFlow_Break (ret_both (1 : int32)) in
+    ControlFlow_Continue (never_to_any hoist34)
+    else ()
+    else () in
+    ControlFlow_Continue (letb _ := assign todo(term) in
+    ret_both (tt : 'unit))
+    else () in
+    ControlFlow_Continue x)) : both (L1 :|: L2 :|: L3 :|: fset [x_loc]) (I1 :|: I2 :|: I3) int32.
+Fail Next Obligation.
+
 Definition t_A : choice_type :=
   'unit.
 Equations Build_t_A : both (fset []) (fset []) (t_A) :=
@@ -220,10 +249,10 @@ Notation "'Build_t_Bar' '[' x ']' '(' 'f_b' ':=' y ')'" := (Build_t_Bar (f_a := 
 Equations monad_lifting {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 int8) : both L1 I1 (t_Result t_A t_B) :=
   monad_lifting x  :=
     solve_lift (run (ifb x >.? (ret_both (123 : int8))
-    then letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist33 := ControlFlow_Continue (Result_Err B) in
-    letb hoist34 := Result_Ok hoist33 in
-    letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist35 := ControlFlow_Break hoist34 in
-    ControlFlow_Continue (never_to_any hoist35)
+    then letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist35 := ControlFlow_Continue (Result_Err B) in
+    letb hoist36 := Result_Ok hoist35 in
+    letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist37 := ControlFlow_Break hoist36 in
+    ControlFlow_Continue (never_to_any hoist37)
     else ControlFlow_Continue (Result_Ok A))) : both L1 I1 (t_Result t_A t_B).
 Fail Next Obligation.
 
