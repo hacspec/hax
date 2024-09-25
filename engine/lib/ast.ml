@@ -1,7 +1,7 @@
 open! Prelude
 
-type todo = string [@@deriving show, yojson, hash, eq]
-type span = Span.t [@@deriving show, yojson, hash, compare, sexp, eq]
+type todo = string [@@deriving show, yojson, hash, compare, sexp, hash, eq]
+type span = Span.t [@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
 type concrete_ident = Concrete_ident.t
 [@@deriving show, yojson, hash, compare, sexp, hash, eq]
@@ -9,7 +9,7 @@ type concrete_ident = Concrete_ident.t
 type logical_op = And | Or
 
 and primitive_ident = Deref | Cast | LogicalOp of logical_op
-[@@deriving show, yojson, hash, compare, sexp, eq]
+[@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
 module Global_ident = struct
   module T = struct
@@ -21,7 +21,7 @@ module Global_ident = struct
       | `TupleField of int * int
       | `Projector of [ `Concrete of concrete_ident | `TupleField of int * int ]
       ]
-    [@@deriving show, yojson, compare, hash, sexp, eq]
+    [@@deriving show, yojson, hash, compare, sexp, hash, eq]
   end
 
   module M = struct
@@ -40,7 +40,8 @@ module Global_ident = struct
   let to_string : t -> string = [%show: t]
 end
 
-type global_ident = Global_ident.t [@@deriving show, yojson, hash, eq]
+type global_ident = Global_ident.t
+[@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
 type attr_kind =
   | Tool of { path : string; tokens : string }
@@ -48,13 +49,13 @@ type attr_kind =
 
 and attr = { kind : attr_kind; span : span }
 and doc_comment_kind = DCKLine | DCKBlock
-and attrs = attr list [@@deriving show, yojson, hash, eq]
+and attrs = attr list [@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
 type local_ident = Local_ident.t
-[@@deriving show, yojson, hash, compare, sexp, eq]
+[@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
 type size = S8 | S16 | S32 | S64 | S128 | SSize
-[@@deriving show, yojson, hash, compare, eq]
+[@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
 let int_of_size = function
   | S8 -> Some 8
@@ -67,10 +68,10 @@ let int_of_size = function
 let string_of_size = int_of_size >> Option.map ~f:Int.to_string
 
 type signedness = Signed | Unsigned
-[@@deriving show, yojson, hash, compare, eq]
+[@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
 type int_kind = { size : size; signedness : signedness }
-[@@deriving show, yojson, hash, compare, eq]
+[@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
 let show_int_kind { size; signedness } =
   (match signedness with Signed -> "i" | Unsigned -> "u")
@@ -79,7 +80,7 @@ let show_int_kind { size; signedness } =
     |> Option.value ~default:"size")
 
 type float_kind = F16 | F32 | F64 | F128
-[@@deriving show, yojson, hash, compare, eq]
+[@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
 let show_float_kind = function
   | F16 -> "f16"
@@ -93,12 +94,10 @@ type literal =
   | Int of { value : string; negative : bool; kind : int_kind }
   | Float of { value : string; negative : bool; kind : float_kind }
   | Bool of bool
-[@@deriving show, yojson, hash, eq]
-
-(* type 't spanned = { v : 't; span : span } [@@deriving show, yojson, hash, eq] *)
+[@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
 type 'mut_witness mutability = Mutable of 'mut_witness | Immutable
-[@@deriving show, yojson, hash, eq]
+[@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
 module Make =
 functor
@@ -106,13 +105,13 @@ functor
   ->
   struct
     type safety_kind = Safe | Unsafe of F.unsafe
-    [@@deriving show, yojson, hash, eq]
+    [@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
     type borrow_kind = Shared | Unique | Mut of F.mutable_reference
-    [@@deriving show, yojson, hash, eq]
+    [@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
     type binding_mode = ByValue | ByRef of (borrow_kind * F.reference)
-    [@@deriving show, yojson, hash, eq]
+    [@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
     type ty =
       | TBool
@@ -141,7 +140,9 @@ functor
       | GType of ty
       | GConst of expr
 
-    and impl_expr =
+    and impl_expr = { kind : impl_expr_kind; goal : trait_goal }
+
+    and impl_expr_kind =
       | Self
       | Concrete of trait_goal
       | LocalBound of { id : string }
@@ -351,7 +352,9 @@ functor
 
     (* OCaml + visitors is not happy with `pat`... hence `arm_pat`... *)
     and arm' = { arm_pat : pat; body : expr; guard : guard option }
-    and arm = { arm : arm'; span : span } [@@deriving show, yojson, hash, eq]
+
+    and arm = { arm : arm'; span : span }
+    [@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
     type generic_param = {
       ident : local_ident;
@@ -371,7 +374,7 @@ functor
       | GCProjection of projection_predicate
           (** Trait or lifetime constraints. For instance, `A` and `B` in
     `fn f<T: A + B>()`. *)
-    [@@deriving show, yojson, hash, eq]
+    [@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
     type param = { pat : pat; typ : ty; typ_span : span option; attrs : attrs }
 
@@ -466,7 +469,7 @@ functor
       ti_ident : concrete_ident;
       ti_attrs : attrs;
     }
-    [@@deriving show, yojson, hash, eq]
+    [@@deriving show, yojson, hash, compare, sexp, hash, eq]
 
     type modul = item list
 
@@ -478,8 +481,8 @@ functor
   end
 
 module type T = sig
-  type expr [@@deriving show, yojson]
-  type item' [@@deriving show, yojson]
+  type expr [@@deriving show, compare, yojson]
+  type item' [@@deriving show, compare, yojson]
 
   type item = {
     v : item';
@@ -487,7 +490,7 @@ module type T = sig
     ident : Concrete_ident.t;
     attrs : attrs;
   }
-  [@@deriving show, yojson]
+  [@@deriving show, compare, yojson]
 
   val make_hax_error_item : span -> Concrete_ident.t -> string -> item
 end

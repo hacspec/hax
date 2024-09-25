@@ -1029,21 +1029,23 @@ end) : EXPR = struct
   (* fun _ -> Ok Bool *)
 
   and c_impl_expr (span : Thir.span) (ie : Thir.impl_expr) : impl_expr =
-    let impl = c_impl_expr_atom span ie.impl in
+    let goal = c_trait_ref span ie.trait.value in
+    let impl = { kind = c_impl_expr_atom span ie.impl; goal } in
     match ie.args with
     | [] -> impl
     | args ->
         let args = List.map ~f:(c_impl_expr span) args in
-        ImplApp { impl; args }
+        { kind = ImplApp { impl; args }; goal }
 
   and c_trait_ref span (tr : Thir.trait_ref) : trait_goal =
     let trait = Concrete_ident.of_def_id Trait tr.def_id in
     let args = List.map ~f:(c_generic_value span) tr.generic_args in
     { trait; args }
 
-  and c_impl_expr_atom (span : Thir.span) (ie : Thir.impl_expr_atom) : impl_expr
-      =
-    let browse_path (impl : impl_expr) (chunk : Thir.impl_expr_path_chunk) =
+  and c_impl_expr_atom (span : Thir.span) (ie : Thir.impl_expr_atom) :
+      impl_expr_kind =
+    let browse_path (item_kind : impl_expr_kind)
+        (chunk : Thir.impl_expr_path_chunk) =
       match chunk with
       | AssocItem
           { item; predicate = { value = { trait_ref; _ }; _ }; predicate_id; _ }
@@ -1055,13 +1057,16 @@ end) : EXPR = struct
             match item.kind with Const | Fn -> Value | Type -> Type
           in
           let item = Concrete_ident.of_def_id kind item.def_id in
-          Projection { impl; ident; item }
+          let trait_ref = c_trait_ref span trait_ref in
+          Projection
+            { impl = { kind = item_kind; goal = trait_ref }; ident; item }
       | Parent { predicate = { value = { trait_ref; _ }; _ }; predicate_id; _ }
         ->
           let ident =
             { goal = c_trait_ref span trait_ref; name = predicate_id }
           in
-          Parent { impl; ident }
+          let trait_ref = c_trait_ref span trait_ref in
+          Parent { impl = { kind = item_kind; goal = trait_ref }; ident }
     in
     match ie with
     | Concrete { id; generics } ->

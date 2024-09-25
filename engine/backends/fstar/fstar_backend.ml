@@ -306,7 +306,7 @@ struct
     | TArray { typ; length } ->
         F.mk_e_app (F.term_of_lid [ "t_Array" ]) [ pty span typ; pexpr length ]
     | TParam i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident i)
-    | TAssociatedType { impl = Self; item } ->
+    | TAssociatedType { impl = { kind = Self; _ }; item } ->
         F.term
         @@ F.AST.Var (F.lid [ U.Concrete_ident_view.to_definition_name item ])
     | TAssociatedType { impl; item } -> (
@@ -342,7 +342,7 @@ struct
   and pimpl_expr span (ie : impl_expr) =
     let some = Option.some in
     let hax_unstable_impl_exprs = false in
-    match ie with
+    match ie.kind with
     | Concrete tr -> c_trait_goal span tr |> some
     | LocalBound { id } ->
         let local_ident =

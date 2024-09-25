@@ -239,12 +239,12 @@ module Make (F : Features.T) = struct
           in
           super#visit_item' (enabled, s) item
 
-        method! visit_impl_expr s ie =
+        method! visit_impl_expr_kind s ie =
           match ie with
           | LocalBound { id } ->
               LocalBound
                 { id = Hashtbl.find (snd s) id |> Option.value ~default:id }
-          | _ -> super#visit_impl_expr s ie
+          | _ -> super#visit_impl_expr_kind s ie
       end
 
     let drop_bodies =
@@ -933,6 +933,7 @@ module Make (F : Features.T) = struct
 
   module LiftToFullAst = struct
     let expr : AST.expr -> Ast.Full.expr = Stdlib.Obj.magic
+    let ty : AST.ty -> Ast.Full.ty = Stdlib.Obj.magic
     let item : AST.item -> Ast.Full.item = Stdlib.Obj.magic
   end
 
