@@ -316,11 +316,9 @@ let simplifiable_return (c1 c2 c3: bool) : i32 =
       then 1l
       else
         let x:i32 = x +! 1l in
-        let _:Prims.unit = () in
         x
     else
       let x:i32 = x +! 1l in
-      let _:Prims.unit = () in
       x
   else x
 

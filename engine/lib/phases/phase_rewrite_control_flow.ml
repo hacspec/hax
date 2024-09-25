@@ -46,21 +46,26 @@ module Make (F : Features.T) =
                   let branch_stmts, branch_final =
                     U.collect_let_bindings branch
                   in
-                  U.make_lets
-                    (branch_stmts @ ((p, branch_final) :: stmts_after))
-                    final
+                  let stmts_to_add =
+                    match (p, branch_final) with
+                    (* This avoids adding `let _ = ()` *)
+                    | { p = PWild; _ }, { e = GlobalVar (`TupleCons 0); _ } ->
+                        stmts_after
+                    | stmt -> stmt :: stmts_after
+                  in
+                  U.make_lets (branch_stmts @ stmts_to_add) final
                 in
-                match
+                let stmts_before, stmt_and_stmts_after =
                   List.split_while stmts ~f:(fun (_, e) ->
                       match e.e with
                       | (If _ | Match _) when has_return#visit_expr () e ->
                           false
                       | Return _ -> false
                       | _ -> true)
-                with
-                | ( stmts_before,
-                    (p, ({ e = If { cond; then_; else_ }; _ } as rhs))
-                    :: stmts_after ) ->
+                in
+                match stmt_and_stmts_after with
+                | (p, ({ e = If { cond; then_; else_ }; _ } as rhs))
+                  :: stmts_after ->
                     (* We know there is no "return" in the condition
                        so we must rewrite the if *)
                     let then_ = inline_in_branch then_ p stmts_after final in
@@ -74,9 +79,8 @@ module Make (F : Features.T) =
                     U.make_lets stmts_before
                       { rhs with e = If { cond; then_; else_ } }
                     |> self#visit_expr ()
-                | ( stmts_before,
-                    (p, ({ e = Match { scrutinee; arms }; _ } as rhs))
-                    :: stmts_after ) ->
+                | (p, ({ e = Match { scrutinee; arms }; _ } as rhs))
+                  :: stmts_after ->
                     let arms =
                       List.map arms ~f:(fun arm ->
                           let body =
@@ -88,7 +92,7 @@ module Make (F : Features.T) =
                       { rhs with e = Match { scrutinee; arms } }
                     |> self#visit_expr ()
                 (* The statements coming after a "return" are useless. *)
-                | stmts_before, (_, ({ e = Return _; _ } as rhs)) :: _ ->
+                | (_, ({ e = Return _; _ } as rhs)) :: _ ->
                     U.make_lets stmts_before rhs |> self#visit_expr ()
                 | _ ->
                     let stmts =
