@@ -77,6 +77,8 @@ Number Notation int_num Pos.of_num_int Pos.to_num_int (via positive mapping [[in
 
 Notation "0" := (repr _ 0%Z) : hacspec_scope.
 
+(** Ops *)
+
 Class Addition (A : choice_type) :=
   add : both A -> both A -> both A.
 Notation "a .+ b" := (add a b).
@@ -97,6 +99,8 @@ Notation "a .^ b" := (xor a b).
 
 Program Instance int_xor_inst {ws : wsize} : Xor (@int ws) := { xor a b := int_xor a b }.
 Fail Next Obligation.
+
+(** Iter *)
 
 Structure array_or_seq A (len : nat) :=
   { as_nseq :> both (nseq_ A len) ;
@@ -264,6 +268,8 @@ Notation "a <> b" := (negb (eqb a b)).
 Notation "'not'" := (negb).
 Notation "x ':of:' y" := (x : both _ _ y) (at level 100).
 Notation "x ':of0:' y" := (x : both y) (at level 100).
+
+(** Trait impls *)
 
 Class t_Serialize (Self : choice_type).
 Class t_Deserial (Self : choice_type).

@@ -313,9 +313,9 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
                       SSP.AST.Var "s";
                       SSP.AST.Lambda
                         ( [ SSP.AST.Ident "x" ],
-                          SSP.AST.App
-                            ( SSP.AST.Var "solve_lift",
-                              [
+                          (* SSP.AST.App *)
+                          (*   ( SSP.AST.Var "solve_lift", *)
+                              (* [ *)
                                 SSP.AST.App
                                   ( SSP.AST.Var "ret_both",
                                     [
@@ -330,7 +330,7 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
                                                 ~f:(fun _ -> "fst")),
                                           y );
                                     ] );
-                              ] ) );
+                              (* ] ) *) );
                     ] ),
                 wrap_type_in_both y ))
           fields
@@ -351,9 +351,9 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
                   fields,
               List.fold_left
                 ~init:
-                  (SSP.AST.App
-                     ( SSP.AST.Var "solve_lift",
-                       [
+                  ((* SSP.AST.App *)
+                   (*   ( SSP.AST.Var "solve_lift", *)
+                       (* [ *)
                          SSP.AST.App
                            ( SSP.AST.Var "ret_both",
                              [
@@ -364,7 +364,7 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
                                         fields),
                                    SSP.AST.NameTy ty_name );
                              ] );
-                       ] ))
+                         (* ] ) *))
                 ~f:(fun z (x, _y) ->
                   SSP.AST.App
                     ( SSP.AST.Var "bind_both",
@@ -432,16 +432,16 @@ module SSPExtraDefinitions (* : ANALYSIS *) = struct
              in
              let definition_body =
                let inject_argument inner_val =
-                 SSP.AST.App
-                   ( SSP.AST.Var "solve_lift",
-                     [
+                 (* SSP.AST.App *)
+                 (*   ( SSP.AST.Var "solve_lift", *)
+                     (* [ *)
                        SSP.AST.App
                          ( SSP.AST.Var "ret_both",
                            [
                              SSP.AST.TypedTerm
                                (injections inner_val, SSP.AST.NameTy name);
                            ] );
-                     ] )
+                     (* ] ) *)
                in
                match curr_typ with
                | [] -> inject_argument unit_term
@@ -571,7 +571,7 @@ let plocal_ident (e : Local_ident.t) : string =
         { e with name }
     | _ -> e)
 
-module Make (Ctx : sig
+module Make (Attrs : Attrs.WITH_ITEMS) (Ctx : sig
   val ctx : Context.t
 end) =
 struct
@@ -800,14 +800,14 @@ struct
   and pexpr (env : LocalIdentOrLisIis.W.t list Map.M(Local_ident).t)
       (add_solve : bool) (e : expr) : SSP.AST.term =
     let span = e.span in
-    (match (add_solve, e.e) with
-    | ( true,
-        ( Construct { is_record = true; _ }
-        | If _ (* | Match _ *) | Literal _
-        | Construct { constructor = `TupleCons _; _ }
-        | App _ | GlobalVar _ | LocalVar _ ) ) ->
-        fun x -> SSP.AST.App (SSP.AST.Var "solve_lift", [ x ])
-    | _ -> fun x -> x)
+    (* (match (add_solve, e.e) with *)
+    (* | ( true, *)
+    (*     ( Construct { is_record = true; _ } *)
+    (*     | If _ (\* | Match _ *\) | Literal _ *)
+    (*     | Construct { constructor = `TupleCons _; _ } *)
+    (*     | App _ | GlobalVar _ | LocalVar _ ) ) -> *)
+    (*     fun x -> x (\* SSP.AST.App (SSP.AST.Var "solve_lift", [ x ]) *\) *)
+    (* | _ -> fun x -> x) *)
       (match e.e with
       | Literal lit ->
           SSP.AST.App
@@ -1283,10 +1283,11 @@ struct
                       | _ -> .)
                     args ) );
         ]
-    | GCProjection _ ->
-        Error.unimplemented ~issue_id:549
-          ~details:"Projections of an associated type is not yet supported."
-          span
+    | GCProjection { impl; assoc_item; typ; } ->
+      []
+      (* Error.unimplemented ~issue_id:549 *)
+      (*   ~details:"Projections of an associated type is not yet supported." *)
+      (*   span *)
     | _ -> .
 
   let pgeneric (span : Ast.span) (generics : AST.generics) :
@@ -1367,16 +1368,26 @@ struct
                        params)
                    (pty span body.typ)
                in
-               SSP.AST.Equations
-                 ( pconcrete_ident f_name,
-                   args,
-                   (pexpr
-                      (extend_env_with_params
-                         (Map.empty (module Local_ident))
-                         (List.map ~f:(fun { pat; _ } -> pat) params))
-                      true)
-                     body,
-                   ret_typ ));
+               if Attrs.lemma e.attrs
+               then SSP.AST.Lemma ( pconcrete_ident f_name,
+                                    args,
+                                    (pexpr
+                                       (extend_env_with_params
+                                          (Map.empty (module Local_ident))
+                                          (List.map ~f:(fun { pat; _ } -> pat) params))
+                                       true)
+                                      (Option.value ~default:body (Attrs.associated_expr Ensures e.attrs))
+                                  )
+               else SSP.AST.Equations
+                   ( pconcrete_ident f_name,
+                     args,
+                     (pexpr
+                        (extend_env_with_params
+                           (Map.empty (module Local_ident))
+                           (List.map ~f:(fun { pat; _ } -> pat) params))
+                        true)
+                       body,
+                     ret_typ ));
             ]
       | TyAlias { name; generics; ty } ->
           let g = pgeneric span generics in
@@ -1738,18 +1749,20 @@ module type S = sig
   (* val pgeneric : Ast.span -> AST.generics -> SSP.AST.argument list *)
 end
 
-let make ctx =
-  (module Make (struct
-    let ctx = ctx
-  end) : S)
+let make (module M : Attrs.WITH_ITEMS) ctx =
+  (module Make
+            (M)
+            (struct
+              let ctx = ctx
+            end) : S)
 
 let decls_to_string (decls : SSP.AST.decl list) : string =
   String.concat ~sep:"\n" (List.map ~f:SSP.decl_to_string decls)
 
-let print_item (analysis_data : StaticAnalysis.analysis_data) (item : AST.item)
+let print_item m (analysis_data : StaticAnalysis.analysis_data) (item : AST.item)
     : SSP.AST.decl list =
   let (module Print) =
-    make
+    make m
       {
         current_namespace = U.Concrete_ident_view.to_namespace item.ident;
         analysis_data;
@@ -2144,12 +2157,12 @@ let process_annotation (x : 'a list) (f2 : ('b * ('a -> 'b)) list) : 'b list =
       if List.is_empty (List.concat temp) then [] else d :: temp)
     f2
 
-let string_of_items (x, y) =
+let string_of_items m (x, y) =
   cleanup_item_strings
     (List.map ~f:decls_to_string
        (process_annotation x
           [
-            ([], print_item y);
+            ([], print_item m y);
             (* ConCert.(concert_header, translate_concert_annotations y); *)
           ]
           (* @ ConCert.concert_contract_type_decls x *)))
@@ -2178,7 +2191,7 @@ let hardcoded_coq_headers =
    Import choice.Choice.Exports.\n\n\
    Obligation Tactic := (* try timeout 8 *) solve_ssprove_obligations.\n"
 
-let translate _ (_bo : BackendOptions.t) (items : AST.item list) :
+let translate m (_bo : BackendOptions.t) (items : AST.item list) :
     Types.file list =
   let analysis_data = StaticAnalysis.analyse items in
   U.group_items_by_namespace items
@@ -2192,7 +2205,7 @@ let translate _ (_bo : BackendOptions.t) (items : AST.item list) :
          in
          let file_content =
            hardcoded_coq_headers ^ "\n"
-           ^ string_of_items (items, analysis_data)
+           ^ string_of_items m (items, analysis_data)
            ^ "\n"
          in
 
