@@ -32,6 +32,6 @@ members = [
         "cli/interface-only",
         "recursion",
         "functions",
-        "guards",
+        "guards", "misc",
 ]
 resolver = "2"
