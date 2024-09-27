@@ -582,6 +582,11 @@ let closure_impl_expr_fngen
       <:
       Core.Iter.Adapters.Map.t_Map v_I v_F)
 
+let iter_option (#v_T: Type0) (x: Core.Option.t_Option v_T) : Core.Option.t_IntoIter v_T =
+  Core.Iter.Traits.Collect.f_into_iter #(Core.Option.t_Option v_T)
+    #FStar.Tactics.Typeclasses.solve
+    (Core.Option.impl__as_ref #v_T x <: Core.Option.t_Option v_T)
+
 class t_Foo (v_Self: Type0) = {
   f_AssocType:Type0;
   f_AssocType_15525962639250476383:t_SuperTrait f_AssocType;
@@ -619,11 +624,6 @@ let f (#v_T: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_T) (x
 
 let g (#v_T: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_T) (x: i1.f_AssocType)
     : u32 = f_function_of_super_trait #i1.f_AssocType #FStar.Tactics.Typeclasses.solve x
-
-let iter_option (#v_T: Type0) (x: Core.Option.t_Option v_T) : Core.Option.t_IntoIter v_T =
-  Core.Iter.Traits.Collect.f_into_iter #(Core.Option.t_Option v_T)
-    #FStar.Tactics.Typeclasses.solve
-    (Core.Option.impl__as_ref #v_T x <: Core.Option.t_Option v_T)
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_Foo_for_tuple_: t_Foo Prims.unit =
