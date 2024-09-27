@@ -189,7 +189,7 @@ pub type StateWithThir<'tcx> =
 pub type StateWithMir<'tcx> =
     State<Base<'tcx>, (), types::RcMir<'tcx>, rustc_hir::def_id::DefId, ()>;
 
-impl<'tcx> State<Base<'tcx>, (), (), (), ()> {
+impl<'tcx> StateWithBase<'tcx> {
     pub fn new(
         tcx: rustc_middle::ty::TyCtxt<'tcx>,
         options: hax_frontend_exporter_options::Options,
@@ -243,6 +243,18 @@ impl<'tcx> StateWithThir<'tcx> {
             owner_id,
             binder: (),
             base,
+        }
+    }
+}
+
+impl<'tcx> StateWithOwner<'tcx> {
+    pub fn from_under_owner<S: UnderOwnerState<'tcx>>(s: &S) -> Self {
+        Self {
+            base: s.base(),
+            owner_id: s.owner_id(),
+            thir: (),
+            mir: (),
+            binder: (),
         }
     }
 }

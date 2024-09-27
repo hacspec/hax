@@ -78,6 +78,11 @@ impl Error {
     }
 }
 
+// Trickier case.
+fn iter_option<'a, T>(x: &'a Option<T>) -> impl Iterator<Item = &'a T> {
+    x.as_ref().into_iter()
+}
+
 mod for_clauses {
     trait Foo<T> {
         fn to_t(&self) -> T;

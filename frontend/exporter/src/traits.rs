@@ -10,12 +10,14 @@ pub enum ImplExprPathChunk {
         predicate: Binder<TraitPredicate>,
         #[value(<_ as SInto<_, Clause>>::sinto(predicate, s).id)]
         predicate_id: PredicateId,
+        /// The nth predicate returned by `tcx.item_bounds`.
         index: usize,
     },
     Parent {
         predicate: Binder<TraitPredicate>,
         #[value(<_ as SInto<_, Clause>>::sinto(predicate, s).id)]
         predicate_id: PredicateId,
+        /// The nth predicate returned by `tcx.predicates_of`.
         index: usize,
     },
 }
@@ -41,10 +43,15 @@ pub enum ImplExprAtom {
             predicate.sinto(s).id
         })]
         predicate_id: PredicateId,
+        /// The nth (non-self) predicate found for this item. We use predicates from
+        /// `tcx.predicates_defined_on` starting from the parentmost item. If the item is an opaque
+        /// type, we also append the predicates from `explicit_item_bounds` to this list.
+        index: usize,
         r#trait: Binder<TraitRef>,
         path: Vec<ImplExprPathChunk>,
     },
-    /// The automatic clause `Self: Trait` present inside a `impl Trait for Type {}` item.
+    /// The implicit `Self: Trait` clause present inside a `trait Trait {}` item.
+    // TODO: should we also get that clause for trait impls?
     SelfImpl {
         r#trait: Binder<TraitRef>,
         path: Vec<ImplExprPathChunk>,
@@ -80,6 +87,7 @@ pub struct ImplExpr {
 
 #[cfg(feature = "rustc")]
 pub mod rustc {
+    use rustc_hir::def::DefKind;
     use rustc_hir::def_id::DefId;
     use rustc_middle::ty::*;
 
@@ -87,9 +95,18 @@ pub mod rustc {
     impl<'tcx, S: crate::UnderOwnerState<'tcx>> crate::SInto<S, crate::ImplExpr>
         for rustc_middle::ty::PolyTraitRef<'tcx>
     {
+        #[tracing::instrument(level = "trace", skip(s))]
         fn sinto(&self, s: &S) -> crate::ImplExpr {
+            tracing::trace!(
+                "Enters sinto ({})",
+                stringify!(rustc_middle::ty::PolyTraitRef<'tcx>)
+            );
             use crate::ParamEnv;
-            let warn = |msg: &str| crate::warning!(s, "{}", msg);
+            let warn = |msg: &str| {
+                if !s.base().ty_alias_mode {
+                    crate::warning!(s, "{}", msg)
+                }
+            };
             match impl_expr(s.base().tcx, s.owner_id(), s.param_env(), self, &warn) {
                 Ok(x) => x.sinto(s),
                 Err(e) => crate::fatal!(s, "{}", e),
@@ -97,79 +114,137 @@ pub mod rustc {
         }
     }
 
+    /// Items have various predicates in scope. `path_to` uses them as a starting point for trait
+    /// resolution. This tracks where each of them comes from.
     #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-    pub struct AnnotatedClause<'tcx> {
-        pub is_extra_self_predicate: bool,
-        /// Note: they are all actually `Clause`s.
-        pub clause: Clause<'tcx>,
-        pub span: rustc_span::Span,
+    pub enum BoundPredicateOrigin {
+        /// The `Self: Trait` predicate implicitly present within trait declarations (note: we
+        /// don't add it for trait implementations, should we?).
+        SelfPred,
+        /// The nth (non-self) predicate found for this item. We use predicates from
+        /// `tcx.predicates_defined_on` starting from the parentmost item. If the item is an opaque
+        /// type, we also append the predicates from `explicit_item_bounds` to this list.
+        Item(usize),
+    }
+
+    #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+    pub struct AnnotatedTraitPred<'tcx> {
+        pub origin: BoundPredicateOrigin,
+        pub clause: PolyTraitPredicate<'tcx>,
     }
 
     #[extension_traits::extension(pub trait TyCtxtExtPredOrAbove)]
     impl<'tcx> TyCtxt<'tcx> {
-        /// Just like `TyCtxt::predicates_defined_on`, but in the case of
-        /// a trait or impl item, also includes the predicates defined on
-        /// the parent.
-        fn predicates_defined_on_or_above(
-            self,
-            did: rustc_span::def_id::DefId,
-        ) -> Vec<AnnotatedClause<'tcx>> {
-            let mut next_did = Some(did);
-            let mut predicates = vec![];
-            while let Some(did) = next_did {
-                let (preds, parent) = self.annotated_predicates_of(did);
-                next_did = parent;
-                predicates.extend(preds)
-            }
-            predicates
-        }
-
-        fn annotated_predicates_of(
+        /// Just like `TyCtxt::predicates_of`, but in the case of a trait or impl item or closures,
+        /// also includes the predicates defined on the parents. Also this returns the special
+        /// `Self` clause separately.
+        fn predicates_of_or_above(
             self,
             did: rustc_span::def_id::DefId,
         ) -> (
-            impl Iterator<Item = AnnotatedClause<'tcx>>,
-            Option<rustc_span::def_id::DefId>,
+            Vec<PolyTraitPredicate<'tcx>>,
+            Option<PolyTraitPredicate<'tcx>>,
         ) {
-            let with_self = self.predicates_of(did);
-            let parent = with_self.parent;
-            let with_self = {
-                let extra_predicates: Vec<(Clause<'_>, rustc_span::Span)> =
-                    if rustc_hir::def::DefKind::OpaqueTy == self.def_kind(did) {
-                        // An opaque type (e.g. `impl Trait`) provides
-                        // predicates by itself: we need to account for them.
+            use DefKind::*;
+            let tcx = self;
+            let def_kind = tcx.def_kind(did);
+
+            let (mut predicates, mut self_pred) = match def_kind {
+                // These inherit some predicates from their parent.
+                AssocTy | AssocFn | AssocConst | Closure => {
+                    let parent = tcx.parent(did);
+                    self.predicates_of_or_above(parent)
+                }
+                _ => (vec![], None),
+            };
+
+            match def_kind {
+                // Don't list the predicates of traits, we already list the `Self` clause from
+                // which we can resolve anything needed.
+                Trait => {}
+                AssocConst
+                | AssocFn
+                | AssocTy
+                | Const
+                | Enum
+                | Fn
+                | ForeignTy
+                | Impl { .. }
+                | OpaqueTy
+                | Static { .. }
+                | Struct
+                | TraitAlias
+                | TyAlias
+                | Union => {
+                    // Only these kinds may reasonably have predicates; we have to filter
+                    // otherwise calling `predicates_defined_on` may ICE.
+                    predicates.extend(
+                        tcx.predicates_defined_on(did)
+                            .predicates
+                            .iter()
+                            .filter_map(|(clause, _span)| clause.as_trait_clause()),
+                    );
+                }
+                _ => {}
+            }
+
+            // Add some extra predicates that aren't in `predicates_defined_on`.
+            match def_kind {
+                OpaqueTy => {
+                    // An opaque type (e.g. `impl Trait`) provides predicates by itself: we need to
+                    // account for them.
+                    // TODO: is this still useful? The test that used to require this doesn't anymore.
+                    predicates.extend(
                         self.explicit_item_bounds(did)
                             .skip_binder() // Skips an `EarlyBinder`, likely for GATs
                             .iter()
-                            .copied()
-                            .collect()
-                    } else {
-                        vec![]
-                    };
-                with_self.predicates.iter().copied().chain(extra_predicates)
-            };
-            let without_self: Vec<Clause<'_>> = self
-                .predicates_defined_on(did)
-                .predicates
-                .iter()
-                .copied()
-                .map(|(clause, _)| clause)
-                .collect();
-            (
-                with_self.map(move |(clause, span)| AnnotatedClause {
-                    is_extra_self_predicate: !without_self.contains(&clause),
+                            .filter_map(|(clause, _span)| clause.as_trait_clause()),
+                    )
+                }
+                Trait => {
+                    // Add the special `Self: Trait` clause.
+                    // Copied from the code of `tcx.predicates_of()`.
+                    let self_clause: Clause<'_> = TraitRef::identity(tcx, did).upcast(tcx);
+                    self_pred = Some(self_clause.as_trait_clause().unwrap());
+                }
+                _ => {}
+            }
+
+            (predicates, self_pred)
+        }
+
+        /// The predicates to use as a starting point for resolving trait references within this
+        /// item. This is just like `TyCtxt::predicates_of`, but in the case of a trait or impl
+        /// item or closures, also includes the predicates defined on the parents.
+        fn initial_search_predicates(
+            self,
+            did: rustc_span::def_id::DefId,
+        ) -> Vec<AnnotatedTraitPred<'tcx>> {
+            let (predicates, self_pred) = self.predicates_of_or_above(did);
+            let mut predicates: Vec<_> = predicates
+                .into_iter()
+                .enumerate()
+                .map(|(i, clause)| AnnotatedTraitPred {
+                    origin: BoundPredicateOrigin::Item(i),
                     clause,
-                    span,
-                }),
-                parent,
-            )
+                })
+                .collect();
+
+            if let Some(clause) = self_pred {
+                predicates.push(AnnotatedTraitPred {
+                    origin: BoundPredicateOrigin::SelfPred,
+                    clause,
+                })
+            }
+
+            predicates
         }
     }
 
     // FIXME: this has visibility `pub(crate)` only because of https://github.com/rust-lang/rust/issues/83049
     pub(crate) mod search_clause {
-        use super::{AnnotatedClause, Path, PathChunk, TyCtxtExtPredOrAbove};
-        use crate::rustc_utils::*;
+        use super::{AnnotatedTraitPred, Path, PathChunk, TyCtxtExtPredOrAbove};
+        use rustc_hir::def_id::DefId;
         use rustc_middle::ty::*;
 
         /// Custom equality on `Predicate`s.
@@ -226,51 +301,37 @@ pub mod rustc {
 
         #[extension_traits::extension(pub trait TraitPredicateExt)]
         impl<'tcx> PolyTraitPredicate<'tcx> {
-            fn predicates_to_poly_trait_predicates(
-                self,
-                tcx: TyCtxt<'tcx>,
-                predicates: impl Iterator<Item = Predicate<'tcx>>,
-            ) -> impl Iterator<Item = PolyTraitPredicate<'tcx>> {
-                // Warning: this skip_binder seems dangerous
-                let generics = self.skip_binder().trait_ref.args;
-                predicates
-                    .filter_map(|pred| pred.as_trait_clause())
-                    .map(move |clause| clause.subst(tcx, generics))
-            }
-
             #[tracing::instrument(level = "trace", skip(tcx))]
-            fn parents_trait_predicates(
-                self,
-                tcx: TyCtxt<'tcx>,
-            ) -> Vec<(usize, PolyTraitPredicate<'tcx>)> {
-                let predicates = tcx
-                    .predicates_defined_on_or_above(self.def_id())
-                    .into_iter()
-                    .map(|apred| apred.clause.as_predicate());
-                self.predicates_to_poly_trait_predicates(tcx, predicates)
-                    .enumerate()
+            fn parents_trait_predicates(self, tcx: TyCtxt<'tcx>) -> Vec<PolyTraitPredicate<'tcx>> {
+                let self_trait_ref = self.to_poly_trait_ref();
+                tcx.predicates_of(self.def_id())
+                    .predicates
+                    .iter()
+                    // Substitute with the `self` args so that the clause makes sense in the
+                    // outside context.
+                    .map(|(clause, _span)| clause.instantiate_supertrait(tcx, self_trait_ref))
+                    .filter_map(|pred| pred.as_trait_clause())
                     .collect()
             }
             #[tracing::instrument(level = "trace", skip(tcx))]
             fn associated_items_trait_predicates(
                 self,
                 tcx: TyCtxt<'tcx>,
-            ) -> Vec<(
-                AssocItem,
-                EarlyBinder<'tcx, Vec<(usize, PolyTraitPredicate<'tcx>)>>,
-            )> {
+            ) -> Vec<(AssocItem, EarlyBinder<'tcx, Vec<PolyTraitPredicate<'tcx>>>)> {
+                let self_trait_ref = self.to_poly_trait_ref();
                 tcx.associated_items(self.def_id())
                     .in_definition_order()
                     .filter(|item| item.kind == AssocKind::Type)
                     .copied()
                     .map(|item| {
                         let bounds = tcx.item_bounds(item.def_id).map_bound(|clauses| {
-                            self.predicates_to_poly_trait_predicates(
-                                tcx,
-                                clauses.into_iter().map(|clause| clause.as_predicate()),
-                            )
-                            .enumerate()
-                            .collect()
+                            clauses
+                                .iter()
+                                // Substitute with the `self` args so that the clause makes sense
+                                // in the outside context.
+                                .map(|clause| clause.instantiate_supertrait(tcx, self_trait_ref))
+                                .filter_map(|pred| pred.as_trait_clause())
+                                .collect()
                         });
                         (item, bounds)
                     })
@@ -281,10 +342,10 @@ pub mod rustc {
         #[tracing::instrument(level = "trace", skip(tcx, param_env))]
         pub(super) fn path_to<'tcx>(
             tcx: TyCtxt<'tcx>,
-            starting_points: &[AnnotatedClause<'tcx>],
-            target: PolyTraitRef<'tcx>,
+            owner_id: DefId,
             param_env: rustc_middle::ty::ParamEnv<'tcx>,
-        ) -> Option<(Path<'tcx>, AnnotatedClause<'tcx>)> {
+            target: PolyTraitRef<'tcx>,
+        ) -> Option<(Path<'tcx>, AnnotatedTraitPred<'tcx>)> {
             /// A candidate projects `self` along a path reaching some
             /// predicate. A candidate is selected when its predicate
             /// is the one expected, aka `target`.
@@ -292,19 +353,17 @@ pub mod rustc {
             struct Candidate<'tcx> {
                 path: Path<'tcx>,
                 pred: PolyTraitPredicate<'tcx>,
-                origin: AnnotatedClause<'tcx>,
+                origin: AnnotatedTraitPred<'tcx>,
             }
 
             use std::collections::VecDeque;
-            let mut candidates: VecDeque<Candidate<'tcx>> = starting_points
+            let mut candidates: VecDeque<Candidate<'tcx>> = tcx
+                .initial_search_predicates(owner_id)
                 .into_iter()
-                .filter_map(|pred| {
-                    let clause = pred.clause.as_trait_clause();
-                    clause.map(|clause| Candidate {
-                        path: vec![],
-                        pred: clause,
-                        origin: *pred,
-                    })
+                .map(|initial_clause| Candidate {
+                    path: vec![],
+                    pred: initial_clause.clause,
+                    origin: initial_clause,
                 })
                 .collect();
 
@@ -334,7 +393,12 @@ pub mod rustc {
                 }
 
                 // otherwise, we add to the queue all paths reachable from the candidate
-                for (index, parent_pred) in candidate.pred.parents_trait_predicates(tcx) {
+                for (index, parent_pred) in candidate
+                    .pred
+                    .parents_trait_predicates(tcx)
+                    .into_iter()
+                    .enumerate()
+                {
                     let mut path = candidate.path.clone();
                     path.push(PathChunk::Parent {
                         predicate: parent_pred,
@@ -347,8 +411,8 @@ pub mod rustc {
                     });
                 }
                 for (item, binder) in candidate.pred.associated_items_trait_predicates(tcx) {
-                    // Warning: this skip_binder seems dangerous
-                    for (index, parent_pred) in binder.skip_binder().into_iter() {
+                    // This `skip_binder` is for an early binder and skips GAT parameters.
+                    for (index, parent_pred) in binder.skip_binder().into_iter().enumerate() {
                         let mut path = candidate.path.clone();
                         path.push(PathChunk::AssocItem {
                             item,
@@ -372,10 +436,12 @@ pub mod rustc {
         AssocItem {
             item: AssocItem,
             predicate: PolyTraitPredicate<'tcx>,
+            /// The nth predicate returned by `tcx.item_bounds`.
             index: usize,
         },
         Parent {
             predicate: PolyTraitPredicate<'tcx>,
+            /// The nth predicate returned by `tcx.predicates_of`.
             index: usize,
         },
     }
@@ -391,6 +457,11 @@ pub mod rustc {
         /// A context-bound clause like `where T: Trait`.
         LocalBound {
             predicate: Predicate<'tcx>,
+            /// The nth (non-self) predicate found for this item. We use predicates from
+            /// `tcx.predicates_defined_on` starting from the parentmost item. If the item is an
+            /// opaque type, we also append the predicates from `explicit_item_bounds` to this
+            /// list.
+            index: usize,
             r#trait: PolyTraitRef<'tcx>,
             path: Path<'tcx>,
         },
@@ -422,27 +493,14 @@ pub mod rustc {
         pub args: Vec<Self>,
     }
 
-    impl<'tcx> ImplExprAtom<'tcx> {
-        fn with_args(
-            self,
-            args: Vec<ImplExpr<'tcx>>,
-            r#trait: PolyTraitRef<'tcx>,
-        ) -> ImplExpr<'tcx> {
-            ImplExpr {
-                r#impl: self,
-                args,
-                r#trait,
-            }
-        }
-    }
-
     #[tracing::instrument(level = "trace", skip(tcx, warn))]
     fn impl_exprs<'tcx>(
         tcx: TyCtxt<'tcx>,
         owner_id: DefId,
-        obligations: &Vec<
-            rustc_trait_selection::traits::Obligation<'tcx, rustc_middle::ty::Predicate<'tcx>>,
-        >,
+        obligations: &[rustc_trait_selection::traits::Obligation<
+            'tcx,
+            rustc_middle::ty::Predicate<'tcx>,
+        >],
         warn: &impl Fn(&str),
     ) -> Result<Vec<ImplExpr<'tcx>>, String> {
         obligations
@@ -470,64 +528,76 @@ pub mod rustc {
         // Call back into hax-related code to display a nice warning.
         warn: &impl Fn(&str),
     ) -> Result<ImplExpr<'tcx>, String> {
-        use rustc_trait_selection::traits::*;
-        let impl_source = copy_paste_from_rustc::codegen_select_candidate(tcx, (param_env, *tref))
-            .map_err(|e| format!("Cannot handle error `{e:?}` selecting `{tref:?}`"))?;
-        Ok(match impl_source {
-            ImplSource::UserDefined(ImplSourceUserDefinedData {
+        use rustc_trait_selection::traits::{
+            BuiltinImplSource, ImplSource, ImplSourceUserDefinedData,
+        };
+
+        let impl_source = copy_paste_from_rustc::codegen_select_candidate(tcx, (param_env, *tref));
+        let atom = match impl_source {
+            Ok(ImplSource::UserDefined(ImplSourceUserDefinedData {
                 impl_def_id,
                 args: generics,
-                nested,
-            }) => ImplExprAtom::Concrete {
+                ..
+            })) => ImplExprAtom::Concrete {
                 def_id: impl_def_id,
                 generics,
-            }
-            .with_args(impl_exprs(tcx, owner_id, &nested, warn)?, *tref),
-            ImplSource::Param(nested) => {
-                let nested = impl_exprs(tcx, owner_id, &nested, warn)?;
-                let predicates = tcx.predicates_defined_on_or_above(owner_id);
-                let Some((path, apred)) =
-                    search_clause::path_to(tcx, &predicates, tref.clone(), param_env)
-                else {
-                    let msg =
-                        format!("Could not find a clause for `{tref:?}` in the item parameters");
-                    warn(&msg);
-                    return Ok(ImplExprAtom::Error(msg).with_args(nested, *tref));
-                };
-
-                let Some(trait_clause) = apred.clause.as_trait_clause() else {
-                    return Err(format!(
-                        "Candidate origin for `{tref:?}` is a clause but not a \
-                        trait clause: `{:?}`",
-                        apred.clause
-                    ));
-                };
-                use rustc_middle::ty::ToPolyTraitRef;
-                let r#trait = trait_clause.to_poly_trait_ref();
-                if apred.is_extra_self_predicate {
-                    ImplExprAtom::SelfImpl { r#trait, path }
-                } else {
-                    ImplExprAtom::LocalBound {
-                        predicate: apred.clause.as_predicate(),
-                        r#trait,
-                        path,
+            },
+            Ok(ImplSource::Param(_)) => {
+                match search_clause::path_to(tcx, owner_id, param_env, tref.clone()) {
+                    Some((path, apred)) => {
+                        let r#trait = apred.clause.to_poly_trait_ref();
+                        match apred.origin {
+                            BoundPredicateOrigin::SelfPred => {
+                                ImplExprAtom::SelfImpl { r#trait, path }
+                            }
+                            BoundPredicateOrigin::Item(index) => ImplExprAtom::LocalBound {
+                                predicate: apred.clause.upcast(tcx),
+                                index,
+                                r#trait,
+                                path,
+                            },
+                        }
+                    }
+                    None => {
+                        let msg = format!(
+                            "Could not find a clause for `{tref:?}` in the item parameters"
+                        );
+                        warn(&msg);
+                        ImplExprAtom::Error(msg)
                     }
                 }
-                .with_args(nested, *tref)
             }
+            Ok(ImplSource::Builtin(BuiltinImplSource::Object { .. }, _)) => ImplExprAtom::Dyn,
+            Ok(ImplSource::Builtin(_, _)) => ImplExprAtom::Builtin {
+                r#trait: tref.clone(),
+            },
+            Err(e) => {
+                let msg = format!(
+                    "Could not find a clause for `{tref:?}` in the current context: `{e:?}`"
+                );
+                warn(&msg);
+                ImplExprAtom::Error(msg)
+            }
+        };
+
+        let nested = match &impl_source {
+            Ok(ImplSource::UserDefined(ImplSourceUserDefinedData { nested, .. })) => {
+                nested.as_slice()
+            }
+            Ok(ImplSource::Param(nested)) => nested.as_slice(),
             // We ignore the contained obligations here. For example for `(): Send`, the
             // obligations contained would be `[(): Send]`, which leads to an infinite loop. There
-            // might be important obligation shere inother cases; we'll have to see if that comes
+            // might be important obligations here in other cases; we'll have to see if that comes
             // up.
-            ImplSource::Builtin(source, _ignored) => {
-                let atom = match source {
-                    BuiltinImplSource::Object { .. } => ImplExprAtom::Dyn,
-                    _ => ImplExprAtom::Builtin {
-                        r#trait: tref.clone(),
-                    },
-                };
-                atom.with_args(vec![], *tref)
-            }
+            Ok(ImplSource::Builtin(_, _ignored)) => &[],
+            Err(_) => &[],
+        };
+        let nested = impl_exprs(tcx, owner_id, nested, warn)?;
+
+        Ok(ImplExpr {
+            r#impl: atom,
+            args: nested,
+            r#trait: *tref,
         })
     }
 
