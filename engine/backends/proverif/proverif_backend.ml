@@ -142,9 +142,9 @@ end
 module Make (Options : OPTS) : MAKE = struct
   module Print = struct
     module GenericPrint =
-      Generic_printer.Make (InputLanguage) (U.Concrete_ident_view)
+      Deprecated_generic_printer.Make (InputLanguage) (U.Concrete_ident_view)
 
-    open Generic_printer_base.Make (InputLanguage)
+    open Deprecated_generic_printer_base.Make (InputLanguage)
     open PPrint
 
     let iblock f = group >> jump 2 0 >> terminate (break 0) >> f >> group
@@ -264,7 +264,8 @@ module Make (Options : OPTS) : MAKE = struct
 
         method typed_wildcard = print#wildcard ^^ string ": bitstring"
 
-        method tuple_elem_pat' : Generic_printer_base.par_state -> pat' fn =
+        method tuple_elem_pat'
+            : Deprecated_generic_printer_base.par_state -> pat' fn =
           fun ctx ->
             let wrap_parens =
               group
@@ -277,14 +278,15 @@ module Make (Options : OPTS) : MAKE = struct
                 p ^^ colon ^^ space ^^ print#ty ctx typ
             | p -> print#pat' ctx p
 
-        method tuple_elem_pat : Generic_printer_base.par_state -> pat fn =
+        method tuple_elem_pat
+            : Deprecated_generic_printer_base.par_state -> pat fn =
           fun ctx { p; span; _ } ->
             print#with_span ~span (fun _ -> print#tuple_elem_pat' ctx p)
 
         method tuple_elem_pat_at = print#par_state >> print#tuple_elem_pat
 
         (* Overridden methods *)
-        method! pat' : Generic_printer_base.par_state -> pat' fn =
+        method! pat' : Deprecated_generic_printer_base.par_state -> pat' fn =
           fun ctx ->
             let wrap_parens =
               group
@@ -344,7 +346,8 @@ module Make (Options : OPTS) : MAKE = struct
         method! ty_bool = string "bool"
         method! ty_int _ = string "nat"
 
-        method! pat_at : Generic_printer_base.ast_position -> pat fn =
+        method! pat_at : Deprecated_generic_printer_base.ast_position -> pat fn
+            =
           fun pos pat ->
             match pat with
             | { p = PWild } -> (
@@ -374,7 +377,7 @@ module Make (Options : OPTS) : MAKE = struct
           in
           f ^^ iblock parens args
 
-        method! expr' : Generic_printer_base.par_state -> expr' fn =
+        method! expr' : Deprecated_generic_printer_base.par_state -> expr' fn =
           fun ctx e ->
             let wrap_parens =
               group
@@ -720,7 +723,7 @@ module Make (Options : OPTS) : MAKE = struct
                   | _ -> super#expr ctx e (*This cannot happen*))
               | _ -> super#expr ctx e)
 
-        method! ty : Generic_printer_base.par_state -> ty fn =
+        method! ty : Deprecated_generic_printer_base.par_state -> ty fn =
           fun ctx ty ->
             match ty with
             | TBool -> print#ty_bool

@@ -2,8 +2,8 @@ open! Prelude
 open! Ast
 
 module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
-  open Generic_printer_base
-  open Generic_printer_base.Make (F)
+  open Deprecated_generic_printer_base
+  open Deprecated_generic_printer_base.Make (F)
 
   module Class = struct
     module U = Ast_utils.Make (F)
