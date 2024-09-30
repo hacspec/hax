@@ -291,7 +291,7 @@ module Make (F : Features.T) (Error : Phase_utils.ERROR) = struct
                         ^ "\n - free_variables: "
                         ^ [%show: string list] free_variables
                       in
-                      Error.unimplemented ~details span)
+                      Error.assertion_failure span details)
              in
              let v =
                U.Mappers.rename_local_idents (fun i ->

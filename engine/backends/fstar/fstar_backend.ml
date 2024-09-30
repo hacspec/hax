@@ -156,7 +156,8 @@ struct
             Some
               ( (match signedness with Signed -> Signed | Unsigned -> Unsigned),
                 size ) )
-    | Float _ -> Error.unimplemented ~details:"pliteral: Float" span
+    | Float _ ->
+        Error.unimplemented ~issue_id:230 ~details:"pliteral: Float" span
     | Bool b -> F.Const.Const_bool b
 
   let pliteral_as_expr span (e : literal) =
@@ -302,7 +303,7 @@ struct
         F.mk_e_app base args
     | TArrow (inputs, output) ->
         F.mk_e_arrow (List.map ~f:(pty span) inputs) (pty span output)
-    | TFloat _ -> Error.unimplemented ~details:"pty: Float" span
+    | TFloat _ -> Error.unimplemented ~issue_id:230 ~details:"pty: Float" span
     | TArray { typ; length } ->
         F.mk_e_app (F.term_of_lid [ "t_Array" ]) [ pty span typ; pexpr length ]
     | TParam i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident i)
@@ -398,7 +399,7 @@ struct
     | POr { subpats } when shallow ->
         F.pat @@ F.AST.PatOr (List.map ~f:ppat subpats)
     | POr _ ->
-        Error.unimplemented p.span ~issue_id:463
+        Error.unimplemented ~issue_id:463 p.span
           ~details:"The F* backend doesn't support nested disjuntive patterns"
     | PArray { args } -> F.pat @@ F.AST.PatList (List.map ~f:ppat args)
     | PConstruct { name = `TupleCons 0; args = [] } ->

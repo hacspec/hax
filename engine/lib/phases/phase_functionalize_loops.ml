@@ -222,12 +222,12 @@ struct
           UB.call ~kind:(AssociatedItem Value) Rust_primitives__hax__while_loop
             [ condition; init; body ] span (dty span expr.typ)
       | Loop { state = None; _ } ->
-          Error.unimplemented ~details:"Loop without mutation?" span
+          Error.unimplemented ~issue_id:405 ~details:"Loop without mutation"
+            span
       | Loop _ ->
-          Error.unimplemented
-            ~details:"Only for loop are being functionalized for now" span
+          Error.unimplemented ~issue_id:933 ~details:"Unhandled loop kind" span
       | Break _ ->
-          Error.unimplemented
+          Error.unimplemented ~issue_id:15
             ~details:
               "For now, the AST node [Break] is feature gated only by [loop], \
                there is nothing for having loops but no breaks."
