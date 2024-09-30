@@ -1,0 +1,9 @@
+(library
+ (name sourcemaps)
+ (package hax-engine)
+ (inline_tests)
+ (preprocess
+  (pps ppx_inline_test ppx_yojson_conv ppx_deriving.show ppx_deriving.eq))
+ (libraries base))
+
+(include_subdirs unqualified)

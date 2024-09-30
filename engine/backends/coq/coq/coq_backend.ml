@@ -696,6 +696,7 @@ let translate _ (_bo : BackendOptions.t) (items : AST.item list) :
              path = mod_name ^ ".v";
              contents =
                hardcoded_coq_headers ^ "\n" ^ string_of_items items ^ "\n";
+             sourcemap = None;
            })
 
 open Phase_utils
