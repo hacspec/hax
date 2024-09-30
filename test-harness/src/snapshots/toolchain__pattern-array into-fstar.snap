@@ -1,0 +1,167 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: fstar
+  info:
+    name: pattern-array
+    manifest: pattern-array/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: false
+      stdout: true
+    include_flag: ~
+    backend_options: ~
+---
+exit = 0
+
+[stdout]
+diagnostics = []
+
+[stdout.files]
+"Pattern_array.fst" = '''
+module Pattern_array
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let array_pattern (x: t_Array i32 (sz 2)) : i32 =
+  match
+    match x with
+    | array_var ->
+      (match array_var.[ isz 0 ], array_var.[ isz 1 ] <: (i32 & i32) with
+        | 0l, a -> Core.Option.Option_Some a <: Core.Option.t_Option i32
+        | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+    | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
+  with
+  | Core.Option.Option_Some x -> x
+  | Core.Option.Option_None  -> 1l
+
+let nested_array_pattern (x: t_Slice (t_Array i32 (sz 2))) : i32 =
+  match
+    match x with
+    | array_var1 ->
+      (match
+          if (Core.Slice.impl__len array_var1 <: isize) >=. isz 2
+          then
+            match array_var1.[ isz 1 ] with
+            | array_var ->
+              Core.Option.Option_Some
+              (array_var1.[ isz 0 ], (array_var.[ isz 0 ], array_var.[ isz 1 ] <: (i32 & i32))
+                <:
+                (t_Array i32 (sz 2) & (i32 & i32)))
+              <:
+              Core.Option.t_Option (t_Array i32 (sz 2) & (i32 & i32))
+            | _ ->
+              Core.Option.Option_None <: Core.Option.t_Option (t_Array i32 (sz 2) & (i32 & i32))
+          else Core.Option.Option_None <: Core.Option.t_Option (t_Array i32 (sz 2) & (i32 & i32))
+        with
+        | Core.Option.Option_Some (_, (y, _)) ->
+          Core.Option.Option_Some y <: Core.Option.t_Option i32
+        | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+    | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
+  with
+  | Core.Option.Option_Some x -> x
+  | Core.Option.Option_None  -> 1l
+
+let nested_usize_array_pattern (x: t_Slice (t_Array usize (sz 2))) : usize =
+  match
+    match x with
+    | array_var2 ->
+      (match
+          if (Core.Slice.impl__len array_var2 <: isize) >=. isz 2
+          then
+            match
+              array_var2.[ isz 0 ], array_var2.[ isz 1 ]
+              <:
+              (t_Array usize (sz 2) & t_Array usize (sz 2))
+            with
+            | array_var, array_var1 ->
+              Core.Option.Option_Some
+              ((if
+                    (Core.Slice.impl__len (array_var <: t_Slice (t_Array usize (sz 2))) <: isize) >=.
+                    isz 2
+                  then
+                    match array_var.[ isz 0 ] with
+                    | size_var ->
+                      Core.Option.Option_Some
+                      (sz 1 =. size_var, array_var.[ isz 1 ] <: (bool & usize))
+                      <:
+                      Core.Option.t_Option (bool & usize)
+                    | _ -> Core.Option.Option_None <: Core.Option.t_Option (bool & usize)
+                  else Core.Option.Option_None <: Core.Option.t_Option (bool & usize)),
+                (array_var1.[ isz 0 ], array_var1.[ isz 1 ] <: (usize & usize))
+                <:
+                (Core.Option.t_Option (bool & usize) & (usize & usize)))
+              <:
+              Core.Option.t_Option (Core.Option.t_Option (bool & usize) & (usize & usize))
+            | _ ->
+              Core.Option.Option_None
+              <:
+              Core.Option.t_Option (Core.Option.t_Option (bool & usize) & (usize & usize))
+          else
+            Core.Option.Option_None
+            <:
+            Core.Option.t_Option (Core.Option.t_Option (bool & usize) & (usize & usize))
+        with
+        | Core.Option.Option_Some (Core.Option.Option_Some (true, _), (y, _)) ->
+          Core.Option.Option_Some y <: Core.Option.t_Option usize
+        | _ -> Core.Option.Option_None <: Core.Option.t_Option usize)
+    | _ -> Core.Option.Option_None <: Core.Option.t_Option usize
+  with
+  | Core.Option.Option_Some x -> x
+  | Core.Option.Option_None  -> sz 1
+
+let slice_pattern (x: t_Slice i32) : i32 =
+  match
+    match x with
+    | array_var ->
+      (match
+          if (Core.Slice.impl__len array_var <: isize) >=. isz 2
+          then
+            Core.Option.Option_Some
+            (array_var.[ isz 0 ],
+              array_var.[ (Core.Slice.impl__len array_var <: isize) -! isz 1 <: isize ]
+              <:
+              (i32 & i32))
+            <:
+            Core.Option.t_Option (i32 & i32)
+          else Core.Option.Option_None <: Core.Option.t_Option (i32 & i32)
+        with
+        | Core.Option.Option_Some (0l, a) -> Core.Option.Option_Some a <: Core.Option.t_Option i32
+        | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+    | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
+  with
+  | Core.Option.Option_Some x -> x
+  | Core.Option.Option_None  -> 1l
+
+let usize_array_pattern (x: t_Slice usize) : usize =
+  match
+    match x with
+    | array_var ->
+      (match
+          if (Core.Slice.impl__len array_var <: isize) >=. isz 2
+          then
+            match array_var.[ isz 0 ] with
+            | size_var ->
+              Core.Option.Option_Some (sz 1 =. size_var, array_var.[ isz 1 ] <: (bool & usize))
+              <:
+              Core.Option.t_Option (bool & usize)
+            | _ -> Core.Option.Option_None <: Core.Option.t_Option (bool & usize)
+          else Core.Option.Option_None <: Core.Option.t_Option (bool & usize)
+        with
+        | Core.Option.Option_Some (true, y) ->
+          Core.Option.Option_Some y <: Core.Option.t_Option usize
+        | _ -> Core.Option.Option_None <: Core.Option.t_Option usize)
+    | _ -> Core.Option.Option_None <: Core.Option.t_Option usize
+  with
+  | Core.Option.Option_Some x -> x
+  | Core.Option.Option_None  -> sz 1
+'''

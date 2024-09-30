@@ -1,0 +1,160 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: fstar
+  info:
+    name: pattern-opaque
+    manifest: pattern-opaque/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: false
+      stdout: true
+    include_flag: ~
+    backend_options: ~
+---
+exit = 0
+
+[stdout]
+diagnostics = []
+
+[stdout.files]
+"Pattern_opaque.fst" = '''
+module Pattern_opaque
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let equivalent (x: usize) : i32 =
+  match
+    match x with
+    | a ->
+      (match a =. sz 1 with
+        | true -> Core.Option.Option_Some 1l <: Core.Option.t_Option i32
+        | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+    | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
+  with
+  | Core.Option.Option_Some x -> x
+  | Core.Option.Option_None  ->
+    match
+      match x with
+      | a ->
+        (match a =. sz 2 with
+          | true -> Core.Option.Option_Some 2l <: Core.Option.t_Option i32
+          | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+      | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
+    with
+    | Core.Option.Option_Some x -> x
+    | Core.Option.Option_None  -> 0l
+
+let u128_pattern (x: u128) : i32 =
+  match
+    match x with
+    | size_var ->
+      (match pub_u128 1 =. size_var with
+        | true -> Core.Option.Option_Some 1l <: Core.Option.t_Option i32
+        | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+    | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
+  with
+  | Core.Option.Option_Some x -> x
+  | Core.Option.Option_None  -> 0l
+
+let u_i_size_nested (x1 x2: usize) (y: isize) : i32 =
+  match
+    match (x1, 1l <: (usize & i32)), y <: ((usize & i32) & isize) with
+    | (size_var, res), size_var1 ->
+      (match sz 1 =. size_var, isz 1 =. size_var1 <: (bool & bool) with
+        | true, true -> Core.Option.Option_Some res <: Core.Option.t_Option i32
+        | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+    | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
+  with
+  | Core.Option.Option_Some x -> x
+  | Core.Option.Option_None  -> 0l
+
+let u_i_size_nested_equivalent (x1 x2: usize) (y: isize) : i32 =
+  match
+    match (x1, 1l <: (usize & i32)), y <: ((usize & i32) & isize) with
+    | (a1, res), b ->
+      (match a1 =. sz 1, b =. isz 1 <: (bool & bool) with
+        | true, true -> Core.Option.Option_Some res <: Core.Option.t_Option i32
+        | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+    | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
+  with
+  | Core.Option.Option_Some x -> x
+  | Core.Option.Option_None  -> 0l
+
+let usize_complicated_or_pattern (x: usize) : usize =
+  match
+    match x, x <: (usize & usize) with
+    | size_var, a ->
+      (match sz 1 =. size_var with
+        | true -> Core.Option.Option_Some a <: Core.Option.t_Option usize
+        | _ -> Core.Option.Option_None <: Core.Option.t_Option usize)
+    | _ -> Core.Option.Option_None <: Core.Option.t_Option usize
+  with
+  | Core.Option.Option_Some x -> x
+  | Core.Option.Option_None  ->
+    match
+      match x, x <: (usize & usize) with
+      | a, size_var ->
+        (match sz 1 =. size_var with
+          | true -> Core.Option.Option_Some a <: Core.Option.t_Option usize
+          | _ -> Core.Option.Option_None <: Core.Option.t_Option usize)
+      | _ -> Core.Option.Option_None <: Core.Option.t_Option usize
+    with
+    | Core.Option.Option_Some x -> x
+    | Core.Option.Option_None  -> sz 0
+
+let usize_or_equivalent (x: usize) : i32 =
+  match
+    match x, x <: (usize & usize) with
+    | a, b ->
+      (match a =. sz 1 || a =. sz 2 with
+        | true -> Core.Option.Option_Some 1l <: Core.Option.t_Option i32
+        | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+    | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
+  with
+  | Core.Option.Option_Some x -> x
+  | Core.Option.Option_None  -> 0l
+
+let usize_or_pattern (x: usize) : i32 =
+  match
+    match x, 1l <: (usize & i32) with
+    | size_var, a ->
+      (match sz 1 =. size_var || sz 2 =. size_var with
+        | true -> Core.Option.Option_Some a <: Core.Option.t_Option i32
+        | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+    | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
+  with
+  | Core.Option.Option_Some x -> x
+  | Core.Option.Option_None  -> 0l
+
+let usize_pattern (x: usize) : i32 =
+  match
+    match x with
+    | size_var ->
+      (match sz 1 =. size_var with
+        | true -> Core.Option.Option_Some 1l <: Core.Option.t_Option i32
+        | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+    | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
+  with
+  | Core.Option.Option_Some x -> x
+  | Core.Option.Option_None  ->
+    match
+      match x with
+      | size_var ->
+        (match sz 2 =. size_var with
+          | true -> Core.Option.Option_Some 2l <: Core.Option.t_Option i32
+          | _ -> Core.Option.Option_None <: Core.Option.t_Option i32)
+      | _ -> Core.Option.Option_None <: Core.Option.t_Option i32
+    with
+    | Core.Option.Option_Some x -> x
+    | Core.Option.Option_None  -> 0l
+'''

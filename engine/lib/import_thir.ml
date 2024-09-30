@@ -870,7 +870,13 @@ end) : EXPR = struct
           and pat'_of_expr' (e : expr') span =
             match e with
             | Literal lit -> PConstant { lit }
-            | Array l -> PArray { args = List.map ~f:pat_of_expr l }
+            | Array l ->
+                PArray
+                  {
+                    args = List.map ~f:pat_of_expr l;
+                    slice = false;
+                    suffix = [];
+                  }
             | Borrow { kind = _; e; witness } ->
                 PDeref { subpat = pat_of_expr e; witness }
             | _ ->
@@ -879,9 +885,21 @@ end) : EXPR = struct
           in
           (c_constant_expr value |> pat_of_expr).p
       | InlineConstant { subpattern; _ } -> (c_pat subpattern).p
-      | Array _ -> unimplemented [ pat.span ] "Pat:Array"
+      | Array { prefix; slice; suffix } ->
+          PArray
+            {
+              args = List.map ~f:c_pat prefix;
+              slice = Option.is_some slice;
+              suffix = List.map ~f:c_pat suffix;
+            }
       | Or { pats } -> POr { subpats = List.map ~f:c_pat pats }
-      | Slice _ -> unimplemented [ pat.span ] "pat Slice"
+      | Slice { prefix; slice; suffix } ->
+          PArray
+            {
+              args = List.map ~f:c_pat prefix;
+              slice = Option.is_some slice;
+              suffix = List.map ~f:c_pat suffix;
+            }
       | Range _ -> unimplemented [ pat.span ] "pat Range"
       | DerefPattern _ -> unimplemented [ pat.span ] "pat DerefPattern"
       | Never -> unimplemented [ pat.span ] "pat Never"

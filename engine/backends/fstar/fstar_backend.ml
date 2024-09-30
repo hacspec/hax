@@ -1697,6 +1697,7 @@ module TransformToInputLanguage =
   |> Phases.Direct_and_mut
   |> Phases.Reject.Arbitrary_lhs
   |> Phases.Drop_blocks
+  |> Phases.Rewrite_patterns
   |> Phases.Drop_match_guards
   |> Phases.Drop_references
   |> Phases.Trivialize_assign_lhs

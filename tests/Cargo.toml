@@ -9,6 +9,8 @@ members = [
         "let-else",
         "enum-repr",
         "pattern-or",
+        "pattern-array",
+        "pattern-opaque",
         "side-effects",
         "mut-ref-functionalization",
         "generics",
