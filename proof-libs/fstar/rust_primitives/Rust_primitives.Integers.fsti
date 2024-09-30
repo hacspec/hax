@@ -492,7 +492,6 @@ val get_bit_shr #t #u (x: int_t t) (y: int_t u) (i: usize {v i < bits t})
                          else 0))
     [SMTPat (get_bit (x >>! y) i)]
 
-// TODO(issue #422): check for neg numbers
 /// Bit-wise semantics of integer casts
 val get_bit_cast #t #u
   (x: int_t t) (nth: usize)
