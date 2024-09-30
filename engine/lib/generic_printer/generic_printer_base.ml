@@ -9,12 +9,12 @@ end
 
 let ( !: ) (type a) (f : a SecretTypes.no_override) : a = f
 
-include New_generic_printer_base_sig.Types
+include Generic_printer_base_sig.Types
 
 module Make (F : Features.T) = struct
   module AST = Ast.Make (F)
   open Ast.Make (F)
-  open New_generic_printer_base_sig.Make (F) (SecretTypes)
+  open Generic_printer_base_sig.Make (F) (SecretTypes)
 
   class virtual base : print_base_type =
     object (print)

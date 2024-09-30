@@ -708,34 +708,31 @@ module Traditional : T = struct
 end
 
 module Experimental : T = struct
-  module NewRustGenericPrinter = New_rust_printer.Make (Features.Full)
+  module GenericRustPrinter = Generic_rust_printer.Make (Features.Full)
 
   let pitem : item -> AnnotatedString.Output.t =
-    NewRustGenericPrinter.item ()
-    >> New_generic_printer_api.AnnotatedString.to_spanned_strings
+    GenericRustPrinter.item ()
+    >> Generic_printer_api.AnnotatedString.to_spanned_strings
     >> AnnotatedString.Output.convert
 
   let pitems : item list -> AnnotatedString.Output.t =
-    NewRustGenericPrinter.items ()
-    >> New_generic_printer_api.AnnotatedString.to_spanned_strings
+    GenericRustPrinter.items ()
+    >> Generic_printer_api.AnnotatedString.to_spanned_strings
     >> AnnotatedString.Output.convert
 
   let pexpr : expr -> AnnotatedString.Output.t =
-    NewRustGenericPrinter.expr ()
-    >> New_generic_printer_api.AnnotatedString.to_spanned_strings
+    GenericRustPrinter.expr ()
+    >> Generic_printer_api.AnnotatedString.to_spanned_strings
     >> AnnotatedString.Output.convert
 
   let pitem_str : item -> string =
-    NewRustGenericPrinter.item ()
-    >> New_generic_printer_api.AnnotatedString.to_string
+    GenericRustPrinter.item () >> Generic_printer_api.AnnotatedString.to_string
 
   let pexpr_str : expr -> string =
-    NewRustGenericPrinter.expr ()
-    >> New_generic_printer_api.AnnotatedString.to_string
+    GenericRustPrinter.expr () >> Generic_printer_api.AnnotatedString.to_string
 
   let pty_str : ty -> string =
-    NewRustGenericPrinter.ty ()
-    >> New_generic_printer_api.AnnotatedString.to_string
+    GenericRustPrinter.ty () >> Generic_printer_api.AnnotatedString.to_string
 end
 
 let experimental =

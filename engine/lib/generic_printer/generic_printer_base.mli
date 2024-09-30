@@ -11,13 +11,13 @@ include module type of struct
     (** Hello *)
   end
 
-  include New_generic_printer_base_sig.Types
+  include Generic_printer_base_sig.Types
 end
 
 val ( !: ) : 'a. 'a SecretTypes.no_override -> 'a
 
 module Make (F : Features.T) : sig
-  open New_generic_printer_base_sig.Make(F)(SecretTypes)
+  open Generic_printer_base_sig.Make(F)(SecretTypes)
 
   class virtual base : print_base_type
 end

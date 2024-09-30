@@ -1663,8 +1663,8 @@ let translate_as_experimental_rust m (bo : BackendOptions.t)
          in
          let string_of_items _ _ items =
            let r = NewGenericPrinter.items () items in
-           let str = New_generic_printer_api.AnnotatedString.to_string r in
-           let sm = New_generic_printer_api.AnnotatedString.to_sourcemap r in
+           let str = Generic_printer_api.AnnotatedString.to_string r in
+           let sm = Generic_printer_api.AnnotatedString.to_sourcemap r in
            let r = (str, sm) in
            (r, r)
          in

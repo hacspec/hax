@@ -3,8 +3,8 @@ open Prelude
 module Make (F : Features.T) = struct
   module AST = Ast.Make (F)
   open Ast.Make (F)
-  open New_generic_printer_base
-  module P = New_generic_printer_base.Make (F)
+  open Generic_printer_base
+  module P = Generic_printer_base.Make (F)
   open PPrint
 
   let unimplemented s = string ("unimplemented: " ^ s)
@@ -159,7 +159,7 @@ module Make (F : Features.T) = struct
         separate_map (colon ^^ colon) utf8string chunks
     end
 
-  open New_generic_printer_api.Make (F)
+  open Generic_printer_api.Make (F)
 
   include Api (struct
     type aux_info = unit

@@ -1,5 +1,5 @@
 open! Prelude
-open New_generic_printer_base
+open Generic_printer_base
 
 module AnnotatedString = struct
   type t = string * Annotation.t list [@@deriving show, yojson, eq]
