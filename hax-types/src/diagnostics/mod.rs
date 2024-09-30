@@ -64,6 +64,9 @@ impl std::fmt::Display for Diagnostics {
             Kind::ArbitraryLHS => write!(f, "Assignation of an arbitrary left-hand side is not supported. `lhs = e` is fine only when `lhs` is a combination of local identifiers, field accessors and index accessors."),
 
             Kind::AttributeRejected {reason} => write!(f, "Here, this attribute cannot be used: {reason}."),
+
+            Kind::NonTrivialAndMutFnInput => write!(f, "The support in hax of function with one or more inputs of type `&mut _` is limited. Onlu trivial patterns are allowed there: `fn f(x: &mut (T, U)) ...` is allowed while `f((x, y): &mut (T, U))` is rejected."),
+
             _ => write!(f, "{:?}", self.kind),
         }
     }
@@ -124,6 +127,9 @@ pub enum Kind {
     } = 9,
 
     ExpectedMutRef = 10,
+
+    /// &mut inputs should be trivial patterns
+    NonTrivialAndMutFnInput = 11,
 
     /// An hax attribute (from `hax-lib-macros`) was rejected
     AttributeRejected {
