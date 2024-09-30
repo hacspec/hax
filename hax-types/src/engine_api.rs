@@ -14,8 +14,9 @@ pub struct EngineOptions {
     )>,
 }
 
+#[derive_group(Serializers)]
 #[allow(non_snake_case)]
-#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize)]
+#[derive(JsonSchema, Debug, Clone)]
 pub struct SourceMap {
     pub mappings: String,
     pub sourceRoot: String,

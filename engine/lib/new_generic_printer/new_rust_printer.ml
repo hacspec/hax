@@ -82,7 +82,7 @@ module Make (F : Features.T) = struct
               ~lhs ~rhs body
             |> wrap_parens
         | Literal l -> print#literal l
-        | Block (e, _) -> call print#expr ctx e
+        | Block { e; _ } -> call print#expr ctx e
         | _ -> unimplemented "expr_todo"
 
       method expr_monadic_let
@@ -118,7 +118,7 @@ module Make (F : Features.T) = struct
 
       method item_ _ item =
         match item.v with
-        | Fn { name; generics; body; params } ->
+        | Fn { name; generics; body; params; _ } ->
             let params =
               iblock parens (separate_map (comma ^^ break 1) print#param params)
             in

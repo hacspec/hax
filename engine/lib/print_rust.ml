@@ -732,6 +732,10 @@ module Experimental : T = struct
   let pexpr_str : expr -> string =
     NewRustGenericPrinter.expr ()
     >> New_generic_printer_api.AnnotatedString.to_string
+
+  let pty_str : ty -> string =
+    NewRustGenericPrinter.ty ()
+    >> New_generic_printer_api.AnnotatedString.to_string
 end
 
 let experimental =
