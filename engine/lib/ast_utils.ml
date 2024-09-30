@@ -407,6 +407,11 @@ module Make (F : Features.T) = struct
           shadows' ~env vars x next
       end
 
+      (** Rust macros are hygienic: even if a macro introduces a name
+         that already exists in scope, the compiler will not shadow
+         it. Instead, it will track and differentiate the two, even if
+         those have the same name. `collect_ambiguous_local_idents` is
+         a visitor that collects such "fake" shadowings. *)
       let collect_ambiguous_local_idents =
         object (self)
           inherit [_] Visitors.reduce as super
@@ -472,8 +477,12 @@ module Make (F : Features.T) = struct
               (module Local_ident)
         end
 
-      (* This removes "fake" shadowing introduced by macros.
-         See PR #368 *)
+      (** Rust macros are hygienic: even if a macro introduces a name
+         that already exists in scope, the compiler will not shadow
+         it. Instead, it will track and differentiate the two, even if
+         those have the same name. `disambiguate_local_idents item`
+         renames every instance of such a "fake" shadowing in
+         `item`. See PR #368 for an example. *)
       let disambiguate_local_idents (item : item) =
         let ambiguous = collect_ambiguous_local_idents#visit_item [] item in
         let local_vars = collect_local_idents#visit_item () item |> ref in
