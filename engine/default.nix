@@ -10,7 +10,6 @@
   gnused,
   lib,
   removeReferencesTo,
-  ocaml-sourcemaps,
 }: let
   non_empty_list = ocamlPackages.buildDunePackage rec {
     pname = "non_empty_list";
@@ -67,7 +66,6 @@
         re
         js_of_ocaml
         ocamlgraph
-        ocaml-sourcemaps
       ]
       ++
       # F* dependencies

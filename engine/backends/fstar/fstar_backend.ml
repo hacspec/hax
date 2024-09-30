@@ -1641,7 +1641,7 @@ let fstar_headers (bo : BackendOptions.t) =
   in
   [ opts; "open Core"; "open FStar.Mul" ] |> String.concat ~sep:"\n"
 
-module NewGenericPrinter = New_rust_printer.Make (InputLanguage)
+module GenericPrinter = Generic_rust_printer.Make (InputLanguage)
 
 (** Use the generic printer instead of the F* printer. For now, there
 is no generic printer for F*, that's why we currently just use the
@@ -1662,7 +1662,7 @@ let translate_as_experimental_rust m (bo : BackendOptions.t)
                 (fst ns :: snd ns))
          in
          let string_of_items _ _ items =
-           let r = NewGenericPrinter.items () items in
+           let r = GenericPrinter.items () items in
            let str = Generic_printer_api.AnnotatedString.to_string r in
            let sm = Generic_printer_api.AnnotatedString.to_sourcemap r in
            let r = (str, sm) in

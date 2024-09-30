@@ -23,14 +23,6 @@
       url = "github:hacl-star/hacl-star";
       flake = false;
     };
-    ocaml-sourcemaps = {
-      url = "github:W95Psp/ocaml-sourcemaps";
-      flake = true;
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-        flake-utils.follows = "flake-utils";
-      };
-    };
   };
 
   outputs = {
@@ -64,7 +56,6 @@
             cat "${hax-env-file}" | xargs -I{} echo "export {}"
           fi
         '';
-        ocaml-sourcemaps = inputs.ocaml-sourcemaps.packages.${system}.default;
         ocamlPackages = pkgs.ocamlPackages;
       in rec {
         packages = {
@@ -83,7 +74,7 @@
               #!${pkgs.stdenv.shell}
               ${packages.hax-rust-frontend.hax-engine-names-extract}/bin/hax-engine-names-extract | sed 's|/nix/store/\(.\{6\}\)|/nix_store/\1-|g'
             '';
-            inherit rustc ocaml-sourcemaps ocamlPackages;
+            inherit rustc ocamlPackages;
           };
           hax-rust-frontend = pkgs.callPackage ./cli {
             inherit rustc craneLib;

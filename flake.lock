@@ -93,29 +93,6 @@
         "type": "github"
       }
     },
-    "ocaml-sourcemaps": {
-      "inputs": {
-        "flake-utils": [
-          "flake-utils"
-        ],
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1709059830,
-        "narHash": "sha256-K+g/h6xhE5uOBri1oCaOier3jeIwZrMGOSx79mz5FrU=",
-        "owner": "W95Psp",
-        "repo": "ocaml-sourcemaps",
-        "rev": "391ef51d2fad9884f7535e003b9c9f1a53536fbb",
-        "type": "github"
-      },
-      "original": {
-        "owner": "W95Psp",
-        "repo": "ocaml-sourcemaps",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
         "crane": "crane",
@@ -123,7 +100,6 @@
         "fstar": "fstar",
         "hacl-star": "hacl-star",
         "nixpkgs": "nixpkgs",
-        "ocaml-sourcemaps": "ocaml-sourcemaps",
         "rust-overlay": "rust-overlay"
       }
     },
