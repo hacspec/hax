@@ -170,7 +170,7 @@ module Make (F : Features.T) = struct
         let cycles g = CC.components_list g
       end
 
-      let of_graph (g : G.t) (mod_graph_cycles : Namespace.Set.t list) :
+      let of_graph' (g : G.t) (mod_graph_cycles : Namespace.Set.t list) :
           Bundle.t list =
         let closure = Oper.transitive_closure g in
 
@@ -215,6 +215,12 @@ module Make (F : Features.T) = struct
 
         let bundles = Bundle.cycles bundles_graph in
         bundles
+
+      let of_graph (g : G.t) (mod_graph_cycles : Namespace.Set.t list) :
+          Bundle.t list =
+        match mod_graph_cycles with
+        | [] -> []
+        | _ -> of_graph' g mod_graph_cycles
     end
 
     open Graph.Graphviz.Dot (struct
