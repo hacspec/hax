@@ -33,5 +33,6 @@ members = [
         "recursion",
         "functions",
         "guards",
+        "cyclic-modules",
 ]
 resolver = "2"
