@@ -246,7 +246,6 @@ module Make (F : Features.T) = struct
 
     let of_items (items : item list) : G.t =
       let ig = ItemGraph.of_items ~original_items:items items in
-      (* assert (ItemGraph.MutRec.all_homogeneous_namespace ig); *)
       List.map ~f:(ident_of >> (Namespace.of_concrete_ident &&& Fn.id)) items
       |> Map.of_alist_multi (module Namespace)
       |> Map.map
@@ -414,7 +413,7 @@ module Make (F : Features.T) = struct
     let item' = f item in
     [ { item with v = Alias { name = item.ident; item = item'.ident } }; item' ]
 
-  let name_me' (items : item list) : item list =
+  let name_me (items : item list) : item list =
     let g = ItemGraph.of_items ~original_items:items items in
     let from_ident ident : item option =
       List.find ~f:(fun i -> [%equal: Concrete_ident.t] i.ident ident) items
@@ -486,16 +485,4 @@ module Make (F : Features.T) = struct
     in
     let f = List.filter_map ~f:from_ident in
     (List.map ~f bundles.mut_rec_bundles, f bundles.non_mut_rec)
-
-  let name_me (items : item list) : item list =
-    let h f name items =
-      let file = Stdlib.open_out @@ "/tmp/graph_" ^ name ^ ".dot" in
-      f file items;
-      Stdlib.close_out file
-    in
-    h ItemGraph.print "items_before" items;
-    let items = name_me' items in
-    h ItemGraph.print "items_after" items;
-    h ModGraph.print "mods" items;
-    items
 end
