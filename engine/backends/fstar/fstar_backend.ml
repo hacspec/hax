@@ -1801,6 +1801,6 @@ let apply_phases (bo : BackendOptions.t) (items : Ast.Rust.item list) :
     |> List.map ~f:unsize_as_identity
     |> List.map ~f:unsize_as_identity
     |> List.map ~f:U.Mappers.add_typ_ascription
-    |> DepGraph.name_me
+    |> DepGraph.bundle_cyclic_modules
   in
   items

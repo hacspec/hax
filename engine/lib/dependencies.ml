@@ -413,7 +413,7 @@ module Make (F : Features.T) = struct
     let item' = f item in
     [ { item with v = Alias { name = item.ident; item = item'.ident } }; item' ]
 
-  let name_me (items : item list) : item list =
+  let bundle_cyclic_modules (items : item list) : item list =
     let g = ItemGraph.of_items ~original_items:items items in
     let from_ident ident : item option =
       List.find ~f:(fun i -> [%equal: Concrete_ident.t] i.ident ident) items
