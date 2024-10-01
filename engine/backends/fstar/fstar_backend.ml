@@ -1556,12 +1556,10 @@ let strings_of_item ~signature_only (bo : BackendOptions.t) m items
            if interface_mode then [ (`Impl s, `Newline); (`Intf s, `Newline) ]
            else [ (`Impl s, `Newline) ])
 
-module DepGraph = Dependencies.Make (InputLanguage)
-
 type rec_prefix = NonRec | FirstMutRec | MutRec
 
-let string_of_items ~signature_only ~mod_name (bo : BackendOptions.t) m items :
-    string * string =
+let string_of_items ~signature_only ~mod_name ~bundles (bo : BackendOptions.t) m
+    items : string * string =
   let collect_trait_goal_idents =
     object
       inherit [_] Visitors.reduce as super
@@ -1615,7 +1613,6 @@ let string_of_items ~signature_only ~mod_name (bo : BackendOptions.t) m items :
      We know that these items will already be grouped together but we need to add the `rec` qualifier
      to the first one (in the case of functions). And to replace the `let`/`type` keyword by `and`
      for the other elements coming after. *)
-  let bundles, _ = DepGraph.recursive_bundles items in
   let first_in_bundles = Array.create (List.length bundles) None in
   let get_recursivity_prefix it =
     match
@@ -1679,8 +1676,8 @@ let fstar_headers (bo : BackendOptions.t) =
   in
   [ opts; "open Core"; "open FStar.Mul" ] |> String.concat ~sep:"\n"
 
-let translate m (bo : BackendOptions.t) (items : AST.item list) :
-    Types.file list =
+let translate m (bo : BackendOptions.t) ~(bundles : AST.item list list)
+    (items : AST.item list) : Types.file list =
   let show_view Concrete_ident.{ crate; path; definition } =
     crate :: (path @ [ definition ]) |> String.concat ~sep:"::"
   in
@@ -1699,7 +1696,7 @@ let translate m (bo : BackendOptions.t) (items : AST.item list) :
          in
          let mod_name = module_name ns in
          let impl, intf =
-           string_of_items ~signature_only ~mod_name bo m items
+           string_of_items ~signature_only ~mod_name ~bundles bo m items
          in
          let make ~ext body =
            if String.is_empty body then None
@@ -1801,6 +1798,5 @@ let apply_phases (bo : BackendOptions.t) (items : Ast.Rust.item list) :
     |> List.map ~f:unsize_as_identity
     |> List.map ~f:unsize_as_identity
     |> List.map ~f:U.Mappers.add_typ_ascription
-    |> DepGraph.bundle_cyclic_modules
   in
   items

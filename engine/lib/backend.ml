@@ -31,6 +31,7 @@ module type T = sig
   val translate :
     (module Attrs.WITH_ITEMS) ->
     BackendOptions.t ->
+    bundles:AST.item list list ->
     AST.item list ->
     Types.file list
 
