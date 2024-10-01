@@ -861,15 +861,8 @@ struct
       list =
     match e.v with
     | Alias { name; item } ->
-        (* let pat =
-             F.pat
-             @@ F.AST.PatVar
-                  (F.id @@ U.Concrete_ident_view.to_definition_name name, None, [])
-           in
-           F.decls ~quals:[ F.AST.Unfold_for_unification_and_vcgen ]
-           @@ F.AST.TopLevelLet
-                ( NoLetQualifier,
-                  [ (pat, F.term @@ F.AST.Name (pconcrete_ident item)) ] ) *)
+        (* These should come from bundled items (in the case of cyclic module dependencies).
+           We make use of this f* feature: https://github.com/FStarLang/FStar/pull/3369 *)
         let bundle = U.Concrete_ident_view.to_namespace item |> module_name in
         [
           `VerbatimImpl
@@ -926,11 +919,7 @@ struct
         in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (ty, None)) in
         let full =
-          F.decl
-          @@ F.AST.TopLevelLet
-               ( qualifier,
-                 [ (pat, pexpr body) ]
-                 (* TODO there should be several elements for mut rec*) )
+          F.decl @@ F.AST.TopLevelLet (qualifier, [ (pat, pexpr body) ])
         in
 
         let intf = F.decl ~fsti:true (F.AST.Val (name, arrow_typ)) in
@@ -1619,9 +1608,13 @@ let string_of_items ~signature_only ~mod_name (bo : BackendOptions.t) m items :
     List.map
       ~f:
         (map_string ~f:(fun str ->
-             Logs.info (fun m -> m "%s \n" str);
              String.substr_replace_first ~pattern ~with_ str))
   in
+
+  (* Each of these bundles contains recursive items (mutually if the bundle has more than one element).
+     We know that these items will already be grouped together but we need to add the `rec` qualifier
+     to the first one (in the case of functions). And to replace the `let`/`type` keyword by `and`
+     for the other elements coming after. *)
   let bundles, _ = DepGraph.recursive_bundles items in
   let first_in_bundles = Array.create (List.length bundles) None in
   let get_recursivity_prefix it =
@@ -1645,11 +1638,8 @@ let string_of_items ~signature_only ~mod_name (bo : BackendOptions.t) m items :
         let strs = strings_of_item ~signature_only bo m items item in
         match (recursivity_prefix, item.v) with
         | FirstMutRec, Fn _ ->
-            Logs.info (fun m -> m "replace let rec in \n\n");
             replace_in_strs ~pattern:"let" ~with_:"let rec" strs
-        | MutRec, Fn _ ->
-            Logs.info (fun m -> m "replace and in \n\n");
-            replace_in_strs ~pattern:"let" ~with_:"and" strs
+        | MutRec, Fn _ -> replace_in_strs ~pattern:"let" ~with_:"and" strs
         | MutRec, Type _ -> replace_in_strs ~pattern:"type" ~with_:"and" strs
         | _ -> strs)
       its
@@ -1806,7 +1796,6 @@ let apply_phases (bo : BackendOptions.t) (items : Ast.Rust.item list) :
     (* else *)
     items
   in
-  Logs.info (fun m -> m "bundles: here\n\n");
   let items =
     TransformToInputLanguage.ditems items
     |> List.map ~f:unsize_as_identity
