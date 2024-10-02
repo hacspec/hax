@@ -675,7 +675,7 @@ struct
       let ident = plocal_ident p.ident in
       match p.kind with
       | GPLifetime _ -> Error.assertion_failure span "pgeneric_param:LIFETIME"
-      | GPType { default = _ } -> { kind = Implicit; typ = F.type0_term; ident }
+      | GPType -> { kind = Implicit; typ = F.type0_term; ident }
       | GPConst { typ } -> { kind = Explicit; typ = pty span typ; ident }
 
     let of_generic_constraint span (nth : int) (c : generic_constraint) =

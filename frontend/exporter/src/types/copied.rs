@@ -2983,8 +2983,16 @@ pub enum GenericParamKind<Body: IsBody> {
         kind: LifetimeParamKind,
     },
     Type {
-        #[map(x.map(|ty| ty.sinto(tcx)))]
-        default: Option<Ty>,
+        /// On use site, Rust always give us all the generic
+        /// parameters, no matter the defaultness. This information is
+        /// thus not so useful. At the same time, as discussed in
+        /// https://github.com/hacspec/hax/issues/310, extracting this
+        /// default type causes failures when querying Rust for trait
+        /// resolution. We thus decided to disable this feature. If
+        /// this default type information is useful to you, please
+        /// open an issue on https://github.com/hacspec/hax.
+        #[map(x.map(|_ty| ()))]
+        default: Option<()>,
         synthetic: bool,
     },
     Const {
