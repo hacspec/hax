@@ -138,8 +138,7 @@ struct
       let* kind =
         match kind with
         | GPLifetime _ -> None
-        | GPType { default } ->
-            Some (B.GPType { default = Option.map ~f:(dty span) default })
+        | GPType -> Some B.GPType
         | GPConst { typ } -> Some (B.GPConst { typ = dty span typ })
       in
       Some B.{ ident; kind; attrs; span }

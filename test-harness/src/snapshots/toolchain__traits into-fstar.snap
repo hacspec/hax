@@ -46,6 +46,19 @@ class t_BlockBackend (v_Self: Type0) = {
     -> Prims.Pure Prims.unit (f_proc_block_pre x0) (fun result -> f_proc_block_post x0 result)
 }
 '''
+"Traits.Default_traits_parameters.fst" = '''
+module Traits.Default_traits_parameters
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class t_Bar (v_Self: Type0) (v_T: Type0) = { __marker_trait_t_Bar:Prims.unit }
+
+class t_Foo (v_Self: Type0) = {
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_12056653545434731362:t_Bar v_Self f_U;
+  f_U:Type0
+}
+'''
 "Traits.For_clauses.Issue_495_.Minimized_3_.fst" = '''
 module Traits.For_clauses.Issue_495_.Minimized_3_
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"

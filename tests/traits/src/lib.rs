@@ -281,3 +281,11 @@ mod recursive_trait_with_assoc_type {
         type U;
     }
 }
+
+// issue 310
+mod default_traits_parameters {
+    trait Foo: Bar {
+        type U;
+    }
+    trait Bar<T = <Self as Foo>::U> {}
+}
