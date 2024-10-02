@@ -38,11 +38,13 @@ cfg_feature_rustc! {
     extern crate rustc_target;
     extern crate rustc_trait_selection;
     extern crate rustc_type_ir;
+    extern crate rustc_lexer;
 
     mod rustc_utils;
     pub mod state;
     mod utils;
     mod deterministic_hash;
+    pub mod comments;
 }
 
 mod body;

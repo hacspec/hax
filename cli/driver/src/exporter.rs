@@ -264,12 +264,21 @@ impl Callbacks for ExtractionCallbacks {
                 <Body>|| {
                     let (spans, def_ids, impl_infos, items) =
                         convert_thir(&self.clone().into(), self.macro_calls.clone(), tcx);
+                    let files: HashSet<PathBuf> = HashSet::from_iter(
+                        items
+                            .iter()
+                            .flat_map(|item| item.span.filename.to_path().map(|path| path.to_path_buf()))
+                    );
                     let haxmeta: HaxMeta<Body> = HaxMeta {
                         crate_name,
                         cg_metadata,
                         externs,
                         impl_infos,
                         items,
+                        comments: files.into_iter()
+                            .flat_map(|path|hax_frontend_exporter::comments::comments_of_file(path).ok())
+                            .flatten()
+                            .collect(),
                         def_ids,
                     };
                     haxmeta.write(&mut file);
