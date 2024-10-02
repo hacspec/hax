@@ -415,9 +415,18 @@ module Make (F : Features.T) = struct
   (* Construct the new item `f item` (say `item'`), and create a
      "symbolic link" to `item'`. Returns a pair that consists in the
      symbolic link and in `item'`. *)
-  let shallow_copy (f : item -> item) (item : item) : item list =
+  let shallow_copy (f : item -> item)
+      (variants_renamings :
+        concrete_ident * concrete_ident ->
+        (concrete_ident * concrete_ident) list) (item : item) : item list =
     let item' = f item in
-    [ { item with v = Alias { name = item.ident; item = item'.ident } }; item' ]
+    let old_new = (item.ident, item'.ident) in
+    let aliases =
+      List.map (old_new :: variants_renamings old_new)
+        ~f:(fun (old_ident, new_ident) ->
+          { item with v = Alias { name = old_ident; item = new_ident } })
+    in
+    item' :: aliases
 
   let bundle_cyclic_modules (items : item list) : item list =
     let g = ItemGraph.of_items ~original_items:items items in
@@ -459,13 +468,26 @@ module Make (F : Features.T) = struct
         List.map
           ~f:(ident_of >> (Fn.id &&& (add_prefix >> new_name_under_ns)))
           bundle
-        |> Map.of_alist_exn (module Concrete_ident)
+      in
+      let variants_renamings (previous_name, new_name) =
+        match from_ident previous_name with
+        | Some { v = Type { variants; _ }; _ } ->
+            List.map variants ~f:(fun { name; _ } ->
+                ( name,
+                  Concrete_ident.Create.move_under ~new_parent:new_name name ))
+        | _ -> []
+      in
+
+      let renamings =
+        Map.of_alist_exn
+          (module Concrete_ident)
+          (renamings @ List.concat_map ~f:variants_renamings renamings)
       in
       let rename =
         let renamer _lvl i = Map.find renamings i |> Option.value ~default:i in
         (U.Mappers.rename_concrete_idents renamer)#visit_item ExprLevel
       in
-      shallow_copy rename it
+      shallow_copy rename variants_renamings it
     in
     let maybe_transform_item it =
       match
