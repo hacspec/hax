@@ -13,6 +13,7 @@ include
       include On.Construct_base
       include On.Quote
       include On.Dyn
+      include On.Unsafe
     end)
     (struct
       let backend = Diagnostics.Backend.FStar
@@ -42,8 +43,7 @@ module SubtypeToInputLanguage
              and type for_index_loop = Features.Off.for_index_loop
              and type state_passing_loop = Features.Off.state_passing_loop
              and type match_guard = Features.Off.match_guard
-             and type trait_item_default = Features.Off.trait_item_default
-             and type unsafe = Features.Off.unsafe) =
+             and type trait_item_default = Features.Off.trait_item_default) =
 struct
   module FB = InputLanguage
 
@@ -59,6 +59,7 @@ struct
         include Features.SUBTYPE.On.Macro
         include Features.SUBTYPE.On.Quote
         include Features.SUBTYPE.On.Dyn
+        include Features.SUBTYPE.On.Unsafe
       end)
 
   let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
@@ -680,7 +681,7 @@ struct
       let ident = plocal_ident p.ident in
       match p.kind with
       | GPLifetime _ -> Error.assertion_failure span "pgeneric_param:LIFETIME"
-      | GPType { default = _ } -> { kind = Implicit; typ = F.type0_term; ident }
+      | GPType -> { kind = Implicit; typ = F.type0_term; ident }
       | GPConst { typ } -> { kind = Explicit; typ = pty span typ; ident }
 
     let of_generic_constraint span (nth : int) (c : generic_constraint) =
@@ -1718,8 +1719,7 @@ module DepGraphR = Dependencies.Make (Features.Rust)
 
 module TransformToInputLanguage =
   [%functor_application
-  Phases.Reject.Unsafe(Features.Rust)
-  |> Phases.Reject.RawOrMutPointer
+    Phases.Reject.RawOrMutPointer(Features.Rust)
   |> Phases.Transform_hax_lib_inline
   |> Phases.Specialize
   |> Phases.Drop_sized_trait

@@ -1182,9 +1182,7 @@ end) : EXPR = struct
     let kind =
       match (param.kind : Thir.generic_param_kind) with
       | Lifetime _ -> GPLifetime { witness = W.lifetime }
-      | Type { default; _ } ->
-          let default = Option.map ~f:(c_ty param.span) default in
-          GPType { default }
+      | Type _ -> GPType
       (* Rustc always fills in const generics on use. Thus we can drop this information. *)
       | Const { default = _; ty } -> GPConst { typ = c_ty param.span ty }
     in
@@ -1334,7 +1332,7 @@ let generic_param_to_value ({ ident; kind; span; _ } : generic_param) :
   match kind with
   | GPLifetime { witness } ->
       GLifetime { lt = [%show: local_ident] ident; witness }
-  | GPType _ -> GType (TParam ident)
+  | GPType -> GType (TParam ident)
   | GPConst { typ } -> GConst { e = LocalVar ident; typ; span }
 
 type discriminant_expr =
@@ -1591,8 +1589,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
         let self =
           let id = Local_ident.mk_id Typ 0 (* todo *) in
           let ident = Local_ident.{ name = "Self"; id } in
-          let kind = GPType { default = None } in
-          { ident; span; attrs = []; kind }
+          { ident; span; attrs = []; kind = GPType }
         in
         let params = self :: params in
         let generics = { params; constraints } in

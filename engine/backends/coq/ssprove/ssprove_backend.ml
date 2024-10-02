@@ -1322,11 +1322,10 @@ struct
         SSP.AST.Implicit
           ( SSP.AST.Ident (plocal_ident ident),
             match kind with
-            | GPType { default = Some t } -> pty span t
             | GPConst { typ = t } ->
                 SSPExtraDefinitions.wrap_type_in_both "(fset [])" "(fset [])"
                   (pty span t)
-            | GPType { default = None } -> SSP.AST.WildTy
+            | GPType -> SSP.AST.WildTy
             | _ -> . )
 
   let pgeneric_constraints_as_argument span :

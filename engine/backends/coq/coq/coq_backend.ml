@@ -362,10 +362,8 @@ struct
 
   let pgeneric_param_as_argument span : generic_param -> C.AST.argument =
     function
-    | { ident; kind = GPType { default }; _ } ->
-        C.AST.Explicit
-          ( C.AST.Ident ident.name,
-            match default with Some t -> pty span t | None -> C.AST.WildTy )
+    | { ident; kind = GPType; _ } ->
+        C.AST.Explicit (C.AST.Ident ident.name, C.AST.WildTy)
     | _ -> Error.unimplemented ~details:"Coq: TODO: generic_params" span
 
   let rec pitem (e : item) : C.AST.decl list =

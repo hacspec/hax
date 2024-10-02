@@ -365,7 +365,7 @@ functor
 
     and generic_param_kind =
       | GPLifetime of { witness : F.lifetime }
-      | GPType of { default : ty option }
+      | GPType
       | GPConst of { typ : ty }
 
     and generic_constraint =
