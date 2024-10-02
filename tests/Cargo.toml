@@ -33,5 +33,6 @@ members = [
         "recursion",
         "functions",
         "guards",
+        "unsafe",
 ]
 resolver = "2"
