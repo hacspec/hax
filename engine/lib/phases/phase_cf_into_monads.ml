@@ -209,10 +209,10 @@ struct
           let then_ = KnownMonads.lift "If:then-branch" then' mthen.monad m in
           { e = If { cond; then_; else_ }; span; typ = then_.typ }
       | Continue _ ->
-          Error.unimplemented ~issue_id:96
+          Error.unimplemented ~issue_id:15
             ~details:"TODO: Monad for loop-related control flow" span
       | Break _ ->
-          Error.unimplemented ~issue_id:96
+          Error.unimplemented ~issue_id:15
             ~details:"TODO: Monad for loop-related control flow" span
       | QuestionMark { e; _ } -> dexpr e
       | Return { e; _ } ->
