@@ -1,0 +1,49 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: fstar
+  info:
+    name: unsafe
+    manifest: unsafe/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: true
+      stdout: true
+    include_flag: ~
+    backend_options: ~
+---
+exit = 0
+stderr = 'Finished `dev` profile [unoptimized + debuginfo] target(s) in XXs'
+
+[stdout]
+diagnostics = []
+
+[stdout.files]
+"Unsafe.fst" = '''
+module Unsafe
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+type t_Impossible =
+
+let t_Impossible_cast_to_repr (x: t_Impossible) : Rust_primitives.Hax.t_Never = match x with
+
+let get_unchecked_example (slice: t_Slice u8)
+    : Prims.Pure u8
+      (requires (Core.Slice.impl__len #u8 slice <: usize) >. sz 10)
+      (fun _ -> Prims.l_True) = Core.Slice.impl__get_unchecked #u8 #usize slice (sz 6)
+
+let impossible (_: Prims.unit) : Prims.Pure t_Impossible (requires false) (fun _ -> Prims.l_True) =
+  Rust_primitives.Hax.never_to_any (Core.Hint.unreachable_unchecked ()
+      <:
+      Rust_primitives.Hax.t_Never)
+'''
