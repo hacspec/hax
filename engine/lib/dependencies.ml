@@ -6,7 +6,8 @@ module Make (F : Features.T) = struct
   open Ast
   open AST
 
-  let ident_of (item : item) : Concrete_ident.t = item.ident
+  let ident_of (item : item) : Concrete_ident.t =
+    match item.v with Type { name; _ } -> name | _ -> item.ident
 
   module Namespace = struct
     module T = struct
@@ -420,7 +421,7 @@ module Make (F : Features.T) = struct
         concrete_ident * concrete_ident ->
         (concrete_ident * concrete_ident) list) (item : item) : item list =
     let item' = f item in
-    let old_new = (item.ident, item'.ident) in
+    let old_new = (ident_of item, ident_of item') in
     let aliases =
       List.map (old_new :: variants_renamings old_new)
         ~f:(fun (old_ident, new_ident) ->
