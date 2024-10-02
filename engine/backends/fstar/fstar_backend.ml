@@ -405,8 +405,9 @@ struct
     | POr { subpats } when shallow ->
         F.pat @@ F.AST.PatOr (List.map ~f:ppat subpats)
     | POr _ ->
-        Error.unimplemented ~issue_id:463 p.span
-          ~details:"The F* backend doesn't support nested disjuntive patterns"
+        Error.assertion_failure p.span
+          "Nested disjuntive patterns should have been eliminated by phase \
+           `HoistDisjunctions` (see PR #830)."
     | PArray { args } -> F.pat @@ F.AST.PatList (List.map ~f:ppat args)
     | PConstruct { name = `TupleCons 0; args = [] } ->
         F.pat @@ F.AST.PatConst F.Const.Const_unit
