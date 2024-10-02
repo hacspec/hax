@@ -95,3 +95,26 @@ mod rec2_same_name {
         }
     }
 }
+mod enums_a {
+    pub enum T {
+        A,
+        B,
+        C(Vec<super::enums_b::U>),
+        D(Vec<super::enums_b::T>),
+    }
+}
+mod enums_b {
+    pub enum U {
+        A,
+        B,
+        C(Vec<super::enums_a::T>),
+    }
+    pub enum T {
+        A,
+        B,
+        C(Vec<super::enums_a::T>),
+    }
+    pub fn f() -> T {
+        T::A
+    }
+}
