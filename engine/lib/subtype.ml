@@ -264,7 +264,7 @@ struct
     | Continue { e; label; witness = w1, w2 } ->
         Continue
           {
-            e = Option.map ~f:(S.state_passing_loop span *** dexpr) e;
+            e = Option.map ~f:(dexpr *** S.state_passing_loop span) e;
             label;
             witness = (S.continue span w1, S.loop span w2);
           }

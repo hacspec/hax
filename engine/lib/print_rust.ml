@@ -344,7 +344,7 @@ module Raw = struct
         | None -> main)
     | Break { e; _ } -> !"(break (" & pexpr e & !"))"
     | Continue { e = None; _ } -> !"continue"
-    | Continue { e = Some (_, e); _ } ->
+    | Continue { e = Some (e, _); _ } ->
         !"state_passing_continue!(" & pexpr e & !")"
     | Return { e; _ } -> !"(return " & pexpr e & !")"
     | QuestionMark { e; _ } -> !"(" & pexpr e & !")?"

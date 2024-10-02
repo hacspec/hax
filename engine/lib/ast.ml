@@ -273,7 +273,7 @@ functor
       coercion is applied on the (potential) error payload of
       `e`. Coercion should be made explicit within `e`. *)
       | Continue of {
-          e : (F.state_passing_loop * expr) option;
+          e : (expr * F.state_passing_loop) option;
           label : string option;
           witness : F.continue * F.loop;
         }
