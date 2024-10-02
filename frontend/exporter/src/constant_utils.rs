@@ -419,8 +419,10 @@ mod rustc {
                 }))
             } else {
                 let param_env = s.param_env();
-                let ty = s.base().tcx.type_of(ucv.def);
-                let ty = tcx.instantiate_and_normalize_erasing_regions(ucv.args, param_env, ty);
+                let ty = s.base().tcx.type_of(ucv.def).instantiate(tcx, ucv.args);
+                let ty = tcx
+                    .try_normalize_erasing_regions(param_env, ty)
+                    .unwrap_or(ty);
                 let kind = if let Some(assoc) = s.base().tcx.opt_associated_item(ucv.def) {
                     if assoc.trait_item_def_id.is_some() {
                         // This must be a trait declaration constant

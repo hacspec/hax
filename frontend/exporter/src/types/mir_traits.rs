@@ -68,13 +68,14 @@ pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
         if let Some(trait_clause) = pred.as_trait_clause() {
             let poly_trait_ref = trait_clause.map_bound(|clause| clause.trait_ref);
             // Apply the substitution
-            let value = rustc_middle::ty::EarlyBinder::bind(poly_trait_ref);
-            // Warning: this erases regions. We don't really have a way to substitute without
+            let poly_trait_ref =
+                rustc_middle::ty::EarlyBinder::bind(poly_trait_ref).instantiate(tcx, generics);
+            // Warning: this erases regions. We don't really have a way to normalize without
             // erasing regions, but this may cause problems in trait solving if there are trait
             // impls that include `'static` lifetimes.
-            // TODO: try `EarlyBinder::subst(...)`?
-            let poly_trait_ref =
-                tcx.instantiate_and_normalize_erasing_regions(generics, param_env, value);
+            let poly_trait_ref = tcx
+                .try_normalize_erasing_regions(param_env, poly_trait_ref)
+                .unwrap_or(poly_trait_ref);
             let impl_expr = solve_trait(s, poly_trait_ref);
             impl_exprs.push(impl_expr);
         }
