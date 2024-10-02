@@ -2404,8 +2404,8 @@ let hardcoded_coq_headers =
    Import choice.Choice.Exports.\n\n\
    Obligation Tactic := (* try timeout 8 *) solve_ssprove_obligations.\n"
 
-let translate _ (_bo : BackendOptions.t) (items : AST.item list) :
-    Types.file list =
+let translate _ (_bo : BackendOptions.t) ~(bundles : AST.item list list)
+    (items : AST.item list) : Types.file list =
   let analysis_data = StaticAnalysis.analyse items in
   U.group_items_by_namespace items
   |> Map.to_alist

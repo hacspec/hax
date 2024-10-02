@@ -677,8 +677,8 @@ let hardcoded_coq_headers =
    Open Scope Z_scope.\n\
    Open Scope bool_scope.\n"
 
-let translate _ (_bo : BackendOptions.t) (items : AST.item list) :
-    Types.file list =
+let translate _ (_bo : BackendOptions.t) ~(bundles : AST.item list list)
+    (items : AST.item list) : Types.file list =
   U.group_items_by_namespace items
   |> Map.to_alist
   |> List.map ~f:(fun (ns, items) ->
