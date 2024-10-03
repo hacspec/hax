@@ -27,4 +27,14 @@ let _main =
            | Result.Ok v -> Some Datatype.{ v with name = path }
            | _ -> None)
   in
-  datatypes |> Codegen_visitor.mk |> Stdio.print_endline
+
+  datatypes
+  |> (match Sys.get_argv () with
+     | [| _; "visitors" |] -> Codegen_visitor.mk
+     | [| _; "ast_builder" |] -> Codegen_ast_builder.mk
+     | [| _; "json" |] ->
+         [%yojson_of: Datatype.t list] >> Yojson.Safe.pretty_to_string
+     | [| _; verb |] ->
+         failwith ("`generate_from_ast`: unknown action `" ^ verb ^ "`")
+     | _ -> failwith "`generate_from_ast`: expected one argument")
+  |> Stdio.print_endline

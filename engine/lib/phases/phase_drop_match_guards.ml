@@ -84,7 +84,7 @@ module%inlined_contents Make (F : Features.T) = struct
       match remaining with
       | [] -> treated
       | { arm = { arm_pat; body; guard = None }; span } :: remaining ->
-          let new_arm : B.arm = UB.make_arm (dpat arm_pat) (dexpr body) span in
+          let new_arm : B.arm = UB.M.arm (dpat arm_pat) (dexpr body) ~span in
           transform_arms scrutinee remaining (new_arm :: treated)
       (* Matches an arm `arm_pat if let lhs = rhs => body` *)
       (* And rewrites to `_ => match <option_match> {Some(x) => x, None => match scrutinee {<treated>} }` *)
@@ -101,6 +101,7 @@ module%inlined_contents Make (F : Features.T) = struct
           span;
         }
         :: remaining ->
+          let module MS = (val UB.M.make guard_span) in
           let result_typ = dty span body.typ in
           let opt_result_typ : B.ty =
             TApp
@@ -126,21 +127,10 @@ module%inlined_contents Make (F : Features.T) = struct
                     [ { field = `TupleField (0, 1); pat = b } ] )
               | None -> (Core__option__Option__None, [])
             in
-            {
-              p =
-                PConstruct
-                  {
-                    name =
-                      Global_ident.of_name
-                        (Constructor { is_struct = false })
-                        name;
-                    args;
-                    is_record = false;
-                    is_struct = false;
-                  };
-              span = guard_span;
-              typ = opt_result_typ;
-            }
+            MS.pat_PConstruct
+              ~name:
+                (Global_ident.of_name (Constructor { is_struct = false }) name)
+              ~args ~is_record:false ~is_struct:false ~typ:opt_result_typ
           in
 
           let expr_none = mk_opt_expr None in
@@ -148,93 +138,54 @@ module%inlined_contents Make (F : Features.T) = struct
           (* This is the nested pattern matching equivalent to the guard *)
           (* Example: .. if let pat = rhs => body *)
           (* Rewrites with match rhs { pat => Some(body), _ => None }*)
-          let guard_match : B.expr' =
-            Match
-              {
-                scrutinee = dexpr rhs;
-                arms =
-                  [
-                    UB.make_arm (dpat lhs)
-                      (mk_opt_expr (Some (dexpr body)))
-                      span;
-                    UB.make_arm
-                      (UB.make_wild_pat (dty guard_span lhs.typ) guard_span)
-                      expr_none guard_span;
-                  ];
-              }
+          let guard_match : B.expr =
+            MS.expr_Match ~scrutinee:(dexpr rhs)
+              ~arms:
+                [
+                  UB.M.arm (dpat lhs) (mk_opt_expr (Some (dexpr body))) ~span;
+                  MS.arm (MS.pat_PWild ~typ:(dty guard_span lhs.typ)) expr_none;
+                ]
+              ~typ:opt_result_typ
           in
 
           (* `r` corresponds to `option_match` in the example above *)
           let r : B.expr =
-            {
-              e =
-                Match
-                  {
-                    scrutinee;
-                    arms =
-                      [
-                        UB.make_arm (dpat arm_pat)
-                          {
-                            e = guard_match;
-                            span = guard_span;
-                            typ = opt_result_typ;
-                          }
-                          guard_span;
-                        UB.make_arm
-                          (UB.make_wild_pat
-                             (dty guard_span arm_pat.typ)
-                             guard_span)
-                          expr_none guard_span;
-                      ];
-                  };
-              span = guard_span;
-              typ = opt_result_typ;
-            }
+            MS.expr_Match ~scrutinee
+              ~arms:
+                [
+                  MS.arm (dpat arm_pat) guard_match;
+                  MS.arm
+                    (UB.M.pat_PWild
+                       ~typ:(dty guard_span arm_pat.typ)
+                       ~span:guard_span)
+                    expr_none;
+                ]
+              ~typ:opt_result_typ
           in
           let id = UB.fresh_local_ident_in [] "x" in
           let new_body : B.expr =
-            {
-              e =
-                Match
-                  {
-                    scrutinee = r;
-                    arms =
-                      [
-                        UB.make_arm
-                          (mk_opt_pattern
-                             (Some
-                                {
-                                  p =
-                                    PBinding
-                                      {
-                                        mut = Immutable;
-                                        mode = ByValue;
-                                        var = id;
-                                        typ = result_typ;
-                                        subpat = None;
-                                      };
-                                  span;
-                                  typ = result_typ;
-                                }))
-                          { e = LocalVar id; span; typ = result_typ }
-                          guard_span;
-                        UB.make_arm (mk_opt_pattern None)
-                          {
-                            e = maybe_simplified_match scrutinee treated;
-                            span = guard_span;
-                            typ = result_typ;
-                          }
-                          guard_span;
-                      ];
-                  };
-              span = guard_span;
-              typ = result_typ;
-            }
+            MS.expr_Match ~scrutinee:r
+              ~arms:
+                [
+                  MS.arm
+                    (mk_opt_pattern
+                       (Some
+                          (MS.pat_PBinding ~mut:Immutable ~mode:ByValue ~var:id
+                             ~typ:result_typ ~subpat:None)))
+                    { e = LocalVar id; span; typ = result_typ };
+                  MS.arm (mk_opt_pattern None)
+                    {
+                      e = maybe_simplified_match scrutinee treated;
+                      span = guard_span;
+                      typ = result_typ;
+                    };
+                ]
+              ~typ:result_typ
           in
           let new_arm : B.arm =
-            UB.make_arm
-              (UB.make_wild_pat (dty span arm_pat.typ) span)
-              new_body span
+            UB.M.arm
+              (UB.M.pat_PWild ~typ:(dty span arm_pat.typ) ~span)
+              new_body ~span
           in
           transform_arms scrutinee remaining [ new_arm ]
       [@@inline_ands
