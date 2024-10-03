@@ -196,7 +196,7 @@ struct
             List.map
               ~f:(function
                 | Some (var, _), (ty, span) -> UB.make_var_pat var ty span
-                | None, (ty, span) -> UB.make_wild_pat ty span)
+                | None, (typ, span) -> UB.M.pat_PWild ~typ ~span)
               mutargs
             @ out
             |> UB.make_tuple_pat

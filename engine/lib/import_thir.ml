@@ -428,11 +428,11 @@ end) : EXPR = struct
                 {
                   arms =
                     [
-                      U.make_arm lhs body lhs_body_span;
-                      U.make_arm
+                      U.M.arm lhs body ~span:lhs_body_span;
+                      U.M.arm
                         { p = PWild; span = else_block.span; typ = lhs.typ }
                         { else_block with typ = body.typ }
-                        else_block.span;
+                        ~span:else_block.span;
                     ];
                   scrutinee = rhs;
                 }
@@ -488,10 +488,10 @@ end) : EXPR = struct
             Option.value ~default:(U.unit_expr span)
             @@ Option.map ~f:c_expr else_opt
           in
-          let arm_then = U.make_arm arm_pat then_ then_.span in
+          let arm_then = U.M.arm arm_pat then_ ~span:then_.span in
           let arm_else =
             let arm_pat = { arm_pat with p = PWild } in
-            U.make_arm arm_pat else_ else_.span
+            U.M.arm arm_pat else_ ~span:else_.span
           in
           Match { scrutinee; arms = [ arm_then; arm_else ] }
       | If { cond; else_opt; then'; _ } ->
@@ -726,7 +726,8 @@ end) : EXPR = struct
             List.filter_map ~f:(fun p -> Option.map ~f:c_pat p.pat) params
           in
           let params =
-            if List.is_empty params then [ U.make_wild_pat U.unit_typ span ]
+            if List.is_empty params then
+              [ U.M.pat_PWild ~typ:U.M.ty_unit ~span ]
             else params
           in
           let body = c_expr body in
