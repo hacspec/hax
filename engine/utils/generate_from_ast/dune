@@ -1,6 +1,6 @@
 (executable
- (public_name generate_visitors)
- (name generate_visitors)
+ (public_name generate_from_ast)
+ (name generate_from_ast)
  (package hax-engine)
  (libraries ppxlib base stdio ppx_deriving_yojson.runtime)
  (preprocess

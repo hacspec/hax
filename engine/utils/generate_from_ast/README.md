@@ -1,5 +1,6 @@
-# `generate_visitors`
+# `generate_from_ast`
 
+## `generate_from_ast visitors`
 This binary reads the AST module of hax and creates **standalone**
 visitors. We need to define visitors and the types of the AST in two
 separate modules. Otherwise, each time we instantiate the AST functor,
@@ -12,3 +13,6 @@ outputs an OCaml module defining visitors for those types.
 
 Note that this binary relies on the structure and naming of the AST of
 hax; it is not intended for any other use.
+
+## `generate_from_ast ast_builder`
+Generates helpers to build node in the AST.

@@ -49,6 +49,7 @@ module Make (F : Features.T) = struct
   open AST
   module TypedLocalIdent = TypedLocalIdent (AST)
   module Visitors = Ast_visitors.Make (F)
+  module M = Ast_builder.Make (F)
 
   module Expect = struct
     let mut_borrow (e : expr) : expr option =
