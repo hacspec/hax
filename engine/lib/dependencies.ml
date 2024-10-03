@@ -472,7 +472,7 @@ module Make (F : Features.T) = struct
       in
       let variants_renamings (previous_name, new_name) =
         match from_ident previous_name with
-        | Some { v = Type { variants; _ }; _ } ->
+        | Some { v = Type { variants; is_struct = false; _ }; _ } ->
             List.map variants ~f:(fun { name; _ } ->
                 ( name,
                   Concrete_ident.Create.move_under ~new_parent:new_name name ))
