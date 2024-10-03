@@ -251,10 +251,12 @@ struct
                         it = dexpr it;
                         pat = dpat pat;
                         witness = Features.On.for_loop;
+                        has_return = false;
                       };
                   state = Option.map ~f:(dloop_state expr.span) state;
                   label;
                   witness = S.loop expr.span witness;
+                  control_flow = false;
                 };
             span = expr.span;
             typ = UB.unit_typ;

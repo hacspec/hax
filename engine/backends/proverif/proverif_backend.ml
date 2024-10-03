@@ -902,7 +902,7 @@ module TransformToInputLanguage =
   |> Phases.Trivialize_assign_lhs
   |> Side_effect_utils.Hoist
   |> Phases.Simplify_match_return
-  |> Phases.Drop_needless_returns
+  |> Phases.Drop_return_break_continue
   |> Phases.Local_mutation
   |> Phases.Reject.Continue
   |> Phases.Reject.Dyn

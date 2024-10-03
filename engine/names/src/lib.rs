@@ -38,6 +38,11 @@ fn dummy_hax_concrete_ident_wrapper<I: core::iter::Iterator<Item = u8>>(x: I, mu
     let _ = ..;
     let _ = ..1;
 
+    let _ = [
+        std::ops::ControlFlow::Break(()),
+        std::ops::ControlFlow::Continue(()),
+    ];
+
     fn iterator_functions<It: Iterator + Clone>(it: It) {
         let _ = it.clone().step_by(2);
         let _ = it.clone().enumerate();
@@ -159,6 +164,8 @@ mod hax {
     enum MutRef {}
 
     fn while_loop() {}
+    fn while_loop_cf() {}
+    fn while_loop_return() {}
     fn repeat() {}
     fn update_at() {}
     mod monomorphized_update_at {
@@ -174,9 +181,19 @@ mod hax {
 
     mod folds {
         fn fold_range() {}
+        fn fold_range_cf() {}
+        fn fold_range_return() {}
         fn fold_range_step_by() {}
+        fn fold_range_step_by_cf() {}
+        fn fold_range_step_by_return() {}
         fn fold_enumerated_slice() {}
+        fn fold_enumerated_slice_cf() {}
+        fn fold_enumerated_slice_return() {}
         fn fold_enumerated_chunked_slice() {}
+        fn fold_enumerated_chunked_slice_cf() {}
+        fn fold_enumerated_chunked_slice_return() {}
+        fn fold_cf() {}
+        fn fold_return() {}
     }
 
     /// The engine uses this `dropped_body` symbol as a marker value

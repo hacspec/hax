@@ -284,7 +284,7 @@ struct
                         },
                         m#plus ceffect effects ))
               | None -> (e, ceffect))
-          | Loop { body; kind; state; label; witness } ->
+          | Loop { body; kind; state; label; witness; control_flow } ->
               let kind' =
                 match kind with
                 | UnconditionalLoop -> []
@@ -304,10 +304,12 @@ struct
               HoistSeq.many env kind_state (fun l effects ->
                   let kind =
                     match (l, kind) with
-                    | condition :: ([ _ ] | []), WhileLoop { witness; _ } ->
-                        WhileLoop { condition; witness }
-                    | it :: ([ _ ] | []), ForLoop { pat; witness; _ } ->
-                        ForLoop { pat; witness; it }
+                    | ( condition :: ([ _ ] | []),
+                        WhileLoop { witness; has_return; _ } ) ->
+                        WhileLoop { condition; has_return; witness }
+                    | ( it :: ([ _ ] | []),
+                        ForLoop { pat; witness; has_return; _ } ) ->
+                        ForLoop { pat; witness; has_return; it }
                     | ([ _ ] | []), UnconditionalLoop -> UnconditionalLoop
                     | _, ForIndexLoop _ -> .
                     | _ -> HoistSeq.err_hoist_invariant e.span Stdlib.__LOC__
@@ -329,7 +331,11 @@ struct
                   in
                   let effects = m#plus effects body_effects in
                   let body = lets_of_bindings lbs body in
-                  ( { e with e = Loop { body; kind; state; label; witness } },
+                  ( {
+                      e with
+                      e =
+                        Loop { body; kind; state; label; witness; control_flow };
+                    },
                     effects ))
           | If { cond; then_; else_ } ->
               HoistSeq.one env (self#visit_expr env cond) (fun cond effects ->
