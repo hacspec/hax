@@ -321,7 +321,8 @@ fn run_engine(
     if !exit_status.success() {
         HaxMessage::HaxEngineFailure {
             exit_code: exit_status.code().unwrap_or(-1),
-        };
+        }
+        .report(message_format, None);
         std::process::exit(1);
     }
 
