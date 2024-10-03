@@ -621,7 +621,9 @@ pub mod rustc {
             (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
         ) -> Result<rustc_trait_selection::traits::Selection<'tcx>, CodegenObligationError>
         {
-            let trait_ref = tcx.normalize_erasing_regions(param_env, trait_ref);
+            let trait_ref = tcx
+                .try_normalize_erasing_regions(param_env, trait_ref)
+                .unwrap_or(trait_ref);
 
             // Do the initial selection for the obligation. This yields the
             // shallow result we are looking for -- that is, what specific impl.
