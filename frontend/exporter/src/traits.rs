@@ -504,7 +504,7 @@ pub mod rustc {
         warn: &impl Fn(&str),
     ) -> Result<Vec<ImplExpr<'tcx>>, String> {
         obligations
-            .into_iter()
+            .iter()
             .flat_map(|obligation| {
                 obligation.predicate.as_trait_clause().map(|trait_ref| {
                     impl_expr(
@@ -543,7 +543,7 @@ pub mod rustc {
                 generics,
             },
             Ok(ImplSource::Param(_)) => {
-                match search_clause::path_to(tcx, owner_id, param_env, tref.clone()) {
+                match search_clause::path_to(tcx, owner_id, param_env, *tref) {
                     Some((path, apred)) => {
                         let r#trait = apred.clause.to_poly_trait_ref();
                         match apred.origin {
@@ -568,9 +568,7 @@ pub mod rustc {
                 }
             }
             Ok(ImplSource::Builtin(BuiltinImplSource::Object { .. }, _)) => ImplExprAtom::Dyn,
-            Ok(ImplSource::Builtin(_, _)) => ImplExprAtom::Builtin {
-                r#trait: tref.clone(),
-            },
+            Ok(ImplSource::Builtin(_, _)) => ImplExprAtom::Builtin { r#trait: *tref },
             Err(e) => {
                 let msg = format!(
                     "Could not find a clause for `{tref:?}` in the current context: `{e:?}`"

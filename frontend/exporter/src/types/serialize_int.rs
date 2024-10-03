@@ -34,7 +34,7 @@ pub mod unsigned {
         where
             E: serde::de::Error,
         {
-            Ok(v.parse().map_err(serde::de::Error::custom)?)
+            v.parse().map_err(serde::de::Error::custom)
         }
 
         fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
@@ -75,7 +75,7 @@ pub mod signed {
         where
             E: serde::de::Error,
         {
-            Ok(v.parse().map_err(serde::de::Error::custom)?)
+            v.parse().map_err(serde::de::Error::custom)
         }
 
         fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>

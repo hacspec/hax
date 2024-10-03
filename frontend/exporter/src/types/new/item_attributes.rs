@@ -7,6 +7,12 @@ pub struct ItemAttributes {
     parent_attributes: Vec<Attribute>,
 }
 
+impl Default for ItemAttributes {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ItemAttributes {
     pub fn new() -> Self {
         ItemAttributes {
@@ -40,8 +46,7 @@ impl ItemAttributes {
             parent_attributes: hir
                 .parent_owner_iter(HirId::from(oid))
                 .map(|(oid, _)| oid)
-                .map(attrs_of)
-                .flatten()
+                .flat_map(attrs_of)
                 .collect(),
         }
     }
@@ -52,7 +57,7 @@ impl ItemAttributes {
         if let Some(def_id) = did.as_local() {
             Self::from_owner_id(s, rustc_hir::hir_id::OwnerId { def_id })
         } else {
-            return ItemAttributes::new();
+            ItemAttributes::new()
         }
     }
 }

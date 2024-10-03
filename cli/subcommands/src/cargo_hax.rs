@@ -87,12 +87,8 @@ fn find_hax_engine(message_format: MessageFormat) -> process::Command {
 
     std::env::var("HAX_ENGINE_BINARY")
         .ok()
-        .map(|name| process::Command::new(name))
-        .or_else(|| {
-            which(ENGINE_BINARY_NAME)
-                .ok()
-                .map(|name| process::Command::new(name))
-        })
+        .map(process::Command::new)
+        .or_else(|| which(ENGINE_BINARY_NAME).ok().map(process::Command::new))
         .or_else(|| {
             which("node").ok().and_then(|_| {
                 if let Ok(true) = inquire::Confirm::new(&format!(
@@ -184,7 +180,7 @@ impl HaxMessage {
             }
             Self::CargoBuildFailure => {
                 let title =
-                    format!("hax: running `cargo build` was not successful, continuing anyway.");
+                    "hax: running `cargo build` was not successful, continuing anyway.".to_string();
                 eprintln!("{}", renderer.render(Level::Warning.title(&title)));
             }
             Self::WarnExperimentalBackend { backend } => {
@@ -215,14 +211,13 @@ fn run_engine(
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
-        .map_err(|e| {
+        .inspect_err(|e| {
             if let std::io::ErrorKind::NotFound = e.kind() {
                 panic!(
                     "The binary [{}] was not found in your [PATH].",
                     ENGINE_BINARY_NAME
                 )
             }
-            e
         })
         .unwrap();
 
@@ -288,7 +283,7 @@ fn run_engine(
                         output.files.push(file)
                     } else {
                         let path = out_dir.join(&file.path);
-                        std::fs::create_dir_all(&path.parent().unwrap()).unwrap();
+                        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
                         let mut wrote = false;
                         if fs::read_to_string(&path).as_ref().ok() != Some(&file.contents) {
                             std::fs::write(&path, file.contents).unwrap();

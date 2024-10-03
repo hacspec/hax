@@ -21,9 +21,9 @@ impl std::hash::Hash for DefId {
 #[cfg(feature = "rustc")]
 impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
     fn sinto(&self, s: &S) -> DefId {
-        s.base().exported_def_ids.borrow_mut().insert(self.clone());
+        s.base().exported_def_ids.borrow_mut().insert(*self);
         let tcx = s.base().tcx;
-        let def_path = tcx.def_path(self.clone());
+        let def_path = tcx.def_path(*self);
         let krate = tcx.crate_name(def_path.krate);
         DefId {
             path: def_path.data.iter().map(|x| x.sinto(s)).collect(),
@@ -226,19 +226,16 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::mi
         use rustc_middle::mir::Const;
         let tcx = s.base().tcx;
         match self {
-            Const::Val(const_value, ty) => const_value_to_constant_expr(
-                s,
-                ty.clone(),
-                const_value.clone(),
-                rustc_span::DUMMY_SP,
-            ),
+            Const::Val(const_value, ty) => {
+                const_value_to_constant_expr(s, *ty, *const_value, rustc_span::DUMMY_SP)
+            }
             Const::Ty(_ty, c) => c.sinto(s),
             Const::Unevaluated(ucv, _ty) => {
                 use crate::rustc_middle::query::Key;
                 let span = tcx
                     .def_ident_span(ucv.def)
                     .unwrap_or_else(|| ucv.def.default_span(tcx));
-                if let Some(_) = ucv.promoted {
+                if ucv.promoted.is_some() {
                     self.eval_constant(s)
                         .unwrap_or_else(|| {
                             supposely_unreachable_fatal!(s, "UnevalPromotedConstant"; {self, ucv});
@@ -991,11 +988,11 @@ const _: () = {
 };
 
 #[cfg(feature = "rustc")]
-impl Into<Loc> for rustc_span::Loc {
-    fn into(self) -> Loc {
+impl From<rustc_span::Loc> for Loc {
+    fn from(val: rustc_span::Loc) -> Self {
         Loc {
-            line: self.line,
-            col: self.col_display,
+            line: val.line,
+            col: val.col_display,
         }
     }
 }
@@ -1004,8 +1001,8 @@ impl Into<Loc> for rustc_span::Loc {
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Span> for rustc_span::Span {
     fn sinto(&self, s: &S) -> Span {
         let set: crate::state::ExportedSpans = s.base().exported_spans;
-        set.borrow_mut().insert(self.clone());
-        translate_span(self.clone(), s.base().tcx.sess)
+        set.borrow_mut().insert(*self);
+        translate_span(*self, s.base().tcx.sess)
     }
 }
 
@@ -1027,10 +1024,9 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, LocalIdent> for rustc_middle::thir
                 .borrow()
                 .vars
                 .get(self)
-                .clone()
                 .s_unwrap(s)
                 .to_string(),
-            id: self.clone().0.sinto(s),
+            id: self.0.sinto(s),
         }
     }
 }
@@ -1527,7 +1523,7 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Pat> for rustc_middle::thir::Pat<'tcx> {
             rustc_middle::thir::PatKind::Leaf { subpatterns } => match ty.kind() {
                 rustc_middle::ty::TyKind::Adt(adt_def, args) => {
                     (rustc_middle::thir::PatKind::Variant {
-                        adt_def: adt_def.clone(),
+                        adt_def: *adt_def,
                         args,
                         variant_index: rustc_target::abi::VariantIdx::from_usize(0),
                         subpatterns: subpatterns.clone(),
@@ -2082,7 +2078,7 @@ pub enum PatKind {
     #[custom_arm(
         rustc_middle::thir::PatKind::Binding {name, mode, var, ty, subpattern, is_primary} => {
             let local_ctx = gstate.base().local_ctx;
-            local_ctx.borrow_mut().vars.insert(var.clone(), name.to_string());
+            local_ctx.borrow_mut().vars.insert(*var, name.to_string());
             PatKind::Binding {
                 mode: mode.sinto(gstate),
                 var: var.sinto(gstate),
@@ -2916,7 +2912,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, ImplItem<Body>>
 {
     fn sinto(&self, s: &S) -> ImplItem<Body> {
         let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
-        let impl_item = tcx.hir().impl_item(self.id.clone());
+        let impl_item = tcx.hir().impl_item(self.id);
         let s = with_owner_id(s.base(), (), (), impl_item.owner_id.to_def_id());
         impl_item.sinto(&s)
     }
@@ -3024,7 +3020,7 @@ pub struct GenericParam<Body: IsBody> {
     pub pure_wrt_drop: bool,
     pub kind: GenericParamKind<Body>,
     pub colon_span: Option<Span>,
-    #[value(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
+    #[value(s.base().tcx.hir().attrs(*hir_id).sinto(s))]
     attributes: Vec<Attribute>,
 }
 
@@ -3195,7 +3191,7 @@ pub struct HirFieldDef {
     pub hir_id: HirId,
     pub def_id: GlobalIdent,
     pub ty: Ty,
-    #[value(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
+    #[value(s.base().tcx.hir().attrs(*hir_id).sinto(s))]
     attributes: Vec<Attribute>,
 }
 
@@ -3222,7 +3218,7 @@ pub struct Variant<Body: IsBody> {
     })]
     pub discr: DiscriminantDefinition,
     pub span: Span,
-    #[value(s.base().tcx.hir().attrs(hir_id.clone()).sinto(s))]
+    #[value(s.base().tcx.hir().attrs(*hir_id).sinto(s))]
     pub attributes: Vec<Attribute>,
 }
 
@@ -3236,7 +3232,7 @@ pub struct UsePath {
     #[map(x.iter().map(|res| res.sinto(s)).collect())]
     pub res: Vec<Res>,
     pub segments: Vec<PathSegment>,
-    #[value(self.segments.iter().last().map_or(None, |segment| {
+    #[value(self.segments.iter().last().and_then(|segment| {
             match s.base().tcx.hir_node_by_def_id(segment.hir_id.owner.def_id) {
                 rustc_hir::Node::Item(rustc_hir::Item {
                     ident,
@@ -3438,7 +3434,7 @@ impl<'a, S: UnderOwnerState<'a>, Body: IsBody> SInto<S, TraitItem<Body>>
     fn sinto(&self, s: &S) -> TraitItem<Body> {
         let s = with_owner_id(s.base(), (), (), self.id.owner_id.to_def_id());
         let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
-        tcx.hir().trait_item(self.clone().id).sinto(&s)
+        tcx.hir().trait_item(self.id).sinto(&s)
     }
 }
 
@@ -3484,7 +3480,7 @@ impl<'a, S: UnderOwnerState<'a>, Body: IsBody> SInto<S, ForeignItem<Body>>
 {
     fn sinto(&self, s: &S) -> ForeignItem<Body> {
         let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
-        tcx.hir().foreign_item(self.clone().id).sinto(s)
+        tcx.hir().foreign_item(self.id).sinto(s)
     }
 }
 
@@ -3543,7 +3539,7 @@ pub struct TraitRef {
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TraitPredicate {
     pub trait_ref: TraitRef,
-    #[map(x.clone() == rustc_middle::ty::PredicatePolarity::Positive)]
+    #[map(*x == rustc_middle::ty::PredicatePolarity::Positive)]
     #[from(polarity)]
     pub is_positive: bool,
 }
@@ -3662,10 +3658,7 @@ pub struct Clause {
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause> for rustc_middle::ty::Clause<'tcx> {
     fn sinto(&self, s: &S) -> Clause {
         let kind = self.kind().sinto(s);
-        let id = kind
-            .clone()
-            .map(|clause_kind| PredicateKind::Clause(clause_kind))
-            .predicate_id();
+        let id = kind.clone().map(PredicateKind::Clause).predicate_id();
         Clause { kind, id }
     }
 }
@@ -3676,11 +3669,8 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause>
 {
     fn sinto(&self, s: &S) -> Clause {
         let kind: Binder<_> = self.sinto(s);
-        let kind: Binder<ClauseKind> = kind.map(|x| ClauseKind::Trait(x));
-        let id = kind
-            .clone()
-            .map(|clause_kind| PredicateKind::Clause(clause_kind))
-            .predicate_id();
+        let kind: Binder<ClauseKind> = kind.map(ClauseKind::Trait);
+        let id = kind.clone().map(PredicateKind::Clause).predicate_id();
         Clause { kind, id }
     }
 }
@@ -3993,7 +3983,7 @@ impl<'tcx, S: BaseState<'tcx>, Body: IsBody> SInto<S, Item<Body>> for rustc_hir:
 impl<'tcx, S: BaseState<'tcx>, Body: IsBody> SInto<S, Item<Body>> for rustc_hir::ItemId {
     fn sinto(&self, s: &S) -> Item<Body> {
         let tcx: rustc_middle::ty::TyCtxt = s.base().tcx;
-        tcx.hir().item(self.clone()).sinto(s)
+        tcx.hir().item(*self).sinto(s)
     }
 }
 

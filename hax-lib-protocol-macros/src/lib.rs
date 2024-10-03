@@ -76,7 +76,7 @@ pub fn init(
     );
     output.extend(expanded);
 
-    return output.into();
+    output.into()
 }
 
 /// This macro takes an `fn` as the basis of an `InitialState` implementation
@@ -236,7 +236,7 @@ pub fn write(
     );
     output.extend(expanded);
 
-    return output.into();
+    output.into()
 }
 
 /// Macro deriving a `ReadState` implementation for the destination state type,
@@ -305,5 +305,5 @@ pub fn read(
     );
     output.extend(expanded);
 
-    return output.into();
+    output.into()
 }

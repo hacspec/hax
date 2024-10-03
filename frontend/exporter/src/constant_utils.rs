@@ -214,9 +214,7 @@ mod rustc {
     ) -> ConstantLiteral {
         match ty.kind() {
             ty::Char => ConstantLiteral::Char(
-                char::try_from(x)
-                    .s_expect(s, "scalar_int_to_constant_literal: expected a char")
-                    .into(),
+                char::try_from(x).s_expect(s, "scalar_int_to_constant_literal: expected a char"),
             ),
             ty::Bool => ConstantLiteral::Bool(
                 x.try_to_bool()
@@ -296,7 +294,7 @@ mod rustc {
                             },
                         );
                         ConstantExprKind::Literal(ConstantLiteral::ByteStr(
-                            values.iter().copied().collect(),
+                            values.to_vec(),
                             StrStyle::Cooked,
                         ))
                     }
@@ -356,9 +354,9 @@ mod rustc {
     /// Rustc; we don't want to reflect that, instead we prefer inlining
     /// those. `is_anon_const` is used to detect such AnonConst so that we
     /// can evaluate and inline them.
-    pub(crate) fn is_anon_const<'tcx>(
+    pub(crate) fn is_anon_const(
         did: rustc_span::def_id::DefId,
-        tcx: rustc_middle::ty::TyCtxt<'tcx>,
+        tcx: rustc_middle::ty::TyCtxt<'_>,
     ) -> bool {
         matches!(
             tcx.def_path(did).data.last().map(|x| x.data),
@@ -489,7 +487,7 @@ mod rustc {
                 }
 
                 ty::ConstKind::Unevaluated(ucv) => match self.translate_uneval(s, ucv, span) {
-                    TranslateUnevalRes::EvaluatedConstant(c) => return c.sinto(s),
+                    TranslateUnevalRes::EvaluatedConstant(c) => c.sinto(s),
                     TranslateUnevalRes::GlobalName(c) => c,
                 },
                 ty::ConstKind::Value(ty, valtree) => valtree_to_constant_expr(s, valtree, ty, span),

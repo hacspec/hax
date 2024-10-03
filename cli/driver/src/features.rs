@@ -104,7 +104,7 @@ impl Features {
         };
         let exit_code = rustc_driver::catch_with_exit_code(|| {
             rustc_driver::RunCompiler::new(
-                &rustc_args,
+                rustc_args,
                 &mut CallbacksWrapper {
                     sub: &mut callbacks,
                     options: options.clone(),

@@ -380,7 +380,7 @@ fn normalize_trait_clauses<'tcx, S: UnderOwnerState<'tcx>>(
     let predicates: Vec<_> = predicates
         .iter()
         .map(|(clause, span)| {
-            let mut clause = clause.clone();
+            let mut clause = *clause;
             if matches!(&clause.kind().skip_binder(), ty::ClauseKind::Trait(_)) {
                 clause = s
                     .base()
