@@ -108,3 +108,22 @@ let rec fold_range
     then fold_range (start +! mk_int 1) end_ inv (f init start) f
     else init
 
+let fold_range_cf
+  (#acc_t: Type0) (#u: Lib.IntTypes.inttype)
+  (start: int_t u)
+  (end_: int_t u)
+  (inv: acc_t -> (i:int_t u{fold_range_wf_index start end_ false (v i)}) -> Type0)
+  (cf_init: tuple2 (Core.Ops.Control_flow.t_ControlFlow unit unit)  acc_t )
+  (f: (acc:acc_t -> i:int_t u 
+                  -> (tuple2 (Core.Ops.Control_flow.t_ControlFlow unit unit) acc_t ) ))
+: Tot (result: acc_t ) 
+        (decreases v end_ - v start)
+  = 
+  let cf, init = cf_init in
+  if v start < v end_
+    then (
+      match cf with 
+      | Core.Ops.Control_flow.ControlFlow_Break _ -> init
+      | Core.Ops.Control_flow.ControlFlow_Continue _ -> fold_range (start +! mk_int 1) end_ inv (f init start) f
+    )
+    else init

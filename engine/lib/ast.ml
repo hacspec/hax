@@ -262,6 +262,7 @@ functor
           body : expr;
           kind : loop_kind;
           state : loop_state option;
+          control_flow : bool;
           label : string option;
           witness : F.loop;
         }
@@ -307,13 +308,23 @@ functor
 
     and loop_kind =
       | UnconditionalLoop
-      | WhileLoop of { condition : expr; witness : F.while_loop }
-      | ForLoop of { pat : pat; it : expr; witness : F.for_loop }
+      | WhileLoop of {
+          condition : expr;
+          has_return : bool;
+          witness : F.while_loop;
+        }
+      | ForLoop of {
+          pat : pat;
+          it : expr;
+          has_return : bool;
+          witness : F.for_loop;
+        }
       | ForIndexLoop of {
           start : expr;
           end_ : expr;
           var : local_ident;
           var_typ : ty;
+          has_return : bool;
           witness : F.for_index_loop;
         }
 
