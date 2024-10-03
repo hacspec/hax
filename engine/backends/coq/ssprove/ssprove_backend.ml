@@ -1117,6 +1117,7 @@ struct
                         };
                     label;
                     witness;
+                    control_flow = false;
                   };
               typ = e.typ;
               span = e.span;

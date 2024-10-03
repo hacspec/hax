@@ -78,6 +78,14 @@ struct
       let rec dexpr e = dexpr_s { s with expr_level = []; drop_expr = false } e
       and dloop_state = [%inline_body dloop_state] in
       let span = expr.span in
+      let local_vars_expr =
+        let vars =
+          List.map
+            ~f:(fun (i, typ) : B.expr -> { e = LocalVar i; typ; span })
+            s.loop_level
+        in
+        match vars with [ v ] -> v | _ -> UB.make_tuple_expr ~span vars
+      in
       match expr.e with
       | Let
           {
@@ -229,7 +237,20 @@ struct
             dexpr_s { s with expr_level = []; drop_expr = false } scrutinee
           in
           { e = Match { scrutinee; arms }; typ; span = expr.span }
-      | Loop { body; kind; state; label; witness } ->
+      | Break { e; label; witness; _ } ->
+          let e = UB.make_tuple_expr ~span [ dexpr_same e; local_vars_expr ] in
+          { e = Break { e; label; witness }; span = expr.span; typ = e.typ }
+      | Continue { e = None; label; witness; _ } ->
+          let w = Features.On.state_passing_loop in
+          let e =
+            UB.make_tuple_expr ~span [ UB.unit_expr expr.span; local_vars_expr ]
+          in
+          {
+            e = Continue { e = Some (w, e); label; witness };
+            span = expr.span;
+            typ = e.typ;
+          }
+      | Loop { body; kind; state; label; witness; control_flow } ->
           let variables_to_output = s.expr_level in
           (* [adapt]: should we reorder shadowings? *)
           let observable_mutations, adapt =
@@ -295,7 +316,11 @@ struct
           (* we deal with a for loop: this is always a unit expression (i.e. no [break foo] with [foo] non-unit allowed) *)
           let typ = List.map ~f:snd observable_mutations |> UB.make_tuple_typ in
           let loop : B.expr =
-            { e = Loop { body; kind; state; label; witness }; typ; span }
+            {
+              e = Loop { body; kind; state; label; witness; control_flow };
+              typ;
+              span;
+            }
           in
           if adapt && not (List.is_empty variables_to_output) then
             (* here, we need to introduce the shadowings as bindings *)
@@ -318,8 +343,8 @@ struct
                 typ = out.typ;
               }
           else loop
-      | [%inline_arms "dexpr'.*" - Let - Assign - Closure - Loop - If - Match]
-        ->
+      | [%inline_arms
+          "dexpr'.*" - Let - Assign - Closure - Loop - If - Match - Break] ->
           map (fun e ->
               let e' =
                 B.{ e; typ = dty expr.span expr.typ; span = expr.span }

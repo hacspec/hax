@@ -585,6 +585,7 @@ end) : EXPR = struct
               state = None;
               label = None;
               witness = W.loop;
+              control_flow = false;
             }
       | Match { scrutinee; arms } ->
           let scrutinee = c_expr scrutinee in

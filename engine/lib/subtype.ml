@@ -236,13 +236,14 @@ struct
             e = dexpr e;
             witness = S.mutable_variable span witness;
           }
-    | Loop { body; kind; state; label; witness } ->
+    | Loop { body; kind; state; label; witness; control_flow } ->
         Loop
           {
             body = dexpr body;
             kind = dloop_kind span kind;
             state = Option.map ~f:(dloop_state span) state;
             label;
+            control_flow;
             witness = S.loop span witness;
           }
     | Break { e; label; witness } ->
@@ -306,19 +307,29 @@ struct
   and dloop_kind (span : span) (k : A.loop_kind) : B.loop_kind =
     match k with
     | UnconditionalLoop -> UnconditionalLoop
-    | WhileLoop { condition; witness } ->
+    | WhileLoop { condition; witness; has_return } ->
         WhileLoop
-          { condition = dexpr condition; witness = S.while_loop span witness }
-    | ForLoop { it; pat; witness } ->
+          {
+            condition = dexpr condition;
+            has_return;
+            witness = S.while_loop span witness;
+          }
+    | ForLoop { it; pat; has_return; witness } ->
         ForLoop
-          { it = dexpr it; pat = dpat pat; witness = S.for_loop span witness }
-    | ForIndexLoop { start; end_; var; var_typ; witness } ->
+          {
+            it = dexpr it;
+            pat = dpat pat;
+            has_return;
+            witness = S.for_loop span witness;
+          }
+    | ForIndexLoop { start; end_; var; var_typ; has_return; witness } ->
         ForIndexLoop
           {
             start = dexpr start;
             end_ = dexpr end_;
             var;
             var_typ = dty span var_typ;
+            has_return;
             witness = S.for_index_loop span witness;
           }
 

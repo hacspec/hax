@@ -1738,9 +1738,9 @@ module TransformToInputLanguage =
   |> Side_effect_utils.Hoist
   |> Phases.Hoist_disjunctive_patterns
   |> Phases.Simplify_match_return
-  |> Phases.Rewrite_control_flow
-  |> Phases.Drop_needless_returns
   |> Phases.Local_mutation
+  |> Phases.Rewrite_control_flow
+  |> Phases.Drop_return_break_continue
   |> Phases.Reject.Continue
   |> Phases.Cf_into_monads
   |> Phases.Reject.EarlyExit
