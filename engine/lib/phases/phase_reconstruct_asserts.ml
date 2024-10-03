@@ -19,92 +19,34 @@ module Make (F : Features.T) =
           inherit [_] Visitors.map as super
 
           method! visit_expr () e =
-            match e with
-            | {
-             e =
-               If
-                 {
-                   cond;
-                   then_ =
-                     {
-                       e =
-                         ( App
-                             {
-                               f = { e = GlobalVar nta; _ };
-                               args =
-                                 [
-                                   {
-                                     e =
-                                       Let
-                                         {
-                                           body =
-                                             {
-                                               e =
-                                                 Block
-                                                   {
-                                                     e =
-                                                       {
-                                                         e =
-                                                           App
-                                                             {
-                                                               f =
-                                                                 {
-                                                                   e =
-                                                                     GlobalVar
-                                                                       panic;
-                                                                   _;
-                                                                 };
-                                                               _;
-                                                             };
-                                                         _;
-                                                       };
-                                                     _;
-                                                   };
-                                               _;
-                                             };
-                                           _;
-                                         };
-                                     _;
-                                   };
-                                 ];
-                               _;
-                             }
-                         | Block
-                             {
-                               e =
-                                 {
-                                   e =
-                                     App
-                                       {
-                                         f = { e = GlobalVar nta; _ };
-                                         args =
-                                           [
-                                             {
-                                               e =
-                                                 App
-                                                   {
-                                                     f =
-                                                       {
-                                                         e = GlobalVar panic;
-                                                         _;
-                                                       };
-                                                     _;
-                                                   };
-                                               _;
-                                             };
-                                           ];
-                                         _;
-                                       };
-                                   _;
-                                 };
-                               _;
-                             } );
-                       _;
-                     };
-                   _;
-                 };
-             _;
-            }
+            let extract_block e =
+              let* { e; _ } = U.D.expr_Block e in
+              let* { f; args; _ } = U.D.expr_App e in
+              let* nta = U.D.expr_GlobalVar f in
+              match args with
+              | [ { e = App { f = { e = GlobalVar panic; _ }; _ }; _ } ] ->
+                  Some (nta, panic)
+              | _ -> None
+            in
+            let extract_app e =
+              let* { f; args; _ } = U.D.expr_App e in
+              let* nta = U.D.expr_GlobalVar f in
+              let* arg = U.D.list_1 args in
+              let* { body; _ } = U.D.expr_Let arg in
+              let* { e; _ } = U.D.expr_Block body in
+              let* { f; _ } = U.D.expr_App e in
+              let* panic = U.D.expr_GlobalVar f in
+              Some (nta, panic)
+            in
+            let extract e =
+              let* { cond; then_; _ } = U.D.expr_If e in
+              let* nta, panic =
+                extract_app then_ <|> fun _ -> extract_block then_
+              in
+              Some (panic, nta, cond)
+            in
+            match extract e with
+            | Some (panic, nta, cond)
               when Ast.Global_ident.eq_name Rust_primitives__hax__never_to_any
                      nta
                    && (Ast.Global_ident.eq_name Core__panicking__panic panic
