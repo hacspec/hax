@@ -37,7 +37,7 @@ pub(crate) fn get_variant_information<'s, S: UnderOwnerState<'s>>(
     s_assert!(s, !adt_def.is_union() || *CORE_EXTRACTION_MODE);
     fn is_record<'s, I: std::iter::Iterator<Item = &'s ty::FieldDef> + Clone>(it: I) -> bool {
         it.clone()
-            .any(|field| !field.name.to_ident_string().parse::<u64>().is_ok())
+            .any(|field| field.name.to_ident_string().parse::<u64>().is_err())
     }
     let variant_def = adt_def.variant(variant_index);
     let variant = variant_def.def_id;
@@ -109,7 +109,7 @@ pub(crate) fn read_span_from_file(span: &Span) -> Result<String, ReadSpanErr> {
             let first = first.chars().skip(span.lo.col).collect();
             let last = last.chars().take(span.hi.col).collect();
             Ok(std::iter::once(first)
-                .chain(middle.into_iter().cloned())
+                .chain(middle.iter().cloned())
                 .chain(std::iter::once(last))
                 .collect::<Vec<String>>()
                 .join("\n"))
@@ -145,7 +145,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> ParamEnv<'tcx> for S {
 
 #[tracing::instrument]
 pub fn argument_span_of_mac_call(mac_call: &rustc_ast::ast::MacCall) -> rustc_span::Span {
-    (*mac_call.args).dspan.entire()
+    mac_call.args.dspan.entire()
 }
 #[tracing::instrument(skip(state))]
 pub(crate) fn raw_macro_invocation_of_span<'t, S: BaseState<'t>>(
@@ -224,7 +224,7 @@ pub(crate) fn attribute_from_scope<'tcx, S: ExprState<'tcx>>(
     let map = tcx.hir();
     let attributes = hir_id
         .map(|hir_id| map.attrs(hir_id).sinto(s))
-        .unwrap_or(vec![]);
+        .unwrap_or_default();
     (hir_id, attributes)
 }
 
@@ -247,7 +247,7 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
     ids.map(|id| tcx.hir().item(id))
         .group_by(|item| SpanEq(raw_macro_invocation_of_span(item.span, s)))
         .into_iter()
-        .map(|(mac, items)| match mac.0 {
+        .flat_map(|(mac, items)| match mac.0 {
             Some((macro_ident, expn_data)) => {
                 let owner_id: rustc_hir::hir_id::OwnerId =
                     items.into_iter().map(|x| x.owner_id).next().s_unwrap(s);
@@ -267,6 +267,5 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
             }
             _ => items.map(|item| item.sinto(s)).collect(),
         })
-        .flatten()
         .collect()
 }

@@ -36,7 +36,7 @@ mod module {
         s: &S,
     ) -> FnDef<Body> {
         let hir_id = body_id.hir_id;
-        let ldid = hir_id.clone().owner.def_id;
+        let ldid = hir_id.owner.def_id;
 
         let (thir, expr_entrypoint) = get_thir(ldid, s);
         let s = &with_owner_id(s.base(), thir.clone(), (), ldid.to_def_id());
@@ -64,15 +64,13 @@ mod module {
     mod implementations {
         use super::*;
         impl IsBody for () {
-            fn body<'tcx, S: UnderOwnerState<'tcx>>(_did: RLocalDefId, _s: &S) -> Self {
-                ()
-            }
+            fn body<'tcx, S: UnderOwnerState<'tcx>>(_did: RLocalDefId, _s: &S) -> Self {}
         }
         impl IsBody for ThirBody {
             fn body<'tcx, S: UnderOwnerState<'tcx>>(did: RLocalDefId, s: &S) -> Self {
                 let (thir, expr) = get_thir(did, s);
                 if *CORE_EXTRACTION_MODE {
-                    let expr = &thir.exprs[expr.clone()];
+                    let expr = &thir.exprs[expr];
                     Decorated {
                         contents: Box::new(ExprKind::Tuple { fields: vec![] }),
                         hir_id: None,
@@ -111,7 +109,7 @@ mod module {
 
     impl<'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, Body> for rustc_hir::BodyId {
         fn sinto(&self, s: &S) -> Body {
-            body_from_id::<Body, _>(self.clone(), s)
+            body_from_id::<Body, _>(*self, s)
         }
     }
 }

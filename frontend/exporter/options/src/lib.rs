@@ -36,9 +36,8 @@ impl std::convert::From<String> for Namespace {
         Namespace {
             chunks: s
                 .split("::")
-                .into_iter()
-                .filter(|s| s.len() > 0)
-                .map(|s| NamespaceChunk::from(s))
+                .filter(|s| !s.is_empty())
+                .map(NamespaceChunk::from)
                 .collect(),
         }
     }

@@ -35,10 +35,10 @@ impl<I: rustc_index::Idx, T: Sized> std::ops::DerefMut for IndexVec<I, T> {
 }
 
 #[cfg(feature = "rustc")]
-impl<I: rustc_index::Idx, T> Into<IndexVec<I, T>> for rustc_index::IndexVec<I, T> {
-    fn into(self) -> IndexVec<I, T> {
+impl<I: rustc_index::Idx, T> From<rustc_index::IndexVec<I, T>> for IndexVec<I, T> {
+    fn from(val: rustc_index::IndexVec<I, T>) -> Self {
         IndexVec {
-            raw: self.raw,
+            raw: val.raw,
             _marker: std::marker::PhantomData,
         }
     }

@@ -105,6 +105,12 @@ mod types {
         pub vars: HashMap<rustc_middle::thir::LocalVarId, String>,
     }
 
+    impl Default for LocalContextS {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl LocalContextS {
         pub fn new() -> LocalContextS {
             LocalContextS {
@@ -260,12 +266,12 @@ impl<'tcx> StateWithOwner<'tcx> {
 }
 
 /// Updates the OnwerId in a state, making sure to override `opt_def_id` in base as well.
-pub fn with_owner_id<'tcx, THIR, MIR>(
-    mut base: types::Base<'tcx>,
+pub fn with_owner_id<THIR, MIR>(
+    mut base: types::Base<'_>,
     thir: THIR,
     mir: MIR,
     owner_id: rustc_hir::def_id::DefId,
-) -> State<types::Base<'tcx>, THIR, MIR, rustc_hir::def_id::DefId, ()> {
+) -> State<types::Base<'_>, THIR, MIR, rustc_hir::def_id::DefId, ()> {
     base.opt_def_id = Some(owner_id);
     State {
         thir,
@@ -289,7 +295,7 @@ pub trait UnderBinderState<'tcx> = UnderOwnerState<'tcx> + HasBinder<'tcx>;
 pub trait ExprState<'tcx> = UnderOwnerState<'tcx> + HasThir<'tcx>;
 
 impl ImplInfos {
-    fn from<'tcx>(base: Base<'tcx>, did: rustc_hir::def_id::DefId) -> Self {
+    fn from(base: Base<'_>, did: rustc_hir::def_id::DefId) -> Self {
         let tcx = base.tcx;
         let s = &with_owner_id(base, (), (), did);
 
@@ -315,7 +321,7 @@ pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: BaseState<'tcx>>(
 
     let def_ids = exported_def_ids.as_ref().borrow().clone();
     let with_parents = |mut did: rustc_hir::def_id::DefId| {
-        let mut acc = vec![did.clone()];
+        let mut acc = vec![did];
         while let Some(parent) = tcx.opt_parent(did) {
             did = parent;
             acc.push(did);
@@ -326,8 +332,7 @@ pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: BaseState<'tcx>>(
     def_ids
         .iter()
         .cloned()
-        .map(with_parents)
-        .flatten()
+        .flat_map(with_parents)
         .unique()
         .filter(|&did| {
             // keep only DefIds that corresponds to implementations
