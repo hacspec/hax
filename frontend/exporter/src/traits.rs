@@ -277,7 +277,7 @@ pub mod rustc {
             let y = erase_and_norm(y);
             let sx = format!("{:?}", x.kind().skip_binder());
             let sy = format!("{:?}", y.kind().skip_binder());
-            let result = sx == sy;
+
             // const DEBUG: bool = false;
             // if DEBUG && result {
             //     use crate::{Predicate, SInto};
@@ -296,7 +296,7 @@ pub mod rustc {
             //         eprintln!("sinto(y)={:#?}", ys);
             //     }
             // }
-            result
+            sx == sy
         }
 
         #[extension_traits::extension(pub trait TraitPredicateExt)]

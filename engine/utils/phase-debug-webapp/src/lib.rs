@@ -32,7 +32,7 @@ pub fn run(get_json: impl Fn() -> String) {
             path if path.starts_with("/debug-hax-engine.json") => {
                 Response::from_string(get_json()).with_header(ct_utf8.clone())
             }
-            _ => Response::from_string(format!("Unknown route")).with_status_code(404),
+            _ => Response::from_string("Unknown route".to_string()).with_status_code(404),
         };
         let _ = request.respond(response);
     }
