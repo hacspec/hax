@@ -27,4 +27,11 @@ let _main =
            | Result.Ok v -> Some Datatype.{ v with name = path }
            | _ -> None)
   in
-  datatypes |> Codegen_visitor.mk |> Stdio.print_endline
+
+  datatypes
+  |> (match Sys.argv.(1) with
+     | "visitors" -> Codegen_visitor.mk
+     | "printer" -> Codegen_printer.mk
+     | "json" -> [%yojson_of: Datatype.t list] >> Yojson.Safe.pretty_to_string
+     | verb -> failwith ("Unknown action `" ^ verb ^ "`"))
+  |> Stdio.print_endline

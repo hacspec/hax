@@ -707,37 +707,37 @@ module Traditional : T = struct
     |> Stdlib.String.trim
 end
 
-module Experimental : T = struct
-  module GenericRustPrinter = Generic_rust_printer.Make (Features.Full)
+(* module Experimental : T = struct *)
+(*   module GenericRustPrinter = Generic_rust_printer.Make (Features.Full) *)
 
-  let pitem : item -> AnnotatedString.Output.t =
-    GenericRustPrinter.item ()
-    >> Generic_printer_api.AnnotatedString.to_spanned_strings
-    >> AnnotatedString.Output.convert
+(*   let pitem : item -> AnnotatedString.Output.t = *)
+(*     GenericRustPrinter.item () *)
+(*     >> Generic_printer_api.AnnotatedString.to_spanned_strings *)
+(*     >> AnnotatedString.Output.convert *)
 
-  let pitems : item list -> AnnotatedString.Output.t =
-    GenericRustPrinter.items ()
-    >> Generic_printer_api.AnnotatedString.to_spanned_strings
-    >> AnnotatedString.Output.convert
+(*   let pitems : item list -> AnnotatedString.Output.t = *)
+(*     GenericRustPrinter.items () *)
+(*     >> Generic_printer_api.AnnotatedString.to_spanned_strings *)
+(*     >> AnnotatedString.Output.convert *)
 
-  let pexpr : expr -> AnnotatedString.Output.t =
-    GenericRustPrinter.expr ()
-    >> Generic_printer_api.AnnotatedString.to_spanned_strings
-    >> AnnotatedString.Output.convert
+(*   let pexpr : expr -> AnnotatedString.Output.t = *)
+(*     GenericRustPrinter.expr () *)
+(*     >> Generic_printer_api.AnnotatedString.to_spanned_strings *)
+(*     >> AnnotatedString.Output.convert *)
 
-  let pitem_str : item -> string =
-    GenericRustPrinter.item () >> Generic_printer_api.AnnotatedString.to_string
+(*   let pitem_str : item -> string = *)
+(*     GenericRustPrinter.item () >> Generic_printer_api.AnnotatedString.to_string *)
 
-  let pexpr_str : expr -> string =
-    GenericRustPrinter.expr () >> Generic_printer_api.AnnotatedString.to_string
+(*   let pexpr_str : expr -> string = *)
+(*     GenericRustPrinter.expr () >> Generic_printer_api.AnnotatedString.to_string *)
 
-  let pty_str : ty -> string =
-    GenericRustPrinter.ty () >> Generic_printer_api.AnnotatedString.to_string
-end
+(*   let pty_str : ty -> string = *)
+(*     GenericRustPrinter.ty () >> Generic_printer_api.AnnotatedString.to_string *)
+(* end *)
 
 let experimental =
   Sys.getenv "HAX_ENGINE_EXPERIMENTAL_RUST_PRINTER" |> Option.is_some
 
 include
-  (val if experimental then (module Experimental : T)
+  (val if experimental then failwith "todo" (*module Experimental : T*)
        else (module Traditional : T))

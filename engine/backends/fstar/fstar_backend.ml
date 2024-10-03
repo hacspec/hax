@@ -1641,6 +1641,7 @@ let fstar_headers (bo : BackendOptions.t) =
   in
   [ opts; "open Core"; "open FStar.Mul" ] |> String.concat ~sep:"\n"
 
+(*
 module GenericPrinter = Generic_rust_printer.Make (InputLanguage)
 
 (** Use the generic printer instead of the F* printer. For now, there
@@ -1681,6 +1682,7 @@ let translate_as_experimental_rust m (bo : BackendOptions.t)
                  }
          in
          List.filter_map ~f:Fn.id [ make ~ext:"rs" impl ])
+*)
 
 (** Translate as F* (the "legacy" printer) *)
 let translate_as_fstar m (bo : BackendOptions.t) (items : AST.item list) :
@@ -1725,7 +1727,7 @@ let translate =
   if
     Sys.getenv "HAX_ENGINE_EXPERIMENTAL_RUST_PRINTER_INSTEAD_OF_FSTAR"
     |> Option.is_some
-  then translate_as_experimental_rust
+  then failwith "todo"
   else translate_as_fstar
 
 open Phase_utils
