@@ -401,23 +401,26 @@ struct
         Error.unimplemented p.span ~issue_id:463
           ~details:"The F* backend doesn't support nested disjuntive patterns"
     | PArray { args } -> F.pat @@ F.AST.PatList (List.map ~f:ppat args)
-    | PConstruct { name = `TupleCons 0; args = [] } ->
+    | PConstruct { constructor = `TupleCons 0; fields = [] } ->
         F.pat @@ F.AST.PatConst F.Const.Const_unit
-    | PConstruct { name = `TupleCons 1; args = [ { pat } ] } -> ppat pat
-    | PConstruct { name = `TupleCons n; args } ->
+    | PConstruct { constructor = `TupleCons 1; fields = [ { pat } ] } ->
+        ppat pat
+    | PConstruct { constructor = `TupleCons n; fields } ->
         F.pat
-        @@ F.AST.PatTuple (List.map ~f:(fun { pat } -> ppat pat) args, false)
-    | PConstruct { name; args; is_record; is_struct } ->
+        @@ F.AST.PatTuple (List.map ~f:(fun { pat } -> ppat pat) fields, false)
+    | PConstruct { constructor; fields; is_record; is_struct } ->
         let pat_rec () =
-          F.pat @@ F.AST.PatRecord (List.map ~f:pfield_pat args)
+          F.pat @@ F.AST.PatRecord (List.map ~f:pfield_pat fields)
         in
         if is_struct && is_record then pat_rec ()
         else
-          let pat_name = F.pat @@ F.AST.PatName (pglobal_ident p.span name) in
+          let pat_name =
+            F.pat @@ F.AST.PatName (pglobal_ident p.span constructor)
+          in
           F.pat_app pat_name
           @@
           if is_record then [ pat_rec () ]
-          else List.map ~f:(fun { field; pat } -> ppat pat) args
+          else List.map ~f:(fun { field; pat } -> ppat pat) fields
     | PConstant { lit } -> F.pat @@ F.AST.PatConst (pliteral p.span lit)
     | _ -> .
 

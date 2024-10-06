@@ -130,8 +130,8 @@ module%inlined_contents Make (FA : Features.T) = struct
           match p.p with
           | PConstruct
               {
-                name;
-                args =
+                constructor;
+                fields =
                   [
                     {
                       pat =
@@ -145,7 +145,7 @@ module%inlined_contents Make (FA : Features.T) = struct
                   ];
                 _;
               } ->
-              Some (name, var)
+              Some (constructor, var)
           | _ -> None
         in
         match e.e with

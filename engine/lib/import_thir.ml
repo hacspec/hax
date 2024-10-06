@@ -866,14 +866,14 @@ end) : EXPR = struct
           let var = local_ident Expr var in
           PBinding { mut; mode; var; typ; subpat }
       | Variant { info; subpatterns; _ } ->
-          let name =
+          let constructor =
             def_id (Constructor { is_struct = info.typ_is_struct }) info.variant
           in
-          let args = List.map ~f:(c_field_pat info) subpatterns in
+          let fields = List.map ~f:(c_field_pat info) subpatterns in
           PConstruct
             {
-              name;
-              args;
+              constructor;
+              fields;
               is_record = info.variant_is_record;
               is_struct = info.typ_is_struct;
             }
@@ -1375,12 +1375,12 @@ let cast_of_enum typ_name generics typ thir_span
             {
               is_record = variant.is_record;
               is_struct = false;
-              args =
+              fields =
                 List.map
                   ~f:(fun (cid, typ, _) ->
                     { field = `Concrete cid; pat = { p = PWild; typ; span } })
                   variant.arguments;
-              name = `Concrete variant.name;
+              constructor = `Concrete variant.name;
             }
         in
         let pat = { p = pat; typ = self; span } in

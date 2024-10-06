@@ -195,21 +195,21 @@ module Raw = struct
     | PWild -> !"_"
     | PAscription { typ; pat; _ } ->
         !"pat_ascription!(" & ppat pat & !" as " & pty e.span typ & !")"
-    | PConstruct { name; args; is_record; _ } ->
-        pglobal_ident e.span name
+    | PConstruct { constructor; fields; is_record; _ } ->
+        pglobal_ident e.span constructor
         &
-        if List.is_empty args then !""
+        if List.is_empty fields then !""
         else if is_record then
           !"{"
           & concat ~sep:!", "
               (List.map
                  ~f:(fun { field; pat } ->
                    !(last_of_global_ident field e.span) & !":" & ppat pat)
-                 args)
+                 fields)
           & !"}"
         else
           !"("
-          & concat ~sep:!", " (List.map ~f:(fun { pat; _ } -> ppat pat) args)
+          & concat ~sep:!", " (List.map ~f:(fun { pat; _ } -> ppat pat) fields)
           & !")"
     | POr { subpats } -> concat ~sep:!" | " (List.map ~f:ppat subpats)
     | PArray { args } -> !"[" & concat ~sep:!"," (List.map ~f:ppat args) & !"]"

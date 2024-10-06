@@ -196,10 +196,10 @@ functor
       | PWild
       | PAscription of { typ : ty; typ_span : span; pat : pat }
       | PConstruct of {
-          name : global_ident;
+          constructor : global_ident;
           is_record : bool; (* are fields named? *)
           is_struct : bool; (* a struct has one constructor *)
-          args : field_pat list;
+          fields : field_pat list;
         }
       (* An or-pattern, e.g. `p | q`.
          Invariant: `List.length subpats >= 2`. *)

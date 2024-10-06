@@ -242,8 +242,8 @@ module Make (Options : OPTS) : MAKE = struct
           let body = print#expr_at Arm_body body in
           match arm_pat with
           | { p = PWild; _ } -> body
-          | { p = PConstruct { name; _ } }
-            when Global_ident.eq_name Core__result__Result__Err name ->
+          | { p = PConstruct { constructor; _ } }
+            when Global_ident.eq_name Core__result__Result__Err constructor ->
               print#pv_letfun_call (print#error_letfun_name body_typ) []
           | _ ->
               let pat =
@@ -296,16 +296,18 @@ module Make (Options : OPTS) : MAKE = struct
             fun pat ->
               match pat with
               | PConstant { lit } -> string "=" ^^ print#literal Pat lit
-              | PConstruct { name; args }
-                when Global_ident.eq_name Core__option__Option__None name ->
+              | PConstruct { constructor; fields }
+                when Global_ident.eq_name Core__option__Option__None constructor
+                ->
                   string "None()"
-              | PConstruct { name; args }
+              | PConstruct { constructor; fields }
               (* The `Some` constructor in ProVerif expects a
                  bitstring argument, so we use the appropriate
                  `_to_bitstring` type converter on the inner
                  expression. *)
-                when Global_ident.eq_name Core__option__Option__Some name ->
-                  let inner_field = List.hd_exn args in
+                when Global_ident.eq_name Core__option__Option__Some constructor
+                ->
+                  let inner_field = List.hd_exn fields in
                   let inner_field_type_doc =
                     print#ty AlreadyPar inner_field.pat.typ
                   in
@@ -322,21 +324,23 @@ module Make (Options : OPTS) : MAKE = struct
                           ^^ iblock parens inner_field_doc)
                   in
                   string "Some" ^^ inner_block
-              | PConstruct { name; args }
+              | PConstruct { constructor; fields }
               (* We replace applications of the `Ok` constructor
                  with their contents. *)
-                when Global_ident.eq_name Core__result__Result__Ok name ->
-                  let inner_field = List.hd_exn args in
+                when Global_ident.eq_name Core__result__Result__Ok constructor
+                ->
+                  let inner_field = List.hd_exn fields in
                   let inner_field_type_doc =
                     print#ty AlreadyPar inner_field.pat.typ
                   in
                   let inner_field_doc = print#pat ctx inner_field.pat in
                   inner_field_doc
-              | PConstruct { name; args } -> (
+              | PConstruct { constructor; fields } -> (
                   match
-                    translate_known_name name ~dict:library_constructor_patterns
+                    translate_known_name constructor
+                      ~dict:library_constructor_patterns
                   with
-                  | Some (_, translation) -> translation args
+                  | Some (_, translation) -> translation fields
                   | None -> super#pat' ctx pat)
               | PWild ->
                   print#typed_wildcard

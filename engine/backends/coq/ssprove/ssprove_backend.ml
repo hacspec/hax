@@ -792,25 +792,26 @@ struct
         SSP.AST.Ident (plocal_ident var) (* TODO Mutable binding ! *)
     | POr { subpats } -> SSP.AST.DisjunctivePat (List.map ~f:ppat subpats)
     | PArray _ -> __TODO_pat__ p.span "Parray?"
-    | PConstruct { name = `TupleCons 0; args = []; _ } ->
+    | PConstruct { constructor = `TupleCons 0; fields = []; _ } ->
         SSP.AST.WildPat (* UnitPat *)
-    | PConstruct { name = `TupleCons 1; args = [ _ ]; _ } ->
+    | PConstruct { constructor = `TupleCons 1; fields = [ _ ]; _ } ->
         __TODO_pat__ p.span "tuple 1"
-    | PConstruct { name = `TupleCons _n; args; _ } ->
-        SSP.AST.TuplePat (List.map ~f:(fun { pat; _ } -> ppat pat) args)
+    | PConstruct { constructor = `TupleCons _n; fields; _ } ->
+        SSP.AST.TuplePat (List.map ~f:(fun { pat; _ } -> ppat pat) fields)
     (* Record *)
     | PConstruct { is_record = true; _ } -> __TODO_pat__ p.span "record pattern"
-    (* (\* SSP.AST.Ident (pglobal_ident name) *\) *)
-    (* SSP.AST.RecordPat (pglobal_ident name, List.map ~f:(fun {field; pat} -> (pglobal_ident field, ppat pat)) args) *)
-    (*       (\* SSP.AST.ConstructorPat (pglobal_ident name ^ "_case", [SSP.AST.Ident "temp"]) *\) *)
-    (*       (\* List.map ~f:(fun {field; pat} -> (pat, SSP.AST.App (SSP.AST.Var (pglobal_ident field), [SSP.AST.Var "temp"]))) args *\) *)
+    (* (\* SSP.AST.Ident (pglobal_ident constructor) *\) *)
+    (* SSP.AST.RecordPat (pglobal_ident constructor, List.map ~f:(fun {field; pat} -> (pglobal_ident field, ppat pat)) fields) *)
+    (*       (\* SSP.AST.ConstructorPat (pglobal_ident constructor ^ "_case", [SSP.AST.Ident "temp"]) *\) *)
+    (*       (\* List.map ~f:(fun {field; pat} -> (pat, SSP.AST.App (SSP.AST.Var (pglobal_ident field), [SSP.AST.Var "temp"]))) fields *\) *)
     (* Enum *)
-    | PConstruct { name; args; is_record = false; _ } ->
+    | PConstruct { constructor; fields; is_record = false; _ } ->
         SSP.AST.ConstructorPat
-          ( pglobal_ident name,
-            match args with
+          ( pglobal_ident constructor,
+            match fields with
             | [] -> []
-            | _ -> [ SSP.AST.TuplePat (List.map ~f:(fun p -> ppat p.pat) args) ]
+            | _ ->
+                [ SSP.AST.TuplePat (List.map ~f:(fun p -> ppat p.pat) fields) ]
           )
     | PConstant { lit } -> SSP.AST.Lit (pliteral lit)
     | _ -> .
@@ -959,7 +960,7 @@ struct
                           p =
                             PConstruct
                               {
-                                args = [ { pat; _ } ];
+                                fields = [ { pat; _ } ];
                                 is_record = false;
                                 is_struct = true;
                                 _;
@@ -990,16 +991,21 @@ struct
                 ~f:(fun { arm = { arm_pat; body }; _ } ->
                   match arm_pat.p with
                   | PConstruct
-                      { name; args; is_record = false; is_struct = false } -> (
+                      {
+                        constructor;
+                        fields;
+                        is_record = false;
+                        is_struct = false;
+                      } -> (
                       let arg_tuple =
                         SSP.AST.TuplePat
-                          (List.map ~f:(fun p -> ppat p.pat) args)
+                          (List.map ~f:(fun p -> ppat p.pat) fields)
                       in
                       ( SSP.AST.ConstructorPat
-                          ( pglobal_ident name ^ "_case",
-                            match args with [] -> [] | _ -> [ arg_tuple ] ),
+                          ( pglobal_ident constructor ^ "_case",
+                            match fields with [] -> [] | _ -> [ arg_tuple ] ),
                         match
-                          (args, SSPExtraDefinitions.pat_as_expr arg_tuple)
+                          (fields, SSPExtraDefinitions.pat_as_expr arg_tuple)
                         with
                         | _ :: _, Some (redefine_pat, redefine_expr) ->
                             SSPExtraDefinitions.letb
@@ -1016,14 +1022,14 @@ struct
                                               (List.map
                                                  ~f:(fun x ->
                                                    pty arm_pat.span x.pat.typ)
-                                                 args) );
+                                                 fields) );
                                       ] );
                                 body = (pexpr env true) body;
                                 value_typ =
                                   SSP.AST.Product
                                     (List.map
                                        ~f:(fun x -> pty arm_pat.span x.pat.typ)
-                                       args);
+                                       fields);
                                 monad_typ = None;
                               }
                         | _, _ -> (pexpr env true) body ))
@@ -1103,8 +1109,8 @@ struct
                               p =
                                 PConstruct
                                   {
-                                    name = `TupleCons 0;
-                                    args = [];
+                                    constructor = `TupleCons 0;
+                                    fields = [];
                                     is_record = false;
                                     is_struct = false;
                                   };
@@ -1299,9 +1305,9 @@ struct
     match pat.p with
     | PWild -> false
     | PAscription { pat; _ } -> is_mutable_pat pat
-    | PConstruct { name = `TupleCons _; args; _ } ->
+    | PConstruct { constructor = `TupleCons _; fields; _ } ->
         List.fold ~init:false ~f:( || )
-          (List.map ~f:(fun p -> is_mutable_pat p.pat) args)
+          (List.map ~f:(fun p -> is_mutable_pat p.pat) fields)
     | PConstruct _ -> false
     | PArray _ ->
         (* List.fold ~init:false ~f:(||) (List.map ~f:(fun p -> is_mutable_pat p) args) *)

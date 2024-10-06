@@ -121,13 +121,13 @@ struct
     | PWild -> PWild
     | PAscription { typ; typ_span; pat } ->
         PAscription { typ = dty span typ; pat = dpat pat; typ_span }
-    | PConstruct { name; args; is_record; is_struct } ->
+    | PConstruct { constructor; is_record; is_struct; fields } ->
         PConstruct
           {
-            name;
-            args = List.map ~f:(dfield_pat span) args;
+            constructor;
             is_record;
             is_struct;
+            fields = List.map ~f:(dfield_pat span) fields;
           }
     | POr { subpats } -> POr { subpats = List.map ~f:dpat subpats }
     | PArray { args } -> PArray { args = List.map ~f:dpat args }

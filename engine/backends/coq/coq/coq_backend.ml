@@ -215,16 +215,16 @@ struct
         C.AST.Ident var.name
     | POr { subpats } -> C.AST.DisjunctivePat (List.map ~f:ppat subpats)
     | PArray _ -> __TODO_pat__ p.span "Parray?"
-    | PConstruct { name = `TupleCons 0; args = []; _ } -> C.AST.UnitPat
-    | PConstruct { name = `TupleCons 1; args = [ _ ]; _ } ->
+    | PConstruct { constructor = `TupleCons 0; fields = []; _ } -> C.AST.UnitPat
+    | PConstruct { constructor = `TupleCons 1; fields = [ _ ]; _ } ->
         __TODO_pat__ p.span "tuple 1"
-    | PConstruct { name = `TupleCons _n; args; _ } ->
-        C.AST.TuplePat (List.map ~f:(fun { pat; _ } -> ppat pat) args)
-    | PConstruct { name; args; is_record = true; _ } ->
-        C.AST.RecordPat (pglobal_ident name, pfield_pats args)
-    | PConstruct { name; args; is_record = false; _ } ->
+    | PConstruct { constructor = `TupleCons _n; fields; _ } ->
+        C.AST.TuplePat (List.map ~f:(fun { pat; _ } -> ppat pat) fields)
+    | PConstruct { constructor; fields; is_record = true; _ } ->
+        C.AST.RecordPat (pglobal_ident constructor, pfield_pats fields)
+    | PConstruct { constructor; fields; is_record = false; _ } ->
         C.AST.ConstructorPat
-          (pglobal_ident name, List.map ~f:(fun p -> ppat p.pat) args)
+          (pglobal_ident constructor, List.map ~f:(fun p -> ppat p.pat) fields)
     | PConstant { lit } -> C.AST.Lit (pliteral p.span lit)
     | _ -> .
 

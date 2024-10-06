@@ -119,7 +119,7 @@ module%inlined_contents Make (F : Features.T) = struct
           in
 
           let mk_opt_pattern (binding : B.pat option) : B.pat =
-            let (name : Concrete_ident.name), (args : B.field_pat list) =
+            let (name : Concrete_ident.name), (fields : B.field_pat list) =
               match binding with
               | Some b ->
                   ( Core__option__Option__Some,
@@ -130,11 +130,11 @@ module%inlined_contents Make (F : Features.T) = struct
               p =
                 PConstruct
                   {
-                    name =
+                    constructor =
                       Global_ident.of_name
                         (Constructor { is_struct = false })
                         name;
-                    args;
+                    fields;
                     is_record = false;
                     is_struct = false;
                   };
