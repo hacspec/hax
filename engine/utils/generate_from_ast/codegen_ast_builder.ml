@@ -97,6 +97,8 @@ let mk datatypes =
       (find "pat", find "pat'");
       (find "item", find "item'");
       (find "guard", find "guard'");
+      (find "trait_item", find "trait_item'");
+      (find "impl_expr", find "impl_expr_kind");
     ]
   in
   let body = data |> List.map ~f:(mk_builder []) |> String.concat ~sep:"\n\n" in

@@ -58,6 +58,17 @@
     (run generate_from_ast visitors)))))
 
 (rule
+ (target ast_destruct_generated.ml)
+ (deps
+  (:ast ast.ml))
+ (action
+  (with-stdout-to
+   ast_destruct_generated.ml
+   (with-stdin-from
+    %{ast}
+    (run generate_from_ast ast_destruct)))))
+
+(rule
  (target ast_builder_generated.ml)
  (deps
   (:ast ast.ml))

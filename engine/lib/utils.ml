@@ -79,6 +79,7 @@ let sequence (l : 'a option list) : 'a list option =
       match (acc, x) with Some acc, Some x -> Some (x :: acc) | _ -> None)
     ~init:(Some []) l
 
+let ( <|> ) x f = match x with Some x -> Some x | None -> f ()
 let tabsize = 2
 let newline_indent depth : string = "\n" ^ String.make (tabsize * depth) ' '
 
