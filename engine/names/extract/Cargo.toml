@@ -23,3 +23,6 @@ extract_names_mode = []
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("rustc"))'] }
+
+[package.metadata.release]
+release = false
