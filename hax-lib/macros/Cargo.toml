@@ -1,0 +1,30 @@
+[package]
+name = "hax-lib-macros"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+edition.workspace = true
+repository.workspace = true
+readme = "README.md"
+description = "Hax-specific proc-macros for Rust programs"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro-error = "1.0.4"
+proc-macro2.workspace = true
+quote.workspace = true
+syn = { version = "2.0", features = [
+    "full",
+    "visit-mut",
+    "visit",
+    "extra-traits",
+    "parsing",
+] }
+hax-lib-macros-types.workspace = true
+paste = "1.0.15"
+
+[dev-dependencies]
+hax-lib = { path = "../../hax-lib" }
