@@ -2,6 +2,8 @@
 
 (name hax-engine)
 
+(version 0.1.0-pre.1)
+
 (generate_opam_files true)
 
 (source

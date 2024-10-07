@@ -53,3 +53,9 @@ hax-frontend-exporter.workspace = true
 hax-lib-macros-types = {workspace = true, features = ["schemars"]}
 version_check = "0.9"
 toml = "0.8"
+
+[[package.metadata.release.pre-release-replacements]]
+file = "../../engine/dune-project"
+search = "version [a-z0-9\\.-]+"
+replace = "version {{version}}"
+prerelease = true
