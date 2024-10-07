@@ -39,6 +39,10 @@ While the prerequisites above must be satisfied prior to having your pull reques
 
 It is fine to force-push either (1) before asking for a review or (2) after PR approval, just before merging. Otherwise, in between two reviews, please do not force-push.
 
+### Regressions
+
+When a PR introduces a regression, a fix should be submitted in a
+window of 2 days, otherwise the PR will be reverted.
 
 ## Rules for the OCaml code
  - Never use the OCaml standard library, always use [`base`](https://v3.ocaml.org/p/base/latest/doc/index.html), [`core`](https://v3.ocaml.org/p/core/latest/doc/index.html) or [`stdlib`](https://v3.ocaml.org/p/stdlib/latest/doc/index.html) instead.
