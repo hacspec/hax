@@ -218,29 +218,23 @@ pub mod rustc {
         did: rustc_span::def_id::DefId,
     ) -> Vec<AnnotatedTraitPred<'tcx>> {
         let (predicates, self_pred) = predicates_of_or_above(tcx, did);
-        let mut predicates: Vec<_> = predicates
+        let predicates = predicates
             .into_iter()
             .enumerate()
             .map(|(i, clause)| AnnotatedTraitPred {
                 origin: BoundPredicateOrigin::Item(i),
                 clause,
-            })
-            .collect();
+            });
+        let self_pred = self_pred.map(|clause| AnnotatedTraitPred {
+            origin: BoundPredicateOrigin::SelfPred,
+            clause,
+        });
 
-        if let Some(clause) = self_pred {
-            predicates.push(AnnotatedTraitPred {
-                origin: BoundPredicateOrigin::SelfPred,
-                clause,
-            })
-        }
-
-        predicates
+        self_pred.into_iter().chain(predicates).collect()
     }
 
     // FIXME: this has visibility `pub(crate)` only because of https://github.com/rust-lang/rust/issues/83049
     pub(crate) mod search_clause {
-        use std::collections::HashSet;
-
         use super::{AnnotatedTraitPred, Path, PathChunk};
         use rustc_hir::def_id::DefId;
         use rustc_middle::ty::*;
@@ -321,29 +315,158 @@ pub mod rustc {
                 .collect()
         }
 
-        #[tracing::instrument(level = "trace", skip(tcx))]
-        fn associated_items_trait_predicates<'tcx>(
-            tcx: TyCtxt<'tcx>,
+        /// A candidate projects `self` along a path reaching some predicate. A candidate is
+        /// selected when its predicate is the one expected, aka `target`.
+        #[derive(Debug, Clone)]
+        struct Candidate<'tcx> {
+            path: Path<'tcx>,
             pred: PolyTraitPredicate<'tcx>,
-        ) -> Vec<(AssocItem, EarlyBinder<'tcx, Vec<PolyTraitPredicate<'tcx>>>)> {
-            let self_trait_ref = pred.to_poly_trait_ref();
-            tcx.associated_items(pred.def_id())
-                .in_definition_order()
-                .filter(|item| item.kind == AssocKind::Type)
-                .copied()
-                .map(|item| {
-                    let bounds = tcx.item_bounds(item.def_id).map_bound(|clauses| {
-                        clauses
+            origin: AnnotatedTraitPred<'tcx>,
+        }
+
+        /// Stores a set of predicates along with where they came from.
+        struct PredicateSearcher<'tcx> {
+            tcx: TyCtxt<'tcx>,
+            param_env: rustc_middle::ty::ParamEnv<'tcx>,
+            candidates: Vec<Candidate<'tcx>>,
+        }
+
+        impl<'tcx> PredicateSearcher<'tcx> {
+            /// Initialize the elaborator with the predicates accessible within this item.
+            fn new_for_owner(
+                tcx: TyCtxt<'tcx>,
+                param_env: rustc_middle::ty::ParamEnv<'tcx>,
+                owner_id: DefId,
+            ) -> Self {
+                let mut out = Self {
+                    tcx,
+                    param_env,
+                    candidates: Default::default(),
+                };
+                out.extend(
+                    super::initial_search_predicates(tcx, owner_id)
+                        .into_iter()
+                        .map(|clause| Candidate {
+                            path: vec![],
+                            pred: clause.clause,
+                            origin: clause,
+                        }),
+                );
+                out
+            }
+
+            /// Insert new candidates and all their parent predicates. This deduplicates predicates
+            /// to avoid divergence.
+            fn extend(&mut self, candidates: impl IntoIterator<Item = Candidate<'tcx>>) {
+                let tcx = self.tcx;
+                // Filter out duplicated candidates.
+                let new_candidates: Vec<_> = candidates
+                    .into_iter()
+                    .filter(|candidate| {
+                        !self
+                            .candidates
                             .iter()
-                            // Substitute with the `self` args so that the clause makes sense
-                            // in the outside context.
-                            .map(|clause| clause.instantiate_supertrait(tcx, self_trait_ref))
-                            .filter_map(|pred| pred.as_trait_clause())
-                            .collect()
-                    });
-                    (item, bounds)
-                })
-                .collect()
+                            .any(|seen_candidate: &Candidate<'tcx>| {
+                                predicate_equality(
+                                    tcx,
+                                    candidate.pred,
+                                    seen_candidate.pred,
+                                    self.param_env,
+                                )
+                            })
+                    })
+                    .collect();
+                if new_candidates.is_empty() {
+                    return;
+                }
+                // Add the candidates and their parents.
+                self.extend_inner(new_candidates);
+            }
+
+            /// Add the given candidates without filtering for duplicates. This is a separate
+            /// function to avoid polymorphic recursion due to the closures capturing the type
+            /// parameters of this function.
+            fn extend_inner(&mut self, new_candidates: Vec<Candidate<'tcx>>) {
+                let tcx = self.tcx;
+                // First append all the new candidates.
+                self.candidates.extend(new_candidates.iter().cloned());
+                // Then recursively add their parents. This way ensures a breadth-first order,
+                // which means we select the shortest path when looking up predicates.
+                self.extend(new_candidates.into_iter().flat_map(|candidate| {
+                    parents_trait_predicates(tcx, candidate.pred)
+                        .into_iter()
+                        .enumerate()
+                        .map(move |(index, parent_pred)| {
+                            let mut parent_candidate = Candidate {
+                                pred: parent_pred,
+                                path: candidate.path.clone(),
+                                origin: candidate.origin,
+                            };
+                            parent_candidate.path.push(PathChunk::Parent {
+                                predicate: parent_pred,
+                                index,
+                            });
+                            parent_candidate
+                        })
+                }));
+            }
+
+            /// Lookup a predicate in this set. If the predicate applies to an associated type, we
+            /// add the relevant implied associated type bounds to the set as well.
+            fn lookup(&mut self, target: PolyTraitRef<'tcx>) -> Option<&Candidate<'tcx>> {
+                let tcx = self.tcx;
+                let target: PolyTraitPredicate = target.upcast(tcx);
+
+                // The predicate is `<T as Trait>::Type: OtherTrait`. We look up `T as Trait` in
+                // the current context and add all the bounds on `Trait::Type` to our context.
+                // Note: We skip a binder but rebind it just after.
+                if let TyKind::Alias(AliasTyKind::Projection, alias_ty) =
+                    target.self_ty().skip_binder().kind()
+                {
+                    let (trait_ref, _gat_args) = alias_ty.trait_ref_and_own_args(tcx);
+                    let trait_ref = target.self_ty().rebind(trait_ref);
+                    // Recursively look up the trait ref inside `self`.
+                    let trait_candidate = self.lookup(trait_ref)?.clone();
+                    let item_bounds = tcx
+                        .item_bounds(alias_ty.def_id)
+                        // This `skip_binder` is for GATs. TODO: instantiate properly
+                        .skip_binder()
+                        .iter()
+                        // Substitute with the `trait_ref` args so that the clause makes sense in
+                        // the current context.
+                        .map(|clause| clause.instantiate_supertrait(tcx, trait_ref))
+                        .filter_map(|pred| pred.as_trait_clause())
+                        .enumerate();
+                    // Add all the bounds on the corresponding associated item.
+                    self.extend(item_bounds.map(|(index, pred)| {
+                        let mut candidate = Candidate {
+                            path: trait_candidate.path.clone(),
+                            pred,
+                            origin: trait_candidate.origin,
+                        };
+                        candidate.path.push(PathChunk::AssocItem {
+                            item: tcx.associated_item(alias_ty.def_id),
+                            predicate: pred,
+                            index,
+                        });
+                        candidate
+                    }));
+                }
+
+                for candidate in &self.candidates {
+                    if predicate_equality(tcx, candidate.pred, target, self.param_env) {
+                        return Some(candidate);
+                    }
+                }
+                tracing::trace!(
+                    "Couldn't find {target:?} in: [\n{}\n]",
+                    self.candidates
+                        .iter()
+                        .map(|c| format!("  {c:?}\n"))
+                        .join("")
+                );
+                None
+            }
         }
 
         #[tracing::instrument(level = "trace", skip(tcx, param_env))]
@@ -353,81 +476,9 @@ pub mod rustc {
             param_env: rustc_middle::ty::ParamEnv<'tcx>,
             target: PolyTraitRef<'tcx>,
         ) -> Option<(Path<'tcx>, AnnotatedTraitPred<'tcx>)> {
-            /// A candidate projects `self` along a path reaching some
-            /// predicate. A candidate is selected when its predicate
-            /// is the one expected, aka `target`.
-            #[derive(Debug)]
-            struct Candidate<'tcx> {
-                path: Path<'tcx>,
-                pred: PolyTraitPredicate<'tcx>,
-                origin: AnnotatedTraitPred<'tcx>,
-            }
-
-            use std::collections::VecDeque;
-            let mut candidates: VecDeque<Candidate<'tcx>> =
-                super::initial_search_predicates(tcx, owner_id)
-                    .into_iter()
-                    .map(|initial_clause| Candidate {
-                        path: vec![],
-                        pred: initial_clause.clause,
-                        origin: initial_clause,
-                    })
-                    .collect();
-
-            let target: PolyTraitPredicate = target.upcast(tcx);
-            let mut seen = HashSet::new();
-
-            while let Some(candidate) = candidates.pop_front() {
-                {
-                    // If a predicate was already seen, we know it is
-                    // not the one we are looking for: we skip it.
-                    if seen.iter().any(|seen_pred: &PolyTraitPredicate<'tcx>| {
-                        predicate_equality(tcx, candidate.pred, *seen_pred, param_env)
-                    }) {
-                        continue;
-                    }
-                    seen.insert(candidate.pred);
-                }
-
-                // if the candidate equals the target, let's return its path
-                if predicate_equality(tcx, candidate.pred, target, param_env) {
-                    return Some((candidate.path, candidate.origin));
-                }
-
-                // otherwise, we add to the queue all paths reachable from the candidate
-                for (index, parent_pred) in parents_trait_predicates(tcx, candidate.pred)
-                    .into_iter()
-                    .enumerate()
-                {
-                    let mut path = candidate.path.clone();
-                    path.push(PathChunk::Parent {
-                        predicate: parent_pred,
-                        index,
-                    });
-                    candidates.push_back(Candidate {
-                        pred: parent_pred,
-                        path,
-                        origin: candidate.origin,
-                    });
-                }
-                for (item, binder) in associated_items_trait_predicates(tcx, candidate.pred) {
-                    // This `skip_binder` is for an early binder and skips GAT parameters.
-                    for (index, parent_pred) in binder.skip_binder().into_iter().enumerate() {
-                        let mut path = candidate.path.clone();
-                        path.push(PathChunk::AssocItem {
-                            item,
-                            predicate: parent_pred,
-                            index,
-                        });
-                        candidates.push_back(Candidate {
-                            pred: parent_pred,
-                            path,
-                            origin: candidate.origin,
-                        });
-                    }
-                }
-            }
-            None
+            let mut searcher = PredicateSearcher::new_for_owner(tcx, param_env, owner_id);
+            let candidate = searcher.lookup(target)?;
+            Some((candidate.path.clone(), candidate.origin))
         }
     }
 
