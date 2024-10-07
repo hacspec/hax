@@ -453,6 +453,7 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) -> boo
                                 def_ids: haxmeta.def_ids,
                                 impl_infos: haxmeta.impl_infos,
                                 items: haxmeta.items,
+                                comments: haxmeta.comments,
                             },
                         )
                     } else {
