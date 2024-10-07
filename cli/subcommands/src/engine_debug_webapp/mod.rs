@@ -23,10 +23,10 @@ pub fn run(get_json: impl Fn() -> String) {
     let ct_utf8 = Header::from_bytes(&b"charset"[..], &b"utf-8"[..]).unwrap();
     for request in server.incoming_requests() {
         let response = match request.url() {
-            "/" => Response::from_string(include_str!("../static/index.html"))
+            "/" => Response::from_string(include_str!("static/index.html"))
                 .with_header(ct_html.clone())
                 .with_header(ct_utf8.clone()),
-            "/script.js" => Response::from_string(include_str!("../static/script.js"))
+            "/script.js" => Response::from_string(include_str!("static/script.js"))
                 .with_header(ct_js.clone())
                 .with_header(ct_utf8.clone()),
             path if path.starts_with("/debug-hax-engine.json") => {

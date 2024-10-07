@@ -173,7 +173,6 @@ dependencies = [
  "hax-frontend-exporter",
  "hax-frontend-exporter-options",
  "hax-lib-macros-types",
- "hax-phase-debug-webapp",
  "hax-types",
  "inquire",
  "is-terminal",
@@ -188,6 +187,7 @@ dependencies = [
  "serde_json",
  "syn 2.0.79",
  "tempfile",
+ "tiny_http",
  "toml 0.8.19",
  "version_check",
  "which",
@@ -597,13 +597,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.79",
-]
-
-[[package]]
-name = "hax-phase-debug-webapp"
-version = "0.1.0-pre.1"
-dependencies = [
- "tiny_http",
 ]
 
 [[package]]
