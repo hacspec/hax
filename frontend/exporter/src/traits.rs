@@ -236,6 +236,7 @@ pub mod rustc {
     // FIXME: this has visibility `pub(crate)` only because of https://github.com/rust-lang/rust/issues/83049
     pub(crate) mod search_clause {
         use super::{AnnotatedTraitPred, Path, PathChunk};
+        use itertools::Itertools;
         use rustc_hir::def_id::DefId;
         use rustc_middle::ty::*;
 
@@ -423,18 +424,14 @@ pub mod rustc {
                 if let TyKind::Alias(AliasTyKind::Projection, alias_ty) =
                     target.self_ty().skip_binder().kind()
                 {
-                    let (trait_ref, _gat_args) = alias_ty.trait_ref_and_own_args(tcx);
-                    let trait_ref = target.self_ty().rebind(trait_ref);
+                    let trait_ref = target.rebind(alias_ty.trait_ref(tcx));
                     // Recursively look up the trait ref inside `self`.
                     let trait_candidate = self.lookup(trait_ref)?.clone();
                     let item_bounds = tcx
+                        // TODO: `item_bounds` can contain parent traits, we don't want them
                         .item_bounds(alias_ty.def_id)
-                        // This `skip_binder` is for GATs. TODO: instantiate properly
-                        .skip_binder()
+                        .instantiate(tcx, alias_ty.args)
                         .iter()
-                        // Substitute with the `trait_ref` args so that the clause makes sense in
-                        // the current context.
-                        .map(|clause| clause.instantiate_supertrait(tcx, trait_ref))
                         .filter_map(|pred| pred.as_trait_clause())
                         .enumerate();
                     // Add all the bounds on the corresponding associated item.
@@ -453,6 +450,13 @@ pub mod rustc {
                     }));
                 }
 
+                tracing::trace!(
+                    "Looking for {target:?} in: [\n{}\n]",
+                    self.candidates
+                        .iter()
+                        .map(|c| format!("  {c:?}\n"))
+                        .join("")
+                );
                 for candidate in &self.candidates {
                     if predicate_equality(tcx, candidate.pred, target, self.param_env) {
                         return Some(candidate);
