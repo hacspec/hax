@@ -12,6 +12,8 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process;
 
+mod engine_debug_webapp;
+
 /// Return a toolchain argument to pass to `cargo`: when the correct nightly is
 /// already present, this is None, otherwise we (1) ensure `rustup` is available
 /// (2) install the nightly (3) return the toolchain
@@ -340,7 +342,7 @@ fn run_engine(
                 eprintln!("----------------------------------------------");
                 eprintln!("----------------------------------------------");
                 eprintln!("----------------------------------------------");
-                hax_phase_debug_webapp::run(|| debug_json.clone())
+                engine_debug_webapp::run(|| debug_json.clone())
             }
             Some(DebugEngineMode::File(_file)) if !backend.dry_run => {
                 println!("{}", debug_json)

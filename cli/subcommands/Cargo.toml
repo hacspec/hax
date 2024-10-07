@@ -35,7 +35,7 @@ version_check = "0.9"
 rustup-toolchain = "0.1"
 colored.workspace = true
 is-terminal = "0.4.9"
-hax-phase-debug-webapp.workspace = true
+tiny_http = "0.12"
 inquire = "0.6"
 annotate-snippets.workspace = true
 serde-jsonlines = "0.5.0"
@@ -53,3 +53,9 @@ hax-frontend-exporter.workspace = true
 hax-lib-macros-types = {workspace = true, features = ["schemars"]}
 version_check = "0.9"
 toml = "0.8"
+
+[[package.metadata.release.pre-release-replacements]]
+file = "../../engine/dune-project"
+search = "version [a-z0-9\\.-]+"
+replace = "version {{version}}"
+prerelease = true
