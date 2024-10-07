@@ -239,9 +239,19 @@ pub mod rustc {
 
     // FIXME: this has visibility `pub(crate)` only because of https://github.com/rust-lang/rust/issues/83049
     pub(crate) mod search_clause {
+        use std::collections::HashSet;
+
         use super::{AnnotatedTraitPred, Path, PathChunk};
         use rustc_hir::def_id::DefId;
         use rustc_middle::ty::*;
+
+        fn erase_and_norm<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            param_env: ParamEnv<'tcx>,
+            x: PolyTraitPredicate<'tcx>,
+        ) -> PolyTraitPredicate<'tcx> {
+            tcx.erase_regions(tcx.try_normalize_erasing_regions(param_env, x).unwrap_or(x))
+        }
 
         /// Custom equality on `Predicate`s.
         ///
@@ -262,15 +272,15 @@ pub mod rustc {
         /// [2]: https://github.com/rust-lang/rust/blob/b0889cb4ed0e6f3ed9f440180678872b02e7052c/compiler/rustc_middle/src/ty/print/mod.rs#L141
         fn predicate_equality<'tcx>(
             tcx: TyCtxt<'tcx>,
-            x: Predicate<'tcx>,
-            y: Predicate<'tcx>,
+            x: PolyTraitPredicate<'tcx>,
+            y: PolyTraitPredicate<'tcx>,
             param_env: rustc_middle::ty::ParamEnv<'tcx>,
         ) -> bool {
-            let erase_and_norm =
-                |x| tcx.erase_regions(tcx.try_normalize_erasing_regions(param_env, x).unwrap_or(x));
             // Lifetime and constantness are irrelevant when resolving instances
-            let x = erase_and_norm(x);
-            let y = erase_and_norm(y);
+            let x = erase_and_norm(tcx, param_env, x);
+            let y = erase_and_norm(tcx, param_env, y);
+            let x: Predicate = x.upcast(tcx);
+            let y: Predicate = y.upcast(tcx);
             let sx = format!("{:?}", x.kind().skip_binder());
             let sy = format!("{:?}", y.kind().skip_binder());
 
@@ -364,20 +374,15 @@ pub mod rustc {
                     })
                     .collect();
 
-            let target_pred = target.upcast(tcx);
-            let mut seen = std::collections::HashSet::new();
+            let target: PolyTraitPredicate = target.upcast(tcx);
+            let mut seen = HashSet::new();
 
             while let Some(candidate) = candidates.pop_front() {
                 {
                     // If a predicate was already seen, we know it is
                     // not the one we are looking for: we skip it.
                     if seen.iter().any(|seen_pred: &PolyTraitPredicate<'tcx>| {
-                        predicate_equality(
-                            tcx,
-                            candidate.pred.upcast(tcx),
-                            (*seen_pred).upcast(tcx),
-                            param_env,
-                        )
+                        predicate_equality(tcx, candidate.pred, *seen_pred, param_env)
                     }) {
                         continue;
                     }
@@ -385,7 +390,7 @@ pub mod rustc {
                 }
 
                 // if the candidate equals the target, let's return its path
-                if predicate_equality(tcx, candidate.pred.upcast(tcx), target_pred, param_env) {
+                if predicate_equality(tcx, candidate.pred, target, param_env) {
                     return Some((candidate.path, candidate.origin));
                 }
 
