@@ -382,6 +382,27 @@ pub fn ensures(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream 
     .into()
 }
 
+/// Exclude this item from the Hax translation.
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn interface(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
+    let item: ItemFn = parse_macro_input!(item);
+    let ItemFn {
+        // The function signature
+        sig,
+        // The visibility specifier of this function
+        vis,
+        // The function block or body
+        block,
+        // Other attributes applied to this function
+        attrs,
+    } = item.clone();
+
+    quote! {
+        #(#attrs)* #vis #sig { todo!() }
+    }.into()
+}
+
 mod kw {
     syn::custom_keyword!(hax_lib);
     syn::custom_keyword!(decreases);

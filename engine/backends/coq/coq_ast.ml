@@ -163,15 +163,15 @@ functor
       | AST.Product [] | AST.Unit ->
           (Lib.Notation.unit_str, false (* TODO: might need paren *))
       | AST.TypeTy -> (Lib.Notation.type_str, false (* TODO: might need paren *))
-      | AST.Int { size = AST.USize; _ } -> ("uint_size", false)
-      | AST.Int { size; _ } -> ("int" ^ int_size_to_string size, false)
+      | AST.Int { size = AST.USize; _ } -> ("t_usize", false)
+      | AST.Int { size; _ } -> ("t_u" ^ int_size_to_string size, false)
       | AST.NameTy s -> (s, false)
       | AST.RecordTy (name, _fields) ->
           (* [ AST.Record (name, fields) ] *) (name, false)
       | AST.Product l ->
           let ty_str =
             String.concat
-              ~sep:(" " ^ "×" ^ " ")
+              ~sep:(" " ^ "*" ^ " ")  (* TODO, notations differ for SSProve '×' *)
               (List.map ~f:ty_to_string_without_paren l)
           in
           (ty_str, true)
@@ -297,7 +297,7 @@ functor
           ^ ")" (* TODO: Should this be true of false? *)
       | AST.DisjunctivePat pats ->
           let f pat = pat_to_string pat true depth in
-          String.concat ~sep:" | " @@ List.map ~f pats
+          "(" ^ (String.concat ~sep:" | " @@ List.map ~f pats) ^ ")"
 
     and tick_if is_top_expr = if is_top_expr then "'" else ""
 
@@ -370,8 +370,8 @@ functor
             ^ (if List.length args > 0 then " " else "")
             ^ String.concat ~sep:" "
                 (List.map
-                   ~f:(fun (n, t) ->
-                     "(" ^ n ^ " " ^ ":=" ^ " "
+                   ~f:(fun (_n, t) ->
+                     "(" (* ^ n ^ " " ^ ":=" *) ^ " "
                      ^ term_to_string_without_paren t depth
                      ^ ")")
                    args),
@@ -423,6 +423,7 @@ functor
             ^ "]",
             true )
       | AST.Array [] -> ("!TODO empty array!", false)
+      | AST.TypedTerm (AST.TypedTerm (e, t), _) -> term_to_string (AST.TypedTerm (e, t)) depth
       | AST.TypedTerm (e, t) ->
           ( term_to_string_without_paren e depth
             ^ " " ^ ":" ^ " " ^ ty_to_string_with_paren t,

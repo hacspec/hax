@@ -106,17 +106,17 @@ struct
       id.definition
     else
       (* id.crate ^ "_" ^ *)
-      (* List.fold_left ~init:"" ~f:(fun x y -> x ^ "_" ^ y) *)
+      (* List.fold_left ~init:"" ~f:(fun x y -> x ^ "_" ^ y) id.path ^ *)
       id.definition
 
   let pglobal_ident (id : global_ident) : string =
     match id with
-    | `Projector (`Concrete cid) | `Concrete cid -> pconcrete_ident cid
+    | `Concrete cid -> pconcrete_ident cid
+    | `Projector (`Concrete cid) -> pconcrete_ident cid ^ "_ci"
     | `Primitive p_id -> primitive_to_string p_id
     | `TupleType _i -> "TODO (global ident) tuple type"
     | `TupleCons _i -> "TODO (global ident) tuple cons"
-    | `Projector (`TupleField _) | `TupleField _ ->
-        "TODO (global ident) tuple field"
+    | `Projector (`TupleField _) | `TupleField _ -> "TODO (global ident) tuple field"
     | _ -> .
 
   module TODOs_debug = struct
@@ -167,7 +167,7 @@ struct
     | TBool -> C.AST.Bool
     | TChar -> __TODO_ty__ span "char"
     | TInt k -> C.AST.Int (pint_kind k)
-    | TStr -> __TODO_ty__ span "str"
+    | TStr -> C.AST.NameTy "string"
     | TApp { ident = `TupleType 0; args = [] } -> C.AST.Unit
     | TApp { ident = `TupleType 1; args = [ GType ty ] } -> pty span ty
     | TApp { ident = `TupleType n; args } when n >= 2 ->
@@ -183,7 +183,11 @@ struct
         C.AST.ArrayTy (pty span typ, "TODO: Int.to_string length")
     | TSlice { ty; _ } -> C.AST.SliceTy (pty span ty)
     | TParam i -> C.AST.NameTy i.name
-    | TAssociatedType _ -> C.AST.WildTy
+    | TAssociatedType { impl = Self; item } -> C.AST.NameTy (U.Concrete_ident_view.to_definition_name item)
+    | TAssociatedType { impl = Dyn; item } ->  __TODO_ty__ span "pty: Dyn"
+    | TAssociatedType { impl = Concrete _; item } ->  __TODO_ty__ span "pty: Concrete"
+    | TAssociatedType { impl = LocalBound _; item } ->  __TODO_ty__ span "pty: LocalBound"
+    | TAssociatedType { impl = goal; item } ->  __TODO_ty__ span "pty: LocalBound"
     | TOpaque _ -> __TODO_ty__ span "pty: TAssociatedType/TOpaque"
     | _ -> .
 
@@ -194,7 +198,7 @@ struct
         (match arg with
         | GLifetime _ -> __TODO_ty__ span "lifetime"
         | GType x -> pty span x
-        | GConst _ -> __TODO_ty__ span "const")
+        | GConst { typ } -> pty span typ)
         :: args_ty span xs
     | [] -> []
 
@@ -254,6 +258,7 @@ struct
       (c Core__ops__arith__Rem__rem, (2, [ ""; ".%"; "" ]));
       (c Core__ops__bit__Shl__shl, (2, [ ""; " shift_left "; "" ]));
       (c Core__ops__bit__Shr__shr, (2, [ ""; " shift_right "; "" ]));
+      (c Core__ops__bit__Not__not, (1, [ " negb "; "" ]));
       (* TODO: those two are not notations/operators at all, right? *)
       (* (c "secret_integers::rotate_left", (2, [ "rol "; " "; "" ])); *)
       (* (c "hacspec::lib::foldi", (4, [ "foldi "; " "; " "; " "; "" ])); *)
@@ -275,7 +280,7 @@ struct
     let span = e.span in
     match e.e with
     | Literal l -> C.AST.Const (pliteral e.span l)
-    | LocalVar local_ident -> C.AST.NameTerm local_ident.name
+    | LocalVar local_ident -> C.AST.NameTerm (local_ident.name)
     | GlobalVar (`TupleCons 0)
     | Construct { constructor = `TupleCons 0; fields = []; _ } ->
         C.AST.UnitTerm
@@ -297,8 +302,8 @@ struct
     (*    __TODO_term__ span "GLOBAL APP?" *)
     | App { f; args; _ } ->
         let base = pexpr f in
-        let args = List.map ~f:pexpr args in
-        C.AST.App (base, args)
+        let args = List.map ~f:(fun x -> C.AST.TypedTerm (pexpr x, pty span x.typ)) args in
+        C.AST.TypedTerm (C.AST.App (base, args), pty span e.typ)
     | If { cond; then_; else_ } ->
         C.AST.If
           ( pexpr cond,
@@ -340,8 +345,8 @@ struct
     | Construct { is_record = true; constructor; fields; _ } ->
         (* TODO: handle base *)
         C.AST.RecordConstructor
-          ( pglobal_ident constructor,
-            List.map ~f:(fun (f, e) -> (pglobal_ident f, pexpr e)) fields )
+          ( "t_" ^ pglobal_ident constructor,
+            List.map ~f:(fun (f, e) -> (pglobal_ident constructor, pexpr e)) fields )
     | Construct { is_record = false; constructor; fields = [ (_f, e) ]; _ } ->
         C.AST.App (C.AST.Var (pglobal_ident constructor), [ pexpr e ])
     | Construct { constructor; _ } ->
@@ -392,15 +397,13 @@ struct
             ("'" ^ pconcrete_ident name ^ "'", C.AST.Type (pty span ty), None);
         ]
     (* record *)
-    | Type { name; generics; variants = [ v ]; is_struct = true } ->
+    | Type { name; generics; variants = [ { arguments; is_record = true; _ } ]; is_struct = true } ->
         [
           (* TODO: generics *)
           C.AST.Record
             ( U.Concrete_ident_view.to_definition_name name,
               List.map ~f:(pgeneric_param_as_argument span) generics.params,
-              List.map
-                ~f:(fun (x, y) -> C.AST.Named (x, y))
-                (p_record_record span v.arguments) );
+              List.map ~f:(fun (x, y) -> C.AST.Named (U.Concrete_ident_view.to_definition_name name ^ "_" ^ x, y)) (p_record_record span arguments) );
         ]
     (* enum *)
     | Type { name; generics; variants; _ } ->
@@ -573,7 +576,13 @@ struct
                       match x.ti_v with
                       | TIFn fn_ty -> pty span fn_ty
                       | TIDefault _ -> .
-                      | _ -> __TODO_ty__ span "field_ty" ))
+                      | TIType impl_list  ->
+                        C.AST.TypeTy
+                        (* C.AST.Product *)
+                        (*   (List.map *)
+                        (*     ~f:(fun { goal = { trait; args }; name } -> C.AST.NameTy (U.Concrete_ident_view.to_definition_name trait)) *)
+                        (*     impl_list) *)
+                    ))
                 items );
         ]
     | Impl { generics; self_ty; of_trait = name, gen_vals; items } ->
@@ -583,26 +592,24 @@ struct
               List.map ~f:(pgeneric_param_as_argument span) generics.params,
               pty span self_ty,
               args_ty span gen_vals,
-              List.map
-                ~f:(fun x ->
-                  match x.ii_v with
+              List.fold_left ~init:[]
+                ~f:(fun y x ->
+                  y @ (match x.ii_v with
                   | IIFn { body; params } ->
-                      ( U.Concrete_ident_view.to_definition_name x.ii_ident,
+                      [( U.Concrete_ident_view.to_definition_name x.ii_ident,
                         List.map
                           ~f:(fun { pat; typ; _ } ->
                             C.AST.Explicit (ppat pat, pty span typ))
                           params,
                         pexpr body,
-                        pty span body.typ )
-                  | _ ->
-                      ( "todo_name",
-                        [],
-                        __TODO_term__ span "body",
-                        __TODO_ty__ span "typ" ))
+                        pty span body.typ )]
+                  | IIType { typ; parent_bounds } ->
+                    [] (* TODO: Is this just Self? *)))
                 items );
         ]
+    | _ -> .
 
-  and p_inductive span variants _parrent_name : C.AST.inductive_case list =
+  and p_inductive span variants parrent_name : C.AST.inductive_case list =
     List.map variants ~f:(fun { name; arguments; is_record; _ } ->
         if is_record then
           C.AST.InductiveCase
