@@ -14,7 +14,7 @@ let length (#a: Type) (s: t_Slice a): usize = sz (Seq.length s)
 let contains (#t: eqtype) (s: t_Slice t) (x: t): bool = Seq.mem x s
 
 /// Converts an F* list into an array
-val of_list (#t:Type) (l: list t {FStar.List.Tot.length l < maxint Lib.IntTypes.U16}):
+val of_list (#t:Type) (l: list t {FStar.List.Tot.length l < maxint U16}):
     t_Array t (sz (FStar.List.Tot.length l))
 /// Converts an slice into a F* list
 val to_list (#t:Type) (s: t_Slice t): list t

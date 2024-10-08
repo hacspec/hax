@@ -51,7 +51,7 @@ let (.[]<-) #self #idx {| update_at_tc self idx |} (s: self) (i: idx {f_index_pr
   = update_at s i
 
 unfold let array_of_list (#t:Type)
-  (n: nat {n < maxint Lib.IntTypes.U16})
+  (n: nat {n < maxint U16})
   (l: list t {FStar.List.Tot.length l == n})
   : t_Array t (sz n)
   = Seq.seq_of_list l

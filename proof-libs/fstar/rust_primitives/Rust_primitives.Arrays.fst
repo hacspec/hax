@@ -2,7 +2,7 @@ module Rust_primitives.Arrays
 
 open Rust_primitives.Integers
 
-let of_list (#t:Type) (l: list t {FStar.List.Tot.length l < maxint Lib.IntTypes.U16}): t_Slice t = Seq.seq_of_list l
+let of_list (#t:Type) (l: list t {FStar.List.Tot.length l < maxint U16}): t_Slice t = Seq.seq_of_list l
 let to_list (#t:Type) (s: t_Slice t): list t = Seq.seq_to_list s
 
 let to_of_list_lemma t l = Seq.lemma_list_seq_bij l
