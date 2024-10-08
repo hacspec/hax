@@ -91,29 +91,6 @@ pub mod rustc {
     use rustc_hir::def_id::DefId;
     use rustc_middle::ty::*;
 
-    /// This is the entrypoint of the solving.
-    impl<'tcx, S: crate::UnderOwnerState<'tcx>> crate::SInto<S, crate::ImplExpr>
-        for rustc_middle::ty::PolyTraitRef<'tcx>
-    {
-        #[tracing::instrument(level = "trace", skip(s))]
-        fn sinto(&self, s: &S) -> crate::ImplExpr {
-            tracing::trace!(
-                "Enters sinto ({})",
-                stringify!(rustc_middle::ty::PolyTraitRef<'tcx>)
-            );
-            use crate::ParamEnv;
-            let warn = |msg: &str| {
-                if !s.base().ty_alias_mode {
-                    crate::warning!(s, "{}", msg)
-                }
-            };
-            match impl_expr(s.base().tcx, s.owner_id(), s.param_env(), self, &warn) {
-                Ok(x) => x.sinto(s),
-                Err(e) => crate::fatal!(s, "{}", e),
-            }
-        }
-    }
-
     /// Items have various predicates in scope. `path_to` uses them as a starting point for trait
     /// resolution. This tracks where each of them comes from.
     #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -239,65 +216,59 @@ pub mod rustc {
         use itertools::Itertools;
         use rustc_hir::def_id::DefId;
         use rustc_middle::ty::*;
+        use std::collections::{hash_map::Entry, HashMap};
 
-        fn erase_and_norm<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            param_env: ParamEnv<'tcx>,
-            x: PolyTraitPredicate<'tcx>,
-        ) -> PolyTraitPredicate<'tcx> {
-            tcx.erase_regions(tcx.try_normalize_erasing_regions(param_env, x).unwrap_or(x))
+        /// Erase all regions. Largely copied from `tcx.erase_regions`.
+        fn erase_all_regions<'tcx, T>(tcx: TyCtxt<'tcx>, value: T) -> T
+        where
+            T: TypeFoldable<TyCtxt<'tcx>>,
+        {
+            use rustc_middle::ty;
+            struct RegionEraserVisitor<'tcx> {
+                tcx: TyCtxt<'tcx>,
+            }
+
+            impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionEraserVisitor<'tcx> {
+                fn cx(&self) -> TyCtxt<'tcx> {
+                    self.tcx
+                }
+
+                fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+                    ty.super_fold_with(self)
+                }
+
+                fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T>
+                where
+                    T: TypeFoldable<TyCtxt<'tcx>>,
+                {
+                    // Empty the binder
+                    Binder::dummy(t.skip_binder().fold_with(self))
+                }
+
+                fn fold_region(&mut self, _r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+                    // We erase bound regions despite it being possibly incorrect. `for<'a> fn(&'a
+                    // ())` and `fn(&'free ())` are different types: they may implement different
+                    // traits and have a different `TypeId`. It's unclear whether this can cause us
+                    // to select the wrong trait reference.
+                    self.tcx.lifetimes.re_erased
+                }
+            }
+            value.fold_with(&mut RegionEraserVisitor { tcx })
         }
 
-        /// Custom equality on `Predicate`s.
-        ///
-        /// Sometimes Rustc inserts extra generic arguments: I noticed
-        /// some `__H` second argument given to core::hash::Hash for
-        /// instance. `__H` seems to be inserted in [1]. Such extra
-        /// arguments seems to be ignored by `default_print_def_path` [2].
-        ///
-        /// Hence, for now, equality is decided by comparing the debug
-        /// string representations of `Predicate`s.
-        ///
-        /// Note there exist also predicates that are different,
-        /// `Eq`-wise, but whose `sinto` counterpart are equal.
-        ///
-        /// TODO: figure out how to implement this function in a sane way.
-        ///
-        /// [1]: https://github.com/rust-lang/rust/blob/b0889cb4ed0e6f3ed9f440180678872b02e7052c/compiler/rustc_builtin_macros/src/deriving/hash.rs#L20
-        /// [2]: https://github.com/rust-lang/rust/blob/b0889cb4ed0e6f3ed9f440180678872b02e7052c/compiler/rustc_middle/src/ty/print/mod.rs#L141
-        fn predicate_equality<'tcx>(
+        // Lifetimes are irrelevant when resolving instances.
+        pub(super) fn erase_and_norm<'tcx, T>(
             tcx: TyCtxt<'tcx>,
-            x: PolyTraitPredicate<'tcx>,
-            y: PolyTraitPredicate<'tcx>,
-            param_env: rustc_middle::ty::ParamEnv<'tcx>,
-        ) -> bool {
-            // Lifetime and constantness are irrelevant when resolving instances
-            let x = erase_and_norm(tcx, param_env, x);
-            let y = erase_and_norm(tcx, param_env, y);
-            let x: Predicate = x.upcast(tcx);
-            let y: Predicate = y.upcast(tcx);
-            let sx = format!("{:?}", x.kind().skip_binder());
-            let sy = format!("{:?}", y.kind().skip_binder());
-
-            // const DEBUG: bool = false;
-            // if DEBUG && result {
-            //     use crate::{Predicate, SInto};
-            //     let xs: Predicate = x.sinto(s);
-            //     let ys: Predicate = y.sinto(s);
-            //     if x != y {
-            //         eprintln!(
-            //             "######################## predicate_equality ########################"
-            //         );
-            //         eprintln!("x={:#?}", x);
-            //         eprintln!("y={:#?}", y);
-            //         eprintln!(
-            //             "########################        sinto       ########################"
-            //         );
-            //         eprintln!("sinto(x)={:#?}", xs);
-            //         eprintln!("sinto(y)={:#?}", ys);
-            //     }
-            // }
-            sx == sy
+            param_env: ParamEnv<'tcx>,
+            x: T,
+        ) -> T
+        where
+            T: TypeFoldable<TyCtxt<'tcx>> + Copy,
+        {
+            erase_all_regions(
+                tcx,
+                tcx.try_normalize_erasing_regions(param_env, x).unwrap_or(x),
+            )
         }
 
         #[tracing::instrument(level = "trace", skip(tcx))]
@@ -329,7 +300,7 @@ pub mod rustc {
         struct PredicateSearcher<'tcx> {
             tcx: TyCtxt<'tcx>,
             param_env: rustc_middle::ty::ParamEnv<'tcx>,
-            candidates: Vec<Candidate<'tcx>>,
+            candidates: HashMap<PolyTraitPredicate<'tcx>, Candidate<'tcx>>,
         }
 
         impl<'tcx> PredicateSearcher<'tcx> {
@@ -361,36 +332,25 @@ pub mod rustc {
             fn extend(&mut self, candidates: impl IntoIterator<Item = Candidate<'tcx>>) {
                 let tcx = self.tcx;
                 // Filter out duplicated candidates.
-                let new_candidates: Vec<_> = candidates
-                    .into_iter()
-                    .filter(|candidate| {
-                        !self
-                            .candidates
-                            .iter()
-                            .any(|seen_candidate: &Candidate<'tcx>| {
-                                predicate_equality(
-                                    tcx,
-                                    candidate.pred,
-                                    seen_candidate.pred,
-                                    self.param_env,
-                                )
-                            })
-                    })
-                    .collect();
-                if new_candidates.is_empty() {
-                    return;
+                let mut new_candidates = Vec::new();
+                for mut candidate in candidates {
+                    // Normalize and erase all lifetimes.
+                    candidate.pred = erase_and_norm(tcx, self.param_env, candidate.pred);
+                    if let Entry::Vacant(entry) = self.candidates.entry(candidate.pred) {
+                        entry.insert(candidate.clone());
+                        new_candidates.push(candidate);
+                    }
                 }
-                // Add the candidates and their parents.
-                self.extend_inner(new_candidates);
+                if !new_candidates.is_empty() {
+                    self.extend_parents(new_candidates);
+                }
             }
 
-            /// Add the given candidates without filtering for duplicates. This is a separate
-            /// function to avoid polymorphic recursion due to the closures capturing the type
-            /// parameters of this function.
-            fn extend_inner(&mut self, new_candidates: Vec<Candidate<'tcx>>) {
+            /// Add the parents of these candidates. This is a separate function to avoid
+            /// polymorphic recursion due to the closures capturing the type parameters of this
+            /// function.
+            fn extend_parents(&mut self, new_candidates: Vec<Candidate<'tcx>>) {
                 let tcx = self.tcx;
-                // First append all the new candidates.
-                self.candidates.extend(new_candidates.iter().cloned());
                 // Then recursively add their parents. This way ensures a breadth-first order,
                 // which means we select the shortest path when looking up predicates.
                 self.extend(new_candidates.into_iter().flat_map(|candidate| {
@@ -416,7 +376,8 @@ pub mod rustc {
             /// add the relevant implied associated type bounds to the set as well.
             fn lookup(&mut self, target: PolyTraitRef<'tcx>) -> Option<&Candidate<'tcx>> {
                 let tcx = self.tcx;
-                let target: PolyTraitPredicate = target.upcast(tcx);
+                let target: PolyTraitPredicate =
+                    erase_and_norm(tcx, self.param_env, target).upcast(tcx);
 
                 // The predicate is `<T as Trait>::Type: OtherTrait`. We look up `T as Trait` in
                 // the current context and add all the bounds on `Trait::Type` to our context.
@@ -450,26 +411,18 @@ pub mod rustc {
                     }));
                 }
 
-                tracing::trace!(
-                    "Looking for {target:?} in: [\n{}\n]",
-                    self.candidates
-                        .iter()
-                        .map(|c| format!("  {c:?}\n"))
-                        .join("")
-                );
-                for candidate in &self.candidates {
-                    if predicate_equality(tcx, candidate.pred, target, self.param_env) {
-                        return Some(candidate);
-                    }
+                tracing::trace!("Looking for {target:?}");
+                let ret = self.candidates.get(&target);
+                if ret.is_none() {
+                    tracing::trace!(
+                        "Couldn't find {target:?} in: [\n{}]",
+                        self.candidates
+                            .iter()
+                            .map(|(_, c)| format!("  - {:?}\n", c.pred))
+                            .join("")
+                    );
                 }
-                tracing::trace!(
-                    "Couldn't find {target:?} in: [\n{}\n]",
-                    self.candidates
-                        .iter()
-                        .map(|c| format!("  {c:?}\n"))
-                        .join("")
-                );
-                None
+                ret
             }
         }
 
@@ -560,7 +513,9 @@ pub mod rustc {
     ) -> Result<Vec<ImplExpr<'tcx>>, String> {
         obligations
             .iter()
-            .flat_map(|obligation| {
+            // Only keep depth-1 obligations to avoid duplicate impl exprs.
+            .filter(|obligation| obligation.recursion_depth == 1)
+            .filter_map(|obligation| {
                 obligation.predicate.as_trait_clause().map(|trait_ref| {
                     impl_expr(
                         tcx,
@@ -575,7 +530,7 @@ pub mod rustc {
     }
 
     #[tracing::instrument(level = "trace", skip(tcx, param_env, warn))]
-    fn impl_expr<'tcx>(
+    pub(super) fn impl_expr<'tcx>(
         tcx: TyCtxt<'tcx>,
         owner_id: DefId,
         param_env: rustc_middle::ty::ParamEnv<'tcx>,
@@ -676,9 +631,7 @@ pub mod rustc {
             (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
         ) -> Result<rustc_trait_selection::traits::Selection<'tcx>, CodegenObligationError>
         {
-            let trait_ref = tcx
-                .try_normalize_erasing_regions(param_env, trait_ref)
-                .unwrap_or(trait_ref);
+            let trait_ref = super::search_clause::erase_and_norm(tcx, param_env, trait_ref);
 
             // Do the initial selection for the obligation. This yields the
             // shallow result we are looking for -- that is, what specific impl.
@@ -742,16 +695,6 @@ pub mod rustc {
     }
 }
 
-#[cfg(feature = "rustc")]
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ImplExpr>
-    for rustc_middle::ty::PolyTraitPredicate<'tcx>
-{
-    fn sinto(&self, s: &S) -> ImplExpr {
-        use rustc_middle::ty::ToPolyTraitRef;
-        self.to_poly_trait_ref().sinto(s)
-    }
-}
-
 /// Given a clause `clause` in the context of some impl block `impl_did`, susbts correctly `Self`
 /// from `clause` and (1) derive a `Clause` and (2) resolve an `ImplExpr`.
 #[cfg(feature = "rustc")]
@@ -761,6 +704,7 @@ pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
     clause: rustc_middle::ty::Clause<'tcx>,
     span: rustc_span::Span,
 ) -> Option<(Clause, ImplExpr, Span)> {
+    use rustc_middle::ty::ToPolyTraitRef;
     let tcx = s.base().tcx;
     let impl_trait_ref = tcx
         .impl_trait_ref(impl_did)
@@ -772,8 +716,100 @@ pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
         clause.sinto(s).id
     };
     let new_clause = clause.instantiate_supertrait(tcx, impl_trait_ref);
-    let impl_expr = new_clause.as_predicate().as_trait_clause()?.sinto(s);
+    let impl_expr = solve_trait(
+        s,
+        new_clause
+            .as_predicate()
+            .as_trait_clause()?
+            .to_poly_trait_ref(),
+    );
     let mut new_clause_no_binder = new_clause.sinto(s);
     new_clause_no_binder.id = original_predicate_id;
     Some((new_clause_no_binder, impl_expr, span.sinto(s)))
+}
+
+/// This is the entrypoint of the solving.
+#[cfg(feature = "rustc")]
+#[tracing::instrument(level = "trace", skip(s))]
+pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
+    s: &S,
+    trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
+) -> ImplExpr {
+    use crate::ParamEnv;
+    let warn = |msg: &str| {
+        if !s.base().ty_alias_mode {
+            crate::warning!(s, "{}", msg)
+        }
+    };
+    match rustc::impl_expr(s.base().tcx, s.owner_id(), s.param_env(), &trait_ref, &warn) {
+        Ok(x) => x.sinto(s),
+        Err(e) => crate::fatal!(s, "{}", e),
+    }
+}
+
+/// Solve the trait obligations for a specific item use (for example, a method call, an ADT, etc.).
+///
+/// [predicates]: optional predicates, in case we want to solve custom predicates (instead of the
+/// ones returned by [TyCtxt::predicates_defined_on].
+#[cfg(feature = "rustc")]
+#[tracing::instrument(level = "trace", skip(s), ret)]
+pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
+    s: &S,
+    def_id: rustc_hir::def_id::DefId,
+    generics: rustc_middle::ty::GenericArgsRef<'tcx>,
+    predicates: Option<rustc_middle::ty::GenericPredicates<'tcx>>,
+) -> Vec<ImplExpr> {
+    let tcx = s.base().tcx;
+    let param_env = s.param_env();
+
+    let mut impl_exprs = Vec::new();
+
+    // Lookup the predicates and iter through them: we want to solve all the
+    // trait requirements.
+    // IMPORTANT: we use [TyCtxt::predicates_defined_on] and not [TyCtxt::predicated_of]
+    let predicates = match predicates {
+        None => tcx.predicates_defined_on(def_id),
+        Some(preds) => preds,
+    };
+    for (pred, _) in predicates.predicates {
+        // Explore only the trait predicates
+        if let Some(trait_clause) = pred.as_trait_clause() {
+            let poly_trait_ref = trait_clause.map_bound(|clause| clause.trait_ref);
+            // Apply the substitution
+            let poly_trait_ref =
+                rustc_middle::ty::EarlyBinder::bind(poly_trait_ref).instantiate(tcx, generics);
+            // Warning: this erases regions. We don't really have a way to normalize without
+            // erasing regions, but this may cause problems in trait solving if there are trait
+            // impls that include `'static` lifetimes.
+            let poly_trait_ref = tcx
+                .try_normalize_erasing_regions(param_env, poly_trait_ref)
+                .unwrap_or(poly_trait_ref);
+            let impl_expr = solve_trait(s, poly_trait_ref);
+            impl_exprs.push(impl_expr);
+        }
+    }
+    impl_exprs
+}
+
+/// Retrieve the `Self: Trait` clause for a trait associated item.
+#[cfg(feature = "rustc")]
+pub fn self_clause_for_item<'tcx, S: UnderOwnerState<'tcx>>(
+    s: &S,
+    assoc: &rustc_middle::ty::AssocItem,
+    generics: rustc_middle::ty::GenericArgsRef<'tcx>,
+) -> Option<ImplExpr> {
+    let tcx = s.base().tcx;
+
+    // Retrieve the trait
+    let tr_def_id = tcx.trait_of_item(assoc.def_id)?;
+
+    // Create the reference to the trait
+    use rustc_middle::ty::TraitRef;
+    let tr_generics = tcx.generics_of(tr_def_id);
+    let generics = generics.truncate_to(tcx, tr_generics);
+    let tr_ref = TraitRef::new(tcx, tr_def_id, generics);
+    let tr_ref = rustc_middle::ty::Binder::dummy(tr_ref);
+
+    // Solve
+    Some(solve_trait(s, tr_ref))
 }

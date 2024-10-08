@@ -374,7 +374,7 @@ mod rustc {
         let name = assoc.name.to_string();
 
         // Retrieve the trait information
-        let impl_expr = get_trait_info(s, generics, assoc);
+        let impl_expr = self_clause_for_item(s, assoc, generics).unwrap();
 
         ConstantExprKind::TraitConst { impl_expr, name }
     }
