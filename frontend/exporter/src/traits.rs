@@ -765,23 +765,10 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             crate::warning!(s, "{}", msg)
         }
     };
-    let mut impl_expr: ImplExpr =
-        match rustc::impl_expr(s.base().tcx, s.owner_id(), s.param_env(), &trait_ref, &warn) {
-            Ok(x) => x.sinto(s),
-            Err(e) => crate::fatal!(s, "{}", e),
-        };
-
-    // TODO: this is a bug in hax: in case of method calls, the trait ref
-    // contains the generics for the trait ref + the generics for the method
-    let trait_def_id: rustc_hir::def_id::DefId =
-        (&impl_expr.r#trait.as_ref().hax_skip_binder().def_id).into();
-    let num_generic_params = s.base().tcx.generics_of(trait_def_id).own_params.len();
-    impl_expr
-        .r#trait
-        .inner_mut()
-        .generic_args
-        .truncate(num_generic_params);
-    impl_expr
+    match rustc::impl_expr(s.base().tcx, s.owner_id(), s.param_env(), &trait_ref, &warn) {
+        Ok(x) => x.sinto(s),
+        Err(e) => crate::fatal!(s, "{}", e),
+    }
 }
 
 /// Solve the trait obligations for a specific item use (for example, a method call, an ADT, etc.).
@@ -842,6 +829,8 @@ pub fn self_clause_for_item<'tcx, S: UnderOwnerState<'tcx>>(
 
     // Create the reference to the trait
     use rustc_middle::ty::TraitRef;
+    let tr_generics = tcx.generics_of(tr_def_id);
+    let generics = generics.truncate_to(tcx, tr_generics);
     let tr_ref = TraitRef::new(tcx, tr_def_id, generics);
     let tr_ref = rustc_middle::ty::Binder::dummy(tr_ref);
 
