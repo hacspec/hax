@@ -219,7 +219,7 @@ pub mod rustc {
         use std::collections::{hash_map::Entry, HashMap};
 
         /// Erase all regions. Largely copied from `tcx.erase_regions`.
-        fn erase_all_regions<'tcx, T>(tcx: TyCtxt<'tcx>, value: Binder<'tcx, T>) -> Binder<'tcx, T>
+        fn erase_all_regions<'tcx, T>(tcx: TyCtxt<'tcx>, value: T) -> T
         where
             T: TypeFoldable<TyCtxt<'tcx>>,
         {
@@ -257,11 +257,14 @@ pub mod rustc {
         }
 
         // Lifetimes are irrelevant when resolving instances.
-        fn erase_and_norm<'tcx>(
+        pub(super) fn erase_and_norm<'tcx, T>(
             tcx: TyCtxt<'tcx>,
             param_env: ParamEnv<'tcx>,
-            x: PolyTraitPredicate<'tcx>,
-        ) -> PolyTraitPredicate<'tcx> {
+            x: T,
+        ) -> T
+        where
+            T: TypeFoldable<TyCtxt<'tcx>> + Copy,
+        {
             erase_all_regions(
                 tcx,
                 tcx.try_normalize_erasing_regions(param_env, x).unwrap_or(x),
@@ -373,7 +376,8 @@ pub mod rustc {
             /// add the relevant implied associated type bounds to the set as well.
             fn lookup(&mut self, target: PolyTraitRef<'tcx>) -> Option<&Candidate<'tcx>> {
                 let tcx = self.tcx;
-                let target = erase_and_norm(tcx, self.param_env, target.upcast(tcx));
+                let target: PolyTraitPredicate =
+                    erase_and_norm(tcx, self.param_env, target).upcast(tcx);
 
                 // The predicate is `<T as Trait>::Type: OtherTrait`. We look up `T as Trait` in
                 // the current context and add all the bounds on `Trait::Type` to our context.
@@ -627,9 +631,7 @@ pub mod rustc {
             (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
         ) -> Result<rustc_trait_selection::traits::Selection<'tcx>, CodegenObligationError>
         {
-            let trait_ref = tcx
-                .try_normalize_erasing_regions(param_env, trait_ref)
-                .unwrap_or(trait_ref);
+            let trait_ref = super::search_clause::erase_and_norm(tcx, param_env, trait_ref);
 
             // Do the initial selection for the obligation. This yields the
             // shallow result we are looking for -- that is, what specific impl.
