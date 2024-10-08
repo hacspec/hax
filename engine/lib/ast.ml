@@ -236,18 +236,20 @@ functor
     and pat = { p : pat'; span : span; typ : ty }
     and field_pat = { field : global_ident; pat : pat }
 
+    (** rust: [ quote!(...) ] *)
     and expr' =
       (* pure fragment *)
       | If of { cond : expr; then_ : expr; else_ : expr option }
+          (** rust: [if <expr> then { <expr> } [else { <expr> }]] *)
       | App of {
           f : expr;
           args : expr list (* ; f_span: span *);
           generic_args : generic_value list;
           bounds_impls : impl_expr list;
           trait : (impl_expr * generic_value list) option;
-        }
-      | Literal of literal
-      | Array of expr list
+        }  (** rust: [<expr> < <generic_value>* > ( <expr>* )] *)
+      | Literal of literal  (** rust: inline <literal> *)
+      | Array of expr list  (** [[ <expr>* ]] *)
       | Construct of {
           constructor : global_ident;
           is_record : bool; (* are fields named? *)
@@ -255,18 +257,22 @@ functor
           fields : (global_ident * expr) list;
           base : (expr * F.construct_base) option;
         }
+          (** rust: [<global_ident> ( <expr>* )] or [<global_ident> { ( <global_ident>: <expr> ; )* }] or (when construct_base enabled) [<global_ident> { ( <global_ident>: <expr> ; )* [ ..< base > ] }] *)
       | Match of { scrutinee : expr; arms : arm list }
+          (** rust: [match <expr> { <arm>* }] *)
       | Let of {
           monadic : (supported_monads * F.monadic_binding) option;
           lhs : pat;
           rhs : expr;
           body : expr;
         }
+          (** rust: [let <pat> = <expr> ; <body>] or (when monadic_binding) [monadic_bind< <supported_monads> >(| <pat> | <expr>, <body>)] *)
       | Block of { e : expr; safety_mode : safety_kind; witness : F.block }
-        (* Corresponds to `{e}`: this is important for places *)
-      | LocalVar of local_ident
-      | GlobalVar of global_ident
-      | Ascription of { e : expr; typ : ty }
+          (** rust: [[<safety_mode>] { <expr> }]  *)
+      (* Corresponds to `{e}`: this is important for places *)
+      | LocalVar of local_ident  (** rust: [<local_ident>] *)
+      | GlobalVar of global_ident  (** rust: [<global_ident>] *)
+      | Ascription of { e : expr; typ : ty }  (** rust: [<expr> as <ty>] *)
       (* Macro *)
       | MacroInvokation of {
           macro : global_ident;
@@ -275,6 +281,7 @@ functor
         }
       (* Mut *)
       | Assign of { lhs : lhs; e : expr; witness : F.mutable_variable }
+          (** rust: [<lhs> = <expr>] *)
       (* Loop *)
       | Loop of {
           body : expr;
@@ -283,9 +290,13 @@ functor
           label : string option;
           witness : F.loop;
         }
+          (** rust: [ loop { <body> }] or (when while_loop) [ while( <expr> ) { <body> }] or (when for_loop) [ for(<pat> in <expr>) { <body> } ] or (when for_index_loop) [for (let <local_ident> in <expr> .. <expr> { <body> })] *)
+      (* grammar: missing state *)
       (* ControlFlow *)
       | Break of { e : expr; label : string option; witness : F.break * F.loop }
+          (** rust: [break <expr> ['<string>]] *)
       | Return of { e : expr; witness : F.early_exit }
+          (** rust: [return <expr>] *)
       | QuestionMark of { e : expr; return_typ : ty; witness : F.question_mark }
           (** The expression `e?`. In opposition to Rust, no implicit
       coercion is applied on the (potential) error payload of
@@ -295,15 +306,19 @@ functor
           label : string option;
           witness : F.continue * F.loop;
         }
+          (** rust: [continue ['<string>]] or (when state_passing_loop) [continue_with_state!('string, <expr>)] *)
       (* Mem *)
       | Borrow of { kind : borrow_kind; e : expr; witness : F.reference }
+          (** rust: [&<borrow_kind> <expr>] *)
       (* Raw borrow *)
       | AddressOf of {
           mut : F.mutable_pointer mutability;
           e : expr;
           witness : F.raw_pointer;
         }
+          (** rust: [&<mut> <expr> as &const _] or (when mutable_pointer) [&<mut> <expr> as &mut _] *)
       | Closure of { params : pat list; body : expr; captures : expr list }
+          (** rust: [| (<pat>,)* | <expr> ] *)
       | EffectAction of { action : F.monadic_action; argument : expr }
       | Quote of quote
           (** A quotation is an inlined piece of backend code
