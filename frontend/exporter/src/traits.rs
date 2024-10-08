@@ -216,6 +216,7 @@ pub mod rustc {
         use itertools::Itertools;
         use rustc_hir::def_id::DefId;
         use rustc_middle::ty::*;
+        use std::collections::{hash_map::Entry, HashMap};
 
         /// Erase all regions. Largely copied from `tcx.erase_regions`.
         fn erase_all_regions<'tcx, T>(tcx: TyCtxt<'tcx>, value: Binder<'tcx, T>) -> Binder<'tcx, T>
@@ -296,7 +297,7 @@ pub mod rustc {
         struct PredicateSearcher<'tcx> {
             tcx: TyCtxt<'tcx>,
             param_env: rustc_middle::ty::ParamEnv<'tcx>,
-            candidates: Vec<Candidate<'tcx>>,
+            candidates: HashMap<PolyTraitPredicate<'tcx>, Candidate<'tcx>>,
         }
 
         impl<'tcx> PredicateSearcher<'tcx> {
@@ -328,35 +329,25 @@ pub mod rustc {
             fn extend(&mut self, candidates: impl IntoIterator<Item = Candidate<'tcx>>) {
                 let tcx = self.tcx;
                 // Filter out duplicated candidates.
-                let new_candidates: Vec<_> = candidates
-                    .into_iter()
-                    // Normalize and erase lifetimes as much as possible.
-                    .update(|candidate| {
-                        candidate.pred = erase_and_norm(tcx, self.param_env, candidate.pred)
-                    })
-                    .filter(|candidate| {
-                        !self
-                            .candidates
-                            .iter()
-                            .any(|seen_candidate: &Candidate<'tcx>| {
-                                candidate.pred == seen_candidate.pred
-                            })
-                    })
-                    .collect();
-                if new_candidates.is_empty() {
-                    return;
+                let mut new_candidates = Vec::new();
+                for mut candidate in candidates {
+                    // Normalize and erase all lifetimes.
+                    candidate.pred = erase_and_norm(tcx, self.param_env, candidate.pred);
+                    if let Entry::Vacant(entry) = self.candidates.entry(candidate.pred) {
+                        entry.insert(candidate.clone());
+                        new_candidates.push(candidate);
+                    }
                 }
-                // Add the candidates and their parents.
-                self.extend_inner(new_candidates);
+                if !new_candidates.is_empty() {
+                    self.extend_parents(new_candidates);
+                }
             }
 
-            /// Add the given candidates without filtering for duplicates. This is a separate
-            /// function to avoid polymorphic recursion due to the closures capturing the type
-            /// parameters of this function.
-            fn extend_inner(&mut self, new_candidates: Vec<Candidate<'tcx>>) {
+            /// Add the parents of these candidates. This is a separate function to avoid
+            /// polymorphic recursion due to the closures capturing the type parameters of this
+            /// function.
+            fn extend_parents(&mut self, new_candidates: Vec<Candidate<'tcx>>) {
                 let tcx = self.tcx;
-                // First append all the new candidates.
-                self.candidates.extend(new_candidates.iter().cloned());
                 // Then recursively add their parents. This way ensures a breadth-first order,
                 // which means we select the shortest path when looking up predicates.
                 self.extend(new_candidates.into_iter().flat_map(|candidate| {
@@ -417,19 +408,17 @@ pub mod rustc {
                 }
 
                 tracing::trace!("Looking for {target:?}");
-                for candidate in &self.candidates {
-                    if candidate.pred == target {
-                        return Some(candidate);
-                    }
+                let ret = self.candidates.get(&target);
+                if ret.is_none() {
+                    tracing::trace!(
+                        "Couldn't find {target:?} in: [\n{}]",
+                        self.candidates
+                            .iter()
+                            .map(|(_, c)| format!("  - {:?}\n", c.pred))
+                            .join("")
+                    );
                 }
-                tracing::trace!(
-                    "Couldn't find {target:?} in: [\n{}]",
-                    self.candidates
-                        .iter()
-                        .map(|c| format!("  - {:?}\n", c.pred))
-                        .join("")
-                );
-                None
+                ret
             }
         }
 
