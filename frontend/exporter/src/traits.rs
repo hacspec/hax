@@ -427,20 +427,13 @@ pub mod rustc {
                     }));
                 }
 
-                tracing::trace!(
-                    "Looking for {target:?} in: [\n{}\n]",
-                    self.candidates
-                        .iter()
-                        .map(|c| format!("  {c:?}\n"))
-                        .join("")
-                );
                 for candidate in &self.candidates {
                     if predicate_equality(tcx, candidate.pred, target, self.param_env) {
                         return Some(candidate);
                     }
                 }
                 tracing::trace!(
-                    "Couldn't find {target:?} in: [\n{}\n]",
+                    "Couldn't find {target:?} in: [\n{}]",
                     self.candidates
                         .iter()
                         .map(|c| format!("  {c:?}\n"))
