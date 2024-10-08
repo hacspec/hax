@@ -1,26 +1,5 @@
 use crate::prelude::*;
 
-/// Retrieve the trait information, typically for a function call.
-/// TODO: rename
-pub fn get_trait_info<'tcx, S: UnderOwnerState<'tcx>>(
-    s: &S,
-    generics: rustc_middle::ty::GenericArgsRef<'tcx>,
-    assoc: &rustc_middle::ty::AssocItem,
-) -> ImplExpr {
-    let tcx = s.base().tcx;
-
-    // Retrieve the trait
-    let tr_def_id = tcx.trait_of_item(assoc.def_id).unwrap();
-
-    // Create the reference to the trait
-    use rustc_middle::ty::TraitRef;
-    let tr_ref = TraitRef::new(tcx, tr_def_id, generics);
-    let tr_ref = rustc_middle::ty::Binder::dummy(tr_ref);
-
-    // Solve
-    solve_trait(s, tr_ref)
-}
-
 /// We use this to store information about the parameters in parent blocks.
 /// This is necessary because when querying the generics of a definition,
 /// rustc gives us *all* the generics used in this definition, including

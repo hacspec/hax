@@ -2443,13 +2443,10 @@ pub enum ExprKind {
                 let tcx = gstate.base().tcx;
                 r#trait = (|| {
                     let assoc_item = tcx.opt_associated_item(*def_id)?;
-                    let assoc_trait = tcx.trait_of_item(assoc_item.def_id)?;
-                    let trait_ref = ty::TraitRef::new(tcx, assoc_trait, generics.iter());
-                    // TODO: we should not wrap into a dummy binder
-                    let impl_expr = solve_trait(gstate, ty::Binder::dummy(trait_ref));
+                    let impl_expr = self_clause_for_item(gstate, &assoc_item, generics)?;
                     let assoc_generics = tcx.generics_of(assoc_item.def_id);
-                    let assoc_generics = translated_generics.drain(0..assoc_generics.parent_count);
-                    Some((impl_expr, assoc_generics.collect()))
+                    let assoc_generics = translated_generics.drain(0..assoc_generics.parent_count).collect();
+                    Some((impl_expr, assoc_generics))
                 })();
                 generic_args = translated_generics;
                 bounds_impls = solve_item_traits(gstate, *def_id, generics, None);
@@ -2698,8 +2695,8 @@ pub enum ExprKind {
         #[value({
             let tcx = gstate.base().tcx;
             tcx.opt_associated_item(*def_id).as_ref().and_then(|assoc| {
-                poly_trait_ref(gstate, assoc, args)
-            }).map(|poly_trait_ref| solve_trait(gstate, poly_trait_ref))
+                self_clause_for_item(gstate, assoc, args)
+            })
         })]
         r#impl: Option<ImplExpr>,
     },

@@ -12,17 +12,6 @@ impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
     }
 }
 
-// TODO: this seems to be constructing a `Self: Trait` clause. Document what it does exactly.
-pub fn poly_trait_ref<'tcx, S: UnderOwnerState<'tcx>>(
-    s: &S,
-    assoc: &ty::AssocItem,
-    generics: ty::GenericArgsRef<'tcx>,
-) -> Option<ty::PolyTraitRef<'tcx>> {
-    let tcx = s.base().tcx;
-    let r#trait = tcx.trait_of_item(assoc.def_id)?;
-    Some(ty::Binder::dummy(ty::TraitRef::new(tcx, r#trait, generics)))
-}
-
 #[tracing::instrument(skip(s))]
 pub(crate) fn arrow_of_sig<'tcx, S: UnderOwnerState<'tcx>>(sig: &ty::PolyFnSig<'tcx>, s: &S) -> Ty {
     Ty::Arrow(Box::new(sig.sinto(s)))

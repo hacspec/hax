@@ -383,7 +383,7 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
         match assoc.container {
             rustc_middle::ty::AssocItemContainer::TraitContainer => {
                 // Retrieve the trait information
-                let impl_expr = get_trait_info(s, generics, &assoc);
+                let impl_expr = self_clause_for_item(s, &assoc, generics).unwrap();
                 // Return only the method generics; the trait generics are included in `impl_expr`.
                 let method_generics = &generics[num_container_generics..];
                 (method_generics.sinto(s), Option::Some(impl_expr))

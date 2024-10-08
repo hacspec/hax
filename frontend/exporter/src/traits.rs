@@ -827,3 +827,24 @@ pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
     }
     impl_exprs
 }
+
+/// Retrieve the `Self: Trait` clause for a trait associated item.
+#[cfg(feature = "rustc")]
+pub fn self_clause_for_item<'tcx, S: UnderOwnerState<'tcx>>(
+    s: &S,
+    assoc: &rustc_middle::ty::AssocItem,
+    generics: rustc_middle::ty::GenericArgsRef<'tcx>,
+) -> Option<ImplExpr> {
+    let tcx = s.base().tcx;
+
+    // Retrieve the trait
+    let tr_def_id = tcx.trait_of_item(assoc.def_id)?;
+
+    // Create the reference to the trait
+    use rustc_middle::ty::TraitRef;
+    let tr_ref = TraitRef::new(tcx, tr_def_id, generics);
+    let tr_ref = rustc_middle::ty::Binder::dummy(tr_ref);
+
+    // Solve
+    Some(solve_trait(s, tr_ref))
+}
