@@ -267,55 +267,6 @@ pub mod rustc {
             )
         }
 
-        /// Custom equality on `Predicate`s.
-        ///
-        /// Sometimes Rustc inserts extra generic arguments: I noticed
-        /// some `__H` second argument given to core::hash::Hash for
-        /// instance. `__H` seems to be inserted in [1]. Such extra
-        /// arguments seems to be ignored by `default_print_def_path` [2].
-        ///
-        /// Hence, for now, equality is decided by comparing the debug
-        /// string representations of `Predicate`s.
-        ///
-        /// Note there exist also predicates that are different,
-        /// `Eq`-wise, but whose `sinto` counterpart are equal.
-        ///
-        /// TODO: figure out how to implement this function in a sane way.
-        ///
-        /// [1]: https://github.com/rust-lang/rust/blob/b0889cb4ed0e6f3ed9f440180678872b02e7052c/compiler/rustc_builtin_macros/src/deriving/hash.rs#L20
-        /// [2]: https://github.com/rust-lang/rust/blob/b0889cb4ed0e6f3ed9f440180678872b02e7052c/compiler/rustc_middle/src/ty/print/mod.rs#L141
-        fn predicate_equality<'tcx>(
-            _tcx: TyCtxt<'tcx>,
-            x: PolyTraitPredicate<'tcx>,
-            y: PolyTraitPredicate<'tcx>,
-            _param_env: rustc_middle::ty::ParamEnv<'tcx>,
-        ) -> bool {
-            let x: Predicate = x.upcast(tcx);
-            let y: Predicate = y.upcast(tcx);
-            let sx = format!("{:?}", x.kind().skip_binder());
-            let sy = format!("{:?}", y.kind().skip_binder());
-
-            // const DEBUG: bool = false;
-            // if DEBUG && result {
-            //     use crate::{Predicate, SInto};
-            //     let xs: Predicate = x.sinto(s);
-            //     let ys: Predicate = y.sinto(s);
-            //     if x != y {
-            //         eprintln!(
-            //             "######################## predicate_equality ########################"
-            //         );
-            //         eprintln!("x={:#?}", x);
-            //         eprintln!("y={:#?}", y);
-            //         eprintln!(
-            //             "########################        sinto       ########################"
-            //         );
-            //         eprintln!("sinto(x)={:#?}", xs);
-            //         eprintln!("sinto(y)={:#?}", ys);
-            //     }
-            // }
-            sx == sy
-        }
-
         #[tracing::instrument(level = "trace", skip(tcx))]
         fn parents_trait_predicates<'tcx>(
             tcx: TyCtxt<'tcx>,
@@ -388,12 +339,7 @@ pub mod rustc {
                             .candidates
                             .iter()
                             .any(|seen_candidate: &Candidate<'tcx>| {
-                                predicate_equality(
-                                    tcx,
-                                    candidate.pred,
-                                    seen_candidate.pred,
-                                    self.param_env,
-                                )
+                                candidate.pred == seen_candidate.pred
                             })
                     })
                     .collect();
@@ -472,7 +418,7 @@ pub mod rustc {
 
                 tracing::trace!("Looking for {target:?}");
                 for candidate in &self.candidates {
-                    if predicate_equality(tcx, candidate.pred, target, self.param_env) {
+                    if candidate.pred == target {
                         return Some(candidate);
                     }
                 }
