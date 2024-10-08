@@ -91,29 +91,6 @@ pub mod rustc {
     use rustc_hir::def_id::DefId;
     use rustc_middle::ty::*;
 
-    /// This is the entrypoint of the solving.
-    impl<'tcx, S: crate::UnderOwnerState<'tcx>> crate::SInto<S, crate::ImplExpr>
-        for rustc_middle::ty::PolyTraitRef<'tcx>
-    {
-        #[tracing::instrument(level = "trace", skip(s))]
-        fn sinto(&self, s: &S) -> crate::ImplExpr {
-            tracing::trace!(
-                "Enters sinto ({})",
-                stringify!(rustc_middle::ty::PolyTraitRef<'tcx>)
-            );
-            use crate::ParamEnv;
-            let warn = |msg: &str| {
-                if !s.base().ty_alias_mode {
-                    crate::warning!(s, "{}", msg)
-                }
-            };
-            match impl_expr(s.base().tcx, s.owner_id(), s.param_env(), self, &warn) {
-                Ok(x) => x.sinto(s),
-                Err(e) => crate::fatal!(s, "{}", e),
-            }
-        }
-    }
-
     /// Items have various predicates in scope. `path_to` uses them as a starting point for trait
     /// resolution. This tracks where each of them comes from.
     #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -575,7 +552,7 @@ pub mod rustc {
     }
 
     #[tracing::instrument(level = "trace", skip(tcx, param_env, warn))]
-    fn impl_expr<'tcx>(
+    pub(super) fn impl_expr<'tcx>(
         tcx: TyCtxt<'tcx>,
         owner_id: DefId,
         param_env: rustc_middle::ty::ParamEnv<'tcx>,
@@ -742,16 +719,6 @@ pub mod rustc {
     }
 }
 
-#[cfg(feature = "rustc")]
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ImplExpr>
-    for rustc_middle::ty::PolyTraitPredicate<'tcx>
-{
-    fn sinto(&self, s: &S) -> ImplExpr {
-        use rustc_middle::ty::ToPolyTraitRef;
-        self.to_poly_trait_ref().sinto(s)
-    }
-}
-
 /// Given a clause `clause` in the context of some impl block `impl_did`, susbts correctly `Self`
 /// from `clause` and (1) derive a `Clause` and (2) resolve an `ImplExpr`.
 #[cfg(feature = "rustc")]
@@ -761,6 +728,7 @@ pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
     clause: rustc_middle::ty::Clause<'tcx>,
     span: rustc_span::Span,
 ) -> Option<(Clause, ImplExpr, Span)> {
+    use rustc_middle::ty::ToPolyTraitRef;
     let tcx = s.base().tcx;
     let impl_trait_ref = tcx
         .impl_trait_ref(impl_did)
@@ -772,18 +740,37 @@ pub fn super_clause_to_clause_and_impl_expr<'tcx, S: UnderOwnerState<'tcx>>(
         clause.sinto(s).id
     };
     let new_clause = clause.instantiate_supertrait(tcx, impl_trait_ref);
-    let impl_expr = new_clause.as_predicate().as_trait_clause()?.sinto(s);
+    let impl_expr = solve_trait(
+        s,
+        new_clause
+            .as_predicate()
+            .as_trait_clause()?
+            .to_poly_trait_ref(),
+    );
     let mut new_clause_no_binder = new_clause.sinto(s);
     new_clause_no_binder.id = original_predicate_id;
     Some((new_clause_no_binder, impl_expr, span.sinto(s)))
 }
 
+/// This is the entrypoint of the solving.
 #[cfg(feature = "rustc")]
+#[tracing::instrument(level = "trace", skip(s))]
 pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
 ) -> ImplExpr {
-    let mut impl_expr: ImplExpr = trait_ref.sinto(s);
+    use crate::ParamEnv;
+    let warn = |msg: &str| {
+        if !s.base().ty_alias_mode {
+            crate::warning!(s, "{}", msg)
+        }
+    };
+    let mut impl_expr: ImplExpr =
+        match rustc::impl_expr(s.base().tcx, s.owner_id(), s.param_env(), &trait_ref, &warn) {
+            Ok(x) => x.sinto(s),
+            Err(e) => crate::fatal!(s, "{}", e),
+        };
+
     // TODO: this is a bug in hax: in case of method calls, the trait ref
     // contains the generics for the trait ref + the generics for the method
     let trait_def_id: rustc_hir::def_id::DefId =
