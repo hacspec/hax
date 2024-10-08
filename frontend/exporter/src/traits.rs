@@ -537,7 +537,9 @@ pub mod rustc {
     ) -> Result<Vec<ImplExpr<'tcx>>, String> {
         obligations
             .iter()
-            .flat_map(|obligation| {
+            // Only keep depth-1 obligations to avoid duplicate impl exprs.
+            .filter(|obligation| obligation.recursion_depth == 1)
+            .filter_map(|obligation| {
                 obligation.predicate.as_trait_clause().map(|trait_ref| {
                     impl_expr(
                         tcx,
