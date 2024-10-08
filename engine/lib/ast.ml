@@ -115,30 +115,48 @@ functor
 
     type ty =
       | TBool
+      (** [ bool ] **)
       | TChar
+      (** [ char ] **)
       | TInt of int_kind
+      (** [ int <int_kind> ] **)
       | TFloat of float_kind
+      (** [ float <float_kind> ] **)
       | TStr
+      (** [ str ] **)
       | TApp of { ident : global_ident; args : generic_value list }
+      (** [ <ident>( [<arg>]* ) ] **)
       | TArray of { typ : ty; length : expr }
+      (** [ [<typ>, <length>] ] **)
       | TSlice of { witness : F.slice; ty : ty }
+      (** [ (when slice) [<ty>] ] **)
       | TRawPointer of { witness : F.raw_pointer } (* todo *)
+      (** [ (when raw_pointer) *const <ty> or (when raw_pointer) *mut <ty> ] **)
       | TRef of {
           witness : F.reference;
           region : todo;
           typ : ty;
           mut : F.mutable_reference mutability;
         }
+      (** [ (when reference) &<typ> or (when reference and mut_reference) &mut <typ>] **) (* TODO: Region *)
       | TParam of local_ident
+      (** [ <local_ident> ] **)
       | TArrow of ty list * ty
+      (** [ [<ty>]+ -> <ty> ] **) (* TODO: empty is unit? + or * *)
       | TAssociatedType of { impl : impl_expr; item : concrete_ident }
+      (** [ <impl>::<item> ] **)
       | TOpaque of concrete_ident
+      (** [ <concrete_ident> ] **)
       | TDyn of { witness : F.dyn; goals : dyn_trait_goal list }
+      (** [ (when dyn) [<goals>]* ] **)
 
     and generic_value =
       | GLifetime of { lt : todo; witness : F.lifetime }
+      (** [ (when lifetime) '<lt> ] **)
       | GType of ty
+      (** [ <ty> ] **)
       | GConst of expr
+      (** [ const <expr>: <expr.ty> ] **) (* TODO constant expr *)
 
     and impl_expr = { kind : impl_expr_kind; goal : trait_goal }
 
