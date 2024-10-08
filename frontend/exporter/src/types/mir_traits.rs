@@ -21,68 +21,6 @@ pub fn get_trait_info<'tcx, S: UnderOwnerState<'tcx>>(
     solve_trait(s, tr_ref)
 }
 
-pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
-    s: &S,
-    trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
-) -> ImplExpr {
-    let mut impl_expr: ImplExpr = trait_ref.sinto(s);
-    // TODO: this is a bug in hax: in case of method calls, the trait ref
-    // contains the generics for the trait ref + the generics for the method
-    let trait_def_id: rustc_hir::def_id::DefId =
-        (&impl_expr.r#trait.as_ref().hax_skip_binder().def_id).into();
-    let params_info = get_params_info(s, trait_def_id);
-    impl_expr
-        .r#trait
-        .inner_mut()
-        .generic_args
-        .truncate(params_info.num_generic_params);
-    impl_expr
-}
-
-/// Solve the trait obligations for a specific item use (for example, a method
-/// call, an ADT, etc.).
-///
-/// [predicates]: optional predicates, in case we want to solve custom predicates
-/// (instead of the ones returned by [TyCtxt::predicates_defined_on].
-#[tracing::instrument(level = "trace", skip(s))]
-pub fn solve_item_traits<'tcx, S: UnderOwnerState<'tcx>>(
-    s: &S,
-    def_id: rustc_hir::def_id::DefId,
-    generics: rustc_middle::ty::GenericArgsRef<'tcx>,
-    predicates: Option<rustc_middle::ty::GenericPredicates<'tcx>>,
-) -> Vec<ImplExpr> {
-    let tcx = s.base().tcx;
-    let param_env = s.param_env();
-
-    let mut impl_exprs = Vec::new();
-
-    // Lookup the predicates and iter through them: we want to solve all the
-    // trait requirements.
-    // IMPORTANT: we use [TyCtxt::predicates_defined_on] and not [TyCtxt::predicated_of]
-    let predicates = match predicates {
-        None => tcx.predicates_defined_on(def_id),
-        Some(preds) => preds,
-    };
-    for (pred, _) in predicates.predicates {
-        // Explore only the trait predicates
-        if let Some(trait_clause) = pred.as_trait_clause() {
-            let poly_trait_ref = trait_clause.map_bound(|clause| clause.trait_ref);
-            // Apply the substitution
-            let poly_trait_ref =
-                rustc_middle::ty::EarlyBinder::bind(poly_trait_ref).instantiate(tcx, generics);
-            // Warning: this erases regions. We don't really have a way to normalize without
-            // erasing regions, but this may cause problems in trait solving if there are trait
-            // impls that include `'static` lifetimes.
-            let poly_trait_ref = tcx
-                .try_normalize_erasing_regions(param_env, poly_trait_ref)
-                .unwrap_or(poly_trait_ref);
-            let impl_expr = solve_trait(s, poly_trait_ref);
-            impl_exprs.push(impl_expr);
-        }
-    }
-    impl_exprs
-}
-
 /// We use this to store information about the parameters in parent blocks.
 /// This is necessary because when querying the generics of a definition,
 /// rustc gives us *all* the generics used in this definition, including
