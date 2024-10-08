@@ -217,14 +217,53 @@ pub mod rustc {
         use rustc_hir::def_id::DefId;
         use rustc_middle::ty::*;
 
+        /// Erase all regions. Largely copied from `tcx.erase_regions`.
+        fn erase_all_regions<'tcx, T>(tcx: TyCtxt<'tcx>, value: Binder<'tcx, T>) -> Binder<'tcx, T>
+        where
+            T: TypeFoldable<TyCtxt<'tcx>>,
+        {
+            use rustc_middle::ty;
+            struct RegionEraserVisitor<'tcx> {
+                tcx: TyCtxt<'tcx>,
+            }
+
+            impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionEraserVisitor<'tcx> {
+                fn cx(&self) -> TyCtxt<'tcx> {
+                    self.tcx
+                }
+
+                fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+                    ty.super_fold_with(self)
+                }
+
+                fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T>
+                where
+                    T: TypeFoldable<TyCtxt<'tcx>>,
+                {
+                    // Empty the binder
+                    Binder::dummy(t.skip_binder().fold_with(self))
+                }
+
+                fn fold_region(&mut self, _r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+                    // We erase bound regions despite it being possibly incorrect. `for<'a> fn(&'a
+                    // ())` and `fn(&'free ())` are different types: they may implement different
+                    // traits and have a different `TypeId`. It's unclear whether this can cause us
+                    // to select the wrong trait reference.
+                    self.tcx.lifetimes.re_erased
+                }
+            }
+            value.fold_with(&mut RegionEraserVisitor { tcx })
+        }
+
         // Lifetimes are irrelevant when resolving instances.
         fn erase_and_norm<'tcx>(
             tcx: TyCtxt<'tcx>,
             param_env: ParamEnv<'tcx>,
             x: PolyTraitPredicate<'tcx>,
         ) -> PolyTraitPredicate<'tcx> {
-            tcx.anonymize_bound_vars(
-                tcx.erase_regions(tcx.try_normalize_erasing_regions(param_env, x).unwrap_or(x)),
+            erase_all_regions(
+                tcx,
+                tcx.try_normalize_erasing_regions(param_env, x).unwrap_or(x),
             )
         }
 
