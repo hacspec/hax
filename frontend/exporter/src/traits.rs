@@ -217,12 +217,15 @@ pub mod rustc {
         use rustc_hir::def_id::DefId;
         use rustc_middle::ty::*;
 
+        // Lifetimes are irrelevant when resolving instances.
         fn erase_and_norm<'tcx>(
             tcx: TyCtxt<'tcx>,
             param_env: ParamEnv<'tcx>,
             x: PolyTraitPredicate<'tcx>,
         ) -> PolyTraitPredicate<'tcx> {
-            tcx.erase_regions(tcx.try_normalize_erasing_regions(param_env, x).unwrap_or(x))
+            tcx.anonymize_bound_vars(
+                tcx.erase_regions(tcx.try_normalize_erasing_regions(param_env, x).unwrap_or(x)),
+            )
         }
 
         /// Custom equality on `Predicate`s.
@@ -243,14 +246,11 @@ pub mod rustc {
         /// [1]: https://github.com/rust-lang/rust/blob/b0889cb4ed0e6f3ed9f440180678872b02e7052c/compiler/rustc_builtin_macros/src/deriving/hash.rs#L20
         /// [2]: https://github.com/rust-lang/rust/blob/b0889cb4ed0e6f3ed9f440180678872b02e7052c/compiler/rustc_middle/src/ty/print/mod.rs#L141
         fn predicate_equality<'tcx>(
-            tcx: TyCtxt<'tcx>,
+            _tcx: TyCtxt<'tcx>,
             x: PolyTraitPredicate<'tcx>,
             y: PolyTraitPredicate<'tcx>,
-            param_env: rustc_middle::ty::ParamEnv<'tcx>,
+            _param_env: rustc_middle::ty::ParamEnv<'tcx>,
         ) -> bool {
-            // Lifetime and constantness are irrelevant when resolving instances
-            let x = erase_and_norm(tcx, param_env, x);
-            let y = erase_and_norm(tcx, param_env, y);
             let x: Predicate = x.upcast(tcx);
             let y: Predicate = y.upcast(tcx);
             let sx = format!("{:?}", x.kind().skip_binder());
@@ -340,6 +340,10 @@ pub mod rustc {
                 // Filter out duplicated candidates.
                 let new_candidates: Vec<_> = candidates
                     .into_iter()
+                    // Normalize and erase lifetimes as much as possible.
+                    .update(|candidate| {
+                        candidate.pred = erase_and_norm(tcx, self.param_env, candidate.pred)
+                    })
                     .filter(|candidate| {
                         !self
                             .candidates
@@ -393,7 +397,7 @@ pub mod rustc {
             /// add the relevant implied associated type bounds to the set as well.
             fn lookup(&mut self, target: PolyTraitRef<'tcx>) -> Option<&Candidate<'tcx>> {
                 let tcx = self.tcx;
-                let target: PolyTraitPredicate = target.upcast(tcx);
+                let target = erase_and_norm(tcx, self.param_env, target.upcast(tcx));
 
                 // The predicate is `<T as Trait>::Type: OtherTrait`. We look up `T as Trait` in
                 // the current context and add all the bounds on `Trait::Type` to our context.
@@ -427,6 +431,7 @@ pub mod rustc {
                     }));
                 }
 
+                tracing::trace!("Looking for {target:?}");
                 for candidate in &self.candidates {
                     if predicate_equality(tcx, candidate.pred, target, self.param_env) {
                         return Some(candidate);
@@ -436,7 +441,7 @@ pub mod rustc {
                     "Couldn't find {target:?} in: [\n{}]",
                     self.candidates
                         .iter()
-                        .map(|c| format!("  {c:?}\n"))
+                        .map(|c| format!("  - {:?}\n", c.pred))
                         .join("")
                 );
                 None
