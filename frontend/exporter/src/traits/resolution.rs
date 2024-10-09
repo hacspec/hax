@@ -143,7 +143,10 @@ struct Candidate<'tcx> {
 pub(super) struct PredicateSearcher<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
+    /// Local clauses available in the current context.
     candidates: HashMap<PolyTraitPredicate<'tcx>, Candidate<'tcx>>,
+    /// Cache of trait refs to resolved impl expressions.
+    resolution_cache: HashMap<PolyTraitRef<'tcx>, ImplExpr<'tcx>>,
 }
 
 impl<'tcx> PredicateSearcher<'tcx> {
@@ -157,6 +160,7 @@ impl<'tcx> PredicateSearcher<'tcx> {
             tcx,
             param_env,
             candidates: Default::default(),
+            resolution_cache: Default::default(),
         };
         out.extend(
             initial_search_predicates(tcx, owner_id)
@@ -287,13 +291,17 @@ impl<'tcx> PredicateSearcher<'tcx> {
     #[tracing::instrument(level = "trace", skip(self, warn))]
     pub(super) fn resolve(
         &mut self,
-        tref: &rustc_middle::ty::PolyTraitRef<'tcx>,
+        tref: &PolyTraitRef<'tcx>,
         // Call back into hax-related code to display a nice warning.
         warn: &impl Fn(&str),
     ) -> Result<ImplExpr<'tcx>, String> {
         use rustc_trait_selection::traits::{
             BuiltinImplSource, ImplSource, ImplSourceUserDefinedData,
         };
+
+        if let Some(impl_expr) = self.resolution_cache.get(tref) {
+            return Ok(impl_expr.clone());
+        }
 
         let tcx = self.tcx;
         let impl_source =
@@ -363,11 +371,13 @@ impl<'tcx> PredicateSearcher<'tcx> {
             })
             .collect::<Result<_, _>>()?;
 
-        Ok(ImplExpr {
+        let impl_expr = ImplExpr {
             r#impl: atom,
             args: nested,
             r#trait: *tref,
-        })
+        };
+        self.resolution_cache.insert(*tref, impl_expr.clone());
+        Ok(impl_expr)
     }
 }
 
