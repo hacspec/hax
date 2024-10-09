@@ -274,6 +274,27 @@ module Make (F : Features.T) = struct
       (** [ty_TApp_application ~typ ~generics] prints the type
       [typ<...generics>]. *)
 
+      (** *)
+
+      method virtual item'_Type_struct :
+        super:item ->
+        name:concrete_ident lazy_doc ->
+        generics:generics lazy_doc ->
+        variants:(variant lazy_doc) list ->
+        document
+
+      method virtual item'_Type_enum :
+        super:item ->
+        name:concrete_ident lazy_doc ->
+        generics:generics lazy_doc ->
+        variants:(variant lazy_doc) list ->
+        document
+
+      method _do_not_override_item'_Type ~super ~name ~generics ~variants ~is_struct =
+        if is_struct
+        then self#item'_Type_struct ~super ~name ~generics ~variants
+        else self#item'_Type_enum ~super ~name ~generics ~variants
+
       (** {2:common-nodes Printers for common nodes} *)
 
       method virtual common_array : document list -> document
@@ -505,5 +526,6 @@ module Make (F : Features.T) = struct
         let module View = (val concrete_ident_view) in
         current_namespace <- View.to_namespace value.ident |> Option.some;
         super#_do_not_override_lazy_of_item ast_position value
+
     end
 end
