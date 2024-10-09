@@ -64,12 +64,9 @@ struct
   let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
 end
 
-module AST = Ast.Make (InputLanguage)
 module BackendOptions = Backend.UnitBackendOptions
-open Ast
 module CoqNamePolicy = Concrete_ident.DefaultNamePolicy
 module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (CoqNamePolicy)
-open AST
 
 module CoqLibrary : Library = struct
   module Notation = struct
@@ -84,619 +81,598 @@ end
 
 module C = Coq (CoqLibrary)
 
-module Context = struct
-  type t = { current_namespace : string * string list }
-end
+open Ast
 
-let primitive_to_string (id : primitive_ident) : string =
-  match id with
-  | Deref -> "(TODO: Deref)" (* failwith "Deref" *)
-  | Cast -> "cast" (* failwith "Cast" *)
-  | LogicalOp op -> ( match op with And -> "andb" | Or -> "orb")
-
-module Make (Ctx : sig
-  val ctx : Context.t
-end) =
+module Make
+    (F : Features.T) (Default : sig
+      val default : string -> string
+    end) =
 struct
-  open Ctx
+  module AST = Ast.Make (F)
+  open Ast.Make (F)
+  module Base = Generic_printer.Make (F)
+  open PPrint
 
-  let pconcrete_ident (id : concrete_ident) : string =
-    let id = U.Concrete_ident_view.to_view id in
-    let crate, path = ctx.current_namespace in
-    if String.(crate = id.crate) && [%eq: string list] id.path path then
-      id.definition
-    else
-      (* id.crate ^ "_" ^ *)
-      (* List.fold_left ~init:"" ~f:(fun x y -> x ^ "_" ^ y) *)
-      id.definition
+  let default_string_for s = "TODO: please implement the method `" ^ s ^ "`"
+  let default_document_for = default_string_for >> string
 
-  let pglobal_ident (id : global_ident) : string =
-    match id with
-    | `Projector (`Concrete cid) | `Concrete cid -> pconcrete_ident cid
-    | `Primitive p_id -> primitive_to_string p_id
-    | `TupleType _i -> "TODO (global ident) tuple type"
-    | `TupleCons _i -> "TODO (global ident) tuple cons"
-    | `Projector (`TupleField _) | `TupleField _ ->
-        "TODO (global ident) tuple field"
-    | _ -> .
+  let any_number_of x = brackets ( x ) ^^ string "*"
+  let option_of x = brackets ( x ) ^^ string "?"
 
-  module TODOs_debug = struct
-    let __TODO_pat__ _ s = C.AST.Ident (s ^ " todo(pat)")
-    let __TODO_ty__ _ s : C.AST.ty = C.AST.NameTy (s ^ " todo(ty)")
-    let __TODO_item__ _ s = C.AST.Unimplemented (s ^ " todo(item)")
-    let __TODO_term__ _ s = C.AST.Const (C.AST.Const_string (s ^ " todo(term)"))
-  end
+  class printer =
+    object
+      inherit Base.base
 
-  module TODOs = struct
-    let __TODO_ty__ span s : C.AST.ty =
-      Error.unimplemented ~details:("[ty] node " ^ s) span
+      (* BEGIN GENERATED *)
+      method arm ~arm:_ ~span:_ = default_document_for "arm"
 
-    let __TODO_pat__ span s =
-      Error.unimplemented ~details:("[pat] node " ^ s) span
+      method arm' ~super:_ ~arm_pat:_ ~body:_ ~guard:_ =
+        default_document_for "arm'"
 
-    let __TODO_term__ span s =
-      Error.unimplemented ~details:("[expr] node " ^ s) span
+      method attrs _x1 = default_document_for "attrs"
 
-    let __TODO_item__ _span s = C.AST.Unimplemented (s ^ " todo(item)")
-  end
+      method binding_mode_ByRef _x1 _x2 =
+        default_document_for "binding_mode_ByRef"
 
-  open TODOs
+      method binding_mode_ByValue = default_document_for "binding_mode_ByValue"
+      method borrow_kind_Mut _x1 = default_document_for "borrow_kind_Mut"
+      method borrow_kind_Shared = default_document_for "borrow_kind_Shared"
+      method borrow_kind_Unique = default_document_for "borrow_kind_Unique"
+      method common_array _x1 = default_document_for "common_array"
 
-  let pint_kind (k : int_kind) : C.AST.int_type =
-    {
-      size =
-        (match k.size with
-        | S8 -> U8
-        | S16 -> U16
-        | S32 -> U32
-        | S64 -> U64
-        | S128 -> U128
-        | SSize -> USize);
-      signed = (match k.signedness with Signed -> true | _ -> false);
-    }
+      method dyn_trait_goal ~trait:_ ~non_self_args:_ =
+        default_document_for "dyn_trait_goal"
 
-  let pliteral span (e : literal) =
-    match e with
-    | String s -> C.AST.Const_string s
-    | Char c -> C.AST.Const_char (Char.to_int c)
-    | Int { value; kind; _ } -> C.AST.Const_int (value, pint_kind kind)
-    | Float _ -> Error.unimplemented ~details:"pliteral: Float" span
-    | Bool b -> C.AST.Const_bool b
+      method error_expr _x1 = default_document_for "error_expr"
+      method error_item _x1 = default_document_for "error_item"
+      method error_pat _x1 = default_document_for "error_pat"
+      method expr ~e:_ ~span:_ ~typ:_ = default_document_for "expr"
 
-  let rec pty span (t : ty) : C.AST.ty =
-    match t with
-    | TBool -> C.AST.Bool
-    | TChar -> __TODO_ty__ span "char"
-    | TInt k -> C.AST.Int (pint_kind k)
-    | TStr -> __TODO_ty__ span "str"
-    | TApp { ident = `TupleType 0; args = [] } -> C.AST.Unit
-    | TApp { ident = `TupleType 1; args = [ GType ty ] } -> pty span ty
-    | TApp { ident = `TupleType n; args } when n >= 2 ->
-        C.AST.Product (args_ty span args)
-    | TApp { ident; args } ->
-        C.AST.AppTy
-          (C.AST.NameTy (pglobal_ident ident ^ "_t"), args_ty span args)
-    | TArrow (inputs, output) ->
-        List.fold_right ~init:(pty span output)
-          ~f:(fun x y -> C.AST.Arrow (x, y))
-          (List.map ~f:(pty span) inputs)
-    | TFloat _ -> __TODO_ty__ span "pty: Float"
-    | TArray { typ; _ } ->
-        C.AST.ArrayTy (pty span typ, "TODO: Int.to_string length")
-    | TSlice { ty; _ } -> C.AST.SliceTy (pty span ty)
-    | TParam i -> C.AST.NameTy i.name
-    | TAssociatedType _ -> C.AST.WildTy
-    | TOpaque _ -> __TODO_ty__ span "pty: TAssociatedType/TOpaque"
-    | _ -> .
+      method expr'_AddressOf ~super:_ ~mut:_ ~e:_ ~witness:_ =
+        default_document_for "expr'_AddressOf"
 
-  and args_ty span (args : generic_value list) : C.AST.ty list =
-    (* List.map ~f:pty *)
-    match args with
-    | arg :: xs ->
-        (match arg with
-        | GLifetime _ -> __TODO_ty__ span "lifetime"
-        | GType x -> pty span x
-        | GConst _ -> __TODO_ty__ span "const")
-        :: args_ty span xs
-    | [] -> []
+      method expr'_App_application ~super:_ ~f:_ ~args:_ ~generics:_ =
+        default_document_for "expr'_App_application"
 
-  let rec ppat (p : pat) : C.AST.pat =
-    match p.p with
-    | PWild -> C.AST.WildPat
-    | PAscription { typ; pat; _ } ->
-        C.AST.AscriptionPat (ppat pat, pty p.span typ)
-    | PBinding
-        {
-          mut = Immutable;
-          mode = _;
-          subpat = None;
-          var;
-          typ = _ (* we skip type annot here *);
-        } ->
-        C.AST.Ident var.name
-    | POr { subpats } -> C.AST.DisjunctivePat (List.map ~f:ppat subpats)
-    | PArray _ -> __TODO_pat__ p.span "Parray?"
-    | PConstruct { constructor = `TupleCons 0; fields = []; _ } -> C.AST.UnitPat
-    | PConstruct { constructor = `TupleCons 1; fields = [ _ ]; _ } ->
-        __TODO_pat__ p.span "tuple 1"
-    | PConstruct { constructor = `TupleCons _n; fields; _ } ->
-        C.AST.TuplePat (List.map ~f:(fun { pat; _ } -> ppat pat) fields)
-    | PConstruct { constructor; fields; is_record = true; _ } ->
-        C.AST.RecordPat (pglobal_ident constructor, pfield_pats fields)
-    | PConstruct { constructor; fields; is_record = false; _ } ->
-        C.AST.ConstructorPat
-          (pglobal_ident constructor, List.map ~f:(fun p -> ppat p.pat) fields)
-    | PConstant { lit } -> C.AST.Lit (pliteral p.span lit)
-    | _ -> .
+      method expr'_App_constant ~super:_ ~constant:_ ~generics:_ =
+        default_document_for "expr'_App_constant"
 
-  and pfield_pats (args : field_pat list) : (string * C.AST.pat) list =
-    match args with
-    | { field; pat } :: xs -> (pglobal_ident field, ppat pat) :: pfield_pats xs
-    | _ -> []
+      method expr'_App_field_projection ~super:_ ~field:_ ~e:_ =
+        default_document_for "expr'_App_field_projection"
 
-  (* TODO: I guess this should be named `notations` rather than `operators`, for the Coq backend, right? *)
-  let operators =
-    let c = Global_ident.of_name Value in
-    [
-      (c Rust_primitives__hax__array_of_list, (3, [ ""; ".["; "]<-"; "" ]));
-      (c Core__ops__index__Index__index, (2, [ ""; ".["; "]" ]));
-      (c Core__ops__bit__BitXor__bitxor, (2, [ ""; ".^"; "" ]));
-      (c Core__ops__bit__BitAnd__bitand, (2, [ ""; ".&"; "" ]));
-      (c Core__ops__bit__BitOr__bitor, (2, [ ""; ".|"; "" ]));
-      (c Core__ops__arith__Add__add, (2, [ ""; ".+"; "" ]));
-      (c Core__ops__arith__Sub__sub, (2, [ ""; ".-"; "" ]));
-      (c Core__ops__arith__Mul__mul, (2, [ ""; ".*"; "" ]));
-      (c Core__ops__arith__Div__div, (2, [ ""; "./"; "" ]));
-      (c Core__cmp__PartialEq__eq, (2, [ ""; "=.?"; "" ]));
-      (c Core__cmp__PartialOrd__lt, (2, [ ""; "<.?"; "" ]));
-      (c Core__cmp__PartialOrd__le, (2, [ ""; "<=.?"; "" ]));
-      (c Core__cmp__PartialOrd__ge, (2, [ ""; ">=.?"; "" ]));
-      (c Core__cmp__PartialOrd__gt, (2, [ ""; ">.?"; "" ]));
-      (c Core__cmp__PartialEq__ne, (2, [ ""; "<>"; "" ]));
-      (c Core__ops__arith__Rem__rem, (2, [ ""; ".%"; "" ]));
-      (c Core__ops__bit__Shl__shl, (2, [ ""; " shift_left "; "" ]));
-      (c Core__ops__bit__Shr__shr, (2, [ ""; " shift_right "; "" ]));
-      (* TODO: those two are not notations/operators at all, right? *)
-      (* (c "secret_integers::rotate_left", (2, [ "rol "; " "; "" ])); *)
-      (* (c "hacspec::lib::foldi", (4, [ "foldi "; " "; " "; " "; "" ])); *)
+      method expr'_App_tuple_projection ~super:_ ~size:_ ~nth:_ ~e:_ =
+        default_document_for "expr'_App_tuple_projection"
 
-      (* (c "secret_integers::u8", (0, ["U8"])); *)
-      (* (c "secret_integers::u16", (0, ["U16"])); *)
-      (* (c "secret_integers::u32", (0, ["U32"])); *)
-      (* (c "secret_integers::u64", (0, ["U64"])); *)
-      (* (c "secret_integers::u128", (0, ["U128"])); *)
-    ]
-    |> Map.of_alist_exn (module Global_ident)
+      method expr'_Ascription ~super:_ ~e:_ ~typ:_ =
+        default_document_for "expr'_Ascription"
 
-  let rec pexpr (e : expr) =
-    try pexpr_unwrapped e
-    with Diagnostics.SpanFreeError.Exn _ ->
-      TODOs_debug.__TODO_term__ e.span "failure"
+      method expr'_Assign ~super:_ ~lhs:_ ~e:_ ~witness:_ =
+        default_document_for "expr'_Assign"
 
-  and pexpr_unwrapped (e : expr) : C.AST.term =
-    let span = e.span in
-    match e.e with
-    | Literal l -> C.AST.Const (pliteral e.span l)
-    | LocalVar local_ident -> C.AST.NameTerm local_ident.name
-    | GlobalVar (`TupleCons 0)
-    | Construct { constructor = `TupleCons 0; fields = []; _ } ->
-        C.AST.UnitTerm
-    | GlobalVar global_ident -> C.AST.Var (pglobal_ident global_ident)
-    | App
-        {
-          f = { e = GlobalVar (`Projector (`TupleField _)); _ };
-          args = [ _ ];
-          _;
-        } ->
-        __TODO_term__ span "app global vcar projector tuple"
-    | App { f = { e = GlobalVar x; _ }; args; _ } when Map.mem operators x ->
-        let arity, op = Map.find_exn operators x in
-        if List.length args <> arity then
-          Error.assertion_failure span "expr: function application: bad arity";
-        let args = List.map ~f:(fun x -> C.AST.Value (pexpr x, true, 0)) args in
-        C.AST.AppFormat (op, args)
-    (* | App { f = { e = GlobalVar x }; args } -> *)
-    (*    __TODO_term__ span "GLOBAL APP?" *)
-    | App { f; args; _ } ->
-        let base = pexpr f in
-        let args = List.map ~f:pexpr args in
-        C.AST.App (base, args)
-    | If { cond; then_; else_ } ->
-        C.AST.If
-          ( pexpr cond,
-            pexpr then_,
-            Option.value_map else_ ~default:(C.AST.Literal "()") ~f:pexpr )
-    | Array l -> C.AST.Array (List.map ~f:pexpr l)
-    | Let { lhs; rhs; body; monadic } ->
-        C.AST.Let
-          {
-            pattern = ppat lhs;
-            mut =
-              (match lhs.p with
-              | PBinding { mut = Mutable _; _ } -> true
-              | _ -> false);
-            value = pexpr rhs;
-            body = pexpr body;
-            value_typ = pty span lhs.typ;
-            monad_typ =
-              Option.map
-                ~f:(fun (m, _) ->
-                  match m with
-                  | MException typ -> C.AST.Exception (pty span typ)
-                  | MResult typ -> C.AST.Result (pty span typ)
-                  | MOption -> C.AST.Option)
-                monadic;
-          }
-    | Match { scrutinee; arms } ->
-        C.AST.Match
-          ( pexpr scrutinee,
-            List.map
-              ~f:(fun { arm = { arm_pat; body; _ }; _ } ->
-                (ppat arm_pat, pexpr body))
-              arms )
-    | Ascription _ -> __TODO_term__ span "asciption"
-    | Construct { constructor = `TupleCons 1; fields = [ (_, e) ]; _ } ->
-        pexpr e
-    | Construct { constructor = `TupleCons _n; fields; _ } ->
-        C.AST.Tuple (List.map ~f:(snd >> pexpr) fields)
-    | Construct { is_record = true; constructor; fields; _ } ->
-        (* TODO: handle base *)
-        C.AST.RecordConstructor
-          ( pglobal_ident constructor,
-            List.map ~f:(fun (f, e) -> (pglobal_ident f, pexpr e)) fields )
-    | Construct { is_record = false; constructor; fields = [ (_f, e) ]; _ } ->
-        C.AST.App (C.AST.Var (pglobal_ident constructor), [ pexpr e ])
-    | Construct { constructor; _ } ->
-        (* __TODO_term__ span "constructor" *)
-        C.AST.Var
-          (pglobal_ident constructor
-          ^ C.ty_to_string_without_paren (pty span e.typ))
-    | Closure { params; body; _ } ->
-        C.AST.Lambda (List.map ~f:ppat params, pexpr body)
-    | MacroInvokation { macro; _ } ->
-        Error.raise
-        @@ {
-             kind = UnsupportedMacro { id = [%show: global_ident] macro };
-             span = e.span;
-           }
-    | _ -> .
+      method expr'_Block ~super:_ ~e:_ ~safety_mode:_ ~witness:_ =
+        default_document_for "expr'_Block"
 
-  let pgeneric_param_as_argument span : generic_param -> C.AST.argument =
-    function
-    | { ident; kind = GPType; _ } ->
-        C.AST.Explicit (C.AST.Ident ident.name, C.AST.WildTy)
-    | _ -> Error.unimplemented ~details:"Coq: TODO: generic_params" span
+      method expr'_Borrow ~super:_ ~kind:_ ~e:_ ~witness:_ =
+        default_document_for "expr'_Borrow"
 
-  let rec pitem (e : item) : C.AST.decl list =
-    try pitem_unwrapped e
-    with Diagnostics.SpanFreeError.Exn _ ->
-      [ C.AST.Unimplemented "item error backend" ]
+      method expr'_Break ~super:_ ~e:_ ~label:_ ~witness:_ =
+        default_document_for "expr'_Break"
 
-  and pitem_unwrapped (e : item) : C.AST.decl list =
-    let span = e.span in
-    match e.v with
-    | Fn { name; body; params; _ } ->
-        [
-          C.AST.Definition
-            ( pconcrete_ident name,
-              List.map
-                ~f:(fun { pat; typ; _ } ->
-                  C.AST.Explicit (ppat pat, pty span typ))
-                params,
-              pexpr body,
-              pty span body.typ );
-        ]
-    | TyAlias { name; ty; _ } ->
-        [
-          C.AST.Notation
-            ( "'" ^ pconcrete_ident name ^ "_t" ^ "'",
-              C.AST.Type (pty span ty),
-              None );
-        ]
-    (* record *)
-    | Type { name; generics; variants = [ v ]; is_struct = true } ->
-        [
-          (* TODO: generics *)
-          C.AST.Record
-            ( U.Concrete_ident_view.to_definition_name name,
-              List.map ~f:(pgeneric_param_as_argument span) generics.params,
-              List.map
-                ~f:(fun (x, y) -> C.AST.Named (x, y))
-                (p_record_record span v.arguments) );
-        ]
-    (* enum *)
-    | Type { name; generics; variants; _ } ->
-        [
-          C.AST.Inductive
-            ( U.Concrete_ident_view.to_definition_name name,
-              List.map ~f:(pgeneric_param_as_argument span) generics.params,
-              p_inductive span variants name );
-        ]
-    (* TODO: this is never matched, now *)
-    (* | Type { name; generics; variants } -> *)
-    (*     [ *)
-    (*       C.AST.Notation *)
-    (*         ( U.Concrete_ident_view.to_definition_name name, *)
-    (*           C.AST.Product (List.map ~f:snd (p_record span variants name)) ); *)
-    (*       C.AST.Definition *)
-    (*         ( U.Concrete_ident_view.to_definition_name name, *)
-    (*           [], *)
-    (*           C.AST.Var "id", *)
-    (*           C.AST.Arrow *)
-    (*             ( C.AST.Name (U.Concrete_ident_view.to_definition_name name), *)
-    (*               C.AST.Name (U.Concrete_ident_view.to_definition_name name) ) ); *)
-    (*     ] *)
-    | IMacroInvokation { macro; argument; _ } -> (
-        let unsupported () =
-          let id = [%show: concrete_ident] macro in
-          Error.raise { kind = UnsupportedMacro { id }; span = e.span }
-        in
-        match U.Concrete_ident_view.to_view macro with
-        | { crate = "hacspec_lib"; path = _; definition = name } -> (
-            match name with
-            | "public_nat_mod" ->
-                let open Hacspeclib_macro_parser in
-                let o : PublicNatMod.t =
-                  PublicNatMod.parse argument |> Result.ok_or_failwith
-                in
-                [
-                  C.AST.Notation
-                    ( "'" ^ o.type_name ^ "_t" ^ "'",
-                      C.AST.Type
-                        (C.AST.NatMod
-                           ( o.type_of_canvas,
-                             o.bit_size_of_field,
-                             o.modulo_value )),
-                      None );
-                  C.AST.Definition
-                    ( o.type_name,
-                      [],
-                      C.AST.Var "id",
-                      C.AST.Arrow
-                        ( C.AST.NameTy (o.type_name ^ "_t"),
-                          C.AST.NameTy (o.type_name ^ "_t") ) );
-                ]
-            | "bytes" ->
-                let open Hacspeclib_macro_parser in
-                let o : Bytes.t =
-                  Bytes.parse argument |> Result.ok_or_failwith
-                in
-                [
-                  C.AST.Notation
-                    ( "'" ^ o.bytes_name ^ "_t" ^ "'",
-                      C.AST.Type
-                        (C.AST.ArrayTy
-                           ( C.AST.Int { size = C.AST.U8; signed = false },
-                             (* int_of_string *) o.size )),
-                      None );
-                  C.AST.Definition
-                    ( o.bytes_name,
-                      [],
-                      C.AST.Var "id",
-                      C.AST.Arrow
-                        ( C.AST.NameTy (o.bytes_name ^ "_t"),
-                          C.AST.NameTy (o.bytes_name ^ "_t") ) );
-                ]
-            | "unsigned_public_integer" ->
-                let open Hacspeclib_macro_parser in
-                let o =
-                  UnsignedPublicInteger.parse argument |> Result.ok_or_failwith
-                in
-                [
-                  C.AST.Notation
-                    ( "'" ^ o.integer_name ^ "_t" ^ "'",
-                      C.AST.Type
-                        (C.AST.ArrayTy
-                           ( C.AST.Int { size = C.AST.U8; signed = false },
-                             Int.to_string ((o.bits + 7) / 8) )),
-                      None );
-                  C.AST.Definition
-                    ( o.integer_name,
-                      [],
-                      C.AST.Var "id",
-                      C.AST.Arrow
-                        ( C.AST.NameTy (o.integer_name ^ "_t"),
-                          C.AST.NameTy (o.integer_name ^ "_t") ) );
-                ]
-            | "public_bytes" ->
-                let open Hacspeclib_macro_parser in
-                let o : Bytes.t =
-                  Bytes.parse argument |> Result.ok_or_failwith
-                in
-                let typ =
-                  C.AST.ArrayTy
-                    ( C.AST.Int { size = C.AST.U8; signed = false },
-                      (* int_of_string *) o.size )
-                in
-                [
-                  C.AST.Notation
-                    ("'" ^ o.bytes_name ^ "_t" ^ "'", C.AST.Type typ, None);
-                  C.AST.Definition
-                    ( o.bytes_name,
-                      [],
-                      C.AST.Var "id",
-                      C.AST.Arrow
-                        ( C.AST.NameTy (o.bytes_name ^ "_t"),
-                          C.AST.NameTy (o.bytes_name ^ "_t") ) );
-                ]
-            | "array" ->
-                let open Hacspeclib_macro_parser in
-                let o : Array.t =
-                  Array.parse argument |> Result.ok_or_failwith
-                in
-                let typ =
-                  match o.typ with
-                  (* Some *)
-                  | "U128" -> C.AST.U128
-                  (* Some *)
-                  | "U64" -> C.AST.U64
-                  (* Some *)
-                  | "U32" -> C.AST.U32
-                  (* Some *)
-                  | "U16" -> C.AST.U16
-                  (* Some *)
-                  | "U8" -> C.AST.U8
-                  | _usize -> C.AST.U32 (* TODO: usize? *)
-                in
-                [
-                  C.AST.Notation
-                    ( "'" ^ o.array_name ^ "_t" ^ "'",
-                      C.AST.Type
-                        (C.AST.ArrayTy
-                           ( C.AST.Int { size = typ; signed = false },
-                             (* int_of_string *) o.size )),
-                      None );
-                  C.AST.Definition
-                    ( o.array_name,
-                      [],
-                      C.AST.Var "id",
-                      C.AST.Arrow
-                        ( C.AST.NameTy (o.array_name ^ "_t"),
-                          C.AST.NameTy (o.array_name ^ "_t") ) );
-                ]
-            | _ -> unsupported ())
-        | _ -> unsupported ())
-    | Use { path; is_external; rename } ->
-        if is_external then [] else [ C.AST.Require (None, path, rename) ]
-    | HaxError s -> [ __TODO_item__ span s ]
-    | NotImplementedYet -> [ __TODO_item__ span "Not implemented yet?" ]
-    | Alias _ -> [ __TODO_item__ span "Not implemented yet? alias" ]
-    | Trait { name; generics; items } ->
-        [
-          C.AST.Class
-            ( U.Concrete_ident_view.to_definition_name name,
-              List.map
-                ~f:(pgeneric_param_as_argument span)
-                (match List.rev generics.params with
-                | _ :: xs -> List.rev xs
-                | _ -> []),
-              List.map
-                ~f:(fun x ->
-                  C.AST.Named
-                    ( U.Concrete_ident_view.to_definition_name x.ti_ident,
-                      match x.ti_v with
-                      | TIFn fn_ty -> pty span fn_ty
-                      | TIDefault _ -> .
-                      | _ -> __TODO_ty__ span "field_ty" ))
-                items );
-        ]
-    | Impl { generics; self_ty; of_trait = name, gen_vals; items } ->
-        [
-          C.AST.Instance
-            ( pconcrete_ident name,
-              List.map ~f:(pgeneric_param_as_argument span) generics.params,
-              pty span self_ty,
-              args_ty span gen_vals,
-              List.map
-                ~f:(fun x ->
-                  match x.ii_v with
-                  | IIFn { body; params } ->
-                      ( U.Concrete_ident_view.to_definition_name x.ii_ident,
-                        List.map
-                          ~f:(fun { pat; typ; _ } ->
-                            C.AST.Explicit (ppat pat, pty span typ))
-                          params,
-                        pexpr body,
-                        pty span body.typ )
-                  | _ ->
-                      ( "todo_name",
-                        [],
-                        __TODO_term__ span "body",
-                        __TODO_ty__ span "typ" ))
-                items );
-        ]
+      method expr'_Closure ~super:_ ~params:_ ~body:_ ~captures:_ =
+        default_document_for "expr'_Closure"
 
-  and p_inductive span variants _parrent_name : C.AST.inductive_case list =
-    List.map variants ~f:(fun { name; arguments; is_record; _ } ->
-        if is_record then
-          C.AST.InductiveCase
-            ( U.Concrete_ident_view.to_definition_name name,
-              C.AST.RecordTy
-                (pconcrete_ident name, p_record_record span arguments) )
-        else
-          let name = U.Concrete_ident_view.to_definition_name name in
-          match arguments with
-          | [] -> C.AST.BaseCase name
-          | [ (_arg_name, arg_ty, _arg_attrs) ] ->
-              C.AST.InductiveCase (name, pty span arg_ty)
-          | _ ->
-              C.AST.InductiveCase
-                (name, C.AST.Product (List.map ~f:(snd3 >> pty span) arguments)))
-  (* match variants with _ -> [] *)
-  (* TODO: I don't get this pattern maching below. Variant with more than one payloads are rejected implicitely? *)
-  (* | { name; arguments = [ (arg_name, arg_ty) ] } :: xs -> *)
-  (*     if (index_of_field >> Option.is_some) arg_name then *)
-  (*       C.AST.InductiveCase (U.Concrete_ident_view.to_definition_name name, pty span arg_ty) *)
-  (*       :: p_inductive span xs parrent_name *)
-  (*     else *)
-  (*       C.AST.InductiveCase (U.Concrete_ident_view.to_definition_name arg_name, pty span arg_ty) *)
-  (*       :: p_inductive span xs parrent_name *)
-  (* | { name; arguments = [] } :: xs -> *)
-  (*     C.AST.BaseCase (U.Concrete_ident_view.to_definition_name name) *)
-  (*     :: p_inductive span xs parrent_name *)
-  (* | { name; arguments } :: xs -> *)
-  (*     C.AST.InductiveCase *)
-  (*       ( U.Concrete_ident_view.to_definition_name name, *)
-  (*         C.AST.RecordTy (pglobal_ident name, p_record_record span arguments) *)
-  (*       ) *)
-  (*     :: p_inductive span xs parrent_name *)
-  (* | _ -> [] *)
+      method expr'_Construct_inductive ~super:_ ~constructor:_ ~is_record:_
+          ~is_struct:_ ~fields:_ ~base:_ =
+        default_document_for "expr'_Construct_inductive"
 
-  and p_record_record span arguments : (string * C.AST.ty) list =
-    List.map
-      ~f:(function
-        | arg_name, arg_ty, _arg_attrs ->
-            (U.Concrete_ident_view.to_definition_name arg_name, pty span arg_ty))
-      arguments
+      method expr'_Construct_tuple ~super:_ ~components:_ =
+        default_document_for "expr'_Construct_tuple"
+
+      method expr'_Continue ~super:_ ~e:_ ~label:_ ~witness:_ =
+        default_document_for "expr'_Continue"
+
+      method expr'_EffectAction ~super:_ ~action:_ ~argument:_ =
+        default_document_for "expr'_EffectAction"
+
+      method expr'_GlobalVar ~super:_ _x2 =
+        default_document_for "expr'_GlobalVar"
+
+      method expr'_If ~super:_ ~cond:_ ~then_:_ ~else_:_ =
+        default_document_for "expr'_If"
+
+      method expr'_Let ~super:_ ~monadic:_ ~lhs:_ ~rhs:_ ~body:_ =
+        default_document_for "expr'_Let"
+
+      method expr'_Literal ~super:_ _x2 = default_document_for "expr'_Literal"
+      method expr'_LocalVar ~super:_ _x2 = default_document_for "expr'_LocalVar"
+
+      method expr'_Loop ~super:_ ~body:_ ~kind:_ ~state:_ ~label:_ ~witness:_ =
+        default_document_for "expr'_Loop"
+
+      method expr'_MacroInvokation ~super:_ ~macro:_ ~args:_ ~witness:_ =
+        default_document_for "expr'_MacroInvokation"
+
+      method expr'_Match ~super:_ ~scrutinee:_ ~arms:_ =
+        default_document_for "expr'_Match"
+
+      method expr'_QuestionMark ~super:_ ~e:_ ~return_typ:_ ~witness:_ =
+        default_document_for "expr'_QuestionMark"
+
+      method expr'_Quote ~super:_ _x2 = default_document_for "expr'_Quote"
+
+      method expr'_Return ~super:_ ~e:_ ~witness:_ =
+        default_document_for "expr'_Return"
+
+      method field_pat ~field:_ ~pat:_ = default_document_for "field_pat"
+
+      method generic_constraint_GCLifetime _x1 _x2 =
+        default_document_for "generic_constraint_GCLifetime"
+
+      method generic_constraint_GCProjection _x1 =
+        default_document_for "generic_constraint_GCProjection"
+
+      method generic_constraint_GCType _x1 =
+        default_document_for "generic_constraint_GCType"
+
+      method generic_param ~ident:_ ~span:_ ~attrs:_ ~kind:_ =
+        default_document_for "generic_param"
+
+      method generic_param_kind_GPConst ~typ:_ =
+        default_document_for "generic_param_kind_GPConst"
+
+      method generic_param_kind_GPLifetime ~witness:_ =
+        default_document_for "generic_param_kind_GPLifetime"
+
+      method generic_param_kind_GPType ~default:_ =
+        default_document_for "generic_param_kind_GPType"
+
+      method generic_value_GConst _x1 =
+        default_document_for "generic_value_GConst"
+
+      method generic_value_GLifetime ~lt:_ ~witness:_ =
+        default_document_for "generic_value_GLifetime"
+
+      method generic_value_GType _x1 =
+        default_document_for "generic_value_GType"
+
+      method generics ~params:_ ~constraints:_ = default_document_for "generics"
+      method guard ~guard:_ ~span:_ = default_document_for "guard"
+
+      method guard'_IfLet ~super:_ ~lhs:_ ~rhs:_ ~witness:_ =
+        default_document_for "guard'_IfLet"
+
+      method impl_expr ~kind:_ ~goal:_ = default_document_for "impl_expr"
+
+      method impl_expr_kind_Builtin _x1 =
+        default_document_for "impl_expr_kind_Builtin"
+
+      method impl_expr_kind_Concrete _x1 =
+        default_document_for "impl_expr_kind_Concrete"
+
+      method impl_expr_kind_Dyn = default_document_for "impl_expr_kind_Dyn"
+
+      method impl_expr_kind_ImplApp ~impl:_ ~args:_ =
+        default_document_for "impl_expr_kind_ImplApp"
+
+      method impl_expr_kind_LocalBound ~id:_ =
+        default_document_for "impl_expr_kind_LocalBound"
+
+      method impl_expr_kind_Parent ~impl:_ ~ident:_ =
+        default_document_for "impl_expr_kind_Parent"
+
+      method impl_expr_kind_Projection ~impl:_ ~item:_ ~ident:_ =
+        default_document_for "impl_expr_kind_Projection"
+
+      method impl_expr_kind_Self = default_document_for "impl_expr_kind_Self"
+      method impl_ident ~goal:_ ~name:_ = default_document_for "impl_ident"
+
+      method impl_item ~ii_span:_ ~ii_generics:_ ~ii_v:_ ~ii_ident:_ ~ii_attrs:_
+          =
+        default_document_for "impl_item"
+
+      method impl_item'_IIFn ~body:_ ~params:_ =
+        default_document_for "impl_item'_IIFn"
+
+      method impl_item'_IIType ~typ:_ ~parent_bounds:_ =
+        default_document_for "impl_item'_IIType"
+
+      method item ~v ~span:_ ~ident:_ ~attrs:_ = v#p (* default_document_for "item" *)
+
+      method item'_Alias ~super:_ ~name:_ ~item:_ =
+        default_document_for "item'_Alias"
+
+      method item'_Fn ~super:_ ~name:_ ~generics:_ ~body:_ ~params:_ ~safety:_ =
+        (* TODOD: pub, const, pub(crate) *)
+        string "<safety>" ^^ space ^^ string "fn" ^^ space ^^ string "<ident>" ^^ parens ( any_number_of (string "<pat>" ^^ space ^^ colon ^^ string "<ty>") ) ^^ braces ( string "<expr>" )
+
+
+      method item'_HaxError ~super:_ _x2 = default_document_for "item'_HaxError"
+
+      method item'_IMacroInvokation ~super:_ ~macro:_ ~argument:_ ~span:_
+          ~witness:_ =
+        default_document_for "item'_IMacroInvokation"
+
+      method item'_Impl ~super:_ ~generics:_ ~self_ty:_ ~of_trait:_ ~items:_
+          ~parent_bounds:_ ~safety:_ =
+        default_document_for "item'_Impl"
+
+      method item'_NotImplementedYet =
+        default_document_for "item'_NotImplementedYet"
+
+      method item'_Quote ~super:_ _x2 = default_document_for "item'_Quote"
+
+      method item'_Trait ~super:_ ~name:_ ~generics:_ ~items:_ ~safety:_ =
+        string "trait" ^^ space ^^ string "<ident>" ^^ braces ( any_number_of (string "<trait_item>") )
+
+      method item'_TyAlias ~super:_ ~name:_ ~generics:_ ~ty:_ =
+        string "type" ^^ space ^^ string "<ident>" ^^ space ^^ string "=" ^^ space ^^ string "<ty>"
+
+      method item'_Type ~super:_ ~name:_ ~generics:_ ~variants:_ ~is_struct =
+        (* TODO globality *)
+        if is_struct
+        then string "struct" ^^ space ^^ string "<ident>" ^^ space ^^ string "=" ^^ space ^^ braces ( any_number_of ( string "<name>" ^^ colon ^^ space ^^ string "<ty>" ^^ comma ) )
+        else string "enum" ^^ space ^^ string "<ident>" ^^ space ^^ string "=" ^^ space ^^ braces ( any_number_of (string "<ident>" ^^ option_of (parens (any_number_of (string "<ty>"))) ^^ comma ) )
+
+      method item'_Use ~super:_ ~path:_ ~is_external:_ ~rename:_ =
+        default_document_for "item'_Use"
+
+      method lhs_LhsArbitraryExpr ~e:_ ~witness:_ =
+        default_document_for "lhs_LhsArbitraryExpr"
+
+      method lhs_LhsArrayAccessor ~e:_ ~typ:_ ~index:_ ~witness:_ =
+        default_document_for "lhs_LhsArrayAccessor"
+
+      method lhs_LhsFieldAccessor_field ~e:_ ~typ:_ ~field:_ ~witness:_ =
+        default_document_for "lhs_LhsFieldAccessor_field"
+
+      method lhs_LhsFieldAccessor_tuple ~e:_ ~typ:_ ~nth:_ ~size:_ ~witness:_ =
+        default_document_for "lhs_LhsFieldAccessor_tuple"
+
+      method lhs_LhsLocalVar ~var:_ ~typ:_ =
+        default_document_for "lhs_LhsLocalVar"
+
+      method literal_Bool _x1 = default_document_for "literal_Bool"
+      method literal_Char _x1 = default_document_for "literal_Char"
+
+      method literal_Float ~value:_ ~negative:_ ~kind:_ =
+        default_document_for "literal_Float"
+
+      method literal_Int ~value:_ ~negative:_ ~kind:_ =
+        default_document_for "literal_Int"
+
+      method literal_String _x1 = default_document_for "literal_String"
+
+      method loop_kind_ForIndexLoop ~start:_ ~end_:_ ~var:_ ~var_typ:_
+          ~witness:_ =
+        default_document_for "loop_kind_ForIndexLoop"
+
+      method loop_kind_ForLoop ~pat:_ ~it:_ ~witness:_ =
+        default_document_for "loop_kind_ForLoop"
+
+      method loop_kind_UnconditionalLoop =
+        default_document_for "loop_kind_UnconditionalLoop"
+
+      method loop_kind_WhileLoop ~condition:_ ~witness:_ =
+        default_document_for "loop_kind_WhileLoop"
+
+      method loop_state ~init:_ ~bpat:_ ~witness:_ =
+        default_document_for "loop_state"
+
+      method modul _x1 = default_document_for "modul"
+
+      method param ~pat:_ ~typ:_ ~typ_span:_ ~attrs:_ =
+        default_document_for "param"
+
+      method pat ~p:_ ~span:_ ~typ:_ = default_document_for "pat"
+
+      method pat'_PAscription ~super:_ ~typ:_ ~typ_span:_ ~pat:_ =
+        default_document_for "pat'_PAscription"
+
+      method pat'_PBinding ~super:_ ~mut:_ ~mode:_ ~var:_ ~typ:_ ~subpat:_ =
+        default_document_for "pat'_PBinding"
+
+      method pat'_PConstant ~super:_ ~lit:_ =
+        default_document_for "pat'_PConstant"
+
+      method pat'_PConstruct_inductive ~super:_ ~constructor:_ ~is_record:_
+          ~is_struct:_ ~fields:_ =
+        default_document_for "pat'_PConstruct_inductive"
+
+      method pat'_PConstruct_tuple ~super:_ ~components:_ =
+        default_document_for "pat'_PConstruct_tuple"
+
+      method pat'_PDeref ~super:_ ~subpat:_ ~witness:_ =
+        default_document_for "pat'_PDeref"
+
+      method pat'_PWild = default_document_for "pat'_PWild"
+      method printer_name = default_string_for "printer_name"
+
+      method projection_predicate ~impl:_ ~assoc_item:_ ~typ:_ =
+        default_document_for "projection_predicate"
+
+      method safety_kind_Safe = default_document_for "safety_kind_Safe"
+      method safety_kind_Unsafe _x1 = default_document_for "safety_kind_Unsafe"
+
+      method supported_monads_MException _x1 =
+        default_document_for "supported_monads_MException"
+
+      method supported_monads_MOption =
+        default_document_for "supported_monads_MOption"
+
+      method supported_monads_MResult _x1 =
+        default_document_for "supported_monads_MResult"
+
+      method trait_goal ~trait:_ ~args:_ = default_document_for "trait_goal"
+
+      method trait_item ~ti_span:_ ~ti_generics:_ ~ti_v:_ ~ti_ident:_
+          ~ti_attrs:_ =
+        default_document_for "trait_item"
+
+      method trait_item'_TIDefault ~params:_ ~body:_ ~witness:_ =
+        default_document_for "trait_item'_TIDefault"
+
+      method trait_item'_TIFn _x1 = default_document_for "trait_item'_TIFn"
+      method trait_item'_TIType _x1 = default_document_for "trait_item'_TIType"
+
+      method ty_TApp_application ~typ:_ ~generics:_ =
+        default_document_for "ty_TApp_application"
+
+      method ty_TApp_tuple ~types:_ = default_document_for "ty_TApp_tuple"
+      method ty_TArray ~typ:_ ~length:_ = default_document_for "ty_TArray"
+      method ty_TArrow _x1 _x2 = default_document_for "ty_TArrow"
+
+      method ty_TAssociatedType ~impl:_ ~item:_ =
+        default_document_for "ty_TAssociatedType"
+
+      method ty_TBool = default_document_for "ty_TBool"
+      method ty_TChar = default_document_for "ty_TChar"
+      method ty_TDyn ~witness:_ ~goals:_ = default_document_for "ty_TDyn"
+      method ty_TFloat _x1 = default_document_for "ty_TFloat"
+      method ty_TInt _x1 = default_document_for "ty_TInt"
+      method ty_TOpaque _x1 = default_document_for "ty_TOpaque"
+      method ty_TParam _x1 = default_document_for "ty_TParam"
+      method ty_TRawPointer ~witness:_ = default_document_for "ty_TRawPointer"
+
+      method ty_TRef ~witness:_ ~region:_ ~typ:_ ~mut:_ =
+        default_document_for "ty_TRef"
+
+      method ty_TSlice ~witness:_ ~ty:_ = default_document_for "ty_TSlice"
+      method ty_TStr = default_document_for "ty_TStr"
+
+      method variant ~name:_ ~arguments:_ ~is_record:_ ~attrs:_ =
+        default_document_for "variant"
+      (* END GENERATED *)
+    end
 end
 
-module type S = sig
-  val pitem : item -> C.AST.decl list
+module HaxCFG = struct
+  module MyPrinter = Make (Features.Full) (struct let default x = x end)
+
+  module AST = Ast.Make (Features.Full)
+  open AST
+
+  let print_ast (_ : unit) =
+    let my_printer = new MyPrinter.printer in
+
+    let dummy_ident : concrete_ident =
+      Concrete_ident.of_name Value Hax_lib__RefineAs__into_checked
+    in
+    let dummy_ty : ty = TStr in
+    let dummy_expr : expr = { e = Literal (String "dummy"); span = Span.dummy (); typ = dummy_ty } in
+    let dummy_generics : generics = { params = []; constraints = [] } in
+    let dummy_global_ident : global_ident =
+      `Concrete (dummy_ident)
+    in
+    let dummy_pat = { p = PWild; span = Span.dummy(); typ = dummy_ty } in
+    let dummy_local_ident : local_ident = { name = "dummy"; id = Local_ident.mk_id Typ 0 } in
+
+    (* print#_do_not_override_lazy_of_item' ~super AstPos_item__v v *)
+
+    let my_items' : item' list =
+      [
+        Fn {
+          name = dummy_ident;
+          generics = dummy_generics;
+          body = dummy_expr;
+          params = [];
+          safety = Safe};
+        TyAlias {
+          name = dummy_ident;
+          generics = dummy_generics;
+          ty = dummy_ty};
+        (* struct *)
+        Type {
+          name = dummy_ident;
+          generics = dummy_generics;
+          variants = [];
+          is_struct = false;
+        } ;
+        (* enum *)
+        Type {
+          name = dummy_ident;
+          generics = dummy_generics;
+          variants = [];
+          is_struct = true;
+        } ;
+      ]
+      (* @ List.map ~f:(fun x -> IMacroInvokation { *)
+      (*     macro = x; *)
+      (*     argument = "TODO"; *)
+      (*     span = Span.dummy(); *)
+      (*     witness : Features.On.macro; (\* TODO: Check feature enabled in target langauge *\) *)
+      (*   }) ["public_nat_mod"; *)
+      (*       "bytes"; *)
+      (*       "public_bytes"; *)
+      (*       "array"; *)
+      (* "unsigned_public_integer"] *)
+      @ [
+        Trait {
+          name = dummy_ident;
+          generics = dummy_generics;
+          items = [];
+          safety = Safe;
+        } ;
+        Impl {
+          generics = dummy_generics;
+          self_ty = dummy_ty;
+          of_trait = (dummy_global_ident , []);
+          items = [];
+          parent_bounds = [];
+          safety = Safe;
+        };
+        Alias { name = dummy_ident; item = dummy_ident };
+        Use { path = []; is_external = false; rename = None; };
+        Quote { contents = []; witness = Features.On.quote (* TODO: Check if feature enabled *); };
+        HaxError "dummy";
+        NotImplementedYet
+      ]
+    in
+    let my_items : item list = List.map ~f:(fun x -> { v = x; span = Span.dummy(); ident = dummy_ident; attrs = [] }) my_items' in
+    let item_string =
+      "<item> ::=\n" ^
+      String.concat ~sep:"\n" (
+        List.map
+          ~f:(fun item ->
+              let buf = Buffer.create 0 in
+              PPrint.ToBuffer.pretty 1.0 80 buf (my_printer#entrypoint_item item);
+              "| " ^ Buffer.contents buf
+            )
+          my_items)
+    in
+
+    let my_exprs' = [
+      If { cond = dummy_expr; then_ = dummy_expr; else_ = None };
+      App { f = dummy_expr; args = []; generic_args = []; bounds_impls = []; trait = None; };
+      Literal (String "dummy");
+      Array [];
+      (* Construct { *)
+      (*   constructor = dummy_global_ident; *)
+      (*   is_record = false; *)
+      (*   is_struct = false; *)
+      (*   fields = []; *)
+      (*   base = None; *)
+      (* }; *)
+      (* Match { scrutinee = dummy_expr; arms = [] }; *)
+      (* Let { monadic = None; lhs = dummy_pat; rhs = dummy_expr; body = dummy_expr; }; *)
+      (* Block { e = dummy_expr; safety_mode = Safe; witness = Features.On.block _ _ }; *)
+      (* LocalVar dummy_local_ident; *)
+      (* GlobalVar dummy_global_ident; *)
+      (* Ascription { e = dummy_expr; typ = dummy_ty }; *)
+      (* MacroInvokation { macro = dummy_global_ident; args = "dummy"; witness = Features.On.macro; } *)
+      (* Assign { lhs = LhsLocalVar { var = dummy_local_ident; typ = dummy_ty }; e = dummy_expr; witness = _ } *)
+      (* Loop { body = dummy_expr; kind = UnconditionalLoop; state = None; label = None; witness = Features.On.loop; }; *)
+      (* Break { e = dummy_expr; label = None; witness = (Features.On.break , Features.On.loop) }; *)
+      (* Return { e = dummy_expr; witness = Features.On.early_exit }; *)
+      (* QuestionMark { e = dummy_expr; return_typ = dummy_ty; witness = Features.On.question_mark }; *)
+      (* Continue { *)
+      (*   e = None; *)
+      (*   label = None; *)
+      (*   witness = (Features.On.continue , Features.On.loop); *)
+      (* }; *)
+      (* (\* Mem *\) *)
+      (* | Borrow of { kind : borrow_kind; e : expr; witness : Features.On.reference } *)
+      (* (\* Raw borrow *\) *)
+      (* | AddressOf of { *)
+      (*   mut : Features.On.mutable_pointer mutability; *)
+      (*   e : expr; *)
+      (*   witness : Features.On.raw_pointer; *)
+      (* } *)
+      (* | Closure of { params : pat list; body : expr; captures : expr list } *)
+      (* | EffectAction of { action : Features.On.monadic_action; argument : expr } *)
+      (* | Quote of quote *)
+      (* (\** A quotation is an inlined piece of backend code *)
+      (*     interleaved with Rust code *\) *)
+    ] in
+    let my_exprs = List.map ~f:(fun x -> { e = x; span = Span.dummy(); typ = dummy_ty }) my_exprs' in
+    let expr_string =
+      "<expr> ::=\n" ^
+      String.concat ~sep:"\n" (
+        List.map
+          ~f:(fun expr ->
+              let buf = Buffer.create 0 in
+              PPrint.ToBuffer.pretty 1.0 80 buf (my_printer#entrypoint_expr expr);
+              "| " ^ Buffer.contents buf
+            )
+          my_exprs)
+    in
+
+    let my_tys = [
+      TBool;
+      TChar;
+      TInt ({ size = S8; signedness = Signed });
+      (* TFloat of float_kind; *)
+      TStr;
+      (* TApp of { ident : global_ident; args : generic_value list }; *)
+      (* TArray of { typ : ty; length : expr }; *)
+      (* TSlice of { witness : F.slice; ty : ty }; *)
+      (* TRawPointer of { witness : F.raw_pointer } (\* todo *\); *)
+      (* TRef of { *)
+      (*     witness : F.reference; *)
+      (*     region : todo; *)
+      (*     typ : ty; *)
+      (*     mut : F.mutable_reference mutability; *)
+      (*   }; *)
+      (* TParam of local_ident; *)
+      (* TArrow of ty list * ty; *)
+      (* TAssociatedType of { impl : impl_expr; item : concrete_ident }; *)
+      (* TOpaque of concrete_ident; *)
+      (* TDyn of { witness : F.dyn; goals : dyn_trait_goal list }; *)
+    ] in
+    let ty_string =
+      "<ty> ::=\n" ^
+      String.concat ~sep:"\n" (
+        List.map
+          ~f:(fun ty ->
+              let buf = Buffer.create 0 in
+              PPrint.ToBuffer.pretty 1.0 80 buf (my_printer#entrypoint_ty ty);
+              "| " ^ Buffer.contents buf
+            )
+          my_tys)
+    in
+
+    let my_pats' = [
+      PWild;
+      (* PAscription of { typ : ty; typ_span : span; pat : pat }; *)
+      (* PConstruct of { constructor : global_ident; is_record : bool; (\* are fields named? *\) is_struct : bool; (\* a struct has one constructor *\) fields : field_pat list; }; *)
+      (* POr of { subpats : pat list }; *)
+      (* PArray of { args : pat list }; *)
+      (* PDeref of { subpat : pat; witness : F.reference }; *)
+      (* PConstant of { lit : literal }; *)
+      (* PBinding of { mut : F.mutable_variable mutability; mode : binding_mode; var : local_ident; typ : ty; subpat : (pat * F.as_pattern) option; }; *)
+    ] in
+    let my_pats = List.map ~f:(fun x -> { p = x; span = Span.dummy(); typ = dummy_ty }) my_pats' in
+    let pat_string =
+      "<pat> ::=\n" ^
+      String.concat ~sep:"\n" (
+        List.map
+          ~f:(fun pat ->
+              let buf = Buffer.create 0 in
+              PPrint.ToBuffer.pretty 1.0 80 buf (my_printer#entrypoint_pat pat);
+              "| " ^ Buffer.contents buf
+            )
+          my_pats)
+    in
+
+    [Types.
+       {
+         path = "ast_spec.txt";
+         contents =
+           "Hax CFG"
+           ^ "\n"
+           ^ "======="
+           ^ "\n"
+           ^ expr_string
+           ^ "\n\n"
+           ^ ty_string
+           ^ "\n\n"
+           ^ pat_string
+           ^ "\n\n"
+           ^ item_string;
+         sourcemap = None;
+       }]
 end
 
-let make ctx =
-  (module Make (struct
-    let ctx = ctx
-  end) : S)
-
-let string_of_item (item : item) : string =
-  let (module Print) =
-    make { current_namespace = U.Concrete_ident_view.to_namespace item.ident }
-  in
-  List.map ~f:C.decl_to_string @@ Print.pitem item |> String.concat ~sep:"\n"
-
-let string_of_items : AST.item list -> string =
-  List.map ~f:string_of_item >> List.map ~f:String.strip
-  >> List.filter ~f:(String.is_empty >> not)
-  >> String.concat ~sep:"\n\n"
-
-let hardcoded_coq_headers =
-  "(* File automatically generated by Hacspec *)\n\
-   From Hacspec Require Import Hacspec_Lib MachineIntegers.\n\
-   From Coq Require Import ZArith.\n\
-   Import List.ListNotations.\n\
-   Open Scope Z_scope.\n\
-   Open Scope bool_scope.\n"
-
-let translate _ (_bo : BackendOptions.t) ~(bundles : AST.item list list)
-    (items : AST.item list) : Types.file list =
-  U.group_items_by_namespace items
-  |> Map.to_alist
-  |> List.map ~f:(fun (ns, items) ->
-         let mod_name =
-           String.concat ~sep:"_"
-             (List.map
-                ~f:(map_first_letter String.uppercase)
-                (fst ns :: snd ns))
-         in
-
-         Types.
-           {
-             path = mod_name ^ ".v";
-             contents =
-               hardcoded_coq_headers ^ "\n" ^ string_of_items items ^ "\n";
-             sourcemap = None;
-           })
+let translate _ (_bo) _ = HaxCFG.print_ast ()
 
 open Phase_utils
 
