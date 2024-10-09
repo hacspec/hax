@@ -114,15 +114,44 @@ struct
   let default_string_for s = "TODO: please implement the method `" ^ s ^ "`"
   let default_document_for = default_string_for >> string
 
+  module CoqNotation = struct
+    let definition name params ty body =
+      string "Definition" ^^ space ^^ name ^^ concat_map (fun x -> space ^^ x) params ^^ space ^^ string ":=" ^^ nest 2 (
+        break 1 ^^ body
+      ) ^^ dot
+
+    let instance name params typ body =
+      string "Instance" ^^ space ^^ name ^^ concat_map (fun x -> space ^^ x) params ^^ space ^^ colon ^^ space ^^ typ ^^ space ^^ string ":=" ^^ nest 2 (
+        break 1 ^^ body
+      ) ^^ dot
+  end
+
+  let pconcrete_ident (id : concrete_ident) : string =
+    let id = U.Concrete_ident_view.to_view id in
+    id.definition
+
+  let pglobal_ident (id : global_ident) : string =
+    match id with
+    | `Concrete cid -> pconcrete_ident cid
+    | `Projector (`Concrete cid) -> pconcrete_ident cid ^ "_ci"
+    | `Primitive p_id -> primitive_to_string p_id
+    | `TupleType _i -> "TODO (global ident) tuple type"
+    | `TupleCons _i -> "TODO (global ident) tuple cons"
+    | `Projector (`TupleField _) | `TupleField _ -> "TODO (global ident) tuple field"
+    | _ -> .
+
   class printer =
     object
       inherit Base.base
 
       (* BEGIN GENERATED *)
-      method arm ~arm:_ ~span:_ = default_document_for "arm"
+      method arm ~arm ~span:_ =
+        arm#p
 
-      method arm' ~super:_ ~arm_pat:_ ~body:_ ~guard:_ =
-        default_document_for "arm'"
+      method arm' ~super:_ ~arm_pat ~body ~guard:_ =
+        space ^^ arm_pat#p ^^ space ^^ string "=>" ^^ nest 2 (
+          break 1 ^^ body#p
+        )
 
       method attrs _x1 = default_document_for "attrs"
 
@@ -141,19 +170,19 @@ struct
       method error_expr _x1 = default_document_for "error_expr"
       method error_item _x1 = default_document_for "error_item"
       method error_pat _x1 = default_document_for "error_pat"
-      method expr ~e:_ ~span:_ ~typ:_ = default_document_for "expr"
+      method expr ~e ~span:_ ~typ = e#p (* parens (e#p ^^ space ^^ colon ^^ space ^^ typ#p) *)
 
       method expr'_AddressOf ~super:_ ~mut:_ ~e:_ ~witness:_ =
         default_document_for "expr'_AddressOf"
 
-      method expr'_App_application ~super:_ ~f:_ ~args:_ ~generics:_ =
-        default_document_for "expr'_App_application"
+      method expr'_App_application ~super:_ ~f ~args ~generics:_ =
+        f#p ^^ concat_map (fun x -> space ^^ parens(x#p)) args
 
       method expr'_App_constant ~super:_ ~constant:_ ~generics:_ =
         default_document_for "expr'_App_constant"
 
-      method expr'_App_field_projection ~super:_ ~field:_ ~e:_ =
-        default_document_for "expr'_App_field_projection"
+      method expr'_App_field_projection ~super:_ ~field ~e =
+        field#p ^^ space ^^ e#p
 
       method expr'_App_tuple_projection ~super:_ ~size:_ ~nth:_ ~e:_ =
         default_document_for "expr'_App_tuple_projection"
@@ -176,9 +205,9 @@ struct
       method expr'_Closure ~super:_ ~params:_ ~body:_ ~captures:_ =
         default_document_for "expr'_Closure"
 
-      method expr'_Construct_inductive ~super:_ ~constructor:_ ~is_record:_
-          ~is_struct:_ ~fields:_ ~base:_ =
-        default_document_for "expr'_Construct_inductive"
+      method expr'_Construct_inductive ~super:_ ~constructor ~is_record:_
+          ~is_struct:_ ~fields ~base:_ =
+        constructor#p ^^ concat_map (fun (ident, exp) -> space ^^ exp#p) fields
 
       method expr'_Construct_tuple ~super:_ ~components:_ =
         default_document_for "expr'_Construct_tuple"
@@ -189,11 +218,11 @@ struct
       method expr'_EffectAction ~super:_ ~action:_ ~argument:_ =
         default_document_for "expr'_EffectAction"
 
-      method expr'_GlobalVar_concrete ~super:_ _x2 =
-        default_document_for "expr'_GlobalVar_concrete"
+      method expr'_GlobalVar_concrete ~super:_ x2 =
+        x2#p
 
-      method expr'_GlobalVar_primitive ~super:_ _x2 =
-        default_document_for "expr'_GlobalVar_primitive"
+      method expr'_GlobalVar_primitive ~super:_ x2 =
+        string (primitive_to_string x2)
 
       method expr'_If ~super:_ ~cond:_ ~then_:_ ~else_:_ =
         default_document_for "expr'_If"
@@ -201,8 +230,8 @@ struct
       method expr'_Let ~super:_ ~monadic:_ ~lhs:_ ~rhs:_ ~body:_ =
         default_document_for "expr'_Let"
 
-      method expr'_Literal ~super:_ _x2 = default_document_for "expr'_Literal"
-      method expr'_LocalVar ~super:_ _x2 = default_document_for "expr'_LocalVar"
+      method expr'_Literal ~super:_ x2 = x2#p
+      method expr'_LocalVar ~super:_ x2 = x2#p
 
       method expr'_Loop ~super:_ ~body:_ ~kind:_ ~state:_ ~control_flow:_ ~label:_ ~witness:_ =
         default_document_for "expr'_Loop"
@@ -210,8 +239,10 @@ struct
       method expr'_MacroInvokation ~super:_ ~macro:_ ~args:_ ~witness:_ =
         default_document_for "expr'_MacroInvokation"
 
-      method expr'_Match ~super:_ ~scrutinee:_ ~arms:_ =
-        default_document_for "expr'_Match"
+      method expr'_Match ~super:_ ~scrutinee ~arms =
+        string "match" ^^ space ^^ scrutinee#p ^^ space ^^ string "with" ^^ break 1
+        ^^ concat_map (fun x -> string "|" ^^ space ^^ x#p ^^ break 1) arms
+        ^^ string "end"
 
       method expr'_QuestionMark ~super:_ ~e:_ ~return_typ:_ ~witness:_ =
         default_document_for "expr'_QuestionMark"
@@ -236,8 +267,8 @@ struct
       method generic_constraint_GCType _x1 =
         default_document_for "generic_constraint_GCType"
 
-      method generic_param ~ident:_ ~span:_ ~attrs:_ ~kind:_ =
-        default_document_for "generic_param"
+      method generic_param ~ident ~span:_ ~attrs:_ ~kind:_ =
+        ident#p
 
       method generic_param_kind_GPConst ~typ:_ =
         default_document_for "generic_param_kind_GPConst"
@@ -288,23 +319,26 @@ struct
       method impl_expr_kind_Self = default_document_for "impl_expr_kind_Self"
       method impl_ident ~goal:_ ~name:_ = default_document_for "impl_ident"
 
-      method impl_item ~ii_span:_ ~ii_generics:_ ~ii_v:_ ~ii_ident:_ ~ii_attrs:_
-          =
-        default_document_for "impl_item"
+      method impl_item ~ii_span:_ ~ii_generics:_ ~ii_v ~ii_ident ~ii_attrs:_ = ii_ident#p ^^ space ^^ string ":=" ^^ space ^^ ii_v#p ^^ semi
 
-      method impl_item'_IIFn ~body:_ ~params:_ =
-        default_document_for "impl_item'_IIFn"
+      method impl_item'_IIFn ~body ~params =
+        if List.length params == 0
+        then body#p
+        else
+          string "fun" ^^ space ^^ (concat_map (fun x -> x#p ^^ space) params) ^^ string "=>" ^^ nest 2 (
+            break 1 ^^ body#p
+          )
 
-      method impl_item'_IIType ~typ:_ ~parent_bounds:_ =
-        default_document_for "impl_item'_IIType"
+      method impl_item'_IIType ~typ ~parent_bounds:_ =
+        typ#p
 
-      method item ~v:_ ~span:_ ~ident:_ ~attrs:_ = default_document_for "item"
+      method item ~v ~span:_ ~ident:_ ~attrs:_ = v#p ^^ break 1
 
       method item'_Alias ~super:_ ~name:_ ~item:_ =
         default_document_for "item'_Alias"
 
-      method item'_Fn ~super:_ ~name:_ ~generics:_ ~body:_ ~params:_ ~safety:_ =
-        default_document_for "item'_Fn"
+      method item'_Fn ~super:_ ~name ~generics:_ ~body ~params ~safety:_ =
+        CoqNotation.definition (name#p) (List.map ~f:(fun x -> x#p) params) (string "_") body#p (* TODO: Why is type not available here ? *)
 
       method item'_HaxError ~super:_ _x2 = default_document_for "item'_HaxError"
 
@@ -312,34 +346,36 @@ struct
           ~witness:_ =
         default_document_for "item'_IMacroInvokation"
 
-      method item'_Impl ~super:_ ~generics:_ ~self_ty:_ ~of_trait:_ ~items:_
+      method item'_Impl ~super:_ ~generics:_ ~self_ty ~of_trait ~items
           ~parent_bounds:_ ~safety:_ =
-        default_document_for "item'_Impl"
+        let (name,_) = of_trait#v in
+        CoqNotation.instance (self_ty#p ^^ string "_" ^^ name#p) [] (name#p) (braces (nest 2 (concat_map (fun x -> break 1 ^^ x#p) items) ^^ break 1))
 
-      method item'_NotImplementedYet =
-        default_document_for "item'_NotImplementedYet"
+      method item'_NotImplementedYet = string "(* NotImplementedYet *)"
 
       method item'_Quote ~super:_ ~quote:_ ~origin:_ =
         default_document_for "item'_Quote"
 
-      method item'_Trait ~super:_ ~name:_ ~generics:_ ~items:_ ~safety:_ =
-        default_document_for "item'_Trait"
+      method item'_Trait ~super:_ ~name ~generics:_ ~items ~safety:_ =
+        string "Class" ^^ space ^^ name#p ^^ space ^^ string ":=" ^^
+        braces (nest 2 (concat_map (fun x -> break 1 ^^ x#p) items) ^^ break 1) ^^ dot
 
-      method item'_TyAlias ~super:_ ~name:_ ~generics:_ ~ty:_ =
-        default_document_for "item'_TyAlias"
+      method item'_TyAlias ~super:_ ~name ~generics:_ ~ty =
+        string "Notation" ^^ space ^^ string "\"'" ^^ name#p ^^ string "'\"" ^^ space ^^ string ":=" ^^ space ^^ ty#p ^^ dot
+
+      method item'_Type_struct ~super:_ ~name ~generics:_ ~tuple_struct:_ ~arguments =
+        string "Record" ^^ space ^^ name#p ^^ space ^^ braces ( nest 2 (concat_map (fun (x,y,z) -> break 1 ^^ x#p) arguments) ^^ break 1 ) ^^ dot
+
+      method item'_Type_enum ~super:_ ~name ~generics:_ ~variants =
+        string "Inductive" ^^ space ^^ name#p ^^ space ^^ string ":=" ^^ concat_map (fun x -> break 1 ^^ string "|" ^^ space ^^ x#p) variants ^^ dot
 
       method item'_Type ~super:_ ~name:_ ~generics:_ ~variants:_ ~is_struct:_ =
         default_document_for "item'_Type"
 
-      method item'_Type_enum ~super:_ ~name:_ ~generics:_ ~variants:_ =
-        default_document_for "item'_Type_enum"
-
-      method item'_Type_struct ~super:_ ~name:_ ~generics:_ ~tuple_struct:_
-          ~arguments:_ =
-        default_document_for "item'_Type_struct"
-
-      method item'_Use ~super:_ ~path:_ ~is_external:_ ~rename:_ =
-        default_document_for "item'_Use"
+      method item'_Use ~super:_ ~path ~is_external:_ ~rename:_ =
+        if List.length path == 0
+        then empty
+        else string "Require Import" ^^ space ^^ string (String.concat ~sep:"." path) ^^ dot
 
       method lhs_LhsArbitraryExpr ~e:_ ~witness:_ =
         default_document_for "lhs_LhsArbitraryExpr"
@@ -356,7 +392,7 @@ struct
       method lhs_LhsLocalVar ~var:_ ~typ:_ =
         default_document_for "lhs_LhsLocalVar"
 
-      method literal_Bool _x1 = default_document_for "literal_Bool"
+      method literal_Bool x1 = string (if x1 then "true" else "false")
       method literal_Char _x1 = default_document_for "literal_Char"
 
       method literal_Float ~value:_ ~negative:_ ~kind:_ =
@@ -385,23 +421,23 @@ struct
 
       method modul _x1 = default_document_for "modul"
 
-      method param ~pat:_ ~typ:_ ~typ_span:_ ~attrs:_ =
-        default_document_for "param"
+      method param ~pat ~typ ~typ_span:_ ~attrs:_ =
+        parens (pat#p ^^ space ^^ colon ^^ space ^^ typ#p)
 
-      method pat ~p:_ ~span:_ ~typ:_ = default_document_for "pat"
+      method pat ~p ~span:_ ~typ:_ = p#p
 
       method pat'_PAscription ~super:_ ~typ:_ ~typ_span:_ ~pat:_ =
         default_document_for "pat'_PAscription"
 
-      method pat'_PBinding ~super:_ ~mut:_ ~mode:_ ~var:_ ~typ:_ ~subpat:_ =
-        default_document_for "pat'_PBinding"
+      method pat'_PBinding ~super:_ ~mut:_ ~mode:_ ~var ~typ:_ ~subpat:_ =
+        var#p (* ^^ space ^^ colon ^^ space ^^ typ#p *)
 
       method pat'_PConstant ~super:_ ~lit:_ =
         default_document_for "pat'_PConstant"
 
-      method pat'_PConstruct_inductive ~super:_ ~constructor:_ ~is_record:_
-          ~is_struct:_ ~fields:_ =
-        default_document_for "pat'_PConstruct_inductive"
+      method pat'_PConstruct_inductive ~super:_ ~constructor ~is_record:_
+          ~is_struct:_ ~fields =
+        constructor#p ^^ concat_map (fun (ident, exp) -> space ^^ exp#p) fields
 
       method pat'_PConstruct_tuple ~super:_ ~components:_ =
         default_document_for "pat'_PConstruct_tuple"
@@ -409,7 +445,7 @@ struct
       method pat'_PDeref ~super:_ ~subpat:_ ~witness:_ =
         default_document_for "pat'_PDeref"
 
-      method pat'_PWild = default_document_for "pat'_PWild"
+      method pat'_PWild = string "_"
       method printer_name = default_string_for "printer_name"
 
       method projection_predicate ~impl:_ ~assoc_item:_ ~typ:_ =
@@ -429,43 +465,43 @@ struct
 
       method trait_goal ~trait:_ ~args:_ = default_document_for "trait_goal"
 
-      method trait_item ~ti_span:_ ~ti_generics:_ ~ti_v:_ ~ti_ident:_
+      method trait_item ~ti_span:_ ~ti_generics:_ ~ti_v ~ti_ident
           ~ti_attrs:_ =
-        default_document_for "trait_item"
+        ti_ident#p ^^ space ^^ colon ^^ space ^^ ti_v#p ^^ semi
 
       method trait_item'_TIDefault ~params:_ ~body:_ ~witness:_ =
         default_document_for "trait_item'_TIDefault"
 
-      method trait_item'_TIFn _x1 = default_document_for "trait_item'_TIFn"
+      method trait_item'_TIFn x1 = x1#p
       method trait_item'_TIType _x1 = default_document_for "trait_item'_TIType"
 
-      method ty_TApp_application ~typ:_ ~generics:_ =
-        default_document_for "ty_TApp_application"
+      method ty_TApp_application ~typ ~generics:_ =
+        typ#p
 
       method ty_TApp_tuple ~types:_ = default_document_for "ty_TApp_tuple"
       method ty_TArray ~typ:_ ~length:_ = default_document_for "ty_TArray"
-      method ty_TArrow _x1 _x2 = default_document_for "ty_TArrow"
+      method ty_TArrow x1 x2 = concat_map (fun x -> x#p ^^ space ^^ string "->" ^^ space) x1 ^^ x2#p
 
       method ty_TAssociatedType ~impl:_ ~item:_ =
         default_document_for "ty_TAssociatedType"
 
-      method ty_TBool = default_document_for "ty_TBool"
+      method ty_TBool = string "bool"
       method ty_TChar = default_document_for "ty_TChar"
       method ty_TDyn ~witness:_ ~goals:_ = default_document_for "ty_TDyn"
       method ty_TFloat _x1 = default_document_for "ty_TFloat"
       method ty_TInt _x1 = default_document_for "ty_TInt"
       method ty_TOpaque _x1 = default_document_for "ty_TOpaque"
-      method ty_TParam _x1 = default_document_for "ty_TParam"
+      method ty_TParam x1 = x1#p
       method ty_TRawPointer ~witness:_ = default_document_for "ty_TRawPointer"
 
       method ty_TRef ~witness:_ ~region:_ ~typ:_ ~mut:_ =
         default_document_for "ty_TRef"
 
       method ty_TSlice ~witness:_ ~ty:_ = default_document_for "ty_TSlice"
-      method ty_TStr = default_document_for "ty_TStr"
+      method ty_TStr = string "string"
 
-      method item'_Enum_Variant ~name:_ ~arguments:_ ~is_record:_ ~attrs:_ =
-        default_document_for "variant"
+      method item'_Enum_Variant ~name ~arguments ~is_record:_ ~attrs:_ =
+        name#p ^^ space ^^ colon ^^ space ^^ concat_map (fun (ident,typ,attr) -> parens (ident#p ^^ space ^^ colon ^^ space ^^ typ#p)) arguments ^^ semi
       (* END GENERATED *)
     end
 end
@@ -494,7 +530,7 @@ let translate _ _ ~bundles:_ (items : AST.item list) :
                    ~f:(fun item ->
                        let buf = Buffer.create 0 in
                        PPrint.ToBuffer.pretty 1.0 80 buf (my_printer#entrypoint_item item);
-                       "| " ^ Buffer.contents buf
+                       Buffer.contents buf
                      )
                    items);
              sourcemap = None;
