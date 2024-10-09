@@ -201,7 +201,7 @@ fn run_engine(
     haxmeta: HaxMeta<hax_frontend_exporter::ThirBody>,
     working_dir: PathBuf,
     manifest_dir: PathBuf,
-    backend: &BackendOptions,
+    backend: &BackendOptions<()>,
     message_format: MessageFormat,
 ) -> bool {
     let engine_options = EngineOptions {
