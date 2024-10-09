@@ -104,18 +104,21 @@ val v_mk_int_lemma: #t:inttype -> n:range_t t -> Lemma
   (v #t (mk_int #t n) == n)
   [SMTPat (v #t (mk_int #t n))]
 
-let mk_uint8 x = mk_int #U8 x
-let mk_int8  x = mk_int #I8 x
-let mk_uint16  x = mk_int #U16 x
-let mk_int16  x = mk_int #I16 x
-let mk_uint32 x = mk_int #U32 x
-let mk_int32  x = mk_int #I32 x
-let mk_uint64 x = mk_int #U64 x
-let mk_int64  x = mk_int #I64 x
-let mk_uint128 x = mk_int #U128 x
-let mk_int128  x = mk_int #I128 x
+let mk_u8 x = mk_int #U8 x
+let mk_i8  x = mk_int #I8 x
+let mk_u16  x = mk_int #U16 x
+let mk_i6  x = mk_int #I16 x
+let mk_u32 x = mk_int #U32 x
+let mk_i32  x = mk_int #I32 x
+let mk_u64 x = mk_int #U64 x
+let mk_i64  x = mk_int #I64 x
+let mk_u128 x = mk_int #U128 x
+let mk_i128  x = mk_int #I128 x
 let mk_usize x = mk_int #USIZE x
 let mk_isize  x = mk_int #ISIZE x
+
+let sz x = mk_usize x
+let isz  x = mk_isize x
 
 let from_uint8 (x:FStar.UInt8.t) : u8  = FStar.UInt8.v x
 let from_int8 (x:FStar.Int8.t) : i8  = FStar.Int8.v x

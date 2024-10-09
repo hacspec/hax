@@ -22,7 +22,8 @@ type t_Order = {
 }
 
 let is_match (order other: t_Order) : bool =
-  order.f_quantity >. 0uL && other.f_quantity >. 0uL && order.f_side <>. other.f_side &&
+  order.f_quantity >. Rust_primitives.mk_u64 0 && other.f_quantity >. Rust_primitives.mk_u64 0 &&
+  order.f_side <>. other.f_side &&
   (order.f_side =. (Side_Buy <: t_Side) && order.f_price >=. other.f_price ||
   order.f_side =. (Side_Sell <: t_Side) && order.f_price <=. other.f_price)
 
@@ -58,20 +59,16 @@ let process_order
   let done, matches, order, other_side:(bool & Alloc.Vec.t_Vec t_Match Alloc.Alloc.t_Global &
     t_Order &
     Alloc.Collections.Binary_heap.t_BinaryHeap v_T Alloc.Alloc.t_Global) =
-    Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Ops.Range.t_Range
-            usize)
-          ({
-              Core.Ops.Range.f_start = sz 1;
-              Core.Ops.Range.f_end
-              =
-              Alloc.Collections.Binary_heap.impl_11__len #v_T #Alloc.Alloc.t_Global other_side
-              <:
-              usize
-            }
-            <:
-            Core.Ops.Range.t_Range usize)
-        <:
-        Core.Ops.Range.t_Range usize)
+    Rust_primitives.Hax.Folds.fold_range (Rust_primitives.mk_usize 1)
+      (Alloc.Collections.Binary_heap.impl_11__len #v_T #Alloc.Alloc.t_Global other_side <: usize)
+      (fun temp_0_ temp_1_ ->
+          let done, matches, order, other_side:(bool & Alloc.Vec.t_Vec t_Match Alloc.Alloc.t_Global &
+            t_Order &
+            Alloc.Collections.Binary_heap.t_BinaryHeap v_T Alloc.Alloc.t_Global) =
+            temp_0_
+          in
+          let _:usize = temp_1_ in
+          true)
       (done, matches, order, other_side
         <:
         (bool & Alloc.Vec.t_Vec t_Match Alloc.Alloc.t_Global & t_Order &
@@ -95,7 +92,8 @@ let process_order
                     let other:v_T = other in
                     impl__Order__try_match (Core.Convert.f_into #v_T
                           #t_Order
-                          (Core.Clone.f_clone #v_T other <: v_T)
+                          #FStar.Tactics.Typeclasses.solve
+                          (Core.Clone.f_clone #v_T #FStar.Tactics.Typeclasses.solve other <: v_T)
                         <:
                         t_Order)
                       order
@@ -116,13 +114,16 @@ let process_order
                 tmp0
               in
               let (other: t_Order):t_Order =
-                Core.Convert.f_into #v_T #t_Order (Core.Option.impl__unwrap #v_T out <: v_T)
+                Core.Convert.f_into #v_T
+                  #t_Order
+                  #FStar.Tactics.Typeclasses.solve
+                  (Core.Option.impl__unwrap #v_T out <: v_T)
               in
               let other:t_Order =
                 { other with f_quantity = other.f_quantity -! m.f_quantity } <: t_Order
               in
               let other_side:Alloc.Collections.Binary_heap.t_BinaryHeap v_T Alloc.Alloc.t_Global =
-                if other.f_quantity >. 0uL
+                if other.f_quantity >. Rust_primitives.mk_u64 0
                 then
                   let other_side:Alloc.Collections.Binary_heap.t_BinaryHeap v_T Alloc.Alloc.t_Global
                   =
@@ -131,7 +132,10 @@ let process_order
                       other_side
                       (Core.Convert.f_from #v_T
                           #t_Order
-                          (Core.Clone.f_clone #t_Order other <: t_Order)
+                          #FStar.Tactics.Typeclasses.solve
+                          (Core.Clone.f_clone #t_Order #FStar.Tactics.Typeclasses.solve other
+                            <:
+                            t_Order)
                         <:
                         v_T)
                   in
@@ -160,7 +164,7 @@ let process_order
   let hax_temp_output:(Alloc.Vec.t_Vec t_Match Alloc.Alloc.t_Global & Core.Option.t_Option t_Order)
   =
     matches,
-    (if order.f_quantity >. 0uL
+    (if order.f_quantity >. Rust_primitives.mk_u64 0
       then Core.Option.Option_Some order <: Core.Option.t_Option t_Order
       else Core.Option.Option_None <: Core.Option.t_Option t_Order)
     <:
