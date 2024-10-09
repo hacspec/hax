@@ -268,47 +268,6 @@ impl<'tcx> PredicateSearcher<'tcx> {
     }
 }
 
-#[tracing::instrument(level = "trace", skip(tcx, param_env))]
-pub(super) fn path_to<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    owner_id: DefId,
-    param_env: rustc_middle::ty::ParamEnv<'tcx>,
-    target: PolyTraitRef<'tcx>,
-) -> Option<(Path<'tcx>, AnnotatedTraitPred<'tcx>)> {
-    let mut searcher = PredicateSearcher::new_for_owner(tcx, param_env, owner_id);
-    let candidate = searcher.lookup(target)?;
-    Some((candidate.path.clone(), candidate.origin))
-}
-
-#[tracing::instrument(level = "trace", skip(tcx, warn))]
-fn impl_exprs<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    owner_id: DefId,
-    param_env: rustc_middle::ty::ParamEnv<'tcx>,
-    obligations: &[rustc_trait_selection::traits::Obligation<
-        'tcx,
-        rustc_middle::ty::Predicate<'tcx>,
-    >],
-    warn: &impl Fn(&str),
-) -> Result<Vec<ImplExpr<'tcx>>, String> {
-    obligations
-        .iter()
-        // Only keep depth-1 obligations to avoid duplicate impl exprs.
-        .filter(|obligation| obligation.recursion_depth == 1)
-        .filter_map(|obligation| {
-            obligation.predicate.as_trait_clause().map(|trait_ref| {
-                impl_expr(
-                    tcx,
-                    owner_id,
-                    param_env,
-                    &trait_ref.map_bound(|p| p.trait_ref),
-                    warn,
-                )
-            })
-        })
-        .collect()
-}
-
 #[tracing::instrument(level = "trace", skip(tcx, param_env, warn))]
 pub(super) fn impl_expr<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -330,25 +289,30 @@ pub(super) fn impl_expr<'tcx>(
             def_id: impl_def_id,
             generics,
         },
-        Ok(ImplSource::Param(_)) => match path_to(tcx, owner_id, param_env, *tref) {
-            Some((path, apred)) => {
-                let r#trait = apred.clause.to_poly_trait_ref();
-                match apred.origin {
-                    BoundPredicateOrigin::SelfPred => ImplExprAtom::SelfImpl { r#trait, path },
-                    BoundPredicateOrigin::Item(index) => ImplExprAtom::LocalBound {
-                        predicate: apred.clause.upcast(tcx),
-                        index,
-                        r#trait,
-                        path,
-                    },
+        Ok(ImplSource::Param(_)) => {
+            let mut searcher = PredicateSearcher::new_for_owner(tcx, param_env, owner_id);
+            match searcher.lookup(*tref) {
+                Some(candidate) => {
+                    let path = candidate.path.clone();
+                    let r#trait = candidate.origin.clause.to_poly_trait_ref();
+                    match candidate.origin.origin {
+                        BoundPredicateOrigin::SelfPred => ImplExprAtom::SelfImpl { r#trait, path },
+                        BoundPredicateOrigin::Item(index) => ImplExprAtom::LocalBound {
+                            predicate: candidate.origin.clause.upcast(tcx),
+                            index,
+                            r#trait,
+                            path,
+                        },
+                    }
+                }
+                None => {
+                    let msg =
+                        format!("Could not find a clause for `{tref:?}` in the item parameters");
+                    warn(&msg);
+                    ImplExprAtom::Error(msg)
                 }
             }
-            None => {
-                let msg = format!("Could not find a clause for `{tref:?}` in the item parameters");
-                warn(&msg);
-                ImplExprAtom::Error(msg)
-            }
-        },
+        }
         Ok(ImplSource::Builtin(BuiltinImplSource::Object { .. }, _)) => ImplExprAtom::Dyn,
         Ok(ImplSource::Builtin(_, _)) => ImplExprAtom::Builtin { r#trait: *tref },
         Err(e) => {
@@ -369,7 +333,22 @@ pub(super) fn impl_expr<'tcx>(
         Ok(ImplSource::Builtin(_, _ignored)) => &[],
         Err(_) => &[],
     };
-    let nested = impl_exprs(tcx, owner_id, param_env, nested, warn)?;
+    let nested = nested
+        .iter()
+        // Only keep depth-1 obligations to avoid duplicate impl exprs.
+        .filter(|obligation| obligation.recursion_depth == 1)
+        .filter_map(|obligation| {
+            obligation.predicate.as_trait_clause().map(|trait_ref| {
+                impl_expr(
+                    tcx,
+                    owner_id,
+                    param_env,
+                    &trait_ref.map_bound(|p| p.trait_ref),
+                    warn,
+                )
+            })
+        })
+        .collect::<Result<_, _>>()?;
 
     Ok(ImplExpr {
         r#impl: atom,
