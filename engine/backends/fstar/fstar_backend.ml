@@ -131,9 +131,16 @@ struct
     | String s -> F.Const.Const_string (s, F.dummyRange)
     | Char c -> F.Const.Const_char (Char.to_int c)
     | Int { value; kind = { size; signedness }; negative } ->
-        F.Const.Const_int ( pnegative negative ^ value, None )
+        F.Const.Const_int (pnegative negative ^ value, None)
     | Float _ -> Error.unimplemented ~details:"pliteral: Float" span
     | Bool b -> F.Const.Const_bool b
+
+  let pconcrete_ident (id : concrete_ident) =
+    let id = U.Concrete_ident_view.to_view id in
+    let ns_crate, ns_path = ctx.current_namespace in
+    if String.(ns_crate = id.crate) && [%eq: string list] ns_path id.path then
+      F.lid [ id.definition ]
+    else F.lid (id.crate :: (id.path @ [ id.definition ]))
 
   let pliteral_as_expr span (e : literal) =
     let mk_const c = F.AST.Const c |> F.term in
@@ -142,30 +149,25 @@ struct
     in
     let wrap_app fn x n = F.mk_e_app (F.term_of_lid [ fn ]) [ mk_nat x n ] in
     match e with
-    | Int { value; kind = { size; signedness}; negative = n } ->
-	let f = match (size,signedness) with
-	| S8, Signed -> Rust_primitives__mk_i8
-	| S16, Signed -> Rust_primitives__mk_i16
-	| S32, Signed -> Rust_primitives__mk_i32
-	| S64, Signed -> Rust_primitives__mk_i64
-	| S128, Signed -> Rust_primitives__mk_i128
-	| SSize, Signed -> Rust_primitives__mk_isize
-	| S8, Unsigned -> Rust_primitives__mk_u8
-	| S16, Unsigned -> Rust_primitives__mk_u16
-	| S32, Unsigned -> Rust_primitives__mk_u32
-	| S64, Unsigned -> Rust_primitives__mk_u64
-	| S128, Unsigned -> Rust_primitives__mk_u128
-	| SSize, Unsigned -> Rust_primitives__mk_usize
-	in
-        wrap_app (Global_ident.of_name Value f) value n
+    | Int { value; kind = { size; signedness }; negative = n } ->
+        let f =
+          match (size, signedness) with
+          | S8, Signed -> Concrete_ident_generated.Rust_primitives__mk_i8
+          | S16, Signed -> Rust_primitives__mk_i16
+          | S32, Signed -> Rust_primitives__mk_i32
+          | S64, Signed -> Rust_primitives__mk_i64
+          | S128, Signed -> Rust_primitives__mk_i128
+          | SSize, Signed -> Rust_primitives__mk_isize
+          | S8, Unsigned -> Rust_primitives__mk_u8
+          | S16, Unsigned -> Rust_primitives__mk_u16
+          | S32, Unsigned -> Rust_primitives__mk_u32
+          | S64, Unsigned -> Rust_primitives__mk_u64
+          | S128, Unsigned -> Rust_primitives__mk_u128
+          | SSize, Unsigned -> Rust_primitives__mk_usize
+        in
+        let f = Concrete_ident.of_name Value f |> pconcrete_ident in
+        F.mk_e_app (F.term @@ F.AST.Name f) [ mk_nat value n ]
     | _ -> mk_const @@ pliteral span e
-
-  let pconcrete_ident (id : concrete_ident) =
-    let id = U.Concrete_ident_view.to_view id in
-    let ns_crate, ns_path = ctx.current_namespace in
-    if String.(ns_crate = id.crate) && [%eq: string list] ns_path id.path then
-      F.lid [ id.definition ]
-    else F.lid (id.crate :: (id.path @ [ id.definition ]))
 
   let rec pglobal_ident (span : span) (id : global_ident) =
     match id with
