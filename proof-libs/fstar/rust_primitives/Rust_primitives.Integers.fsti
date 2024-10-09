@@ -133,6 +133,17 @@ let from_int128 (x:FStar.Int128.t) : i128  = FStar.Int128.v x
 let from_usize (x:FStar.UInt32.t) : usize  = FStar.UInt32.v x
 let from_isize (x:FStar.Int32.t) : isize  = FStar.Int32.v x
 
+let to_uint8 (x:u8) : FStar.UInt8.t = FStar.UInt8.uint_to_t x
+let to_int8 (x:i8) : FStar.Int8.t  = FStar.Int8.int_to_t x
+let to_uint16 (x:u16) : FStar.UInt16.t  = FStar.UInt16.uint_to_t x
+let to_int16 (x:i16) : FStar.Int16.t  = FStar.Int16.int_to_t x
+let to_uint32 (x:u32) : FStar.UInt32.t  = FStar.UInt32.uint_to_t x
+let to_int32 (x:i32) : FStar.Int32.t  = FStar.Int32.int_to_t x
+let to_uint64 (x:u64) : FStar.UInt64.t  = FStar.UInt64.uint_to_t x
+let to_int64 (x:i64) : FStar.Int64.t  = FStar.Int64.int_to_t x
+let to_uint128 (x:u128) : FStar.UInt128.t  = FStar.UInt128.uint_to_t x
+let to_int128 (x:i128) : FStar.Int128.t  = FStar.Int128.int_to_t x
+
 let modulus t = pow2 (bits t)
 
 (* Wrap-around modulo: wraps into [-p/2; p/2[ *)
