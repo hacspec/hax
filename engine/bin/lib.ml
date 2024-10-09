@@ -1,6 +1,7 @@
 open Hax_engine
 open Base
 open Stdio
+open Utils
 
 let setup_logs (options : Types.engine_options) =
   let level : Logs.level option =
@@ -66,7 +67,12 @@ let import_thir_items ~drop_impl_bodies
       items
     |> List.map ~f:snd
   in
+  Logs.info (fun m -> m "Items translated");
   let items = List.concat_map ~f:fst imported_items in
+  let associated_items =
+    let assoc_items = Deps.uid_associated_items items in
+    fun (item : Deps.AST.item) -> assoc_items item.attrs
+  in
   (* Build a map from idents to error reports *)
   let ident_to_reports =
     List.concat_map
@@ -77,6 +83,11 @@ let import_thir_items ~drop_impl_bodies
   in
   let items =
     Deps.filter_by_inclusion_clauses ~drop_impl_bodies include_clauses items
+  in
+  let items =
+    items
+    @ (List.concat_map ~f:associated_items items
+      |> List.filter ~f:(List.mem ~equal:[%eq: Deps.AST.item] items >> not))
   in
   let items =
     List.filter
@@ -131,6 +142,9 @@ let run (options : Types.engine_options) : Types.output =
           ([%show: Diagnostics.Backend.t] M.backend));
     let items = apply_phases backend_options items in
     let with_items = Attrs.with_items items in
+    let module DepGraph = Dependencies.Make (InputLanguage) in
+    let items = DepGraph.bundle_cyclic_modules items in
+    let bundles, _ = DepGraph.recursive_bundles items in
     let items =
       List.filter items ~f:(fun (i : AST.item) ->
           Attrs.late_skip i.attrs |> not)
@@ -138,7 +152,7 @@ let run (options : Types.engine_options) : Types.output =
     Logs.info (fun m ->
         m "Translating items with backend %s"
           ([%show: Diagnostics.Backend.t] M.backend));
-    let items = translate with_items options backend_options items in
+    let items = translate with_items options backend_options items ~bundles in
     items
   in
   let diagnostics, files =

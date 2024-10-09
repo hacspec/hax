@@ -89,7 +89,9 @@ module Raw = struct
   let rec pglobal_ident' prefix span (e : global_ident) : AnnotatedString.t =
     let ( ! ) s = pure span (prefix ^ s) in
     match e with
-    | `Concrete c -> !(Concrete_ident_view.show c)
+    | `Concrete c ->
+        !(let s = Concrete_ident_view.show c in
+          if String.equal "_" s then "_anon" else s)
     | `Primitive p -> pprimitive_ident span p
     | `TupleType n -> ![%string "tuple%{Int.to_string n}"]
     | `TupleCons n -> ![%string "Tuple%{Int.to_string n}"]
@@ -111,6 +113,7 @@ module Raw = struct
               name
       | _ -> e.name
     in
+    let name = if String.equal name "_" then "_anon" else name in
     pure span name
 
   let dmutability span : _ -> AnnotatedString.t =
@@ -388,8 +391,7 @@ module Raw = struct
     let ( ! ) = pure span in
     match pk with
     | GPLifetime _ -> (empty, !": 'unk")
-    | GPType { default = Some default } -> (empty, !" = " & pty span default)
-    | GPType { default = None } -> (empty, empty)
+    | GPType -> (empty, empty)
     | GPConst { typ } -> (!"const ", !":" & pty span typ)
 
   let pgeneric_param (p : generic_param) =
@@ -416,15 +418,24 @@ module Raw = struct
     !(Concrete_ident_view.show trait)
     & if List.is_empty args then empty else !"<" & args & !">"
 
+  let pprojection_predicate span (pp : projection_predicate) =
+    let ( ! ) = pure span in
+    pp.impl.goal.args
+    |> List.find_map ~f:(function GType ty -> Some ty | _ -> None)
+    |> Option.map ~f:(pty span)
+    |> Option.value ~default:!"unknown_self"
+    & !" :"
+    & !(Concrete_ident_view.show pp.impl.goal.trait)
+    & !"<"
+    & !(Concrete_ident_view.to_definition_name pp.assoc_item)
+    & !" = " & pty span pp.typ & !">"
+
   let pgeneric_constraint span (p : generic_constraint) =
     let ( ! ) = pure span in
     match p with
     | GCLifetime _ -> !"'unk: 'unk"
-    | GCType { goal; _ } -> !"_:" & ptrait_goal span goal
-    | GCProjection { assoc_item; typ; _ } ->
-        !"_:_<_>::"
-        & !(Concrete_ident_view.show assoc_item)
-        & !"==" & pty span typ
+    | GCType { goal; _ } -> !"_: " & ptrait_goal span goal
+    | GCProjection pp -> pprojection_predicate span pp
 
   let pgeneric_constraints span (constraints : generic_constraint list) =
     if List.is_empty constraints then empty
@@ -658,6 +669,19 @@ let pitems : item list -> AnnotatedString.Output.t =
   >> rustfmt_annotated >> AnnotatedString.Output.convert
 
 let pitem_str : item -> string = pitem >> AnnotatedString.Output.raw_string
+
+let pty_str (e : ty) : string =
+  let e = Raw.pty (Span.dummy ()) e in
+  let ( ! ) = AnnotatedString.pure @@ Span.dummy () in
+  let ( & ) = AnnotatedString.( & ) in
+  let prefix = "type TypeWrapper = " in
+  let suffix = ";" in
+  let item = !prefix & e & !suffix in
+  rustfmt_annotated item |> AnnotatedString.Output.convert
+  |> AnnotatedString.Output.raw_string |> Stdlib.String.trim
+  |> String.chop_suffix_if_exists ~suffix
+  |> String.chop_prefix_if_exists ~prefix
+  |> Stdlib.String.trim
 
 let pexpr_str (e : expr) : string =
   let e = Raw.pexpr e in

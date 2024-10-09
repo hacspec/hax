@@ -63,6 +63,26 @@ fn early_returns(mut x: u32) -> u32 {
     .wrapping_add(x);
 }
 
+fn simplifiable_return(c1: bool, c2: bool, c3: bool) -> i32 {
+    let mut x = 0;
+    if c1 {
+        if c2 {
+            x += 10;
+            if c3 {
+                return 1;
+            }
+        }
+        x += 1;
+    }
+    x
+}
+
+fn simplifiable_question_mark(c: bool, x: Option<i32>) -> Option<i32> {
+    let a = if c { x? + 10 } else { 0 };
+    let b = 20;
+    Some(a + b)
+}
+
 /// Question mark without error coercion
 fn direct_result_question_mark(y: Result<(), u32>) -> Result<i8, u32> {
     y?;

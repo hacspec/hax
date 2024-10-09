@@ -36,7 +36,7 @@ mod module {
         s: &S,
     ) -> FnDef<Body> {
         let hir_id = body_id.hir_id;
-        let ldid = hir_id.clone().owner.def_id;
+        let ldid = hir_id.owner.def_id;
 
         let (thir, expr_entrypoint) = get_thir(ldid, s);
         let s = &with_owner_id(s.base(), thir.clone(), (), ldid.to_def_id());
@@ -64,15 +64,13 @@ mod module {
     mod implementations {
         use super::*;
         impl IsBody for () {
-            fn body<'tcx, S: UnderOwnerState<'tcx>>(_did: RLocalDefId, _s: &S) -> Self {
-                ()
-            }
+            fn body<'tcx, S: UnderOwnerState<'tcx>>(_did: RLocalDefId, _s: &S) -> Self {}
         }
         impl IsBody for ThirBody {
             fn body<'tcx, S: UnderOwnerState<'tcx>>(did: RLocalDefId, s: &S) -> Self {
                 let (thir, expr) = get_thir(did, s);
                 if *CORE_EXTRACTION_MODE {
-                    let expr = &thir.exprs[expr.clone()];
+                    let expr = &thir.exprs[expr];
                     Decorated {
                         contents: Box::new(ExprKind::Tuple { fields: vec![] }),
                         hir_id: None,
@@ -95,15 +93,23 @@ mod module {
         impl<MirKind: IsMirKind + Clone + 'static> IsBody for MirBody<MirKind> {
             fn body<'tcx, S: UnderOwnerState<'tcx>>(did: RLocalDefId, s: &S) -> Self {
                 let (thir, _) = get_thir(did, s);
-                let mir = Rc::new(s.base().tcx.mir_built(did).borrow().clone());
-                mir.sinto(&with_owner_id(s.base(), thir, mir.clone(), did.to_def_id()))
+                let mir = MirKind::get_mir(s.base().tcx, did, |body| {
+                    let body = Rc::new(body.clone());
+                    body.sinto(&with_owner_id(
+                        s.base(),
+                        thir,
+                        body.clone(),
+                        did.to_def_id(),
+                    ))
+                });
+                mir.s_unwrap(s)
             }
         }
     }
 
     impl<'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, Body> for rustc_hir::BodyId {
         fn sinto(&self, s: &S) -> Body {
-            body_from_id::<Body, _>(self.clone(), s)
+            body_from_id::<Body, _>(*self, s)
         }
     }
 }

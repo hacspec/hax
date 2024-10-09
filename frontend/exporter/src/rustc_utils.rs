@@ -8,98 +8,8 @@ impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
         tcx: ty::TyCtxt<'tcx>,
         generics: &[ty::GenericArg<'tcx>],
     ) -> ty::Binder<'tcx, T> {
-        self.rebind(ty::EarlyBinder::bind(self.clone().skip_binder()).instantiate(tcx, generics))
+        ty::EarlyBinder::bind(self).instantiate(tcx, generics)
     }
-}
-
-#[extension_traits::extension(pub trait PredicateToPolyTraitPredicate)]
-impl<'tcx> ty::Binder<'tcx, ty::PredicateKind<'tcx>> {
-    fn as_poly_trait_predicate(self) -> Option<ty::PolyTraitPredicate<'tcx>> {
-        self.try_map_bound(|kind| match kind {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => Ok(trait_pred),
-            _ => Err(()),
-        })
-        .ok()
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct AnnotatedPredicate<'tcx> {
-    pub is_extra_self_predicate: bool,
-    /// Note: they are all actually `Clause`s.
-    pub predicate: ty::Predicate<'tcx>,
-    pub span: rustc_span::Span,
-}
-
-#[extension_traits::extension(pub trait TyCtxtExtPredOrAbove)]
-impl<'tcx> ty::TyCtxt<'tcx> {
-    /// Just like `TyCtxt::predicates_defined_on`, but in the case of
-    /// a trait or impl item, also includes the predicates defined on
-    /// the parent.
-    fn predicates_defined_on_or_above(
-        self,
-        did: rustc_span::def_id::DefId,
-    ) -> Vec<AnnotatedPredicate<'tcx>> {
-        let mut next_did = Some(did);
-        let mut predicates = vec![];
-        while let Some(did) = next_did {
-            let (preds, parent) = self.annotated_predicates_of(did);
-            next_did = parent;
-            predicates.extend(preds)
-        }
-        predicates
-    }
-
-    fn annotated_predicates_of(
-        self,
-        did: rustc_span::def_id::DefId,
-    ) -> (
-        impl Iterator<Item = AnnotatedPredicate<'tcx>>,
-        Option<rustc_span::def_id::DefId>,
-    ) {
-        let with_self = self.predicates_of(did);
-        let parent = with_self.parent;
-        let with_self = {
-            let extra_predicates: Vec<(ty::Clause<'_>, rustc_span::Span)> =
-                if rustc_hir::def::DefKind::OpaqueTy == self.def_kind(did) {
-                    // An opaque type (e.g. `impl Trait`) provides
-                    // predicates by itself: we need to account for them.
-                    self.explicit_item_bounds(did)
-                        .skip_binder()
-                        .iter()
-                        .copied()
-                        .collect()
-                } else {
-                    vec![]
-                };
-            with_self.predicates.iter().copied().chain(extra_predicates)
-        };
-        let without_self: Vec<ty::Clause<'_>> = self
-            .predicates_defined_on(did)
-            .predicates
-            .iter()
-            .copied()
-            .map(|(clause, _)| clause)
-            .collect();
-        (
-            with_self.map(move |(clause, span)| AnnotatedPredicate {
-                is_extra_self_predicate: !without_self.contains(&clause),
-                predicate: clause.as_predicate(),
-                span,
-            }),
-            parent,
-        )
-    }
-}
-
-pub fn poly_trait_ref<'tcx, S: UnderOwnerState<'tcx>>(
-    s: &S,
-    assoc: &ty::AssocItem,
-    generics: ty::GenericArgsRef<'tcx>,
-) -> Option<ty::PolyTraitRef<'tcx>> {
-    let tcx = s.base().tcx;
-    let r#trait = tcx.trait_of_item(assoc.def_id)?;
-    Some(ty::Binder::dummy(ty::TraitRef::new(tcx, r#trait, generics)))
 }
 
 #[tracing::instrument(skip(s))]
@@ -116,7 +26,7 @@ pub(crate) fn get_variant_information<'s, S: UnderOwnerState<'s>>(
     s_assert!(s, !adt_def.is_union() || *CORE_EXTRACTION_MODE);
     fn is_record<'s, I: std::iter::Iterator<Item = &'s ty::FieldDef> + Clone>(it: I) -> bool {
         it.clone()
-            .any(|field| !field.name.to_ident_string().parse::<u64>().is_ok())
+            .any(|field| field.name.to_ident_string().parse::<u64>().is_err())
     }
     let variant_def = adt_def.variant(variant_index);
     let variant = variant_def.def_id;
@@ -188,7 +98,7 @@ pub(crate) fn read_span_from_file(span: &Span) -> Result<String, ReadSpanErr> {
             let first = first.chars().skip(span.lo.col).collect();
             let last = last.chars().take(span.hi.col).collect();
             Ok(std::iter::once(first)
-                .chain(middle.into_iter().cloned())
+                .chain(middle.iter().cloned())
                 .chain(std::iter::once(last))
                 .collect::<Vec<String>>()
                 .join("\n"))
@@ -224,7 +134,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> ParamEnv<'tcx> for S {
 
 #[tracing::instrument]
 pub fn argument_span_of_mac_call(mac_call: &rustc_ast::ast::MacCall) -> rustc_span::Span {
-    (*mac_call.args).dspan.entire()
+    mac_call.args.dspan.entire()
 }
 #[tracing::instrument(skip(state))]
 pub(crate) fn raw_macro_invocation_of_span<'t, S: BaseState<'t>>(
@@ -303,7 +213,7 @@ pub(crate) fn attribute_from_scope<'tcx, S: ExprState<'tcx>>(
     let map = tcx.hir();
     let attributes = hir_id
         .map(|hir_id| map.attrs(hir_id).sinto(s))
-        .unwrap_or(vec![]);
+        .unwrap_or_default();
     (hir_id, attributes)
 }
 
@@ -326,7 +236,7 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
     ids.map(|id| tcx.hir().item(id))
         .group_by(|item| SpanEq(raw_macro_invocation_of_span(item.span, s)))
         .into_iter()
-        .map(|(mac, items)| match mac.0 {
+        .flat_map(|(mac, items)| match mac.0 {
             Some((macro_ident, expn_data)) => {
                 let owner_id: rustc_hir::hir_id::OwnerId =
                     items.into_iter().map(|x| x.owner_id).next().s_unwrap(s);
@@ -346,6 +256,5 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
             }
             _ => items.map(|item| item.sinto(s)).collect(),
         })
-        .flatten()
         .collect()
 }

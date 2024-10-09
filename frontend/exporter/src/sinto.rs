@@ -45,7 +45,7 @@ mod test {
     pub struct Foo(usize);
     impl Foo {
         pub fn as_usize(&self) -> usize {
-            self.0.clone()
+            self.0
         }
     }
 }
@@ -76,24 +76,24 @@ impl<S, D, T: SInto<S, D>> SInto<S, D> for &T {
 }
 impl<S, D: Clone, T: SInto<S, D>> SInto<S, Vec<D>> for [T] {
     fn sinto(&self, s: &S) -> Vec<D> {
-        self.into_iter().map(|x| x.sinto(s)).collect()
+        self.iter().map(|x| x.sinto(s)).collect()
     }
 }
 impl<S, D: Clone, T: SInto<S, D>> SInto<S, Vec<D>> for Box<[T]> {
     fn sinto(&self, s: &S) -> Vec<D> {
-        (&*self).into_iter().map(|x| x.sinto(s)).collect()
+        self.into_iter().map(|x| x.sinto(s)).collect()
     }
 }
 
 impl<S, D: Clone, T: SInto<S, D>> SInto<S, Vec<D>> for Vec<T> {
     fn sinto(&self, s: &S) -> Vec<D> {
-        self.into_iter().map(|x| x.sinto(s)).collect()
+        self.iter().map(|x| x.sinto(s)).collect()
     }
 }
 #[cfg(feature = "rustc")]
 impl<S> SInto<S, Vec<u8>> for rustc_data_structures::sync::Lrc<[u8]> {
     fn sinto(&self, _s: &S) -> Vec<u8> {
-        (**self).iter().cloned().collect()
+        (**self).to_vec()
     }
 }
 

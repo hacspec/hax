@@ -43,8 +43,6 @@ module Rust = struct
   include Off.Quote
 end
 
-let _ = Enumeration.all
-
 module _ = struct
   module _ : T = Full
   module _ : T = Rust

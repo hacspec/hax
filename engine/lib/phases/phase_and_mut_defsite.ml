@@ -59,9 +59,8 @@ struct
             in
             Some (var, typ, param.pat.span)
         | _ ->
-            (* TODO: nicer error! other pats are rejected, not unimplem! *)
-            Error.unimplemented
-              ~details:"Non-binding patterns for `&mut` inputs" param.pat.span
+            Error.raise
+              { kind = NonTrivialAndMutFnInput; span = param.pat.span }
 
       let rewrite_fn_sig (all_vars : local_ident list) (params : param list)
           (output : ty) :

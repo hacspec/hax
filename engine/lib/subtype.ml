@@ -78,6 +78,9 @@ struct
     }
 
   and dimpl_expr (span : span) (i : A.impl_expr) : B.impl_expr =
+    { kind = dimpl_expr_kind span i.kind; goal = dtrait_goal span i.goal }
+
+  and dimpl_expr_kind (span : span) (i : A.impl_expr_kind) : B.impl_expr_kind =
     match i with
     | Self -> Self
     | Concrete tr -> Concrete (dtrait_goal span tr)
@@ -378,8 +381,7 @@ struct
         match kind with
         | GPLifetime { witness } ->
             B.GPLifetime { witness = S.lifetime span witness }
-        | GPType { default } ->
-            GPType { default = Option.map ~f:(dty span) default }
+        | GPType -> GPType
         | GPConst { typ } -> GPConst { typ = dty span typ }
       in
       { ident; span; kind; attrs }

@@ -1322,11 +1322,10 @@ struct
         SSP.AST.Implicit
           ( SSP.AST.Ident (plocal_ident ident),
             match kind with
-            | GPType { default = Some t } -> pty span t
             | GPConst { typ = t } ->
                 SSPExtraDefinitions.wrap_type_in_both "(fset [])" "(fset [])"
                   (pty span t)
-            | GPType { default = None } -> SSP.AST.WildTy
+            | GPType -> SSP.AST.WildTy
             | _ -> . )
 
   let pgeneric_constraints_as_argument span :
@@ -2405,8 +2404,8 @@ let hardcoded_coq_headers =
    Import choice.Choice.Exports.\n\n\
    Obligation Tactic := (* try timeout 8 *) solve_ssprove_obligations.\n"
 
-let translate _ _ (_bo : BackendOptions.t) (items : AST.item list) :
-    Types.file list =
+let translate _ _ (_bo : BackendOptions.t) ~(bundles : AST.item list list)
+    (items : AST.item list) : Types.file list =
   let analysis_data = StaticAnalysis.analyse items in
   U.group_items_by_namespace items
   |> Map.to_alist

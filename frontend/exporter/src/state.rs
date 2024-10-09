@@ -105,6 +105,12 @@ mod types {
         pub vars: HashMap<rustc_middle::thir::LocalVarId, String>,
     }
 
+    impl Default for LocalContextS {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl LocalContextS {
         pub fn new() -> LocalContextS {
             LocalContextS {
@@ -165,6 +171,7 @@ mod types {
     pub type ExportedDefIds = Rc<RefCell<HashSet<rustc_hir::def_id::DefId>>>;
     pub type RcThir<'tcx> = Rc<rustc_middle::thir::Thir<'tcx>>;
     pub type RcMir<'tcx> = Rc<rustc_middle::mir::Body<'tcx>>;
+    pub type Binder<'tcx> = rustc_middle::ty::Binder<'tcx, ()>;
 }
 
 mk!(
@@ -173,12 +180,22 @@ mk!(
         thir: {'tcx} types::RcThir,
         mir: {'tcx} types::RcMir,
         owner_id: {} rustc_hir::def_id::DefId,
+        binder: {'tcx} types::Binder,
     }
 );
 
 pub use self::types::*;
 
-impl<'tcx> State<Base<'tcx>, (), (), ()> {
+pub type StateWithBase<'tcx> = State<Base<'tcx>, (), (), (), ()>;
+pub type StateWithOwner<'tcx> = State<Base<'tcx>, (), (), rustc_hir::def_id::DefId, ()>;
+pub type StateWithBinder<'tcx> =
+    State<Base<'tcx>, (), (), rustc_hir::def_id::DefId, types::Binder<'tcx>>;
+pub type StateWithThir<'tcx> =
+    State<Base<'tcx>, types::RcThir<'tcx>, (), rustc_hir::def_id::DefId, ()>;
+pub type StateWithMir<'tcx> =
+    State<Base<'tcx>, (), types::RcMir<'tcx>, rustc_hir::def_id::DefId, ()>;
+
+impl<'tcx> StateWithBase<'tcx> {
     pub fn new(
         tcx: rustc_middle::ty::TyCtxt<'tcx>,
         options: hax_frontend_exporter_options::Options,
@@ -187,22 +204,24 @@ impl<'tcx> State<Base<'tcx>, (), (), ()> {
             thir: (),
             mir: (),
             owner_id: (),
+            binder: (),
             base: Base::new(tcx, options),
         }
     }
 }
 
-impl<'tcx> State<Base<'tcx>, (), (), rustc_hir::def_id::DefId> {
+impl<'tcx> StateWithOwner<'tcx> {
     pub fn new_from_state_and_id<S: BaseState<'tcx>>(s: &S, id: rustc_hir::def_id::DefId) -> Self {
         State {
             thir: (),
             mir: (),
             owner_id: id,
+            binder: (),
             base: s.base().clone(),
         }
     }
 }
-impl<'tcx> State<Base<'tcx>, (), Rc<rustc_middle::mir::Body<'tcx>>, rustc_hir::def_id::DefId> {
+impl<'tcx> StateWithMir<'tcx> {
     pub fn new_from_mir(
         tcx: rustc_middle::ty::TyCtxt<'tcx>,
         options: hax_frontend_exporter_options::Options,
@@ -213,38 +232,70 @@ impl<'tcx> State<Base<'tcx>, (), Rc<rustc_middle::mir::Body<'tcx>>, rustc_hir::d
             thir: (),
             mir: Rc::new(mir),
             owner_id,
+            binder: (),
             base: Base::new(tcx, options),
+        }
+    }
+}
+impl<'tcx> StateWithThir<'tcx> {
+    pub fn from_thir(
+        base: Base<'tcx>,
+        owner_id: rustc_hir::def_id::DefId,
+        thir: types::RcThir<'tcx>,
+    ) -> Self {
+        Self {
+            thir,
+            mir: (),
+            owner_id,
+            binder: (),
+            base,
+        }
+    }
+}
+
+impl<'tcx> StateWithOwner<'tcx> {
+    pub fn from_under_owner<S: UnderOwnerState<'tcx>>(s: &S) -> Self {
+        Self {
+            base: s.base(),
+            owner_id: s.owner_id(),
+            thir: (),
+            mir: (),
+            binder: (),
         }
     }
 }
 
 /// Updates the OnwerId in a state, making sure to override `opt_def_id` in base as well.
-pub fn with_owner_id<'tcx, THIR, MIR>(
-    mut base: types::Base<'tcx>,
+pub fn with_owner_id<THIR, MIR>(
+    mut base: types::Base<'_>,
     thir: THIR,
     mir: MIR,
     owner_id: rustc_hir::def_id::DefId,
-) -> State<types::Base<'tcx>, THIR, MIR, rustc_hir::def_id::DefId> {
+) -> State<types::Base<'_>, THIR, MIR, rustc_hir::def_id::DefId, ()> {
     base.opt_def_id = Some(owner_id);
     State {
         thir,
         owner_id,
         base,
         mir,
+        binder: (),
     }
 }
 
 pub trait BaseState<'tcx> = HasBase<'tcx> + Clone + IsState<'tcx>;
 
-/// State of anything below a `owner_id`
+/// State of anything below a `owner_id`.
 pub trait UnderOwnerState<'tcx> = BaseState<'tcx> + HasOwnerId;
+
+/// State of anything below a binder.
+pub trait UnderBinderState<'tcx> = UnderOwnerState<'tcx> + HasBinder<'tcx>;
 
 /// While translating expressions, we expect to always have a THIR
 /// body and an `owner_id` in the state
 pub trait ExprState<'tcx> = UnderOwnerState<'tcx> + HasThir<'tcx>;
 
 impl ImplInfos {
-    fn from<'tcx>(base: Base<'tcx>, did: rustc_hir::def_id::DefId) -> Self {
+    fn from(base: Base<'_>, did: rustc_hir::def_id::DefId) -> Self {
         let tcx = base.tcx;
         let s = &with_owner_id(base, (), (), did);
 
@@ -270,7 +321,7 @@ pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: BaseState<'tcx>>(
 
     let def_ids = exported_def_ids.as_ref().borrow().clone();
     let with_parents = |mut did: rustc_hir::def_id::DefId| {
-        let mut acc = vec![did.clone()];
+        let mut acc = vec![did];
         while let Some(parent) = tcx.opt_parent(did) {
             did = parent;
             acc.push(did);
@@ -281,8 +332,7 @@ pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: BaseState<'tcx>>(
     def_ids
         .iter()
         .cloned()
-        .map(with_parents)
-        .flatten()
+        .flat_map(with_parents)
         .unique()
         .filter(|&did| {
             // keep only DefIds that corresponds to implementations

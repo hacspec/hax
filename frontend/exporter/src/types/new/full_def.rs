@@ -30,7 +30,7 @@ pub struct FullDef {
     /// If this definition is a diagnostic item, we store the identifier, e.g. `box_new`.
     pub diagnostic_item: Option<String>,
     #[value({
-        let state_with_id = State { thir: (), mir: (), owner_id: *self, base: s.base() };
+        let state_with_id = State { thir: (), mir: (), owner_id: *self, binder: (), base: s.base() };
         s.base().tcx.def_kind(*self).sinto(&state_with_id)
     })]
     pub kind: FullDefKind,
@@ -79,11 +79,10 @@ pub enum FullDefKind {
         predicates: GenericPredicates,
         // `predicates_of` has the special `Self: Trait` clause as its last element.
         #[value({
-            let (clause, _) = s.base().tcx.predicates_of(s.owner_id()).predicates.last().unwrap();
-            let Some(ty::ClauseKind::Trait(trait_ref)) = clause.kind().no_bound_vars() else {
-                panic!()
-            };
-            trait_ref.sinto(s)
+            use ty::Upcast;
+            let tcx = s.base().tcx;
+            let pred: ty::TraitPredicate = ty::TraitRef::identity(tcx, s.owner_id()).upcast(tcx);
+            pred.sinto(s)
         })]
         self_predicate: TraitPredicate,
         /// Associated items, in definition order.
@@ -100,7 +99,9 @@ pub enum FullDefKind {
         #[value(s.base().tcx.hir().get_if_local(s.owner_id()).map(|node| {
             let rustc_hir::Node::Item(item) = node else { unreachable!() };
             let rustc_hir::ItemKind::TyAlias(ty, _generics) = &item.kind else { unreachable!() };
-            ty.sinto(s)
+            let mut s = State::from_under_owner(s);
+            s.base.ty_alias_mode = true;
+            ty.sinto(&s)
         }))]
         ty: Option<Ty>,
     },
@@ -379,12 +380,13 @@ fn normalize_trait_clauses<'tcx, S: UnderOwnerState<'tcx>>(
     let predicates: Vec<_> = predicates
         .iter()
         .map(|(clause, span)| {
-            let mut clause = clause.clone();
+            let mut clause = *clause;
             if matches!(&clause.kind().skip_binder(), ty::ClauseKind::Trait(_)) {
                 clause = s
                     .base()
                     .tcx
-                    .normalize_erasing_regions(s.param_env(), clause);
+                    .try_normalize_erasing_regions(s.param_env(), clause)
+                    .unwrap_or(clause);
             }
             (clause.as_predicate(), *span)
         })

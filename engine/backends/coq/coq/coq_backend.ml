@@ -362,10 +362,8 @@ struct
 
   let pgeneric_param_as_argument span : generic_param -> C.AST.argument =
     function
-    | { ident; kind = GPType { default }; _ } ->
-        C.AST.Explicit
-          ( C.AST.Ident ident.name,
-            match default with Some t -> pty span t | None -> C.AST.WildTy )
+    | { ident; kind = GPType; _ } ->
+        C.AST.Explicit (C.AST.Ident ident.name, C.AST.WildTy)
     | _ -> Error.unimplemented ~details:"Coq: TODO: generic_params" span
 
   let rec pitem (e : item) : C.AST.decl list =
@@ -679,8 +677,8 @@ let hardcoded_coq_headers =
    Open Scope Z_scope.\n\
    Open Scope bool_scope.\n"
 
-let translate _ _ (_bo : BackendOptions.t) (items : AST.item list) :
-    Types.file list =
+let translate _ _ (_bo : BackendOptions.t) ~(bundles : AST.item list list)
+    (items : AST.item list) : Types.file list =
   U.group_items_by_namespace items
   |> Map.to_alist
   |> List.map ~f:(fun (ns, items) ->

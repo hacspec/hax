@@ -80,11 +80,7 @@ pub(crate) fn merge_generics(x: Generics, y: Generics) -> Generics {
         where_clause: match (x.where_clause, y.where_clause) {
             (Some(wx), Some(wy)) => Some(syn::WhereClause {
                 where_token: wx.where_token,
-                predicates: wx
-                    .predicates
-                    .into_iter()
-                    .chain(wy.predicates.into_iter())
-                    .collect(),
+                predicates: wx.predicates.into_iter().chain(wy.predicates).collect(),
             }),
             (Some(w), None) | (None, Some(w)) => Some(w),
             (None, None) => None,
@@ -182,7 +178,7 @@ impl VisitMut for RewriteFuture {
                     }
                 };
                 let help_message = match self.0.iter().next() {
-                    None => format!(" In the context, there is no `&mut` input."),
+                    None => " In the context, there is no `&mut` input.".to_string(),
                     Some(var) => {
                         format!(" For example, in the context you can write `future({var})`.")
                     }

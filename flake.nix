@@ -131,6 +131,24 @@
               ${pkgs.python3}/bin/python -m http.server "$@"
             ''}";
           };
+          # Check the coherency between issues labeled
+          # `marked-unimplemented` on GitHub and issues mentionned in
+          # the engine in the `Unimplemented {issue_id: ...}` errors.
+          check-unimlemented-issue-coherency = {
+            type = "app";
+            program = "${pkgs.writeScript "check-unimlemented-issue-coherency" ''
+              RG=${pkgs.ripgrep}/bin/rg
+              SD=${pkgs.sd}/bin/sd
+
+              diff -U0 \
+                  <(${pkgs.gh}/bin/gh issue -R hacspec/hax list --label 'marked-unimplemented' --json number,closed -L 200 \
+                       | ${pkgs.jq}/bin/jq '.[] | select(.closed | not) | .number' | sort -u) \
+                  <($RG 'issue_id:(\d+)' -Ior '$1' | sort -u) \
+                  | $RG '^[+-]\d' \
+                  | $SD '[-](\d+)' '#$1\t is labeled `marked-unimplemented`, but was not found in the code' \
+                  | $SD '[+](\d+)' '#$1\t is *not* labeled `marked-unimplemented` or is closed'
+            ''}";
+          };
           serve-book = {
             type = "app";
             program = "${pkgs.writeScript "serve-book" ''
@@ -171,6 +189,7 @@
             pkgs.ocamlPackages.utop
 
             pkgs.cargo-expand
+            pkgs.cargo-release
             pkgs.cargo-insta
             pkgs.openssl.dev
             pkgs.pkg-config

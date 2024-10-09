@@ -2,13 +2,8 @@
 use core::hash::Hasher;
 
 /// Wrapper around any hasher to make it deterministic.
+#[derive(Default)]
 pub struct DeterministicHasher<T: Hasher>(T);
-
-impl<T: Hasher> DeterministicHasher<T> {
-    pub fn new(inner: T) -> Self {
-        Self(inner)
-    }
-}
 
 /// Implementation of hasher that forces all bytes written to be platform agnostic.
 impl<T: Hasher> core::hash::Hasher for DeterministicHasher<T> {

@@ -22,6 +22,9 @@ pub enum ConstantInt {
 pub enum ConstantLiteral {
     Bool(bool),
     Char(char),
+    // Rust floats do not have the Eq or Ord traits due to the presence of NaN
+    // We instead store their bit representation, which always fits in a u128
+    Float(u128, FloatTy),
     Int(ConstantInt),
     Str(String, StrStyle),
     ByteStr(Vec<u8>, StrStyle),
@@ -156,6 +159,7 @@ mod rustc {
                                 }
                             }
                         }
+                        Float(_bits, _ty) => todo!("Converting float literals back to AST"),
                         ByteStr(raw, str_style) => LitKind::ByteStr(raw, str_style),
                         Str(raw, str_style) => LitKind::Str(raw, str_style),
                     };
@@ -210,9 +214,7 @@ mod rustc {
     ) -> ConstantLiteral {
         match ty.kind() {
             ty::Char => ConstantLiteral::Char(
-                char::try_from(x)
-                    .s_expect(s, "scalar_int_to_constant_literal: expected a char")
-                    .into(),
+                char::try_from(x).s_expect(s, "scalar_int_to_constant_literal: expected a char"),
             ),
             ty::Bool => ConstantLiteral::Bool(
                 x.try_to_bool()
@@ -255,6 +257,19 @@ mod rustc {
                 });
                 ConstantExprKind::Literal(scalar_int_to_constant_literal(s, scalar_int, ty))
             }
+            ty::Float(float_type) => {
+                let scalar_int = scalar.try_to_scalar_int().unwrap_or_else(|_| {
+                    fatal!(
+                        s[span],
+                        "Type is [Float], but the scalar {:#?} is not a number",
+                        scalar
+                    )
+                });
+                ConstantExprKind::Literal(ConstantLiteral::Float(
+                    scalar_int.to_bits_unchecked(),
+                    float_type.sinto(s),
+                ))
+            }
             ty::Ref(_, inner_ty, Mutability::Not) | ty::RawPtr(inner_ty, Mutability::Mut) => {
                 let tcx = s.base().tcx;
                 let pointer = scalar.to_pointer(&tcx).unwrap_or_else(|_| {
@@ -279,7 +294,7 @@ mod rustc {
                             },
                         );
                         ConstantExprKind::Literal(ConstantLiteral::ByteStr(
-                            values.iter().copied().collect(),
+                            values.to_vec(),
                             StrStyle::Cooked,
                         ))
                     }
@@ -339,9 +354,9 @@ mod rustc {
     /// Rustc; we don't want to reflect that, instead we prefer inlining
     /// those. `is_anon_const` is used to detect such AnonConst so that we
     /// can evaluate and inline them.
-    pub(crate) fn is_anon_const<'tcx>(
+    pub(crate) fn is_anon_const(
         did: rustc_span::def_id::DefId,
-        tcx: rustc_middle::ty::TyCtxt<'tcx>,
+        tcx: rustc_middle::ty::TyCtxt<'_>,
     ) -> bool {
         matches!(
             tcx.def_path(did).data.last().map(|x| x.data),
@@ -359,7 +374,7 @@ mod rustc {
         let name = assoc.name.to_string();
 
         // Retrieve the trait information
-        let impl_expr = get_trait_info(s, generics, assoc);
+        let impl_expr = self_clause_for_item(s, assoc, generics).unwrap();
 
         ConstantExprKind::TraitConst { impl_expr, name }
     }
@@ -402,8 +417,10 @@ mod rustc {
                 }))
             } else {
                 let param_env = s.param_env();
-                let ty = s.base().tcx.type_of(ucv.def);
-                let ty = tcx.instantiate_and_normalize_erasing_regions(ucv.args, param_env, ty);
+                let ty = s.base().tcx.type_of(ucv.def).instantiate(tcx, ucv.args);
+                let ty = tcx
+                    .try_normalize_erasing_regions(param_env, ty)
+                    .unwrap_or(ty);
                 let kind = if let Some(assoc) = s.base().tcx.opt_associated_item(ucv.def) {
                     if assoc.trait_item_def_id.is_some() {
                         // This must be a trait declaration constant
@@ -413,8 +430,7 @@ mod rustc {
 
                         // Solve the trait obligations
                         let parent_def_id = tcx.parent(ucv.def);
-                        let trait_refs =
-                            solve_item_traits(s, param_env, parent_def_id, ucv.args, None);
+                        let trait_refs = solve_item_traits(s, parent_def_id, ucv.args, None);
 
                         // Convert
                         let id = ucv.def.sinto(s);
@@ -473,7 +489,7 @@ mod rustc {
                 }
 
                 ty::ConstKind::Unevaluated(ucv) => match self.translate_uneval(s, ucv, span) {
-                    TranslateUnevalRes::EvaluatedConstant(c) => return c.sinto(s),
+                    TranslateUnevalRes::EvaluatedConstant(c) => c.sinto(s),
                     TranslateUnevalRes::GlobalName(c) => c,
                 },
                 ty::ConstKind::Value(ty, valtree) => valtree_to_constant_expr(s, valtree, ty, span),

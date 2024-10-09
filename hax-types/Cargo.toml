@@ -7,6 +7,7 @@ homepage.workspace = true
 edition.workspace = true
 repository.workspace = true
 readme.workspace = true
+description = "Helper crate defining the types used to communicate between the custom rustc driver, the CLI and the engine of hax."
 
 [dependencies]
 clap = { workspace = true, features = ["env"] }

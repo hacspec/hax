@@ -76,7 +76,7 @@ fn name_of_local(
     var_debug_info: &Vec<rustc_middle::mir::VarDebugInfo>,
 ) -> Option<String> {
     var_debug_info
-        .into_iter()
+        .iter()
         .find(|info| {
             if let rustc_middle::mir::VarDebugInfoContents::Place(place) = info.value {
                 place.projection.is_empty() && place.local == local
@@ -91,24 +91,107 @@ fn name_of_local(
 /// instead of an open list of types.
 pub mod mir_kinds {
     use crate::prelude::{derive_group, JsonSchema};
+
     #[derive_group(Serializers)]
     #[derive(Clone, Copy, Debug, JsonSchema)]
     pub struct Built;
+
+    #[derive_group(Serializers)]
+    #[derive(Clone, Copy, Debug, JsonSchema)]
+    pub struct Promoted;
+
+    #[derive_group(Serializers)]
+    #[derive(Clone, Copy, Debug, JsonSchema)]
+    pub struct Elaborated;
+
+    #[derive_group(Serializers)]
+    #[derive(Clone, Copy, Debug, JsonSchema)]
+    pub struct Optimized;
+
+    #[derive_group(Serializers)]
+    #[derive(Clone, Copy, Debug, JsonSchema)]
+    pub struct CTFE;
+
     #[cfg(feature = "rustc")]
     pub use rustc::*;
     #[cfg(feature = "rustc")]
     mod rustc {
         use super::*;
-        use rustc_data_structures::steal::Steal;
         use rustc_middle::mir::Body;
         use rustc_middle::ty::TyCtxt;
         use rustc_span::def_id::LocalDefId;
-        pub trait IsMirKind: Clone {
-            fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>>;
+
+        pub trait IsMirKind: Clone + std::fmt::Debug {
+            // CPS to deal with stealable bodies cleanly.
+            fn get_mir<'tcx, T>(
+                tcx: TyCtxt<'tcx>,
+                id: LocalDefId,
+                f: impl FnOnce(&Body<'tcx>) -> T,
+            ) -> Option<T>;
         }
+
         impl IsMirKind for Built {
-            fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>> {
-                tcx.mir_built(id)
+            fn get_mir<'tcx, T>(
+                tcx: TyCtxt<'tcx>,
+                id: LocalDefId,
+                f: impl FnOnce(&Body<'tcx>) -> T,
+            ) -> Option<T> {
+                let steal = tcx.mir_built(id);
+                if steal.is_stolen() {
+                    None
+                } else {
+                    Some(f(&steal.borrow()))
+                }
+            }
+        }
+
+        impl IsMirKind for Promoted {
+            fn get_mir<'tcx, T>(
+                tcx: TyCtxt<'tcx>,
+                id: LocalDefId,
+                f: impl FnOnce(&Body<'tcx>) -> T,
+            ) -> Option<T> {
+                let (steal, _) = tcx.mir_promoted(id);
+                if steal.is_stolen() {
+                    None
+                } else {
+                    Some(f(&steal.borrow()))
+                }
+            }
+        }
+
+        impl IsMirKind for Elaborated {
+            fn get_mir<'tcx, T>(
+                tcx: TyCtxt<'tcx>,
+                id: LocalDefId,
+                f: impl FnOnce(&Body<'tcx>) -> T,
+            ) -> Option<T> {
+                let steal = tcx.mir_drops_elaborated_and_const_checked(id);
+                if steal.is_stolen() {
+                    None
+                } else {
+                    Some(f(&steal.borrow()))
+                }
+            }
+        }
+
+        impl IsMirKind for Optimized {
+            fn get_mir<'tcx, T>(
+                tcx: TyCtxt<'tcx>,
+                id: LocalDefId,
+                f: impl FnOnce(&Body<'tcx>) -> T,
+            ) -> Option<T> {
+                Some(f(tcx.optimized_mir(id)))
+            }
+        }
+
+        impl IsMirKind for CTFE {
+            fn get_mir<'tcx, T>(
+                tcx: TyCtxt<'tcx>,
+                id: LocalDefId,
+                f: impl FnOnce(&Body<'tcx>) -> T,
+            ) -> Option<T> {
+                Some(f(tcx.mir_for_ctfe(id)))
             }
         }
     }
@@ -220,7 +303,6 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
     generics: rustc_middle::ty::GenericArgsRef<'tcx>,
 ) -> (DefId, Vec<GenericArg>, Vec<ImplExpr>, Option<ImplExpr>) {
     let tcx = s.base().tcx;
-    let param_env = s.param_env();
 
     // Retrieve the trait requirements for the **method**.
     // For instance, if we write:
@@ -228,7 +310,7 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
     // fn foo<T : Bar>(...)
     //            ^^^
     // ```
-    let mut trait_refs = solve_item_traits(s, param_env, def_id, generics, None);
+    let mut trait_refs = solve_item_traits(s, def_id, generics, None);
 
     // Check if this is a trait method call: retrieve the trait source if
     // it is the case (i.e., where does the method come from? Does it refer
@@ -301,7 +383,7 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
         match assoc.container {
             rustc_middle::ty::AssocItemContainer::TraitContainer => {
                 // Retrieve the trait information
-                let impl_expr = get_trait_info(s, generics, &assoc);
+                let impl_expr = self_clause_for_item(s, &assoc, generics).unwrap();
                 // Return only the method generics; the trait generics are included in `impl_expr`.
                 let method_generics = &generics[num_container_generics..];
                 (method_generics.sinto(s), Option::Some(impl_expr))
@@ -311,7 +393,7 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
                 let container_generics = tcx.generics_of(container_def_id);
                 let container_generics = generics.truncate_to(tcx, container_generics);
                 let container_trait_refs =
-                    solve_item_traits(s, param_env, container_def_id, container_generics, None);
+                    solve_item_traits(s, container_def_id, container_generics, None);
                 trait_refs.extend(container_trait_refs);
                 (generics.sinto(s), Option::None)
             }
@@ -721,7 +803,7 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
 
         loop {
             use rustc_middle::mir::ProjectionElem::*;
-            let cur_ty = current_ty.clone();
+            let cur_ty = current_ty;
             let cur_kind = current_kind.clone();
             use rustc_middle::ty::TyKind;
             let mk_field =
@@ -753,7 +835,7 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                 [Downcast(_, variant_idx), Field(index, ty), rest @ ..] => {
                     elems = rest;
                     let r = mk_field(index, Some(*variant_idx));
-                    current_ty = ty.clone();
+                    current_ty = *ty;
                     r
                 }
                 [elem, rest @ ..] => {
@@ -762,7 +844,7 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                     match elem {
                         Deref => {
                             current_ty = match current_ty.kind() {
-                                TyKind::Ref(_, ty, _) | TyKind::RawPtr(ty, _) => ty.clone(),
+                                TyKind::Ref(_, ty, _) | TyKind::RawPtr(ty, _) => *ty,
                                 TyKind::Adt(def, generics) if def.is_box() => generics.type_at(0),
                                 _ => supposely_unreachable_fatal!(
                                     s, "PlaceDerefNotRefNorPtrNorBox";
@@ -778,13 +860,13 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                                 use crate::rustc_index::Idx;
                                 let generics = generics.as_closure();
                                 let upvar_tys = generics.upvar_tys();
-                                current_ty = upvar_tys[index.sinto(s).index()].clone();
+                                current_ty = upvar_tys[index.sinto(s).index()];
                                 ProjectionElem::Field(ProjectionElemFieldKind::ClosureState(
                                     index.sinto(s),
                                 ))
                             } else {
                                 let r = mk_field(index, None);
-                                current_ty = ty.clone();
+                                current_ty = *ty;
                                 r
                             }
                         }
@@ -797,7 +879,7 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                                     {current_ty, current_kind, elem}
                                 );
                             };
-                            current_ty = ty.clone();
+                            current_ty = *ty;
                             ProjectionElem::Index(local.sinto(s))
                         }
                         ConstantIndex {
@@ -812,7 +894,7 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                                     {current_ty, current_kind, elem}
                                 )
                             };
-                            current_ty = ty.clone();
+                            current_ty = *ty;
                             ProjectionElem::ConstantIndex {
                                 offset: *offset,
                                 min_length: *min_length,
@@ -829,7 +911,7 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                             }
                         }
                         OpaqueCast(ty) => {
-                            current_ty = ty.clone();
+                            current_ty = *ty;
                             ProjectionElem::OpaqueCast
                         }
                         // This is used for casts to a subtype, e.g. between `for<‘a> fn(&’a ())`
@@ -856,16 +938,6 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
     }
 }
 
-// TODO: we need this function because sometimes, Rust doesn't infer the proper
-// typeclass instance.
-#[cfg(feature = "rustc")]
-pub(crate) fn poly_fn_sig_to_mir_poly_fn_sig<'tcx, S: BaseState<'tcx> + HasOwnerId>(
-    sig: &rustc_middle::ty::PolyFnSig<'tcx>,
-    s: &S,
-) -> PolyFnSig {
-    sig.sinto(s)
-}
-
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::AggregateKind<'tcx>, state: S as s)]
@@ -874,8 +946,7 @@ pub enum AggregateKind {
     Tuple,
     #[custom_arm(rustc_middle::mir::AggregateKind::Adt(def_id, vid, generics, annot, fid) => {
         let adt_kind = s.base().tcx.adt_def(def_id).adt_kind().sinto(s);
-        let param_env = s.param_env();
-        let trait_refs = solve_item_traits(s, param_env, *def_id, generics, None);
+        let trait_refs = solve_item_traits(s, *def_id, generics, None);
         AggregateKind::Adt(
             def_id.sinto(s),
             vid.sinto(s),
@@ -901,19 +972,17 @@ pub enum AggregateKind {
         // type, regions, etc. variables, which means we can treat the local
         // closure like any top-level function.
         let closure = generics.as_closure();
-        let sig = closure.sig();
-        let sig = poly_fn_sig_to_mir_poly_fn_sig(&sig, s);
+        let sig = closure.sig().sinto(s);
 
         // Solve the trait obligations. Note that we solve the parent
         let tcx = s.base().tcx;
-        let param_env = s.param_env();
         let parent_generics = closure.parent_args();
         let generics = tcx.mk_args(parent_generics);
         // Retrieve the predicates from the parent (i.e., the function which calls
         // the closure).
         let predicates = tcx.predicates_defined_on(tcx.generics_of(rust_id).parent.unwrap());
 
-        let trait_refs = solve_item_traits(s, param_env, *rust_id, generics, Some(predicates));
+        let trait_refs = solve_item_traits(s, *rust_id, generics, Some(predicates));
         AggregateKind::Closure(def_id, parent_generics.sinto(s), trait_refs, sig)
     })]
     Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, PolyFnSig),

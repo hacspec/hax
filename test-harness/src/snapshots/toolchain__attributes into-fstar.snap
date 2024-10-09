@@ -32,14 +32,6 @@ module Attributes.Ensures_on_arity_zero_fns
 open Core
 open FStar.Mul
 
-let basically_a_constant (_: Prims.unit)
-    : Prims.Pure u8
-      (requires true)
-      (ensures
-        fun x ->
-          let x:u8 = x in
-          x >. 100uy) = 127uy
-
 let doing_nothing (_: Prims.unit)
     : Prims.Pure Prims.unit
       (requires true)
@@ -47,6 +39,14 @@ let doing_nothing (_: Prims.unit)
         fun v__x ->
           let v__x:Prims.unit = v__x in
           true) = ()
+
+let basically_a_constant (_: Prims.unit)
+    : Prims.Pure u8
+      (requires true)
+      (ensures
+        fun x ->
+          let x:u8 = x in
+          x >. 100uy) = 127uy
 '''
 "Attributes.Inlined_code_ensures_requires.fst" = '''
 module Attributes.Inlined_code_ensures_requires
@@ -92,8 +92,6 @@ open FStar.Mul
 
 unfold type t_Int = int
 
-unfold let add x y = x + y
-
 unfold instance impl: Core.Ops.Arith.t_Sub t_Int t_Int =
   {
     f_Output = t_Int;
@@ -101,6 +99,8 @@ unfold instance impl: Core.Ops.Arith.t_Sub t_Int t_Int =
     f_sub_post = (fun (self: t_Int) (other: t_Int) (out: t_Int) -> true);
     f_sub = fun (self: t_Int) (other: t_Int) -> self + other
   }
+
+unfold let add x y = x + y
 '''
 "Attributes.Nested_refinement_elim.fst" = '''
 module Attributes.Nested_refinement_elim
@@ -454,12 +454,6 @@ module Attributes
 open Core
 open FStar.Mul
 
-let add3_lemma (x: u32)
-    : Lemma Prims.l_True
-      (ensures
-        x <=. 10ul || x >=. (u32_max /! 3ul <: u32) || (add3 x x x <: u32) =. (x *! 3ul <: u32)) =
-  ()
-
 let inlined_code__V: u8 = 12uy
 
 let issue_844_ (v__x: u8)
@@ -471,21 +465,6 @@ let issue_844_ (v__x: u8)
           true) = v__x
 
 let u32_max: u32 = 90000ul
-
-unfold let some_function _ = "hello from F*"
-
-/// A doc comment on `add3`
-///another doc comment on add3
-let add3 (x y z: u32)
-    : Prims.Pure u32
-      (requires x >. 10ul && y >. 10ul && z >. 10ul && ((x +! y <: u32) +! z <: u32) <. u32_max)
-      (ensures
-        fun result ->
-          let result:u32 = result in
-          Hax_lib.implies true
-            (fun temp_0_ ->
-                let _:Prims.unit = temp_0_ in
-                result >. 32ul <: bool)) = (x +! y <: u32) +! z
 
 let swap_and_mut_req_ens (x y: u32)
     : Prims.Pure (u32 & u32 & u32)
@@ -500,11 +479,32 @@ let swap_and_mut_req_ens (x y: u32)
   let hax_temp_output:u32 = x +! y in
   x, y, hax_temp_output <: (u32 & u32 & u32)
 
+/// A doc comment on `add3`
+///another doc comment on add3
+let add3 (x y z: u32)
+    : Prims.Pure u32
+      (requires x >. 10ul && y >. 10ul && z >. 10ul && ((x +! y <: u32) +! z <: u32) <. u32_max)
+      (ensures
+        fun result ->
+          let result:u32 = result in
+          Hax_lib.implies true
+            (fun temp_0_ ->
+                let _:Prims.unit = temp_0_ in
+                result >. 32ul <: bool)) = (x +! y <: u32) +! z
+
+let add3_lemma (x: u32)
+    : Lemma Prims.l_True
+      (ensures
+        x <=. 10ul || x >=. (u32_max /! 3ul <: u32) || (add3 x x x <: u32) =. (x *! 3ul <: u32)) =
+  ()
+
 type t_Foo = {
   f_x:u32;
   f_y:f_y: u32{f_y >. 3ul};
   f_z:f_z: u32{((f_y +! f_x <: u32) +! f_z <: u32) >. 3ul}
 }
+
+unfold let some_function _ = "hello from F*"
 
 let before_inlined_code = "example before"
 

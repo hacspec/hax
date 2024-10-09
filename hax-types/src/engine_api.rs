@@ -62,4 +62,5 @@ pub struct WithDefIds<Body: hax_frontend_exporter::IsBody> {
         hax_frontend_exporter::ImplInfos,
     )>,
     pub items: Vec<hax_frontend_exporter::Item<Body>>,
+    pub comments: Vec<(hax_frontend_exporter::Span, String)>,
 }

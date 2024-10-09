@@ -1,4 +1,3 @@
-use hax_frontend_exporter;
 use hax_frontend_exporter::state::{ExportedSpans, LocalContextS};
 use hax_frontend_exporter::SInto;
 use hax_types::cli_options::{Backend, PathOrDash, ENV_VAR_OPTIONS_FRONTEND};
@@ -19,11 +18,11 @@ use std::rc::Rc;
 
 type ThirBundle<'tcx> = (Rc<rustc_middle::thir::Thir<'tcx>>, ExprId);
 /// Generates a dummy THIR body with an error literal as first expression
-fn dummy_thir_body<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn dummy_thir_body(
+    tcx: TyCtxt<'_>,
     span: rustc_span::Span,
     guar: rustc_errors::ErrorGuaranteed,
-) -> ThirBundle<'tcx> {
+) -> ThirBundle<'_> {
     use rustc_middle::thir::*;
     let ty = tcx.mk_ty_from_kind(rustc_type_ir::TyKind::Never);
     let mut thir = Thir::new(BodyTy::Const(ty));
@@ -45,9 +44,9 @@ fn dummy_thir_body<'tcx>(
 
 /// Precompute all THIR bodies in a certain order so that we avoid
 /// stealing issues (theoretically...)
-fn precompute_local_thir_bodies<'tcx>(
-    tcx: TyCtxt<'tcx>,
-) -> std::collections::HashMap<rustc_span::def_id::LocalDefId, ThirBundle<'tcx>> {
+fn precompute_local_thir_bodies(
+    tcx: TyCtxt<'_>,
+) -> std::collections::HashMap<rustc_span::def_id::LocalDefId, ThirBundle<'_>> {
     let hir = tcx.hir();
     use rustc_hir::def::DefKind::*;
     use rustc_hir::*;
@@ -79,7 +78,7 @@ fn precompute_local_thir_bodies<'tcx>(
         .filter(|ldid| {
             match tcx.def_kind(ldid.to_def_id()) {
                 InlineConst | AnonConst => {
-                    fn is_fn<'tcx>(tcx: TyCtxt<'tcx>, did: rustc_span::def_id::DefId) -> bool {
+                    fn is_fn(tcx: TyCtxt<'_>, did: rustc_span::def_id::DefId) -> bool {
                         use rustc_hir::def::DefKind;
                         matches!(
                             tcx.def_kind(did),
@@ -264,12 +263,21 @@ impl Callbacks for ExtractionCallbacks {
                 <Body>|| {
                     let (spans, def_ids, impl_infos, items) =
                         convert_thir(&self.clone().into(), self.macro_calls.clone(), tcx);
+                    let files: HashSet<PathBuf> = HashSet::from_iter(
+                        items
+                            .iter()
+                            .flat_map(|item| item.span.filename.to_path().map(|path| path.to_path_buf()))
+                    );
                     let haxmeta: HaxMeta<Body> = HaxMeta {
                         crate_name,
                         cg_metadata,
                         externs,
                         impl_infos,
                         items,
+                        comments: files.into_iter()
+                            .flat_map(|path|hax_frontend_exporter::comments::comments_of_file(path).ok())
+                            .flatten()
+                            .collect(),
                         def_ids,
                     };
                     haxmeta.write(&mut file);

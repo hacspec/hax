@@ -27,15 +27,12 @@ enum AntiquoteKind {
 
 impl ToTokens for AntiquoteKind {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        tokens.extend(
-            [match self {
-                Self::Expr => quote! {_expr},
-                Self::Constructor => quote! {_constructor},
-                Self::Pat => quote! {_pat},
-                Self::Ty => quote! {_ty},
-            }]
-            .into_iter(),
-        )
+        tokens.extend([match self {
+            Self::Expr => quote! {_expr},
+            Self::Constructor => quote! {_constructor},
+            Self::Pat => quote! {_pat},
+            Self::Ty => quote! {_ty},
+        }])
     }
 }
 
@@ -59,7 +56,7 @@ impl ToTokens for Antiquote {
             AntiquoteKind::Pat => wrap_pattern(ts),
             AntiquoteKind::Ty => quote! {None::<#ts>},
         };
-        tokens.extend([ts].into_iter())
+        tokens.extend([ts])
     }
 }
 
@@ -85,7 +82,7 @@ fn process_string(s: &str) -> std::result::Result<(String, Vec<Antiquote>), Stri
                 if let Some('{') = chars.peek() {
                     chars.next(); // Consume `{`
                     let mut level = 0;
-                    while let Some(ch) = chars.next() {
+                    for ch in chars.by_ref() {
                         level += match ch {
                             '{' => 1,
                             '}' => -1,
@@ -180,7 +177,7 @@ pub(super) fn detect_future_node_in_expression(e: &syn::Expr) -> bool {
 pub(super) fn expression(force_unit: bool, payload: pm::TokenStream) -> pm::TokenStream {
     let (mut backend_code, antiquotes) = {
         let payload = parse_macro_input!(payload as LitStr).value();
-        if payload.find(SPLIT_MARK).is_some() {
+        if payload.contains(SPLIT_MARK) {
             return quote! {std::compile_error!(std::concat!($SPLIT_MARK, " is reserved"))}.into();
         }
         let (string, antiquotes) = match process_string(&payload) {

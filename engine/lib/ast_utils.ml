@@ -49,6 +49,8 @@ module Make (F : Features.T) = struct
   open AST
   module TypedLocalIdent = TypedLocalIdent (AST)
   module Visitors = Ast_visitors.Make (F)
+  module M = Ast_builder.Make (F)
+  module D = Ast_destruct.Make (F)
 
   module Expect = struct
     let mut_borrow (e : expr) : expr option =
@@ -239,12 +241,12 @@ module Make (F : Features.T) = struct
           in
           super#visit_item' (enabled, s) item
 
-        method! visit_impl_expr s ie =
+        method! visit_impl_expr_kind s ie =
           match ie with
           | LocalBound { id } ->
               LocalBound
                 { id = Hashtbl.find (snd s) id |> Option.value ~default:id }
-          | _ -> super#visit_impl_expr s ie
+          | _ -> super#visit_impl_expr_kind s ie
       end
 
     let drop_bodies drop_impl_bodies =
@@ -413,6 +415,11 @@ module Make (F : Features.T) = struct
           shadows' ~env vars x next
       end
 
+      (** Rust macros are hygienic: even if a macro introduces a name
+         that already exists in scope, the compiler will not shadow
+         it. Instead, it will track and differentiate the two, even if
+         those have the same name. `collect_ambiguous_local_idents` is
+         a visitor that collects such "fake" shadowings. *)
       let collect_ambiguous_local_idents =
         object (self)
           inherit [_] Visitors.reduce as super
@@ -478,8 +485,12 @@ module Make (F : Features.T) = struct
               (module Local_ident)
         end
 
-      (* This removes "fake" shadowing introduced by macros.
-         See PR #368 *)
+      (** Rust macros are hygienic: even if a macro introduces a name
+         that already exists in scope, the compiler will not shadow
+         it. Instead, it will track and differentiate the two, even if
+         those have the same name. `disambiguate_local_idents item`
+         renames every instance of such a "fake" shadowing in
+         `item`. See PR #368 for an example. *)
       let disambiguate_local_idents (item : item) =
         let ambiguous = collect_ambiguous_local_idents#visit_item [] item in
         let local_vars = collect_local_idents#visit_item () item |> ref in
@@ -798,19 +809,13 @@ module Make (F : Features.T) = struct
   let make_tuple_typ (tuple : ty list) : ty =
     match tuple with [ ty ] -> ty | _ -> make_tuple_typ' tuple
 
-  let make_wild_pat (typ : ty) (span : span) : pat = { p = PWild; span; typ }
-
-  let make_arm (arm_pat : pat) (body : expr) ?(guard : guard option = None)
-      (span : span) : arm =
-    { arm = { arm_pat; body; guard }; span }
-
   let make_unit_param (span : span) : param =
     let typ = unit_typ in
-    let pat = make_wild_pat typ span in
+    let pat = M.pat_PWild ~typ ~span in
     { pat; typ; typ_span = None; attrs = [] }
 
   let make_seq (e1 : expr) (e2 : expr) : expr =
-    make_let (make_wild_pat e1.typ e1.span) e1 e2
+    make_let (M.pat_PWild ~typ:e1.typ ~span:e1.span) e1 e2
 
   let make_tuple_field_pat (len : int) (nth : int) (pat : pat) : field_pat =
     { field = `TupleField (nth + 1, len); pat }
@@ -915,7 +920,9 @@ module Make (F : Features.T) = struct
 
   let make_closure (params : pat list) (body : expr) (span : span) : expr =
     let params =
-      match params with [] -> [ make_wild_pat unit_typ span ] | _ -> params
+      match params with
+      | [] -> [ M.pat_PWild ~typ:unit_typ ~span ]
+      | _ -> params
     in
     let e = Closure { params; body; captures = [] } in
     { e; typ = TArrow (List.map ~f:(fun p -> p.typ) params, body.typ); span }
@@ -939,6 +946,7 @@ module Make (F : Features.T) = struct
 
   module LiftToFullAst = struct
     let expr : AST.expr -> Ast.Full.expr = Stdlib.Obj.magic
+    let ty : AST.ty -> Ast.Full.ty = Stdlib.Obj.magic
     let item : AST.item -> Ast.Full.item = Stdlib.Obj.magic
   end
 

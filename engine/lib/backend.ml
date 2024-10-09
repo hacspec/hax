@@ -32,6 +32,7 @@ module type T = sig
     (module Attrs.WITH_ITEMS) ->
     Types.engine_options ->
     BackendOptions.t ->
+    bundles:AST.item list list ->
     AST.item list ->
     Types.file list
 

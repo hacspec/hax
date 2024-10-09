@@ -19,11 +19,11 @@ let assertion_failure (span : Thir.span list) (details : string) =
   let kind = T.AssertionFailure { details } in
   Diagnostics.SpanFreeError.raise ~span ThirImport kind
 
-let unimplemented ?issue_id (span : Thir.span list) (details : string) =
+let unimplemented ~issue_id (span : Thir.span list) (details : string) =
   let kind =
     T.Unimplemented
       {
-        issue_id = Option.map ~f:MyInt64.of_int_exn issue_id;
+        issue_id = Some (MyInt64.of_int_exn issue_id);
         details = String.(if details = "" then None else Some details);
       }
   in
@@ -78,7 +78,11 @@ let c_mutability (witness : 'a) : bool -> 'a Ast.mutability = function
 
 let c_borrow_kind span : Thir.borrow_kind -> borrow_kind = function
   | Shared -> Shared
-  | Fake _ -> unimplemented [ span ] "Shallow borrows"
+  | Fake _ ->
+      assertion_failure [ span ]
+        "Got a shallow borrow node (`BorrowKind::Fake`). Those are generated \
+         by the borrow checker and should be discarded after borrow checking: \
+         we should never see such borrows."
   | Mut _ -> Mut W.mutable_reference
 
 let c_binding_mode : Thir.by_ref -> binding_mode = function
@@ -424,11 +428,11 @@ end) : EXPR = struct
                 {
                   arms =
                     [
-                      U.make_arm lhs body lhs_body_span;
-                      U.make_arm
+                      U.M.arm lhs body ~span:lhs_body_span;
+                      U.M.arm
                         { p = PWild; span = else_block.span; typ = lhs.typ }
                         { else_block with typ = body.typ }
-                        else_block.span;
+                        ~span:else_block.span;
                     ];
                   scrutinee = rhs;
                 }
@@ -484,10 +488,10 @@ end) : EXPR = struct
             Option.value ~default:(U.unit_expr span)
             @@ Option.map ~f:c_expr else_opt
           in
-          let arm_then = U.make_arm arm_pat then_ then_.span in
+          let arm_then = U.M.arm arm_pat then_ ~span:then_.span in
           let arm_else =
             let arm_pat = { arm_pat with p = PWild } in
-            U.make_arm arm_pat else_ else_.span
+            U.M.arm arm_pat else_ ~span:else_.span
           in
           Match { scrutinee; arms = [ arm_then; arm_else ] }
       | If { cond; else_opt; then'; _ } ->
@@ -586,7 +590,9 @@ end) : EXPR = struct
           let scrutinee = c_expr scrutinee in
           let arms = List.map ~f:c_arm arms in
           Match { scrutinee; arms }
-      | Let _ -> unimplemented [ e.span ] "Let"
+      | Let _ ->
+          assertion_failure [ e.span ]
+            "`Let` nodes are supposed to be pre-processed"
       | Block { expr; span; stmts; safety_mode; _ } ->
           let { e; _ } = c_block ~expr ~span ~stmts ~ty:e.ty ~safety_mode in
           e
@@ -655,7 +661,7 @@ end) : EXPR = struct
           let e = Option.map ~f:c_expr value in
           let e = Option.value ~default:(unit_expr span) e in
           Return { e; witness = W.early_exit }
-      | ConstBlock _ -> unimplemented [ e.span ] "ConstBlock"
+      | ConstBlock _ -> unimplemented ~issue_id:923 [ e.span ] "ConstBlock"
       | ConstParam { param = id; _ } (* TODO: shadowing? *) | ConstRef { id } ->
           LocalVar
             {
@@ -720,7 +726,8 @@ end) : EXPR = struct
             List.filter_map ~f:(fun p -> Option.map ~f:c_pat p.pat) params
           in
           let params =
-            if List.is_empty params then [ U.make_wild_pat U.unit_typ span ]
+            if List.is_empty params then
+              [ U.M.pat_PWild ~typ:U.M.ty_unit ~span ]
             else params
           in
           let body = c_expr body in
@@ -735,11 +742,19 @@ end) : EXPR = struct
             [ lhs; index ]
       | StaticRef { def_id = id; _ } -> GlobalVar (def_id Value id)
       | PlaceTypeAscription _ ->
-          unimplemented [ e.span ] "expression PlaceTypeAscription"
+          assertion_failure [ e.span ]
+            "Got a unexpected node `PlaceTypeAscription`. Please report, we \
+             were not able to figure out an expression yielding that node: a \
+             bug report would be very valuable here!"
       | ValueTypeAscription { source; _ } -> (c_expr source).e
-      | ZstLiteral _ -> unimplemented [ e.span ] "expression ZstLiteral"
-      | Yield _ -> unimplemented [ e.span ] "expression Yield"
-      | Todo payload -> unimplemented [ e.span ] ("expression Todo\n" ^ payload)
+      | ZstLiteral _ ->
+          assertion_failure [ e.span ]
+            "`ZstLiteral` are expected to be handled before-hand"
+      | Yield _ ->
+          unimplemented ~issue_id:924 [ e.span ]
+            "Got expression `Yield`: coroutines are not supported by hax"
+      | Todo payload ->
+          assertion_failure [ e.span ] ("expression Todo\n" ^ payload)
     in
     { e = v; span; typ }
 
@@ -793,7 +808,7 @@ end) : EXPR = struct
         Thir.expr_kind =
       match ce with
       | Literal lit ->
-          let lit, neg = constant_lit_to_lit lit in
+          let lit, neg = constant_lit_to_lit lit span in
           Literal { lit = { node = lit; span }; neg }
       | Adt { fields; info } ->
           let fields = List.map ~f:constant_field_expr fields in
@@ -807,10 +822,11 @@ end) : EXPR = struct
           Borrow { arg = constant_expr_to_expr arg; borrow_kind = Thir.Shared }
       | ConstRef { id } -> ConstRef { id }
       | MutPtr _ | TraitConst _ | FnPtr _ ->
-          unimplemented [ span ]
+          assertion_failure [ span ]
             "constant_lit_to_lit: TraitConst | FnPtr | MutPtr"
-      | Todo _ -> unimplemented [ span ] "ConstantExpr::Todo"
-    and constant_lit_to_lit (l : Thir.constant_literal) : Thir.lit_kind * bool =
+      | Todo _ -> assertion_failure [ span ] "ConstantExpr::Todo"
+    and constant_lit_to_lit (l : Thir.constant_literal) _span :
+        Thir.lit_kind * bool =
       match l with
       | Bool v -> (Bool v, false)
       | Char v -> (Char v, false)
@@ -819,6 +835,10 @@ end) : EXPR = struct
           | Some v -> (Int (v, Signed ty), true)
           | None -> (Int (v, Signed ty), false))
       | Int (Uint (v, ty)) -> (Int (v, Unsigned ty), false)
+      | Float (v, ty) -> (
+          match String.chop_prefix v ~prefix:"-" with
+          | Some v -> (Float (v, Suffixed ty), true)
+          | None -> (Float (v, Suffixed ty), false))
       | Str (v, style) -> (Str (v, style), false)
       | ByteStr (v, style) -> (ByteStr (v, style), false)
     and constant_field_expr ({ field; value } : Thir.constant_field_expr) :
@@ -877,13 +897,17 @@ end) : EXPR = struct
           in
           (c_constant_expr value |> pat_of_expr).p
       | InlineConstant { subpattern; _ } -> (c_pat subpattern).p
-      | Array _ -> unimplemented [ pat.span ] "Pat:Array"
+      | Array _ -> unimplemented ~issue_id:804 [ pat.span ] "Pat:Array"
       | Or { pats } -> POr { subpats = List.map ~f:c_pat pats }
-      | Slice _ -> unimplemented [ pat.span ] "pat Slice"
-      | Range _ -> unimplemented [ pat.span ] "pat Range"
-      | DerefPattern _ -> unimplemented [ pat.span ] "pat DerefPattern"
-      | Never -> unimplemented [ pat.span ] "pat Never"
-      | Error _ -> unimplemented [ pat.span ] "pat Error"
+      | Slice _ -> unimplemented ~issue_id:804 [ pat.span ] "pat Slice"
+      | Range _ -> unimplemented ~issue_id:925 [ pat.span ] "pat Range"
+      | DerefPattern _ ->
+          unimplemented ~issue_id:926 [ pat.span ] "pat DerefPattern"
+      | Never -> unimplemented ~issue_id:927 [ pat.span ] "pat Never"
+      | Error _ ->
+          assertion_failure [ pat.span ]
+            "`Error` node: Rust compilation failed. If Rust compilation was \
+             fine, please file an issue."
     in
     { p = v; span; typ }
 
@@ -947,7 +971,7 @@ end) : EXPR = struct
         (*       ^ "]\n\nThe expression is: " *)
         (*       ^ [%show: expr] source)) *)
     | _ ->
-        unimplemented [ e.span ]
+        assertion_failure [ e.span ]
           ("Pointer, with [cast] being " ^ [%show: Thir.pointer_coercion] cast)
 
   and c_ty (span : Thir.span) (ty : Thir.ty) : ty =
@@ -970,7 +994,7 @@ end) : EXPR = struct
         let ident = def_id Type id in
         let args = List.map ~f:(c_generic_value span) generic_args in
         TApp { ident; args }
-    | Foreign _ -> unimplemented [ span ] "Foreign"
+    | Foreign _ -> unimplemented ~issue_id:928 [ span ] "Foreign"
     | Str -> TStr
     | Array (ty, len) ->
         TArray { typ = c_ty span ty; length = c_constant_expr len }
@@ -993,12 +1017,15 @@ end) : EXPR = struct
     | Alias { kind = Opaque; def_id; _ } ->
         TOpaque (Concrete_ident.of_def_id Type def_id)
     | Alias { kind = Inherent; _ } ->
-        unimplemented [ span ] "type Alias::Inherent"
-    | Alias { kind = Weak; _ } -> unimplemented [ span ] "type Alias::Weak"
+        assertion_failure [ span ] "Ty::Alias with AliasTyKind::Inherent"
+    | Alias { kind = Weak; _ } ->
+        assertion_failure [ span ] "Ty::Alias with AliasTyKind::Weak"
     | Param { index; name } ->
         (* TODO: [id] might not unique *)
         TParam { name; id = Local_ident.mk_id Typ (MyInt64.to_int_exn index) }
-    | Error -> unimplemented [ span ] "type Error"
+    | Error ->
+        assertion_failure [ span ]
+          "got type `Error`: Rust compilation probably failed."
     | Dynamic (predicates, _region, Dyn) -> (
         let goals, non_traits =
           List.partition_map
@@ -1017,31 +1044,42 @@ end) : EXPR = struct
         in
         match non_traits with
         | [] -> TDyn { witness = W.dyn; goals }
-        | _ -> unimplemented [ span ] "type Dyn with non trait predicate")
-    | Dynamic (_, _, DynStar) -> unimplemented [ span ] "type DynStar"
-    | Coroutine _ -> unimplemented [ span ] "type Coroutine"
-    | Placeholder _ -> unimplemented [ span ] "type Placeholder"
-    | Bound _ -> unimplemented [ span ] "type Bound"
-    | Infer _ -> unimplemented [ span ] "type Infer"
-    | Todo _ -> unimplemented [ span ] "type Todo"
+        | _ -> assertion_failure [ span ] "type Dyn with non trait predicate")
+    | Dynamic (_, _, DynStar) ->
+        unimplemented ~issue_id:931 [ span ] "type DynStar"
+    | Coroutine _ ->
+        unimplemented ~issue_id:924 [ span ]
+          "Got type `Coroutine`: coroutines are not supported by hax"
+    | Placeholder _ ->
+        assertion_failure [ span ]
+          "type Placeholder: should be gone after typechecking"
+    | Bound _ ->
+        assertion_failure [ span ]
+          "type Bound: should be gone after typechecking"
+    | Infer _ ->
+        assertion_failure [ span ]
+          "type Infer: should be gone after typechecking"
+    | Todo _ -> assertion_failure [ span ] "type Todo"
   (* fun _ -> Ok Bool *)
 
   and c_impl_expr (span : Thir.span) (ie : Thir.impl_expr) : impl_expr =
-    let impl = c_impl_expr_atom span ie.impl in
+    let goal = c_trait_ref span ie.trait.value in
+    let impl = { kind = c_impl_expr_atom span ie.impl; goal } in
     match ie.args with
     | [] -> impl
     | args ->
         let args = List.map ~f:(c_impl_expr span) args in
-        ImplApp { impl; args }
+        { kind = ImplApp { impl; args }; goal }
 
   and c_trait_ref span (tr : Thir.trait_ref) : trait_goal =
     let trait = Concrete_ident.of_def_id Trait tr.def_id in
     let args = List.map ~f:(c_generic_value span) tr.generic_args in
     { trait; args }
 
-  and c_impl_expr_atom (span : Thir.span) (ie : Thir.impl_expr_atom) : impl_expr
-      =
-    let browse_path (impl : impl_expr) (chunk : Thir.impl_expr_path_chunk) =
+  and c_impl_expr_atom (span : Thir.span) (ie : Thir.impl_expr_atom) :
+      impl_expr_kind =
+    let browse_path (item_kind : impl_expr_kind)
+        (chunk : Thir.impl_expr_path_chunk) =
       match chunk with
       | AssocItem
           { item; predicate = { value = { trait_ref; _ }; _ }; predicate_id; _ }
@@ -1053,13 +1091,16 @@ end) : EXPR = struct
             match item.kind with Const | Fn -> Value | Type -> Type
           in
           let item = Concrete_ident.of_def_id kind item.def_id in
-          Projection { impl; ident; item }
+          let trait_ref = c_trait_ref span trait_ref in
+          Projection
+            { impl = { kind = item_kind; goal = trait_ref }; ident; item }
       | Parent { predicate = { value = { trait_ref; _ }; _ }; predicate_id; _ }
         ->
           let ident =
             { goal = c_trait_ref span trait_ref; name = predicate_id }
           in
-          Parent { impl; ident }
+          let trait_ref = c_trait_ref span trait_ref in
+          Parent { impl = { kind = item_kind; goal = trait_ref }; ident }
     in
     match ie with
     | Concrete { id; generics } ->
@@ -1071,8 +1112,8 @@ end) : EXPR = struct
         List.fold ~init ~f:browse_path path
     | Dyn -> Dyn
     | SelfImpl { path; _ } -> List.fold ~init:Self ~f:browse_path path
-    | Builtin { trait } -> Builtin (c_trait_ref span trait)
-    | Todo str -> failwith @@ "impl_expr_atom: Todo " ^ str
+    | Builtin { trait } -> Builtin (c_trait_ref span trait.value)
+    | Error str -> failwith @@ "impl_expr_atom: Error " ^ str
 
   and c_generic_value (span : Thir.span) (ty : Thir.generic_arg) : generic_value
       =
@@ -1142,9 +1183,7 @@ end) : EXPR = struct
     let kind =
       match (param.kind : Thir.generic_param_kind) with
       | Lifetime _ -> GPLifetime { witness = W.lifetime }
-      | Type { default; _ } ->
-          let default = Option.map ~f:(c_ty param.span) default in
-          GPType { default }
+      | Type _ -> GPType
       (* Rustc always fills in const generics on use. Thus we can drop this information. *)
       | Const { default = _; ty } -> GPConst { typ = c_ty param.span ty }
     in
@@ -1224,8 +1263,9 @@ end) : EXPR = struct
         in
         TIType bounds
     | Type (_, Some _) ->
-        unimplemented [ span ]
-          "TODO: traits: no support for defaults in type for now"
+        unimplemented ~issue_id:929 [ span ]
+          "Associated types defaults are not supported by hax yet (it is a \
+           nightly feature)"
 end
 
 include struct
@@ -1293,7 +1333,7 @@ let generic_param_to_value ({ ident; kind; span; _ } : generic_param) :
   match kind with
   | GPLifetime { witness } ->
       GLifetime { lt = [%show: local_ident] ident; witness }
-  | GPType _ -> GType (TParam ident)
+  | GPType -> GType (TParam ident)
   | GPConst { typ } -> GConst { e = LocalVar ident; typ; span }
 
 type discriminant_expr =
@@ -1555,15 +1595,15 @@ and c_item_unwrapped ~ident ~drop_body ~drop_impl_bodies (item : Thir.item) :
         let self =
           let id = Local_ident.mk_id Typ 0 (* todo *) in
           let ident = Local_ident.{ name = "Self"; id } in
-          let kind = GPType { default = None } in
-          { ident; span; attrs = []; kind }
+          { ident; span; attrs = []; kind = GPType }
         in
         let params = self :: params in
         let generics = { params; constraints } in
         let items = List.map ~f:c_trait_item items in
         let safety = csafety safety in
         mk @@ Trait { name; generics; items; safety }
-    | Trait (Yes, _, _, _, _) -> unimplemented [ item.span ] "Auto trait"
+    | Trait (Yes, _, _, _, _) ->
+        unimplemented ~issue_id:930 [ item.span ] "Auto trait"
     | Impl { of_trait = None; generics; items; _ } ->
         let items =
           List.filter
