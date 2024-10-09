@@ -505,6 +505,7 @@ pub mod rustc {
     fn impl_exprs<'tcx>(
         tcx: TyCtxt<'tcx>,
         owner_id: DefId,
+        param_env: rustc_middle::ty::ParamEnv<'tcx>,
         obligations: &[rustc_trait_selection::traits::Obligation<
             'tcx,
             rustc_middle::ty::Predicate<'tcx>,
@@ -520,7 +521,7 @@ pub mod rustc {
                     impl_expr(
                         tcx,
                         owner_id,
-                        obligation.param_env,
+                        param_env,
                         &trait_ref.map_bound(|p| p.trait_ref),
                         warn,
                     )
@@ -600,7 +601,7 @@ pub mod rustc {
             Ok(ImplSource::Builtin(_, _ignored)) => &[],
             Err(_) => &[],
         };
-        let nested = impl_exprs(tcx, owner_id, nested, warn)?;
+        let nested = impl_exprs(tcx, owner_id, param_env, nested, warn)?;
 
         Ok(ImplExpr {
             r#impl: atom,
