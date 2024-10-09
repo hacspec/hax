@@ -5,44 +5,46 @@ use crate::prelude::*;
 
 use clap::{Parser, Subcommand};
 
-macro_rules! mk_Extension_trait {
-    {$(type $name:ident : $kind:ident;)+} => {
-        pub trait Extension {
-            $(type $name: bincode::Decode
-              + bincode::Encode
-              + std::fmt::Debug
-              + for<'a> serde::Deserialize<'a>
-              + serde::Serialize
-              + JsonSchema
-              + Clone
-              + for<'a> bincode::BorrowDecode<'a>
-              + clap::$kind;)+
-        }
-
-        /// `()` is the empty extension
-        const _: () = {
-            use NoExtensionStruct as Args;
-            use NoExtensionEnum as Subcommand;
-
-            impl Extension for () {
-                $(type $name = $kind;)+
-            }
-        };
-
+macro_rules! trait_alias {
+    ($name:ident = $($base:tt)+) => {
+        pub trait $name: $($base)+ { }
+        impl<T: $($base)+> $name for T { }
     };
 }
 
+trait_alias!(
+    ExtensionPoint =
+    bincode::Decode
+        + bincode::Encode
+        + std::fmt::Debug
+        + for<'a> serde::Deserialize<'a>
+        + serde::Serialize
+        + JsonSchema
+        + Clone
+        + for<'a> bincode::BorrowDecode<'a>
+);
+
+trait_alias!(SubcommandExtensionPoint = ExtensionPoint + clap::Subcommand);
+trait_alias!(ArgsExtensionPoint = ExtensionPoint + clap::Args);
+
 #[derive_group(Serializers)]
 #[derive(JsonSchema, Parser, Debug, Clone)]
-pub struct NoExtensionStruct {}
+pub struct EmptyArgsExtension {}
 
 #[derive_group(Serializers)]
 #[derive(JsonSchema, Subcommand, Debug, Clone)]
-pub enum NoExtensionEnum {}
+pub enum EmptySubcommandExtension {}
 
-mk_Extension_trait! {
-    type Options: Args;
-    type Command: Subcommand;
-    type BackendOptions: Args;
-    type FStarOptions: Args;
+pub trait Extension {
+    type Options: ArgsExtensionPoint;
+    type Command: SubcommandExtensionPoint;
+    type BackendOptions: ArgsExtensionPoint;
+    type FStarOptions: ArgsExtensionPoint;
+}
+
+impl Extension for () {
+    type Options = EmptyArgsExtension;
+    type Command = EmptySubcommandExtension;
+    type BackendOptions = EmptyArgsExtension;
+    type FStarOptions = EmptyArgsExtension;
 }
