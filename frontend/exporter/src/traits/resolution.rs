@@ -2,228 +2,13 @@
 //! This module is independent from the rest of hax, in particular it doesn't use its
 //! state-tracking machinery.
 
+use itertools::Itertools;
+use std::collections::{hash_map::Entry, HashMap};
+
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::*;
 
-/// Items have various predicates in scope. `path_to` uses them as a starting point for trait
-/// resolution. This tracks where each of them comes from.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub enum BoundPredicateOrigin {
-    /// The `Self: Trait` predicate implicitly present within trait declarations (note: we
-    /// don't add it for trait implementations, should we?).
-    SelfPred,
-    /// The nth (non-self) predicate found for this item. We use predicates from
-    /// `tcx.predicates_defined_on` starting from the parentmost item. If the item is an opaque
-    /// type, we also append the predicates from `explicit_item_bounds` to this list.
-    Item(usize),
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct AnnotatedTraitPred<'tcx> {
-    pub origin: BoundPredicateOrigin,
-    pub clause: PolyTraitPredicate<'tcx>,
-}
-
-/// The predicates to use as a starting point for resolving trait references within this
-/// item. This is just like `TyCtxt::predicates_of`, but in the case of a trait or impl
-/// item or closures, also includes the predicates defined on the parents.
-fn initial_search_predicates<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    did: rustc_span::def_id::DefId,
-) -> Vec<AnnotatedTraitPred<'tcx>> {
-    let (predicates, self_pred) = super::utils::predicates_of_or_above(tcx, did);
-    let predicates = predicates
-        .into_iter()
-        .enumerate()
-        .map(|(i, clause)| AnnotatedTraitPred {
-            origin: BoundPredicateOrigin::Item(i),
-            clause,
-        });
-    let self_pred = self_pred.map(|clause| AnnotatedTraitPred {
-        origin: BoundPredicateOrigin::SelfPred,
-        clause,
-    });
-
-    self_pred.into_iter().chain(predicates).collect()
-}
-
-// FIXME: this has visibility `pub(crate)` only because of https://github.com/rust-lang/rust/issues/83049
-pub(crate) mod search_clause {
-    use crate::traits::utils::erase_and_norm;
-
-    use super::{AnnotatedTraitPred, Path, PathChunk};
-    use itertools::Itertools;
-    use rustc_hir::def_id::DefId;
-    use rustc_middle::ty::*;
-    use std::collections::{hash_map::Entry, HashMap};
-
-    #[tracing::instrument(level = "trace", skip(tcx))]
-    fn parents_trait_predicates<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        pred: PolyTraitPredicate<'tcx>,
-    ) -> Vec<PolyTraitPredicate<'tcx>> {
-        let self_trait_ref = pred.to_poly_trait_ref();
-        tcx.predicates_of(pred.def_id())
-            .predicates
-            .iter()
-            // Substitute with the `self` args so that the clause makes sense in the
-            // outside context.
-            .map(|(clause, _span)| clause.instantiate_supertrait(tcx, self_trait_ref))
-            .filter_map(|pred| pred.as_trait_clause())
-            .collect()
-    }
-
-    /// A candidate projects `self` along a path reaching some predicate. A candidate is
-    /// selected when its predicate is the one expected, aka `target`.
-    #[derive(Debug, Clone)]
-    struct Candidate<'tcx> {
-        path: Path<'tcx>,
-        pred: PolyTraitPredicate<'tcx>,
-        origin: AnnotatedTraitPred<'tcx>,
-    }
-
-    /// Stores a set of predicates along with where they came from.
-    struct PredicateSearcher<'tcx> {
-        tcx: TyCtxt<'tcx>,
-        param_env: rustc_middle::ty::ParamEnv<'tcx>,
-        candidates: HashMap<PolyTraitPredicate<'tcx>, Candidate<'tcx>>,
-    }
-
-    impl<'tcx> PredicateSearcher<'tcx> {
-        /// Initialize the elaborator with the predicates accessible within this item.
-        fn new_for_owner(
-            tcx: TyCtxt<'tcx>,
-            param_env: rustc_middle::ty::ParamEnv<'tcx>,
-            owner_id: DefId,
-        ) -> Self {
-            let mut out = Self {
-                tcx,
-                param_env,
-                candidates: Default::default(),
-            };
-            out.extend(
-                super::initial_search_predicates(tcx, owner_id)
-                    .into_iter()
-                    .map(|clause| Candidate {
-                        path: vec![],
-                        pred: clause.clause,
-                        origin: clause,
-                    }),
-            );
-            out
-        }
-
-        /// Insert new candidates and all their parent predicates. This deduplicates predicates
-        /// to avoid divergence.
-        fn extend(&mut self, candidates: impl IntoIterator<Item = Candidate<'tcx>>) {
-            let tcx = self.tcx;
-            // Filter out duplicated candidates.
-            let mut new_candidates = Vec::new();
-            for mut candidate in candidates {
-                // Normalize and erase all lifetimes.
-                candidate.pred = erase_and_norm(tcx, self.param_env, candidate.pred);
-                if let Entry::Vacant(entry) = self.candidates.entry(candidate.pred) {
-                    entry.insert(candidate.clone());
-                    new_candidates.push(candidate);
-                }
-            }
-            if !new_candidates.is_empty() {
-                self.extend_parents(new_candidates);
-            }
-        }
-
-        /// Add the parents of these candidates. This is a separate function to avoid
-        /// polymorphic recursion due to the closures capturing the type parameters of this
-        /// function.
-        fn extend_parents(&mut self, new_candidates: Vec<Candidate<'tcx>>) {
-            let tcx = self.tcx;
-            // Then recursively add their parents. This way ensures a breadth-first order,
-            // which means we select the shortest path when looking up predicates.
-            self.extend(new_candidates.into_iter().flat_map(|candidate| {
-                parents_trait_predicates(tcx, candidate.pred)
-                    .into_iter()
-                    .enumerate()
-                    .map(move |(index, parent_pred)| {
-                        let mut parent_candidate = Candidate {
-                            pred: parent_pred,
-                            path: candidate.path.clone(),
-                            origin: candidate.origin,
-                        };
-                        parent_candidate.path.push(PathChunk::Parent {
-                            predicate: parent_pred,
-                            index,
-                        });
-                        parent_candidate
-                    })
-            }));
-        }
-
-        /// Lookup a predicate in this set. If the predicate applies to an associated type, we
-        /// add the relevant implied associated type bounds to the set as well.
-        fn lookup(&mut self, target: PolyTraitRef<'tcx>) -> Option<&Candidate<'tcx>> {
-            let tcx = self.tcx;
-            let target: PolyTraitPredicate =
-                erase_and_norm(tcx, self.param_env, target).upcast(tcx);
-
-            // The predicate is `<T as Trait>::Type: OtherTrait`. We look up `T as Trait` in
-            // the current context and add all the bounds on `Trait::Type` to our context.
-            // Note: We skip a binder but rebind it just after.
-            if let TyKind::Alias(AliasTyKind::Projection, alias_ty) =
-                target.self_ty().skip_binder().kind()
-            {
-                let trait_ref = target.rebind(alias_ty.trait_ref(tcx));
-                // Recursively look up the trait ref inside `self`.
-                let trait_candidate = self.lookup(trait_ref)?.clone();
-                let item_bounds = tcx
-                    // TODO: `item_bounds` can contain parent traits, we don't want them
-                    .item_bounds(alias_ty.def_id)
-                    .instantiate(tcx, alias_ty.args)
-                    .iter()
-                    .filter_map(|pred| pred.as_trait_clause())
-                    .enumerate();
-                // Add all the bounds on the corresponding associated item.
-                self.extend(item_bounds.map(|(index, pred)| {
-                    let mut candidate = Candidate {
-                        path: trait_candidate.path.clone(),
-                        pred,
-                        origin: trait_candidate.origin,
-                    };
-                    candidate.path.push(PathChunk::AssocItem {
-                        item: tcx.associated_item(alias_ty.def_id),
-                        predicate: pred,
-                        index,
-                    });
-                    candidate
-                }));
-            }
-
-            tracing::trace!("Looking for {target:?}");
-            let ret = self.candidates.get(&target);
-            if ret.is_none() {
-                tracing::trace!(
-                    "Couldn't find {target:?} in: [\n{}]",
-                    self.candidates
-                        .iter()
-                        .map(|(_, c)| format!("  - {:?}\n", c.pred))
-                        .join("")
-                );
-            }
-            ret
-        }
-    }
-
-    #[tracing::instrument(level = "trace", skip(tcx, param_env))]
-    pub(super) fn path_to<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        owner_id: DefId,
-        param_env: rustc_middle::ty::ParamEnv<'tcx>,
-        target: PolyTraitRef<'tcx>,
-    ) -> Option<(Path<'tcx>, AnnotatedTraitPred<'tcx>)> {
-        let mut searcher = PredicateSearcher::new_for_owner(tcx, param_env, owner_id);
-        let candidate = searcher.lookup(target)?;
-        Some((candidate.path.clone(), candidate.origin))
-    }
-}
+use crate::traits::utils::erase_and_norm;
 
 #[derive(Debug, Clone)]
 pub enum PathChunk<'tcx> {
@@ -287,6 +72,214 @@ pub struct ImplExpr<'tcx> {
     pub args: Vec<Self>,
 }
 
+/// Items have various predicates in scope. `path_to` uses them as a starting point for trait
+/// resolution. This tracks where each of them comes from.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub enum BoundPredicateOrigin {
+    /// The `Self: Trait` predicate implicitly present within trait declarations (note: we
+    /// don't add it for trait implementations, should we?).
+    SelfPred,
+    /// The nth (non-self) predicate found for this item. We use predicates from
+    /// `tcx.predicates_defined_on` starting from the parentmost item. If the item is an opaque
+    /// type, we also append the predicates from `explicit_item_bounds` to this list.
+    Item(usize),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub struct AnnotatedTraitPred<'tcx> {
+    pub origin: BoundPredicateOrigin,
+    pub clause: PolyTraitPredicate<'tcx>,
+}
+
+/// The predicates to use as a starting point for resolving trait references within this
+/// item. This is just like `TyCtxt::predicates_of`, but in the case of a trait or impl
+/// item or closures, also includes the predicates defined on the parents.
+fn initial_search_predicates<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    did: rustc_span::def_id::DefId,
+) -> Vec<AnnotatedTraitPred<'tcx>> {
+    let (predicates, self_pred) = super::utils::predicates_of_or_above(tcx, did);
+    let predicates = predicates
+        .into_iter()
+        .enumerate()
+        .map(|(i, clause)| AnnotatedTraitPred {
+            origin: BoundPredicateOrigin::Item(i),
+            clause,
+        });
+    let self_pred = self_pred.map(|clause| AnnotatedTraitPred {
+        origin: BoundPredicateOrigin::SelfPred,
+        clause,
+    });
+
+    self_pred.into_iter().chain(predicates).collect()
+}
+
+#[tracing::instrument(level = "trace", skip(tcx))]
+fn parents_trait_predicates<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    pred: PolyTraitPredicate<'tcx>,
+) -> Vec<PolyTraitPredicate<'tcx>> {
+    let self_trait_ref = pred.to_poly_trait_ref();
+    tcx.predicates_of(pred.def_id())
+        .predicates
+        .iter()
+        // Substitute with the `self` args so that the clause makes sense in the
+        // outside context.
+        .map(|(clause, _span)| clause.instantiate_supertrait(tcx, self_trait_ref))
+        .filter_map(|pred| pred.as_trait_clause())
+        .collect()
+}
+
+/// A candidate projects `self` along a path reaching some predicate. A candidate is
+/// selected when its predicate is the one expected, aka `target`.
+#[derive(Debug, Clone)]
+struct Candidate<'tcx> {
+    path: Path<'tcx>,
+    pred: PolyTraitPredicate<'tcx>,
+    origin: AnnotatedTraitPred<'tcx>,
+}
+
+/// Stores a set of predicates along with where they came from.
+struct PredicateSearcher<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    param_env: rustc_middle::ty::ParamEnv<'tcx>,
+    candidates: HashMap<PolyTraitPredicate<'tcx>, Candidate<'tcx>>,
+}
+
+impl<'tcx> PredicateSearcher<'tcx> {
+    /// Initialize the elaborator with the predicates accessible within this item.
+    fn new_for_owner(
+        tcx: TyCtxt<'tcx>,
+        param_env: rustc_middle::ty::ParamEnv<'tcx>,
+        owner_id: DefId,
+    ) -> Self {
+        let mut out = Self {
+            tcx,
+            param_env,
+            candidates: Default::default(),
+        };
+        out.extend(
+            initial_search_predicates(tcx, owner_id)
+                .into_iter()
+                .map(|clause| Candidate {
+                    path: vec![],
+                    pred: clause.clause,
+                    origin: clause,
+                }),
+        );
+        out
+    }
+
+    /// Insert new candidates and all their parent predicates. This deduplicates predicates
+    /// to avoid divergence.
+    fn extend(&mut self, candidates: impl IntoIterator<Item = Candidate<'tcx>>) {
+        let tcx = self.tcx;
+        // Filter out duplicated candidates.
+        let mut new_candidates = Vec::new();
+        for mut candidate in candidates {
+            // Normalize and erase all lifetimes.
+            candidate.pred = erase_and_norm(tcx, self.param_env, candidate.pred);
+            if let Entry::Vacant(entry) = self.candidates.entry(candidate.pred) {
+                entry.insert(candidate.clone());
+                new_candidates.push(candidate);
+            }
+        }
+        if !new_candidates.is_empty() {
+            self.extend_parents(new_candidates);
+        }
+    }
+
+    /// Add the parents of these candidates. This is a separate function to avoid
+    /// polymorphic recursion due to the closures capturing the type parameters of this
+    /// function.
+    fn extend_parents(&mut self, new_candidates: Vec<Candidate<'tcx>>) {
+        let tcx = self.tcx;
+        // Then recursively add their parents. This way ensures a breadth-first order,
+        // which means we select the shortest path when looking up predicates.
+        self.extend(new_candidates.into_iter().flat_map(|candidate| {
+            parents_trait_predicates(tcx, candidate.pred)
+                .into_iter()
+                .enumerate()
+                .map(move |(index, parent_pred)| {
+                    let mut parent_candidate = Candidate {
+                        pred: parent_pred,
+                        path: candidate.path.clone(),
+                        origin: candidate.origin,
+                    };
+                    parent_candidate.path.push(PathChunk::Parent {
+                        predicate: parent_pred,
+                        index,
+                    });
+                    parent_candidate
+                })
+        }));
+    }
+
+    /// Lookup a predicate in this set. If the predicate applies to an associated type, we
+    /// add the relevant implied associated type bounds to the set as well.
+    fn lookup(&mut self, target: PolyTraitRef<'tcx>) -> Option<&Candidate<'tcx>> {
+        let tcx = self.tcx;
+        let target: PolyTraitPredicate = erase_and_norm(tcx, self.param_env, target).upcast(tcx);
+
+        // The predicate is `<T as Trait>::Type: OtherTrait`. We look up `T as Trait` in
+        // the current context and add all the bounds on `Trait::Type` to our context.
+        // Note: We skip a binder but rebind it just after.
+        if let TyKind::Alias(AliasTyKind::Projection, alias_ty) =
+            target.self_ty().skip_binder().kind()
+        {
+            let trait_ref = target.rebind(alias_ty.trait_ref(tcx));
+            // Recursively look up the trait ref inside `self`.
+            let trait_candidate = self.lookup(trait_ref)?.clone();
+            let item_bounds = tcx
+                // TODO: `item_bounds` can contain parent traits, we don't want them
+                .item_bounds(alias_ty.def_id)
+                .instantiate(tcx, alias_ty.args)
+                .iter()
+                .filter_map(|pred| pred.as_trait_clause())
+                .enumerate();
+            // Add all the bounds on the corresponding associated item.
+            self.extend(item_bounds.map(|(index, pred)| {
+                let mut candidate = Candidate {
+                    path: trait_candidate.path.clone(),
+                    pred,
+                    origin: trait_candidate.origin,
+                };
+                candidate.path.push(PathChunk::AssocItem {
+                    item: tcx.associated_item(alias_ty.def_id),
+                    predicate: pred,
+                    index,
+                });
+                candidate
+            }));
+        }
+
+        tracing::trace!("Looking for {target:?}");
+        let ret = self.candidates.get(&target);
+        if ret.is_none() {
+            tracing::trace!(
+                "Couldn't find {target:?} in: [\n{}]",
+                self.candidates
+                    .iter()
+                    .map(|(_, c)| format!("  - {:?}\n", c.pred))
+                    .join("")
+            );
+        }
+        ret
+    }
+}
+
+#[tracing::instrument(level = "trace", skip(tcx, param_env))]
+pub(super) fn path_to<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    owner_id: DefId,
+    param_env: rustc_middle::ty::ParamEnv<'tcx>,
+    target: PolyTraitRef<'tcx>,
+) -> Option<(Path<'tcx>, AnnotatedTraitPred<'tcx>)> {
+    let mut searcher = PredicateSearcher::new_for_owner(tcx, param_env, owner_id);
+    let candidate = searcher.lookup(target)?;
+    Some((candidate.path.clone(), candidate.origin))
+}
+
 #[tracing::instrument(level = "trace", skip(tcx, warn))]
 fn impl_exprs<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -337,7 +330,7 @@ pub(super) fn impl_expr<'tcx>(
             def_id: impl_def_id,
             generics,
         },
-        Ok(ImplSource::Param(_)) => match search_clause::path_to(tcx, owner_id, param_env, *tref) {
+        Ok(ImplSource::Param(_)) => match path_to(tcx, owner_id, param_env, *tref) {
             Some((path, apred)) => {
                 let r#trait = apred.clause.to_poly_trait_ref();
                 match apred.origin {
