@@ -126,7 +126,7 @@ struct
       method error_expr _x1 = default_document_for "error_expr"
       method error_item _x1 = default_document_for "error_item"
       method error_pat _x1 = default_document_for "error_pat"
-      method expr ~e:_ ~span:_ ~typ:_ = default_document_for "expr"
+      method expr ~e ~span:_ ~typ:_ = e#p
 
       method expr'_AddressOf ~super:_ ~mut:_ ~e:_ ~witness:_ =
         default_document_for "expr'_AddressOf"
@@ -178,7 +178,7 @@ struct
         default_document_for "expr'_GlobalVar"
 
       method expr'_If ~super:_ ~cond:_ ~then_:_ ~else_:_ =
-        default_document_for "expr'_If"
+        string "if" ^^ space ^^ string "<expr>" ^^ braces ( string "<expr>" ) ^^ space ^^ option_of (string "else" ^^ braces (string "<expr>"))
 
       method expr'_Let ~super:_ ~monadic:_ ~lhs:_ ~rhs:_ ~body:_ =
         default_document_for "expr'_Let"
@@ -363,7 +363,7 @@ struct
       method param ~pat:_ ~typ:_ ~typ_span:_ ~attrs:_ =
         default_document_for "param"
 
-      method pat ~p:_ ~span:_ ~typ:_ = default_document_for "pat"
+      method pat ~p ~span:_ ~typ:_ = p#p
 
       method pat'_PAscription ~super:_ ~typ:_ ~typ_span:_ ~pat:_ =
         default_document_for "pat'_PAscription"
@@ -424,8 +424,8 @@ struct
       method ty_TAssociatedType ~impl:_ ~item:_ =
         default_document_for "ty_TAssociatedType"
 
-      method ty_TBool = default_document_for "ty_TBool"
-      method ty_TChar = default_document_for "ty_TChar"
+      method ty_TBool = string "bool"
+      method ty_TChar = string "char"
       method ty_TDyn ~witness:_ ~goals:_ = default_document_for "ty_TDyn"
       method ty_TFloat _x1 = default_document_for "ty_TFloat"
       method ty_TInt _x1 = default_document_for "ty_TInt"
@@ -437,13 +437,15 @@ struct
         default_document_for "ty_TRef"
 
       method ty_TSlice ~witness:_ ~ty:_ = default_document_for "ty_TSlice"
-      method ty_TStr = default_document_for "ty_TStr"
+      method ty_TStr = string "str"
 
       method variant ~name:_ ~arguments:_ ~is_record:_ ~attrs:_ =
         default_document_for "variant"
       (* END GENERATED *)
     end
 end
+
+(* TODO: Write quoted expression shallowly, to get a generator for full AST *)
 
 module HaxCFG = struct
   module MyPrinter = Make (Features.Full) (struct let default x = x end)
@@ -457,8 +459,10 @@ module HaxCFG = struct
     let dummy_ident : concrete_ident =
       Concrete_ident.of_name Value Hax_lib__RefineAs__into_checked
     in
-    let dummy_ty : ty = TStr in
-    let dummy_expr : expr = { e = Literal (String "dummy"); span = Span.dummy (); typ = dummy_ty } in
+
+    let dummy_literal = String "dummy" in
+
+    let dummy_expr : expr = { e = Literal (dummy_literal); span = Span.dummy (); typ = dummy_ty } in
     let dummy_generics : generics = { params = []; constraints = [] } in
     let dummy_global_ident : global_ident =
       `Concrete (dummy_ident)
@@ -495,16 +499,16 @@ module HaxCFG = struct
           is_struct = true;
         } ;
       ]
-      (* @ List.map ~f:(fun x -> IMacroInvokation { *)
-      (*     macro = x; *)
-      (*     argument = "TODO"; *)
-      (*     span = Span.dummy(); *)
-      (*     witness : Features.On.macro; (\* TODO: Check feature enabled in target langauge *\) *)
-      (*   }) ["public_nat_mod"; *)
-      (*       "bytes"; *)
-      (*       "public_bytes"; *)
-      (*       "array"; *)
-      (* "unsigned_public_integer"] *)
+      @ List.map ~f:(fun x -> IMacroInvokation {
+          macro = Concrete_ident.of_name Macro Alloc__string__String ; (* TODO *)
+          argument = "TODO";
+          span = Span.dummy();
+          witness = Features.On.macro;
+        }) ["public_nat_mod";
+            "bytes";
+            "public_bytes";
+            "array";
+            "unsigned_public_integer"]
       @ [
         Trait {
           name = dummy_ident;
@@ -522,7 +526,7 @@ module HaxCFG = struct
         };
         Alias { name = dummy_ident; item = dummy_ident };
         Use { path = []; is_external = false; rename = None; };
-        Quote { contents = []; witness = Features.On.quote (* TODO: Check if feature enabled *); };
+        Quote { contents = []; witness = Features.On.quote; };
         HaxError "dummy";
         NotImplementedYet
       ]
@@ -542,46 +546,35 @@ module HaxCFG = struct
 
     let my_exprs' = [
       If { cond = dummy_expr; then_ = dummy_expr; else_ = None };
-      App { f = dummy_expr; args = []; generic_args = []; bounds_impls = []; trait = None; };
+      (* App { f = dummy_expr; args = []; generic_args = []; bounds_impls = []; trait = None; }; *)
       Literal (String "dummy");
       Array [];
-      (* Construct { *)
-      (*   constructor = dummy_global_ident; *)
-      (*   is_record = false; *)
-      (*   is_struct = false; *)
-      (*   fields = []; *)
-      (*   base = None; *)
-      (* }; *)
-      (* Match { scrutinee = dummy_expr; arms = [] }; *)
-      (* Let { monadic = None; lhs = dummy_pat; rhs = dummy_expr; body = dummy_expr; }; *)
-      (* Block { e = dummy_expr; safety_mode = Safe; witness = Features.On.block _ _ }; *)
-      (* LocalVar dummy_local_ident; *)
-      (* GlobalVar dummy_global_ident; *)
-      (* Ascription { e = dummy_expr; typ = dummy_ty }; *)
-      (* MacroInvokation { macro = dummy_global_ident; args = "dummy"; witness = Features.On.macro; } *)
-      (* Assign { lhs = LhsLocalVar { var = dummy_local_ident; typ = dummy_ty }; e = dummy_expr; witness = _ } *)
-      (* Loop { body = dummy_expr; kind = UnconditionalLoop; state = None; label = None; witness = Features.On.loop; }; *)
-      (* Break { e = dummy_expr; label = None; witness = (Features.On.break , Features.On.loop) }; *)
-      (* Return { e = dummy_expr; witness = Features.On.early_exit }; *)
-      (* QuestionMark { e = dummy_expr; return_typ = dummy_ty; witness = Features.On.question_mark }; *)
-      (* Continue { *)
-      (*   e = None; *)
-      (*   label = None; *)
-      (*   witness = (Features.On.continue , Features.On.loop); *)
-      (* }; *)
-      (* (\* Mem *\) *)
-      (* | Borrow of { kind : borrow_kind; e : expr; witness : Features.On.reference } *)
-      (* (\* Raw borrow *\) *)
-      (* | AddressOf of { *)
-      (*   mut : Features.On.mutable_pointer mutability; *)
-      (*   e : expr; *)
-      (*   witness : Features.On.raw_pointer; *)
-      (* } *)
-      (* | Closure of { params : pat list; body : expr; captures : expr list } *)
-      (* | EffectAction of { action : Features.On.monadic_action; argument : expr } *)
-      (* | Quote of quote *)
-      (* (\** A quotation is an inlined piece of backend code *)
-      (*     interleaved with Rust code *\) *)
+      Construct {
+        constructor = dummy_global_ident;
+        is_record = false;
+        is_struct = false;
+        fields = [];
+        base = None;
+      };
+      Match { scrutinee = dummy_expr; arms = [] };
+      Let { monadic = None; lhs = dummy_pat; rhs = dummy_expr; body = dummy_expr; };
+      Block { e = dummy_expr; safety_mode = Safe; witness = Features.On.block };
+      LocalVar dummy_local_ident;
+      GlobalVar dummy_global_ident;
+      Ascription { e = dummy_expr; typ = dummy_ty };
+      MacroInvokation { macro = dummy_global_ident; args = "dummy"; witness = Features.On.macro; };
+      Assign { lhs = LhsLocalVar { var = dummy_local_ident; typ = dummy_ty }; e = dummy_expr; witness = Features.On.mutable_variable; };
+      Loop { body = dummy_expr; kind = UnconditionalLoop; state = None; label = None; witness = Features.On.loop; };
+      Break { e = dummy_expr; label = None; witness = (Features.On.break , Features.On.loop) };
+      Return { e = dummy_expr; witness = Features.On.early_exit };
+      QuestionMark { e = dummy_expr; return_typ = dummy_ty; witness = Features.On.question_mark };
+      Continue { e = None; label = None; witness = (Features.On.continue , Features.On.loop) };
+      Borrow { kind = Shared; e = dummy_expr; witness = Features.On.reference };
+      AddressOf { mut = Immutable; e = dummy_expr; witness = Features.On.raw_pointer; };
+      AddressOf { mut = (Mutable Features.On.mutable_pointer) ; e = dummy_expr; witness = Features.On.raw_pointer; };
+      Closure { params = []; body = dummy_expr; captures = [] };
+      EffectAction { action = Features.On.monadic_action; argument = dummy_expr };
+      Quote  { contents = []; witness = Features.On.quote; }
     ] in
     let my_exprs = List.map ~f:(fun x -> { e = x; span = Span.dummy(); typ = dummy_ty }) my_exprs' in
     let expr_string =
@@ -603,20 +596,26 @@ module HaxCFG = struct
       (* TFloat of float_kind; *)
       TStr;
       (* TApp of { ident : global_ident; args : generic_value list }; *)
-      (* TArray of { typ : ty; length : expr }; *)
-      (* TSlice of { witness : F.slice; ty : ty }; *)
-      (* TRawPointer of { witness : F.raw_pointer } (\* todo *\); *)
-      (* TRef of { *)
-      (*     witness : F.reference; *)
-      (*     region : todo; *)
-      (*     typ : ty; *)
-      (*     mut : F.mutable_reference mutability; *)
-      (*   }; *)
-      (* TParam of local_ident; *)
-      (* TArrow of ty list * ty; *)
-      (* TAssociatedType of { impl : impl_expr; item : concrete_ident }; *)
-      (* TOpaque of concrete_ident; *)
-      (* TDyn of { witness : F.dyn; goals : dyn_trait_goal list }; *)
+      TArray { typ = dummy_ty; length = dummy_expr (* const *) };
+      TSlice { witness = Features.On.slice; ty = dummy_ty };
+      TRawPointer { witness = Features.On.raw_pointer };
+      TRef {
+          witness = Features.On.reference;
+          region = "todo";
+          typ = dummy_ty;
+          mut = Immutable;
+        };
+      TRef {
+          witness = Features.On.reference;
+          region = "todo";
+          typ = dummy_ty;
+          mut = Mutable (Features.On.mutable_reference);
+        };
+      TParam dummy_local_ident;
+      TArrow ([] , dummy_ty);
+      (* TAssociatedType { impl = impl_expr; item : concrete_ident }; *)
+      TOpaque (dummy_ident);
+      TDyn { witness = Features.On.dyn; goals = [] };
     ] in
     let ty_string =
       "<ty> ::=\n" ^
@@ -632,13 +631,19 @@ module HaxCFG = struct
 
     let my_pats' = [
       PWild;
-      (* PAscription of { typ : ty; typ_span : span; pat : pat }; *)
-      (* PConstruct of { constructor : global_ident; is_record : bool; (\* are fields named? *\) is_struct : bool; (\* a struct has one constructor *\) fields : field_pat list; }; *)
-      (* POr of { subpats : pat list }; *)
-      (* PArray of { args : pat list }; *)
-      (* PDeref of { subpat : pat; witness : F.reference }; *)
-      (* PConstant of { lit : literal }; *)
-      (* PBinding of { mut : F.mutable_variable mutability; mode : binding_mode; var : local_ident; typ : ty; subpat : (pat * F.as_pattern) option; }; *)
+      PAscription { typ = dummy_ty; typ_span = Span.dummy(); pat = dummy_pat };
+      PConstruct { constructor = dummy_global_ident; is_record = false; is_struct = false; fields = []; };
+      POr { subpats = [] };
+      PArray { args = [] };
+      PDeref { subpat = dummy_pat; witness = Features.On.reference };
+      PConstant { lit = dummy_literal };
+      PBinding {
+        mut = Mutable Features.On.mutable_variable;
+        mode = ByValue;
+        var = dummy_local_ident;
+        typ = dummy_ty;
+        subpat = None;
+      };
     ] in
     let my_pats = List.map ~f:(fun x -> { p = x; span = Span.dummy(); typ = dummy_ty }) my_pats' in
     let pat_string =
