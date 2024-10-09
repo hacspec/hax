@@ -4,6 +4,8 @@ use clap::{Parser, Subcommand, ValueEnum};
 use std::fmt;
 
 pub use hax_frontend_exporter_options::*;
+pub mod extension;
+use extension::Extension;
 
 #[derive_group(Serializers)]
 #[derive(JsonSchema, Debug, Clone)]
@@ -130,7 +132,7 @@ pub struct ProVerifOptions {
 
 #[derive_group(Serializers)]
 #[derive(JsonSchema, Parser, Debug, Clone)]
-pub struct FStarOptions {
+pub struct FStarOptions<E: Extension> {
     /// Set the Z3 per-query resource limit
     #[arg(long, default_value = "15")]
     z3rlimit: u32,
@@ -162,13 +164,16 @@ pub struct FStarOptions {
 
     #[arg(long, default_value = "100", env = "HAX_FSTAR_LINE_WIDTH")]
     line_width: u16,
+
+    #[group(flatten)]
+    pub cli_extension: E::FStarOptions,
 }
 
 #[derive_group(Serializers)]
 #[derive(JsonSchema, Subcommand, Debug, Clone)]
-pub enum Backend {
+pub enum Backend<E: Extension> {
     /// Use the F* backend
-    Fstar(FStarOptions),
+    Fstar(FStarOptions<E>),
     /// Use the Coq backend
     Coq,
     /// Use the SSProve backend
@@ -179,7 +184,7 @@ pub enum Backend {
     ProVerif(ProVerifOptions),
 }
 
-impl fmt::Display for Backend {
+impl fmt::Display for Backend<()> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Backend::Fstar(..) => write!(f, "fstar"),
@@ -290,9 +295,9 @@ pub struct TranslationOptions {
 
 #[derive_group(Serializers)]
 #[derive(JsonSchema, Parser, Debug, Clone)]
-pub struct BackendOptions {
+pub struct BackendOptions<E: Extension> {
     #[command(subcommand)]
-    pub backend: Backend,
+    pub backend: Backend<E>,
 
     /// Don't write anything on disk. Output everything as JSON to stdout
     /// instead.
@@ -336,17 +341,20 @@ pub struct BackendOptions {
     /// Defaults to "<crate folder>/proofs/<backend>/extraction".
     #[arg(long)]
     pub output_dir: Option<PathBuf>,
+
+    #[group(flatten)]
+    pub cli_extension: E::BackendOptions,
 }
 
 #[derive_group(Serializers)]
 #[derive(JsonSchema, Subcommand, Debug, Clone)]
-pub enum Command {
+pub enum Command<E: Extension> {
     /// Translate to a backend. The translated modules will be written
     /// under the directory `<PKG>/proofs/<BACKEND>/extraction`, where
     /// `<PKG>` is the translated cargo package name and `<BACKEND>`
     /// the name of the backend.
     #[clap(name = "into")]
-    Backend(BackendOptions),
+    Backend(BackendOptions<E>),
 
     /// Export directly as a JSON file
     JSON {
@@ -374,9 +382,12 @@ pub enum Command {
         #[arg(short = 'E', long = "include-extra", default_value = "false")]
         include_extra: bool,
     },
+
+    #[command(flatten)]
+    CliExtension(E::Command),
 }
 
-impl Command {
+impl<E: Extension> Command<E> {
     pub fn body_kinds(&self) -> Vec<ExportBodyKind> {
         match self {
             Command::JSON { kind, .. } => kind.clone(),
@@ -395,7 +406,7 @@ pub enum ExportBodyKind {
 #[derive_group(Serializers)]
 #[derive(JsonSchema, Parser, Debug, Clone)]
 #[command(author, version = concat!("commit=", env!("HAX_GIT_COMMIT_HASH"), " ", "describe=", env!("HAX_GIT_DESCRIBE")), name = "hax", about, long_about = None)]
-pub struct Options {
+pub struct ExtensibleOptions<E: Extension> {
     /// Replace the expansion of each macro matching PATTERN by their
     /// invocation. PATTERN denotes a rust path (i.e. `A::B::c`) in
     /// which glob patterns are allowed. The glob pattern * matches
@@ -423,7 +434,7 @@ pub struct Options {
     pub cargo_flags: Vec<String>,
 
     #[command(subcommand)]
-    pub command: Command,
+    pub command: Command<E>,
 
     /// `cargo` caching is enable by default, this flag disables it.
     #[arg(long="disable-cargo-cache", action=clap::builder::ArgAction::SetFalse)]
@@ -447,7 +458,12 @@ pub struct Options {
     /// if not present.
     #[arg(long, default_value = "human")]
     pub message_format: MessageFormat,
+
+    #[group(flatten)]
+    pub extension: E::Options,
 }
+
+pub type Options = ExtensibleOptions<()>;
 
 #[derive_group(Serializers)]
 #[derive(JsonSchema, ValueEnum, Debug, Clone, Copy, Eq, PartialEq)]
@@ -456,7 +472,7 @@ pub enum MessageFormat {
     Json,
 }
 
-impl NormalizePaths for Command {
+impl<E: Extension> NormalizePaths for Command<E> {
     fn normalize_paths(&mut self) {
         use Command::*;
         match self {

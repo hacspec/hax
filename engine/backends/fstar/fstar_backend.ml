@@ -68,7 +68,7 @@ end
 module AST = Ast.Make (InputLanguage)
 
 module BackendOptions = struct
-  type t = Hax_engine.Types.f_star_options
+  type t = Hax_engine.Types.f_star_options_for__null
 end
 
 open Ast
