@@ -140,7 +140,7 @@ struct Candidate<'tcx> {
 }
 
 /// Stores a set of predicates along with where they came from.
-struct PredicateSearcher<'tcx> {
+pub(super) struct PredicateSearcher<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     candidates: HashMap<PolyTraitPredicate<'tcx>, Candidate<'tcx>>,
@@ -148,7 +148,7 @@ struct PredicateSearcher<'tcx> {
 
 impl<'tcx> PredicateSearcher<'tcx> {
     /// Initialize the elaborator with the predicates accessible within this item.
-    fn new_for_owner(
+    pub(super) fn new_for_owner(
         tcx: TyCtxt<'tcx>,
         param_env: rustc_middle::ty::ParamEnv<'tcx>,
         owner_id: DefId,
@@ -266,32 +266,32 @@ impl<'tcx> PredicateSearcher<'tcx> {
         }
         ret
     }
-}
 
-#[tracing::instrument(level = "trace", skip(tcx, param_env, warn))]
-pub(super) fn impl_expr<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    owner_id: DefId,
-    param_env: rustc_middle::ty::ParamEnv<'tcx>,
-    tref: &rustc_middle::ty::PolyTraitRef<'tcx>,
-    // Call back into hax-related code to display a nice warning.
-    warn: &impl Fn(&str),
-) -> Result<ImplExpr<'tcx>, String> {
-    use rustc_trait_selection::traits::{BuiltinImplSource, ImplSource, ImplSourceUserDefinedData};
+    /// Resolve the given trait reference in the local context.
+    #[tracing::instrument(level = "trace", skip(self, warn))]
+    pub(super) fn resolve(
+        &mut self,
+        tref: &rustc_middle::ty::PolyTraitRef<'tcx>,
+        // Call back into hax-related code to display a nice warning.
+        warn: &impl Fn(&str),
+    ) -> Result<ImplExpr<'tcx>, String> {
+        use rustc_trait_selection::traits::{
+            BuiltinImplSource, ImplSource, ImplSourceUserDefinedData,
+        };
 
-    let impl_source = copy_paste_from_rustc::codegen_select_candidate(tcx, (param_env, *tref));
-    let atom = match impl_source {
-        Ok(ImplSource::UserDefined(ImplSourceUserDefinedData {
-            impl_def_id,
-            args: generics,
-            ..
-        })) => ImplExprAtom::Concrete {
-            def_id: impl_def_id,
-            generics,
-        },
-        Ok(ImplSource::Param(_)) => {
-            let mut searcher = PredicateSearcher::new_for_owner(tcx, param_env, owner_id);
-            match searcher.lookup(*tref) {
+        let tcx = self.tcx;
+        let impl_source =
+            copy_paste_from_rustc::codegen_select_candidate(tcx, (self.param_env, *tref));
+        let atom = match impl_source {
+            Ok(ImplSource::UserDefined(ImplSourceUserDefinedData {
+                impl_def_id,
+                args: generics,
+                ..
+            })) => ImplExprAtom::Concrete {
+                def_id: impl_def_id,
+                generics,
+            },
+            Ok(ImplSource::Param(_)) => match self.lookup(*tref) {
                 Some(candidate) => {
                     let path = candidate.path.clone();
                     let r#trait = candidate.origin.clause.to_poly_trait_ref();
@@ -311,50 +311,48 @@ pub(super) fn impl_expr<'tcx>(
                     warn(&msg);
                     ImplExprAtom::Error(msg)
                 }
+            },
+            Ok(ImplSource::Builtin(BuiltinImplSource::Object { .. }, _)) => ImplExprAtom::Dyn,
+            Ok(ImplSource::Builtin(_, _)) => ImplExprAtom::Builtin { r#trait: *tref },
+            Err(e) => {
+                let msg = format!(
+                    "Could not find a clause for `{tref:?}` in the current context: `{e:?}`"
+                );
+                warn(&msg);
+                ImplExprAtom::Error(msg)
             }
-        }
-        Ok(ImplSource::Builtin(BuiltinImplSource::Object { .. }, _)) => ImplExprAtom::Dyn,
-        Ok(ImplSource::Builtin(_, _)) => ImplExprAtom::Builtin { r#trait: *tref },
-        Err(e) => {
-            let msg =
-                format!("Could not find a clause for `{tref:?}` in the current context: `{e:?}`");
-            warn(&msg);
-            ImplExprAtom::Error(msg)
-        }
-    };
+        };
 
-    let nested = match &impl_source {
-        Ok(ImplSource::UserDefined(ImplSourceUserDefinedData { nested, .. })) => nested.as_slice(),
-        Ok(ImplSource::Param(nested)) => nested.as_slice(),
-        // We ignore the contained obligations here. For example for `(): Send`, the
-        // obligations contained would be `[(): Send]`, which leads to an infinite loop. There
-        // might be important obligations here in other cases; we'll have to see if that comes
-        // up.
-        Ok(ImplSource::Builtin(_, _ignored)) => &[],
-        Err(_) => &[],
-    };
-    let nested = nested
-        .iter()
-        // Only keep depth-1 obligations to avoid duplicate impl exprs.
-        .filter(|obligation| obligation.recursion_depth == 1)
-        .filter_map(|obligation| {
-            obligation.predicate.as_trait_clause().map(|trait_ref| {
-                impl_expr(
-                    tcx,
-                    owner_id,
-                    param_env,
-                    &trait_ref.map_bound(|p| p.trait_ref),
-                    warn,
-                )
+        let nested = match &impl_source {
+            Ok(ImplSource::UserDefined(ImplSourceUserDefinedData { nested, .. })) => {
+                nested.as_slice()
+            }
+            Ok(ImplSource::Param(nested)) => nested.as_slice(),
+            // We ignore the contained obligations here. For example for `(): Send`, the
+            // obligations contained would be `[(): Send]`, which leads to an infinite loop. There
+            // might be important obligations here in other cases; we'll have to see if that comes
+            // up.
+            Ok(ImplSource::Builtin(_, _ignored)) => &[],
+            Err(_) => &[],
+        };
+        let nested = nested
+            .iter()
+            // Only keep depth-1 obligations to avoid duplicate impl exprs.
+            .filter(|obligation| obligation.recursion_depth == 1)
+            .filter_map(|obligation| {
+                obligation
+                    .predicate
+                    .as_trait_clause()
+                    .map(|trait_ref| self.resolve(&trait_ref.map_bound(|p| p.trait_ref), warn))
             })
-        })
-        .collect::<Result<_, _>>()?;
+            .collect::<Result<_, _>>()?;
 
-    Ok(ImplExpr {
-        r#impl: atom,
-        args: nested,
-        r#trait: *tref,
-    })
+        Ok(ImplExpr {
+            r#impl: atom,
+            args: nested,
+            r#trait: *tref,
+        })
+    }
 }
 
 mod copy_paste_from_rustc {

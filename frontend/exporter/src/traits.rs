@@ -138,7 +138,10 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             crate::warning!(s, "{}", msg)
         }
     };
-    match resolution::impl_expr(s.base().tcx, s.owner_id(), s.param_env(), &trait_ref, &warn) {
+    let tcx = s.base().tcx;
+    let mut searcher =
+        resolution::PredicateSearcher::new_for_owner(tcx, s.param_env(), s.owner_id());
+    match searcher.resolve(&trait_ref, &warn) {
         Ok(x) => x.sinto(s),
         Err(e) => crate::fatal!(s, "{}", e),
     }
