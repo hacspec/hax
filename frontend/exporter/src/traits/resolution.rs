@@ -226,7 +226,7 @@ impl<'tcx> PredicateSearcher<'tcx> {
 
         // The predicate we're looking for is is `<T as Trait>::Type: OtherTrait`. We look up `T as
         // Trait` in the current context and add all the bounds on `Trait::Type` to our context.
-        let Some(trait_candidate) = self.lookup(trait_ref).cloned() else {
+        let Some(trait_candidate) = self.lookup(trait_ref) else {
             return;
         };
 
@@ -256,15 +256,21 @@ impl<'tcx> PredicateSearcher<'tcx> {
 
     /// Lookup a predicate in this set. If the predicate applies to an associated type, we
     /// add the relevant implied associated type bounds to the set as well.
-    fn lookup(&mut self, target: PolyTraitRef<'tcx>) -> Option<&Candidate<'tcx>> {
+    fn lookup(&mut self, target: PolyTraitRef<'tcx>) -> Option<Candidate<'tcx>> {
         let tcx = self.tcx;
         let target: PolyTraitPredicate = erase_and_norm(tcx, self.param_env, target).upcast(tcx);
+        tracing::trace!("Looking for {target:?}");
+
+        // Look up the predicate
+        let ret = self.candidates.get(&target).cloned();
+        if ret.is_some() {
+            return ret;
+        }
 
         // Add clauses related to associated type in the `Self` type of the predicate.
         self.add_associated_type_refs(target.self_ty());
 
-        tracing::trace!("Looking for {target:?}");
-        let ret = self.candidates.get(&target);
+        let ret = self.candidates.get(&target).cloned();
         if ret.is_none() {
             tracing::trace!(
                 "Couldn't find {target:?} in: [\n{}]",
@@ -303,7 +309,7 @@ impl<'tcx> PredicateSearcher<'tcx> {
             },
             Ok(ImplSource::Param(_)) => match self.lookup(*tref) {
                 Some(candidate) => {
-                    let path = candidate.path.clone();
+                    let path = candidate.path;
                     let r#trait = candidate.origin.clause.to_poly_trait_ref();
                     match candidate.origin.origin {
                         BoundPredicateOrigin::SelfPred => ImplExprAtom::SelfImpl { r#trait, path },
