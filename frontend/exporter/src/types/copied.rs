@@ -1797,8 +1797,7 @@ impl Alias {
                 // yet we dont have a binder around (could even be several). Binding this correctly
                 // is therefore difficult. Since our trait resolution ignores lifetimes anyway, we
                 // just erase them. See also https://github.com/hacspec/hax/issues/747.
-                let trait_ref =
-                    traits::rustc::search_clause::erase_and_norm(tcx, s.param_env(), trait_ref);
+                let trait_ref = crate::traits::erase_and_norm(tcx, s.param_env(), trait_ref);
                 AliasKind::Projection {
                     assoc_item: tcx.associated_item(alias_ty.def_id).sinto(s),
                     impl_expr: solve_trait(s, ty::Binder::dummy(trait_ref)),
