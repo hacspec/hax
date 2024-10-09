@@ -215,43 +215,53 @@ impl<'tcx> PredicateSearcher<'tcx> {
         }));
     }
 
+    /// If the type is a trait associated type, we add any relevant bounds to our context.
+    fn add_associated_type_refs(&mut self, ty: Binder<'tcx, Ty<'tcx>>) {
+        let tcx = self.tcx;
+        // Note: We skip a binder but rebind it just after.
+        let TyKind::Alias(AliasTyKind::Projection, alias_ty) = ty.skip_binder().kind() else {
+            return;
+        };
+        let trait_ref = ty.rebind(alias_ty.trait_ref(tcx));
+
+        // The predicate we're looking for is is `<T as Trait>::Type: OtherTrait`. We look up `T as
+        // Trait` in the current context and add all the bounds on `Trait::Type` to our context.
+        let Some(trait_candidate) = self.lookup(trait_ref).cloned() else {
+            return;
+        };
+
+        let item_bounds = tcx
+            // TODO: `item_bounds` can contain parent traits, we don't want them
+            .item_bounds(alias_ty.def_id)
+            .instantiate(tcx, alias_ty.args)
+            .iter()
+            .filter_map(|pred| pred.as_trait_clause())
+            .enumerate();
+
+        // Add all the bounds on the corresponding associated item.
+        self.extend(item_bounds.map(|(index, pred)| {
+            let mut candidate = Candidate {
+                path: trait_candidate.path.clone(),
+                pred,
+                origin: trait_candidate.origin,
+            };
+            candidate.path.push(PathChunk::AssocItem {
+                item: tcx.associated_item(alias_ty.def_id),
+                predicate: pred,
+                index,
+            });
+            candidate
+        }));
+    }
+
     /// Lookup a predicate in this set. If the predicate applies to an associated type, we
     /// add the relevant implied associated type bounds to the set as well.
     fn lookup(&mut self, target: PolyTraitRef<'tcx>) -> Option<&Candidate<'tcx>> {
         let tcx = self.tcx;
         let target: PolyTraitPredicate = erase_and_norm(tcx, self.param_env, target).upcast(tcx);
 
-        // The predicate is `<T as Trait>::Type: OtherTrait`. We look up `T as Trait` in
-        // the current context and add all the bounds on `Trait::Type` to our context.
-        // Note: We skip a binder but rebind it just after.
-        if let TyKind::Alias(AliasTyKind::Projection, alias_ty) =
-            target.self_ty().skip_binder().kind()
-        {
-            let trait_ref = target.rebind(alias_ty.trait_ref(tcx));
-            // Recursively look up the trait ref inside `self`.
-            let trait_candidate = self.lookup(trait_ref)?.clone();
-            let item_bounds = tcx
-                // TODO: `item_bounds` can contain parent traits, we don't want them
-                .item_bounds(alias_ty.def_id)
-                .instantiate(tcx, alias_ty.args)
-                .iter()
-                .filter_map(|pred| pred.as_trait_clause())
-                .enumerate();
-            // Add all the bounds on the corresponding associated item.
-            self.extend(item_bounds.map(|(index, pred)| {
-                let mut candidate = Candidate {
-                    path: trait_candidate.path.clone(),
-                    pred,
-                    origin: trait_candidate.origin,
-                };
-                candidate.path.push(PathChunk::AssocItem {
-                    item: tcx.associated_item(alias_ty.def_id),
-                    predicate: pred,
-                    index,
-                });
-                candidate
-            }));
-        }
+        // Add clauses related to associated type in the `Self` type of the predicate.
+        self.add_associated_type_refs(target.self_ty());
 
         tracing::trace!("Looking for {target:?}");
         let ret = self.candidates.get(&target);
