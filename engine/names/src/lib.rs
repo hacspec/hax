@@ -149,6 +149,33 @@ fn offset() {}
 
 fn unsize() {}
 
+fn from_uint8 () {}
+fn from_int8 () {}
+fn from_uint16 () {}
+fn from_int16 () {}
+fn from_uint32 () {}
+fn from_int32 () {}
+fn from_uint64 () {}
+fn from_int64 () {}
+fn from_uint128 () {}
+fn from_int128 () {}
+fn from_usize () {}
+fn from_isize () {}
+
+fn mk_u8 () {}
+fn mk_i8 () {}
+fn mk_u16 () {}
+fn mk_i16 () {}
+fn mk_u32 () {}
+fn mk_i32 () {}
+fn mk_u64 () {}
+fn mk_i64 () {}
+fn mk_u128 () {}
+fn mk_i128 () {}
+fn mk_usize () {}
+fn mk_isize () {}
+
+
 /// Hax additions
 mod hax {
     fn failure() {}

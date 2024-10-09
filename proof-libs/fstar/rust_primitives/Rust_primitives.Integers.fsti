@@ -90,6 +90,33 @@ type i128 = int_t I128
 type usize = int_t USIZE
 type isize = int_t ISIZE
 
+[@(strict_on_arguments [0])]
+let v (#t:inttype) (x:int_t t) : range_t t = x
+
+[@(strict_on_arguments [0])]
+let mk_int (#t:inttype) (n:range_t t) : int_t t = n
+
+val mk_int_v_lemma: #t:inttype -> a:int_t t -> Lemma
+  (mk_int #t (v #t a) == a)
+  [SMTPat (mk_int #t (v #t a))]
+
+val v_mk_int_lemma: #t:inttype -> n:range_t t -> Lemma
+  (v #t (mk_int #t n) == n)
+  [SMTPat (v #t (mk_int #t n))]
+
+let mk_uint8 x = mk_int #U8 x
+let mk_int8  x = mk_int #I8 x
+let mk_uint16  x = mk_int #U16 x
+let mk_int16  x = mk_int #I16 x
+let mk_uint32 x = mk_int #U32 x
+let mk_int32  x = mk_int #I32 x
+let mk_uint64 x = mk_int #U64 x
+let mk_int64  x = mk_int #I64 x
+let mk_uint128 x = mk_int #U128 x
+let mk_int128  x = mk_int #I128 x
+let mk_usize x = mk_int #USIZE x
+let mk_isize  x = mk_int #ISIZE x
+
 let from_uint8 (x:FStar.UInt8.t) : u8  = FStar.UInt8.v x
 let from_int8 (x:FStar.Int8.t) : i8  = FStar.Int8.v x
 let from_uint16 (x:FStar.UInt16.t) : u16  = FStar.UInt16.v x
@@ -100,23 +127,8 @@ let from_uint64 (x:FStar.UInt64.t) : u64  = FStar.UInt64.v x
 let from_int64 (x:FStar.Int64.t) : i64  = FStar.Int64.v x
 let from_uint128 (x:FStar.UInt128.t) : u128  = FStar.UInt128.v x
 let from_int128 (x:FStar.Int128.t) : i128  = FStar.Int128.v x
-
-[@(strict_on_arguments [0])]
-let v (#t:inttype) (x:int_t t) : range_t t = x
-
-[@(strict_on_arguments [0])]
-let mk_int (#t:inttype) (n:range_t t) : int_t t = n
-
-let sz (n:range_t usize_inttype) : usize = mk_int n
-let isz (n:range_t isize_inttype) : isize = mk_int n
-
-val mk_int_v_lemma: #t:inttype -> a:int_t t -> Lemma
-  (mk_int #t (v #t a) == a)
-  [SMTPat (mk_int #t (v #t a))]
-
-val v_mk_int_lemma: #t:inttype -> n:range_t t -> Lemma
-  (v #t (mk_int #t n) == n)
-  [SMTPat (v #t (mk_int #t n))]
+let from_usize (x:FStar.UInt32.t) : usize  = FStar.UInt32.v x
+let from_isize (x:FStar.Int32.t) : isize  = FStar.Int32.v x
 
 let modulus t = pow2 (bits t)
 

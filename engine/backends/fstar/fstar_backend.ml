@@ -131,31 +131,7 @@ struct
     | String s -> F.Const.Const_string (s, F.dummyRange)
     | Char c -> F.Const.Const_char (Char.to_int c)
     | Int { value; kind = { size; signedness }; negative } ->
-        let open F.Const in
-        let size =
-          match size with
-          | S8 -> Int8
-          | S16 -> Int16
-          | S32 -> Int32
-          | S64 -> Int64
-          | S128 ->
-              Error.unimplemented ~issue_id:464
-                ~details:
-                  "Matching on u128 or i128 literals is not yet supported." span
-          | SSize ->
-              Error.unimplemented ~issue_id:464
-                ~details:
-                  "Matching on usize or isize literals is not yet supported. \
-                   As a work-around, instead of `match expr { 0 => ... }`, \
-                   please cast for instance to `u64` before: `match expr as \
-                   u64 { 0 => ... }`."
-                span
-        in
-        F.Const.Const_int
-          ( pnegative negative ^ value,
-            Some
-              ( (match signedness with Signed -> Signed | Unsigned -> Unsigned),
-                size ) )
+        F.Const.Const_int ( pnegative negative ^ value, None )
     | Float _ -> Error.unimplemented ~details:"pliteral: Float" span
     | Bool b -> F.Const.Const_bool b
 
@@ -166,11 +142,22 @@ struct
     in
     let wrap_app fn x n = F.mk_e_app (F.term_of_lid [ fn ]) [ mk_nat x n ] in
     match e with
-    | Int { value; kind = { size = SSize; signedness = sn }; negative = n } ->
-        wrap_app (match sn with Signed -> "isz" | Unsigned -> "sz") value n
-    | Int { value; kind = { size = S128; signedness = sn }; negative } ->
-        let prefix = match sn with Signed -> "i" | Unsigned -> "u" in
-        wrap_app ("pub_" ^ prefix ^ "128") value negative
+    | Int { value; kind = { size; signedness}; negative = n } ->
+	let f = match (size,signedness) with
+	| S8, Signed -> Rust_primitives__mk_i8
+	| S16, Signed -> Rust_primitives__mk_i16
+	| S32, Signed -> Rust_primitives__mk_i32
+	| S64, Signed -> Rust_primitives__mk_i64
+	| S128, Signed -> Rust_primitives__mk_i128
+	| SSize, Signed -> Rust_primitives__mk_isize
+	| S8, Unsigned -> Rust_primitives__mk_u8
+	| S16, Unsigned -> Rust_primitives__mk_u16
+	| S32, Unsigned -> Rust_primitives__mk_u32
+	| S64, Unsigned -> Rust_primitives__mk_u64
+	| S128, Unsigned -> Rust_primitives__mk_u128
+	| SSize, Unsigned -> Rust_primitives__mk_usize
+	in
+        wrap_app (Global_ident.of_name Value f) value n
     | _ -> mk_const @@ pliteral span e
 
   let pconcrete_ident (id : concrete_ident) =
