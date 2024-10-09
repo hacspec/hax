@@ -27,4 +27,4 @@ hax-lib-macros-types.workspace = true
 paste = "1.0.15"
 
 [dev-dependencies]
-hax-lib = { path = "../hax-lib" }
+hax-lib = { path = ".." }
