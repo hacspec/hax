@@ -107,7 +107,7 @@ val v_mk_int_lemma: #t:inttype -> n:range_t t -> Lemma
 let mk_u8 x = mk_int #U8 x
 let mk_i8  x = mk_int #I8 x
 let mk_u16  x = mk_int #U16 x
-let mk_i6  x = mk_int #I16 x
+let mk_i16  x = mk_int #I16 x
 let mk_u32 x = mk_int #U32 x
 let mk_i32  x = mk_int #I32 x
 let mk_u64 x = mk_int #U64 x
