@@ -119,6 +119,11 @@ mod types {
         }
     }
 
+    #[derive(Default)]
+    pub struct Caches<'tcx> {
+        pub predicate_searcher: HashMap<RDefId, crate::traits::PredicateSearcher<'tcx>>,
+    }
+
     #[derive(Clone)]
     pub struct Base<'tcx> {
         pub options: Rc<hax_frontend_exporter_options::Options>,
@@ -136,6 +141,7 @@ mod types {
                 ),
             >,
         >,
+        pub caches: Rc<RefCell<Caches<'tcx>>>,
         pub tcx: rustc_middle::ty::TyCtxt<'tcx>,
         /// Rust doesn't enforce bounds on generic parameters in type
         /// aliases. Thus, when translating type aliases, we need to
@@ -154,6 +160,7 @@ mod types {
                 tcx,
                 macro_infos: Rc::new(HashMap::new()),
                 cached_thirs: Rc::new(HashMap::new()),
+                caches: Default::default(),
                 options: Rc::new(options),
                 // Always prefer `s.owner_id()` to `s.base().opt_def_id`.
                 // `opt_def_id` is used in `utils` for error reporting

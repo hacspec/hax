@@ -140,7 +140,7 @@ struct Candidate<'tcx> {
 }
 
 /// Stores a set of predicates along with where they came from.
-pub(super) struct PredicateSearcher<'tcx> {
+pub struct PredicateSearcher<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     /// Local clauses available in the current context.
@@ -151,7 +151,7 @@ pub(super) struct PredicateSearcher<'tcx> {
 
 impl<'tcx> PredicateSearcher<'tcx> {
     /// Initialize the elaborator with the predicates accessible within this item.
-    pub(super) fn new_for_owner(tcx: TyCtxt<'tcx>, owner_id: DefId) -> Self {
+    pub fn new_for_owner(tcx: TyCtxt<'tcx>, owner_id: DefId) -> Self {
         let mut out = Self {
             tcx,
             param_env: tcx.param_env(owner_id),
@@ -285,7 +285,7 @@ impl<'tcx> PredicateSearcher<'tcx> {
 
     /// Resolve the given trait reference in the local context.
     #[tracing::instrument(level = "trace", skip(self, warn))]
-    pub(super) fn resolve(
+    pub fn resolve(
         &mut self,
         tref: &PolyTraitRef<'tcx>,
         // Call back into hax-related code to display a nice warning.

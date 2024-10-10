@@ -7,6 +7,9 @@ mod utils;
 #[cfg(feature = "rustc")]
 pub use utils::erase_and_norm;
 
+#[cfg(feature = "rustc")]
+pub use resolution::PredicateSearcher;
+
 #[derive(AdtInto)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> >, from: resolution::PathChunk<'tcx>, state: S as s)]
 #[derive_group(Serializers)]
@@ -137,9 +140,19 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             crate::warning!(s, "{}", msg)
         }
     };
-    let tcx = s.base().tcx;
-    let mut searcher = resolution::PredicateSearcher::new_for_owner(tcx, s.owner_id());
-    match searcher.resolve(&trait_ref, &warn) {
+    let base = s.base();
+    let resolved = {
+        // Important: drop this borrow before calling `sinto(s)` again.
+        let mut caches = base.caches.borrow_mut();
+        let searcher = caches
+            .predicate_searcher
+            .entry(s.owner_id())
+            .or_insert_with(|| {
+                resolution::PredicateSearcher::new_for_owner(base.tcx, s.owner_id())
+            });
+        searcher.resolve(&trait_ref, &warn)
+    };
+    match resolved {
         Ok(x) => x.sinto(s),
         Err(e) => crate::fatal!(s, "{}", e),
     }
