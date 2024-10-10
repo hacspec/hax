@@ -121,7 +121,11 @@ mod types {
 
     #[derive(Default)]
     pub struct Caches<'tcx> {
+        /// Cache the trait resolution engine for each item.
         pub predicate_searcher: HashMap<RDefId, crate::traits::PredicateSearcher<'tcx>>,
+        /// Cache of trait refs to resolved impl expressions.
+        pub resolution_cache:
+            HashMap<(RDefId, rustc_middle::ty::PolyTraitRef<'tcx>), crate::traits::ImplExpr>,
     }
 
     #[derive(Clone)]
@@ -170,6 +174,13 @@ mod types {
                 exported_def_ids: Rc::new(RefCell::new(HashSet::new())),
                 ty_alias_mode: false,
             }
+        }
+
+        /// Access the shared caches. You must not call `sinto` within this function as this will
+        /// likely result in `BorrowMut` panics.
+        pub fn with_caches<T>(&self, f: impl FnOnce(&mut Caches<'tcx>) -> T) -> T {
+            let mut caches = self.caches.borrow_mut();
+            f(&mut *caches)
         }
     }
 

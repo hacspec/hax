@@ -145,8 +145,6 @@ pub struct PredicateSearcher<'tcx> {
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     /// Local clauses available in the current context.
     candidates: HashMap<PolyTraitPredicate<'tcx>, Candidate<'tcx>>,
-    /// Cache of trait refs to resolved impl expressions.
-    resolution_cache: HashMap<PolyTraitRef<'tcx>, ImplExpr<'tcx>>,
 }
 
 impl<'tcx> PredicateSearcher<'tcx> {
@@ -156,7 +154,6 @@ impl<'tcx> PredicateSearcher<'tcx> {
             tcx,
             param_env: tcx.param_env(owner_id),
             candidates: Default::default(),
-            resolution_cache: Default::default(),
         };
         out.extend(
             initial_search_predicates(tcx, owner_id)
@@ -295,10 +292,6 @@ impl<'tcx> PredicateSearcher<'tcx> {
 
         let erased_tref = erase_and_norm(self.tcx, self.param_env, *tref);
 
-        if let Some(impl_expr) = self.resolution_cache.get(&erased_tref) {
-            return Ok(impl_expr.clone());
-        }
-
         let tcx = self.tcx;
         let impl_source =
             copy_paste_from_rustc::codegen_select_candidate(tcx, (self.param_env, erased_tref));
@@ -367,13 +360,11 @@ impl<'tcx> PredicateSearcher<'tcx> {
             })
             .collect::<Result<_, _>>()?;
 
-        let impl_expr = ImplExpr {
+        Ok(ImplExpr {
             r#impl: atom,
             args: nested,
             r#trait: *tref,
-        };
-        self.resolution_cache.insert(erased_tref, impl_expr.clone());
-        Ok(impl_expr)
+        })
     }
 }
 

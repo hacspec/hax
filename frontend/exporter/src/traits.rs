@@ -140,22 +140,32 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             crate::warning!(s, "{}", msg)
         }
     };
-    let base = s.base();
-    let resolved = {
-        // Important: drop this borrow before calling `sinto(s)` again.
-        let mut caches = base.caches.borrow_mut();
+    let owner_id = s.owner_id();
+    if let Some(impl_expr) = s
+        .base()
+        .with_caches(|caches| caches.resolution_cache.get(&(owner_id, trait_ref)).cloned())
+    {
+        return impl_expr;
+    }
+    let resolved = s.base().with_caches(|caches| {
         let searcher = caches
             .predicate_searcher
             .entry(s.owner_id())
             .or_insert_with(|| {
-                resolution::PredicateSearcher::new_for_owner(base.tcx, s.owner_id())
+                resolution::PredicateSearcher::new_for_owner(s.base().tcx, owner_id)
             });
         searcher.resolve(&trait_ref, &warn)
-    };
-    match resolved {
+    });
+    let impl_expr = match resolved {
         Ok(x) => x.sinto(s),
         Err(e) => crate::fatal!(s, "{}", e),
-    }
+    };
+    s.base().with_caches(|caches| {
+        caches
+            .resolution_cache
+            .insert((owner_id, trait_ref), impl_expr.clone())
+    });
+    impl_expr
 }
 
 /// Solve the trait obligations for a specific item use (for example, a method call, an ADT, etc.).
