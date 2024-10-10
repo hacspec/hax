@@ -10,7 +10,7 @@ readme = "README.md"
 [dependencies]
 hax-lib-protocol = { path = "../../hax-lib-protocol" }
 hax-lib-protocol-macros = { path = "../../hax-lib-protocol-macros" }
-hax-lib-macros = { path = "../../hax-lib-macros" }
+hax-lib = { path = "../../hax-lib" }
 
 
 [dev-dependencies]

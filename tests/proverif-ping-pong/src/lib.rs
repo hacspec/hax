@@ -1,7 +1,7 @@
 mod a;
 mod b;
 
-#[hax_lib_macros::protocol_messages]
+#[hax_lib::protocol_messages]
 pub enum Message {
     Ping(u8),
     Pong(u8),
