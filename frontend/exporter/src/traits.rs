@@ -132,15 +132,13 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
     s: &S,
     trait_ref: rustc_middle::ty::PolyTraitRef<'tcx>,
 ) -> ImplExpr {
-    use crate::ParamEnv;
     let warn = |msg: &str| {
         if !s.base().ty_alias_mode {
             crate::warning!(s, "{}", msg)
         }
     };
     let tcx = s.base().tcx;
-    let mut searcher =
-        resolution::PredicateSearcher::new_for_owner(tcx, s.param_env(), s.owner_id());
+    let mut searcher = resolution::PredicateSearcher::new_for_owner(tcx, s.owner_id());
     match searcher.resolve(&trait_ref, &warn) {
         Ok(x) => x.sinto(s),
         Err(e) => crate::fatal!(s, "{}", e),

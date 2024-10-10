@@ -151,14 +151,10 @@ pub(super) struct PredicateSearcher<'tcx> {
 
 impl<'tcx> PredicateSearcher<'tcx> {
     /// Initialize the elaborator with the predicates accessible within this item.
-    pub(super) fn new_for_owner(
-        tcx: TyCtxt<'tcx>,
-        param_env: rustc_middle::ty::ParamEnv<'tcx>,
-        owner_id: DefId,
-    ) -> Self {
+    pub(super) fn new_for_owner(tcx: TyCtxt<'tcx>, owner_id: DefId) -> Self {
         let mut out = Self {
             tcx,
-            param_env,
+            param_env: tcx.param_env(owner_id),
             candidates: Default::default(),
             resolution_cache: Default::default(),
         };
