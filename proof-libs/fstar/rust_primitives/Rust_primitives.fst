@@ -46,7 +46,23 @@ instance array_to_slice_unsize t n: unsize_tc (t_Array t n) = {
             arr <: t_Slice t);
 }
 
+(*
+type t_ControlFlow (b c: Type) = 
+  | ControlFlow_Continue of c
+  | ControlFlow_Break of b
+*)
+
 let rec f_while_loop #s (condition: s -> bool) (init: s) (f: (i:s -> o:s{o << i})): s
   = if condition init
     then f_while_loop #s  condition (f init) f
     else init
+
+(* let f_while_loop_cf #s #t (condition: s -> bool) (init: s) (f: (i:s -> Core.Ops.Control_flow.t_ControlFlow t s)): s
+  = 
+  let rec f_while_loop_inner (init: Core.Ops.Control_flow.t_ControlFlow t s) = 
+    match init with 
+    | Core.Ops.Control_flow.ControlFlow_Continue v -> if condition v then f_while_loop_inner (f v) else v
+    | Core.Ops.Control_flow.ControlFlow_Break _ -> init
+  if condition init
+    then f_while_loop #s  condition (f init) f
+    else init *)
