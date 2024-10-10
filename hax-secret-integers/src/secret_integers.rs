@@ -4,7 +4,7 @@ use crate::traits::*;
 #[repr(transparent)]
 pub struct Secret<T>(T);
 
-fn secret<T>(x:T) -> Secret<T> {Secret(x)}
+pub const fn secret<T>(x:T) -> Secret<T> {Secret(x)}
 fn unwrap<T>(x:Secret<T>) -> T {x.0}
 
 impl<T> Classify for T {
