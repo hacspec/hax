@@ -27,7 +27,7 @@ module%inlined_contents Make (F : Features.T) = struct
     module UA = Ast_utils.Make (F)
     module UB = Ast_utils.Make (FB)
 
-    [%%inline_defs dmutability]
+    [%%inline_defs dmutability + dsafety_kind]
 
     let rec updater_of_lhs (lhs : A.lhs) (rhs : B.expr) (span : span) :
         (Local_ident.t * B.ty) * B.expr =

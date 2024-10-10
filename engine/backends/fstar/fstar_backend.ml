@@ -12,6 +12,7 @@ include
       include On.Macro
       include On.Construct_base
       include On.Quote
+      include On.Dyn
     end)
     (struct
       let backend = Diagnostics.Backend.FStar
@@ -39,7 +40,10 @@ module SubtypeToInputLanguage
              and type for_loop = Features.Off.for_loop
              and type while_loop = Features.Off.while_loop
              and type for_index_loop = Features.Off.for_index_loop
-             and type state_passing_loop = Features.Off.state_passing_loop) =
+             and type state_passing_loop = Features.Off.state_passing_loop
+             and type match_guard = Features.Off.match_guard
+             and type trait_item_default = Features.Off.trait_item_default
+             and type unsafe = Features.Off.unsafe) =
 struct
   module FB = InputLanguage
 
@@ -54,6 +58,7 @@ struct
         include Features.SUBTYPE.On.Slice
         include Features.SUBTYPE.On.Macro
         include Features.SUBTYPE.On.Quote
+        include Features.SUBTYPE.On.Dyn
       end)
 
   let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
@@ -74,7 +79,7 @@ module FStarNamePolicy = struct
 
   let index_field_transform index = "_" ^ index
 
-  let reserved_words = Hash_set.of_list (module String) ["attributes";"noeq";"unopteq";"and";"assert";"assume";"begin";"by";"calc";"class";"default";"decreases";"effect";"eliminate";"else";"end";"ensures";"exception";"exists";"false";"friend";"forall";"fun";"λ";"function";"if";"in";"include";"inline";"inline_for_extraction";"instance";"introduce";"irreducible";"let";"logic";"match";"returns";"as";"module";"new";"new_effect";"layered_effect";"polymonadic_bind";"polymonadic_subcomp";"noextract";"of";"open";"opaque";"private";"quote";"range_of";"rec";"reifiable";"reify";"reflectable";"requires";"set_range_of";"sub_effect";"synth";"then";"total";"true";"try";"type";"unfold";"unfoldable";"val";"when";"with";"_";"__SOURCE_FILE__";"__LINE__";"match";"if";"let";"and"]
+  let reserved_words = Hash_set.of_list (module String) ["attributes";"noeq";"unopteq";"and";"assert";"assume";"begin";"by";"calc";"class";"default";"decreases";"effect";"eliminate";"else";"end";"ensures";"exception";"exists";"false";"friend";"forall";"fun";"λ";"function";"if";"in";"include";"inline";"inline_for_extraction";"instance";"introduce";"irreducible";"let";"logic";"match";"returns";"as";"module";"new";"new_effect";"layered_effect";"polymonadic_bind";"polymonadic_subcomp";"noextract";"of";"open";"opaque";"private";"quote";"range_of";"rec";"reifiable";"reify";"reflectable";"requires";"set_range_of";"sub_effect";"synth";"then";"total";"true";"try";"type";"unfold";"unfoldable";"val";"when";"with";"_";"__SOURCE_FILE__";"__LINE__";"match";"if";"let";"and";"string"]
 end
 
 module U = Ast_utils.MakeWithNamePolicy (InputLanguage) (FStarNamePolicy)
@@ -82,23 +87,12 @@ module Visitors = Ast_visitors.Make (InputLanguage)
 open AST
 module F = Fstar_ast
 
-let doc_to_string : PPrint.document -> string =
-  FStar_Pprint.pretty_string 1.0 (Z.of_int 100)
-
-let term_to_string : F.AST.term -> string =
-  FStar_Parser_ToDocument.term_to_document >> doc_to_string
-
-let pat_to_string : F.AST.pattern -> string =
-  FStar_Parser_ToDocument.pat_to_document >> doc_to_string
-
-let decl_to_string : F.AST.decl -> string =
-  FStar_Parser_ToDocument.decl_to_document >> doc_to_string
-
 module Context = struct
   type t = {
     current_namespace : string * string list;
     items : item list;
     interface_mode : bool;
+    line_width : int;
   }
 end
 
@@ -108,6 +102,18 @@ module Make
     end) =
 struct
   open Ctx
+
+  let doc_to_string : PPrint.document -> string =
+    FStar_Pprint.pretty_string 1.0 (Z.of_int ctx.line_width)
+
+  let term_to_string : F.AST.term -> string =
+    FStar_Parser_ToDocument.term_to_document >> doc_to_string
+
+  let pat_to_string : F.AST.pattern -> string =
+    FStar_Parser_ToDocument.pat_to_document >> doc_to_string
+
+  let decl_to_string : F.AST.decl -> string =
+    FStar_Parser_ToDocument.decl_to_document >> doc_to_string
 
   let pprim_ident (span : span) (id : primitive_ident) =
     match id with
@@ -300,7 +306,7 @@ struct
     | TArray { typ; length } ->
         F.mk_e_app (F.term_of_lid [ "t_Array" ]) [ pty span typ; pexpr length ]
     | TParam i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident i)
-    | TAssociatedType { impl = Self; item } ->
+    | TAssociatedType { impl = { kind = Self; _ }; item } ->
         F.term
         @@ F.AST.Var (F.lid [ U.Concrete_ident_view.to_definition_name item ])
     | TAssociatedType { impl; item } -> (
@@ -311,12 +317,32 @@ struct
                  (impl, F.lid [ U.Concrete_ident_view.to_definition_name item ])
         | None -> F.term @@ F.AST.Wild)
     | TOpaque s -> F.term @@ F.AST.Wild
+    | TDyn { goals; _ } ->
+        let traits = List.map ~f:(pdyn_trait_goal span) goals in
+        let dyn = F.AST.Var (F.lid [ "dyn" ]) |> F.term in
+        let length =
+          F.AST.Const
+            (FStar_Const.Const_int (List.length goals |> Int.to_string, None))
+          |> F.term
+        in
+        F.mk_e_app dyn (length :: traits)
     | _ -> .
+
+  and pdyn_trait_goal span (goal : dyn_trait_goal) =
+    (* This introduces a potential shadowing *)
+    let type_var = "z" in
+    let pat = F.pat @@ F.AST.PatVar (F.id type_var, None, []) in
+    let trait = F.AST.Var (pconcrete_ident goal.trait) |> F.term in
+    let args =
+      (F.AST.Var (F.lid [ type_var ]) |> F.term)
+      :: List.map ~f:(pgeneric_value span) goal.non_self_args
+    in
+    F.mk_e_abs [ pat ] (F.mk_e_app trait args)
 
   and pimpl_expr span (ie : impl_expr) =
     let some = Option.some in
     let hax_unstable_impl_exprs = false in
-    match ie with
+    match ie.kind with
     | Concrete tr -> c_trait_goal span tr |> some
     | LocalBound { id } ->
         let local_ident =
@@ -656,15 +682,26 @@ struct
       | GCLifetime _ -> .
       | GCType { goal; name } ->
           let typ = c_trait_goal span goal in
-          { kind = Tcresolve; ident = F.id name; typ }
+          Some { kind = Tcresolve; ident = F.id name; typ }
+      | GCProjection _ ->
+          (* TODO: Not yet implemented, see https://github.com/hacspec/hax/issues/785 *)
+          None
 
     let of_generics span generics : t list =
       List.map ~f:(of_generic_param span) generics.params
-      @ List.mapi ~f:(of_generic_constraint span) generics.constraints
+      @ List.filter_mapi ~f:(of_generic_constraint span) generics.constraints
 
     let of_typ span (nth : int) typ : t =
       let ident = F.id ("x" ^ Int.to_string nth) in
       { kind = Explicit; ident; typ = pty span typ }
+
+    (** Makes an F* binder from a name and an F* type *)
+    let of_named_fstar_typ span name typ : t =
+      let ident = plocal_ident name in
+      { kind = Explicit; ident; typ }
+
+    (** Makes an F* binder from a name and an hax type *)
+    let of_named_typ span name = pty span >> of_named_fstar_typ span name
 
     let to_pattern (x : t) : F.AST.pattern =
       let subpat =
@@ -718,90 +755,9 @@ struct
         Error.assertion_failure span "pgeneric_constraint_bd:LIFETIME"
     | GCType { goal; name = _ } -> c_trait_goal span goal
 
-  let get_attr (type a) (name : string) (map : string -> a) (attrs : attrs) :
-      a option =
-    List.find_map
-      ~f:(fun attr ->
-        match attr.kind with
-        | Tool { path; tokens } when [%eq: string] path name ->
-            Some (map tokens)
-        | _ -> None)
-      attrs
-
-  module UUID : sig
-    type t
-
-    val of_attrs : attrs -> t option
-    val associated_items : ?kind:string -> t option -> item list
-    val associated_item : ?kind:string -> t option -> item option
-  end = struct
-    (* TODO: parse_quoted_string is incorrect *)
-    let parse_quoted_string = String.strip ~drop:([%eq: char] '"')
-
-    let parse_associated_with s =
-      let uuid, kind = String.lsplit2 ~on:',' s |> Option.value_exn in
-      let uuid = parse_quoted_string uuid in
-      let kind = String.strip ~drop:([%eq: char] ' ') kind in
-      (uuid, kind)
-
-    type t = string
-
-    let of_attrs : attrs -> t option = get_attr "_hax::uuid" parse_quoted_string
-
-    let associated_items ?kind (uuid : t option) : item list =
-      let ( let* ) x f = Option.bind ~f x in
-      Option.value ~default:[]
-        (let* uuid = uuid in
-         List.filter
-           ~f:(fun item ->
-             Option.value ~default:false
-               (let* uuid', kind' =
-                  get_attr "_hax::associated_with" parse_associated_with
-                    item.attrs
-                in
-                let kind_eq =
-                  match kind with
-                  | Some kind -> String.equal kind' kind
-                  | None -> true
-                in
-                Some (kind_eq && String.equal uuid' uuid)))
-           ctx.items
-         |> Option.some)
-
-    let associated_item ?kind (uuid : t option) : item option =
-      match associated_items ?kind uuid with
-      | [ i ] -> Some i
-      | [] -> None
-      | _ -> failwith "expected 0-1 items"
-  end
-
-  (* TODO: incorrect *)
-  let fvar_of_params = function
-    | { pat = { p = PBinding { var; _ }; _ }; _ } -> var
-    | _ -> failwith "?? todo"
-
-  let associated_refinement (free_variables : string list) (attrs : attrs) :
-      expr option =
-    UUID.associated_item ~kind:"refinement" (UUID.of_attrs attrs)
-    |> Option.map ~f:(function
-         | { v = Fn { params; body; _ }; _ } ->
-             let substs =
-               List.zip_exn
-                 (List.map ~f:fvar_of_params params)
-                 (List.map ~f:Local_ident.make_final free_variables)
-             in
-             let v =
-               U.Mappers.rename_local_idents (fun i ->
-                   match List.find ~f:(fst >> [%eq: local_ident] i) substs with
-                   | None -> i
-                   | Some (_, i) -> i)
-             in
-             v#visit_expr () body
-         | _ -> failwith "expected associated_refinement")
-
   let pmaybe_refined_ty span (free_variables : string list) (attrs : attrs)
       (binder_name : string) (ty : ty) : F.AST.term =
-    match Attrs.associated_refinement_in_type free_variables attrs with
+    match Attrs.associated_refinement_in_type span free_variables attrs with
     | Some refinement ->
         F.mk_refined binder_name (pty span ty) (fun ~x -> pexpr refinement)
     | None -> pty span ty
@@ -1217,11 +1173,138 @@ struct
                              [],
                              F.mk_e_app base args ))
                          bounds
-                | TIFn (TArrow (inputs, output))
+                | TIFn ty
                   when Attrs.find_unique_attr i.ti_attrs ~f:(function
                          | TraitMethodNoPrePost -> Some ()
                          | _ -> None)
-                       |> Option.is_none ->
+                       |> Option.is_some ->
+                    let weakest =
+                      let h kind =
+                        Attrs.associated_fns kind i.ti_attrs
+                        |> List.hd
+                        |> Option.map ~f:(fun attr ->
+                               ( attr,
+                                 [%eq: Attr_payloads.AssocRole.t] kind Requires
+                               ))
+                      in
+                      Option.first_some (h Ensures) (h Requires)
+                      |> Option.map
+                           ~f:(fun ((generics, params, expr), is_req) ->
+                             let dummy_self =
+                               List.find generics.params
+                                 ~f:[%matches? { kind = GPType _; _ }]
+                               |> Option.value_or_thunk ~default:(fun () ->
+                                      Error.assertion_failure i.ti_span
+                                        ("Expected a first generic of type \
+                                          `Self`. Instead generics params \
+                                          are: "
+                                        ^ [%show: generic_param list]
+                                            generics.params))
+                               |> fun x -> x.ident
+                             in
+                             let self =
+                               Local_ident.{ name = "Self"; id = mk_id Typ 0 }
+                             in
+                             let renamer =
+                               let f (id : local_ident) =
+                                 if [%eq: string] dummy_self.name id.name then
+                                   self
+                                 else id
+                               in
+                               U.Mappers.rename_local_idents f
+                             in
+                             let generics =
+                               renamer#visit_generics () generics
+                             in
+                             let params =
+                               List.map ~f:(renamer#visit_param ()) params
+                             in
+                             let expr = renamer#visit_expr () expr in
+                             (generics, params, expr, is_req))
+                    in
+                    let ty =
+                      let variables =
+                        let idents_visitor = U.Reducers.collect_local_idents in
+                        idents_visitor#visit_trait_item () i
+                        :: (Option.map
+                              ~f:(fun (generics, params, expr, _) ->
+                                [
+                                  idents_visitor#visit_generics () generics;
+                                  idents_visitor#visit_expr () expr;
+                                ]
+                                @ List.map
+                                    ~f:(idents_visitor#visit_param ())
+                                    params)
+                              weakest
+                           |> Option.value ~default:[])
+                        |> Set.union_list (module Local_ident)
+                        |> Set.to_list |> ref
+                      in
+                      let mk_fresh prefix =
+                        let v = U.fresh_local_ident_in !variables prefix in
+                        variables := v :: !variables;
+                        v
+                      in
+                      let bindings = ref [] in
+                      let f (p : param) =
+                        let name =
+                          match p.pat.p with
+                          | PBinding { var; _ } -> var
+                          | _ ->
+                              let name = mk_fresh "x" in
+                              let ({ span; typ; _ } : pat) = p.pat in
+                              let expr = { e = LocalVar name; span; typ } in
+                              bindings := (p.pat, expr) :: !bindings;
+                              name
+                        in
+                        FStarBinder.of_named_typ p.pat.span name p.typ
+                      in
+                      weakest
+                      |> Option.map ~f:(fun (generics, binders, expr, is_req) ->
+                             (generics, List.map ~f binders, expr, is_req))
+                      |> Option.map
+                           ~f:(fun (generics, binders, (expr : expr), is_req) ->
+                             let result_ident = mk_fresh "pred" in
+                             let result_bd =
+                               FStarBinder.of_named_fstar_typ expr.span
+                                 result_ident F.type0_term
+                             in
+                             let expr = U.make_lets !bindings expr in
+                             let expr = pexpr expr in
+                             let result =
+                               F.term
+                               @@ F.AST.Var
+                                    (plocal_ident result_ident |> F.lid_of_id)
+                             in
+                             let result =
+                               F.AST.Refine
+                                 ( FStarBinder.to_binder result_bd,
+                                   (if is_req then Fn.flip else Fn.id)
+                                     F.implies result expr )
+                               |> F.term
+                             in
+                             F.AST.Product
+                               ( List.map ~f:FStarBinder.to_binder binders,
+                                 result )
+                             |> F.term)
+                      |> Option.value_or_thunk ~default:(fun _ ->
+                             let ty = pty e.span ty in
+                             match ty.tm with
+                             | F.AST.Product (inputs, _) ->
+                                 {
+                                   ty with
+                                   tm = F.AST.Product (inputs, F.type0_term);
+                                 }
+                             | _ -> F.type0_term)
+                    in
+
+                    let ty =
+                      F.term
+                      @@ F.AST.Product
+                           (generics |> List.map ~f:FStarBinder.to_binder, ty)
+                    in
+                    [ (F.id name, None, [], ty) ]
+                | TIFn (TArrow (inputs, output)) ->
                     let inputs =
                       List.mapi ~f:(FStarBinder.of_typ e.span) inputs
                     in
@@ -1262,14 +1345,13 @@ struct
                     let inputs = List.map ~f:FStarBinder.to_binder inputs in
                     let ty = F.term @@ F.AST.Product (inputs, ty_pre_post) in
                     [ (F.id name, None, [], ty) ]
-                | TIFn ty ->
-                    let ty = pty e.span ty in
-                    let ty =
-                      F.term
-                      @@ F.AST.Product
-                           (generics |> List.map ~f:FStarBinder.to_binder, ty)
-                    in
+                | TIFn non_arrow_ty ->
+                    let inputs = generics in
+                    let output = pty e.span non_arrow_ty in
+                    let inputs = List.map ~f:FStarBinder.to_binder inputs in
+                    let ty = F.term @@ F.AST.Product (inputs, output) in
                     [ (F.id name, None, [], ty) ]
+                | _ -> .
               in
               List.map ~f:Fn.id
                 (* ~f:(fun (n, q, a, ty) -> (n, q, a, F.mk_e_app bds ty)) *)
@@ -1278,13 +1360,16 @@ struct
         in
         let constraints_fields : FStar_Parser_AST.tycon_record =
           generics.constraints
-          |> List.map ~f:(fun c ->
-                 let bound, id =
-                   match c with GCType { goal; name } -> (goal, name) | _ -> .
-                 in
-                 let name = "_super_" ^ id in
-                 let typ = pgeneric_constraint_type e.span c in
-                 (F.id name, None, [ F.Attrs.no_method ], typ))
+          |> List.filter_map ~f:(fun c ->
+                 match c with
+                 | GCType { goal = bound; name = id } ->
+                     let name = "_super_" ^ id in
+                     let typ = pgeneric_constraint_type e.span c in
+                     Some (F.id name, None, [ F.Attrs.no_method ], typ)
+                 | GCProjection _ ->
+                     (* TODO: Not yet implemented, see https://github.com/hacspec/hax/issues/785 *)
+                     None
+                 | _ -> .)
         in
         let fields : FStar_Parser_AST.tycon_record =
           constraints_fields @ fields
@@ -1379,15 +1464,13 @@ struct
           |> Option.value_or_thunk ~default:(fun _ ->
                  Error.assertion_failure e.span
                    "Malformed `Quote` item: could not find a ItemQuote payload")
-          |> Option.value ~default:Types.{ intf = true; impl = false }
+          |> Option.value ~default:Types.{ intf = false; impl = true }
         in
-        (if fstar_opts.intf then
-         [ `VerbatimIntf (pquote e.span quote, `Newline) ]
-        else [])
-        @
-        if fstar_opts.impl then
-          [ `VerbatimImpl (pquote e.span quote, `Newline) ]
-        else []
+        let payload = (pquote e.span quote, `Newline) in
+        if ctx.interface_mode then
+          (if fstar_opts.intf then [ `VerbatimIntf payload ] else [])
+          @ if fstar_opts.impl then [ `VerbatimImpl payload ] else []
+        else [ `VerbatimImpl payload ]
     | HaxError details ->
         [
           `Comment
@@ -1399,6 +1482,8 @@ struct
 end
 
 module type S = sig
+  val decl_to_string : F.AST.decl -> string
+
   val pitem :
     item ->
     [> `Impl of F.AST.decl
@@ -1444,6 +1529,7 @@ let strings_of_item ~signature_only (bo : BackendOptions.t) m items
         current_namespace = U.Concrete_ident_view.to_namespace item.ident;
         interface_mode;
         items;
+        line_width = bo.line_width;
       }
   in
   let mk_impl = if interface_mode then fun i -> `Impl i else fun i -> `Impl i in
@@ -1455,8 +1541,8 @@ let strings_of_item ~signature_only (bo : BackendOptions.t) m items
   Print.pitem item
   |> List.filter ~f:(function `Impl _ when no_impl -> false | _ -> true)
   |> List.concat_map ~f:(function
-       | `Impl i -> [ (mk_impl (decl_to_string i), `Newline) ]
-       | `Intf i -> [ (mk_intf (decl_to_string i), `Newline) ]
+       | `Impl i -> [ (mk_impl (Print.decl_to_string i), `Newline) ]
+       | `Intf i -> [ (mk_intf (Print.decl_to_string i), `Newline) ]
        | `VerbatimIntf (s, nl) ->
            [ ((if interface_mode then `Intf s else `Impl s), nl) ]
        | `VerbatimImpl (s, nl) ->
@@ -1541,8 +1627,12 @@ let string_of_items ~signature_only ~mod_name (bo : BackendOptions.t) m items :
     in
     match lines with [] -> "" | _ -> header ^ String.concat ~sep:"\n" lines
   in
-  ( string_for (function `Impl s -> Some s | _ -> None),
-    string_for (function `Intf s -> Some s | _ -> None) )
+  let replace =
+    String.substr_replace_all ~pattern:"_hax_panic_freedom_admit_"
+      ~with_:"admit () (* Panic freedom *)"
+  in
+  ( string_for (function `Impl s -> Some (replace s) | _ -> None),
+    string_for (function `Intf s -> Some (replace s) | _ -> None) )
 
 let fstar_headers (bo : BackendOptions.t) =
   let opts =
@@ -1594,21 +1684,26 @@ module DepGraphR = Dependencies.Make (Features.Rust)
 
 module TransformToInputLanguage =
   [%functor_application
-  Phases.Reject.RawOrMutPointer(Features.Rust)
+  Phases.Reject.Unsafe(Features.Rust)
+  |> Phases.Reject.RawOrMutPointer
   |> Phases.Transform_hax_lib_inline
   |> Phases.Specialize
   |> Phases.Drop_sized_trait
   |> Phases.Simplify_question_marks
   |> Phases.And_mut_defsite
+  |> Phases.Reconstruct_asserts
   |> Phases.Reconstruct_for_loops
   |> Phases.Reconstruct_while_loops
   |> Phases.Direct_and_mut
   |> Phases.Reject.Arbitrary_lhs
   |> Phases.Drop_blocks
+  |> Phases.Drop_match_guards
   |> Phases.Drop_references
   |> Phases.Trivialize_assign_lhs
   |> Side_effect_utils.Hoist
+  |> Phases.Hoist_disjunctive_patterns
   |> Phases.Simplify_match_return
+  |> Phases.Rewrite_control_flow
   |> Phases.Drop_needless_returns
   |> Phases.Local_mutation
   |> Phases.Reject.Continue
@@ -1619,10 +1714,35 @@ module TransformToInputLanguage =
   |> Phases.Traits_specs
   |> Phases.Simplify_hoisting
   |> Phases.Newtype_as_refinement
+  |> Phases.Reject.Trait_item_default
   |> SubtypeToInputLanguage
   |> Identity
   ]
   [@ocamlformat "disable"]
+
+(** Rewrites `unsize x` to `x <: τ` when `τ` is in the allowlist described by `unsize_identity_typ` *)
+let unsize_as_identity =
+  (* Tells if a unsize should be treated as identity by type *)
+  let rec unsize_identity_typ = function
+    | TArray _ -> true
+    | TRef { typ; _ } -> unsize_identity_typ typ
+    | _ -> false
+  in
+  let visitor =
+    object
+      inherit [_] U.Visitors.map as super
+
+      method! visit_expr () e =
+        match e.e with
+        | App { f = { e = GlobalVar f; _ }; args = [ x ]; _ }
+          when Global_ident.eq_name Rust_primitives__unsize f
+               && unsize_identity_typ x.typ ->
+            let x = super#visit_expr () x in
+            { e with e = Ascription { e = x; typ = e.typ } }
+        | _ -> super#visit_expr () e
+    end
+  in
+  visitor#visit_item ()
 
 let apply_phases (bo : BackendOptions.t) (items : Ast.Rust.item list) :
     AST.item list =
@@ -1641,6 +1761,8 @@ let apply_phases (bo : BackendOptions.t) (items : Ast.Rust.item list) :
   in
   let items =
     TransformToInputLanguage.ditems items
+    |> List.map ~f:unsize_as_identity
+    |> List.map ~f:unsize_as_identity
     |> List.map ~f:U.Mappers.add_typ_ascription
     (* |> DepGraph.name_me *)
   in

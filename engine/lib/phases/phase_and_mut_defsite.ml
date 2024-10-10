@@ -286,6 +286,10 @@ struct
                   let output = body.typ in
                   let ty = B.TArrow (inputs, output) in
                   Some (B.TIFn ty)
+              | TIDefault { params; body; witness } ->
+                  let* params, body = rewrite_function params body in
+                  let witness = S.trait_item_default span witness in
+                  Some (B.TIDefault { params; body; witness })
               | _ -> None)
               |> Option.value_or_thunk
                    ~default:(Fn.flip super#visit_trait_item' item.ti_v)
@@ -305,9 +309,9 @@ struct
 
           method! visit_item' () item' =
             (match item' with
-            | Fn { name; generics; body; params } ->
+            | Fn { name; generics; body; params; safety } ->
                 let* params, body = rewrite_function params body in
-                Some (B.Fn { name; generics; body; params })
+                Some (B.Fn { name; generics; body; params; safety })
             | _ -> None)
             |> Option.value_or_thunk ~default:(Fn.flip super#visit_item' item')
         end

@@ -27,9 +27,9 @@ module Make (F : Features.T) =
         let f' (item : item) : item =
           let v =
             match item.v with
-            | Trait { name; generics; items } ->
-                let f (item : trait_item) =
-                  let mk kind =
+            | Trait { name; generics; items; safety } ->
+                let f attrs (item : trait_item) =
+                  let mk role kind =
                     let ti_ident = mk_name item.ti_ident kind in
                     {
                       item with
@@ -38,26 +38,53 @@ module Make (F : Features.T) =
                         [
                           Attr_payloads.to_attr TraitMethodNoPrePost
                             item.ti_span;
-                        ];
+                        ]
+                        @ (List.filter
+                             ~f:
+                               [%matches?
+                                 Types.AssociatedItem { role = role'; _ }, _ when 
+                                 [%eq: Types.ha_assoc_role] role role']
+                             attrs
+                          |> List.map ~f:(uncurry Attr_payloads.to_attr));
                     }
                   in
                   match item.ti_v with
                   | TIFn (TArrow (inputs, output)) ->
                       [
-                        { (mk "pre") with ti_v = TIFn (TArrow (inputs, TBool)) };
                         {
-                          (mk "post") with
+                          (mk Types.Requires "pre") with
+                          ti_v = TIFn (TArrow (inputs, TBool));
+                        };
+                        {
+                          (mk Types.Ensures "post") with
                           ti_v = TIFn (TArrow (inputs @ [ output ], TBool));
                         };
                       ]
                   | TIFn _ -> [ (* REFINEMENTS FOR CONSTANTS? *) ]
                   | TIType _ -> [ (* TODO REFINEMENTS FOR TYPES *) ]
+                  | TIDefault _ -> [ (* TODO REFINEMENTS FOR DEFAULT ITEMS *) ]
                 in
                 let items =
-                  List.concat_map ~f:(fun item -> f item @ [ item ]) items
+                  List.concat_map
+                    ~f:(fun item ->
+                      let attrs = Attr_payloads.payloads item.ti_attrs in
+                      let ti_attrs =
+                        attrs
+                        |> List.filter
+                             ~f:
+                               (fst
+                               >> [%matches?
+                                    Types.AssociatedItem
+                                      { role = Ensures | Requires; _ }]
+                               >> not)
+                        |> List.map ~f:(uncurry Attr_payloads.to_attr)
+                      in
+                      f attrs item @ [ { item with ti_attrs } ])
+                    items
                 in
-                Trait { name; generics; items }
-            | Impl { generics; self_ty; of_trait; items; parent_bounds } ->
+                Trait { name; generics; items; safety }
+            | Impl { generics; self_ty; of_trait; items; parent_bounds; safety }
+              ->
                 let f (item : impl_item) =
                   let mk kind =
                     let ii_ident = mk_name item.ii_ident kind in
@@ -73,51 +100,51 @@ module Make (F : Features.T) =
                   match item.ii_v with
                   | IIFn { params = []; _ } -> []
                   | IIFn { body; params } ->
-                      let out_ident =
-                        U.fresh_local_ident_in
-                          (U.Reducers.collect_local_idents#visit_impl_item ()
-                             item
-                          |> Set.to_list)
-                          "out"
-                      in
-                      let params_pat =
-                        List.map ~f:(fun param -> param.pat) params
-                      in
-                      let pat = U.make_var_pat out_ident body.typ body.span in
-                      let typ = body.typ in
-                      let out = { pat; typ; typ_span = None; attrs = [] } in
+                      (* We always need to produce a pre and a post
+                         condition implementation for each method in
+                         the impl. *)
                       [
-                        {
-                          (mk "pre") with
-                          ii_v =
-                            IIFn
-                              {
-                                body =
-                                  Attrs.associated_expr_rebinding params_pat
-                                    Requires item.ii_attrs
-                                  |> Option.value ~default;
-                                params;
-                              };
-                        };
-                        {
-                          (mk "post") with
-                          ii_v =
-                            IIFn
-                              {
-                                body =
-                                  Attrs.associated_expr_rebinding
-                                    (params_pat @ [ pat ]) Ensures item.ii_attrs
-                                  |> Option.value ~default;
-                                params = params @ [ out ];
-                              };
-                        };
+                        (let params, body =
+                           match Attrs.associated_fn Requires item.ii_attrs with
+                           | Some (_, params, body) -> (params, body)
+                           | None -> (params, default)
+                         in
+                         { (mk "pre") with ii_v = IIFn { body; params } });
+                        (let params, body =
+                           match Attrs.associated_fn Ensures item.ii_attrs with
+                           | Some (_, params, body) -> (params, body)
+                           | None ->
+                               (* There is no explicit post-condition
+                                  on this method. We need to define a
+                                  trivial one. *)
+                               (* Post-condition *always* an extra
+                                  argument in final position for the
+                                  output. *)
+                               let out_ident =
+                                 U.fresh_local_ident_in
+                                   (U.Reducers.collect_local_idents
+                                      #visit_impl_item () item
+                                   |> Set.to_list)
+                                   "out"
+                               in
+                               let pat =
+                                 U.make_var_pat out_ident body.typ body.span
+                               in
+                               let typ = body.typ in
+                               let out =
+                                 { pat; typ; typ_span = None; attrs = [] }
+                               in
+                               (params @ [ out ], default)
+                         in
+                         { (mk "post") with ii_v = IIFn { body; params } });
                       ]
                   | IIType _ -> []
                 in
                 let items =
                   List.concat_map ~f:(fun item -> f item @ [ item ]) items
                 in
-                Impl { generics; self_ty; of_trait; items; parent_bounds }
+                Impl
+                  { generics; self_ty; of_trait; items; parent_bounds; safety }
             | v -> v
           in
           { item with v }

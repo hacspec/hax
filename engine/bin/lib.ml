@@ -1,6 +1,7 @@
 open Hax_engine
 open Base
 open Stdio
+open Utils
 
 let setup_logs (options : Types.engine_options) =
   let level : Logs.level option =
@@ -46,7 +47,12 @@ let import_thir_items (include_clauses : Types.inclusion_clause list)
       items
     |> List.map ~f:snd
   in
+  Logs.info (fun m -> m "Items translated");
   let items = List.concat_map ~f:fst imported_items in
+  let associated_items =
+    let assoc_items = Deps.uid_associated_items items in
+    fun (item : Deps.AST.item) -> assoc_items item.attrs
+  in
   (* Build a map from idents to error reports *)
   let ident_to_reports =
     List.concat_map
@@ -56,6 +62,11 @@ let import_thir_items (include_clauses : Types.inclusion_clause list)
     |> Map.of_alist_exn (module Concrete_ident)
   in
   let items = Deps.filter_by_inclusion_clauses include_clauses items in
+  let items =
+    items
+    @ (List.concat_map ~f:associated_items items
+      |> List.filter ~f:(List.mem ~equal:[%eq: Deps.AST.item] items >> not))
+  in
   let items =
     List.filter
       ~f:(fun i ->

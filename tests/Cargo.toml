@@ -1,10 +1,12 @@
 [workspace]
 members = [
+        "assert",
         "enum-struct-variant",
         "literals",
         "slices",
         "naming",
         "if-let",
+        "let-else",
         "enum-repr",
         "pattern-or",
         "side-effects",
@@ -18,6 +20,7 @@ members = [
         "attribute-opaque",
         "raw-attributes",
         "traits",
+        "dyn",
         "reordering",
         "nested-derefs",
         "proverif-minimal",
@@ -29,5 +32,6 @@ members = [
         "cli/interface-only",
         "recursion",
         "functions",
+        "guards",
 ]
 resolver = "2"

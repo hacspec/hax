@@ -12,6 +12,9 @@ struct
   module UB = Ast_utils.Make (FB)
   module FA = FA
 
+  let dsafety_kind (span : Span.t) (safety : A.safety_kind) : B.safety_kind =
+    match safety with Safe -> Safe | Unsafe w -> Unsafe (S.unsafe span w)
+
   let dmutability (span : Span.t) (type a b) (s : Span.t -> a -> b)
       (mutability : a mutability) : b mutability =
     match mutability with
@@ -47,6 +50,18 @@ struct
     | TOpaque ident -> TOpaque ident
     | TRawPointer { witness } ->
         TRawPointer { witness = S.raw_pointer span witness }
+    | TDyn { witness; goals } ->
+        TDyn
+          {
+            witness = S.dyn span witness;
+            goals = List.map ~f:(ddyn_trait_goal span) goals;
+          }
+
+  and ddyn_trait_goal (span : span) (r : A.dyn_trait_goal) : B.dyn_trait_goal =
+    {
+      trait = r.trait;
+      non_self_args = List.map ~f:(dgeneric_value span) r.non_self_args;
+    }
 
   and dtrait_goal (span : span) (r : A.trait_goal) : B.trait_goal =
     { trait = r.trait; args = List.map ~f:(dgeneric_value span) r.args }
@@ -54,7 +69,18 @@ struct
   and dimpl_ident (span : span) (r : A.impl_ident) : B.impl_ident =
     { goal = dtrait_goal span r.goal; name = r.name }
 
+  and dprojection_predicate (span : span) (r : A.projection_predicate) :
+      B.projection_predicate =
+    {
+      impl = dimpl_expr span r.impl;
+      assoc_item = r.assoc_item;
+      typ = dty span r.typ;
+    }
+
   and dimpl_expr (span : span) (i : A.impl_expr) : B.impl_expr =
+    { kind = dimpl_expr_kind span i.kind; goal = dtrait_goal span i.goal }
+
+  and dimpl_expr_kind (span : span) (i : A.impl_expr_kind) : B.impl_expr_kind =
     match i with
     | Self -> Self
     | Concrete tr -> Concrete (dtrait_goal span tr)
@@ -191,7 +217,13 @@ struct
             rhs = dexpr rhs;
             body = dexpr body;
           }
-    | Block (e, witness) -> Block (dexpr e, S.block span witness)
+    | Block { e; safety_mode; witness } ->
+        Block
+          {
+            e = dexpr e;
+            safety_mode = dsafety_kind span safety_mode;
+            witness = S.block span witness;
+          }
     | LocalVar local_ident -> LocalVar local_ident
     | GlobalVar global_ident -> GlobalVar global_ident
     | Ascription { e; typ } -> Ascription { e = dexpr e; typ = dty span typ }
@@ -297,10 +329,27 @@ struct
       witness = S.state_passing_loop span s.witness;
     }
 
-  and darm (a : A.arm) : B.arm = { span = a.span; arm = darm' a.span a.arm }
+  and darm (a : A.arm) : B.arm = { span = a.span; arm = darm' a.arm }
 
-  and darm' (_span : span) (a : A.arm') : B.arm' =
-    { arm_pat = dpat a.arm_pat; body = dexpr a.body }
+  and darm' (a : A.arm') : B.arm' =
+    {
+      arm_pat = dpat a.arm_pat;
+      body = dexpr a.body;
+      guard = Option.map ~f:dguard a.guard;
+    }
+
+  and dguard (a : A.guard) : B.guard =
+    { span = a.span; guard = dguard' a.span a.guard }
+
+  and dguard' (span : span) (guard : A.guard') : B.guard' =
+    match guard with
+    | IfLet { lhs; rhs; witness } ->
+        IfLet
+          {
+            lhs = dpat lhs;
+            rhs = dexpr rhs;
+            witness = S.match_guard span witness;
+          }
 
   and dlhs (span : span) (lhs : A.lhs) : B.lhs =
     match lhs with
@@ -343,6 +392,8 @@ struct
       match generic_constraint with
       | GCLifetime (lf, witness) -> B.GCLifetime (lf, S.lifetime span witness)
       | GCType impl_ident -> B.GCType (dimpl_ident span impl_ident)
+      | GCProjection projection ->
+          B.GCProjection (dprojection_predicate span projection)
 
     let dgenerics (span : span) (g : A.generics) : B.generics =
       {
@@ -370,6 +421,13 @@ struct
       match ti with
       | TIType idents -> TIType (List.map ~f:(dimpl_ident span) idents)
       | TIFn t -> TIFn (dty span t)
+      | TIDefault { params; body; witness } ->
+          TIDefault
+            {
+              params = List.map ~f:(dparam span) params;
+              body = dexpr body;
+              witness = S.trait_item_default span witness;
+            }
 
     and dtrait_item (ti : A.trait_item) : B.trait_item =
       {
@@ -422,13 +480,14 @@ struct
 
     and ditem' (span : span) (item : A.item') : B.item' =
       match item with
-      | Fn { name; generics; body; params } ->
+      | Fn { name; generics; body; params; safety } ->
           B.Fn
             {
               name;
               generics = dgenerics span generics;
               body = dexpr body;
               params = List.map ~f:(dparam span) params;
+              safety = dsafety_kind span safety;
             }
       | Type { name; generics; variants; is_struct } ->
           B.Type
@@ -444,12 +503,13 @@ struct
       | IMacroInvokation { macro; argument; span; witness } ->
           B.IMacroInvokation
             { macro; argument; span; witness = S.macro span witness }
-      | Trait { name; generics; items } ->
+      | Trait { name; generics; items; safety } ->
           B.Trait
             {
               name;
               generics = dgenerics span generics;
               items = List.map ~f:dtrait_item items;
+              safety = dsafety_kind span safety;
             }
       | Impl
           {
@@ -458,6 +518,7 @@ struct
             of_trait = trait_id, trait_generics;
             items;
             parent_bounds;
+            safety;
           } ->
           B.Impl
             {
@@ -468,6 +529,7 @@ struct
               items = List.map ~f:dimpl_item items;
               parent_bounds =
                 List.map ~f:(dimpl_expr span *** dimpl_ident span) parent_bounds;
+              safety = dsafety_kind span safety;
             }
       | Alias { name; item } -> B.Alias { name; item }
       | Use { path; is_external; rename } -> B.Use { path; is_external; rename }

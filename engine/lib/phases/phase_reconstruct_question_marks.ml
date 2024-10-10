@@ -51,9 +51,12 @@ module%inlined_contents Make (FA : Features.T) = struct
       `std::ops::FromResidual` for the type [Result<_, _>], and
       extract its parent [From] impl expr *)
       let expect_residual_impl_result (impl : impl_expr) : impl_expr option =
-        match impl with
+        match impl.kind with
         | ImplApp
-            { impl = Concrete { trait; _ }; args = [ _; _; _; from_impl ] }
+            {
+              impl = { kind = Concrete { trait; _ }; _ };
+              args = [ _; _; _; from_impl ];
+            }
           when Concrete_ident.eq_name Core__result__Impl_27 trait ->
             Some from_impl
         | _ -> None
@@ -201,7 +204,7 @@ module%inlined_contents Make (FA : Features.T) = struct
         | _ -> None
     end
 
-    [%%inline_defs dmutability]
+    [%%inline_defs dmutability + dsafety_kind]
 
     let rec dexpr_unwrapped (expr : A.expr) : B.expr =
       let h = [%inline_body dexpr_unwrapped] in

@@ -40,7 +40,11 @@ module SubtypeToInputLanguage
              and type while_loop = Features.Off.while_loop
              and type for_index_loop = Features.Off.for_index_loop
              and type quote = Features.Off.quote
-             and type state_passing_loop = Features.Off.state_passing_loop) =
+             and type state_passing_loop = Features.Off.state_passing_loop
+             and type dyn = Features.Off.dyn
+             and type match_guard = Features.Off.match_guard
+             and type trait_item_default = Features.Off.trait_item_default
+             and type unsafe = Features.Off.unsafe) =
 struct
   module FB = InputLanguage
 
@@ -573,6 +577,7 @@ struct
                     ( U.Concrete_ident_view.to_definition_name x.ti_ident,
                       match x.ti_v with
                       | TIFn fn_ty -> pty span fn_ty
+                      | TIDefault _ -> .
                       | _ -> __TODO_ty__ span "field_ty" ))
                 items );
         ]
@@ -697,12 +702,15 @@ open Phase_utils
 
 module TransformToInputLanguage =
   [%functor_application
-  Phases.Reject.RawOrMutPointer(Features.Rust)
+  Phases.Reject.Unsafe(Features.Rust)
+  |> Phases.Reject.RawOrMutPointer
   |> Phases.And_mut_defsite
+  |> Phases.Reconstruct_asserts
   |> Phases.Reconstruct_for_loops
   |> Phases.Direct_and_mut
   |> Phases.Reject.Arbitrary_lhs
   |> Phases.Drop_blocks
+  |> Phases.Drop_match_guards
   |> Phases.Reject.Continue
   |> Phases.Drop_references
   |> Phases.Trivialize_assign_lhs
@@ -714,6 +722,8 @@ module TransformToInputLanguage =
   |> Phases.Reject.EarlyExit
   |> Phases.Functionalize_loops
   |> Phases.Reject.As_pattern
+  |> Phases.Reject.Dyn
+  |> Phases.Reject.Trait_item_default
   |> SubtypeToInputLanguage
   |> Identity
   ]

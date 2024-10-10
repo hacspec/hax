@@ -253,3 +253,26 @@ mod type_alias_bounds_issue_707 {
     type SynonymA<T> = StructWithGenericBounds<T>;
     type SynonymB<T> = StructWithGenericBounds<(T, T)>;
 }
+
+// Related to PR 730
+mod block_size {
+    pub trait BlockSizeUser {
+        type BlockSize;
+    }
+    pub trait ParBlocksSizeUser: BlockSizeUser {}
+
+    pub trait BlockBackend: ParBlocksSizeUser {
+        fn proc_block(block: Vec<<Self as BlockSizeUser>::BlockSize>);
+    }
+}
+
+// issue 692
+mod recursive_trait_with_assoc_type {
+    pub trait Trait1 {
+        type T: Trait1;
+    }
+
+    pub trait Trait2: Trait1 {
+        type U;
+    }
+}

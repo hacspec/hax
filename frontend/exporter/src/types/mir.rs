@@ -91,24 +91,107 @@ fn name_of_local(
 /// instead of an open list of types.
 pub mod mir_kinds {
     use crate::prelude::{derive_group, JsonSchema};
+
     #[derive_group(Serializers)]
     #[derive(Clone, Copy, Debug, JsonSchema)]
     pub struct Built;
+
+    #[derive_group(Serializers)]
+    #[derive(Clone, Copy, Debug, JsonSchema)]
+    pub struct Promoted;
+
+    #[derive_group(Serializers)]
+    #[derive(Clone, Copy, Debug, JsonSchema)]
+    pub struct Elaborated;
+
+    #[derive_group(Serializers)]
+    #[derive(Clone, Copy, Debug, JsonSchema)]
+    pub struct Optimized;
+
+    #[derive_group(Serializers)]
+    #[derive(Clone, Copy, Debug, JsonSchema)]
+    pub struct CTFE;
+
     #[cfg(feature = "rustc")]
     pub use rustc::*;
     #[cfg(feature = "rustc")]
     mod rustc {
         use super::*;
-        use rustc_data_structures::steal::Steal;
         use rustc_middle::mir::Body;
         use rustc_middle::ty::TyCtxt;
         use rustc_span::def_id::LocalDefId;
-        pub trait IsMirKind: Clone {
-            fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>>;
+
+        pub trait IsMirKind: Clone + std::fmt::Debug {
+            // CPS to deal with stealable bodies cleanly.
+            fn get_mir<'tcx, T>(
+                tcx: TyCtxt<'tcx>,
+                id: LocalDefId,
+                f: impl FnOnce(&Body<'tcx>) -> T,
+            ) -> Option<T>;
         }
+
         impl IsMirKind for Built {
-            fn get_mir<'tcx>(tcx: TyCtxt<'tcx>, id: LocalDefId) -> &'tcx Steal<Body<'tcx>> {
-                tcx.mir_built(id)
+            fn get_mir<'tcx, T>(
+                tcx: TyCtxt<'tcx>,
+                id: LocalDefId,
+                f: impl FnOnce(&Body<'tcx>) -> T,
+            ) -> Option<T> {
+                let steal = tcx.mir_built(id);
+                if steal.is_stolen() {
+                    None
+                } else {
+                    Some(f(&steal.borrow()))
+                }
+            }
+        }
+
+        impl IsMirKind for Promoted {
+            fn get_mir<'tcx, T>(
+                tcx: TyCtxt<'tcx>,
+                id: LocalDefId,
+                f: impl FnOnce(&Body<'tcx>) -> T,
+            ) -> Option<T> {
+                let (steal, _) = tcx.mir_promoted(id);
+                if steal.is_stolen() {
+                    None
+                } else {
+                    Some(f(&steal.borrow()))
+                }
+            }
+        }
+
+        impl IsMirKind for Elaborated {
+            fn get_mir<'tcx, T>(
+                tcx: TyCtxt<'tcx>,
+                id: LocalDefId,
+                f: impl FnOnce(&Body<'tcx>) -> T,
+            ) -> Option<T> {
+                let steal = tcx.mir_drops_elaborated_and_const_checked(id);
+                if steal.is_stolen() {
+                    None
+                } else {
+                    Some(f(&steal.borrow()))
+                }
+            }
+        }
+
+        impl IsMirKind for Optimized {
+            fn get_mir<'tcx, T>(
+                tcx: TyCtxt<'tcx>,
+                id: LocalDefId,
+                f: impl FnOnce(&Body<'tcx>) -> T,
+            ) -> Option<T> {
+                Some(f(tcx.optimized_mir(id)))
+            }
+        }
+
+        impl IsMirKind for CTFE {
+            fn get_mir<'tcx, T>(
+                tcx: TyCtxt<'tcx>,
+                id: LocalDefId,
+                f: impl FnOnce(&Body<'tcx>) -> T,
+            ) -> Option<T> {
+                Some(f(tcx.mir_for_ctfe(id)))
             }
         }
     }
@@ -153,7 +236,6 @@ pub struct MirBody<KIND> {
     pub spread_arg: Option<Local>,
     pub var_debug_info: Vec<VarDebugInfo>,
     pub span: Span,
-    pub required_consts: Vec<Constant>,
     pub is_polymorphic: bool,
     pub injection_phase: Option<MirPhase>,
     pub tainted_by_errors: Option<ErrorGuaranteed>,
@@ -221,7 +303,6 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
     generics: rustc_middle::ty::GenericArgsRef<'tcx>,
 ) -> (DefId, Vec<GenericArg>, Vec<ImplExpr>, Option<ImplExpr>) {
     let tcx = s.base().tcx;
-    let param_env = s.param_env();
 
     // Retrieve the trait requirements for the **method**.
     // For instance, if we write:
@@ -229,7 +310,7 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
     // fn foo<T : Bar>(...)
     //            ^^^
     // ```
-    let mut trait_refs = solve_item_traits(s, param_env, def_id, generics, None);
+    let mut trait_refs = solve_item_traits(s, def_id, generics, None);
 
     // Check if this is a trait method call: retrieve the trait source if
     // it is the case (i.e., where does the method come from? Does it refer
@@ -312,7 +393,7 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
                 let container_generics = tcx.generics_of(container_def_id);
                 let container_generics = generics.truncate_to(tcx, container_generics);
                 let container_trait_refs =
-                    solve_item_traits(s, param_env, container_def_id, container_generics, None);
+                    solve_item_traits(s, container_def_id, container_generics, None);
                 trait_refs.extend(container_trait_refs);
                 (generics.sinto(s), Option::None)
             }
@@ -570,6 +651,11 @@ pub enum TerminatorKind {
         trait_refs: Vec<ImplExpr>,
         trait_info: Option<ImplExpr>,
     },
+    TailCall {
+        func: Operand,
+        args: Vec<Spanned<Operand>>,
+        fn_span: Span,
+    },
     Assert {
         cond: Operand,
         expected: bool,
@@ -633,6 +719,23 @@ pub enum StatementKind {
     Intrinsic(NonDivergingIntrinsic),
     ConstEvalCounter,
     Nop,
+}
+
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::NonDivergingIntrinsic<'tcx>, state: S as s)]
+pub enum NonDivergingIntrinsic {
+    Assume(Operand),
+    CopyNonOverlapping(CopyNonOverlapping),
+}
+
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::CopyNonOverlapping<'tcx>, state: S as s)]
+pub struct CopyNonOverlapping {
+    pub src: Operand,
+    pub dst: Operand,
+    pub count: Operand,
 }
 
 #[derive_group(Serializers)]
@@ -709,7 +812,8 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                     ProjectionElem::Field(match cur_ty.kind() {
                         TyKind::Adt(adt_def, _) => {
                             assert!(
-                                (adt_def.is_struct() && variant_idx.is_none())
+                                ((adt_def.is_struct() || adt_def.is_union())
+                                    && variant_idx.is_none())
                                     || (adt_def.is_enum() && variant_idx.is_some())
                             );
                             ProjectionElemFieldKind::Adt {
@@ -740,10 +844,10 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                     match elem {
                         Deref => {
                             current_ty = match current_ty.kind() {
-                                TyKind::Ref(_, ty, _) => ty.clone(),
+                                TyKind::Ref(_, ty, _) | TyKind::RawPtr(ty, _) => ty.clone(),
                                 TyKind::Adt(def, generics) if def.is_box() => generics.type_at(0),
                                 _ => supposely_unreachable_fatal!(
-                                    s, "PlaceDerefNotRefNorBox";
+                                    s, "PlaceDerefNotRefNorPtrNorBox";
                                     {current_ty, current_kind, elem}
                                 ),
                             };
@@ -835,43 +939,6 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
 }
 
 #[derive_group(Serializers)]
-#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct MirFnSig {
-    pub inputs: Vec<Ty>,
-    pub output: Ty,
-    pub c_variadic: bool,
-    pub safety: Safety,
-    pub abi: Abi,
-}
-
-pub type MirPolyFnSig = Binder<MirFnSig>;
-
-#[cfg(feature = "rustc")]
-impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, MirFnSig> for rustc_middle::ty::FnSig<'tcx> {
-    fn sinto(&self, s: &S) -> MirFnSig {
-        let inputs = self.inputs().sinto(s);
-        let output = self.output().sinto(s);
-        MirFnSig {
-            inputs,
-            output,
-            c_variadic: self.c_variadic,
-            safety: self.safety.sinto(s),
-            abi: self.abi.sinto(s),
-        }
-    }
-}
-
-// TODO: we need this function because sometimes, Rust doesn't infer the proper
-// typeclass instance.
-#[cfg(feature = "rustc")]
-pub(crate) fn poly_fn_sig_to_mir_poly_fn_sig<'tcx, S: BaseState<'tcx> + HasOwnerId>(
-    sig: &rustc_middle::ty::PolyFnSig<'tcx>,
-    s: &S,
-) -> MirPolyFnSig {
-    sig.sinto(s)
-}
-
-#[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>>, from: rustc_middle::mir::AggregateKind<'tcx>, state: S as s)]
 pub enum AggregateKind {
@@ -879,8 +946,7 @@ pub enum AggregateKind {
     Tuple,
     #[custom_arm(rustc_middle::mir::AggregateKind::Adt(def_id, vid, generics, annot, fid) => {
         let adt_kind = s.base().tcx.adt_def(def_id).adt_kind().sinto(s);
-        let param_env = s.param_env();
-        let trait_refs = solve_item_traits(s, param_env, *def_id, generics, None);
+        let trait_refs = solve_item_traits(s, *def_id, generics, None);
         AggregateKind::Adt(
             def_id.sinto(s),
             vid.sinto(s),
@@ -906,22 +972,20 @@ pub enum AggregateKind {
         // type, regions, etc. variables, which means we can treat the local
         // closure like any top-level function.
         let closure = generics.as_closure();
-        let sig = closure.sig();
-        let sig = poly_fn_sig_to_mir_poly_fn_sig(&sig, s);
+        let sig = closure.sig().sinto(s);
 
         // Solve the trait obligations. Note that we solve the parent
         let tcx = s.base().tcx;
-        let param_env = s.param_env();
         let parent_generics = closure.parent_args();
         let generics = tcx.mk_args(parent_generics);
         // Retrieve the predicates from the parent (i.e., the function which calls
         // the closure).
         let predicates = tcx.predicates_defined_on(tcx.generics_of(rust_id).parent.unwrap());
 
-        let trait_refs = solve_item_traits(s, param_env, *rust_id, generics, Some(predicates));
+        let trait_refs = solve_item_traits(s, *rust_id, generics, Some(predicates));
         AggregateKind::Closure(def_id, parent_generics.sinto(s), trait_refs, sig)
     })]
-    Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, MirPolyFnSig),
+    Closure(DefId, Vec<GenericArg>, Vec<ImplExpr>, PolyFnSig),
     Coroutine(DefId, Vec<GenericArg>),
     CoroutineClosure(DefId, Vec<GenericArg>),
     RawPtr(Ty, Mutability),
@@ -1008,7 +1072,6 @@ sinto_todo!(rustc_middle::mir, AssertMessage<'tcx>);
 sinto_todo!(rustc_middle::mir, UnwindAction);
 sinto_todo!(rustc_middle::mir, FakeReadCause);
 sinto_todo!(rustc_middle::mir, RetagKind);
-sinto_todo!(rustc_middle::mir, NonDivergingIntrinsic<'tcx>);
 sinto_todo!(rustc_middle::mir, UserTypeProjection);
 sinto_todo!(rustc_middle::mir, MirSource<'tcx>);
 sinto_todo!(rustc_middle::mir, CoroutineInfo<'tcx>);

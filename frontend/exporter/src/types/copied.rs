@@ -2,13 +2,16 @@ use crate::prelude::*;
 
 #[cfg(feature = "rustc")]
 use rustc_middle::ty;
+#[cfg(feature = "rustc")]
+use rustc_span::def_id::DefId as RDefId;
 
 impl std::hash::Hash for DefId {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         let DefId {
             krate,
             path,
-            index: _, // intentionally discarding index
+            index: _,    // intentionally discarding index
+            is_local: _, // intentionally discarding is_local
         } = self;
         krate.hash(state);
         path.hash(state);
@@ -29,6 +32,7 @@ impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
                 rustc_hir::def_id::CrateNum::as_u32(self.krate),
                 rustc_hir::def_id::DefIndex::as_u32(self.index),
             ),
+            is_local: self.is_local(),
         }
     }
 }
@@ -41,6 +45,14 @@ impl From<&DefId> for rustc_span::def_id::DefId {
             krate: rustc_hir::def_id::CrateNum::from_u32(krate),
             index: rustc_hir::def_id::DefIndex::from_u32(index),
         }
+    }
+}
+
+// Impl to be able to use hax's `DefId` for many rustc queries.
+#[cfg(feature = "rustc")]
+impl rustc_middle::query::IntoQueryParam<RDefId> for &DefId {
+    fn into_query_param(self) -> RDefId {
+        self.into()
     }
 }
 
@@ -97,13 +109,24 @@ pub enum AttrStyle {
 /// Reflects [`rustc_ast::ast::Attribute`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[args(<'slt, S: BaseState<'slt>>, from: rustc_ast::ast::Attribute, state: S as gstate)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_ast::ast::Attribute, state: S as gstate)]
 pub struct Attribute {
     pub kind: AttrKind,
     #[map(x.as_usize())]
     pub id: usize,
     pub style: AttrStyle,
     pub span: Span,
+}
+
+/// Reflects [`rustc_attr::InlineAttr`]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_attr::InlineAttr, state: S as _s)]
+pub enum InlineAttr {
+    None,
+    Hint,
+    Always,
+    Never,
 }
 
 /// Generic container for decorating items with a type, a span,
@@ -215,9 +238,17 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for rustc_middle::mi
                 let span = tcx
                     .def_ident_span(ucv.def)
                     .unwrap_or_else(|| ucv.def.default_span(tcx));
-                match self.translate_uneval(s, ucv.shrink(), span) {
-                    TranslateUnevalRes::EvaluatedConstant(c) => c.sinto(s),
-                    TranslateUnevalRes::GlobalName(c) => c,
+                if let Some(_) = ucv.promoted {
+                    self.eval_constant(s)
+                        .unwrap_or_else(|| {
+                            supposely_unreachable_fatal!(s, "UnevalPromotedConstant"; {self, ucv});
+                        })
+                        .sinto(s)
+                } else {
+                    match self.translate_uneval(s, ucv.shrink(), span) {
+                        TranslateUnevalRes::EvaluatedConstant(c) => c.sinto(s),
+                        TranslateUnevalRes::GlobalName(c) => c,
+                    }
                 }
             }
         }
@@ -518,6 +549,15 @@ pub enum UserType {
 pub enum CtorKind {
     Fn,
     Const,
+}
+
+/// Reflects [`rustc_hir::def::CtorOf`]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[args(<S>, from: rustc_hir::def::CtorOf, state: S as _s)]
+pub enum CtorOf {
+    Struct,
+    Variant,
 }
 
 /// Reflects [`rustc_middle::ty::VariantDiscr`]
@@ -1655,7 +1695,7 @@ impl<S, U, T: SInto<S, U>> SInto<S, Vec<U>> for rustc_middle::ty::List<T> {
 
 /// Reflects [`rustc_middle::ty::GenericParamDef`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::GenericParamDef, state: S as state)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::GenericParamDef, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct GenericParamDef {
@@ -1663,18 +1703,33 @@ pub struct GenericParamDef {
     pub def_id: DefId,
     pub index: u32,
     pub pure_wrt_drop: bool,
+    #[value(
+        match self.kind {
+            ty::GenericParamDefKind::Lifetime => GenericParamDefKind::Lifetime,
+            ty::GenericParamDefKind::Type { has_default, synthetic } => GenericParamDefKind::Type { has_default, synthetic },
+            ty::GenericParamDefKind::Const { has_default, is_host_effect, .. } => {
+                let ty = s.base().tcx.type_of(self.def_id).instantiate_identity().sinto(s);
+                GenericParamDefKind::Const { has_default, is_host_effect, ty }
+            },
+        }
+    )]
     pub kind: GenericParamDefKind,
 }
 
 /// Reflects [`rustc_middle::ty::GenericParamDefKind`]
-#[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::GenericParamDefKind, state: S as state)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub enum GenericParamDefKind {
     Lifetime,
-    Type { has_default: bool, synthetic: bool },
-    Const { has_default: bool },
+    Type {
+        has_default: bool,
+        synthetic: bool,
+    },
+    Const {
+        has_default: bool,
+        is_host_effect: bool,
+        ty: Ty,
+    },
 }
 
 /// Reflects [`rustc_middle::ty::Generics`]
@@ -1732,52 +1787,24 @@ impl Alias {
         use rustc_type_ir::AliasTyKind as RustAliasKind;
         let kind = match alias_kind {
             RustAliasKind::Projection => {
-                use rustc_middle::ty::{Binder, EarlyBinder, TypeVisitableExt};
+                use rustc_middle::ty::{Binder, TypeVisitableExt};
                 let tcx = s.base().tcx;
                 let trait_ref = alias_ty.trait_ref(tcx);
-                // Sometimes (see
-                // https://github.com/hacspec/hax/issues/495), we get
-                // trait refs with escaping bound vars. Empirically,
-                // this seems fine. If we detect such a situation, we
-                // emit a warning with a lot of debugging information.
-                let poly_trait_ref = if trait_ref.has_escaping_bound_vars() {
-                    let trait_ref_and_generics = alias_ty.trait_ref_and_own_args(tcx);
-                    let rebased_generics =
-                        alias_ty.rebase_inherent_args_onto_impl(alias_ty.args, tcx);
-                    let norm_rebased_generics = tcx.try_instantiate_and_normalize_erasing_regions(
-                        rebased_generics,
-                        s.param_env(),
-                        EarlyBinder::bind(trait_ref),
-                    );
-                    let norm_generics = tcx.try_instantiate_and_normalize_erasing_regions(
-                        alias_ty.args,
-                        s.param_env(),
-                        EarlyBinder::bind(trait_ref),
-                    );
-                    let early_binder_generics =
-                        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                            EarlyBinder::bind(trait_ref).instantiate(tcx, alias_ty.args)
-                        }));
-                    let early_binder_rebased_generics =
-                        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                            EarlyBinder::bind(trait_ref).instantiate(tcx, alias_ty.args)
-                        }));
+                // We don't have a clear handling of binders here; this is causing a number of
+                // problems in Charon. In the meantime we return something well-formed when we
+                // can't trait-solve. See also https://github.com/hacspec/hax/issues/495.
+                if trait_ref.has_escaping_bound_vars() {
                     warning!(
                         s,
-                        "Hax frontend found a projected type with escaping bound vars. Please report https://github.com/hacspec/hax/issues/495";
-                        {alias_ty, alias_kind, trait_ref, trait_ref_and_generics, rebased_generics,
-                         norm_rebased_generics, norm_generics,
-                         early_binder_generics, early_binder_rebased_generics}
+                        "Hax frontend found a projected type with escaping bound vars. Please report https://github.com/hacspec/hax/issues/495"
                     );
-                    // we cannot use `Binder::dummy`: it asserts that
-                    // there is no any escaping bound vars
-                    Binder::bind_with_vars(trait_ref, rustc_middle::ty::List::empty())
+                    AliasKind::Opaque
                 } else {
-                    Binder::dummy(trait_ref)
-                };
-                AliasKind::Projection {
-                    assoc_item: tcx.associated_item(alias_ty.def_id).sinto(s),
-                    impl_expr: poly_trait_ref.impl_expr(s, s.param_env()),
+                    let impl_expr = Binder::dummy(trait_ref).sinto(s);
+                    AliasKind::Projection {
+                        assoc_item: tcx.associated_item(alias_ty.def_id).sinto(s),
+                        impl_expr,
+                    }
                 }
             }
             RustAliasKind::Inherent => AliasKind::Inherent,
@@ -1826,7 +1853,7 @@ pub enum Ty {
             let trait_refs = if state.base().ty_alias_mode {
                 vec![]
             } else {
-                solve_item_traits(state, state.param_env(), adt_def.did(), generics, None)
+                solve_item_traits(state, adt_def.did(), generics, None)
             };
             Ty::Adt { def_id, generic_args, trait_refs }
         },
@@ -2337,7 +2364,8 @@ pub struct AttrItem {
 #[cfg(feature = "rustc")]
 impl<S> SInto<S, String> for rustc_ast::tokenstream::LazyAttrTokenStream {
     fn sinto(&self, st: &S) -> String {
-        self.to_attr_token_stream().to_tokenstream().sinto(st)
+        rustc_ast::tokenstream::TokenStream::new(self.to_attr_token_stream().to_token_trees())
+            .sinto(st)
     }
 }
 
@@ -2426,17 +2454,17 @@ pub enum ExprKind {
                     let assoc_item = tcx.opt_associated_item(*def_id)?;
                     let assoc_trait = tcx.trait_of_item(assoc_item.def_id)?;
                     let trait_ref = ty::TraitRef::new(tcx, assoc_trait, generics.iter());
-                    let impl_expr = {
+                    let impl_expr: ImplExpr = {
                         // TODO: we should not wrap into a dummy binder
                         let poly_trait_ref = ty::Binder::dummy(trait_ref);
-                        poly_trait_ref.impl_expr(gstate, gstate.param_env())
+                        poly_trait_ref.sinto(gstate)
                     };
                     let assoc_generics = tcx.generics_of(assoc_item.def_id);
                     let assoc_generics = translated_generics.drain(0..assoc_generics.parent_count);
                     Some((impl_expr, assoc_generics.collect()))
                 })();
                 generic_args = translated_generics;
-                bounds_impls = solve_item_traits(gstate, gstate.param_env(), *def_id, generics, None);
+                bounds_impls = solve_item_traits(gstate, *def_id, generics, None);
                 Expr {
                     contents,
                     span: e.span.sinto(gstate),
@@ -2650,12 +2678,7 @@ pub enum ExprKind {
     },
     #[custom_arm(FROM_TYPE::Closure(e) => {
         let (thir, expr_entrypoint) = get_thir(e.closure_id, gstate);
-        let s = &State {
-            thir: thir.clone(),
-            owner_id: gstate.owner_id(),
-            base: gstate.base(),
-            mir: (),
-        };
+        let s = &State::from_thir(gstate.base(), gstate.owner_id(), thir.clone());
         TO_TYPE::Closure {
             params: thir.params.raw.sinto(s),
             body: expr_entrypoint.sinto(s),
@@ -2688,7 +2711,7 @@ pub enum ExprKind {
             let tcx = gstate.base().tcx;
             tcx.opt_associated_item(*def_id).as_ref().and_then(|assoc| {
                 poly_trait_ref(gstate, assoc, args)
-            }).map(|poly_trait_ref| poly_trait_ref.impl_expr(gstate, gstate.param_env()))
+            }).map(|poly_trait_ref| poly_trait_ref.sinto(gstate))
         })]
         r#impl: Option<ImplExpr>,
     },
@@ -2884,23 +2907,11 @@ pub enum Constness {
 #[derive(Clone, Debug, JsonSchema)]
 pub struct Generics<Body: IsBody> {
     pub params: Vec<GenericParam<Body>>,
-    pub predicates: Vec<WherePredicate<Body>>,
     #[value(region_bounds_at_current_owner(tcx))]
     pub bounds: GenericBounds,
     pub has_where_clause_predicates: bool,
     pub where_clause_span: Span,
     pub span: Span,
-}
-
-/// Reflects [`rustc_hir::WherePredicate`]
-#[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::WherePredicate<'tcx>, state: S as tcx)]
-#[derive_group(Serializers)]
-#[derive(Clone, Debug, JsonSchema)]
-pub enum WherePredicate<Body: IsBody> {
-    BoundPredicate(WhereBoundPredicate<Body>),
-    RegionPredicate(WhereRegionPredicate),
-    EqPredicate(WhereEqPredicate),
 }
 
 #[cfg(feature = "rustc")]
@@ -2948,6 +2959,25 @@ pub struct AnonConst<Body: IsBody> {
     pub body: Body,
 }
 
+/// Reflects [`rustc_hir::ConstArg`]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::ConstArg<'tcx>, state: S as s)]
+pub struct ConstArg<Body: IsBody> {
+    pub hir_id: HirId,
+    pub kind: ConstArgKind<Body>,
+    pub is_desugared_from_effects: bool,
+}
+
+/// Reflects [`rustc_hir::ConstArgKind`]
+#[derive_group(Serializers)]
+#[derive(AdtInto, Clone, Debug, JsonSchema)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::ConstArgKind<'tcx>, state: S as s)]
+pub enum ConstArgKind<Body: IsBody> {
+    Path(QPath),
+    Anon(AnonConst<Body>),
+}
+
 /// Reflects [`rustc_hir::GenericParamKind`]
 #[derive_group(Serializers)]
 #[derive(AdtInto, Clone, Debug, JsonSchema)]
@@ -2963,7 +2993,7 @@ pub enum GenericParamKind<Body: IsBody> {
     },
     Const {
         ty: Ty,
-        default: Option<AnonConst<Body>>,
+        default: Option<ConstArg<Body>>,
     },
 }
 
@@ -3028,7 +3058,7 @@ pub enum ImplItemKind<Body: IsBody> {
             let assoc_item = tcx.opt_associated_item(owner_id).unwrap();
             let impl_did = assoc_item.impl_container(tcx).unwrap();
             tcx.explicit_item_bounds(assoc_item.trait_item_def_id.unwrap())
-                .skip_binder()
+                .skip_binder() // Skips an `EarlyBinder`, likely for GATs
                 .iter()
                 .copied()
                 .filter_map(|(clause, span)| super_clause_to_clause_and_impl_expr(s, impl_did, clause, span))
@@ -3091,7 +3121,7 @@ pub struct Impl<Body: IsBody> {
         let (tcx, owner_id) = (s.base().tcx, s.owner_id());
         let trait_did = tcx.trait_id_of_impl(owner_id);
         if let Some(trait_did) = trait_did {
-            tcx.super_predicates_of(trait_did)
+            tcx.explicit_super_predicates_of(trait_did)
                 .predicates
                 .iter()
                 .copied()
@@ -3306,10 +3336,11 @@ pub enum ItemKind<Body: IsBody> {
     TyAlias(
         #[map({
             let s = &State {
-                thir: s.clone(),
-                owner_id: s.owner_id(),
                 base: Base {ty_alias_mode: true, ..s.base()},
+                owner_id: s.owner_id(),
+                thir: (),
                 mir: (),
+                binder: (),
             };
             x.sinto(s)
         })]
@@ -3582,29 +3613,19 @@ pub struct ProjectionPredicate {
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ProjectionPredicate>
+impl<'tcx, S: UnderBinderState<'tcx>> SInto<S, ProjectionPredicate>
     for rustc_middle::ty::ProjectionPredicate<'tcx>
 {
     fn sinto(&self, s: &S) -> ProjectionPredicate {
         let tcx = s.base().tcx;
-        let AliasKind::Projection {
-            impl_expr,
-            assoc_item,
-        } = Alias::from(
-            s,
-            &rustc_middle::ty::AliasTyKind::Projection,
-            &self.projection_term.expect_ty(tcx),
-        )
-        .kind
-        else {
-            unreachable!()
-        };
+        let alias_ty = &self.projection_term.expect_ty(tcx);
+        let poly_trait_ref = s.binder().rebind(alias_ty.trait_ref(tcx));
         let Term::Ty(ty) = self.term.sinto(s) else {
             unreachable!()
         };
         ProjectionPredicate {
-            impl_expr,
-            assoc_item,
+            impl_expr: poly_trait_ref.sinto(s),
+            assoc_item: tcx.associated_item(alias_ty.def_id).sinto(s),
             ty,
         }
     }
@@ -3612,7 +3633,7 @@ impl<'tcx, S: BaseState<'tcx> + HasOwnerId> SInto<S, ProjectionPredicate>
 
 /// Reflects [`rustc_middle::ty::ClauseKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::ClauseKind<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderBinderState<'tcx>>, from: rustc_middle::ty::ClauseKind<'tcx>, state: S as tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ClauseKind {
@@ -3636,10 +3657,27 @@ pub struct Clause {
 #[cfg(feature = "rustc")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause> for rustc_middle::ty::Clause<'tcx> {
     fn sinto(&self, s: &S) -> Clause {
-        Clause {
-            kind: self.kind().sinto(s),
-            id: self.predicate_id(s),
-        }
+        let kind = self.kind().sinto(s);
+        let id = kind
+            .clone()
+            .map(|clause_kind| PredicateKind::Clause(clause_kind))
+            .predicate_id();
+        Clause { kind, id }
+    }
+}
+
+#[cfg(feature = "rustc")]
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Clause>
+    for rustc_middle::ty::PolyTraitPredicate<'tcx>
+{
+    fn sinto(&self, s: &S) -> Clause {
+        let kind: Binder<_> = self.sinto(s);
+        let kind: Binder<ClauseKind> = kind.map(|x| ClauseKind::Trait(x));
+        let id = kind
+            .clone()
+            .map(|clause_kind| PredicateKind::Clause(clause_kind))
+            .predicate_id();
+        Clause { kind, id }
     }
 }
 
@@ -3654,10 +3692,9 @@ pub struct Predicate {
 #[cfg(feature = "rustc")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Predicate> for rustc_middle::ty::Predicate<'tcx> {
     fn sinto(&self, s: &S) -> Predicate {
-        Predicate {
-            kind: self.kind().sinto(s),
-            id: self.predicate_id(s),
-        }
+        let kind = self.kind().sinto(s);
+        let id = kind.predicate_id();
+        Predicate { kind, id }
     }
 }
 
@@ -3680,6 +3717,30 @@ pub struct Binder<T> {
     pub bound_vars: Vec<BoundVariableKind>,
 }
 
+impl<T> Binder<T> {
+    pub fn as_ref(&self) -> Binder<&T> {
+        Binder {
+            value: &self.value,
+            bound_vars: self.bound_vars.clone(),
+        }
+    }
+
+    pub fn hax_skip_binder(self) -> T {
+        self.value
+    }
+
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Binder<U> {
+        Binder {
+            value: f(self.value),
+            bound_vars: self.bound_vars,
+        }
+    }
+
+    pub fn inner_mut(&mut self) -> &mut T {
+        &mut self.value
+    }
+}
+
 /// Reflects [`rustc_middle::ty::GenericPredicates`]
 #[derive(AdtInto)]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::GenericPredicates<'tcx>, state: S as s)]
@@ -3696,11 +3757,20 @@ pub struct GenericPredicates {
 impl<'tcx, S: UnderOwnerState<'tcx>, T1, T2> SInto<S, Binder<T2>>
     for rustc_middle::ty::Binder<'tcx, T1>
 where
-    T1: SInto<S, T2> + Clone + rustc_middle::ty::TypeFoldable<rustc_middle::ty::TyCtxt<'tcx>>,
+    T1: SInto<StateWithBinder<'tcx>, T2>,
 {
     fn sinto(&self, s: &S) -> Binder<T2> {
         let bound_vars = self.bound_vars().sinto(s);
-        let value = self.as_ref().skip_binder().sinto(s);
+        let value = {
+            let under_binder_s = &State {
+                base: s.base(),
+                owner_id: s.owner_id(),
+                binder: self.as_ref().map_bound(|_| ()),
+                thir: (),
+                mir: (),
+            };
+            self.as_ref().skip_binder().sinto(under_binder_s)
+        };
         Binder { value, bound_vars }
     }
 }
@@ -3736,6 +3806,22 @@ pub enum AliasRelationDirection {
     Subtype,
 }
 
+/// Reflects [`rustc_middle::ty::ClosureArgs`]
+#[derive(AdtInto)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: ty::ClosureArgs<ty::TyCtxt<'tcx>>, state: S as s)]
+#[derive(Clone, Debug, JsonSchema)]
+#[derive_group(Serializers)]
+pub struct ClosureArgs {
+    #[value(self.kind().sinto(s))]
+    pub kind: ClosureKind,
+    #[value(self.parent_args().sinto(s))]
+    pub parent_args: Vec<GenericArg>,
+    #[value(self.sig().sinto(s))]
+    pub sig: PolyFnSig,
+    #[value(self.upvar_tys().sinto(s))]
+    pub upvar_tys: Vec<Ty>,
+}
+
 /// Reflects [`rustc_middle::ty::ClosureKind`]
 #[derive(AdtInto)]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::ClosureKind, state: S as _tcx)]
@@ -3749,7 +3835,7 @@ pub enum ClosureKind {
 
 /// Reflects [`rustc_middle::ty::PredicateKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::PredicateKind<'tcx>, state: S as tcx)]
+#[args(<'tcx, S: UnderBinderState<'tcx>>, from: rustc_middle::ty::PredicateKind<'tcx>, state: S as tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PredicateKind {
@@ -3761,6 +3847,26 @@ pub enum PredicateKind {
     Ambiguous,
     AliasRelate(Term, Term, AliasRelationDirection),
     NormalizesTo(NormalizesTo),
+}
+
+/// Reflects [`rustc_middle::ty::ImplSubject`]
+#[derive(AdtInto)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::ImplSubject<'tcx>, state: S as s)]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ImplSubject {
+    Trait(
+        // Also record the polarity.
+        #[map({
+            let polarity = s.base().tcx.impl_polarity(s.owner_id());
+            TraitPredicate {
+                trait_ref: x.sinto(s),
+                is_positive: matches!(polarity, rustc_middle::ty::ImplPolarity::Positive),
+            }
+        })]
+        TraitPredicate,
+    ),
+    Inherent(Ty),
 }
 
 /// Reflects [`rustc_hir::GenericBounds`]
@@ -3889,21 +3995,6 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ident> for rustc_span::symbol::Ide
     }
 }
 
-/// Reflects [`rustc_hir::WhereBoundPredicate`]
-#[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::WhereBoundPredicate<'tcx>, state: S as tcx)]
-#[derive_group(Serializers)]
-#[derive(Clone, Debug, JsonSchema)]
-pub struct WhereBoundPredicate<Body: IsBody> {
-    pub hir_id: HirId,
-    pub span: Span,
-    pub origin: PredicateOrigin,
-    pub bound_generic_params: Vec<GenericParam<Body>>,
-    pub bounded_ty: Ty,
-    // TODO: What to do with WhereBoundPredicate?
-    // pub bounds: GenericBounds,
-}
-
 /// Reflects [`rustc_hir::PredicateOrigin`]
 #[derive(AdtInto)]
 #[args(<S>, from: rustc_hir::PredicateOrigin, state: S as _s)]
@@ -3917,22 +4008,26 @@ pub enum PredicateOrigin {
 
 /// Reflects [`rustc_middle::ty::AssocItem`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::AssocItem, state: S as tcx)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::AssocItem, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AssocItem {
     pub def_id: DefId,
     pub name: Symbol,
     pub kind: AssocKind,
+    #[value(get_container_for_assoc_item(s, self))]
     pub container: AssocItemContainer,
-    pub trait_item_def_id: Option<DefId>,
+    /// Whether this item has a value (e.g. this is `false` for trait methods without default
+    /// implementations).
+    #[value(self.defaultness(s.base().tcx).has_value())]
+    pub has_value: bool,
     pub fn_has_self_parameter: bool,
     pub opt_rpitit_info: Option<ImplTraitInTraitData>,
 }
 
 /// Reflects [`rustc_middle::ty::ImplTraitInTraitData`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::ImplTraitInTraitData, state: S as _tcx)]
+#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_middle::ty::ImplTraitInTraitData, state: S as _s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ImplTraitInTraitData {
@@ -3945,14 +4040,55 @@ pub enum ImplTraitInTraitData {
     },
 }
 
-/// Reflects [`rustc_middle::ty::AssocItemContainer`]
-#[derive(AdtInto)]
-#[args(<S>, from: rustc_middle::ty::AssocItemContainer, state: S as _tcx)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AssocItemContainer {
-    TraitContainer,
-    ImplContainer,
+    TraitContainer {
+        trait_id: DefId,
+    },
+    TraitImplContainer {
+        impl_id: DefId,
+        implemented_trait: DefId,
+        implemented_trait_item: DefId,
+        /// Whether the corresponding trait item had a default (and therefore this one overrides
+        /// it).
+        overrides_default: bool,
+    },
+    InherentImplContainer {
+        impl_id: DefId,
+    },
+}
+
+#[cfg(feature = "rustc")]
+fn get_container_for_assoc_item<'tcx, S: BaseState<'tcx>>(
+    s: &S,
+    item: &ty::AssocItem,
+) -> AssocItemContainer {
+    let container_id = item.container_id(s.base().tcx);
+    match item.container {
+        ty::AssocItemContainer::TraitContainer => AssocItemContainer::TraitContainer {
+            trait_id: container_id.sinto(s),
+        },
+        ty::AssocItemContainer::ImplContainer => {
+            if let Some(implemented_trait_item) = item.trait_item_def_id {
+                AssocItemContainer::TraitImplContainer {
+                    impl_id: container_id.sinto(s),
+                    implemented_trait: s
+                        .base()
+                        .tcx
+                        .trait_of_item(implemented_trait_item)
+                        .unwrap()
+                        .sinto(s),
+                    implemented_trait_item: implemented_trait_item.sinto(s),
+                    overrides_default: s.base().tcx.defaultness(implemented_trait_item).has_value(),
+                }
+            } else {
+                AssocItemContainer::InherentImplContainer {
+                    impl_id: container_id.sinto(s),
+                }
+            }
+        }
+    }
 }
 
 /// Reflects [`rustc_middle::ty::AssocKind`]

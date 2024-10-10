@@ -26,6 +26,18 @@ module Make (F : Features.T) = struct
       krate :: path
   end
 
+  module Error : Phase_utils.ERROR = Phase_utils.MakeError (struct
+    let ctx = Diagnostics.Context.Dependencies
+  end)
+
+  module Attrs = Attr_payloads.Make (F) (Error)
+
+  let uid_associated_items (items : item list) : attrs -> item list =
+    let open Attrs.WithItems (struct
+      let items = items
+    end) in
+    raw_associated_item >> List.map ~f:(snd >> item_of_uid)
+
   module ItemGraph = struct
     module G = Graph.Persistent.Digraph.Concrete (Concrete_ident)
     module Topological = Graph.Topological.Make_stable (G)
@@ -39,7 +51,7 @@ module Make (F : Features.T) = struct
       in
       let set =
         match i.v with
-        | Fn { name = _; generics; body; params } ->
+        | Fn { name = _; generics; body; params; _ } ->
             v#visit_generics () generics
             @ v#visit_expr () body
             @ concat_map (v#visit_param ()) params
@@ -51,10 +63,11 @@ module Make (F : Features.T) = struct
         | IMacroInvokation { macro; argument = (_ : string); span; witness = _ }
           ->
             v#visit_concrete_ident () macro @ v#visit_span () span
-        | Trait { name = _; generics; items } ->
+        | Trait { name = _; generics; items; safety = _ } ->
             v#visit_generics () generics
             @ concat_map (v#visit_trait_item ()) items
-        | Impl { generics; self_ty; of_trait; items; parent_bounds } ->
+        | Impl { generics; self_ty; of_trait; items; parent_bounds; safety = _ }
+          ->
             v#visit_generics () generics
             @ v#visit_ty () self_ty
             @ v#visit_global_ident () (fst of_trait)
@@ -70,15 +83,23 @@ module Make (F : Features.T) = struct
       in
       set |> Set.to_list
 
-    let vertices_of_items : item list -> G.E.t list =
-      List.concat_map ~f:(fun i ->
-          vertices_of_item i |> List.map ~f:(Fn.const i.ident &&& Fn.id))
+    let vertices_of_items ~uid_associated_items (items : item list) : G.E.t list
+        =
+      List.concat_map
+        ~f:(fun i ->
+          let assoc =
+            uid_associated_items i.attrs |> List.map ~f:(fun i -> i.ident)
+          in
+          vertices_of_item i @ assoc |> List.map ~f:(Fn.const i.ident &&& Fn.id))
+        items
 
-    let of_items (items : item list) : G.t =
+    let of_items ~original_items (items : item list) : G.t =
       let init =
         List.fold ~init:G.empty ~f:(fun g -> ident_of >> G.add_vertex g) items
       in
-      vertices_of_items items |> List.fold ~init ~f:(G.add_edge >> uncurry)
+      let uid_associated_items = uid_associated_items original_items in
+      vertices_of_items ~uid_associated_items items
+      |> List.fold ~init ~f:(G.add_edge >> uncurry)
 
     let transitive_dependencies_of (g : G.t) (selection : Concrete_ident.t list)
         : Concrete_ident.t Hash_set.t =
@@ -91,9 +112,9 @@ module Make (F : Features.T) = struct
       List.filter ~f:(G.mem_vertex g) selection |> List.iter ~f:visit;
       set
 
-    let transitive_dependencies_of_items (items : item list)
-        ?(graph = of_items items) (selection : Concrete_ident.t list) :
-        item list =
+    let transitive_dependencies_of_items ~original_items (items : item list)
+        ?(graph = of_items ~original_items items)
+        (selection : Concrete_ident.t list) : item list =
       let set = transitive_dependencies_of graph selection in
       items |> List.filter ~f:(ident_of >> Hash_set.mem set)
 
@@ -153,14 +174,14 @@ module Make (F : Features.T) = struct
       let edge_attributes _ = []
     end)
 
-    let print oc items = output_graph oc (of_items items)
+    let print oc items = output_graph oc (of_items ~original_items:items items)
   end
 
   module ModGraph = struct
     module G = Graph.Persistent.Digraph.Concrete (Namespace)
 
     let of_items (items : item list) : G.t =
-      let ig = ItemGraph.of_items items in
+      let ig = ItemGraph.of_items ~original_items:items items in
       assert (ItemGraph.MutRec.all_homogeneous_namespace ig);
       List.map ~f:(ident_of >> (Namespace.of_concrete_ident &&& Fn.id)) items
       |> Map.of_alist_multi (module Namespace)
@@ -214,7 +235,9 @@ module Make (F : Features.T) = struct
     List.map ~f:Concrete_ident.DefaultViewAPI.show >> String.concat ~sep:", "
 
   let sort (items : item list) : item list =
-    let g = ItemGraph.of_items items |> ItemGraph.Oper.mirror in
+    let g =
+      ItemGraph.of_items ~original_items:items items |> ItemGraph.Oper.mirror
+    in
     let lookup (name : concrete_ident) =
       List.find ~f:(ident_of >> Concrete_ident.equal name) items
     in
@@ -231,9 +254,10 @@ module Make (F : Features.T) = struct
       Set.equal items items');
     items'
 
-  let filter_by_inclusion_clauses' (clauses : Types.inclusion_clause list)
-      (items : item list) : item list * Concrete_ident.t Hash_set.t =
-    let graph = ItemGraph.of_items items in
+  let filter_by_inclusion_clauses' ~original_items
+      (clauses : Types.inclusion_clause list) (items : item list) :
+      item list * Concrete_ident.t Hash_set.t =
+    let graph = ItemGraph.of_items ~original_items items in
     let of_list = Set.of_list (module Concrete_ident) in
     let selection = List.map ~f:ident_of items |> of_list in
     let deps_of =
@@ -299,7 +323,7 @@ module Make (F : Features.T) = struct
 
   let filter_by_inclusion_clauses (clauses : Types.inclusion_clause list)
       (items : item list) : item list =
-    let f = filter_by_inclusion_clauses' clauses in
+    let f = filter_by_inclusion_clauses' ~original_items:items clauses in
     let selection =
       let items', items_drop_body = f items in
       let items', _ =
@@ -324,7 +348,7 @@ module Make (F : Features.T) = struct
     ({ item with v = Alias { name = item.ident; item = item'.ident } }, item')
 
   let name_me' (items : item list) : item list =
-    let g = ItemGraph.of_items items in
+    let g = ItemGraph.of_items ~original_items:items items in
     let from_ident ident : item option =
       List.find ~f:(fun i -> [%equal: Concrete_ident.t] i.ident ident) items
     in

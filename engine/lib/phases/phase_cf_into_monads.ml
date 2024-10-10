@@ -37,7 +37,7 @@ struct
       let monadic_binding _ = Features.On.monadic_binding
     end
 
-    [%%inline_defs dmutability]
+    [%%inline_defs dmutability + dsafety_kind]
 
     module KnownMonads = struct
       type t = { monad : B.supported_monads option; typ : B.ty }
@@ -163,10 +163,11 @@ struct
       | Match { scrutinee; arms } ->
           let arms =
             List.map
-              ~f:(fun { arm = { arm_pat; body = a }; span } ->
+              ~f:(fun { arm = { arm_pat; body = a; guard }; span } ->
                 let b = dexpr a in
                 let m = KnownMonads.from_typ dty a.typ b.typ in
-                (m, (dpat arm_pat, span, b)))
+                let g = Option.map ~f:dguard guard in
+                (m, (dpat arm_pat, span, b, g)))
               arms
           in
           let arms =
@@ -177,10 +178,10 @@ struct
                 |> List.reduce_exn ~f:(KnownMonads.lub span)
               in
               List.map
-                ~f:(fun (mself, (arm_pat, span, body)) ->
+                ~f:(fun (mself, (arm_pat, span, body, guard)) ->
                   let body = KnownMonads.lift "Match" body mself.monad m in
                   let arm_pat = { arm_pat with typ = body.typ } in
-                  ({ arm = { arm_pat; body }; span } : B.arm))
+                  ({ arm = { arm_pat; body; guard }; span } : B.arm))
                 arms
           in
           let typ =

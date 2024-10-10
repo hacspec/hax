@@ -40,7 +40,11 @@ module SubtypeToInputLanguage
              and type arbitrary_lhs = Features.Off.arbitrary_lhs
              and type nontrivial_lhs = Features.Off.nontrivial_lhs
              and type quote = Features.Off.quote
-             and type block = Features.Off.block) =
+             and type block = Features.Off.block
+             and type dyn = Features.Off.dyn
+             and type match_guard = Features.Off.match_guard
+             and type trait_item_default = Features.Off.trait_item_default
+             and type unsafe = Features.Off.unsafe) =
 struct
   module FB = InputLanguage
 
@@ -562,12 +566,15 @@ open Phase_utils
 
 module TransformToInputLanguage (* : PHASE *) =
   [%functor_application
-    Phases.Reject.RawOrMutPointer(Features.Rust)
+    Phases.Reject.Unsafe(Features.Rust)
+    |> Phases.Reject.RawOrMutPointer
     |> Phases.And_mut_defsite
+    |> Phases.Reconstruct_asserts
     |> Phases.Reconstruct_for_loops
     |> Phases.Direct_and_mut
     |> Phases.Reject.Arbitrary_lhs
     |> Phases.Drop_blocks
+    |> Phases.Drop_match_guards
     (* |> Phases.Reject.Continue *)
     |> Phases.Drop_references
     |> Phases.Trivialize_assign_lhs
@@ -580,6 +587,8 @@ module TransformToInputLanguage (* : PHASE *) =
     |> Phases.Reject.EarlyExit
     (* |> Phases.Functionalize_loops *)
     |> Phases.Reject.As_pattern
+    |> Phases.Reject.Dyn
+    |> Phases.Reject.Trait_item_default
     |> SubtypeToInputLanguage
     |> Identity
   ]
@@ -1337,6 +1346,10 @@ struct
                       | _ -> .)
                     args ) );
         ]
+    | GCProjection _ ->
+        Error.unimplemented ~issue_id:549
+          ~details:"Projections of an associated type is not yet supported."
+          span
     | _ -> .
 
   let pgeneric (span : Ast.span) (generics : AST.generics) :
@@ -1753,7 +1766,8 @@ struct
                                          SSP.AST.NameTy
                                            (pconcrete_ident x.ti_ident);
                                        ] ) ))
-                             impl_idents)
+                             impl_idents
+                    | _ -> .)
                   items );
           ]
           @ List.concat_map
@@ -1764,6 +1778,7 @@ struct
                       SSP.AST.HintUnfold
                         (pconcrete_ident x.ti_ident ^ "_loc", None);
                     ]
+                | TIDefault _ -> .
                 | _ -> [])
               items
       | Impl { generics; self_ty; of_trait = name, gen_vals; items } ->

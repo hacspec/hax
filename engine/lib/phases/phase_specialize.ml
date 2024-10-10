@@ -113,7 +113,14 @@ module Make (F : Features.T) =
 
           method! visit_expr () e =
             match e.e with
-            | App { f = { e = GlobalVar f; _ } as f'; args = l; _ } -> (
+            | App
+                {
+                  f = { e = GlobalVar f; _ } as f';
+                  args = l;
+                  trait;
+                  generic_args;
+                  bounds_impls;
+                } -> (
                 let l = List.map ~f:(self#visit_expr ()) l in
                 let matching =
                   List.filter patterns ~f:(fun { fn; args; _ } ->
@@ -139,7 +146,32 @@ module Make (F : Features.T) =
                             bounds_impls = [];
                           };
                     }
-                | [] -> super#visit_expr () e
+                | [] -> (
+                    (* In this case we need to avoid recursing again through the arguments *)
+                    let visited =
+                      super#visit_expr ()
+                        {
+                          e with
+                          e =
+                            App
+                              {
+                                f = f';
+                                args = [];
+                                trait;
+                                generic_args;
+                                bounds_impls;
+                              };
+                        }
+                    in
+                    match visited.e with
+                    | App { f; trait; generic_args; bounds_impls; _ } ->
+                        {
+                          visited with
+                          e =
+                            App
+                              { f; args = l; trait; generic_args; bounds_impls };
+                        }
+                    | _ -> super#visit_expr () e)
                 | _ ->
                     Error.assertion_failure e.span
                       "Found multiple matching patterns")

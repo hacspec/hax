@@ -32,6 +32,7 @@ let lookup span (impl : Concrete_ident.t) : t option =
       Import_thir.import_clause span binder
     in
     List.filter_map ~f clauses
-    |> List.map ~f:(fun (i : Ast.Rust.impl_ident) -> i.goal)
+    |> List.filter_map ~f:(fun (c : Ast.Rust.generic_constraint) ->
+           match c with GCType i -> Some i.goal | _ -> None)
   in
   Some { trait_goal; typ; clauses }

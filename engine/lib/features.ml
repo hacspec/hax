@@ -23,7 +23,11 @@ loop,
   monadic_action,
   monadic_binding,
   quote,
-  block]
+  block,
+  dyn,
+  match_guard,
+  trait_item_default,
+  unsafe]
 
 module Full = On
 
@@ -38,8 +42,6 @@ module Rust = struct
   include Off.State_passing_loop
   include Off.Quote
 end
-
-let _ = Enumeration.all
 
 module _ = struct
   module _ : T = Full

@@ -1,0 +1,83 @@
+---
+source: test-harness/src/harness.rs
+expression: snapshot
+info:
+  kind:
+    Translate:
+      backend: fstar
+  info:
+    name: dyn
+    manifest: dyn/Cargo.toml
+    description: ~
+  spec:
+    optional: false
+    broken: false
+    issue_id: ~
+    positive: true
+    snapshot:
+      stderr: false
+      stdout: true
+    include_flag: ~
+    backend_options: ~
+---
+exit = 0
+
+[stdout]
+diagnostics = []
+
+[stdout.files]
+"Dyn.fst" = '''
+module Dyn
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class t_Printable (v_Self: Type0) (v_S: Type0) = {
+  f_stringify_pre:v_Self -> Type0;
+  f_stringify_post:v_Self -> v_S -> Type0;
+  f_stringify:x0: v_Self
+    -> Prims.Pure v_S (f_stringify_pre x0) (fun result -> f_stringify_post x0 result)
+}
+
+[@@ FStar.Tactics.Typeclasses.tcinstance]
+let impl: t_Printable i32 Alloc.String.t_String =
+  {
+    f_stringify_pre = (fun (self: i32) -> true);
+    f_stringify_post = (fun (self: i32) (out: Alloc.String.t_String) -> true);
+    f_stringify
+    =
+    fun (self: i32) -> Alloc.String.f_to_string #i32 #FStar.Tactics.Typeclasses.solve self
+  }
+
+let print
+      (a:
+          Alloc.Boxed.t_Box (dyn 1 (fun z -> t_Printable z Alloc.String.t_String))
+            Alloc.Alloc.t_Global)
+    : Prims.unit =
+  let _:Prims.unit =
+    Std.Io.Stdio.v__print (Core.Fmt.impl_2__new_v1 (sz 2)
+          (sz 1)
+          (let list = [""; "\n"] in
+            FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 2);
+            Rust_primitives.Hax.array_of_list 2 list)
+          (let list =
+              [
+                Core.Fmt.Rt.impl_1__new_display #Alloc.String.t_String
+                  (f_stringify #(dyn 1 (fun z -> t_Printable z Alloc.String.t_String))
+                      #Alloc.String.t_String
+                      #FStar.Tactics.Typeclasses.solve
+                      a
+                    <:
+                    Alloc.String.t_String)
+                <:
+                Core.Fmt.Rt.t_Argument
+              ]
+            in
+            FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 1);
+            Rust_primitives.Hax.array_of_list 1 list)
+        <:
+        Core.Fmt.t_Arguments)
+  in
+  let _:Prims.unit = () in
+  ()
+'''

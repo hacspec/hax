@@ -51,9 +51,12 @@ module%inlined_contents Make (FA : Features.T) = struct
       `std::ops::FromResidual` for the type [Result<_, _>], and
       extract its parent [From] impl expr *)
       let expect_residual_impl_result (impl : impl_expr) : impl_expr option =
-        match impl with
+        match impl.kind with
         | ImplApp
-            { impl = Concrete { trait; _ }; args = [ _; _; _; from_impl ] }
+            {
+              impl = { kind = Concrete { trait; _ }; _ };
+              args = [ _; _; _; from_impl ];
+            }
           when Concrete_ident.eq_name Core__result__Impl_27 trait ->
             Some from_impl
         | _ -> None
@@ -229,7 +232,7 @@ module%inlined_contents Make (FA : Features.T) = struct
                     let body =
                       { typ = local_success; e = LocalVar var_ok; span }
                     in
-                    { arm = { arm_pat; body }; span }
+                    { arm = { arm_pat; body; guard = None }; span }
                   in
                   let arm_err =
                     let pat = UA.make_var_pat var_err local_err span in
@@ -248,7 +251,7 @@ module%inlined_contents Make (FA : Features.T) = struct
                     in
                     let e = Return { e = err; witness = return_witness } in
                     let return = { typ = local_success; e; span } in
-                    { arm = { arm_pat; body = return }; span }
+                    { arm = { arm_pat; body = return; guard = None }; span }
                   in
                   let arms, typ = ([ arm_ok; arm_err ], local_success) in
                   { e = Match { scrutinee = expr; arms }; typ; span }
@@ -263,7 +266,7 @@ module%inlined_contents Make (FA : Features.T) = struct
                     let body =
                       { typ = local_success; e = LocalVar var_some; span }
                     in
-                    { arm = { arm_pat; body }; span }
+                    { arm = { arm_pat; body; guard = None }; span }
                   in
                   let arm_none =
                     let arm_pat = mk_cons Core__option__Option__None [] in
@@ -273,7 +276,7 @@ module%inlined_contents Make (FA : Features.T) = struct
                     in
                     let e = Return { e = none; witness = return_witness } in
                     let return = { typ = local_success; e; span } in
-                    { arm = { arm_pat; body = return }; span }
+                    { arm = { arm_pat; body = return; guard = None }; span }
                   in
                   let arms, typ = ([ arm_some; arm_none ], local_success) in
                   { e = Match { scrutinee = expr; arms }; typ; span }
@@ -286,7 +289,7 @@ module%inlined_contents Make (FA : Features.T) = struct
         | _ -> None
     end
 
-    [%%inline_defs dmutability]
+    [%%inline_defs dmutability + dsafety_kind]
 
     let rec dexpr_unwrapped (expr : A.expr) : B.expr =
       QuestionMarks.extract expr |> Option.value ~default:expr

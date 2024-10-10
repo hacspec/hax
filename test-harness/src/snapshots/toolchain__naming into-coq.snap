@@ -20,10 +20,12 @@ info:
     include_flag: ~
     backend_options: ~
 ---
-exit = 0
-
-[stdout]
-diagnostics = []
+exit = 1
+[[stdout.diagnostics]]
+message = '''
+(Coq backend) something is not implemented yet.
+[ty] node str'''
+spans = ['Span { lo: Loc { line: 160, col: 0 }, hi: Loc { line: 160, col: 43 }, filename: Real(LocalPath("naming/src/lib.rs")), rust_span_data: None }']
 
 [stdout.files]
 "Naming.v" = '''
@@ -91,6 +93,8 @@ Definition ff__g__impl_1__g (self : t_Foo_t) : uint_size :=
 
 Definition reserved_names (val : int8) (noeq : int8) (of : int8) : int8 :=
   (val.+noeq).+of.
+
+(*item error backend*)
 
 Record t_Arity1 (T : _) : Type := {
   0 : T;

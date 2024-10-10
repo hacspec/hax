@@ -15,6 +15,9 @@ module Phase = struct
       | RawOrMutPointer
       | EarlyExit
       | AsPattern
+      | Dyn
+      | TraitItemDefault
+      | Unsafe
     [@@deriving show { with_path = false }, eq, yojson, compare, hash, sexp]
 
     let display = function
@@ -29,14 +32,18 @@ module Phase = struct
     | DropReferences
     | DropBlocks
     | DropSizedTrait
+    | DropMatchGuards
     | RefMut
+    | ResugarAsserts
     | ResugarForLoops
     | ResugarWhileLoops
     | ResugarForIndexLoops
     | ResugarQuestionMarks
+    | RewriteControlFlow
     | SimplifyQuestionMarks
     | Specialize
     | HoistSideEffects
+    | HoistDisjunctions
     | LocalMutation
     | TrivializeAssignLhs
     | CfIntoMonads
@@ -63,6 +70,7 @@ module Context = struct
     | Phase of Phase.t
     | Backend of Backend.t
     | ThirImport
+    | Dependencies
     | DebugPrintRust
     | GenericPrinter of string
     | Other of string
@@ -73,6 +81,7 @@ module Context = struct
     | Backend backend -> [%show: Backend.t] backend ^ " backend"
     | ThirImport -> "AST import"
     | DebugPrintRust -> "Rust debug printer"
+    | Dependencies -> "Dependenciy analysis"
     | GenericPrinter kind -> kind ^ " generic printer"
     | Other s -> "Other (" ^ s ^ ")"
 end

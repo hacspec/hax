@@ -27,6 +27,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b46cbb362ab8752921c97e041f5e366ee6297bd428a31275b9fcf1e380f7299"
 
 [[package]]
+name = "assert"
+version = "0.1.0"
+
+[[package]]
 name = "attribute-opaque"
 version = "0.1.0"
 dependencies = [
@@ -214,6 +218,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "dyn"
+version = "0.1.0"
+
+[[package]]
 name = "either"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -257,6 +265,13 @@ dependencies = [
  "libc",
  "wasi",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "guards"
+version = "0.1.0"
+dependencies = [
+ "hax-lib",
 ]
 
 [[package]]
@@ -307,6 +322,7 @@ name = "hax-lib-macros"
 version = "0.1.0-pre.1"
 dependencies = [
  "hax-lib-macros-types",
+ "paste",
  "proc-macro-error",
  "proc-macro2",
  "quote",
@@ -416,6 +432,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
+name = "let-else"
+version = "0.1.0"
+
+[[package]]
 name = "libc"
 version = "0.2.147"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -479,6 +499,9 @@ checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
 [[package]]
 name = "loops"
 version = "0.1.0"
+dependencies = [
+ "hax-lib",
+]
 
 [[package]]
 name = "memchr"
@@ -621,6 +644,12 @@ name = "os_str_bytes"
 version = "6.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2355d85b9a3786f481747ced0e0ff2ba35213a1f9bd406ed906554d7af805a1"
+
+[[package]]
+name = "paste"
+version = "1.0.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "pattern-or"

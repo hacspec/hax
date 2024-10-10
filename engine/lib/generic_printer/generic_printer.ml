@@ -141,6 +141,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
             | TAssociatedType _ -> string "assoc_type!()"
             | TOpaque _ -> string "opaque_type!()"
             | TApp _ -> super#ty ctx ty
+            | TDyn _ -> empty (* TODO *)
 
         method! expr' : par_state -> expr' fn =
           fun ctx e ->
@@ -185,7 +186,11 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
                   ~lhs ~rhs body
                 |> wrap_parens
             | Literal l -> print#literal Expr l
-            | Block (e, _) -> print#expr ctx e
+            | Block { e; safety_mode; _ } -> (
+                let e = lbrace ^/^ nest 2 (print#expr ctx e) ^/^ rbrace in
+                match safety_mode with
+                | Safe -> e
+                | Unsafe _ -> !^"unsafe " ^^ e)
             | Array l ->
                 separate_map comma (print#expr_at Expr_Array) l
                 |> group |> brackets
@@ -387,13 +392,19 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
 
         method item' : item' fn =
           function
-          | Fn { name; generics; body; params } ->
+          | Fn { name; generics; body; params; safety } ->
               let params =
                 iblock parens
                   (separate_map (comma ^^ break 1) print#param params)
               in
               let generics = print#generic_params generics.params in
-              string "fn" ^^ space ^^ print#concrete_ident name ^^ generics
+              let safety =
+                optional Base.Fn.id
+                  (match safety with
+                  | Safe -> None
+                  | Unsafe _ -> Some !^"unsafe ")
+              in
+              safety ^^ !^"fn" ^^ space ^^ print#concrete_ident name ^^ generics
               ^^ params
               ^^ iblock braces (print#expr_at Item_Fn_body body)
           | Quote quote -> print#quote quote
@@ -428,11 +439,20 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
         method generic_params : generic_param list fn =
           separate_map comma print#generic_param >> group >> angles
 
+        (*Option.map ~f:(...) guard |> Option.value ~default:empty*)
         method arm' : arm' fn =
-          fun { arm_pat; body } ->
+          fun { arm_pat; body; guard } ->
             let pat = print#pat_at Arm_pat arm_pat |> group in
             let body = print#expr_at Arm_body body in
-            pat ^^ string " => " ^^ body ^^ comma
+            let guard =
+              Option.map
+                ~f:(fun { guard = IfLet { lhs; rhs; _ }; _ } ->
+                  string " if let " ^^ print#pat_at Arm_pat lhs ^^ string " = "
+                  ^^ print#expr_at Arm_body rhs)
+                guard
+              |> Option.value ~default:empty
+            in
+            pat ^^ guard ^^ string " => " ^^ body ^^ comma
       end
   end
 

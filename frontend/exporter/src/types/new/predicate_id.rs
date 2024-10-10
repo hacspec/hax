@@ -9,38 +9,15 @@ use crate::prelude::*;
 pub struct PredicateId(u64);
 
 #[cfg(feature = "rustc")]
-pub use self::rustc::*;
-#[cfg(feature = "rustc")]
 mod rustc {
     use super::*;
-    use rustc_middle::ty;
-    /// Implemented by anything that can be assimilated to a predicate.
-    pub trait IntoPredicateId<'tcx, S: UnderOwnerState<'tcx>> {
-        /// Compute a consistent `PredicateId`
-        fn predicate_id(&self, s: &S) -> PredicateId;
-    }
-
-    impl<'tcx, S: UnderOwnerState<'tcx>> IntoPredicateId<'tcx, S> for ty::Clause<'tcx> {
-        fn predicate_id(&self, s: &S) -> PredicateId {
-            self.as_predicate().predicate_id(s)
-        }
-    }
-
-    impl<'tcx, S: UnderOwnerState<'tcx>> IntoPredicateId<'tcx, S> for ty::Predicate<'tcx> {
-        fn predicate_id(&self, s: &S) -> PredicateId {
+    impl<'tcx> Binder<PredicateKind> {
+        #[tracing::instrument(level = "trace")]
+        pub fn predicate_id(&self) -> PredicateId {
             // Here, we need to be careful about not hashing a `crate::Predicate`,
             // but `crate::Binder<crate::PredicateKind>` instead,
             // otherwise we would get into a infinite recursion.
-            let poly_kind: Binder<PredicateKind> = self.kind().sinto(s);
-            PredicateId(deterministic_hash(&poly_kind))
-        }
-    }
-
-    impl<'tcx, S: UnderOwnerState<'tcx>> IntoPredicateId<'tcx, S> for ty::PolyTraitPredicate<'tcx> {
-        fn predicate_id(&self, s: &S) -> PredicateId {
-            use ty::Upcast;
-            let predicate: ty::Predicate<'tcx> = (*self).upcast(s.base().tcx);
-            predicate.predicate_id(s)
+            PredicateId(deterministic_hash(self))
         }
     }
 
@@ -62,9 +39,8 @@ mod rustc {
     fn deterministic_hash<T: std::hash::Hash>(x: &T) -> u64 {
         use crate::deterministic_hash::DeterministicHasher;
         use std::collections::hash_map::DefaultHasher;
-        use std::hash::Hasher;
-        let mut hasher = DeterministicHasher::new(DefaultHasher::new());
-        x.hash(&mut hasher);
-        hasher.finish()
+        use std::hash::BuildHasher;
+        use std::hash::BuildHasherDefault;
+        <BuildHasherDefault<DeterministicHasher<DefaultHasher>>>::default().hash_one(x)
     }
 }

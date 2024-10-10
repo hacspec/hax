@@ -76,6 +76,10 @@ struct
         let monadic_action = reject
         let monadic_binding = reject
         let block = reject
+        let dyn = reject
+        let match_guard = reject
+        let trait_item_default = reject
+        let unsafe = reject
         let metadata = Phase_reject.make_metadata (NotInBackendLang ProVerif)
       end)
 
@@ -885,11 +889,12 @@ module DepGraphR = Dependencies.Make (Features.Rust)
 
 module TransformToInputLanguage =
   [%functor_application
-    Phases.Reject.RawOrMutPointer(Features.Rust)
-    |> Phases.Transform_hax_lib_inline
-    |> Phases.Simplify_question_marks
-    |> Phases.And_mut_defsite
-    |> Phases.Reconstruct_for_loops
+  Phases.Reject.Unsafe(Features.Rust)
+  |> Phases.Reject.RawOrMutPointer
+  |> Phases.Transform_hax_lib_inline
+  |> Phases.Simplify_question_marks
+  |> Phases.And_mut_defsite
+  |> Phases.Reconstruct_for_loops
   |> Phases.Direct_and_mut
   |> Phases.Reject.Arbitrary_lhs
   |> Phases.Drop_blocks
@@ -900,6 +905,7 @@ module TransformToInputLanguage =
   |> Phases.Drop_needless_returns
   |> Phases.Local_mutation
   |> Phases.Reject.Continue
+  |> Phases.Reject.Dyn
   |> SubtypeToInputLanguage
   |> Identity
   ]

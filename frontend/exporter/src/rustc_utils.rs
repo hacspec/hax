@@ -8,90 +8,11 @@ impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
         tcx: ty::TyCtxt<'tcx>,
         generics: &[ty::GenericArg<'tcx>],
     ) -> ty::Binder<'tcx, T> {
-        self.rebind(ty::EarlyBinder::bind(self.clone().skip_binder()).instantiate(tcx, generics))
+        ty::EarlyBinder::bind(self).instantiate(tcx, generics)
     }
 }
 
-#[extension_traits::extension(pub trait PredicateToPolyTraitPredicate)]
-impl<'tcx> ty::Binder<'tcx, ty::PredicateKind<'tcx>> {
-    fn as_poly_trait_predicate(self) -> Option<ty::PolyTraitPredicate<'tcx>> {
-        self.try_map_bound(|kind| match kind {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => Ok(trait_pred),
-            _ => Err(()),
-        })
-        .ok()
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct AnnotatedPredicate<'tcx> {
-    pub is_extra_self_predicate: bool,
-    /// Note: they are all actually `Clause`s.
-    pub predicate: ty::Predicate<'tcx>,
-    pub span: rustc_span::Span,
-}
-
-#[extension_traits::extension(pub trait TyCtxtExtPredOrAbove)]
-impl<'tcx> ty::TyCtxt<'tcx> {
-    /// Just like `TyCtxt::predicates_defined_on`, but in the case of
-    /// a trait or impl item, also includes the predicates defined on
-    /// the parent.
-    fn predicates_defined_on_or_above(
-        self,
-        did: rustc_span::def_id::DefId,
-    ) -> Vec<AnnotatedPredicate<'tcx>> {
-        let mut next_did = Some(did);
-        let mut predicates = vec![];
-        while let Some(did) = next_did {
-            let (preds, parent) = self.annotated_predicates_of(did);
-            next_did = parent;
-            predicates.extend(preds)
-        }
-        predicates
-    }
-
-    fn annotated_predicates_of(
-        self,
-        did: rustc_span::def_id::DefId,
-    ) -> (
-        impl Iterator<Item = AnnotatedPredicate<'tcx>>,
-        Option<rustc_span::def_id::DefId>,
-    ) {
-        let with_self = self.predicates_of(did);
-        let parent = with_self.parent;
-        let with_self = {
-            let extra_predicates: Vec<(ty::Clause<'_>, rustc_span::Span)> =
-                if rustc_hir::def::DefKind::OpaqueTy == self.def_kind(did) {
-                    // An opaque type (e.g. `impl Trait`) provides
-                    // predicates by itself: we need to account for them.
-                    self.explicit_item_bounds(did)
-                        .skip_binder()
-                        .iter()
-                        .copied()
-                        .collect()
-                } else {
-                    vec![]
-                };
-            with_self.predicates.iter().copied().chain(extra_predicates)
-        };
-        let without_self: Vec<ty::Clause<'_>> = self
-            .predicates_defined_on(did)
-            .predicates
-            .iter()
-            .copied()
-            .map(|(clause, _)| clause)
-            .collect();
-        (
-            with_self.map(move |(clause, span)| AnnotatedPredicate {
-                is_extra_self_predicate: !without_self.contains(&clause),
-                predicate: clause.as_predicate(),
-                span,
-            }),
-            parent,
-        )
-    }
-}
-
+// TODO: this seems to be constructing a `Self: Trait` clause. Document what it does exactly.
 pub fn poly_trait_ref<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     assoc: &ty::AssocItem,

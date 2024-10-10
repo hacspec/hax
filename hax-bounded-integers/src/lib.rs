@@ -215,14 +215,14 @@ macro_rules! derivate_operations_for_bounded {
             impl<INTRO_CONSTANTS> Zero for $bounded_t<USE_CONSTANTS> {
                 #[inline(always)]
                 fn zero() -> Self {
-                    Self::new(1)
+                    Self::new(0)
                 }
             }
 
             impl<INTRO_CONSTANTS> One for $bounded_t<USE_CONSTANTS> {
                 #[inline(always)]
                 fn one() -> Self {
-                    Self::new(0)
+                    Self::new(1)
                 }
             }
 

@@ -33,8 +33,8 @@ open Core
 open FStar.Mul
 
 class t_FooTrait (v_Self: Type0) = {
-  f_z_pre:v_Self -> bool;
-  f_z_post:v_Self -> v_Self -> bool;
+  f_z_pre:v_Self -> Type0;
+  f_z_post:v_Self -> v_Self -> Type0;
   f_z:x0: v_Self -> Prims.Pure v_Self (f_z_pre x0) (fun result -> f_z_post x0 result)
 }
 
@@ -127,9 +127,9 @@ let index_mutation_unsize (x: t_Array u8 (sz 12)) : u8 =
               Core.Ops.Range.t_Range usize ]
             <:
             t_Slice u8)
-          (Rust_primitives.unsize (let list = [1uy; 2uy] in
-                FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 2);
-                Rust_primitives.Hax.array_of_list 2 list)
+          ((let list = [1uy; 2uy] in
+              FStar.Pervasives.assert_norm (Prims.eq2 (List.Tot.length list) 2);
+              Rust_primitives.Hax.array_of_list 2 list)
             <:
             t_Slice u8)
         <:
@@ -195,14 +195,12 @@ let impl__S__update (self: t_S) (x: u8) : t_S =
 
 let foo (lhs rhs: t_S) : t_S =
   let lhs:t_S =
-    Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Ops.Range.t_Range
-            usize)
-          #FStar.Tactics.Typeclasses.solve
-          ({ Core.Ops.Range.f_start = sz 0; Core.Ops.Range.f_end = sz 1 }
-            <:
-            Core.Ops.Range.t_Range usize)
-        <:
-        Core.Ops.Range.t_Range usize)
+    Rust_primitives.Hax.Folds.fold_range (sz 0)
+      (sz 1)
+      (fun lhs temp_1_ ->
+          let lhs:t_S = lhs in
+          let _:usize = temp_1_ in
+          true)
       lhs
       (fun lhs i ->
           let lhs:t_S = lhs in
@@ -244,14 +242,12 @@ let g (x: t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global))
     : Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global =
   let x:t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) = x in
   let x:t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) =
-    Core.Iter.Traits.Iterator.f_fold (Core.Iter.Traits.Collect.f_into_iter #(Core.Ops.Range.t_Range
-            u8)
-          #FStar.Tactics.Typeclasses.solve
-          ({ Core.Ops.Range.f_start = 1uy; Core.Ops.Range.f_end = 10uy }
-            <:
-            Core.Ops.Range.t_Range u8)
-        <:
-        Core.Ops.Range.t_Range u8)
+    Rust_primitives.Hax.Folds.fold_range 1uy
+      10uy
+      (fun x temp_1_ ->
+          let x:t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) = x in
+          let _:u8 = temp_1_ in
+          true)
       x
       (fun x i ->
           let x:t_Pair (Alloc.Vec.t_Vec u8 Alloc.Alloc.t_Global) = x in

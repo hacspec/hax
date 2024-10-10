@@ -93,3 +93,25 @@ module MyInt64 = struct
 
   let yojson_of_t (int64 : t) : Yojson.Safe.t = `Intlit (to_string int64)
 end
+
+include (
+  struct
+    let id = ref 0
+
+    let tempfile_path ~suffix =
+      id := !id + 1;
+      Core.Filename.(
+        concat temp_dir_name ("hax-debug-" ^ Int.to_string !id ^ suffix))
+  end :
+    sig
+      val tempfile_path : suffix:string -> string
+      (** Generates a temporary file path that ends with `suffix` *)
+    end)
+
+module List = struct
+  include Base.List
+
+  let zip_opt : 'a 'b. 'a list -> 'b list -> ('a * 'b) list option =
+   fun x y ->
+    match zip x y with Ok result -> Some result | Unequal_lengths -> None
+end

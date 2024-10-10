@@ -98,3 +98,57 @@ module As_pattern (FA : Features.T) = struct
         let metadata = make_metadata AsPattern
       end)
 end
+
+module Dyn (FA : Features.T) = struct
+  module FB = struct
+    include FA
+    include Features.Off.Dyn
+  end
+
+  include
+    Feature_gate.Make (FA) (FB)
+      (struct
+        module A = FA
+        module B = FB
+        include Feature_gate.DefaultSubtype
+
+        let dyn = reject
+        let metadata = make_metadata Dyn
+      end)
+end
+
+module Trait_item_default (FA : Features.T) = struct
+  module FB = struct
+    include FA
+    include Features.Off.Trait_item_default
+  end
+
+  include
+    Feature_gate.Make (FA) (FB)
+      (struct
+        module A = FA
+        module B = FB
+        include Feature_gate.DefaultSubtype
+
+        let trait_item_default = reject
+        let metadata = make_metadata TraitItemDefault
+      end)
+end
+
+module Unsafe (FA : Features.T) = struct
+  module FB = struct
+    include FA
+    include Features.Off.Unsafe
+  end
+
+  include
+    Feature_gate.Make (FA) (FB)
+      (struct
+        module A = FA
+        module B = FB
+        include Feature_gate.DefaultSubtype
+
+        let unsafe = reject
+        let metadata = make_metadata Unsafe
+      end)
+end
