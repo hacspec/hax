@@ -500,8 +500,10 @@ struct
       method ty_TSlice ~witness:_ ~ty:_ = default_document_for "ty_TSlice"
       method ty_TStr = string "string"
 
-      method item'_Enum_Variant ~name ~arguments ~is_record:_ ~attrs:_ =
-        name#p ^^ space ^^ colon ^^ space ^^ concat_map (fun (ident,typ,attr) -> parens (ident#p ^^ space ^^ colon ^^ space ^^ typ#p)) arguments ^^ semi
+      method item'_Enum_Variant ~name ~arguments ~is_record ~attrs:_ =
+        if is_record
+        then concat_map (fun (ident,typ,attr) -> ident#p ^^ space ^^ colon ^^ space ^^ typ#p) arguments ^^ semi
+        else name#p ^^ space ^^ colon ^^ space ^^ concat_map (fun (ident,typ,attr) -> parens (ident#p ^^ space ^^ colon ^^ space ^^ typ#p)) arguments ^^ semi
       (* END GENERATED *)
     end
 end
