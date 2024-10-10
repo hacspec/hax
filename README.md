@@ -138,10 +138,17 @@ You can also just use [direnv](https://github.com/nix-community/nix-direnv), wit
   programs from the Rust language to various backends (see `engine/backends/`).
 - `cli/`: the `hax` subcommand for Cargo.
 
-### Recompiling
-You can use the [`.utils/rebuild.sh`](./.utils/rebuild.sh) script (which is available automatically as the command `rebuild` when using the Nix devshell):
- - `rebuild`: rebuild the Rust then the OCaml part;
- - `rebuild TARGET`: rebuild the `TARGET` part (`TARGET` is either `rust` or `ocaml`).
+### Compiling, formatting, and more
+We use the [`just` command runner](https://just.systems/). If you use
+Nix, the dev shell provides it automatically, if you don't use Nix,
+please [install `just`](https://just.systems/man/en/packages.html) on
+your system.
+
+Anywhere within the repository, you can build and install in PATH (1)
+the Rust parts with `just rust`, (2) the OCaml parts with `just ocaml`
+or (3) both with `just build`. More commands (e.g. `just fmt` to
+format) are available, please run `just` or `just --list` to get all
+the commands.
 
 ## Publications & Other material
 
