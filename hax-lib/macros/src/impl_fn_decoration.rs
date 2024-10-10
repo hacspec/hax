@@ -13,32 +13,6 @@ pub struct ImplFnDecoration {
     pub self_ty: Type,
 }
 
-/// The various strings allowed as decoration kinds.
-pub const DECORATION_KINDS: &[&str] = &["decreases", "ensures", "requires"];
-
-/// Expects a `Path` to be a decoration kind: `::hax_lib::<KIND>`,
-/// `hax_lib::<KIND>` or `<KIND>` in (with `KIND` in
-/// `DECORATION_KINDS`).
-pub fn expects_path_decoration(path: &Path) -> Result<Option<String>> {
-    let path_span = path.span();
-    let path = path
-        .expect_simple_path()
-        .ok_or_else(|| Error::new(path_span, "Expected a simple path, with no `<...>`."))?;
-    Ok(
-        match path
-            .iter()
-            .map(|x| x.as_str())
-            .collect::<Vec<_>>()
-            .as_slice()
-        {
-            [kw] | ["", "hax_lib", kw] | ["hax_lib", kw] if DECORATION_KINDS.contains(kw) => {
-                Some(kw.to_string())
-            }
-            _ => None,
-        },
-    )
-}
-
 impl parse::Parse for ImplFnDecoration {
     fn parse(input: parse::ParseStream) -> Result<Self> {
         let parse_next = || -> Result<_> {
