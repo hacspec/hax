@@ -185,3 +185,54 @@ impl<const N: usize> TryDecodeOps<U8> for [U32; N] {
         try_from_be_bytes(x)
     }
 }
+
+impl IntOps for Secret<u64> {
+    fn wrapping_add<T:Into<Secret<u64>>>(self,rhs:T) -> Self {
+        self.declassify().wrapping_add(rhs.into().declassify()).classify()
+    }
+    fn wrapping_sub<T:Into<Secret<u64>>>(self,rhs:T) -> Self {
+        self.declassify().wrapping_sub(rhs.into().declassify()).classify()
+    }
+    fn wrapping_mul<T:Into<Secret<u64>>>(self,rhs:T) -> Self {
+        self.declassify().wrapping_mul(rhs.into().declassify()).classify()
+    }
+    fn rotate_left(self,rhs:u32) -> Self {
+        self.declassify().rotate_left(rhs).classify()
+    }
+    fn rotate_right(self,rhs:u32) -> Self {
+        self.declassify().rotate_right(rhs).classify()
+    }
+}
+
+impl EncodeOps<U8,8> for U64 {
+    fn to_le_bytes(&self) -> [U8;8] {
+        self.declassify().to_le_bytes().classify_each()
+    }
+    fn to_be_bytes(&self) -> [U8;8] {
+        self.declassify().to_be_bytes().classify_each()
+    }
+    fn from_le_bytes(x:&[U8;8]) -> Self {
+        u64::from_le_bytes(x.map(|i| i.declassify())).classify()
+    }
+    fn from_be_bytes(x:&[U8;8]) -> Self {
+        u64::from_be_bytes(x.map(|i| i.declassify())).classify()
+    }
+}
+
+impl<const N: usize, const B:usize> TryEncodeOps<U8, B> for [U64; N] {
+    fn try_to_le_bytes(&self) -> Result<[U8;B],()> {
+        try_to_le_bytes(self)
+    }
+    fn try_to_be_bytes(&self) -> Result<[U8;B],()> {
+        try_to_be_bytes(self)
+    }
+}
+
+impl<const N: usize> TryDecodeOps<U8> for [U64; N] {
+    fn try_from_le_bytes(x:&[U8]) -> Result<Self,()> {
+        try_from_le_bytes(x)
+    }
+    fn try_from_be_bytes(x:&[U8]) -> Result<Self,()> {
+        try_from_be_bytes(x)
+    }
+}
