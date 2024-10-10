@@ -222,7 +222,7 @@ impl<'tcx> PredicateSearcher<'tcx> {
         let TyKind::Alias(AliasTyKind::Projection, alias_ty) = ty.skip_binder().kind() else {
             return;
         };
-        let trait_ref = ty.rebind(alias_ty.trait_ref(tcx));
+        let trait_ref = ty.rebind(alias_ty.trait_ref(tcx)).upcast(tcx);
 
         // The predicate we're looking for is is `<T as Trait>::Type: OtherTrait`. We look up `T as
         // Trait` in the current context and add all the bounds on `Trait::Type` to our context.
@@ -256,9 +256,7 @@ impl<'tcx> PredicateSearcher<'tcx> {
 
     /// Lookup a predicate in this set. If the predicate applies to an associated type, we
     /// add the relevant implied associated type bounds to the set as well.
-    fn lookup(&mut self, target: PolyTraitRef<'tcx>) -> Option<Candidate<'tcx>> {
-        let tcx = self.tcx;
-        let target: PolyTraitPredicate = erase_and_norm(tcx, self.param_env, target).upcast(tcx);
+    fn lookup(&mut self, target: PolyTraitPredicate<'tcx>) -> Option<Candidate<'tcx>> {
         tracing::trace!("Looking for {target:?}");
 
         // Look up the predicate
@@ -295,13 +293,15 @@ impl<'tcx> PredicateSearcher<'tcx> {
             BuiltinImplSource, ImplSource, ImplSourceUserDefinedData,
         };
 
-        if let Some(impl_expr) = self.resolution_cache.get(tref) {
+        let erased_tref = erase_and_norm(self.tcx, self.param_env, *tref);
+
+        if let Some(impl_expr) = self.resolution_cache.get(&erased_tref) {
             return Ok(impl_expr.clone());
         }
 
         let tcx = self.tcx;
         let impl_source =
-            copy_paste_from_rustc::codegen_select_candidate(tcx, (self.param_env, *tref));
+            copy_paste_from_rustc::codegen_select_candidate(tcx, (self.param_env, erased_tref));
         let atom = match impl_source {
             Ok(ImplSource::UserDefined(ImplSourceUserDefinedData {
                 impl_def_id,
@@ -311,7 +311,7 @@ impl<'tcx> PredicateSearcher<'tcx> {
                 def_id: impl_def_id,
                 generics,
             },
-            Ok(ImplSource::Param(_)) => match self.lookup(*tref) {
+            Ok(ImplSource::Param(_)) => match self.lookup(erased_tref.upcast(self.tcx)) {
                 Some(candidate) => {
                     let path = candidate.path;
                     let r#trait = candidate.origin.clause.to_poly_trait_ref();
@@ -372,7 +372,7 @@ impl<'tcx> PredicateSearcher<'tcx> {
             args: nested,
             r#trait: *tref,
         };
-        self.resolution_cache.insert(*tref, impl_expr.clone());
+        self.resolution_cache.insert(erased_tref, impl_expr.clone());
         Ok(impl_expr)
     }
 }
@@ -387,8 +387,6 @@ mod copy_paste_from_rustc {
         Unimplemented,
     };
 
-    use crate::traits::utils::erase_and_norm;
-
     /// Attempts to resolve an obligation to an `ImplSource`. The result is
     /// a shallow `ImplSource` resolution, meaning that we do not
     /// (necessarily) resolve all nested obligations on the impl. Note
@@ -400,8 +398,6 @@ mod copy_paste_from_rustc {
         tcx: TyCtxt<'tcx>,
         (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
     ) -> Result<rustc_trait_selection::traits::Selection<'tcx>, CodegenObligationError> {
-        let trait_ref = erase_and_norm(tcx, param_env, trait_ref);
-
         // Do the initial selection for the obligation. This yields the
         // shallow result we are looking for -- that is, what specific impl.
         let infcx = tcx.infer_ctxt().ignoring_regions().build();
