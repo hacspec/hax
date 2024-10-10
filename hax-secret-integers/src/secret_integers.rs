@@ -89,6 +89,14 @@ impl<T: BitXor,V:Into<Secret<T>>> BitXor<V> for Secret<T> {
     }
 }
 
+impl<T: BitXor+Copy,V:Into<Secret<T>>> BitXorAssign<V> for Secret<T> 
+    where T::Output : Into<T> {
+    fn bitxor_assign(&mut self, rhs: V) {
+        let r = self.declassify().bitxor(rhs.into().declassify()).into();
+        *self = r.classify();
+    }
+}
+
 impl<T: BitOr,V:Into<Secret<T>>> BitOr<V> for Secret<T> {
     type Output = Secret<T::Output>;
     fn bitor(self, rhs: V) -> Self::Output {
@@ -96,10 +104,26 @@ impl<T: BitOr,V:Into<Secret<T>>> BitOr<V> for Secret<T> {
     }
 }
 
+impl<T: BitOr+Copy,V:Into<Secret<T>>> BitOrAssign<V> for Secret<T> 
+    where T::Output : Into<T> {
+    fn bitor_assign(&mut self, rhs: V) {
+        let r = self.declassify().bitor(rhs.into().declassify()).into();
+        *self = r.classify();
+    }
+}
+
 impl<T: BitAnd,V:Into<Secret<T>>> BitAnd<V> for Secret<T> {
     type Output = Secret<T::Output>;
     fn bitand(self, rhs: V) -> Self::Output {
         self.declassify().bitand(rhs.into().declassify()).into()
+    }
+}
+
+impl<T: BitAnd+Copy,V:Into<Secret<T>>> BitAndAssign<V> for Secret<T> 
+    where T::Output : Into<T> {
+    fn bitand_assign(&mut self, rhs: V) {
+        let r = self.declassify().bitand(rhs.into().declassify()).into();
+        *self = r.classify();
     }
 }
 
