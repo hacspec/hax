@@ -50,3 +50,8 @@ engine. Those should not be published on `crate.io`.
  2. PR the change
  3. when the PR is merged in main, checkout `main` and run `cargo release --execute`
 
+Note: for now, we are not publishing to Opam. Instead, let's just advertise the following for installation:
+```bash
+opam pin hax-engine https://github.com/hacspec/hax.git#the-release-tag
+opam install hax-engine
+```
