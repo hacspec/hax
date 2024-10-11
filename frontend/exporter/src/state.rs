@@ -98,6 +98,7 @@ macro_rules! mk {
 
 mod types {
     use crate::prelude::*;
+    use rustc_middle::ty;
     use std::cell::RefCell;
     use std::collections::HashSet;
 
@@ -119,13 +120,21 @@ mod types {
         }
     }
 
-    #[derive(Default)]
+    /// Per-item cache
     pub struct Caches<'tcx> {
         /// Cache the trait resolution engine for each item.
-        pub predicate_searcher: HashMap<RDefId, crate::traits::PredicateSearcher<'tcx>>,
+        pub predicate_searcher: crate::traits::PredicateSearcher<'tcx>,
         /// Cache of trait refs to resolved impl expressions.
-        pub resolution_cache:
-            HashMap<(RDefId, rustc_middle::ty::PolyTraitRef<'tcx>), crate::traits::ImplExpr>,
+        pub resolution_cache: HashMap<ty::PolyTraitRef<'tcx>, crate::traits::ImplExpr>,
+    }
+
+    impl<'tcx> Caches<'tcx> {
+        pub fn new(tcx: ty::TyCtxt<'tcx>, def_id: RDefId) -> Self {
+            Self {
+                predicate_searcher: crate::traits::PredicateSearcher::new_for_owner(tcx, def_id),
+                resolution_cache: Default::default(),
+            }
+        }
     }
 
     #[derive(Clone)]
@@ -145,8 +154,9 @@ mod types {
                 ),
             >,
         >,
-        pub caches: Rc<RefCell<Caches<'tcx>>>,
-        pub tcx: rustc_middle::ty::TyCtxt<'tcx>,
+        /// Per-item caches.
+        pub caches: Rc<RefCell<HashMap<RDefId, Caches<'tcx>>>>,
+        pub tcx: ty::TyCtxt<'tcx>,
         /// Rust doesn't enforce bounds on generic parameters in type
         /// aliases. Thus, when translating type aliases, we need to
         /// disable the resolution of implementation expressions. For
@@ -178,9 +188,12 @@ mod types {
 
         /// Access the shared caches. You must not call `sinto` within this function as this will
         /// likely result in `BorrowMut` panics.
-        pub fn with_caches<T>(&self, f: impl FnOnce(&mut Caches<'tcx>) -> T) -> T {
+        pub fn with_caches<T>(&self, def_id: RDefId, f: impl FnOnce(&mut Caches<'tcx>) -> T) -> T {
             let mut caches = self.caches.borrow_mut();
-            f(&mut *caches)
+            let caches_for_def_id = caches
+                .entry(def_id)
+                .or_insert_with(|| Caches::new(self.tcx, def_id));
+            f(caches_for_def_id)
         }
     }
 
