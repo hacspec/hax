@@ -1,4 +1,5 @@
 open Prelude
+open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 module Location = Location
 include Mappings
 
