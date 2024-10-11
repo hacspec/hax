@@ -46,8 +46,3 @@ let impl__ok_or #t_Self #e (self: t_Option t_Self) (err: e): Core.Result.t_Resul
   match self with 
   | Option_Some inner -> Core.Result.Result_Ok inner
   | Option_None -> Core.Result.Result_Err err
-
-let impl__map #t_Self #u (self: t_Option t_Self) (f: t_Self -> u): t_Option u =
-  match self with
-  | Option_Some inner -> Option_Some (f inner)
-  | Option_None -> Option_None
