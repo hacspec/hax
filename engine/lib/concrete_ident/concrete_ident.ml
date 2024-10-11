@@ -284,8 +284,8 @@ module View = struct
       last.data |> Imported.of_def_path_item |> string_of_def_path_item
       |> Option.map ~f:escape
     in
-    let arity0 =
-      Option.map ~f:escape << function
+    let arity0 ty =
+      match ty.Types.kind with
       | Types.Bool -> Some "bool"
       | Char -> Some "char"
       | Str -> Some "str"
@@ -305,11 +305,13 @@ module View = struct
       | Float F32 -> Some "f32"
       | Float F64 -> Some "f64"
       | Tuple [] -> Some "unit"
-      | Adt { def_id; generic_args = []; _ } -> adt def_id
+      | Adt { def_id; generic_args = []; _ } ->
+          Option.map ~f:escape (adt def_id)
       | _ -> None
     in
     let apply left right = left ^ "_of_" ^ right in
-    let rec arity1 = function
+    let rec arity1 ty =
+      match ty.Types.kind with
       | Types.Slice sub -> arity1 sub |> Option.map ~f:(apply "slice")
       | Ref (_, sub, _) -> arity1 sub |> Option.map ~f:(apply "ref")
       | Adt { def_id; generic_args = [ Type arg ]; _ } ->
@@ -319,7 +321,7 @@ module View = struct
       | Tuple l ->
           let* l = List.map ~f:arity0 l |> Option.all in
           Some ("tuple_" ^ String.concat ~sep:"_" l)
-      | otherwise -> arity0 otherwise
+      | _ -> arity0 ty
     in
     arity1
 

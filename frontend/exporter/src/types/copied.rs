@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use std::sync::Arc;
 
 #[cfg(feature = "rustc")]
 use rustc_middle::ty;
@@ -259,20 +260,6 @@ pub type ConstantKind = ConstantExpr;
 impl<S> SInto<S, u64> for rustc_middle::mir::interpret::AllocId {
     fn sinto(&self, _: &S) -> u64 {
         self.0.get()
-    }
-}
-
-#[cfg(feature = "rustc")]
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Box<Ty>> for rustc_middle::ty::Ty<'tcx> {
-    fn sinto(&self, s: &S) -> Box<Ty> {
-        Box::new(self.sinto(s))
-    }
-}
-
-#[cfg(feature = "rustc")]
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_middle::ty::Ty<'tcx> {
-    fn sinto(&self, s: &S) -> Ty {
-        self.kind().sinto(s)
     }
 }
 
@@ -1815,12 +1802,41 @@ impl Alias {
     }
 }
 
+#[cfg(feature = "rustc")]
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Box<Ty>> for rustc_middle::ty::Ty<'tcx> {
+    fn sinto(&self, s: &S) -> Box<Ty> {
+        Box::new(self.sinto(s))
+    }
+}
+
+/// Reflects [`rustc_middle::ty::Ty`]
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Ty {
+    pub kind: Arc<TyKind>,
+}
+
+impl Ty {
+    pub fn kind(&self) -> &TyKind {
+        self.kind.as_ref()
+    }
+}
+
+#[cfg(feature = "rustc")]
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_middle::ty::Ty<'tcx> {
+    fn sinto(&self, s: &S) -> Ty {
+        Ty {
+            kind: Arc::new(self.kind().sinto(s)),
+        }
+    }
+}
+
 /// Reflects [`rustc_middle::ty::TyKind`]
 #[derive(AdtInto)]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::TyKind<'tcx>, state: S as state)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Ty {
+pub enum TyKind {
     Bool,
     Char,
     Int(IntTy),
@@ -1847,7 +1863,7 @@ pub enum Ty {
             let def_id = adt_def.did().sinto(state);
             let generic_args: Vec<GenericArg> = generics.sinto(state);
             let trait_refs = solve_item_traits(state, adt_def.did(), generics, None);
-            Ty::Adt { def_id, generic_args, trait_refs }
+            TyKind::Adt { def_id, generic_args, trait_refs }
         },
     )]
     Adt {
@@ -1870,7 +1886,7 @@ pub enum Ty {
     Tuple(Vec<Ty>),
     #[custom_arm(
         rustc_middle::ty::TyKind::Alias(alias_kind, alias_ty) => {
-            Ty::Alias(Alias::from(state, alias_kind, alias_ty))
+            TyKind::Alias(Alias::from(state, alias_kind, alias_ty))
         },
     )]
     Alias(Alias),
@@ -1878,7 +1894,7 @@ pub enum Ty {
     Bound(DebruijnIndex, BoundTy),
     Placeholder(PlaceholderType),
     Infer(InferTy),
-    #[custom_arm(rustc_middle::ty::TyKind::Error(..) => Ty::Error,)]
+    #[custom_arm(rustc_middle::ty::TyKind::Error(..) => TyKind::Error,)]
     Error,
     #[todo]
     Todo(String),

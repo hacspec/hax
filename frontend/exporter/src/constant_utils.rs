@@ -584,9 +584,9 @@ mod rustc {
         assert!(dc.variant.is_none());
 
         // The type should be tuple
-        let hax_ty = ty.sinto(s);
-        match &hax_ty {
-            Ty::Tuple(_) => (),
+        let hax_ty: Ty = ty.sinto(s);
+        match hax_ty.kind() {
+            TyKind::Tuple(_) => (),
             _ => {
                 fatal!(s[span], "Expected the type to be tuple: {:?}", val)
             }
@@ -632,12 +632,12 @@ mod rustc {
             }
             ConstValue::ZeroSized { .. } => {
                 // Should be unit
-                let hty = ty.sinto(s);
-                let cv = match &hty {
-                    Ty::Tuple(tys) if tys.is_empty() => {
+                let hty: Ty = ty.sinto(s);
+                let cv = match hty.kind() {
+                    TyKind::Tuple(tys) if tys.is_empty() => {
                         ConstantExprKind::Tuple { fields: Vec::new() }
                     }
-                    Ty::Arrow(_) => match ty.kind() {
+                    TyKind::Arrow(_) => match ty.kind() {
                         rustc_middle::ty::TyKind::FnDef(def_id, args) => {
                             let (def_id, generics, generics_impls, method_impl) =
                                 get_function_from_def_id_and_generics(s, *def_id, args);

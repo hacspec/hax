@@ -13,8 +13,11 @@ impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
 }
 
 #[tracing::instrument(skip(s))]
-pub(crate) fn arrow_of_sig<'tcx, S: UnderOwnerState<'tcx>>(sig: &ty::PolyFnSig<'tcx>, s: &S) -> Ty {
-    Ty::Arrow(Box::new(sig.sinto(s)))
+pub(crate) fn arrow_of_sig<'tcx, S: UnderOwnerState<'tcx>>(
+    sig: &ty::PolyFnSig<'tcx>,
+    s: &S,
+) -> TyKind {
+    TyKind::Arrow(Box::new(sig.sinto(s)))
 }
 
 #[tracing::instrument(skip(s))]
