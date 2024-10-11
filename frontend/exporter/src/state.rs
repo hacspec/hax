@@ -122,6 +122,8 @@ mod types {
 
     /// Per-item cache
     pub struct Caches<'tcx> {
+        /// Cache the `Ty` translations.
+        pub ty: HashMap<ty::Ty<'tcx>, Ty>,
         /// Cache the trait resolution engine for each item.
         pub predicate_searcher: crate::traits::PredicateSearcher<'tcx>,
         /// Cache of trait refs to resolved impl expressions.
@@ -136,6 +138,7 @@ mod types {
     impl<'tcx> Caches<'tcx> {
         pub fn new(tcx: ty::TyCtxt<'tcx>, def_id: RDefId) -> Self {
             Self {
+                ty: Default::default(),
                 predicate_searcher: crate::traits::PredicateSearcher::new_for_owner(tcx, def_id),
                 resolution_cache: Default::default(),
                 thir: Default::default(),

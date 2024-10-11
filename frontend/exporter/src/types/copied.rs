@@ -1825,9 +1825,19 @@ impl Ty {
 #[cfg(feature = "rustc")]
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_middle::ty::Ty<'tcx> {
     fn sinto(&self, s: &S) -> Ty {
-        Ty {
-            kind: Arc::new(self.kind().sinto(s)),
+        let owner_id = s.owner_id();
+        if let Some(ty) = s
+            .base()
+            .with_caches(owner_id, |caches| caches.ty.get(self).cloned())
+        {
+            return ty;
         }
+        let ty = Ty {
+            kind: Arc::new(self.kind().sinto(s)),
+        };
+        s.base()
+            .with_caches(owner_id, |caches| caches.ty.insert(*self, ty.clone()));
+        ty
     }
 }
 
