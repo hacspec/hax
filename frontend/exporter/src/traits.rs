@@ -257,7 +257,7 @@ pub mod rustc {
         }
 
         // Lifetimes are irrelevant when resolving instances.
-        pub(super) fn erase_and_norm<'tcx, T>(
+        pub(crate) fn erase_and_norm<'tcx, T>(
             tcx: TyCtxt<'tcx>,
             param_env: ParamEnv<'tcx>,
             x: T,
