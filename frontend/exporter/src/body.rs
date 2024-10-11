@@ -21,9 +21,9 @@ mod module {
         Rc<rustc_middle::thir::Thir<'tcx>>,
         rustc_middle::thir::ExprId,
     ) {
-        let base = s.base();
-        base.with_caches(did.to_def_id(), |caches| {
-            let msg = || fatal!(s[base.tcx.def_span(did)], "THIR not found for {:?}", did);
+        let tcx = s.base().tcx;
+        s.with_item_cache(did.to_def_id(), |caches| {
+            let msg = || fatal!(s[tcx.def_span(did)], "THIR not found for {:?}", did);
             caches.thir.as_ref().unwrap_or_else(msg).clone()
         })
     }

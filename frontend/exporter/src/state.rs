@@ -120,14 +120,21 @@ mod types {
         }
     }
 
+    /// Global caches
+    #[derive(Default)]
+    pub struct GlobalCache<'tcx> {
+        /// Per-item cache.
+        pub per_item: HashMap<RDefId, ItemCache<'tcx>>,
+    }
+
     /// Per-item cache
-    pub struct Caches<'tcx> {
+    pub struct ItemCache<'tcx> {
         /// Cache the `Ty` translations.
-        pub ty: HashMap<ty::Ty<'tcx>, Ty>,
+        pub tys: HashMap<ty::Ty<'tcx>, Ty>,
         /// Cache the trait resolution engine for each item.
         pub predicate_searcher: crate::traits::PredicateSearcher<'tcx>,
         /// Cache of trait refs to resolved impl expressions.
-        pub resolution_cache: HashMap<ty::PolyTraitRef<'tcx>, crate::traits::ImplExpr>,
+        pub impl_exprs: HashMap<ty::PolyTraitRef<'tcx>, crate::traits::ImplExpr>,
         /// Cache thir bodies.
         pub thir: Option<(
             Rc<rustc_middle::thir::Thir<'tcx>>,
@@ -135,12 +142,12 @@ mod types {
         )>,
     }
 
-    impl<'tcx> Caches<'tcx> {
+    impl<'tcx> ItemCache<'tcx> {
         pub fn new(tcx: ty::TyCtxt<'tcx>, def_id: RDefId) -> Self {
             Self {
-                ty: Default::default(),
+                tys: Default::default(),
                 predicate_searcher: crate::traits::PredicateSearcher::new_for_owner(tcx, def_id),
-                resolution_cache: Default::default(),
+                impl_exprs: Default::default(),
                 thir: Default::default(),
             }
         }
@@ -154,8 +161,7 @@ mod types {
         pub opt_def_id: Option<rustc_hir::def_id::DefId>,
         pub exported_spans: ExportedSpans,
         pub exported_def_ids: ExportedDefIds,
-        /// Per-item caches.
-        pub caches: Rc<RefCell<HashMap<RDefId, Caches<'tcx>>>>,
+        pub cache: Rc<RefCell<GlobalCache<'tcx>>>,
         pub tcx: ty::TyCtxt<'tcx>,
         /// Rust doesn't enforce bounds on generic parameters in type
         /// aliases. Thus, when translating type aliases, we need to
@@ -173,7 +179,7 @@ mod types {
             Self {
                 tcx,
                 macro_infos: Rc::new(HashMap::new()),
-                caches: Default::default(),
+                cache: Default::default(),
                 options: Rc::new(options),
                 // Always prefer `s.owner_id()` to `s.base().opt_def_id`.
                 // `opt_def_id` is used in `utils` for error reporting
@@ -183,16 +189,6 @@ mod types {
                 exported_def_ids: Rc::new(RefCell::new(HashSet::new())),
                 ty_alias_mode: false,
             }
-        }
-
-        /// Access the shared caches. You must not call `sinto` within this function as this will
-        /// likely result in `BorrowMut` panics.
-        pub fn with_caches<T>(&self, def_id: RDefId, f: impl FnOnce(&mut Caches<'tcx>) -> T) -> T {
-            let mut caches = self.caches.borrow_mut();
-            let caches_for_def_id = caches
-                .entry(def_id)
-                .or_insert_with(|| Caches::new(self.tcx, def_id));
-            f(caches_for_def_id)
         }
     }
 
@@ -323,6 +319,37 @@ pub trait UnderBinderState<'tcx> = UnderOwnerState<'tcx> + HasBinder<'tcx>;
 /// While translating expressions, we expect to always have a THIR
 /// body and an `owner_id` in the state
 pub trait ExprState<'tcx> = UnderOwnerState<'tcx> + HasThir<'tcx>;
+
+pub trait WithGlobalCacheExt<'tcx>: BaseState<'tcx> {
+    /// Access the global cache. You must not call `sinto` within this function as this will likely
+    /// result in `BorrowMut` panics.
+    fn with_global_cache<T>(&self, f: impl FnOnce(&mut GlobalCache<'tcx>) -> T) -> T {
+        let base = self.base();
+        let mut cache = base.cache.borrow_mut();
+        f(&mut *cache)
+    }
+    /// Access the cache for a given item. You must not call `sinto` within this function as this
+    /// will likely result in `BorrowMut` panics.
+    fn with_item_cache<T>(&self, def_id: RDefId, f: impl FnOnce(&mut ItemCache<'tcx>) -> T) -> T {
+        self.with_global_cache(|cache| {
+            let cache_for_item = cache
+                .per_item
+                .entry(def_id)
+                .or_insert_with(|| ItemCache::new(self.base().tcx, def_id));
+            f(cache_for_item)
+        })
+    }
+}
+impl<'tcx, S: BaseState<'tcx>> WithGlobalCacheExt<'tcx> for S {}
+
+pub trait WithItemCacheExt<'tcx>: UnderOwnerState<'tcx> {
+    /// Access the cache for the current item. You must not call `sinto` within this function as
+    /// this will likely result in `BorrowMut` panics.
+    fn with_cache<T>(&self, f: impl FnOnce(&mut ItemCache<'tcx>) -> T) -> T {
+        self.with_item_cache(self.owner_id(), f)
+    }
+}
+impl<'tcx, S: UnderOwnerState<'tcx>> WithItemCacheExt<'tcx> for S {}
 
 impl ImplInfos {
     fn from(base: Base<'_>, did: rustc_hir::def_id::DefId) -> Self {

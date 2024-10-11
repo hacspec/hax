@@ -140,22 +140,15 @@ pub fn solve_trait<'tcx, S: BaseState<'tcx> + HasOwnerId>(
             crate::warning!(s, "{}", msg)
         }
     };
-    let owner_id = s.owner_id();
-    if let Some(impl_expr) = s.base().with_caches(owner_id, |caches| {
-        caches.resolution_cache.get(&trait_ref).cloned()
-    }) {
+    if let Some(impl_expr) = s.with_cache(|cache| cache.impl_exprs.get(&trait_ref).cloned()) {
         return impl_expr;
     }
-    let resolved = s.base().with_caches(owner_id, |caches| {
-        caches.predicate_searcher.resolve(&trait_ref, &warn)
-    });
+    let resolved = s.with_cache(|cache| cache.predicate_searcher.resolve(&trait_ref, &warn));
     let impl_expr = match resolved {
         Ok(x) => x.sinto(s),
         Err(e) => crate::fatal!(s, "{}", e),
     };
-    s.base().with_caches(owner_id, |caches| {
-        caches.resolution_cache.insert(trait_ref, impl_expr.clone())
-    });
+    s.with_cache(|cache| cache.impl_exprs.insert(trait_ref, impl_expr.clone()));
     impl_expr
 }
 
