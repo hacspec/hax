@@ -126,6 +126,11 @@ mod types {
         pub predicate_searcher: crate::traits::PredicateSearcher<'tcx>,
         /// Cache of trait refs to resolved impl expressions.
         pub resolution_cache: HashMap<ty::PolyTraitRef<'tcx>, crate::traits::ImplExpr>,
+        /// Cache thir bodies.
+        pub thir: Option<(
+            Rc<rustc_middle::thir::Thir<'tcx>>,
+            rustc_middle::thir::ExprId,
+        )>,
     }
 
     impl<'tcx> Caches<'tcx> {
@@ -133,6 +138,7 @@ mod types {
             Self {
                 predicate_searcher: crate::traits::PredicateSearcher::new_for_owner(tcx, def_id),
                 resolution_cache: Default::default(),
+                thir: Default::default(),
             }
         }
     }
@@ -145,15 +151,6 @@ mod types {
         pub opt_def_id: Option<rustc_hir::def_id::DefId>,
         pub exported_spans: ExportedSpans,
         pub exported_def_ids: ExportedDefIds,
-        pub cached_thirs: Rc<
-            HashMap<
-                rustc_span::def_id::LocalDefId,
-                (
-                    Rc<rustc_middle::thir::Thir<'tcx>>,
-                    rustc_middle::thir::ExprId,
-                ),
-            >,
-        >,
         /// Per-item caches.
         pub caches: Rc<RefCell<HashMap<RDefId, Caches<'tcx>>>>,
         pub tcx: ty::TyCtxt<'tcx>,
@@ -173,7 +170,6 @@ mod types {
             Self {
                 tcx,
                 macro_infos: Rc::new(HashMap::new()),
-                cached_thirs: Rc::new(HashMap::new()),
                 caches: Default::default(),
                 options: Rc::new(options),
                 // Always prefer `s.owner_id()` to `s.base().opt_def_id`.

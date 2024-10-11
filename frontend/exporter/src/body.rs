@@ -22,8 +22,10 @@ mod module {
         rustc_middle::thir::ExprId,
     ) {
         let base = s.base();
-        let msg = || fatal!(s[base.tcx.def_span(did)], "THIR not found for {:?}", did);
-        base.cached_thirs.get(&did).unwrap_or_else(msg).clone()
+        base.with_caches(did.to_def_id(), |caches| {
+            let msg = || fatal!(s[base.tcx.def_span(did)], "THIR not found for {:?}", did);
+            caches.thir.as_ref().unwrap_or_else(msg).clone()
+        })
     }
 
     pub trait IsBody: Sized + Clone + 'static {
