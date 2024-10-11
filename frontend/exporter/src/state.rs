@@ -123,6 +123,8 @@ mod types {
     /// Global caches
     #[derive(Default)]
     pub struct GlobalCache<'tcx> {
+        /// Cache the `Span` translations.
+        pub spans: HashMap<rustc_span::Span, Span>,
         /// Per-item cache.
         pub per_item: HashMap<RDefId, ItemCache<'tcx>>,
     }
@@ -149,7 +151,6 @@ mod types {
         pub macro_infos: MacroCalls,
         pub local_ctx: Rc<RefCell<LocalContextS>>,
         pub opt_def_id: Option<rustc_hir::def_id::DefId>,
-        pub exported_spans: ExportedSpans,
         pub exported_def_ids: ExportedDefIds,
         pub cache: Rc<RefCell<GlobalCache<'tcx>>>,
         pub tcx: ty::TyCtxt<'tcx>,
@@ -175,7 +176,6 @@ mod types {
                 // `opt_def_id` is used in `utils` for error reporting
                 opt_def_id: None,
                 local_ctx: Rc::new(RefCell::new(LocalContextS::new())),
-                exported_spans: Rc::new(RefCell::new(HashSet::new())),
                 exported_def_ids: Rc::new(RefCell::new(HashSet::new())),
                 ty_alias_mode: false,
             }
@@ -183,7 +183,6 @@ mod types {
     }
 
     pub type MacroCalls = Rc<HashMap<Span, Span>>;
-    pub type ExportedSpans = Rc<RefCell<HashSet<rustc_span::Span>>>;
     pub type ExportedDefIds = Rc<RefCell<HashSet<rustc_hir::def_id::DefId>>>;
     pub type RcThir<'tcx> = Rc<rustc_middle::thir::Thir<'tcx>>;
     pub type RcMir<'tcx> = Rc<rustc_middle::mir::Body<'tcx>>;

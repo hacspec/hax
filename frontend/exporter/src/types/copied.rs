@@ -987,9 +987,12 @@ impl From<rustc_span::Loc> for Loc {
 #[cfg(feature = "rustc")]
 impl<'tcx, S: BaseState<'tcx>> SInto<S, Span> for rustc_span::Span {
     fn sinto(&self, s: &S) -> Span {
-        let set: crate::state::ExportedSpans = s.base().exported_spans;
-        set.borrow_mut().insert(*self);
-        translate_span(*self, s.base().tcx.sess)
+        if let Some(span) = s.with_global_cache(|cache| cache.spans.get(self).cloned()) {
+            return span;
+        }
+        let span = translate_span(*self, s.base().tcx.sess);
+        s.with_global_cache(|cache| cache.spans.insert(*self, span.clone()));
+        span
     }
 }
 

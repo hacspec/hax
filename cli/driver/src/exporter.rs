@@ -1,4 +1,4 @@
-use hax_frontend_exporter::state::{ExportedSpans, LocalContextS};
+use hax_frontend_exporter::state::LocalContextS;
 use hax_frontend_exporter::SInto;
 use hax_types::cli_options::{Backend, PathOrDash, ENV_VAR_OPTIONS_FRONTEND};
 use rustc_driver::{Callbacks, Compilation};
@@ -146,19 +146,14 @@ fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
     let impl_infos = hax_frontend_exporter::impl_def_ids_to_impled_types_and_bounds(&state)
         .into_iter()
         .collect();
-    let exported_spans = state.base.exported_spans.borrow().clone();
+    let exported_spans = state.base.cache.borrow().spans.keys().copied().collect();
 
     let exported_def_ids = {
         let def_ids = state.base.exported_def_ids.borrow();
         let state = hax_frontend_exporter::state::State::new(tcx, options.clone());
         def_ids.iter().map(|did| did.sinto(&state)).collect()
     };
-    (
-        exported_spans.into_iter().collect(),
-        exported_def_ids,
-        impl_infos,
-        result,
-    )
+    (exported_spans, exported_def_ids, impl_infos, result)
 }
 
 /// Collect a map from spans to macro calls
