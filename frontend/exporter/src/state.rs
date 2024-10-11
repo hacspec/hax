@@ -100,7 +100,6 @@ mod types {
     use crate::prelude::*;
     use rustc_middle::ty;
     use std::cell::RefCell;
-    use std::collections::HashSet;
 
     pub struct LocalContextS {
         pub vars: HashMap<rustc_middle::thir::LocalVarId, String>,
@@ -132,6 +131,8 @@ mod types {
     /// Per-item cache
     #[derive(Default)]
     pub struct ItemCache<'tcx> {
+        /// The translated `DefId`.
+        pub def_id: Option<DefId>,
         /// Cache the `Ty` translations.
         pub tys: HashMap<ty::Ty<'tcx>, Ty>,
         /// Cache the trait resolution engine for each item.
@@ -151,7 +152,6 @@ mod types {
         pub macro_infos: MacroCalls,
         pub local_ctx: Rc<RefCell<LocalContextS>>,
         pub opt_def_id: Option<rustc_hir::def_id::DefId>,
-        pub exported_def_ids: ExportedDefIds,
         pub cache: Rc<RefCell<GlobalCache<'tcx>>>,
         pub tcx: ty::TyCtxt<'tcx>,
         /// Rust doesn't enforce bounds on generic parameters in type
@@ -176,14 +176,12 @@ mod types {
                 // `opt_def_id` is used in `utils` for error reporting
                 opt_def_id: None,
                 local_ctx: Rc::new(RefCell::new(LocalContextS::new())),
-                exported_def_ids: Rc::new(RefCell::new(HashSet::new())),
                 ty_alias_mode: false,
             }
         }
     }
 
     pub type MacroCalls = Rc<HashMap<Span, Span>>;
-    pub type ExportedDefIds = Rc<RefCell<HashSet<rustc_hir::def_id::DefId>>>;
     pub type RcThir<'tcx> = Rc<rustc_middle::thir::Thir<'tcx>>;
     pub type RcMir<'tcx> = Rc<rustc_middle::mir::Body<'tcx>>;
     pub type Binder<'tcx> = rustc_middle::ty::Binder<'tcx, ()>;
@@ -353,13 +351,9 @@ impl ImplInfos {
 pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: BaseState<'tcx>>(
     s: &S,
 ) -> HashMap<DefId, ImplInfos> {
-    let Base {
-        tcx,
-        exported_def_ids,
-        ..
-    } = s.base();
+    let tcx = s.base().tcx;
 
-    let def_ids = exported_def_ids.as_ref().borrow().clone();
+    let def_ids: Vec<_> = s.with_global_cache(|cache| cache.per_item.keys().copied().collect());
     let with_parents = |mut did: rustc_hir::def_id::DefId| {
         let mut acc = vec![did];
         while let Some(parent) = tcx.opt_parent(did) {
@@ -370,8 +364,7 @@ pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: BaseState<'tcx>>(
     };
     use itertools::Itertools;
     def_ids
-        .iter()
-        .cloned()
+        .into_iter()
         .flat_map(with_parents)
         .unique()
         .filter(|&did| {

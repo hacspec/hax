@@ -146,13 +146,15 @@ fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
     let impl_infos = hax_frontend_exporter::impl_def_ids_to_impled_types_and_bounds(&state)
         .into_iter()
         .collect();
-    let exported_spans = state.base.cache.borrow().spans.keys().copied().collect();
+    let exported_spans = state.with_global_cache(|cache| cache.spans.keys().copied().collect());
+    let exported_def_ids = state.with_global_cache(|cache| {
+        cache
+            .per_item
+            .values()
+            .filter_map(|per_item_cache| per_item_cache.def_id.clone())
+            .collect()
+    });
 
-    let exported_def_ids = {
-        let def_ids = state.base.exported_def_ids.borrow();
-        let state = hax_frontend_exporter::state::State::new(tcx, options.clone());
-        def_ids.iter().map(|did| did.sinto(&state)).collect()
-    };
     (exported_spans, exported_def_ids, impl_infos, result)
 }
 

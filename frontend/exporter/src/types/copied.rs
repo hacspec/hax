@@ -20,21 +20,30 @@ impl std::hash::Hash for DefId {
 }
 
 #[cfg(feature = "rustc")]
+pub(crate) fn translate_def_id<'tcx, S: BaseState<'tcx>>(s: &S, def_id: RDefId) -> DefId {
+    let tcx = s.base().tcx;
+    let def_path = tcx.def_path(def_id);
+    let krate = tcx.crate_name(def_path.krate);
+    DefId {
+        path: def_path.data.iter().map(|x| x.sinto(s)).collect(),
+        krate: format!("{}", krate),
+        index: (
+            rustc_hir::def_id::CrateNum::as_u32(def_id.krate),
+            rustc_hir::def_id::DefIndex::as_u32(def_id.index),
+        ),
+        is_local: def_id.is_local(),
+    }
+}
+
+#[cfg(feature = "rustc")]
 impl<'s, S: BaseState<'s>> SInto<S, DefId> for rustc_hir::def_id::DefId {
     fn sinto(&self, s: &S) -> DefId {
-        s.base().exported_def_ids.borrow_mut().insert(*self);
-        let tcx = s.base().tcx;
-        let def_path = tcx.def_path(*self);
-        let krate = tcx.crate_name(def_path.krate);
-        DefId {
-            path: def_path.data.iter().map(|x| x.sinto(s)).collect(),
-            krate: format!("{}", krate),
-            index: (
-                rustc_hir::def_id::CrateNum::as_u32(self.krate),
-                rustc_hir::def_id::DefIndex::as_u32(self.index),
-            ),
-            is_local: self.is_local(),
+        if let Some(def_id) = s.with_item_cache(*self, |cache| cache.def_id.clone()) {
+            return def_id;
         }
+        let def_id = translate_def_id(s, *self);
+        s.with_item_cache(*self, |cache| cache.def_id = Some(def_id.clone()));
+        def_id
     }
 }
 
