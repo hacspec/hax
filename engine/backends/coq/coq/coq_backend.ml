@@ -100,7 +100,9 @@ let hardcoded_coq_headers =
    Import List.ListNotations.\n\
    Open Scope Z_scope.\n\
    Open Scope bool_scope.\n\
-   Require Import String.\n"
+   Require Import String.\n\
+   Notation \"'projection_0'\" := id.\n\
+   From Core Require Import Core_Marker.\n"
 
 module Make
     (F : Features.T) (Default : sig
@@ -111,20 +113,23 @@ struct
   open Ast.Make (F)
   module Base = Generic_printer.Make (F)
   open PPrint
+  module U = Ast_utils.MakeWithNamePolicy (F) (CoqNamePolicy)
 
   let default_string_for s = "TODO: please implement the method `" ^ s ^ "`"
   let default_document_for = default_string_for >> string
 
   module CoqNotation = struct
-    let definition name params ty body =
-      string "Definition" ^^ space ^^ name ^^ concat_map (fun x -> space ^^ x) params ^^ space ^^ string ":=" ^^ nest 2 (
+    let definition_struct keyword n name generics params typ body =
+      keyword ^^ space ^^ name ^^ (if PPrint.is_empty generics then empty else space ^^ generics) ^^ concat_map (fun x -> space ^^ x) params ^^ space ^^ colon ^^ space ^^ typ ^^ space ^^ string ":=" ^^ nest n (
         break 1 ^^ body
       ) ^^ dot
 
-    let instance name params typ body =
-      string "Instance" ^^ space ^^ name ^^ concat_map (fun x -> space ^^ x) params ^^ space ^^ colon ^^ space ^^ typ ^^ space ^^ string ":=" ^^ nest 2 (
-        break 1 ^^ body
-      ) ^^ dot
+    let definition = definition_struct (string "Definition") 2
+    let fixpoint = definition_struct (string "Fixpoint") 2
+    let inductive = definition_struct (string "Inductive") 0
+    let record = definition_struct (string "Record") 2
+    let instance = definition_struct (string "Instance") 2
+    let class_ = definition_struct (string "Class") 2
   end
 
   let pconcrete_ident (id : concrete_ident) : string =
@@ -137,7 +142,7 @@ struct
     | `Projector (`Concrete cid) -> pconcrete_ident cid ^ "_ci"
     | `Primitive p_id -> primitive_to_string p_id
     | `TupleType _i -> "TODO (global ident) tuple type"
-    | `TupleCons _i -> "TODO (global ident) tuple cons"
+    | `TupleCons i -> "TODO (global ident) tuple cons: " ^ Int.to_string i
     | `Projector (`TupleField _) | `TupleField _ -> "TODO (global ident) tuple field"
     | _ -> .
 
@@ -183,7 +188,8 @@ struct
         default_document_for "expr'_App_constant"
 
       method expr'_App_field_projection ~super:_ ~field ~e =
-        field#p ^^ space ^^ e#p
+        (new printer)#entrypoint_ty e#v.typ (* TODO: Name of struct should be made accessible here! *) ^^ !^"_" ^^ field#p ^^ space ^^ e#p
+      (* TODO: Do nothing if is zero *)
 
       method expr'_App_tuple_projection ~super:_ ~size:_ ~nth:_ ~e:_ =
         default_document_for "expr'_App_tuple_projection"
@@ -206,9 +212,18 @@ struct
       method expr'_Closure ~super:_ ~params:_ ~body:_ ~captures:_ =
         default_document_for "expr'_Closure"
 
-      method expr'_Construct_inductive ~super:_ ~constructor ~is_record:_
-          ~is_struct:_ ~fields ~base:_ =
-        constructor#p ^^ concat_map (fun (ident, exp) -> space ^^ exp#p) fields
+      method expr'_Construct_inductive ~super:_ ~constructor ~is_record
+          ~is_struct ~fields ~base:_ =
+        if is_struct
+        then
+          if is_record
+          then
+            string "Build_t_" ^^ constructor#p ^^ concat_map (fun (ident, exp) -> space ^^ parens(exp#p)) fields
+          else
+            concat_map (fun (ident, exp) -> space ^^ parens(exp#p)) fields
+        else
+          (* default_document_for "expr'_Construct_inductive" *)
+          constructor#p ^^ concat_map (fun (ident, exp) -> space ^^ parens(exp#p)) fields
 
       method expr'_Construct_tuple ~super:_ ~components =
         parens ( separate_map comma (fun x -> x#p) components )
@@ -226,12 +241,12 @@ struct
         string (primitive_to_string x2)
 
       method expr'_If ~super:_ ~cond ~then_ ~else_ =
-        string "if" ^^ space ^^ cond#p ^^ space
-        ^^ string "then" ^^ space ^^ then_#p ^^ space
-        ^^ string "else" ^^ space ^^
-        (match else_ with
-         | Some x -> x#p
-         | None -> string "tt")
+        string "if" ^^ nest 2 (break 1 ^^ cond#p) ^^ break 1
+        ^^ string "then" ^^ nest 2 (break 1 ^^ then_#p) ^^ break 1
+        ^^ string "else" ^^ nest 2 (break 1 ^^
+                                    match else_ with
+                                    | Some x -> x#p
+                                    | None -> string "tt")
 
       method expr'_Let ~super:_ ~monadic:_ ~lhs ~rhs ~body =
        string "let" ^^ space ^^ lhs#p ^^ space ^^ string ":=" ^^ space ^^ rhs#p ^^ space ^^ string "in" ^^ break 1 ^^ body#p
@@ -270,8 +285,8 @@ struct
       method generic_constraint_GCProjection _x1 =
         default_document_for "generic_constraint_GCProjection"
 
-      method generic_constraint_GCType _x1 =
-        default_document_for "generic_constraint_GCType"
+      method generic_constraint_GCType x1 =
+        x1#p
 
       method generic_param ~ident ~span:_ ~attrs:_ ~kind:_ =
         ident#p
@@ -285,22 +300,32 @@ struct
       method generic_param_kind_GPType =
         default_document_for "generic_param_kind_GPType"
 
-      method generic_value_GConst _x1 =
-        default_document_for "generic_value_GConst"
+      method generic_value_GConst x1 =
+        x1#p
 
       method generic_value_GLifetime ~lt:_ ~witness:_ =
         default_document_for "generic_value_GLifetime"
 
-      method generic_value_GType _x1 =
-        default_document_for "generic_value_GType"
+      method generic_value_GType x1 = x1#p
 
-      method generics ~params:_ ~constraints:_ = default_document_for "generics"
+      method generics ~params ~constraints =
+        let params_document = separate_map space (fun x -> string "`" ^^ braces (x#p ^^ space ^^ colon ^^ space ^^ string "Type")) params in
+        let constraints_document = separate_map space (fun x -> string "`" ^^ braces (x#p)) constraints in
+        match List.length params, List.length constraints with
+        | 0, 0 -> empty
+        | _, 0 ->
+          params_document
+        | 0, _ ->
+          constraints_document
+        | _, _ ->
+          params_document ^^ space ^^ constraints_document
+
       method guard ~guard:_ ~span:_ = default_document_for "guard"
 
       method guard'_IfLet ~super:_ ~lhs:_ ~rhs:_ ~witness:_ =
         default_document_for "guard'_IfLet"
 
-      method impl_expr ~kind:_ ~goal:_ = default_document_for "impl_expr"
+      method impl_expr ~kind ~goal = goal#p
 
       method impl_expr_kind_Builtin _x1 =
         default_document_for "impl_expr_kind_Builtin"
@@ -323,9 +348,13 @@ struct
         default_document_for "impl_expr_kind_Projection"
 
       method impl_expr_kind_Self = default_document_for "impl_expr_kind_Self"
-      method impl_ident ~goal:_ ~name:_ = default_document_for "impl_ident"
+      method impl_ident ~goal ~name:_ =
+        goal#p
+      (* string name ^^ space ^^ colon ^^ space ^^ goal#p *)
+      (* TODO: include names and do something about numbered names of instance *)
 
-      method impl_item ~ii_span:_ ~ii_generics:_ ~ii_v ~ii_ident ~ii_attrs:_ = ii_ident#p ^^ space ^^ string ":=" ^^ space ^^ ii_v#p ^^ semi
+      method impl_item ~ii_span:_ ~ii_generics:_ ~ii_v ~ii_ident ~ii_attrs:_ =
+        ii_ident#p ^^ space ^^ string ":=" ^^ space ^^ ii_v#p ^^ semi
 
       method impl_item'_IIFn ~body ~params =
         if List.length params == 0
@@ -343,8 +372,19 @@ struct
       method item'_Alias ~super:_ ~name:_ ~item:_ =
         default_document_for "item'_Alias"
 
-      method item'_Fn ~super:_ ~name ~generics:_ ~body ~params ~safety:_ =
-        CoqNotation.definition (name#p) (List.map ~f:(fun x -> x#p) params) (string "_") body#p (* TODO: Why is type not available here ? *)
+      method item'_Fn ~super:_ ~name ~generics ~body ~params ~safety:_ =
+        let is_rec =
+          Set.mem
+            (U.Reducers.collect_concrete_idents#visit_expr () body#v)
+            name#v
+        in
+        let typ = (new printer)#entrypoint_ty body#v.typ in
+        if is_rec
+        then
+          CoqNotation.fixpoint (name#p) generics#p (List.map ~f:(fun x -> x#p) params) typ body#p
+        else
+          CoqNotation.definition (name#p) (generics#p) (List.map ~f:(fun x -> x#p) params) typ body#p
+      (* TODO: Why is type not available here ? *)
 
       method item'_HaxError ~super:_ _x2 = default_document_for "item'_HaxError"
 
@@ -352,36 +392,55 @@ struct
           ~witness:_ =
         default_document_for "item'_IMacroInvokation"
 
-      method item'_Impl ~super:_ ~generics:_ ~self_ty ~of_trait ~items
+
+      method item'_Impl ~super:_ ~generics ~self_ty ~of_trait ~items
           ~parent_bounds:_ ~safety:_ =
-        let (name,_) = of_trait#v in
-        CoqNotation.instance (self_ty#p ^^ string "_" ^^ name#p) [] (name#p) (braces (nest 2 (concat_map (fun x -> break 1 ^^ x#p) items) ^^ break 1))
+        let (name_document,_) = of_trait#v in
+        CoqNotation.instance
+          (self_ty#p ^^ string "_" ^^ name_document#p)
+          (generics#p)
+          []
+          (name_document#p)
+          (braces (nest 2 (concat_map (fun x -> break 1 ^^ name_document#p ^^ !^"_" ^^ x#p) items) ^^ break 1))
 
       method item'_NotImplementedYet = string "(* NotImplementedYet *)"
 
       method item'_Quote ~super:_ ~quote:_ ~origin:_ =
         default_document_for "item'_Quote"
 
-      method item'_Trait ~super:_ ~name ~generics:_ ~items ~safety:_ =
-        string "Class" ^^ space ^^ name#p ^^ space ^^ string ":=" ^^
-        braces (nest 2 (concat_map (fun x -> break 1 ^^ x#p) items) ^^ break 1) ^^ dot
+      method item'_Trait ~super:_ ~name ~generics ~items ~safety:_ =
+        CoqNotation.class_
+          (name#p)
+          (generics#p)
+          []
+          (!^"Type")
+          (braces (nest 2 (concat_map (fun x -> break 1 ^^ (name#p ^^ !^"_" (* TODO: this information should be given to [trait_item] instead *)) ^^ x#p) items) ^^ break 1))
+        ^^ break 1
+        ^^ !^"Arguments" ^^ space ^^ name#p ^^ colon ^^ !^"clear implicits" ^^ dot
+
+        ^^ !^"Arguments" ^^ space ^^ name#p ^^ space ^^ !^"(_)" ^^ dot
 
       method item'_TyAlias ~super:_ ~name ~generics:_ ~ty =
         string "Notation" ^^ space ^^ string "\"'" ^^ name#p ^^ string "'\"" ^^ space ^^ string ":=" ^^ space ^^ ty#p ^^ dot
 
-      method item'_Type_struct ~super:_ ~name ~generics:_ ~tuple_struct:_ ~arguments =
-        string "Record" ^^ space ^^ name#p ^^ space ^^ string ":=" ^^ space ^^ braces ( nest 2 (concat_map (fun (x,y,z) -> break 1 ^^ x#p) arguments) ^^ break 1 ) ^^ dot
+      method item'_Type_struct ~super:_ ~name ~generics ~tuple_struct:_ ~arguments =
+        CoqNotation.record (name#p) (generics#p) [] (string "Type") (braces ( nest 2 (concat_map (fun (ident, typ, attr) -> break 1 ^^ name#p ^^ !^"_" ^^ ident#p ^^ space ^^ colon ^^ space ^^ typ#p) arguments) ^^ break 1 ))
 
-      method item'_Type_enum ~super:_ ~name ~generics:_ ~variants =
-        string "Inductive" ^^ space ^^ name#p ^^ space ^^ string ":=" ^^ concat_map (fun x -> break 1 ^^ string "|" ^^ space ^^ x#p) variants ^^ dot
+      method item'_Type_enum ~super:_ ~name ~generics ~variants =
+        CoqNotation.inductive (name#p) (generics#p) [] (string "Type") (separate_map (break 1) (fun x -> string "|" ^^ space ^^ x#p) variants)
 
       method item'_Type ~super:_ ~name:_ ~generics:_ ~variants:_ ~is_struct:_ =
         default_document_for "item'_Type"
 
       method item'_Use ~super:_ ~path ~is_external:_ ~rename:_ =
-        if List.length path == 0
-        then empty
-        else string "Require Import" ^^ space ^^ string (String.concat ~sep:"." path) ^^ dot
+        let path_string = (
+          match List.rev path with
+          | [a] -> a
+          | (a :: l) -> String.concat ~sep:"_" (List.map ~f:String.capitalize (List.rev l)) ^ "." ^ a
+          | _ -> ""
+        ) in
+        string "Require Import" ^^ space ^^ string path_string ^^ dot
+        ^^ break 1 ^^ string "Export" ^^ space ^^ string path_string ^^ dot
 
       method lhs_LhsArbitraryExpr ~e:_ ~witness:_ =
         default_document_for "lhs_LhsArbitraryExpr"
@@ -430,16 +489,16 @@ struct
       method param ~pat ~typ ~typ_span:_ ~attrs:_ =
         parens (pat#p ^^ space ^^ colon ^^ space ^^ typ#p)
 
-      method pat ~p ~span:_ ~typ:_ = string "'" ^^ p#p
+      method pat ~p ~span:_ ~typ:_ = p#p
 
-      method pat'_PAscription ~super:_ ~typ:_ ~typ_span:_ ~pat:_ =
-        default_document_for "pat'_PAscription"
+      method pat'_PAscription ~super:_ ~typ ~typ_span:_ ~pat =
+        pat#p ^^ space ^^ colon ^^ space ^^ typ#p
 
       method pat'_PBinding ~super:_ ~mut:_ ~mode:_ ~var ~typ:_ ~subpat:_ =
         var#p (* ^^ space ^^ colon ^^ space ^^ typ#p *)
 
-      method pat'_PConstant ~super:_ ~lit:_ =
-        default_document_for "pat'_PConstant"
+      method pat'_PConstant ~super:_ ~lit =
+        lit#p
 
       method pat'_PConstruct_inductive ~super:_ ~constructor ~is_record:_
           ~is_struct:_ ~fields =
@@ -469,7 +528,8 @@ struct
       method supported_monads_MResult _x1 =
         default_document_for "supported_monads_MResult"
 
-      method trait_goal ~trait:_ ~args:_ = default_document_for "trait_goal"
+      method trait_goal ~trait ~args:_ =
+        trait#p (* ^^ concat_map (fun x -> space ^^ x#p) args *)
 
       method trait_item ~ti_span:_ ~ti_generics:_ ~ti_v ~ti_ident
           ~ti_attrs:_ =
@@ -479,23 +539,35 @@ struct
         default_document_for "trait_item'_TIDefault"
 
       method trait_item'_TIFn x1 = x1#p
-      method trait_item'_TIType _x1 = default_document_for "trait_item'_TIType"
+      method trait_item'_TIType x1 =
+        string "Type" (* TODO, type should implement x1 traits *)
+        (* concat_map (fun x -> x#p) x1 *)
 
-      method ty_TApp_application ~typ ~generics:_ =
-        typ#p
+      method ty_TApp_application ~typ ~generics =
+        typ#p ^^ concat_map (fun x -> space ^^ parens(x#p)) generics
 
-      method ty_TApp_tuple ~types:_ = default_document_for "ty_TApp_tuple"
+      method ty_TApp_tuple ~types = parens( separate_map star (fun x -> (new printer)#entrypoint_ty x) types )
       method ty_TArray ~typ:_ ~length:_ = default_document_for "ty_TArray"
       method ty_TArrow x1 x2 = concat_map (fun x -> x#p ^^ space ^^ string "->" ^^ space) x1 ^^ x2#p
 
-      method ty_TAssociatedType ~impl:_ ~item:_ =
-        default_document_for "ty_TAssociatedType"
+      method ty_TAssociatedType ~impl ~item =
+        impl#p ^^ string "_" ^^ item#p
 
       method ty_TBool = string "bool"
       method ty_TChar = default_document_for "ty_TChar"
       method ty_TDyn ~witness:_ ~goals:_ = default_document_for "ty_TDyn"
       method ty_TFloat _x1 = default_document_for "ty_TFloat"
-      method ty_TInt _x1 = default_document_for "ty_TInt"
+      method ty_TInt x1 =
+        match x1 with
+        | { size; signedness } ->
+          match size with
+          | S8 -> string "t_u8"
+          | S16 -> string "t_u16"
+          | S32 -> string "t_u32"
+          | S64 -> string "t_u64"
+          | S128 -> string "t_u128"
+          | SSize -> string "t_usize"
+
       method ty_TOpaque _x1 = default_document_for "ty_TOpaque"
       method ty_TParam x1 = x1#p
       method ty_TRawPointer ~witness:_ = default_document_for "ty_TRawPointer"
@@ -503,20 +575,20 @@ struct
       method ty_TRef ~witness:_ ~region:_ ~typ:_ ~mut:_ =
         default_document_for "ty_TRef"
 
-      method ty_TSlice ~witness:_ ~ty:_ = default_document_for "ty_TSlice"
+      method ty_TSlice ~witness:_ ~ty = !^"t_Slice" ^^ space ^^ ty#p
       method ty_TStr = string "string"
 
       method item'_Enum_Variant ~name ~arguments ~is_record ~attrs:_ =
         if is_record
-        then concat_map (fun (ident,typ,attr) -> ident#p ^^ space ^^ colon ^^ space ^^ typ#p) arguments ^^ semi
-        else
-        if List.length arguments == 0
         then
-          name#p
+          concat_map (fun (ident,typ,attr) -> ident#p ^^ space ^^ colon ^^ space ^^ typ#p) arguments ^^ semi
         else
-          name#p
-          ^^ space ^^ colon ^^ space
-          ^^ separate_map (space ^^ string "->" ^^ space) (fun (ident,typ,attr) -> typ#p (* parens (ident#p ^^ space ^^ colon ^^ space ^^ typ#p) *)) arguments ^^ space ^^ string "->" ^^ space ^^ string "_"
+          if List.length arguments == 0
+          then name#p
+          else
+            name#p
+            ^^ space ^^ colon ^^ space
+            ^^ separate_map (space ^^ string "->" ^^ space) (fun (ident,typ,attr) -> typ#p (* parens (ident#p ^^ space ^^ colon ^^ space ^^ typ#p) *)) arguments ^^ space ^^ string "->" ^^ space ^^ string "_"
       (* END GENERATED *)
 
       method module_path_separator = "."
@@ -531,12 +603,12 @@ let translate _ _ ~bundles:_ (items : AST.item list) :
   Types.file list =
   let my_printer = new MyPrinter.printer in
 
-  let _ = Gen.map (fun apply ->
-      let printer = new MyPrinter.printer in
-      let doc = apply printer in
-      let buf = Buffer.create 0 in
-      PPrint.ToBuffer.pretty 1.0 80 buf doc;
-      (Buffer.contents buf (* , printer#get_span_data () *))) in
+  (* let _ = Gen.map (fun apply -> *)
+  (*     let printer = new MyPrinter.printer in *)
+  (*     let doc = apply printer in *)
+  (*     let buf = Buffer.create 0 in *)
+  (*     PPrint.ToBuffer.pretty 1.0 80 buf doc; *)
+  (*     (Buffer.contents buf (\* , printer#get_span_data () *\))) in *)
 
   U.group_items_by_namespace items
   |> Map.to_alist
