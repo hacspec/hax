@@ -98,7 +98,8 @@ let hardcoded_coq_headers =
    From Coq Require Import ZArith.\n\
    Import List.ListNotations.\n\
    Open Scope Z_scope.\n\
-   Open Scope bool_scope.\n"
+   Open Scope bool_scope.\n\
+   Require Import String.\n"
 
 module Make
     (F : Features.T) (Default : sig
@@ -161,7 +162,7 @@ struct
       method borrow_kind_Mut _x1 = default_document_for "borrow_kind_Mut"
       method borrow_kind_Shared = default_document_for "borrow_kind_Shared"
       method borrow_kind_Unique = default_document_for "borrow_kind_Unique"
-      method common_array _x1 = default_document_for "common_array"
+      method common_array x1 = brackets (separate comma x1)
 
       method dyn_trait_goal ~trait:_ ~non_self_args:_ =
         default_document_for "dyn_trait_goal"
@@ -208,8 +209,8 @@ struct
           ~is_struct:_ ~fields ~base:_ =
         constructor#p ^^ concat_map (fun (ident, exp) -> space ^^ exp#p) fields
 
-      method expr'_Construct_tuple ~super:_ ~components:_ =
-        default_document_for "expr'_Construct_tuple"
+      method expr'_Construct_tuple ~super:_ ~components =
+        parens ( separate_map comma (fun x -> x#p) components )
 
       method expr'_Continue ~super:_ ~e:_ ~label:_ ~witness:_ =
         default_document_for "expr'_Continue"
@@ -219,11 +220,16 @@ struct
 
       method expr'_GlobalVar ~super:_ x2 = string (pglobal_ident x2)
 
-      method expr'_If ~super:_ ~cond:_ ~then_:_ ~else_:_ =
-        default_document_for "expr'_If"
+      method expr'_If ~super:_ ~cond ~then_ ~else_ =
+        string "if" ^^ space ^^ cond#p ^^ space
+        ^^ string "then" ^^ space ^^ then_#p ^^ space
+        ^^ string "else" ^^ space ^^
+        (match else_ with
+         | Some x -> x#p
+         | None -> string "tt")
 
-      method expr'_Let ~super:_ ~monadic:_ ~lhs:_ ~rhs:_ ~body:_ =
-        default_document_for "expr'_Let"
+      method expr'_Let ~super:_ ~monadic:_ ~lhs ~rhs ~body =
+       string "let" ^^ space ^^ lhs#p ^^ space ^^ string ":=" ^^ space ^^ rhs#p ^^ space ^^ string "in" ^^ break 1 ^^ body#p
 
       method expr'_Literal ~super:_ x2 = x2#p
       method expr'_LocalVar ~super:_ x2 = x2#p
@@ -353,7 +359,7 @@ struct
         string "Notation" ^^ space ^^ string "\"'" ^^ name#p ^^ string "'\"" ^^ space ^^ string ":=" ^^ space ^^ ty#p ^^ dot
 
       method item'_Type_struct ~super:_ ~name ~generics:_ ~variants =
-        string "Record" ^^ space ^^ name#p ^^ space ^^ braces ( nest 2 (concat_map (fun x -> break 1 ^^ x#p) variants) ^^ break 1 ) ^^ dot
+        string "Record" ^^ space ^^ name#p ^^ space ^^ string ":=" ^^ space ^^ braces ( nest 2 (concat_map (fun x -> break 1 ^^ x#p) variants) ^^ break 1 ) ^^ dot
 
       method item'_Type_enum ~super:_ ~name ~generics:_ ~variants =
         string "Inductive" ^^ space ^^ name#p ^^ space ^^ string ":=" ^^ concat_map (fun x -> break 1 ^^ string "|" ^^ space ^^ x#p) variants ^^ dot
@@ -384,10 +390,10 @@ struct
       method literal_Float ~value:_ ~negative:_ ~kind:_ =
         default_document_for "literal_Float"
 
-      method literal_Int ~value:_ ~negative:_ ~kind:_ =
-        default_document_for "literal_Int"
+      method literal_Int ~value ~negative:_ ~kind:_ =
+        string value
 
-      method literal_String _x1 = default_document_for "literal_String"
+      method literal_String x1 = string "\"" ^^ string x1 ^^ string "\"%string"
 
       method loop_kind_ForIndexLoop ~start:_ ~end_:_ ~var:_ ~var_typ:_
           ~witness:_ =
@@ -410,7 +416,7 @@ struct
       method param ~pat ~typ ~typ_span:_ ~attrs:_ =
         parens (pat#p ^^ space ^^ colon ^^ space ^^ typ#p)
 
-      method pat ~p ~span:_ ~typ:_ = p#p
+      method pat ~p ~span:_ ~typ:_ = string "'" ^^ p#p
 
       method pat'_PAscription ~super:_ ~typ:_ ~typ_span:_ ~pat:_ =
         default_document_for "pat'_PAscription"
@@ -425,8 +431,8 @@ struct
           ~is_struct:_ ~fields =
         constructor#p ^^ concat_map (fun (ident, exp) -> space ^^ exp#p) fields
 
-      method pat'_PConstruct_tuple ~super:_ ~components:_ =
-        default_document_for "pat'_PConstruct_tuple"
+      method pat'_PConstruct_tuple ~super:_ ~components =
+        parens ( separate_map comma (fun x -> x#p) components )
 
       method pat'_PDeref ~super:_ ~subpat:_ ~witness:_ =
         default_document_for "pat'_PDeref"
@@ -489,8 +495,20 @@ struct
       method variant ~name ~arguments ~is_record ~attrs:_ =
         if is_record
         then concat_map (fun (ident,typ,attr) -> ident#p ^^ space ^^ colon ^^ space ^^ typ#p) arguments ^^ semi
-        else name#p ^^ space ^^ colon ^^ space ^^ concat_map (fun (ident,typ,attr) -> parens (ident#p ^^ space ^^ colon ^^ space ^^ typ#p)) arguments ^^ semi
+        else
+        if List.length arguments == 0
+        then
+          name#p
+        else
+          name#p
+          ^^ space ^^ colon ^^ space
+          ^^ separate_map (space ^^ string "->" ^^ space) (fun (ident,typ,attr) -> typ#p (* parens (ident#p ^^ space ^^ colon ^^ space ^^ typ#p) *)) arguments ^^ space ^^ string "->" ^^ space ^^ string "_"
       (* END GENERATED *)
+
+      method module_path_separator = "."
+      method concrete_ident ~local:_ id : document =
+        string id.definition
+      val mutable current_namespace : (string * string list) option = None
     end
 end
 
@@ -498,6 +516,14 @@ module MyPrinter = Make (InputLanguage) (struct let default x = x end)
 let translate _ (_bo : BackendOptions.t) (items : AST.item list) :
   Types.file list =
   let my_printer = new MyPrinter.printer in
+
+  let _ = Gen.map (fun apply ->
+      let printer = new MyPrinter.printer in
+      let doc = apply printer in
+      let buf = Buffer.create 0 in
+      PPrint.ToBuffer.pretty 1.0 80 buf doc;
+      (Buffer.contents buf (* , printer#get_span_data () *))) in
+
   U.group_items_by_namespace items
   |> Map.to_alist
   |> List.map ~f:(fun (ns, items) ->
