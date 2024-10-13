@@ -381,15 +381,15 @@ struct
         let is_lemma = Attrs.lemma super.attrs in
         if is_lemma
         then
-          let get_expr_of kind : document =
+          let get_expr_of kind f : document =
             Attrs.associated_expr kind (super.attrs)
-            |> Option.map ~f:(self#entrypoint_expr)
+            |> Option.map ~f:(self#entrypoint_expr >> f)
             |> Option.value ~default:empty
           in
 
           CoqNotation.lemma (name#p) generics#p (List.map ~f:(fun x -> x#p) params) (
-            get_expr_of Requires ^^ space ^^ string "=" ^^ space ^^ string "true" ^^ space ^^ string "->" ^^ break 1 ^^
-            get_expr_of Ensures ^^ space ^^ string "=" ^^ space ^^ string "true"
+            get_expr_of Requires (fun x -> x ^^ space ^^ string "=" ^^ space ^^ string "true" ^^ space ^^ string "->" ^^ break 1) ^^
+            get_expr_of Ensures (fun x -> x ^^ space ^^ string "=" ^^ space ^^ string "true")
           )
         else
           (if is_rec
