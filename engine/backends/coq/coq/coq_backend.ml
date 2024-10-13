@@ -392,7 +392,6 @@ struct
             |> Option.map ~f:(self#entrypoint_expr >> f)
             |> Option.value ~default:empty
           in
-
           CoqNotation.lemma (name#p) generics#p (List.map ~f:(fun x -> x#p) params) (
             get_expr_of Requires (fun x -> x ^^ space ^^ string "=" ^^ space ^^ string "true" ^^ space ^^ string "->" ^^ break 1) ^^
             get_expr_of Ensures (fun x -> x ^^ space ^^ string "=" ^^ space ^^ string "true")
@@ -414,13 +413,13 @@ struct
 
       method item'_Impl ~super:_ ~generics ~self_ty ~of_trait ~items
           ~parent_bounds:_ ~safety:_ =
-        let (name_document,_) = of_trait#v in
+        let (name,_) = of_trait#v in
         CoqNotation.instance
-          (self_ty#p ^^ string "_" ^^ name_document#p)
+          (self_ty#p ^^ string "_" ^^ name#p)
           (generics#p)
           []
-          (name_document#p)
-          (braces (nest 2 (concat_map (fun x -> break 1 ^^ name_document#p ^^ !^"_" ^^ x#p) items) ^^ break 1))
+          (name#p)
+          (braces (nest 2 (concat_map (fun x -> break 1 ^^ name#p ^^ !^"_" ^^ x#p) items) ^^ break 1))
 
       method item'_NotImplementedYet = string "(* NotImplementedYet *)"
 
