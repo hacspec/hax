@@ -104,16 +104,13 @@ let hardcoded_coq_headers =
    From Core Require Import Core_Marker.\n"
 
 module Make
-    (F : Features.T) (Default : sig
+    (Default : sig
       val default : string -> string
-    end) =
+    end)
+    (Attrs : Attrs.WITH_ITEMS) =
 struct
-  module AST = Ast.Make (F)
-  open Ast.Make (F)
-  module Base = Generic_printer.Make (F)
+  module Base = Generic_printer.Make (InputLanguage)
   open PPrint
-  module U = Ast_utils.MakeWithNamePolicy (F) (CoqNamePolicy)
-
   let default_string_for s = "TODO: please implement the method `" ^ s ^ "`"
   let default_document_for = default_string_for >> string
 
@@ -123,12 +120,17 @@ struct
         break 1 ^^ body
       ) ^^ dot
 
+    let proof_struct keyword name generics params statement =
+      keyword ^^ space ^^ name ^^ (if PPrint.is_empty generics then empty else space ^^ generics) ^^ concat_map (fun x -> space ^^ x) params ^^ space ^^ colon ^^ nest 2 ( break 1 ^^ statement ^^ dot ) ^^ break 1 ^^ string "Proof" ^^ dot ^^ space ^^ string "Admitted" ^^ dot
+
     let definition = definition_struct (string "Definition") 2
     let fixpoint = definition_struct (string "Fixpoint") 2
     let inductive = definition_struct (string "Inductive") 0
     let record = definition_struct (string "Record") 2
     let instance = definition_struct (string "Instance") 2
     let class_ = definition_struct (string "Class") 2
+
+    let lemma = proof_struct (string "Lemma")
   end
 
   let pconcrete_ident (id : concrete_ident) : string =
@@ -145,8 +147,10 @@ struct
     | `Projector (`TupleField _) | `TupleField _ -> "TODO (global ident) tuple field"
     | _ -> .
 
+  type ('get_span_data, 'a) object_type = ('get_span_data, 'a) Base.Gen.object_type
   class printer =
-    object
+    (* let associated_expr = let open m in associated_expr in *)
+    object(self)
       inherit Base.base
 
       (* BEGIN GENERATED *)
@@ -158,7 +162,8 @@ struct
           break 1 ^^ body#p
         )
 
-      method attrs _x1 = default_document_for "attrs"
+      method attrs x1 =
+        default_document_for "attrs"
 
       method binding_mode_ByRef _x1 _x2 =
         default_document_for "binding_mode_ByRef"
@@ -187,7 +192,7 @@ struct
         default_document_for "expr'_App_constant"
 
       method expr'_App_field_projection ~super:_ ~field ~e =
-        (new printer)#entrypoint_ty e#v.typ (* TODO: Name of struct should be made accessible here! *) ^^ !^"_" ^^ field#p ^^ space ^^ e#p
+        self#entrypoint_ty e#v.typ (* TODO: Name of struct should be made accessible here! *) ^^ !^"_" ^^ field#p ^^ space ^^ e#p
       (* TODO: Do nothing if is zero *)
 
       method expr'_App_tuple_projection ~super:_ ~size:_ ~nth:_ ~e:_ =
@@ -233,7 +238,10 @@ struct
       method expr'_EffectAction ~super:_ ~action:_ ~argument:_ =
         default_document_for "expr'_EffectAction"
 
-      method expr'_GlobalVar ~super:_ x2 = string (pglobal_ident x2)
+      method expr'_GlobalVar ~super:_ x2 =
+        match x2 with
+        | (`TupleCons 0) -> string "tt" (* unit *)
+        | _ -> string (pglobal_ident x2)
 
       method expr'_If ~super:_ ~cond ~then_ ~else_ =
         string "if" ^^ nest 2 (break 1 ^^ cond#p) ^^ break 1
@@ -279,8 +287,8 @@ struct
       method generic_constraint_GCType x1 =
         x1#p
 
-      method generic_param ~ident ~span:_ ~attrs:_ ~kind:_ =
-        ident#p
+      method generic_param ~ident ~span:_ ~attrs ~kind:_ =
+        ident#p ^^ space ^^ !^"TODO:" ^^ attrs#p
 
       method generic_param_kind_GPConst ~typ:_ =
         default_document_for "generic_param_kind_GPConst"
@@ -363,19 +371,33 @@ struct
       method item'_Alias ~super:_ ~name:_ ~item:_ =
         default_document_for "item'_Alias"
 
-      method item'_Fn ~super:_ ~name ~generics ~body ~params ~safety:_ =
+      method item'_Fn ~super ~name ~generics ~body ~params ~safety:_ =
         let is_rec =
           Set.mem
             (U.Reducers.collect_concrete_idents#visit_expr () body#v)
             name#v
         in
-        let typ = (new printer)#entrypoint_ty body#v.typ in
-        if is_rec
+        let typ = self#_do_not_override_lazy_of_ty AstPos_item'_Fn_body body#v.typ in
+        let is_lemma = Attrs.lemma super.attrs in
+        if is_lemma
         then
-          CoqNotation.fixpoint (name#p) generics#p (List.map ~f:(fun x -> x#p) params) typ body#p
+          let get_expr_of kind : document =
+            Attrs.associated_expr kind (super.attrs)
+            |> Option.map ~f:(self#entrypoint_expr)
+            |> Option.value ~default:empty
+          in
+
+          CoqNotation.lemma (name#p) generics#p (List.map ~f:(fun x -> x#p) params) (
+            get_expr_of Requires ^^ space ^^ string "=" ^^ space ^^ string "true" ^^ space ^^ string "->" ^^ break 1 ^^
+            get_expr_of Ensures ^^ space ^^ string "=" ^^ space ^^ string "true"
+          )
         else
-          CoqNotation.definition (name#p) (generics#p) (List.map ~f:(fun x -> x#p) params) typ body#p
-      (* TODO: Why is type not available here ? *)
+          (if is_rec
+           then
+             CoqNotation.fixpoint (name#p) generics#p (List.map ~f:(fun x -> x#p) params) typ#p body#p
+           else
+             CoqNotation.definition (name#p) (generics#p) (List.map ~f:(fun x -> x#p) params) typ#p body#p
+             (* TODO: Why is type not available here ? *))
 
       method item'_HaxError ~super:_ _x2 = default_document_for "item'_HaxError"
 
@@ -536,7 +558,7 @@ struct
       method ty_TApp_application ~typ ~generics =
         typ#p ^^ concat_map (fun x -> space ^^ parens(x#p)) generics
 
-      method ty_TApp_tuple ~types = parens( separate_map star (fun x -> (new printer)#entrypoint_ty x) types )
+      method ty_TApp_tuple ~types = parens( separate_map star (fun x -> self#entrypoint_ty x) types )
       method ty_TArray ~typ:_ ~length:_ = default_document_for "ty_TArray"
       method ty_TArrow x1 x2 = concat_map (fun x -> x#p ^^ space ^^ string "->" ^^ space) x1 ^^ x2#p
 
@@ -588,10 +610,1021 @@ struct
     end
 end
 
-module MyPrinter = Make (InputLanguage) (struct let default x = x end)
-let translate _ (_bo : BackendOptions.t) (items : AST.item list) :
+class type printer_type =
+  object
+    val concrete_ident_view :
+      (module Hax_engine.Concrete_ident.VIEW_API)
+    val mutable current_namespace : (string * string list) option
+    method _do_not_override_expr'_App :
+      super:expr ->
+      f:expr Generic_printer.LazyDoc.lazy_doc ->
+      args:expr Generic_printer.LazyDoc.lazy_doc list ->
+      generic_args:generic_value Generic_printer.LazyDoc.lazy_doc
+          list ->
+      bounds_impls:impl_expr Generic_printer.LazyDoc.lazy_doc list ->
+      trait:(impl_expr Generic_printer.LazyDoc.lazy_doc *
+             generic_value Generic_printer.LazyDoc.lazy_doc list)
+          Generic_printer.LazyDoc.lazy_doc option ->
+      PPrint.document
+    method _do_not_override_expr'_Construct :
+      super:expr ->
+      constructor:global_ident ->
+      is_record:bool ->
+      is_struct:bool ->
+      fields:(global_ident * expr Generic_printer.LazyDoc.lazy_doc)
+          Generic_printer.LazyDoc.lazy_doc list ->
+      base:(expr Generic_printer.LazyDoc.lazy_doc *
+            InputLanguage.construct_base)
+          Generic_printer.LazyDoc.lazy_doc option ->
+      PPrint.document
+    method _do_not_override_item'_Type :
+      super:item ->
+      name:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      generics:generics Generic_printer.LazyDoc.lazy_doc ->
+      variants:variant Generic_printer.LazyDoc.lazy_doc list ->
+      is_struct:bool -> PPrint.document
+    method _do_not_override_lazy_of_arm :
+      Generated_generic_printer_base.ast_position ->
+      arm -> arm Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_arm' :
+      super:arm ->
+      Generated_generic_printer_base.ast_position ->
+      arm' -> arm' Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_attrs :
+      Generated_generic_printer_base.ast_position ->
+      attrs -> attrs Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_binding_mode :
+      Generated_generic_printer_base.ast_position ->
+      binding_mode -> binding_mode Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_borrow_kind :
+      Generated_generic_printer_base.ast_position ->
+      borrow_kind -> borrow_kind Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_concrete_ident :
+      Generated_generic_printer_base.ast_position ->
+      concrete_ident ->
+      concrete_ident Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_dyn_trait_goal :
+      Generated_generic_printer_base.ast_position ->
+      dyn_trait_goal ->
+      dyn_trait_goal Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_expr :
+      Generated_generic_printer_base.ast_position ->
+      expr -> expr Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_expr' :
+      super:expr ->
+      Generated_generic_printer_base.ast_position ->
+      expr' -> expr' Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_field_pat :
+      Generated_generic_printer_base.ast_position ->
+      field_pat -> field_pat Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_generic_constraint :
+      Generated_generic_printer_base.ast_position ->
+      generic_constraint ->
+      generic_constraint Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_generic_param :
+      Generated_generic_printer_base.ast_position ->
+      generic_param ->
+      generic_param Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_generic_param_kind :
+      Generated_generic_printer_base.ast_position ->
+      generic_param_kind ->
+      generic_param_kind Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_generic_value :
+      Generated_generic_printer_base.ast_position ->
+      generic_value ->
+      generic_value Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_generics :
+      Generated_generic_printer_base.ast_position ->
+      generics -> generics Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_guard :
+      Generated_generic_printer_base.ast_position ->
+      guard -> guard Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_guard' :
+      super:guard ->
+      Generated_generic_printer_base.ast_position ->
+      guard' -> guard' Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_impl_expr :
+      Generated_generic_printer_base.ast_position ->
+      impl_expr -> impl_expr Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_impl_expr_kind :
+      Generated_generic_printer_base.ast_position ->
+      impl_expr_kind ->
+      impl_expr_kind Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_impl_ident :
+      Generated_generic_printer_base.ast_position ->
+      impl_ident -> impl_ident Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_impl_item :
+      Generated_generic_printer_base.ast_position ->
+      impl_item -> impl_item Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_impl_item' :
+      Generated_generic_printer_base.ast_position ->
+      impl_item' -> impl_item' Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_item :
+      Generated_generic_printer_base.ast_position ->
+      item -> item Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_item' :
+      super:item ->
+      Generated_generic_printer_base.ast_position ->
+      item' -> item' Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_lhs :
+      Generated_generic_printer_base.ast_position ->
+      lhs -> lhs Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_literal :
+      Generated_generic_printer_base.ast_position ->
+      literal -> literal Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_local_ident :
+      Generated_generic_printer_base.ast_position ->
+      local_ident -> local_ident Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_loop_kind :
+      Generated_generic_printer_base.ast_position ->
+      loop_kind -> loop_kind Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_loop_state :
+      Generated_generic_printer_base.ast_position ->
+      loop_state -> loop_state Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_modul :
+      Generated_generic_printer_base.ast_position ->
+      item list -> item list Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_param :
+      Generated_generic_printer_base.ast_position ->
+      param -> param Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_pat :
+      Generated_generic_printer_base.ast_position ->
+      pat -> pat Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_pat' :
+      super:pat ->
+      Generated_generic_printer_base.ast_position ->
+      pat' -> pat' Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_projection_predicate :
+      Generated_generic_printer_base.ast_position ->
+      projection_predicate ->
+      projection_predicate Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_quote :
+      Generated_generic_printer_base.ast_position ->
+      quote -> quote Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_safety_kind :
+      Generated_generic_printer_base.ast_position ->
+      safety_kind -> safety_kind Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_supported_monads :
+      Generated_generic_printer_base.ast_position ->
+      supported_monads ->
+      supported_monads Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_trait_goal :
+      Generated_generic_printer_base.ast_position ->
+      trait_goal -> trait_goal Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_trait_item :
+      Generated_generic_printer_base.ast_position ->
+      trait_item -> trait_item Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_trait_item' :
+      Generated_generic_printer_base.ast_position ->
+      trait_item' -> trait_item' Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_ty :
+      Generated_generic_printer_base.ast_position ->
+      ty -> ty Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lazy_of_variant :
+      Generated_generic_printer_base.ast_position ->
+      variant -> variant Generic_printer.LazyDoc.lazy_doc
+    method _do_not_override_lhs_LhsFieldAccessor :
+      e:lhs Generic_printer.LazyDoc.lazy_doc ->
+      typ:ty Generic_printer.LazyDoc.lazy_doc ->
+      field:global_ident ->
+      witness:InputLanguage.nontrivial_lhs -> PPrint.document
+    method _do_not_override_pat'_PConstruct :
+      super:pat ->
+      constructor:global_ident ->
+      is_record:bool ->
+      is_struct:bool ->
+      fields:field_pat Generic_printer.LazyDoc.lazy_doc list ->
+      PPrint.document
+    method _do_not_override_ty_TApp :
+      ident:global_ident ->
+      args:generic_value Generic_printer.LazyDoc.lazy_doc list ->
+      PPrint.document
+    method arm :
+      arm:arm' Generic_printer.LazyDoc.lazy_doc ->
+      span:span -> PPrint.document
+    method arm' :
+      super:arm ->
+      arm_pat:pat Generic_printer.LazyDoc.lazy_doc ->
+      body:expr Generic_printer.LazyDoc.lazy_doc ->
+      guard:guard Generic_printer.LazyDoc.lazy_doc option ->
+      PPrint.document
+    method assertion_failure : string -> 'any
+    method attrs : attr list -> PPrint.document
+    method binding_mode_ByRef :
+      borrow_kind Generic_printer.LazyDoc.lazy_doc ->
+      InputLanguage.reference -> PPrint.document
+    method binding_mode_ByValue : PPrint.document
+    method borrow_kind_Mut :
+      InputLanguage.mutable_reference -> PPrint.document
+    method borrow_kind_Shared : PPrint.document
+    method borrow_kind_Unique : PPrint.document
+    method catch_exn :
+      (string -> PPrint.document) ->
+      (unit -> PPrint.document) -> PPrint.document
+    method private catch_exn' :
+      (Diagnostics.Context.t -> Diagnostics.kind -> PPrint.document) ->
+      (unit -> PPrint.document) -> PPrint.document
+    method common_array : PPrint.document list -> PPrint.document
+    method concrete_ident :
+      local:bool -> Concrete_ident.view -> PPrint.document
+    method current_span : span
+    method dyn_trait_goal :
+      trait:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      non_self_args:generic_value Generic_printer.LazyDoc.lazy_doc
+          list ->
+      PPrint.document
+    method entrypoint_arm : arm -> PPrint.document
+    method entrypoint_attrs : attrs -> PPrint.document
+    method entrypoint_binding_mode : binding_mode -> PPrint.document
+    method entrypoint_borrow_kind : borrow_kind -> PPrint.document
+    method entrypoint_dyn_trait_goal :
+      dyn_trait_goal -> PPrint.document
+    method entrypoint_expr : expr -> PPrint.document
+    method entrypoint_field_pat : field_pat -> PPrint.document
+    method entrypoint_generic_constraint :
+      generic_constraint -> PPrint.document
+    method entrypoint_generic_param :
+      generic_param -> PPrint.document
+    method entrypoint_generic_param_kind :
+      generic_param_kind -> PPrint.document
+    method entrypoint_generic_value :
+      generic_value -> PPrint.document
+    method entrypoint_generics : generics -> PPrint.document
+    method entrypoint_guard : guard -> PPrint.document
+    method entrypoint_impl_expr : impl_expr -> PPrint.document
+    method entrypoint_impl_expr_kind :
+      impl_expr_kind -> PPrint.document
+    method entrypoint_impl_ident : impl_ident -> PPrint.document
+    method entrypoint_impl_item : impl_item -> PPrint.document
+    method entrypoint_impl_item' : impl_item' -> PPrint.document
+    method entrypoint_item : item -> PPrint.document
+    method entrypoint_lhs : lhs -> PPrint.document
+    method entrypoint_literal : literal -> PPrint.document
+    method entrypoint_loop_kind : loop_kind -> PPrint.document
+    method entrypoint_loop_state : loop_state -> PPrint.document
+    method entrypoint_modul : item list -> PPrint.document
+    method entrypoint_param : param -> PPrint.document
+    method entrypoint_pat : pat -> PPrint.document
+    method entrypoint_projection_predicate :
+      projection_predicate -> PPrint.document
+    method entrypoint_safety_kind : safety_kind -> PPrint.document
+    method entrypoint_supported_monads :
+      supported_monads -> PPrint.document
+    method entrypoint_trait_goal : trait_goal -> PPrint.document
+    method entrypoint_trait_item : trait_item -> PPrint.document
+    method entrypoint_trait_item' : trait_item' -> PPrint.document
+    method entrypoint_ty : ty -> PPrint.document
+    method entrypoint_variant : variant -> PPrint.document
+    method error_expr : string -> PPrint.document
+    method error_item : string -> PPrint.document
+    method error_pat : string -> PPrint.document
+    method expr :
+      e:expr' Generic_printer.LazyDoc.lazy_doc ->
+      span:span ->
+      typ:ty Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method expr'_AddressOf :
+      super:expr ->
+      mut:InputLanguage.mutable_pointer mutability ->
+      e:expr Generic_printer.LazyDoc.lazy_doc ->
+      witness:InputLanguage.raw_pointer -> PPrint.document
+    method expr'_App_application :
+      super:expr ->
+      f:expr Generic_printer.LazyDoc.lazy_doc ->
+      args:expr Generic_printer.LazyDoc.lazy_doc list ->
+      generics:generic_value Generic_printer.LazyDoc.lazy_doc list ->
+      PPrint.document
+    method expr'_App_constant :
+      super:expr ->
+      constant:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      generics:generic_value Generic_printer.LazyDoc.lazy_doc list ->
+      PPrint.document
+    method expr'_App_field_projection :
+      super:expr ->
+      field:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      e:expr Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method expr'_App_tuple_projection :
+      super:expr ->
+      size:int ->
+      nth:int ->
+      e:expr Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method expr'_Array :
+      super:expr ->
+      expr Generic_printer.LazyDoc.lazy_doc list -> PPrint.document
+    method expr'_Ascription :
+      super:expr ->
+      e:expr Generic_printer.LazyDoc.lazy_doc ->
+      typ:ty Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method expr'_Assign :
+      super:expr ->
+      lhs:lhs Generic_printer.LazyDoc.lazy_doc ->
+      e:expr Generic_printer.LazyDoc.lazy_doc ->
+      witness:InputLanguage.mutable_variable -> PPrint.document
+    method expr'_Block :
+      super:expr ->
+      e:expr Generic_printer.LazyDoc.lazy_doc ->
+      safety_mode:safety_kind Generic_printer.LazyDoc.lazy_doc ->
+      witness:InputLanguage.block -> PPrint.document
+    method expr'_Borrow :
+      super:expr ->
+      kind:borrow_kind Generic_printer.LazyDoc.lazy_doc ->
+      e:expr Generic_printer.LazyDoc.lazy_doc ->
+      witness:InputLanguage.reference -> PPrint.document
+    method expr'_Break :
+      super:expr ->
+      e:expr Generic_printer.LazyDoc.lazy_doc ->
+      label:string option ->
+      witness:InputLanguage.break * InputLanguage.loop ->
+      PPrint.document
+    method expr'_Closure :
+      super:expr ->
+      params:pat Generic_printer.LazyDoc.lazy_doc list ->
+      body:expr Generic_printer.LazyDoc.lazy_doc ->
+      captures:expr Generic_printer.LazyDoc.lazy_doc list ->
+      PPrint.document
+    method expr'_Construct_inductive :
+      super:expr ->
+      constructor:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      is_record:bool ->
+      is_struct:bool ->
+      fields:(concrete_ident Generic_printer.LazyDoc.lazy_doc *
+              expr Generic_printer.LazyDoc.lazy_doc)
+          list ->
+      base:(expr Generic_printer.LazyDoc.lazy_doc *
+            InputLanguage.construct_base)
+          Generic_printer.LazyDoc.lazy_doc option ->
+      PPrint.document
+    method expr'_Construct_tuple :
+      super:expr ->
+      components:expr Generic_printer.LazyDoc.lazy_doc list ->
+      PPrint.document
+    method expr'_Continue :
+      super:expr ->
+      e:(expr Generic_printer.LazyDoc.lazy_doc *
+         InputLanguage.state_passing_loop)
+          Generic_printer.LazyDoc.lazy_doc option ->
+      label:string option ->
+      witness:InputLanguage.continue * InputLanguage.loop ->
+      PPrint.document
+    method expr'_EffectAction :
+      super:expr ->
+      action:InputLanguage.monadic_action ->
+      argument:expr Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method expr'_GlobalVar :
+      super:expr -> global_ident -> PPrint.document
+    method expr'_If :
+      super:expr ->
+      cond:expr Generic_printer.LazyDoc.lazy_doc ->
+      then_:expr Generic_printer.LazyDoc.lazy_doc ->
+      else_:expr Generic_printer.LazyDoc.lazy_doc option ->
+      PPrint.document
+    method expr'_Let :
+      super:expr ->
+      monadic:(supported_monads Generic_printer.LazyDoc.lazy_doc *
+               InputLanguage.monadic_binding)
+          Generic_printer.LazyDoc.lazy_doc option ->
+      lhs:pat Generic_printer.LazyDoc.lazy_doc ->
+      rhs:expr Generic_printer.LazyDoc.lazy_doc ->
+      body:expr Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method expr'_Literal :
+      super:expr ->
+      literal Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method expr'_LocalVar :
+      super:expr ->
+      local_ident Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method expr'_Loop :
+      super:expr ->
+      body:expr Generic_printer.LazyDoc.lazy_doc ->
+      kind:loop_kind Generic_printer.LazyDoc.lazy_doc ->
+      state:loop_state Generic_printer.LazyDoc.lazy_doc option ->
+      label:string option ->
+      witness:InputLanguage.loop -> PPrint.document
+    method expr'_MacroInvokation :
+      super:expr ->
+      macro:global_ident ->
+      args:string -> witness:InputLanguage.macro -> PPrint.document
+    method expr'_Match :
+      super:expr ->
+      scrutinee:expr Generic_printer.LazyDoc.lazy_doc ->
+      arms:arm Generic_printer.LazyDoc.lazy_doc list ->
+      PPrint.document
+    method expr'_QuestionMark :
+      super:expr ->
+      e:expr Generic_printer.LazyDoc.lazy_doc ->
+      return_typ:ty Generic_printer.LazyDoc.lazy_doc ->
+      witness:InputLanguage.question_mark -> PPrint.document
+    method expr'_Quote :
+      super:expr ->
+      quote Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method expr'_Return :
+      super:expr ->
+      e:expr Generic_printer.LazyDoc.lazy_doc ->
+      witness:InputLanguage.early_exit -> PPrint.document
+    method field_pat :
+      field:global_ident ->
+      pat:pat Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method generic_constraint_GCLifetime :
+      string -> InputLanguage.lifetime -> PPrint.document
+    method generic_constraint_GCProjection :
+      projection_predicate Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method generic_constraint_GCType :
+      impl_ident Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method generic_param :
+      ident:local_ident Generic_printer.LazyDoc.lazy_doc ->
+      span:span ->
+      attrs:attrs Generic_printer.LazyDoc.lazy_doc ->
+      kind:generic_param_kind Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method generic_param_kind_GPConst :
+      typ:ty Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method generic_param_kind_GPLifetime :
+      witness:InputLanguage.lifetime -> PPrint.document
+    method generic_param_kind_GPType :
+      default:ty Generic_printer.LazyDoc.lazy_doc option ->
+      PPrint.document
+    method generic_value_GConst :
+      expr Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method generic_value_GLifetime :
+      lt:string -> witness:InputLanguage.lifetime -> PPrint.document
+    method generic_value_GType :
+      ty Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method generics :
+      params:generic_param Generic_printer.LazyDoc.lazy_doc list ->
+      constraints:generic_constraint
+          Generic_printer.LazyDoc.lazy_doc list ->
+      PPrint.document
+    method guard :
+      guard:guard' Generic_printer.LazyDoc.lazy_doc ->
+      span:span -> PPrint.document
+    method guard'_IfLet :
+      super:guard ->
+      lhs:pat Generic_printer.LazyDoc.lazy_doc ->
+      rhs:expr Generic_printer.LazyDoc.lazy_doc ->
+      witness:InputLanguage.match_guard -> PPrint.document
+    method impl_expr :
+      kind:impl_expr_kind Generic_printer.LazyDoc.lazy_doc ->
+      goal:trait_goal Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method impl_expr_kind_Builtin :
+      trait_goal Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method impl_expr_kind_Concrete :
+      trait_goal Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method impl_expr_kind_Dyn : PPrint.document
+    method impl_expr_kind_ImplApp :
+      impl:impl_expr Generic_printer.LazyDoc.lazy_doc ->
+      args:impl_expr Generic_printer.LazyDoc.lazy_doc list ->
+      PPrint.document
+    method impl_expr_kind_LocalBound : id:string -> PPrint.document
+    method impl_expr_kind_Parent :
+      impl:impl_expr Generic_printer.LazyDoc.lazy_doc ->
+      ident:impl_ident Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method impl_expr_kind_Projection :
+      impl:impl_expr Generic_printer.LazyDoc.lazy_doc ->
+      item:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      ident:impl_ident Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method impl_expr_kind_Self : PPrint.document
+    method impl_ident :
+      goal:trait_goal Generic_printer.LazyDoc.lazy_doc ->
+      name:string -> PPrint.document
+    method impl_item :
+      ii_span:span ->
+      ii_generics:generics Generic_printer.LazyDoc.lazy_doc ->
+      ii_v:impl_item' Generic_printer.LazyDoc.lazy_doc ->
+      ii_ident:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      ii_attrs:attrs Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method impl_item'_IIFn :
+      body:expr Generic_printer.LazyDoc.lazy_doc ->
+      params:param Generic_printer.LazyDoc.lazy_doc list ->
+      PPrint.document
+    method impl_item'_IIType :
+      typ:ty Generic_printer.LazyDoc.lazy_doc ->
+      parent_bounds:(impl_expr Generic_printer.LazyDoc.lazy_doc *
+                     impl_ident Generic_printer.LazyDoc.lazy_doc)
+          list ->
+      PPrint.document
+    method item :
+      v:item' Generic_printer.LazyDoc.lazy_doc ->
+      span:span ->
+      ident:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      attrs:attrs Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method item'_Alias :
+      super:item ->
+      name:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      item:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method item'_Fn :
+      super:item ->
+      name:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      generics:generics Generic_printer.LazyDoc.lazy_doc ->
+      body:expr Generic_printer.LazyDoc.lazy_doc ->
+      params:param Generic_printer.LazyDoc.lazy_doc list ->
+      safety:safety_kind Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method item'_HaxError : super:item -> string -> PPrint.document
+    method item'_IMacroInvokation :
+      super:item ->
+      macro:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      argument:string ->
+      span:span -> witness:InputLanguage.macro -> PPrint.document
+    method item'_Impl :
+      super:item ->
+      generics:generics Generic_printer.LazyDoc.lazy_doc ->
+      self_ty:ty Generic_printer.LazyDoc.lazy_doc ->
+      of_trait:global_ident *
+               generic_value Generic_printer.LazyDoc.lazy_doc list ->
+      items:impl_item Generic_printer.LazyDoc.lazy_doc list ->
+      parent_bounds:(impl_expr Generic_printer.LazyDoc.lazy_doc *
+                     impl_ident Generic_printer.LazyDoc.lazy_doc)
+          list ->
+      safety:safety_kind Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method item'_NotImplementedYet : PPrint.document
+    method item'_Quote :
+      super:item ->
+      quote Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method item'_Trait :
+      super:item ->
+      name:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      generics:generics Generic_printer.LazyDoc.lazy_doc ->
+      items:trait_item Generic_printer.LazyDoc.lazy_doc list ->
+      safety:safety_kind Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method item'_TyAlias :
+      super:item ->
+      name:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      generics:generics Generic_printer.LazyDoc.lazy_doc ->
+      ty:ty Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method item'_Type_enum :
+      super:item ->
+      name:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      generics:generics Generic_printer.LazyDoc.lazy_doc ->
+      variants:variant Generic_printer.LazyDoc.lazy_doc list ->
+      PPrint.document
+    method item'_Type_struct :
+      super:item ->
+      name:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      generics:generics Generic_printer.LazyDoc.lazy_doc ->
+      arguments:(concrete_ident Generic_printer.LazyDoc.lazy_doc *
+                 ty Generic_printer.LazyDoc.lazy_doc *
+                 attr Generic_printer.LazyDoc.lazy_doc list)
+          list ->
+      PPrint.document
+    method item'_Type_tuple_struct :
+      super:item ->
+      name:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      generics:generics Generic_printer.LazyDoc.lazy_doc ->
+      arguments:(concrete_ident Generic_printer.LazyDoc.lazy_doc *
+                 ty Generic_printer.LazyDoc.lazy_doc *
+                 attr Generic_printer.LazyDoc.lazy_doc list)
+          list ->
+      PPrint.document
+    method item'_Use :
+      super:item ->
+      path:string list ->
+      is_external:bool -> rename:string option -> PPrint.document
+    method lhs_LhsArbitraryExpr :
+      e:expr Generic_printer.LazyDoc.lazy_doc ->
+      witness:InputLanguage.arbitrary_lhs -> PPrint.document
+    method lhs_LhsArrayAccessor :
+      e:lhs Generic_printer.LazyDoc.lazy_doc ->
+      typ:ty Generic_printer.LazyDoc.lazy_doc ->
+      index:expr Generic_printer.LazyDoc.lazy_doc ->
+      witness:InputLanguage.nontrivial_lhs -> PPrint.document
+    method lhs_LhsFieldAccessor_field :
+      e:lhs Generic_printer.LazyDoc.lazy_doc ->
+      typ:ty Generic_printer.LazyDoc.lazy_doc ->
+      field:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      witness:InputLanguage.nontrivial_lhs -> PPrint.document
+    method lhs_LhsFieldAccessor_tuple :
+      e:lhs Generic_printer.LazyDoc.lazy_doc ->
+      typ:ty Generic_printer.LazyDoc.lazy_doc ->
+      nth:int ->
+      size:int ->
+      witness:InputLanguage.nontrivial_lhs -> PPrint.document
+    method lhs_LhsLocalVar :
+      var:local_ident ->
+      typ:ty Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method literal_Bool : bool -> PPrint.document
+    method literal_Char : Prelude.char -> PPrint.document
+    method literal_Float :
+      value:string ->
+      negative:bool -> kind:float_kind -> PPrint.document
+    method literal_Int :
+      value:string ->
+      negative:bool -> kind:int_kind -> PPrint.document
+    method literal_String : string -> PPrint.document
+    method local_ident : local_ident -> PPrint.document
+    method loop_kind_ForIndexLoop :
+      start:expr Generic_printer.LazyDoc.lazy_doc ->
+      end_:expr Generic_printer.LazyDoc.lazy_doc ->
+      var:local_ident Generic_printer.LazyDoc.lazy_doc ->
+      var_typ:ty Generic_printer.LazyDoc.lazy_doc ->
+      witness:InputLanguage.for_index_loop -> PPrint.document
+    method loop_kind_ForLoop :
+      pat:pat Generic_printer.LazyDoc.lazy_doc ->
+      it:expr Generic_printer.LazyDoc.lazy_doc ->
+      witness:InputLanguage.for_loop -> PPrint.document
+    method loop_kind_UnconditionalLoop : PPrint.document
+    method loop_kind_WhileLoop :
+      condition:expr Generic_printer.LazyDoc.lazy_doc ->
+      witness:InputLanguage.while_loop -> PPrint.document
+    method loop_state :
+      init:expr Generic_printer.LazyDoc.lazy_doc ->
+      bpat:pat Generic_printer.LazyDoc.lazy_doc ->
+      witness:InputLanguage.state_passing_loop -> PPrint.document
+    method modul :
+      item Generic_printer.LazyDoc.lazy_doc list -> PPrint.document
+    method module_path_separator : string
+    method param :
+      pat:pat Generic_printer.LazyDoc.lazy_doc ->
+      typ:ty Generic_printer.LazyDoc.lazy_doc ->
+      typ_span:span option ->
+      attrs:attrs Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method pat :
+      p:pat' Generic_printer.LazyDoc.lazy_doc ->
+      span:span ->
+      typ:ty Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method pat'_PArray :
+      super:pat ->
+      args:pat Generic_printer.LazyDoc.lazy_doc list ->
+      PPrint.document
+    method pat'_PAscription :
+      super:pat ->
+      typ:ty Generic_printer.LazyDoc.lazy_doc ->
+      typ_span:span ->
+      pat:pat Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method pat'_PBinding :
+      super:pat ->
+      mut:InputLanguage.mutable_variable mutability ->
+      mode:binding_mode Generic_printer.LazyDoc.lazy_doc ->
+      var:local_ident Generic_printer.LazyDoc.lazy_doc ->
+      typ:ty Generic_printer.LazyDoc.lazy_doc ->
+      subpat:(pat Generic_printer.LazyDoc.lazy_doc *
+              InputLanguage.as_pattern)
+          Generic_printer.LazyDoc.lazy_doc option ->
+      PPrint.document
+    method pat'_PConstant :
+      super:pat ->
+      lit:literal Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method pat'_PConstruct_inductive :
+      super:pat ->
+      constructor:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      is_record:bool ->
+      is_struct:bool ->
+      fields:(concrete_ident Generic_printer.LazyDoc.lazy_doc *
+              pat Generic_printer.LazyDoc.lazy_doc)
+          list ->
+      PPrint.document
+    method pat'_PConstruct_tuple :
+      super:pat ->
+      components:pat Generic_printer.LazyDoc.lazy_doc list ->
+      PPrint.document
+    method pat'_PDeref :
+      super:pat ->
+      subpat:pat Generic_printer.LazyDoc.lazy_doc ->
+      witness:InputLanguage.reference -> PPrint.document
+    method pat'_POr :
+      super:pat ->
+      subpats:pat Generic_printer.LazyDoc.lazy_doc list ->
+      PPrint.document
+    method pat'_PWild : PPrint.document
+    method print_arm :
+      Generated_generic_printer_base.ast_position ->
+      arm -> PPrint.document
+    method print_attrs :
+      Generated_generic_printer_base.ast_position ->
+      attrs -> PPrint.document
+    method print_binding_mode :
+      Generated_generic_printer_base.ast_position ->
+      binding_mode -> PPrint.document
+    method print_borrow_kind :
+      Generated_generic_printer_base.ast_position ->
+      borrow_kind -> PPrint.document
+    method print_dyn_trait_goal :
+      Generated_generic_printer_base.ast_position ->
+      dyn_trait_goal -> PPrint.document
+    method print_expr :
+      Generated_generic_printer_base.ast_position ->
+      expr -> PPrint.document
+    method print_field_pat :
+      Generated_generic_printer_base.ast_position ->
+      field_pat -> PPrint.document
+    method print_generic_constraint :
+      Generated_generic_printer_base.ast_position ->
+      generic_constraint -> PPrint.document
+    method print_generic_param :
+      Generated_generic_printer_base.ast_position ->
+      generic_param -> PPrint.document
+    method print_generic_param_kind :
+      Generated_generic_printer_base.ast_position ->
+      generic_param_kind -> PPrint.document
+    method print_generic_value :
+      Generated_generic_printer_base.ast_position ->
+      generic_value -> PPrint.document
+    method print_generics :
+      Generated_generic_printer_base.ast_position ->
+      generics -> PPrint.document
+    method print_guard :
+      Generated_generic_printer_base.ast_position ->
+      guard -> PPrint.document
+    method print_impl_expr :
+      Generated_generic_printer_base.ast_position ->
+      impl_expr -> PPrint.document
+    method print_impl_expr_kind :
+      Generated_generic_printer_base.ast_position ->
+      impl_expr_kind -> PPrint.document
+    method print_impl_ident :
+      Generated_generic_printer_base.ast_position ->
+      impl_ident -> PPrint.document
+    method print_impl_item :
+      Generated_generic_printer_base.ast_position ->
+      impl_item -> PPrint.document
+    method print_impl_item' :
+      Generated_generic_printer_base.ast_position ->
+      impl_item' -> PPrint.document
+    method print_item :
+      Generated_generic_printer_base.ast_position ->
+      item -> PPrint.document
+    method print_lhs :
+      Generated_generic_printer_base.ast_position ->
+      lhs -> PPrint.document
+    method print_literal :
+      Generated_generic_printer_base.ast_position ->
+      literal -> PPrint.document
+    method print_loop_kind :
+      Generated_generic_printer_base.ast_position ->
+      loop_kind -> PPrint.document
+    method print_loop_state :
+      Generated_generic_printer_base.ast_position ->
+      loop_state -> PPrint.document
+    method print_modul :
+      Generated_generic_printer_base.ast_position ->
+      item list -> PPrint.document
+    method print_param :
+      Generated_generic_printer_base.ast_position ->
+      param -> PPrint.document
+    method print_pat :
+      Generated_generic_printer_base.ast_position ->
+      pat -> PPrint.document
+    method print_projection_predicate :
+      Generated_generic_printer_base.ast_position ->
+      projection_predicate -> PPrint.document
+    method print_safety_kind :
+      Generated_generic_printer_base.ast_position ->
+      safety_kind -> PPrint.document
+    method print_supported_monads :
+      Generated_generic_printer_base.ast_position ->
+      supported_monads -> PPrint.document
+    method print_trait_goal :
+      Generated_generic_printer_base.ast_position ->
+      trait_goal -> PPrint.document
+    method print_trait_item :
+      Generated_generic_printer_base.ast_position ->
+      trait_item -> PPrint.document
+    method print_trait_item' :
+      Generated_generic_printer_base.ast_position ->
+      trait_item' -> PPrint.document
+    method print_ty :
+      Generated_generic_printer_base.ast_position ->
+      ty -> PPrint.document
+    method print_variant :
+      Generated_generic_printer_base.ast_position ->
+      variant -> PPrint.document
+    method printer_name : string
+    method projection_predicate :
+      impl:impl_expr Generic_printer.LazyDoc.lazy_doc ->
+      assoc_item:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      typ:ty Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method quote : quote -> PPrint.document
+    method safety_kind_Safe : PPrint.document
+    method safety_kind_Unsafe :
+      InputLanguage.unsafe -> PPrint.document
+    method span_data : Generic_printer.Annotation.t list
+    method supported_monads_MException :
+      ty Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method supported_monads_MOption : PPrint.document
+    method supported_monads_MResult :
+      ty Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method trait_goal :
+      trait:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      args:generic_value Generic_printer.LazyDoc.lazy_doc list ->
+      PPrint.document
+    method trait_item :
+      ti_span:span ->
+      ti_generics:generics Generic_printer.LazyDoc.lazy_doc ->
+      ti_v:trait_item' Generic_printer.LazyDoc.lazy_doc ->
+      ti_ident:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      ti_attrs:attrs Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method trait_item'_TIDefault :
+      params:param Generic_printer.LazyDoc.lazy_doc list ->
+      body:expr Generic_printer.LazyDoc.lazy_doc ->
+      witness:InputLanguage.trait_item_default -> PPrint.document
+    method trait_item'_TIFn :
+      ty Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method trait_item'_TIType :
+      impl_ident Generic_printer.LazyDoc.lazy_doc list ->
+      PPrint.document
+    method ty_TApp_application :
+      typ:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      generics:generic_value Generic_printer.LazyDoc.lazy_doc list ->
+      PPrint.document
+    method ty_TApp_tuple : types:ty list -> PPrint.document
+    method ty_TArray :
+      typ:ty Generic_printer.LazyDoc.lazy_doc ->
+      length:expr Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method ty_TArrow :
+      ty Generic_printer.LazyDoc.lazy_doc list ->
+      ty Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method ty_TAssociatedType :
+      impl:impl_expr Generic_printer.LazyDoc.lazy_doc ->
+      item:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method ty_TBool : PPrint.document
+    method ty_TChar : PPrint.document
+    method ty_TDyn :
+      witness:InputLanguage.dyn ->
+      goals:dyn_trait_goal Generic_printer.LazyDoc.lazy_doc list ->
+      PPrint.document
+    method ty_TFloat : float_kind -> PPrint.document
+    method ty_TInt : int_kind -> PPrint.document
+    method ty_TOpaque :
+      concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method ty_TParam :
+      local_ident Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method ty_TRawPointer :
+      witness:InputLanguage.raw_pointer -> PPrint.document
+    method ty_TRef :
+      witness:InputLanguage.reference ->
+      region:string ->
+      typ:ty Generic_printer.LazyDoc.lazy_doc ->
+      mut:InputLanguage.mutable_reference mutability ->
+      PPrint.document
+    method ty_TSlice :
+      witness:InputLanguage.slice ->
+      ty:ty Generic_printer.LazyDoc.lazy_doc -> PPrint.document
+    method ty_TStr : PPrint.document
+    method unreachable : unit -> 'any
+    method variant :
+      name:concrete_ident Generic_printer.LazyDoc.lazy_doc ->
+      arguments:(concrete_ident Generic_printer.LazyDoc.lazy_doc *
+                 ty Generic_printer.LazyDoc.lazy_doc *
+                 attrs Generic_printer.LazyDoc.lazy_doc)
+          list ->
+      is_record:bool ->
+      attrs:attrs Generic_printer.LazyDoc.lazy_doc ->
+      PPrint.document
+    method with_span :
+      span:span -> (unit -> PPrint.document) -> PPrint.document
+    method wrap_arm :
+      Generated_generic_printer_base.ast_position ->
+      arm -> PPrint.document -> PPrint.document
+    method wrap_arm' :
+      Generated_generic_printer_base.ast_position ->
+      arm' -> PPrint.document -> PPrint.document
+    method wrap_attrs :
+      Generated_generic_printer_base.ast_position ->
+      attrs -> PPrint.document -> PPrint.document
+    method wrap_binding_mode :
+      Generated_generic_printer_base.ast_position ->
+      binding_mode -> PPrint.document -> PPrint.document
+    method wrap_borrow_kind :
+      Generated_generic_printer_base.ast_position ->
+      borrow_kind -> PPrint.document -> PPrint.document
+    method wrap_dyn_trait_goal :
+      Generated_generic_printer_base.ast_position ->
+      dyn_trait_goal -> PPrint.document -> PPrint.document
+    method wrap_expr :
+      Generated_generic_printer_base.ast_position ->
+      expr -> PPrint.document -> PPrint.document
+    method wrap_expr' :
+      Generated_generic_printer_base.ast_position ->
+      expr' -> PPrint.document -> PPrint.document
+    method wrap_field_pat :
+      Generated_generic_printer_base.ast_position ->
+      field_pat -> PPrint.document -> PPrint.document
+    method wrap_generic_constraint :
+      Generated_generic_printer_base.ast_position ->
+      generic_constraint -> PPrint.document -> PPrint.document
+    method wrap_generic_param :
+      Generated_generic_printer_base.ast_position ->
+      generic_param -> PPrint.document -> PPrint.document
+    method wrap_generic_param_kind :
+      Generated_generic_printer_base.ast_position ->
+      generic_param_kind -> PPrint.document -> PPrint.document
+    method wrap_generic_value :
+      Generated_generic_printer_base.ast_position ->
+      generic_value -> PPrint.document -> PPrint.document
+    method wrap_generics :
+      Generated_generic_printer_base.ast_position ->
+      generics -> PPrint.document -> PPrint.document
+    method wrap_guard :
+      Generated_generic_printer_base.ast_position ->
+      guard -> PPrint.document -> PPrint.document
+    method wrap_guard' :
+      Generated_generic_printer_base.ast_position ->
+      guard' -> PPrint.document -> PPrint.document
+    method wrap_impl_expr :
+      Generated_generic_printer_base.ast_position ->
+      impl_expr -> PPrint.document -> PPrint.document
+    method wrap_impl_expr_kind :
+      Generated_generic_printer_base.ast_position ->
+      impl_expr_kind -> PPrint.document -> PPrint.document
+    method wrap_impl_ident :
+      Generated_generic_printer_base.ast_position ->
+      impl_ident -> PPrint.document -> PPrint.document
+    method wrap_impl_item :
+      Generated_generic_printer_base.ast_position ->
+      impl_item -> PPrint.document -> PPrint.document
+    method wrap_impl_item' :
+      Generated_generic_printer_base.ast_position ->
+      impl_item' -> PPrint.document -> PPrint.document
+    method wrap_item :
+      Generated_generic_printer_base.ast_position ->
+      item -> PPrint.document -> PPrint.document
+    method wrap_item' :
+      Generated_generic_printer_base.ast_position ->
+      item' -> PPrint.document -> PPrint.document
+    method wrap_lhs :
+      Generated_generic_printer_base.ast_position ->
+      lhs -> PPrint.document -> PPrint.document
+    method wrap_literal :
+      Generated_generic_printer_base.ast_position ->
+      literal -> PPrint.document -> PPrint.document
+    method wrap_loop_kind :
+      Generated_generic_printer_base.ast_position ->
+      loop_kind -> PPrint.document -> PPrint.document
+    method wrap_loop_state :
+      Generated_generic_printer_base.ast_position ->
+      loop_state -> PPrint.document -> PPrint.document
+    method wrap_modul :
+      Generated_generic_printer_base.ast_position ->
+      item list -> PPrint.document -> PPrint.document
+    method wrap_param :
+      Generated_generic_printer_base.ast_position ->
+      param -> PPrint.document -> PPrint.document
+    method wrap_pat :
+      Generated_generic_printer_base.ast_position ->
+      pat -> PPrint.document -> PPrint.document
+    method wrap_pat' :
+      Generated_generic_printer_base.ast_position ->
+      pat' -> PPrint.document -> PPrint.document
+    method wrap_projection_predicate :
+      Generated_generic_printer_base.ast_position ->
+      projection_predicate -> PPrint.document -> PPrint.document
+    method wrap_safety_kind :
+      Generated_generic_printer_base.ast_position ->
+      safety_kind -> PPrint.document -> PPrint.document
+    method wrap_supported_monads :
+      Generated_generic_printer_base.ast_position ->
+      supported_monads -> PPrint.document -> PPrint.document
+    method wrap_trait_goal :
+      Generated_generic_printer_base.ast_position ->
+      trait_goal -> PPrint.document -> PPrint.document
+    method wrap_trait_item :
+      Generated_generic_printer_base.ast_position ->
+      trait_item -> PPrint.document -> PPrint.document
+    method wrap_trait_item' :
+      Generated_generic_printer_base.ast_position ->
+      trait_item' -> PPrint.document -> PPrint.document
+    method wrap_ty :
+      Generated_generic_printer_base.ast_position ->
+      ty -> PPrint.document -> PPrint.document
+    method wrap_variant :
+      Generated_generic_printer_base.ast_position ->
+      variant -> PPrint.document -> PPrint.document
+  end
+
+module type S = sig
+  class printer : printer_type
+end
+
+
+let make  (module M : Attrs.WITH_ITEMS) =
+  (module
+    Make
+      (struct let default x = x end)
+      (M) : S)
+
+let translate m (_bo : BackendOptions.t) (items : AST.item list) :
   Types.file list =
-  let my_printer = new MyPrinter.printer in
+
+  let (module Printer) = make m in
+  let my_printer = new Printer.printer in
+
+  (* let temp = MyPrinter in *)
+  (* let temp : (module _) = MyPrinter in *)
 
   (* let _ = Gen.map (fun apply -> *)
   (*     let printer = new MyPrinter.printer in *)
@@ -661,3 +1694,41 @@ let apply_phases (_bo : BackendOptions.t) (items : Ast.Rust.item list) :
     AST.item list =
   TransformToInputLanguage.ditems items
 
+  (* (\* val decl_to_string : MyPrinter.Base.Gen.printer *\) *)
+  (* type ('get_span_data, 'a) object_type = < *)
+  (*   get_span_data : 'get_span_data; *)
+  (*   entrypoint_modul : modul ->  'a; *)
+  (*   entrypoint_trait_item : trait_item ->  'a; *)
+  (*   entrypoint_trait_item' : trait_item' ->  'a; *)
+  (*   entrypoint_impl_item : impl_item ->  'a; *)
+  (*   entrypoint_impl_item' : impl_item' ->  'a; *)
+  (*   entrypoint_item : item ->  'a; *)
+  (*   entrypoint_variant : variant ->  'a; *)
+  (*   entrypoint_generics : generics ->  'a; *)
+  (*   entrypoint_param : param ->  'a; *)
+  (*   entrypoint_generic_constraint : generic_constraint ->  'a; *)
+  (*   entrypoint_generic_param_kind : generic_param_kind ->  'a; *)
+  (*   entrypoint_generic_param : generic_param ->  'a; *)
+  (*   entrypoint_arm : arm ->  'a; *)
+  (*   entrypoint_guard : guard ->  'a; *)
+  (*   entrypoint_lhs : lhs ->  'a; *)
+  (*   entrypoint_loop_state : loop_state ->  'a; *)
+  (*   entrypoint_loop_kind : loop_kind ->  'a; *)
+  (*   entrypoint_supported_monads : supported_monads ->  'a; *)
+  (*   entrypoint_expr : expr ->  'a; *)
+  (*   entrypoint_field_pat : field_pat ->  'a; *)
+  (*   entrypoint_pat : pat ->  'a; *)
+  (*   entrypoint_projection_predicate : projection_predicate ->  'a; *)
+  (*   entrypoint_impl_ident : impl_ident ->  'a; *)
+  (*   entrypoint_dyn_trait_goal : dyn_trait_goal ->  'a; *)
+  (*   entrypoint_trait_goal : trait_goal ->  'a; *)
+  (*   entrypoint_impl_expr_kind : impl_expr_kind ->  'a; *)
+  (*   entrypoint_impl_expr : impl_expr ->  'a; *)
+  (*   entrypoint_generic_value : generic_value ->  'a; *)
+  (*   entrypoint_ty : ty ->  'a; *)
+  (*   entrypoint_binding_mode : binding_mode ->  'a; *)
+  (*   entrypoint_borrow_kind : borrow_kind ->  'a; *)
+  (*   entrypoint_safety_kind : safety_kind ->  'a; *)
+  (*   entrypoint_literal : literal ->  'a; *)
+  (*   entrypoint_attrs : attrs ->  'a *)
+  (* > *)
