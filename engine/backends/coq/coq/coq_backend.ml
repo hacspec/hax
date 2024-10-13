@@ -372,6 +372,7 @@ struct
         default_document_for "item'_Alias"
 
       method item'_Fn ~super ~name ~generics ~body ~params ~safety:_ =
+        let genericsp = (match generics#v with | { params = []; constraints = []; } -> empty | _ -> generics#p) in
         let is_rec =
           Set.mem
             (U.Reducers.collect_concrete_idents#visit_expr () body#v)
@@ -386,17 +387,16 @@ struct
             |> Option.map ~f:(self#entrypoint_expr >> f)
             |> Option.value ~default:empty
           in
-
-          CoqNotation.lemma (name#p) generics#p (List.map ~f:(fun x -> x#p) params) (
+          CoqNotation.lemma (name#p) genericsp (List.map ~f:(fun x -> x#p) params) (
             get_expr_of Requires (fun x -> x ^^ space ^^ string "=" ^^ space ^^ string "true" ^^ space ^^ string "->" ^^ break 1) ^^
             get_expr_of Ensures (fun x -> x ^^ space ^^ string "=" ^^ space ^^ string "true")
           )
         else
           (if is_rec
            then
-             CoqNotation.fixpoint (name#p) generics#p (List.map ~f:(fun x -> x#p) params) typ#p body#p
+             CoqNotation.fixpoint (name#p) genericsp (List.map ~f:(fun x -> x#p) params) typ#p body#p
            else
-             CoqNotation.definition (name#p) (generics#p) (List.map ~f:(fun x -> x#p) params) typ#p body#p
+             CoqNotation.definition (name#p) (genericsp) (List.map ~f:(fun x -> x#p) params) typ#p body#p
              (* TODO: Why is type not available here ? *))
 
       method item'_HaxError ~super:_ _x2 = default_document_for "item'_HaxError"
@@ -407,10 +407,11 @@ struct
 
       method item'_Impl ~super:_ ~generics ~self_ty ~of_trait:(name,_) ~items
           ~parent_bounds:_ ~safety:_ =
+        let genericsp = (match generics#v with | { params = []; constraints = []; } -> empty | _ -> generics#p) in
         let name_document = string (pglobal_ident name) in
         CoqNotation.instance
           (self_ty#p ^^ string "_" ^^ name_document)
-          (generics#p)
+          (genericsp)
           []
           (name_document)
           (braces (nest 2 (concat_map (fun x -> break 1 ^^ name_document ^^ !^"_" ^^ x#p) items) ^^ break 1))
@@ -420,9 +421,10 @@ struct
       method item'_Quote ~super:_ _x2 = default_document_for "item'_Quote"
 
       method item'_Trait ~super:_ ~name ~generics ~items ~safety:_ =
+        let genericsp = (match generics#v with | { params = []; constraints = []; } -> empty | _ -> generics#p) in
         CoqNotation.class_
           (name#p)
-          (generics#p)
+          (genericsp)
           []
           (!^"Type")
           (braces (nest 2 (concat_map (fun x -> break 1 ^^ (name#p ^^ !^"_" (* TODO: this information should be given to [trait_item] instead *)) ^^ x#p) items) ^^ break 1))
@@ -435,14 +437,17 @@ struct
         string "Notation" ^^ space ^^ string "\"'" ^^ name#p ^^ string "'\"" ^^ space ^^ string ":=" ^^ space ^^ ty#p ^^ dot
 
       method item'_Type_struct ~super:_ ~name ~generics ~arguments =
-        CoqNotation.record (name#p) (generics#p) [] (string "Type") (braces ( nest 2 (concat_map (fun (ident, typ, attr) -> break 1 ^^ name#p ^^ !^"_" ^^ ident#p ^^ space ^^ colon ^^ space ^^ typ#p) arguments) ^^ break 1 ))
+        let genericsp = (match generics#v with | { params = []; constraints = []; } -> empty | _ -> generics#p) in
+        CoqNotation.record (name#p) (genericsp) [] (string "Type") (braces ( nest 2 (concat_map (fun (ident, typ, attr) -> break 1 ^^ name#p ^^ !^"_" ^^ ident#p ^^ space ^^ colon ^^ space ^^ typ#p) arguments) ^^ break 1 ))
 
       method item'_Type_tuple_struct ~super:_ ~name ~generics ~arguments =
-        CoqNotation.definition (name#p) (generics#p) [] (string "Type") (
+        let genericsp = (match generics#v with | { params = []; constraints = []; } -> empty | _ -> generics#p) in
+        CoqNotation.definition (name#p) (genericsp) [] (string "Type") (
           separate_map (space ^^ star ^^ space) (fun (ident, typ, attr) -> typ#p) arguments)
 
       method item'_Type_enum ~super:_ ~name ~generics ~variants =
-        CoqNotation.inductive (name#p) (generics#p) [] (string "Type") (separate_map (break 1) (fun x -> string "|" ^^ space ^^ x#p) variants)
+        let genericsp = (match generics#v with | { params = []; constraints = []; } -> empty | _ -> generics#p) in
+        CoqNotation.inductive (name#p) (genericsp) [] (string "Type") (separate_map (break 1) (fun x -> string "|" ^^ space ^^ x#p) variants)
 
       method item'_Use ~super:_ ~path ~is_external:_ ~rename:_ =
         let path_string = (
