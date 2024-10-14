@@ -173,7 +173,7 @@ struct
 
       method _do_not_override_expr'_App ~super ~f ~args ~generic_args ~bounds_impls ~trait =
         string "expr" ^^ space ^^ symbol_parens ( any_number_of (string "expr" ^^ space ^^ symbol_comma) )
-      
+
       method expr'_App_application ~super:_ ~f:_ ~args:_ ~generics:_ =
         default_document_for "expr'_App_application"
 
@@ -599,6 +599,7 @@ struct
         default_document_for "variant"
       (* END GENERATED *)
     end
+
 end
 
 (* TODO: Write quoted expression shallowly, to get a generator for full AST *)
@@ -616,45 +617,490 @@ module HaxCFG = struct
   module AST = Ast.Make (Features.Full)
   open AST
 
+  type ast_types =
+    | CONCRETE_IDENT
+    | LITERAL
+    | TY
+    | EXPR
+    | GENERICS
+    | GLOBAL_IDENT
+    | PAT
+    | LOCAL_IDENT
+    | IMPL_EXPR
+    | ITEM
+
+  let rec generate_helper (t : ast_types) (indexes : int list) : Yojson.Safe.t * int list =
+    let i, indexes = List.hd_exn indexes, Option.value ~default:[] (List.tl indexes) in
+    let cases: (unit -> Yojson.Safe.t * int list) list =
+      (match t with
+       | CONCRETE_IDENT ->
+         [
+           (fun () -> ([%yojson_of: concrete_ident] (Concrete_ident.of_name Value Hax_lib__RefineAs__into_checked), indexes))
+         ]
+
+       | LITERAL ->
+         [
+           (fun () -> ([%yojson_of: literal] (String "dummy"), indexes));
+           (fun () -> ([%yojson_of: literal] (Char 'a'), indexes));
+           (fun () -> ([%yojson_of: literal] (Int {value = "dummy"; negative = false; kind = { size = S8; signedness = Unsigned }}), indexes));
+           (fun () -> ([%yojson_of: literal] (Float {value = "dummy"; negative = false; kind = F16}), indexes));
+           (fun () -> ([%yojson_of: literal] (Bool false), indexes));
+         ]
+
+       | TY ->
+         [
+           (fun () -> ([%yojson_of: ty] TBool, indexes));
+           (fun () -> ([%yojson_of: ty] TChar, indexes));
+           (fun () -> ([%yojson_of: ty] (TInt { size = S8 ; signedness = Unsigned}), indexes));
+           (fun () -> ([%yojson_of: ty] (TFloat F16), indexes));
+           (fun () -> ([%yojson_of: ty] TStr, indexes));
+           (fun () ->
+              let g_ident, indexes = generate_helper GLOBAL_IDENT indexes in
+              let g_ident = [%of_yojson: global_ident] g_ident in
+              ([%yojson_of: ty] (TApp { ident = g_ident ; args = [] }), indexes));
+           (fun () ->
+              let typ, indexes = generate_helper TY indexes in
+              let typ = [%of_yojson: ty] typ in
+              let length, indexes = generate_helper EXPR indexes in (* Should be const expr ! *)
+              let length = [%of_yojson: expr] length in
+              ([%yojson_of: ty] (TArray {typ; length;}), indexes));
+           (fun () ->
+              let typ, indexes = generate_helper TY indexes in
+              let typ = [%of_yojson: ty] typ in
+              ([%yojson_of: ty] (TSlice {witness = Features.On.slice; ty = typ;}), indexes));
+           (fun () ->
+              ([%yojson_of: ty] (TRawPointer {witness = Features.On.raw_pointer;}), indexes));
+           (fun () ->
+              let typ, indexes = generate_helper TY indexes in
+              let typ = [%of_yojson: ty] typ in
+              ([%yojson_of: ty] (TRef {
+                   witness = Features.On.reference;
+                   region = "todo";
+                   typ = typ;
+                   mut = Immutable;
+                 }), indexes));
+           (fun () ->
+              let l_ident, indexes = generate_helper LOCAL_IDENT indexes in
+              let l_ident = [%of_yojson : local_ident] l_ident in
+              ([%yojson_of: ty] (TParam l_ident), indexes));
+           (fun () ->
+              let typ, indexes = generate_helper TY indexes in
+              let typ = [%of_yojson : ty] typ in
+              ([%yojson_of: ty] (TArrow ([] ,typ)), indexes));
+           (fun () ->
+              let impl_expr, indexes = generate_helper IMPL_EXPR indexes in
+              let impl_expr = [%of_yojson: impl_expr] impl_expr in
+
+              let c_ident, indexes = generate_helper CONCRETE_IDENT indexes in
+              let c_ident = [%of_yojson: concrete_ident] c_ident in
+              ([%yojson_of: ty] (TAssociatedType {impl = impl_expr; item = c_ident}), indexes));
+           (fun () ->
+              let c_ident, indexes = generate_helper CONCRETE_IDENT indexes in
+              let c_ident = [%of_yojson: concrete_ident] c_ident in
+              ([%yojson_of: ty] (TOpaque c_ident), indexes));
+           (fun () ->
+              ([%yojson_of: ty] (TDyn { witness = Features.On.dyn; goals= []}), indexes));
+         ]
+
+       | EXPR ->
+         let expr_shell e indexes =
+           let typ, indexes = generate_helper TY indexes in
+           (`Assoc [
+               ("e" , e ) ;
+               ("span" , `Assoc [("id" , `Int 79902) ; ("data" , `List [])]) ;
+               ("typ" , typ)
+             ], indexes)
+         in
+         List.map ~f:(fun expr_f -> (fun () ->
+             let (expr', indexes) = expr_f () in
+             expr_shell expr' indexes))
+           [
+             (fun () ->
+                let cond, indexes = generate_helper EXPR indexes in
+                let cond = [%of_yojson: expr] cond in
+
+                let then_, indexes = generate_helper EXPR indexes in
+                let then_ = [%of_yojson: expr] then_ in
+
+                ([%yojson_of: expr'] (If {
+                     cond = cond;
+                     then_ = then_;
+                     else_ = None
+                   }), indexes));
+             (fun () ->
+                let f, indexes = generate_helper EXPR indexes in
+                let f = [%of_yojson: expr] f in
+
+                let args, indexes = generate_helper EXPR indexes in
+                let args = [%of_yojson: expr] args in
+
+                ([%yojson_of: expr'] (App { f; args = [ args (* must have 1+ items *) ]; generic_args = []; bounds_impls = []; trait = None; }), indexes));
+             (fun () ->
+                let lit, indexes = generate_helper LITERAL indexes in
+                let lit = [%of_yojson: literal] lit in
+                ([%yojson_of: expr'] (Literal lit), indexes));
+             (fun () -> ([%yojson_of: expr'] (Array []), indexes));
+             (fun () ->
+                let g_ident, indexes = generate_helper GLOBAL_IDENT indexes in
+                let g_ident = [%of_yojson: global_ident] g_ident in
+
+                ([%yojson_of: expr'] (Construct {
+                     constructor = g_ident;
+                     is_record = false;
+                     is_struct = false;
+                     fields = [];
+                     base = None;
+                   }), indexes));
+             (fun () ->
+                let expr, indexes = generate_helper EXPR indexes in
+                let expr = [%of_yojson: expr] expr in
+
+                ([%yojson_of: expr'] (Match { scrutinee = expr; arms = [] }), indexes));
+             (fun () ->
+                let lhs, indexes = generate_helper PAT indexes in
+                let lhs = [%of_yojson: pat] lhs in
+
+                let rhs, indexes = generate_helper EXPR indexes in
+                let rhs = [%of_yojson: expr] rhs in
+
+                let body, indexes = generate_helper EXPR indexes in
+                let body = [%of_yojson: expr] body in
+
+                ([%yojson_of: expr'] (Let { monadic = None; lhs; rhs; body; }), indexes));
+             (fun () ->
+                let expr, indexes = generate_helper EXPR indexes in
+                let expr = [%of_yojson: expr] expr in
+
+                ([%yojson_of: expr'] (Block { e = expr; safety_mode = Safe; witness = Features.On.block }), indexes));
+             (fun () ->
+                let l_ident, indexes = generate_helper LOCAL_IDENT indexes in
+                let l_ident = [%of_yojson : local_ident] l_ident in
+                ([%yojson_of: expr'] (LocalVar l_ident), indexes));
+             (fun () ->
+                let g_ident, indexes = generate_helper GLOBAL_IDENT indexes in
+                let g_ident = [%of_yojson : global_ident] g_ident in
+                ([%yojson_of: expr'] (GlobalVar g_ident), indexes));
+             (fun () ->
+                let expr, indexes = generate_helper EXPR indexes in
+                let expr = [%of_yojson: expr] expr in
+
+                let typ, indexes = generate_helper TY indexes in
+                let typ = [%of_yojson: ty] typ in
+                ([%yojson_of: expr'] (Ascription { e = expr; typ; }), indexes));
+             (fun () ->
+                let g_ident, indexes = generate_helper GLOBAL_IDENT indexes in
+                let g_ident = [%of_yojson : global_ident] g_ident in
+                ([%yojson_of: expr'] (MacroInvokation {
+                  macro = g_ident;
+                  args = "dummy";
+                  witness = Features.On.macro;
+                }), indexes));
+             (fun () ->
+                let l_ident, indexes = generate_helper LOCAL_IDENT indexes in
+                let l_ident = [%of_yojson : local_ident] l_ident in
+
+                let expr, indexes = generate_helper EXPR indexes in
+                let expr = [%of_yojson: expr] expr in
+
+                let typ, indexes = generate_helper TY indexes in
+                let typ = [%of_yojson: ty] typ in
+                ([%yojson_of: expr'] (Assign {
+                     lhs = LhsLocalVar { var = l_ident; typ; };
+                     e = expr;
+                     witness = Features.On.mutable_variable;
+                   }), indexes));
+             (fun () ->
+                let body, indexes = generate_helper EXPR indexes in
+                let body = [%of_yojson: expr] body in
+
+                ([%yojson_of: expr'] (Loop {
+                 body = body;
+                 kind = UnconditionalLoop;
+                 state = None;
+                 label = None;
+                 witness = Features.On.loop;
+               }), indexes));
+             (fun () ->
+                let expr, indexes = generate_helper EXPR indexes in
+                let expr = [%of_yojson: expr] expr in
+                ([%yojson_of: expr'] (Break {
+                 e = expr;
+                 label = None;
+                 witness = (Features.On.break, Features.On.loop);
+               }), indexes));
+             (fun () ->
+                let expr, indexes = generate_helper EXPR indexes in
+                let expr = [%of_yojson: expr] expr in
+                ([%yojson_of: expr'] (Return { e = expr; witness = Features.On.early_exit }), indexes));
+             (fun () ->
+                let expr, indexes = generate_helper EXPR indexes in
+                let expr = [%of_yojson: expr] expr in
+
+                let typ, indexes = generate_helper TY indexes in
+                let typ = [%of_yojson: ty] typ in
+                ([%yojson_of: expr'] (QuestionMark {
+                     e = expr;
+                     return_typ = typ;
+                     witness = Features.On.question_mark;
+                   }), indexes));
+             (fun () -> ([%yojson_of: expr'] (Continue {
+                  e = None;
+                  label = None;
+                  witness = (Features.On.continue, Features.On.loop);
+                }), indexes));
+             (fun () ->
+                let expr, indexes = generate_helper EXPR indexes in
+                let expr = [%of_yojson: expr] expr in
+                ([%yojson_of: expr'] (Borrow {
+                  kind = Shared;
+                  e = expr;
+                  witness = Features.On.reference
+                }), indexes));
+             (fun () ->
+                let expr, indexes = generate_helper EXPR indexes in
+                let expr = [%of_yojson: expr] expr in
+                ([%yojson_of: expr'] (AddressOf
+               { mut = Immutable; e = expr; witness = Features.On.raw_pointer }), indexes));
+             (fun () ->
+                let body, indexes = generate_helper EXPR indexes in
+                let body = [%of_yojson: expr] body in
+                ([%yojson_of: expr'] (Closure { params = []; body; captures = [] }), indexes));
+             (* TODO: The two remaing ast elements! *)
+             (* EffectAction *)
+             (*   { action = Features.On.monadic_action; argument = dummy_expr }; *)
+             (* Quote { contents = []; witness = Features.On.quote }; *)
+           ]
+
+       | GENERICS ->
+         [
+           (fun () -> ([%yojson_of: generics] { params = []; constraints = [] }, indexes));
+         ]
+
+       | GLOBAL_IDENT ->
+         [fun () ->
+            let c_ident, indexes = generate_helper CONCRETE_IDENT indexes in
+            (`List [ `String "Concrete" ; c_ident ], indexes)
+         ]
+
+       | PAT ->
+
+         let pat_shell v indexes =
+           let typ, indexes = generate_helper TY indexes in
+           (`Assoc [
+               ("p" , v ) ;
+               ("span" , `Assoc [("id" , `Int 79902) ; ("data" , `List [])]) ;
+               ("typ" , typ) ;
+             ], indexes)
+         in
+         List.map ~f:(fun pat_f -> (fun () ->
+             let (pat', indexes) = pat_f () in
+             pat_shell pat' indexes))
+         [
+           (fun () -> ([%yojson_of: pat'] PWild, indexes));
+           (fun () ->
+              let typ, indexes = generate_helper TY indexes in
+              let typ = [%of_yojson: ty] typ in
+
+              let pat, indexes = generate_helper PAT indexes in
+              let pat = [%of_yojson: pat] pat in
+              ([%yojson_of: pat'] (PAscription {
+                   typ;
+                   typ_span = Span.dummy ();
+                   pat;
+                 }), indexes));
+           (fun () ->
+              let g_ident, indexes = generate_helper GLOBAL_IDENT indexes in
+              let g_ident = [%of_yojson: global_ident] g_ident in
+              ([%yojson_of: pat'] (PConstruct
+             {
+               constructor = g_ident;
+               is_record = false;
+               is_struct = false;
+               fields = [];
+             }), indexes));
+           (fun () ->
+              let lhs_pat, indexes = generate_helper PAT indexes in
+              let lhs_pat = [%of_yojson: pat] lhs_pat in
+
+              let rhs_pat, indexes = generate_helper PAT indexes in
+              let rhs_pat = [%of_yojson: pat] rhs_pat in
+              ([%yojson_of: pat'] (POr {
+                   subpats = [ lhs_pat; rhs_pat ]
+                 }), indexes));
+           (fun () -> ([%yojson_of: pat'] (PArray { args = [] }), indexes));
+           (fun () ->
+              let pat, indexes = generate_helper PAT indexes in
+              let pat = [%of_yojson: pat] pat in
+              ([%yojson_of: pat'] (PDeref {
+                   subpat = pat;
+                   witness = Features.On.reference
+                 }), indexes));
+           (fun () ->
+              let lit, indexes = generate_helper LITERAL indexes in
+              let lit = [%of_yojson: literal] lit in
+              ([%yojson_of: pat'] (PConstant { lit }), indexes));
+           (fun () ->
+              let l_ident, indexes = generate_helper LOCAL_IDENT indexes in
+              let l_ident = [%of_yojson: local_ident] l_ident in
+
+              let typ, indexes = generate_helper TY indexes in
+              let typ = [%of_yojson: ty] typ in
+              ([%yojson_of: pat'] (PBinding
+             {
+               mut = Mutable Features.On.mutable_variable;
+               mode = ByValue;
+               var = l_ident;
+               typ;
+               subpat = None;
+             }), indexes));
+         ]
+
+       | LOCAL_IDENT ->
+         [fun () ->
+            (`Assoc [("name" , `String "dummy") ; ("id" , `List [`List [`String "Typ"] ; `Int 0])], indexes)
+         ]
+
+       | IMPL_EXPR ->
+         [fun () ->
+            let c_ident, indexes = generate_helper CONCRETE_IDENT indexes in
+            (`Assoc [
+                ("kind" , `List [`String "Self"]) ;
+                ("goal" , `Assoc [
+                    ("trait" , c_ident) ;
+                    ("args" , `List [])])
+              ], indexes)
+         ]
+
+       | ITEM ->
+         let item_shell v indexes =
+           let ident, indexes = generate_helper CONCRETE_IDENT indexes in
+           (`Assoc [
+               ("v" , v ) ;
+               ("span" , `Assoc [("id" , `Int 79902) ; ("data" , `List [])]) ;
+               ("ident" , ident) ;
+               ("attrs" , `List [])
+             ], indexes)
+         in
+         List.map ~f:(fun item_f -> (fun () ->
+             let (item', indexes) = item_f () in
+             item_shell item' indexes))
+           [
+             (fun () ->
+                let name, indexes = generate_helper CONCRETE_IDENT indexes in
+                let name = [%of_yojson: concrete_ident] name in
+
+                let generics, indexes = generate_helper GENERICS indexes in
+                let generics = [%of_yojson: generics] generics in
+
+                let body, indexes = generate_helper EXPR indexes in
+                let body = [%of_yojson: expr] body in
+                ([%yojson_of: item'] (Fn {name; generics; body; params = []; safety = Safe}), indexes));
+            (fun () ->
+               let name, indexes = generate_helper CONCRETE_IDENT indexes in
+               let name = [%of_yojson: concrete_ident] name in
+
+               let generics, indexes = generate_helper GENERICS indexes in
+               let generics = [%of_yojson: generics] generics in
+
+               let typ, indexes = generate_helper TY indexes in
+               let typ = [%of_yojson: ty] typ in
+               ([%yojson_of: item'] (TyAlias {name; generics; ty = typ;}), indexes));
+            (* enum *)
+            (fun () ->
+              let name, indexes = generate_helper CONCRETE_IDENT indexes in
+              let name = [%of_yojson: concrete_ident] name in
+
+              let generics, indexes = generate_helper GENERICS indexes in
+              let generics = [%of_yojson: generics] generics in
+              ([%yojson_of: item'] (Type {name; generics; variants = []; is_struct = false}), indexes));
+            (* struct *)
+            (fun () ->
+              let name, indexes = generate_helper CONCRETE_IDENT indexes in
+              let name = [%of_yojson: concrete_ident] name in
+
+              let generics, indexes = generate_helper GENERICS indexes in
+              let generics = [%of_yojson: generics] generics in
+              ([%yojson_of: item'] (Type {name; generics; variants = []; is_struct = true}), indexes));
+            (fun () ->
+               let macro, indexes = generate_helper CONCRETE_IDENT indexes in
+               let macro = [%of_yojson: concrete_ident] macro in
+               ([%yojson_of: item'] (IMacroInvokation {macro; argument = "TODO"; span = Span.dummy(); witness = Features.On.macro}), indexes));
+            (fun () ->
+              let name, indexes = generate_helper CONCRETE_IDENT indexes in
+              let name = [%of_yojson: concrete_ident] name in
+
+              let generics, indexes = generate_helper GENERICS indexes in
+              let generics = [%of_yojson: generics] generics in
+              ([%yojson_of: item'] (Trait {
+                   name ;
+                   generics ;
+                   items = [];
+                   safety = Safe;
+                 }), indexes));
+            (fun () ->
+              let generics, indexes = generate_helper GENERICS indexes in
+              let generics = [%of_yojson: generics] generics in
+
+              let ty, indexes = generate_helper TY indexes in
+              let ty = [%of_yojson: ty] ty in
+
+              let g_ident, indexes = generate_helper GLOBAL_IDENT indexes in
+              let g_ident = [%of_yojson: global_ident] g_ident in
+              ([%yojson_of: item'] (Impl {
+                   generics;
+                   self_ty = ty;
+                   of_trait = (g_ident, []) ;
+                   items = [] ;
+                   parent_bounds = [] ;
+                   safety = Safe
+                 }), indexes));
+            (fun () ->
+              let name, indexes = generate_helper CONCRETE_IDENT indexes in
+              let name = [%of_yojson: concrete_ident] name in
+
+              let item, indexes = generate_helper CONCRETE_IDENT indexes in
+              let item = [%of_yojson: concrete_ident] item in
+               ([%yojson_of: item'] (Alias { name;  item }), indexes));
+            (fun () ->
+              ([%yojson_of: item'] (Use {
+                  path = [];
+                  is_external = false;
+                  rename = None
+                }), indexes));
+            (* Quote { contents = []; witness = Features.On.quote }; *)
+            (* HaxError "dummy"; *)
+            (* NotImplementedYet; *)
+           ]
+      )  in
+    List.nth_exn cases i ()
+
+  let generate (t : ast_types) (indexes : int list) : Yojson.Safe.t =
+    fst (generate_helper t indexes)
+
   let print_ast (_ : unit) =
     let my_printer = new MyPrinter.printer in
 
-    let dummy_ident : concrete_ident =
-      Concrete_ident.of_name Value Hax_lib__RefineAs__into_checked
-    in
-
-    let dummy_literal = String "dummy" in
-
-    let dummy_ty = TBool in
-
-    let dummy_expr : expr =
-      { e = Literal dummy_literal; span = Span.dummy (); typ = dummy_ty }
-    in
-    let dummy_generics : generics = { params = []; constraints = [] } in
-    let dummy_global_ident : global_ident = `Concrete dummy_ident in
-    let dummy_pat = { p = PWild; span = Span.dummy (); typ = dummy_ty } in
-    let dummy_local_ident : local_ident =
-      { name = "dummy"; id = Local_ident.mk_id Typ 0 }
-    in
-    let dummy_trait_item = { kind = Self; goal = { trait = dummy_ident; args = [] } } in
-    
     (** Can use rendering tools for EBNF e.g. https://rr.red-dove.com/ui **)
-    
-    (* print#_do_not_override_lazy_of_item' ~super AstPos_item__v v *)
-    let my_literals =
-      [
-        String "dummy";
-        Char 'a';
-        Int
-          {
-            value = "dummy";
-            kind = { size = S8; signedness = Unsigned };
-            negative = false;
-          };
-        Float { value = "dummy"; kind = F16; negative = false };
-        Bool false;
-      ]
-    in
+
+    let concrete_ident_args = [0] in
+    let global_ident_args = [0] @ concrete_ident_args in
+    let local_ident_args = [0] in
+    let generics_args = [0] in
+    let impl_expr_args = [0;0] in
+
+    let literal_args = [
+      (* String *)
+      [0];
+      (* Char *)
+      [1];
+      (* Int *)
+      [2];
+      (* Float *)
+      [3];
+      (* Bool *)
+      [4]
+    ] in
+    let my_literals = List.map ~f:(fun x -> [%of_yojson: literal] (generate LITERAL x)) literal_args in
     let literal_string =
       "\n\n```ebnf\nliteral ::=\n"
       ^ String.concat ~sep:"\n"
@@ -668,163 +1114,149 @@ module HaxCFG = struct
       ^ "\n```"
     in
 
-    let my_items' : item' list =
-      [
-        Fn
-          {
-            name = dummy_ident;
-            generics = dummy_generics;
-            body = dummy_expr;
-            params = [];
-            safety = Safe;
-          };
-        TyAlias { name = dummy_ident; generics = dummy_generics; ty = dummy_ty };
-        (* struct *)
-        Type
-          {
-            name = dummy_ident;
-            generics = dummy_generics;
-            variants = [];
-            is_struct = false;
-          };
-        (* enum *)
-        Type
-          {
-            name = dummy_ident;
-            generics = dummy_generics;
-            variants = [];
-            is_struct = true;
-          };
-        IMacroInvokation
-          {
-            macro = dummy_ident;
-            argument = "TODO";
-            span = Span.dummy ();
-            witness = Features.On.macro;
-          };
-        Trait
-          {
-            name = dummy_ident;
-            generics = dummy_generics;
-            items = [];
-            safety = Safe;
-          };
-        Impl
-          {
-            generics = dummy_generics;
-            self_ty = dummy_ty;
-            of_trait = (dummy_global_ident, []);
-            items = [];
-            parent_bounds = [];
-            safety = Safe;
-          };
-        Alias { name = dummy_ident; item = dummy_ident };
-        Use { path = []; is_external = false; rename = None };
-        (* Quote { contents = []; witness = Features.On.quote }; *)
-        (* HaxError "dummy"; *)
-        (* NotImplementedYet; *)
-      ]
-    in
-    let my_items : item list =
-      List.map
-        ~f:(fun x ->
-          { v = x; span = Span.dummy (); ident = dummy_ident; attrs = [] })
-        my_items'
-    in
-    let item_string =
-      "\n\n```ebnf\nitem ::=\n"
+    (* TODO: BFS generator *)
+    let ty_args ~ty ~expr = [
+      (* TBool *)
+      [0];
+      (* TChar *)
+      [1];
+      (* TInt *)
+      [2];
+      (* TFloat *)
+      [3];
+      (* TStr *)
+      [4];
+      (* TApp *)
+      [5] @ global_ident_args;
+      (* TArray *)
+      [6] @ ty @ expr;
+      (* TSlice *)
+      [7] @ ty;
+      (* TRawPointer *)
+      [8];
+      (* TRef *)
+      [9] @ ty;
+      (* TParam *)
+      [10] @ local_ident_args;
+      (* TArrow *)
+      [11] @ ty;
+      (* TAssociatedType *)
+      [12] @ impl_expr_args @ concrete_ident_args ;
+      (* TOpaque *)
+      [13] @ concrete_ident_args;
+      (* TDyn *)
+      [14];
+    ] in
+    let ty_args = ty_args ~ty:[0] ~expr:[2;0;0] (* TODO: generate random elements in ty and expr *) in
+
+    let my_tys = List.map ~f:(fun x -> [%of_yojson: ty] (generate TY x)) ty_args in
+    let ty_string =
+      "\n\n```ebnf\nty ::=\n"
       ^ String.concat ~sep:"\n"
           (List.map
-             ~f:(fun item ->
+             ~f:(fun ty ->
                let buf = Buffer.create 0 in
-               PPrint.ToBuffer.pretty 1.0 80 buf
-                 (my_printer#entrypoint_item item);
+               PPrint.ToBuffer.pretty 1.0 80 buf (my_printer#entrypoint_ty ty);
                "| " ^ Buffer.contents buf)
-             my_items)
+             my_tys)
       ^ "\n```"
     in
 
-    let my_exprs' =
-      [
-        If { cond = dummy_expr; then_ = dummy_expr; else_ = None };
-        App { f = dummy_expr; args = [ dummy_expr (* must have 1+ items *) ]; generic_args = []; bounds_impls = []; trait = None; };
-        Literal (String "dummy");
-        Array [];
-        Construct
-          {
-            constructor = dummy_global_ident;
-            is_record = false;
-            is_struct = false;
-            fields = [];
-            base = None;
-          };
-        Match { scrutinee = dummy_expr; arms = [] };
-        Let
-          {
-            monadic = None;
-            lhs = dummy_pat;
-            rhs = dummy_expr;
-            body = dummy_expr;
-          };
-        Block
-          { e = dummy_expr; safety_mode = Safe; witness = Features.On.block };
-        LocalVar dummy_local_ident;
-        GlobalVar dummy_global_ident;
-        Ascription { e = dummy_expr; typ = dummy_ty };
-        MacroInvokation
-          {
-            macro = dummy_global_ident;
-            args = "dummy";
-            witness = Features.On.macro;
-          };
-        Assign
-          {
-            lhs = LhsLocalVar { var = dummy_local_ident; typ = dummy_ty };
-            e = dummy_expr;
-            witness = Features.On.mutable_variable;
-          };
-        Loop
-          {
-            body = dummy_expr;
-            kind = UnconditionalLoop;
-            state = None;
-            label = None;
-            witness = Features.On.loop;
-          };
-        Break
-          {
-            e = dummy_expr;
-            label = None;
-            witness = (Features.On.break, Features.On.loop);
-          };
-        Return { e = dummy_expr; witness = Features.On.early_exit };
-        QuestionMark
-          {
-            e = dummy_expr;
-            return_typ = dummy_ty;
-            witness = Features.On.question_mark;
-          };
-        Continue
-          {
-            e = None;
-            label = None;
-            witness = (Features.On.continue, Features.On.loop);
-          };
-        Borrow
-          { kind = Shared; e = dummy_expr; witness = Features.On.reference };
-        AddressOf
-          { mut = Immutable; e = dummy_expr; witness = Features.On.raw_pointer };
-        Closure { params = []; body = dummy_expr; captures = [] };
-        (* TODO: The two remaing ast elements! *)
-        (* EffectAction *)
-        (*   { action = Features.On.monadic_action; argument = dummy_expr }; *)
-        (* Quote { contents = []; witness = Features.On.quote }; *)
-      ]
+    let pat_args ~ty ~ty1 ~literal ~pat1 ~pat2 =  List.map ~f:(fun x -> x @ ty) [
+        (* PWild *)
+        [0];
+        (* PAscription *)
+        [1] @ ty1 @ pat1;
+        (* PConstruct *)
+        [2] @ global_ident_args;
+        (* POr *)
+        [3] @ pat1 @ pat2;
+        (* PArray *)
+        [4];
+        (* PDeref *)
+        [5] @ pat1;
+        (* PConstant *)
+        [6] @ literal;
+        (* PBinding *)
+        [7] @ local_ident_args @ ty1;
+      ] in
+    let pat_args = pat_args ~ty:[0] ~ty1:[0] ~literal:(List.nth_exn literal_args 0) ~pat1:[0;0] ~pat2:[0;0] in
+
+    let my_pats =
+      List.map ~f:(fun x -> [%of_yojson: pat] (generate PAT x)) pat_args
     in
+    let pat_string =
+      "\n\n```ebnf\npat ::=\n"
+      ^ String.concat ~sep:"\n"
+          (List.map
+             ~f:(fun pat ->
+               let buf = Buffer.create 0 in
+               PPrint.ToBuffer.pretty 1.0 80 buf (my_printer#entrypoint_pat pat);
+               "| " ^ Buffer.contents buf)
+             my_pats)
+      ^ "\n```"
+    in
+
+    let expr_args ~expr_ty ~literal ~ty ~expr0 ~expr1 ~expr2 ~pat =
+      List.map ~f:(fun x -> x @ expr_ty)
+        [
+          (* If *)
+          [0] @ expr1 @ expr2 (* @ expr3 *) ;
+          (* App *)
+          [1] @ expr1 @ expr2;
+          (* Literal *)
+          [2] @ literal;
+          (* Array *)
+          [3];
+          (* Construct *)
+          [4] @ global_ident_args;
+          (* Match *)
+          [5] @ expr1;
+          (* Let *)
+          [6] @ pat @ expr1 @ expr2;
+          (* Block *)
+          [7] @ expr1;
+          (* LocalVar *)
+          [8] @ local_ident_args;
+          (* GlobalVar *)
+          [9] @ global_ident_args;
+          (* Ascription *)
+          [10] @ expr1 @ ty;
+          (* MacroInvokation *)
+          [11] @ global_ident_args;
+          (* Assign *)
+          [12] @ local_ident_args @ expr1 @ ty;
+          (* Loop *)
+          [13] @ expr1;
+          (* Break *)
+          [14] @ expr1;
+          (* Return *)
+          [15] @ expr1;
+          (* QuestionMark *)
+          [16] @ expr1 @ ty;
+          (* Continue *)
+          [17];
+          (* Borrow *)
+          [18] @ expr1;
+          (* AddressOf *)
+          [19] @ expr1;
+          (* Closure *)
+          [20] @ expr1;
+        ]
+    in
+    let expr_args =
+      expr_args
+        ~expr_ty:[0]
+        ~literal:(List.nth_exn literal_args 0)
+        ~ty:[0]
+        ~expr0:[2;0;0]
+        ~expr1:[2;0;0]
+        ~expr2:[2;0;0]
+        ~pat:[0;0]
+    in
+
     let my_exprs =
-      List.map
-        ~f:(fun x -> { e = x; span = Span.dummy (); typ = dummy_ty })
-        my_exprs'
+      List.map ~f:(fun x -> [%of_yojson: expr] (generate EXPR x)) expr_args
     in
     let expr_string =
       "\n\n```ebnf\nexpr ::=\n"
@@ -839,84 +1271,38 @@ module HaxCFG = struct
       ^ "\n```"
     in
 
-    let my_tys =
-      [
-        TBool;
-        TChar;
-        TInt { size = S8; signedness = Signed };
-        TFloat F16;
-        TStr;
-        TApp { ident = dummy_global_ident; args = [] };
-        TArray { typ = dummy_ty; length = dummy_expr (* const *) };
-        TSlice { witness = Features.On.slice; ty = dummy_ty };
-        TRawPointer { witness = Features.On.raw_pointer };
-        TRef
-          {
-            witness = Features.On.reference;
-            region = "todo";
-            typ = dummy_ty;
-            mut = Immutable;
-          };
-        TParam dummy_local_ident;
-        TArrow ([], dummy_ty);
-        TAssociatedType { impl = dummy_trait_item ; item = dummy_ident };
-        TOpaque dummy_ident;
-        TDyn { witness = Features.On.dyn; goals = [] };
+    let item_args = List.map ~f:(fun x -> x @ concrete_ident_args) [
+        (* Fn *)
+        [0] @ concrete_ident_args @ generics_args @ List.nth_exn expr_args 2;
+        (* TyAlias *)
+        [1] @ concrete_ident_args @ generics_args @ List.nth_exn ty_args 0;
+        (* Type *)
+        [2] @ concrete_ident_args @ generics_args;
+        (* Type *)
+        [3] @ concrete_ident_args @ generics_args;
+        (* IMacroInvokation *)
+        [4] @ concrete_ident_args;
+        (* Trait *)
+        [5] @ concrete_ident_args @ generics_args;
+        (* Impl *)
+        [6] @ generics_args @ List.nth_exn ty_args 0 @ global_ident_args;
+        (* Alias *)
+        [7] @ concrete_ident_args @ concrete_ident_args;
+        (* Use *)
+        [8];
       ]
     in
-    let ty_string =
-      "\n\n```ebnf\nty ::=\n"
+    let my_items : item list = List.map ~f:(fun x -> [%of_yojson: item] (generate ITEM x)) item_args in
+    let item_string =
+      "\n\n```ebnf\nitem ::=\n"
       ^ String.concat ~sep:"\n"
           (List.map
-             ~f:(fun ty ->
+             ~f:(fun item ->
                let buf = Buffer.create 0 in
-               PPrint.ToBuffer.pretty 1.0 80 buf (my_printer#entrypoint_ty ty);
+               PPrint.ToBuffer.pretty 1.0 80 buf
+                 (my_printer#entrypoint_item item);
                "| " ^ Buffer.contents buf)
-             my_tys)
-      ^ "\n```"
-    in
-
-    let my_pats' =
-      [
-        PWild;
-        PAscription
-          { typ = dummy_ty; typ_span = Span.dummy (); pat = dummy_pat };
-        PConstruct
-          {
-            constructor = dummy_global_ident;
-            is_record = false;
-            is_struct = false;
-            fields = [];
-          };
-        POr { subpats = [ dummy_pat; dummy_pat ] };
-        (* Does not render *)
-        PArray { args = [] };
-        PDeref { subpat = dummy_pat; witness = Features.On.reference };
-        PConstant { lit = dummy_literal };
-        PBinding
-          {
-            mut = Mutable Features.On.mutable_variable;
-            mode = ByValue;
-            var = dummy_local_ident;
-            typ = dummy_ty;
-            subpat = None;
-          };
-      ]
-    in
-    let my_pats =
-      List.map
-        ~f:(fun x -> { p = x; span = Span.dummy (); typ = dummy_ty })
-        my_pats'
-    in
-    let pat_string =
-      "\n\n```ebnf\npat ::=\n"
-      ^ String.concat ~sep:"\n"
-          (List.map
-             ~f:(fun pat ->
-               let buf = Buffer.create 0 in
-               PPrint.ToBuffer.pretty 1.0 80 buf (my_printer#entrypoint_pat pat);
-               "| " ^ Buffer.contents buf)
-             my_pats)
+             my_items)
       ^ "\n```"
     in
 
