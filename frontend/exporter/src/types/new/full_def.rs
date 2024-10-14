@@ -1,11 +1,10 @@
 use crate::prelude::*;
+use std::sync::Arc;
 
 #[cfg(feature = "rustc")]
 use rustc_middle::ty;
 #[cfg(feature = "rustc")]
 use rustc_span::def_id::DefId as RDefId;
-#[cfg(feature = "rustc")]
-use std::sync::Arc;
 
 /// Gathers a lot of definition information about a [`rustc_hir::def_id::DefId`].
 #[derive_group(Serializers)]
@@ -109,8 +108,17 @@ pub enum FullDefKind {
         })]
         self_predicate: TraitPredicate,
         /// Associated items, in definition order.
-        #[value(s.base().tcx.associated_items(s.owner_id()).in_definition_order().collect::<Vec<_>>().sinto(s))]
-        items: Vec<AssocItem>,
+        #[value(
+            s
+                .base()
+                .tcx
+                .associated_items(s.owner_id())
+                .in_definition_order()
+                .map(|assoc| (assoc, assoc.def_id))
+                .collect::<Vec<_>>()
+                .sinto(s)
+        )]
+        items: Vec<(AssocItem, Arc<FullDef>)>,
     },
     /// Type alias: `type Foo = Bar;`
     TyAlias {
@@ -263,8 +271,17 @@ pub enum FullDefKind {
         #[value(s.base().tcx.impl_subject(s.owner_id()).instantiate_identity().sinto(s))]
         impl_subject: ImplSubject,
         /// Associated items, in definition order.
-        #[value(s.base().tcx.associated_items(s.owner_id()).in_definition_order().collect::<Vec<_>>().sinto(s))]
-        items: Vec<AssocItem>,
+        #[value(
+            s
+                .base()
+                .tcx
+                .associated_items(s.owner_id())
+                .in_definition_order()
+                .map(|assoc| (assoc, assoc.def_id))
+                .collect::<Vec<_>>()
+                .sinto(s)
+        )]
+        items: Vec<(AssocItem, Arc<FullDef>)>,
     },
     /// A field in a struct, enum or union. e.g.
     /// - `bar` in `struct Foo { bar: u8 }`
