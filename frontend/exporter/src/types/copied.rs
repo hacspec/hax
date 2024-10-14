@@ -2075,6 +2075,26 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, AdtDef> for rustc_middle::ty::AdtD
     }
 }
 
+/// Describe the kind of a variant
+#[derive_group(Serializers)]
+#[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum VariantKind {
+    /// The variant is the only variant of a `struct` type
+    Struct {
+        /// Are the fields on this struct all named?
+        named: bool,
+    },
+    /// The variant is the only variant of a `union` type
+    Union,
+    /// The variant is one of the many variants of a `enum` type
+    Enum {
+        /// The index of this variant in the `enum`
+        index: VariantIdx,
+        /// Are the fields on this struct all named?
+        named: bool,
+    },
+}
+
 /// Describe a variant
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -2083,17 +2103,7 @@ pub struct VariantInformations {
 
     pub typ: DefId,
     pub variant: DefId,
-    pub variant_index: VariantIdx,
-
-    /// A record type is a type with only one variant which is a
-    /// record variant.
-    pub typ_is_record: bool,
-    /// A record variant is a variant whose fields are named, a record
-    /// variant always has at least one field.
-    pub variant_is_record: bool,
-    /// A struct is a type with exactly one variant. Note that one
-    /// variant is named exactly as the type.
-    pub typ_is_struct: bool,
+    pub kind: VariantKind,
 }
 
 /// Reflects [`rustc_middle::thir::PatKind`]

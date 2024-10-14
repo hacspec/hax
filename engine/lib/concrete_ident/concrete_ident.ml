@@ -284,9 +284,9 @@ module View = struct
       last.data |> Imported.of_def_path_item |> string_of_def_path_item
       |> Option.map ~f:escape
     in
-    let arity0 ty =
+    let arity0 (ty : Types.ty) =
       match ty.Types.kind with
-      | Types.Bool -> Some "bool"
+      | Bool -> Some "bool"
       | Char -> Some "char"
       | Str -> Some "str"
       | Never -> Some "never"
@@ -310,9 +310,9 @@ module View = struct
       | _ -> None
     in
     let apply left right = left ^ "_of_" ^ right in
-    let rec arity1 ty =
-      match ty.Types.kind with
-      | Types.Slice sub -> arity1 sub |> Option.map ~f:(apply "slice")
+    let rec arity1 (ty : Types.ty) =
+      match ty.kind with
+      | Slice sub -> arity1 sub |> Option.map ~f:(apply "slice")
       | Ref (_, sub, _) -> arity1 sub |> Option.map ~f:(apply "ref")
       | Adt { def_id; generic_args = [ Type arg ]; _ } ->
           let* adt = adt def_id in
