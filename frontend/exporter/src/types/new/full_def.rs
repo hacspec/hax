@@ -4,6 +4,8 @@ use crate::prelude::*;
 use rustc_middle::ty;
 #[cfg(feature = "rustc")]
 use rustc_span::def_id::DefId as RDefId;
+#[cfg(feature = "rustc")]
+use std::sync::Arc;
 
 /// Gathers a lot of definition information about a [`rustc_hir::def_id::DefId`].
 #[derive_group(Serializers)]
@@ -25,15 +27,18 @@ pub struct FullDef {
 }
 
 #[cfg(feature = "rustc")]
-impl<'tcx, S: BaseState<'tcx>> SInto<S, FullDef> for RDefId {
-    fn sinto(&self, s: &S) -> FullDef {
+impl<'tcx, S: BaseState<'tcx>> SInto<S, Arc<FullDef>> for RDefId {
+    fn sinto(&self, s: &S) -> Arc<FullDef> {
+        if let Some(full_def) = s.with_item_cache(*self, |cache| cache.full_def.clone()) {
+            return full_def;
+        }
         let tcx = s.base().tcx;
         let def_id = *self;
         let kind = {
             let state_with_id = with_owner_id(s.base(), (), (), def_id);
             tcx.def_kind(def_id).sinto(&state_with_id)
         };
-        FullDef {
+        let full_def = FullDef {
             def_id: self.sinto(s),
             parent: tcx.opt_parent(def_id).sinto(s),
             span: tcx.def_span(def_id).sinto(s),
@@ -47,7 +52,10 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, FullDef> for RDefId {
                 .sinto(s),
             diagnostic_item: tcx.get_diagnostic_name(def_id).sinto(s),
             kind,
-        }
+        };
+        let full_def: Arc<FullDef> = Arc::new(full_def);
+        s.with_item_cache(*self, |cache| cache.full_def = Some(full_def.clone()));
+        full_def
     }
 }
 
