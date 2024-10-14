@@ -13,7 +13,12 @@ pub struct FullDef {
     pub def_id: DefId,
     /// The enclosing item.
     pub parent: Option<DefId>,
+    /// The span of the definition of this item (e.g. for a function this is is signature).
     pub span: Span,
+    /// The span of the whole definition (including e.g. the function body).
+    pub source_span: Option<Span>,
+    /// The text of the whole definition.
+    pub source_text: Option<String>,
     /// Attributes on this definition, if applicable.
     pub attributes: Vec<Attribute>,
     /// Visibility of the definition, for definitions where this makes sense.
@@ -37,10 +42,17 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, Arc<FullDef>> for RDefId {
             let state_with_id = with_owner_id(s.base(), (), (), def_id);
             tcx.def_kind(def_id).sinto(&state_with_id)
         };
+
+        let source_span = def_id.as_local().map(|ldid| tcx.source_span(ldid));
+        let source_text = source_span
+            .filter(|source_span| source_span.ctxt().is_root())
+            .and_then(|source_span| tcx.sess.source_map().span_to_snippet(source_span).ok());
         let full_def = FullDef {
             def_id: self.sinto(s),
             parent: tcx.opt_parent(def_id).sinto(s),
             span: tcx.def_span(def_id).sinto(s),
+            source_span: source_span.sinto(s),
+            source_text,
             attributes: tcx.get_attrs_unchecked(def_id).sinto(s),
             visibility: get_def_visibility(tcx, def_id),
             lang_item: s
@@ -99,7 +111,7 @@ pub enum FullDefKind {
         generics: TyGenerics,
         #[value(get_generic_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
-        // `predicates_of` has the special `Self: Trait` clause as its last element.
+        /// The special `Self: Trait` clause.
         #[value({
             use ty::Upcast;
             let tcx = s.base().tcx;
@@ -294,6 +306,11 @@ pub enum FullDefKind {
 }
 
 impl FullDef {
+    #[cfg(feature = "rustc")]
+    pub fn rust_def_id(&self) -> RDefId {
+        (&self.def_id).into()
+    }
+
     pub fn kind(&self) -> &FullDefKind {
         &self.kind
     }
