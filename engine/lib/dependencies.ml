@@ -197,14 +197,25 @@ module Make (F : Features.T) = struct
                           G.fold_succ
                             (fun dest bundles_graph ->
                               let dest_mod = Namespace.of_concrete_ident dest in
-                              if [%eq: Namespace.t] interm_mod dest_mod then
-                                let g =
+                              if [%eq: Namespace.t] start_mod dest_mod then
+                                let bundles_graph =
                                   Bundle.G.add_edge bundles_graph start interm
                                 in
-                                let g = Bundle.G.add_edge g interm dest in
-                                g
+                                let bundles_graph =
+                                  Bundle.G.add_edge bundles_graph interm dest
+                                in
+                                let bundles_graph =
+                                  G.fold_succ
+                                    (fun sec_interm bundles_graph ->
+                                      if G.mem_edge closure sec_interm dest then
+                                        Bundle.G.add_edge bundles_graph interm
+                                          sec_interm
+                                      else bundles_graph)
+                                    closure interm bundles_graph
+                                in
+                                bundles_graph
                               else bundles_graph)
-                            g start bundles_graph
+                            closure interm bundles_graph
                         else bundles_graph)
                       g start bundles_graph
                   in
@@ -214,8 +225,32 @@ module Make (F : Features.T) = struct
             closure Bundle.G.empty
         in
 
-        let bundles = Bundle.cycles bundles_graph in
-        bundles
+        let preliminary_bundles = Bundle.cycles bundles_graph in
+        (* We also need to add to the bundle the dependencies of its items belonging
+            to the original modules, otherwise we would create a new cycle.
+        *)
+        let bundles_graph =
+          preliminary_bundles
+          |> List.fold ~init:bundles_graph ~f:(fun bundles_graph bundle ->
+                 let modules =
+                   bundle
+                   |> List.map ~f:Namespace.of_concrete_ident
+                   |> List.dedup_and_sort ~compare:Namespace.compare
+                 in
+                 List.fold bundle ~init:bundles_graph
+                   ~f:(fun bundles_graph item ->
+                     G.fold_succ
+                       (fun dep bundles_graph ->
+                         if
+                           List.mem modules
+                             (Namespace.of_concrete_ident dep)
+                             ~equal:Namespace.equal
+                         then Bundle.G.add_edge bundles_graph item dep
+                         else bundles_graph)
+                       closure item bundles_graph))
+        in
+        let extended_bundles = Bundle.cycles bundles_graph in
+        extended_bundles
 
       let of_graph (g : G.t) (mod_graph_cycles : Namespace.Set.t list) :
           Bundle.t list =

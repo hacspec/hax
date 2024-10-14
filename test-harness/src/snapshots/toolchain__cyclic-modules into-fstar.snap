@@ -144,6 +144,42 @@ include Cyclic_modules.Enums_b.Rec_bundle_573885887 {U_C as U_C}
 
 let f (_: Prims.unit) : t_T = T_A <: t_T
 '''
+"Cyclic_modules.M1.fst" = '''
+module Cyclic_modules.M1
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+include Cyclic_modules.M2.Rec_bundle_180367580 {a as a}
+'''
+"Cyclic_modules.M2.Rec_bundle_180367580.fst" = '''
+module Cyclic_modules.M2.Rec_bundle_180367580
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let c (_: Prims.unit) : Prims.unit = ()
+
+let a (_: Prims.unit) : Prims.unit = c ()
+
+let d (_: Prims.unit) : Prims.unit = ()
+
+let b (_: Prims.unit) : Prims.unit =
+  let _:Prims.unit = a () in
+  d ()
+'''
+"Cyclic_modules.M2.fst" = '''
+module Cyclic_modules.M2
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+include Cyclic_modules.M2.Rec_bundle_180367580 {c as c}
+
+include Cyclic_modules.M2.Rec_bundle_180367580 {d as d}
+
+include Cyclic_modules.M2.Rec_bundle_180367580 {b as b}
+'''
 "Cyclic_modules.Rec.fst" = '''
 module Cyclic_modules.Rec
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"

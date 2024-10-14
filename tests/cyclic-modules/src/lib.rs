@@ -118,3 +118,18 @@ mod enums_b {
         T::A
     }
 }
+
+mod m1 {
+    pub fn a() {
+        super::m2::c()
+    }
+}
+
+mod m2 {
+    pub fn d() {}
+    pub fn b() {
+        super::m1::a();
+        d()
+    }
+    pub fn c() {}
+}
