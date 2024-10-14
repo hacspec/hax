@@ -52,7 +52,8 @@ To see the implementation of the `Ast_visitors` module, run `dune describe pp li
 You can enable a debug mode that prints a Rustish AST at each phase,
 that you can browse interactively along with the actual AST.
 
-Just add the flag `--debug-engine` (or `-d`) to the `into` subcommand.
-At the end of the translation, `cargo hax` will spawn a webserver that
-lets you browse the debug information. Note, you can change to port by
-setting the environment variable `HAX_DEBUGGER_PORT`.
+Just add the flag `--debug-engine i` (or `-d i`, `i` stands for
+**i**nteractive) to the `into` subcommand.  At the end of the
+translation, `cargo hax` will spawn a webserver that lets you browse
+the debug information. Note, you can change to port by setting the
+environment variable `HAX_DEBUGGER_PORT`.
