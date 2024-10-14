@@ -1,40 +1,38 @@
--R specs/ Core
+-R src/ Core
 -arg -w
 -arg all
 
-./specs/Core_Clone.v
+./src/Core_Clone.v
 
-./specs/Core_Marker.v
+./src/Core_Marker.v
 
-./specs/Core_Option.v
-./specs/Core_Cmp.v
+./src/Core_Option.v
+./src/Core_Cmp.v
 
-./specs/Core_Base_Int.v
-./specs/Core_Base_Int_Base_spec.v
-./specs/Core_Base_Int_Base_impl.v
+./src/Core_Base_Int.v
+./src/Core_Base_Int_Base_spec.v
+./src/Core_Base_Int_Base_impl.v
 
-./specs/Core_Coerce.v
-./specs/Core_Convert.v
+./src/Core_Coerce.v
+./src/Core_Convert.v
 
-./specs/Core_Ops_Arith.v
-./specs/Core_Ops_Bit.v
+./src/Core_Ops_Arith.v
+./src/Core_Ops_Bit.v
 
-./specs/Core_Int.v
+./src/Core_Int.v
 
-./specs/Core_Primitive.v
-./specs/Core_Intrinsics.v
+./src/Core_Primitive.v
+./src/Core_Intrinsics.v
 
-./specs/Core_Num.v
+./src/Core_Num.v
 
-./specs/Core_Base_Seq.v
-./specs/Core_Base_Seq_Base_spec.v
+./src/Core_Base_Seq.v
+./src/Core_Base_Seq_Base_spec.v
 
-./specs/Core_Panicking.v
+./src/Core_Panicking.v
 
-./specs/Core_Base_Seq_Base_impl.v
+./src/Core_Base_Seq_Base_impl.v
 
-# ./specs/Core_Base_Int_Number_conversion.v
+./src/Core_Base_Int_Number_conversion.v
 
-# ./specs/Core_Array.v
-
-# ./specs/Core.v
+./src/Core_Array.v

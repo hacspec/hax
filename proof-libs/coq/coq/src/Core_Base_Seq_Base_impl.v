@@ -113,8 +113,8 @@ Next Obligation.
       Lia.lia.
 Qed.
 
-Definition impl_2__get_index `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (self : t_Seq (v_T)) (i : t_HaxInt) `{H : (N.to_nat i < Datatypes.length self)%nat} : v_T :=
-  impl_2__get_index__get_index_unary (self) (impl_5__from_int (i)) (H1 := H).
+Definition impl_2__get_index `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (self : t_Seq (v_T)) (i : t_HaxInt) `{H_inside : (N.to_nat i < Datatypes.length self)%nat} : v_T :=
+  impl_2__get_index__get_index_unary (self) (impl_5__from_int (i)) (H1 := H_inside).
 
 Fixpoint impl_2__repeat__repeat_unary `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (n : t_Unary) (v : v_T) : t_Seq (v_T) :=
   match impl_6__match_unary (n) with
@@ -155,5 +155,5 @@ Next Obligation.
       Lia.lia.
 Qed.
 
-Definition impl_2__set_index `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (self : t_Seq (v_T)) (i : t_HaxInt) (v : v_T) `{H : (N.to_nat i < Datatypes.length self)%nat} : t_Seq (v_T) :=
-  impl_2__set_index__set_index_unary (self) (impl_5__from_int (i)) (v) (H1 := H).
+Definition impl_2__set_index `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (self : t_Seq (v_T)) (i : t_HaxInt) (v : v_T) `{H_inside : (N.to_nat i < Datatypes.length self)%nat} : t_Seq (v_T) :=
+  impl_2__set_index__set_index_unary (self) (impl_5__from_int (i)) (v) (H1 := H_inside).
