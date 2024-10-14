@@ -6,34 +6,49 @@ use rustc_middle::ty;
 use rustc_span::def_id::DefId as RDefId;
 
 /// Gathers a lot of definition information about a [`rustc_hir::def_id::DefId`].
-#[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_hir::def_id::DefId, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct FullDef {
-    #[value(self.sinto(s))]
     pub def_id: DefId,
-    #[value(s.base().tcx.opt_parent(*self).sinto(s))]
+    /// The enclosing item.
     pub parent: Option<DefId>,
-    #[value(s.base().tcx.def_span(*self).sinto(s))]
     pub span: Span,
-    #[value(s.base().tcx.get_attrs_unchecked(*self).sinto(s))]
     /// Attributes on this definition, if applicable.
     pub attributes: Vec<Attribute>,
-    #[value(get_def_visibility(s, *self))]
     /// Visibility of the definition, for definitions where this makes sense.
     pub visibility: Option<bool>,
-    #[value(s.base().tcx.as_lang_item(*self).map(|litem| litem.name()).sinto(s))]
     /// If this definition is a lang item, we store the identifier, e.g. `sized`.
     pub lang_item: Option<String>,
-    #[value(s.base().tcx.get_diagnostic_name(*self).sinto(s))]
     /// If this definition is a diagnostic item, we store the identifier, e.g. `box_new`.
     pub diagnostic_item: Option<String>,
-    #[value({
-        let state_with_id = State { thir: (), mir: (), owner_id: *self, binder: (), base: s.base() };
-        s.base().tcx.def_kind(*self).sinto(&state_with_id)
-    })]
     pub kind: FullDefKind,
+}
+
+#[cfg(feature = "rustc")]
+impl<'tcx, S: BaseState<'tcx>> SInto<S, FullDef> for RDefId {
+    fn sinto(&self, s: &S) -> FullDef {
+        let tcx = s.base().tcx;
+        let def_id = *self;
+        let kind = {
+            let state_with_id = with_owner_id(s.base(), (), (), def_id);
+            tcx.def_kind(def_id).sinto(&state_with_id)
+        };
+        FullDef {
+            def_id: self.sinto(s),
+            parent: tcx.opt_parent(def_id).sinto(s),
+            span: tcx.def_span(def_id).sinto(s),
+            attributes: tcx.get_attrs_unchecked(def_id).sinto(s),
+            visibility: get_def_visibility(tcx, def_id),
+            lang_item: s
+                .base()
+                .tcx
+                .as_lang_item(def_id)
+                .map(|litem| litem.name())
+                .sinto(s),
+            diagnostic_item: tcx.get_diagnostic_name(def_id).sinto(s),
+            kind,
+        }
+    }
 }
 
 /// Imbues [`rustc_hir::def::DefKind`] with a lot of extra information.
@@ -330,9 +345,8 @@ impl FullDef {
 /// Gets the visibility (`pub` or not) of the definition. Returns `None` for defs that don't have a
 /// meaningful visibility.
 #[cfg(feature = "rustc")]
-fn get_def_visibility<'tcx, S: BaseState<'tcx>>(s: &S, def_id: RDefId) -> Option<bool> {
+fn get_def_visibility<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: RDefId) -> Option<bool> {
     use rustc_hir::def::DefKind::*;
-    let tcx = s.base().tcx;
     match tcx.def_kind(def_id) {
         AssocConst
         | AssocFn
