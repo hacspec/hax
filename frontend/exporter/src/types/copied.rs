@@ -1775,7 +1775,7 @@ pub enum AliasKind {
 #[cfg(feature = "rustc")]
 impl Alias {
     #[tracing::instrument(level = "trace", skip(s))]
-    fn from<'tcx, S: BaseState<'tcx> + HasOwnerId>(
+    fn from<'tcx, S: UnderOwnerState<'tcx>>(
         s: &S,
         alias_kind: &rustc_type_ir::AliasTyKind,
         alias_ty: &rustc_middle::ty::AliasTy<'tcx>,
@@ -1783,23 +1783,25 @@ impl Alias {
         use rustc_type_ir::AliasTyKind as RustAliasKind;
         let kind = match alias_kind {
             RustAliasKind::Projection => {
-                use rustc_middle::ty::{Binder, TypeVisitableExt};
                 let tcx = s.base().tcx;
                 let trait_ref = alias_ty.trait_ref(tcx);
-                // We don't have a clear handling of binders here; this is causing a number of
-                // problems in Charon. In the meantime we return something well-formed when we
-                // can't trait-solve. See also https://github.com/hacspec/hax/issues/495.
-                if trait_ref.has_escaping_bound_vars() {
-                    warning!(
-                        s,
-                        "Hax frontend found a projected type with escaping bound vars. Please report https://github.com/hacspec/hax/issues/495"
-                    );
-                    AliasKind::Opaque
-                } else {
-                    AliasKind::Projection {
-                        assoc_item: tcx.associated_item(alias_ty.def_id).sinto(s),
-                        impl_expr: solve_trait(s, Binder::dummy(trait_ref)),
-                    }
+                // In a case like:
+                // ```
+                // impl<T, U> Trait for Result<T, U>
+                // where
+                //     for<'a> &'a Result<T, U>: IntoIterator,
+                //     for<'a> <&'a Result<T, U> as IntoIterator>::Item: Copy,
+                // {}
+                // ```
+                // the `&'a Result<T, U> as IntoIterator` trait ref has escaping bound variables
+                // yet we dont have a binder around (could even be several). Binding this correctly
+                // is therefore difficult. Since our trait resolution ignores lifetimes anyway, we
+                // just erase them. See also https://github.com/hacspec/hax/issues/747.
+                let trait_ref =
+                    traits::rustc::search_clause::erase_and_norm(tcx, s.param_env(), trait_ref);
+                AliasKind::Projection {
+                    assoc_item: tcx.associated_item(alias_ty.def_id).sinto(s),
+                    impl_expr: solve_trait(s, ty::Binder::dummy(trait_ref)),
                 }
             }
             RustAliasKind::Inherent => AliasKind::Inherent,
