@@ -679,9 +679,15 @@ end) : EXPR = struct
           (U.make_tuple_expr' ~span @@ List.map ~f:c_expr fields).e
       | Array { fields } -> Array (List.map ~f:c_expr fields)
       | Adt { info; base; fields; _ } ->
-          let constructor =
-            def_id (Constructor { is_struct = info.typ_is_struct }) info.variant
+          let is_struct, is_record =
+            match info.kind with
+            | Struct { named } -> (true, named)
+            | Enum { named; _ } -> (false, named)
+            | Union ->
+                unimplemented ~issue_id:998 [ e.span ]
+                  "Construct union types: not supported"
           in
+          let constructor = def_id (Constructor { is_struct }) info.variant in
           let base =
             Option.map
               ~f:(fun base -> (c_expr base.base, W.construct_base))
@@ -695,14 +701,7 @@ end) : EXPR = struct
                 (field, value))
               fields
           in
-          Construct
-            {
-              is_record = info.variant_is_record;
-              is_struct = info.typ_is_struct;
-              constructor;
-              fields;
-              base;
-            }
+          Construct { is_record; is_struct; constructor; fields; base }
       | Literal { lit; neg; _ } -> (
           match c_lit e.span neg lit typ with
           | EL_Lit lit -> Literal lit
@@ -873,17 +872,17 @@ end) : EXPR = struct
           let var = local_ident Expr var in
           PBinding { mut; mode; var; typ; subpat }
       | Variant { info; subpatterns; _ } ->
-          let name =
-            def_id (Constructor { is_struct = info.typ_is_struct }) info.variant
+          let is_struct, is_record =
+            match info.kind with
+            | Struct { named } -> (true, named)
+            | Enum { named; _ } -> (false, named)
+            | Union ->
+                unimplemented ~issue_id:998 [ pat.span ]
+                  "Pattern match on union types: not supported"
           in
+          let name = def_id (Constructor { is_struct }) info.variant in
           let args = List.map ~f:(c_field_pat info) subpatterns in
-          PConstruct
-            {
-              name;
-              args;
-              is_record = info.variant_is_record;
-              is_struct = info.typ_is_struct;
-            }
+          PConstruct { name; args; is_record; is_struct }
       | Tuple { subpatterns } ->
           (List.map ~f:c_pat subpatterns |> U.make_tuple_pat').p
       | Deref { subpattern } ->
@@ -1519,7 +1518,8 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
             ~f:
               (fun ({ data; def_id = variant_id; attributes; _ } as original) ->
               let is_record =
-                [%matches? Types.Struct { fields = _ :: _; _ }] data
+                [%matches? (Struct { fields = _ :: _; _ } : Types.variant_data)]
+                  data
               in
               let name = Concrete_ident.of_def_id kind variant_id in
               let arguments =
@@ -1757,8 +1757,10 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
           }
         in
         [ { span; v; ident = Concrete_ident.of_def_id Value def_id; attrs } ]
+    | Union _ ->
+        unimplemented ~issue_id:998 [ item.span ] "Union types: not supported"
     | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
-    | OpaqueTy _ | Union _ | TraitAlias _ ->
+    | OpaqueTy _ | TraitAlias _ ->
         mk NotImplementedYet
 
 let import_item ~drop_body (item : Thir.item) :

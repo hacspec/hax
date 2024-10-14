@@ -27,22 +27,27 @@ pub(crate) fn get_variant_information<'s, S: UnderOwnerState<'s>>(
     s: &S,
 ) -> VariantInformations {
     s_assert!(s, !adt_def.is_union() || *CORE_EXTRACTION_MODE);
-    fn is_record<'s, I: std::iter::Iterator<Item = &'s ty::FieldDef> + Clone>(it: I) -> bool {
+    fn is_named<'s, I: std::iter::Iterator<Item = &'s ty::FieldDef> + Clone>(it: I) -> bool {
         it.clone()
             .any(|field| field.name.to_ident_string().parse::<u64>().is_err())
     }
     let variant_def = adt_def.variant(variant_index);
     let variant = variant_def.def_id;
     let constructs_type: DefId = adt_def.did().sinto(s);
+    let kind = if adt_def.is_struct() {
+        let named = is_named(adt_def.all_fields());
+        VariantKind::Struct { named }
+    } else if adt_def.is_union() {
+        VariantKind::Union
+    } else {
+        let named = is_named(variant_def.fields.iter());
+        let index = variant_index.into();
+        VariantKind::Enum { index, named }
+    };
     VariantInformations {
         typ: constructs_type.clone(),
         variant: variant.sinto(s),
-        variant_index: variant_index.into(),
-
-        typ_is_record: adt_def.is_struct() && is_record(adt_def.all_fields()),
-        variant_is_record: is_record(variant_def.fields.iter()),
-        typ_is_struct: adt_def.is_struct(),
-
+        kind,
         type_namespace: DefId {
             path: match constructs_type.path.as_slice() {
                 [init @ .., _] => init.to_vec(),
