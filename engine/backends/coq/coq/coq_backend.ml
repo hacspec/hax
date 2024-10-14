@@ -137,10 +137,15 @@ struct
     let id = U.Concrete_ident_view.to_view id in
     match id.definition with
     | "not" -> "negb"
-    | "f_eq" -> "t_PartialEq_f_eq"
+    | "eq" | "f_eq" -> "t_PartialEq_f_eq"
     | "f_clone" -> "t_Clone_f_clone"
     | "f_le" -> "t_PartialOrd_f_le"
+    | "lt" | "f_lt" -> "t_PartialOrd_f_lt"
     | "f_from" -> "t_From_f_from"
+    | "add" -> "t_Add_f_add"
+    | "mul" -> "t_Mul_f_mul"
+    | "rem" -> "t_Rem_f_rem"
+    | "div" -> "t_Div_f_div"
     | x -> x
       (* String.concat ~sep:"_" (id.path @ [ id.definition ]) *)
 
@@ -322,7 +327,7 @@ struct
       method generic_value_GType x1 = x1#p
 
       method generics ~params ~constraints =
-        let params_document = separate_map space (fun x -> string "`" ^^ braces (x#p ^^ space ^^ colon ^^ space ^^ string "Type")) params in
+        let params_document = separate_map space (fun x -> string "`" ^^ braces (x#p ^^ space ^^ colon ^^ space ^^ string "_ (* Type? *)")) params in
         let constraints_document = separate_map space (fun x -> string "`" ^^ braces (x#p)) constraints in
         match List.length params, List.length constraints with
         | 0, 0 -> empty
@@ -450,6 +455,9 @@ struct
 
       method item'_Type_struct ~super:_ ~name ~generics ~tuple_struct:_ ~arguments =
         CoqNotation.record (name#p) (generics#p) [] (string "Type") (braces ( nest 2 (concat_map (fun (ident, typ, attr) -> break 1 ^^ name#p ^^ !^"_" ^^ ident#p ^^ space ^^ colon ^^ space ^^ typ#p) arguments) ^^ break 1 ))
+        ^^ break 1
+        ^^ !^"Arguments" ^^ space ^^ name#p ^^ colon ^^ !^"clear implicits" ^^ dot ^^ break 1
+        ^^ !^"Arguments" ^^ space ^^ name#p ^^ concat_map (fun _ -> space ^^ !^"(_)") generics#v.params ^^ concat_map (fun _ -> space ^^ !^"{_}") generics#v.constraints ^^ dot
 
       method item'_Type_enum ~super:_ ~name ~generics ~variants =
         CoqNotation.inductive (name#p) (generics#p) [] (string "Type") (separate_map (break 1) (fun x -> string "|" ^^ space ^^ x#p) variants)
@@ -491,8 +499,17 @@ struct
       method literal_Float ~value:_ ~negative:_ ~kind:_ =
         default_document_for "literal_Float"
 
-      method literal_Int ~value ~negative:_ ~kind:_ =
-        string value
+      method literal_Int ~value ~negative:_ ~kind =
+        (match kind.size with
+         | S8 -> string "Build_t_U8"
+         | S16 -> string "Build_t_U16"
+         | S32 -> string "Build_t_U32"
+         | S64 -> string "Build_t_U64"
+         | S128 -> string "Build_t_U128"
+         | SSize -> string "Build_t_U64"
+         (* Dependens on architecture.. *)
+        )
+        ^^ space ^^ string value ^^ string "%N"
 
       method literal_String x1 = string "\"" ^^ string x1 ^^ string "\"%string"
 
