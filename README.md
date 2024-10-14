@@ -55,7 +55,7 @@ Note:
    fstar --z3rlimit 100`. Use `--help` on those subcommands to list
    all options.
 
-## Installation
+## Installation (💥 bleeding edge –`main`)
 <details>
   <summary><b>Manual installation</b></summary>
 
@@ -69,6 +69,7 @@ Note:
 2. Clone this repo: `git clone git@github.com:hacspec/hax.git && cd hax`
 3. Run the [setup.sh](./setup.sh) script: `./setup.sh`.
 4. Run `cargo-hax --help`
+
 
 </details>
 
@@ -107,6 +108,13 @@ manager</a> <i>(with <a href="https://nixos.wiki/wiki/Flakes">flakes</a> enabled
 5. You can now run `cargo-hax --help` (notice here we use `cargo-hax` instead of `cargo hax`)
 
 </details>
+
+## Installation (🏖️ `v0.1.0-alpha.1` release)
+```bash
+cargo install cargo-hax@0.1.0-alpha.1
+opam pin hax-engine https://github.com/hacspec/hax.git#cargo-hax-v0.1.0-alpha.1
+opam install hax-engine
+```
 
 ## Supported Subset of the Rust Language
 
