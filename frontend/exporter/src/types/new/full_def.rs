@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use std::sync::Arc;
 
 #[cfg(feature = "rustc")]
 use rustc_middle::ty;
@@ -6,34 +7,67 @@ use rustc_middle::ty;
 use rustc_span::def_id::DefId as RDefId;
 
 /// Gathers a lot of definition information about a [`rustc_hir::def_id::DefId`].
-#[derive(AdtInto)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_hir::def_id::DefId, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema)]
 pub struct FullDef {
-    #[value(self.sinto(s))]
     pub def_id: DefId,
-    #[value(s.base().tcx.opt_parent(*self).sinto(s))]
+    /// The enclosing item.
     pub parent: Option<DefId>,
-    #[value(s.base().tcx.def_span(*self).sinto(s))]
+    /// The span of the definition of this item (e.g. for a function this is is signature).
     pub span: Span,
-    #[value(s.base().tcx.get_attrs_unchecked(*self).sinto(s))]
+    /// The span of the whole definition (including e.g. the function body).
+    pub source_span: Option<Span>,
+    /// The text of the whole definition.
+    pub source_text: Option<String>,
     /// Attributes on this definition, if applicable.
     pub attributes: Vec<Attribute>,
-    #[value(get_def_visibility(s, *self))]
     /// Visibility of the definition, for definitions where this makes sense.
     pub visibility: Option<bool>,
-    #[value(s.base().tcx.as_lang_item(*self).map(|litem| litem.name()).sinto(s))]
     /// If this definition is a lang item, we store the identifier, e.g. `sized`.
     pub lang_item: Option<String>,
-    #[value(s.base().tcx.get_diagnostic_name(*self).sinto(s))]
     /// If this definition is a diagnostic item, we store the identifier, e.g. `box_new`.
     pub diagnostic_item: Option<String>,
-    #[value({
-        let state_with_id = State { thir: (), mir: (), owner_id: *self, binder: (), base: s.base() };
-        s.base().tcx.def_kind(*self).sinto(&state_with_id)
-    })]
     pub kind: FullDefKind,
+}
+
+#[cfg(feature = "rustc")]
+impl<'tcx, S: BaseState<'tcx>> SInto<S, Arc<FullDef>> for RDefId {
+    fn sinto(&self, s: &S) -> Arc<FullDef> {
+        if let Some(full_def) = s.with_item_cache(*self, |cache| cache.full_def.clone()) {
+            return full_def;
+        }
+        let tcx = s.base().tcx;
+        let def_id = *self;
+        let kind = {
+            let state_with_id = with_owner_id(s.base(), (), (), def_id);
+            tcx.def_kind(def_id).sinto(&state_with_id)
+        };
+
+        let source_span = def_id.as_local().map(|ldid| tcx.source_span(ldid));
+        let source_text = source_span
+            .filter(|source_span| source_span.ctxt().is_root())
+            .and_then(|source_span| tcx.sess.source_map().span_to_snippet(source_span).ok());
+        let full_def = FullDef {
+            def_id: self.sinto(s),
+            parent: tcx.opt_parent(def_id).sinto(s),
+            span: tcx.def_span(def_id).sinto(s),
+            source_span: source_span.sinto(s),
+            source_text,
+            attributes: tcx.get_attrs_unchecked(def_id).sinto(s),
+            visibility: get_def_visibility(tcx, def_id),
+            lang_item: s
+                .base()
+                .tcx
+                .as_lang_item(def_id)
+                .map(|litem| litem.name())
+                .sinto(s),
+            diagnostic_item: tcx.get_diagnostic_name(def_id).sinto(s),
+            kind,
+        };
+        let full_def: Arc<FullDef> = Arc::new(full_def);
+        s.with_item_cache(*self, |cache| cache.full_def = Some(full_def.clone()));
+        full_def
+    }
 }
 
 /// Imbues [`rustc_hir::def::DefKind`] with a lot of extra information.
@@ -77,7 +111,7 @@ pub enum FullDefKind {
         generics: TyGenerics,
         #[value(get_generic_predicates(s, s.owner_id()))]
         predicates: GenericPredicates,
-        // `predicates_of` has the special `Self: Trait` clause as its last element.
+        /// The special `Self: Trait` clause.
         #[value({
             use ty::Upcast;
             let tcx = s.base().tcx;
@@ -86,8 +120,17 @@ pub enum FullDefKind {
         })]
         self_predicate: TraitPredicate,
         /// Associated items, in definition order.
-        #[value(s.base().tcx.associated_items(s.owner_id()).in_definition_order().collect::<Vec<_>>().sinto(s))]
-        items: Vec<AssocItem>,
+        #[value(
+            s
+                .base()
+                .tcx
+                .associated_items(s.owner_id())
+                .in_definition_order()
+                .map(|assoc| (assoc, assoc.def_id))
+                .collect::<Vec<_>>()
+                .sinto(s)
+        )]
+        items: Vec<(AssocItem, Arc<FullDef>)>,
     },
     /// Type alias: `type Foo = Bar;`
     TyAlias {
@@ -240,8 +283,17 @@ pub enum FullDefKind {
         #[value(s.base().tcx.impl_subject(s.owner_id()).instantiate_identity().sinto(s))]
         impl_subject: ImplSubject,
         /// Associated items, in definition order.
-        #[value(s.base().tcx.associated_items(s.owner_id()).in_definition_order().collect::<Vec<_>>().sinto(s))]
-        items: Vec<AssocItem>,
+        #[value(
+            s
+                .base()
+                .tcx
+                .associated_items(s.owner_id())
+                .in_definition_order()
+                .map(|assoc| (assoc, assoc.def_id))
+                .collect::<Vec<_>>()
+                .sinto(s)
+        )]
+        items: Vec<(AssocItem, Arc<FullDef>)>,
     },
     /// A field in a struct, enum or union. e.g.
     /// - `bar` in `struct Foo { bar: u8 }`
@@ -254,6 +306,11 @@ pub enum FullDefKind {
 }
 
 impl FullDef {
+    #[cfg(feature = "rustc")]
+    pub fn rust_def_id(&self) -> RDefId {
+        (&self.def_id).into()
+    }
+
     pub fn kind(&self) -> &FullDefKind {
         &self.kind
     }
@@ -330,9 +387,8 @@ impl FullDef {
 /// Gets the visibility (`pub` or not) of the definition. Returns `None` for defs that don't have a
 /// meaningful visibility.
 #[cfg(feature = "rustc")]
-fn get_def_visibility<'tcx, S: BaseState<'tcx>>(s: &S, def_id: RDefId) -> Option<bool> {
+fn get_def_visibility<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: RDefId) -> Option<bool> {
     use rustc_hir::def::DefKind::*;
-    let tcx = s.base().tcx;
     match tcx.def_kind(def_id) {
         AssocConst
         | AssocFn

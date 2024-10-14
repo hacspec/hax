@@ -99,7 +99,7 @@ macro_rules! mk {
 mod types {
     use crate::prelude::*;
     use rustc_middle::ty;
-    use std::cell::RefCell;
+    use std::{cell::RefCell, sync::Arc};
 
     pub struct LocalContextS {
         pub vars: HashMap<rustc_middle::thir::LocalVarId, String>,
@@ -133,6 +133,8 @@ mod types {
     pub struct ItemCache<'tcx> {
         /// The translated `DefId`.
         pub def_id: Option<DefId>,
+        /// The translated definition.
+        pub full_def: Option<Arc<FullDef>>,
         /// Cache the `Ty` translations.
         pub tys: HashMap<ty::Ty<'tcx>, Ty>,
         /// Cache the trait resolution engine for each item.

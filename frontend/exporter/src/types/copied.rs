@@ -3889,23 +3889,44 @@ pub enum PredicateKind {
 }
 
 /// Reflects [`rustc_middle::ty::ImplSubject`]
-#[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_middle::ty::ImplSubject<'tcx>, state: S as s)]
 #[derive_group(Serializers)]
 #[derive(Clone, Debug, JsonSchema, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ImplSubject {
-    Trait(
-        // Also record the polarity.
-        #[map({
-            let polarity = s.base().tcx.impl_polarity(s.owner_id());
-            TraitPredicate {
-                trait_ref: x.sinto(s),
-                is_positive: matches!(polarity, rustc_middle::ty::ImplPolarity::Positive),
-            }
-        })]
-        TraitPredicate,
-    ),
+    Trait {
+        /// The trait that is implemented by this impl block.
+        trait_pred: TraitPredicate,
+        /// The `ImplExpr`s required to satisfy the predicates on the trait declaration. E.g.:
+        /// ```ignore
+        /// trait Foo: Bar {}
+        /// impl Foo for () {} // would supply an `ImplExpr` for `Self: Bar`.
+        /// ```
+        required_impl_exprs: Vec<ImplExpr>,
+    },
     Inherent(Ty),
+}
+
+#[cfg(feature = "rustc")]
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ImplSubject> for ty::ImplSubject<'tcx> {
+    fn sinto(&self, s: &S) -> ImplSubject {
+        let tcx = s.base().tcx;
+        match self {
+            ty::ImplSubject::Inherent(ty) => ImplSubject::Inherent(ty.sinto(s)),
+            ty::ImplSubject::Trait(trait_ref) => {
+                // Also record the polarity.
+                let polarity = tcx.impl_polarity(s.owner_id());
+                let trait_pred = TraitPredicate {
+                    trait_ref: trait_ref.sinto(s),
+                    is_positive: matches!(polarity, rustc_middle::ty::ImplPolarity::Positive),
+                };
+                let required_impl_exprs =
+                    solve_item_traits(s, trait_ref.def_id, trait_ref.args, None);
+                ImplSubject::Trait {
+                    trait_pred,
+                    required_impl_exprs,
+                }
+            }
+        }
+    }
 }
 
 /// Reflects [`rustc_hir::GenericBounds`]
