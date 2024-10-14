@@ -1,4 +1,4 @@
-use hax_frontend_exporter::state::{ExportedSpans, LocalContextS};
+use hax_frontend_exporter::state::LocalContextS;
 use hax_frontend_exporter::SInto;
 use hax_types::cli_options::{Backend, PathOrDash, ENV_VAR_OPTIONS_FRONTEND};
 use rustc_driver::{Callbacks, Compilation};
@@ -46,8 +46,7 @@ fn dummy_thir_body(
 /// stealing issues (theoretically...)
 fn precompute_local_thir_bodies(
     tcx: TyCtxt<'_>,
-) -> std::collections::HashMap<rustc_span::def_id::LocalDefId, ThirBundle<'_>> {
-    let hir = tcx.hir();
+) -> impl Iterator<Item = (rustc_hir::def_id::DefId, ThirBundle<'_>)> {
     use rustc_hir::def::DefKind::*;
     use rustc_hir::*;
 
@@ -74,7 +73,7 @@ fn precompute_local_thir_bodies(
     }
 
     use itertools::Itertools;
-    hir.body_owners()
+    tcx.hir().body_owners()
         .filter(|ldid| {
             match tcx.def_kind(ldid.to_def_id()) {
                 InlineConst | AnonConst => {
@@ -91,10 +90,10 @@ fn precompute_local_thir_bodies(
             }
         })
         .sorted_by_key(|ldid| const_level_of(tcx, *ldid))
-        .filter(|ldid| hir.maybe_body_owned_by(*ldid).is_some())
-        .map(|ldid| {
+        .filter(move |ldid| tcx.hir().maybe_body_owned_by(*ldid).is_some())
+        .map(move |ldid| {
             tracing::debug!("⏳ Type-checking THIR body for {:#?}", ldid);
-            let span = hir.span(tcx.local_def_id_to_hir_id(ldid));
+            let span = tcx.hir().span(tcx.local_def_id_to_hir_id(ldid));
             let (thir, expr) = match tcx.thir_body(ldid) {
                 Ok(x) => x,
                 Err(e) => {
@@ -117,7 +116,7 @@ fn precompute_local_thir_bodies(
             tracing::debug!("✅ Type-checked THIR body for {:#?}", ldid);
             (ldid, (Rc::new(thir), expr))
         })
-        .collect()
+        .map(|(ldid, bundle)| (ldid.to_def_id(), bundle))
 }
 
 /// Browse a crate and translate every item from HIR+THIR to "THIR'"
@@ -136,27 +135,27 @@ fn convert_thir<'tcx, Body: hax_frontend_exporter::IsBody>(
     )>,
     Vec<hax_frontend_exporter::Item<Body>>,
 ) {
+    use hax_frontend_exporter::WithGlobalCacheExt;
     let mut state = hax_frontend_exporter::state::State::new(tcx, options.clone());
     state.base.macro_infos = Rc::new(macro_calls);
-    state.base.cached_thirs = Rc::new(precompute_local_thir_bodies(tcx));
+    for (def_id, thir) in precompute_local_thir_bodies(tcx) {
+        state.with_item_cache(def_id, |caches| caches.thir = Some(thir));
+    }
 
     let result = hax_frontend_exporter::inline_macro_invocations(tcx.hir().items(), &state);
     let impl_infos = hax_frontend_exporter::impl_def_ids_to_impled_types_and_bounds(&state)
         .into_iter()
         .collect();
-    let exported_spans = state.base.exported_spans.borrow().clone();
+    let exported_spans = state.with_global_cache(|cache| cache.spans.keys().copied().collect());
+    let exported_def_ids = state.with_global_cache(|cache| {
+        cache
+            .per_item
+            .values()
+            .filter_map(|per_item_cache| per_item_cache.def_id.clone())
+            .collect()
+    });
 
-    let exported_def_ids = {
-        let def_ids = state.base.exported_def_ids.borrow();
-        let state = hax_frontend_exporter::state::State::new(tcx, options.clone());
-        def_ids.iter().map(|did| did.sinto(&state)).collect()
-    };
-    (
-        exported_spans.into_iter().collect(),
-        exported_def_ids,
-        impl_infos,
-        result,
-    )
+    (exported_spans, exported_def_ids, impl_infos, result)
 }
 
 /// Collect a map from spans to macro calls

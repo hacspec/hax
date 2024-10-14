@@ -385,7 +385,7 @@ end) : EXPR = struct
     in
     (* if there is no expression & the last expression is ⊥, just use that *)
     let lift_last_statement_as_expr_if_possible expr stmts (ty : Thir.ty) =
-      match (ty, expr, List.drop_last stmts, List.last stmts) with
+      match (ty.kind, expr, List.drop_last stmts, List.last stmts) with
       | ( Thir.Never,
           None,
           Some stmts,
@@ -981,7 +981,7 @@ end) : EXPR = struct
           ("Pointer, with [cast] being " ^ [%show: Thir.pointer_coercion] cast)
 
   and c_ty (span : Thir.span) (ty : Thir.ty) : ty =
-    match ty with
+    match ty.kind with
     | Bool -> TBool
     | Char -> TChar
     | Int k -> TInt (c_int_ty k)

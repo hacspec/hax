@@ -540,8 +540,8 @@ fn translate_switch_targets<'tcx, S: UnderOwnerState<'tcx>>(
     let targets_vec: Vec<(u128, BasicBlock)> =
         targets.iter().map(|(v, b)| (v, b.sinto(s))).collect();
 
-    match switch_ty {
-        Ty::Bool => {
+    match switch_ty.kind() {
+        TyKind::Bool => {
             // This is an: `if ... then ... else ...`
             assert!(targets_vec.len() == 1);
             // It seems the block targets are inverted
@@ -554,10 +554,10 @@ fn translate_switch_targets<'tcx, S: UnderOwnerState<'tcx>>(
 
             SwitchTargets::If(if_block, otherwise_block)
         }
-        Ty::Int(_) | Ty::Uint(_) => {
-            let int_ty = match switch_ty {
-                Ty::Int(ty) => IntUintTy::Int(*ty),
-                Ty::Uint(ty) => IntUintTy::Uint(*ty),
+        TyKind::Int(_) | TyKind::Uint(_) => {
+            let int_ty = match switch_ty.kind() {
+                TyKind::Int(ty) => IntUintTy::Int(*ty),
+                TyKind::Uint(ty) => IntUintTy::Uint(*ty),
                 _ => unreachable!(),
             };
 
