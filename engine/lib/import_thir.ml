@@ -1019,7 +1019,7 @@ end) : EXPR = struct
         let impl = c_impl_expr span impl_expr in
         let item = Concrete_ident.of_def_id (AssociatedItem Type) def_id in
         TAssociatedType { impl; item }
-    | Alias { kind = Opaque; def_id; _ } ->
+    | Alias { kind = Opaque _; def_id; _ } ->
         TOpaque (Concrete_ident.of_def_id Type def_id)
     | Alias { kind = Inherent; _ } ->
         assertion_failure [ span ] "Ty::Alias with AliasTyKind::Inherent"
