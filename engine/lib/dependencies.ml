@@ -530,6 +530,12 @@ module Make (F : Features.T) = struct
             List.map variants ~f:(fun { name; _ } ->
                 ( name,
                   Concrete_ident.Create.move_under ~new_parent:new_name name ))
+        | Some { v = Type { variants; is_struct = true; _ }; _ } ->
+            List.concat_map variants ~f:(fun { arguments; _ } ->
+                List.map arguments ~f:(fun (name, _, _) ->
+                    ( name,
+                      Concrete_ident.Create.move_under ~new_parent:new_name name
+                    )))
         | _ -> []
       in
 
