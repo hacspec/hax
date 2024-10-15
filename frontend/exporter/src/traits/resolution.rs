@@ -338,27 +338,28 @@ impl<'tcx> PredicateSearcher<'tcx> {
 
         let nested = match &impl_source {
             Ok(ImplSource::UserDefined(ImplSourceUserDefinedData { nested, .. })) => {
-                nested.as_slice()
+                // The nested obligations of depth 1 correspond (we hope) to the predicates on the
+                // relevant impl that need to be satisfied.
+                nested
+                    .iter()
+                    .filter(|obligation| obligation.recursion_depth == 1)
+                    .filter_map(|obligation| {
+                        obligation.predicate.as_trait_clause().map(|trait_ref| {
+                            self.resolve(&trait_ref.map_bound(|p| p.trait_ref), warn)
+                        })
+                    })
+                    .collect::<Result<_, _>>()?
             }
-            Ok(ImplSource::Param(nested)) => nested.as_slice(),
+            // Nested obligations can happen e.g. for GATs. We ignore these as we resolve local
+            // clauses ourselves.
+            Ok(ImplSource::Param(_)) => vec![],
             // We ignore the contained obligations here. For example for `(): Send`, the
             // obligations contained would be `[(): Send]`, which leads to an infinite loop. There
             // might be important obligations here in other cases; we'll have to see if that comes
             // up.
-            Ok(ImplSource::Builtin(_, _ignored)) => &[],
-            Err(_) => &[],
+            Ok(ImplSource::Builtin(..)) => vec![],
+            Err(_) => vec![],
         };
-        let nested = nested
-            .iter()
-            // Only keep depth-1 obligations to avoid duplicate impl exprs.
-            .filter(|obligation| obligation.recursion_depth == 1)
-            .filter_map(|obligation| {
-                obligation
-                    .predicate
-                    .as_trait_clause()
-                    .map(|trait_ref| self.resolve(&trait_ref.map_bound(|p| p.trait_ref), warn))
-            })
-            .collect::<Result<_, _>>()?;
 
         Ok(ImplExpr {
             r#impl: atom,
