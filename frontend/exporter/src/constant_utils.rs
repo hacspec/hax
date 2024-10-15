@@ -649,26 +649,30 @@ mod rustc {
             ConstValue::ZeroSized { .. } => {
                 // Should be unit
                 let hty: Ty = ty.sinto(s);
-                let cv = match hty.kind() {
-                    TyKind::Tuple(tys) if tys.is_empty() => {
+                let cv = match ty.kind() {
+                    ty::TyKind::Tuple(tys) if tys.is_empty() => {
                         ConstantExprKind::Tuple { fields: Vec::new() }
                     }
-                    TyKind::Arrow(_) => match ty.kind() {
-                        rustc_middle::ty::TyKind::FnDef(def_id, args) => {
-                            let (def_id, generics, generics_impls, method_impl) =
-                                get_function_from_def_id_and_generics(s, *def_id, args);
+                    ty::TyKind::FnDef(def_id, args) => {
+                        let (def_id, generics, generics_impls, method_impl) =
+                            get_function_from_def_id_and_generics(s, *def_id, args);
 
-                            ConstantExprKind::FnPtr {
-                                def_id,
-                                generics,
-                                generics_impls,
-                                method_impl,
-                            }
+                        ConstantExprKind::FnPtr {
+                            def_id,
+                            generics,
+                            generics_impls,
+                            method_impl,
                         }
-                        kind => {
-                            fatal!(s[span], "Unexpected:"; {kind})
+                    }
+                    ty::TyKind::Adt(adt_def, ..) => {
+                        assert_eq!(adt_def.variants().len(), 1);
+                        let variant = rustc_target::abi::FIRST_VARIANT;
+                        let variants_info = get_variant_information(adt_def, variant, s);
+                        ConstantExprKind::Adt {
+                            info: variants_info,
+                            fields: vec![],
                         }
-                    },
+                    }
                     _ => {
                         fatal!(
                             s[span],
