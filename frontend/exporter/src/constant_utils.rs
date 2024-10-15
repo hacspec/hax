@@ -581,27 +581,43 @@ mod rustc {
             .s_unwrap(s);
 
         // Iterate over the fields, which should be values
-        assert!(dc.variant.is_none());
-
-        // The type should be tuple
-        let hax_ty: Ty = ty.sinto(s);
-        match hax_ty.kind() {
-            TyKind::Tuple(_) => (),
-            _ => {
-                fatal!(s[span], "Expected the type to be tuple: {:?}", val)
-            }
-        };
-
         // Below: we are mutually recursive with [const_value_to_constant_expr],
         // which takes a [Const] as input, but it should be
         // ok because we call it on a strictly smaller value.
-        let fields: Vec<ConstantExpr> = dc
+        let fields = dc
             .fields
             .iter()
             .copied()
-            .map(|(val, ty)| const_value_to_constant_expr(s, ty, val, span))
-            .collect();
-        (ConstantExprKind::Tuple { fields }).decorate(hax_ty, span.sinto(s))
+            .map(|(val, ty)| const_value_to_constant_expr(s, ty, val, span));
+
+        // The type should be tuple
+        let hax_ty: Ty = ty.sinto(s);
+        match ty.kind() {
+            ty::TyKind::Tuple(_) => {
+                assert!(dc.variant.is_none());
+                let fields = fields.collect();
+                ConstantExprKind::Tuple { fields }
+            }
+            ty::TyKind::Adt(adt_def, ..) => {
+                let variant = dc.variant.unwrap_or(rustc_target::abi::FIRST_VARIANT);
+                let variants_info = get_variant_information(adt_def, variant, s);
+                let fields = fields
+                    .zip(&adt_def.variant(variant).fields)
+                    .map(|(value, field)| ConstantFieldExpr {
+                        field: field.did.sinto(s),
+                        value,
+                    })
+                    .collect();
+                ConstantExprKind::Adt {
+                    info: variants_info,
+                    fields,
+                }
+            }
+            _ => {
+                fatal!(s[span], "Expected the type to be tuple or adt: {:?}", val)
+            }
+        }
+        .decorate(hax_ty, span.sinto(s))
     }
 
     pub fn const_value_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
