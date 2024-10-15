@@ -17,17 +17,29 @@ pub use resolution::PredicateSearcher;
 pub enum ImplExprPathChunk {
     AssocItem {
         item: AssocItem,
+        /// The arguments provided to the item (for GATs).
+        generic_args: Vec<GenericArg>,
+        /// The impl exprs that must be satisfied to apply the given arguments to the item. E.g.
+        /// `T: Clone` in the following example:
+        /// ```ignore
+        /// trait Foo {
+        ///     type Type<T: Clone>: Debug;
+        /// }
+        /// ```
+        impl_exprs: Vec<ImplExpr>,
+        /// The implemented predicate.
         predicate: Binder<TraitPredicate>,
         #[value(<_ as SInto<_, Clause>>::sinto(predicate, s).id)]
         predicate_id: PredicateId,
-        /// The nth predicate returned by `tcx.item_bounds`.
+        /// The index of this predicate in the list returned by `tcx.item_bounds`.
         index: usize,
     },
     Parent {
+        /// The implemented predicate.
         predicate: Binder<TraitPredicate>,
         #[value(<_ as SInto<_, Clause>>::sinto(predicate, s).id)]
         predicate_id: PredicateId,
-        /// The nth predicate returned by `tcx.predicates_of`.
+        /// The index of this predicate in the list returned by `tcx.predicates_of`.
         index: usize,
     },
 }
