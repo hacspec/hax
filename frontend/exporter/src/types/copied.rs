@@ -3543,30 +3543,6 @@ pub struct OpaqueTy<Body: IsBody> {
     pub in_trait: bool,
 }
 
-/// Reflects [`rustc_hir::LifetimeName`]
-#[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::LifetimeName, state: S as tcx)]
-#[derive(Clone, Debug, JsonSchema)]
-#[derive_group(Serializers)]
-pub enum LifetimeName {
-    Param(GlobalIdent),
-    ImplicitObjectLifetimeDefault,
-    Error,
-    Infer,
-    Static,
-}
-
-/// Reflects [`rustc_hir::Lifetime`]
-#[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_hir::Lifetime, state: S as tcx)]
-#[derive_group(Serializers)]
-#[derive(Clone, Debug, JsonSchema)]
-pub struct Lifetime {
-    pub hir_id: HirId,
-    pub ident: Ident,
-    pub res: LifetimeName,
-}
-
 /// Reflects [`rustc_middle::ty::TraitRef`]
 #[derive_group(Serializers)]
 #[derive(AdtInto)]
@@ -4063,17 +4039,6 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ident> for rustc_span::symbol::Ide
     fn sinto(&self, s: &S) -> Ident {
         (self.name.sinto(s), self.span.sinto(s))
     }
-}
-
-/// Reflects [`rustc_hir::PredicateOrigin`]
-#[derive(AdtInto)]
-#[args(<S>, from: rustc_hir::PredicateOrigin, state: S as _s)]
-#[derive_group(Serializers)]
-#[derive(Clone, Debug, JsonSchema)]
-pub enum PredicateOrigin {
-    WhereClause,
-    GenericParam,
-    ImplTrait,
 }
 
 /// Reflects [`rustc_middle::ty::AssocItem`]
