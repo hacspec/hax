@@ -405,7 +405,14 @@ pub enum ExportBodyKind {
 
 #[derive_group(Serializers)]
 #[derive(JsonSchema, Parser, Debug, Clone)]
-#[command(author, version = concat!("commit=", env!("HAX_GIT_COMMIT_HASH"), " ", "describe=", env!("HAX_GIT_DESCRIBE")), name = "hax", about, long_about = None)]
+#[command(
+    author,
+    version = crate::HAX_VERSION,
+    long_version = concat!("\nversion=", env!("HAX_VERSION"), "\n", "commit=", env!("HAX_GIT_COMMIT_HASH")),
+    name = "hax",
+    about,
+    long_about = None
+)]
 pub struct ExtensibleOptions<E: Extension> {
     /// Replace the expansion of each macro matching PATTERN by their
     /// invocation. PATTERN denotes a rust path (i.e. `A::B::c`) in
