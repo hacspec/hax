@@ -32,7 +32,7 @@ module Cyclic_modules.B
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Rec_bundle_507852343 {g as g}
+include Cyclic_modules.Rec_bundle_194616565 {g as g}
 '''
 "Cyclic_modules.C.fst" = '''
 module Cyclic_modules.C
@@ -42,26 +42,8 @@ open FStar.Mul
 
 let i (_: Prims.unit) : Prims.unit = ()
 '''
-"Cyclic_modules.D.fst" = '''
-module Cyclic_modules.D
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
-open Core
-open FStar.Mul
-
-include Cyclic_modules.E.Rec_bundle_868781766 {d1 as d1}
-
-include Cyclic_modules.E.Rec_bundle_868781766 {d2 as d2}
-'''
-"Cyclic_modules.De.fst" = '''
-module Cyclic_modules.De
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
-open Core
-open FStar.Mul
-
-include Cyclic_modules.E.Rec_bundle_868781766 {de1 as de1}
-'''
-"Cyclic_modules.E.Rec_bundle_868781766.fst" = '''
-module Cyclic_modules.E.Rec_bundle_868781766
+"Cyclic_modules.D.Rec_bundle_773034964.fst" = '''
+module Cyclic_modules.D.Rec_bundle_773034964
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
@@ -74,13 +56,65 @@ let de1 (_: Prims.unit) : Prims.unit = e1 ()
 
 let d2 (_: Prims.unit) : Prims.unit = de1 ()
 '''
+"Cyclic_modules.D.fst" = '''
+module Cyclic_modules.D
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+include Cyclic_modules.D.Rec_bundle_773034964 {d1 as d1}
+
+include Cyclic_modules.D.Rec_bundle_773034964 {d2 as d2}
+'''
+"Cyclic_modules.De.fst" = '''
+module Cyclic_modules.De
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+include Cyclic_modules.D.Rec_bundle_773034964 {de1 as de1}
+'''
+"Cyclic_modules.Disjoint_cycle_a.Rec_bundle_317759688.fst" = '''
+module Cyclic_modules.Disjoint_cycle_a.Rec_bundle_317759688
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let g (_: Prims.unit) : Prims.unit = ()
+
+let h (_: Prims.unit) : Prims.unit = ()
+
+let f (_: Prims.unit) : Prims.unit = h ()
+
+let i (_: Prims.unit) : Prims.unit = g ()
+'''
+"Cyclic_modules.Disjoint_cycle_a.fst" = '''
+module Cyclic_modules.Disjoint_cycle_a
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+include Cyclic_modules.Disjoint_cycle_a.Rec_bundle_317759688 {g as g}
+
+include Cyclic_modules.Disjoint_cycle_a.Rec_bundle_317759688 {f as f}
+'''
+"Cyclic_modules.Disjoint_cycle_b.fst" = '''
+module Cyclic_modules.Disjoint_cycle_b
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+include Cyclic_modules.Disjoint_cycle_a.Rec_bundle_317759688 {h as h}
+
+include Cyclic_modules.Disjoint_cycle_a.Rec_bundle_317759688 {i as i}
+'''
 "Cyclic_modules.E.fst" = '''
 module Cyclic_modules.E
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
 
-include Cyclic_modules.E.Rec_bundle_868781766 {e1 as e1}
+include Cyclic_modules.D.Rec_bundle_773034964 {e1 as e1}
 '''
 "Cyclic_modules.Enums_a.fst" = '''
 module Cyclic_modules.Enums_a
@@ -88,18 +122,18 @@ module Cyclic_modules.Enums_a
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Enums_b.Rec_bundle_573885887 {t_T240131830 as t_T}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {t_T240131830 as t_T}
 
-include Cyclic_modules.Enums_b.Rec_bundle_573885887 {T240131830_A as T_A}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {T240131830_A as T_A}
 
-include Cyclic_modules.Enums_b.Rec_bundle_573885887 {T240131830_B as T_B}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {T240131830_B as T_B}
 
-include Cyclic_modules.Enums_b.Rec_bundle_573885887 {T240131830_C as T_C}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {T240131830_C as T_C}
 
-include Cyclic_modules.Enums_b.Rec_bundle_573885887 {T240131830_D as T_D}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {T240131830_D as T_D}
 '''
-"Cyclic_modules.Enums_b.Rec_bundle_573885887.fst" = '''
-module Cyclic_modules.Enums_b.Rec_bundle_573885887
+"Cyclic_modules.Enums_b.Rec_bundle_994866580.fst" = '''
+module Cyclic_modules.Enums_b.Rec_bundle_994866580
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
@@ -119,6 +153,8 @@ and t_T240131830 =
   | T240131830_B : t_T240131830
   | T240131830_C : Alloc.Vec.t_Vec t_U Alloc.Alloc.t_Global -> t_T240131830
   | T240131830_D : Alloc.Vec.t_Vec t_T366415196 Alloc.Alloc.t_Global -> t_T240131830
+
+let f (_: Prims.unit) : t_T366415196 = T366415196_A <: t_T366415196
 '''
 "Cyclic_modules.Enums_b.fst" = '''
 module Cyclic_modules.Enums_b
@@ -126,23 +162,59 @@ module Cyclic_modules.Enums_b
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Enums_b.Rec_bundle_573885887 {t_T366415196 as t_T}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {t_T366415196 as t_T}
 
-include Cyclic_modules.Enums_b.Rec_bundle_573885887 {T366415196_A as T_A}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {T366415196_A as T_A}
 
-include Cyclic_modules.Enums_b.Rec_bundle_573885887 {T366415196_B as T_B}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {T366415196_B as T_B}
 
-include Cyclic_modules.Enums_b.Rec_bundle_573885887 {T366415196_C as T_C}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {T366415196_C as T_C}
 
-include Cyclic_modules.Enums_b.Rec_bundle_573885887 {t_U as t_U}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {t_U as t_U}
 
-include Cyclic_modules.Enums_b.Rec_bundle_573885887 {U_A as U_A}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {U_A as U_A}
 
-include Cyclic_modules.Enums_b.Rec_bundle_573885887 {U_B as U_B}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {U_B as U_B}
 
-include Cyclic_modules.Enums_b.Rec_bundle_573885887 {U_C as U_C}
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {U_C as U_C}
 
-let f (_: Prims.unit) : t_T = T_A <: t_T
+include Cyclic_modules.Enums_b.Rec_bundle_994866580 {f as f}
+'''
+"Cyclic_modules.M1.fst" = '''
+module Cyclic_modules.M1
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+include Cyclic_modules.M2.Rec_bundle_489499412 {a as a}
+'''
+"Cyclic_modules.M2.Rec_bundle_489499412.fst" = '''
+module Cyclic_modules.M2.Rec_bundle_489499412
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+let c (_: Prims.unit) : Prims.unit = ()
+
+let a (_: Prims.unit) : Prims.unit = c ()
+
+let d (_: Prims.unit) : Prims.unit = ()
+
+let b (_: Prims.unit) : Prims.unit =
+  let _:Prims.unit = a () in
+  d ()
+'''
+"Cyclic_modules.M2.fst" = '''
+module Cyclic_modules.M2
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+include Cyclic_modules.M2.Rec_bundle_489499412 {c as c}
+
+include Cyclic_modules.M2.Rec_bundle_489499412 {d as d}
+
+include Cyclic_modules.M2.Rec_bundle_489499412 {b as b}
 '''
 "Cyclic_modules.Rec.fst" = '''
 module Cyclic_modules.Rec
@@ -174,16 +246,8 @@ and g2 (x: t_T) : t_T =
   | T_t1  -> g1 x
   | T_t2  -> hf x
 '''
-"Cyclic_modules.Rec1_same_name.fst" = '''
-module Cyclic_modules.Rec1_same_name
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
-open Core
-open FStar.Mul
-
-include Cyclic_modules.Rec2_same_name.Rec_bundle_784146069 {f533409751 as f}
-'''
-"Cyclic_modules.Rec2_same_name.Rec_bundle_784146069.fst" = '''
-module Cyclic_modules.Rec2_same_name.Rec_bundle_784146069
+"Cyclic_modules.Rec1_same_name.Rec_bundle_213192514.fst" = '''
+module Cyclic_modules.Rec1_same_name.Rec_bundle_213192514
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
@@ -192,16 +256,24 @@ let rec f533409751 (x: i32) : i32 = f91805216 x
 
 and f91805216 (x: i32) : i32 = if x >. 0l then f533409751 (x -! 1l <: i32) else 0l
 '''
+"Cyclic_modules.Rec1_same_name.fst" = '''
+module Cyclic_modules.Rec1_same_name
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+include Cyclic_modules.Rec1_same_name.Rec_bundle_213192514 {f533409751 as f}
+'''
 "Cyclic_modules.Rec2_same_name.fst" = '''
 module Cyclic_modules.Rec2_same_name
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Rec2_same_name.Rec_bundle_784146069 {f91805216 as f}
+include Cyclic_modules.Rec1_same_name.Rec_bundle_213192514 {f91805216 as f}
 '''
-"Cyclic_modules.Rec_bundle_507852343.fst" = '''
-module Cyclic_modules.Rec_bundle_507852343
+"Cyclic_modules.Rec_bundle_194616565.fst" = '''
+module Cyclic_modules.Rec_bundle_194616565
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
@@ -213,6 +285,8 @@ let g (_: Prims.unit) : Prims.unit = f ()
 let h (_: Prims.unit) : Prims.unit =
   let _:Prims.unit = g () in
   Cyclic_modules.C.i ()
+
+let h2 (_: Prims.unit) : Prims.unit = Cyclic_modules.C.i ()
 '''
 "Cyclic_modules.Typ_a.fst" = '''
 module Cyclic_modules.Typ_a
@@ -220,21 +294,29 @@ module Cyclic_modules.Typ_a
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Typ_b.Rec_bundle_684725220 {t_T as t_T}
+include Cyclic_modules.Typ_b.Rec_bundle_546955701 {t_T as t_T}
 
-include Cyclic_modules.Typ_b.Rec_bundle_684725220 {T_T as T_T}
+include Cyclic_modules.Typ_b.Rec_bundle_546955701 {T_T as T_T}
 
-include Cyclic_modules.Typ_b.Rec_bundle_445945170 {t_TRec as t_TRec}
+include Cyclic_modules.Typ_b.Rec_bundle_546955701 {t_TRec as t_TRec}
 
-include Cyclic_modules.Typ_b.Rec_bundle_445945170 {TRec_T as TRec_T}
+include Cyclic_modules.Typ_b.Rec_bundle_546955701 {TRec_T as TRec_T}
 
-include Cyclic_modules.Typ_b.Rec_bundle_445945170 {TRec_Empty as TRec_Empty}
+include Cyclic_modules.Typ_b.Rec_bundle_546955701 {TRec_Empty as TRec_Empty}
 '''
-"Cyclic_modules.Typ_b.Rec_bundle_445945170.fst" = '''
-module Cyclic_modules.Typ_b.Rec_bundle_445945170
+"Cyclic_modules.Typ_b.Rec_bundle_546955701.fst" = '''
+module Cyclic_modules.Typ_b.Rec_bundle_546955701
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
+
+type t_T1 = | T1_T1 : t_T1
+
+type t_T = | T_T : t_T1 -> t_T
+
+let t_T1_cast_to_repr (x: t_T1) : isize = match x with | T1_T1  -> isz 0
+
+type t_T2 = | T2_T2 : t_T -> t_T2
 
 type t_TRec =
   | TRec_T : t_T1Rec -> t_TRec
@@ -244,41 +326,29 @@ and t_T1Rec = | T1Rec_T1 : Alloc.Boxed.t_Box t_T2Rec Alloc.Alloc.t_Global -> t_T
 
 and t_T2Rec = | T2Rec_T2 : t_TRec -> t_T2Rec
 '''
-"Cyclic_modules.Typ_b.Rec_bundle_684725220.fst" = '''
-module Cyclic_modules.Typ_b.Rec_bundle_684725220
-#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
-open Core
-open FStar.Mul
-
-type t_T1 = | T1_T1 : t_T1
-
-type t_T = | T_T : t_T1 -> t_T
-
-type t_T2 = | T2_T2 : t_T -> t_T2
-'''
 "Cyclic_modules.Typ_b.fst" = '''
 module Cyclic_modules.Typ_b
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Typ_b.Rec_bundle_684725220 {t_T1 as t_T1}
+include Cyclic_modules.Typ_b.Rec_bundle_546955701 {t_T1 as t_T1}
 
-include Cyclic_modules.Typ_b.Rec_bundle_684725220 {T1_T1 as T1_T1}
+include Cyclic_modules.Typ_b.Rec_bundle_546955701 {T1_T1 as T1_T1}
 
-let t_T1_cast_to_repr (x: t_T1) : isize = match x with | T1_T1  -> isz 0
+include Cyclic_modules.Typ_b.Rec_bundle_546955701 {t_T1_cast_to_repr as t_T1_cast_to_repr}
 
-include Cyclic_modules.Typ_b.Rec_bundle_684725220 {t_T2 as t_T2}
+include Cyclic_modules.Typ_b.Rec_bundle_546955701 {t_T2 as t_T2}
 
-include Cyclic_modules.Typ_b.Rec_bundle_684725220 {T2_T2 as T2_T2}
+include Cyclic_modules.Typ_b.Rec_bundle_546955701 {T2_T2 as T2_T2}
 
-include Cyclic_modules.Typ_b.Rec_bundle_445945170 {t_T1Rec as t_T1Rec}
+include Cyclic_modules.Typ_b.Rec_bundle_546955701 {t_T1Rec as t_T1Rec}
 
-include Cyclic_modules.Typ_b.Rec_bundle_445945170 {T1Rec_T1 as T1Rec_T1}
+include Cyclic_modules.Typ_b.Rec_bundle_546955701 {T1Rec_T1 as T1Rec_T1}
 
-include Cyclic_modules.Typ_b.Rec_bundle_445945170 {t_T2Rec as t_T2Rec}
+include Cyclic_modules.Typ_b.Rec_bundle_546955701 {t_T2Rec as t_T2Rec}
 
-include Cyclic_modules.Typ_b.Rec_bundle_445945170 {T2Rec_T2 as T2Rec_T2}
+include Cyclic_modules.Typ_b.Rec_bundle_546955701 {T2Rec_T2 as T2Rec_T2}
 '''
 "Cyclic_modules.fst" = '''
 module Cyclic_modules
@@ -286,9 +356,45 @@ module Cyclic_modules
 open Core
 open FStar.Mul
 
-include Cyclic_modules.Rec_bundle_507852343 {f as f}
+include Cyclic_modules.Rec_bundle_194616565 {v_DUMMY as v_DUMMY}
 
-include Cyclic_modules.Rec_bundle_507852343 {h as h}
+include Cyclic_modules.Rec_bundle_194616565 {b as b}
 
-let h2 (_: Prims.unit) : Prims.unit = Cyclic_modules.C.i ()
+include Cyclic_modules.Rec_bundle_194616565 {c as c}
+
+include Cyclic_modules.Rec_bundle_194616565 {d as d}
+
+include Cyclic_modules.Rec_bundle_194616565 {de as de}
+
+include Cyclic_modules.Rec_bundle_194616565 {disjoint_cycle_a as disjoint_cycle_a}
+
+include Cyclic_modules.Rec_bundle_194616565 {disjoint_cycle_b as disjoint_cycle_b}
+
+include Cyclic_modules.Rec_bundle_194616565 {e as e}
+
+include Cyclic_modules.Rec_bundle_194616565 {enums_a as enums_a}
+
+include Cyclic_modules.Rec_bundle_194616565 {enums_b as enums_b}
+
+include Cyclic_modules.Rec_bundle_194616565 {m1 as m1}
+
+include Cyclic_modules.Rec_bundle_194616565 {m2 as m2}
+
+include Cyclic_modules.Rec_bundle_194616565 {v_rec as v_rec}
+
+include Cyclic_modules.Rec_bundle_194616565 {rec1_same_name as rec1_same_name}
+
+include Cyclic_modules.Rec_bundle_194616565 {rec2_same_name as rec2_same_name}
+
+include Cyclic_modules.Rec_bundle_194616565 {std as std}
+
+include Cyclic_modules.Rec_bundle_194616565 {typ_a as typ_a}
+
+include Cyclic_modules.Rec_bundle_194616565 {typ_b as typ_b}
+
+include Cyclic_modules.Rec_bundle_194616565 {f as f}
+
+include Cyclic_modules.Rec_bundle_194616565 {h as h}
+
+include Cyclic_modules.Rec_bundle_194616565 {h2 as h2}
 '''

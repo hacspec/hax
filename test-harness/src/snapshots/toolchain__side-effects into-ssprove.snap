@@ -54,11 +54,91 @@ Import choice.Choice.Exports.
 
 Obligation Tactic := (* try timeout 8 *) solve_ssprove_obligations.
 
+Definition t_A : choice_type :=
+  'unit.
+Equations Build_t_A : both (fset []) (fset []) (t_A) :=
+  Build_t_A  :=
+    solve_lift (ret_both (tt (* Empty tuple *) : (t_A))) : both (fset []) (fset []) (t_A).
+Fail Next Obligation.
+
+Definition t_B : choice_type :=
+  'unit.
+Equations Build_t_B : both (fset []) (fset []) (t_B) :=
+  Build_t_B  :=
+    solve_lift (ret_both (tt (* Empty tuple *) : (t_B))) : both (fset []) (fset []) (t_B).
+Fail Next Obligation.
+
+Definition t_Bar : choice_type :=
+  ('bool × nseq ('bool × 'bool) 6 × 'bool).
+Equations f_a {L : {fset Location}} {I : Interface} (s : both L I t_Bar) : both L I 'bool :=
+  f_a s  :=
+    bind_both s (fun x =>
+      solve_lift (ret_both (fst x : 'bool))) : both L I 'bool.
+Fail Next Obligation.
+Equations f_b {L : {fset Location}} {I : Interface} (s : both L I t_Bar) : both L I (nseq ('bool × 'bool) 6 × 'bool) :=
+  f_b s  :=
+    bind_both s (fun x =>
+      solve_lift (ret_both (snd x : (nseq ('bool × 'bool) 6 × 'bool)))) : both L I (nseq ('bool × 'bool) 6 × 'bool).
+Fail Next Obligation.
+Equations Build_t_Bar {L0 : {fset Location}} {L1 : {fset Location}} {I0 : Interface} {I1 : Interface} {f_a : both L0 I0 'bool} {f_b : both L1 I1 (nseq ('bool × 'bool) 6 × 'bool)} : both (L0:|:L1) (I0:|:I1) (t_Bar) :=
+  Build_t_Bar  :=
+    bind_both f_b (fun f_b =>
+      bind_both f_a (fun f_a =>
+        solve_lift (ret_both ((f_a,f_b) : (t_Bar))))) : both (L0:|:L1) (I0:|:I1) (t_Bar).
+Fail Next Obligation.
+Notation "'Build_t_Bar' '[' x ']' '(' 'f_a' ':=' y ')'" := (Build_t_Bar (f_a := y) (f_b := f_b x)).
+Notation "'Build_t_Bar' '[' x ']' '(' 'f_b' ':=' y ')'" := (Build_t_Bar (f_a := f_a x) (f_b := y)).
+
+Definition t_Foo : choice_type :=
+  ('bool × 'bool × t_Vec t_Bar t_Global × nseq t_Bar 6 × t_Bar).
+Equations f_x {L : {fset Location}} {I : Interface} (s : both L I t_Foo) : both L I 'bool :=
+  f_x s  :=
+    bind_both s (fun x =>
+      solve_lift (ret_both (fst (fst (fst x)) : 'bool))) : both L I 'bool.
+Fail Next Obligation.
+Equations f_y {L : {fset Location}} {I : Interface} (s : both L I t_Foo) : both L I ('bool × t_Vec t_Bar t_Global) :=
+  f_y s  :=
+    bind_both s (fun x =>
+      solve_lift (ret_both (snd (fst (fst x)) : ('bool × t_Vec t_Bar t_Global)))) : both L I ('bool × t_Vec t_Bar t_Global).
+Fail Next Obligation.
+Equations f_z {L : {fset Location}} {I : Interface} (s : both L I t_Foo) : both L I (nseq t_Bar 6) :=
+  f_z s  :=
+    bind_both s (fun x =>
+      solve_lift (ret_both (snd (fst x) : (nseq t_Bar 6)))) : both L I (nseq t_Bar 6).
+Fail Next Obligation.
+Equations f_bar {L : {fset Location}} {I : Interface} (s : both L I t_Foo) : both L I t_Bar :=
+  f_bar s  :=
+    bind_both s (fun x =>
+      solve_lift (ret_both (snd x : t_Bar))) : both L I t_Bar.
+Fail Next Obligation.
+Equations Build_t_Foo {L0 : {fset Location}} {L1 : {fset Location}} {L2 : {fset Location}} {L3 : {fset Location}} {I0 : Interface} {I1 : Interface} {I2 : Interface} {I3 : Interface} {f_x : both L0 I0 'bool} {f_y : both L1 I1 ('bool × t_Vec t_Bar t_Global)} {f_z : both L2 I2 (nseq t_Bar 6)} {f_bar : both L3 I3 t_Bar} : both (L0:|:L1:|:L2:|:L3) (I0:|:I1:|:I2:|:I3) (t_Foo) :=
+  Build_t_Foo  :=
+    bind_both f_bar (fun f_bar =>
+      bind_both f_z (fun f_z =>
+        bind_both f_y (fun f_y =>
+          bind_both f_x (fun f_x =>
+            solve_lift (ret_both ((f_x,f_y,f_z,f_bar) : (t_Foo))))))) : both (L0:|:L1:|:L2:|:L3) (I0:|:I1:|:I2:|:I3) (t_Foo).
+Fail Next Obligation.
+Notation "'Build_t_Foo' '[' x ']' '(' 'f_x' ':=' y ')'" := (Build_t_Foo (f_x := y) (f_y := f_y x) (f_z := f_z x) (f_bar := f_bar x)).
+Notation "'Build_t_Foo' '[' x ']' '(' 'f_y' ':=' y ')'" := (Build_t_Foo (f_x := f_x x) (f_y := y) (f_z := f_z x) (f_bar := f_bar x)).
+Notation "'Build_t_Foo' '[' x ']' '(' 'f_z' ':=' y ')'" := (Build_t_Foo (f_x := f_x x) (f_y := f_y x) (f_z := y) (f_bar := f_bar x)).
+Notation "'Build_t_Foo' '[' x ']' '(' 'f_bar' ':=' y ')'" := (Build_t_Foo (f_x := f_x x) (f_y := f_y x) (f_z := f_z x) (f_bar := y)).
+
 (*Not implemented yet? todo(item)*)
 
 Equations add3 {L1 : {fset Location}} {L2 : {fset Location}} {L3 : {fset Location}} {I1 : Interface} {I2 : Interface} {I3 : Interface} (x : both L1 I1 int32) (y : both L2 I2 int32) (z : both L3 I3 int32) : both (L1 :|: L2 :|: L3) (I1 :|: I2 :|: I3) int32 :=
   add3 x y z  :=
     solve_lift (impl__u32__wrapping_add (impl__u32__wrapping_add x y) z) : both (L1 :|: L2 :|: L3) (I1 :|: I2 :|: I3) int32.
+Fail Next Obligation.
+
+Equations assign_non_trivial_lhs {L1 : {fset Location}} {I1 : Interface} (foo : both L1 I1 t_Foo) : both L1 I1 t_Foo :=
+  assign_non_trivial_lhs foo  :=
+    letb _ := assign todo(term) in
+    letb _ := assign todo(term) in
+    letb _ := assign todo(term) in
+    letb _ := assign todo(term) in
+    letb _ := assign todo(term) in
+    solve_lift foo : both L1 I1 t_Foo.
 Fail Next Obligation.
 
 Equations direct_result_question_mark {L1 : {fset Location}} {I1 : Interface} (y : both L1 I1 (t_Result 'unit int32)) : both L1 I1 (t_Result int8 int32) :=
@@ -132,37 +212,47 @@ Equations local_mutation {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1
     impl__u32__wrapping_add x y) : both (L1 :|: fset [y_loc;y_loc]) I1 int32.
 Fail Next Obligation.
 
+Equations monad_lifting {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 int8) : both L1 I1 (t_Result t_A t_B) :=
+  monad_lifting x  :=
+    solve_lift (run (ifb x >.? (ret_both (123 : int8))
+    then letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist16 := ControlFlow_Continue (Result_Err B) in
+    letb hoist17 := Result_Ok hoist16 in
+    letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist18 := ControlFlow_Break hoist17 in
+    ControlFlow_Continue (never_to_any hoist18)
+    else ControlFlow_Continue (Result_Ok A))) : both L1 I1 (t_Result t_A t_B).
+Fail Next Obligation.
+
 Equations options {L1 : {fset Location}} {L2 : {fset Location}} {L3 : {fset Location}} {I1 : Interface} {I2 : Interface} {I3 : Interface} (x : both L1 I1 (t_Option int8)) (y : both L2 I2 (t_Option int8)) (z : both L3 I3 (t_Option int64)) : both (L1 :|: L2 :|: L3) (I1 :|: I2 :|: I3) (t_Option int8) :=
   options x y z  :=
-    solve_lift (run (letm[choice_typeMonad.option_bind_code] hoist19 := x in
-    letb hoist20 := hoist19 >.? (ret_both (10 : int8)) in
-    letm[choice_typeMonad.option_bind_code] hoist26 := ifb hoist20
-    then letm[choice_typeMonad.option_bind_code] hoist21 := x in
-    Option_Some (letb hoist22 := impl__u8__wrapping_add hoist21 (ret_both (3 : int8)) in
-    Option_Some hoist22)
-    else letm[choice_typeMonad.option_bind_code] hoist24 := x in
-    letm[choice_typeMonad.option_bind_code] hoist23 := y in
-    Option_Some (letb hoist25 := impl__u8__wrapping_add hoist24 hoist23 in
-    Option_Some hoist25) in
-    letm[choice_typeMonad.option_bind_code] hoist27 := hoist26 in
-    letm[choice_typeMonad.option_bind_code] v := matchb hoist27 with
+    solve_lift (run (letm[choice_typeMonad.option_bind_code] hoist22 := x in
+    letb hoist23 := hoist22 >.? (ret_both (10 : int8)) in
+    letm[choice_typeMonad.option_bind_code] hoist29 := ifb hoist23
+    then letm[choice_typeMonad.option_bind_code] hoist24 := x in
+    Option_Some (letb hoist25 := impl__u8__wrapping_add hoist24 (ret_both (3 : int8)) in
+    Option_Some hoist25)
+    else letm[choice_typeMonad.option_bind_code] hoist27 := x in
+    letm[choice_typeMonad.option_bind_code] hoist26 := y in
+    Option_Some (letb hoist28 := impl__u8__wrapping_add hoist27 hoist26 in
+    Option_Some hoist28) in
+    letm[choice_typeMonad.option_bind_code] hoist30 := hoist29 in
+    letm[choice_typeMonad.option_bind_code] v := matchb hoist30 with
     | 3 =>
       Option_None
     | 4 =>
-      letm[choice_typeMonad.option_bind_code] hoist16 := z in
-      Option_Some (letb hoist17 := hoist16 >.? (ret_both (4 : int64)) in
-      letb hoist18 := ifb hoist17
+      letm[choice_typeMonad.option_bind_code] hoist19 := z in
+      Option_Some (letb hoist20 := hoist19 >.? (ret_both (4 : int64)) in
+      letb hoist21 := ifb hoist20
       then ret_both (0 : int8)
       else ret_both (3 : int8) in
-      solve_lift ((ret_both (4 : int8)) .+ hoist18))
+      solve_lift ((ret_both (4 : int8)) .+ hoist21))
     | _ =>
       Option_Some (solve_lift (ret_both (12 : int8)))
     end in
-    letm[choice_typeMonad.option_bind_code] hoist28 := x in
-    letb hoist30 := impl__u8__wrapping_add v hoist28 in
-    letm[choice_typeMonad.option_bind_code] hoist29 := y in
-    Option_Some (letb hoist31 := impl__u8__wrapping_add hoist30 hoist29 in
-    Option_Some hoist31))) : both (L1 :|: L2 :|: L3) (I1 :|: I2 :|: I3) (t_Option int8).
+    letm[choice_typeMonad.option_bind_code] hoist31 := x in
+    letb hoist33 := impl__u8__wrapping_add v hoist31 in
+    letm[choice_typeMonad.option_bind_code] hoist32 := y in
+    Option_Some (letb hoist34 := impl__u8__wrapping_add hoist33 hoist32 in
+    Option_Some hoist34))) : both (L1 :|: L2 :|: L3) (I1 :|: I2 :|: I3) (t_Option int8).
 Fail Next Obligation.
 
 Definition y_loc : Location :=
@@ -174,8 +264,8 @@ Equations question_mark {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 
     letb _ := assign todo(term) in
     letb _ := assign todo(term) in
     letb _ := assign todo(term) in
-    letb hoist32 := x >.? (ret_both (90 : int32)) in
-    ifb hoist32
+    letb hoist35 := x >.? (ret_both (90 : int32)) in
+    ifb hoist35
     then impl__map_err (Result_Err (ret_both (12 : int8))) f_from
     else ()
     else () in
@@ -185,8 +275,8 @@ Fail Next Obligation.
 Equations simplifiable_question_mark {L1 : {fset Location}} {L2 : {fset Location}} {I1 : Interface} {I2 : Interface} (c : both L1 I1 'bool) (x : both L2 I2 (t_Option int32)) : both (L1 :|: L2) (I1 :|: I2) (t_Option int32) :=
   simplifiable_question_mark c x  :=
     solve_lift (run (letm[choice_typeMonad.option_bind_code] a := ifb c
-    then letm[choice_typeMonad.option_bind_code] hoist33 := x in
-    Option_Some (hoist33 .+ (ret_both (10 : int32)))
+    then letm[choice_typeMonad.option_bind_code] hoist36 := x in
+    Option_Some (hoist36 .+ (ret_both (10 : int32)))
     else Option_Some (ret_both (0 : int32)) in
     Option_Some (letb b := ret_both (20 : int32) in
     Option_Some (a .+ b)))) : both (L1 :|: L2) (I1 :|: I2) (t_Option int32).
@@ -201,103 +291,13 @@ Equations simplifiable_return {L1 : {fset Location}} {L2 : {fset Location}} {L3 
     then letm[choice_typeMonad.result_bind_code int32] _ := ifb c2
     then letb _ := assign todo(term) in
     ifb c3
-    then letm[choice_typeMonad.result_bind_code int32] hoist34 := ControlFlow_Break (ret_both (1 : int32)) in
-    ControlFlow_Continue (never_to_any hoist34)
+    then letm[choice_typeMonad.result_bind_code int32] hoist37 := ControlFlow_Break (ret_both (1 : int32)) in
+    ControlFlow_Continue (never_to_any hoist37)
     else ()
     else () in
     ControlFlow_Continue (letb _ := assign todo(term) in
     ret_both (tt : 'unit))
     else () in
     ControlFlow_Continue x)) : both (L1 :|: L2 :|: L3 :|: fset [x_loc]) (I1 :|: I2 :|: I3) int32.
-Fail Next Obligation.
-
-Definition t_A : choice_type :=
-  'unit.
-Equations Build_t_A : both (fset []) (fset []) (t_A) :=
-  Build_t_A  :=
-    solve_lift (ret_both (tt (* Empty tuple *) : (t_A))) : both (fset []) (fset []) (t_A).
-Fail Next Obligation.
-
-Definition t_B : choice_type :=
-  'unit.
-Equations Build_t_B : both (fset []) (fset []) (t_B) :=
-  Build_t_B  :=
-    solve_lift (ret_both (tt (* Empty tuple *) : (t_B))) : both (fset []) (fset []) (t_B).
-Fail Next Obligation.
-
-Definition t_Bar : choice_type :=
-  ('bool × nseq ('bool × 'bool) 6 × 'bool).
-Equations f_a {L : {fset Location}} {I : Interface} (s : both L I t_Bar) : both L I 'bool :=
-  f_a s  :=
-    bind_both s (fun x =>
-      solve_lift (ret_both (fst x : 'bool))) : both L I 'bool.
-Fail Next Obligation.
-Equations f_b {L : {fset Location}} {I : Interface} (s : both L I t_Bar) : both L I (nseq ('bool × 'bool) 6 × 'bool) :=
-  f_b s  :=
-    bind_both s (fun x =>
-      solve_lift (ret_both (snd x : (nseq ('bool × 'bool) 6 × 'bool)))) : both L I (nseq ('bool × 'bool) 6 × 'bool).
-Fail Next Obligation.
-Equations Build_t_Bar {L0 : {fset Location}} {L1 : {fset Location}} {I0 : Interface} {I1 : Interface} {f_a : both L0 I0 'bool} {f_b : both L1 I1 (nseq ('bool × 'bool) 6 × 'bool)} : both (L0:|:L1) (I0:|:I1) (t_Bar) :=
-  Build_t_Bar  :=
-    bind_both f_b (fun f_b =>
-      bind_both f_a (fun f_a =>
-        solve_lift (ret_both ((f_a,f_b) : (t_Bar))))) : both (L0:|:L1) (I0:|:I1) (t_Bar).
-Fail Next Obligation.
-Notation "'Build_t_Bar' '[' x ']' '(' 'f_a' ':=' y ')'" := (Build_t_Bar (f_a := y) (f_b := f_b x)).
-Notation "'Build_t_Bar' '[' x ']' '(' 'f_b' ':=' y ')'" := (Build_t_Bar (f_a := f_a x) (f_b := y)).
-
-Equations monad_lifting {L1 : {fset Location}} {I1 : Interface} (x : both L1 I1 int8) : both L1 I1 (t_Result t_A t_B) :=
-  monad_lifting x  :=
-    solve_lift (run (ifb x >.? (ret_both (123 : int8))
-    then letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist35 := ControlFlow_Continue (Result_Err B) in
-    letb hoist36 := Result_Ok hoist35 in
-    letm[choice_typeMonad.result_bind_code (t_Result t_A t_B)] hoist37 := ControlFlow_Break hoist36 in
-    ControlFlow_Continue (never_to_any hoist37)
-    else ControlFlow_Continue (Result_Ok A))) : both L1 I1 (t_Result t_A t_B).
-Fail Next Obligation.
-
-Definition t_Foo : choice_type :=
-  ('bool × 'bool × t_Vec t_Bar t_Global × nseq t_Bar 6 × t_Bar).
-Equations f_x {L : {fset Location}} {I : Interface} (s : both L I t_Foo) : both L I 'bool :=
-  f_x s  :=
-    bind_both s (fun x =>
-      solve_lift (ret_both (fst (fst (fst x)) : 'bool))) : both L I 'bool.
-Fail Next Obligation.
-Equations f_y {L : {fset Location}} {I : Interface} (s : both L I t_Foo) : both L I ('bool × t_Vec t_Bar t_Global) :=
-  f_y s  :=
-    bind_both s (fun x =>
-      solve_lift (ret_both (snd (fst (fst x)) : ('bool × t_Vec t_Bar t_Global)))) : both L I ('bool × t_Vec t_Bar t_Global).
-Fail Next Obligation.
-Equations f_z {L : {fset Location}} {I : Interface} (s : both L I t_Foo) : both L I (nseq t_Bar 6) :=
-  f_z s  :=
-    bind_both s (fun x =>
-      solve_lift (ret_both (snd (fst x) : (nseq t_Bar 6)))) : both L I (nseq t_Bar 6).
-Fail Next Obligation.
-Equations f_bar {L : {fset Location}} {I : Interface} (s : both L I t_Foo) : both L I t_Bar :=
-  f_bar s  :=
-    bind_both s (fun x =>
-      solve_lift (ret_both (snd x : t_Bar))) : both L I t_Bar.
-Fail Next Obligation.
-Equations Build_t_Foo {L0 : {fset Location}} {L1 : {fset Location}} {L2 : {fset Location}} {L3 : {fset Location}} {I0 : Interface} {I1 : Interface} {I2 : Interface} {I3 : Interface} {f_x : both L0 I0 'bool} {f_y : both L1 I1 ('bool × t_Vec t_Bar t_Global)} {f_z : both L2 I2 (nseq t_Bar 6)} {f_bar : both L3 I3 t_Bar} : both (L0:|:L1:|:L2:|:L3) (I0:|:I1:|:I2:|:I3) (t_Foo) :=
-  Build_t_Foo  :=
-    bind_both f_bar (fun f_bar =>
-      bind_both f_z (fun f_z =>
-        bind_both f_y (fun f_y =>
-          bind_both f_x (fun f_x =>
-            solve_lift (ret_both ((f_x,f_y,f_z,f_bar) : (t_Foo))))))) : both (L0:|:L1:|:L2:|:L3) (I0:|:I1:|:I2:|:I3) (t_Foo).
-Fail Next Obligation.
-Notation "'Build_t_Foo' '[' x ']' '(' 'f_x' ':=' y ')'" := (Build_t_Foo (f_x := y) (f_y := f_y x) (f_z := f_z x) (f_bar := f_bar x)).
-Notation "'Build_t_Foo' '[' x ']' '(' 'f_y' ':=' y ')'" := (Build_t_Foo (f_x := f_x x) (f_y := y) (f_z := f_z x) (f_bar := f_bar x)).
-Notation "'Build_t_Foo' '[' x ']' '(' 'f_z' ':=' y ')'" := (Build_t_Foo (f_x := f_x x) (f_y := f_y x) (f_z := y) (f_bar := f_bar x)).
-Notation "'Build_t_Foo' '[' x ']' '(' 'f_bar' ':=' y ')'" := (Build_t_Foo (f_x := f_x x) (f_y := f_y x) (f_z := f_z x) (f_bar := y)).
-
-Equations assign_non_trivial_lhs {L1 : {fset Location}} {I1 : Interface} (foo : both L1 I1 t_Foo) : both L1 I1 t_Foo :=
-  assign_non_trivial_lhs foo  :=
-    letb _ := assign todo(term) in
-    letb _ := assign todo(term) in
-    letb _ := assign todo(term) in
-    letb _ := assign todo(term) in
-    letb _ := assign todo(term) in
-    solve_lift foo : both L1 I1 t_Foo.
 Fail Next Obligation.
 '''

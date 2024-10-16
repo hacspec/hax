@@ -118,3 +118,31 @@ mod enums_b {
         T::A
     }
 }
+
+mod m1 {
+    pub fn a() {
+        super::m2::c()
+    }
+}
+
+mod m2 {
+    pub fn d() {}
+    pub fn b() {
+        super::m1::a();
+        d()
+    }
+    pub fn c() {}
+}
+
+pub mod disjoint_cycle_a {
+    pub fn f() {
+        super::disjoint_cycle_b::h()
+    }
+    pub fn g() {}
+}
+pub mod disjoint_cycle_b {
+    pub fn h() {}
+    pub fn i() {
+        super::disjoint_cycle_a::g()
+    }
+}

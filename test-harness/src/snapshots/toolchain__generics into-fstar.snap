@@ -46,6 +46,8 @@ open FStar.Mul
 let impl__Bar__inherent_impl_generics (#v_T: Type0) (v_N: usize) (x: t_Array v_T v_N) : Prims.unit =
   ()
 
+type t_Bar = | Bar : t_Bar
+
 class t_Foo (v_Self: Type0) = {
   f_const_add_pre:v_N: usize -> v_Self -> Type0;
   f_const_add_post:v_N: usize -> v_Self -> usize -> Type0;
@@ -131,6 +133,4 @@ let repeat
       (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: Core.Marker.t_Copy v_T)
       (x: v_T)
     : t_Array v_T v_LEN = Rust_primitives.Hax.repeat x v_LEN
-
-type t_Bar = | Bar : t_Bar
 '''

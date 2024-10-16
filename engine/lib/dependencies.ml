@@ -155,13 +155,6 @@ module Make (F : Features.T) = struct
     end
 
     module CyclicDep = struct
-      (* We are looking for dependencies between items that give a cyclic dependency at the module level
-         (but not necessarily at the item level). All the items belonging to such a cycle should be bundled
-         together. *)
-      (* The algorithm is to take the transitive closure of the items dependency graph and look
-         for paths of length 3 that in terms of modules have the form A -> B -> A (A != B) *)
-      (* To compute the bundles, we keep a second (undirected graph) where an edge between two items
-         means they should be in the same bundle. The bundles are the connected components of this graph. *)
       module Bundle = struct
         type t = Concrete_ident.t list
 
@@ -171,57 +164,22 @@ module Make (F : Features.T) = struct
         let cycles g = CC.components_list g
       end
 
-      let of_graph' (g : G.t) (mod_graph_cycles : Namespace.Set.t list) :
-          Bundle.t list =
-        let closure = Oper.transitive_closure g in
-
-        let bundles_graph =
-          G.fold_vertex
-            (fun start (bundles_graph : Bundle.G.t) ->
-              let start_mod = Namespace.of_concrete_ident start in
-              let cycle_modules =
-                List.filter mod_graph_cycles ~f:(fun cycle ->
-                    Set.mem cycle start_mod)
-                |> List.reduce ~f:Set.union
-              in
-              match cycle_modules with
-              | Some cycle_modules ->
-                  let bundles_graph =
-                    G.fold_succ
-                      (fun interm bundles_graph ->
-                        let interm_mod = Namespace.of_concrete_ident interm in
-                        if
-                          (not ([%eq: Namespace.t] interm_mod start_mod))
-                          && Set.mem cycle_modules interm_mod
-                        then
-                          G.fold_succ
-                            (fun dest bundles_graph ->
-                              let dest_mod = Namespace.of_concrete_ident dest in
-                              if [%eq: Namespace.t] interm_mod dest_mod then
-                                let g =
-                                  Bundle.G.add_edge bundles_graph start interm
-                                in
-                                let g = Bundle.G.add_edge g interm dest in
-                                g
-                              else bundles_graph)
-                            g start bundles_graph
-                        else bundles_graph)
-                      g start bundles_graph
-                  in
-
-                  bundles_graph
-              | None -> bundles_graph)
-            closure Bundle.G.empty
+      (* This is a solution that bundles together everything that belongs to the same module SCC.
+         It results in bundles that are much bigger than they could be but is a simple solution
+         to the problem described in https://github.com/hacspec/hax/issues/995#issuecomment-2411114404 *)
+      let of_mod_sccs (items : item list)
+          (mod_graph_cycles : Namespace.Set.t list) : Bundle.t list =
+        let item_names = List.map items ~f:(fun x -> x.ident) in
+        let cycles =
+          List.filter mod_graph_cycles ~f:(fun set ->
+              Prelude.Set.length set > 1)
         in
-
-        let bundles = Bundle.cycles bundles_graph in
+        let bundles =
+          List.map cycles ~f:(fun set ->
+              List.filter item_names ~f:(fun item ->
+                  Prelude.Set.mem set (Namespace.of_concrete_ident item)))
+        in
         bundles
-
-      let of_graph (g : G.t) (mod_graph_cycles : Namespace.Set.t list) :
-          Bundle.t list =
-        match mod_graph_cycles with
-        | [] -> []
-        | _ -> of_graph' g mod_graph_cycles
     end
 
     open Graph.Graphviz.Dot (struct
@@ -430,13 +388,12 @@ module Make (F : Features.T) = struct
     item' :: aliases
 
   let bundle_cyclic_modules (items : item list) : item list =
-    let g = ItemGraph.of_items ~original_items:items items in
     let from_ident ident : item option =
       List.find ~f:(fun i -> [%equal: Concrete_ident.t] i.ident ident) items
     in
     let mut_rec_bundles =
       let mod_graph_cycles = ModGraph.of_items items |> ModGraph.cycles in
-      let bundles = ItemGraph.CyclicDep.of_graph g mod_graph_cycles in
+      let bundles = ItemGraph.CyclicDep.of_mod_sccs items mod_graph_cycles in
       let f = List.filter_map ~f:from_ident in
       List.map ~f bundles
     in
@@ -476,6 +433,12 @@ module Make (F : Features.T) = struct
             List.map variants ~f:(fun { name; _ } ->
                 ( name,
                   Concrete_ident.Create.move_under ~new_parent:new_name name ))
+        | Some { v = Type { variants; is_struct = true; _ }; _ } ->
+            List.concat_map variants ~f:(fun { arguments; _ } ->
+                List.map arguments ~f:(fun (name, _, _) ->
+                    ( name,
+                      Concrete_ident.Create.move_under ~new_parent:new_name name
+                    )))
         | _ -> []
       in
 
