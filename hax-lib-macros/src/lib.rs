@@ -1021,7 +1021,7 @@ pub fn refinement_type(mut attr: pm::TokenStream, item: pm::TokenStream) -> pm::
             }
 
             #[::hax_lib::exclude]
-            impl #generics ::std::ops::Deref for #ident <#generics_args> {
+            impl #generics ::core::ops::Deref for #ident <#generics_args> {
                 type Target = #inner_ty;
                 fn deref(&self) -> &Self::Target {
                     &self.0

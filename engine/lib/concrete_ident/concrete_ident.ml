@@ -474,7 +474,7 @@ module MakeViewAPI (NP : NAME_POLICY) : VIEW_API = struct
         else escape name
     | Constructor { is_struct } ->
         let name =
-          if start_lowercase name || is_reserved_word name then "C_" ^ name
+          if start_lowercase name || is_reserved_word name then "t_" ^ name
           else escape name
         in
         if is_struct then NP.struct_constructor_name_transform name

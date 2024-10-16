@@ -183,6 +183,7 @@ struct
         default_document_for "expr'_App_constant"
 
       method expr'_App_field_projection ~super:_ ~field ~e =
+        (* e#p *)
         field#p ^^ space ^^ e#p
       (* TODO: Do nothing if is zero *)
 
@@ -215,11 +216,13 @@ struct
         then
           if is_record
           then
+            (* Struct *)
             string "Build_t_" ^^ constructor#p ^^ concat_map (fun (ident, exp) -> space ^^ parens(exp#p)) fields
           else
-            separate_map space (fun (ident, exp) -> parens(exp#p)) fields
+            (* Tuple struct *)
+            string "Build_" ^^ constructor#p ^^ concat_map (fun (ident, exp) -> space ^^ parens(exp#p)) fields
         else
-          (* default_document_for "expr'_Construct_inductive" *)
+          (* Indutive type *)
           constructor#p ^^ concat_map (fun (ident, exp) -> space ^^ parens(exp#p)) fields
 
       method expr'_Construct_tuple ~super:_ ~components =
@@ -449,6 +452,7 @@ struct
         ^^ break 1
         ^^ !^"Arguments" ^^ space ^^ name#p ^^ colon ^^ !^"clear implicits" ^^ dot ^^ break 1
         ^^ !^"Arguments" ^^ space ^^ name#p ^^ concat_map (fun _ -> space ^^ !^"(_)") generics#v.params ^^ concat_map (fun _ -> space ^^ !^"{_}") generics#v.constraints ^^ dot
+        ^^ !^"Arguments" ^^ space ^^ !^"Build_" ^^ name#p ^^ concat_map (fun _ -> space ^^ !^"{_}") generics#v.params ^^ concat_map (fun _ -> space ^^ !^"{_}") generics#v.constraints ^^ dot
 
       method item'_Type_enum ~super:_ ~name ~generics ~variants =
         CoqNotation.inductive (name#p) (generics#p) [] (string "Type") (separate_map (break 1) (fun x -> string "|" ^^ space ^^ x#p) variants)
@@ -502,16 +506,16 @@ struct
         default_document_for "literal_Float"
 
       method literal_Int ~value ~negative:_ ~kind =
-        (match kind.size with
-         | S8 -> string "Build_t_U8"
-         | S16 -> string "Build_t_U16"
-         | S32 -> string "Build_t_U32"
-         | S64 -> string "Build_t_U64"
-         | S128 -> string "Build_t_U128"
-         | SSize -> string "Build_t_U64"
+        let outer, inner = (match kind.size with
+         | S8 -> ("u8", "U8")
+         | S16 -> ("u16", "U16")
+         | S32 -> ("u32", "U32")
+         | S64 -> ("u64", "U64")
+         | S128 -> ("u128", "U128")
+         | SSize -> ("usize", "U64")
          (* Dependens on architecture.. *)
-        )
-        ^^ space ^^ string value ^^ string "%N"
+        ) in
+        string ("Build_t_" ^ outer) ^^ space ^^ parens(string ("Build_t_" ^ inner) ^^ space ^^ string value ^^ string "%N")
 
       method literal_String x1 = string "\"" ^^ string x1 ^^ string "\"%string"
 
@@ -648,6 +652,15 @@ struct
         string (
           match id.definition with
           | "not" -> "negb"
+          | "eq" -> "t_PartialEq_f_eq"
+          | "lt" -> "t_PartialOrd_f_lt"
+          | "gt" -> "t_PartialOrd_f_gt"
+          | "le" -> "t_PartialOrd_f_le"
+          | "ge" -> "t_PartialOrd_f_ge"
+          | "rem" -> "t_Rem_f_rem"
+          | "add" -> "t_Add_f_add"
+          | "mul" -> "t_Mul_f_mul"
+          | "div" -> "t_Div_f_div"
           | x -> x
         )
         (* string (String.concat ~sep:"_" (id.crate :: (id.path @ [ id.definition ]))) *)
