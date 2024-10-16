@@ -1555,6 +1555,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
         let v =
           let kind = Concrete_ident.Kind.Constructor { is_struct } in
           let name = Concrete_ident.of_def_id kind def_id in
+          let name = Concrete_ident.Create.move_under name ~new_parent:name in
           let mk fields is_record =
             let arguments =
               List.map
