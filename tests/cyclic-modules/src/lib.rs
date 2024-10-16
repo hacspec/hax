@@ -133,3 +133,16 @@ mod m2 {
     }
     pub fn c() {}
 }
+
+pub mod disjoint_cycle_a {
+    pub fn f() {
+        super::disjoint_cycle_b::h()
+    }
+    pub fn g() {}
+}
+pub mod disjoint_cycle_b {
+    pub fn h() {}
+    pub fn i() {
+        super::disjoint_cycle_a::g()
+    }
+}
