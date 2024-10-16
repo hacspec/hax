@@ -362,6 +362,29 @@ fn target_dir(suffix: &str) -> PathBuf {
     dir.into()
 }
 
+/// Gets hax version: if hax is being compiled from a dirty git repo,
+/// then this function taints the hax version with the hash of the
+/// current executable. This makes sure cargo doesn't cache across
+/// different versions of hax, for more information see
+/// https://github.com/hacspec/hax/issues/801.
+fn get_hax_version() -> String {
+    let mut version = hax_types::HAX_VERSION.to_string();
+    if env!("HAX_GIT_IS_DIRTY") == "true" {
+        version += &std::env::current_exe()
+            .ok()
+            .and_then(|exe_path| std::fs::read(exe_path).ok())
+            .map(|contents| {
+                use std::hash::{DefaultHasher, Hash, Hasher};
+                let mut s = DefaultHasher::new();
+                contents.hash(&mut s);
+                format!("hash-exe-{}", s.finish())
+            })
+            .expect("Expect read path")
+    }
+
+    version
+}
+
 /// Calls `cargo` with a custom driver which computes `haxmeta` files
 /// in `TARGET`. One `haxmeta` file is produced by crate. Each
 /// `haxmeta` file contains the full AST of one crate.
@@ -393,6 +416,7 @@ fn compute_haxmeta_files(options: &Options) -> (Vec<EmitHaxMetaMessage>, i32) {
         )
         .env(RUST_LOG_STYLE, rust_log_style())
         .env(RUSTFLAGS, rustflags())
+        .env("HAX_CARGO_CACHE_KEY", get_hax_version())
         .env(
             ENV_VAR_OPTIONS_FRONTEND,
             serde_json::to_string(&options)
