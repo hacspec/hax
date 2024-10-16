@@ -33,19 +33,6 @@ module Interface_only
 open Core
 open FStar.Mul
 
-/// This item contains unsafe blocks and raw references, two features
-/// not supported by hax. Thanks to the `-i` flag and the `+:`
-/// modifier, `f` is still extractable as an interface.
-/// Expressions within type are still extracted, as well as pre- and
-/// post-conditions.
-val f (x: u8)
-    : Prims.Pure (t_Array u8 (sz 4))
-      (requires x <. 254uy)
-      (ensures
-        fun r ->
-          let r:t_Array u8 (sz 4) = r in
-          (r.[ sz 0 ] <: u8) >. x)
-
 type t_Bar = | Bar : t_Bar
 
 /// Non-inherent implementations are extracted, their bodies are not
@@ -69,4 +56,17 @@ let impl_1: Core.Convert.t_From t_Bar u8 =
     f_from_post = (fun (x: u8) (out: t_Bar) -> true);
     f_from = fun (x: u8) -> from__from x
   }
+
+/// This item contains unsafe blocks and raw references, two features
+/// not supported by hax. Thanks to the `-i` flag and the `+:`
+/// modifier, `f` is still extractable as an interface.
+/// Expressions within type are still extracted, as well as pre- and
+/// post-conditions.
+val f (x: u8)
+    : Prims.Pure (t_Array u8 (sz 4))
+      (requires x <. 254uy)
+      (ensures
+        fun r ->
+          let r:t_Array u8 (sz 4) = r in
+          (r.[ sz 0 ] <: u8) >. x)
 '''

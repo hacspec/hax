@@ -118,16 +118,11 @@ module Attributes.Newtype_pattern
 open Core
 open FStar.Mul
 
-let v_MAX: usize = sz 10
-
 type t_SafeIndex = { f_i:f_i: usize{f_i <. v_MAX} }
 
 let impl__SafeIndex__as_usize (self: t_SafeIndex) : usize = self.f_i
 
-let impl__SafeIndex__new (i: usize) : Core.Option.t_Option t_SafeIndex =
-  if i <. v_MAX
-  then Core.Option.Option_Some ({ f_i = i } <: t_SafeIndex) <: Core.Option.t_Option t_SafeIndex
-  else Core.Option.Option_None <: Core.Option.t_Option t_SafeIndex
+let v_MAX: usize = sz 10
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_1 (#v_T: Type0) : Core.Ops.Index.t_Index (t_Array v_T (sz 10)) t_SafeIndex =
@@ -137,6 +132,11 @@ let impl_1 (#v_T: Type0) : Core.Ops.Index.t_Index (t_Array v_T (sz 10)) t_SafeIn
     f_index_post = (fun (self: t_Array v_T (sz 10)) (index: t_SafeIndex) (out: v_T) -> true);
     f_index = fun (self: t_Array v_T (sz 10)) (index: t_SafeIndex) -> self.[ index.f_i ]
   }
+
+let impl__SafeIndex__new (i: usize) : Core.Option.t_Option t_SafeIndex =
+  if i <. v_MAX
+  then Core.Option.Option_Some ({ f_i = i } <: t_SafeIndex) <: Core.Option.t_Option t_SafeIndex
+  else Core.Option.Option_None <: Core.Option.t_Option t_SafeIndex
 '''
 "Attributes.Pre_post_on_traits_and_impls.fst" = '''
 module Attributes.Pre_post_on_traits_and_impls
@@ -169,13 +169,9 @@ class t_TraitWithRequiresAndEnsures (v_Self: Type0) = {
     -> Prims.Pure u8 (f_method_pre x0 x1) (fun result -> f_method_post x0 x1 result)
 }
 
-let test
-      (#v_T: Type0)
-      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_TraitWithRequiresAndEnsures v_T)
-      (x: v_T)
-    : u8 = (f_method #v_T #FStar.Tactics.Typeclasses.solve x 99uy <: u8) -! 88uy
-
 type t_ViaAdd = | ViaAdd : t_ViaAdd
+
+type t_ViaMul = | ViaMul : t_ViaMul
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl: t_Operation t_ViaAdd =
@@ -194,8 +190,6 @@ let impl: t_Operation t_ViaAdd =
     f_double = fun (x: u8) -> x +! x
   }
 
-type t_ViaMul = | ViaMul : t_ViaMul
-
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl_1: t_Operation t_ViaMul =
   {
@@ -212,6 +206,12 @@ let impl_1: t_Operation t_ViaMul =
         (Rust_primitives.Hax.Int.from_machine result <: Hax_lib.Int.t_Int));
     f_double = fun (x: u8) -> x *! 2uy
   }
+
+let test
+      (#v_T: Type0)
+      (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_TraitWithRequiresAndEnsures v_T)
+      (x: v_T)
+    : u8 = (f_method #v_T #FStar.Tactics.Typeclasses.solve x 99uy <: u8) -! 88uy
 '''
 "Attributes.Refined_arithmetic.fst" = '''
 module Attributes.Refined_arithmetic
@@ -247,9 +247,9 @@ module Attributes.Refined_indexes
 open Core
 open FStar.Mul
 
-let v_MAX: usize = sz 10
-
 type t_MyArray = | MyArray : t_Array u8 (sz 10) -> t_MyArray
+
+let v_MAX: usize = sz 10
 
 /// Triple dash comment
 (** Multiline double star comment Maecenas blandit accumsan feugiat.
@@ -288,17 +288,17 @@ module Attributes.Refinement_types
 open Core
 open FStar.Mul
 
-let t_BoundedU8 (v_MIN v_MAX: u8) = x: u8{x >=. v_MIN && x <=. v_MAX}
-
 /// Example of a specific constraint on a value
 let t_CompressionFactor = x: u8{x =. 4uy || x =. 5uy || x =. 10uy || x =. 11uy}
+
+let t_BoundedU8 (v_MIN v_MAX: u8) = x: u8{x >=. v_MIN && x <=. v_MAX}
+
+/// A field element
+let t_FieldElement = x: u16{x <=. 2347us}
 
 /// Even `u8` numbers. Constructing pub Even values triggers static
 /// proofs in the extraction.
 let t_Even = x: u8{(x %! 2uy <: u8) =. 0uy}
-
-/// A field element
-let t_FieldElement = x: u16{x <=. 2347us}
 
 /// A modular mutliplicative inverse
 let t_ModInverse (v_MOD: u32) =
@@ -330,13 +330,13 @@ let t_NoE =
       in
       ~.out }
 
+let double_refine (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_True) =
+  x +! x <: t_Even
+
 let bounded_u8 (x: t_BoundedU8 12uy 15uy) (y: t_BoundedU8 10uy 11uy) : t_BoundedU8 1uy 23uy =
   (x <: u8) +! (y <: u8) <: t_BoundedU8 1uy 23uy
 
 let double (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_True) =
-  x +! x <: t_Even
-
-let double_refine (x: u8) : Prims.Pure t_Even (requires x <. 127uy) (fun _ -> Prims.l_True) =
   x +! x <: t_Even
 '''
 "Attributes.Requires_mut.fst" = '''
@@ -454,6 +454,12 @@ module Attributes
 open Core
 open FStar.Mul
 
+type t_Foo = {
+  f_x:u32;
+  f_y:f_y: u32{f_y >. 3ul};
+  f_z:f_z: u32{((f_y +! f_x <: u32) +! f_z <: u32) >. 3ul}
+}
+
 let inlined_code__V: u8 = 12uy
 
 let issue_844_ (v__x: u8)
@@ -498,14 +504,6 @@ let add3_lemma (x: u32)
         x <=. 10ul || x >=. (u32_max /! 3ul <: u32) || (add3 x x x <: u32) =. (x *! 3ul <: u32)) =
   ()
 
-type t_Foo = {
-  f_x:u32;
-  f_y:f_y: u32{f_y >. 3ul};
-  f_z:f_z: u32{((f_y +! f_x <: u32) +! f_z <: u32) >. 3ul}
-}
-
-unfold let some_function _ = "hello from F*"
-
 let before_inlined_code = "example before"
 
 let inlined_code (foo: t_Foo) : Prims.unit =
@@ -518,4 +516,6 @@ let inlined_code (foo: t_Foo) : Prims.unit =
   ()
 
 let inlined_code_after = "example after"
+
+unfold let some_function _ = "hello from F*"
 '''

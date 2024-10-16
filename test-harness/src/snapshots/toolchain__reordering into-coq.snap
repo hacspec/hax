@@ -38,6 +38,10 @@ Inductive t_Foo : Type :=
 | Foo_A : t_Foo
 | Foo_B : t_Foo.
 
+Record t_Bar : Type := {
+  0 : t_Foo_t;
+}.
+
 Definition t_Foo_cast_to_repr (x : t_Foo_t) : uint_size :=
   match x with
   | Foo_A  =>
@@ -51,16 +55,12 @@ Definition t_Foo_cast_to_repr (x : t_Foo_t) : uint_size :=
 Definition f (_ : int32) : t_Foo_t :=
   Foo_At_Foo_t.
 
+Definition g (_ : unit) : t_Bar_t :=
+  Bar (f (@repr WORDSIZE32 32)).
+
 Definition no_dependency_1_ (_ : unit) : unit :=
   tt.
 
 Definition no_dependency_2_ (_ : unit) : unit :=
   tt.
-
-Record t_Bar : Type := {
-  0 : t_Foo_t;
-}.
-
-Definition g (_ : unit) : t_Bar_t :=
-  Bar (f (@repr WORDSIZE32 32)).
 '''

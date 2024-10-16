@@ -400,6 +400,9 @@ module Traits.Interlaced_consts_types
 open Core
 open FStar.Mul
 
+type t_Bar (v_FooConst: usize) (v_FooType: Type0) =
+  | Bar : t_Array v_FooType v_FooConst -> t_Bar v_FooConst v_FooType
+
 class t_Foo (v_Self: Type0) (v_FooConst: usize) (v_FooType: Type0) = {
   f_fun_pre:
       v_FunConst: usize ->
@@ -456,9 +459,6 @@ let impl (v_FooConst: usize) (#v_FooType #v_SelfType: Type0) : t_Foo v_SelfType 
       ->
       ()
   }
-
-type t_Bar (v_FooConst: usize) (v_FooType: Type0) =
-  | Bar : t_Array v_FooType v_FooConst -> t_Bar v_FooConst v_FooType
 '''
 "Traits.Recursive_trait_with_assoc_type.fst" = '''
 module Traits.Recursive_trait_with_assoc_type
@@ -491,16 +491,13 @@ module Traits.Unconstrainted_types_issue_677_
 open Core
 open FStar.Mul
 
+type t_Plus = | Plus : t_Plus
+
 class t_PolyOp (v_Self: Type0) = {
   f_op_pre:u32 -> u32 -> Type0;
   f_op_post:u32 -> u32 -> u32 -> Type0;
   f_op:x0: u32 -> x1: u32 -> Prims.Pure u32 (f_op_pre x0 x1) (fun result -> f_op_post x0 x1 result)
 }
-
-let twice (#v_OP: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_PolyOp v_OP) (x: u32)
-    : u32 = f_op #v_OP #FStar.Tactics.Typeclasses.solve x x
-
-type t_Plus = | Plus : t_Plus
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl: t_PolyOp t_Plus =
@@ -519,6 +516,9 @@ let impl_1: t_PolyOp t_Times =
     f_op_post = (fun (x: u32) (y: u32) (out: u32) -> true);
     f_op = fun (x: u32) (y: u32) -> x *! y
   }
+
+let twice (#v_OP: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_PolyOp v_OP) (x: u32)
+    : u32 = f_op #v_OP #FStar.Tactics.Typeclasses.solve x x
 
 let both (x: u32) : (u32 & u32) = twice #t_Plus x, twice #t_Times x <: (u32 & u32)
 '''
@@ -545,6 +545,8 @@ let impl__Error__for_application_callback (_: Prims.unit) :  Prims.unit -> t_Err
     Error_Fail <: t_Error
 
 let t_Error_cast_to_repr (x: t_Error) : isize = match x with | Error_Fail  -> isz 0
+
+type t_Struct = | Struct : t_Struct
 
 class t_SuperTrait (v_Self: Type0) = {
   [@@@ FStar.Tactics.Typeclasses.no_method]_super_9442900250278684536:Core.Clone.t_Clone v_Self;
@@ -628,8 +630,6 @@ class t_Lang (v_Self: Type0) = {
   f_s:x0: v_Self -> x1: i32
     -> Prims.Pure (v_Self & f_Var) (f_s_pre x0 x1) (fun result -> f_s_post x0 x1 result)
 }
-
-type t_Struct = | Struct : t_Struct
 
 let f (#v_T: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_T) (x: v_T) : Prims.unit =
   let _:Prims.unit = f_assoc_f #v_T #FStar.Tactics.Typeclasses.solve () in
