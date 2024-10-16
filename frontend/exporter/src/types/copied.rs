@@ -3134,19 +3134,6 @@ pub enum AssocItemKind {
     Type,
 }
 
-#[cfg(feature = "rustc")]
-impl<
-        'tcx,
-        S,
-        D: Clone,
-        T: SInto<S, D> + rustc_middle::ty::TypeFoldable<rustc_middle::ty::TyCtxt<'tcx>>,
-    > SInto<S, D> for rustc_middle::ty::EarlyBinder<'tcx, T>
-{
-    fn sinto(&self, s: &S) -> D {
-        self.clone().instantiate_identity().sinto(s)
-    }
-}
-
 /// Reflects [`rustc_hir::Impl`].
 #[derive(AdtInto)]
 #[args(<'tcx, S: UnderOwnerState<'tcx> >, from: rustc_hir::Impl<'tcx>, state: S as s)]
@@ -3159,7 +3146,10 @@ pub struct Impl<Body: IsBody> {
     pub defaultness_span: Option<Span>,
     pub generics: Generics<Body>,
     #[map({
-        s.base().tcx.impl_trait_ref(s.owner_id()).sinto(s)
+        s.base().tcx
+            .impl_trait_ref(s.owner_id())
+            .map(|trait_ref| trait_ref.instantiate_identity())
+            .sinto(s)
     })]
     pub of_trait: Option<TraitRef>,
     pub self_ty: Ty,
