@@ -14,13 +14,25 @@ use crate::traits::utils::erase_and_norm;
 pub enum PathChunk<'tcx> {
     AssocItem {
         item: AssocItem,
+        /// The arguments provided to the item (for GATs).
+        generic_args: &'tcx [GenericArg<'tcx>],
+        /// The impl exprs that must be satisfied to apply the given arguments to the item. E.g.
+        /// `T: Clone` in the following example:
+        /// ```ignore
+        /// trait Foo {
+        ///     type Type<T: Clone>: Debug;
+        /// }
+        /// ```
+        impl_exprs: Vec<ImplExpr<'tcx>>,
+        /// The implemented predicate.
         predicate: PolyTraitPredicate<'tcx>,
-        /// The nth predicate returned by `tcx.item_bounds`.
+        /// The index of this predicate in the list returned by `tcx.item_bounds`.
         index: usize,
     },
     Parent {
+        /// The implemented predicate.
         predicate: PolyTraitPredicate<'tcx>,
-        /// The nth predicate returned by `tcx.predicates_of`.
+        /// The index of this predicate in the list returned by `tcx.predicates_of`.
         index: usize,
     },
 }
@@ -213,20 +225,27 @@ impl<'tcx> PredicateSearcher<'tcx> {
     }
 
     /// If the type is a trait associated type, we add any relevant bounds to our context.
-    fn add_associated_type_refs(&mut self, ty: Binder<'tcx, Ty<'tcx>>) {
+    fn add_associated_type_refs(
+        &mut self,
+        ty: Binder<'tcx, Ty<'tcx>>,
+        // Call back into hax-related code to display a nice warning.
+        warn: &impl Fn(&str),
+    ) -> Result<(), String> {
         let tcx = self.tcx;
         // Note: We skip a binder but rebind it just after.
         let TyKind::Alias(AliasTyKind::Projection, alias_ty) = ty.skip_binder().kind() else {
-            return;
+            return Ok(());
         };
-        let trait_ref = ty.rebind(alias_ty.trait_ref(tcx)).upcast(tcx);
+        let (trait_ref, item_args) = alias_ty.trait_ref_and_own_args(tcx);
+        let trait_ref = ty.rebind(trait_ref).upcast(tcx);
 
         // The predicate we're looking for is is `<T as Trait>::Type: OtherTrait`. We look up `T as
         // Trait` in the current context and add all the bounds on `Trait::Type` to our context.
-        let Some(trait_candidate) = self.lookup(trait_ref) else {
-            return;
+        let Some(trait_candidate) = self.resolve_local(trait_ref, warn)? else {
+            return Ok(());
         };
 
+        // The bounds that the associated type must validate.
         let item_bounds = tcx
             // TODO: `item_bounds` can contain parent traits, we don't want them
             .item_bounds(alias_ty.def_id)
@@ -234,6 +253,16 @@ impl<'tcx> PredicateSearcher<'tcx> {
             .iter()
             .filter_map(|pred| pred.as_trait_clause())
             .enumerate();
+
+        // Resolve predicates required to mention the item.
+        let nested_impl_exprs: Vec<_> = tcx
+            .predicates_defined_on(alias_ty.def_id)
+            .predicates
+            .iter()
+            .filter_map(|(clause, _span)| clause.as_trait_clause())
+            .map(|trait_pred| trait_pred.map_bound(|p| p.trait_ref))
+            .map(|trait_ref| self.resolve(&trait_ref, warn))
+            .collect::<Result<_, _>>()?;
 
         // Add all the bounds on the corresponding associated item.
         self.extend(item_bounds.map(|(index, pred)| {
@@ -244,26 +273,35 @@ impl<'tcx> PredicateSearcher<'tcx> {
             };
             candidate.path.push(PathChunk::AssocItem {
                 item: tcx.associated_item(alias_ty.def_id),
+                generic_args: item_args,
+                impl_exprs: nested_impl_exprs.clone(),
                 predicate: pred,
                 index,
             });
             candidate
         }));
+
+        Ok(())
     }
 
-    /// Lookup a predicate in this set. If the predicate applies to an associated type, we
-    /// add the relevant implied associated type bounds to the set as well.
-    fn lookup(&mut self, target: PolyTraitPredicate<'tcx>) -> Option<Candidate<'tcx>> {
+    /// Resolve a local clause by looking it up in this set. If the predicate applies to an
+    /// associated type, we add the relevant implied associated type bounds to the set as well.
+    fn resolve_local(
+        &mut self,
+        target: PolyTraitPredicate<'tcx>,
+        // Call back into hax-related code to display a nice warning.
+        warn: &impl Fn(&str),
+    ) -> Result<Option<Candidate<'tcx>>, String> {
         tracing::trace!("Looking for {target:?}");
 
         // Look up the predicate
         let ret = self.candidates.get(&target).cloned();
         if ret.is_some() {
-            return ret;
+            return Ok(ret);
         }
 
         // Add clauses related to associated type in the `Self` type of the predicate.
-        self.add_associated_type_refs(target.self_ty());
+        self.add_associated_type_refs(target.self_ty(), warn)?;
 
         let ret = self.candidates.get(&target).cloned();
         if ret.is_none() {
@@ -275,7 +313,7 @@ impl<'tcx> PredicateSearcher<'tcx> {
                     .join("")
             );
         }
-        ret
+        Ok(ret)
     }
 
     /// Resolve the given trait reference in the local context.
@@ -304,7 +342,9 @@ impl<'tcx> PredicateSearcher<'tcx> {
                 def_id: impl_def_id,
                 generics,
             },
-            Ok(ImplSource::Param(_)) => match self.lookup(erased_tref.upcast(self.tcx)) {
+            Ok(ImplSource::Param(_)) => match self
+                .resolve_local(erased_tref.upcast(self.tcx), warn)?
+            {
                 Some(candidate) => {
                     let path = candidate.path;
                     let r#trait = candidate.origin.clause.to_poly_trait_ref();
@@ -338,27 +378,28 @@ impl<'tcx> PredicateSearcher<'tcx> {
 
         let nested = match &impl_source {
             Ok(ImplSource::UserDefined(ImplSourceUserDefinedData { nested, .. })) => {
-                nested.as_slice()
+                // The nested obligations of depth 1 correspond (we hope) to the predicates on the
+                // relevant impl that need to be satisfied.
+                nested
+                    .iter()
+                    .filter(|obligation| obligation.recursion_depth == 1)
+                    .filter_map(|obligation| {
+                        obligation.predicate.as_trait_clause().map(|trait_ref| {
+                            self.resolve(&trait_ref.map_bound(|p| p.trait_ref), warn)
+                        })
+                    })
+                    .collect::<Result<_, _>>()?
             }
-            Ok(ImplSource::Param(nested)) => nested.as_slice(),
+            // Nested obligations can happen e.g. for GATs. We ignore these as we resolve local
+            // clauses ourselves.
+            Ok(ImplSource::Param(_)) => vec![],
             // We ignore the contained obligations here. For example for `(): Send`, the
             // obligations contained would be `[(): Send]`, which leads to an infinite loop. There
             // might be important obligations here in other cases; we'll have to see if that comes
             // up.
-            Ok(ImplSource::Builtin(_, _ignored)) => &[],
-            Err(_) => &[],
+            Ok(ImplSource::Builtin(..)) => vec![],
+            Err(_) => vec![],
         };
-        let nested = nested
-            .iter()
-            // Only keep depth-1 obligations to avoid duplicate impl exprs.
-            .filter(|obligation| obligation.recursion_depth == 1)
-            .filter_map(|obligation| {
-                obligation
-                    .predicate
-                    .as_trait_clause()
-                    .map(|trait_ref| self.resolve(&trait_ref.map_bound(|p| p.trait_ref), warn))
-            })
-            .collect::<Result<_, _>>()?;
 
         Ok(ImplExpr {
             r#impl: atom,

@@ -53,7 +53,7 @@ impl<'tcx, S: BaseState<'tcx>> SInto<S, Arc<FullDef>> for RDefId {
             span: tcx.def_span(def_id).sinto(s),
             source_span: source_span.sinto(s),
             source_text,
-            attributes: tcx.get_attrs_unchecked(def_id).sinto(s),
+            attributes: get_def_attrs(tcx, def_id).sinto(s),
             visibility: get_def_visibility(tcx, def_id),
             lang_item: s
                 .base()
@@ -421,6 +421,17 @@ fn get_def_visibility<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: RDefId) -> Option<boo
         | LifetimeParam
         | OpaqueTy
         | TyParam => None,
+    }
+}
+
+/// Gets the attributes of the definition.
+#[cfg(feature = "rustc")]
+fn get_def_attrs<'tcx>(tcx: ty::TyCtxt<'tcx>, def_id: RDefId) -> &'tcx [rustc_ast::ast::Attribute] {
+    use rustc_hir::def::DefKind::*;
+    match tcx.def_kind(def_id) {
+        // These kinds cause `get_attrs_unchecked` to panic.
+        ConstParam | LifetimeParam | TyParam => &[],
+        _ => tcx.get_attrs_unchecked(def_id),
     }
 }
 

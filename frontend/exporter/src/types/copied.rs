@@ -1766,7 +1766,10 @@ pub enum AliasKind {
     /// An associated type in an inherent impl.
     Inherent,
     /// An `impl Trait` opaque type.
-    Opaque,
+    Opaque {
+        /// The real type hidden inside this opaque type.
+        hidden_ty: Ty,
+    },
     /// A type alias that references opaque types. Likely to always be normalized away.
     Weak,
 }
@@ -1778,11 +1781,11 @@ impl Alias {
         s: &S,
         alias_kind: &rustc_type_ir::AliasTyKind,
         alias_ty: &rustc_middle::ty::AliasTy<'tcx>,
-    ) -> Self {
+    ) -> TyKind {
+        let tcx = s.base().tcx;
         use rustc_type_ir::AliasTyKind as RustAliasKind;
         let kind = match alias_kind {
             RustAliasKind::Projection => {
-                let tcx = s.base().tcx;
                 let trait_ref = alias_ty.trait_ref(tcx);
                 // In a case like:
                 // ```
@@ -1803,14 +1806,20 @@ impl Alias {
                 }
             }
             RustAliasKind::Inherent => AliasKind::Inherent,
-            RustAliasKind::Opaque => AliasKind::Opaque,
+            RustAliasKind::Opaque => {
+                // Reveal the underlying `impl Trait` type.
+                let ty = tcx.type_of(alias_ty.def_id).instantiate(tcx, alias_ty.args);
+                AliasKind::Opaque {
+                    hidden_ty: ty.sinto(s),
+                }
+            }
             RustAliasKind::Weak => AliasKind::Weak,
         };
-        Alias {
+        TyKind::Alias(Alias {
             kind,
             args: alias_ty.args.sinto(s),
             def_id: alias_ty.def_id.sinto(s),
-        }
+        })
     }
 }
 
@@ -1903,7 +1912,7 @@ pub enum TyKind {
     Tuple(Vec<Ty>),
     #[custom_arm(
         rustc_middle::ty::TyKind::Alias(alias_kind, alias_ty) => {
-            TyKind::Alias(Alias::from(state, alias_kind, alias_ty))
+            Alias::from(state, alias_kind, alias_ty)
         },
     )]
     Alias(Alias),
