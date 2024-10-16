@@ -4,6 +4,7 @@ target/
 node_modules
 TODO.org
 .direnv
+.envrc
 _build
 result
 .DS_Store
