@@ -152,7 +152,7 @@ impl<'tcx> PredicateSearcher<'tcx> {
     pub fn new_for_owner(tcx: TyCtxt<'tcx>, owner_id: DefId) -> Self {
         let mut out = Self {
             tcx,
-            param_env: tcx.param_env(owner_id),
+            param_env: tcx.param_env(owner_id).with_reveal_all_normalized(tcx),
             candidates: Default::default(),
         };
         out.extend(

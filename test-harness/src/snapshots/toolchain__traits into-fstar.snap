@@ -602,6 +602,15 @@ let iter_option (#v_T: Type0) (x: Core.Option.t_Option v_T) : Core.Option.t_Into
     #FStar.Tactics.Typeclasses.solve
     (Core.Option.impl__as_ref #v_T x <: Core.Option.t_Option v_T)
 
+let use_impl_trait (_: Prims.unit) : Prims.unit =
+  let iter:_ = iter_option #bool (Core.Option.Option_Some false <: Core.Option.t_Option bool) in
+  let tmp0, out:(_ & Core.Option.t_Option bool) =
+    Core.Iter.Traits.Iterator.f_next #_ #FStar.Tactics.Typeclasses.solve iter
+  in
+  let iter:_ = tmp0 in
+  let _:Core.Option.t_Option bool = out in
+  ()
+
 class t_Foo (v_Self: Type0) = {
   f_AssocType:Type0;
   f_AssocType_15525962639250476383:t_SuperTrait f_AssocType;
