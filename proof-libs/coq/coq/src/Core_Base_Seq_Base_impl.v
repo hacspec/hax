@@ -4,13 +4,22 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 Require Import String.
-From Core Require Import Core_Marker.
+
+
+From Core Require Import Core_Base_Seq.
+Export Core_Base_Seq.
 
 From Core Require Import Core_Base_Seq_Base_spec.
 Export Core_Base_Seq_Base_spec.
 
 From Core Require Import Core_Panicking.
 Export Core_Panicking.
+
+From Core Require Import Core_Marker.
+Export Core_Marker.
+
+From Core Require Import Core_Clone.
+Export Core_Clone.
 
 From Core Require Import Core_Cmp.
 Export Core_Cmp.
@@ -20,51 +29,50 @@ Export Core_Base_Int_Base_impl.
 
 Definition impl_2__is_empty `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (self : t_Seq (v_T)) : bool :=
   match impl_1__match_list (self) with
-  |  LIST_NIL =>
+  |  t_LIST_LIST_NIL =>
     true
-  |  LIST_CONS (_) (_) =>
+  |  t_LIST_LIST_CONS (_) (_) =>
     false
   end.
 
-Definition impl_2__tl `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (self : t_Seq (v_T)) : t_Seq (v_T) :=
+Definition impl_2__tl `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (self : t_Seq (v_T)) `{negb (impl_2__is_empty (self)) = true} : t_Seq (v_T) :=
   match impl_1__match_list (self) with
-  |  LIST_NIL =>
+  |  t_LIST_LIST_NIL =>
     impl_1__NIL
-  |  LIST_CONS (_) (tl) =>
+  |  t_LIST_LIST_CONS (_) (tl) =>
     tl
   end.
 
-Definition impl_2__hd__panic_cold_explicit (_ : unit) `{x : t_Never} : t_Never :=
-  panic_explicit (tt) (x := x).
+Definition impl_2__hd__panic_cold_explicit (_ : unit) `{false = true} : t_Never :=
+  panic_explicit (H := H) (tt).
 
-Program Definition impl_2__hd `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (self : t_Seq (v_T)) `{(0 < List.length self)%nat} : v_T :=
-  match impl_1__match_list (self) with
-  |  LIST_NIL =>
-    never_to_any (impl_2__hd__panic_cold_explicit (tt) (x := _))
-  |  LIST_CONS (hd) (_) =>
+Definition impl_2__hd `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (self : t_Seq (v_T)) `{negb (impl_2__is_empty (self)) = true} : v_T :=
+  match impl_1__match_list (self) as k return negb (impl_2__is_empty k) = true -> _ with
+  |  t_LIST_LIST_NIL =>
+    fun F =>
+    never_to_any (impl_2__hd__panic_cold_explicit (H := F) (tt))
+  |  t_LIST_LIST_CONS (hd) (_) =>
+    fun _ =>
     hd
-  end.
-Next Obligation.
-Admitted.
-Fail Next Obligation.
+  end H1.
 
-Definition impl_2__set_index__set_index_unary__panic_cold_explicit (_ : unit) `{x : t_Never} : t_Never :=
-  panic_explicit (tt) (x := x).
+Definition impl_2__set_index__set_index_unary__panic_cold_explicit (_ : unit) `{false = true} : t_Never :=
+  panic_explicit (H := H) (tt).
 
 Fixpoint impl__eq_inner `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} `{t_PartialEq v_T v_T} (self : t_Seq (v_T)) (other : t_Seq (v_T)) : bool :=
-  match impl_1__match_list (impl__clone (self)) with
-  |  LIST_NIL =>
-    impl_2__is_empty (impl__clone (other))
-  |  LIST_CONS (x) (xs) =>
-    match impl_1__match_list (impl__clone (other)) with
-    |  LIST_NIL =>
+  match impl_1__match_list (t_Clone_f_clone (self)) with
+  |  t_LIST_LIST_NIL =>
+    impl_2__is_empty (t_Clone_f_clone (other))
+  |  t_LIST_LIST_CONS (x) (xs) =>
+    match impl_1__match_list (t_Clone_f_clone (other)) with
+    |  t_LIST_LIST_NIL =>
       false
-    |  LIST_CONS (y) (ys) =>
+    |  t_LIST_LIST_CONS (y) (ys) =>
       andb (t_PartialEq_f_eq (x) (y)) (impl__eq_inner (xs) (ys))
     end
   end.
 
-Instance t_Seq_t_PartialEq `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} `{t_PartialEq v_T v_T} : t_PartialEq (t_Seq (v_T)) (t_Seq (v_T)) :=
+Instance t_PartialEq_531240694 `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} `{t_PartialEq v_T v_T} : t_PartialEq (t_Seq (v_T)) (t_Seq (v_T)) :=
   {
     t_PartialEq_f_eq := fun (self : t_Seq (v_T)) (other : t_Seq (v_T)) =>
       impl__eq_inner (self) (other);
@@ -74,86 +82,61 @@ Instance t_Seq_t_PartialEq `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} `{t_Parti
 
 Fixpoint impl_2__len `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (self : t_Seq (v_T)) : t_HaxInt :=
   match impl_1__match_list (self) with
-  |  LIST_NIL =>
+  |  t_LIST_LIST_NIL =>
     impl_9__ZERO
-  |  LIST_CONS (_) (tl) =>
+  |  t_LIST_LIST_CONS (_) (tl) =>
     impl_9__succ (impl_2__len (tl))
   end.
 
 Fixpoint impl_2__rev_accum `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (self : t_Seq (v_T)) (accum : t_Seq (v_T)) : t_Seq (v_T) :=
   match impl_1__match_list (self) with
-  |  LIST_NIL =>
+  |  t_LIST_LIST_NIL =>
     accum
-  |  LIST_CONS (hd) (tl) =>
+  |  t_LIST_LIST_CONS (hd) (tl) =>
     impl_2__rev_accum (tl) (impl_1__cons (accum) (hd))
   end.
 
 Definition impl_2__rev `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (self : t_Seq (v_T)) : t_Seq (v_T) :=
   impl_2__rev_accum (self) (impl_1__NIL).
 
-Program Fixpoint impl_2__get_index__get_index_unary `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (l : t_Seq (v_T)) (i : t_Unary) `{(i < Datatypes.length l)%nat} : v_T :=
+Program Fixpoint impl_2__get_index__get_index_unary `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (l : t_Seq (v_T)) (i : t_Unary) `{t_PartialOrd_f_lt (impl_5__to_int i) ((impl_2__len (l))) = true} : v_T :=
   match impl_6__match_unary (i) with
-  |  UNARY_ZERO =>
+  |  t_UNARY_UNARY_ZERO =>
     impl_2__hd (l)
-  |  UNARY_SUCC (n) =>
+  |  t_UNARY_UNARY_SUCC (n) =>
     impl_2__get_index__get_index_unary (impl_2__tl (l)) (n)
   end.
-Next Obligation.
-  destruct l.
-  - easy.
-  - apply Nat.lt_0_succ.
-Qed.
-Next Obligation.
-  destruct i.
-  - easy.
-  - inversion Heq_anonymous. subst. clear Heq_anonymous.
-    destruct l.
-    + easy.
-    + cbn in H1 |- *.
-      Lia.lia.
-Qed.
+Admit Obligations.
 
-Definition impl_2__get_index `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (self : t_Seq (v_T)) (i : t_HaxInt) `{H_inside : (N.to_nat i < Datatypes.length self)%nat} : v_T :=
-  impl_2__get_index__get_index_unary (self) (impl_5__from_int (i)) (H1 := H_inside).
+Program Definition impl_2__get_index `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (self : t_Seq (v_T)) (i : t_HaxInt) `{t_PartialOrd_f_lt (i) (impl_2__len (self)) = true} : v_T :=
+  impl_2__get_index__get_index_unary (H1 := _) (self) (impl_5__from_int (i)).
+Admit Obligations.
 
 Fixpoint impl_2__repeat__repeat_unary `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (n : t_Unary) (v : v_T) : t_Seq (v_T) :=
   match impl_6__match_unary (n) with
-  |  UNARY_ZERO =>
+  |  t_UNARY_UNARY_ZERO =>
     impl_1__NIL
-  |  UNARY_SUCC (m) =>
+  |  t_UNARY_UNARY_SUCC (m) =>
     impl_1__cons (impl_2__repeat__repeat_unary (m) (t_Clone_f_clone (v))) (v)
   end.
 
 Definition impl_2__repeat `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (n : t_HaxInt) (v : v_T) : t_Seq (v_T) :=
   impl_2__repeat__repeat_unary (impl_5__from_int (n)) (v).
 
-Program Fixpoint impl_2__set_index__set_index_unary `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (x : t_Seq (v_T)) (i : t_Unary) (v : v_T) `{(i < Datatypes.length x)%nat} : t_Seq (v_T) :=
+Program Fixpoint impl_2__set_index__set_index_unary `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (x : t_Seq (v_T)) (i : t_Unary) (v : v_T) `{t_PartialOrd_f_lt (impl_5__to_int i) ((impl_2__len (x))) = true} : t_Seq (v_T) :=
   match impl_1__match_list (x) with
-  |  LIST_NIL =>
-    never_to_any (impl_2__set_index__set_index_unary__panic_cold_explicit (tt))
-  |  LIST_CONS (hd) (tl) =>
+  |  t_LIST_LIST_NIL =>
+    never_to_any (impl_2__set_index__set_index_unary__panic_cold_explicit (H := _) (tt))
+  |  t_LIST_LIST_CONS (hd) (tl) =>
     match impl_6__match_unary (i) with
-    |  UNARY_ZERO =>
+    |  t_UNARY_UNARY_ZERO =>
       impl_1__cons (tl) (v)
-    |  UNARY_SUCC (n) =>
+    |  t_UNARY_UNARY_SUCC (n) =>
       impl_1__cons (impl_2__set_index__set_index_unary (tl) (n) (v)) (hd)
     end
   end.
-Next Obligation.
-  destruct x.
-  - destruct i ; cbn in H1 ; Lia.lia.
-  - discriminate.
-Qed.
-Next Obligation.
-  destruct i.
-  - easy.
-  - inversion Heq_anonymous. subst. clear Heq_anonymous.
-    destruct x.
-    + easy.
-    + inversion Heq_anonymous0. subst. clear Heq_anonymous0.
-      cbn in H1 |- *.
-      Lia.lia.
-Qed.
+Admit Obligations.
 
-Definition impl_2__set_index `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (self : t_Seq (v_T)) (i : t_HaxInt) (v : v_T) `{H_inside : (N.to_nat i < Datatypes.length self)%nat} : t_Seq (v_T) :=
-  impl_2__set_index__set_index_unary (self) (impl_5__from_int (i)) (v) (H1 := H_inside).
+Program Definition impl_2__set_index `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (self : t_Seq (v_T)) (i : t_HaxInt) (v : v_T) `{t_PartialOrd_f_lt (i) (impl_2__len (self)) = true} : t_Seq (v_T) :=
+  impl_2__set_index__set_index_unary (H1 := _) (self) (impl_5__from_int (i)) (v).
+Admit Obligations.

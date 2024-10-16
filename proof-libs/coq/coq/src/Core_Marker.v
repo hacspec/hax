@@ -5,8 +5,14 @@ Open Scope Z_scope.
 Open Scope bool_scope.
 Require Import String.
 
-From Core Require Import Core_Clone.
-Export Core_Clone.
+From Core Require Import Core_Clone (t_Clone).
+Export Core_Clone (t_Clone).
+
+Class t_Copy `{v_Self : Type} `{t_Clone v_Self} : Type :=
+  {
+  }.
+Arguments t_Copy:clear implicits.
+Arguments t_Copy (_) {_}.
 
 Class t_Destruct `{v_Self : Type} : Type :=
   {
@@ -20,13 +26,6 @@ Class t_Sized `{v_Self : Type} : Type :=
 Arguments t_Sized:clear implicits.
 Arguments t_Sized (_).
 
-Class t_Copy `{v_Self : Type} `{t_Clone v_Self} : Type :=
-  {
-  }.
-Arguments t_Copy:clear implicits.
-Arguments t_Copy (_).
-
 (* *** *)
-Instance t_Destruct_any v_Self : t_Sized v_Self := {}.
-Instance t_Sized_any v_Self : t_Sized v_Self := {}.
-Instance t_Copy_any v_Self : t_Sized v_Self := {}.
+
+Instance t_Sized_any T : t_Sized T := {}.

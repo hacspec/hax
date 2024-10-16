@@ -4,23 +4,27 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 Require Import String.
-From Core Require Import Core_Marker.
 
-Definition t_HaxInt  : Type := N.
+(* NotImplementedYet *)
 
-Definition t_Positive  : Type := positive.
+(* NotImplementedYet *)
 
-Notation "'t_POS'" := N.
-Notation "'POS_ZERO'" := N0.
-Notation "'POS_POS'" := Npos.
+(* NotImplementedYet *)
 
-Notation "'t_POSITIVE'" := positive.
-Notation "'POSITIVE_XH'" := xH.
-Notation "'POSITIVE_XO'" := xO.
-Notation "'POSITIVE_XI'" := xI.
+Definition t_HaxInt : Type := N.
+Definition t_Positive : Type := positive.
 
-Definition t_Unary  : Type := nat.
+Notation "'t_POS'" := t_HaxInt.
+Notation "'t_POS_POS_ZERO'" := N0.
+Notation "'t_POS_POS_POS'" := Npos.
 
-Notation "'t_UNARY'" := nat.
-Notation "'UNARY_ZERO'" := O.
-Notation "'UNARY_SUCC'" := S.
+Notation "'t_POSITIVE'" := t_Positive.
+Notation "'t_POSITIVE_POSITIVE_XH'" := xH.
+Notation "'t_POSITIVE_POSITIVE_XO'" := xO.
+Notation "'t_POSITIVE_POSITIVE_XI'" := xI.
+
+Definition t_Unary : Type := nat.
+
+Notation "'t_UNARY'" := t_Unary.
+Notation "'t_UNARY_UNARY_ZERO'" := O.
+Notation "'t_UNARY_UNARY_SUCC'" := S.

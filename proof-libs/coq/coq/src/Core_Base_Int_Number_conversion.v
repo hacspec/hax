@@ -4,247 +4,77 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 Require Import String.
-From Core Require Import Core_Marker.
 
-From Core Require Import Core_Num.
-Export Core_Num.
+From Core Require Import Core_Base_Int.
+Export Core_Base_Int.
+
+From Core Require Import Core_Primitive.
+Export Core_Primitive.
+
+From Core Require Import Core_Cmp.
+Export Core_Cmp.
+
+From Core Require Import Core_Convert.
+Export Core_Convert.
 
 (* NotImplementedYet *)
 
-Definition impl__from_u128_binary (x : t_u128) `{H : t_PartialOrd_f_lt (Build_t_U128 0%N)  x = true} : t_Positive :=
-  match x as k return (t_PartialOrd_f_lt (Build_t_U128 0%N) k = true) -> _ with
-  | Build_t_U128 v =>
-    match v as k return (t_PartialOrd_f_lt (Build_t_U128 0%N) (Build_t_U128 k) = true) -> _ with
-    | N0 => fun f => False_rect _ (Bool.diff_false_true f)
-    | Npos p => fun _ => p
-    end
-  end H.
-
-Fixpoint impl__from_u16_binary (x : t_u16) `{t_PartialOrd_f_lt (Build_t_U16 0%N)  x = true} : t_Positive :=
-  match x as k return (t_PartialOrd_f_lt (Build_t_U16 0%N) k = true) -> _ with
-  | Build_t_U16 v =>
-    match v as k return (t_PartialOrd_f_lt (Build_t_U16 0%N) (Build_t_U16 k) = true) -> _ with
-    | N0 => fun f => False_rect _ (Bool.diff_false_true f)
-    | Npos p => fun _ => p
-    end
-  end H.
-
-Fixpoint impl__from_u32_binary (x : t_u32) `{t_PartialOrd_f_lt (Build_t_U32 0%N)  x = true} : t_Positive :=
-  match x as k return (t_PartialOrd_f_lt (Build_t_U32 0%N) k = true) -> _ with
-  | Build_t_U32 v =>
-    match v as k return (t_PartialOrd_f_lt (Build_t_U32 0%N) (Build_t_U32 k) = true) -> _ with
-    | N0 => fun f => False_rect _ (Bool.diff_false_true f)
-    | Npos p => fun _ => p
-    end
-  end H.
-
-Fixpoint impl__from_u64_binary (x : t_u64) `{t_PartialOrd_f_lt (Build_t_U64 0%N)  x = true} : t_Positive :=
-  match x as k return (t_PartialOrd_f_lt (Build_t_U64 0%N) k = true) -> _ with
-  | Build_t_U64 v =>
-    match v as k return (t_PartialOrd_f_lt (Build_t_U64 0%N) (Build_t_U64 k) = true) -> _ with
-    | N0 => fun f => False_rect _ (Bool.diff_false_true f)
-    | Npos p => fun _ => p
-    end
-  end H.
-
-Fixpoint impl__from_u8_binary (x : t_u8) `{t_PartialOrd_f_lt (Build_t_U8 0%N)  x = true} : t_Positive :=
-  match x as k return (t_PartialOrd_f_lt (Build_t_U8 0%N) k = true) -> _ with
-  | Build_t_U8 v =>
-    match v as k return (t_PartialOrd_f_lt (Build_t_U8 0%N) (Build_t_U8 k) = true) -> _ with
-    | N0 => fun f => False_rect _ (Bool.diff_false_true f)
-    | Npos p => fun _ => p
-    end
-  end H.
-
-Fixpoint impl__from_usize_binary (x : t_usize) `{t_PartialOrd_f_lt (Build_t_U64 0%N)  x = true} : t_Positive :=
-  match x as k return (t_PartialOrd_f_lt (Build_t_U64 0%N) k = true) -> _ with
-  | Build_t_U64 v =>
-    match v as k return (t_PartialOrd_f_lt (Build_t_U64 0%N) (Build_t_U64 k) = true) -> _ with
-    | N0 => fun f => False_rect _ (Bool.diff_false_true f)
-    | Npos p => fun _ => p
-    end
-  end H.
-
-Fixpoint impl__to_u128_binary (self : t_Positive) : t_u128 :=
-  match impl_8__match_positive (self) with
-  |  POSITIVE_XH =>
-    Build_t_U128 1%N
-  |  POSITIVE_XO (p) =>
-    t_Mul_f_mul (impl__to_u128_binary (p)) (Build_t_U128 2%N)
-  |  POSITIVE_XI (p) =>
-    t_Add_f_add (t_Add := t_U128_t_Add) (t_Mul_f_mul (impl__to_u128_binary (p)) (Build_t_U128 2%N)) (Build_t_U128 1%N)
-  end.
-
-Fixpoint impl__to_u16_binary (self : t_Positive) : t_u16 :=
-  match impl_8__match_positive (self) with
-  |  POSITIVE_XH =>
-    Build_t_U16 1%N
-  |  POSITIVE_XO (p) =>
-    t_Mul_f_mul (impl__to_u16_binary (p)) (Build_t_U16 2%N)
-  |  POSITIVE_XI (p) =>
-    t_Add_f_add (t_Add := t_U16_t_Add) (t_Mul_f_mul (impl__to_u16_binary (p)) (Build_t_U16 2%N)) (Build_t_U16 1%N)
-  end.
-
-Fixpoint impl__to_u32_binary (self : t_Positive) : t_u32 :=
-  match impl_8__match_positive (self) with
-  |  POSITIVE_XH =>
-    Build_t_U32 1%N
-  |  POSITIVE_XO (p) =>
-    t_Mul_f_mul (impl__to_u32_binary (p)) (Build_t_U32 2%N)
-  |  POSITIVE_XI (p) =>
-    t_Add_f_add (t_Add := t_U32_t_Add) (t_Mul_f_mul (impl__to_u32_binary (p)) (Build_t_U32 2%N)) (Build_t_U32 1%N)
-  end.
-
-Fixpoint impl__to_u64_binary (self : t_Positive) : t_u64 :=
-  match impl_8__match_positive (self) with
-  |  POSITIVE_XH =>
-    Build_t_U64 1%N
-  |  POSITIVE_XO (p) =>
-    t_Mul_f_mul (impl__to_u64_binary (p)) (Build_t_U64 2%N)
-  |  POSITIVE_XI (p) =>
-    t_Add_f_add (t_Add := t_U64_t_Add) (t_Mul_f_mul (impl__to_u64_binary (p)) (Build_t_U64 2%N)) (Build_t_U64 1%N)
-  end.
-
-Fixpoint impl__to_u8_binary (self : t_Positive) : t_u8 :=
-  match impl_8__match_positive (self) with
-  |  POSITIVE_XH =>
-    Build_t_U8 1%N
-  |  POSITIVE_XO (p) =>
-    t_Mul_f_mul (impl__to_u8_binary (p)) (Build_t_U8 2%N)
-  |  POSITIVE_XI (p) =>
-    t_Add_f_add (t_Add := t_U8_t_Add) (t_Mul_f_mul (impl__to_u8_binary (p)) (Build_t_U8 2%N)) (Build_t_U8 1%N)
-  end.
-
-Fixpoint impl__to_usize_binary (self : t_Positive) : t_usize :=
-  match impl_8__match_positive (self) with
-  |  POSITIVE_XH =>
-    Build_t_U64 1%N
-  |  POSITIVE_XO (p) =>
-    t_Mul_f_mul (impl__to_usize_binary (p)) (Build_t_U64 2%N)
-  |  POSITIVE_XI (p) =>
-    t_Add_f_add (t_Add := t_U64_t_Add) (t_Mul_f_mul (impl__to_usize_binary (p)) (Build_t_U64 2%N)) (Build_t_U64 1%N)
-  end.
-
-Program Instance t_HaxInt_t_From_t_u8 : t_From (t_HaxInt) (t_u8) :=
+Instance t_From_62544291 : t_From (t_HaxInt) (t_u8) :=
   {
-    t_From_f_from := fun (x : t_u8) =>
-                       match x with
-                       | Build_t_U8 0%N => impl_9__ZERO
-                       | Build_t_U8 (Npos v)%N =>
-                           impl_4__to_int (impl__from_u8_binary (x))
-                       end;
-  }.
-Fail Next Obligation.
-
-Instance t_u8_t_From_t_HaxInt : t_From (t_u8) (t_HaxInt) :=
-  {
-    t_From_f_from := fun (x : t_HaxInt) =>
-      match impl_9__match_pos (x) with
-      |  POS_ZERO =>
-        Build_t_U8 0%N
-      |  POS_POS (p) =>
-        impl__to_u8_binary (p)
-      end;
+    t_From_f_from := fun (x : t_u8) => t_U8_f_v (t_u8_0 x);
   }.
 
-Instance t_u16_t_From_t_HaxInt : t_From (t_u16) (t_HaxInt) :=
+Instance t_From_1006987144 : t_From (t_u8) (t_HaxInt) :=
   {
-    t_From_f_from := fun (x : t_HaxInt) =>
-      match impl_9__match_pos (x) with
-      |  POS_ZERO =>
-        Build_t_U16 0%N
-      |  POS_POS (p) =>
-        impl__to_u16_binary (p)
-      end;
+    t_From_f_from := fun (x : t_HaxInt) => Build_t_u8 (Build_t_U8 x)
   }.
 
-Program Instance t_HaxInt_t_From_t_u32 : t_From (t_HaxInt) (t_u32) :=
+Instance t_From_1039663005 : t_From (t_HaxInt) (t_u16) :=
   {
-    t_From_f_from := fun (x : t_u32) =>
-                       match (x) with
-                       | (Build_t_U32 0%N) =>
-        impl_9__ZERO
-                       | (Build_t_U32 (Npos v)%N) =>
-        impl_4__to_int (impl__from_u32_binary (x))
-                       end;
-  }.
-Fail Next Obligation.
-
-Instance t_u32_t_From_t_HaxInt : t_From (t_u32) (t_HaxInt) :=
-  {
-    t_From_f_from := fun (x : t_HaxInt) =>
-      match impl_9__match_pos (x) with
-      |  POS_ZERO =>
-        Build_t_U32 0%N
-      |  POS_POS (p) =>
-        impl__to_u32_binary (p)
-      end;
+    t_From_f_from := fun (x : t_u16) => t_U16_f_v (t_u16_0 x);
   }.
 
-Program Instance t_HaxInt_t_From : t_From (t_HaxInt) (t_u64) :=
+Instance t_From_1052282100 : t_From (t_u16) (t_HaxInt) :=
   {
-    t_From_f_from := fun (x : t_u64) =>
-                       match (x) with
-                       | (Build_t_U64 0%N) =>
-        impl_9__ZERO
-                       | (Build_t_U64 (Npos _)%N) =>
-        impl_4__to_int (impl__from_u64_binary (x))
-                       end;
-  }.
-Fail Next Obligation.
-
-Instance t_u64_t_From_t_HaxInt : t_From (t_u64) (t_HaxInt) :=
-  {
-    t_From_f_from := fun (x : t_HaxInt) =>
-      match impl_9__match_pos (x) with
-      |  POS_ZERO =>
-        Build_t_U64 0%N
-      |  POS_POS (p) =>
-        impl__to_u64_binary (p)
-      end;
+    t_From_f_from := fun (x : t_HaxInt) => Build_t_u16 (Build_t_U16 x);
   }.
 
-Program Instance t_HaxInt_t_From_t_u128 : t_From (t_HaxInt) (t_u128) :=
+Instance t_From_529475850 : t_From (t_HaxInt) (t_u32) :=
   {
-    t_From_f_from := fun (x : t_u128) =>
-                       match x with
-                       | (Build_t_U128 0%N) =>
-                           impl_9__ZERO
-                       | (Build_t_U128 (Npos v)%N) =>
-                           impl_4__to_int (impl__from_u128_binary (x))
-                       end;
-  }.
-Fail Next Obligation.
-
-Instance t_u128_t_From_t_HaxInt : t_From (t_u128) (t_HaxInt) :=
-  {
-    t_From_f_from := fun (x : t_HaxInt) =>
-      match impl_9__match_pos (x) with
-      |  POS_ZERO =>
-        Build_t_U128 0%N
-      |  POS_POS (p) =>
-        impl__to_u128_binary (p)
-      end;
+    t_From_f_from := fun (x : t_u32) => t_U32_f_v (t_u32_0 x);
   }.
 
-Program Instance t_HaxInt_t_From_t_usize : t_From (t_HaxInt) (t_usize) :=
+Instance t_From_447931916 : t_From (t_u32) (t_HaxInt) :=
   {
-    t_From_f_from := fun (x : t_usize) =>
-                       match x with
-                       | (Build_t_U64 0%N) =>
-        impl_9__ZERO
-                       | (Build_t_U64 (Npos v)%N) =>
-                           impl_4__to_int (impl__from_usize_binary (x))
-                       end;
+    t_From_f_from := fun (x : t_HaxInt) => Build_t_u32 (Build_t_U32 x);
   }.
 
-Instance t_usize_t_From : t_From (t_usize) (t_HaxInt) :=
+Instance t_From_616445870 : t_From (t_HaxInt) (t_u64) :=
   {
-    t_From_f_from := fun (x : t_HaxInt) =>
-      match impl_9__match_pos (x) with
-      |  POS_ZERO =>
-        Build_t_U64 0%N
-      |  POS_POS (p) =>
-        impl__to_usize_binary (p)
-      end;
+    t_From_f_from := fun (x : t_u64) => t_U64_f_v (t_u64_0 x);
+  }.
+
+Instance t_From_70650389 : t_From (t_u64) (t_HaxInt) :=
+  {
+    t_From_f_from := fun (x : t_HaxInt) => Build_t_u64 (Build_t_U64 x);
+  }.
+
+Instance t_From_184355489 : t_From (t_HaxInt) (t_u128) :=
+  {
+    t_From_f_from := fun (x : t_u128) => t_U128_f_v (t_u128_0 x);
+  }.
+
+Instance t_From_844812452 : t_From (t_u128) (t_HaxInt) :=
+  {
+    t_From_f_from := fun (x : t_HaxInt) => Build_t_u128 (Build_t_U128 x);
+  }.
+
+Instance t_From_946823391 : t_From (t_HaxInt) (t_usize) :=
+  {
+    t_From_f_from := fun (x : t_usize) => t_U64_f_v (t_usize_0 x);
+  }.
+
+Instance t_From_655514338 : t_From (t_usize) (t_HaxInt) :=
+  {
+    t_From_f_from := fun (x : t_HaxInt) => Build_t_usize (Build_t_U64 x);
   }.

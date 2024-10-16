@@ -4,12 +4,14 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 Require Import String.
-From Core Require Import Core_Marker.
 
 From Core Require Import Core_Base_Seq.
 Export Core_Base_Seq.
 
-Definition impl__clone `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} (self : t_Seq (v_T)) : t_Seq (v_T) := self.
+Instance t_Clone_528107485 `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} : t_Clone (t_Seq (v_T)) :=
+  {
+    t_Clone_f_clone := fun (self : t_Seq (v_T)) => self;
+  }.
 
 Definition impl_1__NIL `{v_T : Type} `{t_Sized v_T} `{t_Clone v_T} : t_Seq (v_T) := nil.
 

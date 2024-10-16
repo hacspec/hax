@@ -4,43 +4,51 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 Require Import String.
-From Core Require Import Core_Marker.
 
-From Core Require Import Core_Base_Seq_Base_impl.
-Export Core_Base_Seq_Base_impl.
 
-From Core Require Import Core_Num.
-Export Core_Num.
+From Core Require Import Core_Coerce (t_Abstraction).
+Export Core_Coerce (t_Abstraction).
+
+From Core Require Import Core_Coerce (t_Concretization).
+Export Core_Coerce (t_Concretization).
+
 
 From Core Require Import Core_Base_Int_Number_conversion.
 Export Core_Base_Int_Number_conversion.
 
-Record t_Array `{v_T : Type} `{v_N : t_usize} `{t_Sized v_T} : Type :=
-  {
-    t_Array_f_v : t_Seq (v_T) ;
-    guarantee : t_PartialEq_f_eq v_N (Build_t_U64 (N.of_nat (List.length t_Array_f_v))) = true ;
-  }.
-Arguments t_Array:clear implicits.
-Arguments t_Array (_) (_) {_}.
-Arguments Build_t_Array {_} {_} {_} (t_Array_f_v) {guarantee}.
+From Core Require Import Core_Base_Seq.
+Export Core_Base_Seq.
 
-Instance t_Array_t_Clone `{v_T : Type} `{v_N : t_usize} `{t_Sized v_T} `{t_Clone v_T} : t_Clone (t_Array (v_T) (v_N)) :=
+From Core Require Import Core_Int.
+Export Core_Int.
+
+
+From Core Require Import Core_Cmp.
+Export Core_Cmp.
+
+From Core Require Import Core_Clone.
+Export Core_Clone.
+
+
+From Core Require Import Core_Primitive.
+Export Core_Primitive.
+
+Instance t_Clone_427868774 `{v_T : Type} `{v_N : t_usize} `{t_Sized v_T} `{t_Clone v_T} : t_Clone (t_Array (v_T) (v_N)) :=
   {
-    t_Clone_f_clone := fun (self : t_Array (v_T) (v_N)) => self;
+    t_Clone_f_clone := fun (self : t_Array (v_T) (v_N)) =>
+      Build_t_Array (t_Clone_f_clone (t_Array_f_v self));
   }.
 
-Instance t_Array_t_PartialEq `{v_T : Type} `{v_N : t_usize} `{t_Sized v_T} `{t_Clone v_T} `{t_PartialEq v_T v_T} : t_PartialEq (t_Array (v_T) (v_N)) (t_Array (v_T) (v_N)) :=
+Instance t_PartialEq_670168337 `{v_T : Type} `{v_N : t_usize} `{t_Sized v_T} `{t_Clone v_T} `{t_PartialEq v_T v_T} : t_PartialEq (t_Array (v_T) (v_N)) (t_Array (v_T) (v_N)) :=
   {
     t_PartialEq_f_eq := fun (self : t_Array (v_T) (v_N)) (other : t_Array (v_T) (v_N)) =>
-      t_PartialEq_f_eq (impl__clone (t_Array_f_v self)) (t_Array_f_v other);
+      t_PartialEq_f_eq (t_Clone_f_clone (t_Array_f_v self)) (t_Array_f_v other);
     t_PartialEq_f_ne := fun (self : t_Array (v_T) (v_N)) (other : t_Array (v_T) (v_N)) =>
-      negb (t_PartialEq_f_eq (impl__clone (t_Array_f_v self)) (t_Array_f_v other));
+      negb (t_PartialEq_f_eq (t_Clone_f_clone (t_Array_f_v self)) (t_Array_f_v other));
   }.
 
-Program Definition impl_2__reverse `{v_T : Type} `{v_N : t_usize} `{t_Sized v_T} `{t_Clone v_T} (self : t_Array (v_T) (v_N)) : t_Array (v_T) (v_N) :=
-  Build_t_Array (impl_2__rev (t_Array_f_v self)) (guarantee := _).
-Admit Obligations.
-Fail Next Obligation.
+Definition impl_2__reverse `{v_T : Type} `{v_N : t_usize} `{t_Sized v_T} `{t_Clone v_T} (self : t_Array (v_T) (v_N)) : t_Array (v_T) (v_N) :=
+  Build_t_Array (impl_2__rev (t_Array_f_v self)).
 
 Lemma lt_usize_implies_hax_int (x : t_usize) (y : t_usize) :
   t_PartialOrd_f_lt (x) (y) = true ->
@@ -48,19 +56,17 @@ Lemma lt_usize_implies_hax_int (x : t_usize) (y : t_usize) :
 Proof. Admitted.
 
 Lemma lift_usize_equality (x : t_HaxInt) (y : t_usize) :
-  t_PartialEq_f_eq (t_PartialEq := t_HaxInt_t_PartialEq) (x) (t_From_f_from (y)) = true ->
-  t_PartialEq_f_eq (t_PartialEq := t_usize_t_PartialEq) (t_From_f_from (x)) (y) = true.
+  t_PartialEq_f_eq (x) (t_From_f_from  y) = true ->
+  t_PartialEq_f_eq (t_From_f_from (x)) (y) = true.
 Proof. Admitted.
 
-Definition impl_2__index `{v_T : Type} `{v_N : t_usize} `{t_Sized v_T} `{t_Clone v_T} (self : t_Array (v_T) (v_N)) (i : t_usize) `{H_inside: (N.to_nat (t_From_f_from i) < Datatypes.length (t_Array_f_v self))%nat}: v_T :=
-  impl_2__get_index (H_inside := H_inside) (t_Array_f_v self) (t_From_f_from (i)).
-
-Program Definition impl_2__new `{v_T : Type} `{v_N : t_usize} `{t_Sized v_T} `{t_Clone v_T} (x : v_T) : t_Array (v_T) (v_N) :=
-  Build_t_Array (impl_2__repeat (t_From_f_from (v_N)) (x)) (guarantee := _).
+Program Definition impl_2__index `{v_T : Type} `{v_N : t_usize} `{t_Sized v_T} `{t_Clone v_T} (self : t_Array (v_T) (v_N)) (i : t_usize) `{andb (t_PartialEq_f_eq (impl_2__len (t_Array_f_v self)) (t_From_f_from (v_N))) (t_PartialOrd_f_lt (i) (v_N)) = true} : v_T :=
+    impl_2__get_index (H1 := _) (t_Array_f_v self) (t_From_f_from (i)).
 Admit Obligations.
-Fail Next Obligation.
 
-Program Definition impl_2__set_index `{v_T : Type} `{v_N : t_usize} `{t_Sized v_T} `{t_Clone v_T} (self : t_Array (v_T) (v_N)) (i : t_usize) (t : v_T) `{H_inside : (N.to_nat (t_From_f_from i) < Datatypes.length (t_Array_f_v self))%nat} : t_Array (v_T) (v_N) :=
-  Build_t_Array (impl_2__set_index (t_Array_f_v self) (t_From_f_from (i)) (t) (H_inside := H_inside)) (guarantee := _).
+Definition impl_2__new `{v_T : Type} `{v_N : t_usize} `{t_Sized v_T} `{t_Clone v_T} (x : v_T) : t_Array (v_T) (v_N) :=
+  Build_t_Array (impl_2__repeat (t_From_f_from (v_N)) (x)).
+
+Program Definition impl_2__set_index `{v_T : Type} `{v_N : t_usize} `{t_Sized v_T} `{t_Clone v_T} (self : t_Array (v_T) (v_N)) (i : t_usize) (t : v_T) `{andb (t_PartialEq_f_eq (impl_2__len (t_Array_f_v self)) (t_From_f_from (v_N))) (t_PartialOrd_f_lt (i) (v_N)) = true} : t_Array (v_T) (v_N) :=
+  Build_t_Array (impl_2__set_index (H1 := _) (t_Array_f_v self) (t_From_f_from (i)) (t)).
 Admit Obligations.
-Fail Next Obligation.

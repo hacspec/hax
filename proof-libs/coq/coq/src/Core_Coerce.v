@@ -4,14 +4,13 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 Require Import String.
-From Core Require Import Core_Marker.
 
-Class t_Concretization `{v_Self : Type} `{v_T : Type} `{t_Sized v_T} : Type :=
+Class t_Concretization `{v_Self : Type} `{v_T : Type} : Type :=
   {
     t_Concretization_f_concretize : v_Self -> v_T;
   }.
 Arguments t_Concretization:clear implicits.
-Arguments t_Concretization (_) (_) {_}.
+Arguments t_Concretization (_) (_).
 
 Class t_Abstraction `{v_Self : Type} : Type :=
   {
