@@ -4,25 +4,27 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 Require Import String.
-From Core Require Import Core_Marker.
 
-From Core Require Import Core_Option.
-Export Core_Option.
 
-Definition discriminant_Ordering_Equal :=
-  0.
+From Core Require Import Core_Option (t_Option).
+Export Core_Option (t_Option).
 
-Definition discriminant_Ordering_Greater :=
-  1.
+Definition discriminant_t_Ordering_Ordering_Equal :=
+  0%N.
+
+Definition discriminant_t_Ordering_Ordering_Greater :=
+  1%N.
 
 Inductive t_Ordering : Type :=
-| Ordering_Less
-| Ordering_Equal
-| Ordering_Greater.
+| t_Ordering_Ordering_Less
+| t_Ordering_Ordering_Equal
+| t_Ordering_Ordering_Greater.
+Arguments t_Ordering:clear implicits.
+Arguments t_Ordering.
 
 Definition impl__Ordering__is_eq (self : t_Ordering) : bool :=
   match self with
-  |  Ordering_Equal =>
+  |  t_Ordering_Ordering_Equal =>
     true
   |  _ =>
     false
@@ -30,7 +32,7 @@ Definition impl__Ordering__is_eq (self : t_Ordering) : bool :=
 
 Definition impl__Ordering__is_gt (self : t_Ordering) : bool :=
   match self with
-  |  Ordering_Greater =>
+  |  t_Ordering_Ordering_Greater =>
     true
   |  _ =>
     false
@@ -38,7 +40,7 @@ Definition impl__Ordering__is_gt (self : t_Ordering) : bool :=
 
 Definition impl__Ordering__is_lt (self : t_Ordering) : bool :=
   match self with
-  |  Ordering_Less =>
+  |  t_Ordering_Ordering_Less =>
     true
   |  _ =>
     false
@@ -46,25 +48,25 @@ Definition impl__Ordering__is_lt (self : t_Ordering) : bool :=
 
 Definition impl__Ordering__reverse (self : t_Ordering) : t_Ordering :=
   match self with
-  |  Ordering_Less =>
-    Ordering_Greater
-  |  Ordering_Equal =>
-    Ordering_Equal
-  |  Ordering_Greater =>
-    Ordering_Less
+  |  t_Ordering_Ordering_Less =>
+    t_Ordering_Ordering_Greater
+  |  t_Ordering_Ordering_Equal =>
+    t_Ordering_Ordering_Equal
+  |  t_Ordering_Ordering_Greater =>
+    t_Ordering_Ordering_Less
   end.
 
-Definition discriminant_Ordering_Less :=
-  1.
+Definition discriminant_t_Ordering_Ordering_Less :=
+  1%N.
 
 Definition t_Ordering_cast_to_repr (x : t_Ordering) :=
   match x with
-  |  Ordering_Less =>
-    discriminant_Ordering_Less
-  |  Ordering_Equal =>
-    discriminant_Ordering_Equal
-  |  Ordering_Greater =>
-    discriminant_Ordering_Greater
+  |  t_Ordering_Ordering_Less =>
+    discriminant_t_Ordering_Ordering_Less
+  |  t_Ordering_Ordering_Equal =>
+    discriminant_t_Ordering_Ordering_Equal
+  |  t_Ordering_Ordering_Greater =>
+    discriminant_t_Ordering_Ordering_Greater
   end.
 
 Class t_PartialEq `{v_Self : Type} `{v_Rhs : Type} : Type :=
@@ -77,7 +79,7 @@ Arguments t_PartialEq (_) (_).
 
 Definition impl__Ordering__is_ge (self : t_Ordering) : bool :=
   negb (match self with
-  |  Ordering_Less =>
+  |  t_Ordering_Ordering_Less =>
     true
   |  _ =>
     false
@@ -85,7 +87,7 @@ Definition impl__Ordering__is_ge (self : t_Ordering) : bool :=
 
 Definition impl__Ordering__is_le (self : t_Ordering) : bool :=
   negb (match self with
-  |  Ordering_Greater =>
+  |  t_Ordering_Ordering_Greater =>
     true
   |  _ =>
     false
@@ -93,33 +95,33 @@ Definition impl__Ordering__is_le (self : t_Ordering) : bool :=
 
 Definition impl__Ordering__is_ne (self : t_Ordering) : bool :=
   negb (match self with
-  |  Ordering_Equal =>
+  |  t_Ordering_Ordering_Equal =>
     true
   |  _ =>
     false
   end).
 
-Instance t_Ordering_t_PartialEq : t_PartialEq (t_Ordering) (t_Ordering) :=
+Instance t_PartialEq_322340293 : t_PartialEq (t_Ordering) (t_Ordering) :=
   {
     t_PartialEq_f_eq := fun (self : t_Ordering) (other : t_Ordering) =>
       match self with
-      |  Ordering_Less =>
+      |  t_Ordering_Ordering_Less =>
         match other with
-        |  Ordering_Less =>
+        |  t_Ordering_Ordering_Less =>
           true
         |  _ =>
           false
         end
-      |  Ordering_Equal =>
+      |  t_Ordering_Ordering_Equal =>
         match other with
-        |  Ordering_Equal =>
+        |  t_Ordering_Ordering_Equal =>
           true
         |  _ =>
           false
         end
-      |  Ordering_Greater =>
+      |  t_Ordering_Ordering_Greater =>
         match other with
-        |  Ordering_Greater =>
+        |  t_Ordering_Ordering_Greater =>
           true
         |  _ =>
           false
@@ -127,23 +129,23 @@ Instance t_Ordering_t_PartialEq : t_PartialEq (t_Ordering) (t_Ordering) :=
       end;
     t_PartialEq_f_ne := fun (self : t_Ordering) (other : t_Ordering) =>
       negb (match self with
-      |  Ordering_Less =>
+      |  t_Ordering_Ordering_Less =>
         match other with
-        |  Ordering_Less =>
+        |  t_Ordering_Ordering_Less =>
           true
         |  _ =>
           false
         end
-      |  Ordering_Equal =>
+      |  t_Ordering_Ordering_Equal =>
         match other with
-        |  Ordering_Equal =>
+        |  t_Ordering_Ordering_Equal =>
           true
         |  _ =>
           false
         end
-      |  Ordering_Greater =>
+      |  t_Ordering_Ordering_Greater =>
         match other with
-        |  Ordering_Greater =>
+        |  t_Ordering_Ordering_Greater =>
           true
         |  _ =>
           false

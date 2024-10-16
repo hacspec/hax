@@ -4,12 +4,27 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 Require Import String.
-From Core Require Import Core_Marker.
+
+From Core Require Import Core_Clone (t_Clone).
+Export Core_Clone (t_Clone).
+
+From Core Require Import Core_Cmp (t_PartialEq).
+Export Core_Cmp (t_PartialEq).
+
+From Core Require Import Core_Marker (t_Sized).
+Export Core_Marker (t_Sized).
+
+From Core Require Import Core_Base_Int.
+Export Core_Base_Int.
+
+(* NotImplementedYet *)
+
+(* NotImplementedYet *)
 
 Definition t_Seq `{v_T : Type} `{t_Sized v_T} : Type := list v_T.
 Arguments t_Seq:clear implicits.
 Arguments t_Seq (_) {_}.
 
-Notation "'t_LIST'" := list.
-Notation "'LIST_NIL'" := nil.
-Notation "'LIST_CONS'" := cons.
+Notation "'t_LIST'" := t_Seq.
+Notation "'t_LIST_LIST_NIL'" := nil.
+Notation "'t_LIST_LIST_CONS'" := cons.

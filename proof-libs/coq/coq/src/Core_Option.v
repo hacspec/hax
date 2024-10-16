@@ -4,10 +4,9 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 Require Import String.
-From Core Require Import Core_Marker.
 
-Inductive t_Option `{v_T : Type} `{t_Sized v_T} : Type :=
-| Option_None
-| Option_Some : v_T -> _.
+Inductive t_Option `{v_T : Type} : Type :=
+| t_Option_Option_None
+| t_Option_Option_Some : v_T -> _.
 Arguments t_Option:clear implicits.
-Arguments t_Option (_) {_}.
+Arguments t_Option (_).

@@ -19,12 +19,9 @@
 ./src/Core_Ops_Arith.v
 ./src/Core_Ops_Bit.v
 
+./src/Core_Ops.v
+
 ./src/Core_Int.v
-
-./src/Core_Primitive.v
-./src/Core_Intrinsics.v
-
-./src/Core_Num.v
 
 ./src/Core_Base_Seq.v
 ./src/Core_Base_Seq_Base_spec.v
@@ -33,6 +30,12 @@
 
 ./src/Core_Base_Seq_Base_impl.v
 
+./src/Core_Primitive.v
+
 ./src/Core_Base_Int_Number_conversion.v
 
 ./src/Core_Array.v
+
+./src/Core_Intrinsics.v
+
+./src/Core_Num.v

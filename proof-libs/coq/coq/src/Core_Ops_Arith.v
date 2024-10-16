@@ -4,7 +4,9 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 Require Import String.
-From Core Require Import Core_Marker.
+
+From Core Require Import Core_Marker (t_Sized).
+Export Core_Marker (t_Sized).
 
 (* NotImplementedYet *)
 
