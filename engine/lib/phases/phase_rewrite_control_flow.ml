@@ -1,6 +1,6 @@
 (* This phase rewrites: `if c {return a}; b` as `if c {return a; b} else {b}`
    and does the equivalent transformation for pattern matchings.
-   It rewrites the body of loops considereing `break` and `continue`
+   It rewrites the body of loops considering `break` and `continue`
    as `return` to place them in return position. If a loop contains
    a `return` it places it is rewritten inside a pattern matching over the result. *)
 
@@ -34,6 +34,18 @@ module Make (F : Features.T) =
             | _ -> super#visit_expr' in_loop e
         end
 
+      let loop_return_type =
+        object (_self)
+          inherit [_] Visitors.reduce as super
+          method zero = U.unit_typ
+          method plus l r = if [%eq: ty] l U.unit_typ then r else l
+
+          method! visit_expr' () e =
+            match e with
+            | Return { e; _ } -> e.typ
+            | _ -> super#visit_expr' () e
+        end
+
       let loop_has_cf =
         object (_self)
           inherit [_] Visitors.reduce as super
@@ -53,10 +65,27 @@ module Make (F : Features.T) =
 
           method! visit_expr in_loop e =
             let loop_with_return (loop : expr) stmts_after final pat =
-              let typ = loop.typ in
+              let loop =
+                match loop.e with
+                | Loop ({ kind; _ } as loop_info) ->
+                    let kind =
+                      match kind with
+                      | ForLoop for_loop ->
+                          ForLoop { for_loop with has_return = true }
+                      | WhileLoop while_loop ->
+                          WhileLoop { while_loop with has_return = true }
+                      | _ -> kind
+                    in
+                    { loop with e = Loop { loop_info with kind } }
+                | _ -> loop
+              in
+              let return_type = loop_return_type#visit_expr () loop in
+
+              let typ =
+                U.make_control_flow_type ~continue_type:loop.typ
+                  ~break_type:return_type
+              in
               let span = loop.span in
-              (* wrong, we would need to propagate the return type (either by looking at the
-                 return statements (and the type of the expression they contain) or at the return type of the function) *)
               let id = U.fresh_local_ident_in [] "ret" in
               let module MS = (val U.M.make span) in
               let mk_cf_pat = U.make_control_flow_pat ~span ~typ in
@@ -64,13 +93,12 @@ module Make (F : Features.T) =
                 [
                   MS.arm
                     (mk_cf_pat `Break (U.make_var_pat id typ span))
-                    (MS.expr_LocalVar ~typ id);
-                  MS.arm
-                    (MS.pat_POr ~subpats:[ mk_cf_pat `Continue pat ] ~typ)
-                    (U.make_lets stmts_after final);
+                    (MS.expr_LocalVar ~typ:return_type id);
+                  MS.arm (mk_cf_pat `Continue pat)
+                    (U.make_lets stmts_after final |> self#visit_expr in_loop);
                 ]
               in
-              MS.expr_Match ~scrutinee:loop ~arms ~typ
+              MS.expr_Match ~scrutinee:loop ~arms ~typ:return_type
             in
             match e.e with
             (* This is supposed to improve performance but it might actually make it worse in some cases *)

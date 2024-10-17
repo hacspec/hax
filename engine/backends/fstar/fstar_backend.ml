@@ -1742,8 +1742,9 @@ module TransformToInputLanguage =
   |> Phases.Rewrite_control_flow
   |> Phases.Drop_return_break_continue
   |> Phases.Reject.Continue
-  |> Phases.Cf_into_monads
   |> Phases.Reject.EarlyExit
+  |> Phases.Reject.QuestionMark
+  |> Phases.Reject.Break
   |> Phases.Functionalize_loops
   |> Phases.Reject.As_pattern
   |> Phases.Traits_specs

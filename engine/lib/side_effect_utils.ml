@@ -261,12 +261,12 @@ struct
                   ( { e with e = Return { e = e'; witness } },
                     m#plus effects
                       (no_lbs { SideEffects.zero with return = Some e'.typ }) ))
-          | Break { e = e'; label; witness } ->
+          | Break { e = e'; label; acc; witness } ->
               HoistSeq.one env (self#visit_expr env e') (fun e' effects ->
-                  ( { e with e = Break { e = e'; label; witness } },
+                  ( { e with e = Break { e = e'; acc; label; witness } },
                     m#plus effects
                       (no_lbs { SideEffects.zero with break = Some e'.typ }) ))
-          | Continue { e = e'; label; witness } -> (
+          | Continue { acc = e'; label; witness } -> (
               let ceffect =
                 no_lbs
                   {
@@ -280,7 +280,8 @@ struct
                       ( {
                           e with
                           e =
-                            Continue { e = Some (witness', e'); label; witness };
+                            Continue
+                              { acc = Some (witness', e'); label; witness };
                         },
                         m#plus ceffect effects ))
               | None -> (e, ceffect))

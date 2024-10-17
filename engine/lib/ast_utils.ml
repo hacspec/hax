@@ -922,6 +922,24 @@ module Make (F : Features.T) = struct
     let e = Closure { params; body; captures = [] } in
     { e; typ = TArrow (List.map ~f:(fun p -> p.typ) params, body.typ); span }
 
+  let make_control_flow_type ~(continue_type : ty) ~(break_type : ty) : ty =
+    TApp
+      {
+        ident = Global_ident.of_name Type Core__ops__control_flow__ControlFlow;
+        args = [ GType break_type; GType continue_type ];
+      }
+
+  let make_cf_return_type ~(acc_type : ty) ~(break_type : ty)
+      ~(return_type : ty option) : ty =
+    let break_type = make_tuple_typ [ break_type; acc_type ] in
+    match return_type with
+    | Some ret_ty ->
+        let break_type =
+          make_control_flow_type ~break_type:ret_ty ~continue_type:break_type
+        in
+        make_control_flow_type ~break_type ~continue_type:acc_type
+    | None -> make_control_flow_type ~break_type ~continue_type:acc_type
+
   let make_control_flow_pat ~(span : span) ~(typ : ty)
       (cf : [ `Break | `Continue ]) (pat : pat) =
     match cf with
@@ -947,7 +965,6 @@ module Make (F : Features.T) = struct
                 is_struct = false;
               };
           typ;
-          (* Wrong *)
           span;
         }
     | `Continue ->
@@ -972,12 +989,13 @@ module Make (F : Features.T) = struct
                 is_struct = false;
               };
           typ;
-          (* Wrong *)
           span;
         }
 
-  let make_control_flow_expr' ~(span : span) ~(typ : ty)
-      (cf : [ `Break | `Continue ]) (e : expr) =
+  let make_control_flow_expr' ~(span : span) ~(break_type : ty)
+      ?(continue_type : ty = unit_typ) (cf : [ `Break | `Continue ]) (e : expr)
+      =
+    let typ = make_control_flow_type ~continue_type ~break_type in
     match cf with
     | `Break ->
         call_Constructor Core__ops__control_flow__ControlFlow__Break false [ e ]
@@ -986,20 +1004,49 @@ module Make (F : Features.T) = struct
         call_Constructor Core__ops__control_flow__ControlFlow__Continue false
           [ e ] span typ
 
-  let make_control_flow_expr ~(span : span) ~(typ : ty) ~(has_return : bool)
-      (cf : [ `Return | `Break | `Continue ]) (e : expr) =
+  (* We use the following encoding of return, break and continue in the `ControlFlow` enum:
+     Return e -> Break (Break e)
+     Break e -> Break ((Continue(e, acc)))
+     Continue -> Continue(acc)
+
+     In case there is no return we simplify to:
+      Break e -> (Break (e, acc))
+      Continue -> (continue (acc))
+  *)
+  let make_control_flow_expr ~(span : span) ~(break_type : ty)
+      ~(return_type : ty option) ~(acc : expr) ?(e : expr = unit_expr span)
+      (cf : [ `Return | `Break | `Continue ]) =
     match cf with
     | `Return ->
-        make_control_flow_expr' ~span ~typ `Break
-          (make_control_flow_expr' ~span ~typ `Break e)
-    | `Break when has_return ->
-        make_control_flow_expr' ~span ~typ `Break
-          (make_control_flow_expr' ~span ~typ `Continue e)
-    | `Break -> make_control_flow_expr' ~span ~typ `Break e
-    | `Continue when has_return ->
-        make_control_flow_expr' ~span ~typ `Continue
-          (make_control_flow_expr' ~span ~typ `Continue e)
-    | `Continue -> make_control_flow_expr' ~span ~typ `Continue e
+        let continue_type = make_tuple_typ [ break_type; acc.typ ] in
+        let inner =
+          make_control_flow_expr' ~break_type:e.typ ~continue_type ~span `Break
+            e
+        in
+        make_control_flow_expr' ~span ~break_type:inner.typ
+          ~continue_type:acc.typ `Break inner
+    | `Break ->
+        let tuple = make_tuple_expr ~span [ e; acc ] in
+        let inner =
+          match return_type with
+          | Some ret_typ ->
+              make_control_flow_expr' ~span ~break_type:ret_typ
+                ~continue_type:tuple.typ `Continue tuple
+          | None -> tuple
+        in
+        make_control_flow_expr' ~span ~break_type:inner.typ
+          ~continue_type:acc.typ `Break inner
+    | `Continue ->
+        let break_type =
+          let tuple_type = make_tuple_typ [ break_type; acc.typ ] in
+          match return_type with
+          | Some ret_typ ->
+              make_control_flow_type ~break_type:ret_typ
+                ~continue_type:tuple_type
+          | None -> tuple_type
+        in
+        make_control_flow_expr' ~span ~break_type ~continue_type:acc.typ
+          `Continue acc
 
   let string_lit span (s : string) : expr =
     { span; typ = TStr; e = Literal (String s) }

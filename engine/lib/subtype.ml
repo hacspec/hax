@@ -246,10 +246,11 @@ struct
             control_flow;
             witness = S.loop span witness;
           }
-    | Break { e; label; witness } ->
+    | Break { e; acc; label; witness } ->
         Break
           {
             e = dexpr e;
+            acc = Option.map ~f:(S.state_passing_loop span *** dexpr) acc;
             label;
             witness = (S.break span *** S.loop span) witness;
           }
@@ -262,10 +263,10 @@ struct
             return_typ = dty span return_typ;
             witness = S.question_mark span witness;
           }
-    | Continue { e; label; witness = w1, w2 } ->
+    | Continue { acc; label; witness = w1, w2 } ->
         Continue
           {
-            e = Option.map ~f:(S.state_passing_loop span *** dexpr) e;
+            acc = Option.map ~f:(S.state_passing_loop span *** dexpr) acc;
             label;
             witness = (S.continue span w1, S.loop span w2);
           }

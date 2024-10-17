@@ -115,13 +115,37 @@ let rec fold_range_cf
   (inv: acc_t -> (i:int_t u{fold_range_wf_index start end_ false (v i)}) -> Type0)
   (acc: acc_t {inv acc start})
   (f: (acc:acc_t -> i:int_t u {v i <= v end_ /\ fold_range_wf_index start end_ true (v i) /\ inv acc i}
-                  -> tuple:((Core.Ops.Control_flow.t_ControlFlow unit unit) & acc_t)
-                    {let cf, acc = tuple in inv acc (mk_int (v i + 1))}))
+                  -> tuple:((Core.Ops.Control_flow.t_ControlFlow (unit & acc_t) acc_t))
+                    {
+                      let acc = match tuple with 
+                        | Core.Ops.Control_flow.ControlFlow_Break ((), acc)
+                        | Core.Ops.Control_flow.ControlFlow_Continue acc -> acc in
+                      inv acc (mk_int (v i + 1))}))
 : Tot acc_t (decreases v end_ - v start)
   =
   if v start < v end_
   then match f acc start with
-       | Core.Ops.Control_flow.ControlFlow_Break (), acc -> acc
-       | Core.Ops.Control_flow.ControlFlow_Continue (), acc ->
+       | Core.Ops.Control_flow.ControlFlow_Break ((), acc) -> acc
+       | Core.Ops.Control_flow.ControlFlow_Continue acc ->
          fold_range_cf (start +! mk_int 1) end_ inv acc f
   else acc
+
+let rec fold_range_return
+  (#acc_t: Type0) (#ret_t: Type0) (#u: Lib.IntTypes.inttype)
+  (start: int_t u)
+  (end_: int_t u)
+  (inv: acc_t -> (i:int_t u{fold_range_wf_index start end_ false (v i)}) -> Type0)
+  (acc: acc_t {inv acc start})
+  (f: (acc:acc_t -> i:int_t u {v i <= v end_ /\ fold_range_wf_index start end_ true (v i) /\ inv acc i}
+                  -> tuple:((Core.Ops.Control_flow.t_ControlFlow (Core.Ops.Control_flow.t_ControlFlow ret_t (unit & acc_t))) acc_t)
+                    ))
+: Tot (Core.Ops.Control_flow.t_ControlFlow ret_t acc_t) (decreases v end_ - v start)
+  =
+  if v start < v end_
+  then match f acc start with
+       | Core.Ops.Control_flow.ControlFlow_Break (Core.Ops.Control_flow.ControlFlow_Break res)-> Core.Ops.Control_flow.ControlFlow_Break res
+       
+       | Core.Ops.Control_flow.ControlFlow_Break (Core.Ops.Control_flow.ControlFlow_Continue ((), res)) -> Core.Ops.Control_flow.ControlFlow_Continue res
+       | Core.Ops.Control_flow.ControlFlow_Continue acc ->
+         fold_range_return (start +! mk_int 1) end_ inv acc f
+  else Core.Ops.Control_flow.ControlFlow_Continue acc

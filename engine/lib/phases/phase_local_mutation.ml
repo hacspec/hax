@@ -238,15 +238,24 @@ struct
           in
           { e = Match { scrutinee; arms }; typ; span = expr.span }
       | Break { e; label; witness; _ } ->
-          let e = UB.make_tuple_expr ~span [ dexpr_same e; local_vars_expr ] in
-          { e = Break { e; label; witness }; span = expr.span; typ = e.typ }
-      | Continue { e = None; label; witness; _ } ->
           let w = Features.On.state_passing_loop in
-          let e =
-            UB.make_tuple_expr ~span [ UB.unit_expr expr.span; local_vars_expr ]
-          in
           {
-            e = Continue { e = Some (w, e); label; witness };
+            e =
+              Break
+                {
+                  e = dexpr_same e;
+                  acc = Some (w, local_vars_expr);
+                  label;
+                  witness;
+                };
+            span = expr.span;
+            typ = local_vars_expr.typ;
+          }
+      | Continue { acc = None; label; witness; _ } ->
+          let w = Features.On.state_passing_loop in
+          let e = local_vars_expr in
+          {
+            e = Continue { acc = Some (w, e); label; witness };
             span = expr.span;
             typ = e.typ;
           }

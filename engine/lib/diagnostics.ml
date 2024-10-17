@@ -12,6 +12,8 @@ module Phase = struct
       | NotInBackendLang of Backend.t
       | ArbitraryLhs
       | Continue
+      | Break
+      | QuestionMark
       | RawOrMutPointer
       | EarlyExit
       | AsPattern

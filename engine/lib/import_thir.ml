@@ -655,9 +655,9 @@ end) : EXPR = struct
           (* TODO: labels! *)
           let e = Option.map ~f:c_expr value in
           let e = Option.value ~default:(unit_expr span) e in
-          Break { e; label = None; witness = (W.break, W.loop) }
+          Break { e; acc = None; label = None; witness = (W.break, W.loop) }
       | Continue _ ->
-          Continue { e = None; label = None; witness = (W.continue, W.loop) }
+          Continue { acc = None; label = None; witness = (W.continue, W.loop) }
       | Return { value } ->
           let e = Option.map ~f:c_expr value in
           let e = Option.value ~default:(unit_expr span) e in

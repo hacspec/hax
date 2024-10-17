@@ -192,17 +192,30 @@ struct
           {
             body;
             kind = ForLoop { it; pat; has_return; _ };
-            state = Some { init; bpat; _ };
+            state = Some _ as state;
+            control_flow;
+            _;
+          }
+      | Loop
+          {
+            body;
+            kind = ForLoop { it; pat; has_return = true as has_return; _ };
+            state;
             control_flow;
             _;
           } ->
+          let bpat, init =
+            match state with
+            | Some { bpat; init; _ } -> (dpat bpat, dexpr init)
+            | None ->
+                let unit = UB.unit_expr span in
+                (M.pat_PWild ~span ~typ:unit.typ, unit)
+          in
           let body = dexpr body in
           let { body; invariant } = extract_loop_invariant body in
           let it = dexpr it in
           let pat = dpat pat in
-          let bpat = dpat bpat in
           let fn : B.expr = UB.make_closure [ bpat; pat ] body body.span in
-          let init = dexpr init in
           let f, kind, args =
             match
               as_iterator it
@@ -232,14 +245,27 @@ struct
           {
             body;
             kind = WhileLoop { condition; has_return; _ };
-            state = Some { init; bpat; _ };
+            state = Some _ as state;
+            control_flow;
+            _;
+          }
+      | Loop
+          {
+            body;
+            kind = WhileLoop { condition; has_return = true as has_return; _ };
+            state;
             control_flow;
             _;
           } ->
+          let bpat, init =
+            match state with
+            | Some { bpat; init; _ } -> (dpat bpat, dexpr init)
+            | None ->
+                let unit = UB.unit_expr span in
+                (M.pat_PWild ~span ~typ:unit.typ, unit)
+          in
           let body = dexpr body in
           let condition = dexpr condition in
-          let bpat = dpat bpat in
-          let init = dexpr init in
           let condition : B.expr =
             M.expr_Closure ~params:[ bpat ] ~body:condition ~captures:[]
               ~span:condition.span
