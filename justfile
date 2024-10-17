@@ -4,7 +4,7 @@
 # Build Rust and OCaml parts and install binaries in PATH. To build
 # only OCaml parts or only Rust parts, set target to `rust` or
 # `ocaml`.
-@build target='rust ocaml':
+@build target='rust+ocaml':
   ./.utils/rebuild.sh {{target}}
 
 alias b := build
