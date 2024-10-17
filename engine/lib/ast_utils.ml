@@ -306,6 +306,7 @@ module Make (F : Features.T) = struct
         method! visit_global_ident lvl (x : Global_ident.t) =
           match x with
           | `Concrete x -> `Concrete (f lvl x)
+          | `Projector (`Concrete x) -> `Projector (`Concrete (f lvl x))
           | _ -> super#visit_global_ident lvl x
 
         method! visit_ty _ t = super#visit_ty TypeLevel t
