@@ -215,9 +215,22 @@ enum InclusionKind {
 
 #[derive_group(Serializers)]
 #[derive(JsonSchema, Debug, Clone)]
-struct InclusionClause {
-    kind: InclusionKind,
-    namespace: Namespace,
+pub struct InclusionClause {
+    pub kind: InclusionKind,
+    pub namespace: Namespace,
+}
+
+impl ToString for InclusionClause {
+    fn to_string(&self) -> String {
+        let kind = match self.kind {
+            InclusionKind::Included(DepsKind::Transitive) => "+",
+            InclusionKind::Included(DepsKind::Shallow) => "+~",
+            InclusionKind::Included(DepsKind::None) => "+!",
+            InclusionKind::SignatureOnly => "+:",
+            InclusionKind::Excluded => "-",
+        };
+        format!("{kind}{}", self.namespace.to_string())
+    }
 }
 
 fn parse_inclusion_clause(
