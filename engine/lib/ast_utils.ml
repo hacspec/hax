@@ -922,6 +922,85 @@ module Make (F : Features.T) = struct
     let e = Closure { params; body; captures = [] } in
     { e; typ = TArrow (List.map ~f:(fun p -> p.typ) params, body.typ); span }
 
+  let make_control_flow_pat ~(span : span) ~(typ : ty)
+      (cf : [ `Break | `Continue ]) (pat : pat) =
+    match cf with
+    | `Break ->
+        {
+          p =
+            PConstruct
+              {
+                name =
+                  Global_ident.of_name
+                    (Constructor { is_struct = false })
+                    Core__ops__control_flow__ControlFlow__Break;
+                args =
+                  [
+                    {
+                      field =
+                        Global_ident.of_name Field
+                          Core__ops__control_flow__ControlFlow__Break__0;
+                      pat;
+                    };
+                  ];
+                is_record = false;
+                is_struct = false;
+              };
+          typ;
+          (* Wrong *)
+          span;
+        }
+    | `Continue ->
+        {
+          p =
+            PConstruct
+              {
+                name =
+                  Global_ident.of_name
+                    (Constructor { is_struct = false })
+                    Core__ops__control_flow__ControlFlow__Continue;
+                args =
+                  [
+                    {
+                      field =
+                        Global_ident.of_name Field
+                          Core__ops__control_flow__ControlFlow__Continue__0;
+                      pat;
+                    };
+                  ];
+                is_record = false;
+                is_struct = false;
+              };
+          typ;
+          (* Wrong *)
+          span;
+        }
+
+  let make_control_flow_expr' ~(span : span) ~(typ : ty)
+      (cf : [ `Break | `Continue ]) (e : expr) =
+    match cf with
+    | `Break ->
+        call_Constructor Core__ops__control_flow__ControlFlow__Break false [ e ]
+          span typ
+    | `Continue ->
+        call_Constructor Core__ops__control_flow__ControlFlow__Continue false
+          [ e ] span typ
+
+  let make_control_flow_expr ~(span : span) ~(typ : ty) ~(has_return : bool)
+      (cf : [ `Return | `Break | `Continue ]) (e : expr) =
+    match cf with
+    | `Return ->
+        make_control_flow_expr' ~span ~typ `Break
+          (make_control_flow_expr' ~span ~typ `Break e)
+    | `Break when has_return ->
+        make_control_flow_expr' ~span ~typ `Break
+          (make_control_flow_expr' ~span ~typ `Continue e)
+    | `Break -> make_control_flow_expr' ~span ~typ `Break e
+    | `Continue when has_return ->
+        make_control_flow_expr' ~span ~typ `Continue
+          (make_control_flow_expr' ~span ~typ `Continue e)
+    | `Continue -> make_control_flow_expr' ~span ~typ `Continue e
+
   let string_lit span (s : string) : expr =
     { span; typ = TStr; e = Literal (String s) }
 
