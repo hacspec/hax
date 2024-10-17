@@ -22,7 +22,7 @@ DUNEJOBS=${DUNEJOBS:-} # required since `set -u`
 YELLOW=43
 GREEN=42
 RED=41
-BLACK=40
+BLACK=90
 status () { echo -e "\033[1m[rebuild script] \033[30m\033[$1m$2\033[0m"; }
 
 cd_rootwise () {
