@@ -127,7 +127,7 @@ pub struct ProVerifOptions {
         value_delimiter = ' ',
         allow_hyphen_values(true)
     )]
-    assume_items: Vec<InclusionClause>,
+    pub assume_items: Vec<InclusionClause>,
 }
 
 #[derive_group(Serializers)]
@@ -135,13 +135,13 @@ pub struct ProVerifOptions {
 pub struct FStarOptions<E: Extension> {
     /// Set the Z3 per-query resource limit
     #[arg(long, default_value = "15")]
-    z3rlimit: u32,
+    pub z3rlimit: u32,
     /// Number of unrolling of recursive functions to try
     #[arg(long, default_value = "0")]
-    fuel: u32,
+    pub fuel: u32,
     /// Number of unrolling of inductive datatypes to try
     #[arg(long, default_value = "1")]
-    ifuel: u32,
+    pub ifuel: u32,
     /// Modules for which Hax should extract interfaces (`*.fsti`
     /// files) in supplement to implementations (`*.fst` files). By
     /// default we extract no interface, only implementations. If a
@@ -160,10 +160,10 @@ pub struct FStarOptions<E: Extension> {
         value_delimiter = ' ',
         allow_hyphen_values(true)
     )]
-    interfaces: Vec<InclusionClause>,
+    pub interfaces: Vec<InclusionClause>,
 
     #[arg(long, default_value = "100", env = "HAX_FSTAR_LINE_WIDTH")]
-    line_width: u16,
+    pub line_width: u16,
 
     #[group(flatten)]
     pub cli_extension: E::FStarOptions,
@@ -198,7 +198,7 @@ impl fmt::Display for Backend<()> {
 
 #[derive_group(Serializers)]
 #[derive(JsonSchema, Debug, Clone)]
-enum DepsKind {
+pub enum DepsKind {
     Transitive,
     Shallow,
     None,
@@ -206,7 +206,7 @@ enum DepsKind {
 
 #[derive_group(Serializers)]
 #[derive(JsonSchema, Debug, Clone)]
-enum InclusionKind {
+pub enum InclusionKind {
     /// `+query` include the items selected by `query`
     Included(DepsKind),
     SignatureOnly,
@@ -233,7 +233,7 @@ impl ToString for InclusionClause {
     }
 }
 
-fn parse_inclusion_clause(
+pub fn parse_inclusion_clause(
     s: &str,
 ) -> Result<InclusionClause, Box<dyn std::error::Error + Send + Sync + 'static>> {
     let s = s.trim();
@@ -303,7 +303,7 @@ pub struct TranslationOptions {
         value_delimiter = ' ',
     )]
     #[arg(short, allow_hyphen_values(true))]
-    include_namespaces: Vec<InclusionClause>,
+    pub include_namespaces: Vec<InclusionClause>,
 }
 
 #[derive_group(Serializers)]
