@@ -276,56 +276,52 @@ module Make (F : Features.T) = struct
 
       (** *)
 
-      method virtual item'_Type_struct :
-        super:item ->
-        name:concrete_ident lazy_doc ->
-        generics:generics lazy_doc ->
-        arguments:(concrete_ident lazy_doc * ty lazy_doc * attr lazy_doc list) list ->
-        document
+      method virtual item'_Type_struct
+          : super:item ->
+            name:concrete_ident lazy_doc ->
+            generics:generics lazy_doc ->
+            arguments:
+              (concrete_ident lazy_doc * ty lazy_doc * attr lazy_doc list) list ->
+            document
 
-      method virtual item'_Type_tuple_struct :
-        super:item ->
-        name:concrete_ident lazy_doc ->
-        generics:generics lazy_doc ->
-        arguments:(concrete_ident lazy_doc * ty lazy_doc * attr lazy_doc list) list ->
-        document
+      method virtual item'_Type_tuple_struct
+          : super:item ->
+            name:concrete_ident lazy_doc ->
+            generics:generics lazy_doc ->
+            arguments:
+              (concrete_ident lazy_doc * ty lazy_doc * attr lazy_doc list) list ->
+            document
 
-      method virtual item'_Type_enum :
-        super:item ->
-        name:concrete_ident lazy_doc ->
-        generics:generics lazy_doc ->
-        variants:(variant lazy_doc) list ->
-        document
+      method virtual item'_Type_enum
+          : super:item ->
+            name:concrete_ident lazy_doc ->
+            generics:generics lazy_doc ->
+            variants:variant lazy_doc list ->
+            document
 
-      method _do_not_override_item'_Type ~super ~name ~generics ~variants ~is_struct =
-        if is_struct
-        then
+      method _do_not_override_item'_Type ~super ~name ~generics ~variants
+          ~is_struct =
+        if is_struct then
           match variants with
-          | [variant] ->
-            let variant_arguments =
-              List.map
-                ~f:(fun (ident,typ,_attrs) ->
-                    (self#_do_not_override_lazy_of_concrete_ident AstPos_variant__arguments ident,
-                     self#_do_not_override_lazy_of_ty AstPos_variant__arguments typ,
-                     [] (* TODO: attrs *)))
-                variant#v.arguments
-            in
-            if variant#v.is_record
-            then
-               self#item'_Type_struct
-                 ~super
-                 ~name
-                 ~generics
-                 ~arguments:variant_arguments
-            else
-              self#item'_Type_tuple_struct
-                ~super
-                ~name
-                ~generics
-                ~arguments:variant_arguments
+          | [ variant ] ->
+              let variant_arguments =
+                List.map
+                  ~f:(fun (ident, typ, _attrs) ->
+                    ( self#_do_not_override_lazy_of_concrete_ident
+                        AstPos_variant__arguments ident,
+                      self#_do_not_override_lazy_of_ty AstPos_variant__arguments
+                        typ,
+                      [] (* TODO: attrs *) ))
+                  variant#v.arguments
+              in
+              if variant#v.is_record then
+                self#item'_Type_struct ~super ~name ~generics
+                  ~arguments:variant_arguments
+              else
+                self#item'_Type_tuple_struct ~super ~name ~generics
+                  ~arguments:variant_arguments
           | _ -> self#unreachable () (* TODO: guarantees? *)
-        else
-          self#item'_Type_enum ~super ~name ~generics ~variants
+        else self#item'_Type_enum ~super ~name ~generics ~variants
 
       (** {2:common-nodes Printers for common nodes} *)
 
@@ -521,17 +517,26 @@ module Make (F : Features.T) = struct
             self#concrete_ident ~local id)
           ast_position id
 
-      method virtual expr'_GlobalVar_concrete: super:expr -> concrete_ident lazy_doc -> document
-      method virtual expr'_GlobalVar_primitive: super:expr -> primitive_ident -> document
+      method virtual expr'_GlobalVar_concrete
+          : super:expr -> concrete_ident lazy_doc -> document
+
+      method virtual expr'_GlobalVar_primitive
+          : super:expr -> primitive_ident -> document
 
       method _do_not_override_expr'_GlobalVar ~super global_ident =
         match global_ident with
         | `Concrete concrete ->
-            let concrete = self#_do_not_override_lazy_of_concrete_ident AstPos_expr'_GlobalVar_x0 concrete in
+            let concrete =
+              self#_do_not_override_lazy_of_concrete_ident
+                AstPos_expr'_GlobalVar_x0 concrete
+            in
             self#expr'_GlobalVar_concrete ~super concrete
         | `Primitive primitive ->
             self#expr'_GlobalVar_primitive ~super primitive
-        | _ -> self#assertion_failure @@ "GlobalVar: expected a concrete or primitive global ident, got:" ^ [%show: global_ident] global_ident
+        | _ ->
+            self#assertion_failure
+            @@ "GlobalVar: expected a concrete or primitive global ident, got:"
+            ^ [%show: global_ident] global_ident
 
       method module_path_separator = "::"
       (** [module_path_separator] is the default separator for

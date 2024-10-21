@@ -1865,7 +1865,9 @@ struct
                              ])
                        items) );
             ]
-          @ [ SSP.AST.HintUnfold (pconcrete_ident name, Some (pty span self_ty)) ]
+          @ [
+              SSP.AST.HintUnfold (pconcrete_ident name, Some (pty span self_ty));
+            ]
     in
     decls_from_item
 

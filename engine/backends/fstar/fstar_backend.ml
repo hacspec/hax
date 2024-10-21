@@ -1725,7 +1725,7 @@ let translate_as_experimental_rust m (bo : BackendOptions.t)
 *)
 
 (** Translate as F* (the "legacy" printer) *)
-let translate_as_fstar m (bo : BackendOptions.t)  ~(bundles : AST.item list list)
+let translate_as_fstar m (bo : BackendOptions.t) ~(bundles : AST.item list list)
     (items : AST.item list) : Types.file list =
   let show_view Concrete_ident.{ crate; path; definition } =
     crate :: (path @ [ definition ]) |> String.concat ~sep:"::"
