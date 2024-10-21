@@ -434,6 +434,16 @@ let exporters = {
             return {type, parse, to_json};
         },
     },
+    empty_struct: {
+        guard: def => (eq(keys(def), new Set(["type"])) && def.type == 'object'),
+        f: (name, _) => {
+            return {
+                type: `EmptyStruct${name}`,
+                parse: `EmptyStruct${name}`,
+                to_json: '`Null',
+            };
+        },
+    },
     // object is a *flat* record
     object: {
         guard: def => (eq(keys(def), new Set(["type", "required", "properties"]))
@@ -462,6 +472,14 @@ let exporters = {
             && def.type == "string",
         f: (name, o) => {
             assert(o.enum.every(x => typeof x == "string"), 'not every enum is a string');
+
+            if(o.enum.length == 0) {
+                return {
+                    type: '|',
+                    parse: 'failwith "cannot parse an empty type"',
+                    to_json: 'match o with _ -> .',
+                };
+            }
 
             let variants = o.enum.map(n => ({
                 Δ: n,

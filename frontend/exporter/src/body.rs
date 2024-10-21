@@ -21,9 +21,11 @@ mod module {
         Rc<rustc_middle::thir::Thir<'tcx>>,
         rustc_middle::thir::ExprId,
     ) {
-        let base = s.base();
-        let msg = || fatal!(s[base.tcx.def_span(did)], "THIR not found for {:?}", did);
-        base.cached_thirs.get(&did).unwrap_or_else(msg).clone()
+        let tcx = s.base().tcx;
+        s.with_item_cache(did.to_def_id(), |caches| {
+            let msg = || fatal!(s[tcx.def_span(did)], "THIR not found for {:?}", did);
+            caches.thir.as_ref().unwrap_or_else(msg).clone()
+        })
     }
 
     pub trait IsBody: Sized + Clone + 'static {
@@ -36,7 +38,7 @@ mod module {
         s: &S,
     ) -> FnDef<Body> {
         let hir_id = body_id.hir_id;
-        let ldid = hir_id.clone().owner.def_id;
+        let ldid = hir_id.owner.def_id;
 
         let (thir, expr_entrypoint) = get_thir(ldid, s);
         let s = &with_owner_id(s.base(), thir.clone(), (), ldid.to_def_id());
@@ -64,15 +66,13 @@ mod module {
     mod implementations {
         use super::*;
         impl IsBody for () {
-            fn body<'tcx, S: UnderOwnerState<'tcx>>(_did: RLocalDefId, _s: &S) -> Self {
-                ()
-            }
+            fn body<'tcx, S: UnderOwnerState<'tcx>>(_did: RLocalDefId, _s: &S) -> Self {}
         }
         impl IsBody for ThirBody {
             fn body<'tcx, S: UnderOwnerState<'tcx>>(did: RLocalDefId, s: &S) -> Self {
                 let (thir, expr) = get_thir(did, s);
                 if *CORE_EXTRACTION_MODE {
-                    let expr = &thir.exprs[expr.clone()];
+                    let expr = &thir.exprs[expr];
                     Decorated {
                         contents: Box::new(ExprKind::Tuple { fields: vec![] }),
                         hir_id: None,
@@ -111,7 +111,7 @@ mod module {
 
     impl<'tcx, S: UnderOwnerState<'tcx>, Body: IsBody> SInto<S, Body> for rustc_hir::BodyId {
         fn sinto(&self, s: &S) -> Body {
-            body_from_id::<Body, _>(self.clone(), s)
+            body_from_id::<Body, _>(*self, s)
         }
     }
 }

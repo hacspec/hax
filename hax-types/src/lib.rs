@@ -25,3 +25,6 @@ pub mod driver_api;
 /// The types used to communicate between `cargo-hax` and
 /// `hax-engine`.
 pub mod engine_api;
+
+/// Compile-time version of hax
+pub const HAX_VERSION: &str = env!("HAX_VERSION");

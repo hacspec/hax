@@ -381,8 +381,7 @@ struct
         match kind with
         | GPLifetime { witness } ->
             B.GPLifetime { witness = S.lifetime span witness }
-        | GPType { default } ->
-            GPType { default = Option.map ~f:(dty span) default }
+        | GPType -> GPType
         | GPConst { typ } -> GPConst { typ = dty span typ }
       in
       { ident; span; kind; attrs }

@@ -49,6 +49,8 @@ module Make (F : Features.T) = struct
   open AST
   module TypedLocalIdent = TypedLocalIdent (AST)
   module Visitors = Ast_visitors.Make (F)
+  module M = Ast_builder.Make (F)
+  module D = Ast_destruct.Make (F)
 
   module Expect = struct
     let mut_borrow (e : expr) : expr option =
@@ -304,6 +306,7 @@ module Make (F : Features.T) = struct
         method! visit_global_ident lvl (x : Global_ident.t) =
           match x with
           | `Concrete x -> `Concrete (f lvl x)
+          | `Projector (`Concrete x) -> `Projector (`Concrete (f lvl x))
           | _ -> super#visit_global_ident lvl x
 
         method! visit_ty _ t = super#visit_ty TypeLevel t
@@ -801,19 +804,13 @@ module Make (F : Features.T) = struct
   let make_tuple_typ (tuple : ty list) : ty =
     match tuple with [ ty ] -> ty | _ -> make_tuple_typ' tuple
 
-  let make_wild_pat (typ : ty) (span : span) : pat = { p = PWild; span; typ }
-
-  let make_arm (arm_pat : pat) (body : expr) ?(guard : guard option = None)
-      (span : span) : arm =
-    { arm = { arm_pat; body; guard }; span }
-
   let make_unit_param (span : span) : param =
     let typ = unit_typ in
-    let pat = make_wild_pat typ span in
+    let pat = M.pat_PWild ~typ ~span in
     { pat; typ; typ_span = None; attrs = [] }
 
   let make_seq (e1 : expr) (e2 : expr) : expr =
-    make_let (make_wild_pat e1.typ e1.span) e1 e2
+    make_let (M.pat_PWild ~typ:e1.typ ~span:e1.span) e1 e2
 
   let make_tuple_field_pat (len : int) (nth : int) (pat : pat) : field_pat =
     { field = `TupleField (nth + 1, len); pat }
@@ -918,7 +915,9 @@ module Make (F : Features.T) = struct
 
   let make_closure (params : pat list) (body : expr) (span : span) : expr =
     let params =
-      match params with [] -> [ make_wild_pat unit_typ span ] | _ -> params
+      match params with
+      | [] -> [ M.pat_PWild ~typ:unit_typ ~span ]
+      | _ -> params
     in
     let e = Closure { params; body; captures = [] } in
     { e; typ = TArrow (List.map ~f:(fun p -> p.typ) params, body.typ); span }

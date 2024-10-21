@@ -76,7 +76,7 @@ fn name_of_local(
     var_debug_info: &Vec<rustc_middle::mir::VarDebugInfo>,
 ) -> Option<String> {
     var_debug_info
-        .into_iter()
+        .iter()
         .find(|info| {
             if let rustc_middle::mir::VarDebugInfoContents::Place(place) = info.value {
                 place.projection.is_empty() && place.local == local
@@ -383,7 +383,7 @@ pub(crate) fn get_function_from_def_id_and_generics<'tcx, S: BaseState<'tcx> + H
         match assoc.container {
             rustc_middle::ty::AssocItemContainer::TraitContainer => {
                 // Retrieve the trait information
-                let impl_expr = get_trait_info(s, generics, &assoc);
+                let impl_expr = self_clause_for_item(s, &assoc, generics).unwrap();
                 // Return only the method generics; the trait generics are included in `impl_expr`.
                 let method_generics = &generics[num_container_generics..];
                 (method_generics.sinto(s), Option::Some(impl_expr))
@@ -540,8 +540,8 @@ fn translate_switch_targets<'tcx, S: UnderOwnerState<'tcx>>(
     let targets_vec: Vec<(u128, BasicBlock)> =
         targets.iter().map(|(v, b)| (v, b.sinto(s))).collect();
 
-    match switch_ty {
-        Ty::Bool => {
+    match switch_ty.kind() {
+        TyKind::Bool => {
             // This is an: `if ... then ... else ...`
             assert!(targets_vec.len() == 1);
             // It seems the block targets are inverted
@@ -554,10 +554,10 @@ fn translate_switch_targets<'tcx, S: UnderOwnerState<'tcx>>(
 
             SwitchTargets::If(if_block, otherwise_block)
         }
-        Ty::Int(_) | Ty::Uint(_) => {
-            let int_ty = match switch_ty {
-                Ty::Int(ty) => IntUintTy::Int(*ty),
-                Ty::Uint(ty) => IntUintTy::Uint(*ty),
+        TyKind::Int(_) | TyKind::Uint(_) => {
+            let int_ty = match switch_ty.kind() {
+                TyKind::Int(ty) => IntUintTy::Int(*ty),
+                TyKind::Uint(ty) => IntUintTy::Uint(*ty),
                 _ => unreachable!(),
             };
 
@@ -803,7 +803,7 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
 
         loop {
             use rustc_middle::mir::ProjectionElem::*;
-            let cur_ty = current_ty.clone();
+            let cur_ty = current_ty;
             let cur_kind = current_kind.clone();
             use rustc_middle::ty::TyKind;
             let mk_field =
@@ -835,7 +835,7 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                 [Downcast(_, variant_idx), Field(index, ty), rest @ ..] => {
                     elems = rest;
                     let r = mk_field(index, Some(*variant_idx));
-                    current_ty = ty.clone();
+                    current_ty = *ty;
                     r
                 }
                 [elem, rest @ ..] => {
@@ -844,7 +844,7 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                     match elem {
                         Deref => {
                             current_ty = match current_ty.kind() {
-                                TyKind::Ref(_, ty, _) | TyKind::RawPtr(ty, _) => ty.clone(),
+                                TyKind::Ref(_, ty, _) | TyKind::RawPtr(ty, _) => *ty,
                                 TyKind::Adt(def, generics) if def.is_box() => generics.type_at(0),
                                 _ => supposely_unreachable_fatal!(
                                     s, "PlaceDerefNotRefNorPtrNorBox";
@@ -860,13 +860,13 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                                 use crate::rustc_index::Idx;
                                 let generics = generics.as_closure();
                                 let upvar_tys = generics.upvar_tys();
-                                current_ty = upvar_tys[index.sinto(s).index()].clone();
+                                current_ty = upvar_tys[index.sinto(s).index()];
                                 ProjectionElem::Field(ProjectionElemFieldKind::ClosureState(
                                     index.sinto(s),
                                 ))
                             } else {
                                 let r = mk_field(index, None);
-                                current_ty = ty.clone();
+                                current_ty = *ty;
                                 r
                             }
                         }
@@ -879,7 +879,7 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                                     {current_ty, current_kind, elem}
                                 );
                             };
-                            current_ty = ty.clone();
+                            current_ty = *ty;
                             ProjectionElem::Index(local.sinto(s))
                         }
                         ConstantIndex {
@@ -894,7 +894,7 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                                     {current_ty, current_kind, elem}
                                 )
                             };
-                            current_ty = ty.clone();
+                            current_ty = *ty;
                             ProjectionElem::ConstantIndex {
                                 offset: *offset,
                                 min_length: *min_length,
@@ -911,7 +911,7 @@ impl<'tcx, S: UnderOwnerState<'tcx> + HasMir<'tcx>> SInto<S, Place>
                             }
                         }
                         OpaqueCast(ty) => {
-                            current_ty = ty.clone();
+                            current_ty = *ty;
                             ProjectionElem::OpaqueCast
                         }
                         // This is used for casts to a subtype, e.g. between `for<‘a> fn(&’a ())`

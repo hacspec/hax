@@ -18,6 +18,7 @@ info:
       stderr: false
       stdout: true
     include_flag: ~
+    backend_options: ~
 ---
 exit = 0
 
@@ -33,7 +34,13 @@ Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope bool_scope.
 
+Record t_Foo : Type := {
+}.
+
 Class t_Trait (Self : Type) := {
+}.
+
+#[global] Instance t_Foo_t_t_Trait : t_Trait t_Foo_t := {
 }.
 
 (*Not implemented yet? todo(item)*)
@@ -82,12 +89,6 @@ Definition main_c (_ : unit) : unit :=
   let _ := main_c_b tt : unit in
   let _ := main_c_c tt : unit in
   tt.
-
-Record t_Foo : Type := {
-}.
-
-#[global] Instance t_Foo_t_t_Trait : t_Trait t_Foo_t := {
-}.
 
 Definition main (_ : unit) : unit :=
   let _ := main_a Foot_Foo_t : unit in

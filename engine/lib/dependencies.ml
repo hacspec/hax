@@ -6,7 +6,8 @@ module Make (F : Features.T) = struct
   open Ast
   open AST
 
-  let ident_of (item : item) : Concrete_ident.t = item.ident
+  let ident_of (item : item) : Concrete_ident.t =
+    match item.v with Type { name; _ } -> name | _ -> item.ident
 
   module Namespace = struct
     module T = struct
@@ -153,6 +154,34 @@ module Make (F : Features.T) = struct
           (of_graph g).mut_rec_bundles
     end
 
+    module CyclicDep = struct
+      module Bundle = struct
+        type t = Concrete_ident.t list
+
+        module G = Graph.Persistent.Graph.Concrete (Concrete_ident)
+        module CC = Graph.Components.Undirected (G)
+
+        let cycles g = CC.components_list g
+      end
+
+      (* This is a solution that bundles together everything that belongs to the same module SCC.
+         It results in bundles that are much bigger than they could be but is a simple solution
+         to the problem described in https://github.com/hacspec/hax/issues/995#issuecomment-2411114404 *)
+      let of_mod_sccs (items : item list)
+          (mod_graph_cycles : Namespace.Set.t list) : Bundle.t list =
+        let item_names = List.map items ~f:(fun x -> x.ident) in
+        let cycles =
+          List.filter mod_graph_cycles ~f:(fun set ->
+              Prelude.Set.length set > 1)
+        in
+        let bundles =
+          List.map cycles ~f:(fun set ->
+              List.filter item_names ~f:(fun item ->
+                  Prelude.Set.mem set (Namespace.of_concrete_ident item)))
+        in
+        bundles
+    end
+
     open Graph.Graphviz.Dot (struct
       include G
 
@@ -182,7 +211,6 @@ module Make (F : Features.T) = struct
 
     let of_items (items : item list) : G.t =
       let ig = ItemGraph.of_items ~original_items:items items in
-      assert (ItemGraph.MutRec.all_homogeneous_namespace ig);
       List.map ~f:(ident_of >> (Namespace.of_concrete_ident &&& Fn.id)) items
       |> Map.of_alist_multi (module Namespace)
       |> Map.map
@@ -198,6 +226,9 @@ module Make (F : Features.T) = struct
       |> List.fold ~init:G.empty ~f:(G.add_edge >> uncurry)
 
     module SCC = Graph.Components.Make (G)
+
+    let cycles g : Namespace.Set.t list =
+      SCC.scc_list g |> List.map ~f:(Set.of_list (module Namespace))
 
     open Graph.Graphviz.Dot (struct
       include G
@@ -343,61 +374,107 @@ module Make (F : Features.T) = struct
   (* Construct the new item `f item` (say `item'`), and create a
      "symbolic link" to `item'`. Returns a pair that consists in the
      symbolic link and in `item'`. *)
-  let shallow_copy (f : item -> item) (item : item) : item * item =
+  let shallow_copy (f : item -> item)
+      (variants_renamings :
+        concrete_ident * concrete_ident ->
+        (concrete_ident * concrete_ident) list) (item : item) : item list =
     let item' = f item in
-    ({ item with v = Alias { name = item.ident; item = item'.ident } }, item')
+    let old_new = (ident_of item, ident_of item') in
+    let aliases =
+      List.map (old_new :: variants_renamings old_new)
+        ~f:(fun (old_ident, new_ident) ->
+          { item with v = Alias { name = old_ident; item = new_ident } })
+    in
+    item' :: aliases
 
-  let name_me' (items : item list) : item list =
-    let g = ItemGraph.of_items ~original_items:items items in
+  let bundle_cyclic_modules (items : item list) : item list =
     let from_ident ident : item option =
       List.find ~f:(fun i -> [%equal: Concrete_ident.t] i.ident ident) items
     in
-    let non_mut_rec, mut_rec_bundles =
-      let b = ItemGraph.MutRec.of_graph g in
+    let mut_rec_bundles =
+      let mod_graph_cycles = ModGraph.of_items items |> ModGraph.cycles in
+      let bundles = ItemGraph.CyclicDep.of_mod_sccs items mod_graph_cycles in
       let f = List.filter_map ~f:from_ident in
-      (f b.non_mut_rec, List.map ~f b.mut_rec_bundles)
+      List.map ~f bundles
     in
-    let transform (bundle : item list) =
+
+    let transform (bundle : item list) it =
       let ns : Concrete_ident.t =
         Concrete_ident.Create.fresh_module ~from:(List.map ~f:ident_of bundle)
       in
       let new_name_under_ns : Concrete_ident.t -> Concrete_ident.t =
         Concrete_ident.Create.move_under ~new_parent:ns
       in
+      let new_names = List.map ~f:(ident_of >> new_name_under_ns) bundle in
+      let duplicates =
+        new_names |> List.find_all_dups ~compare:Concrete_ident.compare
+      in
+      (* Verify name clashes *)
+      (* In case of clash, add hash *)
+      let add_prefix id =
+        if
+          not
+            (List.mem duplicates (new_name_under_ns id)
+               ~equal:Concrete_ident.equal)
+        then id
+        else
+          Concrete_ident.Create.map_last
+            ~f:(fun name -> name ^ (Concrete_ident.hash id |> Int.to_string))
+            id
+      in
       let renamings =
-        List.map ~f:(ident_of >> (Fn.id &&& new_name_under_ns)) bundle
-        |> Map.of_alist_exn (module Concrete_ident)
+        List.map
+          ~f:(ident_of >> (Fn.id &&& (add_prefix >> new_name_under_ns)))
+          bundle
+      in
+      let variants_renamings (previous_name, new_name) =
+        match from_ident previous_name with
+        | Some { v = Type { variants; is_struct = false; _ }; _ } ->
+            List.map variants ~f:(fun { name; _ } ->
+                ( name,
+                  Concrete_ident.Create.move_under ~new_parent:new_name name ))
+        | Some { v = Type { variants; is_struct = true; _ }; _ } ->
+            List.concat_map variants ~f:(fun { arguments; _ } ->
+                List.map arguments ~f:(fun (name, _, _) ->
+                    ( name,
+                      Concrete_ident.Create.move_under ~new_parent:new_name name
+                    )))
+        | _ -> []
+      in
+
+      let renamings =
+        Map.of_alist_exn
+          (module Concrete_ident)
+          (renamings @ List.concat_map ~f:variants_renamings renamings)
       in
       let rename =
         let renamer _lvl i = Map.find renamings i |> Option.value ~default:i in
         (U.Mappers.rename_concrete_idents renamer)#visit_item ExprLevel
       in
-      let shallow, bundle =
-        List.map ~f:(shallow_copy rename) bundle |> List.unzip
-      in
-      bundle @ shallow
+      shallow_copy rename variants_renamings it
     in
-    let mut_rec_bundles =
-      List.map
-        ~f:(fun bundle ->
+    let maybe_transform_item it =
+      match
+        List.find
+          ~f:(fun bundle -> List.mem bundle it ~equal:[%eq: item])
+          mut_rec_bundles
+      with
+      | Some bundle ->
           if
             List.map ~f:ident_of bundle
             |> ItemGraph.MutRec.Bundle.homogeneous_namespace
-          then bundle
-          else transform bundle)
-        mut_rec_bundles
+          then [ it ]
+          else transform bundle it
+      | None -> [ it ]
     in
-    non_mut_rec @ List.concat_map ~f:Fn.id mut_rec_bundles
+    List.concat_map items ~f:maybe_transform_item
 
-  let name_me (items : item list) : item list =
-    let h f name items =
-      let file = Stdlib.open_out @@ "/tmp/graph_" ^ name ^ ".dot" in
-      f file items;
-      Stdlib.close_out file
+  let recursive_bundles (items : item list) : item list list * item list =
+    let g = ItemGraph.of_items ~original_items:items items in
+    let bundles = ItemGraph.MutRec.of_graph g in
+    let from_ident ident : item option =
+      List.find ~f:(fun i -> [%equal: Concrete_ident.t] i.ident ident) items
     in
-    h ItemGraph.print "items_before" items;
-    let items = name_me' items in
-    h ItemGraph.print "items_after" items;
-    h ModGraph.print "mods" items;
-    items
+    let f = List.filter_map ~f:from_ident in
+    (List.map ~f bundles.mut_rec_bundles, f bundles.non_mut_rec)
 end

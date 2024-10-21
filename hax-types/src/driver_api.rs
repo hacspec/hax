@@ -27,6 +27,7 @@ pub struct HaxMeta<Body: hax_frontend_exporter::IsBody> {
         hax_frontend_exporter::ImplInfos,
     )>,
     pub def_ids: Vec<hax_frontend_exporter::DefId>,
+    pub comments: Vec<(hax_frontend_exporter::Span, String)>,
 }
 
 impl<Body: hax_frontend_exporter::IsBody> HaxMeta<Body>

@@ -14,9 +14,17 @@ impl<'a> Callbacks for CallbacksWrapper<'a> {
     fn config(&mut self, config: &mut interface::Config) {
         let options = self.options.clone();
         config.psess_created = Some(Box::new(move |parse_sess| {
-            parse_sess.env_depinfo.get_mut().insert((
+            let depinfo = parse_sess.env_depinfo.get_mut();
+            depinfo.insert((
                 Symbol::intern(ENV_VAR_OPTIONS_FRONTEND),
                 Some(Symbol::intern(&serde_json::to_string(&options).unwrap())),
+            ));
+            depinfo.insert((
+                Symbol::intern("HAX_CARGO_CACHE_KEY"),
+                std::env::var("HAX_CARGO_CACHE_KEY")
+                    .ok()
+                    .as_deref()
+                    .map(Symbol::intern),
             ));
         }));
         self.sub.config(config)

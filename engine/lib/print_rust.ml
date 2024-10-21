@@ -391,8 +391,7 @@ module Raw = struct
     let ( ! ) = pure span in
     match pk with
     | GPLifetime _ -> (empty, !": 'unk")
-    | GPType { default = Some default } -> (empty, !" = " & pty span default)
-    | GPType { default = None } -> (empty, empty)
+    | GPType -> (empty, empty)
     | GPConst { typ } -> (!"const ", !":" & pty span typ)
 
   let pgeneric_param (p : generic_param) =

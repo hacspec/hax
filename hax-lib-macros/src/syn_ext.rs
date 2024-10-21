@@ -52,7 +52,7 @@ impl PathExt for Path {
                 return None;
             }
         }
-        return Some(chunks);
+        Some(chunks)
     }
 }
 
@@ -70,7 +70,7 @@ pub trait ExpectIdent {
 
 impl<T: ExpectIdent> ExpectIdent for Box<T> {
     fn expect_ident(&self) -> Option<Ident> {
-        let this: &T = &*self;
+        let this: &T = self;
         this.expect_ident()
     }
 }

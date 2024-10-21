@@ -21,7 +21,7 @@ pub enum HaxMessage {
     } = 2,
     CargoBuildFailure = 3,
     WarnExperimentalBackend {
-        backend: Backend,
+        backend: Backend<()>,
     } = 4,
 }
 

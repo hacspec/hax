@@ -107,16 +107,15 @@ impl visit_mut::VisitMut for RewriteSelf {
                     attrs: vec![],
                     by_ref: None,
                     mutability: None,
-                    ident: self.self_ident(span.clone()).clone(),
+                    ident: self.self_ident(span).clone(),
                     subpat: None,
                 })),
                 colon_token: token::Colon(arg.span()),
-                ty: Box::new(self.self_ty(span.clone())),
+                ty: Box::new(self.self_ty(span)),
             });
         }
     }
     fn visit_item_impl_mut(&mut self, _i: &mut ItemImpl) {
         // Do nothing! We allow user to write self if it's nested in a impl block
-        ()
     }
 }

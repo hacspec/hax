@@ -385,7 +385,7 @@ end) : EXPR = struct
     in
     (* if there is no expression & the last expression is ⊥, just use that *)
     let lift_last_statement_as_expr_if_possible expr stmts (ty : Thir.ty) =
-      match (ty, expr, List.drop_last stmts, List.last stmts) with
+      match (ty.kind, expr, List.drop_last stmts, List.last stmts) with
       | ( Thir.Never,
           None,
           Some stmts,
@@ -428,11 +428,11 @@ end) : EXPR = struct
                 {
                   arms =
                     [
-                      U.make_arm lhs body lhs_body_span;
-                      U.make_arm
+                      U.M.arm lhs body ~span:lhs_body_span;
+                      U.M.arm
                         { p = PWild; span = else_block.span; typ = lhs.typ }
                         { else_block with typ = body.typ }
-                        else_block.span;
+                        ~span:else_block.span;
                     ];
                   scrutinee = rhs;
                 }
@@ -488,10 +488,10 @@ end) : EXPR = struct
             Option.value ~default:(U.unit_expr span)
             @@ Option.map ~f:c_expr else_opt
           in
-          let arm_then = U.make_arm arm_pat then_ then_.span in
+          let arm_then = U.M.arm arm_pat then_ ~span:then_.span in
           let arm_else =
             let arm_pat = { arm_pat with p = PWild } in
-            U.make_arm arm_pat else_ else_.span
+            U.M.arm arm_pat else_ ~span:else_.span
           in
           Match { scrutinee; arms = [ arm_then; arm_else ] }
       | If { cond; else_opt; then'; _ } ->
@@ -679,9 +679,15 @@ end) : EXPR = struct
           (U.make_tuple_expr' ~span @@ List.map ~f:c_expr fields).e
       | Array { fields } -> Array (List.map ~f:c_expr fields)
       | Adt { info; base; fields; _ } ->
-          let constructor =
-            def_id (Constructor { is_struct = info.typ_is_struct }) info.variant
+          let is_struct, is_record =
+            match info.kind with
+            | Struct { named } -> (true, named)
+            | Enum { named; _ } -> (false, named)
+            | Union ->
+                unimplemented ~issue_id:998 [ e.span ]
+                  "Construct union types: not supported"
           in
+          let constructor = def_id (Constructor { is_struct }) info.variant in
           let base =
             Option.map
               ~f:(fun base -> (c_expr base.base, W.construct_base))
@@ -695,14 +701,7 @@ end) : EXPR = struct
                 (field, value))
               fields
           in
-          Construct
-            {
-              is_record = info.variant_is_record;
-              is_struct = info.typ_is_struct;
-              constructor;
-              fields;
-              base;
-            }
+          Construct { is_record; is_struct; constructor; fields; base }
       | Literal { lit; neg; _ } -> (
           match c_lit e.span neg lit typ with
           | EL_Lit lit -> Literal lit
@@ -716,17 +715,24 @@ end) : EXPR = struct
                        typ = TInt { size = S8; signedness = Unsigned };
                      })
                    l))
-      | NamedConst { def_id = id; impl; _ } ->
+      | NamedConst { def_id = id; impl; _ } -> (
           let kind : Concrete_ident.Kind.t =
             match impl with Some _ -> AssociatedItem Value | _ -> Value
           in
-          GlobalVar (def_id kind id)
+          let f = GlobalVar (def_id kind id) in
+          match impl with
+          | Some impl ->
+              let trait = Some (c_impl_expr e.span impl, []) in
+              let f = { e = f; span; typ = TArrow ([], typ) } in
+              App { f; trait; args = []; generic_args = []; bounds_impls = [] }
+          | _ -> f)
       | Closure { body; params; upvars; _ } ->
           let params =
             List.filter_map ~f:(fun p -> Option.map ~f:c_pat p.pat) params
           in
           let params =
-            if List.is_empty params then [ U.make_wild_pat U.unit_typ span ]
+            if List.is_empty params then
+              [ U.M.pat_PWild ~typ:U.M.ty_unit ~span ]
             else params
           in
           let body = c_expr body in
@@ -866,17 +872,17 @@ end) : EXPR = struct
           let var = local_ident Expr var in
           PBinding { mut; mode; var; typ; subpat }
       | Variant { info; subpatterns; _ } ->
-          let constructor =
-            def_id (Constructor { is_struct = info.typ_is_struct }) info.variant
+          let is_struct, is_record =
+            match info.kind with
+            | Struct { named } -> (true, named)
+            | Enum { named; _ } -> (false, named)
+            | Union ->
+                unimplemented ~issue_id:998 [ pat.span ]
+                  "Pattern match on union types: not supported"
           in
+          let constructor = def_id (Constructor { is_struct }) info.variant in
           let fields = List.map ~f:(c_field_pat info) subpatterns in
-          PConstruct
-            {
-              constructor;
-              fields;
-              is_record = info.variant_is_record;
-              is_struct = info.typ_is_struct;
-            }
+          PConstruct { constructor; fields; is_record; is_struct }
       | Tuple { subpatterns } ->
           (List.map ~f:c_pat subpatterns |> U.make_tuple_pat').p
       | Deref { subpattern } ->
@@ -974,7 +980,7 @@ end) : EXPR = struct
           ("Pointer, with [cast] being " ^ [%show: Thir.pointer_coercion] cast)
 
   and c_ty (span : Thir.span) (ty : Thir.ty) : ty =
-    match ty with
+    match ty.kind with
     | Bool -> TBool
     | Char -> TChar
     | Int k -> TInt (c_int_ty k)
@@ -1013,7 +1019,7 @@ end) : EXPR = struct
         let impl = c_impl_expr span impl_expr in
         let item = Concrete_ident.of_def_id (AssociatedItem Type) def_id in
         TAssociatedType { impl; item }
-    | Alias { kind = Opaque; def_id; _ } ->
+    | Alias { kind = Opaque _; def_id; _ } ->
         TOpaque (Concrete_ident.of_def_id Type def_id)
     | Alias { kind = Inherent; _ } ->
         assertion_failure [ span ] "Ty::Alias with AliasTyKind::Inherent"
@@ -1182,9 +1188,7 @@ end) : EXPR = struct
     let kind =
       match (param.kind : Thir.generic_param_kind) with
       | Lifetime _ -> GPLifetime { witness = W.lifetime }
-      | Type { default; _ } ->
-          let default = Option.map ~f:(c_ty param.span) default in
-          GPType { default }
+      | Type _ -> GPType
       (* Rustc always fills in const generics on use. Thus we can drop this information. *)
       | Const { default = _; ty } -> GPConst { typ = c_ty param.span ty }
     in
@@ -1334,7 +1338,7 @@ let generic_param_to_value ({ ident; kind; span; _ } : generic_param) :
   match kind with
   | GPLifetime { witness } ->
       GLifetime { lt = [%show: local_ident] ident; witness }
-  | GPType _ -> GType (TParam ident)
+  | GPType -> GType (TParam ident)
   | GPConst { typ } -> GConst { e = LocalVar ident; typ; span }
 
 type discriminant_expr =
@@ -1514,7 +1518,8 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
             ~f:
               (fun ({ data; def_id = variant_id; attributes; _ } as original) ->
               let is_record =
-                [%matches? Types.Struct { fields = _ :: _; _ }] data
+                [%matches? (Struct { fields = _ :: _; _ } : Types.variant_data)]
+                  data
               in
               let name = Concrete_ident.of_def_id kind variant_id in
               let arguments =
@@ -1550,6 +1555,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
         let v =
           let kind = Concrete_ident.Kind.Constructor { is_struct } in
           let name = Concrete_ident.of_def_id kind def_id in
+          let name = Concrete_ident.Create.move_under name ~new_parent:name in
           let mk fields is_record =
             let arguments =
               List.map
@@ -1591,8 +1597,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
         let self =
           let id = Local_ident.mk_id Typ 0 (* todo *) in
           let ident = Local_ident.{ name = "Self"; id } in
-          let kind = GPType { default = None } in
-          { ident; span; attrs = []; kind }
+          { ident; span; attrs = []; kind = GPType }
         in
         let params = self :: params in
         let generics = { params; constraints } in
@@ -1753,8 +1758,10 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
           }
         in
         [ { span; v; ident = Concrete_ident.of_def_id Value def_id; attrs } ]
+    | Union _ ->
+        unimplemented ~issue_id:998 [ item.span ] "Union types: not supported"
     | ExternCrate _ | Static _ | Macro _ | Mod _ | ForeignMod _ | GlobalAsm _
-    | OpaqueTy _ | Union _ | TraitAlias _ ->
+    | OpaqueTy _ | TraitAlias _ ->
         mk NotImplementedYet
 
 let import_item ~drop_body (item : Thir.item) :

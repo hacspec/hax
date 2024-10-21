@@ -12,20 +12,12 @@ impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
     }
 }
 
-// TODO: this seems to be constructing a `Self: Trait` clause. Document what it does exactly.
-pub fn poly_trait_ref<'tcx, S: UnderOwnerState<'tcx>>(
-    s: &S,
-    assoc: &ty::AssocItem,
-    generics: ty::GenericArgsRef<'tcx>,
-) -> Option<ty::PolyTraitRef<'tcx>> {
-    let tcx = s.base().tcx;
-    let r#trait = tcx.trait_of_item(assoc.def_id)?;
-    Some(ty::Binder::dummy(ty::TraitRef::new(tcx, r#trait, generics)))
-}
-
 #[tracing::instrument(skip(s))]
-pub(crate) fn arrow_of_sig<'tcx, S: UnderOwnerState<'tcx>>(sig: &ty::PolyFnSig<'tcx>, s: &S) -> Ty {
-    Ty::Arrow(Box::new(sig.sinto(s)))
+pub(crate) fn arrow_of_sig<'tcx, S: UnderOwnerState<'tcx>>(
+    sig: &ty::PolyFnSig<'tcx>,
+    s: &S,
+) -> TyKind {
+    TyKind::Arrow(Box::new(sig.sinto(s)))
 }
 
 #[tracing::instrument(skip(s))]
@@ -35,22 +27,27 @@ pub(crate) fn get_variant_information<'s, S: UnderOwnerState<'s>>(
     s: &S,
 ) -> VariantInformations {
     s_assert!(s, !adt_def.is_union() || *CORE_EXTRACTION_MODE);
-    fn is_record<'s, I: std::iter::Iterator<Item = &'s ty::FieldDef> + Clone>(it: I) -> bool {
+    fn is_named<'s, I: std::iter::Iterator<Item = &'s ty::FieldDef> + Clone>(it: I) -> bool {
         it.clone()
-            .any(|field| !field.name.to_ident_string().parse::<u64>().is_ok())
+            .any(|field| field.name.to_ident_string().parse::<u64>().is_err())
     }
     let variant_def = adt_def.variant(variant_index);
     let variant = variant_def.def_id;
     let constructs_type: DefId = adt_def.did().sinto(s);
+    let kind = if adt_def.is_struct() {
+        let named = is_named(adt_def.all_fields());
+        VariantKind::Struct { named }
+    } else if adt_def.is_union() {
+        VariantKind::Union
+    } else {
+        let named = is_named(variant_def.fields.iter());
+        let index = variant_index.into();
+        VariantKind::Enum { index, named }
+    };
     VariantInformations {
         typ: constructs_type.clone(),
         variant: variant.sinto(s),
-        variant_index: variant_index.into(),
-
-        typ_is_record: adt_def.is_struct() && is_record(adt_def.all_fields()),
-        variant_is_record: is_record(variant_def.fields.iter()),
-        typ_is_struct: adt_def.is_struct(),
-
+        kind,
         type_namespace: DefId {
             path: match constructs_type.path.as_slice() {
                 [init @ .., _] => init.to_vec(),
@@ -109,7 +106,7 @@ pub(crate) fn read_span_from_file(span: &Span) -> Result<String, ReadSpanErr> {
             let first = first.chars().skip(span.lo.col).collect();
             let last = last.chars().take(span.hi.col).collect();
             Ok(std::iter::once(first)
-                .chain(middle.into_iter().cloned())
+                .chain(middle.iter().cloned())
                 .chain(std::iter::once(last))
                 .collect::<Vec<String>>()
                 .join("\n"))
@@ -145,7 +142,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> ParamEnv<'tcx> for S {
 
 #[tracing::instrument]
 pub fn argument_span_of_mac_call(mac_call: &rustc_ast::ast::MacCall) -> rustc_span::Span {
-    (*mac_call.args).dspan.entire()
+    mac_call.args.dspan.entire()
 }
 #[tracing::instrument(skip(state))]
 pub(crate) fn raw_macro_invocation_of_span<'t, S: BaseState<'t>>(
@@ -224,7 +221,7 @@ pub(crate) fn attribute_from_scope<'tcx, S: ExprState<'tcx>>(
     let map = tcx.hir();
     let attributes = hir_id
         .map(|hir_id| map.attrs(hir_id).sinto(s))
-        .unwrap_or(vec![]);
+        .unwrap_or_default();
     (hir_id, attributes)
 }
 
@@ -247,7 +244,7 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
     ids.map(|id| tcx.hir().item(id))
         .group_by(|item| SpanEq(raw_macro_invocation_of_span(item.span, s)))
         .into_iter()
-        .map(|(mac, items)| match mac.0 {
+        .flat_map(|(mac, items)| match mac.0 {
             Some((macro_ident, expn_data)) => {
                 let owner_id: rustc_hir::hir_id::OwnerId =
                     items.into_iter().map(|x| x.owner_id).next().s_unwrap(s);
@@ -267,6 +264,5 @@ pub fn inline_macro_invocations<'t, S: BaseState<'t>, Body: IsBody>(
             }
             _ => items.map(|item| item.sinto(s)).collect(),
         })
-        .flatten()
         .collect()
 }

@@ -61,11 +61,6 @@ fn setup_logging() {
     let subscriber = tracing_subscriber::Registry::default()
         .with(tracing_subscriber::EnvFilter::from_default_env())
         .with(
-            tracing_subscriber::fmt::layer()
-                .with_file(true)
-                .with_line_number(true),
-        )
-        .with(
             tracing_tree::HierarchicalLayer::new(2)
                 .with_ansi(enable_colors)
                 .with_indent_lines(true),
@@ -78,15 +73,20 @@ const HAX_VANILLA_RUSTC: &str = "HAX_VANILLA_RUSTC";
 fn main() {
     setup_logging();
 
-    let options: hax_types::cli_options::Options =
-        serde_json::from_str(&std::env::var(ENV_VAR_OPTIONS_FRONTEND).expect(&format!(
-            "Cannot find environnement variable {}",
-            ENV_VAR_OPTIONS_FRONTEND
-        )))
-        .expect(&format!(
+    let options: hax_types::cli_options::Options = serde_json::from_str(
+        &std::env::var(ENV_VAR_OPTIONS_FRONTEND).unwrap_or_else(|_| {
+            panic!(
+                "Cannot find environnement variable {}",
+                ENV_VAR_OPTIONS_FRONTEND
+            )
+        }),
+    )
+    .unwrap_or_else(|_| {
+        panic!(
             "Invalid value for the environnement variable {}",
             ENV_VAR_OPTIONS_FRONTEND
-        ));
+        )
+    });
 
     let mut rustc_args: Vec<String> = std::env::args().skip(1).collect();
     // add [--sysroot] if not present
@@ -140,9 +140,7 @@ fn main() {
             adt_const_params: false,    // not useful for now
             generic_const_exprs: false, // not useful for now
             register_tool: true,
-            registered_tools: HashSet::from_iter(
-                vec![hax_lib_macros_types::HAX_TOOL.into()].into_iter(),
-            ),
+            registered_tools: HashSet::from_iter(vec![hax_lib_macros_types::HAX_TOOL.into()]),
             auto_traits: true,
             negative_impls: true,
         } - Features::detect_forking();

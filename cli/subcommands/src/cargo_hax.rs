@@ -12,6 +12,8 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process;
 
+mod engine_debug_webapp;
+
 /// Return a toolchain argument to pass to `cargo`: when the correct nightly is
 /// already present, this is None, otherwise we (1) ensure `rustup` is available
 /// (2) install the nightly (3) return the toolchain
@@ -87,12 +89,8 @@ fn find_hax_engine(message_format: MessageFormat) -> process::Command {
 
     std::env::var("HAX_ENGINE_BINARY")
         .ok()
-        .map(|name| process::Command::new(name))
-        .or_else(|| {
-            which(ENGINE_BINARY_NAME)
-                .ok()
-                .map(|name| process::Command::new(name))
-        })
+        .map(process::Command::new)
+        .or_else(|| which(ENGINE_BINARY_NAME).ok().map(process::Command::new))
         .or_else(|| {
             which("node").ok().and_then(|_| {
                 if let Ok(true) = inquire::Confirm::new(&format!(
@@ -184,7 +182,7 @@ impl HaxMessage {
             }
             Self::CargoBuildFailure => {
                 let title =
-                    format!("hax: running `cargo build` was not successful, continuing anyway.");
+                    "hax: running `cargo build` was not successful, continuing anyway.".to_string();
                 eprintln!("{}", renderer.render(Level::Warning.title(&title)));
             }
             Self::WarnExperimentalBackend { backend } => {
@@ -203,7 +201,7 @@ fn run_engine(
     haxmeta: HaxMeta<hax_frontend_exporter::ThirBody>,
     working_dir: PathBuf,
     manifest_dir: PathBuf,
-    backend: &BackendOptions,
+    backend: &BackendOptions<()>,
     message_format: MessageFormat,
 ) -> bool {
     let engine_options = EngineOptions {
@@ -215,14 +213,13 @@ fn run_engine(
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
-        .map_err(|e| {
+        .inspect_err(|e| {
             if let std::io::ErrorKind::NotFound = e.kind() {
                 panic!(
                     "The binary [{}] was not found in your [PATH].",
                     ENGINE_BINARY_NAME
                 )
             }
-            e
         })
         .unwrap();
 
@@ -288,7 +285,7 @@ fn run_engine(
                         output.files.push(file)
                     } else {
                         let path = out_dir.join(&file.path);
-                        std::fs::create_dir_all(&path.parent().unwrap()).unwrap();
+                        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
                         let mut wrote = false;
                         if fs::read_to_string(&path).as_ref().ok() != Some(&file.contents) {
                             std::fs::write(&path, file.contents).unwrap();
@@ -326,7 +323,8 @@ fn run_engine(
     if !exit_status.success() {
         HaxMessage::HaxEngineFailure {
             exit_code: exit_status.code().unwrap_or(-1),
-        };
+        }
+        .report(message_format, None);
         std::process::exit(1);
     }
 
@@ -344,7 +342,7 @@ fn run_engine(
                 eprintln!("----------------------------------------------");
                 eprintln!("----------------------------------------------");
                 eprintln!("----------------------------------------------");
-                hax_phase_debug_webapp::run(|| debug_json.clone())
+                engine_debug_webapp::run(|| debug_json.clone())
             }
             Some(DebugEngineMode::File(_file)) if !backend.dry_run => {
                 println!("{}", debug_json)
@@ -362,6 +360,29 @@ fn target_dir(suffix: &str) -> PathBuf {
     let mut dir = metadata.target_directory;
     dir.push(suffix);
     dir.into()
+}
+
+/// Gets hax version: if hax is being compiled from a dirty git repo,
+/// then this function taints the hax version with the hash of the
+/// current executable. This makes sure cargo doesn't cache across
+/// different versions of hax, for more information see
+/// https://github.com/hacspec/hax/issues/801.
+fn get_hax_version() -> String {
+    let mut version = hax_types::HAX_VERSION.to_string();
+    if env!("HAX_GIT_IS_DIRTY") == "true" {
+        version += &std::env::current_exe()
+            .ok()
+            .and_then(|exe_path| std::fs::read(exe_path).ok())
+            .map(|contents| {
+                use std::hash::{DefaultHasher, Hash, Hasher};
+                let mut s = DefaultHasher::new();
+                contents.hash(&mut s);
+                format!("hash-exe-{}", s.finish())
+            })
+            .expect("Expect read path")
+    }
+
+    version
 }
 
 /// Calls `cargo` with a custom driver which computes `haxmeta` files
@@ -395,6 +416,7 @@ fn compute_haxmeta_files(options: &Options) -> (Vec<EmitHaxMetaMessage>, i32) {
         )
         .env(RUST_LOG_STYLE, rust_log_style())
         .env(RUSTFLAGS, rustflags())
+        .env("HAX_CARGO_CACHE_KEY", get_hax_version())
         .env(
             ENV_VAR_OPTIONS_FRONTEND,
             serde_json::to_string(&options)
@@ -457,6 +479,7 @@ fn run_command(options: &Options, haxmeta_files: Vec<EmitHaxMetaMessage>) -> boo
                                 def_ids: haxmeta.def_ids,
                                 impl_infos: haxmeta.impl_infos,
                                 items: haxmeta.items,
+                                comments: haxmeta.comments,
                             },
                         )
                     } else {

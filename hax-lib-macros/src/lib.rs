@@ -215,7 +215,7 @@ pub fn lemma(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
             return None;
         };
         let ps = (segments.len() == 1).then_some(()).and(segments.first())?;
-        (ps.ident.to_string() == "Proof").then_some(())?;
+        (ps.ident == "Proof").then_some(())?;
         let PathArguments::AngleBracketed(args) = &ps.arguments else {
             None?
         };
@@ -236,8 +236,7 @@ pub fn lemma(attr: pm::TokenStream, item: pm::TokenStream) -> pm::TokenStream {
                     return ensures(
                         quote! {|_| #ensures_clause}.into(),
                         quote! { #attr #item }.into(),
-                    )
-                    .into();
+                    );
                 }
                 None => false,
             },
@@ -697,7 +696,7 @@ pub fn int(payload: pm::TokenStream) -> pm::TokenStream {
     let lit = format!("{lit}");
     // Allow negative numbers
     let mut lit = lit.strip_prefix("-").unwrap_or(lit.as_str()).to_string();
-    if let Some(faulty) = lit.chars().find(|ch| !matches!(ch, '0'..='9')) {
+    if let Some(faulty) = lit.chars().find(|ch| !ch.is_ascii_digit()) {
         abort_call_site!(format!("Expected a digit, found {faulty}"));
     }
     if negative {

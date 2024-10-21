@@ -13,6 +13,7 @@ include
       include On.Construct_base
       include On.Quote
       include On.Dyn
+      include On.Unsafe
     end)
     (struct
       let backend = Diagnostics.Backend.FStar
@@ -42,8 +43,7 @@ module SubtypeToInputLanguage
              and type for_index_loop = Features.Off.for_index_loop
              and type state_passing_loop = Features.Off.state_passing_loop
              and type match_guard = Features.Off.match_guard
-             and type trait_item_default = Features.Off.trait_item_default
-             and type unsafe = Features.Off.unsafe) =
+             and type trait_item_default = Features.Off.trait_item_default) =
 struct
   module FB = InputLanguage
 
@@ -59,6 +59,7 @@ struct
         include Features.SUBTYPE.On.Macro
         include Features.SUBTYPE.On.Quote
         include Features.SUBTYPE.On.Dyn
+        include Features.SUBTYPE.On.Unsafe
       end)
 
   let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
@@ -67,7 +68,7 @@ end
 module AST = Ast.Make (InputLanguage)
 
 module BackendOptions = struct
-  type t = Hax_engine.Types.f_star_options
+  type t = Hax_engine.Types.f_star_options_for__null
 end
 
 open Ast
@@ -95,6 +96,11 @@ module Context = struct
     line_width : int;
   }
 end
+
+(** Convers a namespace to a module name *)
+let module_name (ns : string * string list) : string =
+  String.concat ~sep:"."
+    (List.map ~f:(map_first_letter String.uppercase) (fst ns :: snd ns))
 
 module Make
     (Attrs : Attrs.WITH_ITEMS) (Ctx : sig
@@ -156,7 +162,8 @@ struct
             Some
               ( (match signedness with Signed -> Signed | Unsigned -> Unsigned),
                 size ) )
-    | Float _ -> Error.unimplemented ~details:"pliteral: Float" span
+    | Float _ ->
+        Error.unimplemented ~issue_id:230 ~details:"pliteral: Float" span
     | Bool b -> F.Const.Const_bool b
 
   let pliteral_as_expr span (e : literal) =
@@ -302,7 +309,7 @@ struct
         F.mk_e_app base args
     | TArrow (inputs, output) ->
         F.mk_e_arrow (List.map ~f:(pty span) inputs) (pty span output)
-    | TFloat _ -> Error.unimplemented ~details:"pty: Float" span
+    | TFloat _ -> Error.unimplemented ~issue_id:230 ~details:"pty: Float" span
     | TArray { typ; length } ->
         F.mk_e_app (F.term_of_lid [ "t_Array" ]) [ pty span typ; pexpr length ]
     | TParam i -> F.term @@ F.AST.Var (F.lid_of_id @@ plocal_ident i)
@@ -398,8 +405,9 @@ struct
     | POr { subpats } when shallow ->
         F.pat @@ F.AST.PatOr (List.map ~f:ppat subpats)
     | POr _ ->
-        Error.unimplemented p.span ~issue_id:463
-          ~details:"The F* backend doesn't support nested disjuntive patterns"
+        Error.assertion_failure p.span
+          "Nested disjuntive patterns should have been eliminated by phase \
+           `HoistDisjunctions` (see PR #830)."
     | PArray { args } -> F.pat @@ F.AST.PatList (List.map ~f:ppat args)
     | PConstruct { constructor = `TupleCons 0; fields = [] } ->
         F.pat @@ F.AST.PatConst F.Const.Const_unit
@@ -677,7 +685,7 @@ struct
       let ident = plocal_ident p.ident in
       match p.kind with
       | GPLifetime _ -> Error.assertion_failure span "pgeneric_param:LIFETIME"
-      | GPType { default = _ } -> { kind = Implicit; typ = F.type0_term; ident }
+      | GPType -> { kind = Implicit; typ = F.type0_term; ident }
       | GPConst { typ } -> { kind = Explicit; typ = pty span typ; ident }
 
     let of_generic_constraint span (nth : int) (c : generic_constraint) =
@@ -858,19 +866,17 @@ struct
       list =
     match e.v with
     | Alias { name; item } ->
-        let pat =
-          F.pat
-          @@ F.AST.PatVar
-               (F.id @@ U.Concrete_ident_view.to_definition_name name, None, [])
-        in
-        F.decls ~quals:[ F.AST.Unfold_for_unification_and_vcgen ]
-        @@ F.AST.TopLevelLet
-             ( NoLetQualifier,
-               [ (pat, F.term @@ F.AST.Name (pconcrete_ident item)) ] )
+        (* These should come from bundled items (in the case of cyclic module dependencies).
+           We make use of this f* feature: https://github.com/FStarLang/FStar/pull/3369 *)
+        let bundle = U.Concrete_ident_view.to_namespace item |> module_name in
+        [
+          `VerbatimImpl
+            ( Printf.sprintf "include %s {%s as %s}" bundle
+                (U.Concrete_ident_view.to_definition_name item)
+                (U.Concrete_ident_view.to_definition_name name),
+              `Newline );
+        ]
     | Fn { name; generics; body; params } ->
-        let is_rec =
-          Set.mem (U.Reducers.collect_concrete_idents#visit_expr () body) name
-        in
         let name = F.id @@ U.Concrete_ident_view.to_definition_name name in
         let pat = F.pat @@ F.AST.PatVar (name, None, []) in
         let generics = FStarBinder.of_generics e.span generics in
@@ -883,7 +889,7 @@ struct
               params
         in
         let pat = F.pat @@ F.AST.PatApp (pat, pat_args) in
-        let qualifier = F.AST.(if is_rec then Rec else NoLetQualifier) in
+        let qualifier = F.AST.(NoLetQualifier) in
         let impl =
           F.decl ~fsti:false
           @@ F.AST.TopLevelLet (qualifier, [ (pat, pexpr body) ])
@@ -1555,13 +1561,10 @@ let strings_of_item ~signature_only (bo : BackendOptions.t) m items
            if interface_mode then [ (`Impl s, `Newline); (`Intf s, `Newline) ]
            else [ (`Impl s, `Newline) ])
 
-(** Convers a namespace to a module name *)
-let module_name (ns : string * string list) : string =
-  String.concat ~sep:"."
-    (List.map ~f:(map_first_letter String.uppercase) (fst ns :: snd ns))
+type rec_prefix = NonRec | FirstMutRec | MutRec
 
-let string_of_items ~signature_only ~mod_name (bo : BackendOptions.t) m items :
-    string * string =
+let string_of_items ~signature_only ~mod_name ~bundles (bo : BackendOptions.t) m
+    items : string * string =
   let collect_trait_goal_idents =
     object
       inherit [_] Visitors.reduce as super
@@ -1601,14 +1604,48 @@ let string_of_items ~signature_only ~mod_name (bo : BackendOptions.t) m items :
           |> String.concat ~sep:"")
         ^ "\n\n"
   in
-  let strings =
-    List.concat_map ~f:(strings_of_item ~signature_only bo m items) items
-    |> List.map
-         ~f:
-           ((function
-              | `Impl s -> `Impl (String.strip s)
-              | `Intf s -> `Intf (String.strip s))
-           *** Fn.id)
+  let map_string ~f (str, space) =
+    ((match str with `Impl s -> `Impl (f s) | `Intf s -> `Intf (f s)), space)
+  in
+  let replace_in_strs ~pattern ~with_ =
+    List.map
+      ~f:
+        (map_string ~f:(fun str ->
+             String.substr_replace_first ~pattern ~with_ str))
+  in
+
+  (* Each of these bundles contains recursive items (mutually if the bundle has more than one element).
+     We know that these items will already be grouped together but we need to add the `rec` qualifier
+     to the first one (in the case of functions). And to replace the `let`/`type` keyword by `and`
+     for the other elements coming after. *)
+  let first_in_bundles = Array.create (List.length bundles) None in
+  let get_recursivity_prefix it =
+    match
+      List.findi bundles ~f:(fun _ bundle ->
+          List.mem bundle it ~equal:[%eq: item])
+    with
+    | Some (i, _) -> (
+        match first_in_bundles.(i) with
+        | Some first_it when [%eq: item] first_it it -> FirstMutRec
+        | Some _ -> MutRec
+        | None ->
+            first_in_bundles.(i) <- Some it;
+            FirstMutRec)
+    | None -> NonRec
+  in
+  let strings its =
+    List.concat_map
+      ~f:(fun item ->
+        let recursivity_prefix = get_recursivity_prefix item in
+        let strs = strings_of_item ~signature_only bo m items item in
+        match (recursivity_prefix, item.v) with
+        | FirstMutRec, Fn _ ->
+            replace_in_strs ~pattern:"let" ~with_:"let rec" strs
+        | MutRec, Fn _ -> replace_in_strs ~pattern:"let" ~with_:"and" strs
+        | MutRec, Type _ -> replace_in_strs ~pattern:"type" ~with_:"and" strs
+        | _ -> strs)
+      its
+    |> List.map ~f:(map_string ~f:String.strip)
     |> List.filter
          ~f:(fst >> (function `Impl s | `Intf s -> String.is_empty s) >> not)
   in
@@ -1618,7 +1655,7 @@ let string_of_items ~signature_only ~mod_name (bo : BackendOptions.t) m items :
         ~f:(fun (s, space) ->
           let* s = filter s in
           Some (s, space))
-        strings
+        (strings items)
     in
     let n = List.length l - 1 in
     let lines =
@@ -1644,6 +1681,7 @@ let fstar_headers (bo : BackendOptions.t) =
   in
   [ opts; "open Core"; "open FStar.Mul" ] |> String.concat ~sep:"\n"
 
+<<<<<<< HEAD
 (*
 module GenericPrinter = Generic_rust_printer.Make (InputLanguage)
 
@@ -1688,8 +1726,8 @@ let translate_as_experimental_rust m (bo : BackendOptions.t)
 *)
 
 (** Translate as F* (the "legacy" printer) *)
-let translate_as_fstar m (bo : BackendOptions.t) (items : AST.item list) :
-    Types.file list =
+let translate_as_fstar m (bo : BackendOptions.t)  ~(bundles : AST.item list list)
+    (items : AST.item list) : Types.file list =
   let show_view Concrete_ident.{ crate; path; definition } =
     crate :: (path @ [ definition ]) |> String.concat ~sep:"::"
   in
@@ -1708,7 +1746,7 @@ let translate_as_fstar m (bo : BackendOptions.t) (items : AST.item list) :
          in
          let mod_name = module_name ns in
          let impl, intf =
-           string_of_items ~signature_only ~mod_name bo m items
+           string_of_items ~signature_only ~mod_name ~bundles bo m items
          in
          let make ~ext body =
            if String.is_empty body then None
@@ -1734,13 +1772,11 @@ let translate =
   else translate_as_fstar
 
 open Phase_utils
-module DepGraph = Dependencies.Make (InputLanguage)
 module DepGraphR = Dependencies.Make (Features.Rust)
 
 module TransformToInputLanguage =
   [%functor_application
-  Phases.Reject.Unsafe(Features.Rust)
-  |> Phases.Reject.RawOrMutPointer
+    Phases.Reject.RawOrMutPointer(Features.Rust)
   |> Phases.Transform_hax_lib_inline
   |> Phases.Specialize
   |> Phases.Drop_sized_trait
@@ -1819,6 +1855,5 @@ let apply_phases (bo : BackendOptions.t) (items : Ast.Rust.item list) :
     |> List.map ~f:unsize_as_identity
     |> List.map ~f:unsize_as_identity
     |> List.map ~f:U.Mappers.add_typ_ascription
-    (* |> DepGraph.name_me *)
   in
   items

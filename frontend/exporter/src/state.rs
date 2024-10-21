@@ -98,11 +98,17 @@ macro_rules! mk {
 
 mod types {
     use crate::prelude::*;
-    use std::cell::RefCell;
-    use std::collections::HashSet;
+    use rustc_middle::ty;
+    use std::{cell::RefCell, sync::Arc};
 
     pub struct LocalContextS {
         pub vars: HashMap<rustc_middle::thir::LocalVarId, String>,
+    }
+
+    impl Default for LocalContextS {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl LocalContextS {
@@ -113,24 +119,43 @@ mod types {
         }
     }
 
+    /// Global caches
+    #[derive(Default)]
+    pub struct GlobalCache<'tcx> {
+        /// Cache the `Span` translations.
+        pub spans: HashMap<rustc_span::Span, Span>,
+        /// Per-item cache.
+        pub per_item: HashMap<RDefId, ItemCache<'tcx>>,
+    }
+
+    /// Per-item cache
+    #[derive(Default)]
+    pub struct ItemCache<'tcx> {
+        /// The translated `DefId`.
+        pub def_id: Option<DefId>,
+        /// The translated definition.
+        pub full_def: Option<Arc<FullDef>>,
+        /// Cache the `Ty` translations.
+        pub tys: HashMap<ty::Ty<'tcx>, Ty>,
+        /// Cache the trait resolution engine for each item.
+        pub predicate_searcher: Option<crate::traits::PredicateSearcher<'tcx>>,
+        /// Cache of trait refs to resolved impl expressions.
+        pub impl_exprs: HashMap<ty::PolyTraitRef<'tcx>, crate::traits::ImplExpr>,
+        /// Cache thir bodies.
+        pub thir: Option<(
+            Rc<rustc_middle::thir::Thir<'tcx>>,
+            rustc_middle::thir::ExprId,
+        )>,
+    }
+
     #[derive(Clone)]
     pub struct Base<'tcx> {
         pub options: Rc<hax_frontend_exporter_options::Options>,
         pub macro_infos: MacroCalls,
         pub local_ctx: Rc<RefCell<LocalContextS>>,
         pub opt_def_id: Option<rustc_hir::def_id::DefId>,
-        pub exported_spans: ExportedSpans,
-        pub exported_def_ids: ExportedDefIds,
-        pub cached_thirs: Rc<
-            HashMap<
-                rustc_span::def_id::LocalDefId,
-                (
-                    Rc<rustc_middle::thir::Thir<'tcx>>,
-                    rustc_middle::thir::ExprId,
-                ),
-            >,
-        >,
-        pub tcx: rustc_middle::ty::TyCtxt<'tcx>,
+        pub cache: Rc<RefCell<GlobalCache<'tcx>>>,
+        pub tcx: ty::TyCtxt<'tcx>,
         /// Rust doesn't enforce bounds on generic parameters in type
         /// aliases. Thus, when translating type aliases, we need to
         /// disable the resolution of implementation expressions. For
@@ -147,22 +172,18 @@ mod types {
             Self {
                 tcx,
                 macro_infos: Rc::new(HashMap::new()),
-                cached_thirs: Rc::new(HashMap::new()),
+                cache: Default::default(),
                 options: Rc::new(options),
                 // Always prefer `s.owner_id()` to `s.base().opt_def_id`.
                 // `opt_def_id` is used in `utils` for error reporting
                 opt_def_id: None,
                 local_ctx: Rc::new(RefCell::new(LocalContextS::new())),
-                exported_spans: Rc::new(RefCell::new(HashSet::new())),
-                exported_def_ids: Rc::new(RefCell::new(HashSet::new())),
                 ty_alias_mode: false,
             }
         }
     }
 
     pub type MacroCalls = Rc<HashMap<Span, Span>>;
-    pub type ExportedSpans = Rc<RefCell<HashSet<rustc_span::Span>>>;
-    pub type ExportedDefIds = Rc<RefCell<HashSet<rustc_hir::def_id::DefId>>>;
     pub type RcThir<'tcx> = Rc<rustc_middle::thir::Thir<'tcx>>;
     pub type RcMir<'tcx> = Rc<rustc_middle::mir::Body<'tcx>>;
     pub type Binder<'tcx> = rustc_middle::ty::Binder<'tcx, ()>;
@@ -260,12 +281,12 @@ impl<'tcx> StateWithOwner<'tcx> {
 }
 
 /// Updates the OnwerId in a state, making sure to override `opt_def_id` in base as well.
-pub fn with_owner_id<'tcx, THIR, MIR>(
-    mut base: types::Base<'tcx>,
+pub fn with_owner_id<THIR, MIR>(
+    mut base: types::Base<'_>,
     thir: THIR,
     mir: MIR,
     owner_id: rustc_hir::def_id::DefId,
-) -> State<types::Base<'tcx>, THIR, MIR, rustc_hir::def_id::DefId, ()> {
+) -> State<types::Base<'_>, THIR, MIR, rustc_hir::def_id::DefId, ()> {
     base.opt_def_id = Some(owner_id);
     State {
         thir,
@@ -288,8 +309,33 @@ pub trait UnderBinderState<'tcx> = UnderOwnerState<'tcx> + HasBinder<'tcx>;
 /// body and an `owner_id` in the state
 pub trait ExprState<'tcx> = UnderOwnerState<'tcx> + HasThir<'tcx>;
 
+pub trait WithGlobalCacheExt<'tcx>: BaseState<'tcx> {
+    /// Access the global cache. You must not call `sinto` within this function as this will likely
+    /// result in `BorrowMut` panics.
+    fn with_global_cache<T>(&self, f: impl FnOnce(&mut GlobalCache<'tcx>) -> T) -> T {
+        let base = self.base();
+        let mut cache = base.cache.borrow_mut();
+        f(&mut *cache)
+    }
+    /// Access the cache for a given item. You must not call `sinto` within this function as this
+    /// will likely result in `BorrowMut` panics.
+    fn with_item_cache<T>(&self, def_id: RDefId, f: impl FnOnce(&mut ItemCache<'tcx>) -> T) -> T {
+        self.with_global_cache(|cache| f(cache.per_item.entry(def_id).or_default()))
+    }
+}
+impl<'tcx, S: BaseState<'tcx>> WithGlobalCacheExt<'tcx> for S {}
+
+pub trait WithItemCacheExt<'tcx>: UnderOwnerState<'tcx> {
+    /// Access the cache for the current item. You must not call `sinto` within this function as
+    /// this will likely result in `BorrowMut` panics.
+    fn with_cache<T>(&self, f: impl FnOnce(&mut ItemCache<'tcx>) -> T) -> T {
+        self.with_item_cache(self.owner_id(), f)
+    }
+}
+impl<'tcx, S: UnderOwnerState<'tcx>> WithItemCacheExt<'tcx> for S {}
+
 impl ImplInfos {
-    fn from<'tcx>(base: Base<'tcx>, did: rustc_hir::def_id::DefId) -> Self {
+    fn from(base: Base<'_>, did: rustc_hir::def_id::DefId) -> Self {
         let tcx = base.tcx;
         let s = &with_owner_id(base, (), (), did);
 
@@ -307,15 +353,11 @@ impl ImplInfos {
 pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: BaseState<'tcx>>(
     s: &S,
 ) -> HashMap<DefId, ImplInfos> {
-    let Base {
-        tcx,
-        exported_def_ids,
-        ..
-    } = s.base();
+    let tcx = s.base().tcx;
 
-    let def_ids = exported_def_ids.as_ref().borrow().clone();
+    let def_ids: Vec<_> = s.with_global_cache(|cache| cache.per_item.keys().copied().collect());
     let with_parents = |mut did: rustc_hir::def_id::DefId| {
-        let mut acc = vec![did.clone()];
+        let mut acc = vec![did];
         while let Some(parent) = tcx.opt_parent(did) {
             did = parent;
             acc.push(did);
@@ -324,10 +366,8 @@ pub fn impl_def_ids_to_impled_types_and_bounds<'tcx, S: BaseState<'tcx>>(
     };
     use itertools::Itertools;
     def_ids
-        .iter()
-        .cloned()
-        .map(with_parents)
-        .flatten()
+        .into_iter()
+        .flat_map(with_parents)
         .unique()
         .filter(|&did| {
             // keep only DefIds that corresponds to implementations

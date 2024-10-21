@@ -214,9 +214,7 @@ mod rustc {
     ) -> ConstantLiteral {
         match ty.kind() {
             ty::Char => ConstantLiteral::Char(
-                char::try_from(x)
-                    .s_expect(s, "scalar_int_to_constant_literal: expected a char")
-                    .into(),
+                char::try_from(x).s_expect(s, "scalar_int_to_constant_literal: expected a char"),
             ),
             ty::Bool => ConstantLiteral::Bool(
                 x.try_to_bool()
@@ -296,7 +294,7 @@ mod rustc {
                             },
                         );
                         ConstantExprKind::Literal(ConstantLiteral::ByteStr(
-                            values.iter().copied().collect(),
+                            values.to_vec(),
                             StrStyle::Cooked,
                         ))
                     }
@@ -356,9 +354,9 @@ mod rustc {
     /// Rustc; we don't want to reflect that, instead we prefer inlining
     /// those. `is_anon_const` is used to detect such AnonConst so that we
     /// can evaluate and inline them.
-    pub(crate) fn is_anon_const<'tcx>(
+    pub(crate) fn is_anon_const(
         did: rustc_span::def_id::DefId,
-        tcx: rustc_middle::ty::TyCtxt<'tcx>,
+        tcx: rustc_middle::ty::TyCtxt<'_>,
     ) -> bool {
         matches!(
             tcx.def_path(did).data.last().map(|x| x.data),
@@ -376,7 +374,7 @@ mod rustc {
         let name = assoc.name.to_string();
 
         // Retrieve the trait information
-        let impl_expr = get_trait_info(s, generics, assoc);
+        let impl_expr = self_clause_for_item(s, assoc, generics).unwrap();
 
         ConstantExprKind::TraitConst { impl_expr, name }
     }
@@ -419,8 +417,10 @@ mod rustc {
                 }))
             } else {
                 let param_env = s.param_env();
-                let ty = s.base().tcx.type_of(ucv.def);
-                let ty = tcx.instantiate_and_normalize_erasing_regions(ucv.args, param_env, ty);
+                let ty = s.base().tcx.type_of(ucv.def).instantiate(tcx, ucv.args);
+                let ty = tcx
+                    .try_normalize_erasing_regions(param_env, ty)
+                    .unwrap_or(ty);
                 let kind = if let Some(assoc) = s.base().tcx.opt_associated_item(ucv.def) {
                     if assoc.trait_item_def_id.is_some() {
                         // This must be a trait declaration constant
@@ -489,7 +489,7 @@ mod rustc {
                 }
 
                 ty::ConstKind::Unevaluated(ucv) => match self.translate_uneval(s, ucv, span) {
-                    TranslateUnevalRes::EvaluatedConstant(c) => return c.sinto(s),
+                    TranslateUnevalRes::EvaluatedConstant(c) => c.sinto(s),
                     TranslateUnevalRes::GlobalName(c) => c,
                 },
                 ty::ConstKind::Value(ty, valtree) => valtree_to_constant_expr(s, valtree, ty, span),
@@ -581,27 +581,43 @@ mod rustc {
             .s_unwrap(s);
 
         // Iterate over the fields, which should be values
-        assert!(dc.variant.is_none());
-
-        // The type should be tuple
-        let hax_ty = ty.sinto(s);
-        match &hax_ty {
-            Ty::Tuple(_) => (),
-            _ => {
-                fatal!(s[span], "Expected the type to be tuple: {:?}", val)
-            }
-        };
-
         // Below: we are mutually recursive with [const_value_to_constant_expr],
         // which takes a [Const] as input, but it should be
         // ok because we call it on a strictly smaller value.
-        let fields: Vec<ConstantExpr> = dc
+        let fields = dc
             .fields
             .iter()
             .copied()
-            .map(|(val, ty)| const_value_to_constant_expr(s, ty, val, span))
-            .collect();
-        (ConstantExprKind::Tuple { fields }).decorate(hax_ty, span.sinto(s))
+            .map(|(val, ty)| const_value_to_constant_expr(s, ty, val, span));
+
+        // The type should be tuple
+        let hax_ty: Ty = ty.sinto(s);
+        match ty.kind() {
+            ty::TyKind::Tuple(_) => {
+                assert!(dc.variant.is_none());
+                let fields = fields.collect();
+                ConstantExprKind::Tuple { fields }
+            }
+            ty::TyKind::Adt(adt_def, ..) => {
+                let variant = dc.variant.unwrap_or(rustc_target::abi::FIRST_VARIANT);
+                let variants_info = get_variant_information(adt_def, variant, s);
+                let fields = fields
+                    .zip(&adt_def.variant(variant).fields)
+                    .map(|(value, field)| ConstantFieldExpr {
+                        field: field.did.sinto(s),
+                        value,
+                    })
+                    .collect();
+                ConstantExprKind::Adt {
+                    info: variants_info,
+                    fields,
+                }
+            }
+            _ => {
+                fatal!(s[span], "Expected the type to be tuple or adt: {:?}", val)
+            }
+        }
+        .decorate(hax_ty, span.sinto(s))
     }
 
     pub fn const_value_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
@@ -632,27 +648,31 @@ mod rustc {
             }
             ConstValue::ZeroSized { .. } => {
                 // Should be unit
-                let hty = ty.sinto(s);
-                let cv = match &hty {
-                    Ty::Tuple(tys) if tys.is_empty() => {
+                let hty: Ty = ty.sinto(s);
+                let cv = match ty.kind() {
+                    ty::TyKind::Tuple(tys) if tys.is_empty() => {
                         ConstantExprKind::Tuple { fields: Vec::new() }
                     }
-                    Ty::Arrow(_) => match ty.kind() {
-                        rustc_middle::ty::TyKind::FnDef(def_id, args) => {
-                            let (def_id, generics, generics_impls, method_impl) =
-                                get_function_from_def_id_and_generics(s, *def_id, args);
+                    ty::TyKind::FnDef(def_id, args) => {
+                        let (def_id, generics, generics_impls, method_impl) =
+                            get_function_from_def_id_and_generics(s, *def_id, args);
 
-                            ConstantExprKind::FnPtr {
-                                def_id,
-                                generics,
-                                generics_impls,
-                                method_impl,
-                            }
+                        ConstantExprKind::FnPtr {
+                            def_id,
+                            generics,
+                            generics_impls,
+                            method_impl,
                         }
-                        kind => {
-                            fatal!(s[span], "Unexpected:"; {kind})
+                    }
+                    ty::TyKind::Adt(adt_def, ..) => {
+                        assert_eq!(adt_def.variants().len(), 1);
+                        let variant = rustc_target::abi::FIRST_VARIANT;
+                        let variants_info = get_variant_information(adt_def, variant, s);
+                        ConstantExprKind::Adt {
+                            info: variants_info,
+                            fields: vec![],
                         }
-                    },
+                    }
                     _ => {
                         fatal!(
                             s[span],

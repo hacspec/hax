@@ -158,6 +158,8 @@ struct
 
     let rec dexpr_unwrapped (expr : A.expr) : B.expr =
       let span = expr.span in
+      let module M = UB.M in
+      let module MS = (val M.make span) in
       match expr.e with
       | Loop
           {
@@ -178,9 +180,8 @@ struct
             | Some (f, args, typ) ->
                 let invariant : B.expr =
                   let default =
-                    let span = expr.span in
-                    let pat = UB.make_wild_pat typ span in
-                    (pat, B.{ e = Literal (Bool true); typ = TBool; span })
+                    let pat = MS.pat_PWild ~typ in
+                    (pat, MS.expr_Literal ~typ:TBool (Bool true))
                   in
                   let pat, invariant = Option.value ~default invariant in
                   UB.make_closure [ bpat; pat ] invariant invariant.span
@@ -204,30 +205,24 @@ struct
           let bpat = dpat bpat in
           let init = dexpr init in
           let condition : B.expr =
-            let e : B.expr' =
-              Closure { params = [ bpat ]; body = condition; captures = [] }
-            in
-            let typ : B.ty = TArrow ([ bpat.typ ], condition.typ) in
-            let span = condition.span in
-            { e; typ; span }
+            M.expr_Closure ~params:[ bpat ] ~body:condition ~captures:[]
+              ~span:condition.span
+              ~typ:(TArrow ([ bpat.typ ], condition.typ))
           in
           let body : B.expr =
-            let e : B.expr' =
-              Closure { params = [ bpat ]; body; captures = [] }
-            in
-            let typ : B.ty = TArrow ([ bpat.typ ], body.typ) in
-            let span = body.span in
-            { e; typ; span }
+            M.expr_Closure ~params:[ bpat ] ~body ~captures:[]
+              ~typ:(TArrow ([ bpat.typ ], body.typ))
+              ~span:body.span
           in
           UB.call ~kind:(AssociatedItem Value) Rust_primitives__hax__while_loop
             [ condition; init; body ] span (dty span expr.typ)
       | Loop { state = None; _ } ->
-          Error.unimplemented ~details:"Loop without mutation?" span
+          Error.unimplemented ~issue_id:405 ~details:"Loop without mutation"
+            span
       | Loop _ ->
-          Error.unimplemented
-            ~details:"Only for loop are being functionalized for now" span
+          Error.unimplemented ~issue_id:933 ~details:"Unhandled loop kind" span
       | Break _ ->
-          Error.unimplemented
+          Error.unimplemented ~issue_id:15
             ~details:
               "For now, the AST node [Break] is feature gated only by [loop], \
                there is nothing for having loops but no breaks."

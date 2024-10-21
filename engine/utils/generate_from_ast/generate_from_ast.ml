@@ -28,10 +28,19 @@ let _main =
            | _ -> None)
   in
 
-  datatypes
-  |> (match Sys.argv.(1) with
-     | "visitors" -> Codegen_visitor.mk
-     | "printer" -> Codegen_printer.mk
-     | "json" -> [%yojson_of: Datatype.t list] >> Yojson.Safe.pretty_to_string
-     | verb -> failwith ("Unknown action `" ^ verb ^ "`"))
-  |> Stdio.print_endline
+  let data =
+    datatypes
+    |>
+    match Sys.get_argv () with
+    | [| _; "visitors" |] -> Codegen_visitor.mk
+    | [| _; "printer" |] -> Codegen_printer.mk
+    | [| _; "ast_builder" |] -> Codegen_ast_builder.mk
+    | [| _; "ast_destruct" |] -> Codegen_ast_destruct.mk
+    | [| _; "json" |] ->
+        [%yojson_of: Datatype.t list] >> Yojson.Safe.pretty_to_string
+    | [| _; verb |] ->
+        failwith ("`generate_from_ast`: unknown action `" ^ verb ^ "`")
+    | _ -> failwith "`generate_from_ast`: expected one argument"
+  in
+  (* Stdio.Out_channel.write_all "/tmp/debug-generated-code.ml" ~data; *)
+  Stdio.print_endline data

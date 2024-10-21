@@ -37,17 +37,14 @@ module%inlined_contents Make (F : Features.T) = struct
           let lhs = UA.expr_of_lhs span e |> dexpr in
           match lhs.typ with
           | TApp { ident; _ } ->
-              let rhs' =
-                B.Construct
-                  {
-                    constructor = ident;
-                    is_record = true (* TODO: might not be, actually *);
-                    is_struct = true;
-                    fields = [ (field, rhs) ];
-                    base = Some (lhs, Features.On.construct_base);
-                  }
+              let rhs =
+                UB.M.expr_Construct ~constructor:ident
+                  ~is_record:true (* TODO: might not be, actually *)
+                  ~is_struct:true
+                  ~fields:[ (field, rhs) ]
+                  ~base:(Some (lhs, Features.On.construct_base))
+                  ~span ~typ:lhs.typ
               in
-              let rhs = { B.e = rhs'; typ = lhs.typ; span } in
               updater_of_lhs e rhs span
           | _ -> Error.raise { kind = ArbitraryLHS; span })
       | LhsArrayAccessor { e; typ = _; index; _ } ->
@@ -89,15 +86,11 @@ module%inlined_contents Make (F : Features.T) = struct
       let span = expr.span in
       match expr.e with
       | Assign { lhs; e; witness } ->
-          let (var, typ), e = updater_of_lhs lhs (dexpr e) expr.span in
+          let (var, typ), inner_e = updater_of_lhs lhs (dexpr e) span in
           let lhs : B.lhs = LhsLocalVar { var; typ } in
-          {
-            e = Assign { lhs; e; witness };
-            span = expr.span;
-            typ = UB.unit_typ;
-          }
+          UB.M.expr_Assign ~lhs ~inner_e ~witness ~span ~typ:UB.unit_typ
       | [%inline_arms "dexpr'.*" - Assign] ->
-          map (fun e -> B.{ e; typ = dty expr.span expr.typ; span = expr.span })
+          map (fun e -> B.{ e; typ = dty span expr.typ; span })
       [@@inline_ands bindings_of dexpr - dlhs - dexpr']
 
     [%%inline_defs "Item.*"]

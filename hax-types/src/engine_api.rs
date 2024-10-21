@@ -6,7 +6,7 @@ type ThirBody = hax_frontend_exporter::ThirBody;
 #[derive_group(Serializers)]
 #[derive(JsonSchema, Debug, Clone)]
 pub struct EngineOptions {
-    pub backend: BackendOptions,
+    pub backend: BackendOptions<()>,
     pub input: Vec<hax_frontend_exporter::Item<ThirBody>>,
     pub impl_infos: Vec<(
         hax_frontend_exporter::DefId,
@@ -91,4 +91,5 @@ pub struct WithDefIds<Body: hax_frontend_exporter::IsBody> {
         hax_frontend_exporter::ImplInfos,
     )>,
     pub items: Vec<hax_frontend_exporter::Item<Body>>,
+    pub comments: Vec<(hax_frontend_exporter::Span, String)>,
 }

@@ -83,6 +83,12 @@ fn iter_option<'a, T>(x: &'a Option<T>) -> impl Iterator<Item = &'a T> {
     x.as_ref().into_iter()
 }
 
+// Issue #684
+fn use_impl_trait() {
+    let mut iter = iter_option(&Some(false));
+    let _ = iter.next();
+}
+
 mod for_clauses {
     trait Foo<T> {
         fn to_t(&self) -> T;
@@ -280,4 +286,12 @@ mod recursive_trait_with_assoc_type {
     pub trait Trait2: Trait1 {
         type U;
     }
+}
+
+// issue 310
+mod default_traits_parameters {
+    trait Foo: Bar {
+        type U;
+    }
+    trait Bar<T = <Self as Foo>::U> {}
 }

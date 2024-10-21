@@ -46,6 +46,19 @@ class t_BlockBackend (v_Self: Type0) = {
     -> Prims.Pure Prims.unit (f_proc_block_pre x0) (fun result -> f_proc_block_post x0 result)
 }
 '''
+"Traits.Default_traits_parameters.fst" = '''
+module Traits.Default_traits_parameters
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
+open Core
+open FStar.Mul
+
+class t_Bar (v_Self: Type0) (v_T: Type0) = { __marker_trait_t_Bar:Prims.unit }
+
+class t_Foo (v_Self: Type0) = {
+  [@@@ FStar.Tactics.Typeclasses.no_method]_super_12056653545434731362:t_Bar v_Self f_U;
+  f_U:Type0
+}
+'''
 "Traits.For_clauses.Issue_495_.Minimized_3_.fst" = '''
 module Traits.For_clauses.Issue_495_.Minimized_3_
 #set-options "--fuel 0 --ifuel 1 --z3rlimit 15"
@@ -387,6 +400,9 @@ module Traits.Interlaced_consts_types
 open Core
 open FStar.Mul
 
+type t_Bar (v_FooConst: usize) (v_FooType: Type0) =
+  | Bar : t_Array v_FooType v_FooConst -> t_Bar v_FooConst v_FooType
+
 class t_Foo (v_Self: Type0) (v_FooConst: usize) (v_FooType: Type0) = {
   f_fun_pre:
       v_FunConst: usize ->
@@ -443,9 +459,6 @@ let impl (v_FooConst: usize) (#v_FooType #v_SelfType: Type0) : t_Foo v_SelfType 
       ->
       ()
   }
-
-type t_Bar (v_FooConst: usize) (v_FooType: Type0) =
-  | Bar : t_Array v_FooType v_FooConst -> t_Bar v_FooConst v_FooType
 '''
 "Traits.Recursive_trait_with_assoc_type.fst" = '''
 module Traits.Recursive_trait_with_assoc_type
@@ -478,16 +491,13 @@ module Traits.Unconstrainted_types_issue_677_
 open Core
 open FStar.Mul
 
+type t_Plus = | Plus : t_Plus
+
 class t_PolyOp (v_Self: Type0) = {
   f_op_pre:u32 -> u32 -> Type0;
   f_op_post:u32 -> u32 -> u32 -> Type0;
   f_op:x0: u32 -> x1: u32 -> Prims.Pure u32 (f_op_pre x0 x1) (fun result -> f_op_post x0 x1 result)
 }
-
-let twice (#v_OP: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_PolyOp v_OP) (x: u32)
-    : u32 = f_op #v_OP #FStar.Tactics.Typeclasses.solve x x
-
-type t_Plus = | Plus : t_Plus
 
 [@@ FStar.Tactics.Typeclasses.tcinstance]
 let impl: t_PolyOp t_Plus =
@@ -506,6 +516,9 @@ let impl_1: t_PolyOp t_Times =
     f_op_post = (fun (x: u32) (y: u32) (out: u32) -> true);
     f_op = fun (x: u32) (y: u32) -> x *! y
   }
+
+let twice (#v_OP: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_PolyOp v_OP) (x: u32)
+    : u32 = f_op #v_OP #FStar.Tactics.Typeclasses.solve x x
 
 let both (x: u32) : (u32 & u32) = twice #t_Plus x, twice #t_Times x <: (u32 & u32)
 '''
@@ -532,6 +545,8 @@ let impl__Error__for_application_callback (_: Prims.unit) :  Prims.unit -> t_Err
     Error_Fail <: t_Error
 
 let t_Error_cast_to_repr (x: t_Error) : isize = match x with | Error_Fail  -> isz 0
+
+type t_Struct = | Struct : t_Struct
 
 class t_SuperTrait (v_Self: Type0) = {
   [@@@ FStar.Tactics.Typeclasses.no_method]_super_9442900250278684536:Core.Clone.t_Clone v_Self;
@@ -587,6 +602,15 @@ let iter_option (#v_T: Type0) (x: Core.Option.t_Option v_T) : Core.Option.t_Into
     #FStar.Tactics.Typeclasses.solve
     (Core.Option.impl__as_ref #v_T x <: Core.Option.t_Option v_T)
 
+let use_impl_trait (_: Prims.unit) : Prims.unit =
+  let iter:_ = iter_option #bool (Core.Option.Option_Some false <: Core.Option.t_Option bool) in
+  let tmp0, out:(_ & Core.Option.t_Option bool) =
+    Core.Iter.Traits.Iterator.f_next #_ #FStar.Tactics.Typeclasses.solve iter
+  in
+  let iter:_ = tmp0 in
+  let _:Core.Option.t_Option bool = out in
+  ()
+
 class t_Foo (v_Self: Type0) = {
   f_AssocType:Type0;
   f_AssocType_15525962639250476383:t_SuperTrait f_AssocType;
@@ -615,8 +639,6 @@ class t_Lang (v_Self: Type0) = {
   f_s:x0: v_Self -> x1: i32
     -> Prims.Pure (v_Self & f_Var) (f_s_pre x0 x1) (fun result -> f_s_post x0 x1 result)
 }
-
-type t_Struct = | Struct : t_Struct
 
 let f (#v_T: Type0) (#[FStar.Tactics.Typeclasses.tcresolve ()] i1: t_Foo v_T) (x: v_T) : Prims.unit =
   let _:Prims.unit = f_assoc_f #v_T #FStar.Tactics.Typeclasses.solve () in

@@ -347,7 +347,7 @@ struct
                           Let
                             {
                               monadic = None;
-                              lhs = UB.make_wild_pat e'.typ e'.span;
+                              lhs = UB.M.pat_PWild ~typ:e'.typ ~span:e'.span;
                               rhs = e';
                               body = vars;
                             };

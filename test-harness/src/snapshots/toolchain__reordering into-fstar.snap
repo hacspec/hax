@@ -36,6 +36,8 @@ type t_Foo =
   | Foo_A : t_Foo
   | Foo_B : t_Foo
 
+type t_Bar = | Bar : t_Foo -> t_Bar
+
 let t_Foo_cast_to_repr (x: t_Foo) : isize =
   match x with
   | Foo_A  -> isz 0
@@ -43,11 +45,9 @@ let t_Foo_cast_to_repr (x: t_Foo) : isize =
 
 let f (_: u32) : t_Foo = Foo_A <: t_Foo
 
+let g (_: Prims.unit) : t_Bar = Bar (f 32ul) <: t_Bar
+
 let no_dependency_1_ (_: Prims.unit) : Prims.unit = ()
 
 let no_dependency_2_ (_: Prims.unit) : Prims.unit = ()
-
-type t_Bar = | Bar : t_Foo -> t_Bar
-
-let g (_: Prims.unit) : t_Bar = Bar (f 32ul) <: t_Bar
 '''
