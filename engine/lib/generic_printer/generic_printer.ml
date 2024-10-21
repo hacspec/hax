@@ -576,5 +576,32 @@ module Make (F : Features.T) = struct
         current_namespace <- View.to_namespace value.ident |> Option.some;
         super#_do_not_override_lazy_of_item ast_position value
 
+      method _do_not_override_lazy_of_generics ast_position (value : generics)
+          : (generics lazy_doc
+            * generic_param lazy_doc list
+            * generic_constraint lazy_doc list)
+            lazy_doc =
+        let params =
+          List.map
+            ~f:(fun x ->
+              self#_do_not_override_lazy_of_generic_param
+                AstPos_generics__params x)
+            value.params
+        in
+        let constraints =
+          List.map
+            ~f:(fun x ->
+              self#_do_not_override_lazy_of_generic_constraint
+                AstPos_generics__constraints x)
+            value.constraints
+        in
+        lazy_doc (fun (lazy_doc, _, _) -> lazy_doc#p) ast_position
+        ( lazy_doc
+            (fun (value : generics) ->
+              self#wrap_generics ast_position value
+                (self#generics ~params ~constraints))
+            ast_position value,
+          params,
+          constraints )
     end
 end

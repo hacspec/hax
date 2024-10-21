@@ -30,6 +30,8 @@ let is_hidden_method =
   in
   List.mem ~equal:[%eq: string] list
 
+let lazy_doc_manual_definitions = [ "_do_not_override_lazy_of_generics" ]
+
 let rec of_ty (state : state) (call_method : string -> ty:string -> string)
     (t : Type.t) : ((unit -> string) -> string -> string) option =
   let* args =
@@ -82,13 +84,13 @@ let rec of_ty (state : state) (call_method : string -> ty:string -> string)
           ^ " " ^ pos () ^ " " ^ value ^ ")")
   | _ -> Some (fun pos value -> "(" ^ value ^ ")")
 
-and string_ty_of_ty (state : state) (t : Type.t) =
+and string_ty_of_ty' (state : state) (t : Type.t) =
   if String.is_prefix t.typ ~prefix:"prim___tuple_" then
-    let args = List.map t.args ~f:(string_ty_of_ty state) in
+    let args = List.map t.args ~f:(string_ty_of_ty' state) in
     let n = List.count args ~f:(String.is_suffix ~suffix:"lazy_doc)") in
     let base =
       "("
-      ^ String.concat ~sep:" * " (List.map t.args ~f:(string_ty_of_ty state))
+      ^ String.concat ~sep:" * " (List.map t.args ~f:(string_ty_of_ty' state))
       ^ ")"
     in
     if [%eq: int] n 1 then "(" ^ base ^ " lazy_doc)" else base
@@ -97,7 +99,7 @@ and string_ty_of_ty (state : state) (t : Type.t) =
     ^ (if List.is_empty t.args then ""
       else
         "("
-        ^ String.concat ~sep:", " (List.map t.args ~f:(string_ty_of_ty state))
+        ^ String.concat ~sep:", " (List.map t.args ~f:(string_ty_of_ty' state))
         ^ ") ")
     ^ t.typ
     ^ (if List.mem ~equal:[%eq: string] state.names_with_doc t.typ then
@@ -105,8 +107,16 @@ and string_ty_of_ty (state : state) (t : Type.t) =
       else "")
     ^ ")"
 
-and is_lazy_doc_typ (state : state) = string_ty_of_ty state >> is_lazy_doc_typ'
+and is_lazy_doc_typ (state : state) = string_ty_of_ty' state >> is_lazy_doc_typ'
 and is_lazy_doc_typ' = String.is_suffix ~suffix:"lazy_doc)"
+
+let string_ty_of_ty (state : state) (t : Type.t) =
+  let s = string_ty_of_ty' state t in
+  match s with
+  | "(generics lazy_doc)" ->
+      "((generics lazy_doc * generic_param lazy_doc list * generic_constraint \
+       lazy_doc list) lazy_doc)"
+  | _ -> s
 
 let meth_name' typ_name variant_name =
   typ_name ^ if String.is_empty variant_name then "" else "_" ^ variant_name
@@ -210,11 +220,16 @@ let print_datatype state (dt : Datatype.t)
     in
     let body = wrapper body in
     sigs :=
-      ("method wrap_" ^ dt.name ^ " _pos (_value: " ^ dt.name
+      ("method wrap_" ^ dt.name ^ " (_pos: ast_position) (_value: " ^ dt.name
      ^ ") (doc: document): document = doc")
       :: !sigs;
-    head ^ "lazy_doc (fun (value: " ^ dt.name ^ ") -> " ^ body
-    ^ ") ast_position value" ^ "(**/**)"
+    let def =
+      head ^ "lazy_doc (fun (value: " ^ dt.name ^ ") -> " ^ body
+      ^ ") ast_position value"
+    in
+    if List.mem ~equal:[%eq: string] lazy_doc_manual_definitions method_name
+    then "(* skipping " ^ method_name ^ " *) (**/**)"
+    else def ^ "(**/**)"
   in
   let main =
     match dt.kind with
