@@ -1,7 +1,3 @@
-(**
-  The generic printer if 
-*)
-
 open! Prelude
 open! Ast
 open! PPrint
@@ -169,15 +165,59 @@ module Make (F : Features.T) = struct
         with Diagnostics.SpanFreeError.Exn (Data (context, kind)) ->
           handle context kind
 
+      (** {2:specialize-expr Printer settings} *)
+
+      method virtual printer_name : string
+      (** Mark a path as unreachable *)
+
+      val concrete_ident_view : (module Concrete_ident.VIEW_API) =
+        (module Concrete_ident.DefaultViewAPI)
+      (** The concrete ident view to be used *)
+
+      (** {2:specialize-expr Utility functions} *)
+
       method assertion_failure : 'any. string -> 'any =
         fun details ->
           let span = Span.to_thir self#current_span in
           let kind = Types.AssertionFailure { details } in
           let ctx = Diagnostics.Context.GenericPrinter self#printer_name in
           Diagnostics.SpanFreeError.raise ~span ctx kind
+      (** An assertion failed *)
 
-      method unreachable : 'any. unit -> 'any = failwith "Unreachable!"
-      method virtual printer_name : string
+      method unreachable : 'any. unit -> 'any =
+        self#assertion_failure "Unreachable"
+      (** Mark a path as unreachable *)
+
+      method local_ident (id : local_ident) : document =
+        let module View = (val concrete_ident_view) in
+        View.local_ident
+          (match String.chop_prefix ~prefix:"impl " id.name with
+          | Some _ ->
+              let name = "impl_" ^ Int.to_string ([%hash: string] id.name) in
+              { id with name }
+          | _ -> id)
+        |> string
+      (** {2:specialize-expr Printers for special types} *)
+
+      method concrete_ident ~local (id : Concrete_ident.view) : document =
+        string
+          (if local then id.definition
+          else
+            String.concat ~sep:self#module_path_separator
+              (id.crate :: (id.path @ [ id.definition ])))
+      (** [concrete_ident ~local id] prints a name without path if
+      [local] is true, otherwise it prints the full path, separated by
+      `module_path_separator`. *)
+
+      method quote (quote : quote) : document =
+        List.map
+          ~f:(function
+            | `Verbatim code -> string code
+            | `Expr e -> self#print_expr AstPosition_Quote e
+            | `Pat p -> self#print_pat AstPosition_Quote p
+            | `Typ p -> self#print_ty AstPosition_Quote p)
+          quote.contents
+        |> concat
 
       (** {2:specialize-expr Specialized printers for [expr]} *)
 
@@ -231,6 +271,12 @@ module Make (F : Features.T) = struct
       method virtual expr'_Construct_tuple
           : super:expr -> components:expr lazy_doc list -> document
 
+      method virtual expr'_GlobalVar_concrete
+          : super:expr -> concrete_ident lazy_doc -> document
+
+      method virtual expr'_GlobalVar_primitive
+          : super:expr -> primitive_ident -> document
+
       (** {2:specialize-pat Specialized printers for [pat]} *)
 
       method virtual pat'_PConstruct_inductive
@@ -274,7 +320,7 @@ module Make (F : Features.T) = struct
       (** [ty_TApp_application ~typ ~generics] prints the type
       [typ<...generics>]. *)
 
-      (** *)
+      (** {2:specialize-ty Specialized printers for [item]} *)
 
       method virtual item'_Type_struct
           : super:item ->
@@ -284,6 +330,9 @@ module Make (F : Features.T) = struct
             arguments:
               (concrete_ident lazy_doc * ty lazy_doc * attr list lazy_doc) list ->
             document
+      (** [item'_Type_struct ~super ~name ~generics ~tuple_struct ~arguments] prints the struct definition [struct name<generics> arguments]. `tuple_struct` says whether we are dealing with a tuple struct
+            (e.g. [struct Foo(T1, T2)]) or a named struct
+            (e.g. [struct Foo {field: T1, other: T2}])? *)
 
       method virtual item'_Type_enum
           : super:item ->
@@ -291,52 +340,44 @@ module Make (F : Features.T) = struct
             generics:generics lazy_doc ->
             variants:variant lazy_doc list ->
             document
-
-      method _do_not_override_item'_Type ~super ~name ~generics ~variants
-          ~is_struct =
-        if is_struct then
-          match variants with
-          | [ variant ] ->
-              let variant_arguments =
-                List.map
-                  ~f:(fun (ident, typ, attrs) ->
-                    ( self#_do_not_override_lazy_of_concrete_ident
-                        AstPos_variant__arguments ident,
-                      self#_do_not_override_lazy_of_ty AstPos_variant__arguments
-                        typ,
-                      self#_do_not_override_lazy_of_attrs AstPos_variant__attrs
-                        attrs ))
-                  variant#v.arguments
-              in
-              self#item'_Type_struct ~super ~name ~generics
-                ~tuple_struct:(not variant#v.is_record)
-                ~arguments:variant_arguments
-          | _ -> self#unreachable ()
-        else self#item'_Type_enum ~super ~name ~generics ~variants
+      (** [item'_Type_enum ~super ~name ~generics ~variants] prints
+      the enum type [enum name<generics> { ... }]. *)
 
       method virtual item'_Enum_Variant
-        : name:concrete_ident lazy_doc ->
-          arguments:
-            (concrete_ident lazy_doc * ty lazy_doc * attrs lazy_doc) list ->
-          is_record:bool ->
-          attrs:attrs lazy_doc ->
-          document
-
-
-      method _do_not_override_variant
-        : name:concrete_ident lazy_doc ->
-          arguments:
-            (concrete_ident lazy_doc * ty lazy_doc * attrs lazy_doc) list ->
-          is_record:bool ->
-          attrs:attrs lazy_doc ->
-          document
-        = self#item'_Enum_Variant
-
+          : name:concrete_ident lazy_doc ->
+            arguments:
+              (concrete_ident lazy_doc * ty lazy_doc * attrs lazy_doc) list ->
+            is_record:bool ->
+            attrs:attrs lazy_doc ->
+            document
+      (** [item'_Enum_Variant] prints a variant of an enum. *)
 
       (** {2:common-nodes Printers for common nodes} *)
 
       method virtual common_array : document list -> document
       (** [common_array values] is a default for printing array-like nodes: array patterns, array expressions. *)
+
+      (** {2:defaults Default printers} **)
+
+      method module_path_separator = "::"
+      (** [module_path_separator] is the default separator for
+      paths. `::` by default *)
+
+      method pat'_PArray ~super:_ ~args =
+        List.map ~f:(fun arg -> arg#p) args |> self#common_array
+
+      method expr'_Array ~super:_ args =
+        List.map ~f:(fun arg -> arg#p) args |> self#common_array
+
+      method pat'_POr ~super:_ ~subpats =
+        List.map ~f:(fun subpat -> subpat#p) subpats
+        |> separate (break 1 ^^ char '|' ^^ space)
+
+      (**/**)
+      (* This section is about defining or overriding
+         `_do_not_override_` methods. This is internal logic, whence this
+         is excluded from documentation (with the nice and user friendly
+         `(**/**)` ocamldoc syntax) *)
 
       method _do_not_override_lhs_LhsFieldAccessor ~e ~typ ~field ~witness =
         let field =
@@ -426,6 +467,21 @@ module Make (F : Features.T) = struct
         | `Primitive _ | `TupleType _ | `TupleField _ | `Projector _ ->
             self#assertion_failure "Construct unexpected constructors"
 
+      method _do_not_override_expr'_GlobalVar ~super global_ident =
+        match global_ident with
+        | `Concrete concrete ->
+            let concrete =
+              self#_do_not_override_lazy_of_concrete_ident
+                AstPos_expr'_GlobalVar_x0 concrete
+            in
+            self#expr'_GlobalVar_concrete ~super concrete
+        | `Primitive primitive ->
+            self#expr'_GlobalVar_primitive ~super primitive
+        | _ ->
+            self#assertion_failure
+            @@ "GlobalVar: expected a concrete or primitive global ident, got:"
+            ^ [%show: global_ident] global_ident
+
       method _do_not_override_pat'_PConstruct ~super ~constructor ~is_record
           ~is_struct ~fields =
         match constructor with
@@ -488,25 +544,36 @@ module Make (F : Features.T) = struct
               self#assertion_failure "malformed [ty.TApp] tuple";
             self#ty_TApp_tuple ~types
 
-      method pat'_PArray ~super:_ ~args =
-        List.map ~f:(fun arg -> arg#p) args |> self#common_array
+      method _do_not_override_item'_Type ~super ~name ~generics ~variants
+          ~is_struct =
+        if is_struct then
+          match variants with
+          | [ variant ] ->
+              let variant_arguments =
+                List.map
+                  ~f:(fun (ident, typ, attrs) ->
+                    ( self#_do_not_override_lazy_of_concrete_ident
+                        AstPos_variant__arguments ident,
+                      self#_do_not_override_lazy_of_ty AstPos_variant__arguments
+                        typ,
+                      self#_do_not_override_lazy_of_attrs AstPos_variant__attrs
+                        attrs ))
+                  variant#v.arguments
+              in
+              self#item'_Type_struct ~super ~name ~generics
+                ~tuple_struct:(not variant#v.is_record)
+                ~arguments:variant_arguments
+          | _ -> self#unreachable ()
+        else self#item'_Type_enum ~super ~name ~generics ~variants
 
-      method expr'_Array ~super:_ args =
-        List.map ~f:(fun arg -> arg#p) args |> self#common_array
-
-      val concrete_ident_view : (module Concrete_ident.VIEW_API) =
-        (module Concrete_ident.DefaultViewAPI)
-      (** The concrete ident view to be used *)
-
-      method local_ident (id : local_ident) : document =
-        let module View = (val concrete_ident_view) in
-        View.local_ident
-          (match String.chop_prefix ~prefix:"impl " id.name with
-          | Some _ ->
-              let name = "impl_" ^ Int.to_string ([%hash: string] id.name) in
-              { id with name }
-          | _ -> id)
-        |> string
+      method _do_not_override_variant
+          : name:concrete_ident lazy_doc ->
+            arguments:
+              (concrete_ident lazy_doc * ty lazy_doc * attrs lazy_doc) list ->
+            is_record:bool ->
+            attrs:attrs lazy_doc ->
+            document =
+        self#item'_Enum_Variant
 
       method _do_not_override_lazy_of_local_ident ast_position
           (id : local_ident) =
@@ -526,55 +593,6 @@ module Make (F : Features.T) = struct
             in
             self#concrete_ident ~local id)
           ast_position id
-
-      method virtual expr'_GlobalVar_concrete
-          : super:expr -> concrete_ident lazy_doc -> document
-
-      method virtual expr'_GlobalVar_primitive
-          : super:expr -> primitive_ident -> document
-
-      method _do_not_override_expr'_GlobalVar ~super global_ident =
-        match global_ident with
-        | `Concrete concrete ->
-            let concrete =
-              self#_do_not_override_lazy_of_concrete_ident
-                AstPos_expr'_GlobalVar_x0 concrete
-            in
-            self#expr'_GlobalVar_concrete ~super concrete
-        | `Primitive primitive ->
-            self#expr'_GlobalVar_primitive ~super primitive
-        | _ ->
-            self#assertion_failure
-            @@ "GlobalVar: expected a concrete or primitive global ident, got:"
-            ^ [%show: global_ident] global_ident
-
-      method module_path_separator = "::"
-      (** [module_path_separator] is the default separator for
-      paths. `::` by default *)
-
-      method concrete_ident ~local id : document =
-        string
-          (if local then id.definition
-          else
-            String.concat ~sep:self#module_path_separator
-              (id.crate :: (id.path @ [ id.definition ])))
-      (** [concrete_ident ~local id] prints a name without path if
-      [local] is true, otherwise it prints the full path, separated by
-      `module_path_separator`. *)
-
-      method pat'_POr ~super:_ ~subpats =
-        List.map ~f:(fun subpat -> subpat#p) subpats
-        |> separate (break 1 ^^ char '|' ^^ space)
-
-      method quote (quote : quote) : document =
-        List.map
-          ~f:(function
-            | `Verbatim code -> string code
-            | `Expr e -> self#print_expr AstPosition_Quote e
-            | `Pat p -> self#print_pat AstPosition_Quote p
-            | `Typ p -> self#print_ty AstPosition_Quote p)
-          quote.contents
-        |> concat
 
       method _do_not_override_lazy_of_quote ast_position (value : quote)
           : quote lazy_doc =
@@ -615,5 +633,7 @@ module Make (F : Features.T) = struct
               ast_position value,
             params,
             constraints )
+
+      (**/**)
     end
 end
