@@ -851,7 +851,7 @@ let translate m (bo : BackendOptions.t) ~(bundles : AST.item list list)
     M.Preamble.print items ^ M.DataTypes.print items ^ M.Letfuns.print items
   in
   let lib_file = Types.{ path = "lib.pvl"; contents = lib_contents } in
-  [ lib_file; ]
+  [ lib_file ]
 
 open Phase_utils
 module DepGraph = Dependencies.Make (InputLanguage)
