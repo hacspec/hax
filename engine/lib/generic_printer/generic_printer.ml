@@ -521,6 +521,18 @@ module Make (F : Features.T) = struct
             self#concrete_ident ~local id)
           ast_position id
 
+      method virtual expr'_GlobalVar_concrete: super:expr -> concrete_ident lazy_doc -> document
+      method virtual expr'_GlobalVar_primitive: super:expr -> primitive_ident -> document
+
+      method _do_not_override_expr'_GlobalVar ~super global_ident =
+        match global_ident with
+        | `Concrete concrete ->
+            let concrete = self#_do_not_override_lazy_of_concrete_ident AstPos_expr'_GlobalVar_x0 concrete in
+            self#expr'_GlobalVar_concrete ~super concrete
+        | `Primitive primitive ->
+            self#expr'_GlobalVar_primitive ~super primitive
+        | _ -> self#assertion_failure @@ "GlobalVar: expected a concrete or primitive global ident, got:" ^ [%show: global_ident] global_ident
+
       method module_path_separator = "::"
       (** [module_path_separator] is the default separator for
       paths. `::` by default *)

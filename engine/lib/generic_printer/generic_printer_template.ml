@@ -90,8 +90,11 @@ struct
       method expr'_EffectAction ~super:_ ~action:_ ~argument:_ =
         default_document_for "expr'_EffectAction"
 
-      method expr'_GlobalVar ~super:_ _x2 =
-        default_document_for "expr'_GlobalVar"
+      method expr'_GlobalVar_concrete ~super:_ _x2 =
+        default_document_for "expr'_GlobalVar_concrete"
+
+      method expr'_GlobalVar_primitive ~super:_ _x2 =
+        default_document_for "expr'_GlobalVar_primitive"
 
       method expr'_If ~super:_ ~cond:_ ~then_:_ ~else_:_ =
         default_document_for "expr'_If"

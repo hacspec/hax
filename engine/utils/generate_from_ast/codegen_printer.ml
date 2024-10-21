@@ -25,6 +25,7 @@ let is_hidden_method =
       "lhs_LhsFieldAccessor";
       "local_ident";
       "pat'_PConstruct";
+      "expr'_GlobalVar";
     ]
   in
   List.mem ~equal:[%eq: string] list
