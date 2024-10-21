@@ -12,6 +12,7 @@ include
       include On.Monadic_binding
       include On.Macro
       include On.Construct_base
+      include On.Trait_item_default
     end)
     (struct
       let backend = Diagnostics.Backend.Coq
@@ -44,7 +45,7 @@ module SubtypeToInputLanguage
              and type fold_like_loop = Features.Off.fold_like_loop
              and type dyn = Features.Off.dyn
              and type match_guard = Features.Off.match_guard
-             and type trait_item_default = Features.Off.trait_item_default
+             (* and type trait_item_default = Features.Off.trait_item_default *)
              and type unsafe = Features.Off.unsafe) =
 struct
   module FB = InputLanguage
@@ -59,6 +60,7 @@ struct
         include Features.SUBTYPE.On.Construct_base
         include Features.SUBTYPE.On.Slice
         include Features.SUBTYPE.On.Macro
+        include Features.SUBTYPE.On.Trait_item_default
       end)
 
   let metadata = Phase_utils.Metadata.make (Reject (NotInBackendLang backend))
@@ -1799,7 +1801,7 @@ module TransformToInputLanguage =
   |> Phases.Functionalize_loops
   |> Phases.Reject.As_pattern
   |> Phases.Reject.Dyn
-  |> Phases.Reject.Trait_item_default
+  (* |> Phases.Reject.Trait_item_default *)
   |> SubtypeToInputLanguage
   |> Identity
   ]
