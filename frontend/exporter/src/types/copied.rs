@@ -1369,15 +1369,16 @@ impl<'tcx, S: ExprState<'tcx>> SInto<S, Expr> for rustc_middle::thir::Expr<'tcx>
             None => match kind {
                 // Introduce intermediate `Cast` from `T` to `U` when casting from a `#[repr(T)]` enum to `U`
                 rustc_middle::thir::ExprKind::Cast { source } => {
-                    if let rustc_middle::ty::TyKind::Adt(def, _) = s.thir().exprs[source].ty.kind()
+                    if let rustc_middle::ty::TyKind::Adt(adt, _) = s.thir().exprs[source].ty.kind()
                     {
                         let tcx = s.base().tcx;
                         let contents = kind.sinto(s);
-                        use crate::rustc_middle::ty::util::IntTypeExt;
-                        let repr_type = tcx
-                            .repr_options_of_def(def.did().expect_local())
-                            .discr_type()
-                            .to_ty(s.base().tcx);
+                        let repr_type = if adt.is_enum() {
+                            use crate::rustc_middle::ty::util::IntTypeExt;
+                            adt.repr().discr_type().to_ty(tcx)
+                        } else {
+                            ty
+                        };
                         if repr_type == ty {
                             contents
                         } else {
