@@ -274,6 +274,59 @@ module Make (F : Features.T) = struct
       (** [ty_TApp_application ~typ ~generics] prints the type
       [typ<...generics>]. *)
 
+      (** *)
+
+      method virtual item'_Type_struct :
+        super:item ->
+        name:concrete_ident lazy_doc ->
+        generics:generics lazy_doc ->
+        arguments:(concrete_ident lazy_doc * ty lazy_doc * attr lazy_doc list) list ->
+        document
+
+      method virtual item'_Type_tuple_struct :
+        super:item ->
+        name:concrete_ident lazy_doc ->
+        generics:generics lazy_doc ->
+        arguments:(concrete_ident lazy_doc * ty lazy_doc * attr lazy_doc list) list ->
+        document
+
+      method virtual item'_Type_enum :
+        super:item ->
+        name:concrete_ident lazy_doc ->
+        generics:generics lazy_doc ->
+        variants:(variant lazy_doc) list ->
+        document
+
+      method _do_not_override_item'_Type ~super ~name ~generics ~variants ~is_struct =
+        if is_struct
+        then
+          match variants with
+          | [variant] ->
+            let variant_arguments =
+              List.map
+                ~f:(fun (ident,typ,_attrs) ->
+                    (self#_do_not_override_lazy_of_concrete_ident AstPos_variant__arguments ident,
+                     self#_do_not_override_lazy_of_ty AstPos_variant__arguments typ,
+                     [] (* TODO: attrs *)))
+                variant#v.arguments
+            in
+            if variant#v.is_record
+            then
+               self#item'_Type_struct
+                 ~super
+                 ~name
+                 ~generics
+                 ~arguments:variant_arguments
+            else
+              self#item'_Type_tuple_struct
+                ~super
+                ~name
+                ~generics
+                ~arguments:variant_arguments
+          | _ -> self#unreachable () (* TODO: guarantees? *)
+        else
+          self#item'_Type_enum ~super ~name ~generics ~variants
+
       (** {2:common-nodes Printers for common nodes} *)
 
       method virtual common_array : document list -> document
@@ -505,5 +558,6 @@ module Make (F : Features.T) = struct
         let module View = (val concrete_ident_view) in
         current_namespace <- View.to_namespace value.ident |> Option.some;
         super#_do_not_override_lazy_of_item ast_position value
+
     end
 end
