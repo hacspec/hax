@@ -1799,7 +1799,7 @@ struct
             items
           @ [
               SSP.AST.ProgramInstance
-                ( pglobal_ident name,
+                ( pconcrete_ident name,
                   pgeneric span generics,
                   pty span self_ty,
                   args_ty span gen_vals,
@@ -1865,7 +1865,7 @@ struct
                              ])
                        items) );
             ]
-          @ [ SSP.AST.HintUnfold (pglobal_ident name, Some (pty span self_ty)) ]
+          @ [ SSP.AST.HintUnfold (pconcrete_ident name, Some (pty span self_ty)) ]
     in
     decls_from_item
 

@@ -1674,7 +1674,7 @@ and c_item_unwrapped ~ident ~drop_body (item : Thir.item) : item list =
                generics = c_generics generics;
                self_ty = c_ty item.span self_ty;
                of_trait =
-                 ( def_id Trait of_trait.def_id,
+                 ( Concrete_ident.of_def_id Trait of_trait.def_id,
                    List.map ~f:(c_generic_value item.span) of_trait.generic_args
                  );
                items =

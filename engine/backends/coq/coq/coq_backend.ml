@@ -582,7 +582,7 @@ struct
     | Impl { generics; self_ty; of_trait = name, gen_vals; items } ->
         [
           C.AST.Instance
-            ( pglobal_ident name,
+            ( pconcrete_ident name,
               List.map ~f:(pgeneric_param_as_argument span) generics.params,
               pty span self_ty,
               args_ty span gen_vals,

@@ -1419,7 +1419,7 @@ struct
         in
         let typ =
           F.mk_e_app
-            (F.term @@ F.AST.Name (pglobal_ident e.span trait))
+            (F.term @@ F.AST.Name (pconcrete_ident trait))
             (List.map ~f:(pgeneric_value e.span) generic_args)
         in
         let pat = F.pat @@ F.AST.PatAscribed (pat, (typ, None)) in

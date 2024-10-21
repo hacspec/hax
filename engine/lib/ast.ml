@@ -421,7 +421,7 @@ functor
       | Impl of {
           generics : generics;
           self_ty : ty;
-          of_trait : global_ident * generic_value list;
+          of_trait : concrete_ident * generic_value list;
           items : impl_item list;
           parent_bounds : (impl_expr * impl_ident) list;
           safety : safety_kind;

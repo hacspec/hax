@@ -576,7 +576,7 @@ module Raw = struct
         | Impl { generics; self_ty; of_trait; items; parent_bounds = _; safety }
           ->
             let trait =
-              pglobal_ident e.span (fst of_trait)
+              pglobal_ident e.span (`Concrete (fst of_trait))
               & !"<"
               & concat ~sep:!","
                   (List.map ~f:(pgeneric_value e.span) (snd of_trait))
