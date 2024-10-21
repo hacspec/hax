@@ -15,8 +15,11 @@ let fmt = path => execSync(`ocamlformat -i ${path}`);
 // Go to the root of the engine
 require('process').chdir(`${execSync('git rev-parse --show-toplevel').toString().trim()}/engine`);
 
+
 // Prints the signature of module `Generic_printer` (using `ocaml-print-intf`)
-let mli = execSync(`dune exec -- ocaml-print-intf ${GENERIC_PRINTER}`).toString();
+let mli = execSync(`dune exec -- ocaml-print-intf ${GENERIC_PRINTER}`).toString().split('class virtual base')[2];
+
+writeFileSync('/tmp/exported.mli', mli);
 
 // Parses all 
 let virtual_methods = [...mli.matchAll(/^( +)method (private )?virtual +(?<name>.*) +:(?<sig>.*(\n \1.*)*)/gm)];

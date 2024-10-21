@@ -56,7 +56,7 @@
    ast_visitors.ml
    (with-stdin-from
     %{ast}
-    (run generate_visitors visitors)))))
+    (run generate_from_ast visitors)))))
 
 (rule
  (target generated_generic_printer_base.ml)
@@ -67,10 +67,10 @@
    generated_generic_printer_base.ml
    (with-stdin-from
     %{ast}
-    (run generate_visitors printer)))))
+    (run generate_from_ast printer)))))
 
 (rule
- (target ast_builder_generated.ml)
+ (target ast_destruct_generated.ml)
  (deps
   (:ast ast.ml))
  (action

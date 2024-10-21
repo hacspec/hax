@@ -1681,7 +1681,6 @@ let fstar_headers (bo : BackendOptions.t) =
   in
   [ opts; "open Core"; "open FStar.Mul" ] |> String.concat ~sep:"\n"
 
-<<<<<<< HEAD
 (*
 module GenericPrinter = Generic_rust_printer.Make (InputLanguage)
 

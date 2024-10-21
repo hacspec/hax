@@ -361,15 +361,6 @@ module Make (F : Features.T) = struct
    module AST = Ast.Make (F)
    open Ast.Make (F)
 
-   (* module DoNotOverride: sig
-     type 'a t
-     val __force (type a) (f: a t): a
-   end = struct
-     (** Marks a method that should not be overriden by a printer. *)
-     type 'a t = 'a
-     let __force (f: 'a) = 'a
-   end *)
-
    class virtual base = object (print)
      %s
    end

@@ -415,10 +415,7 @@ module Make (F : Features.T) (View : Concrete_ident.VIEW_API) = struct
             let suffix =
               match kind with
               | GPLifetime _ -> space ^^ colon ^^ space ^^ string "'unk"
-              | GPType { default = None } -> empty
-              | GPType { default = Some default } ->
-                  space ^^ equals ^^ space
-                  ^^ print#ty_at GenericParam_GPType default
+              | GPType -> empty
               | GPConst { typ } ->
                   space ^^ colon ^^ space
                   ^^ print#ty_at GenericParam_GPConst typ
