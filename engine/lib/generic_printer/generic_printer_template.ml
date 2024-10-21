@@ -230,11 +230,9 @@ struct
       method item'_Type_enum ~super:_ ~name:_ ~generics:_ ~variants:_ =
         default_document_for "item'_Type_enum"
 
-      method item'_Type_struct ~super:_ ~name:_ ~generics:_ ~arguments:_ =
+      method item'_Type_struct ~super:_ ~name:_ ~generics:_ ~tuple_struct:_
+          ~arguments:_ =
         default_document_for "item'_Type_struct"
-
-      method item'_Type_tuple_struct ~super:_ ~name:_ ~generics:_ ~arguments:_ =
-        default_document_for "item'_Type_tuple_struct"
 
       method item'_Use ~super:_ ~path:_ ~is_external:_ ~rename:_ =
         default_document_for "item'_Use"

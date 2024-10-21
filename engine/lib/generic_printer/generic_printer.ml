@@ -280,16 +280,9 @@ module Make (F : Features.T) = struct
           : super:item ->
             name:concrete_ident lazy_doc ->
             generics:generics lazy_doc ->
+            tuple_struct:bool ->
             arguments:
-              (concrete_ident lazy_doc * ty lazy_doc * attr lazy_doc list) list ->
-            document
-
-      method virtual item'_Type_tuple_struct
-          : super:item ->
-            name:concrete_ident lazy_doc ->
-            generics:generics lazy_doc ->
-            arguments:
-              (concrete_ident lazy_doc * ty lazy_doc * attr lazy_doc list) list ->
+              (concrete_ident lazy_doc * ty lazy_doc * attr list lazy_doc) list ->
             document
 
       method virtual item'_Type_enum
@@ -306,21 +299,19 @@ module Make (F : Features.T) = struct
           | [ variant ] ->
               let variant_arguments =
                 List.map
-                  ~f:(fun (ident, typ, _attrs) ->
+                  ~f:(fun (ident, typ, attrs) ->
                     ( self#_do_not_override_lazy_of_concrete_ident
                         AstPos_variant__arguments ident,
                       self#_do_not_override_lazy_of_ty AstPos_variant__arguments
                         typ,
-                      [] (* TODO: attrs *) ))
+                      self#_do_not_override_lazy_of_attrs AstPos_variant__attrs
+                        attrs ))
                   variant#v.arguments
               in
-              if variant#v.is_record then
-                self#item'_Type_struct ~super ~name ~generics
-                  ~arguments:variant_arguments
-              else
-                self#item'_Type_tuple_struct ~super ~name ~generics
-                  ~arguments:variant_arguments
-          | _ -> self#unreachable () (* TODO: guarantees? *)
+              self#item'_Type_struct ~super ~name ~generics
+                ~tuple_struct:(not variant#v.is_record)
+                ~arguments:variant_arguments
+          | _ -> self#unreachable ()
         else self#item'_Type_enum ~super ~name ~generics ~variants
 
       (** {2:common-nodes Printers for common nodes} *)
